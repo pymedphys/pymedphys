@@ -26,7 +26,9 @@ An element's rule comes from the first of these that covers it:
    values that de-identification removes;
 2. Table E.1-1's Private Attributes row, for each element of an odd group
    other than 0001, 0003, 0005, 0007, and FFFF, which PS3.5 Section 7.8.1
-   does not allow for private use;
+   does not allow for private use: X, or C under the Retain Safe Private
+   Option, which the walker settles by the reviewed safe private rules
+   (:mod:`~pymedphys._dicom.deidentify.retained_private`);
 3. the policy's action for Table E.1-1's row of the attribute, by exact tag
    and then by masked tag, (50xx,xxxx), (60xx,3000), and (60xx,4000), which
    match only the repeating groups 5000 to 501E and 6000 to 601E (PS3.5
@@ -50,15 +52,21 @@ An element's rule comes from the first of these that covers it:
 No rules for cleaning the contents of a sequence are designed yet, so a
 sequence to which the policy gives C, such as Reason for Visit Code
 Sequence (0032,1067) under Clean Descriptors, takes its Basic Profile
-action. An attribute
+action. Nor is a cleaner of overlays and curves, so a masked row to which
+the policy gives C, which only Clean Graphics does, to Curve Data
+(50xx,xxxx), Overlay Data (60xx,3000), and Overlay Comments (60xx,4000),
+takes its Basic Profile action too, X, which removes the attribute, and
+for Overlay Data its overlay group (D-020, D-041). Under Clean Structured
+Content, the walker is given K in place of that action for each sequence of
+content items that can be kept, with the actions of its content items'
+concept names (:mod:`~pymedphys._dicom.deidentify.content_items`, D-047),
+which come from the source's values rather than from a rule. An attribute
 whose alternative VRs include a binary VR, such as LUT Data (0028,3006),
 US or OW, is kept only where the IOD defines it.
 
 Compound actions, such as X/Z/D, are kept as the rule gives them, for
 :mod:`~pymedphys._dicom.deidentify.compound_actions` to resolve by Type.
-No reviewed rules yet say which private attributes are safe, so a policy
-that selects the Retain Safe Private Option is refused. Rules name tags,
-never values.
+Rules name tags, never values.
 """
 
 from __future__ import annotations
@@ -69,7 +77,8 @@ from collections.abc import Sequence
 
 from .file_layout import TAG_PATTERN
 from .iods import IOD
-from .policy import Policy, PolicyError, refuse_retain_safe_private
+from .policy import Policy, PolicyError, refuse_unapplied_options
+from .safe_private import RuleList, SafePrivateList, load_safe_private_rules
 from .standard import (
     _RESERVED_ODD_GROUPS,
     PRIVATE_ATTRIBUTES_TAG,
@@ -78,6 +87,7 @@ from .standard import (
     load_table_e1_1,
 )
 from .supplementary_actions import TEXT_VRS, UNCOVERED_TEXT_ACTION
+from .tcia_private_tags import tcia_safe_private_rules
 from .uid_roles import load_uid_roles
 
 REMOVE = "X"
@@ -106,6 +116,10 @@ class RuleSource(enum.Enum):
     UNCOVERED_TEXT = "uncovered-text"
     DEFAULT = "default"
     NOT_IN_DICTIONARY = "not-in-dictionary"
+    # Under Clean Structured Content, the action that a content item's
+    # concept name gives its sequence or its value, which the walker is given
+    # in place of the rule's (D-047).
+    CONTENT_ITEM = "content-item"
 
 
 @dataclasses.dataclass(frozen=True)
@@ -140,6 +154,11 @@ def _is_sequence(tag: str) -> bool:
     return attribute is not None and "SQ" in attribute.vrs
 
 
+def _is_masked(tag: str) -> bool:
+    """Whether a row of Table E.1-1 is masked, such as (60xx,3000)."""
+    return "x" in tag
+
+
 def _matches(pattern: str, tag: str) -> bool:
     """Whether a masked tag of Table E.1-1, such as (60xx,3000), covers ``tag``.
 
@@ -170,16 +189,35 @@ class ElementRules:
     policy : Policy
         A validated policy, composed from the pinned Table E.1-1, such as
         that of :func:`~pymedphys._dicom.deidentify.policy.compose_policy`.
+    safe_private_list : SafePrivateList, optional
+        Under the Retain Safe Private Option, the list whose rules settle
+        private attributes: the reviewed rules, the default, or TCIA's
+        Private Tag Dictionary (D-035).
 
     Attributes
     ----------
     policy : Policy
+    safe_private_list : SafePrivateList or None
+        The list chosen under the Retain Safe Private Option; otherwise
+        ``None``.
+    safe_private : RuleList or None
+        That list's rules, which settle the C that the policy gives private
+        attributes: the reviewed rules
+        (:class:`~pymedphys._dicom.deidentify.safe_private.SafePrivateRules`)
+        or TCIA's
+        (:class:`~pymedphys._dicom.deidentify.tcia_private_tags.TciaSafePrivateRules`);
+        otherwise ``None``.
 
     Raises
     ------
     PolicyError
-        If the policy selects the Retain Safe Private Option, or was not
-        composed from the pinned Table E.1-1.
+        If the policy selects an option that the engine does not yet apply
+        (:func:`~pymedphys._dicom.deidentify.policy.refuse_unapplied_options`),
+        or was not composed from the pinned Table E.1-1; or if
+        ``safe_private_list`` chooses TCIA's dictionary for a policy without
+        the Retain Safe Private Option.
+    TypeError
+        If ``safe_private_list`` is not a SafePrivateList.
 
     Examples
     --------
@@ -194,23 +232,71 @@ class ElementRules:
     'X/Z/D'
     """
 
-    def __init__(self, policy: Policy) -> None:
-        refuse_retain_safe_private(policy)
+    def __init__(
+        self,
+        policy: Policy,
+        *,
+        safe_private_list: SafePrivateList = SafePrivateList.REVIEWED,
+    ) -> None:
+        refuse_unapplied_options(policy)
+        if not isinstance(safe_private_list, SafePrivateList):
+            raise TypeError("safe_private_list must be a SafePrivateList")
         table = load_table_e1_1()
         rows = {row.tag: row for row in table.attributes}
         if table.edition != policy.edition or rows.keys() != policy.actions.keys():
             raise PolicyError("the policy was not composed from the pinned Table E.1-1")
         self.policy = policy
         self._private = policy.actions[PRIVATE_ATTRIBUTES_TAG]
+        if self._private != "C" and safe_private_list is not SafePrivateList.REVIEWED:
+            raise PolicyError(
+                "a safe private list can be chosen only under the Retain Safe "
+                "Private Option"
+            )
+        self.safe_private_list = safe_private_list if self._private == "C" else None
+        self.safe_private: RuleList | None = None
+        if self.safe_private_list is SafePrivateList.REVIEWED:
+            self.safe_private = load_safe_private_rules()
+        elif self.safe_private_list is SafePrivateList.TCIA:
+            self.safe_private = tcia_safe_private_rules()
         self._table = {
             tag: rows[tag].basic_profile
-            if action == "C" and _is_sequence(tag)
+            if action == "C" and (_is_sequence(tag) or _is_masked(tag))
             else action
             for tag, action in policy.actions.items()
             if tag != PRIVATE_ATTRIBUTES_TAG
         }
         self._masked = tuple(tag for tag in self._table if "x" in tag)
         self._uid_roles = frozenset(load_uid_roles().rules)
+
+    def row_action(self, entry: str) -> str:
+        """Return the action that the rules give the elements of a table row.
+
+        It is the policy's action for the row, except that a sequence or a
+        masked row to which the policy gives C takes its Basic Profile
+        action.
+
+        Parameters
+        ----------
+        entry : str
+            The row's tag, as Table E.1-1 gives it, such as ``"(50xx,xxxx)"``
+            or the Private Attributes row.
+
+        Raises
+        ------
+        KeyError
+            If ``entry`` is not the tag of a row of Table E.1-1.
+
+        Examples
+        --------
+        >>> from pymedphys._dicom.deidentify.policy import compose_custom_policy
+        >>> ElementRules(compose_custom_policy(["clean_graphics"])).row_action(
+        ...     "(50xx,xxxx)"
+        ... )
+        'X'
+        """
+        if entry == PRIVATE_ATTRIBUTES_TAG:
+            return self._private
+        return self._table[entry]
 
     def rule(
         self, tag: str, path: Sequence[str] = (), *, iod: IOD | None = None

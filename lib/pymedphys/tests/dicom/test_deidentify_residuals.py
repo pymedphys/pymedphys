@@ -19,6 +19,7 @@
 # pylint: disable = too-many-lines
 
 import dataclasses
+import gc
 import io
 import json
 import logging
@@ -30,7 +31,16 @@ from unittest import mock
 from pymedphys._imports import hypothesis, pydicom, pytest
 from pymedphys._imports import numpy as np
 
-from pymedphys._dicom.deidentify import dates, dummy_values, pseudonyms, residuals, uids
+from pymedphys._dicom.deidentify import (
+    dates,
+    dummy_values,
+    markers,
+    policy,
+    pseudonyms,
+    residuals,
+    uids,
+)
+from pymedphys._dicom.deidentify.codes import load_context_group
 from pymedphys._dicom.deidentify.file_layout import ElementPath, Location, Region
 from pymedphys._dicom.deidentify.keys import DeidKey
 from pymedphys._dicom.deidentify.residuals import (
@@ -1199,6 +1209,33 @@ def test_values_in_numeric_values_need_long_single_byte_forms(tag, vr):
     ]
 
 
+@pytest.mark.parametrize(
+    "form, before, after",
+    [
+        (b"ZEBEDEEQUILLON", b"K", b"\x00"),
+        (b"ZEBEDEEQUILLON", b"\x00", b"t"),
+        (BIRTH_DATE.encode(), b"7", b"\x00"),
+    ],
+)
+def test_a_long_form_in_numbers_is_found_whatever_bytes_adjoin_it(form, before, after):
+    # Found by the fuzz campaign (test_deidentify_malformed_input.py): a name
+    # in sample values was not found where a sample's byte that is a letter
+    # adjoined it, as a name inside a longer word is not, and so was
+    # released.
+    sources = [_source("(0010,0010)", "PN", "ZEBEDEE^QUILLON"), BIRTH_SOURCE]
+    samples = b"\x00\x02" + before + form + after + b"\x00\x02"
+    numeric = _file(_element(0x7FE00010, "OW", samples))
+    text = _file(_element(0x00191001, "OB", samples))
+
+    in_numbers = find_residuals(numeric, sources)
+    in_text = find_residuals(text, sources)
+
+    assert [f.offset for f in in_numbers.findings] == [numeric.index(form)]
+    # In other values, which can hold text, a longer word or number is still
+    # not a finding.
+    assert not in_text.findings
+
+
 def test_in_an_item_only_values_of_numeric_vrs_hold_numbers():
     # Pixel Data in an item, such as an icon's, is searched for every form.
     item = _element(0x00191001, "OW", IN_NUMBERS) + _element(0x7FE00010, "OB", b"MARY")
@@ -1285,6 +1322,41 @@ def test_entropy_coded_data_hold_numbers_and_marker_segments_are_text(split):
     ]
 
 
+@pytest.mark.deid_requirement("MIDI-BP-01")
+def test_entropy_coded_data_are_searched_for_forms_of_six_bytes():
+    # Decoders skip bytes after the data they need, which may hold a name,
+    # so forms of six bytes are found in entropy-coded data, but not shorter
+    # ones, nor six-byte forms in values that hold numbers.
+    text = b"ZEBED\x01QUILLO\x01"
+    data = _encapsulated_file(compressed.JPEG_LOSSLESS_SV1, _jpeg_lossless(text))
+    numbers = _file(_element(0x7FE00010, "OW", text))
+    name = _source("(0010,0010)", "PN", "QUILLO^ZEBED")
+
+    assert residuals.MIN_BYTES_IN_CODED == 6
+    assert [f.offset for f in find_residuals(data, [name]).findings] == [
+        data.index(b"QUILLO")
+    ]
+    assert not find_residuals(numbers, [name]).findings
+
+
+def test_a_form_in_a_codestream_is_found_whatever_bytes_adjoin_it():
+    # Found by the fuzz campaign, in JPEG 2000 entropy-coded data and in a
+    # QCD marker segment: as in sample values above. A kept marker segment
+    # holds coding parameters, so its short forms are found too.
+    table = struct.pack(">HH", 0xFFDB, 8) + b"KMARYt"
+    codestream = _jpeg_lossless(b"KZEBEDEEQUILLONt")
+    codestream = codestream[:2] + table + codestream[2:]
+    data = _encapsulated_file(compressed.JPEG_LOSSLESS_SV1, codestream)
+    name = _source("(0010,0010)", "PN", "MARY^ZEBEDEEQUILLON")
+
+    result = find_residuals(data, [name])
+
+    assert [f.offset for f in result.findings] == [data.index(b"MARY")]
+    assert [f.offset for f in find_residuals(data, [NAME_SOURCE]).findings] == [
+        data.index(b"ZEBEDEEQUILLON")
+    ]
+
+
 def test_fragments_whose_codestreams_do_not_parse_are_searched_for_every_form():
     codestream = _jpeg_lossless(b"MARY")
     data = _encapsulated_file(compressed.JPEG_LOSSLESS_SV1, codestream + b"MORE")
@@ -1296,8 +1368,11 @@ def test_fragments_whose_codestreams_do_not_parse_are_searched_for_every_form():
 
 
 def test_rle_lossless_fragments_hold_numbers():
+    # RLE Lossless has no bytes that a decoder skips, so its fragments are
+    # searched as sample values, not for forms of six or seven bytes.
     data = _encapsulated_file(
-        "1.2.840.10008.1.2.5", bytes(64) + b"MARY" + PATIENT_ID.encode()
+        "1.2.840.10008.1.2.5",
+        bytes(64) + b"MARY\x01QUILLON\x01" + PATIENT_ID.encode(),
     )
     name = _source("(0010,0010)", "PN", "MARY^QUILLON")
 
@@ -1325,6 +1400,101 @@ def test_the_same_value_from_two_instances_is_reported_once_per_place():
     result = find_residuals(data, [NAME_SOURCE, NAME_SOURCE, ID_SOURCE])
 
     assert len(result.findings) == 1
+
+
+def test_a_set_of_values_is_grouped_once_and_judged_in_the_order_given(monkeypatch):
+    # Two names from the same attribute, one of them the other's UTF-8 bytes
+    # read as ISO 8859-1, match at the same byte as the same form, and the
+    # value given first decides the encoding reported.
+    as_latin_1 = _source("(0010,0010)", "PN", "MÃ¼LLER^ANNA")
+    as_utf_8 = _source("(0010,0010)", "PN", "MüLLER^ANNA")
+    data = b"by " + "MüLLER^ANNA".encode("utf-8") + b" on"
+    monkeypatch.setattr(residuals, "_PLAN", [])
+    kept = residuals._PLAN  # pylint: disable = protected-access
+
+    def encodings(*values):
+        return [f.encoding for f in find_residuals(data, values).findings]
+
+    assert encodings(as_latin_1, as_utf_8) == ["latin-1"]
+    (plan,) = kept
+    assert encodings(as_utf_8, as_latin_1) == ["utf-8"]
+    assert encodings(as_latin_1, as_utf_8, as_utf_8) == ["latin-1"]
+    # Grouped for the first search alone.
+    assert len(kept) == 1 and kept[0] is plan
+
+
+def test_groups_are_searched_in_the_order_given(monkeypatch):
+    # The same bytes match a form of each name, in groups of their own, and
+    # the name given first decides the encoding reported, on a kept plan too.
+    as_latin_1 = _source("(0010,0010)", "PN", "MÃ¼LLER")
+    as_utf_8 = _source("(0010,0010)", "PN", "MüLLER^ANNA")
+    data = b"by " + "MüLLER^ANNA".encode("utf-8") + b" on"
+    monkeypatch.setattr(residuals, "_PLAN", [])
+    kept = residuals._PLAN  # pylint: disable = protected-access
+
+    def encodings(*values):
+        return [f.encoding for f in find_residuals(data, values).findings]
+
+    assert encodings(as_latin_1, as_utf_8) == ["latin-1"]
+    (plan,) = kept
+    assert encodings(as_utf_8, as_latin_1) == ["utf-8"]
+    assert encodings(as_latin_1, as_utf_8) == ["latin-1"]
+    assert kept[0] is plan
+
+
+def test_only_forms_found_are_ordered_and_each_once(monkeypatch):
+    # Bytes that start as the form does, but are not it, keep nothing.
+    orders = []
+    results = []
+
+    class Recorded(residuals._Order):  # pylint: disable = protected-access
+        def __init__(self, *args):
+            super().__init__(*args)
+            orders.append(self)
+
+        def __call__(self, *args):
+            result = super().__call__(*args)
+            if result:
+                results.append(result)
+            return result
+
+    monkeypatch.setattr(residuals, "_Order", Recorded)
+    misses = b"".join(f"QUOKK{index:05d} ".encode() for index in range(200))
+    data = misses + b"QUOKKA0042 and QUOKKA0042"
+
+    find_residuals(data, [_source("(0010,0020)", "LO", "QUOKKA0042")])
+
+    (order,) = orders
+    assert len(order.found) == 1
+    assert len(results) == 2 and results[0] is results[1]
+
+
+def test_another_set_of_values_is_grouped_afresh(monkeypatch):
+    monkeypatch.setattr(residuals, "_PLAN", [])
+    kept = residuals._PLAN  # pylint: disable = protected-access
+    first = _source("(0010,0020)", "LO", "ID00001")
+    second = _source("(0010,0020)", "LO", "ID00002")
+    plans = []
+
+    for values in ([first], [first, second], [second], [first], [first]):
+        find_residuals(b"", values)
+        plans.append(kept[0])
+
+    assert len({id(plan) for plan in plans[:4]}) == 4
+    assert plans[4] is plans[3]
+
+
+def test_grouped_forms_are_dropped_once_a_value_is_gone(monkeypatch):
+    monkeypatch.setattr(residuals, "_PLAN", [])
+    kept = residuals._PLAN  # pylint: disable = protected-access
+    value = _source("(0010,0010)", "PN", "OKAPI^XENOCRATES")
+    find_residuals(b"", [value])
+    assert kept
+
+    del value
+    gc.collect()
+
+    assert not kept
 
 
 # What is not searched, and robustness.
@@ -1556,6 +1726,19 @@ def test_a_source_value_that_differs_from_every_constant_is_searched(vr, value):
 
     assert result.findings
     assert not result.unsearched
+
+
+def test_only_the_codes_of_the_options_that_the_markers_write_are_constants():
+    constants = set(residuals.written_constants())
+    meanings = {
+        row.code_value: row.code_meaning for row in load_context_group(7050).rows
+    }
+    for option, code in markers.OPTION_CODES.items():
+        # The engine refuses a policy with any other option, so the markers
+        # never write its code.
+        written = option in policy.ENGINE_OPTIONS
+        assert (("SH", code) in constants) is written, option
+        assert (("LO", meanings[code]) in constants) is written, option
 
 
 @pytest.mark.deid_requirement("MIDI-BP-01")

@@ -38,6 +38,9 @@ RESPONSIBLE_PERSON = "(0010,2297)"
 RESPONSIBLE_ORGANIZATION = "(0010,2299)"
 SOURCE_SERIES_INFORMATION = "(3006,004C)"
 ROI_INTERPRETER_SEQUENCE = "(3006,004E)"
+ROI_CREATOR_SEQUENCE = "(3006,004D)"
+ETHICS_COMMITTEE_NAME = "(0012,0081)"
+ETHICS_COMMITTEE_APPROVAL_NUMBER = "(0012,0082)"
 RT_ROI_OBSERVATIONS = "(3006,0080)"
 PATIENT_SETUP = "(300A,0180)"
 REFERENCED_PATIENT_SETUP_PHOTO = "(300A,078C)"
@@ -464,6 +467,66 @@ def test_a_plain_x_on_roi_interpreter_sequence_removes_it_alone(tables):
     assert resolve_plain_x_in_iod(
         structure_set, ROI_INTERPRETER_SEQUENCE, path
     ) == _removal(*ALONE)
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.1-09", "MIDI-BP-03")
+def test_each_lapsed_condition_needs_an_attribute_that_every_option_removes(
+    tables,
+):
+    # The attribute that each condition needs is X under the Basic Profile
+    # and given no other action by any option, so the condition never holds
+    # in the output. A new edition that changes either fails here.
+    assert dict(compound_actions.LAPSED_CONDITIONS) == {
+        ETHICS_COMMITTEE_NAME: ETHICS_COMMITTEE_APPROVAL_NUMBER,
+        ROI_INTERPRETER_SEQUENCE: ROI_CREATOR_SEQUENCE,
+    }
+    rows = {a.tag: a for a in standard.load_table_e1_1().attributes}
+    for tag, needed in compound_actions.LAPSED_CONDITIONS.items():
+        assert (rows[needed].basic_profile, dict(rows[needed].options)) == ("X", {})
+        # Wherever the first supported release's IODs define the attribute,
+        # it is Type 1C, and the IOD defines the attribute its condition needs.
+        defined = {
+            (name, definition.path): definition.type
+            for name in FIRST_RELEASE_IODS
+            for definition in tables.iods[name].definitions
+            if definition.tag == tag
+        }
+        assert set(defined.values()) == {"1C"}, tag
+        for name, _ in defined:
+            assert any(
+                definition.tag == needed for definition in tables.iods[name].definitions
+            ), (tag, name)
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.1-09", "MIDI-BP-03")
+@pytest.mark.parametrize("name", FIRST_RELEASE_IODS)
+@pytest.mark.parametrize("action", sorted(compound_actions.PLAIN_ACTIONS))
+def test_every_plain_action_removes_clinical_trial_protocol_ethics_committee_name(
+    tables, name, action
+):
+    # Table E.1-1 gives the name D, or K under Retain Institution Identity.
+    # It is Type 1C in the Clinical Trial Subject Module, "Required if
+    # Clinical Trial Protocol Ethics Committee Approval Number (0012,0082) is
+    # present", which the table removes, and PS3.5 Section 7.4.2 does not
+    # allow it otherwise: a dummy value would leave the output invalid.
+    iod = tables.iods[name]
+
+    assert strictest_type(iod, ETHICS_COMMITTEE_NAME) == "1"
+    assert resolve_plain_in_iod(iod, ETHICS_COMMITTEE_NAME, (), action) == "X"
+    assert resolve_plain_x_in_iod(iod, ETHICS_COMMITTEE_NAME, ()) == _removal(*ALONE)
+
+
+def test_the_basic_profile_gives_clinical_trial_protocol_ethics_committee_name_d():
+    # The engine departs from the table's D for this attribute alone.
+    (row,) = (
+        a
+        for a in standard.load_table_e1_1().attributes
+        if a.tag == ETHICS_COMMITTEE_NAME
+    )
+    assert (row.basic_profile, dict(row.options)) == (
+        "D",
+        {"retain_institution_identity": "K"},
+    )
 
 
 def _basic_profile_removes(iod, tag, path, basic):

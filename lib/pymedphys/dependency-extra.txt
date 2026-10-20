@@ -8,6 +8,7 @@ all = [
     'anthropic',
     'attrs',
     'dbfread',
+    'dicom-validator',
     'httpx2',
     'hypothesis',
     'imageio',
@@ -16,6 +17,7 @@ all = [
     'natsort',
     'numba',
     'numpy',
+    'onnxruntime',
     'pandas',
     'Pillow',
     'plotly',
@@ -111,6 +113,7 @@ tests = [
     'altair',
     'attrs',
     'dbfread',
+    'dicom-validator',
     'hypothesis',
     'imageio',
     'keyring',
@@ -118,6 +121,7 @@ tests = [
     'natsort',
     'numba',
     'numpy',
+    'onnxruntime',
     'pandas',
     'Pillow',
     'plotly',
@@ -149,6 +153,11 @@ tests = [
     'watchdog',
     'xlrd',
     'xmltodict',
+]
+text-detection = [
+    'numpy',
+    'onnxruntime',
+    'scipy',
 ]
 trf = [
     'attrs',

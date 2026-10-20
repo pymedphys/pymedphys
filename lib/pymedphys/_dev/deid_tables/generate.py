@@ -36,11 +36,18 @@ from collections.abc import Callable, Mapping
 from pymedphys._data.download import download_with_progress
 from pymedphys._dicom.deidentify.codes import CODE_TABLES
 from pymedphys._dicom.deidentify.iods import IOD_MODULES_TABLE, MODULE_ATTRIBUTES_TABLE
+from pymedphys._dicom.deidentify.residual_exemptions import (
+    BODY_PART_TERMS_TABLE,
+    DEFINED_TERMS_TABLE,
+)
 from pymedphys._dicom.deidentify.sop_classes import STORAGE_SOP_CLASS_TABLE
 from pymedphys._dicom.deidentify.standard import SCHEMA, STANDARD_DIR, content_sha256
+from pymedphys._dicom.deidentify.structured_content import (
+    FILE as STRUCTURED_CONTENT_FILE,
+)
 from pymedphys._dicom.deidentify.uid_registry import UID_TABLES
 
-from . import annex_e, chtml, ps3_3, ps3_4, ps3_6, ps3_16
+from . import annex_e, chtml, ps3_3, ps3_3_terms, ps3_4, ps3_6, ps3_16
 from .sources import SourceDigestError, read_verified_source
 
 # NEMA serves the current edition only under "current". Superseded editions
@@ -105,6 +112,13 @@ class Pin:
     corrections : tuple of Correction
         Corrections to errors in the edition's PS3.3 tables. Generation fails
         if one no longer applies.
+    structured_content_schemes : tuple of str
+        The coding schemes, by designator, whose rows of Table E.3.4-1 are
+        generated, such as ``"DCM"``.
+    left_out_structured_content_schemes : tuple of str
+        The coding schemes whose rows of Table E.3.4-1 are left out, because
+        their terms have not been accepted for bundling. Generation fails if
+        a row's scheme is in neither tuple, or a scheme in them has no row.
     """
 
     edition: str
@@ -112,6 +126,8 @@ class Pin:
     left_out_iods: tuple[ps3_3.LeftOutIOD, ...]
     shared_functional_groups: tuple[tuple[str, str], ...]
     corrections: tuple[ps3_3.Correction, ...]
+    structured_content_schemes: tuple[str, ...]
+    left_out_structured_content_schemes: tuple[str, ...]
 
 
 # To move to a new edition, update the edition and every digest, regenerate,
@@ -122,6 +138,10 @@ PIN = Pin(
         PinnedSource(
             "chtml/part15/chapter_E.html",
             "cb214710fce798ed3688b4cb1d6b2d62ebd254e6946aa3efb3fc14038a41d58d",
+        ),
+        PinnedSource(
+            "chtml/part15/sect_E.3.4.html",
+            "d3bf68bd69f8623b34060b7599630634634bcd1a1bcefaf7112ef7847f15d3c9",
         ),
         PinnedSource(
             "chtml/part15/sect_E.3.10.html",
@@ -146,6 +166,10 @@ PIN = Pin(
         PinnedSource(
             "chtml/part16/sect_CID_7005.html",
             "15d1ca542b46cda0a5525f59ea8417f3d253e0259037ac5f567ccf31972f28b0",
+        ),
+        PinnedSource(
+            "chtml/part16/chapter_L.html",
+            "961864cd5810868701227bfb751eb4085b40c8fe2d6a9057f92e193f6d6c85a4",
         ),
         PinnedSource(
             "chtml/part04/sect_B.5.html",
@@ -218,6 +242,13 @@ PIN = Pin(
             "Table C.8.31.7-1", "Include Table C.8-36b", ">Include Table C.8-36b"
         ),
     ),
+    # DICOM's own codes, and the SNOMED CT codes of the subset DICOM
+    # publishes (PS3.16 Section 2.19), which head_and_neck_regions.toml also
+    # bundles. The LOINC, NCDR, NCIt, and UMLS codes carry their own terms,
+    # which have not been accepted for bundling, so their rows are left out
+    # and a content item they name takes its sequence's Basic Profile action.
+    structured_content_schemes=("DCM", "SCT"),
+    left_out_structured_content_schemes=("LN", "NCDR", "NCIt", "UMLS"),
 )
 
 
@@ -260,6 +291,7 @@ def _read_sources(pin: Pin, source_dir: pathlib.Path | None) -> dict[str, bytes]
 
 
 _CHAPTER_E = "chtml/part15/chapter_E.html"
+_SECTION_E3_4 = "chtml/part15/sect_E.3.4.html"
 _SECTION_E3_10 = "chtml/part15/sect_E.3.10.html"
 _CHAPTER_6 = "chtml/part06/chapter_6.html"
 _CHAPTER_A = "chtml/part06/chapter_A.html"
@@ -270,6 +302,7 @@ _CODE_TABLE_PAGES = {
     "Table CID 7050": "chtml/part16/sect_CID_7050.html",
     "Table CID 7005": "chtml/part16/sect_CID_7005.html",
 }
+_ANNEX_L = "chtml/part16/chapter_L.html"
 _SECTION_B_5 = "chtml/part04/sect_B.5.html"
 _PS3_3 = "html/part03.html"
 _PART = re.compile(r"part([0-9]{2})")
@@ -331,6 +364,29 @@ def _table_e1_1a(pin: Pin, pages: Mapping[str, bytes]) -> dict[str, object]:
         {"code": action.code, "description": action.description} for action in codes
     ]
     return _document(pin, _CHAPTER_E, annex_e.TABLE_E1_1A, rows)
+
+
+def _table_e3_4_1(pin: Pin, pages: Mapping[str, bytes]) -> dict[str, object]:
+    concepts = annex_e.parse_table_e3_4_1(
+        _select(pages, _SECTION_E3_4, annex_e.TABLE_E3_4_1),
+        frozenset(pin.structured_content_schemes),
+        frozenset(pin.left_out_structured_content_schemes),
+    )
+    rows: list[dict[str, object]] = [
+        {
+            "code_meaning": concept.code_meaning,
+            "code_value": concept.code_value,
+            "scheme_designator": concept.scheme_designator,
+            "scheme_version": concept.scheme_version,
+            "value_type": concept.value_type,
+            "retired": concept.retired,
+            "in_standard_template": concept.in_standard_template,
+            "basic_profile": concept.basic_profile,
+            "options": dict(concept.options),
+        }
+        for concept in concepts
+    ]
+    return _document(pin, _SECTION_E3_4, annex_e.TABLE_E3_4_1, rows)
 
 
 def _table_e3_10_1(pin: Pin, pages: Mapping[str, bytes]) -> dict[str, object]:
@@ -405,6 +461,27 @@ def _module_attributes(pin: Pin, pages: Mapping[str, bytes]) -> dict[str, object
     )
 
 
+def _defined_terms(pin: Pin, pages: Mapping[str, bytes]) -> dict[str, object]:
+    """Return the Enumerated Values and Defined Terms of the CS attributes."""
+    dictionary = {
+        attribute.tag: attribute.vr
+        for attribute in ps3_6.parse_table_6_1(
+            _select(pages, _CHAPTER_6, ps3_6.TABLE_6_1)
+        )
+    }
+    rows = ps3_3_terms.parse_terms(pages[_PS3_3].decode("utf-8"), dictionary)
+    return _document(pin, _PS3_3, ps3_3_terms.TERMS_LABEL, list(rows))
+
+
+def _body_part_terms(pin: Pin, pages: Mapping[str, bytes]) -> dict[str, object]:
+    """Return the Defined Terms of Body Part Examined, which PS3.16 lists."""
+    tables = {
+        label: _select(pages, _ANNEX_L, label) for label in ps3_16.BODY_PART_TABLES
+    }
+    rows = ps3_16.parse_body_part_terms(tables)
+    return _document(pin, _ANNEX_L, ps3_16.BODY_PART_LABEL, list(rows))
+
+
 def _registry_table(
     source: str, label: str, parse: Callable[[str, chtml.HtmlTable], tuple]
 ) -> Callable[[Pin, Mapping[str, bytes]], dict[str, object]]:
@@ -421,10 +498,13 @@ def _registry_table(
 _OUTPUTS: dict[str, Callable[[Pin, Mapping[str, bytes]], dict[str, object]]] = {
     "e1_1.json": _table_e1_1,
     "e1_1a.json": _table_e1_1a,
+    STRUCTURED_CONTENT_FILE: _table_e3_4_1,
     "e3_10_1.json": _table_e3_10_1,
     "data_dictionary.json": _data_dictionary,
     "iod_modules.json": _iod_modules,
     "module_attributes.json": _module_attributes,
+    DEFINED_TERMS_TABLE.file: _defined_terms,
+    BODY_PART_TERMS_TABLE.file: _body_part_terms,
     STORAGE_SOP_CLASS_TABLE.file: _storage_sop_classes,
     **{
         spec.file: _registry_table(_CHAPTER_A, label, ps3_6.parse_uid_table)

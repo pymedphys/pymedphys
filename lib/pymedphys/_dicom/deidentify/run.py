@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# pylint: disable = too-many-lines
+# One module runs a whole run's passes, staging, and release, so it is long.
+
 """Run de-identification over a directory of source files, through a staging area.
 
 A run has five steps:
@@ -25,14 +28,18 @@ A run has five steps:
 2. The first pass reads each file once, builds its
    :class:`~pymedphys._dicom.deidentify.references.InstanceRecord`, and
    builds the :class:`~pymedphys._dicom.deidentify.reference_graph.ReferenceGraph`
-   of the inputs, before anything is written. Its findings take their
-   graded consequences: a study whose instances name several patients
-   stops the run with :class:`RunStopped` before any directory is created;
-   every copy of a conflicting instance, every instance of a series in
-   several studies, and every instance without its SOP Instance, Series
-   Instance, or Study Instance UID is sequestered; identical copies are
-   processed once, from the first copy that reads unchanged; and a dangling
-   reference or a frame of reference mismatch is reported only.
+   of the inputs, before anything is written. It gives each Series Number
+   the numbering of the study that holds the series it numbers
+   (:func:`~pymedphys._dicom.deidentify.references.with_series_numberings`),
+   so that the run renumbers each series alike wherever it is named. Its
+   findings take their graded consequences: a study whose instances name
+   several patients stops the run with :class:`RunStopped` before any
+   directory is created; every copy of a conflicting instance, every
+   instance of a series in several studies, and every instance without its
+   SOP Instance, Series Instance, or Study Instance UID is sequestered;
+   identical copies are processed once, from the first copy that reads
+   unchanged; and a dangling reference or a frame of reference mismatch is
+   reported only.
 3. The second pass reads each file again, sequesters it if it is no longer
    the file that discovery found or its bytes differ from the first pass's,
    and gives it to the run's :class:`Transform`. A transform returns the
@@ -101,6 +108,7 @@ from __future__ import annotations
 import collections
 import dataclasses
 import enum
+import functools
 import hashlib
 import os
 import shutil
@@ -118,7 +126,7 @@ from .reference_graph import (
     ReferenceGraph,
     build_reference_graph,
 )
-from .references import InstanceRecord, UnreadableSequence
+from .references import InstanceRecord, UnreadableSequence, with_series_numberings
 from .reasons import RunReason
 
 # discover and ReleaseWithheld are part of the run's interface, from here.
@@ -291,7 +299,12 @@ def run(
         The release directory, which must not exist. Its parent must.
     transform : Transform
         Called once for each instance with a record, in run order, other
-        than identical copies and inputs that changed during the run.
+        than identical copies and inputs that changed during the run. One
+        with a ``prepare`` method, such as an
+        :class:`~pymedphys._dicom.deidentify.instance_transform.InstanceTransform`,
+        is first given the records of the instances that it will be called
+        for, by run position, and a function that gives the file at a
+        position as the first pass read it, or None if it has changed.
     gate : Gate
         Called once for each staged file, in run order, after every
         instance has been transformed.
@@ -400,6 +413,21 @@ def _run(  # pylint: disable = too-many-arguments, too-many-positional-arguments
     )
     if stopping:
         raise RunStopped(stopping)
+    # A transform that needs more than one instance at a time, such as one
+    # that finds each CT series' face block, is given the run's records and
+    # its files, as the first pass read them, before it writes any.
+    prepare = getattr(transform, "prepare", None)
+    if callable(prepare):
+        # Each identical copy but the first is written as the first is.
+        copied = {position for group in first.copies.values() for position in group[1:]}
+        prepare(
+            {
+                position: record
+                for position, record in first.records.items()
+                if position not in first.settled and position not in copied
+            },
+            functools.partial(_second_read, discovery, first),
+        )
 
     try:
         staging.mkdir(mode=0o700)
@@ -415,7 +443,9 @@ def _run(  # pylint: disable = too-many-arguments, too-many-positional-arguments
         if reporter is not None:
             outcomes = _admitted(outcomes, reporter)
         outcomes = _labelled(outcomes)
-        pack = run_qc.qc_pack_of(discovery.paths, outcomes, material)
+        pack = run_qc.qc_pack_of(
+            discovery.paths, outcomes, material, digests=first.digests
+        )
         # Built before the pack is written, so a failure leaves no QC material.
         files = run_report.documents(reporter, outcomes, material, pack.reference)
         staged_release = staging / _STAGED_RELEASE
@@ -581,6 +611,7 @@ def _first_pass(discovery: Discovery) -> _FirstPass:
                 position, Status.REFUSED, RunReason.NOT_READABLE_AS_DICOM
             )
 
+    records = with_series_numberings(records)
     positions = tuple(records)
     graph = build_reference_graph([records[position] for position in positions])
     findings = tuple(

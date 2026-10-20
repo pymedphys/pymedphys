@@ -187,6 +187,103 @@ def test_roi_interpreter_sequence_may_go_alone():
     assert not _found(_structure_set(), output, "RT Structure Set")
 
 
+OTHER_STUDY = "2.25.900"
+REFERENCED_SERIES = ElementPath((), "(0008,1115)")
+OTHER_STUDIES = ElementPath((), "(0008,1200)")
+
+
+def _referencing(dataset, listed=True, referenced=synthetic.CT_SLICES[1]):
+    """Give ``dataset`` a Referenced Image Sequence (0008,1140) item.
+
+    With ``listed``, its Common Instance Reference Module lists the image in
+    this study and the same image as one of another study.
+    """
+    image = synthetic.reference(synthetic.CT_IMAGE_STORAGE, referenced)
+    dataset.ReferencedImageSequence = [image]
+    if listed:
+        series = synthetic.item(
+            SeriesInstanceUID=synthetic.CT_SERIES,
+            ReferencedInstanceSequence=[
+                synthetic.reference(synthetic.CT_IMAGE_STORAGE, synthetic.CT_SLICES[1])
+            ],
+        )
+        dataset.ReferencedSeriesSequence = [series]
+        dataset.StudiesContainingOtherReferencedInstancesSequence = [
+            synthetic.item(
+                StudyInstanceUID=OTHER_STUDY,
+                ReferencedSeriesSequence=[copy.deepcopy(series)],
+            )
+        ]
+    return dataset
+
+
+def _with_ethics_committee(dataset, approval_number=True):
+    dataset.ClinicalTrialProtocolEthicsCommitteeName = "FICTITIOUS COMMITTEE"
+    if approval_number:
+        dataset.ClinicalTrialProtocolEthicsCommitteeApprovalNumber = "FICTITIOUS-1"
+    return dataset
+
+
+@pytest.mark.deid_requirement("MIDI-BP-03")
+def test_the_common_instance_reference_may_go_once_no_other_reference_remains():
+    # Its two sequences are Type 1C, required only where the instance
+    # references instances (PS3.3 Section C.12.2).
+    assert not _found(_referencing(_ct()), _ct(), "CT Image")
+
+
+@pytest.mark.deid_requirement("MIDI-BP-03")
+def test_the_common_instance_reference_may_not_go_while_another_reference_remains():
+    output = _referencing(_ct(), listed=False)
+
+    assert _found(_referencing(_ct()), output, "CT Image") == (
+        LostRequirement(REFERENCED_SERIES, "1", emptied=False),
+        LostRequirement(OTHER_STUDIES, "1", emptied=False),
+    )
+
+
+def test_an_empty_reference_does_not_keep_the_common_instance_reference():
+    source = _referencing(_ct(), referenced="")
+    output = _referencing(_ct(), listed=False, referenced="")
+
+    assert not _found(source, output, "CT Image")
+
+
+@pytest.mark.deid_requirement("MIDI-BP-03")
+def test_clinical_trial_protocol_ethics_committee_name_may_go_alone():
+    # Type 1C, required only while the approval number is present, which
+    # the Basic Profile removes.
+    output = _without(
+        _with_ethics_committee(_ct()),
+        "ClinicalTrialProtocolEthicsCommitteeName",
+        "ClinicalTrialProtocolEthicsCommitteeApprovalNumber",
+    )
+
+    assert not _found(_with_ethics_committee(_ct()), output, "CT Image")
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.1-09", "MIDI-BP-03")
+@pytest.mark.parametrize("approval_number", [True, False])
+def test_an_instance_loses_its_ethics_committee_name_with_its_approval_number(
+    approval_number,
+):
+    # PS3.5 Section 7.4.2 does not allow the Type 1C name once the Basic
+    # Profile removes the approval number that its condition needs, so the
+    # name goes too, rather than taking Table E.1-1's dummy value. A source
+    # that has the name without the number loses it as well.
+    source = _with_ethics_committee(_ct(), approval_number)
+    result = _transformed(source)
+
+    assert isinstance(result, run.Transformed)
+    written = synthetic.read(result.data)
+    assert "ClinicalTrialProtocolEthicsCommitteeName" not in written
+    assert "ClinicalTrialProtocolEthicsCommitteeApprovalNumber" not in written
+    assert not lost_requirements(
+        read_source(synthetic.written(source)),
+        read_source(result.data),
+        _iods()["CT Image"],
+    )
+
+
 def test_a_user_optional_overlay_group_may_go():
     source = _ct()
     source.add_new(0x60000010, "US", 4)  # Overlay Rows, Type 1
@@ -357,6 +454,39 @@ def test_the_written_file_is_checked_against_its_iod(monkeypatch):
 
     assert isinstance(result, run.Transformed)
     assert checked == [("CT Image", len(result.data))]
+
+
+@pytest.mark.deid_requirement("MIDI-BP-03")
+def test_an_instance_whose_only_other_reference_is_removed_drops_the_module():
+    # The Basic Profile's X/Z/U* removes Referenced Image Sequence, Type 3
+    # at the top level of the CT Image IOD, so the module's conditions lapse.
+    result = _transformed(_referencing(_ct()))
+
+    assert isinstance(result, run.Transformed)
+    written = synthetic.read(result.data)
+    for keyword in (
+        "ReferencedImageSequence",
+        "ReferencedSeriesSequence",
+        "StudiesContainingOtherReferencedInstancesSequence",
+    ):
+        assert keyword not in written
+
+
+@pytest.mark.deid_requirement("MIDI-BP-03")
+def test_an_instance_that_keeps_another_reference_keeps_the_module():
+    # Referenced Structure Set Sequence (300C,0060) of an RT Plan is kept,
+    # with its UID replaced.
+    source = _referencing(synthetic.rt_plan())
+    result = _transformed(source)
+
+    assert isinstance(result, run.Transformed)
+    written = synthetic.read(result.data)
+    (series,) = written.ReferencedSeriesSequence
+    (listed,) = series.ReferencedInstanceSequence
+    (kept,) = written.ReferencedStructureSetSequence
+    assert "StudiesContainingOtherReferencedInstancesSequence" in written
+    assert listed.ReferencedSOPInstanceUID != synthetic.CT_SLICES[1]
+    assert kept.ReferencedSOPInstanceUID != synthetic.STRUCTURE_SET
 
 
 def _plan_with_setup_photo():

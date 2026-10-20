@@ -27,9 +27,15 @@ from collections.abc import Set
 # the Streamlit AppTest suite does, so the whole test run draws with Agg.
 os.environ.setdefault("MPLBACKEND", "Agg")
 
+import hypothesis  # noqa: E402
 import pytest  # noqa: E402
 
 from pymedphys._root import LIBRARY_ROOT  # noqa: E402
+
+# A longer campaign of the property tests, chosen with
+# --hypothesis-profile=deid-fuzz, as the de-identification engine's tests of
+# malformed input describe. CI runs Hypothesis's default profile.
+hypothesis.settings.register_profile("deid-fuzz", max_examples=10_000, deadline=None)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -84,6 +90,12 @@ MARKER_CONFIG: dict[str, Marker] = {
         include_option="--include-anthropic",
         description="mark test as requiring an Anthropic API key",
         noun="the tests that use the Anthropic API",
+    ),
+    "dicom_validators": Marker(
+        only_options=("--run-only-dicom-validators", "--dicom-validators"),
+        include_option="--include-dicom-validators",
+        description="mark test as running external DICOM validators",
+        noun="the tests that run external DICOM validators",
     ),
 }
 

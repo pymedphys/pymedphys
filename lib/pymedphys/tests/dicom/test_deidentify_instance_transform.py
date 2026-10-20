@@ -82,8 +82,13 @@ from pymedphys._dicom.deidentify.residuals import (
     written_constants,
 )
 from pymedphys._dicom.deidentify.run_qc import Dropped, SearchMaterial, SeriesEvidence
-from pymedphys._dicom.deidentify.scope import UnsupportedIod
-from pymedphys._dicom.deidentify.source import SourceReason, read_source
+from pymedphys._dicom.deidentify.scope import Disposition, UnsupportedIod
+from pymedphys._dicom.deidentify.source import (
+    SourceEvidence,
+    SourceReason,
+    SourceRefused,
+    read_source,
+)
 from pymedphys._dicom.deidentify.uids import UIDOutcome, replacement_uid
 from pymedphys._dicom.deidentify.walker import (
     SequesterReason,
@@ -720,6 +725,109 @@ def test_a_source_file_that_is_not_ps3_10_is_sequestered_by_the_source_reason():
     assert result == run.Sequestered((SourceReason.NOT_PS3_10,))
 
 
+def test_a_source_that_pydicom_cannot_read_is_sequestered_by_the_source_reason(
+    monkeypatch,
+):
+    data = synthetic.written(_plan_with_sentinels())
+
+    def refused(_):
+        raise SourceRefused(SourceReason.PYDICOM)
+
+    monkeypatch.setattr(SourceEvidence, "dataset", refused)
+    result = _transform()(data, InstanceRecord.from_file(data))
+
+    assert result == run.Sequestered((SourceReason.PYDICOM,))
+
+
+_CHARACTER_SET = 0x00080005
+_UNSUPPORTED_CHARACTER_SET = Sequestration(
+    ElementPath((), "(0008,0005)"),
+    "K",
+    "CS",
+    SequesterReason.UNSUPPORTED_CHARACTER_SET,
+)
+
+
+def _with_character_set(dataset, value, vr="CS"):
+    dataset[_CHARACTER_SET] = pydicom.DataElement(_CHARACTER_SET, vr, value)
+    return dataset
+
+
+def test_a_character_set_that_cannot_be_read_sequesters_by_its_path():
+    # A VR that the pinned dictionary does not give.
+    dataset = _with_character_set(_plan_with_sentinels(), "ISO_IR 100", "LO")
+    result = _transformed(dataset)
+
+    # The walker's reason for an item's character set (D-010), never no SOP
+    # Class: the SOP Class UID is UI, which no character set changes.
+    assert result == run.Sequestered((_UNSUPPORTED_CHARACTER_SET,))
+    assert "SENTINEL" not in repr(result)
+
+
+_UNSUPPORTED_VALUES = pytest.mark.parametrize(
+    "value",
+    [
+        "ISO_IR 999",  # not a Defined Term of PS3.3 C.12.1.1.2
+        "iso_ir 100",  # a misspelt one
+        ["ISO 2022 IR 999", "ISO 2022 IR 998"],
+        ["ISO_IR 100", "ISO_IR 192"],  # ISO_IR 192 allows no extensions
+    ],
+    ids=["not-a-term", "misspelt", "two-not-terms", "no-extensions"],
+)
+
+
+@_UNSUPPORTED_VALUES
+def test_text_in_iso_646_is_read_under_an_unsupported_character_set(value):
+    # Text with no byte from 0x80 and no escape reads the same in every
+    # character set, so the instance is read in the Default Character
+    # Repertoire, and no codec is guessed (D-010).
+    transformed = _transformed(_with_character_set(synthetic.rt_plan(), value))
+
+    assert isinstance(transformed, run.Transformed)
+    evidence = transformed.evidence
+    assert isinstance(evidence, Coverage)
+    assert not evidence.decoded_as_bytes  # pylint: disable=no-member
+
+
+@pytest.mark.deid_requirement("MIDI-BP-01")
+@_UNSUPPORTED_VALUES
+def test_text_outside_iso_646_under_an_unsupported_character_set_is_not_guessed(
+    value,
+):
+    # As where no Specific Character Set is given: a removed name with a byte
+    # from 0x80 is read as ISO 8859-1, which withholds the file.
+    plan = _with_character_set(
+        _with_latin_1(synthetic.rt_plan(), _PATIENTS_NAME), value
+    )
+    transformed = _transformed(plan)
+    assert isinstance(transformed, run.Transformed)
+
+    evidence = transformed.evidence
+    assert isinstance(evidence, Coverage)
+    path = _top("(0010,0010)")
+    assert evidence.decoded_as_bytes == frozenset({path})  # pylint: disable=no-member
+    result = ReleaseGate()(transformed.data, evidence, (evidence,))
+    reason = ReleaseReason(Decision.WITHHOLD, ReasonCode.READ_AS_LATIN_1, path)
+    assert reason in result.reasons
+
+
+def test_an_unsupported_character_set_keeps_the_scope_reason_first():
+    nm = synthetic.instance(
+        synthetic.NM_IMAGE_STORAGE, synthetic.OTHER, synthetic.OTHER_SERIES
+    )
+    result = _transformed(_with_character_set(nm, "ISO_IR 100", "LO"))
+
+    assert result == run.Sequestered(
+        (UnsupportedIod("Nuclear Medicine Image"), _UNSUPPORTED_CHARACTER_SET)
+    )
+
+    plan = _with_character_set(_plan_with_sentinels(), "ISO_IR 100", "LO")
+    plan.SOPClassUID = _UNLISTED_SOP_CLASS
+    result = _transformed(plan)
+
+    assert result == run.Sequestered((Disposition.UNLISTED_SOP_CLASS,))
+
+
 def test_without_the_subjects_identity_the_pseudonyms_are_pending():
     dataset = synthetic.rt_plan()
     dataset.PatientID = ""
@@ -756,26 +864,30 @@ _UNLISTED_SOP_CLASS = "2.25.999"
 _SHARED = "QUIMBYZELDA7"
 
 
-def _plan_label_kept_in_a_dose(tmp_path, plan_class=None):
+def _plan_label_kept_in_a_dose(tmp_path, plan_class=None, character_set=None):
     """A plan, at position 0, whose label its subject's dose keeps."""
     plan = synthetic.rt_plan()
     plan.RTPlanLabel = _SHARED
     if plan_class is not None:
         plan.SOPClassUID = plan_class
+    if character_set is not None:
+        _with_character_set(plan, *character_set)
     dose = synthetic.rt_dose()
     dose.DoseUnits = _SHARED  # kept as it is (K)
     return _source(tmp_path, [plan, dose])
 
 
 @pytest.mark.deid_requirement("MIDI-BP-17")
-@pytest.mark.parametrize("cause", ["no-iod", "raises", "changed"])
+@pytest.mark.parametrize("cause", ["no-iod", "character-set", "raises", "changed"])
 def test_a_sibling_that_gives_no_evidence_withholds_its_subject(
     tmp_path, monkeypatch, cause
 ):
     # Without the plan's coverage, the dose's search could not look for the
     # plan's label, which the dose keeps (D-027).
     no_iod = _UNLISTED_SOP_CLASS if cause == "no-iod" else None
-    discovery = _plan_label_kept_in_a_dose(tmp_path, no_iod)
+    # A Specific Character Set that cannot be read, with a VR other than CS.
+    character_set = ("ISO_IR 100", "LO") if cause == "character-set" else None
+    discovery = _plan_label_kept_in_a_dose(tmp_path, no_iod, character_set)
     transform = _transform()
     if cause == "raises":
         calls = []
@@ -1108,6 +1220,55 @@ def test_a_removed_registered_uid_does_not_withhold_the_collection(tmp_path):
     assert [outcome.status for outcome in result.outcomes] == [run.Status.RELEASED] * 6
 
 
+def _ct_with_an_icon(vr, icon_representation):
+    """A CT slice whose icon image's palette colour descriptors are of ``vr``."""
+    ct = synthetic.ct_slice(0)
+    ct.PixelRepresentation = 1
+    icon = pydicom.Dataset()
+    icon.PhotometricInterpretation = "PALETTE COLOR"
+    if icon_representation is not None:
+        icon.PixelRepresentation = icon_representation
+    for tag in (0x00281101, 0x00281102, 0x00281103):
+        icon.add_new(tag, vr, [256, 0, 8])
+    ct.IconImageSequence = pydicom.Sequence([icon])
+    return ct
+
+
+@pytest.mark.parametrize(
+    "vr, icon_representation", [("US", None), ("SS", 0)], ids=["us", "ss"]
+)
+def test_palette_descriptors_whose_vr_pixel_representation_contradicts_are_collected(
+    tmp_path, vr, icon_representation
+):
+    # Explicit VR states the VR that the second value needs (PS3.3 Section
+    # C.7.6.3.1.5), so an icon image's descriptors are collected, and do not
+    # withhold the collection, where Pixel Representation would say otherwise.
+    ct = _ct_with_an_icon(vr, icon_representation)
+    data = synthetic.written(ct)
+    source = read_source(data)
+    plan = plan_instance(
+        source, ElementRules(compose_policy("basic")), _iod("CT Image")
+    )
+    coverage = coverage_of(plan, edit_instance(source, plan, KEY))
+    collected = {value.source: value.vr for value in coverage.collected}
+    datasets = [
+        ct if dataset.SOPInstanceUID == ct.SOPInstanceUID else dataset
+        for dataset in synthetic.collection()
+    ]
+    result = run.run(
+        _source(tmp_path, datasets),
+        tmp_path / "release",
+        _transform(),
+        ReleaseGate(),
+        qc_destination=tmp_path / "qc",
+    )
+
+    assert not coverage.uncollected
+    for tag in ("(0028,1101)", "(0028,1102)", "(0028,1103)"):
+        assert collected[ElementPath((("(0088,0200)", 0),), tag)] == vr
+    assert [outcome.status for outcome in result.outcomes] == [run.Status.RELEASED] * 6
+
+
 @pytest.mark.deid_requirement("MIDI-BP-01")
 def test_a_run_with_the_transform_and_gate_releases_the_collection(tmp_path):
     release = tmp_path / "release"
@@ -1373,13 +1534,20 @@ def test_a_run_writes_the_qc_pack_of_the_transform_and_gate(tmp_path):
     assert registered in pack["drops"]
 
 
-def test_transform_for_selects_an_enabled_preset_only(monkeypatch):
+def test_transform_for_selects_an_enabled_policy_only(monkeypatch):
     with pytest.raises(PolicyError):
         transform_for("basic", KEY)
+    with pytest.raises(PolicyError):
+        transform_for(key=KEY, options=["clean_descriptors"])
 
     policy = compose_policy("basic")
-    made = []
-    monkeypatch.setattr(instance_transform, "select_policy", lambda preset: policy)
+    made, selected = [], []
+
+    def select(preset, options=None):
+        selected.append((preset, options))
+        return policy
+
+    monkeypatch.setattr(instance_transform, "select_policy", select)
     monkeypatch.setattr(
         instance_transform,
         "InstanceTransform",
@@ -1389,8 +1557,10 @@ def test_transform_for_selects_an_enabled_preset_only(monkeypatch):
 
     transform_for(key=KEY, cleaning=cleaning)
     transform_for("basic")
+    transform_for(key=KEY, options=("clean_descriptors",))
 
-    (given, generated) = made
+    assert selected == [(None, None), ("basic", None), (None, ("clean_descriptors",))]
+    (given, generated, _) = made
     assert given == (policy, KEY, None, {"cleaning": cleaning})
     assert generated[3] == {"cleaning": None}
     assert generated[0] is policy and generated[1] != KEY

@@ -16,11 +16,15 @@
 
 """Read an instance's indicators of risk in its pixel data.
 
-The engine does not change pixel data and never claims the Clean Pixel Data
-or Clean Recognizable Visual Features Options. It reports indicators of risk
-for review instead: of text burned into the pixel data, of a face that
-could be reconstructed and recognised, and of values that may disclose the
-patient's body weight. :func:`assess_pixel_risk` reads them
+The engine changes pixel data only under the Clean Pixel Data Option, which
+blacks out the text that a text finder finds and holds the instance for
+review, and claims that option only for an instance that a reviewer cleared
+or that has nothing for the option to clean. It claims the Clean
+Recognizable Visual Features Option only for an instance that cannot show a
+face or whose source file a reviewer found free of one. Whatever the options,
+it reports indicators of risk for review: of text burned into the pixel data,
+of a face that could be reconstructed and recognised, and of values that may
+disclose the patient's body weight. :func:`assess_pixel_risk` reads them
 from one instance's attributes; it never inspects the pixel data, so the
 absence of an indicator is not evidence that the risk is absent.
 
@@ -43,9 +47,12 @@ The indicators are:
   the Basic Profile removes the overlay's attributes.
 - In an RT Structure Set, an ROI that has contours and whose RT ROI
   Interpreted Type (3006,00A4) or ROI Name (3006,0026) is EXTERNAL, BODY,
-  or SKIN, the patient's outline: the outline of the head can be
-  reconstructed into a face (MIDI report Section 1.20.4). The whole name is
-  compared, whatever its case, so a name such as "Skin 5mm" is not one.
+  or SKIN, the patient's outline, or BOLUS or FIXATION, the Defined Terms
+  of a bolus and of an immobilization device (PS3.3 Section C.8.8.8),
+  which lie on the outline: the outline of the head can be reconstructed
+  into a face (MIDI report Section 1.20.4), and so can a bolus or a mask
+  moulded to it. The whole name is compared, whatever its case, so a name
+  such as "Skin 5mm" is not one.
 - Units (0054,1001) of GML or CM2ML, values scaled to a standardised uptake
   value (SUV), or a Real World Value Mapping Sequence (0040,9096) item, at
   the top level or in a shared or per-frame functional group, whose
@@ -55,7 +62,10 @@ The indicators are:
   (0010,1030) but keeps these and Radionuclide Total Dose (0018,1074), so
   a mapping's slope and the dose give the weight, and so do images scaled
   to an SUV released with attenuation-corrected images of the same
-  acquisition (MIDI report Section 1.20.2).
+  acquisition (MIDI report Section 1.20.2). The Retain Patient
+  Characteristics Option keeps the weight itself, so under it these
+  indicators say no more than the written instance does; they are still
+  reported, since the assessment reads the source whatever the policy.
 
 Values are compared whatever their case, though CS is upper case, so that a
 writer's lower-case "yes" does not hide an indicator. An ROI Name is
@@ -67,9 +77,11 @@ of the risk that it bears on, since reading it could otherwise hide an
 indicator. Findings name attribute paths, never values.
 
 :func:`assess_series` reads the indicators that need a whole series:
-every CT, MR, and PET volume may hold a reconstructable face, and one
-whose attributes name a region of the head or neck in a reviewed list from
-PS3.16 Annex L says that it does. :func:`series_evidence` gives the part
+every CT, MR, and PET volume, and every RT Dose grid of more than one
+frame, may hold a reconstructable face; so may a CT, MR, or PET localizer,
+which can show the face in profile; and one whose attributes name a region
+of the head or neck in a reviewed list from PS3.16 Annex L says that it
+does. :func:`series_evidence` gives the part
 of an instance that it reads.
 
 Reading leaves the data set as it was: pydicom converts an element read from
@@ -122,6 +134,8 @@ class Indicator(enum.Enum):
     CT_VOLUME = "ct-volume"
     MR_VOLUME = "mr-volume"
     PET_VOLUME = "pet-volume"
+    RT_DOSE_VOLUME = "rt-dose-volume"
+    LOCALIZER = "localizer"
     HEAD_OR_NECK = "head-or-neck"
     SUV_UNITS = "suv-units"
     SUV_MAPPING = "suv-mapping"
@@ -144,6 +158,8 @@ _RISKS = {
     Indicator.CT_VOLUME: Risk.RECONSTRUCTABLE_FACE,
     Indicator.MR_VOLUME: Risk.RECONSTRUCTABLE_FACE,
     Indicator.PET_VOLUME: Risk.RECONSTRUCTABLE_FACE,
+    Indicator.RT_DOSE_VOLUME: Risk.RECONSTRUCTABLE_FACE,
+    Indicator.LOCALIZER: Risk.RECONSTRUCTABLE_FACE,
     Indicator.HEAD_OR_NECK: Risk.RECONSTRUCTABLE_FACE,
     Indicator.SUV_UNITS: Risk.BODY_WEIGHT,
     Indicator.SUV_MAPPING: Risk.BODY_WEIGHT,
@@ -246,8 +262,9 @@ _UNITS = "(0054,1001)"
 _REAL_WORLD_VALUE_MAPPING_SEQUENCE = "(0040,9096)"
 _MEASUREMENT_UNITS_CODE_SEQUENCE = "(0040,08EA)"
 _LONG_CODE_VALUE = "(0008,0119)"
-# The interpreted types and ROI names of the patient's outline.
-_SURFACE_TERMS = frozenset({"EXTERNAL", "BODY", "SKIN"})
+# The interpreted types and ROI names of the patient's outline, and of a
+# bolus or an immobilization device, which lie on it.
+_SURFACE_TERMS = frozenset({"EXTERNAL", "BODY", "SKIN", "BOLUS", "FIXATION"})
 
 # The VR in the pinned data dictionary of each attribute read, which a test
 # checks against it.
@@ -489,11 +506,11 @@ def _overlay_findings(dataset: pydicom.Dataset) -> Iterator[Finding]:
 
 
 def _surface_findings(dataset: pydicom.Dataset) -> Iterator[Finding]:
-    """Find the contours of the ROIs that are the patient's outline.
+    """Find the contours of the ROIs that are the patient's outline, or lie on it.
 
-    An ROI is the outline if an RT ROI Observations Sequence item gives it an
-    RT ROI Interpreted Type, or its Structure Set ROI Sequence item gives it
-    an ROI Name, of EXTERNAL, BODY, or SKIN.
+    An ROI is found if an RT ROI Observations Sequence item gives it an RT
+    ROI Interpreted Type, or its Structure Set ROI Sequence item gives it an
+    ROI Name, of EXTERNAL, BODY, SKIN, BOLUS, or FIXATION.
     """
     risk = Risk.RECONSTRUCTABLE_FACE
     external: set[int] = set()
@@ -671,10 +688,10 @@ HEAD_AND_NECK_REGIONS_PATH = (
 )
 _REGIONS_SCHEMA = "pymedphys-deid-head-and-neck-regions/1"
 _REGION_FIELDS = {"meaning", "sct"}
-# The image Storage SOP Classes of CT, MR, and PET (PS3.4 Table B.5-1), each
-# with the indicator of its modality's volume and whether its instances hold
-# Number of Frames; an instance of any other is one frame. MR Spectroscopy
-# holds spectra, not images, so it is none of them.
+# The image Storage SOP Classes of CT, MR, and PET, and RT Dose Storage
+# (PS3.4 Table B.5-1), each with the indicator of its volume and whether its
+# instances hold Number of Frames; an instance of any other is one frame. MR
+# Spectroscopy holds spectra, not images, so it is none of them.
 _VOLUME_SOP_CLASSES = {
     # CT Image, and CT Image - For Processing.
     "1.2.840.10008.5.1.4.1.1.2": (Indicator.CT_VOLUME, False),
@@ -697,8 +714,18 @@ _VOLUME_SOP_CLASSES = {
     # Enhanced PET Image and Legacy Converted Enhanced PET Image.
     "1.2.840.10008.5.1.4.1.1.130": (Indicator.PET_VOLUME, True),
     "1.2.840.10008.5.1.4.1.1.128.1": (Indicator.PET_VOLUME, True),
+    # RT Dose. A grid of doses is a multi-frame image (PS3.3 Section A.18.3),
+    # and a treatment planning system that computes dose only within the
+    # patient's outline leaves the outline in it; one of DVHs alone has no
+    # frames, so it is not a volume.
+    "1.2.840.10008.5.1.4.1.1.481.2": (Indicator.RT_DOSE_VOLUME, True),
 }
-VOLUME_INDICATORS = (Indicator.CT_VOLUME, Indicator.MR_VOLUME, Indicator.PET_VOLUME)
+VOLUME_INDICATORS = (
+    Indicator.CT_VOLUME,
+    Indicator.MR_VOLUME,
+    Indicator.PET_VOLUME,
+    Indicator.RT_DOSE_VOLUME,
+)
 _TERM = re.compile(r"[A-Z0-9_ ]{1,16}")
 
 
@@ -818,23 +845,31 @@ def assess_series(instances: Sequence[pydicom.Dataset]) -> tuple[SeriesFinding, 
     """Read a series' indicators of a reconstructable face.
 
     Without inspecting pixel data, the engine cannot tell whether a series
-    covers the face, so every CT, MR, and PET volume is reported: a series
-    whose images of one of those modalities, of any of its image Storage SOP
-    Classes, hold at least two frames that are not localizers, whose Image
-    Type (0008,0008) has a third value of LOCALIZER (PS3.3 Sections
-    C.8.2.1.1.1 and C.8.16.1.3). A single-frame image is one frame; an
-    Enhanced or Legacy Converted Enhanced image holds its Number of Frames
-    (0028,0008), one if it is absent, and is a volume by itself if that
-    cannot be read. An instance whose SOP Class UID (0008,0016) cannot be
-    read counts as a frame of each modality's volume that the series' other
-    images make. A volume whose Body Part Examined (0018,0015) or Anatomic
-    Region Sequence (0008,2218), at the top level or in a Frame Anatomy
-    Sequence (0020,9071) of the shared or a per-frame functional group,
-    names a region in :func:`load_head_and_neck_regions` is also reported
-    as showing the head or neck. How finely a series samples the face
-    changes how readily it can be recognised (MIDI report Section
-    1.18.3.2), but no spacing makes it safe, so spacing decides nothing
-    here.
+    covers the face, so every CT, MR, PET, and RT Dose volume is reported: a
+    series whose instances of one of those modalities, of any of its image
+    Storage SOP Classes or of RT Dose Storage, hold at least two frames that
+    are not localizers, whose Image Type (0008,0008) has a third value of
+    LOCALIZER (PS3.3 Sections C.8.2.1.1.1 and C.8.16.1.3). A single-frame
+    image is one frame; an Enhanced or Legacy Converted Enhanced image, or
+    an RT Dose, holds its Number of Frames (0028,0008), one if it is
+    absent, and is a volume by itself if that cannot be read. An RT Dose of
+    one frame, a plane or DVHs alone, is no part of a volume, since two
+    doses are not two frames of one grid. An RT Dose of
+    a grid of doses over the head shows the patient's outline wherever the
+    treatment planning system computed dose only within it, and the dose
+    build-up at the skin shows it otherwise (an inference, not a published
+    result). An instance whose SOP Class UID (0008,0016) cannot be read
+    counts as a frame of each volume that the series' other instances make.
+    The localizers of those image classes are reported apart, since a
+    localizer can show the face in profile, although no study has measured
+    recognition from one. A volume or localizer whose Body Part Examined
+    (0018,0015) or Anatomic Region Sequence (0008,2218), at the top level or
+    in a Frame Anatomy Sequence (0020,9071) of the shared or a per-frame
+    functional group, names a region in :func:`load_head_and_neck_regions`
+    is also reported as showing the head or neck. How finely a series
+    samples the face changes how readily it can be recognised (MIDI report
+    Section 1.18.3.2), but no spacing makes it safe, so spacing decides
+    nothing here.
 
     Parameters
     ----------
@@ -844,14 +879,16 @@ def assess_series(instances: Sequence[pydicom.Dataset]) -> tuple[SeriesFinding, 
     Returns
     -------
     tuple of SeriesFinding
-        The CT, MR, and PET volumes first, in that order, then the head or
-        neck by attribute, then unreadable evidence by instance, which is
-        reported whether or not the series is a volume.
+        The CT, MR, PET, and RT Dose volumes first, in that order, then the
+        localizers, then the head or neck by attribute, then unreadable
+        evidence by instance, which is reported whether or not the series
+        is a volume.
     """
     regions = load_head_and_neck_regions()
     members: dict[Indicator, list[int]] = {}
     frames: dict[Indicator, int] = {}
     unknown: list[int] = []
+    localizers: list[int] = []
     head: dict[int, list[ElementPath]] = {}
     unreadable: list[SeriesFinding] = []
     for index, dataset in enumerate(instances):
@@ -869,29 +906,32 @@ def assess_series(instances: Sequence[pydicom.Dataset]) -> tuple[SeriesFinding, 
             image_type = []  # the instance assessment reports it
         assert isinstance(image_type, list)
         if image_type[2:3] == ["LOCALIZER"]:
-            continue
-        if volume_class is None:
+            localizers.append(index)
+        elif volume_class is None:
             unknown.append(index)
         else:
             indicator, multi_frame = volume_class
-            members.setdefault(indicator, []).append(index)
-            frames[indicator] = frames.get(indicator, 0) + (
-                _frames(dataset, index, unreadable) if multi_frame else 1
-            )
+            count = _frames(dataset, index, unreadable) if multi_frame else 1
+            # Two doses are not two frames of one grid.
+            if indicator is not Indicator.RT_DOSE_VOLUME or count >= 2:
+                members.setdefault(indicator, []).append(index)
+                frames[indicator] = frames.get(indicator, 0) + count
         head[index] = list(_head_or_neck(dataset, regions, index, unreadable))
-    volumes = [
+    shown_by = [
         SeriesFinding(indicator, tuple(sorted([*members[indicator], *unknown])))
         for indicator in VOLUME_INDICATORS
         if indicator in members and frames[indicator] + len(unknown) >= 2
     ]
-    shown = {index for volume in volumes for index in volume.instances}
+    if localizers:
+        shown_by.append(SeriesFinding(Indicator.LOCALIZER, tuple(localizers)))
+    shown = {index for finding in shown_by for index in finding.instances}
     named: dict[ElementPath, list[int]] = {}
     for index, paths in head.items():
         if index in shown:
             for path in paths:
                 named.setdefault(path, []).append(index)
     return (
-        *volumes,
+        *shown_by,
         *(
             SeriesFinding(Indicator.HEAD_OR_NECK, tuple(where), path)
             for path, where in sorted(named.items(), key=lambda item: str(item[0]))

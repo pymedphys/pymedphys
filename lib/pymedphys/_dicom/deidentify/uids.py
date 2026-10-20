@@ -33,7 +33,6 @@ from __future__ import annotations
 
 import enum
 import functools
-import hashlib
 import uuid
 
 from . import codes, uid_registry
@@ -52,18 +51,6 @@ _PADDING = "\x00 "
 def normalise_uid(value: str) -> str:
     """Return ``value`` without its trailing NUL and space padding."""
     return value.rstrip(_PADDING)
-
-
-def uuid5(namespace: uuid.UUID, name: bytes) -> uuid.UUID:
-    """Return the name-based version 5 UUID of ``name`` in ``namespace``.
-
-    This is the construction of ITU-T X.667 clause 14.3, which
-    :func:`uuid.uuid5` implements for text names only before Python 3.12.
-    SHA-1 is used as X.667 specifies, not for its collision resistance: the
-    names are keyed tokens that nobody without the key can choose.
-    """
-    digest = hashlib.sha1(namespace.bytes + name, usedforsecurity=False).digest()
-    return uuid.UUID(bytes=digest[:16], version=5)
 
 
 def replacement_uid(key: DeidKey, uid: str) -> str:
@@ -100,7 +87,7 @@ def replacement_uid(key: DeidKey, uid: str) -> str:
     if not normalised:
         raise ValueError("an empty UID has no replacement")
     token = key.derive("uid", normalised)
-    return f"{UID_ROOT}{uuid5(UID_NAMESPACE, token).int}"
+    return f"{UID_ROOT}{uuid.uuid5(UID_NAMESPACE, token).int}"
 
 
 class UIDOutcome(enum.Enum):

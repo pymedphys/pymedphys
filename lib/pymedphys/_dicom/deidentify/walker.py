@@ -28,8 +28,10 @@ each element of the data set, in file order:
    so that X/Z on a Type 1 or 1C attribute gives D, as the maintainer
    decided on 1 October 2026; a plain D on an attribute that the IOD does
    not define at that place gives X, following Note 13 after Table E.1-1a;
-   and a plain Z on an attribute that is Type 1 or 1C there gives D, the
-   dummy value that Table E.1-1a allows Z
+   a plain Z on an attribute that is Type 1 or 1C there gives D, the
+   dummy value that Table E.1-1a allows Z; and Clinical Trial Protocol
+   Ethics Committee Name (0012,0081), whose Type 1C condition lapses once its
+   approval number is removed, gives X
    (:func:`~pymedphys._dicom.deidentify.compound_actions.resolve_plain_in_iod`,
    D-020);
 3. its consumers: what must read its value to apply the action, or to
@@ -46,7 +48,10 @@ Every element whose value is removed or replaced, a descendant of a removed
 sequence included, is collected for the residual search
 (:mod:`~pymedphys._dicom.deidentify.residuals`), whatever its VR: what
 is searched, and what is listed as not searched, is for that search's own
-contract to decide. A sequence holds no value of its own to collect. The plan
+contract to decide. A sequence holds no value of its own to collect. So is
+each private creator that the plan keeps where it cleans private text,
+since cleaning may remove a creator with the text that it was kept for;
+cleaning leaves out each creator that it writes. The plan
 records the VR that the element is read by, as
 :attr:`~pymedphys._dicom.deidentify.file_layout.Location.vr` gives it: as
 written, or, in implicit VR and in place of UN, the one VR that the pinned
@@ -85,13 +90,43 @@ overlay group in the same data set or item; and where neither applies, a
 :class:`Sequestration` is added. Each element so removed that its own rule
 would not remove names the attribute in :attr:`ElementPlan.removed_for`.
 The engine's own removals, such as Encrypted Attributes Sequence
-(0400,0500), apply alone, whatever the Type. The consumers here are those
+(0400,0500), apply alone, whatever the Type. So does the removal of the
+Common Instance Reference Module's Type 1C sequences, Referenced Series
+Sequence (0008,1115) and Studies Containing Other Referenced Instances
+Sequence (0008,1200), with everything in them, where the plan keeps no other
+reference to an instance, since their conditions then do not hold
+(:mod:`~pymedphys._dicom.deidentify.common_instance_reference`):
+:attr:`ElementPlan.lapsed` marks them. The consumers here are those
 of the actions; the
 inputs of options that keep or modify values, such as patient pseudonyms
 and modified dates, are added with those options.
 
-Making the plan reads no value: only the structure that the source evidence
-has already validated. The plan, its ``repr``, and its sequestrations name
+Under Clean Structured Content, each element that
+:func:`~pymedphys._dicom.deidentify.content_items.content_item_actions` names,
+a content-item sequence that is kept or the value of one of its content
+items, takes the action that it gives in place of its rule's (D-047).
+
+Under the Retain Safe Private Option, the C that Table E.1-1 gives each
+element of a private group is settled here, by the reviewed safe private
+rules (:func:`~pymedphys._dicom.deidentify.retained_private.private_actions`):
+a private creator or data element is kept (K), a private UID is
+replaced (U), private text is cleaned (C) where the policy also selects
+Clean Descriptors, or the element is removed (X). A private sequence that a
+rule keeps is kept as a container, so that each element in its items takes
+its own rule. So is a private sequence that no rule lists, which E.3.10 asks
+to be parsed, but the data set is planned again with it removed, with
+everything in it, where nothing in its items, at any depth, is kept,
+replaced, or cleaned but private creators: the sequence and its creator are
+kept only for what the parsing keeps. The plan gives the key by which each
+private value to clean is decided on, in :attr:`InstancePlan.private_texts`.
+A private data element that a rule keeps or replaces, written without its
+VR, in implicit VR or as UN, is read by the rule's VR.
+
+Making the plan reads no value but, under the Retain Safe Private Option,
+the private creators and the private values that a rule would keep, which
+decide their actions: otherwise only the structure that the source evidence
+has already validated, and the actions that it is given. The plan, its
+``repr``, and its sequestrations name
 tags, item numbers, actions, and VRs, never a value.
 
 Examples
@@ -116,7 +151,13 @@ from __future__ import annotations
 
 import dataclasses
 import enum
+import types
+from collections.abc import Mapping
 
+from .common_instance_reference import (
+    is_common_instance_reference,
+    is_instance_reference,
+)
 from .compound_actions import (
     COMPOUND_ACTIONS,
     RemovalExtent,
@@ -128,12 +169,16 @@ from .dummy_values import DUMMY_VRS, ICC_PROFILE
 from .element_rules import ElementRule, ElementRules, RuleSource
 from .file_layout import ElementPath
 from .iods import IOD
+from .policy import CLEAN_DESCRIPTORS
+from .retained_private import PrivatePlan, is_private, is_private_creator, private_plan
 from .source import SourceEvidence
 from .standard import dictionary_attribute
 
 # The actions under which a sequence is kept as a container, so that its
 # items' elements take their own rules.
 DESCENDED = frozenset({"K", "U"})
+# No element takes another action than its rule's.
+_NONE: Mapping[ElementPath, str] = types.MappingProxyType({})
 _REMOVED = "X"
 # The sequences whose dummy value a reviewed rule gives, and the attributes
 # of their items that are compared with it (D-021).
@@ -150,7 +195,8 @@ class Consumer(enum.Enum):
     # a dummy value, which must differ from the source's (D-021)
     DUMMY_COMPARISON = "dummy-comparison"
     CLEANING = "cleaning"  # C
-    # a value removed or replaced, to search the output for
+    # a value removed or replaced, or a private creator that cleaning may
+    # remove, to search the output for
     RESIDUAL_COLLECTION = "residual-collection"
 
 
@@ -237,8 +283,9 @@ class ElementPlan:
     path : ElementPath
     vr : str or None
         The VR that the value is read by: as written, or, in implicit VR or
-        in place of UN, the one VR that the pinned data dictionary gives;
-        ``None`` where neither gives one.
+        in place of UN, the one VR that the pinned data dictionary gives, or,
+        for a private element that a reviewed safe private rule keeps or
+        replaces, the rule's; ``None`` where none gives one.
     rule : ElementRule or None
         The element's rule, or ``None`` if it is removed with a sequence.
     action : str
@@ -253,6 +300,11 @@ class ElementPlan:
         the innermost enclosing sequence that is Type 3 at its own place, or
         another attribute of the overlay group of Overlay Data (60xx,3000).
         Otherwise ``None``.
+    lapsed : bool
+        ``True`` for a sequence of the Common Instance Reference Module that
+        is removed, which its own rule would not remove, because the plan
+        keeps no other reference to an instance, so its Type 1C condition
+        does not hold in the output. Otherwise ``False``.
     """
 
     path: ElementPath
@@ -262,6 +314,7 @@ class ElementPlan:
     removed_with: ElementPath | None
     consumers: frozenset[Consumer]
     removed_for: ElementPath | None = None
+    lapsed: bool = False
 
 
 @dataclasses.dataclass(frozen=True)
@@ -275,10 +328,26 @@ class InstancePlan:
     sequestrations : tuple of Sequestration
         Each reason found that the instance must be sequestered, in file
         order; ``()`` if there is none.
+    private_texts : mapping of ElementPath to str
+        Under the Retain Safe Private Option with Clean Descriptors, the key
+        (:func:`~pymedphys._dicom.deidentify.reviewed_descriptors.private_descriptor`)
+        by which each private element that the plan cleans is decided on;
+        empty otherwise. A plain dictionary, so that the plan pickles; it is
+        not to be changed.
+    private_text_vms : mapping of ElementPath to str
+        The VM of the rule of each private element that the plan cleans,
+        which its decoded values must meet; as ``private_texts`` otherwise.
     """
 
     elements: tuple[ElementPlan, ...]
     sequestrations: tuple[Sequestration, ...]
+    # A mapping is not hashable, so it is left out of the hash.
+    private_texts: Mapping[ElementPath, str] = dataclasses.field(
+        default_factory=dict, hash=False
+    )
+    private_text_vms: Mapping[ElementPath, str] = dataclasses.field(
+        default_factory=dict, hash=False
+    )
 
     def to_decode(self) -> tuple[ElementPath, ...]:
         """Return the paths of the elements that a consumer must read, in file order."""
@@ -392,11 +461,21 @@ def _resolve(iod: IOD, path: ElementPath, rule: ElementRule) -> str:
 
 
 def _plan(
-    source: SourceEvidence, rules: ElementRules, iod: IOD, forced: _PlainRemovals
+    source: SourceEvidence,
+    rules: ElementRules,
+    iod: IOD,
+    forced: _PlainRemovals,
+    content_items: Mapping[ElementPath, str],
+    lapsed: frozenset[ElementPath] = frozenset(),
+    private: PrivatePlan | None = None,
 ) -> tuple[InstancePlan, _PlainRemovals]:
     """Plan every element, removing what ``forced`` says plain X removes.
 
-    Also return what each plain X found removes with its attribute.
+    An element in ``content_items`` takes the action given there in place of
+    its rule's. The sequences in ``lapsed`` are removed too. ``private`` gives
+    the action of each element of a private group under the Retain Safe
+    Private Option. Also return what each plain X found removes with its
+    attribute.
     """
     elements: list[ElementPlan] = []
     sequestrations: list[Sequestration] = []
@@ -418,9 +497,18 @@ def _plan(
             )
             continue
         rule = rules.rule(path.tag, tuple(tag for tag, _ in path.items), iod=iod)
-        action = _resolve(iod, path, rule)
+        if path in content_items:
+            rule = ElementRule(
+                path.tag, RuleSource.CONTENT_ITEM, content_items[path], path.tag
+            )
+        if rule.source is RuleSource.PRIVATE and private is not None:
+            action = private.actions.get(path, _REMOVED)
+            vr = private.vrs.get(path, vr)
+        else:
+            action = _resolve(iod, path, rule)
         removed_for = forced.removed_for(path) if action != _REMOVED else None
-        if removed_for is not None:
+        lapses = path in lapsed and action != _REMOVED
+        if removed_for is not None or lapses:
             action = _REMOVED
         elif rule.action == _REMOVED and rule.source is not RuleSource.ENGINE:
             # The engine's own removals apply whatever the Type.
@@ -439,19 +527,125 @@ def _plan(
             removing[path] = action
         consumers = _consumers(action, container, False)
         elements.append(
-            ElementPlan(path, vr, rule, action, None, consumers, removed_for)
+            ElementPlan(path, vr, rule, action, None, consumers, removed_for, lapses)
         )
-    return InstancePlan(tuple(elements), tuple(sequestrations)), found
+    texts, vms = {}, {}
+    if private is not None and private.texts:
+        texts = {
+            element.path: private.texts[element.path]
+            for element in elements
+            if element.action == "C" and element.path in private.texts
+        }
+        vms = {path: private.text_vms[path] for path in texts}
+    if texts:
+        # Cleaning may remove a private creator that the plan keeps, with
+        # the text that it was kept for, so each is collected; cleaning
+        # leaves out each that it writes (D-027).
+        elements = [
+            dataclasses.replace(
+                element,
+                consumers=element.consumers | {Consumer.RESIDUAL_COLLECTION},
+            )
+            if element.action == "K" and is_private_creator(element.path.tag)
+            else element
+            for element in elements
+        ]
+    return InstancePlan(tuple(elements), tuple(sequestrations), texts, vms), found
+
+
+def _keeps_a_reference(plan: InstancePlan, source: SourceEvidence) -> bool:
+    """Return whether the plan keeps a reference to an instance.
+
+    A reference is kept where its element keeps a value: it has one in the
+    source, and is neither removed nor emptied. The dummy item that D writes
+    for Referenced Performed Procedure Step Sequence (0008,1111) holds a
+    replacement Referenced SOP Instance UID, so that counts too.
+    """
+    for element in plan.elements:
+        if element.path.tag in REVIEWED_DUMMY_SEQUENCES and element.action == "D":
+            if "(0008,1155)" in REVIEWED_DUMMY_SEQUENCES[element.path.tag]:
+                return True
+        elif (
+            element.action not in (_REMOVED, "Z")
+            and is_instance_reference(element.path)
+            and not _source_empty(source, element.path)
+        ):
+            return True
+    return False
+
+
+def _source_empty(source: SourceEvidence, path: ElementPath) -> bool:
+    """Return whether the source holds the element with a zero-length value."""
+    extent = source.element(path)
+    return not extent.undefined_length and extent.end == extent.value_start
+
+
+def _lapsed(plan: InstancePlan, source: SourceEvidence) -> frozenset[ElementPath]:
+    """Return the module's kept sequences, where no other reference is kept."""
+    kept = frozenset(
+        element.path
+        for element in plan.elements
+        if is_common_instance_reference(element.path) and element.action != _REMOVED
+    )
+    if not kept or _keeps_a_reference(plan, source):
+        return frozenset()
+    return kept
+
+
+def _unkept(
+    plan: InstancePlan, source: SourceEvidence, parsed: frozenset[ElementPath]
+) -> frozenset[ElementPath]:
+    """Return the parsed private sequences that the plan keeps nothing in.
+
+    What counts is an element kept, replaced, or, for private text, cleaned,
+    at any depth, that is not a sequence, whose kept container holds no
+    value of its own, or a private creator, which is kept only for what its
+    block keeps.
+    """
+    holding: set[ElementPath] = set()
+    for element in plan.elements:
+        path = element.path
+        if (
+            (
+                element.action in DESCENDED
+                or (element.action == "C" and is_private(path.tag))
+            )
+            and source.element(path).items is None
+            and not is_private_creator(path.tag)
+        ):
+            holding.update(
+                ElementPath(path.items[:depth], tag)
+                for depth, (tag, _) in enumerate(path.items)
+            )
+    return frozenset(
+        element.path
+        for element in plan.elements
+        if element.path in parsed
+        and element.action in DESCENDED
+        and element.path not in holding
+    )
 
 
 def plan_instance(
-    source: SourceEvidence, rules: ElementRules, iod: IOD
+    source: SourceEvidence,
+    rules: ElementRules,
+    iod: IOD,
+    content_items: Mapping[ElementPath, str] = _NONE,
 ) -> InstancePlan:
     """Return the plan of every element of a source file's data set.
 
     A plain X can remove a sequence that encloses its attribute, or the
     other attributes of an overlay group, some of which come before it in
-    file order, so the data set is planned again where one does.
+    file order, so the data set is planned again where one does. Under the
+    Retain Safe Private Option, it is planned again, until none is left,
+    with each private sequence that no rule lists removed where the plan
+    keeps nothing in it. Removing such a sequence removes no value that the
+    plan keeps or replaces, only the sequence and, where its block keeps
+    nothing else, its private creator, so no other decision changes. Where
+    the plan then keeps no reference to an instance outside the Common
+    Instance Reference Module, it is planned once more with the module's
+    sequences removed, which removes no reference that the decision rests
+    on.
 
     Parameters
     ----------
@@ -463,13 +657,45 @@ def plan_instance(
     iod : IOD
         The instance's IOD, from its SOP Class UID
         (:func:`~pymedphys._dicom.deidentify.scope.classify`).
+    content_items : Mapping of ElementPath to str, optional
+        Under Clean Structured Content, the action of each content-item
+        sequence that is kept, K, and of the value of each content item in
+        it whose concept name Table E.3.4-1 lists, in place of its rule's
+        (:func:`~pymedphys._dicom.deidentify.content_items.content_item_actions`,
+        D-047). Its rule's source is then
+        :attr:`~pymedphys._dicom.deidentify.element_rules.RuleSource.CONTENT_ITEM`.
+        Defaults to none.
 
     Returns
     -------
     InstancePlan
     """
-    plan, removals = _plan(source, rules, iod, _PlainRemovals())
+    clean_text = CLEAN_DESCRIPTORS in rules.policy.options
+    private = (
+        None
+        if rules.safe_private is None
+        else private_plan(source, rules.safe_private, clean_text=clean_text)
+    )
+    plan, removals = _plan(
+        source, rules, iod, _PlainRemovals(), content_items, private=private
+    )
     if removals.sequences or removals.overlay_groups:
         # Planning again only removes more, so it finds nothing new to force.
-        plan, _ = _plan(source, rules, iod, removals)
+        plan, _ = _plan(source, rules, iod, removals, content_items, private=private)
+    unkept: frozenset[ElementPath] = frozenset()
+    while private is not None and rules.safe_private is not None:
+        found = _unkept(plan, source, private.parsed)
+        if not found:
+            break
+        # Each pass removes at least one more sequence, so the passes end.
+        unkept |= found
+        private = private_plan(
+            source, rules.safe_private, unkept, clean_text=clean_text
+        )
+        plan, _ = _plan(source, rules, iod, removals, content_items, private=private)
+    lapsed = _lapsed(plan, source)
+    if lapsed:
+        plan, _ = _plan(
+            source, rules, iod, removals, content_items, lapsed, private=private
+        )
     return plan

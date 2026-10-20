@@ -38,17 +38,29 @@ to a copy of a data set and changes nothing else in it:
   Descriptors, which goes unsatisfied where an instance retains a
   descriptor that has not passed pooled human review, such as a reviewer's
   decision in the reviewed-names list (D-009); a descriptor removed or
-  replaced by its Basic Profile action instead still meets it.
+  replaced by its Basic Profile action instead still meets it. Clean Pixel
+  Data likewise goes unsatisfied where an instance's pixel data await review
+  (D-037), and Clean Recognizable Visual Features where an instance is held
+  for its face review.
   A code is not added where an item already present has the same Code
   Value and Coding Scheme Designator, and the same Coding Scheme Version
   where either has one. ``tps-import`` adds no code, and the sequence is left
   out where it would have no item, since a present Type 1C sequence needs
   one.
-- Longitudinal Temporal Information Modified (0028,0303) is MODIFIED where
-  the policy applies Retain Longitudinal Temporal Information with Modified
-  Dates, and otherwise REMOVED, or the value already present where that is
-  stricter, in the order UNMODIFIED, MODIFIED, REMOVED. A value already
+- Longitudinal Temporal Information Modified (0028,0303) is UNMODIFIED where
+  the policy applies Retain Longitudinal Temporal Information with Full
+  Dates, MODIFIED where it applies Retain Longitudinal Temporal Information
+  with Modified Dates, and otherwise REMOVED, or the value already present
+  where that is stricter, in the order UNMODIFIED, MODIFIED, REMOVED. A value already
   present that is not one of these is refused.
+- Burned In Annotation (0028,0301) is NO, replacing any value already
+  present, in an instance that satisfies the Clean Pixel Data Option, as
+  PS3.15 E.3.1 requires whether or not the instance's IOD defines the
+  attribute, and is otherwise left as it is.
+- Recognizable Visual Features (0028,0302) is NO, replacing any value
+  already present, in an instance that satisfies the Clean Recognizable
+  Visual Features Option, as PS3.15 E.3.2 requires whether or not the
+  instance's IOD defines the attribute, and is otherwise left as it is.
 - Contributing Equipment Sequence (0018,A001) keeps the items already present
   and, unless one of them has the same Manufacturer, Software Versions in the
   same order, and purpose of reference, gains one that names PyMedPhys as its
@@ -59,13 +71,14 @@ to a copy of a data set and changes nothing else in it:
   one value, such as ``CPython 3.14.0``; ``pydicom <version>``; and
   ``tomlkit <version>``. They are read from the running process each time
   the markers are computed, and record the runtime that ran, which the
-  method digest does not cover.
+  method digest does not cover, apart from the text finder's runtime under
+  the Clean Pixel Data Option.
 
 So output de-identified twice by the same release and policy in the same
 runtime carries the markers of one run. A run with another digest adds its
 own pair of De-identification Method values, and a run in another runtime,
-whose digest is the same, adds only its own Contributing Equipment Sequence
-item.
+whose digest is the same unless its text finder's runtime differs, adds only
+its own Contributing Equipment Sequence item.
 
 Each value is checked against its VR and VM in the pinned data dictionary,
 Patient Identity Removed is checked to be YES, and the first
@@ -110,7 +123,7 @@ from pymedphys._imports import pydicom
 from . import runtime
 from .codes import CodedConcept, load_context_group
 from .diagnostics import redacted_diagnostics
-from .policy import MODIFIED_DATES, Policy
+from .policy import ENGINE_OPTIONS, FULL_DATES, MODIFIED_DATES, Policy
 from .standard import DictionaryAttribute, StandardTableError, load_data_dictionary
 from .values import values_problem
 
@@ -124,30 +137,51 @@ NO_CONFORMANCE_CLAIM = "no PS3.15 claim"
 # The Coding Scheme Designator of every code that the markers write.
 DCM = "DCM"
 # The CID 7050 code of the Basic Application Level Confidentiality Profile,
-# and of each option that the design document's Scope targets.
+# and of each option, in the order of standard.ALL_OPTIONS: Table E.1-1's,
+# then Clean Pixel Data and Clean Recognizable Visual Features.
 PROFILE_CODE = "113100"
 OPTION_CODES = types.MappingProxyType(
     {
         "retain_safe_private": "113111",
+        "retain_uids": "113110",
         "retain_device_identity": "113109",
+        "retain_institution_identity": "113112",
         "retain_patient_characteristics": "113108",
+        "retain_longitudinal_full_dates": "113106",
         "retain_longitudinal_modified_dates": "113107",
         "clean_descriptors": "113105",
+        "clean_structured_content": "113104",
+        "clean_graphics": "113103",
+        "clean_pixel_data": "113101",
+        "clean_recognizable_visual_features": "113102",
     }
 )
+# The codes of the options whose policies the engine applies: the only option
+# codes that the markers write in a run, since the engine refuses any other
+# option. The residual search leaves out these alone
+# (residuals.written_constants).
+WRITTEN_OPTION_CODES = frozenset(OPTION_CODES[o] for o in ENGINE_OPTIONS)
 # The CID 7005 code of De-identifying Equipment.
 DEIDENTIFYING_EQUIPMENT = "109104"
 # The values of Longitudinal Temporal Information Modified, from the least
 # strict to the strictest.
 TEMPORAL_VALUES = ("UNMODIFIED", "MODIFIED", "REMOVED")
-# The one selected option that a policy claiming conformance can leave
-# unsatisfied: in an instance that retains a descriptor without review.
+# The selected options that a policy claiming conformance can leave
+# unsatisfied, each in an instance whose own outcome does not meet it: Clean
+# Descriptors, where it retains a descriptor without review, Clean Pixel Data,
+# where its pixel data await review, and Clean Recognizable Visual Features,
+# where it is held for its face review.
 _CLEAN_DESCRIPTORS = "clean_descriptors"
+_PIXEL_DATA = "clean_pixel_data"
+_VISUAL_FEATURES = "clean_recognizable_visual_features"
+_REVIEWED_OPTIONS = (_CLEAN_DESCRIPTORS, _PIXEL_DATA, _VISUAL_FEATURES)
 
 _PATIENT_IDENTITY_REMOVED = "(0012,0062)"
 _DEIDENTIFICATION_METHOD = "(0012,0063)"
 _DEIDENTIFICATION_METHOD_CODES = "(0012,0064)"
 _TEMPORAL_INFORMATION_MODIFIED = "(0028,0303)"
+_BURNED_IN_ANNOTATION = "(0028,0301)"
+_RECOGNIZABLE_VISUAL_FEATURES = "(0028,0302)"
 _CONTRIBUTING_EQUIPMENT = "(0018,A001)"
 _MANUFACTURER = "(0008,0070)"
 _SOFTWARE_VERSIONS = "(0018,1020)"
@@ -206,6 +240,16 @@ class Markers:
     purpose_of_reference : CodedConcept
         The item's Purpose of Reference Code Sequence (0040,A170) item: DCM
         109104 "De-identifying Equipment".
+    recognizable_visual_features : str or None
+        Recognizable Visual Features (0028,0302): ``"NO"`` in an instance
+        that satisfies the Clean Recognizable Visual Features Option,
+        whether or not its IOD defines the attribute (PS3.15 E.3.2), or
+        None, which leaves it as it is.
+    burned_in_annotation : str or None
+        Burned In Annotation (0028,0301): ``"NO"`` in an instance that
+        satisfies the Clean Pixel Data Option, whether or not its IOD
+        defines the attribute (PS3.15 E.3.1), or None, which leaves it as
+        it is.
     """
 
     patient_identity_removed: str
@@ -215,6 +259,8 @@ class Markers:
     manufacturer: str
     software_versions: tuple[str, ...]
     purpose_of_reference: CodedConcept
+    recognizable_visual_features: str | None = None
+    burned_in_annotation: str | None = None
 
 
 @functools.cache
@@ -244,8 +290,9 @@ def _satisfied(policy: Policy, satisfied: Iterable[str]) -> tuple[str, ...]:
     """Return the satisfied options in the policy's order, after checking them.
 
     Under a policy that can claim conformance, every selected option but
-    Clean Descriptors must be satisfied, so that the codes name each option
-    whose actions the instance carries. An option that the policy records as
+    Clean Descriptors, Clean Pixel Data, and Clean Recognizable Visual
+    Features must be satisfied, so that the codes name each option whose
+    actions the instance carries. An option that the policy records as
     unmet is never required.
     """
     if isinstance(satisfied, str):
@@ -263,13 +310,15 @@ def _satisfied(policy: Policy, satisfied: Iterable[str]) -> tuple[str, ...]:
     missing = [
         option
         for option in policy.options
-        if option not in chosen and option != _CLEAN_DESCRIPTORS and option not in unmet
+        if option not in chosen
+        and option not in _REVIEWED_OPTIONS
+        and option not in unmet
     ]
     if policy.claims_conformance and missing:
         raise ValueError(
             f"satisfied leaves out {', '.join(missing)}, which the policy "
-            f"selects; only {_CLEAN_DESCRIPTORS} can go unsatisfied, in an "
-            "instance that retains a descriptor without review"
+            f"selects; only {', '.join(_REVIEWED_OPTIONS)} can go unsatisfied, in "
+            "an instance whose own outcome does not meet them"
         )
     return tuple(option for option in policy.options if option in chosen)
 
@@ -328,6 +377,12 @@ def _check(found: Markers) -> None:
     if found.patient_identity_removed != "YES":
         name = _dictionary()[_PATIENT_IDENTITY_REMOVED].name
         problems.append(f"{name} {_PATIENT_IDENTITY_REMOVED} is not YES")
+    for tag, value in (
+        (_BURNED_IN_ANNOTATION, found.burned_in_annotation),
+        (_RECOGNIZABLE_VISUAL_FEATURES, found.recognizable_visual_features),
+    ):
+        if value not in (None, "NO"):
+            problems.append(f"{_dictionary()[tag].name} {tag} is not NO")
     if found.temporal_information_modified not in TEMPORAL_VALUES:
         name = _dictionary()[_TEMPORAL_INFORMATION_MODIFIED].name
         problems.append(
@@ -386,7 +441,11 @@ def markers_for(policy: Policy, digest: str, *, satisfied: Iterable[str]) -> Mar
         must have every selected option satisfied except Clean Descriptors,
         which an instance that retains a descriptor that has not passed
         pooled human review does not satisfy; one whose descriptors are
-        removed or replaced by their Basic Profile actions instead does.
+        removed or replaced by their Basic Profile actions instead does;
+        except Clean Pixel Data, which an instance whose pixel data await
+        review does not satisfy (D-037); and except Clean Recognizable Visual
+        Features, which an instance held for its face review does not
+        satisfy.
         ``tps-import``, which claims no conformance and adds no codes, needs
         none satisfied, and never the Retain Device Identity that it records
         as unmet.
@@ -406,9 +465,10 @@ def markers_for(policy: Policy, digest: str, *, satisfied: Iterable[str]) -> Mar
         If ``digest`` is not 64 lowercase hexadecimal digits; if
         ``satisfied`` names an option that the policy does not select, or,
         under a policy that can claim conformance, leaves out a selected
-        option other than Clean Descriptors, in which case the message names
-        each option left out; or if the policy selects an option without a
-        CID 7050 code here, which a validated policy never does. The message
+        option other than Clean Descriptors, Clean Pixel Data, and Clean
+        Recognizable Visual Features, in which case the message names each
+        option left out; or if the policy selects an option without a CID
+        7050 code here, which a validated policy never does. The message
         does not quote the digest.
     MarkerError
         If the policy resolves a conflict between options by keeping the
@@ -466,15 +526,30 @@ def markers_for(policy: Policy, digest: str, *, satisfied: Iterable[str]) -> Mar
         patient_identity_removed="YES",
         method=(digest, f"{MANUFACTURER} {version}; {claim}; {name}"),
         method_codes=method_codes,
-        temporal_information_modified=(
-            "MODIFIED" if MODIFIED_DATES in policy.options else "REMOVED"
-        ),
+        temporal_information_modified=_temporal_value(policy),
         manufacturer=MANUFACTURER,
         software_versions=software_versions,
         purpose_of_reference=_code(7005, DEIDENTIFYING_EQUIPMENT),
+        recognizable_visual_features=(
+            "NO" if policy.claims_conformance and _VISUAL_FEATURES in options else None
+        ),
+        burned_in_annotation=(
+            "NO" if policy.claims_conformance and _PIXEL_DATA in options else None
+        ),
     )
     _check(found)
     return found
+
+
+def _temporal_value(policy: Policy) -> str:
+    """Return the Longitudinal Temporal Information Modified of the policy.
+
+    UNMODIFIED under Full Dates and MODIFIED under Modified Dates (PS3.15
+    E.3.6), and otherwise REMOVED (E.2). A policy never selects both.
+    """
+    if FULL_DATES in policy.options:
+        return "UNMODIFIED"
+    return "MODIFIED" if MODIFIED_DATES in policy.options else "REMOVED"
 
 
 def _int_tag(tag: str) -> int:
@@ -717,4 +792,10 @@ def _marked(dataset: pydicom.Dataset, markers: Markers) -> pydicom.Dataset:
         marked.pop(_int_tag(_DEIDENTIFICATION_METHOD_CODES), None)
     _set(marked, _TEMPORAL_INFORMATION_MODIFIED, [temporal])
     _set(marked, _CONTRIBUTING_EQUIPMENT, equipment_items)
+    for tag, value in (
+        (_BURNED_IN_ANNOTATION, markers.burned_in_annotation),
+        (_RECOGNIZABLE_VISUAL_FEATURES, markers.recognizable_visual_features),
+    ):
+        if value is not None:
+            _set(marked, tag, [value])
     return marked

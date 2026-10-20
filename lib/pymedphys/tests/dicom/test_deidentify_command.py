@@ -37,6 +37,10 @@ from pymedphys._dicom.deidentify import (
     run_report,
 )
 from pymedphys._dicom.deidentify.policy import compose_policy
+from pymedphys._dicom.deidentify.reviewed_descriptors import (
+    ReviewedDescriptor,
+    ReviewedDescriptors,
+)
 from pymedphys._dicom.deidentify.reviewed_roi_names import (
     Review,
     ReviewedName,
@@ -723,6 +727,50 @@ def test_a_reviewed_names_list_where_a_run_writes_exits_three_naming_no_path(
     assert not built
 
 
+@pytest.mark.usefixtures("enabled", "edition")
+def test_the_reviewed_descriptors_list_is_used(tmp_path, monkeypatch):
+    path = tmp_path / "custodian" / "descriptors.json"
+    path.parent.mkdir()
+    reviewed = ReviewedDescriptors.open(path)
+    reviewed.record("(0008,1030)", "CHEST", ReviewedDescriptor(Review.KEEP))
+    reviewed.save()
+
+    status, _, built = _cleaning(
+        tmp_path, monkeypatch, "--reviewed-descriptors", str(path)
+    )
+
+    assert status == command.EXIT_RELEASED
+    (cleaning,) = built
+    assert cleaning.reviewed_descriptors.get("(0008,1030)", "CHEST") == (
+        ReviewedDescriptor(Review.KEEP)
+    )
+    assert cleaning.technique is not None
+
+
+@pytest.mark.usefixtures("enabled", "edition")
+@pytest.mark.parametrize(
+    "where", ["custodian", "release", "qc", "source"], ids=lambda where: where
+)
+def test_a_reviewed_descriptors_list_where_a_run_writes_exits_three_naming_no_path(
+    tmp_path, monkeypatch, where
+):
+    path = tmp_path / where / SENTINEL
+    path.parent.mkdir()
+    ReviewedDescriptors.open(path).save()
+    if where == "custodian":
+        path = tmp_path / where / "missing.json"
+
+    status, err, built = _cleaning(
+        tmp_path, monkeypatch, "--reviewed-descriptors", str(path)
+    )
+
+    assert status == command.EXIT_NOT_RUN
+    expected = "does not exist" if where == "custodian" else "could not be used"
+    assert err.startswith("error: the reviewed descriptors list") and expected in err
+    assert SENTINEL not in err and str(tmp_path) not in err
+    assert not built
+
+
 def _converted_list(path, *names):
     source = path.parent / "list.csv"
     source.write_text("Name\n" + "".join(f"{name}\n" for name in names), "utf-8")
@@ -805,6 +853,7 @@ def test_clean_descriptors_not_enabled_exits_three_before_loading_anything(
         ("--reviewed-names", "x"),
         ("--empty-held-roi-names",),
         ("--roi-list", "x"),
+        ("--reviewed-descriptors", "x"),
     ],
     ids=lambda option: option[0],
 )

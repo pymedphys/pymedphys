@@ -14,8 +14,9 @@
 
 """The runtime environment that runs the de-identification engine.
 
-Each run records the environment that ran it as provenance, apart from the
-method digest, which the environment does not change: the PyMedPhys version,
+Each run records the environment that ran it as provenance, separately from
+the method digest, which the environment does not change except for the text
+finder's runtime under the Clean Pixel Data Option: the PyMedPhys version,
 the Python implementation and version, and the versions of pydicom and
 tomlkit. The release report holds them as structured fields, and the
 Software Versions of the de-identifying equipment's Contributing Equipment

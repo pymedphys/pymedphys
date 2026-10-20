@@ -16,6 +16,7 @@
 
 import dataclasses
 import io
+import re
 
 from pymedphys._imports import pydicom, pytest
 
@@ -29,6 +30,7 @@ from pymedphys._dicom.deidentify import (
     roi_names,
     run,
     run_qc,
+    standard,
 )
 from pymedphys._dicom.deidentify.keys import DeidKey
 from pymedphys._nomenclature import tg263
@@ -108,6 +110,20 @@ def test_a_published_vocabulary_is_named_with_its_edition(monkeypatch):
     )
     assert "TG263 vInvented" in section
     assert statement.vocabulary_digest in section
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
+@pytest.mark.parametrize("published", [False, True])
+def test_the_statement_with_a_vocabulary_cites_no_decision_number(
+    monkeypatch, published
+):
+    # The ROI Name text differs with a vocabulary, which the preset and option
+    # statements of test_deidentify_conformance_values.py render without.
+    vocabulary = _published_vocabulary(monkeypatch) if published else VOCABULARY
+    text = conformance_markdown.render_markdown(
+        _statement("basic-clean-descriptors", vocabulary)
+    )
+    assert re.search(r"\bD-\d{3}\b", text) is None
 
 
 @pytest.mark.deid_requirement("PS3.15-E.1.3-01", "PS3.15-E.3.5-02")
@@ -204,7 +220,11 @@ def test_each_other_attribute_given_c_is_described_by_its_fallback_action(preset
         assert conformance.PENDING_CLEANING not in statement.pending
     elif "clean_descriptors" not in composed.options:
         assert not fallen_back
-    if "C" in {e.action for e in statement.attributes if e.tag != ROI_NAME}:
+    # The cleaners, and the safe private rules, describe what they clean.
+    described = {ROI_NAME, standard.PRIVATE_ATTRIBUTES_TAG} | {
+        tag for each in statement.cleaned for tag in each.tags
+    }
+    if "C" in {e.action for e in statement.attributes if e.tag not in described}:
         assert conformance.PENDING_CLEANING in statement.pending
     assert all(e.action != "C" and e.policy_action == "C" for e in fallen_back.values())
 
@@ -216,7 +236,7 @@ def test_the_described_fallback_is_the_maintainers_decision():
     assert (
         "takes the action that the policy gives it without Clean Descriptors"
     ) in actions
-    assert "decided on 6 October 2026 (D-009)" in actions
+    assert "decided on 6 October 2026, unless" in actions
     inserted = _section(text, "Attributes inserted")
     assert "not yet described" not in inserted
 

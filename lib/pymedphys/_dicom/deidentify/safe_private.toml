@@ -1,0 +1,613 @@
+# Reviewed rules for the Retain Safe Private Option (PS3.15 E.3.10), curated
+# by hand for one edition of PS3.15.
+#
+# E.3.10 retains the private attributes "known by the de-identifier to be
+# safe from identity leakage". Table E.3.10-1 is one way of knowing, but its
+# Note calls it "a sample list of Private Attributes thought to be safe",
+# which vendors do not guarantee, and suggests retaining numeric values only,
+# with code strings a possible exception, and treating bulk binary data as
+# particularly unsafe. So every row of the table has a rule here, and each
+# rule says how its value is handled when the Option is selected:
+#
+# numeric:  FD, FL, SL, SS, SV, UL, US, UV, and AT values, and IS and DS
+#           values that are valid numbers of their VR.
+# code:     CS values made only of the characters that VR CS allows.
+# uid:      UI values, replaced as every other UID is (D-003).
+# text:     LO, LT, SH, ST, UC, and UT values, cleaned as descriptors are
+#           under Clean Descriptors, and removed without it.
+# sequence: SQ values, whose items are parsed and each nested attribute
+#           handled on its own merits (E.3.10).
+# remove:   not retained: OB, OW, and UN values, and attributes for which the
+#           table gives no single VR, which cannot be checked.
+#
+# Each rule takes the handling of its VR unless its note says why not. A
+# reviewed addition, for a private attribute that the table does not list,
+# must retain its value, and cites the public document that shows it is
+# safe; there are none yet. TCIA's Private Tag Dictionary, which ships in
+# _tcia/, is a separate list that a run may choose instead of this one; it is
+# not a source of additions.
+#
+# The comment after each rule is the table's description of the attribute.
+
+schema = "pymedphys-deid-safe-private/1"
+edition = "2026d"
+acknowledgement = "DICOM PS3.15 2026d, © NEMA"
+
+[[table]]
+private_creator = "Philips PET Private Group"
+elements = [
+  { tag = "(7053,xx00)", vr = "DS", vm = "1", handling = "numeric" },  # SUV Factor - Multiplying Stored Pixel Values by Rescale Slope then this factor results in SUVbw in g/l
+  { tag = "(7053,xx09)", vr = "DS", vm = "1", handling = "numeric" },  # Activity Concentration Factor - Multiplying Stored Pixel Values by Rescale Slope then this factor results in MBq/ml.
+]
+
+[[table]]
+private_creator = "ELSCINT1"
+elements = [
+  { tag = "(00E1,xx21)", vr = "DS", vm = "1", handling = "numeric" },  # DLP
+  { tag = "(00E1,xx50)", vr = "DS", vm = "1", handling = "numeric" },  # Acquisition Duration
+  { tag = "(01E1,xx26)", vr = "CS", vm = "1", handling = "code" },  # Phantom Type
+  { tag = "(01F1,xx01)", vr = "CS", vm = "1", handling = "code" },  # Acquisition Type
+  { tag = "(01F1,xx07)", vr = "DS", vm = "1", handling = "numeric" },  # Table Velocity
+  { tag = "(01F1,xx26)", vr = "DS", vm = "1", handling = "numeric" },  # Pitch
+  { tag = "(01F1,xx27)", vr = "DS", vm = "1", handling = "numeric" },  # Rotation Time
+]
+
+[[table]]
+private_creator = "GEMS_ACQU_01"
+elements = [
+  { tag = "(0019,xx23)", vr = "DS", vm = "1", handling = "numeric" },  # Table Speed [mm/rotation]
+  { tag = "(0019,xx24)", vr = "DS", vm = "1", handling = "remove", note = "A time in seconds that can be an absolute time of the scan rather than a duration, and no reviewed vendor document says which, so it is removed, as the Basic Profile removes acquisition times." },  # Mid Scan Time [sec]
+  { tag = "(0019,xx27)", vr = "DS", vm = "1", handling = "numeric" },  # Rotation Speed (Gantry Period)
+  { tag = "(0019,xx9E)", vr = "LO", vm = "1", handling = "text" },  # Internal Pulse Sequence Name
+]
+
+[[table]]
+private_creator = "GEMS_PARM_01"
+elements = [
+  { tag = "(0043,xx27)", vr = "SH", vm = "1", handling = "text" },  # Scan Pitch Ratio in the form "n.nnn:1"
+  { tag = "(0043,xx39)", vr = "IS", vm = "4", handling = "numeric" },  # 1stvalue is B Value
+  { tag = "(0043,xx6F)", vr = "DS", vm = "3-4", handling = "numeric" },  # Scanner Table Entry + Gradient Coil Selected
+]
+
+[[table]]
+private_creator = "GEMS_HELIOS_01"
+elements = [
+  { tag = "(0045,xx01)", vr = "SS", vm = "1", handling = "numeric" },  # Number of Macro Rows in Detector
+  { tag = "(0045,xx02)", vr = "FL", vm = "1", handling = "numeric" },  # Macro width at ISO Center
+]
+
+[[table]]
+private_creator = "GEIIS PACS"
+elements = [
+  { tag = "(0903,xx10)", vr = "US", vm = "1", handling = "numeric" },  # Reject Image Flag
+  { tag = "(0903,xx11)", vr = "US", vm = "1", handling = "numeric" },  # Significant Flag
+  { tag = "(0903,xx12)", vr = "US", vm = "1", handling = "numeric" },  # Confidential Flag
+]
+
+[[table]]
+private_creator = "Philips Imaging DD 001"
+elements = [
+  { tag = "(2001,xx01)", vr = "FL", vm = "1", handling = "numeric" },  # MR Image Chemical Shift
+  { tag = "(2001,xx02)", vr = "IS", vm = "1", handling = "numeric" },  # MR Image Chemical Shift Number
+  { tag = "(2001,xx03)", vr = "FL", vm = "1", handling = "numeric" },  # MR Image Diffusion B-Factor
+  { tag = "(2001,xx04)", vr = "CS", vm = "1", handling = "code" },  # MR Image Diffusion Direction
+  { tag = "(2001,xx05)", vr = "SS", vm = "1", handling = "numeric" },  # Graphic Annotation Parent ID
+  { tag = "(2001,xx06)", vr = "CS", vm = "1", handling = "code" },  # MR Image Enhanced
+  { tag = "(2001,xx07)", vr = "CS", vm = "1", handling = "code" },  # MR Image Type Edes
+  { tag = "(2001,xx08)", vr = "IS", vm = "1", handling = "numeric" },  # MR Image Phase Number
+  { tag = "(2001,xx09)", vr = "FL", vm = "1", handling = "numeric" },  # MR Image Prepulse Delay
+  { tag = "(2001,xx0A)", vr = "IS", vm = "1", handling = "numeric" },  # Image Plane Number
+  { tag = "(2001,xx0B)", vr = "CS", vm = "1", handling = "code" },  # Image Plane Orientation
+  { tag = "(2001,xx0C)", vr = "CS", vm = "1", handling = "code" },  # MR Series Arrhythmia Rejection
+  { tag = "(2001,xx0E)", vr = "CS", vm = "1", handling = "code" },  # MR Series Cardiac Cycled
+  { tag = "(2001,xx0F)", vr = "SS", vm = "1", handling = "numeric" },  # MR Series Cardiac Gate Width
+  { tag = "(2001,xx10)", vr = "CS", vm = "1", handling = "code" },  # MR Series Cardiac Sync
+  { tag = "(2001,xx11)", vr = "FL", vm = "1", handling = "numeric" },  # MR Series Diffusion Echo Time
+  { tag = "(2001,xx12)", vr = "CS", vm = "1", handling = "code" },  # MR Series Dynamic Series
+  { tag = "(2001,xx13)", vr = "SL", vm = "1", handling = "numeric" },  # MR Series Epi Factor
+  { tag = "(2001,xx14)", vr = "SL", vm = "1", handling = "numeric" },  # MR Series Nr Of Echoes
+  { tag = "(2001,xx15)", vr = "SS", vm = "1", handling = "numeric" },  # MR Series Nr Of Locations
+  { tag = "(2001,xx16)", vr = "SS", vm = "1", handling = "numeric" },  # MR Series Nr Of Phase Contrast Directions
+  { tag = "(2001,xx17)", vr = "SL", vm = "1", handling = "numeric" },  # MR Series Nr Of Phases
+  { tag = "(2001,xx18)", vr = "SL", vm = "1", handling = "numeric" },  # MR Series Nr Of Slices
+  { tag = "(2001,xx19)", vr = "CS", vm = "1", handling = "code" },  # MR Series Partial Matrix Scanned
+  { tag = "(2001,xx1A)", vr = "FL", vm = "3", handling = "numeric" },  # MR Series Pc Velocity
+  { tag = "(2001,xx1B)", vr = "FL", vm = "1", handling = "numeric" },  # MR Series Prepulse Delay
+  { tag = "(2001,xx1C)", vr = "CS", vm = "1", handling = "code" },  # MR Series Prepulse Type
+  { tag = "(2001,xx1D)", vr = "IS", vm = "1", handling = "numeric" },  # MR Series Reconstruction Number
+  { tag = "(2001,xx1E)", vr = "CS", vm = "1", handling = "code" },  # MR Series Reformat Accuracy
+  { tag = "(2001,xx1F)", vr = "CS", vm = "1", handling = "code" },  # MR Series Respiration Sync
+  { tag = "(2001,xx21)", vr = "CS", vm = "1", handling = "code" },  # MR Series Sel Part Inversion Recovery
+  { tag = "(2001,xx22)", vr = "FL", vm = "1", handling = "numeric" },  # MR Series Water Fat Shift
+  { tag = "(2001,xx23)", vr = "DS", vm = "1", handling = "numeric" },  # MR Series Flip Angle
+  { tag = "(2001,xx24)", vr = "CS", vm = "1", handling = "code" },  # MR Series Is Interactive
+  { tag = "(2001,xx25)", vr = "SH", vm = "1", handling = "text" },  # MR Series Echo Time Display
+  { tag = "(2001,xx26)", vr = "CS", vm = "1", handling = "code" },  # Presentation State Subtraction Active
+  { tag = "(2001,xx27)", vr = "CS", vm = "1", handling = "code" },  # Edge Enhancement Kernel Size
+  { tag = "(2001,xx28)", vr = "FL", vm = "1", handling = "numeric" },  # Edge Enhancement Gain Factor Sub
+  { tag = "(2001,xx29)", vr = "FL", vm = "1", handling = "numeric" },  # Edge Enhancement Gain Factor
+  { tag = "(2001,xx2A)", vr = "CS", vm = "1", handling = "code" },  # Edge Enhancement Taste Adapt Sub
+  { tag = "(2001,xx2B)", vr = "CS", vm = "1", handling = "code" },  # Edge Enhancement Taste Adapt
+  { tag = "(2001,xx2C)", vr = "FL", vm = "1", handling = "numeric" },  # Harmonization Factor
+  { tag = "(2001,xx2D)", vr = "SS", vm = "1", handling = "numeric" },  # Stack Number Of Slices
+  { tag = "(2001,xx2E)", vr = "CS", vm = "1", handling = "code" },  # Harmonization Kernel Size
+  { tag = "(2001,xx2F)", vr = "FL", vm = "1", handling = "numeric" },  # Harmonization Gain
+  { tag = "(2001,xx30)", vr = "UL", vm = "1", handling = "numeric" },  # Log Subtraction Gain Step Taste
+  { tag = "(2001,xx31)", vr = "US", vm = "1", handling = "numeric" },  # Mixing Nr Of Mask Image Numbers
+  { tag = "(2001,xx32)", vr = "FL", vm = "1", handling = "numeric" },  # Stack Radial Angle
+  { tag = "(2001,xx33)", vr = "CS", vm = "1", handling = "code" },  # Stack Radial Axis
+  { tag = "(2001,xx34)", vr = "CS", vm = "1", handling = "code" },  # Mixing Mask Operation Type
+  { tag = "(2001,xx35)", vr = "SS", vm = "1", handling = "numeric" },  # Stack Slice Number
+  { tag = "(2001,xx36)", vr = "CS", vm = "1", handling = "code" },  # Stack Type
+  { tag = "(2001,xx37)", vr = "CS", vm = "1", handling = "code" },  # Mixing Operation Type
+  { tag = "(2001,xx38)", vr = "FL", vm = "1", handling = "numeric" },  # Overlay Mix Factor
+  { tag = "(2001,xx39)", vr = "FL", vm = "1", handling = "numeric" },  # Overscan Factor
+  { tag = "(2001,xx3A)", vr = "CS", vm = "1", handling = "code" },  # Pixel Shift
+  { tag = "(2001,xx3B)", vr = "FL", vm = "4", handling = "numeric" },  # Pixel Shift Split Line Coordinates
+  { tag = "(2001,xx3C)", vr = "FL", vm = "2", handling = "numeric" },  # Pixel Shift Shift Vectora
+  { tag = "(2001,xx3D)", vr = "UL", vm = "1", handling = "numeric" },  # Contour Fill Color
+  { tag = "(2001,xx3E)", vr = "FL", vm = "2", handling = "numeric" },  # Pixel Shift Shift Vectorb
+  { tag = "(2001,xx3F)", vr = "CS", vm = "1", handling = "code" },  # Displayed Area Zoom Interpolation Meth
+  { tag = "(2001,xx40)", vr = "CS", vm = "1", handling = "code" },  # Pixel Shift Split Screen
+  { tag = "(2001,xx41)", vr = "FL", vm = "1", handling = "numeric" },  # Subtraction Land Marking Factor
+  { tag = "(2001,xx42)", vr = "CS", vm = "1", handling = "code" },  # Subtraction Land Marking Active
+  { tag = "(2001,xx43)", vr = "IS", vm = "2", handling = "numeric" },  # Ellips Displ Shut Major Ax Frst End Pnt
+  { tag = "(2001,xx44)", vr = "IS", vm = "2", handling = "numeric" },  # Ellips Displ Shut Major Ax Scnd End Pnt
+  { tag = "(2001,xx45)", vr = "IS", vm = "2", handling = "numeric" },  # Ellips Displ Shut Other Ax Frst End Pnt
+  { tag = "(2001,xx46)", vr = "CS", vm = "1", handling = "code" },  # Graphic Line Style
+  { tag = "(2001,xx47)", vr = "FL", vm = "1", handling = "numeric" },  # Graphic Line Width
+  { tag = "(2001,xx48)", vr = "SS", vm = "1", handling = "numeric" },  # Graphic Annotation Id
+  { tag = "(2001,xx49)", vr = "IS", vm = "1", handling = "numeric" },  # Trace First Image
+  { tag = "(2001,xx4A)", vr = "CS", vm = "1", handling = "code" },  # Trace Taste
+  { tag = "(2001,xx4B)", vr = "CS", vm = "1", handling = "code" },  # Interpolation Method
+  { tag = "(2001,xx4C)", vr = "CS", vm = "1", handling = "code" },  # Poly Line Begin Point Style
+  { tag = "(2001,xx4D)", vr = "CS", vm = "1", handling = "code" },  # Poly Line End Point Style
+  { tag = "(2001,xx4E)", vr = "CS", vm = "1", handling = "code" },  # Window Smoothing Taste
+  { tag = "(2001,xx4F)", vr = "FD", vm = "1", handling = "numeric" },  # Harmonization Offset
+  { tag = "(2001,xx50)", vr = "LO", vm = "1", handling = "text" },  # Graphic Marker Type
+  { tag = "(2001,xx51)", vr = "IS", vm = "1", handling = "numeric" },  # Overlay Plane Id
+  { tag = "(2001,xx53)", vr = "CS", vm = "1", handling = "code" },  # Presentation Gl Trafo Invert
+  { tag = "(2001,xx54)", vr = "FL", vm = "1", handling = "numeric" },  # Contour Fill Transparency
+  { tag = "(2001,xx55)", vr = "UL", vm = "1", handling = "numeric" },  # Graphic Line Color
+  { tag = "(2001,xx56)", vr = "CS", vm = "1", handling = "code" },  # Graphic Type
+  { tag = "(2001,xx57)", vr = "CS", vm = "1", handling = "code" },  # Log Subtraction Taste
+  { tag = "(2001,xx58)", vr = "UL", vm = "1", handling = "numeric" },  # Series Xray Contrast Transfer Taste
+  { tag = "(2001,xx59)", vr = "IS", vm = "1", handling = "numeric" },  # Curve Id
+  { tag = "(2001,xx5A)", vr = "ST", vm = "1", handling = "text" },  # Graphic Annotation Model
+  { tag = "(2001,xx5D)", vr = "ST", vm = "1", handling = "text" },  # Measurement Text Units
+  { tag = "(2001,xx5E)", vr = "ST", vm = "1", handling = "text" },  # Measurement Text Type
+  { tag = "(2001,xx5F)", vr = "SQ", vm = "1-n", handling = "sequence" },  # Stack Sequence
+  { tag = "(2001,xx60)", vr = "SL", vm = "1", handling = "numeric" },  # MR Series Nr Of Stacks
+  { tag = "(2001,xx61)", vr = "CS", vm = "1", handling = "code" },  # Series Transmitted
+  { tag = "(2001,xx62)", vr = "CS", vm = "1", handling = "code" },  # Series Committed
+  { tag = "(2001,xx63)", vr = "CS", vm = "1", handling = "code" },  # Examination Source
+  { tag = "(2001,xx64)", vr = "SH", vm = "1", handling = "text" },  # Text Type
+  { tag = "(2001,xx65)", vr = "SQ", vm = "1-n", handling = "sequence" },  # Overlay Plane Sequence
+  { tag = "(2001,xx66)", vr = "SQ", vm = "1-n", handling = "sequence" },  # Image Curve
+  { tag = "(2001,xx67)", vr = "CS", vm = "1", handling = "code" },  # Linear Presentation Gl Trafo Shape Sub
+  { tag = "(2001,xx68)", vr = "SQ", vm = "1-n", handling = "sequence" },  # Modality Gl Trafo Sequence
+  { tag = "(2001,xx69)", vr = "SQ", vm = "1-n", handling = "sequence" },  # Display Shutter Sequence
+  { tag = "(2001,xx6A)", vr = "SQ", vm = "1-n", handling = "sequence" },  # Spatial Transformation Sequence
+  { tag = "(2001,xx6B)", vr = "SQ", vm = "1-n", handling = "sequence" },  # Edge Enhancement Sequence
+  { tag = "(2001,xx6D)", vr = "LO", vm = "1", handling = "text" },  # Text Font
+  { tag = "(2001,xx6E)", vr = "SH", vm = "1", handling = "text" },  # Series Type
+  { tag = "(2001,xx6F)", vr = "SQ", vm = "1-n", handling = "sequence" },  # Mixing Sequence
+  { tag = "(2001,xx71)", vr = "CS", vm = "1", handling = "code" },  # Graphic Constraint
+  { tag = "(2001,xx72)", vr = "IS", vm = "2", handling = "numeric" },  # Ellips Displ Shut Other Ax Scnd End Pnt
+  { tag = "(2001,xx73)", vr = "SQ", vm = "1-n", handling = "sequence" },  # Referenced Mask Image Sequence
+  { tag = "(2001,xx74)", vr = "DS", vm = "1-n", handling = "numeric" },  # Window Center Sub
+  { tag = "(2001,xx75)", vr = "DS", vm = "1-n", handling = "numeric" },  # Window Width Sub
+  { tag = "(2001,xx76)", vr = "UL", vm = "1", handling = "numeric" },  # Presentation State Xray Contrast Transfer Taste
+  { tag = "(2001,xx77)", vr = "CS", vm = "1", handling = "code" },  # Gl Trafo Type
+  { tag = "(2001,xx79)", vr = "SQ", vm = "1-n", handling = "sequence" },  # Harmonisation Sequence
+  { tag = "(2001,xx7A)", vr = "FL", vm = "1", handling = "numeric" },  # Window Rounding Factor
+  { tag = "(2001,xx7B)", vr = "IS", vm = "1", handling = "numeric" },  # MR Series Acquisition Number
+  { tag = "(2001,xx7C)", vr = "UL", vm = "1", handling = "numeric" },  # Frame Number
+  { tag = "(2001,xx7D)", vr = "OW/OB", vm = "1", handling = "remove" },  # Frame Pixel Data
+  { tag = "(2001,xx7E)", vr = "US", vm = "1", handling = "numeric" },  # Edge Enhancement Gain Taste
+  { tag = "(2001,xx7F)", vr = "US", vm = "1", handling = "numeric" },  # Edge Enhancement Gain Taste Sub
+  { tag = "(2001,xx80)", vr = "LO", vm = "1", handling = "text" },  # Text Anchor Point Alignment
+  { tag = "(2001,xx81)", vr = "IS", vm = "1", handling = "numeric" },  # MR Series Nr Of Dynamic Scans
+  { tag = "(2001,xx82)", vr = "IS", vm = "1", handling = "numeric" },  # MR Series Echo Train Length
+  { tag = "(2001,xx83)", vr = "DS", vm = "1", handling = "numeric" },  # MR Series Imaging Frequency
+  { tag = "(2001,xx84)", vr = "DS", vm = "1", handling = "numeric" },  # MR Series Inversion Time
+  { tag = "(2001,xx85)", vr = "DS", vm = "1", handling = "numeric" },  # MR Series Magnetic Field Strength
+  { tag = "(2001,xx86)", vr = "IS", vm = "1", handling = "numeric" },  # MR Series Nr Of Phase Encoding Steps
+  { tag = "(2001,xx87)", vr = "SH", vm = "1", handling = "text" },  # MR Series Nucleus
+  { tag = "(2001,xx88)", vr = "DS", vm = "1", handling = "numeric" },  # MR Series Number Of Averages
+  { tag = "(2001,xx89)", vr = "DS", vm = "1", handling = "numeric" },  # MR Series Percent Phase Field Of View
+  { tag = "(2001,xx8A)", vr = "DS", vm = "1", handling = "numeric" },  # MR Series Percent Sampling
+  { tag = "(2001,xx8B)", vr = "SH", vm = "1", handling = "text" },  # MR Series Transmitting Coil
+  { tag = "(2001,xx8C)", vr = "CS", vm = "0-n", handling = "code" },  # Needs Processing
+  { tag = "(2001,xx90)", vr = "LO", vm = "1", handling = "text" },  # Text Foreground Color
+  { tag = "(2001,xx91)", vr = "LO", vm = "1", handling = "text" },  # Text Background Color
+  { tag = "(2001,xx92)", vr = "LO", vm = "1", handling = "text" },  # Text Shadow Color
+  { tag = "(2001,xx93)", vr = "LO", vm = "1", handling = "text" },  # Text Style
+  { tag = "(2001,xx94)", vr = "LO", vm = "1", handling = "text" },  # Processing Order Specialization
+  { tag = "(2001,xx9A)", vr = "SQ", vm = "1-n", handling = "sequence" },  # Graphic Number Sequence
+  { tag = "(2001,xx9B)", vr = "UL", vm = "1", handling = "numeric" },  # Graphic Number
+  { tag = "(2001,xx9D)", vr = "LO", vm = "1", handling = "text" },  # Subtraction Type
+  { tag = "(2001,xx9F)", vr = "US", vm = "2", handling = "numeric" },  # Pixel Processing Kernel Size
+  { tag = "(2001,xxA1)", vr = "CS", vm = "1", handling = "code" },  # Is Raw Image
+  { tag = "(2001,xxA2)", vr = "US", vm = "1", handling = "numeric" },  # Log Subtraction Curve Taste
+  { tag = "(2001,xxA3)", vr = "UL", vm = "1", handling = "numeric" },  # Text Color Foreground
+  { tag = "(2001,xxA4)", vr = "UL", vm = "1", handling = "numeric" },  # Text Color Background
+  { tag = "(2001,xxA5)", vr = "UL", vm = "1", handling = "numeric" },  # Text Color Shadow
+  { tag = "(2001,xxC0)", vr = "UL", vm = "1", handling = "numeric" },  # Content Item Identifier
+  { tag = "(2001,xxC1)", vr = "LO", vm = "1", handling = "text" },  # Nested Object Type Name
+  { tag = "(2001,xxC2)", vr = "FD", vm = "1", handling = "numeric" },  # Subtraction Rescale Factor
+  { tag = "(2001,xxC3)", vr = "UL", vm = "1", handling = "numeric" },  # Subtraction Offset
+  { tag = "(2001,xxC5)", vr = "SQ", vm = "0-1", handling = "sequence" },  # Mask Image Lut Sequence
+  { tag = "(2001,xxC6)", vr = "SQ", vm = "0-1", handling = "sequence" },  # Gain Lut Sequence
+  { tag = "(2001,xxC7)", vr = "SQ", vm = "0-1", handling = "sequence" },  # Contrast Image Lut Sequence
+  { tag = "(2001,xxCA)", vr = "SQ", vm = "1", handling = "sequence" },  # Reversed Modality Lut
+  { tag = "(2001,xxCB)", vr = "IS", vm = "1", handling = "numeric" },  # Redundant Overlay Plane Id
+  { tag = "(2001,xxD0)", vr = "AT", vm = "1-n", handling = "numeric" },  # Frame Index Pointer
+  { tag = "(2001,xxD1)", vr = "US", vm = "1-n", handling = "numeric" },  # Index Number Vector
+  { tag = "(2001,xxD2)", vr = "US", vm = "1", handling = "numeric" },  # Frame Detector Number
+  { tag = "(2001,xxD3)", vr = "US", vm = "1", handling = "numeric" },  # Frame Phase Number
+  { tag = "(2001,xxD4)", vr = "US", vm = "1", handling = "numeric" },  # Frame Rotation Number
+  { tag = "(2001,xxD5)", vr = "US", vm = "1", handling = "numeric" },  # Frame Rr Interval Number
+  { tag = "(2001,xxD6)", vr = "US", vm = "1", handling = "numeric" },  # Frame Time Slot Number
+  { tag = "(2001,xxD7)", vr = "US", vm = "1", handling = "numeric" },  # Frame Slice Number
+  { tag = "(2001,xxD8)", vr = "US", vm = "1", handling = "numeric" },  # Frame Angular View Number
+  { tag = "(2001,xxD9)", vr = "US", vm = "1", handling = "numeric" },  # Frame Time Slice Number
+  { tag = "(2001,xxDA)", vr = "CS", vm = "1", handling = "code" },  # Is Arrowhead
+  { tag = "(2001,xxDB)", vr = "US", vm = "1", handling = "numeric" },  # PET Rr Interval Index
+  { tag = "(2001,xxDC)", vr = "US", vm = "1", handling = "numeric" },  # PET Time Slot Index
+  { tag = "(2001,xxDD)", vr = "US", vm = "1", handling = "numeric" },  # PET Time Slice Index
+  { tag = "(2001,xxDE)", vr = "US", vm = "1", handling = "numeric" },  # PET Slice Index
+  { tag = "(2001,xxDF)", vr = "UL", vm = "1", handling = "numeric" },  # Voxel Number
+  { tag = "(2001,xxE9)", vr = "SQ", vm = "0-n", handling = "sequence" },  # Per Frame Voxels Functional Group
+  { tag = "(2001,xxF1)", vr = "FL", vm = "6", handling = "numeric" },  # MR Image Prospective Motion Correction
+  { tag = "(2001,xxF2)", vr = "FL", vm = "1-n", handling = "numeric" },  # MR Image Retrospective Motion Correction
+  { tag = "(2001,xxF3)", vr = "CS", vm = "1", handling = "code" },  # Dynamic Linear Voigl Trafo
+  { tag = "(2001,xxF4)", vr = "UL", vm = "1", handling = "numeric" },  # Color Key
+  { tag = "(2001,xxF5)", vr = "CS", vm = "1", handling = "code" },  # Rotated Text Allowed
+  { tag = "(2001,xxF6)", vr = "UL", vm = "1", handling = "numeric" },  # Number Of Represented Images
+  { tag = "(2001,xxF7)", vr = "LO", vm = "0-n", handling = "text" },  # Data Type Icons
+  { tag = "(2001,xxF9)", vr = "SQ", vm = "0-n", handling = "sequence" },  # Flagging Sequence
+  { tag = "(2001,xxFB)", vr = "SQ", vm = "0-1", handling = "sequence" },  # Bookmark Sequence
+  { tag = "(2001,xxFC)", vr = "SQ", vm = "0-1", handling = "sequence" },  # Ris Code Sequence
+  { tag = "(2001,xxFD)", vr = "SQ", vm = "0-n", handling = "sequence" },  # Workflow Step Sequence
+  { tag = "(2001,xxFF)", vr = "OW/OB", vm = "1", handling = "remove" },  # Volume Pixel
+]
+
+[[table]]
+private_creator = "Philips Imaging DD 002"
+elements = [
+  { tag = "(2001,xx01)", vr = "US", vm = "1", handling = "numeric" },  # Edr Setgp
+  { tag = "(2001,xx02)", vr = "FD", vm = "1", handling = "numeric" },  # Edr Setsk
+  { tag = "(2001,xx03)", vr = "CS", vm = "1", handling = "code" },  # Um Rank Type
+  { tag = "(2001,xx04)", vr = "SS", vm = "1", handling = "numeric" },  # Um Rank Number
+  { tag = "(2001,xx05)", vr = "FD", vm = "1", handling = "numeric" },  # Um Rank Enhancement
+  { tag = "(2001,xx06)", vr = "US", vm = "1", handling = "numeric" },  # Um Kernel Size
+  { tag = "(2001,xx07)", vr = "CS", vm = "1", handling = "code" },  # Um Gamma Type
+  { tag = "(2001,xx08)", vr = "FD", vm = "1", handling = "numeric" },  # Um Gamma Angle
+  { tag = "(2001,xx09)", vr = "FD", vm = "1", handling = "numeric" },  # Um Gamma Shift
+  { tag = "(2001,xx0A)", vr = "FD", vm = "1", handling = "numeric" },  # Um Gamma Center
+  { tag = "(2001,xx0B)", vr = "FD", vm = "1", handling = "numeric" },  # Drr Contrast Equalization
+  { tag = "(2001,xx0C)", vr = "US", vm = "1", handling = "numeric" },  # Drr Contrast Equalization Kernel Size
+  { tag = "(2001,xx0D)", vr = "CS", vm = "1", handling = "code" },  # Drr Sharp Lut Type
+  { tag = "(2001,xx0E)", vr = "FD", vm = "1", handling = "numeric" },  # Drr Sharpening
+  { tag = "(2001,xx0F)", vr = "US", vm = "1", handling = "numeric" },  # Drr Sharp Kernel Size
+  { tag = "(2001,xx10)", vr = "SS", vm = "1", handling = "numeric" },  # Drr Window Width
+  { tag = "(2001,xx11)", vr = "SS", vm = "1", handling = "numeric" },  # Drr Window Level
+  { tag = "(2001,xx12)", vr = "CS", vm = "1", handling = "code" },  # Drr Lut Type
+  { tag = "(2001,xx13)", vr = "SS", vm = "1", handling = "numeric" },  # Unique Processing Mode
+  { tag = "(2001,xx14)", vr = "FD", vm = "1", handling = "numeric" },  # Unique Contrast Balance
+  { tag = "(2001,xx15)", vr = "FD", vm = "1", handling = "numeric" },  # Unique Center Density
+  { tag = "(2001,xx16)", vr = "FD", vm = "1", handling = "numeric" },  # Unique Bright Density
+  { tag = "(2001,xx17)", vr = "FD", vm = "1", handling = "numeric" },  # Unique Detail Contrast
+  { tag = "(2001,xx18)", vr = "CS", vm = "1", handling = "code" },  # Unique Density Curve
+  { tag = "(2001,xx19)", vr = "FD", vm = "1", handling = "numeric" },  # Unique Density Min
+  { tag = "(2001,xx1A)", vr = "FD", vm = "1", handling = "numeric" },  # Unique Density Max
+  { tag = "(2001,xx1B)", vr = "FD", vm = "1", handling = "numeric" },  # Unique Gamma
+  { tag = "(2001,xx1C)", vr = "FD", vm = "1", handling = "numeric" },  # Unique Gamma Min
+  { tag = "(2001,xx1D)", vr = "FD", vm = "1", handling = "numeric" },  # Unique Gamma Max
+  { tag = "(2001,xx1E)", vr = "FD", vm = "1", handling = "numeric" },  # Unique Structure Preference
+  { tag = "(2001,xx1F)", vr = "FD", vm = "1", handling = "numeric" },  # Unique Noise Limit
+  { tag = "(2001,xx20)", vr = "FD", vm = "1", handling = "numeric" },  # Unique Noise Band
+  { tag = "(2001,xx21)", vr = "FD", vm = "1", handling = "numeric" },  # Unique Noise Step
+  { tag = "(2001,xx22)", vr = "FD", vm = "1", handling = "numeric" },  # Unique Noise Compensation
+  { tag = "(2001,xx23)", vr = "FD", vm = "1", handling = "numeric" },  # Unique Structure Boost
+  { tag = "(2001,xx24)", vr = "FD", vm = "1", handling = "numeric" },  # Unique Strong Contrast Limit
+  { tag = "(2001,xx25)", vr = "FD", vm = "1", handling = "numeric" },  # Unique Strong Contrast Factor
+  { tag = "(2001,xx26)", vr = "FD", vm = "1", handling = "numeric" },  # Unique Structure Boost Offset
+  { tag = "(2001,xx27)", vr = "FD", vm = "1", handling = "numeric" },  # Unique Weak Contrast Limit
+  { tag = "(2001,xx28)", vr = "US", vm = "1", handling = "numeric" },  # Unique Smooth Gain
+  { tag = "(2001,xx29)", vr = "US", vm = "1", handling = "numeric" },  # Unique Level
+  { tag = "(2001,xx2A)", vr = "US", vm = "1", handling = "numeric" },  # Unique Gain Up Single
+  { tag = "(2001,xx2B)", vr = "SS", vm = "1", handling = "numeric" },  # Unique Smh Limit One
+  { tag = "(2001,xx2C)", vr = "FD", vm = "1", handling = "numeric" },  # Unique Film Density Min
+  { tag = "(2001,xx2D)", vr = "FD", vm = "1", handling = "numeric" },  # Unique Film Density Max
+  { tag = "(2001,xx2E)", vr = "SS", vm = "1", handling = "numeric" },  # Unique Version
+  { tag = "(2001,xx2F)", vr = "SS", vm = "1", handling = "numeric" },  # Ranger Version
+  { tag = "(2001,xx30)", vr = "SS", vm = "1", handling = "numeric" },  # Ranger Mode
+  { tag = "(2001,xx31)", vr = "SS", vm = "1", handling = "numeric" },  # Ranger Field1
+  { tag = "(2001,xx32)", vr = "SS", vm = "1", handling = "numeric" },  # Ranger Field2
+  { tag = "(2001,xx33)", vr = "SS", vm = "1", handling = "numeric" },  # Ranger Percentile Key1
+  { tag = "(2001,xx34)", vr = "SS", vm = "1", handling = "numeric" },  # Ranger Percentile Key2
+  { tag = "(2001,xx35)", vr = "FD", vm = "1", handling = "numeric" },  # Ranger Dose1
+  { tag = "(2001,xx36)", vr = "FD", vm = "1", handling = "numeric" },  # Ranger Dose2
+  { tag = "(2001,xx37)", vr = "FD", vm = "1", handling = "numeric" },  # Ranger Manual Dose1
+  { tag = "(2001,xx38)", vr = "FD", vm = "1", handling = "numeric" },  # Ranger Manual Dose2
+  { tag = "(2001,xx39)", vr = "CS", vm = "1", handling = "code" },  # Unique Rox Shape
+  { tag = "(2001,xx3A)", vr = "SQ", vm = "1", handling = "sequence" },  # Ranger Set Sequence
+  { tag = "(2001,xx3B)", vr = "SQ", vm = "0-n", handling = "sequence" },  # Rox Sequence
+  { tag = "(2001,xx3C)", vr = "SQ", vm = "1-n", handling = "sequence" },  # Xray Edge Enhancement Sequence
+  { tag = "(2001,xx3D)", vr = "SQ", vm = "0-1", handling = "sequence" },  # Edr Lut Sequence
+  { tag = "(2001,xx3E)", vr = "SS", vm = "1", handling = "numeric" },  # Unique Dose Decades
+  { tag = "(2001,xx3F)", vr = "SS", vm = "1", handling = "numeric" },  # Unique Dose Unit
+  { tag = "(2001,xx40)", vr = "SS", vm = "1", handling = "numeric" },  # Unique Density Unit
+  { tag = "(2001,xx50)", vr = "CS", vm = "1", handling = "code" },  # Workflow Status
+  { tag = "(2001,xx52)", vr = "LO", vm = "1", handling = "text" },  # Workflow Step Id
+  { tag = "(2001,xx53)", vr = "CS", vm = "1", handling = "code" },  # Workflow Step Status
+  { tag = "(2001,xx57)", vr = "SQ", vm = "0-1", handling = "sequence" },  # Workflow Step Input Sequence
+  { tag = "(2001,xx58)", vr = "SQ", vm = "0-1", handling = "sequence" },  # Workflow Step Output Sequence
+  { tag = "(2001,xx5A)", vr = "LO", vm = "1", handling = "text" },  # Workflow Step Type
+  { tag = "(2001,xx5C)", vr = "LO", vm = "1", handling = "text" },  # Workflow Id
+  { tag = "(2001,xx5D)", vr = "UL", vm = "1", handling = "numeric" },  # Pixel Data Representation Rows
+  { tag = "(2001,xx5E)", vr = "UL", vm = "1", handling = "numeric" },  # Pixel Data Representation Columns
+  { tag = "(2001,xx5F)", vr = "SQ", vm = "0-1", handling = "sequence" },  # Private Dicom Extension Sequence
+  { tag = "(2001,xx63)", vr = "ST", vm = "1", handling = "text" },  # Isyntax Reference
+  { tag = "(2001,xx64)", vr = "SQ", vm = "0-1", handling = "sequence" },  # Workflow Step Job Params Sequence
+  { tag = "(2001,xx65)", vr = "CS", vm = "1", handling = "code" },  # Preserve Aspect
+  { tag = "(2001,xx66)", vr = "CS", vm = "1", handling = "code" },  # Interpolated
+  { tag = "(2001,xx67)", vr = "LO", vm = "1", handling = "text" },  # Error Flag
+  { tag = "(2001,xx68)", vr = "LO", vm = "1", handling = "text" },  # Error Message Id
+  { tag = "(2001,xx6B)", vr = "LO", vm = "0-n", handling = "text" },  # Suitable For
+  { tag = "(2001,xx71)", vr = "CS", vm = "1", handling = "code" },  # Submit Mpps Job
+  { tag = "(2001,xx72)", vr = "FL", vm = "2", handling = "numeric" },  # Displayed Area Bottom Right Hand Corner Fraction
+  { tag = "(2001,xx73)", vr = "FL", vm = "2", handling = "numeric" },  # Displayed Area Top Left Hand Corner Fraction
+  { tag = "(2001,xx74)", vr = "LO", vm = "1", handling = "text" },  # Interpolation Mode
+  { tag = "(2001,xx75)", vr = "SS", vm = "0-n", handling = "numeric" },  # Graphic Annotation Id Reference
+]
+
+[[table]]
+private_creator = "Philips Imaging DD 097"
+elements = [
+  { tag = "(2001,xx01)", vr = "SQ", vm = "1", handling = "sequence" },  # View Geometry
+  { tag = "(2001,xx02)", vr = "FD", vm = "3", handling = "numeric" },  # Frame Geometry Origin
+  { tag = "(2001,xx03)", vr = "FD", vm = "2", handling = "numeric" },  # Frame Geometry Extent
+  { tag = "(2001,xx04)", vr = "FD", vm = "6", handling = "numeric" },  # Frame Geometry Orientation
+  { tag = "(2001,xx05)", vr = "SQ", vm = "1-n", handling = "sequence" },  # Visual Sequence
+  { tag = "(2001,xx06)", vr = "SQ", vm = "0-n", handling = "sequence" },  # Cut Sequence
+  { tag = "(2001,xx07)", vr = "FD", vm = "1", handling = "numeric" },  # Visual Opacity
+  { tag = "(2001,xx08)", vr = "SQ", vm = "1", handling = "sequence" },  # Opacity Map Sequence
+  { tag = "(2001,xx0A)", vr = "SQ", vm = "1-n", handling = "sequence" },  # Light Sequence
+  { tag = "(2001,xx0B)", vr = "SQ", vm = "1", handling = "sequence" },  # Color Map Sequence
+  { tag = "(2001,xx0D)", vr = "FD", vm = "1", handling = "numeric" },  # Visual Threshold
+  { tag = "(2001,xx0E)", vr = "SQ", vm = "0-n", handling = "sequence" },  # Scene Sequence
+  { tag = "(2001,xx0F)", vr = "FD", vm = "2", handling = "numeric" },  # Frame Geometry Slab
+  { tag = "(2001,xx12)", vr = "SQ", vm = "1", handling = "sequence" },  # Gradient Map Sequence
+  { tag = "(2001,xx17)", vr = "US", vm = "1", handling = "numeric" },  # Display Rows
+  { tag = "(2001,xx18)", vr = "US", vm = "1", handling = "numeric" },  # Display Columns
+  { tag = "(2001,xx19)", vr = "LO", vm = "1", handling = "text" },  # Frame Geometry Type
+  { tag = "(2001,xx1A)", vr = "FD", vm = "1", handling = "numeric" },  # Light Intensity
+  { tag = "(2001,xx1B)", vr = "UL", vm = "1", handling = "numeric" },  # Light Color
+  { tag = "(2001,xx1C)", vr = "FD", vm = "3", handling = "numeric" },  # Light Origin
+  { tag = "(2001,xx1D)", vr = "FD", vm = "3", handling = "numeric" },  # Light Direction
+  { tag = "(2001,xx1E)", vr = "FD", vm = "4-n", handling = "numeric" },  # Color Map Samples
+  { tag = "(2001,xx1F)", vr = "FD", vm = "2-n", handling = "numeric" },  # Opacity Map Samples
+  { tag = "(2001,xx21)", vr = "UL", vm = "1", handling = "numeric" },  # Visual Color
+  { tag = "(2001,xx22)", vr = "FD", vm = "1", handling = "numeric" },  # Illumination Ambient
+  { tag = "(2001,xx23)", vr = "FD", vm = "1", handling = "numeric" },  # Illumination Diffuse
+  { tag = "(2001,xx24)", vr = "FD", vm = "1", handling = "numeric" },  # Illumination Specular
+  { tag = "(2001,xx25)", vr = "FD", vm = "1", handling = "numeric" },  # Illumination Specular Power
+  { tag = "(2001,xx26)", vr = "FD", vm = "1", handling = "numeric" },  # Depth Cue Begin
+  { tag = "(2001,xx27)", vr = "FD", vm = "1", handling = "numeric" },  # Depth Cue Lambda
+  { tag = "(2001,xx28)", vr = "LO", vm = "1", handling = "text" },  # Depth Cue Function
+  { tag = "(2001,xx2A)", vr = "LO", vm = "1", handling = "text" },  # Cut Set Type
+  { tag = "(2001,xx2B)", vr = "FD", vm = "3", handling = "numeric" },  # Cut Plane Origin
+  { tag = "(2001,xx2C)", vr = "FD", vm = "3", handling = "numeric" },  # Cut Plane Normal
+  { tag = "(2001,xx2D)", vr = "UL", vm = "1", handling = "numeric" },  # Volume Definition Number
+  { tag = "(2001,xx2E)", vr = "SQ", vm = "0-1", handling = "sequence" },  # Volume Mask Sequence
+  { tag = "(2001,xx2F)", vr = "OB", vm = "1", handling = "remove" },  # Volume Mask Data
+  { tag = "(2001,xx30)", vr = "SL", vm = "3", handling = "numeric" },  # Volume Mask Offset
+  { tag = "(2001,xx31)", vr = "SL", vm = "3", handling = "numeric" },  # Volume Mask Size
+  { tag = "(2001,xx32)", vr = "SL", vm = "2", handling = "numeric" },  # Volume Mask Alignment
+  { tag = "(2001,xx36)", vr = "LO", vm = "1", handling = "text" },  # Light Anchor
+  { tag = "(2001,xx37)", vr = "FD", vm = "3", handling = "numeric" },  # Cone Geometry Origin
+  { tag = "(2001,xx38)", vr = "FD", vm = "9", handling = "numeric" },  # Cone Geometry Orientation
+  { tag = "(2001,xx39)", vr = "FD", vm = "1", handling = "numeric" },  # Cone Geometry View Distance
+  { tag = "(2001,xx3A)", vr = "FD", vm = "2", handling = "numeric" },  # Cone Geometry Slab Extent
+  { tag = "(2001,xx3B)", vr = "FD", vm = "2", handling = "numeric" },  # Cone Geometry Field Of View
+  { tag = "(2001,xx3C)", vr = "SQ", vm = "1", handling = "sequence" },  # Intensity Map Sequence
+  { tag = "(2001,xx3D)", vr = "FD", vm = "1-n", handling = "numeric" },  # Intensity Map Samples
+  { tag = "(2001,xx3E)", vr = "SQ", vm = "0-n", handling = "sequence" },  # Mesh Sequence
+  { tag = "(2001,xx40)", vr = "UL", vm = "1", handling = "numeric" },  # Mesh Color
+  { tag = "(2001,xx41)", vr = "LO", vm = "1", handling = "text" },  # Mesh Draw Style
+  { tag = "(2001,xx42)", vr = "SQ", vm = "0-n", handling = "sequence" },  # Mesh Section Sequence
+  { tag = "(2001,xx44)", vr = "LO", vm = "1", handling = "text" },  # Mesh Section Vertex Connectivity
+  { tag = "(2001,xx45)", vr = "SL", vm = "1", handling = "numeric" },  # Mesh Section Vertex Size
+  { tag = "(2001,xx46)", vr = "LO", vm = "1", handling = "text" },  # Mesh Section Vertex Format
+  { tag = "(2001,xx47)", vr = "OB", vm = "1-n", handling = "remove" },  # Mesh Section Vertex Data
+  { tag = "(2001,xx49)", vr = "SQ", vm = "1", handling = "sequence" },  # Referenced Volume Definition Sequence
+  { tag = "(2001,xx4A)", vr = "OB", vm = "1-n", handling = "remove" },  # Mesh Section Index Data
+  { tag = "(2001,xx4B)", vr = "SL", vm = "1", handling = "numeric" },  # Mesh Section Index Size
+  { tag = "(2001,xx4C)", vr = "LO", vm = "1", handling = "text" },  # Shutter Interaction Type
+  { tag = "(2001,xxA1)", vr = "CS", vm = "1-2", handling = "code" },  # Volume Type
+  { tag = "(2001,xxA2)", vr = "FD", vm = "3", handling = "numeric" },  # Volume Origin
+  { tag = "(2001,xxA3)", vr = "FD", vm = "9", handling = "numeric" },  # Volume Axis
+  { tag = "(2001,xxA4)", vr = "FD", vm = "2", handling = "numeric" },  # Volume Pixel Spacing
+  { tag = "(2001,xxA5)", vr = "FD", vm = "1-n", handling = "numeric" },  # Volume Slice Spacing
+  { tag = "(2001,xxA6)", vr = "US", vm = "1", handling = "numeric" },  # Volume Slices
+  { tag = "(2001,xxA8)", vr = "IS", vm = "1-n", handling = "numeric" },  # Referenced Volume Definition Number
+  { tag = "(2001,xxA9)", vr = "SQ", vm = "0-n", handling = "sequence" },  # Linear Modality Gl Trafo Sequence
+  { tag = "(2001,xxAA)", vr = "FD", vm = "1-n", handling = "numeric" },  # Volume Slice Offsets
+  { tag = "(2001,xxAB)", vr = "IS", vm = "1", handling = "numeric" },  # Number Of Volume Definitions
+]
+
+[[table]]
+private_creator = "Philips Imaging DD 129"
+elements = [
+  { tag = "(2001,xx00)", vr = "SQ", vm = "1", handling = "sequence" },  # Presentation State Sequence
+  { tag = "(2001,xx01)", vr = "SQ", vm = "1", handling = "sequence" },  # Embedded Original Presentation State Sequence
+  { tag = "(2001,xx02)", vr = "SQ", vm = "0-1", handling = "sequence" },  # Planar Intersection Sequence
+  { tag = "(2001,xx03)", vr = "UL", vm = "1", handling = "numeric" },  # Plane Separator Line Color
+  { tag = "(2001,xx04)", vr = "SQ", vm = "1-n", handling = "sequence" },  # Plane Sequence
+  { tag = "(2001,xx05)", vr = "FD", vm = "4", handling = "numeric" },  # Plane Equation
+  { tag = "(2001,xx06)", vr = "FD", vm = "1", handling = "numeric" },  # Plane Opacity
+  { tag = "(2001,xx07)", vr = "CS", vm = "1", handling = "code" },  # Plane Enabled
+  { tag = "(2001,xx08)", vr = "CS", vm = "1", handling = "code" },  # Plane Selected
+  { tag = "(2001,xx09)", vr = "UL", vm = "1", handling = "numeric" },  # Plane Highlight Color
+]
+
+[[table]]
+private_creator = "Philips ST80i"
+elements = [
+  { tag = "(0025,xx01)", vr = "OW", vm = "1", handling = "remove" },  # ST80i Stress Study file data
+]
+
+[[table]]
+private_creator = "SIEMENS MR HEADER"
+elements = [
+  { tag = "(0019,xx0C)", vr = "IS", vm = "1", handling = "numeric" },  # B Value
+  { tag = "(0019,xx0D)", vr = "CS", vm = "1", handling = "code" },  # Diffusion Directionality
+  { tag = "(0019,xx0E)", vr = "FD", vm = "3", handling = "numeric" },  # Diffusion Gradient Direction
+  { tag = "(0019,xx27)", vr = "FD", vm = "6", handling = "numeric" },  # B Matrix
+]
+
+[[table]]
+private_creator = "GEMS_SERS_01"
+elements = [
+  { tag = "(0025,xx07)", vr = "SL", vm = "1", handling = "numeric" },  # Images in Series
+]
+
+[[table]]
+private_creator = "HOLOGIC, Inc."
+elements = [
+  { tag = "(7E01,xx01)", vr = "LO", vm = "1", handling = "text" },  # Codec Version
+  { tag = "(7E01,xx02)", vr = "SH", vm = "1", handling = "text" },  # Codec Content Type
+  { tag = "(7E01,xx10)", vr = "SQ", vm = "1", handling = "sequence" },  # High Resolution Data Sequence
+  { tag = "(7E01,xx11)", vr = "SQ", vm = "1", handling = "sequence" },  # Low Resolution Data Sequence
+  { tag = "(7E01,xx12)", vr = "OB", vm = "1", handling = "remove" },  # Codec Content
+]
+
+[[table]]
+private_creator = "NQHeader"
+elements = [
+  { tag = "(0099,xx01)", vr = "UI", vm = "1", handling = "uid" },  # Version
+  { tag = "(0099,xx02)", vr = "UI", vm = "1", handling = "uid" },  # Analyzed Series UID
+  { tag = "(0099,xx04)", vr = "SS", vm = "1", handling = "numeric" },  # Return Code
+  { tag = "(0099,xx05)", vr = "LT", vm = "1", handling = "text" },  # Return Message
+  { tag = "(0099,xx10)", vr = "FL", vm = "1", handling = "numeric" },  # MI
+  { tag = "(0099,xx20)", vr = "SH", vm = "1", handling = "text" },  # Units
+  { tag = "(0099,xx21)", vr = "FL", vm = "1", handling = "numeric" },  # ICV
+]
+
+[[table]]
+private_creator = "NQLeft"
+elements = [
+  { tag = "(0199,xx01)", vr = "FL", vm = "1", handling = "numeric" },  # Left Cortical White Matter
+  { tag = "(0199,xx02)", vr = "FL", vm = "1", handling = "numeric" },  # Left Cortical Gray Matter
+  { tag = "(0199,xx03)", vr = "FL", vm = "1", handling = "numeric" },  # Left 3rd Ventricle
+  { tag = "(0199,xx04)", vr = "FL", vm = "1", handling = "numeric" },  # Left 4th Ventricle
+  { tag = "(0199,xx05)", vr = "FL", vm = "1", handling = "numeric" },  # Left 5th Ventricle
+  { tag = "(0199,xx06)", vr = "FL", vm = "1", handling = "numeric" },  # Left Lateral Ventricle
+  { tag = "(0199,xx07)", vr = "FL", vm = "1", handling = "numeric" },  # Left Inferior Lateral Ventricle
+  { tag = "(0199,xx08)", vr = "FL", vm = "1", handling = "numeric" },  # Left Inferior CSF
+  { tag = "(0199,xx09)", vr = "FL", vm = "1", handling = "numeric" },  # Left Cerebellar White Matter
+  { tag = "(0199,xx0A)", vr = "FL", vm = "1", handling = "numeric" },  # Left Cerebellar Gray Matter
+  { tag = "(0199,xx0B)", vr = "FL", vm = "1", handling = "numeric" },  # Left Hippocampus
+  { tag = "(0199,xx0C)", vr = "FL", vm = "1", handling = "numeric" },  # Left Amygdala
+  { tag = "(0199,xx0D)", vr = "FL", vm = "1", handling = "numeric" },  # Left Thalamus
+  { tag = "(0199,xx0E)", vr = "FL", vm = "1", handling = "numeric" },  # Left Caudate
+  { tag = "(0199,xx0F)", vr = "FL", vm = "1", handling = "numeric" },  # Left Putamen
+  { tag = "(0199,xx10)", vr = "FL", vm = "1", handling = "numeric" },  # Left Pallidum
+  { tag = "(0199,xx11)", vr = "FL", vm = "1", handling = "numeric" },  # Left Ventral Diencephalon
+  { tag = "(0199,xx12)", vr = "FL", vm = "1", handling = "numeric" },  # Left Nucleus Accumbens
+  { tag = "(0199,xx13)", vr = "FL", vm = "1", handling = "numeric" },  # Left Brain Stem
+  { tag = "(0199,xx14)", vr = "FL", vm = "1", handling = "numeric" },  # Left Exterior CSF
+  { tag = "(0199,xx15)", vr = "FL", vm = "1", handling = "numeric" },  # Left WM Hypo
+  { tag = "(0199,xx16)", vr = "FL", vm = "1", handling = "numeric" },  # Left Other
+]
+
+[[table]]
+private_creator = "NQRight"
+elements = [
+  { tag = "(0299,xx01)", vr = "FL", vm = "1", handling = "numeric" },  # Right Cortical White Matter
+  { tag = "(0299,xx02)", vr = "FL", vm = "1", handling = "numeric" },  # Right Cortical Gray Matter
+  { tag = "(0299,xx03)", vr = "FL", vm = "1", handling = "numeric" },  # Right 3rd Ventricle
+  { tag = "(0299,xx04)", vr = "FL", vm = "1", handling = "numeric" },  # Right 4th Ventricle
+  { tag = "(0299,xx05)", vr = "FL", vm = "1", handling = "numeric" },  # Right 5th Ventricle
+  { tag = "(0299,xx06)", vr = "FL", vm = "1", handling = "numeric" },  # Right Lateral Ventricle
+  { tag = "(0299,xx07)", vr = "FL", vm = "1", handling = "numeric" },  # Right Inferior Lateral Ventricle
+  { tag = "(0299,xx08)", vr = "FL", vm = "1", handling = "numeric" },  # Right Inferior CSF
+  { tag = "(0299,xx09)", vr = "FL", vm = "1", handling = "numeric" },  # Right Cerebellar White Matter
+  { tag = "(0299,xx0A)", vr = "FL", vm = "1", handling = "numeric" },  # Right Cerebellar Gray Matter
+  { tag = "(0299,xx0B)", vr = "FL", vm = "1", handling = "numeric" },  # Right Hippocampus
+  { tag = "(0299,xx0C)", vr = "FL", vm = "1", handling = "numeric" },  # Right Amygdala
+  { tag = "(0299,xx0D)", vr = "FL", vm = "1", handling = "numeric" },  # Right Thalamus
+  { tag = "(0299,xx0E)", vr = "FL", vm = "1", handling = "numeric" },  # Right Caudate
+  { tag = "(0299,xx0F)", vr = "FL", vm = "1", handling = "numeric" },  # Right Putamen
+  { tag = "(0299,xx10)", vr = "FL", vm = "1", handling = "numeric" },  # Right Pallidum
+  { tag = "(0299,xx11)", vr = "FL", vm = "1", handling = "numeric" },  # Right Ventral Diencephalon
+  { tag = "(0299,xx12)", vr = "FL", vm = "1", handling = "numeric" },  # Right Nucleus Accumbens
+  { tag = "(0299,xx13)", vr = "FL", vm = "1", handling = "numeric" },  # Right Brain Stem
+  { tag = "(0299,xx14)", vr = "FL", vm = "1", handling = "numeric" },  # Right Exterior CSF
+  { tag = "(0299,xx15)", vr = "FL", vm = "1", handling = "numeric" },  # Right WM Hypo
+  { tag = "(0299,xx16)", vr = "FL", vm = "1", handling = "numeric" },  # Right Other
+]
+
+[[table]]
+private_creator = "Philips MR Imaging DD 001"
+elements = [
+  { tag = "(2005,xx0D)", vr = "FL", vm = "1", handling = "numeric" },  # Scale Intercept
+  { tag = "(2005,xx0E)", vr = "FL", vm = "1", handling = "numeric" },  # Scale Slope
+]
+
+[[table]]
+private_creator = "SIEMENS Ultrasound SC2000"
+elements = [
+  { tag = "(0119,xx00)", vr = "LO", vm = "1", handling = "text" },  # Acoustic Meta Information Version
+  { tag = "(0119,xx01)", vr = "OB", vm = "1", handling = "remove" },  # Common Acoustic Meta Information
+  { tag = "(0119,xx02)", vr = "SQ", vm = "1", handling = "sequence" },  # Multi Stream Sequence
+  { tag = "(0119,xx03)", vr = "SQ", vm = "1", handling = "sequence" },  # Acoustic Data Sequence
+  { tag = "(0119,xx04)", vr = "OB", vm = "1", handling = "remove" },  # Per Transaction Acoustic Control Information
+  { tag = "(0119,xx05)", vr = "UL", vm = "1", handling = "numeric" },  # Acoustic Data Offset
+  { tag = "(0119,xx06)", vr = "UL", vm = "1", handling = "numeric" },  # Acoustic Data Length
+  { tag = "(0119,xx07)", vr = "UL", vm = "1", handling = "numeric" },  # Footer Offset
+  { tag = "(0119,xx08)", vr = "UL", vm = "1", handling = "numeric" },  # Footer Length
+  { tag = "(0119,xx09)", vr = "SS", vm = "1", handling = "numeric" },  # Acoustic Stream Number
+  { tag = "(0119,xx10)", vr = "SH", vm = "1", handling = "text" },  # Acoustic Stream Type
+  { tag = "(0119,xx11)", vr = "", vm = "1", handling = "remove" },  # Stage Timer Time
+  { tag = "(0119,xx12)", vr = "", vm = "1", handling = "remove" },  # Stop Watch Time
+  { tag = "(0119,xx13)", vr = "IS", vm = "1", handling = "numeric" },  # Volume Rate
+  { tag = "(0119,xx21)", vr = "SH", vm = "1", handling = "text" },  # (no meaning given)
+  { tag = "(0129,xx00)", vr = "SQ", vm = "1", handling = "sequence" },  # MPR View Sequence
+  { tag = "(0129,xx02)", vr = "UI", vm = "1", handling = "uid" },  # Bookmark UID
+  { tag = "(0129,xx03)", vr = "", vm = "1", handling = "remove" },  # Plane Origin Vector
+  { tag = "(0129,xx04)", vr = "", vm = "1", handling = "remove" },  # Row Vector
+  { tag = "(0129,xx05)", vr = "", vm = "1", handling = "remove" },  # Column Vector
+  { tag = "(0129,xx06)", vr = "SQ", vm = "1", handling = "sequence" },  # Visualization Sequence
+  { tag = "(0129,xx07)", vr = "UI", vm = "1", handling = "uid" },  # Bookmark UID
+  { tag = "(0129,xx08)", vr = "OB", vm = "1", handling = "remove" },  # Visualization Information
+  { tag = "(0129,xx09)", vr = "SQ", vm = "1", handling = "sequence" },  # Application State Sequence
+  { tag = "(0129,xx10)", vr = "OB", vm = "1", handling = "remove" },  # Application State Information
+  { tag = "(0129,xx11)", vr = "SQ", vm = "1", handling = "sequence" },  # Referenced Bookmark Sequence
+  { tag = "(0129,xx12)", vr = "UI", vm = "1", handling = "uid" },  # Referenced Bookmark UID
+  { tag = "(0129,xx20)", vr = "SQ", vm = "1", handling = "sequence" },  # Cine Parameters Sequence
+  { tag = "(0129,xx21)", vr = "OB", vm = "1", handling = "remove" },  # Cine Parameters Schema
+  { tag = "(0129,xx22)", vr = "OB", vm = "1", handling = "remove" },  # Values of Cine Parameters
+  { tag = "(0129,xx29)", vr = "OB", vm = "1", handling = "remove" },  # (no meaning given)
+  { tag = "(0129,xx30)", vr = "CS", vm = "1", handling = "code" },  # Raw Data Object Type
+  { tag = "(0139,xx01)", vr = "SL", vm = "1", handling = "numeric" },  # Physio Capture ROI
+  { tag = "(0149,xx01)", vr = "FD", vm = "1-n", handling = "numeric" },  # Vector of BROI Points
+  { tag = "(0149,xx02)", vr = "FD", vm = "1-n", handling = "remove", note = "Timestamps that can be absolute times of the acquisition rather than offsets, and no reviewed vendor document says which, so they are removed, as the Basic Profile removes acquisition times." },  # Start/End Timestamps of Strip Stream
+  { tag = "(0149,xx03)", vr = "FD", vm = "1-n", handling = "remove", note = "Timestamps that can be absolute times of the acquisition rather than offsets, and no reviewed vendor document says which, so they are removed, as the Basic Profile removes acquisition times." },  # Timestamps of Visible R-waves
+  { tag = "(7FD1,xx01)", vr = "OB", vm = "1", handling = "remove" },  # Acoustic Image and Footer Data
+  { tag = "(7FD1,xx09)", vr = "UI", vm = "1", handling = "uid" },  # Volume Version ID
+  { tag = "(7FD1,xx10)", vr = "OB", vm = "1", handling = "remove" },  # Volume Payload
+  { tag = "(7FD1,xx11)", vr = "OB", vm = "1", handling = "remove" },  # After Payload
+]
+
+[[table]]
+private_creator = "SIEMENS SYNGO ULTRA-SOUND TOYON DATA STREAMING"
+elements = [
+  { tag = "(7FD1,xx01)", vr = "OB", vm = "1", handling = "remove" },  # Padding
+  { tag = "(7FD1,xx09)", vr = "UI", vm = "1", handling = "uid" },  # Version ID
+  { tag = "(7FD1,xx10)", vr = "OB", vm = "1", handling = "remove" },  # Volume Payload
+  { tag = "(7FD1,xx11)", vr = "OB", vm = "1", handling = "remove" },  # After Payload
+]

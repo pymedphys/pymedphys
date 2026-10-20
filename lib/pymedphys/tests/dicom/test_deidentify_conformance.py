@@ -139,59 +139,6 @@ def test_the_statement_names_the_edition_preset_and_options(preset, statement_fo
         assert meanings[conformance.OPTION_CODES[option]] in text
 
 
-def test_each_option_names_its_cid_7050_code():
-    meanings = {
-        c.code_value: c.code_meaning for c in codes.load_context_group(7050).rows
-    }
-    assert set(conformance.OPTION_CODES) == set(standard.OPTIONS)
-    assert len(set(conformance.OPTION_CODES.values())) == len(standard.OPTIONS)
-    assert meanings[markers.PROFILE_CODE] == (
-        "Basic Application Confidentiality Profile"
-    )
-    for option, code in conformance.OPTION_CODES.items():
-        words = meanings[code].lower().split()
-        # Each option's own words appear in its code's meaning, in order.
-        assert words[-1] == "option"
-        for word in option.split("_"):
-            assert word in words, (option, meanings[code])
-
-
-@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
-def test_options_outside_the_supported_scope_are_listed_as_not_supported(statement_for):
-    text = conformance_markdown.render_markdown(statement_for("basic"))
-    meanings = {
-        c.code_value: c.code_meaning for c in codes.load_context_group(7050).rows
-    }
-    supported, unsupported = text.split("Options that are not supported")
-    for option in policy.TARGET_OPTIONS:
-        assert meanings[conformance.OPTION_CODES[option]] in supported
-    for option in set(standard.OPTIONS) - set(policy.TARGET_OPTIONS):
-        assert meanings[conformance.OPTION_CODES[option]] in unsupported
-
-
-def test_the_pixel_options_outside_table_e1_1_are_listed_as_not_supported(
-    preset, statement_for
-):
-    # PS3.15 E.1.1 Note 11 leaves Clean Pixel Data and Clean Recognizable
-    # Visual Features out of Table E.1-1; CID 7050 still codes them.
-    text = conformance_markdown.render_markdown(statement_for(preset))
-    meanings = {
-        c.code_value: c.code_meaning for c in codes.load_context_group(7050).rows
-    }
-    assert meanings["113101"] == "Clean Pixel Data Option"
-    assert meanings["113102"] == "Clean Recognizable Visual Features Option"
-    (line,) = [
-        line
-        for line in text.splitlines()
-        if line.startswith("- Options that are not supported: ")
-    ]
-    for code in conformance.PIXEL_OPTION_CODES:
-        assert f"{meanings[code]} (DCM {code})" in line
-    assert set(conformance.PIXEL_OPTION_CODES).isdisjoint(
-        conformance.OPTION_CODES.values()
-    )
-
-
 @pytest.mark.deid_requirement("PS3.15-E.1.3-01")
 def test_every_table_row_and_supplementary_rule_is_listed_with_the_policys_action(
     preset,
@@ -381,7 +328,10 @@ def test_the_method_digest_is_the_policys_with_the_same_vocabulary(
     assert statement.vocabulary_digest == expected
     text = conformance_markdown.render_markdown(statement)
     assert statement.method_digest in text
-    assert "and without a reviewed-names list, is" in text
+    assert (
+        "without the technique vocabulary of free-text descriptors, and "
+        "without a reviewed-names or reviewed descriptors list, is"
+    ) in text
     if vocabulary is None:
         assert "without a vocabulary" in text
     else:
@@ -494,14 +444,13 @@ def test_places_name_their_enclosing_sequences(statement_for):
     assert row.endswith(". X elsewhere. |")
 
 
-def test_retained_safe_private_attributes_are_pending_where_selected(
+def test_retained_safe_private_attributes_are_listed_where_selected(
     preset, statement_for
 ):
     composed = policy.compose_policy(preset)
-    pending = statement_for(preset).pending
-    assert (conformance.PENDING_SAFE_PRIVATE in pending) == (
-        "retain_safe_private" in composed.options
-    )
+    statement = statement_for(preset)
+    assert conformance.PENDING_SAFE_PRIVATE not in statement.pending
+    assert bool(statement.safe_private) == ("retain_safe_private" in composed.options)
 
 
 def test_synthetic_birth_dates_are_pending_only_for_tps_import(preset, statement_for):
@@ -520,11 +469,17 @@ def test_cleaning_is_pending_only_for_a_policy_that_cleans(preset, statement_for
     assert cleans == (preset != "basic")
     # Under Clean Descriptors, an attribute other than ROI Name given C whose
     # fallback action is not C takes that action (D-009), so only what keeps
-    # C there is pending.
-    undescribed = "C" in {
-        e.action for e in statement.attributes if e.tag != "(3006,0026)"
+    # C there is pending. The cleaners describe the attributes that they
+    # clean, and under Retain Safe Private the safe private section describes
+    # how Private Attributes are cleaned.
+    described = {"(3006,0026)", standard.PRIVATE_ATTRIBUTES_TAG} | {
+        tag for each in statement.cleaned for tag in each.tags
     }
-    assert undescribed == (cleans and preset != "basic-clean-descriptors")
+    undescribed = "C" in {
+        e.action for e in statement.attributes if e.tag not in described
+    }
+    # Of the presets, only tps-import gives C that no cleaner describes.
+    assert undescribed == (preset == "tps-import")
     assert (conformance.PENDING_CLEANING in statement.pending) == undescribed
     assert set(conformance.PENDING) <= set(statement.pending)
 
@@ -723,7 +678,7 @@ CLEANED_SEQUENCES = {
     "(0032,1067)": "X",  # Reason for Visit Code Sequence
     "(3010,0081)": "Z",  # Prescription Notes Sequence
 }
-SUPPORTED_BY_THE_ENGINE = [p for p in policy.PRESETS if p != "public-release"]
+SUPPORTED_BY_THE_ENGINE = list(policy.PRESETS)
 
 
 def _concrete(tag):
@@ -810,7 +765,7 @@ def test_the_file_meta_information_the_engine_writes_is_described():
         tag = f"({element.tag.group:04X},{element.tag.element:04X})"
         assert f"{names.get(tag, element.name)} {tag}" in paragraph, tag
     assert "holds only" in paragraph
-    assert "replacement SOP Instance UID" in paragraph
+    assert "the SOP Instance UID that the instance is written with" in paragraph
 
 
 @pytest.mark.deid_requirement("PS3.15-E.1.3-01")
@@ -873,6 +828,10 @@ def test_the_rules_for_other_elements_are_described():
     assert f"get `{other.text_action}`, resolved by Type" in section
     assert "items" in section
     assert "does not list" in section
+    # The Common Instance Reference Module's sequences lapse with the last
+    # other reference to an instance.
+    assert "Referenced Series Sequence (0008,1115)" in section
+    assert "Referenced Instances Sequence (0008,1200)" in section
     # Group 0002 is the File Meta Information, which the engine writes.
     assert "File Meta Information" in section
 
@@ -883,21 +842,30 @@ def test_every_engine_group_has_its_reason():
 
 
 @pytest.mark.deid_requirement("PS3.15-E.1.3-01")
-def test_a_policy_that_the_engine_refuses_lists_the_policys_actions():
+def test_a_policy_that_the_engine_refuses_lists_the_policys_actions(monkeypatch):
+    # An option that the engine does not apply, whichever options it applies.
     composed = policy.compose_policy("public-release")
+    monkeypatch.setattr(policy, "ENGINE_OPTIONS", ())
     with pytest.raises(policy.PolicyError):
         element_rules.ElementRules(composed)
     statement = conformance.conformance_statement(composed, vocabulary=None)
     assert statement.other_elements is None
-    assert conformance.PENDING_REFUSED in statement.pending
+    assert conformance.PENDING_UNAPPLIED in statement.pending
+    assert conformance.PENDING_SAFE_PRIVATE in statement.pending
+    assert not statement.safe_private
     table = [e for e in statement.attributes if e.rule == conformance.TABLE_E1_1]
     assert [(e.tag, e.action) for e in table] == list(composed.actions.items())
     assert not any(e.policy_action for e in statement.attributes)
     text = conformance_markdown.render_markdown(statement)
     assert "## Other elements" not in text
-    assert conformance.PENDING_REFUSED in text
+    assert "## Safe private attributes" not in text
+    assert conformance.PENDING_UNAPPLIED in text
+
+
+def test_the_engine_applies_every_presets_policy():
     for name in SUPPORTED_BY_THE_ENGINE:
-        assert conformance.PENDING_REFUSED not in _statement(name).pending
+        assert conformance.PENDING_UNAPPLIED not in _statement(name).pending
+        assert _statement(name).other_elements is not None
 
 
 def _described_action(other, attribute, defined):

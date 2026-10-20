@@ -363,6 +363,7 @@ def test_axes_within_the_alignment_tolerance_still_get_a_projection():
     assert [preview.kind for preview in previews.previews] == [
         PreviewKind.SERIES_CINE,
         PreviewKind.SERIES_MIP,
+        PreviewKind.SERIES_SURFACE,
     ]
 
 

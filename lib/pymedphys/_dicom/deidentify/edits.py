@@ -40,8 +40,14 @@ each element of the data set, in file order, an :class:`Edit`:
 Patient's Name (0010,0010) and Patient ID (0010,0020) at the top level of
 the data set take the subject's keyed pseudonyms under Z and D (D-005),
 given the subject's identity, which the run resolves across its instances;
-without one, their edits are pending. C cleans the value (D-009), so its
-edit is pending, for a later step to give.
+without one, their edits are pending. Series Number (0020,0011), wherever Z
+or D applies to it, takes its rank in the numbering of the study that holds
+the series it numbers, which the run gives
+(:mod:`~pymedphys._dicom.deidentify.series_numbers`); a value that takes no
+rank, being empty, not one number, or without a numbering or not in it, is
+emptied under Z and given D's dummy value under D, and without any
+numberings its edit is pending. C cleans the value (D-009), so its edit is pending, for a later
+step to give.
 
 It also collects, for the residual search
 (:mod:`~pymedphys._dicom.deidentify.residuals`), each value that is removed
@@ -94,9 +100,11 @@ from .file_layout import ElementPath
 from .keys import DeidKey
 from .pseudonyms import SubjectIdentity, patient_pseudonym
 from .residuals import SourceValue
+from .retained_private import is_private
+from .series_numbers import SERIES_NUMBER, SeriesNumberings, series_number
 from .source import SourceEvidence
 from .standard import dictionary_attribute
-from .uid_roles import load_uid_roles
+from .uid_roles import UIDRole, load_uid_roles
 from .uids import UIDOutcome, normalise_uid, transform_uid, well_known_uids
 from .walker import (
     DESCENDED,
@@ -203,9 +211,10 @@ class InstanceEdits:
         Each reason found that the instance must be sequestered: the plan's,
         then those found while editing and collecting, in file order.
     read_as_latin_1 : tuple of ElementPath
-        In file order, the path of each value, removed or replaced, that was
-        read as ISO 8859-1, being text outside ISO 646 where no Specific
-        Character Set applies, so that its writer knows, and as evidence of
+        In file order, the path of each value, removed or replaced, or
+        private text to clean, that was read as ISO 8859-1, being text
+        outside ISO 646 where no Specific Character Set applies, so that its
+        writer knows, and as evidence of
         how each collected value was read, whether or not the instance must
         be sequestered; ``()`` if there is none.
     registered_uids : tuple of ElementPath
@@ -360,17 +369,22 @@ def _read_planned(
     Text outside ISO 646 where no Specific Character Set applies is read as
     ISO 8859-1 where its rule removes or replaces it, as the maintainer
     decided on 1 October 2026; text to be cleaned cannot be decoded. The
-    flag says whether the value was read as ISO 8859-1.
+    flag says whether the value was read as ISO 8859-1. Private text to be
+    cleaned is read as removed text is, since cleaning removes it where it
+    cannot be decoded, rather than sequestering the instance.
     """
+    needs_value = element.consumers & _NEEDS_VALUE
+    if is_private(element.path.tag):
+        needs_value -= {Consumer.CLEANING}
     try:
         try:
             return reader.read(element.path), None, False
         except OutsideDefaultRepertoire:
-            if Consumer.CLEANING in element.consumers:
+            if Consumer.CLEANING in needs_value:
                 raise
             return reader.read(element.path, latin_1=True), None, True
     except UndecodableElement as error:
-        if element.consumers & _NEEDS_VALUE or _takes_pseudonym(element):
+        if needs_value or _takes_pseudonym(element):
             # A value that a reviewed dummy item is compared with is needed
             # by the D of the sequence that removes it.
             compared = Consumer.DUMMY_COMPARISON in element.consumers
@@ -420,6 +434,37 @@ def _takes_pseudonym(element: ElementPlan) -> bool:
     )
 
 
+def _takes_rank(element: ElementPlan) -> bool:
+    """Return whether an element takes its rank in its study's numbering."""
+    return (
+        element.removed_with is None
+        and element.action in ("Z", "D")
+        and element.path.tag == SERIES_NUMBER
+    )
+
+
+def _ranked(
+    element: ElementPlan,
+    value: ElementValue | None,
+    numberings: SeriesNumberings | None,
+) -> Edit | None:
+    """Return a Series Number's edit, or ``None`` if its value takes no rank."""
+    if numberings is None:
+        return Edit(element.path, element.action, EditKind.PENDING)
+    numbering = numberings.numbering(element.path)
+    if numbering is None:
+        return None
+    number = (
+        series_number(value.values[0])
+        if value is not None and len(value.values) == 1
+        else None
+    )
+    rank = numbering.rank(number)
+    if rank is None:
+        return None
+    return Edit(element.path, element.action, EditKind.REPLACE, (str(rank),))
+
+
 def _kind(element: ElementPlan, container: bool) -> EditKind:
     """Return what an element becomes, before any value is worked out.
 
@@ -461,7 +506,13 @@ def _dummy(path: ElementPath, value: ElementValue, key: DeidKey) -> Edit:
 
 def _uids(path: ElementPath, value: ElementValue, key: DeidKey) -> Edit:
     attribute = dictionary_attribute(path.tag)
-    role = load_uid_roles().role(attribute.tag if attribute else path.tag)
+    # A private UID that the Retain Safe Private Option replaces has no role
+    # of its own; it is replaced as an instance's UID is.
+    role = (
+        UIDRole.INSTANCE
+        if is_private(path.tag)
+        else load_uid_roles().role(attribute.tag if attribute else path.tag)
+    )
     replaced = [
         transform_uid(key, role, str(uid))
         if normalise_uid(str(uid))
@@ -494,12 +545,18 @@ def _edit(
     value: ElementValue | None,
     key: DeidKey,
     identity: SubjectIdentity | None,
+    numberings: SeriesNumberings | None,
 ) -> Edit:
     """Return the edit of an element whose needed value, if any, is read."""
     kind = _kind(element, container)
     path = element.path
     if identity is not None and _takes_pseudonym(element):
         return _pseudonym(path, element.action, key, identity)
+    if (
+        _takes_rank(element)
+        and (ranked := _ranked(element, value, numberings)) is not None
+    ):
+        return ranked
     if kind is not EditKind.REPLACE:
         return Edit(
             element.path, element.action, kind, removed_with=element.removed_with
@@ -666,6 +723,7 @@ def edit_instance(
     plan: InstancePlan,
     key: DeidKey,
     identity: SubjectIdentity | None = None,
+    series_numberings: SeriesNumberings | None = None,
 ) -> InstanceEdits:
     """Return what each element of a planned data set becomes.
 
@@ -681,6 +739,10 @@ def edit_instance(
         The subject's identity, as the run resolves it, for the pseudonyms
         of Patient's Name and Patient ID. Without one, their edits are
         pending.
+    series_numberings : SeriesNumberings, optional
+        The numbering of each of the instance's Series Numbers, as the run
+        gives it, for the ranks that replace them. Without them, the edits
+        of the Series Numbers that Z or D applies to are pending.
 
     Returns
     -------
@@ -712,7 +774,7 @@ def edit_instance(
             if _kept_container(element, container):
                 _check_items(reader, element)
             value = gathered.read(reader, element) if element.consumers else None
-            edit = _edit(element, container, value, key, identity)
+            edit = _edit(element, container, value, key, identity, series_numberings)
             if container and edit.kind is EditKind.REPLACE:
                 reviewed[edit.path] = (len(found), items or 0)
             found.append(edit)
@@ -730,6 +792,12 @@ def read_values(
     plan keeps as they are, which D-017's review needs
     (:func:`~pymedphys._dicom.deidentify.qc_retained.retained_paths`).
 
+    A private element that the plan reads by a reviewed safe private rule's
+    VR, or a private creator that it reads as LO, because its own VR is not
+    written, is read from its Value Field, which the rule's check, or the
+    creator's match, has found to be printable ISO 646
+    (:mod:`~pymedphys._dicom.deidentify.retained_private`).
+
     Returns
     -------
     dict of ElementPath to ElementValue or None
@@ -739,9 +807,41 @@ def read_values(
     """
     found: dict[ElementPath, ElementValue | None] = dict.fromkeys(paths)
     reader = _Reader(source, plan)
+    planned = {element.path: element for element in plan.elements}
     for path in paths:
+        element = planned.get(path)
         try:
-            found[path] = reader.read(path)
+            if element is not None and _read_by_private_rule(source, element):
+                found[path] = _private_string(source, element)
+            else:
+                found[path] = reader.read(path)
         except (UndecodableElement, _Sequester):
             pass
     return found
+
+
+def _read_by_private_rule(source: SourceEvidence, element: ElementPlan) -> bool:
+    """Return whether a private element is read by its rule's VR, not its own."""
+    written = source.element(element.path).vr
+    return (
+        is_private(element.path.tag)
+        and written in (None, "UN")
+        and element.vr not in (None, "UN")
+    )
+
+
+def _private_string(
+    source: SourceEvidence, element: ElementPlan
+) -> ElementValue | None:
+    """Read a kept private creator, CS, DS, or IS from its Value Field, or None."""
+    try:
+        text = source.value_field(element.path).decode("ascii")
+    except (UnicodeDecodeError, ValueError):
+        return None
+    # Padded to an even length with a space, or, as a creator can be, a NUL.
+    text = text.rstrip(" \x00")
+    if not text.isprintable():
+        return None
+    assert element.vr is not None  # _read_by_private_rule checks it
+    values = tuple(text.split("\\")) if text else ()
+    return ElementValue(element.path, element.vr, values)

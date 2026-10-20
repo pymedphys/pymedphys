@@ -3,7 +3,7 @@
 This page explains what the different ways of installing PyMedPhys give you.
 For almost everyone, the answer is `pymedphys[user]`.
 
-PyMedPhys currently supports Python 3.11, 3.12, 3.13, and 3.14.
+PyMedPhys currently supports Python 3.12, 3.13, and 3.14.
 
 ## Recommended approach
 
@@ -82,7 +82,7 @@ For how this works inside PyMedPhys, see
 The example commands below assume you already created a virtual environment,
 such as the `.venv` made in the Quick Start Guide.
 
-All examples below use `uv pip install`.
+The extras examples below use `uv pip install`.
 If you are using the fallback Python + `venv` + `pip` path, replace
 `uv pip install` with `python -m pip install`.
 
@@ -141,6 +141,37 @@ If you are contributing to PyMedPhys itself, follow the
 [Contributors Guide](https://docs.pymedphys.com/en/latest/contrib/index.html)
 instead. A source checkout uses dependency groups, which are not published to
 PyPI, and `uv sync` installs everything a contributor needs.
+
+## Conda environments
+
+PyMedPhys's [conda-forge feedstock](https://github.com/conda-forge/pymedphys-feedstock)
+is archived. Its last release is 0.11.0 (2019), and it will not receive updates.
+Install current releases from PyPI with pip inside your conda environment.
+
+Use a dedicated environment with a supported Python version and pip. Choose
+an unused environment name, such as `pymedphys-pip` in this example:
+
+```bash
+conda create --name pymedphys-pip python=3.12 pip
+conda activate pymedphys-pip
+python -m pip install --upgrade "pymedphys[user]"
+```
+
+If you installed PyMedPhys from conda-forge, use a new environment for the
+PyPI installation. This keeps the old conda-managed installation separate.
+You can use an existing environment if its Python version is supported by
+the current PyPI release and it has pip and no conda-forge PyMedPhys packages:
+activate it and run the `python -m pip` command above.
+
+Check the installed version in that environment:
+
+```bash
+python -c "import pymedphys; print(pymedphys.__version__)"
+```
+
+It should report the current PyPI release, rather than 0.11.0. For more on
+mixing the package managers, see
+[Conda's guidance on pip](https://docs.conda.io/projects/conda/en/stable/user-guide/tasks/manage-environments.html#using-pip-in-an-environment).
 
 ## Next step
 

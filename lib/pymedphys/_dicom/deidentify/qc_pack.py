@@ -27,9 +27,13 @@ release, and staging directories, and readable only by its owner (D-016).
 
 A pack holds, for one run:
 
-- ``instances``: each input by its run position and source path, with its
-  output path if written, or the opaque per-run label by which the release
-  report refers to it if sequestered, and why (D-026);
+- ``instances``: each input by its run position and source path, with the
+  SHA-256 of the source file as the run read it, its output path if
+  written, or the opaque per-run label by which the release report refers
+  to it if sequestered, and why (D-026), and, for each released or held
+  instance whose written file the gate handed over, the SHA-256 of that
+  file's pixel data, which binds a face verdict to the pixel data that the
+  reviewer saw (D-046);
 - ``residual_findings``: each residual that the search of a written file
   found, by instance and place, with a contextual excerpt of the bytes
   around it (D-027);
@@ -44,17 +48,37 @@ A pack holds, for one run:
   audit of every name renamed, kept, or mapped, and each name held for
   review, with why and the names of the run's institutional list that it
   matched (D-009);
+- ``descriptors``: what descriptor cleaning decided for each value of each
+  free-text descriptor that it read, kept, kept by the technique vocabulary,
+  mapped, emptied, or held for review, with why, and whether the element
+  was written with those values or took its action without Clean
+  Descriptors instead, for the audit of every value retained or changed and
+  the reviewer's list of values to decide on for later runs (D-009, D-036),
+  each by the attribute that a decision on it names: its tag, or, for
+  private text under the Retain Safe Private Option, its private creator,
+  group, element within the block, and VR (D-035);
 - ``reference_findings``: each reference finding that the run reports
   without acting on it, such as a dangling reference, or a written reference
   to an instance that was not written, at each instance it names, with the
   attribute's tags and its count; the release report gives only how many
   instances have each kind;
 - ``pixel_risks``: each instance in a high-risk category, with the
-  indicators of risk in its pixel data that put it there (D-017); and
-  ``series_risks``: each series of released or held instances with
-  findings of its series assessment, a CT, MR, or PET volume, the head or
-  neck, or unreadable evidence of either, with the instances that show each
-  (D-015, D-017);
+  indicators of risk in its pixel data that put it there (D-017);
+  ``series``: each series of released or held instances, by the run
+  positions of its instances, by which an attestation gives each series'
+  face verdict (D-016, D-017); and ``series_risks``: each series of released or held instances with
+  findings of its series assessment, a CT, MR, PET, or RT Dose volume, a
+  localizer, the head or neck, or unreadable evidence of any of them, with
+  the instances that show each (D-015, D-017);
+- ``redactions``: each released or held instance whose Pixel Data the
+  Clean Pixel Data Option cleaned, with why it is held, its number of
+  frames, its Rows and Columns, and the regions blacked out in each frame,
+  by frame index from 0, each as ``[top, left, bottom, right]`` in pixels
+  from the frame's top left corner, with the bottom row and right column
+  excluded, for the review of
+  every frame that the option requires. Each frame with regions is
+  previewed as received, so under the option the pack holds the burned-in
+  text that the release lacks;
 - ``previews``: each image preview, by its file in the previews directory
   beside the pack, with what it shows and the file's SHA-256, so that an
   attestation of the pack covers them; and ``not_previewed``: each instance
@@ -90,15 +114,21 @@ from pathlib import PurePosixPath
 from . import pixel_risk, residuals, roi_names
 from .file_layout import TAG_PATTERN, ElementPath, Location
 from .iod_conformance import SourceGap
+from .reasons import PixelDataReason
 from .reference_graph import FindingKind
 from .run_written import REPORTED_ONLY
 from .written_references import WrittenFindingKind
 from .labels import LABEL_PATTERN
 from .residuals import UnsearchedReason
+from .reviewed_descriptors import CleanedDescriptor
+from .reviewed_descriptors import Held as DescriptorHeld
+from .reviewed_descriptors import Outcome as DescriptorOutcome
+from .reviewed_descriptors import is_private_descriptor, stripped
 from .reviewed_roi_names import Outcome
+from .text_detection import TextBox
 
 # The format of the pack document. A change to its fields takes a new label.
-FORMAT = "pymedphys-deid-qc-pack/1"
+FORMAT = "pymedphys-deid-qc-pack/9"
 # The bytes of a written file shown on each side of a residual's offset.
 EXCERPT_BYTES = 48
 
@@ -108,6 +138,7 @@ PREVIEW_DIRECTORY = "previews"
 _CHUNK_BYTES = 4096
 
 _REFERENCE = re.compile(r"A-[0-9a-f]{32}")
+_SHA256 = re.compile(r"[0-9a-f]{64}")
 
 
 class QcPackError(ValueError):
@@ -152,6 +183,23 @@ _HELD_BECAUSE = frozenset(
 )
 
 
+# The outcomes of a descriptor value: held for review, written empty, and
+# written as the source value without its padding.
+_DESCRIPTOR_HELD = frozenset(
+    {DescriptorOutcome.HELD, DescriptorOutcome.EMPTIED_UNREVIEWED}
+)
+_DESCRIPTOR_EMPTIED = frozenset(
+    {
+        DescriptorOutcome.EMPTY,
+        DescriptorOutcome.EMPTIED,
+        DescriptorOutcome.EMPTIED_UNREVIEWED,
+    }
+)
+_DESCRIPTOR_KEPT = frozenset(
+    {DescriptorOutcome.KEPT, DescriptorOutcome.KEPT_BY_VOCABULARY}
+)
+
+
 def new_reference() -> str:
     """Return a new opaque reference for a QC pack, ``A-`` and 32 hex digits.
 
@@ -188,6 +236,20 @@ class InstanceEntry:
     reasons : tuple of str
         Why an input was sequestered, held for review, or refused, as the
         engine words its findings, which hold no values; empty otherwise.
+    source_sha256 : str, optional
+        The SHA-256 of the source file as the run's first pass read it, in
+        lower-case hexadecimal, which binds a series' face verdict to the
+        files the reviewer saw; ``None`` for an input that was not read.
+    pixel_sha256 : str, optional
+        The :func:`~.face_review.pixel_data_sha256` of the file written of
+        a released or held input, as the gate read it, in lower-case
+        hexadecimal, which binds a series' face verdict to the pixel data
+        that the run wrote; ``None`` for any other input, or one whose
+        written file the gate did not hand over or could not be read.
+    contour_sha256 : str, optional
+        Likewise, the :func:`~.face_review.contour_data_sha256` of the file
+        written, which binds a series' face verdict to the contours that
+        the run wrote.
     """
 
     position: int
@@ -196,6 +258,9 @@ class InstanceEntry:
     output: PurePosixPath | None = None
     label: str | None = None
     reasons: tuple[str, ...] = ()
+    source_sha256: str | None = None
+    pixel_sha256: str | None = None
+    contour_sha256: str | None = None
 
     def __post_init__(self) -> None:
         _check_position("an instance", self.position)
@@ -207,6 +272,32 @@ class InstanceEntry:
             isinstance(reason, str) and reason for reason in self.reasons
         ):
             raise QcPackError(f"instance {self.position} needs reasons as text")
+        if self.source_sha256 is not None and not (
+            isinstance(self.source_sha256, str)
+            and _SHA256.fullmatch(self.source_sha256)
+        ):
+            raise QcPackError(
+                f"instance {self.position} needs its source's SHA-256 as 64 "
+                "lower-case hexadecimal digits"
+            )
+        if self.pixel_sha256 is not None and not (
+            isinstance(self.pixel_sha256, str)
+            and _SHA256.fullmatch(self.pixel_sha256)
+            and self.disposition in _REVIEWED
+        ):
+            raise QcPackError(
+                f"instance {self.position} needs its pixel data's SHA-256 as 64 "
+                "lower-case hexadecimal digits, and only if released or held"
+            )
+        if self.contour_sha256 is not None and not (
+            isinstance(self.contour_sha256, str)
+            and _SHA256.fullmatch(self.contour_sha256)
+            and self.disposition in _REVIEWED
+        ):
+            raise QcPackError(
+                f"instance {self.position} needs its contours' SHA-256 as 64 "
+                "lower-case hexadecimal digits, and only if released or held"
+            )
         problem = self._problem()
         if problem:
             raise QcPackError(
@@ -626,12 +717,131 @@ class RoiNameEntry:
         )
 
 
+@dataclasses.dataclass(frozen=True, repr=False)
+class DescriptorEntry:
+    """What descriptor cleaning decided for the values of one free-text descriptor.
+
+    The kept, mapped, and emptied values are the audit of what was retained
+    or changed; the held values are the reviewer's list, whose decisions a
+    reviewed descriptors list carries to later runs (D-009). Its ``repr``
+    leaves out the values.
+
+    Attributes
+    ----------
+    position : int
+        The instance's run position.
+    path : ElementPath
+        The descriptor's element.
+    sources : tuple of str
+        The element's source values, in order, each as decoded.
+    results : tuple of ~pymedphys._dicom.deidentify.reviewed_descriptors.CleanedDescriptor
+        What cleaning decided for each source value, in the same order: its
+        outcome, why a held value was held, and what it would write, the
+        source value without its padding if kept, which is None if held.
+    applied : bool
+        Whether the element was written with those values. Where it was not,
+        because a value was held, no value had text, or a kept value was
+        beside a mapped or emptied one, or because another attribute's action removed
+        its sequence, it took its action without Clean Descriptors.
+    attribute : str or None
+        For private text under the Retain Safe Private Option, the key by
+        which a reviewer decides on its values
+        (:func:`~pymedphys._dicom.deidentify.reviewed_descriptors.private_descriptor`),
+        since its tag depends on the block that its creator reserves; None
+        for an attribute of the standard, which its tag names.
+    """
+
+    position: int
+    path: ElementPath
+    sources: tuple[str, ...]
+    results: tuple[CleanedDescriptor, ...]
+    applied: bool
+    attribute: str | None = None
+
+    def __post_init__(self) -> None:
+        _check_position("a descriptor", self.position)
+        if (
+            not isinstance(self.path, ElementPath)
+            or not isinstance(self.sources, tuple)
+            or not self.sources
+            or not all(isinstance(source, str) for source in self.sources)
+        ):
+            raise QcPackError(
+                f"a descriptor of instance {self.position} needs an ElementPath "
+                "and its values as text"
+            )
+        if (
+            not isinstance(self.results, tuple)
+            or len(self.results) != len(self.sources)
+            or not all(isinstance(result, CleanedDescriptor) for result in self.results)
+        ):
+            raise QcPackError(
+                f"a descriptor of instance {self.position} needs a "
+                "CleanedDescriptor for each value"
+            )
+        if not isinstance(self.applied, bool):
+            raise QcPackError(
+                f"a descriptor of instance {self.position} needs whether it was "
+                "applied as True or False"
+            )
+        if self.attribute is not None and not (
+            isinstance(self.attribute, str) and is_private_descriptor(self.attribute)
+        ):
+            raise QcPackError(
+                f"a descriptor of instance {self.position} needs None or a private "
+                "attribute's key as its attribute"
+            )
+        for source, result in zip(self.sources, self.results):
+            problem = _descriptor_problem(source, result)
+            if problem is None and self.applied and result.value is None:
+                problem = "was applied, so is not held"
+            if problem:
+                raise QcPackError(
+                    f"a descriptor value of instance {self.position} {problem}"
+                )
+
+    def __repr__(self) -> str:
+        return (
+            f"DescriptorEntry(position={self.position}, path={str(self.path)!r}, "
+            f"applied={self.applied!r})"
+        )
+
+
+def _descriptor_problem(source: str, result: CleanedDescriptor) -> str | None:
+    """Return why a descriptor value's result cannot be listed, or None."""
+    if not isinstance(result.outcome, DescriptorOutcome):
+        return "needs an outcome"
+    if (result.outcome in _DESCRIPTOR_HELD) != isinstance(
+        result.held_because, DescriptorHeld
+    ):
+        return "has a reason for review only when it was held"
+    if result.outcome is DescriptorOutcome.HELD:
+        return None if result.value is None else "has nothing written"
+    problems = (
+        (not isinstance(result.value, str), "needs what was written"),
+        (
+            (result.outcome in _DESCRIPTOR_EMPTIED) != (result.value == ""),
+            "is written empty only when it was emptied or empty",
+        ),
+        (
+            result.outcome in _DESCRIPTOR_KEPT and result.value != stripped(source),
+            "is written as its source value, without padding",
+        ),
+    )
+    return next((problem for failed, problem in problems if failed), None)
+
+
 class PreviewKind(enum.Enum):
     """What an image preview shows (D-017)."""
 
     SERIES_CINE = "series-cine"  # frames evenly spaced through a series
     SERIES_MIP = "series-mip"  # a frontal maximum intensity projection
+    # renders of a volume's skin surface, from the front, obliques, and profiles
+    SERIES_SURFACE = "series-surface"
     INSTANCE = "instance"  # a high-risk instance at full resolution
+    # a frame that Clean Pixel Data cleaned, at full resolution, with its
+    # regions outlined: as received beside as written where it has any
+    REDACTION = "redaction"
 
 
 class NotPreviewedReason(enum.Enum):
@@ -645,6 +855,10 @@ class NotPreviewedReason(enum.Enum):
     NO_PIXEL_DATA = "no-pixel-data"
     # a released or held instance whose written file the run did not hand over
     NOT_AVAILABLE = "file-not-available"
+    # an instance that Clean Pixel Data cleaned whose source cannot be shown
+    # beside its written file: unreadable, undecodable, or of another shape,
+    # number of frames, or colour
+    SOURCE_NOT_SHOWN = "source-not-shown"
 
 
 PREVIEW_NAME = re.compile(r"P-[0-9]{4,}\.png")
@@ -783,6 +997,100 @@ class PixelRiskEntry:
 
 
 @dataclasses.dataclass(frozen=True)
+class RedactionEntry:
+    """An instance whose Pixel Data the Clean Pixel Data Option cleaned.
+
+    Attributes
+    ----------
+    position : int
+        The instance's run position.
+    reason : ~pymedphys._dicom.deidentify.reasons.PixelDataReason
+        Why it is held for review.
+    frames : int
+        How many frames its Pixel Data holds.
+    rows, columns : int
+        Its Rows and Columns, which each of its frames has, so that an
+        attestation can refuse a region past them (D-048).
+    regions : tuple of (int, tuple of TextBox)
+        Each frame with a region, by frame index from 0, in order, with its
+        regions, sorted, each once, and each within its rows and columns;
+        none where no text was found.
+    """
+
+    position: int
+    reason: PixelDataReason
+    frames: int
+    rows: int
+    columns: int
+    regions: tuple[tuple[int, tuple[TextBox, ...]], ...]
+
+    def __post_init__(self) -> None:
+        _check_position("a cleaned instance", self.position)
+        if not isinstance(self.reason, PixelDataReason):
+            raise QcPackError(
+                f"cleaned instance {self.position} needs a PixelDataReason"
+            )
+        if (
+            not isinstance(self.frames, int)
+            or isinstance(self.frames, bool)
+            or self.frames < 1
+        ):
+            raise QcPackError(
+                f"cleaned instance {self.position} needs its number of frames"
+            )
+        if not all(_is_count(size) for size in (self.rows, self.columns)):
+            raise QcPackError(
+                f"cleaned instance {self.position} needs its Rows and Columns"
+            )
+        if not isinstance(self.regions, tuple) or not all(
+            _is_frame_regions(entry, self.frames) for entry in self.regions
+        ):
+            raise QcPackError(
+                f"cleaned instance {self.position} needs regions of its frames, "
+                "each a frame index with sorted, distinct boxes"
+            )
+        if any(
+            box.bottom > self.rows or box.right > self.columns
+            for _, boxes in self.regions
+            for box in boxes
+        ):
+            raise QcPackError(
+                f"cleaned instance {self.position} has a region past its Rows "
+                "or Columns"
+            )
+        indices = [index for index, _ in self.regions]
+        if indices != sorted(set(indices)):
+            raise QcPackError(
+                f"cleaned instance {self.position} must list each frame once, in order"
+            )
+        found = self.reason is PixelDataReason.TEXT_BLACKED_OUT
+        if found != bool(self.regions):
+            raise QcPackError(
+                f"cleaned instance {self.position} has regions exactly where "
+                "text was blacked out"
+            )
+
+
+def _is_count(value: object) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool) and value >= 1
+
+
+def _is_frame_regions(entry: object, frames: int) -> bool:
+    if not (isinstance(entry, tuple) and len(entry) == 2):
+        return False
+    index, boxes = entry
+    return (
+        isinstance(index, int)
+        and not isinstance(index, bool)
+        and 0 <= index < frames
+        and isinstance(boxes, tuple)
+        and bool(boxes)
+        and all(isinstance(box, TextBox) for box in boxes)
+        and list(boxes) == sorted(set(boxes))
+    )
+
+
+@dataclasses.dataclass(frozen=True)
 class SourceGapEntry:
     """An instance whose source lacks attributes that its IOD requires.
 
@@ -805,6 +1113,32 @@ class SourceGapEntry:
             and all(isinstance(gap, SourceGap) for gap in self.gaps)
         ):
             raise QcPackError(f"instance {self.position} needs its source gaps")
+
+
+@dataclasses.dataclass(frozen=True)
+class SeriesEntry:
+    """A series of released or held instances, which a face verdict names.
+
+    An attestation names the series by its first run position (D-017), and
+    the SHA-256 of its instances' source files, in ``instances``, binds the
+    verdict to the files the reviewer saw.
+
+    Attributes
+    ----------
+    positions : tuple of int
+        The run positions of the series' released and held instances, in
+        order, each once.
+    """
+
+    positions: tuple[int, ...]
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.positions, tuple) or not self.positions:
+            raise QcPackError("a series needs its instances' run positions")
+        for position in self.positions:
+            _check_position("a series", position)
+        if list(self.positions) != sorted(set(self.positions)):
+            raise QcPackError("a series must list each instance once, in order")
 
 
 @dataclasses.dataclass(frozen=True)
@@ -879,18 +1213,26 @@ class QcPack:
     retained_strings : tuple of RetainedString
         Each value once.
     roi_names : tuple of RoiNameEntry
+    descriptors : tuple of DescriptorEntry
     reference_findings : tuple of ReferenceFindingEntry
     pixel_risks : tuple of PixelRiskEntry
         Each high-risk instance once, in run position order.
     series_risks : tuple of SeriesRiskEntry
         Each instance in at most one, by its first run position in order;
         each instance released or held for review.
+    redactions : tuple of RedactionEntry
+        Each instance once, in run position order; each instance released
+        or held for review.
     previews : tuple of Preview
         Named ``P-0001.png`` onwards, in order, at one width.
     not_previewed : tuple of NotPreviewedEntry
         Each instance once, in run position order.
     source_gaps : tuple of SourceGapEntry
         Each instance once, in run position order.
+    series : tuple of SeriesEntry
+        Each instance in at most one, by its first run position in order;
+        each instance released or held for review, with its source's
+        SHA-256.
 
     Raises
     ------
@@ -906,7 +1248,12 @@ class QcPack:
         instance is listed twice as high-risk, as not previewed, or with source
         gaps, or out of order; or if an instance is in two series with risks,
         the series are out of order, or one has an instance that was neither
-        released nor held for review.
+        released nor held for review; or if the same holds of ``series``, or
+        a series has an instance without its source's SHA-256; or if an
+        instance is listed twice as cleaned, out of order, or neither
+        released nor held for review; or if a cleaned instance that is not
+        listed as not previewed lacks a redaction preview of each frame, in
+        order, or a redaction preview shows anything else.
     """
 
     reference: str
@@ -916,12 +1263,15 @@ class QcPack:
     not_searched: tuple[NotSearchedEntry, ...] = ()
     retained_strings: tuple[RetainedString, ...] = ()
     roi_names: tuple[RoiNameEntry, ...] = ()
+    descriptors: tuple[DescriptorEntry, ...] = ()
     reference_findings: tuple[ReferenceFindingEntry, ...] = ()
     pixel_risks: tuple[PixelRiskEntry, ...] = ()
     series_risks: tuple[SeriesRiskEntry, ...] = ()
+    redactions: tuple[RedactionEntry, ...] = ()
     previews: tuple[Preview, ...] = ()
     not_previewed: tuple[NotPreviewedEntry, ...] = ()
     source_gaps: tuple[SourceGapEntry, ...] = ()
+    series: tuple[SeriesEntry, ...] = ()
 
     def __post_init__(self) -> None:
         if not isinstance(self.reference, str) or not _REFERENCE.fullmatch(
@@ -935,12 +1285,15 @@ class QcPack:
             "not_searched": NotSearchedEntry,
             "retained_strings": RetainedString,
             "roi_names": RoiNameEntry,
+            "descriptors": DescriptorEntry,
             "reference_findings": ReferenceFindingEntry,
             "pixel_risks": PixelRiskEntry,
             "series_risks": SeriesRiskEntry,
+            "redactions": RedactionEntry,
             "previews": Preview,
             "not_previewed": NotPreviewedEntry,
             "source_gaps": SourceGapEntry,
+            "series": SeriesEntry,
         }
         for name, kind in sections.items():
             entries = getattr(self, name)
@@ -959,8 +1312,10 @@ class QcPack:
             "drops",
             "not_searched",
             "roi_names",
+            "descriptors",
             "reference_findings",
             "pixel_risks",
+            "redactions",
             "not_previewed",
             "source_gaps",
         ):
@@ -977,31 +1332,45 @@ class QcPack:
         values = [retained.value for retained in self.retained_strings]
         if len(set(values)) != len(values):
             raise QcPackError("retained_strings must hold each value once")
-        for name in ("pixel_risks", "not_previewed", "source_gaps"):
+        for name in ("pixel_risks", "redactions", "not_previewed", "source_gaps"):
             listed = [entry.position for entry in getattr(self, name)]
             if listed != sorted(set(listed)):
                 raise QcPackError(f"{name} must list each instance once, in order")
         self._check_series()
         self._check_previews()
-
-    def _check_series(self) -> None:
-        firsts = [entry.positions[0] for entry in self.series_risks]
-        if firsts != sorted(firsts):
-            raise QcPackError("series_risks must be in order of their first instance")
-        listed = [
-            position for entry in self.series_risks for position in entry.positions
-        ]
-        if len(set(listed)) != len(listed):
-            raise QcPackError("an instance is in two series of series_risks")
         if any(
-            position >= len(self.instances)
-            or self.instances[position].disposition not in _REVIEWED
-            for position in listed
+            self.instances[entry.position].disposition not in _REVIEWED
+            for entry in self.redactions
         ):
             raise QcPackError(
-                "series_risks names an instance that was neither released nor "
+                "redactions names an instance that was neither released nor "
                 "held for review"
             )
+
+    def _check_series(self) -> None:
+        for name in ("series", "series_risks"):
+            entries = getattr(self, name)
+            firsts = [entry.positions[0] for entry in entries]
+            if firsts != sorted(firsts):
+                raise QcPackError(f"{name} must be in order of their first instance")
+            listed = [position for entry in entries for position in entry.positions]
+            if len(set(listed)) != len(listed):
+                raise QcPackError(f"an instance is in two series of {name}")
+            if any(
+                position >= len(self.instances)
+                or self.instances[position].disposition not in _REVIEWED
+                for position in listed
+            ):
+                raise QcPackError(
+                    f"{name} names an instance that was neither released nor "
+                    "held for review"
+                )
+        if any(
+            self.instances[position].source_sha256 is None
+            for entry in self.series
+            for position in entry.positions
+        ):
+            raise QcPackError("series names an instance without its source's SHA-256")
 
     def _check_previews(self) -> None:
         width = max(4, len(str(len(self.previews))))
@@ -1019,6 +1388,34 @@ class QcPack:
                 "a preview shows an instance that was neither released nor held "
                 "for review"
             )
+        self._check_redaction_previews()
+
+    def _check_redaction_previews(self) -> None:
+        """Each cleaned instance has a redaction preview of each frame, in
+        order, unless it is listed as not previewed, and no other has one."""
+        cleaned = {entry.position: entry.frames for entry in self.redactions}
+        unshown = {entry.position for entry in self.not_previewed}
+        shown: dict[int, list[int]] = {}
+        for preview in self.previews:
+            if preview.kind is not PreviewKind.REDACTION:
+                continue
+            if (
+                len(preview.frames) != 1
+                or cleaned.get(preview.frames[0][0]) != preview.total_frames
+            ):
+                raise QcPackError(
+                    "a redaction preview must show one frame of a cleaned "
+                    "instance, with its number of frames"
+                )
+            position, frame = preview.frames[0]
+            shown.setdefault(position, []).append(frame)
+        for position, frames in cleaned.items():
+            expected = [] if position in unshown else list(range(frames))
+            if shown.get(position, []) != expected:
+                raise QcPackError(
+                    "a cleaned instance needs a redaction preview of each "
+                    "frame, in order, unless it is listed as not previewed"
+                )
 
     def _check_names(self) -> None:
         labels = [entry.label for entry in self.instances if entry.label is not None]
@@ -1049,11 +1446,13 @@ class QcPack:
             f"drops={len(self.drops)}, not_searched={len(self.not_searched)}, "
             f"retained_strings={len(self.retained_strings)}, "
             f"roi_names={len(self.roi_names)}, "
+            f"descriptors={len(self.descriptors)}, "
             f"reference_findings={len(self.reference_findings)}, "
             f"pixel_risks={len(self.pixel_risks)}, "
-            f"series_risks={len(self.series_risks)}, previews={len(self.previews)}, "
+            f"series_risks={len(self.series_risks)}, "
+            f"redactions={len(self.redactions)}, previews={len(self.previews)}, "
             f"not_previewed={len(self.not_previewed)}, "
-            f"source_gaps={len(self.source_gaps)})"
+            f"source_gaps={len(self.source_gaps)}, series={len(self.series)})"
         )
 
 
@@ -1155,6 +1554,28 @@ def pack_document(pack: QcPack) -> dict:
             }
             for entry in pack.roi_names
         ],
+        "descriptors": [
+            {
+                "position": entry.position,
+                "element": str(entry.path),
+                "attribute": entry.attribute or entry.path.tag,
+                "applied": entry.applied,
+                "values": [
+                    {
+                        "source": source,
+                        "outcome": result.outcome.value,
+                        "held_because": (
+                            None
+                            if result.held_because is None
+                            else result.held_because.value
+                        ),
+                        "written": result.value,
+                    }
+                    for source, result in zip(entry.sources, entry.results)
+                ],
+            }
+            for entry in pack.descriptors
+        ],
         "reference_findings": [
             {
                 "position": entry.position,
@@ -1178,6 +1599,7 @@ def pack_document(pack: QcPack) -> dict:
             }
             for entry in pack.pixel_risks
         ],
+        "series": [{"positions": list(entry.positions)} for entry in pack.series],
         "series_risks": [
             {
                 "positions": list(entry.positions),
@@ -1192,6 +1614,25 @@ def pack_document(pack: QcPack) -> dict:
                 ],
             }
             for entry in pack.series_risks
+        ],
+        "redactions": [
+            {
+                "position": entry.position,
+                "reason": entry.reason.value,
+                "frames": entry.frames,
+                "rows": entry.rows,
+                "columns": entry.columns,
+                "regions": [
+                    {
+                        "frame": index,
+                        "boxes": [
+                            [box.top, box.left, box.bottom, box.right] for box in boxes
+                        ],
+                    }
+                    for index, boxes in entry.regions
+                ],
+            }
+            for entry in pack.redactions
         ],
         "previews": [
             {
@@ -1230,6 +1671,9 @@ def _instance(entry: InstanceEntry) -> dict:
         "output": None if entry.output is None else entry.output.as_posix(),
         "label": entry.label,
         "reasons": list(entry.reasons),
+        "source_sha256": entry.source_sha256,
+        "pixel_sha256": entry.pixel_sha256,
+        "contour_sha256": entry.contour_sha256,
     }
 
 

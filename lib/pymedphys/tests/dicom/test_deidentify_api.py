@@ -20,6 +20,7 @@ import shutil
 import tempfile
 from pathlib import Path
 
+from pymedphys._imports import numpy as np
 from pymedphys._imports import pytest
 
 from pymedphys._nomenclature import roi_list, tg263
@@ -29,17 +30,21 @@ from pymedphys._dicom.deidentify import (
     command,
     diagnostics,
     instance_transform,
+    pixel_decoding,
     policy,
     roi_names,
     run,
     run_report,
 )
+from pymedphys._dicom.deidentify.reasons import TransformReason
+from pymedphys._dicom.deidentify.reviewed_descriptors import ReviewedDescriptors
 from pymedphys._dicom.deidentify.reviewed_roi_names import (
     Review,
     ReviewedName,
     ReviewedNames,
 )
 
+from . import _synthetic_compressed as compressed
 from . import _synthetic_references as synthetic
 from .test_deidentify_run import SENTINEL, _write
 
@@ -124,6 +129,37 @@ def test_the_basic_preset_releases_a_collection_with_its_report(tmp_path):
     assert any((tmp_path / "qc").iterdir())
     assert done.summary()[1] == "inputs: 6"
     assert str(tmp_path / "source") not in "\n".join(done.summary())
+
+
+@pytest.mark.usefixtures("enabled")
+def test_an_image_whose_decoder_ends_its_process_is_sequestered_and_the_run_completes(
+    tmp_path,
+):
+    # GDCM aborts its process for a JPEG frame with a JFIF segment of
+    # version 2.01, which a run decodes in a child process.
+    syntax = compressed.JPEG_LOSSLESS_SV1
+    if not pixel_decoding.decoder_available(syntax):
+        pytest.skip(f"no decoder for {syntax} is installed")
+    datasets = synthetic.collection()
+    codestream = compressed.jpeg_lossless(np.arange(64).reshape(8, 8) * 7)
+    datasets[0] = compressed.ct_image(
+        syntax,
+        [compressed.with_jfif_version(codestream, (2, 1))],
+        rows=8,
+        columns=8,
+        name=str(datasets[0].PatientName),
+    )
+    if compressed.gdcm_outcome(datasets[0]) != "aborts":
+        pytest.skip("the installed GDCM does not abort on the frame")
+    _write(tmp_path / "source", datasets)
+
+    done = _deidentify(tmp_path)
+
+    first, *others = done.result.outcomes
+    assert first.status is run.Status.SEQUESTERED
+    assert first.reasons == (TransformReason.UNDECODABLE_PIXEL_DATA,)
+    assert all(outcome.status is run.Status.RELEASED for outcome in others)
+    assert (tmp_path / "release" / run_report.RELEASE_REPORT).is_file()
 
 
 @pytest.mark.usefixtures("enabled", "edition")
@@ -239,6 +275,7 @@ def test_an_unknown_preset_raises(tmp_path):
         {"reviewed_names": "x"},
         {"empty_held_roi_names": True},
         {"roi_list": "x"},
+        {"reviewed_descriptors": "x"},
     ],
     ids=lambda option: next(iter(option)),
 )
@@ -409,3 +446,25 @@ def test_a_staging_area_left_behind_is_not_released():
 
     assert not done.released
     assert done.exit_status == command.EXIT_STAGING_LEFT
+
+
+@pytest.mark.usefixtures("enabled", "edition")
+@pytest.mark.parametrize("where", ["custodian", "release"])
+def test_a_reviewed_descriptors_list_that_cannot_be_used_raises_naming_no_path(
+    tmp_path, where
+):
+    path = tmp_path / where / SENTINEL
+    path.parent.mkdir()
+    ReviewedDescriptors.open(path).save()
+    if where == "custodian":
+        path = tmp_path / where / "missing.json"
+    before = sorted(tmp_path.rglob("*"))
+
+    with pytest.raises(api.DeidentifyError) as raised:
+        _deidentify(tmp_path, preset=_CLEAN, reviewed_descriptors=path)
+
+    message = str(raised.value)
+    expected = "does not exist" if where == "custodian" else "could not be used"
+    assert message.startswith("the reviewed descriptors list") and expected in message
+    assert SENTINEL not in message and str(tmp_path) not in message
+    assert sorted(tmp_path.rglob("*")) == before

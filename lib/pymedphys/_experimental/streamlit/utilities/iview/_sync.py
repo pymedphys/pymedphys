@@ -176,7 +176,7 @@ def icom_iview_timestamp_alignment(
             title="Time displacement between iView image timestamp and closest iCom record"
         )
 
-        st.altair_chart(altair_chart=raw_chart, use_container_width=True)
+        st.altair_chart(altair_chart=raw_chart, width="stretch")
 
     max_diff = np.max(np.abs(time_diffs["time_diff"]))
 

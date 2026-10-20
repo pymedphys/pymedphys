@@ -24,6 +24,7 @@ security.yml <- schedule, manual run, main push, ready PR, merge_group
 Schedule / manual run -> deps.yml
 Schedule / manual run -> deid-edition-check.yml
 Schedule / manual run -> tg263-edition-check.yml
+Schedule / manual run / PR changing it or labelled check-upstream -> tcia-edition-check.yml
 Published release -> release.yml -> quality checks, publishing, verification, and published-package tests
 Issue comment -> claude.yml
 
@@ -203,7 +204,7 @@ Fast unit tests with smart matrix strategy.
 
 - **Features**:
   - Full OS and Python matrix on main pushes and releases (Ubuntu, Windows,
-    macOS; Python 3.11, 3.12, 3.13, 3.14)
+    macOS; Python 3.12, 3.13, 3.14)
   - Quick mode for merge groups and other PRs (Ubuntu + Python 3.14). The selector's
     `run-full-matrix` output decides, and only an explicit `false` keeps the
     quick matrix
@@ -221,15 +222,21 @@ Fast unit tests with smart matrix strategy.
   - JUnit XML report generation
 
 The `dependency-floors` job runs the unit tests (`-m "not slow"`, with the
-data cache) at the declared minimum versions of NumPy (1.26.4) and pandas
-(2.0.3), alongside both the quick and full matrices. It runs on Ubuntu with
-Python 3.11, the only supported version with wheels for both: NumPy 1.26 has
-none for Python 3.13 or later, and pandas 2.0 none for 3.12 or later. It
-installs the same locked environment as the unit tests, overlays the two
-packages with `uv run --no-sync --with numpy==1.26.4 --with pandas==2.0.3`,
-and fails first if the overlay did not take effect. It uploads its JUnit
-report as `junit-dependency-floors`. A failure fails the unit-test workflow and
-therefore the required CI or release summary.
+data cache) at the declared minimum versions of NumPy (2.0.2) and pandas
+(2.2.2), alongside both the quick and full matrices. It runs on Ubuntu with
+Python 3.12, the only supported version with wheels for both: neither has any
+for Python 3.13 or later. It installs the same locked environment as the unit
+tests and overlays the two packages with
+`uv run --no-sync --with numpy==2.0.2 --with pandas==2.2.2`. The overlay also
+takes tifffile, whose locked version requires NumPy 2.1, at its latest release
+that accepts NumPy 2.0. The job fails first if the overlay did not take effect,
+and then if any installed package's requirements are missing or not met,
+including those of the extras the job installs PyMedPhys with and of the
+extras that those requirements request; when a newly locked package requires a
+newer NumPy or pandas, add it to the overlay. It uploads its JUnit report as
+`junit-dependency-floors`. A
+failure fails the unit-test workflow and therefore the required CI or release
+summary.
 
 The `pydicom-versions` job runs the de-identification tests (the
 `test_deidentify_*` modules in `tests/dicom` and `tests/dev/test_deid_tables.py`,
@@ -494,6 +501,37 @@ cleaning ROI names.
   the check's report and a link to the run. Once each new download is
   reviewed, the pin moved or the download added to `REVIEWED`, close the issue;
   a later finding opens a new one
+
+#### `tcia-edition-check.yml`
+
+Checks the TCIA Private Tag Dictionary that PyMedPhys ships for the Retain
+Safe Private Option against TCIA's original.
+
+- **Triggers**: monthly (the 5th), manually, and on ready pull requests that
+  change the dictionary in `lib/pymedphys/_dicom/deidentify/_tcia/`, its
+  loader, the check, the downloader, or this workflow, or that carry the
+  `check-upstream` label. Merge groups do not run it, so TCIA's availability
+  cannot block them
+- **Steps**: installs the project with the `user` extra and runs
+  `pymedphys dev tcia-check`, which downloads the file at the pinned URL and
+  compares its length and SHA-256, and the shipped copy's, with `PIN` in
+  `tcia_private_tags.py`, and lists the editions that TCIA's page links to and
+  whether it still links to the CC BY 3.0 licence that the shipped notice
+  relies on. Its check job can only read the repository
+- **Failures**: on a pull request, the check job fails. The result is
+  advisory: the workflow is not a required check, because TCIA's site does
+  not always answer GitHub's runners, so a reviewer of a change to the
+  dictionary reads the result rather than the merge queue enforcing it. On a
+  scheduled or manual run, when the shipped copy or the pinned file differs from the pin,
+  the page links to an edition not yet reviewed, or no longer links to the
+  pinned file or the licence, or the page or the file cannot be fetched, the
+  page links to no edition, or the check stops without a result, a separate
+  job, the only one that can write issues and which runs no repository code,
+  opens or comments on the issue titled "TCIA edition check: the Private Tag
+  Dictionary needs attention" with the check's report and a link to the run.
+  Once each new edition is reviewed, the pin moved or the edition added to
+  `REVIEWED` in `lib/pymedphys/_dev/tcia_edition_check.py`, close the issue; a
+  later finding opens a new one
 
 ### AI Assistance
 
@@ -874,7 +912,7 @@ uv run pymedphys dev docs
 
 ## Version Compatibility
 
-- **Python**: 3.11, 3.12, 3.13, 3.14 (all in the full unit-test matrix; 3.14 runs the quick matrix and every other job except the NumPy and pandas minimum-version check, which uses 3.11; 3.11 reaches end of life in October 2027)
+- **Python**: 3.12, 3.13, 3.14 (all in the full unit-test matrix; 3.14 runs the quick matrix and every other job except the NumPy and pandas minimum-version check, which uses 3.12; 3.12 reaches end of life in October 2028)
 - **uv**: 0.12.15, pinned in CI (`setup-uv`) and in the pre-commit `uv-lock` hook
 - **GitHub Actions**: Latest Ubuntu, Windows, and macOS runner images
 - **SQL Server**: 2022 Latest (for Mosaiq tests)

@@ -81,12 +81,12 @@ WHEEL_PACKAGE_ROOT = "pymedphys/"
 # Independent release expectations: keep these in sync with the project's
 # license and license-files settings in pyproject.toml. Reading expectations
 # from archive metadata would let matching omissions in both archives pass.
-EXPECTED_LICENCE_EXPRESSION = "Apache-2.0 AND MIT AND BSD-2-Clause"
+EXPECTED_LICENCE_EXPRESSION = "Apache-2.0 AND MIT AND CC-BY-3.0"
 EXPECTED_LICENCE_FILES = frozenset(
     (
         "LICENSE",
         "lib/pymedphys/_pinnacle/LICENSE-MIT",
-        "lib/pymedphys/_dicom/deidentify/LICENSE-BSD-2-Clause",
+        "lib/pymedphys/_dicom/deidentify/_tcia/LICENSE-CC-BY-3.0.txt",
     )
 )
 # pymedphys.cli imports every command module, as the console script does.
@@ -331,7 +331,7 @@ def check_contents(
         failures.append(f"The wheel is missing {', '.join(missing_from_wheel)}")
 
     # Every packaged file must also be in the sdist, or a wheel rebuilt from
-    # the sdist (as conda-forge and Linux distributions do) would lack it.
+    # the sdist (as downstream redistributors do) would lack it.
     # Skip this when the sdist has no package at all: that is reported above.
     if not missing_from_sdist:
         not_in_sdist = sorted(

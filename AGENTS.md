@@ -156,11 +156,12 @@ Use this list wherever metadata needs the maintainers.
   do not maintain a list of value-taking options, since plugins can add more.
   The `pymedphys._dev.pytest_paths` plugin does this in the controller and in
   every pytest-xdist worker, which parse the original arguments again.
-- Tests marked `slow` (and `mosaiqdb`, `anthropic_key`) are skipped by
-  `conftest.py` unless requested. `--include-slow` (and `--include-mosaiqdb`,
-  `--include-anthropic`) adds them to the default selection. `--slow` (and
-  `--mosaiqdb`, `--anthropic`, `--pydicom`) runs only the tests with that
-  marker; several of these select the union. `--all` runs everything.
+- Tests marked `slow` (and `mosaiqdb`, `anthropic_key`, `dicom_validators`)
+  are skipped by `conftest.py` unless requested. `--include-slow` (and
+  `--include-mosaiqdb`, `--include-anthropic`, `--include-dicom-validators`)
+  adds them to the default selection. `--slow` (and `--mosaiqdb`,
+  `--anthropic`, `--dicom-validators`, `--pydicom`) runs only the tests with
+  that marker; several of these select the union. `--all` runs everything.
   `pytest -m slow` alone selects the slow tests but still skips every one.
 - CI runs the slow tests in parallel (`-n auto`), so keep every test
   independent of the others: no shared output paths or ordering assumptions.
@@ -262,6 +263,10 @@ Extras (`[project.optional-dependencies]`) are published and are for people who 
 
 ### Packaging
 
+- PyMedPhys packages are published on PyPI only. The conda-forge feedstock is
+  archived; do not add conda recipes, feedstock automation, or conda CI. Direct
+  conda-environment users to the
+  [installation guide](lib/pymedphys/docs/users/get-started/installation-options.md#conda-environments).
 - `uv build` makes the sdist and then the wheel from it, so a file missing from
   the sdist also breaks the wheel. Check a build with
   `python .github/scripts/check_distributions.py dist`, which also installs the
@@ -350,10 +355,10 @@ Extras (`[project.optional-dependencies]`) are published and are for people who 
 
 6. **Database Connections**: Mosaiq integration requires appropriate database credentials and SQL Server access.
 
-7. **DICOM De-identification**: The replacement for `pymedphys.dicom.anonymise` and experimental pseudonymisation is specified in `lib/pymedphys/docs/contrib/info/deidentification-design.md`. Follow its decisions, and update it in any pull request that changes one. Outside the design document and its requirements register, describe what a decision requires rather than citing its number, since decisions may be renumbered or removed. In new or modified code that handles DICOM data:
+7. **DICOM De-identification**: The replacement for `pymedphys.dicom.anonymise` and experimental pseudonymisation is specified in `lib/pymedphys/docs/contrib/info/deidentification-design.md`. Follow its decisions, and update it in any pull request that changes one. Comments, tests, and docstrings outside the public API may cite a decision by its number, such as D-024, which refers to that document; a pull request that renumbers or removes a decision updates the code that cites it. Nothing users see may cite a decision number: describe what the decision requires instead in the public API's docstrings, user documentation, command-line help, error, warning, and log messages, and every file or DICOM value that a run or command writes, such as the release report, QC pack, attestation, conformance statement, and De-identification Method (0012,0063). The design document, its requirements register, the requirements matrix generated from the register, and contributor documentation may cite numbers. In new or modified code that handles DICOM data:
    - never put source attribute values, keys, or original paths in logs, standard output or standard error, warnings, exception messages, output file or directory names, or reports; use attribute paths and opaque identifiers;
    - never describe output as "anonymised", or as "de-identified" without naming the PS3.15 edition, profile, and options it has been validated against;
-   - never claim the Clean Pixel Data or Clean Recognizable Visual Features Options, or change Burned In Annotation or Recognizable Visual Features to NO;
+   - claim the Clean Pixel Data Option, and set Burned In Annotation to NO, or the Clean Recognizable Visual Features Option, and set Recognizable Visual Features to NO, only in an instance that satisfies the option as the design document specifies;
    - regenerate rule tables generated from the DICOM standard, and vocabularies converted from source spreadsheets, with their generators; never edit them by hand.
 
 ## Common Development Patterns
@@ -536,7 +541,10 @@ tests with NumPy and pandas at their declared minimum versions, and the
 declared minimum. When a change needs a newer NumPy, pandas, or pydicom, or a
 minimum is raised for another reason such as a security fix, raise the minimum
 in `pyproject.toml` and the version pinned in that job together, rather than
-working around a failure there.
+working around a failure there. When `dependency-floors` fails because the
+lock moved another package to a release that requires a newer NumPy or pandas,
+add that package to the job's overlay instead, so that the job installs its
+latest release that accepts the minimums.
 
 ### GitHub Actions Pins and Dependabot
 

@@ -20,7 +20,10 @@ for one edition of the pinned PS3.6 data dictionary, gives some of them an
 action from Table E.1-1a, each with a note that says why. It gives one to
 every person name (PN) attribute that the table omits, and keeps Burned In
 Annotation (0028,0301) and Recognizable Visual Features (0028,0302) as
-received, since the engine does not change pixel data.
+received. The markers set each to NO only in an instance that claims the
+option that adds it, Clean Pixel Data or Clean Recognizable Visual Features,
+and neither blacking out text nor removing a face from pixel data alone
+satisfies either option.
 
 It also gives one to every text attribute (VR LO, SH, LT, ST, UC, or UT) that
 the table omits and an IOD of the supported scope uses, at any depth. Like a

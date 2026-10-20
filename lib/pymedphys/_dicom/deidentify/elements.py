@@ -20,7 +20,10 @@ for anything it cannot decode exactly. UN is decoded as Implicit VR Little
 Endian (PS3.5 Section 6.2.2), including a sequence that pydicom does not
 know, such as RT Assertions Sequence (0044,0110), by
 :func:`.sequences.decode_items` once :func:`.file_layout.reads_as_items`
-finds that items fill it: pydicom reads malformed items silently. A VR in
+finds that items fill it: pydicom reads malformed items silently. So is a
+value of an attribute that the dictionary does not list, such as a private
+one, written as UN or in implicit VR, where the source's layout reads it as
+items (:func:`.file_layout.read_file_layout`). A VR in
 the file must be one the dictionary gives, and not contradict the one that
 the standard decides of alternatives. US or
 SS follows Pixel Representation (0028,0103) in the nearest data set that has
@@ -30,10 +33,13 @@ decides it (PS3.3 Section C.11.2.1.1): Pixel Representation without a
 Modality LUT or rescale, US after a Modality LUT, and after rescale SS where
 the rescaled range can be negative, as Hounsfield Units always can, and US
 otherwise. There, in explicit VR, either applies, since the standard has the
-VR follow what the second value needs; in Presentation LUT Sequence
-(2050,0010) it is always US (Section C.11.4.1). The first and third values
-of a LUT Descriptor of VR SS are decoded and written as unsigned (Sections
-C.11.1.1.1 and C.11.2.1.1), so a table of 40000 entries keeps its count. Real World Value First Value Mapped
+VR follow what the second value needs, as it does for the Red, Green, and
+Blue Palette Color Lookup Table Descriptors (0028,1101-1103) (Section
+C.7.6.3.1.5), whose VR Pixel Representation decides only without a VR in the
+file; in Presentation LUT Sequence (2050,0010) it is always US (Section
+C.11.4.1). The first and third values of these descriptors of VR SS are
+decoded and written as unsigned (Sections C.7.6.3.1.5, C.11.1.1.1, and
+C.11.2.1.1), so a table of 40000 entries keeps its count. Real World Value First Value Mapped
 (0040,9216) and Last Value Mapped (0040,9211) are SS for floating point
 pixel data (PS3.3 Section C.7.6.16.2.11.1.1), which the first supported
 release's IODs do not have, so without a VR in the file they are refused
@@ -67,6 +73,7 @@ from __future__ import annotations
 import dataclasses
 import decimal
 import functools
+import types
 from collections.abc import Sequence
 from typing import cast
 
@@ -74,13 +81,31 @@ from pymedphys._imports import pydicom
 
 from .diagnostics import redacted_diagnostics
 from .file_layout import ElementPath
+from .retained_private import is_private
 from .sequences import UnreadableItems, decode_items
 from .source import SourceEvidence
 from .sop_classes import load_storage_sop_classes
-from .standard import VRS, dictionary_attribute
+from .standard import VRS, DictionaryAttribute, dictionary_attribute
 from .uids import normalise_uid
 from .values import values_problem
 
+# A private UID, which the Retain Safe Private Option replaces, as written.
+_PRIVATE_UID = DictionaryAttribute("(gggg,eeee)", "", "", "UI", "1-n", "")
+# Private text that descriptor cleaning writes under the Retain Safe Private
+# Option, with the VMs that each text VR allows.
+_PRIVATE_TEXT = types.MappingProxyType(
+    {
+        vr: DictionaryAttribute("(gggg,eeee)", "", "", vr, vm, "")
+        for vr, vm in (
+            ("SH", "1-n"),
+            ("LO", "1-n"),
+            ("UC", "1-n"),
+            ("ST", "1"),
+            ("LT", "1"),
+            ("UT", "1"),
+        )
+    }
+)
 # The codecs of the Default Character Repertoire, as pydicom names them.
 DEFAULT_CODECS = ("iso8859",)
 # Not a Defined Term, but it names the Default Character Repertoire.
@@ -112,6 +137,10 @@ _BITS_STORED = "(0028,0101)"
 _PIXEL_REPRESENTATION = "(0028,0103)"
 _SIGNEDNESS = {0: "US", 1: "SS"}
 _LUT_DESCRIPTOR = "(0028,3002)"
+# Red, Green, and Blue Palette Color Lookup Table Descriptor.
+_PALETTE_DESCRIPTORS = frozenset({"(0028,1101)", "(0028,1102)", "(0028,1103)"})
+# The descriptors whose first and third values are always unsigned.
+_DESCRIPTORS = frozenset({_LUT_DESCRIPTOR, *_PALETTE_DESCRIPTORS})
 _VOI_LUT_SEQUENCE = "(0028,3010)"
 _MODALITY_LUT_SEQUENCE = "(0028,3000)"
 _PRESENTATION_LUT_SEQUENCE = "(2050,0010)"
@@ -195,12 +224,15 @@ def dataset_codecs(
 
     ``inherited`` are those of the data set that holds it, which apply unless
     it has its own Specific Character Set (0008,0005) (PS3.5 Section 7.5.3),
-    and ``items`` the items that hold it, as in :class:`ElementPath`. It
-    raises :class:`UndecodableElement` unless each value is a Defined Term of
-    PS3.3 Section C.12.1.1.2 that pydicom can decode, or the only value is
-    ``ISO_IR 6``, which gives the Default Character Repertoire as an absent
-    value does; only the first is empty; and several all use ISO 2022 code
-    extensions.
+    and ``items`` the items that hold it, as in :class:`ElementPath`. Each
+    value must be a Defined Term of PS3.3 Section C.12.1.1.2 that pydicom can
+    decode, or the only value ``ISO_IR 6``, which gives the Default Character
+    Repertoire as an absent value does; only the first may be empty; and
+    several must all use ISO 2022 code extensions. Any other value gives the
+    Default Character Repertoire too, so that the data set's text is read only
+    where it is in ISO 646, without a byte from 0x80 or an escape. The current
+    pydicom codecs read those bytes as the same characters; text outside it is
+    then read as it is where no value is given (Architecture item 5).
 
     Given the ``source`` that the data set was read from, the value is read
     from the source's bytes, as :func:`read_element` reads it, and a data
@@ -228,7 +260,7 @@ def dataset_codecs(
         or (term in _TERMS and (single or term.startswith("ISO 2022")))
         for index, term in enumerate(terms)
     ):
-        raise UndecodableElement(path, "is not a supported Specific Character Set")
+        return DEFAULT_CODECS
     return tuple(pydicom.charset.python_encoding[term] for term in terms)
 
 
@@ -272,7 +304,9 @@ def read_element(
     from the source whatever value it now holds, since pydicom keeps no
     encoded form of it to compare. A sequence of undefined length is read
     from the items that ``dcmread`` built, whose elements are then read
-    against the source in turn. ``codecs`` must then come from
+    against the source in turn. An element whose attribute the dictionary
+    does not list, written as UN or in implicit VR, is read as a sequence
+    where the source holds items in it. ``codecs`` must then come from
     :func:`dataset_codecs` given the same source. The elements of
     ``ancestors`` that decide a VR are read without the source.
 
@@ -302,6 +336,10 @@ def read_element(
             undefined = element.is_undefined_length
         stated = str(element.VR) if element.VR in VRS - {"UN"} else None
         vr = _applicable_vr(path, stated, undefined, (dataset, *ancestors))
+        if vr == "UN" and source is not None and source.element(path).items is not None:
+            # An attribute that the dictionary does not list holds items where
+            # the source's layout reads them, as the plan has it.
+            vr = "SQ"
         if (literal := _outside_repertoire(element, vr, codecs)) is not None:
             if not outside_repertoire_as_latin_1:
                 raise OutsideDefaultRepertoire(path, _OUTSIDE.format(vr=vr))
@@ -316,7 +354,7 @@ def read_element(
         elif value is None or value in ("", b""):
             values = []
         plain = tuple(_plain(path, vr, each) for each in values)
-        if path.tag == _LUT_DESCRIPTOR and vr == "SS":
+        if path.tag in _DESCRIPTORS and vr == "SS":
             plain = _unsigned_descriptor(plain)
         # pydicom reads the Default Character Repertoire as ISO 8859-1, but it
         # is ISO 646 (PS3.5 Section 6.1.2.1).
@@ -399,9 +437,13 @@ def _from_source(element, path: ElementPath, source: SourceEvidence):
             raise UndecodableElement(path, "does not match its source")
         return element
     value = source.value_field(path)
-    if raw and (
-        element.value != value or (extent.vr is not None and element.VR != extent.vr)
-    ):
+    held = element.value if raw else None
+    if raw and held is None and not element.length:
+        # pydicom reads a zero-length value as None where it has no VR for
+        # it, as in Implicit VR Little Endian. A deferred value is None too,
+        # but with its length, and matches no Value Field.
+        held = b""
+    if raw and (held != value or (extent.vr is not None and element.VR != extent.vr)):
         raise UndecodableElement(path, "does not match its source")
     # pydicom records where in the file it read each value it decodes from
     # one, and nothing for a value set in memory.
@@ -493,6 +535,11 @@ def _signedness(
         # C.11.2.1.1), so the file's VR applies, whichever it is.
         decided = None if stated else _voi_lut_input_vr(chain)
         return decided, "PS3.3 Section C.11.2.1.1"
+    if path.tag in _PALETTE_DESCRIPTORS and stated:
+        # So too for these (PS3.3 Section C.7.6.3.1.5): the explicit VR
+        # "will be consistent with Pixel Representation", but the file's VR
+        # is the one the second value is written in.
+        return None, "PS3.3 Section C.7.6.3.1.5"
     representation = _deciding(chain, _PIXEL_REPRESENTATION)
     return _SIGNEDNESS.get(representation), "Pixel Representation (0028,0103)"
 
@@ -661,8 +708,8 @@ def _unsigned_descriptor(values: tuple) -> tuple:
     """Return SS LUT Descriptor values with the first and third unsigned.
 
     "the first and third values are always by definition interpreted as
-    unsigned", whichever VR the second needs (PS3.3 Sections C.11.1.1.1 and
-    C.11.2.1.1); pydicom decodes all three as SS.
+    unsigned", whichever VR the second needs (PS3.3 Sections C.7.6.3.1.5,
+    C.11.1.1.1, and C.11.2.1.1); pydicom decodes all three as SS.
     """
     return tuple(
         value + 0x10000
@@ -816,8 +863,8 @@ def _descriptor_problem(vm: str, values: Sequence[object]) -> str | None:
     """Return what is wrong with the values of an SS LUT Descriptor, or None.
 
     Its first and third values are unsigned whichever VR its second needs
-    (PS3.3 Sections C.11.1.1.1 and C.11.2.1.1), so they must be valid US,
-    and only its second a valid SS.
+    (PS3.3 Sections C.7.6.3.1.5, C.11.1.1.1, and C.11.2.1.1), so they must be
+    valid US, and only its second a valid SS.
     """
     if len(values) != 3:  # which the VM, 3, does not allow
         return values_problem("US", vm, values)
@@ -835,13 +882,20 @@ def new_element(
     ``vr`` is one the pinned dictionary gives the attribute, of alternatives
     the one :func:`read_element` gives; ``values`` are as in
     :class:`ElementValue`, or a sequence's items; and ``codecs`` are those of
-    the data set it is written in. It raises :class:`ValueError` without the
-    value for any other VR, an item that is not a data set, or a problem that
-    :func:`written_value_problem` finds. A LUT Descriptor (0028,3002) of VR
-    SS takes its first and third values as US, as :func:`read_element` gives
-    them.
+    the data set it is written in. A private UID, which the dictionary does
+    not list, takes VR UI and VM 1-n, as the Retain Safe Private Option
+    replaces it, and private text of VR SH, LO, ST, LT, UC, or UT, which
+    descriptor cleaning writes under that Option, the VMs that its VR
+    allows. It raises :class:`ValueError` without the value for any
+    other VR, an item that is not a data set, or a problem that
+    :func:`written_value_problem` finds. A LUT Descriptor (0028,3002) or Red,
+    Green, or Blue Palette Color Lookup Table Descriptor (0028,1101-1103) of
+    VR SS takes its first and third values as US, as :func:`read_element`
+    gives them.
     """
     attribute = dictionary_attribute(path.tag)
+    if attribute is None and is_private(path.tag):
+        attribute = _PRIVATE_TEXT.get(vr, _PRIVATE_UID if vr == "UI" else None)
     if attribute is None or vr not in attribute.vrs:
         raise ValueError(f"{path} does not have VR {vr} in the pinned data dictionary")
     value: object
@@ -851,12 +905,12 @@ def new_element(
         value = pydicom.Sequence(cast(Sequence[pydicom.Dataset], values))
     elif problem := (
         _descriptor_problem(attribute.vm, values)
-        if path.tag == _LUT_DESCRIPTOR and vr == "SS"
+        if path.tag in _DESCRIPTORS and vr == "SS"
         else written_value_problem(vr, attribute.vm, values, codecs)
     ):
         raise ValueError(f"{path} {problem}")
     else:
-        if path.tag == _LUT_DESCRIPTOR and vr == "SS":
+        if path.tag in _DESCRIPTORS and vr == "SS":
             # pydicom writes the first value as US and the others as SS, so
             # the bytes of an unsigned third value above 32767 are those of
             # its negative counterpart.

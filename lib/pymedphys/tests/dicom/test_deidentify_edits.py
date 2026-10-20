@@ -29,9 +29,17 @@ from pymedphys._dicom.deidentify.element_rules import RuleSource
 from pymedphys._dicom.deidentify.iods import load_iod_tables
 from pymedphys._dicom.deidentify.keys import DeidKey
 from pymedphys._dicom.deidentify.pseudonyms import SubjectIdentity, patient_pseudonym
+from pymedphys._dicom.deidentify.series_numbers import SeriesNumbering, SeriesNumberings
 from pymedphys._dicom.deidentify.uids import UIDOutcome, replacement_uid
 
-from .test_deidentify_file_layout import EXPLICIT, _explicit, _file, _item
+from .test_deidentify_file_layout import (
+    EXPLICIT,
+    IMPLICIT,
+    _explicit,
+    _file,
+    _implicit,
+    _item,
+)
 from .test_deidentify_walker import (
     BEAM_SEQUENCE,
     OTHER_IDS,
@@ -163,6 +171,105 @@ def test_d_writes_the_dummy_value_and_the_second_where_the_source_equals_it():
     assert label.values == ("DE-IDENTIFIED",)
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-01")
+@pytest.mark.parametrize(
+    "transfer_syntax, element",
+    [
+        (IMPLICIT, lambda tag, vr, value=b"": _implicit(tag, value)),
+        (EXPLICIT, _explicit),
+    ],
+    ids=["implicit-vr", "explicit-vr"],
+)
+def test_an_empty_value_is_edited_and_collected_whatever_the_transfer_syntax(
+    transfer_syntax, element
+):
+    # pydicom reads a zero-length value as None, not b"", where it has no VR
+    # for it, as in Implicit VR Little Endian, and for a VR such as DS; that
+    # is still the source's empty Value Field, so it is read, not refused as
+    # not matching it, which would withhold the subject's files.
+    data_set = (
+        element(0x00080016, "UI", RT_PLAN_CLASS.encode() + b"\x00")
+        + element(0x00080018, "UI", INSTANCE_UID.encode())
+        + element(0x00080050, "SH")  # Accession Number, Z
+        + element(0x00080090, "PN")  # Referring Physician's Name, Z
+        + element(0x00101030, "DS")  # Patient's Weight, X
+        + element(0x300A0002, "SH")  # RT Plan Label, D
+    )
+    evidence = source.read_source(_file(transfer_syntax, data_set))
+    plan = walker.plan_instance(evidence, _rules(), _rt_plan())
+    result = edits.edit_instance(evidence, plan, KEY)
+
+    assert not result.sequestrations
+    assert not result.not_collected
+    found = {edit.path: edit for edit in result.edits}
+    assert found[_path("(0008,0050)")].kind is EditKind.EMPTY
+    assert found[_path("(0008,0090)")].kind is EditKind.EMPTY
+    assert found[_path("(0010,1030)")].kind is EditKind.REMOVE
+    assert found[_path("(300A,0002)")].values == ("DEIDENTIFIED",)
+
+
+SERIES_NUMBER = _path("(0020,0011)")
+# The numbers of three series of a study, two of them dates.
+NUMBERING = SeriesNumbering.of([20230601, 7, 20230512])
+
+
+def _series_number_edit(value, action=None, numbering=NUMBERING):
+    """Return the edit of an RT Plan's Series Number of ``value``.
+
+    Z applies to it, as it is Type 2 in the RT Series Module, unless
+    ``action`` replaces it.
+    """
+    data_set = (
+        _explicit(0x00080016, "UI", RT_PLAN_CLASS.encode() + b"\x00")
+        + _explicit(0x00080018, "UI", INSTANCE_UID.encode())
+        + _explicit(0x00200011, "IS", value)
+    )
+    evidence = source.read_source(_file(EXPLICIT, data_set))
+    rules = _rules() if action is None else _Overridden({"(0020,0011)": action})
+    plan = walker.plan_instance(evidence, rules, _rt_plan())
+    numberings = numbering and SeriesNumberings.of({SERIES_NUMBER: numbering})
+    result = edits.edit_instance(evidence, plan, KEY, series_numberings=numberings)
+    assert not result.sequestrations
+    return {edit.path: edit for edit in result.edits}[SERIES_NUMBER]
+
+
+@pytest.mark.deid_requirement("MIDI-BP-03", "MIDI-BP-06")
+@pytest.mark.parametrize("action", ["Z", "D"])
+@pytest.mark.parametrize(
+    "value, rank", [(b"20230512", "2"), (b"7 ", "1"), (b"+0020230601 ", "3")]
+)
+def test_a_series_number_takes_its_rank_in_its_studys_numbering(value, rank, action):
+    edit = _series_number_edit(value, action)
+
+    assert (edit.action, edit.kind, edit.values) == (action, EditKind.REPLACE, (rank,))
+
+
+@pytest.mark.deid_requirement("MIDI-BP-06")
+@pytest.mark.parametrize("value", [b"", b"7.0 ", b"20230513", b"12345678901234"])
+def test_a_series_number_that_takes_no_rank_is_emptied_under_z(value):
+    # Empty, not one Integer String, or not in the numbering.
+    edit = _series_number_edit(value)
+
+    assert (edit.action, edit.kind) == ("Z", EditKind.EMPTY)
+
+
+@pytest.mark.deid_requirement("MIDI-BP-06")
+@pytest.mark.parametrize("value", [b"7.0 ", b"20230513"])
+def test_a_series_number_that_takes_no_rank_takes_ds_dummy_value_under_d(value):
+    edit = _series_number_edit(value, "D")
+
+    # Never a rank, which starts from 1.
+    assert (edit.kind, edit.values) == (EditKind.REPLACE, ("0",))
+
+
+@pytest.mark.deid_requirement("MIDI-BP-06")
+@pytest.mark.parametrize("action", ["Z", "D"])
+def test_without_a_numbering_a_series_numbers_edit_is_pending(action):
+    edit = _series_number_edit(b"20230512", action, numbering=None)
+
+    assert edit.kind is EditKind.PENDING
+
+
 def test_patients_name_and_id_wait_for_their_pseudonyms():
     # D-005: Patient's Name and Patient ID take the subject's keyed
     # pseudonyms under Z and D, which a later step gives.
@@ -208,6 +315,17 @@ def test_every_removed_or_replaced_value_is_collected_with_its_vr():
     assert _path("(0028,0010)") not in collected
     assert BEAM_SEQUENCE not in collected
     assert all(value.codecs == ("latin_1",) for value in result.source_values)
+
+
+def test_a_private_un_value_that_reads_as_items_has_its_items_collected():
+    # As in MR private sequences: the layout, and so the plan, has its items.
+    _, result = _edits(
+        _explicit(0x00091001, "UN", _item(_implicit(0x00100020, b"SENTINEL")))
+    )
+
+    assert not result.sequestrations
+    inner = _path(("(0009,1001)", 0), "(0010,0020)")
+    assert _collected(result)[inner] == ("LO", "SENTINEL")
 
 
 def test_only_the_planned_values_and_the_sequences_that_hold_them_are_read(
@@ -336,29 +454,13 @@ def test_cleaned_text_outside_iso_646_without_a_character_set_sequesters():
     assert not result.edits
 
 
-def test_an_unsupported_character_set_sequesters_the_instance():
-    _, result = _edits(
-        _explicit(0x00080005, "CS", b"ISO_IR 999")
-        + _explicit(0x00100010, "PN", b"SENTINEL^NAME ")
-    )
-
-    (sequestration,) = result.sequestrations
-    assert sequestration.path == _path("(0008,0005)")
-    assert sequestration.reason is walker.SequesterReason.UNSUPPORTED_CHARACTER_SET
-    assert not result.edits
-    # With no character set to read the data set's text in, nothing in it is
-    # collected, and each value to collect is listed.
-    assert not result.source_values
-    assert [missing.path for missing in result.not_collected] == [_path("(0010,0010)")]
-    assert "SENTINEL" not in "".join(m.reason for m in result.not_collected)
-
-
 def test_an_item_with_its_own_character_set_is_read_under_an_unsupported_one(
     monkeypatch,
 ):
     # An item's own Specific Character Set replaces the one it would inherit
     # (PS3.5 Section 7.5.3), so its text can be read where the data set's
     # cannot.
+    _refusing(monkeypatch, _path("(0008,0005)"))
     data_set = (
         _explicit(0x00080005, "CS", b"ISO_IR 999")
         + _explicit(0x00100010, "PN", b"SENTINEL^NAME ")
@@ -503,8 +605,10 @@ def test_a_sequestration_while_editing_keeps_the_values_before_and_after_it(
 def test_an_unsupported_character_set_in_an_item_keeps_the_other_values(
     monkeypatch,
 ):
-    _refusing(monkeypatch, _path("(300A,0002)"))
     in_item = (("(0010,1002)", 0),)
+    _refusing(
+        monkeypatch, walker.ElementPath(in_item, "(0008,0005)"), _path("(300A,0002)")
+    )
     data_set = (
         _explicit(0x00081030, "LO", b"SENTINEL DESC ")
         + _explicit(
@@ -719,8 +823,11 @@ def test_an_items_character_set_is_inherited_or_its_own():
 
 
 @pytest.mark.parametrize("action", ["K", "X"])
-def test_an_unsupported_character_set_in_an_item_sequesters_the_instance(action):
+def test_an_unsupported_character_set_in_an_item_sequesters_the_instance(
+    monkeypatch, action
+):
     # D-010, whether the item is kept, with nothing in it read, or removed.
+    _refusing(monkeypatch, _path(("(300A,00B0)", 0), "(0008,0005)"))
     # Beam Sequence is Type 1, so the engine's rule removes it, as a plain X
     # from Table E.1-1 would sequester the instance (D-020).
     data_set = _explicit(

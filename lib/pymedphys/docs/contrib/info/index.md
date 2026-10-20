@@ -13,6 +13,7 @@ lazy-imports
 deidentification-design
 deidentification-requirements
 deidentification-midi-benchmark
+deidentification-dicom-validation
 dicom-coordinate-validation
 dicom-coordinates-illustrated
 gamma-performance

@@ -1,7 +1,13 @@
 import pathlib
 import sys
 
-from pymedphys._dev import docs, propagate, tests, tg263_edition_check
+from pymedphys._dev import (
+    docs,
+    propagate,
+    tcia_edition_check,
+    tests,
+    tg263_edition_check,
+)
 from pymedphys._dev.deid_tables import edition_check
 from pymedphys._dev.deid_tables import generate as deid_tables
 
@@ -16,6 +22,7 @@ def dev_cli(subparsers):
     add_deid_tables_parser(dev_subparsers)
     add_deid_matrix_parser(dev_subparsers)
     add_tg263_check_parser(dev_subparsers)
+    add_tcia_check_parser(dev_subparsers)
     add_doctests_parser(dev_subparsers)
     add_clean_imports_parser(dev_subparsers)
     add_mosaiq_mssql_parser(dev_subparsers)
@@ -237,6 +244,27 @@ def add_tg263_check_parser(dev_subparsers):
         help="Also write the result to FILE as JSON.",
     )
     parser.set_defaults(func=tg263_edition_check.tg263_check_cli)
+
+
+def add_tcia_check_parser(dev_subparsers):
+    parser = dev_subparsers.add_parser(
+        "tcia-check",
+        help=(
+            "Check the shipped TCIA Private Tag Dictionary against TCIA's "
+            "original: whether the shipped copy or the file at the pinned URL "
+            "differs from the pin, or TCIA's page links to an edition not yet "
+            "reviewed, or no longer links to the pinned file or to the CC BY "
+            "3.0 licence. Exits with status 0 if nothing has changed, 1 if "
+            "something has, and 3 if the page or the pinned file could not be "
+            "fetched, or the page links to no edition."
+        ),
+    )
+    parser.add_argument(
+        "--json",
+        metavar="FILE",
+        help="Also write the result to FILE as JSON.",
+    )
+    parser.set_defaults(func=tcia_edition_check.tcia_check_cli)
 
 
 def add_clean_imports_parser(dev_subparsers):

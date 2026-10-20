@@ -160,10 +160,7 @@ def _walk(root: Path) -> Iterator[_Entry]:
 
 
 def _is_link(entry: os.DirEntry, details: os.stat_result) -> bool:
-    if entry.is_symlink():
-        return True
-    is_junction = getattr(entry, "is_junction", None)  # Python 3.12 and later
-    if is_junction is not None and is_junction():
+    if entry.is_symlink() or entry.is_junction():
         return True
     attributes = getattr(details, "st_file_attributes", 0)  # Windows
     return bool(attributes & _FILE_ATTRIBUTE_REPARSE_POINT)

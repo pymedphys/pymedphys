@@ -43,6 +43,7 @@ from pymedphys._dev.deid_tables import (
     edition_check,
     generate,
     ps3_3,
+    ps3_3_terms,
     ps3_4,
     ps3_6,
     ps3_16,
@@ -51,8 +52,10 @@ from pymedphys._dev.deid_tables import (
 from pymedphys._dicom.deidentify import (
     codes,
     iods,
+    residual_exemptions,
     sop_classes,
     standard,
+    structured_content,
     uid_registry,
 )
 from pymedphys.cli import define_parser
@@ -236,6 +239,46 @@ E3_10_1 = _table(
 )
 E1_1 = _table(
     "Table E.1-1. Fixture Confidentiality Profile Attributes", E1_1_HEADER, E1_1_ROWS
+)
+E3_4_1_HEADER = (
+    "Code Meaning",
+    "Code Value",
+    "Coding Scheme Designator",
+    "Value Type",
+    "Retd. (from PS3.16)",
+    "In Std. Tpl. (from PS3.16)",
+    "Basic Prof.",
+    "Rtn. UIDs Opt.",
+    "Rtn. Dev. Id. Opt.",
+    "Rtn. Inst. Id. Opt.",
+    "Rtn. Pat. Chars. Opt.",
+    "Rtn. Long. Full Dates Opt.",
+    "Rtn. Long. Modif. Dates Opt.",
+    "Clean Desc. Opt.",
+)
+# The published table gives one concept name a row for each of several value
+# types, with different actions, and the Coding Scheme Version in brackets
+# after some designators. The pin keeps the rows of 99FIX and 99VER and
+# leaves out those of 99OUT.
+E3_4_1_ROWS = (
+    ("Fixture Observer Name", "990001", "99FIX", "PNAME", "N", "Y", "D") + ("",) * 7,
+    ("Fixture Procedure Date", "990002", "99FIX", "DATE", "N", "Y", "X")
+    + ("", "", "", "", "K", "C", ""),
+    ("Fixture Report", "990003", "99FIX", "COMPOSITE", "Y", "N", "X/D")
+    + ("K", "", "", "", "", "", ""),
+    ("Fixture Report", "990003", "99FIX", "TEXT", "N", "Y", "X")
+    + ("", "", "", "", "", "", "C"),
+    ("Fixture Registry Time", "17", "99VER [1.2b]", "DATETIME", "N", "Y", "X")
+    + ("", "", "", "", "K", "C", ""),
+    ("Fixture Device Code", "F-0001", "99OUT", "TEXT", "N", "Y", "X")
+    + ("", "K", "", "", "", "", ""),
+)
+E3_4_1_DESIGNATORS = frozenset({"99FIX", "99VER"})
+E3_4_1_LEFT_OUT = frozenset({"99OUT"})
+E3_4_1 = _table(
+    "Table E.3.4-1. Fixture Content Item Concept Name Codes",
+    E3_4_1_HEADER,
+    E3_4_1_ROWS,
 )
 
 
@@ -442,16 +485,32 @@ PS3_16 = {
     "Table CID 7050": (CID_HEADER, CID_7050_ROWS, codes.CodedConcept),
     "Table CID 7005": (CID_HEADER, CID_7005_ROWS, codes.CodedConcept),
 }
+# Annex L's tables of Body Part Examined terms, with some of their columns.
+# A row can give a code but no term.
+ANNEX_L_HEADER = ("Code Value", "Code Meaning", "Body Part Examined")
+ANNEX_L = {
+    "Table L-1": (
+        ANNEX_L_HEADER,
+        (("900011", "Fixture region", "FIXTUREREGION"), ("900012", "Uncut", "")),
+    ),
+    "Table L-2": (ANNEX_L_HEADER, (("900013", "Fixture leg", "FIXTURE LEG"),)),
+    "Table L-3": (
+        ("Code Meaning", "Body Part Examined", "Mouse Anatomy ID"),
+        (("Fixture region", "FIXTUREREGION", "0000001"),),
+    ),
+}
 PS3_16_PAGES = {
     "chtml/part16/chapter_8.html": ("Table 8-1", "Table 8-2"),
     "chtml/part16/sect_CID_7050.html": ("Table CID 7050",),
     "chtml/part16/sect_CID_7005.html": ("Table CID 7005",),
+    "chtml/part16/chapter_L.html": tuple(ANNEX_L),
 }
 
 
 def _ps3_16_page(labels):
+    tables = {**PS3_16, **ANNEX_L}
     return _page(
-        *(_table(f"{label}. Fixture {label}", *PS3_16[label][:2]) for label in labels)
+        *(_table(f"{label}. Fixture {label}", *tables[label][:2]) for label in labels)
     )
 
 
@@ -925,6 +984,146 @@ def test_table_e3_10_1_without_rows_fails():
         annex_e.parse_table_e3_10_1(_e3_10_1_table(rows=()))
 
 
+def _e3_4_1_table(header=E3_4_1_HEADER, rows=E3_4_1_ROWS):
+    page = _page(_table("Table E.3.4-1. Fixture", header, rows))
+    return chtml.select_table(chtml.extract_tables(page), "Table E.3.4-1")
+
+
+def _parse_e3_4_1(table=None, designators=E3_4_1_DESIGNATORS, left_out=E3_4_1_LEFT_OUT):
+    return annex_e.parse_table_e3_4_1(
+        _e3_4_1_table() if table is None else table, designators, left_out
+    )
+
+
+def test_parse_table_e3_4_1():
+    concepts = _parse_e3_4_1()
+
+    assert [
+        (c.code_meaning, c.code_value, c.scheme_designator, c.value_type)
+        for c in concepts
+    ] == [
+        ("Fixture Observer Name", "990001", "99FIX", "PNAME"),
+        ("Fixture Procedure Date", "990002", "99FIX", "DATE"),
+        ("Fixture Report", "990003", "99FIX", "COMPOSITE"),
+        ("Fixture Report", "990003", "99FIX", "TEXT"),
+        ("Fixture Registry Time", "17", "99VER", "DATETIME"),
+    ]
+    assert concepts[2] == structured_content.ContentItemConcept(
+        code_meaning="Fixture Report",
+        code_value="990003",
+        scheme_designator="99FIX",
+        scheme_version="",
+        value_type="COMPOSITE",
+        retired=True,
+        in_standard_template=False,
+        basic_profile="X/D",
+        options=types.MappingProxyType({"retain_uids": "K"}),
+    )
+    assert dict(concepts[1].options) == {
+        "retain_longitudinal_full_dates": "K",
+        "retain_longitudinal_modified_dates": "C",
+    }
+    assert dict(concepts[3].options) == {"clean_descriptors": "C"}
+    assert not concepts[0].options
+    # The version given in brackets after the designator.
+    assert concepts[4].scheme_version == "1.2b"
+
+
+def test_table_e3_4_1_columns_are_mapped_by_header_text():
+    order = (13, 3, 0, 6, 2, 12, 1, 5, 4, 11, 7, 10, 8, 9)
+    header = tuple(E3_4_1_HEADER[i] for i in order)
+    rows = tuple(tuple(row[i] for i in order) for row in E3_4_1_ROWS)
+
+    assert _parse_e3_4_1(_e3_4_1_table(header, rows)) == _parse_e3_4_1()
+
+
+@pytest.mark.parametrize(
+    "header, message",
+    [
+        (E3_4_1_HEADER + ("Clean Struct. Cont. Opt.",), "unknown column 'Clean Struct"),
+        (E3_4_1_HEADER[:-1], "missing column 'Clean Desc. Opt.'"),
+    ],
+)
+def test_table_e3_4_1_unknown_or_missing_columns_fail(header, message):
+    rows = tuple((row + ("",))[: len(header)] for row in E3_4_1_ROWS)
+
+    with pytest.raises(chtml.TableFormatError, match=message):
+        _parse_e3_4_1(_e3_4_1_table(header, rows))
+
+
+@pytest.mark.parametrize(
+    "column, value, message",
+    [
+        (0, "", "code meaning is not text"),
+        (0, "Fixture\\Name", "code meaning is not text"),
+        (0, "F" * 65, "code meaning is not text"),
+        (1, "", "code value is not text"),
+        (1, "9" * 17, "code value is not text"),
+        (2, "", "designator '' is not recognised"),
+        (2, "99FIX [", "designator '99FIX \\[' is not recognised"),
+        (2, "99FIX []", "is not recognised"),
+        (2, "99FIX[1.2b]", "is not recognised"),
+        (2, "99FIX [1.2b] x", "is not recognised"),
+        (2, "_99FIX", "is not recognised"),
+        (2, "F" * 17, "is not recognised"),
+        (3, "NUMERIC", "value type 'NUMERIC' is not defined"),
+        (3, "text", "value type 'text' is not defined"),
+        (4, "", "Retd. \\(from PS3.16\\) is '', not Y or N"),
+        (5, "y", "is 'y', not Y or N"),
+        (6, "", "Basic Prof. has action ''"),
+        (6, "U*", "Basic Prof. has action 'U\\*'"),
+        (7, "k", "Rtn. UIDs Opt. has action 'k'"),
+    ],
+)
+def test_table_e3_4_1_invalid_values_fail(column, value, message):
+    row = list(E3_4_1_ROWS[0])
+    row[column] = value
+
+    with pytest.raises(chtml.TableFormatError, match=f"E.3.4-1 row 1.*{message}"):
+        _parse_e3_4_1(_e3_4_1_table(rows=(tuple(row),) + E3_4_1_ROWS[1:]))
+
+
+def test_table_e3_4_1_repeated_code_and_value_type_fail():
+    # The same code with another value type is a separate row; the same code
+    # with the same value type is repeated, whatever the version or meaning.
+    repeated = ("Other Meaning", "17", "99VER", "DATETIME") + E3_4_1_ROWS[4][4:]
+
+    with pytest.raises(
+        chtml.TableFormatError, match="99VER 17 DATETIME appears 2 times"
+    ):
+        _parse_e3_4_1(_e3_4_1_table(rows=E3_4_1_ROWS + (repeated,)))
+
+
+@pytest.mark.parametrize(
+    "designators, left_out, message",
+    [
+        (
+            frozenset({"99FIX"}),
+            E3_4_1_LEFT_OUT,
+            "the pin neither keeps nor leaves out: 99VER",
+        ),
+        (
+            E3_4_1_DESIGNATORS | {"99NEW"},
+            E3_4_1_LEFT_OUT,
+            "no rows of coding schemes the pin names: 99NEW",
+        ),
+        (
+            E3_4_1_DESIGNATORS,
+            E3_4_1_LEFT_OUT | {"99VER"},
+            "the pin both keeps and leaves out 99VER",
+        ),
+    ],
+)
+def test_table_e3_4_1_schemes_must_match_the_pin(designators, left_out, message):
+    with pytest.raises(chtml.TableFormatError, match=message):
+        _parse_e3_4_1(designators=designators, left_out=left_out)
+
+
+def test_table_e3_4_1_without_rows_fails():
+    with pytest.raises(chtml.TableFormatError, match="has no rows"):
+        _parse_e3_4_1(_e3_4_1_table(rows=()))
+
+
 def test_parse_table_6_1():
     attributes = ps3_6.parse_table_6_1(_table_6_1())
 
@@ -1307,12 +1506,34 @@ PS3_3_PATIENT_MACRO = _spanning_table(
     ATTRIBUTE_HEADER,
     (("Fixture Scan", "(0998,0060)", "3", "Invented."),),
 )
+
+
+def _terms(title, *terms):
+    """Return a list of terms as PS3.3 marks one up."""
+    return (
+        f'<div class="variablelist"><p class="title"><strong>{title}</strong></p>'
+        '<dl class="variablelist compact">'
+        + "".join(
+            f'<dt><span class="term">{term}</span></dt><dd><p>Invented.</p></dd>'
+            for term in terms
+        )
+        + "</dl></div>"
+    )
+
+
 PS3_3_IMAGE = _spanning_table(
     "Table C.99-2. Fixture Image Module Attributes",
     ATTRIBUTE_HEADER,
     (
         ("Fixture Overlay Value", "(60xx,0998)", "1", "Invented."),
-        ("Fixture Scan", "(0998,0060)", "3", "Invented."),
+        (
+            "Fixture Scan",
+            "(0998,0060)",
+            "3",
+            "Invented.</p>"
+            + _terms("Defined Terms:", "FIXTURE SCAN")
+            + '<p>See <a class="xref" href="#sect_C.99.2.1">C.99.2.1</a>.',
+        ),
         _include(0, "Table 10-98", "Fixture Wildcard Macro Attributes"),
     ),
 )
@@ -1468,6 +1689,9 @@ PS3_3_TABLES = (
     _section("B.99.1", PS3_3_NORMALIZED_IOD),
     _section("C.99.1", PS3_3_PATIENT, PS3_3_PATIENT_MACRO),
     _section("C.99.2", PS3_3_IMAGE),
+    _section(
+        "C.99.2.1", "<p>Invented.</p>", _terms("Enumerated Values:", "SECTION_SCAN")
+    ),
     _section("C.99.3", PS3_3_OTHER),
     _section("C.99.4b", PS3_3_CONTRAST),
     _section("C.99.5", PS3_3_FUNCTIONAL_GROUPS),
@@ -2529,6 +2753,7 @@ def test_a_malformed_expected_digest_is_rejected(tmp_path):
 
 # The generator, with a pin for the hand-written page instead of NEMA's.
 FIXTURE_PAGE = _page(E1_1A, E1_1).encode("utf-8")
+FIXTURE_E3_4_PAGE = _page(E3_4_1).encode("utf-8")
 FIXTURE_E3_10_PAGE = _page(E3_10_1).encode("utf-8")
 FIXTURE_CHAPTER_6_PAGE = _page(TABLE_6_1).encode("utf-8")
 FIXTURE_CHAPTER_A_PAGE = _page(*ANNEX_A_TABLES).encode("utf-8")
@@ -2540,6 +2765,7 @@ FIXTURE_PS3_3_PAGE = _page(*PS3_3_TABLES).encode("utf-8")
 # Each page at its path below output/, as NEMA publishes it.
 FIXTURE_PAGES = {
     "chtml/part15/chapter_E.html": FIXTURE_PAGE,
+    "chtml/part15/sect_E.3.4.html": FIXTURE_E3_4_PAGE,
     "chtml/part15/sect_E.3.10.html": FIXTURE_E3_10_PAGE,
     "chtml/part06/chapter_6.html": FIXTURE_CHAPTER_6_PAGE,
     "chtml/part06/chapter_A.html": FIXTURE_CHAPTER_A_PAGE,
@@ -2556,7 +2782,13 @@ FIXTURE_PIN = generate.Pin(
     left_out_iods=PS3_3_LEFT_OUT_IODS,
     shared_functional_groups=PS3_3_SHARED_FUNCTIONAL_GROUPS,
     corrections=PS3_3_CORRECTIONS,
+    structured_content_schemes=tuple(sorted(E3_4_1_DESIGNATORS)),
+    left_out_structured_content_schemes=tuple(sorted(E3_4_1_LEFT_OUT)),
 )
+
+
+def _fixture_digest(path):
+    return next(source.sha256 for source in FIXTURE_PIN.sources if source.path == path)
 
 
 @pytest.fixture(name="source_dir")
@@ -2620,6 +2852,74 @@ def test_generate_writes_table_e1_1_with_its_provenance(source_dir, tmp_path):
             [{"code": code, "description": text} for code, text in E1_1A_ROWS],
         ),
         (
+            "e3_4_1.json",
+            "PS3.15 Table E.3.4-1",
+            "chtml/part15/sect_E.3.4.html",
+            [
+                {
+                    "code_meaning": "Fixture Observer Name",
+                    "code_value": "990001",
+                    "scheme_designator": "99FIX",
+                    "scheme_version": "",
+                    "value_type": "PNAME",
+                    "retired": False,
+                    "in_standard_template": True,
+                    "basic_profile": "D",
+                    "options": {},
+                },
+                {
+                    "code_meaning": "Fixture Procedure Date",
+                    "code_value": "990002",
+                    "scheme_designator": "99FIX",
+                    "scheme_version": "",
+                    "value_type": "DATE",
+                    "retired": False,
+                    "in_standard_template": True,
+                    "basic_profile": "X",
+                    "options": {
+                        "retain_longitudinal_full_dates": "K",
+                        "retain_longitudinal_modified_dates": "C",
+                    },
+                },
+                {
+                    "code_meaning": "Fixture Report",
+                    "code_value": "990003",
+                    "scheme_designator": "99FIX",
+                    "scheme_version": "",
+                    "value_type": "COMPOSITE",
+                    "retired": True,
+                    "in_standard_template": False,
+                    "basic_profile": "X/D",
+                    "options": {"retain_uids": "K"},
+                },
+                {
+                    "code_meaning": "Fixture Report",
+                    "code_value": "990003",
+                    "scheme_designator": "99FIX",
+                    "scheme_version": "",
+                    "value_type": "TEXT",
+                    "retired": False,
+                    "in_standard_template": True,
+                    "basic_profile": "X",
+                    "options": {"clean_descriptors": "C"},
+                },
+                {
+                    "code_meaning": "Fixture Registry Time",
+                    "code_value": "17",
+                    "scheme_designator": "99VER",
+                    "scheme_version": "1.2b",
+                    "value_type": "DATETIME",
+                    "retired": False,
+                    "in_standard_template": True,
+                    "basic_profile": "X",
+                    "options": {
+                        "retain_longitudinal_full_dates": "K",
+                        "retain_longitudinal_modified_dates": "C",
+                    },
+                },
+            ],
+        ),
+        (
             "e3_10_1.json",
             "PS3.15 Table E.3.10-1",
             "chtml/part15/sect_E.3.10.html",
@@ -2648,6 +2948,16 @@ def test_generate_writes_the_other_annex_e_tables(
     assert document["content_sha256"] == standard.content_sha256(rows)
 
 
+def test_the_generated_table_e3_4_1_loads_as_parsed(source_dir, tmp_path):
+    output_dir = tmp_path / "tables"
+
+    assert generate.generate(FIXTURE_PIN, output_dir, source_dir=source_dir) == 0
+
+    table = structured_content.load_table_e3_4_1(output_dir / "e3_4_1.json")
+    assert table.edition == "2099a"
+    assert table.concepts == _parse_e3_4_1()
+
+
 def test_generate_writes_the_data_dictionary(source_dir, tmp_path):
     output_dir = tmp_path / "tables"
 
@@ -2666,7 +2976,7 @@ def test_generate_writes_the_data_dictionary(source_dir, tmp_path):
     assert document["sources"] == [
         {
             "path": "chtml/part06/chapter_6.html",
-            "sha256": FIXTURE_PIN.sources[2].sha256,
+            "sha256": _fixture_digest("chtml/part06/chapter_6.html"),
         }
     ]
     assert document["rows"] == rows
@@ -2688,7 +2998,7 @@ def test_generate_writes_the_annex_a_tables(source_dir, tmp_path, label):
     assert document["sources"] == [
         {
             "path": "chtml/part06/chapter_A.html",
-            "sha256": FIXTURE_PIN.sources[3].sha256,
+            "sha256": _fixture_digest("chtml/part06/chapter_A.html"),
         }
     ]
     assert document["rows"] == expected
@@ -2770,7 +3080,154 @@ def test_generate_writes_the_ps3_3_tables(source_dir, tmp_path, name, table, row
     assert document["content_sha256"] == standard.content_sha256(rows)
 
 
+def test_generate_writes_the_terms_of_the_cs_attributes(source_dir, tmp_path):
+    output_dir = tmp_path / "tables"
+
+    assert generate.generate(FIXTURE_PIN, output_dir, source_dir=source_dir) == 0
+
+    document = json.loads((output_dir / "defined_terms.json").read_text("utf-8"))
+    rows = [
+        {"tag": "(0998,0060)", "term": "FIXTURE SCAN"},
+        {"tag": "(0998,0060)", "term": "SECTION_SCAN"},
+    ]
+    assert document["table"] == residual_exemptions.DEFINED_TERMS_TABLE.table
+    assert document["acknowledgement"] == "DICOM PS3.3 2099a, \u00a9 NEMA"
+    assert document["rows"] == rows
+    assert document["content_sha256"] == standard.content_sha256(rows)
+    table = residual_exemptions.load_defined_terms(output_dir / "defined_terms.json")
+    assert [(row.tag, row.term) for row in table.rows] == [
+        (row["tag"], row["term"]) for row in rows
+    ]
+
+
+def test_generate_writes_the_body_part_terms_of_annex_l(source_dir, tmp_path):
+    output_dir = tmp_path / "tables"
+
+    assert generate.generate(FIXTURE_PIN, output_dir, source_dir=source_dir) == 0
+
+    path = output_dir / residual_exemptions.BODY_PART_TERMS_TABLE.file
+    document = json.loads(path.read_text("utf-8"))
+    rows = [{"term": "FIXTURE LEG"}, {"term": "FIXTUREREGION"}]
+    assert document["table"] == residual_exemptions.BODY_PART_TERMS_TABLE.table
+    assert document["acknowledgement"] == "DICOM PS3.16 2099a, \u00a9 NEMA"
+    assert document["rows"] == rows
+    table = residual_exemptions.load_body_part_terms(path)
+    assert [row.term for row in table.rows] == ["FIXTURE LEG", "FIXTUREREGION"]
+
+
+def _annex_l(header=ANNEX_L_HEADER, rows=(("900011", "Fixture", "FIXTURE"),)):
+    page = _page(_table("Table L-1. Fixture", header, rows))
+    return {"Table L-1": chtml.select_table(chtml.extract_tables(page), "Table L-1")}
+
+
+@pytest.mark.parametrize(
+    "tables, message",
+    [
+        (_annex_l(header=("Code Value", "Code Meaning", "Body Part")), "column"),
+        (_annex_l(rows=(("900011", "Fixture", "Fixture"),)), "row 1"),
+        (_annex_l(rows=(("900011", "Fixture", ""),)), "no Annex L"),
+    ],
+)
+def test_annex_l_without_valid_body_part_terms_fails(tables, message):
+    with pytest.raises(chtml.TableFormatError, match=message):
+        ps3_16.parse_body_part_terms(tables)
+
+
+def _terms_page(*parts):
+    return "<html><body>" + "".join(parts) + "</body></html>"
+
+
+def _terms_row(tag, description):
+    return (
+        "<table><tr><td><p>Name</p></td>"
+        f"<td><p>{tag}</p></td><td><p>3</p></td><td><p>{description}</p></td></tr>"
+        "</table>"
+    )
+
+
+TERMS_DICTIONARY = {
+    "(0998,0060)": "CS",
+    "(0998,0061)": "CS",
+    "(0998,0050)": "DS",
+    "(60xx,0998)": "CS",
+}
+
+
+@pytest.mark.parametrize(
+    "parts, expected",
+    [
+        # A list in the attribute's row, keeping only values that CS can hold.
+        (
+            [
+                _terms_row(
+                    "(0998,0060)", _terms("Defined Terms:", "ONE", "Two", "X" * 17)
+                )
+            ],
+            [("(0998,0060)", "ONE")],
+        ),
+        # Every list in a section the row refers to, and retired terms.
+        (
+            [
+                _section(
+                    "C.1", "<p>Invented.</p>", _terms("Retired Defined Terms:", "OLD")
+                ),
+                _section(
+                    "C.2", "<p>Invented.</p>", _terms("Enumerated Values:", "OTHER")
+                ),
+                _terms_row(
+                    "(0998,0060)", 'See <a class="xref" href="#sect_C.1">C.1</a>'
+                ),
+            ],
+            [("(0998,0060)", "OLD")],
+        ),
+        # A title that names an attribute gives its terms to that attribute,
+        # and a tag after "when" is a condition.
+        (
+            [
+                _terms_row(
+                    "(0998,0060)",
+                    _terms(
+                        "Enumerated Values for Fixture (0998,0061) when Fixture "
+                        "(0998,0060) is ONE:",
+                        "NAMED",
+                    ),
+                )
+            ],
+            [("(0998,0061)", "NAMED")],
+        ),
+        # Lists with other titles, of attributes of other VRs, and of
+        # repeating groups are left out.
+        (
+            [
+                _terms_row("(0998,0060)", _terms("Recommended text:", "TEXT")),
+                _terms_row("(0998,0050)", _terms("Enumerated Values:", "1.5")),
+                _terms_row("(60xx,0998)", _terms("Enumerated Values:", "G")),
+                _terms_row("(0998,0061)", _terms("Defined Terms:", "KEPT")),
+            ],
+            [("(0998,0061)", "KEPT")],
+        ),
+    ],
+)
+def test_parse_terms(parts, expected):
+    rows = ps3_3_terms.parse_terms(_terms_page(*parts), TERMS_DICTIONARY)
+
+    assert [(row["tag"], row["term"]) for row in rows] == expected
+
+
+def test_a_page_without_terms_fails():
+    with pytest.raises(chtml.TableFormatError, match="Enumerated Values"):
+        ps3_3_terms.parse_terms(
+            _terms_page(_terms_row("(0998,0060)", "None.")), TERMS_DICTIONARY
+        )
+
+
 def test_the_ps3_3_tables_are_named_as_the_loader_expects():
+    assert residual_exemptions.DEFINED_TERMS_TABLE.table == (
+        f"PS3.3 {ps3_3_terms.TERMS_LABEL}"
+    )
+    assert residual_exemptions.BODY_PART_TERMS_TABLE.table == (
+        f"PS3.16 {ps3_16.BODY_PART_LABEL}"
+    )
     assert iods.IOD_MODULES_TABLE == "PS3.3 IOD Modules"
     assert iods.MODULE_ATTRIBUTES_TABLE == "PS3.3 Module Attributes"
 
@@ -2826,6 +3283,19 @@ def test_the_pin_leaves_out_the_real_time_iods():
         ),
         ps3_3.LeftOutIOD("Table A.34.11-1", "Real-Time Audio Waveform", "(0006,0001)"),
     }
+
+
+def test_the_pin_keeps_the_dicom_and_snomed_ct_rows_of_table_e3_4_1():
+    # The schemes of the 2026d table's 214 rows: DCM 189, SCT 11, LN 7,
+    # NCDR 4, NCIt 2, and UMLS 1. Generation fails if an edition adds or
+    # drops a scheme, and so does this test until it is updated with the pin.
+    assert generate.PIN.structured_content_schemes == ("DCM", "SCT")
+    assert generate.PIN.left_out_structured_content_schemes == (
+        "LN",
+        "NCDR",
+        "NCIt",
+        "UMLS",
+    )
 
 
 def test_the_pin_gives_an_iod_the_functional_group_macros_its_text_names():
@@ -2920,6 +3390,7 @@ CURRENT_URL = (
 
 
 def test_download_prefers_the_edition_and_falls_back_to_current(monkeypatch, tmp_path):
+    e3_4_current = CURRENT_URL.replace("chapter_E.html", "sect_E.3.4.html")
     e3_10_current = CURRENT_URL.replace("chapter_E.html", "sect_E.3.10.html")
     chapter_6_current = CURRENT_URL.replace(
         "part15/chapter_E.html", "part06/chapter_6.html"
@@ -2939,6 +3410,7 @@ def test_download_prefers_the_edition_and_falls_back_to_current(monkeypatch, tmp
         monkeypatch,
         {
             CURRENT_URL: FIXTURE_PAGE,
+            e3_4_current: FIXTURE_E3_4_PAGE,
             e3_10_current: FIXTURE_E3_10_PAGE,
             chapter_6_current: FIXTURE_CHAPTER_6_PAGE,
             chapter_a_current: FIXTURE_CHAPTER_A_PAGE,
@@ -2952,6 +3424,8 @@ def test_download_prefers_the_edition_and_falls_back_to_current(monkeypatch, tmp
     assert requested == [
         EDITION_URL,
         CURRENT_URL,
+        EDITION_URL.replace("chapter_E.html", "sect_E.3.4.html"),
+        e3_4_current,
         EDITION_URL.replace("chapter_E.html", "sect_E.3.10.html"),
         e3_10_current,
         EDITION_URL.replace("part15/chapter_E.html", "part06/chapter_6.html"),
@@ -2974,6 +3448,7 @@ def test_download_prefers_the_edition_and_falls_back_to_current(monkeypatch, tmp
     for name in (
         "e1_1.json",
         "e1_1a.json",
+        "e3_4_1.json",
         "e3_10_1.json",
         "data_dictionary.json",
         "iod_modules.json",
@@ -3153,7 +3628,12 @@ def test_a_changed_cell_changes_exactly_its_table(tables_dir):
                 b"<p>Keyword</p>",
                 f"<p>{SECRET}</p>".encode("utf-8"),
             ),
-            ["data_dictionary.json", "iod_modules.json", "module_attributes.json"],
+            [
+                "data_dictionary.json",
+                "iod_modules.json",
+                "module_attributes.json",
+                "defined_terms.json",
+            ],
         ),
     ],
 )
