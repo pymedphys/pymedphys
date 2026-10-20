@@ -874,14 +874,29 @@ def test_random_holes_that_cuts_make_are_split_away_from_closed_planar_contours(
 def test_a_contour_that_cannot_be_freed_of_holes_is_cut_by_the_whole_block(
     monkeypatch,
 ):
+    # The holes in two columns need two splits, one more than allowed.
     monkeypatch.setattr(region_defacing, "_MOST_SPLITS", 1)
 
     rings = _rings_cut(
-        _holed_region([(0, -4)]), "CLOSED_PLANAR", _rectangle(-8, 8, -9, 5, 20)
+        _holed_region([(0, -4), (0, -7), (3, -2)]),
+        "CLOSED_PLANAR",
+        _rectangle(-8, 8, -9, 5, 20),
     )
 
     assert len(rings) == 1
     assert _polygon(rings[0]).equals(_polygon(_rectangle(-8, 8, 0, 5, 20)))
+
+
+def test_the_limit_counts_splits_not_the_joins_between_them(monkeypatch):
+    # Two splits free the contour of its holes, with four joins.
+    monkeypatch.setattr(region_defacing, "_MOST_SPLITS", 2)
+    air = [(0, -4), (0, -7), (3, -2)]
+    points = _rectangle(-8, 8, -9, 5, 20)
+
+    rings = _rings_cut(_holed_region(air), "CLOSED_PLANAR", points)
+
+    assert len(rings) == 3
+    _assert_hole_free(rings, _polygon(points).difference(_air_removed(air)))
 
 
 def test_a_contour_nearer_two_tilted_slices_is_cut_by_the_whole_block():

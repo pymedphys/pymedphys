@@ -471,9 +471,8 @@ def _without_holes(
     z = float(ring[0, 2])
     written: list[np.ndarray] = []
     pending = [pieces]
-    for _ in range(_MOST_SPLITS):
-        if not pending:
-            return written
+    splits = 0
+    while pending:
         parts = pending.pop()
         rings = dissolve([part[:, :2] for part in parts], ring[:, :2], _SAME_POINT)
         if rings is None:
@@ -483,6 +482,9 @@ def _without_holes(
         if not holes:
             written.extend(rings)
             continue
+        if splits == _MOST_SPLITS:
+            return None
+        splits += 1
         hole = min(
             (
                 grid.indices(np.column_stack([each, np.full(len(each), z)]))[1]
@@ -503,7 +505,7 @@ def _without_holes(
             ]
             if half:
                 pending.append(half)
-    return None
+    return written
 
 
 def _distinct(points: np.ndarray) -> np.ndarray:
