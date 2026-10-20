@@ -115,7 +115,8 @@ SciPy promise the same output from one version to the next, so the text
 detector's description includes their versions. The engine records the
 Python implementation and version and the versions of pydicom and tomlkit
 separately, as provenance of each run; other libraries' versions reach the
-release report only within a text finder's description. Runtime software
+release report only through the digest of a text finder's description.
+Runtime software
 can affect execution, so equal digests show that these inputs are equal, not
 that two runs executed identically or wrote the same output; reproducing or
 auditing a run also needs its recorded runtime environment.

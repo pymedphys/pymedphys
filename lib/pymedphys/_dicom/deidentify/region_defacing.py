@@ -347,9 +347,9 @@ class _Spare:
     def of(cls, region: DoseBlock, polygons: list[np.ndarray]) -> _Spare | None:
         """Return the kept brain of the plane of ``polygons``, or None where
         they are cut by the whole block: where they are not all simple and
-        in one axial plane above the block's axial plane, nearest one axial
-        slice of the series within half its spacing, with pixels kept in
-        the block."""
+        in one axial plane above the block's axial plane, with every point
+        within them nearest one axial slice of the series within half its
+        spacing, one with pixels kept in the block."""
         z = float(polygons[0][0, 2])
         if (
             not region.slices
