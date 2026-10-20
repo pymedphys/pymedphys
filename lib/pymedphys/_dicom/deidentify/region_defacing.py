@@ -36,21 +36,22 @@ counts where it lies in the block.
 
 A closed contour that reaches the face loses only what defacing writes as
 air, as the CT does, where it can be cut so (:class:`_Spare`): where the
-closed contours of its ROI in its plane are each simple, all lie at one z
-above the block's axial plane, and have one nearest slice, an axial one
-with pixels that defacing keeps in the block. Each of them is then written
-as its part behind the block's vertical plane joined with its part ahead
-of that plane within the squares of that slice's pixels that defacing does
-not write as air, those of the kept cavity and those whose centres lie
-outside the block, each square being the points whose nearest pixel it
-is. The part within the squares is found exactly, a row of pixels at a
-time (:func:`~pymedphys._geometry.pixel_grids.within_pixels`), and the
-pieces are joined into rings along the edges that they share
-(:func:`~pymedphys._geometry.polygons.dissolve`), outer rings
-anticlockwise and holes clockwise, each its own contour of the same type,
-or written as they are where they cannot be joined, which still covers the
-same region. A contour whose region loses no area by this is written as
-received.
+closed contours of its ROI in its plane are each simple, a point that
+repeats the one before it aside, all lie at one z above the block's axial
+plane, and have one nearest slice, an axial one with pixels that defacing
+keeps in the block. Each of them is then written as its part behind the
+block's vertical plane joined with its part ahead of that plane within the
+squares of that slice's pixels that defacing does not write as air, those
+of the kept cavity and those whose centres lie outside the block, each
+square being the points whose nearest pixel it is. The part within the
+squares is found exactly, a row of pixels at a time
+(:func:`~pymedphys._geometry.pixel_grids.within_pixels`), and the pieces
+are joined into rings along the edges that they share
+(:func:`~pymedphys._geometry.polygons.dissolve`), outer rings winding as
+the source contour does and holes the other way, each its own contour of
+the same type. Where the pieces of any of them cannot be joined, all of
+them are cut by the whole block instead. A contour whose region loses no
+area by this is written as received.
 
 Any other contour that reaches the face is cut by the block's two planes,
 so that what is written of it lies outside the block or on its boundary,
@@ -253,9 +254,11 @@ def _written(
 
     Closed contours in one plane bound one region together, as a hole's
     contour does within its outer one, so where one of them reaches the
-    face, each of them that enters the block is cut by it, and the region
-    that they bound together loses just its part in the block. Where any
-    is cut, a closed contour that lies in no one plane is refused.
+    face, each of them is cut by the same region, the block less the
+    pixels that defacing does not write as air where :class:`_Spare` can
+    cut them all so, or else the whole block, and the region that they
+    bound together loses just its part in it. Where any is cut, a closed
+    contour that lies in no one plane is refused.
 
     Raises
     ------
@@ -283,13 +286,15 @@ def _written(
         # the brain that defacing keeps where the plane allows, or the whole
         # block, so that the region they bound together loses just its part
         # in it.
-        spare = _Spare.of(region, [parsed[index][1] for index in members])
-        for index in members:
-            points = parsed[index][1]
-            if spare is None:
-                cutting[index] = _enters(region.block, points)
-            else:
-                cutting[index], spared[index] = spare.cut(points)
+        polygons = [_distinct(parsed[index][1]) for index in members]
+        spare = _Spare.of(region, polygons)
+        cuts = None if spare is None else [spare.cut(each) for each in polygons]
+        if cuts is None or any(each is None for each in cuts):
+            for index in members:
+                cutting[index] = _enters(region.block, parsed[index][1])
+            continue
+        for index, each in zip(members, cuts, strict=True):
+            cutting[index], spared[index] = each
     if not any(cutting):
         return None
     written: list[WrittenContour] = []
@@ -355,15 +360,17 @@ class _Spare:
             each.kept | ~inside,
         )
 
-    def cut(self, points: np.ndarray) -> tuple[bool, list[np.ndarray]]:
+    def cut(self, points: np.ndarray) -> tuple[bool, list[np.ndarray]] | None:
         """Return whether a closed contour's region meets the block where
         defacing writes air, and so is cut, and the polygons written in its
         place: its part outside the block (:func:`_pieces`), joined with
         its part in the block in the squares of the pixels that defacing
         does not write as air, where it has one, into rings, outer ones
-        anticlockwise and holes clockwise.
+        winding as the contour does and holes the other way. Return None
+        where the pieces cannot be joined into rings.
         """
-        ring = points if signed_area(points) > 0 else points[::-1]
+        clockwise = signed_area(points) <= 0
+        ring = points[::-1] if clockwise else points
         outside = _pieces(self.block, CLOSED_PLANAR, ring)
         ahead = clip(ring, *_ahead(self.block))
         kept = [
@@ -375,14 +382,28 @@ class _Spare:
         if not removed > _SLIVER:
             return False, []
         if not sum(map(signed_area, kept)) > _SLIVER:
-            return True, outside
-        rings = dissolve(
-            [piece[:, :2] for piece in outside + kept], ring[:, :2], _SAME_POINT
-        )
-        if rings is None:
-            return True, outside + kept
-        z = float(ring[0, 2])
-        return True, [np.column_stack([each, np.full(len(each), z)]) for each in rings]
+            written = outside
+        else:
+            rings = dissolve(
+                [piece[:, :2] for piece in outside + kept], ring[:, :2], _SAME_POINT
+            )
+            if rings is None:
+                return None
+            z = float(ring[0, 2])
+            written = [np.column_stack([each, np.full(len(each), z)]) for each in rings]
+        # A reader that fills by the nonzero rule takes a hole for one only
+        # where it winds against its outer contour.
+        return True, [each[::-1] for each in written] if clockwise else written
+
+
+def _distinct(points: np.ndarray) -> np.ndarray:
+    """Return a closed contour's points without a point that repeats the
+    one before it, the last point being before the first, so that a contour
+    whose first point is written again at its end can still be simple."""
+    repeated = (points == np.roll(points, 1, axis=0)).all(axis=1)
+    if repeated.all():
+        return points[:1]
+    return points[~repeated]
 
 
 def _contour(contour: pydicom.Dataset) -> tuple[str, np.ndarray]:

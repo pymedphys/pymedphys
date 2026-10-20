@@ -29,7 +29,7 @@ from pymedphys._dicom.deidentify.dose_defacing import DoseBlock
 from pymedphys._dicom.deidentify.face_blocks import KeptSlice
 from pymedphys._dicom.deidentify.pixel_cleaning import PixelDataRefused
 from pymedphys._dicom.deidentify import region_defacing
-from pymedphys._geometry.polygons import coplanar
+from pymedphys._geometry.polygons import coplanar, signed_area
 from pymedphys._dicom.deidentify.region_defacing import (
     ContoursRefused,
     PetDefacer,
@@ -46,11 +46,11 @@ _FRAME = files.FRAME
 
 def _kept_slice(z: float) -> KeptSlice:
     """An axial slice over x and y from -20 to 20 mm at 1 mm, whose kept
-    pixels are those in the block with x from -5 to 5 mm and y from -10 to
-    -1 mm, above z = 15 mm."""
+    pixels are those in the block with x from -5 to 7 mm and y from -10 to
+    -1 mm, above z = 15 mm, so that a mirror image of them is not."""
     x = np.arange(-20, 21)[None, :]
     y = np.arange(-20, 21)[:, None]
-    kept = (np.abs(x) <= 5) & (y >= -10) & (y <= -1) & (z > 15)
+    kept = (x >= -5) & (x <= 7) & (y >= -10) & (y <= -1) & (z > 15)
     return KeptSlice((-20.0, -20.0, z), files.AXIAL, (1.0, 1.0), kept)
 
 
@@ -223,7 +223,7 @@ def _region_of(polygons):
 
 _FACE_SIDE = shapely.geometry.box(-1000, -1000, 1000, 0)
 # The squares of the pixels kept in the block.
-_CAVITY = shapely.geometry.box(-5.5, -10.5, 5.5, -0.5)
+_CAVITY = shapely.geometry.box(-5.5, -10.5, 7.5, -0.5)
 
 
 def _removed(z):
@@ -631,6 +631,77 @@ def test_random_simple_polygons_keep_exactly_their_part_in_the_kept_brain():
     assert spared > 100, (spared, kept_whole)
 
 
+def _winding(point, rings):
+    """The sum of the rings' winding numbers about a point, by x and y."""
+    total = 0
+    for ring in rings:
+        starts = ring[:, :2]
+        for (x0, y0), (x1, y1) in zip(starts, np.roll(starts, -1, axis=0)):
+            cross = (x1 - x0) * (point[1] - y0) - (point[0] - x0) * (y1 - y0)
+            if y0 <= point[1] < y1 and cross > 0:
+                total += 1
+            elif y1 <= point[1] < y0 and cross < 0:
+                total -= 1
+    return total
+
+
+@pytest.mark.parametrize("reverse", [False, True], ids=["outer", "outer reversed"])
+def test_a_cut_contour_keeps_its_winding_so_a_hole_stays_one_by_any_rule(reverse):
+    # A reader that fills by the nonzero rule takes a hole for one only
+    # where it winds against its outer contour, so the outer contour, which
+    # is cut, keeps its winding, and the hole, which is not, is as it was.
+    outer = _rectangle(-15, 15, -15, 15, 20)
+    hole = _rectangle(-4, 4, -9, -2, 20)[::-1]
+    if reverse:
+        outer, hole = outer[::-1], hole[::-1]
+
+    written = _roi([("CLOSED_PLANAR", outer), ("CLOSED_PLANAR", hole)])
+
+    assert [index for index, _ in written] == [0, 1]
+    assert np.sign(signed_area(written[0][1])) == np.sign(signed_area(outer))
+    rings = [points for _, points in written]
+    expected = _region_of([outer, hole]).difference(_removed(20.0))
+    for x in np.arange(-16, 16, 0.37) + 0.011:
+        for y in np.arange(-16, 16, 0.37) + 0.013:
+            filled = _winding((x, y), rings) != 0
+            assert filled == expected.contains(shapely.geometry.Point(x, y)), (x, y)
+
+
+def test_contours_whose_pieces_cannot_be_joined_are_cut_by_the_whole_block(
+    monkeypatch,
+):
+    # Where the pieces of one contour of a plane cannot be joined into
+    # rings, every closed contour of the plane is cut by the whole block,
+    # so that the hole within the kept cavity goes with the cavity.
+    monkeypatch.setattr(region_defacing, "dissolve", lambda *_: None)
+    outer = _rectangle(-15, 15, -15, 15, 20)
+    hole = _rectangle(-4, 4, -9, -2, 20)
+
+    written = _roi([("CLOSEDPLANAR_XOR", outer), ("CLOSEDPLANAR_XOR", hole)])
+
+    assert [index for index, _ in written] == [0]
+    assert _polygon(written[0][1]).equals(_polygon(_rectangle(-15, 15, 0, 15, 20)))
+
+
+@pytest.mark.parametrize("repeat", [0, 2], ids=["closing point", "middle point"])
+def test_a_contour_with_a_repeated_point_keeps_its_part_in_the_kept_brain(repeat):
+    # Some planning systems write a closed contour's first point again at
+    # its end; a point repeated in place draws no edge, so the contour is
+    # still simple.
+    points = _rectangle(-10, 10, -15, 10, 20)
+    repeated = (
+        np.vstack([points, points[:1]])
+        if repeat == 0
+        else np.insert(points, repeat, points[repeat], axis=0)
+    )
+
+    (written,) = _cut("CLOSED_PLANAR", repeated)
+
+    expected = _polygon(points).difference(_removed(20.0))
+    assert _polygon(written).symmetric_difference(expected).area < 1e-9
+    assert _polygon(written).intersection(_CAVITY).area > 1
+
+
 def test_contours_of_a_plane_at_more_than_one_z_are_cut_by_the_whole_block():
     # The hole lies 0.1 mm above the outer contour, in its plane by the
     # grouping, but not in one slice's, so neither keeps the kept brain.
@@ -773,7 +844,7 @@ def test_pet_is_set_to_zero_activity_in_the_block_less_the_kept_cavity():
     mask = PetDefacer(_REGION, dataset).mask(0, dataset.pixel_array)
 
     x, y = _pet_points()
-    kept = (np.abs(x) <= 5) & (y >= -10) & (y <= -1)
+    kept = (x >= -5) & (x <= 7) & (y >= -10) & (y <= -1)
     assert mask.frame == 0 and mask.value == 0
     assert np.array_equal(mask.mask, (y < 0) & ~kept)
 
