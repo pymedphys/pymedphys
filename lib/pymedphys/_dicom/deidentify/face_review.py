@@ -363,8 +363,8 @@ def _series_files(data: bytes) -> dict[int, frozenset[_File]]:
 def _previews(document: dict) -> tuple[set[int], set[int], dict[int, int]]:
     """The run positions whose contours a pack's contour sheet shows, those
     that it lists as not shown, and how many frames of each other position
-    its other previews show, as :func:`~.qc_pack.pictured_frames` counts
-    them."""
+    its other previews show in a way that could show a face, as
+    :func:`~.qc_pack.pictured_frames` counts them."""
     malformed = QcPackError("the QC pack is not of its format")
     previews, missing = document.get("previews"), document.get("not_previewed")
     if not isinstance(previews, list) or not isinstance(missing, list):

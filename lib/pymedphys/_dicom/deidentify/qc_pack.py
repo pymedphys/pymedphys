@@ -1412,8 +1412,8 @@ class QcPack:
 
     def _check_pixel_previews(self) -> None:
         """An instance's pixel data's SHA-256, other than that of none, is
-        recorded only where previews other than contour sheets show its
-        frames from the first, with none missing, and it is not listed as not
+        recorded only where previews that could show a face show its frames
+        from the first, with none missing, and it is not listed as not
         previewed, so that no verdict releases pixel data that no one saw.
         The pack does not record how many frames an instance has, so a run
         under the option holds one with more than its previews list
@@ -1532,8 +1532,8 @@ def pictured_frames(
     previews: Iterable[tuple[str, Iterable[tuple[int, int]]]],
     not_previewed: Collection[int],
 ) -> dict[int, int]:
-    """Return how many frames of each run position a pack's previews show,
-    from its first frame with none missing.
+    """Return how many frames of each run position a pack's previews show
+    in a way that could show a face, from its first frame with none missing.
 
     Parameters
     ----------
@@ -1549,15 +1549,30 @@ def pictured_frames(
         For each position whose frames those previews list from frame 0
         with none missing, how many they list. A contour sheet's frames do
         not count, since it shows the volume that it is drawn with only as a
-        surface.
+        surface, and nor do those of the isodose render of an RT Dose grid,
+        which D-017 finds inconclusive. A surface render is a dose grid's
+        where it lists a frame other than a position's first, as a volume's
+        never does, since a volume is of single-frame instances.
     """
-    contours = PreviewKind.STRUCTURE_SET_CONTOURS.value
+    previews = [(kind, tuple(frames)) for kind, frames in previews]
+    surface, contours = (
+        PreviewKind.SERIES_SURFACE.value,
+        PreviewKind.STRUCTURE_SET_CONTOURS.value,
+    )
+    dosed = {
+        position
+        for kind, frames in previews
+        if kind == surface
+        for position, frame in frames
+        if frame
+    }
     framed: dict[int, set[int]] = {}
     for kind, frames in previews:
         if kind == contours:
             continue
         for position, frame in frames:
-            framed.setdefault(position, set()).add(frame)
+            if not (kind == surface and position in dosed):
+                framed.setdefault(position, set()).add(frame)
     return {
         position: len(frames)
         for position, frames in framed.items()

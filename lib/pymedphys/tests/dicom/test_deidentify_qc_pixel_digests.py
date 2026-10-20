@@ -165,16 +165,41 @@ def test_pixel_data_longer_than_their_frames_are_not_shown(count):
     assert found.pixels_shown == frozenset()
 
 
+def _dose(frames):
+    stored = np.zeros((frames, 20, 20), np.uint32)
+    stored[:, 5:15, 5:15] = 1000
+    return files.dose(
+        stored,
+        position=(-50.0, -50.0, 0.0),
+        spacing=(5.0, 5.0),
+        offsets=[3.0 * frame for frame in range(frames)],
+    )
+
+
+def test_a_dose_grid_is_shown_only_in_the_frames_of_its_cine():
+    # Its isodose render lists every frame, but cannot show a face.
+    found, framed = _shown({0: _dose(30)})
+    assert PreviewKind.SERIES_SURFACE in {preview.kind for preview in found.previews}
+    assert framed[0] == set(range(30))
+    assert found.pixels_shown == frozenset()
+    found, _ = _shown({0: _dose(12)})
+    assert found.pixels_shown == {0}
+
+
 def test_frames_count_only_from_the_first_with_none_missing():
-    cine, contours = (
+    cine, surface, contours = (
         PreviewKind.SERIES_CINE.value,
+        PreviewKind.SERIES_SURFACE.value,
         PreviewKind.STRUCTURE_SET_CONTOURS.value,
     )
     assert pictured_frames([(cine, [(0, 0), (0, 1), (1, 0)])], ()) == {0: 2, 1: 1}
     assert pictured_frames([(cine, [(0, 0), (0, 2)]), (cine, [(1, 1)])], ()) == {}
     assert pictured_frames([(cine, [(0, 0)])], {0}) == {}
-    # A contour sheet shows the volume that it is drawn with only as a
-    # surface.
+    # A volume's surface render shows each slice's first frame; one that
+    # shows a later frame is a dose grid's isodose render, which does not
+    # count, nor does a contour sheet.
+    assert pictured_frames([(surface, [(0, 0), (1, 0)])], ()) == {0: 1, 1: 1}
+    assert pictured_frames([(surface, [(0, 0), (0, 1)])], ()) == {}
     assert pictured_frames([(contours, [(0, 0)])], ()) == {}
 
 
@@ -407,9 +432,10 @@ def _verdict_run(data):
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.2-01")
-@pytest.mark.parametrize("make, count", [(_frames, 40), (_longer, 1)])
+@pytest.mark.parametrize("make, count", [(_frames, 40), (_longer, 1), (_dose, 30)])
 def test_a_verdict_of_absent_holds_pixel_data_that_the_pack_did_not_show(make, count):
-    # Frames beyond the cine, and bytes beyond the frames.
+    # Frames beyond the cine, bytes beyond the frames, and a dose grid that
+    # only its isodose render shows in full.
     entry, outcome = _verdict_run(make(count))
     assert entry["pixel_sha256"] is None
     assert outcome.status.value == "held-for-review"
@@ -421,6 +447,7 @@ def test_a_verdict_of_absent_holds_pixel_data_that_the_pack_did_not_show(make, c
 
 
 def test_a_verdict_of_absent_releases_pixel_data_whose_every_frame_was_shown():
-    entry, outcome = _verdict_run(_frames(12))
-    assert entry["pixel_sha256"] is not None
-    assert outcome.status.value == "released"
+    for data in (_frames(12), _dose(12)):
+        entry, outcome = _verdict_run(data)
+        assert entry["pixel_sha256"] is not None
+        assert outcome.status.value == "released"

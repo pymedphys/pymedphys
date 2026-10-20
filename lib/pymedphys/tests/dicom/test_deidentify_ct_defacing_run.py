@@ -241,14 +241,16 @@ def _runs(
     revised=None,
     dose=None,
     edges=False,
+    dose_alone=False,
 ):
     """Run the collection, with its CT slices replaced by the head's, its RT
     Structure Set by the head's ROIs, or by a target in the block if
     ``target``, its PET Image by :data:`_PET_SLICES`, and its first RT Dose
     by a grid over the head of ``dose`` where given, with the RT Dose
     instances of :data:`_UNPLACEABLE` and :data:`_DVH_ONLY` in its series if
-    ``edges``, under ``basic``, or under the option and ``first`` with a
-    face review that gives no verdicts; attest the pack with the head's
+    ``edges``, or in a series of its own if ``dose_alone``, under
+    ``basic``, or under the option and ``first`` with a face review that
+    gives no verdicts; attest the pack with the head's
     series, and those of the RT Structure Set, RT Dose, and PET in its
     frame, marked absent, and, if ``accepted``, the regions of each of the
     head's CT and PET slices that the pack previews accepted, or, if
@@ -275,6 +277,8 @@ def _runs(
             (instances / _head_name(index)).write_bytes(data)
         if dose is not None:
             grid = pydicom.dcmread(instances / _DOSE[0])
+            if dose_alone:
+                grid.SeriesInstanceUID += ".1"
             (instances / _DOSE[0]).write_bytes(
                 files.dose(
                     dose,
@@ -420,6 +424,12 @@ def fixture_defaced():
 
 # With the RT Dose instances that cannot be placed or have no grid, which
 # its run holds or releases alike, so that one run tests them all.
+@pytest.fixture(name="dose_alone", scope="module")
+def fixture_dose_alone():
+    with _runs(first=(), dose=_dose(_LOW), dose_alone=True) as found:
+        yield found
+
+
 @pytest.fixture(name="hot", scope="module")
 def fixture_hot():
     with _runs(first=(), dose=_dose(_HIGHEST), edges=True) as found:
@@ -723,8 +733,8 @@ def test_rt_dose_behind_the_block_is_released_unchanged(fixture, request):
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.2-01", "PS3.15-E.3.2-02")
-def test_low_dose_in_the_block_is_set_to_zero_there_and_released(defaced):
-    slices, outcomes, reasons, _ = defaced
+def test_low_dose_in_the_block_is_set_to_zero_there_and_released(dose_alone):
+    slices, outcomes, reasons, _ = dose_alone
     block = _block(slices)
     disposition, dataset = outcomes[_DOSE[0]]
 
@@ -746,6 +756,19 @@ def test_low_dose_in_the_block_is_set_to_zero_there_and_released(defaced):
     brain = inside & (values == head.BRAIN) & (points[..., 2] > floor + 5)
     assert brain.any() and np.array_equal(written[brain], source[brain])
     assert np.count_nonzero(written[inside] == 0) > np.count_nonzero(brain)
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.2-01")
+def test_a_grid_set_to_zero_that_the_previews_do_not_show_whole_is_held(defaced):
+    _, outcomes, reasons, _ = defaced
+
+    # Its series' cine strip shows 16 of its frames and the other grid's,
+    # and its isodose render cannot show a face, so the pack has no digest
+    # of its pixel data, and the verdict of absent does not release it.
+    assert outcomes[_DOSE[0]] == ("held-for-review", None)
+    assert reasons[_DOSE[0]] == {
+        HeldVisualFeatures(VisualFeaturesReason.OTHER_PIXEL_DATA)
+    }
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.2-01")

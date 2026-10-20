@@ -216,10 +216,12 @@ class PreviewSet:
         shows.
     pixels_shown : frozenset of int
         The run positions of the files with pixel data every frame of which
-        a preview other than a contour sheet lists, and that are not listed
-        as not previewed, and whose native Pixel Data hold no more than
-        their frames. A volume's projection and surface render list each of
-        its slices, which they sample.
+        a preview that could show a face lists, and that are not listed as
+        not previewed, and whose native Pixel Data hold no more than their
+        frames. A volume's projection and surface render list each of its
+        slices, which they sample. A contour sheet, and the isodose render
+        of an RT Dose grid, which D-017 finds inconclusive, list frames that
+        they cannot show a face in, so their frames do not count.
     """
 
     previews: tuple[Preview, ...]
@@ -287,8 +289,8 @@ def previews_of(
         if instance.position in redactions:
             source, entry = redactions[instance.position]
             images.extend(_redaction_images(instance, source, entry, decoded))
-    # Every frame of an instance must be among those of previews other than
-    # contour sheets.
+    # Only previews that could show a face count, and every frame of an
+    # instance must be among theirs.
     pictured = pictured_frames(
         ((kind.value, frames) for kind, frames, _, _ in images), refused
     )
