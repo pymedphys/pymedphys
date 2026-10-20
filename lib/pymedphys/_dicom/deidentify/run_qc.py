@@ -156,7 +156,7 @@ class RedactionMaterial:
     Attributes
     ----------
     reason : ~pymedphys._dicom.deidentify.reasons.PixelDataReason
-    frames : int
+    frames, rows, columns : int
     regions : tuple of (int, tuple of ~.text_detection.TextBox)
         As :class:`~pymedphys._dicom.deidentify.qc_pack.RedactionEntry`
         gives them.
@@ -168,12 +168,15 @@ class RedactionMaterial:
 
     reason: PixelDataReason
     frames: int
+    rows: int
+    columns: int
     regions: tuple[tuple[int, tuple[TextBox, ...]], ...]
     source: bytes | None
 
     def __repr__(self) -> str:
         return (
             f"RedactionMaterial(reason={self.reason.value!r}, frames={self.frames}, "
+            f"rows={self.rows}, columns={self.columns}, "
             f"regions={len(self.regions)})"
         )
 
@@ -414,7 +417,14 @@ def qc_pack_of(
     cleaned = {
         position: (
             item.source,
-            qc_pack.RedactionEntry(position, item.reason, item.frames, item.regions),
+            qc_pack.RedactionEntry(
+                position,
+                item.reason,
+                item.frames,
+                item.rows,
+                item.columns,
+                item.regions,
+            ),
         )
         for position, item in redactions.items()
     }

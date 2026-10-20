@@ -505,6 +505,9 @@ def test_each_cleaned_image_is_listed_and_previewed_frame_by_frame(policy_run):
         assert entry["frames"] == int(source.get("NumberOfFrames") or 1)
         regions = {region["frame"]: region["boxes"] for region in entry["regions"]}
         rows, columns = source.Rows, source.Columns
+        assert (entry["rows"], entry["columns"]) == (rows, columns)
+        # A monochrome frame is shown again over its full range.
+        panels = 1 if source.SamplesPerPixel == 3 else 2
         frames = pydicom.pixels.iter_pixels(io.BytesIO(data), raw=True)
         for index, frame in enumerate(frames):
             # Each box is clipped to the frame.
@@ -513,8 +516,10 @@ def test_each_cleaned_image_is_listed_and_previewed_frame_by_frame(policy_run):
                 for box in spec.finder.find(np.asarray(frame))
             ]
             assert regions.get(index, []) == found
-            # A frame with regions is shown beside its source, with a gutter.
-            assert next(sizes) == (columns * 2 + 8 if found else columns, rows)
+            # A frame with regions is shown beside its source, each panel
+            # with a gutter after the first.
+            across = panels + 1 if found else panels
+            assert next(sizes) == (columns * across + 8 * (across - 1), rows)
 
 
 @pytest.mark.deid_requirement(

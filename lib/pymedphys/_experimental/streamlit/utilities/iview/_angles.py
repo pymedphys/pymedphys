@@ -173,7 +173,7 @@ def attempt_to_make_angles_continuous(
                 )
                 .interactive(bind_y=False)
             )
-            st.altair_chart(chart, use_container_width=True)
+            st.altair_chart(chart, width="stretch")
 
             st.error(
                 "The WLutz analysis will now continue with this angle 'jump' "
