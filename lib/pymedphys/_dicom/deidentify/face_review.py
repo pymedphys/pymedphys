@@ -510,17 +510,19 @@ def is_rt_dose(dataset: pydicom.Dataset) -> bool:
     makes it one, so that a file of either alone is never counted as shown,
     nor released under the option. A value that cannot be read is neither.
     """
-    for keyword, value in (
-        ("SOPClassUID", RT_DOSE_STORAGE),
-        ("Modality", "RTDOSE"),
-    ):
-        try:
-            if str(dataset.get(keyword) or "").strip() == value:
-                return True
-        # Whatever reading the value raises, it is not the one sought.
-        except Exception:  # pylint: disable = broad-exception-caught
-            continue
-    return False
+    return (
+        _text(dataset, "SOPClassUID") == RT_DOSE_STORAGE
+        or _text(dataset, "Modality") == "RTDOSE"
+    )
+
+
+def _text(dataset: pydicom.Dataset, keyword: str) -> str:
+    """An attribute's value as stripped text, or "" where it cannot be read."""
+    try:
+        return str(dataset.get(keyword) or "").strip()
+    # Whatever reading the value raises, it is not a value sought.
+    except Exception:  # pylint: disable = broad-exception-caught
+        return ""
 
 
 def carries_visual_features(dataset: pydicom.Dataset, iod: str) -> bool:
