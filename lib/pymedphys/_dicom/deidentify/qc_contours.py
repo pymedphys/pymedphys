@@ -35,8 +35,9 @@ separated by grey rows of :data:`GUTTER_PIXELS`, are:
   row of :data:`GUTTER_PIXELS` for an item without contours.
 
 Each region is sampled to cubic voxels over the extent of what it draws,
-with a voxel more on each side across, and up to a voxel more below, so
-that its edge and its lowest point are drawn. A frame's united region has voxels of
+with a voxel more on each low side across, 0 to 1 voxel more on each high
+side, and up to a voxel more below, so that its edge and its lowest point
+are drawn. A frame's united region has voxels of
 :data:`~.qc_surfaces.MINIMUM_VOXEL` millimetres, enlarged where needed to
 keep each axis within :data:`~.qc_surfaces.MAXIMUM_VOXELS` voxels, as
 :mod:`~.qc_surfaces` samples a volume. An ROI alone has the finer of the
@@ -109,9 +110,10 @@ LONGEST = 2000.0
 ROI_VOXELS = 128
 ROI_MINIMUM_VOXEL = 0.5  # millimetres
 GUTTER_PIXELS = 8
-# The tallest contour sheet that is shown, about 390 ROI items; a taller one
-# is not shown, so that its set is held rather than shown in an image that a
-# viewer may scale down or refuse.
+# The tallest contour sheet that is shown: an ROI's row is at most 257
+# voxels tall, so at least about 120 ROI items, and more where they are
+# shorter. A taller one is not drawn or shown, so that its set is held
+# rather than shown in an image that a viewer may scale down or refuse.
 MAXIMUM_SHEET_PIXELS = 32768
 
 # As a redaction preview's outline and gutter.
@@ -430,6 +432,26 @@ def contour_sheet(
     return _stacked(rows)
 
 
+def sheet_height(
+    contours: Contours, guides: Mapping[str | None, Guide] | None = None
+) -> int:
+    """Return the height, in pixels, of :func:`contour_sheet`'s sheet of the
+    same contours and guides, without drawing it."""
+    guides = {} if guides is None else guides
+    heights = []
+    for frame in contours.frames:
+        rois = [roi for roi in contours.rois if roi.frame == frame]
+        heights.append(len(_grid(rois, _united_voxel).zs))
+        guide = guides.get(frame)
+        if guide is not None:
+            heights.append(guide.inside.shape[0])
+    heights.extend(
+        GUTTER_PIXELS if roi.empty else len(_grid([roi], _roi_voxel).zs)
+        for roi in contours.rois
+    )
+    return sum(heights) + GUTTER_PIXELS * (len(heights) - 1)
+
+
 def _key(roi: RoiContours) -> bytes:
     """What an ROI draws, and in which frame, as bytes."""
     parts = [str(roi.frame).encode("utf-8", "surrogateescape"), b"|"]
@@ -474,9 +496,10 @@ def _grid(rois: Sequence[RoiContours], voxel_of: Callable[[float], float]) -> _G
     points = np.concatenate([roi.coordinates() for roi in rois])
     low, high = points.min(axis=0), points.max(axis=0)
     voxel = voxel_of(float((high - low).max()))
-    # A voxel more on each side across, and below, where the slices, which
-    # start at the top, would otherwise stop short of the lowest point, so
-    # that a region's edge and every point are drawn.
+    # A voxel more on each low side across, and 0 to 1 more on each high
+    # side, as the division falls, and up to one more below, where the
+    # slices, which start at the top, would otherwise stop short of the
+    # lowest point, so that a region's edge and every point are drawn.
     low -= voxel
     high[:2] += voxel
 
