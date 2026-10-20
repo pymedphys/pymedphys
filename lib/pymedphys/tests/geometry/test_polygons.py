@@ -98,6 +98,43 @@ def test_a_ring_is_simple_only_where_it_neither_crosses_nor_touches_itself(
     assert polygons.is_simple(ring) is simple
 
 
+# A block with a slot cut along one line, turned, as a split leaves a ring
+# beside a notch: its edges 3 and 7 lie on the line, 0.1 mm apart along it,
+# their cross products rounding noise of alternating sign.
+_SLOTTED = np.array(
+    [
+        [5.591580643830662, 5.8598852851148955],
+        [7.753063463012837, 9.127094527282036],
+        [7.836464212518324, 9.071919215937895],
+        [5.67498139333615, 5.804709973770754],
+        [13.973355969132163, 0.3147664950287048],
+        [23.307629263052693, 14.424073172909232],
+        [6.627479361955177, 25.45913544173747],
+        [-2.706793931965353, 11.34982876385694],
+    ]
+)
+
+
+def test_edges_in_one_turned_line_with_a_gap_between_them_do_not_meet():
+    assert polygons.is_simple(_SLOTTED)
+
+
+def test_turned_rings_with_edges_in_one_line_are_simple():
+    # A C whose two edges either side of its opening lie in one line, at
+    # random turns near the origin, where rounding makes their cross
+    # products alternate in sign.
+    c = [(0, 0), (0, -13), (26, -13), (26, 0), (19, 0), (19, -6.5), (7, -6.5), (7, 0)]
+    rng = np.random.default_rng(20261022)
+    for _ in range(1000):
+        angle = rng.uniform(0, 2 * np.pi)
+        along = np.array([np.cos(angle), np.sin(angle)])
+        across = np.array([-along[1], along[0]])
+        origin = rng.uniform(-10, 10, 2)
+        ring = np.array([origin + s * along + t * across for s, t in c])
+
+        assert polygons.is_simple(ring)
+
+
 def _dissolved(pieces, kept=np.empty((0, 2))):
     return polygons.dissolve([np.asarray(piece)[:, :2] for piece in pieces], kept, 1e-9)
 

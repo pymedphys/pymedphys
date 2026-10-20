@@ -285,6 +285,51 @@ def _cross(origin: np.ndarray, one: np.ndarray, other: np.ndarray) -> np.ndarray
     return cross
 
 
+# Shewchuk's bound on the rounding error of :func:`_cross`, relative to the
+# sum of its two products' magnitudes, for doubles ("Adaptive Precision
+# Floating-Point Arithmetic and Fast Robust Geometric Predicates", 1997, as
+# ccwerrboundA). A cross product of less magnitude may have the wrong sign.
+_CROSS_ERROR = (3 + 16 * 2.0**-53) * 2.0**-53
+
+
+def _side(origin: np.ndarray, one: np.ndarray, other: np.ndarray) -> np.ndarray:
+    """The sign of :func:`_cross`, broadcast, found exactly for the points as
+    given wherever rounding could have changed it, as it can for points in
+    a line that no axis runs along."""
+    left = (one[..., 0] - origin[..., 0]) * (other[..., 1] - origin[..., 1])
+    right = (one[..., 1] - origin[..., 1]) * (other[..., 0] - origin[..., 0])
+    cross = left - right
+    side: np.ndarray = np.array(np.sign(cross))
+    unsure = np.abs(cross) < _CROSS_ERROR * (np.abs(left) + np.abs(right))
+    if unsure.any():
+        shape = cross.shape + (2,)
+        o, p, q = (
+            np.broadcast_to(each[..., :2], shape)[unsure]
+            for each in (origin, one, other)
+        )
+        # Where two of the points are one, it is exactly zero.
+        apart = ~((p == o).all(axis=1) | (q == o).all(axis=1) | (q == p).all(axis=1))
+        exact = np.zeros(len(o), dtype=side.dtype)
+        exact[apart] = [
+            _exact_side(*each)
+            for each in zip(o[apart].tolist(), p[apart].tolist(), q[apart].tolist())
+        ]
+        side[unsure] = exact
+    return side
+
+
+def _exact_side(origin: list[float], one: list[float], other: list[float]) -> int:
+    """The sign of :func:`_cross` for three points, found exactly by
+    integers, each coordinate being an integer over a power of two."""
+    ratios = [value.as_integer_ratio() for value in (*origin, *one, *other)]
+    scale = max(denominator for _, denominator in ratios)
+    ox, oy, px, py, qx, qy = (
+        numerator * (scale // denominator) for numerator, denominator in ratios
+    )
+    exact = (px - ox) * (qy - oy) - (py - oy) * (qx - ox)
+    return (exact > 0) - (exact < 0)
+
+
 def _between(start: np.ndarray, end: np.ndarray, point: np.ndarray) -> np.ndarray:
     """Whether a point collinear with a segment lies on it, ends included."""
     between: np.ndarray = (
@@ -298,11 +343,9 @@ def _between(start: np.ndarray, end: np.ndarray, point: np.ndarray) -> np.ndarra
 
 def _meet(a: np.ndarray, b: np.ndarray, c: np.ndarray, d: np.ndarray) -> np.ndarray:
     """Whether segments ab and cd share a point, ends included."""
-    first, second = _cross(a, b, c), _cross(a, b, d)
-    third, fourth = _cross(c, d, a), _cross(c, d, b)
-    proper = (np.sign(first) * np.sign(second) < 0) & (
-        np.sign(third) * np.sign(fourth) < 0
-    )
+    first, second = _side(a, b, c), _side(a, b, d)
+    third, fourth = _side(c, d, a), _side(c, d, b)
+    proper = (first * second < 0) & (third * fourth < 0)
     touching = (
         ((first == 0) & _between(a, b, c))
         | ((second == 0) & _between(a, b, d))
@@ -317,7 +360,7 @@ def _overlap(a: np.ndarray, b: np.ndarray, c: np.ndarray, d: np.ndarray) -> np.n
     """Whether neighbouring segments ab and cd, sharing a vertex, also share
     more than it: they lie along one line and double back over each
     other."""
-    collinear = (_cross(a, b, c) == 0) & (_cross(a, b, d) == 0)
+    collinear = (_side(a, b, c) == 0) & (_side(a, b, d) == 0)
     forward = (b[..., 0] - a[..., 0]) * (d[..., 0] - c[..., 0]) + (
         b[..., 1] - a[..., 1]
     ) * (d[..., 1] - c[..., 1])

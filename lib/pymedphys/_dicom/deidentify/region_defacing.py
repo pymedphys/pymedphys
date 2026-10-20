@@ -159,7 +159,8 @@ _STEP = 0.5
 # hole whole within a contour that is cut.
 _COPLANAR = 0.15
 # The area, in square millimetres, of a contour's part in the block, or in
-# the brain kept there, at or below which it is taken for an artefact of
+# the brain kept there, of a ring that its pieces join into, or of a piece
+# that a split leaves, at or below which it is taken for an artefact of
 # floating point.
 _SLIVER = 1e-9
 # How far apart, in millimetres, two points of the pieces of a cut contour
@@ -473,9 +474,10 @@ def _without_holes(
     column of the holes' points, each side joined again, and so on until no
     ring bounds one. A hole that the edge crosses or touches becomes a notch
     in the rings beside it, and none lies wholly on the edge's lower side,
-    so each split leaves at least one hole fewer. Return None where the pieces of a
-    side cannot be joined, the edge would miss the hole, or a ring is not
-    simple.
+    so, but where joining takes points within a hair of each other as one,
+    each split leaves at least one hole fewer. Return None where the pieces
+    of a side cannot be joined, the edge would miss the hole, a ring is not
+    simple, or ``_MOST_SPLITS`` splits leave a hole.
     """
     z = float(ring[0, 2])
     written: list[np.ndarray] = []
