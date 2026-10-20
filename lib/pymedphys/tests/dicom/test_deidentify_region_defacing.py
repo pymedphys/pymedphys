@@ -899,6 +899,164 @@ def test_the_limit_counts_splits_not_the_joins_between_them(monkeypatch):
     _assert_hole_free(rings, _polygon(points).difference(_air_removed(air)))
 
 
+def _turned_grid_l_shape(dx, dy, quadrant):
+    """A region of slices on a 1 mm grid turned 133.1 degrees about z, its
+    kept pixels those centred within |x| <= 9 mm and -15 <= y <= -0.2 mm but
+    the one nearest (0, -7) mm, and an L-shaped contour at z = 20 mm, written
+    to 13 significant figures, whose inner corner lies 1e-9 mm from a corner
+    of that pixel's square, towards (``dx``, ``dy``), and which lacks the
+    ``quadrant`` of a square of 16 mm about it, "upper" or "lower"."""
+    angle = math.radians(133.1)
+    along = np.array([math.cos(angle), math.sin(angle), 0.0])
+    down = np.array([-math.sin(angle), math.cos(angle), 0.0])
+    origin = -30 * (along + down)
+    index = np.arange(61)
+    centres = origin + index[None, :, None] * along + index[:, None, None] * down
+    x, y = centres[..., 0], centres[..., 1]
+    air = np.unravel_index(np.argmin(np.hypot(x, y + 7)), x.shape)
+    kept = (np.abs(x) <= 9) & (y >= -15) & (y <= -0.2)
+    kept[air] = False
+    region = DoseBlock(
+        _BLOCK,
+        tuple(
+            KeptSlice(
+                tuple(origin + (0, 0, z)),
+                tuple(along) + tuple(down),
+                (1.0, 1.0),
+                kept & (z > 15),
+            )
+            for z in _CT_Z
+        ),
+    )
+    corner = centres[air] + 0.5 * (down - along)
+    px, py = corner[:2] + 1e-9 / math.sqrt(2) * np.array([dx, dy])
+    x0, x1, y0, y1 = px - 8, px + 8, py - 8, py + 8
+    outline = {
+        "upper": [(x0, y0), (x1, y0), (x1, py), (px, py), (px, y1), (x0, y1)],
+        "lower": [(px, y0), (x1, y0), (x1, y1), (x0, y1), (x0, py), (px, py)],
+    }[quadrant]
+    points = np.array([(u, v, 20.0) for u, v in outline])
+    structure_set = _structure_set([("CLOSED_PLANAR", points)])
+    structure_set.ROIContourSequence[0].ContourSequence[0].ContourData = [
+        f"{v:.13g}" for v in np.ravel(points)
+    ]
+    spared = shapely.ops.unary_union(
+        [shapely.geometry.box(-100, 0, 100, 100)]
+        + [
+            shapely.geometry.Polygon(
+                [
+                    tuple((centres[each] + 0.5 * (a * along + b * down))[:2])
+                    for a, b in ((-1, -1), (1, -1), (1, 1), (-1, 1))
+                ]
+            )
+            for each in zip(*np.nonzero(kept | (y >= 0)))
+        ]
+    )
+    return region, structure_set, _polygon(points).intersection(spared)
+
+
+def _written_rings(region, structure_set):
+    ((_, written),) = list(cut_contours(region, structure_set, _FRAME).items())
+    return [
+        np.array([float(v) for v in each.values]).reshape(-1, 3) for each in written
+    ]
+
+
+def test_a_ring_of_no_area_that_joining_leaves_is_not_written():
+    # Joining points within 1e-9 mm of a turned pixel's corner left a ring
+    # of three points in a line, written as a contour of its own.
+    region, structure_set, expected = _turned_grid_l_shape(1, -1, "upper")
+
+    rings = _written_rings(region, structure_set)
+
+    assert all(abs(signed_area(each)) > 1e-9 for each in rings)
+    _assert_simple_and_bounding(rings, expected)
+
+
+def test_a_ring_that_crosses_itself_after_splitting_falls_back_to_the_block():
+    # Here joining the split pieces near the corner left a ring that
+    # crosses itself, which a reader may fill otherwise.
+    region, structure_set, _ = _turned_grid_l_shape(-1, 1, "lower")
+
+    rings = _written_rings(region, structure_set)
+
+    assert all(is_simple(each) for each in rings)
+    assert all(_outside(each).all() for each in rings)
+
+
+@pytest.mark.parametrize("kind", ["CLOSED_PLANAR", "CLOSEDPLANAR_XOR"])
+def test_rings_that_meet_at_points_around_gaps_are_written_as_they_are(kind):
+    # On a 45 by 45 grid turned 133.1 degrees about z, centred on (0, -6)
+    # mm, an L-shaped contour's inner corner lies 1e-9 mm beyond a corner of
+    # the pixel written as air nearest (0, -7) mm. Squares written as air
+    # that straddle the plane leave gaps between two rings that meet at
+    # points, and joining left a third ring of no area.
+    angle = math.radians(133.1)
+    along = np.array([math.cos(angle), math.sin(angle), 0.0])
+    down = np.array([-math.sin(angle), math.cos(angle), 0.0])
+    origin = np.array([0.0, -6.0, 0.0]) - 22 * (along + down)
+    rows, columns = np.mgrid[0:45, 0:45]
+    centres = origin + columns[..., None] * along + rows[..., None] * down
+    x, y = centres[..., 0], centres[..., 1]
+    offset = np.array([0.0, -7.0, 0.0]) - origin
+    air = (int(round(offset @ down)), int(round(offset @ along)))
+    kept = (np.abs(x) <= 9) & (y >= -15) & (y <= -0.2)
+    kept[air] = False
+    region = DoseBlock(
+        _BLOCK,
+        tuple(
+            KeptSlice(
+                tuple(origin + (0, 0, z)),
+                tuple(along) + tuple(down),
+                (1.0, 1.0),
+                kept & (z > 15),
+            )
+            for z in _CT_Z
+        ),
+    )
+    reach = 0.5 + 1e-9 / math.sqrt(2)
+    corners = [(-14, -reach), (reach, -reach), (reach, -14), (14, -14), (14, 14)]
+    points = np.array(
+        [centres[air] + p * along + q * down for p, q in corners + [(-14, 14)]]
+    )
+    points[:, 2] = 20.0
+    if signed_area(points) < 0:
+        points = points[::-1]
+    structure_set = _structure_set([(kind, points)])
+    structure_set.ROIContourSequence[0].ContourSequence[0].ContourData = [
+        pydicom.valuerep.format_number_as_ds(float(v)) for v in np.ravel(points)
+    ]
+    spared = shapely.ops.unary_union(
+        [shapely.geometry.box(-100, 0, 100, 100)]
+        + [
+            shapely.geometry.Polygon(
+                [
+                    tuple((centres[each] + 0.5 * (a * along + b * down))[:2])
+                    for a, b in ((-1, -1), (1, -1), (1, 1), (-1, 1))
+                ]
+            )
+            for each in zip(*np.nonzero(kept | (y >= 0)))
+        ]
+    )
+
+    rings = _written_rings(region, structure_set)
+
+    assert len(rings) == 2
+    assert all(signed_area(each) > 1e-9 for each in rings)
+    expected = _polygon(points).intersection(spared)
+    assert len(getattr(expected, "geoms", [expected])[0].interiors) > 0
+    _assert_simple_and_bounding(rings, expected)
+
+
+def _assert_simple_and_bounding(rings, expected):
+    """That the rings are simple, overlap nowhere, and bound ``expected``."""
+    assert all(is_simple(each) for each in rings)
+    polygons = [_polygon(each) for each in rings]
+    union = shapely.ops.unary_union(polygons)
+    assert math.isclose(sum(each.area for each in polygons), union.area)
+    assert union.symmetric_difference(expected).area < 1e-6
+
+
 def test_a_contour_nearer_two_tilted_slices_is_cut_by_the_whole_block():
     # Slices tilted within face finding's tolerance, 2 mm apart along their
     # normal, keep the same pixels but for one bone pixel of the upper. An

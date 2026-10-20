@@ -59,10 +59,11 @@ air within the kept cavity makes one, its pieces are split along the edge
 between two columns of the slice's pixels at the hole's lowest column,
 the hole becoming a notch in the piece beyond the edge, until no ring
 bounds one (:func:`_without_holes`); the edge passes through no pixel's
-centre, so each pixel's centre lies within one ring or none. Where the
-pieces of any of them cannot be joined, or split so, all of them are cut
-by the whole block instead. A contour whose region loses no area by this
-is written as received.
+centre, so each pixel's centre lies within one ring or none. A ring of
+no more area than a sliver is dropped. Where the pieces of any of them
+cannot be joined, or a CLOSED_PLANAR contour's cannot be split so into
+simple rings, all of them are cut by the whole block instead. A contour
+whose region loses no area by this is written as received.
 
 Any other contour that reaches the face is cut by the block's two planes,
 so that what is written of it lies outside the block or on its boundary,
@@ -438,11 +439,7 @@ class _Spare:
             rings = (
                 _without_holes(outside + kept, ring, self.grid)
                 if kind == CLOSED_PLANAR
-                else dissolve(
-                    [piece[:, :2] for piece in outside + kept],
-                    ring[:, :2],
-                    _SAME_POINT,
-                )
+                else _joined(outside + kept, ring)
             )
             if rings is None:
                 return None
@@ -453,12 +450,23 @@ class _Spare:
         return True, [each[::-1] for each in written] if clockwise else written
 
 
+def _joined(pieces: list[np.ndarray], ring: np.ndarray) -> list[np.ndarray] | None:
+    """Join a contour's pieces into rings, by x and y, as
+    :func:`~pymedphys._geometry.polygons.dissolve` joins them, keeping the
+    points of ``ring`` as they are, but for a ring of no more area than a
+    sliver, such as one of three points in a line that joining points within
+    a hair of a pixel's corner can leave."""
+    rings = dissolve([piece[:, :2] for piece in pieces], ring[:, :2], _SAME_POINT)
+    if rings is None:
+        return None
+    return [each for each in rings if abs(signed_area(each)) > _SLIVER]
+
+
 def _without_holes(
     pieces: list[np.ndarray], ring: np.ndarray, grid: PixelGrid
 ) -> list[np.ndarray] | None:
     """Join a contour's pieces into anticlockwise rings, by x and y, that
-    bound no hole, as :func:`~pymedphys._geometry.polygons.dissolve` joins
-    them, keeping the points of ``ring`` as they are.
+    bound no hole, as :func:`_joined` joins them.
 
     Where the rings would bound a hole, the pieces are split along the edge
     between columns of ``grid``'s pixels at, or just beyond, the lowest
@@ -466,7 +474,8 @@ def _without_holes(
     ring bounds one. A hole that the edge crosses or touches becomes a notch
     in the rings beside it, and none lies wholly on the edge's lower side,
     so each split leaves at least one hole fewer. Return None where the pieces of a
-    side cannot be joined, or the edge would miss the hole.
+    side cannot be joined, the edge would miss the hole, or a ring is not
+    simple.
     """
     z = float(ring[0, 2])
     written: list[np.ndarray] = []
@@ -474,7 +483,7 @@ def _without_holes(
     splits = 0
     while pending:
         parts = pending.pop()
-        rings = dissolve([part[:, :2] for part in parts], ring[:, :2], _SAME_POINT)
+        rings = _joined(parts, ring)
         if rings is None:
             return None
         # Each ring is anticlockwise here but a hole's.
@@ -505,7 +514,9 @@ def _without_holes(
             ]
             if half:
                 pending.append(half)
-    return written
+    # Joining points within a hair of a pixel's corner can leave a ring that
+    # crosses or touches itself there, which a reader may fill otherwise.
+    return written if all(map(is_simple, written)) else None
 
 
 def _distinct(points: np.ndarray) -> np.ndarray:
