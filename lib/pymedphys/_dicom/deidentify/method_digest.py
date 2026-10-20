@@ -85,16 +85,26 @@ apply, whether or not the policy's options use it:
   ``importlib.reload`` or Jupyter's autoreload, is not supported, and the
   digest is then not guaranteed to match the code that runs. The engine is
   to compute the digest before it processes anything, so that the digest
-  stands for the code that runs.
+  stands for the code that runs;
+- the source files of PyMedPhys's modules outside this package that its
+  modules import, directly or through one another, such as
+  ``pymedphys._geometry``, which clips contours, and
+  ``pymedphys._nomenclature.roi_list``, which matches ROI names. They are
+  listed by their paths within PyMedPhys in :data:`OUTSIDE_MODULES`, a
+  package's directory standing for each of its files of a covered type at
+  any depth. A test scans the imports, and fails if the engine imports a
+  module that the list leaves out, or the list names one that it does not
+  import. Each is read as the engine's files are, once per process, and named
+  ``pymedphys/`` and its path within PyMedPhys, such as
+  ``pymedphys/_geometry/polygons.py``. The digest is refused if one cannot
+  be found. A package's ``__init__.py`` that runs only because one of its
+  modules is imported is left out, as is ``pymedphys/__init__.py``, which
+  imports PyMedPhys's public API, none of which the engine calls.
 
 The digest therefore also changes when something the policy does not use
 changes, which is harmless; it never stays the same when one of these inputs
 changes, with the files and tables as read at the first digest in the
-process. Of PyMedPhys's code outside this package, including the modules
-that this package imports, ``pymedphys._version``, ``pymedphys._config``,
-``pymedphys._dicom.uid``, ``pymedphys._imports``, and
-``pymedphys._nomenclature.tg263``, the digest covers only PyMedPhys's
-version, which a development build keeps across commits.
+process.
 
 The runtime environment is not an input, apart from the text finder's
 runtime. The Python implementation and version, and the versions of pydicom,
@@ -152,10 +162,34 @@ from .policy import SAFE_PRIVATE, Policy
 from .safe_private import SafePrivateList
 
 # The format of the canonical form. A change to the form takes a new label.
-FORMAT = "pymedphys-deid-method-digest/5"
+FORMAT = "pymedphys-deid-method-digest/6"
 # The engine's package, whose source and rule files the digest covers.
 PACKAGE_DIR = pathlib.Path(__file__).resolve().parent
 COVERED_SUFFIXES = frozenset({".py", ".toml", ".json", ".csv", ".txt"})
+# PyMedPhys's own package, within which the engine's outside modules lie.
+PYMEDPHYS_DIR = PACKAGE_DIR.parents[1]
+# PyMedPhys's modules outside the engine's package that its modules import,
+# directly or through one another, by their paths within PyMedPhys. A
+# directory stands for each of its files of a covered type at any depth. A
+# test fails if this leaves out a module the engine imports, or names one it
+# does not.
+OUTSIDE_MODULES = (
+    "_config.py",
+    "_data/download.py",
+    "_data/retry.py",
+    "_data/zenodo.py",
+    "_dev/paths.py",
+    "_dicom/uid.py",
+    "_extras.py",
+    "_geometry",
+    "_imports",
+    "_nomenclature/roi_list.py",
+    "_nomenclature/tg263.py",
+    "_nomenclature/tg263_published.py",
+    "_utilities/filehash",
+    "_vendor/apipkg",
+    "_version.py",
+)
 # A keyed digest, as 64 lowercase hexadecimal digits.
 _DIGEST = re.compile(r"[0-9a-f]{64}")
 # The parameters of generated values, by module, which the digest names as
@@ -226,7 +260,9 @@ class MethodDigestInputs:
     files : Mapping of str to str
         The SHA-256 of each source and rule file, with CRLF line endings read
         as LF, by its path within the package, such as ``"policy.py"`` or
-        ``"_standard/e1_1.json"``.
+        ``"_standard/e1_1.json"``, and of each source file of an outside
+        module, by ``pymedphys/`` and its path within PyMedPhys, such as
+        ``"pymedphys/_geometry/polygons.py"``.
     """
 
     engine_version: str
@@ -296,7 +332,9 @@ class MethodDigestComponents:
     engine_files : Mapping of str to str
         The SHA-256 of each source and rule file, with CRLF line endings read
         as LF, by its path within the package, such as ``"policy.py"`` or
-        ``"_standard/e1_1.json"``. Read-only.
+        ``"_standard/e1_1.json"``, and of each source file of an outside
+        module, by ``pymedphys/`` and its path within PyMedPhys, such as
+        ``"pymedphys/_geometry/polygons.py"``. Read-only.
     """
 
     method_digest: str
@@ -572,13 +610,7 @@ def _file_digests(directory: pathlib.Path) -> Mapping[str, str]:
     directory without this module's own source is refused, since its files
     cannot be the engine's.
     """
-    digests = {}
-    for path in directory.rglob("*"):
-        relative = path.relative_to(directory)
-        cached = any(p == "__pycache__" or p.startswith(".") for p in relative.parts)
-        if path.suffix in COVERED_SUFFIXES and not cached and path.is_file():
-            data = path.read_bytes().replace(b"\r\n", b"\n")
-            digests[relative.as_posix()] = hashlib.sha256(data).hexdigest()
+    digests = _covered_files(directory)
     if not digests:
         raise MethodDigestError(
             "the method digest found no source or rule files of the engine"
@@ -588,6 +620,50 @@ def _file_digests(directory: pathlib.Path) -> Mapping[str, str]:
             "the files that the method digest found do not include "
             "method_digest.py, so they are not the engine's"
         )
+    return types.MappingProxyType(digests)
+
+
+def _covered_files(directory: pathlib.Path) -> dict[str, str]:
+    """Return the SHA-256 of each file of a covered type in a directory, at
+    any depth, with CRLF read as LF, by its path within it, leaving out
+    ``__pycache__`` and names that start with ``.``."""
+    digests = {}
+    for path in directory.rglob("*"):
+        relative = path.relative_to(directory)
+        cached = any(p == "__pycache__" or p.startswith(".") for p in relative.parts)
+        if path.suffix in COVERED_SUFFIXES and not cached and path.is_file():
+            data = path.read_bytes().replace(b"\r\n", b"\n")
+            digests[relative.as_posix()] = hashlib.sha256(data).hexdigest()
+    return digests
+
+
+@functools.lru_cache(maxsize=None)
+def _outside_digests(
+    directory: pathlib.Path, modules: tuple[str, ...]
+) -> Mapping[str, str]:
+    """Return the SHA-256 of each source file of the engine's outside modules,
+    with CRLF read as LF, by ``pymedphys/`` and its path within PyMedPhys.
+
+    ``directory`` is PyMedPhys's own, and ``modules`` the modules' paths
+    within it, as :data:`OUTSIDE_MODULES` gives them. Each directory and list
+    is read once and cached. A module that cannot be found is refused, since
+    the digest could not cover it.
+    """
+    digests = {}
+    for module in modules:
+        path = directory / module
+        if path.is_dir():
+            found = {f"{module}/{name}": d for name, d in _covered_files(path).items()}
+        elif path.suffix in COVERED_SUFFIXES and path.is_file():
+            data = path.read_bytes().replace(b"\r\n", b"\n")
+            found = {module: hashlib.sha256(data).hexdigest()}
+        else:
+            found = {}
+        if not found:
+            raise MethodDigestError(
+                f"the method digest cannot find PyMedPhys's module {module}"
+            )
+        digests.update({f"pymedphys/{name}": d for name, d in found.items()})
     return types.MappingProxyType(digests)
 
 
@@ -603,8 +679,8 @@ def digest_inputs(
     """Gather everything the method digest covers apart from the policy.
 
     Reads the engine's own files once per process, at the first call: the
-    generated tables, the supplementary rule files, and the package's source
-    and rule files.
+    generated tables, the supplementary rule files, the package's source
+    and rule files, and the source files of its outside modules.
 
     Parameters
     ----------
@@ -660,7 +736,8 @@ def digest_inputs(
         digest it records.
     MethodDigestError
         If the package's source and rule files cannot be found, or do not
-        include this module's own source, ``method_digest.py``.
+        include this module's own source, ``method_digest.py``, or an
+        outside module cannot be found.
     """
     if vocabulary is not None and not isinstance(vocabulary, tg263.Nomenclature):
         raise TypeError("vocabulary must be a TG-263 Nomenclature or None")
@@ -712,7 +789,12 @@ def digest_inputs(
             for module, names in GENERATED_VALUE_PARAMETERS
             for name in names
         },
-        files=_file_digests(PACKAGE_DIR.resolve()),
+        files=types.MappingProxyType(
+            {
+                **_file_digests(PACKAGE_DIR.resolve()),
+                **_outside_digests(PYMEDPHYS_DIR.resolve(), OUTSIDE_MODULES),
+            }
+        ),
     )
 
 
@@ -890,7 +972,7 @@ def method_digest_components(
     ... )
     True
     >>> components.method_digest_format, components.l3_rules
-    ('pymedphys-deid-method-digest/5', None)
+    ('pymedphys-deid-method-digest/6', None)
     """
     _check_policy(policy)
     return digest_components(
