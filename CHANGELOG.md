@@ -272,6 +272,7 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
   before clients connect; the listener exposes the actual port when started
   with port 0. Full OS/Python, dependency and release validation
   remains in place. [PR #2241](https://github.com/pymedphys/pymedphys/pull/2241)
+- **[Contributor facing only]** The NumPy and pandas minimum-version unit tests run in two parts on two runners, since a slow runner could take the 30-minute limit to run them all; every test still runs. `--ignore` now works with `pymedphys dev tests`: the conftest's collection hook no longer answers for the paths it does not ignore. [PR #2422](https://github.com/pymedphys/pymedphys/pull/2422)
 - Corrected the documentation dependency-group terminology, the weekly dependency update branch name and the current status of the historical coordinate expected failures. [PR #2246](https://github.com/pymedphys/pymedphys/pull/2246)
 
 - **[Contributor facing only]** CI and security workflows now validate
