@@ -46,12 +46,11 @@ separated by grey rows of :data:`GUTTER_PIXELS`, are:
   in parts across those rows, where rays cross different numbers of
   surfaces before it, so they are read together. The oblique views have
   no rows of crossings, since their rays, which step between voxels,
-  cross a surface falsely where they graze it. Where the voxels that an
-  ROI's closed contours fill lie all around, in its slice, a voxel of its
-  marks, below, that no closed contour bounding a voxel draws, as a box's
-  do around a curve within it, its region hides the mark from every view,
-  so those marks, alone, then have rows of their own after the ROI's, as
-  its region has, but with no row of cavities.
+  cross a surface falsely where they graze it. Where an ROI's closed
+  contours fill a voxel of its marks, below, that no closed contour
+  bounding a voxel draws, as a box's do a curve within it, the mark leaves
+  its region as it was, so those marks, alone, then have rows of their own
+  after the ROI's, as its region has, but with no row of cavities.
 
 Each region is sampled to cubic voxels over the extent of what it draws,
 with a voxel more on each low side across, 0 to 1 voxel more on each high
@@ -665,13 +664,13 @@ def _filled(roi: RoiContours, grid: _Grid, planes: np.ndarray) -> np.ndarray:
 
 
 def _hidden(roi: RoiContours, grid: _Grid, filled: np.ndarray) -> np.ndarray | None:
-    """Where the voxels that an ROI's closed contours fill are all around a
-    voxel of its marks that no closed contour bounding a voxel draws, and so
-    hide it from every view, the voxels of those marks alone, indexed as a
+    """Where a voxel of an ROI's marks that no closed contour bounding a
+    voxel draws is one that its closed contours fill, which the mark then
+    leaves as it was, the voxels of those marks alone, indexed as a
     surface's mask; or else None."""
     # The marks of its points, of its open contours, and of its closed
     # contours that bound no voxel, such as one that doubles back on itself;
-    # the others' marks lie on the edges of what they fill.
+    # the others' marks trace the edges of what they fill.
     alone = RoiContours(
         closed=tuple(each for each in roi.closed if not _bounds_any(each[1], grid)),
         points=roi.points,
@@ -680,7 +679,7 @@ def _hidden(roi: RoiContours, grid: _Grid, filled: np.ndarray) -> np.ndarray | N
     if not (alone.closed or alone.points.size or alone.lines):
         return None
     marked = _marked(alone.marks(_step(grid)), grid)
-    return marked if (marked & _interior(filled)).any() else None
+    return marked if (marked & filled).any() else None
 
 
 def _step(grid: _Grid) -> float:
@@ -710,19 +709,6 @@ def _marked(marks: np.ndarray, grid: _Grid) -> np.ndarray:
         within = (z >= 0) & (y >= 0) & (x >= 0)
         marked[len(grid.zs) - 1 - z[within], y[within], x[within]] = True
     return marked
-
-
-def _interior(filled: np.ndarray) -> np.ndarray:
-    """The voxels of a region whose eight neighbours in their slice are in
-    it too, so that every view, whose rays run within a slice, meets a
-    voxel there only through the region."""
-    padded = np.pad(filled, [(0, 0), (1, 1), (1, 1)])
-    rows, columns = filled.shape[1:]
-    inner = filled.copy()
-    for down in (0, 1, 2):
-        for across in (0, 1, 2):
-            inner &= padded[:, down : down + rows, across : across + columns]
-    return inner
 
 
 def _nearest(coordinates: np.ndarray, wanted: np.ndarray) -> np.ndarray:

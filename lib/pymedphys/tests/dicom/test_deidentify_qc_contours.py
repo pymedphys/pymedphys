@@ -536,9 +536,11 @@ def _curve(bend):
     [
         [("OPEN_PLANAR", _curve(4.0)), ("OPEN_PLANAR", _curve(-4.0))],
         [("POINT", np.array([[5.0, -6.0, 3.0]]))],
+        # Just inside the box's front edge, where it fills the voxel.
+        [("POINT", np.array([[5.0, -31.8, 3.0]]))],
         [_closed(np.vstack([files.square((0.0, 0.0, 0.0), 15.0)] * 2))],
     ],
-    ids=["open", "point", "doubled"],
+    ids=["open", "point", "edge", "doubled"],
 )
 def test_marks_within_their_own_roi_s_region_have_rows_of_their_own(marks):
     solid = _sheet_rows(qc_contours.contour_sheet(_solid()))
@@ -562,9 +564,10 @@ def test_marks_within_their_own_roi_s_region_are_told_apart():
     assert (one[1] == other[1]).all() and (one[2] != other[2]).any()
 
 
-def test_marks_on_the_edge_of_their_own_roi_s_region_have_no_rows_of_their_own():
-    edge = np.array([[-25.0, -32.0, 0.0], [25.0, -32.0, 0.0]])
-    rows = _sheet_rows(qc_contours.contour_sheet(_marked_box(("OPEN_PLANAR", edge))))
+def test_marks_outside_their_own_roi_s_region_have_no_rows_of_their_own():
+    # Above the box, where no ray meets the box too.
+    outside = np.array([[-10.0, 0.0, 20.0], [10.0, 0.0, 20.0]])
+    rows = _sheet_rows(qc_contours.contour_sheet(_marked_box(("OPEN_PLANAR", outside))))
     assert len(rows) == 2
 
 
