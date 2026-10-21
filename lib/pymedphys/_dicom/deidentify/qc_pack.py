@@ -130,7 +130,7 @@ from .reviewed_roi_names import Outcome
 from .text_detection import TextBox
 
 # The format of the pack document. A change to its fields takes a new label.
-FORMAT = "pymedphys-deid-qc-pack/11"
+FORMAT = "pymedphys-deid-qc-pack/12"
 # The bytes of a written file shown on each side of a residual's offset.
 EXCERPT_BYTES = 48
 # The SHA-256 that face_review.contour_data_sha256 gives a file without
@@ -255,8 +255,8 @@ class InstanceEntry:
         that the run wrote; ``None`` for any other input, or one whose
         written file the gate did not hand over or could not be read, or
         whose pixel data the pack's previews that could show a face do not
-        draw in every frame, as none yet does an RT Dose's, so that no
-        verdict releases them.
+        draw in every frame, which for an RT Dose only its dose-levels
+        previews can, so that no verdict releases them.
     contour_sha256 : str, optional
         Likewise, the :func:`~.face_review.contour_data_sha256` of the file
         written, which binds a series' face verdict to the contours that
@@ -850,6 +850,9 @@ class PreviewKind(enum.Enum):
     SERIES_MIP = "series-mip"  # a frontal maximum intensity projection
     # renders of a volume's skin surface, from the front, obliques, and profiles
     SERIES_SURFACE = "series-surface"
+    # renders of an RT Dose's surfaces at each of a ladder of dose levels,
+    # or a map of one plane's dose by level, drawing every frame listed
+    SERIES_DOSE_LEVELS = "series-dose-levels"
     INSTANCE = "instance"  # a high-risk instance at full resolution
     # a frame that Clean Pixel Data cleaned, at full resolution, with its
     # regions outlined: as received beside as written where it has any
@@ -1532,6 +1535,7 @@ class QcPack:
 def pictured_frames(
     previews: Iterable[tuple[str, Iterable[tuple[int, int]]]],
     not_previewed: Collection[int],
+    kinds: Collection[str] | None = None,
 ) -> dict[int, int]:
     """Return how many frames of each run position a pack's previews show
     in a way that could show a face, from its first frame with none missing.
@@ -1543,37 +1547,26 @@ def pictured_frames(
         frames it lists, by run position and frame index.
     not_previewed : collection of int
         The run positions listed as not previewed, which are left out.
+    kinds : collection of str, optional
+        The kinds of preview to count, as :class:`PreviewKind` values; by
+        default every kind but a contour sheet. Only dose-levels previews
+        show an RT Dose as it could show a face.
 
     Returns
     -------
     dict of int to int
         For each position whose frames those previews list from frame 0
-        with none missing, how many they list. A contour sheet's frames do
-        not count, since it shows the volume that it is drawn with only as a
-        surface, and nor do those of the isodose render of an RT Dose grid,
-        which D-017 finds inconclusive. A surface render is a dose grid's
-        where it lists a frame other than a position's first, as a volume's
-        never does, since a volume is of single-frame instances.
+        with none missing, how many they list. A contour sheet's frames
+        never count, since it shows the volume that it is drawn with only
+        as a surface.
     """
-    previews = [(kind, tuple(frames)) for kind, frames in previews]
-    surface, contours = (
-        PreviewKind.SERIES_SURFACE.value,
-        PreviewKind.STRUCTURE_SET_CONTOURS.value,
-    )
-    dosed = {
-        position
-        for kind, frames in previews
-        if kind == surface
-        for position, frame in frames
-        if frame
-    }
+    contours = PreviewKind.STRUCTURE_SET_CONTOURS.value
     framed: dict[int, set[int]] = {}
     for kind, frames in previews:
-        if kind == contours:
+        if kind == contours or (kinds is not None and kind not in kinds):
             continue
         for position, frame in frames:
-            if not (kind == surface and position in dosed):
-                framed.setdefault(position, set()).add(frame)
+            framed.setdefault(position, set()).add(frame)
     return {
         position: len(frames)
         for position, frames in framed.items()

@@ -25,8 +25,8 @@ second run of the same files under a policy that selects the option is
 given that pack (:func:`read_face_review`). The pack also records the
 SHA-256 of the pixel data of each file that the first run wrote
 (:func:`pixel_data_sha256`), only where previews that could show a face
-draw every frame of them, which none yet does of an RT Dose
-(:func:`is_rt_dose`), and the second run holds pixel data of more frames
+draw every frame of them, which for an RT Dose (:func:`is_rt_dose`) only
+dose-levels previews do, and the second run holds pixel data of more frames
 than they listed;
 and of the contours of each RT Structure Set that it wrote
 (:func:`contour_data_sha256`), only where its contour sheet shows them. An
@@ -111,6 +111,11 @@ class FaceReview:
         many frames, from the first, the pack's previews showed of it; an
         instance with more is held. :func:`read_face_review` always gives
         it; None, the default, bounds no instance's frames.
+    absent_dose_frames : frozenset of (bytes, bytes, int), optional
+        Likewise, how many frames its dose-levels previews showed, which
+        alone show an RT Dose as it could show a face, so bound an RT
+        Dose's. :func:`read_face_review` always gives it; None, the
+        default, releases no RT Dose with pixel data.
     """
 
     reference: str
@@ -119,6 +124,7 @@ class FaceReview:
     absent_pixels: frozenset[tuple[bytes, bytes]] = frozenset()
     absent_contours: frozenset[tuple[bytes, bytes]] = frozenset()
     absent_frames: frozenset[tuple[bytes, bytes, int]] | None = None
+    absent_dose_frames: frozenset[tuple[bytes, bytes, int]] | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.reference, str) or not re.fullmatch(
@@ -142,21 +148,23 @@ class FaceReview:
                     "a face review's pixel data and contours are SHA-256 "
                     "digests of files marked absent"
                 )
-        if self.absent_frames is not None and (
-            not isinstance(self.absent_frames, frozenset)
-            or not all(
-                isinstance(each, tuple)
-                and len(each) == 3
-                and each[:2] in self.absent_pixels
-                and isinstance(each[2], int)
-                and not isinstance(each[2], bool)
-                and each[2] >= 1
-                for each in self.absent_frames
-            )
-        ):
-            raise QcPackError(
-                "a face review's frames shown are counts of pixel data marked absent"
-            )
+        for counts in (self.absent_frames, self.absent_dose_frames):
+            if counts is not None and (
+                not isinstance(counts, frozenset)
+                or not all(
+                    isinstance(each, tuple)
+                    and len(each) == 3
+                    and each[:2] in self.absent_pixels
+                    and isinstance(each[2], int)
+                    and not isinstance(each[2], bool)
+                    and each[2] >= 1
+                    for each in counts
+                )
+            ):
+                raise QcPackError(
+                    "a face review's frames shown are counts of pixel data "
+                    "marked absent"
+                )
 
     def __repr__(self) -> str:
         return (
@@ -170,6 +178,7 @@ class FaceReview:
         pixels: bytes | None,
         contours: bytes | None,
         frames: int | None = None,
+        dose: bool = False,
     ) -> VisualFeaturesReason | None:
         """Return why an instance cannot claim the option.
 
@@ -188,6 +197,11 @@ class FaceReview:
             where that cannot be found. Where ``absent_frames`` is given,
             pixel data other than none are held unless the pack showed at
             least this many of their frames.
+        dose : bool, optional
+            Whether the instance is an RT Dose (:func:`is_rt_dose`), whose
+            pixel data other than none are held unless its dose-levels
+            previews showed at least ``frames`` of their frames, and so
+            always where ``absent_dose_frames`` is not given.
 
         Returns
         -------
@@ -204,15 +218,17 @@ class FaceReview:
             return VisualFeaturesReason.NO_FACE_VERDICT
         if (digest, pixels) not in self.absent_pixels:
             return VisualFeaturesReason.OTHER_PIXEL_DATA
-        # Pixel data with more frames than the pack showed were not all seen.
+        # Pixel data with more frames than the pack showed were not all
+        # seen, and only dose levels show an RT Dose.
+        counts = self.absent_dose_frames if dose else self.absent_frames
         if (
-            self.absent_frames is not None
+            (dose or counts is not None)
             and pixels != _NO_PIXELS
             and not any(
                 (source, written) == (digest, pixels)
                 and frames is not None
                 and 1 <= frames <= shown
-                for source, written, shown in self.absent_frames
+                for source, written, shown in counts or ()
             )
         ):
             return VisualFeaturesReason.OTHER_PIXEL_DATA
@@ -284,7 +300,12 @@ def read_face_review(pack_directory: os.PathLike | str) -> FaceReview:
         ),
         frozenset(
             (source, pixels, shown)
-            for source, pixels, _, _, shown in absent
+            for source, pixels, _, _, shown, _ in absent
+            if pixels is not None and shown is not None
+        ),
+        frozenset(
+            (source, pixels, shown)
+            for source, pixels, _, _, _, shown in absent
             if pixels is not None and shown is not None
         ),
     )
@@ -294,8 +315,9 @@ def read_face_review(pack_directory: os.PathLike | str) -> FaceReview:
 # of it, if any, whether a verdict of absent leaves it out: where the run
 # held it beside a CT series that it defaced, as received, or the pack could
 # not show its contours; and how many frames of pixel data other than none
-# its previews showed, from the first, where it has their digest.
-_File = tuple[bytes, bytes | None, bytes | None, bool, int | None]
+# its previews showed, from the first, where it has their digest, and how
+# many its dose-levels previews showed, where they show any so.
+_File = tuple[bytes, bytes | None, bytes | None, bool, int | None, int | None]
 # Those holds' reasons as the QC pack words them, which run_qc.reason_text
 # gives.
 UNDEFACED_TEXT = (
@@ -315,7 +337,7 @@ def _series_files(data: bytes) -> dict[int, frozenset[_File]]:
     series = document.get("series")
     if not isinstance(instances, list) or not isinstance(series, list):
         raise malformed
-    shown, unshown, pictured = _previews(document)
+    shown, unshown, pictured, dosed = _previews(document)
     digests: dict[int, _File] = {}
     for instance in instances:
         if not isinstance(instance, dict):
@@ -339,11 +361,12 @@ def _series_files(data: bytes) -> dict[int, frozenset[_File]]:
             if contours not in (None, NO_CONTOURS_SHA256) and position not in shown:
                 raise malformed
             # Likewise, pixel data's binds it only to the frames previewed.
-            frames = None
+            frames = dose_frames = None
             if pixels not in (None, NO_PIXELS_SHA256):
                 if position not in pictured:
                     raise malformed
                 frames = pictured[position]
+                dose_frames = dosed.get(position)
             digests[position] = (
                 bytes.fromhex(digest),
                 None if pixels is None else bytes.fromhex(pixels),
@@ -352,6 +375,7 @@ def _series_files(data: bytes) -> dict[int, frozenset[_File]]:
                 or DOSE_IN_FACE_BLOCK_TEXT in reasons
                 or position in unshown,
                 frames,
+                dose_frames,
             )
     files: dict[int, frozenset[_File]] = {}
     for entry in series:
@@ -364,11 +388,13 @@ def _series_files(data: bytes) -> dict[int, frozenset[_File]]:
     return files
 
 
-def _previews(document: dict) -> tuple[set[int], set[int], dict[int, int]]:
+def _previews(
+    document: dict,
+) -> tuple[set[int], set[int], dict[int, int], dict[int, int]]:
     """The run positions whose contours a pack's contour sheet shows, those
     that it lists as not shown, and how many frames of each other position
-    its other previews show in a way that could show a face, as
-    :func:`~.qc_pack.pictured_frames` counts them."""
+    its other previews, and its dose-levels previews, show in a way that
+    could show a face, as :func:`~.qc_pack.pictured_frames` counts them."""
     malformed = QcPackError("the QC pack is not of its format")
     previews, missing = document.get("previews"), document.get("not_previewed")
     if not isinstance(previews, list) or not isinstance(missing, list):
@@ -401,11 +427,10 @@ def _previews(document: dict) -> tuple[set[int], set[int], dict[int, int]]:
             raise malformed
         if entry.get("reason") == NotPreviewedReason.CONTOURS_NOT_SHOWN.value:
             unshown.add(entry.get("position"))
-    pictured = pictured_frames(
-        framed,
-        {entry.get("position") for entry in missing},
-    )
-    return shown, unshown, pictured
+    refused = {entry.get("position") for entry in missing}
+    pictured = pictured_frames(framed, refused)
+    dosed = pictured_frames(framed, refused, {PreviewKind.SERIES_DOSE_LEVELS.value})
+    return shown, unshown, pictured, dosed
 
 
 def pixel_data_sha256(dataset: pydicom.Dataset) -> bytes:
@@ -503,8 +528,8 @@ def _floats(value: object) -> list[float]:
 
 
 def is_rt_dose(dataset: pydicom.Dataset) -> bool:
-    """Whether an instance is an RT Dose, which no QC pack preview shows as
-    it could show a face (D-017).
+    """Whether an instance is an RT Dose, which only a QC pack's
+    dose-levels previews show as it could show a face (D-017).
 
     Its SOP Class UID being RT Dose Storage, or its Modality possibly being
     RTDOSE (:func:`_dose_modality`), makes it one, so that a file of either

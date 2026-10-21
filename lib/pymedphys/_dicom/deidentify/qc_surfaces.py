@@ -25,7 +25,7 @@ renders:
 - each RT Dose instance of two or more frames, placed by Image Position
   (Patient), Image Orientation (Patient), Pixel Spacing, and Grid Frame
   Offset Vector, whose axes lie along the patient's three directions and
-  whose frames are evenly spaced.
+  whose frames are evenly spaced, at each of a ladder of dose levels.
 
 Enhanced multi-frame images are not rendered.
 :mod:`~pymedphys._dicom.deidentify.qc_contours` renders RT Structure Set
@@ -34,16 +34,24 @@ that one region hides behind its own.
 
 The surface encloses the voxels at or above a threshold, applied after
 Rescale Slope and Rescale Intercept, or after Dose Grid Scaling for RT Dose:
-:data:`CT_THRESHOLD` Hounsfield units for a CT series; Otsu's threshold over
-the sampled volume for any other series, such as MR or PET, with pixel
+:data:`CT_THRESHOLD` Hounsfield units for a CT series; and Otsu's threshold
+over the sampled volume for any other series, such as MR or PET, with pixel
 padding counted below its lowest value, since padding marks where there is
-no patient; and :data:`DOSE_FRACTION` of the maximum of every voxel of the
-grid for RT Dose. Pixel padding, which is NaN, lies below every threshold.
+no patient. Pixel padding, which is NaN, lies below every threshold.
 
-An RT Dose render is a preview of one isodose surface. Lower doses can
-outline the patient where it does not, so a render that shows no face is
-inconclusive: it does not show that no face can be reconstructed from the
-grid.
+An RT Dose, or a series of RT Dose planes, is rendered at each level of
+:func:`dose_levels`, one row of views a level, from the top: its support,
+the voxels of any dose above 0, then each fraction of its greatest dose of
+0.5, 0.2, 0.1, 0.05, and so on down, whose dose is above its smallest dose
+above 0, so that no two neighbouring rows, nor the lowest and the smallest
+dose, differ by more than a factor of 2.5. A planning system either sets
+dose to zero outside the body, so that the support outlines the skin
+wherever the grid reaches past it, or computes a dose in air, so that dose
+falls steeply across the skin. The region at or above a level lies inside
+the region at or above any lower one, so an outline that holds over a band
+of dose wider than a factor of 2.5 shows in at least one row; one that
+holds only over a narrower band may show in none. A single plane is shown
+by :func:`level_bands`.
 
 The volume is sampled by nearest neighbour to cubic voxels of
 :data:`MINIMUM_VOXEL` millimetres, or of its smallest spacing where that is
@@ -79,7 +87,10 @@ from pymedphys._imports import numpy as np
 # towards the patient's left: frontal, the two obliques, and the two profiles.
 VIEWS = (0, 45, -45, 90, -90)
 CT_THRESHOLD = -300.0  # Hounsfield units, between air and soft tissue
-DOSE_FRACTION = 0.05
+# The fractions of an RT Dose's greatest dose that dose_levels takes, in
+# each decade, and the greatest.
+DOSE_STEPS = (5.0, 2.0, 1.0)
+DOSE_TOP = 0.5
 MINIMUM_VOXEL = 2.0  # millimetres
 MAXIMUM_VOXELS = 256
 RT_DOSE_STORAGE = "1.2.840.10008.5.1.4.1.1.481.2"
@@ -99,7 +110,7 @@ class Threshold(enum.Enum):
 
     CT = "ct"  # CT_THRESHOLD
     OTSU = "otsu"  # Otsu's threshold over the sampled volume, padding lowest
-    DOSE = "dose"  # DOSE_FRACTION of the grid's maximum
+    DOSE = "dose"  # each of dose_levels, a row of views each
 
 
 @dataclasses.dataclass(frozen=True)
@@ -194,21 +205,32 @@ class Surface:
             tuple(len(taken) for taken in self._taken), np.nan, np.float32
         )
         self._added = 0
+        # An RT Dose's greatest dose, and its smallest above 0, over every
+        # pixel of every slice.
         self._peak = -math.inf
+        self._floor = math.inf
 
-    def add(self, frame: np.ndarray) -> None:
-        """Add the next slice, rescaled, with padding as NaN."""
+    def add(self, frame: np.ndarray, scale: float | None = None) -> None:
+        """Add the next slice, rescaled, with padding as NaN.
+
+        ``scale`` multiplies it in place of the grid's, as each plane of a
+        series of RT Dose planes has its own Dose Grid Scaling.
+        """
         index = self._added
         self._added += 1
         if index >= len(self._grid.coordinates[0]):
             return
+        scale = self._grid.scale if scale is None else scale
         values = frame
-        if self._grid.scale != 1.0:
-            values = frame * np.float32(self._grid.scale)
+        if scale != 1.0:
+            values = frame * np.float32(scale)
         if self._grid.threshold is Threshold.DOSE:
             finite = values[np.isfinite(values)]
             if finite.size:
                 self._peak = max(self._peak, float(finite.max()))
+            positive = finite[finite > 0]
+            if positive.size:
+                self._floor = min(self._floor, float(positive.min()))
         wanted = np.union1d(
             np.flatnonzero(self._taken[0] == index), self._nearest[index]
         )
@@ -218,19 +240,32 @@ class Surface:
             self._samples[wanted], values[np.ix_(self._taken[1], self._taken[2])]
         )
 
-    def mask(self) -> np.ndarray | None:
+    def mask(self, level: float | None = None) -> np.ndarray | None:
         """The voxels in the surface, or None if a slice is missing.
 
         Indexed from superior, from anterior, then from the patient's right.
+        For an RT Dose, the voxels at or above ``level``, or of any dose
+        above 0 where it is 0 or not given.
         """
         if self._added != len(self._grid.coordinates[0]):
             return None
-        level = self._level()
-        if level is None:
-            inside = np.zeros(self._samples.shape, bool)
+        samples = np.nan_to_num(self._samples, nan=-np.inf)
+        if self._grid.threshold is Threshold.DOSE:
+            inside = samples >= level if level else samples > 0
         else:
-            inside = np.nan_to_num(self._samples, nan=-np.inf) >= level
+            level = self._level()
+            if level is None:
+                inside = np.zeros(self._samples.shape, bool)
+            else:
+                inside = samples >= level
         return np.transpose(inside, [self._grid.axes.index(axis) for axis in (2, 1, 0)])
+
+    @property
+    def levels(self) -> tuple[float, ...] | None:
+        """An RT Dose's :func:`dose_levels`, or None for another volume."""
+        if self._grid.threshold is not Threshold.DOSE:
+            return None
+        return dose_levels(self._peak, self._floor)
 
     @property
     def sampled(self) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
@@ -241,19 +276,70 @@ class Surface:
         return first, second, third
 
     def image(self) -> np.ndarray | None:
-        """The views side by side, as 8-bit grey, or None if a slice is missing."""
-        inside = self.mask()
-        if inside is None:
-            return None
-        return side_by_side(views(inside))
+        """The views side by side, as 8-bit grey, or None if a slice is missing.
+
+        An RT Dose's has a row of views for each of its levels, from the
+        support down, each separated from the next by black rows.
+        """
+        levels = self.levels or (None,)
+        rows = []
+        for level in levels:
+            inside = self.mask(level)
+            if inside is None:
+                return None
+            rows.append(side_by_side(views(inside)))
+        gap = np.zeros((_GAP_PIXELS, rows[0].shape[1]), np.uint8)
+        return np.concatenate([part for row in rows for part in (gap, row)][1:])
 
     def _level(self) -> float | None:
-        threshold = self._grid.threshold
-        if threshold is Threshold.CT:
+        if self._grid.threshold is Threshold.CT:
             return CT_THRESHOLD
-        if threshold is Threshold.DOSE:
-            return DOSE_FRACTION * self._peak if self._peak > 0 else None
         return _otsu(self._samples, padding=True)
+
+
+def dose_levels(peak: float, floor: float) -> tuple[float, ...]:
+    """Return the levels at which an RT Dose is shown, ascending.
+
+    0, its support, of any dose above 0; then each fraction of ``peak`` of
+    :data:`DOSE_STEPS` in each decade, from :data:`DOSE_TOP` down, whose
+    dose is above ``floor``, so that the lowest is within a factor of 2.5
+    of it. Only the support where ``peak`` is not above 0 and finite, as for
+    a grid of no dose.
+
+    Parameters
+    ----------
+    peak : float
+        The greatest dose.
+    floor : float
+        The smallest dose above 0.
+    """
+    if not (math.isfinite(peak) and peak > 0):
+        return (0.0,)
+    levels: list[float] = []
+    decade = DOSE_TOP / DOSE_STEPS[0]
+    while True:
+        for step in DOSE_STEPS:
+            level = step * decade * peak
+            # The level falls by at least half a step, so this ends.
+            if not level > floor:
+                return (0.0, *reversed(levels))
+            levels.append(level)
+        decade /= 10
+
+
+def level_bands(values: np.ndarray, levels: Sequence[float]) -> np.ndarray:
+    """Return an RT Dose plane as 8-bit grey by the levels its dose reaches.
+
+    Each pixel is ``255 * k / len(levels)``, rounded, where ``k`` levels of
+    ``levels``, as :func:`dose_levels` gives them, are at or below its dose,
+    the support counting where its dose is above 0; padding, NaN, is black.
+    So each level's outline is an edge between two greys.
+    """
+    finite = np.nan_to_num(values, nan=-np.inf)
+    reached = (finite > 0).astype(np.intp)
+    for level in levels[1:]:
+        reached += finite >= level
+    return np.rint(reached * (255.0 / len(levels))).astype(np.uint8)
 
 
 def views(inside: np.ndarray) -> list[np.ndarray]:

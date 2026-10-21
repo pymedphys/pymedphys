@@ -41,10 +41,18 @@ frame with such regions, also from the file as received:
   to square pixels by nearest neighbour, at most :data:`MIP_PIXELS` a side,
   each slice also taken into the pixel nearest it by the maximum, so that
   every slice is drawn where slices are closer than the pixels;
-- a sheet of renders of the skin surface of each such volume, and of each
-  RT Dose instance of two or more frames whose grid lies along the patient's
-  axes, from the front, the two obliques, and the two profiles, as
-  :mod:`~pymedphys._dicom.deidentify.qc_surfaces` describes;
+- a sheet of renders of the skin surface of each such volume, from the
+  front, the two obliques, and the two profiles, as
+  :mod:`~pymedphys._dicom.deidentify.qc_surfaces` describes, or, for a
+  volume of RT Dose planes, and for each RT Dose instance of two or more
+  frames whose grid lies along the patient's axes with its frames evenly
+  spaced, a dose-levels sheet of such renders at each of its dose levels;
+  an RT Dose is shown so only where it is one by its SOP Class, and its
+  stored values are unsigned, not rescaled, and scaled by a finite Dose Grid
+  Scaling above 0;
+- a dose-levels map of each RT Dose plane of one frame, so shown, that is
+  in no volume, at full resolution, grey by how many of its dose levels
+  each pixel reaches, so that each level's outline is an edge;
 - a contour sheet of each instance with contours, such as an RT Structure
   Set, high-risk or not, since a face verdict can release only what a
   reviewer saw: its contours as written, drawn in each Frame of Reference
@@ -188,15 +196,19 @@ class _Instance:
     plane: _Plane | None
     number: int | None
     modality: str
-    grid: qc_surfaces.Grid | None  # an RT Dose grid that a surface render shows
+    grid: qc_surfaces.Grid | None  # an RT Dose grid that dose levels show
     frame: str | None  # Frame of Reference UID
     # Whether its native Pixel Data hold no more than its frames, with at most
     # one byte of padding; the bytes beyond them are in no frame a preview
     # can show. Encapsulated Pixel Data are taken as whole here.
     whole: bool = True
-    # Whether it is an RT Dose (face_review.is_rt_dose), which no preview
-    # shows as it could show a face (D-017).
+    # Whether it is an RT Dose (face_review.is_rt_dose), which only a
+    # dose-levels preview shows as it could show a face (D-017).
     dose: bool = False
+    # Dose Grid Scaling, where a dose-levels preview can show its doses:
+    # an RT Dose by its SOP Class, unsigned, not rescaled, and scaled by a
+    # finite number above 0.
+    dose_scale: float | None = None
 
 
 @dataclasses.dataclass(frozen=True)
@@ -207,8 +219,9 @@ class PreviewSet:
     ----------
     previews : tuple of ~pymedphys._dicom.deidentify.qc_pack.Preview
         Each series' cine strip, then its projection and its surface render
-        if it forms a volume, then the surface render of each RT Dose grid
-        in it, series in the order of their first run position; then each
+        if it forms a volume, then the dose-levels render of each RT Dose
+        grid in it, then the dose-levels map of each RT Dose plane in it in
+        no volume, series in the order of their first run position; then each
         contour sheet, in run position order; then each high-risk instance,
         in run position order; then each frame of each instance that Clean
         Pixel Data cleaned, in run position and frame order. Named
@@ -224,16 +237,13 @@ class PreviewSet:
         The run positions of the files with pixel data every frame of which
         a preview that could show a face draws, and that are not listed as
         not previewed, and whose native Pixel Data hold no more than their
-        frames, other than RT Dose instances. A volume's projection and
-        surface render draw each of its slices, by its maximum where slices
-        are closer than their pixels. A contour sheet, and the isodose
-        render of an RT Dose grid, which D-017 finds inconclusive, list
-        frames that they cannot show a face in, so their frames do not
-        count. No preview yet shows an RT Dose as it could show a face: its
-        cine strip is windowed to its highest doses, which can leave a low
-        dose outlining the skin black, and the renders of a series of its
-        planes find their surface by Otsu's threshold, which D-017's
-        reasoning makes as inconclusive as the isodose render.
+        frames. A volume's projection and surface render draw each of its
+        slices, by its maximum where slices are closer than their pixels. A
+        contour sheet lists frames that it cannot show a face in, so its
+        frames do not count. Only dose-levels previews count for an RT Dose,
+        by :func:`~.face_review.is_rt_dose`: its cine strip is windowed to
+        its highest doses, which can leave a low dose outlining the skin
+        black, and an Otsu render of a series of its planes shows one level.
     """
 
     previews: tuple[Preview, ...]
@@ -306,10 +316,10 @@ def previews_of(
             source, entry = redactions[instance.position]
             images.extend(_redaction_images(instance, source, entry, decoded))
     # Only previews that could show a face count, and every frame of an
-    # instance must be among theirs; none yet shows an RT Dose so.
-    pictured = pictured_frames(
-        ((kind.value, frames) for kind, frames, _, _ in images), refused
-    )
+    # instance must be among theirs; for an RT Dose, only dose levels do.
+    listed = [(kind.value, frames) for kind, frames, _, _ in images]
+    pictured = pictured_frames(listed, refused)
+    dosed = pictured_frames(listed, refused, {PreviewKind.SERIES_DOSE_LEVELS.value})
     width = max(4, len(str(len(images))))
     previews = tuple(
         Preview(f"P-{number:0{width}d}.png", kind, frames, total, encoded)
@@ -326,8 +336,8 @@ def previews_of(
             instance.position
             for instance in instances
             if instance.whole
-            and not instance.dose
-            and pictured.get(instance.position) == instance.frames
+            and (dosed if instance.dose else pictured).get(instance.position)
+            == instance.frames
         ),
     )
 
@@ -412,6 +422,7 @@ def _described(
         return NotPreviewedReason.UNREADABLE
     spacing = _spacing(dataset)
     uid = dataset.get("SeriesInstanceUID")
+    scale = None if colour or rescale != (1.0, 0.0) else _dose_scale(dataset)
     whole = True
     if not plugin:
         try:
@@ -434,10 +445,13 @@ def _described(
         plane=_plane(dataset, spacing, (rows, columns)) if frames == 1 else None,
         number=number,
         modality=modality,
-        grid=None if colour else _dose_grid(dataset, spacing, (rows, columns), frames),
+        grid=None
+        if scale is None
+        else _dose_grid(dataset, spacing, (rows, columns), frames, scale),
         frame=_uid(dataset, "FrameOfReferenceUID"),
         whole=whole,
         dose=is_rt_dose(dataset),
+        dose_scale=scale,
     )
 
 
@@ -511,21 +525,38 @@ def _plane(
     )
 
 
+def _dose_scale(dataset: pydicom.Dataset) -> float | None:
+    """Dose Grid Scaling, where the data set is an RT Dose by its SOP Class
+    whose stored values are unsigned and scaled by a finite number above 0;
+    otherwise None, as a signed grid can hold doses below 0, which no level
+    shows, and a grid without a scaling above 0 has no dose to show."""
+    try:
+        sop_class = str(dataset.get("SOPClassUID") or "")
+    except Exception:  # pylint: disable = broad-exception-caught
+        sop_class = ""
+    scaling = _number(dataset, "DoseGridScaling", float)
+    if (
+        sop_class != qc_surfaces.RT_DOSE_STORAGE
+        or _number(dataset, "PixelRepresentation", int) != 0
+        or scaling is None
+        or scaling <= 0
+    ):
+        return None
+    return float(scaling)
+
+
 def _dose_grid(
     dataset: pydicom.Dataset,
     spacing: tuple[float, float] | None,
     shape: tuple[int, int],
     frames: int,
+    scale: float,
 ) -> qc_surfaces.Grid | None:
     """The grid of an RT Dose instance of two or more frames, if it is rendered.
 
     Its axes must lie along the patient's, and its frames be evenly spaced.
     """
-    try:
-        sop_class = str(dataset.get("SOPClassUID") or "")
-    except Exception:  # pylint: disable = broad-exception-caught
-        sop_class = ""
-    if frames < 2 or sop_class != qc_surfaces.RT_DOSE_STORAGE:
+    if frames < 2:
         return None
     plane = _plane(dataset, spacing, shape)
     offsets = _floats(dataset, "GridFrameOffsetVector", frames)
@@ -555,14 +586,13 @@ def _dose_grid(
         or np.ptp(steps) > _STACKING_TOLERANCE
     ):
         return None
-    scaling = _number(dataset, "DoseGridScaling", float)
     return qc_surfaces.grid(
         directions,
         offsets,
         plane.spacing,
         shape,
         qc_surfaces.Threshold.DOSE,
-        1.0 if scaling is None else float(scaling),
+        scale,
     )
 
 
@@ -703,12 +733,22 @@ def _series_images(
     tiles: list[tuple[int, int, np.ndarray, _Instance]] = []
     projection = _Projection(volume) if volume is not None else None
     surfaces = _surfaces(series, volume)
-    rendered = {frame for shown, _ in surfaces for frame in shown}
+    rendered = {frame for _, shown, _ in surfaces for frame in shown}
+    # Each RT Dose plane in no volume, mapped by the levels of its dose.
+    planes = {
+        instance.position: instance
+        for instance in series
+        if volume is None and instance.frames == 1 and instance.dose_scale is not None
+    }
+    maps = []
     for instance in series:
         for frame in range(instance.frames):
             shown = (instance.position, frame) in chosen
             projected = projection is not None and not frame
-            if not (shown or projected or (instance.position, frame) in rendered):
+            mapped = instance.position in planes
+            if not (
+                shown or projected or mapped or (instance.position, frame) in rendered
+            ):
                 continue
             pixels = decoder.frame(instance, frame)
             if pixels is None:
@@ -719,9 +759,15 @@ def _series_images(
                 )
             if projection is not None:
                 projection.add(instance, pixels)
-            for each, surface in surfaces:
+            for kind, each, surface in surfaces:
                 if (instance.position, frame) in each:
-                    surface.add(pixels)
+                    # A series of RT Dose planes scales each by its own.
+                    planed = (
+                        kind is PreviewKind.SERIES_DOSE_LEVELS and volume is not None
+                    )
+                    surface.add(pixels, instance.dose_scale if planed else None)
+            if mapped:
+                maps.append((instance, pixels))
     if tiles:
         image = _sheet(
             _windowed_tiles([(tile, instance) for _, _, tile, instance in tiles]),
@@ -745,41 +791,73 @@ def _series_images(
         and frame in guides
         and all(instance.frame == frame for instance in series)
     ):
-        guide = _guide(series, surfaces[0][1])
+        guide = _guide(series, surfaces[0][2])
         if guide is not None:
-            guides[frame].append(((guide, surfaces[0][0]), series[0].series))
-    for shown, surface in surfaces:
+            guides[frame].append(((guide, surfaces[0][1]), series[0].series))
+    for kind, shown, surface in surfaces:
         image = surface.image()
         if image is not None:
-            yield PreviewKind.SERIES_SURFACE, shown, len(shown), image
+            yield kind, shown, len(shown), image
+    for instance, pixels in maps:
+        yield (
+            PreviewKind.SERIES_DOSE_LEVELS,
+            ((instance.position, 0),),
+            1,
+            _level_map(instance, pixels),
+        )
+
+
+def _level_map(instance: _Instance, pixels: np.ndarray) -> np.ndarray:
+    """An RT Dose plane at full resolution, grey by the levels of its dose."""
+    assert instance.dose_scale is not None
+    values = pixels * np.float32(instance.dose_scale)
+    finite = values[np.isfinite(values)]
+    positive = finite[finite > 0]
+    levels = qc_surfaces.dose_levels(
+        float(finite.max()) if finite.size else -math.inf,
+        float(positive.min()) if positive.size else math.inf,
+    )
+    return qc_surfaces.level_bands(values, levels)
 
 
 def _surfaces(
     series: list[_Instance], volume: _Volume | None
-) -> list[tuple[tuple[tuple[int, int], ...], qc_surfaces.Surface]]:
-    """The surface renders of a series, each with the frames that it shows.
+) -> list[tuple[PreviewKind, tuple[tuple[int, int], ...], qc_surfaces.Surface]]:
+    """The surface renders of a series, each with its kind and the frames
+    that it shows.
 
     The volume's first, if the series forms one, then each RT Dose grid's.
-    A CT series' surface is at a fixed level, and any other's by Otsu's.
+    A CT series' surface is at a fixed level; a series of RT Dose planes,
+    each of whose doses a dose-levels preview can show, is shown at each of
+    its dose levels; and any other's surface is by Otsu's threshold.
     """
     surfaces = []
     if volume is not None:
-        threshold = (
-            qc_surfaces.Threshold.CT
-            if all(instance.modality == "CT" for instance in series)
-            else qc_surfaces.Threshold.OTSU
-        )
+        kind = PreviewKind.SERIES_SURFACE
+        if all(instance.modality == "CT" for instance in series):
+            threshold = qc_surfaces.Threshold.CT
+        elif all(instance.dose_scale is not None for instance in series):
+            threshold = qc_surfaces.Threshold.DOSE
+            kind = PreviewKind.SERIES_DOSE_LEVELS
+        else:
+            threshold = qc_surfaces.Threshold.OTSU
         grid = qc_surfaces.grid(
             volume.directions, volume.positions, volume.spacing, volume.shape, threshold
         )
         shown = tuple((instance.position, 0) for instance in series)
-        surfaces.append((shown, qc_surfaces.Surface(grid)))
+        surfaces.append((kind, shown, qc_surfaces.Surface(grid)))
     for instance in series:
         if instance.grid is not None:
             shown = tuple(
                 (instance.position, frame) for frame in range(instance.frames)
             )
-            surfaces.append((shown, qc_surfaces.Surface(instance.grid)))
+            surfaces.append(
+                (
+                    PreviewKind.SERIES_DOSE_LEVELS,
+                    shown,
+                    qc_surfaces.Surface(instance.grid),
+                )
+            )
     return surfaces
 
 

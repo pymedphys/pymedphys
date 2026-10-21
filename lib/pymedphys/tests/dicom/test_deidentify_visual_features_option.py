@@ -1016,34 +1016,39 @@ def test_a_verdict_releases_compressed_pixel_data_as_the_reviewed_run_wrote_them
             continue
         # Marked absent, but with no pixel data seen, it is held; given the
         # pixel data that this run wrote, with each codestream's metadata
-        # cut, it is released, but for an RT Dose, which no preview shows
-        # as it could show a face, so that a run holds it whatever its
-        # verdict.
+        # cut, it is released; an RT Dose only where its dose levels showed
+        # every frame, as a review built by hand says only where asked.
         assert isinstance(unseen.evidence, HeldEvidence)
         assert held in getattr(unseen.evidence, "held")
-        written = pixel_data_sha256(read_source(unseen.data).dataset())
-        contours = contour_data_sha256(read_source(unseen.data).dataset())
-        seen = InstanceTransform(
-            _policy(),
-            KEY,
-            face_review=FaceReview(
-                REFERENCE,
-                frozenset({source}),
-                frozenset(),
-                frozenset({(source, written)}),
-                frozenset({(source, contours)}),
-            ),
-            unvalidated_policy=True,
-        )(file.data, record)
+        dataset = read_source(unseen.data).dataset()
+        written = pixel_data_sha256(dataset)
+        review = FaceReview(
+            REFERENCE,
+            frozenset({source}),
+            frozenset(),
+            frozenset({(source, written)}),
+            frozenset({(source, contour_data_sha256(dataset))}),
+        )
+        seen = _seen(file.data, record, review)
         if record.iod == RT_DOSE:
             assert isinstance(seen.evidence, HeldEvidence), file.name
             assert getattr(seen.evidence, "held") == (held,), file.name
+            frames = int(dataset.get("NumberOfFrames") or 1)
+            review = dataclasses.replace(
+                review, absent_dose_frames=frozenset({(source, written, frames)})
+            )
+            seen = _seen(file.data, record, review)
             doses += 1
-            continue
         assert not isinstance(seen.evidence, HeldEvidence), file.name
         assert CODE in _codes(pydicom.dcmread(io.BytesIO(seen.data)))
         released += 1
         cut += written != pixel_data_sha256(read_source(file.data).dataset())
     assert released and cut
-    # The collection's RT Dose images, in RLE Lossless.
+    # The collection's RT Dose images, in RLE Lossless, are among them.
     assert doses == 2
+
+
+def _seen(data, record, review):
+    return InstanceTransform(
+        _policy(), KEY, face_review=review, unvalidated_policy=True
+    )(data, record)

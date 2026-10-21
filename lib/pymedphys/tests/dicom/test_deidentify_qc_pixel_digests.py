@@ -264,30 +264,83 @@ def test_an_rt_dose_is_known_by_its_class_or_a_modality_that_may_be_rtdose():
         assert not face_review.is_rt_dose(instance(modality)), modality
 
 
-def test_no_rt_dose_is_shown():
-    # A grid's isodose render lists every frame, and its cine strip every
-    # frame of a short grid, but the render cannot show a face, and the cine
-    # strip is windowed to the highest doses, which can leave a low dose
-    # outlining the skin black.
-    for frames in (30, 12):
-        found, framed = _shown({0: _dose(frames)})
-        assert PreviewKind.SERIES_SURFACE in {p.kind for p in found.previews}
-        assert framed[0] == set(range(frames))
-        assert found.pixels_shown == frozenset()
-    # A series of planes forms a volume, whose projection and Otsu surface
-    # list every plane, but no more show a face than the isodose render.
-    found, framed = _shown(dict(enumerate(_dose_planes())))
-    kinds = {preview.kind for preview in found.previews}
-    assert {PreviewKind.SERIES_MIP, PreviewKind.SERIES_SURFACE} <= kinds
-    assert framed == {position: {0} for position in range(4)}
+def test_an_rt_dose_is_shown_by_its_dose_levels():
+    # A grid's dose levels list every frame, a series of planes' every
+    # plane, and a lone plane's map its frame, whether two planes or one.
+    for written in (
+        {0: _dose(30)},
+        {0: _dose(12)},
+        dict(enumerate(_dose_planes())),
+        dict(enumerate(_dose_planes(2))),
+        dict(enumerate(_dose_planes(1))),
+        # An RT Dose labelled CT is one by its SOP Class.
+        {0: _relabelled(_dose(12), "CT")},
+    ):
+        found, _ = _shown(written)
+        kinds = [preview.kind for preview in found.previews]
+        assert PreviewKind.SERIES_DOSE_LEVELS in kinds
+        assert PreviewKind.SERIES_SURFACE not in kinds
+        assert found.pixels_shown == frozenset(written)
+
+
+def _altered(data, **attributes):
+    """A file with attributes set, or deleted where None."""
+    dataset = pydicom.dcmread(io.BytesIO(data))
+    for keyword, value in attributes.items():
+        if value is None:
+            delattr(dataset, keyword)
+        else:
+            setattr(dataset, keyword, value)
+    return files.written(dataset)
+
+
+def _unshown_doses():
+    """RT Dose instances of 12 frames, or a series of planes, whose dose
+    levels cannot be drawn, by name."""
+    oblique = (0.866025, 0.5, 0.0, -0.5, 0.866025, 0.0)
+    longer = pydicom.dcmread(io.BytesIO(_dose(12)))
+    longer.PixelData += bytes(4 * 20 * 20)
+    return {
+        "unscaled": [_altered(_dose(12), DoseGridScaling=None)],
+        "zero-scaling": [_altered(_dose(12), DoseGridScaling=0)],
+        "negative-scaling": [_altered(_dose(12), DoseGridScaling=-0.001)],
+        "signed": [_altered(_dose(12), PixelRepresentation=1)],
+        "rescaled": [_altered(_dose(12), RescaleSlope=2, RescaleIntercept=0)],
+        "oblique": [_altered(_dose(12), ImageOrientationPatient=list(oblique))],
+        "uneven": [
+            _altered(_dose(12), GridFrameOffsetVector=[0.0, 3.0, 7.0, *range(9, 18)])
+        ],
+        "longer": [files.written(longer)],
+        "plane-unscaled": [
+            *_dose_planes()[:3],
+            _altered(_dose_planes()[3], DoseGridScaling=None),
+        ],
+    }
+
+
+@pytest.mark.parametrize("name", list(_unshown_doses()))
+def test_an_rt_dose_whose_levels_cannot_be_drawn_is_not_shown(name):
+    # Its cine strip lists every frame of a short grid, and a series of
+    # planes' projection and Otsu render every plane, but the strip is
+    # windowed to the highest doses, which can leave a low dose outlining
+    # the skin black, and an Otsu render shows one level. A grid whose
+    # stored values may be below 0, or rescaled, or not scaled above 0, has
+    # doses that its levels would not show.
+    written = dict(enumerate(_unshown_doses()[name]))
+    found, framed = _shown(written)
+    assert all(
+        framed[position] == set(range(12 if len(written) == 1 else 1))
+        for position in written
+    )
     assert found.pixels_shown == frozenset()
-    # Its SOP Class or its Modality alone makes a file an RT Dose: a short
-    # grid labelled CT, and a short CT instance labelled RTDOSE, which would
-    # each be shown otherwise.
-    for data in (_relabelled(_dose(12), "CT"), _relabelled(_frames(12), "RTDOSE")):
-        found, framed = _shown({0: data})
-        assert framed[0] == set(range(12))
-        assert found.pixels_shown == frozenset()
+
+
+def test_an_image_labelled_rtdose_is_not_shown():
+    # Its Modality makes it an RT Dose, which only dose levels show, and
+    # only an RT Dose by its SOP Class has them.
+    found, framed = _shown({0: _relabelled(_frames(12), "RTDOSE")})
+    assert framed[0] == set(range(12))
+    assert found.pixels_shown == frozenset()
 
 
 def _thin(block=None, count=40):
@@ -340,12 +393,15 @@ def test_frames_count_only_from_the_first_with_none_missing():
     assert pictured_frames([(cine, [(0, 0), (0, 1), (1, 0)])], ()) == {0: 2, 1: 1}
     assert pictured_frames([(cine, [(0, 0), (0, 2)]), (cine, [(1, 1)])], ()) == {}
     assert pictured_frames([(cine, [(0, 0)])], {0}) == {}
-    # A volume's surface render shows each slice's first frame; one that
-    # shows a later frame is a dose grid's isodose render, which does not
-    # count, nor does a contour sheet.
-    assert pictured_frames([(surface, [(0, 0), (1, 0)])], ()) == {0: 1, 1: 1}
-    assert pictured_frames([(surface, [(0, 0), (0, 1)])], ()) == {}
+    # A contour sheet's frames never count, and where kinds are named, only
+    # those count, as only dose levels do for an RT Dose.
+    assert pictured_frames([(surface, [(0, 0), (0, 1)])], ()) == {0: 2}
     assert pictured_frames([(contours, [(0, 0)])], ()) == {}
+    levels = PreviewKind.SERIES_DOSE_LEVELS.value
+    previews = [(cine, [(0, 0), (1, 0)]), (levels, [(1, 0), (1, 1)])]
+    assert pictured_frames(previews, ()) == {0: 1, 1: 2}
+    assert pictured_frames(previews, (), {levels}) == {1: 2}
+    assert pictured_frames(previews, (), {levels, contours}) == {1: 2}
 
 
 # Which pixel data's SHA-256 the pack records.
@@ -459,14 +515,21 @@ def test_the_reader_takes_pixel_data_s_digest_only_where_a_preview_shows_them():
     files_of = face_review._series_files(json.dumps(document).encode("ascii"))
     (entry,) = files_of[0]
     assert entry[1] == bytes.fromhex("1e" * 32)
-    # It carries how many frames, from the first, the previews showed.
-    assert entry[4] == 1
+    # It carries how many frames, from the first, the previews showed, and
+    # none that dose levels showed.
+    assert entry[4] == 1 and entry[5] is None
     document["previews"][0]["frames"].append({"position": 0, "frame": 2})
     with pytest.raises(QcPackError, match="not of its format"):
         face_review._series_files(json.dumps(document).encode("ascii"))
     document["previews"][0]["frames"][1]["frame"] = 1
     (entry,) = face_review._series_files(json.dumps(document).encode("ascii"))[0]
     assert entry[4] == 2
+    # Dose levels' frames count for both.
+    document["previews"].append(
+        {"kind": "series-dose-levels", "frames": [{"position": 0, "frame": 0}]}
+    )
+    (entry,) = face_review._series_files(json.dumps(document).encode("ascii"))[0]
+    assert entry[4:] == (2, 1)
     document["not_previewed"] = [{"position": 0, "reason": "unreadable-pixel-data"}]
     with pytest.raises(QcPackError, match="not of its format"):
         face_review._series_files(json.dumps(document).encode("ascii"))
@@ -498,6 +561,46 @@ def test_a_review_holds_pixel_data_with_more_frames_than_its_pack_showed():
             frozenset({source}),
             frozenset(),
             absent_frames=frozenset({(source, pixels, 16)}),
+        )
+
+
+def test_a_review_holds_an_rt_dose_unless_its_dose_levels_showed_every_frame():
+    source, pixels = hashlib.sha256(b"source").digest(), hashlib.sha256(b"x").digest()
+    contours = bytes.fromhex(NO_CONTOURS_SHA256)
+
+    def review(dose_frames):
+        return FaceReview(
+            REFERENCE,
+            frozenset({source}),
+            frozenset(),
+            frozenset({(source, pixels), (source, bytes.fromhex(NO_PIXELS_SHA256))}),
+            frozenset({(source, contours)}),
+            frozenset({(source, pixels, 16)}),
+            dose_frames,
+        )
+
+    held = VisualFeaturesReason.OTHER_PIXEL_DATA
+    # Other previews' frames do not count for an RT Dose, so a review
+    # without dose levels' holds every one with pixel data.
+    for dose_frames in (None, frozenset()):
+        assert review(dose_frames).hold_reason(source, pixels, contours, 16) is None
+        assert (
+            review(dose_frames).hold_reason(source, pixels, contours, 16, dose=True)
+            is held
+        )
+    shown = review(frozenset({(source, pixels, 12)}))
+    assert shown.hold_reason(source, pixels, contours, 12, dose=True) is None
+    for frames in (0, 13, None):
+        assert shown.hold_reason(source, pixels, contours, frames, dose=True) is held
+    # One without pixel data, of dose-volume histograms alone, shows no face.
+    none = bytes.fromhex(NO_PIXELS_SHA256)
+    assert review(None).hold_reason(source, none, contours, None, dose=True) is None
+    with pytest.raises(QcPackError, match="frames shown"):
+        FaceReview(
+            REFERENCE,
+            frozenset({source}),
+            frozenset(),
+            absent_dose_frames=frozenset({(source, pixels, 16)}),
         )
 
 
@@ -586,15 +689,15 @@ def _verdict_run(*data):
     [
         [_frames(40)],
         [_longer(1)],
-        [_dose(30)],
-        [_dose(12)],
-        _dose_planes(),
+        _unshown_doses()["unscaled"],
+        _unshown_doses()["longer"],
+        _unshown_doses()["plane-unscaled"],
     ],
-    ids=["frames", "bytes", "grid", "short-grid", "planes"],
+    ids=["frames", "bytes", "unscaled-grid", "longer-grid", "unscaled-plane"],
 )
 def test_a_verdict_of_absent_holds_pixel_data_that_the_pack_did_not_show(data):
-    # Frames beyond the cine, bytes beyond the frames, and RT Dose, which
-    # no preview shows as it could show a face.
+    # Frames beyond the cine, bytes beyond the frames, and RT Dose whose
+    # dose levels the pack could not draw.
     entries, outcomes = _verdict_run(*data)
     assert len(outcomes) == len(data)
     for entry, outcome in zip(entries, outcomes):
@@ -607,10 +710,18 @@ def test_a_verdict_of_absent_holds_pixel_data_that_the_pack_did_not_show(data):
         )
 
 
-def test_a_verdict_of_absent_releases_pixel_data_whose_every_frame_was_shown():
-    (entry,), (outcome,) = _verdict_run(_frames(12))
-    assert entry["pixel_sha256"] is not None
-    assert outcome.status.value == "released"
+@pytest.mark.deid_requirement("PS3.15-E.3.2-01")
+@pytest.mark.parametrize(
+    "data",
+    [[_frames(12)], [_dose(30)], [_dose(12)], _dose_planes(), _dose_planes(1)],
+    ids=["frames", "grid", "short-grid", "planes", "plane"],
+)
+def test_a_verdict_of_absent_releases_pixel_data_whose_every_frame_was_shown(data):
+    entries, outcomes = _verdict_run(*data)
+    assert len(outcomes) == len(data)
+    for entry, outcome in zip(entries, outcomes):
+        assert entry["pixel_sha256"] is not None
+        assert outcome.status.value == "released"
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.2-01")
@@ -625,7 +736,9 @@ def test_a_verdict_of_absent_releases_pixel_data_whose_every_frame_was_shown():
     ],
     ids=["rt-dose", "ct-rtdose", "ct-lower-case", "ct-two-values", "ct-nul"],
 )
-def test_a_run_holds_an_rt_dose_whatever_its_review_says(data):
+def test_a_run_releases_an_rt_dose_only_where_its_dose_levels_showed_every_frame(
+    data,
+):
     record = InstanceRecord.from_file(data)
     source = hashlib.sha256(data).digest()
     transform = InstanceTransform(
@@ -638,23 +751,33 @@ def test_a_run_holds_an_rt_dose_whatever_its_review_says(data):
     assert isinstance(unseen, Transformed)
     written = read_source(unseen.data).dataset()
     pixels = pixel_data_sha256(written)
-    # A review that binds the verdict to every frame, as no pack does of an
-    # RT Dose by its SOP Class or Modality, still does not release it.
-    held = InstanceTransform(
-        _policy(),
-        KEY,
-        face_review=FaceReview(
-            REFERENCE,
-            frozenset({source}),
-            frozenset(),
-            frozenset({(source, pixels)}),
-            frozenset({(source, face_review.contour_data_sha256(written))}),
-            frozenset({(source, pixels, 12)}),
-        ),
-        unvalidated_policy=True,
-    )(data, record)
-    assert isinstance(held, Transformed)
-    assert isinstance(held.evidence, HeldEvidence)
-    assert getattr(held.evidence, "held") == (
-        HeldVisualFeatures(VisualFeaturesReason.OTHER_PIXEL_DATA),
-    )
+
+    def transformed(dose_frames):
+        return InstanceTransform(
+            _policy(),
+            KEY,
+            face_review=FaceReview(
+                REFERENCE,
+                frozenset({source}),
+                frozenset(),
+                frozenset({(source, pixels)}),
+                frozenset({(source, face_review.contour_data_sha256(written))}),
+                frozenset({(source, pixels, 12)}),
+                dose_frames,
+            ),
+            unvalidated_policy=True,
+        )(data, record)
+
+    # A review that binds the verdict to every frame through other previews
+    # does not release an RT Dose, by its SOP Class or Modality, nor one
+    # whose dose levels showed too few frames.
+    for dose_frames in (None, frozenset({(source, pixels, 11)})):
+        held = transformed(dose_frames)
+        assert isinstance(held, Transformed)
+        assert isinstance(held.evidence, HeldEvidence)
+        assert getattr(held.evidence, "held") == (
+            HeldVisualFeatures(VisualFeaturesReason.OTHER_PIXEL_DATA),
+        )
+    released = transformed(frozenset({(source, pixels, 12)}))
+    assert isinstance(released, Transformed)
+    assert not isinstance(released.evidence, HeldEvidence)
