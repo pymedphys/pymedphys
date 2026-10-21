@@ -142,12 +142,15 @@ def _eye(side, *, below=0.0):
 
 
 # The head's ROIs: its outline, which the block cuts on each slice; its
-# brain, within the kept cavity, above the floor; its eyes, whose backs lie
-# behind the block's plane; a lens, wholly in the block; and a target
-# behind the block.
+# brain, within the kept cavity, above the floor, and drawn out to the
+# skull; its eyes, whose backs lie behind the block's plane; a lens, wholly
+# in the block; and a target behind the block.
 _ROIS = {
     "External": ("EXTERNAL", [_section(_OUTLINE, z) for z in (20.0, 60.0, 80.0)]),
     "Brain": ("ORGAN", [_section(_BRAIN, z, 0.9) for z in (60.0, 80.0)]),
+    # The brain drawn on the inner table, as segmentations commonly are, so
+    # that it reaches bone, which defacing writes as air.
+    "Brain_Table": ("ORGAN", [_section(_BRAIN, z) for z in (60.0, 80.0)]),
     "Eye_R": ("ORGAN", _eye(0)),
     "Eye_L": ("ORGAN", _eye(1)),
     "Lens_L": (
@@ -665,6 +668,34 @@ def _behind(block, z):
     )
 
 
+def _written_as_air(outcomes, block, z):
+    """The parts in the block of the squares of the pixels of the head's CT
+    slice at ``z`` that the run wrote as air there, as a polygon, read from
+    the released slice."""
+    (index,) = [i for i, each in enumerate(_SCAN.positions) if each[2] == z]
+    _, dataset = outcomes[_head_name(index)]
+    written = pydicom.pixels.apply_rescale(pydicom.pixels.pixel_array(dataset), dataset)
+    points = _SCAN.points(index)
+    air = block.contains(points) & (written == -1000)
+    half = _SCAN.spacing[0] / 2
+    squares = shapely.ops.unary_union(
+        [
+            shapely.geometry.box(x - half, y - half, x + half, y + half)
+            for x, y in points[air][:, :2]
+        ]
+    )
+    return squares.difference(_behind(block, z))
+
+
+def _region(contours):
+    """The region that contours in one plane bound together, by exclusive
+    or."""
+    region = shapely.geometry.Polygon()
+    for points in contours:
+        region = region.symmetric_difference(shapely.geometry.Polygon(points[:, :2]))
+    return region
+
+
 @pytest.mark.deid_requirement("PS3.15-E.3.2-01", "PS3.15-E.3.2-02")
 def test_the_head_structure_set_is_cut_by_the_block_and_released(defaced):
     slices, outcomes, reasons, _ = defaced
@@ -675,13 +706,19 @@ def test_the_head_structure_set_is_cut_by_the_block_and_released(defaced):
     assert dataset.RecognizableVisualFeatures == "NO"
     assert _codes(dataset)[-2:] == [markers.PROFILE_CODE, CODE]
     written = _contours(dataset)
-    # The outline and the eyes lose their parts in the block, on each slice,
-    # the forehead above the kept brain's floor included; each slice's
-    # contour is one polygon, which is its part behind the block's plane, as
-    # the CT keeps the backs of the globes.
+    floor = head.GLOBE_Z + face_blocks.CAVITY_FLOOR
+    # Below the kept brain's floor, the outline and the eyes lose their
+    # parts in the block, on each slice; each slice's contour is one
+    # polygon, which is its part behind the block's plane, as the CT keeps
+    # the backs of the globes.
     for name in ("External", "Eye_R", "Eye_L"):
-        for source, cut in zip(_ROIS[name][1], written[name], strict=True):
+        cuts = iter(written[name])
+        for source in _ROIS[name][1]:
             z = source[0, 2]
+            if z > floor:
+                continue
+            cut = next(cuts)
+            assert cut[0, 2] == z
             assert not block.contains(cut).any(), (name, z)
             expected = shapely.geometry.Polygon(source[:, :2]).intersection(
                 _behind(block, z)
@@ -689,6 +726,20 @@ def test_the_head_structure_set_is_cut_by_the_block_and_released(defaced):
             got = shapely.geometry.Polygon(cut[:, :2])
             assert got.symmetric_difference(expected).area < 1e-3 * expected.area
             assert got.area < shapely.geometry.Polygon(source[:, :2]).area, name
+    # Above it, the outline, and the brain drawn out to the skull, lose
+    # exactly what the CT writes as air, keeping the brain that the CT
+    # keeps, and so more than the block's plane would leave them.
+    for name in ("External", "Brain_Table"):
+        for source in _ROIS[name][1]:
+            z = source[0, 2]
+            if z <= floor:
+                continue
+            got = _region([each for each in written[name] if each[0, 2] == z])
+            whole = shapely.geometry.Polygon(source[:, :2])
+            expected = whole.difference(_written_as_air(outcomes, block, z))
+            assert got.symmetric_difference(expected).area < 1e-6 * whole.area
+            assert got.area < whole.area, (name, z)
+            assert got.area > whole.intersection(_behind(block, z)).area, (name, z)
     # The brain, in the kept cavity, and the target behind the block, are as
     # they were; the lens, wholly in the block, is gone, without a Contour
     # Sequence.
