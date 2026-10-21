@@ -55,11 +55,17 @@ separated by grey rows of :data:`GUTTER_PIXELS`, are:
   within its region, one that bounds a hole that its own marks or others
   fill, or one in a plane that covers no slice. Those marks, with every
   mark of the first kinds, then have rows of their own after the ROI's,
-  as its region has, but with no row of cavities, so that every mark is
-  shown, in those rows or within two voxels of an edge of the ROI's own.
-  Where those marks hide one another in turn, as a line drawn back and
-  forth over a patch hides a curve within it, or lines that fill a hole
-  hide its outline, a sheet cannot show them, so none is drawn.
+  as its region has, but with no row of cavities, and with a row for each
+  further crossing however few times a ray crosses them, so that they
+  show every crossing into or out of the marks that a ray of the frontal
+  view or of a profile makes; so every mark is shown, in those rows or
+  within two voxels of the edge of what its slice shows, which the ROI's
+  rows draw from the front and the sides, though not from behind. Those
+  rows draw every voxel of the marks only where each has a neighbour along
+  its row or its column of voxels that is not a mark; where one does not,
+  as where a line drawn back and forth over a patch, with or without gaps
+  a voxel wide between its passes, covers a curve within it, or lines that
+  fill a hole cover its outline, no sheet is drawn.
 
 Each region is sampled to cubic voxels over the extent of what it draws,
 with a voxel more on each low side across, 0 to 1 voxel more on each high
@@ -437,7 +443,7 @@ def contour_sheet(
     numpy.ndarray or None
         uint8, of shape (rows, columns, 3); or None where the sheet would be
         taller than ``tallest``, which is drawn only until it is, or where
-        an ROI's hidden marks hide one another.
+        the rows of an ROI's hidden marks would leave any of them undrawn.
     """
     guides = {} if guides is None else guides
     if contours.empty:
@@ -487,16 +493,16 @@ def contour_sheet(
 
 def _item_rows(roi: RoiContours, planes: np.ndarray) -> list[np.ndarray] | None:
     """An ROI's rows, with those of the marks that its region hides; or
-    None where those marks hide one another, which no row can show."""
+    None where those marks' rows would leave any voxel of them undrawn."""
     grid = _grid([roi], _roi_voxel)
     filled = _filled(roi, grid, planes)
     hidden = _hidden(roi, grid, filled)
     rows = _roi_rows(filled | _marked(roi.marks(_step(grid)), grid))
     if hidden is None:
         return rows
-    if _buried(hidden, hidden).any():
+    if _undrawn(hidden).any():
         return None
-    return rows + _roi_rows(hidden, cavities=False)
+    return rows + _roi_rows(hidden, marks=True)
 
 
 def _least_height(contours: Contours, guides: Mapping[str | None, Guide]) -> int:
@@ -517,17 +523,18 @@ def _least_height(contours: Contours, guides: Mapping[str | None, Guide]) -> int
     return sum(heights) + GUTTER_PIXELS * (len(heights) - 1)
 
 
-def _roi_rows(inside: np.ndarray, cavities: bool = True) -> list[np.ndarray]:
+def _roi_rows(inside: np.ndarray, marks: bool = False) -> list[np.ndarray]:
     """An ROI's rows, or its hidden marks', as the module describes, from
-    their voxels; the marks have no row of cavities."""
+    their voxels; the marks have no row of cavities, and a row of each
+    further crossing however few times a ray crosses them."""
     rows = [_rgb(_views(inside))]
     # The rays of the views that look along an axis of the voxels meet every
     # voxel of its surface, and cross the surface more than twice only where
     # it hides some of its surface behind its own; the oblique views' rays,
     # which step between voxels, cross a surface falsely where they graze it.
-    if max(_most_crossings(inside, axis) for axis in (1, 2)) <= 2:
+    if not marks and max(_most_crossings(inside, axis) for axis in (1, 2)) <= 2:
         return rows
-    if cavities:
+    if not marks:
         # Each slice's cavities: what its region encloses, but does not hold.
         within = np.zeros((3, 3, 3), bool)
         within[1] = [[False, True, False], [True, True, True], [False, True, False]]
@@ -545,6 +552,17 @@ def _roi_rows(inside: np.ndarray, cavities: bool = True) -> list[np.ndarray]:
             )
         rows.append(_rgb(_tiles(tiles)))
     return rows
+
+
+def _undrawn(marks: np.ndarray) -> np.ndarray:
+    """The voxels of hidden marks that their rows, which show every crossing
+    into or out of them that a ray of the frontal view or of a profile
+    makes, draw in no tile: those whose neighbours along their row and their
+    column of voxels are all marks too. The oblique views are not counted,
+    so as to claim no voxel that they may miss."""
+    around = np.zeros((3, 3, 3), bool)
+    around[1] = [[False, True, False], [True, True, True], [False, True, False]]
+    return marks & scipy.ndimage.binary_erosion(marks, around, border_value=0)
 
 
 def _most_crossings(inside: np.ndarray, axis: int) -> int:
@@ -696,12 +714,13 @@ def _hidden(roi: RoiContours, grid: _Grid, filled: np.ndarray) -> np.ndarray | N
     slice, as where a contour retraces a loop within its region, bounds a
     hole narrower than a voxel or one that marks fill, or lies in a plane
     that covers no slice. A mark that is not hidden lies within two voxels
-    of the edge of what its slice shows, whose every voxel is within one of
-    a voxel that the rays of the frontal view or of a profile cross, so
-    the rows show it to within a few voxels. A mark within one voxel of
-    that edge is not counted as hidden, since a contour in a plane finer
-    than the slices, such as one near the top of the head, lies there
-    without hiding anything that its neighbours do not show."""
+    of the edge of what its slice shows, which the rows draw from the front
+    and the sides, though not from behind. A mark that near the edge is not
+    counted as hidden, since a contour in a plane that covers no slice,
+    between those of a smooth outline, lies there without hiding anything
+    that its neighbours do not show. Near a rounded end, such as the top of
+    a head, an outline can shrink by more than two voxels from one such
+    plane to the next, so the marks of those planes there are hidden."""
     step = _step(grid)
     alone = RoiContours(
         closed=tuple(each for each in roi.closed if not _bounds_any(each[1], grid)),

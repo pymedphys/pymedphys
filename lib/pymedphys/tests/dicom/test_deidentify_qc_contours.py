@@ -646,17 +646,50 @@ def _rastered(curve):
     return qc_contours.contours_of(_read(_structure_set([rings + marks])))
 
 
+def _gapped(curve, banded=False):
+    """The box with a curve within it at 0 mm, and a line along each row of
+    voxels within 20 mm of its middle, each fifth of which leaves out a
+    voxel at least every fifth, off the marks of either curve that
+    :func:`_curve` bends, so that no voxel of the lines has every voxel
+    within two of it in the lines; or, if ``banded``, is left out."""
+    rings = [("CLOSED_PLANAR", _box(z)) for z in _BOX_HEIGHTS]
+    (roi,) = qc_contours.contours_of(_read(_structure_set([rings]))).rois
+    grid = qc_contours._grid([roi], qc_contours._roi_voxel)
+    across = np.flatnonzero(np.abs(grid.xs) <= 15)
+    bent = qc_contours.RoiContours(lines=(_curve(4.0), _curve(-4.0)))
+    marked = qc_contours._marked(bent.marks(qc_contours._step(grid)), grid)
+    at = marked[int(np.abs(grid.zs).argmin())]
+    lines = []
+    for count, row in enumerate(np.flatnonzero(np.abs(grid.ys) < 20)):
+        kept = np.ones(len(across), bool)
+        last = -1
+        if banded and count % 5 == 4:
+            kept[:] = False
+        while not banded and count % 5 == 4 and last + 5 < len(across):
+            last += int(np.flatnonzero(~at[row, across[last + 1 : last + 6]])[-1]) + 1
+            kept[last] = False
+        gaps = np.flatnonzero(~kept)
+        for stretch in np.split(np.flatnonzero(kept), gaps - np.arange(len(gaps))):
+            if stretch.size:
+                ends = grid.xs[across[stretch[[0, -1]]]]
+                lines.append(np.column_stack([ends, [grid.ys[row]] * 2, [0.0, 0.0]]))
+    marks = [("OPEN_PLANAR", curve)] + [("OPEN_PLANAR", line) for line in lines]
+    return qc_contours.contours_of(_read(_structure_set([rings + marks])))
+
+
 @pytest.mark.parametrize(
     "contours",
     [
         lambda: _plugged(files.square((0.0, 0.0, 0.0), 12.0)),
         lambda: _rastered(_curve(4.0)),
+        lambda: _gapped(_curve(4.0)),
+        lambda: _gapped(_curve(4.0) + [0.0, 26.0, 0.0], banded=True),
     ],
-    ids=["plugged", "rastered"],
+    ids=["plugged", "rastered", "gapped", "banded"],
 )
-def test_marks_that_hide_one_another_are_not_shown(contours):
-    # The marks fill a patch, which would hide a hole's outline or a curve
-    # in their own rows too.
+def test_marks_that_their_own_rows_would_not_all_draw_are_not_shown(contours):
+    # The marks fill a patch, or one with gaps a voxel wide, which would hide
+    # a hole's outline, a curve, or the lines themselves in their own rows.
     assert qc_contours.contour_sheet(contours()) is None
 
 
@@ -709,6 +742,20 @@ def test_ordinary_outlines_hide_no_marks():
             grid = qc_contours._grid([roi], qc_contours._roi_voxel)
             filled = qc_contours._filled(roi, grid, qc_contours._planes(roi))
             assert qc_contours._hidden(roi, grid, filled) is None
+
+
+def test_a_rounded_end_in_planes_finer_than_its_voxels_has_rows_of_its_marks():
+    # Near the top of the head, the outline shrinks by more than two voxels
+    # from one plane 1 mm apart to the next, so the planes that cover no
+    # slice of voxels near 1.7 mm lie within the region of those that do.
+    heights = np.arange(-108.0, 108.5, 1.0)
+    rings = [_closed(_section(z)) for z in heights]
+    contours = qc_contours.contours_of(_read(_structure_set([rings])))
+    (roi,) = contours.rois
+    grid = qc_contours._grid([roi], qc_contours._roi_voxel)
+    filled = qc_contours._filled(roi, grid, qc_contours._planes(roi))
+    assert qc_contours._hidden(roi, grid, filled) is not None
+    assert qc_contours.contour_sheet(contours) is not None
 
 
 def test_marks_outside_their_own_roi_s_region_have_no_rows_of_their_own():
