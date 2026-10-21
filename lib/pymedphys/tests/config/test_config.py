@@ -71,3 +71,21 @@ def test_redirect_cycle_raises(tmp_path):
 
     with pytest.raises(ValueError, match="redirect loop"):
         _config.get_config(tmp_path)
+
+
+def test_config_path_without_a_config_is_the_default_location(tmp_path):
+    assert _config.get_config_path(tmp_path) == tmp_path / "config.toml"
+
+
+def test_config_path_is_the_file_redirected_to(tmp_path):
+    final = _write(tmp_path / "shared" / "final.toml", "site = 'there'\n")
+    middle = _redirect(tmp_path / "middle" / "config.toml", final)
+    _redirect(tmp_path / "config.toml", middle)
+
+    assert _config.get_config_path(tmp_path) == final
+
+
+def test_config_path_may_be_a_redirect_target_not_yet_created(tmp_path):
+    _redirect(tmp_path / "config.toml", "shared/config.toml")
+
+    assert _config.get_config_path(tmp_path) == tmp_path / "shared" / "config.toml"
