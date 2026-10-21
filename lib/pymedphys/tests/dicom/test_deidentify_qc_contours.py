@@ -564,6 +564,29 @@ def test_marks_within_their_own_roi_s_region_are_told_apart():
     assert (one[1] == other[1]).all() and (one[2] != other[2]).any()
 
 
+def _retraced(loop):
+    # The box, its contour at 0 mm also tracing a loop within it twice.
+    rings = [("CLOSED_PLANAR", _box(z)) for z in _BOX_HEIGHTS if z != 0]
+    box, entry = _box(0.0), np.array([[loop[0, 0], -32.0, 0.0]])
+    path = np.vstack([box[:1], entry, loop, loop, loop[:1], entry, box[1:]])
+    return qc_contours.contours_of(
+        _read(_structure_set([[*rings, ("CLOSED_PLANAR", path)]]))
+    )
+
+
+def test_a_path_that_a_contour_retraces_within_its_region_has_rows_of_its_own():
+    solid = _sheet_rows(qc_contours.contour_sheet(_solid()))
+    square = _sheet_rows(
+        qc_contours.contour_sheet(_retraced(files.square((0.0, 0.0, 0.0), 12.0)))
+    )
+    circle = _sheet_rows(
+        qc_contours.contour_sheet(_retraced(files.circle((0.0, 0.0, 0.0), 12.0)))
+    )
+    assert len(square) > 2 and len(circle) > 2
+    assert all((row == other).all() for row, other in zip(square[:2], solid))
+    assert (square[2] != circle[2]).any()
+
+
 def test_marks_outside_their_own_roi_s_region_have_no_rows_of_their_own():
     # Above the box, where no ray meets the box too.
     outside = np.array([[-10.0, 0.0, 20.0], [10.0, 0.0, 20.0]])
