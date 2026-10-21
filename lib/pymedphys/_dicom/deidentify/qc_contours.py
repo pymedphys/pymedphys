@@ -61,11 +61,13 @@ separated by grey rows of :data:`GUTTER_PIXELS`, are:
   view or of a profile makes; so every mark is shown, in those rows or
   within two voxels of the edge of what its slice shows, which the ROI's
   rows draw from the front and the sides, though not from behind. Those
-  rows draw every voxel of the marks only where each has a neighbour along
-  its row or its column of voxels that is not a mark; where one does not,
-  as where a line drawn back and forth over a patch, with or without gaps
-  a voxel wide between its passes, covers a curve within it, or lines that
-  fill a hole cover its outline, no sheet is drawn.
+  rows are taken to draw every voxel of the marks only where each has a
+  neighbour along its row or its column of voxels that is not a mark,
+  counting the views along the voxels' axes and not the oblique ones;
+  where one does not, as where a line drawn back and forth over a patch,
+  with or without gaps a voxel wide between its passes, covers a curve
+  within it, or lines that fill a hole cover its outline, no sheet is
+  drawn.
 
 Each region is sampled to cubic voxels over the extent of what it draws,
 with a voxel more on each low side across, 0 to 1 voxel more on each high
