@@ -55,6 +55,7 @@ import hashlib
 import http.client
 import json
 import re
+import shutil
 import sys
 import tempfile
 import time
@@ -63,10 +64,11 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import zipfile
+import zlib
 from collections.abc import Callable, Mapping, Sequence
 from importlib import resources
 from pathlib import Path
-from typing import BinaryIO
+from typing import BinaryIO, TypeVar
 
 FORMAT = "pymedphys-deid-midi-download/1"
 PINS = "midi_data.toml"
@@ -92,6 +94,7 @@ _SHA256 = re.compile(r"[0-9a-f]{64}")
 _AGENT_NOTE = re.compile(r"[A-Za-z0-9 .:;/_=,+-]{1,200}")
 
 Opener = Callable[[str], BinaryIO]
+_T = TypeVar("_T")
 
 
 class DownloadError(Exception):
@@ -269,6 +272,56 @@ def _failure(error: BaseException) -> str:
     return type(error).__name__
 
 
+class _Retry(Exception):
+    """A fetch that may succeed if tried again. The message quotes no value."""
+
+
+def _fetch_once(url: str, destination: Path, opener: Opener) -> str:
+    """Fetch ``url`` to ``destination`` once, and return its SHA-256."""
+    digest = hashlib.sha256()
+    try:
+        with opener(url) as response, destination.open("wb") as file:
+            while chunk := response.read(CHUNK):
+                digest.update(chunk)
+                file.write(chunk)
+    except (OSError, http.client.HTTPException) as error:
+        # HTTPError, URLError, and timeouts are all OSErrors. Name the type
+        # alone: its message can quote the URL, which can hold a UID.
+        raise _Retry(_failure(error)) from None
+    return digest.hexdigest()
+
+
+def _retrying(
+    what: str,
+    attempt: Callable[[], _T],
+    *,
+    sleep: Callable[[float], None] | None = None,
+    say: Callable[[str], None] | None = None,
+) -> _T:
+    """Call ``attempt`` until it succeeds, at most ``ATTEMPTS`` times.
+
+    Each retry is reported to ``say`` with the time, in UTC, and the failure,
+    so that a server's refusals can be matched with its own logs.
+    """
+    for number in range(1, ATTEMPTS + 1):
+        try:
+            return attempt()
+        except _Retry as error:
+            if number == ATTEMPTS:
+                raise DownloadError(
+                    f"the {what} could not be fetched after {ATTEMPTS} "
+                    f"attempts ({error})"
+                ) from None
+            wait = WAITS[number - 1]
+            if say is not None:
+                say(
+                    f"Fetching the {what}: attempt {number} of {ATTEMPTS} failed "
+                    f"at {_utc_now()} ({error}); trying again in {wait:g} s"
+                )
+            (sleep or time.sleep)(wait)
+    raise AssertionError("unreachable")
+
+
 def _fetch(
     url: str,
     destination: Path,
@@ -278,43 +331,21 @@ def _fetch(
     sleep: Callable[[float], None] | None = None,
     say: Callable[[str], None] | None = None,
 ) -> str:
-    """Fetch ``url`` to ``destination``, retrying, and return its SHA-256.
-
-    Each retry is reported to ``say`` with the time, in UTC, and the failure's
-    type, so that a server's refusals can be matched with its own logs.
-    """
-    for attempt in range(1, ATTEMPTS + 1):
-        digest = hashlib.sha256()
-        try:
-            with opener(url) as response, destination.open("wb") as file:
-                while chunk := response.read(CHUNK):
-                    digest.update(chunk)
-                    file.write(chunk)
-            return digest.hexdigest()
-        except (OSError, http.client.HTTPException) as error:
-            # HTTPError, URLError, and timeouts are all OSErrors. Name the type
-            # alone:
-            # its message can quote the URL, which can hold a UID.
-            if attempt == ATTEMPTS:
-                raise DownloadError(
-                    f"the {what} could not be fetched after {ATTEMPTS} "
-                    f"attempts ({_failure(error)})"
-                ) from None
-            wait = WAITS[attempt - 1]
-            if say is not None:
-                say(
-                    f"Fetching the {what}: attempt {attempt} of {ATTEMPTS} failed "
-                    f"at {_utc_now()} ({_failure(error)}); trying again in {wait:g} s"
-                )
-            (sleep or time.sleep)(wait)
-    raise AssertionError("unreachable")
+    """Fetch ``url`` to ``destination``, retrying, and return its SHA-256."""
+    return _retrying(
+        what, lambda: _fetch_once(url, destination, opener), sleep=sleep, say=say
+    )
 
 
-def _extract(archive: Path, directory: Path, what: str) -> tuple[list[str], int, int]:
+def _extract(archive: Path, directory: Path) -> tuple[list[str], int, int]:
     """Write each DICOM file of ``archive`` into ``directory``, by position.
 
     Returns the files' SHA-256 digests, their total size, and how many
-    members were skipped as not DICOM.
+    members were skipped as not DICOM. An archive that cannot be read, or
+    that holds no DICOM file, raises ``_Retry`` and leaves no directory
+    behind, so that the series can be fetched again: NBIA has returned an
+    archive with no DICOM file for a series that it returned whole in other
+    runs.
     """
     directory.mkdir(mode=0o700)
     digests: list[str] = []
@@ -342,12 +373,14 @@ def _extract(archive: Path, directory: Path, what: str) -> tuple[list[str], int,
                             file.write(chunk)
                     size += path.stat().st_size
                     digests.append(digest.hexdigest())
-    except (zipfile.BadZipFile, zipfile.LargeZipFile) as error:
-        raise DownloadError(
-            f"the {what}'s archive is not a readable ZIP file ({type(error).__name__})"
+    except (zipfile.BadZipFile, zipfile.LargeZipFile, EOFError, zlib.error) as error:
+        shutil.rmtree(directory)
+        raise _Retry(
+            f"its archive is not a readable ZIP file: {type(error).__name__}"
         ) from None
     if not digests:
-        raise DownloadError(f"the {what}'s archive holds no DICOM file")
+        shutil.rmtree(directory)
+        raise _Retry("its archive holds no DICOM file")
     return digests, size, skipped
 
 
@@ -360,14 +393,17 @@ def _series(
     total: int,
     say: Callable[[str], None],
 ) -> tuple[list[str], int, int]:
-    what = f"series {index} of {total}"
     archive = scratch / f"{index:04d}.zip"
     url = f"{NBIA_IMAGES}?{urllib.parse.urlencode({'SeriesInstanceUID': uid})}"
-    _fetch(url, archive, opener, what=what, say=say)
-    try:
-        return _extract(archive, images / f"{index:04d}", what)
-    finally:
-        archive.unlink()
+
+    def attempt() -> tuple[list[str], int, int]:
+        try:
+            _fetch_once(url, archive, opener)
+            return _extract(archive, images / f"{index:04d}")
+        finally:
+            archive.unlink(missing_ok=True)
+
+    return _retrying(f"series {index} of {total}", attempt, say=say)
 
 
 def download(  # pylint: disable = too-many-locals

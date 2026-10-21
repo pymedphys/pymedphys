@@ -262,6 +262,7 @@ def test_unpinned_digests_are_recorded_as_not_pinned(tmp_path):
         ),
     ],
 )
+@pytest.mark.usefixtures("no_sleep")
 def test_mismatches_are_refused_without_quoting_a_uid(
     tmp_path, changes, server, message
 ):
@@ -336,6 +337,58 @@ def test_a_series_that_keeps_failing_names_only_its_position(tmp_path):
     assert str(raised.value) == (
         "the series 2 of 2 could not be fetched after 6 attempts (HTTPError 500)"
     )
+
+
+def _corrupt_second_member() -> bytes:
+    """The first series' archive, its second DICOM member failing its CRC."""
+    data = _archive(
+        {"2.25.9001.1.dcm": _dicom("first"), "2.25.9001.2.dcm": _dicom("second")}
+    )
+    at = data.index(b"DICMsecond") + len(b"DICMsec")
+    return data[:at] + b"0" + data[at + 1 :]
+
+
+@pytest.mark.parametrize(
+    "broken, failure",
+    [
+        (_archive({"LICENSE": b"not DICOM"}), "its archive holds no DICOM file"),
+        (b"not a zip", "its archive is not a readable ZIP file: BadZipFile"),
+        (
+            _corrupt_second_member(),
+            "its archive is not a readable ZIP file: BadZipFile",
+        ),
+    ],
+)
+def test_an_unusable_archive_is_fetched_again(tmp_path, no_sleep, broken, failure):
+    class OnceBroken(Server):
+        served_broken = False
+
+        def __call__(self, url):
+            if SERIES[0] in url and not self.served_broken:
+                self.served_broken = True
+                self.requests.append(url)
+                return io.BytesIO(broken)
+            return super().__call__(url)
+
+    lines: list[str] = []
+    record = midi_download.download(
+        _subset(),
+        tmp_path / "midi",
+        opener=OnceBroken(),
+        workers=1,
+        progress=lines.append,
+    )
+    stamp = r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ"
+    assert [re.sub(stamp, "<time>", line) for line in lines if "failed" in line] == [
+        f"Fetching the series 1 of 2: attempt 1 of 6 failed at <time> ({failure}); "
+        "trying again in 10 s"
+    ]
+    assert no_sleep == [midi_download.WAITS[0]]
+    assert record["content"] == {"sha256": _content(), "pin": "matched"}
+    first = tmp_path / "midi" / "images" / "0001"
+    assert sorted(path.name for path in first.iterdir()) == ["00001.dcm", "00002.dcm"]
+    assert [path.read_bytes() for path in sorted(first.iterdir())] == list(FILES[:2])
+    assert not any("2.25.900" in line for line in lines)
 
 
 def test_an_existing_destination_is_refused(tmp_path):
