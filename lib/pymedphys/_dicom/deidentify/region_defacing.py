@@ -51,13 +51,19 @@ squares is found exactly, a row of pixels at a time
 are joined into rings along the edges that they share
 (:func:`~pymedphys._geometry.polygons.dissolve`), outer rings winding as
 the source contour does and holes the other way, each its own contour of
-the same type. Where the pieces of any of them cannot be joined, or where
-a CLOSED_PLANAR contour's would bound a hole, as a pixel written as air
-within the kept cavity makes one, all of them are cut by the whole block
-instead: CLOSEDPLANAR_XOR contours combine by exclusive or, so a hole
-there is a contour of its own, but a reader may fill each CLOSED_PLANAR
-contour alone, filling the hole. A contour whose region loses no area by
-this is written as received.
+the same type. CLOSEDPLANAR_XOR contours combine by exclusive or, so a
+hole there is a contour of its own, but a reader may fill each
+CLOSED_PLANAR contour alone, which would fill the hole. So where a
+CLOSED_PLANAR contour's rings would bound a hole, as a pixel written as
+air within the kept cavity makes one, its pieces are split along the edge
+between two columns of the slice's pixels at the hole's lowest column,
+the hole becoming a notch in the piece beyond the edge, until no ring
+bounds one (:func:`_without_holes`); the edge passes through no pixel's
+centre, so each pixel's centre lies within one ring or none. A ring of
+no more area than a sliver is dropped. Where the pieces of any of them
+cannot be joined, or a CLOSED_PLANAR contour's cannot be split so into
+simple rings, all of them are cut by the whole block instead. A contour
+whose region loses no area by this is written as received.
 
 Any other contour that reaches the face is cut by the block's two planes,
 so that what is written of it lies outside the block or on its boundary,
@@ -153,12 +159,21 @@ _STEP = 0.5
 # hole whole within a contour that is cut.
 _COPLANAR = 0.15
 # The area, in square millimetres, of a contour's part in the block, or in
-# the brain kept there, at or below which it is taken for an artefact of
+# the brain kept there, of a ring that its pieces join into, or of a piece
+# that a split leaves, at or below which it is taken for an artefact of
 # floating point.
 _SLIVER = 1e-9
 # How far apart, in millimetres, two points of the pieces of a cut contour
 # may be and be joined as one.
 _SAME_POINT = 1e-9
+# How far, in pixels, a hole's leftmost point may lie to the left of an edge
+# between columns of pixels and be taken to lie on it, as one found by
+# clipping at that edge does but for rounding.
+_ON_EDGE = 1e-6
+# The most times that the pieces of one contour are split to free it of
+# holes; each split frees it of at least one, except where joining takes
+# points within a hair of each other as one.
+_MOST_SPLITS = 256
 
 
 class ContoursRefused(Exception):
@@ -402,10 +417,11 @@ class _Spare:
         place: its part outside the block (:func:`_pieces`), joined with
         its part in the block in the squares of the pixels that defacing
         does not write as air, where it has one, into rings, outer ones
-        winding as the contour does and holes the other way. Return None
-        where the pieces cannot be joined into rings, or where they would
-        bound a hole in a contour of Contour Geometric Type ``kind``
-        CLOSED_PLANAR, which a contour of its own cannot exclude there.
+        winding as the contour does and holes the other way; for a contour
+        of Contour Geometric Type ``kind`` CLOSED_PLANAR, in which a
+        contour of its own cannot exclude a hole, into rings that bound
+        none (:func:`_without_holes`). Return None where the pieces cannot
+        be joined into such rings.
         """
         clockwise = signed_area(points) <= 0
         ring = points[::-1] if clockwise else points
@@ -422,19 +438,89 @@ class _Spare:
         if not sum(map(signed_area, kept)) > _SLIVER:
             written = outside
         else:
-            rings = dissolve(
-                [piece[:, :2] for piece in outside + kept], ring[:, :2], _SAME_POINT
+            rings = (
+                _without_holes(outside + kept, ring, self.grid)
+                if kind == CLOSED_PLANAR
+                else _joined(outside + kept, ring)
             )
-            # Each ring is anticlockwise here but a hole's.
-            if rings is None or (
-                kind == CLOSED_PLANAR and any(signed_area(each) < 0 for each in rings)
-            ):
+            if rings is None:
                 return None
             z = float(ring[0, 2])
             written = [np.column_stack([each, np.full(len(each), z)]) for each in rings]
         # A reader that fills by the nonzero rule takes a hole for one only
         # where it winds against its outer contour.
         return True, [each[::-1] for each in written] if clockwise else written
+
+
+def _joined(pieces: list[np.ndarray], ring: np.ndarray) -> list[np.ndarray] | None:
+    """Join a contour's pieces into rings, by x and y, as
+    :func:`~pymedphys._geometry.polygons.dissolve` joins them, keeping the
+    points of ``ring`` as they are, but for a ring of no more area than a
+    sliver, such as one of three points in a line that joining points within
+    a hair of a pixel's corner can leave."""
+    rings = dissolve([piece[:, :2] for piece in pieces], ring[:, :2], _SAME_POINT)
+    if rings is None:
+        return None
+    return [each for each in rings if abs(signed_area(each)) > _SLIVER]
+
+
+def _without_holes(
+    pieces: list[np.ndarray], ring: np.ndarray, grid: PixelGrid
+) -> list[np.ndarray] | None:
+    """Join a contour's pieces into anticlockwise rings, by x and y, that
+    bound no hole, as :func:`_joined` joins them.
+
+    Where the rings would bound a hole, the pieces are split along the edge
+    between columns of ``grid``'s pixels at, or just beyond, the lowest
+    column of the holes' points, each side joined again, and so on until no
+    ring bounds one. A hole that the edge crosses or touches becomes a notch
+    in the rings beside it, and none lies wholly on the edge's lower side,
+    so each split leaves at least one hole fewer, except where joining takes
+    points within a hair of each other as one, where ``_MOST_SPLITS`` still
+    bounds the splits. Return None where the pieces of a side cannot be
+    joined, the edge would miss the hole, a ring is not simple, or
+    ``_MOST_SPLITS`` splits leave a hole.
+    """
+    z = float(ring[0, 2])
+    written: list[np.ndarray] = []
+    pending = [pieces]
+    splits = 0
+    while pending:
+        parts = pending.pop()
+        rings = _joined(parts, ring)
+        if rings is None:
+            return None
+        # Each ring is anticlockwise here but a hole's.
+        holes = [each for each in rings if signed_area(each) < 0]
+        if not holes:
+            written.extend(rings)
+            continue
+        if splits == _MOST_SPLITS:
+            return None
+        splits += 1
+        hole = min(
+            (
+                grid.indices(np.column_stack([each, np.full(len(each), z)]))[1]
+                for each in holes
+            ),
+            key=np.min,
+        )
+        edge = math.ceil(float(hole.min()) - 0.5 - _ON_EDGE) + 0.5
+        if not edge < float(hole.max()):
+            return None
+        normal, offset = grid.column_bound(edge)
+        for side in ((normal, offset), (-normal, -offset)):
+            half = [
+                piece
+                for part in parts
+                for piece in clip(part, *side)
+                if abs(signed_area(piece)) > _SLIVER
+            ]
+            if half:
+                pending.append(half)
+    # Joining points within a hair of a pixel's corner can leave a ring that
+    # crosses or touches itself there, which a reader may fill otherwise.
+    return written if all(map(is_simple, written)) else None
 
 
 def _distinct(points: np.ndarray) -> np.ndarray:
