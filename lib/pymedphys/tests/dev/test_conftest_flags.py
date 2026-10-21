@@ -81,3 +81,17 @@ def test_the_suite_does_not_use_the_real_home_directory():
 
 def test_the_data_cache_is_still_shared():
     assert download.get_data_dir().resolve() == conftest.SHARED_DATA_DIR.resolve()
+
+
+def test_paths_the_conftest_does_not_ignore_are_left_to_pytest(pytestconfig):
+    # pytest takes the first answer, so False would skip its own checks, such
+    # as --ignore, which the NumPy-minimum job's parts rely on.
+    library = pathlib.Path(conftest.__file__).parent
+
+    assert (
+        conftest.pytest_ignore_collect(library / "tests" / "dev", pytestconfig) is None
+    )
+    assert (
+        conftest.pytest_ignore_collect(library / "examples" / "x.py", pytestconfig)
+        is True
+    )

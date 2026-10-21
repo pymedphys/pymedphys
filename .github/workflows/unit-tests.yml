@@ -163,13 +163,27 @@ jobs:
   # The declared minimum versions of NumPy (2.0) and pandas (2.2.2) are
   # checked together, whichever matrix runs. Python 3.12 is the only supported
   # version with wheels for both: neither has any for Python 3.13 or later.
+  # The suite runs in two parts on two runners, since on a slow runner the
+  # whole of it at once can reach the time limit. The corpus-runs part runs
+  # the modules listed below, which run the synthetic collection through the
+  # engine and take about half the suite's time; the others part runs every
+  # other test, including any module added later.
   dependency-floors:
-    name: NumPy and pandas minimum versions
+    name: NumPy and pandas minimum versions (${{ matrix.part }})
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        part: [corpus-runs, others]
     runs-on: ubuntu-latest
     env:
       # PyMedPhys's extras to install, whose requirements the check below counts.
       PYMEDPHYS_EXTRAS: tests
+      CORPUS_RUN_TESTS: >-
+        lib/pymedphys/tests/dicom/test_deidentify_ct_defacing_run.py
+        lib/pymedphys/tests/dicom/test_deidentify_corpus_end_to_end.py
+        lib/pymedphys/tests/dicom/test_deidentify_conformance.py
+        lib/pymedphys/tests/dicom/test_deidentify_redaction_review.py
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -188,6 +202,7 @@ jobs:
         env:
           NUMPY_FLOOR: '2.0.2'
           PANDAS_FLOOR: '2.2.2'
+          PART: ${{ matrix.part }}
         run: |
           set -euxo pipefail
           mkdir -p test-results
@@ -246,15 +261,23 @@ jobs:
           print("\n".join(unmet) or "Every installed package's requirements are met")
           sys.exit(bool(unmet))
           EOF
-          "${overlay[@]}" python -m pymedphys dev tests -m "not slow" \
+          # A listed module that no longer exists fails the corpus-runs part,
+          # and every module not listed runs in the others part.
+          read -ra listed <<< "${CORPUS_RUN_TESTS}"
+          if [[ "${PART}" == corpus-runs ]]; then
+            selection=("${listed[@]}")
+          else
+            selection=("${listed[@]/#/--ignore=${GITHUB_WORKSPACE}/}")
+          fi
+          "${overlay[@]}" python -m pymedphys dev tests -m "not slow" "${selection[@]}" \
             -n 2 --dist worksteal --durations=15 \
-            --junitxml="${GITHUB_WORKSPACE}/test-results/junit-dependency-floors.xml"
+            --junitxml="${GITHUB_WORKSPACE}/test-results/junit-dependency-floors-${PART}.xml"
 
       - name: Upload test results
         if: ${{ !cancelled() && steps.tests.outcome != 'skipped' }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: junit-dependency-floors
+          name: junit-dependency-floors-${{ matrix.part }}
           path: test-results/*.xml
           if-no-files-found: error
           retention-days: 30

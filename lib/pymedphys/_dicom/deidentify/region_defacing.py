@@ -34,36 +34,67 @@ is kept whole. Each segment is sampled within the block at intervals of
 half the smallest pixel spacing of those slices. A point with no such pixel
 counts where it lies in the block.
 
-Any other contour is cut by the block's two planes, so that what is written
-of it lies outside the block or on its boundary, the kept cavity being cut
-away with the rest: a closed contour, of Contour Geometric Type
-CLOSED_PLANAR or CLOSEDPLANAR_XOR, is written as each polygon of its part
-behind the block's vertical plane, and of its part ahead of that plane and
-not above the block's axial plane, each its own contour of the same type;
-an open contour, OPEN_PLANAR or OPEN_NONPLANAR, as each piece of it outside
-the block; and a POINT contour not at all. A part of a polygon is found by
-clipping it against one plane at a time, and its pieces are separated where
-the plane cuts it into more than one, by pairing the points at which its
-edges cross the plane along their line, as a simple polygon's do. Since
-each of the two parts lies on its own side of the vertical plane, each
-piece is disjoint from the others but for that plane, so the pieces of a
-CLOSEDPLANAR_XOR contour combine as the contour's own part outside the
-block does. The closed contours of an ROI in one plane bound one region
-together, as a hole's contour does within its outer one, so where one of
-them is cut, each of them that enters the block is cut too, even one that
-enters only the kept cavity, so that a hole kept whole within the cavity
-never becomes a region that the cut outer contour no longer surrounds.
-Since each is cut to its part outside the same block, the region that they
-bound together, whether by exclusive or or by union, is cut to its part
-outside the block. A contour's plane is the one that best fits its points,
-found for any winding and for a contour that crosses itself, and where a
-closed contour of an ROI that is cut lies in no one plane, the structure
-set is refused. Where the crossings cannot be paired, as for a polygon that
-crosses itself, the part is written as one polygon joined along the plane,
-which still lies outside the block. The first piece written of a contour
-keeps its Contour Number, and the others have none, since a number names
-one contour of its ROI. An ROI left with no contour is written without a
-Contour Sequence, which is Type 3.
+A closed contour that reaches the face loses what defacing writes as air,
+as the CT does, and the squares of padding pixels in the block, which the
+CT leaves as they are, where it can be cut so (:class:`_Spare`): where the
+closed contours of its ROI in its plane are each simple, a point that
+repeats the one before it aside, all lie at one z above the block's axial
+plane, and every point within them has one nearest slice, whether or not
+it lies within the slice's pixels, an axial one with pixels that defacing
+keeps in the block. Each of them is then written as its part behind the
+block's vertical plane joined with its part ahead of that plane within the
+squares of that slice's pixels that defacing does not write as air, those
+of the kept cavity and those whose centres lie outside the block, each
+square being the points whose nearest pixel it is. The part within the
+squares is found exactly, a row of pixels at a time
+(:func:`~pymedphys._geometry.pixel_grids.within_pixels`), and the pieces
+are joined into rings along the edges that they share
+(:func:`~pymedphys._geometry.polygons.dissolve`), outer rings winding as
+the source contour does and holes the other way, each its own contour of
+the same type. CLOSEDPLANAR_XOR contours combine by exclusive or, so a
+hole there is a contour of its own, but a reader may fill each
+CLOSED_PLANAR contour alone, which would fill the hole. So where a
+CLOSED_PLANAR contour's rings would bound a hole, as a pixel written as
+air within the kept cavity makes one, its pieces are split along the edge
+between two columns of the slice's pixels at the hole's lowest column,
+the hole becoming a notch in the piece beyond the edge, until no ring
+bounds one (:func:`_without_holes`); the edge passes through no pixel's
+centre, so each pixel's centre lies within one ring or none. A ring of
+no more area than a sliver is dropped. Where the pieces of any of them
+cannot be joined, or a CLOSED_PLANAR contour's cannot be split so into
+simple rings, all of them are cut by the whole block instead. A contour
+whose region loses no area by this is written as received.
+
+Any other contour that reaches the face is cut by the block's two planes,
+so that what is written of it lies outside the block or on its boundary,
+the kept cavity being cut away with the rest: a closed contour, of Contour
+Geometric Type CLOSED_PLANAR or CLOSEDPLANAR_XOR, is written as each
+polygon of its part behind the block's vertical plane, and of its part
+ahead of that plane and not above the block's axial plane, each its own
+contour of the same type; an open contour, OPEN_PLANAR or OPEN_NONPLANAR,
+as each piece of it outside the block; and a POINT contour not at all. A
+part of a polygon is found by clipping it against one plane at a time, and
+its pieces are separated where the plane cuts it into more than one, by
+pairing the points at which its edges cross the plane along their line, as
+a simple polygon's do. Since each of the two parts lies on its own side of
+the vertical plane, each piece is disjoint from the others but for that
+plane, so the pieces of a CLOSEDPLANAR_XOR contour combine as the contour's
+own part outside the block does. The closed contours of an ROI in one plane
+bound one region together, as a hole's contour does within its outer one,
+so where one of them is cut, each of them is cut the same way, by the same
+region, so that a hole within the cavity never becomes a region that the
+cut outer contour no longer surrounds; cut by the whole block, each that
+enters the block is cut, even one that enters only the kept cavity. Since
+each is cut by the same region, the region that they bound together,
+whether by exclusive or or by union, is cut by it. A contour's plane is the
+one that best fits its points, found for any winding and for a contour that
+crosses itself, and where a closed contour of an ROI that is cut lies in no
+one plane, the structure set is refused. Where the crossings cannot be
+paired, as for a polygon that crosses itself, the part is written as one
+polygon joined along the plane, which still lies outside the block. The
+first piece written of a contour keeps its Contour Number, and the others
+have none, since a number names one contour of its ROI. An ROI left with no
+contour is written without a Contour Sequence, which is Type 3.
 
 A structure set is cut only where each of its ROIs names the defaced
 series' frame, and each contour has a known Contour Geometric Type, Contour
@@ -90,11 +121,18 @@ from __future__ import annotations
 import dataclasses
 import math
 
-from pymedphys._geometry.polygons import clip, coplanar
+from pymedphys._geometry.pixel_grids import PixelGrid, within_pixels
+from pymedphys._geometry.polygons import (
+    clip,
+    coplanar,
+    dissolve,
+    is_simple,
+    signed_area,
+)
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom
 
-from .defacing import FaceBlock
+from .defacing import ALIGNMENT_TOLERANCE, FaceBlock
 from .diagnostics import redacted_diagnostics
 from .dose_defacing import DoseBlock, _check_directions, _check_reach, _numbers
 from .face_blocks import _padding
@@ -116,10 +154,26 @@ _STEP = 0.5
 # How far, in millimetres, each point of a closed contour may lie from
 # another's plane, or from its own, and still be taken to lie in it. It
 # allows for coordinates written to 0.1 mm, which move a point up to 0.087 mm
-# off its plane, and is far less than half of any slice spacing. Grouping
+# off its plane, and is less than any slice spacing in use. Grouping
 # too much cuts more of the kept cavity; grouping too little can leave a
 # hole whole within a contour that is cut.
 _COPLANAR = 0.15
+# The area, in square millimetres, of a contour's part in the block, or in
+# the brain kept there, of a ring that its pieces join into, or of a piece
+# that a split leaves, at or below which it is taken for an artefact of
+# floating point.
+_SLIVER = 1e-9
+# How far apart, in millimetres, two points of the pieces of a cut contour
+# may be and be joined as one.
+_SAME_POINT = 1e-9
+# How far, in pixels, a hole's leftmost point may lie to the left of an edge
+# between columns of pixels and be taken to lie on it, as one found by
+# clipping at that edge does but for rounding.
+_ON_EDGE = 1e-6
+# The most times that the pieces of one contour are split to free it of
+# holes; each split frees it of at least one, except where joining takes
+# points within a hair of each other as one.
+_MOST_SPLITS = 256
 
 
 class ContoursRefused(Exception):
@@ -221,9 +275,11 @@ def _written(
 
     Closed contours in one plane bound one region together, as a hole's
     contour does within its outer one, so where one of them reaches the
-    face, each of them that enters the block is cut by it, and the region
-    that they bound together loses just its part in the block. Where any
-    is cut, a closed contour that lies in no one plane is refused.
+    face, each of them is cut by the same region, the block less the
+    pixels that defacing does not write as air where :class:`_Spare` can
+    cut them all so, or else the whole block, and the region that they
+    bound together loses just its part in it. Where any is cut, a closed
+    contour that lies in no one plane is refused.
 
     Raises
     ------
@@ -233,18 +289,41 @@ def _written(
     """
     parsed = [_contour(contour) for contour in contours]
     cutting = [_reaches_face(region, kind, points, step) for kind, points in parsed]
+    # Grouping only spreads a cut, so an ROI with none needs no grouping.
+    if not any(cutting):
+        return None
     closed = [index for index, (kind, _) in enumerate(parsed) if kind in CLOSED]
     groups, unplaced = coplanar([parsed[index][1] for index in closed], _COPLANAR)
     # A closed contour in no one plane cannot be decided with those it may
     # bound a region with, so an ROI that is cut with one is refused.
-    if unplaced and any(cutting):
+    if unplaced:
         raise ContoursRefused()
+    spared: dict[int, list[np.ndarray]] = {}
     for group in groups:
-        if any(cutting[closed[member]] for member in group):
-            for member in group:
-                cutting[closed[member]] = _enters(
-                    region.block, parsed[closed[member]][1]
-                )
+        members = [closed[member] for member in group]
+        if not any(cutting[index] for index in members):
+            continue
+        # Every contour of a plane is cut by the same region, the block less
+        # the brain that defacing keeps where the plane allows, or the whole
+        # block, so that the region they bound together loses just its part
+        # in it.
+        polygons = [_distinct(parsed[index][1]) for index in members]
+        spare = _Spare.of(region, polygons)
+        cuts = (
+            []
+            if spare is None
+            else [
+                spare.cut(each, parsed[index][0])
+                for index, each in zip(members, polygons, strict=True)
+            ]
+        )
+        joined = [each for each in cuts if each is not None]
+        if len(joined) != len(members):
+            for index in members:
+                cutting[index] = _enters(region.block, parsed[index][1])
+            continue
+        for index, (cut, pieces) in zip(members, joined, strict=True):
+            cutting[index], spared[index] = cut, pieces
     if not any(cutting):
         return None
     written: list[WrittenContour] = []
@@ -252,11 +331,205 @@ def _written(
         if not cut:
             written.append(WrittenContour(index))
             continue
+        pieces = (
+            spared[index] if index in spared else _pieces(region.block, kind, points)
+        )
         written.extend(
             WrittenContour(index, _decimals(piece), first == 0)
-            for first, piece in enumerate(_pieces(region.block, kind, points))
+            for first, piece in enumerate(pieces)
         )
     return tuple(written)
+
+
+@dataclasses.dataclass(frozen=True, repr=False)
+class _Spare:
+    """The pixels of the slice nearest one axial plane of an ROI's closed
+    contours that defacing does not write as air, those of the brain kept
+    in the block and those whose centres lie outside it, whose squares a
+    contour cut in that plane keeps.
+
+    Its ``repr`` shows nothing of it.
+    """
+
+    block: FaceBlock
+    grid: PixelGrid
+    spared: np.ndarray
+
+    def __repr__(self) -> str:
+        return "_Spare()"
+
+    @classmethod
+    def of(cls, region: DoseBlock, polygons: list[np.ndarray]) -> _Spare | None:
+        """Return the kept brain of the plane of ``polygons``, or None where
+        they are cut by the whole block: where they are not all simple and
+        in one axial plane above the block's axial plane, with every point
+        within them nearest one axial slice of the series within half its
+        spacing, one with pixels kept in the block."""
+        z = float(polygons[0][0, 2])
+        if (
+            not region.slices
+            or not z > region.block.inferior_limit
+            or any(
+                (points[:, 2] != z).any() or not is_simple(points)
+                for points in polygons
+            )
+        ):
+            return None
+        # Every point of the polygons, and so every point within them, since
+        # its height along the slices' normal lies between theirs, must have
+        # one nearest slice, whether or not it lies within the slice's
+        # pixels: a point beyond them has none kept, as for the cut.
+        points = np.concatenate(polygons)
+        normal = np.cross(
+            region.slices[0].orientation[:3], region.slices[0].orientation[3:]
+        )
+        along = points @ normal
+        ends = points[[int(np.argmin(along)), int(np.argmax(along))]]
+        found = np.unique(region.nearest_slices(ends))
+        if len(found) != 1 or found[0] < 0:
+            return None
+        each = region.slices[int(found[0])]
+        orientation = np.asarray(each.orientation, dtype=float)
+        # Direction cosines may differ from unit length within a tolerance,
+        # so the normal's tilt is judged by its direction alone.
+        normal = np.cross(orientation[:3], orientation[3:])
+        length = float(np.linalg.norm(normal))
+        if (
+            not each.kept.any()
+            or length <= 0
+            or abs(abs(normal[2]) / length - 1) > ALIGNMENT_TOLERANCE
+        ):
+            return None
+        inside = region.block.slice_mask(
+            each.position, each.orientation, each.spacing, each.kept.shape
+        )
+        return cls(
+            region.block,
+            PixelGrid(each.position, each.orientation, each.spacing),
+            each.kept | ~inside,
+        )
+
+    def cut(
+        self, points: np.ndarray, kind: str
+    ) -> tuple[bool, list[np.ndarray]] | None:
+        """Return whether a closed contour's region meets the block where
+        defacing writes air, and so is cut, and the polygons written in its
+        place: its part outside the block (:func:`_pieces`), joined with
+        its part in the block in the squares of the pixels that defacing
+        does not write as air, where it has one, into rings, outer ones
+        winding as the contour does and holes the other way; for a contour
+        of Contour Geometric Type ``kind`` CLOSED_PLANAR, in which a
+        contour of its own cannot exclude a hole, into rings that bound
+        none (:func:`_without_holes`). Return None where the pieces cannot
+        be joined into such rings.
+        """
+        clockwise = signed_area(points) <= 0
+        ring = points[::-1] if clockwise else points
+        outside = _pieces(self.block, CLOSED_PLANAR, ring)
+        ahead = clip(ring, *_ahead(self.block))
+        kept = [
+            piece
+            for part in ahead
+            for piece in within_pixels(part, self.grid, self.spared)
+        ]
+        removed = sum(map(signed_area, ahead)) - sum(map(signed_area, kept))
+        if not removed > _SLIVER:
+            return False, []
+        if not sum(map(signed_area, kept)) > _SLIVER:
+            written = outside
+        else:
+            rings = (
+                _without_holes(outside + kept, ring, self.grid)
+                if kind == CLOSED_PLANAR
+                else _joined(outside + kept, ring)
+            )
+            if rings is None:
+                return None
+            z = float(ring[0, 2])
+            written = [np.column_stack([each, np.full(len(each), z)]) for each in rings]
+        # A reader that fills by the nonzero rule takes a hole for one only
+        # where it winds against its outer contour.
+        return True, [each[::-1] for each in written] if clockwise else written
+
+
+def _joined(pieces: list[np.ndarray], ring: np.ndarray) -> list[np.ndarray] | None:
+    """Join a contour's pieces into rings, by x and y, as
+    :func:`~pymedphys._geometry.polygons.dissolve` joins them, keeping the
+    points of ``ring`` as they are, but for a ring of no more area than a
+    sliver, such as one of three points in a line that joining points within
+    a hair of a pixel's corner can leave."""
+    rings = dissolve([piece[:, :2] for piece in pieces], ring[:, :2], _SAME_POINT)
+    if rings is None:
+        return None
+    return [each for each in rings if abs(signed_area(each)) > _SLIVER]
+
+
+def _without_holes(
+    pieces: list[np.ndarray], ring: np.ndarray, grid: PixelGrid
+) -> list[np.ndarray] | None:
+    """Join a contour's pieces into anticlockwise rings, by x and y, that
+    bound no hole, as :func:`_joined` joins them.
+
+    Where the rings would bound a hole, the pieces are split along the edge
+    between columns of ``grid``'s pixels at, or just beyond, the lowest
+    column of the holes' points, each side joined again, and so on until no
+    ring bounds one. A hole that the edge crosses or touches becomes a notch
+    in the rings beside it, and none lies wholly on the edge's lower side,
+    so each split leaves at least one hole fewer, except where joining takes
+    points within a hair of each other as one, where ``_MOST_SPLITS`` still
+    bounds the splits. Return None where the pieces of a side cannot be
+    joined, the edge would miss the hole, a ring is not simple, or
+    ``_MOST_SPLITS`` splits leave a hole.
+    """
+    z = float(ring[0, 2])
+    written: list[np.ndarray] = []
+    pending = [pieces]
+    splits = 0
+    while pending:
+        parts = pending.pop()
+        rings = _joined(parts, ring)
+        if rings is None:
+            return None
+        # Each ring is anticlockwise here but a hole's.
+        holes = [each for each in rings if signed_area(each) < 0]
+        if not holes:
+            written.extend(rings)
+            continue
+        if splits == _MOST_SPLITS:
+            return None
+        splits += 1
+        hole = min(
+            (
+                grid.indices(np.column_stack([each, np.full(len(each), z)]))[1]
+                for each in holes
+            ),
+            key=np.min,
+        )
+        edge = math.ceil(float(hole.min()) - 0.5 - _ON_EDGE) + 0.5
+        if not edge < float(hole.max()):
+            return None
+        normal, offset = grid.column_bound(edge)
+        for side in ((normal, offset), (-normal, -offset)):
+            half = [
+                piece
+                for part in parts
+                for piece in clip(part, *side)
+                if abs(signed_area(piece)) > _SLIVER
+            ]
+            if half:
+                pending.append(half)
+    # Joining points within a hair of a pixel's corner can leave a ring that
+    # crosses or touches itself there, which a reader may fill otherwise.
+    return written if all(map(is_simple, written)) else None
+
+
+def _distinct(points: np.ndarray) -> np.ndarray:
+    """Return a closed contour's points without a point that repeats the
+    one before it, the last point being before the first, so that a contour
+    whose first point is written again at its end can still be simple."""
+    repeated = (points == np.roll(points, 1, axis=0)).all(axis=1)
+    distinct: np.ndarray = points[:1] if repeated.all() else points[~repeated]
+    return distinct
 
 
 def _contour(contour: pydicom.Dataset) -> tuple[str, np.ndarray]:
