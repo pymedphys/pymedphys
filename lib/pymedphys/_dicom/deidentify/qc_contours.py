@@ -445,7 +445,8 @@ def contour_sheet(
     numpy.ndarray or None
         uint8, of shape (rows, columns, 3); or None where the sheet would be
         taller than ``tallest``, which is drawn only until it is, or where
-        the rows of an ROI's hidden marks would leave any of them undrawn.
+        the frontal view and profiles of the rows of an ROI's hidden marks
+        would leave any of them undrawn.
     """
     guides = {} if guides is None else guides
     if contours.empty:
@@ -495,7 +496,8 @@ def contour_sheet(
 
 def _item_rows(roi: RoiContours, planes: np.ndarray) -> list[np.ndarray] | None:
     """An ROI's rows, with those of the marks that its region hides; or
-    None where those marks' rows would leave any voxel of them undrawn."""
+    None where the frontal view and profiles of those marks' rows would
+    leave any voxel of them undrawn."""
     grid = _grid([roi], _roi_voxel)
     filled = _filled(roi, grid, planes)
     hidden = _hidden(roi, grid, filled)
