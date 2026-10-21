@@ -178,11 +178,13 @@ jobs:
       # addresses answers it, before the job first asks TCIA for anything and
       # again after a failure: TCIA's site has stopped answering some runners
       # for most of an hour, and TCIA can match these with its own logs. They
-      # hold no MIDI-B data.
+      # hold no MIDI-B data. Each request to TCIA's site and to NBIA also
+      # names the runner's address and the run in its User-Agent header, so
+      # that TCIA can find the job's requests in its logs.
       - name: Record how the runner reaches TCIA
         continue-on-error: true
         timeout-minutes: 5
-        run: python3 -I .github/scripts/midi_b_tcia_answer_keys.py network
+        run: python3 -I .github/scripts/midi_b_tcia_answer_keys.py network --github-env "${GITHUB_ENV}"
 
       # TCIA publishes the answer keys only as Faspex packages. Fetch them
       # with IBM's client, list their files' names, sizes, and digests, and
@@ -216,7 +218,9 @@ jobs:
             echo "Installing IBM's transfer daemon: attempt ${attempt} of 3 failed at $(date -u +%FT%TZ); trying again in $((60 * attempt)) s."
             sleep $((60 * attempt))
           done
-          python3 -I .github/scripts/midi_b_tcia_answer_keys.py fetch "${RUNNER_TEMP}/midi-b/tcia"
+          note="runner ${MIDI_B_RUNNER_ADDRESS:-unknown}; run ${GITHUB_RUN_ID}/${GITHUB_RUN_ATTEMPT}; ${SUBSET} ${PRESET}"
+          python3 -I .github/scripts/midi_b_tcia_answer_keys.py fetch "${RUNNER_TEMP}/midi-b/tcia" \
+            --user-agent-note "${note}"
           python3 -I .github/scripts/midi_b_tcia_answer_keys.py list "${RUNNER_TEMP}/midi-b/tcia" \
             | tee "${RUNNER_TEMP}/midi-b/results/tcia-answer-keys.txt"
           mapfile -t keys < <(find "${RUNNER_TEMP}/midi-b/tcia" -type f \
@@ -230,7 +234,8 @@ jobs:
       # The downloader prints only counts, digests, and positions.
       - name: Download the subset from TCIA
         run: |
-          args=(--subset "${SUBSET}" --dest "${RUNNER_TEMP}/midi-b/data")
+          note="runner ${MIDI_B_RUNNER_ADDRESS:-unknown}; run ${GITHUB_RUN_ID}/${GITHUB_RUN_ATTEMPT}; ${SUBSET} ${PRESET}"
+          args=(--subset "${SUBSET}" --dest "${RUNNER_TEMP}/midi-b/data" --user-agent-note "${note}")
           if [[ -n "${ANSWER_KEY_URL}" ]]; then
             if [[ "${CHOSEN}" == both ]]; then
               echo "An answer key belongs to one subset: choose validation or test to give one."

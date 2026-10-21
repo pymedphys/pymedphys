@@ -50,6 +50,7 @@ from __future__ import annotations
 import argparse
 import concurrent.futures
 import dataclasses
+import functools
 import hashlib
 import http.client
 import json
@@ -70,6 +71,7 @@ from typing import BinaryIO
 FORMAT = "pymedphys-deid-midi-download/1"
 PINS = "midi_data.toml"
 NBIA_IMAGES = "https://services.cancerimagingarchive.net/nbia-api/services/v1/getImage"
+USER_AGENT = "pymedphys-midi-download"
 DOWNLOAD_JSON = "download.json"
 ANSWER_KEY = "answer-key.db"
 IMAGES = "images"
@@ -85,6 +87,9 @@ _MAGIC = b"DICM"
 _SQLITE = b"SQLite format 3\x00"
 _UID = re.compile(r"[0-9]+(\.[0-9]+)+")
 _SHA256 = re.compile(r"[0-9a-f]{64}")
+# What a note in the User-Agent header may hold: characters that an RFC 9110
+# comment allows unquoted.
+_AGENT_NOTE = re.compile(r"[A-Za-z0-9 .:;/_=,+-]{1,200}")
 
 Opener = Callable[[str], BinaryIO]
 
@@ -159,13 +164,38 @@ def load_subsets(text: str | None = None) -> dict[str, Subset]:
     return subsets
 
 
-def open_url(url: str) -> BinaryIO:
-    """Open an HTTPS URL for reading."""
+def user_agent(note: str | None = None) -> str:
+    """Return the User-Agent header, with ``note`` as a comment if given.
+
+    A note, such as the address of the machine that downloads and the run it
+    belongs to, lets the server's operator find the run's requests in the
+    server's logs.
+
+    >>> user_agent("runner 192.0.2.1; run 7/1")
+    'pymedphys-midi-download (runner 192.0.2.1; run 7/1)'
+
+    Raises
+    ------
+    DownloadError
+        If the note is empty, longer than 200 characters, or holds a
+        character other than a letter, a digit, a space, or one of
+        ``. : ; / _ = , + -``.
+    """
+    if note is None:
+        return USER_AGENT
+    if not _AGENT_NOTE.fullmatch(note):
+        raise DownloadError(
+            "a user agent note may hold only up to 200 letters, digits, "
+            "spaces, and . : ; / _ = , + -"
+        )
+    return f"{USER_AGENT} ({note})"
+
+
+def open_url(url: str, *, agent: str = USER_AGENT) -> BinaryIO:
+    """Open an HTTPS URL for reading, sending ``agent`` as the User-Agent."""
     if not url.startswith("https://"):
         raise DownloadError("only HTTPS URLs are fetched")
-    request = urllib.request.Request(
-        url, headers={"User-Agent": "pymedphys-midi-download"}
-    )
+    request = urllib.request.Request(url, headers={"User-Agent": agent})
     # The scheme is checked above: only HTTPS is opened.
     return urllib.request.urlopen(request, timeout=TIMEOUT_SECONDS)  # nosec B310
 
@@ -688,6 +718,14 @@ def main(
         ),
     )
     parser.add_argument("--workers", type=int, default=8)
+    parser.add_argument(
+        "--user-agent-note",
+        help=(
+            "Text to add to the User-Agent header of each request, such as "
+            "the address of the machine that downloads and the run it belongs "
+            "to, so that TCIA can find the run's requests in its logs."
+        ),
+    )
     arguments = parser.parse_args(argv)
     if arguments.verify is not None:
         try:
@@ -701,6 +739,7 @@ def main(
         differs = any(isinstance(pin, dict) and pin["pin"] == "differs" for pin in pins)
         return 1 if differs or checked["files"] != checked["expected_files"] else 0
     try:
+        agent = user_agent(arguments.user_agent_note)
         record = download(
             subsets[arguments.subset],
             arguments.dest,
@@ -708,6 +747,7 @@ def main(
             answer_key_sha256=arguments.answer_key_sha256,
             answer_key_file=arguments.answer_key_file,
             workers=arguments.workers,
+            opener=functools.partial(open_url, agent=agent),
             progress=lambda line: print(line, file=sys.stderr, flush=True),
         )
     except DownloadError as error:

@@ -2,20 +2,24 @@
 
 Usage:
 
-- ``python midi_b_tcia_answer_keys.py fetch DEST``: read the public Faspex
-  links on TCIA's MIDI-B page and receive each package into ``DEST/<n>``
-  with IBM's ``ascli``, which must be on the path with its transfer daemon
-  installed.
+- ``python midi_b_tcia_answer_keys.py fetch DEST [--user-agent-note NOTE]``:
+  read the public Faspex links on TCIA's MIDI-B page and receive each
+  package into ``DEST/<n>`` with IBM's ``ascli``, which must be on the path
+  with its transfer daemon installed. A note, such as the runner's address
+  and the run, is added to the page request's User-Agent header, so that
+  TCIA can find the run's requests in its logs.
 - ``python midi_b_tcia_answer_keys.py list DEST``: print each file's
   package, name, size, and SHA-256; for a ZIP file, each member's name,
   size, and SHA-256; and, for an SQLite database, its tables and their row
   counts.
-- ``python midi_b_tcia_answer_keys.py network``: print the time, in UTC,
-  the runner's public address, as a web service sees it, and, for each of
-  TCIA's hosts that the workflow uses, the addresses it resolves to and
-  whether a TCP connection to each opens on port 443, and how fast. TCIA's
-  site sometimes stops answering a runner, and TCIA can match these with
-  its own logs. It never fails.
+- ``python midi_b_tcia_answer_keys.py network [--github-env FILE]``: print
+  the time, in UTC, the runner's public address, as a web service sees it,
+  and, for each of TCIA's hosts that the workflow uses, the addresses it
+  resolves to and whether a TCP connection to each opens on port 443, and
+  how fast. TCIA's site sometimes stops answering a runner, and TCIA can
+  match these with its own logs. With ``--github-env``, it also appends
+  ``MIDI_B_RUNNER_ADDRESS=<address>`` to that file, GitHub's
+  ``GITHUB_ENV``, when the address is known. It never fails.
 
 TCIA publishes MIDI-B's answer keys (https://doi.org/10.7937/cf2p-aw56,
 CC BY 4.0) only as Faspex packages. The MIDI-B Benchmark workflow uses this
@@ -27,6 +31,7 @@ links nor ``ascli``'s output are printed: ``ascli``'s output goes to
 
 from __future__ import annotations
 
+import argparse
 import hashlib
 import html
 import http.client
@@ -44,6 +49,10 @@ import zipfile
 from pathlib import Path
 
 PAGE = "https://www.cancerimagingarchive.net/collection/midi-b-test-midi-b-validation/"
+USER_AGENT = "pymedphys-midi-b"
+# What a note in the User-Agent header may hold: characters that an RFC 9110
+# comment allows unquoted.
+_AGENT_NOTE = re.compile(r"[A-Za-z0-9 .:;/_=,+-]{1,200}")
 _FASPEX = re.compile(r'href="(https://faspex\.cancerimagingarchive\.net/[^"]+)"')
 _SAFE_NAME = re.compile(r"[A-Za-z0-9 ._()+-]{1,200}")
 _SQLITE = b"SQLite format 3\x00"
@@ -68,6 +77,26 @@ ADDRESS_SERVICES = ("https://checkip.amazonaws.com/", "https://api.ipify.org/")
 def utc_now() -> str:
     """The time, in UTC, to the second."""
     return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+
+
+def user_agent(note: str | None = None) -> str:
+    """The User-Agent header, with ``note`` as a comment if given.
+
+    >>> user_agent("runner 192.0.2.1; run 7/1")
+    'pymedphys-midi-b (runner 192.0.2.1; run 7/1)'
+    >>> user_agent("a) b")
+    Traceback (most recent call last):
+    ...
+    ValueError: a user agent note may hold only up to 200 letters, digits, spaces, and . : ; / _ = , + -
+    """
+    if note is None:
+        return USER_AGENT
+    if not _AGENT_NOTE.fullmatch(note):
+        raise ValueError(
+            "a user agent note may hold only up to 200 letters, digits, "
+            "spaces, and . : ; / _ = , + -"
+        )
+    return f"{USER_AGENT} ({note})"
 
 
 def failure(error: BaseException) -> str:
@@ -99,9 +128,11 @@ def public_links(page: str) -> list[str]:
     return links
 
 
-def _page(attempts: int = ATTEMPTS, pause: float = PAUSE) -> str:
+def _page(
+    attempts: int = ATTEMPTS, pause: float = PAUSE, agent: str = USER_AGENT
+) -> str:
     """Return TCIA's MIDI-B page, trying again after a network error."""
-    request = urllib.request.Request(PAGE, headers={"User-Agent": "pymedphys-midi-b"})
+    request = urllib.request.Request(PAGE, headers={"User-Agent": agent})
     for attempt in range(1, attempts + 1):
         try:
             # A constant HTTPS URL.
@@ -122,9 +153,9 @@ def _page(attempts: int = ATTEMPTS, pause: float = PAUSE) -> str:
     raise AssertionError("unreachable")
 
 
-def fetch(destination: Path) -> int:
+def fetch(destination: Path, agent: str = USER_AGENT) -> int:
     """Receive every package that TCIA's MIDI-B page links into ``destination``."""
-    links = public_links(_page())
+    links = public_links(_page(agent=agent))
     if not links:
         print("TCIA's MIDI-B page links no Faspex package.")
         return 1
@@ -158,23 +189,25 @@ def fetch(destination: Path) -> int:
     return 0
 
 
-def public_address() -> str:
-    """The runner's public address, as a web service sees it, or why not."""
-    reasons = []
+def public_address() -> str | None:
+    """The runner's public address, as a web service sees it, if one answers."""
     for url in ADDRESS_SERVICES:
-        request = urllib.request.Request(
-            url, headers={"User-Agent": "pymedphys-midi-b"}
-        )
+        request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
         try:
             # Constant HTTPS URLs.
             with urllib.request.urlopen(  # nosec B310
                 request, timeout=CONNECT_TIMEOUT
             ) as response:
                 # Only an address is printed, never what else a service sends.
-                return str(ipaddress.ip_address(response.read(64).decode().strip()))
+                address = str(ipaddress.ip_address(response.read(64).decode().strip()))
+            # A scoped IPv6 address, with its "%", is no public address, and
+            # could not go in a User-Agent note.
+            if "%" in address:
+                raise ValueError("a scoped address")
+            return address
         except (OSError, ValueError, http.client.HTTPException) as error:
-            reasons.append(failure(error))
-    return f"unknown ({', '.join(reasons)})"
+            print(f"{url} gave no address ({failure(error)}).", flush=True)
+    return None
 
 
 def connect(host: str, port: int = PORT) -> list[str]:
@@ -204,12 +237,21 @@ def connect(host: str, port: int = PORT) -> list[str]:
     return lines
 
 
-def network() -> int:
-    """Print the runner's public address, and how each of TCIA's hosts answers."""
+def network(github_env: Path | None = None) -> int:
+    """Print the runner's public address, and how each of TCIA's hosts answers.
+
+    Given ``github_env``, also append ``MIDI_B_RUNNER_ADDRESS=<address>`` to
+    it when the address is known.
+    """
+    address = public_address()
     print(
-        f"At {utc_now()}, this runner's public address is {public_address()}.",
+        f"At {utc_now()}, this runner's public address is {address or 'unknown'}.",
         flush=True,
     )
+    if address is not None and github_env is not None:
+        # A checked IP address: a single line, with nothing to escape.
+        with github_env.open("a", encoding="utf-8") as file:
+            file.write(f"MIDI_B_RUNNER_ADDRESS={address}\n")
     for host in HOSTS:
         for line in connect(host):
             print(line, flush=True)
@@ -293,15 +335,36 @@ def listing(destination: Path) -> list[str]:
 
 
 def main(argv: list[str]) -> int:
-    if argv == ["network"]:
-        return network()
-    if len(argv) != 2 or argv[0] not in {"fetch", "list"}:
-        print("usage: midi_b_tcia_answer_keys.py {fetch,list} DEST | network")
-        return 2
-    destination = Path(argv[1])
-    if argv[0] == "fetch":
-        return fetch(destination)
-    print("\n".join(listing(destination)))
+    parser = argparse.ArgumentParser(prog="midi_b_tcia_answer_keys.py")
+    commands = parser.add_subparsers(dest="command", required=True)
+    fetching = commands.add_parser(
+        "fetch", help="Receive the packages that TCIA's MIDI-B page links."
+    )
+    fetching.add_argument("destination", metavar="DEST", type=Path)
+    fetching.add_argument(
+        "--user-agent-note",
+        help="Text to add to the User-Agent header, such as the runner's address.",
+    )
+    listed = commands.add_parser("list", help="List the files received.")
+    listed.add_argument("destination", metavar="DEST", type=Path)
+    probing = commands.add_parser(
+        "network", help="Print how this runner reaches TCIA's hosts."
+    )
+    probing.add_argument(
+        "--github-env",
+        type=Path,
+        help="A file to append MIDI_B_RUNNER_ADDRESS=<address> to.",
+    )
+    arguments = parser.parse_args(argv)
+    if arguments.command == "network":
+        return network(arguments.github_env)
+    if arguments.command == "fetch":
+        try:
+            agent = user_agent(arguments.user_agent_note)
+        except ValueError as error:
+            parser.error(str(error))
+        return fetch(arguments.destination, agent)
+    print("\n".join(listing(arguments.destination)))
     return 0
 
 

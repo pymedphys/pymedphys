@@ -380,6 +380,62 @@ def test_the_command_prints_the_record(tmp_path, monkeypatch, capsys):
     assert "of 2 series" in printed.err
 
 
+def test_a_user_agent_note_is_a_checked_comment():
+    assert midi_download.user_agent() == "pymedphys-midi-download"
+    assert midi_download.user_agent("runner 2001:db8::1; run 7/2; test basic") == (
+        "pymedphys-midi-download (runner 2001:db8::1; run 7/2; test basic)"
+    )
+    for note in ("", "a)b", "(a", "a\\b", "a\r\nX-Injected: 1", "a" * 201):
+        with pytest.raises(DownloadError, match="user agent note"):
+            midi_download.user_agent(note)
+
+
+def test_the_command_sends_its_note_in_each_request(tmp_path, monkeypatch):
+    server = Server()
+    agents = []
+
+    def urlopen(request, timeout):
+        assert timeout == midi_download.TIMEOUT_SECONDS
+        agents.append(request.get_header("User-agent"))
+        return server(request.full_url)
+
+    monkeypatch.setattr(midi_download.urllib.request, "urlopen", urlopen)
+    note = "runner 192.0.2.1; run 7/1; validation basic"
+    assert (
+        midi_download.main(
+            [
+                "--subset",
+                "validation",
+                "--dest",
+                str(tmp_path / "midi"),
+                "--user-agent-note",
+                note,
+            ],
+            subsets={"validation": _subset()},
+        )
+        == 0
+    )
+    # The answer key, the manifest, and both series.
+    assert len(agents) == len(server.requests) == 4
+    assert set(agents) == {f"pymedphys-midi-download ({note})"}
+
+
+def test_the_command_refuses_a_note_that_is_not_a_comment(tmp_path):
+    with pytest.raises(SystemExit, match="user agent note"):
+        midi_download.main(
+            [
+                "--subset",
+                "validation",
+                "--dest",
+                str(tmp_path / "midi"),
+                "--user-agent-note",
+                "a) b",
+            ],
+            subsets={"validation": _subset()},
+        )
+    assert not (tmp_path / "midi").exists()
+
+
 def test_the_command_refuses_without_a_traceback(tmp_path):
     with pytest.raises(SystemExit, match="must not exist"):
         midi_download.main(
