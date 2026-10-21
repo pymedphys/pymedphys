@@ -337,7 +337,7 @@ class WorkflowContractTests(unittest.TestCase):
             [
                 "junit-${{ matrix.os }}-${{ matrix.python-version }}",
                 "junit-extra-${{ matrix.extra }}",
-                "junit-dependency-floors",
+                "junit-dependency-floors-${{ matrix.part }}",
                 "junit-pydicom-${{ matrix.pydicom }}",
             ],
         )
@@ -346,7 +346,8 @@ class WorkflowContractTests(unittest.TestCase):
                 self.assertTrue(fnmatch.fnmatchcase(f"junit-{os_name}-3.12", pattern))
         for name in (
             "junit-extra-dicom",
-            "junit-dependency-floors",
+            "junit-dependency-floors-corpus-runs",
+            "junit-dependency-floors-others",
             "junit-pydicom-minimum",
             "junit-pydicom-latest",
         ):
@@ -398,6 +399,23 @@ class WorkflowContractTests(unittest.TestCase):
             with self.subTest(job=job):
                 self.assertNotIn(job, needs(workflow["publish-pypi"]))
                 self.assertNotIn(job, needs(workflow["upload-release-assets"]))
+
+    def test_the_dependency_floors_parts_run_every_test_once(self):
+        floors = jobs("unit-tests.yml")["dependency-floors"]
+        self.assertIn("        part: [corpus-runs, others]\n", floors)
+        listed = re.search(r"CORPUS_RUN_TESTS: >-\n((?: {8}\S+\n)+)", floors)[1].split()
+        self.assertTrue(listed)
+        # The corpus-runs part runs the listed modules and the others part
+        # ignores them, so a module is in exactly one part.
+        for path in listed:
+            with self.subTest(path=path):
+                self.assertTrue((WORKFLOWS.parents[1] / path).is_file())
+        self.assertIn('            selection=("${listed[@]}")\n', floors)
+        self.assertIn(
+            '            selection=("${listed[@]/#/--ignore=${GITHUB_WORKSPACE}/}")\n',
+            floors,
+        )
+        self.assertIn('"not slow" "${selection[@]}"', floors)
 
     def test_pydicom_reuse_keeps_its_proof_inside_the_unit_workflow(self):
         workflow = jobs("unit-tests.yml")
