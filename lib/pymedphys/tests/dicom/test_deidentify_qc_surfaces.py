@@ -289,6 +289,23 @@ def test_the_frontal_view_meets_the_nose_first():
 
 @pytest.mark.deid_requirement("MIDI-BP-15")
 @pytest.mark.pydicom
+def test_each_crossing_of_a_surface_is_found_in_order_from_the_viewer():
+    # Two pieces along one ray of the frontal view, the second reaching
+    # the end of the ray.
+    inside = np.zeros((1, 12, 1), bool)
+    inside[0, 2:4, 0] = True
+    inside[0, 7:, 0] = True
+    crossings = qc_surfaces.view_crossings(inside)
+    frontal = crossings[0]
+    # The ray through the voxels is the middle of 13, and its depths are
+    # one more than the voxels' indices from anterior.
+    assert frontal.shape == (4, 1, 13)
+    assert frontal[:, 0, 6].tolist() == [3, 4, 8, 12]
+    assert (np.delete(frontal, 6, axis=2) == -1).all()
+    for each, first in zip(crossings, qc_surfaces.view_depths(inside)):
+        assert (each[0] == first).all()
+
+
 def test_the_profiles_show_the_nose_on_the_side_it_faces():
     nose = _views(_surface(_axial(_body(nose=True))))
     plain = _views(_surface(_axial(_body(nose=False))))

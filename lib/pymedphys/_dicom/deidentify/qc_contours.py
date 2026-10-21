@@ -32,7 +32,21 @@ separated by grey rows of :data:`GUTTER_PIXELS`, are:
   patient's surface; then
 - for each item of the ROI Contour Sequence, in order, its region alone,
   since the united region hides an ROI wholly inside another, or a black
-  row of :data:`GUTTER_PIXELS` for an item without contours.
+  row of :data:`GUTTER_PIXELS` for an item without contours. Where a ray
+  of the frontal view or of a profile, which look along the axes of the
+  voxels and so between them meet every voxel of the region's surface,
+  crosses that surface more than twice, the region hides some of its
+  surface behind its own, as one with a cavity within it, or with one
+  part behind another, does. Its row is then followed by a row of its
+  cavities, the voxels that each slice of the region encloses but does not
+  hold, as a region of their own, where it has any; and by a row for each
+  further crossing, in which each ray shows the surface where it crosses
+  it, into or out of the region, that many times from the viewer, so that
+  every surface that those rays cross is shown. One surface may be shown
+  in parts across those rows, where rays cross different numbers of
+  surfaces before it, so they are read together. The oblique views have
+  no rows of crossings, since their rays, which step between voxels,
+  cross a surface falsely where they graze it.
 
 Each region is sampled to cubic voxels over the extent of what it draws,
 with a voxel more on each low side across, 0 to 1 voxel more on each high
@@ -89,6 +103,7 @@ from collections.abc import Callable, Mapping, Sequence
 from pymedphys._geometry.rasters import even_odd
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom
+from pymedphys._imports import scipy
 
 from . import qc_surfaces
 from .uids import normalise_uid
@@ -110,14 +125,17 @@ LONGEST = 2000.0
 ROI_VOXELS = 128
 ROI_MINIMUM_VOXEL = 0.5  # millimetres
 GUTTER_PIXELS = 8
-# The tallest contour sheet that is shown: an ROI's row is at most 257
-# voxels tall, so at least about 120 ROI items in one frame, about 103 in
-# ten frames each with a guide, and about 2 fewer for each further frame
-# with a guide, and more where they are shorter. A taller one is not drawn
-# or shown, so that its set is held rather than shown in an image that a
+# The tallest contour sheet that is shown: each row is at most 257 voxels
+# tall, so at least about 120 rows in one frame, about 103 in ten frames
+# each with a guide, and about 2 fewer for each further frame with a guide.
+# An ROI item has one row, and more where it hides some of its surface
+# behind its own. A taller one is drawn only until it is too tall, and is
+# not shown, so that its set is held rather than shown in an image that a
 # viewer may scale down or refuse.
 MAXIMUM_SHEET_PIXELS = 32768
 
+# The views whose rays look along an axis of the voxels.
+_ALONG = (0, 90, -90)
 # As a redaction preview's outline and gutter.
 _OUTLINE = (255, 0, 255)
 _GUTTER = (128, 128, 128)
@@ -385,8 +403,10 @@ class _Grid:
 
 
 def contour_sheet(
-    contours: Contours, guides: Mapping[str | None, Guide] | None = None
-) -> np.ndarray:
+    contours: Contours,
+    guides: Mapping[str | None, Guide] | None = None,
+    tallest: int | None = None,
+) -> np.ndarray | None:
     """Return the sheet of a structure set's contours, as the module
     describes, in RGB.
 
@@ -397,49 +417,65 @@ def contour_sheet(
     guides : mapping of str to Guide, optional
         The volume that the sheet is drawn with in each Frame of Reference,
         by its UID.
+    tallest : int, optional
+        The most pixels that the sheet may be tall.
 
     Returns
     -------
-    numpy.ndarray
-        uint8, of shape (rows, columns, 3).
+    numpy.ndarray or None
+        uint8, of shape (rows, columns, 3); or None where the sheet would be
+        taller than ``tallest``, which is drawn only until it is.
     """
     guides = {} if guides is None else guides
     if contours.empty:
         raise ValueError("a contour sheet needs a contour")
     # Each ROI's planes, so that the planes of one ROI never empty another's
     # slices.
+    if tallest is not None and _least_height(contours, guides) > tallest:
+        return None
     planes = [_planes(roi) for roi in contours.rois]
-    rows = []
+    rows: list[np.ndarray] = []
+    height = -GUTTER_PIXELS
+
+    def fits(more: Sequence[np.ndarray]) -> bool:
+        nonlocal height
+        rows.extend(more)
+        height += sum(row.shape[0] + GUTTER_PIXELS for row in more)
+        return tallest is None or height <= tallest
+
     for frame in contours.frames:
         chosen = [i for i, roi in enumerate(contours.rois) if roi.frame == frame]
         rois = [contours.rois[i] for i in chosen]
         grid = _grid(rois, _united_voxel)
         shown = [planes[i] for i in chosen]
-        rows.append(_rgb(_views(_mask(rois, grid, shown))))
+        if not fits([_rgb(_views(_mask(rois, grid, shown)))]):
+            return None
         guide = guides.get(frame)
-        if guide is not None:
-            rows.append(_guided(guide, _mask(rois, _of(guide), shown)))
+        if guide is not None and not fits(
+            [_guided(guide, _mask(rois, _of(guide), shown))]
+        ):
+            return None
     # An ROI the same as an earlier one, as a copied item is, is rendered
-    # once, though each has its row.
-    rendered: dict[bytes, np.ndarray] = {}
+    # once, though each has its rows.
+    rendered: dict[bytes, list[np.ndarray]] = {}
     for roi, own in zip(contours.rois, planes):
         if roi.empty:
-            rows.append(np.zeros((GUTTER_PIXELS, 1, 3), np.uint8))
+            if not fits([np.zeros((GUTTER_PIXELS, 1, 3), np.uint8)]):
+                return None
             continue
         key = _key(roi)
         if key not in rendered:
             grid = _grid([roi], _roi_voxel)
-            rendered[key] = _rgb(_views(_mask([roi], grid, [own])))
-        rows.append(rendered[key])
+            rendered[key] = _roi_rows(_mask([roi], grid, [own]))
+        if not fits(rendered[key]):
+            return None
     return _stacked(rows)
 
 
-def sheet_height(
-    contours: Contours, guides: Mapping[str | None, Guide] | None = None
-) -> int:
-    """Return the height, in pixels, of :func:`contour_sheet`'s sheet of the
-    same contours and guides, without drawing it."""
-    guides = {} if guides is None else guides
+def _least_height(contours: Contours, guides: Mapping[str | None, Guide]) -> int:
+    """The height, in pixels, of a sheet without the rows of any ROI's
+    cavities or of the surfaces that it hides behind its own, found without
+    drawing it."""
     heights = []
     for frame in contours.frames:
         rois = [roi for roi in contours.rois if roi.frame == frame]
@@ -452,6 +488,47 @@ def sheet_height(
         for roi in contours.rois
     )
     return sum(heights) + GUTTER_PIXELS * (len(heights) - 1)
+
+
+def _roi_rows(inside: np.ndarray) -> list[np.ndarray]:
+    """An ROI's rows, as the module describes, from its voxels."""
+    rows = [_rgb(_views(inside))]
+    # The rays of the views that look along an axis of the voxels meet every
+    # voxel of its surface, and cross the surface more than twice only where
+    # it hides some of its surface behind its own; the oblique views' rays,
+    # which step between voxels, cross a surface falsely where they graze it.
+    if max(_most_crossings(inside, axis) for axis in (1, 2)) <= 2:
+        return rows
+    # Each slice's cavities: what its region encloses, but does not hold.
+    within = np.zeros((3, 3, 3), bool)
+    within[1] = [[False, True, False], [True, True, True], [False, True, False]]
+    cavities = scipy.ndimage.binary_fill_holes(inside, within) & ~inside
+    if cavities.any():
+        rows.append(_rgb(_views(cavities)))
+    along = dict(zip(_ALONG, qc_surfaces.view_crossings(inside, _ALONG)))
+    none = np.full(along[0].shape[1:], -1)
+    for crossing in range(1, max(len(each) for each in along.values())):
+        tiles = []
+        for view in qc_surfaces.VIEWS:
+            each = along.get(view)
+            tiles.append(
+                none if each is None or crossing >= len(each) else each[crossing]
+            )
+        rows.append(_rgb(_tiles(tiles)))
+    return rows
+
+
+def _most_crossings(inside: np.ndarray, axis: int) -> int:
+    """The most times that a line of voxels along an axis crosses in or out
+    of the region."""
+    padding = [(0, 0)] * inside.ndim
+    padding[axis] = (1, 1)
+    changes = np.diff(np.pad(inside, padding), axis=axis)
+    return int(changes.sum(axis=axis).max(initial=0))
+
+
+def _tiles(depths: Sequence[np.ndarray]) -> np.ndarray:
+    return qc_surfaces.side_by_side([qc_surfaces.shaded(each) for each in depths])
 
 
 def _key(roi: RoiContours) -> bytes:
