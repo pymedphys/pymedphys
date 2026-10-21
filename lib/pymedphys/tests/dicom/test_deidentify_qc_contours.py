@@ -631,17 +631,33 @@ def _plugged(hole):
     return qc_contours.contours_of(_read(_structure_set([rings + lines])))
 
 
-def test_a_hole_that_marks_fill_has_rows_of_its_own():
-    solid = _sheet_rows(qc_contours.contour_sheet(_solid()))
-    square = _sheet_rows(
-        qc_contours.contour_sheet(_plugged(files.square((0.0, 0.0, 0.0), 12.0)))
-    )
-    circle = _sheet_rows(
-        qc_contours.contour_sheet(_plugged(files.circle((0.0, 0.0, 0.0), 12.0)))
-    )
-    assert len(square) > 2 and len(circle) > 2
-    assert all((row == other).all() for row, other in zip(square[:2], solid))
-    assert (square[2] != circle[2]).any()
+def _rastered(curve):
+    """The box with a curve within it at 0 mm, and a line back and forth
+    over it along each row of voxels."""
+    rings = [("CLOSED_PLANAR", _box(z)) for z in _BOX_HEIGHTS]
+    (roi,) = qc_contours.contours_of(_read(_structure_set([rings]))).rois
+    ys = qc_contours._grid([roi], qc_contours._roi_voxel).ys
+    ys = ys[np.abs(ys) < 20]
+    xs = np.where(np.arange(len(ys)) % 2, 15.0, -15.0)
+    passes = np.column_stack([xs, ys, np.zeros_like(ys)])
+    raster = np.repeat(passes, 2, axis=0)
+    raster[1::2, 0] *= -1
+    marks = [("OPEN_PLANAR", curve), ("OPEN_PLANAR", raster)]
+    return qc_contours.contours_of(_read(_structure_set([rings + marks])))
+
+
+@pytest.mark.parametrize(
+    "contours",
+    [
+        lambda: _plugged(files.square((0.0, 0.0, 0.0), 12.0)),
+        lambda: _rastered(_curve(4.0)),
+    ],
+    ids=["plugged", "rastered"],
+)
+def test_marks_that_hide_one_another_are_not_shown(contours):
+    # The marks fill a patch, which would hide a hole's outline or a curve
+    # in their own rows too.
+    assert qc_contours.contour_sheet(contours()) is None
 
 
 # A slab 240 by 200 mm across, of voxels near 2 mm, in planes 1 mm apart,

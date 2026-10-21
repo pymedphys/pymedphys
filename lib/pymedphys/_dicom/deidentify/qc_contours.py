@@ -57,6 +57,9 @@ separated by grey rows of :data:`GUTTER_PIXELS`, are:
   mark of the first kinds, then have rows of their own after the ROI's,
   as its region has, but with no row of cavities, so that every mark is
   shown, in those rows or within two voxels of an edge of the ROI's own.
+  Where those marks hide one another in turn, as a line drawn back and
+  forth over a patch hides a curve within it, or lines that fill a hole
+  hide its outline, a sheet cannot show them, so none is drawn.
 
 Each region is sampled to cubic voxels over the extent of what it draws,
 with a voxel more on each low side across, 0 to 1 voxel more on each high
@@ -433,7 +436,8 @@ def contour_sheet(
     -------
     numpy.ndarray or None
         uint8, of shape (rows, columns, 3); or None where the sheet would be
-        taller than ``tallest``, which is drawn only until it is.
+        taller than ``tallest``, which is drawn only until it is, or where
+        an ROI's hidden marks hide one another.
     """
     guides = {} if guides is None else guides
     if contours.empty:
@@ -466,7 +470,7 @@ def contour_sheet(
             return None
     # An ROI the same as an earlier one, as a copied item is, is rendered
     # once, though each has its rows.
-    rendered: dict[bytes, list[np.ndarray]] = {}
+    rendered: dict[bytes, list[np.ndarray] | None] = {}
     for roi, own in zip(contours.rois, planes):
         if roi.empty:
             if not fits([np.zeros((GUTTER_PIXELS, 1, 3), np.uint8)]):
@@ -474,15 +478,25 @@ def contour_sheet(
             continue
         key = _key(roi)
         if key not in rendered:
-            grid = _grid([roi], _roi_voxel)
-            filled = _filled(roi, grid, own)
-            hidden = _hidden(roi, grid, filled)
-            rendered[key] = _roi_rows(filled | _marked(roi.marks(_step(grid)), grid))
-            if hidden is not None:
-                rendered[key] += _roi_rows(hidden, cavities=False)
-        if not fits(rendered[key]):
+            rendered[key] = _item_rows(roi, own)
+        shown = rendered[key]
+        if shown is None or not fits(shown):
             return None
     return _stacked(rows)
+
+
+def _item_rows(roi: RoiContours, planes: np.ndarray) -> list[np.ndarray] | None:
+    """An ROI's rows, with those of the marks that its region hides; or
+    None where those marks hide one another, which no row can show."""
+    grid = _grid([roi], _roi_voxel)
+    filled = _filled(roi, grid, planes)
+    hidden = _hidden(roi, grid, filled)
+    rows = _roi_rows(filled | _marked(roi.marks(_step(grid)), grid))
+    if hidden is None:
+        return rows
+    if _buried(hidden, hidden).any():
+        return None
+    return rows + _roi_rows(hidden, cavities=False)
 
 
 def _least_height(contours: Contours, guides: Mapping[str | None, Guide]) -> int:
@@ -696,15 +710,19 @@ def _hidden(roi: RoiContours, grid: _Grid, filled: np.ndarray) -> np.ndarray | N
     )
     marked = _marked(alone.marks(step), grid)
     every = _marked(roi.marks(step), grid)
-    around = np.zeros((3, 3, 3), bool)
-    around[1] = True
-    shown = filled | every
-    buried = every & scipy.ndimage.binary_erosion(
-        shown, around, iterations=2, border_value=0
-    )
+    buried = _buried(every, filled | every)
     if not ((marked & filled).any() or buried.any()):
         return None
     return marked | buried
+
+
+def _buried(marked: np.ndarray, shown: np.ndarray) -> np.ndarray:
+    """The voxels of marks around which what each slice shows holds every
+    voxel within two in the slice."""
+    around = np.zeros((3, 3, 3), bool)
+    around[1] = True
+    inner = scipy.ndimage.binary_erosion(shown, around, iterations=2, border_value=0)
+    return marked & inner
 
 
 def _step(grid: _Grid) -> float:
