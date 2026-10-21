@@ -215,12 +215,13 @@ class CoverageEvidenceTests(CoveragePlanMixin, unittest.TestCase):
                 coverage.record_baseline(LOCK, "3.0.2", COMMIT, self.results)
             self.assertFalse((self.results / coverage.BASELINE_METADATA).exists())
 
-    def parts(self, python="3.14.0"):
+    def parts(self, *pythons):
         """Record passing evidence for every part, as each part's job does."""
-        with mock.patch.object(
-            coverage.platform, "python_version", return_value=python
-        ):
-            for part in coverage.BASELINE_PARTS:
+        pythons = pythons or ("3.14.0",) * len(coverage.BASELINE_PARTS)
+        for part, python in zip(coverage.BASELINE_PARTS, pythons, strict=True):
+            with mock.patch.object(
+                coverage.platform, "python_version", return_value=python
+            ):
                 self.report(name=coverage.part_artifact(part))
                 coverage.record_part(LOCK, part, "3.0.2", COMMIT, self.results)
 
@@ -286,15 +287,17 @@ class CoverageEvidenceTests(CoveragePlanMixin, unittest.TestCase):
 
     def test_baseline_needs_both_parts_to_agree_on_their_imports(self):
         self.parts()
+        pythons = dict.fromkeys(coverage.BASELINE_PARTS, "3.14.0")
         self.assertEqual(
-            coverage.part_versions(LOCK, COMMIT, self.results), ("3.0.2", "3.14.0")
+            coverage.part_versions(LOCK, COMMIT, self.results), ("3.0.2", pythons)
         )
         self.report(text=PASSED)
         metadata = coverage.record_baseline(
-            LOCK, "3.0.2", COMMIT, self.results, "3.14.0"
+            LOCK, "3.0.2", COMMIT, self.results, pythons
         )
         self.assertEqual(metadata["actual_python_version"], "3.14.0")
         self.assertEqual(metadata["parts"], list(coverage.BASELINE_PARTS))
+        self.assertEqual(metadata["part_python_versions"], pythons)
         path = self.results / "pydicom-py3.14-others.json"
         recorded = json.loads(path.read_text())
         for changes in (
@@ -303,7 +306,8 @@ class CoverageEvidenceTests(CoveragePlanMixin, unittest.TestCase):
             {"commit": "b" * 40},
             {"junit": "wrong.xml"},
             {"actual_version": "3.1.0"},
-            {"actual_python_version": "3.14.1"},
+            {"actual_python_version": "3.13.5"},
+            {"actual_python_version": None},
         ):
             path.write_text(json.dumps(recorded | changes))
             with self.subTest(changes=changes), self.assertRaises(ValueError):
@@ -313,9 +317,22 @@ class CoverageEvidenceTests(CoveragePlanMixin, unittest.TestCase):
             coverage.part_versions(LOCK, COMMIT, self.results)
 
     def test_parts_must_have_run_python_3_14(self):
-        self.parts(python="3.13.5")
+        self.parts("3.13.5", "3.13.5")
         with self.assertRaises(ValueError):
             coverage.part_versions(LOCK, COMMIT, self.results)
+
+    def test_parts_may_run_different_python_3_14_releases(self):
+        # Runner images can carry different 3.14 patch releases during a
+        # rollout, and each part runs on its own runner.
+        self.parts("3.14.1", "3.14.0")
+        actual, pythons = coverage.part_versions(LOCK, COMMIT, self.results)
+        self.assertEqual(
+            pythons, dict(zip(coverage.BASELINE_PARTS, ("3.14.1", "3.14.0")))
+        )
+        self.report(text=PASSED)
+        metadata = coverage.record_baseline(LOCK, actual, COMMIT, self.results, pythons)
+        self.assertEqual(metadata["actual_python_version"], "3.14.0, 3.14.1")
+        self.assertEqual(metadata["part_python_versions"], pythons)
 
     def test_overlay_needs_its_real_report_and_actual_requested_version(self):
         plan = self.plan(role="latest", requested="3.1.0")

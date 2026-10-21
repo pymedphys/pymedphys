@@ -252,10 +252,16 @@ def combine_reports(results: Path) -> Path:
     return output
 
 
-def part_versions(lock: dict, commit: str, results: Path) -> tuple[str, str]:
-    """Return the pydicom and Python versions that every part recorded."""
+def part_versions(lock: dict, commit: str, results: Path) -> tuple[str, dict[str, str]]:
+    """Return the pydicom version every part imported and each part's Python.
+
+    The parts must agree on pydicom, which must be the locked version. Each
+    part's Python need only be 3.14: the parts run on separate runners, whose
+    images can carry different 3.14 patch releases while GitHub rolls one out.
+    """
     commit = commit_sha(commit)
     found = set()
+    pythons = {}
     for part in BASELINE_PARTS:
         path = results / part_metadata(part)
         metadata = json.loads(path.read_text(encoding="utf-8"))
@@ -267,15 +273,16 @@ def part_versions(lock: dict, commit: str, results: Path) -> tuple[str, str]:
         ):
             raise ValueError(f"Invalid part evidence in {path}")
         checked_locked(lock, metadata.get("actual_version", ""))
-        found.add((metadata["actual_version"], metadata.get("actual_python_version")))
+        python = metadata.get("actual_python_version")
+        if not isinstance(python, str) or not python.startswith("3.14."):
+            raise ValueError(f"The {part} part ran Python {python!r}, expected 3.14.")
+        found.add(metadata["actual_version"])
+        pythons[part] = python
     if len(found) != 1:
         raise ValueError(
-            f"The parts imported different versions: {sorted(found, key=str)}"
+            f"The parts imported different pydicom versions: {sorted(found)}"
         )
-    actual, python = found.pop()
-    if not isinstance(python, str) or not python.startswith("3.14."):
-        raise ValueError(f"The parts ran Python {python!r}, expected 3.14.")
-    return actual, python
+    return found.pop(), pythons
 
 
 def record_baseline(
@@ -283,9 +290,13 @@ def record_baseline(
     actual: str,
     commit: str,
     results: Path,
-    python_version: str | None = None,
+    part_pythons: dict[str, str] | None = None,
 ) -> dict:
-    """Bind the normal Ubuntu/Python 3.14 report to the version actually imported."""
+    """Bind the normal Ubuntu/Python 3.14 report to the version actually imported.
+
+    ``part_pythons`` maps each part to the Python it ran, since the combining
+    job's own Python is not the one the tests ran under.
+    """
     commit = commit_sha(commit)
     locked = checked_locked(lock, actual)
     # Validate the report separately: upload-artifact only requires some files
@@ -295,12 +306,18 @@ def record_baseline(
         "format": "pymedphys-pydicom-baseline/1",
         "commit": commit,
         "actual_version": actual,
-        "actual_python_version": python_version or platform.python_version(),
+        "actual_python_version": (
+            ", ".join(sorted(set(part_pythons.values())))
+            if part_pythons
+            else platform.python_version()
+        ),
         "locked_version": locked,
         "artifact": BASELINE_ARTIFACT,
         "junit": f"{BASELINE_ARTIFACT}.xml",
         "parts": list(BASELINE_PARTS),
     }
+    if part_pythons:
+        metadata["part_python_versions"] = part_pythons
     write_json(results / BASELINE_METADATA, metadata)
     return metadata
 
@@ -386,8 +403,8 @@ def main() -> None:
         combine_reports(RESULTS)
     elif command == "baseline":
         commit = checked_commit(os.environ["CI_COMMIT"])
-        actual, python_version = part_versions(lock, commit, RESULTS)
-        record_baseline(lock, actual, commit, RESULTS, python_version)
+        actual, part_pythons = part_versions(lock, commit, RESULTS)
+        record_baseline(lock, actual, commit, RESULTS, part_pythons)
     elif command == "record":
         plan = json.loads(
             (RESULTS / f"pydicom-plan-{os.environ['PYDICOM']}.json").read_text(

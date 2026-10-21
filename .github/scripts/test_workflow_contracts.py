@@ -473,6 +473,15 @@ class WorkflowContractTests(unittest.TestCase):
                 self.assertIn(
                     "          cache-data: ${{ matrix.part != 'corpus-runs' }}\n", job
                 )
+        # The include entries add both Ubuntu/Python 3.14 parts whatever
+        # python-matrix holds, so no caller may narrow it.
+        self.assertIn('        default: \'["3.12", "3.13", "3.14"]\'\n', text)
+        for caller in sorted(WORKFLOWS.glob("*.yml")):
+            if caller.name != "unit-tests.yml":
+                with self.subTest(caller=caller.name):
+                    self.assertNotIn(
+                        "python-matrix", caller.read_text(encoding="utf-8")
+                    )
 
     def test_pydicom_reuse_keeps_its_proof_inside_the_unit_workflow(self):
         workflow = jobs("unit-tests.yml")

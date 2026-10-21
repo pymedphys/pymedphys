@@ -247,9 +247,11 @@ and the `others` part runs every other test by passing each listed module to
 `--ignore`, so a new module runs in `others` until it is listed. A listed
 module that no longer exists fails both parts before pytest starts, and a
 contract test checks that each listed module exists. The `corpus-runs` parts
-read no downloaded data, so they skip the data cache, whose key the two parts
-of a job would otherwise share. Move a module between the parts when the
-`--durations` reports show one part taking much longer than the other.
+read no downloaded data, so they skip the data cache. Its key ends in the job's
+ID, so every part and cell of a job on one OS shares it, and a part that saved
+it without the data would leave the others re-downloading. Move a module
+between the parts when the `--durations` reports show one part taking much
+longer than the other.
 
 The Ubuntu/Python 3.14 parts upload their reports as `junit-py3.14-corpus-runs`
 and `junit-py3.14-others`, which the release's `junit-*-latest-*` pattern leaves
@@ -279,11 +281,13 @@ or synthetic JUnit. Each role uploads a coverage manifest naming its requested
 version and evidence source. The normal reference cell records its imported
 versions and checkout revision: each of its two parts records the pydicom and
 Python versions it imported, and the `baseline-report` job records the
-combined evidence only when both parts passed on the checked-out commit with
-the same versions, which must match the lock. It explicitly requires both
-metadata and JUnit before upload. Reuse is established only when the whole
-unit-test workflow succeeds, including both parts, the `baseline-report` job,
-and both compatibility jobs.
+combined evidence only when both parts passed on the checked-out commit and
+imported the same pydicom, which must match the lock, under Python 3.14. The
+parts may run different 3.14 patch releases, since each runner image carries
+its own while GitHub rolls out a new one, and the evidence records each part's.
+It explicitly requires both metadata and JUnit before upload. Reuse is
+established only when the whole unit-test workflow succeeds, including both
+parts, the `baseline-report` job, and both compatibility jobs.
 Lookup, planning, metadata and upload failures fail the workflow. Reuse adds
 no test run: `baseline-report`, the only job after the test jobs, combines
 reports and runs no tests.
