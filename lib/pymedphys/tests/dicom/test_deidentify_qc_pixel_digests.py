@@ -25,6 +25,7 @@ import json
 import shutil
 import tempfile
 from pathlib import Path
+from typing import Any
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom, pytest
@@ -217,7 +218,7 @@ class _Unreadable(pydicom.Dataset):
 class _Given(pydicom.Dataset):
     """A data set whose Modality reads as a value no file passing run 1 gives."""
 
-    given: object = None
+    given: Any = None
 
     def get(self, key, default=None):
         if key == "Modality":
