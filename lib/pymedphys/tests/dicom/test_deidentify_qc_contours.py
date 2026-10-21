@@ -429,6 +429,98 @@ def test_an_roi_that_another_encloses_has_a_row_of_its_own():
     assert rows[2].any()
 
 
+# A cavity that an ROI's own contours bound: a box 50 by 64 mm across with,
+# in one ROI, a head's sections, a quarter of its size, as contours within it.
+_BOX_HEIGHTS = np.arange(-15.0, 16.0, 3.0)
+
+
+def _box(z):
+    return np.array([[-25, -32, z], [25, -32, z], [25, 32, z], [-25, 32, z]], float)
+
+
+def _cavity(z, cut=False):
+    section = _section(4 * z, cut)
+    section[:, :2] /= 4
+    section[:, 2] = z
+    return section
+
+
+def _hollow(cut=False, keyhole=False):
+    return qc_contours.contours_of(_read(_hollow_set(cut, keyhole)))
+
+
+def _hollow_set(cut=False, keyhole=False):
+    """A box with a head-shaped cavity, by XOR contours or by keyhole
+    contours that each trace the box and, by a cut, the cavity."""
+    rings = []
+    for z in _BOX_HEIGHTS:
+        box = _box(z)
+        if abs(z) > 10:
+            rings.append(("CLOSEDPLANAR_XOR", box))
+        elif keyhole:
+            cavity = _cavity(z, cut)
+            # Into the cavity from the box's front edge, around it the other
+            # way, and back out.
+            start = int(np.argmin(cavity[:, 1]))
+            around = np.roll(cavity, -start, axis=0)[::-1]
+            around = np.vstack([around[-1:], around[:-1]])
+            entry = np.array([[around[0, 0], -32.0, z]])
+            rings.append(
+                (
+                    "CLOSED_PLANAR",
+                    np.vstack([entry, box[[0, 3, 2, 1]], entry, around, around[:1]]),
+                )
+            )
+        else:
+            rings.extend(
+                [("CLOSEDPLANAR_XOR", box), ("CLOSEDPLANAR_XOR", _cavity(z, cut))]
+            )
+    return _structure_set([rings])
+
+
+def _solid():
+    rings = [("CLOSEDPLANAR_XOR", _box(z)) for z in _BOX_HEIGHTS]
+    return qc_contours.contours_of(_read(_structure_set([rings])))
+
+
+@pytest.mark.parametrize("keyhole", [False, True], ids=["xor", "keyhole"])
+def test_a_cavity_that_an_roi_s_own_contours_bound_is_shown(keyhole):
+    solid = _sheet_rows(qc_contours.contour_sheet(_solid()))
+    hollow = _sheet_rows(qc_contours.contour_sheet(_hollow(keyhole=keyhole)))
+    cut = _sheet_rows(qc_contours.contour_sheet(_hollow(cut=True, keyhole=keyhole)))
+    # The box's own row hides the cavity, as it would alone.
+    assert len(solid) == 2
+    assert (hollow[1] == solid[1]).all()
+    # A row of the cavity, whole, then a row for each further crossing of
+    # the surface, along the views that look along an axis.
+    assert len(hollow) > 3 and len(cut) == len(hollow)
+    width = hollow[2].shape[1] // 5
+    cavity = hollow[2][:, : width - 1]
+    assert cavity.any() and (cavity != cut[2][:, : width - 1]).any()
+    # The cavity's front shows in the frontal view of a further row, though
+    # its own row were not drawn.
+    assert any(
+        (row[:, : width - 1] != other[:, : width - 1]).any()
+        for row, other in zip(hollow[3:], cut[3:])
+    )
+
+
+def test_a_surface_that_an_roi_hides_behind_its_own_is_shown_without_a_cavity():
+    # Two pieces of one ROI, one behind the other, enclose nothing between
+    # them.
+    rings = [
+        _closed(files.circle((0, y, z), 8.0)) for y in (-15.0, 15.0) for z in (0, 3)
+    ]
+    rows = _sheet_rows(
+        qc_contours.contour_sheet(
+            qc_contours.contours_of(_read(_structure_set([rings])))
+        )
+    )
+    # The united row, its own row, and the three further crossings of the
+    # frontal view's rays: out of one piece, into the other, and out.
+    assert len(rows) == 2 + 3
+
+
 def test_each_frame_has_its_own_united_row_and_each_item_its_own_row():
     ring = [_closed(files.circle((0, 0, z), 20.0)) for z in (0.0, 3.0)]
     contours = qc_contours.contours_of(
@@ -448,11 +540,10 @@ def test_each_frame_has_its_own_united_row_and_each_item_its_own_row():
     assert (rows[2] == rows[5]).all() and (rows[2] == rows[4]).all()
 
 
-def test_a_sheet_s_height_is_found_without_drawing_it():
+def test_a_sheet_taller_than_its_tallest_is_not_given():
     ring = [_closed(files.circle((0, 0, z), 20.0)) for z in (0.0, 3.0)]
     far = [("POINT", np.array([[0.0, 900.0, 0.0]]))]
     sets = [
-        _structure_set([[_closed(_section(z)) for z in _HEIGHTS]]),
         _structure_set(
             [ring, [], ring, far],
             frames=[files.FRAME, files.FRAME, files.ROOT + ".9", files.FRAME],
@@ -468,9 +559,9 @@ def test_a_sheet_s_height_is_found_without_drawing_it():
                         for z in np.arange(centre[2], centre[2] + length, 2.5)
                     ]
                     for centre, radius, length in zip(
-                        generator.uniform(-60, 60, (4, 3)),
-                        generator.uniform(2, 40, 4),
-                        generator.uniform(3, 50, 4),
+                        generator.uniform(-30, 30, (4, 3)),
+                        generator.uniform(2, 12, 4),
+                        generator.uniform(3, 20, 4),
                     )
                 ]
             )
@@ -484,10 +575,44 @@ def test_a_sheet_s_height_is_found_without_drawing_it():
     for data in sets:
         contours = qc_contours.contours_of(_read(data))
         for guides in ({}, {files.FRAME: guide}):
-            assert (
-                qc_contours.sheet_height(contours, guides)
-                == (qc_contours.contour_sheet(contours, guides).shape[0])
-            )
+            sheet = qc_contours.contour_sheet(contours, guides)
+            height = sheet.shape[0]
+            fitted = qc_contours.contour_sheet(contours, guides, height)
+            assert fitted is not None and (fitted == sheet).all()
+            assert qc_contours.contour_sheet(contours, guides, height - 1) is None
+            # Without rows of cavities or hidden surfaces, the height is found
+            # without drawing the sheet.
+            assert qc_contours._least_height(contours, guides) == height
+    hollow = _hollow()
+    assert (
+        qc_contours._least_height(hollow, {})
+        < qc_contours.contour_sheet(hollow).shape[0]
+    )
+
+
+def test_a_sheet_is_drawn_only_until_it_is_too_tall(monkeypatch):
+    rings = [
+        [_closed(files.circle((0, 0, z), radius)) for z in (0.0, 3.0)]
+        for radius in (5.0, 6.0, 7.0)
+    ]
+    contours = qc_contours.contours_of(_read(_structure_set(rings)))
+    drawn = []
+    rows = qc_contours._roi_rows
+    monkeypatch.setattr(
+        qc_contours, "_roi_rows", lambda inside: drawn.append(1) or rows(inside)
+    )
+    assert qc_contours.contour_sheet(contours, tallest=1) is None
+    assert not drawn
+    # Drawn until it is too tall, where its rows without those of hidden
+    # surfaces fit.
+    height = qc_contours._least_height(contours, {})
+    monkeypatch.setattr(
+        qc_contours,
+        "_roi_rows",
+        lambda inside: drawn.append(1) or rows(inside) * 3,
+    )
+    assert qc_contours.contour_sheet(contours, tallest=height) is None
+    assert len(drawn) < 3
 
 
 def test_a_sheet_needs_a_contour():
@@ -579,12 +704,22 @@ def test_a_sheet_taller_than_any_shown_is_not_shown(monkeypatch):
     (sheet,) = qc_previews.previews_of({3: written}, {3}).previews
     height = int.from_bytes(sheet.png[20:24], "big")
     monkeypatch.setattr(qc_contours, "MAXIMUM_SHEET_PIXELS", height - 1)
+    found = qc_previews.previews_of({3: written}, {3})
+    assert not found.previews
+    assert found.contours_shown == frozenset()
+    assert found.not_previewed == (
+        NotPreviewedEntry(3, NotPreviewedReason.CONTOURS_NOT_SHOWN),
+    )
 
-    def drawn(*_):
-        raise AssertionError("a sheet over the bound is drawn")
 
-    # Its height is found without drawing it.
-    monkeypatch.setattr(qc_contours, "contour_sheet", drawn)
+def test_a_sheet_too_tall_only_by_the_rows_of_a_cavity_is_not_shown(monkeypatch):
+    written = _hollow_set()
+    (sheet,) = qc_previews.previews_of({3: written}, {3}).previews
+    rows = _sheet_rows(_decoded(sheet.png))
+    height = int.from_bytes(sheet.png[20:24], "big")
+    monkeypatch.setattr(qc_contours, "MAXIMUM_SHEET_PIXELS", height - 1)
+    # Its united row and its own row fit.
+    assert rows[0].shape[0] + qc_contours.GUTTER_PIXELS + rows[1].shape[0] < height - 1
     found = qc_previews.previews_of({3: written}, {3})
     assert not found.previews
     assert found.contours_shown == frozenset()
