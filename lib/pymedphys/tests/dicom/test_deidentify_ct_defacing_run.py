@@ -18,14 +18,15 @@ Dose, and PET in the same Frame of Reference, the RT Structure Set replaced
 by one of the head, one RT Dose by a grid over the head, and the PET Image
 by two slices of the head. Every UID and value here is invented."""
 
-# The tests share one run of the analytic head and its helpers, so they stay
-# in one module.
+# The runs share the head, its ROIs, and the fixtures that review one run of
+# the collection, so they stay in one module.
 # pylint: disable = too-many-lines
 
 from __future__ import annotations
 
 import contextlib
 import copy
+import dataclasses
 import json
 import shutil
 import tempfile
@@ -237,32 +238,42 @@ def _dvh_only(grid, instance):
     return files.written(dataset)
 
 
+@dataclasses.dataclass(frozen=True)
+class _Reviewed:
+    """The collection as :func:`_reviewed` wrote it, and its first run."""
+
+    directory: Path
+    instances: Path
+    slices: list
+    pack: Path
+    names: dict
+    marked: list
+
+
 @contextlib.contextmanager
-def _runs(
-    *others,
-    first=None,
-    target=False,
-    eyes_away=False,
-    without_ct=False,
-    accepted=False,
-    revised=None,
-    dose=None,
-    edges=False,
-):
+def _runs(*others, without_ct=False, accepted=False, revised=None, **first_run):
+    """Run the collection as :func:`_reviewed` does, given ``first_run``, and
+    again as :func:`_second` does, given the rest."""
+    with _reviewed(**first_run) as reviewed:
+        yield _second(
+            reviewed,
+            *others,
+            name="r",
+            without_ct=without_ct,
+            accepted=accepted,
+            revised=revised,
+        )
+
+
+@contextlib.contextmanager
+def _reviewed(first=None, target=False, eyes_away=False, dose=None, edges=False):
     """Run the collection, with its CT slices replaced by the head's, its RT
     Structure Set by the head's ROIs, or by a target in the block if
     ``target``, its PET Image by :data:`_PET_SLICES`, and its first RT Dose
     by a grid over the head of ``dose`` where given, with the RT Dose
     instances of :data:`_UNPLACEABLE` and :data:`_DVH_ONLY` in its series if
     ``edges``, under ``basic``, or under the option and ``first`` with a
-    face review that gives no verdicts; attest the pack with the head's
-    series, and those of the RT Structure Set, RT Dose, and PET in its
-    frame, marked absent, and, if ``accepted``, the regions of each of the
-    head's CT and PET slices that the pack previews accepted, or, if
-    ``revised``, those of each of its CT slices, revised with that region
-    added in their first frame; and run it again under the option and
-    ``others``, given those verdicts, without the head's slices if
-    ``without_ct``."""
+    face review that gives no verdicts."""
     corpus = corpus_module.build_corpus()
     directory = Path(tempfile.mkdtemp(prefix="d"))
     try:
@@ -348,64 +359,81 @@ def _runs(
                 for p in s["positions"]
             )
         ]
-        verdict = (
-            {"redaction": Redaction.ACCEPTED}
-            if revised is None
-            else {"redaction": Redaction.REVISED, "regions": ((0, (revised,)),)}
-        )
-        redactions = (
-            [
-                RedactionVerdict(position, **verdict)
-                for position in previewed_redactions(reviewed.qc_pack.read_bytes())
-                if names[position].startswith("01-head")
-                or (revised is None and names[position] in _PET_SLICES)
-            ]
-            if accepted or revised is not None
-            else []
-        )
-        _attest(
-            reviewed.qc_pack.parent,
-            dict.fromkeys(marked, Face.ABSENT),
-            redactions=redactions,
-        )
-        if without_ct:
-            for index in range(len(slices)):
-                (instances / _head_name(index)).unlink()
-        transform = _transform(
-            others,
-            read_face_review(reviewed.qc_pack.parent),
-            read_redaction_review(reviewed.qc_pack.parent)
-            if accepted or revised is not None
-            else None,
-        )
-        second = run.run(
-            run.discover(instances),
-            directory / "r2",
-            transform,
-            ReleaseGate(),
-            qc_destination=directory / "qc2",
-            reporter=transform.reporter,
-        )
-        pack = json.loads(second.qc_pack.read_text("utf-8"))["instances"]
-        outcomes = {
-            Path(entry["source"]).name: (
-                entry["disposition"],
-                None
-                if entry.get("output") is None
-                else pydicom.dcmread(directory / "r2" / entry["output"]),
-            )
-            for entry in pack
-        }
-        reasons = {
-            Path(entry["source"]).name: set(outcome.reasons)
-            for entry in pack
-            for outcome in second.outcomes
-            if outcome.position == entry["position"]
-        }
-        report = json.loads((directory / "r2" / "release-report.json").read_text())
-        yield slices, outcomes, reasons, report
+        yield _Reviewed(directory, instances, slices, reviewed.qc_pack, names, marked)
     finally:
         shutil.rmtree(directory, ignore_errors=True)
+
+
+def _second(reviewed, *others, name, without_ct=False, accepted=False, revised=None):
+    """Attest a copy of the reviewed run's pack, in ``name`` beside it, with
+    the head's series, and those of the RT Structure Set, RT Dose, and PET
+    in its frame, marked absent, and, if ``accepted``, the regions of each
+    of the head's CT and PET slices that the pack previews accepted, or, if
+    ``revised``, those of each of its CT slices, revised with that region
+    added in their first frame; and run the collection again under the
+    option and ``others``, given those verdicts, without the head's slices
+    if ``without_ct``.
+
+    The run that it reviews, and the files that it ran, are left as they
+    were, so that one reviewed run serves several second runs."""
+    directory = reviewed.directory / name
+    pack = directory / "qc1"
+    shutil.copytree(reviewed.pack.parent, pack)
+    verdict = (
+        {"redaction": Redaction.ACCEPTED}
+        if revised is None
+        else {"redaction": Redaction.REVISED, "regions": ((0, (revised,)),)}
+    )
+    redactions = (
+        [
+            RedactionVerdict(position, **verdict)
+            for position in previewed_redactions(reviewed.pack.read_bytes())
+            if reviewed.names[position].startswith("01-head")
+            or (revised is None and reviewed.names[position] in _PET_SLICES)
+        ]
+        if accepted or revised is not None
+        else []
+    )
+    _attest(pack, dict.fromkeys(reviewed.marked, Face.ABSENT), redactions=redactions)
+    instances = reviewed.instances
+    if without_ct:
+        instances = directory / "i"
+        shutil.copytree(
+            reviewed.instances,
+            instances,
+            ignore=lambda _, found: [f for f in found if f.startswith("01-head")],
+        )
+    transform = _transform(
+        others,
+        read_face_review(pack),
+        read_redaction_review(pack) if accepted or revised is not None else None,
+    )
+    second = run.run(
+        run.discover(instances),
+        directory / "r2",
+        transform,
+        ReleaseGate(),
+        qc_destination=directory / "qc2",
+        reporter=transform.reporter,
+    )
+    entries = json.loads(second.qc_pack.read_text("utf-8"))["instances"]
+    outcomes = {
+        Path(entry["source"]).name: (
+            entry["disposition"],
+            None
+            if entry.get("output") is None
+            else pydicom.dcmread(directory / "r2" / entry["output"]),
+        )
+        for entry in entries
+    }
+    reasons = {
+        Path(entry["source"]).name: set(outcome.reasons)
+        for entry in entries
+        for outcome in second.outcomes
+        if outcome.position == entry["position"]
+    }
+    report = json.loads((directory / "r2" / "release-report.json").read_text())
+    return reviewed.slices, outcomes, reasons, report
 
 
 def _transform(options, face_review, redaction_review=None):
@@ -419,10 +447,24 @@ def _transform(options, face_review, redaction_review=None):
     )
 
 
-@pytest.fixture(name="defaced", scope="module")
-def fixture_defaced():
-    with _runs(first=(), dose=_dose(_LOW)) as found:
+# The runs that the defaced and without_ct runs review, and those that the
+# with_pixel_data, accepted, and revised runs review, are the same, so each
+# is made once.
+@pytest.fixture(name="reviewed_low", scope="module")
+def fixture_reviewed_low():
+    with _reviewed(first=(), dose=_dose(_LOW)) as found:
         yield found
+
+
+@pytest.fixture(name="reviewed_with_pixel_data", scope="module")
+def fixture_reviewed_with_pixel_data():
+    with _reviewed(first=(CLEAN_PIXEL_DATA,)) as found:
+        yield found
+
+
+@pytest.fixture(name="defaced", scope="module")
+def fixture_defaced(reviewed_low):
+    return _second(reviewed_low, name="d")
 
 
 # With the RT Dose instances that cannot be placed or have no grid, which
@@ -452,21 +494,18 @@ def fixture_eyes_away():
 
 
 @pytest.fixture(name="without_ct", scope="module")
-def fixture_without_ct():
-    with _runs(first=(), without_ct=True, dose=_dose(_LOW)) as found:
-        yield found
+def fixture_without_ct(reviewed_low):
+    return _second(reviewed_low, name="w", without_ct=True)
 
 
 @pytest.fixture(name="with_pixel_data", scope="module")
-def fixture_with_pixel_data():
-    with _runs(CLEAN_PIXEL_DATA, first=(CLEAN_PIXEL_DATA,)) as found:
-        yield found
+def fixture_with_pixel_data(reviewed_with_pixel_data):
+    return _second(reviewed_with_pixel_data, CLEAN_PIXEL_DATA, name="p")
 
 
 @pytest.fixture(name="accepted", scope="module")
-def fixture_accepted():
-    with _runs(CLEAN_PIXEL_DATA, first=(CLEAN_PIXEL_DATA,), accepted=True) as found:
-        yield found
+def fixture_accepted(reviewed_with_pixel_data):
+    return _second(reviewed_with_pixel_data, CLEAN_PIXEL_DATA, name="a", accepted=True)
 
 
 # A region of the reviewer's own, within the head on each of its slices.
@@ -474,9 +513,10 @@ _REVISED = TextBox(46, 36, 51, 45)
 
 
 @pytest.fixture(name="revised", scope="module")
-def fixture_revised():
-    with _runs(CLEAN_PIXEL_DATA, first=(CLEAN_PIXEL_DATA,), revised=_REVISED) as found:
-        yield found
+def fixture_revised(reviewed_with_pixel_data):
+    return _second(
+        reviewed_with_pixel_data, CLEAN_PIXEL_DATA, name="v", revised=_REVISED
+    )
 
 
 def _block(slices):
