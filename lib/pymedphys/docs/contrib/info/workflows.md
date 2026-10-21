@@ -234,9 +234,19 @@ and then if any installed package's requirements are missing or not met,
 including those of the extras the job installs PyMedPhys with and of the
 extras that those requirements request; when a newly locked package requires a
 newer NumPy or pandas, add it to the overlay. It uploads its JUnit report as
-`junit-dependency-floors`. A
+`junit-dependency-floors-<part>`. A
 failure fails the unit-test workflow and therefore the required CI or release
 summary.
+
+The job runs in two parts on two runners, since a slow runner could take the
+30-minute limit to run the whole suite at once. The `corpus-runs` part runs the
+modules listed in the job's `CORPUS_RUN_TESTS`, which run the synthetic
+collection through the engine and take about half the suite's time, and the
+`others` part runs every other test by passing each listed module to
+`--ignore`, so a new module runs in `others` until it is listed. A listed
+module that no longer exists fails the `corpus-runs` part, and a contract test
+checks that each listed module exists. Move a module between the parts when
+the `--durations` reports show one part taking much longer than the other.
 
 The `pydicom-versions` job runs the de-identification tests (the
 `test_deidentify_*` modules in `tests/dicom` and `tests/dev/test_deid_tables.py`,
