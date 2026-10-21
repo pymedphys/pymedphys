@@ -48,8 +48,9 @@ frame with such regions, also from the file as received:
   frames whose grid lies along the patient's axes with its frames evenly
   spaced, a dose-levels sheet of such renders at each of its dose levels;
   an RT Dose is shown so only where it is one by its SOP Class, and its
-  stored values are unsigned, not rescaled, and scaled by a finite Dose Grid
-  Scaling above 0;
+  stored values are unsigned, not padded, not rescaled, and scaled by a
+  finite Dose Grid Scaling above 0 to doses that float32 holds, each above
+  0 still above 0 and none infinite;
 - a dose-levels map of each RT Dose plane of one frame, so shown, that is
   in no volume, at full resolution, grey by how many of its dose levels
   each pixel reaches, so that each level's outline is an edge;
@@ -525,11 +526,17 @@ def _plane(
     )
 
 
+# The attributes by which stored values pad, and so are read as no patient.
+_PADDING = ("PixelPaddingValue", "PixelPaddingRangeLimit")
+
+
 def _dose_scale(dataset: pydicom.Dataset) -> float | None:
     """Dose Grid Scaling, where the data set is an RT Dose by its SOP Class
-    whose stored values are unsigned and scaled by a finite number above 0;
-    otherwise None, as a signed grid can hold doses below 0, which no level
-    shows, and a grid without a scaling above 0 has no dose to show."""
+    whose stored values are unsigned, not padded, and scaled by a finite
+    number above 0; otherwise None, as a signed grid can hold doses below 0,
+    which no level shows, a padded one has stored values that are read as
+    no dose, which no level shows either, and a grid without a scaling above
+    0 has no dose to show."""
     try:
         sop_class = str(dataset.get("SOPClassUID") or "")
     except Exception:  # pylint: disable = broad-exception-caught
@@ -538,6 +545,7 @@ def _dose_scale(dataset: pydicom.Dataset) -> float | None:
     if (
         sop_class != qc_surfaces.RT_DOSE_STORAGE
         or _number(dataset, "PixelRepresentation", int) != 0
+        or any(keyword in dataset for keyword in _PADDING)
         or scaling is None
         or scaling <= 0
     ):
@@ -799,18 +807,23 @@ def _series_images(
         if image is not None:
             yield kind, shown, len(shown), image
     for instance, pixels in maps:
-        yield (
-            PreviewKind.SERIES_DOSE_LEVELS,
-            ((instance.position, 0),),
-            1,
-            _level_map(instance, pixels),
-        )
+        mapped = _level_map(instance, pixels)
+        if mapped is not None:
+            yield (
+                PreviewKind.SERIES_DOSE_LEVELS,
+                ((instance.position, 0),),
+                1,
+                mapped,
+            )
 
 
-def _level_map(instance: _Instance, pixels: np.ndarray) -> np.ndarray:
-    """An RT Dose plane at full resolution, grey by the levels of its dose."""
+def _level_map(instance: _Instance, pixels: np.ndarray) -> np.ndarray | None:
+    """An RT Dose plane at full resolution, grey by the levels of its dose,
+    or None if its scaling loses a dose (:func:`~.qc_surfaces.dose_values`)."""
     assert instance.dose_scale is not None
-    values = pixels * np.float32(instance.dose_scale)
+    values = qc_surfaces.dose_values(pixels, instance.dose_scale)
+    if values is None:
+        return None
     finite = values[np.isfinite(values)]
     positive = finite[finite > 0]
     levels = qc_surfaces.dose_levels(

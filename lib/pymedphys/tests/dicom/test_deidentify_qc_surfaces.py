@@ -669,6 +669,114 @@ def test_a_lone_dose_plane_is_mapped_by_its_dose_levels():
     assert np.array_equal(_decoded(mapped.png), expected)
 
 
+def _sheet_rows(data):
+    """Each row of a dose-levels render whose rows are all of the grid's
+    height, as an image."""
+    gap = qc_surfaces._GAP_PIXELS  # pylint: disable = protected-access
+    return _levels(data, (_decoded(data).shape[0] + gap) // (SIDE + gap))
+
+
+@pytest.mark.pydicom
+def test_a_lower_dose_enclosed_by_a_higher_one_shows_in_rows_of_hidden_surfaces():
+    # The head, with or without its nose, at 12 mGy, inside 1 Gy all around
+    # it. Each level above 12 mGy is a box with the head as its cavity, so
+    # every ray of every view meets the box first, and the head shows only
+    # in the rows of the surfaces that the box hides.
+    offsets = [2.0 * k for k in range(SIDE)]
+    rows = {
+        nose: _sheet_rows(
+            _surface(
+                {0: _dose(_body(nose=nose, inside=12, outside=1000), offsets)},
+                PreviewKind.SERIES_DOSE_LEVELS,
+            )
+        )
+        for nose in (True, False)
+    }
+    levels = qc_surfaces.dose_levels(1.0, 0.012)
+    assert len(rows[True]) > len(levels)
+    # The support, the whole box, hides nothing, and is the same either way.
+    assert np.array_equal(rows[True][0], rows[False][0])
+    assert any(
+        not np.array_equal(with_nose, without)
+        for with_nose, without in zip(rows[True][1:], rows[False][1:])
+    )
+
+
+def test_hidden_rows_show_a_cavity_and_each_further_crossing():
+    k, j, i = np.indices((SIDE,) * 3)
+    distance = (k - 20) ** 2 + (j - 20) ** 2 + (i - 20) ** 2
+    ball, cavity = distance <= 225, distance <= 64
+    assert not qc_surfaces.hidden_rows(ball)
+    rows = qc_surfaces.hidden_rows(ball & ~cavity)
+    # Its cavity, then where rays through it leave the shell, enter the
+    # cavity's far side, and leave the shell again.
+    assert len(rows) == 4
+    assert np.array_equal(rows[0], qc_surfaces.side_by_side(qc_surfaces.views(cavity)))
+    # In the frontal view, every ray through the shell leaves it, and only
+    # those through the cavity enter it again.
+    assert np.array_equal(
+        _views(rows[1])[0] > 0,
+        _views(qc_surfaces.side_by_side(qc_surfaces.views(ball)))[0] > 0,
+    )
+    assert np.array_equal(_views(rows[2])[0] > 0, _views(rows[0])[0] > 0)
+    # The oblique views are black in the rows of crossings.
+    for row in rows[1:]:
+        assert not _views(row)[45].any() and not _views(row)[-45].any()
+
+
+@pytest.mark.pydicom
+@pytest.mark.parametrize("scaling", [1e-46, 1e-42, 1e39])
+@pytest.mark.parametrize("shape", ["grid", "plane"])
+def test_a_dose_that_its_scaling_would_lose_is_not_shown(shape, scaling):
+    # Float32 takes the scaled dose to 0, below a normal float32, or to
+    # infinity, so no level would show what it holds.
+    grid = _hot(19000)
+    data = (
+        _dose(grid[18:22], [0.0, 2.0, 4.0, 6.0], scaling=scaling)
+        if shape == "grid"
+        else _dose(grid[20:21], [0.0], scaling=scaling)
+    )
+
+    previews = qc_previews.previews_of({0: data}, ())
+
+    assert [preview.kind for preview in previews.previews] == [PreviewKind.SERIES_CINE]
+
+
+@pytest.mark.pydicom
+def test_a_scaling_that_float32_holds_or_a_grid_of_no_dose_is_shown():
+    offsets = [2.0 * k for k in range(SIDE)]
+    # Levels are fractions of the greatest dose, so a scaling far from 1
+    # that float32 holds draws the same sheet.
+    assert _surface(
+        {0: _dose(_hot(19000), offsets, scaling=1e-30)},
+        PreviewKind.SERIES_DOSE_LEVELS,
+    ) == _surface({0: _dose(_hot(19000), offsets)}, PreviewKind.SERIES_DOSE_LEVELS)
+    # A grid of no dose loses none at any scaling.
+    (support,) = _levels(
+        _surface(
+            {0: _dose(np.zeros((4, SIDE, SIDE)), [0.0, 2.0, 4.0, 6.0], scaling=1e-46)},
+            PreviewKind.SERIES_DOSE_LEVELS,
+        ),
+        1,
+    )
+    assert not support.any()
+
+
+@pytest.mark.pydicom
+def test_a_dose_sheet_taller_than_its_bound_is_not_shown(monkeypatch):
+    # Four rows of the grid's 40 voxels, with three gaps between them.
+    written = {0: _dose(_hot(19000), [2.0 * k for k in range(SIDE)])}
+    gap = qc_surfaces._GAP_PIXELS  # pylint: disable = protected-access
+    height = 4 * SIDE + 3 * gap
+    monkeypatch.setattr(qc_surfaces, "MAXIMUM_DOSE_SHEET_PIXELS", height)
+    assert _decoded(_surface(written, PreviewKind.SERIES_DOSE_LEVELS)).shape[0] == (
+        height
+    )
+    monkeypatch.setattr(qc_surfaces, "MAXIMUM_DOSE_SHEET_PIXELS", height - 1)
+    previews = qc_previews.previews_of(written, ())
+    assert [preview.kind for preview in previews.previews] == [PreviewKind.SERIES_CINE]
+
+
 @pytest.mark.pydicom
 def test_each_frame_is_decoded_once(monkeypatch):
     decode = pydicom.pixels.pixel_array

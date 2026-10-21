@@ -294,6 +294,14 @@ def _altered(data, **attributes):
     return files.written(dataset)
 
 
+def _padded(data, tag):
+    """A file with Pixel Padding Value, or its range limit, of 1000, the
+    dose that it stores."""
+    dataset = pydicom.dcmread(io.BytesIO(data))
+    dataset.add_new(tag, "US", 1000)
+    return files.written(dataset)
+
+
 def _unshown_doses():
     """RT Dose instances of 12 frames, or a series of planes, whose dose
     levels cannot be drawn, by name."""
@@ -315,6 +323,18 @@ def _unshown_doses():
             *_dose_planes()[:3],
             _altered(_dose_planes()[3], DoseGridScaling=None),
         ],
+        # Scalings that float32 takes to 0, or below a normal float32, and
+        # to infinity, so that no level shows a stored dose.
+        "tiny-scaling": [_altered(_dose(12), DoseGridScaling=1e-46)],
+        "subnormal-scaling": [_altered(_dose(12), DoseGridScaling=1e-42)],
+        "huge-scaling": [_altered(_dose(12), DoseGridScaling=1e39)],
+        "plane-tiny-scaling": [
+            *_dose_planes()[:3],
+            _altered(_dose_planes()[3], DoseGridScaling=1e-46),
+        ],
+        # Padding is read as no dose, which no level shows.
+        "padded": [_padded(_dose(12), 0x00280120)],
+        "padding-limit": [_padded(_dose(12), 0x00280121)],
     }
 
 
@@ -324,8 +344,9 @@ def test_an_rt_dose_whose_levels_cannot_be_drawn_is_not_shown(name):
     # planes' projection and Otsu render every plane, but the strip is
     # windowed to the highest doses, which can leave a low dose outlining
     # the skin black, and an Otsu render shows one level. A grid whose
-    # stored values may be below 0, or rescaled, or not scaled above 0, has
-    # doses that its levels would not show.
+    # stored values may be below 0, or rescaled, or padded, or not scaled
+    # above 0, or scaled beyond what float32 holds, has doses that its
+    # levels would not show.
     written = dict(enumerate(_unshown_doses()[name]))
     found, framed = _shown(written)
     assert all(
@@ -692,8 +713,18 @@ def _verdict_run(*data):
         _unshown_doses()["unscaled"],
         _unshown_doses()["longer"],
         _unshown_doses()["plane-unscaled"],
+        _unshown_doses()["tiny-scaling"],
+        _unshown_doses()["padded"],
     ],
-    ids=["frames", "bytes", "unscaled-grid", "longer-grid", "unscaled-plane"],
+    ids=[
+        "frames",
+        "bytes",
+        "unscaled-grid",
+        "longer-grid",
+        "unscaled-plane",
+        "tiny-scaling-grid",
+        "padded-grid",
+    ],
 )
 def test_a_verdict_of_absent_holds_pixel_data_that_the_pack_did_not_show(data):
     # Frames beyond the cine, bytes beyond the frames, and RT Dose whose
