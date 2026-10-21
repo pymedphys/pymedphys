@@ -35,6 +35,14 @@ LOCK = {
     ]
 }
 PASSED = '<testsuites><testsuite><testcase name="case" /></testsuite></testsuites>'
+PART_REPORTS = {
+    "corpus-runs": '<testsuites><testsuite name="pytest">'
+    '<testcase classname="a" name="one" /><testcase classname="a" name="two" />'
+    "</testsuite></testsuites>",
+    "others": '<testsuite name="pytest"><testcase classname="b" name="one">'
+    '<failure /></testcase><testcase classname="a" name="three">'
+    "<skipped /></testcase></testsuite>",
+}
 
 
 class CoveragePlanMixin:
@@ -206,6 +214,108 @@ class CoverageEvidenceTests(CoveragePlanMixin, unittest.TestCase):
             with self.subTest(text=text), self.assertRaises(ValueError):
                 coverage.record_baseline(LOCK, "3.0.2", COMMIT, self.results)
             self.assertFalse((self.results / coverage.BASELINE_METADATA).exists())
+
+    def parts(self, python="3.14.0"):
+        """Record passing evidence for every part, as each part's job does."""
+        with mock.patch.object(
+            coverage.platform, "python_version", return_value=python
+        ):
+            for part in coverage.BASELINE_PARTS:
+                self.report(name=coverage.part_artifact(part))
+                coverage.record_part(LOCK, part, "3.0.2", COMMIT, self.results)
+
+    def test_each_part_binds_its_passing_report_to_its_import(self):
+        self.report(name="junit-py3.14-others")
+        metadata = coverage.record_part(LOCK, "others", "3.0.2", COMMIT, self.results)
+        self.assertEqual(metadata["part"], "others")
+        self.assertEqual(metadata["junit"], "junit-py3.14-others.xml")
+        self.assertEqual(
+            json.loads((self.results / "pydicom-py3.14-others.json").read_text()),
+            metadata,
+        )
+        for part, actual, commit, text in (
+            ("unknown", "3.0.2", COMMIT, PASSED),
+            ("others", "3.1.0", COMMIT, PASSED),
+            ("others", "3.0.2", "", PASSED),
+            ("others", "3.0.2", COMMIT, "<testsuites />"),
+        ):
+            (self.results / "pydicom-py3.14-others.json").unlink(missing_ok=True)
+            self.report(name="junit-py3.14-others", text=text)
+            with (
+                self.subTest(part=part, actual=actual, commit=commit, text=text),
+                self.assertRaises(ValueError),
+            ):
+                coverage.record_part(LOCK, part, actual, commit, self.results)
+            self.assertFalse((self.results / "pydicom-py3.14-others.json").exists())
+
+    def test_combining_keeps_every_case_of_every_part_including_failures(self):
+        for part, text in PART_REPORTS.items():
+            self.report(name=coverage.part_artifact(part), text=text)
+        path = coverage.combine_reports(self.results)
+        self.assertEqual(path, self.results / f"{coverage.BASELINE_ARTIFACT}.xml")
+        root = coverage.ET.parse(path).getroot()
+        self.assertEqual(root.tag, "testsuites")
+        self.assertEqual(len(root.findall("testsuite")), 2)
+        self.assertEqual(
+            [
+                (case.get("classname"), case.get("name"))
+                for case in root.iter("testcase")
+            ],
+            [("a", "one"), ("a", "two"), ("b", "one"), ("a", "three")],
+        )
+        self.assertEqual(len(list(root.iter("failure"))), 1)
+        with self.assertRaises(ValueError):
+            coverage.check_junit(path)
+
+    def test_a_missing_part_or_a_case_in_both_parts_writes_no_report(self):
+        output = self.results / f"{coverage.BASELINE_ARTIFACT}.xml"
+        self.report(name="junit-py3.14-corpus-runs", text=PART_REPORTS["corpus-runs"])
+        with self.assertRaises(FileNotFoundError):
+            coverage.combine_reports(self.results)
+        self.assertFalse(output.exists())
+        for text in (
+            PART_REPORTS["corpus-runs"],
+            '<testsuite><testcase classname="a" name="two" /></testsuite>',
+            "<!DOCTYPE testsuites><testsuites><testcase /></testsuites>",
+            "<other />",
+        ):
+            self.report(name="junit-py3.14-others", text=text)
+            with self.subTest(text=text), self.assertRaises(ValueError):
+                coverage.combine_reports(self.results)
+            self.assertFalse(output.exists())
+
+    def test_baseline_needs_both_parts_to_agree_on_their_imports(self):
+        self.parts()
+        self.assertEqual(
+            coverage.part_versions(LOCK, COMMIT, self.results), ("3.0.2", "3.14.0")
+        )
+        self.report(text=PASSED)
+        metadata = coverage.record_baseline(
+            LOCK, "3.0.2", COMMIT, self.results, "3.14.0"
+        )
+        self.assertEqual(metadata["actual_python_version"], "3.14.0")
+        self.assertEqual(metadata["parts"], list(coverage.BASELINE_PARTS))
+        path = self.results / "pydicom-py3.14-others.json"
+        recorded = json.loads(path.read_text())
+        for changes in (
+            {"format": "unknown"},
+            {"part": "corpus-runs"},
+            {"commit": "b" * 40},
+            {"junit": "wrong.xml"},
+            {"actual_version": "3.1.0"},
+            {"actual_python_version": "3.14.1"},
+        ):
+            path.write_text(json.dumps(recorded | changes))
+            with self.subTest(changes=changes), self.assertRaises(ValueError):
+                coverage.part_versions(LOCK, COMMIT, self.results)
+        path.unlink()
+        with self.assertRaises(FileNotFoundError):
+            coverage.part_versions(LOCK, COMMIT, self.results)
+
+    def test_parts_must_have_run_python_3_14(self):
+        self.parts(python="3.13.5")
+        with self.assertRaises(ValueError):
+            coverage.part_versions(LOCK, COMMIT, self.results)
 
     def test_overlay_needs_its_real_report_and_actual_requested_version(self):
         plan = self.plan(role="latest", requested="3.1.0")

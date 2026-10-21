@@ -233,20 +233,30 @@ that accepts NumPy 2.0. The job fails first if the overlay did not take effect,
 and then if any installed package's requirements are missing or not met,
 including those of the extras the job installs PyMedPhys with and of the
 extras that those requirements request; when a newly locked package requires a
-newer NumPy or pandas, add it to the overlay. It uploads its JUnit report as
-`junit-dependency-floors-<part>`. A
+newer NumPy or pandas, add it to the overlay. Each part uploads its JUnit
+report as `junit-dependency-floors-<part>`. A
 failure fails the unit-test workflow and therefore the required CI or release
 summary.
 
-The job runs in two parts on two runners, since a slow runner could take the
-30-minute limit to run the whole suite at once. The `corpus-runs` part runs the
-modules listed in the job's `CORPUS_RUN_TESTS`, which run the synthetic
-collection through the engine and take about half the suite's time, and the
-`others` part runs every other test by passing each listed module to
+The `dependency-floors` job and the Ubuntu/Python 3.14 cell of the unit-test
+matrix each run in two parts on two runners, since a slow runner could take
+the 30-minute limit to run the whole suite at once. The `corpus-runs` part runs
+the modules listed in the workflow's `CORPUS_RUN_TESTS`, which run the
+synthetic collection through the engine and take about half the suite's time,
+and the `others` part runs every other test by passing each listed module to
 `--ignore`, so a new module runs in `others` until it is listed. A listed
-module that no longer exists fails the `corpus-runs` part, and a contract test
-checks that each listed module exists. Move a module between the parts when
-the `--durations` reports show one part taking much longer than the other.
+module that no longer exists fails both parts before pytest starts, and a
+contract test checks that each listed module exists. The `corpus-runs` parts
+read no downloaded data, so they skip the data cache, whose key the two parts
+of a job would otherwise share. Move a module between the parts when the
+`--durations` reports show one part taking much longer than the other.
+
+The Ubuntu/Python 3.14 parts upload their reports as `junit-py3.14-corpus-runs`
+and `junit-py3.14-others`, which the release's `junit-*-latest-*` pattern leaves
+out. Once the unit-test matrix has finished, even after failed tests, the
+`baseline-report` job combines them into `junit-ubuntu-latest-3.14`, the report
+that the release's requirements matrix reads for that environment. It writes
+no report if a part's report is missing or a test case ran in both parts.
 
 The `pydicom-versions` job runs the de-identification tests (the
 `test_deidentify_*` modules in `tests/dicom` and `tests/dev/test_deid_tables.py`,
@@ -267,11 +277,16 @@ if that is not the one requested. Actual executions upload JUnit reports as
 `junit-pydicom-minimum` and `junit-pydicom-latest`; reused evidence has no copied
 or synthetic JUnit. Each role uploads a coverage manifest naming its requested
 version and evidence source. The normal reference cell records its imported
-versions and checkout revision, and explicitly requires both metadata and
-JUnit before upload. Reuse is established only when the whole unit-test
-workflow succeeds, including that reference cell and both compatibility jobs.
-Lookup, planning, metadata and upload failures fail the workflow. The existing
-jobs retain their parallel scheduling, with no new final verification job.
+versions and checkout revision: each of its two parts records the pydicom and
+Python versions it imported, and the `baseline-report` job records the
+combined evidence only when both parts passed on the checked-out commit with
+the same versions, which must match the lock. It explicitly requires both
+metadata and JUnit before upload. Reuse is established only when the whole
+unit-test workflow succeeds, including both parts, the `baseline-report` job,
+and both compatibility jobs.
+Lookup, planning, metadata and upload failures fail the workflow. Reuse adds
+no test run: `baseline-report`, the only job after the test jobs, combines
+reports and runs no tests.
 A failure fails the
 unit-test workflow and therefore the required CI or release summary, so a
 pydicom release that breaks the de-identification tests fails every unit-test
@@ -392,7 +407,8 @@ Publishes to PyPI behind quality gates.
 - **Requirements evidence**: `deid-matrix` runs after the unit tests, whatever
   their result, and renders the de-identification requirements-to-tests matrix
   with `pymedphys dev deid-matrix --check` from the JUnit report of every
-  environment in the unit-test matrix. It fails when a traced test failed, was
+  environment in the unit-test matrix; Ubuntu with Python 3.14 reports through
+  its two parts' combined report. It fails when a traced test failed, was
   skipped, or did not run in every environment, or when an environment's
   report is missing, and still writes the matrix. Once the build has passed,
   `upload-deid-matrix`, which runs no repository code, attaches the matrix to
