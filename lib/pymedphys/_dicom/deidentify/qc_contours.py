@@ -46,7 +46,12 @@ separated by grey rows of :data:`GUTTER_PIXELS`, are:
   in parts across those rows, where rays cross different numbers of
   surfaces before it, so they are read together. The oblique views have
   no rows of crossings, since their rays, which step between voxels,
-  cross a surface falsely where they graze it.
+  cross a surface falsely where they graze it. Where the voxels that an
+  ROI's closed contours fill lie all around, in its slice, a voxel of its
+  marks, below, that no closed contour bounding a voxel draws, as a box's
+  do around a curve within it, its region hides the mark from every view,
+  so those marks, alone, then have rows of their own after the ROI's, as
+  its region has, but with no row of cavities.
 
 Each region is sampled to cubic voxels over the extent of what it draws,
 with a voxel more on each low side across, 0 to 1 voxel more on each high
@@ -127,9 +132,10 @@ ROI_MINIMUM_VOXEL = 0.5  # millimetres
 GUTTER_PIXELS = 8
 # The tallest contour sheet that is shown: each row is at most 257 voxels
 # tall, so at least about 120 rows, of which an ROI item has one, and more
-# where it hides some of its surface behind its own. A taller one is drawn
-# only until it is too tall, and is not shown, so that its set is held
-# rather than shown in an image that a viewer may scale down or refuse.
+# where it hides some of its surface behind its own, or its marks. A taller
+# one is drawn only until it is too tall, and is not shown, so that its set
+# is held rather than shown in an image that a viewer may scale down or
+# refuse.
 MAXIMUM_SHEET_PIXELS = 32768
 
 # The views whose rays look along an axis of the voxels.
@@ -464,7 +470,11 @@ def contour_sheet(
         key = _key(roi)
         if key not in rendered:
             grid = _grid([roi], _roi_voxel)
-            rendered[key] = _roi_rows(_mask([roi], grid, [own]))
+            filled = _filled(roi, grid, own)
+            hidden = _hidden(roi, grid, filled)
+            rendered[key] = _roi_rows(filled | _marked(roi.marks(_step(grid)), grid))
+            if hidden is not None:
+                rendered[key] += _roi_rows(hidden, cavities=False)
         if not fits(rendered[key]):
             return None
     return _stacked(rows)
@@ -472,8 +482,8 @@ def contour_sheet(
 
 def _least_height(contours: Contours, guides: Mapping[str | None, Guide]) -> int:
     """The height, in pixels, of a sheet without the rows of any ROI's
-    cavities or of the surfaces that it hides behind its own, found without
-    drawing it."""
+    cavities, of the surfaces that it hides behind its own, or of the marks
+    that it hides, found without drawing it."""
     heights = []
     for frame in contours.frames:
         rois = [roi for roi in contours.rois if roi.frame == frame]
@@ -488,8 +498,9 @@ def _least_height(contours: Contours, guides: Mapping[str | None, Guide]) -> int
     return sum(heights) + GUTTER_PIXELS * (len(heights) - 1)
 
 
-def _roi_rows(inside: np.ndarray) -> list[np.ndarray]:
-    """An ROI's rows, as the module describes, from its voxels."""
+def _roi_rows(inside: np.ndarray, cavities: bool = True) -> list[np.ndarray]:
+    """An ROI's rows, or its hidden marks', as the module describes, from
+    their voxels; the marks have no row of cavities."""
     rows = [_rgb(_views(inside))]
     # The rays of the views that look along an axis of the voxels meet every
     # voxel of its surface, and cross the surface more than twice only where
@@ -497,12 +508,13 @@ def _roi_rows(inside: np.ndarray) -> list[np.ndarray]:
     # which step between voxels, cross a surface falsely where they graze it.
     if max(_most_crossings(inside, axis) for axis in (1, 2)) <= 2:
         return rows
-    # Each slice's cavities: what its region encloses, but does not hold.
-    within = np.zeros((3, 3, 3), bool)
-    within[1] = [[False, True, False], [True, True, True], [False, True, False]]
-    cavities = scipy.ndimage.binary_fill_holes(inside, within) & ~inside
-    if cavities.any():
-        rows.append(_rgb(_views(cavities)))
+    if cavities:
+        # Each slice's cavities: what its region encloses, but does not hold.
+        within = np.zeros((3, 3, 3), bool)
+        within[1] = [[False, True, False], [True, True, True], [False, True, False]]
+        enclosed = scipy.ndimage.binary_fill_holes(inside, within) & ~inside
+        if enclosed.any():
+            rows.append(_rgb(_views(enclosed)))
     along = dict(zip(_ALONG, qc_surfaces.view_crossings(inside, _ALONG)))
     none = np.full(along[0].shape[1:], -1)
     for crossing in range(1, max(len(each) for each in along.values())):
@@ -630,25 +642,87 @@ def _mask(
     each ROI's slices of voxels are covered by its own ``planes``."""
     inside = np.zeros((len(grid.zs), len(grid.ys), len(grid.xs)), bool)
     for roi, own in zip(rois, planes, strict=True):
-        if roi.closed:
-            covering = _covering(own, grid.zs, grid.voxel)
-            heights = np.array([height for height, _ in roi.closed])
-            # Each contour's plane: the nearest, within which it lies.
-            of = np.abs(heights[:, np.newaxis] - own[np.newaxis, :]).argmin(axis=1)
-            for plane in np.unique(of):
-                slices = np.flatnonzero(covering == plane)
-                if not slices.size:
-                    continue
-                rings = [ring for (_, ring), at in zip(roi.closed, of) if at == plane]
-                inside[slices] |= even_odd(rings, grid.xs, grid.ys)
-        marks = roi.marks(grid.voxel / 2 if grid.voxel else qc_surfaces.MINIMUM_VOXEL)
-        if len(marks):
-            z = _nearest(grid.zs[::-1], marks[:, 2])
-            y = _nearest(grid.ys, marks[:, 1])
-            x = _nearest(grid.xs, marks[:, 0])
-            within = (z >= 0) & (y >= 0) & (x >= 0)
-            inside[len(grid.zs) - 1 - z[within], y[within], x[within]] = True
+        inside |= _filled(roi, grid, own) | _marked(roi.marks(_step(grid)), grid)
     return inside
+
+
+def _filled(roi: RoiContours, grid: _Grid, planes: np.ndarray) -> np.ndarray:
+    """The voxels that an ROI's closed contours fill, indexed as a surface's
+    mask, its slices of voxels covered by its ``planes``."""
+    filled = np.zeros((len(grid.zs), len(grid.ys), len(grid.xs)), bool)
+    if roi.closed:
+        covering = _covering(planes, grid.zs, grid.voxel)
+        heights = np.array([height for height, _ in roi.closed])
+        # Each contour's plane: the nearest, within which it lies.
+        of = np.abs(heights[:, np.newaxis] - planes[np.newaxis, :]).argmin(axis=1)
+        for plane in np.unique(of):
+            slices = np.flatnonzero(covering == plane)
+            if not slices.size:
+                continue
+            rings = [ring for (_, ring), at in zip(roi.closed, of) if at == plane]
+            filled[slices] |= even_odd(rings, grid.xs, grid.ys)
+    return filled
+
+
+def _hidden(roi: RoiContours, grid: _Grid, filled: np.ndarray) -> np.ndarray | None:
+    """Where the voxels that an ROI's closed contours fill are all around a
+    voxel of its marks that no closed contour bounding a voxel draws, and so
+    hide it from every view, the voxels of those marks alone, indexed as a
+    surface's mask; or else None."""
+    # The marks of its points, of its open contours, and of its closed
+    # contours that bound no voxel, such as one that doubles back on itself;
+    # the others' marks lie on the edges of what they fill.
+    alone = RoiContours(
+        closed=tuple(each for each in roi.closed if not _bounds_any(each[1], grid)),
+        points=roi.points,
+        lines=roi.lines,
+    )
+    if not (alone.closed or alone.points.size or alone.lines):
+        return None
+    marked = _marked(alone.marks(_step(grid)), grid)
+    return marked if (marked & _interior(filled)).any() else None
+
+
+def _step(grid: _Grid) -> float:
+    """How far apart marks are taken along a contour: half a voxel."""
+    return grid.voxel / 2 if grid.voxel else qc_surfaces.MINIMUM_VOXEL
+
+
+def _bounds_any(ring: np.ndarray, grid: _Grid) -> bool:
+    """Whether a closed contour bounds a voxel of its own."""
+    low, high = ring.min(axis=0), ring.max(axis=0)
+    xs = grid.xs[(grid.xs >= low[0]) & (grid.xs <= high[0])]
+    ys = grid.ys[(grid.ys >= low[1]) & (grid.ys <= high[1])]
+    if not (xs.size and ys.size):
+        return False
+    # Most do in their middle row of voxels, which is quicker to find.
+    middle = ys[len(ys) // 2 :][:1]
+    return bool(even_odd([ring], xs, middle).any() or even_odd([ring], xs, ys).any())
+
+
+def _marked(marks: np.ndarray, grid: _Grid) -> np.ndarray:
+    """The voxels nearest marks, indexed as a surface's mask."""
+    marked = np.zeros((len(grid.zs), len(grid.ys), len(grid.xs)), bool)
+    if len(marks):
+        z = _nearest(grid.zs[::-1], marks[:, 2])
+        y = _nearest(grid.ys, marks[:, 1])
+        x = _nearest(grid.xs, marks[:, 0])
+        within = (z >= 0) & (y >= 0) & (x >= 0)
+        marked[len(grid.zs) - 1 - z[within], y[within], x[within]] = True
+    return marked
+
+
+def _interior(filled: np.ndarray) -> np.ndarray:
+    """The voxels of a region whose eight neighbours in their slice are in
+    it too, so that every view, whose rays run within a slice, meets a
+    voxel there only through the region."""
+    padded = np.pad(filled, [(0, 0), (1, 1), (1, 1)])
+    rows, columns = filled.shape[1:]
+    inner = filled.copy()
+    for down in (0, 1, 2):
+        for across in (0, 1, 2):
+            inner &= padded[:, down : down + rows, across : across + columns]
+    return inner
 
 
 def _nearest(coordinates: np.ndarray, wanted: np.ndarray) -> np.ndarray:

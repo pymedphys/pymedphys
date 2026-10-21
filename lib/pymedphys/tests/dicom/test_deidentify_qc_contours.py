@@ -521,6 +521,53 @@ def test_a_surface_that_an_roi_hides_behind_its_own_is_shown_without_a_cavity():
     assert len(rows) == 2 + 3
 
 
+def _marked_box(*marks):
+    rings = [("CLOSED_PLANAR", _box(z)) for z in _BOX_HEIGHTS]
+    return qc_contours.contours_of(_read(_structure_set([rings + list(marks)])))
+
+
+def _curve(bend):
+    x = np.linspace(-12.0, 12.0, 25)
+    return np.column_stack([x, bend * np.sin(x / 4), np.zeros_like(x)])
+
+
+@pytest.mark.parametrize(
+    "marks",
+    [
+        [("OPEN_PLANAR", _curve(4.0)), ("OPEN_PLANAR", _curve(-4.0))],
+        [("POINT", np.array([[5.0, -6.0, 3.0]]))],
+        [_closed(np.vstack([files.square((0.0, 0.0, 0.0), 15.0)] * 2))],
+    ],
+    ids=["open", "point", "doubled"],
+)
+def test_marks_within_their_own_roi_s_region_have_rows_of_their_own(marks):
+    solid = _sheet_rows(qc_contours.contour_sheet(_solid()))
+    rows = _sheet_rows(qc_contours.contour_sheet(_marked_box(*marks)))
+    # The box's region hides the marks, so its rows are those of the box
+    # alone, and the marks' rows follow them.
+    assert len(solid) == 2 and len(rows) > 2
+    assert all((row == other).all() for row, other in zip(rows[:2], solid))
+    assert all(row.any() for row in rows[2:])
+
+
+def test_marks_within_their_own_roi_s_region_are_told_apart():
+    one = _sheet_rows(
+        qc_contours.contour_sheet(_marked_box(("OPEN_PLANAR", _curve(4.0))))
+    )
+    other = _sheet_rows(
+        qc_contours.contour_sheet(_marked_box(("OPEN_PLANAR", _curve(-4.0))))
+    )
+    # The box's own rows are the same, and the marks' row is not.
+    assert len(one) == len(other) > 2
+    assert (one[1] == other[1]).all() and (one[2] != other[2]).any()
+
+
+def test_marks_on_the_edge_of_their_own_roi_s_region_have_no_rows_of_their_own():
+    edge = np.array([[-25.0, -32.0, 0.0], [25.0, -32.0, 0.0]])
+    rows = _sheet_rows(qc_contours.contour_sheet(_marked_box(("OPEN_PLANAR", edge))))
+    assert len(rows) == 2
+
+
 def test_each_frame_has_its_own_united_row_and_each_item_its_own_row():
     ring = [_closed(files.circle((0, 0, z), 20.0)) for z in (0.0, 3.0)]
     contours = qc_contours.contours_of(
