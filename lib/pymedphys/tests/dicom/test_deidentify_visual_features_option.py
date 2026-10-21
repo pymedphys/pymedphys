@@ -17,8 +17,8 @@
 Every name, path, and data set here is invented or synthetic.
 """
 
-# The option's review, claims, and holds share these packs and runs, so they
-# stay in one module.
+# The tests share the face review's helpers and one reviewed run of the
+# synthetic collection, so they stay in one module.
 # pylint: disable = too-many-lines
 
 import dataclasses
@@ -769,22 +769,26 @@ class _CornerFinder:
         return (TextBox(0, 0, 2, 3),)
 
 
-@pytest.fixture(name="second_run", scope="module")
-def fixture_second_run():
-    with _second_run() as found:
+# Both runs review the same first run, so it is made once.
+@pytest.fixture(name="first_run", scope="module")
+def fixture_first_run():
+    with _first_run() as found:
         yield found
+
+
+@pytest.fixture(name="second_run", scope="module")
+def fixture_second_run(first_run):
+    return _second_run(first_run, name="s")
 
 
 @pytest.fixture(name="second_run_with_pixel_data", scope="module")
-def fixture_second_run_with_pixel_data():
-    with _second_run(CLEAN_PIXEL_DATA) as found:
-        yield found
+def fixture_second_run_with_pixel_data(first_run):
+    return _second_run(first_run, CLEAN_PIXEL_DATA, name="p")
 
 
 @contextlib.contextmanager
-def _second_run(*others):
-    """Run the synthetic collection under ``basic``, attest its pack, and run
-    it again under the option and ``others``, given the verdicts."""
+def _first_run():
+    """Run the synthetic collection under ``basic``, and attest its pack."""
     corpus = corpus_module.build_corpus()
     # A short directory, since a run refuses output paths that could exceed
     # Windows' 259 characters.
@@ -811,14 +815,6 @@ def _second_run(*others):
                 by_first[_DOSE[0]]["positions"][0]: Face.PRESENT,
             },
         )
-        review = read_face_review(pack_directory)
-        transform = InstanceTransform(
-            _policy(*others),
-            KEY,
-            face_review=review,
-            finder=_CornerFinder() if CLEAN_PIXEL_DATA in others else None,
-            unvalidated_policy=True,
-        )
         # The same files, renamed so that they are found in the reverse
         # order, since the verdicts follow the files' contents alone.
         again = directory / "again"
@@ -826,28 +822,44 @@ def _second_run(*others):
         files = sorted(instances.iterdir())
         for number, file in enumerate(reversed(files)):
             shutil.copyfile(file, again / f"{number:02d}{file.name}")
-        second = run.run(
-            run.discover(again),
-            directory / "r2",
-            transform,
-            ReleaseGate(),
-            qc_destination=directory / "qc2",
-            reporter=transform.reporter,
-        )
-        pack_entries = json.loads(second.qc_pack.read_text("utf-8"))["instances"]
-        outcomes = {
-            Path(entry["source"]).name[2:]: (
-                entry["disposition"],
-                None
-                if entry.get("output") is None
-                else pydicom.dcmread(directory / "r2" / entry["output"]),
-            )
-            for entry in pack_entries
-        }
-        report = json.loads((directory / "r2" / "release-report.json").read_text())
-        yield attestation, outcomes, report, second
+        yield directory, attestation, read_face_review(pack_directory), again
     finally:
         shutil.rmtree(directory, ignore_errors=True)
+
+
+def _second_run(first_run, *others, name):
+    """Run the files of ``first_run`` again, into ``name`` beside them, under
+    the option and ``others``, given its verdicts."""
+    directory, attestation, review, again = first_run
+    directory = directory / name
+    directory.mkdir()
+    transform = InstanceTransform(
+        _policy(*others),
+        KEY,
+        face_review=review,
+        finder=_CornerFinder() if CLEAN_PIXEL_DATA in others else None,
+        unvalidated_policy=True,
+    )
+    second = run.run(
+        run.discover(again),
+        directory / "r2",
+        transform,
+        ReleaseGate(),
+        qc_destination=directory / "qc2",
+        reporter=transform.reporter,
+    )
+    pack_entries = json.loads(second.qc_pack.read_text("utf-8"))["instances"]
+    outcomes = {
+        Path(entry["source"]).name[2:]: (
+            entry["disposition"],
+            None
+            if entry.get("output") is None
+            else pydicom.dcmread(directory / "r2" / entry["output"]),
+        )
+        for entry in pack_entries
+    }
+    report = json.loads((directory / "r2" / "release-report.json").read_text())
+    return attestation, outcomes, report, second
 
 
 def _codes(dataset):
