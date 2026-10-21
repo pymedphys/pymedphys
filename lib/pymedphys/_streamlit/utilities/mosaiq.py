@@ -28,6 +28,7 @@ DEFAULT_PORT = 1433
 DEFAULT_DATABASE = "MOSAIQ"
 
 _SUBMITTED_SETTINGS_KEY = "_mosaiq_prompt_settings"
+_PROMPT_CONNECTION_KEY = "_mosaiq_prompt_connection"
 
 
 def get_valid_mosaiq_sites_from_config(
@@ -192,8 +193,8 @@ def get_mosaiq_connection_with_prompts() -> _connect.Connection:
     """Get a Mosaiq database connection, prompting for config if needed.
 
     This function checks for existing Mosaiq configuration. If none exists,
-    it prompts the user to enter connection details and optionally saves
-    them to the config file.
+    it prompts the user to enter connection details and, once they connect,
+    optionally saves them to the config file.
 
     Returns
     -------
@@ -242,28 +243,38 @@ def get_mosaiq_connection_with_prompts() -> _connect.Connection:
     settings = (hostname, port, database, site_name)
 
     if connect_button:
-        if save_config:
-            config_path = save_mosaiq_config_to_file(
-                site_name=site_name,
-                hostname=hostname,
-                port=port,
-                database=database,
-            )
-            st.success(f"Configuration saved to {config_path}")
         st.session_state[_SUBMITTED_SETTINGS_KEY] = settings
 
     # Editing any setting after submitting needs another click on Connect.
     if st.session_state.get(_SUBMITTED_SETTINGS_KEY) != settings:
         st.stop()
 
-    # Now get the connection using the streamlit mosaiq utility
-    # which will prompt for credentials if needed
-    return get_uncached_mosaiq_connection(
-        hostname=hostname,
-        port=port,
-        database=database,
-        alias=f"{site_name} Mosaiq SQL Server",
-    )
+    # Reuse this session's connection until the settings change. The login
+    # widgets in get_uncached_mosaiq_connection can't run inside a cached
+    # function, so keep the connection in session state instead.
+    cached = st.session_state.get(_PROMPT_CONNECTION_KEY)
+    if cached is None or cached[0] != settings:
+        connection = get_uncached_mosaiq_connection(
+            hostname=hostname,
+            port=port,
+            database=database,
+            alias=f"{site_name} Mosaiq SQL Server",
+        )
+        st.session_state[_PROMPT_CONNECTION_KEY] = (settings, connection)
+    else:
+        connection = cached[1]
+
+    # Save only after connecting, so failed settings remain editable.
+    if save_config:
+        config_path = save_mosaiq_config_to_file(
+            site_name=site_name,
+            hostname=hostname,
+            port=port,
+            database=database,
+        )
+        st.success(f"Configuration saved to {config_path}")
+
+    return connection
 
 
 def get_single_mosaiq_connection_with_config(config) -> _connect.Connection:
@@ -308,7 +319,13 @@ def get_single_mosaiq_connection_with_config(config) -> _connect.Connection:
         chosen_site_config["hostname"],
         chosen_site_config["port"],
         chosen_site_config["database"],
-        chosen_site_config["alias"],
+        (
+            f"{chosen_site_config['alias']} "
+            f"({chosen_site_config['hostname']}:{chosen_site_config['port']}/"
+            f"{chosen_site_config['database']})"
+            if chosen_site_config["alias"] is not None
+            else None
+        ),
     )
 
     # Streamlit's @st.cache_resource() decorator erases the wrapped function's

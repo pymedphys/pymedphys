@@ -22,7 +22,7 @@ Mosaiq connectivity.
 # pylint: disable = redefined-outer-name, import-outside-toplevel
 
 import pathlib
-from typing import Dict, Iterator, Tuple
+from typing import Dict, Iterator, List, Tuple
 
 from pymedphys._imports import pytest
 from pymedphys._imports import toml
@@ -34,6 +34,8 @@ from . import apptest_utilities as utl
 pytest.importorskip("streamlit")
 
 HOSTNAME = "mosaiq.example.test"
+OTHER_HOSTNAME = "other.example.test"
+UNREACHABLE_HOSTNAME = "typo.example.test"
 
 
 def _connection_app():
@@ -64,8 +66,19 @@ def config_dir(
 
 
 @pytest.fixture
-def credential_store(monkeypatch: pytest.MonkeyPatch) -> Dict[Tuple, Dict[str, str]]:
-    """Stand in for the keyring and accept any stored username and password."""
+def connections() -> List[str]:
+    """The connections the fake database has opened, in order."""
+    return []
+
+
+@pytest.fixture
+def credential_store(
+    monkeypatch: pytest.MonkeyPatch, connections: List[str]
+) -> Dict[Tuple, Dict[str, str]]:
+    """Stand in for the keyring and accept any stored username and password.
+
+    Connecting to ``UNREACHABLE_HOSTNAME`` fails, as for a mistyped server.
+    """
     from pymedphys._mosaiq import connect as _connect
     from pymedphys._mosaiq import credentials as _credentials
 
@@ -82,7 +95,11 @@ def credential_store(monkeypatch: pytest.MonkeyPatch) -> Dict[Tuple, Dict[str, s
         return save_field
 
     def connect_with_credentials(username, _password, hostname, port, database):
-        return f"{username}@{hostname}:{port}/{database}"
+        if hostname == UNREACHABLE_HOSTNAME:
+            raise ConnectionError(f"Unable to connect to {hostname}")
+        connection = f"{username}@{hostname}:{port}/{database}"
+        connections.append(connection)
+        return connection
 
     monkeypatch.setattr(
         _credentials,
@@ -111,6 +128,43 @@ def _submit(app_test, *, save: bool, hostname: str = HOSTNAME):
     ).run()
     app_test.button(key="mosaiq_prompt_connect").click().run()
     utl.assert_no_exception(app_test)
+
+
+def _store_credentials(credential_store, hostname=HOSTNAME):
+    credential_store[(hostname, 1433, "MOSAIQ")] = {
+        "username": "physicist",
+        "password": "secret",
+    }
+
+
+def _log_in(app_test, username="physicist", password="secret"):
+    utl.widget(app_test.text_input, _username_label(app_test)).input(username).run()
+    utl.widget(app_test.text_input, "Password").input(password).run()
+    [login] = [b for b in app_test.button if b.key != "mosaiq_prompt_connect"]
+    login.click().run()
+    utl.assert_no_exception(app_test)
+
+
+def _username_label(app_test):
+    [label] = [w.label for w in app_test.text_input if w.label.startswith("Username")]
+    return label
+
+
+def _saved_sites(config_dir):
+    path = config_dir / "config.toml"
+    if not path.exists():
+        return []
+    return toml.loads(path.read_text(encoding="utf-8")).get("site", [])
+
+
+def _assert_no_exception_besides_cached_widget_warning(app_test):
+    """The login form for a configured site is drawn inside the
+    ``st.cache_resource`` function ``get_cached_mosaiq_connection``, so
+    Streamlit warns about widgets in a cached function."""
+    exceptions = [
+        e.value for e in app_test.exception if "in a cached function" not in e.value
+    ]
+    assert not exceptions, f"The app raised: {exceptions}"
 
 
 def _connected(app_test):
@@ -204,3 +258,106 @@ def test_saving_writes_to_the_file_config_is_read_from(config_dir, hops):
     [site] = pmp_config.get_config()["site"]
     assert site["name"] == "clinic"
     assert site["mosaiq"]["hostname"] == HOSTNAME
+
+
+def test_failed_endpoint_is_not_saved_and_can_be_corrected(
+    config_dir, credential_store
+):
+    _store_credentials(credential_store, UNREACHABLE_HOSTNAME)
+    app_test = _start()
+    utl.widget(app_test.text_input, "SQL Server Hostname").input(
+        UNREACHABLE_HOSTNAME
+    ).run()
+    app_test.button(key="mosaiq_prompt_connect").click().run()
+
+    assert app_test.exception
+    assert _saved_sites(config_dir) == []
+    assert "SQL Server Hostname" in _labels(app_test.text_input)
+
+    _submit(app_test, save=True)
+    _log_in(app_test)
+
+    assert _connected(app_test) == [f"physicist@{HOSTNAME}:1433/MOSAIQ"]
+    [site] = _saved_sites(config_dir)
+    assert site["mosaiq"]["hostname"] == HOSTNAME
+
+
+@pytest.mark.usefixtures("credential_store")
+def test_site_is_saved_only_after_first_login(config_dir):
+    app_test = _start()
+    _submit(app_test, save=True)
+
+    assert _username_label(app_test)
+    assert _saved_sites(config_dir) == []
+
+    _log_in(app_test)
+
+    expected = f"physicist@{HOSTNAME}:1433/MOSAIQ"
+    assert _connected(app_test) == [expected]
+    [site] = _saved_sites(config_dir)
+    assert site["name"] == "my-site"
+
+    # The next rerun connects through the saved site, using the stored login.
+    utl.widget(app_test.text_input, "Patient ID").input("989898").run()
+    utl.assert_no_exception(app_test)
+
+    assert "SQL Server Hostname" not in _labels(app_test.text_input)
+    assert _connected(app_test) == [expected]
+
+
+@pytest.mark.usefixtures("config_dir")
+def test_connection_is_reused_across_reruns(credential_store, connections):
+    _store_credentials(credential_store)
+    app_test = _start()
+    _submit(app_test, save=False)
+
+    for patient_id in ["989898", "123456", "555555"]:
+        utl.widget(app_test.text_input, "Patient ID").input(patient_id).run()
+        utl.assert_no_exception(app_test)
+
+    assert connections == [f"physicist@{HOSTNAME}:1433/MOSAIQ"]
+
+
+@pytest.mark.usefixtures("config_dir")
+def test_changing_the_endpoint_opens_a_new_connection(credential_store, connections):
+    _store_credentials(credential_store)
+    _store_credentials(credential_store, OTHER_HOSTNAME)
+    app_test = _start()
+    _submit(app_test, save=False)
+    _submit(app_test, save=False, hostname=OTHER_HOSTNAME)
+
+    expected = f"physicist@{OTHER_HOSTNAME}:1433/MOSAIQ"
+    assert _connected(app_test) == [expected]
+    assert connections == [f"physicist@{HOSTNAME}:1433/MOSAIQ", expected]
+
+
+def test_configured_sites_keep_separate_logins(config_dir, credential_store):
+    """Two sites with the same alias still get their own login."""
+    sites = "".join(
+        f"""
+[[site]]
+name = "{name}"
+
+[site.mosaiq]
+hostname = "{hostname}"
+alias = "Clinic Mosaiq"
+"""
+        for name, hostname in [("north", HOSTNAME), ("south", OTHER_HOSTNAME)]
+    )
+    (config_dir / "config.toml").write_text(f"version = 0\n{sites}", encoding="utf-8")
+
+    app_test = _start()
+    assert _username_label(app_test) == (
+        f"Username for the SQL server on Clinic Mosaiq ({HOSTNAME}:1433/MOSAIQ)"
+    )
+    utl.widget(app_test.text_input, _username_label(app_test)).input("north-user").run()
+
+    utl.widget(app_test.radio, "Site").set_value("south").run()
+    _assert_no_exception_besides_cached_widget_warning(app_test)
+
+    assert _username_label(app_test) == (
+        f"Username for the SQL server on Clinic Mosaiq ({OTHER_HOSTNAME}:1433/MOSAIQ)"
+    )
+    assert utl.widget(app_test.text_input, _username_label(app_test)).value == ""
+    assert credential_store[(HOSTNAME, 1433, "MOSAIQ")] == {"username": "north-user"}
+    assert (OTHER_HOSTNAME, 1433, "MOSAIQ") not in credential_store
