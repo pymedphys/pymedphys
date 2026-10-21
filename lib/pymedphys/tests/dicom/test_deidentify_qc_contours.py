@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# pylint: disable = protected-access
+# pylint: disable = protected-access, too-many-lines
 """Tests of the QC pack's renders of RT Structure Set contours.
 
 Every name, UID, and contour here is invented.
@@ -539,8 +539,9 @@ def _curve(bend):
         # Just inside the box's front edge, where it fills the voxel.
         [("POINT", np.array([[5.0, -31.8, 3.0]]))],
         [_closed(np.vstack([files.square((0.0, 0.0, 0.0), 15.0)] * 2))],
+        [_closed(files.square((0.0, 0.0, 0.0), 8.0))] * 2,
     ],
-    ids=["open", "point", "edge", "doubled"],
+    ids=["open", "point", "edge", "doubled", "twins"],
 )
 def test_marks_within_their_own_roi_s_region_have_rows_of_their_own(marks):
     solid = _sheet_rows(qc_contours.contour_sheet(_solid()))
@@ -564,27 +565,134 @@ def test_marks_within_their_own_roi_s_region_are_told_apart():
     assert (one[1] == other[1]).all() and (one[2] != other[2]).any()
 
 
-def _retraced(loop):
-    # The box, its contour at 0 mm also tracing a loop within it twice.
+def _detoured(detour):
+    # The box, its contour at 0 mm also running from its front edge along a
+    # detour within it and back.
     rings = [("CLOSED_PLANAR", _box(z)) for z in _BOX_HEIGHTS if z != 0]
-    box, entry = _box(0.0), np.array([[loop[0, 0], -32.0, 0.0]])
-    path = np.vstack([box[:1], entry, loop, loop, loop[:1], entry, box[1:]])
+    box, entry = _box(0.0), np.array([[detour[0, 0], -32.0, 0.0]])
+    path = np.vstack([box[:1], entry, detour, entry, box[1:]])
     return qc_contours.contours_of(
         _read(_structure_set([[*rings, ("CLOSED_PLANAR", path)]]))
     )
 
 
-def test_a_path_that_a_contour_retraces_within_its_region_has_rows_of_its_own():
+def _twice(loop):
+    return np.vstack([loop, loop, loop[:1]])
+
+
+def _spur(bend):
+    # Into the box and back the same way, around a bulge 4 mm across.
+    spur = np.array([[0.0, -20.0, 0.0], [bend, -10.0, 0.0], [0.0, 0.0, 0.0]])
+    bulge = files.square((0.0, 2.0, 0.0), 2.0)
+    return np.vstack([spur, bulge, bulge[:1], spur[::-1]])
+
+
+@pytest.mark.parametrize(
+    "detours",
+    [
+        [
+            _twice(files.square((0.0, 0.0, 0.0), 12.0)),
+            _twice(files.circle((0.0, 0.0, 0.0), 12.0)),
+        ],
+        [_spur(0.0), _spur(6.0)],
+    ],
+    ids=["retraced", "spur"],
+)
+def test_a_path_that_a_contour_retraces_within_its_region_has_rows_of_its_own(
+    detours,
+):
+    solid = _sheet_rows(qc_contours.contour_sheet(_solid()))
+    one, other = (
+        _sheet_rows(qc_contours.contour_sheet(_detoured(each))) for each in detours
+    )
+    assert len(one) > 2 and len(other) > 2
+    assert all((row == box).all() for row, box in zip(one[:2], solid))
+    assert any(
+        row.shape != then.shape or (row != then).any()
+        for row, then in zip(one[2:], other[2:])
+    )
+
+
+def _plugged(hole):
+    """The box with a hole at 0 mm, and a line across each row of the
+    hole's voxels."""
+    rings = [("CLOSED_PLANAR", _box(z)) for z in _BOX_HEIGHTS]
+    rings.append(("CLOSED_PLANAR", hole))
+    (roi,) = qc_contours.contours_of(_read(_structure_set([rings]))).rois
+    grid = qc_contours._grid([roi], qc_contours._roi_voxel)
+    filled = qc_contours._filled(roi, grid, qc_contours._planes(roi))
+    near = (np.abs(grid.zs) <= 1.5)[:, None, None] & (np.abs(grid.xs) < 23)
+    empty = ~filled & near & (np.abs(grid.ys) < 30)[:, None]
+    lines = []
+    for k, j in zip(*np.nonzero(empty.any(axis=2))):
+        x = grid.xs[np.flatnonzero(empty[k, j])]
+        ends = [[x[0], grid.ys[j], grid.zs[k]], [x[-1], grid.ys[j], grid.zs[k]]]
+        lines.append(("OPEN_PLANAR", np.array(ends)))
+    return qc_contours.contours_of(_read(_structure_set([rings + lines])))
+
+
+def test_a_hole_that_marks_fill_has_rows_of_its_own():
     solid = _sheet_rows(qc_contours.contour_sheet(_solid()))
     square = _sheet_rows(
-        qc_contours.contour_sheet(_retraced(files.square((0.0, 0.0, 0.0), 12.0)))
+        qc_contours.contour_sheet(_plugged(files.square((0.0, 0.0, 0.0), 12.0)))
     )
     circle = _sheet_rows(
-        qc_contours.contour_sheet(_retraced(files.circle((0.0, 0.0, 0.0), 12.0)))
+        qc_contours.contour_sheet(_plugged(files.circle((0.0, 0.0, 0.0), 12.0)))
     )
     assert len(square) > 2 and len(circle) > 2
     assert all((row == other).all() for row, other in zip(square[:2], solid))
     assert (square[2] != circle[2]).any()
+
+
+# A slab 240 by 200 mm across, of voxels near 2 mm, in planes 1 mm apart,
+# some of which cover no slice of voxels.
+_SLAB_HEIGHTS = np.arange(-10.0, 10.5, 1.0)
+
+
+def _slab(*extra):
+    rings = [
+        _closed(
+            np.array([[-120, -100, z], [120, -100, z], [120, 100, z], [-120, 100, z]])
+        )
+        for z in _SLAB_HEIGHTS
+    ]
+    return qc_contours.contours_of(_read(_structure_set([rings + list(extra)])))
+
+
+def _slab_plane(covered):
+    (roi,) = _slab().rois
+    grid = qc_contours._grid([roi], qc_contours._roi_voxel)
+    shown = set(qc_contours._covering(qc_contours._planes(roi), grid.zs, grid.voxel))
+    return next(z for i, z in enumerate(_SLAB_HEIGHTS) if (i in shown) == covered)
+
+
+def test_a_slit_or_a_hole_in_a_plane_that_no_slice_shows_has_rows_of_its_own():
+    def sheet(*extra):
+        return qc_contours.contour_sheet(_slab(*extra))
+
+    def differ(one, other):
+        return one.shape != other.shape or (one != other).any()
+
+    z = _slab_plane(covered=True)
+    straight = np.array([[-20, -0.9, z], [20, -0.9, z], [20, 0.9, z], [-20, 0.9, z]])
+    slanted = straight.copy()
+    slanted[[0, 3], 1] -= 10
+    slab = sheet()
+    # A slit a voxel wide, which its own marks fill.
+    assert differ(sheet(_closed(straight)), slab)
+    assert differ(sheet(_closed(straight)), sheet(_closed(slanted)))
+    z = _slab_plane(covered=False)
+    square = sheet(_closed(files.square((0.0, 0.0, z), 12.0)))
+    assert differ(square, slab)
+    assert differ(square, sheet(_closed(files.circle((0.0, 0.0, z), 12.0))))
+
+
+def test_ordinary_outlines_hide_no_marks():
+    for contours in (_head(), _solid(), _slab()):
+        for roi in contours.rois:
+            grid = qc_contours._grid([roi], qc_contours._roi_voxel)
+            filled = qc_contours._filled(roi, grid, qc_contours._planes(roi))
+            assert qc_contours._hidden(roi, grid, filled) is None
 
 
 def test_marks_outside_their_own_roi_s_region_have_no_rows_of_their_own():
