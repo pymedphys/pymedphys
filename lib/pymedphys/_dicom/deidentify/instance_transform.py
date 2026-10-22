@@ -1086,10 +1086,10 @@ class InstanceTransform:
 
         Nothing holds an instance without a face review, or one that cannot
         show a face. The review is of the source file, and of the pixel data
-        and contours that ``writing`` writes. An RT Dose with pixel data, by
-        its IOD, SOP Class UID, or Modality, is held whatever its verdict,
-        since no preview yet shows its doses as they could show a face
-        (D-017), as a QC pack records by giving it no pixel data digest.
+        and contours that ``writing`` writes. An RT Dose, by its IOD, SOP
+        Class UID, or Modality, is held where it has pixel data of more
+        frames than the pack's dose-levels previews showed, since only they
+        show its doses as they could show a face (D-017).
         """
         review = self._face_review
         if review is None or not carries_visual_features(dataset, iod.name):
@@ -1099,13 +1099,8 @@ class InstanceTransform:
             _pixel_digest(writing, dataset),
             _contour_digest(writing, dataset),
             _frame_count(writing, dataset),
+            dose=iod.name == RT_DOSE or is_rt_dose(dataset),
         )
-        if (
-            reason is None
-            and (iod.name == RT_DOSE or is_rt_dose(dataset))
-            and any(tag in dataset for tag in PIXEL_DATA_TAGS)
-        ):
-            reason = VisualFeaturesReason.OTHER_PIXEL_DATA
         return None if reason is None else HeldVisualFeatures(reason)
 
     def _frame_hold(
