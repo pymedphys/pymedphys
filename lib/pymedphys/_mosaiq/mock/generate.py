@@ -1,5 +1,5 @@
 # Copyright (C) 2026 Matthew Jennings
-# Copyright (C) 2021 Derek Lane
+# Copyright (C) 2021, 2026 Derek Lane
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -27,6 +27,11 @@ from . import utilities
 
 # vary the number of fractions a bit
 NUMBER_OF_FRACTIONS = (20, 25, 30)
+
+# the department (Inst_ID) that records the mock treatments, and its
+# treatment session interval in hundredths of a second (Mosaiq's default, 3 hours)
+MOCK_INST_ID = 1
+MOCK_TX_INTERVAL_TIME = 1_080_000
 
 # dict that represents the number of fields for a few named techniques
 FIELD_COUNT_BY_TECHNIQUE_NAME = {"4-fld": 4, "5-fld": 5, "7-fld": 7}
@@ -363,9 +368,38 @@ def create_mock_treatment_fields(site_df=None):
     return txfield_df
 
 
+def create_mock_department_config(tx_interval_time=MOCK_TX_INTERVAL_TIME):
+    """create the Config row for the mock department
+
+    Parameters
+    ----------
+    tx_interval_time : int, optional
+        the department's treatment session interval (Config.Tx_Interval_Time)
+        in hundredths of a second, by default 3 hours
+    """
+    config_df = pd.DataFrame(
+        [(MOCK_INST_ID, tx_interval_time)],
+        columns=["Inst_ID", "Tx_Interval_Time"],
+        index=[1],
+    )
+    dataframe_to_sql(
+        config_df,
+        "Config",
+        index_label="CFG_ID",
+        dtype={
+            "Inst_ID": sqlalchemy.types.Integer(),
+            "Tx_Interval_Time": sqlalchemy.types.Integer(),
+        },
+    )
+
+
 def create_mock_treatment_sessions(site_df=None, txfield_df=None):
     """for a given site and set of tx fields, generate treatment session data
-    (Dose_Hst and Offset) for randomly chosen treatment interval
+    (Dose_Hst and Offset) for randomly chosen treatment interval, and the
+    department Config that sets the treatment session interval
+
+    Each site also gets one QA-mode delivery early on the morning of its
+    first fraction, which Mosaiq does not count as a patient session.
 
     Parameters
     ----------
@@ -407,6 +441,21 @@ def create_mock_treatment_sessions(site_df=None, txfield_df=None):
             )
             session_date = datetime.strptime(session_date_str, "%Y-W%W-%w")
 
+            # a QA-mode delivery at 6am before the first fraction
+            if n == 0:
+                for fld_id, txfield_rec in txfield_df.iterrows():
+                    if txfield_rec["SIT_SET_ID"] == sit_set_id:
+                        dose_hst_recs.append(
+                            (
+                                pat_id1,
+                                sit_id,
+                                fld_id,
+                                session_date + timedelta(hours=6),
+                                True,
+                            )
+                        )
+                        break
+
             # and add the appointment time
             session_time = session_date + appointment_time
 
@@ -432,7 +481,7 @@ def create_mock_treatment_sessions(site_df=None, txfield_df=None):
             for fld_id, txfield_rec in txfield_df.iterrows():
                 if txfield_rec["SIT_SET_ID"] == sit_set_id:
                     session_time += timedelta(minutes=1)
-                    dose_hst_recs.append((pat_id1, sit_id, fld_id, session_time))
+                    dose_hst_recs.append((pat_id1, sit_id, fld_id, session_time, False))
 
             # choose whether to create a localization offset
             if protocol == "nal" and not created_localization_yet:
@@ -457,8 +506,10 @@ def create_mock_treatment_sessions(site_df=None, txfield_df=None):
 
     # now populate tables
     dose_hst_df = pd.DataFrame(
-        dose_hst_recs, columns=["Pat_ID1", "SIT_ID", "FLD_ID", "Tx_DtTm"]
+        dose_hst_recs,
+        columns=["Pat_ID1", "SIT_ID", "FLD_ID", "Tx_DtTm", "WasQAMode"],
     )
+    dose_hst_df["Inst_ID"] = MOCK_INST_ID
     dataframe_to_sql(
         dose_hst_df,
         "Dose_Hst",
@@ -468,6 +519,8 @@ def create_mock_treatment_sessions(site_df=None, txfield_df=None):
             "SIT_ID": sqlalchemy.types.Integer(),
             "FLD_ID": sqlalchemy.types.Integer(),
             "Tx_DtTm": sqlalchemy.types.DateTime(),
+            "WasQAMode": sqlalchemy.types.Boolean(),
+            "Inst_ID": sqlalchemy.types.Integer(),
         },
     )
 
@@ -500,3 +553,5 @@ def create_mock_treatment_sessions(site_df=None, txfield_df=None):
             "Version": sqlalchemy.types.Integer(),
         },
     )
+
+    create_mock_department_config()
