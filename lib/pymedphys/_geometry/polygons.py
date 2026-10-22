@@ -256,22 +256,31 @@ def is_simple(points: np.ndarray) -> bool:
     block = max(1, (1 << 22) // count)
     for first in range(0, count, block):
         rows = np.arange(first, min(first + block, count))
-        meet = _meet(
-            starts[rows, None], ends[rows, None], starts[None, :], ends[None, :]
+        a, b, c, d = (
+            starts[rows, None],
+            ends[rows, None],
+            starts[None, :],
+            ends[None, :],
         )
         later = np.arange(count)[None, :] > rows[:, None]
         neighbours = (np.arange(count)[None, :] == rows[:, None] + 1) | (
             (rows[:, None] == 0) & (np.arange(count)[None, :] == count - 1)
         )
-        if (meet & later & ~neighbours).any():
-            return False
-        if (
-            _overlap(
-                starts[rows, None], ends[rows, None], starts[None, :], ends[None, :]
+        # Two edges can meet only where their closed bounding boxes do, so
+        # only those pairs are tested exactly and can count as meeting, which
+        # spares the exact tests of the many pairs of edges far apart along
+        # one line; every pair is still tested with rounding.
+        boxes = np.ones(later.shape, dtype=bool)
+        for axis in (0, 1):
+            boxes &= np.minimum(a[..., axis], b[..., axis]) <= np.maximum(
+                c[..., axis], d[..., axis]
             )
-            & later
-            & neighbours
-        ).any():
+            boxes &= np.minimum(c[..., axis], d[..., axis]) <= np.maximum(
+                a[..., axis], b[..., axis]
+            )
+        if _meet(a, b, c, d, boxes & later & ~neighbours).any():
+            return False
+        if _overlap(a, b, c, d, later & neighbours).any():
             return False
     return True
 
@@ -285,6 +294,59 @@ def _cross(origin: np.ndarray, one: np.ndarray, other: np.ndarray) -> np.ndarray
     return cross
 
 
+# Shewchuk's bound on the rounding error of :func:`_cross`, relative to the
+# sum of its two products' magnitudes, for doubles ("Adaptive Precision
+# Floating-Point Arithmetic and Fast Robust Geometric Predicates", 1997, as
+# ccwerrboundA), which assumes that no product underflows, as none does but
+# for points within about 1e-154 of each other. A cross product of less
+# magnitude than the bound may have the wrong sign.
+_CROSS_ERROR = (3 + 16 * 2.0**-53) * 2.0**-53
+
+
+def _side(
+    origin: np.ndarray,
+    one: np.ndarray,
+    other: np.ndarray,
+    where: np.ndarray | bool = True,
+) -> np.ndarray:
+    """The sign of :func:`_cross`, broadcast, found exactly for the points as
+    given, where ``where`` holds, wherever rounding could have changed it,
+    as it can for points in a line that no axis runs along. Where ``where``
+    does not hold, the sign is as rounded, which callers mask away."""
+    left = (one[..., 0] - origin[..., 0]) * (other[..., 1] - origin[..., 1])
+    right = (one[..., 1] - origin[..., 1]) * (other[..., 0] - origin[..., 0])
+    cross = left - right
+    side: np.ndarray = np.array(np.sign(cross))
+    unsure = (np.abs(cross) < _CROSS_ERROR * (np.abs(left) + np.abs(right))) & where
+    if unsure.any():
+        shape = cross.shape + (2,)
+        o, p, q = (
+            np.broadcast_to(each[..., :2], shape)[unsure]
+            for each in (origin, one, other)
+        )
+        # Where two of the points are one, it is exactly zero.
+        apart = ~((p == o).all(axis=1) | (q == o).all(axis=1) | (q == p).all(axis=1))
+        exact = np.zeros(len(o), dtype=side.dtype)
+        exact[apart] = [
+            _exact_side(*each)
+            for each in zip(o[apart].tolist(), p[apart].tolist(), q[apart].tolist())
+        ]
+        side[unsure] = exact
+    return side
+
+
+def _exact_side(origin: list[float], one: list[float], other: list[float]) -> int:
+    """The sign of :func:`_cross` for three points, found exactly by
+    integers, each coordinate being an integer over a power of two."""
+    ratios = [value.as_integer_ratio() for value in (*origin, *one, *other)]
+    scale = max(denominator for _, denominator in ratios)
+    ox, oy, px, py, qx, qy = (
+        numerator * (scale // denominator) for numerator, denominator in ratios
+    )
+    exact = (px - ox) * (qy - oy) - (py - oy) * (qx - ox)
+    return (exact > 0) - (exact < 0)
+
+
 def _between(start: np.ndarray, end: np.ndarray, point: np.ndarray) -> np.ndarray:
     """Whether a point collinear with a segment lies on it, ends included."""
     between: np.ndarray = (
@@ -296,32 +358,43 @@ def _between(start: np.ndarray, end: np.ndarray, point: np.ndarray) -> np.ndarra
     return between
 
 
-def _meet(a: np.ndarray, b: np.ndarray, c: np.ndarray, d: np.ndarray) -> np.ndarray:
-    """Whether segments ab and cd share a point, ends included."""
-    first, second = _cross(a, b, c), _cross(a, b, d)
-    third, fourth = _cross(c, d, a), _cross(c, d, b)
-    proper = (np.sign(first) * np.sign(second) < 0) & (
-        np.sign(third) * np.sign(fourth) < 0
-    )
+def _meet(
+    a: np.ndarray,
+    b: np.ndarray,
+    c: np.ndarray,
+    d: np.ndarray,
+    where: np.ndarray | bool = True,
+) -> np.ndarray:
+    """Whether segments ab and cd share a point, ends included, where
+    ``where`` holds; false elsewhere."""
+    first, second = _side(a, b, c, where), _side(a, b, d, where)
+    third, fourth = _side(c, d, a, where), _side(c, d, b, where)
+    proper = (first * second < 0) & (third * fourth < 0)
     touching = (
         ((first == 0) & _between(a, b, c))
         | ((second == 0) & _between(a, b, d))
         | ((third == 0) & _between(c, d, a))
         | ((fourth == 0) & _between(c, d, b))
     )
-    meet: np.ndarray = proper | touching
+    meet: np.ndarray = (proper | touching) & where
     return meet
 
 
-def _overlap(a: np.ndarray, b: np.ndarray, c: np.ndarray, d: np.ndarray) -> np.ndarray:
+def _overlap(
+    a: np.ndarray,
+    b: np.ndarray,
+    c: np.ndarray,
+    d: np.ndarray,
+    where: np.ndarray | bool = True,
+) -> np.ndarray:
     """Whether neighbouring segments ab and cd, sharing a vertex, also share
-    more than it: they lie along one line and double back over each
-    other."""
-    collinear = (_cross(a, b, c) == 0) & (_cross(a, b, d) == 0)
+    more than it: they lie along one line and double back over each other,
+    where ``where`` holds; false elsewhere."""
+    collinear = (_side(a, b, c, where) == 0) & (_side(a, b, d, where) == 0)
     forward = (b[..., 0] - a[..., 0]) * (d[..., 0] - c[..., 0]) + (
         b[..., 1] - a[..., 1]
     ) * (d[..., 1] - c[..., 1])
-    overlap: np.ndarray = collinear & (forward < 0)
+    overlap: np.ndarray = collinear & (forward < 0) & where
     return overlap
 
 

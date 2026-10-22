@@ -31,7 +31,20 @@ from xml.parsers import expat
 
 BASELINE_ARTIFACT = "junit-ubuntu-latest-3.14"
 BASELINE_METADATA = "pydicom-ubuntu-latest-3.14.json"
+# The Ubuntu/Python 3.14 cell runs in these parts on separate runners; the
+# baseline is their combined report.
+BASELINE_PARTS = ("corpus-runs", "others")
 RESULTS = Path("test-results")
+
+
+def part_artifact(part: str) -> str:
+    if part not in BASELINE_PARTS:
+        raise ValueError(f"Unknown part: {part!r}")
+    return f"junit-py3.14-{part}"
+
+
+def part_metadata(part: str) -> str:
+    return f"{part_artifact(part).replace('junit-', 'pydicom-', 1)}.json"
 
 
 def version(value: str) -> str:
@@ -175,15 +188,117 @@ def read_toml(filename: str) -> dict:
     return tomllib.loads(Path(filename).read_text(encoding="utf-8"))
 
 
-def record_baseline(lock: dict, actual: str, commit: str, results: Path) -> dict:
-    """Bind the normal Ubuntu/Python 3.14 report to the version actually imported."""
+def checked_locked(lock: dict, actual: str) -> str | None:
     actual = version(actual)
-    commit = commit_sha(commit)
     locked = locked_version(lock)
     if locked is not None and actual != locked:
         raise ValueError(
             f"The locked suite imported pydicom {actual}, expected {locked}."
         )
+    return locked
+
+
+def record_part(lock: dict, part: str, actual: str, commit: str, results: Path) -> dict:
+    """Bind one part's passing report to the version that part imported."""
+    artifact = part_artifact(part)
+    commit = commit_sha(commit)
+    locked = checked_locked(lock, actual)
+    check_junit(results / f"{artifact}.xml")
+    metadata = {
+        "format": "pymedphys-pydicom-part/1",
+        "part": part,
+        "commit": commit,
+        "actual_version": actual,
+        "actual_python_version": platform.python_version(),
+        "locked_version": locked,
+        "junit": f"{artifact}.xml",
+    }
+    write_json(results / part_metadata(part), metadata)
+    return metadata
+
+
+def combine_reports(results: Path) -> Path:
+    """Write every part's test cases into the one baseline report.
+
+    Failed and skipped cases are kept, so the combined report shows them. A
+    missing part, or a case that two parts both ran, writes no report.
+    """
+    combined = ET.Element("testsuites")
+    seen: dict[tuple[str, str], str] = {}
+    for part in BASELINE_PARTS:
+        path = results / f"{part_artifact(part)}.xml"
+        refuse_dtd(path)
+        # nosemgrep: python.lang.security.use-defused-xml-parse
+        root = ET.parse(path).getroot()  # nosec B314
+        if root.tag == "testsuite":
+            suites = [root]
+        elif root.tag == "testsuites":
+            suites = list(root)
+        else:
+            raise ValueError(f"{path} is not a JUnit XML report")
+        cases = {
+            (case.get("classname", ""), case.get("name", ""))
+            for case in root.iter("testcase")
+        }
+        overlap = sorted(cases & seen.keys())
+        if overlap:
+            raise ValueError(
+                f"{'::'.join(overlap[0])} ran in both {seen[overlap[0]]} and {part}."
+            )
+        seen.update(dict.fromkeys(cases, part))
+        combined.extend(suites)
+    output = results / f"{BASELINE_ARTIFACT}.xml"
+    ET.ElementTree(combined).write(output, encoding="utf-8", xml_declaration=True)
+    return output
+
+
+def part_versions(lock: dict, commit: str, results: Path) -> tuple[str, dict[str, str]]:
+    """Return the pydicom version every part imported and each part's Python.
+
+    The parts must agree on pydicom, which must be the locked version. Each
+    part's Python need only be 3.14: the parts run on separate runners, whose
+    images can carry different 3.14 patch releases while GitHub rolls one out.
+    """
+    commit = commit_sha(commit)
+    found = set()
+    pythons = {}
+    for part in BASELINE_PARTS:
+        path = results / part_metadata(part)
+        metadata = json.loads(path.read_text(encoding="utf-8"))
+        if (
+            metadata.get("format") != "pymedphys-pydicom-part/1"
+            or metadata.get("part") != part
+            or metadata.get("commit") != commit
+            or metadata.get("junit") != f"{part_artifact(part)}.xml"
+        ):
+            raise ValueError(f"Invalid part evidence in {path}")
+        checked_locked(lock, metadata.get("actual_version", ""))
+        python = metadata.get("actual_python_version")
+        if not isinstance(python, str) or not python.startswith("3.14."):
+            raise ValueError(f"The {part} part ran Python {python!r}, expected 3.14.")
+        found.add(metadata["actual_version"])
+        pythons[part] = python
+    if len(found) != 1:
+        raise ValueError(
+            f"The parts imported different pydicom versions: {sorted(found)}"
+        )
+    return found.pop(), pythons
+
+
+def record_baseline(
+    lock: dict,
+    actual: str,
+    commit: str,
+    results: Path,
+    part_pythons: dict[str, str] | None = None,
+) -> dict:
+    """Bind the normal Ubuntu/Python 3.14 report to the version actually imported.
+
+    ``part_pythons`` maps each part to the Python it ran, since the combining
+    job's own Python is not the one the tests ran under.
+    """
+    commit = commit_sha(commit)
+    locked = checked_locked(lock, actual)
     # Validate the report separately: upload-artifact only requires some files
     # to exist, whereas successful reuse requires both XML and metadata.
     check_junit(results / f"{BASELINE_ARTIFACT}.xml")
@@ -191,11 +306,18 @@ def record_baseline(lock: dict, actual: str, commit: str, results: Path) -> dict
         "format": "pymedphys-pydicom-baseline/1",
         "commit": commit,
         "actual_version": actual,
-        "actual_python_version": platform.python_version(),
+        "actual_python_version": (
+            ", ".join(sorted(set(part_pythons.values())))
+            if part_pythons
+            else platform.python_version()
+        ),
         "locked_version": locked,
         "artifact": BASELINE_ARTIFACT,
         "junit": f"{BASELINE_ARTIFACT}.xml",
+        "parts": list(BASELINE_PARTS),
     }
+    if part_pythons:
+        metadata["part_python_versions"] = part_pythons
     write_json(results / BASELINE_METADATA, metadata)
     return metadata
 
@@ -267,12 +389,22 @@ def main() -> None:
             output.write(
                 f"version={plan['requested_version']}\nreuse={str(plan['mode'] == 'reuse').lower()}\n"
             )
-    elif command == "baseline":
+    elif command == "part":
         import pydicom
 
-        record_baseline(
-            lock, pydicom.__version__, checked_commit(os.environ["CI_COMMIT"]), RESULTS
+        record_part(
+            lock,
+            os.environ["PART"],
+            pydicom.__version__,
+            checked_commit(os.environ["CI_COMMIT"]),
+            RESULTS,
         )
+    elif command == "combine":
+        combine_reports(RESULTS)
+    elif command == "baseline":
+        commit = checked_commit(os.environ["CI_COMMIT"])
+        actual, part_pythons = part_versions(lock, commit, RESULTS)
+        record_baseline(lock, actual, commit, RESULTS, part_pythons)
     elif command == "record":
         plan = json.loads(
             (RESULTS / f"pydicom-plan-{os.environ['PYDICOM']}.json").read_text(

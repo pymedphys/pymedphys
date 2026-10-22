@@ -878,8 +878,9 @@ class NotPreviewedReason(enum.Enum):
     # number of frames, or colour
     SOURCE_NOT_SHOWN = "source-not-shown"
     # an instance with contours, such as an RT Structure Set, that a contour
-    # sheet cannot show: unreadable, or with a contour that it does not draw,
-    # so its verdict gives it none
+    # sheet cannot show: unreadable, with a contour that it does not draw,
+    # too tall, or with a voxel of hidden marks that the frontal view and
+    # profiles of its rows would not draw, so its verdict gives it none
     CONTOURS_NOT_SHOWN = "contours-not-shown"
 
 
