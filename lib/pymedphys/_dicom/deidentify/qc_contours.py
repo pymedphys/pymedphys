@@ -505,7 +505,9 @@ def contour_sheet(
             continue
         key = _key(roi)
         if key not in rendered:
-            rendered[key] = _item_rows(roi, own, tallest)
+            rendered[key] = _item_rows(
+                roi, own, None if tallest is None else tallest - height
+            )
         shown = rendered[key]
         if shown is None or not fits(shown):
             return None
@@ -513,26 +515,48 @@ def contour_sheet(
 
 
 def _item_rows(
-    roi: RoiContours, planes: np.ndarray, tallest: int | None = None
+    roi: RoiContours, planes: np.ndarray, room: int | None = None
 ) -> list[np.ndarray] | None:
     """An ROI's rows, with those of each layer of the marks that its region
     hides; or None where the frontal view and profiles of a layer's rows
-    would leave any voxel of it undrawn, or where its layers alone would
-    make a sheet taller than ``tallest``."""
+    would leave any voxel of it undrawn, or where the rows, each with the
+    gutter above it, would take more than ``room`` pixels."""
     grid = _grid([roi], _roi_voxel)
     filled = _filled(roi, grid, planes)
     hidden = _hidden(roi, grid, filled)
     rows = _roi_rows(filled | _marked(roi.marks(_step(grid)), grid))
+    left = None if room is None else room - _height(rows)
+    if left is not None and left < 0:
+        return None
     if hidden is None:
         return rows
     # Each layer has a row at least.
-    most = None if tallest is None else tallest // (len(grid.zs) + GUTTER_PIXELS)
+    most = None if left is None else left // (len(grid.zs) + GUTTER_PIXELS)
     layers = _layered(hidden, filled.shape, most)
-    if layers is None or any(_undrawn(layer).any() for layer in layers):
+    if layers is None or any(
+        _undrawn(_layer(voxels, filled.shape)).any() for voxels in layers
+    ):
         return None
-    for layer in layers:
-        rows.extend(_roi_rows(layer, marks=True))
+    for voxels in layers:
+        more = _roi_rows(_layer(voxels, filled.shape), marks=True)
+        rows.extend(more)
+        if left is not None:
+            left -= _height(more)
+            if left < 0:
+                return None
     return rows
+
+
+def _height(rows: Sequence[np.ndarray]) -> int:
+    """The pixels that rows take on a sheet, each with the gutter above it."""
+    return sum(row.shape[0] + GUTTER_PIXELS for row in rows)
+
+
+def _layer(voxels: np.ndarray, shape: tuple[int, ...]) -> np.ndarray:
+    """A mask of ``shape`` of a layer's voxels, by flat index."""
+    layer = np.zeros(shape, bool)
+    layer.flat[voxels] = True
+    return layer
 
 
 def _least_height(contours: Contours, guides: Mapping[str | None, Guide]) -> int:
@@ -783,32 +807,36 @@ def _layered(
     hidden: Sequence[np.ndarray], shape: tuple[int, ...], most: int | None = None
 ) -> list[np.ndarray] | None:
     """The hidden marks of each contour, as flat indices of a mask of
-    ``shape``, laid out in layers, each a mask: each contour's in the first
-    layer that holds none of its voxels, nor any beside one along its row
-    or its column of voxels, so that a layer's rows draw each contour's
-    marks as they would draw them alone. A contour's marks the same as an
-    earlier one's are left out. None where it would take more than ``most``
-    layers."""
-    layers: list[np.ndarray] = []
-    near: list[np.ndarray] = []
+    ``shape``, laid out in layers, each as the ascending flat indices of its
+    voxels: each contour's in the first layer that holds none of its voxels,
+    nor any beside one along its row or its column of voxels, so that a
+    layer's rows draw each contour's marks as they would draw them alone. A
+    contour's marks the same as an earlier one's are left out. None where it
+    would take more than ``most`` layers."""
+    layers: list[list[np.ndarray]] = []
+    # For each voxel on or beside one in a layer, the bits of those layers,
+    # so that memory and time go with the marks, not the grid or the layers.
+    near: dict[int, int] = {}
     seen: set[bytes] = set()
     for voxels in hidden:
         key = voxels.tobytes()
         if key in seen:
             continue
         seen.add(key)
-        free = [i for i, close in enumerate(near) if not close.flat[voxels].any()]
-        if free:
-            chosen = free[0]
-        else:
+        taken = 0
+        for voxel in voxels.tolist():
+            taken |= near.get(voxel, 0)
+        # The lowest layer whose bit is not taken.
+        chosen = ((taken + 1) & ~taken).bit_length() - 1
+        if chosen == len(layers):
             if most is not None and len(layers) >= most:
                 return None
-            layers.append(np.zeros(shape, bool))
-            near.append(np.zeros(shape, bool))
-            chosen = len(layers) - 1
-        layers[chosen].flat[voxels] = True
-        near[chosen].flat[_beside(voxels, shape)] = True
-    return layers
+            layers.append([])
+        layers[chosen].append(voxels)
+        bit = 1 << chosen
+        for voxel in _beside(voxels, shape).tolist():
+            near[voxel] = near.get(voxel, 0) | bit
+    return [np.unique(np.concatenate(each)) for each in layers]
 
 
 def _beside(voxels: np.ndarray, shape: tuple[int, ...]) -> np.ndarray:

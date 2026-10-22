@@ -687,7 +687,13 @@ def _layers(roi):
     grid = qc_contours._grid([roi], qc_contours._roi_voxel)
     filled = qc_contours._filled(roi, grid, qc_contours._planes(roi))
     hidden = qc_contours._hidden(roi, grid, filled)
-    return [] if hidden is None else qc_contours._layered(hidden, filled.shape)
+    if hidden is None:
+        return []
+    return _masks(qc_contours._layered(hidden, filled.shape), filled.shape)
+
+
+def _masks(layers, shape):
+    return [qc_contours._layer(voxels, shape) for voxels in layers]
 
 
 @pytest.mark.parametrize(
@@ -777,6 +783,69 @@ def test_lines_that_cross_or_lie_side_by_side_are_each_drawn(lines):
     layers = _layers(roi)
     assert len(layers) == 2 and qc_contours._undrawn(np.any(layers, axis=0)).any()
     assert qc_contours.contour_sheet(contours) is not None
+
+
+def _spokes(count):
+    """The box with ``count`` open lines at 0 mm through the middle of one
+    voxel, so that each needs a layer of its own."""
+    rings = [("CLOSED_PLANAR", _box(z)) for z in _BOX_HEIGHTS]
+    (roi,) = qc_contours.contours_of(_read(_structure_set([rings]))).rois
+    grid = qc_contours._grid([roi], qc_contours._roi_voxel)
+    middle = np.array([grid.xs[len(grid.xs) // 2], grid.ys[len(grid.ys) // 2], 0.0])
+    marks = []
+    for angle in np.linspace(0, np.pi, count, endpoint=False):
+        arm = 12.0 * np.array([np.cos(angle), np.sin(angle), 0.0])
+        marks.append(("OPEN_PLANAR", np.array([middle - arm, middle, middle + arm])))
+    return qc_contours.contours_of(_read(_structure_set([rings + marks])))
+
+
+def test_marks_that_need_more_layers_than_the_sheet_has_room_for_are_not_drawn(
+    monkeypatch,
+):
+    contours = _spokes(12)
+    (roi,) = contours.rois
+    assert len(_layers(roi)) == 12
+    planes = qc_contours._planes(roi)
+    grid = qc_contours._grid([roi], qc_contours._roi_voxel)
+    filled = qc_contours._filled(roi, grid, planes)
+    hidden = qc_contours._hidden(roi, grid, filled)
+    assert qc_contours._layered(hidden, filled.shape, most=11) is None
+    assert len(qc_contours._layered(hidden, filled.shape, most=12)) == 12
+    rows = qc_contours._item_rows(roi, planes)
+    room = qc_contours._height(rows)
+    assert len(qc_contours._item_rows(roi, planes, room)) == len(rows)
+    assert qc_contours._item_rows(roi, planes, room - 1) is None
+    # Each layer takes a row at least, so with room for its own rows and 11
+    # more, none of the 12 layers is drawn.
+    drawn = []
+    roi_rows = qc_contours._roi_rows
+    monkeypatch.setattr(
+        qc_contours,
+        "_roi_rows",
+        lambda inside, marks=False: drawn.append(marks) or roi_rows(inside, marks),
+    )
+    own = qc_contours._height(qc_contours._roi_rows(filled))
+    one = len(grid.zs) + qc_contours.GUTTER_PIXELS
+    assert qc_contours._item_rows(roi, planes, own + 11 * one) is None
+    assert not any(drawn[1:])
+
+
+def test_contours_whose_marks_touch_only_diagonally_or_repeat_share_a_layer():
+    shape = (1, 6, 6)
+
+    def line(row, start, stop):
+        return np.ravel_multi_index(
+            ([0] * (stop - start), [row] * (stop - start), range(start, stop)), shape
+        )
+
+    # Along one row, then the next from the column after: they meet only at
+    # the corners of two voxels.
+    diagonal = qc_contours._layered([line(2, 0, 3), line(3, 3, 6)], shape)
+    beside = qc_contours._layered([line(2, 0, 3), line(3, 2, 6)], shape)
+    assert len(diagonal) == 1 and len(beside) == 2
+    # A contour's marks the same as another's are drawn once.
+    again = qc_contours._layered([line(2, 0, 3), line(2, 0, 3)], shape)
+    assert len(again) == 1 and (again[0] == line(2, 0, 3)).all()
 
 
 def test_a_blunt_rounded_end_in_planes_much_finer_than_its_voxels_is_shown():
@@ -893,7 +962,7 @@ def test_the_rows_of_an_roi_and_of_its_hidden_marks_draw_what_they_claim(seed):
     if hidden is None:
         assert len(rows) == len(qc_contours._roi_rows(inside))
         return
-    layers = qc_contours._layered(hidden, filled.shape)
+    layers = _masks(qc_contours._layered(hidden, filled.shape), filled.shape)
     every = np.zeros(filled.shape, bool)
     for voxels in hidden:
         every.flat[voxels] = True
