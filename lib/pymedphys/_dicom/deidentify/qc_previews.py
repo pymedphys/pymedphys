@@ -38,7 +38,9 @@ frame with such regions, also from the file as received:
   multi-frame volume, such as an Enhanced CT image, is shown by its cine
   strip only. It is projected along the anterior-posterior axis and shown
   with the patient's head at the top and right on the viewer's left, sampled
-  to square pixels by nearest neighbour, at most :data:`MIP_PIXELS` a side;
+  to square pixels by nearest neighbour, at most :data:`MIP_PIXELS` a side,
+  each slice also taken into the pixel nearest it by the maximum, so that
+  every slice is drawn where slices are closer than the pixels;
 - a sheet of renders of the skin surface of each such volume, and of each
   RT Dose instance of two or more frames whose grid lies along the patient's
   axes, from the front, the two obliques, and the two profiles, as
@@ -119,12 +121,14 @@ from pymedphys._imports import pydicom
 
 from .pixel_decoding import DECODING_PLUGINS, decoder_available
 from . import qc_contours, qc_surfaces
+from .face_review import is_rt_dose
 from .qc_pack import (
     NotPreviewedEntry,
     NotPreviewedReason,
     Preview,
     PreviewKind,
     RedactionEntry,
+    pictured_frames,
 )
 from .uids import normalise_uid
 
@@ -186,6 +190,13 @@ class _Instance:
     modality: str
     grid: qc_surfaces.Grid | None  # an RT Dose grid that a surface render shows
     frame: str | None  # Frame of Reference UID
+    # Whether its native Pixel Data hold no more than its frames, with at most
+    # one byte of padding; the bytes beyond them are in no frame a preview
+    # can show. Encapsulated Pixel Data are taken as whole here.
+    whole: bool = True
+    # Whether it is an RT Dose (face_review.is_rt_dose), which no preview
+    # shows as it could show a face (D-017).
+    dose: bool = False
 
 
 @dataclasses.dataclass(frozen=True)
@@ -209,11 +220,26 @@ class PreviewSet:
     contours_shown : frozenset of int
         The run positions of the files with contours that a contour sheet
         shows.
+    pixels_shown : frozenset of int
+        The run positions of the files with pixel data every frame of which
+        a preview that could show a face draws, and that are not listed as
+        not previewed, and whose native Pixel Data hold no more than their
+        frames, other than RT Dose instances. A volume's projection and
+        surface render draw each of its slices, by its maximum where slices
+        are closer than their pixels. A contour sheet, and the isodose
+        render of an RT Dose grid, which D-017 finds inconclusive, list
+        frames that they cannot show a face in, so their frames do not
+        count. No preview yet shows an RT Dose as it could show a face: its
+        cine strip is windowed to its highest doses, which can leave a low
+        dose outlining the skin black, and the renders of a series of its
+        planes find their surface by Otsu's threshold, which D-017's
+        reasoning makes as inconclusive as the isodose render.
     """
 
     previews: tuple[Preview, ...]
     not_previewed: tuple[NotPreviewedEntry, ...]
     contours_shown: frozenset[int] = frozenset()
+    pixels_shown: frozenset[int] = frozenset()
 
 
 def previews_of(
@@ -279,6 +305,11 @@ def previews_of(
         if instance.position in redactions:
             source, entry = redactions[instance.position]
             images.extend(_redaction_images(instance, source, entry, decoded))
+    # Only previews that could show a face count, and every frame of an
+    # instance must be among theirs; none yet shows an RT Dose so.
+    pictured = pictured_frames(
+        ((kind.value, frames) for kind, frames, _, _ in images), refused
+    )
     width = max(4, len(str(len(images))))
     previews = tuple(
         Preview(f"P-{number:0{width}d}.png", kind, frames, total, encoded)
@@ -291,6 +322,13 @@ def previews_of(
             for position, reason in sorted(refused.items())
         ),
         frozenset(contoured) - frozenset(refused),
+        frozenset(
+            instance.position
+            for instance in instances
+            if instance.whole
+            and not instance.dose
+            and pictured.get(instance.position) == instance.frames
+        ),
     )
 
 
@@ -374,6 +412,13 @@ def _described(
         return NotPreviewedReason.UNREADABLE
     spacing = _spacing(dataset)
     uid = dataset.get("SeriesInstanceUID")
+    whole = True
+    if not plugin:
+        try:
+            expected = pydicom.pixels.utils.get_expected_length(dataset, "bytes")
+            whole = len(dataset.PixelData) <= expected + 1
+        except Exception:  # pylint: disable = broad-exception-caught
+            whole = False
     return _Instance(
         position=position,
         data=data,
@@ -391,6 +436,8 @@ def _described(
         modality=modality,
         grid=None if colour else _dose_grid(dataset, spacing, (rows, columns), frames),
         frame=_uid(dataset, "FrameOfReferenceUID"),
+        whole=whole,
+        dose=is_rt_dose(dataset),
     )
 
 
@@ -1143,7 +1190,17 @@ class _Projection:
             count = math.floor(extents[dimension] / step + 1e-6) + 1
             wanted = np.arange(count) * step
             nearest = _nearest(coordinates[axis], wanted)
-            image = np.take(image, nearest, axis=dimension)
+            sampled = np.take(image, nearest, axis=dimension)
+            if axis == 0:
+                # Each slice is also taken into the pixel nearest it by its
+                # maximum, so that every slice is drawn where slices are
+                # closer than the pixels.
+                np.fmax.at(
+                    np.moveaxis(sampled, dimension, 0),
+                    _nearest(wanted, coordinates[axis]),
+                    np.moveaxis(image, dimension, 0),
+                )
+            image = sampled
         vertical, horizontal = (volume.directions[axis] for axis in axes)
         if vertical[2] > 0:  # increasing index runs superior, so flip
             image = image[::-1]
@@ -1156,6 +1213,8 @@ class _Projection:
 
 def _nearest(coordinates: np.ndarray, wanted: np.ndarray) -> np.ndarray:
     """The index of the coordinate nearest each wanted one; coordinates ascend."""
+    if len(coordinates) == 1:
+        return np.zeros(len(wanted), np.intp)
     right = np.clip(np.searchsorted(coordinates, wanted), 1, len(coordinates) - 1)
     left = right - 1
     closer_left = (wanted - coordinates[left]) <= (coordinates[right] - wanted)

@@ -49,7 +49,11 @@ The volume is sampled by nearest neighbour to cubic voxels of
 :data:`MINIMUM_VOXEL` millimetres, or of its smallest spacing where that is
 larger, enlarged where needed to keep each axis within
 :data:`MAXIMUM_VOXELS` voxels. Its slices are sampled as they are decoded,
-so that it is never held at full resolution. Each view looks along
+so that it is never held at full resolution. Each slice is also taken into
+the voxels nearest it along the slice axis by their maximum, so that every
+slice is drawn, as it would not be by nearest neighbour alone where slices
+are closer than the voxels: a voxel is in the surface where any of its
+slices is there. Each view looks along
 horizontal rays, turned about the superior-inferior axis by its angle in
 degrees from anterior towards the patient's left. It shows the first voxel
 on each ray that is in the surface, shaded by Lambert's law from the slope
@@ -182,6 +186,10 @@ class Surface:
             sampled_indices(np.asarray(coordinates), axis, voxel)
             for coordinates, axis in zip(volume.coordinates, volume.axes)
         )
+        # The voxel nearest each slice along the slice axis.
+        self._nearest = nearest_voxels(
+            np.asarray(volume.coordinates[0]), volume.axes[0], voxel
+        )
         self._samples = np.full(
             tuple(len(taken) for taken in self._taken), np.nan, np.float32
         )
@@ -201,9 +209,14 @@ class Surface:
             finite = values[np.isfinite(values)]
             if finite.size:
                 self._peak = max(self._peak, float(finite.max()))
-        wanted = np.flatnonzero(self._taken[0] == index)
-        if wanted.size:
-            self._samples[wanted] = values[np.ix_(self._taken[1], self._taken[2])]
+        wanted = np.union1d(
+            np.flatnonzero(self._taken[0] == index), self._nearest[index]
+        )
+        # fmax keeps a voxel's highest slice, and ignores NaN, which is
+        # padding or a voxel not yet sampled, unless every value is.
+        self._samples[wanted] = np.fmax(
+            self._samples[wanted], values[np.ix_(self._taken[1], self._taken[2])]
+        )
 
     def mask(self) -> np.ndarray | None:
         """The voxels in the surface, or None if a slice is missing.
@@ -315,20 +328,34 @@ def sampled_indices(coordinates: np.ndarray, axis: int, voxel: float) -> np.ndar
     The voxels are ``voxel`` millimetres apart, from the highest coordinate
     along z and from the lowest along x and y.
     """
-    low, high = float(coordinates.min()), float(coordinates.max())
-    # The end is kept, though the division may fall a little short of it.
-    count = math.floor((high - low) / voxel + 1e-6) + 1
-    wanted = (
-        high - np.arange(count) * voxel if axis == 2 else low + np.arange(count) * voxel
-    )
+    wanted = _voxel_coordinates(coordinates, axis, voxel)
     if len(coordinates) == 1:
-        return np.zeros(count, np.intp)
+        return np.zeros(len(wanted), np.intp)
     order = np.argsort(coordinates, kind="stable")
     ascending = coordinates[order]
     right = np.clip(np.searchsorted(ascending, wanted), 1, len(ascending) - 1)
     left = right - 1
     closer_left = (wanted - ascending[left]) <= (ascending[right] - wanted)
     return order[np.where(closer_left, left, right)]
+
+
+def nearest_voxels(coordinates: np.ndarray, axis: int, voxel: float) -> np.ndarray:
+    """The index of the voxel nearest each coordinate along one axis, the
+    voxels being those of :func:`sampled_indices`."""
+    wanted = _voxel_coordinates(coordinates, axis, voxel)
+    return np.abs(coordinates[:, np.newaxis] - wanted[np.newaxis, :]).argmin(axis=1)
+
+
+def _voxel_coordinates(coordinates: np.ndarray, axis: int, voxel: float) -> np.ndarray:
+    """The coordinate of each voxel along one axis, ``voxel`` millimetres
+    apart, from the highest coordinate along z and from the lowest along x
+    and y."""
+    low, high = float(coordinates.min()), float(coordinates.max())
+    # The end is kept, though the division may fall a little short of it.
+    count = math.floor((high - low) / voxel + 1e-6) + 1
+    return (
+        high - np.arange(count) * voxel if axis == 2 else low + np.arange(count) * voxel
+    )
 
 
 def _otsu(values: np.ndarray, padding: bool = False) -> float | None:

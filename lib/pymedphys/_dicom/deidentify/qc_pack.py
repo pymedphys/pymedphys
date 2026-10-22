@@ -110,7 +110,7 @@ import hashlib
 import json
 import re
 import secrets
-from collections.abc import Iterable
+from collections.abc import Collection, Iterable
 from pathlib import PurePosixPath
 
 from . import pixel_risk, residuals, roi_names
@@ -130,12 +130,15 @@ from .reviewed_roi_names import Outcome
 from .text_detection import TextBox
 
 # The format of the pack document. A change to its fields takes a new label.
-FORMAT = "pymedphys-deid-qc-pack/10"
+FORMAT = "pymedphys-deid-qc-pack/11"
 # The bytes of a written file shown on each side of a residual's offset.
 EXCERPT_BYTES = 48
 # The SHA-256 that face_review.contour_data_sha256 gives a file without
 # contours: of a count of no ROI Contour Sequence items.
 NO_CONTOURS_SHA256 = hashlib.sha256(bytes(8)).hexdigest()
+# The SHA-256 that face_review.pixel_data_sha256 gives a file without pixel
+# data: of nothing.
+NO_PIXELS_SHA256 = hashlib.sha256(b"").hexdigest()
 
 # The directory, beside the pack's file, that holds its previews.
 PREVIEW_DIRECTORY = "previews"
@@ -250,7 +253,10 @@ class InstanceEntry:
         a released or held input, as the gate read it, in lower-case
         hexadecimal, which binds a series' face verdict to the pixel data
         that the run wrote; ``None`` for any other input, or one whose
-        written file the gate did not hand over or could not be read.
+        written file the gate did not hand over or could not be read, or
+        whose pixel data the pack's previews that could show a face do not
+        draw in every frame, as none yet does an RT Dose's, so that no
+        verdict releases them.
     contour_sha256 : str, optional
         Likewise, the :func:`~.face_review.contour_data_sha256` of the file
         written, which binds a series' face verdict to the contours that
@@ -1404,6 +1410,28 @@ class QcPack:
             )
         self._check_redaction_previews()
         self._check_contour_previews()
+        self._check_pixel_previews()
+
+    def _check_pixel_previews(self) -> None:
+        """An instance's pixel data's SHA-256, other than that of none, is
+        recorded only where previews that could show a face show its frames
+        from the first, with none missing, and it is not listed as not
+        previewed, so that no verdict releases pixel data that no one saw.
+        The pack does not record how many frames an instance has, so a run
+        under the option holds one with more than its previews list
+        (:meth:`~.face_review.FaceReview.hold_reason`)."""
+        pictured = pictured_frames(
+            ((preview.kind.value, preview.frames) for preview in self.previews),
+            {entry.position for entry in self.not_previewed},
+        )
+        if any(
+            entry.pixel_sha256 not in (None, NO_PIXELS_SHA256)
+            and entry.position not in pictured
+            for entry in self.instances
+        ):
+            raise QcPackError(
+                "an instance's pixel data's SHA-256 needs a preview that shows them"
+            )
 
     def _check_contour_previews(self) -> None:
         """An instance's contours' SHA-256, other than that of none, is
@@ -1500,6 +1528,58 @@ class QcPack:
             f"not_previewed={len(self.not_previewed)}, "
             f"source_gaps={len(self.source_gaps)}, series={len(self.series)})"
         )
+
+
+def pictured_frames(
+    previews: Iterable[tuple[str, Iterable[tuple[int, int]]]],
+    not_previewed: Collection[int],
+) -> dict[int, int]:
+    """Return how many frames of each run position a pack's previews show
+    in a way that could show a face, from its first frame with none missing.
+
+    Parameters
+    ----------
+    previews : iterable of (str, iterable of (int, int))
+        Each preview's kind, as a :class:`PreviewKind` value, and the
+        frames it lists, by run position and frame index.
+    not_previewed : collection of int
+        The run positions listed as not previewed, which are left out.
+
+    Returns
+    -------
+    dict of int to int
+        For each position whose frames those previews list from frame 0
+        with none missing, how many they list. A contour sheet's frames do
+        not count, since it shows the volume that it is drawn with only as a
+        surface, and nor do those of the isodose render of an RT Dose grid,
+        which D-017 finds inconclusive. A surface render is a dose grid's
+        where it lists a frame other than a position's first, as a volume's
+        never does, since a volume is of single-frame instances.
+    """
+    previews = [(kind, tuple(frames)) for kind, frames in previews]
+    surface, contours = (
+        PreviewKind.SERIES_SURFACE.value,
+        PreviewKind.STRUCTURE_SET_CONTOURS.value,
+    )
+    dosed = {
+        position
+        for kind, frames in previews
+        if kind == surface
+        for position, frame in frames
+        if frame
+    }
+    framed: dict[int, set[int]] = {}
+    for kind, frames in previews:
+        if kind == contours:
+            continue
+        for position, frame in frames:
+            if not (kind == surface and position in dosed):
+                framed.setdefault(position, set()).add(frame)
+    return {
+        position: len(frames)
+        for position, frames in framed.items()
+        if position not in not_previewed and frames == set(range(len(frames)))
+    }
 
 
 def _check_position(what: str, position: object) -> None:

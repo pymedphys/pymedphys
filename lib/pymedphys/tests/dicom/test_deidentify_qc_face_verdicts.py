@@ -263,6 +263,16 @@ def test_a_run_binds_each_series_to_the_digests_of_its_source_files(tmp_path):
             ).hex()
             for file in corpus.files
         }
+        # No preview shows an RT Dose as it could show a face.
+        doses = {
+            file.manifest.name
+            for file in corpus.files
+            if (dataset := pydicom.dcmread(instances / file.manifest.name)).get(
+                "Modality"
+            )
+            == "RTDOSE"
+            and "PixelData" in dataset
+        }
     finally:
         shutil.rmtree(directory, ignore_errors=True)
 
@@ -280,9 +290,9 @@ def test_a_run_binds_each_series_to_the_digests_of_its_source_files(tmp_path):
     for entry in entries:
         name = Path(entry["source"]).name
         reviewable = entry["position"] in reviewed
-        assert entry["pixel_sha256"] == (pixels[name] if reviewable else None), entry[
-            "position"
-        ]
+        assert entry["pixel_sha256"] == (
+            pixels[name] if reviewable and name not in doses else None
+        ), entry["position"]
         assert entry["contour_sha256"] == (contours[name] if reviewable else None), (
             entry["position"]
         )
@@ -321,14 +331,17 @@ def test_a_written_file_that_cannot_be_read_has_no_digests(monkeypatch, digester
     }
     digests = run_qc._written_sha256  # pylint: disable = protected-access
     # A file without contours has the digest of none, shown or not.
-    assert digests(data, False) == expected
+    assert digests(data, False, True) == expected
     monkeypatch.setattr(run_qc, digester, fails)
     # Whatever taking a digest raises, the pack is still built, and no
     # verdict can clear the instance, which lacks that digest; nor one that
     # cannot be read.
     field = "pixel_sha256" if digester == "pixel_data_sha256" else "contour_sha256"
-    assert digests(data, False) == {**expected, field: None}
-    assert digests(b"not DICOM", True) == {"pixel_sha256": None, "contour_sha256": None}
+    assert digests(data, False, True) == {**expected, field: None}
+    assert digests(b"not DICOM", True, True) == {
+        "pixel_sha256": None,
+        "contour_sha256": None,
+    }
 
 
 # The attestation's verdicts.

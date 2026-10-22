@@ -145,6 +145,7 @@ from .face_review import (
     FaceReview,
     carries_visual_features,
     contour_data_sha256,
+    is_rt_dose,
     pixel_data_sha256,
 )
 from .file_layout import ElementPath
@@ -246,6 +247,7 @@ _STUDY = ElementPath((), "(0020,000D)")
 _SERIES = ElementPath((), "(0020,000E)")
 _PATIENT_ID = ElementPath((), "(0010,0020)")
 _PIXEL_DATA = ElementPath((), "(7FE0,0010)")
+_NUMBER_OF_FRAMES = ElementPath((), "(0028,0008)")
 _BURNED_IN_ANNOTATION = "(0028,0301)"
 _RECOGNIZABLE_VISUAL_FEATURES = "(0028,0302)"
 _ROI_CONTOURS = "(3006,0039)"  # ROI Contour Sequence
@@ -1084,7 +1086,10 @@ class InstanceTransform:
 
         Nothing holds an instance without a face review, or one that cannot
         show a face. The review is of the source file, and of the pixel data
-        and contours that ``writing`` writes.
+        and contours that ``writing`` writes. An RT Dose with pixel data, by
+        its IOD, SOP Class UID, or Modality, is held whatever its verdict,
+        since no preview yet shows its doses as they could show a face
+        (D-017), as a QC pack records by giving it no pixel data digest.
         """
         review = self._face_review
         if review is None or not carries_visual_features(dataset, iod.name):
@@ -1093,7 +1098,14 @@ class InstanceTransform:
             hashlib.sha256(data).digest(),
             _pixel_digest(writing, dataset),
             _contour_digest(writing, dataset),
+            _frame_count(writing, dataset),
         )
+        if (
+            reason is None
+            and (iod.name == RT_DOSE or is_rt_dose(dataset))
+            and any(tag in dataset for tag in PIXEL_DATA_TAGS)
+        ):
+            reason = VisualFeaturesReason.OTHER_PIXEL_DATA
         return None if reason is None else HeldVisualFeatures(reason)
 
     def _frame_hold(
@@ -1603,6 +1615,23 @@ def _pixel_digest(writing: WriterPlan, dataset: pydicom.Dataset) -> bytes | None
     try:
         return pixel_data_sha256(planned)
     except ValueError:
+        return None
+
+
+def _frame_count(writing: WriterPlan, dataset: pydicom.Dataset) -> int | None:
+    """Return how many frames the pixel data that the writer's plan writes
+    have, as a QC pack's previews count them: Number of Frames, the plan's
+    replacement or the source's where the plan keeps it, or one where the
+    file written has none or it is empty; None where it cannot be read."""
+    if _NUMBER_OF_FRAMES in writing.replacements:
+        element = writing.replacements[_NUMBER_OF_FRAMES]
+    elif _NUMBER_OF_FRAMES in writing.kept and "NumberOfFrames" in dataset:
+        element = dataset["NumberOfFrames"]
+    else:
+        return 1
+    try:
+        return int(element.value or 1)
+    except Exception:  # pylint: disable = broad-exception-caught
         return None
 
 

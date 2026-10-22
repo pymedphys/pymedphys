@@ -47,6 +47,7 @@ from pymedphys._dicom.deidentify import (
     run_qc,
 )
 from pymedphys._dicom.deidentify import synthetic_corpus as corpus_module
+from pymedphys._dicom.deidentify.dose_defacing import RT_DOSE
 from pymedphys._dicom.deidentify.face_review import (
     DOSE_IN_FACE_BLOCK_TEXT,
     UNDEFACED_TEXT,
@@ -75,6 +76,7 @@ from pymedphys._dicom.deidentify.policy import (
 from pymedphys._dicom.deidentify.qc_attestation import Coverage, Face, Outcome
 from pymedphys._dicom.deidentify.qc_pack import (
     NO_CONTOURS_SHA256,
+    NO_PIXELS_SHA256,
     Disposition,
     InstanceEntry,
     Preview,
@@ -122,24 +124,29 @@ def fixture_pack(tmp_path):
 
 
 def _sheeted(instances):
-    """A pack of these instances, with a contour sheet for each whose
-    contours' SHA-256 it records, as the pack needs."""
-    contoured = [
-        entry.position
+    """A pack of these instances, with a preview of each whose pixel data's
+    SHA-256 it records, and a contour sheet of each whose contours', as the
+    pack needs."""
+    shown = [
+        (PreviewKind.INSTANCE, entry.position)
+        for entry in instances
+        if entry.pixel_sha256 not in (None, NO_PIXELS_SHA256)
+    ] + [
+        (PreviewKind.STRUCTURE_SET_CONTOURS, entry.position)
         for entry in instances
         if entry.contour_sha256 not in (None, NO_CONTOURS_SHA256)
     ]
-    sheets = tuple(
+    previews = tuple(
         Preview(
             f"P-{number:04d}.png",
-            PreviewKind.STRUCTURE_SET_CONTOURS,
+            kind,
             ((position, 0),),
             1,
             qc_previews.png(np.zeros((2, 2), np.uint8)),
         )
-        for number, position in enumerate(contoured, 1)
+        for number, (kind, position) in enumerate(shown, 1)
     )
-    return QcPack(REFERENCE, instances, series=SERIES, previews=sheets)
+    return QcPack(REFERENCE, instances, series=SERIES, previews=previews)
 
 
 def _sha(*numbers):
@@ -992,7 +999,7 @@ def test_a_held_reason_is_a_visual_features_reason():
 def test_a_verdict_releases_compressed_pixel_data_as_the_reviewed_run_wrote_them():
     corpus = compressed.compressed_corpus(corpus_module.build_corpus())
     held = HeldVisualFeatures(VisualFeaturesReason.OTHER_PIXEL_DATA)
-    released = cut = 0
+    released = cut = doses = 0
 
     for file in corpus.files:
         if file.manifest.transfer_syntax not in compressed.CORPUS_SYNTAXES:
@@ -1009,7 +1016,9 @@ def test_a_verdict_releases_compressed_pixel_data_as_the_reviewed_run_wrote_them
             continue
         # Marked absent, but with no pixel data seen, it is held; given the
         # pixel data that this run wrote, with each codestream's metadata
-        # cut, it is released.
+        # cut, it is released, but for an RT Dose, which no preview shows
+        # as it could show a face, so that a run holds it whatever its
+        # verdict.
         assert isinstance(unseen.evidence, HeldEvidence)
         assert held in getattr(unseen.evidence, "held")
         written = pixel_data_sha256(read_source(unseen.data).dataset())
@@ -1026,8 +1035,15 @@ def test_a_verdict_releases_compressed_pixel_data_as_the_reviewed_run_wrote_them
             ),
             unvalidated_policy=True,
         )(file.data, record)
+        if record.iod == RT_DOSE:
+            assert isinstance(seen.evidence, HeldEvidence), file.name
+            assert getattr(seen.evidence, "held") == (held,), file.name
+            doses += 1
+            continue
         assert not isinstance(seen.evidence, HeldEvidence), file.name
         assert CODE in _codes(pydicom.dcmread(io.BytesIO(seen.data)))
         released += 1
         cut += written != pixel_data_sha256(read_source(file.data).dataset())
     assert released and cut
+    # The collection's RT Dose images, in RLE Lossless.
+    assert doses == 2
