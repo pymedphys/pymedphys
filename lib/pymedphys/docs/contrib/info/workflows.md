@@ -196,7 +196,14 @@ Static type checking for type safety.
   - `type-check`: Pyright, the blocking type checker, then MyPy, a secondary
     checker run from the locked `lint` dependency group, with the `tests` and `ai` extras so that both checkers see every import. MyPy is optional: its step uses
     `continue-on-error`, so a MyPy failure marks the step and adds a run
-    annotation but leaves the job green. It runs even when Pyright fails
+    annotation but leaves the job green. It runs even when Pyright fails.
+    Pyright checks two projects: `lib/pymedphys`, configured in
+    `pyproject.toml`, and `.github/scripts`, whose `pyrightconfig.json`
+    extends those settings. The Pyright command line always skips
+    dot-directories below its project root, whatever `exclude` says, so the
+    scripts cannot be part of the root project. Each run fails unless it
+    checks every Python file in its tree, so a project that stops finding its
+    files cannot pass silently.
 - Runs when the selector chooses the Python checks, even if pre-commit fails
 
 #### `unit-tests.yml`
@@ -906,6 +913,7 @@ uv run pre-commit run --all-files
 uv run ruff check
 uv run ruff format --check
 uv run pyright
+uv run pyright --project .github/scripts
 uv run pymedphys dev lint
 uv run pymedphys dev tests -m "not slow"
 

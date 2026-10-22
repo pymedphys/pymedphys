@@ -564,6 +564,30 @@ class WorkflowContractTests(unittest.TestCase):
         self.assertEqual(job.count("continue-on-error: true"), 1)
         self.assertIn("unit-tests", needs(jobs("ci.yml")["summary"]))
 
+    def test_pyright_checks_the_package_and_these_scripts(self):
+        # The pyright command line always skips dot-directories below its
+        # project root, so these scripts are a project of their own that
+        # inherits the package's settings.
+        config = json.loads(
+            (Path(__file__).parent / "pyrightconfig.json").read_text(encoding="utf-8")
+        )
+        self.assertEqual(config, {"extends": "../../pyproject.toml", "include": ["."]})
+        root = (WORKFLOWS.parents[1] / "pyproject.toml").read_text(encoding="utf-8")
+        # Listing the scripts here again would only look like coverage.
+        self.assertIn('\ninclude = ["lib/pymedphys"]\n', root)
+        job = jobs("type-check.yml")["type-check"]
+        for line in (
+            "        shell: bash\n",
+            "          check lib/pymedphys\n",
+            "          check .github/scripts --project .github/scripts\n",
+            '          exit "${status}"\n',
+        ):
+            with self.subTest(line=line):
+                self.assertIn(line, job)
+        # A project that finds fewer files than its tree holds fails the step.
+        self.assertIn('if [[ "${found}" != "${expected}" ]]; then\n', job)
+        self.assertIn("uv run -- pyright --stats", job)
+
 
 if __name__ == "__main__":
     unittest.main()
