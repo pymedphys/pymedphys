@@ -35,7 +35,7 @@ from pathlib import Path, PurePosixPath
 
 from pymedphys._imports import pydicom
 
-from . import pixel_risk, qc_pack, qc_previews, residuals
+from . import pixel_risk, qc_contours, qc_pack, qc_previews, residuals
 from .iod_conformance import SourceGap
 from .face_review import contour_data_sha256, pixel_data_sha256
 from .file_layout import ElementPath
@@ -317,11 +317,12 @@ def qc_pack_of(
     :class:`PixelRiskMaterial` gives findings for as high-risk, and the
     frames of each instance that a :class:`RedactionMaterial` gives, which
     the pack lists in ``redactions``. A released or held instance without
-    one is listed as not previewed. Each such file's pixel data and
-    contours are recorded with its instance as
+    one is listed as not previewed. Each such file's pixel
+    data and contours are recorded with its instance as
     :func:`~.face_review.pixel_data_sha256` and
     :func:`~.face_review.contour_data_sha256` give them, unless the file
-    cannot be read again.
+    cannot be read again, or, for its contours, unless it has contours that
+    no contour sheet shows.
 
     The released and held instances that give :class:`SeriesEvidence` are
     grouped by series, in run position order, and each series is assessed
@@ -428,13 +429,16 @@ def qc_pack_of(
         )
         for position, item in redactions.items()
     }
+    previews = qc_previews.previews_of(written, high_risk, cleaned)
     instances = tuple(
-        dataclasses.replace(entry, **_written_sha256(written[position]))
+        dataclasses.replace(
+            entry,
+            **_written_sha256(written[position], position in previews.contours_shown),
+        )
         if position in written
         else entry
         for position, entry in enumerate(instances)
     )
-    previews = qc_previews.previews_of(written, high_risk, cleaned)
     # A released or held file that no gate handed over is listed, not lost.
     missing = [
         qc_pack.NotPreviewedEntry(
@@ -531,9 +535,13 @@ def assessed_series(
     return assessed
 
 
-def _written_sha256(written: bytes) -> dict[str, str | None]:
+def _written_sha256(written: bytes, contours_shown: bool) -> dict[str, str | None]:
     """Return the SHA-256 of a written file's pixel data and contours, as an
-    instance entry's fields, each None if unreadable."""
+    instance entry's fields, each None if unreadable.
+
+    The contours' is None too where the file has contours that the pack's
+    contour sheet does not show, so that no verdict releases them unseen.
+    """
     digests: dict[str, str | None] = {"pixel_sha256": None, "contour_sha256": None}
     try:
         dataset = read_source(written).dataset()
@@ -541,10 +549,10 @@ def _written_sha256(written: bytes) -> dict[str, str | None]:
     # verdict clears it, and the pack is still written.
     except Exception:  # pylint: disable = broad-exception-caught
         return digests
-    for field, digest in (
-        ("pixel_sha256", pixel_data_sha256),
-        ("contour_sha256", contour_data_sha256),
-    ):
+    taken = [("pixel_sha256", pixel_data_sha256)]
+    if contours_shown or not qc_contours.has_contours(dataset):
+        taken.append(("contour_sha256", contour_data_sha256))
+    for field, digest in taken:
         try:
             digests[field] = digest(dataset).hex()
         # Likewise, for the digest that cannot be taken.

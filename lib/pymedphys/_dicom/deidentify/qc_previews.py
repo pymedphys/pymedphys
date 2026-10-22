@@ -43,6 +43,12 @@ frame with such regions, also from the file as received:
   RT Dose instance of two or more frames whose grid lies along the patient's
   axes, from the front, the two obliques, and the two profiles, as
   :mod:`~pymedphys._dicom.deidentify.qc_surfaces` describes;
+- a contour sheet of each instance with contours, such as an RT Structure
+  Set, high-risk or not, since a face verdict can release only what a
+  reviewer saw: its contours as written, drawn in each Frame of Reference
+  of its ROIs with the surface of a volume in that frame, of a series that
+  it references where there is one, or else of the first, as
+  :mod:`~pymedphys._dicom.deidentify.qc_contours` describes;
 - each high-risk instance at full resolution: every frame, or
   :data:`CINE_FRAMES` evenly spaced, unscaled, since burned-in text may be
   small;
@@ -89,11 +95,11 @@ An instance whose pixel data cannot be previewed is reported with why,
 rather than left out: pixel data in a compressed transfer syntax that no
 installed plugin is pinned to decode; a photometric interpretation other
 than those above, or float pixel data; or pixel data that cannot be
-decoded. A high-risk
-instance without pixel data, such as an RT Structure Set with the patient's
-outline, is reported too, so that the reviewer knows there is nothing to see
-of it here. Only the frames that a preview shows are decoded, one at a
-time, so an instance is reported as undecodable only where one of them is.
+decoded. An instance with contours that a sheet cannot show is reported,
+and so is a high-risk instance without pixel data or contours, so that the
+reviewer knows there is nothing to see of it here. Only the frames that a
+preview shows are decoded, one at a time, so an instance is reported as
+undecodable only where one of them is.
 
 A PNG is written with no ancillary chunks, so it holds no time or text, and
 the same pixels always give the same file with the same zlib.
@@ -112,7 +118,7 @@ from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom
 
 from .pixel_decoding import DECODING_PLUGINS, decoder_available
-from . import qc_surfaces
+from . import qc_contours, qc_surfaces
 from .qc_pack import (
     NotPreviewedEntry,
     NotPreviewedReason,
@@ -120,6 +126,7 @@ from .qc_pack import (
     PreviewKind,
     RedactionEntry,
 )
+from .uids import normalise_uid
 
 CINE_FRAMES = 16
 CINE_COLUMNS = 4
@@ -178,6 +185,7 @@ class _Instance:
     number: int | None
     modality: str
     grid: qc_surfaces.Grid | None  # an RT Dose grid that a surface render shows
+    frame: str | None  # Frame of Reference UID
 
 
 @dataclasses.dataclass(frozen=True)
@@ -190,15 +198,22 @@ class PreviewSet:
         Each series' cine strip, then its projection and its surface render
         if it forms a volume, then the surface render of each RT Dose grid
         in it, series in the order of their first run position; then each
-        high-risk instance, in run position order; then each frame of each
-        instance that Clean Pixel Data cleaned, in run position and frame
-        order. Named ``P-0001.png`` onwards in that order.
+        contour sheet, in run position order; then each high-risk instance,
+        in run position order; then each frame of each instance that Clean
+        Pixel Data cleaned, in run position and frame order. Named
+        ``P-0001.png`` onwards in that order. A contour sheet shows its
+        instance's frame 0, then the frames of each volume that it is
+        drawn with, if any.
     not_previewed : tuple of ~pymedphys._dicom.deidentify.qc_pack.NotPreviewedEntry
         In run position order.
+    contours_shown : frozenset of int
+        The run positions of the files with contours that a contour sheet
+        shows.
     """
 
     previews: tuple[Preview, ...]
     not_previewed: tuple[NotPreviewedEntry, ...]
+    contours_shown: frozenset[int] = frozenset()
 
 
 def previews_of(
@@ -227,19 +242,34 @@ def previews_of(
     redactions = {} if redactions is None else redactions
     instances: list[_Instance] = []
     refused: dict[int, NotPreviewedReason] = {}
+    contoured: dict[int, qc_contours.Contours] = {}
     for position in sorted(written):
         found = _instance(position, written[position])
         if isinstance(found, _Instance):
             instances.append(found)
-        elif found is not None:
+        elif isinstance(found, NotPreviewedReason):
             refused[position] = found
+        elif found is not None:
+            contoured[position] = found
         elif position in high_risk:
             refused[position] = NotPreviewedReason.NO_PIXEL_DATA
     # Each image is encoded as it is made, so that only its PNG is kept.
     images: list[_Encoded] = []
     decoded = _Decoder(refused)
+    guides: dict[str, list[tuple[_Guided, str | None]]] = {
+        frame: []
+        for contours in contoured.values()
+        for frame in contours.frames
+        if frame is not None
+    }
     for series in _series(instances):
-        images.extend(_encoded(_series_images(series, decoded)))
+        images.extend(_encoded(_series_images(series, decoded, guides)))
+    for position, contours in sorted(contoured.items()):
+        sheet = _contour_image(position, contours, guides)
+        if sheet is None:
+            refused[position] = NotPreviewedReason.CONTOURS_NOT_SHOWN
+            continue
+        images.extend(_encoded([sheet]))
     for instance in instances:
         if instance.position in high_risk:
             image = _instance_image(instance, decoded)
@@ -260,12 +290,16 @@ def previews_of(
             NotPreviewedEntry(position, reason)
             for position, reason in sorted(refused.items())
         ),
+        frozenset(contoured) - frozenset(refused),
     )
 
 
 # An image's kind, the frames it shows by run position and index, how many
 # frames its series or instance has, and its PNG.
 _Encoded = tuple[PreviewKind, tuple[tuple[int, int], ...], int, bytes]
+# The surface of a volume that a contour sheet can be drawn with, and the
+# frames that it shows.
+_Guided = tuple[qc_contours.Guide, tuple[tuple[int, int], ...]]
 
 
 def _encoded(images) -> Iterator[_Encoded]:
@@ -274,10 +308,14 @@ def _encoded(images) -> Iterator[_Encoded]:
         yield kind, frames, total, png(image)
 
 
-def _instance(position: int, data: bytes) -> _Instance | NotPreviewedReason | None:
+def _instance(
+    position: int, data: bytes
+) -> _Instance | NotPreviewedReason | qc_contours.Contours | None:
     """Read what a preview needs of a file, or why it cannot be previewed.
 
-    ``None`` means the file has no pixel data.
+    A file without pixel data gives its contours, where it has any that a
+    sheet can show, or ``CONTOURS_NOT_SHOWN`` where it has others, or
+    ``None`` where it has none.
     """
     try:
         dataset = pydicom.dcmread(io.BytesIO(data))
@@ -287,7 +325,10 @@ def _instance(position: int, data: bytes) -> _Instance | NotPreviewedReason | No
     if any(keyword in dataset for keyword in _FLOAT_PIXEL_DATA):
         return NotPreviewedReason.UNSUPPORTED
     if "PixelData" not in dataset:
-        return None
+        if not qc_contours.has_contours(dataset):
+            return None
+        contours = qc_contours.contours_of(dataset)
+        return NotPreviewedReason.CONTOURS_NOT_SHOWN if contours is None else contours
     # The data set is not kept: its frames are decoded from the file one at
     # a time, so that a run's pixel data are never all decoded at once.
     return _described(position, dataset, data)
@@ -349,7 +390,16 @@ def _described(
         number=number,
         modality=modality,
         grid=None if colour else _dose_grid(dataset, spacing, (rows, columns), frames),
+        frame=_uid(dataset, "FrameOfReferenceUID"),
     )
+
+
+def _uid(dataset: pydicom.Dataset, keyword: str) -> str | None:
+    try:
+        uid = normalise_uid(str(dataset.get(keyword) or ""))
+    except Exception:  # pylint: disable = broad-exception-caught
+        return None
+    return uid or None
 
 
 def _number(dataset: pydicom.Dataset, keyword: str, kind: type) -> float | int | None:
@@ -591,7 +641,11 @@ def _evenly(count: int, limit: int) -> list[int]:
     return sorted({round(i * (count - 1) / (limit - 1)) for i in range(limit)})
 
 
-def _series_images(series: list[_Instance], decoder: _Decoder):
+def _series_images(
+    series: list[_Instance],
+    decoder: _Decoder,
+    guides: dict[str, list[tuple[_Guided, str | None]]] | None = None,
+):
     frames = [
         (instance.position, frame)
         for instance in series
@@ -637,6 +691,16 @@ def _series_images(series: list[_Instance], decoder: _Decoder):
         projected = projection.image()
         if projected is not None:
             yield projected
+    frame = series[0].frame
+    if (
+        guides is not None
+        and volume is not None
+        and frame in guides
+        and all(instance.frame == frame for instance in series)
+    ):
+        guide = _guide(series, surfaces[0][1])
+        if guide is not None:
+            guides[frame].append(((guide, surfaces[0][0]), series[0].series))
     for shown, surface in surfaces:
         image = surface.image()
         if image is not None:
@@ -670,6 +734,69 @@ def _surfaces(
             )
             surfaces.append((shown, qc_surfaces.Surface(instance.grid)))
     return surfaces
+
+
+def _guide(
+    series: list[_Instance], surface: qc_surfaces.Surface
+) -> qc_contours.Guide | None:
+    """The surface of a volume, placed in the patient's coordinates.
+
+    None if a slice is missing.
+    """
+    inside = surface.mask()
+    if inside is None:
+        return None
+    planes = [instance.plane for instance in series]
+    first = planes[0]
+    assert first is not None
+    normal = np.cross(first.row, first.column)
+    axes = [int(np.argmax(np.abs(d))) for d in (normal, first.column, first.row)]
+    along = (
+        np.array([plane.origin[axes[0]] for plane in planes if plane is not None]),
+        first.origin[axes[1]]
+        + first.column[axes[1]] * first.spacing[0] * np.arange(first.shape[0]),
+        first.origin[axes[2]]
+        + first.row[axes[2]] * first.spacing[1] * np.arange(first.shape[1]),
+    )
+    sampled = {
+        axis: values[taken] for axis, values, taken in zip(axes, along, surface.sampled)
+    }
+    return qc_contours.Guide(inside, sampled[2], sampled[1], sampled[0])
+
+
+def _contour_image(
+    position: int,
+    contours: qc_contours.Contours,
+    guides: Mapping[str, list[tuple[_Guided, str | None]]],
+):
+    """The contour sheet of a structure set, drawn in each Frame of
+    Reference of its ROIs with the surface of a volume in that frame: of a
+    series that the structure set references, if there is one, or else the
+    first; or None where it would be taller than
+    :data:`~.qc_contours.MAXIMUM_SHEET_PIXELS`, which is drawn only until
+    it is."""
+    chosen: dict[str | None, qc_contours.Guide] = {}
+    frames: list[tuple[int, int]] = [(position, 0)]
+    for frame in contours.frames:
+        candidates = guides.get(frame, []) if frame is not None else []
+        found = next(
+            (guided for guided, uid in candidates if uid in contours.series),
+            candidates[0][0] if candidates else None,
+        )
+        if found is not None:
+            chosen[frame] = found[0]
+            frames.extend(each for each in found[1] if each not in frames)
+    sheet = qc_contours.contour_sheet(
+        contours, chosen, qc_contours.MAXIMUM_SHEET_PIXELS
+    )
+    if sheet is None:
+        return None
+    return (
+        PreviewKind.STRUCTURE_SET_CONTOURS,
+        tuple(frames),
+        len(frames),
+        sheet,
+    )
 
 
 def _instance_image(instance: _Instance, decoder: _Decoder):

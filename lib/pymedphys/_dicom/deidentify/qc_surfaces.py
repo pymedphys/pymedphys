@@ -27,7 +27,10 @@ renders:
   Offset Vector, whose axes lie along the patient's three directions and
   whose frames are evenly spaced.
 
-Enhanced multi-frame images and RT Structure Set contours are not rendered.
+Enhanced multi-frame images are not rendered.
+:mod:`~pymedphys._dicom.deidentify.qc_contours` renders RT Structure Set
+contours by :func:`views`, and by :func:`view_crossings` the surfaces
+that one region hides behind its own.
 
 The surface encloses the voxels at or above a threshold, applied after
 Rescale Slope and Rescale Intercept, or after Dose Grid Scaling for RT Dose:
@@ -216,15 +219,20 @@ class Surface:
             inside = np.nan_to_num(self._samples, nan=-np.inf) >= level
         return np.transpose(inside, [self._grid.axes.index(axis) for axis in (2, 1, 0)])
 
+    @property
+    def sampled(self) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """For each of the volume's axes, the index sampled at each voxel
+        along its patient axis, from superior, anterior, and the patient's
+        right."""
+        first, second, third = self._taken
+        return first, second, third
+
     def image(self) -> np.ndarray | None:
         """The views side by side, as 8-bit grey, or None if a slice is missing."""
         inside = self.mask()
         if inside is None:
             return None
-        tiles = [_shaded(_depths(inside, view)) for view in VIEWS]
-        gap = np.zeros((tiles[0].shape[0], _GAP_PIXELS), np.uint8)
-        parts = [part for tile in tiles for part in (gap, tile)][1:]
-        return np.concatenate(parts, axis=1)
+        return side_by_side(views(inside))
 
     def _level(self) -> float | None:
         threshold = self._grid.threshold
@@ -233,6 +241,50 @@ class Surface:
         if threshold is Threshold.DOSE:
             return DOSE_FRACTION * self._peak if self._peak > 0 else None
         return _otsu(self._samples, padding=True)
+
+
+def views(inside: np.ndarray) -> list[np.ndarray]:
+    """Render voxels from each direction of :data:`VIEWS`, as the module
+    describes, each as 8-bit grey.
+
+    ``inside`` is indexed from superior, from anterior, and from the
+    patient's right, as :meth:`Surface.mask` gives it.
+    """
+    return [shaded(depths) for depths in view_depths(inside)]
+
+
+def view_depths(inside: np.ndarray) -> list[np.ndarray]:
+    """For each direction of :data:`VIEWS`, the depth along each ray of the
+    first voxel in ``inside``, or -1 where a ray meets none.
+
+    Each is indexed from superior, and across from the viewer's left, as
+    the tiles of :func:`views` are.
+    """
+    return [_depths(inside, view) for view in VIEWS]
+
+
+def view_crossings(
+    inside: np.ndarray, directions: Sequence[float] = VIEWS
+) -> list[np.ndarray]:
+    """For each of ``directions``, by default :data:`VIEWS`, the depth along
+    each ray of each voxel at which it crosses the surface, entering or
+    leaving it, in order from the viewer.
+
+    Each is of shape (crossings, rows, across), indexed from superior, and
+    across from the viewer's left, as the tiles of :func:`views` are, with
+    -1 where a ray crosses the surface fewer times; its first crossings are
+    :func:`view_depths`. A crossing into the surface is at the first voxel
+    in it, and one out of it at the last.
+    """
+    return [_crossings(inside, view) for view in directions]
+
+
+def side_by_side(tiles: Sequence[np.ndarray]) -> np.ndarray:
+    """Lay the tiles of one height out from left to right, each separated
+    from the next by black columns."""
+    gap = np.zeros((tiles[0].shape[0], _GAP_PIXELS, *tiles[0].shape[2:]), np.uint8)
+    parts = [part for tile in tiles for part in (gap, tile)][1:]
+    return np.concatenate(parts, axis=1)
 
 
 def voxel_side(
@@ -325,9 +377,41 @@ def _depths(inside: np.ndarray, view: float) -> np.ndarray:
 
     ``inside`` is indexed from superior, from anterior, and from the
     patient's right. The result is indexed from superior, and across from
-    the viewer's left, with -1 where a ray meets no voxel. Rays turn about
-    a voxel at or next to the middle, and reach every voxel in every view.
+    the viewer's left, with -1 where a ray meets no voxel.
     """
+    rays = _rays(inside, view)
+    met = rays.any(axis=1)
+    return np.where(met, rays.argmax(axis=1), -1)
+
+
+def _crossings(inside: np.ndarray, view: float) -> np.ndarray:
+    """For each ray of a view, the depth of each voxel at which it crosses
+    the surface, as :func:`view_crossings` gives them."""
+    rays = _rays(inside, view)
+    rows, steps, across = rays.shape
+    # Each ray's voxels in order, so that its crossings are found in order,
+    # and one beyond its end, so that a ray that ends in the surface leaves it.
+    along = np.zeros((rows, across, steps + 1), bool)
+    along[..., :steps] = np.moveaxis(rays, 1, 2)
+    before = np.zeros_like(along)
+    before[..., 1:] = along[..., :-1]
+    row, column, step = np.nonzero(along != before)
+    depth = np.where(along[row, column, step], step, step - 1)
+    ray = row * across + column
+    counts = np.bincount(ray, minlength=rows * across)
+    rank = np.arange(len(ray)) - (np.cumsum(counts) - counts)[ray]
+    crossings = np.full(
+        (max(1, int(np.max(counts, initial=0))), rows, across), -1, np.intp
+    )
+    crossings[rank, row, column] = depth
+    return crossings
+
+
+def _rays(inside: np.ndarray, view: float) -> np.ndarray:
+    """The voxels along each ray of a view, indexed from superior, by depth
+    from the viewer, and across from the viewer's left, with False beyond
+    ``inside``. Rays turn about a voxel at or next to the middle, and reach
+    every voxel in every view."""
     rows, deep, wide = inside.shape
     middle_y, middle_x = (deep - 1) // 2, (wide - 1) // 2
     reach = math.ceil(
@@ -345,17 +429,18 @@ def _depths(inside: np.ndarray, view: float) -> np.ndarray:
     outside = (x < 0) | (x >= wide) | (y < 0) | (y >= deep)
     padded = np.zeros((rows, deep + 1, wide + 1), bool)
     padded[:, :deep, :wide] = inside
-    rays = padded[
+    rays: np.ndarray = padded[
         :,
         np.asarray(np.where(outside, deep, y), dtype=np.intp),
         np.asarray(np.where(outside, wide, x), dtype=np.intp),
     ]
-    met = rays.any(axis=1)
-    return np.where(met, rays.argmax(axis=1), -1)
+    return rays
 
 
-def _shaded(depths: np.ndarray) -> np.ndarray:
-    """Shade each surface voxel by Lambert's law, lit from the viewer."""
+def shaded(depths: np.ndarray) -> np.ndarray:
+    """Shade each surface voxel of a view by Lambert's law, lit from the
+    viewer, as 8-bit grey, from the depth along each ray, or -1 where a ray
+    meets none."""
     met = depths >= 0
     depth = _smoothed(depths.astype(np.float64), met)
     down, across = _slope(depth, met, 0), _slope(depth, met, 1)

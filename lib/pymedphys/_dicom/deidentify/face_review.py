@@ -25,7 +25,8 @@ second run of the same files under a policy that selects the option is
 given that pack (:func:`read_face_review`). The pack also records the
 SHA-256 of the pixel data of each file that the first run wrote
 (:func:`pixel_data_sha256`), which its previews show, and of the contours of
-each RT Structure Set that it wrote (:func:`contour_data_sha256`). An
+each RT Structure Set that it wrote (:func:`contour_data_sha256`), only
+where its contour sheet shows them. An
 instance that carries visual features (:func:`carries_visual_features`)
 satisfies the option only where the SHA-256 of its source file is that of
 an instance of a series marked absent, and the pixel data and contours that
@@ -54,7 +55,12 @@ import struct
 from pymedphys._imports import pydicom
 
 from .qc_attestation import Face, Outcome, attested_pack
-from .qc_pack import QcPackError
+from .qc_pack import (
+    NO_CONTOURS_SHA256,
+    NotPreviewedReason,
+    PreviewKind,
+    QcPackError,
+)
 from .reasons import VisualFeaturesReason
 
 # Float Pixel Data (7FE0,0008), Double Float Pixel Data (7FE0,0009), and
@@ -181,7 +187,8 @@ def read_face_review(pack_directory: os.PathLike | str) -> FaceReview:
         the pack lists as held because the run defaced its frame, or as an
         RT Dose with too much dose in the face block to set to zero, is not
         taken as absent, since its verdict was on the defaced images beside
-        it.
+        it; nor is one whose contours the pack could not show, since its
+        verdict was on none of them.
 
     Raises
     ------
@@ -191,7 +198,8 @@ def read_face_review(pack_directory: os.PathLike | str) -> FaceReview:
         release nothing; if either is not of its format, or the attestation
         is for another pack; if the pack or a preview changed after it was
         attested; or if a verdict names a series that the pack does not
-        list. The message names no path and no value.
+        list, or an instance's contours' SHA-256 has no contour sheet that
+        shows them. The message names no path and no value.
     """
     attestation, data = attested_pack(pack_directory)
     if attestation.outcome is not Outcome.ATTESTED:
@@ -209,7 +217,8 @@ def read_face_review(pack_directory: os.PathLike | str) -> FaceReview:
     # A file that the reviewed run held beside a CT series that it defaced
     # was judged beside defaced images, while its own outlines or pixel data
     # were left as they were, so a verdict of absent does not cover it,
-    # whatever a later run defaces.
+    # whatever a later run defaces. One whose contours no contour sheet
+    # showed was judged without them.
     absent = {each for each in by_face[Face.ABSENT] if not each[3]}
     return FaceReview(
         attestation.reference,
@@ -227,8 +236,9 @@ def read_face_review(pack_directory: os.PathLike | str) -> FaceReview:
 
 
 # A source file's SHA-256, those of the pixel data and the contours written
-# of it, if any, and whether the run held it beside a CT series that it
-# defaced, as received.
+# of it, if any, and whether a verdict of absent leaves it out: where the run
+# held it beside a CT series that it defaced, as received, or the pack could
+# not show its contours.
 _File = tuple[bytes, bytes | None, bytes | None, bool]
 # Those holds' reasons as the QC pack words them, which run_qc.reason_text
 # gives.
@@ -249,6 +259,7 @@ def _series_files(data: bytes) -> dict[int, frozenset[_File]]:
     series = document.get("series")
     if not isinstance(instances, list) or not isinstance(series, list):
         raise malformed
+    shown, unshown = _contour_previews(document)
     digests: dict[int, _File] = {}
     for instance in instances:
         if not isinstance(instance, dict):
@@ -267,11 +278,17 @@ def _series_files(data: bytes) -> dict[int, frozenset[_File]]:
                 or not isinstance(reasons, list)
             ):
                 raise malformed
+            # Contours' digest binds a verdict only to contours that a
+            # contour sheet showed.
+            if contours not in (None, NO_CONTOURS_SHA256) and position not in shown:
+                raise malformed
             digests[position] = (
                 bytes.fromhex(digest),
                 None if pixels is None else bytes.fromhex(pixels),
                 None if contours is None else bytes.fromhex(contours),
-                UNDEFACED_TEXT in reasons or DOSE_IN_FACE_BLOCK_TEXT in reasons,
+                UNDEFACED_TEXT in reasons
+                or DOSE_IN_FACE_BLOCK_TEXT in reasons
+                or position in unshown,
             )
     files: dict[int, frozenset[_File]] = {}
     for entry in series:
@@ -282,6 +299,32 @@ def _series_files(data: bytes) -> dict[int, frozenset[_File]]:
             raise malformed
         files[positions[0]] = frozenset(digests[p] for p in positions)
     return files
+
+
+def _contour_previews(document: dict) -> tuple[set[int], set[int]]:
+    """The run positions whose contours a pack's contour sheet shows, and
+    those that it lists as not shown."""
+    malformed = QcPackError("the QC pack is not of its format")
+    previews, missing = document.get("previews"), document.get("not_previewed")
+    if not isinstance(previews, list) or not isinstance(missing, list):
+        raise malformed
+    shown, unshown = set(), set()
+    for preview in previews:
+        if not isinstance(preview, dict) or not isinstance(preview.get("frames"), list):
+            raise malformed
+        if preview.get("kind") == PreviewKind.STRUCTURE_SET_CONTOURS.value:
+            first = preview["frames"][0] if preview["frames"] else None
+            if not isinstance(first, dict) or not isinstance(
+                first.get("position"), int
+            ):
+                raise malformed
+            shown.add(first["position"])
+    for entry in missing:
+        if not isinstance(entry, dict):
+            raise malformed
+        if entry.get("reason") == NotPreviewedReason.CONTOURS_NOT_SHOWN.value:
+            unshown.add(entry.get("position"))
+    return shown, unshown
 
 
 def pixel_data_sha256(dataset: pydicom.Dataset) -> bytes:
@@ -322,12 +365,13 @@ def contour_data_sha256(dataset: pydicom.Dataset) -> bytes:
     Sequence (3006,0039).
 
     The digest is of each item's contours, in order: each contour's Contour
-    Geometric Type, as its text, and the values of its Contour Data, as
-    64-bit floating-point numbers, each item, contour, type, and list of
-    values after its count, so that the same contours under another ROI, or
-    split otherwise, differ. A data set without the sequence, as every one
-    but an RT Structure Set's is, gives the digest of no contours, which is
-    the same for each.
+    Geometric Type, as its text, and the values of its Contour Data,
+    Contour Offset Vector, and Contour Slab Thickness, as 64-bit
+    floating-point numbers, each item, contour, type, and list of values
+    after its count, so that the same contours under another ROI, split
+    otherwise, moved, or given depth differ. A data set without a contour,
+    as every one but an RT Structure Set's is, gives the digest of no
+    contours, which is the same for each, however many items it has.
 
     Raises
     ------
@@ -337,6 +381,8 @@ def contour_data_sha256(dataset: pydicom.Dataset) -> bytes:
     digest = hashlib.sha256()
     try:
         items = dataset.get("ROIContourSequence") or []
+        if not any(len(item.get("ContourSequence") or []) for item in items):
+            items = []
         digest.update(struct.pack(">Q", len(items)))
         for item in items:
             contours = item.get("ContourSequence") or []
@@ -355,11 +401,24 @@ def contour_data_sha256(dataset: pydicom.Dataset) -> bytes:
                 )
                 digest.update(struct.pack(">Q", len(kind)) + kind)
                 digest.update(struct.pack(f">Q{len(values)}d", len(values), *values))
+                # Each places or gives depth to the contour, so is part of it.
+                for keyword in ("ContourOffsetVector", "ContourSlabThickness"):
+                    extra = _floats(contour.get(keyword))
+                    digest.update(struct.pack(f">Q{len(extra)}d", len(extra), *extra))
     # pydicom raises many types for a value it cannot read, and a message
     # can quote the value.
     except Exception:  # pylint: disable = broad-exception-caught
         raise ValueError("contours cannot be read") from None
     return digest.digest()
+
+
+def _floats(value: object) -> list[float]:
+    """A value's numbers, none where it is absent or empty."""
+    if value is None or value == "":
+        return []
+    if isinstance(value, (list, tuple, pydicom.multival.MultiValue)):
+        return [float(each) for each in value]
+    return [float(value)]
 
 
 def carries_visual_features(dataset: pydicom.Dataset, iod: str) -> bool:

@@ -19,6 +19,8 @@ with pixel grids, in NumPy alone.
 polygons by the plane they lie in, and joins pieces that tile a region back
 into its rings; :mod:`~pymedphys._geometry.pixel_grids` finds a polygon's
 part within chosen pixels of a grid, each pixel taken as the square of the
-points nearest its centre. Results are exact up to floating point: no
-polygon is approximated by pixels.
+points nearest its centre. Their results are exact up to floating point: no
+polygon is approximated by pixels. :mod:`~pymedphys._geometry.rasters`
+fills polygons onto a grid of points instead, for a picture or a sampled
+mask of the region that they bound.
 """
