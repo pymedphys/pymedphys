@@ -54,20 +54,23 @@ separated by grey rows of :data:`GUTTER_PIXELS`, are:
   within two of it in the slice, as around a contour that retraces a loop
   within its region, one that bounds a hole that its own marks or others
   fill, or one in a plane that covers no slice. Those marks, with every
-  mark of the first kinds, then have rows of their own after the ROI's,
-  as its region has, but with no row of cavities, and with a row for each
-  further crossing however few times a ray crosses them, so that they
-  show every crossing into or out of the marks that a ray of the frontal
-  view or of a profile makes; so every mark is shown, in those rows or
-  within two voxels of the edge of what its slice shows, which the ROI's
-  rows draw from the front and the sides, though not from behind. Those
-  rows are taken to draw every voxel of the marks only where each has a
-  neighbour along its row or its column of voxels that is not a mark,
-  counting the views along the voxels' axes and not the oblique ones;
-  where one does not, as where a line drawn back and forth over a patch,
-  with or without gaps a voxel wide between its passes, covers a curve
-  within it, or lines that fill a hole cover its outline, no sheet is
-  drawn.
+  mark of the first kinds, then have rows of their own after the ROI's, in
+  layers: each contour's hidden marks are in the first layer that holds
+  none of their voxels, nor any beside one along its row or its column of
+  voxels, so that a layer's rows draw each contour's marks as they would
+  draw them alone, and a contour's marks the same as an earlier one's are
+  left out. Each layer has rows as the ROI's region has, but with no row of
+  cavities, and with a row for each further crossing however few times a
+  ray crosses it, so that they show every crossing into or out of the
+  layer that a ray of the frontal view or of a profile makes; so every
+  mark is shown, in those rows or within two voxels of the edge of what
+  its slice shows, which the ROI's rows draw from the front and the sides,
+  though not from behind. A layer's rows are taken to draw every voxel of
+  it only where each has a neighbour along its row or its column of voxels
+  that is not in the layer, counting the views along the voxels' axes and
+  not the oblique ones; where one does not, as where one contour's marks
+  fill a patch, as a line drawn back and forth with no gap between its
+  passes does, no sheet is drawn.
 
 Each region is sampled to cubic voxels over the extent of what it draws,
 with a voxel more on each low side across, 0 to 1 voxel more on each high
@@ -207,13 +210,20 @@ class RoiContours:
         """Its points, and points along each open contour's segments, and
         each closed contour's, its last point joined to its first, at most
         ``step`` apart, as x, y, and z, of shape (m, 3)."""
-        sampled = [self.points]
+        return np.concatenate(
+            [self.points, *self.contour_marks(step)[len(self.points) :]]
+        )
+
+    def contour_marks(self, step: float) -> list[np.ndarray]:
+        """The marks of :meth:`marks`, by contour: each point alone, then
+        each open contour's, then each closed contour's, each as x, y, and
+        z, of shape (m, 3)."""
+        sampled = [point[np.newaxis] for point in self.points]
         rings = [
             np.column_stack([ring, np.full(len(ring), height)])
             for height, ring in self.closed
         ]
         for line in [*self.lines, *(np.vstack([ring, ring[:1]]) for ring in rings)]:
-            sampled.append(line[-1:])
             starts, steps = line[:-1], np.diff(line, axis=0)
             counts = np.maximum(
                 1, np.ceil(np.linalg.norm(steps, axis=1) / step).astype(np.intp)
@@ -224,8 +234,15 @@ class RoiContours:
             fractions = (np.arange(int(counts.sum())) - first[segment]) / counts[
                 segment
             ]
-            sampled.append(starts[segment] + fractions[:, np.newaxis] * steps[segment])
-        return np.concatenate(sampled)
+            sampled.append(
+                np.concatenate(
+                    [
+                        line[-1:],
+                        starts[segment] + fractions[:, np.newaxis] * steps[segment],
+                    ]
+                )
+            )
+        return sampled
 
     def __repr__(self) -> str:
         return "RoiContours()"
@@ -446,8 +463,8 @@ def contour_sheet(
     numpy.ndarray or None
         uint8, of shape (rows, columns, 3); or None where the sheet would be
         taller than ``tallest``, which is drawn only until it is, or where
-        the frontal view and profiles of the rows of an ROI's hidden marks
-        would leave any of them undrawn.
+        the frontal view and profiles of the rows of a layer of an ROI's
+        hidden marks would leave any voxel of it undrawn.
     """
     guides = {} if guides is None else guides
     if contours.empty:
@@ -488,26 +505,34 @@ def contour_sheet(
             continue
         key = _key(roi)
         if key not in rendered:
-            rendered[key] = _item_rows(roi, own)
+            rendered[key] = _item_rows(roi, own, tallest)
         shown = rendered[key]
         if shown is None or not fits(shown):
             return None
     return _stacked(rows)
 
 
-def _item_rows(roi: RoiContours, planes: np.ndarray) -> list[np.ndarray] | None:
-    """An ROI's rows, with those of the marks that its region hides; or
-    None where the frontal view and profiles of those marks' rows would
-    leave any voxel of them undrawn."""
+def _item_rows(
+    roi: RoiContours, planes: np.ndarray, tallest: int | None = None
+) -> list[np.ndarray] | None:
+    """An ROI's rows, with those of each layer of the marks that its region
+    hides; or None where the frontal view and profiles of a layer's rows
+    would leave any voxel of it undrawn, or where its layers alone would
+    make a sheet taller than ``tallest``."""
     grid = _grid([roi], _roi_voxel)
     filled = _filled(roi, grid, planes)
     hidden = _hidden(roi, grid, filled)
     rows = _roi_rows(filled | _marked(roi.marks(_step(grid)), grid))
     if hidden is None:
         return rows
-    if _undrawn(hidden).any():
+    # Each layer has a row at least.
+    most = None if tallest is None else tallest // (len(grid.zs) + GUTTER_PIXELS)
+    layers = _layered(hidden, filled.shape, most)
+    if layers is None or any(_undrawn(layer).any() for layer in layers):
         return None
-    return rows + _roi_rows(hidden, marks=True)
+    for layer in layers:
+        rows.extend(_roi_rows(layer, marks=True))
+    return rows
 
 
 def _least_height(contours: Contours, guides: Mapping[str | None, Guide]) -> int:
@@ -529,9 +554,9 @@ def _least_height(contours: Contours, guides: Mapping[str | None, Guide]) -> int
 
 
 def _roi_rows(inside: np.ndarray, marks: bool = False) -> list[np.ndarray]:
-    """An ROI's rows, or its hidden marks', as the module describes, from
-    their voxels; the marks have no row of cavities, and a row of each
-    further crossing however few times a ray crosses them."""
+    """An ROI's rows, or those of a layer of its hidden marks, as the module
+    describes, from their voxels; a layer has no row of cavities, and a row
+    of each further crossing however few times a ray crosses it."""
     rows = [_rgb(_views(inside))]
     # The rays of the views that look along an axis of the voxels meet every
     # voxel of its surface, and cross the surface more than twice only where
@@ -560,11 +585,11 @@ def _roi_rows(inside: np.ndarray, marks: bool = False) -> list[np.ndarray]:
 
 
 def _undrawn(marks: np.ndarray) -> np.ndarray:
-    """The voxels of hidden marks that their rows, which show every crossing
-    into or out of them that a ray of the frontal view or of a profile
-    makes, draw in no tile: those whose neighbours along their row and their
-    column of voxels are all marks too. The oblique views are not counted,
-    so as to claim no voxel that they may miss."""
+    """The voxels of a layer of hidden marks that its rows, which show every
+    crossing into or out of it that a ray of the frontal view or of a
+    profile makes, draw in no tile: those whose neighbours along their row
+    and their column of voxels are all in the layer too. The oblique views
+    are not counted, so as to claim no voxel that they may miss."""
     around = np.zeros((3, 3, 3), bool)
     around[1] = [[False, True, False], [True, True, True], [False, True, False]]
     return marks & scipy.ndimage.binary_erosion(marks, around, border_value=0)
@@ -706,10 +731,12 @@ def _filled(roi: RoiContours, grid: _Grid, planes: np.ndarray) -> np.ndarray:
     return filled
 
 
-def _hidden(roi: RoiContours, grid: _Grid, filled: np.ndarray) -> np.ndarray | None:
+def _hidden(
+    roi: RoiContours, grid: _Grid, filled: np.ndarray
+) -> list[np.ndarray] | None:
     """The voxels of an ROI's marks that its rows hide, with those of its
-    points and open contours, indexed as a surface's mask, where they hide
-    any; or else None.
+    points and open contours, by contour, as flat indices of a surface's
+    mask, where they hide any; or else None.
 
     A mark of a point, of an open contour, or of a closed contour that
     bounds no voxel, such as one that doubles back on itself, is hidden
@@ -725,19 +752,75 @@ def _hidden(roi: RoiContours, grid: _Grid, filled: np.ndarray) -> np.ndarray | N
     between those of a smooth outline, lies there without hiding anything
     that its neighbours do not show. Near a rounded end, such as the top of
     a head, an outline can shrink by more than two voxels from one such
-    plane to the next, so the marks of those planes there are hidden."""
+    plane to the next, so the marks of those planes there are hidden.
+
+    Each contour gives every voxel of its marks if it is a point, an open
+    contour, or a closed contour that bounds no voxel, and otherwise those
+    of its marks' voxels that are hidden, in the order of
+    :meth:`RoiContours.contour_marks`, leaving out any that gives none."""
     step = _step(grid)
-    alone = RoiContours(
-        closed=tuple(each for each in roi.closed if not _bounds_any(each[1], grid)),
-        points=roi.points,
-        lines=roi.lines,
-    )
-    marked = _marked(alone.marks(step), grid)
-    every = _marked(roi.marks(step), grid)
+    alone = [True] * (len(roi.points) + len(roi.lines)) + [
+        not _bounds_any(ring, grid) for _, ring in roi.closed
+    ]
+    each = [_voxels(marks, grid) for marks in roi.contour_marks(step)]
+    every = np.zeros(filled.shape, bool)
+    marked = np.zeros(filled.shape, bool)
+    for voxels, by_itself in zip(each, alone, strict=True):
+        every.flat[voxels] = True
+        if by_itself:
+            marked.flat[voxels] = True
     buried = _buried(every, filled | every)
     if not ((marked & filled).any() or buried.any()):
         return None
-    return marked | buried
+    hidden = [
+        voxels if by_itself else voxels[buried.flat[voxels]]
+        for voxels, by_itself in zip(each, alone, strict=True)
+    ]
+    return [voxels for voxels in hidden if voxels.size]
+
+
+def _layered(
+    hidden: Sequence[np.ndarray], shape: tuple[int, ...], most: int | None = None
+) -> list[np.ndarray] | None:
+    """The hidden marks of each contour, as flat indices of a mask of
+    ``shape``, laid out in layers, each a mask: each contour's in the first
+    layer that holds none of its voxels, nor any beside one along its row
+    or its column of voxels, so that a layer's rows draw each contour's
+    marks as they would draw them alone. A contour's marks the same as an
+    earlier one's are left out. None where it would take more than ``most``
+    layers."""
+    layers: list[np.ndarray] = []
+    near: list[np.ndarray] = []
+    seen: set[bytes] = set()
+    for voxels in hidden:
+        key = voxels.tobytes()
+        if key in seen:
+            continue
+        seen.add(key)
+        free = [i for i, close in enumerate(near) if not close.flat[voxels].any()]
+        if free:
+            chosen = free[0]
+        else:
+            if most is not None and len(layers) >= most:
+                return None
+            layers.append(np.zeros(shape, bool))
+            near.append(np.zeros(shape, bool))
+            chosen = len(layers) - 1
+        layers[chosen].flat[voxels] = True
+        near[chosen].flat[_beside(voxels, shape)] = True
+    return layers
+
+
+def _beside(voxels: np.ndarray, shape: tuple[int, ...]) -> np.ndarray:
+    """Flat indices of a mask of ``shape``: the voxels, and those beside
+    each along its row and its column of voxels."""
+    z, y, x = np.unravel_index(voxels, shape)
+    found = [voxels]
+    for dy, dx in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+        ny, nx = y + dy, x + dx
+        within = (ny >= 0) & (ny < shape[1]) & (nx >= 0) & (nx < shape[2])
+        found.append(np.ravel_multi_index((z[within], ny[within], nx[within]), shape))
+    return np.concatenate(found)
 
 
 def _buried(marked: np.ndarray, shown: np.ndarray) -> np.ndarray:
@@ -769,13 +852,24 @@ def _bounds_any(ring: np.ndarray, grid: _Grid) -> bool:
 def _marked(marks: np.ndarray, grid: _Grid) -> np.ndarray:
     """The voxels nearest marks, indexed as a surface's mask."""
     marked = np.zeros((len(grid.zs), len(grid.ys), len(grid.xs)), bool)
-    if len(marks):
-        z = _nearest(grid.zs[::-1], marks[:, 2])
-        y = _nearest(grid.ys, marks[:, 1])
-        x = _nearest(grid.xs, marks[:, 0])
-        within = (z >= 0) & (y >= 0) & (x >= 0)
-        marked[len(grid.zs) - 1 - z[within], y[within], x[within]] = True
+    marked.flat[_voxels(marks, grid)] = True
     return marked
+
+
+def _voxels(marks: np.ndarray, grid: _Grid) -> np.ndarray:
+    """The voxels nearest marks, as ascending flat indices of a surface's
+    mask, each once."""
+    shape = (len(grid.zs), len(grid.ys), len(grid.xs))
+    if not len(marks):
+        return np.zeros(0, np.intp)
+    z = _nearest(grid.zs[::-1], marks[:, 2])
+    y = _nearest(grid.ys, marks[:, 1])
+    x = _nearest(grid.xs, marks[:, 0])
+    within = (z >= 0) & (y >= 0) & (x >= 0)
+    flat = np.ravel_multi_index(
+        (len(grid.zs) - 1 - z[within], y[within], x[within]), shape
+    )
+    return np.unique(flat)
 
 
 def _nearest(coordinates: np.ndarray, wanted: np.ndarray) -> np.ndarray:
