@@ -85,7 +85,8 @@ A pack holds, for one run:
   attestation of the pack covers them, among them a contour sheet of each
   instance with contours, such as an RT Structure Set; and
   ``not_previewed``: each instance whose pixel data could not be previewed,
-  or whose contours could not be shown, with why (D-017). The images are
+  whose contours could not be shown, or, for an RT Dose, whose dose levels
+  could not be drawn, with why (D-017). The images are
   made by :mod:`~pymedphys._dicom.deidentify.qc_previews`.
 - ``source_gaps``: each instance whose source lacks an attribute that its
   IOD unconditionally requires, with each such attribute's place and Type,
@@ -131,7 +132,7 @@ from .reviewed_roi_names import Outcome
 from .text_detection import TextBox
 
 # The format of the pack document. A change to its fields takes a new label.
-FORMAT = "pymedphys-deid-qc-pack/13"
+FORMAT = "pymedphys-deid-qc-pack/15"
 # The bytes of a written file shown on each side of a residual's offset.
 EXCERPT_BYTES = 48
 # The SHA-256 that face_review.contour_data_sha256 gives a file without
@@ -865,7 +866,8 @@ class PreviewKind(enum.Enum):
 
 
 class NotPreviewedReason(enum.Enum):
-    """Why an instance has no image preview."""
+    """Why an instance has no image preview, or, for an RT Dose, no
+    dose-levels preview."""
 
     # compressed pixel data that no installed plugin is pinned to decode
     COMPRESSED = "compressed-pixel-data"
@@ -885,6 +887,13 @@ class NotPreviewedReason(enum.Enum):
     # view from behind, and the profiles of its rows would not draw, so its
     # verdict gives it none
     CONTOURS_NOT_SHOWN = "contours-not-shown"
+    # an RT Dose, by face_review.is_rt_dose, that no dose-levels preview
+    # shows whole: one that cannot be placed as a grid or a series of
+    # planes, whose stored values or scaling its levels would not show, or
+    # whose sheet would have too many levels or be too tall. Its other
+    # previews are kept, such as its cine strip, which can leave a low dose
+    # black, and a redaction preview of each frame where it was cleaned.
+    DOSE_LEVELS_NOT_SHOWN = "dose-levels-not-shown"
 
 
 PREVIEW_NAME = re.compile(r"P-[0-9]{4,}\.png")
@@ -1292,8 +1301,9 @@ class QcPack:
         a series has an instance without its source's SHA-256; or if an
         instance is listed twice as cleaned, out of order, or neither
         released nor held for review; or if a cleaned instance that is not
-        listed as not previewed lacks a redaction preview of each frame, in
-        order, or a redaction preview shows anything else.
+        listed as not previewed, or is listed only for its dose levels,
+        lacks a redaction preview of each frame, in order, or a redaction
+        preview shows anything else.
     """
 
     reference: str
@@ -1486,9 +1496,14 @@ class QcPack:
 
     def _check_redaction_previews(self) -> None:
         """Each cleaned instance has a redaction preview of each frame, in
-        order, unless it is listed as not previewed, and no other has one."""
+        order, unless it is listed as not previewed for a reason other than
+        its dose levels, and no other has one."""
         cleaned = {entry.position: entry.frames for entry in self.redactions}
-        unshown = {entry.position for entry in self.not_previewed}
+        unshown = {
+            entry.position
+            for entry in self.not_previewed
+            if entry.reason is not NotPreviewedReason.DOSE_LEVELS_NOT_SHOWN
+        }
         shown: dict[int, list[int]] = {}
         for preview in self.previews:
             if preview.kind is not PreviewKind.REDACTION:
@@ -1508,7 +1523,8 @@ class QcPack:
             if shown.get(position, []) != expected:
                 raise QcPackError(
                     "a cleaned instance needs a redaction preview of each "
-                    "frame, in order, unless it is listed as not previewed"
+                    "frame, in order, unless it is listed as not previewed "
+                    "for a reason other than its dose levels"
                 )
 
     def _check_names(self) -> None:

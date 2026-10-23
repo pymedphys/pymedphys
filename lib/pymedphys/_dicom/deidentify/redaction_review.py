@@ -23,7 +23,8 @@ run position, in the pack's attestation
 (:mod:`~pymedphys._dicom.deidentify.qc_attestation`): the pack's regions
 accepted, the pack's regions with the reviewer's own added to them, or the
 instance rejected. A cleaned instance that the pack lists as not previewed
-can have no verdict, since the reviewer has not seen its frames. A second
+can have no verdict, since the reviewer has not seen its frames, unless it is
+an RT Dose listed only because its dose levels are not shown. A second
 run of the same files under a policy that selects the option is given that
 pack (:func:`read_redaction_review`), and an attestation whose outcome is
 rejected is refused. An instance whose source file has, by its SHA-256, an

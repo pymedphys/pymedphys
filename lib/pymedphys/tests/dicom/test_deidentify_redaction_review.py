@@ -627,14 +627,25 @@ def test_a_verdict_on_an_instance_without_a_cleaned_previewed_source_is_refused(
 def test_only_a_previewed_cleaned_instance_can_be_given_a_verdict():
     data = json.dumps(
         {
-            "redactions": [_cleaned(0), _cleaned(1), {**_cleaned(2), "frames": 3}],
-            "not_previewed": [{"position": 1, "reason": "source-not-shown"}],
+            "redactions": [
+                _cleaned(0),
+                _cleaned(1),
+                {**_cleaned(2), "frames": 3},
+                _cleaned(3),
+            ],
+            "not_previewed": [
+                {"position": 1, "reason": "source-not-shown"},
+                # An RT Dose whose dose levels are not drawn still has its
+                # redaction previews.
+                {"position": 3, "reason": "dose-levels-not-shown"},
+            ],
         }
     ).encode()
 
     assert qc_attestation.previewed_redactions(data) == {
         0: CleanedShape(1, 6, 8),
         2: CleanedShape(3, 6, 8),
+        3: CleanedShape(1, 6, 8),
     }
 
 

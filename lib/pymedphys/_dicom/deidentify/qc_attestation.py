@@ -77,7 +77,7 @@ from collections.abc import Iterable, Mapping
 from pathlib import Path
 
 from . import qc_pack, qc_store
-from .qc_pack import QcPackError
+from .qc_pack import NotPreviewedReason, QcPackError
 from .text_detection import TextBox
 
 # The format of the attestation document. A change to its fields takes a new label.
@@ -579,7 +579,8 @@ def previewed_redactions(data: bytes) -> dict[int, CleanedShape]:
 
     A cleaned instance that the pack lists as not previewed is left out,
     since a reviewer cannot have seen its frames, and so can give it no
-    verdict.
+    verdict; but not an RT Dose listed only for its dose levels, whose
+    frames the pack's redaction previews still show.
 
     Raises
     ------
@@ -597,7 +598,8 @@ def previewed_redactions(data: bytes) -> dict[int, CleanedShape]:
         position = entry.get("position") if isinstance(entry, dict) else None
         if not isinstance(position, int):
             raise QcPackError("the QC pack is not of its format")
-        hidden.add(position)
+        if entry.get("reason") != NotPreviewedReason.DOSE_LEVELS_NOT_SHOWN.value:
+            hidden.add(position)
     shapes = {}
     for entry in redactions:
         if not isinstance(entry, dict):

@@ -342,7 +342,7 @@ def _codes(dataset):
     return [item.CodeValue for item in dataset.DeidentificationMethodCodeSequence]
 
 
-@pytest.mark.deid_requirement("PS3.15-E.3.8-01")
+@pytest.mark.deid_requirement("PS3.15-E.3.8-01", "MIDI-BP-04")
 def test_retain_device_identity_keeps_the_device_and_tokenises_ae_titles():
     plan = _plan(
         StationAETitle="SENTINEL_CT ",
