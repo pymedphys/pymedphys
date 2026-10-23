@@ -72,10 +72,11 @@ A pack holds, for one run:
   the instances that show each (D-015, D-017);
 - ``redactions``: each released or held instance whose Pixel Data the
   Clean Pixel Data Option cleaned, with why it is held, its number of
-  frames, its Rows and Columns, and the regions blacked out in each frame,
+  frames, its Rows and Columns, the regions blacked out in each frame,
   by frame index from 0, each as ``[top, left, bottom, right]`` in pixels
   from the frame's top left corner, with the bottom row and right column
-  excluded, for the review of
+  excluded, and, for compressed Pixel Data, the SHA-256 of its frames as
+  decoded, which binds a verdict to them (D-048), for the review of
   every frame that the option requires. Each frame with regions is
   previewed as received, so under the option the pack holds the burned-in
   text that the release lacks;
@@ -130,7 +131,7 @@ from .reviewed_roi_names import Outcome
 from .text_detection import TextBox
 
 # The format of the pack document. A change to its fields takes a new label.
-FORMAT = "pymedphys-deid-qc-pack/12"
+FORMAT = "pymedphys-deid-qc-pack/13"
 # The bytes of a written file shown on each side of a residual's offset.
 EXCERPT_BYTES = 48
 # The SHA-256 that face_review.contour_data_sha256 gives a file without
@@ -1039,6 +1040,11 @@ class RedactionEntry:
         Each frame with a region, by frame index from 0, in order, with its
         regions, sorted, each once, and each within its rows and columns;
         none where no text was found.
+    decoded_sha256 : str, optional
+        For compressed Pixel Data, the SHA-256 of its frames as decoded
+        (:attr:`~.pixel_cleaning.Redaction.decoded_sha256`), as 64 lowercase
+        hex digits, which a reviewer's verdict on the instance requires the
+        frames to decode to again (D-048); None for native Pixel Data.
     """
 
     position: int
@@ -1047,6 +1053,7 @@ class RedactionEntry:
     rows: int
     columns: int
     regions: tuple[tuple[int, tuple[TextBox, ...]], ...]
+    decoded_sha256: str | None = None
 
     def __post_init__(self) -> None:
         _check_position("a cleaned instance", self.position)
@@ -1086,6 +1093,14 @@ class RedactionEntry:
         if indices != sorted(set(indices)):
             raise QcPackError(
                 f"cleaned instance {self.position} must list each frame once, in order"
+            )
+        if self.decoded_sha256 is not None and not (
+            isinstance(self.decoded_sha256, str)
+            and _SHA256.fullmatch(self.decoded_sha256)
+        ):
+            raise QcPackError(
+                f"cleaned instance {self.position} needs its decoded frames' "
+                "SHA-256 as 64 lowercase hex digits, or none"
             )
         found = self.reason is PixelDataReason.TEXT_BLACKED_OUT
         if found != bool(self.regions):
@@ -1751,6 +1766,7 @@ def pack_document(pack: QcPack) -> dict:
                     }
                     for index, boxes in entry.regions
                 ],
+                "decoded_sha256": entry.decoded_sha256,
             }
             for entry in pack.redactions
         ],

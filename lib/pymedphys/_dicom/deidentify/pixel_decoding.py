@@ -74,15 +74,31 @@ Where the child cannot be started, the instance is sequestered as
 :attr:`.reasons.TransformReason.NO_DECODER`, as where the plugin is not
 installed, since its frames cannot be decoded either way. The offset tables
 and codestream headers are checked in process.
+
+Under the Clean Pixel Data Option, :func:`decoded_frames` decodes every
+frame once more, for the text finder and for writing the frames
+uncompressed where a region is blacked out (D-037). The child decodes one
+frame at a time, from that frame's codestream and the Image Pixel
+attributes that the engine read from the source, and sends back the frame's
+samples as base64 text in its JSON, with their photometric interpretation,
+NumPy type, and shape, each of which the engine checks against what it
+expects before it takes the samples: plain data, never a type or name to
+resolve. A decoder that a codestream subverts can therefore give the engine
+no more than other samples of the expected size, which become output bytes
+only through an instance held for review, whose every frame the QC pack
+shows as written (D-037, D-048).
 """
 
 from __future__ import annotations
 
+import base64
+import binascii
+import dataclasses
 import io
 import itertools
 import struct
 import types
-from collections.abc import Mapping
+from collections.abc import Iterator, Mapping
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom
@@ -122,6 +138,18 @@ pylibjpeg-openjpeg, for JPEG 2000 and HTJ2K; and pydicom's own for RLE
 Lossless. Each is licensed at least as permissively as PyMedPhys's Apache
 License 2.0, which is why JPEG and JPEG-LS are not decoded by
 pylibjpeg-libjpeg, under the GNU GPL version 3."""
+# The NumPy type of a decoded sample, by Bits Allocated and whether Pixel
+# Representation is 1, two's complement, as pydicom gives it.
+_SAMPLE_TYPES = types.MappingProxyType(
+    {
+        (8, False): "|u1",
+        (8, True): "|i1",
+        (16, False): "<u2",
+        (16, True): "<i2",
+        (32, False): "<u4",
+        (32, True): "<i4",
+    }
+)
 ISOLATED_PLUGINS = frozenset({_GDCM, _PYLIBJPEG})
 """The plugins of :data:`DECODING_PLUGINS` whose native libraries can end
 the process that calls them on a malformed codestream, and so decode in a
@@ -269,19 +297,26 @@ def _headers_problem(
         int(dataset.PixelRepresentation) == 1,
         str(dataset.PhotometricInterpretation),
     )
+    for codestream in _codestreams(source, frames):
+        problem = header_problem(source.transfer_syntax, codestream, declared)
+        if problem is not None:
+            return problem
+    return None
+
+
+def _codestreams(source: SourceEvidence, frames: int) -> Iterator[bytes]:
+    """Yield each frame's codestream, found as pydicom finds it to decode
+    it, by :func:`pydicom.encaps.generate_frames`, from the offset tables
+    that :func:`_offsets_match` shows sound."""
     extended = None
     if _EXTENDED_OFFSET_TABLE in source:
         extended = (
             source.value_field(_EXTENDED_OFFSET_TABLE),
             source.value_field(_EXTENDED_OFFSET_TABLE_LENGTHS),
         )
-    for codestream in pydicom.encaps.generate_frames(
+    yield from pydicom.encaps.generate_frames(
         _value(source), number_of_frames=frames, extended_offsets=extended
-    ):
-        problem = header_problem(source.transfer_syntax, codestream, declared)
-        if problem is not None:
-            return problem
-    return None
+    )
 
 
 def _offsets_match(source: SourceEvidence, frames: int) -> bool:
@@ -406,3 +441,189 @@ def _same(before: pydicom.Dataset, after: pydicom.Dataset, plugin: str) -> bool:
         if first.dtype != second.dtype or not np.array_equal(first, second):
             return False
     return True
+
+
+class FramesRefused(Exception):
+    """Compressed frames that :func:`decoded_frames` cannot give, with a
+    value-free reason."""
+
+    def __init__(self, reason: TransformReason) -> None:
+        super().__init__(reason.value)
+        self.reason = reason
+
+
+def decoded_frames(
+    source: SourceEvidence,
+    attributes: Mapping[str, int | str],
+    frames: int,
+    photometric: str,
+) -> bytes:
+    """Return every frame of compressed Pixel Data decoded, for Clean Pixel Data.
+
+    Each frame is decoded by the plugin pinned to the transfer syntax, as
+    :func:`frames_problem` decodes it, but with YBR_FULL and YBR_FULL_422
+    converted to RGB by pydicom, and JPEG 2000's YBR_ICT and YBR_RCT by the
+    decoder, so that the samples are those that native Pixel Data of the
+    photometric interpretation ``photometric`` would hold. Frames that
+    :data:`ISOLATED_PLUGINS` decode are decoded in the child process, one
+    at a time, and what it sends back is checked, as the module describes.
+
+    Parameters
+    ----------
+    source : SourceEvidence
+        A source whose frames :func:`frames_problem` has shown sound.
+    attributes : mapping of str to int or str
+        The source's Rows, Columns, Samples per Pixel, Bits Allocated, Bits
+        Stored, High Bit, Pixel Representation, Photometric Interpretation,
+        and, for colour, Planar Configuration, by keyword, as read from it,
+        which describe one frame to its decoder.
+    frames : int
+        How many frames the Pixel Data hold.
+    photometric : str
+        The photometric interpretation of the decoded samples: the source's
+        for monochrome, and ``"RGB"`` for colour.
+
+    Returns
+    -------
+    bytes
+        The samples of every frame, in order, as native Pixel Data holds
+        them in little endian: each sample in a word of Bits Allocated, in
+        two's complement where signed, with the samples of each pixel
+        together, as Planar Configuration 0 gives them, and no padding.
+
+    Raises
+    ------
+    FramesRefused
+        With :attr:`~.reasons.TransformReason.NO_DECODER` where the plugin
+        is not installed or the child cannot be started,
+        :attr:`~.reasons.TransformReason.UNDECODABLE_PIXEL_DATA` where a
+        frame does not decode,
+        :attr:`~.reasons.TransformReason.UNCLEANABLE_PIXEL_DATA` where a
+        frame decodes to another photometric interpretation, and
+        :attr:`~.reasons.TransformReason.FRAME_MISMATCH` where a frame's
+        samples are not of the expected type, shape, or size, or the frames
+        are not ``frames`` in number.
+    """
+    plugin = DECODING_PLUGINS.get(source.transfer_syntax)
+    if plugin is None or not decoder_available(source.transfer_syntax):
+        raise FramesRefused(TransformReason.NO_DECODER)
+    rows, columns, samples = (
+        int(attributes[keyword]) for keyword in ("Rows", "Columns", "SamplesPerPixel")
+    )
+    kind = _SAMPLE_TYPES.get(
+        (int(attributes["BitsAllocated"]), int(attributes["PixelRepresentation"]) == 1)
+    )
+    if kind is None:
+        raise FramesRefused(TransformReason.UNCLEANABLE_PIXEL_DATA)
+    expected = _Expected(
+        photometric,
+        kind,
+        [rows, columns] if samples == 1 else [rows, columns, samples],
+        rows * columns * samples * int(kind[2:]),
+    )
+    described = tuple(sorted(attributes.items()))
+    decoded: list[bytes] = []
+    refused: TransformReason | None = None
+    try:
+        with redacted_diagnostics():
+            for codestream in _codestreams(source, frames):
+                arguments = (source.transfer_syntax, plugin, codestream, described)
+                if plugin in ISOLATED_PLUGINS:
+                    sent = isolated_decoding.run(
+                        _frame_decoded,
+                        *arguments,
+                        # The samples' size once encoded as base64.
+                        result_bytes=4 * -(-expected.size // 3),
+                    )
+                else:
+                    sent = _frame_decoded(*arguments)
+                frame = expected.checked(sent)
+                if isinstance(frame, TransformReason):
+                    refused = frame
+                    break
+                decoded.append(frame)
+    # The plugin is installed, but the process that runs it cannot be.
+    except isolated_decoding.DecoderUnavailable:
+        raise FramesRefused(TransformReason.NO_DECODER) from None
+    # pydicom and its plugins raise many types for pixel data they cannot
+    # decode, and a message can quote a value.
+    except Exception:  # pylint: disable = broad-exception-caught
+        raise FramesRefused(TransformReason.UNDECODABLE_PIXEL_DATA) from None
+    if refused is not None:
+        raise FramesRefused(refused)
+    if len(decoded) != frames:
+        raise FramesRefused(TransformReason.FRAME_MISMATCH)
+    return b"".join(decoded)
+
+
+@dataclasses.dataclass(frozen=True)
+class _Expected:
+    """What a decoded frame must be: its photometric interpretation, its
+    samples' NumPy type, its shape, and its size in bytes."""
+
+    photometric: str
+    kind: str
+    shape: list[int]
+    size: int
+
+    def checked(self, sent: object) -> bytes | TransformReason:
+        """Return the samples of a frame that :func:`_frame_decoded` sent,
+        or why they are refused.
+
+        ``sent`` may come from a child that a codestream subverted, so it is
+        only compared with what is expected and decoded from base64, never
+        used to find a type, a name, or an attribute.
+        """
+        if not (isinstance(sent, list) and len(sent) == 4):
+            return TransformReason.FRAME_MISMATCH
+        photometric, kind, shape, text = sent
+        if not isinstance(photometric, str) or photometric != self.photometric:
+            return TransformReason.UNCLEANABLE_PIXEL_DATA
+        if (
+            not isinstance(kind, str)
+            or kind != self.kind
+            or not isinstance(shape, list)
+            or shape != self.shape
+            or not isinstance(text, str)
+        ):
+            return TransformReason.FRAME_MISMATCH
+        try:
+            samples = base64.b64decode(text.encode("ascii"), validate=True)
+        except (UnicodeError, binascii.Error):
+            return TransformReason.FRAME_MISMATCH
+        if len(samples) != self.size:
+            return TransformReason.FRAME_MISMATCH
+        return samples
+
+
+def _frame_decoded(
+    transfer_syntax: str,
+    plugin: str,
+    codestream: bytes,
+    attributes: tuple[tuple[str, int | str], ...],
+) -> list:
+    """Return one frame decoded by ``plugin``, as JSON can send it back: its
+    photometric interpretation as decoded, its samples' NumPy type and
+    shape, and its samples as base64 text, in C order.
+
+    The frame's codestream is decoded as the only frame of a data set that
+    holds ``attributes`` and the codestream, encapsulated.
+    """
+    dataset = pydicom.Dataset()
+    dataset.file_meta = pydicom.dataset.FileMetaDataset()
+    dataset.file_meta.TransferSyntaxUID = transfer_syntax
+    for keyword, value in attributes:
+        setattr(dataset, keyword, value)
+    dataset.PixelData = pydicom.encaps.encapsulate([codestream])
+    dataset["PixelData"].VR = "OB"
+    decoder = pydicom.pixels.get_decoder(transfer_syntax)
+    frame, properties = next(
+        decoder.iter_array(dataset, decoding_plugin=plugin, as_rgb=True)
+    )
+    photometric = properties["photometric_interpretation"]
+    return [
+        str(getattr(photometric, "value", photometric)),
+        frame.dtype.str,
+        list(frame.shape),
+        base64.b64encode(np.ascontiguousarray(frame).tobytes()).decode("ascii"),
+    ]

@@ -31,7 +31,11 @@ accepted or revised verdict has exactly the reviewed regions blacked out,
 without the finder, and satisfies the option; one with a rejected verdict is
 sequestered; and any other is cleaned by the finder and held for review, as
 in the first run, so a source file changed since the review no longer
-matches.
+matches. For compressed Pixel Data, the pack also records the SHA-256 of
+the frames as decoded, which the second run's decoding must give again
+before the reviewed regions are applied, since another build of a decoder
+can decode the same lossy codestream to other pixels than those that the
+reviewer saw.
 
 The verdicts are read by digest, never by path or run position, so the
 second run may discover the files in another order, or among others, which
@@ -77,11 +81,18 @@ class RedactionReview:
     rejected : frozenset of bytes
         The SHA-256 of each source file whose instance the reviewer
         rejected.
+    decoded : mapping of bytes to bytes
+        For each approved source file whose Pixel Data is compressed, by
+        its SHA-256, the SHA-256 of its frames as the reviewed run decoded
+        them.
     """
 
     reference: str
     approved: Mapping[bytes, Regions]
     rejected: frozenset[bytes]
+    decoded: Mapping[bytes, bytes] = dataclasses.field(
+        default_factory=lambda: types.MappingProxyType({})
+    )
 
     def __post_init__(self) -> None:
         if not isinstance(self.reference, str) or not re.fullmatch(
@@ -92,8 +103,15 @@ class RedactionReview:
             self.rejected, frozenset
         ):
             raise QcPackError("a redaction review's files are SHA-256 digests")
-        if not all(_is_digest(d) for d in (*self.approved, *self.rejected)):
+        if not isinstance(self.decoded, Mapping) or not all(
+            _is_digest(d)
+            for d in (*self.approved, *self.rejected, *self.decoded.values())
+        ):
             raise QcPackError("a redaction review's files are SHA-256 digests")
+        if not set(self.decoded) <= set(self.approved):
+            raise QcPackError(
+                "a redaction review records decoded frames only of approved files"
+            )
         if not all(_is_regions(regions) for regions in self.approved.values()):
             raise QcPackError(
                 "a redaction review's regions are frames, in order, with boxes"
@@ -106,6 +124,7 @@ class RedactionReview:
         object.__setattr__(
             self, "approved", types.MappingProxyType(dict(self.approved))
         )
+        object.__setattr__(self, "decoded", types.MappingProxyType(dict(self.decoded)))
 
     def __repr__(self) -> str:
         return (
@@ -153,7 +172,8 @@ def read_redaction_review(pack_directory: os.PathLike | str) -> RedactionReview:
         Empty of files where the attestation gives no verdict. An accepted
         instance's regions are those that the pack lists for it, and a
         revised one's those and the ones that the verdict adds, in each
-        frame.
+        frame, with the SHA-256 of its decoded frames where the pack
+        records one.
 
     Raises
     ------
@@ -164,7 +184,8 @@ def read_redaction_review(pack_directory: os.PathLike | str) -> RedactionReview:
         or a preview changed after it was attested; if a verdict names an
         instance that the pack does not list as cleaned and previewed, or
         that it lists without its source's SHA-256; or if verdicts disagree
-        on one source file. The message names no path and no value.
+        on one source file, or on the decoded frames of one. The message
+        names no path and no value.
     """
     attestation, data = attested_pack(pack_directory)
     if attestation.outcome is not Outcome.ATTESTED:
@@ -172,8 +193,9 @@ def read_redaction_review(pack_directory: os.PathLike | str) -> RedactionReview:
             "the QC pack's attestation rejected it, so its verdicts release nothing"
         )
     digests, cleaned = _cleaned(data)
-    # The regions to black out in each source file, or None to reject it.
-    decisions: dict[bytes, Regions | None] = {}
+    # The regions to black out in each source file, or None to reject it,
+    # and the SHA-256 of its decoded frames, if compressed.
+    decisions: dict[bytes, tuple[Regions | None, bytes | None]] = {}
     for verdict in attestation.redactions:
         if verdict.position not in cleaned or verdict.position not in digests:
             raise QcPackError(
@@ -181,25 +203,34 @@ def read_redaction_review(pack_directory: os.PathLike | str) -> RedactionReview:
                 "list as cleaned and previewed"
             )
         digest = digests[verdict.position]
+        regions, decoded = cleaned[verdict.position]
         if verdict.redaction is Redaction.REJECTED:
             decided: Regions | None = None
         elif verdict.redaction is Redaction.ACCEPTED:
-            decided = cleaned[verdict.position]
+            decided = regions
         else:
-            decided = _added(cleaned[verdict.position], verdict.regions)
-        if decisions.setdefault(digest, decided) != decided:
+            decided = _added(regions, verdict.regions)
+        if decisions.setdefault(digest, (decided, decoded)) != (decided, decoded):
             raise QcPackError(
                 "the redaction verdicts disagree on a source file that the QC "
                 "pack lists more than once"
             )
+    approved = {
+        digest: (regions, decoded)
+        for digest, (regions, decoded) in decisions.items()
+        if regions is not None
+    }
     return RedactionReview(
         attestation.reference,
+        {digest: regions for digest, (regions, _) in approved.items()},
+        frozenset(
+            digest for digest, (regions, _) in decisions.items() if regions is None
+        ),
         {
-            digest: regions
-            for digest, regions in decisions.items()
-            if regions is not None
+            digest: decoded
+            for digest, (_, decoded) in approved.items()
+            if decoded is not None
         },
-        frozenset(digest for digest, regions in decisions.items() if regions is None),
     )
 
 
@@ -212,9 +243,12 @@ def _added(regions: Regions, more: Regions) -> Regions:
     return tuple((index, tuple(sorted(by_frame[index]))) for index in sorted(by_frame))
 
 
-def _cleaned(data: bytes) -> tuple[dict[int, bytes], dict[int, Regions]]:
+def _cleaned(
+    data: bytes,
+) -> tuple[dict[int, bytes], dict[int, tuple[Regions, bytes | None]]]:
     """Return each instance's source digest, and the regions of each cleaned
-    instance that the pack previewed, by run position."""
+    instance that the pack previewed, with the SHA-256 of its decoded
+    frames where the pack records one, by run position."""
     malformed = QcPackError("the QC pack is not of its format")
     document = json.loads(data.decode("ascii"))  # attested_pack has parsed it
     instances = document.get("instances")
@@ -231,6 +265,7 @@ def _cleaned(data: bytes) -> tuple[dict[int, bytes], dict[int, Regions]]:
                 raise malformed
             digests[position] = bytes.fromhex(digest)
     cleaned: dict[int, Regions] = {}
+    decoded: dict[int, bytes | None] = {}
     try:
         for entry in redactions:
             cleaned[entry["position"]] = tuple(
@@ -240,6 +275,14 @@ def _cleaned(data: bytes) -> tuple[dict[int, bytes], dict[int, Regions]]:
                 )
                 for regions in entry["regions"]
             )
+            sha256 = entry["decoded_sha256"]
+            if sha256 is not None and not (
+                isinstance(sha256, str) and _SHA256.fullmatch(sha256)
+            ):
+                raise malformed
+            decoded[entry["position"]] = (
+                None if sha256 is None else bytes.fromhex(sha256)
+            )
     # A pack that attested_pack read is of its format, but one written by
     # another tool could still hold anything.
     except (KeyError, TypeError, ValueError):
@@ -248,7 +291,7 @@ def _cleaned(data: bytes) -> tuple[dict[int, bytes], dict[int, Regions]]:
         raise malformed
     previewed = previewed_redactions(data)
     return digests, {
-        position: regions
+        position: (regions, decoded[position])
         for position, regions in cleaned.items()
         if position in previewed
     }

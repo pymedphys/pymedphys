@@ -66,7 +66,11 @@ each item checked to be of an even, defined length. Any other kept element of un
 holds no items, which can only be fragments of OB, is refused rather than
 copied, since verification could not show it preserved. Only the transfer
 syntaxes that :func:`.source.read_source` admits are written, and the data
-set is written in the source's. :func:`write_file_bytes` puts the preamble
+set is written in the source's, apart from encapsulated Pixel Data that
+Clean Pixel Data writes uncompressed, in Explicit VR Little Endian, which
+every data set of a syntax that encapsulates Pixel Data is already in
+(D-037): its replacement is then encoded as any other element is, with a
+defined length. :func:`write_file_bytes` puts the preamble
 and the File Meta Information that :mod:`.file_meta` builds before the data
 set. Each refusal is raised outside any handler, so it carries no exception
 from pydicom, whose message can quote a value, and pydicom's warnings and
@@ -94,6 +98,7 @@ from .elements import (
 from .file_layout import ElementPath
 from .preservation import TEXT_VRS, Expectations
 from .source import (
+    ENCAPSULATED_TRANSFER_SYNTAXES,
     SUPPORTED_TRANSFER_SYNTAXES,
     SourceEvidence,
     encapsulated_pixel_data,
@@ -101,6 +106,7 @@ from .source import (
 from .standard import VRS, dictionary_attribute
 
 _IMPLICIT = "1.2.840.10008.1.2"
+_EXPLICIT = "1.2.840.10008.1.2.1"
 _CHARACTER_SET = "(0008,0005)"
 # The VRs of text in the Default Character Repertoire alone (PS3.5 Table 6.2-1).
 _DEFAULT_TEXT_VRS = frozenset(
@@ -163,6 +169,7 @@ def write_data_set(
     kept: frozenset[ElementPath],
     removed: frozenset[ElementPath],
     replacements: Mapping[ElementPath, pydicom.DataElement],
+    transfer_syntax: str | None = None,
 ) -> bytes:
     """Return the encoded data set that the plan makes of ``source``.
 
@@ -177,6 +184,10 @@ def write_data_set(
         The elements to write in place of source elements, or to introduce,
         each with the tag of its path and a single VR. The elements in the
         items of a sequence among them are written from the sequence.
+    transfer_syntax : str, optional
+        Explicit VR Little Endian, for a source in a transfer syntax that
+        encapsulates Pixel Data, whose replacement of Pixel Data is then
+        native, as Clean Pixel Data writes it. By default, the source's.
 
     Returns
     -------
@@ -191,9 +202,20 @@ def write_data_set(
     WriteRefused
         If the data set cannot be written as planned.
     """
-    if source.transfer_syntax not in SUPPORTED_TRANSFER_SYNTAXES:
+    if source.transfer_syntax not in SUPPORTED_TRANSFER_SYNTAXES or (
+        transfer_syntax is not None
+        and not (
+            transfer_syntax == _EXPLICIT
+            and source.transfer_syntax in ENCAPSULATED_TRANSFER_SYNTAXES
+        )
+    ):
         raise WriteRefused(WriteReason.TRANSFER_SYNTAX)
-    plan = Expectations(kept=kept, changed=frozenset(replacements), removed=removed)
+    plan = Expectations(
+        kept=kept,
+        changed=frozenset(replacements),
+        removed=removed,
+        transfer_syntax=transfer_syntax,
+    )
     with redacted_diagnostics():
         writer = _Writer(source, plan, replacements)
         data = writer.data_set((), source.transfer_syntax != _IMPLICIT)
@@ -271,6 +293,7 @@ class _Writer:
             if (
                 path in self.replacements
                 and path in self.source
+                and self.plan.transfer_syntax is None
                 and encapsulated_pixel_data(self.source, path)
             ):
                 encoded.append((path.tag, _encapsulated(path, self.replacements[path])))

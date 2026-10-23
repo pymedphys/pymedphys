@@ -301,19 +301,19 @@ url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.3
 text = '''
 When this Option is specified in addition to the Basic Application Level Confidentiality Profile, any information burned in to the Pixel Data (7FE0,0010) corresponding to the Attribute information specified to be removed by the Profile and any other Options specified shall also be removed, as described in Table E.1-1.
 '''
-status = "partial"
-milestone = "M3"
+status = "implemented"
 decisions = ["D-015", "D-037", "D-048"]
 implementation = [
   "_dicom/deidentify/instance_transform.py",
   "_dicom/deidentify/pixel_cleaning.py",
+  "_dicom/deidentify/pixel_decoding.py",
   "_dicom/deidentify/redaction_review.py",
   "_dicom/deidentify/text_detection.py",
 ]
 note = '''
-Text that a text finder finds in native Pixel Data is blacked out, whatever it says, and every instance cleaned is held for review (D-037).
-A later run of the same files, given the attested QC pack, blacks out the regions that the reviewer accepted, with any that the reviewer added, without the finder, and releases the instance with the option's code; an instance that the reviewer rejected is sequestered (D-048).
-Compressed Pixel Data is sequestered.
+Text that a text finder finds in Pixel Data is blacked out, whatever it says, and every instance cleaned is held for review (D-037).
+Compressed Pixel Data is decoded first, in the isolated decoding child for the native decoders, and frames with a region are written uncompressed, in Explicit VR Little Endian; without a region, the compressed value is kept (D-037).
+A later run of the same files, given the attested QC pack, blacks out the regions that the reviewer accepted, with any that the reviewer added, without the finder, and releases the instance with the option's code; for compressed Pixel Data, only where its frames decode to the SHA-256 that the pack records, and otherwise the instance is held again. An instance that the reviewer rejected is sequestered (D-048).
 '''
 
 [[requirement]]

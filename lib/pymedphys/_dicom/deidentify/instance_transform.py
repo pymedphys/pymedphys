@@ -43,7 +43,8 @@ each instance it may process. It joins the engine's per-instance steps:
    :func:`~pymedphys._dicom.deidentify.descriptor_cleaning.clean_descriptors`,
    settle the attributes that the policy gives C, and under Clean Pixel Data,
    :func:`~pymedphys._dicom.deidentify.pixel_cleaning.black_out` blacks out
-   the text found in native Pixel Data (D-037), or, where a reviewer's
+   the text found in Pixel Data (D-037), writing compressed Pixel Data
+   uncompressed where it blacks out a region, or, where a reviewer's
    verdict on its source file is given,
    :func:`~pymedphys._dicom.deidentify.pixel_cleaning.black_out_reviewed`
    the regions that the reviewer approved, and under Clean Recognizable
@@ -171,7 +172,7 @@ from .reasons import (
     TransformReason,
     VisualFeaturesReason,
 )
-from .redaction_review import RedactionReview
+from .redaction_review import RedactionReview, Regions
 from .reference_graph import ReferenceGraph
 from .references import InstanceRecord
 from .reviewed_roi_names import ReviewQueue
@@ -192,6 +193,7 @@ from .codestreams import CodestreamRefused, without_metadata
 from .pixel_decoding import frames_problem, same_pixels
 from .pixel_cleaning import (
     PixelDataRefused,
+    PixelsNotReviewed,
     Redaction,
     TextFinder,
     black_out,
@@ -199,6 +201,7 @@ from .pixel_cleaning import (
     finder_description,
     redaction_problem,
 )
+from .defacing import FaceBlock
 from .dose_defacing import RT_DOSE, DoseBlock, RtDoseDefacer, find_dose_blocks
 from .face_blocks import (
     CT_IMAGE,
@@ -248,6 +251,15 @@ _SERIES = ElementPath((), "(0020,000E)")
 _PATIENT_ID = ElementPath((), "(0010,0020)")
 _PIXEL_DATA = ElementPath((), "(7FE0,0010)")
 _NUMBER_OF_FRAMES = ElementPath((), "(0028,0008)")
+_PHOTOMETRIC_INTERPRETATION = ElementPath((), "(0028,0004)")
+_PLANAR_CONFIGURATION = ElementPath((), "(0028,0006)")
+# What describes only encapsulated Pixel Data: Extended Offset Table, its
+# lengths, and Encapsulated Pixel Data Value Total Length.
+_ENCAPSULATION = (
+    ElementPath((), "(7FE0,0001)"),
+    ElementPath((), "(7FE0,0002)"),
+    ElementPath((), "(7FE0,0003)"),
+)
 _BURNED_IN_ANNOTATION = "(0028,0301)"
 _RECOGNIZABLE_VISUAL_FEATURES = "(0028,0302)"
 _ROI_CONTOURS = "(3006,0039)"  # ROI Contour Sequence
@@ -284,6 +296,10 @@ class WriterPlan:
         which the writer writes from the sequence. The source elements
         inside such a sequence are all in ``removed``, for the writer;
         verification expects those at an introduced path to be changed.
+    transfer_syntax : str or None
+        The transfer syntax written where it is not the source's: Explicit
+        VR Little Endian, where Clean Pixel Data writes compressed Pixel
+        Data uncompressed (D-037); None otherwise.
     """
 
     kept: frozenset[ElementPath]
@@ -292,6 +308,7 @@ class WriterPlan:
         repr=False
     )
     introduced: frozenset[ElementPath] = frozenset()
+    transfer_syntax: str | None = None
 
     @property
     def expectations(self) -> Expectations:
@@ -300,6 +317,7 @@ class WriterPlan:
             kept=self.kept,
             changed=frozenset(self.replacements) | self.introduced,
             removed=self.removed - self.introduced,
+            transfer_syntax=self.transfer_syntax,
         )
 
 
@@ -512,7 +530,10 @@ def writer_plan(
                     _paths_within(replacements[edit.path], edit.path.items)
                 )
     return WriterPlan(
-        frozenset(kept), frozenset(removed), replacements, frozenset(introduced)
+        frozenset(kept),
+        frozenset(removed),
+        replacements,
+        frozenset(introduced),
     )
 
 
@@ -601,7 +622,11 @@ def with_markers(
         replacements[path] = element
         introduced |= set(_paths_within(element, ()))
     return WriterPlan(
-        frozenset(kept), frozenset(removed), replacements, frozenset(introduced)
+        frozenset(kept),
+        frozenset(removed),
+        replacements,
+        frozenset(introduced),
+        writing.transfer_syntax,
     )
 
 
@@ -805,18 +830,23 @@ class InstanceTransform:
 
     Under Clean Pixel Data, :func:`~.pixel_cleaning.black_out` blacks out the
     regions of text that ``finder`` finds in each frame of the instance's
-    top-level native Pixel Data, :func:`~.pixel_cleaning.redaction_problem`
-    checks the file written, and the instance's evidence is a
+    top-level Pixel Data, decoded first where it is compressed and then
+    written uncompressed, in Explicit VR Little Endian, if a region is
+    blacked out, :func:`~.pixel_cleaning.redaction_problem` checks the file
+    written, and the instance's evidence is a
     :class:`HeldEvidence`, whether or not text was found, since the finder can
     miss text and only review can confirm the option (D-037). Where
     ``redaction_review`` has a verdict on the SHA-256 of the instance's
     source file, the finder is not asked: an instance whose regions the
     reviewer accepted or revised has exactly those regions blacked out
     (:func:`~.pixel_cleaning.black_out_reviewed`), checked in the same way,
-    and satisfies the option, and one that the reviewer rejected is
-    sequestered (:attr:`~.reasons.TransformReason.REDACTION_REJECTED`). One
-    whose pixel data the option cannot clean, such as compressed Pixel Data,
-    is sequestered (:class:`~.pixel_cleaning.PixelDataRefused`), and one
+    and satisfies the option, unless its Pixel Data is compressed and its
+    frames no longer decode to the pixels whose SHA-256 the review records,
+    when it is cleaned by the finder and held again; one that the reviewer
+    rejected is sequestered
+    (:attr:`~.reasons.TransformReason.REDACTION_REJECTED`). One whose pixel
+    data the option cannot clean, such as float pixel data, is sequestered
+    (:class:`~.pixel_cleaning.PixelDataRefused`), and one
     without top-level pixel data has nothing for the option to clean, so it
     satisfies it. Each instance that satisfies the option is marked with its
     code and Burned In Annotation (0028,0301) set to NO, which PS3.15 E.3.1
@@ -1188,6 +1218,12 @@ class InstanceTransform:
         :attr:`~.reasons.VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME` or
         the defacer's reason.
 
+        Compressed Pixel Data is decoded to clean it, and a reviewer's
+        regions are applied to it only where the decoded frames' SHA-256 is
+        the one that the review records for the source file, so that what
+        is released is what the reviewer saw, whichever decoder's build
+        decoded it; otherwise the finder cleans it and it is held again.
+
         Raises
         ------
         _Refused
@@ -1198,47 +1234,82 @@ class InstanceTransform:
         block = None if defacing is None else defacing.block
         if self._finder is None and block is None and dose is None and pet is None:
             return None, None, False
-        approved = None
+        approved = decoded = None
         if self._finder is not None and self._redaction_review is not None:
             digest = hashlib.sha256(data).digest()
             if digest in self._redaction_review.rejected:
                 raise _Refused(TransformReason.REDACTION_REJECTED)
             approved = self._redaction_review.approved.get(digest)
-        reviewed = approved is not None
+            decoded = self._redaction_review.decoded.get(digest)
         try:
-            if dose is not None or pet is not None:
-                try:
-                    defacer = (
-                        RtDoseDefacer(dose, dataset)
-                        if dose is not None
-                        else PetDefacer(pet, dataset)  # type: ignore[arg-type]
-                    )
-                    redaction = (
-                        black_out(source, dataset, self._finder, defacer)
-                        if approved is None
-                        else black_out_reviewed(source, dataset, approved, defacer)
-                    )
-                    why = defacer.held
-                except PixelDataRefused:
-                    redaction = None
-                    why = VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME
-                if why is not None:
-                    redaction = None
-                    if approved is not None:
-                        redaction = black_out_reviewed(source, dataset, approved)
-                    elif self._finder is not None:
-                        redaction = black_out(source, dataset, self._finder)
-                return redaction, why, reviewed
-            defacer = None if block is None else CtDefacer(block, dataset)
-            if approved is not None:
-                return (
-                    black_out_reviewed(source, dataset, approved, defacer),
-                    None,
-                    True,
+            try:
+                return self._cleaned(
+                    source, dataset, block, dose, pet, approved, decoded
                 )
-            return black_out(source, dataset, self._finder, defacer), None, False
+            except PixelsNotReviewed:
+                return self._cleaned(source, dataset, block, dose, pet, None, None)
         except PixelDataRefused as refused:
             raise _Refused(refused.reason) from None
+
+    def _cleaned(
+        self,
+        source: SourceEvidence,
+        dataset: pydicom.Dataset,
+        block: FaceBlock | None,
+        dose: DoseBlock | None,
+        pet: DoseBlock | None,
+        approved: Regions | None,
+        decoded: bytes | None,
+    ) -> tuple[Redaction | None, VisualFeaturesReason | None, bool]:
+        """Return what :meth:`_black_out` returns, with the regions that a
+        reviewer ``approved``, if any, and the SHA-256 that the review
+        records of the decoded frames, if any.
+
+        Raises
+        ------
+        PixelDataRefused
+            As :func:`~.pixel_cleaning.black_out` raises it.
+        PixelsNotReviewed
+            As :func:`~.pixel_cleaning.black_out_reviewed` raises it.
+        """
+        reviewed = approved is not None
+        if dose is not None or pet is not None:
+            try:
+                defacer = (
+                    RtDoseDefacer(dose, dataset)
+                    if dose is not None
+                    else PetDefacer(pet, dataset)  # type: ignore[arg-type]
+                )
+                redaction = (
+                    black_out(source, dataset, self._finder, defacer)
+                    if approved is None
+                    else black_out_reviewed(
+                        source, dataset, approved, defacer, decoded_sha256=decoded
+                    )
+                )
+                why = defacer.held
+            except PixelDataRefused:
+                redaction = None
+                why = VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME
+            if why is not None:
+                redaction = None
+                if approved is not None:
+                    redaction = black_out_reviewed(
+                        source, dataset, approved, decoded_sha256=decoded
+                    )
+                elif self._finder is not None:
+                    redaction = black_out(source, dataset, self._finder)
+            return redaction, why, reviewed
+        defacer = None if block is None else CtDefacer(block, dataset)
+        if approved is not None:
+            return (
+                black_out_reviewed(
+                    source, dataset, approved, defacer, decoded_sha256=decoded
+                ),
+                None,
+                True,
+            )
+        return black_out(source, dataset, self._finder, defacer), None, False
 
     def _kept_descriptors(
         self, plan: InstancePlan, edits: InstanceEdits
@@ -1379,10 +1450,12 @@ class InstanceTransform:
             )
             # The markers write no pixel data, so the face review is of the
             # pixel data that this plan writes.
+            # Compressed Pixel Data written uncompressed holds no codestream
+            # whose metadata could be cut.
             writing = _without_bitstream_metadata(
-                writer_plan(plan, edits, codecs), source
+                _with_redaction(writer_plan(plan, edits, codecs), dataset, redaction),
+                source,
             )
-            writing = _with_redaction(writing, dataset, redaction)
             if region is not None and iod.name == RT_STRUCTURE_SET:
                 try:
                     writing = _with_cut_contours(
@@ -1554,7 +1627,8 @@ def _written(
 
     Pixel Data that the plan replaces must decode to the source's pixels, or,
     where Clean Pixel Data blacked out ``redaction``'s regions, differ from
-    the source's only as that redaction planned.
+    the source's only as that redaction planned; compressed Pixel Data in
+    which Clean Pixel Data wrote nothing is checked as it is without it.
     """
     path = _output_path(identifiers.names)
     sop_class = _replaced(writing.replacements, _SOP_CLASS)
@@ -1566,12 +1640,13 @@ def _written(
             kept=writing.kept,
             removed=writing.removed,
             replacements=writing.replacements,
+            transfer_syntax=writing.transfer_syntax,
         )
         data = write_file_bytes(
             data_set,
             sop_class_uid=sop_class,
             sop_instance_uid=identifiers.sop_instance_uid,
-            transfer_syntax_uid=source.transfer_syntax,
+            transfer_syntax_uid=writing.transfer_syntax or source.transfer_syntax,
         )
     except WriteRefused as refused:
         raise _Refused(refused.reason) from None
@@ -1585,7 +1660,7 @@ def _written(
         raise _Refused(failed.reason) from None
     if lost_requirements(source, output, iod, frozenset(writing.replacements)):
         raise _Refused(TransformReason.REQUIRED_ATTRIBUTE_LOST)
-    if redaction is not None:
+    if redaction is not None and (redaction.changed or redaction.decoded is None):
         if redaction_problem(source, output, redaction):
             raise _Refused(TransformReason.REDACTION_MISMATCH)
     elif _PIXEL_DATA in writing.replacements and not same_pixels(source, output):
@@ -1717,7 +1792,11 @@ def _with_cut_contours(
         else:
             removed.add(path)
     return WriterPlan(
-        frozenset(kept), frozenset(removed), replacements, frozenset(introduced)
+        frozenset(kept),
+        frozenset(removed),
+        replacements,
+        frozenset(introduced),
+        writing.transfer_syntax,
     )
 
 
@@ -1780,17 +1859,45 @@ def _with_redaction(
     gives it for the native transfer syntaxes. Pixel Data without a region
     to black out is kept, and Pixel Data that the plan does not keep is left
     as planned, which :func:`_written` refuses.
+
+    Compressed Pixel Data with a region is written uncompressed, of VR OW
+    where Bits Allocated is over 8 and OB otherwise, as
+    Explicit VR Little Endian has it (PS3.5 Section A.2), in that transfer
+    syntax, with Photometric Interpretation and Planar Configuration as the
+    frames were decoded, and without the Extended Offset Table, its lengths,
+    or Encapsulated Pixel Data Value Total Length, which describe only
+    encapsulated Pixel Data (PS3.3 Section C.7.6.3.1.8).
     """
     if redaction is None or not redaction.changed or _PIXEL_DATA not in writing.kept:
         return writing
-    vr = dataset[0x7FE00010].VR
-    if vr not in ("OB", "OW"):
-        vr = "OW" if redaction.layout.bits_allocated > 8 else "OB"
-    element = pydicom.DataElement(0x7FE00010, vr, redaction.value)
+    if redaction.transfer_syntax is None:
+        vr = dataset[0x7FE00010].VR
+        if vr not in ("OB", "OW"):
+            vr = "OW" if redaction.layout.bits_allocated > 8 else "OB"
+        element = pydicom.DataElement(0x7FE00010, vr, redaction.value)
+        return dataclasses.replace(
+            writing,
+            kept=writing.kept - {_PIXEL_DATA},
+            replacements={**writing.replacements, _PIXEL_DATA: element},
+        )
+    layout = redaction.layout
+    vr = "OW" if layout.bits_allocated > 8 else "OB"
+    replaced = {_PIXEL_DATA: pydicom.DataElement(0x7FE00010, vr, redaction.value)}
+    if str(dataset.PhotometricInterpretation) != layout.photometric:
+        replaced[_PHOTOMETRIC_INTERPRETATION] = pydicom.DataElement(
+            0x00280004, "CS", layout.photometric
+        )
+    if layout.samples > 1 and dataset.PlanarConfiguration != int(layout.planar):
+        replaced[_PLANAR_CONFIGURATION] = pydicom.DataElement(
+            0x00280006, "US", int(layout.planar)
+        )
+    encapsulation = {path for path in _ENCAPSULATION if path in writing.kept}
     return dataclasses.replace(
         writing,
-        kept=writing.kept - {_PIXEL_DATA},
-        replacements={**writing.replacements, _PIXEL_DATA: element},
+        kept=writing.kept - set(replaced) - encapsulation,
+        removed=writing.removed | encapsulation,
+        replacements={**writing.replacements, **replaced},
+        transfer_syntax=redaction.transfer_syntax,
     )
 
 
@@ -1798,7 +1905,8 @@ def _redaction_material(redaction: Redaction, source: bytes) -> RedactionMateria
     """The QC material of what Clean Pixel Data did, for the reviewer.
 
     The source is kept only where a frame has regions, since only those
-    frames are shown as received.
+    frames are shown as received. The SHA-256 of compressed Pixel Data's
+    decoded frames binds a verdict to them (D-048).
     """
     return RedactionMaterial(
         redaction.reason,
@@ -1807,6 +1915,7 @@ def _redaction_material(redaction: Redaction, source: bytes) -> RedactionMateria
         redaction.layout.columns,
         tuple((regions.frame, regions.boxes) for regions in redaction.regions),
         source if redaction.regions else None,
+        redaction.decoded_sha256,
     )
 
 

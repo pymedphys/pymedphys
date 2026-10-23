@@ -108,16 +108,14 @@ class TransformReason(enum.Enum):
     # whose overlay may lie in unused bits of Pixel Data, which the engine
     # does not change
     OVERLAY_IN_PIXEL_DATA = "overlay-in-pixel-data"
-    # under Clean Pixel Data, compressed Pixel Data, which the engine does not
-    # yet black out (D-037)
-    COMPRESSED_PIXEL_DATA = "compressed-pixel-data"
     # under Clean Pixel Data, top-level Float Pixel Data or Double Float Pixel
-    # Data, or native Pixel Data that cannot be read as frames of stored
-    # values: a layout other than whole bytes of 8, 16, or 32 bits with its
-    # High Bit one less than Bits Stored, a photometric interpretation other
-    # than MONOCHROME1, MONOCHROME2, or 8-bit RGB, a length that does not fit
-    # its frames, or bits above Bits Stored that hold more than the value's
-    # sign, such as an overlay (D-037)
+    # Data, or Pixel Data that cannot be read as frames of stored values: a
+    # layout other than whole bytes of 8, 16, or 32 bits with its High Bit one
+    # less than Bits Stored, a photometric interpretation other than
+    # MONOCHROME1, MONOCHROME2, or 8-bit RGB, or, compressed, 8-bit YBR_FULL,
+    # YBR_FULL_422, YBR_ICT, or YBR_RCT, which decode to RGB, a length that
+    # does not fit its frames, or bits above Bits Stored that hold more than
+    # the value's sign, such as an overlay (D-037)
     UNCLEANABLE_PIXEL_DATA = "uncleanable-pixel-data"
     # under Clean Pixel Data, written Pixel Data that differs from its source
     # other than by the blacked-out regions (D-037), or reviewed regions in a

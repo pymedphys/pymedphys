@@ -75,6 +75,8 @@ from .source import SourceEvidence
 _OVERLAY_GROUP = re.compile(r"\((60[01][02468ACE]),[0-9A-F]{4}\)")
 # The removals of a required attribute that a plain X allows on their own.
 _ALLOWED = frozenset({RemovalExtent.ATTRIBUTE, RemovalExtent.OVERLAY_GROUP})
+_EXTENDED_OFFSET_TABLE = "(7FE0,0001)"
+_EXTENDED_OFFSET_TABLE_LENGTHS = "(7FE0,0002)"
 
 
 @dataclasses.dataclass(frozen=True)
@@ -243,12 +245,17 @@ def _allowed_removal(iod: IOD, path: ElementPath, output: SourceEvidence) -> boo
     none of the group's attributes may remain in the data set, or item, that
     held it. A sequence of the Common Instance Reference Module may go only
     where the output holds no other reference to an instance with a value.
+    Extended Offset Table Lengths, required only with an Extended Offset
+    Table, may go with it, as where Clean Pixel Data writes compressed Pixel
+    Data uncompressed (D-037).
     """
     if is_common_instance_reference(path):
         return not any(
             is_instance_reference(kept) and not _empty(output, kept)
             for kept in output.paths()
         )
+    if path.tag == _EXTENDED_OFFSET_TABLE_LENGTHS:
+        return ElementPath(path.items, _EXTENDED_OFFSET_TABLE) not in output
     tag = path.tag
     tags = tuple(each for each, _ in path.items)
     overlay = _OVERLAY_GROUP.fullmatch(tag)
