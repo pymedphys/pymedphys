@@ -234,6 +234,23 @@ def test_otsu_puts_padding_below_one_value(value):
     assert ((values >= level) == np.isfinite(values)).all()
 
 
+@pytest.mark.parametrize("padding", [False, True])
+def test_otsu_is_the_same_counted_in_parts(monkeypatch, padding):
+    rng = np.random.default_rng(5)
+    values = np.concatenate(
+        [rng.normal(-800, 50, 400), rng.normal(60, 30, 600), np.full(100, np.nan)]
+    ).astype(np.float32)
+    rng.shuffle(values)
+    volume = values.reshape(11, 10, 10)
+    # pylint: disable = protected-access
+    whole = qc_surfaces._otsu(volume, padding=padding)
+    assert whole is not None
+
+    for part in (1, 7, 64):
+        monkeypatch.setattr(qc_surfaces, "_OTSU_PART", part)
+        assert qc_surfaces._otsu(volume, padding=padding) == whole
+
+
 @pytest.mark.deid_requirement("MIDI-BP-15", "MIDI-BP-17")
 @pytest.mark.pydicom
 def test_a_volume_gets_a_surface_render_after_its_projection():
@@ -266,6 +283,45 @@ def test_a_series_that_is_not_a_volume_gets_no_surface_render():
         assert [preview.kind for preview in previews.previews] == [
             PreviewKind.SERIES_CINE
         ]
+
+
+@pytest.mark.parametrize("spacing, rendered", [(2.0, True), (600.0, False)])
+@pytest.mark.pydicom
+def test_a_volume_too_large_to_render_has_only_its_cine_strip_and_is_held_beyond_it(
+    spacing, rendered
+):
+    # 20 slices of 3 by 3 pixels: 1,200 mm across at 600 mm a pixel.
+    count = 20
+    written = {
+        k: _with(
+            _image(
+                np.full((3, 3), 40),
+                number=k + 1,
+                series="2.25.7105",
+                origin=(0.0, 0.0, 2.0 * k),
+                spacing=(spacing, spacing),
+            ),
+            Modality="CT",
+        )
+        for k in range(count)
+    }
+
+    previews = qc_previews.previews_of(written, ())
+
+    kinds = [preview.kind for preview in previews.previews]
+    if rendered:
+        assert kinds == [
+            PreviewKind.SERIES_CINE,
+            PreviewKind.SERIES_MIP,
+            PreviewKind.SERIES_SURFACE,
+        ]
+        assert previews.pixels_shown == frozenset(range(count))
+    else:
+        assert kinds == [PreviewKind.SERIES_CINE]
+        (cine,) = previews.previews
+        shown = {position for position, _ in cine.frames}
+        assert len(shown) == qc_previews.CINE_FRAMES < count
+        assert previews.pixels_shown == frozenset(shown)
 
 
 @pytest.mark.deid_requirement("MIDI-BP-15")
@@ -802,7 +858,7 @@ def test_the_same_files_give_the_same_render():
     assert _surface(_axial(_body(ear=True))) == _surface(_axial(_body(ear=True)))
 
 
-def test_a_long_volume_is_sampled_to_at_most_the_maximum_voxels():
+def test_a_long_volume_is_sampled_at_2_mm():
     directions = (np.array([0, 0, 1.0]), np.array([0, 1.0, 0]), np.array([1.0, 0, 0]))
     surface = qc_surfaces.Surface(
         qc_surfaces.grid(
@@ -818,11 +874,120 @@ def test_a_long_volume_is_sampled_to_at_most_the_maximum_voxels():
 
     mask = surface.mask()
 
-    assert mask is not None
-    assert max(mask.shape) == qc_surfaces.MAXIMUM_VOXELS
+    # 1,000 mm along z, 299.5 mm along y, and 1.5 mm along x, at 2 mm, where
+    # 256 voxels a side would have sampled it at about 3.9 mm.
+    assert mask is not None and mask.shape == (501, 150, 1)
     assert mask.all()
     image = surface.image()
     assert image is not None and image.dtype == np.uint8
+    assert image.shape[0] == 501
+
+
+def _box_grid(extents, threshold=qc_surfaces.Threshold.CT):
+    """An axial grid of two slices, rows, and columns, whose extents along
+    x, y, and z are as given."""
+    x, y, z = extents
+    directions = (np.array([0, 0, 1.0]), np.array([0, 1.0, 0]), np.array([1.0, 0, 0]))
+    return qc_surfaces.grid(directions, [0.0, z], (y, x), (2, 2), threshold)
+
+
+@pytest.mark.parametrize(
+    "extents, rendered",
+    [
+        ((qc_surfaces.WIDEST, qc_surfaces.WIDEST, qc_surfaces.LONGEST), True),
+        ((qc_surfaces.WIDEST + 0.5, 10.0, 10.0), False),
+        ((10.0, qc_surfaces.WIDEST + 0.5, 10.0), False),
+        ((10.0, 10.0, qc_surfaces.LONGEST + 0.5), False),
+    ],
+    ids=["at-the-bounds", "wide-across", "deep-front-to-back", "long"],
+)
+@pytest.mark.parametrize(
+    "threshold", [qc_surfaces.Threshold.CT, qc_surfaces.Threshold.DOSE]
+)
+def test_a_volume_too_long_or_too_wide_is_not_rendered(extents, rendered, threshold):
+    surface = qc_surfaces.Surface(_box_grid(extents, threshold))
+    for _ in range(2):
+        surface.add(np.ones((2, 2), np.float32))
+
+    assert (surface.mask() is not None) is rendered
+    assert (surface.image() is not None) is rendered
+    if not rendered:
+        # Nothing of it is sampled, however large it is.
+        assert not surface._samples.size  # pylint: disable = protected-access
+
+
+@pytest.mark.deid_requirement("MIDI-BP-15")
+@pytest.mark.pydicom
+def test_the_view_from_behind_shows_the_patients_left_on_the_viewers_left():
+    ear = _views(_surface(_axial(_body(nose=False, ear=True))))
+    plain = _views(_surface(_axial(_body(nose=False))))
+    middle = ear[0].shape[1] // 2
+
+    # The head and its ear are symmetric from front to back, so from behind
+    # they are seen as from the front, mirrored.
+    assert (ear[180] == ear[0][:, ::-1]).all()
+    _, columns = _changed(ear[180], plain[180])
+    assert max(columns) < middle - 5
+    # The nose, in front, is hidden from behind.
+    nose = _views(_surface(_axial(_body(nose=True))))
+    assert (nose[180] == plain[180]).all()
+
+
+def test_only_the_view_from_behind_and_the_profiles_show_a_bump_on_the_back():
+    inside = np.zeros((9, 21, 21), bool)
+    inside[:, 5:16, 5:16] = True
+    bumped = inside.copy()
+    # Rows run towards posterior.
+    bumped[3:6, 16:18, 9:12] = True
+
+    changed = {
+        view: not (plain == bump).all()
+        for view, plain, bump in zip(
+            qc_surfaces.VIEWS, qc_surfaces.views(inside), qc_surfaces.views(bumped)
+        )
+    }
+
+    assert changed == {0: False, 45: False, -45: False, 90: True, -90: True, 180: True}
+
+
+def test_views_and_crossings_are_the_same_however_many_slices_are_rendered_at_once(
+    monkeypatch,
+):
+    rng = np.random.default_rng(3)
+    inside = rng.random((10, 15, 13)) < 0.4
+    views = qc_surfaces.views(inside)
+    crossings = qc_surfaces.view_crossings(inside)
+
+    for count in (1, 3, 10**6):
+        monkeypatch.setattr(qc_surfaces, "_SLICES_AT_A_TIME", count)
+        assert all((a == b).all() for a, b in zip(qc_surfaces.views(inside), views))
+        again = qc_surfaces.view_crossings(inside)
+        assert all(
+            a.dtype == np.int16 and a.shape == b.shape and (a == b).all()
+            for a, b in zip(again, crossings)
+        )
+
+
+def test_hidden_rows_that_would_not_fit_are_not_drawn_nor_their_crossings_found(
+    monkeypatch,
+):
+    # Ten nested square rings in a slice, so a ray crosses 20 times.
+    inside = np.zeros((3, 44, 44), bool)
+    for ring in range(10):
+        inside[1, 2 * ring : 44 - 2 * ring, 2 * ring : 44 - 2 * ring] = ring % 2 == 0
+    gap = qc_surfaces._GAP_PIXELS  # pylint: disable = protected-access
+    # A row for each crossing after the first, as the room counts them.
+    needed = 19 * (len(inside) + gap)
+    rows = qc_surfaces.hidden_rows(inside, room=needed)
+    # And a row of its cavities, which the room does not count.
+    assert rows is not None and len(rows) == 1 + 19
+
+    def found(*_):
+        raise AssertionError("crossings found")
+
+    monkeypatch.setattr(qc_surfaces, "_crossings", found)
+    monkeypatch.setattr(qc_surfaces, "views", found)
+    assert qc_surfaces.hidden_rows(inside, room=needed - 1) is None
 
 
 def test_a_render_needs_every_slice():

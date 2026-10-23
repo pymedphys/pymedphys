@@ -42,11 +42,14 @@ frame with such regions, also from the file as received:
   each slice also taken into the pixel nearest it by the maximum, so that
   every slice is drawn where slices are closer than the pixels;
 - a sheet of renders of the skin surface of each such volume, from the
-  front, the two obliques, and the two profiles, as
+  front, the two obliques, the two profiles, and behind, as
   :mod:`~pymedphys._dicom.deidentify.qc_surfaces` describes, or, for a
   volume of RT Dose planes, and for each RT Dose instance of two or more
   frames whose grid lies along the patient's axes with its frames evenly
   spaced, a dose-levels sheet of such renders at each of its dose levels;
+  one that :mod:`~pymedphys._dicom.deidentify.qc_surfaces` finds too large
+  to render has none, and such a volume has no projection either, so that
+  its slices beyond its cine strip are held;
   an RT Dose is shown so only where it is one by its SOP Class, and its
   stored values are unsigned, not padded, not rescaled, and scaled by a
   finite Dose Grid Scaling above 0 to doses that float32 holds, each above
@@ -739,9 +742,16 @@ def _series_images(
     chosen = {frames[i] for i in _evenly(len(frames), CINE_FRAMES)}
     volume = _volume(series)
     tiles: list[tuple[int, int, np.ndarray, _Instance]] = []
-    projection = _Projection(volume) if volume is not None else None
     surfaces = _surfaces(series, volume)
-    rendered = {frame for _, shown, _ in surfaces for frame in shown}
+    # A volume too large for a surface render has no projection either, so
+    # that no preview that could show a face draws its slices beyond its
+    # cine strip, and their pixel data are held.
+    projection = (
+        _Projection(volume) if volume is not None and not surfaces[0][2].large else None
+    )
+    rendered = {
+        frame for _, shown, surface in surfaces if not surface.large for frame in shown
+    }
     # Each RT Dose plane in no volume, mapped by the levels of its dose.
     planes = {
         instance.position: instance

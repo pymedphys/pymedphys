@@ -848,7 +848,8 @@ class PreviewKind(enum.Enum):
 
     SERIES_CINE = "series-cine"  # frames evenly spaced through a series
     SERIES_MIP = "series-mip"  # a frontal maximum intensity projection
-    # renders of a volume's skin surface, from the front, obliques, and profiles
+    # renders of a volume's skin surface, from the front, obliques, profiles,
+    # and behind
     SERIES_SURFACE = "series-surface"
     # renders of an RT Dose's surfaces at each of a ladder of dose levels,
     # or a map of one plane's dose by level, drawing every frame listed

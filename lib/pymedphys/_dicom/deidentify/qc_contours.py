@@ -22,7 +22,7 @@ An RT Structure Set has no pixel data, but its contours can trace the skin
 surface, as an outline of the patient's body does, from which a
 face-recognition system can match a face as it does from a CT's.
 :func:`contour_sheet` renders the region that a structure set's contours,
-as the run wrote them, bound, by :func:`~.qc_surfaces.views`, from the five
+as the run wrote them, bound, by :func:`~.qc_surfaces.views`, from the six
 directions of :data:`~.qc_surfaces.VIEWS`, so that a reviewer can see a
 face where its contours trace one. The sheet's rows, from the top,
 separated by grey rows of :data:`GUTTER_PIXELS`, are:
@@ -36,8 +36,8 @@ separated by grey rows of :data:`GUTTER_PIXELS`, are:
 - for each item of the ROI Contour Sequence, in order, its region alone,
   since the united region hides an ROI wholly inside another, or a black
   row of :data:`GUTTER_PIXELS` for an item without contours. Where a ray
-  of the frontal view or of a profile, which look along the axes of the
-  voxels and so between them meet every voxel of the region's surface,
+  of the frontal view, the view from behind, or a profile, which look
+  along the axes of the voxels and so between them meet every voxel of the region's surface,
   crosses that surface more than twice, the region hides some of its
   surface behind its own, as one with a cavity within it, or with one
   part behind another, does. Its row is then followed by a row of its
@@ -67,8 +67,8 @@ separated by grey rows of :data:`GUTTER_PIXELS`, are:
   ray crosses it, so that they show every crossing into or out of the
   layer that a ray of the frontal view or of a profile makes; so every
   mark is shown, in those rows or within two voxels of the edge of what
-  its slice shows, which the ROI's rows draw from the front and the sides,
-  though not from behind. A layer's rows are taken to draw every voxel of
+  its slice shows, which the ROI's rows draw from the front, the back, and
+  the sides. A layer's rows are taken to draw every voxel of
   it only where each has a neighbour along its row or its column of voxels
   that is not in the layer, counting the views along the voxels' axes and
   not the oblique ones; where one does not, as where one contour's marks
@@ -80,7 +80,7 @@ with a voxel more on each low side across, 0 to 1 voxel more on each high
 side, and up to a voxel more below, so that its edge and its lowest point
 are drawn. A frame's united region has voxels of
 :data:`~.qc_surfaces.MINIMUM_VOXEL` millimetres, as :mod:`~.qc_surfaces`
-samples a volume up to 510 mm in extent, whatever the frame's extent, so
+samples a volume, whatever the frame's extent, so
 that a longer frame's rows are taller rather than coarser. An ROI alone has
 the finer of those voxels and those that keep its extent within
 :data:`ROI_VOXELS`, but none finer than
@@ -151,17 +151,18 @@ FARTHEST = 1e6
 # frame that a sheet draws, longer than a patient, and the widest across,
 # from left to right or front to back, wider than any scanner's bore; so
 # its voxels are at most 2 mm, and each row at most about 1,000 pixels
-# tall and 3,600 wide.
-LONGEST = 2000.0
-WIDEST = 1000.0
+# tall and 4,300 wide, as :mod:`~.qc_surfaces` bounds a volume.
+LONGEST = qc_surfaces.LONGEST
+WIDEST = qc_surfaces.WIDEST
 ROI_VOXELS = 128
 ROI_MINIMUM_VOXEL = 0.5  # millimetres
 GUTTER_PIXELS = 8
 # The tallest contour sheet that is shown: each row of a frame whose ROIs
-# span up to 510 mm along z is at most 257 voxels tall, as is a guide, so
-# at least about 120 rows in one such frame, about 103 in ten frames each
-# with a guide, and about 2 fewer for each further frame with a guide; a
-# row of an ROI 2,000 mm long is about 1,000 tall, so about 32 of them fit.
+# span up to 510 mm along z is at most 257 voxels tall, as is the guide of
+# a volume up to 510 mm long, so at least about 120 rows in one such frame,
+# about 103 in ten frames each with such a guide, and about 2 fewer for each
+# further frame with one; a row of an ROI, or a guide, 2,000 mm long is
+# about 1,000 tall, so about 32 of them fit.
 # An ROI item has one row, and more where it hides some of its surface
 # behind its own, or its marks. A taller one is drawn only until it is too
 # tall, and is not shown, so that its set is held rather than shown in an
@@ -169,9 +170,7 @@ GUTTER_PIXELS = 8
 MAXIMUM_SHEET_PIXELS = 32768
 
 # The views whose rays look along an axis of the voxels.
-_ALONG = (0, 90, -90)
-# How many slices of a region are rendered at once.
-_SLICES_AT_A_TIME = 64
+_ALONG = (0, 90, -90, 180)
 # As a redaction preview's outline and gutter.
 _OUTLINE = (255, 0, 255)
 _GUTTER = (128, 128, 128)
@@ -603,15 +602,15 @@ def _roi_rows(
     # voxel of its surface, and cross the surface more than twice only where
     # it hides some of its surface behind its own; the oblique views' rays,
     # which step between voxels, cross a surface falsely where they graze it.
-    most = max(_most_crossings(inside, axis) for axis in (1, 2))
+    most = max(qc_surfaces.most_crossings(inside, axis) for axis in (1, 2))
     crossed = marks or most > 2
     # The views' row, and a row for each crossing after the first.
     least = 1 + (max(most - 1, 0) if crossed else 0)
     if room is not None and least * (len(inside) + GUTTER_PIXELS) > room:
         return None
     # So, within a sheet's height bound, the crossings found are at most
-    # about 32,768 by 711 for each of three views, as 16-bit integers, some
-    # 140 MB, however intricate the region.
+    # about 32,768 by 711 for each of four views, as 16-bit integers, some
+    # 190 MB, however intricate the region.
     rows = [_rgb(_views(inside))]
     if not crossed:
         return rows
@@ -622,7 +621,7 @@ def _roi_rows(
         enclosed = scipy.ndimage.binary_fill_holes(inside, within) & ~inside
         if enclosed.any():
             rows.append(_rgb(_views(enclosed)))
-    along = dict(zip(_ALONG, _view_crossings(inside, _ALONG)))
+    along = dict(zip(_ALONG, qc_surfaces.view_crossings(inside, _ALONG)))
     none = np.full(along[0].shape[1:], -1)
     for crossing in range(1, max(len(each) for each in along.values())):
         tiles = []
@@ -646,20 +645,6 @@ def _undrawn(marks: np.ndarray) -> np.ndarray:
     return marks & scipy.ndimage.binary_erosion(marks, around, border_value=0)
 
 
-def _most_crossings(inside: np.ndarray, axis: int) -> int:
-    """The most times that a line of voxels along an axis within a slice
-    crosses in or out of the region, found a few slices at a time."""
-    padding = [(0, 0)] * inside.ndim
-    padding[axis] = (1, 1)
-    return max(
-        (
-            int(np.diff(np.pad(part, padding), axis=axis).sum(axis=axis).max(initial=0))
-            for part in _slice_runs(inside)
-        ),
-        default=0,
-    )
-
-
 def _tiles(depths: Sequence[np.ndarray]) -> np.ndarray:
     return qc_surfaces.side_by_side([qc_surfaces.shaded(each) for each in depths])
 
@@ -681,54 +666,7 @@ def _sized(values: np.ndarray) -> bytes:
 
 
 def _views(inside: np.ndarray) -> np.ndarray:
-    depths = [
-        np.concatenate(each)
-        for each in zip(*_by_slices(inside, qc_surfaces.view_depths))
-    ]
-    return qc_surfaces.side_by_side([qc_surfaces.shaded(each) for each in depths])
-
-
-def _view_crossings(
-    inside: np.ndarray, directions: Sequence[float]
-) -> list[np.ndarray]:
-    """:func:`~.qc_surfaces.view_crossings`, found a few slices at a time,
-    and held as 16-bit integers, since no ray is 32,768 voxels long."""
-    found = []
-    for parts in zip(
-        *_by_slices(inside, lambda part: qc_surfaces.view_crossings(part, directions))
-    ):
-        most = max(len(part) for part in parts)
-        found.append(
-            np.concatenate(
-                [
-                    np.pad(
-                        part.astype(np.int16),
-                        ((0, most - len(part)), (0, 0), (0, 0)),
-                        constant_values=-1,
-                    )
-                    for part in parts
-                ],
-                axis=1,
-            )
-        )
-    return found
-
-
-def _by_slices(
-    inside: np.ndarray, render: Callable[[np.ndarray], list[np.ndarray]]
-) -> list[list[np.ndarray]]:
-    """What ``render`` gives for each run of up to ``_SLICES_AT_A_TIME``
-    slices, which it renders each alone, so that a long region's rays are
-    held in memory a few slices at a time."""
-    return [render(part) for part in _slice_runs(inside)]
-
-
-def _slice_runs(inside: np.ndarray) -> list[np.ndarray]:
-    """Runs of up to ``_SLICES_AT_A_TIME`` slices, in order, as views."""
-    return [
-        inside[start : start + _SLICES_AT_A_TIME]
-        for start in range(0, len(inside), _SLICES_AT_A_TIME)
-    ]
+    return qc_surfaces.side_by_side(qc_surfaces.views(inside))
 
 
 def _of(guide: Guide) -> _Grid:
@@ -737,8 +675,8 @@ def _of(guide: Guide) -> _Grid:
 
 def _united_voxel(extent: float) -> float:  # pylint: disable = unused-argument
     """The side of a united region's voxels, whatever its extent: as fine as
-    a volume's surface render samples one 510 mm or less in extent, and no
-    coarser for a longer one, whose rows are taller instead."""
+    a volume's surface render samples one, and no coarser for a long one,
+    whose rows are taller instead."""
     return qc_surfaces.MINIMUM_VOXEL
 
 
@@ -850,8 +788,8 @@ def _hidden(
     slice, as where a contour retraces a loop within its region, bounds a
     hole narrower than a voxel or one that marks fill, or lies in a plane
     that covers no slice. A mark that is not hidden lies within two voxels
-    of the edge of what its slice shows, which the rows draw from the front
-    and the sides, though not from behind. A mark that near the edge is not
+    of the edge of what its slice shows, which the rows draw from the front,
+    the back, and the sides. A mark that near the edge is not
     counted as hidden, since a contour in a plane that covers no slice,
     between those of a smooth outline, lies there without hiding anything
     that its neighbours do not show. Near a rounded end, such as the top of
