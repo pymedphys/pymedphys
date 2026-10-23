@@ -31,7 +31,11 @@ from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom, pytest
 
 from pymedphys._dicom.deidentify import qc_previews, qc_surfaces
-from pymedphys._dicom.deidentify.qc_pack import PreviewKind
+from pymedphys._dicom.deidentify.qc_pack import (
+    NotPreviewedEntry,
+    NotPreviewedReason,
+    PreviewKind,
+)
 
 from .test_deidentify_qc_previews import _decoded, _file, _image
 
@@ -169,8 +173,22 @@ def _levels(data, rows):
     gap = qc_surfaces._GAP_PIXELS  # pylint: disable = protected-access
     height = (image.shape[0] - (rows - 1) * gap) // rows
     assert image.shape[0] == rows * height + (rows - 1) * gap
-    assert not image[height : height + gap].any()
+    _gaps(image, rows)
     return [image[index * (height + gap) :][:height] for index in range(rows)]
+
+
+def _gaps(image, rows):
+    """The grey of each gap between a dose-levels render's ``rows`` rows of
+    equal height: 0 within a level's rows, or the rule between levels."""
+    gap = qc_surfaces._GAP_PIXELS  # pylint: disable = protected-access
+    height = (image.shape[0] - (rows - 1) * gap) // rows
+    greys = []
+    for index in range(1, rows):
+        between = image[index * (height + gap) - gap :][:gap]
+        assert (between == between.flat[0]).all()
+        assert between.flat[0] in (0, qc_surfaces.LEVEL_RULE)
+        greys.append(int(between.flat[0]))
+    return greys
 
 
 def _views(data):
@@ -797,9 +815,7 @@ def test_a_dose_that_its_scaling_would_lose_is_not_shown(shape, scaling):
         else _dose(grid[20:21], [0.0], scaling=scaling)
     )
 
-    previews = qc_previews.previews_of({0: data}, ())
-
-    assert [preview.kind for preview in previews.previews] == [PreviewKind.SERIES_CINE]
+    assert _not_drawn(qc_previews.previews_of({0: data}, ()))
 
 
 @pytest.mark.pydicom
@@ -833,8 +849,7 @@ def test_a_dose_sheet_taller_than_its_bound_is_not_shown(monkeypatch):
         height
     )
     monkeypatch.setattr(qc_surfaces, "MAXIMUM_DOSE_SHEET_PIXELS", height - 1)
-    previews = qc_previews.previews_of(written, ())
-    assert [preview.kind for preview in previews.previews] == [PreviewKind.SERIES_CINE]
+    assert _not_drawn(qc_previews.previews_of(written, ()))
 
 
 @pytest.mark.pydicom
@@ -1004,3 +1019,101 @@ def test_a_render_needs_every_slice():
     surface.add(np.zeros((3, 3), np.float32))
 
     assert surface.mask() is None and surface.image() is None
+
+
+@pytest.mark.pydicom
+def test_a_dose_sheet_separates_its_levels_by_grey_and_a_level_s_rows_by_black():
+    # Each level above 12 mGy hides the head behind a box, so has rows of
+    # hidden surfaces after its own.
+    offsets = [2.0 * k for k in range(SIDE)]
+    image = _decoded(
+        _surface(
+            {0: _dose(_body(inside=12, outside=1000), offsets)},
+            PreviewKind.SERIES_DOSE_LEVELS,
+        )
+    )
+    gap = qc_surfaces._GAP_PIXELS  # pylint: disable = protected-access
+    rows = (image.shape[0] + gap) // (SIDE + gap)
+    greys = _gaps(image, rows)
+    levels = qc_surfaces.dose_levels(1.0, 0.012)
+    assert greys.count(qc_surfaces.LEVEL_RULE) == len(levels) - 1
+    assert greys.count(0) == rows - len(levels) > 0
+    # The support, the whole box, hides nothing, so the next level follows
+    # it at once; each level above has its hidden rows after its own.
+    assert greys[0] == qc_surfaces.LEVEL_RULE and greys[1] == 0
+
+
+def _not_drawn(previews, position=0):
+    """Whether an RT Dose is shown only by its cine strip, and listed as not
+    previewed for its dose levels."""
+    return (
+        [preview.kind for preview in previews.previews] == [PreviewKind.SERIES_CINE]
+        and previews.not_previewed
+        == (NotPreviewedEntry(position, NotPreviewedReason.DOSE_LEVELS_NOT_SHOWN),)
+        and position not in previews.pixels_shown
+    )
+
+
+@pytest.mark.pydicom
+@pytest.mark.parametrize("shape", ["grid", "plane"])
+def test_a_dose_of_more_levels_than_its_bound_is_not_drawn(monkeypatch, shape):
+    # The hot head's levels are its support and 1.9, 3.8, and 9.5 Gy.
+    grid = _hot(19000)
+    written = {
+        0: _dose(grid, [2.0 * k for k in range(SIDE)])
+        if shape == "grid"
+        else _dose(grid[20:21], [0.0])
+    }
+    monkeypatch.setattr(qc_surfaces, "MAXIMUM_DOSE_LEVELS", 4)
+    assert PreviewKind.SERIES_DOSE_LEVELS in [
+        preview.kind for preview in qc_previews.previews_of(written, ()).previews
+    ]
+    monkeypatch.setattr(qc_surfaces, "MAXIMUM_DOSE_LEVELS", 3)
+
+    def drawn(*_):
+        raise AssertionError("a level drawn")
+
+    monkeypatch.setattr(qc_surfaces.Surface, "mask", drawn)
+    monkeypatch.setattr(qc_surfaces, "level_bands", drawn)
+    assert _not_drawn(qc_previews.previews_of(written, ()))
+
+
+@pytest.mark.pydicom
+def test_dose_planes_whose_scalings_span_many_decades_are_not_drawn():
+    # Half the planes store their dose at a scaling 10**-20 of the others',
+    # so the levels run down 20 decades more than either half's.
+    grid = _hot(19000)
+    planes = {
+        k: _dose(
+            grid[k : k + 1],
+            None,
+            origin=(0.0, 0.0, 2.0 * k),
+            scaling=1e-23 if k % 2 else 0.001,
+            instance=f"2.25.9101.{k + 1}",
+        )
+        for k in range(SIDE)
+    }
+    previews = qc_previews.previews_of(planes, ())
+    assert PreviewKind.SERIES_DOSE_LEVELS not in [
+        preview.kind for preview in previews.previews
+    ]
+    assert previews.not_previewed == tuple(
+        NotPreviewedEntry(k, NotPreviewedReason.DOSE_LEVELS_NOT_SHOWN)
+        for k in range(SIDE)
+    )
+
+
+@pytest.mark.pydicom
+def test_a_dose_whose_levels_are_not_drawn_keeps_its_other_previews(monkeypatch):
+    monkeypatch.setattr(qc_surfaces, "MAXIMUM_DOSE_LEVELS", 3)
+    written = {0: _dose(_hot(19000), [2.0 * k for k in range(SIDE)])}
+    previews = qc_previews.previews_of(written, (0,))
+    # Its frames are decoded for its high-risk preview too, after its dose
+    # levels are refused.
+    assert [preview.kind for preview in previews.previews] == [
+        PreviewKind.SERIES_CINE,
+        PreviewKind.INSTANCE,
+    ]
+    assert previews.not_previewed == (
+        NotPreviewedEntry(0, NotPreviewedReason.DOSE_LEVELS_NOT_SHOWN),
+    )

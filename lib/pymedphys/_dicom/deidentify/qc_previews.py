@@ -233,7 +233,9 @@ class PreviewSet:
         instance's frame 0, then the frames of each volume that it is
         drawn with, if any.
     not_previewed : tuple of ~pymedphys._dicom.deidentify.qc_pack.NotPreviewedEntry
-        In run position order.
+        In run position order. An RT Dose whose dose-levels preview could
+        not be drawn is listed as ``DOSE_LEVELS_NOT_SHOWN``, though its cine
+        strip is shown, unless another reason is listed first.
     contours_shown : frozenset of int
         The run positions of the files with contours that a contour sheet
         shows.
@@ -296,6 +298,9 @@ def previews_of(
     # Each image is encoded as it is made, so that only its PNG is kept.
     images: list[_Encoded] = []
     decoded = _Decoder(refused)
+    # RT Doses whose dose levels are not drawn, refused only once every image
+    # is made, so that their frames are still decoded for any other preview.
+    undrawn: set[int] = set()
     guides: dict[str, list[tuple[_Guided, str | None]]] = {
         frame: []
         for contours in contoured.values()
@@ -303,7 +308,7 @@ def previews_of(
         if frame is not None
     }
     for series in _series(instances):
-        images.extend(_encoded(_series_images(series, decoded, guides)))
+        images.extend(_encoded(_series_images(series, decoded, guides, undrawn)))
     for position, contours in sorted(contoured.items()):
         sheet = _contour_image(position, contours, guides)
         if sheet is None:
@@ -319,6 +324,8 @@ def previews_of(
         if instance.position in redactions:
             source, entry = redactions[instance.position]
             images.extend(_redaction_images(instance, source, entry, decoded))
+    for position in undrawn:
+        refused.setdefault(position, NotPreviewedReason.DOSE_LEVELS_NOT_SHOWN)
     # Only previews that could show a face count, and every frame of an
     # instance must be among theirs; for an RT Dose, only dose levels do.
     listed = [(kind.value, frames) for kind, frames, _, _ in images]
@@ -733,7 +740,11 @@ def _series_images(
     series: list[_Instance],
     decoder: _Decoder,
     guides: dict[str, list[tuple[_Guided, str | None]]] | None = None,
+    undrawn: set[int] | None = None,
 ):
+    """A series' previews; the position of each RT Dose whose dose levels
+    are not drawn is added to ``undrawn``."""
+    undrawn = set() if undrawn is None else undrawn
     frames = [
         (instance.position, frame)
         for instance in series
@@ -816,9 +827,13 @@ def _series_images(
         image = surface.image()
         if image is not None:
             yield kind, shown, len(shown), image
+        elif kind is PreviewKind.SERIES_DOSE_LEVELS:
+            undrawn.update(position for position, _ in shown)
     for instance, pixels in maps:
         mapped = _level_map(instance, pixels)
-        if mapped is not None:
+        if mapped is None:
+            undrawn.add(instance.position)
+        else:
             yield (
                 PreviewKind.SERIES_DOSE_LEVELS,
                 ((instance.position, 0),),
@@ -829,7 +844,8 @@ def _series_images(
 
 def _level_map(instance: _Instance, pixels: np.ndarray) -> np.ndarray | None:
     """An RT Dose plane at full resolution, grey by the levels of its dose,
-    or None if its scaling loses a dose (:func:`~.qc_surfaces.dose_values`)."""
+    or None if its scaling loses a dose (:func:`~.qc_surfaces.dose_values`)
+    or it has more than :data:`~.qc_surfaces.MAXIMUM_DOSE_LEVELS` levels."""
     assert instance.dose_scale is not None
     values = qc_surfaces.dose_values(pixels, instance.dose_scale)
     if values is None:
@@ -840,6 +856,8 @@ def _level_map(instance: _Instance, pixels: np.ndarray) -> np.ndarray | None:
         float(finite.max()) if finite.size else -math.inf,
         float(positive.min()) if positive.size else math.inf,
     )
+    if len(levels) > qc_surfaces.MAXIMUM_DOSE_LEVELS:
+        return None
     return qc_surfaces.level_bands(values, levels)
 
 

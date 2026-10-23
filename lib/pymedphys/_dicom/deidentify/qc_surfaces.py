@@ -54,8 +54,11 @@ holds only over a narrower band may show in none. The band is that at each
 point of an outline, so one whose dose varies along it can show in parts
 across rows. Each level's row is followed by the rows of
 :func:`hidden_rows`, where its surface hides some of itself, so that a lower
-dose enclosed by a higher one is shown; a sheet taller than
-:data:`MAXIMUM_DOSE_SHEET_PIXELS` is not drawn. A slice whose Dose Grid
+dose enclosed by a higher one is shown. Each level's rows are separated
+from the next level's by grey rows of :data:`LEVEL_RULE`, and from each
+other by black, so that each level's group of rows can be told apart. A
+sheet taller than :data:`MAXIMUM_DOSE_SHEET_PIXELS`, or of more than
+:data:`MAXIMUM_DOSE_LEVELS` levels, is not drawn. A slice whose Dose Grid
 Scaling float32 would lose a dose of (:func:`dose_values`) is not drawn
 either. A single plane is shown by :func:`level_bands`.
 
@@ -118,6 +121,16 @@ WIDEST = 1000.0
 # taller one is not drawn, so that its grid is held rather than shown in an
 # image that a viewer may scale down or refuse.
 MAXIMUM_DOSE_SHEET_PIXELS = 32768
+# The most levels at which an RT Dose is shown. One grid of 32-bit stored
+# values needs at most 29, from a greatest dose of 2**32 - 1 times the
+# smallest; the rest allows for a series of planes whose scalings differ.
+# More are not drawn, so that planes whose scalings span float32's range
+# cannot take minutes to render, and their grid is held.
+MAXIMUM_DOSE_LEVELS = 40
+# The grey of the rows between one level's rows and the next level's, so
+# that each level's group of rows can be told apart; the rows within a
+# group are separated by black.
+LEVEL_RULE = 128
 RT_DOSE_STORAGE = "1.2.840.10008.5.1.4.1.1.481.2"
 
 _OTSU_BINS = 256
@@ -342,16 +355,22 @@ class Surface:
         too large to render.
 
         An RT Dose's has a row of views for each of its levels, from the
-        support down, each followed by the rows of :func:`hidden_rows`, and
-        each separated from the next by black rows; it is None where it
-        would be taller than :data:`MAXIMUM_DOSE_SHEET_PIXELS`.
+        support down, each followed by the rows of :func:`hidden_rows`; the
+        rows of a level are separated by black rows, and each level's from
+        the next by grey rows of :data:`LEVEL_RULE`. It is None where it
+        would have more than :data:`MAXIMUM_DOSE_LEVELS` levels, before any
+        is drawn, or would be taller than :data:`MAXIMUM_DOSE_SHEET_PIXELS`.
         """
         levels = self.levels
         if levels is None:
             inside = self.mask()
             return None if inside is None else side_by_side(views(inside))
+        if len(levels) > MAXIMUM_DOSE_LEVELS:
+            return None
         height = -_GAP_PIXELS
         rows = []
+        # Each level's rows, after the first level's, start a new group.
+        starts = set()
         for index, level in enumerate(levels):
             inside = self.mask(level)
             if inside is None:
@@ -365,13 +384,22 @@ class Surface:
             hidden = hidden_rows(inside, MAXIMUM_DOSE_SHEET_PIXELS - height - rest)
             if hidden is None:
                 return None
+            if rows:
+                starts.add(len(rows))
             for row in (side_by_side(views(inside)), *hidden):
                 rows.append(row)
                 height += row.shape[0] + _GAP_PIXELS
             if height > MAXIMUM_DOSE_SHEET_PIXELS:
                 return None
         gap = np.zeros((_GAP_PIXELS, rows[0].shape[1]), np.uint8)
-        return np.concatenate([part for row in rows for part in (gap, row)][1:])
+        rule = np.full(gap.shape, LEVEL_RULE, np.uint8)
+        return np.concatenate(
+            [
+                part
+                for index, row in enumerate(rows)
+                for part in (rule if index in starts else gap, row)
+            ][1:]
+        )
 
     def _level(self) -> float | None:
         if self._grid.threshold is Threshold.CT:

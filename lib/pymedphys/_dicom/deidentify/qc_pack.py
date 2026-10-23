@@ -84,7 +84,8 @@ A pack holds, for one run:
   attestation of the pack covers them, among them a contour sheet of each
   instance with contours, such as an RT Structure Set; and
   ``not_previewed``: each instance whose pixel data could not be previewed,
-  or whose contours could not be shown, with why (D-017). The images are
+  whose contours could not be shown, or, for an RT Dose, whose dose levels
+  could not be drawn, with why (D-017). The images are
   made by :mod:`~pymedphys._dicom.deidentify.qc_previews`.
 - ``source_gaps``: each instance whose source lacks an attribute that its
   IOD unconditionally requires, with each such attribute's place and Type,
@@ -130,7 +131,7 @@ from .reviewed_roi_names import Outcome
 from .text_detection import TextBox
 
 # The format of the pack document. A change to its fields takes a new label.
-FORMAT = "pymedphys-deid-qc-pack/12"
+FORMAT = "pymedphys-deid-qc-pack/14"
 # The bytes of a written file shown on each side of a residual's offset.
 EXCERPT_BYTES = 48
 # The SHA-256 that face_review.contour_data_sha256 gives a file without
@@ -864,7 +865,8 @@ class PreviewKind(enum.Enum):
 
 
 class NotPreviewedReason(enum.Enum):
-    """Why an instance has no image preview."""
+    """Why an instance has no image preview, or, for an RT Dose, no
+    dose-levels preview."""
 
     # compressed pixel data that no installed plugin is pinned to decode
     COMPRESSED = "compressed-pixel-data"
@@ -883,6 +885,11 @@ class NotPreviewedReason(enum.Enum):
     # too tall, or with a voxel of hidden marks that the frontal view and
     # profiles of its rows would not draw, so its verdict gives it none
     CONTOURS_NOT_SHOWN = "contours-not-shown"
+    # an RT Dose whose dose-levels preview cannot be drawn: of a volume too
+    # large, a scaling that float32 loses, too many levels, or a sheet too
+    # tall, so that only its cine strip, which can leave a low dose black,
+    # is shown
+    DOSE_LEVELS_NOT_SHOWN = "dose-levels-not-shown"
 
 
 PREVIEW_NAME = re.compile(r"P-[0-9]{4,}\.png")
