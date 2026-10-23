@@ -243,8 +243,8 @@ def _reviewed(  # pylint: disable = too-many-arguments
 
 
 def _readiness(review, pack=None, **changes):
-    run = {"subjects": 2, "policy_sha256": POLICY}
-    run.update(changes)
+    facts = {"subjects": 2, "policy_sha256": POLICY}
+    facts.update(changes)
     return readiness.readiness(
         review,
         _pack(THIS_RUN) if pack is None else pack,
