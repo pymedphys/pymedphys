@@ -233,9 +233,10 @@ class PreviewSet:
         instance's frame 0, then the frames of each volume that it is
         drawn with, if any.
     not_previewed : tuple of ~pymedphys._dicom.deidentify.qc_pack.NotPreviewedEntry
-        In run position order. An RT Dose whose dose-levels preview could
-        not be drawn is listed as ``DOSE_LEVELS_NOT_SHOWN``, though its cine
-        strip is shown, unless another reason is listed first.
+        In run position order. An RT Dose that no dose-levels preview shows
+        whole, whatever the cause, is listed as ``DOSE_LEVELS_NOT_SHOWN``,
+        though its other previews are kept, unless another reason is listed
+        first.
     contours_shown : frozenset of int
         The run positions of the files with contours that a contour sheet
         shows.
@@ -298,9 +299,6 @@ def previews_of(
     # Each image is encoded as it is made, so that only its PNG is kept.
     images: list[_Encoded] = []
     decoded = _Decoder(refused)
-    # RT Doses whose dose levels are not drawn, refused only once every image
-    # is made, so that their frames are still decoded for any other preview.
-    undrawn: set[int] = set()
     guides: dict[str, list[tuple[_Guided, str | None]]] = {
         frame: []
         for contours in contoured.values()
@@ -308,7 +306,7 @@ def previews_of(
         if frame is not None
     }
     for series in _series(instances):
-        images.extend(_encoded(_series_images(series, decoded, guides, undrawn)))
+        images.extend(_encoded(_series_images(series, decoded, guides)))
     for position, contours in sorted(contoured.items()):
         sheet = _contour_image(position, contours, guides)
         if sheet is None:
@@ -324,13 +322,22 @@ def previews_of(
         if instance.position in redactions:
             source, entry = redactions[instance.position]
             images.extend(_redaction_images(instance, source, entry, decoded))
-    for position in undrawn:
-        refused.setdefault(position, NotPreviewedReason.DOSE_LEVELS_NOT_SHOWN)
     # Only previews that could show a face count, and every frame of an
     # instance must be among theirs; for an RT Dose, only dose levels do.
     listed = [(kind.value, frames) for kind, frames, _, _ in images]
+    levels = {PreviewKind.SERIES_DOSE_LEVELS.value}
+    # An RT Dose whose every frame no dose-levels preview shows is listed,
+    # whatever the cause, unless it is listed already. It is listed only
+    # once every image is made, so that its frames were still decoded for
+    # its other previews, which it keeps.
+    dosed = pictured_frames(listed, refused, levels)
+    for instance in instances:
+        if instance.dose and dosed.get(instance.position) != instance.frames:
+            refused.setdefault(
+                instance.position, NotPreviewedReason.DOSE_LEVELS_NOT_SHOWN
+            )
     pictured = pictured_frames(listed, refused)
-    dosed = pictured_frames(listed, refused, {PreviewKind.SERIES_DOSE_LEVELS.value})
+    dosed = pictured_frames(listed, refused, levels)
     width = max(4, len(str(len(images))))
     previews = tuple(
         Preview(f"P-{number:0{width}d}.png", kind, frames, total, encoded)
@@ -740,11 +747,7 @@ def _series_images(
     series: list[_Instance],
     decoder: _Decoder,
     guides: dict[str, list[tuple[_Guided, str | None]]] | None = None,
-    undrawn: set[int] | None = None,
 ):
-    """A series' previews; the position of each RT Dose whose dose levels
-    are not drawn is added to ``undrawn``."""
-    undrawn = set() if undrawn is None else undrawn
     frames = [
         (instance.position, frame)
         for instance in series
@@ -827,13 +830,9 @@ def _series_images(
         image = surface.image()
         if image is not None:
             yield kind, shown, len(shown), image
-        elif kind is PreviewKind.SERIES_DOSE_LEVELS:
-            undrawn.update(position for position, _ in shown)
     for instance, pixels in maps:
         mapped = _level_map(instance, pixels)
-        if mapped is None:
-            undrawn.add(instance.position)
-        else:
+        if mapped is not None:
             yield (
                 PreviewKind.SERIES_DOSE_LEVELS,
                 ((instance.position, 0),),

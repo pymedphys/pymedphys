@@ -354,6 +354,16 @@ def test_an_rt_dose_whose_levels_cannot_be_drawn_is_not_shown(name):
         for position in written
     )
     assert found.pixels_shown == frozenset()
+    # Each is listed as having no dose levels, whatever the cause, but one
+    # whose levels show every frame that it declares.
+    assert found.not_previewed == (
+        ()
+        if name == "longer"
+        else tuple(
+            NotPreviewedEntry(position, NotPreviewedReason.DOSE_LEVELS_NOT_SHOWN)
+            for position in written
+        )
+    )
 
 
 def test_an_image_labelled_rtdose_is_not_shown():
@@ -362,6 +372,9 @@ def test_an_image_labelled_rtdose_is_not_shown():
     found, framed = _shown({0: _relabelled(_frames(12), "RTDOSE")})
     assert framed[0] == set(range(12))
     assert found.pixels_shown == frozenset()
+    assert found.not_previewed == (
+        NotPreviewedEntry(0, NotPreviewedReason.DOSE_LEVELS_NOT_SHOWN),
+    )
 
 
 def _thin(block=None, count=40):

@@ -386,20 +386,19 @@ class Surface:
                 return None
             if rows:
                 starts.add(len(rows))
+            # A sheet now too tall is refused by the next level's bound, before
+            # it is drawn, or after the last level.
             for row in (side_by_side(views(inside)), *hidden):
                 rows.append(row)
                 height += row.shape[0] + _GAP_PIXELS
-            if height > MAXIMUM_DOSE_SHEET_PIXELS:
-                return None
         gap = np.zeros((_GAP_PIXELS, rows[0].shape[1]), np.uint8)
         rule = np.full(gap.shape, LEVEL_RULE, np.uint8)
-        return np.concatenate(
-            [
-                part
-                for index, row in enumerate(rows)
-                for part in (rule if index in starts else gap, row)
-            ][1:]
-        )
+        parts = [
+            part
+            for index, row in enumerate(rows)
+            for part in (rule if index in starts else gap, row)
+        ]
+        return None if height > MAXIMUM_DOSE_SHEET_PIXELS else np.concatenate(parts[1:])
 
     def _level(self) -> float | None:
         if self._grid.threshold is Threshold.CT:

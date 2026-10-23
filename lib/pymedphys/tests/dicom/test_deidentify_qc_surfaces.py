@@ -715,10 +715,8 @@ def test_an_rt_dose_grid_that_cannot_be_placed_or_levelled_is_not_rendered(case)
     if case == "signed":
         data = _with(data, PixelRepresentation=1)
 
-    previews = qc_previews.previews_of({0: data}, ())
-
-    assert [preview.kind for preview in previews.previews] == [PreviewKind.SERIES_CINE]
-    assert not previews.not_previewed
+    # Its cine strip alone shows it, and it is listed as without dose levels.
+    assert _not_drawn(qc_previews.previews_of({0: data}, ()))
 
 
 @pytest.mark.pydicom
