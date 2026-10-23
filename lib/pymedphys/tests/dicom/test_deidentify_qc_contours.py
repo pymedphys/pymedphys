@@ -365,7 +365,7 @@ def test_a_long_roi_is_drawn_in_voxels_of_2_mm_a_few_slices_at_a_time(monkeypatc
     sheet = qc_contours.contour_sheet(contours)
     assert all(len(row) > 500 for row in _sheet_rows(sheet))
     # Rendering the slices all at once draws the same sheet.
-    monkeypatch.setattr(qc_contours, "_SLICES_AT_A_TIME", 10**6)
+    monkeypatch.setattr(qc_surfaces, "_SLICES_AT_A_TIME", 10**6)
     assert (qc_contours.contour_sheet(contours) == sheet).all()
 
 
@@ -374,7 +374,7 @@ def test_a_sheet_is_the_same_however_many_slices_are_rendered_at_once(
     contours, monkeypatch
 ):
     sheet = qc_contours.contour_sheet(contours())
-    monkeypatch.setattr(qc_contours, "_SLICES_AT_A_TIME", 3)
+    monkeypatch.setattr(qc_surfaces, "_SLICES_AT_A_TIME", 3)
     assert (qc_contours.contour_sheet(contours()) == sheet).all()
 
 
@@ -910,7 +910,7 @@ def test_rows_that_would_not_fit_are_not_drawn_nor_their_crossings_found(
     def found(*_):
         raise AssertionError("crossings found")
 
-    monkeypatch.setattr(qc_contours, "_view_crossings", found)
+    monkeypatch.setattr(qc_surfaces, "view_crossings", found)
     monkeypatch.setattr(qc_contours, "_views", found)
     # Without room for the views' row and the 19 rows of crossings after the
     # first, nothing is drawn or found.
