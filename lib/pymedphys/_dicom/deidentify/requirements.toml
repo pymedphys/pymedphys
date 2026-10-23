@@ -752,7 +752,7 @@ For public sharing, remove or replace all known direct identifiers and relevant 
 '''
 status = "partial"
 milestone = "M4"
-decisions = ["D-001", "D-015", "D-016", "D-017", "D-022", "D-023", "D-027", "D-032", "D-042"]
+decisions = ["D-001", "D-015", "D-016", "D-017", "D-022", "D-023", "D-027", "D-032", "D-042", "D-053"]
 implementation = [
   "_dicom/deidentify/file_layout.py",
   "_dicom/deidentify/instance_transform.py",
@@ -760,6 +760,7 @@ implementation = [
   "_dicom/deidentify/release_gate.py",
   "_dicom/deidentify/residual_exemptions.py",
   "_dicom/deidentify/residuals.py",
+  "_dicom/deidentify/risk_assessment.py",
 ]
 note = '''
 The Basic Profile's actions remove or replace identifiers, and reviewed rules act on the text attributes, dates, and times that Table E.1-1 omits (D-022, D-023).
@@ -769,13 +770,13 @@ The release gate runs that search itself, for exactly the values collected acros
 It withholds any output file that still holds a source person name, UID, date, datetime, or direct identifier, or a source value outside its data set, or whose collection of person names, UIDs, dates, datetimes, direct identifiers, or sequences was incomplete, and sends other text findings and other incomplete collection, including of private values, to confidential review; a search that finds nothing does not on its own release a file (D-027).
 A text finding is not sent to review where it is in a kept CS value made only of its attribute's terms in the pinned PS3.3 (for Body Part Examined, PS3.16 Annex L), in a code item of a scheme that PS3.16 Table 8-1 lists, or in Manufacturer, Manufacturer's Model Name, or Software Versions with a private or equipment source, or where its source is a private creator that PS3.15 Table E.3.10-1 lists, and the QC pack still lists it (D-032).
 Nor is a finding inside a value that a selected option keeps, where its source is a private data element or an attribute of that option, or where it equals a whole kept date or time, and in that case a date finding does not withhold the file either (D-042).
-`public-release` retains indirect identifiers only after its statistical assessment.
+An external statistical assessment of a run's collection is recorded beside its QC pack, bound to the pack, to the source files it records, and to the policy, and the statistical gate passes only for the same files and policy, the run's number of distinct subjects, and a maximum per-subject re-identification probability within the threshold of 0.09 or 0.05 that the assessment states (D-017, D-053).
 A deterministic synthetic collection, with an instance of each IOD of the first supported release, plants a conspicuous marker wherever its IODs define an attribute of Table E.1-1, down to a nesting depth of 4 items, and records each deeper place as not planted; Responsible Person and Responsible Organization, whose removal sequesters an instance (D-020), are planted in one instance only, so the others can be released, and the Enhanced PET Image's Radiopharmaceutical Start DateTime, whose removal sequesters it, in none.
 The run's instance transform removes and replaces identifiers in each data set and gives the gate its coverage, including each value read as ISO 8859-1, and the run acts on the gate's decision.
 An instance out of scope whose IOD the pinned tables define is read only to collect its values for its subject's search, and is never written; an instance whose values could not be collected at all withholds every file of its subject.
 The Basic Profile removes Patient's Weight but keeps PET values scaled to an SUV and mappings of values to one, which, with the Radionuclide Total Dose it also keeps, may disclose the weight, depending on the SUV normalisation, activity calibration, and compatible dose timing; each instance with either is reported as an indicator of a possibly disclosed body weight, in the QC pack and as counts in the release report (D-015).
 An end-to-end test runs `basic` and `basic-clean-descriptors` over that collection and searches every published file for its markers, independently of the gate.
-Remaining: the statistical assessment, and pixel and face review (M4).
+Remaining: `public-release`'s readiness, which needs its statistical gate, its pixel and face review, and its attestation to pass together (M4).
 Pixel data are assessed for risk, not cleaned (D-015).
 '''
 
@@ -932,11 +933,17 @@ id = "MIDI-BP-07"
 text = '''
 If any patient characteristic or other indirect identifier is retained, perform a collection-specific expert statistical analysis of residual risk, whether elements are kept by an allow-list or removed by a deny-list, and consider characteristics that can be derived from the pixel data.
 '''
-status = "planned"
+status = "partial"
 milestone = "M4"
-decisions = ["D-017"]
+decisions = ["D-017", "D-053"]
+implementation = [
+  "_dicom/deidentify/risk_assessment.py",
+]
 note = '''
 `tps-import` retains patient characteristics for non-clinical databases, not for public sharing, and `public-release` does not select Retain Patient Characteristics (D-038).
+`public-release` keeps other indirect identifiers, such as modified dates, coded values, and characteristics that can be derived from the pixel data.
+The record of an external statistical assessment of a collection lists its matching variables and how characteristics derivable from the pixel data were considered, with every other statement that D-017 requires, each required, and the statistical gate checks it against the run, counting distinct subjects rather than images, frames, or visits (D-053).
+Remaining: `public-release`'s readiness, which needs the statistical gate to pass (M4).
 '''
 
 [[requirement]]
