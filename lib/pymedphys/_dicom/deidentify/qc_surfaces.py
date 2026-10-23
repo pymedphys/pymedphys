@@ -55,9 +55,10 @@ point of an outline, so one whose dose varies along it can show in parts
 across rows. Each level's row is followed by the rows of
 :func:`hidden_rows`, where its surface hides some of itself, so that a lower
 dose enclosed by a higher one is shown; a sheet taller than
-:data:`MAXIMUM_DOSE_SHEET_PIXELS` is not drawn. A slice whose Dose Grid
-Scaling float32 would lose a dose of (:func:`dose_values`) is not drawn
-either. A single plane is shown by :func:`level_bands`.
+:data:`MAXIMUM_DOSE_SHEET_PIXELS` is not drawn. Nor is the sheet of a grid
+any of whose stored doses its Dose Grid Scaling, held in float32, would
+lose (:func:`dose_values`): the whole grid, not only that slice, is then
+held. A single plane is shown by :func:`level_bands`.
 
 The volume is sampled by nearest neighbour to cubic voxels of
 :data:`MINIMUM_VOXEL` millimetres, or of its smallest spacing where that is
@@ -447,7 +448,9 @@ def hidden_rows(inside: np.ndarray, room: int | None = None) -> list[np.ndarray]
     encloses but does not hold, as a region of their own, where it has any;
     and one for each further crossing, in which each ray shows the surface
     where it crosses it, into or out of the region, that many times from
-    the viewer, so that every surface that those rays cross is shown. The
+    the viewer, so that every surface that those rays cross is shown. One
+    surface may be shown in parts across those rows, where rays cross
+    different numbers of surfaces before it, so they are read together. The
     oblique views are black in those rows, since their rays, which step
     between voxels, cross a surface falsely where they graze it. The rows
     of crossings are counted (:func:`most_crossings`) before any is drawn,
