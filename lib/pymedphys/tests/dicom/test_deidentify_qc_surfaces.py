@@ -20,6 +20,10 @@ voxels in the patient's coordinates, where x runs to the patient's left, y
 posterior, and z superior.
 """
 
+# The tests share the synthetic head and its series builders, so they stay
+# in one module.
+# pylint: disable = too-many-lines
+
 import io
 import math
 
