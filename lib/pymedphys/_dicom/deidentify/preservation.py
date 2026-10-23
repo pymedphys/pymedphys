@@ -81,11 +81,11 @@ from .elements import CHARACTER_SET_VRS
 from .file_layout import ElementPath, Extent
 from .source import (
     ENCAPSULATED_TRANSFER_SYNTAXES,
+    EXPLICIT_VR_LITTLE_ENDIAN,
     SourceEvidence,
     encapsulated_pixel_data,
 )
 
-EXPLICIT_VR_LITTLE_ENDIAN = "1.2.840.10008.1.2.1"
 _PIXEL_DATA = ElementPath((), "(7FE0,0010)")
 
 _CHARACTER_SET = "(0008,0005)"

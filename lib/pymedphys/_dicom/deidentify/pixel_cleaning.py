@@ -45,15 +45,15 @@ Compressed Pixel Data, in a transfer syntax that encapsulates it, is
 decoded first, every frame, by :func:`.pixel_decoding.decoded_frames`,
 which decodes in a child process the frames of the plugins that run native
 code; colour of 8 bits as YBR_FULL, YBR_FULL_422, YBR_ICT, or YBR_RCT is
-decoded to RGB. The text finder searches the decoded frames, and where a
-region or mask is written, the new value is the decoded frames with it,
-written uncompressed, in Explicit VR Little Endian (:attr:`Redaction.transfer_syntax`),
-since writing into a codestream would mean encoding it again. Where nothing
-is written, the compressed Pixel Data is kept as it would be without the
-option. The SHA-256 of the decoded frames (:attr:`Redaction.decoded_sha256`)
-binds a reviewer's verdict to the pixels that the reviewer saw, since
-another build of a decoder can decode the same lossy codestream otherwise
-(D-048).
+decoded to RGB. The text finder searches the decoded frames, and the new
+value is the decoded frames with any regions and masks, written
+uncompressed, in Explicit VR Little Endian (:attr:`Redaction.transfer_syntax`),
+since writing into a codestream would mean encoding it again. It is so
+written even where nothing is set, so that the QC pack previews the samples
+that the decoder gave, which a later release writes. The SHA-256 of the
+decoded frames (:attr:`Redaction.decoded_sha256`) binds a reviewer's
+verdict to those samples, since another build of a decoder, or one that its
+codestream subverts, can decode the same codestream otherwise (D-048).
 
 Under Clean Recognizable Visual Features, :func:`black_out` also writes
 the masks that a :class:`Defacer` gives each frame, such as the face block
@@ -74,6 +74,7 @@ from __future__ import annotations
 
 import dataclasses
 import hashlib
+import io
 import types
 from collections.abc import Callable, Iterator, Mapping, Sequence
 from typing import Protocol
@@ -85,7 +86,11 @@ from .diagnostics import redacted_diagnostics
 from .file_layout import ElementPath
 from .pixel_decoding import FramesRefused, decoded_frames
 from .reasons import PixelDataReason, TransformReason
-from .source import NATIVE_TRANSFER_SYNTAXES, SourceEvidence
+from .source import (
+    EXPLICIT_VR_LITTLE_ENDIAN,
+    NATIVE_TRANSFER_SYNTAXES,
+    SourceEvidence,
+)
 from .text_detection import TextBox
 
 PIXEL_DATA = ElementPath((), "(7FE0,0010)")
@@ -101,8 +106,9 @@ _RGB = "RGB"
 # YBR_FULL and YBR_FULL_422, and by the JPEG 2000 decoder from YBR_ICT and
 # YBR_RCT, whose multiple component transformation it reverses.
 _DECODED_TO_RGB = (_RGB, "YBR_FULL", "YBR_FULL_422", "YBR_ICT", "YBR_RCT")
-EXPLICIT_VR_LITTLE_ENDIAN = "1.2.840.10008.1.2.1"
-"""The transfer syntax of cleaned compressed Pixel Data, written uncompressed."""
+# Extended Offset Table, its lengths, and Encapsulated Pixel Data Value Total
+# Length, which describe only encapsulated Pixel Data.
+_ENCAPSULATION = (0x7FE00001, 0x7FE00002, 0x7FE00003)
 
 
 class TextFinder(Protocol):
@@ -337,9 +343,9 @@ class Redaction:
     @property
     def transfer_syntax(self) -> str | None:
         """The transfer syntax in which ``value`` is written where it is not
-        the source's: Explicit VR Little Endian for compressed Pixel Data
-        with a region or mask, and otherwise None."""
-        if self.decoded is None or not self.changed:
+        the source's: Explicit VR Little Endian for compressed Pixel Data,
+        and otherwise None."""
+        if self.decoded is None:
             return None
         return EXPLICIT_VR_LITTLE_ENDIAN
 
@@ -655,6 +661,44 @@ def _read_layout(dataset: pydicom.Dataset) -> Layout:
     )
 
 
+def as_received(source: SourceEvidence, redaction: Redaction) -> bytes | None:
+    """Return the source file with compressed Pixel Data replaced by its
+    frames as :func:`black_out` decoded them, for a QC pack to show as
+    received.
+
+    The frames are those of :attr:`Redaction.decoded`, uncompressed, in
+    Explicit VR Little Endian, with the layout of the redaction, so that the
+    QC pack shows the samples whose SHA-256 binds a verdict, and the engine's
+    process never decodes the codestream with a native decoder to preview
+    it. Native Pixel Data gives None, since the source shows it as it is,
+    and so does a source that pydicom cannot write so, which then cannot be
+    shown beside its frames.
+    """
+    if redaction.decoded is None:
+        return None
+    layout = redaction.layout
+    try:
+        dataset = source.dataset()
+        for tag in _ENCAPSULATION:
+            if tag in dataset:
+                del dataset[tag]
+        dataset.PixelData = redaction.decoded + bytes(len(redaction.decoded) % 2)
+        dataset["PixelData"].VR = "OW" if layout.bits_allocated > 8 else "OB"
+        dataset["PixelData"].is_undefined_length = False
+        dataset.PhotometricInterpretation = layout.photometric
+        if layout.samples > 1:
+            dataset.PlanarConfiguration = int(layout.planar)
+        dataset.file_meta.TransferSyntaxUID = EXPLICIT_VR_LITTLE_ENDIAN
+        buffer = io.BytesIO()
+        with redacted_diagnostics():
+            pydicom.dcmwrite(buffer, dataset, enforce_file_format=True)
+    # pydicom raises many types for a data set it cannot write, and its
+    # message can quote a value.
+    except Exception:  # pylint: disable = broad-exception-caught
+        return None
+    return buffer.getvalue()
+
+
 def redaction_problem(
     source: SourceEvidence, output: SourceEvidence, redaction: Redaction
 ) -> bool:
@@ -670,10 +714,7 @@ def redaction_problem(
     syntax = redaction.transfer_syntax or source.transfer_syntax
     if PIXEL_DATA not in output or output.transfer_syntax != syntax:
         return True
-    decoded = redaction.decoded if redaction.transfer_syntax is not None else None
-    if redaction.decoded is not None and decoded is None:
-        # Compressed Pixel Data with nothing written is not cleaned here.
-        return True
+    decoded = redaction.decoded
     before = source.value_field(PIXEL_DATA) if decoded is None else decoded
     after = output.value_field(PIXEL_DATA)
     layout = redaction.layout

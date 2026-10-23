@@ -99,6 +99,7 @@ from .file_layout import ElementPath
 from .preservation import TEXT_VRS, Expectations
 from .source import (
     ENCAPSULATED_TRANSFER_SYNTAXES,
+    EXPLICIT_VR_LITTLE_ENDIAN,
     SUPPORTED_TRANSFER_SYNTAXES,
     SourceEvidence,
     encapsulated_pixel_data,
@@ -106,7 +107,6 @@ from .source import (
 from .standard import VRS, dictionary_attribute
 
 _IMPLICIT = "1.2.840.10008.1.2"
-_EXPLICIT = "1.2.840.10008.1.2.1"
 _CHARACTER_SET = "(0008,0005)"
 # The VRs of text in the Default Character Repertoire alone (PS3.5 Table 6.2-1).
 _DEFAULT_TEXT_VRS = frozenset(
@@ -205,7 +205,7 @@ def write_data_set(
     if source.transfer_syntax not in SUPPORTED_TRANSFER_SYNTAXES or (
         transfer_syntax is not None
         and not (
-            transfer_syntax == _EXPLICIT
+            transfer_syntax == EXPLICIT_VR_LITTLE_ENDIAN
             and source.transfer_syntax in ENCAPSULATED_TRANSFER_SYNTAXES
         )
     ):

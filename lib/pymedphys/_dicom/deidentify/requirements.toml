@@ -312,7 +312,7 @@ implementation = [
 ]
 note = '''
 Text that a text finder finds in Pixel Data is blacked out, whatever it says, and every instance cleaned is held for review (D-037).
-Compressed Pixel Data is decoded first, in the isolated decoding child for the native decoders, and frames with a region are written uncompressed, in Explicit VR Little Endian; without a region, the compressed value is kept (D-037).
+Compressed Pixel Data is decoded first, in the isolated decoding child for the native decoders, and its frames are written uncompressed, in Explicit VR Little Endian, as decoded, with or without a region, so that the QC pack previews the samples that a release writes (D-037).
 A later run of the same files, given the attested QC pack, blacks out the regions that the reviewer accepted, with any that the reviewer added, without the finder, and releases the instance with the option's code; for compressed Pixel Data, only where its frames decode to the SHA-256 that the pack records, and otherwise the instance is held again. An instance that the reviewer rejected is sequestered (D-048).
 '''
 

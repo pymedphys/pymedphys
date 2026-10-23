@@ -65,6 +65,9 @@ from .file_layout import (
 # Implicit VR Little Endian and Explicit VR Little Endian (PS3.5 Sections
 # A.1 and A.2), whose Pixel Data is native.
 NATIVE_TRANSFER_SYNTAXES = frozenset({"1.2.840.10008.1.2", "1.2.840.10008.1.2.1"})
+EXPLICIT_VR_LITTLE_ENDIAN = "1.2.840.10008.1.2.1"
+"""The transfer syntax in which Clean Pixel Data writes compressed Pixel
+Data uncompressed (D-037)."""
 # The transfer syntaxes that encapsulate Pixel Data in an Explicit VR Little
 # Endian data set (PS3.5 Section A.4) and that pydicom 3.0.2, the minimum
 # (D-002), has decoders for: JPEG (Section A.4.1), RLE (Section A.4.2),

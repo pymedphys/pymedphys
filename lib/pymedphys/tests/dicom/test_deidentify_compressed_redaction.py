@@ -15,10 +15,11 @@
 """Clean Pixel Data for compressed Pixel Data (D-037, D-048).
 
 Each frame is decoded, in the child process for GDCM and pylibjpeg, the
-finder searches the decoded frames, and an instance with a region is
-written uncompressed, in Explicit VR Little Endian. A reviewer's verdict
-applies only where the frames decode to the pixels whose SHA-256 the
-reviewed QC pack records.
+finder searches the decoded frames, and the instance is written
+uncompressed, in Explicit VR Little Endian, with or without a region, so
+that its previews show the samples that the decoder gave. A reviewer's
+verdict applies only where the frames decode to the samples whose SHA-256
+the reviewed QC pack records.
 
 Every file is synthetic, and every finder is a stand-in that gives fixed
 regions, so no model is downloaded and no network is reached.
@@ -45,7 +46,6 @@ from pymedphys._dicom.deidentify.instance_transform import (
     InstanceTransform,
 )
 from pymedphys._dicom.deidentify.pixel_cleaning import (
-    EXPLICIT_VR_LITTLE_ENDIAN,
     PixelDataRefused,
     PixelsNotReviewed,
     black_out,
@@ -75,7 +75,7 @@ from pymedphys._dicom.deidentify.redaction_review import (
     read_redaction_review,
 )
 from pymedphys._dicom.deidentify.run_qc import RedactionMaterial
-from pymedphys._dicom.deidentify.source import read_source
+from pymedphys._dicom.deidentify.source import EXPLICIT_VR_LITTLE_ENDIAN, read_source
 from pymedphys._dicom.deidentify.text_detection import TextBox
 
 from . import _synthetic_compressed as compressed
@@ -245,16 +245,17 @@ def test_each_frame_is_decoded_on_its_own_and_searched():
     assert redaction.decoded == b"".join(f.astype("<u2").tobytes() for f in frames)
 
 
-def test_compressed_pixel_data_without_text_changes_nothing():
+def test_compressed_pixel_data_without_text_is_still_written_as_decoded():
     _needs(compressed.JPEG_2000_LOSSLESS)
-    source = read_source(_jpeg_2000_ct([_monochrome()]))
+    frame = _monochrome()
+    source = read_source(_jpeg_2000_ct([frame]))
 
     redaction = black_out(source, source.dataset(), Finder(boxes=()))
 
     assert redaction is not None
     assert not redaction.changed
-    assert redaction.transfer_syntax is None
-    assert redaction.decoded_sha256 is not None
+    assert redaction.transfer_syntax == EXPLICIT_VR
+    assert redaction.value == redaction.decoded == frame.tobytes()
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.1-01")
@@ -340,13 +341,39 @@ def test_a_cleaned_compressed_image_is_written_uncompressed_and_held():
     assert CODE not in _codes(written)
     (material,) = [m for m in result.qc if isinstance(m, RedactionMaterial)]
     assert material.decoded_sha256 == hashlib.sha256(frame.tobytes()).digest()
-    assert material.source == data
+    # The source as received is shown from its decoded frames, uncompressed,
+    # so that the engine's process never decodes the codestream to show it.
+    shown = pydicom.dcmread(io.BytesIO(material.source))
+    assert shown.file_meta.TransferSyntaxUID == EXPLICIT_VR
+    assert shown.PixelData == frame.tobytes()
+    assert shown.SOPInstanceUID == pydicom.dcmread(io.BytesIO(data)).SOPInstanceUID
+    for keyword in ("ExtendedOffsetTable", "ExtendedOffsetTableLengths"):
+        assert keyword not in shown
 
 
-def test_a_compressed_image_without_text_is_written_compressed_and_held():
+@pytest.mark.deid_requirement("PS3.15-E.3.1-01")
+def test_the_source_is_shown_as_the_child_decoded_it(monkeypatch):
+    _needs(compressed.JPEG_2000_LOSSLESS)
+    data = _jpeg_2000_ct([_monochrome()])
+    _decoded_otherwise(monkeypatch, 5)
+
+    result = _transformed(_transform(), data)
+
+    assert isinstance(result, run.Transformed), result
+    (material,) = [m for m in result.qc if isinstance(m, RedactionMaterial)]
+    shown = pydicom.dcmread(io.BytesIO(material.source))
+    assert shown.PixelData == _monochrome(5).tobytes()
+    # Written and shown as received are the same decode, outside the region.
+    written = pydicom.pixels.pixel_array(pydicom.dcmread(io.BytesIO(result.data)))
+    inside = _inside((ROWS, COLUMNS))
+    assert np.array_equal(written[~inside], pydicom.pixels.pixel_array(shown)[~inside])
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.1-01")
+def test_a_compressed_image_without_text_is_written_uncompressed_and_held():
     _needs(compressed.JPEG_2000_LOSSLESS)
     frame = _monochrome()
-    data = _jpeg_2000_ct([frame])
+    data = _jpeg_2000_ct([frame], extended=True)
 
     result = _transformed(_transform(Finder(boxes=())), data)
 
@@ -355,9 +382,10 @@ def test_a_compressed_image_without_text_is_written_compressed_and_held():
         HeldPixelData(PixelDataReason.NO_TEXT_FOUND),
     )
     written = pydicom.dcmread(io.BytesIO(result.data))
-    # As without the option: compressed, with its codestream's comment cut.
-    assert written.file_meta.TransferSyntaxUID == compressed.JPEG_2000_LOSSLESS
-    assert np.array_equal(pydicom.pixels.pixel_array(written), frame)
+    # The decoded frames, as the previews show them and a release writes them.
+    assert written.file_meta.TransferSyntaxUID == EXPLICIT_VR
+    assert "ExtendedOffsetTable" not in written
+    assert written.PixelData == frame.tobytes()
     (material,) = [m for m in result.qc if isinstance(m, RedactionMaterial)]
     assert material.decoded_sha256 is not None
     assert material.source is None
@@ -573,7 +601,7 @@ def test_reviewed_regions_release_frames_that_decode_as_reviewed():
     assert np.array_equal(pixels[~inside], frame[~inside])
 
 
-def test_an_approved_image_without_regions_is_released_compressed():
+def test_an_approved_image_without_regions_is_released_as_decoded():
     _needs(compressed.JPEG_2000_LOSSLESS)
     frame = _monochrome()
     data = _jpeg_2000_ct([frame])
@@ -583,7 +611,8 @@ def test_an_approved_image_without_regions_is_released_compressed():
     assert isinstance(result, run.Transformed), result
     assert not isinstance(result.evidence, HeldEvidence)
     written = pydicom.dcmread(io.BytesIO(result.data))
-    assert written.file_meta.TransferSyntaxUID == compressed.JPEG_2000_LOSSLESS
+    assert written.file_meta.TransferSyntaxUID == EXPLICIT_VR
+    assert written.PixelData == frame.tobytes()
     assert _codes(written)[-1] == CODE
 
 
@@ -638,14 +667,21 @@ def _numbered(data, number):
     return synthetic.written(dataset, dataset.file_meta.TransferSyntaxUID)
 
 
-def _first_and_second_runs(tmp_path, files, verdicts):
-    """Run the files under the option, attest the pack with the verdicts that
-    ``verdicts`` gives by file name, and run them again given the review."""
+def _first_and_second_runs(tmp_path, files, verdicts, finder=None, between=None):
+    """Run the files under the option, with ``finder`` or one that marks BOX
+    in each frame, attest the pack with the verdicts that ``verdicts`` gives
+    by file name, call ``between``, if given, and run them again given the
+    review."""
     _write(tmp_path / "source", files)
     first = _run(
         tmp_path / "first",
         tmp_path / "source",
-        InstanceTransform(_policy(), KEY, finder=Finder(), unvalidated_policy=True),
+        InstanceTransform(
+            _policy(),
+            KEY,
+            finder=Finder() if finder is None else finder,
+            unvalidated_policy=True,
+        ),
     )
     pack = first.qc_pack.parent
     document = json.loads(first.qc_pack.read_text("utf-8"))
@@ -659,6 +695,8 @@ def _first_and_second_runs(tmp_path, files, verdicts):
             for name, verdict in verdicts.items()
         ],
     )
+    if between is not None:
+        between()
     second = _run(
         tmp_path / "second",
         tmp_path / "source",
@@ -670,7 +708,7 @@ def _first_and_second_runs(tmp_path, files, verdicts):
             unvalidated_policy=True,
         ),
     )
-    return document, second
+    return document, first, second
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.1-01", "PS3.15-E.3.1-02")
@@ -685,7 +723,7 @@ def test_a_reviewed_compressed_image_is_released_as_its_previews_showed_it(
     }
     files["2-unjudged.dcm"] = _numbered(_jpeg_2000_ct([_monochrome(3)]), 2)
 
-    document, second = _first_and_second_runs(
+    document, _, second = _first_and_second_runs(
         tmp_path,
         files,
         {
@@ -717,6 +755,66 @@ def test_a_reviewed_compressed_image_is_released_as_its_previews_showed_it(
         pixels = pydicom.pixels.pixel_array(written)
         assert np.all(pixels[inside] == frame.min())
         assert np.array_equal(pixels[~inside], frame[~inside])
+
+
+def _decoded_otherwise(monkeypatch, start):
+    """Have the child decode every frame to the samples of
+    ``_monochrome(start)``, which the codestream does not hold, as a
+    subverted decoder, or another build of one, could."""
+    sent = _good()
+    sent[3] = _base64(_monochrome(start).tobytes())
+    _sent_instead(monkeypatch, sent)
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.1-01", "PS3.15-E.3.1-02")
+@pytest.mark.parametrize("again", [True, False])
+def test_regions_a_reviewer_adds_to_an_unmarked_image_release_what_was_previewed(
+    tmp_path, monkeypatch, again
+):
+    # The finder marks nothing, and the reviewer adds a region. The cleaning
+    # decode, in the child, differs from the source's codestream, which the
+    # parent decodes in process for previews of a source. What the first
+    # run wrote, and so what its previews showed, is the child's decode,
+    # and the second run releases it, with the reviewer's region, only if
+    # the child decodes it so again.
+    _needs(compressed.JPEG_2000_LOSSLESS)
+    frame = _monochrome()
+    data = _jpeg_2000_ct([frame])
+    _decoded_otherwise(monkeypatch, 5)
+    shown = _monochrome(5)
+    assert not np.array_equal(pydicom.pixels.pixel_array(io.BytesIO(data)), shown)
+    # The file that the first run holds, and previews without publishing it,
+    # is the child's decode.
+    held = _transformed(_transform(Finder(boxes=())), data)
+    assert isinstance(held, run.Transformed), held
+    previewed = pydicom.dcmread(io.BytesIO(held.data))
+    assert previewed.file_meta.TransferSyntaxUID == EXPLICIT_VR
+    assert previewed.PixelData == shown.tobytes()
+
+    document, _, second = _first_and_second_runs(
+        tmp_path,
+        {"0.dcm": data},
+        {"0.dcm": (Redaction.REVISED, ((0, (REVISED,)),))},
+        finder=Finder(boxes=()),
+        between=None if again else lambda: _decoded_otherwise(monkeypatch, 6),
+    )
+
+    (entry,) = document["redactions"]
+    assert entry["regions"] == []
+    assert entry["decoded_sha256"] == hashlib.sha256(shown.tobytes()).hexdigest()
+    (held,) = document["instances"]
+    assert held["disposition"] == "held-for-review"
+    (outcome,) = json.loads(second.qc_pack.read_text("utf-8"))["instances"]
+    if not again:
+        assert outcome["disposition"] == "held-for-review"
+        return
+    assert outcome["disposition"] == "released"
+    written = pydicom.dcmread(tmp_path / "second" / "release" / outcome["output"])
+    assert written.BurnedInAnnotation == "NO"
+    pixels = pydicom.pixels.pixel_array(written)
+    inside = _inside(frame.shape, REVISED)
+    assert np.all(pixels[inside] == shown.min())
+    assert np.array_equal(pixels[~inside], shown[~inside])
 
 
 def test_a_pack_whose_decoded_digest_is_malformed_is_refused(tmp_path):

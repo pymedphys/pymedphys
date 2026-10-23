@@ -44,7 +44,7 @@ each instance it may process. It joins the engine's per-instance steps:
    settle the attributes that the policy gives C, and under Clean Pixel Data,
    :func:`~pymedphys._dicom.deidentify.pixel_cleaning.black_out` blacks out
    the text found in Pixel Data (D-037), writing compressed Pixel Data
-   uncompressed where it blacks out a region, or, where a reviewer's
+   uncompressed, as decoded, or, where a reviewer's
    verdict on its source file is given,
    :func:`~pymedphys._dicom.deidentify.pixel_cleaning.black_out_reviewed`
    the regions that the reviewer approved, and under Clean Recognizable
@@ -197,6 +197,7 @@ from .pixel_cleaning import (
     Redaction,
     TextFinder,
     black_out,
+    as_received,
     black_out_reviewed,
     finder_description,
     redaction_problem,
@@ -831,8 +832,8 @@ class InstanceTransform:
     Under Clean Pixel Data, :func:`~.pixel_cleaning.black_out` blacks out the
     regions of text that ``finder`` finds in each frame of the instance's
     top-level Pixel Data, decoded first where it is compressed and then
-    written uncompressed, in Explicit VR Little Endian, if a region is
-    blacked out, :func:`~.pixel_cleaning.redaction_problem` checks the file
+    written uncompressed, in Explicit VR Little Endian, whether or not a
+    region is blacked out, :func:`~.pixel_cleaning.redaction_problem` checks the file
     written, and the instance's evidence is a
     :class:`HeldEvidence`, whether or not text was found, since the finder can
     miss text and only review can confirm the option (D-037). Where
@@ -1488,7 +1489,7 @@ class InstanceTransform:
             # that is only defaced is not.
             if redaction is not None and self._finder is not None and not reviewed:
                 evidence = _held(evidence, HeldPixelData(redaction.reason))
-                qc = (*qc, _redaction_material(redaction, data))
+                qc = (*qc, _redaction_material(redaction, source, data))
             elif self._finder is not None:
                 # A reviewer approved the regions, or there are no pixel data
                 # to clean.
@@ -1627,8 +1628,7 @@ def _written(
 
     Pixel Data that the plan replaces must decode to the source's pixels, or,
     where Clean Pixel Data blacked out ``redaction``'s regions, differ from
-    the source's only as that redaction planned; compressed Pixel Data in
-    which Clean Pixel Data wrote nothing is checked as it is without it.
+    the source's only as that redaction planned.
     """
     path = _output_path(identifiers.names)
     sop_class = _replaced(writing.replacements, _SOP_CLASS)
@@ -1660,7 +1660,7 @@ def _written(
         raise _Refused(failed.reason) from None
     if lost_requirements(source, output, iod, frozenset(writing.replacements)):
         raise _Refused(TransformReason.REQUIRED_ATTRIBUTE_LOST)
-    if redaction is not None and (redaction.changed or redaction.decoded is None):
+    if redaction is not None:
         if redaction_problem(source, output, redaction):
             raise _Refused(TransformReason.REDACTION_MISMATCH)
     elif _PIXEL_DATA in writing.replacements and not same_pixels(source, output):
@@ -1856,11 +1856,12 @@ def _with_redaction(
 
     The new value is written with the source element's VR, or, where pydicom
     reads it as neither OB nor OW, by Bits Allocated as PS3.5 Section A.1
-    gives it for the native transfer syntaxes. Pixel Data without a region
-    to black out is kept, and Pixel Data that the plan does not keep is left
-    as planned, which :func:`_written` refuses.
+    gives it for the native transfer syntaxes. Native Pixel Data without a
+    region to black out is kept, and Pixel Data that the plan does not keep
+    is left as planned, which :func:`_written` refuses.
 
-    Compressed Pixel Data with a region is written uncompressed, of VR OW
+    Compressed Pixel Data, decoded, is written uncompressed, with or without
+    a region, of VR OW
     where Bits Allocated is over 8 and OB otherwise, as
     Explicit VR Little Endian has it (PS3.5 Section A.2), in that transfer
     syntax, with Photometric Interpretation and Planar Configuration as the
@@ -1868,7 +1869,11 @@ def _with_redaction(
     or Encapsulated Pixel Data Value Total Length, which describe only
     encapsulated Pixel Data (PS3.3 Section C.7.6.3.1.8).
     """
-    if redaction is None or not redaction.changed or _PIXEL_DATA not in writing.kept:
+    if (
+        redaction is None
+        or (redaction.decoded is None and not redaction.changed)
+        or _PIXEL_DATA not in writing.kept
+    ):
         return writing
     if redaction.transfer_syntax is None:
         vr = dataset[0x7FE00010].VR
@@ -1901,20 +1906,27 @@ def _with_redaction(
     )
 
 
-def _redaction_material(redaction: Redaction, source: bytes) -> RedactionMaterial:
+def _redaction_material(
+    redaction: Redaction, source: SourceEvidence, data: bytes
+) -> RedactionMaterial:
     """The QC material of what Clean Pixel Data did, for the reviewer.
 
     The source is kept only where a frame has regions, since only those
-    frames are shown as received. The SHA-256 of compressed Pixel Data's
-    decoded frames binds a verdict to them (D-048).
+    frames are shown as received; compressed Pixel Data is kept as its
+    frames were decoded (:func:`~.pixel_cleaning.as_received`), so that the
+    engine's process does not decode it to preview it and the previews show
+    the samples whose SHA-256 binds a verdict to them (D-048).
     """
+    shown = None
+    if redaction.regions:
+        shown = data if redaction.decoded is None else as_received(source, redaction)
     return RedactionMaterial(
         redaction.reason,
         redaction.layout.frames,
         redaction.layout.rows,
         redaction.layout.columns,
         tuple((regions.frame, regions.boxes) for regions in redaction.regions),
-        source if redaction.regions else None,
+        shown,
         redaction.decoded_sha256,
     )
 

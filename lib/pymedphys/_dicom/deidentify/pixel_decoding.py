@@ -518,7 +518,7 @@ def decoded_frames(
     expected = _Expected(
         photometric,
         kind,
-        [rows, columns] if samples == 1 else [rows, columns, samples],
+        (rows, columns) if samples == 1 else (rows, columns, samples),
         rows * columns * samples * int(kind[2:]),
     )
     described = tuple(sorted(attributes.items()))
@@ -563,7 +563,7 @@ class _Expected:
 
     photometric: str
     kind: str
-    shape: list[int]
+    shape: tuple[int, ...]
     size: int
 
     def checked(self, sent: object) -> bytes | TransformReason:
@@ -583,7 +583,7 @@ class _Expected:
             not isinstance(kind, str)
             or kind != self.kind
             or not isinstance(shape, list)
-            or shape != self.shape
+            or tuple(shape) != self.shape
             or not isinstance(text, str)
         ):
             return TransformReason.FRAME_MISMATCH
