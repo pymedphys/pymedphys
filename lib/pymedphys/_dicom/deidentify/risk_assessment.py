@@ -64,8 +64,9 @@ or for a maximum probability above the threshold, and passes otherwise.
 The threshold is the one that the assessment states: nothing yet selects
 the stricter one for a collection, so a reviewer of the record checks that
 it applied the threshold that the collection's sensitivity calls for.
-Passing it passes neither of the other gates. No run calls it yet: a
-release report's readiness of a ``public-release`` run is to build on it.
+Passing it passes neither of the other gates. A ``public-release`` run
+reports it in its release report's readiness, with the other two
+(:mod:`~pymedphys._dicom.deidentify.readiness`).
 
 The record is confidential with the pack, since it can describe the cohort
 and names the assessor. Only its opaque reference, ``R-`` and 32 hex
@@ -78,7 +79,6 @@ from __future__ import annotations
 
 import dataclasses
 import datetime
-import enum
 import hashlib
 import hmac
 import json
@@ -94,6 +94,10 @@ from .qc_attestation import _pack_bytes, _read, _reference_of
 from .qc_pack import Disposition, QcPackError
 from .reviewed_descriptors import ReviewedDescriptors
 from .reviewed_roi_names import ReviewedNames
+
+# The statistical gate's reasons, which the release report names, are kept
+# with the engine's other reason codes, since this module imports the report.
+from .reasons import StatisticalReason
 
 # The format of the record. A change to its fields takes a new label.
 FORMAT = "pymedphys-deid-risk-assessment/1"
@@ -123,26 +127,6 @@ class RiskAssessmentError(QcPackError):
     The message names the field or check that failed, never a value or a
     path.
     """
-
-
-class StatisticalReason(enum.Enum):
-    """Why the statistical gate failed, as a release report records it."""
-
-    # no assessment was given
-    NO_ASSESSMENT = "no-assessment"
-    # the assessment is of other source files
-    OTHER_COLLECTION = "other-collection"
-    # the assessment is of another policy, or of another engine
-    OTHER_POLICY = "other-policy"
-    # the assessment is of other reviewed ROI names or descriptors lists
-    OTHER_LISTS = "other-lists"
-    # the assessment counts fewer subjects than the run releases
-    FEWER_SUBJECTS = "fewer-subjects"
-    # the assessment counts more subjects than the run releases, as an
-    # assessment that counted images, frames, or visits would
-    MORE_SUBJECTS = "more-subjects"
-    # the maximum per-subject probability is above the threshold
-    ABOVE_THRESHOLD = "above-threshold"
 
 
 def _text(value: object) -> bool:
