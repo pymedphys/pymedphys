@@ -536,11 +536,12 @@ def _item_rows(
     gutter above it, would take more than ``room`` pixels."""
     grid = _grid([roi], _roi_voxel)
     filled = _filled(roi, grid, planes)
-    hidden = _hidden(roi, grid, filled)
-    rows = _roi_rows(filled | _marked(roi.marks(_step(grid)), grid))
-    left = None if room is None else room - _height(rows)
-    if left is not None and left < 0:
+    rows = _roi_rows(filled | _marked(roi.marks(_step(grid)), grid), room=room)
+    left = None if room is None or rows is None else room - _height(rows)
+    if rows is None or (left is not None and left < 0):
         return None
+    # Its hidden marks are found only where its own rows fit.
+    hidden = _hidden(roi, grid, filled)
     if hidden is None:
         return rows
     # Each layer has a row at least.
@@ -551,12 +552,12 @@ def _item_rows(
     ):
         return None
     for voxels in layers:
-        more = _roi_rows(_layer(voxels, filled.shape), marks=True)
+        more = _roi_rows(_layer(voxels, filled.shape), marks=True, room=left)
+        if more is None or (left is not None and _height(more) > left):
+            return None
         rows.extend(more)
         if left is not None:
             left -= _height(more)
-            if left < 0:
-                return None
     return rows
 
 
@@ -590,16 +591,29 @@ def _least_height(contours: Contours, guides: Mapping[str | None, Guide]) -> int
     return sum(heights) + GUTTER_PIXELS * (len(heights) - 1)
 
 
-def _roi_rows(inside: np.ndarray, marks: bool = False) -> list[np.ndarray]:
+def _roi_rows(
+    inside: np.ndarray, marks: bool = False, room: int | None = None
+) -> list[np.ndarray] | None:
     """An ROI's rows, or those of a layer of its hidden marks, as the module
     describes, from their voxels; a layer has no row of cavities, and a row
-    of each further crossing however few times a ray crosses it."""
-    rows = [_rgb(_views(inside))]
+    of each further crossing however few times a ray crosses it. None,
+    before any is drawn, where the rows that it draws at least, each with
+    the gutter above it, would take more than ``room`` pixels."""
     # The rays of the views that look along an axis of the voxels meet every
     # voxel of its surface, and cross the surface more than twice only where
     # it hides some of its surface behind its own; the oblique views' rays,
     # which step between voxels, cross a surface falsely where they graze it.
-    if not marks and max(_most_crossings(inside, axis) for axis in (1, 2)) <= 2:
+    most = max(_most_crossings(inside, axis) for axis in (1, 2))
+    crossed = marks or most > 2
+    # The views' row, and a row for each crossing after the first.
+    least = 1 + (max(most - 1, 0) if crossed else 0)
+    if room is not None and least * (len(inside) + GUTTER_PIXELS) > room:
+        return None
+    # So, within a sheet's height bound, the crossings found are at most
+    # about 32,768 by 503 for each of three views, as 16-bit integers, some
+    # 100 MB, however intricate the region.
+    rows = [_rgb(_views(inside))]
+    if not crossed:
         return rows
     if not marks:
         # Each slice's cavities: what its region encloses, but does not hold.
@@ -633,12 +647,17 @@ def _undrawn(marks: np.ndarray) -> np.ndarray:
 
 
 def _most_crossings(inside: np.ndarray, axis: int) -> int:
-    """The most times that a line of voxels along an axis crosses in or out
-    of the region."""
+    """The most times that a line of voxels along an axis within a slice
+    crosses in or out of the region, found a few slices at a time."""
     padding = [(0, 0)] * inside.ndim
     padding[axis] = (1, 1)
-    changes = np.diff(np.pad(inside, padding), axis=axis)
-    return int(changes.sum(axis=axis).max(initial=0))
+    return max(
+        (
+            int(np.diff(np.pad(part, padding), axis=axis).sum(axis=axis).max(initial=0))
+            for part in _slice_runs(inside)
+        ),
+        default=0,
+    )
 
 
 def _tiles(depths: Sequence[np.ndarray]) -> np.ndarray:
@@ -672,7 +691,8 @@ def _views(inside: np.ndarray) -> np.ndarray:
 def _view_crossings(
     inside: np.ndarray, directions: Sequence[float]
 ) -> list[np.ndarray]:
-    """:func:`~.qc_surfaces.view_crossings`, found a few slices at a time."""
+    """:func:`~.qc_surfaces.view_crossings`, found a few slices at a time,
+    and held as 16-bit integers, since no ray is 32,768 voxels long."""
     found = []
     for parts in zip(
         *_by_slices(inside, lambda part: qc_surfaces.view_crossings(part, directions))
@@ -682,7 +702,7 @@ def _view_crossings(
             np.concatenate(
                 [
                     np.pad(
-                        part,
+                        part.astype(np.int16),
                         ((0, most - len(part)), (0, 0), (0, 0)),
                         constant_values=-1,
                     )
@@ -700,8 +720,13 @@ def _by_slices(
     """What ``render`` gives for each run of up to ``_SLICES_AT_A_TIME``
     slices, which it renders each alone, so that a long region's rays are
     held in memory a few slices at a time."""
+    return [render(part) for part in _slice_runs(inside)]
+
+
+def _slice_runs(inside: np.ndarray) -> list[np.ndarray]:
+    """Runs of up to ``_SLICES_AT_A_TIME`` slices, in order, as views."""
     return [
-        render(inside[start : start + _SLICES_AT_A_TIME])
+        inside[start : start + _SLICES_AT_A_TIME]
         for start in range(0, len(inside), _SLICES_AT_A_TIME)
     ]
 

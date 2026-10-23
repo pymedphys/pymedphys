@@ -865,12 +865,57 @@ def test_marks_that_need_more_layers_than_the_sheet_has_room_for_are_not_drawn(
     monkeypatch.setattr(
         qc_contours,
         "_roi_rows",
-        lambda inside, marks=False: drawn.append(marks) or roi_rows(inside, marks),
+        lambda inside, marks=False, room=None: (
+            drawn.append(marks) or roi_rows(inside, marks, room)
+        ),
     )
     own = qc_contours._height(qc_contours._roi_rows(filled))
     one = len(grid.zs) + qc_contours.GUTTER_PIXELS
     assert qc_contours._item_rows(roi, planes, own + 11 * one) is None
     assert not any(drawn[1:])
+
+
+def _runs_crossed(inside):
+    """The most times a line of voxels along y or x crosses in or out of
+    ``inside``, counted run by run."""
+    most = 0
+    for line in [
+        *inside.transpose(0, 2, 1).reshape(-1, inside.shape[1]),
+        *inside.reshape(-1, inside.shape[2]),
+    ]:
+        runs = sum(
+            1 for i, value in enumerate(line) if value and (i == 0 or not line[i - 1])
+        )
+        most = max(most, 2 * runs)
+    return most
+
+
+def test_rows_that_would_not_fit_are_not_drawn_nor_their_crossings_found(
+    monkeypatch,
+):
+    # Ten nested square rings in a slice, so a ray crosses 20 times.
+    inside = np.zeros((3, 44, 44), bool)
+    for ring in range(10):
+        inside[1, 2 * ring : 44 - 2 * ring, 2 * ring : 44 - 2 * ring] = ring % 2 == 0
+    assert _runs_crossed(inside) == 20
+    rows = qc_contours._roi_rows(inside)
+    one = len(inside) + qc_contours.GUTTER_PIXELS
+    # Its views' row, a row of its cavities, and one for each crossing after
+    # the first.
+    assert len(rows) == 1 + 1 + 19
+    assert len(qc_contours._roi_rows(inside, room=qc_contours._height(rows))) == len(
+        rows
+    )
+
+    def found(*_):
+        raise AssertionError("crossings found")
+
+    monkeypatch.setattr(qc_contours, "_view_crossings", found)
+    monkeypatch.setattr(qc_contours, "_views", found)
+    # Without room for the views' row and the 19 rows of crossings after the
+    # first, nothing is drawn or found.
+    assert qc_contours._roi_rows(inside, room=20 * one - 1) is None
+    assert qc_contours._roi_rows(inside, marks=True, room=20 * one - 1) is None
 
 
 def test_contours_whose_marks_touch_only_diagonally_or_repeat_share_a_layer():
@@ -1002,6 +1047,25 @@ def test_the_rows_of_an_roi_and_of_its_hidden_marks_draw_what_they_claim(seed):
     assert (_drawn(inside) == _edges(inside)).all()
     hidden = qc_contours._hidden(roi, grid, filled)
     rows = qc_contours._item_rows(roi, planes)
+    # The rows found before any is drawn are those drawn, but for a row of
+    # cavities, so a region given the room its rows take is drawn.
+    for mask, marks in [
+        (inside, False),
+        *(
+            (layer, True)
+            for layer in _masks(
+                qc_contours._layered(hidden or [], filled.shape), filled.shape
+            )
+        ),
+    ]:
+        drawn = qc_contours._roi_rows(mask, marks)
+        most = _runs_crossed(mask)
+        crossed = marks or most > 2
+        least = 1 + (max(most - 1, 0) if crossed else 0)
+        cavities = (0, 1) if crossed and not marks else (0,)
+        assert len(drawn) - least in cavities
+        height = qc_contours._height(drawn)
+        assert qc_contours._roi_rows(mask, marks, height) is not None
     if hidden is None:
         assert len(rows) == len(qc_contours._roi_rows(inside))
         return
@@ -1176,7 +1240,11 @@ def test_a_sheet_is_drawn_only_until_it_is_too_tall(monkeypatch):
     drawn = []
     rows = qc_contours._roi_rows
     monkeypatch.setattr(
-        qc_contours, "_roi_rows", lambda inside: drawn.append(1) or rows(inside)
+        qc_contours,
+        "_roi_rows",
+        lambda inside, marks=False, room=None: (
+            drawn.append(1) or rows(inside, marks, room)
+        ),
     )
     assert qc_contours.contour_sheet(contours, tallest=1) is None
     assert not drawn
@@ -1186,7 +1254,10 @@ def test_a_sheet_is_drawn_only_until_it_is_too_tall(monkeypatch):
     monkeypatch.setattr(
         qc_contours,
         "_roi_rows",
-        lambda inside: drawn.append(1) or rows(inside) * 3,
+        # Taller than the room each is given, which they are not told.
+        lambda inside, marks=False, room=None: (
+            drawn.append(1) or rows(inside, marks) * 3
+        ),
     )
     assert qc_contours.contour_sheet(contours, tallest=height) is None
     assert len(drawn) < 3
