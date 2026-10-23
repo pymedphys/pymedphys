@@ -1043,7 +1043,8 @@ implementation = [
 ]
 note = '''
 Offsets are whole weeks, derived from the key and the subject's identity, and every date, time, and datetime attribute has a reviewed role that decides whether it moves with the subject.
-Under Retain Longitudinal Temporal Information with Modified Dates, a cleaner of the whole instance moves every subject-event and radiation-source date back by the subject's offset, the same in every instance of the subject in a run, so intervals between studies, weekdays, times of day, and decay intervals are preserved exactly, and replaces device and other dates with dummy values (D-039, PS3.15-E.3.6-02).
+Under Retain Longitudinal Temporal Information with Modified Dates, a cleaner of the whole instance moves every subject-event and radiation-source date back by the subject's offset, the same in every instance of the subject in a run, so date-only intervals, weekdays, local times of day, and decay intervals at a common UTC offset are preserved, and replaces device and other dates with dummy values (D-039, PS3.15-E.3.6-02).
+Intervals between instances with different UTC offsets change by the difference between those offsets (D-007).
 Times of day are kept, not replaced, since whole weeks keep them and a time alone identifies no one (D-006); only the date of a datetime moves.
 Each run has its own key, so offsets are consistent across a subject's studies within a run but not between separate runs.
 Remaining: offsets that stay the same across runs, read from a project key's subject profiles, so that studies de-identified in separate runs keep their intervals (D-004) (M4).
