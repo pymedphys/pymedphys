@@ -1037,7 +1037,8 @@ id = "MIDI-BP-12"
 text = '''
 Replace absolute dates and times while preserving relative temporal relationships across studies, within a useful tolerance, for short-term analyses such as dynamic contrast and nuclide decay and long-term ones such as therapy assessment.
 '''
-status = "implemented"
+status = "partial"
+milestone = "M4"
 decisions = ["D-004", "D-006", "D-007", "D-039"]
 implementation = [
   "_dicom/deidentify/api.py",
@@ -1058,7 +1059,8 @@ Intervals between instances with different UTC offsets change by the difference 
 Times of day are kept, not replaced, since whole weeks keep them and a time alone identifies no one (D-006); only the date of a datetime moves.
 Each subject's offset is the one its profile records (D-004). Under a run-scoped key, the profile is the derivation, so offsets are consistent across a subject's studies within a run but not between separate runs.
 Under a project key, the subject profile store records the offset at first export and every later run reads it back, so studies de-identified in separate runs keep their intervals; the store is saved before the release is published, so a store that cannot be saved publishes nothing.
-Project keys are refused until `PROJECT_KEYS_ENABLED` is set, which stays off until the release PR, since the first supported release uses a run-scoped key.
+Project keys are refused until `PROJECT_KEYS_ENABLED` is set, so no run can use them yet, since the first supported release uses a run-scoped key.
+Remaining: enable project keys (`PROJECT_KEYS_ENABLED`) in the release PR (M4).
 '''
 
 [[requirement]]

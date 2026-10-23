@@ -74,7 +74,8 @@ def build_parser(*, stderr: TextIO | None = None) -> argparse.ArgumentParser:
         stderr=stderr,
         description=(
             "Write a new project key to KEY_FILE, which must not exist, "
-            "readable only by its owner. For use before the first supported "
+            "readable only by its owner. A run refuses a project key until "
+            "project keys are enabled. For use before the first supported "
             "release."
         ),
     )

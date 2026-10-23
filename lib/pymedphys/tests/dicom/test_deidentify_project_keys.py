@@ -14,6 +14,7 @@
 
 """Runs under a project key and its subject profiles (D-004)."""
 
+import base64
 import datetime
 import io
 import json
@@ -120,6 +121,26 @@ def _report(done):
     return json.loads(
         (done.result.release / run_report.RELEASE_REPORT).read_text(encoding="utf-8")
     )
+
+
+def _secrets(key_file, store=None):
+    """Return each form a project key or its custodian files can take."""
+    key = keys.read_key_file(key_file)
+    secrets = [
+        key.secret,
+        key.secret.hex().encode(),
+        base64.b64encode(key.secret),
+        key_file.read_bytes(),
+        str(key_file).encode(),
+    ]
+    if store is not None:
+        secrets.append(str(store).encode())
+    return secrets
+
+
+def _assert_discloses_none(data, secrets):
+    for secret in secrets:
+        assert secret not in data
 
 
 def _transform(store=None, key=KEY):
@@ -251,7 +272,7 @@ def test_a_store_that_cannot_be_saved_publishes_nothing(
 
 @pytest.mark.usefixtures("enabled")
 def test_the_report_and_statement_say_the_key_is_a_project_key(tmp_path, custodian):
-    key_file, _ = custodian
+    key_file, store = custodian
     key = keys.read_key_file(key_file)
 
     done = _run(tmp_path, "first", _slices(0), custodian)
@@ -263,13 +284,10 @@ def test_the_report_and_statement_say_the_key_is_a_project_key(tmp_path, custodi
     )
     assert "The run's key is a project key" in statement
     assert "Each run has its own" not in statement
-    secret = key.secret.hex()
+    secrets = _secrets(key_file, store)
     for path in (*released.rglob("*"), *(tmp_path / "first" / "qc").rglob("*")):
         if path.is_file():
-            data = path.read_bytes()
-            assert key_file.read_bytes() not in data
-            assert secret.encode() not in data
-            assert str(key_file).encode() not in data
+            _assert_discloses_none(path.read_bytes(), secrets)
 
 
 @pytest.mark.usefixtures("enabled")
@@ -401,9 +419,12 @@ def test_the_command_runs_under_a_project_key(tmp_path, custodian, capsys):
         (tmp_path / "release" / run_report.RELEASE_REPORT).read_text(encoding="utf-8")
     )
     assert report["key"]["scope"] == "project"
+    secrets = _secrets(key_file, store)
     printed = capsys.readouterr()
-    assert str(key_file) not in printed.out + printed.err
-    assert str(store) not in printed.out + printed.err
+    _assert_discloses_none((printed.out + printed.err).encode(), secrets)
+    for path in (*(tmp_path / "release").rglob("*"), *(tmp_path / "qc").rglob("*")):
+        if path.is_file():
+            _assert_discloses_none(path.read_bytes(), secrets)
 
 
 def test_the_command_refuses_a_project_key_until_enabled(tmp_path, custodian, capsys):
@@ -424,7 +445,11 @@ def test_the_command_refuses_a_project_key_until_enabled(tmp_path, custodian, ca
     )
 
     assert status == command.EXIT_NOT_RUN
-    assert "not enabled" in capsys.readouterr().err
+    printed = capsys.readouterr()
+    assert "not enabled" in printed.err
+    _assert_discloses_none(
+        (printed.out + printed.err).encode(), _secrets(key_file, store)
+    )
     assert not (tmp_path / "release").exists()
     assert not store.exists()
 
@@ -466,9 +491,11 @@ def test_the_key_command_writes_a_key_only_its_owner_can_read(tmp_path, capsys):
 
     assert status == key_command.EXIT_CREATED
     key = keys.read_key_file(path)
-    printed = capsys.readouterr().out
-    assert printed.strip() == f"wrote a new project key with identifier {key.key_id}"
-    assert str(path) not in printed
+    printed = capsys.readouterr()
+    assert printed.out.strip() == (
+        f"wrote a new project key with identifier {key.key_id}"
+    )
+    _assert_discloses_none((printed.out + printed.err).encode(), _secrets(path))
     assert stat.S_IMODE(path.stat().st_mode) == 0o600
 
 
