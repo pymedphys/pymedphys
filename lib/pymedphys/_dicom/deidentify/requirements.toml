@@ -868,7 +868,8 @@ id = "MIDI-BP-05"
 text = '''
 Remove or replace the identities of other persons, departments, institutions, and organisations, except where they are needed for utility and a residual risk assessment supports keeping them.
 '''
-status = "implemented"
+status = "partial"
+milestone = "M4"
 decisions = ["D-001", "D-016", "D-017", "D-022"]
 implementation = [
   "_dicom/deidentify/element_rules.py",
@@ -890,6 +891,7 @@ The run's instance transform applies these actions to each instance it de-identi
 As for MIDI-BP-01, an end-to-end test of `basic` and `basic-clean-descriptors` over the synthetic collection, which plants markers in the names of other persons, institutions, departments, and stations, finds none of them in the published files; the removals of D-022's other attributes, such as Requesting Service Code Sequence, rest on the tests of the element and supplementary rules.
 The Retain Institution Identity Option is not supported.
 The institutional identity that the first supported release keeps, in an in-house device's Manufacturer and in the codes and Coding Scheme URLs of local coding schemes, is assessed by whoever releases the data, as D-022 and D-016 assign it: a `public-release` run is ready for release only where the attested QC pack lists each string that the run retains in a released instance, so that the reviewer reviewed it, and the releaser confirmed in the attestation that the output's residual risk is acceptable (MIDI-BP-17); otherwise its attestation gate fails (D-017).
+Remaining: a residual risk assessment of that kept institutional identity beyond the releaser's confirmation, which MIDI asks for and the first release does not yet make (M4).
 '''
 
 [[requirement]]
@@ -991,7 +993,7 @@ Every instance's attributes are read for indicators of burned-in text, whatever 
 The indicators are read from attributes, never from the pixel data (D-015), which only the Clean Pixel Data Option changes (D-037).
 Each run gives the indicators of each source it can decode to the confidential QC pack, which lists the instances at high risk and previews those released or held.
 The release report counts the released and held instances with each risk and each indicator, naming none, as the QC pack lists them (D-015).
-A `public-release` run is ready for release only where an attested review of an earlier run of the same files and policy, whose coverage includes every high-risk instance, listed as high-risk each instance at high risk that the run releases; otherwise its pixel and face review gate fails, and a reviewer who finds text rejects the pack, so that the run is not ready (D-017).
+A `public-release` run is ready for release only where each instance at high risk that it releases was listed as high-risk in an attested QC pack of an earlier run of the same files and policy, whose attestation covers every high-risk instance; otherwise its pixel and face review gate fails. A reviewer who finds burned-in text rejects the pack, and the run is then not ready (D-017).
 '''
 
 [[requirement]]
@@ -1088,7 +1090,8 @@ id = "MIDI-BP-15"
 text = '''
 Quantify the re-identification risk from potentially reconstructable facial information in head and neck cross-sectional images with a collection-specific expert statistical analysis. Above the threshold, remove or modify the facial features, or do not share the images publicly.
 '''
-status = "implemented"
+status = "partial"
+milestone = "M4"
 decisions = ["D-015", "D-017", "D-046", "D-053"]
 implementation = [
   "_dicom/deidentify/pixel_risk.py",
@@ -1108,6 +1111,7 @@ The QC pack renders the skin surface of each volume that it projects, and the 5%
 It renders each RT Structure Set's contours as written from the same directions, each frame's ROIs united and each ROI alone, drawn with the surface of a volume in their frame, so that the reviewer sees a face that an outline traces (D-017).
 A `public-release` run is ready for release only where every instance that it releases that can show a face, one with pixel data or contours, is in a series that the reviewer marked as showing no face, on the pixel data and contours that the run writes, or where its statistical gate passes with an external assessment that covered faces reconstructed from the images, which D-017 accepts as the risk assessment reference that unblocks facial information; otherwise its pixel and face review gate fails (D-017, D-053).
 A reviewer's verdict that the renders show no face stands in for a quantified facial risk, as D-017 decides; the engine computes no facial re-identification probability itself.
+Remaining: a collection-specific quantified analysis of the facial re-identification risk wherever a series can show a face, which a reviewer's verdict does not supply (M4).
 '''
 
 [[requirement]]

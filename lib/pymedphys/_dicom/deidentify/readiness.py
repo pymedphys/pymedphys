@@ -89,11 +89,9 @@ from .risk_assessment import (
 )
 
 # The dispositions of an instance that the reviewed run wrote, and so
-# previewed, and of one that a series preview showed: an identical copy of
-# a released instance is the same file.
-_REVIEWED = frozenset(
-    {Disposition.RELEASED, Disposition.HELD_FOR_REVIEW, Disposition.DUPLICATE}
-)
+# previewed. An identical copy of one has its source's digest already; a
+# copy is not counted itself, since its group's first copy may not have
+# been written.
 _WRITTEN = frozenset({Disposition.RELEASED.value, Disposition.HELD_FOR_REVIEW.value})
 # The face reasons in the order that the gate gives the first of them, the
 # gravest first.
@@ -135,7 +133,7 @@ class ReadinessReview:
         release report.
     reviewed : frozenset of bytes
         The SHA-256 of each source file that the reviewed run released or
-        held, or copied as a duplicate of one it released.
+        held.
     high_risk : frozenset of bytes
         The SHA-256 of each source file that the pack lists in a high-risk
         category and that the reviewed run released or held.
@@ -374,18 +372,18 @@ def released_subjects(
     patients : mapping of int to object
         Each input's subject identity by run position, such as its first
         pass record's ``patient``, which is None for an instance that names
-        no patient.
+        no patient. Those that name none count as one subject.
     positions : set of int
         The run positions of the instances that the run releases.
 
     Examples
     --------
-    >>> released_subjects({0: "a", 1: "a", 2: "b", 3: None}, {0, 1, 3})
-    1
+    >>> released_subjects({0: "a", 1: "a", 2: "b", 3: None, 4: None}, {0, 1, 3, 4})
+    2
     """
-    return len(
-        {patients[p] for p in positions if p in patients and patients[p] is not None}
-    )
+    # Instances that name no patient are one subject, as the run groups them
+    # for the residual search.
+    return len({patients[p] for p in positions if p in patients})
 
 
 def _bound(
@@ -486,9 +484,8 @@ def _reviewed_pack(
             continue
         if not isinstance(digest, str) or not _SHA256.fullmatch(digest):
             raise malformed
-        if disposition in {each.value for each in _REVIEWED}:
-            reviewed.add(bytes.fromhex(digest))
         if disposition in _WRITTEN:
+            reviewed.add(bytes.fromhex(digest))
             written[entry.get("position")] = bytes.fromhex(digest)  # type: ignore[index]
     high_risk = set()
     for entry in risks:  # type: ignore[union-attr]

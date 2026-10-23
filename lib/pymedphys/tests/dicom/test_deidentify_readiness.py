@@ -394,6 +394,36 @@ def test_an_instance_that_the_reviewed_run_did_not_write_was_not_reviewed(tmp_pa
     assert result.statistical is None
 
 
+def test_a_released_instance_without_its_source_digest_was_not_reviewed(tmp_path):
+    review = _reviewed(tmp_path)
+    # The collection's digest leaves out a source without one, so only the
+    # attestation gate can tell that it was not reviewed.
+    unknown = _entry(5, source_sha256=None)
+    # A pack's series name only instances with a source digest.
+    pack = _pack(THIS_RUN, (*(_entry(n) for n in range(5)), unknown))
+
+    result = _readiness(review, pack)
+
+    assert _gates(result) == (None, None, ReviewReason.UNREVIEWED_INSTANCE)
+
+
+def test_a_duplicate_in_the_reviewed_run_is_not_itself_reviewed(tmp_path):
+    # The reviewed run recorded 3 as a copy of 2, so only 2's file was
+    # previewed; a later run that releases 3's file shows what no one saw.
+    copy = InstanceEntry(
+        position=3,
+        source="/imports/3.dcm",
+        disposition=Disposition.DUPLICATE,
+        output=_entry(2).output,
+        source_sha256=_digest(3),
+    )
+    instances = tuple(copy if n == 3 else _entry(n) for n in range(5))
+    series = (SeriesEntry((0, 2)), *SERIES[1:])
+    review = _reviewed(tmp_path, _pack(REVIEWED, instances, series=series))
+
+    assert _readiness(review).attestation is ReviewReason.UNREVIEWED_INSTANCE
+
+
 @pytest.mark.deid_requirement("MIDI-BP-05", "MIDI-BP-11")
 def test_a_retained_string_that_the_reviewed_pack_lacks_was_not_reviewed(tmp_path):
     review = _reviewed(tmp_path)
@@ -623,6 +653,19 @@ def test_the_report_records_the_gates_by_reason_and_reference_alone(tmp_path):
     assert document["format"] == "pymedphys-deid-release-report/24"
 
 
+def test_a_public_release_report_given_no_readiness_is_not_ready():
+    document = release_report.report_document(_report(None))
+
+    assert document["readiness"] == {
+        "ready": False,
+        "review": None,
+        "assessment": None,
+        "statistical": "no-assessment",
+        "pixel_and_face": "no-review",
+        "attestation": "no-review",
+    }
+
+
 def test_a_report_of_another_policy_has_no_readiness():
     assert release_report.report_document(_report(None, "basic"))["readiness"] is None
     with pytest.raises(ReleaseReportError, match="readiness"):
@@ -731,7 +774,9 @@ def test_a_report_of_another_preset_ignores_the_run_facts():
 def test_released_subjects_counts_distinct_patients_of_released_instances():
     assert readiness.released_subjects(PATIENTS, {0, 1, 2, 3, 4}) == 2
     assert readiness.released_subjects(PATIENTS, {0, 2}) == 1
-    assert readiness.released_subjects({0: None}, {0}) == 0
+    # Instances that name no patient are one subject, as the run groups them.
+    assert readiness.released_subjects({0: None, 1: None}, {0, 1}) == 1
+    assert readiness.released_subjects({**PATIENTS, 5: None}, {0, 1, 5}) == 3
     assert readiness.released_subjects(PATIENTS, set()) == 0
 
 

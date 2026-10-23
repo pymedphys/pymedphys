@@ -1417,12 +1417,25 @@ def _redaction_review_section(reference: str | None) -> dict | None:
 def _readiness_section(
     readiness: Readiness | None, policy: PolicyRecord
 ) -> dict | None:
-    """Return the section that says whether a ``public-release`` run is ready."""
+    """Return the section that says whether a ``public-release`` run is ready.
+
+    A ``public-release`` report given no readiness is not ready on any gate,
+    as a run given no review is, so that it never reads as having none.
+    """
+    public = isinstance(policy, PolicyRecord) and policy.preset == PUBLIC_RELEASE
     if readiness is None:
-        return None
+        if not public:
+            return None
+        readiness = Readiness(
+            review=None,
+            assessment=None,
+            statistical=StatisticalReason.NO_ASSESSMENT,
+            pixel_and_face=ReviewReason.NO_REVIEW,
+            attestation=ReviewReason.NO_REVIEW,
+        )
     if not isinstance(readiness, Readiness):
         raise _refuse("readiness", "is not a Readiness")
-    if not isinstance(policy, PolicyRecord) or policy.preset != PUBLIC_RELEASE:
+    if not public:
         raise _refuse("readiness", "is given for a policy other than public-release")
     review, assessment = readiness.review, readiness.assessment
     if review is not None and (
