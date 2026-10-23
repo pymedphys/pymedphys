@@ -1009,6 +1009,8 @@ def _redaction_images(
     written = decoder.frames(instance)
     sources = iter(())
     if isinstance(received, _Instance):
+        # Only here are frames decoded as received; every other decoding is
+        # of a file as written, whose padding of more than one value holds it.
         sources = decoder.frames(
             received,
             sorted(regions),
