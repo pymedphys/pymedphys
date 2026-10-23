@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# pylint: disable = too-many-lines
+# One module draws, and proves complete, every row of a contour sheet.
+
 """Renders of RT Structure Set contours for the confidential QC pack's face
 review (D-017, D-052).
 
@@ -76,11 +79,11 @@ Each region is sampled to cubic voxels over the extent of what it draws,
 with a voxel more on each low side across, 0 to 1 voxel more on each high
 side, and up to a voxel more below, so that its edge and its lowest point
 are drawn. A frame's united region has voxels of
-:data:`~.qc_surfaces.MINIMUM_VOXEL` millimetres, enlarged where needed to
-keep each axis within :data:`~.qc_surfaces.MAXIMUM_VOXELS` voxels, as
-:mod:`~.qc_surfaces` samples a volume. An ROI alone has the finer of the
-voxels that a united region of its own extent would have and those that
-keep its extent within :data:`ROI_VOXELS`, but none finer than
+:data:`~.qc_surfaces.MINIMUM_VOXEL` millimetres, as :mod:`~.qc_surfaces`
+samples a volume up to 510 mm in extent, whatever the frame's extent, so
+that a longer frame's rows are taller rather than coarser. An ROI alone has
+the finer of those voxels and those that keep its extent within
+:data:`ROI_VOXELS`, but none finer than
 :data:`ROI_MINIMUM_VOXEL`, so that a small ROI is seen in detail, and an
 ROI far from another no coarser than if it were alone. Each slice of
 voxels is the region of the contours' plane that covers it: each plane of
@@ -111,8 +114,10 @@ Slab Thickness, which would place it elsewhere or give it depth, and, for a
 closed contour of three or more points, with every point within
 :data:`COPLANAR` millimetres of one axial plane, as
 :mod:`~.region_defacing` groups contours; and the ROIs of each frame
-spanning at most :data:`LONGEST` millimetres along each axis, so that its
-voxels stay fine enough to show a face. A closed contour in an oblique,
+spanning at most :data:`LONGEST` millimetres along each axis, and at most
+:data:`WIDEST` across, from left to right and from front to back, so that
+its rows stay within the sheet's bounds at voxels fine enough to show a
+face. A closed contour in an oblique,
 coronal, or sagittal plane, whose region the slices of voxels would cut
 edge on, is not drawn, so a structure set with one is not shown, and nor is
 one with a contour of another type, or one that cannot be read.
@@ -143,15 +148,20 @@ COPLANAR = 0.15
 # The largest magnitude, in millimetres, of a coordinate that is drawn.
 FARTHEST = 1e6
 # The longest span, in millimetres, along any axis, of the ROIs of one
-# frame that a sheet draws: longer than a patient, and drawn in voxels of
-# under 8 mm.
+# frame that a sheet draws, longer than a patient, and the widest across,
+# from left to right or front to back, wider than any scanner's bore; so
+# its voxels are at most 2 mm, and each row at most about 1,000 pixels
+# tall and 3,600 wide.
 LONGEST = 2000.0
+WIDEST = 1000.0
 ROI_VOXELS = 128
 ROI_MINIMUM_VOXEL = 0.5  # millimetres
 GUTTER_PIXELS = 8
-# The tallest contour sheet that is shown: each row is at most 257 voxels
-# tall, so at least about 120 rows in one frame, about 103 in ten frames
-# each with a guide, and about 2 fewer for each further frame with a guide.
+# The tallest contour sheet that is shown: each row of a frame whose ROIs
+# span up to 510 mm along z is at most 257 voxels tall, as is a guide, so
+# at least about 120 rows in one such frame, about 103 in ten frames each
+# with a guide, and about 2 fewer for each further frame with a guide; a
+# row of an ROI 2,000 mm long is about 1,000 tall, so about 32 of them fit.
 # An ROI item has one row, and more where it hides some of its surface
 # behind its own, or its marks. A taller one is drawn only until it is too
 # tall, and is not shown, so that its set is held rather than shown in an
@@ -160,6 +170,8 @@ MAXIMUM_SHEET_PIXELS = 32768
 
 # The views whose rays look along an axis of the voxels.
 _ALONG = (0, 90, -90)
+# How many slices of a region are rendered at once.
+_SLICES_AT_A_TIME = 64
 # As a redaction preview's outline and gutter.
 _OUTLINE = (255, 0, 255)
 _GUTTER = (128, 128, 128)
@@ -338,7 +350,8 @@ def contours_of(dataset: pydicom.Dataset) -> Contours | None:
         points = np.concatenate(
             [roi.coordinates() for roi in found.rois if roi.frame == frame]
         )
-        if np.ptp(points, axis=0).max() > LONGEST:
+        spans = np.ptp(points, axis=0)
+        if spans.max() > LONGEST or spans[:2].max() > WIDEST:
             return None
     return found
 
@@ -595,7 +608,7 @@ def _roi_rows(inside: np.ndarray, marks: bool = False) -> list[np.ndarray]:
         enclosed = scipy.ndimage.binary_fill_holes(inside, within) & ~inside
         if enclosed.any():
             rows.append(_rgb(_views(enclosed)))
-    along = dict(zip(_ALONG, qc_surfaces.view_crossings(inside, _ALONG)))
+    along = dict(zip(_ALONG, _view_crossings(inside, _ALONG)))
     none = np.full(along[0].shape[1:], -1)
     for crossing in range(1, max(len(each) for each in along.values())):
         tiles = []
@@ -649,17 +662,59 @@ def _sized(values: np.ndarray) -> bytes:
 
 
 def _views(inside: np.ndarray) -> np.ndarray:
-    return qc_surfaces.side_by_side(qc_surfaces.views(inside))
+    depths = [
+        np.concatenate(each)
+        for each in zip(*_by_slices(inside, qc_surfaces.view_depths))
+    ]
+    return qc_surfaces.side_by_side([qc_surfaces.shaded(each) for each in depths])
+
+
+def _view_crossings(
+    inside: np.ndarray, directions: Sequence[float]
+) -> list[np.ndarray]:
+    """:func:`~.qc_surfaces.view_crossings`, found a few slices at a time."""
+    found = []
+    for parts in zip(
+        *_by_slices(inside, lambda part: qc_surfaces.view_crossings(part, directions))
+    ):
+        most = max(len(part) for part in parts)
+        found.append(
+            np.concatenate(
+                [
+                    np.pad(
+                        part,
+                        ((0, most - len(part)), (0, 0), (0, 0)),
+                        constant_values=-1,
+                    )
+                    for part in parts
+                ],
+                axis=1,
+            )
+        )
+    return found
+
+
+def _by_slices(
+    inside: np.ndarray, render: Callable[[np.ndarray], list[np.ndarray]]
+) -> list[list[np.ndarray]]:
+    """What ``render`` gives for each run of up to ``_SLICES_AT_A_TIME``
+    slices, which it renders each alone, so that a long region's rays are
+    held in memory a few slices at a time."""
+    return [
+        render(inside[start : start + _SLICES_AT_A_TIME])
+        for start in range(0, len(inside), _SLICES_AT_A_TIME)
+    ]
 
 
 def _of(guide: Guide) -> _Grid:
     return _Grid(guide.zs, guide.ys, guide.xs)
 
 
-def _united_voxel(extent: float) -> float:
-    """The side of a united region's voxels, as a volume's surface render
-    samples one of that extent."""
-    return max(qc_surfaces.MINIMUM_VOXEL, extent / (qc_surfaces.MAXIMUM_VOXELS - 1))
+def _united_voxel(extent: float) -> float:  # pylint: disable = unused-argument
+    """The side of a united region's voxels, whatever its extent: as fine as
+    a volume's surface render samples one 510 mm or less in extent, and no
+    coarser for a longer one, whose rows are taller instead."""
+    return qc_surfaces.MINIMUM_VOXEL
 
 
 def _roi_voxel(extent: float) -> float:
