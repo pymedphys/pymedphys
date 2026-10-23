@@ -517,6 +517,7 @@ def test_only_codes_numbers_tags_sequences_and_binary_values_reach_the_default()
     }
 
 
+@pytest.mark.deid_requirement("MIDI-BP-04")
 def test_the_default_keeps_the_vrs_that_the_design_names():
     # From the design document: codes, tags, and the numeric VRs are kept,
     # and binary values and sequences only where the IOD defines the
