@@ -21,7 +21,7 @@ frame of a CT series that a run defaces
 dose falls away at the skin, so the edge of the dose that a body receives
 outlines the face that the CT no longer shows. A run therefore sets the
 dose to zero in the same region as the CT's, the face block less the
-cranial cavity that defacing keeps, on the grid's own geometry
+brain that defacing keeps, on the grid's own geometry
 (:class:`RtDoseDefacer`), and never recalculates it. A voxel is in the
 region where its centre is in the block, and is kept where the nearest
 pixel of the nearest slice that the block reaches, within half the slices'

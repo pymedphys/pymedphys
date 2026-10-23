@@ -59,19 +59,23 @@ from pymedphys._dicom.deidentify.qc_pack import (
     PreviewKind,
     QcPack,
     QcPackError,
+    RedactionEntry,
     pictured_frames,
 )
 from pymedphys._dicom.deidentify.reasons import (
     HeldVisualFeatures,
+    PixelDataReason,
     VisualFeaturesReason,
 )
 from pymedphys._dicom.deidentify.references import InstanceRecord
 from pymedphys._dicom.deidentify.run_results import Transformed
 from pymedphys._dicom.deidentify.source import read_source
+from pymedphys._dicom.deidentify.text_detection import TextBox
 
 from . import _synthetic_head as head
 from . import _synthetic_head_dicom as files
 from .test_deidentify_qc_face_verdicts import REFERENCE, _released
+from .test_deidentify_qc_previews import _decoded
 from .test_deidentify_visual_features_option import KEY, _attest, _policy
 
 _SCAN = head.axial(
@@ -170,6 +174,79 @@ def test_pixel_data_longer_than_their_frames_are_not_shown(count):
     assert framed[0] == set(range(count))
     assert not found.not_previewed
     assert found.pixels_shown == frozenset()
+
+
+def _padding_range(data, value, limit):
+    """A file whose stored values from ``value`` to ``limit`` are padding."""
+    dataset = pydicom.dcmread(io.BytesIO(data))
+    dataset.PixelPaddingValue = value
+    dataset["PixelPaddingValue"].VR = "SS"
+    dataset.PixelPaddingRangeLimit = limit
+    dataset["PixelPaddingRangeLimit"].VR = "SS"
+    return files.written(dataset)
+
+
+def _shown_black(found):
+    return all(not _decoded(preview.png).any() for preview in found.previews)
+
+
+def test_a_volume_padded_over_its_anatomy_is_not_shown():
+    # Every stored value is padding, so every preview of the head is black,
+    # though each lists every slice.
+    slices = files.ct_files(_SCAN)
+    written = {k: _padding_range(data, -32768, 32767) for k, data in enumerate(slices)}
+    found, framed = _shown(written)
+    assert framed == {k: {0} for k in written}
+    assert _shown_black(found)
+    assert not found.not_previewed
+    assert found.pixels_shown == frozenset()
+
+
+def test_an_instance_padded_over_part_of_its_anatomy_is_not_shown():
+    # Soft tissue, -200 to 200 HU, is padding, and shown black.
+    found, framed = _shown({0: _padding_range(_frames(12), 824, 1224)})
+    assert framed[0] == set(range(12))
+    assert not _shown_black(found)
+    assert found.pixels_shown == frozenset()
+
+
+@pytest.mark.parametrize("limit", [None, -3000, -2000])
+def test_padding_of_one_stored_value_is_shown(limit):
+    # Padding of one value outside the skin shows no more than where it is,
+    # which every preview draws, whatever range it may span.
+    slices = files.ct_files(_SCAN, padding=-2000)
+    if limit is not None:
+        slices = [_padding_range(data, -2000, limit) for data in slices]
+    found, _ = _shown(dict(enumerate(slices)))
+    assert not _shown_black(found)
+    assert found.pixels_shown == set(range(len(slices)))
+
+
+@pytest.mark.parametrize("mixed", [False, True])
+def test_padding_of_more_than_one_value_counts_only_as_written(mixed):
+    # The frame as received, beside the frame as written, is not released.
+    dataset = _slices()[0]
+    rows, columns = dataset.Rows, dataset.Columns
+    stored = dataset.pixel_array.copy()
+    stored[:2] = -32768
+    stored[0, :4] = -32767
+    dataset.PixelData = stored.tobytes()
+    received = _padding_range(files.written(dataset), -32768, -32767)
+    stored[0, :4] = -32767 if mixed else -32768
+    dataset.PixelData = stored.tobytes()
+    written = _padding_range(files.written(dataset), -32768, -32767)
+    entry = RedactionEntry(
+        0,
+        PixelDataReason.TEXT_BLACKED_OUT,
+        1,
+        rows,
+        columns,
+        ((0, (TextBox(0, 0, 1, 4),)),),
+    )
+    found = qc_previews.previews_of({0: written}, set(), {0: (received, entry)})
+    assert [preview.kind for preview in found.previews][-1] is PreviewKind.REDACTION
+    assert not found.not_previewed
+    assert found.pixels_shown == (frozenset() if mixed else {0})
 
 
 def _dose(frames):
@@ -715,6 +792,7 @@ def _verdict_run(*data):
         _unshown_doses()["plane-unscaled"],
         _unshown_doses()["tiny-scaling"],
         _unshown_doses()["padded"],
+        [_padding_range(_frames(12), 824, 1224)],
     ],
     ids=[
         "frames",
@@ -724,11 +802,12 @@ def _verdict_run(*data):
         "unscaled-plane",
         "tiny-scaling-grid",
         "padded-grid",
+        "padded-anatomy",
     ],
 )
 def test_a_verdict_of_absent_holds_pixel_data_that_the_pack_did_not_show(data):
-    # Frames beyond the cine, bytes beyond the frames, and RT Dose whose
-    # dose levels the pack could not draw.
+    # Frames beyond the cine, bytes beyond the frames, RT Dose whose dose
+    # levels the pack could not draw, and anatomy drawn black as padding.
     entries, outcomes = _verdict_run(*data)
     assert len(outcomes) == len(data)
     for entry, outcome in zip(entries, outcomes):

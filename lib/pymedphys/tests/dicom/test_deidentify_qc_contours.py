@@ -789,8 +789,8 @@ def test_a_contour_whose_marks_its_own_rows_would_not_all_draw_is_not_shown(
 ):
     # One contour's marks fill a patch, as a line drawn back and forth over
     # it does, which would hide a curve within it, or cross themselves, so
-    # that no ray of the frontal view or the profiles crosses into or out of
-    # some voxel of them.
+    # that no ray of the frontal view, the view from behind, or the profiles
+    # crosses into or out of some voxel of them.
     assert qc_contours.contour_sheet(contours()) is None
 
 
@@ -820,7 +820,7 @@ def _crossed(*lines):
 def test_lines_that_cross_or_lie_side_by_side_are_each_drawn(lines):
     # In one layer, the voxel where a row and a column cross, and those of a
     # middle line between two others, would be crossed by no ray of the
-    # frontal view or the profiles.
+    # frontal view, the view from behind, or the profiles.
     contours = _crossed(*lines)
     (roi,) = contours.rois
     layers = _layers(roi)
@@ -976,8 +976,9 @@ def _ray_voxels(shape, view):
 
 
 def _drawn(inside):
-    """The voxels at which a ray of the frontal view or of a profile crosses
-    into or out of ``inside``, found from the depths of those crossings."""
+    """The voxels at which a ray of the frontal view, the view from behind,
+    or a profile crosses into or out of ``inside``, found from the depths of
+    those crossings."""
     drawn = np.zeros_like(inside)
     for view, crossings in zip(_ALONG, qc_surfaces.view_crossings(inside, _ALONG)):
         y, x = _ray_voxels(inside.shape, view)
@@ -1042,8 +1043,8 @@ def test_the_rows_of_an_roi_and_of_its_hidden_marks_draw_what_they_claim(seed):
     planes = qc_contours._planes(roi)
     filled = qc_contours._filled(roi, grid, planes)
     inside = filled | qc_contours._marked(roi.marks(qc_contours._step(grid)), grid)
-    # The frontal view and profiles cross into or out of the region at every
-    # voxel of its edge in its slice, and no other.
+    # The frontal view, the view from behind, and the profiles cross into or
+    # out of the region at every voxel of its edge in its slice, and no other.
     assert (_drawn(inside) == _edges(inside)).all()
     hidden = qc_contours._hidden(roi, grid, filled)
     rows = qc_contours._item_rows(roi, planes)
