@@ -19,6 +19,7 @@ Every name, UID, and contour here is invented.
 """
 
 import json
+import math
 import shutil
 import tempfile
 from pathlib import Path
@@ -30,6 +31,7 @@ from pymedphys._dicom.deidentify import (
     face_review,
     qc_contours,
     qc_previews,
+    qc_surfaces,
     run,
     run_qc,
 )
@@ -677,20 +679,311 @@ def _gapped(curve, banded=False):
     return qc_contours.contours_of(_read(_structure_set([rings + marks])))
 
 
+def _differ(one, other):
+    return one.shape != other.shape or (one != other).any()
+
+
+def _layers(roi):
+    grid = qc_contours._grid([roi], qc_contours._roi_voxel)
+    filled = qc_contours._filled(roi, grid, qc_contours._planes(roi))
+    hidden = qc_contours._hidden(roi, grid, filled)
+    if hidden is None:
+        return []
+    return _masks(qc_contours._layered(hidden, filled.shape), filled.shape)
+
+
+def _masks(layers, shape):
+    return [qc_contours._layer(voxels, shape) for voxels in layers]
+
+
 @pytest.mark.parametrize(
     "contours",
     [
-        lambda: _plugged(files.square((0.0, 0.0, 0.0), 12.0)),
-        lambda: _rastered(_curve(4.0)),
-        lambda: _gapped(_curve(4.0)),
-        lambda: _gapped(_curve(4.0) + [0.0, 26.0, 0.0], banded=True),
+        lambda: (
+            _plugged(files.square((0.0, 0.0, 0.0), 12.0)),
+            _plugged(files.circle((0.0, 0.0, 0.0), 12.0)),
+        ),
+        lambda: (_gapped(_curve(4.0)), _gapped(_curve(-4.0))),
+        lambda: (
+            _gapped(_curve(4.0) + [0.0, 26.0, 0.0], banded=True),
+            _gapped(_curve(-4.0) + [0.0, 26.0, 0.0], banded=True),
+        ),
     ],
-    ids=["plugged", "rastered", "gapped", "banded"],
+    ids=["plugged", "gapped", "banded"],
 )
-def test_marks_that_their_own_rows_would_not_all_draw_are_not_shown(contours):
-    # The marks fill a patch, or one with gaps a voxel wide, which would hide
-    # a hole's outline, a curve, or the lines themselves in their own rows.
+def test_marks_that_cover_one_another_are_drawn_in_layers_that_tell_them_apart(
+    contours,
+):
+    # Lines that fill a hole, or a patch with gaps a voxel wide or in bands,
+    # would cover the hole's outline or a curve within the patch, and the
+    # lines beside one another, in one layer; each contour's in a layer
+    # where no other's lies beside them shows each.
+    one, other = contours()
+    (roi,) = one.rois
+    layers = _layers(roi)
+    assert len(layers) > 1 and qc_contours._undrawn(np.any(layers, axis=0)).any()
+    assert not any(qc_contours._undrawn(layer).any() for layer in layers)
+    sheets = [qc_contours.contour_sheet(each) for each in (one, other)]
+    assert all(sheet is not None for sheet in sheets)
+    assert _differ(*sheets)
+
+
+def _plus(arm):
+    """An open contour along a row of voxels and back, then along a column."""
+    return np.array([[-arm, 0, 0], [arm, 0, 0], [0, 0, 0], [0, -arm, 0], [0, arm, 0]])
+
+
+@pytest.mark.parametrize(
+    "contours",
+    [
+        lambda: _rastered(_curve(4.0)),
+        lambda: _marked_box(("OPEN_PLANAR", _plus(10.0))),
+    ],
+    ids=["rastered", "plus"],
+)
+def test_a_contour_whose_marks_its_own_rows_would_not_all_draw_is_not_shown(
+    contours,
+):
+    # One contour's marks fill a patch, as a line drawn back and forth over
+    # it does, which would hide a curve within it, or cross themselves, so
+    # that no ray of the frontal view or the profiles crosses into or out of
+    # some voxel of them.
     assert qc_contours.contour_sheet(contours()) is None
+
+
+def _crossed(*lines):
+    """The box with open lines at 0 mm along rows and columns of its voxels:
+    each line by the row or column, and the voxel, from the middle."""
+    rings = [("CLOSED_PLANAR", _box(z)) for z in _BOX_HEIGHTS]
+    (roi,) = qc_contours.contours_of(_read(_structure_set([rings]))).rois
+    grid = qc_contours._grid([roi], qc_contours._roi_voxel)
+    ys, xs = grid.ys[np.abs(grid.ys) < 20], grid.xs[np.abs(grid.xs) < 15]
+    j, i = len(ys) // 2, len(xs) // 2
+    marks = []
+    for along, offset in lines:
+        if along == "row":
+            ends = [[xs[0], ys[j + offset], 0.0], [xs[-1], ys[j + offset], 0.0]]
+        else:
+            ends = [[xs[i + offset], ys[0], 0.0], [xs[i + offset], ys[-1], 0.0]]
+        marks.append(("OPEN_PLANAR", np.array(ends)))
+    return qc_contours.contours_of(_read(_structure_set([rings + marks])))
+
+
+@pytest.mark.parametrize(
+    "lines",
+    [[("row", 0), ("column", 0)], [("row", -1), ("row", 0), ("row", 1)]],
+    ids=["crossing", "side-by-side"],
+)
+def test_lines_that_cross_or_lie_side_by_side_are_each_drawn(lines):
+    # In one layer, the voxel where a row and a column cross, and those of a
+    # middle line between two others, would be crossed by no ray of the
+    # frontal view or the profiles.
+    contours = _crossed(*lines)
+    (roi,) = contours.rois
+    layers = _layers(roi)
+    assert len(layers) == 2 and qc_contours._undrawn(np.any(layers, axis=0)).any()
+    assert qc_contours.contour_sheet(contours) is not None
+
+
+def _spokes(count):
+    """The box with ``count`` open lines at 0 mm through the middle of one
+    voxel, so that each needs a layer of its own."""
+    rings = [("CLOSED_PLANAR", _box(z)) for z in _BOX_HEIGHTS]
+    (roi,) = qc_contours.contours_of(_read(_structure_set([rings]))).rois
+    grid = qc_contours._grid([roi], qc_contours._roi_voxel)
+    middle = np.array([grid.xs[len(grid.xs) // 2], grid.ys[len(grid.ys) // 2], 0.0])
+    marks = []
+    for angle in np.linspace(0, np.pi, count, endpoint=False):
+        arm = 12.0 * np.array([np.cos(angle), np.sin(angle), 0.0])
+        marks.append(("OPEN_PLANAR", np.array([middle - arm, middle, middle + arm])))
+    return qc_contours.contours_of(_read(_structure_set([rings + marks])))
+
+
+def test_marks_that_need_more_layers_than_the_sheet_has_room_for_are_not_drawn(
+    monkeypatch,
+):
+    contours = _spokes(12)
+    (roi,) = contours.rois
+    assert len(_layers(roi)) == 12
+    planes = qc_contours._planes(roi)
+    grid = qc_contours._grid([roi], qc_contours._roi_voxel)
+    filled = qc_contours._filled(roi, grid, planes)
+    hidden = qc_contours._hidden(roi, grid, filled)
+    assert qc_contours._layered(hidden, filled.shape, most=11) is None
+    assert len(qc_contours._layered(hidden, filled.shape, most=12)) == 12
+    rows = qc_contours._item_rows(roi, planes)
+    room = qc_contours._height(rows)
+    assert len(qc_contours._item_rows(roi, planes, room)) == len(rows)
+    assert qc_contours._item_rows(roi, planes, room - 1) is None
+    # Each layer takes a row at least, so with room for its own rows and 11
+    # more, none of the 12 layers is drawn.
+    drawn = []
+    roi_rows = qc_contours._roi_rows
+    monkeypatch.setattr(
+        qc_contours,
+        "_roi_rows",
+        lambda inside, marks=False: drawn.append(marks) or roi_rows(inside, marks),
+    )
+    own = qc_contours._height(qc_contours._roi_rows(filled))
+    one = len(grid.zs) + qc_contours.GUTTER_PIXELS
+    assert qc_contours._item_rows(roi, planes, own + 11 * one) is None
+    assert not any(drawn[1:])
+
+
+def test_contours_whose_marks_touch_only_diagonally_or_repeat_share_a_layer():
+    shape = (1, 6, 6)
+
+    def line(row, start, stop):
+        return np.ravel_multi_index(
+            ([0] * (stop - start), [row] * (stop - start), range(start, stop)), shape
+        )
+
+    # Along one row, then the next from the column after: they meet only at
+    # the corners of two voxels.
+    diagonal = qc_contours._layered([line(2, 0, 3), line(3, 3, 6)], shape)
+    beside = qc_contours._layered([line(2, 0, 3), line(3, 2, 6)], shape)
+    assert len(diagonal) == 1 and len(beside) == 2
+    # A contour's marks the same as another's are drawn once.
+    again = qc_contours._layered([line(2, 0, 3), line(2, 0, 3)], shape)
+    assert len(again) == 1 and (again[0] == line(2, 0, 3)).all()
+
+
+def test_a_blunt_rounded_end_in_planes_much_finer_than_its_voxels_is_shown():
+    # An ellipsoid the size of a liver, 220 by 160 by 180 mm, in planes 0.5
+    # mm apart over voxels near 1.7 mm: near its ends the rings of several
+    # planes that cover no slice lie within one another in a slice.
+    a, b, c = 110.0, 80.0, 90.0
+    angles = np.linspace(0, 2 * np.pi, 96, endpoint=False)
+    rings = []
+    for z in np.arange(-89.75, 90.0, 0.5):
+        scale = np.sqrt(1 - (z / c) ** 2)
+        x, y = a * scale * np.cos(angles), b * scale * np.sin(angles)
+        rings.append(_closed(np.column_stack([x, y, np.full(len(x), z)])))
+    contours = qc_contours.contours_of(_read(_structure_set([rings])))
+    (roi,) = contours.rois
+    layers = _layers(roi)
+    assert len(layers) > 1 and qc_contours._undrawn(np.any(layers, axis=0)).any()
+    assert qc_contours.contour_sheet(contours) is not None
+
+
+_ALONG = (0, 90, -90)
+
+
+def _ray_voxels(shape, view):
+    """The y and x of each voxel along each ray of a view, by depth and
+    across, as the renders step through them."""
+    _, deep, wide = shape
+    middle_y, middle_x = (deep - 1) // 2, (wide - 1) // 2
+    reach = math.ceil(
+        math.hypot(
+            max(middle_y, deep - 1 - middle_y), max(middle_x, wide - 1 - middle_x)
+        )
+    )
+    steps = np.arange(-reach, reach + 1, dtype=float)
+    angle = math.radians(view)
+    across, depth = steps[np.newaxis, :], steps[:, np.newaxis]
+    x = np.rint(middle_x + across * math.cos(angle) - depth * math.sin(angle))
+    y = np.rint(middle_y + across * math.sin(angle) + depth * math.cos(angle))
+    return y.astype(int), x.astype(int)
+
+
+def _drawn(inside):
+    """The voxels at which a ray of the frontal view or of a profile crosses
+    into or out of ``inside``, found from the depths of those crossings."""
+    drawn = np.zeros_like(inside)
+    for view, crossings in zip(_ALONG, qc_surfaces.view_crossings(inside, _ALONG)):
+        y, x = _ray_voxels(inside.shape, view)
+        _, row, across = np.nonzero(crossings >= 0)
+        depth = crossings[crossings >= 0]
+        drawn[row, y[depth, across], x[depth, across]] = True
+    assert not (drawn & ~inside).any()
+    return drawn
+
+
+def _edges(inside):
+    """The voxels with a neighbour along their row or column that is not in
+    ``inside``."""
+    padded = np.pad(inside, ((0, 0), (1, 1), (1, 1)))
+    interior = (
+        padded[:, :-2, 1:-1]
+        & padded[:, 2:, 1:-1]
+        & padded[:, 1:-1, :-2]
+        & padded[:, 1:-1, 2:]
+    )
+    return inside & ~interior
+
+
+def _random_roi(seed):
+    """A rounded star-shaped ROI in planes 0.5 to 3 mm apart, with random
+    points and open lines within it, and loops that closed contours retrace
+    within it."""
+    rng = np.random.default_rng(seed)
+    spacing = float(rng.choice([0.5, 1.0, 1.5, 2.0, 3.0]))
+    heights = np.arange(-15.0, 15.01, spacing)
+    angles = np.linspace(0, 2 * np.pi, 48, endpoint=False)
+    radii = 12 + 4 * rng.random(48)
+    closed = []
+    for z in heights:
+        radius = radii * np.sqrt(1 - (z / 16) ** 2) * rng.uniform(0.9, 1.1)
+        closed.append(
+            (
+                float(z),
+                np.column_stack([radius * np.cos(angles), radius * np.sin(angles)]),
+            )
+        )
+    for _ in range(rng.integers(0, 4)):
+        centre, radius = rng.uniform(-4, 4, 2), rng.uniform(1, 4)
+        loop = centre + radius * np.column_stack([np.cos(angles), np.sin(angles)])
+        closed.append(
+            (float(rng.choice(heights[np.abs(heights) < 8])), np.vstack([loop, loop]))
+        )
+    lines = tuple(
+        np.column_stack(
+            [rng.uniform(-8, 8, (count, 2)), np.full(count, rng.uniform(-8, 8))]
+        )
+        for count in rng.integers(2, 6, rng.integers(0, 6))
+    )
+    points = rng.uniform(-8, 8, (rng.integers(0, 12), 3))
+    return qc_contours.RoiContours(tuple(closed), points=points, lines=lines)
+
+
+@pytest.mark.parametrize("seed", range(16))
+def test_the_rows_of_an_roi_and_of_its_hidden_marks_draw_what_they_claim(seed):
+    roi = _random_roi(seed)
+    grid = qc_contours._grid([roi], qc_contours._roi_voxel)
+    planes = qc_contours._planes(roi)
+    filled = qc_contours._filled(roi, grid, planes)
+    inside = filled | qc_contours._marked(roi.marks(qc_contours._step(grid)), grid)
+    # The frontal view and profiles cross into or out of the region at every
+    # voxel of its edge in its slice, and no other.
+    assert (_drawn(inside) == _edges(inside)).all()
+    hidden = qc_contours._hidden(roi, grid, filled)
+    rows = qc_contours._item_rows(roi, planes)
+    if hidden is None:
+        assert len(rows) == len(qc_contours._roi_rows(inside))
+        return
+    layers = _masks(qc_contours._layered(hidden, filled.shape), filled.shape)
+    every = np.zeros(filled.shape, bool)
+    for voxels in hidden:
+        every.flat[voxels] = True
+        # Some layer holds each contour's hidden marks, and draws each of
+        # their voxels just as it would draw them alone.
+        alone = np.zeros(filled.shape, bool)
+        alone.flat[voxels] = True
+        assert any(
+            layer[alone].all() and ((_edges(layer) & alone) == _edges(alone)).all()
+            for layer in layers
+        )
+    assert (np.any(layers, axis=0) == every).all()
+    # A layer's rows draw a voxel of it where, and only where, it has a
+    # neighbour along its row or column that is not in the layer, so the
+    # ROI is shown only where they draw every voxel of every layer.
+    undrawn = [layer & ~_drawn(layer) for layer in layers]
+    assert all(
+        (each == qc_contours._undrawn(layer)).all()
+        for each, layer in zip(undrawn, layers)
+    )
+    assert (rows is None) == any(each.any() for each in undrawn)
 
 
 # A slab 240 by 200 mm across, of voxels near 2 mm, in planes 1 mm apart,
@@ -719,21 +1012,18 @@ def test_a_slit_or_a_hole_in_a_plane_that_no_slice_shows_has_rows_of_its_own():
     def sheet(*extra):
         return qc_contours.contour_sheet(_slab(*extra))
 
-    def differ(one, other):
-        return one.shape != other.shape or (one != other).any()
-
     z = _slab_plane(covered=True)
     straight = np.array([[-20, -0.9, z], [20, -0.9, z], [20, 0.9, z], [-20, 0.9, z]])
     slanted = straight.copy()
     slanted[[0, 3], 1] -= 10
     slab = sheet()
     # A slit a voxel wide, which its own marks fill.
-    assert differ(sheet(_closed(straight)), slab)
-    assert differ(sheet(_closed(straight)), sheet(_closed(slanted)))
+    assert _differ(sheet(_closed(straight)), slab)
+    assert _differ(sheet(_closed(straight)), sheet(_closed(slanted)))
     z = _slab_plane(covered=False)
     square = sheet(_closed(files.square((0.0, 0.0, z), 12.0)))
-    assert differ(square, slab)
-    assert differ(square, sheet(_closed(files.circle((0.0, 0.0, z), 12.0))))
+    assert _differ(square, slab)
+    assert _differ(square, sheet(_closed(files.circle((0.0, 0.0, z), 12.0))))
 
 
 def test_ordinary_outlines_hide_no_marks():
