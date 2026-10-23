@@ -25,7 +25,13 @@ import json
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pytest
 
-from pymedphys._dicom.deidentify import qc_pack, qc_previews, run
+from pymedphys._dicom.deidentify import (
+    qc_attestation,
+    qc_pack,
+    qc_previews,
+    qc_surfaces,
+    run,
+)
 from pymedphys._dicom.deidentify.instance_transform import ReleaseGate
 from pymedphys._dicom.deidentify.qc_pack import (
     Disposition,
@@ -45,6 +51,7 @@ from pymedphys._dicom.deidentify.text_detection import TextBox
 from . import _synthetic_references as synthetic
 from .test_deidentify_pixel_cleaning import Finder, _ct, _frame, _rgb, _transform
 from .test_deidentify_qc_pack import SOURCE_PATH, _pack, _sequestered, _written
+from .test_deidentify_qc_pixel_digests import _altered, _dose
 from .test_deidentify_qc_previews import _decoded
 
 # A run needs a base directory short enough for Windows' output path limit.
@@ -416,6 +423,44 @@ def test_an_instance_without_text_found_is_previewed_as_written():
     assert image.shape == (6, 2 * 8 + GUTTER)
 
 
+@pytest.mark.parametrize("undrawn", ["unscaled", "too-many-levels"])
+def test_a_cleaned_rt_dose_whose_levels_are_not_drawn_keeps_its_redaction_previews(
+    monkeypatch, undrawn
+):
+    # Its dose levels are not drawn, but every frame of it is previewed as
+    # cleaned, so a verdict can be given on its redaction.
+    data = _dose(12)
+    if undrawn == "unscaled":
+        data = _altered(data, DoseGridScaling=None)
+    else:
+        monkeypatch.setattr(qc_surfaces, "MAXIMUM_DOSE_LEVELS", 0)
+    entry = RedactionEntry(0, NOTHING_FOUND, 12, 20, 20, ())
+    previews = qc_previews.previews_of({0: data}, (), {0: (data, entry)})
+    assert previews.not_previewed == (
+        NotPreviewedEntry(0, NotPreviewedReason.DOSE_LEVELS_NOT_SHOWN),
+    )
+    assert [preview.frames for preview, _ in _redaction_images(previews)] == [
+        ((0, frame),) for frame in range(12)
+    ]
+
+    pack = _pack(
+        instances=(_held(),),
+        redactions=(entry,),
+        previews=previews.previews,
+        not_previewed=previews.not_previewed,
+    )
+    document = json.dumps(qc_pack.pack_document(pack)).encode("ascii")
+    assert list(qc_attestation.previewed_redactions(document)) == [0]
+    # It still needs a redaction preview of each frame.
+    with pytest.raises(QcPackError, match="redaction preview of each"):
+        _pack(
+            instances=(_held(),),
+            redactions=(entry,),
+            previews=previews.previews[:-1],
+            not_previewed=previews.not_previewed,
+        )
+
+
 def test_text_that_the_percentile_window_saturates_stands_apart_over_the_full_range():
     # Anatomy from 0 to 1,500, bone at 1,600 in 2% of the frame, so that
     # the 99.5th percentile falls on it, and a pixel of missed text at the
@@ -464,7 +509,7 @@ def test_a_runs_pack_lists_each_cleaned_instance_and_previews_its_frames(tmp_pat
         run.Status.RELEASED,
     ]
     pack = json.loads((tmp_path / "qc" / "qc-pack.json").read_text(encoding="ascii"))
-    assert pack["format"] == "pymedphys-deid-qc-pack/12"
+    assert pack["format"] == "pymedphys-deid-qc-pack/14"
     assert pack["redactions"] == [
         {
             "position": 0,
