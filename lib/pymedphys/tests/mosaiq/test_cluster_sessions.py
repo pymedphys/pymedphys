@@ -123,7 +123,9 @@ class FakeConnection:
         self.intervals = intervals
 
 
-def fake_execute(connection, query, parameters=None):
+def fake_execute(
+    connection, query, parameters=None
+):  # pylint: disable = unused-argument
     if "Config.Tx_Interval_Time" in query:
         return [(value,) for value in connection.intervals]
     if "FROM Dose_Hst" in query:
