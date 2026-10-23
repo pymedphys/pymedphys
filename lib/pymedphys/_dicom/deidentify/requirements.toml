@@ -852,12 +852,22 @@ id = "MIDI-BP-04"
 text = '''
 Preserve as much information about image acquisition as possible, including machine identity, characteristics, and settings, unless it is shown to raise residual risk above the predetermined threshold.
 '''
-status = "planned"
-milestone = "M3"
-decisions = ["D-007", "D-022"]
+status = "implemented"
+decisions = ["D-007", "D-022", "D-034", "D-036", "D-042"]
+implementation = [
+  "_dicom/deidentify/ae_titles.py",
+  "_dicom/deidentify/element_rules.py",
+  "_dicom/deidentify/instance_transform.py",
+  "_dicom/deidentify/option_kept.py",
+  "_dicom/deidentify/policy.py",
+  "_dicom/deidentify/technique_descriptors.py",
+]
 note = '''
-`tps-import` retains device identity.
-`public-release` omits it, because device serial numbers and machine names can identify an institution and, with dates, individual treatments.
+Under every option, an attribute that no rule covers is kept where its VR is CS, AT, or numeric, so acquisition settings and characteristics, such as KVP, Image Type, and Acquisition Number, are kept as read (design Architecture).
+Under Clean Descriptors, a technique descriptor such as Protocol Name or Series Description is kept where every word of it is in the reviewed technique vocabulary and it echoes no identifier (D-036).
+The Retain Device Identity Option keeps machine identity, such as Station Name and Device Serial Number, as Table E.1-1 gives it, replacing each AE title by a keyed token (D-034), and a removed AE title or private value found in a text attribute that the Option keeps, such as an AE title equal to the Station Name, does not send the file to review (D-042).
+`tps-import` retains device identity, and modifies the device dates and times that the Option would keep by their role under Modified Dates (D-007).
+`public-release` omits it, because device serial numbers and machine names can identify an institution and, with dates, individual treatments, rather than after an assessment showing that they raise the residual risk.
 '''
 
 [[requirement]]
@@ -1018,16 +1028,20 @@ id = "MIDI-BP-12"
 text = '''
 Replace absolute dates and times while preserving relative temporal relationships across studies, within a useful tolerance, for short-term analyses such as dynamic contrast and nuclide decay and long-term ones such as therapy assessment.
 '''
-status = "partial"
-milestone = "M3"
-decisions = ["D-006", "D-007"]
+status = "implemented"
+decisions = ["D-004", "D-006", "D-007", "D-039"]
 implementation = [
+  "_dicom/deidentify/cleaners.py",
   "_dicom/deidentify/dates.py",
+  "_dicom/deidentify/instance_transform.py",
+  "_dicom/deidentify/modified_dates.py",
   "_dicom/deidentify/profiles.py",
+  "_dicom/deidentify/temporal_roles.py",
 ]
 note = '''
-Offsets are whole weeks, identical across a subject's studies and runs, so intervals and times are preserved exactly, and every date, time, and datetime attribute has a reviewed role that decides whether it moves with the subject.
-Remaining: their modification in data sets (M3).
+Offsets are whole weeks, derived from the key and the subject's identity, and every date, time, and datetime attribute has a reviewed role that decides whether it moves with the subject.
+Under Retain Longitudinal Temporal Information with Modified Dates, a cleaner of the whole instance moves every subject-event and radiation-source date back by the subject's offset, the same in every instance of the subject in a run, so intervals between studies, weekdays, times of day, and decay intervals are preserved exactly, and replaces device and other dates with dummy values (D-039, PS3.15-E.3.6-02).
+Each run has its own key, so offsets are consistent across a subject's studies within a run but not between separate runs; keeping them across releases comes with project keys (D-004).
 '''
 
 [[requirement]]
