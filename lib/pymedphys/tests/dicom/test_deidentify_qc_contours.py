@@ -230,11 +230,29 @@ def test_each_roi_takes_its_frame_or_else_the_structure_set_s_only_one():
 
 def test_contours_of_a_frame_that_span_farther_than_a_patient_are_not_shown():
     near = [_closed(files.circle((0, 0, 0), 9.0))]
-    far = [_closed(files.circle((qc_contours.LONGEST, 0, 0), 9.0))]
+    far = [_closed(files.circle((0, 0, qc_contours.LONGEST + 1.0), 9.0))]
     assert qc_contours.contours_of(_read(_structure_set([near, far]))) is None
     # In frames of their own, each spans little.
     apart = _structure_set([near, far], frames=[files.FRAME, files.ROOT + ".9"])
     assert qc_contours.contours_of(_read(apart)) is not None
+
+
+@pytest.mark.parametrize("axis", [0, 1])
+def test_contours_of_a_frame_wider_than_a_bore_are_not_shown(axis):
+    # Squares 2 mm across whose outer edges lie WIDEST apart along x or y,
+    # and then a little farther.
+    def across(span):
+        centre = np.zeros(3)
+        centre[axis] = span - 2.0
+        return _structure_set(
+            [
+                [_closed(files.square((1.0, 1.0, 0.0), 1.0))],
+                [_closed(files.square(tuple(centre + [1.0, 1.0, 0.0]), 1.0))],
+            ]
+        )
+
+    assert qc_contours.contours_of(_read(across(qc_contours.WIDEST))) is not None
+    assert qc_contours.contours_of(_read(across(qc_contours.WIDEST + 0.5))) is None
 
 
 # What a sheet draws.
@@ -309,15 +327,15 @@ def test_points_and_open_contours_are_drawn_as_marks():
 def test_an_roi_alone_is_sampled_finely_and_as_if_it_were_alone():
     # 20 mm across in at most ROI_VOXELS voxels, but none under 0.5 mm.
     assert qc_contours._roi_voxel(20.0) == pytest.approx(0.5)
-    # A large ROI is sampled no coarser than a volume of its extent is.
-    assert qc_contours._roi_voxel(300.0) == pytest.approx(2.0)
-    assert qc_contours._roi_voxel(600.0) == pytest.approx(
-        qc_contours._united_voxel(600.0)
-    )
-    # A marker far from the outline coarsens the united row, not the
-    # outline's own row.
+    # A large ROI is sampled at 2 mm, as a volume's surface render samples
+    # one up to 510 mm across, however long it is.
+    for extent in (300.0, 600.0, qc_contours.LONGEST):
+        assert qc_contours._roi_voxel(extent) == pytest.approx(2.0)
+        assert qc_contours._united_voxel(extent) == pytest.approx(2.0)
+    # A marker far from the outline widens the united row, and leaves the
+    # outline's own row as it is.
     body = [_closed(files.ellipse((0, 0, z), (150, 120))) for z in range(-90, 91, 3)]
-    far = [("POINT", np.array([[0.0, 900.0, 0.0]]))]
+    far = [("POINT", np.array([[0.0, 850.0, 0.0]]))]
     alone = _sheet_rows(
         qc_contours.contour_sheet(
             qc_contours.contours_of(_read(_structure_set([body])))
@@ -333,6 +351,31 @@ def test_an_roi_alone_is_sampled_finely_and_as_if_it_were_alone():
     assert (both[1][:, :width] == alone[1][:, :width]).all()
     assert not both[1][:, width:].any() and not alone[1][:, width:].any()
     assert both[0].shape != alone[0].shape or (both[0] != alone[0]).any()
+
+
+def test_a_long_roi_is_drawn_in_voxels_of_2_mm_a_few_slices_at_a_time(monkeypatch):
+    # A body 1,000 mm long, which voxels keeping its extent within 256 a
+    # side would sample at about 3.9 mm.
+    body = [_closed(files.ellipse((0, 0, z), (150, 120))) for z in range(-500, 501, 5)]
+    contours = qc_contours.contours_of(_read(_structure_set([body])))
+    (roi,) = contours.rois
+    for voxel_of in (qc_contours._united_voxel, qc_contours._roi_voxel):
+        grid = qc_contours._grid([roi], voxel_of)
+        assert grid.voxel == pytest.approx(2.0) and len(grid.zs) > 500
+    sheet = qc_contours.contour_sheet(contours)
+    assert all(len(row) > 500 for row in _sheet_rows(sheet))
+    # Rendering the slices all at once draws the same sheet.
+    monkeypatch.setattr(qc_contours, "_SLICES_AT_A_TIME", 10**6)
+    assert (qc_contours.contour_sheet(contours) == sheet).all()
+
+
+@pytest.mark.parametrize("contours", [_head, lambda: _hollow()], ids=["head", "hollow"])
+def test_a_sheet_is_the_same_however_many_slices_are_rendered_at_once(
+    contours, monkeypatch
+):
+    sheet = qc_contours.contour_sheet(contours())
+    monkeypatch.setattr(qc_contours, "_SLICES_AT_A_TIME", 3)
+    assert (qc_contours.contour_sheet(contours()) == sheet).all()
 
 
 def _own_mask(roi):
@@ -1076,7 +1119,7 @@ def test_each_frame_has_its_own_united_row_and_each_item_its_own_row():
 
 def test_a_sheet_taller_than_its_tallest_is_not_given():
     ring = [_closed(files.circle((0, 0, z), 20.0)) for z in (0.0, 3.0)]
-    far = [("POINT", np.array([[0.0, 900.0, 0.0]]))]
+    far = [("POINT", np.array([[0.0, 850.0, 0.0]]))]
     sets = [
         _structure_set(
             [ring, [], ring, far],
