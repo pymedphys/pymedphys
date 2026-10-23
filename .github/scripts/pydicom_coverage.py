@@ -29,18 +29,35 @@ import xml.etree.ElementTree as ET  # nosec B405
 from pathlib import Path
 from xml.parsers import expat
 
+BASELINE_OS = "ubuntu-latest"
+BASELINE_PYTHON = "3.14"
 BASELINE_ARTIFACT = "junit-ubuntu-latest-3.14"
 BASELINE_METADATA = "pydicom-ubuntu-latest-3.14.json"
-# The Ubuntu/Python 3.14 cell runs in these parts on separate runners; the
-# baseline is their combined report.
-BASELINE_PARTS = ("corpus-runs", "others")
+# Each cell of the unit-test matrix runs in these parts on separate runners,
+# and each cell's report is their combination; the Ubuntu/Python 3.14 cell's
+# is the baseline.
+PARTS = ("corpus-runs", "others")
 RESULTS = Path("test-results")
 
 
-def part_artifact(part: str) -> str:
-    if part not in BASELINE_PARTS:
+def cell_artifact(os_name: str, python: str) -> str:
+    """Name a cell's report as the release's ``junit-*-latest-*`` reads it."""
+    if not re.fullmatch(r"[a-z]+-latest", os_name):
+        raise ValueError(f"Unknown runner: {os_name!r}")
+    if not re.fullmatch(r"3\.[0-9]+", python):
+        raise ValueError(f"Unknown Python version: {python!r}")
+    return f"junit-{os_name}-{python}"
+
+
+def part_artifact(
+    part: str, os_name: str = BASELINE_OS, python: str = BASELINE_PYTHON
+) -> str:
+    """Name a part's report so that the release's pattern leaves it out:
+    ``-latest`` ends the name, never followed by a hyphen."""
+    if part not in PARTS:
         raise ValueError(f"Unknown part: {part!r}")
-    return f"junit-py3.14-{part}"
+    cell_artifact(os_name, python)
+    return f"junit-py{python}-{part}-{os_name}"
 
 
 def part_metadata(part: str) -> str:
@@ -217,16 +234,19 @@ def record_part(lock: dict, part: str, actual: str, commit: str, results: Path) 
     return metadata
 
 
-def combine_reports(results: Path) -> Path:
-    """Write every part's test cases into the one baseline report.
+def combine_reports(
+    results: Path, os_name: str = BASELINE_OS, python: str = BASELINE_PYTHON
+) -> Path:
+    """Write every part's test cases into the cell's one report.
 
     Failed and skipped cases are kept, so the combined report shows them. A
     missing part, or a case that two parts both ran, writes no report.
     """
+    output = results / f"{cell_artifact(os_name, python)}.xml"
     combined = ET.Element("testsuites")
     seen: dict[tuple[str, str], str] = {}
-    for part in BASELINE_PARTS:
-        path = results / f"{part_artifact(part)}.xml"
+    for part in PARTS:
+        path = results / f"{part_artifact(part, os_name, python)}.xml"
         refuse_dtd(path)
         # nosemgrep: python.lang.security.use-defused-xml-parse
         root = ET.parse(path).getroot()  # nosec B314
@@ -247,7 +267,6 @@ def combine_reports(results: Path) -> Path:
             )
         seen.update(dict.fromkeys(cases, part))
         combined.extend(suites)
-    output = results / f"{BASELINE_ARTIFACT}.xml"
     ET.ElementTree(combined).write(output, encoding="utf-8", xml_declaration=True)
     return output
 
@@ -262,7 +281,7 @@ def part_versions(lock: dict, commit: str, results: Path) -> tuple[str, dict[str
     commit = commit_sha(commit)
     found = set()
     pythons = {}
-    for part in BASELINE_PARTS:
+    for part in PARTS:
         path = results / part_metadata(part)
         metadata = json.loads(path.read_text(encoding="utf-8"))
         if (
@@ -314,7 +333,7 @@ def record_baseline(
         "locked_version": locked,
         "artifact": BASELINE_ARTIFACT,
         "junit": f"{BASELINE_ARTIFACT}.xml",
-        "parts": list(BASELINE_PARTS),
+        "parts": list(PARTS),
     }
     if part_pythons:
         metadata["part_python_versions"] = part_pythons
@@ -400,7 +419,7 @@ def main() -> None:
             RESULTS,
         )
     elif command == "combine":
-        combine_reports(RESULTS)
+        combine_reports(RESULTS, os.environ["CELL_OS"], os.environ["CELL_PYTHON"])
     elif command == "baseline":
         commit = checked_commit(os.environ["CI_COMMIT"])
         actual, part_pythons = part_versions(lock, commit, RESULTS)

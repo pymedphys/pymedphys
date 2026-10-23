@@ -245,9 +245,9 @@ report as `junit-dependency-floors-<part>`. A
 failure fails the unit-test workflow and therefore the required CI or release
 summary.
 
-The `dependency-floors` job and the Ubuntu/Python 3.14 cell of the unit-test
-matrix each run in two parts on two runners, since a slow runner could take
-the 30-minute limit to run the whole suite at once. The `corpus-runs` part runs
+The `dependency-floors` job and every cell of the unit-test matrix each run in
+two parts on two runners, since a slow runner could take the 30-minute limit
+(60 minutes on Windows) to run the whole suite at once. The `corpus-runs` part runs
 the modules listed in the workflow's `CORPUS_RUN_TESTS`, which run the
 synthetic collection through the engine and take about half the suite's time,
 and the `others` part runs every other test by passing each listed module to
@@ -260,12 +260,18 @@ it without the data would leave the others re-downloading. Move a module
 between the parts when the `--durations` reports show one part taking much
 longer than the other.
 
-The Ubuntu/Python 3.14 parts upload their reports as `junit-py3.14-corpus-runs`
-and `junit-py3.14-others`, which the release's `junit-*-latest-*` pattern leaves
-out. Once the unit-test matrix has finished, even after failed tests, the
-`baseline-report` job combines them into `junit-ubuntu-latest-3.14`, the report
-that the release's requirements matrix reads for that environment. It writes
-no report if a part's report is missing or a test case ran in both parts.
+Each cell's parts upload their reports as `junit-py<python>-<part>-<os>`, such
+as `junit-py3.14-corpus-runs-ubuntu-latest`, which the release's
+`junit-*-latest-*` pattern leaves out, since `-latest` ends them. Once the
+unit-test matrix has finished, even after failed tests, the `combined-report`
+job combines each cell's parts into `junit-<os>-<python>`, such as
+`junit-ubuntu-latest-3.14`, the report that the release's requirements matrix
+reads for that environment. It writes no report for a cell if one of its
+parts' reports is missing or a test case ran in both parts. Since every cell
+runs two jobs, a full-matrix run starts six macOS unit-test jobs, and GitHub
+runs at most five macOS jobs at once on its Free, Pro, and Team plans, so some
+parts may queue for a runner; the queue does not count towards a job's time
+limit.
 
 The `pydicom-versions` job runs the de-identification tests (the
 `test_deidentify_*` modules in `tests/dicom` and `tests/dev/test_deid_tables.py`,
@@ -287,16 +293,16 @@ if that is not the one requested. Actual executions upload JUnit reports as
 or synthetic JUnit. Each role uploads a coverage manifest naming its requested
 version and evidence source. The normal reference cell records its imported
 versions and checkout revision: each of its two parts records the pydicom and
-Python versions it imported, and the `baseline-report` job records the
+Python versions it imported, and the `combined-report` job records the
 combined evidence only when both parts passed on the checked-out commit and
 imported the same pydicom, which must match the lock, under Python 3.14. The
 parts may run different 3.14 patch releases, since each runner image carries
 its own while GitHub rolls out a new one, and the evidence records each part's.
 It explicitly requires both metadata and JUnit before upload. Reuse is
 established only when the whole unit-test workflow succeeds, including both
-parts, the `baseline-report` job, and both compatibility jobs.
+parts, the `combined-report` jobs, and both compatibility jobs.
 Lookup, planning, metadata and upload failures fail the workflow. Reuse adds
-no test run: `baseline-report`, the only job after the test jobs, combines
+no test run: `combined-report`, the only job after the test jobs, combines
 reports and runs no tests.
 A failure fails the
 unit-test workflow and therefore the required CI or release summary, so a
@@ -418,8 +424,8 @@ Publishes to PyPI behind quality gates.
 - **Requirements evidence**: `deid-matrix` runs after the unit tests, whatever
   their result, and renders the de-identification requirements-to-tests matrix
   with `pymedphys dev deid-matrix --check` from the JUnit report of every
-  environment in the unit-test matrix; Ubuntu with Python 3.14 reports through
-  its two parts' combined report. It fails when a traced test failed, was
+  environment in the unit-test matrix; each environment reports through its
+  two parts' combined report. It fails when a traced test failed, was
   skipped, or did not run in every environment, or when an environment's
   report is missing, and still writes the matrix. Once the build has passed,
   `upload-deid-matrix`, which runs no repository code, attaches the matrix to

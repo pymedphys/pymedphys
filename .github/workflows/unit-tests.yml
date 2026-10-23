@@ -27,12 +27,12 @@ env:
   OMP_NUM_THREADS: '1'
   MKL_NUM_THREADS: '1'
   VECLIB_MAXIMUM_THREADS: '1'
-  # The longest unit-test runs, on Ubuntu with Python 3.14 and at the
-  # dependency floors, each run in two parts on two runners, since on a slow
-  # runner the whole suite at once can reach the time limit. The corpus-runs
-  # part runs these modules, which run the synthetic collection through the
-  # engine and take about half the suite's time; the others part ignores
-  # them, so it runs every other test, including any module added later.
+  # Every cell of the unit-test matrix, and the run at the dependency floors,
+  # runs in two parts on two runners, since on a slow runner the whole suite
+  # at once can reach the time limit. The corpus-runs part runs these
+  # modules, which run the synthetic collection through the engine and take
+  # about half the suite's time; the others part ignores them, so it runs
+  # every other test, including any module added later.
   CORPUS_RUN_TESTS: >-
     lib/pymedphys/tests/dicom/test_deidentify_ct_defacing_run.py
     lib/pymedphys/tests/dicom/test_deidentify_corpus_end_to_end.py
@@ -41,32 +41,22 @@ env:
 
 jobs:
   test:
-    name: ${{ matrix.os }} - py${{ matrix.python-version }}${{ matrix.part && format(' ({0})', matrix.part) || '' }}
-    # Allow for setup and the full suite on slower Windows runners.
+    name: ${{ matrix.os }} - py${{ matrix.python-version }} (${{ matrix.part }})
+    # Allow for setup and slower Windows runners.
     timeout-minutes: ${{ matrix.os == 'windows-latest' && 60 || 30 }}
     strategy:
       fail-fast: false
       matrix:
         os: ${{ inputs.quick && fromJSON('["ubuntu-latest"]') || fromJSON('["ubuntu-latest", "windows-latest", "macos-latest"]') }}
         python-version: ${{ inputs.quick && fromJSON('["3.14"]') || fromJSON(inputs.python-matrix) }}
-        # The Ubuntu/Python 3.14 cell runs in two parts, which the
-        # baseline-report job combines. An include that matches no remaining
-        # combination adds one of its own, so each part is a separate job.
-        exclude:
-          - os: ubuntu-latest
-            python-version: '3.14'
-        include:
-          - os: ubuntu-latest
-            python-version: '3.14'
-            part: corpus-runs
-          - os: ubuntu-latest
-            python-version: '3.14'
-            part: others
+        # Each cell runs in two parts, which the combined-report job combines.
+        part: [corpus-runs, others]
     runs-on: ${{ matrix.os }}
     env:
       # The parts' reports have names that the release's junit-*-latest-*
-      # pattern leaves out; it reads their combination instead.
-      REPORT: junit-${{ matrix.part && format('py{0}-{1}', matrix.python-version, matrix.part) || format('{0}-{1}', matrix.os, matrix.python-version) }}
+      # pattern leaves out, since -latest ends them; it reads their
+      # combination instead.
+      REPORT: junit-py${{ matrix.python-version }}-${{ matrix.part }}-${{ matrix.os }}
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -125,7 +115,7 @@ jobs:
             --junitxml="${GITHUB_WORKSPACE}/test-results/${REPORT}.xml"
 
       - name: Record the pydicom version this part imported
-        if: matrix.part
+        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.14'
         env:
           CI_COMMIT: ${{ github.sha }}
           PART: ${{ matrix.part }}
@@ -140,18 +130,26 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-  # Combine the two parts of the Ubuntu/Python 3.14 cell into that cell's one
-  # report, junit-ubuntu-latest-3.14: the release's requirements matrix reads
-  # it as that environment, and the pydicom-versions job reuses it when the
-  # locked pydicom is the version it would test. It runs after failed tests
-  # too, so the combined report shows them, but records the pydicom evidence
-  # only when both parts passed and imported the same version.
-  baseline-report:
-    name: ubuntu-latest - py3.14 (combined report)
+  # Combine the two parts of each cell into that cell's one report, such as
+  # junit-ubuntu-latest-3.14: the release's requirements matrix reads each as
+  # that environment, and the pydicom-versions job reuses the Ubuntu/Python
+  # 3.14 cell's when the locked pydicom is the version it would test. It runs
+  # after failed tests too, so the combined reports show them, but records the
+  # pydicom evidence only when both of that cell's parts passed and imported
+  # the same version.
+  combined-report:
+    name: ${{ matrix.os }} - py${{ matrix.python-version }} (combined report)
     needs: [test]
     if: ${{ !cancelled() }}
     timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ${{ inputs.quick && fromJSON('["ubuntu-latest"]') || fromJSON('["ubuntu-latest", "windows-latest", "macos-latest"]') }}
+        python-version: ${{ inputs.quick && fromJSON('["3.14"]') || fromJSON(inputs.python-matrix) }}
     runs-on: ubuntu-latest
+    env:
+      CELL: junit-${{ matrix.os }}-${{ matrix.python-version }}
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -166,27 +164,32 @@ jobs:
       - name: Download the parts' reports
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
-          pattern: junit-py3.14-*
+          pattern: junit-py${{ matrix.python-version }}-*-${{ matrix.os }}
           path: test-results/
           merge-multiple: true
 
       - name: Combine the parts' reports
         id: combine
+        env:
+          CELL_OS: ${{ matrix.os }}
+          CELL_PYTHON: ${{ matrix.python-version }}
         run: python .github/scripts/pydicom_coverage.py combine
 
       - name: Record the locked pydicom test evidence
+        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.14'
         env:
           CI_COMMIT: ${{ github.sha }}
         run: python .github/scripts/pydicom_coverage.py baseline
 
+      # Only the Ubuntu/Python 3.14 cell records pydicom evidence.
       - name: Upload test results
         if: ${{ !cancelled() && steps.combine.outcome == 'success' }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: junit-ubuntu-latest-3.14
+          name: ${{ env.CELL }}
           path: |
-            test-results/junit-ubuntu-latest-3.14.xml
-            test-results/pydicom-ubuntu-latest-3.14.json
+            test-results/${{ env.CELL }}.xml
+            test-results/pydicom-${{ matrix.os }}-${{ matrix.python-version }}.json
           if-no-files-found: error
           retention-days: 30
 
