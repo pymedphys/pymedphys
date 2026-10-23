@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# pylint: disable = too-many-lines
+
 """The record of an external statistical risk assessment, for the statistical gate.
 
 A ``public-release`` run is ready for release only when its statistical
@@ -42,25 +44,34 @@ required, and no default stands in for any of them.
 It also binds the assessment, as :class:`AssessmentRecord`, to what was
 assessed: to the QC pack, by its reference and the SHA-256 of its file; to
 the collection, by :func:`collection_digest` of the SHA-256 of each source
-file that the pack records; and to the policy, by :func:`policy_digest` of
-the run's release report. A later run of the same files under the same
-policy, given the pack, finds the same collection and policy digests, and
-any change to either requires a new assessment. The policy digest covers
-the report's policy and every input of the method digest except the keyed
-digests of the reviewed lists, which differ under each run's key, so it
-records only whether each list was given.
+file that the pack records; to the policy, by :func:`policy_digest` of the
+run's release report; and to the reviewed ROI names and descriptors lists
+that descriptor cleaning applied, by :func:`lists_digest` under a random
+salt that the record keeps. A later run of the same files under the same
+policy and lists, given the pack, finds the same digests, and any change to
+any of them requires a new assessment. The policy digest covers the
+report's policy and every input of the method digest except the keyed
+digests of the reviewed lists, which differ under each run's key; the
+lists' own digest binds them instead. The engine's files and the text
+finder's runtime are inputs of the method digest, so a new version of
+PyMedPhys, or of a library that the text finder names, needs a new
+assessment too.
 
 :func:`statistical_gate` decides the gate for a run from a record, or from
 none, as a reason code and no value: it fails without a record, for another
-collection or policy, for a count of subjects other than the run's, or for
-a maximum probability above the threshold, and passes otherwise. Passing it
-passes neither of the other gates.
+collection, policy, or lists, for a count of subjects other than the run's,
+or for a maximum probability above the threshold, and passes otherwise.
+The threshold is the one that the assessment states: nothing yet selects
+the stricter one for a collection, so a reviewer of the record checks that
+it applied the threshold that the collection's sensitivity calls for.
+Passing it passes neither of the other gates. No run calls it yet: a
+release report's readiness of a ``public-release`` run is to build on it.
 
 The record is confidential with the pack, since it can describe the cohort
-and names the assessor. A release report takes only its opaque reference,
-``R-`` and 32 hex digits, which is random and reveals nothing of it, and the
-gate's outcome (D-016). Nothing here raises with a path or a value from the
-record.
+and names the assessor. Only its opaque reference, ``R-`` and 32 hex
+digits, which is random and reveals nothing of it, and the gate's outcome
+are for a release report (D-016). Nothing here raises with a path or a
+value from the record.
 """
 
 from __future__ import annotations
@@ -69,6 +80,7 @@ import dataclasses
 import datetime
 import enum
 import hashlib
+import hmac
 import json
 import math
 import os
@@ -79,7 +91,9 @@ from pathlib import Path
 
 from . import qc_store, release_report
 from .qc_attestation import _pack_bytes, _read, _reference_of
-from .qc_pack import QcPackError
+from .qc_pack import Disposition, QcPackError
+from .reviewed_descriptors import ReviewedDescriptors
+from .reviewed_roi_names import ReviewedNames
 
 # The format of the record. A change to its fields takes a new label.
 FORMAT = "pymedphys-deid-risk-assessment/1"
@@ -91,11 +105,12 @@ DEFAULT_THRESHOLD = 0.09
 STRICT_THRESHOLD = 0.05
 THRESHOLDS = (DEFAULT_THRESHOLD, STRICT_THRESHOLD)
 # The method components that are keyed by the run's key, so differ in each
-# run: the method digest, which is computed from them, and the digests of
-# the reviewed lists, of which the policy digest keeps only whether each is
-# given.
-_METHOD_DIGEST = "method_digest"
-_KEYED_LISTS = ("reviewed_roi_names", "reviewed_descriptors")
+# run, and that the policy digest leaves out: the method digest, which is
+# computed from them, and the digests of the reviewed lists, which the
+# lists' own digest replaces.
+_KEYED = ("method_digest", "reviewed_roi_names", "reviewed_descriptors")
+# How many random bytes salt the lists' digest.
+_SALT_BYTES = 32
 
 _REFERENCE = re.compile(r"R-[0-9a-f]{32}")
 _PACK_REFERENCE = re.compile(r"A-[0-9a-f]{32}")
@@ -119,6 +134,8 @@ class StatisticalReason(enum.Enum):
     OTHER_COLLECTION = "other-collection"
     # the assessment is of another policy, or of another engine
     OTHER_POLICY = "other-policy"
+    # the assessment is of other reviewed ROI names or descriptors lists
+    OTHER_LISTS = "other-lists"
     # the assessment counts fewer subjects than the run releases
     FEWER_SUBJECTS = "fewer-subjects"
     # the assessment counts more subjects than the run releases, as an
@@ -299,7 +316,9 @@ class Assessment:
             raise RiskAssessmentError(
                 "the assessment needs its matching variables, at least one, as text"
             )
-        if len(set(variables)) != len(variables):
+        if len({variable.strip().casefold() for variable in variables}) != len(
+            variables
+        ):
             raise RiskAssessmentError(
                 "the assessment lists each matching variable once"
             )
@@ -339,6 +358,8 @@ class Assessment:
             self.assessed_at, datetime.datetime
         ) or self.assessed_at.utcoffset() != datetime.timedelta(0):
             raise RiskAssessmentError("the assessment needs its time in UTC")
+        if self.assessed_at > datetime.datetime.now(datetime.timezone.utc):
+            raise RiskAssessmentError("the assessment's time is in the future")
 
     @property
     def within_threshold(self) -> bool:
@@ -353,11 +374,12 @@ class Assessment:
 
 
 def _is_number(value: object) -> bool:
-    return (
-        isinstance(value, (int, float))
-        and not isinstance(value, bool)
-        and math.isfinite(value)
-    )
+    if not isinstance(value, (int, float)) or isinstance(value, bool):
+        return False
+    try:
+        return math.isfinite(value)
+    except OverflowError:  # an int too large for a float
+        return False
 
 
 @dataclasses.dataclass(frozen=True, repr=False)
@@ -379,6 +401,11 @@ class AssessmentRecord:
         :func:`collection_digest` of the source files that the pack records.
     policy_sha256 : str
         :func:`policy_digest` of the release report of the pack's run.
+    lists_salt : str
+        The random salt of the lists' digest, 64 hex digits.
+    lists_sha256 : str
+        :func:`lists_digest` of the reviewed lists that the pack's run
+        applied, under ``lists_salt``.
     assessment : Assessment
     """
 
@@ -387,6 +414,8 @@ class AssessmentRecord:
     pack_digest: str
     collection_sha256: str
     policy_sha256: str
+    lists_salt: str
+    lists_sha256: str
     assessment: Assessment
 
     def __post_init__(self) -> None:
@@ -398,7 +427,13 @@ class AssessmentRecord:
             raise RiskAssessmentError(
                 "a risk assessment record needs the QC pack's reference"
             )
-        for name in ("pack_digest", "collection_sha256", "policy_sha256"):
+        for name in (
+            "pack_digest",
+            "collection_sha256",
+            "policy_sha256",
+            "lists_salt",
+            "lists_sha256",
+        ):
             value = getattr(self, name)
             if not isinstance(value, str) or not _SHA256.fullmatch(value):
                 raise RiskAssessmentError(
@@ -496,11 +531,11 @@ def policy_digest(report: Mapping[str, object]) -> str:
     """Return the digest of the policy and method that a release report records.
 
     It is the SHA-256 of the canonical JSON of the report's ``policy``
-    section and of its ``method`` section without the method digest, with
-    whether each reviewed list was given in place of its keyed digest, which
-    differs under each run's key. The other components of the method digest
-    stay, so another engine, policy, vocabulary, text finder, or list of
-    safe private rules gives another digest.
+    section and of its ``method`` section without the method digest and the
+    keyed digests of the reviewed lists, which differ under each run's key
+    and which :func:`lists_digest` binds instead. The other components of
+    the method digest stay, so another engine, policy, vocabulary, text
+    finder, or list of safe private rules gives another digest.
 
     Parameters
     ----------
@@ -520,17 +555,12 @@ def policy_digest(report: Mapping[str, object]) -> str:
     if (
         not isinstance(policy, Mapping)
         or not isinstance(method, Mapping)
-        or _METHOD_DIGEST not in method
-        or not all(name in method for name in _KEYED_LISTS)
+        or not all(name in method for name in _KEYED)
     ):
         raise RiskAssessmentError("the release report is not of its format")
     bound = {
         "policy": dict(policy),
-        "method": {
-            name: (value is not None) if name in _KEYED_LISTS else value
-            for name, value in method.items()
-            if name != _METHOD_DIGEST
-        },
+        "method": {name: value for name, value in method.items() if name not in _KEYED},
     }
     try:
         text = json.dumps(
@@ -539,6 +569,59 @@ def policy_digest(report: Mapping[str, object]) -> str:
     except (TypeError, ValueError):
         raise RiskAssessmentError("the release report is not of its format") from None
     return hashlib.sha256(text.encode("ascii")).hexdigest()
+
+
+def new_salt() -> str:
+    """Return a new random salt for :func:`lists_digest`, as 64 hex digits."""
+    return secrets.token_hex(_SALT_BYTES)
+
+
+def lists_digest(
+    salt: str,
+    reviewed_names: ReviewedNames | None,
+    reviewed_descriptors: ReviewedDescriptors | None,
+) -> str:
+    """Return the digest of the reviewed lists that descriptor cleaning applied.
+
+    It is the HMAC-SHA-256, under ``salt``, of the canonical JSON of the
+    SHA-256 of each list's canonical form
+    (:meth:`~.reviewed_roi_names.ReviewedNames.canonical_bytes`,
+    :meth:`~.reviewed_descriptors.ReviewedDescriptors.canonical_bytes`), or
+    of None for a list not given, as without Clean Descriptors. Any change
+    to a decision or a name in either list gives another digest, and an
+    empty list differs from none. The lists hold source names and values,
+    so their digest is salted, and kept only in the confidential record.
+
+    Parameters
+    ----------
+    salt : str
+        64 hex digits, from :func:`new_salt` or a record's ``lists_salt``.
+    reviewed_names : ReviewedNames or None
+    reviewed_descriptors : ReviewedDescriptors or None
+
+    Raises
+    ------
+    RiskAssessmentError
+        If the salt is not 64 hex digits.
+    TypeError
+        If a list is not of its type or None.
+    """
+    if not isinstance(salt, str) or not _SHA256.fullmatch(salt):
+        raise RiskAssessmentError("the lists' digest needs a salt of 64 hex digits")
+    if reviewed_names is not None and not isinstance(reviewed_names, ReviewedNames):
+        raise TypeError("reviewed_names must be ReviewedNames or None")
+    if reviewed_descriptors is not None and not isinstance(
+        reviewed_descriptors, ReviewedDescriptors
+    ):
+        raise TypeError("reviewed_descriptors must be ReviewedDescriptors or None")
+    digests = [
+        None if each is None else hashlib.sha256(each.canonical_bytes()).hexdigest()
+        for each in (reviewed_names, reviewed_descriptors)
+    ]
+    text = json.dumps(digests, separators=(",", ":"))
+    return hmac.new(
+        bytes.fromhex(salt), text.encode("ascii"), hashlib.sha256
+    ).hexdigest()
 
 
 def assessment_document(record: AssessmentRecord) -> dict:
@@ -553,6 +636,8 @@ def assessment_document(record: AssessmentRecord) -> dict:
         "pack_digest": record.pack_digest,
         "collection_sha256": record.collection_sha256,
         "policy_sha256": record.policy_sha256,
+        "lists_salt": record.lists_salt,
+        "lists_sha256": record.lists_sha256,
         "model": dataclasses.asdict(assessment.model),
         "attacker": dataclasses.asdict(assessment.attacker),
         "population": dataclasses.asdict(assessment.population),
@@ -578,6 +663,9 @@ def record_assessment(
     pack_directory: os.PathLike | str,
     release_report_file: os.PathLike | str,
     assessment: Assessment,
+    *,
+    reviewed_names: ReviewedNames | None,
+    reviewed_descriptors: ReviewedDescriptors | None,
 ) -> AssessmentRecord:
     """Record an external risk assessment beside the QC pack of the run assessed.
 
@@ -591,22 +679,31 @@ def record_assessment(
         published, which names the pack by its reference.
     assessment : Assessment
         What the assessor states.
+    reviewed_names, reviewed_descriptors : ReviewedNames or ReviewedDescriptors or None
+        The reviewed ROI names and descriptors lists that the run's
+        descriptor cleaning applied, as their custodian holds them, or None
+        for each that the run was not given, as without Clean Descriptors.
+        They must be given by name, and have no default, so that every
+        caller states them.
 
     Returns
     -------
     AssessmentRecord
-        Bound to the pack, the collection that it records, and the policy
-        that the report records, with a new reference.
+        Bound to the pack, the collection that it records, the policy that
+        the report records, and the lists, with a new reference.
 
     Raises
     ------
     RiskAssessmentError
-        If the release report cannot be read, is not of its format, or names
-        another QC pack; if the pack does not record the SHA-256 of a source
-        file of its run; or if the pack already has a risk assessment, since a
+        If the release report is not of its format, or names another QC
+        pack; if a list is given that the report records none of, or not
+        given where it records one; if the pack records no source file, or
+        a released, duplicate, or held instance without its source file's
+        SHA-256; or if the pack already has a risk assessment, since a
         record is never overwritten, and a change requires a new assessment.
     QcPackError
-        If the directory holds no QC pack, or the pack is not of its format.
+        If the directory holds no QC pack, the pack is not of its format, or
+        the release report cannot be read.
     """
     if not isinstance(assessment, Assessment):
         raise TypeError("assessment must be an Assessment")
@@ -617,12 +714,24 @@ def record_assessment(
     qc_review = report.get("qc_review")
     if not isinstance(qc_review, Mapping) or qc_review.get("reference") != reference:
         raise RiskAssessmentError("the release report names another QC pack")
+    method = report["method"] if isinstance(report.get("method"), Mapping) else {}
+    for name, given in (
+        ("reviewed_roi_names", reviewed_names),
+        ("reviewed_descriptors", reviewed_descriptors),
+    ):
+        if (method.get(name) is None) != (given is None):
+            raise RiskAssessmentError(
+                f"the {name} list is given exactly where the release report records one"
+            )
+    salt = new_salt()
     record = AssessmentRecord(
         reference=new_reference(),
         pack=reference,
         pack_digest=hashlib.sha256(data).hexdigest(),
         collection_sha256=_pack_collection(data),
         policy_sha256=policy_digest(report),
+        lists_salt=salt,
+        lists_sha256=lists_digest(salt, reviewed_names, reviewed_descriptors),
         assessment=assessment,
     )
     text = json.dumps(assessment_document(record), indent=2, ensure_ascii=True)
@@ -679,6 +788,8 @@ def statistical_gate(
     *,
     collection_sha256: str,
     policy_sha256: str,
+    reviewed_names: ReviewedNames | None,
+    reviewed_descriptors: ReviewedDescriptors | None,
     subjects: int,
 ) -> StatisticalGate:
     """Decide a run's statistical gate from a risk assessment record.
@@ -692,6 +803,9 @@ def statistical_gate(
         the run read.
     policy_sha256 : str
         :func:`policy_digest` of the run's release report.
+    reviewed_names, reviewed_descriptors : ReviewedNames or ReviewedDescriptors or None
+        The reviewed lists that the run's descriptor cleaning applied, as
+        it read them, or None for each that it was not given.
     subjects : int
         The number of distinct subjects of the instances that the run
         releases.
@@ -700,9 +814,9 @@ def statistical_gate(
     -------
     StatisticalGate
         Failed for the first of these that holds: no record; another
-        collection; another policy; fewer, or more, subjects than the run
-        releases; a maximum probability above the threshold. Passed
-        otherwise.
+        collection; another policy; other lists; fewer, or more, subjects
+        than the run releases; a maximum probability above the threshold.
+        Passed otherwise.
     """
     for name, value in (
         ("collection_sha256", collection_sha256),
@@ -712,6 +826,8 @@ def statistical_gate(
             raise RiskAssessmentError(f"the run's {name} must be a SHA-256")
     if not isinstance(subjects, int) or isinstance(subjects, bool) or subjects < 0:
         raise RiskAssessmentError("the run's subjects must be a whole number")
+    # Checks the lists' types, whether or not a record was given.
+    lists_digest(new_salt(), reviewed_names, reviewed_descriptors)
     if record is None:
         return StatisticalGate(None, StatisticalReason.NO_ASSESSMENT)
     if not isinstance(record, AssessmentRecord):
@@ -722,6 +838,11 @@ def statistical_gate(
         reason = StatisticalReason.OTHER_COLLECTION
     elif record.policy_sha256 != policy_sha256:
         reason = StatisticalReason.OTHER_POLICY
+    elif not hmac.compare_digest(
+        record.lists_sha256,
+        lists_digest(record.lists_salt, reviewed_names, reviewed_descriptors),
+    ):
+        reason = StatisticalReason.OTHER_LISTS
     elif assessment.subjects < subjects:
         reason = StatisticalReason.FEWER_SUBJECTS
     elif assessment.subjects > subjects:
@@ -754,23 +875,57 @@ def _pack_collection(data: bytes) -> str:
         raise QcPackError("the QC pack is not of its format")
     digests = []
     for entry in instances:
-        if not isinstance(entry, dict) or "source_sha256" not in entry:
+        if (
+            not isinstance(entry, dict)
+            or "source_sha256" not in entry
+            or entry.get("disposition") not in _DISPOSITIONS
+        ):
             raise QcPackError("the QC pack is not of its format")
         digest = entry["source_sha256"]
         if digest is None:
+            if entry["disposition"] in _REACHING:
+                # Its source is unbound, so no collection could be bound.
+                raise RiskAssessmentError(
+                    "the QC pack has an instance that reaches a recipient "
+                    "without its source's SHA-256"
+                )
             # A file that the run could not read, or did not list as a
             # regular file, has none, and is in no run's collection digest.
             continue
         if not isinstance(digest, str) or not _SHA256.fullmatch(digest):
             raise QcPackError("the QC pack is not of its format")
         digests.append(bytes.fromhex(digest))
+    if not digests:
+        raise RiskAssessmentError("the QC pack binds no source file")
     return collection_digest(digests)
+
+
+_DISPOSITIONS = frozenset(member.value for member in Disposition)
+# Released, a duplicate of a released input, or held until a reviewer decides.
+_REACHING = frozenset(
+    member.value
+    for member in (
+        Disposition.RELEASED,
+        Disposition.DUPLICATE,
+        Disposition.HELD_FOR_REVIEW,
+    )
+)
+
+
+def _unique_members(pairs: list[tuple[str, object]]) -> dict[str, object]:
+    """Return an object's members, refusing one named twice."""
+    document = dict(pairs)
+    if len(document) != len(pairs):
+        raise RiskAssessmentError("the risk assessment names a member twice")
+    return document
 
 
 def _record_from(content: bytes) -> AssessmentRecord:
     """Rebuild a written record, so that it meets every check again."""
     try:
-        document = json.loads(content.decode("ascii"))
+        document = json.loads(
+            content.decode("ascii"), object_pairs_hook=_unique_members
+        )
         if (
             isinstance(document, dict)
             and document.get("format") == FORMAT
@@ -784,6 +939,8 @@ def _record_from(content: bytes) -> AssessmentRecord:
                 pack_digest=document["pack_digest"],
                 collection_sha256=document["collection_sha256"],
                 policy_sha256=document["policy_sha256"],
+                lists_salt=document["lists_salt"],
+                lists_sha256=document["lists_sha256"],
                 assessment=Assessment(
                     model=Model(**document["model"]),
                     attacker=Attacker(**document["attacker"]),
@@ -822,6 +979,8 @@ _FIELDS = (
     "pack_digest",
     "collection_sha256",
     "policy_sha256",
+    "lists_salt",
+    "lists_sha256",
     "model",
     "attacker",
     "population",
