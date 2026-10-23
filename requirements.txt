@@ -116,7 +116,7 @@ pandas==3.0.6
     # via
     #   pymedphys
     #   streamlit
-pillow==12.3.0
+pillow==13.0.0
     # via
     #   imageio
     #   matplotlib
