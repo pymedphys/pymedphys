@@ -128,6 +128,10 @@ SHORTEST_FORM = 4
 # UID, could match by chance within the digits of a replacement UID, so it
 # is found only where no digit or full stop is before it.
 DIGITS_ONLY = re.compile(r"[0-9.]+")
+# A SHA-256 in hexadecimal, as the release report gives each engine file's,
+# whose digits could hold a date's by chance, as 12071010edb6 holds
+# 12071010.
+SHA256_HEX = re.compile(rb"(?<![0-9a-f])[0-9a-f]{64}(?![0-9a-f])")
 DATE_DIGITS = 8
 # A file holds an encoded form only if it holds the form's first GRAM bytes,
 # so a set of each run of GRAM bytes in a file rules out most forms without
@@ -409,6 +413,8 @@ def _markers_in(spec, corpus, instances, published):
     for name, data in published.items():
         if name in instances:
             data = _without_kept(data, corpus.files[instances[name]], spec)
+        else:
+            data = SHA256_HEX.sub(lambda digest: b"-" * 64, data)
         grams = _grams(data)
         found.extend(
             (name, signature)
