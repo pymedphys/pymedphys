@@ -121,8 +121,8 @@ def _outside(points):
     [
         _rectangle(-10, 10, 1, 15, 20),  # behind the block
         _rectangle(-10, 10, -15, 15, -5),  # below it
-        _rectangle(-4, 4, -9, -2, 20),  # in the kept cavity alone
-        # Crossing into the block within the kept cavity alone, so that the
+        _rectangle(-4, 4, -9, -2, 20),  # in the kept brain alone
+        # Crossing into the block within the kept brain alone, so that the
         # points just ahead of the plane, whose nearest pixels lie on it and
         # are not written as air, do not count.
         _rectangle(-4, 4, -8, 10, 20),
@@ -150,8 +150,8 @@ def test_a_point_kept_whole_or_removed_by_where_it_lies():
 
 @pytest.mark.parametrize("kind", ["CLOSED_PLANAR", "CLOSEDPLANAR_XOR"])
 def test_a_contour_that_reaches_the_face_keeps_its_part_in_the_kept_brain(kind):
-    # It reaches beyond the kept cavity, so its part ahead of the plane is
-    # cut away, but for the pixels that defacing keeps: the cavity's, and
+    # It reaches beyond the kept brain, so its part ahead of the plane is
+    # cut away, but for the pixels that defacing keeps: the brain's, and
     # those whose centres lie on the plane.
     points = _rectangle(-10, 10, -15, 10, 20)
 
@@ -244,7 +244,7 @@ def _removed(z):
 
 @pytest.mark.parametrize("kind", ["CLOSEDPLANAR_XOR", "CLOSED_PLANAR"])
 def test_a_hole_in_the_cavity_is_cut_with_the_contour_around_it(kind):
-    # The outer contour reaches the face; the hole lies in the kept cavity
+    # The outer contour reaches the face; the hole lies in the kept brain
     # alone, so on its own it would be kept whole, and become a filled
     # island once the outer contour is cut.
     outer = _rectangle(-15, 15, -15, 15, 20)
@@ -414,7 +414,7 @@ def _even_odd(rings, x, y):
 def test_a_hole_in_a_bow_tie_is_cut_with_it(reverse_outer, reverse_hole, hole_first):
     # A bow tie's lobes are wound oppositely, so its signed area is zero,
     # yet it lies in one plane, and its left lobe holds the hole, which lies
-    # within the kept cavity alone.
+    # within the kept brain alone.
     outer = np.array(
         [(-10, -10, 20), (10, 10, 20), (10, -10, 20), (-10, 10, 20)], float
     )
@@ -677,7 +677,7 @@ def test_contours_whose_pieces_cannot_be_joined_are_cut_by_the_whole_block(
 ):
     # Where the pieces of one contour of a plane cannot be joined into
     # rings, every closed contour of the plane is cut by the whole block,
-    # so that the hole within the kept cavity goes with the cavity.
+    # so that the hole within the kept brain goes with the brain.
     monkeypatch.setattr(region_defacing, "dissolve", lambda *_: None)
     outer = _rectangle(-15, 15, -15, 15, 20)
     hole = _rectangle(-4, 4, -9, -2, 20)
@@ -1246,7 +1246,7 @@ def _pet_points():
     return np.broadcast_arrays(x, y)
 
 
-def test_pet_is_set_to_zero_activity_in_the_block_less_the_kept_cavity():
+def test_pet_is_set_to_zero_activity_in_the_block_less_the_kept_brain():
     dataset = _pet()
 
     mask = PetDefacer(_REGION, dataset).mask(0, dataset.pixel_array)

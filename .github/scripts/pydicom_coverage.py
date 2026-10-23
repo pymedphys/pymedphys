@@ -33,8 +33,9 @@ BASELINE_ARTIFACT = "junit-ubuntu-latest-3.14"
 BASELINE_METADATA = "pydicom-ubuntu-latest-3.14.json"
 # The Ubuntu/Python 3.14 cell runs in these parts on separate runners; the
 # baseline is their combined report.
-BASELINE_PARTS = ("corpus-runs", "others")
+BASELINE_PARTS: tuple[str, ...] = ("corpus-runs", "others")
 RESULTS = Path("test-results")
+PYTHON_3_14 = re.compile(r"3\.14\.\d+")
 
 
 def part_artifact(part: str) -> str:
@@ -274,8 +275,8 @@ def part_versions(lock: dict, commit: str, results: Path) -> tuple[str, dict[str
             raise ValueError(f"Invalid part evidence in {path}")
         checked_locked(lock, metadata.get("actual_version", ""))
         python = metadata.get("actual_python_version")
-        if not isinstance(python, str) or not python.startswith("3.14."):
-            raise ValueError(f"The {part} part ran Python {python!r}, expected 3.14.")
+        if not isinstance(python, str) or not PYTHON_3_14.fullmatch(python):
+            raise ValueError(f"The {part} part ran Python {python!r}, expected 3.14.x.")
         found.add(metadata["actual_version"])
         pythons[part] = python
     if len(found) != 1:
@@ -283,6 +284,11 @@ def part_versions(lock: dict, commit: str, results: Path) -> tuple[str, dict[str
             f"The parts imported different pydicom versions: {sorted(found)}"
         )
     return found.pop(), pythons
+
+
+def _release(python: str) -> tuple[int, ...]:
+    """Order Python versions by release, so 3.14.9 comes before 3.14.10."""
+    return tuple(int(part) for part in python.split("."))
 
 
 def record_baseline(
@@ -307,7 +313,7 @@ def record_baseline(
         "commit": commit,
         "actual_version": actual,
         "actual_python_version": (
-            ", ".join(sorted(set(part_pythons.values())))
+            ", ".join(sorted(set(part_pythons.values()), key=_release))
             if part_pythons
             else platform.python_version()
         ),
