@@ -867,13 +867,13 @@ class InstanceTransform:
     (:attr:`~.reasons.VisualFeaturesReason.EYES_DISAGREE_WITH_ROIS`). An RT
     Dose whose only Frame of Reference is that of one defaced series is
     written with its dose set to zero in the series' block, less the
-    cavity that defacing keeps (:class:`~.dose_defacing.RtDoseDefacer`), or,
+    brain that defacing keeps (:class:`~.dose_defacing.RtDoseDefacer`), or,
     where the dose there is too great, written as received and held
     (:attr:`~.reasons.VisualFeaturesReason.DOSE_IN_FACE_BLOCK`). An RT
     Structure Set whose only Frame of Reference is that of one defaced
     series is written with its contours cut by the block
     (:func:`~.region_defacing.cut_contours`), and a PET image's activity in
-    the block, less that cavity, is set to zero
+    the block, less that brain, is set to zero
     (:class:`~.region_defacing.PetDefacer`). Any other RT Structure Set, RT
     Dose with pixel data, or PET instance in a defaced series' Frame of
     Reference, naming none, or referring to a defaced slice, such as one

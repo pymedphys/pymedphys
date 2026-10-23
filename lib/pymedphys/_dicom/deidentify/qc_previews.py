@@ -99,11 +99,15 @@ and how many frames its series or instance has.
 Monochrome pixel data are rescaled by Rescale Slope and Rescale Intercept,
 where both can be read, and windowed from the 0.5th to the 99.5th percentile
 of what the preview shows, other than a redaction preview's full-range
-image, leaving out the stored values that Pixel Padding
-Value and Pixel Padding Range Limit name, which are shown black; MONOCHROME1 is inverted so that higher values are darker. Colour
-pixel data with 8 bits allocated are shown as RGB: as they are, or converted
-from YBR_FULL or YBR_FULL_422 by pydicom, while JPEG 2000's YBR_ICT and
-YBR_RCT are decoded to RGB. Compressed pixel data are decoded by the plugin
+image, leaving out the stored values that Pixel Padding Value and Pixel
+Padding Range Limit name, which are shown black; MONOCHROME1 is inverted so
+that higher values are darker. Since that black shows one value, an instance
+of which a frame as written pads with more than one stored value, which
+could hold an image that every preview shows black, is not counted as
+shown, so that no verdict releases its pixel data. Colour pixel data with
+8 bits allocated are shown as RGB: as they are, or converted from YBR_FULL
+or YBR_FULL_422 by pydicom, while JPEG 2000's YBR_ICT and YBR_RCT are
+decoded to RGB. Compressed pixel data are decoded by the plugin
 that :data:`.pixel_decoding.DECODING_PLUGINS` pins for its transfer syntax.
 An instance whose pixel data cannot be previewed is reported with why,
 rather than left out: pixel data in a compressed transfer syntax that no
@@ -248,6 +252,9 @@ class PreviewSet:
         by :func:`~.face_review.is_rt_dose`: its cine strip is windowed to
         its highest doses, which can leave a low dose outlining the skin
         black, and an Otsu render of a series of its planes shows one level.
+        Nor does a file of which a frame that a preview draws pads with more
+        than one stored value, since every preview draws its padding as one
+        black, or as no patient.
     """
 
     previews: tuple[Preview, ...]
@@ -340,6 +347,7 @@ def previews_of(
             instance.position
             for instance in instances
             if instance.whole
+            and instance.position not in decoded.mixed_padding
             and (dosed if instance.dose else pictured).get(instance.position)
             == instance.frames
         ),
@@ -612,6 +620,11 @@ class _Decoder:
 
     def __init__(self, refused: dict[int, NotPreviewedReason]) -> None:
         self._refused = refused
+        # The run positions of written files of which a frame pads with more
+        # than one stored value: every preview draws padding as one black, or
+        # as no patient, so what those values hold, which could be a face,
+        # is shown in none.
+        self.mixed_padding: set[int] = set()
 
     def refuse(self, position: int, reason: NotPreviewedReason) -> None:
         """Record that an instance's pixel data cannot be previewed."""
@@ -643,11 +656,14 @@ class _Decoder:
         instance: _Instance,
         indices: Sequence[int] | None = None,
         reason: NotPreviewedReason = NotPreviewedReason.UNREADABLE,
+        received: bool = False,
     ) -> Iterator[np.ndarray]:
         """Yield an instance's frames, or those at ``indices``, in order, as
         :meth:`frame` gives them, reading its file once.
 
-        Stops at a frame that cannot be decoded, recording ``reason``.
+        Stops at a frame that cannot be decoded, recording ``reason``. The
+        frames of a file as ``received``, which is not released, are not
+        checked for padding of more than one value.
         """
         if instance.position in self._refused:
             return
@@ -657,7 +673,7 @@ class _Decoder:
                 indices=indices,
                 decoding_plugin=instance.plugin,
             ):
-                shown = self._shown(instance, np.asarray(pixels), reason)
+                shown = self._shown(instance, np.asarray(pixels), reason, received)
                 if shown is None:
                     return
                 yield shown
@@ -665,7 +681,11 @@ class _Decoder:
             self._refused.setdefault(instance.position, reason)
 
     def _shown(
-        self, instance: _Instance, pixels: np.ndarray, reason: NotPreviewedReason
+        self,
+        instance: _Instance,
+        pixels: np.ndarray,
+        reason: NotPreviewedReason,
+        received: bool = False,
     ) -> np.ndarray | None:
         shape = instance.shape + ((3,) if instance.colour else ())
         if pixels.size != math.prod(shape):
@@ -678,7 +698,12 @@ class _Decoder:
         shown = pixels.astype(np.float32) * np.float32(slope) + np.float32(intercept)
         if instance.padding is not None:
             low, high = instance.padding
-            shown[(pixels >= low) & (pixels <= high)] = np.nan
+            padded = (pixels >= low) & (pixels <= high)
+            if low < high and not received and padded.any():
+                values = pixels[padded]
+                if values.min() != values.max():
+                    self.mixed_padding.add(instance.position)
+            shown[padded] = np.nan
         return shown
 
 
@@ -984,8 +1009,13 @@ def _redaction_images(
     written = decoder.frames(instance)
     sources = iter(())
     if isinstance(received, _Instance):
+        # Only here are frames decoded as received; every other decoding is
+        # of a file as written, whose padding of more than one value holds it.
         sources = decoder.frames(
-            received, sorted(regions), NotPreviewedReason.SOURCE_NOT_SHOWN
+            received,
+            sorted(regions),
+            NotPreviewedReason.SOURCE_NOT_SHOWN,
+            received=True,
         )
     images = []
     for index in range(instance.frames):

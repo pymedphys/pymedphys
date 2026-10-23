@@ -981,8 +981,8 @@ class CtDefacer:
 def _kept(
     block: FaceBlock, each: _Slice, stored: np.ndarray
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Return a slice's pixels of the cranial cavity that defacing keeps, and
-    those of padding, each of bool, rows by columns."""
+    """Return a slice's pixels of the brain, within the cranial cavity, that
+    defacing keeps, and those of padding, each of bool, rows by columns."""
     slope, intercept = each.rescale
     padded = np.zeros(each.shape, dtype=bool)
     if each.padding is not None:
@@ -1054,7 +1054,7 @@ def _described(dataset: pydicom.Dataset, layout: Layout) -> _Slice:
 @dataclasses.dataclass(frozen=True, repr=False)
 class KeptSlice:
     """A slice of a defaced series that its face block reaches, with the
-    pixels of the block that :class:`CtDefacer` keeps as cranial cavity.
+    pixels of the block that :class:`CtDefacer` keeps as brain.
 
     Its ``repr`` shows nothing of it.
 

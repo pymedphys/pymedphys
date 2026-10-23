@@ -65,15 +65,15 @@ separated by grey rows of :data:`GUTTER_PIXELS`, are:
   left out. Each layer has rows as the ROI's region has, but with no row of
   cavities, and with a row for each further crossing however few times a
   ray crosses it, so that they show every crossing into or out of the
-  layer that a ray of the frontal view or of a profile makes; so every
-  mark is shown, in those rows or within two voxels of the edge of what
-  its slice shows, which the ROI's rows draw from the front, the back, and
-  the sides. A layer's rows are taken to draw every voxel of
-  it only where each has a neighbour along its row or its column of voxels
-  that is not in the layer, counting the views along the voxels' axes and
-  not the oblique ones; where one does not, as where one contour's marks
-  fill a patch, as a line drawn back and forth with no gap between its
-  passes does, no sheet is drawn.
+  layer that a ray of the frontal view, the view from behind, or a
+  profile makes; so every mark is shown, in those rows or within two
+  voxels of the edge of what its slice shows, which the ROI's rows draw
+  from the front, the back, and the sides. A layer's rows are taken to
+  draw every voxel of it only where each has a neighbour along its row or
+  its column of voxels that is not in the layer, counting the views along
+  the voxels' axes and not the oblique ones; where one does not, as where
+  one contour's marks fill a patch, as a line drawn back and forth with no
+  gap between its passes does, no sheet is drawn.
 
 Each region is sampled to cubic voxels over the extent of what it draws,
 with a voxel more on each low side across, 0 to 1 voxel more on each high
@@ -475,8 +475,9 @@ def contour_sheet(
     numpy.ndarray or None
         uint8, of shape (rows, columns, 3); or None where the sheet would be
         taller than ``tallest``, which is drawn only until it is, or where
-        the frontal view and profiles of the rows of a layer of an ROI's
-        hidden marks would leave any voxel of it undrawn.
+        the frontal view, the view from behind, and the profiles of the
+        rows of a layer of an ROI's hidden marks would leave any voxel of
+        it undrawn.
     """
     guides = {} if guides is None else guides
     if contours.empty:
@@ -530,9 +531,10 @@ def _item_rows(
     roi: RoiContours, planes: np.ndarray, room: int | None = None
 ) -> list[np.ndarray] | None:
     """An ROI's rows, with those of each layer of the marks that its region
-    hides; or None where the frontal view and profiles of a layer's rows
-    would leave any voxel of it undrawn, or where the rows, each with the
-    gutter above it, would take more than ``room`` pixels."""
+    hides; or None where the frontal view, the view from behind, and the
+    profiles of a layer's rows would leave any voxel of it undrawn, or
+    where the rows, each with the gutter above it, would take more than
+    ``room`` pixels."""
     grid = _grid([roi], _roi_voxel)
     filled = _filled(roi, grid, planes)
     rows = _roi_rows(filled | _marked(roi.marks(_step(grid)), grid), room=room)
@@ -636,10 +638,11 @@ def _roi_rows(
 
 def _undrawn(marks: np.ndarray) -> np.ndarray:
     """The voxels of a layer of hidden marks that its rows, which show every
-    crossing into or out of it that a ray of the frontal view or of a
-    profile makes, draw in no tile: those whose neighbours along their row
-    and their column of voxels are all in the layer too. The oblique views
-    are not counted, so as to claim no voxel that they may miss."""
+    crossing into or out of it that a ray of the frontal view, the view
+    from behind, or a profile makes, draw in no tile: those whose neighbours
+    along their row and their column of voxels are all in the layer too.
+    The oblique views are not counted, so as to claim no voxel that they may
+    miss."""
     around = np.zeros((3, 3, 3), bool)
     around[1] = [[False, True, False], [True, True, True], [False, True, False]]
     return marks & scipy.ndimage.binary_erosion(marks, around, border_value=0)
