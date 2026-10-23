@@ -29,6 +29,7 @@ from pymedphys._dicom.deidentify import (
     cleaners,
     conformance,
     conformance_markdown,
+    dates,
     keys,
     run,
 )
@@ -238,7 +239,7 @@ def test_a_cleaner_cleans_single_values_or_the_whole_instance_not_both():
     def clean(source, _key):
         return (source,)
 
-    def clean_instance(_values, _key, _identity):
+    def clean_instance(_values, _key, _identity, _offsets):
         return {}
 
     shared = {
@@ -261,9 +262,9 @@ def test_a_cleaner_of_the_whole_instance_settles_what_it_returns():
     second = ElementPath((), "(0008,0030)")
     timestamp = ElementPath((("(5200,9230)", 0),), "(0034,0007)")
 
-    def clean_instance(values, key, identity):
+    def clean_instance(values, key, identity, offsets):
         values = tuple(values)
-        received.append((values, key, identity))
+        received.append((values, key, identity, offsets(identity)))
         return {
             first: (("19000101",), False),
             second: (("SENTINEL",), True),
@@ -291,9 +292,11 @@ def test_a_cleaner_of_the_whole_instance_settles_what_it_returns():
 
     cleaned = cleaners.apply_cleaners(edits, (instance,), KEY, identity)
 
-    ((given, key, subject),) = received
+    ((given, key, subject, weeks),) = received
     assert [value.source for value in given] == [first, second, timestamp]
     assert (key, subject) == (KEY, identity)
+    # By default, the key's own derivation gives the offset.
+    assert weeks == dates.date_offset_weeks(KEY, identity)
     date, time, stamp, allergies = cleaned.edits.edits
     assert (date.kind, date.values) == (EditKind.REPLACE, ("19000101",))
     assert (time.kind, time.values) == (EditKind.REPLACE, ("SENTINEL",))
@@ -303,7 +306,7 @@ def test_a_cleaner_of_the_whole_instance_settles_what_it_returns():
 
 
 def test_a_cleaner_of_the_whole_instance_is_given_nothing_without_pending_c():
-    def clean_instance(_values, _key, _identity):
+    def clean_instance(_values, _key, _identity, _offsets):
         raise AssertionError("not called")
 
     instance = cleaners.Cleaner(
@@ -423,8 +426,8 @@ def test_a_retain_c_that_no_cleaner_settles_holds_the_instance(monkeypatch):
 def test_a_transform_gives_a_cleaner_of_the_whole_instance_its_subject(monkeypatch):
     received = []
 
-    def clean_instance(values, _key, identity):
-        received.append(identity)
+    def clean_instance(values, _key, identity, offsets):
+        received.append((identity, offsets))
         return {value.source: (("CLEANED",), False) for value in values}
 
     instance = cleaners.Cleaner(
@@ -438,11 +441,13 @@ def test_a_transform_gives_a_cleaner_of_the_whole_instance_its_subject(monkeypat
     data = synthetic.written(_plan(Allergies="SENTINEL ALLERGY"))
     record = InstanceRecord.from_file(data)
 
-    result = _transform(["retain_patient_characteristics"])(data, record)
+    transform = _transform(["retain_patient_characteristics"])
+    result = transform(data, record)
 
     assert isinstance(result, run.Transformed), result
     assert record.patient is not None
-    assert received == [record.patient]
+    # Offsets come from the transform's subject profiles (D-004).
+    assert received == [(record.patient, transform.profiles.date_offset_weeks)]
     assert pydicom.dcmread(io.BytesIO(result.data)).Allergies == "CLEANED"
 
 

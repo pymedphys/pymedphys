@@ -171,6 +171,13 @@ class ReleaseReporter:
         :func:`~pymedphys._dicom.deidentify.release_report.release_report`
         and :func:`~pymedphys._dicom.deidentify.conformance.conformance_statement`
         take it.
+    project_key : str, optional
+        The identifier of the project key whose subject profiles the run
+        reads and records (D-004), or None, the default, for a run-scoped
+        key, as
+        :func:`~pymedphys._dicom.deidentify.release_report.release_report`
+        takes it; the conformance statement then says that the run's
+        generated values agree with every other run under that key.
     """
 
     def __init__(
@@ -186,9 +193,11 @@ class ReleaseReporter:
         redaction_review: str | None = None,
         text_finder: Mapping[str, object] | None = None,
         safe_private_list: SafePrivateList = SafePrivateList.REVIEWED,
+        project_key: str | None = None,
     ):
         if not isinstance(policy, Policy):
             raise TypeError("policy must be a Policy")
+        self._project_key = project_key
         self._policy = policy
         self._vocabulary = vocabulary
         self._reviewed_roi_names = reviewed_roi_names
@@ -276,6 +285,7 @@ class ReleaseReporter:
             self._policy,
             vocabulary=self._vocabulary,
             safe_private_list=self._safe_private_list,
+            project_key=self._project_key is not None,
         )
         return conformance_markdown.render_markdown(statement)
 
@@ -291,6 +301,7 @@ class ReleaseReporter:
             technique_vocabulary=self._technique_vocabulary,
             text_finder=self._text_finder,
             safe_private_list=self._safe_private_list,
+            project_key=self._project_key,
             **run,  # type: ignore[arg-type]
         )
 

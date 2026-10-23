@@ -30,7 +30,7 @@ from __future__ import annotations
 
 import datetime
 import re
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 
 from .keys import DeidKey
 from .pseudonyms import SubjectIdentity
@@ -57,6 +57,11 @@ _DT = re.compile(
     r"(?P<offset>[+-][0-9]{4})?"
 )
 _OFFSET = re.compile(r"[+-][0-9]{4}")
+
+
+# Gives a subject's date offset in whole weeks, such as a profile store's
+# :meth:`~pymedphys._dicom.deidentify.profiles.ProfileStore.date_offset_weeks`.
+DateOffsets = Callable[[SubjectIdentity], int]
 
 
 def date_offset_weeks(key: DeidKey, identity: SubjectIdentity) -> int:

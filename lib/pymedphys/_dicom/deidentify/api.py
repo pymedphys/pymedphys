@@ -17,7 +17,8 @@
 :func:`deidentify` is the library API that the design document's Scope
 says the first supported release ships beside the command line. It runs a
 directory exactly as :func:`~pymedphys._dicom.deidentify.command.main`
-does: a new run-scoped key that nothing keeps, the transform of its preset
+does: a new run-scoped key that nothing keeps, or a project key and its
+subject profiles once project keys are enabled, the transform of its preset
 or custom option set (D-033) from
 :func:`~pymedphys._dicom.deidentify.command.transform_for`, the release
 gate, the transform's release report, and the reference graph's second
@@ -39,7 +40,6 @@ from collections.abc import Collection
 
 from . import command, instance_transform, policy, run
 from .diagnostics import RedactionCounts, redacted_diagnostics
-from .keys import DeidKey
 from .safe_private import SafePrivateList
 
 
@@ -102,6 +102,8 @@ def deidentify(  # pylint: disable = too-many-arguments
     roi_list: str | os.PathLike[str] | None = None,
     reviewed_descriptors: str | os.PathLike[str] | None = None,
     safe_private_list: str = "reviewed",
+    key_file: str | os.PathLike[str] | None = None,
+    profile_store: str | os.PathLike[str] | None = None,
 ) -> Deidentified:
     """De-identify the DICOM files below a source directory into a new release.
 
@@ -158,6 +160,19 @@ def deidentify(  # pylint: disable = too-many-arguments
         Table E.3.10-1 and their additions, or ``"tcia"`` for the Private
         Tag Dictionary of The Cancer Imaging Archive. The method digest,
         the release report, and the conformance statement record which.
+    key_file : str or os.PathLike, optional
+        A project key, written by ``python -m
+        pymedphys._dicom.deidentify.key_command``, outside ``source``,
+        ``release``, and ``qc_pack``, so that the run's replacement UIDs,
+        pseudonyms, and date offsets agree with every other run under it
+        (D-004). It is given with ``profile_store``, and refused until
+        project keys are enabled. By default, a new run-scoped key, which
+        nothing keeps.
+    profile_store : str or os.PathLike, optional
+        The project key's subject profiles, outside the same directories,
+        created if it does not exist, and saved before the release is
+        published, so that each subject keeps the date offset of its first
+        export. It is given with ``key_file``.
 
     Returns
     -------
@@ -182,7 +197,11 @@ def deidentify(  # pylint: disable = too-many-arguments
         If the preset or an option is unknown or not enabled, the options
         cannot be composed, or the TG-263 edition, the reviewed-names list,
         the institutional list, or the reviewed descriptors list cannot be
-        used. Nothing is created.
+        used; or if only one of ``key_file`` and ``profile_store`` is given,
+        project keys are not enabled, or either cannot be used. Nothing is
+        created.
+    ~pymedphys._dicom.deidentify.profiles.ProfileError
+        If the profile store could not be saved. Nothing is published.
     ~pymedphys._dicom.deidentify.run.RunError
     ~pymedphys._dicom.deidentify.run.RunStopped
     ~pymedphys._dicom.deidentify.qc_pack.QcPackError
@@ -231,9 +250,16 @@ def deidentify(  # pylint: disable = too-many-arguments
         )
     with redacted_diagnostics() as counts:
         try:
+            key, profiles = command.run_key(
+                key_file,
+                profile_store,
+                source=source,
+                release=release,
+                qc_pack=qc_pack,
+            )
             transform = command.transform_for(
                 preset,
-                DeidKey.generate(),
+                key,
                 options=chosen,
                 source=source,
                 release=release,
@@ -244,6 +270,7 @@ def deidentify(  # pylint: disable = too-many-arguments
                 roi_list_path=roi_list,
                 reviewed_descriptors=reviewed_descriptors,
                 safe_private_list=chosen_list,
+                profiles=profiles,
             )
         except command.TransformNotBuilt as error:
             raise DeidentifyError(str(error)) from None
@@ -255,6 +282,7 @@ def deidentify(  # pylint: disable = too-many-arguments
             qc_destination=qc_pack,
             reporter=transform.reporter,
             written_check=transform.written_check,
+            before_publish=command.profile_saver(profiles),
         )
     return Deidentified(result, counts)
 
