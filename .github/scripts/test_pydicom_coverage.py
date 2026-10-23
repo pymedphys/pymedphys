@@ -307,6 +307,9 @@ class CoverageEvidenceTests(CoveragePlanMixin, unittest.TestCase):
             {"junit": "wrong.xml"},
             {"actual_version": "3.1.0"},
             {"actual_python_version": "3.13.5"},
+            {"actual_python_version": "3.14"},
+            {"actual_python_version": "3.14."},
+            {"actual_python_version": "3.140.1"},
             {"actual_python_version": None},
         ):
             path.write_text(json.dumps(recorded | changes))
@@ -333,6 +336,13 @@ class CoverageEvidenceTests(CoveragePlanMixin, unittest.TestCase):
         metadata = coverage.record_baseline(LOCK, actual, COMMIT, self.results, pythons)
         self.assertEqual(metadata["actual_python_version"], "3.14.0, 3.14.1")
         self.assertEqual(metadata["part_python_versions"], pythons)
+
+    def test_the_parts_pythons_are_listed_in_release_order(self):
+        self.parts("3.14.10", "3.14.9")
+        actual, pythons = coverage.part_versions(LOCK, COMMIT, self.results)
+        self.report(text=PASSED)
+        metadata = coverage.record_baseline(LOCK, actual, COMMIT, self.results, pythons)
+        self.assertEqual(metadata["actual_python_version"], "3.14.9, 3.14.10")
 
     def test_overlay_needs_its_real_report_and_actual_requested_version(self):
         plan = self.plan(role="latest", requested="3.1.0")

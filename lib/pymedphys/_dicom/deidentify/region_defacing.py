@@ -27,10 +27,10 @@ there, on the block of the frame's one defaced series
 A contour is written as received where none of its segments enters the
 block at a point whose nearest pixel, of the nearest slice that the block
 reaches within half the slices' spacing, is one that defacing writes as air
-(:func:`cut_contours`): a pixel in the block, other than one of the cranial
-cavity that defacing keeps. So a contour that lies behind the block, below
-it, or within the kept cavity alone, as the brain's does above the orbits,
-is kept whole. Each segment is sampled within the block at intervals of
+(:func:`cut_contours`): a pixel in the block, other than one of the brain
+that defacing keeps. So a contour that lies behind the block, below it, or
+within the kept brain alone, as a brain contour above the orbits can, is
+kept whole. Each segment is sampled within the block at intervals of
 half the smallest pixel spacing of those slices. A point with no such pixel
 counts where it lies in the block.
 
@@ -44,7 +44,7 @@ it lies within the slice's pixels, an axial one with pixels that defacing
 keeps in the block. Each of them is then written as its part behind the
 block's vertical plane joined with its part ahead of that plane within the
 squares of that slice's pixels that defacing does not write as air, those
-of the kept cavity and those whose centres lie outside the block, each
+of the kept brain and those whose centres lie outside the block, each
 square being the points whose nearest pixel it is. The part within the
 squares is found exactly, a row of pixels at a time
 (:func:`~pymedphys._geometry.pixel_grids.within_pixels`), and the pieces
@@ -55,7 +55,7 @@ the same type. CLOSEDPLANAR_XOR contours combine by exclusive or, so a
 hole there is a contour of its own, but a reader may fill each
 CLOSED_PLANAR contour alone, which would fill the hole. So where a
 CLOSED_PLANAR contour's rings would bound a hole, as a pixel written as
-air within the kept cavity makes one, its pieces are split along the edge
+air within the kept brain makes one, its pieces are split along the edge
 between two columns of the slice's pixels at the hole's lowest column,
 the hole becoming a notch in the piece beyond the edge, until no ring
 bounds one (:func:`_without_holes`); the edge passes through no pixel's
@@ -67,7 +67,7 @@ whose region loses no area by this is written as received.
 
 Any other contour that reaches the face is cut by the block's two planes,
 so that what is written of it lies outside the block or on its boundary,
-the kept cavity being cut away with the rest: a closed contour, of Contour
+the kept brain being cut away with the rest: a closed contour, of Contour
 Geometric Type CLOSED_PLANAR or CLOSEDPLANAR_XOR, is written as each
 polygon of its part behind the block's vertical plane, and of its part
 ahead of that plane and not above the block's axial plane, each its own
@@ -82,9 +82,9 @@ plane, so the pieces of a CLOSEDPLANAR_XOR contour combine as the contour's
 own part outside the block does. The closed contours of an ROI in one plane
 bound one region together, as a hole's contour does within its outer one,
 so where one of them is cut, each of them is cut the same way, by the same
-region, so that a hole within the cavity never becomes a region that the
+region, so that a hole within the kept brain never becomes a region that the
 cut outer contour no longer surrounds; cut by the whole block, each that
-enters the block is cut, even one that enters only the kept cavity. Since
+enters the block is cut, even one that enters only the kept brain. Since
 each is cut by the same region, the region that they bound together,
 whether by exclusive or or by union, is cut by it. A contour's plane is the
 one that best fits its points, found for any winding and for a contour that
@@ -155,7 +155,7 @@ _STEP = 0.5
 # another's plane, or from its own, and still be taken to lie in it. It
 # allows for coordinates written to 0.1 mm, which move a point up to 0.087 mm
 # off its plane, and is less than any slice spacing in use. Grouping
-# too much cuts more of the kept cavity; grouping too little can leave a
+# too much cuts more of the kept brain; grouping too little can leave a
 # hole whole within a contour that is cut.
 _COPLANAR = 0.15
 # The area, in square millimetres, of a contour's part in the block, or in
