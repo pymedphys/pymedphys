@@ -610,8 +610,8 @@ def _roi_rows(
     if room is not None and least * (len(inside) + GUTTER_PIXELS) > room:
         return None
     # So, within a sheet's height bound, the crossings found are at most
-    # about 32,768 by 503 for each of three views, as 16-bit integers, some
-    # 100 MB, however intricate the region.
+    # about 32,768 by 711 for each of three views, as 16-bit integers, some
+    # 140 MB, however intricate the region.
     rows = [_rgb(_views(inside))]
     if not crossed:
         return rows
