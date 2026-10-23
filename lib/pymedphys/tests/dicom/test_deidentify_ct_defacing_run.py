@@ -88,7 +88,7 @@ _IN_FRAME = (_STRUCTURE_SET, *_DOSE, *_PET, _PET_ABOVE)
 # The PET instances that the run does not clean.
 _UNDEFACED = _PET[1:]
 # The PET slices of the head, by file name, at heights below and above the
-# floor of the kept cavity.
+# floor of the kept brain.
 _PET_SLICES = {_PET[0]: 20.0, _PET_ABOVE: 70.0}
 _PET_GRID = {"position": (-100.0, -130.0), "spacing": (5.0, 5.0), "shape": (49, 41)}
 _UPTAKE = 100
@@ -142,7 +142,7 @@ def _eye(side, *, below=0.0):
 
 
 # The head's ROIs: its outline, which the block cuts on each slice; its
-# brain, within the kept cavity, above the floor, and drawn out to the
+# brain, within the cranial cavity above the floor, and drawn out to the
 # skull; its eyes, whose backs lie behind the block's plane; a lens, wholly
 # in the block; and a target behind the block.
 _ROIS = {
@@ -740,7 +740,7 @@ def test_the_head_structure_set_is_cut_by_the_block_and_released(defaced):
             assert got.symmetric_difference(expected).area < 1e-6 * whole.area
             assert got.area < whole.area, (name, z)
             assert got.area > whole.intersection(_behind(block, z)).area, (name, z)
-    # The brain, in the kept cavity, and the target behind the block, are as
+    # The brain, kept above the floor, and the target behind the block, are as
     # they were; the lens, wholly in the block, is gone, without a Contour
     # Sequence.
     for name in ("Brain", "PTV"):
