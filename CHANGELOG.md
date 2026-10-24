@@ -252,6 +252,8 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
 - The `user` and `all` extras now install `plotly`, which draws the experimental DICOM RT viewer. [PR #1885](https://github.com/pymedphys/pymedphys/pull/1885), [PR #2138](https://github.com/pymedphys/pymedphys/pull/2138)
 - `pydicom` is now required at `>=3.0.2` instead of `>=3.0`, in every extra that installs it and in the `docs` dependency group. pydicom 3.0.0 and 3.0.1 are affected by CVE-2026-32711, a path-traversal flaw in reading DICOMDIR files that 3.0.2 fixes. The locked development environment already uses 3.0.2, and CI runs the de-identification tests with the new minimum. [PR #2195](https://github.com/pymedphys/pymedphys/pull/2195)
 
+- Documentation and gamma-scaling example environments now pin setuptools 84.1.0, fixing a Windows path escape in legacy wheel installation. Refresh these environments from the updated dependency files. [PR #2444](https://github.com/pymedphys/pymedphys/pull/2444)
+
 ### Contributor facing changes
 
 - **[Contributor facing only]** UID replacement property tests retain valid and invalid inputs while allowing distinct pairs to shrink to small examples. They now pass the input-generation health checks in Hypothesis 6.170.2 used by dependency-update validation. [PR #2411](https://github.com/pymedphys/pymedphys/pull/2411)
