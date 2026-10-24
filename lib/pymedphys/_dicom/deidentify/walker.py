@@ -285,7 +285,9 @@ class ElementPlan:
         The VR that the value is read by: as written, or, in implicit VR or
         in place of UN, the one VR that the pinned data dictionary gives, or,
         for a private element that a reviewed safe private rule keeps or
-        replaces, the rule's; ``None`` where none gives one.
+        replaces, the rule's, but for a sequence, which holds no value of
+        its own. Where none gives one, it is UN as written, or ``None`` in
+        implicit VR.
     rule : ElementRule or None
         The element's rule, or ``None`` if it is removed with a sequence.
     action : str
