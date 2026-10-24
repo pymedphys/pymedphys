@@ -255,7 +255,16 @@ jobs:
         if: failure()
         continue-on-error: true
         timeout-minutes: 5
-        run: python3 -I .github/scripts/midi_b_tcia_answer_keys.py network
+        run: |
+          python3 -I .github/scripts/midi_b_tcia_answer_keys.py network
+          # How far TCP packets to TCIA get, beside a host that answers, so a
+          # trace that stops can be told from a network that hides its hops.
+          sudo apt-get install --yes --no-install-recommends traceroute > /dev/null 2>&1 \
+            || echo "traceroute could not be installed."
+          for host in www.cancerimagingarchive.net pypi.org; do
+            echo "TCP trace to ${host} port 443 at $(date -u +%FT%TZ):"
+            sudo traceroute -T -p 443 -n -q 1 -w 2 -m 30 "${host}" || true
+          done
 
       - name: Run the benchmark
         id: benchmark
