@@ -487,7 +487,14 @@ def _entry(position, digest=DIGEST):
 
 
 def _cleaned(position):
-    return {"position": position, "frames": 1, "rows": 6, "columns": 8, "regions": []}
+    return {
+        "position": position,
+        "frames": 1,
+        "rows": 6,
+        "columns": 8,
+        "regions": [],
+        "decoded_sha256": None,
+    }
 
 
 def test_verdicts_that_disagree_on_one_source_file_are_refused(first_run, monkeypatch):
@@ -524,6 +531,75 @@ def test_verdicts_that_agree_on_one_source_file_are_read_once(first_run, monkeyp
     assert read_redaction_review(pack).rejected == frozenset({DIGEST})
 
 
+def test_the_decoded_frames_of_an_approved_compressed_source_are_read(
+    first_run, monkeypatch
+):
+    pack, _ = first_run
+    decoded = bytes(range(32, 64))
+    attestation = dataclasses.replace(
+        _attest(pack),
+        redactions=(
+            RedactionVerdict(0, Redaction.ACCEPTED),
+            RedactionVerdict(1, Redaction.REJECTED),
+        ),
+    )
+    other = bytes(range(1, 33))
+    _with_pack(
+        monkeypatch,
+        attestation,
+        [_entry(0), _entry(1, other)],
+        [
+            {**_cleaned(0), "decoded_sha256": decoded.hex()},
+            {**_cleaned(1), "decoded_sha256": bytes(32).hex()},
+        ],
+    )
+
+    review = read_redaction_review(pack)
+
+    assert dict(review.decoded) == {DIGEST: decoded}
+    assert review.rejected == frozenset({other})
+
+
+@pytest.mark.parametrize("decoded", ["0" * 63, "F" * 64, 64, "absent"])
+def test_a_decoded_digest_that_is_not_one_is_refused(first_run, monkeypatch, decoded):
+    pack, _ = first_run
+    attestation = dataclasses.replace(
+        _attest(pack), redactions=(RedactionVerdict(0, Redaction.ACCEPTED),)
+    )
+    cleaned = _cleaned(0)
+    if decoded == "absent":
+        del cleaned["decoded_sha256"]
+    else:
+        cleaned["decoded_sha256"] = decoded
+    _with_pack(monkeypatch, attestation, [_entry(0)], [cleaned])
+
+    with pytest.raises(QcPackError, match="not of its format"):
+        read_redaction_review(pack)
+
+
+def test_copies_whose_frames_decoded_otherwise_are_refused(first_run, monkeypatch):
+    pack, _ = first_run
+    attestation = dataclasses.replace(
+        _attest(pack),
+        redactions=(
+            RedactionVerdict(0, Redaction.ACCEPTED),
+            RedactionVerdict(1, Redaction.ACCEPTED),
+        ),
+    )
+    _with_pack(
+        monkeypatch,
+        attestation,
+        [_entry(0), _entry(1)],
+        [
+            {**_cleaned(0), "decoded_sha256": bytes(32).hex()},
+            {**_cleaned(1), "decoded_sha256": bytes(range(32)).hex()},
+        ],
+    )
+
+    with pytest.raises(QcPackError, match="disagree"):
+        read_redaction_review(pack)
+
+
 @pytest.mark.parametrize(
     "instances, redactions, unshown",
     [
@@ -551,14 +627,25 @@ def test_a_verdict_on_an_instance_without_a_cleaned_previewed_source_is_refused(
 def test_only_a_previewed_cleaned_instance_can_be_given_a_verdict():
     data = json.dumps(
         {
-            "redactions": [_cleaned(0), _cleaned(1), {**_cleaned(2), "frames": 3}],
-            "not_previewed": [{"position": 1, "reason": "source-not-shown"}],
+            "redactions": [
+                _cleaned(0),
+                _cleaned(1),
+                {**_cleaned(2), "frames": 3},
+                _cleaned(3),
+            ],
+            "not_previewed": [
+                {"position": 1, "reason": "source-not-shown"},
+                # An RT Dose whose dose levels are not drawn still has its
+                # redaction previews.
+                {"position": 3, "reason": "dose-levels-not-shown"},
+            ],
         }
     ).encode()
 
     assert qc_attestation.previewed_redactions(data) == {
         0: CleanedShape(1, 6, 8),
         2: CleanedShape(3, 6, 8),
+        3: CleanedShape(1, 6, 8),
     }
 
 

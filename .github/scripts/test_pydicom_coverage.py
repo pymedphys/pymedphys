@@ -217,8 +217,8 @@ class CoverageEvidenceTests(CoveragePlanMixin, unittest.TestCase):
 
     def parts(self, *pythons):
         """Record passing evidence for every part, as each part's job does."""
-        pythons = pythons or ("3.14.0",) * len(coverage.BASELINE_PARTS)
-        for part, python in zip(coverage.BASELINE_PARTS, pythons, strict=True):
+        pythons = pythons or ("3.14.0",) * len(coverage.PARTS)
+        for part, python in zip(coverage.PARTS, pythons, strict=True):
             with mock.patch.object(
                 coverage.platform, "python_version", return_value=python
             ):
@@ -226,12 +226,14 @@ class CoverageEvidenceTests(CoveragePlanMixin, unittest.TestCase):
                 coverage.record_part(LOCK, part, "3.0.2", COMMIT, self.results)
 
     def test_each_part_binds_its_passing_report_to_its_import(self):
-        self.report(name="junit-py3.14-others")
+        self.report(name="junit-py3.14-others-ubuntu-latest")
         metadata = coverage.record_part(LOCK, "others", "3.0.2", COMMIT, self.results)
         self.assertEqual(metadata["part"], "others")
-        self.assertEqual(metadata["junit"], "junit-py3.14-others.xml")
+        self.assertEqual(metadata["junit"], "junit-py3.14-others-ubuntu-latest.xml")
         self.assertEqual(
-            json.loads((self.results / "pydicom-py3.14-others.json").read_text()),
+            json.loads(
+                (self.results / "pydicom-py3.14-others-ubuntu-latest.json").read_text()
+            ),
             metadata,
         )
         for part, actual, commit, text in (
@@ -240,14 +242,18 @@ class CoverageEvidenceTests(CoveragePlanMixin, unittest.TestCase):
             ("others", "3.0.2", "", PASSED),
             ("others", "3.0.2", COMMIT, "<testsuites />"),
         ):
-            (self.results / "pydicom-py3.14-others.json").unlink(missing_ok=True)
-            self.report(name="junit-py3.14-others", text=text)
+            (self.results / "pydicom-py3.14-others-ubuntu-latest.json").unlink(
+                missing_ok=True
+            )
+            self.report(name="junit-py3.14-others-ubuntu-latest", text=text)
             with (
                 self.subTest(part=part, actual=actual, commit=commit, text=text),
                 self.assertRaises(ValueError),
             ):
                 coverage.record_part(LOCK, part, actual, commit, self.results)
-            self.assertFalse((self.results / "pydicom-py3.14-others.json").exists())
+            self.assertFalse(
+                (self.results / "pydicom-py3.14-others-ubuntu-latest.json").exists()
+            )
 
     def test_combining_keeps_every_case_of_every_part_including_failures(self):
         for part, text in PART_REPORTS.items():
@@ -268,9 +274,45 @@ class CoverageEvidenceTests(CoveragePlanMixin, unittest.TestCase):
         with self.assertRaises(ValueError):
             coverage.check_junit(path)
 
+    def test_each_cell_combines_only_its_own_parts(self):
+        for part, text in PART_REPORTS.items():
+            self.report(
+                name=coverage.part_artifact(part, "macos-latest", "3.12"), text=text
+            )
+            # Another cell's parts, which must not be read.
+            self.report(name=coverage.part_artifact(part), text="<other />")
+        path = coverage.combine_reports(self.results, "macos-latest", "3.12")
+        self.assertEqual(path, self.results / "junit-macos-latest-3.12.xml")
+        self.assertEqual(
+            len(list(coverage.ET.parse(path).getroot().iter("testcase"))), 4
+        )
+        self.assertFalse((self.results / f"{coverage.BASELINE_ARTIFACT}.xml").exists())
+
+    def test_reports_are_named_only_for_known_parts_and_cells(self):
+        self.assertEqual(
+            coverage.part_artifact("others", "windows-latest", "3.13"),
+            "junit-py3.13-others-windows-latest",
+        )
+        self.assertEqual(
+            coverage.cell_artifact(coverage.BASELINE_OS, coverage.BASELINE_PYTHON),
+            coverage.BASELINE_ARTIFACT,
+        )
+        for args in (
+            ("unknown", "ubuntu-latest", "3.14"),
+            ("others", "../ubuntu-latest", "3.14"),
+            ("others", "ubuntu-22.04", "3.14"),
+            ("others", "ubuntu-latest", "3.14/.."),
+            ("others", "ubuntu-latest", ""),
+        ):
+            with self.subTest(args=args), self.assertRaises(ValueError):
+                coverage.part_artifact(*args)
+
     def test_a_missing_part_or_a_case_in_both_parts_writes_no_report(self):
         output = self.results / f"{coverage.BASELINE_ARTIFACT}.xml"
-        self.report(name="junit-py3.14-corpus-runs", text=PART_REPORTS["corpus-runs"])
+        self.report(
+            name="junit-py3.14-corpus-runs-ubuntu-latest",
+            text=PART_REPORTS["corpus-runs"],
+        )
         with self.assertRaises(FileNotFoundError):
             coverage.combine_reports(self.results)
         self.assertFalse(output.exists())
@@ -280,14 +322,14 @@ class CoverageEvidenceTests(CoveragePlanMixin, unittest.TestCase):
             "<!DOCTYPE testsuites><testsuites><testcase /></testsuites>",
             "<other />",
         ):
-            self.report(name="junit-py3.14-others", text=text)
+            self.report(name="junit-py3.14-others-ubuntu-latest", text=text)
             with self.subTest(text=text), self.assertRaises(ValueError):
                 coverage.combine_reports(self.results)
             self.assertFalse(output.exists())
 
     def test_baseline_needs_both_parts_to_agree_on_their_imports(self):
         self.parts()
-        pythons = dict.fromkeys(coverage.BASELINE_PARTS, "3.14.0")
+        pythons = dict.fromkeys(coverage.PARTS, "3.14.0")
         self.assertEqual(
             coverage.part_versions(LOCK, COMMIT, self.results), ("3.0.2", pythons)
         )
@@ -296,9 +338,9 @@ class CoverageEvidenceTests(CoveragePlanMixin, unittest.TestCase):
             LOCK, "3.0.2", COMMIT, self.results, pythons
         )
         self.assertEqual(metadata["actual_python_version"], "3.14.0")
-        self.assertEqual(metadata["parts"], list(coverage.BASELINE_PARTS))
+        self.assertEqual(metadata["parts"], list(coverage.PARTS))
         self.assertEqual(metadata["part_python_versions"], pythons)
-        path = self.results / "pydicom-py3.14-others.json"
+        path = self.results / "pydicom-py3.14-others-ubuntu-latest.json"
         recorded = json.loads(path.read_text())
         for changes in (
             {"format": "unknown"},
@@ -329,9 +371,7 @@ class CoverageEvidenceTests(CoveragePlanMixin, unittest.TestCase):
         # rollout, and each part runs on its own runner.
         self.parts("3.14.1", "3.14.0")
         actual, pythons = coverage.part_versions(LOCK, COMMIT, self.results)
-        self.assertEqual(
-            pythons, dict(zip(coverage.BASELINE_PARTS, ("3.14.1", "3.14.0")))
-        )
+        self.assertEqual(pythons, dict(zip(coverage.PARTS, ("3.14.1", "3.14.0"))))
         self.report(text=PASSED)
         metadata = coverage.record_baseline(LOCK, actual, COMMIT, self.results, pythons)
         self.assertEqual(metadata["actual_python_version"], "3.14.0, 3.14.1")

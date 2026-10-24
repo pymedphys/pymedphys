@@ -72,10 +72,11 @@ A pack holds, for one run:
   the instances that show each (D-015, D-017);
 - ``redactions``: each released or held instance whose Pixel Data the
   Clean Pixel Data Option cleaned, with why it is held, its number of
-  frames, its Rows and Columns, and the regions blacked out in each frame,
+  frames, its Rows and Columns, the regions blacked out in each frame,
   by frame index from 0, each as ``[top, left, bottom, right]`` in pixels
   from the frame's top left corner, with the bottom row and right column
-  excluded, for the review of
+  excluded, and, for compressed Pixel Data, the SHA-256 of its frames as
+  decoded, which binds a verdict to them (D-048), for the review of
   every frame that the option requires. Each frame with regions is
   previewed as received, so under the option the pack holds the burned-in
   text that the release lacks;
@@ -84,7 +85,8 @@ A pack holds, for one run:
   attestation of the pack covers them, among them a contour sheet of each
   instance with contours, such as an RT Structure Set; and
   ``not_previewed``: each instance whose pixel data could not be previewed,
-  or whose contours could not be shown, with why (D-017). The images are
+  whose contours could not be shown, or, for an RT Dose, whose dose levels
+  could not be drawn, with why (D-017). The images are
   made by :mod:`~pymedphys._dicom.deidentify.qc_previews`.
 - ``source_gaps``: each instance whose source lacks an attribute that its
   IOD unconditionally requires, with each such attribute's place and Type,
@@ -130,7 +132,7 @@ from .reviewed_roi_names import Outcome
 from .text_detection import TextBox
 
 # The format of the pack document. A change to its fields takes a new label.
-FORMAT = "pymedphys-deid-qc-pack/12"
+FORMAT = "pymedphys-deid-qc-pack/15"
 # The bytes of a written file shown on each side of a residual's offset.
 EXCERPT_BYTES = 48
 # The SHA-256 that face_review.contour_data_sha256 gives a file without
@@ -864,7 +866,8 @@ class PreviewKind(enum.Enum):
 
 
 class NotPreviewedReason(enum.Enum):
-    """Why an instance has no image preview."""
+    """Why an instance has no image preview, or, for an RT Dose, no
+    dose-levels preview."""
 
     # compressed pixel data that no installed plugin is pinned to decode
     COMPRESSED = "compressed-pixel-data"
@@ -884,6 +887,13 @@ class NotPreviewedReason(enum.Enum):
     # view from behind, and the profiles of its rows would not draw, so its
     # verdict gives it none
     CONTOURS_NOT_SHOWN = "contours-not-shown"
+    # an RT Dose, by face_review.is_rt_dose, that no dose-levels preview
+    # shows whole: one that cannot be placed as a grid or a series of
+    # planes, whose stored values or scaling its levels would not show, or
+    # whose sheet would have too many levels or be too tall. Its other
+    # previews are kept, such as its cine strip, which can leave a low dose
+    # black, and a redaction preview of each frame where it was cleaned.
+    DOSE_LEVELS_NOT_SHOWN = "dose-levels-not-shown"
 
 
 PREVIEW_NAME = re.compile(r"P-[0-9]{4,}\.png")
@@ -1040,6 +1050,11 @@ class RedactionEntry:
         Each frame with a region, by frame index from 0, in order, with its
         regions, sorted, each once, and each within its rows and columns;
         none where no text was found.
+    decoded_sha256 : str, optional
+        For compressed Pixel Data, the SHA-256 of its frames as decoded
+        (:attr:`~.pixel_cleaning.Redaction.decoded_sha256`), as 64 lowercase
+        hex digits, which a reviewer's verdict on the instance requires the
+        frames to decode to again (D-048); None for native Pixel Data.
     """
 
     position: int
@@ -1048,6 +1063,7 @@ class RedactionEntry:
     rows: int
     columns: int
     regions: tuple[tuple[int, tuple[TextBox, ...]], ...]
+    decoded_sha256: str | None = None
 
     def __post_init__(self) -> None:
         _check_position("a cleaned instance", self.position)
@@ -1087,6 +1103,14 @@ class RedactionEntry:
         if indices != sorted(set(indices)):
             raise QcPackError(
                 f"cleaned instance {self.position} must list each frame once, in order"
+            )
+        if self.decoded_sha256 is not None and not (
+            isinstance(self.decoded_sha256, str)
+            and _SHA256.fullmatch(self.decoded_sha256)
+        ):
+            raise QcPackError(
+                f"cleaned instance {self.position} needs its decoded frames' "
+                "SHA-256 as 64 lowercase hex digits, or none"
             )
         found = self.reason is PixelDataReason.TEXT_BLACKED_OUT
         if found != bool(self.regions):
@@ -1277,8 +1301,9 @@ class QcPack:
         a series has an instance without its source's SHA-256; or if an
         instance is listed twice as cleaned, out of order, or neither
         released nor held for review; or if a cleaned instance that is not
-        listed as not previewed lacks a redaction preview of each frame, in
-        order, or a redaction preview shows anything else.
+        listed as not previewed, or is listed only for its dose levels,
+        lacks a redaction preview of each frame, in order, or a redaction
+        preview shows anything else.
     """
 
     reference: str
@@ -1471,9 +1496,14 @@ class QcPack:
 
     def _check_redaction_previews(self) -> None:
         """Each cleaned instance has a redaction preview of each frame, in
-        order, unless it is listed as not previewed, and no other has one."""
+        order, unless it is listed as not previewed for a reason other than
+        its dose levels, and no other has one."""
         cleaned = {entry.position: entry.frames for entry in self.redactions}
-        unshown = {entry.position for entry in self.not_previewed}
+        unshown = {
+            entry.position
+            for entry in self.not_previewed
+            if entry.reason is not NotPreviewedReason.DOSE_LEVELS_NOT_SHOWN
+        }
         shown: dict[int, list[int]] = {}
         for preview in self.previews:
             if preview.kind is not PreviewKind.REDACTION:
@@ -1493,7 +1523,8 @@ class QcPack:
             if shown.get(position, []) != expected:
                 raise QcPackError(
                     "a cleaned instance needs a redaction preview of each "
-                    "frame, in order, unless it is listed as not previewed"
+                    "frame, in order, unless it is listed as not previewed "
+                    "for a reason other than its dose levels"
                 )
 
     def _check_names(self) -> None:
@@ -1752,6 +1783,7 @@ def pack_document(pack: QcPack) -> dict:
                     }
                     for index, boxes in entry.regions
                 ],
+                "decoded_sha256": entry.decoded_sha256,
             }
             for entry in pack.redactions
         ],

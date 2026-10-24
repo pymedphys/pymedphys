@@ -237,7 +237,10 @@ class PreviewSet:
         instance's frame 0, then the frames of each volume that it is
         drawn with, if any.
     not_previewed : tuple of ~pymedphys._dicom.deidentify.qc_pack.NotPreviewedEntry
-        In run position order.
+        In run position order. An RT Dose that no dose-levels preview shows
+        whole, whatever the cause, is listed as ``DOSE_LEVELS_NOT_SHOWN``,
+        though its other previews are kept, unless another reason is listed
+        first.
     contours_shown : frozenset of int
         The run positions of the files with contours that a contour sheet
         shows.
@@ -329,8 +332,19 @@ def previews_of(
     # Only previews that could show a face count, and every frame of an
     # instance must be among theirs; for an RT Dose, only dose levels do.
     listed = [(kind.value, frames) for kind, frames, _, _ in images]
+    levels = {PreviewKind.SERIES_DOSE_LEVELS.value}
+    # An RT Dose whose every frame no dose-levels preview shows is listed,
+    # whatever the cause, unless it is listed already. It is listed only
+    # once every image is made, so that its frames were still decoded for
+    # its other previews, which it keeps.
+    dosed = pictured_frames(listed, refused, levels)
+    for instance in instances:
+        if instance.dose and dosed.get(instance.position) != instance.frames:
+            refused.setdefault(
+                instance.position, NotPreviewedReason.DOSE_LEVELS_NOT_SHOWN
+            )
     pictured = pictured_frames(listed, refused)
-    dosed = pictured_frames(listed, refused, {PreviewKind.SERIES_DOSE_LEVELS.value})
+    dosed = pictured_frames(listed, refused, levels)
     width = max(4, len(str(len(images))))
     previews = tuple(
         Preview(f"P-{number:0{width}d}.png", kind, frames, total, encoded)
@@ -854,7 +868,8 @@ def _series_images(
 
 def _level_map(instance: _Instance, pixels: np.ndarray) -> np.ndarray | None:
     """An RT Dose plane at full resolution, grey by the levels of its dose,
-    or None if its scaling loses a dose (:func:`~.qc_surfaces.dose_values`)."""
+    or None if its scaling loses a dose (:func:`~.qc_surfaces.dose_values`)
+    or it has more than :data:`~.qc_surfaces.MAXIMUM_DOSE_LEVELS` levels."""
     assert instance.dose_scale is not None
     values = qc_surfaces.dose_values(pixels, instance.dose_scale)
     if values is None:
@@ -865,6 +880,8 @@ def _level_map(instance: _Instance, pixels: np.ndarray) -> np.ndarray | None:
         float(finite.max()) if finite.size else -math.inf,
         float(positive.min()) if positive.size else math.inf,
     )
+    if len(levels) > qc_surfaces.MAXIMUM_DOSE_LEVELS:
+        return None
     return qc_surfaces.level_bands(values, levels)
 
 
