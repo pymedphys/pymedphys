@@ -122,6 +122,7 @@ PIXEL_OPTION_CODES: Mapping[str, str] = types.MappingProxyType(
 )
 FULL_DATES = "retain_longitudinal_full_dates"
 MODIFIED_DATES = "retain_longitudinal_modified_dates"
+CLEAN_STRUCTURED_CONTENT = "clean_structured_content"
 
 # The generic parts of every marker.
 MARKER_SIGNATURES = (
@@ -139,6 +140,7 @@ CLEAN_DESCRIPTORS = "basic-clean-descriptors"
 COMPRESSED = "basic-compressed"
 ROI_SEQUENCE = "(3006,0020)"
 ROI_NAME = "(3006,0026)"
+REFERENCED_FRAME_OF_REFERENCE = "(3006,0024)"
 # The second ROI's name, which the automatic tier renames, and what it and
 # the reviewer write.
 UNCLEANED_NAME = "lung l"
@@ -261,6 +263,24 @@ def kept_rows(options: tuple[str, ...]) -> frozenset[str]:
         if actions == {"K"}:
             kept.add(row.tag)
     return frozenset(kept)
+
+
+@functools.cache
+def content_item_sequences(options: tuple[str, ...]) -> frozenset[str]:
+    """Return the tags of the sequences whose content items the options clean.
+
+    Those to which Clean Structured Content, where it is selected, gives C.
+    PS3.15 E.3.4 cleans the content items' information rather than removing
+    the sequence, so where the engine keeps such a sequence, the elements of
+    its items take their own actions, which other options can make K, as
+    Retain UIDs does to a Referenced SOP Instance UID (D-047). Where it
+    cannot clean every item, the sequence is removed or emptied instead.
+    """
+    if CLEAN_STRUCTURED_CONTENT not in options:
+        return frozenset()
+    return frozenset(
+        row.tag for row in _rows() if row.options.get(CLEAN_STRUCTURED_CONTENT) == "C"
+    )
 
 
 def removed_rows(options: tuple[str, ...]) -> frozenset[str]:
@@ -397,11 +417,14 @@ class CorpusRun:
 
         Its row must be kept (:meth:`kept_rows`), and so must every sequence
         of Table E.1-1 that holds it, since a sequence's other actions
-        remove, empty, replace, or clean what it holds.
+        remove, empty, replace, or clean what it holds; but a sequence whose
+        content items the run cleans (:func:`content_item_sequences`) keeps
+        what its items' own actions keep, where it is kept at all.
         """
         kept = self.kept_rows()
+        passed = kept | content_item_sequences(self.selected)
         return placement.profile_tag in kept and all(
-            tag in kept or tag not in _listed() for tag, _ in placement.path.items
+            tag in passed or tag not in _listed() for tag, _ in placement.path.items
         )
 
     def method_codes(self) -> frozenset[tuple[str, str]]:
@@ -495,6 +518,9 @@ def with_a_second_roi(
     """Return the corpus with a second ROI, named for the automatic tier.
 
     pydicom writes the structure set again, which keeps every planted value.
+    The second ROI references the first's frame of reference, whose linked
+    UID it copies, so the manifest records the copy as a placement too: an
+    option that keeps the UID, such as Retain UIDs, keeps it at both places.
     """
     file = structure_set(corpus)
     dataset = pydicom.dcmread(pydicom.filebase.DicomBytesIO(file.data))
@@ -507,13 +533,26 @@ def with_a_second_roi(
     dataset.StructureSetROISequence.append(item)
     buffer = pydicom.filebase.DicomBytesIO()
     dataset.save_as(buffer, enforce_file_format=True)
-    data = buffer.getvalue()
+    first_reference = ElementPath(((ROI_SEQUENCE, 0),), REFERENCED_FRAME_OF_REFERENCE)
+    copied = ElementPath(
+        ((ROI_SEQUENCE, len(dataset.StructureSetROISequence) - 1),),
+        REFERENCED_FRAME_OF_REFERENCE,
+    )
+    manifest = dataclasses.replace(
+        file.manifest,
+        placements=(
+            *file.manifest.placements,
+            *(
+                dataclasses.replace(placement, path=copied)
+                for placement in file.manifest.placements
+                if placement.path == first_reference
+            ),
+        ),
+    )
+    replaced = dataclasses.replace(file, data=buffer.getvalue(), manifest=manifest)
     return dataclasses.replace(
         corpus,
-        files=tuple(
-            dataclasses.replace(each, data=data) if each is file else each
-            for each in corpus.files
-        ),
+        files=tuple(replaced if each is file else each for each in corpus.files),
     )
 
 
