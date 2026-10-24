@@ -248,7 +248,8 @@ class Assessment:
     device_identity : str
         Whether keeping machine identity, such as Station Name and Device
         Serial Number, would raise the risk above the threshold, which
-        justifies the policy omitting or keeping it.
+        shows whoever reviews the record whether the policy's omission of
+        it was needed.
     facial_reconstruction : bool
         Whether re-identification from faces reconstructed from the images
         was among the channels assessed, so that the assessment may stand
