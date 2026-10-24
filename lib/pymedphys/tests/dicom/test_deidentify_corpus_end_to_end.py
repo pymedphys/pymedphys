@@ -955,6 +955,18 @@ def test_each_run_names_a_policy_once():
         CorpusRun("both", preset="basic", options=("clean_descriptors",))
     with pytest.raises(TypeError):
         CorpusRun("one string", options="clean_descriptors")
+    with pytest.raises(ValueError, match="needs Clean Structured Content"):
+        CorpusRun(
+            "no option",
+            options=("retain_uids",),
+            kept_content=frozenset({"(0040,0555)"}),
+        )
+    with pytest.raises(ValueError, match="no sequence of content items"):
+        CorpusRun(
+            "not content items",
+            options=("clean_structured_content",),
+            kept_content=frozenset({ROI_SEQUENCE}),
+        )
 
 
 def _codes(dataset):

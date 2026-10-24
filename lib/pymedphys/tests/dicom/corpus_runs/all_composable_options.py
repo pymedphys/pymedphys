@@ -21,7 +21,10 @@ column for, is selected; each has runs of its own. The corpus is changed as
 each option's own run changes it: Retain Patient Characteristics' attributes
 of free text are emptied, Clean Structured Content's acquisition context
 items are content items, and Clean Descriptors has its technique
-descriptions and the structure set of its run.
+descriptions and the structure set of its run. Every acquisition context
+item is then one that Clean Structured Content can clean, so the sequence is
+kept, and each element of its items takes its own action (D-047): Retain
+UIDs keeps a Referenced SOP Instance UID there, and Full Dates a date.
 
 Each option's kept rows are kept, but Clinical Trial Protocol Ethics
 Committee Name (0012,0081), which is removed whatever its action (D-020),
@@ -45,6 +48,8 @@ from . import (
     retain_patient_characteristics,
 )
 
+# Acquisition Context Sequence.
+ACQUISITION_CONTEXT = "(0040,0555)"
 OPTIONS = (
     "retain_safe_private",
     "retain_uids",
@@ -74,6 +79,7 @@ RUN = CorpusRun(
     reviewed_roi_names=mapped_planted_name,
     kept=kept_rows(OPTIONS) - {retain_institution_identity.ETHICS_COMMITTEE_NAME},
     roi_names=(MAPPED_NAME, VOCABULARY_NAME),
+    kept_content=frozenset({ACQUISITION_CONTEXT}),
     inconsistent=(
         retain_patient_characteristics.KEPT_DIFFERENCES
         | retain_institution_identity.KEPT_DIFFERENCES

@@ -266,18 +266,8 @@ def kept_rows(options: tuple[str, ...]) -> frozenset[str]:
 
 
 @functools.cache
-def content_item_sequences(options: tuple[str, ...]) -> frozenset[str]:
-    """Return the tags of the sequences whose content items the options clean.
-
-    Those to which Clean Structured Content, where it is selected, gives C.
-    PS3.15 E.3.4 cleans the content items' information rather than removing
-    the sequence, so where the engine keeps such a sequence, the elements of
-    its items take their own actions, which other options can make K, as
-    Retain UIDs does to a Referenced SOP Instance UID (D-047). Where it
-    cannot clean every item, the sequence is removed or emptied instead.
-    """
-    if CLEAN_STRUCTURED_CONTENT not in options:
-        return frozenset()
+def _content_item_sequences() -> frozenset[str]:
+    """The sequences to which Clean Structured Content gives C."""
     return frozenset(
         row.tag for row in _rows() if row.options.get(CLEAN_STRUCTURED_CONTENT) == "C"
     )
@@ -366,6 +356,14 @@ class CorpusRun:
         so that dcentvfy finds each of them in the released instances as
         often as in their inputs. The Basic Profile removes or replaces
         every such value alike, so by default there are none.
+    kept_content : frozenset of str
+        The sequences of Table E.1-1, by tag, whose content items Clean
+        Structured Content cleans, and which the engine keeps, since the
+        run's corpus makes every item one it can clean (D-047). The elements
+        of their items take their own actions, so a marker in one is kept
+        where its row is. Every other sequence that the option gives C may be
+        removed or emptied, as the engine does where an item cannot be
+        cleaned, so nothing in it is kept. Empty without the option.
     marks : tuple
         pytest marks of the run's parameter, such as a skip.
     """
@@ -389,6 +387,7 @@ class CorpusRun:
     codes: frozenset[str] | None = None
     roi_names: tuple[str, ...] | None = ("",)
     inconsistent: frozenset[str] = frozenset()
+    kept_content: frozenset[str] = frozenset()
     marks: tuple = ()
 
     def __post_init__(self):
@@ -396,6 +395,14 @@ class CorpusRun:
             raise TypeError("options must be a tuple of option names")
         if self.preset is not None and self.options:
             raise ValueError(f"{self.name}: give a preset or options, not both")
+        if self.kept_content and CLEAN_STRUCTURED_CONTENT not in self.selected:
+            raise ValueError(
+                f"{self.name}: kept_content needs Clean Structured Content"
+            )
+        if not self.kept_content <= _content_item_sequences():
+            raise ValueError(
+                f"{self.name}: kept_content names no sequence of content items"
+            )
 
     @property
     def selected(self) -> tuple[str, ...]:
@@ -418,11 +425,11 @@ class CorpusRun:
         Its row must be kept (:meth:`kept_rows`), and so must every sequence
         of Table E.1-1 that holds it, since a sequence's other actions
         remove, empty, replace, or clean what it holds; but a sequence whose
-        content items the run cleans (:func:`content_item_sequences`) keeps
-        what its items' own actions keep, where it is kept at all.
+        content items the run cleans and keeps (:attr:`kept_content`) keeps
+        what its items' own actions keep.
         """
         kept = self.kept_rows()
-        passed = kept | content_item_sequences(self.selected)
+        passed = kept | self.kept_content
         return placement.profile_tag in kept and all(
             tag in passed or tag not in _listed() for tag, _ in placement.path.items
         )
