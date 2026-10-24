@@ -52,7 +52,7 @@ the engine defines, never from DICOM data directly, and the check is a
 backstop: a field of another form, which could be a source value or a path
 outside the package, is refused. A field that fails is named, never quoted.
 
-Twelve sections describe a run, by replacement identifiers, attribute tags,
+Fourteen sections describe a run, by replacement identifiers, attribute tags,
 and codes that the engine defines, never by a source value or path:
 
 - ``qc_review``: the run's QC pack by its opaque reference, with the outcome
@@ -71,6 +71,13 @@ and codes that the engine defines, never by a source value or path:
 - ``redaction_review``: under the Clean Pixel Data Option, the opaque
   reference of the earlier run's attested QC pack whose redaction verdicts
   the run applied; None otherwise.
+- ``readiness``: under the ``public-release`` preset, whether the run is
+  ready for release, which it is only where its three gates pass: the
+  statistical gate, from the risk assessment recorded beside the earlier
+  run's QC pack that the run was given (D-053), and the pixel and face
+  review and human QC attestation gates, from that pack's attestation,
+  each failed with the first reason that held, and each reference opaque
+  (:class:`Readiness`, D-017); None under any other policy.
 - ``released``: each released instance by its output name, the path below
   the release directory that
   :func:`~pymedphys._dicom.deidentify.output_names.instance_path` gives
@@ -165,7 +172,9 @@ from .reasons import (
     HeldRoiName,
     HeldVisualFeatures,
     PixelDataReason,
+    ReviewReason,
     RunReason,
+    StatisticalReason,
     TransformReason,
     VisualFeaturesReason,
 )
@@ -206,6 +215,34 @@ _ATTRIBUTE = re.compile(rf"{TAG_PATTERN.pattern}( > {TAG_PATTERN.pattern})*")
 _ACTIONS = frozenset({"K", "X", "Z", "D", "U", "C"})
 # The QC pack's opaque reference, as qc_pack gives it (D-016).
 _REFERENCE = re.compile(r"A-[0-9a-f]{32}")
+# A risk assessment record's opaque reference, as risk_assessment gives it
+# (D-053).
+_ASSESSMENT_REFERENCE = re.compile(r"R-[0-9a-f]{32}")
+# The preset whose runs the readiness section describes (D-017).
+PUBLIC_RELEASE = "public-release"
+# The reasons of each readiness gate that rests on a reviewed QC pack, those
+# that both give first.
+_REVIEW_REASONS = (
+    ReviewReason.NO_REVIEW,
+    ReviewReason.NOT_ATTESTED,
+    ReviewReason.REJECTED,
+    ReviewReason.OTHER_COLLECTION,
+    ReviewReason.OTHER_POLICY,
+)
+PIXEL_AND_FACE_REASONS = (
+    *_REVIEW_REASONS,
+    ReviewReason.UNREVIEWED_HIGH_RISK,
+    ReviewReason.FACE_PRESENT,
+    ReviewReason.NO_FACE_VERDICT,
+    ReviewReason.OTHER_PIXEL_DATA,
+    ReviewReason.OTHER_CONTOURS,
+)
+ATTESTATION_REASONS = (
+    *_REVIEW_REASONS,
+    ReviewReason.RESIDUAL_RISK_NOT_ACCEPTED,
+    ReviewReason.UNREVIEWED_INSTANCE,
+    ReviewReason.UNREVIEWED_RETAINED_STRING,
+)
 
 # The reason codes of each stage that sequesters an instance.
 _SEQUESTERING = {
@@ -549,6 +586,48 @@ def _no_checks() -> tuple[StructuralCheck, ...]:
 
 
 @dataclasses.dataclass(frozen=True)
+class Readiness:
+    """Whether a ``public-release`` run is ready for release, by its three gates.
+
+    Each gate is passed, with no reason, or failed, with the first reason
+    that held, and passing one passes no other (D-017).
+    :func:`~pymedphys._dicom.deidentify.readiness.readiness` decides them.
+
+    Attributes
+    ----------
+    review : str or None
+        The opaque reference of the earlier run's QC pack that the run was
+        given, or None without one.
+    assessment : str or None
+        The opaque reference of the risk assessment recorded beside it, or
+        None without one.
+    statistical : ~pymedphys._dicom.deidentify.reasons.StatisticalReason or None
+        Why the statistical gate failed, or None where it passed.
+    pixel_and_face : ~pymedphys._dicom.deidentify.reasons.ReviewReason or None
+        Why the pixel and face review gate failed, one of
+        :data:`PIXEL_AND_FACE_REASONS`, or None where it passed.
+    attestation : ~pymedphys._dicom.deidentify.reasons.ReviewReason or None
+        Why the human QC attestation gate failed, one of
+        :data:`ATTESTATION_REASONS`, or None where it passed.
+    """
+
+    review: str | None
+    assessment: str | None
+    statistical: StatisticalReason | None
+    pixel_and_face: ReviewReason | None
+    attestation: ReviewReason | None
+
+    @property
+    def ready(self) -> bool:
+        """Whether every gate passed."""
+        return (
+            self.statistical is None
+            and self.pixel_and_face is None
+            and self.attestation is None
+        )
+
+
+@dataclasses.dataclass(frozen=True)
 class ReleaseReport:
     """A release report's record of the method, the runtime, and the run.
 
@@ -564,6 +643,7 @@ class ReleaseReport:
     face_review : str or None
     face_blocks : ~pymedphys._dicom.deidentify.face_blocks.FaceBlockCounts or None
     redaction_review : str or None
+    readiness : Readiness or None
     released : tuple of pathlib.PurePosixPath
     sequestered : tuple of SequesteredInstance
     search_coverage : tuple of SearchCoverage
@@ -584,6 +664,7 @@ class ReleaseReport:
     face_review: str | None = None
     face_blocks: FaceBlockCounts | None = None
     redaction_review: str | None = None
+    readiness: Readiness | None = None
     released: tuple[PurePosixPath, ...] = ()
     sequestered: tuple[SequesteredInstance, ...] = ()
     search_coverage: tuple[SearchCoverage, ...] = ()
@@ -942,6 +1023,7 @@ def release_report(
     face_review: str | None = None,
     face_blocks: FaceBlockCounts | None = None,
     redaction_review: str | None = None,
+    readiness: Readiness | None = None,
     released: Iterable[PurePosixPath] = (),
     sequestered: Iterable[SequesteredInstance] = (),
     coverage: Iterable[SearchCoverage] = (),
@@ -1013,6 +1095,11 @@ def release_report(
         pack whose redaction verdicts the run applied, from
         :class:`~pymedphys._dicom.deidentify.redaction_review.RedactionReview`;
         None, the default, otherwise.
+    readiness : Readiness, optional
+        Under the ``public-release`` preset, whether the run is ready for
+        release, from
+        :func:`~pymedphys._dicom.deidentify.readiness.readiness`; None, the
+        default, otherwise.
     released : iterable of pathlib.PurePosixPath, optional
         The output name of each released instance, as
         :func:`~pymedphys._dicom.deidentify.output_names.instance_path`
@@ -1069,7 +1156,7 @@ def release_report(
     >>> report.policy.preset, report.policy.options
     ('basic', ())
     >>> list(report_document(report))
-    ['format', 'policy', 'method', 'runtime', 'key', 'qc_review', 'face_review', 'redaction_review', 'released', 'sequestered', 'held_for_review', 'roi_names', 'descriptors', 'reference_findings', 'pixel_risks', 'search_coverage', 'source_gaps', 'structural_checks']
+    ['format', 'policy', 'method', 'runtime', 'key', 'qc_review', 'face_review', 'redaction_review', 'readiness', 'released', 'sequestered', 'held_for_review', 'roi_names', 'descriptors', 'reference_findings', 'pixel_risks', 'search_coverage', 'source_gaps', 'structural_checks']
     """
     if not isinstance(policy, Policy):
         raise TypeError("policy must be a Policy")
@@ -1095,6 +1182,7 @@ def release_report(
         face_review=face_review,
         face_blocks=face_blocks,
         redaction_review=redaction_review,
+        readiness=readiness,
         released=tuple(released),
         sequestered=tuple(sequestered),
         search_coverage=tuple(coverage),
@@ -1351,6 +1439,68 @@ def _redaction_review_section(reference: str | None) -> dict | None:
     if _string(reference) is None or not _REFERENCE.fullmatch(reference):
         raise _refuse("redaction_review", "is not a QC pack's reference")
     return {"reference": reference}
+
+
+def _readiness_section(
+    readiness: Readiness | None, policy: PolicyRecord
+) -> dict | None:
+    """Return the section that says whether a ``public-release`` run is ready.
+
+    A ``public-release`` report given no readiness is not ready on any gate,
+    as a run given no review is, so that it never reads as having none.
+    """
+    public = isinstance(policy, PolicyRecord) and policy.preset == PUBLIC_RELEASE
+    if readiness is None:
+        if not public:
+            return None
+        readiness = Readiness(
+            review=None,
+            assessment=None,
+            statistical=StatisticalReason.NO_ASSESSMENT,
+            pixel_and_face=ReviewReason.NO_REVIEW,
+            attestation=ReviewReason.NO_REVIEW,
+        )
+    if not isinstance(readiness, Readiness):
+        raise _refuse("readiness", "is not a Readiness")
+    if not public:
+        raise _refuse("readiness", "is given for a policy other than public-release")
+    review, assessment = readiness.review, readiness.assessment
+    if review is not None and (
+        _string(review) is None or not _REFERENCE.fullmatch(review)
+    ):
+        raise _refuse("readiness review", "is not a QC pack's reference")
+    if assessment is not None and (
+        _string(assessment) is None or not _ASSESSMENT_REFERENCE.fullmatch(assessment)
+    ):
+        raise _refuse("readiness assessment", "is not a risk assessment's reference")
+    gates = {
+        "statistical": (readiness.statistical, tuple(StatisticalReason)),
+        "pixel_and_face": (readiness.pixel_and_face, PIXEL_AND_FACE_REASONS),
+        "attestation": (readiness.attestation, ATTESTATION_REASONS),
+    }
+    for name, (reason, reasons) in gates.items():
+        if reason is not None and reason not in reasons:
+            raise _refuse(f"readiness {name}", "is not a reason of its gate")
+    # A run given no reviewed pack has neither review nor assessment, and
+    # a gate fails for the lack of one exactly where it was not given.
+    if assessment is not None and review is None:
+        raise _refuse("readiness assessment", "is given without a review")
+    if (assessment is None) != (
+        readiness.statistical is StatisticalReason.NO_ASSESSMENT
+    ):
+        raise _refuse("readiness statistical", "is no-assessment exactly without one")
+    for name in ("pixel_and_face", "attestation"):
+        if (review is None) != (getattr(readiness, name) is ReviewReason.NO_REVIEW):
+            raise _refuse(f"readiness {name}", "is no-review exactly without one")
+    return {
+        "ready": readiness.ready,
+        "review": review,
+        "assessment": assessment,
+        **{
+            name: None if reason is None else reason.value
+            for name, (reason, _) in gates.items()
+        },
+    }
 
 
 def _is_output_name(path: object) -> bool:
@@ -1632,7 +1782,7 @@ def report_document(report: ReleaseReport) -> dict:
 
     The document is an object with the members ``format`` (:data:`FORMAT`),
     ``policy``, ``method``, ``runtime``, ``key``, ``qc_review``, ``face_review``,
-    ``redaction_review``, ``released``, ``sequestered``, ``held_for_review``, ``roi_names``,
+    ``redaction_review``, ``readiness``, ``released``, ``sequestered``, ``held_for_review``, ``roi_names``,
     ``descriptors``,
     ``reference_findings``, ``pixel_risks``, ``search_coverage``,
     ``source_gaps``, and ``structural_checks``, in that order, each section's
@@ -1642,7 +1792,11 @@ def report_document(report: ReleaseReport) -> dict:
     wrote no QC pack,
     ``face_review`` null or an object with the reference and the CT series'
     ``ct_series`` counts, ``defaced`` and ``not_defaced`` by code,
-    ``redaction_review`` null or an object with the reference, the released
+    ``redaction_review`` null or an object with the reference,
+    ``readiness`` null or an object with ``ready``, the ``review`` and
+    ``assessment`` references, each null without one, and the
+    ``statistical``, ``pixel_and_face``, and ``attestation`` gates' reason
+    codes, each null where its gate passed, the released
     output names sorted, the sequestered instances by label, each with its
     reasons once, in the order given, the held counts by stage and code, the
     ROI Names' and the descriptors' ``outcomes`` and ``held`` counts each by
@@ -1673,6 +1827,10 @@ def report_document(report: ReleaseReport) -> dict:
         identifier, a file name
         or path within the engine's package, a QC pack's reference and an
         attestation outcome, a confirmation given only with an attestation,
+        a readiness section given only under ``public-release``, with a
+        risk assessment's reference only with a QC pack's, each gate's own
+        reason codes, and a gate failed for the lack of either exactly where
+        it is not given,
         an output name that
         :func:`~pymedphys._dicom.deidentify.output_names.instance_path`
         gives, listed once, one of the labels ``S-0001`` to ``S-n`` for ``n``
@@ -1691,6 +1849,7 @@ def report_document(report: ReleaseReport) -> dict:
         "qc_review": _qc_review_section(report.qc_review),
         "face_review": _face_review_section(report.face_review, report.face_blocks),
         "redaction_review": _redaction_review_section(report.redaction_review),
+        "readiness": _readiness_section(report.readiness, report.policy),
         "released": _released_section(report.released),
         "sequestered": _sequestered_section(report.sequestered),
         "held_for_review": _held_section(report.held_for_review),

@@ -23,8 +23,11 @@ Information are not compared, since :mod:`.file_meta` replaces them. An
 unchanged transfer syntax is necessary but not sufficient, so it checks each
 element as the bytes encode it, and decodes no value:
 
-- the transfer syntax is the same, since the first supported release does
-  not transcode;
+- the transfer syntax is the same, since the engine does not transcode,
+  except that the plan can give Explicit VR Little Endian for a source in
+  a transfer syntax that encapsulates Pixel Data, all of whose data sets
+  are in Explicit VR Little Endian too, where Clean Pixel Data writes its
+  frames uncompressed (D-037), with Pixel Data changed;
 - each element of the source is planned once, as kept, changed, or removed;
   each element of the output was kept or changed; each kept element is in
   both; each changed element, being emptied, replaced, or introduced, is in
@@ -76,7 +79,14 @@ import enum
 
 from .elements import CHARACTER_SET_VRS
 from .file_layout import ElementPath, Extent
-from .source import SourceEvidence, encapsulated_pixel_data
+from .source import (
+    ENCAPSULATED_TRANSFER_SYNTAXES,
+    EXPLICIT_VR_LITTLE_ENDIAN,
+    SourceEvidence,
+    encapsulated_pixel_data,
+)
+
+_PIXEL_DATA = ElementPath((), "(7FE0,0010)")
 
 _CHARACTER_SET = "(0008,0005)"
 # Without a VR as written or in the dictionary, text cannot be ruled out.
@@ -148,6 +158,10 @@ class Expectations:
         validated elsewhere.
     removed : frozenset of ElementPath
         Elements removed, including every element inside a removed sequence.
+    transfer_syntax : str or None
+        The output's transfer syntax where it is not the source's: Explicit
+        VR Little Endian, for compressed Pixel Data written uncompressed;
+        None otherwise.
 
     Paths name items by their index in the source, which the output must
     keep: an item is never removed on its own, so that the items after it
@@ -162,6 +176,7 @@ class Expectations:
     kept: frozenset[ElementPath] = frozenset()
     changed: frozenset[ElementPath] = frozenset()
     removed: frozenset[ElementPath] = frozenset()
+    transfer_syntax: str | None = None
 
     def __post_init__(self) -> None:
         twice = (
@@ -189,7 +204,13 @@ def verify_preservation(
     PreservationFailed
         At the first element that does not match its expectation.
     """
-    if output.transfer_syntax != source.transfer_syntax:
+    if output.transfer_syntax != (expected.transfer_syntax or source.transfer_syntax):
+        raise PreservationFailed(PreservationReason.TRANSFER_SYNTAX)
+    if expected.transfer_syntax is not None and not (
+        expected.transfer_syntax == EXPLICIT_VR_LITTLE_ENDIAN
+        and source.transfer_syntax in ENCAPSULATED_TRANSFER_SYNTAXES
+        and _PIXEL_DATA in expected.changed
+    ):
         raise PreservationFailed(PreservationReason.TRANSFER_SYNTAX)
     planned = expected.kept | expected.changed | expected.removed
     for path in source.paths():

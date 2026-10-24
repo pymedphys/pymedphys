@@ -13,7 +13,7 @@ attrs==26.1.0
     #   jsonschema
     #   pymedphys
     #   referencing
-certifi==2026.10.18
+certifi==2026.10.19
     # via requests
 cffi==2.1.1 ; platform_python_implementation != 'PyPy' and sys_platform == 'linux'
     # via cryptography

@@ -301,19 +301,19 @@ url = "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/sect_E.3
 text = '''
 When this Option is specified in addition to the Basic Application Level Confidentiality Profile, any information burned in to the Pixel Data (7FE0,0010) corresponding to the Attribute information specified to be removed by the Profile and any other Options specified shall also be removed, as described in Table E.1-1.
 '''
-status = "partial"
-milestone = "M3"
+status = "implemented"
 decisions = ["D-015", "D-037", "D-048"]
 implementation = [
   "_dicom/deidentify/instance_transform.py",
   "_dicom/deidentify/pixel_cleaning.py",
+  "_dicom/deidentify/pixel_decoding.py",
   "_dicom/deidentify/redaction_review.py",
   "_dicom/deidentify/text_detection.py",
 ]
 note = '''
-Text that a text finder finds in native Pixel Data is blacked out, whatever it says, and every instance cleaned is held for review (D-037).
-A later run of the same files, given the attested QC pack, blacks out the regions that the reviewer accepted, with any that the reviewer added, without the finder, and releases the instance with the option's code; an instance that the reviewer rejected is sequestered (D-048).
-Compressed Pixel Data is sequestered.
+Text that a text finder finds in Pixel Data is blacked out, whatever it says, and every instance cleaned is held for review (D-037).
+Compressed Pixel Data is decoded first, in the isolated decoding child for the native decoders, and its frames are written uncompressed, in Explicit VR Little Endian, as decoded, with or without a region, so that the QC pack previews the samples that a release writes (D-037).
+A later run of the same files, given the attested QC pack, blacks out the regions that the reviewer accepted, with any that the reviewer added, without the finder, and releases the instance with the option's code; for compressed Pixel Data, only where its frames decode to the SHA-256 that the pack records, and otherwise the instance is held again. An instance that the reviewer rejected is sequestered (D-048).
 '''
 
 [[requirement]]
@@ -750,13 +750,13 @@ id = "MIDI-BP-01"
 text = '''
 For public sharing, remove or replace all known direct identifiers and relevant indirect identifiers and sensitive information wherever they occur: collection descriptions, supporting data, structured and unstructured text, pixel data, and overlays. Justify retaining any indirect identifier with a collection-specific expert statistical analysis of residual risk against a predetermined threshold, which considers other public information about the subjects and holds only at the time it was done.
 '''
-status = "partial"
-milestone = "M4"
+status = "implemented"
 decisions = ["D-001", "D-015", "D-016", "D-017", "D-022", "D-023", "D-027", "D-032", "D-042", "D-053"]
 implementation = [
   "_dicom/deidentify/file_layout.py",
   "_dicom/deidentify/instance_transform.py",
   "_dicom/deidentify/option_kept.py",
+  "_dicom/deidentify/readiness.py",
   "_dicom/deidentify/release_gate.py",
   "_dicom/deidentify/residual_exemptions.py",
   "_dicom/deidentify/residuals.py",
@@ -770,13 +770,15 @@ The release gate runs that search itself, for exactly the values collected acros
 It withholds any output file that still holds a source person name, UID, date, datetime, or direct identifier, or a source value outside its data set, or whose collection of person names, UIDs, dates, datetimes, direct identifiers, or sequences was incomplete, and sends other text findings and other incomplete collection, including of private values, to confidential review; a search that finds nothing does not on its own release a file (D-027).
 A text finding is not sent to review where it is in a kept CS value made only of its attribute's terms in the pinned PS3.3 (for Body Part Examined, PS3.16 Annex L), in a code item of a scheme that PS3.16 Table 8-1 lists, or in Manufacturer, Manufacturer's Model Name, or Software Versions with a private or equipment source, or where its source is a private creator that PS3.15 Table E.3.10-1 lists, and the QC pack still lists it (D-032).
 Nor is a finding inside a value that a selected option keeps, where its source is a private data element or an attribute of that option, or where it equals a whole kept date or time, and in that case a date finding does not withhold the file either (D-042).
-An external statistical assessment of a run's collection is recorded beside its QC pack, bound to the pack, to the source files it records, to the policy, and to the reviewed lists applied, and the statistical gate passes only for the same files, policy, and lists, the run's number of distinct subjects, and a maximum per-subject re-identification probability within the threshold of 0.09 or 0.05 that the assessment states (D-017, D-053).
+An external statistical assessment of a run's collection is recorded beside its QC pack, bound to the pack, to the source files it records, to the policy, and to the reviewed lists that the run applied, by the salted digest that the run records in its pack, and the statistical gate passes only for the same files, policy, and lists, the run's number of distinct subjects, and a maximum per-subject re-identification probability within the threshold of 0.09 or 0.05 that the assessment states (D-017, D-053).
 A deterministic synthetic collection, with an instance of each IOD of the first supported release, plants a conspicuous marker wherever its IODs define an attribute of Table E.1-1, down to a nesting depth of 4 items, and records each deeper place as not planted; Responsible Person and Responsible Organization, whose removal sequesters an instance (D-020), are planted in one instance only, so the others can be released, and the Enhanced PET Image's Radiopharmaceutical Start DateTime, whose removal sequesters it, in none.
 The run's instance transform removes and replaces identifiers in each data set and gives the gate its coverage, including each value read as ISO 8859-1, and the run acts on the gate's decision.
 An instance out of scope whose IOD the pinned tables define is read only to collect its values for its subject's search, and is never written; an instance whose values could not be collected at all withholds every file of its subject.
 The Basic Profile removes Patient's Weight but keeps PET values scaled to an SUV and mappings of values to one, which, with the Radionuclide Total Dose it also keeps, may disclose the weight, depending on the SUV normalisation, activity calibration, and compatible dose timing; each instance with either is reported as an indicator of a possibly disclosed body weight, in the QC pack and as counts in the release report (D-015).
 An end-to-end test runs `basic` and `basic-clean-descriptors` over that collection and searches every published file for its markers, independently of the gate.
-Remaining: `public-release`'s readiness, which needs its statistical gate, its pixel and face review, and its attestation to pass together (M4).
+A `public-release` run's release report says whether it is ready for release, which it is only where the statistical gate, the pixel and face review gate, and the attestation gate all pass, each decided from the run's own QC pack against an earlier run's attested pack of the same files and policy, and each failing on its own with a reason code (D-017).
+The pixel and face review gate needs every released instance at high risk to have been reviewed as one, and every released instance that can show a face to have a verdict that it shows none, on the pixel data and contours that the run writes, or a passing assessment that covers facial reconstruction; the attestation gate needs the releaser's acceptance of the residual risk, and every released instance and every string that it retains to have been in the reviewed pack (D-017).
+Collection descriptions and supporting data outside the DICOM files are not written by the engine, and whoever releases the data reviews them.
 Pixel data are assessed for risk, not cleaned (D-015).
 '''
 
@@ -855,13 +857,15 @@ Preserve as much information about image acquisition as possible, including mach
 '''
 status = "partial"
 milestone = "M4"
-decisions = ["D-007", "D-017", "D-022", "D-034", "D-036", "D-042"]
+decisions = ["D-007", "D-017", "D-022", "D-034", "D-036", "D-042", "D-053"]
 implementation = [
   "_dicom/deidentify/ae_titles.py",
   "_dicom/deidentify/element_rules.py",
   "_dicom/deidentify/instance_transform.py",
   "_dicom/deidentify/option_kept.py",
   "_dicom/deidentify/policy.py",
+  "_dicom/deidentify/readiness.py",
+  "_dicom/deidentify/risk_assessment.py",
   "_dicom/deidentify/technique_descriptors.py",
 ]
 note = '''
@@ -870,7 +874,8 @@ Under Clean Descriptors, a technique descriptor such as Protocol Name or Series 
 The Retain Device Identity Option keeps machine identity, such as Station Name and Device Serial Number, as Table E.1-1 gives it, replacing each AE title by a keyed token (D-034), and a removed AE title or private value found in a text attribute that the Option keeps, such as an AE title equal to the Station Name, does not send the file to review (D-042).
 `tps-import` retains device identity, and modifies the device dates and times that the Option would keep by their role under Modified Dates (D-007).
 `public-release` omits it by fixed policy, because device serial numbers and machine names can identify an institution and, with dates, individual treatments, not after an assessment showing that they raise the residual risk above the threshold.
-Remaining: the residual risk assessment that would justify omitting device identity under `public-release` (M4, with D-017's statistical gate).
+A `public-release` run is ready for release only where its statistical gate passes with a recorded external assessment of the collection, and the record cannot be made without a statement of whether keeping machine identity, such as Station Name and Device Serial Number, would raise the risk above the threshold (D-017, D-053); the engine records that statement and does not interpret it, so whoever reviews the record checks that it justifies the omission.
+Remaining: acting on an assessment that finds keeping machine identity within the threshold, by keeping it under `public-release`, which the preset does not yet do (M4).
 '''
 
 [[requirement]]
@@ -880,10 +885,11 @@ Remove or replace the identities of other persons, departments, institutions, an
 '''
 status = "partial"
 milestone = "M4"
-decisions = ["D-001", "D-022"]
+decisions = ["D-001", "D-016", "D-017", "D-022"]
 implementation = [
   "_dicom/deidentify/element_rules.py",
   "_dicom/deidentify/instance_transform.py",
+  "_dicom/deidentify/readiness.py",
   "_dicom/deidentify/supplementary_actions.py",
 ]
 note = '''
@@ -899,7 +905,8 @@ Manufacturer, Manufacturer's Model Name, and Software Versions are kept because 
 The run's instance transform applies these actions to each instance it de-identifies.
 As for MIDI-BP-01, an end-to-end test of `basic` and `basic-clean-descriptors` over the synthetic collection, which plants markers in the names of other persons, institutions, departments, and stations, finds none of them in the published files; the removals of D-022's other attributes, such as Requesting Service Code Sequence, rest on the tests of the element and supplementary rules.
 The Retain Institution Identity Option is not supported.
-Remaining: a residual risk assessment of the institutional identity that the first supported release keeps without one, in an in-house device's Manufacturer and in the codes and Coding Scheme URLs of local coding schemes, which D-022 accepts and the QC pack lists among its retained strings; for the first release, whoever releases the data confirms that the residual risk is acceptable (MIDI-BP-17) (M4).
+The institutional identity that the first supported release keeps, in an in-house device's Manufacturer and in the codes and Coding Scheme URLs of local coding schemes, is assessed by whoever releases the data, as D-022 and D-016 assign it: a `public-release` run is ready for release only where the attested QC pack lists each string that the run retains in a released instance, so that the reviewer reviewed it, and the releaser confirmed in the attestation that the output's residual risk is acceptable (MIDI-BP-17); otherwise its attestation gate fails (D-017).
+Remaining: a residual risk assessment of that kept institutional identity beyond the releaser's confirmation, which MIDI asks for and the first release does not yet make (M4).
 '''
 
 [[requirement]]
@@ -945,17 +952,17 @@ id = "MIDI-BP-07"
 text = '''
 If any patient characteristic or other indirect identifier is retained, perform a collection-specific expert statistical analysis of residual risk, whether elements are kept by an allow-list or removed by a deny-list, and consider characteristics that can be derived from the pixel data.
 '''
-status = "partial"
-milestone = "M4"
+status = "implemented"
 decisions = ["D-017", "D-053"]
 implementation = [
+  "_dicom/deidentify/readiness.py",
   "_dicom/deidentify/risk_assessment.py",
 ]
 note = '''
 `tps-import` retains patient characteristics for non-clinical databases, not for public sharing, and `public-release` does not select Retain Patient Characteristics (D-038).
 `public-release` keeps other indirect identifiers, such as modified dates, coded values, and characteristics that can be derived from the pixel data.
 The record of an external statistical assessment of a collection lists its matching variables and how characteristics derivable from the pixel data were considered, with every other statement that D-017 requires, each required, and the statistical gate checks it against the run, counting distinct subjects rather than images, frames, or visits (D-053).
-Remaining: `public-release`'s readiness, which needs the statistical gate to pass (M4).
+A `public-release` run is ready for release only where that gate passes for the distinct subjects of the instances that it releases and the reviewed lists that it read; a run without a record fails it (D-017).
 '''
 
 [[requirement]]
@@ -985,13 +992,13 @@ id = "MIDI-BP-10"
 text = '''
 Assess, for every image type, the risk from burned-in text, objects bearing text, and other identifying features in the pixel data. Where the risk exceeds the threshold, scan and redact, with human review, or discard the image. Do not limit checks to a subset of image types chosen from other data elements.
 '''
-status = "partial"
-milestone = "M4"
+status = "implemented"
 decisions = ["D-015", "D-017"]
 implementation = [
   "_dicom/deidentify/instance_transform.py",
   "_dicom/deidentify/pixel_risk.py",
   "_dicom/deidentify/qc_pack.py",
+  "_dicom/deidentify/readiness.py",
   "_dicom/deidentify/release_report.py",
   "_dicom/deidentify/run_qc.py",
   "_dicom/deidentify/run_report.py",
@@ -1001,7 +1008,7 @@ Every instance's attributes are read for indicators of burned-in text, whatever 
 The indicators are read from attributes, never from the pixel data (D-015), which only the Clean Pixel Data Option changes (D-037).
 Each run gives the indicators of each source it can decode to the confidential QC pack, which lists the instances at high risk and previews those released or held.
 The release report counts the released and held instances with each risk and each indicator, naming none, as the QC pack lists them (D-015).
-Remaining: pixel review before `public-release` (M4).
+A `public-release` run is ready for release only where each instance at high risk that it releases was listed as high-risk in an attested QC pack of an earlier run of the same files and policy, whose attestation covers every high-risk instance; otherwise its pixel and face review gate fails. A reviewer who finds burned-in text rejects the pack, and the run is then not ready (D-017).
 '''
 
 [[requirement]]
@@ -1009,13 +1016,13 @@ id = "MIDI-BP-11"
 text = '''
 Remove or replace all unstructured text, whether in data elements, pixel data, or overlays, or, where it is needed for utility, scan it for identifiers and sensitive information, manually or automatically with human review.
 '''
-status = "partial"
-milestone = "M4"
+status = "implemented"
 decisions = ["D-009", "D-017", "D-022", "D-027"]
 implementation = [
   "_dicom/deidentify/descriptor_cleaning.py",
   "_dicom/deidentify/instance_transform.py",
   "_dicom/deidentify/pixel_risk.py",
+  "_dicom/deidentify/readiness.py",
   "_dicom/deidentify/release_gate.py",
   "_dicom/deidentify/residuals.py",
   "_dicom/deidentify/reviewed_roi_names.py",
@@ -1029,7 +1036,7 @@ Under Clean Descriptors, a ROI name is written in the spelling of a TG-263 vocab
 The run's instance transform applies the actions to each data set, and descriptor cleaning holds for review a ROI name whose decision would echo an identifier.
 A reviewer's decision on a ROI name applies to every ROI Name of that spelling, in the collection and in later runs, and each run searches every written file for the source values that had to be removed or replaced (MIDI-BP-01).
 Indicators of burned-in text are reported in the confidential QC pack (D-015); only under the Clean Pixel Data Option does the engine black out text, and it then holds the instance for review (D-037).
-Remaining: human review of the instances whose indicators show burned-in text, before `public-release` (M4, with MIDI-BP-10).
+A `public-release` run is ready for release only where an attested review of an earlier run of the same files and policy reviewed each instance at high risk that it releases, as MIDI-BP-10 says, and each string that it retains in a released instance, which the attestation's coverage confirms; otherwise its pixel and face review gate or its attestation gate fails (D-017).
 '''
 
 [[requirement]]
@@ -1114,11 +1121,12 @@ Quantify the re-identification risk from potentially reconstructable facial info
 '''
 status = "partial"
 milestone = "M4"
-decisions = ["D-015", "D-017"]
+decisions = ["D-015", "D-017", "D-046", "D-053"]
 implementation = [
   "_dicom/deidentify/pixel_risk.py",
   "_dicom/deidentify/head_and_neck_regions.toml",
   "_dicom/deidentify/instance_transform.py",
+  "_dicom/deidentify/readiness.py",
   "_dicom/deidentify/run_qc.py",
   "_dicom/deidentify/qc_contours.py",
   "_dicom/deidentify/qc_pack.py",
@@ -1130,7 +1138,9 @@ Recognizable Visual Features of YES, an RT Structure Set's contours of an ROI wh
 Each run lists each instance's indicators and each series' indicators, assessed over its released and held instances, in its QC pack for review.
 The QC pack renders the skin surface of each volume that it projects, and the 5% isodose surface of each RT Dose grid of two or more frames, from the front, both obliques, both profiles, and behind, on voxels of 2 mm or its own spacing however long it is, so that the reviewer sees the face that a recognition system would; a volume more than 2,000 mm long or 1,000 mm across is not rendered, and is held beyond its cine strip. Every preview draws padding as one black, or as no patient, so an instance with a frame whose padding holds more than one stored value is held. A dose render that shows no face is inconclusive, since lower doses can keep an outline that the 5% isodose misses.
 It renders each RT Structure Set's contours as written from the same directions, each frame's ROIs united and each ROI alone, drawn with the surface of a volume in their frame, so that the reviewer sees a face that an outline traces (D-017).
-Remaining: the `public-release` assessment and face review (M4).
+A `public-release` run is ready for release only where every instance that it releases that can show a face, one with pixel data or contours, is in a series that the reviewer marked as showing no face, on the pixel data and contours that the run writes, or where its statistical gate passes with an external assessment that covered faces reconstructed from the images, which D-017 accepts as the risk assessment reference that unblocks facial information; otherwise its pixel and face review gate fails (D-017, D-053).
+A reviewer's verdict that the renders show no face stands in for a quantified facial risk, as D-017 decides; the engine computes no facial re-identification probability itself.
+Remaining: a collection-specific quantified analysis of the facial re-identification risk wherever a series can show a face, which a reviewer's verdict does not supply (M4).
 '''
 
 [[requirement]]

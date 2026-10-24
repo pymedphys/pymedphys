@@ -101,6 +101,7 @@ _SECTIONS = (
     "qc_review",
     "face_review",
     "redaction_review",
+    "readiness",
     "released",
     "sequestered",
     "held_for_review",
@@ -113,6 +114,13 @@ _SECTIONS = (
     "structural_checks",
 )
 _NONE = "None."
+# The readiness section's gates, as a reader sees them, in the order of the
+# document.
+_GATES = {
+    "statistical": "Statistical gate",
+    "pixel_and_face": "Pixel and face review gate",
+    "attestation": "Attestation gate",
+}
 
 
 class ReleaseReportMarkdownError(ValueError):
@@ -168,6 +176,7 @@ def to_markdown(report: str) -> str:
         *_qc_review(document["qc_review"]),
         *_face_review(document["face_review"]),
         *_redaction_review(document["redaction_review"]),
+        *_readiness(document["readiness"]),
         *_released(document["released"]),
         *_sequestered(document["sequestered"]),
         *_held(document["held_for_review"]),
@@ -391,6 +400,45 @@ def _redaction_review(section: object) -> list[Block]:
             + _code("redaction_review reference", section["reference"])
             + "."
         ],
+    ]
+
+
+def _readiness(section: object) -> list[Block]:
+    if section is None:
+        return []
+    section = _fields("readiness", section, ("ready", "review", "assessment", *_GATES))
+    return [
+        ["## Readiness for public release"],
+        [
+            "Under the `public-release` preset, the run is ready for release "
+            "only where three gates pass: the statistical gate, from the risk "
+            "assessment recorded beside the earlier run's confidential QC pack "
+            "that the run was given, and the pixel and face review and human "
+            "QC attestation gates, from that pack's attestation. Passing one "
+            "passes no other, and a gate that failed gives the first reason "
+            "that held."
+        ],
+        _table(
+            ("Field", "Value"),
+            [
+                ("Ready", _boolean("readiness ready", section["ready"])),
+                (
+                    "Reviewed QC pack",
+                    _optional("readiness review", section["review"]),
+                ),
+                (
+                    "Risk assessment",
+                    _optional("readiness assessment", section["assessment"]),
+                ),
+                *(
+                    (
+                        label,
+                        _optional(f"readiness {name}", section[name], "passed"),
+                    )
+                    for name, label in _GATES.items()
+                ),
+            ],
+        ),
     ]
 
 
