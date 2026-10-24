@@ -796,7 +796,8 @@ def read_values(
     VR, or a private creator that it reads as LO, because its own VR is not
     written, is read from its Value Field, which the rule's check, or the
     creator's match, has found to be printable ISO 646
-    (:mod:`~pymedphys._dicom.deidentify.retained_private`).
+    (:mod:`~pymedphys._dicom.deidentify.retained_private`), and gives the
+    values that the same Value Field written with that VR gives.
 
     Returns
     -------
@@ -844,4 +845,8 @@ def _private_string(
         return None
     assert element.vr is not None  # _read_by_private_rule checks it
     values = tuple(text.split("\\")) if text else ()
+    if element.vr in ("DS", "IS"):
+        # Spaces before or after a number string's value are not significant
+        # (PS3.5 Table 6.2-1), and are not read where its VR is written.
+        values = tuple(value.strip(" ") for value in values)
     return ElementValue(element.path, element.vr, values)
