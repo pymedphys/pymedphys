@@ -294,6 +294,7 @@ def qc_pack_of(
     material: Mapping[int, Sequence[object]],
     reference: str | None = None,
     digests: Mapping[int, bytes] | None = None,
+    reviewed_lists: qc_pack.ListsDigest | None = None,
 ) -> QcPack:
     """Return the QC pack of a run.
 
@@ -312,6 +313,10 @@ def qc_pack_of(
     digests : mapping of int to bytes, optional
         The SHA-256 of each source file that the run's first pass read, by
         run position, which the pack records with each instance.
+    reviewed_lists : ~pymedphys._dicom.deidentify.qc_pack.ListsDigest, optional
+        The salted digest of the reviewed lists that the run applied, from
+        :func:`~pymedphys._dicom.deidentify.risk_assessment.bind_lists`;
+        none by default.
 
     Notes
     -----
@@ -486,6 +491,7 @@ def qc_pack_of(
             qc_pack.SourceGapEntry(position, tuple(found))
             for position, found in sorted(gaps.items())
         ),
+        reviewed_lists=reviewed_lists,
     )
 
 

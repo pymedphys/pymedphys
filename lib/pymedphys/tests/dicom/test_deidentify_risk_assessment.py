@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# pylint: disable = too-many-lines
+
 """The record of an external statistical risk assessment, and the statistical gate."""
 
 import dataclasses
@@ -35,6 +37,7 @@ from pymedphys._dicom.deidentify.qc_attestation import AttestationRecord, Outcom
 from pymedphys._dicom.deidentify.qc_pack import (
     Disposition,
     InstanceEntry,
+    ListsDigest,
     QcPack,
     QcPackError,
 )
@@ -121,14 +124,28 @@ def _descriptors(*decisions):
     return descriptors
 
 
-def _write_pack(tmp_path, name, instances=None):
+# The lists that the runs below applied, unless a test says otherwise: none,
+# as without Clean Descriptors.
+_NO_LISTS = object()
+
+
+def _write_pack(tmp_path, name, instances=None, lists=_NO_LISTS):
     release = tmp_path / "release"
     release.mkdir(exist_ok=True)
     if instances is None:
         instances = _instances()
+    if lists is _NO_LISTS:
+        lists = risk_assessment.bind_lists(None, None)
     return qc_store.write_qc_pack(
-        QcPack(PACK, instances), tmp_path / name, release_directory=release
+        QcPack(PACK, instances, reviewed_lists=lists),
+        tmp_path / name,
+        release_directory=release,
     ).parent
+
+
+def _pack_lists(pack_directory):
+    document = json.loads((pack_directory / qc_store.PACK_FILE).read_text("ascii"))
+    return document["reviewed_lists"]
 
 
 def _instances():
@@ -164,14 +181,8 @@ def fixture_report_file(tmp_path):
     return path
 
 
-def _record(pack_directory, report_file, assessment, **lists):
-    return risk_assessment.record_assessment(
-        pack_directory,
-        report_file,
-        assessment,
-        reviewed_names=lists.get("reviewed_names"),
-        reviewed_descriptors=lists.get("reviewed_descriptors"),
-    )
+def _record(pack_directory, report_file, assessment):
+    return risk_assessment.record_assessment(pack_directory, report_file, assessment)
 
 
 def _gate(record, **changes):
@@ -234,6 +245,11 @@ def test_the_record_is_written_beside_the_pack_and_read_back(pack, report_file):
     }
     assert record.reference.startswith("R-") and len(record.reference) == 34
     assert record.pack_digest == digest
+    # The lists' digest is the one that the run recorded in its pack.
+    assert _pack_lists(pack) == {
+        "salt": record.lists_salt,
+        "sha256": record.lists_sha256,
+    }
     assert risk_assessment.read_assessment(pack) == record
     if os.name == "posix":
         assert stat.S_IMODE(written.stat().st_mode) == 0o600
@@ -245,6 +261,7 @@ def test_each_record_has_a_new_random_reference(tmp_path, report_file):
         for name in ("one", "two")
     ]
     assert len({record.reference for record in records}) == 2
+    # Each run salted its lists' digest anew.
     assert len({record.lists_salt for record in records}) == 2
     assert len({record.lists_sha256 for record in records}) == 2
 
@@ -531,17 +548,19 @@ def _report_file(tmp_path, **fields):
         (_names(("Parotid L", ReviewedName(Review.KEEP))), None),
     ],
 )
-def test_the_gate_fails_for_other_lists(pack, tmp_path, names, descriptors):
+def test_the_gate_fails_for_other_lists(tmp_path, names, descriptors):
+    pack = _write_pack(
+        tmp_path,
+        "listed",
+        lists=risk_assessment.bind_lists(
+            _names(("Parotid L", ReviewedName(Review.KEEP))),
+            _descriptors(("AX T1", ReviewedDescriptor(Review.KEEP))),
+        ),
+    )
     listed = _report_file(
         tmp_path, reviewed_roi_names="d" * 64, reviewed_descriptors="e" * 64
     )
-    _record(
-        pack,
-        listed,
-        _assessment(),
-        reviewed_names=_names(("Parotid L", ReviewedName(Review.KEEP))),
-        reviewed_descriptors=_descriptors(("AX T1", ReviewedDescriptor(Review.KEEP))),
-    )
+    _record(pack, listed, _assessment())
     record = risk_assessment.read_assessment(pack)
     # The same lists, read again by another run under another key, pass.
     same = _gate(
@@ -555,25 +574,63 @@ def test_the_gate_fails_for_other_lists(pack, tmp_path, names, descriptors):
 
 
 @pytest.mark.deid_requirement("MIDI-BP-01")
+def test_the_record_binds_the_lists_that_the_run_applied(tmp_path):
+    applied = _names(("Parotid L", ReviewedName(Review.KEEP)))
+    pack = _write_pack(
+        tmp_path, "listed", lists=risk_assessment.bind_lists(applied, None)
+    )
+    record = _record(
+        pack, _report_file(tmp_path, reviewed_roi_names="d" * 64), _assessment()
+    )
+    # Nothing that whoever records the assessment gives can bind other lists:
+    # the record takes the digest that the run recorded.
+    assert record.lists_sha256 == risk_assessment.lists_digest(
+        record.lists_salt, applied, None
+    )
+    edited = _names(("Parotid L", ReviewedName(Review.EMPTY)))
+    assert record.lists_sha256 != risk_assessment.lists_digest(
+        record.lists_salt, edited, None
+    )
+
+
+@pytest.mark.deid_requirement("MIDI-BP-01")
+def test_a_pack_that_records_no_lists_is_refused(tmp_path, report_file):
+    pack = _write_pack(tmp_path, "unlisted", lists=None)
+    assert _pack_lists(pack) is None
+    with pytest.raises(RiskAssessmentError, match="reviewed lists"):
+        _record(pack, report_file, _assessment())
+    assert not (pack / risk_assessment.ASSESSMENT_FILE).exists()
+
+
 @pytest.mark.parametrize(
-    ("recorded", "given"),
+    "lists",
     [
-        ({}, {"reviewed_names": ReviewedNames.empty()}),
-        ({}, {"reviewed_descriptors": ReviewedDescriptors.empty()}),
-        ({"reviewed_roi_names": "d" * 64}, {}),
-        ({"reviewed_descriptors": "e" * 64}, {}),
-        (
-            {"reviewed_roi_names": "d" * 64},
-            {"reviewed_descriptors": ReviewedDescriptors.empty()},
-        ),
+        [],
+        {"salt": SALT},
+        {"salt": SALT, "sha256": "d" * 64, "extra": 1},
+        {"salt": SALT.upper(), "sha256": "d" * 64},
+        {"salt": SALT, "sha256": None},
     ],
 )
-def test_lists_are_given_exactly_where_the_report_records_them(
-    pack, tmp_path, recorded, given
-):
-    with pytest.raises(RiskAssessmentError, match="exactly where"):
-        _record(pack, _report_file(tmp_path, **recorded), _assessment(), **given)
-    assert not (pack / risk_assessment.ASSESSMENT_FILE).exists()
+def test_a_pack_whose_lists_are_not_of_its_format_is_refused(pack, report_file, lists):
+    file = pack / qc_store.PACK_FILE
+    document = json.loads(file.read_text("ascii"))
+    document["reviewed_lists"] = lists
+    os.chmod(file, 0o600)
+    file.write_text(json.dumps(document), "ascii")
+    with pytest.raises(QcPackError, match="not of its format"):
+        _record(pack, report_file, _assessment())
+
+
+def test_the_lists_are_bound_under_a_new_salt():
+    names = _names(("Parotid L", ReviewedName(Review.KEEP)))
+    first, second = (risk_assessment.bind_lists(names, None) for _ in range(2))
+    assert isinstance(first, ListsDigest)
+    assert first.salt != second.salt and first.sha256 != second.sha256
+    assert first.sha256 == risk_assessment.lists_digest(first.salt, names, None)
+    assert repr(first) == "ListsDigest()"
+    with pytest.raises(TypeError):
+        risk_assessment.bind_lists(None, names)
 
 
 def test_the_lists_digest_is_salted_and_tells_each_list_apart():
@@ -900,11 +957,41 @@ def test_a_record_naming_a_member_twice_is_refused(pack, report_file):
         risk_assessment.read_assessment(pack)
 
 
-def test_an_edited_salt_fails_the_gate_for_other_lists(pack, report_file):
+@pytest.mark.parametrize(
+    "change",
+    [
+        {"lists_salt": "0" * 64},
+        {"lists_sha256": "0" * 64},
+        # Both, consistently, for lists other than those the run applied.
+        {
+            "lists_salt": SALT,
+            "lists_sha256": risk_assessment.lists_digest(
+                SALT, ReviewedNames.empty(), None
+            ),
+        },
+    ],
+)
+def test_a_record_whose_lists_were_edited_is_refused(pack, report_file, change):
     _record(pack, report_file, _assessment())
-    _rewrite(pack, lambda document: document.update(lists_salt="0" * 64))
-    gate = _gate(risk_assessment.read_assessment(pack))
-    assert gate.reason is StatisticalReason.OTHER_LISTS
+    _rewrite(pack, lambda document: document.update(change))
+    with pytest.raises(RiskAssessmentError, match="other reviewed lists"):
+        risk_assessment.read_assessment(pack)
+
+
+def test_a_record_of_a_pack_that_records_no_lists_is_refused(pack, report_file):
+    _record(pack, report_file, _assessment())
+    file = pack / qc_store.PACK_FILE
+    document = json.loads(file.read_text("ascii"))
+    document["reviewed_lists"] = None
+    os.chmod(file, 0o600)
+    file.write_text(json.dumps(document), "ascii")
+    with pytest.raises(RiskAssessmentError, match="changed"):
+        risk_assessment.read_assessment(pack)
+    # Nor does a record edited to match the changed pack bind its lists.
+    digest = hashlib.sha256(file.read_bytes()).hexdigest()
+    _rewrite(pack, lambda record: record.update(pack_digest=digest))
+    with pytest.raises(RiskAssessmentError, match="other reviewed lists"):
+        risk_assessment.read_assessment(pack)
 
 
 def test_errors_quote_no_statement():

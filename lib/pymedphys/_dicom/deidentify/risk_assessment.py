@@ -47,15 +47,17 @@ the collection, by :func:`collection_digest` of the SHA-256 of each source
 file that the pack records; to the policy, by :func:`policy_digest` of the
 run's release report; and to the reviewed ROI names and descriptors lists
 that descriptor cleaning applied, by :func:`lists_digest` under a random
-salt that the record keeps. A later run of the same files under the same
-policy and lists, given the pack, finds the same digests, and any change to
-any of them requires a new assessment. The policy digest covers the
-report's policy and every input of the method digest except the keyed
-digests of the reviewed lists, which differ under each run's key; the
-lists' own digest binds them instead. The engine's files and the text
-finder's runtime are inputs of the method digest, so a new version of
-PyMedPhys, or of a library that the text finder names, needs a new
-assessment too.
+salt, both of which the run recorded in its pack (:func:`bind_lists`) and
+the record copies, so that the lists bound are those the run applied, and
+never lists that whoever records the assessment supplies. A later run of
+the same files under the same policy and lists, given the pack, finds the
+same digests, and any change to any of them requires a new assessment. The
+policy digest covers the report's policy and every input of the method
+digest except the keyed digests of the reviewed lists, which differ under
+each run's key; the lists' own digest binds them instead. The engine's
+files and the text finder's runtime are inputs of the method digest, so a
+new version of PyMedPhys, or of a library that the text finder names, needs
+a new assessment too.
 
 :func:`statistical_gate` decides the gate for a run from a record, or from
 none, as a reason code and no value: it fails without a record, for another
@@ -91,7 +93,7 @@ from pathlib import Path
 
 from . import qc_store, release_report
 from .qc_attestation import _pack_bytes, _read, _reference_of
-from .qc_pack import Disposition, QcPackError
+from .qc_pack import Disposition, ListsDigest, QcPackError
 from .reviewed_descriptors import ReviewedDescriptors
 from .reviewed_roi_names import ReviewedNames
 
@@ -386,10 +388,11 @@ class AssessmentRecord:
     policy_sha256 : str
         :func:`policy_digest` of the release report of the pack's run.
     lists_salt : str
-        The random salt of the lists' digest, 64 hex digits.
+        The random salt of the lists' digest, 64 hex digits, as the pack
+        records it.
     lists_sha256 : str
         :func:`lists_digest` of the reviewed lists that the pack's run
-        applied, under ``lists_salt``.
+        applied, under ``lists_salt``, as the pack records it.
     assessment : Assessment
     """
 
@@ -560,6 +563,37 @@ def new_salt() -> str:
     return secrets.token_hex(_SALT_BYTES)
 
 
+def bind_lists(
+    reviewed_names: ReviewedNames | None,
+    reviewed_descriptors: ReviewedDescriptors | None,
+) -> ListsDigest:
+    """Return the digest of a run's reviewed lists under a new salt, for its pack.
+
+    A run records it in its QC pack, from which :func:`record_assessment`
+    takes it, so that a record binds the lists that the run applied.
+
+    Parameters
+    ----------
+    reviewed_names : ReviewedNames or None
+    reviewed_descriptors : ReviewedDescriptors or None
+        The lists that the run's descriptor cleaning applied, as it read
+        them, or None for each that it was not given.
+
+    Raises
+    ------
+    TypeError
+        If a list is not of its type or None.
+
+    Examples
+    --------
+    >>> bound = bind_lists(None, None)
+    >>> bound.sha256 == lists_digest(bound.salt, None, None)
+    True
+    """
+    salt = new_salt()
+    return ListsDigest(salt, lists_digest(salt, reviewed_names, reviewed_descriptors))
+
+
 def lists_digest(
     salt: str,
     reviewed_names: ReviewedNames | None,
@@ -579,7 +613,8 @@ def lists_digest(
     Parameters
     ----------
     salt : str
-        64 hex digits, from :func:`new_salt` or a record's ``lists_salt``.
+        64 hex digits, from :func:`new_salt`, a pack's reviewed lists, or a
+        record's ``lists_salt``.
     reviewed_names : ReviewedNames or None
     reviewed_descriptors : ReviewedDescriptors or None
 
@@ -647,9 +682,6 @@ def record_assessment(
     pack_directory: os.PathLike | str,
     release_report_file: os.PathLike | str,
     assessment: Assessment,
-    *,
-    reviewed_names: ReviewedNames | None,
-    reviewed_descriptors: ReviewedDescriptors | None,
 ) -> AssessmentRecord:
     """Record an external risk assessment beside the QC pack of the run assessed.
 
@@ -663,28 +695,23 @@ def record_assessment(
         published, which names the pack by its reference.
     assessment : Assessment
         What the assessor states.
-    reviewed_names, reviewed_descriptors : ReviewedNames or ReviewedDescriptors or None
-        The reviewed ROI names and descriptors lists that the run's
-        descriptor cleaning applied, as their custodian holds them, or None
-        for each that the run was not given, as without Clean Descriptors.
-        They must be given by name, and have no default, so that every
-        caller states them.
 
     Returns
     -------
     AssessmentRecord
         Bound to the pack, the collection that it records, the policy that
-        the report records, and the lists, with a new reference.
+        the report records, and the reviewed lists' digest that the pack
+        records, with a new reference.
 
     Raises
     ------
     RiskAssessmentError
         If the release report is not of its format, or names another QC
-        pack; if a list is given that the report records none of, or not
-        given where it records one; if the pack records no source file, or
-        a released, duplicate, or held instance without its source file's
-        SHA-256; or if the pack already has a risk assessment, since a
-        record is never overwritten, and a change requires a new assessment.
+        pack; if the pack records no source file, or a released, duplicate,
+        or held instance without its source file's SHA-256; if it records
+        no digest of the reviewed lists that its run applied; or if the
+        pack already has a risk assessment, since a record is never
+        overwritten, and a change requires a new assessment.
     QcPackError
         If the directory holds no QC pack, the pack is not of its format, or
         the release report cannot be read.
@@ -698,24 +725,19 @@ def record_assessment(
     qc_review = report.get("qc_review")
     if not isinstance(qc_review, Mapping) or qc_review.get("reference") != reference:
         raise RiskAssessmentError("the release report names another QC pack")
-    method = report["method"] if isinstance(report.get("method"), Mapping) else {}
-    for name, given in (
-        ("reviewed_roi_names", reviewed_names),
-        ("reviewed_descriptors", reviewed_descriptors),
-    ):
-        if (method.get(name) is None) != (given is None):
-            raise RiskAssessmentError(
-                f"the {name} list is given exactly where the release report records one"
-            )
-    salt = new_salt()
+    lists = _pack_lists(data)
+    if lists is None:
+        raise RiskAssessmentError(
+            "the QC pack records no digest of the reviewed lists that its run applied"
+        )
     record = AssessmentRecord(
         reference=new_reference(),
         pack=reference,
         pack_digest=hashlib.sha256(data).hexdigest(),
         collection_sha256=_pack_collection(data),
         policy_sha256=policy_digest(report),
-        lists_salt=salt,
-        lists_sha256=lists_digest(salt, reviewed_names, reviewed_descriptors),
+        lists_salt=lists.salt,
+        lists_sha256=lists.sha256,
         assessment=assessment,
     )
     text = json.dumps(assessment_document(record), indent=2, ensure_ascii=True)
@@ -747,7 +769,8 @@ def read_assessment(pack_directory: os.PathLike | str) -> AssessmentRecord | Non
     ------
     RiskAssessmentError
         If the record is not of its format, is for another pack, or does not
-        match the pack, which has changed since it was recorded.
+        match the pack, which has changed since it was recorded, or binds
+        other reviewed lists than those that the pack records.
     QcPackError
         If the directory holds no QC pack, or the pack is not of its format.
     """
@@ -764,6 +787,15 @@ def read_assessment(pack_directory: os.PathLike | str) -> AssessmentRecord | Non
         data
     ).hexdigest() or record.collection_sha256 != _pack_collection(data):
         raise RiskAssessmentError("the QC pack changed after it was assessed")
+    lists = _pack_lists(data)
+    if (
+        lists is None
+        or record.lists_salt != lists.salt
+        or not hmac.compare_digest(record.lists_sha256, lists.sha256)
+    ):
+        raise RiskAssessmentError(
+            "the risk assessment binds other reviewed lists than the QC pack records"
+        )
     return record
 
 
@@ -849,6 +881,20 @@ def _release_report(path: os.PathLike | str) -> Mapping[str, object]:
     if not isinstance(report, dict) or report.get("format") != release_report.FORMAT:
         raise RiskAssessmentError("the release report is not of its format")
     return report
+
+
+def _pack_lists(data: bytes) -> ListsDigest | None:
+    """Return the digest of the reviewed lists that a pack records, if any."""
+    document = json.loads(data.decode("ascii"))  # _reference_of has parsed it
+    lists = document.get("reviewed_lists")
+    if lists is None:
+        return None
+    if not isinstance(lists, dict) or set(lists) != {"salt", "sha256"}:
+        raise QcPackError("the QC pack is not of its format")
+    try:
+        return ListsDigest(lists["salt"], lists["sha256"])
+    except QcPackError:
+        raise QcPackError("the QC pack is not of its format") from None
 
 
 def _pack_collection(data: bytes) -> str:

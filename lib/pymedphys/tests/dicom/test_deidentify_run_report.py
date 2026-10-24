@@ -32,6 +32,7 @@ from pymedphys._dicom.deidentify import (
     qc_pack,
     release_gate,
     release_report,
+    risk_assessment,
     run,
     run_qc,
     run_report,
@@ -46,7 +47,13 @@ from pymedphys._dicom.deidentify.instance_transform import (
 from pymedphys._dicom.deidentify.keys import DeidKey
 from pymedphys._dicom.deidentify.policy import compose_policy
 from pymedphys._dicom.deidentify.reasons import RunReason, TransformReason
-from pymedphys._dicom.deidentify.reviewed_roi_names import Outcome, RoiNameCounts
+from pymedphys._dicom.deidentify.reviewed_roi_names import (
+    Outcome,
+    Review,
+    ReviewedName,
+    ReviewedNames,
+    RoiNameCounts,
+)
 from pymedphys._dicom.deidentify.roi_names import Reason
 from pymedphys._dicom.deidentify.scope import Disposition, UnsupportedIod
 from pymedphys._dicom.deidentify.reference_graph import Finding, FindingKind
@@ -186,6 +193,30 @@ def test_the_report_lists_released_inputs_and_its_qc_pack_not_yet_attested(tmp_p
     }
 
 
+@pytest.mark.deid_requirement("MIDI-BP-01")
+@pytest.mark.pydicom
+def test_the_qc_pack_binds_the_lists_that_the_reporter_checks(tmp_path):
+    _write(tmp_path / "source", synthetic.collection()[:1])
+    names = ReviewedNames.empty()
+    names.record("Parotid L", ReviewedName(Review.KEEP))
+    reporter = ReleaseReporter(
+        compose_policy("basic"),
+        vocabulary=None,
+        reviewed_roi_names=None,
+        reviewed_lists=(names, None),
+    )
+
+    result = _run(tmp_path, Transform(), Gate(), reporter)
+
+    assert reporter.reviewed_lists == (names, None)
+    # A risk assessment of the run binds the lists that the run applied,
+    # under the salt that the run drew.
+    lists = json.loads(result.qc_pack.read_text("ascii"))["reviewed_lists"]
+    assert set(lists) == {"salt", "sha256"}
+    assert lists["sha256"] == risk_assessment.lists_digest(lists["salt"], names, None)
+    assert lists["sha256"] != risk_assessment.lists_digest(lists["salt"], None, None)
+
+
 @pytest.mark.deid_requirement("MIDI-BP-18")
 @pytest.mark.pydicom
 def test_the_report_names_each_sequestered_input_by_its_label(tmp_path):
@@ -243,6 +274,8 @@ def test_the_report_names_the_iod_of_an_input_the_release_does_not_support(tmp_p
 
 
 class _FailingReporter:
+    reviewed_lists = (None, None)
+
     def admits(self, status, reasons):  # pylint: disable = unused-argument
         return True
 
@@ -262,6 +295,8 @@ def test_a_report_that_cannot_be_written_publishes_nothing(tmp_path):
 
 
 class _UnreadableReporter:
+    reviewed_lists = (None, None)
+
     def admits(self, status, reasons):  # pylint: disable = unused-argument
         return True
 
@@ -382,10 +417,12 @@ def test_an_input_sequestered_for_its_reasons_keeps_whose_copy_it_is():
 def test_without_a_reporter_no_report_is_written(tmp_path):
     _write(tmp_path / "source", synthetic.collection()[:1])
 
-    _run(tmp_path, Transform(), Gate(), None)
+    result = _run(tmp_path, Transform(), Gate(), None)
 
     assert not os.path.lexists(tmp_path / "release" / RELEASE_REPORT)
     assert not os.path.lexists(tmp_path / "release" / CONFORMANCE_STATEMENT)
+    # Nor does its pack bind any lists, so no assessment can be recorded of it.
+    assert json.loads(result.qc_pack.read_text("ascii"))["reviewed_lists"] is None
 
 
 @pytest.mark.deid_requirement("PS3.15-E.1.3-01", "MIDI-BP-18")
@@ -409,6 +446,8 @@ def test_a_run_publishes_the_conformance_statement_of_its_policy(tmp_path):
 
 
 class _StatementlessReporter:
+    reviewed_lists = (None, None)
+
     def __init__(self):
         self._reporter = _reporter()
 
@@ -764,7 +803,15 @@ def test_no_output_name_is_the_release_report(name):
 
 @pytest.mark.parametrize(
     "module",
-    ["release_report", "qc_pack", "run_qc", "descriptor_cleaning", "run", "run_report"],
+    [
+        "release_report",
+        "qc_pack",
+        "run_qc",
+        "descriptor_cleaning",
+        "run",
+        "run_report",
+        "risk_assessment",
+    ],
 )
 def test_each_module_of_the_report_and_the_qc_pack_imports_first(module):
     # The QC pack and the release report import from each other's
