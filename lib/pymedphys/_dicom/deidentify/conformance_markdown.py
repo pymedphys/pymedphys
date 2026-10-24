@@ -846,6 +846,47 @@ def _compressed(statement: ConformanceStatement) -> list[str]:
     ]
 
 
+def _key_scope(statement: ConformanceStatement, bits: int) -> list[str]:
+    """Say how far the run's generated values agree, by its key's scope (D-004)."""
+    derived = (
+        "Replacement UIDs and patient pseudonyms are each derived from the "
+        "source as an HMAC-SHA256 under that key, in a domain of their own. "
+    )
+    same = (
+        "every occurrence of a source UID therefore gets the same replacement, "
+        "in every instance, series, study, and patient, including nested "
+        "references and the File Meta Information, and every instance of a "
+        "subject gets the same pseudonyms."
+    )
+    if not statement.project_key:
+        return [
+            f"Each run has its own {bits}-bit key, from a cryptographically "
+            "secure generator, which is discarded after the run. "
+            + derived
+            + "Within a run, "
+            + same
+            + " Across runs they are not consistent: de-identifying the same "
+            "study in two runs gives unrelated replacements, and no map from "
+            "source to replacement values is kept."
+        ]
+    return [
+        f"The run's key is a project key of {bits} bits, from a "
+        "cryptographically secure generator, which its custodian keeps, "
+        "outside the release and the QC pack, for every run of the project. "
+        + derived
+        + "In every run under the key, "
+        + same
+        + " Each subject's date offset is recorded in the custodian's subject "
+        "profiles when the subject is first exported, and read back for every "
+        "later run, so a study de-identified in a later run keeps its "
+        "intervals to the earlier ones. Releases under one key can therefore "
+        "be linked to each other by their replacement values, and anyone who "
+        "holds the key can recompute them from candidate source values, so "
+        "the key is kept as securely as a map from source to replacement "
+        "values would be; the release records only its non-secret identifier."
+    ]
+
+
 def _retained_uids(
     statement: ConformanceStatement, option: Callable[[str], str]
 ) -> list[str]:
@@ -1053,16 +1094,7 @@ def render_markdown(statement: ConformanceStatement) -> str:
         "",
         "## Referential integrity",
         "",
-        f"Each run has its own {bits}-bit key, from a cryptographically secure "
-        "generator, which is discarded after the run. Replacement UIDs "
-        "and patient pseudonyms are each derived from the source as an "
-        "HMAC-SHA256 under that key, in a domain of their own. Within a run, "
-        "every occurrence of a source UID therefore gets the same replacement, "
-        "in every instance, series, study, and patient, including nested "
-        "references and the File Meta Information, and every instance of a "
-        "subject gets the same pseudonyms. Across runs they are not "
-        "consistent: de-identifying the same study in two runs gives unrelated "
-        "replacements, and no map from source to replacement values is kept.",
+        *_key_scope(statement, bits),
         *_retained_uids(statement, option),
         "",
         "## Encrypted Attributes",

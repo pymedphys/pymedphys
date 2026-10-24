@@ -51,8 +51,9 @@ Exit statuses:
   they give ROI name or descriptor options without Clean Descriptors;
 - :data:`EXIT_NOT_RUN`, 3: the run could not start, because its preset or
   option set is not enabled, or what it cleans ROI Names or descriptors
-  with cannot be used, among other reasons, the first pass stopped it, or its QC pack
-  could not be written, and nothing was published;
+  with, or its project key or profile store, cannot be used, among other
+  reasons, the first pass stopped it, or its QC pack or profile store could
+  not be written, and nothing was published;
 - :data:`EXIT_STAGING_LEFT`, 4: the staging area could not be deleted, and
   may hold output that still identifies people, whatever else happened;
 - :data:`EXIT_INTERNAL_ERROR`, 70: anything else failed, and nothing was
@@ -67,16 +68,17 @@ import dataclasses
 import enum
 import os
 import sys
-from collections.abc import Collection, Sequence
+from collections.abc import Callable, Collection, Sequence
 from pathlib import Path
 from typing import NoReturn, TextIO
 
 from pymedphys._nomenclature import roi_list, tg263, tg263_published
 
-from . import instance_transform, policy, run, run_report
+from . import instance_transform, keys, policy, run, run_report
 from .descriptor_cleaning import CLEAN_DESCRIPTORS, DescriptorCleaning
 from .diagnostics import RedactionCounts, redacted_diagnostics
-from .keys import DeidKey
+from .keys import DeidKey, DeidKeyError, custodian_location_problem, read_key_file
+from .profiles import ProfileError, ProfileStore
 from .qc_pack import QcPackError
 from .reviewed_descriptors import ReviewedDescriptors, ReviewedDescriptorsError
 from .reviewed_roi_names import ReviewedNames, ReviewedNamesError
@@ -122,6 +124,23 @@ _DESCRIPTORS_UNUSABLE = (
     "the reviewed descriptors list could not be used; its details are not "
     "shown because they can contain file paths or descriptor values"
 )
+_PROJECT_KEY_HALF = (
+    "a project key's key file and profile store are given together, or neither"
+)
+_PROJECT_KEYS_NOT_ENABLED = (
+    "project keys are not enabled: until they are, each run has a run-scoped key"
+)
+_KEY_FILE_UNUSABLE = (
+    "the key file could not be used; its path is not shown, and nothing of the key is"
+)
+_PROFILES_UNUSABLE = (
+    "the profile store could not be used; its details are not shown because "
+    "they can contain file paths"
+)
+_PROFILES_UNSAVED = (
+    "the profile store could not be saved, so nothing was published; its "
+    "details are not shown because they can contain file paths"
+)
 
 
 def deidentify_directory(
@@ -133,6 +152,7 @@ def deidentify_directory(
     qc_destination: str | os.PathLike[str],
     reporter: run_report.Reporter | None = None,
     written_check: run.WrittenCheck | None = None,
+    before_publish: Callable[[], object] | None = None,
     stdout: TextIO | None = None,
     stderr: TextIO | None = None,
 ) -> int:
@@ -164,6 +184,11 @@ def deidentify_directory(
         :func:`~pymedphys._dicom.deidentify.run.run` takes it, such as an
         :class:`~pymedphys._dicom.deidentify.instance_transform.InstanceTransform`'s
         ``written_check``. Without one, what was written is not checked.
+    before_publish : callable, optional
+        As :func:`~pymedphys._dicom.deidentify.run.run` takes it, such as
+        :func:`profile_saver`'s, which raises a
+        :class:`~pymedphys._dicom.deidentify.profiles.ProfileError` that
+        names nothing if the store cannot be saved.
     stdout, stderr : text file, optional
         Where to print the summary, and the reason the run failed or left
         its staging area behind. By default, :data:`sys.stdout` and
@@ -189,8 +214,9 @@ def deidentify_directory(
                 qc_destination=qc_destination,
                 reporter=reporter,
                 written_check=written_check,
+                before_publish=before_publish,
             )
-        except (run.RunError, run.RunStopped, QcPackError) as error:
+        except (run.RunError, run.RunStopped, QcPackError, ProfileError) as error:
             # Each names only the caller's directories, counts, or the
             # check of the QC destination that failed.
             _print(f"error: {error}", stderr)
@@ -446,6 +472,26 @@ def build_parser(
             "Private Tag Dictionary (tcia)"
         ),
     )
+    parser.add_argument(
+        "--key-file",
+        metavar="FILE",
+        help=(
+            "a project key, written by python -m "
+            "pymedphys._dicom.deidentify.key_command, outside SOURCE, RELEASE, "
+            "and the QC pack, so that the run's generated values agree with "
+            "every other run under it; given with --profile-store, and refused "
+            "until project keys are enabled; by default, a new run-scoped key"
+        ),
+    )
+    parser.add_argument(
+        "--profile-store",
+        metavar="FILE",
+        help=(
+            "the project key's subject profiles, outside SOURCE, RELEASE, and "
+            "the QC pack, created if it does not exist and saved before the "
+            "release is published; given with --key-file"
+        ),
+    )
     return parser
 
 
@@ -460,6 +506,7 @@ def build_transform(
     options: Collection[str] | None = None,
     cleaning: DescriptorCleaning | None = None,
     safe_private_list: SafePrivateList = SafePrivateList.REVIEWED,
+    profiles: ProfileStore | None = None,
 ) -> instance_transform.InstanceTransform:
     """Return the run's transform under ``preset``, or ``options``, and ``key``.
 
@@ -480,6 +527,9 @@ def build_transform(
         Under Retain Safe Private, the list whose rules settle private
         attributes: the reviewed rules, the default, or TCIA's Private Tag
         Dictionary, which no other policy takes.
+    profiles : ProfileStore, optional
+        A project key's subject profiles, from :func:`run_key`; by default,
+        an ephemeral store, for a run-scoped key.
 
     Raises
     ------
@@ -493,7 +543,92 @@ def build_transform(
         key,
         cleaning=cleaning,
         safe_private_list=safe_private_list,
+        profiles=profiles,
     )
+
+
+def _protected(
+    source: str | os.PathLike[str],
+    release: str | os.PathLike[str],
+    qc_pack: str | os.PathLike[str],
+) -> tuple[Path, ...]:
+    """Return the directories that a custodian's file must lie outside."""
+    absolute_release = Path(release).absolute()
+    return (
+        Path(source),
+        absolute_release,
+        run.staging_path(absolute_release),
+        Path(qc_pack),
+    )
+
+
+def run_key(
+    key_file: str | os.PathLike[str] | None,
+    profile_store: str | os.PathLike[str] | None,
+    *,
+    source: str | os.PathLike[str],
+    release: str | os.PathLike[str],
+    qc_pack: str | os.PathLike[str],
+) -> tuple[DeidKey, ProfileStore | None]:
+    """Return the run's key and, for a project key, its subject profiles (D-004).
+
+    Without ``key_file`` and ``profile_store``, the key is a new run-scoped
+    one, which nothing keeps, and there is no store. A project key needs
+    both, since a later run extends earlier ones consistently only with the
+    key and the profiles of the subjects already exported. Each must lie
+    outside ``source``, ``release`` and its staging area, and ``qc_pack``,
+    and outside the PyMedPhys configuration directory; the store is created
+    if it does not exist, and must belong to the key.
+
+    Raises
+    ------
+    TransformNotBuilt
+        If only one of ``key_file`` and ``profile_store`` is given, project
+        keys are not enabled (:data:`~pymedphys._dicom.deidentify.keys.PROJECT_KEYS_ENABLED`),
+        or the key file or store cannot be used, with a message that names
+        neither file and quotes nothing of the key.
+    """
+    if key_file is None and profile_store is None:
+        return DeidKey.generate(), None
+    if key_file is None or profile_store is None:
+        raise TransformNotBuilt(_PROJECT_KEY_HALF)
+    if not keys.PROJECT_KEYS_ENABLED:
+        raise TransformNotBuilt(_PROJECT_KEYS_NOT_ENABLED)
+    protected = _protected(source, release, qc_pack)
+    given = Path(key_file).absolute()
+    places = (given.parent.resolve() / given.name, given.resolve())
+    if not places[1].is_file() or any(
+        custodian_location_problem(place, protected) for place in places
+    ):
+        raise TransformNotBuilt(_KEY_FILE_UNUSABLE)
+    try:
+        key = read_key_file(places[1])
+    except DeidKeyError:
+        raise TransformNotBuilt(_KEY_FILE_UNUSABLE) from None
+    try:
+        profiles = ProfileStore.open(key, profile_store, protected_dirs=protected)
+    except (ProfileError, OSError):
+        raise TransformNotBuilt(_PROFILES_UNUSABLE) from None
+    return key, profiles
+
+
+def profile_saver(profiles: ProfileStore | None) -> Callable[[], None] | None:
+    """Return what saves a project key's profiles before a run publishes.
+
+    For :func:`~pymedphys._dicom.deidentify.run.run`'s ``before_publish``,
+    so that a published release always has its subjects' profiles saved
+    (D-004). None for no store, or one kept for the run only.
+    """
+    if profiles is None or not profiles.persistent:
+        return None
+
+    def save() -> None:
+        try:
+            profiles.save()
+        except (ProfileError, OSError):
+            raise ProfileError(_PROFILES_UNSAVED) from None
+
+    return save
 
 
 def _descriptor_cleaning(  # pylint: disable = too-many-arguments
@@ -535,13 +670,7 @@ def _descriptor_cleaning(  # pylint: disable = too-many-arguments
         )
     except (tg263.TG263Error, OSError):
         raise TransformNotBuilt(_TG263_UNLOADED) from None
-    absolute_release = Path(release).absolute()
-    protected = (
-        Path(source),
-        absolute_release,
-        run.staging_path(absolute_release),
-        Path(qc_pack),
-    )
+    protected = _protected(source, release, qc_pack)
     if reviewed_names is None:
         reviewed = ReviewedNames.empty()
     else:
@@ -591,6 +720,7 @@ def transform_for(  # pylint: disable = too-many-arguments
     roi_list_path: str | os.PathLike[str] | None = None,
     reviewed_descriptors: str | os.PathLike[str] | None = None,
     safe_private_list: SafePrivateList = SafePrivateList.REVIEWED,
+    profiles: ProfileStore | None = None,
 ) -> instance_transform.InstanceTransform:
     """Return :func:`build_transform`'s transform for a run's options.
 
@@ -608,7 +738,9 @@ def transform_for(  # pylint: disable = too-many-arguments
     bundled technique vocabulary (D-036). Under any other policy, these
     options are not read. Under Retain Safe Private, ``safe_private_list``
     chooses the list whose rules settle private attributes, and no other
-    policy takes TCIA's, which is refused before anything is loaded.
+    policy takes TCIA's, which is refused before anything is loaded. A
+    project key's subject profiles, from :func:`run_key`, are given as
+    ``profiles``; by default, the store is ephemeral.
 
     Raises
     ------
@@ -651,6 +783,7 @@ def transform_for(  # pylint: disable = too-many-arguments
             options=None if options is None else selected.options,
             cleaning=cleaning,
             safe_private_list=safe_private_list,
+            profiles=profiles,
         )
     except policy.PolicyError as error:
         raise TransformNotBuilt(str(error)) from None
@@ -673,7 +806,7 @@ def roi_name_options_apply(
 
 
 def _built(
-    arguments: argparse.Namespace, key: DeidKey
+    arguments: argparse.Namespace, key: DeidKey, profiles: ProfileStore | None
 ) -> instance_transform.InstanceTransform:
     """Return :func:`transform_for`'s transform for the parsed options."""
     return transform_for(
@@ -689,6 +822,7 @@ def _built(
         roi_list_path=arguments.roi_list,
         reviewed_descriptors=arguments.reviewed_descriptors,
         safe_private_list=SafePrivateList(arguments.safe_private_list),
+        profiles=profiles,
     )
 
 
@@ -703,8 +837,11 @@ def main(
     """Parse the command line's arguments, and de-identify as they say.
 
     Each run has a new key, which nothing keeps, as M6's run-scoped key
-    requires; the transform is :func:`build_transform`'s for it, and the
-    release report is that transform's.
+    requires, unless ``--key-file`` and ``--profile-store`` give a project
+    key and its subject profiles, which :func:`run_key` refuses until
+    project keys are enabled; the transform is :func:`build_transform`'s for
+    the key, and the release report is that transform's. A project key's
+    profiles are saved before the release is published.
 
     Parameters
     ----------
@@ -745,16 +882,24 @@ def main(
     ):
         _print(_ROI_NAME_OPTIONS, error_stream)
         return EXIT_USAGE
-    reporter = written_check = None
+    reporter = written_check = before_publish = None
     if transform is None:
         try:
             with redacted_diagnostics():
-                built = _built(arguments, DeidKey.generate())
+                key, profiles = run_key(
+                    arguments.key_file,
+                    arguments.profile_store,
+                    source=arguments.source,
+                    release=arguments.release,
+                    qc_pack=arguments.qc_pack,
+                )
+                built = _built(arguments, key, profiles)
         except TransformNotBuilt as error:
             _print(f"error: {error}", error_stream)
             return EXIT_NOT_RUN
         transform, reporter = built, built.reporter
         written_check = built.written_check
+        before_publish = profile_saver(profiles)
     return deidentify_directory(
         arguments.source,
         arguments.release,
@@ -763,6 +908,7 @@ def main(
         qc_destination=arguments.qc_pack,
         reporter=reporter,
         written_check=written_check,
+        before_publish=before_publish,
         stdout=stdout,
         stderr=stderr,
     )
