@@ -89,7 +89,12 @@ from pymedphys._nomenclature import roi_list, tg263
 
 from .edits import Edit, EditKind, InstanceEdits
 from .file_layout import ElementPath
-from .policy import Policy, compose_custom_policy, compose_policy
+from .policy import (
+    Policy,
+    compose_custom_policy,
+    compose_policy,
+    compose_preset_without,
+)
 from .qc_pack import RoiNameOutcome
 from .reasons import DescriptorReason, HeldRoiName
 from .retained_private import creator_of, is_private, is_private_creator
@@ -267,14 +272,16 @@ class DescriptorsRefused(Exception):
 def fallback_policy(policy: Policy) -> Policy:
     """Return the policy without Clean Descriptors, whose actions apply instead.
 
-    Raises
-    ------
-    PolicyError
-        If the other options cannot be composed into a policy, as for
-        ``tps-import``, whose conflicts only that preset resolves.
+    A preset's other options are composed as the preset composes them
+    (:func:`~.policy.compose_preset_without`), so under ``tps-import`` the
+    device dates and times that Retain Device Identity keeps and Modified
+    Dates modifies are modified, as they are under the preset; a custom
+    option set's are composed as a custom option set.
     """
     if policy.preset == "basic-clean-descriptors":
         return compose_policy("basic")
+    if policy.preset is not None:
+        return compose_preset_without(policy.preset, CLEAN_DESCRIPTORS)
     return compose_custom_policy(
         option for option in policy.options if option != CLEAN_DESCRIPTORS
     )

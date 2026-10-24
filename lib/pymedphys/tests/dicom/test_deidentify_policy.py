@@ -530,6 +530,72 @@ def test_only_the_tps_import_preset_resolves_its_conflicts(monkeypatch):
     assert len(policy.compose_policy("tps-import").resolved) == 11
 
 
+def test_tps_import_without_clean_descriptors_resolves_as_the_preset_does():
+    tps = policy.compose_policy("tps-import")
+    without = policy.compose_preset_without("tps-import", CLEAN_DESCRIPTORS)
+
+    assert without.preset is None
+    assert without.options == (DEVICE_IDENTITY, PATIENT_CHARACTERISTICS, MODIFIED_DATES)
+    assert without.resolved == tps.resolved
+    assert not without.claims_conformance
+    # Every row that Clean Descriptors gives no action keeps the preset's.
+    for row in _rows():
+        if CLEAN_DESCRIPTORS not in row.options:
+            assert without.actions[row.tag] == tps.actions[row.tag], row.tag
+    # The same options as a custom option set are refused.
+    with pytest.raises(policy.PolicyError, match="11 attributes"):
+        policy.compose_custom_policy(without.options)
+
+
+def test_a_preset_without_conflicts_without_an_option_is_its_custom_set():
+    others = (SAFE_PRIVATE, MODIFIED_DATES)
+    without = policy.compose_preset_without("public-release", CLEAN_DESCRIPTORS)
+    custom = policy.compose_custom_policy(others)
+
+    assert (without.preset, without.options, without.resolved) == (None, others, ())
+    assert dict(without.actions) == dict(custom.actions)
+    assert dict(without.supplementary_actions) == dict(custom.supplementary_actions)
+
+
+def test_a_preset_without_an_option_is_never_enabled(monkeypatch):
+    monkeypatch.setattr(policy, "ENABLED_PRESETS", frozenset(policy.PRESETS))
+    monkeypatch.setattr(policy, "ENABLED_OPTIONS", frozenset(policy.ENGINE_OPTIONS))
+
+    for preset in ("tps-import", "public-release"):
+        assert policy.compose_policy(preset).enabled
+        assert not policy.compose_preset_without(preset, CLEAN_DESCRIPTORS).enabled
+    # A custom option set of the same options would be.
+    assert policy.compose_custom_policy((SAFE_PRIVATE, MODIFIED_DATES)).enabled
+
+
+def test_a_preset_without_an_option_still_rejects_another_conflict():
+    # Two other options conflicting on a subject event.
+    table = _altered("(0008,0020)", PATIENT_CHARACTERISTICS, "K")
+
+    with pytest.raises(policy.PolicyError, match="no precedence") as raised:
+        policy.compose_preset_without("tps-import", CLEAN_DESCRIPTORS, table=table)
+
+    assert TAG.findall(str(raised.value)) == ["(0008,0020)"]
+    assert "only the tps-import preset" not in str(raised.value)
+
+
+@pytest.mark.parametrize(
+    "preset, option, error, match",
+    [
+        ("tps-imports", CLEAN_DESCRIPTORS, policy.PolicyError, "unknown preset"),
+        ("basic", CLEAN_DESCRIPTORS, policy.PolicyError, "does not select"),
+        ("tps-import", SAFE_PRIVATE, policy.PolicyError, "does not select"),
+        ("tps-import", ("clean_descriptors",), TypeError, "names of a preset"),
+        (None, CLEAN_DESCRIPTORS, TypeError, "names of a preset"),
+    ],
+)
+def test_a_preset_without_an_option_it_does_not_select_is_refused(
+    preset, option, error, match
+):
+    with pytest.raises(error, match=match):
+        policy.compose_preset_without(preset, option)
+
+
 @pytest.mark.deid_requirement("PS3.15-E.1.1-02")
 @pytest.mark.parametrize(
     "preset, tag, option, action",
