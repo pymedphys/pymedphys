@@ -240,6 +240,7 @@ def test_the_document_gives_each_frames_boxes():
                 {"frame": 0, "boxes": [[1, 1, 5, 6]]},
                 {"frame": 2, "boxes": [[0, 0, 1, 2], [1, 1, 5, 6]]},
             ],
+            "decoded_sha256": None,
         }
     ]
     assert "redactions=1" in repr(pack)
@@ -509,7 +510,7 @@ def test_a_runs_pack_lists_each_cleaned_instance_and_previews_its_frames(tmp_pat
         run.Status.RELEASED,
     ]
     pack = json.loads((tmp_path / "qc" / "qc-pack.json").read_text(encoding="ascii"))
-    assert pack["format"] == "pymedphys-deid-qc-pack/14"
+    assert pack["format"] == "pymedphys-deid-qc-pack/15"
     assert pack["redactions"] == [
         {
             "position": 0,
@@ -518,6 +519,7 @@ def test_a_runs_pack_lists_each_cleaned_instance_and_previews_its_frames(tmp_pat
             "rows": 6,
             "columns": 8,
             "regions": [{"frame": 1, "boxes": [[1, 1, 5, 6]]}],
+            "decoded_sha256": None,
         }
     ]
     redactions = [entry for entry in pack["previews"] if entry["kind"] == "redaction"]

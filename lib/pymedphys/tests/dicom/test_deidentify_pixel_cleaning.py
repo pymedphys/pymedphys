@@ -14,6 +14,8 @@
 
 """Clean Pixel Data's blackout of the text found in native Pixel Data (D-037).
 
+Compressed Pixel Data is cleaned in :mod:`.test_deidentify_compressed_redaction`.
+
 Every file is synthetic, and every finder is a stand-in that gives fixed
 regions, so no model is downloaded and no network is reached.
 """
@@ -56,7 +58,6 @@ from pymedphys._dicom.deidentify.run_report import RELEASE_REPORT
 from pymedphys._dicom.deidentify.source import read_source
 from pymedphys._dicom.deidentify.text_detection import TextBox
 
-from . import _synthetic_compressed as compressed
 from . import _synthetic_references as synthetic
 
 pytestmark = [pytest.mark.pydicom, pytest.mark.usefixtures("pydicom_behaviour")]
@@ -257,14 +258,6 @@ def test_an_instance_without_pixel_data_has_nothing_to_clean():
 
     assert black_out(source, source.dataset(), finder) is None
     assert not finder.seen
-
-
-def test_compressed_pixel_data_is_refused():
-    source = read_source(compressed.rle_ct_image(_frame()))
-
-    with pytest.raises(PixelDataRefused) as refused:
-        black_out(source, source.dataset(), Finder())
-    assert refused.value.reason is TransformReason.COMPRESSED_PIXEL_DATA
 
 
 def _with(**attributes):
@@ -607,14 +600,6 @@ def test_an_instance_without_pixel_data_claims_the_option():
     assert _codes(written) == [BASIC_PROFILE_CODE, CLEAN_PIXEL_DATA_CODE]
     # Added although the RT Plan IOD does not define it, as E.3.1 requires.
     assert written.BurnedInAnnotation == "NO"
-
-
-def test_compressed_pixel_data_sequesters_the_instance():
-    data = compressed.rle_ct_image(_frame())
-    result = _transformed(_transform(), data)
-
-    assert isinstance(result, run.Sequestered)
-    assert result.reasons == (TransformReason.COMPRESSED_PIXEL_DATA,)
 
 
 def test_a_redaction_that_was_not_written_as_planned_sequesters_the_instance(
