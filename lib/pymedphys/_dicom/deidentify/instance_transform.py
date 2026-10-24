@@ -812,9 +812,7 @@ class InstanceTransform:
         without Clean Pixel Data; if ``readiness_review`` is given with a
         policy other than the ``public-release`` preset; if
         ``safe_private_list`` chooses TCIA's dictionary without the Retain
-        Safe Private Option; or if the
-        policy's other options cannot be composed into the policy whose
-        actions descriptors take where they are not cleaned.
+        Safe Private Option.
     TypeError
         If ``finder`` does not describe its method as a mapping that is not
         empty, or its description has a type that the method digest does not
