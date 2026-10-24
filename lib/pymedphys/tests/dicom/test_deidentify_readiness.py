@@ -367,7 +367,7 @@ def test_no_run_is_ready_without_a_statement_on_keeping_machine_identity(
     tmp_path, statement
 ):
     # The statistical gate needs a record, and no record can be made without
-    # the statement that justifies omitting or keeping machine identity.
+    # the statement of whether keeping machine identity would raise the risk.
     with pytest.raises(RiskAssessmentError, match="device_identity"):
         _assessment(device_identity=statement)
     result = _readiness(_reviewed(tmp_path, assessment=False))
