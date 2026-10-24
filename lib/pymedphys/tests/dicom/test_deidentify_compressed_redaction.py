@@ -35,6 +35,7 @@ from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom, pytest
 
 from pymedphys._dicom.deidentify import (
+    instance_transform,
     isolated_decoding,
     markers,
     pixel_decoding,
@@ -48,6 +49,7 @@ from pymedphys._dicom.deidentify.instance_transform import (
 from pymedphys._dicom.deidentify.pixel_cleaning import (
     PixelDataRefused,
     PixelsNotReviewed,
+    as_received,
     black_out,
     black_out_reviewed,
     redaction_problem,
@@ -75,7 +77,11 @@ from pymedphys._dicom.deidentify.redaction_review import (
     read_redaction_review,
 )
 from pymedphys._dicom.deidentify.run_qc import RedactionMaterial
-from pymedphys._dicom.deidentify.source import EXPLICIT_VR_LITTLE_ENDIAN, read_source
+from pymedphys._dicom.deidentify.source import (
+    ENCAPSULATED_TRANSFER_SYNTAXES,
+    EXPLICIT_VR_LITTLE_ENDIAN,
+    read_source,
+)
 from pymedphys._dicom.deidentify.text_detection import TextBox
 
 from . import _synthetic_compressed as compressed
@@ -85,6 +91,7 @@ from .test_deidentify_pixel_cleaning import (
     KEY,
     Finder,
     _codes,
+    _ct,
     _inside,
     _transform,
     _transformed,
@@ -772,11 +779,10 @@ def test_regions_a_reviewer_adds_to_an_unmarked_image_release_what_was_previewed
     tmp_path, monkeypatch, again
 ):
     # The finder marks nothing, and the reviewer adds a region. The cleaning
-    # decode, in the child, differs from the source's codestream, which the
-    # parent decodes in process for previews of a source. What the first
-    # run wrote, and so what its previews showed, is the child's decode,
-    # and the second run releases it, with the reviewer's region, only if
-    # the child decodes it so again.
+    # decode, in the child, differs from what the source's codestream holds.
+    # What the first run wrote, and so what its previews showed, is the
+    # child's decode, and the second run releases it, with the reviewer's
+    # region, only if the child decodes it so again.
     _needs(compressed.JPEG_2000_LOSSLESS)
     frame = _monochrome()
     data = _jpeg_2000_ct([frame])
@@ -846,3 +852,129 @@ def test_a_result_can_be_given_room_beyond_the_childs_limit():
     )
 
     assert sent == "x" * size
+
+
+def test_a_source_is_shown_as_decoded_only_where_pydicom_can_write_it(monkeypatch):
+    _needs(compressed.JPEG_2000_LOSSLESS)
+    source = read_source(_jpeg_2000_ct([_monochrome()]))
+    redaction = black_out(source, source.dataset(), Finder())
+    assert redaction is not None
+    assert as_received(source, redaction) is not None
+    native = read_source(synthetic.written(_ct(_monochrome())))
+    native_redaction = black_out(native, native.dataset(), Finder())
+    assert native_redaction is not None
+    # Native Pixel Data is shown from the source as it is.
+    assert as_received(native, native_redaction) is None
+
+    def refused(*args, **kwargs):
+        raise ValueError("a message that quotes a value")
+
+    monkeypatch.setattr(pydicom, "dcmwrite", refused)
+
+    # A source that pydicom cannot write in Explicit VR Little Endian has no
+    # file that shows its decoded frames, and its error is not raised.
+    assert as_received(source, redaction) is None
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.1-01")
+def test_a_compressed_source_that_cannot_be_shown_as_decoded_is_not_previewed(
+    tmp_path, monkeypatch
+):
+    # Without the source as decoded, the frame with a region cannot be shown
+    # as received beside the frame as written, so the pack lists the
+    # instance as not previewed, takes no digest of its pixel data, and
+    # refuses a verdict on it, which so cannot release it.
+    _needs(compressed.JPEG_2000_LOSSLESS)
+    frame = _monochrome()
+    monkeypatch.setattr(instance_transform, "as_received", lambda *_: None)
+    _write(tmp_path / "source", {"0.dcm": _jpeg_2000_ct([frame])})
+
+    first = _run(
+        tmp_path / "first",
+        tmp_path / "source",
+        InstanceTransform(_policy(), KEY, finder=Finder(), unvalidated_policy=True),
+    )
+
+    document = json.loads(first.qc_pack.read_text("utf-8"))
+    (instance,) = document["instances"]
+    position = instance["position"]
+    assert instance["disposition"] == "held-for-review"
+    assert instance["pixel_sha256"] is None
+    (entry,) = document["redactions"]
+    assert entry["regions"]
+    assert entry["decoded_sha256"] == hashlib.sha256(frame.tobytes()).hexdigest()
+    assert document["not_previewed"] == [
+        {"position": position, "reason": "source-not-shown"}
+    ]
+    assert not [
+        preview for preview in document["previews"] if preview["kind"] == "redaction"
+    ]
+    with pytest.raises(QcPackError, match="not list as cleaned and previewed"):
+        _attest(first.qc_pack.parent, [RedactionVerdict(position, Redaction.ACCEPTED)])
+
+
+def _native_decodes(monkeypatch):
+    """Record each frame that a decoding plugin other than pydicom's own
+    decodes in this process, by its plugin, whatever the transfer syntax."""
+    calls = []
+    for syntax in ENCAPSULATED_TRANSFER_SYNTAXES:
+        decoder = pydicom.pixels.get_decoder(syntax)
+        plugins = decoder._available  # pylint: disable = protected-access
+        for plugin, decode in list(plugins.items()):
+            if plugin == "pydicom":
+                continue
+
+            def recorded(*args, plugin=plugin, decode=decode, **kwargs):
+                calls.append(plugin)
+                return decode(*args, **kwargs)
+
+            monkeypatch.setitem(plugins, plugin, recorded)
+    return calls
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.1-01")
+@pytest.mark.parametrize(
+    "image, syntax",
+    [
+        (lambda: _jpeg_2000_ct([_monochrome()]), compressed.JPEG_2000_LOSSLESS),
+        (_jpeg_baseline_colour, compressed.JPEG_BASELINE),
+    ],
+    ids=["pylibjpeg", "gdcm"],
+)
+def test_a_cleaned_compressed_image_is_previewed_without_a_native_decoder(
+    tmp_path, monkeypatch, image, syntax
+):
+    # Under the option, GDCM and pylibjpeg decode a compressed image only in
+    # the child (D-037), and the QC pack shows each frame, as written and as
+    # received, from the child's decode written uncompressed, never from the
+    # codestream decoded again in the engine's process, which a codestream
+    # could end, or decode otherwise than the release writes (D-048).
+    _needs(syntax)
+    plugin = pixel_decoding.DECODING_PLUGINS[syntax]
+    data = image()
+    native = _native_decodes(monkeypatch)
+    pydicom.pixels.pixel_array(io.BytesIO(data), decoding_plugin=plugin)
+    assert native == [plugin]
+    native.clear()
+    child = _decoding_calls(monkeypatch)
+    _write(tmp_path / "source", {"0.dcm": data})
+
+    first = _run(
+        tmp_path / "first",
+        tmp_path / "source",
+        InstanceTransform(_policy(), KEY, finder=Finder(), unvalidated_policy=True),
+    )
+
+    assert not native
+    assert child == [plugin]
+    document = json.loads(first.qc_pack.read_text("utf-8"))
+    (instance,) = document["instances"]
+    assert instance["pixel_sha256"] is not None
+    assert not document["not_previewed"]
+    shown = [
+        frame
+        for preview in document["previews"]
+        if preview["kind"] == "redaction"
+        for frame in preview["frames"]
+    ]
+    assert shown == [{"position": instance["position"], "frame": 0}]
