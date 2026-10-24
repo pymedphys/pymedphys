@@ -116,7 +116,7 @@ pandas==3.0.6
     # via
     #   pymedphys
     #   streamlit
-pillow==12.3.0
+pillow==13.0.0
     # via
     #   imageio
     #   matplotlib
@@ -189,7 +189,7 @@ sqlalchemy==2.1.5
     # via pymedphys
 starlette==1.9.0
     # via streamlit
-streamlit==1.66.0
+streamlit==1.66.1
     # via pymedphys
 threadpoolctl==3.7.0
     # via scikit-learn
