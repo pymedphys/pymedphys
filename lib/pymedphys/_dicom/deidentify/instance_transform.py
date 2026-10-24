@@ -224,7 +224,11 @@ from .face_blocks import (
     find_face_blocks,
     frames_of,
 )
-from .pixel_risk import assess_pixel_risk, series_evidence
+from .pixel_risk import (
+    assess_pixel_risk,
+    overlay_groups_without_data,
+    series_evidence,
+)
 from .region_defacing import (
     ContoursRefused,
     PetDefacer,
@@ -865,8 +869,8 @@ class InstanceTransform:
     that an overlay group without Overlay Data places above High Bit in
     native Pixel Data (:func:`~.pixel_cleaning.overlay_planes`) is cleared,
     in the same write as the option's regions and masks, and checked as a
-    redaction is; under Clean Graphics, an instance whose overlay cannot be
-    so cleared is sequestered
+    redaction is, and the overlay's group is removed; under Clean Graphics,
+    an instance whose overlay cannot be so cleared is sequestered
     (:func:`~.clean_graphics.overlay_in_pixel_data`). Under Clean
     Structured Content, the plan keeps each content-item sequence that it
     can and gives the values of its content items the actions of their
@@ -1583,7 +1587,13 @@ class InstanceTransform:
             # Compressed Pixel Data written uncompressed holds no codestream
             # whose metadata could be cut.
             writing = _without_bitstream_metadata(
-                _with_redaction(writer_plan(plan, edits, codecs), dataset, redaction),
+                _without_cleared_overlays(
+                    _with_redaction(
+                        writer_plan(plan, edits, codecs), dataset, redaction
+                    ),
+                    dataset,
+                    redaction,
+                ),
                 source,
             )
             if region is not None and iod.name == RT_STRUCTURE_SET:
@@ -2075,6 +2085,39 @@ def _subsets(options: list[str]) -> list[tuple[str, ...]]:
     for option in options:
         subsets += [(*subset, option) for subset in subsets]
     return subsets
+
+
+def _without_cleared_overlays(
+    writing: WriterPlan, dataset: pydicom.Dataset, redaction: Redaction | None
+) -> WriterPlan:
+    """Return the writer's plan without the overlay groups whose bit planes
+    the redaction cleared.
+
+    A cleared bit holds what the value's sign gives it, which, in signed
+    Pixel Data, a viewer that shows the group's embedded overlay would draw
+    as its graphics, so every top-level attribute of each overlay group
+    without Overlay Data is removed, as removing Overlay Data removes its
+    group (D-020, D-041). An IOD that requires the group is then found by
+    :func:`_written`.
+    """
+    if redaction is None or not redaction.overlays:
+        return writing
+    groups = overlay_groups_without_data(dataset)
+    paths = frozenset(
+        ElementPath((), f"({tag.group:04X},{tag.element:04X})")
+        for tag in dataset.keys()
+        if tag.group in groups
+    )
+    return dataclasses.replace(
+        writing,
+        kept=writing.kept - paths,
+        removed=writing.removed | paths,
+        replacements={
+            path: element
+            for path, element in writing.replacements.items()
+            if path not in paths
+        },
+    )
 
 
 def _without_bitstream_metadata(

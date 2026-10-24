@@ -76,11 +76,15 @@ def _embedded(dataset, bit=OVERLAY_BIT, group=0x6000, every=3):
     return dataset
 
 
+def _signed_values():
+    """Stored values from -24 to 23, so that half are negative."""
+    return _frame(start=0) - 24
+
+
 def _signed_frame():
-    """Stored values from -2048 upwards, as signed 12-bit words with the
-    unused bits giving each value's sign."""
-    values = _frame() - 2048
-    return values.astype(np.int16).view(np.uint16)
+    """:func:`_signed_values` as signed 12-bit words with the unused bits
+    giving each value's sign."""
+    return _signed_values().astype(np.int16).view(np.uint16)
 
 
 def _transform(options, finder=None):
@@ -112,6 +116,14 @@ def _source(dataset):
     return read_source(synthetic.written(dataset))
 
 
+def _overlay_groups(data):
+    """The overlay groups of a written file."""
+    written = pydicom.dcmread(io.BytesIO(data))
+    return sorted(
+        {tag.group for tag in written.keys() if 0x6000 <= tag.group <= 0x601E}
+    )
+
+
 @pytest.mark.deid_requirement("PS3.15-E.3.3-01")
 def test_clean_graphics_clears_an_overlay_in_unused_bits_and_claims_the_option():
     source = _embedded(_ct(_frame()))
@@ -128,11 +140,14 @@ def test_clean_graphics_clears_an_overlay_in_unused_bits_and_claims_the_option()
     assert np.array_equal(pydicom.pixels.pixel_array(written), _frame())
     assert _codes(result.data) == [BASIC_PROFILE_CODE, CLEAN_GRAPHICS_CODE]
     assert not isinstance(result.evidence, HeldEvidence)
+    # The group goes with its overlay, so nothing describes the cleared bit
+    # as an overlay.
+    assert not _overlay_groups(result.data)
     # The source's indicator is still reported for review.
     assert any(isinstance(material, PixelRiskMaterial) for material in result.qc)
 
 
-def test_a_negative_value_keeps_its_sign_in_the_cleared_bit():
+def test_a_mixed_sign_image_keeps_its_signs_and_describes_no_overlay():
     source = _embedded(_ct(_signed_frame(), signed=True), every=1)
     before = np.frombuffer(source.PixelData, "<u2").copy()
 
@@ -147,7 +162,11 @@ def test_a_negative_value_keeps_its_sign_in_the_cleared_bit():
     assert np.all(after[~negative] >> 12 == 0)
     assert np.array_equal(after & 0x0FFF, before & 0x0FFF)
     written = pydicom.dcmread(io.BytesIO(result.data))
-    assert np.array_equal(pydicom.pixels.pixel_array(written), _frame() - 2048)
+    assert np.array_equal(pydicom.pixels.pixel_array(written), _signed_values())
+    # The overlay's bit now draws the negative values, so no overlay group
+    # may describe it as graphics.
+    assert np.any(negative) and not np.all(negative)
+    assert not _overlay_groups(result.data)
 
 
 def test_every_overlay_group_without_overlay_data_has_its_bit_cleared():
@@ -158,6 +177,7 @@ def test_every_overlay_group_without_overlay_data_has_its_bit_cleared():
 
     assert isinstance(result, run.Transformed), result
     assert not np.any(_words(result.data) >> 12)
+    assert not _overlay_groups(result.data)
 
 
 def test_an_instance_without_an_embedded_overlay_has_no_planes_to_clear():
@@ -336,6 +356,7 @@ def test_clean_pixel_data_clears_the_overlay_and_blacks_out_the_text():
     assert set(np.unique(before[~inside] ^ after[~inside])) == {0, 1 << OVERLAY_BIT}
     assert np.all(after[inside] == _frame().min())
     assert _codes(result.data) == [BASIC_PROFILE_CODE]
+    assert not _overlay_groups(result.data)
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.1-01")
@@ -373,3 +394,4 @@ def test_without_either_option_the_overlay_is_written_as_received():
 
     assert isinstance(result, run.Transformed), result
     assert np.array_equal(_words(result.data), before)
+    assert _overlay_groups(result.data) == [0x6000]

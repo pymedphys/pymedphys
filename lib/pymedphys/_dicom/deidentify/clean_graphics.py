@@ -40,9 +40,12 @@ without Overlay Data may keep its graphics in Pixel Data when the group's
 attributes are removed. Under the option, the transform clears the bit plane
 of each such overlay in native Pixel Data, where
 :func:`~pymedphys._dicom.deidentify.pixel_cleaning.overlay_planes` finds it
-above High Bit, in the same write as Clean Pixel Data's redaction, and
-checks that the written Pixel Data differs from the source in nothing else
-(:func:`~pymedphys._dicom.deidentify.pixel_cleaning.redaction_problem`).
+above High Bit, in the same write as Clean Pixel Data's redaction, checks
+that the written Pixel Data differs from the source in nothing else
+(:func:`~pymedphys._dicom.deidentify.pixel_cleaning.redaction_problem`), and
+removes every attribute of the overlay's group, since in signed Pixel Data
+the cleared bit gives each value's sign, which a viewer would draw as the
+overlay.
 :func:`overlay_in_pixel_data` sequesters an instance whose overlay cannot be
 so cleared, such as one in compressed Pixel Data or within Bits Stored,
 since writing it with the option's code would claim a removal that did not
