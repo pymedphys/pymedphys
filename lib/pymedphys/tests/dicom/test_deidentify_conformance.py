@@ -382,9 +382,10 @@ def test_a_preset_that_is_not_enabled_makes_no_claim(preset, statement_for):
 
 @pytest.mark.deid_requirement("PS3.15-E.1.3-01")
 def test_a_statement_with_sections_still_to_describe_makes_no_claim(monkeypatch):
-    # Modified Dates leaves the manner of cleaning dates and times to describe.
+    # No preset has a section still to describe, so one is supplied.
     preset = "tps-import"
     monkeypatch.setattr(policy, "ENABLED_PRESETS", frozenset({preset}))
+    monkeypatch.setattr(conformance, "PENDING", ("The manner of an example.",))
     statement = _statement(preset)
     assert statement.enabled
     assert statement.pending
@@ -453,9 +454,20 @@ def test_retained_safe_private_attributes_are_listed_where_selected(
     assert bool(statement.safe_private) == ("retain_safe_private" in composed.options)
 
 
-def test_synthetic_birth_dates_are_pending_only_for_tps_import(preset, statement_for):
-    pending = statement_for(preset).pending
-    assert (conformance.PENDING_BIRTH_DATES in pending) == (preset == "tps-import")
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
+def test_only_the_tps_import_statement_describes_synthetic_birth_dates(
+    preset, statement_for
+):
+    statement = statement_for(preset)
+    text = conformance_markdown.render_markdown(statement)
+    described = [line for line in text.splitlines() if "synthetic birth date" in line]
+
+    assert bool(described) == (preset == "tps-import")
+    assert not any("birth date" in item for item in statement.pending)
+    for line in described:
+        assert "Patient's Birth Date (0010,0030)" in line
+        assert "`birth-date-conflict`" in line
+        assert "D-0" not in line
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.5-02")

@@ -48,9 +48,9 @@ Some attributes take other values, which the engine writes instead of
 calling this module. Under every preset, Patient ID (0010,0020) and Patient's
 Name (0010,0010) take the subject's keyed pseudonyms
 (:mod:`~pymedphys._dicom.deidentify.pseudonyms`), whether Z or D applies.
-Under ``tps-import``, Patient's Birth Date (0010,0030) is to take a synthetic
-birth date kept in the subject's profile
-(:mod:`~pymedphys._dicom.deidentify.profiles`), which does not yet record one.
+Under ``tps-import``, Patient's Birth Date (0010,0030) at the top level takes
+the subject's synthetic birth date, kept in the subject's profile
+(:mod:`~pymedphys._dicom.deidentify.birth_dates`).
 
 Dummy values never name PyMedPhys; the de-identification markers do. The one
 exception is the Coding Scheme Designator above, which names who defines the

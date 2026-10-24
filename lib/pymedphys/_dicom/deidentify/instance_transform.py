@@ -41,7 +41,10 @@ each instance it may process. It joins the engine's per-instance steps:
    :func:`~pymedphys._dicom.deidentify.cleaners.apply_cleaners`, then, under
    Clean Descriptors,
    :func:`~pymedphys._dicom.deidentify.descriptor_cleaning.clean_descriptors`,
-   settle the attributes that the policy gives C, and under Clean Pixel Data,
+   settle the attributes that the policy gives C, under ``tps-import``,
+   :func:`~pymedphys._dicom.deidentify.birth_dates.with_birth_date` gives
+   Patient's Birth Date the subject's synthetic birth date, and under Clean
+   Pixel Data,
    :func:`~pymedphys._dicom.deidentify.pixel_cleaning.black_out` blacks out
    the text found in Pixel Data (D-037), writing compressed Pixel Data
    uncompressed, as decoded, or, where a reviewer's
@@ -118,6 +121,7 @@ from pathlib import PurePosixPath
 from pymedphys._imports import pydicom
 
 from . import output_names
+from .birth_dates import BIRTH_DATE_PRESET, BirthDates, with_birth_date
 from .clean_graphics import overlay_in_pixel_data
 from .content_items import content_item_actions
 from .cleaners import apply_cleaners, cleaners_for
@@ -780,7 +784,8 @@ class InstanceTransform:
         the conformance statement record which.
     profiles : ProfileStore, optional
         The subject profiles of ``key``, from which Modified Dates reads
-        each subject's date offset, recording a new subject's (D-004). By
+        each subject's date offset, recording a new subject's (D-004), and
+        ``tps-import`` each subject's synthetic birth date (D-008). By
         default, an ephemeral store, for the run only, which gives the
         offsets that ``key`` derives. A store opened from a file is a
         project key's: the release report and conformance statement then
@@ -836,6 +841,15 @@ class InstanceTransform:
     as the run's first pass records it (``InstanceRecord.patient``). An
     instance without one has no pseudonyms, so its Patient's Name and
     Patient ID edits stay pending and it is sequestered.
+
+    Under ``tps-import``, :meth:`prepare` chooses each subject's synthetic
+    birth date from the run's instances, or reads it back from the
+    subject's profile (:class:`~.birth_dates.BirthDates`), and Patient's
+    Birth Date takes it at the top level of the data set
+    (:func:`~.birth_dates.with_birth_date`). Every instance of a subject
+    whose instances contradict the reference study that its profile records
+    is sequestered
+    (:attr:`~.reasons.TransformReason.BIRTH_DATE_CONFLICT`).
 
     The cleaners of the options that the policy selects
     (:func:`~.cleaners.cleaners_for`) settle the attributes given C that they
@@ -938,6 +952,9 @@ class InstanceTransform:
         elif profiles.key_id != key.key_id:
             raise ProfileError("the profile store belongs to another key")
         self.profiles = profiles
+        self._birth_dates = (
+            BirthDates(key, profiles) if policy.preset == BIRTH_DATE_PRESET else None
+        )
         if not (policy.enabled or unvalidated_policy):
             raise PolicyError(
                 "the policy is not enabled: its behaviour is not yet implemented "
@@ -1064,17 +1081,25 @@ class InstanceTransform:
         records: Mapping[int, InstanceRecord],
         read: Callable[[int], bytes | None],
     ) -> None:
-        """Find the face block of each CT series of a run, before it writes any.
+        """Find what needs more than one instance, before a run writes any.
 
-        Only under Clean Recognizable Visual Features, as
+        A run calls it with the records of the instances that it will
+        transform, by run position, and a function that gives each file as
+        its first pass read it, once, before it transforms any.
+
+        Under ``tps-import``, it chooses each subject's synthetic birth date,
+        or reads it back from the subject's profile
+        (:meth:`~pymedphys._dicom.deidentify.birth_dates.BirthDates.prepare`).
+
+        Under Clean Recognizable Visual Features, it finds the face block of
+        each CT series, as
         :func:`~pymedphys._dicom.deidentify.face_blocks.find_face_blocks`
-        finds them, and counted for the release report. A run calls it with
-        the records of the instances that it will transform, by run
-        position, and a function that gives each file as its first pass
-        read it, once, before it transforms any. It also finds the block in
-        which each RT Dose of a defaced frame is set to zero
+        finds them, counted for the release report, and the block in which
+        each RT Dose of a defaced frame is set to zero
         (:func:`~pymedphys._dicom.deidentify.dose_defacing.find_dose_blocks`).
         """
+        if self._birth_dates is not None:
+            self._birth_dates.prepare(records, read)
         if self._face_block_counts is None:
             return
         self._face_blocks = find_face_blocks(records, read)
@@ -1151,6 +1176,14 @@ class InstanceTransform:
             written[path] = value
             names[path] = output_name_uid(self._key, value, kept)
         return _Identifiers(written[_SOP_INSTANCE], names)
+
+    def _birth_date_conflict(self, record: InstanceRecord) -> tuple[object, ...]:
+        """Why an instance's subject is stopped for review of its birth date, if it is."""
+        if self._birth_dates is not None and self._birth_dates.conflicted(
+            record.patient
+        ):
+            return (TransformReason.BIRTH_DATE_CONFLICT,)
+        return ()
 
     def _face_hold(
         self, data: bytes, dataset: pydicom.Dataset, iod: IOD, writing: WriterPlan
@@ -1415,6 +1448,7 @@ class InstanceTransform:
                 edits.sequestrations
                 or (() if undecoded is None else (undecoded,))
                 or overlay_in_pixel_data(self._rules.policy, risk)
+                or self._birth_date_conflict(record)
             )
         if reasons:
             # An instance out of scope is planned and edited only so that
@@ -1482,6 +1516,8 @@ class InstanceTransform:
             evidence = coverage_of(plan, edits, retained, self._options)
             if cleaned.held:
                 evidence = HeldEvidence(evidence, cleaned.held)
+        if self._birth_dates is not None:
+            edits = with_birth_date(edits, self._birth_dates.value(record.patient))
         defacing = self._defacing(iod, record)
         dose = self._dose_block(iod, record, dataset)
         region = self._region(iod, record)
