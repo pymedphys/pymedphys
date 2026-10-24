@@ -127,6 +127,11 @@ class TransformReason(enum.Enum):
     # under Clean Pixel Data, an instance whose cleaned Pixel Data a reviewer
     # rejected in an attested QC pack, so that it is never released
     REDACTION_REJECTED = "redaction-rejected"
+    # under tps-import, an instance of a subject whose instances in the run
+    # contradict the reference study from which its profile's synthetic
+    # birth date was derived, so that the subject is stopped for review
+    # (D-008)
+    BIRTH_DATE_CONFLICT = "birth-date-conflict"
 
 
 class DescriptorReason(enum.Enum):
