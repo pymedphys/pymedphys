@@ -25,7 +25,6 @@ from pymedphys._imports import pydicom, pytest
 from pymedphys._dicom.deidentify import (
     birth_dates,
     dates,
-    instance_transform,
     keys,
     profiles,
     run,
@@ -58,18 +57,6 @@ def fixture_home(tmp_path, monkeypatch):
     home.mkdir()
     monkeypatch.setattr(pathlib.Path, "home", classmethod(lambda cls: home))
     return home
-
-
-@pytest.fixture(name="composable")
-def fixture_composable(monkeypatch):
-    """Let a tps-import transform be made before its fallback is composable.
-
-    Clean Descriptors' fallback under tps-import is composed by its own
-    change; ROI Names and Patient's Birth Date do not depend on it.
-    """
-    monkeypatch.setattr(
-        instance_transform, "fallback_policy", lambda _: compose_policy("basic")
-    )
 
 
 def _age(birth, day):
@@ -244,9 +231,7 @@ def test_a_leap_day_reference_maps_to_28_february():
     # A source date chosen so that its shifted date is 29 February.
     weeks = dates.date_offset_weeks(KEY, SUBJECT)
     source = datetime.date(2024, 2, 29) + datetime.timedelta(weeks=weeks)
-    chosen, _ = _prepared(
-        [_instance(0, STUDIES[0], date=_text(source), age="045Y")]
-    )
+    chosen, _ = _prepared([_instance(0, STUDIES[0], date=_text(source), age="045Y")])
 
     assert chosen.value(SUBJECT) == "19790228"
 
@@ -527,7 +512,6 @@ def _written(result):
 
 
 @pytest.mark.deid_requirement("MIDI-BP-03")
-@pytest.mark.usefixtures("composable")
 def test_every_instance_of_a_subject_takes_its_birth_date():
     transform = _transform()
     results = _transformed_all(
@@ -548,7 +532,6 @@ def test_every_instance_of_a_subject_takes_its_birth_date():
     assert written[0].PatientAge == "040Y"
 
 
-@pytest.mark.usefixtures("composable")
 def test_without_ages_the_birth_date_is_emptied():
     (result,) = _transformed_all(_transform(), [_instance(0, STUDIES[0])])
 
@@ -557,7 +540,7 @@ def test_without_ages_the_birth_date_is_emptied():
     assert written.PatientBirthDate == ""
 
 
-@pytest.mark.usefixtures("composable", "custodian")
+@pytest.mark.usefixtures("custodian")
 def test_a_conflict_sequesters_every_instance_of_the_subject(tmp_path):
     store = _store(tmp_path)
     _transformed_all(
@@ -581,7 +564,7 @@ def test_a_conflict_sequesters_every_instance_of_the_subject(tmp_path):
 
 
 @pytest.mark.deid_requirement("MIDI-BP-03")
-@pytest.mark.usefixtures("composable", "custodian")
+@pytest.mark.usefixtures("custodian")
 def test_incremental_runs_write_the_same_birth_date(tmp_path):
     store = _store(tmp_path)
     first = _transformed_all(

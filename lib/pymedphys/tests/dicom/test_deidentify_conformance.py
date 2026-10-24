@@ -382,9 +382,10 @@ def test_a_preset_that_is_not_enabled_makes_no_claim(preset, statement_for):
 
 @pytest.mark.deid_requirement("PS3.15-E.1.3-01")
 def test_a_statement_with_sections_still_to_describe_makes_no_claim(monkeypatch):
-    # Modified Dates leaves the manner of cleaning dates and times to describe.
+    # No preset has a section still to describe, so one is supplied.
     preset = "tps-import"
     monkeypatch.setattr(policy, "ENABLED_PRESETS", frozenset({preset}))
+    monkeypatch.setattr(conformance, "PENDING", ("The manner of an example.",))
     statement = _statement(preset)
     assert statement.enabled
     assert statement.pending

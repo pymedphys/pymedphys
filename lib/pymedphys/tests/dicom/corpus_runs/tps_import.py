@@ -22,8 +22,9 @@ every selected option that gives an action keeps, which leaves out the
 eleven device dates and times that Retain Device Identity keeps and Modified
 Dates modifies, which the preset modifies (D-007), and the times that
 Modified Dates keeps. The preset claims no conformance, so its instances
-gain no code. Patient's Birth Date is still emptied by Z, as under every
-other policy, until the synthetic birth date (D-008) is built.
+gain no code. The corpus gives every Patient's Age in weeks, which gives
+no synthetic birth date (D-008), so Patient's Birth Date is emptied, as Z
+empties it; ``test_deidentify_birth_dates.py`` covers the synthetic dates.
 """
 
 from pymedphys._dicom.deidentify.policy import PRESETS
