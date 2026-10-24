@@ -172,26 +172,12 @@ PENDING_CLEANING = (
     "to which the policy gives C and which no cleaner above cleans (PS3.15 "
     "Table E.1-1a)."
 )
-# Pending only for a policy that selects Clean Descriptors and whose other
-# options cannot be composed without it.
-PENDING_FALLBACK = (
-    "A run under this policy, which the engine refuses: an attribute other "
-    "than ROI Name (3006,0026) to which the policy gives C takes the action "
-    "that the policy gives it without Clean Descriptors, and its other "
-    "options cannot be composed into a policy without that option."
-)
 # Pending only for a policy that selects Retain Safe Private and an option
 # that the engine does not yet apply, whose element rules it refuses.
 PENDING_SAFE_PRIVATE = (
     "The safe private attributes that the policy retains, and the basis on "
     "which each is retained (PS3.15 E.3.10)."
 )
-# Pending only for tps-import, whose Z writes a synthetic birth date.
-PENDING_BIRTH_DATES = (
-    "The synthetic birth date that Z writes to Patient's Birth Date "
-    "(0010,0030) in place of a zero-length value."
-)
-_TPS_IMPORT = "tps-import"
 _FULL_DATES = "retain_longitudinal_full_dates"
 _ROI_NAME = "(3006,0026)"
 _CLEAN_DESCRIPTORS = "clean_descriptors"
@@ -206,20 +192,6 @@ _REVIEWED_OPTIONS = (
 # time, or datetime.
 _TEMPORAL_OPTIONS = next(o for o in MUTUALLY_EXCLUSIVE if _FULL_DATES in o)
 _TEMPORAL_VRS = frozenset({"DA", "DT", "TM"})
-
-
-def _falls_back(policy: Policy) -> bool:
-    """Whether a run can give the policy's other attributes given C a fallback.
-
-    A policy without Clean Descriptors needs none.
-    """
-    if _CLEAN_DESCRIPTORS not in policy.options:
-        return True
-    try:
-        fallback_policy(policy)
-    except PolicyError:
-        return False
-    return True
 
 
 @dataclasses.dataclass(frozen=True)
@@ -727,15 +699,12 @@ def _fallen_back(
     that the policy gives it without that option, at each place, as the
     maintainer decided on 6 October 2026 (D-009). One to which that policy
     also gives C keeps it, as does each attribute of a policy that the engine
-    refuses or whose fallback cannot be composed.
+    refuses.
     """
     fallback: dict[str, AttributeAction] = {}
     if rules is not None and _CLEAN_DESCRIPTORS in policy.options:
-        try:
-            composed = fallback_policy(policy)
-            fallback = {e.tag: e for e in _attributes(composed, ElementRules(composed))}
-        except PolicyError:
-            fallback = {}
+        composed = fallback_policy(policy)
+        fallback = {e.tag: e for e in _attributes(composed, ElementRules(composed))}
     for entry in attributes:
         other = fallback.get(entry.tag)
         if (
@@ -995,9 +964,7 @@ def conformance_statement(
         for item, applies in (
             (PENDING_UNAPPLIED, rules is None),
             (PENDING_CLEANING, "C" in actions),
-            (PENDING_FALLBACK, not _falls_back(policy)),
             (PENDING_SAFE_PRIVATE, rules is None and safe_private),
-            (PENDING_BIRTH_DATES, policy.preset == _TPS_IMPORT),
         )
         if applies
     )

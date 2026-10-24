@@ -20,8 +20,10 @@ engine's own constants and functions, so that it changes when they do:
 
 - :func:`values_written`: the values that Z, D, and U write, from
   :mod:`~pymedphys._dicom.deidentify.dummy_values`,
-  :mod:`~pymedphys._dicom.deidentify.pseudonyms`, and
-  :mod:`~pymedphys._dicom.deidentify.uids` (D-003, D-005, and D-021);
+  :mod:`~pymedphys._dicom.deidentify.pseudonyms`,
+  :mod:`~pymedphys._dicom.deidentify.uids`, and, under ``tps-import``,
+  :mod:`~pymedphys._dicom.deidentify.birth_dates` (D-003, D-005, D-008, and
+  D-021);
 - :func:`dates_and_times`: how the policy handles dates and times, by its
   Retain Longitudinal Temporal Information Option or without one (D-006,
   D-007, and D-023);
@@ -43,7 +45,7 @@ import base64
 import types
 from collections.abc import Callable, Iterable, Mapping
 
-from . import dates, dummy_values, pixel_risk, pseudonyms, residuals, uids
+from . import birth_dates, dates, dummy_values, pixel_risk, pseudonyms, residuals, uids
 from . import release_report as report
 from .conformance import ConformanceStatement
 from .edits import PSEUDONYM_TAGS
@@ -316,7 +318,9 @@ def _naming_pymedphys(named: Callable[[str], str]) -> list[str]:
     ]
 
 
-def values_written(named: Callable[[str], str]) -> list[str]:
+def values_written(
+    statement: ConformanceStatement, named: Callable[[str], str]
+) -> list[str]:
     """Return the lines of the section on the values that Z, D, and U write.
 
     ``named`` gives an attribute's name and tag, such as ``"Patient ID
@@ -363,6 +367,11 @@ def values_written(named: Callable[[str], str]) -> list[str]:
         f"{pseudonyms.CODE_BYTES * 8} bits of the key's `patient` derivation "
         "of the subject's identity: a Patient ID with its "
         f"{named('(0010,0021)')}, or a curated subject identifier.",
+        *(
+            ("", _birth_dates(named))
+            if statement.preset == birth_dates.BIRTH_DATE_PRESET
+            else ()
+        ),
         "",
         f"Wherever Z or D applies to {named(SERIES_NUMBER)}, it takes its "
         "rank among the distinct Series Numbers that the run holds for the "
@@ -392,6 +401,41 @@ def values_written(named: Callable[[str], str]) -> list[str]:
             else "."
         ),
     ]
+
+
+def _birth_dates(named: Callable[[str], str]) -> str:
+    """Return the paragraph on the synthetic birth dates that Z writes."""
+    birth_date = named(birth_dates.PATIENTS_BIRTH_DATE.tag)
+    study_date = named(birth_dates.STUDY_DATE.tag)
+    age = named(birth_dates.PATIENTS_AGE.tag)
+    conflict = code(TransformReason.BIRTH_DATE_CONFLICT.value)
+    return (
+        f"At the top level of the data set, {birth_date} takes the subject's "
+        "synthetic birth date wherever Z or D applies to it. It is chosen "
+        "once for each subject, from the instances of the first run that "
+        "holds the subject, and kept with the subject's date offset, so that "
+        "every later run under the same project key writes the same date; "
+        "under a run-scoped key it lasts for the run. Each study of the "
+        "subject, by Study Instance UID, whose instances hold, at the top "
+        f"level, exactly one {study_date} that is a valid date and exactly "
+        f"one {age} in years (`nnnY`) gives an observation. The reference "
+        "study is the observation with the earliest Study Date, and of "
+        "those on that date, the one with the least replacement Study "
+        "Instance UID. The synthetic birth date is the reference study's "
+        "shifted Study Date moved back by the age in calendar years, with "
+        "29 February becoming 28 February in a year without one, so the "
+        "subject has that age, in completed years, on the shifted date. It "
+        "expresses the approximate age at the reference study, not the true "
+        "birthday; the retained Patient's Age remains the source for "
+        "analyses of age. Where no study gives an observation, a study's "
+        "instances hold different values of either attribute, or no birth "
+        "date gives every observation its age, the attribute is emptied for "
+        "that subject, in that run and every later one. A later run whose "
+        "instances of the subject disagree with the reference study, by "
+        "holding it with another Study Date or Patient's Age, or by ages "
+        "that no birth date reconciles with its own, sequesters every "
+        f"instance of the subject as {conflict}, for review."
+    )
 
 
 def dates_and_times(

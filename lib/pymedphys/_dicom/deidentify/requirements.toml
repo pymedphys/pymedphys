@@ -254,7 +254,7 @@ The Conformance Statement of an application that claims conformance to the Basic
 - any additional restrictions (e. g. key sizes for public keys).
 '''
 status = "implemented"
-decisions = ["D-003", "D-004", "D-005", "D-006", "D-007", "D-012", "D-013", "D-016", "D-020", "D-021", "D-022", "D-023", "D-025", "D-026", "D-027"]
+decisions = ["D-003", "D-004", "D-005", "D-006", "D-007", "D-008", "D-012", "D-013", "D-016", "D-020", "D-021", "D-022", "D-023", "D-025", "D-026", "D-027"]
 implementation = [
   "_dicom/deidentify/conformance.py",
   "_dicom/deidentify/conformance_markdown.py",
@@ -263,7 +263,7 @@ implementation = [
 ]
 note = '''
 The conformance statement of a policy is generated as CommonMark from the policy, the pinned tables, and the engine's parameters.
-It lists the action that the engine applies to each attribute of Table E.1-1, of each supplementary rule, and of each UI attribute that the table omits, with each compound action resolved by Type at every place where a supported IOD defines the attribute (D-020), and why where the engine's own removals, the File Meta Information that it writes in place of the source's (D-025), or a sequence given C supersede the policy's action; the rules that give every other element its action (D-022); the values that Z, D, and U write, including the reviewed item of Person Identification Code Sequence, the keyed pseudonyms at the top level of the data set, and replacement UIDs of at most 44 characters (D-003, D-005, D-021); how dates and times are handled: without a Retain Longitudinal Temporal Information Option, by the listed actions of the attributes that have a temporal role, unshifted (D-006, D-007, D-023); referential integrity within a run under its 256-bit key, and none across runs (D-004); that no attribute is encrypted for later re-identification, so that no transfer syntax encodes an Encrypted Attributes Data Set (D-013); the attributes and values that the markers insert, as the engine computes them for the policy (D-012); the removal of private attributes at every level of nesting; what the residual search covers, and each reason it lists a value as not searched (D-027); how the release report names each sequestered instance by a label drawn at random for the run, with each stage and reason code (D-026), including the release gate's withholding of every file of a subject one of whose instances gave no values to search, counts the instances held for review by the codes that can hold one, and counts the values that the residual search does not search by attribute and reason, with per-instance detail only in the confidential QC pack (D-027); and the options applied, those that can be composed, and those that are not supported.
+It lists the action that the engine applies to each attribute of Table E.1-1, of each supplementary rule, and of each UI attribute that the table omits, with each compound action resolved by Type at every place where a supported IOD defines the attribute (D-020), and why where the engine's own removals, the File Meta Information that it writes in place of the source's (D-025), or a sequence given C supersede the policy's action; the rules that give every other element its action (D-022); the values that Z, D, and U write, including the reviewed item of Person Identification Code Sequence, the keyed pseudonyms at the top level of the data set, the synthetic birth dates of `tps-import` (D-008), and replacement UIDs of at most 44 characters (D-003, D-005, D-021); how dates and times are handled: without a Retain Longitudinal Temporal Information Option, by the listed actions of the attributes that have a temporal role, unshifted (D-006, D-007, D-023); referential integrity within a run under its 256-bit key, and none across runs (D-004); that no attribute is encrypted for later re-identification, so that no transfer syntax encodes an Encrypted Attributes Data Set (D-013); the attributes and values that the markers insert, as the engine computes them for the policy (D-012); the removal of private attributes at every level of nesting; what the residual search covers, and each reason it lists a value as not searched (D-027); how the release report names each sequestered instance by a label drawn at random for the run, with each stage and reason code (D-026), including the release gate's withholding of every file of a subject one of whose instances gave no values to search, counts the instances held for review by the codes that can hold one, and counts the values that the residual search does not search by attribute and reason, with per-instance detail only in the confidential QC pack (D-027); and the options applied, those that can be composed, and those that are not supported.
 It describes what each run's QC pack lists for review: each distinct retained string (D-017), each instance whose attributes show an indicator of risk in its pixel data, and each CT, MR, PET, and RT Dose volume and CT, MR, and PET localizer among the released and held instances, with whether it names the head or neck (D-015).
 A statement lists what it cannot yet describe and then claims nothing.
 Plain X, Z, and D are resolved by Type at every place too (D-020), except within a sequence that the engine removes with its contents, and the resolved Z and D are checked against the walker's plan of a synthetic instance.
@@ -272,7 +272,9 @@ Under Clean Descriptors, it describes how ROI Name is cleaned in two tiers: auto
 Each run with a release reporter writes the statement of its policy, as `conformance-statement.md` beside the release report at the root of the release, since it holds no instance value; it describes the policy and vocabulary that the report records, and the report gives the run's own method digest and reviewed-names digest.
 The statements of `basic` and `basic-clean-descriptors`, the presets of the first supported release, list nothing as pending.
 For each selected option that has a cleaner, it gives the attributes that the policy gives C and the cleaner settles, with its method: the AE titles under Retain Device Identity (D-034), the free text under Retain Patient Characteristics, which holds its instance unless it has no value (D-038, PS3.15-E.3.7-02), and the dates and times that Modified Dates modifies (D-039, PS3.15-E.3.6-04).
-A statement still lists as pending, and so claims nothing for, the manner of cleaning any other attribute to which the policy gives C other than under Clean Descriptors alone; a run under `tps-import`, whose other options cannot be composed without Clean Descriptors; and the synthetic birth date of `tps-import` (D-008); these complete with their options and preset.
+A statement still lists as pending, and so claims nothing for, the manner of cleaning any other attribute to which the policy gives C other than under Clean Descriptors alone; this completes with those options.
+Under `tps-import`, it describes the synthetic birth dates that Patient's Birth Date takes, how the reference study is chosen, the empty value written where the ages are missing or inconsistent, and the `birth-date-conflict` sequestration of a later run that contradicts the reference (D-008).
+Under `tps-import`, it gives each attribute other than ROI Name that the policy gives C the action that the preset's other options give it, with the eleven device dates and times modified as the preset modifies them, as descriptor cleaning falls back to it (D-009).
 Under Retain Safe Private, it describes how the reviewed safe private rules are matched and applied, and lists each rule that can retain an attribute (D-035, PS3.15-E.3.10-04).
 '''
 
@@ -584,7 +586,7 @@ note = '''
 The fourteen attributes that the Option gives K are kept as read, wherever they are in the data set, with the Option's code (D-038).
 Its five attributes of free text, which it gives C, are written with no value where they have none, and otherwise hold their instance, so a released instance retains every characteristic it held (PS3.15-E.3.7-02).
 The measures of the body that Table E.1-1 omits, such as Patient's Body Mass Index, are removed under every option (D-022).
-No preset of the first supported release selects the Option; `tps-import` selects it with options that are not yet all implemented.
+No preset of the first supported release selects the Option; `tps-import` selects it, and is not yet enabled.
 '''
 
 [[requirement]]
@@ -803,6 +805,7 @@ Do not let de-identification compromise conformance with the standards that defi
 status = "implemented"
 decisions = ["D-001", "D-003", "D-005", "D-008", "D-011", "D-020", "D-021", "D-022", "D-026", "D-031"]
 implementation = [
+  "_dicom/deidentify/birth_dates.py",
   "_dicom/deidentify/common_instance_reference.py",
   "_dicom/deidentify/compound_actions.py",
   "_dicom/deidentify/dummy_values.py",
@@ -813,6 +816,7 @@ implementation = [
   "_dicom/deidentify/iod_conformance.py",
   "_dicom/deidentify/iods.py",
   "_dicom/deidentify/preserving_writer.py",
+  "_dicom/deidentify/profiles.py",
   "_dicom/deidentify/qc_pack.py",
   "_dicom/deidentify/reference_graph.py",
   "_dicom/deidentify/references.py",
@@ -833,6 +837,7 @@ The Type of each attribute of the first supported release's IODs, and of every o
 Compound actions resolve from the strictest of these Types, so in those IODs they never remove an attribute where it is Type 1, 1C, 2, or 2C, or empty one where it is Type 1 or 1C, and a plain Z on a Type 1 or 1C attribute gives D's dummy value too.
 A plain X on an attribute that the IOD requires at its place removes with it the innermost enclosing sequence that the IOD makes Type 3 at its own place, or sequesters the instance where none encloses it, so it never leaves the output without an attribute that the IOD requires; Overlay Data takes its whole repeating group, whose module is user-optional in the CT Image, MR Image, and Positron Emission Tomography Image IODs, and ROI Interpreter Sequence, whose condition lapses once ROI Creator Sequence is removed, goes alone, as does Clinical Trial Protocol Ethics Committee Name, whose condition lapses once its approval number is removed and which PS3.5 Section 7.4.2 then does not allow (D-020).
 Every dummy value is valid for its VR and for the VM of each attribute of Table E.1-1 that can take it, as is each element of the dummy item of Person Identification Code Sequence, and an attribute whose VR has no generic dummy value and no reviewed rule is refused rather than given an invalid value.
+Under `tps-import`, which planning systems import, Patient's Birth Date takes each subject's synthetic birth date rather than an empty value: the earliest study with a consistent Study Date and Patient's Age in years gives it, the subject profile keeps it for every instance and later run, an empty value is written and kept where the ages are missing or inconsistent, and a later run that contradicts the reference study stops the subject for review (D-008).
 Before anything is written, a first pass over a collection follows the reference attributes that PS3.3 defines inside a sequence of each instance's IOD, and reports each reference that names no instance, series, or study in the collection, and each instance without its SOP Instance, Series Instance, or Study Instance UID.
 It also reports instances that share a SOP Instance UID, as identical copies only where their source bytes, the transfer syntax and the data set as the file encodes it, are shown to be the same, and as conflicting copies otherwise; a series whose instances name several studies; and a study whose instances name several patients, each a Patient ID with its issuer, with the instances without a Patient ID as one more.
 It reports each frame of reference mismatch too: a series whose instances name several Frame of Reference UIDs, an RT Structure Set ROI whose frame of reference the structure set does not list once and only once, and an image that a structure set lists under a frame of reference other than the image's own.
@@ -875,9 +880,9 @@ Under every option, an attribute that no rule covers is kept where its VR is CS,
 Under Clean Descriptors, a technique descriptor such as Protocol Name or Series Description is kept where every word of it is in the reviewed technique vocabulary and it echoes no identifier (D-036).
 The Retain Device Identity Option keeps machine identity, such as Station Name and Device Serial Number, as Table E.1-1 gives it, replacing each AE title by a keyed token (D-034), and a removed AE title or private value found in a text attribute that the Option keeps, such as an AE title equal to the Station Name, does not send the file to review (D-042).
 `tps-import` retains device identity, and modifies the device dates and times that the Option would keep by their role under Modified Dates (D-007).
-`public-release` omits it by fixed policy, because device serial numbers and machine names can identify an institution and, with dates, individual treatments, not after an assessment showing that they raise the residual risk above the threshold.
-A `public-release` run is ready for release only where its statistical gate passes with a recorded external assessment of the collection, and the record cannot be made without a statement of whether keeping machine identity, such as Station Name and Device Serial Number, would raise the risk above the threshold (D-017, D-053); the engine records that statement and does not interpret it, so whoever reviews the record checks that it justifies the omission.
-Remaining: acting on an assessment that finds keeping machine identity within the threshold, by keeping it under `public-release`, which the preset does not yet do (M4).
+`public-release` omits it whatever an assessment of the collection finds, as the maintainer decided on 24 October 2026, because device serial numbers and machine names can identify an institution and, with dates, individual treatments (D-017).
+A `public-release` run is ready for release only where its statistical gate passes with a recorded external assessment of the collection, and the record cannot be made without a statement of whether keeping machine identity, such as Station Name and Device Serial Number, would raise the risk above the threshold (D-017, D-053); the engine records that statement and does not interpret it, so whoever reviews the record sees whether the omission was needed.
+Remaining: a policy that keeps machine identity in a public release, released only where an assessment of its own output, with machine identity among the matching variables, finds the risk within the threshold, which `public-release` deliberately is not (D-017) (M4).
 '''
 
 [[requirement]]

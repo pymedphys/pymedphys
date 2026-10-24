@@ -367,7 +367,7 @@ def test_no_run_is_ready_without_a_statement_on_keeping_machine_identity(
     tmp_path, statement
 ):
     # The statistical gate needs a record, and no record can be made without
-    # the statement that justifies omitting or keeping machine identity.
+    # the statement of whether keeping machine identity would raise the risk.
     with pytest.raises(RiskAssessmentError, match="device_identity"):
         _assessment(device_identity=statement)
     result = _readiness(_reviewed(tmp_path, assessment=False))
@@ -665,7 +665,7 @@ def test_the_report_records_the_gates_by_reason_and_reference_alone(tmp_path):
         "attestation": None,
     }
     assert SENTINEL not in json.dumps(document)
-    assert document["format"] == "pymedphys-deid-release-report/26"
+    assert document["format"] == "pymedphys-deid-release-report/27"
 
 
 def test_a_public_release_report_given_no_readiness_is_not_ready():
