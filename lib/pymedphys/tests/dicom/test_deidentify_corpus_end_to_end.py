@@ -705,6 +705,46 @@ def test_each_kept_marker_is_kept_at_its_place(policy_run):
         assert kept
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-01")
+def test_each_sequence_of_content_items_a_run_keeps_keeps_its_items(policy_run):
+    """A sequence of content items that a run keeps keeps every item, and in
+    them each marker that the run keeps (``CorpusRun.kept_content``).
+
+    The test above lets a marker go with an item that is absent, and an
+    empty Acquisition Context Sequence is valid, so neither it nor the
+    validators show that such a sequence is kept.
+    """
+    spec, corpus, released = policy_run.spec, policy_run.corpus, policy_run.released
+    sequences = markers = 0
+
+    for position, data in released.items():
+        file = corpus.files[position]
+        source, dataset = _read(file.data), _read(data)
+        for tag in spec.kept_content:
+            number = _number(tag)
+            if number not in source:
+                continue
+            assert number in dataset, (file.name, tag)
+            assert len(dataset[number].value) == len(source[number].value), (
+                file.name,
+                tag,
+            )
+            inside = [
+                placement
+                for placement in file.manifest.placements
+                if placement.kind in REMOVED_KINDS
+                and placement.path.items
+                and placement.path.items[0][0] == tag
+                and spec.keeps(placement)
+            ]
+            for placement in inside:
+                assert _kept_at(dataset, placement), (file.name, placement.path)
+            sequences += 1
+            markers += len(inside)
+    # A run names a sequence for the markers that its options keep in it.
+    assert bool(sequences) == bool(markers) == bool(spec.kept_content)
+
+
 @pytest.mark.deid_requirement("MIDI-BP-01", "PS3.15-E.1.1-09")
 def test_no_released_file_keeps_a_removed_sequence_without_a_marker(policy_run):
     """A sequence whose item holds no marker is checked by its absence."""
