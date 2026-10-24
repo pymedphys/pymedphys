@@ -689,25 +689,30 @@ def _creators_as_un():
     """Kept values in blocks whose creators are written as UN, at depths 0 to 2.
 
     The PET creator is padded with a NUL, and the creator that no rule names
-    is kept for the standard attribute in its parsed sequence.
+    is kept for the standard attribute in its parsed sequence. Each block
+    also holds a value that no rule lists, which is removed.
     """
     philips = PHILIPS.encode()
     inner = pydicom.Dataset()
     inner.add_new(0x20010010, "UN", philips)
     inner.add_new(0x20011004, "CS", "RIGHT")
+    inner.add_new(0x200110FE, "UN", b"SENTINEL INNER")
     item = pydicom.Dataset()
     item.add_new(0x20010010, "UN", philips)
     item.add_new(0x20011004, "CS", "LEFT")
     item.add_new(0x20011065, "SQ", pydicom.Sequence([inner]))
+    item.add_new(0x200110FE, "UN", b"SENTINEL ITEM ")
     unlisted = pydicom.Dataset()
     unlisted.SliceThickness = "2.5"
     return _slice(
         (0x00190010, "UN", b"ACME 1.0"),
         (0x00191001, "SQ", pydicom.Sequence([unlisted])),
+        (0x00191002, "UN", b"SENTINEL ACME "),
         (0x20010010, "UN", philips),
         (0x2001105F, "SQ", pydicom.Sequence([item])),
         (0x70530010, "UN", PET.encode() + b"\x00"),
         (0x70531000, "DS", "1.25"),
+        (0x705310FE, "UN", b"SENTINEL PET"),
     )
 
 
@@ -729,6 +734,13 @@ def test_each_creator_written_as_un_is_kept_and_reviewed_as_lo():
 
     assert dict(plan.vrs) == dict.fromkeys(creators, "LO")
     assert all(plan.actions[creator] == "K" for creator in creators)
+    unlisted = [
+        _top("(0019,1002)"),
+        ElementPath(item, "(2001,10FE)"),
+        ElementPath(inner, "(2001,10FE)"),
+        _top("(7053,10FE)"),
+    ]
+    assert all(plan.actions[path] == "X" for path in unlisted)
     assert isinstance(result, run.Transformed), result
     assert b"SENTINEL" not in result.data
     assert {str(creator) for creator in creators} <= _in_private(result.data)
