@@ -60,6 +60,7 @@ DOMAINS = frozenset(
         "date-offset",
         "key-id",
         "patient",
+        "pixel-region-rules",
         "reviewed-descriptors",
         "reviewed-roi-names",
         "subject",

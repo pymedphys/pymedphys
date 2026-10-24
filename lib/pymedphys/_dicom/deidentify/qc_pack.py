@@ -75,9 +75,10 @@ A pack holds, for one run:
   frames, its Rows and Columns, the regions blacked out in each frame,
   by frame index from 0, each as ``[top, left, bottom, right]`` in pixels
   from the frame's top left corner, with the bottom row and right column
-  excluded, and, for compressed Pixel Data, the SHA-256 of its frames as
-  decoded, which binds a verdict to them (D-048), for the review of
-  every frame that the option requires. Each frame with regions is
+  excluded, which of those regions reviewed region rules gave, which are
+  among the regions of every frame, and, for compressed Pixel Data, the
+  SHA-256 of its frames as decoded, which binds a verdict to them (D-048),
+  for the review of every frame that the option requires. Each frame with regions is
   previewed as received, so under the option the pack holds the burned-in
   text that the release lacks;
 - ``previews``: each image preview, by its file in the previews directory
@@ -139,7 +140,7 @@ from .reviewed_roi_names import Outcome
 from .text_detection import TextBox
 
 # The format of the pack document. A change to its fields takes a new label.
-FORMAT = "pymedphys-deid-qc-pack/16"
+FORMAT = "pymedphys-deid-qc-pack/17"
 # The bytes of a written file shown on each side of a residual's offset.
 EXCERPT_BYTES = 48
 # The SHA-256 that face_review.contour_data_sha256 gives a file without
@@ -1062,6 +1063,12 @@ class RedactionEntry:
         (:attr:`~.pixel_cleaning.Redaction.decoded_sha256`), as 64 lowercase
         hex digits, which a reviewer's verdict on the instance requires the
         frames to decode to again (D-048); None for native Pixel Data.
+    rule_boxes : tuple of TextBox, optional
+        The regions that reviewed region rules gave
+        (:attr:`~.pixel_cleaning.Redaction.rule_boxes`), sorted, each once,
+        each of which is among the regions of every frame; none, the
+        default, where no rule matched. Every other region is the text
+        finder's.
     """
 
     position: int
@@ -1071,6 +1078,7 @@ class RedactionEntry:
     columns: int
     regions: tuple[tuple[int, tuple[TextBox, ...]], ...]
     decoded_sha256: str | None = None
+    rule_boxes: tuple[TextBox, ...] = ()
 
     def __post_init__(self) -> None:
         _check_position("a cleaned instance", self.position)
@@ -1124,6 +1132,23 @@ class RedactionEntry:
             raise QcPackError(
                 f"cleaned instance {self.position} has regions exactly where "
                 "text was blacked out"
+            )
+        if not (
+            isinstance(self.rule_boxes, tuple)
+            and all(isinstance(box, TextBox) for box in self.rule_boxes)
+            and list(self.rule_boxes) == sorted(set(self.rule_boxes))
+        ):
+            raise QcPackError(
+                f"cleaned instance {self.position} needs its rules' regions as "
+                "sorted, distinct boxes"
+            )
+        if self.rule_boxes and (
+            indices != list(range(self.frames))
+            or not all(set(self.rule_boxes) <= set(boxes) for _, boxes in self.regions)
+        ):
+            raise QcPackError(
+                f"cleaned instance {self.position} has a rule's region that is "
+                "not among the regions of every frame"
             )
 
 
@@ -1834,6 +1859,10 @@ def pack_document(pack: QcPack) -> dict:
                     for index, boxes in entry.regions
                 ],
                 "decoded_sha256": entry.decoded_sha256,
+                "rule_boxes": [
+                    [box.top, box.left, box.bottom, box.right]
+                    for box in entry.rule_boxes
+                ],
             }
             for entry in pack.redactions
         ],

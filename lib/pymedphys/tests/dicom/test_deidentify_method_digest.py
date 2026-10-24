@@ -97,6 +97,7 @@ SYNTHETIC_INPUTS = method_digest.MethodDigestInputs(
     reviewed_descriptors=None,
     technique_vocabulary=None,
     text_finder=None,
+    pixel_region_rules=None,
     safe_private_list=SafePrivateList.REVIEWED,
     generated_values={
         "uids.UID_ROOT": "2.25.",
@@ -111,7 +112,7 @@ SYNTHETIC_INPUTS = method_digest.MethodDigestInputs(
 SYNTHETIC_CANONICAL_BYTES = (
     '{"engine_version":"0.42.0.dev1",'
     '"files":{"policy.py":"' + "f" * 64 + '"},'
-    '"format":"pymedphys-deid-method-digest/6",'
+    '"format":"pymedphys-deid-method-digest/7",'
     '"generated_values":{'
     '"dates.MIN_OFFSET_WEEKS":["int",52],'
     '"dummy_values.CONSTANTS":["map",{"FL":["list",'
@@ -125,6 +126,7 @@ SYNTHETIC_CANONICAL_BYTES = (
     '"note":"Kept \\"as is\\".\\t\\u0001",'
     '"rules":{"(0008,0018)":"instance"}}},'
     '"l3_rules":null,'
+    '"pixel_region_rules":null,'
     '"policy":{"actions":{"(0010,0010)":"Z"},"edition":"2026d","enabled":false,'
     '"options":[],"preset":"basic","resolved":[],'
     '"supplementary_actions":{"(300A,00C2)":"X/Z/D"}},'
@@ -136,7 +138,7 @@ SYNTHETIC_CANONICAL_BYTES = (
     '"text_finder":null,'
     '"vocabulary":null}'
 ).encode("utf-8")
-SYNTHETIC_SHA256 = "2cad52a682cea91fe2752b9d27afc3efe82c15411a884a8c8c3483d824f324f9"
+SYNTHETIC_SHA256 = "290fecf89d55bc28110bd81b09c6df31a9d51902a740f6f07e560614dc1d0202"
 
 # Each parameter of generated values, and another value for it.
 GENERATED_VALUE_CHANGES = {
@@ -173,6 +175,7 @@ CANONICAL_MEMBERS = {
     "reviewed_descriptors",
     "technique_vocabulary",
     "text_finder",
+    "pixel_region_rules",
     "safe_private_list",
     "generated_values",
     "files",
@@ -1227,6 +1230,7 @@ COMPONENT_FIELDS = (
     "reviewed_descriptors",
     "technique_vocabulary_digest",
     "text_finder_digest",
+    "pixel_region_rules",
     "safe_private_list",
     "generated_values_digest",
     "engine_files",
@@ -1250,7 +1254,7 @@ def test_the_components_of_a_small_synthetic_input_are_digests_of_its_members():
     )
     assert components == method_digest.MethodDigestComponents(
         method_digest=SYNTHETIC_SHA256,
-        method_digest_format="pymedphys-deid-method-digest/6",
+        method_digest_format="pymedphys-deid-method-digest/7",
         engine_version="0.42.0.dev1",
         table_digests={"e1_1.json": "0" * 64},
         l2_rules_digest=SYNTHETIC_L2_RULES_SHA256,
@@ -1260,6 +1264,7 @@ def test_the_components_of_a_small_synthetic_input_are_digests_of_its_members():
         reviewed_descriptors=None,
         technique_vocabulary_digest=None,
         text_finder_digest=None,
+        pixel_region_rules=None,
         safe_private_list=None,
         generated_values_digest=SYNTHETIC_GENERATED_VALUES_SHA256,
         engine_files={"policy.py": "f" * 64},

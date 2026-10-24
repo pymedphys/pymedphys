@@ -55,6 +55,13 @@ decoded frames (:attr:`Redaction.decoded_sha256`) binds a reviewer's
 verdict to those samples, since another build of a decoder, or one that its
 codestream subverts, can decode the same codestream otherwise (D-048).
 
+Reviewed region rules (:mod:`~pymedphys._dicom.deidentify.pixel_region_rules`)
+give :func:`black_out` regions to black out in every frame of an instance
+of one kind beside those that the finder finds, such as the header band
+that an ultrasound scanner burns into each image. They are filled in the
+same way, and :attr:`Redaction.rule_boxes` records them, so that the QC
+pack says which regions a rule gave.
+
 Under Clean Recognizable Visual Features, :func:`black_out` also writes
 the masks that a :class:`Defacer` gives each frame, such as the face block
 of a head CT (:mod:`~pymedphys._dicom.deidentify.face_blocks`), each pixel
@@ -327,6 +334,10 @@ class Redaction:
     decoded : bytes or None
         For compressed Pixel Data, its frames as decoded, in the layout
         that ``value`` has, without padding; None for native Pixel Data.
+    rule_boxes : tuple of TextBox
+        The regions that reviewed region rules gave, sorted, each once,
+        which are among the regions of every frame; none where no rule
+        matched.
     """
 
     layout: Layout
@@ -334,6 +345,7 @@ class Redaction:
     value: bytes = dataclasses.field(repr=False)
     masks: tuple[FrameMask, ...] = ()
     decoded: bytes | None = dataclasses.field(default=None, repr=False)
+    rule_boxes: tuple[TextBox, ...] = ()
 
     @property
     def changed(self) -> bool:
@@ -367,9 +379,11 @@ def black_out(
     dataset: pydicom.Dataset,
     finder: TextFinder | None,
     defacer: Defacer | None = None,
+    *,
+    rules: Sequence[TextBox] = (),
 ) -> Redaction | None:
-    """Return the instance's Pixel Data with the finder's regions blacked out,
-    and the defacer's masks written.
+    """Return the instance's Pixel Data with the finder's regions and the
+    rules' blacked out, and the defacer's masks written.
 
     Parameters
     ----------
@@ -379,6 +393,11 @@ def black_out(
     finder : TextFinder or None
         None where no text is looked for.
     defacer : Defacer, optional
+    rules : sequence of TextBox, optional
+        The regions that reviewed region rules give the instance, as
+        :meth:`~.pixel_region_rules.PixelRegionRules.boxes_for` gives them,
+        to black out in every frame beside the finder's; only with a
+        finder. Like a reviewer's region, a rule's region is never clipped.
 
     Returns
     -------
@@ -393,14 +412,32 @@ def black_out(
         With :attr:`~.reasons.TransformReason.UNCLEANABLE_PIXEL_DATA` for
         float pixel data, or Pixel Data that cannot be read as frames, or
         the reason of :class:`~.pixel_decoding.FramesRefused` for
-        compressed Pixel Data whose frames cannot be decoded for cleaning.
+        compressed Pixel Data whose frames cannot be decoded for cleaning,
+        and with :attr:`~.reasons.TransformReason.REDACTION_MISMATCH` where
+        a rule's region goes past the frame.
+    TypeError
+        If ``rules`` holds anything but TextBox objects, or is given without
+        a finder.
     """
-    return _blacked_out(
-        source,
-        dataset,
-        None if finder is None else lambda _, frame: finder.find(frame),
-        defacer,
-    )
+    if not all(isinstance(box, TextBox) for box in rules):
+        raise TypeError("region rules must give TextBox objects")
+    ruled = tuple(sorted(set(rules)))
+    if finder is None:
+        if ruled:
+            raise TypeError("region rules are applied only beside a text finder")
+        return _blacked_out(source, dataset, None, defacer)
+    find = finder.find
+
+    def found(_: int, frame: np.ndarray) -> Sequence[TextBox]:
+        rows, columns = frame.shape[:2]
+        if any(box.bottom > rows or box.right > columns for box in ruled):
+            raise PixelDataRefused(TransformReason.REDACTION_MISMATCH)
+        return (*_checked(find(frame), rows, columns), *ruled)
+
+    redaction = _blacked_out(source, dataset, found, defacer)
+    if redaction is None or not ruled:
+        return redaction
+    return dataclasses.replace(redaction, rule_boxes=ruled)
 
 
 def black_out_reviewed(
@@ -512,7 +549,7 @@ def _blacked_out(
         boxes = (
             ()
             if boxes_of is None
-            else tuple(sorted(set(_checked(boxes_of(index, frame), layout))))
+            else tuple(sorted(set(_given(boxes_of(index, frame)))))
         )
         if boxes:
             fill = layout.fill(frame)
@@ -862,7 +899,20 @@ def _frame(layout: Layout, frame: np.ndarray) -> np.ndarray:
     return frame[..., 0] if layout.samples == 1 else frame
 
 
-def _checked(boxes: Sequence[TextBox], layout: Layout) -> list[TextBox]:
+def _given(boxes: Sequence[TextBox]) -> Sequence[TextBox]:
+    """Return the boxes given for a frame, each checked to be a TextBox.
+
+    Raises
+    ------
+    TypeError
+        If a box is not a :class:`~.text_detection.TextBox`.
+    """
+    if not all(isinstance(box, TextBox) for box in boxes):
+        raise TypeError("a text finder must give TextBox objects")
+    return boxes
+
+
+def _checked(boxes: Sequence[TextBox], rows: int, columns: int) -> list[TextBox]:
     """Return the finder's boxes, each clipped to the frame.
 
     Raises
@@ -871,10 +921,8 @@ def _checked(boxes: Sequence[TextBox], layout: Layout) -> list[TextBox]:
         If a box is not a :class:`~.text_detection.TextBox`.
     """
     clipped = []
-    for box in boxes:
-        if not isinstance(box, TextBox):
-            raise TypeError("a text finder must give TextBox objects")
-        bottom, right = min(box.bottom, layout.rows), min(box.right, layout.columns)
+    for box in _given(boxes):
+        bottom, right = min(box.bottom, rows), min(box.right, columns)
         if box.top < bottom and box.left < right:
             clipped.append(TextBox(box.top, box.left, bottom, right))
     return clipped

@@ -46,7 +46,8 @@ each instance it may process. It joins the engine's per-instance steps:
    Patient's Birth Date the subject's synthetic birth date, and under Clean
    Pixel Data,
    :func:`~pymedphys._dicom.deidentify.pixel_cleaning.black_out` blacks out
-   the text found in Pixel Data (D-037), writing compressed Pixel Data
+   the text found in Pixel Data and the regions of any reviewed region rule
+   that matches the instance (D-037), writing compressed Pixel Data
    uncompressed, as decoded, or, where a reviewer's
    verdict on its source file is given,
    :func:`~pymedphys._dicom.deidentify.pixel_cleaning.black_out_reviewed`
@@ -177,6 +178,7 @@ from .reasons import (
     TransformReason,
     VisualFeaturesReason,
 )
+from .pixel_region_rules import PixelRegionRules
 from .redaction_review import RedactionReview, Regions
 from .readiness import ReadinessReview
 from .reference_graph import ReferenceGraph
@@ -777,6 +779,15 @@ class InstanceTransform:
         :func:`~pymedphys._dicom.deidentify.redaction_review.read_redaction_review`,
         which only a policy selecting Clean Pixel Data takes; without one,
         no instance with Pixel Data satisfies that option.
+    pixel_region_rules : PixelRegionRules, optional
+        The reviewed region rules whose regions Clean Pixel Data blacks out
+        beside the finder's, in every frame of each instance whose key a
+        rule has
+        (:class:`~pymedphys._dicom.deidentify.pixel_region_rules.PixelRegionRules`),
+        which only a policy selecting Clean Pixel Data takes. The transform
+        applies the rules as they stand when it is made, the version whose
+        keyed digest its markers and release report record; a rule recorded
+        later does not apply.
     safe_private_list : SafePrivateList, optional
         Under the Retain Safe Private Option, the list whose rules settle
         private attributes: the reviewed rules, the default, or TCIA's
@@ -813,8 +824,9 @@ class InstanceTransform:
         if ``cleaning`` is given without Clean Descriptors, or left out with
         it; if ``finder`` is given without Clean Pixel Data, or left out with
         it; if ``face_review`` is given without Clean Recognizable Visual
-        Features, or left out with it; if ``redaction_review`` is given
-        without Clean Pixel Data; if ``readiness_review`` is given with a
+        Features, or left out with it; if ``redaction_review`` or
+        ``pixel_region_rules`` is given without Clean Pixel Data; if
+        ``readiness_review`` is given with a
         policy other than the ``public-release`` preset; if
         ``safe_private_list`` chooses TCIA's dictionary without the Retain
         Safe Private Option.
@@ -869,7 +881,8 @@ class InstanceTransform:
 
     Under Clean Pixel Data, :func:`~.pixel_cleaning.black_out` blacks out the
     regions of text that ``finder`` finds in each frame of the instance's
-    top-level Pixel Data, decoded first where it is compressed and then
+    top-level Pixel Data, and the regions of a reviewed region rule whose
+    key is the instance's, decoded first where it is compressed and then
     written uncompressed, in Explicit VR Little Endian, whether or not a
     region is blacked out, :func:`~.pixel_cleaning.redaction_problem` checks the file
     written, and the instance's evidence is a
@@ -942,6 +955,7 @@ class InstanceTransform:
         finder: TextFinder | None = None,
         face_review: FaceReview | None = None,
         redaction_review: RedactionReview | None = None,
+        pixel_region_rules: PixelRegionRules | None = None,
         safe_private_list: SafePrivateList = SafePrivateList.REVIEWED,
         profiles: ProfileStore | None = None,
         readiness_review: ReadinessReview | None = None,
@@ -977,6 +991,18 @@ class InstanceTransform:
                 "Pixel Data"
             )
         self._redaction_review = redaction_review
+        if pixel_region_rules is not None and CLEAN_PIXEL_DATA not in policy.options:
+            raise PolicyError(
+                "pixel region rules are given only when the policy selects Clean "
+                "Pixel Data"
+            )
+        # One version of the rules, for both cleaning and their digest.
+        self._region_rules = (
+            None if pixel_region_rules is None else pixel_region_rules.snapshot()
+        )
+        region_rules = (
+            None if self._region_rules is None else self._region_rules.keyed_digest(key)
+        )
         if readiness_review is not None and policy.preset != PUBLIC_RELEASE:
             raise PolicyError(
                 "a readiness review is given only under the public-release preset"
@@ -1031,6 +1057,7 @@ class InstanceTransform:
             reviewed_descriptors=descriptors,
             technique_vocabulary=technique,
             text_finder=finder_method,
+            pixel_region_rules=region_rules,
             safe_private_list=safe_private_list,
         )
         satisfied = satisfied_options(policy)
@@ -1058,6 +1085,7 @@ class InstanceTransform:
             reviewed_descriptors=descriptors,
             technique_vocabulary=technique,
             text_finder=finder_method,
+            pixel_region_rules=region_rules,
             face_review=None if face_review is None else face_review.reference,
             redaction_review=(
                 None if redaction_review is None else redaction_review.reference
@@ -1286,7 +1314,8 @@ class InstanceTransform:
         The redaction is None where nothing applies, or the instance has no
         top-level pixel data. The regions are those that the redaction
         review approved for the source file, by its SHA-256, otherwise those
-        that the finder finds, and none without Clean Pixel Data. An RT Dose
+        that the finder finds with those of the region rule whose key is
+        the instance's, if any, and none without Clean Pixel Data. An RT Dose
         whose grid :class:`~.dose_defacing.RtDoseDefacer` cannot set to
         zero, or holds, or a PET image that
         :class:`~.region_defacing.PetDefacer` cannot clean, is blacked out
@@ -1349,6 +1378,11 @@ class InstanceTransform:
             As :func:`~.pixel_cleaning.black_out_reviewed` raises it.
         """
         reviewed = approved is not None
+        rules = (
+            ()
+            if self._region_rules is None or reviewed
+            else self._region_rules.boxes_for(dataset)
+        )
         if dose is not None or pet is not None:
             try:
                 defacer = (
@@ -1357,7 +1391,7 @@ class InstanceTransform:
                     else PetDefacer(pet, dataset)  # type: ignore[arg-type]
                 )
                 redaction = (
-                    black_out(source, dataset, self._finder, defacer)
+                    black_out(source, dataset, self._finder, defacer, rules=rules)
                     if approved is None
                     else black_out_reviewed(
                         source, dataset, approved, defacer, decoded_sha256=decoded
@@ -1374,7 +1408,7 @@ class InstanceTransform:
                         source, dataset, approved, decoded_sha256=decoded
                     )
                 elif self._finder is not None:
-                    redaction = black_out(source, dataset, self._finder)
+                    redaction = black_out(source, dataset, self._finder, rules=rules)
             return redaction, why, reviewed
         defacer = None if block is None else CtDefacer(block, dataset)
         if approved is not None:
@@ -1385,7 +1419,11 @@ class InstanceTransform:
                 None,
                 True,
             )
-        return black_out(source, dataset, self._finder, defacer), None, False
+        return (
+            black_out(source, dataset, self._finder, defacer, rules=rules),
+            None,
+            False,
+        )
 
     def _kept_descriptors(
         self, plan: InstancePlan, edits: InstanceEdits
@@ -2012,6 +2050,7 @@ def _redaction_material(
         tuple((regions.frame, regions.boxes) for regions in redaction.regions),
         shown,
         redaction.decoded_sha256,
+        redaction.rule_boxes,
     )
 
 

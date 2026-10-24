@@ -986,7 +986,7 @@ def render_markdown(statement: ConformanceStatement) -> str:
         "vocabulary of free-text descriptors, "
         + (
             "without a reviewed-names or reviewed descriptors list, and "
-            "without a text finder, "
+            "without a text finder or region rules, "
             if CLEAN_PIXEL_DATA in statement.options
             else "and without a reviewed-names or reviewed descriptors list, "
         )

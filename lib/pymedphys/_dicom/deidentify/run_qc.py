@@ -167,6 +167,11 @@ class RedactionMaterial:
     decoded_sha256 : bytes or None
         For compressed Pixel Data, the SHA-256 of its frames as decoded,
         which the pack records with its regions; None for native Pixel Data.
+    rule_boxes : tuple of ~.text_detection.TextBox
+        The regions that reviewed region rules gave, which are among the
+        regions of every frame, as
+        :class:`~pymedphys._dicom.deidentify.qc_pack.RedactionEntry` gives
+        them.
     """
 
     reason: PixelDataReason
@@ -176,6 +181,7 @@ class RedactionMaterial:
     regions: tuple[tuple[int, tuple[TextBox, ...]], ...]
     source: bytes | None
     decoded_sha256: bytes | None = None
+    rule_boxes: tuple[TextBox, ...] = ()
 
     def __repr__(self) -> str:
         return (
@@ -435,6 +441,7 @@ def qc_pack_of(
                 item.columns,
                 item.regions,
                 None if item.decoded_sha256 is None else item.decoded_sha256.hex(),
+                item.rule_boxes,
             ),
         )
         for position, item in redactions.items()
