@@ -627,7 +627,7 @@ def _statement(monkeypatch, options):
 
 
 UNCHANGED = "The engine writes Pixel Data (7FE0,0010) unchanged"
-WITHOUT_A_FINDER = "and without a text finder, is"
+WITHOUT_A_FINDER = "and without a text finder or region rules, is"
 BLACKED_OUT = "Under the Clean Pixel Data Option, the engine replaces each region"
 
 
