@@ -232,6 +232,7 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
 
 ### Dependency changes
 
+- Documentation and gamma-scaling example environments now pin setuptools 84.1.0, fixing a Windows path escape in legacy wheel installation. Refresh these environments from the updated dependency files. [PR #2444](https://github.com/pymedphys/pymedphys/pull/2444)
 - The extras are reorganised. `user` is unchanged and remains the recommended install. `tests` is now `user` plus the test runner, so `pymedphys[tests]` is enough to run `pymedphys dev tests`. `all` is now `user`, `ai`, and `tests`, without development tools. Development tools move to dependency groups, which are not published to PyPI; in a source checkout, `uv sync` installs every extra and tool. [PR #2145](https://github.com/pymedphys/pymedphys/pull/2145)
 - The feature extras now each install everything their feature uses, and CI installs each one alone and runs its feature's tests. Before, each lacked packages its own feature needed: for example, `pymedphys[dicom]` could not anonymise because it had no NumPy. Combine them as needed, for example `pymedphys[gamma,dicom]` for gamma on DICOM files. [PR #2145](https://github.com/pymedphys/pymedphys/pull/2145)
   - New `gamma`: `pymedphys.gamma` and `pymedphys.gamma_pass_rate`, with NumPy, Numba, and SciPy.
