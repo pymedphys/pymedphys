@@ -91,7 +91,14 @@ A pack holds, for one run:
 - ``source_gaps``: each instance whose source lacks an attribute that its
   IOD unconditionally requires, with each such attribute's place and Type,
   which the run reports and never acts on (MIDI-BP-03); the release report
-  gives only their counts by attribute and Type.
+  gives only their counts by attribute and Type;
+- ``reviewed_lists``: the salted digest of the reviewed ROI names and
+  descriptors lists that the run's descriptor cleaning applied, as
+  :func:`~pymedphys._dicom.deidentify.risk_assessment.lists_digest` gives
+  it, with its salt, or null for a run whose reporter stated no lists; a
+  risk assessment of the run binds these lists, so that what its record
+  binds is what the run applied, not what whoever records it supplies
+  (D-053).
 
 Its ``reference`` is an opaque random token that the release report records
 with the attestation's outcome, in place of the review material (D-016). It
@@ -132,7 +139,7 @@ from .reviewed_roi_names import Outcome
 from .text_detection import TextBox
 
 # The format of the pack document. A change to its fields takes a new label.
-FORMAT = "pymedphys-deid-qc-pack/15"
+FORMAT = "pymedphys-deid-qc-pack/16"
 # The bytes of a written file shown on each side of a residual's offset.
 EXCERPT_BYTES = 48
 # The SHA-256 that face_review.contour_data_sha256 gives a file without
@@ -1164,6 +1171,36 @@ class SourceGapEntry:
             raise QcPackError(f"instance {self.position} needs its source gaps")
 
 
+@dataclasses.dataclass(frozen=True, repr=False)
+class ListsDigest:
+    """The salted digest of the reviewed lists that a run applied.
+
+    A digest of a short list, with its salt, can be tested against guesses
+    of the list, which holds source names and values, so it is kept only in
+    confidential QC material, and its ``repr`` shows neither.
+
+    Attributes
+    ----------
+    salt : str
+        64 hex digits, random for each run.
+    sha256 : str
+        :func:`~pymedphys._dicom.deidentify.risk_assessment.lists_digest` of
+        the lists under ``salt``, 64 hex digits.
+    """
+
+    salt: str
+    sha256: str
+
+    def __post_init__(self) -> None:
+        for name in ("salt", "sha256"):
+            value = getattr(self, name)
+            if not isinstance(value, str) or not _SHA256.fullmatch(value):
+                raise QcPackError(f"the reviewed lists' digest needs its {name}")
+
+    def __repr__(self) -> str:
+        return "ListsDigest()"
+
+
 @dataclasses.dataclass(frozen=True)
 class SeriesEntry:
     """A series of released or held instances, which a face verdict names.
@@ -1282,6 +1319,9 @@ class QcPack:
         Each instance in at most one, by its first run position in order;
         each instance released or held for review, with its source's
         SHA-256.
+    reviewed_lists : ListsDigest or None
+        The salted digest of the reviewed lists that the run applied, or
+        None where it stated none.
 
     Raises
     ------
@@ -1322,12 +1362,17 @@ class QcPack:
     not_previewed: tuple[NotPreviewedEntry, ...] = ()
     source_gaps: tuple[SourceGapEntry, ...] = ()
     series: tuple[SeriesEntry, ...] = ()
+    reviewed_lists: ListsDigest | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.reference, str) or not _REFERENCE.fullmatch(
             self.reference
         ):
             raise QcPackError("a QC pack needs a reference from new_reference()")
+        if self.reviewed_lists is not None and not isinstance(
+            self.reviewed_lists, ListsDigest
+        ):
+            raise QcPackError("reviewed_lists must be a ListsDigest or None")
         sections = {
             "instances": InstanceEntry,
             "residual_findings": ResidualEntry,
@@ -1654,7 +1699,8 @@ def pack_document(pack: QcPack) -> dict:
     Returns
     -------
     dict
-        With the keys ``format``, ``reference``, and one for each section.
+        With the keys ``format``, ``reference``, ``reviewed_lists``, and one
+        for each section.
 
     Examples
     --------
@@ -1668,9 +1714,13 @@ def pack_document(pack: QcPack) -> dict:
     """
     if not isinstance(pack, QcPack):
         raise TypeError("pack must be a QcPack")
+    lists = pack.reviewed_lists
     return {
         "format": FORMAT,
         "reference": pack.reference,
+        "reviewed_lists": (
+            None if lists is None else {"salt": lists.salt, "sha256": lists.sha256}
+        ),
         "instances": [_instance(entry) for entry in pack.instances],
         "residual_findings": [_residual(entry) for entry in pack.residual_findings],
         "drops": [

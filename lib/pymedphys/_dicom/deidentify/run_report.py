@@ -149,8 +149,16 @@ class Reporter(Protocol):
     :func:`~pymedphys._dicom.deidentify.release_report.to_json` gives, from
     which the run generates the report's human-readable form. ``qc_pack`` is
     the opaque reference of the run's QC pack, and ``facts`` the run's
-    :class:`RunFacts`.
+    :class:`RunFacts`. ``reviewed_lists`` are the reviewed ROI names and
+    descriptors lists that the run's descriptor cleaning applies, as it read
+    them, or None for each that it was not given, whose salted digest the
+    run records in its QC pack.
     """
+
+    @property
+    def reviewed_lists(
+        self,
+    ) -> tuple[ReviewedNames | None, ReviewedDescriptors | None]: ...
 
     def admits(self, status: str, reasons: tuple[object, ...]) -> bool:
         """Whether the report can give a withheld outcome with these reasons.
@@ -293,6 +301,11 @@ class ReleaseReporter:
 
     def __repr__(self) -> str:
         return "ReleaseReporter()"
+
+    @property
+    def reviewed_lists(self) -> tuple[ReviewedNames | None, ReviewedDescriptors | None]:
+        """The lists given as ``reviewed_lists``, which the run's QC pack binds."""
+        return self._reviewed_lists
 
     def admits(self, status: str, reasons: tuple[object, ...]) -> bool:
         """Whether the report can give a withheld outcome with these reasons.

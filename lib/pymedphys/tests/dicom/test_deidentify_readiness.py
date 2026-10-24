@@ -158,6 +158,8 @@ def _pack(reference, instances=None, *, series=SERIES, strings=None, risks=(1,))
         pixel_risks=tuple(PixelRiskEntry(p, (BURNED_IN,)) for p in risks),
         series=series,
         previews=previews,
+        # As a run without Clean Descriptors records them.
+        reviewed_lists=risk_assessment.bind_lists(None, None),
     )
 
 
@@ -236,8 +238,6 @@ def _reviewed(  # pylint: disable = too-many-arguments
             directory,
             report_file,
             _assessment() if assessment is None else assessment,
-            reviewed_names=None,
-            reviewed_descriptors=None,
         )
     return readiness.read_readiness_review(directory, report_file)
 
@@ -874,8 +874,6 @@ def test_a_second_run_of_a_reviewed_and_assessed_collection_is_ready():
                 pack,
                 first_report,
                 _assessment(subjects=subjects),
-                reviewed_names=cleaning.reviewed,
-                reviewed_descriptors=cleaning.reviewed_descriptors,
             )
             review = readiness.read_readiness_review(pack, first_report)
             transform = _public_release(cleaning, review)

@@ -136,6 +136,7 @@ from .reference_graph import (
 )
 from .references import InstanceRecord, UnreadableSequence, with_series_numberings
 from .reasons import RunReason
+from .risk_assessment import bind_lists
 
 # discover and ReleaseWithheld are part of the run's interface, from here.
 from .run_discovery import (  # pylint: disable = unused-import
@@ -332,7 +333,11 @@ def run(
         it, as :func:`~pymedphys._dicom.deidentify.run_report.release_files`
         gives them. Without one, neither is written. A withheld input whose reasons
         the reporter does not admit is sequestered for
-        :attr:`RunReason.INVALID_REASON`, followed by its own reasons.
+        :attr:`RunReason.INVALID_REASON`, followed by its own reasons. The
+        QC pack records the salted digest of the reporter's
+        ``reviewed_lists``, the lists that its readiness checks, which a
+        risk assessment of the run binds; without a reporter it records
+        none, and no assessment of the run can be recorded.
     written_check : WrittenCheck, optional
         The reference graph's second pass under the run's key, such as an
         :class:`~pymedphys._dicom.deidentify.instance_transform.InstanceTransform`'s
@@ -454,7 +459,15 @@ def _run(  # pylint: disable = too-many-arguments, too-many-positional-arguments
             outcomes = _admitted(outcomes, reporter)
         outcomes = _labelled(outcomes)
         pack = run_qc.qc_pack_of(
-            discovery.paths, outcomes, material, digests=first.digests
+            discovery.paths,
+            outcomes,
+            material,
+            digests=first.digests,
+            # The lists that the report's readiness checks, under a new salt,
+            # so that a risk assessment of the run binds those it applied.
+            reviewed_lists=(
+                None if reporter is None else bind_lists(*reporter.reviewed_lists)
+            ),
         )
         facts = run_report.RunFacts(
             pack,
