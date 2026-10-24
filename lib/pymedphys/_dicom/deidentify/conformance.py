@@ -186,12 +186,6 @@ PENDING_SAFE_PRIVATE = (
     "The safe private attributes that the policy retains, and the basis on "
     "which each is retained (PS3.15 E.3.10)."
 )
-# Pending only for tps-import, whose Z writes a synthetic birth date.
-PENDING_BIRTH_DATES = (
-    "The synthetic birth date that Z writes to Patient's Birth Date "
-    "(0010,0030) in place of a zero-length value."
-)
-_TPS_IMPORT = "tps-import"
 _FULL_DATES = "retain_longitudinal_full_dates"
 _ROI_NAME = "(3006,0026)"
 _CLEAN_DESCRIPTORS = "clean_descriptors"
@@ -997,7 +991,6 @@ def conformance_statement(
             (PENDING_CLEANING, "C" in actions),
             (PENDING_FALLBACK, not _falls_back(policy)),
             (PENDING_SAFE_PRIVATE, rules is None and safe_private),
-            (PENDING_BIRTH_DATES, policy.preset == _TPS_IMPORT),
         )
         if applies
     )

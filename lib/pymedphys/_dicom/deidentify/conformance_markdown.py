@@ -1084,7 +1084,7 @@ def render_markdown(statement: ConformanceStatement) -> str:
         *_roi_names(statement),
         *_descriptors(statement, named),
         *_cleaned(statement, named, option),
-        *conformance_values.values_written(named),
+        *conformance_values.values_written(statement, named),
         "",
         *conformance_values.dates_and_times(statement, named, option),
         "",

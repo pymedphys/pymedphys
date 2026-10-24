@@ -216,6 +216,97 @@ def test_a_malformed_store_is_rejected(tmp_path, change, message):
         profiles.ProfileStore.open(FIXTURE_KEY, path)
 
 
+BIRTH_DATE = profiles.BirthDate(
+    "19790615",
+    profiles.ReferenceStudy("2.25.123456789", "20190615", 40),
+)
+
+
+@pytest.mark.parametrize("birth_date", [BIRTH_DATE, profiles.NO_BIRTH_DATE])
+def test_a_birth_date_persists_across_runs(tmp_path, birth_date):
+    path = tmp_path / "profiles.json"
+    store = profiles.ProfileStore.open(FIXTURE_KEY, path)
+    recorded = store.record_birth_date(SUBJECT, birth_date)
+    store.save()
+
+    reopened = profiles.ProfileStore.open(FIXTURE_KEY, path)
+    assert reopened.profile(SUBJECT) == recorded
+    assert recorded.birth_date == birth_date
+    assert recorded.date_offset_weeks == dates.date_offset_weeks(FIXTURE_KEY, SUBJECT)
+
+
+def test_a_subject_without_a_birth_date_is_stored_without_one(tmp_path):
+    _, document = _saved_document(tmp_path)
+
+    assert "birth_date" not in document["subjects"][_token(document)]
+    store = profiles.ProfileStore.open(FIXTURE_KEY, tmp_path / "profiles.json")
+    assert store.profile(SUBJECT).birth_date is None
+
+
+def test_a_recorded_birth_date_is_never_replaced():
+    store = profiles.ProfileStore.ephemeral(FIXTURE_KEY)
+    store.record_birth_date(SUBJECT, profiles.NO_BIRTH_DATE)
+
+    with pytest.raises(profiles.ProfileError, match="already holds"):
+        store.record_birth_date(SUBJECT, BIRTH_DATE)
+    assert store.profile(SUBJECT).birth_date == profiles.NO_BIRTH_DATE
+    # Other subjects are recorded apart.
+    assert store.record_birth_date(OTHER_SUBJECT, BIRTH_DATE).birth_date == BIRTH_DATE
+
+
+def test_a_birth_date_has_a_reference_exactly_when_it_has_a_value():
+    with pytest.raises(ValueError, match="reference study"):
+        profiles.BirthDate("19790615", None)
+    with pytest.raises(ValueError, match="reference study"):
+        profiles.BirthDate("", BIRTH_DATE.reference)
+
+
+def _with_birth_date(document, **changes):
+    stored = {
+        "date": "19790615",
+        "reference": {"study": "2.25.123456789", "date": "20190615", "age_years": 40},
+    }
+    for name, value in changes.items():
+        if name in stored:
+            stored[name] = value
+        else:
+            stored["reference"][name] = value
+    document["subjects"][_token(document)]["birth_date"] = stored
+
+
+@pytest.mark.parametrize(
+    "changes, message",
+    [
+        ({"date": "19790230"}, "not a date"),
+        ({"date": ""}, "not a date"),
+        ({"date": "1979615"}, "not a date"),
+        ({"reference": None}, "without its reference"),
+        ({"study": "1.2.3"}, "replacement UID"),
+        ({"study": 2}, "replacement UID"),
+        ({"date": "19790615", "age_years": -1}, "0 to 999"),
+        ({"age_years": 1000}, "0 to 999"),
+        ({"age_years": True}, "0 to 999"),
+        ({"reference": {"study": "2.25.1", "date": "20190615"}}, "replacement UID"),
+    ],
+)
+def test_a_malformed_birth_date_is_rejected(tmp_path, changes, message):
+    path, document = _saved_document(tmp_path)
+    _with_birth_date(document, **changes)
+    path.write_text(json.dumps(document), encoding="utf-8")
+
+    with pytest.raises(profiles.ProfileError, match=message):
+        profiles.ProfileStore.open(FIXTURE_KEY, path)
+
+
+def test_a_birth_date_without_its_fields_is_rejected(tmp_path):
+    path, document = _saved_document(tmp_path)
+    document["subjects"][_token(document)]["birth_date"] = {"date": ""}
+    path.write_text(json.dumps(document), encoding="utf-8")
+
+    with pytest.raises(profiles.ProfileError, match="date and reference"):
+        profiles.ProfileStore.open(FIXTURE_KEY, path)
+
+
 def test_an_unreadable_store_is_rejected(tmp_path):
     path = tmp_path / "profiles.json"
     path.write_text("{", encoding="utf-8")

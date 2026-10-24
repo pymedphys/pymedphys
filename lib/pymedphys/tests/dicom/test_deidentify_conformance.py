@@ -453,9 +453,20 @@ def test_retained_safe_private_attributes_are_listed_where_selected(
     assert bool(statement.safe_private) == ("retain_safe_private" in composed.options)
 
 
-def test_synthetic_birth_dates_are_pending_only_for_tps_import(preset, statement_for):
-    pending = statement_for(preset).pending
-    assert (conformance.PENDING_BIRTH_DATES in pending) == (preset == "tps-import")
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
+def test_only_the_tps_import_statement_describes_synthetic_birth_dates(
+    preset, statement_for
+):
+    statement = statement_for(preset)
+    text = conformance_markdown.render_markdown(statement)
+    described = [line for line in text.splitlines() if "synthetic birth date" in line]
+
+    assert bool(described) == (preset == "tps-import")
+    assert not any("birth date" in item for item in statement.pending)
+    for line in described:
+        assert "Patient's Birth Date (0010,0030)" in line
+        assert "`birth-date-conflict`" in line
+        assert "D-0" not in line
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.5-02")
