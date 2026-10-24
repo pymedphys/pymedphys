@@ -177,6 +177,25 @@ class ProfileStore:
         subjects = _read(resolved, key) if resolved.exists() else {}
         return cls(key, resolved, subjects)
 
+    @property
+    def key_id(self) -> str:
+        """The identifier of the key the store belongs to."""
+        return self._key.key_id
+
+    @property
+    def persistent(self) -> bool:
+        """Whether the store is kept in a file, rather than for the run only."""
+        return self._path is not None
+
+    def date_offset_weeks(self, identity: SubjectIdentity) -> int:
+        """Return the subject's date offset, from its profile.
+
+        The profile is derived and recorded if the subject is new, and
+        otherwise read back, so a subject keeps the offset of its first
+        export.
+        """
+        return self.profile(identity).date_offset_weeks
+
     def profile(self, identity: SubjectIdentity) -> SubjectProfile:
         """Return the subject's profile, deriving and recording it if new."""
         token = self._key.derive("subject", *identity.parts).hex()

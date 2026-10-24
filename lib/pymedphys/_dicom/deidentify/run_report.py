@@ -239,6 +239,13 @@ class ReleaseReporter:
         :func:`~pymedphys._dicom.deidentify.release_report.release_report`
         and :func:`~pymedphys._dicom.deidentify.conformance.conformance_statement`
         take it.
+    project_key : str, optional
+        The identifier of the project key whose subject profiles the run
+        reads and records (D-004), or None, the default, for a run-scoped
+        key, as
+        :func:`~pymedphys._dicom.deidentify.release_report.release_report`
+        takes it; the conformance statement then says that the run's
+        generated values agree with every other run under that key.
     readiness_review : ~pymedphys._dicom.deidentify.readiness.ReadinessReview, optional
         Under the ``public-release`` preset, the review of an earlier run of
         the collection, from
@@ -277,6 +284,7 @@ class ReleaseReporter:
         text_finder: Mapping[str, object] | None = None,
         pixel_region_rules: str | None = None,
         safe_private_list: SafePrivateList = SafePrivateList.REVIEWED,
+        project_key: str | None = None,
         readiness_review: ReadinessReview | None = None,
         reviewed_lists: tuple[ReviewedNames | None, ReviewedDescriptors | None] = (
             None,
@@ -295,6 +303,7 @@ class ReleaseReporter:
                 "a readiness review is given only under the public-release preset"
             )
         self._readiness_review = readiness_review
+        self._project_key = project_key
         self._reviewed_lists = reviewed_lists
         self._policy = policy
         self._vocabulary = vocabulary
@@ -416,6 +425,7 @@ class ReleaseReporter:
             self._policy,
             vocabulary=self._vocabulary,
             safe_private_list=self._safe_private_list,
+            project_key=self._project_key is not None,
         )
         return conformance_markdown.render_markdown(statement)
 
@@ -432,6 +442,7 @@ class ReleaseReporter:
             text_finder=self._text_finder,
             pixel_region_rules=self._pixel_region_rules,
             safe_private_list=self._safe_private_list,
+            project_key=self._project_key,
             **run,  # type: ignore[arg-type]
         )
 

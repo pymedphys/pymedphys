@@ -50,7 +50,8 @@ writes it as CommonMark:
 - the values that Z, D, and U write (D-003, D-005, and D-021);
 - how dates and times are handled, by the policy's Retain Longitudinal
   Temporal Information Option, or without one (D-006, D-007, and D-023);
-- the scope of referential integrity under a run-scoped key (D-004);
+- the scope of referential integrity under a run-scoped key or a project
+  key (D-004);
 - that no attribute is encrypted for later re-identification (D-013);
 - what the residual search of each written file covers (D-027);
 - how the release report names sequestered instances and counts the
@@ -507,6 +508,9 @@ class ConformanceStatement:
         What the statement cannot yet describe.
     acknowledgements : tuple of str
         The attribution of each table the statement quotes.
+    project_key : bool
+        Whether the run's key is a project key, whose generated values agree
+        with every other run under it, rather than a run-scoped key (D-004).
     """
 
     engine_version: str
@@ -530,6 +534,7 @@ class ConformanceStatement:
     temporal: TemporalHandling
     pending: tuple[str, ...]
     acknowledgements: tuple[str, ...]
+    project_key: bool = False
 
     @property
     def claims_conformance(self) -> bool:
@@ -883,6 +888,7 @@ def conformance_statement(
     *,
     vocabulary: tg263.Nomenclature | None,
     safe_private_list: SafePrivateList = SafePrivateList.REVIEWED,
+    project_key: bool = False,
 ) -> ConformanceStatement:
     """Gather what the conformance statement of a policy describes.
 
@@ -904,6 +910,11 @@ def conformance_statement(
         Under the Retain Safe Private Option, the list whose rules settle
         private attributes: the reviewed rules, the default, or TCIA's
         Private Tag Dictionary. The digest is computed with it.
+    project_key : bool, optional
+        Whether the run's key is a project key, whose subject profiles it
+        reads and records, rather than a run-scoped key, the default
+        (D-004). The statement describes referential integrity, and how far
+        generated values agree, for that scope.
 
     Returns
     -------
@@ -1037,4 +1048,5 @@ def conformance_statement(
             if rules is not None and rules.safe_private_list is SafePrivateList.TCIA
             else ()
         ),
+        project_key=project_key,
     )

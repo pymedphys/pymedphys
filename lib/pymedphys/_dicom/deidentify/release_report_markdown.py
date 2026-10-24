@@ -99,6 +99,7 @@ _SECTIONS = (
     "policy",
     "method",
     "runtime",
+    "key",
     "qc_review",
     "face_review",
     "redaction_review",
@@ -174,6 +175,7 @@ def to_markdown(report: str) -> str:
         *_policy(document["policy"]),
         *_method(document["method"]),
         *_runtime(document["runtime"]),
+        *_key(document["key"]),
         *_qc_review(document["qc_review"]),
         *_face_review(document["face_review"]),
         *_redaction_review(document["redaction_review"]),
@@ -289,6 +291,31 @@ def _runtime(section: object) -> list[Block]:
             [
                 (label, _code(f"runtime {name}", section[name]))
                 for name, label in _RUNTIME.items()
+            ],
+        ),
+    ]
+
+
+def _key(section: object) -> list[Block]:
+    section = _fields("key", section, ("scope", "key_id"))
+    scope, key_id = section["scope"], section["key_id"]
+    if (scope, key_id is None) not in (("run", True), ("project", False)):
+        raise _refuse("key")
+    return [
+        ["## Key"],
+        [
+            "The scope of the key that the run's replacement UIDs, "
+            "pseudonyms, and date offsets were derived under: run, for a key "
+            "of this run alone, whose values agree with no other run's, or "
+            "project, for a project key, named by its non-secret identifier, "
+            "whose values agree with every other release under that key, so "
+            "that those releases can be linked to each other."
+        ],
+        _table(
+            ("Field", "Value"),
+            [
+                ("Scope", _code("key scope", scope)),
+                ("Key identifier", _optional("key key_id", key_id)),
             ],
         ),
     ]

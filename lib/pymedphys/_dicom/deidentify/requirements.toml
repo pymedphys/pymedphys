@@ -516,7 +516,7 @@ When the Retain Longitudinal Temporal Information With Modified Dates Option is 
 - preserves the fine temporal relationships between images and real-world events to the extent necessary for analysis of the images for the application
 '''
 status = "implemented"
-decisions = ["D-006", "D-007", "D-034", "D-039"]
+decisions = ["D-004", "D-006", "D-007", "D-034", "D-039"]
 implementation = [
   "_dicom/deidentify/cleaners.py",
   "_dicom/deidentify/dates.py",
@@ -526,11 +526,11 @@ implementation = [
 ]
 note = '''
 Under Modified Dates, a cleaner of the whole instance modifies every value of the 184 attributes that Table E.1-1 and the supplementary rules give C, by its attribute's reviewed temporal role (D-007, D-039).
-A subject-event or radiation-source DA or DT value moves back by the subject's whole-week offset, derived from the run's key and the subject's identity, which keeps intervals, weekdays, times, and decay intervals; a TM value is kept, since whole weeks keep the time of day (D-006); and Frame Origin Timestamp moves its seconds.
+A subject-event or radiation-source DA or DT value moves back by the subject's whole-week offset, derived from the key and the subject's identity at first export, which keeps intervals, weekdays, times, and decay intervals; a TM value is kept, since whole weeks keep the time of day (D-006); and Frame Origin Timestamp moves its seconds.
 Device, vocabulary-version, and other values take D's dummy value, which discloses nothing of the offset; time zone offsets become a nominal +0000 once each DT value with its own offset is in the instance's local time, which keeps every interval within the instance.
 A value that cannot be modified so, such as a DT value without a full date, sequesters its instance.
 Under `tps-import`, the eleven device and beam hold dates and times that Retain Device Identity would keep are modified by their role instead.
-Each run has its own key, so offsets are consistent within a run only; reading them from a project key's subject profiles comes with project keys (D-004).
+The offset is the one the subject's profile records (D-004): under a run-scoped key, consistent within a run only; under a project key, read back from the subject profile store in every later run, once project keys are enabled.
 '''
 
 [[requirement]]
@@ -1050,9 +1050,13 @@ status = "partial"
 milestone = "M4"
 decisions = ["D-004", "D-006", "D-007", "D-039"]
 implementation = [
+  "_dicom/deidentify/api.py",
   "_dicom/deidentify/cleaners.py",
+  "_dicom/deidentify/command.py",
   "_dicom/deidentify/dates.py",
   "_dicom/deidentify/instance_transform.py",
+  "_dicom/deidentify/key_command.py",
+  "_dicom/deidentify/keys.py",
   "_dicom/deidentify/modified_dates.py",
   "_dicom/deidentify/profiles.py",
   "_dicom/deidentify/temporal_roles.py",
@@ -1062,8 +1066,10 @@ Offsets are whole weeks, derived from the key and the subject's identity, and ev
 Under Retain Longitudinal Temporal Information with Modified Dates, a cleaner of the whole instance moves every subject-event and radiation-source date back by the subject's offset, the same in every instance of the subject in a run, so date-only intervals, weekdays, local times of day, and decay intervals at a common UTC offset are preserved, and replaces device and other dates with dummy values (D-039, PS3.15-E.3.6-02).
 Intervals between instances with different UTC offsets change by the difference between those offsets (D-007).
 Times of day are kept, not replaced, since whole weeks keep them and a time alone identifies no one (D-006); only the date of a datetime moves.
-Each run has its own key, so offsets are consistent across a subject's studies within a run but not between separate runs.
-Remaining: offsets that stay the same across runs, read from a project key's subject profiles, so that studies de-identified in separate runs keep their intervals (D-004) (M4).
+Each subject's offset is the one its profile records (D-004). Under a run-scoped key, the profile is the derivation, so offsets are consistent across a subject's studies within a run but not between separate runs.
+Under a project key, the subject profile store records the offset at first export and every later run reads it back, so studies de-identified in separate runs keep their intervals; the store is saved before the release is published, so a store that cannot be saved publishes nothing.
+Project keys are refused until `PROJECT_KEYS_ENABLED` is set, so no run can use them yet, since the first supported release uses a run-scoped key.
+Remaining: enable project keys (`PROJECT_KEYS_ENABLED`) in the release PR (M4).
 '''
 
 [[requirement]]

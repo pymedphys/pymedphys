@@ -35,7 +35,11 @@ on the instances of a run:
 - ``runtime``: the PyMedPhys, Python, pydicom, and tomlkit versions that ran,
   the same values that Software Versions (0018,1020) of the de-identifying
   equipment records
-  (:class:`~pymedphys._dicom.deidentify.runtime.RuntimeEnvironment`).
+  (:class:`~pymedphys._dicom.deidentify.runtime.RuntimeEnvironment`);
+- ``key``: the scope of the run's key, ``"run"`` for a run-scoped key, whose
+  generated values agree with no other run's, or ``"project"`` for a
+  project key, with its non-secret identifier, whose generated values agree
+  with every other run under it, so that its releases are linkable (D-004).
 
 :func:`report_document` gives a report as JSON values, and :func:`to_json`
 as text; each first checks every field's form, as :func:`report_document`
@@ -199,6 +203,8 @@ from .walker import Sequestration, SequesterReason
 FORMAT = "pymedphys-deid-release-report/26"
 
 _DIGEST = re.compile(r"[0-9a-f]{64}")
+# A key's non-secret identifier, as DeidKey.key_id gives it.
+_KEY_ID = re.compile(r"[0-9a-f]{32}")
 _EDITION = re.compile(r"[0-9]{4}[a-z]")
 # A version, or a Python implementation's name: no space, separator, or
 # other character that a path or a person's name would need.
@@ -657,6 +663,9 @@ class ReleaseReport:
     policy : PolicyRecord
     method : ~pymedphys._dicom.deidentify.method_digest.MethodDigestComponents
     runtime : ~pymedphys._dicom.deidentify.runtime.RuntimeEnvironment
+    project_key : str or None
+        The identifier of the run's project key, or None for a run-scoped
+        key.
     qc_review : ~pymedphys._dicom.deidentify.qc_attestation.AttestationRecord or None
     face_review : str or None
     face_blocks : ~pymedphys._dicom.deidentify.face_blocks.FaceBlockCounts or None
@@ -678,6 +687,7 @@ class ReleaseReport:
     policy: PolicyRecord
     method: MethodDigestComponents
     runtime: RuntimeEnvironment
+    project_key: str | None = None
     qc_review: AttestationRecord | None = None
     face_review: str | None = None
     face_blocks: FaceBlockCounts | None = None
@@ -1038,6 +1048,7 @@ def release_report(
     text_finder: Mapping[str, object] | None = None,
     pixel_region_rules: str | None = None,
     safe_private_list: SafePrivateList = SafePrivateList.REVIEWED,
+    project_key: str | None = None,
     qc_review: AttestationRecord | None = None,
     face_review: str | None = None,
     face_blocks: FaceBlockCounts | None = None,
@@ -1096,6 +1107,12 @@ def release_report(
         private attributes: the reviewed rules, the default, or TCIA's
         Private Tag Dictionary. The report records which, and nothing
         without the Option.
+    project_key : str, optional
+        The identifier of the project key whose subject profiles the run
+        read and recorded (D-004), as
+        :attr:`~pymedphys._dicom.deidentify.keys.DeidKey.key_id` gives it;
+        None, the default, for a run-scoped key. The report records the
+        identifier, never the key.
     qc_review : ~pymedphys._dicom.deidentify.qc_attestation.AttestationRecord, optional
         The run's QC pack by its reference, with its attestation's outcome
         and the releaser's confirmations, from
@@ -1181,7 +1198,7 @@ def release_report(
     >>> report.policy.preset, report.policy.options
     ('basic', ())
     >>> list(report_document(report))
-    ['format', 'policy', 'method', 'runtime', 'qc_review', 'face_review', 'redaction_review', 'pixel_regions', 'readiness', 'released', 'sequestered', 'held_for_review', 'roi_names', 'descriptors', 'reference_findings', 'pixel_risks', 'search_coverage', 'source_gaps', 'structural_checks']
+    ['format', 'policy', 'method', 'runtime', 'key', 'qc_review', 'face_review', 'redaction_review', 'pixel_regions', 'readiness', 'released', 'sequestered', 'held_for_review', 'roi_names', 'descriptors', 'reference_findings', 'pixel_risks', 'search_coverage', 'source_gaps', 'structural_checks']
     """
     if not isinstance(policy, Policy):
         raise TypeError("policy must be a Policy")
@@ -1203,6 +1220,7 @@ def release_report(
             safe_private_list=safe_private_list,
         ),
         runtime=runtime_environment(),
+        project_key=project_key,
         qc_review=qc_review,
         face_review=face_review,
         face_blocks=face_blocks,
@@ -1336,6 +1354,15 @@ def _runtime_section(environment: RuntimeEnvironment) -> dict:
         field.name: _version(field.name, getattr(environment, field.name))
         for field in dataclasses.fields(environment)
     }
+
+
+def _key_section(project_key: str | None) -> dict:
+    """Return the section that gives the scope of the run's key (D-004)."""
+    if project_key is None:
+        return {"scope": "run", "key_id": None}
+    if _string(project_key) is None or not _KEY_ID.fullmatch(project_key):
+        raise _refuse("key", "is not a key's identifier")
+    return {"scope": "project", "key_id": project_key}
 
 
 def _string(value: object) -> str | None:
@@ -1831,13 +1858,15 @@ def report_document(report: ReleaseReport) -> dict:
     """Return a release report as JSON values, after checking every field.
 
     The document is an object with the members ``format`` (:data:`FORMAT`),
-    ``policy``, ``method``, ``runtime``, ``qc_review``, ``face_review``,
+    ``policy``, ``method``, ``runtime``, ``key``, ``qc_review``, ``face_review``,
     ``redaction_review``, ``pixel_regions``, ``readiness``, ``released``, ``sequestered``, ``held_for_review``, ``roi_names``,
     ``descriptors``,
     ``reference_findings``, ``pixel_risks``, ``search_coverage``,
     ``source_gaps``, and ``structural_checks``, in that order, each section's
     fields in the order of its class, the digests of tables and files sorted
-    by name, ``qc_review`` null where the run wrote no QC pack,
+    by name, ``key`` with its ``scope``, ``"run"`` or ``"project"``, and
+    ``key_id``, null for a run-scoped key, ``qc_review`` null where the run
+    wrote no QC pack,
     ``face_review`` null or an object with the reference and the CT series'
     ``ct_series`` counts, ``defaced`` and ``not_defaced`` by code,
     ``redaction_review`` null or an object with the reference,
@@ -1873,7 +1902,8 @@ def report_document(report: ReleaseReport) -> dict:
     ------
     ReleaseReportError
         If a field does not have the form of a digest, a version, a known
-        edition, preset, or option, the method digest's format, a file name
+        edition, preset, or option, the method digest's format, a key's
+        identifier, a file name
         or path within the engine's package, a QC pack's reference and an
         attestation outcome, a confirmation given only with an attestation,
         a pixel regions section given exactly under the Clean Pixel Data
@@ -1895,6 +1925,7 @@ def report_document(report: ReleaseReport) -> dict:
         "policy": _policy_section(report.policy),
         "method": _method_section(report.method),
         "runtime": _runtime_section(report.runtime),
+        "key": _key_section(report.project_key),
         "qc_review": _qc_review_section(report.qc_review),
         "face_review": _face_review_section(report.face_review, report.face_blocks),
         "redaction_review": _redaction_review_section(report.redaction_review),
