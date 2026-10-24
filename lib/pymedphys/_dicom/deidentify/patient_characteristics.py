@@ -43,6 +43,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
 
+from .dates import DateOffsets
 from .file_layout import ElementPath
 from .keys import DeidKey
 from .pseudonyms import SubjectIdentity
@@ -82,7 +83,10 @@ def is_empty(value: str) -> bool:
 
 
 def held_unless_empty(
-    values: Iterable[SourceValue], key: DeidKey, identity: SubjectIdentity | None
+    values: Iterable[SourceValue],
+    key: DeidKey,
+    identity: SubjectIdentity | None,
+    offsets: DateOffsets | None = None,
 ) -> Mapping[ElementPath, tuple[tuple[str | bytes, ...], bool]]:
     """Settle each attribute with no value, and leave out each with one.
 
@@ -94,6 +98,8 @@ def held_unless_empty(
         The run's key, which is not used: nothing is derived from a value.
     identity : SubjectIdentity or None
         The instance's subject, which is not used.
+    offsets : callable, optional
+        What gives a subject's date offset, which is not used.
 
     Returns
     -------
@@ -104,7 +110,7 @@ def held_unless_empty(
         be decoded, is left out, so that it stays pending and its instance
         is held.
     """
-    del key, identity
+    del key, identity, offsets
     return {
         value.source: ((), False)
         for value in values

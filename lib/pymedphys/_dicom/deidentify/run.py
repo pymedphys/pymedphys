@@ -297,6 +297,7 @@ def run(
     qc_destination: str | os.PathLike[str],
     reporter: run_report.Reporter | None = None,
     written_check: WrittenCheck | None = None,
+    before_publish: Callable[[], object] | None = None,
 ) -> RunResult:
     """De-identify the discovered inputs into a new release directory.
 
@@ -347,6 +348,12 @@ def run(
         :attr:`RunReason.INCONSISTENT_REFERENCES`. Without one, what was
         written is not checked, which only a transform that writes no
         keyed replacements, such as a test's, should leave out.
+    before_publish : callable, optional
+        Called with no arguments once every file is gated and the report is
+        built, before the QC pack is written and the release published,
+        such as to save the subject profiles of a project key (D-004), so
+        that a published release always has them. What it raises stops the
+        run: nothing is published, and no QC pack is written.
 
     Returns
     -------
@@ -399,6 +406,7 @@ def run(
             qc_destination,
             reporter,
             written_check,
+            before_publish,
         )
 
 
@@ -410,6 +418,7 @@ def _run(  # pylint: disable = too-many-arguments, too-many-positional-arguments
     qc_destination: str | os.PathLike[str],
     reporter: run_report.Reporter | None,
     written_check: WrittenCheck | None,
+    before_publish: Callable[[], object] | None,
 ) -> RunResult:
     staging = staging_path(release_path)
     _check_directories(discovery.source, release_path, staging)
@@ -483,6 +492,8 @@ def _run(  # pylint: disable = too-many-arguments, too-many-positional-arguments
         files = run_report.documents(
             reporter, outcomes, material, pack.reference, facts
         )
+        if before_publish is not None:
+            before_publish()
         staged_release = staging / _STAGED_RELEASE
         staged_release.mkdir(exist_ok=True, mode=0o700)
         _remove_empty_directories(staged_release)

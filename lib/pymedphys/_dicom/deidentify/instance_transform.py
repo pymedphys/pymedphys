@@ -163,6 +163,7 @@ from .policy import (
     select_policy,
 )
 from .preservation import Expectations, PreservationFailed, verify_preservation
+from .profiles import ProfileError, ProfileStore
 from .preserving_writer import WriteRefused, write_data_set, write_file_bytes
 from .qc_pack import DropReason
 from .qc_retained import retained_paths, retained_text
@@ -777,6 +778,15 @@ class InstanceTransform:
         private attributes: the reviewed rules, the default, or TCIA's
         Private Tag Dictionary. The method digest, the release report, and
         the conformance statement record which.
+    profiles : ProfileStore, optional
+        The subject profiles of ``key``, from which Modified Dates reads
+        each subject's date offset, recording a new subject's (D-004). By
+        default, an ephemeral store, for the run only, which gives the
+        offsets that ``key`` derives. A store opened from a file is a
+        project key's: the release report and conformance statement then
+        say that the run's generated values agree with every other run
+        under that key, and the caller saves the store once the run's
+        release is published.
     readiness_review : ReadinessReview, optional
         Under the ``public-release`` preset, the review of an earlier run of
         the same files, from
@@ -791,6 +801,8 @@ class InstanceTransform:
 
     Raises
     ------
+    ProfileError
+        If ``profiles`` belongs to another key than ``key``.
     PolicyError
         If the policy is not enabled and ``unvalidated_policy`` is not set;
         if ``cleaning`` is given without Clean Descriptors, or left out with
@@ -816,6 +828,9 @@ class InstanceTransform:
     reporter : ~pymedphys._dicom.deidentify.run_report.ReleaseReporter
         The release report of a run with this transform, under its policy
         and vocabulary, for :func:`~pymedphys._dicom.deidentify.run.run`.
+    profiles : ProfileStore
+        The subject profiles that the transform reads date offsets from and
+        records new subjects in.
 
     Notes
     -----
@@ -916,9 +931,15 @@ class InstanceTransform:
         face_review: FaceReview | None = None,
         redaction_review: RedactionReview | None = None,
         safe_private_list: SafePrivateList = SafePrivateList.REVIEWED,
+        profiles: ProfileStore | None = None,
         readiness_review: ReadinessReview | None = None,
         unvalidated_policy: bool = False,
     ) -> None:
+        if profiles is None:
+            profiles = ProfileStore.ephemeral(key)
+        elif profiles.key_id != key.key_id:
+            raise ProfileError("the profile store belongs to another key")
+        self.profiles = profiles
         if not (policy.enabled or unvalidated_policy):
             raise PolicyError(
                 "the policy is not enabled: its behaviour is not yet implemented "
@@ -1028,6 +1049,7 @@ class InstanceTransform:
             ),
             safe_private_list=safe_private_list,
             face_blocks=self._face_block_counts,
+            project_key=key.key_id if profiles.persistent else None,
             readiness_review=readiness_review,
             reviewed_lists=(
                 (None, None)
@@ -1408,7 +1430,13 @@ class InstanceTransform:
                 (*risk, *dropped_of(edits, withheld), *omissions_of(evidence)),
             )
         satisfied = False
-        settled = apply_cleaners(edits, self._cleaners, self._key, record.patient)
+        settled = apply_cleaners(
+            edits,
+            self._cleaners,
+            self._key,
+            record.patient,
+            self.profiles.date_offset_weeks,
+        )
         edits, retained = settled.edits, settled.retained | kept_uids
         if settled.retained:
             evidence = coverage_of(plan, edits, retained, self._options)

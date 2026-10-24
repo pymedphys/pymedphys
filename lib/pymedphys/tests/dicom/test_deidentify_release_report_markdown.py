@@ -78,6 +78,7 @@ def _full_report():
         ElementPath((), "(0008,103E)"),
     )
     return _report(
+        project_key="0123456789abcdef" * 2,
         qc_review=qc_attestation.AttestationRecord(
             _REFERENCE, qc_attestation.Outcome.ATTESTED, True, None
         ),
@@ -229,6 +230,7 @@ def test_the_sections_follow_the_documents_order():
         "## Policy",
         "## Method",
         "## Runtime environment",
+        "## Key",
         "## QC review",
         "## Released instances",
         "## Sequestered instances",

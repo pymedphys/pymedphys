@@ -47,9 +47,10 @@ that the Basic Profile removed values that the option keeps (D-012).
 from __future__ import annotations
 
 import dataclasses
+import functools
 from collections.abc import Callable, Iterable, Mapping, Sequence
 
-from . import ae_titles, modified_dates, patient_characteristics
+from . import ae_titles, dates, modified_dates, patient_characteristics
 from .edits import Edit, EditKind, InstanceEdits
 from .file_layout import ElementPath
 from .keys import DeidKey
@@ -66,7 +67,7 @@ from .residuals import SourceValue
 # settles: the values written in its place, ``()`` for none, and whether they
 # are the source's own.
 InstanceClean = Callable[
-    [Iterable[SourceValue], DeidKey, SubjectIdentity | None],
+    [Iterable[SourceValue], DeidKey, SubjectIdentity | None, dates.DateOffsets],
     Mapping[ElementPath, tuple[tuple[str | bytes, ...], bool]],
 ]
 
@@ -104,8 +105,8 @@ class Cleaner:
         such as the dates of an instance, which move by its subject's offset
         and are put in its local time first. Given the source value of every
         attribute of one instance that it is to settle, in file order, the
-        run's key, and the subject's identity, or None for an instance
-        without one, returns, for each that it settles, the values that
+        run's key, the subject's identity, or None for an instance without
+        one, and what gives a subject's date offset, returns, for each that it settles, the values that
         replace it, ``()`` for none, and whether they are the source's own,
         so that the residual search leaves the source value out. An
         attribute that it leaves out stays pending. Its values may be bytes,
@@ -147,11 +148,13 @@ CLEANERS: tuple[Cleaner, ...] = (
             "Each value becomes a token of the run's key, of 16 characters, the "
             "most that VR AE allows: `AE` followed by the first 14 characters "
             "of the base32 encoding of the value's HMAC-SHA256 in a domain of "
-            "its own, once its leading and trailing spaces are removed. Within "
-            "a run, an application entity therefore has the same token in "
-            "every attribute and instance, and different entities have "
-            "different tokens; across runs, tokens are unrelated. An empty "
-            "value stays empty."
+            "its own, once its leading and trailing spaces are removed. Under "
+            "one key, an application entity therefore has the same token in "
+            "every attribute and instance, within a run under a run-scoped "
+            "key and in every run under a project key, and different "
+            "entities have different tokens; under different keys, such as "
+            "two run-scoped keys, tokens are unrelated. An empty value stays "
+            "empty."
         ),
         clean=ae_titles.ae_tokens,
     ),
@@ -209,6 +212,7 @@ def apply_cleaners(
     cleaners: Sequence[Cleaner],
     key: DeidKey,
     identity: SubjectIdentity | None = None,
+    offsets: dates.DateOffsets | None = None,
 ) -> Cleaned:
     """Settle each pending C of one instance that one of ``cleaners`` cleans.
 
@@ -223,6 +227,13 @@ def apply_cleaners(
     identity : SubjectIdentity, optional
         The subject's identity, as the run resolves it, for the cleaners of
         the whole instance; None for an instance without one.
+    offsets : callable, optional
+        Gives a subject's date offset in whole weeks, such as the run's
+        profile store's
+        :meth:`~pymedphys._dicom.deidentify.profiles.ProfileStore.date_offset_weeks`.
+        By default, the key's derivation of it
+        (:func:`~pymedphys._dicom.deidentify.dates.date_offset_weeks`), as an
+        ephemeral store gives it.
 
     Returns
     -------
@@ -236,6 +247,8 @@ def apply_cleaners(
     by_tag = {tag: cleaner for cleaner in cleaners for tag in cleaner.tags}
     if not by_tag:
         return Cleaned(edits)
+    if offsets is None:
+        offsets = functools.partial(dates.date_offset_weeks, key)
     sources = {value.source: value for value in edits.source_values}
     edited = {edit.path: edit for edit in edits.edits}
     settled = {}
@@ -260,7 +273,9 @@ def apply_cleaners(
         clean_instance = cleaners[position].clean_instance
         assert clean_instance is not None  # only such cleaners are gathered
         offered = {value.source for value in given}
-        for path, (values, own) in clean_instance(given, key, identity).items():
+        for path, (values, own) in clean_instance(
+            given, key, identity, offsets
+        ).items():
             if path in offered:
                 settled[path] = _settled(edited[path], values)
                 if own:

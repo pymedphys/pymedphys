@@ -33,8 +33,8 @@ application entity has the same token in every attribute and instance, and
 different entities have different tokens, as a device's identity needs,
 unless two of them collide in 70 bits, which for a thousand entities has a
 probability below one in 10**15. A
-token holds nothing of the value but its keyed digest, and since each run
-has its own key, tokens are not consistent across runs (D-004). Each value
+token holds nothing of the value but its keyed digest, so tokens agree
+across runs only under one project key, never under run-scoped keys (D-004). Each value
 of a multi-valued attribute is replaced on its own; an empty value, or one
 of spaces only, stays empty; and an attribute with no value is written with
 none.
