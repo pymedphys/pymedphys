@@ -122,7 +122,7 @@ from pymedphys._imports import pydicom
 
 from . import output_names
 from .birth_dates import BIRTH_DATE_PRESET, BirthDates, with_birth_date
-from .clean_graphics import overlay_in_pixel_data
+from .clean_graphics import CLEAN_GRAPHICS, overlay_in_pixel_data
 from .content_items import content_item_actions
 from .cleaners import apply_cleaners, cleaners_for
 from .descriptor_cleaning import (
@@ -206,6 +206,7 @@ from .pixel_cleaning import (
     as_received,
     black_out_reviewed,
     finder_description,
+    overlay_planes,
     redaction_problem,
 )
 from .defacing import FaceBlock
@@ -860,8 +861,13 @@ class InstanceTransform:
     review is written with that name empty, and its evidence is a
     :class:`HeldEvidence`, which :class:`ReleaseGate` holds for review. The
     markers claim Clean Descriptors only for an instance that satisfies it.
-    Under Clean Graphics, an instance whose overlay may lie in Pixel Data is
-    sequestered (:func:`~.clean_graphics.overlay_in_pixel_data`). Under Clean
+    Under Clean Graphics or Clean Pixel Data, the bit plane of each overlay
+    that an overlay group without Overlay Data places above High Bit in
+    native Pixel Data (:func:`~.pixel_cleaning.overlay_planes`) is cleared,
+    in the same write as the option's regions and masks, and checked as a
+    redaction is; under Clean Graphics, an instance whose overlay cannot be
+    so cleared is sequestered
+    (:func:`~.clean_graphics.overlay_in_pixel_data`). Under Clean
     Structured Content, the plan keeps each content-item sequence that it
     can and gives the values of its content items the actions of their
     concept names (:func:`~.content_items.content_item_actions`, D-047), as
@@ -1276,12 +1282,15 @@ class InstanceTransform:
         defacing: SeriesDefacing | None,
         dose: DoseBlock | None,
         pet: DoseBlock | None = None,
+        *,
+        overlays: int = 0,
     ) -> tuple[Redaction | None, VisualFeaturesReason | None, bool]:
         """Return the instance's Pixel Data blacked out under Clean Pixel Data,
         and, under Clean Recognizable Visual Features, a CT slice's face
         block written as air, an RT Dose's set to zero, or a PET image's set
         to zero activity, with why an RT Dose's or PET image's is not, and
-        whether a reviewer approved the regions.
+        whether a reviewer approved the regions, with the bit planes of
+        ``overlays`` cleared first (:func:`~.pixel_cleaning.overlay_planes`).
 
         The redaction is None where nothing applies, or the instance has no
         top-level pixel data. The regions are those that the redaction
@@ -1308,7 +1317,13 @@ class InstanceTransform:
             :class:`~.pixel_cleaning.PixelDataRefused`.
         """
         block = None if defacing is None else defacing.block
-        if self._finder is None and block is None and dose is None and pet is None:
+        if (
+            self._finder is None
+            and block is None
+            and dose is None
+            and pet is None
+            and not overlays
+        ):
             return None, None, False
         approved = decoded = None
         if self._finder is not None and self._redaction_review is not None:
@@ -1320,10 +1335,12 @@ class InstanceTransform:
         try:
             try:
                 return self._cleaned(
-                    source, dataset, block, dose, pet, approved, decoded
+                    source, dataset, block, dose, pet, approved, decoded, overlays
                 )
             except PixelsNotReviewed:
-                return self._cleaned(source, dataset, block, dose, pet, None, None)
+                return self._cleaned(
+                    source, dataset, block, dose, pet, None, None, overlays
+                )
         except PixelDataRefused as refused:
             raise _Refused(refused.reason) from None
 
@@ -1336,10 +1353,12 @@ class InstanceTransform:
         pet: DoseBlock | None,
         approved: Regions | None,
         decoded: bytes | None,
+        overlays: int,
     ) -> tuple[Redaction | None, VisualFeaturesReason | None, bool]:
         """Return what :meth:`_black_out` returns, with the regions that a
-        reviewer ``approved``, if any, and the SHA-256 that the review
-        records of the decoded frames, if any.
+        reviewer ``approved``, if any, the SHA-256 that the review records
+        of the decoded frames, if any, and the bit planes of ``overlays``
+        cleared.
 
         Raises
         ------
@@ -1357,10 +1376,15 @@ class InstanceTransform:
                     else PetDefacer(pet, dataset)  # type: ignore[arg-type]
                 )
                 redaction = (
-                    black_out(source, dataset, self._finder, defacer)
+                    black_out(source, dataset, self._finder, defacer, overlays=overlays)
                     if approved is None
                     else black_out_reviewed(
-                        source, dataset, approved, defacer, decoded_sha256=decoded
+                        source,
+                        dataset,
+                        approved,
+                        defacer,
+                        decoded_sha256=decoded,
+                        overlays=overlays,
                     )
                 )
                 why = defacer.held
@@ -1371,21 +1395,36 @@ class InstanceTransform:
                 redaction = None
                 if approved is not None:
                     redaction = black_out_reviewed(
-                        source, dataset, approved, decoded_sha256=decoded
+                        source,
+                        dataset,
+                        approved,
+                        decoded_sha256=decoded,
+                        overlays=overlays,
                     )
-                elif self._finder is not None:
-                    redaction = black_out(source, dataset, self._finder)
+                elif self._finder is not None or overlays:
+                    redaction = black_out(
+                        source, dataset, self._finder, overlays=overlays
+                    )
             return redaction, why, reviewed
         defacer = None if block is None else CtDefacer(block, dataset)
         if approved is not None:
             return (
                 black_out_reviewed(
-                    source, dataset, approved, defacer, decoded_sha256=decoded
+                    source,
+                    dataset,
+                    approved,
+                    defacer,
+                    decoded_sha256=decoded,
+                    overlays=overlays,
                 ),
                 None,
                 True,
             )
-        return black_out(source, dataset, self._finder, defacer), None, False
+        return (
+            black_out(source, dataset, self._finder, defacer, overlays=overlays),
+            None,
+            False,
+        )
 
     def _kept_descriptors(
         self, plan: InstancePlan, edits: InstanceEdits
@@ -1430,6 +1469,11 @@ class InstanceTransform:
         risk: tuple[object, ...] = _pixel_risk(dataset, record)
         if not classification.sequestered:
             risk += source_gaps(source, iod)
+        overlays = (
+            overlay_planes(source, dataset)
+            if {CLEAN_GRAPHICS, CLEAN_PIXEL_DATA}.intersection(self._policy.options)
+            else 0
+        )
         plan = plan_instance(
             source, self._rules, iod, content_item_actions(source, self._policy, iod)
         )
@@ -1447,7 +1491,7 @@ class InstanceTransform:
             reasons = (
                 edits.sequestrations
                 or (() if undecoded is None else (undecoded,))
-                or overlay_in_pixel_data(self._rules.policy, risk)
+                or overlay_in_pixel_data(self._rules.policy, overlays)
                 or self._birth_date_conflict(record)
             )
         if reasons:
@@ -1532,6 +1576,7 @@ class InstanceTransform:
                 defacing,
                 dose,
                 region if iod.name == PET_IMAGE else None,
+                overlays=overlays or 0,
             )
             # The markers write no pixel data, so the face review is of the
             # pixel data that this plan writes.
