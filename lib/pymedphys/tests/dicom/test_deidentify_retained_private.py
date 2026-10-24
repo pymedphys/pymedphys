@@ -30,18 +30,27 @@ from pymedphys._dicom.deidentify import (
     run,
 )
 from pymedphys._dicom.deidentify.edits import read_values
+from pymedphys._dicom.deidentify.elements import UndecodableElement, read_element
 from pymedphys._dicom.deidentify.file_layout import ElementPath
 from pymedphys._dicom.deidentify.instance_transform import InstanceTransform
 from pymedphys._dicom.deidentify.iods import load_iod_tables
 from pymedphys._dicom.deidentify.keys import DeidKey
 from pymedphys._dicom.deidentify.qc_retained import retained_paths
 from pymedphys._dicom.deidentify.references import InstanceRecord
+from pymedphys._dicom.deidentify.release_report import (
+    SequestrationReason,
+    sequestration_reason,
+)
 from pymedphys._dicom.deidentify.retained_private import private_actions, private_plan
 from pymedphys._dicom.deidentify.run_qc import RetainedText
 from pymedphys._dicom.deidentify.safe_private import Handling, load_safe_private_rules
 from pymedphys._dicom.deidentify.source import read_source
 from pymedphys._dicom.deidentify.standard import PRIVATE_ATTRIBUTES_TAG
-from pymedphys._dicom.deidentify.walker import plan_instance
+from pymedphys._dicom.deidentify.walker import (
+    Sequestration,
+    SequesterReason,
+    plan_instance,
+)
 
 from . import _synthetic_references as synthetic
 
@@ -514,6 +523,66 @@ def test_a_private_sequence_without_a_compared_creator_is_removed_whole(creator)
     assert actions[_top("(0019,1001)")] == "X"
     assert b"SENTINEL" not in written
     assert not _in_private(written)
+
+
+def _as_un(dataset, tag):
+    """Write the sequence at ``tag`` as UN, its items in implicit VR (PS3.5 6.2.2)."""
+    items = b""
+    for item in dataset[tag].value:
+        buffer = pydicom.filebase.DicomBytesIO()
+        buffer.is_little_endian, buffer.is_implicit_VR = True, True
+        pydicom.filewriter.write_dataset(buffer, item)
+        body = buffer.getvalue()
+        items += b"\xfe\xff\x00\xe0" + len(body).to_bytes(4, "little") + body
+    dataset[tag] = pydicom.DataElement(tag, "UN", items)
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.10-01", "PS3.15-E.3.10-03")
+@pytest.mark.parametrize(
+    "sequence, tag",
+    [
+        (_philips_sequence, 0x2001105F),
+        (lambda: _unlisted(_pet_item((0x70531000, "DS", "1.25"))), 0x705310F0),
+    ],
+    ids=["listed", "unlisted"],
+)
+@pytest.mark.parametrize(
+    "transfer_syntax, as_un, reported",
+    [
+        (synthetic.EXPLICIT_VR_LITTLE_ENDIAN, False, "SQ"),
+        (synthetic.EXPLICIT_VR_LITTLE_ENDIAN, True, "UN"),
+        (synthetic.IMPLICIT_VR_LITTLE_ENDIAN, False, None),
+    ],
+    ids=["explicit", "explicit-UN", "implicit"],
+)
+def test_a_kept_private_sequence_that_cannot_be_read_reports_its_vr_as_written(
+    monkeypatch, sequence, tag, transfer_syntax, as_un, reported
+):
+    # A sequence holds no value to read by a VR, so neither its rule nor its
+    # parsing gives it one: the release report gives the VR as written, and
+    # none where the file writes none, rather than one the file does not hold.
+    dataset = sequence()
+    if as_un:
+        _as_un(dataset, tag)
+    data = synthetic.written(dataset, transfer_syntax)
+    record = InstanceRecord.from_file(data)
+    path = _top(f"({tag >> 16:04X},{tag & 0xFFFF:04X})")
+
+    def refusing(held, at, *args, **kwargs):
+        if at == path:
+            raise UndecodableElement(at, "has items that cannot be read")
+        return read_element(held, at, *args, **kwargs)
+
+    monkeypatch.setattr("pymedphys._dicom.deidentify.elements.read_element", refusing)
+    result = _transform()(data, record)
+
+    assert isinstance(result, run.Sequestered), result
+    assert result.reasons == (
+        Sequestration(path, "K", reported, SequesterReason.UNDECODABLE),
+    )
+    assert sequestration_reason(result.reasons[0]) == SequestrationReason(
+        "walker", "undecodable", path.tag, "K", reported
+    )
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.10-01")
