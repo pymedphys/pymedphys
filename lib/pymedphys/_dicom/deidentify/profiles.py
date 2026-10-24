@@ -151,6 +151,18 @@ def _is_age(value: object) -> bool:
     )
 
 
+def _is_reference(reference: object) -> bool:
+    if not isinstance(reference, dict) or reference.keys() != _REFERENCE_FIELDS:
+        return False
+    study = reference["study"]
+    return (
+        isinstance(study, str)
+        and _REPLACEMENT_UID.fullmatch(study) is not None
+        and _is_date(reference["date"])
+        and _is_age(reference["age_years"])
+    )
+
+
 def _birth_date_problem(birth_date: object) -> str | None:
     if not isinstance(birth_date, dict) or birth_date.keys() != _BIRTH_DATE_FIELDS:
         return "has a birth date without exactly the fields date and reference"
@@ -159,14 +171,7 @@ def _birth_date_problem(birth_date: object) -> str | None:
         return None if value == "" else "has a birth date without its reference study"
     if not _is_date(value):
         return "has a birth date that is not a date"
-    if (
-        not isinstance(reference, dict)
-        or reference.keys() != _REFERENCE_FIELDS
-        or not isinstance(reference["study"], str)
-        or not _REPLACEMENT_UID.fullmatch(reference["study"])
-        or not _is_date(reference["date"])
-        or not _is_age(reference["age_years"])
-    ):
+    if not _is_reference(reference):
         return (
             "has a birth date whose reference study is not a replacement UID, "
             "a date, and an age of 0 to 999 years"
