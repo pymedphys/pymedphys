@@ -1,3 +1,4 @@
+# Copyright (C) 2026 Derek Lane
 # Copyright (C) 2021 Derek Lane, Cancer Care Associates
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -16,33 +17,46 @@
 """Uses Mosaiq SQL to extract patient sessions and offsets."""
 
 from datetime import datetime, timedelta
-from typing import Iterator, List, Optional, Tuple
+from typing import Iterable, Iterator, Optional, Tuple
 
 from pymedphys._imports import numpy as np
-from pymedphys._imports import sklearn
 
 from . import api
 from .connect import Connection
 
+# Mosaiq's default treatment session interval (Config.Tx_Interval_Time),
+# used when no department setting applies
+DEFAULT_SESSION_INTERVAL = timedelta(hours=3)
+
 
 def cluster_sessions(
-    tx_datetimes: List[datetime], interval=timedelta(hours=3)
+    tx_datetimes: Iterable[datetime],
+    interval: timedelta = DEFAULT_SESSION_INTERVAL,
+    split_on_date: bool = True,
 ) -> Iterator[Tuple[int, datetime, datetime]]:
-    """Clusters a list of datetime objects representing tx beam delivery times
+    """Groups tx beam delivery times into sessions, as Mosaiq numbers them
 
-    Uses the scikit-learn hierarchical clustering algorithm
-    (AgglomerativeClustering) to cluster the dose_hst datetimes
+    A treatment starts a new session when it is more than ``interval``
+    after the first treatment of the current session, or (when
+    ``split_on_date`` is set) when it falls on a different date from that
+    first treatment. A treatment exactly ``interval`` after the first one
+    stays in the same session, so no session lasts longer than ``interval``.
 
     Parameters
     ----------
-    tx_datetimes : list[datetime]
-        A list of datetime objects corresponding to each dose recording
+    tx_datetimes : iterable of datetime
+        datetime objects corresponding to each dose recording
         (i.e. Dose_Hst.Tx_DtTm in the Mosaiq db)
-        ** The list is assumed to be sorted in increasing date/time order
+        ** assumed to be sorted in increasing date/time order
 
     interval : timedelta
-        the minimum interval between tx_datetimes to include in the
-        same cluster
+        the longest time from the first treatment of a session to any
+        other treatment in it (Mosaiq's treatment session interval,
+        Config.Tx_Interval_Time)
+
+    split_on_date : bool
+        whether a change of date always starts a new session, so that
+        sessions never cross midnight
 
     Returns
     -------
@@ -50,6 +64,8 @@ def cluster_sessions(
         * session number, starting at 1 and incrementing
         * start_session: datetime when the session starts
         * end_session: datetime when the session ends
+
+    An empty input gives no sessions, and a single treatment gives one.
 
     Examples
     --------
@@ -65,52 +81,41 @@ def cluster_sessions(
     (3,
     datetime.datetime(2019, 12, 19, 10, 0),
     datetime.datetime(2019, 12, 19, 12, 0))]
+
+    Sessions are measured from their first treatment, so hourly
+    treatments do not chain into one long session:
+
+    >>> hourly = [datetime(2019, 12, 19) + timedelta(hours=h) for h in range(6)]
+    >>> [(n, start.hour, end.hour) for n, start, end in cluster_sessions(hourly)]
+    [(1, 0, 3), (2, 4, 5)]
     """
-    # turn the datetimes in to timestamps (seconds in the epoch)
-    timestamps = [[tx_datetime.timestamp()] for tx_datetime in tx_datetimes]
+    session_number = 0
+    start_session: Optional[datetime] = None
+    end_session: Optional[datetime] = None
 
-    # set up the cluster algorithm
-    cluster_algo = sklearn.cluster.AgglomerativeClustering(
-        n_clusters=None, distance_threshold=interval.seconds, linkage="single"
-    )
+    for tx_datetime in tx_datetimes:
+        if (
+            start_session is None
+            or tx_datetime - start_session > interval
+            or (split_on_date and tx_datetime.date() != start_session.date())
+        ):
+            if start_session is not None and end_session is not None:
+                yield (session_number, start_session, end_session)
 
-    # and fit the timestamps to clusters
-    labels = cluster_algo.fit_predict(timestamps)
+            session_number += 1
+            start_session = tx_datetime
 
-    # the resulting labels are arbitrary, so iterate and collect
-    #   all of the datetimes for each label
-    current_label, current_session_number = labels[0], 1
-    start_session = datetime.fromtimestamp(timestamps[0][0])
-    end_session = start_session
+        end_session = tx_datetime
 
-    # now iterate through the labels and timestamps,
-    #   extracting each session
-    for label, timestamp in zip(labels, timestamps):
-        if label != current_label:
-            # we have a new label, so yield the current session
-            yield (current_session_number, start_session, end_session)
-
-            # and update session stats for the next one
-            current_session_number += 1
-            current_label = label
-            start_session = datetime.fromtimestamp(timestamp[0])
-            end_session = start_session
-        else:
-            # if the same label, then just update the end_session
-            #   for the new timestamp
-            end_session = datetime.fromtimestamp(timestamp[0])
-
-    # yield the final session
-    yield (current_session_number, start_session, end_session)
+    if start_session is not None and end_session is not None:
+        yield (session_number, start_session, end_session)
 
 
-def sessions_for_site(
-    connection: Connection, sit_set_id: int
-) -> Iterator[Tuple[int, datetime, datetime]]:
-    """Determines the sessions for the given site (by SIT_SET_ID)
+def session_interval_for_site(connection: Connection, sit_set_id: int) -> timedelta:
+    """Gets the treatment session interval for the site's department
 
-    uses cluster_sessions after querying for the Dose_Hst.Tx_DtTm
-    that are associated to the site
+    Looks up Config.Tx_Interval_Time (stored in hundredths of a second) for
+    the departments (Dose_Hst.Inst_ID) that recorded the site's treatments.
 
     Parameters
     ----------
@@ -121,9 +126,82 @@ def sessions_for_site(
 
     Returns
     -------
-    generated sequence of session tuples
-        same format as returned by cluster_sessions
+    timedelta
+        the department's session interval, or DEFAULT_SESSION_INTERVAL
+        (3 hours) when the site has no treatments with a department setting
+
+    Raises
+    ------
+    ValueError
+        if the site's treatments were recorded by departments with
+        different session intervals; pass ``interval`` explicitly then
     """
+    result = api.execute(
+        connection,
+        """
+        SELECT DISTINCT
+            Config.Tx_Interval_Time
+        FROM Dose_Hst
+        INNER JOIN
+            Site ON Site.SIT_ID = Dose_Hst.SIT_ID
+        INNER JOIN
+            Config ON Config.Inst_ID = Dose_Hst.Inst_ID
+        WHERE
+            Site.SIT_SET_ID = %(sit_set_id)s
+        """,
+        {"sit_set_id": sit_set_id},
+    )
+
+    intervals = sorted(
+        timedelta(seconds=row[0] / 100) for row in result if row[0] is not None
+    )
+    if not intervals:
+        return DEFAULT_SESSION_INTERVAL
+
+    if len(intervals) > 1:
+        raise ValueError(
+            f"The treatments for SIT_SET_ID {sit_set_id} were recorded by "
+            "departments with different treatment session intervals "
+            f"({', '.join(str(i) for i in intervals)}). "
+            "Pass the interval to use explicitly."
+        )
+
+    return intervals[0]
+
+
+def sessions_for_site(
+    connection: Connection, sit_set_id: int, interval: Optional[timedelta] = None
+) -> Iterator[Tuple[int, datetime, datetime]]:
+    """Determines the sessions for the given site (by SIT_SET_ID)
+
+    uses cluster_sessions after querying for the Dose_Hst.Tx_DtTm
+    that are associated to the site. Treatments recorded in QA mode
+    (Dose_Hst.WasQAMode) are excluded, as Mosaiq numbers them separately.
+
+    Session numbers count the site's sessions only, so they differ from the
+    Treatment Chart's per-patient numbers when several of a patient's
+    sites are treated in the same visit.
+
+    Parameters
+    ----------
+    connection : pymssql connection opened with pymedphys.mosaiq.connect
+
+    sit_set_id : int
+        the SIT_SET_ID for the site of interest
+
+    interval : timedelta, optional
+        the treatment session interval, as for cluster_sessions; by
+        default, the department's setting from session_interval_for_site
+
+    Returns
+    -------
+    generated sequence of session tuples
+        same format as returned by cluster_sessions; none if the site
+        has no treatments
+    """
+    if interval is None:
+        interval = session_interval_for_site(connection, sit_set_id)
+
     result = api.execute(
         connection,
         """
@@ -134,6 +212,8 @@ def sessions_for_site(
             Site ON Site.SIT_ID = Dose_Hst.SIT_ID
         WHERE
             Site.SIT_SET_ID = %(sit_set_id)s
+            AND Dose_Hst.WasQAMode = 0
+            AND Dose_Hst.Tx_DtTm IS NOT NULL
         ORDER BY Dose_Hst.Tx_DtTm
         """,
         {"sit_set_id": sit_set_id},
@@ -142,12 +222,15 @@ def sessions_for_site(
     # cluster_sessions expects a sorted list, so extract
     #   the Tx_DtTm value from each row
     dose_hst_datetimes = [row[0] for row in result]
-    assert isinstance(dose_hst_datetimes[0], datetime)
-    return cluster_sessions(dose_hst_datetimes)
+    assert all(isinstance(tx_dttm, datetime) for tx_dttm in dose_hst_datetimes)
+    return cluster_sessions(dose_hst_datetimes, interval)
 
 
 def session_offsets_for_site(
-    connection: Connection, sit_set_id: int, interval=timedelta(hours=1)
+    connection: Connection,
+    sit_set_id: int,
+    interval=timedelta(hours=1),
+    session_interval: Optional[timedelta] = None,
 ) -> Iterator[Tuple[int, Optional["np.ndarray"]]]:
     """extract the session offsets (one offset per session ) for the given site
 
@@ -163,6 +246,10 @@ def session_offsets_for_site(
         (Offset.Study_DtTm can precede the Dose_Hst records
         for the session)
 
+    session_interval : timedelta, optional
+        the treatment session interval passed to sessions_for_site; by
+        default, the department's setting
+
     Returns
     -------
     generated sequence of tuples:
@@ -171,7 +258,7 @@ def session_offsets_for_site(
                 None if no offsets were found for the session
     """
     for session_num, start_session, end_session in sessions_for_site(
-        connection, sit_set_id
+        connection, sit_set_id, session_interval
     ):
         # calculate the time window within which the offset may occur
         window_start, window_end = (start_session - interval, end_session)
@@ -216,7 +303,9 @@ def session_offsets_for_site(
 
 
 def mean_session_offset_for_site(
-    connection: Connection, sit_set_id: int
+    connection: Connection,
+    sit_set_id: int,
+    session_interval: Optional[timedelta] = None,
 ) -> Optional["np.ndarray"]:
     """computes the mean session offset for the site
 
@@ -226,6 +315,9 @@ def mean_session_offset_for_site(
         an open connection object to be used for queries
     sit_set_id : int
         the sit_sit_id for the site of interest
+    session_interval : Optional[timedelta]
+        the treatment session interval passed to sessions_for_site; by
+        default, the department's setting
 
     Returns
     -------
@@ -234,7 +326,9 @@ def mean_session_offset_for_site(
         or None if there are no session offsets
     """
     offsets: list[np.ndarray] = []
-    for _, offset in session_offsets_for_site(connection, sit_set_id):
+    for _, offset in session_offsets_for_site(
+        connection, sit_set_id, session_interval=session_interval
+    ):
         if offset is not None and np.any(offset):
             offsets.append(offset)
 

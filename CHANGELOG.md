@@ -12,6 +12,23 @@ This project adheres to
 
 ## Unreleased
 
+### Mosaiq treatment sessions follow Mosaiq's rule
+
+The private Mosaiq session helpers in `pymedphys._mosaiq.sessions` now group
+treatments into sessions the way Mosaiq numbers them. A session lasts at most
+the department's treatment session interval (`Config.Tx_Interval_Time`, 3 hours
+by default) from its first treatment, including a treatment exactly one
+interval later, and ends at midnight. QA-mode deliveries are excluded. Before,
+treatments joined a session whenever they were less than 3 hours after the
+previous treatment, so closely spaced treatments chained into one long session,
+QA-mode deliveries joined or added sessions, and the department setting was
+ignored. **Recalculate session counts and session offsets from
+`sessions_for_site`, `session_offsets_for_site` and
+`mean_session_offset_for_site`** for sites with treatments less than 3 hours
+apart over a span longer than 3 hours, treatments across midnight, QA-mode
+deliveries, or a department interval other than 3 hours. Sites treated once a
+day at the default interval give the same sessions. [PR #2430](https://github.com/pymedphys/pymedphys/pull/2430)
+
 ### TRF archive integrity
 
 TRF indexing now checks the archived logfile checksum before removing an incoming
@@ -124,6 +141,7 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
 
 ### Bug fixes
 
+- `pymedphys._mosaiq.sessions.cluster_sessions` no longer drops whole days and fractions of a second from its `interval`, and handles one or no treatments. `sessions_for_site` and the session offset helpers return no sessions, and a mean offset of `None`, for a site with no treatments, where they raised `IndexError`. `sessions_for_site`, `session_offsets_for_site` and `mean_session_offset_for_site` take the session interval as an argument, defaulting to the department setting from the new `session_interval_for_site`, which raises `ValueError` when a site's treatments come from departments with different settings. Session clustering no longer uses scikit-learn. [PR #2430](https://github.com/pymedphys/pymedphys/pull/2430)
 - `pymedphys trf detect` works again. Since the TRF decoder began reading each file's row layout from its header, in v0.40.0, the command has failed with `TypeError` before decoding anything. It now prints the header, any item parts that have no column name, and which of the known row layouts fit the file's table, and exits with an error when none do. An item part with no name does not hide the layouts that fit, so the command can show when a file from a newer linac software version needs only a new column name. [PR #2155](https://github.com/pymedphys/pymedphys/pull/2155)
 
 - **[Security]** The experimental Monaco anonymisation app now refuses a patient ID that would place the zip file it creates, and offers to delete, or the anonymised demographic file outside their folders, for example an ID containing `../`. Previously it used the patient ID in these paths without checking it. [PR #2146](https://github.com/pymedphys/pymedphys/pull/2146)
@@ -535,6 +553,7 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
 
 ### (Potentially) breaking changes
 
+- The private `pymedphys._mosaiq.sessions` helpers return different sessions for some sites; see "Mosaiq treatment sessions follow Mosaiq's rule" above. Session numbers count one site's sessions, so they differ from the Treatment Chart's per-patient numbers when several sites are treated in the same visit. [PR #2430](https://github.com/pymedphys/pymedphys/pull/2430)
 - `pymedphys gui` now serves only the computer that runs it. It listens on `127.0.0.1` instead of every network interface, and accepts the WebSocket connections that run the apps only when they are addressed to `localhost` or `127.0.0.1`, which protects those connections against DNS rebinding. To serve other computers, for example from a department server, pass the address to listen on with the new `--address` option, such as `pymedphys gui --address 0.0.0.0`. The apps have no login and handle patient data, so anyone who can reach that address and port can use them, over unencrypted HTTP. The GUI also turns off Streamlit's usage statistics. It passes these settings to Streamlit on the command line, so they override Streamlit's configuration files and environment variables: a `server.address` set there no longer takes effect; use `--address` instead. See [Graphical apps](https://docs.pymedphys.com/en/latest/users/ref/cli/gui.html). [PR #2166](https://github.com/pymedphys/pymedphys/pull/2166), [PR #2167](https://github.com/pymedphys/pymedphys/pull/2167)
 - `pymedphys[mosaiq]` no longer installs attrs, scikit-learn, SQLAlchemy, or toml. Install `pymedphys[trf,mosaiq]` to identify TRF files against Mosaiq, and `pymedphys[user]` for everything else. [PR #2145](https://github.com/pymedphys/pymedphys/pull/2145)
 - The `dev` and `docs` extras are removed, and `pymedphys[all]` no longer installs linters, type checkers, or the documentation toolchain. Contributors get these from dependency groups with `uv sync` in a source checkout. [PR #2145](https://github.com/pymedphys/pymedphys/pull/2145)
