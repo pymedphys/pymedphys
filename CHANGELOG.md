@@ -232,7 +232,6 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
 
 ### Dependency changes
 
-- Documentation and gamma-scaling example environments now pin setuptools 84.1.0, fixing a Windows path escape in legacy wheel installation. Refresh these environments from the updated dependency files. [PR #2444](https://github.com/pymedphys/pymedphys/pull/2444)
 - The extras are reorganised. `user` is unchanged and remains the recommended install. `tests` is now `user` plus the test runner, so `pymedphys[tests]` is enough to run `pymedphys dev tests`. `all` is now `user`, `ai`, and `tests`, without development tools. Development tools move to dependency groups, which are not published to PyPI; in a source checkout, `uv sync` installs every extra and tool. [PR #2145](https://github.com/pymedphys/pymedphys/pull/2145)
 - The feature extras now each install everything their feature uses, and CI installs each one alone and runs its feature's tests. Before, each lacked packages its own feature needed: for example, `pymedphys[dicom]` could not anonymise because it had no NumPy. Combine them as needed, for example `pymedphys[gamma,dicom]` for gamma on DICOM files. [PR #2145](https://github.com/pymedphys/pymedphys/pull/2145)
   - New `gamma`: `pymedphys.gamma` and `pymedphys.gamma_pass_rate`, with NumPy, Numba, and SciPy.
@@ -250,6 +249,8 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
 - The experimental iCom, iView, and DICOM RT viewer apps pass `width="stretch"` to `st.altair_chart` and `st.plotly_chart` instead of `use_container_width=True`, which Streamlit deprecates for removal. Their charts look the same, Streamlit no longer logs a deprecation message for each chart, and the apps keep drawing charts once Streamlit removes the keyword. [PR #2414](https://github.com/pymedphys/pymedphys/pull/2414)
 - The `user` and `all` extras now install `plotly`, which draws the experimental DICOM RT viewer. [PR #1885](https://github.com/pymedphys/pymedphys/pull/1885), [PR #2138](https://github.com/pymedphys/pymedphys/pull/2138)
 - `pydicom` is now required at `>=3.0.2` instead of `>=3.0`, in every extra that installs it and in the `docs` dependency group. pydicom 3.0.0 and 3.0.1 are affected by CVE-2026-32711, a path-traversal flaw in reading DICOMDIR files that 3.0.2 fixes. The locked development environment already uses 3.0.2, and CI runs the de-identification tests with the new minimum. [PR #2195](https://github.com/pymedphys/pymedphys/pull/2195)
+
+- Documentation and gamma-scaling example environments now pin setuptools 84.1.0, fixing a Windows path escape in legacy wheel installation. Refresh these environments from the updated dependency files. [PR #2444](https://github.com/pymedphys/pymedphys/pull/2444)
 
 ### Contributor facing changes
 
