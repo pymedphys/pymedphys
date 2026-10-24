@@ -25,7 +25,8 @@ pack by its reference, not yet attested, since a reviewer attests to it
 after the run (D-016); each released instance by its output name, and each
 sequestered input by its label and reasons (D-026); how many instances
 were held for review by reason (D-009), what descriptor cleaning wrote for
-ROI Names and free-text descriptors, by count, how many instances have each kind
+ROI Names and free-text descriptors, by count, how many regions Clean Pixel
+Data blacked out, by what gave them, how many instances have each kind
 of reference finding that the run reports without acting on it, from the
 material that the run adds for them, how many released and held instances
 show each risk in their pixel data, and each indicator of it, from the
@@ -72,7 +73,7 @@ from . import (
     release_report_markdown,
 )
 from .face_blocks import FaceBlockCounts
-from .policy import Policy
+from .policy import CLEAN_PIXEL_DATA, Policy
 from .qc_attestation import AttestationRecord, Outcome
 from .qc_pack import QcPack
 from .readiness import ReadinessReview
@@ -96,6 +97,7 @@ from .run_qc import (
     DescriptorMaterial,
     Dropped,
     PixelRiskMaterial,
+    RedactionMaterial,
     ReferenceFindingMaterial,
     RoiNameMaterial,
     SearchMaterial,
@@ -226,6 +228,11 @@ class ReleaseReporter:
         Clean Pixel Data Option applies, or None, the default, without one, as
         :func:`~pymedphys._dicom.deidentify.release_report.release_report`
         takes it.
+    pixel_region_rules : str or None, optional
+        The keyed digest of the reviewed region rules that the Clean Pixel
+        Data Option applies, or None, the default, without rules, as
+        :func:`~pymedphys._dicom.deidentify.release_report.release_report`
+        takes it.
     safe_private_list : SafePrivateList, optional
         Under the Retain Safe Private Option, the list whose rules settle
         private attributes, the reviewed rules by default, as
@@ -275,6 +282,7 @@ class ReleaseReporter:
         face_blocks: FaceBlockCounts | None = None,
         redaction_review: str | None = None,
         text_finder: Mapping[str, object] | None = None,
+        pixel_region_rules: str | None = None,
         safe_private_list: SafePrivateList = SafePrivateList.REVIEWED,
         project_key: str | None = None,
         readiness_review: ReadinessReview | None = None,
@@ -306,6 +314,7 @@ class ReleaseReporter:
         self._face_blocks = face_blocks
         self._redaction_review = redaction_review
         self._text_finder = text_finder
+        self._pixel_region_rules = pixel_region_rules
         self._safe_private_list = safe_private_list
 
     def __repr__(self) -> str:
@@ -364,6 +373,11 @@ class ReleaseReporter:
             ),
             roi_names=roi_name_counts(material),
             descriptors=descriptor_counts(material),
+            pixel_regions=(
+                pixel_regions(outcomes, material)
+                if CLEAN_PIXEL_DATA in self._policy.options
+                else None
+            ),
             findings=reference_findings(outcomes, material),
             pixel=pixel_risks(outcomes, material),
             gaps=release_report.source_gaps(
@@ -426,6 +440,7 @@ class ReleaseReporter:
             reviewed_descriptors=self._reviewed_descriptors,
             technique_vocabulary=self._technique_vocabulary,
             text_finder=self._text_finder,
+            pixel_region_rules=self._pixel_region_rules,
             safe_private_list=self._safe_private_list,
             project_key=self._project_key,
             **run,  # type: ignore[arg-type]
@@ -555,6 +570,37 @@ def reference_findings(
         for position in sorted(material)
         if position not in copies
     )
+
+
+def pixel_regions(
+    outcomes: Sequence[object], material: Mapping[int, Sequence[object]]
+) -> release_report.PixelRegionCounts:
+    """Count the regions that Clean Pixel Data blacked out, by what gave them.
+
+    Each released or held input's regions come from its
+    :class:`~pymedphys._dicom.deidentify.run_qc.RedactionMaterial`, which
+    the transform gives only where no reviewer's verdict applied, each
+    region once in each frame that has it: a reviewed region rule's, which
+    is in every frame, or otherwise the text finder's (D-037). An identical
+    copy of an input is the same instance, so it is not counted again.
+    """
+    shown = {
+        getattr(outcome, "position")
+        for outcome in outcomes
+        if getattr(outcome, "status").value in release_report.PIXEL_RISK_DISPOSITIONS
+        and getattr(outcome, "duplicate_of") is None
+    }
+    detected = rule = 0
+    for position in sorted(material):
+        if position not in shown:
+            continue
+        for item in material[position]:
+            if isinstance(item, RedactionMaterial):
+                ruled = len(item.rule_boxes) * len(item.regions)
+                rule += ruled
+                detected += sum(len(boxes) for _, boxes in item.regions) - ruled
+                break
+    return release_report.PixelRegionCounts(detected=detected, rule=rule)
 
 
 def pixel_risks(
