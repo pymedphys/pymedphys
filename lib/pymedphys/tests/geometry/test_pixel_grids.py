@@ -23,7 +23,7 @@ from pymedphys._imports import pytest
 
 from pymedphys._geometry import pixel_grids, polygons
 
-from .test_polygons import even_odd
+from .test_polygons import even_odd, winding_numbers
 
 _AXIAL = (1.0, 0.0, 0.0, 0.0, 1.0, 0.0)
 
@@ -158,6 +158,94 @@ def test_a_self_crossing_ring_within_a_pixel_keeps_its_region(orientation):
     assert np.array_equal(
         even_odd([piece[:, :2] for piece in pieces], samples), even_odd([ring], samples)
     )
+
+
+def _placed(grid, columns, rows):
+    """The points at the given columns and rows of a grid, by its position,
+    orientation, and spacing, independently of the module."""
+    along_row, down_column = (
+        np.asarray(grid.orientation[:3]),
+        np.asarray(grid.orientation[3:]),
+    )
+    return (
+        np.asarray(grid.position)
+        + np.asarray(columns)[:, None] * grid.spacing[1] * along_row
+        + np.asarray(rows)[:, None] * grid.spacing[0] * down_column
+    )
+
+
+@pytest.mark.parametrize(
+    "orientation",
+    [_AXIAL, (-1.0, 0.0, 0.0, 0.0, -1.0, 0.0), _turned(30), _turned(-61)],
+    ids=["axial", "flipped", "turned 30", "turned -61"],
+)
+@pytest.mark.parametrize("seed", range(25))
+def test_a_ring_whose_lobes_cancel_across_pixels_keeps_its_region(orientation, seed):
+    generator = np.random.default_rng(seed)
+    grid = pixel_grids.PixelGrid((-8.3, -9.1, 4.0), orientation, (1.3, 0.9))
+    # Points to one side of column 6's centre line, then their mirror images
+    # in the same order: the mirror maps the ring onto itself but reverses
+    # its winding, so its signed area is zero, as it is within any run of
+    # chosen pixels that the mirror maps onto itself.
+    columns = 6 - generator.uniform(0.05, 3.0, 6)
+    rows = generator.uniform(2.0, 8.0, 6)
+    ring = _placed(grid, np.concatenate([columns, 12 - columns]), np.tile(rows, 2))
+    half = generator.random((11, 7)) < 0.6
+    chosen = np.concatenate([half, half[:, -2::-1]], axis=1)
+    sample_columns = generator.uniform(2.5, 9.5, 4000)
+    sample_rows = generator.uniform(1.5, 8.5, 4000)
+    samples = _placed(grid, sample_columns, sample_rows)
+    assert polygons.signed_area(ring) == pytest.approx(0, abs=1e-9)
+
+    pieces = pixel_grids.within_pixels(ring, grid, chosen)
+
+    in_chosen = _nearest_chosen(grid, chosen, samples)
+    assert (even_odd([ring], samples) & in_chosen).any()
+    assert np.array_equal(
+        even_odd(pieces, samples), even_odd([ring], samples) & in_chosen
+    )
+    assert np.array_equal(
+        winding_numbers(pieces, samples) != 0,
+        (winding_numbers([ring], samples) != 0) & in_chosen,
+    )
+
+
+def _l_shape(degrees):
+    """An L traced along the edges of pixels on a turned grid, its inner
+    corner on a corner of the pixel at row 2 and column 2, which lies
+    outside it."""
+    grid = pixel_grids.PixelGrid((10.1, -20.3, 5.0), _turned(degrees), (0.9, 0.9))
+    columns, rows = np.array(
+        [(0.5, 0.5), (3.5, 0.5), (3.5, 3.5), (2.5, 3.5), (2.5, 1.5), (0.5, 1.5)]
+    ).T
+    chosen = np.zeros((5, 5), dtype=bool)
+    chosen[2, 2] = True
+    return _placed(grid, columns, rows), grid, chosen
+
+
+def _spike(turn):
+    """A square within the pixel at row 1 and column 1 of an axial grid,
+    with a spike that runs into the pixel at row 1 and column 2, turning
+    there or not, and back the same way."""
+    grid = pixel_grids.PixelGrid((0.0, 0.0, 0.0), _AXIAL, (1.0, 1.0))
+    tip = [(2.0, 1.0), (2.2, 1.2), (2.0, 1.0)] if turn else [(2.2, 1.0)]
+    points = (
+        [(0.6, 0.6), (1.4, 0.6), (1.4, 1.0)]
+        + tip
+        + [(1.4, 1.0), (1.4, 1.4), (0.6, 1.4)]
+    )
+    chosen = np.zeros((3, 4), dtype=bool)
+    chosen[1, 2] = True
+    return np.column_stack([points, np.zeros(len(points))]), grid, chosen
+
+
+@pytest.mark.parametrize(
+    ("ring", "grid", "chosen"),
+    [_spike(True), _spike(False), _l_shape(67), _l_shape(74), _l_shape(88)],
+    ids=["bent-spike", "straight-spike", "l-turned-67", "l-turned-74", "l-turned-88"],
+)
+def test_a_piece_that_bounds_nothing_is_left_out(ring, grid, chosen):
+    assert pixel_grids.within_pixels(ring, grid, chosen) == []
 
 
 @pytest.mark.parametrize(
