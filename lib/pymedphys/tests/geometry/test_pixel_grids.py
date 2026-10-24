@@ -248,6 +248,21 @@ def test_a_piece_that_bounds_nothing_is_left_out(ring, grid, chosen):
     assert pixel_grids.within_pixels(ring, grid, chosen) == []
 
 
+def test_a_piece_along_one_line_is_left_out_without_its_exact_area(monkeypatch):
+    def refuse(points):
+        raise AssertionError("measured exactly")
+
+    monkeypatch.setattr(pixel_grids, "nonzero_area", refuse)
+    grid = pixel_grids.PixelGrid((-8.3, -9.1, 4.0), _AXIAL, (1.3, 0.9))
+    # Out and back along the edge between rows 2 and 3, as a contour traced
+    # along pixels' edges can leave, with a vertex at every half column.
+    steps = np.linspace(0.5, 400.5, 801)
+    columns = np.concatenate([steps, steps[-2:0:-1]])
+    piece = _placed(grid, columns, np.full(len(columns), 2.5))
+
+    assert not pixel_grids._has_area(grid, piece)  # pylint: disable = protected-access
+
+
 @pytest.mark.parametrize(
     "chosen",
     [np.array([[0, 2]]), np.array([[0.0, 0.5]])],

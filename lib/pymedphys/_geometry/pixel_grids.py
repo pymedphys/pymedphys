@@ -172,8 +172,31 @@ def _has_area(grid: PixelGrid, piece: np.ndarray) -> bool:
     The signed area alone settles most pieces. Where it is within
     :data:`NO_AREA` of zero, the piece either bounds nothing or crosses
     itself with lobes that cancel, which only the area by the nonzero rule
-    tells apart.
+    tells apart. Since that costs time growing with the square of the
+    piece's edges, a piece is first measured by a bound of both areas that
+    costs time in proportion to them, which settles a piece that lies
+    along one line, such as a sliver along a pixel's edge.
     """
     rows, columns = grid.indices(piece)
     plane = np.column_stack([columns, rows])
-    return abs(signed_area(plane)) > NO_AREA or nonzero_area(plane) > NO_AREA
+    if abs(signed_area(plane)) > NO_AREA:
+        return True
+    if _area_bound(plane) <= NO_AREA:
+        return False
+    return nonzero_area(plane) > NO_AREA
+
+
+def _area_bound(plane: np.ndarray) -> float:
+    """An upper bound of a ring's signed area in magnitude and of its area
+    by the nonzero rule, by its x and y: the absolute areas of the
+    triangles from its mean point to each of its edges, summed.
+
+    A point's winding number about the ring is the sum of its windings
+    about those triangles, so the points that the ring winds about lie
+    within them, and the signed area is the sum of the triangles' signed
+    areas. The bound is zero where every edge lies on a line through the
+    mean point, as for a ring that lies along one line.
+    """
+    x = plane[:, 0] - plane[:, 0].mean()
+    y = plane[:, 1] - plane[:, 1].mean()
+    return float(np.abs(x * np.roll(y, -1) - np.roll(x, -1) * y).sum()) / 2
