@@ -623,7 +623,10 @@ def _pixel_data(statement: ConformanceStatement) -> str:
     return (
         "Under the Clean Pixel Data Option, the engine replaces each region "
         "of text that its text finder finds in each frame of native Pixel "
-        "Data (7FE0,0010) with one stored value, in place: the frame's "
+        "Data (7FE0,0010), and each region that a reviewed region rule gives "
+        "every frame of an image with the rule's SOP Class UID, Manufacturer, "
+        "Manufacturer's Model Name, Rows, and Columns, with one stored value, "
+        "in place: the frame's "
         "smallest for MONOCHROME2, its largest for MONOCHROME1, or zero for "
         "RGB. This erases the text's pattern, but how bright the region is "
         "displayed depends on the Modality and VOI LUT attributes, which are "
@@ -632,8 +635,9 @@ def _pixel_data(statement: ConformanceStatement) -> str:
         "text, until a reviewer has checked the regions and looked for text "
         "that the finder missed. A later run of the same files, given the "
         "reviewer's verdicts in the attested QC pack, blacks out exactly the "
-        "finder's regions that the reviewer accepted, with any that the "
-        "reviewer added, without the finder, and releases the instance, and it "
+        "finder's and the rules' regions that the reviewer accepted, with any "
+        "that the reviewer added, without the finder or the rules, and "
+        "releases the instance, and it "
         "sequesters an instance that the reviewer rejected. It sequesters an instance with "
         "top-level Float or Double Float Pixel Data, or whose Pixel Data are "
         "compressed, have a photometric interpretation other than MONOCHROME1, MONOCHROME2, or "
@@ -645,8 +649,9 @@ def _pixel_data(statement: ConformanceStatement) -> str:
         + claims
         + "A run's method digest also covers its text finder's class and "
         "description of its method, such as the text detector's model, ONNX "
-        "Runtime, NumPy, and SciPy versions, and parameters, so it is not the "
-        "digest that this statement gives. "
+        "Runtime, NumPy, and SciPy versions, and parameters, and the keyed "
+        "digest of its region rules, so it is not the digest that this "
+        "statement gives. "
     )
 
 

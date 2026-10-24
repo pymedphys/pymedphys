@@ -65,6 +65,7 @@ _METHOD = {
     "reviewed_descriptors": "Reviewed descriptors digest",
     "technique_vocabulary_digest": "Technique vocabulary digest",
     "text_finder_digest": "Text finder digest",
+    "pixel_region_rules": "Pixel region rules digest",
     "safe_private_list": "Safe private list",
     "generated_values_digest": "Generated values digest",
     "engine_files": None,
@@ -78,6 +79,7 @@ _OPTIONAL_METHOD = frozenset(
         "reviewed_descriptors",
         "technique_vocabulary_digest",
         "text_finder_digest",
+        "pixel_region_rules",
         "safe_private_list",
     }
 )
@@ -100,6 +102,7 @@ _SECTIONS = (
     "qc_review",
     "face_review",
     "redaction_review",
+    "pixel_regions",
     "readiness",
     "released",
     "sequestered",
@@ -174,6 +177,7 @@ def to_markdown(report: str) -> str:
         *_qc_review(document["qc_review"]),
         *_face_review(document["face_review"]),
         *_redaction_review(document["redaction_review"]),
+        *_pixel_regions(document["pixel_regions"]),
         *_readiness(document["readiness"]),
         *_released(document["released"]),
         *_sequestered(document["sequestered"]),
@@ -373,6 +377,29 @@ def _redaction_review(section: object) -> list[Block]:
             + _code("redaction_review reference", section["reference"])
             + "."
         ],
+    ]
+
+
+def _pixel_regions(section: object) -> list[Block]:
+    if section is None:
+        return []
+    section = _fields("pixel_regions", section, ("detected", "rule"))
+    return [
+        ["## Pixel regions"],
+        [
+            "Under the Clean Pixel Data Option, the regions blacked out in the "
+            "instances released or held without a reviewer's verdict, each "
+            "region once in each frame that has it, by what gave them. A "
+            "reviewed region rule gives regions to every frame of an instance "
+            "of one kind, beside those that the text finder finds."
+        ],
+        _table(
+            ("Source", "Regions"),
+            [
+                ("Text finder", _tally("pixel_regions detected", section["detected"])),
+                ("Region rules", _tally("pixel_regions rule", section["rule"])),
+            ],
+        ),
     ]
 
 

@@ -41,14 +41,14 @@ on the instances of a run:
 as text; each first checks every field's form, as :func:`report_document`
 lists. Every field is built from the policy, the engine's own files, the
 versions that run it, the keyed digests of the reviewed-names and reviewed
-descriptors lists, the digest of the text finder's class and description of
-its method, the QC pack's opaque reference, the replacement identifiers that
+descriptors lists and of the reviewed region rules, the digest of the text
+finder's class and description of its method, the QC pack's opaque reference, the replacement identifiers that
 name released instances, the run's labels, and codes and attribute tags that
 the engine defines, never from DICOM data directly, and the check is a
 backstop: a field of another form, which could be a source value or a path
 outside the package, is refused. A field that fails is named, never quoted.
 
-Fourteen sections describe a run, by replacement identifiers, attribute tags,
+Fifteen sections describe a run, by replacement identifiers, attribute tags,
 and codes that the engine defines, never by a source value or path:
 
 - ``qc_review``: the run's QC pack by its opaque reference, with the outcome
@@ -67,6 +67,11 @@ and codes that the engine defines, never by a source value or path:
 - ``redaction_review``: under the Clean Pixel Data Option, the opaque
   reference of the earlier run's attested QC pack whose redaction verdicts
   the run applied; None otherwise.
+- ``pixel_regions``: under the Clean Pixel Data Option, how many regions
+  the option blacked out in the instances that the run released or held
+  without a reviewer's verdict, by what gave them: the text finder or a
+  reviewed region rule, each region once in each frame that has it, as the
+  QC pack lists them (:class:`PixelRegionCounts`, D-037); None otherwise.
 - ``readiness``: under the ``public-release`` preset, whether the run is
   ready for release, which it is only where its three gates pass: the
   statistical gate, from the risk assessment recorded beside the earlier
@@ -158,7 +163,7 @@ from .file_layout import TAG_PATTERN, ElementPath
 from .iod_conformance import SourceGap
 from .pixel_risk import Indicator, Risk
 from .labels import LABEL_PATTERN as _LABEL_PATTERN
-from .policy import PRESETS, Policy
+from .policy import CLEAN_PIXEL_DATA, PRESETS, Policy
 from .preservation import PreservationReason
 from .preserving_writer import WriteReason
 from .qc_attestation import AttestationRecord, Outcome
@@ -191,7 +196,7 @@ from .standard import ALL_OPTIONS, VRS
 from .walker import Sequestration, SequesterReason
 
 # The format of the report document. A change to its fields takes a new label.
-FORMAT = "pymedphys-deid-release-report/24"
+FORMAT = "pymedphys-deid-release-report/26"
 
 _DIGEST = re.compile(r"[0-9a-f]{64}")
 _EDITION = re.compile(r"[0-9]{4}[a-z]")
@@ -490,6 +495,28 @@ class ReferenceFindings:
 
 
 @dataclasses.dataclass(frozen=True)
+class PixelRegionCounts:
+    """How many regions Clean Pixel Data blacked out, by what gave them.
+
+    The regions are those of the instances that a run released or held
+    without a reviewer's verdict, each once in each frame that has it, as
+    the QC pack lists them; the regions that a verdict approved are counted
+    by the release report of the run whose pack the reviewer attested.
+
+    Attributes
+    ----------
+    detected : int
+        How many the text finder gave.
+    rule : int
+        How many reviewed region rules gave. A region that both gave counts
+        here.
+    """
+
+    detected: int = 0
+    rule: int = 0
+
+
+@dataclasses.dataclass(frozen=True)
 class PixelRiskCount:
     """How many instances of one disposition show one risk in their pixel data.
 
@@ -634,6 +661,7 @@ class ReleaseReport:
     face_review : str or None
     face_blocks : ~pymedphys._dicom.deidentify.face_blocks.FaceBlockCounts or None
     redaction_review : str or None
+    pixel_regions : PixelRegionCounts or None
     readiness : Readiness or None
     released : tuple of pathlib.PurePosixPath
     sequestered : tuple of SequesteredInstance
@@ -654,6 +682,7 @@ class ReleaseReport:
     face_review: str | None = None
     face_blocks: FaceBlockCounts | None = None
     redaction_review: str | None = None
+    pixel_regions: PixelRegionCounts | None = None
     readiness: Readiness | None = None
     released: tuple[PurePosixPath, ...] = ()
     sequestered: tuple[SequesteredInstance, ...] = ()
@@ -1007,11 +1036,13 @@ def release_report(
     reviewed_descriptors: str | None = None,
     technique_vocabulary: str | None = None,
     text_finder: Mapping[str, object] | None = None,
+    pixel_region_rules: str | None = None,
     safe_private_list: SafePrivateList = SafePrivateList.REVIEWED,
     qc_review: AttestationRecord | None = None,
     face_review: str | None = None,
     face_blocks: FaceBlockCounts | None = None,
     redaction_review: str | None = None,
+    pixel_regions: PixelRegionCounts | None = None,
     readiness: Readiness | None = None,
     released: Iterable[PurePosixPath] = (),
     sequestered: Iterable[SequesteredInstance] = (),
@@ -1054,6 +1085,12 @@ def release_report(
         :func:`~pymedphys._dicom.deidentify.pixel_cleaning.finder_description`
         gives them, or None, the default, without one. The report records
         only their digest.
+    pixel_region_rules : str or None, optional
+        The keyed digest of the reviewed region rules whose regions the
+        Clean Pixel Data Option blacks out beside the text finder's, as
+        :meth:`~pymedphys._dicom.deidentify.pixel_region_rules.PixelRegionRules.keyed_digest`
+        gives it, or None, the default, without rules. The report records
+        only this digest.
     safe_private_list : SafePrivateList, optional
         Under the Retain Safe Private Option, the list whose rules settle
         private attributes: the reviewed rules, the default, or TCIA's
@@ -1078,6 +1115,11 @@ def release_report(
         pack whose redaction verdicts the run applied, from
         :class:`~pymedphys._dicom.deidentify.redaction_review.RedactionReview`;
         None, the default, otherwise.
+    pixel_regions : PixelRegionCounts, optional
+        Under the Clean Pixel Data Option, how many regions the option
+        blacked out in the run's instances without a reviewer's verdict, by
+        what gave them; None, the default, counts none under the option,
+        and is the only value without it.
     readiness : Readiness, optional
         Under the ``public-release`` preset, whether the run is ready for
         release, from
@@ -1139,7 +1181,7 @@ def release_report(
     >>> report.policy.preset, report.policy.options
     ('basic', ())
     >>> list(report_document(report))
-    ['format', 'policy', 'method', 'runtime', 'qc_review', 'face_review', 'redaction_review', 'readiness', 'released', 'sequestered', 'held_for_review', 'roi_names', 'descriptors', 'reference_findings', 'pixel_risks', 'search_coverage', 'source_gaps', 'structural_checks']
+    ['format', 'policy', 'method', 'runtime', 'qc_review', 'face_review', 'redaction_review', 'pixel_regions', 'readiness', 'released', 'sequestered', 'held_for_review', 'roi_names', 'descriptors', 'reference_findings', 'pixel_risks', 'search_coverage', 'source_gaps', 'structural_checks']
     """
     if not isinstance(policy, Policy):
         raise TypeError("policy must be a Policy")
@@ -1157,6 +1199,7 @@ def release_report(
             reviewed_descriptors=reviewed_descriptors,
             technique_vocabulary=technique_vocabulary,
             text_finder=text_finder,
+            pixel_region_rules=pixel_region_rules,
             safe_private_list=safe_private_list,
         ),
         runtime=runtime_environment(),
@@ -1164,6 +1207,11 @@ def release_report(
         face_review=face_review,
         face_blocks=face_blocks,
         redaction_review=redaction_review,
+        pixel_regions=(
+            PixelRegionCounts()
+            if pixel_regions is None and CLEAN_PIXEL_DATA in policy.options
+            else pixel_regions
+        ),
         readiness=readiness,
         released=tuple(released),
         sequestered=tuple(sequestered),
@@ -1263,6 +1311,9 @@ def _method_section(method: MethodDigestComponents) -> dict:
         ),
         "text_finder_digest": _optional_digest(
             "text_finder_digest", method.text_finder_digest
+        ),
+        "pixel_region_rules": _optional_digest(
+            "pixel_region_rules", method.pixel_region_rules
         ),
         "safe_private_list": (
             None
@@ -1412,6 +1463,32 @@ def _redaction_review_section(reference: str | None) -> dict | None:
     if _string(reference) is None or not _REFERENCE.fullmatch(reference):
         raise _refuse("redaction_review", "is not a QC pack's reference")
     return {"reference": reference}
+
+
+def _pixel_regions_section(
+    counts: PixelRegionCounts | None, policy: PolicyRecord
+) -> dict | None:
+    """Return the section that counts the regions that Clean Pixel Data
+    blacked out, by what gave them, which only a policy that selects the
+    option has."""
+    selected = isinstance(policy, PolicyRecord) and CLEAN_PIXEL_DATA in policy.options
+    if counts is None:
+        if selected:
+            raise _refuse("pixel_regions", "is missing under Clean Pixel Data")
+        return None
+    if not selected:
+        raise _refuse("pixel_regions", "is given only under Clean Pixel Data")
+    if not isinstance(counts, PixelRegionCounts):
+        raise _refuse("pixel_regions", "is not counts of regions")
+    section = {}
+    for field in ("detected", "rule"):
+        count = getattr(counts, field)
+        if type(count) is not int:  # pylint: disable = unidiomatic-typecheck
+            raise _refuse(f"pixel_regions {field}", "is not a whole number")
+        if count < 0:
+            raise _refuse(f"pixel_regions {field}", "is negative")
+        section[field] = count
+    return section
 
 
 def _readiness_section(
@@ -1755,7 +1832,7 @@ def report_document(report: ReleaseReport) -> dict:
 
     The document is an object with the members ``format`` (:data:`FORMAT`),
     ``policy``, ``method``, ``runtime``, ``qc_review``, ``face_review``,
-    ``redaction_review``, ``readiness``, ``released``, ``sequestered``, ``held_for_review``, ``roi_names``,
+    ``redaction_review``, ``pixel_regions``, ``readiness``, ``released``, ``sequestered``, ``held_for_review``, ``roi_names``,
     ``descriptors``,
     ``reference_findings``, ``pixel_risks``, ``search_coverage``,
     ``source_gaps``, and ``structural_checks``, in that order, each section's
@@ -1764,6 +1841,8 @@ def report_document(report: ReleaseReport) -> dict:
     ``face_review`` null or an object with the reference and the CT series'
     ``ct_series`` counts, ``defaced`` and ``not_defaced`` by code,
     ``redaction_review`` null or an object with the reference,
+    ``pixel_regions`` null without the Clean Pixel Data Option and
+    otherwise an object with the ``detected`` and ``rule`` counts,
     ``readiness`` null or an object with ``ready``, the ``review`` and
     ``assessment`` references, each null without one, and the
     ``statistical``, ``pixel_and_face``, and ``attestation`` gates' reason
@@ -1797,7 +1876,8 @@ def report_document(report: ReleaseReport) -> dict:
         edition, preset, or option, the method digest's format, a file name
         or path within the engine's package, a QC pack's reference and an
         attestation outcome, a confirmation given only with an attestation,
-        a readiness section given only under ``public-release``, with a
+        a pixel regions section given exactly under the Clean Pixel Data
+        Option, a readiness section given only under ``public-release``, with a
         risk assessment's reference only with a QC pack's, each gate's own
         reason codes, and a gate failed for the lack of either exactly where
         it is not given,
@@ -1818,6 +1898,7 @@ def report_document(report: ReleaseReport) -> dict:
         "qc_review": _qc_review_section(report.qc_review),
         "face_review": _face_review_section(report.face_review, report.face_blocks),
         "redaction_review": _redaction_review_section(report.redaction_review),
+        "pixel_regions": _pixel_regions_section(report.pixel_regions, report.policy),
         "readiness": _readiness_section(report.readiness, report.policy),
         "released": _released_section(report.released),
         "sequestered": _sequestered_section(report.sequestered),
