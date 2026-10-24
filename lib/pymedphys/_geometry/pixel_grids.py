@@ -172,10 +172,11 @@ def _has_area(grid: PixelGrid, piece: np.ndarray) -> bool:
     The signed area alone settles most pieces. Where it is within
     :data:`NO_AREA` of zero, the piece either bounds nothing or crosses
     itself with lobes that cancel, which only the area by the nonzero rule
-    tells apart. Since that costs time growing with the square of the
-    piece's edges, a piece is first measured by a bound of both areas that
-    costs time in proportion to them, which settles a piece that lies
-    along one line, such as a sliver along a pixel's edge.
+    tells apart. Since that costs time growing at least with the square of
+    the piece's edges, and faster where it crosses itself many times, a
+    piece is first measured by a bound of both areas that costs time in
+    proportion to them, which settles a piece that lies along one line,
+    such as a sliver along a pixel's edge.
     """
     rows, columns = grid.indices(piece)
     plane = np.column_stack([columns, rows])

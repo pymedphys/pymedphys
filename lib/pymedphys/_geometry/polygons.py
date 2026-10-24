@@ -254,8 +254,12 @@ def nonzero_area(points: np.ndarray) -> float:
     and its value at the slab's middle, times the slab's height, is exact.
 
     The points are taken relative to their mean, as for
-    :func:`signed_area`. The work grows with the square of the number of
-    edges.
+    :func:`signed_area`. Finding the crossings takes work in proportion to
+    the square of the number of edges, and measuring the slabs to the
+    number of edges times the number of slabs, the vertices and crossings
+    together: about the square of the edges for a ring that crosses itself
+    a few times, but up to their cube for one that crosses itself
+    throughout.
     """
     xy = np.asarray(points, dtype=float)[:, :2]
     if len(xy) < 3:
