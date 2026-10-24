@@ -20,8 +20,9 @@ Sequence (0040,0555) item and of its Content Item Modifier Sequence
 engine could not keep them. Here each becomes a content item: the item a
 Calibration DateTime and its modifier a Person Observer Name, both listed
 in Table E.3.4-1 with D, so their markers are replaced. A NUMERIC item that
-the table does not list is added after them. The option's C to the sequence
-is not K, so no marker in it is kept (D-047).
+the table does not list is added after them. The items' other elements take
+their own actions, none of which is K without another option, so no marker
+in the sequence is kept (D-047).
 """
 
 import dataclasses
