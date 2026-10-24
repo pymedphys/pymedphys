@@ -246,7 +246,7 @@ class _FailingReporter:
     def admits(self, status, reasons):  # pylint: disable = unused-argument
         return True
 
-    def __call__(self, outcomes, material, _qc_pack):
+    def __call__(self, outcomes, material, _qc_pack, _facts):
         raise ValueError("no report")
 
 
@@ -265,7 +265,7 @@ class _UnreadableReporter:
     def admits(self, status, reasons):  # pylint: disable = unused-argument
         return True
 
-    def __call__(self, outcomes, material, _qc_pack):
+    def __call__(self, outcomes, material, _qc_pack, _facts):
         return "{}"
 
     def conformance_statement(self):
@@ -415,8 +415,8 @@ class _StatementlessReporter:
     def admits(self, status, reasons):
         return self._reporter.admits(status, reasons)
 
-    def __call__(self, outcomes, material, reference):
-        return self._reporter(outcomes, material, reference)
+    def __call__(self, outcomes, material, reference, facts):
+        return self._reporter(outcomes, material, reference, facts)
 
     def conformance_statement(self):
         raise ValueError("no statement")

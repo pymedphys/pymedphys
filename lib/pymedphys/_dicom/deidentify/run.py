@@ -117,7 +117,15 @@ from collections.abc import Callable, Iterator
 from pathlib import Path, PurePosixPath
 from typing import TypeGuard
 
-from . import output_names, qc_store, release_report, run_qc, run_report, run_written
+from . import (
+    output_names,
+    qc_store,
+    readiness,
+    release_report,
+    run_qc,
+    run_report,
+    run_written,
+)
 from .diagnostics import redacted_diagnostics
 from .file_layout import Region, read_file_layout
 from .reference_graph import (
@@ -315,8 +323,10 @@ def run(
         :func:`~pymedphys._dicom.deidentify.qc_store.check_confidential_destination`
         checks before anything is created. There is no default (D-016).
     reporter : Reporter, optional
-        Given the labelled outcomes, each input's QC material, and the QC
-        pack's reference, returns the report's text, published at the root as
+        Given the labelled outcomes, each input's QC material, the QC pack's
+        reference, and the :class:`~pymedphys._dicom.deidentify.run_report.RunFacts`
+        of the pack and the distinct subjects of the released instances,
+        returns the report's text, published at the root as
         :data:`~pymedphys._dicom.deidentify.run_report.RELEASE_REPORT`, with
         its human-readable form and its policy's conformance statement beside
         it, as :func:`~pymedphys._dicom.deidentify.run_report.release_files`
@@ -446,8 +456,20 @@ def _run(  # pylint: disable = too-many-arguments, too-many-positional-arguments
         pack = run_qc.qc_pack_of(
             discovery.paths, outcomes, material, digests=first.digests
         )
+        facts = run_report.RunFacts(
+            pack,
+            readiness.released_subjects(
+                {
+                    position: record.patient
+                    for position, record in first.records.items()
+                },
+                {o.position for o in outcomes if o.status is Status.RELEASED},
+            ),
+        )
         # Built before the pack is written, so a failure leaves no QC material.
-        files = run_report.documents(reporter, outcomes, material, pack.reference)
+        files = run_report.documents(
+            reporter, outcomes, material, pack.reference, facts
+        )
         staged_release = staging / _STAGED_RELEASE
         staged_release.mkdir(exist_ok=True, mode=0o700)
         _remove_empty_directories(staged_release)

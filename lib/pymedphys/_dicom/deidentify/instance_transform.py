@@ -173,6 +173,7 @@ from .reasons import (
     VisualFeaturesReason,
 )
 from .redaction_review import RedactionReview, Regions
+from .readiness import ReadinessReview
 from .reference_graph import ReferenceGraph
 from .references import InstanceRecord
 from .reviewed_roi_names import ReviewQueue
@@ -231,6 +232,7 @@ from .run_qc import (
     SearchMaterial,
     SeriesEvidence,
 )
+from .release_report import PUBLIC_RELEASE
 from .run_report import ReleaseReporter
 from .scope import Classification, classify
 from .source import SourceEvidence, SourceRefused, read_source
@@ -775,6 +777,13 @@ class InstanceTransform:
         private attributes: the reviewed rules, the default, or TCIA's
         Private Tag Dictionary. The method digest, the release report, and
         the conformance statement record which.
+    readiness_review : ReadinessReview, optional
+        Under the ``public-release`` preset, the review of an earlier run of
+        the same files, from
+        :func:`~pymedphys._dicom.deidentify.readiness.read_readiness_review`,
+        from which the release report says whether the run is ready for
+        release (D-017). It changes nothing that the run writes. No other
+        policy takes one.
     unvalidated_policy : bool, default False
         Allow a policy that is not enabled, such as a preset whose behaviour
         is not yet validated. For tests and validation runs only; nothing
@@ -788,8 +797,10 @@ class InstanceTransform:
         it; if ``finder`` is given without Clean Pixel Data, or left out with
         it; if ``face_review`` is given without Clean Recognizable Visual
         Features, or left out with it; if ``redaction_review`` is given
-        without Clean Pixel Data; if ``safe_private_list`` chooses TCIA's
-        dictionary without the Retain Safe Private Option; or if the
+        without Clean Pixel Data; if ``readiness_review`` is given with a
+        policy other than the ``public-release`` preset; if
+        ``safe_private_list`` chooses TCIA's dictionary without the Retain
+        Safe Private Option; or if the
         policy's other options cannot be composed into the policy whose
         actions descriptors take where they are not cleaned.
     TypeError
@@ -905,6 +916,7 @@ class InstanceTransform:
         face_review: FaceReview | None = None,
         redaction_review: RedactionReview | None = None,
         safe_private_list: SafePrivateList = SafePrivateList.REVIEWED,
+        readiness_review: ReadinessReview | None = None,
         unvalidated_policy: bool = False,
     ) -> None:
         if not (policy.enabled or unvalidated_policy):
@@ -929,6 +941,10 @@ class InstanceTransform:
                 "Pixel Data"
             )
         self._redaction_review = redaction_review
+        if readiness_review is not None and policy.preset != PUBLIC_RELEASE:
+            raise PolicyError(
+                "a readiness review is given only under the public-release preset"
+            )
         if (CLEAN_RECOGNIZABLE_VISUAL_FEATURES in policy.options) != (
             face_review is not None
         ):
@@ -1012,6 +1028,12 @@ class InstanceTransform:
             ),
             safe_private_list=safe_private_list,
             face_blocks=self._face_block_counts,
+            readiness_review=readiness_review,
+            reviewed_lists=(
+                (None, None)
+                if cleaning is None
+                else (cleaning.reviewed, cleaning.reviewed_descriptors)
+            ),
         )
 
     def __repr__(self) -> str:
