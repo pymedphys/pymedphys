@@ -361,6 +361,21 @@ def test_another_count_of_subjects_fails_only_the_statistical_gate(
     assert _gates(result) == (reason, None, None)
 
 
+@pytest.mark.deid_requirement("MIDI-BP-04")
+@pytest.mark.parametrize("statement", [None, "", "   "])
+def test_no_run_is_ready_without_a_statement_on_keeping_machine_identity(
+    tmp_path, statement
+):
+    # The statistical gate needs a record, and no record can be made without
+    # the statement that justifies omitting or keeping machine identity.
+    with pytest.raises(RiskAssessmentError, match="device_identity"):
+        _assessment(device_identity=statement)
+    result = _readiness(_reviewed(tmp_path, assessment=False))
+
+    assert result.statistical is StatisticalReason.NO_ASSESSMENT
+    assert not result.ready
+
+
 def test_an_assessment_above_its_threshold_fails_only_the_statistical_gate(tmp_path):
     review = _reviewed(tmp_path, assessment=_assessment(maximum_risk=0.1))
 
