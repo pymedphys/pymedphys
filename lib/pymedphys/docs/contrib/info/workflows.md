@@ -957,6 +957,6 @@ uv run pymedphys dev docs
 ## Version Compatibility
 
 - **Python**: 3.12, 3.13, 3.14 (all in the full unit-test matrix; 3.14 runs the quick matrix and every other job except the NumPy and pandas minimum-version check, which uses 3.12; 3.12 reaches end of life in October 2028)
-- **uv**: 0.12.15, pinned in CI (`setup-uv`) and in the pre-commit `uv-lock` hook
+- **uv**: 0.13.4, pinned in CI (`setup-uv`) and in the pre-commit `uv-lock` hook
 - **GitHub Actions**: Latest Ubuntu, Windows, and macOS runner images
 - **SQL Server**: 2022 Latest (for Mosaiq tests)
