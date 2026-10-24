@@ -489,8 +489,9 @@ def test_cleaning_is_pending_only_for_a_policy_that_cleans(preset, statement_for
     undescribed = "C" in {
         e.action for e in statement.attributes if e.tag not in described
     }
-    # Of the presets, only tps-import gives C that no cleaner describes.
-    assert undescribed == (preset == "tps-import")
+    # Every preset's C is described: by a cleaner, by Clean Descriptors, or
+    # by its fallback, which tps-import composes as the preset does.
+    assert not undescribed
     assert (conformance.PENDING_CLEANING in statement.pending) == undescribed
     assert set(conformance.PENDING) <= set(statement.pending)
 
