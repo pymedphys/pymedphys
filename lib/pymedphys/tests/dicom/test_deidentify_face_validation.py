@@ -377,6 +377,33 @@ def test_the_summary_is_the_same_each_time(measured, summary, archive):
     assert face_validation.summarise(list(measured.values()), data) == summary
 
 
+@pytest.mark.parametrize(
+    "bins, values, counts",
+    [
+        (face_validation.Bins("mm", (0.0, 1.0)), [0.0, 0.5, 1.0, 7.0], [2, 2]),
+        (
+            face_validation.Bins("mm", (0.0, 1.0), below=True),
+            [-3.0, 0.0, 1.0],
+            [1, 1, 1],
+        ),
+    ],
+)
+def test_each_value_is_counted_in_the_bin_from_its_lower_edge(bins, values, counts):
+    result = bins.counts(values)
+
+    assert [each["count"] for each in result["bins"]] == counts
+    lows = [each["from"] for each in result["bins"]]
+    highs = [each["to"] for each in result["bins"]]
+    assert lows == ([None] if bins.below else []) + list(bins.edges)
+    assert highs == lows[1:] + [None]
+
+
+@pytest.mark.parametrize("value", [-0.5, math.nan])
+def test_a_value_that_no_bin_holds_is_refused_without_quoting_it(value):
+    with pytest.raises(ValueError, match="^A value is in no bin.$"):
+        face_validation.Bins("mm", (0.0, 1.0)).counts([0.25, value])
+
+
 def test_measures_show_nothing_of_a_case():
     assert repr(CaseMeasures("defaced", "int16 gzip lps", True, 1.0, 2.0)) == (
         "CaseMeasures()"

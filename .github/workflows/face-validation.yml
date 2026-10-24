@@ -16,14 +16,6 @@ name: Face Block Check
 # cached, uploaded, or kept.
 on:
   workflow_dispatch:
-  # Temporary, for the first runs before this workflow is on the default
-  # branch; removed before review.
-  push:
-    branches: [claude/deid-confidentiality-options-61cc80]
-    paths:
-      - .github/workflows/face-validation.yml
-      - lib/pymedphys/_dicom/deidentify/face_validation*.py
-      - lib/pymedphys/_dicom/deidentify/nrrd.py
 
 permissions:
   contents: read

@@ -133,12 +133,22 @@ class Bins:
 
     def counts(self, values: Iterable[float]) -> dict[str, Any]:
         """Count the values in each bin, as ``from``, ``to``, and
-        ``count``, with ``None`` for an open end."""
+        ``count``, with ``None`` for an open end.
+
+        Raises
+        ------
+        ValueError
+            For a value that no bin holds: one that is not a number, or,
+            without ``below``, one below the first edge. The message quotes
+            no value.
+        """
         lows: list[float | None] = [None] if self.below else []
         lows += list(self.edges)
         highs: list[float | None] = [*lows[1:], None]
         counts = [0] * len(lows)
         for value in values:
+            if math.isnan(value) or not (self.below or value >= self.edges[0]):
+                raise ValueError("A value is in no bin.")
             counts[sum(1 for low in lows if low is None or value >= low) - 1] += 1
         return {
             "unit": self.unit,
