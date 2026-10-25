@@ -735,6 +735,82 @@ def test_a_dose_plane_or_dvhs_alone_are_no_volume():
     assert not pixel_risk.assess_series([plane, dvhs])
 
 
+RT_IMAGE = "1.2.840.10008.5.1.4.1.1.481.1"
+# The Defined Terms of the RT Image Module's Image Type value 3 (PS3.3
+# Section C.8.8.2), none of them LOCALIZER.
+RT_IMAGE_TYPES = ["DRR", "PORTAL", "SIMULATOR", "RADIOGRAPH", "BLANK", "FLUENCE"]
+
+
+def _rt_image(number: int, kind: str = "DRR", **attributes) -> "pydicom.Dataset":
+    """A lateral RT Image, unless ``attributes`` say otherwise."""
+    attributes = {"RTImagePlane": "NORMAL", "GantryAngle": 90, **attributes}
+    return _multi_frame(
+        number, RT_IMAGE, ImageType=["DERIVED", "SECONDARY", kind], **attributes
+    )
+
+
+@pytest.mark.deid_requirement("MIDI-BP-15")
+@TRANSFER_SYNTAXES
+@pytest.mark.parametrize("kind", RT_IMAGE_TYPES)
+def test_every_rt_image_can_show_the_face_in_profile(transfer_syntax, kind):
+    # A lateral DRR or simulator image can show the profile, as a localizer
+    # can, though its Image Type never says LOCALIZER.
+    series = [_rt_image(0, kind), _rt_image(1, kind, GantryAngle=0)]
+    if transfer_syntax is not None:
+        series = [_read_back(each, transfer_syntax) for each in series]
+    findings = pixel_risk.assess_series(series)
+    assert _series_found(findings) == {(Indicator.RT_IMAGE, (0, 1), None)}
+    assert {f.risk for f in findings} == {Risk.RECONSTRUCTABLE_FACE}
+    assert _series_found(pixel_risk.assess_series(series[:1])) == {
+        (Indicator.RT_IMAGE, (0,), None)
+    }
+
+
+@pytest.mark.deid_requirement("MIDI-BP-15")
+def test_an_rt_image_of_many_frames_is_no_volume():
+    # A cine portal image's frames are projections over time, not slices.
+    series = [_rt_image(0, "PORTAL", NumberOfFrames=8)]
+    assert _series_found(pixel_risk.assess_series(series)) == {
+        (Indicator.RT_IMAGE, (0,), None)
+    }
+    # Nor is it a frame of a CT volume beside it.
+    assert _series_found(pixel_risk.assess_series([_slice(1), *series])) == {
+        (Indicator.RT_IMAGE, (1,), None)
+    }
+
+
+@pytest.mark.deid_requirement("MIDI-BP-15")
+def test_rt_images_are_reported_after_volumes_and_localizers():
+    localizer = ["ORIGINAL", "PRIMARY", "LOCALIZER"]
+    series = [_rt_image(0), _slice(1), _slice(2, ImageType=localizer), _slice(3)]
+    assert [(f.indicator, f.instances) for f in pixel_risk.assess_series(series)] == [
+        (Indicator.CT_VOLUME, (1, 3)),
+        (Indicator.LOCALIZER, (2,)),
+        (Indicator.RT_IMAGE, (0,)),
+    ]
+
+
+@pytest.mark.deid_requirement("MIDI-BP-15")
+def test_an_rt_image_that_names_the_head_says_so():
+    series = [_rt_image(0, BodyPartExamined="HEAD"), _rt_image(1)]
+    series[1].AnatomicRegionSequence = [_region("69536005", "SCT")]
+    assert _series_found(pixel_risk.assess_series(series)) == {
+        (Indicator.RT_IMAGE, (0, 1), None),
+        (Indicator.HEAD_OR_NECK, (0,), "(0018,0015)"),
+        (Indicator.HEAD_OR_NECK, (1,), "(0008,2218)[0] > (0008,0100)"),
+    }
+
+
+def test_an_unreadable_sop_class_beside_rt_images_is_unreadable_evidence():
+    series = [_rt_image(0), _rt_image(1)]
+    _with_raw(series[1], 0x00080016, "UI", b"1.2.840.10008.5.1.4.1.1.481.1\\1.2.3")
+    # It is no RT Image, but its unreadable class still bears on the face.
+    assert _series_found(pixel_risk.assess_series(series)) == {
+        (Indicator.RT_IMAGE, (0,), None),
+        (Indicator.UNREADABLE, (1,), "(0008,0016)"),
+    }
+
+
 def test_a_ct_image_without_image_type_counts_towards_a_volume():
     series = [_slice(0), _slice(1)]
     del series[1].ImageType

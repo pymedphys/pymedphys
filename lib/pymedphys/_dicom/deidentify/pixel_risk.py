@@ -79,10 +79,10 @@ indicator. Findings name attribute paths, never values.
 :func:`assess_series` reads the indicators that need a whole series:
 every CT, MR, and PET volume, and every RT Dose grid of more than one
 frame, may hold a reconstructable face; so may a CT, MR, or PET localizer,
-which can show the face in profile; and one whose attributes name a region
-of the head or neck in a reviewed list from PS3.16 Annex L says that it
-does. :func:`series_evidence` gives the part
-of an instance that it reads.
+which can show the face in profile, and so may an RT Image, a projection
+such as a lateral DRR; and one whose attributes name a region of the head
+or neck in a reviewed list from PS3.16 Annex L says that it does.
+:func:`series_evidence` gives the part of an instance that it reads.
 
 Reading leaves the data set as it was: pydicom converts an element read from
 a file on first access, in place, and under strict reading its errors can
@@ -136,6 +136,7 @@ class Indicator(enum.Enum):
     PET_VOLUME = "pet-volume"
     RT_DOSE_VOLUME = "rt-dose-volume"
     LOCALIZER = "localizer"
+    RT_IMAGE = "rt-image"
     HEAD_OR_NECK = "head-or-neck"
     SUV_UNITS = "suv-units"
     SUV_MAPPING = "suv-mapping"
@@ -160,6 +161,7 @@ _RISKS = {
     Indicator.PET_VOLUME: Risk.RECONSTRUCTABLE_FACE,
     Indicator.RT_DOSE_VOLUME: Risk.RECONSTRUCTABLE_FACE,
     Indicator.LOCALIZER: Risk.RECONSTRUCTABLE_FACE,
+    Indicator.RT_IMAGE: Risk.RECONSTRUCTABLE_FACE,
     Indicator.HEAD_OR_NECK: Risk.RECONSTRUCTABLE_FACE,
     Indicator.SUV_UNITS: Risk.BODY_WEIGHT,
     Indicator.SUV_MAPPING: Risk.BODY_WEIGHT,
@@ -734,6 +736,11 @@ _VOLUME_SOP_CLASSES = {
     # frames, so it is not a volume.
     "1.2.840.10008.5.1.4.1.1.481.2": (Indicator.RT_DOSE_VOLUME, True),
 }
+# RT Image Storage (PS3.4 Table B.5-1). An RT Image is a projection, such
+# as a digitally reconstructed radiograph (DRR) or a simulator or portal
+# image (PS3.3 Section C.8.8.2), so, like a localizer, it can show the face
+# in profile; its Image Type has no third value of LOCALIZER.
+_RT_IMAGE = "1.2.840.10008.5.1.4.1.1.481.1"
 VOLUME_INDICATORS = (
     Indicator.CT_VOLUME,
     Indicator.MR_VOLUME,
@@ -876,7 +883,11 @@ def assess_series(instances: Sequence[pydicom.Dataset]) -> tuple[SeriesFinding, 
     counts as a frame of each volume that the series' other instances make.
     The localizers of those image classes are reported apart, since a
     localizer can show the face in profile, although no study has measured
-    recognition from one. A volume or localizer whose Body Part Examined
+    recognition from one. So is each RT Image Storage instance, whatever its
+    Image Type, gantry angle, or Number of Frames, since an RT Image is a
+    projection, and a lateral one, such as a DRR or a simulator or portal
+    image, can show the face in profile as a localizer can; it is no frame
+    of a volume. A volume, localizer, or RT Image whose Body Part Examined
     (0018,0015) or Anatomic Region Sequence (0008,2218), at the top level or
     in a Frame Anatomy Sequence (0020,9071) of the shared or a per-frame
     functional group, names a region in :func:`load_head_and_neck_regions`
@@ -894,24 +905,30 @@ def assess_series(instances: Sequence[pydicom.Dataset]) -> tuple[SeriesFinding, 
     -------
     tuple of SeriesFinding
         The CT, MR, PET, and RT Dose volumes first, in that order, then the
-        localizers, then the head or neck by attribute, then unreadable
-        evidence by instance, which is reported whether or not the series
-        is a volume.
+        localizers, then the RT Images, then the head or neck by attribute,
+        then unreadable evidence by instance, which is reported whether or
+        not the series is a volume.
     """
     regions = load_head_and_neck_regions()
     members: dict[Indicator, list[int]] = {}
     frames: dict[Indicator, int] = {}
     unknown: list[int] = []
     localizers: list[int] = []
+    rt_images: list[int] = []
     head: dict[int, list[ElementPath]] = {}
     unreadable: list[SeriesFinding] = []
     for index, dataset in enumerate(instances):
         try:
-            volume_class = _volume_class(dataset)
+            sop_class = _sop_class(dataset)
         except _Unreadable:
             unreadable.append(_unreadable_in(index, ElementPath((), _SOP_CLASS_UID)))
             volume_class = None
         else:
+            if sop_class == _RT_IMAGE:
+                rt_images.append(index)
+                head[index] = list(_head_or_neck(dataset, regions, index, unreadable))
+                continue
+            volume_class = _VOLUME_SOP_CLASSES.get(sop_class or "")
             if volume_class is None:
                 continue
         try:
@@ -938,6 +955,8 @@ def assess_series(instances: Sequence[pydicom.Dataset]) -> tuple[SeriesFinding, 
     ]
     if localizers:
         shown_by.append(SeriesFinding(Indicator.LOCALIZER, tuple(localizers)))
+    if rt_images:
+        shown_by.append(SeriesFinding(Indicator.RT_IMAGE, tuple(rt_images)))
     shown = {index for finding in shown_by for index in finding.instances}
     named: dict[ElementPath, list[int]] = {}
     for index, paths in head.items():
@@ -1004,16 +1023,13 @@ def _unreadable_in(index: int, path: ElementPath) -> SeriesFinding:
     )
 
 
-def _volume_class(dataset: pydicom.Dataset) -> tuple[Indicator, bool] | None:
-    """Return an image's volume indicator and whether it is multi-frame.
-
-    ``None`` is returned for an instance of a class that makes no volume.
-    """
+def _sop_class(dataset: pydicom.Dataset) -> str | None:
+    """Return an instance's normalised SOP Class UID, ``None`` if it has none."""
     uids = _read(dataset, _SOP_CLASS_UID) or []
     assert isinstance(uids, list)
     if len(uids) > 1:
         raise _Unreadable
-    return _VOLUME_SOP_CLASSES.get(normalise_uid(uids[0])) if uids else None
+    return normalise_uid(uids[0]) if uids else None
 
 
 def _frames(dataset: pydicom.Dataset, index: int, unreadable: list) -> int:
