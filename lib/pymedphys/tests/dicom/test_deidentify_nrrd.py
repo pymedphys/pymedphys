@@ -178,34 +178,82 @@ def _extended(encoding: str) -> bytes:
 @pytest.mark.parametrize(
     "data, problem",
     [
-        (b"NRRD0006\n\n", NrrdProblem.NOT_NRRD),
-        (b"P5 5 3 255\n", NrrdProblem.NOT_NRRD),
-        (b"NRRD0004\ntype: short\n", NrrdProblem.NOT_NRRD),
-        (b"NRRD0004\ntype: short\ndimension: 3" + b"x" * 70000, NrrdProblem.NOT_NRRD),
-        (_file(_header(type=None)), NrrdProblem.MALFORMED),
-        (_file([*_header(), "type: short"]), NrrdProblem.MALFORMED),
-        (_file([*_header(), "no colon here"]), NrrdProblem.MALFORMED),
-        (_file(_header(endian=None)), NrrdProblem.MALFORMED),
-        (_file(_header(sizes="5 3")), NrrdProblem.MALFORMED),
-        (_file(_header(sizes="5 0 4")), NrrdProblem.MALFORMED),
-        (_file(_header(sizes="5 -3 4")), NrrdProblem.MALFORMED),
-        (_file(_header(**{"space origin": "(0,nan,0)"})), NrrdProblem.MALFORMED),
-        (_file(_header(**{"space origin": "(0,0)"})), NrrdProblem.MALFORMED),
-        (
+        pytest.param(b"NRRD0006\n\n", NrrdProblem.NOT_NRRD, id="version-6"),
+        pytest.param(b"P5 5 3 255\n", NrrdProblem.NOT_NRRD, id="pgm"),
+        pytest.param(
+            b"NRRD0004\ntype: short\n", NrrdProblem.NOT_NRRD, id="ends-in-header"
+        ),
+        pytest.param(
+            b"NRRD0004\ntype: short\ndimension: 3" + b"x" * 70000,
+            NrrdProblem.NOT_NRRD,
+            id="line-too-long",
+        ),
+        pytest.param(_file(_header(type=None)), NrrdProblem.MALFORMED, id="no-type"),
+        pytest.param(
+            _file([*_header(), "type: short"]),
+            NrrdProblem.MALFORMED,
+            id="repeated-field",
+        ),
+        pytest.param(
+            _file([*_header(), "no colon here"]), NrrdProblem.MALFORMED, id="no-colon"
+        ),
+        pytest.param(
+            _file(_header(endian=None)), NrrdProblem.MALFORMED, id="no-endian"
+        ),
+        pytest.param(
+            _file(_header(sizes="5 3")), NrrdProblem.MALFORMED, id="two-sizes"
+        ),
+        pytest.param(
+            _file(_header(sizes="5 0 4")), NrrdProblem.MALFORMED, id="zero-size"
+        ),
+        pytest.param(
+            _file(_header(sizes="5 -3 4")), NrrdProblem.MALFORMED, id="negative-size"
+        ),
+        pytest.param(
+            _file(_header(**{"space origin": "(0,nan,0)"})),
+            NrrdProblem.MALFORMED,
+            id="nan-origin",
+        ),
+        pytest.param(
+            _file(_header(**{"space origin": "(0,0)"})),
+            NrrdProblem.MALFORMED,
+            id="short-origin",
+        ),
+        pytest.param(
             _file(_header(**{"space directions": "(1,0,0) (0,1,0) [0,0,1]"})),
             NrrdProblem.MALFORMED,
+            id="bracketed-direction",
         ),
-        (_file([*_header(), "data file: values.raw"]), NrrdProblem.DETACHED),
-        (_file(_header(type="block")), NrrdProblem.UNSUPPORTED_TYPE),
-        (_file(_header(encoding="txt")), NrrdProblem.UNSUPPORTED_ENCODING),
-        (_file(_header(space="scanner-xyz")), NrrdProblem.UNSUPPORTED_SPACE),
-        (_file(_header(space="3D-right-handed")), NrrdProblem.UNSUPPORTED_SPACE),
-        (_file(_header(space=None)), NrrdProblem.UNSUPPORTED_SPACE),
-        (
+        pytest.param(
+            _file([*_header(), "data file: values.raw"]),
+            NrrdProblem.DETACHED,
+            id="data-file",
+        ),
+        pytest.param(
+            _file(_header(type="block")), NrrdProblem.UNSUPPORTED_TYPE, id="block"
+        ),
+        pytest.param(
+            _file(_header(encoding="txt")), NrrdProblem.UNSUPPORTED_ENCODING, id="txt"
+        ),
+        pytest.param(
+            _file(_header(space="scanner-xyz")),
+            NrrdProblem.UNSUPPORTED_SPACE,
+            id="scanner-xyz",
+        ),
+        pytest.param(
+            _file(_header(space="3D-right-handed")),
+            NrrdProblem.UNSUPPORTED_SPACE,
+            id="3d-right-handed",
+        ),
+        pytest.param(
+            _file(_header(space=None)), NrrdProblem.UNSUPPORTED_SPACE, id="no-space"
+        ),
+        pytest.param(
             _file([*_header(), 'space units: "mm" "cm" "mm"']),
             NrrdProblem.UNSUPPORTED_SPACE,
+            id="cm-units",
         ),
-        (
+        pytest.param(
             _file(
                 _header(
                     dimension="2",
@@ -214,23 +262,39 @@ def _extended(encoding: str) -> bytes:
                 )
             ),
             NrrdProblem.UNSUPPORTED_GEOMETRY,
+            id="two-dimensions",
         ),
-        (
+        pytest.param(
             _file(_header(**{"space directions": "(1,0,0) (0,1,0) none"})),
             NrrdProblem.UNSUPPORTED_GEOMETRY,
+            id="none-direction",
         ),
-        (
+        pytest.param(
             _file(_header(**{"space directions": "(1,0,0) (2,0,0) (0,0,1)"})),
             NrrdProblem.UNSUPPORTED_GEOMETRY,
+            id="parallel-directions",
         ),
-        (_file(_header(**{"space origin": None})), NrrdProblem.UNSUPPORTED_GEOMETRY),
-        (
+        pytest.param(
+            _file(_header(**{"space origin": None})),
+            NrrdProblem.UNSUPPORTED_GEOMETRY,
+            id="no-origin",
+        ),
+        pytest.param(
             _file(_header(**{"space directions": None})),
             NrrdProblem.UNSUPPORTED_GEOMETRY,
+            id="no-directions",
         ),
-        (_file([*_header(), "byte skip: -1"]), NrrdProblem.UNSUPPORTED_GEOMETRY),
-        (_file([*_header(), "line skip: 1"]), NrrdProblem.UNSUPPORTED_GEOMETRY),
-        (
+        pytest.param(
+            _file([*_header(), "byte skip: -1"]),
+            NrrdProblem.UNSUPPORTED_GEOMETRY,
+            id="byte-skip",
+        ),
+        pytest.param(
+            _file([*_header(), "line skip: 1"]),
+            NrrdProblem.UNSUPPORTED_GEOMETRY,
+            id="line-skip",
+        ),
+        pytest.param(
             _file(
                 _header(
                     dimension="4",
@@ -239,24 +303,32 @@ def _extended(encoding: str) -> bytes:
                 )
             ),
             NrrdProblem.UNSUPPORTED_GEOMETRY,
+            id="four-dimensions",
         ),
-        (_truncated("raw"), NrrdProblem.DATA_LENGTH),
-        (_truncated("gzip"), NrrdProblem.DATA_LENGTH),
-        (_truncated("bzip2"), NrrdProblem.DATA_LENGTH),
-        (_extended("raw"), NrrdProblem.DATA_LENGTH),
-        (_extended("gzip"), NrrdProblem.DATA_LENGTH),
-        (_extended("bzip2"), NrrdProblem.DATA_LENGTH),
-        (_file(_header(encoding="gzip"), b"not gzip at all"), NrrdProblem.DATA_LENGTH),
-        (
+        pytest.param(_truncated("raw"), NrrdProblem.DATA_LENGTH, id="truncated-raw"),
+        pytest.param(_truncated("gzip"), NrrdProblem.DATA_LENGTH, id="truncated-gzip"),
+        pytest.param(
+            _truncated("bzip2"), NrrdProblem.DATA_LENGTH, id="truncated-bzip2"
+        ),
+        pytest.param(_extended("raw"), NrrdProblem.DATA_LENGTH, id="extended-raw"),
+        pytest.param(_extended("gzip"), NrrdProblem.DATA_LENGTH, id="extended-gzip"),
+        pytest.param(_extended("bzip2"), NrrdProblem.DATA_LENGTH, id="extended-bzip2"),
+        pytest.param(
+            _file(_header(encoding="gzip"), b"not gzip at all"),
+            NrrdProblem.DATA_LENGTH,
+            id="not-gzip",
+        ),
+        pytest.param(
             _file(_header(encoding="bzip2"), b"not bzip2 at all"),
             NrrdProblem.DATA_LENGTH,
+            id="not-bzip2",
         ),
-        (
+        pytest.param(
             _file(_header(encoding="gzip"), gzip.compress(bytes(240))),
             NrrdProblem.DATA_LENGTH,
+            id="gzip-too-long",
         ),
     ],
-    ids=lambda value: value.value if isinstance(value, NrrdProblem) else None,
 )
 def test_a_file_this_module_does_not_read_is_refused_by_why(data, problem):
     with pytest.raises(NrrdRefused) as refused:

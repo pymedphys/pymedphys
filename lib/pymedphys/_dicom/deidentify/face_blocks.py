@@ -478,23 +478,7 @@ def _series_outcome(
         # the block.
         if not frame:
             raise _Unusable(SeriesProblem.UNREADABLE)
-        normal = np.cross(first.orientation[:3], first.orientation[3:])
-        # Along the patient's superior axis, the slices within HEAD_REACH of
-        # the top; for a stack along another axis, every slice, since each
-        # spans the volume's height.
-        if abs(abs(normal[2]) - 1) <= _SAME:
-            tops = [each.position[2] for each in slices]
-            kept = [i for i, top in enumerate(tops) if top >= max(tops) - HEAD_REACH]
-        else:
-            kept = list(range(len(slices)))
-        finder = defacing.FaceFinder(
-            first.orientation,
-            [slices[i].position for i in kept],
-            first.spacing,
-            first.shape,
-        )
-        for index in kept:
-            finder.add(_hounsfield(read(positions[index]), slices[index]))
+        finder = _finder(slices, positions, read)
         return SeriesDefacing(finder.block(), None, frame), frame
     except _Unusable as unusable:
         return SeriesDefacing(None, unusable.problem), frame
@@ -506,6 +490,62 @@ def _series_outcome(
     # its message, which can quote a value, is dropped.
     except Exception:  # pylint: disable = broad-exception-caught
         return SeriesDefacing(None, SeriesProblem.UNREADABLE), frame
+
+
+def inspect_series(
+    positions: list[int], read: Callable[[int], bytes | None]
+) -> defacing.FaceInspection | None:
+    """What the finder finds in one series' slices, as a run gives them to
+    it, or None where it is given none, for a check on reference masks.
+
+    Parameters
+    ----------
+    positions : list of int
+        The run positions of the series' CT Image instances.
+    read : callable
+        As for :func:`find_face_blocks`.
+    """
+    try:
+        slices = [_slice(read(position)) for position in positions]
+        _check_stack(slices)
+        return _finder(slices, positions, read).inspect()
+    except (_Unusable, FaceBlockRefused):
+        return None
+
+
+def _finder(
+    slices: list[_Slice],
+    positions: list[int],
+    read: Callable[[int], bytes | None],
+) -> defacing.FaceFinder:
+    """The finder of one stack's slices, each added.
+
+    Raises
+    ------
+    _Unusable
+        If a slice can no longer be read.
+    FaceBlockRefused
+        As :class:`~pymedphys._dicom.deidentify.defacing.FaceFinder` does.
+    """
+    first = slices[0]
+    normal = np.cross(first.orientation[:3], first.orientation[3:])
+    # Along the patient's superior axis, the slices within HEAD_REACH of
+    # the top; for a stack along another axis, every slice, since each
+    # spans the volume's height.
+    if abs(abs(normal[2]) - 1) <= _SAME:
+        tops = [each.position[2] for each in slices]
+        kept = [i for i, top in enumerate(tops) if top >= max(tops) - HEAD_REACH]
+    else:
+        kept = list(range(len(slices)))
+    finder = defacing.FaceFinder(
+        first.orientation,
+        [slices[i].position for i in kept],
+        first.spacing,
+        first.shape,
+    )
+    for index in kept:
+        finder.add(_hounsfield(read(positions[index]), slices[index]))
+    return finder
 
 
 def _slice(data: bytes | None) -> _Slice:

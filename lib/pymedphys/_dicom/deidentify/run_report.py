@@ -34,7 +34,9 @@ material that the transform gives and the assessment of their series, as
 the QC pack lists them (D-015), and how many source values the
 residual searches did not search, by attribute and reason, each counted at
 the instance that holds it among those that the transform gave material for
-(D-027). The report holds no source value or path (D-016), and
+(D-027), and how many released instances have each kind of residual finding
+that an exemption kept from review, from the gate's material (D-032). The
+report holds no source value or path (D-016), and
 :func:`~pymedphys._dicom.deidentify.release_report.to_json` refuses any
 field that could hold one. Before the run labels its outcomes, it asks the
 reporter whether it :meth:`~Reporter.admits` each withheld input's reasons,
@@ -371,6 +373,7 @@ class ReleaseReporter:
             coverage=release_report.search_coverage(
                 coverage_records(material[position]) for position in sorted(material)
             ),
+            exempted=exempted_findings(outcomes, material),
             roi_names=roi_name_counts(material),
             descriptors=descriptor_counts(material),
             pixel_regions=(
@@ -722,6 +725,34 @@ def held_instances(
     )
 
 
+def exempted_findings(
+    outcomes: Sequence[object], material: Mapping[int, Sequence[object]]
+) -> tuple[release_report.ExemptedFindings, ...]:
+    """Count the released instances with each kind of exempted residual finding.
+
+    Each released input's findings come from the
+    :class:`~pymedphys._dicom.deidentify.run_qc.SearchMaterial` that the gate
+    gave it, so each is counted at the written file it was found in. An
+    identical copy of a released input is a duplicate, not released, so it
+    is not counted again.
+    """
+    released = {
+        getattr(outcome, "position")
+        for outcome in outcomes
+        if getattr(outcome, "status").value == RELEASED
+    }
+    return release_report.exempted_findings(
+        [
+            pair
+            for item in material[position]
+            if isinstance(item, SearchMaterial)
+            for pair in item.exempted
+        ]
+        for position in sorted(material)
+        if position in released
+    )
+
+
 def coverage_records(material: Sequence[object]) -> list[NotSearched | Unsearched]:
     """Return what the residual searches did not search of one input's values.
 
@@ -775,7 +806,8 @@ def descriptor_counts(material: Mapping[int, Sequence[object]]) -> DescriptorCou
     element that descriptor cleaning read, as the QC pack lists them, so
     every value counts by its outcome, each distinct value held for review,
     of one attribute, once for each of its reasons, and each element that
-    took its action without Clean Descriptors once, as
+    took its action without Clean Descriptors, rather than holding its
+    instance for review, once, as
     :meth:`~pymedphys._dicom.deidentify.reviewed_descriptors.DescriptorReviewQueue.report_counts`
     gives, without a value.
     """
@@ -788,5 +820,6 @@ def descriptor_counts(material: Mapping[int, Sequence[object]]) -> DescriptorCou
                     item.sources,
                     item.results,
                     applied=item.applied,
+                    holds=item.holds,
                 )
     return queue.report_counts()

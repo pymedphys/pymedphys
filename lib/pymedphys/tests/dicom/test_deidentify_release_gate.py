@@ -490,8 +490,9 @@ def test_a_text_finding_inside_the_data_set_goes_to_qc_review():
 
 
 def test_a_person_name_found_in_a_retained_rt_label_is_withheld():
-    # The design leaves open whether such findings go to QC review instead;
-    # until it is decided, they fail the file. Beam Name is retained here.
+    # A removed value is still searched for where the policy retains a copy,
+    # and a person name found in a retained label withholds the file (D-027).
+    # Beam Name is retained here.
     beam_name = struct.pack("<HH2sH", 0x300A, 0x00C2, b"LO", 8) + b"QUILLON "
     coverage = _coverage(SourceValue(NAME_PATH, "PN", PERSON))
     written = _written() + beam_name

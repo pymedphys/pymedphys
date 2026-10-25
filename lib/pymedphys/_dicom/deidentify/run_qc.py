@@ -43,6 +43,7 @@ from .qc_pack import Disposition, DropReason, QcPack, RoiNameOutcome
 from .reasons import PixelDataReason
 from .reference_graph import Finding, FindingKind
 from .release_report import REPORTED_FINDINGS
+from .residual_exemptions import Exemption
 from .reviewed_descriptors import CleanedDescriptor
 from .run_written import REPORTED_ONLY
 from .roi_names import Reason
@@ -66,10 +67,16 @@ class SearchMaterial:
     search : ~pymedphys._dicom.deidentify.residuals.ResidualSearch
     written : bytes
         The file as the gate read it, to cut each finding's excerpt from.
+    exempted : tuple of (Finding, Exemption)
+        The search's text findings inside the data set that are not reasons
+        for review, each with why, as the release condition gives them
+        (:attr:`~pymedphys._dicom.deidentify.release_gate.ReleaseCondition.exempted`),
+        for the release report's counts.
     """
 
     search: residuals.ResidualSearch
     written: bytes
+    exempted: tuple[tuple[residuals.Finding, Exemption], ...] = ()
 
     def __repr__(self) -> str:
         return "SearchMaterial()"
@@ -107,7 +114,12 @@ class RoiNameMaterial:
 class DescriptorMaterial:
     """What descriptor cleaning decided for the values of one free-text descriptor.
 
-    Attributes are those of :class:`~.qc_pack.DescriptorEntry` but its position.
+    Attributes are those of :class:`~.qc_pack.DescriptorEntry` but its
+    position, and ``holds``, whether a held value of the element held its
+    instance for review, as for an attribute that another option's cleaner
+    left to the reviewed descriptors list (D-038), rather than the element
+    taking its action without Clean Descriptors, which the release report
+    counts apart.
     """
 
     path: ElementPath
@@ -115,6 +127,7 @@ class DescriptorMaterial:
     results: tuple[CleanedDescriptor, ...]
     applied: bool
     attribute: str | None = None
+    holds: bool = False
 
     def __repr__(self) -> str:
         return f"DescriptorMaterial(path={str(self.path)!r}, applied={self.applied!r})"

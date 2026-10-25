@@ -228,6 +228,7 @@ class _Released:
     decision = Decision.RELEASE
     reasons = ()
     search = ResidualSearch((), (), True)
+    exempted = ()
 
 
 @hypothesis.settings(deadline=None)
