@@ -114,7 +114,12 @@ class RoiNameMaterial:
 class DescriptorMaterial:
     """What descriptor cleaning decided for the values of one free-text descriptor.
 
-    Attributes are those of :class:`~.qc_pack.DescriptorEntry` but its position.
+    Attributes are those of :class:`~.qc_pack.DescriptorEntry` but its
+    position, and ``holds``, whether a held value of the element held its
+    instance for review, as for an attribute that another option's cleaner
+    left to the reviewed descriptors list (D-038), rather than the element
+    taking its action without Clean Descriptors, which the release report
+    counts apart.
     """
 
     path: ElementPath
@@ -122,6 +127,7 @@ class DescriptorMaterial:
     results: tuple[CleanedDescriptor, ...]
     applied: bool
     attribute: str | None = None
+    holds: bool = False
 
     def __repr__(self) -> str:
         return f"DescriptorMaterial(path={str(self.path)!r}, applied={self.applied!r})"

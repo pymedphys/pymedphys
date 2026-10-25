@@ -806,7 +806,8 @@ def descriptor_counts(material: Mapping[int, Sequence[object]]) -> DescriptorCou
     element that descriptor cleaning read, as the QC pack lists them, so
     every value counts by its outcome, each distinct value held for review,
     of one attribute, once for each of its reasons, and each element that
-    took its action without Clean Descriptors once, as
+    took its action without Clean Descriptors, rather than holding its
+    instance for review, once, as
     :meth:`~pymedphys._dicom.deidentify.reviewed_descriptors.DescriptorReviewQueue.report_counts`
     gives, without a value.
     """
@@ -819,5 +820,6 @@ def descriptor_counts(material: Mapping[int, Sequence[object]]) -> DescriptorCou
                     item.sources,
                     item.results,
                     applied=item.applied,
+                    holds=item.holds,
                 )
     return queue.report_counts()

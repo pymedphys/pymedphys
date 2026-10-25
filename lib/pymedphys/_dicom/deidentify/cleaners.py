@@ -38,10 +38,13 @@ applies the cleaners of the options its policy selects to each instance's
 edits, by :func:`apply_cleaners`, before descriptor cleaning. An attribute
 given C that no cleaner settles stays pending. Under Clean Descriptors,
 descriptor cleaning gives it the action that the policy gives it without
-that option, where that action is not C (D-009); otherwise the instance is
-sequestered, since writing it with the option's code would claim a retention
-that did not happen (D-011), and writing it without the code would claim
-that the Basic Profile removed values that the option keeps (D-012).
+that option, where that action is not C (D-009), or, where its cleaner
+leaves it to the reviewed descriptors list (:attr:`Cleaner.reviewed`), the
+list's decisions, holding the instance for review where the list does not
+clean a value (D-038); otherwise the instance is sequestered, since writing
+it with the option's code would claim a retention that did not happen
+(D-011), and writing it without the code would claim that the Basic Profile
+removed values that the option keeps (D-012).
 """
 
 from __future__ import annotations
@@ -62,6 +65,7 @@ from .policy import (
 )
 from .pseudonyms import SubjectIdentity
 from .residuals import SourceValue
+from .reviewed_descriptors import descriptor_attributes
 
 # What a cleaner of the whole instance writes for each attribute that it
 # settles: the values written in its place, ``()`` for none, and whether they
@@ -111,13 +115,23 @@ class Cleaner:
         so that the residual search leaves the source value out. An
         attribute that it leaves out stays pending. Its values may be bytes,
         for an attribute of a VR such as OB.
+    reviewed : bool
+        Whether, under a policy that also selects the Clean Descriptors
+        Option, descriptor cleaning gives each attribute that the cleaner
+        leaves pending the decisions of the custodian's reviewed descriptors
+        list, holding its instance for review where the list does not clean
+        a value, rather than leaving it pending, which sequesters the
+        instance (D-038). Every attribute that it cleans must be one whose
+        values a reviewer can decide on
+        (:func:`~.reviewed_descriptors.descriptor_attributes`).
 
     Raises
     ------
     ValueError
         If the cleaner has neither or both of ``clean`` and
         ``clean_instance``, or ``retains`` with ``clean_instance``, which
-        says itself which values it retains.
+        says itself which values it retains, or is ``reviewed`` and cleans
+        an attribute whose values a reviewer cannot decide on.
     """
 
     option: str
@@ -129,12 +143,15 @@ class Cleaner:
     )
     retains: bool = False
     clean_instance: InstanceClean | None = dataclasses.field(default=None, repr=False)
+    reviewed: bool = False
 
     def __post_init__(self) -> None:
         if (self.clean is None) == (self.clean_instance is None):
             raise ValueError("a cleaner has either clean or clean_instance")
         if self.retains and self.clean_instance is not None:
             raise ValueError("clean_instance says itself which values it retains")
+        if self.reviewed and not self.tags <= set(descriptor_attributes()):
+            raise ValueError("a reviewer cannot decide on every attribute it cleans")
 
 
 # Every cleaner, by the order of its option in Table E.1-1. No two clean the
@@ -163,16 +180,24 @@ CLEANERS: tuple[Cleaner, ...] = (
         tags=patient_characteristics.TAGS,
         vrs=patient_characteristics.VRS,
         method=(
-            "No method yet cleans these values of free text, so none of them "
-            "is written: an instance in which one of them has a value is "
-            "held, sequestered rather than written, and one that has no "
-            "value, or whose values hold nothing but spaces, is written with "
-            "no value. Clean Descriptors gives C to Allergies (0010,2110), "
-            "Patient State (0038,0500), and Sex Parameters for Clinical Use "
-            "Category Comment (0010,0042) too, and where the policy selects "
-            "both options, the same applies to them."
+            "No automatic method cleans these values of free text. An "
+            "attribute that has no value, or whose values hold nothing but "
+            "spaces, is written with no value. Under this option without "
+            "Clean Descriptors, no other value is written: an instance in "
+            "which one of them has a value is held, sequestered rather than "
+            "written. Where the policy also selects Clean Descriptors, each "
+            "value is given the decision that a reviewer recorded for it in "
+            "the custodian's reviewed descriptors list: kept, mapped to a "
+            "value that the reviewer chose, or emptied, unless what it would "
+            "write echoes a person's name or a patient identifier in the "
+            "instance. An instance with a value that the list does not "
+            "decide on, or whose decision would echo an identifier, is held "
+            "for review and not released, and one in which a kept value "
+            "would be written beside a mapped or emptied value of the same "
+            "attribute is sequestered."
         ),
         clean_instance=patient_characteristics.held_unless_empty,
+        reviewed=True,
     ),
     Cleaner(
         option=MODIFIED_DATES,

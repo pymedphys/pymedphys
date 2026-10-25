@@ -181,7 +181,7 @@ def read_decisions(path: str | os.PathLike) -> tuple[Decision, ...]:
         If the file cannot be read as UTF-8 CSV; if its header lacks a
         required column or repeats one; if it holds no decision; or if a row
         has more cells than the header, an attribute that is not a descriptor
-        that Clean Descriptors cleans, a value that the list cannot hold, a
+        that a reviewer can decide on, a value that the list cannot hold, a
         decision other than keep, map, or empty, a value to write that does
         not fit its decision or VR, or a value given different decisions. The
         message names lines by number, never a value, a cell, or the path.
