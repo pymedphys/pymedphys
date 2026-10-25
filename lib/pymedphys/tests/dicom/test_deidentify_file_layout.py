@@ -190,8 +190,8 @@ def _plan(undefined_lengths):
     if undefined_lengths:
         for sequence in (dataset["BeamSequence"], beam["ControlPointSequence"]):
             sequence.is_undefined_length = True
-            for item in sequence.value:
-                item.is_undefined_length_sequence_item = True
+        for item in (*dataset.BeamSequence, *beam.ControlPointSequence):
+            item.is_undefined_length_sequence_item = True
     return dataset
 
 

@@ -27,6 +27,10 @@ summary and returns an exit status, it prints nothing and returns
 :class:`Deidentified`; where the command exits because the run could not
 start, it raises.
 
+Under the Clean Recognizable Visual Features Option, it takes the QC
+pack of an earlier run of the same files, attested with face verdicts
+(D-046), which the command does not take yet.
+
 It is private until the release, which is to export it as
 ``pymedphys.dicom.deidentify``; nothing exports it yet. No preset or option
 is enabled yet, so until one is, it raises :class:`DeidentifyError`.
@@ -46,8 +50,9 @@ from .safe_private import SafePrivateList
 class DeidentifyError(Exception):
     """A run that could not start, with a message that quotes no path or value.
 
-    Its preset or option set is not enabled, or what it cleans ROI Names
-    with cannot be used. Nothing was created.
+    Its preset or option set is not enabled, what it cleans ROI Names
+    with cannot be used, or it has no usable face review under the Clean
+    Recognizable Visual Features Option. Nothing was created.
     """
 
 
@@ -106,6 +111,7 @@ def deidentify(  # pylint: disable = too-many-arguments
     safe_private_list: str = "reviewed",
     key_file: str | os.PathLike[str] | None = None,
     profile_store: str | os.PathLike[str] | None = None,
+    face_review: str | os.PathLike[str] | None = None,
 ) -> Deidentified:
     """De-identify the DICOM files below a source directory into a new release.
 
@@ -190,6 +196,19 @@ def deidentify(  # pylint: disable = too-many-arguments
         created if it does not exist, and saved before the release is
         published, so that each subject keeps the date offset of its first
         export. It is given with ``key_file``.
+    face_review : str or os.PathLike, optional
+        Under Clean Recognizable Visual Features, which a run under the
+        option needs, the QC pack of an earlier run of the same files,
+        attested with face verdicts by ``python -m
+        pymedphys._dicom.deidentify.attestation_command``. Each instance
+        that can show a face is released, with the option's code, only
+        where its source file is in a series that the reviewer marked
+        absent and the run writes the pixel data and contours that the
+        reviewed run wrote of it; every other such instance is held for
+        review (D-046). An earlier run that has not defaced a CT series
+        under the option gives a verdict on it as received, which does not
+        release a slice that this run defaces, so the slices are held, and
+        the pack of this run gives the verdicts that release them.
 
     Returns
     -------
@@ -210,15 +229,19 @@ def deidentify(  # pylint: disable = too-many-arguments
         without Clean Descriptors, or ``redaction_review`` or
         ``region_rules`` with a policy without Clean Pixel Data, or if ``safe_private_list`` is not
         ``"reviewed"`` or ``"tcia"``, or is ``"tcia"`` with a policy without
-        Retain Safe Private. Nothing is read or created.
+        Retain Safe Private, or if ``face_review`` is given with a policy
+        without Clean Recognizable Visual Features. Nothing is read or
+        created.
     DeidentifyError
         If the preset or an option is unknown or not enabled, the options
         cannot be composed, or the TG-263 edition, the reviewed-names list,
         the institutional list, the reviewed descriptors list, the
         redaction review, the region rules, or the text detector cannot be
         used; or if only one of ``key_file`` and ``profile_store`` is given,
-        project keys are not enabled, or either cannot be used. Nothing is
-        created.
+        project keys are not enabled, or either cannot be used; or if the
+        policy selects Clean Recognizable Visual Features and
+        ``face_review`` is not given, or its pack cannot be read, has not
+        been attested, or its verdicts cannot be used. Nothing is created.
     ~pymedphys._dicom.deidentify.profiles.ProfileError
         If the profile store could not be saved. Nothing is published.
     ~pymedphys._dicom.deidentify.run.RunError
@@ -273,6 +296,11 @@ def deidentify(  # pylint: disable = too-many-arguments
             'safe_private_list "tcia" applies only under Retain Safe Private: '
             "with a preset or options that include retain_safe_private"
         )
+    if face_review is not None and not command.face_review_applies(preset, chosen):
+        raise ValueError(
+            "face_review applies only under Clean Recognizable Visual Features: "
+            "with options that include clean_recognizable_visual_features"
+        )
     with redacted_diagnostics() as counts:
         try:
             key, profiles = command.run_key(
@@ -298,6 +326,7 @@ def deidentify(  # pylint: disable = too-many-arguments
                 region_rules=region_rules,
                 safe_private_list=chosen_list,
                 profiles=profiles,
+                face_review=face_review,
             )
         except command.TransformNotBuilt as error:
             raise DeidentifyError(str(error)) from None

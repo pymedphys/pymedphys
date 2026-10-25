@@ -38,7 +38,7 @@ from pymedphys._dicom.deidentify import (
     run_report,
 )
 from pymedphys._dicom.deidentify.descriptor_cleaning import HeldRoiName
-from pymedphys._dicom.deidentify.file_layout import ElementPath
+from pymedphys._dicom.deidentify.file_layout import ElementPath, Location, Region
 from pymedphys._dicom.deidentify.iod_conformance import SourceGap
 from pymedphys._dicom.deidentify.instance_transform import (
     InstanceTransform,
@@ -57,6 +57,10 @@ from pymedphys._dicom.deidentify.reviewed_roi_names import (
 from pymedphys._dicom.deidentify.roi_names import Reason
 from pymedphys._dicom.deidentify.scope import Disposition, UnsupportedIod
 from pymedphys._dicom.deidentify.reference_graph import Finding, FindingKind
+from pymedphys._dicom.deidentify.residual_exemptions import Exemption
+from pymedphys._dicom.deidentify.residuals import (
+    Finding as ResidualFinding,
+)
 from pymedphys._dicom.deidentify.residuals import (
     Form,
     NotSearched,
@@ -64,6 +68,7 @@ from pymedphys._dicom.deidentify.residuals import (
     ResidualSearch,
     Unsearched,
     UnsearchedReason,
+    ValueKind,
 )
 from pymedphys._dicom.deidentify.release_report_markdown import (
     ReleaseReportMarkdownError,
@@ -77,6 +82,7 @@ from pymedphys._dicom.deidentify.run_report import (
     SEQUESTERED,
     ReleaseReporter,
     coverage_records,
+    exempted_findings,
     held_instances,
     release_files,
     roi_name_counts,
@@ -492,6 +498,94 @@ def test_coverage_records_follow_the_drops_and_the_search():
         own,
         omission,
     ]
+
+
+# An invented equipment name, distinctive enough that nothing else in a file
+# matches it.
+SCANNER = "ZARQUON SCANNERS"
+
+
+@pytest.mark.deid_requirement("MIDI-BP-01", "MIDI-BP-18")
+@pytest.mark.pydicom
+def test_the_report_counts_released_instances_with_exempted_findings(tmp_path):
+    datasets = synthetic.collection()
+    for dataset in datasets[:3]:
+        # Basic Profile keeps Manufacturer and removes the secondary capture
+        # device's, which the residual search then finds in Manufacturer.
+        dataset.Manufacturer = SCANNER
+        dataset.SecondaryCaptureDeviceManufacturer = SCANNER
+    _write(tmp_path / "source", datasets)
+    transform = InstanceTransform(compose_policy("basic"), KEY, unvalidated_policy=True)
+
+    result = _run(tmp_path, transform, ReleaseGate(), transform.reporter)
+
+    assert [outcome.status for outcome in result.outcomes] == [run.Status.RELEASED] * 6
+    text = (tmp_path / "release" / RELEASE_REPORT).read_text(encoding="utf-8")
+    assert json.loads(text)["exempted_findings"] == [
+        {
+            "exemption": "equipment",
+            "attribute": "(0018,1016)",
+            "found_in": "(0008,0070)",
+            "count": 3,
+        }
+    ]
+    markdown = (tmp_path / "release" / RELEASE_REPORT_MARKDOWN).read_text(
+        encoding="utf-8"
+    )
+    for written in (text, markdown):
+        assert SCANNER not in written
+
+
+def test_the_release_gate_gives_the_conditions_exempted_findings():
+    finding = _exempted_finding()
+    search = ResidualSearch((finding,), (), True)
+
+    def condition(coverage, _written):
+        return release_gate.ReleaseCondition(
+            release_gate.Decision.RELEASE,
+            coverage.outcome,
+            (),
+            (),
+            search,
+            ((finding, Exemption.EQUIPMENT),),
+        )
+
+    verdict = ReleaseGate(condition)(
+        b"", release_gate.Coverage(planned=frozenset(), collected=()), ()
+    )
+
+    (material,) = verdict.qc
+    assert material.exempted == ((finding, Exemption.EQUIPMENT),)
+
+
+def _exempted_finding(source="(0009,1012)", found_in="(0008,0070)"):
+    return ResidualFinding(
+        ElementPath((), source),
+        ValueKind.TEXT,
+        Form.VALUE,
+        "ascii",
+        Location(Region.DATA_SET, ElementPath((), found_in), "LO"),
+        200,
+    )
+
+
+def test_exempted_findings_are_counted_only_in_released_instances():
+    pair = (_exempted_finding(), Exemption.EQUIPMENT)
+    outcomes = [
+        run.Outcome(0, run.Status.RELEASED),
+        run.Outcome(1, run.Status.HELD_FOR_REVIEW),
+        run.Outcome(2, run.Status.SEQUESTERED, label="S-0001"),
+        run.Outcome(3, run.Status.RELEASED),
+        run.Outcome(4, run.Status.DUPLICATE, duplicate_of=0),
+    ]
+    material = {
+        position: (run_qc.SearchMaterial(ResidualSearch((), (), True), b"", (pair,)),)
+        for position in range(5)
+    }
+
+    assert exempted_findings(outcomes, material) == (
+        release_report.ExemptedFindings("equipment", "(0009,1012)", "(0008,0070)", 2),
+    )
 
 
 def _roi_name(item, source, outcome, held_because=None):
