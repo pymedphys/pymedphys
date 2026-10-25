@@ -24,11 +24,13 @@ of the context group that the row names. Code meanings are those of PS3.16
 Annex D for DCM codes, and those the templates and context groups give for
 the others.
 
-Each report holds every row that its templates require where they are
-included, apart from those named in the builder's docstring, which carry
-only codes and numbers, and the optional rows that carry identifying
-values: names and identifiers of people, devices, and organisations,
-free text, dates, and UIDs. The optional rows are keyed by their template
+Each tree is partial: it holds the rows that its templates require where
+they are included, apart from the templates that the builder's docstring
+names as left out, and the optional rows that carry identifying values:
+names and identifiers of people, devices, and organisations, free text,
+dates, and UIDs. So it does not conform to its templates in full, and the
+templates left out can hold identifying values of their own, such as free
+text and image references, which these trees do not test. The optional rows are keyed by their template
 and row, such as ``"TID 1004 row 2"``, so that a test can build a report
 with any of them. The header carries identifying values too: the
 institution, station, and device serial number, the referring physician,
@@ -551,11 +553,15 @@ def x_ray_tree(optional=X_RAY_OPTIONAL_ROWS):
     and 18 are required, as are TID 10002 rows 1 and 2 and TID 10003 rows 1
     to 3, 6, 7, 17, and 18. Of the rows required where they are included,
     it leaves out TID 10002 row 10, TID 10004 "Accumulated Fluoroscopy and
-    Acquisition Projection X-Ray Dose", and TID 10003 rows 27 to 29, TIDs
-    10003A to 10003C, the detector, source, and mechanical data, whose rows
-    carry codes and numbers, apart from the TID 1021 "Device Participant"
-    that TID 10003A and 10003B may include, which TID 10002 row 14 includes
-    here.
+    Acquisition Projection X-Ray Dose", whose rows carry codes and numbers,
+    and TID 10003 rows 27 to 29, TIDs 10003A to 10003C, the detector,
+    source, and mechanical data. Most of their rows carry codes and numbers
+    too, but not all: TID 10003A row 5 references the Acquired Image, which
+    Table E.3.4-1 gives D, and K under Retain UIDs; TID 10003B row 2 can
+    give the Reference Point Definition as free text, which the table does
+    not list; and both can include TID 1021 "Device Participant", which
+    TID 10002 row 14 includes here. The image reference and the free-text
+    Reference Point Definition are not tested.
 
     Parameters
     ----------
