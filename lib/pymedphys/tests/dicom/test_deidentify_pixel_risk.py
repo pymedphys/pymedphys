@@ -737,7 +737,8 @@ def test_a_dose_plane_or_dvhs_alone_are_no_volume():
 
 RT_IMAGE = "1.2.840.10008.5.1.4.1.1.481.1"
 # The Defined Terms of the RT Image Module's Image Type value 3 (PS3.3
-# Section C.8.8.2), none of them LOCALIZER.
+# Section C.8.8.2), none of them LOCALIZER, though an implementer may add
+# terms (PS3.5 Section 6.3).
 RT_IMAGE_TYPES = ["DRR", "PORTAL", "SIMULATOR", "RADIOGRAPH", "BLANK", "FLUENCE"]
 
 
@@ -754,7 +755,7 @@ def _rt_image(number: int, kind: str = "DRR", **attributes) -> "pydicom.Dataset"
 @pytest.mark.parametrize("kind", RT_IMAGE_TYPES)
 def test_every_rt_image_can_show_the_face_in_profile(transfer_syntax, kind):
     # A lateral DRR or simulator image can show the profile, as a localizer
-    # can, though its Image Type never says LOCALIZER.
+    # can, though no standard term of its Image Type says LOCALIZER.
     series = [_rt_image(0, kind), _rt_image(1, kind, GantryAngle=0)]
     if transfer_syntax is not None:
         series = [_read_back(each, transfer_syntax) for each in series]
@@ -762,6 +763,16 @@ def test_every_rt_image_can_show_the_face_in_profile(transfer_syntax, kind):
     assert _series_found(findings) == {(Indicator.RT_IMAGE, (0, 1), None)}
     assert {f.risk for f in findings} == {Risk.RECONSTRUCTABLE_FACE}
     assert _series_found(pixel_risk.assess_series(series[:1])) == {
+        (Indicator.RT_IMAGE, (0,), None)
+    }
+
+
+@pytest.mark.deid_requirement("MIDI-BP-15")
+def test_an_rt_image_labelled_a_localizer_is_an_rt_image():
+    # Defined Terms can be extended, so a writer may label one LOCALIZER;
+    # its SOP Class decides.
+    series = [_rt_image(0, "LOCALIZER")]
+    assert _series_found(pixel_risk.assess_series(series)) == {
         (Indicator.RT_IMAGE, (0,), None)
     }
 

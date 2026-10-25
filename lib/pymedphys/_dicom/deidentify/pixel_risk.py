@@ -739,7 +739,10 @@ _VOLUME_SOP_CLASSES = {
 # RT Image Storage (PS3.4 Table B.5-1). An RT Image is a projection, such
 # as a digitally reconstructed radiograph (DRR) or a simulator or portal
 # image (PS3.3 Section C.8.8.2), so, like a localizer, it can show the face
-# in profile; its Image Type has no third value of LOCALIZER.
+# in profile. It is recognised by its SOP Class, whatever its Image Type:
+# the standard Defined Terms of Image Type's third value for it do not
+# include LOCALIZER, though an implementer may extend them (PS3.5 Section
+# 6.3).
 _RT_IMAGE = "1.2.840.10008.5.1.4.1.1.481.1"
 VOLUME_INDICATORS = (
     Indicator.CT_VOLUME,
