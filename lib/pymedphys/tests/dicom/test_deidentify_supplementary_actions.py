@@ -68,6 +68,15 @@ TARGET_IODS = (
     "Deformable Spatial Registration",
     "Segmentation",
 )
+# The Radiation Dose SR IODs, which the maintainer added to the planned
+# coverage on 25 October 2026, whose text, UID, and date attributes are
+# reviewed ahead of supporting them.
+RADIATION_DOSE_SR_IODS = (
+    "X-Ray Radiation Dose SR",
+    "Enhanced X-Ray Radiation Dose SR",
+    "Radiopharmaceutical Radiation Dose SR",
+    "Patient Radiation Dose SR",
+)
 CLEAN_DESCRIPTORS = "clean_descriptors"
 DEVICE_IDENTITY = "retain_device_identity"
 FULL_DATES = "retain_longitudinal_full_dates"
@@ -544,6 +553,84 @@ def test_every_uid_and_date_that_the_target_iods_use_has_a_role():
     for tag in TARGET_DATES:
         assert listed[tag].basic_profile in REMOVING_ACTIONS, tag
         assert temporal.role(tag) is temporal_roles.TemporalRole.SUBJECT_EVENT, tag
+
+
+# The text attributes that the Radiation Dose SR IODs use and that neither the
+# supported IODs nor the target IODs use, checked by hand against the 2026d
+# PS3.3 and PS3.15. Table E.1-1 lists three, all in SR Document General.
+RADIATION_DOSE_SR_LISTED_TEXT = {
+    "(0040,2016)",  # Placer Order Number / Imaging Service Request
+    "(0040,2017)",  # Filler Order Number / Imaging Service Request
+    "(0040,A027)",  # Verifying Organization
+}
+RADIATION_DOSE_SR_OPERATOR_TEXT = {
+    "(0040,A492)",  # Completion Flag Description
+    "(0072,006F)",  # Selector UC Value, the text of a TABLE item's cells
+}
+# The UID and temporal attributes that the Radiation Dose SR IODs use and the
+# supported and target IODs do not, all listed in Table E.1-1, with the role
+# of each, checked by hand against the 2026d PS3.3 and PS3.15.
+RADIATION_DOSE_SR_UIDS = {"(0040,A171)"}  # Observation UID
+RADIATION_DOSE_SR_DATES = {
+    # Verification DateTime
+    "(0040,A030)": temporal_roles.TemporalRole.SUBJECT_EVENT,
+    # Participation DateTime
+    "(0040,A082)": temporal_roles.TemporalRole.SUBJECT_EVENT,
+    # Referenced DateTime
+    "(0040,A13A)": temporal_roles.TemporalRole.SUBJECT_EVENT,
+    # Selector DT Value, also the DateTime of a TABLE item's cells, whose
+    # meaning only the table's row and column concepts give.
+    "(0072,0063)": temporal_roles.TemporalRole.OTHER,
+}
+
+
+def test_the_radiation_dose_sr_iods_are_generated_and_not_yet_supported():
+    tables = iods.load_iod_tables()
+
+    assert set(RADIATION_DOSE_SR_IODS) <= set(tables.iods)
+    assert not set(RADIATION_DOSE_SR_IODS) & scope.SUPPORTED_IODS
+
+
+@pytest.mark.deid_requirement("MIDI-BP-05", "MIDI-BP-06", "MIDI-BP-11")
+def test_the_text_that_only_the_radiation_dose_sr_iods_use_has_reviewed_rules():
+    listed = _table_e1_1()
+    others = SUPPORTED_IODS + TARGET_IODS
+    added = _used_by(RADIATION_DOSE_SR_IODS, TEXT_VRS) - _used_by(others, TEXT_VRS)
+    rules = _rules()
+
+    assert added == RADIATION_DOSE_SR_LISTED_TEXT | RADIATION_DOSE_SR_OPERATOR_TEXT
+    for tag in RADIATION_DOSE_SR_LISTED_TEXT:
+        assert listed[tag].basic_profile in REMOVING_ACTIONS, tag
+        assert tag not in rules, tag
+    for tag in RADIATION_DOSE_SR_OPERATOR_TEXT:
+        assert tag not in listed, tag
+        assert (rules[tag].action, dict(rules[tag].options)) == (
+            "X/Z/D",
+            {CLEAN_DESCRIPTORS: "C"},
+        ), tag
+        assert rules[tag].note.strip(), tag
+
+
+def test_every_uid_and_date_that_the_radiation_dose_sr_iods_use_has_a_role():
+    listed = _table_e1_1()
+    others = SUPPORTED_IODS + TARGET_IODS
+    uids = uid_roles.load_uid_roles()
+    temporal = temporal_roles.load_temporal_roles()
+    dose_uids = _used_by(RADIATION_DOSE_SR_IODS, {"UI"})
+    dose_dates = _used_by(RADIATION_DOSE_SR_IODS, TEMPORAL_VRS)
+
+    for tag in dose_uids:
+        assert isinstance(uids.role(tag), uid_roles.UIDRole), tag
+    for tag in dose_dates:
+        assert isinstance(temporal.role(tag), temporal_roles.TemporalRole), tag
+    assert dose_uids - _used_by(others, {"UI"}) == RADIATION_DOSE_SR_UIDS
+    assert dose_dates - _used_by(others, TEMPORAL_VRS) == set(RADIATION_DOSE_SR_DATES)
+    for tag in RADIATION_DOSE_SR_UIDS:
+        assert listed[tag].basic_profile == "U", tag
+        assert uids.role(tag) is uid_roles.UIDRole.INSTANCE, tag
+    for tag, role in RADIATION_DOSE_SR_DATES.items():
+        assert listed[tag].basic_profile in REMOVING_ACTIONS, tag
+        assert temporal.role(tag) is role, tag
 
 
 def test_names_identifiers_and_overlay_text_are_removed_under_every_option():
