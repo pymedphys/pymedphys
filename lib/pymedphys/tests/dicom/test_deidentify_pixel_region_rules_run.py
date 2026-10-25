@@ -499,4 +499,4 @@ def test_a_reviewed_rules_regions_are_released_again_without_the_rules(tmp_path)
     # The images held again, without rules, have none of the rules' regions.
     assert second_report["pixel_regions"] == {"detected": 0, "rule": 0}
     assert second_report["method"]["pixel_region_rules"] is None
-    assert qc_pack.FORMAT == "pymedphys-deid-qc-pack/17"
+    assert qc_pack.FORMAT == "pymedphys-deid-qc-pack/19"

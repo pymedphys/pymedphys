@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""CT Image, RT Structure Set, RT Dose, and PET Image files of the analytic
-head, for the defacing tests. Every UID and value here is invented."""
+"""CT Image, RT Structure Set, RT Dose, PET Image, and Segmentation files of
+the analytic head, for the defacing tests. Every UID and value here is
+invented."""
 
 from __future__ import annotations
 
@@ -30,6 +31,8 @@ CT_IMAGE_STORAGE = "1.2.840.10008.5.1.4.1.1.2"
 RT_STRUCTURE_SET_STORAGE = "1.2.840.10008.5.1.4.1.1.481.3"
 RT_DOSE_STORAGE = "1.2.840.10008.5.1.4.1.1.481.2"
 PET_IMAGE_STORAGE = "1.2.840.10008.5.1.4.1.1.128"
+SEGMENTATION_STORAGE = "1.2.840.10008.5.1.4.1.1.66.4"
+LABEL_MAP_SEGMENTATION_STORAGE = "1.2.840.10008.5.1.4.1.1.66.7"
 AXIAL = (1.0, 0.0, 0.0, 0.0, 1.0, 0.0)
 EXPLICIT_VR_LITTLE_ENDIAN = "1.2.840.10008.1.2.1"
 ROOT = "2.25.1234567890123456789"
@@ -222,6 +225,128 @@ def pet(
     dataset.RescaleIntercept = "0"
     dataset.PixelData = np.asarray(stored).astype("<u2").tobytes()
     dataset["PixelData"].VR = "OW"
+    return written(dataset)
+
+
+def segmentation(
+    scan: head.Scan,
+    masks: Sequence[np.ndarray],
+    *,
+    kind: str = "BINARY",
+    frame: str | None = FRAME,
+    series: str | None = SERIES,
+    instance: str = ROOT + ".8.1",
+    codes: Sequence[tuple[str, str, str]] | None = None,
+    keep_empty: bool = False,
+    template: pydicom.Dataset | None = None,
+) -> bytes:
+    """A Segmentation of the scan with a segment for each mask, slices by
+    rows by columns, numbered from 1.
+
+    Of ``kind`` BINARY, with a frame for each slice that a segment holds, or
+    for every slice where ``keep_empty``, segment by segment, and its 1-bit
+    pixels packed across frames; FRACTIONAL, framed so, of 8-bit
+    probabilities, 255 where the mask holds a pixel; or LABELMAP, of 8-bit
+    pixels, a frame for each slice, each pixel holding the number of the
+    last mask that holds it, or 0, the Pixel Padding Value, for none. Each
+    segment's Segmented Property Type is ``codes``' (scheme, value, meaning),
+    or Tissue's. It references ``series`` where given, and is in ``frame``.
+    """
+    masks = [np.asarray(mask, bool) for mask in masks]
+    labelmap = kind == "LABELMAP"
+    dataset = _dataset(
+        LABEL_MAP_SEGMENTATION_STORAGE if labelmap else SEGMENTATION_STORAGE,
+        instance,
+        template,
+    )
+    dataset.Modality = "SEG"
+    dataset.SeriesInstanceUID = ROOT + ".8"
+    if frame is not None:
+        dataset.FrameOfReferenceUID = frame
+    if series is not None:
+        referenced = pydicom.Dataset()
+        referenced.SeriesInstanceUID = series
+        referenced.ReferencedInstanceSequence = []
+        dataset.ReferencedSeriesSequence = [referenced]
+    dataset.SegmentationType = kind
+    if kind == "FRACTIONAL":
+        dataset.SegmentationFractionalType = "PROBABILITY"
+        dataset.MaximumFractionalValue = 255
+    dataset.SegmentSequence = []
+    for number in range(1, len(masks) + 1):
+        segment = pydicom.Dataset()
+        segment.SegmentNumber = number
+        segment.SegmentLabel = f"S{number}"
+        segment.SegmentAlgorithmType = "MANUAL"
+        scheme, value, meaning = (
+            ("SCT", "85756007", "Tissue") if codes is None else codes[number - 1]
+        )
+        for keyword, code in (
+            ("SegmentedPropertyCategoryCodeSequence", ("SCT", "85756007", "Tissue")),
+            ("SegmentedPropertyTypeCodeSequence", (scheme, value, meaning)),
+        ):
+            item = pydicom.Dataset()
+            item.CodingSchemeDesignator, item.CodeValue, item.CodeMeaning = code
+            setattr(segment, keyword, [item])
+        dataset.SegmentSequence.append(segment)
+    orientation = pydicom.Dataset()
+    orientation.ImageOrientationPatient = [_ds(v) for v in scan.orientation]
+    measures = pydicom.Dataset()
+    measures.PixelSpacing = [_ds(v) for v in scan.spacing]
+    measures.SliceThickness = "1"
+    shared = pydicom.Dataset()
+    shared.PlaneOrientationSequence = [orientation]
+    shared.PixelMeasuresSequence = [measures]
+    dataset.SharedFunctionalGroupsSequence = [shared]
+    planes: list[np.ndarray] = []
+    dataset.PerFrameFunctionalGroupsSequence = []
+    if labelmap:
+        chosen = [(index, None) for index in range(len(scan.positions))]
+    else:
+        chosen = [
+            (index, number)
+            for number, mask in enumerate(masks, start=1)
+            for index in range(len(scan.positions))
+            if keep_empty or mask[index].any()
+        ]
+    for index, number in chosen:
+        if number is None:
+            plane = np.zeros(scan.shape, np.uint8)
+            for each, mask in enumerate(masks, start=1):
+                plane[mask[index]] = each
+        else:
+            plane = masks[number - 1][index].astype(np.uint8)
+        planes.append(plane)
+        group = pydicom.Dataset()
+        position = pydicom.Dataset()
+        position.ImagePositionPatient = [_ds(v) for v in scan.positions[index]]
+        group.PlanePositionSequence = [position]
+        if number is not None:
+            identified = pydicom.Dataset()
+            identified.ReferencedSegmentNumber = number
+            group.SegmentIdentificationSequence = [identified]
+        dataset.PerFrameFunctionalGroupsSequence.append(group)
+    dataset.NumberOfFrames = len(planes)
+    dataset.Rows, dataset.Columns = scan.shape
+    dataset.SamplesPerPixel = 1
+    dataset.PhotometricInterpretation = "MONOCHROME2"
+    dataset.PixelRepresentation = 0
+    stacked = np.stack(planes)
+    if kind == "FRACTIONAL":
+        stacked = stacked * np.uint8(255)
+    if labelmap:
+        dataset.PixelPaddingValue = 0
+        dataset["PixelPaddingValue"].VR = "US"
+    if kind == "BINARY":
+        dataset.BitsAllocated = dataset.BitsStored = 1
+        dataset.HighBit = 0
+        data = bytes(np.packbits(stacked.ravel(), bitorder="little"))
+    else:
+        dataset.BitsAllocated = dataset.BitsStored = 8
+        dataset.HighBit = 7
+        data = stacked.tobytes()
+    dataset.PixelData = data + b"\0" * (len(data) % 2)
+    dataset["PixelData"].VR = "OB"
     return written(dataset)
 
 

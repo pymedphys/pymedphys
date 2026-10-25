@@ -580,10 +580,11 @@ def qc_pack(statement: ConformanceStatement, named: Callable[[str], str]) -> lis
     exempt = join(named(tag) for tag in sorted(_NOT_REVIEWED_TAGS))
     unreviewable = code(TransformReason.UNREVIEWABLE_RETAINED_TEXT.value)
     volume = join((code(each.value) for each in pixel_risk.VOLUME_INDICATORS), "or")
-    localizer, head, unreadable = (
+    localizer, segmentation, head, unreadable = (
         code(indicator.value)
         for indicator in (
             Indicator.LOCALIZER,
+            Indicator.SEGMENTATION,
             Indicator.HEAD_OR_NECK,
             Indicator.UNREADABLE,
         )
@@ -617,8 +618,11 @@ def qc_pack(statement: ConformanceStatement, named: Callable[[str], str]) -> lis
         f"be reconstructed, by {volume}, whether or not it covers the face, "
         "since the engine cannot tell without inspecting its pixel data; "
         "the CT, MR, and PET localizers among them, which can show the face "
-        f"in profile, by {localizer}; "
-        "where the attributes of a volume or localizer name a region of the "
+        f"in profile, by {localizer}; the Segmentations among them, whose "
+        "segment of the skin or body traces the profile whatever its label, "
+        f"by {segmentation}; "
+        "where the attributes of a volume, localizer, or Segmentation, or a "
+        "Segmentation's segments, name a region of the "
         f"head or neck in a reviewed list from PS3.16 Annex L, by {head}; and "
         f"where such evidence cannot be read, by {unreadable}; each with the "
         "instances that show it. A volume is a series whose instances of one "

@@ -501,11 +501,11 @@ def contour_sheet(
         rois = [contours.rois[i] for i in chosen]
         grid = _grid(rois, _united_voxel)
         shown = [planes[i] for i in chosen]
-        if not fits([_rgb(_views(_mask(rois, grid, shown)))]):
+        if not fits([rgb(_views(_mask(rois, grid, shown)))]):
             return None
         guide = guides.get(frame)
         if guide is not None and not fits(
-            [_guided(guide, _mask(rois, _of(guide), shown))]
+            [guided(guide, _mask(rois, _of(guide), shown))]
         ):
             return None
     # An ROI the same as an earlier one, as a copied item is, is rendered
@@ -524,7 +524,7 @@ def contour_sheet(
         shown = rendered[key]
         if shown is None or not fits(shown):
             return None
-    return _stacked(rows)
+    return stacked(rows)
 
 
 def _item_rows(
@@ -613,7 +613,7 @@ def _roi_rows(
     # So, within a sheet's height bound, the crossings found are at most
     # about 32,768 by 711 for each of four views, as 16-bit integers, some
     # 190 MB, however intricate the region.
-    rows = [_rgb(_views(inside))]
+    rows = [rgb(_views(inside))]
     if not crossed:
         return rows
     if not marks:
@@ -622,7 +622,7 @@ def _roi_rows(
         within[1] = [[False, True, False], [True, True, True], [False, True, False]]
         enclosed = scipy.ndimage.binary_fill_holes(inside, within) & ~inside
         if enclosed.any():
-            rows.append(_rgb(_views(enclosed)))
+            rows.append(rgb(_views(enclosed)))
     along = dict(zip(_ALONG, qc_surfaces.view_crossings(inside, _ALONG)))
     none = np.full(along[0].shape[1:], -1)
     for crossing in range(1, max(len(each) for each in along.values())):
@@ -632,7 +632,7 @@ def _roi_rows(
             tiles.append(
                 none if each is None or crossing >= len(each) else each[crossing]
             )
-        rows.append(_rgb(_tiles(tiles)))
+        rows.append(rgb(_tiles(tiles)))
     return rows
 
 
@@ -724,8 +724,15 @@ def _planes(roi: RoiContours) -> np.ndarray:
     return np.array([group.mean() for group in np.split(heights, breaks)])
 
 
-def _covering(planes: np.ndarray, zs: np.ndarray, voxel: float) -> np.ndarray:
-    """For each height, the index of the plane that covers it, or -1."""
+def covering(planes: np.ndarray, zs: np.ndarray, voxel: float) -> np.ndarray:
+    """For each height, the index of the plane that covers it, or -1.
+
+    ``planes`` are ascending, and ``zs`` in any order, along one axis, in
+    millimetres. Each plane covers half the distance to the next above and
+    below, or half their median distance apart, or half a ``voxel`` where
+    that is more, where the next is farther than twice that median or there
+    is none, as the module describes for an ROI's planes.
+    """
     if not planes.size:
         return np.full(len(zs), -1, np.intp)
     gaps = np.diff(planes)
@@ -763,12 +770,12 @@ def _filled(roi: RoiContours, grid: _Grid, planes: np.ndarray) -> np.ndarray:
     mask, its slices of voxels covered by its ``planes``."""
     filled = np.zeros((len(grid.zs), len(grid.ys), len(grid.xs)), bool)
     if roi.closed:
-        covering = _covering(planes, grid.zs, grid.voxel)
+        covered = covering(planes, grid.zs, grid.voxel)
         heights = np.array([height for height, _ in roi.closed])
         # Each contour's plane: the nearest, within which it lies.
         of = np.abs(heights[:, np.newaxis] - planes[np.newaxis, :]).argmin(axis=1)
         for plane in np.unique(of):
-            slices = np.flatnonzero(covering == plane)
+            slices = np.flatnonzero(covered == plane)
             if not slices.size:
                 continue
             rings = [ring for (_, ring), at in zip(roi.closed, of) if at == plane]
@@ -935,7 +942,7 @@ def _nearest(coordinates: np.ndarray, wanted: np.ndarray) -> np.ndarray:
     return np.asarray(np.where(beyond, -1, nearest), np.intp)
 
 
-def _guided(guide: Guide, written: np.ndarray) -> np.ndarray:
+def guided(guide: Guide, written: np.ndarray) -> np.ndarray:
     """The guide's views in grey, each with the outline of the written
     region's silhouette in that view drawn over it."""
     tiles = []
@@ -959,11 +966,12 @@ def _edge(silhouette: np.ndarray) -> np.ndarray:
     return edge
 
 
-def _rgb(image: np.ndarray) -> np.ndarray:
+def rgb(image: np.ndarray) -> np.ndarray:
+    """An 8-bit grey image as RGB."""
     return np.repeat(image[..., np.newaxis], 3, axis=2)
 
 
-def _stacked(rows: Sequence[np.ndarray]) -> np.ndarray:
+def stacked(rows: Sequence[np.ndarray]) -> np.ndarray:
     """Lay RGB rows out from top to bottom, each padded with black on the
     right to the widest, with a grey gutter between each and the next."""
     width = max(row.shape[1] for row in rows)
