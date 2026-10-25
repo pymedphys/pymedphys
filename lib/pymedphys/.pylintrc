@@ -1,8 +1,9 @@
 [MASTER]
 init-hook = "import sys; sys.setrecursionlimit(2000)"
-# Lint modules in parallel, one process per CPU. Parallel runs report the same
-# messages as serial ones, including cross-module ones such as cyclic imports.
-jobs = 0
+# Lint in one process. Each parallel worker keeps its own inference caches and
+# takes whichever files are free, so a message could appear on one run and not
+# the next. pymedphys dev lint also passes the files in a fixed order.
+jobs = 1
 # Every documentation build generates docs/conf.py (gitignored) inside the
 # package, so keep it out of the lint run.
 ignore-paths = ^.*/docs/conf[.]py$
