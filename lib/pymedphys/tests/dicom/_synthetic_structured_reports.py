@@ -175,8 +175,8 @@ SUBJECT_SEX = Code("121032", "DCM", "Subject Sex")
 SUBJECT_AGE = Code("121033", "DCM", "Subject Age")
 # TID 2000 and 2002.
 IMPRESSIONS = Code("19005-8", "LN", "Impressions")  # CID 7001
-# CID 7001 lists, for each heading, an equivalent DCM code that it recommends
-# supporting for backward compatibility.
+# CID 7001 lists an equivalent DCM code for this heading that it recommends
+# supporting for backward compatibility; some of its headings have none.
 DCM_IMPRESSIONS = Code("121072", "DCM", "Impressions")
 IMPRESSION = Code("121073", "DCM", "Impression")  # CID 7002
 # The concepts of CID 7002 "Diagnostic Imaging Report Element", which TID
