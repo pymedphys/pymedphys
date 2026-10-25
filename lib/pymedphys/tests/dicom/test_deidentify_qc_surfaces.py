@@ -746,9 +746,9 @@ def test_a_lone_dose_plane_is_mapped_by_its_dose_levels():
     assert np.array_equal(_decoded(mapped.png), expected)
 
 
-def _lone_planes():
-    """Four RT Dose planes of one series at one position, so in no volume;
-    the third's scaling loses its dose, so it is not mapped."""
+def _lone_slices():
+    """Four single-slice RT Dose instances of one series at one position, so
+    in no volume; the third's scaling loses its dose, so it is not mapped."""
     grid = _hot(19000)
     return {
         k: _dose(
@@ -762,8 +762,8 @@ def _lone_planes():
 
 
 @pytest.mark.pydicom
-def test_each_lone_dose_plane_of_a_series_is_mapped_in_order_after_its_cine_strip():
-    previews = qc_previews.previews_of(_lone_planes(), ())
+def test_each_lone_dose_slice_of_a_series_is_mapped_in_order_after_its_cine_strip():
+    previews = qc_previews.previews_of(_lone_slices(), ())
     assert [preview.kind for preview in previews.previews] == [
         PreviewKind.SERIES_CINE,
         *[PreviewKind.SERIES_DOSE_LEVELS] * 3,
@@ -782,24 +782,32 @@ def test_each_lone_dose_plane_of_a_series_is_mapped_in_order_after_its_cine_stri
 
 
 @pytest.mark.pydicom
-def test_a_lone_dose_plane_s_pixels_are_released_once_it_is_mapped(monkeypatch):
-    draw = qc_previews._level_map  # pylint: disable = protected-access
+def test_a_lone_dose_slice_s_pixels_are_released_once_it_is_mapped(monkeypatch):
+    # pylint: disable = protected-access
+    decode = qc_previews._Decoder.frame
+    draw = qc_previews._level_map
     mapped = []
-    held = []
+    held_decoding = []
+    held_mapping = []
+
+    def decoded(self, instance, index):
+        held_decoding.append(sum(earlier() is not None for earlier in mapped))
+        return decode(self, instance, index)
 
     def recorded(instance, pixels):
-        held.append(sum(earlier() is not None for earlier in mapped))
+        held_mapping.append(sum(earlier() is not None for earlier in mapped))
         mapped.append(weakref.ref(pixels))
         return draw(instance, pixels)
 
+    monkeypatch.setattr(qc_previews._Decoder, "frame", decoded)
     monkeypatch.setattr(qc_previews, "_level_map", recorded)
-    with_recording = qc_previews.previews_of(_lone_planes(), ())
+    with_recording = qc_previews.previews_of(_lone_slices(), ())
     monkeypatch.undo()
 
-    # No earlier plane's decoded pixels are held when the next is mapped,
-    # and the previews are those drawn without the recording.
-    assert held == [0, 0, 0, 0]
-    assert with_recording == qc_previews.previews_of(_lone_planes(), ())
+    # No earlier slice's decoded pixels are held when the next is decoded
+    # or mapped, and the previews are those drawn without the recording.
+    assert held_decoding == held_mapping == [0, 0, 0, 0]
+    assert with_recording == qc_previews.previews_of(_lone_slices(), ())
 
 
 def _sheet_rows(data):

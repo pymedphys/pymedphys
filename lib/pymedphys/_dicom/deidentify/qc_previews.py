@@ -797,7 +797,7 @@ def _series_images(
         for instance in series
         if volume is None and instance.frames == 1 and instance.dose_scale is not None
     }
-    # Each plane's map is drawn as soon as it is decoded, so that only its
+    # Each slice's map is drawn as soon as it is decoded, so that only its
     # 8-bit map, or None, and not its pixels, is kept to the series' end.
     maps: list[tuple[_Instance, np.ndarray | None]] = []
     for instance in series:
@@ -827,6 +827,8 @@ def _series_images(
                     surface.add(pixels, instance.dose_scale if planed else None)
             if mapped:
                 maps.append((instance, _level_map(instance, pixels)))
+            # Freed before the next frame is decoded, so no two are held.
+            del pixels
     if tiles:
         image = _sheet(
             _windowed_tiles([(tile, instance) for _, _, tile, instance in tiles]),
