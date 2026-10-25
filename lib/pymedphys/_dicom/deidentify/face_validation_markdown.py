@@ -256,7 +256,8 @@ def _finder(finder: Mapping[str, Any]) -> list[str]:
         "towards the patient's anterior, perpendicular to the line between "
         "the pair, the depth from the ball's surface to air, below -500 HU, "
         "the length of the line through values from -500 HU up to the soft "
-        "tissue before it, and whether bone lies on it before it. A pair "
+        "tissue before it, excluding the final two voxel lengths before air, "
+        "and whether bone lies on it before it. A pair "
         "passes where both balls are open to air in front, or both behind.",
         "",
     ]
