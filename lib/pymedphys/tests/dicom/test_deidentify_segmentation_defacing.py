@@ -164,6 +164,7 @@ def _segmentation(stored=None, *, kind="BINARY", heights=(20.0, 20.0), **changes
         groups.SegmentIdentificationSequence = [
             _item(ReferencedSegmentNumber=index + 1)
         ]
+    dataset.SegmentSequence = [_item(SegmentNumber=n) for n in range(1, frames + 1)]
     if kind == "BINARY":
         data = np.asarray(
             np.packbits(stored.astype(np.uint8).ravel(), bitorder="little")
@@ -181,6 +182,14 @@ def _segmentation(stored=None, *, kind="BINARY", heights=(20.0, 20.0), **changes
     for keyword, value in changes.items():
         setattr(dataset, keyword, value)
     return dataset
+
+
+def _padded(dataset, value):
+    """Give a label map ``value`` as its Pixel Padding Value, described as
+    a segment, as PS3.3 C.8.20.2.3.3 requires of a value it may hold."""
+    dataset.PixelPaddingValue = value
+    dataset["PixelPaddingValue"].VR = "US"
+    dataset.SegmentSequence.append(_item(SegmentNumber=value))
 
 
 def _masks(dataset):
@@ -225,8 +234,7 @@ def test_a_label_map_is_cleared_to_its_pixel_padding_value():
     stored[0, 0] = 7
     stored[0, 1] = 0
     dataset = _segmentation(stored, kind="LABELMAP", heights=(20.0,))
-    dataset.PixelPaddingValue = 7
-    dataset["PixelPaddingValue"].VR = "US"
+    _padded(dataset, 7)
 
     (mask,) = _masks(dataset)
 
@@ -241,8 +249,7 @@ def test_a_label_map_of_8_bits_is_cleared_to_its_pixel_padding_value():
     dataset.BitsAllocated = dataset.BitsStored = 8
     dataset.HighBit = 7
     dataset.PixelData = np.full(_SIZE * _SIZE, 2, dtype=np.uint8).tobytes()
-    dataset.PixelPaddingValue = 255
-    dataset["PixelPaddingValue"].VR = "US"
+    _padded(dataset, 255)
 
     (mask,) = _masks(dataset)
 
@@ -305,8 +312,7 @@ def test_a_segmentation_is_written_cleared_and_checked(kind):
     stored = np.random.default_rng(1).integers(0, 2, size=(2, _SIZE, _SIZE))
     dataset = _segmentation(stored, kind=kind)
     if kind == "LABELMAP":
-        dataset.PixelPaddingValue = 0
-        dataset["PixelPaddingValue"].VR = "US"
+        _padded(dataset, 0)
     source = _source(dataset)
 
     redaction = black_out(
@@ -421,6 +427,13 @@ def _refusals():
         "label-map-of-1-bit": labelmap(PixelPaddingValue=0),
         "label-map-without-padding": labelmap(
             BitsAllocated=8, BitsStored=8, HighBit=7, PixelData=bytes(2 * 576)
+        ),
+        "label-map-with-its-background-not-described": labelmap(
+            BitsAllocated=8,
+            BitsStored=8,
+            HighBit=7,
+            PixelData=bytes([1]) * (2 * 576),
+            PixelPaddingValue=0,
         ),
         "label-map-with-a-range-limit": labelmap(
             BitsAllocated=8,

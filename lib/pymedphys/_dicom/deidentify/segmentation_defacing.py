@@ -36,8 +36,11 @@ FRACTIONAL, whose 0 is a probability or occupancy of zero (PS3.3
 C.8.20.2.3). A LABELMAP's pixel value is a Segment Number, and only a Pixel
 Padding Value marks one as background (PS3.3 C.8.20.2.4), so a label map is
 written with that value, which must be one value that its pixels can hold,
-without Pixel Padding Range Limit; a label map without it has no background
-to write, and is refused. Any other pixel is written as received, so a
+without Pixel Padding Range Limit, and a Segment Number that an item of
+Segment Sequence describes, since PS3.3 C.8.20.2.3.3 requires every value in
+a label map's pixels to be described; a label map without it has no
+background to write, and is refused, as is one whose background is not
+described, which writing it could otherwise leave undescribed. Any other pixel is written as received, so a
 segmentation that the region does not reach, or whose masks there lie only
 in the kept brain, is written unchanged.
 
@@ -130,6 +133,8 @@ class SegmentationDefacer:
                 low, high = stored_range(layout)
                 if not low <= background <= high:
                     raise ValueError("background not stored")
+                if background not in _described(dataset):
+                    raise ValueError("background not described")
             planes = tuple(
                 _plane(dataset, layout.frames, frame) for frame in range(layout.frames)
             )
@@ -174,6 +179,15 @@ class SegmentationDefacer:
         if not inside.any():
             return None
         return FrameMask(frame, inside, self._background)
+
+
+def _described(dataset: pydicom.Dataset) -> set[int]:
+    """Return the Segment Numbers that a segmentation's Segment Sequence
+    describes."""
+    with redacted_diagnostics():
+        return {
+            int(item.SegmentNumber) for item in dataset.get("SegmentSequence") or []
+        }
 
 
 def _plane(
