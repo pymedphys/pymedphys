@@ -63,7 +63,8 @@ Segment Sequence of distinct Segment Numbers; with every frame placed, in
 one orientation whose rows and columns lie along the patient's axes, of one
 Pixel Spacing, and none farther than :data:`~.qc_contours.FARTHEST`
 millimetres; with no segment in one plane in two frames, as at two time
-points, whose union could hide the surface of either; and spanning at most :data:`~.qc_surfaces.LONGEST`
+points, whose union could hide the surface of either, which also refuses
+one plane's tiles of a segment, though they may not overlap; and spanning at most :data:`~.qc_surfaces.LONGEST`
 millimetres along each axis and :data:`~.qc_surfaces.WIDEST` across, from
 left to right and from front to back, as a contour sheet's frame does; and
 whose frames' pixels each lie in a segment that the Segment Sequence
