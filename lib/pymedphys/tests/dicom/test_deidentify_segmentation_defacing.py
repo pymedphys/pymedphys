@@ -21,6 +21,7 @@ value here is invented."""
 
 from __future__ import annotations
 
+import copy
 import functools
 import hashlib
 import io
@@ -268,17 +269,19 @@ def test_a_segmentation_that_the_block_does_not_reach_has_no_mask():
 
 
 def test_each_frame_is_placed_by_its_own_functional_groups():
-    dataset = _segmentation(heights=(20.0, -5.0))
-    # The first frame's own spacing, a quarter of the shared, puts its
+    dataset = _segmentation(heights=(20.0, 20.0))
+    del dataset.SharedFunctionalGroupsSequence[0].PixelMeasuresSequence
+    # The first frame's own spacing, a quarter of the second's, puts its
     # pixels within y of -20 to -8.5 mm, all in the block.
-    dataset.PerFrameFunctionalGroupsSequence[0].PixelMeasuresSequence = [
-        _item(PixelSpacing=["0.5", "0.5"])
-    ]
+    for groups, spacing in zip(dataset.PerFrameFunctionalGroupsSequence, (0.5, 2)):
+        groups.PixelMeasuresSequence = _groups(
+            spacing=(spacing, spacing)
+        ).PixelMeasuresSequence
 
     first, second = _masks(dataset)
 
     assert first.mask.all()
-    assert second is None
+    assert np.array_equal(second.mask, _cleaned_region())
 
 
 def test_a_segmentation_placed_in_its_shared_groups_alone_is_cleaned():
@@ -362,6 +365,28 @@ def _refusals():
     def without_spacing(dataset):
         del dataset.SharedFunctionalGroupsSequence[0].PixelMeasuresSequence
 
+    def in_both(keyword, frames=(0, 1)):
+        def change(dataset):
+            # A copy of the frame's or shared group, moved 40 mm so that the
+            # two disagree, as an instance with both would be free to.
+            for frame in frames:
+                groups = dataset.PerFrameFunctionalGroupsSequence[frame]
+                shared = dataset.SharedFunctionalGroupsSequence[0]
+                source, target = (
+                    (groups, shared) if keyword in groups else (shared, groups)
+                )
+                item = copy.deepcopy(source[keyword].value[0])
+                if keyword == "PlanePositionSequence":
+                    item.ImagePositionPatient = ["-20", "20", "20"]
+                setattr(target, keyword, [item])
+
+        return change
+
+    def without_per_frame_items(dataset):
+        position = dataset.PerFrameFunctionalGroupsSequence[0].PlanePositionSequence
+        dataset.SharedFunctionalGroupsSequence[0].PlanePositionSequence = position
+        del dataset.PerFrameFunctionalGroupsSequence
+
     def two_positions(dataset):
         sequence = dataset.PerFrameFunctionalGroupsSequence[0].PlanePositionSequence
         sequence.append(sequence[0])
@@ -418,6 +443,13 @@ def _refusals():
         ),
         "without-a-position": without_position,
         "without-a-spacing": without_spacing,
+        "position-in-both": in_both("PlanePositionSequence"),
+        "position-in-both-for-one-frame": in_both("PlanePositionSequence", (1,)),
+        "orientation-in-both": in_both("PlaneOrientationSequence"),
+        "orientation-in-both-for-one-frame": in_both("PlaneOrientationSequence", (1,)),
+        "spacing-in-both": in_both("PixelMeasuresSequence"),
+        "spacing-in-both-for-one-frame": in_both("PixelMeasuresSequence", (1,)),
+        "without-per-frame-items": without_per_frame_items,
         "two-positions": two_positions,
         "too-few-per-frame-items": too_few_frames,
         "two-shared-items": two_shared,

@@ -42,9 +42,11 @@ segmentation that the region does not reach, or whose masks there lie only
 in the kept brain, is written unchanged.
 
 Each frame is placed by its own Plane Position (Patient), Plane Orientation
-(Patient), and Pixel Measures functional groups, each from the Per-frame
-Functional Groups Sequence item of the frame or, where that item has none,
-from the Shared Functional Groups Sequence, each sequence of one item:
+(Patient), and Pixel Measures functional groups, each from either the
+Per-frame Functional Groups Sequence item of the frame or the Shared
+Functional Groups Sequence, never both, since PS3.3 C.7.6.16.1.1 lets a
+functional group be in only one of them and gives neither precedence, and
+each sequence of one item:
 Image Position (Patient), Image Orientation (Patient) of two orthogonal unit
 vectors within :data:`~.dose_defacing._UNIT`, and Pixel Spacing, finite and
 positive, every corner of the frame within :data:`~.dose_defacing._FARTHEST`,
@@ -210,25 +212,34 @@ def _plane(
 def _group(
     dataset: pydicom.Dataset, frames: int, frame: int, keyword: str
 ) -> pydicom.Dataset:
-    """Return the one item of a functional group's sequence for a frame: the
-    frame's own, in its item of the Per-frame Functional Groups Sequence,
-    or, where that item has none, the shared one.
+    """Return the one item of a functional group's sequence for a frame,
+    from either the frame's item of the Per-frame Functional Groups Sequence
+    or the Shared Functional Groups Sequence.
+
+    A group in both is refused rather than one taken over the other, since
+    PS3.3 C.7.6.16.1.1 lets a group be in only one and gives neither
+    precedence. A segmentation without the Per-frame Functional Groups
+    Sequence, which PS3.3 A.51.5 permits where it would be empty, is refused
+    too, which only holds it.
 
     Raises
     ------
     ValueError
         Where the Per-frame Functional Groups Sequence does not have one item
         for each of the ``frames`` frames, the Shared Functional Groups
-        Sequence has more than one, or neither gives the group in one item.
+        Sequence has more than one, or the group is not in exactly one of
+        them, in one item.
     """
     each = dataset.get("PerFrameFunctionalGroupsSequence") or []
     shared = dataset.get("SharedFunctionalGroupsSequence") or []
     if len(each) != frames or len(shared) > 1:
         raise ValueError("not one item for each frame")
-    for groups in (each[frame], *shared):
-        if keyword in groups:
-            items = groups[keyword].value
-            if len(items) != 1:
-                raise ValueError("not one item")
-            return items[0]
-    raise ValueError("no functional group")
+    found = [
+        groups[keyword].value for groups in (each[frame], *shared) if keyword in groups
+    ]
+    if len(found) != 1:
+        raise ValueError("not one functional group")
+    (items,) = found
+    if len(items) != 1:
+        raise ValueError("not one item")
+    return items[0]
