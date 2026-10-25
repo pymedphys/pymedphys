@@ -113,6 +113,7 @@ _SECTIONS = (
     "reference_findings",
     "pixel_risks",
     "search_coverage",
+    "exempted_findings",
     "source_gaps",
     "structural_checks",
 )
@@ -189,6 +190,7 @@ def to_markdown(report: str) -> str:
         *_reference_findings(document["reference_findings"]),
         *_pixel_risks(document["pixel_risks"]),
         *_coverage(document["search_coverage"]),
+        *_exempted(document["exempted_findings"]),
         *_gaps(document["source_gaps"]),
         *_structural_checks(document["structural_checks"]),
     ]
@@ -713,6 +715,39 @@ def _coverage(section: object) -> list[Block]:
             "pack lists each by instance and place."
         ],
         _table(("Attribute", "Reason", "Values"), rows) if rows else [_NONE],
+    ]
+
+
+def _exempted(section: object) -> list[Block]:
+    rows = []
+    for entry in _list("exempted_findings", section):
+        entry = _fields(
+            "exempted_findings", entry, ("exemption", "attribute", "found_in", "count")
+        )
+        rows.append(
+            (
+                _code("exempted_findings exemption", entry["exemption"]),
+                _code("exempted_findings attribute", entry["attribute"]),
+                _code("exempted_findings found_in", entry["found_in"]),
+                _count("exempted_findings count", entry["count"]),
+            )
+        )
+    return [
+        ["## Residual findings exempted from review"],
+        [
+            "How many released instances have a source value that the residual "
+            "search found but that neither held nor withheld the instance, "
+            "because what it is or where it was found explains it: a standard "
+            "term or code, an equipment name, a vendor's private creator, a date "
+            "that Modified Dates shifted, or a value that a selected option "
+            "keeps. Each is counted by why it was exempted, the attribute that "
+            "held the source value, and the attribute it was found in, each "
+            "instance once for each. The QC pack lists each finding by instance "
+            "and place."
+        ],
+        _table(("Exemption", "Attribute", "Found in", "Instances"), rows)
+        if rows
+        else [_NONE],
     ]
 
 

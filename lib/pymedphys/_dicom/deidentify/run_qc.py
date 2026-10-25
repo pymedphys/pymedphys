@@ -43,6 +43,7 @@ from .qc_pack import Disposition, DropReason, QcPack, RoiNameOutcome
 from .reasons import PixelDataReason
 from .reference_graph import Finding, FindingKind
 from .release_report import REPORTED_FINDINGS
+from .residual_exemptions import Exemption
 from .reviewed_descriptors import CleanedDescriptor
 from .run_written import REPORTED_ONLY
 from .roi_names import Reason
@@ -66,10 +67,16 @@ class SearchMaterial:
     search : ~pymedphys._dicom.deidentify.residuals.ResidualSearch
     written : bytes
         The file as the gate read it, to cut each finding's excerpt from.
+    exempted : tuple of (Finding, Exemption)
+        The search's text findings inside the data set that are not reasons
+        for review, each with why, as the release condition gives them
+        (:attr:`~pymedphys._dicom.deidentify.release_gate.ReleaseCondition.exempted`),
+        for the release report's counts.
     """
 
     search: residuals.ResidualSearch
     written: bytes
+    exempted: tuple[tuple[residuals.Finding, Exemption], ...] = ()
 
     def __repr__(self) -> str:
         return "SearchMaterial()"

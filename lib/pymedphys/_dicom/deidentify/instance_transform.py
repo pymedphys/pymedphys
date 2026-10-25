@@ -2269,7 +2269,8 @@ class ReleaseGate:
     sequesters the file for.
 
     Each verdict carries, as its QC material, the residual search's findings
-    in the file, with the file. What the search leaves out of the instance's
+    in the file, with the file and the findings that an exemption kept from
+    review. What the search leaves out of the instance's
     own values is the transform's material (:func:`omissions_of`), since the
     search covers the subject's other instances' values too.
 
@@ -2295,7 +2296,7 @@ class ReleaseGate:
         # Each value's omissions are its own instance's material, from the
         # transform, so the pooled search's are left out here.
         search = dataclasses.replace(condition.search, not_searched=(), unsearched=())
-        qc = (SearchMaterial(search, written),)
+        qc = (SearchMaterial(search, written, condition.exempted),)
         reasons = condition.reasons
         if len(given) < len(subject):
             # An instance of the subject gave no evidence, so its values may be

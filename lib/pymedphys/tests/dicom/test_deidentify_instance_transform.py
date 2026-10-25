@@ -1363,6 +1363,7 @@ class _Condition:
         self.decision = decision
         self.reasons = reasons
         self.search = ResidualSearch((), (), True)
+        self.exempted = ()
 
 
 def _plan_of(data):

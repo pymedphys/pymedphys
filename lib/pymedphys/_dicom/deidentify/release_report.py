@@ -52,7 +52,7 @@ the engine defines, never from DICOM data directly, and the check is a
 backstop: a field of another form, which could be a source value or a path
 outside the package, is refused. A field that fails is named, never quoted.
 
-Fifteen sections describe a run, by replacement identifiers, attribute tags,
+Sixteen sections describe a run, by replacement identifiers, attribute tags,
 and codes that the engine defines, never by a source value or path:
 
 - ``qc_review``: the run's QC pack by its opaque reference, with the outcome
@@ -133,6 +133,14 @@ and codes that the engine defines, never by a source value or path:
   residual search did not search, in full or in part, by reason (D-027),
   from :func:`search_coverage`. The QC pack lists each by instance and
   place.
+- ``exempted_findings``: how many released instances have a residual
+  finding that an exemption kept from review, such as a removed value found
+  in a kept standard term or equipment name (D-032), a date that Modified
+  Dates shifted (D-039), or a value that an option keeps (D-042), by the
+  exemption, the source attribute, and the
+  attribute in which it was found, each instance once for each, from
+  :func:`exempted_findings`. The QC pack lists each finding by instance and
+  place, with its excerpt.
 - ``source_gaps``: how many instances' sources lack each attribute that
   their IOD unconditionally requires, by its tags and Type, from
   :func:`source_gaps`. The run reports these and never acts on them, since
@@ -163,7 +171,7 @@ from . import method_digest, output_names
 from .method_digest import MethodDigestComponents
 from .defacing import FaceBlockProblem
 from .face_blocks import FaceBlockCounts, SeriesProblem
-from .file_layout import TAG_PATTERN, ElementPath
+from .file_layout import TAG_PATTERN, ElementPath, Region
 from .iod_conformance import SourceGap
 from .pixel_risk import Indicator, Risk
 from .labels import LABEL_PATTERN as _LABEL_PATTERN
@@ -191,7 +199,8 @@ from .reviewed_descriptors import Outcome as DescriptorOutcome
 from .reviewed_roi_names import Outcome as RoiNameOutcome
 from .reviewed_roi_names import RoiNameCounts
 from .roi_names import Reason as RoiNameReason
-from .residuals import NotSearched, Omission, Unsearched, UnsearchedReason
+from .residual_exemptions import Exemption
+from .residuals import Finding, NotSearched, Omission, Unsearched, UnsearchedReason
 from .runtime import RuntimeEnvironment, runtime_environment
 from .safe_private import SafePrivateList
 from .scope import Disposition, UnsupportedIod, unsupported_iods
@@ -200,7 +209,7 @@ from .standard import ALL_OPTIONS, VRS
 from .walker import Sequestration, SequesterReason
 
 # The format of the report document. A change to its fields takes a new label.
-FORMAT = "pymedphys-deid-release-report/27"
+FORMAT = "pymedphys-deid-release-report/28"
 
 _DIGEST = re.compile(r"[0-9a-f]{64}")
 # A key's non-secret identifier, as DeidKey.key_id gives it.
@@ -451,6 +460,34 @@ class SearchCoverage:
 
 
 @dataclasses.dataclass(frozen=True)
+class ExemptedFindings:
+    """How many released instances have one kind of exempted residual finding.
+
+    A residual finding inside the data set that an exemption explains does
+    not send its instance to review or withhold it (D-032, D-039, D-042). The report counts
+    the released instances that have each, by place, naming no value.
+
+    Attributes
+    ----------
+    exemption : str
+        An :class:`~pymedphys._dicom.deidentify.residual_exemptions.Exemption`,
+        as its value, such as ``"equipment"``.
+    attribute : str
+        The source attribute whose value was found, by its tags from the
+        outermost sequence, without items.
+    found_in : str
+        The written attribute in which it was found, likewise.
+    count : int
+        How many released instances have such a finding, each once.
+    """
+
+    exemption: str
+    attribute: str
+    found_in: str
+    count: int
+
+
+@dataclasses.dataclass(frozen=True)
 class HeldForReview:
     """How many instances were held for review for one reason.
 
@@ -675,6 +712,7 @@ class ReleaseReport:
     released : tuple of pathlib.PurePosixPath
     sequestered : tuple of SequesteredInstance
     search_coverage : tuple of SearchCoverage
+    exempted_findings : tuple of ExemptedFindings
     held_for_review : tuple of HeldForReview
     roi_names : ~pymedphys._dicom.deidentify.reviewed_roi_names.RoiNameCounts
     descriptors : ~pymedphys._dicom.deidentify.reviewed_descriptors.DescriptorCounts
@@ -697,6 +735,7 @@ class ReleaseReport:
     released: tuple[PurePosixPath, ...] = ()
     sequestered: tuple[SequesteredInstance, ...] = ()
     search_coverage: tuple[SearchCoverage, ...] = ()
+    exempted_findings: tuple[ExemptedFindings, ...] = ()
     held_for_review: tuple[HeldForReview, ...] = ()
     roi_names: RoiNameCounts = dataclasses.field(
         default_factory=lambda: RoiNameCounts({}, {})
@@ -843,6 +882,71 @@ def search_coverage(
     return tuple(
         SearchCoverage(attribute, reason, count)
         for (attribute, reason), count in sorted(counts.items())
+    )
+
+
+def exempted_findings(
+    instances: Iterable[Iterable[tuple[Finding, Exemption]]],
+) -> tuple[ExemptedFindings, ...]:
+    """Count the instances with each kind of exempted residual finding.
+
+    ``instances`` holds, for each instance, its residual findings that an
+    exemption kept from review, each with the exemption, as
+    :attr:`~pymedphys._dicom.deidentify.release_gate.ReleaseCondition.exempted`
+    gives them. An instance counts once for an exemption, source attribute,
+    and attribute found in, however many of its items or values have it. The
+    counts are in the order of their exemptions and attributes.
+
+    Raises
+    ------
+    TypeError
+        If the findings are not given for each instance, or one is not a
+        :class:`~pymedphys._dicom.deidentify.residuals.Finding` with an
+        :class:`~pymedphys._dicom.deidentify.residual_exemptions.Exemption`.
+    ValueError
+        For a finding outside a data set element, which no exemption explains.
+
+    >>> from pymedphys._dicom.deidentify.file_layout import Location
+    >>> from pymedphys._dicom.deidentify.residuals import Form, ValueKind
+    >>> finding = Finding(
+    ...     ElementPath((), "(0009,1012)"),
+    ...     ValueKind.TEXT,
+    ...     Form.VALUE,
+    ...     "ascii",
+    ...     Location(Region.DATA_SET, ElementPath((), "(0008,0070)"), "LO"),
+    ...     200,
+    ... )
+    >>> exempted_findings([[(finding, Exemption.EQUIPMENT)], []])
+    (ExemptedFindings(exemption='equipment', attribute='(0009,1012)', found_in='(0008,0070)', count=1),)
+    """
+    counts: collections.Counter[tuple[str, str, str]] = collections.Counter()
+    for pairs in instances:
+        if isinstance(pairs, tuple) and pairs and isinstance(pairs[0], Finding):
+            raise TypeError("exempted findings must be given for each instance")
+        found = set()
+        for pair in pairs:
+            if not (
+                isinstance(pair, tuple)
+                and len(pair) == 2
+                and isinstance(pair[0], Finding)
+                and isinstance(pair[1], Exemption)
+            ):
+                raise TypeError("an exempted finding must be a Finding and Exemption")
+            finding, exemption = pair
+            element = finding.location.element
+            if finding.location.region is not Region.DATA_SET or element is None:
+                raise ValueError("an exempted finding must be in a data set element")
+            found.add(
+                (
+                    exemption.value,
+                    attribute_tags(finding.source),
+                    attribute_tags(element),
+                )
+            )
+        counts.update(found)
+    return tuple(
+        ExemptedFindings(exemption, attribute, found_in, count)
+        for (exemption, attribute, found_in), count in sorted(counts.items())
     )
 
 
@@ -1058,6 +1162,7 @@ def release_report(
     released: Iterable[PurePosixPath] = (),
     sequestered: Iterable[SequesteredInstance] = (),
     coverage: Iterable[SearchCoverage] = (),
+    exempted: Iterable[ExemptedFindings] = (),
     held: Iterable[HeldForReview] = (),
     roi_names: RoiNameCounts | None = None,
     descriptors: DescriptorCounts | None = None,
@@ -1151,6 +1256,10 @@ def release_report(
     coverage : iterable of SearchCoverage, optional
         How many values the run's residual search did not search, from
         :func:`search_coverage`.
+    exempted : iterable of ExemptedFindings, optional
+        How many of the run's released instances have each kind of residual
+        finding that an exemption kept from review, from
+        :func:`exempted_findings`.
     held : iterable of HeldForReview, optional
         How many of the run's instances were held for review, by reason,
         from :func:`held_for_review`.
@@ -1198,7 +1307,7 @@ def release_report(
     >>> report.policy.preset, report.policy.options
     ('basic', ())
     >>> list(report_document(report))
-    ['format', 'policy', 'method', 'runtime', 'key', 'qc_review', 'face_review', 'redaction_review', 'pixel_regions', 'readiness', 'released', 'sequestered', 'held_for_review', 'roi_names', 'descriptors', 'reference_findings', 'pixel_risks', 'search_coverage', 'source_gaps', 'structural_checks']
+    ['format', 'policy', 'method', 'runtime', 'key', 'qc_review', 'face_review', 'redaction_review', 'pixel_regions', 'readiness', 'released', 'sequestered', 'held_for_review', 'roi_names', 'descriptors', 'reference_findings', 'pixel_risks', 'search_coverage', 'exempted_findings', 'source_gaps', 'structural_checks']
     """
     if not isinstance(policy, Policy):
         raise TypeError("policy must be a Policy")
@@ -1234,6 +1343,7 @@ def release_report(
         released=tuple(released),
         sequestered=tuple(sequestered),
         search_coverage=tuple(coverage),
+        exempted_findings=tuple(exempted),
         held_for_review=tuple(held),
         roi_names=RoiNameCounts({}, {}) if roi_names is None else roi_names,
         descriptors=DescriptorCounts({}, {}) if descriptors is None else descriptors,
@@ -1651,6 +1761,34 @@ def _coverage_section(coverage: tuple[SearchCoverage, ...]) -> list:
     return sorted(entries, key=lambda entry: (entry["attribute"], entry["reason"]))
 
 
+_EXEMPTIONS = frozenset(e.value for e in Exemption)
+
+
+def _exempted_section(exempted: tuple[ExemptedFindings, ...]) -> list:
+    entries = []
+    for each in exempted:
+        if not isinstance(each, ExemptedFindings):
+            raise _refuse("exempted_findings", "is not a tuple of exempted counts")
+        if not (isinstance(each.count, int) and not isinstance(each.count, bool)):
+            raise _refuse("exempted_findings count", "is not a whole number")
+        if each.count < 1:
+            raise _refuse("exempted_findings count", "is not positive")
+        entries.append(
+            {
+                "exemption": _code(
+                    "exempted_findings exemption", each.exemption, _EXEMPTIONS
+                ),
+                "attribute": _attribute("exempted_findings attribute", each.attribute),
+                "found_in": _attribute("exempted_findings found_in", each.found_in),
+                "count": each.count,
+            }
+        )
+    return sorted(
+        entries,
+        key=lambda entry: (entry["exemption"], entry["attribute"], entry["found_in"]),
+    )
+
+
 def _held_section(held: tuple[HeldForReview, ...]) -> list:
     entries = []
     for each in held:
@@ -1862,7 +2000,8 @@ def report_document(report: ReleaseReport) -> dict:
     ``redaction_review``, ``pixel_regions``, ``readiness``, ``released``, ``sequestered``, ``held_for_review``, ``roi_names``,
     ``descriptors``,
     ``reference_findings``, ``pixel_risks``, ``search_coverage``,
-    ``source_gaps``, and ``structural_checks``, in that order, each section's
+    ``exempted_findings``, ``source_gaps``, and ``structural_checks``, in
+    that order, each section's
     fields in the order of its class, the digests of tables and files sorted
     by name, ``key`` with its ``scope``, ``"run"`` or ``"project"``, and
     ``key_id``, null for a run-scoped key, ``qc_review`` null where the run
@@ -1882,7 +2021,8 @@ def report_document(report: ReleaseReport) -> dict:
     code, the descriptors' ``fell_back`` count of elements, the reference
     findings' counts by kind, the pixel risks' ``instances`` counts by
     disposition and risk and ``indicators`` counts by disposition, risk, and
-    indicator, the coverage by attribute and reason, the source gaps by
+    indicator, the coverage by attribute and reason, the exempted findings
+    by exemption, attribute, and attribute found in, the source gaps by
     attribute and Type, and each structural check once, in the order of
     :data:`STRUCTURAL_CHECKS`. A walker
     reason has its stage, code, attribute, action, and VR, which is null
@@ -1939,6 +2079,7 @@ def report_document(report: ReleaseReport) -> dict:
         "reference_findings": _reference_findings_section(report.reference_findings),
         "pixel_risks": _pixel_risks_section(report.pixel_risks),
         "search_coverage": _coverage_section(report.search_coverage),
+        "exempted_findings": _exempted_section(report.exempted_findings),
         "source_gaps": _gaps_section(report.source_gaps),
         "structural_checks": _checks_section(
             report.structural_checks, report.sequestered
