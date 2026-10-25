@@ -23,7 +23,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
-from .face_validation import SHARES
+from .face_validation import SHARES, TISSUES
 
 
 def markdown(summary: Mapping[str, Any]) -> str:
@@ -150,6 +150,7 @@ def markdown(summary: Mapping[str, Any]) -> str:
             for organ, shares in summary["written_as_air"].items()
         ),
         "",
+        *_finder(summary["finder"]),
         "## Settings",
         "",
         "| Setting | Value |",
@@ -160,6 +161,145 @@ def markdown(summary: Mapping[str, Any]) -> str:
         ),
     ]
     return "\n".join(lines) + "\n"
+
+
+def _finder(finder: Mapping[str, Any]) -> list[str]:
+    """The section on what the finder saw, by each case's outcome."""
+    outcomes = list(finder["cases"])
+    eyes, pair = finder["eyes"], finder["eye_pair"]
+
+    def coded(title: str, counts: Mapping[str, Mapping[str, int]]) -> list[str]:
+        return _by_outcome(title, outcomes, _coded_rows(counts, outcomes))
+
+    def binned(title: str, counts: Mapping[str, Mapping[str, Any]]) -> list[str]:
+        return _by_outcome(title, outcomes, _binned_rows(counts, outcomes))
+
+    lines = [
+        "## What the finder saw",
+        "",
+        "In each case with both eyes' masks, the finder's steps on the same "
+        "slices, counted by the case's outcome. A ball is a region of soft "
+        "tissue that the finder considered as a globe; it keeps those that "
+        "other tissue or air mostly surrounds. The ball at an eye is the kept "
+        "ball nearest the eye's centroid, within 5 mm of it. Rows with no "
+        "count are left out; the JSON lists every bin.",
+        "",
+        *_codes("Cases inspected", finder["cases"], "Cases"),
+        *_codes(
+            "Cases with both eyes' masks not inspected",
+            finder["not_inspected"],
+            "Cases",
+        ),
+    ]
+    if not outcomes:
+        return lines
+    lines += [
+        *coded("The finder's own outcome", finder["finder_outcome"]),
+        *binned("Side of the finder's voxels (mm)", finder["voxel"]),
+        *binned("Balls considered", finder["balls_considered"]),
+        *binned("Balls kept", finder["balls_kept"]),
+        "### At each eye",
+        "",
+        *binned(
+            "Distance from each eye's centroid to the nearest ball considered (mm)",
+            eyes["nearest_ball"],
+        ),
+        *coded(
+            "The nearest ball considered, where within 5 mm of each eye's centroid",
+            eyes["nearest_ball_status"],
+        ),
+        *binned(
+            "Its share of the surrounding sphere outside soft tissue",
+            eyes["nearest_ball_outside"],
+        ),
+        *binned(
+            "Its greatest share of one half of the sphere outside soft tissue",
+            eyes["nearest_ball_best_half"],
+        ),
+        *binned(
+            "Distance from each eye's centroid to the nearest kept ball (mm)",
+            eyes["nearest_kept_ball"],
+        ),
+        *coded("Eyes with a kept ball within 5 mm", eyes["kept_ball_at_each_eye"]),
+        *binned(
+            "Greatest depth of soft tissue within 5 mm of each eye's centroid (mm)",
+            eyes["depth"],
+        ),
+        *coded(
+            "That depth against the depths at which a ball is looked for",
+            eyes["depth_against_window"],
+        ),
+        "### The pair of balls at the eyes",
+        "",
+        *coded("Cases with a kept ball at each eye", pair["tested"]),
+        *coded("Side by side", pair["side_by_side"]),
+        *coded("Bone lateral to each ball", pair["bone_lateral"]),
+        *coded("Bone superior to each ball", pair["bone_superior"]),
+        *coded("Passes every test of a pair", pair["passes"]),
+        *binned("Share of the region behind filled by tissue", pair["head_behind"]),
+        *binned("Share of the region in front filled by tissue", pair["head_in_front"]),
+        *binned("Behind less in front", pair["head_margin"]),
+        *coded("Bone encloses more above the eyes than below", pair["cranium_above"]),
+        "### Other pairs that pass the tests of a pair",
+        "",
+        *binned("Other pairs", finder["other_pairs"]),
+        *coded(
+            "Where their balls lie from the eyes' centroids: at an eye within "
+            "15 mm, or above or below beyond 10 mm, and behind or in front "
+            "beyond 15 mm",
+            finder["other_pair_places"],
+        ),
+        "### Tissue about each kept ball",
+        "",
+        "Shares of the points of each kept ball's surround test, by its "
+        "averaged value: soft tissue from -40 to 160 HU, fat from -200 HU up "
+        "to that, air below -500 HU, and bone from 300 HU.",
+        "",
+    ]
+    for kind, noun in (("eye", "the balls at the eyes"), ("other", "the others")):
+        for tissue in TISSUES:
+            lines += binned(
+                f"Share in {tissue}, {noun}", finder["shells"][kind][tissue]
+            )
+    return lines
+
+
+def _coded_rows(
+    counts: Mapping[str, Mapping[str, int]], outcomes: list[str]
+) -> list[tuple[str, list[int]]]:
+    codes = sorted({code for outcome in outcomes for code in counts[outcome]})
+    return [
+        (f"`{code}`", [counts[outcome].get(code, 0) for outcome in outcomes])
+        for code in codes
+    ]
+
+
+def _binned_rows(
+    counts: Mapping[str, Mapping[str, Any]], outcomes: list[str]
+) -> list[tuple[str, list[int]]]:
+    rows = []
+    for index, each in enumerate(counts[outcomes[0]]["bins"]):
+        found = [counts[outcome]["bins"][index]["count"] for outcome in outcomes]
+        if any(found):
+            rows.append((_range(each), found))
+    return rows
+
+
+def _by_outcome(
+    title: str, outcomes: list[str], rows: list[tuple[str, list[int]]]
+) -> list[str]:
+    """A table of counts with a column for each outcome."""
+    if not rows:
+        return [f"{title}: none.", ""]
+    return [
+        f"| {title} | " + " | ".join(f"`{outcome}`" for outcome in outcomes) + " |",
+        "| --- | " + " | ".join("---:" for _ in outcomes) + " |",
+        *(
+            f"| {label} | " + " | ".join(str(count) for count in found) + " |"
+            for label, found in rows
+        ),
+        "",
+    ]
 
 
 def _codes(title: str, counts: Mapping[str, int], noun: str) -> list[str]:

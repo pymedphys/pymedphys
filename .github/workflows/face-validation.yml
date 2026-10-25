@@ -16,6 +16,15 @@ name: Face Block Check
 # cached, uploaded, or kept.
 on:
   workflow_dispatch:
+  # Temporary, for one run of the finder's counts before this workflow is
+  # on the default branch; removed before review.
+  push:
+    branches: [claude/project-thread-qu0er6]
+    paths:
+      - .github/workflows/face-validation.yml
+      - lib/pymedphys/_dicom/deidentify/defacing.py
+      - lib/pymedphys/_dicom/deidentify/face_blocks.py
+      - lib/pymedphys/_dicom/deidentify/face_validation*.py
 
 permissions:
   contents: read

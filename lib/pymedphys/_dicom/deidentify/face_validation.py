@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# pylint: disable = too-many-lines
+
 """The face block and CT defacing, checked against reference masks (D-054).
 
 Under the Clean Recognizable Visual Features Option, a run writes air into
@@ -54,7 +56,15 @@ so that a mask need not share the CT's grid. Of each case
   :data:`~pymedphys._dicom.deidentify.defacing.GLOBE_DIAMETER`,
   :data:`~pymedphys._dicom.deidentify.defacing.GLOBE_SEPARATION`, and
   :data:`~pymedphys._dicom.deidentify.defacing.MAXIMUM_TURN`; and
-- the share of each organ's voxels written as air.
+- the share of each organ's voxels written as air; and
+- where the reference eyes are given, what the finder saw
+  (:class:`FinderMeasures`), from
+  :meth:`~pymedphys._dicom.deidentify.defacing.FaceFinder.inspect` on the
+  same slices: the balls of soft tissue that it considered and kept as
+  possible globes, the ball nearest each eye and the depth of the soft
+  tissue there, the tests of the pair of kept balls at the eyes, the other
+  pairs that passed them and where they lie, and the tissue about each kept
+  ball, so that a refusal can be traced to the test that gave it.
 
 The cases' measures are summarised (:func:`summarise`) as counts: of cases
 by outcome and by format, and of measures in fixed bins, never a value or a
@@ -93,7 +103,7 @@ from .face_blocks import CtDefacer, find_face_blocks
 from .references import InstanceRecord
 from .source import EXPLICIT_VR_LITTLE_ENDIAN
 
-FORMAT = "pymedphys-deid-face-validation/1"
+FORMAT = "pymedphys-deid-face-validation/2"
 CT_IMAGE_STORAGE = "1.2.840.10008.5.1.4.1.1.2"
 # Hounsfield units at or below which a voxel counts as air, for the check
 # that a volume's values are in Hounsfield units, and the share of voxels
@@ -167,6 +177,26 @@ GLOBE_SEPARATION = Bins("mm", (40.0, 50.0, 55.0, 60.0, 65.0, 70.0, 80.0), below=
 TURN = Bins("degrees", (0.0, 2.0, 5.0, 10.0, 15.0, 20.0, 30.0))
 PIXEL_SPACING = Bins("mm", (0.0, 0.5, 0.75, 1.0, 1.25, 1.5, 2.0))
 SLICE_SPACING = Bins("mm", (0.0, 1.0, 1.5, 2.0, 2.5, 3.0, 4.0, 5.0))
+# What the finder saw (FinderMeasures).
+VOXEL = Bins("mm", (1.5, 1.75, 2.0, 2.25, 2.5))
+BALLS = Bins("balls", (0, 1, 2, 3, 5, 10, 20, 50, 100, 200, 500, 1000))
+NEAREST = Bins("mm", (0.0, 2.0, 5.0, 10.0, 15.0, 20.0, 30.0))
+DEPTH = Bins("mm", (0.0, 2.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 15.0))
+SHARE = Bins("share", (0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0))
+HEAD_MARGIN = Bins("share", (-1.0, -0.4, -0.2, 0.0, 0.2, 0.3, 0.4, 0.5, 0.6, 0.8))
+OTHER_PAIRS = Bins("pairs", (0, 1, 2, 3))
+# Millimetres from an eye's centroid within which a kept ball is taken for
+# that eye's globe, and a ball of another pair is counted as at an eye.
+_EYE_BALL = 5.0
+_AT_AN_EYE = 15.0
+# Millimetres above or below, and behind or in front of, the eyes'
+# centroids beyond which a ball of another pair is counted as such.
+_LEVEL = 10.0
+_BESIDE = 15.0
+# The tissues about a kept ball, by its averaged Hounsfield units, as the
+# finder classes them: fat lies between this and the soft tissue.
+_FAT = -200.0
+TISSUES = ("soft tissue", "fat", "air", "bone", "other")
 # The share of an organ's voxels written as air.
 SHARES = (
     "none",
@@ -236,6 +266,8 @@ class CaseMeasures:
         read, by why.
     masks_outside : int
         How many masks have a voxel outside the CT, which is left out.
+    finder : FinderMeasures or None
+        Where the reference eyes are given, what the finder saw.
     """
 
     outcome: str
@@ -255,9 +287,124 @@ class CaseMeasures:
     mask_formats: Mapping[str, int] = dataclasses.field(default_factory=dict)
     mask_problems: Mapping[str, int] = dataclasses.field(default_factory=dict)
     masks_outside: int = 0
+    finder: FinderMeasures | None = None
 
     def __repr__(self) -> str:
         return "CaseMeasures()"
+
+
+@dataclasses.dataclass(frozen=True, repr=False)
+class EyeMeasures:
+    """What the finder saw at one reference eye, for :func:`summarise`
+    alone; its ``repr`` shows nothing of it.
+
+    Attributes
+    ----------
+    nearest : float or None
+        The distance from the eye's centroid to the nearest ball considered,
+        by its centre where it was tested and its deepest point where not,
+        in millimetres; None where none was.
+    status : str
+        That ball's, where it lies within 5 mm: ``"kept"``,
+        ``"not-surrounded"`` where its surround test failed,
+        ``"sphere-beyond-volume"``, or ``"within-a-kept-ball"`` where it
+        was not tested; otherwise ``"none-within-5-mm"``.
+    outside, best_half : float or None
+        That ball's two shares of its surround test, where it lies within
+        5 mm and they were measured.
+    nearest_kept : float or None
+        The distance from the eye's centroid to the nearest kept ball's
+        centre, in millimetres; None where none was kept.
+    depth : float
+        The greatest depth of soft tissue within 5 mm of the centroid, in
+        millimetres.
+    depth_window : str
+        ``"below"``, ``"within"``, or ``"above"`` the depths at which the
+        finder looks for a ball's deepest point.
+    """
+
+    nearest: float | None
+    status: str
+    outside: float | None
+    best_half: float | None
+    nearest_kept: float | None
+    depth: float
+    depth_window: str
+
+    def __repr__(self) -> str:
+        return "EyeMeasures()"
+
+
+@dataclasses.dataclass(frozen=True, repr=False)
+class PairMeasures:
+    """The finder's tests of the pair of kept balls at the reference eyes,
+    for :func:`summarise` alone; its ``repr`` shows nothing of it.
+
+    Attributes
+    ----------
+    side_by_side : bool
+        Whether the balls lie side by side.
+    lateral, superior : tuple of bool
+        Whether there is bone lateral to, and superior to, the ball at the
+        right eye, then at the left.
+    behind, in_front : float
+        The shares of the regions behind and in front of the pair that
+        tissue fills, as the head's test measures them.
+    cranium_above : bool
+        Whether bone encloses more voxels above the pair than below it.
+    """
+
+    side_by_side: bool
+    lateral: tuple[bool, bool]
+    superior: tuple[bool, bool]
+    behind: float
+    in_front: float
+    cranium_above: bool
+
+    def __repr__(self) -> str:
+        return "PairMeasures()"
+
+
+@dataclasses.dataclass(frozen=True, repr=False)
+class FinderMeasures:
+    """What the finder saw in one case, for :func:`summarise` alone; its
+    ``repr`` shows nothing of it.
+
+    Attributes
+    ----------
+    outcome : str
+        The finder's own outcome: ``"defaced"`` where it gives a block,
+        otherwise its reason, which a run gives too unless a structure set
+        holds the series.
+    voxel : float
+        The side of the finder's sampled voxels, in millimetres.
+    considered, kept : int
+        How many balls it considered, and how many it kept.
+    eyes : tuple of EyeMeasures
+        At the right reference eye, then at the left.
+    pair : PairMeasures or None
+        Where each eye has a kept ball within 5 mm of its centroid, the
+        tests of those two as a pair.
+    other_pairs : tuple of str
+        Where the balls of each other pair that passed the pair's tests
+        lie (:func:`_place`).
+    shells : tuple of tuple
+        For each kept ball, ``"eye"`` where it is the kept ball within
+        5 mm of an eye, otherwise ``"other"``, and the share of the points
+        of its surround test in each of :data:`TISSUES`.
+    """
+
+    outcome: str
+    voxel: float
+    considered: int
+    kept: int
+    eyes: tuple[EyeMeasures, EyeMeasures]
+    pair: PairMeasures | None
+    other_pairs: tuple[str, ...]
+    shells: tuple[tuple[str, Mapping[str, float]], ...]
+
+    def __repr__(self) -> str:
+        return "FinderMeasures()"
 
 
 @dataclasses.dataclass(frozen=True)
@@ -341,6 +488,10 @@ def measure_case(
         measures["eyes"] = "no-reference-eyes"
         if reference is not None:
             measures.update(_against_block(block, reference))
+    if reference is not None:
+        inspection = series.inspection()
+        if inspection is not None:
+            measures["finder"] = _finder_measures(inspection, reference)
     return CaseMeasures(**measures)
 
 
@@ -425,6 +576,11 @@ class _Series:
         # One series: every slice has the same Series Instance UID.
         (outcome,) = list(find_face_blocks(records, self.file).values())
         return outcome
+
+    def inspection(self) -> defacing.FaceInspection | None:
+        """What the finder finds in the series, as a run gives it the
+        slices, or None where it is given none."""
+        return face_blocks.inspect_series(list(range(len(self._stored))), self.file)
 
     def written(self, block: defacing.FaceBlock) -> np.ndarray:
         """The voxels that a run writes as air, of bool, by slice, row, and
@@ -616,6 +772,163 @@ def _against_block(
     }
 
 
+def _finder_measures(
+    inspection: defacing.FaceInspection, eyes: Sequence[np.ndarray]
+) -> FinderMeasures:
+    """What the finder saw, from its inspection of the series and each
+    reference eye's voxels' positions, the patient's right first."""
+    try:
+        inspection.block()
+        outcome = "defaced"
+    except defacing.FaceBlockRefused as refused:
+        outcome = refused.problem.value
+    centroids = np.array([np.mean(each, axis=0) for each in eyes])
+    balls = inspection.balls
+    where = np.array(
+        [ball.peak if ball.centre is None else ball.centre for ball in balls]
+    ).reshape(-1, 3)
+    kept = [index for index, ball in enumerate(balls) if ball.kept]
+    at_eyes: list[int | None] = []
+    sides = []
+    for centroid in centroids:
+        distances = np.linalg.norm(where - centroid, axis=1)
+        nearest = int(np.argmin(distances)) if len(balls) else None
+        closest = kept[int(np.argmin(distances[kept]))] if kept else None
+        at_eyes.append(
+            closest if closest is not None and distances[closest] <= _EYE_BALL else None
+        )
+        sides.append(
+            _eye_measures(
+                inspection,
+                centroid,
+                (nearest, closest),
+                distances,
+            )
+        )
+    pair = None
+    right, left = at_eyes
+    if right is not None and left is not None and right != left:
+        pair = _pair_measures(inspection, right, left)
+    eye_pair = {right, left}
+    other_pairs = tuple(
+        " + ".join(
+            sorted(
+                _place(np.asarray(balls[index].centre), centroids)
+                for index in (test.right, test.left)
+            )
+        )
+        for test in inspection.pairs
+        if test.eyes and {test.right, test.left} != eye_pair
+    )
+    shells = []
+    for index in kept:
+        values = inspection.shell(index)
+        if values is not None:
+            shells.append(("eye" if index in at_eyes else "other", _tissues(values)))
+    return FinderMeasures(
+        outcome=outcome,
+        voxel=inspection.voxel,
+        considered=len(balls),
+        kept=len(kept),
+        eyes=(sides[0], sides[1]),
+        pair=pair,
+        other_pairs=other_pairs,
+        shells=tuple(shells),
+    )
+
+
+def _eye_measures(
+    inspection: defacing.FaceInspection,
+    centroid: np.ndarray,
+    balls: tuple[int | None, int | None],
+    distances: np.ndarray,
+) -> EyeMeasures:
+    """What the finder saw at one reference eye's centroid, given the
+    nearest ball and the nearest kept ball to it, by their indices, and
+    each ball's distance from it."""
+    nearest, closest = balls
+    status, outside, best_half = "none-within-5-mm", None, None
+    if nearest is not None and distances[nearest] <= _EYE_BALL:
+        ball = inspection.balls[nearest]
+        outside, best_half = ball.outside, ball.best_half
+        if ball.centre is None:
+            status = "within-a-kept-ball"
+        elif ball.outside is None:
+            status = "sphere-beyond-volume"
+        else:
+            status = "kept" if ball.kept else "not-surrounded"
+    depth = inspection.depth_near(centroid, _EYE_BALL)
+    # As the finder's window for a ball's depth at its deepest point.
+    low = defacing.GLOBE_DIAMETER[0] / 2 - inspection.voxel
+    high = defacing.GLOBE_DIAMETER[1] / 2
+    return EyeMeasures(
+        nearest=None if nearest is None else float(distances[nearest]),
+        status=status,
+        outside=outside,
+        best_half=best_half,
+        nearest_kept=None if closest is None else float(distances[closest]),
+        depth=depth,
+        depth_window="below" if depth < low else "above" if depth > high else "within",
+    )
+
+
+def _pair_measures(
+    inspection: defacing.FaceInspection, right: int, left: int
+) -> PairMeasures:
+    """The finder's tests of the kept balls at the right and left reference
+    eyes, by their indices, as a pair."""
+    (test,) = [
+        each for each in inspection.pairs if {each.right, each.left} == {right, left}
+    ]
+    # The finder takes the ball of lower x for the patient's right, which
+    # may be the one at the left eye.
+    order = (0, 1) if test.right == right else (1, 0)
+    behind, in_front = inspection.head_fills(test.right, test.left)
+    above, below = inspection.cranium(test.right, test.left)
+    return PairMeasures(
+        side_by_side=test.side_by_side,
+        lateral=(test.lateral[order[0]], test.lateral[order[1]]),
+        superior=(test.superior[order[0]], test.superior[order[1]]),
+        behind=behind,
+        in_front=in_front,
+        cranium_above=above > below,
+    )
+
+
+def _place(centre: np.ndarray, centroids: np.ndarray) -> str:
+    """Where a ball lies from the reference eyes: ``"at-an-eye"`` within
+    15 mm of either's centroid, or else above, level with, or below them,
+    beyond 10 mm of their centroids' mean height, and behind, beside, or in
+    front of them, beyond 15 mm of their mean along the patient's posterior
+    axis, as ``"above-behind"``."""
+    if np.min(np.linalg.norm(centroids - centre, axis=1)) <= _AT_AN_EYE:
+        return "at-an-eye"
+    middle = centroids.mean(axis=0)
+    height, depth = centre[2] - middle[2], centre[1] - middle[1]
+    vertical = "above" if height > _LEVEL else "below" if height < -_LEVEL else "level"
+    across = (
+        "behind" if depth > _BESIDE else "in-front" if depth < -_BESIDE else "beside"
+    )
+    return f"{vertical}-{across}"
+
+
+def _tissues(values: np.ndarray) -> dict[str, float]:
+    """The share of averaged values in each of :data:`TISSUES`: soft tissue
+    and bone as the finder takes them, fat from -200 HU up to the soft
+    tissue, air below the finder's body threshold, and the rest other."""
+    soft = (values >= defacing.SOFT_TISSUE[0]) & (values <= defacing.SOFT_TISSUE[1])
+    fat = (values >= _FAT) & (values < defacing.SOFT_TISSUE[0])
+    air = values < defacing.BODY
+    bone = values >= defacing.BONE
+    return {
+        "soft tissue": float(np.mean(soft)),
+        "fat": float(np.mean(fat)),
+        "air": float(np.mean(air)),
+        "bone": float(np.mean(bone)),
+        "other": float(np.mean(~(soft | fat | air | bone))),
+    }
+
+
 def summarise(
     cases: Sequence[CaseMeasures | CaseNotMeasured], data: Mapping[str, Any]
 ) -> dict[str, Any]:
@@ -696,7 +1009,139 @@ def summarise(
             )
             for name in organs
         },
+        "finder": _finder_summary(measured),
     }
+
+
+def _finder_summary(measured: Sequence[CaseMeasures]) -> dict[str, Any]:
+    """What the finder saw, counted by each case's outcome, as the module
+    describes."""
+    inspected = [case for case in measured if case.finder is not None]
+    outcomes = sorted({case.outcome for case in inspected})
+
+    def binned(
+        bins: Bins, values: Callable[[FinderMeasures], Iterable[float | None]]
+    ) -> dict[str, Any]:
+        return {
+            outcome: bins.counts(
+                _present(
+                    value
+                    for case in inspected
+                    if case.outcome == outcome and case.finder is not None
+                    for value in values(case.finder)
+                )
+            )
+            for outcome in outcomes
+        }
+
+    def coded(codes: Callable[[FinderMeasures], Iterable[str]]) -> dict[str, Any]:
+        return {
+            outcome: _counted(
+                code
+                for case in inspected
+                if case.outcome == outcome and case.finder is not None
+                for code in codes(case.finder)
+            )
+            for outcome in outcomes
+        }
+
+    def paired(codes: Callable[[PairMeasures], Iterable[str]]) -> dict[str, Any]:
+        return coded(lambda finder: codes(finder.pair) if finder.pair else ())
+
+    def pair_binned(
+        bins: Bins, values: Callable[[PairMeasures], Iterable[float]]
+    ) -> dict[str, Any]:
+        return binned(bins, lambda finder: values(finder.pair) if finder.pair else ())
+
+    return {
+        "cases": _counted(case.outcome for case in inspected),
+        "not_inspected": _counted(
+            case.outcome for case in measured if case.finder is None and case.diameters
+        ),
+        "finder_outcome": coded(lambda finder: [finder.outcome]),
+        "voxel": binned(VOXEL, lambda finder: [finder.voxel]),
+        "balls_considered": binned(BALLS, lambda finder: [finder.considered]),
+        "balls_kept": binned(BALLS, lambda finder: [finder.kept]),
+        "eyes": {
+            "nearest_ball": binned(
+                NEAREST, lambda finder: [eye.nearest for eye in finder.eyes]
+            ),
+            "nearest_ball_status": coded(
+                lambda finder: [eye.status for eye in finder.eyes]
+            ),
+            "nearest_ball_outside": binned(
+                SHARE, lambda finder: [eye.outside for eye in finder.eyes]
+            ),
+            "nearest_ball_best_half": binned(
+                SHARE, lambda finder: [eye.best_half for eye in finder.eyes]
+            ),
+            "nearest_kept_ball": binned(
+                NEAREST, lambda finder: [eye.nearest_kept for eye in finder.eyes]
+            ),
+            "kept_ball_at_each_eye": coded(
+                lambda finder: [
+                    _sides(
+                        tuple(
+                            eye.nearest_kept is not None
+                            and eye.nearest_kept <= _EYE_BALL
+                            for eye in finder.eyes
+                        )
+                    )
+                ]
+            ),
+            "depth": binned(DEPTH, lambda finder: [eye.depth for eye in finder.eyes]),
+            "depth_against_window": coded(
+                lambda finder: [eye.depth_window for eye in finder.eyes]
+            ),
+        },
+        "eye_pair": {
+            "tested": coded(
+                lambda finder: ["yes" if finder.pair is not None else "no"]
+            ),
+            "side_by_side": paired(lambda pair: [_yes(pair.side_by_side)]),
+            "bone_lateral": paired(lambda pair: [_sides(pair.lateral)]),
+            "bone_superior": paired(lambda pair: [_sides(pair.superior)]),
+            "passes": paired(
+                lambda pair: [
+                    _yes(pair.side_by_side and all(pair.lateral + pair.superior))
+                ]
+            ),
+            "head_behind": pair_binned(SHARE, lambda pair: [pair.behind]),
+            "head_in_front": pair_binned(SHARE, lambda pair: [pair.in_front]),
+            "head_margin": pair_binned(
+                HEAD_MARGIN, lambda pair: [pair.behind - pair.in_front]
+            ),
+            "cranium_above": paired(lambda pair: [_yes(pair.cranium_above)]),
+        },
+        "other_pairs": binned(OTHER_PAIRS, lambda finder: [len(finder.other_pairs)]),
+        "other_pair_places": coded(lambda finder: finder.other_pairs),
+        "shells": {
+            kind: {
+                tissue: binned(
+                    SHARE,
+                    lambda finder, kind=kind, tissue=tissue: [
+                        shares[tissue] for each, shares in finder.shells if each == kind
+                    ],
+                )
+                for tissue in TISSUES
+            }
+            for kind in ("eye", "other")
+        },
+    }
+
+
+def _sides(found: tuple[bool, ...]) -> str:
+    """Which of the right and the left a test found, as a code."""
+    right, left = found
+    if right and left:
+        return "both"
+    if right or left:
+        return "right-only" if right else "left-only"
+    return "neither"
+
+
+def _yes(found: bool) -> str:
+    return "yes" if found else "no"
 
 
 def _present(values: Iterable[float | None]) -> list[float]:
