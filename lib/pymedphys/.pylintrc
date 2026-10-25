@@ -2,7 +2,7 @@
 init-hook = "import sys; sys.setrecursionlimit(2000)"
 # Lint in one process. Each parallel worker keeps its own inference caches and
 # takes whichever files are free, so a message could appear on one run and not
-# the next. pymedphys dev lint also passes the files in a fixed order.
+# the next. pymedphys dev lint also sorts the files it lints.
 jobs = 1
 # Every documentation build generates docs/conf.py (gitignored) inside the
 # package, so keep it out of the lint run.

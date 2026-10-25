@@ -208,22 +208,39 @@ def _call_pytest(remaining, label):
 
 
 # Pylint's verdict on a module can depend on which modules it inferred
-# before, and its package expansion lists them in file-system order. Pass the
-# same files, from the same expansion, sorted by path components, so that
-# every machine lints them in one order. The list goes to Pylint inside the
-# child process, since 700-odd paths would pass Windows' command-line limit.
+# before, and its package expansion lists them in file-system order. Sort the
+# expansion by path components, so that every machine lints the files in one
+# order. Pylint still expands the package itself, with its configured ignore
+# options. Run.LinterClass is public, but the expansion method is private, so
+# fail rather than lint unsorted if a Pylint upgrade renames it.
 _PYLINT_IN_PATH_ORDER = """
 import pathlib
 import sys
 
 import pylint
-from astroid import modutils
+from pylint.lint import PyLinter, Run
+
+if not hasattr(PyLinter, "_expand_files"):
+    sys.exit("PyLinter._expand_files is gone, so the files cannot be sorted.")
+
+
+class SortedLinter(PyLinter):
+    def _expand_files(self, files_or_modules):
+        expanded = super()._expand_files(files_or_modules)
+        return dict(
+            sorted(
+                expanded.items(),
+                key=lambda item: pathlib.PurePath(item[1]["path"]).parts,
+            )
+        )
+
+
+class SortedRun(Run):
+    LinterClass = SortedLinter
+
 
 pylint.modify_sys_path()
-package, *arguments = sys.argv[1:]
-files = modutils.get_module_files(package, ["CVS"])
-files.sort(key=lambda path: pathlib.PurePath(path).parts)
-pylint.run_pylint([*files, *arguments])
+SortedRun(sys.argv[1:])
 """
 
 
@@ -243,7 +260,7 @@ def run_pylint(_, remaining):
         python_executable,
         "-c",
         _PYLINT_IN_PATH_ORDER,
-        os.path.relpath(LIBRARY_ROOT, working_directory_to_use),
+        "pymedphys",
         f"--rcfile={str(PYLINT_RC_FILE)}",
     ] + remaining
 
