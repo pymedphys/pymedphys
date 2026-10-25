@@ -207,6 +207,26 @@ def _call_pytest(remaining, label):
     sys.exit(retcode)
 
 
+# Pylint's verdict on a module can depend on which modules it inferred
+# before, and its package expansion lists them in file-system order. Pass the
+# same files, from the same expansion, sorted by path components, so that
+# every machine lints them in one order. The list goes to Pylint inside the
+# child process, since 700-odd paths would pass Windows' command-line limit.
+_PYLINT_IN_PATH_ORDER = """
+import pathlib
+import sys
+
+import pylint
+from astroid import modutils
+
+pylint.modify_sys_path()
+package, *arguments = sys.argv[1:]
+files = modutils.get_module_files(package, ["CVS"])
+files.sort(key=lambda path: pathlib.PurePath(path).parts)
+pylint.run_pylint([*files, *arguments])
+"""
+
+
 def run_pylint(_, remaining):
     original_cwd = os.getcwd()
 
@@ -221,9 +241,9 @@ def run_pylint(_, remaining):
     python_executable = pmp_test_utils.get_executable_even_when_embedded()
     command = [
         python_executable,
-        "-m",
-        "pylint",
-        "pymedphys",
+        "-c",
+        _PYLINT_IN_PATH_ORDER,
+        os.path.relpath(LIBRARY_ROOT, working_directory_to_use),
         f"--rcfile={str(PYLINT_RC_FILE)}",
     ] + remaining
 
