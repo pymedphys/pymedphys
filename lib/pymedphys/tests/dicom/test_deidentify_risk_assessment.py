@@ -34,6 +34,10 @@ from pymedphys._dicom.deidentify import (
     risk_assessment,
 )
 from pymedphys._dicom.deidentify.qc_attestation import AttestationRecord, Outcome
+from pymedphys._dicom.deidentify.pixel_region_rules import (
+    PixelRegionRules,
+    RuleKey,
+)
 from pymedphys._dicom.deidentify.qc_pack import (
     Disposition,
     InstanceEntry,
@@ -60,6 +64,7 @@ from pymedphys._dicom.deidentify.risk_assessment import (
     StatisticalGate,
     StatisticalReason,
 )
+from pymedphys._dicom.deidentify.text_detection import TextBox
 
 PACK = "A-" + "0123456789abcdef" * 2
 OTHER_PACK = "A-" + "fedcba9876543210" * 2
@@ -71,6 +76,9 @@ SENTINEL = "SENTINEL^Assessor"
 SOURCES = (bytes([1]) * 32, bytes([2]) * 32, bytes([3]) * 32, bytes([3]) * 32)
 SALT = "5a" * 32
 SERIES_DESCRIPTION = "(0008,103E)"
+# A region rule of an invented scanner: the top band of its images.
+RULE = RuleKey("1.2.840.10008.5.1.4.1.1.6.1", "Acme Sonics", "Echo 5", 480, 640)
+BAND = TextBox(0, 0, 40, 640)
 
 
 def _assessment(**changes):
@@ -124,6 +132,12 @@ def _descriptors(*decisions):
     return descriptors
 
 
+def _rules(*boxes):
+    rules = PixelRegionRules.empty()
+    rules.record(RULE, boxes or (BAND,))
+    return rules
+
+
 # The lists that the runs below applied, unless a test says otherwise: none,
 # as without Clean Descriptors.
 _NO_LISTS = object()
@@ -135,7 +149,7 @@ def _write_pack(tmp_path, name, instances=None, lists=_NO_LISTS):
     if instances is None:
         instances = _instances()
     if lists is _NO_LISTS:
-        lists = risk_assessment.bind_lists(None, None)
+        lists = risk_assessment.bind_lists(None, None, None)
     return qc_store.write_qc_pack(
         QcPack(PACK, instances, reviewed_lists=lists),
         tmp_path / name,
@@ -191,6 +205,7 @@ def _gate(record, **changes):
         "policy_sha256": risk_assessment.policy_digest(_report()),
         "reviewed_names": None,
         "reviewed_descriptors": None,
+        "pixel_region_rules": None,
         "subjects": 3,
     }
     run.update(changes)
@@ -211,7 +226,9 @@ def test_the_record_is_written_beside_the_pack_and_read_back(pack, report_file):
         "collection_sha256": risk_assessment.collection_digest(SOURCES),
         "policy_sha256": risk_assessment.policy_digest(_report()),
         "lists_salt": record.lists_salt,
-        "lists_sha256": risk_assessment.lists_digest(record.lists_salt, None, None),
+        "lists_sha256": risk_assessment.lists_digest(
+            record.lists_salt, None, None, None
+        ),
         "model": {
             "name": "Population uniqueness",
             "version": "2",
@@ -555,6 +572,7 @@ def test_the_gate_fails_for_other_lists(tmp_path, names, descriptors):
         lists=risk_assessment.bind_lists(
             _names(("Parotid L", ReviewedName(Review.KEEP))),
             _descriptors(("AX T1", ReviewedDescriptor(Review.KEEP))),
+            None,
         ),
     )
     listed = _report_file(
@@ -573,11 +591,35 @@ def test_the_gate_fails_for_other_lists(tmp_path, names, descriptors):
     assert gate.reason is StatisticalReason.OTHER_LISTS
 
 
+@pytest.mark.deid_requirement("MIDI-BP-01", "PS3.15-E.3.1-01")
+@pytest.mark.parametrize(
+    "rules",
+    [
+        # Another region in the same rule.
+        _rules(TextBox(0, 0, 48, 640)),
+        # A rule left out, or none given.
+        PixelRegionRules.empty(),
+        None,
+    ],
+)
+def test_the_gate_fails_for_other_region_rules(tmp_path, rules):
+    pack = _write_pack(
+        tmp_path, "ruled", lists=risk_assessment.bind_lists(None, None, _rules())
+    )
+    ruled = _report_file(tmp_path, pixel_region_rules="c" * 64)
+    _record(pack, ruled, _assessment())
+    record = risk_assessment.read_assessment(pack)
+    # The same rules, read again by another run under another key, pass.
+    assert _gate(record, pixel_region_rules=_rules().snapshot()).passed
+    gate = _gate(record, pixel_region_rules=rules)
+    assert gate.reason is StatisticalReason.OTHER_LISTS
+
+
 @pytest.mark.deid_requirement("MIDI-BP-01")
 def test_the_record_binds_the_lists_that_the_run_applied(tmp_path):
     applied = _names(("Parotid L", ReviewedName(Review.KEEP)))
     pack = _write_pack(
-        tmp_path, "listed", lists=risk_assessment.bind_lists(applied, None)
+        tmp_path, "listed", lists=risk_assessment.bind_lists(applied, None, None)
     )
     record = _record(
         pack, _report_file(tmp_path, reviewed_roi_names="d" * 64), _assessment()
@@ -585,11 +627,11 @@ def test_the_record_binds_the_lists_that_the_run_applied(tmp_path):
     # Nothing that whoever records the assessment gives can bind other lists:
     # the record takes the digest that the run recorded.
     assert record.lists_sha256 == risk_assessment.lists_digest(
-        record.lists_salt, applied, None
+        record.lists_salt, applied, None, None
     )
     edited = _names(("Parotid L", ReviewedName(Review.EMPTY)))
     assert record.lists_sha256 != risk_assessment.lists_digest(
-        record.lists_salt, edited, None
+        record.lists_salt, edited, None, None
     )
 
 
@@ -624,53 +666,62 @@ def test_a_pack_whose_lists_are_not_of_its_format_is_refused(pack, report_file, 
 
 def test_the_lists_are_bound_under_a_new_salt():
     names = _names(("Parotid L", ReviewedName(Review.KEEP)))
-    first, second = (risk_assessment.bind_lists(names, None) for _ in range(2))
+    first, second = (risk_assessment.bind_lists(names, None, None) for _ in range(2))
     assert isinstance(first, ListsDigest)
     assert first.salt != second.salt and first.sha256 != second.sha256
-    assert first.sha256 == risk_assessment.lists_digest(first.salt, names, None)
+    assert first.sha256 == risk_assessment.lists_digest(first.salt, names, None, None)
     assert repr(first) == "ListsDigest()"
     with pytest.raises(TypeError):
-        risk_assessment.bind_lists(None, names)
+        risk_assessment.bind_lists(None, names, None)
+    with pytest.raises(TypeError):
+        risk_assessment.bind_lists(None, None, names)
 
 
 def test_the_lists_digest_is_salted_and_tells_each_list_apart():
     names = _names(("Parotid L", ReviewedName(Review.KEEP)))
     descriptors = _descriptors(("AX T1", ReviewedDescriptor(Review.KEEP)))
-    digest = risk_assessment.lists_digest(SALT, names, descriptors)
+    rules = _rules()
+    digest = risk_assessment.lists_digest(SALT, names, descriptors, rules)
     expected = hmac.new(
         bytes.fromhex(SALT),
         json.dumps(
             [
                 hashlib.sha256(names.canonical_bytes()).hexdigest(),
                 hashlib.sha256(descriptors.canonical_bytes()).hexdigest(),
+                hashlib.sha256(rules.canonical_bytes()).hexdigest(),
             ],
             separators=(",", ":"),
         ).encode("ascii"),
         hashlib.sha256,
     ).hexdigest()
     assert digest == expected
-    assert digest != risk_assessment.lists_digest("a5" * 32, names, descriptors)
+    assert digest != risk_assessment.lists_digest("a5" * 32, names, descriptors, rules)
     digests = {
         risk_assessment.lists_digest(SALT, *lists)
         for lists in (
-            (None, None),
-            (ReviewedNames.empty(), None),
-            (None, ReviewedDescriptors.empty()),
-            (ReviewedNames.empty(), ReviewedDescriptors.empty()),
-            (names, None),
-            (None, descriptors),
+            (None, None, None),
+            (ReviewedNames.empty(), None, None),
+            (None, ReviewedDescriptors.empty(), None),
+            (None, None, PixelRegionRules.empty()),
+            (ReviewedNames.empty(), ReviewedDescriptors.empty(), None),
+            (names, None, None),
+            (None, descriptors, None),
+            (None, None, rules),
+            (names, descriptors, None),
         )
     }
-    assert len(digests) == 6 and digest not in digests
+    assert len(digests) == 9 and digest not in digests
     salt = risk_assessment.new_salt()
     assert len(salt) == 64 and salt != risk_assessment.new_salt()
     for bad in ("5A" * 32, "5a" * 31, None):
         with pytest.raises(RiskAssessmentError, match="salt"):
-            risk_assessment.lists_digest(bad, None, None)
+            risk_assessment.lists_digest(bad, None, None, None)
     with pytest.raises(TypeError):
-        risk_assessment.lists_digest(SALT, descriptors, None)
+        risk_assessment.lists_digest(SALT, descriptors, None, None)
     with pytest.raises(TypeError):
-        risk_assessment.lists_digest(SALT, None, names)
+        risk_assessment.lists_digest(SALT, None, names, None)
+    with pytest.raises(TypeError):
+        risk_assessment.lists_digest(SALT, None, None, names)
 
 
 def test_the_first_failure_is_given():
@@ -681,7 +732,7 @@ def test_the_first_failure_is_given():
         "b" * 64,
         "c" * 64,
         SALT,
-        risk_assessment.lists_digest(SALT, None, None),
+        risk_assessment.lists_digest(SALT, None, None, None),
         _assessment(subjects=2, maximum_risk=0.5),
     )
     run = {
@@ -689,6 +740,7 @@ def test_the_first_failure_is_given():
         "policy_sha256": "c" * 64,
         "reviewed_names": None,
         "reviewed_descriptors": None,
+        "pixel_region_rules": None,
         "subjects": 3,
     }
     assert (
@@ -767,6 +819,9 @@ def test_the_policy_digest_leaves_out_only_what_each_run_keys():
     assert plain == risk_assessment.policy_digest(
         _report(reviewed_roi_names="d" * 64, reviewed_descriptors="e" * 64)
     )
+    # So do the region rules' keyed digests, under each run's key, which
+    # the lists' own digest binds too.
+    assert plain == risk_assessment.policy_digest(_report(pixel_region_rules="c" * 64))
     document = _report()
     document["method"] = {**document["method"], "method_digest": "f" * 64}
     assert risk_assessment.policy_digest(document) == plain
@@ -966,7 +1021,7 @@ def test_a_record_naming_a_member_twice_is_refused(pack, report_file):
         {
             "lists_salt": SALT,
             "lists_sha256": risk_assessment.lists_digest(
-                SALT, ReviewedNames.empty(), None
+                SALT, ReviewedNames.empty(), None, None
             ),
         },
     ],
