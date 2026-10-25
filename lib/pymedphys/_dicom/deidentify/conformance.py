@@ -594,7 +594,7 @@ def _places(
     places = []
     for name in sorted(SUPPORTED_IODS):
         iod = tables.iods[name]
-        for path in dict.fromkeys(d.path for d in iod.definitions if d.tag == tag):
+        for path in iod.paths(tag):
             if not _removed_with_a_sequence(iod, path, sequence_action):
                 places.append(_place(iod, name, concrete, path, action))
     return tuple(places), elsewhere
