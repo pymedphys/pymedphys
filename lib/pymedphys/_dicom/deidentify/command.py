@@ -30,10 +30,11 @@ shows a source value or path, and the summary says how many were redacted.
 destination, the preset or custom option set (D-033), under Clean
 Descriptors what ROI Names and free-text descriptors are cleaned with, and,
 under Clean Pixel Data, the attested QC pack whose redaction verdicts apply
-and the custodian's region rules, from the command line's arguments. It
-builds the policy's transform for a new run-scoped key with
-:func:`build_transform`, with the text detector under Clean Pixel Data, and
-runs it with the release gate, the transform's release report, and the
+and the custodian's region rules, and, under Clean Recognizable Visual
+Features, the attested QC pack whose face verdicts apply, from the command
+line's arguments. It builds the policy's transform for a new run-scoped key
+with :func:`build_transform`, with the text detector under Clean Pixel Data,
+and runs it with the release gate, the transform's release report, and the
 reference graph's second pass under its key, for the ``pymedphys`` command
 to call once the engine is public; nothing registers it yet. No preset or
 option is enabled yet, so until one is, the command refuses to run.
@@ -53,12 +54,14 @@ Exit statuses:
   input was refused, sequestered, or held for review;
 - :data:`EXIT_USAGE`, 2: the arguments could not be parsed, as for any
   :mod:`argparse` command, though the message quotes none of them, or
-  they give ROI name or descriptor options without Clean Descriptors, or a
-  redaction review or region rules without Clean Pixel Data;
+  they give ROI name or descriptor options without Clean Descriptors, a
+  redaction review or region rules without Clean Pixel Data, or a face
+  review without Clean Recognizable Visual Features;
 - :data:`EXIT_NOT_RUN`, 3: the run could not start, because its preset or
-  option set is not enabled, or what it cleans ROI Names or descriptors
-  with, its text detector, redaction review, or region rules, or its
-  project key or profile store, cannot be used, among other
+  option set is not enabled, it has no face review under Clean
+  Recognizable Visual Features, or what it cleans ROI Names or descriptors
+  with, its text detector, redaction review, region rules, or face review,
+  or its project key or profile store, cannot be used, among other
   reasons, the first pass stopped it, or its QC pack or profile store could
   not be written, and nothing was published;
 - :data:`EXIT_STAGING_LEFT`, 4: the staging area could not be deleted, and
@@ -180,6 +183,10 @@ _PROFILES_UNSAVED = (
 _FACE_REVIEW_NEEDED = (
     "a run under Clean Recognizable Visual Features needs a face review: the QC "
     "pack of an earlier run of the same files, attested with face verdicts"
+)
+_FACE_REVIEW_OPTION = (
+    "error: --face-review applies only under Clean Recognizable Visual "
+    "Features: with --option clean_recognizable_visual_features"
 )
 _FACE_REVIEW_UNREAD = "the face review could not be read: {error}"
 _FACE_REVIEW_UNOPENED = (
@@ -528,6 +535,19 @@ def build_parser(
             "outside SOURCE, RELEASE, and the QC pack, whose regions are "
             "blacked out in every frame of a matching image beside the text "
             "detector's; by default, none"
+        ),
+    )
+    parser.add_argument(
+        "--face-review",
+        metavar="DIRECTORY",
+        help=(
+            "under Clean Recognizable Visual Features, which needs it, the QC "
+            "pack of an earlier run of the same files, attested with face "
+            "verdicts by python -m "
+            "pymedphys._dicom.deidentify.attestation_command; an image or RT "
+            "Structure Set is released with the option only where its series "
+            "was marked as showing no recognisable face and it is written as "
+            "the pack showed it, and every other one is held for review"
         ),
     )
     parser.add_argument(
@@ -936,10 +956,12 @@ def transform_for(  # pylint: disable = too-many-arguments
     ------
     TransformNotBuilt
         If the preset or option set is not enabled, ``safe_private_list``
-        does not fit it, or what ROI Names or descriptors are cleaned with,
-        the redaction review, the region rules, or the text detector cannot
-        be used, with a message that quotes nothing but the names of presets
-        and options, or a reason that names no path or value.
+        does not fit it, the policy selects Clean Recognizable Visual
+        Features and ``face_review`` is not given, or what ROI Names or
+        descriptors are cleaned with, the redaction review, the region
+        rules, the face review, or the text detector cannot be used, with a
+        message that quotes nothing but the names of presets and options,
+        or a reason that names no path or value.
     """
     try:
         selected = policy.select_policy(preset, options=options)
@@ -1007,8 +1029,9 @@ def face_review_applies(
     """Return whether the run's policy takes a face review.
 
     It applies under Clean Recognizable Visual Features: with a preset, or a
-    custom option set in ``options``, that selects it (D-033, D-046). No
-    preset selects it yet. Without either, the run's preset is ``basic``.
+    custom option set in ``options``, that selects it (D-033, D-046), and the
+    command line and the library refuse one given otherwise. No preset
+    selects it yet. Without either, the run's preset is ``basic``.
     """
     if options is not None:
         return policy.CLEAN_RECOGNIZABLE_VISUAL_FEATURES in options
@@ -1069,6 +1092,7 @@ def _built(
         region_rules=arguments.region_rules,
         safe_private_list=SafePrivateList(arguments.safe_private_list),
         profiles=profiles,
+        face_review=arguments.face_review,
     )
 
 
@@ -1135,6 +1159,11 @@ def main(
         arguments.preset, arguments.options
     ):
         _print(_PIXEL_DATA_OPTIONS, error_stream)
+        return EXIT_USAGE
+    if arguments.face_review is not None and not face_review_applies(
+        arguments.preset, arguments.options
+    ):
+        _print(_FACE_REVIEW_OPTION, error_stream)
         return EXIT_USAGE
     reporter = written_check = before_publish = None
     if transform is None:
