@@ -58,10 +58,9 @@ ADDED_IODS = (
     "Enhanced PET Image",
     "Legacy Converted Enhanced PET Image",
 )
-EARLIER_IODS = CT_AND_RT_IODS + ADDED_IODS
-# The five IODs of the target coverage that the maintainer added to the first
-# supported release on 25 October 2026, whose attributes were reviewed ahead
-# of supporting them, and those of the five that it supports so far.
+# The IODs of the target coverage whose attributes were reviewed ahead of
+# supporting them, against the CT, MR, PET, and RT IODs above, and those of
+# them that the first supported release now supports.
 TARGET_IODS = (
     "RT Beams Treatment Record",
     "RT Image",
@@ -69,8 +68,10 @@ TARGET_IODS = (
     "Deformable Spatial Registration",
     "Segmentation",
 )
-SUPPORTED_TARGET_IODS = ("RT Beams Treatment Record",)
-SUPPORTED_IODS = EARLIER_IODS + SUPPORTED_TARGET_IODS
+REGISTRATION_IODS = ("Spatial Registration", "Deformable Spatial Registration")
+SUPPORTED_TARGET_IODS = (*REGISTRATION_IODS, "RT Beams Treatment Record")
+REVIEWED_AGAINST = CT_AND_RT_IODS + ADDED_IODS
+SUPPORTED_IODS = REVIEWED_AGAINST + SUPPORTED_TARGET_IODS
 # The Radiation Dose SR IODs, which the maintainer added to the planned
 # coverage on 25 October 2026, whose text, UID, and date attributes are
 # reviewed ahead of supporting them.
@@ -341,10 +342,11 @@ def test_the_basic_profile_keeps_no_person_name():
 def test_every_text_attribute_a_supported_iod_uses_and_table_e1_1_omits_has_a_rule():
     omitted = _omitted_text()
 
-    # Checked by hand against the 2026d PS3.3, PS3.6, and PS3.15: 141 that the
-    # CT, MR, PET, and RT IODs use, and five operator-typed descriptions that
-    # only the RT Beams Treatment Record uses.
-    assert len(omitted) == 146
+    # Checked by hand against the 2026d PS3.3, PS3.6, and PS3.15; the
+    # registration IODs add Content Description and Frame of Reference
+    # Transformation Comment, and the RT Beams Treatment Record five
+    # operator-typed descriptions.
+    assert len(omitted) == 148
     assert omitted <= set(_rules())
     assert {"(0008,0100)", "(300A,00C2)", "(60xx,1500)"} <= omitted
 
@@ -359,7 +361,7 @@ def test_the_rules_for_omitted_text_fall_in_the_reviewed_groups():
 
     assert groups == {
         # Operator-typed labels and text.
-        ("X/Z/D", ((CLEAN_DESCRIPTORS, "C"),)): 67,
+        ("X/Z/D", ((CLEAN_DESCRIPTORS, "C"),)): 69,
         # Accessory and equipment identifiers.
         ("X/Z/D", ((DEVICE_IDENTITY, "K"),)): 24,
         # Coded and technical values, and De-identification Method.
@@ -445,7 +447,7 @@ def test_the_text_that_only_the_added_ct_mr_and_pet_iods_use_has_reviewed_rules(
 
 
 # The text attributes that the target IODs use and that neither Table E.1-1
-# nor the earlier IODs cover, by group, checked by hand against the 2026d
+# nor the supported IODs cover, by group, checked by hand against the 2026d
 # PS3.3.
 TARGET_OPERATOR_TEXT = {
     "(0062,0005)",  # Segment Label
@@ -465,7 +467,7 @@ TARGET_OPERATOR_TEXT = {
 TARGET_DEVICE_IDENTITY = {"(3002,0020)"}  # Radiation Machine Name
 TARGET_KEPT_TEXT = {"(0028,3004)"}  # Modality LUT Type
 TARGET_REMOVED_UNDER_EVERY_OPTION = {"(0062,0020)"}  # Tracking ID
-# The UID and temporal attributes that the target IODs use and the earlier
+# The UID and temporal attributes that the target IODs use and the supported
 # IODs do not, all listed in Table E.1-1, checked by hand against the 2026d
 # PS3.3 and PS3.15.
 TARGET_UIDS = {
@@ -499,7 +501,7 @@ def _used_by(names, vrs):
     }
 
 
-def test_the_target_iods_are_generated_and_only_the_treatment_record_is_supported():
+def test_the_target_iods_are_generated_and_only_the_record_and_registrations_supported():
     tables = iods.load_iod_tables()
 
     assert set(TARGET_IODS) <= set(tables.iods)
@@ -510,7 +512,9 @@ def test_the_target_iods_are_generated_and_only_the_treatment_record_is_supporte
 @pytest.mark.deid_requirement("MIDI-BP-05", "MIDI-BP-06", "MIDI-BP-11")
 def test_the_text_that_only_the_target_iods_use_has_reviewed_rules():
     listed = set(_table_e1_1())
-    target = _used_by(TARGET_IODS, TEXT_VRS) - _used_by(EARLIER_IODS, TEXT_VRS) - listed
+    target = (
+        _used_by(TARGET_IODS, TEXT_VRS) - _used_by(REVIEWED_AGAINST, TEXT_VRS) - listed
+    )
     rules = _rules()
 
     assert target == (
@@ -545,11 +549,11 @@ def test_every_uid_and_date_that_the_target_iods_use_has_a_role():
         assert isinstance(uids.role(tag), uid_roles.UIDRole), tag
     for tag in target_dates:
         assert isinstance(temporal.role(tag), temporal_roles.TemporalRole), tag
-    # Those that none of the earlier IODs uses are all listed in Table E.1-1:
-    # the UIDs are replaced as identifiers of instances, and the dates and
-    # times of treatment move with the subject's other dates.
-    assert target_uids - _used_by(EARLIER_IODS, {"UI"}) == TARGET_UIDS
-    assert target_dates - _used_by(EARLIER_IODS, TEMPORAL_VRS) == TARGET_DATES
+    # Those that none of the IODs reviewed against uses are all listed in
+    # Table E.1-1: the UIDs are replaced as identifiers of instances, and the
+    # dates and times of treatment move with the subject's other dates.
+    assert target_uids - _used_by(REVIEWED_AGAINST, {"UI"}) == TARGET_UIDS
+    assert target_dates - _used_by(REVIEWED_AGAINST, TEMPORAL_VRS) == TARGET_DATES
     for tag in TARGET_UIDS:
         assert listed[tag].basic_profile == "U", tag
         assert uids.role(tag) is uid_roles.UIDRole.INSTANCE, tag
@@ -559,7 +563,7 @@ def test_every_uid_and_date_that_the_target_iods_use_has_a_role():
 
 
 # The text attributes that the Radiation Dose SR IODs use and that neither the
-# earlier IODs nor the target IODs use, checked by hand against the 2026d
+# supported IODs nor the target IODs use, checked by hand against the 2026d
 # PS3.3 and PS3.15. Table E.1-1 lists three, all in SR Document General.
 RADIATION_DOSE_SR_LISTED_TEXT = {
     "(0040,2016)",  # Placer Order Number / Imaging Service Request
@@ -597,7 +601,7 @@ def test_the_radiation_dose_sr_iods_are_generated_and_not_yet_supported():
 @pytest.mark.deid_requirement("MIDI-BP-05", "MIDI-BP-06", "MIDI-BP-11")
 def test_the_text_that_only_the_radiation_dose_sr_iods_use_has_reviewed_rules():
     listed = _table_e1_1()
-    others = EARLIER_IODS + TARGET_IODS
+    others = SUPPORTED_IODS + TARGET_IODS
     added = _used_by(RADIATION_DOSE_SR_IODS, TEXT_VRS) - _used_by(others, TEXT_VRS)
     rules = _rules()
 
@@ -616,7 +620,7 @@ def test_the_text_that_only_the_radiation_dose_sr_iods_use_has_reviewed_rules():
 
 def test_every_uid_and_date_that_the_radiation_dose_sr_iods_use_has_a_role():
     listed = _table_e1_1()
-    others = EARLIER_IODS + TARGET_IODS
+    others = SUPPORTED_IODS + TARGET_IODS
     uids = uid_roles.load_uid_roles()
     temporal = temporal_roles.load_temporal_roles()
     dose_uids = _used_by(RADIATION_DOSE_SR_IODS, {"UI"})
@@ -702,7 +706,7 @@ def test_the_basic_profile_keeps_only_the_reviewed_coded_and_technical_text():
         for tag in _supported_text()
     }
 
-    assert len(basic) == 268
+    assert len(basic) == 270
     assert {tag for tag, action in basic.items() if action == "K"} == (
         KEPT_TEXT | ADDED_KEPT_TEXT
     )

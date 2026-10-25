@@ -192,7 +192,9 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "15-pet.dcm",
         "16-pet-enhanced.dcm",
         "17-pet-legacy-enhanced.dcm",
-        "18-rt-beams-record.dcm",
+        "18-registration.dcm",
+        "19-registration-deformable.dcm",
+        "20-rt-beams-record.dcm",
     ]
     assert [file.manifest.iod for file in corpus.files] == [
         "CT Image",
@@ -212,6 +214,8 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "Positron Emission Tomography Image",
         "Enhanced PET Image",
         "Legacy Converted Enhanced PET Image",
+        "Spatial Registration",
+        "Deformable Spatial Registration",
         "RT Beams Treatment Record",
     ]
     # Every IOD of the first supported release.
@@ -239,7 +243,11 @@ def test_every_attribute_of_table_e1_1_that_the_iod_defines_is_placed(corpus):
             if placement.kind is Kind.NOT_PLANTED:
                 assert placement.reason is not None
             elif placement.kind is Kind.SEQUENCE:
-                assert placement.reason in (None, Reason.NO_MARKER_CARRIER)
+                assert placement.reason in (
+                    None,
+                    Reason.NO_MARKER_CARRIER,
+                    Reason.KEPT_SEQUENCE,
+                )
             else:
                 assert placement.reason is None
 
@@ -475,7 +483,7 @@ def test_the_reference_graph_has_no_findings(corpus):
         "15-pet.dcm": "01-ct-1.dcm",
         "16-pet-enhanced.dcm": "15-pet.dcm",
         "17-pet-legacy-enhanced.dcm": "15-pet.dcm",
-        "18-rt-beams-record.dcm": "05-rtplan.dcm",
+        "20-rt-beams-record.dcm": "05-rtplan.dcm",
     }
     assert {
         (position(source), position(target)) for source, target in sources.items()
@@ -548,6 +556,7 @@ def test_the_structure_set_has_a_second_character_set(corpus):
 
 def test_sequences_hold_a_marker_unless_their_item_can_hold_none(corpus):
     without = set()
+    kept = set()
     for file in corpus.files:
         iod = iod_for_sop_class(file.manifest.sop_class)
         placed = file.manifest.placements
@@ -564,6 +573,9 @@ def test_sequences_hold_a_marker_unless_their_item_can_hold_none(corpus):
             ]
             if below:
                 assert sequence.reason is None, sequence.path
+                continue
+            if sequence.reason is Reason.KEPT_SEQUENCE:
+                kept.add(sequence.path.tag)
                 continue
             assert sequence.reason is Reason.NO_MARKER_CARRIER, sequence.path
             path = tuple(tag for tag, _ in inside)
@@ -588,6 +600,10 @@ def test_sequences_hold_a_marker_unless_their_item_can_hold_none(corpus):
         "(0008,1120)",
         "(0008,1140)",
     } <= without
+    # The Referenced Image Sequence that each registration requires in its
+    # Registration Sequence or Deformable Registration Sequence, which the
+    # Basic Profile keeps, replacing its UIDs.
+    assert kept == {"(0008,1140)"}
 
 
 def test_the_manifest_json_is_deterministic_and_matches_the_files(corpus):

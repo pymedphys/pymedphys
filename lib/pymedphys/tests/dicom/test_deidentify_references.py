@@ -108,6 +108,9 @@ OTHER_SEQUENCES = {
     "(0038,0100)",  # Pertinent Documents Sequence
     "(0040,A390)",  # HL7 Structured Document Reference Sequence
     "(0042,0013)",  # Source Instance Sequence
+    "(0062,0012)",  # Used Segments Sequence
+    "(0070,0314)",  # Used Fiducials Sequence
+    "(0070,0315)",  # Used RT Structure Set ROI Sequence
     "(0070,0404)",  # Referenced Spatial Registration Sequence
     "(3006,0016)",  # Contour Image Sequence
     "(3006,0018)",  # Predecessor Structure Set Sequence
@@ -138,6 +141,7 @@ NOT_FOLLOWED = {
     "(0040,E031)": "identifies a community of repositories",
     "(0044,0102)": "identifies an assertion within a plan",
     "(0044,0108)": "refers to an assertion within a plan",
+    "(0070,031A)": "refers to a fiducial within an instance",
     "(0070,031B)": "refers to a fiducial within an instance",
     "(0088,0140)": "identifies a file set",
     "(0400,0100)": "identifies a digital signature",
@@ -149,6 +153,7 @@ NOT_FOLLOWED = {
     "(3010,0015)": "refers to a conceptual volume, not an instance",
     # A later change follows frames of reference.
     "(0020,0052)": "identifies a frame of reference",
+    "(0064,0003)": "refers to a frame of reference",
     "(3006,0024)": "refers to a frame of reference",
 }
 

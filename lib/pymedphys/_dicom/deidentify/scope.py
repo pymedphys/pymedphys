@@ -14,11 +14,12 @@
 
 """Tell an instance the engine de-identifies from one it sequesters.
 
-The first supported release de-identifies instances of the CT, MR, and PET
-image IODs, including their Enhanced, Legacy Converted Enhanced, and colour
-variants, of MR Spectroscopy, and of the RT Structure Set, RT Plan, RT Dose,
-and RT Beams Treatment Record IODs, uncompressed or in a transfer syntax
-that encapsulates Pixel Data that pydicom's decoding plugins decode.
+The first supported release de-identifies instances of the CT, MR, and
+PET image IODs, including their Enhanced, Legacy Converted Enhanced, and
+colour variants, of MR Spectroscopy, of the RT Structure Set, RT Plan, RT
+Dose, and RT Beams Treatment Record IODs, and of the Spatial Registration
+and Deformable Spatial Registration IODs, uncompressed or in a transfer
+syntax that encapsulates Pixel Data that pydicom's decoding plugins decode.
 Supporting an IOD or a transfer syntax does not release every instance in
 it: a compressed instance is still sequestered where the plugin pinned to
 its transfer syntax is not installed, or where its frames or codestreams
@@ -68,6 +69,8 @@ SUPPORTED_IODS = frozenset(
         "RT Dose",
         "RT Plan",
         "RT Structure Set",
+        "Spatial Registration",
+        "Deformable Spatial Registration",
     }
 )
 # Every transfer syntax whose files the engine reads: Implicit VR Little
