@@ -426,6 +426,7 @@ decisions = ["D-001", "D-010", "D-047"]
 implementation = [
   "_dicom/deidentify/content_items.py",
   "_dicom/deidentify/structured_content.py",
+  "_dicom/deidentify/codes.py",
   "_dicom/deidentify/walker.py",
   "_dicom/deidentify/instance_transform.py",
   "_dicom/deidentify/conformance.py",
@@ -436,7 +437,8 @@ The engine applies the Clean Structured Content Option to a custom option set; n
 Structured Reports are sequestered (D-010), and no supported IOD defines Content Sequence or Waveform Annotation Sequence. Waveform Annotation Sequence takes its Basic Profile action; Content Sequence is cleaned wherever an IOD defines it, at any depth of its nested Content Sequences, with the root content item that holds it, so that Structured Reports are cleaned once a release supports them.
 Acquisition Context Sequence and Specimen Preparation Sequence are kept where the IOD defines them, and each content item is cleaned by its Value Type and concept name, as Table E.3.4-1 gives them, generated for the concept names that DICOM and SNOMED CT code (D-001).
 An item whose concept name the table does not list keeps its codes and numbers, and its other values take their own rules, as in any kept sequence.
-Where the table removes an item, where an item cannot be read as one Value Type and one concept name, or where its concept name is coded in a scheme whose rows the table does not hold, including the retired SNOMED designators, the whole sequence takes its Basic Profile action, since a single item is not removed on its own.
+A concept name coded by a retired SNOMED designator, SRT, SNM3, or 99SDM, is looked up as the SNOMED CT code that PS3.16 Table O-1 maps it to (D-001).
+Where the table removes an item, where an item cannot be read as one Value Type and one concept name, where its concept name is coded in a scheme whose rows the table does not hold, or where it is coded by a retired SNOMED designator with a code that Table O-1 does not map, the whole sequence takes its Basic Profile action, since a single item is not removed on its own.
 '''
 
 [[requirement]]
