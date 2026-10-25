@@ -749,7 +749,7 @@ def release_report() -> list[str]:
         "SR IOD.",
         "",
         "An instance outside the supported scope whose IOD the pinned tables "
-        "define, such as a nuclear medicine image or a spatial registration, "
+        "define, such as a nuclear medicine image or an ultrasound image, "
         "is planned and edited, where its source can be read, only so that its "
         "values are collected for its subject's search; it is never written. "
         "An instance that the first pass read but whose values were not "
