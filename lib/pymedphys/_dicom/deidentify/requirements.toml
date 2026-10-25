@@ -766,9 +766,11 @@ implementation = [
   "_dicom/deidentify/option_kept.py",
   "_dicom/deidentify/readiness.py",
   "_dicom/deidentify/release_gate.py",
+  "_dicom/deidentify/release_report.py",
   "_dicom/deidentify/residual_exemptions.py",
   "_dicom/deidentify/residuals.py",
   "_dicom/deidentify/risk_assessment.py",
+  "_dicom/deidentify/run_report.py",
 ]
 note = '''
 The Basic Profile's actions remove or replace identifiers, and reviewed rules act on the text attributes, dates, and times that Table E.1-1 omits (D-022, D-023).
@@ -778,6 +780,7 @@ The release gate runs that search itself, for exactly the values collected acros
 It withholds any output file that still holds a source person name, UID, date, datetime, or direct identifier, or a source value outside its data set, or whose collection of person names, UIDs, dates, datetimes, direct identifiers, or sequences was incomplete, and sends other text findings and other incomplete collection, including of private values, to confidential review; a search that finds nothing does not on its own release a file (D-027).
 A text finding is not sent to review where it is in a kept CS value made only of its attribute's terms in the pinned PS3.3 (for Body Part Examined, PS3.16 Annex L), in a code item of a scheme that PS3.16 Table 8-1 lists, or in Manufacturer, Manufacturer's Model Name, or Software Versions with a private or equipment source, or where its source is a private creator that PS3.15 Table E.3.10-1 lists, and the QC pack still lists it (D-032).
 Nor is a finding inside a value that a selected option keeps, where its source is a private data element or an attribute of that option, or where it equals a whole kept date or time, and in that case a date finding does not withhold the file either (D-042).
+The release report counts the released instances with each finding that these exemptions keep from review, by exemption, source attribute, and the attribute it was found in, naming no value (D-032).
 An external statistical assessment of a run's collection is recorded beside its QC pack, bound to the pack, to the source files it records, to the policy, and to the reviewed lists that the run applied, by the salted digest that the run records in its pack, and the statistical gate passes only for the same files, policy, and lists, the run's number of distinct subjects, and a maximum per-subject re-identification probability within the threshold of 0.09 or 0.05 that the assessment states (D-017, D-053).
 A deterministic synthetic collection, with an instance of each IOD of the first supported release, plants a conspicuous marker wherever its IODs define an attribute of Table E.1-1, down to a nesting depth of 4 items, and records each deeper place as not planted; Responsible Person and Responsible Organization, whose removal sequesters an instance (D-020), are planted in one instance only, so the others can be released, and the Enhanced PET Image's Radiopharmaceutical Start DateTime, whose removal sequesters it, in none.
 The run's instance transform removes and replaces identifiers in each data set and gives the gate its coverage, including each value read as ISO 8859-1, and the run acts on the gate's decision.

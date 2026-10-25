@@ -47,7 +47,8 @@ from pymedphys._dicom.deidentify import (
     standard,
     walker,
 )
-from pymedphys._dicom.deidentify.file_layout import ElementPath
+from pymedphys._dicom.deidentify.file_layout import ElementPath, Location, Region
+from pymedphys._dicom.deidentify.residual_exemptions import Exemption
 from pymedphys._nomenclature import tg263
 
 # The method section's fields, as the design's method digest decision lists
@@ -211,10 +212,11 @@ def test_the_document_has_the_sections_and_fields_the_design_lists(basic):
         "reference_findings",
         "pixel_risks",
         "search_coverage",
+        "exempted_findings",
         "source_gaps",
         "structural_checks",
     ]
-    assert document["format"] == "pymedphys-deid-release-report/27"
+    assert document["format"] == "pymedphys-deid-release-report/28"
     assert list(document["policy"]) == POLICY_FIELDS
     assert list(document["method"]) == METHOD_FIELDS
     assert list(document["runtime"]) == RUNTIME_FIELDS
@@ -659,6 +661,113 @@ def test_coverage_needs_records_by_instance(records):
     assert "SENTINEL" not in str(raised.value)
 
 
+def _finding(source, found_in):
+    """A text finding of ``source``'s value in the data set element ``found_in``."""
+    return residuals.Finding(
+        source,
+        residuals.ValueKind.TEXT,
+        residuals.Form.VALUE,
+        "ascii",
+        Location(Region.DATA_SET, found_in, "LO"),
+        200,
+    )
+
+
+# The release report counts the released instances with a finding that an
+# exemption kept from review, by exemption, source attribute, and the attribute
+# it was found in, naming no value; the QC pack lists each finding.
+@pytest.mark.deid_requirement("MIDI-BP-18")
+def test_exempted_findings_are_counted_by_exemption_attribute_and_place(basic):
+    private = ElementPath((), "(0009,1012)")
+    manufacturer = ElementPath((), "(0008,0070)")
+    model = ElementPath((), "(0008,1090)")
+    meaning = ElementPath((("(0008,1032)", 0),), "(0008,0104)")
+    exempted = release_report.exempted_findings(
+        [
+            [
+                (_finding(private, manufacturer), Exemption.EQUIPMENT),
+                (_finding(private, model), Exemption.EQUIPMENT),
+                # Two items of one sequence are one place.
+                (
+                    _finding(ElementPath((), "(0008,1030)"), meaning),
+                    Exemption.STANDARD_CODE,
+                ),
+                (
+                    _finding(
+                        ElementPath((), "(0008,1030)"),
+                        ElementPath((("(0008,1032)", 1),), "(0008,0104)"),
+                    ),
+                    Exemption.STANDARD_CODE,
+                ),
+            ],
+            # The same place in another instance is another instance.
+            [(_finding(private, manufacturer), Exemption.EQUIPMENT)],
+            [],
+        ]
+    )
+    report = release_report.release_report(
+        basic, vocabulary=None, reviewed_roi_names=None, exempted=exempted
+    )
+
+    assert release_report.report_document(report)["exempted_findings"] == [
+        {
+            "exemption": "equipment",
+            "attribute": "(0009,1012)",
+            "found_in": "(0008,0070)",
+            "count": 2,
+        },
+        {
+            "exemption": "equipment",
+            "attribute": "(0009,1012)",
+            "found_in": "(0008,1090)",
+            "count": 1,
+        },
+        {
+            "exemption": "standard-code",
+            "attribute": "(0008,1030)",
+            "found_in": "(0008,1032) > (0008,0104)",
+            "count": 1,
+        },
+    ]
+
+
+@pytest.mark.parametrize(
+    "exempted",
+    [
+        (
+            _finding(ElementPath((), "(0009,1012)"), ElementPath((), "(0008,0070)")),
+            Exemption.EQUIPMENT,
+        ),
+        ["SENTINEL"],
+        [
+            (
+                _finding(
+                    ElementPath((), "(0009,1012)"), ElementPath((), "(0008,0070)")
+                ),
+                "SENTINEL",
+            )
+        ],
+        [("SENTINEL", Exemption.EQUIPMENT)],
+    ],
+    ids=["not-by-instance", "not-a-pair", "not-an-exemption", "not-a-finding"],
+)
+def test_exempted_findings_need_findings_and_exemptions_by_instance(exempted):
+    with pytest.raises(TypeError) as raised:
+        release_report.exempted_findings([exempted])
+
+    assert "SENTINEL" not in str(raised.value)
+
+
+def test_an_exempted_finding_outside_a_data_set_element_is_refused():
+    finding = dataclasses.replace(
+        _finding(ElementPath((), "(0009,1012)"), ElementPath((), "(0008,0070)")),
+        location=Location(Region.TRAILING),
+    )
+
+    with pytest.raises(ValueError, match="data set element"):
+        release_report.exempted_findings([[(finding, Exemption.EQUIPMENT)]])
+
+
 class _Text(str):
     pass
 
@@ -816,6 +925,62 @@ def _instance(*causes, label="S-0001"):
             ),
             "count",
         ),
+        (lambda r: _with(r, exempted_findings=("SENTINEL",)), "exempted_findings"),
+        (
+            lambda r: _with(
+                r,
+                exempted_findings=(
+                    release_report.ExemptedFindings(
+                        "SENTINEL", "(0009,1012)", "(0008,0070)", 1
+                    ),
+                ),
+            ),
+            "exemption",
+        ),
+        (
+            lambda r: _with(
+                r,
+                exempted_findings=(
+                    release_report.ExemptedFindings(
+                        "equipment", "SENTINEL^Margaret", "(0008,0070)", 1
+                    ),
+                ),
+            ),
+            "attribute",
+        ),
+        (
+            lambda r: _with(
+                r,
+                exempted_findings=(
+                    release_report.ExemptedFindings(
+                        "equipment", "(0009,1012)", "/SENTINEL/path", 1
+                    ),
+                ),
+            ),
+            "found_in",
+        ),
+        (
+            lambda r: _with(
+                r,
+                exempted_findings=(
+                    release_report.ExemptedFindings(
+                        "equipment", "(0009,1012)", "(0008,0070)", 0
+                    ),
+                ),
+            ),
+            "count",
+        ),
+        (
+            lambda r: _with(
+                r,
+                exempted_findings=(
+                    release_report.ExemptedFindings(
+                        "equipment", "(0009,1012)", "(0008,0070)", True
+                    ),
+                ),
+            ),
+            "count",
+        ),
     ],
     ids=[
         "label",
@@ -839,6 +1004,12 @@ def _instance(*causes, label="S-0001"):
         "coverage-reason",
         "zero-count",
         "boolean-count",
+        "not-exempted-findings",
+        "exempted-exemption",
+        "exempted-attribute",
+        "exempted-found-in",
+        "exempted-zero-count",
+        "exempted-boolean-count",
     ],
 )
 def test_a_run_section_with_a_field_that_could_hold_a_value_is_refused(
