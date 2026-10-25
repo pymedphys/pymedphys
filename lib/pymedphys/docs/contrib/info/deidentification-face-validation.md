@@ -40,7 +40,7 @@ Each measure is counted in fixed bins, and no case is named, so the summary give
 
 ## Reading the results
 
-- A globe error of more than a few millimetres, or `eyes-disagree-with-rois`, means that the finder took something else for a globe, or that the masks are not where the image shows the eyes; a run given those eyes as ROIs would hold the series.
+- A globe-centre error of more than a few millimetres warrants checking the finder and the reference masks. A run given those eyes as ROIs holds the series for `eyes-disagree-with-rois` when an eye point lies more than 25 mm from both found globe centres.
 - A height above the inferior limit below 0 means that part of an eye lies below the block's axial plane, which the block keeps.
 - The front of each eye, `Eye_AR` and `Eye_AL`, should be written as air in every defaced series, and the back, `Eye_PR` and `Eye_PL`, only in part, since the block keeps what lies behind its plane 5 mm behind the globes' centres. Organs behind that plane, or below the block, such as the brainstem, the parotid glands, and the lips, should have none written.
 - The margin, the 30 mm above the higher globe's centre from which the brain is kept, and the 25 mm for an eye ROI are placeholders (D-050). The counts bear on the margin and the 25 mm, without validating either; changing a setting is a decision of its own.
