@@ -771,15 +771,15 @@ class InstanceTransform:
 
     Attributes
     ----------
+    method_digest : str
+        The method digest that the markers and the release report record
+        (:func:`~.method_digest.method_digest`).
     review_queue : ReviewQueue
         The distinct ROI Names that the run's instances held for review,
         for the confidential QC material; empty without ``cleaning``.
     reporter : ~pymedphys._dicom.deidentify.run_report.ReleaseReporter
         The release report of a run with this transform, under its policy
         and vocabulary, for :func:`~pymedphys._dicom.deidentify.run.run`.
-    method_digest : str
-        The method digest that the markers and the release report record
-        (:func:`~.method_digest.method_digest`).
 
     Notes
     -----
