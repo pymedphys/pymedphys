@@ -16,15 +16,37 @@
 
 from pymedphys._imports import pytest
 
+from pymedphys._dicom.deidentify import iods, scope
 from pymedphys._dicom.deidentify.common_instance_reference import (
+    SEQUENCES,
     is_common_instance_reference,
     is_instance_reference,
 )
 from pymedphys._dicom.deidentify.file_layout import ElementPath
 
+MODULE = "Common Instance Reference"
+# The supported IODs that make the module mandatory, from the 2026d PS3.3
+# Tables A.39.1-1 and A.39.2-1.
+MANDATORY = {"Spatial Registration", "Deformable Spatial Registration"}
+
 
 def _path(*steps):
     return ElementPath(tuple((tag, 0) for tag in steps[:-1]), steps[-1])
+
+
+def test_every_supported_iod_includes_the_module_and_its_two_conditional_sequences():
+    # Where an IOD makes the module mandatory, it still holds neither
+    # sequence once both conditions fail, since both are Type 1C.
+    tables = iods.load_iod_tables()
+    for name in scope.SUPPORTED_IODS:
+        iod = tables.iods[name]
+        (usage,) = {m.usage for m in iod.modules if m.module == MODULE}
+        assert usage == ("M" if name in MANDATORY else "U"), name
+        assert {
+            (d.tag, d.type)
+            for d in iod.definitions
+            if d.tag in SEQUENCES and not d.path
+        } == {(tag, "1C") for tag in SEQUENCES}, name
 
 
 @pytest.mark.parametrize("tag", ["(0008,1115)", "(0008,1200)"])
