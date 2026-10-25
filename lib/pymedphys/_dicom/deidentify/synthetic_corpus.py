@@ -20,12 +20,17 @@ fictitious patient and study, with one Frame of Reference: three CT Image
 slices, an RT Structure Set that references the CT series and slices, an RT
 Plan that references the structure set and the dose, an RT Dose that
 references the plan, a second RT Dose of the plan for review (below), and
-one instance of each of the other ten IODs, each in a series of its own.
+one instance of each of the other twelve IODs, each in a series of its own.
 The MR Image and PET Image instances reference the first CT slice, and each
 enhanced, legacy converted enhanced, or MR Spectroscopy instance references
 the single-frame instance of its modality: the first CT slice, the MR
-Image, or the PET Image. It is the input for validating each preset end to
-end: once the engine has
+Image, or the PET Image. The Spatial Registration registers the MR Image to
+the Frame of Reference by an identity matrix, and the Deformable Spatial
+Registration the PET Image by a two by two by one deformation grid; each
+names its image in Referenced Image Sequence (0008,1140), whose item the
+Basic Profile keeps, and the Spatial Registration's Used RT Structure Set
+ROI Sequence (0070,0315) names the structure set. It is the input for
+validating each preset end to end: once the engine has
 written the collection, the residual search
 (:mod:`~pymedphys._dicom.deidentify.residuals`) should find none of the
 markers that had to be removed or replaced.
@@ -113,7 +118,7 @@ Radiopharmaceutical Information Sequence (0054,0016) of an Enhanced PET
 Image. Planted in every file, the first two would sequester every
 instance, and no preset could release any of the collection; planted in one,
 that instance checks sequestration, :data:`REVIEW_FILE` checks review, and
-the other fifteen check each preset's output. Radiopharmaceutical Start
+the other seventeen check each preset's output. Radiopharmaceutical Start
 DateTime, which CT Image does not define, is planted in no file, so the
 Enhanced PET instance, which lacks an attribute of Type 1, is released and
 its other markers are checked; an instance that conforms to the IOD is
@@ -147,7 +152,7 @@ Manufacturer's Model Name (0008,1090), which Table E.1-1 does not list and
 the Basic Profile keeps, a copy of the RT Plan's RT Plan Label marker
 (:attr:`PlacementKind.REVIEW_COPY`), so the residual search finds a source
 value of another instance in its output and sends it to review. The third
-CT slice remains sequestered; the other fifteen files stay releasable.
+CT slice remains sequestered; the other seventeen files stay releasable.
 
 **Manifest.** :class:`CorpusManifest` records, for each file, each
 placement: its element path, VR, values, kind, the Table E.1-1 row it
@@ -796,12 +801,13 @@ def build_corpus() -> SyntheticCorpus:
     Returns
     -------
     SyntheticCorpus
-        Seventeen files: three CT slices; the RT Structure Set, RT Plan, RT
+        Nineteen files: three CT slices; the RT Structure Set, RT Plan, RT
         Dose, and the RT Dose for review; the Enhanced CT Image and Legacy
         Converted Enhanced CT Image; the MR Image, Enhanced MR Image,
         Enhanced MR Color Image, Legacy Converted Enhanced MR Image, and MR
         Spectroscopy; and the PET Image, Enhanced PET Image, and Legacy
-        Converted Enhanced PET Image. Two builds give the same bytes and the
+        Converted Enhanced PET Image; and the Spatial Registration and
+        Deformable Spatial Registration. Two builds give the same bytes and the
         same manifest.
     """
     markers = _Markers()
