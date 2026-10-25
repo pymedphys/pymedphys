@@ -184,8 +184,8 @@ def test_a_record_holds_each_series_number_with_the_series_it_numbers(
 def test_a_record_leaves_out_a_series_number_that_is_not_one_number():
     dataset = _structure_set("20230601", "20230512")
     dataset[SERIES_NUMBER] = _integer_string(b"7\\8 ")
-    dataset.SourceSeriesInformationSequence[0][SERIES_NUMBER] = _integer_string(
-        b"SERIES"
+    dataset[SOURCE_SERIES_INFORMATION_SEQUENCE].value[0][SERIES_NUMBER] = (
+        _integer_string(b"SERIES")
     )
 
     record = synthetic.record(dataset)
