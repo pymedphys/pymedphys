@@ -451,3 +451,154 @@ def test_the_library_makes_the_text_detector_under_the_option(tmp_path, detector
     assert [outcome.status for outcome in result.result.outcomes] == [
         run.Status.HELD_FOR_REVIEW
     ]
+
+
+def _library(tmp_path, run_name, **options):
+    directory = tmp_path / run_name
+    directory.mkdir()
+    return api.deidentify(
+        tmp_path / "source",
+        directory / "release",
+        qc_pack=directory / "qc",
+        **options,
+    )
+
+
+@pytest.mark.usefixtures("enabled", "detectors")
+def test_the_library_uses_the_custodians_region_rules(tmp_path, built):
+    _write(tmp_path / "source", _images(1))
+    path = tmp_path / "custodian" / "rules.json"
+    _store(path)
+
+    result = _library(
+        tmp_path, "first", options=[CLEAN_PIXEL_DATA], region_rules=str(path)
+    )
+
+    assert [outcome.status for outcome in result.result.outcomes] == [
+        run.Status.HELD_FOR_REVIEW
+    ]
+    ((given,),) = [[each["pixel_region_rules"]] for each in built]
+    assert given.get(RULE) == (BAND,)
+    document = json.loads(
+        (tmp_path / "first" / "qc" / qc_store.PACK_FILE).read_text("utf-8")
+    )
+    (redaction,) = document["redactions"]
+    assert redaction["rule_boxes"] == [[4, 0, 6, 8]]
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.1-01", "PS3.15-E.3.1-02")
+@pytest.mark.usefixtures("enabled", "detectors")
+def test_the_library_given_the_attested_pack_releases_the_reviewed_images(
+    tmp_path,
+):
+    _write(tmp_path / "source", _images())
+    first = _library(tmp_path, "first", options=[CLEAN_PIXEL_DATA])
+    assert not first.released
+    pack = tmp_path / "first" / "qc"
+    positions = {name: entry["position"] for name, entry in _instances(pack).items()}
+    _attest(
+        pack,
+        (
+            RedactionVerdict(positions["0.dcm"], Redaction.ACCEPTED),
+            RedactionVerdict(positions["1.dcm"], Redaction.REJECTED),
+        ),
+    )
+
+    second = _library(
+        tmp_path, "second", options=[CLEAN_PIXEL_DATA], redaction_review=pack
+    )
+
+    assert second.exit_status == command.EXIT_WITHHELD
+    assert str(pack) not in "\n".join(second.summary())
+    entries = _instances(tmp_path / "second" / "qc")
+    assert entries["0.dcm"]["disposition"] == run.Status.RELEASED.value
+    assert entries["1.dcm"]["disposition"] == run.Status.SEQUESTERED.value
+    written = pydicom.dcmread(
+        tmp_path / "second" / "release" / entries["0.dcm"]["output"]
+    )
+    frame = _frame(start=100)
+    pixels = pydicom.pixels.pixel_array(written)
+    assert np.all(pixels[_inside(frame.shape)] == frame.min())
+    assert written.BurnedInAnnotation == "NO"
+
+
+@pytest.mark.usefixtures("enabled")
+@pytest.mark.parametrize("problem", ["missing rules", "malformed rules", "no pack"])
+def test_pixel_data_inputs_the_library_cannot_use_raise_naming_no_path(
+    tmp_path, detectors, built, problem
+):
+    where = tmp_path / "custodian" / SENTINEL
+    where.mkdir(parents=True)
+    if problem == "missing rules":
+        given = {"region_rules": where / "missing.json"}
+    elif problem == "malformed rules":
+        (where / "rules.json").write_text(SENTINEL, "utf-8")
+        given = {"region_rules": where / "rules.json"}
+    else:
+        given = {"redaction_review": where}
+
+    with pytest.raises(api.DeidentifyError) as raised:
+        api.deidentify(
+            tmp_path / "source",
+            tmp_path / "release",
+            qc_pack=tmp_path / "qc",
+            options=[CLEAN_PIXEL_DATA],
+            **given,
+        )
+
+    message = str(raised.value)
+    assert message.startswith(
+        "the redaction review" if problem == "no pack" else "the region rules"
+    )
+    assert SENTINEL not in message and str(tmp_path) not in message
+    assert raised.value.__cause__ is None
+    assert (detectors, built) == ([], [])
+    assert not (tmp_path / "release").exists() and not (tmp_path / "qc").exists()
+
+
+@pytest.mark.parametrize("given", ["redaction_review", "region_rules"])
+@pytest.mark.parametrize(
+    "policy_arguments",
+    [{}, {"preset": "basic-clean-descriptors"}, {"options": [DEVICE_IDENTITY]}],
+    ids=["default", "preset", "options"],
+)
+def test_pixel_data_inputs_without_the_option_are_refused_by_the_library(
+    tmp_path, monkeypatch, detectors, given, policy_arguments
+):
+    monkeypatch.setattr(
+        policy, "ENABLED_PRESETS", frozenset({"basic", "basic-clean-descriptors"})
+    )
+    monkeypatch.setattr(policy, "ENABLED_OPTIONS", frozenset({DEVICE_IDENTITY}))
+
+    with pytest.raises(ValueError, match="clean_pixel_data") as raised:
+        api.deidentify(
+            tmp_path / "source",
+            tmp_path / "release",
+            qc_pack=tmp_path / "qc",
+            **policy_arguments,
+            **{given: tmp_path / SENTINEL},
+        )
+
+    assert SENTINEL not in str(raised.value)
+    assert detectors == []
+    assert not any(tmp_path.iterdir())
+
+
+def test_the_library_refuses_pixel_data_inputs_when_the_option_is_not_enabled(
+    tmp_path, detectors
+):
+    path = tmp_path / "custodian" / "rules.json"
+    _store(path)
+
+    with pytest.raises(api.DeidentifyError, match="not enabled"):
+        api.deidentify(
+            tmp_path / "source",
+            tmp_path / "release",
+            qc_pack=tmp_path / "qc",
+            options=[CLEAN_PIXEL_DATA],
+            region_rules=path,
+            redaction_review=tmp_path / "missing",
+        )
+
+    assert detectors == []
+    assert sorted(each.name for each in tmp_path.iterdir()) == ["custodian"]
