@@ -42,7 +42,7 @@ import re
 import types
 import zlib
 from collections.abc import Callable, Mapping
-from typing import BinaryIO, Protocol
+from typing import IO, Protocol
 
 from pymedphys._imports import numpy as np
 
@@ -221,7 +221,8 @@ class Volume:
             The slice, row, and column of each voxel along the last axis.
         """
         steps = np.asarray(indices, dtype=float)[..., ::-1]
-        return self.origin + steps @ self.axes
+        positions: np.ndarray = self.origin + steps @ self.axes
+        return positions
 
     def indices(self, points: np.ndarray) -> np.ndarray:
         """The slice, row, and column, not rounded, at each point.
@@ -237,7 +238,7 @@ class Volume:
         return steps[:, ::-1].reshape(offsets.shape)
 
 
-def read_nrrd(stream: BinaryIO, maximum_bytes: int = MAXIMUM_BYTES) -> Volume:
+def read_nrrd(stream: IO[bytes], maximum_bytes: int = MAXIMUM_BYTES) -> Volume:
     """Read an NRRD volume from a stream, positioned at its start.
 
     Parameters
@@ -296,7 +297,7 @@ def read_nrrd(stream: BinaryIO, maximum_bytes: int = MAXIMUM_BYTES) -> Volume:
     )
 
 
-def _header(stream: BinaryIO) -> tuple[dict[str, str], dict[str, str]]:
+def _header(stream: IO[bytes]) -> tuple[dict[str, str], dict[str, str]]:
     """Return a header's fields, by name without case or spaces, and its
     key/value pairs, leaving the stream at the data."""
     magic = stream.readline(_MAXIMUM_LINE)
@@ -396,28 +397,28 @@ def _vector(text: str) -> np.ndarray:
     return np.array(values)
 
 
-def _raw(stream: BinaryIO, size: int) -> bytearray:
+def _raw(stream: IO[bytes], size: int) -> bytearray:
     """Exactly ``size`` bytes, the rest of the stream."""
     data = bytearray(size)
-    view = memoryview(data)
     filled = 0
     while filled < size:
-        count = stream.readinto(view[filled:])
-        if not count:
+        chunk = stream.read(min(_CHUNK, size - filled))
+        if not chunk:
             raise NrrdRefused(NrrdProblem.DATA_LENGTH)
-        filled += count
+        data[filled : filled + len(chunk)] = chunk
+        filled += len(chunk)
     if stream.read(1):
         raise NrrdRefused(NrrdProblem.DATA_LENGTH)
     return data
 
 
-def _gunzipped(stream: BinaryIO, size: int) -> bytearray:
+def _gunzipped(stream: IO[bytes], size: int) -> bytearray:
     """Exactly ``size`` bytes, the rest of the stream decompressed from one
     or more gzip members, or zlib streams."""
     return _decompressed(stream, size, lambda: zlib.decompressobj(zlib.MAX_WBITS | 32))
 
 
-def _bunzipped(stream: BinaryIO, size: int) -> bytearray:
+def _bunzipped(stream: IO[bytes], size: int) -> bytearray:
     """Exactly ``size`` bytes, the rest of the stream decompressed from one
     or more bzip2 streams."""
     return _decompressed(stream, size, bz2.BZ2Decompressor)
@@ -436,7 +437,7 @@ class _Decompressor(Protocol):
 
 
 def _decompressed(
-    stream: BinaryIO, size: int, start: Callable[[], _Decompressor]
+    stream: IO[bytes], size: int, start: Callable[[], _Decompressor]
 ) -> bytearray:
     """Exactly ``size`` bytes, the rest of the stream decompressed from one
     or more streams, one after another, each begun by ``start``."""
