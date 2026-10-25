@@ -618,9 +618,9 @@ class _Series:
         dataset.RescaleIntercept = "0"
         dataset.RescaleSlope = "1"
         meta = pydicom.dataset.FileMetaDataset()
-        meta.MediaStorageSOPClassUID = CT_IMAGE_STORAGE
-        meta.MediaStorageSOPInstanceUID = instance
-        meta.TransferSyntaxUID = EXPLICIT_VR_LITTLE_ENDIAN
+        meta.MediaStorageSOPClassUID = pydicom.uid.UID(CT_IMAGE_STORAGE)
+        meta.MediaStorageSOPInstanceUID = pydicom.uid.UID(instance)
+        meta.TransferSyntaxUID = pydicom.uid.UID(EXPLICIT_VR_LITTLE_ENDIAN)
         dataset.file_meta = meta
         return dataset
 

@@ -68,12 +68,19 @@ class Grid:
         """The x, y, and z of each voxel, by slice, row, and column."""
         k, j, i = np.indices(self.shape)
         axes = np.asarray(self.axes, dtype=float)
-        return (
+        points: np.ndarray = (
             np.asarray(self.origin, dtype=float)
             + i[..., np.newaxis] * axes[0]
             + j[..., np.newaxis] * axes[1]
             + k[..., np.newaxis] * axes[2]
         )
+        return points
+
+
+def _triple(values: Sequence[float] | np.ndarray) -> tuple[float, float, float]:
+    """Three coordinates, as a grid's origin or one of its axes."""
+    x, y, z = (float(v) for v in values)
+    return x, y, z
 
 
 def grid_of(scan: head.Scan) -> Grid:
@@ -82,10 +89,8 @@ def grid_of(scan: head.Scan) -> Grid:
     down_column = np.array(scan.orientation[3:]) * scan.spacing[0]
     across = np.array(scan.positions[1]) - np.array(scan.positions[0])
     return Grid(
-        tuple(float(v) for v in scan.positions[0]),
-        tuple(
-            tuple(float(v) for v in each) for each in (along_row, down_column, across)
-        ),
+        _triple(scan.positions[0]),
+        tuple(_triple(each) for each in (along_row, down_column, across)),
         (len(scan.positions), *scan.shape),
     )
 
@@ -168,8 +173,9 @@ def nrrd_file(
         f"space origin: ({','.join(repr(float(v)) for v in origin)})",
         *(f"{key}:={value}" for key, value in (key_values or {}).items()),
     ]
-    order = "<" if endian == "little" else ">"
-    data = values.astype(values.dtype.newbyteorder(order)).tobytes()
+    data = values.astype(
+        values.dtype.newbyteorder("<" if endian == "little" else ">")
+    ).tobytes()
     encoded = {
         "raw": lambda: data,
         "gzip": lambda: gzip.compress(data),
@@ -197,7 +203,7 @@ def cropped(mask: np.ndarray, grid: Grid) -> tuple[np.ndarray, Grid]:
     axes = np.asarray(grid.axes)
     origin = np.asarray(grid.origin) + low[::-1] @ axes
     box = mask[low[0] : high[0], low[1] : high[1], low[2] : high[2]]
-    return box, Grid(tuple(float(v) for v in origin), grid.axes, box.shape)
+    return box, Grid(_triple(origin), grid.axes, box.shape)
 
 
 def finer(mask: np.ndarray, grid: Grid) -> tuple[np.ndarray, Grid]:
@@ -207,9 +213,7 @@ def finer(mask: np.ndarray, grid: Grid) -> tuple[np.ndarray, Grid]:
     origin = np.asarray(grid.origin) - axes.sum(axis=0) / 2
     fine = mask.repeat(2, axis=0).repeat(2, axis=1).repeat(2, axis=2)
     return fine, Grid(
-        tuple(float(v) for v in origin),
-        tuple(tuple(float(v) for v in each) for each in axes),
-        fine.shape,
+        _triple(origin), tuple(_triple(each) for each in axes), fine.shape
     )
 
 
@@ -220,8 +224,8 @@ def coronal(values: np.ndarray, grid: Grid) -> tuple[np.ndarray, Grid]:
     top = np.asarray(grid.origin) + (grid.shape[0] - 1) * axes[2]
     stored = np.transpose(values, (1, 0, 2))[:, ::-1, :]
     return np.ascontiguousarray(stored), Grid(
-        tuple(float(v) for v in top),
-        tuple(tuple(float(v) for v in each) for each in (axes[0], -axes[2], axes[1])),
+        _triple(top),
+        tuple(_triple(each) for each in (axes[0], -axes[2], axes[1])),
         stored.shape,
     )
 

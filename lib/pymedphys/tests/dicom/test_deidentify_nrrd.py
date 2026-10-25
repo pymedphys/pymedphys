@@ -45,7 +45,7 @@ def _read(data: bytes, **options) -> nrrd.Volume:
 def _header(**changes: str | None) -> list[str]:
     """The header lines of an NRRD file of _VALUES, with fields changed, or
     left out where None."""
-    fields = {
+    fields: dict[str, str | None] = {
         "type": "short",
         "dimension": "3",
         "space": "left-posterior-superior",
