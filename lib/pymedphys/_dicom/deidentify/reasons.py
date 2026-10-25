@@ -33,6 +33,7 @@ import dataclasses
 import enum
 
 from .file_layout import ElementPath
+from .reviewed_descriptors import Held
 from .roi_names import Reason
 
 
@@ -163,6 +164,23 @@ class HeldRoiName:
 
     path: ElementPath
     reason: Reason
+
+
+@dataclasses.dataclass(frozen=True)
+class HeldDescriptor:
+    """A descriptor value held for review, by its element and reason, never its value.
+
+    Descriptor cleaning holds one where the reviewed descriptors list does not
+    clean a value of an attribute that another option's cleaner left to it,
+    such as Allergies (0010,2110) under Retain Patient Characteristics (D-038).
+    """
+
+    path: ElementPath
+    reason: Held
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.reason, Held):
+            raise TypeError("a held descriptor value needs its reason")
 
 
 @dataclasses.dataclass(frozen=True)

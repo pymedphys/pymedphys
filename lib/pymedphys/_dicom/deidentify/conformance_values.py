@@ -217,6 +217,12 @@ REVIEW_CODES = frozenset(
 HOLDING_STAGES: Mapping[str, str] = types.MappingProxyType(
     {
         "roi-names": "descriptor cleaning sent one of its ROI Names to review",
+        "descriptors": (
+            "descriptor cleaning sent to review a value of an attribute that "
+            "another option keeps and the custodian's reviewed descriptors "
+            "list decides on, such as Allergies (0010,2110) under Retain "
+            "Patient Characteristics"
+        ),
         "pixel-data": (
             "Clean Pixel Data blacked out the text that it found in the "
             "instance's pixel data, or found none, and review must look for "
