@@ -9,8 +9,9 @@
 # operator-typed text is kept merely because the table does not list it, and
 # so does every one that an IOD of the target coverage uses but not yet the
 # supported scope: RT Beams Treatment Record, RT Image, Spatial Registration,
-# Deformable Spatial Registration, and Segmentation, reviewed ahead of
-# supporting them. So does every date, time, and datetime (DA, DT, or TM)
+# Deformable Spatial Registration, Segmentation, and the four Radiation Dose
+# SR IODs, reviewed ahead of supporting them. So does every date, time, and
+# datetime (DA, DT, or TM)
 # attribute that Table E.1-1 omits, besides the role that the temporal roles
 # file gives it. Other attributes that the table omits have a rule only where
 # one has been reviewed, such as the two URLs below that name coding concepts
@@ -251,6 +252,13 @@ options = { clean_descriptors = "C" }
 note = "The free text of a TEXT content item, which can hold anything a person writes, including names and dates. It is removed by Type, and cleaned as a descriptor under Clean Descriptors."
 
 [[attribute]]
+tag = "(0040,A492)"
+keyword = "CompletionFlagDescription"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "An explanation of a structured report's Completion Flag, which PS3.3 does not constrain further, so the person or system that completes the report can type anything in it, including a name or a date. It is removed by Type, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
 tag = "(0044,0106)"
 keyword = "AssertionComments"
 action = "X/Z/D"
@@ -333,6 +341,13 @@ keyword = "ContentDescription"
 action = "X/Z/D"
 options = { clean_descriptors = "C" }
 note = "A user-defined description of the content of an instance, which PS3.3 says carries descriptive identifying text for human readers. It is removed by Type, which empties it where it is Type 2 and replaces it with a dummy value where it is Type 1, and cleaned as a descriptor under Clean Descriptors, as Table E.1-1 does for User Content Label."
+
+[[attribute]]
+tag = "(0072,006F)"
+keyword = "SelectorUCValue"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "The text of the cells of a TABLE content item, such as one in an Enhanced X-Ray Radiation Dose SR, or, outside one, the value of the UC attribute that Selector Attribute names; either can hold anything a person writes. It is removed by Type, which replaces it with a dummy value where it is required, and cleaned as a descriptor under Clean Descriptors, as Table E.1-1 does for Selector LO, LT, SH, ST, and UT Value, which it gives D, and C under Clean Descriptors."
 
 [[attribute]]
 tag = "(0100,0424)"
