@@ -197,6 +197,7 @@ def deidentify_directory(
     reporter: run_report.Reporter | None = None,
     written_check: run.WrittenCheck | None = None,
     before_publish: Callable[[], object] | None = None,
+    summary: Callable[[run.RunResult, RedactionCounts], Sequence[str]] | None = None,
     stdout: TextIO | None = None,
     stderr: TextIO | None = None,
 ) -> int:
@@ -233,6 +234,10 @@ def deidentify_directory(
         :func:`profile_saver`'s, which raises a
         :class:`~pymedphys._dicom.deidentify.profiles.ProfileError` that
         names nothing if the store cannot be saved.
+    summary : callable, optional
+        What gives the lines of the summary of a run that published its
+        release, from its result and the counts of redacted diagnostics,
+        such as the pilot command's; by default, :func:`summary_lines`.
     stdout, stderr : text file, optional
         Where to print the summary, and the reason the run failed or left
         its staging area behind. By default, :data:`sys.stdout` and
@@ -276,7 +281,8 @@ def deidentify_directory(
     # The warning comes first, so that nothing printed after it can lose it.
     if not result.staging_removed:
         _print(_STAGING_LEFT.format(staging=staging), stderr)
-    _print("\n".join(summary_lines(result, counts)), stdout)
+    lines = (summary_lines if summary is None else summary)(result, counts)
+    _print("\n".join(lines), stdout)
     return exit_status(result)
 
 
@@ -578,6 +584,7 @@ def build_transform(
     safe_private_list: SafePrivateList = SafePrivateList.REVIEWED,
     profiles: ProfileStore | None = None,
     face_review: FaceReview | None = None,
+    unvalidated_policy: bool = False,
 ) -> instance_transform.InstanceTransform:
     """Return the run's transform under ``preset``, or ``options``, and ``key``.
 
@@ -614,11 +621,17 @@ def build_transform(
         The face verdicts of an earlier run's attested QC pack, which a
         policy with Clean Recognizable Visual Features needs and no other
         policy takes (D-046).
+    unvalidated_policy : bool, optional
+        Whether a preset or option set that is not enabled is used, for a
+        validation run such as the pilot command's, as
+        :class:`~pymedphys._dicom.deidentify.instance_transform.InstanceTransform`
+        takes it; by default, it is refused.
 
     Raises
     ------
     PolicyError
-        If the preset or option set is not enabled, or ``cleaning``,
+        If the preset or option set is not enabled, unless
+        ``unvalidated_policy`` is true, or ``cleaning``,
         ``finder``, ``redaction_review``, ``pixel_region_rules``, or
         ``safe_private_list`` does not fit it, with a message that quotes
         nothing but the names of presets and options. So too if
@@ -626,7 +639,7 @@ def build_transform(
         or left out with it.
     """
     return instance_transform.InstanceTransform(
-        policy.select_policy(preset, options=options),
+        _policy(preset, options, unvalidated_policy),
         key,
         cleaning=cleaning,
         finder=finder,
@@ -635,7 +648,29 @@ def build_transform(
         safe_private_list=safe_private_list,
         profiles=profiles,
         face_review=face_review,
+        unvalidated_policy=unvalidated_policy,
     )
+
+
+def _policy(
+    preset: str | None, options: Collection[str] | None, unvalidated: bool
+) -> policy.Policy:
+    """Return the policy of ``preset`` or ``options``, enabled unless ``unvalidated``.
+
+    As :func:`~pymedphys._dicom.deidentify.policy.select_policy` gives it,
+    or, for a validation run, composed whether it is enabled or not.
+    """
+    if not unvalidated:
+        return policy.select_policy(preset, options=options)
+    if options is None:
+        return policy.compose_policy(
+            policy.DEFAULT_PRESET if preset is None else preset
+        )
+    if preset is not None:
+        raise policy.PolicyError(
+            "a policy is that of a preset or of a custom option set, not both"
+        )
+    return policy.compose_custom_policy(options)
 
 
 def _protected(
@@ -899,12 +934,15 @@ def transform_for(  # pylint: disable = too-many-arguments
     safe_private_list: SafePrivateList = SafePrivateList.REVIEWED,
     profiles: ProfileStore | None = None,
     face_review: str | os.PathLike[str] | None = None,
+    unvalidated_policy: bool = False,
 ) -> instance_transform.InstanceTransform:
     """Return :func:`build_transform`'s transform for a run's options.
 
     The command line and the library build a run's transform here, so that
     both load the same things in the same order. The preset, or the custom
-    option set in ``options`` (D-033), is checked before anything is loaded;
+    option set in ``options`` (D-033), is checked before anything is loaded,
+    and refused unless it is enabled or ``unvalidated_policy`` is true, as
+    :func:`build_transform` takes it, for the pilot command's validation run;
     under Clean Descriptors, ROI Names are cleaned with the pinned TG-263
     edition, from ``tg263_spreadsheet`` or PyMedPhys's cached download, and
     the custodian's ``reviewed_names`` list, which must exist and lie
@@ -941,7 +979,7 @@ def transform_for(  # pylint: disable = too-many-arguments
         and options, or a reason that names no path or value.
     """
     try:
-        selected = policy.select_policy(preset, options=options)
+        selected = _policy(preset, options, unvalidated_policy)
     except policy.PolicyError as error:
         raise TransformNotBuilt(str(error)) from None
     if (
@@ -995,6 +1033,7 @@ def transform_for(  # pylint: disable = too-many-arguments
             safe_private_list=safe_private_list,
             profiles=profiles,
             face_review=review,
+            unvalidated_policy=unvalidated_policy,
         )
     except policy.PolicyError as error:
         raise TransformNotBuilt(str(error)) from None
