@@ -317,6 +317,7 @@ note = '''
 Text that a text finder finds in Pixel Data is blacked out, whatever it says, and every instance cleaned is held for review (D-037).
 Reviewed region rules, kept by the custodian and keyed by SOP Class UID, Manufacturer, Manufacturer's Model Name, Rows, and Columns, add rectangles that are blacked out in every frame of a matching image beside the finder's regions; the instance is still held for review, the QC pack records which regions rules gave, and the rules' keyed digest is an input to the method digest (D-024, D-037).
 Compressed Pixel Data is decoded first, in the isolated decoding child for the native decoders, and its frames are written uncompressed, in Explicit VR Little Endian, as decoded, with or without a region, so that the QC pack previews the samples that a release writes (D-037).
+In native Pixel Data, the bit plane of an overlay that an overlay group without Overlay Data places above High Bit is cleared in the same write, and its group removed, so the instance is cleaned rather than sequestered as uncleanable-pixel-data (D-037).
 A later run of the same files, given the attested QC pack, blacks out the regions that the reviewer accepted, with any that the reviewer added, without the finder, and releases the instance with the option's code; for compressed Pixel Data, only where its frames decode to the SHA-256 that the pack records, and otherwise the instance is held again. An instance that the reviewer rejected is sequestered (D-048).
 '''
 
@@ -395,12 +396,14 @@ implementation = [
   "_dicom/deidentify/clean_graphics.py",
   "_dicom/deidentify/element_rules.py",
   "_dicom/deidentify/conformance.py",
+  "_dicom/deidentify/pixel_cleaning.py",
 ]
 note = '''
 The engine applies the Clean Graphics Option to a custom option set; no preset selects it (D-041).
 No cleaner of graphics exists yet, so each of the four rows that Table E.1-1 gives C under the option takes its Basic Profile action: Curve Data, Overlay Data, and Overlay Comments are removed, Overlay Data with its overlay group where the IOD's Overlay Plane Module is user-optional, and Graphic Annotation Sequence takes D, which removes it from every supported IOD.
 Every instance written under the option claims it, since E.3.3 specifies what the option removes and Table E.1-1 gives the minimum actions, as for Clean Descriptors (D-009).
-An instance with an overlay group that has no Overlay Data, whose overlay may lie in unused bits of Pixel Data, which the engine does not change, is sequestered under the option as overlay-in-pixel-data.
+An overlay group that has no Overlay Data may place its overlay in unused bits of Pixel Data; under the option, that bit plane is cleared above High Bit in native Pixel Data, in the same write as Clean Pixel Data's redaction, the written Pixel Data is checked to differ from the source in nothing else, and the overlay's group is removed, so the instance is released with the option's code (D-041).
+An instance whose overlay cannot be so cleared, such as one in compressed Pixel Data or within Bits Stored, is sequestered under the option as overlay-in-pixel-data.
 The conformance statement gives each row its Basic Profile action and why.
 '''
 
