@@ -311,6 +311,58 @@ def test_a_run_that_cannot_start_names_its_directories_by_placeholder(
     assert not temporary.exists()
 
 
+class _Broken(io.StringIO):
+    def write(self, s):
+        raise BrokenPipeError
+
+
+def test_a_failing_error_stream_still_deletes_the_temporary_directory(
+    tmp_path, temporary
+):
+    source = _source(tmp_path)
+    release = tmp_path / "release"
+    release.mkdir()
+
+    with pytest.raises(BrokenPipeError):
+        pilot_command.main(
+            [str(source), "--preset", "basic", "--release", str(release)],
+            stdout=io.StringIO(),
+            stderr=_Broken(),
+        )
+
+    assert not temporary.exists()
+
+
+def test_a_qc_pack_given_with_a_tilde_is_named_by_placeholder(tmp_path, monkeypatch):
+    home = tmp_path / "home"
+    home.mkdir()
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("USERPROFILE", str(home))
+    source = _source(tmp_path)
+
+    def refused(*_):
+        raise OSError("refused")
+
+    # The release cannot be published, and its QC pack cannot be withdrawn.
+    monkeypatch.setattr(run.os, "rename", refused)
+    monkeypatch.setattr(run.qc_store, "withdraw_qc_pack", lambda *_: False)
+
+    status, out, err = _pilot(
+        source,
+        "--preset",
+        "basic",
+        "--release",
+        tmp_path / "release",
+        "--qc-pack",
+        f"~/{SENTINEL}",
+    )
+
+    assert status == pilot_command.EXIT_NOT_RUN
+    assert "the QC pack in QC-PACK could not be removed" in err
+    assert SENTINEL not in out + err
+    assert str(home) not in out + err
+
+
 def test_a_temporary_directory_left_behind_is_named_so_it_can_be_deleted(
     tmp_path, temporary, monkeypatch
 ):

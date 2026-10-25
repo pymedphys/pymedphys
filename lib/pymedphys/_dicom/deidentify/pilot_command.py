@@ -295,16 +295,34 @@ def _masked(text: str, places: Mapping[str, Path | None]) -> str:
     """Name each of ``places`` in ``text`` by its placeholder alone."""
     forms: dict[str, str] = {}
     for placeholder, place in places.items():
-        if place is None:
-            continue
-        # A run's messages give its directories absolute, or resolved.
-        for form in (place.absolute(), place.resolve()):
-            forms.setdefault(str(form), placeholder)
+        if place is not None:
+            for form in _spellings(place):
+                forms.setdefault(form, placeholder)
     # The longest first, so that a directory inside another is named as
     # itself, not by its parent's placeholder and the rest of its path.
     for form in sorted(forms, key=len, reverse=True):
         text = text.replace(form, forms[form])
     return text
+
+
+def _spellings(place: Path) -> set[str]:
+    """Return the spellings of ``place`` that a run's messages can give.
+
+    A run gives its directories absolute or resolved, and the QC store
+    gives the QC destination with ``~`` expanded, then resolved.
+    """
+    spellings = set()
+    for spelling in (
+        place.absolute,
+        place.resolve,
+        lambda: place.expanduser().absolute(),
+        lambda: place.expanduser().resolve(),
+    ):
+        try:
+            spellings.add(str(spelling()))
+        except (OSError, RuntimeError):  # RuntimeError: no home, or a loop
+            continue
+    return spellings
 
 
 def _policy_name(arguments: argparse.Namespace) -> str:
@@ -415,8 +433,10 @@ def main(
     try:
         status = _pilot(arguments, release, qc_pack, stdout, errors)
     finally:
-        _print_errors(_masked(errors.getvalue(), places), stderr)
+        # Deleted first, so that no failure to mask or print a message
+        # leaves the temporary directory behind.
         removed = work is None or _removed(work)
+        _print_errors(_masked(errors.getvalue(), places), stderr)
     if not removed:
         _print(_TEMPORARY_LEFT.format(work=work), stderr)
         return EXIT_STAGING_LEFT
