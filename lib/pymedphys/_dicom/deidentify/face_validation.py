@@ -103,7 +103,7 @@ from .face_blocks import CtDefacer, find_face_blocks
 from .references import InstanceRecord
 from .source import EXPLICIT_VR_LITTLE_ENDIAN
 
-FORMAT = "pymedphys-deid-face-validation/2"
+FORMAT = "pymedphys-deid-face-validation/3"
 CT_IMAGE_STORAGE = "1.2.840.10008.5.1.4.1.1.2"
 # Hounsfield units at or below which a voxel counts as air, for the check
 # that a volume's values are in Hounsfield units, and the share of voxels
@@ -185,6 +185,13 @@ DEPTH = Bins("mm", (0.0, 2.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 15
 SHARE = Bins("share", (0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0))
 HEAD_MARGIN = Bins("share", (-1.0, -0.4, -0.2, 0.0, 0.2, 0.3, 0.4, 0.5, 0.6, 0.8))
 OTHER_PAIRS = Bins("pairs", (0, 1, 2, 3))
+# Beyond each ball of a pair, along the line of its front test.
+DEPTH_TO_AIR = Bins(
+    "mm",
+    (0.0, 2.0, 4.0, 6.0, 8.0, 10.0, 12.0, 15.0, 20.0, 25.0, 30.0, 40.0, 50.0),
+    below=True,
+)
+FAT_BEFORE_AIR = Bins("mm", (0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 8.0, 10.0, 15.0, 20.0))
 # Millimetres from an eye's centroid within which a kept ball is taken for
 # that eye's globe, and a ball of another pair is counted as at an eye.
 _EYE_BALL = 5.0
@@ -306,9 +313,9 @@ class EyeMeasures:
         in millimetres; None where none was.
     status : str
         That ball's, where it lies within 5 mm: ``"kept"``,
-        ``"not-surrounded"`` where its surround test failed,
-        ``"sphere-beyond-volume"``, or ``"within-a-kept-ball"`` where it
-        was not tested; otherwise ``"none-within-5-mm"``.
+        ``"not-surrounded"`` where its surround test failed, or
+        ``"within-a-kept-ball"`` where it was not tested; otherwise
+        ``"none-within-5-mm"``.
     outside, best_half : float or None
         That ball's two shares of its surround test, where it lies within
         5 mm and they were measured.
@@ -347,6 +354,9 @@ class PairMeasures:
     lateral, superior : tuple of bool
         Whether there is bone lateral to, and superior to, the ball at the
         right eye, then at the left.
+    passes : bool
+        Whether the pair passes every test of a pair, each ball lying just
+        under the skin among them.
     behind, in_front : float
         The shares of the regions behind and in front of the pair that
         tissue fills, as the head's test measures them.
@@ -357,12 +367,46 @@ class PairMeasures:
     side_by_side: bool
     lateral: tuple[bool, bool]
     superior: tuple[bool, bool]
+    passes: bool
     behind: float
     in_front: float
     cranium_above: bool
 
     def __repr__(self) -> str:
         return "PairMeasures()"
+
+
+@dataclasses.dataclass(frozen=True, repr=False)
+class FrontMeasures:
+    """The finder's test that each ball of a pair lies just under the skin,
+    for a pair that passes its other tests of a pair, for :func:`summarise`
+    alone; its ``repr`` shows nothing of it.
+
+    Attributes
+    ----------
+    place : str
+        ``"eyes"`` for the pair of kept balls at the reference eyes;
+        otherwise where its balls lie (:func:`_place`).
+    depth, fat : tuple of float
+        For each ball, the depth to air and the length through values below
+        the soft tissue before it, along the line towards the patient's
+        anterior (:class:`~.defacing.Front`), in millimetres.
+    bone : tuple of bool
+        For each ball, whether bone lies on that line before air.
+    side : str
+        ``"in-front"`` where both balls are open to air in front,
+        ``"behind"`` where both are behind and not in front, otherwise
+        ``"neither"``, as the pair then fails the test.
+    """
+
+    place: str
+    depth: tuple[float, float]
+    fat: tuple[float, float]
+    bone: tuple[bool, bool]
+    side: str
+
+    def __repr__(self) -> str:
+        return "FrontMeasures()"
 
 
 @dataclasses.dataclass(frozen=True, repr=False)
@@ -388,6 +432,9 @@ class FinderMeasures:
     other_pairs : tuple of str
         Where the balls of each other pair that passed the pair's tests
         lie (:func:`_place`).
+    fronts : tuple of FrontMeasures
+        The front test of each pair that passed the pair's other tests,
+        the pair at the eyes among them.
     shells : tuple of tuple
         For each kept ball, ``"eye"`` where it is the kept ball within
         5 mm of an eye, otherwise ``"other"``, and the share of the points
@@ -401,6 +448,7 @@ class FinderMeasures:
     eyes: tuple[EyeMeasures, EyeMeasures]
     pair: PairMeasures | None
     other_pairs: tuple[str, ...]
+    fronts: tuple[FrontMeasures, ...]
     shells: tuple[tuple[str, Mapping[str, float]], ...]
 
     def __repr__(self) -> str:
@@ -810,15 +858,26 @@ def _finder_measures(
     if right is not None and left is not None and right != left:
         pair = _pair_measures(inspection, right, left)
     eye_pair = {right, left}
-    other_pairs = tuple(
-        " + ".join(
+
+    def place(test: defacing.PairTest) -> str:
+        if {test.right, test.left} == eye_pair:
+            return "eyes"
+        return " + ".join(
             sorted(
                 _place(np.asarray(balls[index].centre), centroids)
                 for index in (test.right, test.left)
             )
         )
+
+    other_pairs = tuple(
+        place(test)
         for test in inspection.pairs
         if test.eyes and {test.right, test.left} != eye_pair
+    )
+    fronts = tuple(
+        _front_measures(test, place(test))
+        for test in inspection.pairs
+        if test.in_orbits
     )
     shells = []
     for index in kept:
@@ -833,6 +892,7 @@ def _finder_measures(
         eyes=(sides[0], sides[1]),
         pair=pair,
         other_pairs=other_pairs,
+        fronts=fronts,
         shells=tuple(shells),
     )
 
@@ -853,8 +913,6 @@ def _eye_measures(
         outside, best_half = ball.outside, ball.best_half
         if ball.centre is None:
             status = "within-a-kept-ball"
-        elif ball.outside is None:
-            status = "sphere-beyond-volume"
         else:
             status = "kept" if ball.kept else "not-surrounded"
     depth = inspection.depth_near(centroid, _EYE_BALL)
@@ -889,9 +947,28 @@ def _pair_measures(
         side_by_side=test.side_by_side,
         lateral=(test.lateral[order[0]], test.lateral[order[1]]),
         superior=(test.superior[order[0]], test.superior[order[1]]),
+        passes=test.eyes,
         behind=behind,
         in_front=in_front,
         cranium_above=above > below,
+    )
+
+
+def _front_measures(test: defacing.PairTest, place: str) -> FrontMeasures:
+    """The front test of a pair, whose balls lie at ``place``."""
+    if all(each.open for each in test.front):
+        side = "in-front"
+    elif all(each.open for each in test.back):
+        side = "behind"
+    else:
+        side = "neither"
+    right, left = test.front
+    return FrontMeasures(
+        place=place,
+        depth=(right.depth, left.depth),
+        fat=(right.fat, left.fat),
+        bone=(right.bone, left.bone),
+        side=side,
     )
 
 
@@ -1101,11 +1178,7 @@ def _finder_summary(measured: Sequence[CaseMeasures]) -> dict[str, Any]:
             "side_by_side": paired(lambda pair: [_yes(pair.side_by_side)]),
             "bone_lateral": paired(lambda pair: [_sides(pair.lateral)]),
             "bone_superior": paired(lambda pair: [_sides(pair.superior)]),
-            "passes": paired(
-                lambda pair: [
-                    _yes(pair.side_by_side and all(pair.lateral + pair.superior))
-                ]
-            ),
+            "passes": paired(lambda pair: [_yes(pair.passes)]),
             "head_behind": pair_binned(SHARE, lambda pair: [pair.behind]),
             "head_in_front": pair_binned(SHARE, lambda pair: [pair.in_front]),
             "head_margin": pair_binned(
@@ -1115,6 +1188,14 @@ def _finder_summary(measured: Sequence[CaseMeasures]) -> dict[str, Any]:
         },
         "other_pairs": binned(OTHER_PAIRS, lambda finder: [len(finder.other_pairs)]),
         "other_pair_places": coded(lambda finder: finder.other_pairs),
+        "front": {
+            kind: _front_summary(
+                kind,
+                binned,
+                coded,
+            )
+            for kind in ("eyes", "other")
+        },
         "shells": {
             kind: {
                 tissue: binned(
@@ -1128,6 +1209,46 @@ def _finder_summary(measured: Sequence[CaseMeasures]) -> dict[str, Any]:
             for kind in ("eye", "other")
         },
     }
+
+
+def _front_summary(
+    kind: str,
+    binned: Callable[
+        [Bins, Callable[[FinderMeasures], Iterable[float | None]]], dict[str, Any]
+    ],
+    coded: Callable[[Callable[[FinderMeasures], Iterable[str]]], dict[str, Any]],
+) -> dict[str, Any]:
+    """The front tests of the pairs of one kind, ``"eyes"`` or ``"other"``,
+    counted by each case's outcome with the summary's ``binned`` and
+    ``coded``."""
+
+    def fronts(finder: FinderMeasures) -> list[FrontMeasures]:
+        return [front for front in finder.fronts if _kind(front) == kind]
+
+    return {
+        "pairs": binned(OTHER_PAIRS, lambda finder: [len(fronts(finder))]),
+        "places": coded(lambda finder: [front.place for front in fronts(finder)]),
+        "side": coded(lambda finder: [front.side for front in fronts(finder)]),
+        "depth": binned(
+            DEPTH_TO_AIR,
+            lambda finder: [depth for front in fronts(finder) for depth in front.depth],
+        ),
+        "fat": binned(
+            FAT_BEFORE_AIR,
+            lambda finder: [fat for front in fronts(finder) for fat in front.fat],
+        ),
+        "bone": coded(
+            lambda finder: [
+                _yes(bone) for front in fronts(finder) for bone in front.bone
+            ]
+        ),
+    }
+
+
+def _kind(front: FrontMeasures) -> str:
+    """``"eyes"`` for the pair at the reference eyes, otherwise
+    ``"other"``."""
+    return "eyes" if front.place == "eyes" else "other"
 
 
 def _sides(found: tuple[bool, ...]) -> str:
@@ -1190,6 +1311,8 @@ def _settings() -> dict[str, Any]:
         "globe_diameter_mm": list(defacing.GLOBE_DIAMETER),
         "globe_separation_mm": list(defacing.GLOBE_SEPARATION),
         "maximum_turn_degrees": defacing.MAXIMUM_TURN,
+        "front_reach_mm": defacing.FRONT_REACH,
+        "front_fat_mm": defacing.FRONT_FAT,
         "eye_reach_mm": face_blocks.EYE_REACH,
         "cavity_floor_mm": face_blocks.CAVITY_FLOOR,
     }
