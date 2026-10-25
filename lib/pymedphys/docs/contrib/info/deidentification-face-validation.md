@@ -82,7 +82,7 @@ The same engine code can be checked on DICOM files that you may process, such as
 
 Reading the results:
 
-- `eyes-disagree-with-rois`, or a globe error of more than a few millimetres, means that the finder took something else for a globe or that an eye ROI is not where the image shows the eye; a run holds the series.
+- A run holds a series for `eyes-disagree-with-rois` when a point of an eye ROI lies more than 25 mm from both globes found, or cannot be placed: the finder took something else for a globe, or the eye ROI is not where the image shows the eye. A globe error of more than a few millimetres warrants checking the finder and the eye ROI, but does not itself hold the series.
 - A refused series, such as `no-eyes`, that holds an eye ROI is a series that a planner could find the eyes in and the finder could not: a cost in yield, since a run leaves it undefaced for the face review.
 - Targets that reach the block, and their clearances, show how often a run would hold a head and neck series for its targets.
 - Dose fractions near 5%, and RT Doses held as `dose-in-face-block`, bear on the dose fraction, a placeholder (D-051), as eye ROIs' reach does on the 25 mm (D-050), without validating either; changing a setting is a decision of its own.
