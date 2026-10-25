@@ -388,9 +388,14 @@ def _superseded(statement: ConformanceStatement) -> list[str]:
                 "E.3.3 specifies what the option removes, and Table E.1-1 "
                 "gives the minimum actions. An overlay group without "
                 "Overlay Data may keep its overlay in unused bits of Pixel "
-                "Data, as PS3.3 allowed before 2004, which the engine does not "
-                "change, so under this option such an instance is sequestered "
-                "as `overlay-in-pixel-data`."
+                "Data, as PS3.3 allowed before 2004. Under this option, the "
+                "bit plane of such an overlay above High Bit in native Pixel "
+                "Data is cleared, each bit set as the value's sign gives it, "
+                "the written Pixel Data is checked to differ from the source "
+                "in nothing else, and every attribute of the overlay's group "
+                "is removed. An instance whose overlay cannot be "
+                "so cleared, such as one in compressed Pixel Data or within "
+                "Bits Stored, is sequestered as `overlay-in-pixel-data`."
             )
         else:
             text = (

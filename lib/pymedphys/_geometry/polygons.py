@@ -20,8 +20,9 @@ pieces into which the half-space's plane cuts it; rings are grouped by the
 plane they lie in by :func:`coplanar`; and pieces that tile a region, such
 as those of a ring clipped to each of several regions that meet only at
 their boundaries, are joined back into the region's rings by
-:func:`dissolve`. :func:`signed_area` and :func:`is_simple` read a ring
-lying in a plane of constant z by its x and y.
+:func:`dissolve`. :func:`signed_area`, :func:`nonzero_area`, and
+:func:`is_simple` read a ring lying in a plane of constant z by its x and
+y.
 """
 
 from __future__ import annotations
@@ -237,6 +238,86 @@ def signed_area(points: np.ndarray) -> float:
     x = points[:, 0] - points[:, 0].mean()
     y = points[:, 1] - points[:, 1].mean()
     return float(np.dot(x, np.roll(y, -1)) - np.dot(np.roll(x, -1), y)) / 2
+
+
+def nonzero_area(points: np.ndarray) -> float:
+    """The area, by a ring's x and y, of the points about which its
+    winding number is not zero: its region's area by the nonzero rule.
+
+    Unlike the magnitude of :func:`signed_area`, it counts each such point
+    once, so the lobes of a ring that crosses itself do not cancel where
+    they wind opposite ways, a part wound about twice counts once, and a
+    ring that bounds nothing, such as one that runs out along a path and
+    back, has none. The plane is cut into slabs of constant y at each
+    vertex and at each crossing of two edges. Within a slab no two edges
+    cross, so the length of the points wound about varies linearly with y,
+    and its value at the slab's middle, times the slab's height, is exact.
+
+    The points are taken relative to their mean, as for
+    :func:`signed_area`. Finding the crossings takes work in proportion to
+    the square of the number of edges, and measuring the slabs to the
+    number of edges times the number of slabs, the vertices and crossings
+    together: about the square of the edges for a ring that crosses itself
+    a few times, but up to their cube for one that crosses itself
+    throughout.
+    """
+    xy = np.asarray(points, dtype=float)[:, :2]
+    if len(xy) < 3:
+        return 0.0
+    xy = xy - xy.mean(axis=0)
+    starts = xy
+    ends = np.roll(xy, -1, axis=0)
+    # An edge of constant y lies along a cut, so it bounds no slab.
+    moving = starts[:, 1] != ends[:, 1]
+    starts, ends = starts[moving], ends[moving]
+    directions = ends - starts
+    count = len(starts)
+    block = max(1, (1 << 22) // max(count, 1))
+    cuts = [xy[:, 1]]
+    for first in range(0, count, block):
+        rows = slice(first, min(first + block, count))
+        a, d = starts[rows, None], directions[rows, None]
+        offset = starts[None, :] - a
+        denominator = _cross_z(d, directions[None, :])
+        with np.errstate(divide="ignore", invalid="ignore"):
+            along = _cross_z(offset, directions[None, :]) / denominator
+            other = _cross_z(offset, d) / denominator
+        # A cut too many divides a slab without changing its result, so
+        # crossings within rounding of an edge's end are cut as well.
+        meet = (
+            (denominator != 0)
+            & (along >= -1e-9)
+            & (along <= 1 + 1e-9)
+            & (other >= -1e-9)
+            & (other <= 1 + 1e-9)
+        )
+        cuts.append((a[..., 1] + along * d[..., 1])[meet])
+    levels = np.unique(np.concatenate(cuts))
+    middles = (levels[:-1] + levels[1:]) / 2
+    heights = np.diff(levels)
+    low = np.minimum(starts[:, 1], ends[:, 1])
+    high = np.maximum(starts[:, 1], ends[:, 1])
+    slopes = directions[:, 0] / directions[:, 1]
+    area = 0.0
+    for first in range(0, len(middles), block):
+        y = middles[first : first + block, None]
+        spans = (low < y) & (y < high)
+        # An edge that does not span the slab is placed at x of zero with
+        # no winding, where it only divides an interval between two others.
+        x = np.where(spans, starts[:, 0] + (y - starts[:, 1]) * slopes, 0.0)
+        winds = np.where(spans, np.sign(directions[:, 1]), 0.0)
+        order = np.argsort(x, axis=1)
+        x = np.take_along_axis(x, order, axis=1)
+        winding = np.cumsum(np.take_along_axis(winds, order, axis=1), axis=1)
+        lengths = (np.diff(x, axis=1) * (winding[:, :-1] != 0)).sum(axis=1)
+        area += float(lengths @ heights[first : first + block])
+    return area
+
+
+def _cross_z(one: np.ndarray, other: np.ndarray) -> np.ndarray:
+    """The z of the cross product of two vectors in x and y, broadcast."""
+    cross: np.ndarray = one[..., 0] * other[..., 1] - one[..., 1] * other[..., 0]
+    return cross
 
 
 def is_simple(points: np.ndarray) -> bool:

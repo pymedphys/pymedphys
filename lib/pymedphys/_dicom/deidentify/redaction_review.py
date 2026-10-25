@@ -53,7 +53,13 @@ import re
 import types
 from collections.abc import Mapping
 
-from .qc_attestation import Outcome, Redaction, attested_pack, previewed_redactions
+from .qc_attestation import (
+    Attestation,
+    Outcome,
+    Redaction,
+    attested_pack,
+    previewed_redactions,
+)
 from .qc_pack import QcPackError
 from .text_detection import TextBox
 
@@ -188,7 +194,32 @@ def read_redaction_review(pack_directory: os.PathLike | str) -> RedactionReview:
         on one source file, or on the decoded frames of one. The message
         names no path and no value.
     """
-    attestation, data = attested_pack(pack_directory)
+    return redaction_review_of(*attested_pack(pack_directory))
+
+
+def redaction_review_of(attestation: Attestation, data: bytes) -> RedactionReview:
+    """Return the redaction verdicts of an attestation of a QC pack.
+
+    Parameters
+    ----------
+    attestation : ~pymedphys._dicom.deidentify.qc_attestation.Attestation
+    data : bytes
+        The bytes of the pack that ``attestation`` attests, as
+        :func:`~pymedphys._dicom.deidentify.qc_attestation.attested_pack`
+        returns them with it, so that a caller that reads the pack's other
+        members reads the same bytes.
+
+    Returns
+    -------
+    RedactionReview
+        As :func:`read_redaction_review` returns it.
+
+    Raises
+    ------
+    QcPackError
+        As :func:`read_redaction_review` raises it, other than for reading
+        the pack and its attestation.
+    """
     if attestation.outcome is not Outcome.ATTESTED:
         raise QcPackError(
             "the QC pack's attestation rejected it, so its verdicts release nothing"

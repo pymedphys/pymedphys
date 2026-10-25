@@ -34,7 +34,9 @@ material that the transform gives and the assessment of their series, as
 the QC pack lists them (D-015), and how many source values the
 residual searches did not search, by attribute and reason, each counted at
 the instance that holds it among those that the transform gave material for
-(D-027). The report holds no source value or path (D-016), and
+(D-027), and how many released instances have each kind of residual finding
+that an exemption kept from review, from the gate's material (D-032). The
+report holds no source value or path (D-016), and
 :func:`~pymedphys._dicom.deidentify.release_report.to_json` refuses any
 field that could hold one. Before the run labels its outcomes, it asks the
 reporter whether it :meth:`~Reporter.admits` each withheld input's reasons,
@@ -371,6 +373,7 @@ class ReleaseReporter:
             coverage=release_report.search_coverage(
                 coverage_records(material[position]) for position in sorted(material)
             ),
+            exempted=exempted_findings(outcomes, material),
             roi_names=roi_name_counts(material),
             descriptors=descriptor_counts(material),
             pixel_regions=(
@@ -719,6 +722,34 @@ def held_instances(
         for outcome in outcomes
         if getattr(outcome, "status").value == HELD_FOR_REVIEW
         and getattr(outcome, "duplicate_of") is None
+    )
+
+
+def exempted_findings(
+    outcomes: Sequence[object], material: Mapping[int, Sequence[object]]
+) -> tuple[release_report.ExemptedFindings, ...]:
+    """Count the released instances with each kind of exempted residual finding.
+
+    Each released input's findings come from the
+    :class:`~pymedphys._dicom.deidentify.run_qc.SearchMaterial` that the gate
+    gave it, so each is counted at the written file it was found in. An
+    identical copy of a released input is a duplicate, not released, so it
+    is not counted again.
+    """
+    released = {
+        getattr(outcome, "position")
+        for outcome in outcomes
+        if getattr(outcome, "status").value == RELEASED
+    }
+    return release_report.exempted_findings(
+        [
+            pair
+            for item in material[position]
+            if isinstance(item, SearchMaterial)
+            for pair in item.exempted
+        ]
+        for position in sorted(material)
+        if position in released
     )
 
 
