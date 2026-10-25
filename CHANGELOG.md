@@ -20,6 +20,7 @@ Data stored as UN in Explicit VR files. This fixes failures in
 structure reader used by dose masks. Malformed encoded coordinates raise an error
 without disclosing their values. File transfer syntaxes are preserved.
 [Issue #2008](https://github.com/pymedphys/pymedphys/issues/2008)
+[PR #2480](https://github.com/pymedphys/pymedphys/pull/2480)
 
 ### TRF archive integrity
 
