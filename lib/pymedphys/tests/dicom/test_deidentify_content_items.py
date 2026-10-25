@@ -392,17 +392,44 @@ def test_an_x_d_item_is_kept_with_a_dummy_value():
         _path(tag=ACQUISITION_CONTEXT): "K",
         _path((ACQUISITION_CONTEXT, 1), tag=TEXT_VALUE): "D",
         _path((ACQUISITION_CONTEXT, 2), tag=DATE): "D",
-        _path((ACQUISITION_CONTEXT, 3), tag=UID): "D",
+        # D on a UID gives U's replacement.
+        _path((ACQUISITION_CONTEXT, 3), tag=UID): "U",
         _path((ACQUISITION_CONTEXT, 4), tag=DATETIME): "D",
     }
     written = _written((CSC,), dataset)
     _, serial, date, uid, ended = written.AcquisitionContextSequence
-    # D-021's constants, and the keyed replacement of a UID.
+    # D-021's constants, and U's replacement of a UID.
     assert serial.TextValue == "DEIDENTIFIED"
     assert date.Date == "19000101"
     assert uid.UID == uids.replacement_uid(KEY, source_uid)
     assert ended.DateTime == "19000101000000"
     assert CSC_CODE in _codes(written)
+
+
+FRAME_OF_REFERENCE_UID = ("112227", "DCM", "Frame of Reference UID")
+TALAIRACH = "1.2.840.10008.1.4.1.1"
+
+
+@pytest.mark.parametrize("frame", [TALAIRACH, "1.2.826.0.1.3680043.10.188.6"])
+def test_a_uidref_item_names_the_frame_that_the_image_names(frame):
+    dataset = _enhanced_ct(_item("UIDREF", FRAME_OF_REFERENCE_UID, UID=frame))
+    dataset.FrameOfReferenceUID = frame
+
+    written = _written((CSC,), dataset)
+
+    (item,) = written.AcquisitionContextSequence
+    assert item.UID == written.FrameOfReferenceUID
+    # A registered frame names a public definition, so it is kept.
+    assert (item.UID == frame) == (frame == TALAIRACH)
+
+
+@pytest.mark.parametrize("value", [None, ""])
+def test_a_uidref_item_with_no_uid_to_replace_is_not_kept(value):
+    item = _item("UIDREF", DEVICE_OBSERVER_UID)
+    if value is not None:
+        item.UID = value
+
+    assert not _actions((CSC,), _enhanced_ct(_coded(), item))
 
 
 def test_an_x_d_reference_is_kept_with_its_uids_replaced():
@@ -530,7 +557,7 @@ def test_retain_uids_keeps_a_device_observer_uid():
 
     assert written.AcquisitionContextSequence[0].UID == value
     item = _path((ACQUISITION_CONTEXT, 0), tag=UID)
-    assert _actions((CSC,), dataset)[item] == "D"
+    assert _actions((CSC,), dataset)[item] == "U"
 
 
 def test_clean_descriptors_falls_back_for_content_item_text():

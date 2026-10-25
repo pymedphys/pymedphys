@@ -75,9 +75,12 @@ item's Value Type (0040,A040) and the code of its Concept Name Code Sequence
   compound action resolves from the strictest Type (D-020); so do the X rows
   of DateTime Ended and X-Ray Attenuator Model Data
   (:data:`DUMMY_IN_PLACE_OF_REMOVAL`), which the templates of Enhanced X-Ray
-  Radiation Dose reports require. D writes D-021's dummy value: a constant
-  for TEXT, DATE, TIME, and DATETIME, and the keyed replacement for UIDREF,
-  while an IMAGE or COMPOSITE item keeps its reference, whose UIDs take
+  Radiation Dose reports require. D writes D-021's dummy value, a constant,
+  for TEXT, DATE, TIME, and DATETIME; gives a UIDREF item's UID U's
+  replacement, which keeps a UID that the pinned tables register, such as a
+  public frame of reference, so that the item names what the attributes that
+  U replaces name, and makes an item with no UID unkeepable, as D refuses
+  one; and leaves an IMAGE or COMPOSITE item its reference, whose UIDs take
   their own rules. C under Clean Descriptors, which no cleaner of content
   items settles, falls back to the action that the concept takes without
   that option, as an attribute's does where descriptor cleaning does not
@@ -115,6 +118,7 @@ from .structured_content import (
     ContentItemConcept,
     load_table_e3_4_1,
 )
+from .uids import normalise_uid
 
 ACQUISITION_CONTEXT = "(0040,0555)"
 SPECIMEN_PREPARATION = "(0040,0610)"
@@ -172,6 +176,8 @@ UNMATCHED_SCHEMES = frozenset({"LN", "NCDR", "NCIt", "UMLS", "SRT", "SNM3", "99S
 KEEP = "K"
 REMOVE = "X"
 DUMMY = "D"
+REPLACE_UID = "U"
+UID_VALUE = "(0040,A124)"
 EITHER = "X/D"
 # The rows that Table E.3.4-1 gives X whose concepts the templates of
 # Enhanced X-Ray Radiation Dose reports require, which take D as an X/D
@@ -208,9 +214,12 @@ METHOD = (
     "require each X/D concept in at least one place; X gives D too for "
     "DateTime Ended (111527, DCM) and X-Ray Attenuator Model Data (128470, "
     "DCM), which the templates of Enhanced X-Ray Radiation Dose reports "
-    "require. D writes the dummy value of the value's VR, or the keyed "
-    "replacement of a UID, and an image or composite reference is kept, "
-    "with its UIDs taking their own rules. C under Clean Descriptors "
+    "require. D writes the dummy value of the value's VR; a UID takes the "
+    "replacement that U gives it elsewhere, which keeps a UID that names a "
+    "public definition, such as a registered frame of reference, and an "
+    "item without one is not kept; and an image or "
+    "composite reference is kept, with its UIDs taking their own rules. C "
+    "under Clean Descriptors "
     "takes the action "
     "without that option, as for an attribute that descriptor cleaning "
     "does not write, and C under "
@@ -440,7 +449,7 @@ class _Sequences:
         found = {}
         value = ElementPath(items, VALUE_ATTRIBUTES.get(value_type, VALUE_TYPE))
         if action is not None and value.tag != VALUE_TYPE:
-            found[value] = action
+            found[value] = self._value_action(value, action)
         modifiers = ElementPath(items, MODIFIERS)
         for index in range(self.reader.count(modifiers)):
             found.update(self.item((*items, (MODIFIERS, index))))
@@ -448,6 +457,23 @@ class _Sequences:
         if contents and nested in self.reader and _defined(self.iod, nested):
             found.update(self.sequence(nested))
         return found
+
+    def _value_action(self, value: ElementPath, action: str) -> str:
+        """Return the action of a listed content item's value attribute.
+
+        D on the UID of a UIDREF item gives U's replacement, which keeps a
+        UID that the pinned tables register, such as a public frame of
+        reference, so that the item names what the attributes that U
+        replaces name in the output, such as Frame of Reference UID
+        (0020,0052). An item with no UID to replace cannot be kept,
+        as D refuses one (D-021).
+        """
+        if value.tag != UID_VALUE or action != DUMMY:
+            return action
+        uid = self.reader.text(value)
+        if uid is None or not normalise_uid(uid):
+            raise _Unkept
+        return REPLACE_UID
 
     def _concept_action(self, items: tuple, value_type: str) -> str | None:
         """Return the action of a content item's concept, or None if unlisted."""
