@@ -777,6 +777,9 @@ class InstanceTransform:
     reporter : ~pymedphys._dicom.deidentify.run_report.ReleaseReporter
         The release report of a run with this transform, under its policy
         and vocabulary, for :func:`~pymedphys._dicom.deidentify.run.run`.
+    method_digest : str
+        The method digest that the markers and the release report record
+        (:func:`~.method_digest.method_digest`).
 
     Notes
     -----
@@ -948,6 +951,7 @@ class InstanceTransform:
             text_finder=finder_method,
             safe_private_list=safe_private_list,
         )
+        self.method_digest = digest
         satisfied = satisfied_options(policy)
         # The markers of each set of per-instance options that an instance
         # can satisfy.

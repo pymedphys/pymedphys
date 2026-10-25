@@ -123,6 +123,9 @@ uv run --no-dev --extra user python -m pymedphys._dicom.deidentify.midi_benchmar
 
 - `--preset` defaults to `basic`, the run to do first. The preset need not be enabled, since this is a validation run.
 - `--preset basic-clean-descriptors` runs the Clean Descriptors Option too. The harness cleans ROI Names with the pinned TG-263 edition, which it downloads to PyMedPhys's data directory on first use, or reads from a copy of the spreadsheet given with `--tg263`. No one reviews the names in a benchmark, so a name that would be held for review is emptied, as `--empty-held-roi-names` empties it, and its structure set is released and scored.
+- `--option`, repeatable, runs a custom option set in place of a preset: the Basic Profile with the options named, such as `--option retain_uids`, as Table E.1-1 names them in `policy.py`. Like a preset, the set need not be enabled. It is refused with `--preset`, and where its options conflict, as Retain Device Identity and Modified Dates do (D-033).
+- Under Clean Pixel Data (`--option clean_pixel_data`), the pinned text detector finds the text, and every instance that the option cleans is held for review, since no one reviews a benchmark's regions. The detector's model is downloaded on first use.
+- Clean Recognizable Visual Features is refused: it needs a reviewer's verdict on each series that can show a face, and a benchmark has none. Its public evidence is HaN-Seg's face block check (D-054).
 - It refuses a work directory that already exists. For another run, use a new name such as `validation-basic-2`.
 - At the end it prints the results as Markdown, the same text as `benchmark.md`.
 - If it stops with an error, the message quotes no value from the files, so it is safe to share in an issue.
@@ -134,12 +137,48 @@ Inside the work directory:
 | Path | What it is | Safe to share? |
 | --- | --- | --- |
 | `benchmark.md` | The results to read: a headline over every check, counts by answer-key category, coverage (with the unreleased instances by SOP Class and transfer syntax), deliberate differences (by category, tag, and the action the engine selected), source gaps, findings, and the failed checks at their source. | Yes |
-| `benchmark.json` | The same results as JSON, with versions and digests. | Yes |
+| `benchmark.json` | The same results as JSON, with versions and digests, including the preset (or `none`) and the options. | Yes |
+| `check-outcomes.txt` | The outcome of each check of the answer key, one letter each in the key's order, for the flip check. | Yes, though there is no need: it is a working file |
 | `release/` | The de-identified release, with its release report. | No |
 | `qc/` | The confidential QC pack. | No |
 | `validation-script/` | `uid_mapping.csv` and `patid_mapping.csv`, mapping the test data's UIDs and Patient IDs to their replacements, for the NCI script. | No |
 
 In `benchmark.md`, the headline counts every check of the answer key. Checks of instances that the run did not release (withheld, or outside the release's coverage) and of instances the input lacked are outcomes of their own, so nothing drops out of the total, and the coverage section lists the unreleased instances by the run's reasons, SOP Class, and transfer syntax, and counts each reason that has a place, such as residual text, by the tags of the source attribute and of where it was found, never the value. It also counts, by modality, the withheld instances that each candidate exemption from the text search would release, because every reason that withheld them is a text finding that the exemption covers: "coded values", a text found in a value of VR CS, in a Coding Scheme Designator, or in another value of a code item whose designator is a standard scheme's; "equipment", a text found in Manufacturer, Manufacturer's Model Name, or Software Versions; and both together. These are measurements to inform a decision, and the engine applies none of them. An instance sequestered for having no SOP Class UID is counted by where the engine's reading of SOP Class UID (0008,0016) stopped, and by the SOP Class UID that pydicom reads, the Media Storage SOP Class UID, and the transfer syntax, each by the name the standard gives it, and by the Specific Character Set's Defined Terms of PS3.3 Tables C.12-2 to C.12-5, with `ISO_IR 6` (any other value counts as `other`, or as `other like` the term it differs from only in case, spaces, hyphens, and underscores), so that a disagreement between the engine's reader and pydicom's can be traced. An instance withheld for an internal error is also counted by the exception's type, the code that raised it, and the instance's SOP Class and transfer syntax, never the exception's message, so that the error can be reproduced on synthetic data. Then read the findings. The deliberate differences are where TCIA's curation differs from the Basic Profile: an attribute that the profile removes but the answer key keeps, and Patient Identity Removed and Longitudinal Temporal Information Modified, whose values the PS3.15 markers replace (`marker`). A text that the answer key says to remove is never a deliberate difference, even where the profile keeps it, since a kept value can still carry an identifier. A source gap is a check that asks for an attribute, or a value, that the source instance does not have either, so no de-identifier could keep it. The last section describes the failed checks at their source, without a value: whether the source holds each attribute that a check asked to be present, empty or with a value, and, for each text that a check asked to be removed, its VR, its number of digits where it is an Integer String, whether the answer key's text is the whole value, and, for an Integer String shaped as a date, which of the instance's own Study, Series, Acquisition, Content, and Patient's Birth Dates equal it. It also counts each finding by whether the same check fails on the source instance too, and each finding that asked for a text to be kept by how the source encodes the attribute: its transfer syntax, its VR as written, its Pixel Representation, and whether the encoded value is the same in the output. `--watch`, given an attribute such as `(0020,0011)` and repeatable, adds a section that counts every check of that attribute by where it ended up; the workflow watches Series Number, Smallest Image Pixel Value, and Image Type. Checks of instances outside the release's coverage (a nuclear medicine image, say) and of instances the run withheld are neither passed nor failed. A withheld instance withholds all of its patient's files.
+
+### Compare a Retain option with basic: the flip check
+
+A Retain option keeps the attributes of its rows of PS3.15 Table E.1-1 and should change nothing else. To test that, run the benchmark under `basic` and under the option alone over the same subset, then compare the two runs check by check.
+
+bash:
+
+```bash
+uv run --no-dev --extra user python -m pymedphys._dicom.deidentify.midi_benchmark_command flip-check \
+  /data/midi-b/validation/answer-key.db \
+  --reference /data/midi-b/runs/validation-basic-1/check-outcomes.txt \
+  --compared /data/midi-b/runs/validation-retain-uids-1/check-outcomes.txt \
+  --option retain_uids \
+  --out /data/midi-b/runs/validation-retain-uids-1-flips.json
+```
+
+PowerShell:
+
+```powershell
+uv run --no-dev --extra user python -m pymedphys._dicom.deidentify.midi_benchmark_command flip-check `
+  D:\midi-b\validation\answer-key.db `
+  --reference D:\midi-b\runs\validation-basic-1\check-outcomes.txt `
+  --compared D:\midi-b\runs\validation-retain-uids-1\check-outcomes.txt `
+  --option retain_uids `
+  --out D:\midi-b\runs\validation-retain-uids-1-flips.json
+```
+
+It compares the checks of the instances that both runs released, and counts those of instances that only one run released apart, as release changes. A check is governed by the option where its attribute, or a sequence that holds it, takes its rule from a row of Table E.1-1 or a supplementary rule that gives the option an action, or where it is one of the markers that record the options: Patient Identity Removed, De-identification Method and its Code Sequence, and Longitudinal Temporal Information Modified. The verdict is:
+
+- **failed**, where a check that the option does not govern changed outcome;
+- **no effect**, where the option governs checks that both runs scored and none of them changed, which suggests the option was not applied;
+- **not exercised**, where the answer key checks none of the option's rows in instances both runs released, which is no evidence either way;
+- **passed** otherwise.
+
+Not every governed check need change. A date that the Basic Profile empties and Modified Dates shifts passes `date_shifted` either way, and fails `text_retained` either way, as a deliberate difference, so for Modified Dates the governed changes are mostly TCIA's MOD-C and HIPAA-C date checks, counted rather than required. The command prints the results as Markdown, writes them as JSON to `--out`, which must not exist, and exits with 1 for **failed** or **no effect**. Both hold only counts, the option, answer-key category codes and action names, and attribute tags.
 
 ## 6. Share the results
 
@@ -228,21 +267,27 @@ Repeat steps 3 to 7 with `--subset test` and a destination such as `/data/midi-b
 The repository's **MIDI-B Benchmark** workflow (`.github/workflows/midi-b-benchmark.yml`) does steps 2 to 7 on GitHub-hosted runners, so you need neither the disk space nor the download time. It runs only when started by hand. A maintainer starts it on `pymedphys/pymedphys`; anyone can start it on their own fork, where it uses the fork's free runner minutes.
 
 1. On GitHub, open the repository's (or your fork's) **Actions** tab, choose **MIDI-B Benchmark**, and choose **Run workflow**.
-2. Pick the branch, the subset (`validation`, `test`, or `both`), and where the answer key comes from. Each subset runs under `basic` and under `basic-clean-descriptors`, each in a job of its own.
+2. Pick the branch, the subset (`validation`, `test`, or `both`), the configurations, and where the answer key comes from. Each job downloads its subset once and runs a group of configurations in turn, deleting each release and QC pack before the next, since the data may not leave the runner. At most four jobs run at once, to limit the load on TCIA.
+   - `basic-presets`, the default: `basic` and `basic-clean-descriptors`, in one job.
+   - `other-presets`: `tps-import` and `public-release`, in one job.
+   - `retain`: each Retain option alone, in three jobs, each of which runs `basic` first and then two or three options, and compares each with `basic` by its flip check (section 4). A flip check that fails or finds no effect fails the job, after its results are kept.
+   - `clean`: Clean Descriptors, Clean Structured Content, and Clean Graphics alone in one job, and Clean Pixel Data alone in another. Clean Recognizable Visual Features is not run (section 4).
+   - `all`: every group, seven jobs for each subset.
    - `pinned`, the default: the copy at the address pinned in `midi_data.toml`. While no address is pinned, the run downloads and checks the images but cannot score them.
    - `tcia`: TCIA's own Aspera packages, fetched on the runner with IBM's `ascli` and checked against the pinned digest. This is the check from the source described in section 10.
    - Otherwise, give an HTTPS address for an answer key and its SHA-256, for one subset at a time.
    - Optionally, give engine refs, each a pull request's head (`refs/pull/<n>/head`) or a branch (`refs/heads/<name>`), separated by spaces, to merge in turn into the chosen branch on the runner before the run. This benchmarks engine changes before they merge, together where one depends on another, and `engine.txt` in the artefact records the chosen commit and each merged commit.
-3. Each job benchmarks its subset under its preset, then validates each released file against its input with dciodvfy, dcentvfy, and dicom-validator, as the [DICOM validation guide](deidentification-dicom-validation.md) describes, and scores the same release with NCI's validation script (step 7), at a pinned commit, in a Python 3.10 environment of its own. When the run finishes, its summary page shows each job's `download.json`, `benchmark.md`, DICOM validation results, and the script's counts, and each job's `midi-b-<subset>-<preset>-results` artefact (with `-attempt-<n>` added on a re-run) holds:
-   - `download.json`, `benchmark.md`, and `benchmark.json`;
+3. Each job benchmarks its subset under each configuration of its group. Under a preset or an option alone, it then validates each released file against its input with dciodvfy, dcentvfy, and dicom-validator, as the [DICOM validation guide](deidentification-dicom-validation.md) describes; under a preset, it also scores the same release with NCI's validation script (step 7), at a pinned commit, in a Python 3.10 environment of its own. The run of `basic` that a group of Retain options compares with is scored by the harness alone. When the run finishes, its summary page shows each job's `download.json` and, for each configuration, `benchmark.md`, the DICOM validation results, the script's counts, and the flip check, and each job's `midi-b-<subset>-<group>-results` artefact (with `-attempt-<n>` added on a re-run) holds `download.json` and, in a folder named for each configuration, such as `basic` or `retain_uids`:
+   - `benchmark.md` and `benchmark.json`, or `benchmark-status.txt` where the benchmark did not finish;
+   - for a Retain option, `flip-check.md`, `flip-check.json`, and `flip-check-status.txt`, its exit status;
    - `script-results.json`, the script's results counted by answer-key category as step 7's `script-results` counts them, or `script-results.txt` saying why there are none;
    - `dicom-validation.json` and `dicom-validation.md`, the validators' comparison of the release with its inputs, and `dicom-validation-status.txt`, its exit status;
-   - `nci-script-environment.txt`, the script's commit and the versions of the packages it ran with, and `nci-answer-key.json`, the counts of the answer keys it was given, which hold the released instances' rows alone, added up over the parts it scored the release in (5,000 files each), as step 7 describes;
-   - with `tcia`, `tcia-answer-keys.txt`, the names, sizes, and SHA-256 digests of the files in TCIA's packages.
+   - `nci-answer-key.json`, the counts of the answer keys it was given, which hold the released instances' rows alone, added up over the parts it scored the release in (5,000 files each), as step 7 describes;
+   - and, beside the folders, `nci-script-environment.txt`, the script's commit and the versions of the packages it ran with, and, with `tcia`, `tcia-answer-keys.txt`, the names, sizes, and SHA-256 digests of the files in TCIA's packages.
 
-Workflow logs and artefacts on a public repository can be read by anyone, so the workflow keeps everything else on the runner, which is deleted when the job ends: the downloaded files, the release, the QC pack, the mapping files, and the NCI script's logs and results database, which quote values from the files. The standard error and standard output of the benchmark and of the DICOM validation, where libraries log, go to files on the runner, and the job prints the result files instead. It prints the benchmark's and the DICOM validation's results before NCI's script starts, as well as at the end, so that a runner lost in the script, which takes longest, still leaves them in the log. A crash is reported by `.github/scripts/run_redacted.py` as its exception type and code locations, never its message.
+Workflow logs and artefacts on a public repository can be read by anyone, so the workflow keeps everything else on the runner, which is deleted when the job ends: the downloaded files, the release, the QC pack, the mapping files, and the NCI script's logs and results database, which quote values from the files. The standard error and standard output of the benchmark and of the DICOM validation, where libraries log, go to files on the runner, and the job prints the result files instead. It prints each configuration's benchmark and DICOM validation results as they finish, as well as at the end, so that a lost runner still leaves them in the log. The check outcomes that the flip checks compare stay on the runner too. A crash is reported by `.github/scripts/run_redacted.py` as its exception type and code locations, never its message.
 
-TCIA's site has at times stopped answering a runner for most of an hour while answering others. So that TCIA can match a failure with its own logs, the log also records, before the job first asks TCIA for anything and again after a failure, the runner's public address and whether each of TCIA's addresses accepts a connection from it, and it records each request to TCIA that is tried again, with the time in UTC and the failure's type. A series archive that cannot be read, or that holds no DICOM file, counts as a failed request and is fetched again, since NBIA has returned an archive with no DICOM file for a series that it returned whole in other runs. Each request to TCIA's site and to NBIA also names the runner's address and the run in its User-Agent header, such as `pymedphys-midi-download (runner 192.0.2.1; run 18765432101/1; validation basic)`, which TCIA's logs record. The address is that of the GitHub-hosted runner, which GitHub assigns to the job. The downloader sends such a note only when given one with `--user-agent-note`, so a run on your own machine does not.
+TCIA's site has at times stopped answering a runner for most of an hour while answering others. So that TCIA can match a failure with its own logs, the log also records, before the job first asks TCIA for anything and again after a failure, the runner's public address and whether each of TCIA's addresses accepts a connection from it, and it records each request to TCIA that is tried again, with the time in UTC and the failure's type. A series archive that cannot be read, or that holds no DICOM file, counts as a failed request and is fetched again, since NBIA has returned an archive with no DICOM file for a series that it returned whole in other runs. Each request to TCIA's site and to NBIA also names the runner's address and the run in its User-Agent header, such as `pymedphys-midi-download (runner 192.0.2.1; run 18765432101/1; validation basic-presets)`, which TCIA's logs record. The address is that of the GitHub-hosted runner, which GitHub assigns to the job. The downloader sends such a note only when given one with `--user-agent-note`, so a run on your own machine does not.
 
 ## 10. Where the data come from, and how to check them
 

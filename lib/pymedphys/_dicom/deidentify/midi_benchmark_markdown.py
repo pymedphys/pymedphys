@@ -404,6 +404,9 @@ def _table(header: Sequence[str], rows: Iterable[Sequence[object]]) -> str:
 
 
 def _cell(value: object) -> str:
+    if isinstance(value, list):
+        # A policy's options.
+        value = ", ".join(str(each) for each in value) or None
     if value is None:
         return "none"
     return " ".join(str(value).split()).replace("|", "\\|")
