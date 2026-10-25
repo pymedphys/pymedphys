@@ -52,6 +52,7 @@ from pymedphys._dev.deid_tables import (
 from pymedphys._dicom.deidentify import (
     codes,
     iods,
+    requirements,
     residual_exemptions,
     sop_classes,
     standard,
@@ -203,9 +204,11 @@ NAVIGATION = (
 )
 
 
-def _page(*tables):
+def _page(*tables, next_page=None):
+    # A chtml page names the next page of its part in its head.
+    link = "" if next_page is None else f'<link rel="next" href="{next_page}" />'
     return (
-        "<!DOCTYPE html><html><head><title>Fixture</title></head><body>"
+        f"<!DOCTYPE html><html><head><title>Fixture</title>{link}</head><body>"
         + NAVIGATION
         + "<p>Prose that mentions Table E.1-1 without being its title.</p>"
         + "".join(tables)
@@ -2751,10 +2754,136 @@ def test_a_malformed_expected_digest_is_rejected(tmp_path):
         sources.read_verified_source(source, "abc")
 
 
+# The paragraphs of Annex E, in the forms the chtml pages use: each paragraph
+# starts with its anchor, sections nest, and Notes and lists sit beside the
+# paragraphs they belong to. The text is invented.
+def _anchor(number):
+    return f"para_{number:08d}-0000-0000-0000-000000000000"
+
+
+def _paragraph(number, text):
+    return f'<p><a id="{_anchor(number)}" shape="rect"></a>{text}</p>'
+
+
+def _annex_e_section(number, *content):
+    level = number.count(".") + 1
+    return (
+        '<div class="section"><div class="titlepage"><div><div>'
+        f'<h{level} class="title"><a id="sect_{number}" shape="rect"></a>'
+        f"{number} Fixture Section</h{level}></div></div></div>"
+        + "".join(content)
+        + "</div>"
+    )
+
+
+def _note(*content):
+    return '<div class="note"><h3 class="title">Note</h3>' + "".join(content) + "</div>"
+
+
+def _list(kind, *items):
+    tag = "ul" if kind == "itemizedlist" else "ol"
+    return (
+        f'<div class="{kind}"><{tag} class="{kind}">'
+        + "".join(f'<li class="listitem">{item}</li>' for item in items)
+        + f"</{tag}></div>"
+    )
+
+
+ANNEX_E_CHAPTER = _annex_e_section(
+    "E.1",
+    _paragraph(1, "A fixture paragraph that requires nothing."),
+    _annex_e_section(
+        "E.1.1",
+        # A paragraph without "shall" that introduces a list whose items are
+        # requirements of their own, each with a Note.
+        _paragraph(2, "A fixture de-identifier conforms if:"),
+        _list(
+            "orderedlist",
+            _paragraph(3, "Each fixture value shall be removed.")
+            + _note(_paragraph(4, "A Note that shall not be read.")),
+            _paragraph(5, 'Each kept\n   fixture value shall be <a href="x">kept</a>.'),
+        ),
+        _paragraph(
+            6, "Text with \u201cquotes\u201d and a zero&#8203;-width space shall stay."
+        ),
+    ),
+    _annex_e_section(
+        "E.1.2",
+        # A paragraph with "shall" that introduces a list keeps the list,
+        # even an item that says "shall" itself.
+        _paragraph(7, "The fixture statement shall describe:"),
+        _list(
+            "itemizedlist",
+            _paragraph(8, "which fixtures are removed;"),
+            _paragraph(9, "which fixtures shall be kept."),
+        ),
+    ),
+)
+ANNEX_E_SECTION_3_4 = _annex_e_section(
+    "E.3.4",
+    _paragraph(10, "Fixture content items shall be cleaned in order:"),
+    _list("orderedlist", _paragraph(11, "first;"), _paragraph(12, "second.")),
+)
+ANNEX_E_SECTION_3_10 = _annex_e_section(
+    "E.3.10",
+    _note(_paragraph(14, "Another Note that shall not be read.")),
+    _paragraph(13, "Safe fixtures shall be retained."),
+)
+# The paragraphs above that contain "shall", as the parser gives them.
+ANNEX_E_PARAGRAPHS = (
+    ("E.1.1", "chapter_E", 3, "Each fixture value shall be removed."),
+    ("E.1.1", "chapter_E", 5, "Each kept fixture value shall be kept."),
+    (
+        "E.1.1",
+        "chapter_E",
+        6,
+        "Text with \u201cquotes\u201d and a zero-width space shall stay.",
+    ),
+    (
+        "E.1.2",
+        "chapter_E",
+        7,
+        "The fixture statement shall describe:\n\n"
+        "- which fixtures are removed;\n- which fixtures shall be kept.",
+    ),
+    (
+        "E.3.4",
+        "sect_E.3.4",
+        10,
+        "Fixture content items shall be cleaned in order:\n\n1. first;\n2. second.",
+    ),
+    ("E.3.10", "sect_E.3.10", 13, "Safe fixtures shall be retained."),
+)
+
+
+def _annex_e_paragraphs():
+    return tuple(
+        requirements.AnnexEParagraph(
+            section=section,
+            page=f"chtml/part15/{page}.html",
+            anchor=_anchor(number),
+            text=text,
+        )
+        for section, page, number, text in ANNEX_E_PARAGRAPHS
+    )
+
+
 # The generator, with a pin for the hand-written page instead of NEMA's.
-FIXTURE_PAGE = _page(E1_1A, E1_1).encode("utf-8")
-FIXTURE_E3_4_PAGE = _page(E3_4_1).encode("utf-8")
-FIXTURE_E3_10_PAGE = _page(E3_10_1).encode("utf-8")
+FIXTURE_PAGE = _page(ANNEX_E_CHAPTER, E1_1A, E1_1, next_page="sect_E.3.4.html").encode(
+    "utf-8"
+)
+FIXTURE_E3_4_PAGE = _page(
+    ANNEX_E_SECTION_3_4, E3_4_1, next_page="sect_E.3.10.html"
+).encode("utf-8")
+FIXTURE_E3_10_PAGE = _page(
+    ANNEX_E_SECTION_3_10, E3_10_1, next_page="chapter_F.html"
+).encode("utf-8")
+ANNEX_E_PAGES = (
+    "chtml/part15/chapter_E.html",
+    "chtml/part15/sect_E.3.4.html",
+    "chtml/part15/sect_E.3.10.html",
+)
+CHAPTER_E_PATH, SECTION_E3_4_PATH, SECTION_E3_10_PATH = ANNEX_E_PAGES
 FIXTURE_CHAPTER_6_PAGE = _page(TABLE_6_1).encode("utf-8")
 FIXTURE_CHAPTER_A_PAGE = _page(*ANNEX_A_TABLES).encode("utf-8")
 FIXTURE_PS3_16_PAGES = {
@@ -2956,6 +3085,141 @@ def test_the_generated_table_e3_4_1_loads_as_parsed(source_dir, tmp_path):
     table = structured_content.load_table_e3_4_1(output_dir / "e3_4_1.json")
     assert table.edition == "2099a"
     assert table.concepts == _parse_e3_4_1()
+
+
+def _parse_paragraphs(replaced=None, pinned=ANNEX_E_PAGES):
+    pages = {**FIXTURE_PAGES, **(replaced or {})}
+    return annex_e.parse_annex_e_paragraphs(pages, pinned)
+
+
+def test_parse_annex_e_paragraphs():
+    paragraphs, read = _parse_paragraphs()
+
+    assert paragraphs == _annex_e_paragraphs()
+    assert read == ANNEX_E_PAGES
+
+
+def test_the_next_links_need_not_follow_the_pin_s_order():
+    paragraphs, read = _parse_paragraphs(pinned=tuple(reversed(ANNEX_E_PAGES)))
+
+    assert paragraphs == _annex_e_paragraphs()
+    assert read == ANNEX_E_PAGES
+
+
+def _fixture_page(path, old, new):
+    """The fixture page at ``path``, with its one ``old`` replaced by ``new``."""
+    page = FIXTURE_PAGES[path]
+    assert page.count(old.encode()) == 1
+    return {path: page.replace(old.encode(), new.encode())}
+
+
+@pytest.mark.parametrize(
+    "replaced, pinned, message",
+    [
+        # A new page of Annex E, which the pin must list before it is read.
+        (
+            _fixture_page(SECTION_E3_10_PATH, "chapter_F.html", "sect_E.3.11.html"),
+            ANNEX_E_PAGES,
+            "Annex E continues on chtml/part15/sect_E.3.11.html, which the pin",
+        ),
+        (
+            _fixture_page(CHAPTER_E_PATH, "sect_E.3.4.html", "sect_E.3.10.html"),
+            ANNEX_E_PAGES,
+            "do not reach chtml/part15/sect_E.3.4.html",
+        ),
+        (
+            _fixture_page(SECTION_E3_10_PATH, "chapter_F.html", "chapter_E.html"),
+            ANNEX_E_PAGES,
+            "reach chtml/part15/chapter_E.html twice",
+        ),
+        (
+            _fixture_page(
+                SECTION_E3_10_PATH, '<link rel="next" href="chapter_F.html" />', ""
+            ),
+            ANNEX_E_PAGES,
+            "sect_E.3.10.html does not link to one next page",
+        ),
+        (
+            {},
+            ANNEX_E_PAGES[:2],
+            "Annex E continues on chtml/part15/sect_E.3.10.html, which the pin",
+        ),
+        (
+            _fixture_page(
+                CHAPTER_E_PATH, '<div class="note">', '<div class="example">'
+            ),
+            ANNEX_E_PAGES,
+            "a division of class 'example' is neither read nor skipped",
+        ),
+        (
+            _fixture_page(
+                CHAPTER_E_PATH,
+                f'<a id="{_anchor(3)}" shape="rect"></a>',
+                "",
+            ),
+            ANNEX_E_PAGES,
+            "chapter_E.html section E.1.1: a paragraph with 'shall' has no anchor",
+        ),
+        (
+            _fixture_page(
+                CHAPTER_E_PATH, "Prose that mentions", "Prose that shall mention"
+            ),
+            ANNEX_E_PAGES,
+            "a paragraph with 'shall' is outside a section",
+        ),
+        (
+            _fixture_page(
+                CHAPTER_E_PATH,
+                "which fixtures are removed;</p>",
+                "which fixtures are removed;</p><p>A second paragraph.</p>",
+            ),
+            ANNEX_E_PAGES,
+            "item 1 of a list that a paragraph with 'shall' introduces is not one",
+        ),
+        (
+            _fixture_page(
+                SECTION_E3_10_PATH,
+                f'<a id="{_anchor(13)}"',
+                f'<a id="{_anchor(3)}"',
+            ),
+            ANNEX_E_PAGES,
+            f"{_anchor(3)} appears 2 times",
+        ),
+    ],
+)
+def test_malformed_annex_e_pages_fail(replaced, pinned, message):
+    with pytest.raises(chtml.TableFormatError, match=re.escape(message)):
+        _parse_paragraphs(replaced, pinned)
+
+
+def test_annex_e_without_a_paragraph_that_contains_shall_fails():
+    page = _page(
+        _annex_e_section("E.1", _paragraph(1, "None.")), next_page="chapter_F.html"
+    )
+    pages = {CHAPTER_E_PATH: page.encode("utf-8")}
+    with pytest.raises(chtml.TableFormatError, match="no paragraph of Annex E"):
+        annex_e.parse_annex_e_paragraphs(pages, (CHAPTER_E_PATH,))
+
+
+def test_generate_writes_the_annex_e_paragraphs(source_dir, tmp_path):
+    output_dir = tmp_path / "tables"
+
+    assert generate.generate(FIXTURE_PIN, output_dir, source_dir=source_dir) == 0
+
+    document = json.loads(
+        (output_dir / requirements.PARAGRAPHS_FILE).read_text(encoding="utf-8")
+    )
+    assert document["table"] == requirements.PARAGRAPHS_TABLE
+    assert document["acknowledgement"] == "DICOM PS3.15 2099a, \u00a9 NEMA"
+    # The pages are recorded in the order their Next links reach them.
+    assert document["sources"] == [
+        {"path": path, "sha256": _fixture_digest(path)} for path in ANNEX_E_PAGES
+    ]
+    loaded = requirements.load_annex_e_paragraphs(
+        output_dir / requirements.PARAGRAPHS_FILE
+    )
+    assert loaded.edition == "2099a"
+    assert loaded.paragraphs == _annex_e_paragraphs()
 
 
 def test_generate_writes_the_data_dictionary(source_dir, tmp_path):
@@ -3536,12 +3800,14 @@ def _replace(page, old, new):
 def _e1_1_page(rows):
     """The fixture's chapter E page, with ``rows`` in Table E.1-1."""
     return _page(
+        ANNEX_E_CHAPTER,
         E1_1A,
         _table(
             "Table E.1-1. Fixture Confidentiality Profile Attributes",
             E1_1_HEADER,
             rows,
         ),
+        next_page="sect_E.3.4.html",
     ).encode("utf-8")
 
 
@@ -3608,6 +3874,49 @@ def test_a_changed_cell_changes_exactly_its_table(tables_dir):
 
 @pytest.mark.deid_requirement("MIDI-BP-06")
 @pytest.mark.parametrize(
+    "path, old, new",
+    [
+        (CHAPTER_E, "shall be removed", "shall be deleted"),
+        # A new paragraph with "shall".
+        (
+            SECTION_E3_10,
+            "Safe fixtures shall be retained.</p>",
+            "Safe fixtures shall be retained.</p><p>"
+            f'<a id="{_anchor(15)}" shape="rect"></a>Fixtures shall be few.</p>',
+        ),
+        # A paragraph that no longer says "shall".
+        (CHAPTER_E, "shall stay", "stays"),
+        # An item of a list that a paragraph with "shall" introduces.
+        (SECTION_E3_4_PATH, "second.", "last."),
+    ],
+)
+def test_a_changed_paragraph_changes_exactly_the_paragraphs(tables_dir, path, old, new):
+    page = _replace(FIXTURE_PAGES[path], old.encode(), new.encode())
+
+    result = _check_current(tables_dir, {path: page})
+
+    assert result.status == "changed"
+    assert result.changed_tables == (requirements.PARAGRAPHS_FILE,)
+    assert not result.failed_tables
+
+
+@pytest.mark.parametrize(
+    "path, old, new",
+    [
+        (SECTION_E3_10, "Another Note that shall", "Another Note that must"),
+        (CHAPTER_E, "requires nothing", "asks for nothing"),
+    ],
+)
+def test_a_changed_note_or_paragraph_without_shall_changes_nothing(
+    tables_dir, path, old, new
+):
+    page = _replace(FIXTURE_PAGES[path], old.encode(), new.encode())
+
+    assert _check_current(tables_dir, {path: page}).status == "unchanged"
+
+
+@pytest.mark.deid_requirement("MIDI-BP-06")
+@pytest.mark.parametrize(
     "path, page, tables",
     [
         (
@@ -3668,7 +3977,11 @@ def test_a_page_that_cannot_be_fetched_fails_the_tables_that_read_it(
     assert result.status == "failed"
     assert result.unfetched_pages == {SECTION_E3_10: reported}
     assert result.failed_tables == {
-        "e3_10_1.json": edition_check.TableFailure((SECTION_E3_10,), "not fetched")
+        # The paragraphs are read from every page of Annex E in turn.
+        requirements.PARAGRAPHS_FILE: edition_check.TableFailure(
+            ANNEX_E_PAGES, "not fetched"
+        ),
+        "e3_10_1.json": edition_check.TableFailure((SECTION_E3_10,), "not fetched"),
     }
     assert not result.changed_tables
     assert SECTION_E3_10 not in result.editions
