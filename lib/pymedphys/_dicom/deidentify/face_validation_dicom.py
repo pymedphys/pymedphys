@@ -145,12 +145,12 @@ from .face_validation import (
     _software,
     crash_site,
 )
-from .pixel_cleaning import PixelDataRefused
+from .pixel_cleaning import FrameMask, PixelDataRefused, black_out
 from .reasons import VisualFeaturesReason
 from .references import InstanceRecord
 from .region_defacing import ContoursRefused, cut_contours
 from .run_discovery import RunError, discover
-from .source import NATIVE_TRANSFER_SYNTAXES
+from .source import NATIVE_TRANSFER_SYNTAXES, SourceRefused, read_source
 from .uids import normalise_uid
 
 FORMAT = "pymedphys-deid-face-validation-dicom/1"
@@ -165,6 +165,10 @@ INTERPRETED_TYPES = frozenset(
         "PTV",
         "CTV",
         "GTV",
+        "TREATED_VOLUME",
+        "IRRAD_VOLUME",
+        "OAR",
+        "BOLUS",
         "AVOIDANCE",
         "ORGAN",
         "MARKER",
@@ -181,6 +185,7 @@ INTERPRETED_TYPES = frozenset(
         "DOSE_REGION",
         "CONTROL",
         "DOSE_MEASUREMENT",
+        "DEVICE",
     }
 )
 TARGET_CLEARANCE = Bins("mm", (0.0, 2.0, 5.0, 10.0, 20.0, 30.0, 50.0, 100.0))
@@ -291,12 +296,16 @@ class DoseMeasures:
     Attributes
     ----------
     outcome : str
-        ``"set-to-zero"``, ``"not-measured/compressed"``, or the reason that
-        it is held, such as ``"dose-in-face-block"``.
+        ``"set-to-zero"``, ``"not-measured/compressed"``, the reason that it
+        is held, such as ``"dose-in-face-block"``, or, for a file that a run
+        sequesters, ``"sequestered/"`` and the
+        :class:`~.source.SourceReason`'s value.
     share : float or None
         The greatest stored value that a run would set to zero as a
         fraction of the grid's greatest, 0 for a grid of none above zero;
-        None where the grid is not placed in the block.
+        None where the grid is not placed in the block, or a run's cleaner
+        refuses its Pixel Data, as it refuses a field of more bytes than its
+        frames and one byte of padding.
     """
 
     outcome: str
@@ -876,7 +885,10 @@ def _hull(plane: np.ndarray) -> np.ndarray:
     def chain(indices: list[int]) -> list[int]:
         found: list[int] = []
         for index in indices:
-            while len(found) >= 2 and _turn(*plane[found[-2:]], plane[index]) <= 0:
+            while (
+                len(found) >= 2
+                and _turn(plane[found[-2]], plane[found[-1]], plane[index]) <= 0
+            ):
                 found.pop()
             found.append(index)
         return found
@@ -917,31 +929,49 @@ def _measure_dose(
         # compressed Pixel Data.
         return DoseMeasures("not-measured/compressed")
     try:
-        defacer = RtDoseDefacer(dose, dataset)
+        source = read_source(data or b"")
+    except SourceRefused as refused:
+        return DoseMeasures(f"sequestered/{refused.reason.value}")
+    try:
+        defacer = RtDoseDefacer(dose, source.dataset())
+        recorder = _Recorder(defacer)
+        # The run's own cleaner, which admits only the Pixel Data that a
+        # run cleans, gives each frame to the defacer.
+        black_out(source, source.dataset(), None, recorder)
     except PixelDataRefused:
         return DoseMeasures(undefaced)
-    share = _share(defacer, dataset)
     held = defacer.held
     if held is not None:
         outcome = held.value
     else:
         outcome = undefaced if dose.holds(defaced, record) else "set-to-zero"
-    return DoseMeasures(outcome, share)
+    return DoseMeasures(outcome, recorder.share)
 
 
-def _share(defacer: RtDoseDefacer, dataset: pydicom.Dataset) -> float:
-    """Give each frame of a grid's native Pixel Data to its defacer, as a
-    run does, and return the greatest stored value that it sets to zero as
-    a fraction of the grid's greatest, or 0 for a grid of none above 0."""
-    stored = np.asarray(dataset.pixel_array)
-    stored = stored.reshape((-1, *stored.shape[-2:]))
-    greatest = int(stored.max()) if stored.size else 0
-    zeroed = 0
-    for index, frame in enumerate(stored):
-        mask = defacer.mask(index, frame)
+class _Recorder:
+    """Gives a defacer's masks, as :func:`~.pixel_cleaning.black_out` asks
+    for them, and records the greatest stored value of the frames given and
+    of the voxels that their masks set to zero."""
+
+    def __init__(self, defacer: RtDoseDefacer) -> None:
+        self._defacer = defacer
+        self._greatest = 0
+        self._zeroed = 0
+
+    def mask(self, frame: int, stored: np.ndarray) -> FrameMask | None:
+        stored = np.asarray(stored)
+        if stored.size:
+            self._greatest = max(self._greatest, int(stored.max()))
+        mask = self._defacer.mask(frame, stored)
         if mask is not None:
-            zeroed = max(zeroed, int(frame[mask.mask].max()))
-    return zeroed / greatest if greatest > 0 else 0.0
+            self._zeroed = max(self._zeroed, int(stored[np.asarray(mask.mask)].max()))
+        return mask
+
+    @property
+    def share(self) -> float:
+        """The greatest stored value set to zero as a fraction of the
+        greatest given, or 0 for frames of none above 0."""
+        return self._zeroed / self._greatest if self._greatest > 0 else 0.0
 
 
 def _measure_structure_set(

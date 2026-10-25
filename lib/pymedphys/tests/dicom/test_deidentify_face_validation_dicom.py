@@ -686,3 +686,55 @@ def test_clearance_is_the_least_over_every_segment_between_the_points(seed):
             for j in range(i, len(plane))
         )
         assert clearance(_CORNER, points) == pytest.approx(expected)
+
+
+def _surplus(data: bytes) -> bytes:
+    """An RT Dose whose Pixel Data has two bytes beyond its frames, which
+    pydicom reads past but a run's cleaner refuses."""
+    dataset = pydicom.dcmread(io.BytesIO(data))
+    dataset.PixelData = dataset.PixelData + bytes(2)
+    return files.written(dataset)
+
+
+def test_an_rt_dose_that_the_runs_cleaner_refuses_is_counted_as_held(tmp_path, block):
+    exact = _dose(1, block, _DOSE_LOW, 1)
+    data = {f"CT{i:03d}.dcm": each for i, each in enumerate(_ct(1))}
+    data["RD1.dcm"] = exact
+    data["RD2.dcm"] = _surplus(_dose(1, block, _DOSE_LOW, 2))
+    for name, each in data.items():
+        (tmp_path / name).write_bytes(each)
+
+    doses = sorted(
+        face_validation_dicom.measure_dicom(tmp_path).doses,
+        key=lambda each: each.outcome,
+    )
+
+    assert [(each.outcome, each.share) for each in doses] == [
+        ("set-to-zero", pytest.approx(_DOSE_LOW / _DOSE_GREATEST)),
+        ("undefaced-in-defaced-frame", None),
+    ]
+
+
+@pytest.mark.parametrize(
+    "kind, counted",
+    [
+        *(
+            (kind, kind)
+            for kind in ("TREATED_VOLUME", "IRRAD_VOLUME", "OAR", "BOLUS", "DEVICE")
+        ),
+        ("ORGAN", "ORGAN"),
+        ("PTV ", "PTV"),
+        ("SITE_SPECIFIC", "other"),
+        ("", "none"),
+    ],
+)
+def test_rt_roi_interpreted_types_are_counted_by_their_defined_terms(kind, counted):
+    observation = pydicom.Dataset()
+    observation.ReferencedROINumber = 1
+    observation.RTROIInterpretedType = kind
+    dataset = pydicom.Dataset()
+    dataset.RTROIObservationsSequence = [observation]
+
+    assert face_validation_dicom._interpreted_types(  # pylint: disable = protected-access
+        dataset
+    ) == {1: counted}
