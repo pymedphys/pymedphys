@@ -12,6 +12,16 @@ This project adheres to
 
 ## Unreleased
 
+### Oversized DICOM contours
+
+Contour merging and structure-coordinate extraction now decode oversized Contour
+Data stored as UN in Explicit VR files. This fixes failures in
+`pymedphys.dicom.merge_contours`, `pymedphys dicom merge-contours`, and the shared
+structure reader used by dose masks. Malformed encoded coordinates raise an error
+without disclosing their values. File transfer syntaxes are preserved.
+[Issue #2008](https://github.com/pymedphys/pymedphys/issues/2008)
+[PR #2480](https://github.com/pymedphys/pymedphys/pull/2480)
+
 ### TRF archive integrity
 
 TRF indexing now checks the archived logfile checksum before removing an incoming
