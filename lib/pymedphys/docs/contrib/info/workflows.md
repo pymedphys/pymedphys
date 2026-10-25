@@ -25,6 +25,7 @@ Schedule / manual run -> deps.yml
 Schedule / manual run -> deid-edition-check.yml
 Schedule / manual run -> tg263-edition-check.yml
 Schedule / manual run / PR changing it or labelled check-upstream -> tcia-edition-check.yml
+Manual run -> face-validation.yml
 Published release -> release.yml -> quality checks, publishing, verification, and published-package tests
 Issue comment -> claude.yml
 
@@ -575,6 +576,27 @@ Safe Private Option against TCIA's original.
   Once each new edition is reviewed, the pin moved or the edition added to
   `REVIEWED` in `lib/pymedphys/_dev/tcia_edition_check.py`, close the issue; a
   later finding opens a new one
+
+#### `face-validation.yml`
+
+Checks the face block that the de-identification engine finds in head CT, and
+the air that it writes there, under the Clean Recognizable Visual Features
+Option, against the eye and organ masks of the HaN-Seg data set (see
+[Check the face block against HaN-Seg](deidentification-face-validation.md)).
+
+- **Triggers**: manually only
+- **Steps**: installs the project with the `user` extra, downloads HaN-Seg
+  version 1.0 from Zenodo, checks its size and MD5 against the record's, and
+  runs `python -m pymedphys._dicom.deidentify.face_validation_command hanseg`
+  through `.github/scripts/run_redacted.py`, which reports a crash by its type
+  and code locations alone. The command's standard output and standard error
+  stay in files on the runner. Its job can only read the repository
+- **Results**: the job summary shows `face-validation.md`, and the
+  `face-validation-results` artefact, kept for 90 days, holds it with
+  `face-validation.json` and `commit.txt`. They hold only counts, codes,
+  digests, versions, and the engine's settings. HaN-Seg's images are of real
+  patients, so the data set is never cached or uploaded, and nothing else read
+  from it leaves the runner
 
 ### AI Assistance
 
