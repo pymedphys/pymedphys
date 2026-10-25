@@ -108,8 +108,9 @@ class TransformReason(enum.Enum):
     # decode to the same pixels as before
     CUT_CHANGED_PIXELS = "cut-changed-pixels"
     # under Clean Graphics, an overlay group without Overlay Data (60xx,3000),
-    # whose overlay may lie in unused bits of Pixel Data, which the engine
-    # does not change
+    # whose overlay may lie in Pixel Data where it cannot be cleared: within
+    # Bits Stored, in compressed Pixel Data, or otherwise than
+    # pixel_cleaning.overlay_planes allows (D-041)
     OVERLAY_IN_PIXEL_DATA = "overlay-in-pixel-data"
     # under Clean Pixel Data, top-level Float Pixel Data or Double Float Pixel
     # Data, or Pixel Data that cannot be read as frames of stored values: a
@@ -118,7 +119,8 @@ class TransformReason(enum.Enum):
     # MONOCHROME1, MONOCHROME2, or 8-bit RGB, or, compressed, 8-bit YBR_FULL,
     # YBR_FULL_422, YBR_ICT, or YBR_RCT, which decode to RGB, a length that
     # does not fit its frames, or bits above Bits Stored that hold more than
-    # the value's sign, such as an overlay (D-037)
+    # the value's sign once any overlay that an overlay group without Overlay
+    # Data places there is cleared (D-037)
     UNCLEANABLE_PIXEL_DATA = "uncleanable-pixel-data"
     # under Clean Pixel Data, written Pixel Data that differs from its source
     # other than by the blacked-out regions (D-037), or reviewed regions in a

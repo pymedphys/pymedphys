@@ -493,16 +493,30 @@ def _image_findings(dataset: pydicom.Dataset) -> Iterator[Finding]:
             yield Finding(indicator, path)
 
 
-def _overlay_findings(dataset: pydicom.Dataset) -> Iterator[Finding]:
-    """Find the overlay groups that have no Overlay Data (60xx,3000)."""
+def overlay_groups_without_data(dataset: pydicom.Dataset) -> dict[int, int]:
+    """Return each overlay group without Overlay Data (60xx,3000), with its
+    first element, in the order of the data set.
+
+    These are the groups whose overlay may lie in unused bits of Pixel Data,
+    which :func:`assess_pixel_risk` reports as
+    :attr:`Indicator.EMBEDDED_OVERLAY`.
+    """
     groups: dict[int, int] = {}
     for tag in dataset.keys():
         if 0x6000 <= tag.group <= 0x601E and tag.group % 2 == 0 and tag.element:
             groups.setdefault(tag.group, tag.element)
-    for group, first in groups.items():
-        if (group << 16 | _OVERLAY_DATA_ELEMENT) not in dataset:
-            path = ElementPath((), f"({group:04X},{first:04X})")
-            yield Finding(Indicator.EMBEDDED_OVERLAY, path)
+    return {
+        group: first
+        for group, first in groups.items()
+        if (group << 16 | _OVERLAY_DATA_ELEMENT) not in dataset
+    }
+
+
+def _overlay_findings(dataset: pydicom.Dataset) -> Iterator[Finding]:
+    """Find the overlay groups that have no Overlay Data (60xx,3000)."""
+    for group, first in overlay_groups_without_data(dataset).items():
+        path = ElementPath((), f"({group:04X},{first:04X})")
+        yield Finding(Indicator.EMBEDDED_OVERLAY, path)
 
 
 def _surface_findings(dataset: pydicom.Dataset) -> Iterator[Finding]:
