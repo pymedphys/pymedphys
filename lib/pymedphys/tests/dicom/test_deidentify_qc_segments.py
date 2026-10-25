@@ -330,6 +330,54 @@ def test_a_segment_in_one_plane_twice_is_refused(kind):
     assert _segments(files.segmentation(_SCAN, [_mask(), _brain()])) is not None
 
 
+def _shifted(*labels):
+    """:func:`_two_times`'s BINARY Segmentation, with the box's frames 0.1 mm
+    above the head's, and labelled by ``labels``: "organisation" as
+    3D_TEMPORAL, and "temporal" or "stack" by distinct Temporal Position
+    Indices or Stack IDs for the two."""
+    dataset = _two_times()
+    groups = dataset.PerFrameFunctionalGroupsSequence
+    frames = len(groups) // 2
+    for index, group in enumerate(groups):
+        later = index >= frames
+        if later:
+            position = group.PlanePositionSequence[0]
+            x, y, z = (float(value) for value in position.ImagePositionPatient)
+            position.ImagePositionPatient = [x, y, round(z + 0.1, 3)]
+        content = pydicom.Dataset()
+        content.TemporalPositionIndex = 2 if later and "temporal" in labels else 1
+        content.StackID = "2" if later and "stack" in labels else "1"
+        group.FrameContentSequence = [content]
+    if "organisation" in labels:
+        dataset.DimensionOrganizationType = "3D_TEMPORAL"
+    return dataset
+
+
+@pytest.mark.parametrize(
+    "labels",
+    [
+        ("organisation", "temporal", "stack"),
+        ("organisation",),
+        ("temporal",),
+        ("stack",),
+        (),
+    ],
+)
+def test_frames_of_two_times_in_displaced_planes_are_refused(labels):
+    # The box's planes lie between the head's, so none holds a segment
+    # twice, but drawn together the box would again hide the head's face:
+    # by its labels, or by its planes off the grid of the 2 mm step.
+    assert qc_segments.segments_of(_shifted(*labels)) is None
+    # One time point and one stack, labelled so, are drawn.
+    dataset = _read(files.segmentation(_SCAN, [_mask(), _brain()]))
+    for group in dataset.PerFrameFunctionalGroupsSequence:
+        content = pydicom.Dataset()
+        content.TemporalPositionIndex, content.StackID = 1, "1"
+        group.FrameContentSequence = [content]
+    dataset.DimensionOrganizationType = "3D"
+    assert qc_segments.segments_of(dataset) is not None
+
+
 # The sheet of a Segmentation's segments.
 
 
@@ -595,19 +643,26 @@ def test_a_ribbon_finer_along_one_axis_and_coarser_along_the_other_is_whole(fine
     assert len(along) * lattice.voxel >= 25 - lattice.voxel
 
 
-def _plates(keep_empty):
-    """A Segmentation of one segment, a plate at z = 0 and another at 20 mm,
-    in frames 1 mm apart, of pixels 0.5 mm apart, with or without the empty
-    frames between them."""
+def _plates(keep_empty, apart=20, thickness=None):
+    """A Segmentation of one segment, a plate at z = 0 and another ``apart``
+    mm above, in frames 1 mm apart, of pixels 0.5 mm apart, with or without
+    the empty frames between them, and of Slice Thickness ``thickness`` mm
+    where given, or 1 mm."""
     scan = head.Scan(
         (1.0, 0.0, 0.0, 0.0, 1.0, 0.0),
-        tuple((0.0, 0.0, float(k)) for k in range(21)),
+        tuple((0.0, 0.0, float(k)) for k in range(apart + 1)),
         (0.5, 0.5),
         (40, 40),
     )
-    mask = np.zeros((21, 40, 40), bool)
-    mask[[0, 20], 10:30, 10:30] = True
-    return files.segmentation(scan, [mask], keep_empty=keep_empty)
+    mask = np.zeros((apart + 1, 40, 40), bool)
+    mask[[0, apart], 10:30, 10:30] = True
+    data = files.segmentation(scan, [mask], keep_empty=keep_empty)
+    if thickness is None:
+        return data
+    dataset = _read(data)
+    measures = dataset.SharedFunctionalGroupsSequence[0].PixelMeasuresSequence[0]
+    measures.SliceThickness = thickness
+    return files.written(dataset)
 
 
 def test_a_writer_leaving_out_every_segment_s_empty_frames_changes_nothing():
@@ -615,12 +670,29 @@ def test_a_writer_leaving_out_every_segment_s_empty_frames_changes_nothing():
     assert _read(sparse).NumberOfFrames == 2
     assert _read(dense).NumberOfFrames == 21
     assert np.array_equal(_sheet(sparse), _sheet(dense))
-    # Each plate is drawn in the one slice of voxels within its 1 mm slab,
+    # Each plate is drawn in the one slice of voxels within its 1 mm cell,
     # not across the 20 mm between them.
     segments = _segments(sparse)
     lattice = qc_segments._own_lattice(segments)  # pylint: disable = protected-access
     placed = qc_segments._Placement(segments, lattice)  # pylint: disable = protected-access
     assert [len(placed.slices(origin)) for origin in segments.origins] == [1, 1]
+
+
+def test_a_slice_thickness_above_the_spacing_bridges_no_left_out_frames():
+    # Plates 4 mm apart, of 5 mm Slice Thickness and 1 mm Spacing Between
+    # Slices: written, the empty frames between them keep the slice of
+    # voxels between them empty, and left out, they still do.
+    sparse, dense = _plates(False, 4, 5), _plates(True, 4, 5)
+    assert _read(sparse).NumberOfFrames == 2
+    assert _read(dense).NumberOfFrames == 5
+    assert np.array_equal(_sheet(sparse), _sheet(dense))
+    segments = _segments(sparse)
+    assert segments.step == 1.0
+    lattice = qc_segments._own_lattice(segments)  # pylint: disable = protected-access
+    placed = qc_segments._Placement(segments, lattice)  # pylint: disable = protected-access
+    drawn = np.union1d(*(placed.slices(origin) for origin in segments.origins))
+    between = np.flatnonzero((lattice.zs > 0.5) & (lattice.zs < 3.5))
+    assert between.size and not np.intersect1d(drawn, between).size
 
 
 @pytest.mark.parametrize(
@@ -632,7 +704,7 @@ def test_a_writer_leaving_out_every_segment_s_empty_frames_changes_nothing():
         {"SpacingBetweenSlices": "nan"},
     ],
 )
-def test_frames_in_two_planes_need_a_slab_to_be_placed(measures):
+def test_frames_in_two_planes_need_a_step_to_be_placed(measures):
     dataset = _read(_plates(False))
     shared = dataset.SharedFunctionalGroupsSequence[0].PixelMeasuresSequence[0]
     del shared.SliceThickness, shared.SpacingBetweenSlices
@@ -644,9 +716,34 @@ def test_frames_in_two_planes_need_a_slab_to_be_placed(measures):
     measured = one.SharedFunctionalGroupsSequence[0].PixelMeasuresSequence[0]
     del measured.SliceThickness, measured.SpacingBetweenSlices
     assert qc_segments.segments_of(one) is not None
-    # Either alone is a slab, and the larger of the two is taken.
-    shared.SliceThickness, shared.SpacingBetweenSlices = "1", "3"
-    assert qc_segments.segments_of(dataset).slab == 3.0
+    # The spacing is the step, or the thickness where there is no spacing.
+    shared.SliceThickness, shared.SpacingBetweenSlices = "5", "1"
+    assert qc_segments.segments_of(dataset).step == 1.0
+    del shared.SpacingBetweenSlices
+    shared.SliceThickness = "2"
+    assert qc_segments.segments_of(dataset).step == 2.0
+
+
+@pytest.mark.parametrize(
+    "apart, keep_empty, measures",
+    [
+        # Plates 20 mm apart, on no grid of 3 mm.
+        (20, False, {"SpacingBetweenSlices": "3"}),
+        (20, True, {"SpacingBetweenSlices": "3"}),
+        # Of 5 mm Slice Thickness and no spacing, frames 1 mm apart, and
+        # plates 4 mm apart, as with their empty frames left out.
+        (4, True, {"SliceThickness": "5"}),
+        (4, False, {"SliceThickness": "5"}),
+    ],
+)
+def test_planes_off_the_grid_of_their_step_are_refused(apart, keep_empty, measures):
+    # The step cannot then tell which planes a writer left out.
+    dataset = _read(_plates(keep_empty, apart))
+    shared = dataset.SharedFunctionalGroupsSequence[0].PixelMeasuresSequence[0]
+    del shared.SliceThickness, shared.SpacingBetweenSlices
+    for keyword, value in measures.items():
+        setattr(shared, keyword, value)
+    assert qc_segments.segments_of(dataset) is None
 
 
 # A Segmentation's previews in the QC pack.
@@ -686,7 +783,9 @@ def test_a_segmentation_is_previewed_by_its_segments_with_its_ct():
     assert PreviewKind.INSTANCE in kinds
 
 
-@pytest.mark.parametrize("why", ["fractional", "unlisted", "too tall", "two times"])
+@pytest.mark.parametrize(
+    "why", ["fractional", "unlisted", "too tall", "two times", "displaced"]
+)
 def test_a_segmentation_that_no_sheet_shows_is_held(monkeypatch, why):
     masks = [_mask(), _brain()]
     if why == "fractional":
@@ -697,6 +796,8 @@ def test_a_segmentation_that_no_sheet_shows_is_held(monkeypatch, why):
         data = files.written(dataset)
     elif why == "two times":
         data = files.written(_two_times())
+    elif why == "displaced":
+        data = files.written(_shifted("organisation", "temporal", "stack"))
     else:
         data = files.segmentation(_SCAN, masks)
         monkeypatch.setattr(qc_previews.qc_contours, "MAXIMUM_SHEET_PIXELS", 100)
