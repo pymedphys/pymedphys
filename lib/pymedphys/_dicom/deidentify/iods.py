@@ -329,6 +329,36 @@ class IOD:
             tuple(recursions),
         )
 
+    @functools.cached_property
+    def _paths_by_tag(self) -> Mapping[str, tuple[tuple[str, ...], ...]]:
+        paths: dict[str, dict[tuple[str, ...], None]] = collections.defaultdict(dict)
+        for definition in self.definitions:
+            paths[definition.tag][definition.path] = None
+        return types.MappingProxyType(
+            {tag: tuple(found) for tag, found in paths.items()}
+        )
+
+    def paths(self, tag: str) -> tuple[tuple[str, ...], ...]:
+        """Return each place in :attr:`definitions` that defines a tag.
+
+        Parameters
+        ----------
+        tag : str
+            The tag as its definitions give it, such as ``"(0010,0020)"``, or
+            ``"(60xx,3000)"`` for an attribute of a repeating group. Unlike
+            :meth:`lookup`, a tag of one group, such as ``"(6002,3000)"``,
+            does not match its group's definition.
+
+        Returns
+        -------
+        tuple of tuple of str
+            The path of each definition of the tag, once each, in the order
+            of its first definition there, or ``()`` if none defines it. The
+            items of a table that includes itself are not repeated, as in
+            :attr:`definitions`.
+        """
+        return self._paths_by_tag.get(tag, ())
+
     def lookup(
         self, tag: str, path: Sequence[str] = ()
     ) -> tuple[AttributeDefinition, ...]:

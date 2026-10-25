@@ -77,7 +77,7 @@ from collections.abc import Sequence
 
 from .file_layout import TAG_PATTERN
 from .iods import IOD
-from .policy import Policy, PolicyError, refuse_unapplied_options
+from .policy import SAFE_PRIVATE, Policy, PolicyError, refuse_unapplied_options
 from .safe_private import RuleList, SafePrivateList, load_safe_private_rules
 from .standard import (
     _RESERVED_ODD_GROUPS,
@@ -213,9 +213,10 @@ class ElementRules:
     PolicyError
         If the policy selects an option that the engine does not yet apply
         (:func:`~pymedphys._dicom.deidentify.policy.refuse_unapplied_options`),
-        or was not composed from the pinned Table E.1-1; or if
-        ``safe_private_list`` chooses TCIA's dictionary for a policy without
-        the Retain Safe Private Option.
+        or was not composed from the pinned Table E.1-1; if it gives Private
+        Attributes another action than X without the Retain Safe Private
+        Option, or than C with it; or if ``safe_private_list`` chooses TCIA's
+        dictionary for a policy without the Retain Safe Private Option.
     TypeError
         If ``safe_private_list`` is not a SafePrivateList.
 
@@ -247,6 +248,17 @@ class ElementRules:
             raise PolicyError("the policy was not composed from the pinned Table E.1-1")
         self.policy = policy
         self._private = policy.actions[PRIVATE_ATTRIBUTES_TAG]
+        option = SAFE_PRIVATE in policy.options
+        if self._private != ("C" if option else REMOVE):
+            raise PolicyError(
+                f"the policy gives Private Attributes {self._private}, but they "
+                + (
+                    "are settled by the safe private rules (C) under the Retain "
+                    "Safe Private Option"
+                    if option
+                    else "are removed (X) without the Retain Safe Private Option"
+                )
+            )
         if self._private != "C" and safe_private_list is not SafePrivateList.REVIEWED:
             raise PolicyError(
                 "a safe private list can be chosen only under the Retain Safe "

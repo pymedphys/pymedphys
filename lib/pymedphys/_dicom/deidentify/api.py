@@ -27,6 +27,10 @@ summary and returns an exit status, it prints nothing and returns
 :class:`Deidentified`; where the command exits because the run could not
 start, it raises.
 
+Under the Clean Recognizable Visual Features Option, it takes the QC
+pack of an earlier run of the same files, attested with face verdicts
+(D-046), which the command does not take yet.
+
 It is private until the release, which is to export it as
 ``pymedphys.dicom.deidentify``; nothing exports it yet. No preset or option
 is enabled yet, so until one is, it raises :class:`DeidentifyError`.
@@ -46,8 +50,9 @@ from .safe_private import SafePrivateList
 class DeidentifyError(Exception):
     """A run that could not start, with a message that quotes no path or value.
 
-    Its preset or option set is not enabled, or what it cleans ROI Names
-    with cannot be used. Nothing was created.
+    Its preset or option set is not enabled, what it cleans ROI Names
+    with cannot be used, or it has no usable face review under the Clean
+    Recognizable Visual Features Option. Nothing was created.
     """
 
 
@@ -101,9 +106,12 @@ def deidentify(  # pylint: disable = too-many-arguments
     empty_held_roi_names: bool = False,
     roi_list: str | os.PathLike[str] | None = None,
     reviewed_descriptors: str | os.PathLike[str] | None = None,
+    redaction_review: str | os.PathLike[str] | None = None,
+    region_rules: str | os.PathLike[str] | None = None,
     safe_private_list: str = "reviewed",
     key_file: str | os.PathLike[str] | None = None,
     profile_store: str | os.PathLike[str] | None = None,
+    face_review: str | os.PathLike[str] | None = None,
 ) -> Deidentified:
     """De-identify the DICOM files below a source directory into a new release.
 
@@ -154,6 +162,21 @@ def deidentify(  # pylint: disable = too-many-arguments
         pymedphys._dicom.deidentify.reviewed_descriptors_command``. By
         default, none, so only technique descriptors made of reviewed
         vocabulary words are kept (D-036).
+    redaction_review : str or os.PathLike, optional
+        Under Clean Pixel Data, the QC pack of an earlier run of the same
+        files under the option, attested with redaction verdicts by
+        ``python -m pymedphys._dicom.deidentify.attestation_command``. Each
+        source file with an accepted or revised verdict has exactly its
+        reviewed regions blacked out and can be released, and one with a
+        rejected verdict is sequestered. By default, none, so every image
+        is cleaned by the text detector and held for review.
+    region_rules : str or os.PathLike, optional
+        Under Clean Pixel Data, the custodian's reviewed region rules, which
+        must exist, outside ``source``, ``release``, and ``qc_pack``, since a
+        run records no rule. Their
+        regions are blacked out in every frame of a matching image beside
+        the text detector's, and the image is still held for review. By
+        default, none.
     safe_private_list : str, optional
         Under Retain Safe Private, the list whose rules settle private
         attributes: ``"reviewed"``, the default, for the reviewed rules of
@@ -173,6 +196,19 @@ def deidentify(  # pylint: disable = too-many-arguments
         created if it does not exist, and saved before the release is
         published, so that each subject keeps the date offset of its first
         export. It is given with ``key_file``.
+    face_review : str or os.PathLike, optional
+        Under Clean Recognizable Visual Features, which a run under the
+        option needs, the QC pack of an earlier run of the same files,
+        attested with face verdicts by ``python -m
+        pymedphys._dicom.deidentify.attestation_command``. Each instance
+        that can show a face is released, with the option's code, only
+        where its source file is in a series that the reviewer marked
+        absent and the run writes the pixel data and contours that the
+        reviewed run wrote of it; every other such instance is held for
+        review (D-046). An earlier run that has not defaced a CT series
+        under the option gives a verdict on it as received, which does not
+        release a slice that this run defaces, so the slices are held, and
+        the pack of this run gives the verdicts that release them.
 
     Returns
     -------
@@ -190,16 +226,22 @@ def deidentify(  # pylint: disable = too-many-arguments
         If both ``preset`` and ``options`` are given, or if
         ``tg263_spreadsheet``, ``reviewed_names``, ``empty_held_roi_names``,
         ``roi_list``, or ``reviewed_descriptors`` is given with a policy
-        without Clean Descriptors, or if ``safe_private_list`` is not
+        without Clean Descriptors, or ``redaction_review`` or
+        ``region_rules`` with a policy without Clean Pixel Data, or if ``safe_private_list`` is not
         ``"reviewed"`` or ``"tcia"``, or is ``"tcia"`` with a policy without
-        Retain Safe Private. Nothing is read or created.
+        Retain Safe Private, or if ``face_review`` is given with a policy
+        without Clean Recognizable Visual Features. Nothing is read or
+        created.
     DeidentifyError
         If the preset or an option is unknown or not enabled, the options
         cannot be composed, or the TG-263 edition, the reviewed-names list,
-        the institutional list, or the reviewed descriptors list cannot be
+        the institutional list, the reviewed descriptors list, the
+        redaction review, the region rules, or the text detector cannot be
         used; or if only one of ``key_file`` and ``profile_store`` is given,
-        project keys are not enabled, or either cannot be used. Nothing is
-        created.
+        project keys are not enabled, or either cannot be used; or if the
+        policy selects Clean Recognizable Visual Features and
+        ``face_review`` is not given, or its pack cannot be read, has not
+        been attested, or its verdicts cannot be used. Nothing is created.
     ~pymedphys._dicom.deidentify.profiles.ProfileError
         If the profile store could not be saved. Nothing is published.
     ~pymedphys._dicom.deidentify.run.RunError
@@ -237,6 +279,12 @@ def deidentify(  # pylint: disable = too-many-arguments
             "basic-clean-descriptors preset, or options that include "
             "clean_descriptors"
         )
+    pixel_data_options = redaction_review is not None or region_rules is not None
+    if pixel_data_options and not command.pixel_data_options_apply(preset, chosen):
+        raise ValueError(
+            "redaction_review and region_rules apply only under Clean Pixel Data: "
+            "with options that include clean_pixel_data"
+        )
     try:
         chosen_list = SafePrivateList(safe_private_list)
     except ValueError:
@@ -247,6 +295,11 @@ def deidentify(  # pylint: disable = too-many-arguments
         raise ValueError(
             'safe_private_list "tcia" applies only under Retain Safe Private: '
             "with a preset or options that include retain_safe_private"
+        )
+    if face_review is not None and not command.face_review_applies(preset, chosen):
+        raise ValueError(
+            "face_review applies only under Clean Recognizable Visual Features: "
+            "with options that include clean_recognizable_visual_features"
         )
     with redacted_diagnostics() as counts:
         try:
@@ -269,8 +322,11 @@ def deidentify(  # pylint: disable = too-many-arguments
                 empty_held_roi_names=empty_held_roi_names,
                 roi_list_path=roi_list,
                 reviewed_descriptors=reviewed_descriptors,
+                redaction_review=redaction_review,
+                region_rules=region_rules,
                 safe_private_list=chosen_list,
                 profiles=profiles,
+                face_review=face_review,
             )
         except command.TransformNotBuilt as error:
             raise DeidentifyError(str(error)) from None

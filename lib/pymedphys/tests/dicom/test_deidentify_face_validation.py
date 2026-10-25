@@ -302,6 +302,111 @@ def test_a_case_whose_ct_cannot_be_measured_is_counted_by_why(measured, name, re
     assert measured[name] == CaseNotMeasured(reason)
 
 
+def test_what_the_finder_saw_at_each_eye_is_measured(measured):
+    case = measured["head"]
+    finder = case.finder
+
+    assert finder is not None
+    assert finder.outcome == "defaced"
+    assert finder.kept <= finder.considered
+    # The balls at the eyes are the globes of the block found.
+    for eye, error in zip(finder.eyes, case.globe_errors, strict=True):
+        assert eye.status == "kept"
+        assert eye.nearest_kept == pytest.approx(error, abs=1e-9)
+        assert eye.nearest is not None and eye.nearest <= eye.nearest_kept
+        assert eye.outside is not None and eye.outside >= 0.5
+        assert eye.best_half is not None and eye.best_half >= 0.8
+        assert eye.depth_window == "within"
+        assert head.GLOBE_RADIUS - 2 * finder.voxel <= eye.depth
+    pair = finder.pair
+    assert pair is not None
+    assert pair.side_by_side
+    assert pair.lateral == pair.superior == (True, True)
+    assert pair.behind - pair.in_front >= defacing.HEAD_BEHIND
+    assert pair.cranium_above
+    assert finder.other_pairs == ()
+    assert sorted(kind for kind, _ in finder.shells).count("eye") == 2
+    for _, shares in finder.shells:
+        assert set(shares) == set(face_validation.TISSUES)
+        assert sum(shares.values()) == pytest.approx(1.0, abs=1e-12)
+
+
+def test_what_the_finder_saw_without_eyes_shows_no_ball_there(measured):
+    finder = measured["no-eyes"].finder
+
+    assert finder is not None
+    assert finder.outcome == "no-eyes"
+    for eye in finder.eyes:
+        assert eye.status == "none-within-5-mm"
+        assert eye.outside is None and eye.best_half is None
+        # Orbital fat, not soft tissue, fills each orbit.
+        assert eye.depth == 0.0
+        assert eye.depth_window == "below"
+    assert finder.pair is None
+    assert all(kind == "other" for kind, _ in finder.shells)
+
+
+def test_globes_away_from_the_eyes_are_counted_as_another_pair(measured):
+    finder = measured["eyes-moved"].finder
+
+    assert finder is not None
+    assert finder.outcome == "defaced"
+    assert finder.pair is None
+    # The eyes' masks moved 30 mm to the patient's left: each globe lies
+    # level with their centroids and beside them, 30 mm or more from each.
+    assert finder.other_pairs == ("level-beside + level-beside",)
+
+
+def test_eyes_named_for_the_other_side_are_tested_as_the_same_pair(measured):
+    swapped, head_case = measured["eyes-swapped"].finder, measured["head"].finder
+
+    assert swapped is not None and head_case is not None
+    assert swapped.pair is not None and head_case.pair is not None
+    assert swapped.pair.behind == head_case.pair.behind
+    assert swapped.pair.in_front == head_case.pair.in_front
+    assert swapped.pair.lateral == swapped.pair.superior == (True, True)
+
+
+def test_another_head_in_view_is_counted_as_another_pair_beside_the_eyes():
+    scan = head.axial(spacing=1.5, extent=((-230, 230), (-130, 110), (-120, 120)))
+    finder = defacing.FaceFinder(
+        scan.orientation, scan.positions, scan.spacing, scan.shape
+    )
+    for values in scan.slices(head.Head(shift=-120.0), head.Head(shift=120.0)):
+        finder.add(values)
+    eyes = [
+        np.array([[x - 120.0, head.GLOBE_Y, head.GLOBE_Z]])
+        for x in (-head.GLOBE_X, head.GLOBE_X)
+    ]
+
+    # pylint: disable-next = protected-access
+    measures = face_validation._finder_measures(finder.inspect(), eyes)
+
+    assert measures.outcome == "ambiguous-eyes"
+    assert measures.pair is not None
+    assert measures.pair.side_by_side
+    assert measures.other_pairs == ("level-beside + level-beside",)
+
+
+@pytest.mark.parametrize(
+    "offset, place",
+    [
+        ((0.0, 0.0, 14.0), "at-an-eye"),
+        ((30.0, 0.0, 0.0), "level-beside"),
+        ((30.0, 0.0, 10.5), "above-beside"),
+        ((30.0, 15.5, -10.5), "below-behind"),
+        ((30.0, -15.5, 0.0), "level-in-front"),
+    ],
+)
+def test_a_ball_is_placed_from_the_eyes_centroids(offset, place):
+    centroids = np.array([[-32.0, -66.0, 20.0], [32.0, -66.0, 20.0]])
+
+    # pylint: disable-next = protected-access
+    found = face_validation._place(centroids[0] + np.array(offset), centroids)
+
+    assert found == place
+
+
 def test_a_ct_not_in_hounsfield_units_is_counted_as_without_air(tmp_path):
     # Stored as CT scanners store values before the rescale, air near 0.
     ct = np.full((3, 8, 8), 24, dtype=np.uint16)
@@ -319,7 +424,7 @@ def test_a_ct_not_in_hounsfield_units_is_counted_as_without_air(tmp_path):
 
 
 def test_the_summary_counts_the_cases_by_outcome(summary):
-    assert summary["format"] == "pymedphys-deid-face-validation/1"
+    assert summary["format"] == "pymedphys-deid-face-validation/2"
     assert summary["cases"] == {
         "total": 10,
         "measured": 6,
@@ -332,6 +437,22 @@ def test_the_summary_counts_the_cases_by_outcome(summary):
         "crashed": {},
     }
     assert summary["series"] == {"defaced": 5, "not_defaced": {"no-eyes": 1}}
+    finder = summary["finder"]
+    assert finder["cases"] == {"defaced": 5, "no-eyes": 1}
+    assert finder["not_inspected"] == {}
+    assert finder["finder_outcome"] == {
+        "defaced": {"defaced": 5},
+        "no-eyes": {"no-eyes": 1},
+    }
+    assert finder["eyes"]["kept_ball_at_each_eye"] == {
+        "defaced": {"both": 4, "neither": 1},
+        "no-eyes": {"neither": 1},
+    }
+    assert finder["eye_pair"]["passes"] == {"defaced": {"yes": 4}, "no-eyes": {}}
+    assert finder["other_pair_places"] == {
+        "defaced": {"level-beside + level-beside": 1},
+        "no-eyes": {},
+    }
     assert summary["eyes_of_defaced_series"] == {
         "agree": 4,
         "eyes-disagree-with-rois": 1,
@@ -404,10 +525,15 @@ def test_a_value_that_no_bin_holds_is_refused_without_quoting_it(value):
         face_validation.Bins("mm", (0.0, 1.0)).counts([0.25, value])
 
 
-def test_measures_show_nothing_of_a_case():
+def test_measures_show_nothing_of_a_case(measured):
     assert repr(CaseMeasures("defaced", "int16 gzip lps", True, 1.0, 2.0)) == (
         "CaseMeasures()"
     )
+    finder = measured["head"].finder
+    assert finder is not None and finder.pair is not None
+    assert repr(finder) == "FinderMeasures()"
+    assert repr(finder.eyes[0]) == "EyeMeasures()"
+    assert repr(finder.pair) == "PairMeasures()"
 
 
 def test_a_case_that_raises_is_counted_by_where_without_its_message(
@@ -471,6 +597,8 @@ def test_the_page_shows_the_counts_as_commonmark(summary):
     assert "| Defaced | 5 |\n" in page
     assert "| Not defaced: `no-eyes` | 1 |\n" in page
     assert "| `Lips` | 3 | 0 | 0 | 0 | 0 | 0 |\n" in page
+    assert "| Eyes with a kept ball within 5 mm | `defaced` | `no-eyes` |\n" in page
+    assert "| `both` | 4 | 0 |\n" in page
     lines = page.split("\n")
     # markdownlint's MD009, MD012, and MD022: no trailing spaces, no blank
     # lines in a row, and a blank line around each heading.

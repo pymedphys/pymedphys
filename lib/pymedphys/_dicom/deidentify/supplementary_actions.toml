@@ -6,11 +6,16 @@
 # no person's name is kept merely because the table does not list it. So does
 # every text attribute (VR LO, SH, LT, ST, UC, or UT) that Table E.1-1 omits
 # and an IOD of the supported scope uses, at any depth, so that no
-# operator-typed text is kept merely because the table does not list it. So
-# does every date, time, and datetime (DA, DT, or TM) attribute that Table
-# E.1-1 omits, besides the role that the temporal roles file gives it. Other
-# attributes that the table omits have a rule only where one has been
-# reviewed, such as the two URLs below that name coding concepts and schemes.
+# operator-typed text is kept merely because the table does not list it, and
+# so does every one that an IOD of the target coverage uses but not yet the
+# supported scope: RT Beams Treatment Record, RT Image, Spatial Registration,
+# Deformable Spatial Registration, Segmentation, and the four Radiation Dose
+# SR IODs, reviewed ahead of supporting them. So does every date, time, and
+# datetime (DA, DT, or TM)
+# attribute that Table E.1-1 omits, besides the role that the temporal roles
+# file gives it. Other attributes that the table omits have a rule only where
+# one has been reviewed, such as the two URLs below that name coding concepts
+# and schemes.
 # A rule never covers an attribute that Table E.1-1 lists, or a UI attribute,
 # which the UID roles file gives a role.
 #
@@ -58,7 +63,8 @@ keyword = "DocumentAuthorTrial"
 action = "X"
 note = "A person's name, retired in 2009 with the other (Trial) attributes of Structured Reporting; Table E.1-1 removes the others that name a person, Current Observer (Trial) and Verbal Source (Trial)."
 
-# Text attributes that Table E.1-1 omits and the supported IODs use.
+# Text attributes that Table E.1-1 omits and the supported IODs, or the
+# target IODs not yet supported, use.
 #
 # Operator-typed labels and text: removed by Type, and cleaned as
 # descriptors under Clean Descriptors.
@@ -246,6 +252,13 @@ options = { clean_descriptors = "C" }
 note = "The free text of a TEXT content item, which can hold anything a person writes, including names and dates. It is removed by Type, and cleaned as a descriptor under Clean Descriptors."
 
 [[attribute]]
+tag = "(0040,A492)"
+keyword = "CompletionFlagDescription"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "An explanation of a structured report's Completion Flag, which PS3.3 does not constrain further, so the person or system that completes the report can type anything in it, including a name or a date. It is removed by Type, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
 tag = "(0044,0106)"
 keyword = "AssertionComments"
 action = "X/Z/D"
@@ -288,6 +301,27 @@ options = { clean_descriptors = "C" }
 note = "A textual description of a PET image's scatter correction. The scanner usually writes it, but PS3.3 defines it as free text, so it is removed by Type, which replaces it with a dummy value where it is required, and cleaned as a descriptor under Clean Descriptors."
 
 [[attribute]]
+tag = "(0062,0005)"
+keyword = "SegmentLabel"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "A user-defined label for a segment, which an operator can type, such as the name of the structure segmented, and which can carry other text. It is removed by Type, which replaces it with a dummy value where it is Type 1, and cleaned as a descriptor under Clean Descriptors, as Table E.1-1 does for ROI Name."
+
+[[attribute]]
+tag = "(0062,0006)"
+keyword = "SegmentDescription"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "A user-defined description of a segment, which can carry anything a person types. It is removed by Type, and cleaned as a descriptor under Clean Descriptors, as Table E.1-1 does for ROI Description."
+
+[[attribute]]
+tag = "(0062,0009)"
+keyword = "SegmentAlgorithmName"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "The name of the algorithm that generated a segment, which PS3.3 says may be identical to Algorithm Name. An in-house algorithm's name is typed and can name a person or the institution, so it is treated as Algorithm Name is: removed by Type, which replaces it with a dummy value where it is required, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
 tag = "(0066,0032)"
 keyword = "AlgorithmParameters"
 action = "X/Z/D"
@@ -302,6 +336,20 @@ options = { clean_descriptors = "C" }
 note = "The name of a software algorithm, such as a dose calculation or contouring algorithm. An in-house algorithm's name is typed and can name a person or the institution, and Table E.1-1 removes Dose Calculation Model Name and cleans it under Clean Descriptors, so this name is treated the same way; Algorithm Family Code Sequence keeps the algorithm's family as a code. It is replaced with a dummy value where it is Type 1."
 
 [[attribute]]
+tag = "(0070,0081)"
+keyword = "ContentDescription"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "A user-defined description of the content of an instance, which PS3.3 says carries descriptive identifying text for human readers. It is removed by Type, which empties it where it is Type 2 and replaces it with a dummy value where it is Type 1, and cleaned as a descriptor under Clean Descriptors, as Table E.1-1 does for User Content Label."
+
+[[attribute]]
+tag = "(0072,006F)"
+keyword = "SelectorUCValue"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "The text of the cells of a TABLE content item, such as one in an Enhanced X-Ray Radiation Dose SR, or, outside one, the value of the UC attribute that Selector Attribute names; either can hold anything a person writes. It is removed by Type, which replaces it with a dummy value where it is required, and cleaned as a descriptor under Clean Descriptors, as Table E.1-1 does for Selector LO, LT, SH, ST, and UT Value, which it gives D, and C under Clean Descriptors."
+
+[[attribute]]
 tag = "(0100,0424)"
 keyword = "SOPAuthorizationComment"
 action = "X/Z/D"
@@ -309,11 +357,67 @@ options = { clean_descriptors = "C" }
 note = "Comments on authorising an instance for use, typed by the person who authorised it. It is removed by Type, and cleaned as a descriptor under Clean Descriptors."
 
 [[attribute]]
+tag = "(3002,0002)"
+keyword = "RTImageLabel"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "A user-defined label for an RT Image, which an operator can type with the patient's name, a site, or a date. It is removed by Type, which replaces it with a dummy value where it is Type 1, and cleaned as a descriptor under Clean Descriptors, as Table E.1-1 does for RT Plan Label."
+
+[[attribute]]
+tag = "(3002,0003)"
+keyword = "RTImageName"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "A user-defined name for an RT Image, which an operator can type with the patient's name, a site, or a date. It is removed by Type, and cleaned as a descriptor under Clean Descriptors, as Table E.1-1 does for RT Plan Name."
+
+[[attribute]]
+tag = "(3002,0004)"
+keyword = "RTImageDescription"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "A user-defined description of an RT Image, which can carry anything a person types. It is removed by Type, and cleaned as a descriptor under Clean Descriptors, as Table E.1-1 does for RT Plan Description."
+
+[[attribute]]
 tag = "(3004,0006)"
 keyword = "DoseComment"
 action = "X/Z/D"
 options = { clean_descriptors = "C" }
 note = "User-defined comments on dose data, which can name the patient or the planner, or carry a date. It is removed by Type, and cleaned as a descriptor under Clean Descriptors, as Table E.1-1 does for other RT comments and descriptions, such as Beam Description."
+
+[[attribute]]
+tag = "(3006,00C8)"
+keyword = "FrameOfReferenceTransformationComment"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "Comments that a person enters about a registration or a frame of reference's relationship to the equipment, which can name people or carry dates. It is removed by Type, and cleaned as a descriptor under Clean Descriptors, as Table E.1-1 does for other comments, such as Frame Comments."
+
+[[attribute]]
+tag = "(3008,0012)"
+keyword = "MeasuredDoseDescription"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "A user-defined description of a measured dose, such as an exit dose. It is removed by Type, and cleaned as a descriptor under Clean Descriptors, as Table E.1-1 does for Dose Reference Description."
+
+[[attribute]]
+tag = "(3008,0066)"
+keyword = "OverrideReason"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "A user-defined reason for overriding a treatment parameter, which PS3.3 says may hold notes justifying the override, and so can name the person who approved it or carry a date. It is removed by Type, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
+tag = "(3008,0074)"
+keyword = "CalculatedDoseReferenceDescription"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "A user-defined description of a calculated dose reference. It is removed by Type, and cleaned as a descriptor under Clean Descriptors, as Table E.1-1 does for Dose Reference Description."
+
+[[attribute]]
+tag = "(3008,0202)"
+keyword = "TreatmentStatusComment"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "A comment on the current status of a treatment, which a person can type with names or dates. It is removed by Type, and cleaned as a descriptor under Clean Descriptors, as Table E.1-1 does for other RT comments and descriptions, such as Beam Description."
 
 [[attribute]]
 tag = "(300A,0009)"
@@ -491,6 +595,13 @@ options = { clean_descriptors = "C" }
 note = "A user-supplied description of a general accessory. It is removed by Type, and cleaned as a descriptor under Clean Descriptors."
 
 [[attribute]]
+tag = "(300A,0730)"
+keyword = "TreatmentTerminationDescription"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "A description, for people to read, of why a treatment ended abnormally; RT Treatment Termination Reason Code Sequence and Machine-Specific Treatment Termination Code Sequence carry the reason as codes. It is free text, so it is removed by Type, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
 tag = "(3010,0005)"
 keyword = "EffectiveDoseCalculationMethodDescription"
 action = "X/Z/D"
@@ -569,6 +680,13 @@ keyword = "AuthorizationEquipmentCertificationNumber"
 action = "X/Z/D"
 options = { retain_device_identity = "K" }
 note = "The certification number issued to the system that authorised the instance for use, which identifies one installation. It is device identity: removed by Type, and kept under Retain Device Identity, as Table E.1-1 does for Device Serial Number."
+
+[[attribute]]
+tag = "(3002,0020)"
+keyword = "RadiationMachineName"
+action = "X/Z/D"
+options = { retain_device_identity = "K" }
+note = "A user-defined name for the radiation machine that acquired or computed an image, such as a simulator, an accelerator, or the machine a DRR models. It names a device as Treatment Machine Name does, so it is removed by Type, which empties it where it is Type 2, and kept under Retain Device Identity, as Table E.1-1 does for Treatment Machine Name."
 
 [[attribute]]
 tag = "(300A,00D4)"
@@ -839,6 +957,12 @@ action = "K"
 note = "The units of the rescaled pixel values, a Defined Term such as HU (PS3.3 C.11.1.1.2) that the equipment writes. It identifies no one, and replacing it would change how the pixel values are read, so it is kept."
 
 [[attribute]]
+tag = "(0028,3004)"
+keyword = "ModalityLUTType"
+action = "K"
+note = "The units of the output of a Modality LUT, a Defined Term such as OD or HU that it shares with Rescale Type (PS3.3 C.11.1.1.2). It identifies no one, and replacing it would change how the pixel values are read, so it is kept, as Rescale Type is."
+
+[[attribute]]
 tag = "(0066,0031)"
 keyword = "AlgorithmVersion"
 action = "K"
@@ -978,6 +1102,12 @@ tag = "(0040,E001)"
 keyword = "HL7InstanceIdentifier"
 action = "X/Z/D"
 note = "The identifier of a referenced HL7 document, a UID with an optional extension, which identifies one document about the patient. Table E.1-1 replaces the UIDs of instances, but this is text, which takes no keyed UID replacement, so it is removed by Type under every option."
+
+[[attribute]]
+tag = "(0062,0020)"
+keyword = "TrackingID"
+action = "X/Z/D"
+note = "A text label that tracks a finding or feature across reporting objects over time and that PS3.3 requires to be unique within the domain in which it is used, so it identifies a record about the patient. Table E.1-1 replaces Tracking UID, which accompanies it, but this is text, which takes no keyed UID replacement, so it is removed by Type under every option, which replaces it with a dummy value where it is required."
 
 [[attribute]]
 tag = "(0088,0130)"

@@ -764,7 +764,11 @@ class DescriptorEntry:
         Whether the element was written with those values. Where it was not,
         because a value was held, no value had text, or a kept value was
         beside a mapped or emptied one, or because another attribute's action removed
-        its sequence, it took its action without Clean Descriptors.
+        its sequence, it took its action without Clean Descriptors, except
+        for an attribute that another option's cleaner left to the reviewed
+        descriptors list, such as Allergies under Retain Patient
+        Characteristics, a held value of which holds its instance for review
+        instead (D-038).
     attribute : str or None
         For private text under the Retain Safe Private Option, the key by
         which a reviewer decides on its values
