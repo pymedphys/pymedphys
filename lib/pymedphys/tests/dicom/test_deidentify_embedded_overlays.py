@@ -64,12 +64,23 @@ CLEAN_GRAPHICS_CODE = "113103"
 OVERLAY_BIT = 13
 
 
+def _set_value(dataset, tag, value):
+    """Replace the element at ``tag`` with one of the same VR holding ``value``.
+
+    Assigning ``dataset[tag].value`` would do the same, but Pylint's inference
+    then records ``value`` as an integer attribute of pydicom's Dataset, and
+    reports ``dataset[tag].value[0]`` as unsubscriptable in any module linted
+    after this one in the same process.
+    """
+    dataset[tag] = pydicom.DataElement(tag, dataset[tag].VR, value)
+
+
 def _embedded(dataset, bit=OVERLAY_BIT, group=0x6000, every=3):
     """Add an overlay group without Overlay Data that places its overlay in
     ``bit`` of Pixel Data, and set that bit in every ``every``-th word."""
     _with_overlay(dataset, group=group, data=False)
-    dataset[group << 16 | 0x0100].value = dataset.BitsAllocated
-    dataset[group << 16 | 0x0102].value = bit
+    _set_value(dataset, group << 16 | 0x0100, dataset.BitsAllocated)
+    _set_value(dataset, group << 16 | 0x0102, bit)
     words = np.frombuffer(dataset.PixelData, "<u2").copy()
     words[::every] |= 1 << bit
     dataset.PixelData = words.tobytes()
@@ -192,7 +203,7 @@ def _bit_inside_bits_stored(dataset):
 
 def _bits_allocated_one(dataset):
     _embedded(dataset)
-    dataset[0x60000100].value = 1
+    _set_value(dataset, 0x60000100, 1)
     return dataset
 
 
@@ -204,7 +215,7 @@ def _no_bit_position(dataset):
 
 def _bit_position_of_two_values(dataset):
     _embedded(dataset)
-    dataset[0x60000102].value = [13, 14]
+    _set_value(dataset, 0x60000102, [13, 14])
     return dataset
 
 
@@ -275,8 +286,8 @@ def _rle_with_overlay():
         bits=12,
     )
     dataset = _with_overlay(pydicom.dcmread(io.BytesIO(data)), data=False)
-    dataset[0x60000100].value = 16
-    dataset[0x60000102].value = OVERLAY_BIT
+    _set_value(dataset, 0x60000100, 16)
+    _set_value(dataset, 0x60000102, OVERLAY_BIT)
     return dataset
 
 
