@@ -514,7 +514,7 @@ def test_a_text_finding_inside_the_data_set_goes_to_qc_review():
     "tag", ["(0012,0020)", "(0012,0030)", "(0012,0050)", "(0012,0071)"]
 )
 def test_a_trial_site_series_or_time_point_id_found_goes_to_qc_review(tag):
-    # Only the two subject IDs of group 0012 name the patient (D-027).
+    # Only the two subject IDs of group 0012 are direct identifiers (D-027).
     coverage = _coverage(SourceValue(ElementPath((), tag), "LO", PATIENT_ID))
     condition = release_condition(coverage, _written(PATIENT_ID))
     assert condition.decision is Decision.QC_REVIEW

@@ -116,9 +116,10 @@ from .standard import ProfileTable, dictionary_attribute, load_table_e1_1
 # The PS3.6 groups of the patient, a visit, the study, and a procedure or
 # order, in which direct identifiers are selected.
 IDENTIFIER_GROUPS = frozenset({"0008", "0010", "0020", "0032", "0038", "0040"})
-# Clinical Trial Subject ID and Clinical Trial Subject Reading ID, the
-# attributes outside those groups that name one patient: the other clinical
-# trial identifiers name the trial, a site, a series, or a time point.
+# Clinical Trial Subject ID and Clinical Trial Subject Reading ID, which
+# are defined for one subject; the other clinical trial identifiers are
+# defined for the trial, a site, a series, or a time point, and a finding
+# of one goes to QC review as other text does.
 NAMED_IDENTIFIERS = frozenset({"(0012,0040)", "(0012,0042)"})
 IDENTIFIER_WORDS = frozenset({"ID", "IDs", "Number", "Numbers", "Locator"})
 # The kinds of value, by VR, that must be collected completely for release.
@@ -637,14 +638,14 @@ def direct_identifiers(table: ProfileTable | None = None) -> frozenset[str]:
     that no option retains (K) or cleans (C), and whose keyword has ``ID``,
     ``IDs``, ``Number``, ``Numbers``, or ``Locator`` as a word, such as
     ``PatientID`` or ``PlacerOrderNumberImagingServiceRequest``. Those two
-    are named because each identifies one subject, whereas the other
-    clinical trial identifiers of group 0012 identify the trial, a site, a
-    series, or a time point. A keyword is split into
-    words at each capital that starts a word, and a run of capitals is one
-    word up to the capital that starts the next, so an acronym directly
-    before ``ID``, as in a keyword such as ``MRNID``, would be one word and
-    not selected; no keyword of the pinned edition that the other rules
-    select is written so.
+    are named because each is defined for one subject, whereas the other
+    clinical trial identifiers of group 0012 are defined for the trial, a
+    site, a series, or a time point, and stay under QC review. A keyword is
+    split into words at each capital that starts a word, and a run of
+    capitals is one word up to the capital that starts the next, so an
+    acronym directly before ``ID``, as in a keyword such as ``MRNID``, would
+    be one word and not selected; no keyword of the pinned edition that the
+    other rules select is written so.
 
     Parameters
     ----------
