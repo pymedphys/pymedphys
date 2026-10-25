@@ -540,7 +540,7 @@ def test_the_release_gate_gives_the_conditions_exempted_findings():
     finding = _exempted_finding()
     search = ResidualSearch((finding,), (), True)
 
-    def condition(coverage, written):
+    def condition(coverage, _written):
         return release_gate.ReleaseCondition(
             release_gate.Decision.RELEASE,
             coverage.outcome,
