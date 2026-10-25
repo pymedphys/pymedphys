@@ -272,6 +272,73 @@ def test_which_retain_options_with_the_option_keep_a_report_of_required_rows(
         assert _kept(dataset, iod, composed) is kept, name
 
 
+# A report made by a modality is observed by a device (TID 1004): its Device
+# Observer UID (row 1) is X/D, and its Name (row 2) and Serial Number (row 5)
+# are X unless Retain Device Identity is selected. The X-ray report's required
+# rows hold one; a radiopharmaceutical report holds one only through the dose
+# calibrator (TID 10022 rows 13 and 15).
+DEVICE_OBSERVERS = {
+    "x-ray, UID": (X_RAY, ()),
+    "x-ray, UID, name, and serial number": (
+        X_RAY,
+        ("TID 1004 row 2", "TID 1004 row 5"),
+    ),
+    "radiopharmaceutical, UID": (RADIOPHARMACEUTICAL, ("TID 10022 row 13",)),
+    "radiopharmaceutical, UID, name, and serial number": (
+        RADIOPHARMACEUTICAL,
+        (
+            "TID 10022 row 13",
+            "TID 10022 row 15 TID 1004 row 2",
+            "TID 10022 row 15 TID 1004 row 5",
+        ),
+    ),
+}
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.4-01")
+@pytest.mark.parametrize(
+    "options, kept",
+    [
+        # Without a dates option the required start datetimes take the tree
+        # out, whatever is retained.
+        ((), set()),
+        ((policy.UIDS,), set()),
+        ((policy.DEVICE_IDENTITY,), set()),
+        ((policy.FULL_DATES,), set()),
+        ((policy.MODIFIED_DATES,), set()),
+        # Retain UIDs keeps the UID but not the name or serial number.
+        (
+            (policy.MODIFIED_DATES, policy.UIDS),
+            {"x-ray, UID", "radiopharmaceutical, UID"},
+        ),
+        ((policy.FULL_DATES, policy.UIDS), {"x-ray, UID", "radiopharmaceutical, UID"}),
+        ((policy.FULL_DATES, policy.DEVICE_IDENTITY), set(DEVICE_OBSERVERS)),
+    ],
+)
+def test_which_retain_options_keep_a_report_observed_by_a_device(options, kept):
+    composed = policy.compose_custom_policy((CSC, *options))
+
+    assert {
+        case
+        for case, (name, optional) in DEVICE_OBSERVERS.items()
+        if _kept(*_report(name, optional), composed)
+    } == kept
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.4-01")
+@pytest.mark.parametrize(
+    "preset, kept", [("public-release", set()), ("tps-import", set(DEVICE_OBSERVERS))]
+)
+def test_which_presets_keep_a_report_observed_by_a_device(with_option, preset, kept):
+    composed = with_option(preset)
+
+    assert {
+        case
+        for case, (name, optional) in DEVICE_OBSERVERS.items()
+        if _kept(*_report(name, optional), composed)
+    } == kept
+
+
 @pytest.mark.parametrize(
     "preset, name, removed",
     [
