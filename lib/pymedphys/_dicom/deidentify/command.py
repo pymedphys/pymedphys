@@ -93,7 +93,8 @@ EXIT_STAGING_LEFT = 4
 EXIT_INTERNAL_ERROR = 70
 
 _RELEASED = (run.Status.RELEASED, run.Status.DUPLICATE)
-# The first supported release's presets (design document, Scope).
+# The presets that the command takes so far. The first supported release ships
+# every preset (design document, Scope).
 _PRESETS = ("basic", "basic-clean-descriptors")
 _ROI_NAME_OPTIONS = (
     "error: --tg263, --reviewed-names, --empty-held-roi-names, --roi-list, and "
