@@ -40,9 +40,11 @@ groups, per frame or shared, and sampled to cubic voxels of
 :data:`~.qc_surfaces.MINIMUM_VOXEL` millimetres, or of its smallest
 spacing where that is larger, as a volume's surface render is sampled, so
 that a long Segmentation's rows are taller rather than coarser. Within a
-frame, each voxel holds every pixel of the mask nearest it and the pixel
-nearest it, so that no pixel of a segment is left out where pixels are
-finer than the voxels, and none is missed where they are coarser. Each
+frame, the mask is sampled along its rows' axis and then its columns', each
+voxel along an axis holding every pixel nearest it and the pixel nearest it,
+so that no pixel of a segment is left out where pixels are finer than the
+voxels, and no voxel is missed where they are coarser, even where they are
+finer along one axis and coarser along the other. Each
 slice of voxels is covered by the plane of the frames nearest it, among
 the planes of every frame of the Segmentation, as a contour sheet covers a
 slice by an ROI's planes (:func:`~.qc_contours.covering`), and each plane
@@ -60,7 +62,8 @@ C.8.20.2.4). A sheet is drawn only of a Segmentation that it can show
 Segment Sequence of distinct Segment Numbers; with every frame placed, in
 one orientation whose rows and columns lie along the patient's axes, of one
 Pixel Spacing, and none farther than :data:`~.qc_contours.FARTHEST`
-millimetres; and spanning at most :data:`~.qc_surfaces.LONGEST`
+millimetres; with no segment in one plane in two frames, as at two time
+points, whose union could hide the surface of either; and spanning at most :data:`~.qc_surfaces.LONGEST`
 millimetres along each axis and :data:`~.qc_surfaces.WIDEST` across, from
 left to right and from front to back, as a contour sheet's frame does; and
 whose frames' pixels each lie in a segment that the Segment Sequence
@@ -265,6 +268,15 @@ def _segments(  # pylint: disable = too-many-return-statements
     spans = high - low
     if spans[2] > qc_surfaces.LONGEST or max(spans[:2]) > qc_surfaces.WIDEST:
         return None
+    # A segment in one plane twice, as at two time points, would be drawn as
+    # their union, which can hide the surface of either.
+    planes = _planes(found)
+    held = [
+        (segment, int(np.abs(planes - origin[found.axes[0]]).argmin()))
+        for segment, origin in zip(found.segments, found.origins)
+    ]
+    if len(set(held)) != len(held):
+        return None
     return found
 
 
@@ -409,17 +421,15 @@ class _Placement:
 
     def pooled(self, origin: Sequence[float], mask: np.ndarray) -> np.ndarray:
         """A frame's mask in the voxels across its plane, indexed along its
-        rows' patient axis and then its columns': each voxel holds every
-        pixel nearest it, and the pixel nearest it."""
+        rows' patient axis and then its columns': along each, each voxel
+        holds every pixel nearest it, and the pixel nearest it."""
         key = (origin[self._segments.axes[1]], origin[self._segments.axes[2]])
         if key not in self._maps:
             self._maps[key] = tuple(self._map(origin, part) for part in range(2))
         (to_r, from_r), (to_c, from_c) = self._maps[key]
-        counts = (len(from_r), len(from_c))
-        pooled = _reduced(_reduced(mask, to_r, counts[0], 0), to_c, counts[1], 1)
-        rows, columns = from_r >= 0, from_c >= 0
-        pooled[np.ix_(rows, columns)] |= mask[np.ix_(from_r[rows], from_c[columns])]
-        return pooled
+        # Along each axis in turn, so that a pixel kept along one axis also
+        # takes, along the other, the voxels nearest it.
+        return _along(_along(mask, to_r, from_r, 0), to_c, from_c, 1)
 
     def _map(self, origin: Sequence[float], part: int) -> tuple[np.ndarray, np.ndarray]:
         """For a frame's rows (0) or columns (1): the voxel nearest each, and
@@ -435,6 +445,18 @@ class _Placement:
         return _nearest(voxels, pixels, voxel / 2), _nearest(
             pixels, voxels, spacing / 2
         )
+
+
+def _along(mask: np.ndarray, to: np.ndarray, back: np.ndarray, axis: int) -> np.ndarray:
+    """A mask resampled along ``axis`` to voxels: each voxel holds every
+    pixel that ``to`` takes into it, and the pixel that ``back`` gives it,
+    -1 for none."""
+    pooled = _reduced(mask, to, len(back), axis)
+    kept = np.flatnonzero(back >= 0)
+    target: list = [slice(None)] * mask.ndim
+    target[axis] = kept
+    pooled[tuple(target)] |= np.take(mask, back[kept], axis=axis)
+    return pooled
 
 
 def _reduced(mask: np.ndarray, to: np.ndarray, count: int, axis: int) -> np.ndarray:

@@ -15,6 +15,7 @@
 """Segmentations as indicators of a reconstructable face, and their segments
 in the QC pack (D-015, D-017)."""
 
+import copy
 import io
 import json
 
@@ -300,6 +301,35 @@ def test_a_segmentation_that_a_sheet_cannot_show_is_refused(change):
     assert qc_segments.segments_of(_altered(data, change)) is None
 
 
+def _two_times(kind="BINARY"):
+    """A Segmentation of one segment in the same planes twice, as at two
+    time points: the head, then a box that encloses it."""
+    box = _box((1, 1, 1), tuple(count - 1 for count in _mask().shape))
+    if kind == "BINARY":
+        dataset = _read(files.segmentation(_SCAN, [_mask(), box]))
+        for group in dataset.PerFrameFunctionalGroupsSequence:
+            group.SegmentIdentificationSequence[0].ReferencedSegmentNumber = 1
+        del dataset.SegmentSequence[1]
+        return dataset
+    dataset = _read(files.segmentation(_SCAN, [_mask()], kind="LABELMAP"))
+    frames = dataset.NumberOfFrames
+    size = dataset.Rows * dataset.Columns
+    dataset.PerFrameFunctionalGroupsSequence.extend(
+        copy.deepcopy(list(dataset.PerFrameFunctionalGroupsSequence))
+    )
+    dataset.NumberOfFrames = 2 * frames
+    dataset.PixelData = dataset.PixelData[: frames * size] + bytes(box.astype(np.uint8))
+    return dataset
+
+
+@pytest.mark.parametrize("kind", ["BINARY", "LABELMAP"])
+def test_a_segment_in_one_plane_twice_is_refused(kind):
+    # The union of the two would show the box alone, hiding the head's face.
+    assert qc_segments.segments_of(_two_times(kind)) is None
+    # Frames of different segments in one plane are drawn, as ever.
+    assert _segments(files.segmentation(_SCAN, [_mask(), _brain()])) is not None
+
+
 # The sheet of a Segmentation's segments.
 
 
@@ -535,6 +565,36 @@ def test_no_pixel_is_lost_and_no_voxel_missed(spacing):
         assert rows * lattice.voxel >= 3 * spacing - lattice.voxel
 
 
+@pytest.mark.parametrize("fine", [0, 1])
+def test_a_ribbon_finer_along_one_axis_and_coarser_along_the_other_is_whole(fine):
+    # Pixels 0.5 mm apart along one axis and 5 mm along the other, with a
+    # ribbon one pixel wide along the coarse axis, between the fine pixels
+    # nearest the voxels.
+    spacing = (0.5, 5.0) if fine == 0 else (5.0, 0.5)
+    shape = (80, 12) if fine == 0 else (12, 80)
+    scan = head.Scan(
+        (1.0, 0.0, 0.0, 0.0, 1.0, 0.0),
+        tuple((0.0, 0.0, 2.0 * k) for k in range(3)),
+        spacing,
+        shape,
+    )
+    mask = np.zeros((3, *shape), bool)
+    ribbon = (1, 42, slice(2, 7)) if fine == 0 else (1, slice(2, 7), 42)
+    mask[ribbon] = True
+    segments = qc_segments.segments_of(
+        _read(files.segmentation(scan, [mask], keep_empty=True))
+    )
+    lattice = qc_segments._own_lattice(segments)  # pylint: disable = protected-access
+    placed = qc_segments._Placement(segments, lattice)  # pylint: disable = protected-access
+    on = np.argwhere(placed.pooled(segments.origins[1], mask[1]))
+    # One line of voxels across the fine axis, with no gap along the 25 mm
+    # that the five coarse pixels cover, each 5 mm wide.
+    assert len(set(on[:, fine])) == 1
+    along = np.sort(on[:, 1 - fine])
+    assert (np.diff(along) == 1).all()
+    assert len(along) * lattice.voxel >= 25 - lattice.voxel
+
+
 # A Segmentation's previews in the QC pack.
 
 
@@ -572,7 +632,7 @@ def test_a_segmentation_is_previewed_by_its_segments_with_its_ct():
     assert PreviewKind.INSTANCE in kinds
 
 
-@pytest.mark.parametrize("why", ["fractional", "unlisted", "too tall"])
+@pytest.mark.parametrize("why", ["fractional", "unlisted", "too tall", "two times"])
 def test_a_segmentation_that_no_sheet_shows_is_held(monkeypatch, why):
     masks = [_mask(), _brain()]
     if why == "fractional":
@@ -581,6 +641,8 @@ def test_a_segmentation_that_no_sheet_shows_is_held(monkeypatch, why):
         dataset = _read(files.segmentation(_SCAN, masks, kind="LABELMAP"))
         del dataset.SegmentSequence[1]
         data = files.written(dataset)
+    elif why == "two times":
+        data = files.written(_two_times())
     else:
         data = files.segmentation(_SCAN, masks)
         monkeypatch.setattr(qc_previews.qc_contours, "MAXIMUM_SHEET_PIXELS", 100)
