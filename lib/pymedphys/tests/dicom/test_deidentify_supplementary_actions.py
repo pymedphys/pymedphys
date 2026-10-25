@@ -31,6 +31,7 @@ from pymedphys._dicom.deidentify import (
     actions,
     iods,
     policy,
+    scope,
     standard,
     supplementary_actions,
     temporal_roles,
@@ -58,6 +59,15 @@ ADDED_IODS = (
     "Legacy Converted Enhanced PET Image",
 )
 SUPPORTED_IODS = CT_AND_RT_IODS + ADDED_IODS
+# The IODs of the target coverage that the first supported release does not
+# support, whose attributes are reviewed ahead of supporting them.
+TARGET_IODS = (
+    "RT Beams Treatment Record",
+    "RT Image",
+    "Spatial Registration",
+    "Deformable Spatial Registration",
+    "Segmentation",
+)
 CLEAN_DESCRIPTORS = "clean_descriptors"
 DEVICE_IDENTITY = "retain_device_identity"
 FULL_DATES = "retain_longitudinal_full_dates"
@@ -418,6 +428,122 @@ def test_the_text_that_only_the_added_ct_mr_and_pet_iods_use_has_reviewed_rules(
                 action,
                 options,
             ), tag
+
+
+# The text attributes that the target IODs use and that neither Table E.1-1
+# nor the supported IODs cover, by group, checked by hand against the 2026d
+# PS3.3.
+TARGET_OPERATOR_TEXT = {
+    "(0062,0005)",  # Segment Label
+    "(0062,0006)",  # Segment Description
+    "(0062,0009)",  # Segment Algorithm Name
+    "(0070,0081)",  # Content Description
+    "(3002,0002)",  # RT Image Label
+    "(3002,0003)",  # RT Image Name
+    "(3002,0004)",  # RT Image Description
+    "(3006,00C8)",  # Frame of Reference Transformation Comment
+    "(3008,0012)",  # Measured Dose Description
+    "(3008,0066)",  # Override Reason
+    "(3008,0074)",  # Calculated Dose Reference Description
+    "(3008,0202)",  # Treatment Status Comment
+    "(300A,0730)",  # Treatment Termination Description
+}
+TARGET_DEVICE_IDENTITY = {"(3002,0020)"}  # Radiation Machine Name
+TARGET_KEPT_TEXT = {"(0028,3004)"}  # Modality LUT Type
+TARGET_REMOVED_UNDER_EVERY_OPTION = {"(0062,0020)"}  # Tracking ID
+# The UID and temporal attributes that the target IODs use and the supported
+# IODs do not, all listed in Table E.1-1, checked by hand against the 2026d
+# PS3.3 and PS3.15.
+TARGET_UIDS = {
+    "(0008,0019)",  # Pyramid UID
+    "(0028,1199)",  # Palette Color Lookup Table UID
+    "(0062,0021)",  # Tracking UID
+    "(0064,0003)",  # Source Frame of Reference UID
+    "(0070,031A)",  # Fiducial UID
+}
+TARGET_DATES = {
+    "(3008,0024)",  # Treatment Control Point Date
+    "(3008,0025)",  # Treatment Control Point Time
+    "(3008,0054)",  # First Treatment Date
+    "(3008,0056)",  # Most Recent Treatment Date
+    "(3008,0250)",  # Treatment Date
+    "(3008,0251)",  # Treatment Time
+    "(300A,0741)",  # Interlock DateTime
+    "(300C,0127)",  # Beam Hold Transition DateTime
+}
+
+
+def _used_by(names, vrs):
+    """Return the attributes of ``vrs`` that the IODs in ``names`` use."""
+    dictionary = _dictionary()
+    tables = iods.load_iod_tables()
+    return {
+        definition.tag
+        for name in names
+        for definition in tables.iods[name].definitions
+        if vrs.intersection(dictionary[definition.tag].vrs)
+    }
+
+
+def test_the_target_iods_are_generated_and_not_yet_supported():
+    tables = iods.load_iod_tables()
+
+    assert set(TARGET_IODS) <= set(tables.iods)
+    assert not set(TARGET_IODS) & scope.SUPPORTED_IODS
+    assert set(SUPPORTED_IODS) == scope.SUPPORTED_IODS
+
+
+@pytest.mark.deid_requirement("MIDI-BP-05", "MIDI-BP-06", "MIDI-BP-11")
+def test_the_text_that_only_the_target_iods_use_has_reviewed_rules():
+    listed = set(_table_e1_1())
+    target = (
+        _used_by(TARGET_IODS, TEXT_VRS) - _used_by(SUPPORTED_IODS, TEXT_VRS) - listed
+    )
+    rules = _rules()
+
+    assert target == (
+        TARGET_OPERATOR_TEXT
+        | TARGET_DEVICE_IDENTITY
+        | TARGET_KEPT_TEXT
+        | TARGET_REMOVED_UNDER_EVERY_OPTION
+    )
+    assert len(target) == 16
+    for tags, action, options in (
+        (TARGET_OPERATOR_TEXT, "X/Z/D", {CLEAN_DESCRIPTORS: "C"}),
+        (TARGET_DEVICE_IDENTITY, "X/Z/D", {DEVICE_IDENTITY: "K"}),
+        (TARGET_KEPT_TEXT, "K", {}),
+        (TARGET_REMOVED_UNDER_EVERY_OPTION, "X/Z/D", {}),
+    ):
+        for tag in tags:
+            assert (rules[tag].action, dict(rules[tag].options)) == (
+                action,
+                options,
+            ), tag
+            assert rules[tag].note.strip(), tag
+
+
+def test_every_uid_and_date_that_the_target_iods_use_has_a_role():
+    listed = _table_e1_1()
+    uids = uid_roles.load_uid_roles()
+    temporal = temporal_roles.load_temporal_roles()
+    target_uids = _used_by(TARGET_IODS, {"UI"})
+    target_dates = _used_by(TARGET_IODS, TEMPORAL_VRS)
+
+    for tag in target_uids:
+        assert isinstance(uids.role(tag), uid_roles.UIDRole), tag
+    for tag in target_dates:
+        assert isinstance(temporal.role(tag), temporal_roles.TemporalRole), tag
+    # Those that no supported IOD uses are all listed in Table E.1-1: the
+    # UIDs are replaced as identifiers of instances, and the dates and times
+    # of treatment move with the subject's other dates.
+    assert target_uids - _used_by(SUPPORTED_IODS, {"UI"}) == TARGET_UIDS
+    assert target_dates - _used_by(SUPPORTED_IODS, TEMPORAL_VRS) == TARGET_DATES
+    for tag in TARGET_UIDS:
+        assert listed[tag].basic_profile == "U", tag
+        assert uids.role(tag) is uid_roles.UIDRole.INSTANCE, tag
+    for tag in TARGET_DATES:
+        assert listed[tag].basic_profile in REMOVING_ACTIONS, tag
+        assert temporal.role(tag) is temporal_roles.TemporalRole.SUBJECT_EVENT, tag
 
 
 def test_names_identifiers_and_overlay_text_are_removed_under_every_option():
