@@ -16,6 +16,7 @@
 
 import collections
 import copy
+import json
 import os
 import re
 import subprocess
@@ -24,8 +25,18 @@ import sys
 from pymedphys._imports import pytest, tomlkit
 
 from pymedphys import conftest
+from pymedphys._dev.deid_tables import generate
 from pymedphys._dicom.deidentify import requirements, standard
 from pymedphys._root import LIBRARY_ROOT
+
+PARAGRAPHS = standard.STANDARD_DIR / requirements.PARAGRAPHS_FILE
+# An invented paragraph in the generated form.
+ROW = {
+    "section": "E.3.1",
+    "page": "chtml/part15/sect_E.3.html",
+    "anchor": "para_00000001-0000-0000-0000-000000000000",
+    "text": "Fixtures shall be kept.",
+}
 
 DESIGN = LIBRARY_ROOT / "docs" / "contrib" / "info" / "deidentification-design.md"
 
@@ -105,9 +116,42 @@ def _register():
 
 def test_the_register_records_each_normative_paragraph_of_annex_e(register):
     dicom = [entry for entry in register.requirements if entry.source == "PS3.15"]
-    # The paragraphs of PS3.15 2026d Annex E, outside Notes and tables, that
-    # contain "shall".
-    assert collections.Counter(entry.section for entry in dicom) == {
+    # The paragraphs of PS3.15 Annex E, outside Notes and tables, that contain
+    # "shall", as generated from the pinned edition, each in its section and
+    # in the standard's order.
+    generated = requirements.load_annex_e_paragraphs()
+
+    assert generated.edition == register.edition
+    assert [(entry.section, entry.url, entry.text) for entry in dicom] == [
+        (paragraph.section, paragraph.url, paragraph.text)
+        for paragraph in generated.paragraphs
+    ]
+    # A paragraph that introduces a list keeps the list.
+    (conformance,) = (entry for entry in dicom if entry.section == "E.1.3")
+    assert conformance.text.startswith(
+        "The Conformance Statement of an application that claims conformance "
+        "to the Basic Application Level Confidentiality Profile shall describe:"
+    )
+    assert "\n- which Options are supported;\n" in conformance.text
+    assert conformance.text.endswith("(e. g. key sizes for public keys).")
+
+
+def test_the_annex_e_paragraphs_are_generated_from_every_pinned_page_of_annex_e():
+    # A new pin without regenerated paragraphs, or the reverse, fails here.
+    document = json.loads(PARAGRAPHS.read_text(encoding="utf-8"))
+    pinned = [
+        {"path": source.path, "sha256": source.sha256}
+        for source in generate.PIN.sources
+        if source.path.startswith("chtml/part15/")
+    ]
+
+    assert document["edition"] == generate.PIN.edition
+    assert sorted(document["sources"], key=lambda s: s["path"]) == sorted(
+        pinned, key=lambda s: s["path"]
+    )
+    # Counts from the published 2026d Annex E.
+    generated = requirements.load_annex_e_paragraphs()
+    assert collections.Counter(p.section for p in generated.paragraphs) == {
         "E.1.1": 9,
         "E.1.2": 3,
         "E.1.3": 1,
@@ -124,14 +168,49 @@ def test_the_register_records_each_normative_paragraph_of_annex_e(register):
         "E.3.10": 4,
         "E.3.11": 1,
     }
-    # A paragraph that introduces a list keeps the list.
-    (conformance,) = (entry for entry in dicom if entry.section == "E.1.3")
-    assert conformance.text.startswith(
-        "The Conformance Statement of an application that claims conformance "
-        "to the Basic Application Level Confidentiality Profile shall describe:"
+
+
+def _paragraphs_document(rows):
+    document = json.loads(PARAGRAPHS.read_text(encoding="utf-8"))
+    document.update(rows=rows, content_sha256=standard.content_sha256(rows))
+    return document
+
+
+def test_generated_paragraphs_load(tmp_path):
+    rows = [ROW]
+    path = tmp_path / "p.json"
+    path.write_text(json.dumps(_paragraphs_document(rows)), encoding="utf-8")
+
+    loaded = requirements.load_annex_e_paragraphs(path)
+
+    assert loaded.paragraphs == (requirements.AnnexEParagraph(**ROW),)
+    assert loaded.paragraphs[0].url == (
+        "https://dicom.nema.org/medical/dicom/current/output/chtml/part15/"
+        "sect_E.3.html#para_00000001-0000-0000-0000-000000000000"
     )
-    assert "\n- which Options are supported;\n" in conformance.text
-    assert conformance.text.endswith("(e. g. key sizes for public keys).")
+
+
+@pytest.mark.parametrize(
+    "rows, message",
+    [
+        ([{**ROW, "section": "3.1"}], "row 1 has a section that is not of the form"),
+        (
+            [{**ROW, "page": "chtml/part15/chapter_F.html"}],
+            "row 1 has a page that is not a chtml page of PS3.15 Annex E",
+        ),
+        ([{**ROW, "anchor": "sect_E.3"}], "row 1 has an anchor that is not"),
+        ([{**ROW, "text": "Fixtures are kept."}], "row 1 has text that does not"),
+        ([{**ROW, "text": 3}], "row 1 has text that does not"),
+        ([{**ROW, "colour": "red"}], "row 1 does not have exactly the fields"),
+        ([ROW, ROW], "row 2 repeats an anchor"),
+    ],
+)
+def test_malformed_generated_paragraphs_are_rejected(tmp_path, rows, message):
+    path = tmp_path / "p.json"
+    path.write_text(json.dumps(_paragraphs_document(rows)), encoding="utf-8")
+
+    with pytest.raises(standard.StandardTableError, match=re.escape(message)):
+        requirements.load_annex_e_paragraphs(path)
 
 
 def test_the_register_records_each_midi_best_practice(register):
