@@ -97,7 +97,8 @@ class RunRedactedTests(unittest.TestCase):
         self.assertEqual(completed.returncode, CRASHED)
         self.assertNotIn(SECRET, completed.stdout)
         self.assertIn("builtins.ValueError was raised at:", completed.stdout)
-        self.assertEqual(kept, f"{SECRET}\n{SECRET} child\n")
+        # Each process buffers its own output, so either line may come first.
+        self.assertCountEqual(kept.splitlines(), [SECRET, f"{SECRET} child"])
 
     def test_code_locations_drop_installation_paths(self):
         self.assertEqual(
