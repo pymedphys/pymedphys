@@ -46,12 +46,13 @@ so that no pixel of a segment is left out where pixels are finer than the
 voxels, and no voxel is missed where they are coarser, even where they are
 finer along one axis and coarser along the other. Each
 slice of voxels is covered by the plane of the frames nearest it, among
-the planes of every frame of the Segmentation, as a contour sheet covers a
-slice by an ROI's planes (:func:`~.qc_contours.covering`), and each plane
-is also taken into the slice of voxels nearest it, so that every frame is
-drawn where planes are closer than the voxels. A segment that has no frame
-in a plane is empty there, since a writer may leave out a segment's empty
-frames.
+the planes of every frame of the Segmentation, where that plane is within
+half the larger of the frames' Slice Thickness and Spacing Between Slices,
+or half a voxel where that is more, and each plane is also taken into the
+slice of voxels nearest it, so that every frame is drawn where planes are
+closer than the voxels. A segment that has no frame in a plane is empty
+there, and so is a slice farther than that from every plane, since a
+writer may leave out the empty frames of a segment, or of every segment.
 
 In a BINARY Segmentation a pixel of 1 is in the segment that its frame's
 Segment Identification functional group names. In a LABELMAP one a pixel
@@ -62,7 +63,10 @@ C.8.20.2.4). A sheet is drawn only of a Segmentation that it can show
 Segment Sequence of distinct Segment Numbers; with every frame placed, in
 one orientation whose rows and columns lie along the patient's axes, of one
 Pixel Spacing, and none farther than :data:`~.qc_contours.FARTHEST`
-millimetres; with no segment in one plane in two frames, as at two time
+millimetres; with a Slice Thickness or Spacing Between Slices, one for
+every frame, where its frames lie in two planes or more, since without one
+the empty frames that a writer left out cannot be placed; with no segment
+in one plane in two frames, as at two time
 points, whose union could hide the surface of either, which also refuses
 one plane's tiles of a segment, though they may not overlap; and spanning at most :data:`~.qc_surfaces.LONGEST`
 millimetres along each axis and :data:`~.qc_surfaces.WIDEST` across, from
@@ -135,6 +139,9 @@ class Segments:
         Its Frame of Reference UID.
     series : frozenset of str
         The Series Instance UIDs that its Referenced Series Sequence names.
+    slab : float or None
+        The larger of its frames' Slice Thickness and Spacing Between
+        Slices, in millimetres, where its Pixel Measures give either.
     """
 
     numbers: tuple[int, ...]
@@ -147,6 +154,7 @@ class Segments:
     segments: tuple[int | None, ...]
     frame: str | None = None
     series: frozenset[str] = frozenset()
+    slab: float | None = None
 
     def __repr__(self) -> str:
         return f"Segments(segments={len(self.numbers)}, frames={len(self.origins)})"
@@ -204,6 +212,7 @@ def _segments(  # pylint: disable = too-many-return-statements
     segments: list[int | None] = []
     orientations = []
     spacings = []
+    slabs = []
     for index in range(frames):
         groups = [per_frame[index]] if per_frame else []
         groups.extend(shared)
@@ -213,7 +222,8 @@ def _segments(  # pylint: disable = too-many-return-statements
         orientation = _floats(
             _macro(groups, "PlaneOrientationSequence"), "ImageOrientationPatient", 6
         )
-        spacing = _floats(_macro(groups, "PixelMeasuresSequence"), "PixelSpacing", 2)
+        measures = _macro(groups, "PixelMeasuresSequence")
+        spacing = _floats(measures, "PixelSpacing", 2)
         if origin is None or orientation is None or spacing is None:
             return None
         if labelmap:
@@ -227,6 +237,7 @@ def _segments(  # pylint: disable = too-many-return-statements
         origins.append(origin)
         orientations.append(orientation)
         spacings.append(spacing)
+        slabs.append(_slab(measures))
     first, spacing = orientations[0], spacings[0]
     if (
         min(spacing) <= 0
@@ -235,6 +246,8 @@ def _segments(  # pylint: disable = too-many-return-statements
             for each in orientations
         )
         or any(not np.allclose(each, spacing) for each in spacings)
+        or any(each != slabs[0] for each in slabs)
+        or slabs[0] == 0.0
     ):
         return None
     row, column = np.array(first[:3]), np.array(first[3:])
@@ -264,6 +277,7 @@ def _segments(  # pylint: disable = too-many-return-statements
             for item in dataset.get("ReferencedSeriesSequence") or []
             if (uid := _uid(item.get("SeriesInstanceUID"))) is not None
         ),
+        slab=slabs[0],
     )
     low, high = _extent(found)
     spans = high - low
@@ -278,7 +292,30 @@ def _segments(  # pylint: disable = too-many-return-statements
     ]
     if len(set(held)) != len(held):
         return None
+    # Without a slab, frames in two planes or more leave unknown where a
+    # writer left out empty frames between them.
+    if found.slab is None and len(planes) > 1:
+        return None
     return found
+
+
+def _slab(measures: pydicom.Dataset | None) -> float | None:
+    """The larger of a Pixel Measures item's Slice Thickness and Spacing
+    Between Slices, None where it gives neither, or 0.0 where either is not
+    a finite number above 0."""
+    slabs = []
+    for keyword in ("SliceThickness", "SpacingBetweenSlices"):
+        value = None if measures is None else measures.get(keyword)
+        if value is None or value == "":
+            continue
+        try:
+            slab = float(value)
+        except (TypeError, ValueError):
+            return 0.0
+        if not (math.isfinite(slab) and slab > 0):
+            return 0.0
+        slabs.append(slab)
+    return max(slabs, default=None)
 
 
 def _macro(groups: Sequence[pydicom.Dataset], keyword: str) -> pydicom.Dataset | None:
@@ -376,6 +413,16 @@ def _planes(segments: Segments) -> np.ndarray:
     return np.array([group.mean() for group in np.split(positions, breaks)])
 
 
+def _covering(planes: np.ndarray, coordinates: np.ndarray, half: float) -> np.ndarray:
+    """For each coordinate along the normal, the index of the plane nearest
+    it, or -1 where that is more than ``half`` from it."""
+    if not planes.size:
+        return np.full(len(coordinates), -1, np.intp)
+    nearest = np.abs(coordinates[:, np.newaxis] - planes[np.newaxis, :]).argmin(axis=1)
+    within = np.abs(coordinates - planes[nearest]) <= half + 1e-6
+    return np.asarray(np.where(within, nearest, -1), np.intp)
+
+
 def _nearest(coordinates: np.ndarray, wanted: np.ndarray, half: float) -> np.ndarray:
     """The index of the monotonic coordinate nearest each wanted one, or -1
     where it lies more than ``half`` beyond the ends."""
@@ -404,7 +451,7 @@ class _Placement:
         planes = _planes(segments)
         normal = lattice.along(segments.axes[0])
         # Each plane's slices of voxels: those it covers, and the nearest.
-        covered = qc_contours.covering(planes, normal, voxel)
+        covered = _covering(planes, normal, max(segments.slab or 0.0, voxel) / 2)
         nearest = _nearest(normal, planes, voxel / 2)
         self._slices = [
             np.union1d(np.flatnonzero(covered == index), nearest[index : index + 1])

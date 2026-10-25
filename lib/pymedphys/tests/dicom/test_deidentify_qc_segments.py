@@ -595,6 +595,60 @@ def test_a_ribbon_finer_along_one_axis_and_coarser_along_the_other_is_whole(fine
     assert len(along) * lattice.voxel >= 25 - lattice.voxel
 
 
+def _plates(keep_empty):
+    """A Segmentation of one segment, a plate at z = 0 and another at 20 mm,
+    in frames 1 mm apart, of pixels 0.5 mm apart, with or without the empty
+    frames between them."""
+    scan = head.Scan(
+        (1.0, 0.0, 0.0, 0.0, 1.0, 0.0),
+        tuple((0.0, 0.0, float(k)) for k in range(21)),
+        (0.5, 0.5),
+        (40, 40),
+    )
+    mask = np.zeros((21, 40, 40), bool)
+    mask[[0, 20], 10:30, 10:30] = True
+    return files.segmentation(scan, [mask], keep_empty=keep_empty)
+
+
+def test_a_writer_leaving_out_every_segment_s_empty_frames_changes_nothing():
+    sparse, dense = _plates(False), _plates(True)
+    assert _read(sparse).NumberOfFrames == 2
+    assert _read(dense).NumberOfFrames == 21
+    assert np.array_equal(_sheet(sparse), _sheet(dense))
+    # Each plate is drawn in the one slice of voxels within its 1 mm slab,
+    # not across the 20 mm between them.
+    segments = _segments(sparse)
+    lattice = qc_segments._own_lattice(segments)  # pylint: disable = protected-access
+    placed = qc_segments._Placement(segments, lattice)  # pylint: disable = protected-access
+    assert [len(placed.slices(origin)) for origin in segments.origins] == [1, 1]
+
+
+@pytest.mark.parametrize(
+    "measures",
+    [
+        {},
+        {"SliceThickness": "0"},
+        {"SliceThickness": "1", "SpacingBetweenSlices": "-1"},
+        {"SpacingBetweenSlices": "nan"},
+    ],
+)
+def test_frames_in_two_planes_need_a_slab_to_be_placed(measures):
+    dataset = _read(_plates(False))
+    shared = dataset.SharedFunctionalGroupsSequence[0].PixelMeasuresSequence[0]
+    del shared.SliceThickness, shared.SpacingBetweenSlices
+    for keyword, value in measures.items():
+        setattr(shared, keyword, value)
+    assert qc_segments.segments_of(dataset) is None
+    # Frames in one plane need none.
+    one = _read(files.segmentation(_SCAN, [_box((40, 20, 20), (41, 100, 80))]))
+    measured = one.SharedFunctionalGroupsSequence[0].PixelMeasuresSequence[0]
+    del measured.SliceThickness, measured.SpacingBetweenSlices
+    assert qc_segments.segments_of(one) is not None
+    # Either alone is a slab, and the larger of the two is taken.
+    shared.SliceThickness, shared.SpacingBetweenSlices = "1", "3"
+    assert qc_segments.segments_of(dataset).slab == 3.0
+
+
 # A Segmentation's previews in the QC pack.
 
 

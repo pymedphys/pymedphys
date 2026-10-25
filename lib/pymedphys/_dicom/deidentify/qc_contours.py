@@ -724,15 +724,8 @@ def _planes(roi: RoiContours) -> np.ndarray:
     return np.array([group.mean() for group in np.split(heights, breaks)])
 
 
-def covering(planes: np.ndarray, zs: np.ndarray, voxel: float) -> np.ndarray:
-    """For each height, the index of the plane that covers it, or -1.
-
-    ``planes`` are ascending, and ``zs`` in any order, along one axis, in
-    millimetres. Each plane covers half the distance to the next above and
-    below, or half their median distance apart, or half a ``voxel`` where
-    that is more, where the next is farther than twice that median or there
-    is none, as the module describes for an ROI's planes.
-    """
+def _covering(planes: np.ndarray, zs: np.ndarray, voxel: float) -> np.ndarray:
+    """For each height, the index of the plane that covers it, or -1."""
     if not planes.size:
         return np.full(len(zs), -1, np.intp)
     gaps = np.diff(planes)
@@ -770,12 +763,12 @@ def _filled(roi: RoiContours, grid: _Grid, planes: np.ndarray) -> np.ndarray:
     mask, its slices of voxels covered by its ``planes``."""
     filled = np.zeros((len(grid.zs), len(grid.ys), len(grid.xs)), bool)
     if roi.closed:
-        covered = covering(planes, grid.zs, grid.voxel)
+        covering = _covering(planes, grid.zs, grid.voxel)
         heights = np.array([height for height, _ in roi.closed])
         # Each contour's plane: the nearest, within which it lies.
         of = np.abs(heights[:, np.newaxis] - planes[np.newaxis, :]).argmin(axis=1)
         for plane in np.unique(of):
-            slices = np.flatnonzero(covered == plane)
+            slices = np.flatnonzero(covering == plane)
             if not slices.size:
                 continue
             rings = [ring for (_, ring), at in zip(roi.closed, of) if at == plane]

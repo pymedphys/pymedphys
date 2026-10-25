@@ -293,7 +293,11 @@ def segmentation(
     orientation.ImageOrientationPatient = [_ds(v) for v in scan.orientation]
     measures = pydicom.Dataset()
     measures.PixelSpacing = [_ds(v) for v in scan.spacing]
-    measures.SliceThickness = "1"
+    # The scan's own slab, as a writer such as highdicom keeps its source's.
+    step = 1.0
+    if len(scan.positions) > 1:
+        step = float(np.linalg.norm(np.subtract(scan.positions[1], scan.positions[0])))
+    measures.SliceThickness = measures.SpacingBetweenSlices = _ds(step)
     shared = pydicom.Dataset()
     shared.PlaneOrientationSequence = [orientation]
     shared.PixelMeasuresSequence = [measures]

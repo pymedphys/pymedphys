@@ -395,7 +395,7 @@ def test_the_lowest_of_many_planes_and_an_open_contour_s_lower_end_are_drawn():
     rings = _roi(*[_closed(files.circle((0, 0, 2.5 * k), 30.0)) for k in range(104)])
     grid, _ = _own_mask(rings)
     planes = qc_contours._planes(rings)
-    covered = qc_contours.covering(planes, grid.zs, grid.voxel)
+    covered = qc_contours._covering(planes, grid.zs, grid.voxel)
     assert set(covered[covered >= 0]) == set(range(len(planes)))
     line = np.array([[0.0, 0.0, 0.0], [10.0, 0.0, 37.3]])
     grid, inside = _own_mask(_roi(("OPEN_NONPLANAR", line)))
@@ -1112,7 +1112,7 @@ def _slab(*extra):
 def _slab_plane(covered):
     (roi,) = _slab().rois
     grid = qc_contours._grid([roi], qc_contours._roi_voxel)
-    shown = set(qc_contours.covering(qc_contours._planes(roi), grid.zs, grid.voxel))
+    shown = set(qc_contours._covering(qc_contours._planes(roi), grid.zs, grid.voxel))
     return next(z for i, z in enumerate(_SLAB_HEIGHTS) if (i in shown) == covered)
 
 
