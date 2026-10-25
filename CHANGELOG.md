@@ -481,9 +481,9 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
   requirements-to-tests matrix from the register as Markdown, with the
   exclusions and the reason for each, and with each traced test's outcome
   when given pytest JUnit XML reports. The design document sets the scope of the
-  first supported release: the Basic Profile, alone and with the Clean
-  Descriptors Option, for uncompressed CT Image, RT Structure Set, RT Plan,
-  and RT Dose instances, through the library and the command line.
+  first supported release: the Basic Profile with every preset and every
+  option, each enabled once validated, through the library and the command
+  line.
   [PR #2061](https://github.com/pymedphys/pymedphys/pull/2061), [PR #2101](https://github.com/pymedphys/pymedphys/pull/2101), [PR #2170](https://github.com/pymedphys/pymedphys/pull/2170), [PR #2192](https://github.com/pymedphys/pymedphys/pull/2192), [PR #2200](https://github.com/pymedphys/pymedphys/pull/2200)
 - **[Contributor facing only]** DICOM coordinate and dose tests use local synthetic fixtures; the validation record above retains the historical fixture provenance. [PR #2066](https://github.com/pymedphys/pymedphys/pull/2066)
 - **[Contributor facing only]** `examples/` contains the gamma benchmark tooling behind the performance audit. The integration Doctests job runs its unit tests whenever `examples/` changes. [PR #2066](https://github.com/pymedphys/pymedphys/pull/2066)
