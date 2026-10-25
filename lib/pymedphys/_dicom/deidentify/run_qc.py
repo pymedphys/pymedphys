@@ -320,7 +320,8 @@ def qc_pack_of(
         The SHA-256 of each source file that the run's first pass read, by
         run position, which the pack records with each instance.
     reviewed_lists : ~pymedphys._dicom.deidentify.qc_pack.ListsDigest, optional
-        The salted digest of the reviewed lists that the run applied, from
+        The salted digest of the reviewed lists and region rules that the
+        run applied, from
         :func:`~pymedphys._dicom.deidentify.risk_assessment.bind_lists`;
         none by default.
 

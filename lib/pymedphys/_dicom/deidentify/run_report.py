@@ -73,6 +73,7 @@ from . import (
     release_report_markdown,
 )
 from .face_blocks import FaceBlockCounts
+from .pixel_region_rules import PixelRegionRules
 from .policy import CLEAN_PIXEL_DATA, Policy
 from .qc_attestation import AttestationRecord, Outcome
 from .qc_pack import QcPack
@@ -118,6 +119,12 @@ CONFORMANCE_STATEMENT = "conformance-statement.md"
 HELD_FOR_REVIEW = "held-for-review"
 RELEASED = "released"
 SEQUESTERED = "sequestered"
+# The reviewed ROI names and descriptors lists that a run's descriptor
+# cleaning applies, and the reviewed region rules that its Clean Pixel Data
+# applies, as the run read them, or None for each that it was not given.
+ReviewedLists = tuple[
+    ReviewedNames | None, ReviewedDescriptors | None, PixelRegionRules | None
+]
 
 
 @dataclasses.dataclass(frozen=True, repr=False)
@@ -152,15 +159,14 @@ class Reporter(Protocol):
     which the run generates the report's human-readable form. ``qc_pack`` is
     the opaque reference of the run's QC pack, and ``facts`` the run's
     :class:`RunFacts`. ``reviewed_lists`` are the reviewed ROI names and
-    descriptors lists that the run's descriptor cleaning applies, as it read
-    them, or None for each that it was not given, whose salted digest the
-    run records in its QC pack.
+    descriptors lists that the run's descriptor cleaning applies, and the
+    reviewed region rules that its Clean Pixel Data applies, as it read
+    them, or None for each that it was not given (:data:`ReviewedLists`),
+    whose salted digest the run records in its QC pack.
     """
 
     @property
-    def reviewed_lists(
-        self,
-    ) -> tuple[ReviewedNames | None, ReviewedDescriptors | None]: ...
+    def reviewed_lists(self) -> ReviewedLists: ...
 
     def admits(self, status: str, reasons: tuple[object, ...]) -> bool:
         """Whether the report can give a withheld outcome with these reasons.
@@ -253,18 +259,20 @@ class ReleaseReporter:
         from which the report says whether the run is ready for release;
         None, the default, without one, which fails every gate. No other
         policy takes one.
-    reviewed_lists : tuple of (ReviewedNames or None, ReviewedDescriptors or None), optional
+    reviewed_lists : ReviewedLists, optional
         The reviewed-names and reviewed descriptors lists that descriptor
         cleaning applies, as it read them, whose keyed digests are
-        ``reviewed_roi_names`` and ``reviewed_descriptors``, for the
-        readiness section's statistical gate; neither, the default, without
-        descriptor cleaning.
+        ``reviewed_roi_names`` and ``reviewed_descriptors``, and the
+        version of the reviewed region rules that Clean Pixel Data applies,
+        whose keyed digest is ``pixel_region_rules``, for the readiness
+        section's statistical gate; none, the default, without descriptor
+        cleaning or rules.
 
     Raises
     ------
     TypeError
-        If ``policy`` is not a Policy, or ``readiness_review`` is not a
-        ReadinessReview.
+        If ``policy`` is not a Policy, ``readiness_review`` is not a
+        ReadinessReview, or ``reviewed_lists`` is not a tuple of three.
     ValueError
         If ``readiness_review`` is given with a policy other than the
         ``public-release`` preset.
@@ -286,13 +294,15 @@ class ReleaseReporter:
         safe_private_list: SafePrivateList = SafePrivateList.REVIEWED,
         project_key: str | None = None,
         readiness_review: ReadinessReview | None = None,
-        reviewed_lists: tuple[ReviewedNames | None, ReviewedDescriptors | None] = (
-            None,
-            None,
-        ),
+        reviewed_lists: ReviewedLists = (None, None, None),
     ):
         if not isinstance(policy, Policy):
             raise TypeError("policy must be a Policy")
+        # Each member's type is checked where the run binds them.
+        if not isinstance(reviewed_lists, tuple) or len(reviewed_lists) != 3:
+            raise TypeError(
+                "reviewed_lists must be the two reviewed lists and the region rules"
+            )
         if readiness_review is not None and not isinstance(
             readiness_review, ReadinessReview
         ):
@@ -321,8 +331,9 @@ class ReleaseReporter:
         return "ReleaseReporter()"
 
     @property
-    def reviewed_lists(self) -> tuple[ReviewedNames | None, ReviewedDescriptors | None]:
-        """The lists given as ``reviewed_lists``, which the run's QC pack binds."""
+    def reviewed_lists(self) -> ReviewedLists:
+        """The lists and rules given as ``reviewed_lists``, which the run's QC
+        pack binds."""
         return self._reviewed_lists
 
     def admits(self, status: str, reasons: tuple[object, ...]) -> bool:
@@ -400,6 +411,7 @@ class ReleaseReporter:
                     policy_sha256=policy_digest(release_report.report_document(report)),
                     reviewed_names=self._reviewed_lists[0],
                     reviewed_descriptors=self._reviewed_lists[1],
+                    pixel_region_rules=self._reviewed_lists[2],
                 ),
             )
         return release_report.to_json(report)

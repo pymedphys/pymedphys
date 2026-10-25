@@ -46,22 +46,24 @@ assessed: to the QC pack, by its reference and the SHA-256 of its file; to
 the collection, by :func:`collection_digest` of the SHA-256 of each source
 file that the pack records; to the policy, by :func:`policy_digest` of the
 run's release report; and to the reviewed ROI names and descriptors lists
-that descriptor cleaning applied, by :func:`lists_digest` under a random
-salt, both of which the run recorded in its pack (:func:`bind_lists`) and
-the record copies, so that the lists bound are those the run applied, and
-never lists that whoever records the assessment supplies. A later run of
-the same files under the same policy and lists, given the pack, finds the
-same digests, and any change to any of them requires a new assessment. The
-policy digest covers the report's policy and every input of the method
-digest except the keyed digests of the reviewed lists, which differ under
-each run's key; the lists' own digest binds them instead. The engine's
+that descriptor cleaning applied, and the reviewed region rules that Clean
+Pixel Data applied, by :func:`lists_digest` under a random salt, both of
+which the run recorded in its pack (:func:`bind_lists`) and the record
+copies, so that the lists and rules bound are those the run applied, and
+never any that whoever records the assessment supplies. A later run of the
+same files under the same policy, lists, and rules, given the pack, finds
+the same digests, and any change to any of them requires a new assessment.
+The policy digest covers the report's policy and every input of the method
+digest except the keyed digests of the reviewed lists and region rules,
+which differ under each run's key; the lists' own digest binds them
+instead. The engine's
 files and the text finder's runtime are inputs of the method digest, so a
 new version of PyMedPhys, or of a library that the text finder names, needs
 a new assessment too.
 
 :func:`statistical_gate` decides the gate for a run from a record, or from
 none, as a reason code and no value: it fails without a record, for another
-collection, policy, or lists, for a count of subjects other than the run's,
+collection, policy, or lists or rules, for a count of subjects other than the run's,
 or for a maximum probability above the threshold, and passes otherwise.
 The threshold is the one that the assessment states: nothing yet selects
 the stricter one for a collection, so a reviewer of the record checks that
@@ -93,6 +95,7 @@ from pathlib import Path
 
 from . import qc_store, release_report
 from .qc_attestation import _pack_bytes, _read, _reference_of
+from .pixel_region_rules import PixelRegionRules
 from .qc_pack import Disposition, ListsDigest, QcPackError
 from .reviewed_descriptors import ReviewedDescriptors
 from .reviewed_roi_names import ReviewedNames
@@ -112,9 +115,14 @@ STRICT_THRESHOLD = 0.05
 THRESHOLDS = (DEFAULT_THRESHOLD, STRICT_THRESHOLD)
 # The method components that are keyed by the run's key, so differ in each
 # run, and that the policy digest leaves out: the method digest, which is
-# computed from them, and the digests of the reviewed lists, which the
-# lists' own digest replaces.
-_KEYED = ("method_digest", "reviewed_roi_names", "reviewed_descriptors")
+# computed from them, and the digests of the reviewed lists and region
+# rules, which the lists' own digest replaces.
+_KEYED = (
+    "method_digest",
+    "reviewed_roi_names",
+    "reviewed_descriptors",
+    "pixel_region_rules",
+)
 # How many random bytes salt the lists' digest.
 _SALT_BYTES = 32
 
@@ -392,8 +400,9 @@ class AssessmentRecord:
         The random salt of the lists' digest, 64 hex digits, as the pack
         records it.
     lists_sha256 : str
-        :func:`lists_digest` of the reviewed lists that the pack's run
-        applied, under ``lists_salt``, as the pack records it.
+        :func:`lists_digest` of the reviewed lists and region rules that
+        the pack's run applied, under ``lists_salt``, as the pack records
+        it.
     assessment : Assessment
     """
 
@@ -520,8 +529,9 @@ def policy_digest(report: Mapping[str, object]) -> str:
 
     It is the SHA-256 of the canonical JSON of the report's ``policy``
     section and of its ``method`` section without the method digest and the
-    keyed digests of the reviewed lists, which differ under each run's key
-    and which :func:`lists_digest` binds instead. The other components of
+    keyed digests of the reviewed lists and region rules, which differ under
+    each run's key and which :func:`lists_digest` binds instead. The other
+    components of
     the method digest stay, so another engine, policy, vocabulary, text
     finder, or list of safe private rules gives another digest.
 
@@ -567,11 +577,13 @@ def new_salt() -> str:
 def bind_lists(
     reviewed_names: ReviewedNames | None,
     reviewed_descriptors: ReviewedDescriptors | None,
+    pixel_region_rules: PixelRegionRules | None,
 ) -> ListsDigest:
     """Return the digest of a run's reviewed lists under a new salt, for its pack.
 
     A run records it in its QC pack, from which :func:`record_assessment`
-    takes it, so that a record binds the lists that the run applied.
+    takes it, so that a record binds the lists and rules that the run
+    applied.
 
     Parameters
     ----------
@@ -579,37 +591,48 @@ def bind_lists(
     reviewed_descriptors : ReviewedDescriptors or None
         The lists that the run's descriptor cleaning applied, as it read
         them, or None for each that it was not given.
+    pixel_region_rules : PixelRegionRules or None
+        The reviewed region rules that the run's Clean Pixel Data applied,
+        as the version that it applied, or None without any.
 
     Raises
     ------
     TypeError
-        If a list is not of its type or None.
+        If a list or the rules are not of their type or None.
 
     Examples
     --------
-    >>> bound = bind_lists(None, None)
-    >>> bound.sha256 == lists_digest(bound.salt, None, None)
+    >>> bound = bind_lists(None, None, None)
+    >>> bound.sha256 == lists_digest(bound.salt, None, None, None)
     True
     """
     salt = new_salt()
-    return ListsDigest(salt, lists_digest(salt, reviewed_names, reviewed_descriptors))
+    return ListsDigest(
+        salt,
+        lists_digest(salt, reviewed_names, reviewed_descriptors, pixel_region_rules),
+    )
 
 
 def lists_digest(
     salt: str,
     reviewed_names: ReviewedNames | None,
     reviewed_descriptors: ReviewedDescriptors | None,
+    pixel_region_rules: PixelRegionRules | None,
 ) -> str:
-    """Return the digest of the reviewed lists that descriptor cleaning applied.
+    """Return the digest of the reviewed lists and region rules that a run applied.
 
     It is the HMAC-SHA-256, under ``salt``, of the canonical JSON of the
-    SHA-256 of each list's canonical form
+    SHA-256 of the canonical form of each list that descriptor cleaning
+    applied and of the region rules that Clean Pixel Data applied
     (:meth:`~.reviewed_roi_names.ReviewedNames.canonical_bytes`,
-    :meth:`~.reviewed_descriptors.ReviewedDescriptors.canonical_bytes`), or
-    of None for a list not given, as without Clean Descriptors. Any change
-    to a decision or a name in either list gives another digest, and an
-    empty list differs from none. The lists hold source names and values,
-    so their digest is salted, and kept only in the confidential record.
+    :meth:`~.reviewed_descriptors.ReviewedDescriptors.canonical_bytes`,
+    :meth:`~.pixel_region_rules.PixelRegionRules.canonical_bytes`), in that
+    order, or of None for each not given, as without Clean Descriptors or
+    without rules. Any change to a decision or a name in either list, or to
+    a rule's key or regions, gives another digest, and an empty list or
+    store differs from none. The lists hold source names and values, and
+    the rules manufacturers' and model names, so their digest is salted, and
+    kept only in the confidential pack and record.
 
     Parameters
     ----------
@@ -618,13 +641,14 @@ def lists_digest(
         record's ``lists_salt``.
     reviewed_names : ReviewedNames or None
     reviewed_descriptors : ReviewedDescriptors or None
+    pixel_region_rules : PixelRegionRules or None
 
     Raises
     ------
     RiskAssessmentError
         If the salt is not 64 hex digits.
     TypeError
-        If a list is not of its type or None.
+        If a list or the rules are not of their type or None.
     """
     if not isinstance(salt, str) or not _SHA256.fullmatch(salt):
         raise RiskAssessmentError("the lists' digest needs a salt of 64 hex digits")
@@ -634,9 +658,13 @@ def lists_digest(
         reviewed_descriptors, ReviewedDescriptors
     ):
         raise TypeError("reviewed_descriptors must be ReviewedDescriptors or None")
+    if pixel_region_rules is not None and not isinstance(
+        pixel_region_rules, PixelRegionRules
+    ):
+        raise TypeError("pixel_region_rules must be PixelRegionRules or None")
     digests = [
         None if each is None else hashlib.sha256(each.canonical_bytes()).hexdigest()
-        for each in (reviewed_names, reviewed_descriptors)
+        for each in (reviewed_names, reviewed_descriptors, pixel_region_rules)
     ]
     text = json.dumps(digests, separators=(",", ":"))
     return hmac.new(
@@ -807,6 +835,7 @@ def statistical_gate(
     policy_sha256: str,
     reviewed_names: ReviewedNames | None,
     reviewed_descriptors: ReviewedDescriptors | None,
+    pixel_region_rules: PixelRegionRules | None,
     subjects: int,
 ) -> StatisticalGate:
     """Decide a run's statistical gate from a risk assessment record.
@@ -823,6 +852,9 @@ def statistical_gate(
     reviewed_names, reviewed_descriptors : ReviewedNames or ReviewedDescriptors or None
         The reviewed lists that the run's descriptor cleaning applied, as
         it read them, or None for each that it was not given.
+    pixel_region_rules : PixelRegionRules or None
+        The reviewed region rules that the run's Clean Pixel Data applied,
+        or None without any.
     subjects : int
         The number of distinct subjects of the instances that the run
         releases.
@@ -831,7 +863,7 @@ def statistical_gate(
     -------
     StatisticalGate
         Failed for the first of these that holds: no record; another
-        collection; another policy; other lists; fewer, or more, subjects
+        collection; another policy; other lists or rules; fewer, or more, subjects
         than the run releases; a maximum probability above the threshold.
         Passed otherwise.
     """
@@ -843,8 +875,9 @@ def statistical_gate(
             raise RiskAssessmentError(f"the run's {name} must be a SHA-256")
     if not isinstance(subjects, int) or isinstance(subjects, bool) or subjects < 0:
         raise RiskAssessmentError("the run's subjects must be a whole number")
-    # Checks the lists' types, whether or not a record was given.
-    lists_digest(new_salt(), reviewed_names, reviewed_descriptors)
+    # Checks the lists' and rules' types, whether or not a record was given.
+    applied = (reviewed_names, reviewed_descriptors, pixel_region_rules)
+    lists_digest(new_salt(), *applied)
     if record is None:
         return StatisticalGate(None, StatisticalReason.NO_ASSESSMENT)
     if not isinstance(record, AssessmentRecord):
@@ -857,7 +890,7 @@ def statistical_gate(
         reason = StatisticalReason.OTHER_POLICY
     elif not hmac.compare_digest(
         record.lists_sha256,
-        lists_digest(record.lists_salt, reviewed_names, reviewed_descriptors),
+        lists_digest(record.lists_salt, *applied),
     ):
         reason = StatisticalReason.OTHER_LISTS
     elif assessment.subjects < subjects:

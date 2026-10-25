@@ -45,6 +45,7 @@ from pymedphys._dicom.deidentify.instance_transform import (
     ReleaseGate,
 )
 from pymedphys._dicom.deidentify.keys import DeidKey
+from pymedphys._dicom.deidentify.pixel_region_rules import PixelRegionRules, RuleKey
 from pymedphys._dicom.deidentify.policy import compose_policy
 from pymedphys._dicom.deidentify.reasons import RunReason, TransformReason
 from pymedphys._dicom.deidentify.reviewed_roi_names import (
@@ -81,6 +82,7 @@ from pymedphys._dicom.deidentify.run_report import (
     release_files,
     roi_name_counts,
 )
+from pymedphys._dicom.deidentify.text_detection import TextBox
 from pymedphys._dicom.deidentify.walker import SequesterReason, Sequestration
 from pymedphys._dicom.deidentify.written_references import (
     WrittenFinding,
@@ -199,22 +201,41 @@ def test_the_qc_pack_binds_the_lists_that_the_reporter_checks(tmp_path):
     _write(tmp_path / "source", synthetic.collection()[:1])
     names = ReviewedNames.empty()
     names.record("Parotid L", ReviewedName(Review.KEEP))
+    rules = PixelRegionRules.empty()
+    rules.record(
+        RuleKey("1.2.840.10008.5.1.4.1.1.6.1", "Acme Sonics", "Echo 5", 480, 640),
+        (TextBox(0, 0, 40, 640),),
+    )
     reporter = ReleaseReporter(
         compose_policy("basic"),
         vocabulary=None,
         reviewed_roi_names=None,
-        reviewed_lists=(names, None),
+        reviewed_lists=(names, None, rules),
     )
 
     result = _run(tmp_path, Transform(), Gate(), reporter)
 
-    assert reporter.reviewed_lists == (names, None)
-    # A risk assessment of the run binds the lists that the run applied,
-    # under the salt that the run drew.
+    assert reporter.reviewed_lists == (names, None, rules)
+    # A risk assessment of the run binds the lists and region rules that the
+    # run applied, under the salt that the run drew.
     lists = json.loads(result.qc_pack.read_text("ascii"))["reviewed_lists"]
     assert set(lists) == {"salt", "sha256"}
-    assert lists["sha256"] == risk_assessment.lists_digest(lists["salt"], names, None)
-    assert lists["sha256"] != risk_assessment.lists_digest(lists["salt"], None, None)
+    salt = lists["salt"]
+    assert lists["sha256"] == risk_assessment.lists_digest(salt, names, None, rules)
+    assert lists["sha256"] != risk_assessment.lists_digest(salt, names, None, None)
+    assert lists["sha256"] != risk_assessment.lists_digest(salt, None, None, rules)
+
+
+@pytest.mark.parametrize("lists", [(None, None), [None, None, None], None])
+def test_the_reporter_takes_the_two_lists_and_the_region_rules(lists):
+    # A reporter given the lists alone would leave the rules unbound.
+    with pytest.raises(TypeError, match="region rules"):
+        ReleaseReporter(
+            compose_policy("basic"),
+            vocabulary=None,
+            reviewed_roi_names=None,
+            reviewed_lists=lists,
+        )
 
 
 @pytest.mark.deid_requirement("MIDI-BP-18")
@@ -274,7 +295,7 @@ def test_the_report_names_the_iod_of_an_input_the_release_does_not_support(tmp_p
 
 
 class _FailingReporter:
-    reviewed_lists = (None, None)
+    reviewed_lists = (None, None, None)
 
     def admits(self, status, reasons):  # pylint: disable = unused-argument
         return True
@@ -295,7 +316,7 @@ def test_a_report_that_cannot_be_written_publishes_nothing(tmp_path):
 
 
 class _UnreadableReporter:
-    reviewed_lists = (None, None)
+    reviewed_lists = (None, None, None)
 
     def admits(self, status, reasons):  # pylint: disable = unused-argument
         return True
@@ -446,7 +467,7 @@ def test_a_run_publishes_the_conformance_statement_of_its_policy(tmp_path):
 
 
 class _StatementlessReporter:
-    reviewed_lists = (None, None)
+    reviewed_lists = (None, None, None)
 
     def __init__(self):
         self._reporter = _reporter()

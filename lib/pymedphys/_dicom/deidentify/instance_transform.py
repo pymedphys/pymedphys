@@ -1104,10 +1104,12 @@ class InstanceTransform:
             face_blocks=self._face_block_counts,
             project_key=key.key_id if profiles.persistent else None,
             readiness_review=readiness_review,
+            # The version of the rules that cleaning applies, as for their
+            # keyed digest.
             reviewed_lists=(
-                (None, None)
-                if cleaning is None
-                else (cleaning.reviewed, cleaning.reviewed_descriptors)
+                None if cleaning is None else cleaning.reviewed,
+                None if cleaning is None else cleaning.reviewed_descriptors,
+                self._region_rules,
             ),
         )
 
