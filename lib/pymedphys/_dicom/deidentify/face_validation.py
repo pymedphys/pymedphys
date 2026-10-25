@@ -956,6 +956,8 @@ def _pair_measures(
 
 def _front_measures(test: defacing.PairTest, place: str) -> FrontMeasures:
     """The front test of a pair, whose balls lie at ``place``."""
+    # Only pairs in orbits, which the front test is given, are measured.
+    assert test.front is not None and test.back is not None
     if all(each.open for each in test.front):
         side = "in-front"
     elif all(each.open for each in test.back):

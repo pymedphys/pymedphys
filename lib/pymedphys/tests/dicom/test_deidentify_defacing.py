@@ -512,6 +512,7 @@ def test_an_inspection_shows_each_globe_kept_and_their_pair_passing(inspection):
     assert pair.lateral == pair.superior == (True, True)
     # Each globe lies under the skin in front, which an eyelid covers, and
     # deep in the head behind.
+    assert pair.front is not None and pair.back is not None
     for front, back in zip(pair.front, pair.back):
         assert front.open and not back.open
         assert 0 < front.depth <= defacing.FRONT_REACH
@@ -679,6 +680,7 @@ def test_soft_tissue_cut_by_the_edge_of_the_field_of_view_is_not_a_globe():
     )
     (pair,) = inspection.pairs
     assert pair.in_orbits and not pair.eyes
+    assert pair.front is not None
     assert all(math.isinf(front.depth) for front in pair.front)
     with pytest.raises(defacing.FaceBlockRefused) as refused:
         inspection.block()
@@ -702,6 +704,7 @@ def test_balls_in_bony_cups_behind_the_eyes_are_not_globes(eyes):
     ]
 
     assert pair.in_orbits and not pair.eyes
+    assert pair.front is not None and pair.back is not None
     assert all(front.bone for front in pair.front)
     assert not any(back.open for back in pair.back)
     if any(eyes):
@@ -724,9 +727,39 @@ def test_a_ball_at_an_orbit_apex_is_not_a_globe():
     ]
 
     assert pair.in_orbits and not pair.eyes
+    assert pair.front is not None
     front = pair.front[1]
     assert front.depth > defacing.FRONT_REACH and front.fat > defacing.FRONT_FAT
     _assert_around_the_globes(inspection.block())
+
+
+def test_balls_one_above_the_other_are_a_pair_given_no_front_test():
+    # Two balls of soft tissue in fat, their centres on the finder's voxels
+    # and one directly above the other, as balls kept on one column of
+    # voxels were in 15 of HaN-Seg's CTs: no horizontal line runs
+    # perpendicular to the line between them, so only a pair in orbits is
+    # given the front test.
+    scan = head.axial(
+        spacing=1.5, thickness=1.5, extent=((-39, 39), (-39, 39), (-39, 39))
+    )
+    finder = _finder(scan)
+    for index in range(len(scan.positions)):
+        points = scan.points(index)
+        values = np.full(points.shape[:-1], -100.0)
+        for z in (-16.5, 16.5):
+            inside = np.linalg.norm(points - (0.0, 0.0, z), axis=-1) <= 11.0
+            values = np.where(inside, 40.0, values)
+        finder.add(values.astype(np.float32))
+    inspection = finder.inspect()
+    centres = [ball.centre for ball in inspection.balls if ball.kept]
+
+    assert sorted(centres) == [(0.0, 0.0, -16.5), (0.0, 0.0, 16.5)]
+    (pair,) = inspection.pairs
+    assert not pair.side_by_side and not pair.in_orbits and not pair.eyes
+    assert pair.front is None and pair.back is None
+    with pytest.raises(defacing.FaceBlockRefused) as refused:
+        inspection.block()
+    assert refused.value.problem is defacing.FaceBlockProblem.NO_EYES
 
 
 def test_the_depth_near_a_globe_is_about_its_radius(inspection):

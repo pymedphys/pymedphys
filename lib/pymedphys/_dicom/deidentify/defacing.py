@@ -385,10 +385,12 @@ class PairTest:
         Whether there is bone lateral to the right ball, then to the left.
     superior : tuple of bool
         Whether there is bone superior to the right ball, then to the left.
-    front, back : tuple of Front
+    front, back : tuple of Front or None
         What lies beyond the right ball, then the left, along the horizontal
         line from its centre perpendicular to the line between them, towards
-        the patient's anterior, and then towards posterior.
+        the patient's anterior, and then towards posterior; None where the
+        pair is not :attr:`in_orbits`, as two balls one above the other have
+        no such line.
     """
 
     right: int
@@ -396,8 +398,8 @@ class PairTest:
     side_by_side: bool
     lateral: tuple[bool, bool]
     superior: tuple[bool, bool]
-    front: tuple[Front, Front]
-    back: tuple[Front, Front]
+    front: tuple[Front, Front] | None
+    back: tuple[Front, Front] | None
 
     @property
     def in_orbits(self) -> bool:
@@ -411,6 +413,8 @@ class PairTest:
         """Whether the pair passes every test of a pair of globes: as
         :attr:`in_orbits`, and with each ball open to air in front, or each
         behind, which the head's test then tells apart."""
+        if self.front is None or self.back is None:
+            return False
         return self.in_orbits and (
             all(each.open for each in self.front)
             or all(each.open for each in self.back)
@@ -649,19 +653,25 @@ class FaceInspection:
                 self._in_orbit(bone, region, outwards)
                 for region, outwards in zip(regions, (-1, 1))
             ]
-            anterior = _anterior(regions[1].centre - regions[0].centre)
-            front = [self._front(region, anterior) for region in regions]
-            back = [self._front(region, -anterior) for region in regions]
-            pairs.append(
-                PairTest(
-                    right,
-                    left,
-                    bool(_paired(*regions)),
-                    (orbits[0][0], orbits[1][0]),
-                    (orbits[0][1], orbits[1][1]),
-                    (front[0], front[1]),
-                    (back[0], back[1]),
+            side_by_side = bool(_paired(*regions))
+            lateral = orbits[0][0], orbits[1][0]
+            superior = orbits[0][1], orbits[1][1]
+            front: tuple[Front, Front] | None = None
+            back: tuple[Front, Front] | None = None
+            # Only a pair side by side has a horizontal line perpendicular
+            # to the line between its balls.
+            if side_by_side and all(lateral) and all(superior):
+                anterior = _anterior(regions[1].centre - regions[0].centre)
+                front = (
+                    self._front(regions[0], anterior),
+                    self._front(regions[1], anterior),
                 )
+                back = (
+                    self._front(regions[0], -anterior),
+                    self._front(regions[1], -anterior),
+                )
+            pairs.append(
+                PairTest(right, left, side_by_side, lateral, superior, front, back)
             )
         self.pairs = tuple(pairs)
 
