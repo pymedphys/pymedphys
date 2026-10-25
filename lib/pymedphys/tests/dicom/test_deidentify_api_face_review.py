@@ -188,9 +188,7 @@ def test_a_face_review_that_cannot_be_used_raises_naming_no_path(
     elif problem == "empty":
         review = holder
     else:
-        review = _pack(
-            holder, None if problem == "not attested" else Outcome.REJECTED
-        )
+        review = _pack(holder, None if problem == "not attested" else Outcome.REJECTED)
     before = sorted(tmp_path.rglob("*"))
 
     with pytest.raises(api.DeidentifyError) as raised:
@@ -276,9 +274,7 @@ def _second_run(directory):
             if entry.get("output") is None
             else pydicom.dcmread(directory / "r2" / entry["output"]),
         )
-        for entry in json.loads(second.result.qc_pack.read_text("utf-8"))[
-            "instances"
-        ]
+        for entry in json.loads(second.result.qc_pack.read_text("utf-8"))["instances"]
     }
     report = json.loads((directory / "r2" / "release-report.json").read_text())
     return attestation, outcomes, report, second
