@@ -175,6 +175,9 @@ SUBJECT_SEX = Code("121032", "DCM", "Subject Sex")
 SUBJECT_AGE = Code("121033", "DCM", "Subject Age")
 # TID 2000 and 2002.
 IMPRESSIONS = Code("19005-8", "LN", "Impressions")  # CID 7001
+# CID 7001 lists, for each heading, an equivalent DCM code that it recommends
+# supporting for backward compatibility.
+DCM_IMPRESSIONS = Code("121072", "DCM", "Impressions")
 IMPRESSION = Code("121073", "DCM", "Impression")  # CID 7002
 # The concepts of CID 7002 "Diagnostic Imaging Report Element", which TID
 # 2002 gives its narrative's TEXT items, in the context group's order.
@@ -555,14 +558,14 @@ OBSERVATION_CONTEXT_ROWS = (
 IMAGING_OPTIONAL_ROWS = (*OBSERVATION_CONTEXT_ROWS, "TID 2000 row 8")
 
 
-def imaging_tree(optional=(), title=BREAST_IMAGING_REPORT):
+def imaging_tree(optional=(), title=BREAST_IMAGING_REPORT, heading=IMPRESSIONS):
     """Return the root of a diagnostic imaging report's tree, TID 2000.
 
     TID 2000 rows 1, 5, and 7 are required: the title, from CID 7000, the
     language (TID 1204 row 1), and the observation context (TID 1001), whose
     observer, a person, is named. ``"TID 2000 row 8"`` adds a section, whose
-    heading is from CID 7001, every code of which is in LOINC, holding an
-    impression in free text (TID 2002 row 3, with a concept from CID 7002).
+    heading is from CID 7001, holding an impression in free text (TID 2002
+    row 3, with a concept from CID 7002).
 
     Parameters
     ----------
@@ -572,12 +575,16 @@ def imaging_tree(optional=(), title=BREAST_IMAGING_REPORT):
         The document title, from CID 7000. Defaults to its DCM code for a
         breast imaging report; most of its titles, such as
         :data:`DIAGNOSTIC_IMAGING_REPORT`, are coded in LOINC.
+    heading : Code
+        The section's heading, from CID 7001. Defaults to its preferred code,
+        in LOINC, for Impressions; :data:`DCM_IMPRESSIONS` is the equivalent
+        DCM code.
     """
     _checked(optional, IMAGING_OPTIONAL_ROWS)
     impression = item("CONTAINS", "TEXT", IMPRESSION, text=f"{SENTINEL} IMPRESSION")
     sections = _chosen(
         optional,
-        [_row("TID 2000 row 8", "CONTAINS", "CONTAINER", IMPRESSIONS, impression)],
+        [_row("TID 2000 row 8", "CONTAINS", "CONTAINER", heading, impression)],
     )
     return item(
         None,
@@ -1129,7 +1136,9 @@ def _report(identity, tree, verified, evidence=None):
     return _with_tree(dataset, tree, template)
 
 
-def imaging_report(optional=(), *, title=BREAST_IMAGING_REPORT, verified=False):
+def imaging_report(
+    optional=(), *, title=BREAST_IMAGING_REPORT, heading=IMPRESSIONS, verified=False
+):
     """Return a Comprehensive SR whose tree is :func:`imaging_tree`.
 
     ``verified`` gives it the Verification Flag VERIFIED, with a Verifying
@@ -1137,7 +1146,7 @@ def imaging_report(optional=(), *, title=BREAST_IMAGING_REPORT, verified=False):
     """
     return _report(
         (COMPREHENSIVE_SR, IMAGING_REPORT, "2000"),
-        imaging_tree(optional, title),
+        imaging_tree(optional, title, heading),
         verified,
     )
 

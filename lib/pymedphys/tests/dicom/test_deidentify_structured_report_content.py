@@ -331,7 +331,8 @@ def test_the_required_rows_that_table_e3_4_1_removes(with_option, preset, remove
 UNMATCHED_FEATURES = {
     # Most of CID 7000's titles, for the root of TID 2000.
     "LOINC title": (IMAGING, (), {"title": reports.DIAGNOSTIC_IMAGING_REPORT}, "LN"),
-    # Every heading of CID 7001, for TID 2000 row 8.
+    # A heading of CID 7001 in its preferred encoding, LOINC, for TID 2000
+    # row 8.
     "LOINC heading": (IMAGING, ("TID 2000 row 8",), {}, "LN"),
     # TID 1004 row 11, required in a Unique Device Identifiers container.
     "LOINC device identifier": (
@@ -596,7 +597,8 @@ def test_the_narrative_of_an_imaging_report_keeps_only_unlisted_text(
     # lists is removed, X or X/D, with C under Clean Descriptors falling back
     # to X; Previous Finding and Impression are not listed; and the rest are
     # coded in LOINC. TID 2000 holds the narrative only in a section, whose
-    # heading is coded in LOINC, so no section is kept at all.
+    # heading CID 7001 prefers in LOINC, which takes the tree out; a section
+    # under its equivalent DCM heading is kept, as tested below.
     assert found == {
         "History": "unmatched",
         "Request": "unmatched",
@@ -610,6 +612,42 @@ def test_the_narrative_of_an_imaging_report_keeps_only_unlisted_text(
         "Patient Presentation": "unmatched",
         "Summary": "unmatched",
     }
+
+
+@pytest.mark.parametrize("preset, options", [
+    *((preset, None) for preset in PRESETS),
+    (None, EVERY_OPTION),
+])  # fmt: skip
+def test_a_section_under_an_equivalent_dcm_heading_is_kept(
+    with_option, preset, options
+):
+    composed = _composed(with_option, preset, options)
+    dataset, iod = _report(
+        IMAGING, ("TID 2000 row 8",), heading=reports.DCM_IMPRESSIONS
+    )
+    actions, _ = _planned(dataset, iod, composed)
+
+    # The heading and the Impression are not listed, so the tree is kept, and
+    # the impression's free text takes Text Value's own rule, a dummy.
+    listed = content_items.concept_actions(composed.options)
+    for meaning, key in _concepts(dataset):
+        if meaning in {"Impressions", "Impression"}:
+            assert key not in listed, meaning
+    assert _kept(dataset, iod, composed)
+    assert _values_by_concept(dataset, actions) == {"Person Observer Name": "D"}
+
+
+@pytest.mark.usefixtures("supported")
+def test_a_section_under_an_equivalent_dcm_heading_is_written_and_released(
+    with_option,
+):
+    dataset, _ = _report(IMAGING, ("TID 2000 row 8",), heading=reports.DCM_IMPRESSIONS)
+
+    data, decision = _released(with_option("public-release"), dataset)
+
+    assert reports.SENTINEL.encode() not in data
+    assert isinstance(decision, run.Release), decision
+    assert _shape(pydicom.dcmread(io.BytesIO(data))) == _shape(dataset)
 
 
 @pytest.mark.parametrize("preset, options", [
@@ -661,9 +699,17 @@ def test_a_subject_id_other_than_the_patient_id_is_not_released(with_option):
     dataset, _ = _report(IMAGING)
     dataset.ContentSequence.append(reports.subject_identifier("SYNTHETIC-OTHER9"))
 
-    data, decision = _released(with_option("public-release"), dataset)
+    result = _transformed(with_option("public-release"), dataset)
 
-    assert b"SYNTHETIC-OTHER9" not in data or not isinstance(decision, run.Release)
+    # Removing the item, sequestering the instance for it, or withholding the
+    # written file at the release gate each keep the identifier unreleased.
+    if not isinstance(result, run.Transformed):
+        assert isinstance(result, run.Sequestered), result
+        return
+    decision = ReleaseGate()(result.data, result.evidence, (result.evidence,))
+    assert b"SYNTHETIC-OTHER9" not in result.data or not isinstance(
+        decision, run.Release
+    )
 
 
 # The optional rows of each report that public-release, with the option
