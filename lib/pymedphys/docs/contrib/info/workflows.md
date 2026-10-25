@@ -26,6 +26,7 @@ Schedule / manual run -> deid-edition-check.yml
 Schedule / manual run -> tg263-edition-check.yml
 Schedule / manual run / PR changing it or labelled check-upstream -> tcia-edition-check.yml
 Manual run -> face-validation.yml
+Manual run -> pixel-text-validation.yml
 Published release -> release.yml -> quality checks, publishing, verification, and published-package tests
 Issue comment -> claude.yml
 
@@ -598,6 +599,31 @@ Option, against the eye and organ masks of the HaN-Seg data set (see
   digests, versions, and the engine's settings. HaN-Seg's images are of real
   patients, so the data set is never cached or uploaded, and nothing else read
   from it leaves the runner
+
+#### `pixel-text-validation.yml`
+
+Counts the regions that the text detector of the Clean Pixel Data Option finds
+in the slices of the HaN-Seg data set's CT and MR volumes, which hold no
+burned-in text, so that each region is one that a run would black out in error
+(see
+[Check the text detector against HaN-Seg](deidentification-pixel-text-validation.md)).
+
+- **Triggers**: manually only
+- **Steps**: one job for each image, `CT` and `MR_T1`, side by side, each with
+  almost the six hours that a hosted runner allows. Each installs the project
+  with the `user` and `text-detection` extras, downloads HaN-Seg version 1.0
+  from Zenodo, checks its size and MD5 against the record's, and runs
+  `python -m pymedphys._dicom.deidentify.pixel_text_validation_command hanseg`
+  with a worker process for each CPU through `.github/scripts/run_redacted.py`,
+  which reports a crash by its type and code locations alone. The command's
+  standard output and standard error stay in files on the runner. Its jobs can
+  only read the repository
+- **Results**: each job's summary shows `pixel-text-validation.md`, and its
+  `pixel-text-validation-results-<image>` artefact, kept for 90 days, holds it
+  with `pixel-text-validation.json` and `commit.txt`. They hold only counts,
+  codes, digests, versions, and the detector's method. As for the face block
+  check, the data set is never cached or uploaded, and nothing else read from
+  it leaves the runner
 
 ### AI Assistance
 
