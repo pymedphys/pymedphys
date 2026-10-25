@@ -26,6 +26,7 @@ posterior, and z superior.
 
 import io
 import math
+import weakref
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom, pytest
@@ -743,6 +744,70 @@ def test_a_lone_dose_plane_is_mapped_by_its_dose_levels():
     values = plane[0].astype(np.float32) * np.float32(0.001)
     expected = qc_surfaces.level_bands(values, qc_surfaces.dose_levels(19.0, 1.0))
     assert np.array_equal(_decoded(mapped.png), expected)
+
+
+def _lone_slices():
+    """Four single-slice RT Dose instances of one series at one position, so
+    in no volume; the third's scaling loses its dose, so it is not mapped."""
+    grid = _hot(19000)
+    return {
+        k: _dose(
+            grid[18 + k : 19 + k],
+            [0.0],
+            scaling=1e-46 if k == 2 else 0.001 * (k + 1),
+            instance=f"2.25.9101.{k + 1}",
+        )
+        for k in range(4)
+    }
+
+
+@pytest.mark.pydicom
+def test_each_lone_dose_slice_of_a_series_is_mapped_in_order_after_its_cine_strip():
+    previews = qc_previews.previews_of(_lone_slices(), ())
+    assert [preview.kind for preview in previews.previews] == [
+        PreviewKind.SERIES_CINE,
+        *[PreviewKind.SERIES_DOSE_LEVELS] * 3,
+    ]
+    grid = _hot(19000)
+    for k, mapped in zip((0, 1, 3), previews.previews[1:]):
+        assert mapped.frames == ((k, 0),) and mapped.total_frames == 1
+        values = grid[18 + k].astype(np.float32) * np.float32(0.001 * (k + 1))
+        finite = values[values > 0]
+        levels = qc_surfaces.dose_levels(float(values.max()), float(finite.min()))
+        expected = qc_surfaces.level_bands(values, levels)
+        assert np.array_equal(_decoded(mapped.png), expected)
+    assert previews.not_previewed == (
+        NotPreviewedEntry(2, NotPreviewedReason.DOSE_LEVELS_NOT_SHOWN),
+    )
+
+
+@pytest.mark.pydicom
+def test_a_lone_dose_slice_s_pixels_are_released_once_it_is_mapped(monkeypatch):
+    # pylint: disable = protected-access
+    decode = qc_previews._Decoder.frame
+    draw = qc_previews._level_map
+    mapped = []
+    held_decoding = []
+    held_mapping = []
+
+    def decoded(self, instance, index):
+        held_decoding.append(sum(earlier() is not None for earlier in mapped))
+        return decode(self, instance, index)
+
+    def recorded(instance, pixels):
+        held_mapping.append(sum(earlier() is not None for earlier in mapped))
+        mapped.append(weakref.ref(pixels))
+        return draw(instance, pixels)
+
+    monkeypatch.setattr(qc_previews._Decoder, "frame", decoded)
+    monkeypatch.setattr(qc_previews, "_level_map", recorded)
+    with_recording = qc_previews.previews_of(_lone_slices(), ())
+    monkeypatch.undo()
+
+    # No earlier slice's decoded pixels are held when the next is decoded
+    # or mapped, and the previews are those drawn without the recording.
+    assert held_decoding == held_mapping == [0, 0, 0, 0]
+    assert with_recording == qc_previews.previews_of(_lone_slices(), ())
 
 
 def _sheet_rows(data):
