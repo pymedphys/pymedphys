@@ -43,12 +43,13 @@ Each measure is counted in fixed bins, and no case is named, so the summary give
 - A globe error of more than a few millimetres, or `eyes-disagree-with-rois`, means that the finder took something else for a globe, or that the masks are not where the image shows the eyes; a run given those eyes as ROIs would hold the series.
 - A height above the inferior limit below 0 means that part of an eye lies below the block's axial plane, which the block keeps.
 - The front of each eye, `Eye_AR` and `Eye_AL`, should be written as air in every defaced series, and the back, `Eye_PR` and `Eye_PL`, only in part, since the block keeps what lies behind its plane 5 mm behind the globes' centres. Organs behind that plane, or below the block, such as the brainstem, the parotid glands, and the lips, should have none written.
-- The margin, the 30 mm above the higher globe's centre from which the brain is kept, and the 25 mm for an eye ROI are placeholders (D-050). The counts are evidence for setting them; changing one is a decision of its own.
+- The margin, the 30 mm above the higher globe's centre from which the brain is kept, and the 25 mm for an eye ROI are placeholders (D-050). The counts bear on the margin and the 25 mm, without validating either; changing a setting is a decision of its own.
 
 ## Limits
 
 - Nothing here renders a surface or tests whether a defaced face can be recognised.
 - HaN-Seg's masks include no targets, so the hold for a target in the block is not tested.
+- They include no brain either, so neither the brain that defacing keeps within the cranial cavity nor the 30 mm floor below which it keeps none is tested; the brainstem, chiasm, and pituitary are no reference for them.
 - Each CT volume is written as the CT Image instances of one series in memory, so the check tests the finder and the defacer, not the reading of a scanner's DICOM files, which the engine's own tests cover.
 - The masks are the reference: an error in a mask counts against the finder.
 
@@ -84,5 +85,6 @@ Reading the results:
 - `eyes-disagree-with-rois`, or a globe error of more than a few millimetres, means that the finder took something else for a globe or that an eye ROI is not where the image shows the eye; a run holds the series.
 - A refused series, such as `no-eyes`, that holds an eye ROI is a series that a planner could find the eyes in and the finder could not: a cost in yield, since a run leaves it undefaced for the face review.
 - Targets that reach the block, and their clearances, show how often a run would hold a head and neck series for its targets.
-- Dose fractions near 5%, and RT Doses held as `dose-in-face-block`, are evidence for the dose fraction, a placeholder (D-051), as the eye reach is (D-050).
+- Dose fractions near 5%, and RT Doses held as `dose-in-face-block`, bear on the dose fraction, a placeholder (D-051), as eye ROIs' reach does on the 25 mm (D-050), without validating either; changing a setting is a decision of its own.
+- Nothing here measures the brain that defacing keeps or the 30 mm floor below which it keeps none. The dose set to zero and the contours cut are those in the block less the brain kept, so they depend on the floor without testing it.
 - Eye ROIs are those whose names a run reads as an eye's, such as `Eye_L` or `Globe_R`, not lenses; an eye named otherwise is not checked, as in a run.
