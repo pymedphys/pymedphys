@@ -116,6 +116,10 @@ from .standard import ProfileTable, dictionary_attribute, load_table_e1_1
 # The PS3.6 groups of the patient, a visit, the study, and a procedure or
 # order, in which direct identifiers are selected.
 IDENTIFIER_GROUPS = frozenset({"0008", "0010", "0020", "0032", "0038", "0040"})
+# Clinical Trial Subject ID and Clinical Trial Subject Reading ID, the
+# attributes outside those groups that name one patient: the other clinical
+# trial identifiers name the trial, a site, a series, or a time point.
+NAMED_IDENTIFIERS = frozenset({"(0012,0040)", "(0012,0042)"})
 IDENTIFIER_WORDS = frozenset({"ID", "IDs", "Number", "Numbers", "Locator"})
 # The kinds of value, by VR, that must be collected completely for release.
 REQUIRED_KINDS = {
@@ -627,11 +631,15 @@ def direct_identifiers(table: ProfileTable | None = None) -> frozenset[str]:
     """Return the tags of the direct identifiers, from the pinned tables.
 
     A direct identifier is an attribute that Table E.1-1 lists in PS3.6
-    group 0008, 0010, 0020, 0032, 0038, or 0040, that the pinned dictionary
-    makes neither a sequence (SQ) nor a UID (UI), that no option retains (K)
-    or cleans (C), and whose keyword has ``ID``, ``IDs``, ``Number``,
-    ``Numbers``, or ``Locator`` as a word, such as ``PatientID`` or
-    ``PlacerOrderNumberImagingServiceRequest``. A keyword is split into
+    group 0008, 0010, 0020, 0032, 0038, or 0040, or that is Clinical Trial
+    Subject ID (0012,0040) or Clinical Trial Subject Reading ID (0012,0042),
+    that the pinned dictionary makes neither a sequence (SQ) nor a UID (UI),
+    that no option retains (K) or cleans (C), and whose keyword has ``ID``,
+    ``IDs``, ``Number``, ``Numbers``, or ``Locator`` as a word, such as
+    ``PatientID`` or ``PlacerOrderNumberImagingServiceRequest``. Those two
+    are named because each identifies one subject, whereas the other
+    clinical trial identifiers of group 0012 identify the trial, a site, a
+    series, or a time point. A keyword is split into
     words at each capital that starts a word, and a run of capitals is one
     word up to the capital that starts the next, so an acronym directly
     before ``ID``, as in a keyword such as ``MRNID``, would be one word and
@@ -653,8 +661,10 @@ def direct_identifiers(table: ProfileTable | None = None) -> frozenset[str]:
     --------
     >>> "(0010,0020)" in direct_identifiers()
     True
+    >>> "(0012,0040)" in direct_identifiers()
+    True
     >>> len(direct_identifiers())  # in the 2026d edition
-    22
+    24
     """
     return _direct_identifiers(load_table_e1_1() if table is None else table)
 
@@ -663,8 +673,8 @@ def direct_identifiers(table: ProfileTable | None = None) -> frozenset[str]:
 def _direct_identifiers(table: ProfileTable) -> frozenset[str]:
     selected = set()
     for row in table.attributes:
-        if row.tag[1:5] not in IDENTIFIER_GROUPS:  # including the private row
-            continue
+        if row.tag[1:5] not in IDENTIFIER_GROUPS and row.tag not in NAMED_IDENTIFIERS:
+            continue  # including the private row
         attribute = dictionary_attribute(row.tag)
         if (
             attribute is not None
