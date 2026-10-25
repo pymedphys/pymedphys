@@ -748,11 +748,40 @@ def test_an_ambiguous_mapping_is_refused(tmp_path, mapping_text):
         dicom_validation.pairs_from_uid_mapping(*_release(tmp_path, mapping_text))
 
 
-def test_outputs_that_share_a_name_are_refused(tmp_path):
-    source, release, mapping = _release(tmp_path, "id_old,id_new\n1.2.3.1,2.25.1\n")
-    _instance(release / "x" / "2.25.1.dcm", "2.25.1")
+def test_an_output_is_found_by_the_uid_it_holds_not_its_name(tmp_path):
+    # Under Retain UIDs, an output holds its input's UID, which the mapping
+    # maps to itself, but is named by the UID's keyed replacement.
+    _instance(tmp_path / "source" / "a.dcm", "1.2.3.1")
+    _instance(tmp_path / "release" / "2.25.1.dcm", "1.2.3.1")
+    mapping = tmp_path / "uid_mapping.csv"
+    mapping.write_text("id_old,id_new\n1.2.3.1,1.2.3.1\n", encoding="utf-8")
 
-    with pytest.raises(dicom_validation.PairingError):
+    pairs, unpaired = dicom_validation.pairs_from_uid_mapping(
+        tmp_path / "source", tmp_path / "release", mapping
+    )
+
+    assert pairs == (
+        Pair(
+            (tmp_path / "source" / "a.dcm").resolve(),
+            tmp_path / "release" / "2.25.1.dcm",
+        ),
+    )
+    assert unpaired == 0
+
+
+def test_an_output_whose_uid_cannot_be_read_is_refused(tmp_path):
+    source, release, mapping = _release(tmp_path, "id_old,id_new\n1.2.3.1,2.25.1\n")
+    (release / "2.25.9.dcm").write_bytes(b"SYNTHETIC NOT DICOM")
+
+    with pytest.raises(dicom_validation.PairingError, match="could not be read"):
+        dicom_validation.pairs_from_uid_mapping(source, release, mapping)
+
+
+def test_outputs_that_hold_one_uid_are_refused(tmp_path):
+    source, release, mapping = _release(tmp_path, "id_old,id_new\n1.2.3.1,2.25.1\n")
+    _instance(release / "x" / "2.25.7.dcm", "2.25.1")
+
+    with pytest.raises(dicom_validation.PairingError, match="hold one"):
         dicom_validation.pairs_from_uid_mapping(source, release, mapping)
 
 

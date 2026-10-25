@@ -24,6 +24,11 @@ import sqlite3
 
 from pymedphys._imports import pytest
 
+from pymedphys._dicom.deidentify import (
+    dicom_validation,
+    dicom_validation_command,
+    dicom_validators,
+)
 from pymedphys._dicom.deidentify import midi_benchmark as benchmark
 from pymedphys._dicom.deidentify import midi_benchmark_command, midi_script_results
 from pymedphys._dicom.deidentify import midi_benchmark_flips as flips
@@ -133,6 +138,54 @@ def test_the_released_answer_key_takes_each_released_files_rows(sources, policy)
         connection.close()
     assert len(uids) == released
     assert uids <= {synthetic.CT_SLICES[0], synthetic.DOSE}
+
+
+@pytest.mark.parametrize("policy", [{}, {"options": [UIDS]}])
+def test_the_dicom_comparison_pairs_each_released_file(sources, policy):
+    # The mapping that a run writes pairs each released file with its input
+    # for the DICOM validators, under Retain UIDs as under basic.
+    work, _ = _run(sources, "option", **policy)
+
+    source = sources / "option-source" / "source"
+    pairs, unpaired = dicom_validation.pairs_from_uid_mapping(
+        source, work / "release", work / "validation-script" / "uid_mapping.csv"
+    )
+
+    released = len(list((work / "release").rglob("*.dcm")))
+    assert len(pairs) == released > 0
+    assert unpaired == len(list(source.glob("*.dcm"))) - released
+
+
+def test_the_dicom_validation_command_reaches_the_comparison(sources, monkeypatch):
+    # Under Retain UIDs, the validators' own pairing used to refuse the run.
+    work, _ = _run(sources, "option", options=[UIDS])
+    compared = []
+
+    def compare(pairs, toolset, *, unpaired, workers):
+        del toolset, workers
+        compared.append(pairs)
+        versions = dicom_validators.Versions(None, None, None, {})
+        return dicom_validation.Comparison(
+            versions, (), len(pairs), unpaired, {}, {}, ()
+        )
+
+    monkeypatch.setattr(dicom_validation.Toolset, "find", lambda *_: None)
+    monkeypatch.setattr(dicom_validation, "compare", compare)
+
+    status = dicom_validation_command.main(
+        [
+            "midi",
+            "--source",
+            str(sources / "option-source" / "source"),
+            "--work",
+            str(work),
+            "--out",
+            str(sources / "validation"),
+        ]
+    )
+
+    assert status != dicom_validation_command.USAGE_ERROR
+    assert len(compared[0]) == len(list((work / "release").rglob("*.dcm"))) > 0
 
 
 def test_a_preset_and_options_together_are_refused(tmp_path):
