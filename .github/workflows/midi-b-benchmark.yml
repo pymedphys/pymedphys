@@ -179,7 +179,8 @@ jobs:
           free -m
 
       # The user extra holds the decoders for compressed transfer syntaxes,
-      # and the tests extra dicom-validator.
+      # and the tests extra dicom-validator and, for Clean Pixel Data, the
+      # text-detection extra.
       - uses: ./.github/actions/setup-project
         with:
           extras: 'user tests'

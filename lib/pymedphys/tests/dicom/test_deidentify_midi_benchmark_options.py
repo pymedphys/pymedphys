@@ -20,11 +20,12 @@ Every DICOM file and answer key is synthetic, as in
 
 import csv
 import json
+import sqlite3
 
 from pymedphys._imports import pytest
 
 from pymedphys._dicom.deidentify import midi_benchmark as benchmark
-from pymedphys._dicom.deidentify import midi_benchmark_command
+from pymedphys._dicom.deidentify import midi_benchmark_command, midi_script_results
 from pymedphys._dicom.deidentify import midi_benchmark_flips as flips
 from pymedphys._dicom.deidentify.midi_answer_key import (
     AnswerInstance,
@@ -103,6 +104,35 @@ def test_the_mapping_files_name_the_uids_a_kept_uid_file_holds(sources):
         row for row in document["categories"] if row["code"] == "DICOM-P15-BASIC-U"
     ]
     assert consistent["passed"] == 1 and consistent["failed"] == 0
+
+
+@pytest.mark.parametrize("policy", [{}, {"options": [UIDS]}])
+def test_the_released_answer_key_takes_each_released_files_rows(sources, policy):
+    # The mapping that a run writes, and its release, prepare the answer key
+    # for NCI's script, under Retain UIDs as under basic.
+    work, document = _run(sources, "option", **policy)
+    out = sources / "released.db"
+
+    counts = midi_script_results.write_released_answer_key(
+        sources / "option-source" / "key.db",
+        work / "release",
+        work / "validation-script" / "uid_mapping.csv",
+        out,
+    )
+
+    released = document["coverage"]["instances"]["released"]
+    assert counts["released_instances"] == len(list((work / "release").rglob("*.dcm")))
+    assert counts["answer_key_instances"] == released
+    connection = sqlite3.connect(out)
+    try:
+        uids = {
+            row[0]
+            for row in connection.execute("SELECT SOPInstanceUID FROM answer_data")
+        }
+    finally:
+        connection.close()
+    assert len(uids) == released
+    assert uids <= {synthetic.CT_SLICES[0], synthetic.DOSE}
 
 
 def test_a_preset_and_options_together_are_refused(tmp_path):
