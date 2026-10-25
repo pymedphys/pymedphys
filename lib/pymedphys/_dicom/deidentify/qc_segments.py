@@ -41,8 +41,9 @@ groups, per frame or shared, and sampled to cubic voxels of
 its pixel spacing and the step of its planes' grid where that is larger, as
 a volume's surface render is sampled, so that a long Segmentation's rows
 are taller rather than coarser; the voxels lie at whole multiples of their
-side, so that neither their side nor their positions depend on which
-frames a writer left out. Within a
+side, and along the normal span the whole cells of the first and last
+planes, so that neither their side, their positions, nor their extent
+depend on which frames a writer left out. Within a
 frame, the mask is sampled along its rows' axis and then its columns', each
 voxel along an axis holding every pixel nearest it and the pixel nearest it,
 so that no pixel of a segment is left out where pixels are finer than the
@@ -420,7 +421,8 @@ class _Lattice:
 
 
 def _own_lattice(segments: Segments) -> _Lattice:
-    """Cubic voxels over the frames' pixels, with at least a voxel more on
+    """Cubic voxels over the frames' pixels, and along the normal over the
+    whole cells of the first and last planes, with at least a voxel more on
     each side, at whole multiples of their side in the patient's
     coordinates.
 
@@ -441,6 +443,10 @@ def _own_lattice(segments: Segments) -> _Lattice:
     ):
         by_axis[axis] = np.arange(count) * spacing
     voxel = qc_surfaces.voxel_side([by_axis[axis] for axis in range(3)])
+    # The first and last planes fill their cells, half a step beyond them.
+    reach = (segments.step or 0.0) / 2
+    low[normal] -= reach
+    high[normal] += reach
 
     def along(index: int) -> np.ndarray:
         first = math.floor(low[index] / voxel + 1e-6) - 1

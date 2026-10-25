@@ -695,6 +695,56 @@ def test_a_slice_thickness_above_the_spacing_bridges_no_left_out_frames():
     assert between.size and not np.intersect1d(drawn, between).size
 
 
+def _spaced(orientation, occupied, kind):
+    """Segmentations of plates in frames 10 mm apart, off centre, at seven
+    planes from 10 mm below the first: those of ``occupied`` written alone,
+    and every plane written."""
+    cosines = np.array(_ORIENTATIONS[orientation])
+    normal = np.cross(cosines[:3], cosines[3:])
+    origin = np.array([-37.3, 21.9, 113.7])
+    scan = head.Scan(
+        tuple(cosines),
+        tuple(tuple(origin + 10.0 * k * normal) for k in range(-1, 6)),
+        (0.5, 0.5),
+        (20, 20),
+    )
+    mask = np.zeros((7, 20, 20), bool)
+    mask[[index + 1 for index in occupied], 5:15, 5:15] = True
+    dense = files.segmentation(scan, [mask], kind=kind, keep_empty=True)
+    if kind == "LABELMAP":
+        # A label map has a frame for every plane, so left out by hand.
+        dataset = _read(dense)
+        size = dataset.Rows * dataset.Columns
+        kept = [index + 1 for index in occupied]
+        groups = dataset.PerFrameFunctionalGroupsSequence
+        dataset.PerFrameFunctionalGroupsSequence = [groups[index] for index in kept]
+        dataset.NumberOfFrames = len(kept)
+        data = dataset.PixelData
+        dataset.PixelData = b"".join(
+            data[index * size : (index + 1) * size] for index in kept
+        )
+        return files.written(dataset), dense
+    return files.segmentation(scan, [mask], kind=kind), dense
+
+
+@pytest.mark.parametrize("kind", ["BINARY", "LABELMAP"])
+@pytest.mark.parametrize("occupied", [(1, 5), (2,)])
+@pytest.mark.parametrize("orientation", list(_ORIENTATIONS))
+def test_left_out_end_frames_clip_no_cell(orientation, occupied, kind):
+    # Plates in frames 10 mm apart fill their whole 10 mm cells, five slices
+    # of 2 mm voxels each, whether or not the empty frames beyond them are
+    # written.
+    sparse, dense = _spaced(orientation, occupied, kind)
+    assert _read(sparse).NumberOfFrames == len(occupied)
+    assert np.array_equal(_sheet(sparse), _sheet(dense))
+    segments = _segments(sparse)
+    lattice = qc_segments._own_lattice(segments)  # pylint: disable = protected-access
+    placed = qc_segments._Placement(segments, lattice)  # pylint: disable = protected-access
+    assert [len(placed.slices(origin)) for origin in segments.origins] == [5] * len(
+        occupied
+    )
+
+
 @pytest.mark.parametrize("pixel", [0.5, 3.0, 4.0, 8.0])
 @pytest.mark.parametrize("below", [0, 3])
 def test_left_out_frames_change_no_voxel_whatever_the_pixels(pixel, below):
