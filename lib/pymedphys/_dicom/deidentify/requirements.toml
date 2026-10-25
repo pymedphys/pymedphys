@@ -270,7 +270,7 @@ Where an IOD requires an attribute given a plain X, the statement names the encl
 Under Clean Descriptors, it describes how ROI Name is cleaned in two tiers: automatic renaming against a published TG-263 edition, which it names, and reviewers' decisions, with every reason a name is held, what is written for each, and the condition on which an instance gains the Clean Descriptors code, each checked against the engine (D-009).
 Each run with a release reporter writes the statement of its policy, as `conformance-statement.md` beside the release report at the root of the release, since it holds no instance value; it describes the policy and vocabulary that the report records, and the report gives the run's own method digest and reviewed-names digest.
 The statements of `basic` and `basic-clean-descriptors`, the presets of the first supported release, list nothing as pending.
-For each selected option that has a cleaner, it gives the attributes that the policy gives C and the cleaner settles, with its method: the AE titles under Retain Device Identity (D-034), the free text under Retain Patient Characteristics, which holds its instance unless it has no value (D-038, PS3.15-E.3.7-02), and the dates and times that Modified Dates modifies (D-039, PS3.15-E.3.6-04).
+For each selected option that has a cleaner, it gives the attributes that the policy gives C and the cleaner settles, with its method: the AE titles under Retain Device Identity (D-034), the free text under Retain Patient Characteristics, which writes none of its values itself and, under Clean Descriptors too, is given the reviewed descriptors list's decisions (D-038, PS3.15-E.3.7-02), and the dates and times that Modified Dates modifies (D-039, PS3.15-E.3.6-04).
 A statement still lists as pending, and so claims nothing for, the manner of cleaning any other attribute to which the policy gives C other than under Clean Descriptors alone; this completes with those options.
 Under `tps-import`, it describes the synthetic birth dates that Patient's Birth Date takes, how the reference study is chosen, the empty value written where the ages are missing or inconsistent, and the `birth-date-conflict` sequestration of a later run that contradicts the reference (D-008).
 Under `tps-import`, it gives each attribute other than ROI Name that the policy gives C the action that the preset's other options give it, with the eleven device dates and times modified as the preset modifies them, as descriptor cleaning falls back to it (D-009).
@@ -350,7 +350,7 @@ text = '''
 When this Option is specified in addition to the Basic Application Level Confidentiality Profile, if there is sufficient visual information within the Pixel Data of a set of instances to allow an individual to be recognized from the instances themselves or a reconstruction of a set of instances, then sufficient removal or distortion of the Pixel Data shall be applied to prevent recognition.
 '''
 status = "implemented"
-decisions = ["D-015", "D-016", "D-017", "D-046", "D-050", "D-051", "D-052", "D-054"]
+decisions = ["D-015", "D-016", "D-017", "D-033", "D-046", "D-050", "D-051", "D-052", "D-054"]
 implementation = [
   "_dicom/deidentify/api.py",
   "_dicom/deidentify/command.py",
@@ -366,7 +366,7 @@ implementation = [
 ]
 note = '''
 The engine claims the option only for an instance in which a reviewer found no recognisable face, by the attested face verdicts of an earlier run's QC pack, matched by the SHA-256 of each source file and of the pixel data, and an RT Structure Set's contours, that the run writes of it, or one that cannot show a face (D-046).
-The library's run under the option takes the attested QC pack whose face verdicts apply, and refuses to start without one (D-046).
+The library's run under the option, and the private command's, take the attested QC pack whose face verdicts apply, and refuse to start without one (D-033, D-046).
 The QC pack shows each RT Structure Set's contours, as written, on a contour sheet, with every surface that an ROI hides behind its own and every mark that it would hide, to within two voxels, at most 4 mm, of its edge as seen from the front, the back, and the sides, and records their SHA-256 only where it shows them, and the pixel data's only where previews that could show a face draw every frame, a volume's slices by its projection and surface render, and an RT Dose's only by renders of its surfaces at each of a ladder of dose levels, from any dose above 0 up, with every surface that a level hides behind its own, or a map of a lone plane by those levels, so a verdict releases only contours and pixel data that the reviewer saw, and an instance the pack does not show in full is held, as is a set with a voxel of hidden marks that its rows' frontal view, view from behind, and profiles cannot draw, even where an oblique view would; the hidden marks are drawn in layers, each contour's where no other's lie beside them, so that is only where one contour's own marks lie side by side within its ROI's region, as where one line drawn back and forth covers a patch or near the tip of a sharp V (D-017).
 Every other instance that can show a face, with pixel data or as an RT Structure Set, is held for review and never released, so no released instance that claims the option has the visual information that the paragraph requires to be removed or distorted.
 Under the option, the engine also writes air into the face block of each CT series in which it finds one, keeping the brain in the cranial cavity above the orbits, and holds a series with a target in its block or an eye ROI away from the globes it found, and each RT Structure Set, RT Dose with pixel data, or PET instance in a defaced series' Frame of Reference, naming none, or referring to a defaced slice, which it does not clean (D-050), but for an RT Dose in the frame of only one defaced series, whose dose in that series' block, less the brain kept, it sets to zero, or holds where that dose is too great (D-051), and an RT Structure Set or single-frame PET image in such a frame, whose contours that reach the face it cuts by the block, less the brain kept where a contour allows, and whose activity in the block, less the brain kept, it sets to zero (D-052); a defaced instance still claims the option only where a reviewer found no recognisable face in it as defaced.
@@ -433,7 +433,7 @@ implementation = [
 ]
 note = '''
 The engine applies the Clean Structured Content Option to a custom option set; no preset selects it (D-047).
-Structured Reports are sequestered (D-010), and no supported IOD defines Content Sequence or Waveform Annotation Sequence, so each takes its Basic Profile action.
+Structured Reports are sequestered (D-010), and no supported IOD defines Content Sequence or Waveform Annotation Sequence. Waveform Annotation Sequence takes its Basic Profile action; Content Sequence is cleaned wherever an IOD defines it, at any depth of its nested Content Sequences, with the root content item that holds it, so that Structured Reports are cleaned once a release supports them.
 Acquisition Context Sequence and Specimen Preparation Sequence are kept where the IOD defines them, and each content item is cleaned by its Value Type and concept name, as Table E.3.4-1 gives them, generated for the concept names that DICOM and SNOMED CT code (D-001).
 An item whose concept name the table does not list keeps its codes and numbers, and its other values take their own rules, as in any kept sequence.
 Where the table removes an item, where an item cannot be read as one Value Type and one concept name, or where its concept name is coded in a scheme whose rows the table does not hold, including the retired SNOMED designators, the whole sequence takes its Basic Profile action, since a single item is not removed on its own.
@@ -496,7 +496,7 @@ The conformance statement describes how ROI Name (3006,0026) is cleaned under Cl
 It also says that a run can be given an institutional list of ROI names, which renames nothing and only shows the reviewer of a held name the list's names it matched.
 It describes how free-text descriptors are cleaned: the reviewed descriptors list's decisions, the technique descriptors and the rules by which the technique vocabulary keeps a value (D-036), the echo checks, and when an element is written with what cleaning gives it.
 Every other attribute given C under Clean Descriptors, and a free-text descriptor that cleaning does not write, takes the action that the policy gives it without that option, as the maintainer decided on 6 October 2026 (D-009); the statement lists that action for each, at each place, as the one the engine applies, so for `basic-clean-descriptors` it lists no manner of cleaning as pending.
-The manner of cleaning an attribute to which the policy gives C without Clean Descriptors too and that no cleaner cleans is listed as pending until its option is implemented; the dates and times under Modified Dates are described with their cleaner (PS3.15-E.3.6-04), and the free text that Retain Patient Characteristics gives C is described with the Option's cleaner, which settles Allergies, Patient State, and Sex Parameters for Clinical Use Category Comment before Clean Descriptors where both are selected (PS3.15-E.3.7-02).
+The manner of cleaning an attribute to which the policy gives C without Clean Descriptors too and that no cleaner cleans is listed as pending until its option is implemented; the dates and times under Modified Dates are described with their cleaner (PS3.15-E.3.6-04), and the free text that Retain Patient Characteristics gives C is described with the Option's cleaner, which settles Allergies, Patient State, and Sex Parameters for Clinical Use Category Comment before Clean Descriptors where both are selected, and leaves each value to the reviewed descriptors list, which decides on Pre-Medication and Special Needs too (PS3.15-E.3.7-02).
 '''
 
 [[requirement]]
@@ -588,15 +588,19 @@ text = '''
 When this Option is specified in addition to the Basic Application Level Confidentiality Profile, information about age, sex, height and weight and other characteristics present in the Attributes shall be retained, as described in Table E.1-1.
 '''
 status = "implemented"
-decisions = ["D-011", "D-012", "D-022", "D-034", "D-038"]
+decisions = ["D-009", "D-011", "D-012", "D-022", "D-034", "D-038"]
 implementation = [
   "_dicom/deidentify/cleaners.py",
+  "_dicom/deidentify/descriptor_cleaning.py",
   "_dicom/deidentify/instance_transform.py",
   "_dicom/deidentify/patient_characteristics.py",
+  "_dicom/deidentify/reviewed_descriptors.py",
 ]
 note = '''
 The fourteen attributes that the Option gives K are kept as read, wherever they are in the data set, with the Option's code (D-038).
-Its five attributes of free text, which it gives C, are written with no value where they have none, and otherwise hold their instance, so a released instance retains every characteristic it held (PS3.15-E.3.7-02).
+Its five attributes of free text, which it gives C, are written with no value where they have none.
+Where the policy also selects Clean Descriptors, as `tps-import` does, each other value is kept, mapped, or emptied by a reviewer's decision in the custodian's reviewed descriptors list, and an instance with a value that the list does not clean is held for review, as for ROI Names (D-009); without Clean Descriptors, such an instance is sequestered.
+So a released instance retains every characteristic it held, its free text as a reviewer decided (PS3.15-E.3.7-02).
 The measures of the body that Table E.1-1 omits, such as Patient's Body Mass Index, are removed under every option (D-022).
 No preset of the first supported release selects the Option; `tps-import` selects it, and is not yet enabled.
 '''
@@ -608,16 +612,17 @@ text = '''
 The manner of cleaning of retained Attributes shall be described in the Conformance Statement.
 '''
 status = "implemented"
-decisions = ["D-034", "D-038"]
+decisions = ["D-009", "D-034", "D-038"]
 implementation = [
   "_dicom/deidentify/cleaners.py",
   "_dicom/deidentify/conformance.py",
   "_dicom/deidentify/conformance_markdown.py",
+  "_dicom/deidentify/descriptor_cleaning.py",
   "_dicom/deidentify/patient_characteristics.py",
 ]
 note = '''
-The statement of a policy that selects the Option lists the fourteen attributes that it keeps, with K, and gives the five that it gives C with their method: none of their values is written, an instance in which one has a value is held, and one with no value is written with none (D-038).
-No method yet cleans their free text automatically; a reviewed list could later keep a reviewed value, which the maintainer has not decided.
+The statement of a policy that selects the Option lists the fourteen attributes that it keeps, with K, and gives the five that it gives C with their method: an attribute with no value is written with none; without Clean Descriptors, no other value is written and its instance is sequestered; with Clean Descriptors, each value takes a reviewer's decision from the reviewed descriptors list, checked for echoes of identifiers, and an instance with a value that the list does not clean is held for review (D-038).
+No method cleans their free text automatically, and the automatic tier of technique descriptors does not apply to them; the maintainer decided on 25 October 2026 that the reviewed descriptors list decides on them (D-038).
 '''
 
 [[requirement]]

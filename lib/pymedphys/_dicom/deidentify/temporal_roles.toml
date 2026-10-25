@@ -779,7 +779,7 @@ note = "A selector value, such as a matching criterion in a hanging protocol. It
 tag = "(0072,0063)"
 keyword = "SelectorDTValue"
 role = "other"
-note = "A selector value, such as a matching criterion in a hanging protocol. Its relationship to the subject's dates is not needed."
+note = "A selector value, such as a matching criterion in a hanging protocol, or the DateTime of the cells of a TABLE content item, such as one in an Enhanced X-Ray Radiation Dose SR. What a cell's value records is named only by the concepts of its row and column, which PS3.3 lets a table leave out, so the attribute alone cannot say whether it is the subject's date; it takes a fixed dummy value, as a date whose original may be known does, rather than the subject's offset."
 
 [[attribute]]
 tag = "(0072,006B)"
