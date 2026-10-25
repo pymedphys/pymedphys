@@ -70,6 +70,7 @@ from pymedphys._dicom.deidentify import (
     pixel_cleaning,
     run,
     standard,
+    uids,
 )
 from pymedphys._dicom.deidentify import synthetic_corpus as corpus_module
 from pymedphys._dicom.deidentify.file_layout import ElementPath
@@ -139,6 +140,8 @@ DATE_DIGITS = 8
 GRAM = 4
 CLEAN_DESCRIPTORS_CODE = ("113105", "DCM")
 PERFORMED_PROCEDURE_STEP_SEQUENCE = "(0008,1111)"
+FRAME_OF_REFERENCE = "(0020,0052)"
+REFERENCED_SOP_INSTANCE = "(0008,1155)"
 IMAGE_COMMENTS = "(0020,4000)"
 SOP_INSTANCE_UID = "(0008,0018)"
 MEDIA_STORAGE_UID = "(0002,0003)"
@@ -916,6 +919,64 @@ def test_the_multi_frame_instances_keep_their_reviewed_dummy_values(policy_run):
     assert {corpus.files[position].manifest.iod for position in released} >= expected
     assert len(steps) == (1 if expected and not kept else 0)
     assert corpus_module.PROCEDURE_STEP not in steps
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.1-04", "MIDI-BP-03")
+def test_each_registration_ties_its_images_to_the_frame_as_written(policy_run):
+    # A registration's frames of reference and its referenced image are
+    # replaced as the registered instances' own UIDs are, by the run's key,
+    # so the written spatial registration still ties the MR Image, and the
+    # deformable registration the PET Image, to the collection's one frame
+    # of reference, as every other written instance names it.
+    corpus, released = policy_run.corpus, policy_run.released
+    kept = policy_run.spec.kept_rows()
+    written = {
+        corpus.files[position].manifest.sop_instance: _read(data)
+        for position, data in released.items()
+    }
+
+    def replaced(uid, tag):
+        return uid if tag in kept else uids.replacement_uid(KEY, uid)
+
+    frame = replaced(corpus_module.FRAME_OF_REFERENCE, FRAME_OF_REFERENCE)
+    assert {
+        dataset.FrameOfReferenceUID
+        for dataset in written.values()
+        if "FrameOfReferenceUID" in dataset
+    } == {frame}
+    checked = 0
+    for registration, image, sequence, frame_keyword in (
+        (
+            corpus_module.REGISTRATION,
+            corpus_module.MR,
+            "RegistrationSequence",
+            "FrameOfReferenceUID",
+        ),
+        (
+            corpus_module.DEFORMABLE_REGISTRATION,
+            corpus_module.PET,
+            "DeformableRegistrationSequence",
+            "SourceFrameOfReferenceUID",
+        ),
+    ):
+        if registration not in written:
+            (name,) = (
+                file.name
+                for file in corpus.files
+                if file.manifest.sop_instance == registration
+            )
+            assert name in policy_run.spec.withheld
+            continue
+        (item,) = written[registration][sequence].value
+        assert item[frame_keyword].value == frame
+        (reference,) = item.ReferencedImageSequence
+        assert reference.ReferencedSOPInstanceUID == (
+            replaced(image, REFERENCED_SOP_INSTANCE)
+        )
+        if image in written:
+            assert reference.ReferencedSOPInstanceUID == written[image].SOPInstanceUID
+        checked += 1
+    assert checked
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.5-01")
