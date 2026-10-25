@@ -31,6 +31,7 @@ from pymedphys._dicom.deidentify import (
     content_items,
     policy,
     run,
+    scope,
     standard,
     structured_content,
 )
@@ -56,6 +57,10 @@ CSC_CODE = "113104"
 ENHANCED_CT = "08-ct-enhanced.dcm"
 ACQUISITION_CONTEXT = "(0040,0555)"
 SPECIMEN_PREPARATION = "(0040,0610)"
+CONTENT = "(0040,A730)"
+WAVEFORM_ANNOTATION = "(0040,B020)"
+REFERENCED_CONTENT_ITEM = "(0040,DB73)"
+REPORT = "Comprehensive SR"
 TEXT_VALUE = "(0040,A160)"
 PERSON_NAME = "(0040,A123)"
 DATE = "(0040,A121)"
@@ -189,11 +194,11 @@ def test_table_e1_1_gives_c_to_the_four_sequences_of_content_items():
 
     assert rows == {
         ACQUISITION_CONTEXT,
-        "(0040,A730)",
+        CONTENT,
         SPECIMEN_PREPARATION,
-        "(0040,B020)",
+        WAVEFORM_ANNOTATION,
     }
-    assert set(content_items.CONTENT_ITEM_SEQUENCES) < rows
+    assert set(content_items.CONTENT_ITEM_SEQUENCES) == rows - {WAVEFORM_ANNOTATION}
 
 
 @pytest.mark.parametrize(
@@ -526,6 +531,179 @@ def test_a_sequence_that_the_iod_does_not_define_there_is_not_kept():
     assert "AcquisitionContextSequence" not in _written((CSC,), dataset)
 
 
+def _container(concept, *items):
+    """Return a CONTAINER content item that contains ``items``."""
+    container = _item("CONTAINER", concept, ContinuityOfContent="SEPARATE")
+    for item in items:
+        item.RelationshipType = "CONTAINS"
+    container.ContentSequence = pydicom.Sequence(list(items))
+    return container
+
+
+SECTION = ("SEC1", "99PMP", "Fixture section")
+
+
+def _report(*items, title=("TTL1", "99PMP", "Fixture report"), depth=1):
+    """Return a Structured Report whose tree holds ``items`` at ``depth``."""
+    for _ in range(depth - 1):
+        items = (_container(SECTION, *items),)
+    dataset = _container(title, *items)
+    dataset.SOPClassUID = "1.2.840.10008.5.1.4.1.1.88.33"
+    dataset.SOPInstanceUID = "1.2.826.0.1.3680043.10.188.3"
+    return dataset
+
+
+def _tree(depth):
+    """Return the paths of the Content Sequences down to ``depth``, outermost first."""
+    return [_path(*((CONTENT, 0),) * level, tag=CONTENT) for level in range(depth)]
+
+
+def _by_reference(*positions):
+    item = pydicom.Dataset()
+    item.RelationshipType = "INFERRED FROM"
+    item.ReferencedContentItemIdentifier = list(positions)
+    return item
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.4-01")
+@pytest.mark.parametrize("depth", [1, 2, 5])
+def test_content_sequence_items_are_cleaned_at_any_depth(depth):
+    name = _item("PNAME", PERSON_OBSERVER_NAME, PersonName=f"{SENTINEL}^NAME")
+    dataset = _report(_coded(), name, _text(), depth=depth)
+    *outer, innermost = _tree(depth)
+    leaf = (*innermost.items, (CONTENT, 1))
+
+    assert dict(_actions((CSC,), dataset, REPORT)) == {
+        **{sequence: "K" for sequence in (*outer, innermost)},
+        _path(*leaf, tag=PERSON_NAME): "D",
+    }
+
+
+@pytest.mark.parametrize(
+    "dataset",
+    [
+        _report(_coded(), _text(ACCESSION_NUMBER), depth=3),
+        # The nested Content Sequence could be kept, but not on its own.
+        _report(_text(ACCESSION_NUMBER), _container(SECTION, _coded())),
+    ],
+)
+def test_an_item_to_remove_anywhere_leaves_out_the_whole_tree(dataset):
+    assert not _actions((CSC,), dataset, REPORT)
+
+
+def test_the_walker_gives_content_sequence_items_their_actions():
+    name = _item("PNAME", PERSON_OBSERVER_NAME, PersonName=f"{SENTINEL}^NAME")
+    source = read_source(
+        synthetic.written(_report(name, _by_reference(1, 1, 1), depth=2))
+    )
+    iod = load_iod_tables().iods[REPORT]
+    rules = ElementRules(policy.compose_custom_policy([CSC]))
+    actions = content_items.content_item_actions(source, rules.policy, iod)
+
+    planned = {e.path: e for e in plan_instance(source, rules, iod, actions).elements}
+
+    outer, inner = _tree(2)
+    for sequence in (outer, inner):
+        assert planned[sequence].action == "K"
+        assert planned[sequence].rule.source is RuleSource.CONTENT_ITEM
+    leaf = inner.items + ((CONTENT, 0),)
+    assert planned[_path(*leaf, tag=PERSON_NAME)].action == "D"
+    reference = inner.items + ((CONTENT, 1),)
+    assert planned[_path(*reference, tag=REFERENCED_CONTENT_ITEM)].action == "K"
+    # Without the option, Table E.1-1's D leaves no dummy value for a
+    # sequence, so the report is sequestered (D-021).
+    without = plan_instance(source, rules, iod)
+    assert [s.path for s in without.sequestrations] == [outer]
+
+
+def test_the_root_of_a_report_is_a_content_item_too():
+    # Table E.3.4-1 gives this CONTAINER X, and Retain Device Identity K.
+    unique_device_identifiers = ("121000", "DCM", "Unique Device Identifiers")
+    dataset = _report(_coded(), title=unique_device_identifiers)
+
+    assert not _actions((CSC,), dataset, REPORT)
+    assert dict(_actions((CSC, "retain_device_identity"), dataset, REPORT)) == {
+        _path(tag=CONTENT): "K"
+    }
+
+
+def _unnamed(item):
+    del item.ConceptNameCodeSequence
+    return item
+
+
+def _image_reference():
+    reference = pydicom.Dataset()
+    reference.ReferencedSOPClassUID = "1.2.840.10008.5.1.4.1.1.2"
+    reference.ReferencedSOPInstanceUID = "1.2.826.0.1.3680043.10.188.4"
+    return _item(
+        "IMAGE",
+        ("CTX1", "99PMP", "Fixture"),
+        ReferencedSOPSequence=pydicom.Sequence([reference]),
+    )
+
+
+def _named_by_reference():
+    item = _by_reference(1)
+    item.ConceptNameCodeSequence = pydicom.Sequence([_code("CTX1", "99PMP", "Fixture")])
+    return item
+
+
+@pytest.mark.parametrize(
+    "item",
+    [
+        _unnamed(_image_reference()),
+        _unnamed(_container(SECTION, _coded())),
+        _by_reference(1),
+    ],
+)
+def test_an_unnamed_reference_or_a_by_reference_relationship_is_kept(item):
+    actions = _actions((CSC,), _report(_coded(), item), REPORT)
+
+    assert actions[_path(tag=CONTENT)] == "K"
+
+
+@pytest.mark.parametrize(
+    "item",
+    [
+        # PS3.3 Table C.17-5 requires a concept name for these Value Types.
+        _unnamed(_text()),
+        _unnamed(_item("PNAME", PERSON_OBSERVER_NAME, PersonName=f"{SENTINEL}^NAME")),
+        # A by-reference relationship has no concept name.
+        _named_by_reference(),
+    ],
+)
+def test_an_item_with_a_missing_or_stray_concept_name_is_not_kept(item):
+    assert not _actions((CSC,), _report(_coded(), item), REPORT)
+
+
+def test_an_unnamed_root_is_not_kept():
+    dataset = _report(_coded())
+    del dataset.ConceptNameCodeSequence
+
+    assert not _actions((CSC,), dataset, REPORT)
+
+
+def test_a_content_sequence_the_iod_does_not_define_there_takes_its_own_rule():
+    context = _coded()
+    context.ContentSequence = pydicom.Sequence(
+        [_item("PNAME", PERSON_OBSERVER_NAME, PersonName=f"{SENTINEL}^NAME")]
+    )
+    dataset = _enhanced_ct(context)
+
+    assert dict(_actions((CSC,), dataset)) == {_path(tag=ACQUISITION_CONTEXT): "K"}
+    written = _written((CSC,), dataset)
+    assert "ContentSequence" not in written.AcquisitionContextSequence[0]
+
+
+def test_no_supported_iod_defines_content_or_waveform_annotation_sequence():
+    """So the engine's output for the supported IODs does not change."""
+    iods = load_iod_tables().iods
+    for name in scope.SUPPORTED_IODS:
+        tags = {definition.tag for definition in iods[name].definitions}
+        assert not tags & {CONTENT, WAVEFORM_ANNOTATION}, name
+
+
 def test_the_statement_describes_the_cleaning_of_content_items():
     composed = policy.compose_custom_policy([CSC])
     statement = conformance.conformance_statement(composed, vocabulary=None)
@@ -534,11 +712,11 @@ def test_the_statement_describes_the_cleaning_of_content_items():
     for tag in content_items.CONTENT_ITEM_SEQUENCES:
         assert by_tag[tag].action == "C"
         assert not by_tag[tag].superseded_by
-    for tag in ("(0040,A730)", "(0040,B020)"):
-        assert by_tag[tag].superseded_by == conformance.SEQUENCE_NOT_CLEANED
+    entry = by_tag[WAVEFORM_ANNOTATION]
+    assert entry.superseded_by == conformance.SEQUENCE_NOT_CLEANED
     (cleaned,) = statement.cleaned
     assert cleaned.option == CSC
-    assert cleaned.tags == (ACQUISITION_CONTEXT, SPECIMEN_PREPARATION)
+    assert cleaned.tags == (ACQUISITION_CONTEXT, SPECIMEN_PREPARATION, CONTENT)
     assert cleaned.method == content_items.METHOD
     assert not statement.pending
     markdown = conformance_markdown.render_markdown(statement)
