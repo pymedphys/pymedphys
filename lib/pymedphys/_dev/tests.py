@@ -207,6 +207,43 @@ def _call_pytest(remaining, label):
     sys.exit(retcode)
 
 
+# Pylint's verdict on a module can depend on which modules it inferred
+# before, and its package expansion lists them in file-system order. Sort the
+# expansion by path components, so that every machine lints the files in one
+# order. Pylint still expands the package itself, with its configured ignore
+# options. Run.LinterClass is public, but the expansion method is private, so
+# fail rather than lint unsorted if a Pylint upgrade renames it.
+_PYLINT_IN_PATH_ORDER = """
+import pathlib
+import sys
+
+import pylint
+from pylint.lint import PyLinter, Run
+
+if not hasattr(PyLinter, "_expand_files"):
+    sys.exit("PyLinter._expand_files is gone, so the files cannot be sorted.")
+
+
+class SortedLinter(PyLinter):
+    def _expand_files(self, files_or_modules):
+        expanded = super()._expand_files(files_or_modules)
+        return dict(
+            sorted(
+                expanded.items(),
+                key=lambda item: pathlib.PurePath(item[1]["path"]).parts,
+            )
+        )
+
+
+class SortedRun(Run):
+    LinterClass = SortedLinter
+
+
+pylint.modify_sys_path()
+SortedRun(sys.argv[1:])
+"""
+
+
 def run_pylint(_, remaining):
     original_cwd = os.getcwd()
 
@@ -221,8 +258,8 @@ def run_pylint(_, remaining):
     python_executable = pmp_test_utils.get_executable_even_when_embedded()
     command = [
         python_executable,
-        "-m",
-        "pylint",
+        "-c",
+        _PYLINT_IN_PATH_ORDER,
         "pymedphys",
         f"--rcfile={str(PYLINT_RC_FILE)}",
     ] + remaining
