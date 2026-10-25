@@ -59,6 +59,10 @@ saves the store:
     rules = PixelRegionRules.open(path, protected_dirs=[output, qc])
     rules.record(key_of(dataset), [TextBox(0, 0, 40, 640)])
     rules.save()
+
+:mod:`.pixel_region_rules_command` does this from an attested QC pack,
+recording only regions that the reviewer's verdict approved for an image,
+under the key of the source file that the pack binds.
 """
 
 from __future__ import annotations
