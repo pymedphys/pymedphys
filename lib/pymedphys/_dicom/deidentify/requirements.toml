@@ -433,7 +433,7 @@ implementation = [
 ]
 note = '''
 The engine applies the Clean Structured Content Option to a custom option set; no preset selects it (D-047).
-Structured Reports are sequestered (D-010), and no supported IOD defines Content Sequence or Waveform Annotation Sequence, so each takes its Basic Profile action.
+Structured Reports are sequestered (D-010), and no supported IOD defines Content Sequence or Waveform Annotation Sequence. Waveform Annotation Sequence takes its Basic Profile action; Content Sequence is cleaned wherever an IOD defines it, at any depth of its nested Content Sequences, with the root content item that holds it, so that Structured Reports are cleaned once a release supports them.
 Acquisition Context Sequence and Specimen Preparation Sequence are kept where the IOD defines them, and each content item is cleaned by its Value Type and concept name, as Table E.3.4-1 gives them, generated for the concept names that DICOM and SNOMED CT code (D-001).
 An item whose concept name the table does not list keeps its codes and numbers, and its other values take their own rules, as in any kept sequence.
 Where the table removes an item, where an item cannot be read as one Value Type and one concept name, or where its concept name is coded in a scheme whose rows the table does not hold, including the retired SNOMED designators, the whole sequence takes its Basic Profile action, since a single item is not removed on its own.
