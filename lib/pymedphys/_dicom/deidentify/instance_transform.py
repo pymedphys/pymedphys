@@ -174,6 +174,7 @@ from .preserving_writer import WriteRefused, write_data_set, write_file_bytes
 from .qc_pack import DropReason
 from .qc_retained import retained_paths, retained_text
 from .reasons import (
+    HeldDescriptor,
     HeldPixelData,
     HeldVisualFeatures,
     TransformReason,
@@ -390,21 +391,25 @@ def dropped_of(
 class HeldEvidence:
     """The evidence of an instance that review holds.
 
-    Descriptor cleaning holds an instance with a ROI Name held for review, a
-    pixel option one whose pixel data await review, and the face review one
-    that can show a face without a verdict of absent for its source file.
+    Descriptor cleaning holds an instance with a ROI Name, or a value of
+    another option's attribute, such as Allergies under Retain Patient
+    Characteristics (D-038), held for review, a pixel option one whose pixel
+    data await review, and the face review one that can show a face without
+    a verdict of absent for its source file.
 
     Attributes
     ----------
     coverage : Coverage
         Its residual search's coverage, pooled with its subject's as any.
-    held : tuple of HeldRoiName, HeldPixelData, or HeldVisualFeatures
-        Each ROI Name held, by path and reason, then why its visual features
-        hold it, if they do, and why a pixel option holds it, if one does.
+    held : tuple of HeldRoiName, HeldDescriptor, HeldPixelData, or HeldVisualFeatures
+        Each ROI Name held, by path and reason, then each value of another
+        option's attribute held, by element and reason, then why its visual
+        features hold it, if they do, and why a pixel option holds it, if
+        one does.
     """
 
     coverage: Coverage
-    held: tuple[HeldRoiName | HeldPixelData | HeldVisualFeatures, ...]
+    held: tuple[HeldRoiName | HeldDescriptor | HeldPixelData | HeldVisualFeatures, ...]
 
 
 def omissions_of(
@@ -1048,6 +1053,12 @@ class InstanceTransform:
         self._cleaned_elsewhere = frozenset(
             tag for cleaner in self._cleaners for tag in cleaner.tags
         )
+        self._reviewed_elsewhere = frozenset(
+            tag
+            for cleaner in self._cleaners
+            if cleaner.reviewed
+            for tag in cleaner.tags
+        )
         self._cleaning = cleaning
         self._fallback = (
             None
@@ -1498,7 +1509,11 @@ class InstanceTransform:
         if self._cleaning is None or self._fallback is None:
             return frozenset()
         return kept_descriptors(
-            plan, edits, self._cleaning, cleaned_elsewhere=self._cleaned_elsewhere
+            plan,
+            edits,
+            self._cleaning,
+            cleaned_elsewhere=self._cleaned_elsewhere,
+            reviewed_elsewhere=self._reviewed_elsewhere,
         )
 
     def __call__(
@@ -1603,6 +1618,7 @@ class InstanceTransform:
                     self.review_queue,
                     fallen_back,
                     cleaned_elsewhere=self._cleaned_elsewhere,
+                    reviewed_elsewhere=self._reviewed_elsewhere,
                     private_texts=plan.private_texts,
                     private_text_vms=plan.private_text_vms,
                 )
