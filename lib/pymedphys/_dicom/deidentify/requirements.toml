@@ -339,7 +339,7 @@ implementation = [
 ]
 note = '''
 Applies only with the Clean Pixel Data Option.
-An instance that satisfies the option, because it holds no top-level pixel data or a reviewer approved its regions, has Burned In Annotation set to NO, replacing any value present, whether or not its IOD defines the attribute; in the RT Plan, RT Structure Set, and MR Spectroscopy IODs, which do not, it is a standard attribute of a Standard Extended SOP Class (PS3.2 Section 7.3), and the validators' findings of it there are known differences (D-048).
+An instance that satisfies the option, because it holds no top-level pixel data or a reviewer approved its regions, has Burned In Annotation set to NO, replacing any value present, whether or not its IOD defines the attribute; in the RT Plan, RT Structure Set, MR Spectroscopy, Spatial Registration, and Deformable Spatial Registration IODs, which do not, it is a standard attribute of a Standard Extended SOP Class (PS3.2 Section 7.3), and the validators' findings of it there are known differences (D-048).
 Any other instance keeps Burned In Annotation as received, and it is never set to NO otherwise (D-015).
 '''
 
@@ -388,7 +388,7 @@ implementation = [
 ]
 note = '''
 Applies only with the Clean Recognizable Visual Features Option.
-An instance that satisfies the option has Recognizable Visual Features set to NO, replacing any value present, whether or not its IOD defines the attribute; in the RT Plan, RT Structure Set, and MR Spectroscopy IODs, which do not, it is a standard attribute of a Standard Extended SOP Class (PS3.2 Section 7.3), and the validators' findings of it there are known differences (D-046).
+An instance that satisfies the option has Recognizable Visual Features set to NO, replacing any value present, whether or not its IOD defines the attribute; in the RT Plan, RT Structure Set, MR Spectroscopy, Spatial Registration, and Deformable Spatial Registration IODs, which do not, it is a standard attribute of a Standard Extended SOP Class (PS3.2 Section 7.3), and the validators' findings of it there are known differences (D-046).
 Under any other policy, Recognizable Visual Features is kept as received and never set to NO (D-015).
 '''
 

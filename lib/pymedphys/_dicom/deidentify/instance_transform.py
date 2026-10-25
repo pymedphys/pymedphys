@@ -93,7 +93,7 @@ file's subject, sequestered instances included, and asks
 :func:`~.release_gate.release_condition` about the written file (D-027).
 Where the edits sequester an instance, the values that they did not reach
 are uncollected. An instance out of scope whose IOD the pinned tables
-define, such as a nuclear medicine image or a spatial registration, is
+define, such as a nuclear medicine image or an ultrasound image, is
 planned and edited too when its source is readable, only so that its values
 are collected for its subject's search; it is never written. Where an
 instance of the subject gives no coverage at all, because its source is
@@ -151,6 +151,7 @@ from .face_review import (
     FaceReview,
     carries_visual_features,
     contour_data_sha256,
+    holds_deformation_grid,
     is_rt_dose,
     pixel_data_sha256,
 )
@@ -947,7 +948,11 @@ class InstanceTransform:
     written with are those that the reviewed run wrote of that file
     (:attr:`~.reasons.VisualFeaturesReason.OTHER_PIXEL_DATA` or
     :attr:`~.reasons.VisualFeaturesReason.OTHER_CONTOURS` otherwise), and
-    an instance that cannot show a face satisfies it. Each is marked with the option's code and Recognizable
+    an instance that cannot show a face satisfies it. An instance that
+    holds a deformable registration's grid
+    (:func:`~.face_review.holds_deformation_grid`), which no preview of the
+    pack draws, never satisfies it
+    (:attr:`~.reasons.VisualFeaturesReason.NO_FACE_VERDICT`). Each is marked with the option's code and Recognizable
     Visual Features (0028,0302) set to NO, which PS3.15 E.3.2 adds whether
     or not its IOD defines the attribute. Any other instance that can show a
     face is written without them, and its evidence is a
@@ -1233,11 +1238,15 @@ class InstanceTransform:
         and contours that ``writing`` writes. An RT Dose, by its IOD, SOP
         Class UID, or Modality, is held where it has pixel data of more
         frames than the pack's dose-levels previews showed, since only they
-        show its doses as they could show a face (D-017).
+        show its doses as they could show a face (D-017). An instance that
+        holds a deformation grid is held whatever its verdict, since no
+        preview of the pack draws one.
         """
         review = self._face_review
         if review is None or not carries_visual_features(dataset, iod.name):
             return None
+        if holds_deformation_grid(dataset):
+            return HeldVisualFeatures(VisualFeaturesReason.NO_FACE_VERDICT)
         reason = review.hold_reason(
             hashlib.sha256(data).digest(),
             _pixel_digest(writing, dataset),
