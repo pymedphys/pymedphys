@@ -917,7 +917,7 @@ def transform_for(  # pylint: disable = too-many-arguments
         else None
     )
     pixel_data = CLEAN_PIXEL_DATA in selected.options
-    review = (
+    redaction = (
         _redaction_review(redaction_review)
         if pixel_data and redaction_review is not None
         else None
@@ -935,7 +935,7 @@ def transform_for(  # pylint: disable = too-many-arguments
             options=None if options is None else selected.options,
             cleaning=cleaning,
             finder=finder,
-            redaction_review=review,
+            redaction_review=redaction,
             pixel_region_rules=rules,
             safe_private_list=safe_private_list,
             profiles=profiles,
