@@ -305,6 +305,7 @@ When this Option is specified in addition to the Basic Application Level Confide
 status = "implemented"
 decisions = ["D-015", "D-033", "D-037", "D-048"]
 implementation = [
+  "_dicom/deidentify/api.py",
   "_dicom/deidentify/command.py",
   "_dicom/deidentify/instance_transform.py",
   "_dicom/deidentify/pixel_cleaning.py",
@@ -321,7 +322,7 @@ A private command records a rule from an attested QC pack, holding only regions 
 Compressed Pixel Data is decoded first, in the isolated decoding child for the native decoders, and its frames are written uncompressed, in Explicit VR Little Endian, as decoded, with or without a region, so that the QC pack previews the samples that a release writes (D-037).
 In native Pixel Data, the bit plane of an overlay that an overlay group without Overlay Data places above High Bit is cleared in the same write, and its group removed, so the instance is cleaned rather than sequestered as uncleanable-pixel-data (D-037).
 A later run of the same files, given the attested QC pack, blacks out the regions that the reviewer accepted, with any that the reviewer added, without the finder, and releases the instance with the option's code; for compressed Pixel Data, only where its frames decode to the SHA-256 that the pack records, and otherwise the instance is held again. An instance that the reviewer rejected is sequestered (D-048).
-The private command's run under the option makes the text detector with the pinned model, and takes the attested QC pack whose verdicts apply and the custodian's region rules (D-033).
+The private command's run under the option, and the library's, makes the text detector with the pinned model, and takes the attested QC pack whose verdicts apply and the custodian's region rules (D-033).
 '''
 
 [[requirement]]

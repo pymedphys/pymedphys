@@ -106,6 +106,8 @@ def deidentify(  # pylint: disable = too-many-arguments
     empty_held_roi_names: bool = False,
     roi_list: str | os.PathLike[str] | None = None,
     reviewed_descriptors: str | os.PathLike[str] | None = None,
+    redaction_review: str | os.PathLike[str] | None = None,
+    region_rules: str | os.PathLike[str] | None = None,
     safe_private_list: str = "reviewed",
     key_file: str | os.PathLike[str] | None = None,
     profile_store: str | os.PathLike[str] | None = None,
@@ -160,6 +162,21 @@ def deidentify(  # pylint: disable = too-many-arguments
         pymedphys._dicom.deidentify.reviewed_descriptors_command``. By
         default, none, so only technique descriptors made of reviewed
         vocabulary words are kept (D-036).
+    redaction_review : str or os.PathLike, optional
+        Under Clean Pixel Data, the QC pack of an earlier run of the same
+        files under the option, attested with redaction verdicts by
+        ``python -m pymedphys._dicom.deidentify.attestation_command``. Each
+        source file with an accepted or revised verdict has exactly its
+        reviewed regions blacked out and can be released, and one with a
+        rejected verdict is sequestered. By default, none, so every image
+        is cleaned by the text detector and held for review.
+    region_rules : str or os.PathLike, optional
+        Under Clean Pixel Data, the custodian's reviewed region rules, which
+        must exist, outside ``source``, ``release``, and ``qc_pack``, since a
+        run records no rule. Their
+        regions are blacked out in every frame of a matching image beside
+        the text detector's, and the image is still held for review. By
+        default, none.
     safe_private_list : str, optional
         Under Retain Safe Private, the list whose rules settle private
         attributes: ``"reviewed"``, the default, for the reviewed rules of
@@ -209,7 +226,8 @@ def deidentify(  # pylint: disable = too-many-arguments
         If both ``preset`` and ``options`` are given, or if
         ``tg263_spreadsheet``, ``reviewed_names``, ``empty_held_roi_names``,
         ``roi_list``, or ``reviewed_descriptors`` is given with a policy
-        without Clean Descriptors, or if ``safe_private_list`` is not
+        without Clean Descriptors, or ``redaction_review`` or
+        ``region_rules`` with a policy without Clean Pixel Data, or if ``safe_private_list`` is not
         ``"reviewed"`` or ``"tcia"``, or is ``"tcia"`` with a policy without
         Retain Safe Private, or if ``face_review`` is given with a policy
         without Clean Recognizable Visual Features. Nothing is read or
@@ -217,7 +235,8 @@ def deidentify(  # pylint: disable = too-many-arguments
     DeidentifyError
         If the preset or an option is unknown or not enabled, the options
         cannot be composed, or the TG-263 edition, the reviewed-names list,
-        the institutional list, or the reviewed descriptors list cannot be
+        the institutional list, the reviewed descriptors list, the
+        redaction review, the region rules, or the text detector cannot be
         used; or if only one of ``key_file`` and ``profile_store`` is given,
         project keys are not enabled, or either cannot be used; or if the
         policy selects Clean Recognizable Visual Features and
@@ -260,6 +279,12 @@ def deidentify(  # pylint: disable = too-many-arguments
             "basic-clean-descriptors preset, or options that include "
             "clean_descriptors"
         )
+    pixel_data_options = redaction_review is not None or region_rules is not None
+    if pixel_data_options and not command.pixel_data_options_apply(preset, chosen):
+        raise ValueError(
+            "redaction_review and region_rules apply only under Clean Pixel Data: "
+            "with options that include clean_pixel_data"
+        )
     try:
         chosen_list = SafePrivateList(safe_private_list)
     except ValueError:
@@ -297,6 +322,8 @@ def deidentify(  # pylint: disable = too-many-arguments
                 empty_held_roi_names=empty_held_roi_names,
                 roi_list_path=roi_list,
                 reviewed_descriptors=reviewed_descriptors,
+                redaction_review=redaction_review,
+                region_rules=region_rules,
                 safe_private_list=chosen_list,
                 profiles=profiles,
                 face_review=face_review,
