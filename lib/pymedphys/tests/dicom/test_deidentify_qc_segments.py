@@ -643,19 +643,19 @@ def test_a_ribbon_finer_along_one_axis_and_coarser_along_the_other_is_whole(fine
     assert len(along) * lattice.voxel >= 25 - lattice.voxel
 
 
-def _plates(keep_empty, apart=20, thickness=None):
+def _plates(keep_empty, apart=20, thickness=None, pixel=0.5, below=0):
     """A Segmentation of one segment, a plate at z = 0 and another ``apart``
-    mm above, in frames 1 mm apart, of pixels 0.5 mm apart, with or without
-    the empty frames between them, and of Slice Thickness ``thickness`` mm
-    where given, or 1 mm."""
+    mm above, in frames 1 mm apart from ``below`` mm below the first, of
+    pixels ``pixel`` mm apart, with or without the empty frames, and of
+    Slice Thickness ``thickness`` mm where given, or 1 mm."""
     scan = head.Scan(
         (1.0, 0.0, 0.0, 0.0, 1.0, 0.0),
-        tuple((0.0, 0.0, float(k)) for k in range(apart + 1)),
-        (0.5, 0.5),
+        tuple((0.0, 0.0, float(k)) for k in range(-below, apart + 1)),
+        (pixel, pixel),
         (40, 40),
     )
-    mask = np.zeros((apart + 1, 40, 40), bool)
-    mask[[0, apart], 10:30, 10:30] = True
+    mask = np.zeros((below + apart + 1, 40, 40), bool)
+    mask[[below, below + apart], 10:30, 10:30] = True
     data = files.segmentation(scan, [mask], keep_empty=keep_empty)
     if thickness is None:
         return data
@@ -693,6 +693,27 @@ def test_a_slice_thickness_above_the_spacing_bridges_no_left_out_frames():
     drawn = np.union1d(*(placed.slices(origin) for origin in segments.origins))
     between = np.flatnonzero((lattice.zs > 0.5) & (lattice.zs < 3.5))
     assert between.size and not np.intersect1d(drawn, between).size
+
+
+@pytest.mark.parametrize("pixel", [0.5, 3.0, 4.0, 8.0])
+@pytest.mark.parametrize("below", [0, 3])
+def test_left_out_frames_change_no_voxel_whatever_the_pixels(pixel, below):
+    # Plates 4 mm apart in frames 1 mm apart, of pixels finer or coarser
+    # than the voxels, with or without three empty frames below them: the
+    # voxels, set by the pixels and the 1 mm step and placed by neither,
+    # are those of the frames written, and an empty slice stays between.
+    sparse, dense = (
+        _plates(False, 4, pixel=pixel),
+        _plates(True, 4, pixel=pixel, below=below),
+    )
+    assert _read(sparse).NumberOfFrames == 2
+    assert np.array_equal(_sheet(sparse), _sheet(dense))
+    segments = _segments(sparse)
+    lattice = qc_segments._own_lattice(segments)  # pylint: disable = protected-access
+    assert lattice.voxel == max(2.0, min(pixel, 1.0))
+    placed = qc_segments._Placement(segments, lattice)  # pylint: disable = protected-access
+    first, second = (placed.slices(origin) for origin in segments.origins)
+    assert first.size and second.size and abs(first - second[:, None]).min() > 1
 
 
 @pytest.mark.parametrize(

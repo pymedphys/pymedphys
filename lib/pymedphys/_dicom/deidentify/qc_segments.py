@@ -37,9 +37,12 @@ by grey rows of :data:`~.qc_contours.GUTTER_PIXELS`, are:
 Each frame is placed in the patient's coordinates by its Plane Position
 (Patient), Plane Orientation (Patient), and Pixel Measures functional
 groups, per frame or shared, and sampled to cubic voxels of
-:data:`~.qc_surfaces.MINIMUM_VOXEL` millimetres, or of its smallest
-spacing where that is larger, as a volume's surface render is sampled, so
-that a long Segmentation's rows are taller rather than coarser. Within a
+:data:`~.qc_surfaces.MINIMUM_VOXEL` millimetres, or of the smallest of
+its pixel spacing and the step of its planes' grid where that is larger, as
+a volume's surface render is sampled, so that a long Segmentation's rows
+are taller rather than coarser; the voxels lie at whole multiples of their
+side, so that neither their side nor their positions depend on which
+frames a writer left out. Within a
 frame, the mask is sampled along its rows' axis and then its columns', each
 voxel along an axis holding every pixel nearest it and the pixel nearest it,
 so that no pixel of a segment is left out where pixels are finer than the
@@ -417,24 +420,34 @@ class _Lattice:
 
 
 def _own_lattice(segments: Segments) -> _Lattice:
-    """Cubic voxels over the frames' pixels, with a voxel more on each low
-    side and 0 to 1 more on each high side, as the division falls."""
+    """Cubic voxels over the frames' pixels, with at least a voxel more on
+    each side, at whole multiples of their side in the patient's
+    coordinates.
+
+    Their side is set by the frames' pixel spacing and step, not by the
+    planes that frames are in, and their positions by neither, so that a
+    writer leaving out empty frames, between others or at either end,
+    changes neither.
+    """
     low, high = _extent(segments)
-    planes = _planes(segments)
-    by_axis: dict[int, np.ndarray] = {segments.axes[0]: planes}
+    normal = segments.axes[0]
+    by_axis: dict[int, np.ndarray] = {
+        normal: (
+            _planes(segments) if segments.step is None else np.arange(2) * segments.step
+        )
+    }
     for axis, spacing, count in zip(
         segments.axes[1:], segments.spacing, segments.shape
     ):
         by_axis[axis] = np.arange(count) * spacing
     voxel = qc_surfaces.voxel_side([by_axis[axis] for axis in range(3)])
 
-    def steps(index: int) -> np.ndarray:
-        count = math.floor((high[index] - low[index]) / voxel + 1e-6) + 3
-        return np.arange(count) * voxel
+    def along(index: int) -> np.ndarray:
+        first = math.floor(low[index] / voxel + 1e-6) - 1
+        last = math.ceil(high[index] / voxel - 1e-6) + 1
+        return np.arange(first, last + 1) * voxel
 
-    return _Lattice(
-        low[0] - voxel + steps(0), low[1] - voxel + steps(1), high[2] + voxel - steps(2)
-    )
+    return _Lattice(along(0), along(1), along(2)[::-1])
 
 
 def _planes(segments: Segments) -> np.ndarray:
