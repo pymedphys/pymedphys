@@ -77,6 +77,7 @@ from pymedphys._nomenclature import roi_list, tg263, tg263_published
 from . import instance_transform, keys, policy, run, run_report
 from .descriptor_cleaning import CLEAN_DESCRIPTORS, DescriptorCleaning
 from .diagnostics import RedactionCounts, redacted_diagnostics
+from .face_review import FaceReview, read_face_review
 from .keys import DeidKey, DeidKeyError, custodian_location_problem, read_key_file
 from .profiles import ProfileError, ProfileStore
 from .qc_pack import QcPackError
@@ -140,6 +141,15 @@ _PROFILES_UNUSABLE = (
 _PROFILES_UNSAVED = (
     "the profile store could not be saved, so nothing was published; its "
     "details are not shown because they can contain file paths"
+)
+_FACE_REVIEW_NEEDED = (
+    "a run under Clean Recognizable Visual Features needs a face review: the QC "
+    "pack of an earlier run of the same files, attested with face verdicts"
+)
+_FACE_REVIEW_UNREAD = "the face review could not be read: {error}"
+_FACE_REVIEW_UNOPENED = (
+    "the face review could not be read; its details are not shown because "
+    "they can contain file paths"
 )
 
 
@@ -507,6 +517,7 @@ def build_transform(
     cleaning: DescriptorCleaning | None = None,
     safe_private_list: SafePrivateList = SafePrivateList.REVIEWED,
     profiles: ProfileStore | None = None,
+    face_review: FaceReview | None = None,
 ) -> instance_transform.InstanceTransform:
     """Return the run's transform under ``preset``, or ``options``, and ``key``.
 
@@ -530,13 +541,19 @@ def build_transform(
     profiles : ProfileStore, optional
         A project key's subject profiles, from :func:`run_key`; by default,
         an ephemeral store, for a run-scoped key.
+    face_review : FaceReview, optional
+        The face verdicts of an earlier run's attested QC pack, which a
+        policy with Clean Recognizable Visual Features needs and no other
+        policy takes (D-046).
 
     Raises
     ------
     PolicyError
         If the preset or option set is not enabled, or ``cleaning`` or
         ``safe_private_list`` does not fit it, with a message that quotes
-        nothing but the names of presets and options.
+        nothing but the names of presets and options. So too if
+        ``face_review`` is given without Clean Recognizable Visual Features,
+        or left out with it.
     """
     return instance_transform.InstanceTransform(
         policy.select_policy(preset, options=options),
@@ -544,6 +561,7 @@ def build_transform(
         cleaning=cleaning,
         safe_private_list=safe_private_list,
         profiles=profiles,
+        face_review=face_review,
     )
 
 
@@ -629,6 +647,31 @@ def profile_saver(profiles: ProfileStore | None) -> Callable[[], None] | None:
             raise ProfileError(_PROFILES_UNSAVED) from None
 
     return save
+
+
+def _face_review(pack: str | os.PathLike[str] | None) -> FaceReview:
+    """Return the face verdicts of an attested QC pack (D-046).
+
+    A run under Clean Recognizable Visual Features needs them, so ``pack``
+    must be given.
+
+    Raises
+    ------
+    TransformNotBuilt
+        If ``pack`` is None, or the pack cannot be read, has not been
+        attested, or its verdicts cannot be used, with
+        :func:`~pymedphys._dicom.deidentify.face_review.read_face_review`'s
+        message, which names no path and no value, or with none for an
+        operating system's error.
+    """
+    if pack is None:
+        raise TransformNotBuilt(_FACE_REVIEW_NEEDED)
+    try:
+        return read_face_review(pack)
+    except QcPackError as error:
+        raise TransformNotBuilt(_FACE_REVIEW_UNREAD.format(error=error)) from None
+    except OSError:
+        raise TransformNotBuilt(_FACE_REVIEW_UNOPENED) from None
 
 
 def _descriptor_cleaning(  # pylint: disable = too-many-arguments
@@ -721,6 +764,7 @@ def transform_for(  # pylint: disable = too-many-arguments
     reviewed_descriptors: str | os.PathLike[str] | None = None,
     safe_private_list: SafePrivateList = SafePrivateList.REVIEWED,
     profiles: ProfileStore | None = None,
+    face_review: str | os.PathLike[str] | None = None,
 ) -> instance_transform.InstanceTransform:
     """Return :func:`build_transform`'s transform for a run's options.
 
@@ -740,7 +784,13 @@ def transform_for(  # pylint: disable = too-many-arguments
     chooses the list whose rules settle private attributes, and no other
     policy takes TCIA's, which is refused before anything is loaded. A
     project key's subject profiles, from :func:`run_key`, are given as
-    ``profiles``; by default, the store is ephemeral.
+    ``profiles``; by default, the store is ephemeral. Under Clean
+    Recognizable Visual Features, the face verdicts of the attested QC pack
+    in ``face_review``, of an earlier run of the same files, are read before
+    what ROI Names or descriptors are cleaned with (D-046); the run needs
+    them, so without a pack, or with one that cannot be used, no transform
+    is built.
+    Under any other policy, ``face_review`` is not read.
 
     Raises
     ------
@@ -762,6 +812,11 @@ def transform_for(  # pylint: disable = too-many-arguments
             "a safe private list can be chosen only under the Retain Safe "
             "Private Option"
         )
+    review = (
+        _face_review(face_review)
+        if policy.CLEAN_RECOGNIZABLE_VISUAL_FEATURES in selected.options
+        else None
+    )
     cleaning = (
         _descriptor_cleaning(
             source=source,
@@ -784,9 +839,26 @@ def transform_for(  # pylint: disable = too-many-arguments
             cleaning=cleaning,
             safe_private_list=safe_private_list,
             profiles=profiles,
+            face_review=review,
         )
     except policy.PolicyError as error:
         raise TransformNotBuilt(str(error)) from None
+
+
+def face_review_applies(
+    preset: str | None, options: Collection[str] | None = None
+) -> bool:
+    """Return whether the run's policy takes a face review.
+
+    It applies under Clean Recognizable Visual Features: with a preset, or a
+    custom option set in ``options``, that selects it (D-033, D-046). No
+    preset selects it yet. Without either, the run's preset is ``basic``.
+    """
+    if options is not None:
+        return policy.CLEAN_RECOGNIZABLE_VISUAL_FEATURES in options
+    return policy.CLEAN_RECOGNIZABLE_VISUAL_FEATURES in policy.PRESETS.get(
+        policy.DEFAULT_PRESET if preset is None else preset, ()
+    )
 
 
 def roi_name_options_apply(
