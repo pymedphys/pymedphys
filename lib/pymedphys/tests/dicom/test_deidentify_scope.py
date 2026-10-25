@@ -65,11 +65,12 @@ SUPPORTED = {
     "1.2.840.10008.5.1.4.1.1.128.1": "Legacy Converted Enhanced PET Image",
     "1.2.840.10008.5.1.4.1.1.481.2": "RT Dose",
     "1.2.840.10008.5.1.4.1.1.481.3": "RT Structure Set",
+    "1.2.840.10008.5.1.4.1.1.481.4": "RT Beams Treatment Record",
     "1.2.840.10008.5.1.4.1.1.481.5": "RT Plan",
 }
 
 
-def test_the_first_release_supports_ct_mr_pet_and_rt_objects():
+def test_the_first_release_supports_ct_mr_pet_rt_and_treatment_record_objects():
     assert scope.SUPPORTED_IODS == {
         "CT Image",
         "Enhanced CT Image",
@@ -82,6 +83,7 @@ def test_the_first_release_supports_ct_mr_pet_and_rt_objects():
         "Positron Emission Tomography Image",
         "Enhanced PET Image",
         "Legacy Converted Enhanced PET Image",
+        "RT Beams Treatment Record",
         "RT Dose",
         "RT Plan",
         "RT Structure Set",
@@ -152,7 +154,7 @@ def test_padding_is_ignored():
         ("1.2.840.10008.5.1.4.1.1.11.1", "Grayscale Softcopy Presentation State"),
         # Outside the first release: other images, CT, MR, and PET objects
         # that are not images, RT Ion and second-generation RT objects, and
-        # treatment records.
+        # the treatment records of RT Ion and brachytherapy.
         ("1.2.840.10008.5.1.4.1.1.20", "Nuclear Medicine Image"),
         ("1.2.840.10008.5.1.4.1.1.6.1", "Ultrasound Image"),
         ("1.2.840.10008.5.1.4.1.1.200.2", "CT Performed Procedure Protocol"),
@@ -162,8 +164,8 @@ def test_padding_is_ignored():
         ("1.2.840.10008.5.1.4.1.1.481.8", "RT Ion Plan"),
         ("1.2.840.10008.5.1.4.1.1.481.10", "RT Physician Intent"),
         ("1.2.840.10008.5.1.4.1.1.481.14", "Tomotherapeutic Radiation"),
-        ("1.2.840.10008.5.1.4.1.1.481.4", "RT Beams Treatment Record"),
         ("1.2.840.10008.5.1.4.1.1.481.6", "RT Brachy Treatment Record"),
+        ("1.2.840.10008.5.1.4.1.1.481.9", "RT Ion Beams Treatment Record"),
     ],
 )
 def test_a_standard_sop_class_of_another_iod_is_sequestered(sop_class, iod):

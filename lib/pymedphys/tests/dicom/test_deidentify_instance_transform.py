@@ -382,6 +382,38 @@ def _radiopharmaceutical(dataset):
     dataset.RadiopharmaceuticalInformationSequence = [item]
 
 
+# Treatment Session Beam Sequence > Interlock Sequence > Interlock
+# Resolution User Sequence, whose item is the Person Identification Macro.
+INTERLOCK_USER = (("(3008,0020)", 0), ("(300A,0740)", 0), ("(300A,0746)", 0))
+
+
+def _interlock_user(dataset, **attributes):
+    """Give a treatment record a beam whose interlock a person resolved."""
+    user = synthetic.item(**attributes)
+    interlock = pydicom.Dataset()
+    interlock.add_new(0x300A0746, "SQ", [user])
+    beam = pydicom.Dataset()
+    beam.add_new(0x300A0740, "SQ", [interlock])
+    dataset.TreatmentSessionBeamSequence = [beam]
+    return user
+
+
+def _person_code():
+    return synthetic.item(
+        CodeValue="SENTINEL",
+        CodingSchemeDesignator="99LOCAL",
+        CodeMeaning="SENTINEL^NAME",
+    )
+
+
+def _interlock_institution_code(dataset):
+    _interlock_user(
+        dataset,
+        PersonIdentificationCodeSequence=[_person_code()],
+        InstitutionCodeSequence=[_person_code()],
+    )
+
+
 @pytest.mark.deid_requirement("MIDI-BP-03")
 @pytest.mark.parametrize(
     "sop_class, add, place, action, reason",
@@ -421,6 +453,15 @@ def _radiopharmaceutical(dataset):
             ElementPath((("(0054,0016)", 0),), "(0018,1078)"),
             "X",
             SequesterReason.REQUIRED_BY_IOD,
+        ),
+        # X/Z/D, Type 1C in the Person Identification Macro of the user who
+        # resolved an interlock; a sequence has no dummy value (D-021).
+        (
+            synthetic.RT_BEAMS_TREATMENT_RECORD_STORAGE,
+            _interlock_institution_code,
+            ElementPath(INTERLOCK_USER, "(0008,0082)"),
+            "D",
+            SequesterReason.NO_DUMMY_VALUE,
         ),
     ],
 )
@@ -520,6 +561,32 @@ def test_d_writes_the_person_identification_item():
         "99PYMEDPHYS",
         "DEIDENTIFIED^DEIDENTIFIED",
     )
+    assert b"SENTINEL" not in result.data
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.1-01")
+def test_d_writes_the_person_identification_item_of_an_interlocks_user():
+    record = synthetic.treatment_record()
+    _interlock_user(
+        record,
+        PersonIdentificationCodeSequence=[_person_code()],
+        InstitutionName="SENTINEL HOSPITAL",
+    )
+
+    result = _transformed(record)
+
+    assert isinstance(result, run.Transformed)
+    written = pydicom.dcmread(io.BytesIO(result.data))
+    (beam,) = written.TreatmentSessionBeamSequence
+    (user,) = beam[0x300A0740].value[0][0x300A0746].value
+    (item,) = user.PersonIdentificationCodeSequence
+    assert (item.CodeValue, item.CodingSchemeDesignator, item.CodeMeaning) == (
+        "DEIDENTIFIED",
+        "99PYMEDPHYS",
+        "DEIDENTIFIED^DEIDENTIFIED",
+    )
+    # Type 1C where Institution Code Sequence is absent, so X/Z/D gives D.
+    assert user.InstitutionName == "DEIDENTIFIED"
     assert b"SENTINEL" not in result.data
 
 

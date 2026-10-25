@@ -651,9 +651,15 @@ def test_the_statement_names_each_supported_iod_that_lacks_the_attribute():
         name for name in SUPPORTED_IODS if not tables.iods[name].lookup("(0028,0302)")
     }
 
-    assert lacking == {"RT Plan", "RT Structure Set", "MR Spectroscopy"}
+    assert lacking == {
+        "RT Plan",
+        "RT Structure Set",
+        "RT Beams Treatment Record",
+        "MR Spectroscopy",
+    }
     assert (
-        "which of the supported IODs are RT Plan, RT Structure Set, and MR Spectroscopy"
+        "which of the supported IODs are RT Plan, RT Structure Set, RT Beams "
+        "Treatment Record, and MR Spectroscopy"
     ) in conformance_markdown.render_markdown(
         conformance.conformance_statement(_policy(), vocabulary=None)
     )
@@ -763,6 +769,9 @@ def test_the_report_refuses_a_face_review_that_is_not_a_reference(reference):
 _CT = ("01-ct-1.dcm", "02-ct-2.dcm")
 _DOSE = ("06-rtdose.dcm", "07-rtdose-review.dcm")
 _STRUCTURE_SET = "04-rtstruct.dcm"
+# The instances without pixel data, of IODs that do not define Recognizable
+# Visual Features: the RT Plan, MR Spectroscopy, and RT Beams Treatment Record.
+_NO_PIXEL_DATA = ("05-rtplan.dcm", "14-mr-spectroscopy.dcm", "18-rt-beams-record.dcm")
 
 
 class _CornerFinder:
@@ -896,7 +905,7 @@ def test_every_other_instance_that_can_show_a_face_is_held(second_run):
         for name in outcomes
         if name not in (*_CT, _STRUCTURE_SET)
         and name != corpus_module.SEQUESTERED_FILE
-        and name not in ("05-rtplan.dcm", "14-mr-spectroscopy.dcm")
+        and name not in _NO_PIXEL_DATA
     }
 
     assert can_show >= set(_DOSE)
@@ -945,7 +954,7 @@ def test_with_clean_pixel_data_a_verdict_covers_only_the_pixel_data_seen(
     assert HeldVisualFeatures(VisualFeaturesReason.FACE_PRESENT) in reasons[_DOSE[0]]
     # What has no pixel data is released, and claims both options, since
     # it has nothing for Clean Pixel Data to clean.
-    released = (_STRUCTURE_SET, "05-rtplan.dcm", "14-mr-spectroscopy.dcm")
+    released = (_STRUCTURE_SET, *_NO_PIXEL_DATA)
     for name in released:
         disposition, dataset = outcomes[name]
         assert disposition == "released", name
@@ -961,12 +970,12 @@ def test_with_clean_pixel_data_a_verdict_covers_only_the_pixel_data_seen(
 def test_an_instance_that_cannot_show_a_face_satisfies_the_option(second_run):
     _, outcomes, _, _ = second_run
 
-    for name in ("05-rtplan.dcm", "14-mr-spectroscopy.dcm"):
+    for name in _NO_PIXEL_DATA:
         disposition, dataset = outcomes[name]
         assert disposition == "released", name
         assert CODE in _codes(dataset)
-        # Neither IOD defines Recognizable Visual Features, but E.3.2 adds
-        # it with the option's code all the same.
+        # None of these IODs defines Recognizable Visual Features, but E.3.2
+        # adds it with the option's code all the same.
         assert dataset.RecognizableVisualFeatures == "NO"
 
 
