@@ -270,7 +270,7 @@ Where an IOD requires an attribute given a plain X, the statement names the encl
 Under Clean Descriptors, it describes how ROI Name is cleaned in two tiers: automatic renaming against a published TG-263 edition, which it names, and reviewers' decisions, with every reason a name is held, what is written for each, and the condition on which an instance gains the Clean Descriptors code, each checked against the engine (D-009).
 Each run with a release reporter writes the statement of its policy, as `conformance-statement.md` beside the release report at the root of the release, since it holds no instance value; it describes the policy and vocabulary that the report records, and the report gives the run's own method digest and reviewed-names digest.
 The statements of `basic` and `basic-clean-descriptors`, the presets of the first supported release, list nothing as pending.
-For each selected option that has a cleaner, it gives the attributes that the policy gives C and the cleaner settles, with its method: the AE titles under Retain Device Identity (D-034), the free text under Retain Patient Characteristics, which holds its instance unless it has no value (D-038, PS3.15-E.3.7-02), and the dates and times that Modified Dates modifies (D-039, PS3.15-E.3.6-04).
+For each selected option that has a cleaner, it gives the attributes that the policy gives C and the cleaner settles, with its method: the AE titles under Retain Device Identity (D-034), the free text under Retain Patient Characteristics, which writes none of its values itself and, under Clean Descriptors too, is given the reviewed descriptors list's decisions (D-038, PS3.15-E.3.7-02), and the dates and times that Modified Dates modifies (D-039, PS3.15-E.3.6-04).
 A statement still lists as pending, and so claims nothing for, the manner of cleaning any other attribute to which the policy gives C other than under Clean Descriptors alone; this completes with those options.
 Under `tps-import`, it describes the synthetic birth dates that Patient's Birth Date takes, how the reference study is chosen, the empty value written where the ages are missing or inconsistent, and the `birth-date-conflict` sequestration of a later run that contradicts the reference (D-008).
 Under `tps-import`, it gives each attribute other than ROI Name that the policy gives C the action that the preset's other options give it, with the eleven device dates and times modified as the preset modifies them, as descriptor cleaning falls back to it (D-009).
@@ -496,7 +496,7 @@ The conformance statement describes how ROI Name (3006,0026) is cleaned under Cl
 It also says that a run can be given an institutional list of ROI names, which renames nothing and only shows the reviewer of a held name the list's names it matched.
 It describes how free-text descriptors are cleaned: the reviewed descriptors list's decisions, the technique descriptors and the rules by which the technique vocabulary keeps a value (D-036), the echo checks, and when an element is written with what cleaning gives it.
 Every other attribute given C under Clean Descriptors, and a free-text descriptor that cleaning does not write, takes the action that the policy gives it without that option, as the maintainer decided on 6 October 2026 (D-009); the statement lists that action for each, at each place, as the one the engine applies, so for `basic-clean-descriptors` it lists no manner of cleaning as pending.
-The manner of cleaning an attribute to which the policy gives C without Clean Descriptors too and that no cleaner cleans is listed as pending until its option is implemented; the dates and times under Modified Dates are described with their cleaner (PS3.15-E.3.6-04), and the free text that Retain Patient Characteristics gives C is described with the Option's cleaner, which settles Allergies, Patient State, and Sex Parameters for Clinical Use Category Comment before Clean Descriptors where both are selected (PS3.15-E.3.7-02).
+The manner of cleaning an attribute to which the policy gives C without Clean Descriptors too and that no cleaner cleans is listed as pending until its option is implemented; the dates and times under Modified Dates are described with their cleaner (PS3.15-E.3.6-04), and the free text that Retain Patient Characteristics gives C is described with the Option's cleaner, which settles Allergies, Patient State, and Sex Parameters for Clinical Use Category Comment before Clean Descriptors where both are selected, and leaves each value to the reviewed descriptors list, which decides on Pre-Medication and Special Needs too (PS3.15-E.3.7-02).
 '''
 
 [[requirement]]
@@ -588,15 +588,19 @@ text = '''
 When this Option is specified in addition to the Basic Application Level Confidentiality Profile, information about age, sex, height and weight and other characteristics present in the Attributes shall be retained, as described in Table E.1-1.
 '''
 status = "implemented"
-decisions = ["D-011", "D-012", "D-022", "D-034", "D-038"]
+decisions = ["D-009", "D-011", "D-012", "D-022", "D-034", "D-038"]
 implementation = [
   "_dicom/deidentify/cleaners.py",
+  "_dicom/deidentify/descriptor_cleaning.py",
   "_dicom/deidentify/instance_transform.py",
   "_dicom/deidentify/patient_characteristics.py",
+  "_dicom/deidentify/reviewed_descriptors.py",
 ]
 note = '''
 The fourteen attributes that the Option gives K are kept as read, wherever they are in the data set, with the Option's code (D-038).
-Its five attributes of free text, which it gives C, are written with no value where they have none, and otherwise hold their instance, so a released instance retains every characteristic it held (PS3.15-E.3.7-02).
+Its five attributes of free text, which it gives C, are written with no value where they have none.
+Where the policy also selects Clean Descriptors, as `tps-import` does, each other value is kept, mapped, or emptied by a reviewer's decision in the custodian's reviewed descriptors list, and an instance with a value that the list does not clean is held for review, as for ROI Names (D-009); without Clean Descriptors, such an instance is sequestered.
+So a released instance retains every characteristic it held, its free text as a reviewer decided (PS3.15-E.3.7-02).
 The measures of the body that Table E.1-1 omits, such as Patient's Body Mass Index, are removed under every option (D-022).
 No preset of the first supported release selects the Option; `tps-import` selects it, and is not yet enabled.
 '''
@@ -608,16 +612,17 @@ text = '''
 The manner of cleaning of retained Attributes shall be described in the Conformance Statement.
 '''
 status = "implemented"
-decisions = ["D-034", "D-038"]
+decisions = ["D-009", "D-034", "D-038"]
 implementation = [
   "_dicom/deidentify/cleaners.py",
   "_dicom/deidentify/conformance.py",
   "_dicom/deidentify/conformance_markdown.py",
+  "_dicom/deidentify/descriptor_cleaning.py",
   "_dicom/deidentify/patient_characteristics.py",
 ]
 note = '''
-The statement of a policy that selects the Option lists the fourteen attributes that it keeps, with K, and gives the five that it gives C with their method: none of their values is written, an instance in which one has a value is held, and one with no value is written with none (D-038).
-No method yet cleans their free text automatically; a reviewed list could later keep a reviewed value, which the maintainer has not decided.
+The statement of a policy that selects the Option lists the fourteen attributes that it keeps, with K, and gives the five that it gives C with their method: an attribute with no value is written with none; without Clean Descriptors, no other value is written and its instance is sequestered; with Clean Descriptors, each value takes a reviewer's decision from the reviewed descriptors list, checked for echoes of identifiers, and an instance with a value that the list does not clean is held for review (D-038).
+No method cleans their free text automatically, and the automatic tier of technique descriptors does not apply to them; the maintainer decided on 25 October 2026 that the reviewed descriptors list decides on them (D-038).
 '''
 
 [[requirement]]
