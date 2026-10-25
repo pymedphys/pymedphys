@@ -15,11 +15,13 @@
 """The Retain Patient Characteristics Option alone, over free text with no value.
 
 The corpus plants a marker in every attribute of free text that the Option
-gives C, and no method yet cleans such text, so the engine holds every
-instance in which one has a value (D-038). This run empties them in each
-file instead, so that the Option's kept rows are checked in instances that
-it releases; holding an instance with a value is tested in
-``test_deidentify_patient_characteristics.py``.
+gives C, and no method cleans such text automatically, so without Clean
+Descriptors the engine sequesters every instance in which one has a value,
+and with it, as under ``tps-import``, holds each whose value the reviewed
+descriptors list does not clean (D-038). This run empties them in each file
+instead, so that the Option's kept rows are checked in instances that it
+releases; sequestering or holding an instance with a value, and writing a
+reviewed value, are tested in ``test_deidentify_patient_characteristics.py``.
 """
 
 import dataclasses

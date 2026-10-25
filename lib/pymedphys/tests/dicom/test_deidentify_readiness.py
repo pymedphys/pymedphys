@@ -665,7 +665,7 @@ def test_the_report_records_the_gates_by_reason_and_reference_alone(tmp_path):
         "attestation": None,
     }
     assert SENTINEL not in json.dumps(document)
-    assert document["format"] == "pymedphys-deid-release-report/28"
+    assert document["format"] == "pymedphys-deid-release-report/29"
 
 
 def test_a_public_release_report_given_no_readiness_is_not_ready():
