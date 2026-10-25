@@ -14,6 +14,7 @@
 
 """The de-identification requirements register and its loader."""
 
+import ast
 import collections
 import copy
 import os
@@ -181,6 +182,101 @@ def test_each_implementation_path_exists(register):
     paths = {path for entry in register.requirements for path in entry.implementation}
     assert paths
     assert not [path for path in sorted(paths) if not (LIBRARY_ROOT / path).is_file()]
+
+
+def _module_name(root, path):
+    """Return the dotted name of the module at ``path`` in package ``root``."""
+    parts = path.relative_to(root.parent).with_suffix("").parts
+    return ".".join(parts[:-1] if parts[-1] == "__init__" else parts)
+
+
+def _imported_names(root, path):
+    """Return the modules that the module at ``path`` imports, by dotted name.
+
+    ``from a import b`` names both ``a`` and ``a.b``, since ``b`` may be a
+    module; a relative import is resolved against the module's package.
+    """
+    name = _module_name(root, path)
+    package = name if path.name == "__init__.py" else name.rpartition(".")[0]
+    found = set()
+    for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
+        if isinstance(node, ast.Import):
+            found.update(alias.name for alias in node.names)
+        elif isinstance(node, ast.ImportFrom):
+            base = node.module or ""
+            if node.level:
+                anchor = package.split(".")
+                anchor = anchor[: len(anchor) - node.level + 1]
+                base = ".".join([*anchor, *([base] if base else [])])
+            found.add(base)
+            found.update(f"{base}.{alias.name}" for alias in node.names)
+    return found
+
+
+def _runs_as_main(path):
+    return any(
+        isinstance(node, ast.If)
+        and isinstance(node.test, ast.Compare)
+        and ast.unparse(node.test)
+        in ("__name__ == '__main__'", "'__main__' == __name__")
+        for node in ast.parse(path.read_text(encoding="utf-8")).body
+    )
+
+
+def _unreachable(root, paths):
+    """Return those of ``paths`` that nothing outside the tests runs.
+
+    A module is reachable if a module of the package outside ``tests``
+    imports it, or if it runs as ``python -m``.
+    """
+    imported = set()
+    for path in root.rglob("*.py"):
+        if "tests" not in path.relative_to(root).parts:
+            imported |= _imported_names(root, path) - {_module_name(root, path)}
+    return [
+        path
+        for path in paths
+        if path.endswith(".py")
+        and _module_name(root, root / path) not in imported
+        and not _runs_as_main(root / path)
+    ]
+
+
+# Entry points that nothing in the package imports, by design.
+_ENTRY_POINTS = {
+    # The library API, which the release is to export as
+    # pymedphys.dicom.deidentify.
+    "_dicom/deidentify/api.py",
+}
+
+
+def test_each_implementation_module_runs_outside_the_tests(register):
+    # A module that only its tests import implements nothing that a run does.
+    paths = {path for entry in register.requirements for path in entry.implementation}
+
+    assert _unreachable(LIBRARY_ROOT, sorted(paths - _ENTRY_POINTS)) == []
+    assert _ENTRY_POINTS <= paths
+
+
+def test_a_module_that_only_its_tests_import_is_unreachable(tmp_path):
+    root = tmp_path / "pkg"
+    (root / "tests").mkdir(parents=True)
+    for name, text in {
+        "__init__.py": "",
+        "used.py": "",
+        "main.py": "if __name__ == '__main__':\n    pass\n",
+        "unused.py": "from . import used\n",
+        "relative.py": "from .used import thing\n",
+        "absolute.py": "import pkg.relative\n",
+        "tests/test_unused.py": "from pkg import unused\n",
+    }.items():
+        (root / name).write_text(text, encoding="utf-8")
+
+    found = _unreachable(
+        root, ["used.py", "main.py", "unused.py", "relative.py", "absolute.py"]
+    )
+
+    assert found == ["unused.py", "absolute.py"]
 
 
 SAMPLE_TESTS = """\

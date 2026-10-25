@@ -182,7 +182,6 @@ implementation = [
   "_dicom/deidentify/elements.py",
   "_dicom/deidentify/instance_transform.py",
   "_dicom/deidentify/policy.py",
-  "_dicom/deidentify/private_attributes.py",
   "_dicom/deidentify/sequences.py",
   "_dicom/deidentify/source.py",
   "_dicom/deidentify/standard.py",
@@ -687,13 +686,17 @@ When this Option is not specified, all Private Attributes shall be removed, as d
 status = "implemented"
 decisions = ["D-028"]
 implementation = [
+  "_dicom/deidentify/element_rules.py",
+  "_dicom/deidentify/file_layout.py",
   "_dicom/deidentify/instance_transform.py",
-  "_dicom/deidentify/private_attributes.py",
   "_dicom/deidentify/sequences.py",
+  "_dicom/deidentify/source.py",
+  "_dicom/deidentify/walker.py",
 ]
 note = '''
-Every element of an odd group, including private creators and the elements that PS3.5 does not allow, is removed from a data set, at the top level and in the items of every standard sequence, including one that pydicom reads as UN, and a private sequence is removed with everything in it.
-A standard sequence that cannot be decoded exactly, that is stored with a VR other than SQ or UN, or whose items have a Specific Character Set that pydicom does not map as given or that is stored with another VR, is refused by its path; it is removed where a rule removes it or a sequence that holds it, and otherwise its instance is sequestered (D-028).
+Every element of an odd group, including private creators and the elements that PS3.5 does not allow, has a rule that removes it, at the top level and in the items of every standard sequence, including one written as UN or without a VR, whose items are read where the pinned data dictionary gives its attribute VR SQ, and a private sequence is removed with everything in it.
+A source file in which such a value does not hold only items is refused, wherever the value is, and a kept standard sequence written with a VR that the dictionary does not give it, such as OB, sequesters its instance (D-028).
+A policy that gives Private Attributes another action than X without the Retain Safe Private Option is refused.
 The run's instance transform removes them from each instance it writes.
 '''
 
@@ -937,7 +940,6 @@ implementation = [
   "_dicom/deidentify/element_rules.py",
   "_dicom/deidentify/instance_transform.py",
   "_dicom/deidentify/policy.py",
-  "_dicom/deidentify/private_attributes.py",
   "_dicom/deidentify/release_report.py",
   "_dicom/deidentify/release_report_markdown.py",
   "_dicom/deidentify/run.py",
@@ -1089,7 +1091,8 @@ Retain private data elements only after evaluating their risk against a reliable
 status = "implemented"
 decisions = ["D-001", "D-028", "D-035"]
 implementation = [
-  "_dicom/deidentify/private_attributes.py",
+  "_dicom/deidentify/element_rules.py",
+  "_dicom/deidentify/instance_transform.py",
   "_dicom/deidentify/retained_private.py",
   "_dicom/deidentify/safe_private.py",
   "_dicom/deidentify/tcia_private_tags.py",
