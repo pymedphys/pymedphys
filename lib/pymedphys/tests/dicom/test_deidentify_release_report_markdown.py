@@ -78,6 +78,7 @@ def _full_report():
         ElementPath((), "(0008,103E)"),
     )
     return _report(
+        project_key="0123456789abcdef" * 2,
         qc_review=qc_attestation.AttestationRecord(
             _REFERENCE, qc_attestation.Outcome.ATTESTED, True, None
         ),
@@ -106,6 +107,14 @@ def _full_report():
         ),
         held=(release_report.HeldForReview("release", "read-as-latin-1", 2),),
         coverage=(release_report.SearchCoverage("(0010,0010)", "too-short", 3),),
+        exempted=(
+            release_report.ExemptedFindings(
+                "equipment", "(0009,1012)", "(0008,0070)", 3
+            ),
+            release_report.ExemptedFindings(
+                "standard-code", "(0008,1030)", "(0008,1032) > (0008,0104)", 1
+            ),
+        ),
         roi_names=reviewed_roi_names.RoiNameCounts(
             held={roi_names.Reason.ECHOES_IDENTIFIER: 1},
             outcomes={
@@ -229,6 +238,7 @@ def test_the_sections_follow_the_documents_order():
         "## Policy",
         "## Method",
         "## Runtime environment",
+        "## Key",
         "## QC review",
         "## Released instances",
         "## Sequestered instances",
@@ -238,6 +248,7 @@ def test_the_sections_follow_the_documents_order():
         "## Reference findings",
         "## Pixel data risks",
         "## Values not searched",
+        "## Residual findings exempted from review",
         "## Required attributes missing from the source",
         "## Structural checks",
     ]
@@ -315,7 +326,7 @@ def test_the_pixel_risks_are_counted_by_disposition_risk_and_indicator():
 def test_an_empty_run_says_so_in_each_run_section():
     markdown = to_markdown(release_report.to_json(_report()))
     assert "No QC pack was written for this run." in markdown
-    assert markdown.count("None.") == 12
+    assert markdown.count("None.") == 13
     run = markdown.split("## QC review", 1)[1].split("## Structural checks", 1)[0]
     assert "|" not in run
 
@@ -385,6 +396,11 @@ def _changed(change):
         lambda d: d["pixel_risks"]["instances"][0].update(count=0),
         lambda d: d["pixel_risks"]["indicators"][0].pop("indicator"),
         lambda d: d["pixel_risks"]["indicators"][0].update(risk="a|b"),
+        lambda d: d["exempted_findings"][0].update(note="x"),
+        lambda d: d["exempted_findings"][0].pop("found_in"),
+        lambda d: d["exempted_findings"][0].update(count=0),
+        lambda d: d["exempted_findings"][0].update(exemption="`SENTINEL`"),
+        lambda d: d.pop("exempted_findings"),
         lambda d: d["source_gaps"][0].update(note="x"),
         lambda d: d["source_gaps"][0].update(count=0),
         lambda d: d.pop("source_gaps"),
@@ -468,4 +484,18 @@ def test_each_source_gap_is_a_row_with_its_type_and_count():
         "| --- | --- | --- |",
         "| `(0008,0060)` | `1` | `2` |",
         "| `(3006,0010) > (0020,0052)` | `2` | `1` |",
+    ]
+
+
+@pytest.mark.deid_requirement("MIDI-BP-18")
+def test_each_exempted_finding_is_a_row_with_its_place_and_count():
+    markdown = to_markdown(release_report.to_json(_full_report()))
+    section = markdown.split("## Residual findings exempted from review", 1)[1]
+    section = section.split("\n## ", 1)[0]
+    rows = [line for line in section.splitlines() if line.startswith("| ")]
+    assert rows == [
+        "| Exemption | Attribute | Found in | Instances |",
+        "| --- | --- | --- | --- |",
+        "| `equipment` | `(0009,1012)` | `(0008,0070)` | `3` |",
+        "| `standard-code` | `(0008,1030)` | `(0008,1032) > (0008,0104)` | `1` |",
     ]

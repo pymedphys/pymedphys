@@ -1,0 +1,105 @@
+name: Face Block Check
+
+# On demand, download the HaN-Seg data set of head and neck planning CTs and
+# their organ-at-risk masks from Zenodo (https://doi.org/10.5281/zenodo.7442914,
+# version 1.0, CC BY-NC-ND 4.0), check it against the size and MD5 that the
+# record gives, and check the face block finder and CT defacing of the Clean
+# Recognizable Visual Features Option against its eye masks (D-054).
+#
+# HaN-Seg's images are real patients' scans, and this repository's logs and
+# artefacts are public. So, as for the MIDI-B benchmark, only counts, codes,
+# digests, and versions leave the runner: the check writes nothing else, its
+# standard error and standard output, where libraries log, go to files on the
+# runner, the job shows the result files instead, and a crash is reported by
+# .github/scripts/run_redacted.py as its type and code locations alone. The
+# data set is read from its ZIP file without extracting it, and is never
+# cached, uploaded, or kept.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: face-validation-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  check:
+    name: Face block check on HaN-Seg
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    permissions:
+      contents: read
+    env:
+      # Zenodo record 7442914, HaN-Seg version 1.0: its one file, with the
+      # size and MD5 that the record gives.
+      HANSEG_URL: https://zenodo.org/api/records/7442914/files/HaN-Seg.zip/content
+      HANSEG_SIZE: '4938848306'
+      HANSEG_MD5: c3d3070de3034933a63031b73b9cf0fc
+      # A re-run's artefact is named apart from the first attempt's.
+      ATTEMPT_SUFFIX: >-
+        ${{ github.run_attempt != '1'
+        && format('-attempt-{0}', github.run_attempt) || '' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # The user extra holds pydicom, NumPy, and SciPy.
+      - uses: ./.github/actions/setup-project
+        with:
+          extras: 'user'
+
+      - name: Prepare private and data directories
+        run: |
+          umask 077
+          mkdir -p "${RUNNER_TEMP}/face/private" "${RUNNER_TEMP}/face/data"
+
+      - name: Download HaN-Seg from Zenodo
+        timeout-minutes: 60
+        run: |
+          archive="${RUNNER_TEMP}/face/data/HaN-Seg.zip"
+          curl -sSfL --retry 3 --retry-all-errors --retry-delay 60 \
+            -o "${archive}" "${HANSEG_URL}"
+          size="$(stat -c %s "${archive}")"
+          if [[ "${size}" != "${HANSEG_SIZE}" ]]; then
+            echo "HaN-Seg.zip is ${size} bytes, not the ${HANSEG_SIZE} that its Zenodo record gives."
+            exit 1
+          fi
+          echo "${HANSEG_MD5}  ${archive}" | md5sum --check --strict -
+          df -h /
+
+      # The command writes face-validation.json and face-validation.md, which
+      # hold only counts, codes, digests, versions, and the engine's settings.
+      - name: Run the check
+        timeout-minutes: 80
+        run: |
+          results="${RUNNER_TEMP}/face/results"
+          uv run --no-sync python .github/scripts/run_redacted.py \
+            --private-stdout "${RUNNER_TEMP}/face/private/stdout.log" \
+            pymedphys._dicom.deidentify.face_validation_command hanseg \
+            "${RUNNER_TEMP}/face/data/HaN-Seg.zip" \
+            --out "${results}" \
+            2> "${RUNNER_TEMP}/face/private/stderr.log"
+          echo "${GITHUB_SHA}" > "${results}/commit.txt"
+
+      - name: Show the results
+        if: ${{ !cancelled() }}
+        run: |
+          page="${RUNNER_TEMP}/face/results/face-validation.md"
+          if [[ -f "${page}" ]]; then
+            tee -a "${GITHUB_STEP_SUMMARY}" < "${page}"
+          else
+            echo "The check wrote no results; the log shows why." \
+              | tee -a "${GITHUB_STEP_SUMMARY}"
+          fi
+
+      - name: Upload the results
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: face-validation-results${{ env.ATTEMPT_SUFFIX }}
+          path: ${{ runner.temp }}/face/results/
+          if-no-files-found: warn
+          retention-days: 90

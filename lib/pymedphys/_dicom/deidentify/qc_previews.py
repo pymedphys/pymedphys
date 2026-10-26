@@ -38,11 +38,38 @@ frame with such regions, also from the file as received:
   multi-frame volume, such as an Enhanced CT image, is shown by its cine
   strip only. It is projected along the anterior-posterior axis and shown
   with the patient's head at the top and right on the viewer's left, sampled
-  to square pixels by nearest neighbour, at most :data:`MIP_PIXELS` a side;
-- a sheet of renders of the skin surface of each such volume, and of each
-  RT Dose instance of two or more frames whose grid lies along the patient's
-  axes, from the front, the two obliques, and the two profiles, as
-  :mod:`~pymedphys._dicom.deidentify.qc_surfaces` describes;
+  to square pixels by nearest neighbour, at most :data:`MIP_PIXELS` a side,
+  each slice also taken into the pixel nearest it by the maximum, so that
+  every slice is drawn where slices are closer than the pixels;
+- a sheet of renders of the skin surface of each such volume, from the
+  front, the two obliques, the two profiles, and behind, as
+  :mod:`~pymedphys._dicom.deidentify.qc_surfaces` describes, or, for a
+  volume of RT Dose planes, and for each RT Dose instance of two or more
+  frames whose grid lies along the patient's axes with its frames evenly
+  spaced, a dose-levels sheet of such renders at each of its dose levels;
+  one that :mod:`~pymedphys._dicom.deidentify.qc_surfaces` finds too large
+  to render has none, and such a volume has no projection either, so that
+  its slices beyond its cine strip are held;
+  an RT Dose is shown so only where it is one by its SOP Class, and its
+  stored values are unsigned, not padded, not rescaled, and scaled by a
+  finite Dose Grid Scaling above 0 to doses that float32 holds, each above
+  0 still above 0 and none infinite;
+- a dose-levels map of each RT Dose plane of one frame, so shown, that is
+  in no volume, at full resolution, grey by how many of its dose levels
+  each pixel reaches, so that each level's outline is an edge;
+- a contour sheet of each instance with contours, such as an RT Structure
+  Set, high-risk or not, since a face verdict can release only what a
+  reviewer saw: its contours as written, drawn in each Frame of Reference
+  of its ROIs with the surface of a volume in that frame, of a series that
+  it references where there is one, or else of the first, as
+  :mod:`~pymedphys._dicom.deidentify.qc_contours` describes;
+- a segments sheet of each Segmentation, high-risk or not, for the same
+  reason: its segments as written, each frame placed by its functional
+  groups, drawn with the surface of a volume in its Frame of Reference, of
+  a series that it references where there is one, or else of the first, as
+  :mod:`~pymedphys._dicom.deidentify.qc_segments` describes. A
+  Segmentation that no segments sheet shows whole, whatever the cause, is
+  reported, though its other previews are kept;
 - each high-risk instance at full resolution: every frame, or
   :data:`CINE_FRAMES` evenly spaced, unscaled, since burned-in text may be
   small;
@@ -56,7 +83,12 @@ frame with such regions, also from the file as received:
   pixels, inside the region, so that the outline hides nothing next to a
   region, where text that a region only partly covered would show; the two
   images are windowed together, from the frame as received, so the fill
-  appears as it would beside the rest. Each file is decoded once, frame by
+  appears as it would beside the rest. A monochrome frame as written is
+  then shown again, after another gutter, windowed from the smallest value
+  to the largest of the frame as received, or of the frame as written where
+  it has no regions, the full range in which the text finder searches it,
+  since the percentile window shows text at or near either extreme as white
+  or black with whatever else lies there. Each file is decoded once, frame by
   frame, and each frame's image is encoded as soon as it is drawn, so only
   one frame of an instance is held decoded at a time. An instance whose
   source cannot be shown beside it, because the source cannot be read or
@@ -73,21 +105,26 @@ and how many frames its series or instance has.
 
 Monochrome pixel data are rescaled by Rescale Slope and Rescale Intercept,
 where both can be read, and windowed from the 0.5th to the 99.5th percentile
-of what the preview shows, leaving out the stored values that Pixel Padding
-Value and Pixel Padding Range Limit name, which are shown black; MONOCHROME1 is inverted so that higher values are darker. Colour
-pixel data with 8 bits allocated are shown as RGB: as they are, or converted
-from YBR_FULL or YBR_FULL_422 by pydicom, while JPEG 2000's YBR_ICT and
-YBR_RCT are decoded to RGB. Compressed pixel data are decoded by the plugin
+of what the preview shows, other than a redaction preview's full-range
+image, leaving out the stored values that Pixel Padding Value and Pixel
+Padding Range Limit name, which are shown black; MONOCHROME1 is inverted so
+that higher values are darker. Since that black shows one value, an instance
+of which a frame as written pads with more than one stored value, which
+could hold an image that every preview shows black, is not counted as
+shown, so that no verdict releases its pixel data. Colour pixel data with
+8 bits allocated are shown as RGB: as they are, or converted from YBR_FULL
+or YBR_FULL_422 by pydicom, while JPEG 2000's YBR_ICT and YBR_RCT are
+decoded to RGB. Compressed pixel data are decoded by the plugin
 that :data:`.pixel_decoding.DECODING_PLUGINS` pins for its transfer syntax.
 An instance whose pixel data cannot be previewed is reported with why,
 rather than left out: pixel data in a compressed transfer syntax that no
 installed plugin is pinned to decode; a photometric interpretation other
 than those above, or float pixel data; or pixel data that cannot be
-decoded. A high-risk
-instance without pixel data, such as an RT Structure Set with the patient's
-outline, is reported too, so that the reviewer knows there is nothing to see
-of it here. Only the frames that a preview shows are decoded, one at a
-time, so an instance is reported as undecodable only where one of them is.
+decoded. An instance with contours that a sheet cannot show is reported,
+and so is a high-risk instance without pixel data or contours, so that the
+reviewer knows there is nothing to see of it here. Only the frames that a
+preview shows are decoded, one at a time, so an instance is reported as
+undecodable only where one of them is.
 
 A PNG is written with no ancillary chunks, so it holds no time or text, and
 the same pixels always give the same file with the same zlib.
@@ -106,14 +143,17 @@ from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom
 
 from .pixel_decoding import DECODING_PLUGINS, decoder_available
-from . import qc_surfaces
+from . import qc_contours, qc_segments, qc_surfaces
+from .face_review import is_rt_dose
 from .qc_pack import (
     NotPreviewedEntry,
     NotPreviewedReason,
     Preview,
     PreviewKind,
     RedactionEntry,
+    pictured_frames,
 )
+from .uids import normalise_uid
 
 CINE_FRAMES = 16
 CINE_COLUMNS = 4
@@ -171,7 +211,29 @@ class _Instance:
     plane: _Plane | None
     number: int | None
     modality: str
-    grid: qc_surfaces.Grid | None  # an RT Dose grid that a surface render shows
+    grid: qc_surfaces.Grid | None  # an RT Dose grid that dose levels show
+    frame: str | None  # Frame of Reference UID
+    # Whether its native Pixel Data hold no more than its frames, with at most
+    # one byte of padding; the bytes beyond them are in no frame a preview
+    # can show. Encapsulated Pixel Data are taken as whole here.
+    whole: bool = True
+    # Whether it is an RT Dose (face_review.is_rt_dose), which only a
+    # dose-levels preview shows as it could show a face (D-017).
+    dose: bool = False
+    # Dose Grid Scaling, where a dose-levels preview can show its doses:
+    # an RT Dose by its SOP Class, unsigned, not rescaled, and scaled by a
+    # finite number above 0.
+    dose_scale: float | None = None
+    # Whether its native Pixel Data are of 1 bit allocated, packed across
+    # frames, which pydicom 3.0 cannot decode one frame at a time where a
+    # frame's bits are not a whole number of bytes, as a Segmentation's
+    # BINARY masks are (_packed_frames).
+    packed: bool = False
+    # Whether it is a Segmentation (qc_segments.is_segmentation), which only
+    # a segments sheet shows as it could show a face (D-017), and what the
+    # sheet needs of it, or None where none can show it.
+    segmentation: bool = False
+    segments: qc_segments.Segments | None = None
 
 
 @dataclasses.dataclass(frozen=True)
@@ -182,17 +244,49 @@ class PreviewSet:
     ----------
     previews : tuple of ~pymedphys._dicom.deidentify.qc_pack.Preview
         Each series' cine strip, then its projection and its surface render
-        if it forms a volume, then the surface render of each RT Dose grid
-        in it, series in the order of their first run position; then each
-        high-risk instance, in run position order; then each frame of each
-        instance that Clean Pixel Data cleaned, in run position and frame
-        order. Named ``P-0001.png`` onwards in that order.
+        if it forms a volume, then the dose-levels render of each RT Dose
+        grid in it, then the dose-levels map of each RT Dose plane in it in
+        no volume, series in the order of their first run position; then each
+        contour sheet, in run position order; then each segments sheet, in
+        run position order; then each high-risk instance, in run position
+        order; then each frame of each instance that Clean Pixel Data
+        cleaned, in run position and frame order. Named ``P-0001.png``
+        onwards in that order. A contour sheet shows its instance's frame
+        0, then the frames of each volume that it is drawn with, if any; a
+        segments sheet shows each of its Segmentation's frames, then the
+        frames of the volume that it is drawn with, if any.
     not_previewed : tuple of ~pymedphys._dicom.deidentify.qc_pack.NotPreviewedEntry
-        In run position order.
+        In run position order. An RT Dose that no dose-levels preview shows
+        whole, whatever the cause, is listed as ``DOSE_LEVELS_NOT_SHOWN``,
+        though its other previews are kept, unless another reason is listed
+        first. Likewise, a Segmentation that no segments sheet shows whole
+        is listed as ``SEGMENTS_NOT_SHOWN``.
+    contours_shown : frozenset of int
+        The run positions of the files with contours that a contour sheet
+        shows.
+    pixels_shown : frozenset of int
+        The run positions of the files with pixel data every frame of which
+        a preview that could show a face draws, and that are not listed as
+        not previewed, and whose native Pixel Data hold no more than their
+        frames. A volume's projection and surface render draw each of its
+        slices, by its maximum where slices are closer than their pixels. A
+        contour sheet lists frames that it cannot show a face in, so its
+        frames do not count. Only dose-levels previews count for an RT Dose,
+        by :func:`~.face_review.is_rt_dose`: its cine strip is windowed to
+        its highest doses, which can leave a low dose outlining the skin
+        black, and an Otsu render of a series of its planes shows one level.
+        Only a segments sheet counts for a Segmentation, and only for its
+        own frames: its cine strip and projection can show a segment as
+        windowed values, but not the surface that a segment traces. Nor
+        does a file of which a frame that a preview draws pads with more
+        than one stored value, since every preview draws its padding as one
+        black, or as no patient.
     """
 
     previews: tuple[Preview, ...]
     not_previewed: tuple[NotPreviewedEntry, ...]
+    contours_shown: frozenset[int] = frozenset()
+    pixels_shown: frozenset[int] = frozenset()
 
 
 def previews_of(
@@ -221,19 +315,40 @@ def previews_of(
     redactions = {} if redactions is None else redactions
     instances: list[_Instance] = []
     refused: dict[int, NotPreviewedReason] = {}
+    contoured: dict[int, qc_contours.Contours] = {}
     for position in sorted(written):
         found = _instance(position, written[position])
         if isinstance(found, _Instance):
             instances.append(found)
-        elif found is not None:
+        elif isinstance(found, NotPreviewedReason):
             refused[position] = found
+        elif found is not None:
+            contoured[position] = found
         elif position in high_risk:
             refused[position] = NotPreviewedReason.NO_PIXEL_DATA
     # Each image is encoded as it is made, so that only its PNG is kept.
     images: list[_Encoded] = []
     decoded = _Decoder(refused)
+    framed = [frame for contours in contoured.values() for frame in contours.frames]
+    framed.extend(
+        instance.segments.frame for instance in instances if instance.segments
+    )
+    guides: dict[str, list[tuple[_Guided, str | None]]] = {
+        frame: [] for frame in framed if frame is not None
+    }
     for series in _series(instances):
-        images.extend(_encoded(_series_images(series, decoded)))
+        images.extend(_encoded(_series_images(series, decoded, guides)))
+    for position, contours in sorted(contoured.items()):
+        sheet = _contour_image(position, contours, guides)
+        if sheet is None:
+            refused[position] = NotPreviewedReason.CONTOURS_NOT_SHOWN
+            continue
+        images.extend(_encoded([sheet]))
+    for instance in instances:
+        if instance.segments is not None:
+            segmented = _segments_image(instance, decoded, guides)
+            if segmented is not None:
+                images.extend(_encoded([segmented]))
     for instance in instances:
         if instance.position in high_risk:
             image = _instance_image(instance, decoded)
@@ -243,6 +358,33 @@ def previews_of(
         if instance.position in redactions:
             source, entry = redactions[instance.position]
             images.extend(_redaction_images(instance, source, entry, decoded))
+    # Only previews that could show a face count, and every frame of an
+    # instance must be among theirs; for an RT Dose, only dose levels do,
+    # and for a Segmentation, only its segments sheet.
+    listed = [(kind.value, frames) for kind, frames, _, _ in images]
+    levels = {PreviewKind.SERIES_DOSE_LEVELS.value}
+    sheets = {PreviewKind.SEGMENTATION_SEGMENTS.value}
+    # An RT Dose whose every frame no dose-levels preview shows is listed,
+    # whatever the cause, unless it is listed already. It is listed only
+    # once every image is made, so that its frames were still decoded for
+    # its other previews, which it keeps.
+    dosed = pictured_frames(listed, refused, levels)
+    for instance in instances:
+        if instance.dose and dosed.get(instance.position) != instance.frames:
+            refused.setdefault(
+                instance.position, NotPreviewedReason.DOSE_LEVELS_NOT_SHOWN
+            )
+    # Likewise a Segmentation whose every frame no segments sheet shows.
+    segmented = pictured_frames(listed, refused, sheets)
+    for instance in instances:
+        if (
+            instance.segmentation
+            and segmented.get(instance.position) != instance.frames
+        ):
+            refused.setdefault(instance.position, NotPreviewedReason.SEGMENTS_NOT_SHOWN)
+    pictured = pictured_frames(listed, refused)
+    dosed = pictured_frames(listed, refused, levels)
+    segmented = pictured_frames(listed, refused, sheets)
     width = max(4, len(str(len(images))))
     previews = tuple(
         Preview(f"P-{number:0{width}d}.png", kind, frames, total, encoded)
@@ -254,12 +396,38 @@ def previews_of(
             NotPreviewedEntry(position, reason)
             for position, reason in sorted(refused.items())
         ),
+        frozenset(contoured) - frozenset(refused),
+        frozenset(
+            instance.position
+            for instance in instances
+            if instance.whole
+            and instance.position not in decoded.mixed_padding
+            and _shown_by(instance, pictured, dosed, segmented).get(instance.position)
+            == instance.frames
+        ),
     )
 
 
 # An image's kind, the frames it shows by run position and index, how many
 # frames its series or instance has, and its PNG.
 _Encoded = tuple[PreviewKind, tuple[tuple[int, int], ...], int, bytes]
+# The surface of a volume that a contour sheet can be drawn with, and the
+# frames that it shows.
+_Guided = tuple[qc_contours.Guide, tuple[tuple[int, int], ...]]
+
+
+def _shown_by(
+    instance: _Instance,
+    pictured: dict[int, int],
+    dosed: dict[int, int],
+    segmented: dict[int, int],
+) -> dict[int, int]:
+    """The frames shown, by run position, of the previews that count for an
+    instance: dose levels for an RT Dose, segments sheets for a
+    Segmentation, and any but a contour sheet for any other."""
+    if instance.dose:
+        return dosed
+    return segmented if instance.segmentation else pictured
 
 
 def _encoded(images) -> Iterator[_Encoded]:
@@ -268,10 +436,14 @@ def _encoded(images) -> Iterator[_Encoded]:
         yield kind, frames, total, png(image)
 
 
-def _instance(position: int, data: bytes) -> _Instance | NotPreviewedReason | None:
+def _instance(
+    position: int, data: bytes
+) -> _Instance | NotPreviewedReason | qc_contours.Contours | None:
     """Read what a preview needs of a file, or why it cannot be previewed.
 
-    ``None`` means the file has no pixel data.
+    A file without pixel data gives its contours, where it has any that a
+    sheet can show, or ``CONTOURS_NOT_SHOWN`` where it has others, or
+    ``None`` where it has none.
     """
     try:
         dataset = pydicom.dcmread(io.BytesIO(data))
@@ -281,7 +453,10 @@ def _instance(position: int, data: bytes) -> _Instance | NotPreviewedReason | No
     if any(keyword in dataset for keyword in _FLOAT_PIXEL_DATA):
         return NotPreviewedReason.UNSUPPORTED
     if "PixelData" not in dataset:
-        return None
+        if not qc_contours.has_contours(dataset):
+            return None
+        contours = qc_contours.contours_of(dataset)
+        return NotPreviewedReason.CONTOURS_NOT_SHOWN if contours is None else contours
     # The data set is not kept: its frames are decoded from the file one at
     # a time, so that a run's pixel data are never all decoded at once.
     return _described(position, dataset, data)
@@ -321,12 +496,21 @@ def _described(
     except Exception:  # pylint: disable = broad-exception-caught
         modality = ""
     colour = photometric in _COLOUR and samples == 3 and allocated == 8
+    segmentation = qc_segments.is_segmentation(dataset)
     if not colour and not (photometric in _MONOCHROME and samples == 1):
         return NotPreviewedReason.UNSUPPORTED
     if frames < 1 or rows < 1 or columns < 1:
         return NotPreviewedReason.UNREADABLE
     spacing = _spacing(dataset)
     uid = dataset.get("SeriesInstanceUID")
+    scale = None if colour or rescale != (1.0, 0.0) else _dose_scale(dataset)
+    whole = True
+    if not plugin:
+        try:
+            expected = pydicom.pixels.utils.get_expected_length(dataset, "bytes")
+            whole = len(dataset.PixelData) <= expected + 1
+        except Exception:  # pylint: disable = broad-exception-caught
+            whole = False
     return _Instance(
         position=position,
         data=data,
@@ -342,8 +526,25 @@ def _described(
         plane=_plane(dataset, spacing, (rows, columns)) if frames == 1 else None,
         number=number,
         modality=modality,
-        grid=None if colour else _dose_grid(dataset, spacing, (rows, columns), frames),
+        grid=None
+        if scale is None
+        else _dose_grid(dataset, spacing, (rows, columns), frames, scale),
+        frame=_uid(dataset, "FrameOfReferenceUID"),
+        whole=whole,
+        dose=is_rt_dose(dataset),
+        dose_scale=scale,
+        packed=not plugin and allocated == 1,
+        segmentation=segmentation,
+        segments=qc_segments.segments_of(dataset) if segmentation else None,
     )
+
+
+def _uid(dataset: pydicom.Dataset, keyword: str) -> str | None:
+    try:
+        uid = normalise_uid(str(dataset.get(keyword) or ""))
+    except Exception:  # pylint: disable = broad-exception-caught
+        return None
+    return uid or None
 
 
 def _number(dataset: pydicom.Dataset, keyword: str, kind: type) -> float | int | None:
@@ -408,21 +609,45 @@ def _plane(
     )
 
 
+# The attributes by which stored values pad, and so are read as no patient.
+_PADDING = ("PixelPaddingValue", "PixelPaddingRangeLimit")
+
+
+def _dose_scale(dataset: pydicom.Dataset) -> float | None:
+    """Dose Grid Scaling, where the data set is an RT Dose by its SOP Class
+    whose stored values are unsigned, not padded, and scaled by a finite
+    number above 0; otherwise None, as a signed grid can hold doses below 0,
+    which no level shows, a padded one has stored values that are read as
+    no dose, which no level shows either, and a grid without a scaling above
+    0 has no dose to show."""
+    try:
+        sop_class = str(dataset.get("SOPClassUID") or "")
+    except Exception:  # pylint: disable = broad-exception-caught
+        sop_class = ""
+    scaling = _number(dataset, "DoseGridScaling", float)
+    if (
+        sop_class != qc_surfaces.RT_DOSE_STORAGE
+        or _number(dataset, "PixelRepresentation", int) != 0
+        or any(keyword in dataset for keyword in _PADDING)
+        or scaling is None
+        or scaling <= 0
+    ):
+        return None
+    return float(scaling)
+
+
 def _dose_grid(
     dataset: pydicom.Dataset,
     spacing: tuple[float, float] | None,
     shape: tuple[int, int],
     frames: int,
+    scale: float,
 ) -> qc_surfaces.Grid | None:
     """The grid of an RT Dose instance of two or more frames, if it is rendered.
 
     Its axes must lie along the patient's, and its frames be evenly spaced.
     """
-    try:
-        sop_class = str(dataset.get("SOPClassUID") or "")
-    except Exception:  # pylint: disable = broad-exception-caught
-        sop_class = ""
-    if frames < 2 or sop_class != qc_surfaces.RT_DOSE_STORAGE:
+    if frames < 2:
         return None
     plane = _plane(dataset, spacing, shape)
     offsets = _floats(dataset, "GridFrameOffsetVector", frames)
@@ -452,14 +677,13 @@ def _dose_grid(
         or np.ptp(steps) > _STACKING_TOLERANCE
     ):
         return None
-    scaling = _number(dataset, "DoseGridScaling", float)
     return qc_surfaces.grid(
         directions,
         offsets,
         plane.spacing,
         shape,
         qc_surfaces.Threshold.DOSE,
-        1.0 if scaling is None else float(scaling),
+        scale,
     )
 
 
@@ -468,6 +692,11 @@ class _Decoder:
 
     def __init__(self, refused: dict[int, NotPreviewedReason]) -> None:
         self._refused = refused
+        # The run positions of written files of which a frame pads with more
+        # than one stored value: every preview draws padding as one black, or
+        # as no patient, so what those values hold, which could be a face,
+        # is shown in none.
+        self.mixed_padding: set[int] = set()
 
     def refuse(self, position: int, reason: NotPreviewedReason) -> None:
         """Record that an instance's pixel data cannot be previewed."""
@@ -482,13 +711,16 @@ class _Decoder:
         if instance.position in self._refused:
             return None
         try:
-            pixels = np.asarray(
-                pydicom.pixels.pixel_array(
-                    io.BytesIO(instance.data),
-                    index=index,
-                    decoding_plugin=instance.plugin,
+            if instance.packed:
+                (pixels,) = _packed_frames(instance, [index])
+            else:
+                pixels = np.asarray(
+                    pydicom.pixels.pixel_array(
+                        io.BytesIO(instance.data),
+                        index=index,
+                        decoding_plugin=instance.plugin,
+                    )
                 )
-            )
         except Exception:  # pylint: disable = broad-exception-caught
             self._refused[instance.position] = NotPreviewedReason.UNREADABLE
             return None
@@ -499,21 +731,31 @@ class _Decoder:
         instance: _Instance,
         indices: Sequence[int] | None = None,
         reason: NotPreviewedReason = NotPreviewedReason.UNREADABLE,
+        received: bool = False,
     ) -> Iterator[np.ndarray]:
         """Yield an instance's frames, or those at ``indices``, in order, as
         :meth:`frame` gives them, reading its file once.
 
-        Stops at a frame that cannot be decoded, recording ``reason``.
+        Stops at a frame that cannot be decoded, recording ``reason``. The
+        frames of a file as ``received``, which is not released, are not
+        checked for padding of more than one value.
         """
         if instance.position in self._refused:
             return
         try:
-            for pixels in pydicom.pixels.iter_pixels(
-                io.BytesIO(instance.data),
-                indices=indices,
-                decoding_plugin=instance.plugin,
-            ):
-                shown = self._shown(instance, np.asarray(pixels), reason)
+            decoded = (
+                _packed_frames(
+                    instance, range(instance.frames) if indices is None else indices
+                )
+                if instance.packed
+                else pydicom.pixels.iter_pixels(
+                    io.BytesIO(instance.data),
+                    indices=indices,
+                    decoding_plugin=instance.plugin,
+                )
+            )
+            for pixels in decoded:
+                shown = self._shown(instance, np.asarray(pixels), reason, received)
                 if shown is None:
                     return
                 yield shown
@@ -521,7 +763,11 @@ class _Decoder:
             self._refused.setdefault(instance.position, reason)
 
     def _shown(
-        self, instance: _Instance, pixels: np.ndarray, reason: NotPreviewedReason
+        self,
+        instance: _Instance,
+        pixels: np.ndarray,
+        reason: NotPreviewedReason,
+        received: bool = False,
     ) -> np.ndarray | None:
         shape = instance.shape + ((3,) if instance.colour else ())
         if pixels.size != math.prod(shape):
@@ -534,8 +780,35 @@ class _Decoder:
         shown = pixels.astype(np.float32) * np.float32(slope) + np.float32(intercept)
         if instance.padding is not None:
             low, high = instance.padding
-            shown[(pixels >= low) & (pixels <= high)] = np.nan
+            padded = (pixels >= low) & (pixels <= high)
+            if low < high and not received and padded.any():
+                values = pixels[padded]
+                if values.min() != values.max():
+                    self.mixed_padding.add(instance.position)
+            shown[padded] = np.nan
         return shown
+
+
+def _packed_frames(instance: _Instance, indices: Sequence[int]) -> Iterator[np.ndarray]:
+    """Yield the frames at ``indices`` of native Pixel Data of 1 bit, in
+    order, as 0 and 1.
+
+    The bits are packed across frames, from the least significant bit of
+    each byte (PS3.5 Section 8.1.1), so a frame can start within a byte.
+    Raises ValueError where the Pixel Data stop short of a frame.
+    """
+    data = pydicom.dcmread(io.BytesIO(instance.data)).PixelData
+    size = instance.shape[0] * instance.shape[1]
+    for index in indices:
+        start = index * size
+        first, stop = start // 8, -(-(start + size) // 8)
+        if stop > len(data):
+            raise ValueError("the Pixel Data stop short of a frame")
+        bits = np.unpackbits(
+            np.frombuffer(data, np.uint8, stop - first, first), bitorder="little"
+        )
+        offset = start - 8 * first
+        yield bits[offset : offset + size].reshape(instance.shape)
 
 
 def _series(instances: Sequence[_Instance]) -> Iterator[list[_Instance]]:
@@ -585,7 +858,11 @@ def _evenly(count: int, limit: int) -> list[int]:
     return sorted({round(i * (count - 1) / (limit - 1)) for i in range(limit)})
 
 
-def _series_images(series: list[_Instance], decoder: _Decoder):
+def _series_images(
+    series: list[_Instance],
+    decoder: _Decoder,
+    guides: dict[str, list[tuple[_Guided, str | None]]] | None = None,
+):
     frames = [
         (instance.position, frame)
         for instance in series
@@ -594,14 +871,33 @@ def _series_images(series: list[_Instance], decoder: _Decoder):
     chosen = {frames[i] for i in _evenly(len(frames), CINE_FRAMES)}
     volume = _volume(series)
     tiles: list[tuple[int, int, np.ndarray, _Instance]] = []
-    projection = _Projection(volume) if volume is not None else None
     surfaces = _surfaces(series, volume)
-    rendered = {frame for shown, _ in surfaces for frame in shown}
+    # A volume too large for a surface render has no projection either, so
+    # that no preview that could show a face draws its slices beyond its
+    # cine strip, and their pixel data are held.
+    projection = (
+        _Projection(volume) if volume is not None and not surfaces[0][2].large else None
+    )
+    rendered = {
+        frame for _, shown, surface in surfaces if not surface.large for frame in shown
+    }
+    # Each RT Dose plane in no volume, mapped by the levels of its dose.
+    planes = {
+        instance.position: instance
+        for instance in series
+        if volume is None and instance.frames == 1 and instance.dose_scale is not None
+    }
+    # Each slice's map is drawn as soon as it is decoded, so that only its
+    # 8-bit map, or None, and not its pixels, is kept to the series' end.
+    maps: list[tuple[_Instance, np.ndarray | None]] = []
     for instance in series:
         for frame in range(instance.frames):
             shown = (instance.position, frame) in chosen
             projected = projection is not None and not frame
-            if not (shown or projected or (instance.position, frame) in rendered):
+            mapped = instance.position in planes
+            if not (
+                shown or projected or mapped or (instance.position, frame) in rendered
+            ):
                 continue
             pixels = decoder.frame(instance, frame)
             if pixels is None:
@@ -612,9 +908,17 @@ def _series_images(series: list[_Instance], decoder: _Decoder):
                 )
             if projection is not None:
                 projection.add(instance, pixels)
-            for each, surface in surfaces:
+            for kind, each, surface in surfaces:
                 if (instance.position, frame) in each:
-                    surface.add(pixels)
+                    # A series of RT Dose planes scales each by its own.
+                    planed = (
+                        kind is PreviewKind.SERIES_DOSE_LEVELS and volume is not None
+                    )
+                    surface.add(pixels, instance.dose_scale if planed else None)
+            if mapped:
+                maps.append((instance, _level_map(instance, pixels)))
+            # Freed before the next frame is decoded, so no two are held.
+            del pixels
     if tiles:
         image = _sheet(
             _windowed_tiles([(tile, instance) for _, _, tile, instance in tiles]),
@@ -631,39 +935,182 @@ def _series_images(series: list[_Instance], decoder: _Decoder):
         projected = projection.image()
         if projected is not None:
             yield projected
-    for shown, surface in surfaces:
+    frame = series[0].frame
+    if (
+        guides is not None
+        and volume is not None
+        and frame in guides
+        and all(instance.frame == frame for instance in series)
+    ):
+        guide = _guide(series, surfaces[0][2])
+        if guide is not None:
+            guides[frame].append(((guide, surfaces[0][1]), series[0].series))
+    for kind, shown, surface in surfaces:
         image = surface.image()
         if image is not None:
-            yield PreviewKind.SERIES_SURFACE, shown, len(shown), image
+            yield kind, shown, len(shown), image
+    for instance, level_map in maps:
+        if level_map is not None:
+            yield (
+                PreviewKind.SERIES_DOSE_LEVELS,
+                ((instance.position, 0),),
+                1,
+                level_map,
+            )
+
+
+def _level_map(instance: _Instance, pixels: np.ndarray) -> np.ndarray | None:
+    """An RT Dose plane at full resolution, grey by the levels of its dose,
+    or None if its scaling loses a dose (:func:`~.qc_surfaces.dose_values`)
+    or it has more than :data:`~.qc_surfaces.MAXIMUM_DOSE_LEVELS` levels."""
+    assert instance.dose_scale is not None
+    values = qc_surfaces.dose_values(pixels, instance.dose_scale)
+    if values is None:
+        return None
+    finite = values[np.isfinite(values)]
+    positive = finite[finite > 0]
+    levels = qc_surfaces.dose_levels(
+        float(finite.max()) if finite.size else -math.inf,
+        float(positive.min()) if positive.size else math.inf,
+    )
+    if len(levels) > qc_surfaces.MAXIMUM_DOSE_LEVELS:
+        return None
+    return qc_surfaces.level_bands(values, levels)
 
 
 def _surfaces(
     series: list[_Instance], volume: _Volume | None
-) -> list[tuple[tuple[tuple[int, int], ...], qc_surfaces.Surface]]:
-    """The surface renders of a series, each with the frames that it shows.
+) -> list[tuple[PreviewKind, tuple[tuple[int, int], ...], qc_surfaces.Surface]]:
+    """The surface renders of a series, each with its kind and the frames
+    that it shows.
 
     The volume's first, if the series forms one, then each RT Dose grid's.
-    A CT series' surface is at a fixed level, and any other's by Otsu's.
+    A CT series' surface is at a fixed level; a series of RT Dose planes,
+    each of whose doses a dose-levels preview can show, is shown at each of
+    its dose levels; and any other's surface is by Otsu's threshold.
     """
     surfaces = []
     if volume is not None:
-        threshold = (
-            qc_surfaces.Threshold.CT
-            if all(instance.modality == "CT" for instance in series)
-            else qc_surfaces.Threshold.OTSU
-        )
+        kind = PreviewKind.SERIES_SURFACE
+        if all(instance.modality == "CT" for instance in series):
+            threshold = qc_surfaces.Threshold.CT
+        elif all(instance.dose_scale is not None for instance in series):
+            threshold = qc_surfaces.Threshold.DOSE
+            kind = PreviewKind.SERIES_DOSE_LEVELS
+        else:
+            threshold = qc_surfaces.Threshold.OTSU
         grid = qc_surfaces.grid(
             volume.directions, volume.positions, volume.spacing, volume.shape, threshold
         )
         shown = tuple((instance.position, 0) for instance in series)
-        surfaces.append((shown, qc_surfaces.Surface(grid)))
+        surfaces.append((kind, shown, qc_surfaces.Surface(grid)))
     for instance in series:
         if instance.grid is not None:
             shown = tuple(
                 (instance.position, frame) for frame in range(instance.frames)
             )
-            surfaces.append((shown, qc_surfaces.Surface(instance.grid)))
+            surfaces.append(
+                (
+                    PreviewKind.SERIES_DOSE_LEVELS,
+                    shown,
+                    qc_surfaces.Surface(instance.grid),
+                )
+            )
     return surfaces
+
+
+def _guide(
+    series: list[_Instance], surface: qc_surfaces.Surface
+) -> qc_contours.Guide | None:
+    """The surface of a volume, placed in the patient's coordinates.
+
+    None if a slice is missing.
+    """
+    inside = surface.mask()
+    if inside is None:
+        return None
+    planes = [instance.plane for instance in series]
+    first = planes[0]
+    assert first is not None
+    normal = np.cross(first.row, first.column)
+    axes = [int(np.argmax(np.abs(d))) for d in (normal, first.column, first.row)]
+    along = (
+        np.array([plane.origin[axes[0]] for plane in planes if plane is not None]),
+        first.origin[axes[1]]
+        + first.column[axes[1]] * first.spacing[0] * np.arange(first.shape[0]),
+        first.origin[axes[2]]
+        + first.row[axes[2]] * first.spacing[1] * np.arange(first.shape[1]),
+    )
+    sampled = {
+        axis: values[taken] for axis, values, taken in zip(axes, along, surface.sampled)
+    }
+    return qc_contours.Guide(inside, sampled[2], sampled[1], sampled[0])
+
+
+def _contour_image(
+    position: int,
+    contours: qc_contours.Contours,
+    guides: Mapping[str, list[tuple[_Guided, str | None]]],
+):
+    """The contour sheet of a structure set, drawn in each Frame of
+    Reference of its ROIs with the surface of a volume in that frame: of a
+    series that the structure set references, if there is one, or else the
+    first; or None where it would be taller than
+    :data:`~.qc_contours.MAXIMUM_SHEET_PIXELS`, which is drawn only until
+    it is."""
+    chosen: dict[str | None, qc_contours.Guide] = {}
+    frames: list[tuple[int, int]] = [(position, 0)]
+    for frame in contours.frames:
+        candidates = guides.get(frame, []) if frame is not None else []
+        found = next(
+            (guided for guided, uid in candidates if uid in contours.series),
+            candidates[0][0] if candidates else None,
+        )
+        if found is not None:
+            chosen[frame] = found[0]
+            frames.extend(each for each in found[1] if each not in frames)
+    sheet = qc_contours.contour_sheet(
+        contours, chosen, qc_contours.MAXIMUM_SHEET_PIXELS
+    )
+    if sheet is None:
+        return None
+    return (
+        PreviewKind.STRUCTURE_SET_CONTOURS,
+        tuple(frames),
+        len(frames),
+        sheet,
+    )
+
+
+def _segments_image(
+    instance: _Instance,
+    decoder: _Decoder,
+    guides: Mapping[str, list[tuple[_Guided, str | None]]],
+):
+    """The segments sheet of a Segmentation, drawn with the surface of a
+    volume in its Frame of Reference: of a series that it references, if
+    there is one, or else the first; or None where
+    :func:`~.qc_segments.segment_sheet` does not draw it, or a frame cannot
+    be decoded. It lists the Segmentation's frames, then the volume's."""
+    segments = instance.segments
+    assert segments is not None
+    candidates = guides.get(segments.frame, []) if segments.frame is not None else []
+    found = next(
+        (guided for guided, uid in candidates if uid in segments.series),
+        candidates[0][0] if candidates else None,
+    )
+    sheet = qc_segments.segment_sheet(
+        segments,
+        decoder.frames(instance),
+        None if found is None else found[0],
+        qc_contours.MAXIMUM_SHEET_PIXELS,
+    )
+    if sheet is None:
+        return None
+    frames = [(instance.position, frame) for frame in range(instance.frames)]
+    if found is not None:
+        frames.extend(found[1])
+    return PreviewKind.SEGMENTATION_SEGMENTS, tuple(frames), len(frames), sheet
 
 
 def _instance_image(instance: _Instance, decoder: _Decoder):
@@ -703,8 +1150,13 @@ def _redaction_images(
     written = decoder.frames(instance)
     sources = iter(())
     if isinstance(received, _Instance):
+        # Only here are frames decoded as received; every other decoding is
+        # of a file as written, whose padding of more than one value holds it.
         sources = decoder.frames(
-            received, sorted(regions), NotPreviewedReason.SOURCE_NOT_SHOWN
+            received,
+            sorted(regions),
+            NotPreviewedReason.SOURCE_NOT_SHOWN,
+            received=True,
         )
     images = []
     for index in range(instance.frames):
@@ -728,24 +1180,43 @@ def _redaction_image(
     instance: _Instance, after: np.ndarray, before: np.ndarray | None, boxes
 ) -> np.ndarray:
     """A frame as written, in grey if monochrome, or, with regions, in
-    colour beside the frame as received, both windowed from it."""
-    if before is None:
-        if instance.colour:
+    colour beside the frame as received, both windowed from it.
+
+    A monochrome frame as written is shown again over its full range, from
+    the smallest value to the largest of the frame as received, or as
+    written where it has no regions, as the text finder searches it, so
+    that text at or near the extremes, which the percentile window shows
+    as white or black with whatever else lies there, stands apart.
+    """
+    if instance.colour:
+        if before is None:
             return after
-        return _grey(after, _window(after), instance.inverted)
-    shown = [before, after]
-    if not instance.colour:
-        window = _window(before)
-        shown = [
-            np.repeat(
-                _grey(image, window, instance.inverted)[..., np.newaxis], 3, axis=2
-            )
+        return _beside([_outlined(image, boxes) for image in (before, after)])
+    reference = after if before is None else before
+    windows = (_window(reference), _full_range(reference))
+    shown = [_grey(after, window, instance.inverted) for window in windows]
+    if before is None:
+        return _beside(shown)
+    shown.insert(0, _grey(before, windows[0], instance.inverted))
+    return _beside(
+        [
+            _outlined(np.repeat(image[..., np.newaxis], 3, axis=2), boxes)
             for image in shown
         ]
-    shown = [_outlined(image, boxes) for image in shown]
-    gutter = np.empty((shown[0].shape[0], _GUTTER_PIXELS, 3), np.uint8)
-    gutter[...] = _GUTTER
-    return np.hstack([shown[0], gutter, shown[1]])
+    )
+
+
+def _beside(images: list[np.ndarray]) -> np.ndarray:
+    """Lay images of one shape out from left to right, with a grey gutter
+    between each and the next."""
+    gutter = np.empty(
+        (images[0].shape[0], _GUTTER_PIXELS, *images[0].shape[2:]), np.uint8
+    )
+    gutter[...] = _GUTTER if images[0].ndim == 3 else _GUTTER[0]
+    laid: list[np.ndarray] = []
+    for image in images:
+        laid.extend([gutter, image] if laid else [image])
+    return np.hstack(laid)
 
 
 def _outlined(image: np.ndarray, boxes) -> np.ndarray:
@@ -817,6 +1288,16 @@ def _window(values: np.ndarray) -> tuple[float, float]:
     low, high = (float(value) for value in np.percentile(finite, _PERCENTILES))
     # A uniform image is shown mid-grey, so that it stands out from the
     # black around the tiles.
+    return (low, high) if high > low else (low - 0.5, low + 0.5)
+
+
+def _full_range(values: np.ndarray) -> tuple[float, float]:
+    """The window from the smallest value to the largest, under which no
+    value is clipped."""
+    finite = values[np.isfinite(values)]
+    if finite.size == 0:
+        return -0.5, 0.5
+    low, high = float(finite.min()), float(finite.max())
     return (low, high) if high > low else (low - 0.5, low + 0.5)
 
 
@@ -981,7 +1462,17 @@ class _Projection:
             count = math.floor(extents[dimension] / step + 1e-6) + 1
             wanted = np.arange(count) * step
             nearest = _nearest(coordinates[axis], wanted)
-            image = np.take(image, nearest, axis=dimension)
+            sampled = np.take(image, nearest, axis=dimension)
+            if axis == 0:
+                # Each slice is also taken into the pixel nearest it by its
+                # maximum, so that every slice is drawn where slices are
+                # closer than the pixels.
+                np.fmax.at(
+                    np.moveaxis(sampled, dimension, 0),
+                    _nearest(wanted, coordinates[axis]),
+                    np.moveaxis(image, dimension, 0),
+                )
+            image = sampled
         vertical, horizontal = (volume.directions[axis] for axis in axes)
         if vertical[2] > 0:  # increasing index runs superior, so flip
             image = image[::-1]
@@ -994,6 +1485,8 @@ class _Projection:
 
 def _nearest(coordinates: np.ndarray, wanted: np.ndarray) -> np.ndarray:
     """The index of the coordinate nearest each wanted one; coordinates ascend."""
+    if len(coordinates) == 1:
+        return np.zeros(len(wanted), np.intp)
     right = np.clip(np.searchsorted(coordinates, wanted), 1, len(coordinates) - 1)
     left = right - 1
     closer_left = (wanted - coordinates[left]) <= (coordinates[right] - wanted)

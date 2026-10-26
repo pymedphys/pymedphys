@@ -20,14 +20,23 @@ voxels in the patient's coordinates, where x runs to the patient's left, y
 posterior, and z superior.
 """
 
+# The tests share the synthetic head and its series builders, so they stay
+# in one module.
+# pylint: disable = too-many-lines
+
 import io
 import math
+import weakref
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom, pytest
 
 from pymedphys._dicom.deidentify import qc_previews, qc_surfaces
-from pymedphys._dicom.deidentify.qc_pack import PreviewKind
+from pymedphys._dicom.deidentify.qc_pack import (
+    NotPreviewedEntry,
+    NotPreviewedReason,
+    PreviewKind,
+)
 
 from .test_deidentify_qc_previews import _decoded, _file, _image
 
@@ -122,12 +131,13 @@ def _dose(
     origin=(0.0, 0.0, 0.0),
     orientation=AXIAL,
     scaling=0.001,
+    instance="2.25.9101",
 ):
     """An RT Dose instance; grid is (frames, rows, columns) of stored values."""
     grid = np.asarray(grid)
     dataset = pydicom.Dataset()
     dataset.SOPClassUID = RT_DOSE_STORAGE
-    dataset.SOPInstanceUID = "2.25.9101"
+    dataset.SOPInstanceUID = instance
     dataset.SeriesInstanceUID = "2.25.7104"
     dataset.Modality = "RTDOSE"
     dataset.NumberOfFrames = len(grid)
@@ -149,17 +159,42 @@ def _dose(
     return _file(dataset)
 
 
-def _surface(written):
-    """The PNG of the only surface render of the files."""
+def _surface(written, kind=PreviewKind.SERIES_SURFACE):
+    """The PNG of the only surface render of the files, or of their only
+    dose-levels render."""
     previews = qc_previews.previews_of(written, ())
-    surfaces = [p for p in previews.previews if p.kind is PreviewKind.SERIES_SURFACE]
+    surfaces = [p for p in previews.previews if p.kind is kind]
     assert len(surfaces) == 1
     return surfaces[0].png
 
 
+def _levels(data, rows):
+    """Each row of a dose-levels render of ``rows`` rows, as an image."""
+    image = _decoded(data)
+    gap = qc_surfaces._GAP_PIXELS  # pylint: disable = protected-access
+    height = (image.shape[0] - (rows - 1) * gap) // rows
+    assert image.shape[0] == rows * height + (rows - 1) * gap
+    _gaps(image, rows)
+    return [image[index * (height + gap) :][:height] for index in range(rows)]
+
+
+def _gaps(image, rows):
+    """The grey of each gap between a dose-levels render's ``rows`` rows of
+    equal height: 0 within a level's rows, or the rule between levels."""
+    gap = qc_surfaces._GAP_PIXELS  # pylint: disable = protected-access
+    height = (image.shape[0] - (rows - 1) * gap) // rows
+    greys = []
+    for index in range(1, rows):
+        between = image[index * (height + gap) - gap :][:gap]
+        assert (between == between.flat[0]).all()
+        assert between.flat[0] in (0, qc_surfaces.LEVEL_RULE)
+        greys.append(int(between.flat[0]))
+    return greys
+
+
 def _views(data):
     """Each view of a surface render, in the order of qc_surfaces.VIEWS."""
-    image = _decoded(data)
+    image = _decoded(data) if isinstance(data, bytes) else data
     count = len(qc_surfaces.VIEWS)
     gap = qc_surfaces._GAP_PIXELS  # pylint: disable = protected-access
     width = (image.shape[1] - (count - 1) * gap) // count
@@ -222,6 +257,23 @@ def test_otsu_puts_padding_below_one_value(value):
     assert ((values >= level) == np.isfinite(values)).all()
 
 
+@pytest.mark.parametrize("padding", [False, True])
+def test_otsu_is_the_same_counted_in_parts(monkeypatch, padding):
+    rng = np.random.default_rng(5)
+    values = np.concatenate(
+        [rng.normal(-800, 50, 400), rng.normal(60, 30, 600), np.full(100, np.nan)]
+    ).astype(np.float32)
+    rng.shuffle(values)
+    volume = values.reshape(11, 10, 10)
+    # pylint: disable = protected-access
+    whole = qc_surfaces._otsu(volume, padding=padding)
+    assert whole is not None
+
+    for part in (1, 7, 64):
+        monkeypatch.setattr(qc_surfaces, "_OTSU_PART", part)
+        assert qc_surfaces._otsu(volume, padding=padding) == whole
+
+
 @pytest.mark.deid_requirement("MIDI-BP-15", "MIDI-BP-17")
 @pytest.mark.pydicom
 def test_a_volume_gets_a_surface_render_after_its_projection():
@@ -254,6 +306,45 @@ def test_a_series_that_is_not_a_volume_gets_no_surface_render():
         assert [preview.kind for preview in previews.previews] == [
             PreviewKind.SERIES_CINE
         ]
+
+
+@pytest.mark.parametrize("spacing, rendered", [(2.0, True), (600.0, False)])
+@pytest.mark.pydicom
+def test_a_volume_too_large_to_render_has_only_its_cine_strip_and_is_held_beyond_it(
+    spacing, rendered
+):
+    # 20 slices of 3 by 3 pixels: 1,200 mm across at 600 mm a pixel.
+    count = 20
+    written = {
+        k: _with(
+            _image(
+                np.full((3, 3), 40),
+                number=k + 1,
+                series="2.25.7105",
+                origin=(0.0, 0.0, 2.0 * k),
+                spacing=(spacing, spacing),
+            ),
+            Modality="CT",
+        )
+        for k in range(count)
+    }
+
+    previews = qc_previews.previews_of(written, ())
+
+    kinds = [preview.kind for preview in previews.previews]
+    if rendered:
+        assert kinds == [
+            PreviewKind.SERIES_CINE,
+            PreviewKind.SERIES_MIP,
+            PreviewKind.SERIES_SURFACE,
+        ]
+        assert previews.pixels_shown == frozenset(range(count))
+    else:
+        assert kinds == [PreviewKind.SERIES_CINE]
+        (cine,) = previews.previews
+        shown = {position for position, _ in cine.frames}
+        assert len(shown) == qc_previews.CINE_FRAMES < count
+        assert previews.pixels_shown == frozenset(shown)
 
 
 @pytest.mark.deid_requirement("MIDI-BP-15")
@@ -289,6 +380,23 @@ def test_the_frontal_view_meets_the_nose_first():
 
 @pytest.mark.deid_requirement("MIDI-BP-15")
 @pytest.mark.pydicom
+def test_each_crossing_of_a_surface_is_found_in_order_from_the_viewer():
+    # Two pieces along one ray of the frontal view, the second reaching
+    # the end of the ray.
+    inside = np.zeros((1, 12, 1), bool)
+    inside[0, 2:4, 0] = True
+    inside[0, 7:, 0] = True
+    crossings = qc_surfaces.view_crossings(inside)
+    frontal = crossings[0]
+    # The ray through the voxels is the middle of 13, and its depths are
+    # one more than the voxels' indices from anterior.
+    assert frontal.shape == (4, 1, 13)
+    assert frontal[:, 0, 6].tolist() == [3, 4, 8, 12]
+    assert (np.delete(frontal, 6, axis=2) == -1).all()
+    for each, first in zip(crossings, qc_surfaces.view_depths(inside)):
+        assert (each[0] == first).all()
+
+
 def test_the_profiles_show_the_nose_on_the_side_it_faces():
     nose = _views(_surface(_axial(_body(nose=True))))
     plain = _views(_surface(_axial(_body(nose=False))))
@@ -430,29 +538,117 @@ def _hot(peak):
 
 @pytest.mark.deid_requirement("MIDI-BP-15")
 @pytest.mark.pydicom
-def test_an_rt_dose_grid_is_rendered_at_5_percent_of_its_maximum():
-    # A hot spot raises the maximum, but not past 20 times the body's dose.
+def test_an_rt_dose_grid_is_rendered_at_each_of_its_dose_levels():
+    # The body's dose, 1 Gy, is the smallest above 0, and a hot spot of
+    # 19 Gy is the greatest, so the levels above the support are 0.1, 0.2,
+    # and 0.5 of it: 1.9, 3.8, and 9.5 Gy, as 0.05 of it is below 1 Gy.
     written = {0: _dose(_hot(19000), [2.0 * k for k in range(SIDE)])}
 
     previews = qc_previews.previews_of(written, ())
 
     assert [preview.kind for preview in previews.previews] == [
         PreviewKind.SERIES_CINE,
-        PreviewKind.SERIES_SURFACE,
+        PreviewKind.SERIES_DOSE_LEVELS,
     ]
-    surface = previews.previews[1]
-    assert surface.frames == tuple((0, frame) for frame in range(SIDE))
-    assert surface.total_frames == SIDE
-    assert surface.png == _surface(_axial(_body()))
-    # Past it, only the hot spot is rendered.
-    hot = _views(_surface({0: _dose(_hot(21000), [2.0 * k for k in range(SIDE)])}))
-    assert np.count_nonzero(hot[0]) == 1
+    levels = previews.previews[1]
+    assert levels.frames == tuple((0, frame) for frame in range(SIDE))
+    assert levels.total_frames == SIDE
+    support, *higher = _levels(levels.png, 4)
+    # The support is the head, as a CT render shows it, and each level above
+    # it only the hot spot.
+    assert np.array_equal(support, _decoded(_surface(_axial(_body()))))
+    for row in higher:
+        assert np.count_nonzero(_views(row)[0]) == 1
+
+
+def test_dose_levels_run_from_the_support_to_half_the_greatest_dose():
+    levels = qc_surfaces.dose_levels(1.0, 0.001)
+    assert levels == pytest.approx((0.0, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5))
+    # No two neighbours, nor the lowest and the smallest dose, are more
+    # than 2.5 apart, however small that is.
+    for floor in (0.3, 1e-4, 3e-7, 2.0**-32):
+        above = qc_surfaces.dose_levels(1.0, floor)[1:]
+        assert above[-1] == pytest.approx(0.5)
+        assert floor < above[0] <= 2.5 * floor
+        assert all(b / a <= 2.5 + 1e-9 for a, b in zip(above, above[1:]))
+    # A uniform dose, no dose, and a greatest dose that is not finite have
+    # only the support.
+    for peak, floor in ((1.0, 1.0), (0.0, math.inf), (-1.0, math.inf)):
+        assert qc_surfaces.dose_levels(peak, floor) == (0.0,)
+    assert qc_surfaces.dose_levels(math.inf, 1.0) == (0.0,)
+    assert qc_surfaces.dose_levels(math.nan, 1.0) == (0.0,)
+
+
+def test_a_plane_is_grey_by_the_levels_its_dose_reaches():
+    levels = qc_surfaces.dose_levels(1.0, 0.001)
+    values = np.array([[0.0, 0.001, 0.003, 0.3, 1.0, np.nan]], np.float32)
+    # 9 levels: none, the support, then 0.002, then up to 0.2, then all.
+    expected = np.rint(np.array([[0, 1, 2, 8, 9, 0]]) * 255 / 9)
+    assert np.array_equal(qc_surfaces.level_bands(values, levels), expected)
+
+
+def _envelope(nose, air=0):
+    """Dose of 1 Gy in a ball in the head, 12 mGy in the rest of it, with
+    or without its nose, and ``air`` mGy outside it."""
+    k, j, i = np.indices((SIDE,) * 3)
+    core = (k - 20) ** 2 + (j - 20) ** 2 + (i - 20) ** 2 <= 36
+    return np.where(core, 1000, _body(nose=nose, inside=12, outside=air))
+
+
+@pytest.mark.pydicom
+@pytest.mark.parametrize("air", [0, 3], ids=["set-to-zero", "computed-in-air"])
+def test_a_low_dose_envelope_shows_in_a_dose_level_below_5_percent(air):
+    offsets = [2.0 * k for k in range(SIDE)]
+    renders = {
+        nose: _surface(
+            {0: _dose(_envelope(nose, air), offsets)}, PreviewKind.SERIES_DOSE_LEVELS
+        )
+        for nose in (True, False)
+    }
+    # Above the support: 0.02 Gy up where air is set to zero, else from
+    # 0.005 Gy, as the smallest dose is 0.003 Gy in air.
+    levels = qc_surfaces.dose_levels(1.0, 0.012 if air == 0 else 0.003)
+    rows = {nose: _levels(png, len(levels)) for nose, png in renders.items()}
+    changed = [
+        level
+        for level, with_nose, without in zip(levels, rows[True], rows[False])
+        if not np.array_equal(with_nose, without)
+    ]
+    # The nose, at 12 mGy, is in the support where air is set to zero, and
+    # in the levels of 5 and 10 mGy where air has 3 mGy; never in the 5%
+    # level.
+    assert changed == pytest.approx([0.0] if air == 0 else [0.005, 0.01])
+    assert any(level == pytest.approx(0.05) for level in levels)
+
+
+@pytest.mark.pydicom
+def test_a_series_of_dose_planes_is_rendered_by_each_plane_s_own_scaling():
+    grid = _hot(19000)
+    offsets = [2.0 * k for k in range(SIDE)]
+    # Odd planes store half the value at twice the scaling.
+    planes = {
+        k: _dose(
+            grid[k : k + 1] // (2 if k % 2 else 1),
+            None,
+            origin=(0.0, 0.0, 2.0 * k),
+            scaling=0.002 if k % 2 else 0.001,
+            instance=f"2.25.9101.{k + 1}",
+        )
+        for k in range(SIDE)
+    }
+    previews = qc_previews.previews_of(planes, ())
+    kinds = [preview.kind for preview in previews.previews]
+    assert PreviewKind.SERIES_DOSE_LEVELS in kinds
+    assert PreviewKind.SERIES_SURFACE not in kinds
+    assert _surface(planes, PreviewKind.SERIES_DOSE_LEVELS) == _surface(
+        {0: _dose(grid, offsets)}, PreviewKind.SERIES_DOSE_LEVELS
+    )
 
 
 @pytest.mark.pydicom
 @pytest.mark.parametrize(
     "case",
-    ["absolute offsets", "descending offsets", "no scaling", "two frames"],
+    ["absolute offsets", "descending offsets", "two frames"],
 )
 def test_an_rt_dose_grid_described_otherwise_is_rendered_alike(case):
     grid = _dose_body()
@@ -465,12 +661,11 @@ def test_an_rt_dose_grid_described_otherwise_is_rendered_alike(case):
     elif case == "descending offsets":
         grid, offsets = grid[::-1], [-offset for offset in offsets]
         kwargs["origin"] = (0.0, 0.0, TOP)
-    elif case == "no scaling":
-        kwargs["scaling"] = None
     elif case == "two frames":
         grid, offsets = grid[19:21], [0.0, 2.0]
 
-    data = _surface({0: _dose(grid, offsets, **kwargs)})
+    # A uniform dose has only its support.
+    data = _surface({0: _dose(grid, offsets, **kwargs)}, PreviewKind.SERIES_DOSE_LEVELS)
 
     if case == "two frames":
         assert _views(data)[0].shape[0] == 2 and _decoded(data).any()
@@ -482,21 +677,22 @@ def test_an_rt_dose_grid_described_otherwise_is_rendered_alike(case):
 @pytest.mark.parametrize(
     "case",
     [
-        "one frame",
         "oblique",
         "uneven offsets",
         "no offsets",
         "absolute offsets off the origin",
         "absolute offsets of a coronal grid",
+        "no scaling",
+        "zero scaling",
+        "negative scaling",
+        "signed",
     ],
 )
-def test_an_rt_dose_grid_that_cannot_be_placed_is_not_rendered(case):
+def test_an_rt_dose_grid_that_cannot_be_placed_or_levelled_is_not_rendered(case):
     grid = _dose_body()[:4]
     offsets = [0.0, 2.0, 4.0, 6.0]
     kwargs = {}
-    if case == "one frame":
-        grid, offsets = grid[:1], [0.0]
-    elif case == "oblique":
+    if case == "oblique":
         angle = math.radians(30)
         cosine, sine = round(math.cos(angle), 6), round(math.sin(angle), 6)
         kwargs["orientation"] = (cosine, sine, 0.0, -sine, cosine, 0.0)
@@ -506,15 +702,217 @@ def test_an_rt_dose_grid_that_cannot_be_placed_is_not_rendered(case):
         offsets = None
     elif case == "absolute offsets off the origin":
         offsets = [10.0, 12.0, 14.0, 16.0]
-    else:
+    elif case == "absolute offsets of a coronal grid":
         kwargs["orientation"] = CORONAL
         kwargs["origin"] = (0.0, 0.0, 10.0)
         offsets = [10.0, 12.0, 14.0, 16.0]
+    elif case == "no scaling":
+        kwargs["scaling"] = None
+    elif case == "zero scaling":
+        kwargs["scaling"] = 0.0
+    elif case == "negative scaling":
+        kwargs["scaling"] = -0.001
+    data = _dose(grid, offsets, **kwargs)
+    if case == "signed":
+        data = _with(data, PixelRepresentation=1)
 
-    previews = qc_previews.previews_of({0: _dose(grid, offsets, **kwargs)}, ())
+    # Its cine strip alone shows it, and it is listed as without dose levels.
+    assert _not_drawn(qc_previews.previews_of({0: data}, ()))
 
-    assert [preview.kind for preview in previews.previews] == [PreviewKind.SERIES_CINE]
-    assert not previews.not_previewed
+
+@pytest.mark.pydicom
+def test_a_grid_of_no_dose_has_only_its_empty_support():
+    data = _surface(
+        {0: _dose(np.zeros((4, SIDE, SIDE)), [0.0, 2.0, 4.0, 6.0])},
+        PreviewKind.SERIES_DOSE_LEVELS,
+    )
+    (support,) = _levels(data, 1)
+    # Its four frames are its height, from superior.
+    assert support.shape[0] == 4 and not support.any()
+
+
+@pytest.mark.pydicom
+def test_a_lone_dose_plane_is_mapped_by_its_dose_levels():
+    plane = _hot(19000)[20:21]
+    previews = qc_previews.previews_of({0: _dose(plane, [0.0])}, ())
+    assert [preview.kind for preview in previews.previews] == [
+        PreviewKind.SERIES_CINE,
+        PreviewKind.SERIES_DOSE_LEVELS,
+    ]
+    mapped = previews.previews[1]
+    assert mapped.frames == ((0, 0),) and mapped.total_frames == 1
+    values = plane[0].astype(np.float32) * np.float32(0.001)
+    expected = qc_surfaces.level_bands(values, qc_surfaces.dose_levels(19.0, 1.0))
+    assert np.array_equal(_decoded(mapped.png), expected)
+
+
+def _lone_slices():
+    """Four single-slice RT Dose instances of one series at one position, so
+    in no volume; the third's scaling loses its dose, so it is not mapped."""
+    grid = _hot(19000)
+    return {
+        k: _dose(
+            grid[18 + k : 19 + k],
+            [0.0],
+            scaling=1e-46 if k == 2 else 0.001 * (k + 1),
+            instance=f"2.25.9101.{k + 1}",
+        )
+        for k in range(4)
+    }
+
+
+@pytest.mark.pydicom
+def test_each_lone_dose_slice_of_a_series_is_mapped_in_order_after_its_cine_strip():
+    previews = qc_previews.previews_of(_lone_slices(), ())
+    assert [preview.kind for preview in previews.previews] == [
+        PreviewKind.SERIES_CINE,
+        *[PreviewKind.SERIES_DOSE_LEVELS] * 3,
+    ]
+    grid = _hot(19000)
+    for k, mapped in zip((0, 1, 3), previews.previews[1:]):
+        assert mapped.frames == ((k, 0),) and mapped.total_frames == 1
+        values = grid[18 + k].astype(np.float32) * np.float32(0.001 * (k + 1))
+        finite = values[values > 0]
+        levels = qc_surfaces.dose_levels(float(values.max()), float(finite.min()))
+        expected = qc_surfaces.level_bands(values, levels)
+        assert np.array_equal(_decoded(mapped.png), expected)
+    assert previews.not_previewed == (
+        NotPreviewedEntry(2, NotPreviewedReason.DOSE_LEVELS_NOT_SHOWN),
+    )
+
+
+@pytest.mark.pydicom
+def test_a_lone_dose_slice_s_pixels_are_released_once_it_is_mapped(monkeypatch):
+    # pylint: disable = protected-access
+    decode = qc_previews._Decoder.frame
+    draw = qc_previews._level_map
+    mapped = []
+    held_decoding = []
+    held_mapping = []
+
+    def decoded(self, instance, index):
+        held_decoding.append(sum(earlier() is not None for earlier in mapped))
+        return decode(self, instance, index)
+
+    def recorded(instance, pixels):
+        held_mapping.append(sum(earlier() is not None for earlier in mapped))
+        mapped.append(weakref.ref(pixels))
+        return draw(instance, pixels)
+
+    monkeypatch.setattr(qc_previews._Decoder, "frame", decoded)
+    monkeypatch.setattr(qc_previews, "_level_map", recorded)
+    with_recording = qc_previews.previews_of(_lone_slices(), ())
+    monkeypatch.undo()
+
+    # No earlier slice's decoded pixels are held when the next is decoded
+    # or mapped, and the previews are those drawn without the recording.
+    assert held_decoding == held_mapping == [0, 0, 0, 0]
+    assert with_recording == qc_previews.previews_of(_lone_slices(), ())
+
+
+def _sheet_rows(data):
+    """Each row of a dose-levels render whose rows are all of the grid's
+    height, as an image."""
+    gap = qc_surfaces._GAP_PIXELS  # pylint: disable = protected-access
+    return _levels(data, (_decoded(data).shape[0] + gap) // (SIDE + gap))
+
+
+@pytest.mark.pydicom
+def test_a_lower_dose_enclosed_by_a_higher_one_shows_in_rows_of_hidden_surfaces():
+    # The head, with or without its nose, at 12 mGy, inside 1 Gy all around
+    # it. Each level above 12 mGy is a box with the head as its cavity, so
+    # every ray of every view meets the box first, and the head shows only
+    # in the rows of the surfaces that the box hides.
+    offsets = [2.0 * k for k in range(SIDE)]
+    rows = {
+        nose: _sheet_rows(
+            _surface(
+                {0: _dose(_body(nose=nose, inside=12, outside=1000), offsets)},
+                PreviewKind.SERIES_DOSE_LEVELS,
+            )
+        )
+        for nose in (True, False)
+    }
+    levels = qc_surfaces.dose_levels(1.0, 0.012)
+    assert len(rows[True]) > len(levels)
+    # The support, the whole box, hides nothing, and is the same either way.
+    assert np.array_equal(rows[True][0], rows[False][0])
+    assert any(
+        not np.array_equal(with_nose, without)
+        for with_nose, without in zip(rows[True][1:], rows[False][1:])
+    )
+
+
+def test_hidden_rows_show_a_cavity_and_each_further_crossing():
+    k, j, i = np.indices((SIDE,) * 3)
+    distance = (k - 20) ** 2 + (j - 20) ** 2 + (i - 20) ** 2
+    ball, cavity = distance <= 225, distance <= 64
+    assert not qc_surfaces.hidden_rows(ball)
+    rows = qc_surfaces.hidden_rows(ball & ~cavity)
+    # Its cavity, then where rays through it leave the shell, enter the
+    # cavity's far side, and leave the shell again.
+    assert len(rows) == 4
+    assert np.array_equal(rows[0], qc_surfaces.side_by_side(qc_surfaces.views(cavity)))
+    # In the frontal view, every ray through the shell leaves it, and only
+    # those through the cavity enter it again.
+    assert np.array_equal(
+        _views(rows[1])[0] > 0,
+        _views(qc_surfaces.side_by_side(qc_surfaces.views(ball)))[0] > 0,
+    )
+    assert np.array_equal(_views(rows[2])[0] > 0, _views(rows[0])[0] > 0)
+    # The oblique views are black in the rows of crossings.
+    for row in rows[1:]:
+        assert not _views(row)[45].any() and not _views(row)[-45].any()
+
+
+@pytest.mark.pydicom
+@pytest.mark.parametrize("scaling", [1e-46, 1e-42, 1e39])
+@pytest.mark.parametrize("shape", ["grid", "plane"])
+def test_a_dose_that_its_scaling_would_lose_is_not_shown(shape, scaling):
+    # Float32 takes the scaled dose to 0, below a normal float32, or to
+    # infinity, so no level would show what it holds.
+    grid = _hot(19000)
+    data = (
+        _dose(grid[18:22], [0.0, 2.0, 4.0, 6.0], scaling=scaling)
+        if shape == "grid"
+        else _dose(grid[20:21], [0.0], scaling=scaling)
+    )
+
+    assert _not_drawn(qc_previews.previews_of({0: data}, ()))
+
+
+@pytest.mark.pydicom
+def test_a_scaling_that_float32_holds_or_a_grid_of_no_dose_is_shown():
+    offsets = [2.0 * k for k in range(SIDE)]
+    # Levels are fractions of the greatest dose, so a scaling far from 1
+    # that float32 holds draws the same sheet.
+    assert _surface(
+        {0: _dose(_hot(19000), offsets, scaling=1e-30)},
+        PreviewKind.SERIES_DOSE_LEVELS,
+    ) == _surface({0: _dose(_hot(19000), offsets)}, PreviewKind.SERIES_DOSE_LEVELS)
+    # A grid of no dose loses none at any scaling.
+    (support,) = _levels(
+        _surface(
+            {0: _dose(np.zeros((4, SIDE, SIDE)), [0.0, 2.0, 4.0, 6.0], scaling=1e-46)},
+            PreviewKind.SERIES_DOSE_LEVELS,
+        ),
+        1,
+    )
+    assert not support.any()
+
+
+@pytest.mark.pydicom
+def test_a_dose_sheet_taller_than_its_bound_is_not_shown(monkeypatch):
+    # Four rows of the grid's 40 voxels, with three gaps between them.
+    written = {0: _dose(_hot(19000), [2.0 * k for k in range(SIDE)])}
+    gap = qc_surfaces._GAP_PIXELS  # pylint: disable = protected-access
+    height = 4 * SIDE + 3 * gap
+    monkeypatch.setattr(qc_surfaces, "MAXIMUM_DOSE_SHEET_PIXELS", height)
+    assert _decoded(_surface(written, PreviewKind.SERIES_DOSE_LEVELS)).shape[0] == (
+        height
+    )
+    monkeypatch.setattr(qc_surfaces, "MAXIMUM_DOSE_SHEET_PIXELS", height - 1)
+    assert _not_drawn(qc_previews.previews_of(written, ()))
 
 
 @pytest.mark.pydicom
@@ -542,7 +940,7 @@ def test_the_same_files_give_the_same_render():
     assert _surface(_axial(_body(ear=True))) == _surface(_axial(_body(ear=True)))
 
 
-def test_a_long_volume_is_sampled_to_at_most_the_maximum_voxels():
+def test_a_long_volume_is_sampled_at_2_mm():
     directions = (np.array([0, 0, 1.0]), np.array([0, 1.0, 0]), np.array([1.0, 0, 0]))
     surface = qc_surfaces.Surface(
         qc_surfaces.grid(
@@ -558,11 +956,120 @@ def test_a_long_volume_is_sampled_to_at_most_the_maximum_voxels():
 
     mask = surface.mask()
 
-    assert mask is not None
-    assert max(mask.shape) == qc_surfaces.MAXIMUM_VOXELS
+    # 1,000 mm along z, 299.5 mm along y, and 1.5 mm along x, at 2 mm, where
+    # 256 voxels a side would have sampled it at about 3.9 mm.
+    assert mask is not None and mask.shape == (501, 150, 1)
     assert mask.all()
     image = surface.image()
     assert image is not None and image.dtype == np.uint8
+    assert image.shape[0] == 501
+
+
+def _box_grid(extents, threshold=qc_surfaces.Threshold.CT):
+    """An axial grid of two slices, rows, and columns, whose extents along
+    x, y, and z are as given."""
+    x, y, z = extents
+    directions = (np.array([0, 0, 1.0]), np.array([0, 1.0, 0]), np.array([1.0, 0, 0]))
+    return qc_surfaces.grid(directions, [0.0, z], (y, x), (2, 2), threshold)
+
+
+@pytest.mark.parametrize(
+    "extents, rendered",
+    [
+        ((qc_surfaces.WIDEST, qc_surfaces.WIDEST, qc_surfaces.LONGEST), True),
+        ((qc_surfaces.WIDEST + 0.5, 10.0, 10.0), False),
+        ((10.0, qc_surfaces.WIDEST + 0.5, 10.0), False),
+        ((10.0, 10.0, qc_surfaces.LONGEST + 0.5), False),
+    ],
+    ids=["at-the-bounds", "wide-across", "deep-front-to-back", "long"],
+)
+@pytest.mark.parametrize(
+    "threshold", [qc_surfaces.Threshold.CT, qc_surfaces.Threshold.DOSE]
+)
+def test_a_volume_too_long_or_too_wide_is_not_rendered(extents, rendered, threshold):
+    surface = qc_surfaces.Surface(_box_grid(extents, threshold))
+    for _ in range(2):
+        surface.add(np.ones((2, 2), np.float32))
+
+    assert (surface.mask() is not None) is rendered
+    assert (surface.image() is not None) is rendered
+    if not rendered:
+        # Nothing of it is sampled, however large it is.
+        assert not surface._samples.size  # pylint: disable = protected-access
+
+
+@pytest.mark.deid_requirement("MIDI-BP-15")
+@pytest.mark.pydicom
+def test_the_view_from_behind_shows_the_patients_left_on_the_viewers_left():
+    ear = _views(_surface(_axial(_body(nose=False, ear=True))))
+    plain = _views(_surface(_axial(_body(nose=False))))
+    middle = ear[0].shape[1] // 2
+
+    # The head and its ear are symmetric from front to back, so from behind
+    # they are seen as from the front, mirrored.
+    assert (ear[180] == ear[0][:, ::-1]).all()
+    _, columns = _changed(ear[180], plain[180])
+    assert max(columns) < middle - 5
+    # The nose, in front, is hidden from behind.
+    nose = _views(_surface(_axial(_body(nose=True))))
+    assert (nose[180] == plain[180]).all()
+
+
+def test_only_the_view_from_behind_and_the_profiles_show_a_bump_on_the_back():
+    inside = np.zeros((9, 21, 21), bool)
+    inside[:, 5:16, 5:16] = True
+    bumped = inside.copy()
+    # Rows run towards posterior.
+    bumped[3:6, 16:18, 9:12] = True
+
+    changed = {
+        view: not (plain == bump).all()
+        for view, plain, bump in zip(
+            qc_surfaces.VIEWS, qc_surfaces.views(inside), qc_surfaces.views(bumped)
+        )
+    }
+
+    assert changed == {0: False, 45: False, -45: False, 90: True, -90: True, 180: True}
+
+
+def test_views_and_crossings_are_the_same_however_many_slices_are_rendered_at_once(
+    monkeypatch,
+):
+    rng = np.random.default_rng(3)
+    inside = rng.random((10, 15, 13)) < 0.4
+    views = qc_surfaces.views(inside)
+    crossings = qc_surfaces.view_crossings(inside)
+
+    for count in (1, 3, 10**6):
+        monkeypatch.setattr(qc_surfaces, "_SLICES_AT_A_TIME", count)
+        assert all((a == b).all() for a, b in zip(qc_surfaces.views(inside), views))
+        again = qc_surfaces.view_crossings(inside)
+        assert all(
+            a.dtype == np.int16 and a.shape == b.shape and (a == b).all()
+            for a, b in zip(again, crossings)
+        )
+
+
+def test_hidden_rows_that_would_not_fit_are_not_drawn_nor_their_crossings_found(
+    monkeypatch,
+):
+    # Ten nested square rings in a slice, so a ray crosses 20 times.
+    inside = np.zeros((3, 44, 44), bool)
+    for ring in range(10):
+        inside[1, 2 * ring : 44 - 2 * ring, 2 * ring : 44 - 2 * ring] = ring % 2 == 0
+    gap = qc_surfaces._GAP_PIXELS  # pylint: disable = protected-access
+    # A row for each crossing after the first, as the room counts them.
+    needed = 19 * (len(inside) + gap)
+    rows = qc_surfaces.hidden_rows(inside, room=needed)
+    # And a row of its cavities, which the room does not count.
+    assert rows is not None and len(rows) == 1 + 19
+
+    def found(*_):
+        raise AssertionError("crossings found")
+
+    monkeypatch.setattr(qc_surfaces, "_crossings", found)
+    monkeypatch.setattr(qc_surfaces, "views", found)
+    assert qc_surfaces.hidden_rows(inside, room=needed - 1) is None
 
 
 def test_a_render_needs_every_slice():
@@ -575,3 +1082,101 @@ def test_a_render_needs_every_slice():
     surface.add(np.zeros((3, 3), np.float32))
 
     assert surface.mask() is None and surface.image() is None
+
+
+@pytest.mark.pydicom
+def test_a_dose_sheet_separates_its_levels_by_grey_and_a_level_s_rows_by_black():
+    # Each level above 12 mGy hides the head behind a box, so has rows of
+    # hidden surfaces after its own.
+    offsets = [2.0 * k for k in range(SIDE)]
+    image = _decoded(
+        _surface(
+            {0: _dose(_body(inside=12, outside=1000), offsets)},
+            PreviewKind.SERIES_DOSE_LEVELS,
+        )
+    )
+    gap = qc_surfaces._GAP_PIXELS  # pylint: disable = protected-access
+    rows = (image.shape[0] + gap) // (SIDE + gap)
+    greys = _gaps(image, rows)
+    levels = qc_surfaces.dose_levels(1.0, 0.012)
+    assert greys.count(qc_surfaces.LEVEL_RULE) == len(levels) - 1
+    assert greys.count(0) == rows - len(levels) > 0
+    # The support, the whole box, hides nothing, so the next level follows
+    # it at once; each level above has its hidden rows after its own.
+    assert greys[0] == qc_surfaces.LEVEL_RULE and greys[1] == 0
+
+
+def _not_drawn(previews, position=0):
+    """Whether an RT Dose is shown only by its cine strip, and listed as not
+    previewed for its dose levels."""
+    return (
+        [preview.kind for preview in previews.previews] == [PreviewKind.SERIES_CINE]
+        and previews.not_previewed
+        == (NotPreviewedEntry(position, NotPreviewedReason.DOSE_LEVELS_NOT_SHOWN),)
+        and position not in previews.pixels_shown
+    )
+
+
+@pytest.mark.pydicom
+@pytest.mark.parametrize("shape", ["grid", "plane"])
+def test_a_dose_of_more_levels_than_its_bound_is_not_drawn(monkeypatch, shape):
+    # The hot head's levels are its support and 1.9, 3.8, and 9.5 Gy.
+    grid = _hot(19000)
+    written = {
+        0: _dose(grid, [2.0 * k for k in range(SIDE)])
+        if shape == "grid"
+        else _dose(grid[20:21], [0.0])
+    }
+    monkeypatch.setattr(qc_surfaces, "MAXIMUM_DOSE_LEVELS", 4)
+    assert PreviewKind.SERIES_DOSE_LEVELS in [
+        preview.kind for preview in qc_previews.previews_of(written, ()).previews
+    ]
+    monkeypatch.setattr(qc_surfaces, "MAXIMUM_DOSE_LEVELS", 3)
+
+    def drawn(*_):
+        raise AssertionError("a level drawn")
+
+    monkeypatch.setattr(qc_surfaces.Surface, "mask", drawn)
+    monkeypatch.setattr(qc_surfaces, "level_bands", drawn)
+    assert _not_drawn(qc_previews.previews_of(written, ()))
+
+
+@pytest.mark.pydicom
+def test_dose_planes_whose_scalings_span_many_decades_are_not_drawn():
+    # Half the planes store their dose at a scaling 10**-20 of the others',
+    # so the levels run down 20 decades more than either half's.
+    grid = _hot(19000)
+    planes = {
+        k: _dose(
+            grid[k : k + 1],
+            None,
+            origin=(0.0, 0.0, 2.0 * k),
+            scaling=1e-23 if k % 2 else 0.001,
+            instance=f"2.25.9101.{k + 1}",
+        )
+        for k in range(SIDE)
+    }
+    previews = qc_previews.previews_of(planes, ())
+    assert PreviewKind.SERIES_DOSE_LEVELS not in [
+        preview.kind for preview in previews.previews
+    ]
+    assert previews.not_previewed == tuple(
+        NotPreviewedEntry(k, NotPreviewedReason.DOSE_LEVELS_NOT_SHOWN)
+        for k in range(SIDE)
+    )
+
+
+@pytest.mark.pydicom
+def test_a_dose_whose_levels_are_not_drawn_keeps_its_other_previews(monkeypatch):
+    monkeypatch.setattr(qc_surfaces, "MAXIMUM_DOSE_LEVELS", 3)
+    written = {0: _dose(_hot(19000), [2.0 * k for k in range(SIDE)])}
+    previews = qc_previews.previews_of(written, (0,))
+    # Its frames are decoded for its high-risk preview too, after its dose
+    # levels are refused.
+    assert [preview.kind for preview in previews.previews] == [
+        PreviewKind.SERIES_CINE,
+        PreviewKind.INSTANCE,
+    ]
+    assert previews.not_previewed == (
+        NotPreviewedEntry(0, NotPreviewedReason.DOSE_LEVELS_NOT_SHOWN),
+    )

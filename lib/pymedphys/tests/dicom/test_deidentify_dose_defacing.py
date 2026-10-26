@@ -102,13 +102,13 @@ def _expected(dataset: pydicom.Dataset) -> np.ndarray:
     return _BLOCK.contains(points) & ~_expected_kept(points)
 
 
-def test_relative_frame_offsets_set_the_block_less_the_kept_cavity_to_zero():
+def test_relative_frame_offsets_set_the_block_less_the_kept_brain_to_zero():
     dataset = _dataset()
 
     masks, defacer = _masks(dataset)
 
     assert np.array_equal(masks, _expected(dataset))
-    # The kept cavity is in the frames at 20 and 30 mm, which the block
+    # The kept brain is in the frames at 20 and 30 mm, which the block
     # otherwise covers, so it is set to zero around it only.
     assert (
         masks.any()
@@ -229,7 +229,7 @@ def _stored(in_block: int, elsewhere: int = 100, kept: int | None = None):
         (round(DOSE_FRACTION * 100), None, None),
         (round(DOSE_FRACTION * 100) + 1, None, VisualFeaturesReason.DOSE_IN_FACE_BLOCK),
         (0, None, None),
-        # Dose in the kept cavity is not set to zero, so does not count.
+        # Dose in the kept brain is not set to zero, so does not count.
         (1, 100, None),
     ],
 )

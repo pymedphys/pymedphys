@@ -41,9 +41,14 @@ each instance it may process. It joins the engine's per-instance steps:
    :func:`~pymedphys._dicom.deidentify.cleaners.apply_cleaners`, then, under
    Clean Descriptors,
    :func:`~pymedphys._dicom.deidentify.descriptor_cleaning.clean_descriptors`,
-   settle the attributes that the policy gives C, and under Clean Pixel Data,
+   settle the attributes that the policy gives C, under ``tps-import``,
+   :func:`~pymedphys._dicom.deidentify.birth_dates.with_birth_date` gives
+   Patient's Birth Date the subject's synthetic birth date, and under Clean
+   Pixel Data,
    :func:`~pymedphys._dicom.deidentify.pixel_cleaning.black_out` blacks out
-   the text found in native Pixel Data (D-037), or, where a reviewer's
+   the text found in Pixel Data and the regions of any reviewed region rule
+   that matches the instance (D-037), writing compressed Pixel Data
+   uncompressed, as decoded, or, where a reviewer's
    verdict on its source file is given,
    :func:`~pymedphys._dicom.deidentify.pixel_cleaning.black_out_reviewed`
    the regions that the reviewer approved, and under Clean Recognizable
@@ -88,7 +93,7 @@ file's subject, sequestered instances included, and asks
 :func:`~.release_gate.release_condition` about the written file (D-027).
 Where the edits sequester an instance, the values that they did not reach
 are uncollected. An instance out of scope whose IOD the pinned tables
-define, such as a nuclear medicine image or a spatial registration, is
+define, such as a nuclear medicine image or an ultrasound image, is
 planned and edited too when its source is readable, only so that its values
 are collected for its subject's search; it is never written. Where an
 instance of the subject gives no coverage at all, because its source is
@@ -113,11 +118,13 @@ import dataclasses
 import hashlib
 from collections.abc import Callable, Iterable, Mapping
 from pathlib import PurePosixPath
+from typing import TypeAlias
 
 from pymedphys._imports import pydicom
 
 from . import output_names
-from .clean_graphics import overlay_in_pixel_data
+from .birth_dates import BIRTH_DATE_PRESET, BirthDates, with_birth_date
+from .clean_graphics import CLEAN_GRAPHICS, overlay_in_pixel_data
 from .content_items import content_item_actions
 from .cleaners import apply_cleaners, cleaners_for
 from .descriptor_cleaning import (
@@ -145,6 +152,8 @@ from .face_review import (
     FaceReview,
     carries_visual_features,
     contour_data_sha256,
+    holds_deformation_grid,
+    is_rt_dose,
     pixel_data_sha256,
 )
 from .file_layout import ElementPath
@@ -161,16 +170,20 @@ from .policy import (
     select_policy,
 )
 from .preservation import Expectations, PreservationFailed, verify_preservation
+from .profiles import ProfileError, ProfileStore
 from .preserving_writer import WriteRefused, write_data_set, write_file_bytes
 from .qc_pack import DropReason
 from .qc_retained import retained_paths, retained_text
 from .reasons import (
+    HeldDescriptor,
     HeldPixelData,
     HeldVisualFeatures,
     TransformReason,
     VisualFeaturesReason,
 )
-from .redaction_review import RedactionReview
+from .pixel_region_rules import PixelRegionRules
+from .redaction_review import RedactionReview, Regions
+from .readiness import ReadinessReview
 from .reference_graph import ReferenceGraph
 from .references import InstanceRecord
 from .reviewed_roi_names import ReviewQueue
@@ -191,13 +204,17 @@ from .codestreams import CodestreamRefused, without_metadata
 from .pixel_decoding import frames_problem, same_pixels
 from .pixel_cleaning import (
     PixelDataRefused,
+    PixelsNotReviewed,
     Redaction,
     TextFinder,
     black_out,
+    as_received,
     black_out_reviewed,
     finder_description,
+    overlay_planes,
     redaction_problem,
 )
+from .defacing import FaceBlock
 from .dose_defacing import RT_DOSE, DoseBlock, RtDoseDefacer, find_dose_blocks
 from .face_blocks import (
     CT_IMAGE,
@@ -212,13 +229,18 @@ from .face_blocks import (
     find_face_blocks,
     frames_of,
 )
-from .pixel_risk import assess_pixel_risk, series_evidence
+from .pixel_risk import (
+    assess_pixel_risk,
+    overlay_groups_without_data,
+    series_evidence,
+)
 from .region_defacing import (
     ContoursRefused,
     PetDefacer,
     WrittenContour,
     cut_contours,
 )
+from .segmentation_defacing import SEGMENTATION, SegmentationDefacer
 from .run_qc import (
     Dropped,
     PixelRiskMaterial,
@@ -226,6 +248,7 @@ from .run_qc import (
     SearchMaterial,
     SeriesEvidence,
 )
+from .release_report import PUBLIC_RELEASE
 from .run_report import ReleaseReporter
 from .scope import Classification, classify
 from .source import SourceEvidence, SourceRefused, read_source
@@ -246,6 +269,16 @@ _STUDY = ElementPath((), "(0020,000D)")
 _SERIES = ElementPath((), "(0020,000E)")
 _PATIENT_ID = ElementPath((), "(0010,0020)")
 _PIXEL_DATA = ElementPath((), "(7FE0,0010)")
+_NUMBER_OF_FRAMES = ElementPath((), "(0028,0008)")
+_PHOTOMETRIC_INTERPRETATION = ElementPath((), "(0028,0004)")
+_PLANAR_CONFIGURATION = ElementPath((), "(0028,0006)")
+# What describes only encapsulated Pixel Data: Extended Offset Table, its
+# lengths, and Encapsulated Pixel Data Value Total Length.
+_ENCAPSULATION = (
+    ElementPath((), "(7FE0,0001)"),
+    ElementPath((), "(7FE0,0002)"),
+    ElementPath((), "(7FE0,0003)"),
+)
 _BURNED_IN_ANNOTATION = "(0028,0301)"
 _RECOGNIZABLE_VISUAL_FEATURES = "(0028,0302)"
 _ROI_CONTOURS = "(3006,0039)"  # ROI Contour Sequence
@@ -255,6 +288,31 @@ _HELD_SERIES = {
     SeriesProblem.TARGET_IN_BLOCK: VisualFeaturesReason.TARGET_IN_FACE_BLOCK,
     SeriesProblem.EYES_DISAGREE: VisualFeaturesReason.EYES_DISAGREE_WITH_ROIS,
 }
+# Makes the defacer of a PET image or Segmentation from its data set.
+_RegionDefacing: TypeAlias = (
+    "Callable[[pydicom.Dataset], PetDefacer | SegmentationDefacer]"
+)
+
+
+def _region_defacing(iod: IOD, region: DoseBlock | None) -> _RegionDefacing | None:
+    """Return what makes the defacer of a PET image or Segmentation in the
+    block of its frame, ``region``, or None for any other instance, or one
+    without a block."""
+    if region is None:
+        return None
+    if iod.name == PET_IMAGE:
+        return lambda dataset: PetDefacer(region, dataset)
+    if iod.name == SEGMENTATION:
+        return lambda dataset: SegmentationDefacer(region, dataset)
+    return None
+
+
+def _unshown_segments(iod: IOD, redaction: Redaction | None) -> bool:
+    """Whether a Segmentation's segments reach the face block, so that it
+    is held without a verdict, since the QC pack does not yet show
+    segments: one that its defacer gave a mask, which it gives only for
+    pixels in a segment where defacing writes air."""
+    return iod.name == SEGMENTATION and redaction is not None and bool(redaction.masks)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -282,6 +340,10 @@ class WriterPlan:
         which the writer writes from the sequence. The source elements
         inside such a sequence are all in ``removed``, for the writer;
         verification expects those at an introduced path to be changed.
+    transfer_syntax : str or None
+        The transfer syntax written where it is not the source's: Explicit
+        VR Little Endian, where Clean Pixel Data writes compressed Pixel
+        Data uncompressed (D-037); None otherwise.
     """
 
     kept: frozenset[ElementPath]
@@ -290,6 +352,7 @@ class WriterPlan:
         repr=False
     )
     introduced: frozenset[ElementPath] = frozenset()
+    transfer_syntax: str | None = None
 
     @property
     def expectations(self) -> Expectations:
@@ -298,6 +361,7 @@ class WriterPlan:
             kept=self.kept,
             changed=frozenset(self.replacements) | self.introduced,
             removed=self.removed - self.introduced,
+            transfer_syntax=self.transfer_syntax,
         )
 
 
@@ -354,21 +418,25 @@ def dropped_of(
 class HeldEvidence:
     """The evidence of an instance that review holds.
 
-    Descriptor cleaning holds an instance with a ROI Name held for review, a
-    pixel option one whose pixel data await review, and the face review one
-    that can show a face without a verdict of absent for its source file.
+    Descriptor cleaning holds an instance with a ROI Name, or a value of
+    another option's attribute, such as Allergies under Retain Patient
+    Characteristics (D-038), held for review, a pixel option one whose pixel
+    data await review, and the face review one that can show a face without
+    a verdict of absent for its source file.
 
     Attributes
     ----------
     coverage : Coverage
         Its residual search's coverage, pooled with its subject's as any.
-    held : tuple of HeldRoiName, HeldPixelData, or HeldVisualFeatures
-        Each ROI Name held, by path and reason, then why its visual features
-        hold it, if they do, and why a pixel option holds it, if one does.
+    held : tuple of HeldRoiName, HeldDescriptor, HeldPixelData, or HeldVisualFeatures
+        Each ROI Name held, by path and reason, then each value of another
+        option's attribute held, by element and reason, then why its visual
+        features hold it, if they do, and why a pixel option holds it, if
+        one does.
     """
 
     coverage: Coverage
-    held: tuple[HeldRoiName | HeldPixelData | HeldVisualFeatures, ...]
+    held: tuple[HeldRoiName | HeldDescriptor | HeldPixelData | HeldVisualFeatures, ...]
 
 
 def omissions_of(
@@ -510,7 +578,10 @@ def writer_plan(
                     _paths_within(replacements[edit.path], edit.path.items)
                 )
     return WriterPlan(
-        frozenset(kept), frozenset(removed), replacements, frozenset(introduced)
+        frozenset(kept),
+        frozenset(removed),
+        replacements,
+        frozenset(introduced),
     )
 
 
@@ -599,7 +670,11 @@ def with_markers(
         replacements[path] = element
         introduced |= set(_paths_within(element, ()))
     return WriterPlan(
-        frozenset(kept), frozenset(removed), replacements, frozenset(introduced)
+        frozenset(kept),
+        frozenset(removed),
+        replacements,
+        frozenset(introduced),
+        writing.transfer_syntax,
     )
 
 
@@ -742,11 +817,37 @@ class InstanceTransform:
         :func:`~pymedphys._dicom.deidentify.redaction_review.read_redaction_review`,
         which only a policy selecting Clean Pixel Data takes; without one,
         no instance with Pixel Data satisfies that option.
+    pixel_region_rules : PixelRegionRules, optional
+        The reviewed region rules whose regions Clean Pixel Data blacks out
+        beside the finder's, in every frame of each instance whose key a
+        rule has
+        (:class:`~pymedphys._dicom.deidentify.pixel_region_rules.PixelRegionRules`),
+        which only a policy selecting Clean Pixel Data takes. The transform
+        applies the rules as they stand when it is made, the version whose
+        keyed digest its markers and release report record; a rule recorded
+        later does not apply.
     safe_private_list : SafePrivateList, optional
         Under the Retain Safe Private Option, the list whose rules settle
         private attributes: the reviewed rules, the default, or TCIA's
         Private Tag Dictionary. The method digest, the release report, and
         the conformance statement record which.
+    profiles : ProfileStore, optional
+        The subject profiles of ``key``, from which Modified Dates reads
+        each subject's date offset, recording a new subject's (D-004), and
+        ``tps-import`` each subject's synthetic birth date (D-008). By
+        default, an ephemeral store, for the run only, which gives the
+        offsets that ``key`` derives. A store opened from a file is a
+        project key's: the release report and conformance statement then
+        say that the run's generated values agree with every other run
+        under that key, and the caller saves the store once the run's
+        release is published.
+    readiness_review : ReadinessReview, optional
+        Under the ``public-release`` preset, the review of an earlier run of
+        the same files, from
+        :func:`~pymedphys._dicom.deidentify.readiness.read_readiness_review`,
+        from which the release report says whether the run is ready for
+        release (D-017). It changes nothing that the run writes. No other
+        policy takes one.
     unvalidated_policy : bool, default False
         Allow a policy that is not enabled, such as a preset whose behaviour
         is not yet validated. For tests and validation runs only; nothing
@@ -754,16 +855,19 @@ class InstanceTransform:
 
     Raises
     ------
+    ProfileError
+        If ``profiles`` belongs to another key than ``key``.
     PolicyError
         If the policy is not enabled and ``unvalidated_policy`` is not set;
         if ``cleaning`` is given without Clean Descriptors, or left out with
         it; if ``finder`` is given without Clean Pixel Data, or left out with
         it; if ``face_review`` is given without Clean Recognizable Visual
-        Features, or left out with it; if ``redaction_review`` is given
-        without Clean Pixel Data; if ``safe_private_list`` chooses TCIA's
-        dictionary without the Retain Safe Private Option; or if the
-        policy's other options cannot be composed into the policy whose
-        actions descriptors take where they are not cleaned.
+        Features, or left out with it; if ``redaction_review`` or
+        ``pixel_region_rules`` is given without Clean Pixel Data; if
+        ``readiness_review`` is given with a
+        policy other than the ``public-release`` preset; if
+        ``safe_private_list`` chooses TCIA's dictionary without the Retain
+        Safe Private Option.
     TypeError
         If ``finder`` does not describe its method as a mapping that is not
         empty, or its description has a type that the method digest does not
@@ -777,6 +881,9 @@ class InstanceTransform:
     reporter : ~pymedphys._dicom.deidentify.run_report.ReleaseReporter
         The release report of a run with this transform, under its policy
         and vocabulary, for :func:`~pymedphys._dicom.deidentify.run.run`.
+    profiles : ProfileStore
+        The subject profiles that the transform reads date offsets from and
+        records new subjects in.
 
     Notes
     -----
@@ -784,6 +891,15 @@ class InstanceTransform:
     as the run's first pass records it (``InstanceRecord.patient``). An
     instance without one has no pseudonyms, so its Patient's Name and
     Patient ID edits stay pending and it is sequestered.
+
+    Under ``tps-import``, :meth:`prepare` chooses each subject's synthetic
+    birth date from the run's instances, or reads it back from the
+    subject's profile (:class:`~.birth_dates.BirthDates`), and Patient's
+    Birth Date takes it at the top level of the data set
+    (:func:`~.birth_dates.with_birth_date`). Every instance of a subject
+    whose instances contradict the reference study that its profile records
+    is sequestered
+    (:attr:`~.reasons.TransformReason.BIRTH_DATE_CONFLICT`).
 
     The cleaners of the options that the policy selects
     (:func:`~.cleaners.cleaners_for`) settle the attributes given C that they
@@ -794,8 +910,13 @@ class InstanceTransform:
     review is written with that name empty, and its evidence is a
     :class:`HeldEvidence`, which :class:`ReleaseGate` holds for review. The
     markers claim Clean Descriptors only for an instance that satisfies it.
-    Under Clean Graphics, an instance whose overlay may lie in Pixel Data is
-    sequestered (:func:`~.clean_graphics.overlay_in_pixel_data`). Under Clean
+    Under Clean Graphics or Clean Pixel Data, the bit plane of each overlay
+    that an overlay group without Overlay Data places above High Bit in
+    native Pixel Data (:func:`~.pixel_cleaning.overlay_planes`) is cleared,
+    in the same write as the option's regions and masks, and checked as a
+    redaction is, and the overlay's group is removed; under Clean Graphics,
+    an instance whose overlay cannot be so cleared is sequestered
+    (:func:`~.clean_graphics.overlay_in_pixel_data`). Under Clean
     Structured Content, the plan keeps each content-item sequence that it
     can and gives the values of its content items the actions of their
     concept names (:func:`~.content_items.content_item_actions`, D-047), as
@@ -803,18 +924,24 @@ class InstanceTransform:
 
     Under Clean Pixel Data, :func:`~.pixel_cleaning.black_out` blacks out the
     regions of text that ``finder`` finds in each frame of the instance's
-    top-level native Pixel Data, :func:`~.pixel_cleaning.redaction_problem`
-    checks the file written, and the instance's evidence is a
+    top-level Pixel Data, and the regions of a reviewed region rule whose
+    key is the instance's, decoded first where it is compressed and then
+    written uncompressed, in Explicit VR Little Endian, whether or not a
+    region is blacked out, :func:`~.pixel_cleaning.redaction_problem` checks the file
+    written, and the instance's evidence is a
     :class:`HeldEvidence`, whether or not text was found, since the finder can
     miss text and only review can confirm the option (D-037). Where
     ``redaction_review`` has a verdict on the SHA-256 of the instance's
     source file, the finder is not asked: an instance whose regions the
     reviewer accepted or revised has exactly those regions blacked out
     (:func:`~.pixel_cleaning.black_out_reviewed`), checked in the same way,
-    and satisfies the option, and one that the reviewer rejected is
-    sequestered (:attr:`~.reasons.TransformReason.REDACTION_REJECTED`). One
-    whose pixel data the option cannot clean, such as compressed Pixel Data,
-    is sequestered (:class:`~.pixel_cleaning.PixelDataRefused`), and one
+    and satisfies the option, unless its Pixel Data is compressed and its
+    frames no longer decode to the pixels whose SHA-256 the review records,
+    when it is cleaned by the finder and held again; one that the reviewer
+    rejected is sequestered
+    (:attr:`~.reasons.TransformReason.REDACTION_REJECTED`). One whose pixel
+    data the option cannot clean, such as float pixel data, is sequestered
+    (:class:`~.pixel_cleaning.PixelDataRefused`), and one
     without top-level pixel data has nothing for the option to clean, so it
     satisfies it. Each instance that satisfies the option is marked with its
     code and Burned In Annotation (0028,0301) set to NO, which PS3.15 E.3.1
@@ -834,15 +961,20 @@ class InstanceTransform:
     (:attr:`~.reasons.VisualFeaturesReason.EYES_DISAGREE_WITH_ROIS`). An RT
     Dose whose only Frame of Reference is that of one defaced series is
     written with its dose set to zero in the series' block, less the
-    cavity that defacing keeps (:class:`~.dose_defacing.RtDoseDefacer`), or,
+    brain that defacing keeps (:class:`~.dose_defacing.RtDoseDefacer`), or,
     where the dose there is too great, written as received and held
     (:attr:`~.reasons.VisualFeaturesReason.DOSE_IN_FACE_BLOCK`). An RT
     Structure Set whose only Frame of Reference is that of one defaced
     series is written with its contours cut by the block
-    (:func:`~.region_defacing.cut_contours`), and a PET image's activity in
-    the block, less that cavity, is set to zero
-    (:class:`~.region_defacing.PetDefacer`). Any other RT Structure Set, RT
-    Dose with pixel data, or PET instance in a defaced series' Frame of
+    (:func:`~.region_defacing.cut_contours`), a PET image's activity in
+    the block, less that brain, is set to zero
+    (:class:`~.region_defacing.PetDefacer`), and a Segmentation's pixels
+    there that lie in a segment are written as its background
+    (:class:`~.segmentation_defacing.SegmentationDefacer`); one with any
+    such pixel is held without a verdict
+    (:attr:`~.reasons.VisualFeaturesReason.NO_FACE_VERDICT`), since the QC
+    pack does not show segments. Any other RT Structure Set, RT Dose with
+    pixel data, PET instance, or Segmentation in a defaced series' Frame of
     Reference, naming none, or referring to a defaced slice, such as one
     whose contours or pixel data cannot be cut, is held whatever its
     verdict (:attr:`~.reasons.VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME`),
@@ -853,7 +985,11 @@ class InstanceTransform:
     written with are those that the reviewed run wrote of that file
     (:attr:`~.reasons.VisualFeaturesReason.OTHER_PIXEL_DATA` or
     :attr:`~.reasons.VisualFeaturesReason.OTHER_CONTOURS` otherwise), and
-    an instance that cannot show a face satisfies it. Each is marked with the option's code and Recognizable
+    an instance that cannot show a face satisfies it. An instance that
+    holds a deformable registration's grid
+    (:func:`~.face_review.holds_deformation_grid`), which no preview of the
+    pack draws, never satisfies it
+    (:attr:`~.reasons.VisualFeaturesReason.NO_FACE_VERDICT`). Each is marked with the option's code and Recognizable
     Visual Features (0028,0302) set to NO, which PS3.15 E.3.2 adds whether
     or not its IOD defines the attribute. Any other instance that can show a
     face is written without them, and its evidence is a
@@ -871,9 +1007,20 @@ class InstanceTransform:
         finder: TextFinder | None = None,
         face_review: FaceReview | None = None,
         redaction_review: RedactionReview | None = None,
+        pixel_region_rules: PixelRegionRules | None = None,
         safe_private_list: SafePrivateList = SafePrivateList.REVIEWED,
+        profiles: ProfileStore | None = None,
+        readiness_review: ReadinessReview | None = None,
         unvalidated_policy: bool = False,
     ) -> None:
+        if profiles is None:
+            profiles = ProfileStore.ephemeral(key)
+        elif profiles.key_id != key.key_id:
+            raise ProfileError("the profile store belongs to another key")
+        self.profiles = profiles
+        self._birth_dates = (
+            BirthDates(key, profiles) if policy.preset == BIRTH_DATE_PRESET else None
+        )
         if not (policy.enabled or unvalidated_policy):
             raise PolicyError(
                 "the policy is not enabled: its behaviour is not yet implemented "
@@ -896,6 +1043,22 @@ class InstanceTransform:
                 "Pixel Data"
             )
         self._redaction_review = redaction_review
+        if pixel_region_rules is not None and CLEAN_PIXEL_DATA not in policy.options:
+            raise PolicyError(
+                "pixel region rules are given only when the policy selects Clean "
+                "Pixel Data"
+            )
+        # One version of the rules, for both cleaning and their digest.
+        self._region_rules = (
+            None if pixel_region_rules is None else pixel_region_rules.snapshot()
+        )
+        region_rules = (
+            None if self._region_rules is None else self._region_rules.keyed_digest(key)
+        )
+        if readiness_review is not None and policy.preset != PUBLIC_RELEASE:
+            raise PolicyError(
+                "a readiness review is given only under the public-release preset"
+            )
         if (CLEAN_RECOGNIZABLE_VISUAL_FEATURES in policy.options) != (
             face_review is not None
         ):
@@ -922,6 +1085,12 @@ class InstanceTransform:
         self._cleaned_elsewhere = frozenset(
             tag for cleaner in self._cleaners for tag in cleaner.tags
         )
+        self._reviewed_elsewhere = frozenset(
+            tag
+            for cleaner in self._cleaners
+            if cleaner.reviewed
+            for tag in cleaner.tags
+        )
         self._cleaning = cleaning
         self._fallback = (
             None
@@ -946,6 +1115,7 @@ class InstanceTransform:
             reviewed_descriptors=descriptors,
             technique_vocabulary=technique,
             text_finder=finder_method,
+            pixel_region_rules=region_rules,
             safe_private_list=safe_private_list,
         )
         satisfied = satisfied_options(policy)
@@ -973,12 +1143,22 @@ class InstanceTransform:
             reviewed_descriptors=descriptors,
             technique_vocabulary=technique,
             text_finder=finder_method,
+            pixel_region_rules=region_rules,
             face_review=None if face_review is None else face_review.reference,
             redaction_review=(
                 None if redaction_review is None else redaction_review.reference
             ),
             safe_private_list=safe_private_list,
             face_blocks=self._face_block_counts,
+            project_key=key.key_id if profiles.persistent else None,
+            readiness_review=readiness_review,
+            # The version of the rules that cleaning applies, as for their
+            # keyed digest.
+            reviewed_lists=(
+                None if cleaning is None else cleaning.reviewed,
+                None if cleaning is None else cleaning.reviewed_descriptors,
+                self._region_rules,
+            ),
         )
 
     def __repr__(self) -> str:
@@ -989,24 +1169,36 @@ class InstanceTransform:
         records: Mapping[int, InstanceRecord],
         read: Callable[[int], bytes | None],
     ) -> None:
-        """Find the face block of each CT series of a run, before it writes any.
+        """Find what needs more than one instance, before a run writes any.
 
-        Only under Clean Recognizable Visual Features, as
+        A run calls it with the records of the instances that it will
+        transform, by run position, and a function that gives each file as
+        its first pass read it, once, before it transforms any.
+
+        Under ``tps-import``, it chooses each subject's synthetic birth date,
+        or reads it back from the subject's profile
+        (:meth:`~pymedphys._dicom.deidentify.birth_dates.BirthDates.prepare`).
+
+        Under Clean Recognizable Visual Features, it finds the face block of
+        each CT series, as
         :func:`~pymedphys._dicom.deidentify.face_blocks.find_face_blocks`
-        finds them, and counted for the release report. A run calls it with
-        the records of the instances that it will transform, by run
-        position, and a function that gives each file as its first pass
-        read it, once, before it transforms any. It also finds the block in
-        which each RT Dose of a defaced frame is set to zero
+        finds them, counted for the release report, and the block in which
+        each RT Dose, RT Structure Set, PET image, and Segmentation of a
+        defaced frame is cleaned
         (:func:`~pymedphys._dicom.deidentify.dose_defacing.find_dose_blocks`).
         """
+        if self._birth_dates is not None:
+            self._birth_dates.prepare(records, read)
         if self._face_block_counts is None:
             return
         self._face_blocks = find_face_blocks(records, read)
         self._face_block_counts.record(self._face_blocks.values())
         self._defaced = find_defaced(records, self._face_blocks)
         self._dose_blocks = find_dose_blocks(
-            records, read, self._face_blocks, (RT_DOSE, RT_STRUCTURE_SET, PET_IMAGE)
+            records,
+            read,
+            self._face_blocks,
+            (RT_DOSE, RT_STRUCTURE_SET, PET_IMAGE, SEGMENTATION),
         )
 
     def written_check(
@@ -1077,6 +1269,14 @@ class InstanceTransform:
             names[path] = output_name_uid(self._key, value, kept)
         return _Identifiers(written[_SOP_INSTANCE], names)
 
+    def _birth_date_conflict(self, record: InstanceRecord) -> tuple[object, ...]:
+        """Why an instance's subject is stopped for review of its birth date, if it is."""
+        if self._birth_dates is not None and self._birth_dates.conflicted(
+            record.patient
+        ):
+            return (TransformReason.BIRTH_DATE_CONFLICT,)
+        return ()
+
     def _face_hold(
         self, data: bytes, dataset: pydicom.Dataset, iod: IOD, writing: WriterPlan
     ) -> HeldVisualFeatures | None:
@@ -1084,15 +1284,24 @@ class InstanceTransform:
 
         Nothing holds an instance without a face review, or one that cannot
         show a face. The review is of the source file, and of the pixel data
-        and contours that ``writing`` writes.
+        and contours that ``writing`` writes. An RT Dose, by its IOD, SOP
+        Class UID, or Modality, is held where it has pixel data of more
+        frames than the pack's dose-levels previews showed, since only they
+        show its doses as they could show a face (D-017). An instance that
+        holds a deformation grid is held whatever its verdict, since no
+        preview of the pack draws one.
         """
         review = self._face_review
         if review is None or not carries_visual_features(dataset, iod.name):
             return None
+        if holds_deformation_grid(dataset):
+            return HeldVisualFeatures(VisualFeaturesReason.NO_FACE_VERDICT)
         reason = review.hold_reason(
             hashlib.sha256(data).digest(),
             _pixel_digest(writing, dataset),
             _contour_digest(writing, dataset),
+            _frame_count(writing, dataset),
+            dose=iod.name == RT_DOSE or is_rt_dose(dataset),
         )
         return None if reason is None else HeldVisualFeatures(reason)
 
@@ -1109,8 +1318,8 @@ class InstanceTransform:
 
         An RT Dose without pixel data is not held for its frame, nor one
         that the run sets to zero in its frame's block, nor an RT Structure
-        Set or PET instance that it cleans there, unless it refers to a
-        defaced slice of another series.
+        Set, PET instance, or Segmentation that it cleans there, unless it
+        refers to a defaced slice of another series.
         """
         if iod.name == RT_DOSE and not any(tag in dataset for tag in PIXEL_DATA_TAGS):
             return None
@@ -1139,10 +1348,11 @@ class InstanceTransform:
         return self._dose_blocks.get(next(iter(frames)))
 
     def _region(self, iod: IOD, record: InstanceRecord) -> DoseBlock | None:
-        """Return the block of an RT Structure Set's or PET image's only Frame
-        of Reference, if the run cleans it there
-        (:mod:`~pymedphys._dicom.deidentify.region_defacing`)."""
-        if iod.name not in (RT_STRUCTURE_SET, PET_IMAGE):
+        """Return the block of an RT Structure Set's, PET image's, or
+        Segmentation's only Frame of Reference, if the run cleans it there
+        (:mod:`~pymedphys._dicom.deidentify.region_defacing` and
+        :mod:`~pymedphys._dicom.deidentify.segmentation_defacing`)."""
+        if iod.name not in (RT_STRUCTURE_SET, PET_IMAGE, SEGMENTATION):
             return None
         frames = frames_of(record)
         if len(frames) != 1:
@@ -1162,24 +1372,37 @@ class InstanceTransform:
         dataset: pydicom.Dataset,
         defacing: SeriesDefacing | None,
         dose: DoseBlock | None,
-        pet: DoseBlock | None = None,
+        region: _RegionDefacing | None = None,
+        *,
+        overlays: int = 0,
     ) -> tuple[Redaction | None, VisualFeaturesReason | None, bool]:
         """Return the instance's Pixel Data blacked out under Clean Pixel Data,
         and, under Clean Recognizable Visual Features, a CT slice's face
-        block written as air, an RT Dose's set to zero, or a PET image's set
-        to zero activity, with why an RT Dose's or PET image's is not, and
-        whether a reviewer approved the regions.
+        block written as air, an RT Dose's set to zero, or a PET image's or
+        Segmentation's cleaned by the defacer that ``region`` makes of its
+        data set, with why an RT Dose's, PET image's, or Segmentation's is
+        not, and whether a reviewer approved the regions, with the bit
+        planes of ``overlays`` cleared first
+        (:func:`~.pixel_cleaning.overlay_planes`).
 
         The redaction is None where nothing applies, or the instance has no
         top-level pixel data. The regions are those that the redaction
         review approved for the source file, by its SHA-256, otherwise those
-        that the finder finds, and none without Clean Pixel Data. An RT Dose
+        that the finder finds with those of the region rule whose key is
+        the instance's, if any, and none without Clean Pixel Data. An RT Dose
         whose grid :class:`~.dose_defacing.RtDoseDefacer` cannot set to
-        zero, or holds, or a PET image that
-        :class:`~.region_defacing.PetDefacer` cannot clean, is blacked out
-        as though it had no block, with
+        zero, or holds, or a PET image or Segmentation that
+        :class:`~.region_defacing.PetDefacer` or
+        :class:`~.segmentation_defacing.SegmentationDefacer` cannot clean, is
+        blacked out as though it had no block, with
         :attr:`~.reasons.VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME` or
         the defacer's reason.
+
+        Compressed Pixel Data is decoded to clean it, and a reviewer's
+        regions are applied to it only where the decoded frames' SHA-256 is
+        the one that the review records for the source file, so that what
+        is released is what the reviewer saw, whichever decoder's build
+        decoded it; otherwise the finder cleans it and it is held again.
 
         Raises
         ------
@@ -1189,49 +1412,134 @@ class InstanceTransform:
             :class:`~.pixel_cleaning.PixelDataRefused`.
         """
         block = None if defacing is None else defacing.block
-        if self._finder is None and block is None and dose is None and pet is None:
+        if (
+            self._finder is None
+            and block is None
+            and dose is None
+            and region is None
+            and not overlays
+        ):
             return None, None, False
-        approved = None
+        approved = decoded = None
         if self._finder is not None and self._redaction_review is not None:
             digest = hashlib.sha256(data).digest()
             if digest in self._redaction_review.rejected:
                 raise _Refused(TransformReason.REDACTION_REJECTED)
             approved = self._redaction_review.approved.get(digest)
-        reviewed = approved is not None
+            decoded = self._redaction_review.decoded.get(digest)
         try:
-            if dose is not None or pet is not None:
-                try:
-                    defacer = (
-                        RtDoseDefacer(dose, dataset)
-                        if dose is not None
-                        else PetDefacer(pet, dataset)  # type: ignore[arg-type]
-                    )
-                    redaction = (
-                        black_out(source, dataset, self._finder, defacer)
-                        if approved is None
-                        else black_out_reviewed(source, dataset, approved, defacer)
-                    )
-                    why = defacer.held
-                except PixelDataRefused:
-                    redaction = None
-                    why = VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME
-                if why is not None:
-                    redaction = None
-                    if approved is not None:
-                        redaction = black_out_reviewed(source, dataset, approved)
-                    elif self._finder is not None:
-                        redaction = black_out(source, dataset, self._finder)
-                return redaction, why, reviewed
-            defacer = None if block is None else CtDefacer(block, dataset)
-            if approved is not None:
-                return (
-                    black_out_reviewed(source, dataset, approved, defacer),
-                    None,
-                    True,
+            try:
+                return self._cleaned(
+                    source, dataset, block, dose, region, approved, decoded, overlays
                 )
-            return black_out(source, dataset, self._finder, defacer), None, False
+            except PixelsNotReviewed:
+                return self._cleaned(
+                    source, dataset, block, dose, region, None, None, overlays
+                )
         except PixelDataRefused as refused:
             raise _Refused(refused.reason) from None
+
+    def _cleaned(
+        self,
+        source: SourceEvidence,
+        dataset: pydicom.Dataset,
+        block: FaceBlock | None,
+        dose: DoseBlock | None,
+        region: _RegionDefacing | None,
+        approved: Regions | None,
+        decoded: bytes | None,
+        overlays: int,
+    ) -> tuple[Redaction | None, VisualFeaturesReason | None, bool]:
+        """Return what :meth:`_black_out` returns, with the regions that a
+        reviewer ``approved``, if any, the SHA-256 that the review records
+        of the decoded frames, if any, and the bit planes of ``overlays``
+        cleared.
+
+        Raises
+        ------
+        PixelDataRefused
+            As :func:`~.pixel_cleaning.black_out` raises it.
+        PixelsNotReviewed
+            As :func:`~.pixel_cleaning.black_out_reviewed` raises it.
+        """
+        reviewed = approved is not None
+        rules = (
+            ()
+            if self._region_rules is None or reviewed
+            else self._region_rules.boxes_for(dataset)
+        )
+        if dose is not None or region is not None:
+            try:
+                defacer: RtDoseDefacer | PetDefacer | SegmentationDefacer
+                if dose is not None:
+                    defacer = RtDoseDefacer(dose, dataset)
+                else:
+                    assert region is not None
+                    defacer = region(dataset)
+                redaction = (
+                    black_out(
+                        source,
+                        dataset,
+                        self._finder,
+                        defacer,
+                        rules=rules,
+                        overlays=overlays,
+                    )
+                    if approved is None
+                    else black_out_reviewed(
+                        source,
+                        dataset,
+                        approved,
+                        defacer,
+                        decoded_sha256=decoded,
+                        overlays=overlays,
+                    )
+                )
+                why = defacer.held
+            except PixelDataRefused:
+                redaction = None
+                why = VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME
+            if why is not None:
+                redaction = None
+                if approved is not None:
+                    redaction = black_out_reviewed(
+                        source,
+                        dataset,
+                        approved,
+                        decoded_sha256=decoded,
+                        overlays=overlays,
+                    )
+                elif self._finder is not None or overlays:
+                    redaction = black_out(
+                        source, dataset, self._finder, rules=rules, overlays=overlays
+                    )
+            return redaction, why, reviewed
+        defacer = None if block is None else CtDefacer(block, dataset)
+        if approved is not None:
+            return (
+                black_out_reviewed(
+                    source,
+                    dataset,
+                    approved,
+                    defacer,
+                    decoded_sha256=decoded,
+                    overlays=overlays,
+                ),
+                None,
+                True,
+            )
+        return (
+            black_out(
+                source,
+                dataset,
+                self._finder,
+                defacer,
+                rules=rules,
+                overlays=overlays,
+            ),
+            None,
+            False,
+        )
 
     def _kept_descriptors(
         self, plan: InstancePlan, edits: InstanceEdits
@@ -1244,7 +1552,11 @@ class InstanceTransform:
         if self._cleaning is None or self._fallback is None:
             return frozenset()
         return kept_descriptors(
-            plan, edits, self._cleaning, cleaned_elsewhere=self._cleaned_elsewhere
+            plan,
+            edits,
+            self._cleaning,
+            cleaned_elsewhere=self._cleaned_elsewhere,
+            reviewed_elsewhere=self._reviewed_elsewhere,
         )
 
     def __call__(
@@ -1276,6 +1588,11 @@ class InstanceTransform:
         risk: tuple[object, ...] = _pixel_risk(dataset, record)
         if not classification.sequestered:
             risk += source_gaps(source, iod)
+        overlays = (
+            overlay_planes(source, dataset)
+            if {CLEAN_GRAPHICS, CLEAN_PIXEL_DATA}.intersection(self._policy.options)
+            else 0
+        )
         plan = plan_instance(
             source, self._rules, iod, content_item_actions(source, self._policy, iod)
         )
@@ -1293,7 +1610,8 @@ class InstanceTransform:
             reasons = (
                 edits.sequestrations
                 or (() if undecoded is None else (undecoded,))
-                or overlay_in_pixel_data(self._rules.policy, risk)
+                or overlay_in_pixel_data(self._rules.policy, overlays)
+                or self._birth_date_conflict(record)
             )
         if reasons:
             # An instance out of scope is planned and edited only so that
@@ -1307,7 +1625,13 @@ class InstanceTransform:
                 (*risk, *dropped_of(edits, withheld), *omissions_of(evidence)),
             )
         satisfied = False
-        settled = apply_cleaners(edits, self._cleaners, self._key, record.patient)
+        settled = apply_cleaners(
+            edits,
+            self._cleaners,
+            self._key,
+            record.patient,
+            self.profiles.date_offset_weeks,
+        )
         edits, retained = settled.edits, settled.retained | kept_uids
         if settled.retained:
             evidence = coverage_of(plan, edits, retained, self._options)
@@ -1337,6 +1661,7 @@ class InstanceTransform:
                     self.review_queue,
                     fallen_back,
                     cleaned_elsewhere=self._cleaned_elsewhere,
+                    reviewed_elsewhere=self._reviewed_elsewhere,
                     private_texts=plan.private_texts,
                     private_text_vms=plan.private_text_vms,
                 )
@@ -1355,6 +1680,8 @@ class InstanceTransform:
             evidence = coverage_of(plan, edits, retained, self._options)
             if cleaned.held:
                 evidence = HeldEvidence(evidence, cleaned.held)
+        if self._birth_dates is not None:
+            edits = with_birth_date(edits, self._birth_dates.value(record.patient))
         defacing = self._defacing(iod, record)
         dose = self._dose_block(iod, record, dataset)
         region = self._region(iod, record)
@@ -1368,14 +1695,23 @@ class InstanceTransform:
                 dataset,
                 defacing,
                 dose,
-                region if iod.name == PET_IMAGE else None,
+                _region_defacing(iod, region),
+                overlays=overlays or 0,
             )
             # The markers write no pixel data, so the face review is of the
             # pixel data that this plan writes.
+            # Compressed Pixel Data written uncompressed holds no codestream
+            # whose metadata could be cut.
             writing = _without_bitstream_metadata(
-                writer_plan(plan, edits, codecs), source
+                _without_cleared_overlays(
+                    _with_redaction(
+                        writer_plan(plan, edits, codecs), dataset, redaction
+                    ),
+                    dataset,
+                    redaction,
+                ),
+                source,
             )
-            writing = _with_redaction(writing, dataset, redaction)
             if region is not None and iod.name == RT_STRUCTURE_SET:
                 try:
                     writing = _with_cut_contours(
@@ -1386,11 +1722,12 @@ class InstanceTransform:
                     )
                 except ContoursRefused:
                     undefaced = VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME
-            face = (
-                HeldVisualFeatures(_HELD_SERIES[defacing.problem])
-                if defacing is not None and defacing.held
-                else self._face_hold(data, dataset, iod, writing)
-            )
+            if defacing is not None and defacing.held:
+                face = HeldVisualFeatures(_HELD_SERIES[defacing.problem])
+            elif _unshown_segments(iod, redaction):
+                face = HeldVisualFeatures(VisualFeaturesReason.NO_FACE_VERDICT)
+            else:
+                face = self._face_hold(data, dataset, iod, writing)
             frame = (
                 self._frame_hold(
                     iod, record, dataset, dose if dose is not None else region
@@ -1408,7 +1745,7 @@ class InstanceTransform:
             # that is only defaced is not.
             if redaction is not None and self._finder is not None and not reviewed:
                 evidence = _held(evidence, HeldPixelData(redaction.reason))
-                qc = (*qc, _redaction_material(redaction, data))
+                qc = (*qc, _redaction_material(redaction, source, data))
             elif self._finder is not None:
                 # A reviewer approved the regions, or there are no pixel data
                 # to clean.
@@ -1559,12 +1896,13 @@ def _written(
             kept=writing.kept,
             removed=writing.removed,
             replacements=writing.replacements,
+            transfer_syntax=writing.transfer_syntax,
         )
         data = write_file_bytes(
             data_set,
             sop_class_uid=sop_class,
             sop_instance_uid=identifiers.sop_instance_uid,
-            transfer_syntax_uid=source.transfer_syntax,
+            transfer_syntax_uid=writing.transfer_syntax or source.transfer_syntax,
         )
     except WriteRefused as refused:
         raise _Refused(refused.reason) from None
@@ -1603,6 +1941,23 @@ def _pixel_digest(writing: WriterPlan, dataset: pydicom.Dataset) -> bytes | None
     try:
         return pixel_data_sha256(planned)
     except ValueError:
+        return None
+
+
+def _frame_count(writing: WriterPlan, dataset: pydicom.Dataset) -> int | None:
+    """Return how many frames the pixel data that the writer's plan writes
+    have, as a QC pack's previews count them: Number of Frames, the plan's
+    replacement or the source's where the plan keeps it, or one where the
+    file written has none or it is empty; None where it cannot be read."""
+    if _NUMBER_OF_FRAMES in writing.replacements:
+        element = writing.replacements[_NUMBER_OF_FRAMES]
+    elif _NUMBER_OF_FRAMES in writing.kept and "NumberOfFrames" in dataset:
+        element = dataset["NumberOfFrames"]
+    else:
+        return 1
+    try:
+        return int(element.value or 1)
+    except Exception:  # pylint: disable = broad-exception-caught
         return None
 
 
@@ -1693,7 +2048,11 @@ def _with_cut_contours(
         else:
             removed.add(path)
     return WriterPlan(
-        frozenset(kept), frozenset(removed), replacements, frozenset(introduced)
+        frozenset(kept),
+        frozenset(removed),
+        replacements,
+        frozenset(introduced),
+        writing.transfer_syntax,
     )
 
 
@@ -1753,34 +2112,79 @@ def _with_redaction(
 
     The new value is written with the source element's VR, or, where pydicom
     reads it as neither OB nor OW, by Bits Allocated as PS3.5 Section A.1
-    gives it for the native transfer syntaxes. Pixel Data without a region
-    to black out is kept, and Pixel Data that the plan does not keep is left
-    as planned, which :func:`_written` refuses.
+    gives it for the native transfer syntaxes. Native Pixel Data without a
+    region to black out is kept, and Pixel Data that the plan does not keep
+    is left as planned, which :func:`_written` refuses.
+
+    Compressed Pixel Data, decoded, is written uncompressed, with or without
+    a region, of VR OW
+    where Bits Allocated is over 8 and OB otherwise, as
+    Explicit VR Little Endian has it (PS3.5 Section A.2), in that transfer
+    syntax, with Photometric Interpretation and Planar Configuration as the
+    frames were decoded, and without the Extended Offset Table, its lengths,
+    or Encapsulated Pixel Data Value Total Length, which describe only
+    encapsulated Pixel Data (PS3.3 Section C.7.6.3.1.8).
     """
-    if redaction is None or not redaction.changed or _PIXEL_DATA not in writing.kept:
+    if (
+        redaction is None
+        or (redaction.decoded is None and not redaction.changed)
+        or _PIXEL_DATA not in writing.kept
+    ):
         return writing
-    vr = dataset[0x7FE00010].VR
-    if vr not in ("OB", "OW"):
-        vr = "OW" if redaction.layout.bits_allocated > 8 else "OB"
-    element = pydicom.DataElement(0x7FE00010, vr, redaction.value)
+    if redaction.transfer_syntax is None:
+        vr = dataset[0x7FE00010].VR
+        if vr not in ("OB", "OW"):
+            vr = "OW" if redaction.layout.bits_allocated > 8 else "OB"
+        element = pydicom.DataElement(0x7FE00010, vr, redaction.value)
+        return dataclasses.replace(
+            writing,
+            kept=writing.kept - {_PIXEL_DATA},
+            replacements={**writing.replacements, _PIXEL_DATA: element},
+        )
+    layout = redaction.layout
+    vr = "OW" if layout.bits_allocated > 8 else "OB"
+    replaced = {_PIXEL_DATA: pydicom.DataElement(0x7FE00010, vr, redaction.value)}
+    if str(dataset.PhotometricInterpretation) != layout.photometric:
+        replaced[_PHOTOMETRIC_INTERPRETATION] = pydicom.DataElement(
+            0x00280004, "CS", layout.photometric
+        )
+    if layout.samples > 1 and dataset.PlanarConfiguration != int(layout.planar):
+        replaced[_PLANAR_CONFIGURATION] = pydicom.DataElement(
+            0x00280006, "US", int(layout.planar)
+        )
+    encapsulation = {path for path in _ENCAPSULATION if path in writing.kept}
     return dataclasses.replace(
         writing,
-        kept=writing.kept - {_PIXEL_DATA},
-        replacements={**writing.replacements, _PIXEL_DATA: element},
+        kept=writing.kept - set(replaced) - encapsulation,
+        removed=writing.removed | encapsulation,
+        replacements={**writing.replacements, **replaced},
+        transfer_syntax=redaction.transfer_syntax,
     )
 
 
-def _redaction_material(redaction: Redaction, source: bytes) -> RedactionMaterial:
+def _redaction_material(
+    redaction: Redaction, source: SourceEvidence, data: bytes
+) -> RedactionMaterial:
     """The QC material of what Clean Pixel Data did, for the reviewer.
 
     The source is kept only where a frame has regions, since only those
-    frames are shown as received.
+    frames are shown as received; compressed Pixel Data is kept as its
+    frames were decoded (:func:`~.pixel_cleaning.as_received`), so that the
+    engine's process does not decode it to preview it and the previews show
+    the samples whose SHA-256 binds a verdict to them (D-048).
     """
+    shown = None
+    if redaction.regions:
+        shown = data if redaction.decoded is None else as_received(source, redaction)
     return RedactionMaterial(
         redaction.reason,
         redaction.layout.frames,
+        redaction.layout.rows,
+        redaction.layout.columns,
         tuple((regions.frame, regions.boxes) for regions in redaction.regions),
-        source if redaction.regions else None,
+        shown,
+        redaction.decoded_sha256,
+        redaction.rule_boxes,
     )
 
 
@@ -1799,6 +2203,39 @@ def _subsets(options: list[str]) -> list[tuple[str, ...]]:
     for option in options:
         subsets += [(*subset, option) for subset in subsets]
     return subsets
+
+
+def _without_cleared_overlays(
+    writing: WriterPlan, dataset: pydicom.Dataset, redaction: Redaction | None
+) -> WriterPlan:
+    """Return the writer's plan without the overlay groups whose bit planes
+    the redaction cleared.
+
+    A cleared bit holds what the value's sign gives it, which, in signed
+    Pixel Data, a viewer that shows the group's embedded overlay would draw
+    as its graphics, so every top-level attribute of each overlay group
+    without Overlay Data is removed, as removing Overlay Data removes its
+    group (D-020, D-041). An IOD that requires the group is then found by
+    :func:`_written`.
+    """
+    if redaction is None or not redaction.overlays:
+        return writing
+    groups = overlay_groups_without_data(dataset)
+    paths = frozenset(
+        ElementPath((), f"({tag.group:04X},{tag.element:04X})")
+        for tag in dataset.keys()
+        if tag.group in groups
+    )
+    return dataclasses.replace(
+        writing,
+        kept=writing.kept - paths,
+        removed=writing.removed | paths,
+        replacements={
+            path: element
+            for path, element in writing.replacements.items()
+            if path not in paths
+        },
+    )
 
 
 def _without_bitstream_metadata(
@@ -1901,7 +2338,8 @@ class ReleaseGate:
     sequesters the file for.
 
     Each verdict carries, as its QC material, the residual search's findings
-    in the file, with the file. What the search leaves out of the instance's
+    in the file, with the file and the findings that an exemption kept from
+    review. What the search leaves out of the instance's
     own values is the transform's material (:func:`omissions_of`), since the
     search covers the subject's other instances' values too.
 
@@ -1927,7 +2365,7 @@ class ReleaseGate:
         # Each value's omissions are its own instance's material, from the
         # transform, so the pooled search's are left out here.
         search = dataclasses.replace(condition.search, not_searched=(), unsearched=())
-        qc = (SearchMaterial(search, written),)
+        qc = (SearchMaterial(search, written, condition.exempted),)
         reasons = condition.reasons
         if len(given) < len(subject):
             # An instance of the subject gave no evidence, so its values may be

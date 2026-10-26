@@ -12,23 +12,29 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Parse the DICOM PS3.15 Annex E tables that de-identification needs.
+"""Parse the DICOM PS3.15 Annex E tables and paragraphs that de-identification needs.
 
-These are Table E.1-1, the attribute confidentiality profile; Table E.1-1a,
-its action codes; Table E.3.4-1, the concept names of content items for the
-Clean Structured Content Option; and Table E.3.10-1, the safe private
-attributes.
+The tables are Table E.1-1, the attribute confidentiality profile; Table
+E.1-1a, its action codes; Table E.3.4-1, the concept names of content items
+for the Clean Structured Content Option; and Table E.3.10-1, the safe private
+attributes. The paragraphs are those that contain "shall", outside Notes and
+tables, which the requirements register records.
 """
 
 from __future__ import annotations
 
+import dataclasses
+import posixpath
 import re
 import types
+from collections.abc import Collection, Iterator, Mapping
+from html.parser import HTMLParser
 
 from pymedphys._dicom.deidentify.codes import (
     CODE_MEANING_MAX_LENGTH,
     CODE_VALUE_MAX_LENGTH,
 )
+from pymedphys._dicom.deidentify.requirements import AnnexEParagraph
 from pymedphys._dicom.deidentify.standard import (
     ACTION_CODES,
     PRIVATE_ATTRIBUTES_TAG,
@@ -46,7 +52,13 @@ from pymedphys._dicom.deidentify.structured_content import (
     split_designator,
 )
 
-from .chtml import HtmlTable, TableFormatError, check_columns, check_unique
+from .chtml import (
+    HtmlTable,
+    TableFormatError,
+    _normalise,
+    check_columns,
+    check_unique,
+)
 
 TABLE_E1_1 = "Table E.1-1"
 TABLE_E1_1A = "Table E.1-1a"
@@ -439,3 +451,241 @@ def parse_table_e3_4_1(
     return tuple(
         concept for concept in concepts if concept.scheme_designator in designators
     )
+
+
+# The paragraphs of Annex E that contain "shall". Each chtml page gives each
+# paragraph an anchor, and links to the next page in the head.
+FIRST_PAGE = "chtml/part15/chapter_E.html"
+_ANNEX_E_PAGE = re.compile(r"(?:chapter_E|sect_E(?:\.[0-9]+)+)\.html")
+_PARAGRAPH_ANCHOR = re.compile(
+    r"para_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+)
+_SHALL = re.compile(r"\bshall\b")
+# Elements with no content or end tag.
+_VOID = frozenset(
+    {"area", "base", "br", "col", "embed", "hr", "img", "input", "link", "meta", "wbr"}
+)
+# Divisions whose paragraphs are not requirements: Notes, tables, and the
+# page's navigation. Any division not listed here or below fails parsing, so
+# that a new kind of content is reviewed before it is read or skipped.
+_SKIPPED = frozenset({"note", "table", "navheader", "navfooter", "breadcrumbs"})
+_READ = frozenset({"chapter", "section", "titlepage"})
+# The divisions that hold a list, which a paragraph before them introduces.
+_LISTS = frozenset({"itemizedlist", "orderedlist"})
+
+
+@dataclasses.dataclass
+class _Element:
+    tag: str
+    attributes: dict[str, str]
+    children: list[_Element | str] = dataclasses.field(default_factory=list)
+
+    @property
+    def classes(self) -> frozenset[str]:
+        return frozenset(self.attributes.get("class", "").split())
+
+    def elements(self) -> list[_Element]:
+        return [child for child in self.children if isinstance(child, _Element)]
+
+    def iter(self) -> Iterator[_Element]:
+        yield self
+        for child in self.elements():
+            yield from child.iter()
+
+    def text(self) -> str:
+        parts = []
+        for child in self.children:
+            if isinstance(child, str):
+                parts.append(child)
+            elif child.tag == "br":
+                parts.append(" ")
+            else:
+                parts.append(child.text())
+        return "".join(parts)
+
+
+class _TreeBuilder(HTMLParser):
+    """Build a page's element tree."""
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.root = _Element("", {})
+        self._open = [self.root]
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        element = _Element(tag, {name: value or "" for name, value in attrs})
+        self._open[-1].children.append(element)
+        if tag not in _VOID:
+            self._open.append(element)
+
+    def handle_endtag(self, tag: str) -> None:
+        # Close the innermost open element of this tag, and any left open in it.
+        for depth in range(len(self._open) - 1, 0, -1):
+            if self._open[depth].tag == tag:
+                del self._open[depth:]
+                return
+
+    def handle_data(self, data: str) -> None:
+        self._open[-1].children.append(data)
+
+
+@dataclasses.dataclass
+class _Walk:
+    """The page being read, the section reached, and the paragraphs found."""
+
+    page: str
+    section: str = ""
+    paragraphs: list[AnnexEParagraph] = dataclasses.field(default_factory=list)
+
+
+def _anchor(paragraph: _Element, where: str) -> str:
+    """Return the anchor that a paragraph starts with."""
+    first = next(iter(paragraph.elements()), None)
+    anchor = first.attributes.get("id", "") if first and first.tag == "a" else ""
+    if not _PARAGRAPH_ANCHOR.fullmatch(anchor):
+        raise TableFormatError(f"{where}: a paragraph with 'shall' has no anchor")
+    return anchor
+
+
+def _list_text(division: _Element, where: str) -> str:
+    """Return the items of a list, one per line, each marked as published."""
+    (kind,) = division.classes & _LISTS
+    lists = [child for child in division.elements() if child.tag in ("ul", "ol")]
+    if len(lists) != 1:
+        raise TableFormatError(f"{where}: a list is not one ul or ol element")
+    lines = []
+    for number, item in enumerate(lists[0].elements(), start=1):
+        content = [child for child in item.elements() if not child.classes & {"note"}]
+        if item.tag != "li" or [child.tag for child in content] != ["p"]:
+            raise TableFormatError(
+                f"{where}: item {number} of a list that a paragraph with 'shall' "
+                "introduces is not one paragraph"
+            )
+        marker = "-" if kind == "itemizedlist" else f"{number}."
+        lines.append(f"{marker} {_normalise(content[0].text())}")
+    if not lines:
+        raise TableFormatError(f"{where}: a list has no items")
+    return "\n".join(lines)
+
+
+def _walk(element: _Element, walk: _Walk) -> None:
+    """Find the paragraphs with "shall" below ``element``, in document order."""
+    children = element.elements()
+    folded: set[int] = set()
+    for index, child in enumerate(children):
+        anchor = child.attributes.get("id", "")
+        if child.tag == "a" and anchor.startswith("sect_"):
+            walk.section = anchor.removeprefix("sect_")
+        if index in folded or child.tag == "table" or child.classes & _SKIPPED:
+            continue
+        if child.tag == "p":
+            text = _normalise(child.text())
+            if not _SHALL.search(text):
+                continue
+            where = (
+                f"{posixpath.basename(walk.page)} section {walk.section or '(none)'}"
+            )
+            if not walk.section.startswith("E"):
+                raise TableFormatError(
+                    f"{where}: a paragraph with 'shall' is outside a section"
+                )
+            following = children[index + 1] if index + 1 < len(children) else None
+            if following is not None and following.classes & _LISTS:
+                text += "\n\n" + _list_text(following, where)
+                folded.add(index + 1)
+            walk.paragraphs.append(
+                AnnexEParagraph(
+                    section=walk.section,
+                    page=walk.page,
+                    anchor=_anchor(child, where),
+                    text=text,
+                )
+            )
+            continue
+        unknown = child.classes - _READ - _LISTS if child.tag == "div" else frozenset()
+        if unknown:
+            raise TableFormatError(
+                f"{posixpath.basename(walk.page)}: a division of class "
+                f"{' '.join(sorted(unknown))!r} is neither read nor skipped"
+            )
+        _walk(child, walk)
+
+
+def _next_page(root: _Element, page: str) -> str:
+    """Return the path of the page that the ``Next`` link in the head names."""
+    links = [
+        element.attributes.get("href", "")
+        for element in root.iter()
+        if element.tag == "link" and element.attributes.get("rel") == "next"
+    ]
+    if len(links) != 1 or not links[0] or "/" in links[0]:
+        raise TableFormatError(
+            f"{posixpath.basename(page)} does not link to one next page of its part"
+        )
+    return posixpath.join(posixpath.dirname(page), links[0])
+
+
+def parse_annex_e_paragraphs(
+    pages: Mapping[str, bytes], pinned: Collection[str]
+) -> tuple[tuple[AnnexEParagraph, ...], tuple[str, ...]]:
+    """Parse the paragraphs of PS3.15 Annex E that contain "shall".
+
+    Starting from :data:`FIRST_PAGE`, each page's ``Next`` link is followed
+    until it leaves Annex E. A paragraph is a ``p`` element; those in Notes
+    and tables are skipped. A paragraph with "shall" that a list follows
+    introduces it, and the list's items are added to its text rather than
+    read as paragraphs of their own.
+
+    Parameters
+    ----------
+    pages : mapping of str to bytes
+        The pages, by their paths below ``output/``.
+    pinned : collection of str
+        The paths of the pages of Annex E that the pin lists.
+
+    Returns
+    -------
+    paragraphs : tuple of AnnexEParagraph
+        In the standard's order.
+    read : tuple of str
+        The pages read, in order.
+
+    Raises
+    ------
+    TableFormatError
+        If the ``Next`` links reach a page of Annex E that ``pinned`` lacks,
+        reach a page twice, or do not reach one that it lists; if a page does
+        not link to exactly one next page; if a division is of a class
+        neither read nor skipped; if a paragraph with "shall" is outside a
+        section of Annex E or does not start with its anchor, or introduces a
+        list whose items are not each one paragraph; if an anchor repeats; or
+        if no paragraph contains "shall".
+    """
+    paragraphs: list[AnnexEParagraph] = []
+    read: list[str] = []
+    page = FIRST_PAGE
+    while _ANNEX_E_PAGE.fullmatch(posixpath.basename(page)):
+        if page in read:
+            raise TableFormatError(f"the Next links reach {page} twice")
+        if page not in pinned:
+            raise TableFormatError(
+                f"Annex E continues on {page}, which the pin does not list"
+            )
+        read.append(page)
+        builder = _TreeBuilder()
+        builder.feed(pages[page].decode("utf-8"))
+        builder.close()
+        walk = _Walk(page)
+        _walk(builder.root, walk)
+        paragraphs.extend(walk.paragraphs)
+        page = _next_page(builder.root, page)
+
+    unread = sorted(set(pinned) - set(read))
+    if unread:
+        raise TableFormatError(
+            "the Next links of Annex E do not reach " + ", ".join(unread)
+        )
+    if not paragraphs:
+        raise TableFormatError("no paragraph of Annex E contains 'shall'")
+    check_unique("Annex E", (paragraph.anchor for paragraph in paragraphs))
+    return tuple(paragraphs), tuple(read)

@@ -40,6 +40,7 @@ from pymedphys._dicom.deidentify.qc_pack import (
     DropReason,
     Excerpt,
     InstanceEntry,
+    ListsDigest,
     QcPack,
     QcPackError,
     ReferenceFindingEntry,
@@ -62,10 +63,13 @@ NAME = "ZEBEDEE^QUILLON"
 SOURCE_PATH = "/imports/ZEBEDEE QUILLON/CT.1.dcm"
 RETAINED = "QUILLON CLINIC CT"
 REFERENCE = "A-" + "0123456789abcdef" * 2
+LISTS = ListsDigest("5a" * 32, "d" * 64)
 OUTPUT = PurePosixPath("ZQ0001/2.25.1/2.25.2/2.25.3.dcm")
 SOURCE_SHA256 = "0f" * 32
-PIXEL_SHA256 = "1e" * 32
-CONTOUR_SHA256 = "2f" * 32
+# The digests of an instance without pixel data or contours, such as an RT
+# Plan's; others need previews that show them.
+PIXEL_SHA256 = qc_pack.NO_PIXELS_SHA256
+CONTOUR_SHA256 = qc_pack.NO_CONTOURS_SHA256
 
 POSIX_ONLY = pytest.mark.skipif(os.name != "posix", reason="POSIX file modes")
 
@@ -156,6 +160,7 @@ def _full_pack():
                 0, FindingKind.DANGLING_REFERENCE, ("(300C,0080)", "(0008,1155)"), 2
             ),
         ),
+        reviewed_lists=LISTS,
     )
 
 
@@ -571,8 +576,9 @@ def test_a_search_gives_entries_with_excerpts_and_omissions():
 @pytest.mark.deid_requirement("MIDI-BP-17")
 def test_the_document_holds_every_section():
     document = json.loads(qc_pack.to_json(_full_pack()))
-    assert document["format"] == qc_pack.FORMAT == "pymedphys-deid-qc-pack/8"
+    assert document["format"] == qc_pack.FORMAT == "pymedphys-deid-qc-pack/19"
     assert document["reference"] == REFERENCE
+    assert document["reviewed_lists"] == {"salt": "5a" * 32, "sha256": "d" * 64}
     assert document["instances"] == [
         {
             "position": 0,
@@ -653,6 +659,7 @@ def test_the_document_holds_every_section():
     assert list(document) == [
         "format",
         "reference",
+        "reviewed_lists",
         "instances",
         "residual_findings",
         "drops",
@@ -671,6 +678,21 @@ def test_the_document_holds_every_section():
     ]
 
 
+def test_a_pack_records_its_runs_lists_or_none():
+    assert qc_pack.pack_document(_pack())["reviewed_lists"] is None
+    with pytest.raises(QcPackError, match="ListsDigest"):
+        _pack(reviewed_lists=("5a" * 32, "d" * 64))
+
+
+@pytest.mark.parametrize(
+    ("salt", "sha256"),
+    [("5A" * 32, "d" * 64), ("5a" * 31, "d" * 64), ("5a" * 32, None), (None, "d")],
+)
+def test_the_lists_digest_is_two_sha256_sized_hex_strings(salt, sha256):
+    with pytest.raises(QcPackError, match="reviewed lists' digest"):
+        ListsDigest(salt, sha256)
+
+
 def test_the_document_is_ascii_and_keeps_undecodable_paths():
     undecodable = os.fsdecode(b"/imports/\xff\xfe.dcm") if os.name == "posix" else "x"
     pack = _pack(instances=(_written(source=undecodable + "é"),))
@@ -687,8 +709,8 @@ def test_the_document_is_deterministic():
 def test_reprs_hold_no_paths_or_values():
     pack = _full_pack()
     shown = repr(pack) + repr(pack.instances) + repr(pack.retained_strings)
-    shown += repr(pack.roi_names)
-    for secret in (SOURCE_PATH, RETAINED, "lung l", "Lung_L"):
+    shown += repr(pack.roi_names) + repr(pack.reviewed_lists)
+    for secret in (SOURCE_PATH, RETAINED, "lung l", "Lung_L", LISTS.salt, LISTS.sha256):
         assert secret not in shown
 
 

@@ -20,12 +20,17 @@ fictitious patient and study, with one Frame of Reference: three CT Image
 slices, an RT Structure Set that references the CT series and slices, an RT
 Plan that references the structure set and the dose, an RT Dose that
 references the plan, a second RT Dose of the plan for review (below), and
-one instance of each of the other ten IODs, each in a series of its own.
+one instance of each of the other twelve IODs, each in a series of its own.
 The MR Image and PET Image instances reference the first CT slice, and each
 enhanced, legacy converted enhanced, or MR Spectroscopy instance references
 the single-frame instance of its modality: the first CT slice, the MR
-Image, or the PET Image. It is the input for validating each preset end to
-end: once the engine has
+Image, or the PET Image. The Spatial Registration registers the MR Image to
+the Frame of Reference by an identity matrix, and the Deformable Spatial
+Registration the PET Image by a two by two by one deformation grid; each
+names its image in Referenced Image Sequence (0008,1140), whose item the
+Basic Profile keeps, and the Spatial Registration's Used RT Structure Set
+ROI Sequence (0070,0315) names the structure set. It is the input for
+validating each preset end to end: once the engine has
 written the collection, the residual search
 (:mod:`~pymedphys._dicom.deidentify.residuals`) should find none of the
 markers that had to be removed or replaced.
@@ -65,7 +70,11 @@ class.
 
 A sequence that Table E.1-1 lists is present with its item. Where no marker
 is planted below it, a marker is put in the first attribute that the IOD
-defines in its item, text first. A linked value does not count, since a
+defines in its item, text first, unless the Basic Profile keeps the item and
+replaces only its UIDs, as X/Z/U* does where the IOD requires the sequence,
+such as a registration's Referenced Image Sequence (0008,1140), and keeps
+each sequence of the table that encloses it: the sequence is then recorded
+with :attr:`NotPlantedReason.KEPT_SEQUENCE`. A linked value does not count, since a
 preset that keeps the sequence and replaces its UIDs would leave no marker.
 Where the IOD defines no attribute in the item that can carry a marker, as
 in Modified Attributes Sequence (0400,0550), or Referenced Patient Sequence,
@@ -109,11 +118,11 @@ Radiopharmaceutical Information Sequence (0054,0016) of an Enhanced PET
 Image. Planted in every file, the first two would sequester every
 instance, and no preset could release any of the collection; planted in one,
 that instance checks sequestration, :data:`REVIEW_FILE` checks review, and
-the other fifteen check each preset's output. Radiopharmaceutical Start
+the other seventeen check each preset's output. Radiopharmaceutical Start
 DateTime, which CT Image does not define, is planted in no file, so the
 Enhanced PET instance, which lacks an attribute of Type 1, is released and
 its other markers are checked; an instance that conforms to the IOD is
-sequestered under both presets of the first supported release.
+sequestered under ``basic`` and ``basic-clean-descriptors``.
 
 **Edge cases.** Each file except the first RT Dose, ``06-rtdose.dcm``, and
 the MR Image, ``10-mr.dcm``, is written in Explicit VR Little Endian, and
@@ -143,7 +152,7 @@ Manufacturer's Model Name (0008,1090), which Table E.1-1 does not list and
 the Basic Profile keeps, a copy of the RT Plan's RT Plan Label marker
 (:attr:`PlacementKind.REVIEW_COPY`), so the residual search finds a source
 value of another instance in its output and sends it to review. The third
-CT slice remains sequestered; the other fifteen files stay releasable.
+CT slice remains sequestered; the other seventeen files stay releasable.
 
 **Manifest.** :class:`CorpusManifest` records, for each file, each
 placement: its element path, VR, values, kind, the Table E.1-1 row it
@@ -176,7 +185,7 @@ from collections.abc import Sequence
 from pymedphys._imports import pydicom
 
 from . import icc_profiles
-from .compound_actions import RemovalExtent, resolve_plain_x_in_iod
+from .compound_actions import RemovalExtent, resolve_in_iod, resolve_plain_x_in_iod
 from .elements import dataset_codecs, new_element
 from .file_layout import ElementPath
 from .iods import IOD
@@ -209,6 +218,8 @@ LEGACY_CONVERTED_ENHANCED_MR_IMAGE_STORAGE = "1.2.840.10008.5.1.4.1.1.4.4"
 PET_IMAGE_STORAGE = "1.2.840.10008.5.1.4.1.1.128"
 LEGACY_CONVERTED_ENHANCED_PET_IMAGE_STORAGE = "1.2.840.10008.5.1.4.1.1.128.1"
 ENHANCED_PET_IMAGE_STORAGE = "1.2.840.10008.5.1.4.1.1.130"
+SPATIAL_REGISTRATION_STORAGE = "1.2.840.10008.5.1.4.1.1.66.1"
+DEFORMABLE_SPATIAL_REGISTRATION_STORAGE = "1.2.840.10008.5.1.4.1.1.66.3"
 RT_DOSE_STORAGE = "1.2.840.10008.5.1.4.1.1.481.2"
 RT_STRUCTURE_SET_STORAGE = "1.2.840.10008.5.1.4.1.1.481.3"
 RT_PLAN_STORAGE = "1.2.840.10008.5.1.4.1.1.481.5"
@@ -265,6 +276,10 @@ ENHANCED_PET_SERIES = f"{LINKED_UID_ROOT}01300"
 ENHANCED_PET = f"{LINKED_UID_ROOT}01301"
 LEGACY_PET_SERIES = f"{LINKED_UID_ROOT}01400"
 LEGACY_PET = f"{LINKED_UID_ROOT}01401"
+REGISTRATION_SERIES = f"{LINKED_UID_ROOT}01500"
+REGISTRATION = f"{LINKED_UID_ROOT}01501"
+DEFORMABLE_REGISTRATION_SERIES = f"{LINKED_UID_ROOT}01600"
+DEFORMABLE_REGISTRATION = f"{LINKED_UID_ROOT}01601"
 # A patient and a procedure step that the collection names but does not hold.
 PATIENT_REFERENCE = f"{LINKED_UID_ROOT}00003"
 PROCEDURE_STEP = f"{LINKED_UID_ROOT}00004"
@@ -284,7 +299,9 @@ _STUDY_TAG = "(0020,000D)"
 _PATIENT_ID_TAG = "(0010,0020)"
 _ISSUER_TAG = "(0010,0021)"
 _PATIENTS_NAME_TAG = "(0010,0010)"
-_FRAME_OF_REFERENCE_TAGS = frozenset({"(0020,0052)", "(3006,0024)"})
+# Frame of Reference UID, Referenced Frame of Reference UID, and the Source
+# Frame of Reference UID of a deformable registration.
+_FRAME_OF_REFERENCE_TAGS = frozenset({"(0020,0052)", "(3006,0024)", "(0064,0003)"})
 _CONTOUR_IMAGE_SEQUENCE = "(3006,0016)"
 # Where an RT Structure Set references every CT slice, not only the first.
 _RT_REFERENCED_CONTOUR_IMAGES = ("(3006,0010)", "(3006,0012)", "(3006,0014)")
@@ -294,6 +311,7 @@ _TARGETS = types.MappingProxyType(
         "(300C,0002)": PLAN,  # Referenced RT Plan Sequence
         "(300C,0060)": STRUCTURE_SET,  # Referenced Structure Set Sequence
         "(300C,0080)": DOSE,  # Referenced Dose Sequence
+        "(0070,0315)": STRUCTURE_SET,  # Used RT Structure Set ROI Sequence
         _CONTOUR_IMAGE_SEQUENCE: CT_SLICES[0],
         "(0008,1120)": PATIENT_REFERENCE,  # Referenced Patient Sequence
         "(0008,1111)": PROCEDURE_STEP,  # Referenced Performed Procedure Step
@@ -316,6 +334,8 @@ _SOP_CLASSES = types.MappingProxyType(
         PET: PET_IMAGE_STORAGE,
         ENHANCED_PET: ENHANCED_PET_IMAGE_STORAGE,
         LEGACY_PET: LEGACY_CONVERTED_ENHANCED_PET_IMAGE_STORAGE,
+        REGISTRATION: SPATIAL_REGISTRATION_STORAGE,
+        DEFORMABLE_REGISTRATION: DEFORMABLE_SPATIAL_REGISTRATION_STORAGE,
         PATIENT_REFERENCE: DETACHED_PATIENT_MANAGEMENT,
         PROCEDURE_STEP: MODALITY_PERFORMED_PROCEDURE_STEP,
     }
@@ -323,6 +343,14 @@ _SOP_CLASSES = types.MappingProxyType(
 # The VR given to an attribute with alternatives, as Implicit VR gives it
 # (PS3.5 Section A.1).
 _DECIDED_VRS = types.MappingProxyType({"(60xx,3000)": "OW"})
+# A registration's Frame of Reference Transformation Matrix that leaves the
+# registered frame unchanged.
+_IDENTITY_MATRIX = [
+    "1", "0", "0", "0",
+    "0", "1", "0", "0",
+    "0", "0", "1", "0",
+    "0", "0", "0", "1",
+]  # fmt: skip
 # The text VRs, which a sequence's content marker has where it can.
 _CONTENT_VRS = frozenset({"LO", "LT", "PN", "SH", "ST", "UC", "UT"})
 _WORD_BYTES = {"OB": 1, "UN": 1, "OW": 2, "OF": 4, "OL": 4, "OD": 8, "OV": 8}
@@ -414,6 +442,10 @@ class NotPlantedReason(enum.Enum):
     # Removing it sequesters the instance, so it is planted only in
     # SEQUESTERED_FILE.
     SEQUESTERS_INSTANCE = "sequesters-instance"
+    # A sequence that the Basic Profile keeps, replacing only its UIDs, so
+    # that a marker in its item would be kept; the sequence itself is
+    # present.
+    KEPT_SEQUENCE = "kept-sequence"
 
 
 @dataclasses.dataclass(frozen=True)
@@ -744,6 +776,22 @@ _SPECS = (
         LEGACY_PET_SERIES,
         PET,
     ),
+    # The spatial registration registers the MR Image, and the deformable
+    # registration the PET Image, to the collection's one Frame of Reference.
+    _Spec(
+        "18-registration.dcm",
+        SPATIAL_REGISTRATION_STORAGE,
+        REGISTRATION,
+        REGISTRATION_SERIES,
+        MR,
+    ),
+    _Spec(
+        "19-registration-deformable.dcm",
+        DEFORMABLE_SPATIAL_REGISTRATION_STORAGE,
+        DEFORMABLE_REGISTRATION,
+        DEFORMABLE_REGISTRATION_SERIES,
+        PET,
+    ),
 )
 
 
@@ -753,12 +801,13 @@ def build_corpus() -> SyntheticCorpus:
     Returns
     -------
     SyntheticCorpus
-        Seventeen files: three CT slices; the RT Structure Set, RT Plan, RT
+        Nineteen files: three CT slices; the RT Structure Set, RT Plan, RT
         Dose, and the RT Dose for review; the Enhanced CT Image and Legacy
         Converted Enhanced CT Image; the MR Image, Enhanced MR Image,
         Enhanced MR Color Image, Legacy Converted Enhanced MR Image, and MR
         Spectroscopy; and the PET Image, Enhanced PET Image, and Legacy
-        Converted Enhanced PET Image. Two builds give the same bytes and the
+        Converted Enhanced PET Image; and the Spatial Registration and
+        Deformable Spatial Registration. Two builds give the same bytes and the
         same manifest.
     """
     markers = _Markers()
@@ -1185,6 +1234,11 @@ class _Instance:
                     sequence, reason=NotPlantedReason.NO_MARKER_CARRIER
                 )
                 continue
+            if self._kept(sequence):
+                self.placements[position] = dataclasses.replace(
+                    sequence, reason=NotPlantedReason.KEPT_SEQUENCE
+                )
+                continue
             attribute = candidates[0]
             values, text = self.markers.values(attribute.vr, _least_count(attribute.vm))
             element_path = ElementPath(inside, attribute.tag)
@@ -1192,6 +1246,22 @@ class _Instance:
                 element_path, attribute.vr, values, self.codecs
             )
             self._record(element_path, attribute.vr, text, PlacementKind.CONTENT, "")
+
+    def _kept(self, sequence: Placement) -> bool:
+        """Return whether the Basic Profile keeps a sequence's item.
+
+        It does where it keeps the sequence and replaces only its UIDs, as
+        X/Z/U* does where the IOD requires the sequence at its place, and
+        keeps each sequence of Table E.1-1 that encloses it.
+        """
+        actions = _basic_profile_actions()
+        tags = (*(tag for tag, _ in sequence.path.items), sequence.path.tag)
+        return all(
+            "/" in actions[tag]
+            and resolve_in_iod(self.iod, tag, tags[:depth], actions[tag]) == "U"
+            for depth, tag in enumerate(tags)
+            if tag in actions
+        )
 
     def _reference_every_slice(self) -> None:
         """Have the structure set's RT Referenced Series reference each slice."""
@@ -1309,6 +1379,20 @@ class _Instance:
             put((), "(5600,0020)", [struct.pack("<2f", 1.0, 2.0)])
         elif self.spec.sop_class in _IMAGES:
             self._add_image(_IMAGES[self.spec.sop_class])
+        elif self.spec.sop_class == SPATIAL_REGISTRATION_STORAGE:
+            put((), "(0008,0060)", ["REG"])
+            matrix = _items(["(0070,0308)", "(0070,0309)", "(0070,030A)"])
+            put(matrix, "(3006,00C6)", _IDENTITY_MATRIX)
+            put(matrix, "(0070,030C)", ["RIGID"])
+        elif self.spec.sop_class == DEFORMABLE_SPATIAL_REGISTRATION_STORAGE:
+            put((), "(0008,0060)", ["REG"])
+            grid = _items(["(0064,0002)", "(0064,0005)"])
+            put(grid, "(0020,0032)", ["-1", "-1", "0"])
+            put(grid, "(0020,0037)", ["1", "0", "0", "0", "1", "0"])
+            put(grid, "(0064,0007)", [2, 2, 1])
+            put(grid, "(0064,0008)", [1.0, 1.0, 1.0])
+            # A displacement of each of the grid's four points, in mm.
+            put(grid, "(0064,0009)", [struct.pack("<12f", *range(12))])
         else:
             put((), "(0008,0060)", ["RTDOSE"])
             put((), "(0020,0032)", ["-1", "-1", "0"])

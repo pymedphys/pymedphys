@@ -40,6 +40,17 @@ OB, has a rule too (:func:`icc_profile_for_d`): D writes a fixed sRGB
 profile in place of an RGB one
 (:mod:`~pymedphys._dicom.deidentify.icc_profiles`).
 
+Verifying Observer Sequence (0040,A073) has a rule of another kind
+(:data:`KEPT_ITEM_ATTRIBUTES`): D keeps each source item, with only the four
+attributes that PS3.3 Table C.17-2 defines in it, each under its own rule,
+and removes the item's other attributes. Table E.1-1 gives Verifying
+Observer Name (0040,A075) and Verifying Organization (0040,A027) D, so they
+take the text constants; Verifying Observer Identification Code Sequence
+(0040,A088) Z, so it is emptied; and Verification DateTime (0040,A030) D,
+which Full Dates gives K and Modified Dates C, so it takes the DT constant
+or is kept or modified with the other dates. A source item without one of
+them stays without it: no value is made up.
+
 Where an attribute is Type 1 or 1C at its place in the data set, Z writes
 D's dummy value, from :func:`values_for_d`, since a zero-length value would
 make the attribute invalid there.
@@ -48,9 +59,9 @@ Some attributes take other values, which the engine writes instead of
 calling this module. Under every preset, Patient ID (0010,0020) and Patient's
 Name (0010,0010) take the subject's keyed pseudonyms
 (:mod:`~pymedphys._dicom.deidentify.pseudonyms`), whether Z or D applies.
-Under ``tps-import``, Patient's Birth Date (0010,0030) is to take a synthetic
-birth date kept in the subject's profile
-(:mod:`~pymedphys._dicom.deidentify.profiles`), which does not yet record one.
+Under ``tps-import``, Patient's Birth Date (0010,0030) at the top level takes
+the subject's synthetic birth date, kept in the subject's profile
+(:mod:`~pymedphys._dicom.deidentify.birth_dates`).
 
 Dummy values never name PyMedPhys; the de-identification markers do. The one
 exception is the Coding Scheme Designator above, which names who defines the
@@ -107,6 +118,22 @@ _TAG_PATTERN = re.compile(r"\([0-9A-F]{4},[0-9A-F]{4}\)")
 PERSON_IDENTIFICATION_CODE_SEQUENCE = "(0040,1101)"
 REFERENCED_PERFORMED_PROCEDURE_STEP_SEQUENCE = "(0008,1111)"
 ICC_PROFILE = "(0028,2000)"
+VERIFYING_OBSERVER_SEQUENCE = "(0040,A073)"
+# The sequences whose D a reviewed rule gives by keeping each source item,
+# with only these of its attributes, each under its own rule, so that each
+# takes the action that the policy gives it there (D-021). Read-only.
+KEPT_ITEM_ATTRIBUTES: Mapping[str, frozenset[str]] = types.MappingProxyType(
+    {
+        VERIFYING_OBSERVER_SEQUENCE: frozenset(
+            {
+                "(0040,A027)",  # Verifying Organization
+                "(0040,A030)",  # Verification DateTime
+                "(0040,A075)",  # Verifying Observer Name
+                "(0040,A088)",  # Verifying Observer Identification Code Sequence
+            }
+        )
+    }
+)
 _REFERENCED_SOP_CLASS_UID = "(0008,1150)"
 _REFERENCED_SOP_INSTANCE_UID = "(0008,1155)"
 # The Modality Performed Procedure Step SOP Class (PS3.4 Annex F), which the
@@ -331,7 +358,9 @@ def items_for_d(
 ) -> tuple[tuple[DummyElement, ...], ...]:
     """Return the items that D writes in a sequence with a reviewed rule.
 
-    Two sequences have one:
+    Two sequences have one; the rule of Verifying Observer Sequence
+    (0040,A073) keeps its source items instead (:data:`KEPT_ITEM_ATTRIBUTES`),
+    so it gives no items here:
 
     - Person Identification Code Sequence (0040,1101): one item, with Code
       Value (0008,0100) ``DEIDENTIFIED``, Coding Scheme Designator

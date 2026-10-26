@@ -70,7 +70,7 @@ def plot_relevant_times(relevant_times, step=5, title=None):
     if title is not None:
         raw_chart = raw_chart.properties(title=title)
 
-    st.altair_chart(altair_chart=raw_chart, use_container_width=True)
+    st.altair_chart(altair_chart=raw_chart, width="stretch")
 
 
 def get_relevant_times_for_filepaths(filepaths):

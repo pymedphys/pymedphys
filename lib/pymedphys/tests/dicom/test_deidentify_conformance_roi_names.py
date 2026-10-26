@@ -317,28 +317,43 @@ def test_the_described_condition_for_the_clean_descriptors_code_is_the_engines(
     assert CLEAN_DESCRIPTORS_CODE in codes
 
 
-@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01", "PS3.15-E.3.5-02")
 @pytest.mark.parametrize("preset", list(policy.PRESETS))
-def test_a_policy_whose_fallback_cannot_be_composed_is_pending(preset):
-    statement = _statement(preset)
+def test_every_preset_with_clean_descriptors_has_a_fallback(preset):
     composed = policy.compose_policy(preset)
-    try:
-        descriptor_cleaning.fallback_policy(composed)
-        refused = False
-    except policy.PolicyError:
-        refused = "clean_descriptors" in composed.options
-    assert (conformance.PENDING_FALLBACK in statement.pending) == refused
-    assert refused == (preset == "tps-import")
-    if refused:
-        with pytest.raises(policy.PolicyError):
-            instance_transform.InstanceTransform(
-                composed,
-                DeidKey(bytes(32)),
-                cleaning=descriptor_cleaning.DescriptorCleaning(
-                    None, reviewed_roi_names.ReviewedNames.empty()
-                ),
-                unvalidated_policy=True,
-            )
+    if "clean_descriptors" not in composed.options:
+        return
+    fallback = descriptor_cleaning.fallback_policy(composed)
+    statement = _statement(preset)
+
+    # The other options, with the preset's resolutions of their conflicts:
+    # under tps-import, the eleven device dates and times are modified
+    # without Clean Descriptors too.
+    assert fallback.options == tuple(
+        option for option in composed.options if option != "clean_descriptors"
+    )
+    assert [r.conflict.tag for r in fallback.resolved] == [
+        r.conflict.tag for r in composed.resolved
+    ]
+    for resolution in composed.resolved:
+        assert fallback.actions[resolution.conflict.tag] == "C"
+    # So each other attribute given C is described by its fallback action,
+    # and the engine builds the rules that it takes them from.
+    fallen_back = [
+        entry
+        for entry in statement.attributes
+        if entry.superseded_by == conformance.CLEAN_DESCRIPTORS_FALLBACK
+    ]
+    assert fallen_back
+    assert conformance.PENDING_CLEANING not in statement.pending
+    instance_transform.InstanceTransform(
+        composed,
+        DeidKey(bytes(32)),
+        cleaning=descriptor_cleaning.DescriptorCleaning(
+            None, reviewed_roi_names.ReviewedNames.empty()
+        ),
+        unvalidated_policy=True,
+    )
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.5-02")

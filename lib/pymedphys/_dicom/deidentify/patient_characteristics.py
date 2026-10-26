@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Settle the free text of Retain Patient Characteristics: held unless empty.
+"""Settle the free text of Retain Patient Characteristics: pending unless empty.
 
 Under the Retain Patient Characteristics Option, Table E.1-1 keeps fourteen
 attributes, such as Patient's Age (0010,1010), Patient's Sex (0010,0040),
@@ -25,24 +25,29 @@ consistent with the VR" (Table E.1-1a), and PS3.15 E.3.7 requires the
 manner of cleaning retained attributes to be described in the conformance
 statement.
 
-No method yet cleans such text automatically: a clinician's note can hold a
-name, a date, or a place, and the reviewed lists that keep a ROI Name after
-pooled human review do not yet cover these attributes (D-009). So none of
-their values is written (D-038). :func:`held_unless_empty`, the Option's
-cleaner of the whole instance, leaves out an attribute with a value, which
-stays pending and holds its instance, sequestered rather than written: removing the value would contradict the Option, which
-retains it (D-011), and writing the instance without the Option's code
-would claim that the Basic Profile removed the characteristics that the
-Option keeps (D-012). An attribute with no value, or whose values hold
-nothing but padding, discloses nothing, so it is written with no value,
-which the Type 2C of Sex Parameters for Clinical Use Category Comment
-allows.
+No method cleans such text automatically: a clinician's note can hold a
+name, a date, or a place, and D-009 retains no free-text value without
+pooled human review. :func:`held_unless_empty`, the Option's cleaner of the
+whole instance, writes none of their values itself (D-038). It leaves out an
+attribute with a value, which stays pending: removing the value would
+contradict the Option, which retains it (D-011), and writing the instance
+without the Option's code would claim that the Basic Profile removed the
+characteristics that the Option keeps (D-012). Under Clean Descriptors as
+well, descriptor cleaning gives each value left pending the decision of the
+custodian's reviewed descriptors list, and holds the instance for review
+where the list does not clean one
+(:mod:`~pymedphys._dicom.deidentify.descriptor_cleaning`); otherwise the
+pending attribute sequesters its instance. An attribute with no value, or
+whose values hold nothing but padding, discloses nothing, so it is written
+with no value, which the Type 2C of Sex Parameters for Clinical Use
+Category Comment allows.
 """
 
 from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
 
+from .dates import DateOffsets
 from .file_layout import ElementPath
 from .keys import DeidKey
 from .pseudonyms import SubjectIdentity
@@ -82,7 +87,10 @@ def is_empty(value: str) -> bool:
 
 
 def held_unless_empty(
-    values: Iterable[SourceValue], key: DeidKey, identity: SubjectIdentity | None
+    values: Iterable[SourceValue],
+    key: DeidKey,
+    identity: SubjectIdentity | None,
+    offsets: DateOffsets | None = None,
 ) -> Mapping[ElementPath, tuple[tuple[str | bytes, ...], bool]]:
     """Settle each attribute with no value, and leave out each with one.
 
@@ -94,6 +102,8 @@ def held_unless_empty(
         The run's key, which is not used: nothing is derived from a value.
     identity : SubjectIdentity or None
         The instance's subject, which is not used.
+    offsets : callable, optional
+        What gives a subject's date offset, which is not used.
 
     Returns
     -------
@@ -101,10 +111,11 @@ def held_unless_empty(
         For each attribute whose decoded values are empty (:func:`is_empty`),
         ``((), False)``: written with no value, which is not the source's
         own. Every other attribute, with a value or with one that could not
-        be decoded, is left out, so that it stays pending and its instance
-        is held.
+        be decoded, is left out, so that it stays pending, for the reviewed
+        descriptors list to decide on under Clean Descriptors, and otherwise
+        to sequester its instance.
     """
-    del key, identity
+    del key, identity, offsets
     return {
         value.source: ((), False)
         for value in values

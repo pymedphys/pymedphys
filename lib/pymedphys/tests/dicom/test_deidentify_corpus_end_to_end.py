@@ -70,6 +70,7 @@ from pymedphys._dicom.deidentify import (
     pixel_cleaning,
     run,
     standard,
+    uids,
 )
 from pymedphys._dicom.deidentify import synthetic_corpus as corpus_module
 from pymedphys._dicom.deidentify.file_layout import ElementPath
@@ -128,6 +129,10 @@ SHORTEST_FORM = 4
 # UID, could match by chance within the digits of a replacement UID, so it
 # is found only where no digit or full stop is before it.
 DIGITS_ONLY = re.compile(r"[0-9.]+")
+# A SHA-256 in hexadecimal, as the release report gives each engine file's,
+# whose digits could hold a date's by chance, as 12071010edb6 holds
+# 12071010.
+SHA256_HEX = re.compile(rb"(?<![0-9a-f])[0-9a-f]{64}(?![0-9a-f])")
 DATE_DIGITS = 8
 # A file holds an encoded form only if it holds the form's first GRAM bytes,
 # so a set of each run of GRAM bytes in a file rules out most forms without
@@ -135,6 +140,8 @@ DATE_DIGITS = 8
 GRAM = 4
 CLEAN_DESCRIPTORS_CODE = ("113105", "DCM")
 PERFORMED_PROCEDURE_STEP_SEQUENCE = "(0008,1111)"
+FRAME_OF_REFERENCE = "(0020,0052)"
+REFERENCED_SOP_INSTANCE = "(0008,1155)"
 IMAGE_COMMENTS = "(0020,4000)"
 SOP_INSTANCE_UID = "(0008,0018)"
 MEDIA_STORAGE_UID = "(0002,0003)"
@@ -409,6 +416,8 @@ def _markers_in(spec, corpus, instances, published):
     for name, data in published.items():
         if name in instances:
             data = _without_kept(data, corpus.files[instances[name]], spec)
+        else:
+            data = SHA256_HEX.sub(lambda digest: b"-" * 64, data)
         grams = _grams(data)
         found.extend(
             (name, signature)
@@ -505,6 +514,9 @@ def test_each_cleaned_image_is_listed_and_previewed_frame_by_frame(policy_run):
         assert entry["frames"] == int(source.get("NumberOfFrames") or 1)
         regions = {region["frame"]: region["boxes"] for region in entry["regions"]}
         rows, columns = source.Rows, source.Columns
+        assert (entry["rows"], entry["columns"]) == (rows, columns)
+        # A monochrome frame is shown again over its full range.
+        panels = 1 if source.SamplesPerPixel == 3 else 2
         frames = pydicom.pixels.iter_pixels(io.BytesIO(data), raw=True)
         for index, frame in enumerate(frames):
             # Each box is clipped to the frame.
@@ -513,8 +525,10 @@ def test_each_cleaned_image_is_listed_and_previewed_frame_by_frame(policy_run):
                 for box in spec.finder.find(np.asarray(frame))
             ]
             assert regions.get(index, []) == found
-            # A frame with regions is shown beside its source, with a gutter.
-            assert next(sizes) == (columns * 2 + 8 if found else columns, rows)
+            # A frame with regions is shown beside its source, each panel
+            # with a gutter after the first.
+            across = panels + 1 if found else panels
+            assert next(sizes) == (columns * across + 8 * (across - 1), rows)
 
 
 @pytest.mark.deid_requirement(
@@ -694,6 +708,46 @@ def test_each_kept_marker_is_kept_at_its_place(policy_run):
         assert kept
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-01")
+def test_each_sequence_of_content_items_a_run_keeps_keeps_its_items(policy_run):
+    """A sequence of content items that a run keeps keeps every item, and in
+    them each marker that the run keeps (``CorpusRun.kept_content``).
+
+    The test above lets a marker go with an item that is absent, and an
+    empty Acquisition Context Sequence is valid, so neither it nor the
+    validators show that such a sequence is kept.
+    """
+    spec, corpus, released = policy_run.spec, policy_run.corpus, policy_run.released
+    sequences = markers = 0
+
+    for position, data in released.items():
+        file = corpus.files[position]
+        source, dataset = _read(file.data), _read(data)
+        for tag in spec.kept_content:
+            number = _number(tag)
+            if number not in source:
+                continue
+            assert number in dataset, (file.name, tag)
+            assert len(dataset[number].value) == len(source[number].value), (
+                file.name,
+                tag,
+            )
+            inside = [
+                placement
+                for placement in file.manifest.placements
+                if placement.kind in REMOVED_KINDS
+                and placement.path.items
+                and placement.path.items[0][0] == tag
+                and spec.keeps(placement)
+            ]
+            for placement in inside:
+                assert _kept_at(dataset, placement), (file.name, placement.path)
+            sequences += 1
+            markers += len(inside)
+    # A run names a sequence for the markers that its options keep in it.
+    assert bool(sequences) == bool(markers) == bool(spec.kept_content)
+
+
 @pytest.mark.deid_requirement("MIDI-BP-01", "PS3.15-E.1.1-09")
 def test_no_released_file_keeps_a_removed_sequence_without_a_marker(policy_run):
     """A sequence whose item holds no marker is checked by its absence."""
@@ -867,6 +921,64 @@ def test_the_multi_frame_instances_keep_their_reviewed_dummy_values(policy_run):
     assert corpus_module.PROCEDURE_STEP not in steps
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-04", "MIDI-BP-03")
+def test_each_registration_ties_its_images_to_the_frame_as_written(policy_run):
+    # A registration's frames of reference and its referenced image are
+    # replaced as the registered instances' own UIDs are, by the run's key,
+    # so the written spatial registration still ties the MR Image, and the
+    # deformable registration the PET Image, to the collection's one frame
+    # of reference, as every other written instance names it.
+    corpus, released = policy_run.corpus, policy_run.released
+    kept = policy_run.spec.kept_rows()
+    written = {
+        corpus.files[position].manifest.sop_instance: _read(data)
+        for position, data in released.items()
+    }
+
+    def replaced(uid, tag):
+        return uid if tag in kept else uids.replacement_uid(KEY, uid)
+
+    frame = replaced(corpus_module.FRAME_OF_REFERENCE, FRAME_OF_REFERENCE)
+    assert {
+        dataset.FrameOfReferenceUID
+        for dataset in written.values()
+        if "FrameOfReferenceUID" in dataset
+    } == {frame}
+    checked = 0
+    for registration, image, sequence, frame_keyword in (
+        (
+            corpus_module.REGISTRATION,
+            corpus_module.MR,
+            "RegistrationSequence",
+            "FrameOfReferenceUID",
+        ),
+        (
+            corpus_module.DEFORMABLE_REGISTRATION,
+            corpus_module.PET,
+            "DeformableRegistrationSequence",
+            "SourceFrameOfReferenceUID",
+        ),
+    ):
+        if registration not in written:
+            (name,) = (
+                file.name
+                for file in corpus.files
+                if file.manifest.sop_instance == registration
+            )
+            assert name in policy_run.spec.withheld
+            continue
+        (item,) = written[registration][sequence].value
+        assert item[frame_keyword].value == frame
+        (reference,) = item.ReferencedImageSequence
+        assert reference.ReferencedSOPInstanceUID == (
+            replaced(image, REFERENCED_SOP_INSTANCE)
+        )
+        if image in written:
+            assert reference.ReferencedSOPInstanceUID == written[image].SOPInstanceUID
+        checked += 1
+    assert checked
+
+
 @pytest.mark.deid_requirement("PS3.15-E.3.5-01")
 def test_roi_names_take_the_vocabulary_spelling_or_the_reviewed_decision(
     policy_run,
@@ -944,6 +1056,18 @@ def test_each_run_names_a_policy_once():
         CorpusRun("both", preset="basic", options=("clean_descriptors",))
     with pytest.raises(TypeError):
         CorpusRun("one string", options="clean_descriptors")
+    with pytest.raises(ValueError, match="needs Clean Structured Content"):
+        CorpusRun(
+            "no option",
+            options=("retain_uids",),
+            kept_content=frozenset({"(0040,0555)"}),
+        )
+    with pytest.raises(ValueError, match="no sequence of content items"):
+        CorpusRun(
+            "not content items",
+            options=("clean_structured_content",),
+            kept_content=frozenset({ROI_SEQUENCE}),
+        )
 
 
 def _codes(dataset):

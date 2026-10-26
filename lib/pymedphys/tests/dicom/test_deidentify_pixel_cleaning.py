@@ -14,6 +14,8 @@
 
 """Clean Pixel Data's blackout of the text found in native Pixel Data (D-037).
 
+Compressed Pixel Data is cleaned in :mod:`.test_deidentify_compressed_redaction`.
+
 Every file is synthetic, and every finder is a stand-in that gives fixed
 regions, so no model is downloaded and no network is reached.
 """
@@ -56,7 +58,6 @@ from pymedphys._dicom.deidentify.run_report import RELEASE_REPORT
 from pymedphys._dicom.deidentify.source import read_source
 from pymedphys._dicom.deidentify.text_detection import TextBox
 
-from . import _synthetic_compressed as compressed
 from . import _synthetic_references as synthetic
 
 pytestmark = [pytest.mark.pydicom, pytest.mark.usefixtures("pydicom_behaviour")]
@@ -257,14 +258,6 @@ def test_an_instance_without_pixel_data_has_nothing_to_clean():
 
     assert black_out(source, source.dataset(), finder) is None
     assert not finder.seen
-
-
-def test_compressed_pixel_data_is_refused():
-    source = read_source(compressed.rle_ct_image(_frame()))
-
-    with pytest.raises(PixelDataRefused) as refused:
-        black_out(source, source.dataset(), Finder())
-    assert refused.value.reason is TransformReason.COMPRESSED_PIXEL_DATA
 
 
 def _with(**attributes):
@@ -609,14 +602,6 @@ def test_an_instance_without_pixel_data_claims_the_option():
     assert written.BurnedInAnnotation == "NO"
 
 
-def test_compressed_pixel_data_sequesters_the_instance():
-    data = compressed.rle_ct_image(_frame())
-    result = _transformed(_transform(), data)
-
-    assert isinstance(result, run.Sequestered)
-    assert result.reasons == (TransformReason.COMPRESSED_PIXEL_DATA,)
-
-
 def test_a_redaction_that_was_not_written_as_planned_sequesters_the_instance(
     monkeypatch,
 ):
@@ -642,7 +627,7 @@ def _statement(monkeypatch, options):
 
 
 UNCHANGED = "The engine writes Pixel Data (7FE0,0010) unchanged"
-WITHOUT_A_FINDER = "and without a text finder, is"
+WITHOUT_A_FINDER = "and without a text finder or region rules, is"
 BLACKED_OUT = "Under the Clean Pixel Data Option, the engine replaces each region"
 
 
@@ -857,3 +842,134 @@ def test_written_pixel_data_that_differs_from_the_mask_is_found(where):
     output = read_source(synthetic.written(dataset))
 
     assert redaction_problem(source, output, redaction)
+
+
+# Masks written into single bits, packed eight to a byte.
+
+
+def _bits(frames):
+    """A CT slice whose native Pixel Data holds ``frames`` of single bits,
+    packed eight to a byte, as a BINARY Segmentation holds its masks."""
+    bits = np.asarray(frames, dtype=np.uint8)
+    dataset = synthetic.ct_slice(0)
+    dataset.SamplesPerPixel = 1
+    dataset.PhotometricInterpretation = "MONOCHROME2"
+    dataset.NumberOfFrames, dataset.Rows, dataset.Columns = bits.shape
+    dataset.BitsAllocated = dataset.BitsStored = 1
+    dataset.HighBit = 0
+    dataset.PixelRepresentation = 0
+    packed = np.asarray(np.packbits(bits.ravel(), bitorder="little")).tobytes()
+    dataset.PixelData = packed + bytes(len(packed) % 2)
+    return dataset
+
+
+def _random_bits(shape=(3, 4, 6)):
+    """Frames of random bits, of three bytes each, so that the frames' value
+    field takes a byte of padding."""
+    return np.random.default_rng(0).integers(0, 2, size=shape)
+
+
+def _bits_region():
+    region = np.zeros((4, 6), dtype=bool)
+    region[1:3, 2:5] = True
+    return region
+
+
+def test_a_mask_is_written_into_single_bits_and_every_other_bit_kept():
+    frames = _random_bits()
+    defacer = Defacer(_bits_region(), 0, frames={1})
+    source, redaction = _defaced(_bits(frames), defacer)
+
+    output = _replaced(source, redaction)
+    expected = frames.copy()
+    expected[1][_bits_region()] = 0
+    assert np.array_equal(_pixels(output), expected)
+    assert len(defacer.seen) == 3
+    assert all(map(np.array_equal, defacer.seen, frames))
+    assert redaction.value[-1:] == b"\0"
+    assert len(redaction.value) == len(source.value_field(pixel_cleaning.PIXEL_DATA))
+    assert [mask.frame for mask in redaction.masks] == [1]
+    assert not redaction_problem(source, output, redaction)
+
+
+def test_a_mask_of_ones_is_written_into_single_bits():
+    frames = np.zeros((2, 4, 6), dtype=np.uint8)
+    source, redaction = _defaced(_bits(frames), Defacer(_bits_region(), 1))
+
+    output = _replaced(source, redaction)
+    assert np.array_equal(_pixels(output), np.stack([_bits_region()] * 2))
+    assert not redaction_problem(source, output, redaction)
+
+
+@pytest.mark.parametrize("where", [3, 24 + 9, 71], ids=repr)
+def test_a_bit_written_otherwise_than_the_mask_is_found(where):
+    source, redaction = _defaced(_bits(_random_bits()), Defacer(_bits_region(), 0))
+    bits = np.asarray(
+        np.unpackbits(np.frombuffer(redaction.value, np.uint8), bitorder="little")
+    )
+    bits[where] ^= 1
+    dataset = source.dataset()
+    dataset.PixelData = np.asarray(np.packbits(bits, bitorder="little")).tobytes()
+    output = read_source(synthetic.written(dataset))
+
+    assert redaction_problem(source, output, redaction)
+
+
+def test_single_bits_are_cleaned_only_by_a_defacer_alone():
+    source = _source(_bits(_random_bits()))
+    defacer = Defacer(_bits_region(), 0)
+
+    for finder, given in ((Finder(), None), (Finder(()), defacer)):
+        with pytest.raises(PixelDataRefused) as refused:
+            black_out(source, source.dataset(), finder, given)
+        assert refused.value.reason is TransformReason.UNCLEANABLE_PIXEL_DATA
+    with pytest.raises(PixelDataRefused):
+        pixel_cleaning.black_out_reviewed(
+            source, source.dataset(), ((0, (BOX,)),), defacer
+        )
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        {"PixelRepresentation": 1},
+        {"BitsStored": 2},
+        {"SamplesPerPixel": 3, "PhotometricInterpretation": "RGB"},
+    ],
+    ids=repr,
+)
+def test_single_bits_of_another_layout_are_refused(change):
+    dataset = _bits(_random_bits())
+    for keyword, value in change.items():
+        setattr(dataset, keyword, value)
+    if "SamplesPerPixel" in change:
+        dataset.PlanarConfiguration = 0
+    source = _source(dataset)
+
+    with pytest.raises(PixelDataRefused):
+        black_out(source, source.dataset(), None, Defacer(_bits_region(), 0))
+
+
+def test_single_bits_in_frames_that_start_within_a_byte_are_refused():
+    region = np.ones((5, 7), dtype=bool)
+    source = _source(_bits(_random_bits((3, 5, 7))))
+
+    with pytest.raises(PixelDataRefused):
+        black_out(source, source.dataset(), None, Defacer(region, 0))
+
+
+@pytest.mark.parametrize("value", [2, -1], ids=repr)
+def test_a_mask_that_single_bits_cannot_store_is_refused(value):
+    source = _source(_bits(_random_bits()))
+
+    with pytest.raises(PixelDataRefused):
+        black_out(source, source.dataset(), None, Defacer(_bits_region(), value))
+
+
+def test_single_bits_short_of_their_frames_are_refused():
+    dataset = _bits(_random_bits())
+    dataset.PixelData = dataset.PixelData[:-2]
+    source = _source(dataset)
+
+    with pytest.raises(PixelDataRefused):
+        black_out(source, source.dataset(), None, Defacer(_bits_region(), 0))

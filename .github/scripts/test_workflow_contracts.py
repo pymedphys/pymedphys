@@ -25,6 +25,7 @@ import re
 import unittest
 from pathlib import Path
 
+import pydicom_coverage
 from select_checks import OUTPUTS
 
 WORKFLOWS = Path(__file__).resolve().parents[1] / "workflows"
@@ -325,28 +326,50 @@ class WorkflowContractTests(unittest.TestCase):
         self.assertIn("unit-tests", needs(render))
         self.assertIn("    if: ${{ !cancelled() }}", render)
         pattern = re.search(r"(?m)^          pattern: (\S+)$", render)[1]
-        # Each environment of the OS and Python matrix, but not the narrow
-        # extras', the dependency floors', or the pydicom versions' reports,
+        # Each environment of the OS and Python matrix, by its parts' combined
+        # report in place of theirs, but not the narrow extras', the
+        # dependency floors', the parts', or the pydicom versions' reports,
         # which run only some tests or would make the others partly run.
         names = re.findall(
-            r"(?m)^          name: (junit-.+)$",
+            r"(?m)^          name: (junit-.+|\$\{\{ env\.(?:REPORT|CELL) \}\})$",
             (WORKFLOWS / "unit-tests.yml").read_text(encoding="utf-8"),
         )
         self.assertEqual(
             names,
             [
-                "junit-${{ matrix.os }}-${{ matrix.python-version }}",
+                "${{ env.REPORT }}",
+                "${{ env.CELL }}",
                 "junit-extra-${{ matrix.extra }}",
-                "junit-dependency-floors",
+                "junit-dependency-floors-${{ matrix.part }}",
                 "junit-pydicom-${{ matrix.pydicom }}",
             ],
+        )
+        self.assertIn(
+            "      REPORT: junit-py${{ matrix.python-version }}-${{ matrix.part }}"
+            "-${{ matrix.os }}\n",
+            jobs("unit-tests.yml")["test"],
+        )
+        self.assertIn(
+            "      CELL: junit-${{ matrix.os }}-${{ matrix.python-version }}\n",
+            jobs("unit-tests.yml")["combined-report"],
         )
         for os_name in ("ubuntu-latest", "windows-latest", "macos-latest"):
             with self.subTest(os=os_name):
                 self.assertTrue(fnmatch.fnmatchcase(f"junit-{os_name}-3.12", pattern))
+        self.assertEqual(pydicom_coverage.BASELINE_ARTIFACT, "junit-ubuntu-latest-3.14")
+        self.assertTrue(
+            fnmatch.fnmatchcase(pydicom_coverage.BASELINE_ARTIFACT, pattern)
+        )
         for name in (
             "junit-extra-dicom",
-            "junit-dependency-floors",
+            "junit-dependency-floors-corpus-runs",
+            "junit-dependency-floors-others",
+            *(
+                pydicom_coverage.part_artifact(part, os_name, python)
+                for part in pydicom_coverage.PARTS
+                for os_name in ("ubuntu-latest", "windows-latest", "macos-latest")
+                for python in ("3.12", "3.13", "3.14")
+            ),
             "junit-pydicom-minimum",
             "junit-pydicom-latest",
         ):
@@ -399,27 +422,155 @@ class WorkflowContractTests(unittest.TestCase):
                 self.assertNotIn(job, needs(workflow["publish-pypi"]))
                 self.assertNotIn(job, needs(workflow["upload-release-assets"]))
 
+    def test_the_split_parts_run_every_test_once(self):
+        text = (WORKFLOWS / "unit-tests.yml").read_text(encoding="utf-8")
+        listed = re.search(r"\n  CORPUS_RUN_TESTS: >-\n((?: {4}\S+\n)+)", text)[1]
+        self.assertTrue(listed.split())
+        for path in listed.split():
+            with self.subTest(path=path):
+                self.assertTrue((WORKFLOWS.parents[1] / path).is_file())
+        workflow = jobs("unit-tests.yml")
+        floors, test = workflow["dependency-floors"], workflow["test"]
+        self.assertIn("        part: [corpus-runs, others]\n", floors)
+        # Every cell runs in one job for each part, which the combined
+        # report joins; no cell runs whole.
+        self.assertIn(
+            f"        part: [{', '.join(pydicom_coverage.PARTS)}]\n"
+            "    runs-on: ${{ matrix.os }}\n",
+            test,
+        )
+        for key in ("exclude:", "include:"):
+            with self.subTest(key=key):
+                self.assertNotIn(key, test)
+        # Each cell's combined report covers the same operating systems and
+        # Python versions as the cells.
+        combined = workflow["combined-report"]
+        for key in ("os", "python-version"):
+            with self.subTest(key=key):
+                line = re.search(rf"(?m)^        {key}: .+\n", test)[0]
+                self.assertIn(line, combined)
+        # Both jobs select their parts the same way: the corpus-runs part runs
+        # the listed modules and the others part ignores them, so a module is
+        # in exactly one part, and a listed module that is missing fails both.
+        selections = [
+            re.search(
+                r"(?ms)^          # Each part runs its share.*?^          fi\n", job
+            )[0]
+            for job in (floors, test)
+        ]
+        self.assertEqual(selections[0], selections[1])
+        for line in (
+            '            if [[ ! -f "${path}" ]]; then\n',
+            '              corpus-runs) selection=("${listed[@]}") ;;\n',
+            "              others) selection="
+            '("${listed[@]/#/--ignore=${GITHUB_WORKSPACE}/}") ;;\n',
+        ):
+            with self.subTest(line=line):
+                self.assertIn(line, selections[0])
+        for name, job in (("dependency-floors", floors), ("test", test)):
+            with self.subTest(job=name):
+                self.assertIn(
+                    '-m "not slow" ${selection[@]+"${selection[@]}"} \\\n', job
+                )
+                # A skipped part would count as a success of the workflow.
+                self.assertNotIn("\n    if:", job)
+                # The corpus-runs part reads no data, so it must not save a
+                # partial data cache under the key the parts share.
+                self.assertIn(
+                    "          cache-data: ${{ matrix.part != 'corpus-runs' }}\n", job
+                )
+        # The release expects a report from every Python version that
+        # python-matrix holds by default, so no caller may narrow it.
+        self.assertIn('        default: \'["3.12", "3.13", "3.14"]\'\n', text)
+        for caller in sorted(WORKFLOWS.glob("*.yml")):
+            if caller.name != "unit-tests.yml":
+                with self.subTest(caller=caller.name):
+                    self.assertNotIn(
+                        "python-matrix", caller.read_text(encoding="utf-8")
+                    )
+
     def test_pydicom_reuse_keeps_its_proof_inside_the_unit_workflow(self):
         workflow = jobs("unit-tests.yml")
-        # Reuse saves suite executions without adding a serial runner job.
+        # Reuse saves suite executions; the only job it waits for combines
+        # each cell's parts' reports, and runs no tests.
         self.assertEqual(
             set(workflow),
             {
                 "test",
+                "combined-report",
                 "narrow-extras",
                 "dependency-floors",
                 "pydicom-versions",
                 "dicom-validators",
             },
         )
-        baseline = workflow["test"]
+        # Each Ubuntu/Python 3.14 part binds its report to the pydicom
+        # version it imported.
+        parts = workflow["test"]
         self.assertIn(
-            "        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.14'",
+            "      - name: Record the pydicom version this part imported\n"
+            "        if: matrix.os == 'ubuntu-latest' && "
+            "matrix.python-version == '3.14'\n",
+            parts,
+        )
+        self.assertIn("python .github/scripts/pydicom_coverage.py part", parts)
+        self.assertIn("          CI_COMMIT: ${{ github.sha }}", parts)
+        self.assertIn("          PART: ${{ matrix.part }}", parts)
+        self.assertIn("          path: test-results/*\n", parts)
+        # Each cell's combined report, and the Ubuntu/Python 3.14 cell's
+        # evidence only when both its parts passed.
+        baseline = workflow["combined-report"]
+        self.assertEqual(needs(baseline), {"test"})
+        self.assertIn("    if: ${{ !cancelled() }}\n", baseline)
+        self.assertIn("    runs-on: ubuntu-latest\n", baseline)
+        pattern = re.search(r"(?m)^          pattern: (.+)$", baseline)[1]
+        self.assertEqual(
+            pattern, "junit-py${{ matrix.python-version }}-*-${{ matrix.os }}"
+        )
+        for os_name, python in (("ubuntu-latest", "3.14"), ("macos-latest", "3.12")):
+            cell = pattern.replace("${{ matrix.python-version }}", python).replace(
+                "${{ matrix.os }}", os_name
+            )
+            for part in pydicom_coverage.PARTS:
+                for other, version in (
+                    (os_name, python),
+                    ("windows-latest", python),
+                    (os_name, "3.13"),
+                ):
+                    name = pydicom_coverage.part_artifact(part, other, version)
+                    with self.subTest(cell=cell, name=name):
+                        self.assertEqual(
+                            fnmatch.fnmatchcase(name, cell),
+                            (other, version) == (os_name, python),
+                        )
+        self.assertIn(
+            "          CELL_OS: ${{ matrix.os }}\n"
+            "          CELL_PYTHON: ${{ matrix.python-version }}\n"
+            "        run: python .github/scripts/pydicom_coverage.py combine\n",
+            baseline,
+        )
+        self.assertIn(
+            "      - name: Record the locked pydicom test evidence\n"
+            "        if: matrix.os == 'ubuntu-latest' && "
+            "matrix.python-version == '3.14'\n",
             baseline,
         )
         self.assertIn("python .github/scripts/pydicom_coverage.py baseline", baseline)
         self.assertIn("          CI_COMMIT: ${{ github.sha }}", baseline)
-        self.assertIn("          path: test-results/*\n", baseline)
+        self.assertNotIn("continue-on-error", baseline)
+        self.assertIn(
+            "          name: ${{ env.CELL }}\n"
+            "          path: |\n"
+            "            test-results/${{ env.CELL }}.xml\n"
+            "            test-results/pydicom-${{ matrix.os }}-"
+            "${{ matrix.python-version }}.json\n",
+            baseline,
+        )
+        self.assertEqual(
+            pydicom_coverage.BASELINE_METADATA,
+            f"pydicom-{pydicom_coverage.BASELINE_OS}-"
+            f"{pydicom_coverage.BASELINE_PYTHON}.json",
+        )
         versions = workflow["pydicom-versions"]
         self.assertEqual(needs(versions), set())
         self.assertNotIn("\n    if:", versions)
@@ -453,6 +604,30 @@ class WorkflowContractTests(unittest.TestCase):
         # Only the snapshot listing may fail without failing the job.
         self.assertEqual(job.count("continue-on-error: true"), 1)
         self.assertIn("unit-tests", needs(jobs("ci.yml")["summary"]))
+
+    def test_pyright_checks_the_package_and_these_scripts(self):
+        # The pyright command line always skips dot-directories below its
+        # project root, so these scripts are a project of their own that
+        # inherits the package's settings.
+        config = json.loads(
+            (Path(__file__).parent / "pyrightconfig.json").read_text(encoding="utf-8")
+        )
+        self.assertEqual(config, {"extends": "../../pyproject.toml", "include": ["."]})
+        root = (WORKFLOWS.parents[1] / "pyproject.toml").read_text(encoding="utf-8")
+        # Listing the scripts here again would only look like coverage.
+        self.assertIn('\ninclude = ["lib/pymedphys"]\n', root)
+        job = jobs("type-check.yml")["type-check"]
+        for line in (
+            "        shell: bash\n",
+            "          check lib/pymedphys\n",
+            "          check .github/scripts --project .github/scripts\n",
+            '          exit "${status}"\n',
+        ):
+            with self.subTest(line=line):
+                self.assertIn(line, job)
+        # A project that finds fewer files than its tree holds fails the step.
+        self.assertIn('if [[ "${found}" != "${expected}" ]]; then\n', job)
+        self.assertIn("uv run -- pyright --stats", job)
 
 
 if __name__ == "__main__":

@@ -18,10 +18,15 @@ Dose, and PET in the same Frame of Reference, the RT Structure Set replaced
 by one of the head, one RT Dose by a grid over the head, and the PET Image
 by two slices of the head. Every UID and value here is invented."""
 
+# The runs share the head, its ROIs, and the fixtures that review one run of
+# the collection, so they stay in one module.
+# pylint: disable = too-many-lines
+
 from __future__ import annotations
 
 import contextlib
 import copy
+import dataclasses
 import json
 import shutil
 import tempfile
@@ -30,7 +35,13 @@ from pathlib import Path
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom, pytest, shapely
 
-from pymedphys._dicom.deidentify import dose_defacing, face_blocks, markers, run
+from pymedphys._dicom.deidentify import (
+    defacing,
+    dose_defacing,
+    face_blocks,
+    markers,
+    run,
+)
 from pymedphys._dicom.deidentify import synthetic_corpus as corpus_module
 from pymedphys._dicom.deidentify.face_review import FaceReview, read_face_review
 from pymedphys._dicom.deidentify.instance_transform import (
@@ -54,6 +65,7 @@ from pymedphys._dicom.deidentify.reasons import (
 from pymedphys._dicom.deidentify.redaction_review import read_redaction_review
 from pymedphys._dicom.deidentify.references import InstanceRecord
 from pymedphys._dicom.deidentify.release_gate import ReleaseReason
+from pymedphys._dicom.deidentify.text_detection import TextBox
 
 from . import _synthetic_head as head
 from . import _synthetic_head_dicom as files
@@ -82,7 +94,7 @@ _IN_FRAME = (_STRUCTURE_SET, *_DOSE, *_PET, _PET_ABOVE)
 # The PET instances that the run does not clean.
 _UNDEFACED = _PET[1:]
 # The PET slices of the head, by file name, at heights below and above the
-# floor of the kept cavity.
+# floor of the kept brain.
 _PET_SLICES = {_PET[0]: 20.0, _PET_ABOVE: 70.0}
 _PET_GRID = {"position": (-100.0, -130.0), "spacing": (5.0, 5.0), "shape": (49, 41)}
 _UPTAKE = 100
@@ -136,12 +148,15 @@ def _eye(side, *, below=0.0):
 
 
 # The head's ROIs: its outline, which the block cuts on each slice; its
-# brain, within the kept cavity, above the floor; its eyes, whose backs lie
-# behind the block's plane; a lens, wholly in the block; and a target
-# behind the block.
+# brain, within the cranial cavity above the floor, and drawn out to the
+# skull; its eyes, whose backs lie behind the block's plane; a lens, wholly
+# in the block; and a target behind the block.
 _ROIS = {
     "External": ("EXTERNAL", [_section(_OUTLINE, z) for z in (20.0, 60.0, 80.0)]),
     "Brain": ("ORGAN", [_section(_BRAIN, z, 0.9) for z in (60.0, 80.0)]),
+    # The brain drawn on the inner table, as segmentations commonly are, so
+    # that it reaches bone, which defacing writes as air.
+    "Brain_Table": ("ORGAN", [_section(_BRAIN, z) for z in (60.0, 80.0)]),
     "Eye_R": ("ORGAN", _eye(0)),
     "Eye_L": ("ORGAN", _eye(1)),
     "Lens_L": (
@@ -229,29 +244,42 @@ def _dvh_only(grid, instance):
     return files.written(dataset)
 
 
+@dataclasses.dataclass(frozen=True)
+class _Reviewed:
+    """The collection as :func:`_reviewed` wrote it, and its first run."""
+
+    directory: Path
+    instances: Path
+    slices: list
+    pack: Path
+    names: dict
+    marked: list
+
+
 @contextlib.contextmanager
-def _runs(
-    *others,
-    first=None,
-    target=False,
-    eyes_away=False,
-    without_ct=False,
-    accepted=False,
-    dose=None,
-    edges=False,
-):
+def _runs(*others, without_ct=False, accepted=False, revised=None, **first_run):
+    """Run the collection as :func:`_reviewed` does, given ``first_run``, and
+    again as :func:`_second` does, given the rest."""
+    with _reviewed(**first_run) as reviewed:
+        yield _second(
+            reviewed,
+            *others,
+            name="r",
+            without_ct=without_ct,
+            accepted=accepted,
+            revised=revised,
+        )
+
+
+@contextlib.contextmanager
+def _reviewed(first=None, target=False, eyes_away=False, dose=None, edges=False):
     """Run the collection, with its CT slices replaced by the head's, its RT
     Structure Set by the head's ROIs, or by a target in the block if
     ``target``, its PET Image by :data:`_PET_SLICES`, and its first RT Dose
     by a grid over the head of ``dose`` where given, with the RT Dose
     instances of :data:`_UNPLACEABLE` and :data:`_DVH_ONLY` in its series if
     ``edges``, under ``basic``, or under the option and ``first`` with a
-    face review that gives no verdicts; attest the pack with the head's
-    series, and those of the RT Structure Set, RT Dose, and PET in its
-    frame, marked absent, and, if ``accepted``, the regions of each of the
-    head's slices that the pack previews accepted; and run it again under
-    the option and ``others``, given those verdicts, without the head's
-    slices if ``without_ct``."""
+    face review that gives no verdicts."""
     corpus = corpus_module.build_corpus()
     directory = Path(tempfile.mkdtemp(prefix="d"))
     try:
@@ -337,56 +365,81 @@ def _runs(
                 for p in s["positions"]
             )
         ]
-        redactions = (
-            [
-                RedactionVerdict(position, Redaction.ACCEPTED)
-                for position in previewed_redactions(reviewed.qc_pack.read_bytes())
-                if names[position].startswith("01-head")
-            ]
-            if accepted
-            else []
-        )
-        _attest(
-            reviewed.qc_pack.parent,
-            dict.fromkeys(marked, Face.ABSENT),
-            redactions=redactions,
-        )
-        if without_ct:
-            for index in range(len(slices)):
-                (instances / _head_name(index)).unlink()
-        transform = _transform(
-            others,
-            read_face_review(reviewed.qc_pack.parent),
-            read_redaction_review(reviewed.qc_pack.parent) if accepted else None,
-        )
-        second = run.run(
-            run.discover(instances),
-            directory / "r2",
-            transform,
-            ReleaseGate(),
-            qc_destination=directory / "qc2",
-            reporter=transform.reporter,
-        )
-        pack = json.loads(second.qc_pack.read_text("utf-8"))["instances"]
-        outcomes = {
-            Path(entry["source"]).name: (
-                entry["disposition"],
-                None
-                if entry.get("output") is None
-                else pydicom.dcmread(directory / "r2" / entry["output"]),
-            )
-            for entry in pack
-        }
-        reasons = {
-            Path(entry["source"]).name: set(outcome.reasons)
-            for entry in pack
-            for outcome in second.outcomes
-            if outcome.position == entry["position"]
-        }
-        report = json.loads((directory / "r2" / "release-report.json").read_text())
-        yield slices, outcomes, reasons, report
+        yield _Reviewed(directory, instances, slices, reviewed.qc_pack, names, marked)
     finally:
         shutil.rmtree(directory, ignore_errors=True)
+
+
+def _second(reviewed, *others, name, without_ct=False, accepted=False, revised=None):
+    """Attest a copy of the reviewed run's pack, in ``name`` beside it, with
+    the head's series, and those of the RT Structure Set, RT Dose, and PET
+    in its frame, marked absent, and, if ``accepted``, the regions of each
+    of the head's CT and PET slices that the pack previews accepted, or, if
+    ``revised``, those of each of its CT slices, revised with that region
+    added in their first frame; and run the collection again under the
+    option and ``others``, given those verdicts, without the head's slices
+    if ``without_ct``.
+
+    The run that it reviews, and the files that it ran, are left as they
+    were, so that one reviewed run serves several second runs."""
+    directory = reviewed.directory / name
+    pack = directory / "qc1"
+    shutil.copytree(reviewed.pack.parent, pack)
+    verdict = (
+        {"redaction": Redaction.ACCEPTED}
+        if revised is None
+        else {"redaction": Redaction.REVISED, "regions": ((0, (revised,)),)}
+    )
+    redactions = (
+        [
+            RedactionVerdict(position, **verdict)
+            for position in previewed_redactions(reviewed.pack.read_bytes())
+            if reviewed.names[position].startswith("01-head")
+            or (revised is None and reviewed.names[position] in _PET_SLICES)
+        ]
+        if accepted or revised is not None
+        else []
+    )
+    _attest(pack, dict.fromkeys(reviewed.marked, Face.ABSENT), redactions=redactions)
+    instances = reviewed.instances
+    if without_ct:
+        instances = directory / "i"
+        shutil.copytree(
+            reviewed.instances,
+            instances,
+            ignore=lambda _, found: [f for f in found if f.startswith("01-head")],
+        )
+    transform = _transform(
+        others,
+        read_face_review(pack),
+        read_redaction_review(pack) if accepted or revised is not None else None,
+    )
+    second = run.run(
+        run.discover(instances),
+        directory / "r2",
+        transform,
+        ReleaseGate(),
+        qc_destination=directory / "qc2",
+        reporter=transform.reporter,
+    )
+    entries = json.loads(second.qc_pack.read_text("utf-8"))["instances"]
+    outcomes = {
+        Path(entry["source"]).name: (
+            entry["disposition"],
+            None
+            if entry.get("output") is None
+            else pydicom.dcmread(directory / "r2" / entry["output"]),
+        )
+        for entry in entries
+    }
+    reasons = {
+        Path(entry["source"]).name: set(outcome.reasons)
+        for entry in entries
+        for outcome in second.outcomes
+        if outcome.position == entry["position"]
+    }
+    report = json.loads((directory / "r2" / "release-report.json").read_text())
+    return reviewed.slices, outcomes, reasons, report
 
 
 def _transform(options, face_review, redaction_review=None):
@@ -400,10 +453,24 @@ def _transform(options, face_review, redaction_review=None):
     )
 
 
-@pytest.fixture(name="defaced", scope="module")
-def fixture_defaced():
-    with _runs(first=(), dose=_dose(_LOW)) as found:
+# The runs that the defaced and without_ct runs review, and those that the
+# with_pixel_data, accepted, and revised runs review, are the same, so each
+# is made once.
+@pytest.fixture(name="reviewed_low", scope="module")
+def fixture_reviewed_low():
+    with _reviewed(first=(), dose=_dose(_LOW)) as found:
         yield found
+
+
+@pytest.fixture(name="reviewed_with_pixel_data", scope="module")
+def fixture_reviewed_with_pixel_data():
+    with _reviewed(first=(CLEAN_PIXEL_DATA,)) as found:
+        yield found
+
+
+@pytest.fixture(name="defaced", scope="module")
+def fixture_defaced(reviewed_low):
+    return _second(reviewed_low, name="d")
 
 
 # With the RT Dose instances that cannot be placed or have no grid, which
@@ -433,21 +500,29 @@ def fixture_eyes_away():
 
 
 @pytest.fixture(name="without_ct", scope="module")
-def fixture_without_ct():
-    with _runs(first=(), without_ct=True, dose=_dose(_LOW)) as found:
-        yield found
+def fixture_without_ct(reviewed_low):
+    return _second(reviewed_low, name="w", without_ct=True)
 
 
 @pytest.fixture(name="with_pixel_data", scope="module")
-def fixture_with_pixel_data():
-    with _runs(CLEAN_PIXEL_DATA, first=(CLEAN_PIXEL_DATA,)) as found:
-        yield found
+def fixture_with_pixel_data(reviewed_with_pixel_data):
+    return _second(reviewed_with_pixel_data, CLEAN_PIXEL_DATA, name="p")
 
 
 @pytest.fixture(name="accepted", scope="module")
-def fixture_accepted():
-    with _runs(CLEAN_PIXEL_DATA, first=(CLEAN_PIXEL_DATA,), accepted=True) as found:
-        yield found
+def fixture_accepted(reviewed_with_pixel_data):
+    return _second(reviewed_with_pixel_data, CLEAN_PIXEL_DATA, name="a", accepted=True)
+
+
+# A region of the reviewer's own, within the head on each of its slices.
+_REVISED = TextBox(46, 36, 51, 45)
+
+
+@pytest.fixture(name="revised", scope="module")
+def fixture_revised(reviewed_with_pixel_data):
+    return _second(
+        reviewed_with_pixel_data, CLEAN_PIXEL_DATA, name="v", revised=_REVISED
+    )
 
 
 def _block(slices):
@@ -599,6 +674,34 @@ def _behind(block, z):
     )
 
 
+def _written_as_air(outcomes, block, z):
+    """The parts in the block of the squares of the pixels of the head's CT
+    slice at ``z`` that the run wrote as air there, as a polygon, read from
+    the released slice."""
+    (index,) = [i for i, each in enumerate(_SCAN.positions) if each[2] == z]
+    _, dataset = outcomes[_head_name(index)]
+    written = pydicom.pixels.apply_rescale(pydicom.pixels.pixel_array(dataset), dataset)
+    points = _SCAN.points(index)
+    air = block.contains(points) & (written == -1000)
+    half = _SCAN.spacing[0] / 2
+    squares = shapely.ops.unary_union(
+        [
+            shapely.geometry.box(x - half, y - half, x + half, y + half)
+            for x, y in points[air][:, :2]
+        ]
+    )
+    return squares.difference(_behind(block, z))
+
+
+def _region(contours):
+    """The region that contours in one plane bound together, by exclusive
+    or."""
+    region = shapely.geometry.Polygon()
+    for points in contours:
+        region = region.symmetric_difference(shapely.geometry.Polygon(points[:, :2]))
+    return region
+
+
 @pytest.mark.deid_requirement("PS3.15-E.3.2-01", "PS3.15-E.3.2-02")
 def test_the_head_structure_set_is_cut_by_the_block_and_released(defaced):
     slices, outcomes, reasons, _ = defaced
@@ -609,13 +712,19 @@ def test_the_head_structure_set_is_cut_by_the_block_and_released(defaced):
     assert dataset.RecognizableVisualFeatures == "NO"
     assert _codes(dataset)[-2:] == [markers.PROFILE_CODE, CODE]
     written = _contours(dataset)
-    # The outline and the eyes lose their parts in the block, on each slice,
-    # the forehead above the kept brain's floor included; each slice's
-    # contour is one polygon, which is its part behind the block's plane, as
-    # the CT keeps the backs of the globes.
+    floor = head.GLOBE_Z + face_blocks.CAVITY_FLOOR
+    # Below the kept brain's floor, the outline and the eyes lose their
+    # parts in the block, on each slice; each slice's contour is one
+    # polygon, which is its part behind the block's plane, as the CT keeps
+    # the backs of the globes.
     for name in ("External", "Eye_R", "Eye_L"):
-        for source, cut in zip(_ROIS[name][1], written[name], strict=True):
+        cuts = iter(written[name])
+        for source in _ROIS[name][1]:
             z = source[0, 2]
+            if z > floor:
+                continue
+            cut = next(cuts)
+            assert cut[0, 2] == z
             assert not block.contains(cut).any(), (name, z)
             expected = shapely.geometry.Polygon(source[:, :2]).intersection(
                 _behind(block, z)
@@ -623,7 +732,21 @@ def test_the_head_structure_set_is_cut_by_the_block_and_released(defaced):
             got = shapely.geometry.Polygon(cut[:, :2])
             assert got.symmetric_difference(expected).area < 1e-3 * expected.area
             assert got.area < shapely.geometry.Polygon(source[:, :2]).area, name
-    # The brain, in the kept cavity, and the target behind the block, are as
+    # Above it, the outline, and the brain drawn out to the skull, lose
+    # exactly what the CT writes as air, keeping the brain that the CT
+    # keeps, and so more than the block's plane would leave them.
+    for name in ("External", "Brain_Table"):
+        for source in _ROIS[name][1]:
+            z = source[0, 2]
+            if z <= floor:
+                continue
+            got = _region([each for each in written[name] if each[0, 2] == z])
+            whole = shapely.geometry.Polygon(source[:, :2])
+            expected = whole.difference(_written_as_air(outcomes, block, z))
+            assert got.symmetric_difference(expected).area < 1e-6 * whole.area
+            assert got.area < whole.area, (name, z)
+            assert got.area > whole.intersection(_behind(block, z)).area, (name, z)
+    # The brain, kept above the floor, and the target behind the block, are as
     # they were; the lens, wholly in the block, is gone, without a Contour
     # Sequence.
     for name in ("Brain", "PTV"):
@@ -863,6 +986,39 @@ def test_an_eye_drawn_away_from_the_globes_holds_the_head_ct(eyes_away):
     assert all(contours is not None for contours in _contours(dataset).values())
 
 
+def test_an_unexpected_error_in_the_finder_releases_no_slice_it_would_deface(
+    reviewed_low, defaced, monkeypatch
+):
+    # As the IndexError that an earlier front test raised on real heads: the
+    # series is not defaced, and a slice is released only as the reviewer
+    # saw it, so each slice that defacing changes is held.
+    def fail(*_):
+        raise IndexError("index out of bounds")
+
+    monkeypatch.setattr(defacing.FaceInspection, "_front", fail)
+    slices, outcomes, reasons, report = _second(reviewed_low, name="e")
+    _, written, _, _ = defaced
+    held = HeldVisualFeatures(VisualFeaturesReason.OTHER_PIXEL_DATA)
+    changed = 0
+
+    for index, data in enumerate(slices):
+        name = _head_name(index)
+        before = pydicom.dcmread(pydicom.filebase.DicomBytesIO(data))
+        if written[name][1].PixelData != before.PixelData:
+            changed += 1
+            assert outcomes[name] == ("held-for-review", None), index
+            assert reasons[name] == {held}, index
+        else:
+            disposition, dataset = outcomes[name]
+            assert disposition == "released", index
+            assert dataset.PixelData == before.PixelData, index
+    assert 0 < changed < len(slices)
+    assert report["face_review"]["ct_series"] == {
+        "defaced": 0,
+        "not_defaced": [{"reason": "unreadable", "count": 1}],
+    }
+
+
 @pytest.mark.deid_requirement("PS3.15-E.3.1-01", "PS3.15-E.3.2-01")
 def test_with_clean_pixel_data_the_head_ct_is_held_for_its_pixel_data(
     with_pixel_data,
@@ -906,3 +1062,54 @@ def test_with_both_options_reviewed_the_head_ct_is_released_with_both(accepted):
         assert len(np.unique(written[corner])) == 1, index
     assert report["face_review"]["ct_series"] == {"defaced": 1, "not_defaced": []}
     assert report["redaction_review"] is not None
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.1-01", "PS3.15-E.3.2-01")
+def test_a_revised_region_that_changes_a_defaced_slice_holds_it_for_its_face(
+    revised,
+):
+    slices, outcomes, reasons, report = revised
+    region = np.zeros(_SCAN.shape, dtype=bool)
+    region[_REVISED.top : _REVISED.bottom, _REVISED.left : _REVISED.right] = True
+
+    # The face verdict is on the pixel data that the first run wrote, without
+    # the reviewer's region. The region covers more than the fill, so the
+    # second run writes other pixel data, which the verdict does not cover:
+    # each slice is held for its face, and not for its text, which the
+    # reviewer approved.
+    for index, data in enumerate(slices):
+        name = _head_name(index)
+        before = pydicom.dcmread(pydicom.filebase.DicomBytesIO(data))
+        source = pydicom.pixels.pixel_array(before)
+        assert np.any(source[region] != source.min()), index
+        assert outcomes[name] == ("held-for-review", None), index
+        assert reasons[name] == {
+            HeldVisualFeatures(VisualFeaturesReason.OTHER_PIXEL_DATA)
+        }, index
+    assert report["face_review"]["ct_series"] == {"defaced": 1, "not_defaced": []}
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.2-01")
+def test_with_both_options_reviewed_the_head_pet_is_released_with_both(accepted):
+    slices, outcomes, reasons, _ = accepted
+    block = _block(slices)
+    corner = np.zeros(_PET_GRID["shape"], dtype=bool)
+    corner[0:2, 0:3] = True
+
+    # The reviewer accepted the regions of each PET slice, set to zero
+    # activity in the block, so the second run blacks out the pack's regions
+    # and sets the block to zero again, writing the pixel data the reviewer
+    # saw, and releases each slice with both options' codes.
+    for name, z in _PET_SLICES.items():
+        disposition, dataset = outcomes[name]
+        assert disposition == "released", (name, reasons[name])
+        assert dataset.BurnedInAnnotation == "NO"
+        assert dataset.RecognizableVisualFeatures == "NO"
+        assert _codes(dataset)[-3:] == [markers.PROFILE_CODE, "113101", CODE]
+        source, written = _pet_uptake(z), dataset.pixel_array
+        inside = block.contains(_pet_points(z))
+        untouched = ~inside & ~corner
+        assert np.array_equal(written[untouched], source[untouched]), name
+        assert np.all((written[inside] == 0) | (written[inside] == source[inside]))
+        assert (written[inside] != source[inside]).any(), name
+        assert len(np.unique(written[corner])) == 1, name

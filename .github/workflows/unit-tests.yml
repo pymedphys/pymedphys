@@ -27,18 +27,36 @@ env:
   OMP_NUM_THREADS: '1'
   MKL_NUM_THREADS: '1'
   VECLIB_MAXIMUM_THREADS: '1'
+  # Every cell of the unit-test matrix, and the run at the dependency floors,
+  # runs in two parts on two runners, since on a slow runner the whole suite
+  # at once can reach the time limit. The corpus-runs part runs these
+  # modules, which run the synthetic collection through the engine and take
+  # about half the suite's time; the others part ignores them, so it runs
+  # every other test, including any module added later.
+  CORPUS_RUN_TESTS: >-
+    lib/pymedphys/tests/dicom/test_deidentify_ct_defacing_run.py
+    lib/pymedphys/tests/dicom/test_deidentify_corpus_end_to_end.py
+    lib/pymedphys/tests/dicom/test_deidentify_conformance.py
+    lib/pymedphys/tests/dicom/test_deidentify_redaction_review.py
 
 jobs:
   test:
-    name: ${{ matrix.os }} - py${{ matrix.python-version }}
-    # Allow for setup and the full suite on slower Windows runners.
+    name: ${{ matrix.os }} - py${{ matrix.python-version }} (${{ matrix.part }})
+    # Allow for setup and slower Windows runners.
     timeout-minutes: ${{ matrix.os == 'windows-latest' && 60 || 30 }}
     strategy:
       fail-fast: false
       matrix:
         os: ${{ inputs.quick && fromJSON('["ubuntu-latest"]') || fromJSON('["ubuntu-latest", "windows-latest", "macos-latest"]') }}
         python-version: ${{ inputs.quick && fromJSON('["3.14"]') || fromJSON(inputs.python-matrix) }}
+        # Each cell runs in two parts, which the combined-report job combines.
+        part: [corpus-runs, others]
     runs-on: ${{ matrix.os }}
+    env:
+      # The parts' reports have names that the release's junit-*-latest-*
+      # pattern leaves out, since -latest ends them; it reads their
+      # combination instead.
+      REPORT: junit-py${{ matrix.python-version }}-${{ matrix.part }}-${{ matrix.os }}
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -47,7 +65,9 @@ jobs:
 
       - uses: ./.github/actions/setup-project
         with:
-          cache-data: 'true'
+          # The corpus-runs part downloads no data, so it neither restores nor
+          # saves the data cache, which the parts would otherwise share.
+          cache-data: ${{ matrix.part != 'corpus-runs' }}
           python-version: ${{ matrix.python-version }}
           # user is a superset of mosaiq and provides the Streamlit GUI tests
           # with the app dependencies.
@@ -58,11 +78,29 @@ jobs:
         shell: bash
         env:
           PYTEST_ADDOPTS: ${{ inputs.extra-pytest-args }}
-          MATRIX_OS: ${{ matrix.os }}
-          MATRIX_PYTHON: ${{ matrix.python-version }}
+          PART: ${{ matrix.part }}
         run: |
           set -euxo pipefail
           mkdir -p test-results
+          # Each part runs its share of the suite: corpus-runs runs the
+          # modules that CORPUS_RUN_TESTS lists and others ignores them. A
+          # listed module that no longer exists fails both parts. Expand the
+          # selection only when it is set, which bash before 4.4 requires.
+          selection=()
+          if [[ -n "${PART}" ]]; then
+            read -ra listed <<< "${CORPUS_RUN_TESTS}"
+            for path in "${listed[@]}"; do
+              if [[ ! -f "${path}" ]]; then
+                echo "::error::CORPUS_RUN_TESTS lists ${path}, which does not exist."
+                exit 1
+              fi
+            done
+            case "${PART}" in
+              corpus-runs) selection=("${listed[@]}") ;;
+              others) selection=("${listed[@]/#/--ignore=${GITHUB_WORKSPACE}/}") ;;
+              *) echo "::error::Unknown part ${PART}."; exit 1 ;;
+            esac
+          fi
 
           # Always exclude slow tests in unit test runs.
           # Extra pytest options come from PYTEST_ADDOPTS, which pytest parses.
@@ -71,23 +109,87 @@ jobs:
           # upload step (which looks in the workspace root) to find it.
           # Use a short pytest temporary root, keeping Windows DICOM release
           # paths inside the 259-character guard on every Python version.
-          uv run -- pymedphys dev tests -m "not slow" \
+          uv run -- pymedphys dev tests -m "not slow" ${selection[@]+"${selection[@]}"} \
             -n 2 --dist worksteal --durations=15 \
             --basetemp="${RUNNER_TEMP}/p" \
-            --junitxml="${GITHUB_WORKSPACE}/test-results/junit-${MATRIX_OS}-${MATRIX_PYTHON}.xml"
+            --junitxml="${GITHUB_WORKSPACE}/test-results/${REPORT}.xml"
 
-      - name: Record the locked pydicom test evidence
+      - name: Record the pydicom version this part imported
         if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.14'
         env:
           CI_COMMIT: ${{ github.sha }}
-        run: uv run -- python .github/scripts/pydicom_coverage.py baseline
+          PART: ${{ matrix.part }}
+        run: uv run -- python .github/scripts/pydicom_coverage.py part
 
       - name: Upload test results
         if: ${{ !cancelled() && steps.tests.outcome != 'skipped' }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: junit-${{ matrix.os }}-${{ matrix.python-version }}
+          name: ${{ env.REPORT }}
           path: test-results/*
+          if-no-files-found: error
+          retention-days: 30
+
+  # Combine the two parts of each cell into that cell's one report, such as
+  # junit-ubuntu-latest-3.14: the release's requirements matrix reads each as
+  # that environment, and the pydicom-versions job reuses the Ubuntu/Python
+  # 3.14 cell's when the locked pydicom is the version it would test. It runs
+  # after failed tests too, so the combined reports show them, but records the
+  # pydicom evidence only when both of that cell's parts passed and imported
+  # the same version.
+  combined-report:
+    name: ${{ matrix.os }} - py${{ matrix.python-version }} (combined report)
+    needs: [test]
+    if: ${{ !cancelled() }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        os: ${{ inputs.quick && fromJSON('["ubuntu-latest"]') || fromJSON('["ubuntu-latest", "windows-latest", "macos-latest"]') }}
+        python-version: ${{ inputs.quick && fromJSON('["3.14"]') || fromJSON(inputs.python-matrix) }}
+    runs-on: ubuntu-latest
+    env:
+      CELL: junit-${{ matrix.os }}-${{ matrix.python-version }}
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup-project
+        with:
+          python-version: '3.14'
+          install-project: 'false'
+
+      - name: Download the parts' reports
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: junit-py${{ matrix.python-version }}-*-${{ matrix.os }}
+          path: test-results/
+          merge-multiple: true
+
+      - name: Combine the parts' reports
+        id: combine
+        env:
+          CELL_OS: ${{ matrix.os }}
+          CELL_PYTHON: ${{ matrix.python-version }}
+        run: python .github/scripts/pydicom_coverage.py combine
+
+      - name: Record the locked pydicom test evidence
+        if: matrix.os == 'ubuntu-latest' && matrix.python-version == '3.14'
+        env:
+          CI_COMMIT: ${{ github.sha }}
+        run: python .github/scripts/pydicom_coverage.py baseline
+
+      # Only the Ubuntu/Python 3.14 cell records pydicom evidence.
+      - name: Upload test results
+        if: ${{ !cancelled() && steps.combine.outcome == 'success' }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ${{ env.CELL }}
+          path: |
+            test-results/${{ env.CELL }}.xml
+            test-results/pydicom-${{ matrix.os }}-${{ matrix.python-version }}.json
           if-no-files-found: error
           retention-days: 30
 
@@ -163,9 +265,14 @@ jobs:
   # The declared minimum versions of NumPy (2.0) and pandas (2.2.2) are
   # checked together, whichever matrix runs. Python 3.12 is the only supported
   # version with wheels for both: neither has any for Python 3.13 or later.
+  # The suite runs in two parts, as CORPUS_RUN_TESTS describes.
   dependency-floors:
-    name: NumPy and pandas minimum versions
+    name: NumPy and pandas minimum versions (${{ matrix.part }})
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        part: [corpus-runs, others]
     runs-on: ubuntu-latest
     env:
       # PyMedPhys's extras to install, whose requirements the check below counts.
@@ -178,7 +285,9 @@ jobs:
 
       - uses: ./.github/actions/setup-project
         with:
-          cache-data: 'true'
+          # The corpus-runs part downloads no data, so it neither restores nor
+          # saves the data cache, which the parts would otherwise share.
+          cache-data: ${{ matrix.part != 'corpus-runs' }}
           python-version: '3.12'
           extras: ${{ env.PYMEDPHYS_EXTRAS }}
 
@@ -188,6 +297,7 @@ jobs:
         env:
           NUMPY_FLOOR: '2.0.2'
           PANDAS_FLOOR: '2.2.2'
+          PART: ${{ matrix.part }}
         run: |
           set -euxo pipefail
           mkdir -p test-results
@@ -246,15 +356,34 @@ jobs:
           print("\n".join(unmet) or "Every installed package's requirements are met")
           sys.exit(bool(unmet))
           EOF
-          "${overlay[@]}" python -m pymedphys dev tests -m "not slow" \
+          # Each part runs its share of the suite: corpus-runs runs the
+          # modules that CORPUS_RUN_TESTS lists and others ignores them. A
+          # listed module that no longer exists fails both parts. Expand the
+          # selection only when it is set, which bash before 4.4 requires.
+          selection=()
+          if [[ -n "${PART}" ]]; then
+            read -ra listed <<< "${CORPUS_RUN_TESTS}"
+            for path in "${listed[@]}"; do
+              if [[ ! -f "${path}" ]]; then
+                echo "::error::CORPUS_RUN_TESTS lists ${path}, which does not exist."
+                exit 1
+              fi
+            done
+            case "${PART}" in
+              corpus-runs) selection=("${listed[@]}") ;;
+              others) selection=("${listed[@]/#/--ignore=${GITHUB_WORKSPACE}/}") ;;
+              *) echo "::error::Unknown part ${PART}."; exit 1 ;;
+            esac
+          fi
+          "${overlay[@]}" python -m pymedphys dev tests -m "not slow" ${selection[@]+"${selection[@]}"} \
             -n 2 --dist worksteal --durations=15 \
-            --junitxml="${GITHUB_WORKSPACE}/test-results/junit-dependency-floors.xml"
+            --junitxml="${GITHUB_WORKSPACE}/test-results/junit-dependency-floors-${PART}.xml"
 
       - name: Upload test results
         if: ${{ !cancelled() && steps.tests.outcome != 'skipped' }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: junit-dependency-floors
+          name: junit-dependency-floors-${{ matrix.part }}
           path: test-results/*.xml
           if-no-files-found: error
           retention-days: 30
