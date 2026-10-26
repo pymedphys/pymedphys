@@ -311,7 +311,7 @@ def test_attributes_are_not_planted_only_beyond_the_depth_cap(corpus):
 
 
 # The sequences whose D a reviewed rule writes (D-021).
-REVIEWED_DUMMY_SEQUENCES = {"(0040,1101)", "(0008,1111)"}
+REVIEWED_DUMMY_SEQUENCES = {"(0040,1101)", "(0008,1111)", "(0040,A073)"}
 
 
 def _resolved(iod, tag, path):
@@ -384,25 +384,15 @@ def test_an_attribute_whose_removal_sequesters_is_planted_in_one_instance(corpus
     # third slice, so that the other instances can be released; and the
     # Enhanced PET Image's Radiopharmaceutical Start DateTime, and the RT
     # Beams Treatment Record's Institution Code Sequence in an interlock's
-    # resolution user, with the attributes of its item (D-021), in no file;
-    # nor each report's Verifying Observer Sequence (D-021), which the IODs
-    # require. The Requested Procedure ID of its Referenced Request Sequence
-    # is planted, since a plain X empties it there (D-020).
+    # resolution user, with the attributes of its item (D-021), in no file.
+    # Each report's Verifying Observer Sequence, which a reviewed rule keeps
+    # with dummy values (D-021), and the Requested Procedure ID of its
+    # Referenced Request Sequence, which a plain X empties there (D-020), are
+    # planted.
     both = {"(0010,2297)", "(0010,2299)"}
-    report = {
-        "(0040,A073)",
-        "(0040,A027)",
-        "(0040,A030)",
-        "(0040,A075)",
-        "(0040,A088)",
-        "(0008,0106)",
-        "(0008,0107)",
-    }
     only_in = {
         "Enhanced PET Image": {"(0018,1078)"},
         "RT Beams Treatment Record": {"(0008,0082)", "(0008,0106)", "(0008,0107)"},
-        "X-Ray Radiation Dose SR": report,
-        "Radiopharmaceutical Radiation Dose SR": report,
     }
     assert planted == {corpus_module.SEQUESTERED_FILE: both}
     assert corpus_module.SEQUESTERED_FILE == corpus.files[2].name

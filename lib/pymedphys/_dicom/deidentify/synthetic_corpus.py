@@ -142,8 +142,7 @@ recorded in the other files with
 :attr:`NotPlantedReason.SEQUESTERS_INSTANCE`, as is each attribute in the
 item of such a sequence. Of the corpus's IODs these
 are Responsible Person (0010,2297) and Responsible Organization (0010,2299)
-at the top level, each Structured Report's Verifying Observer Sequence
-(0040,A073), Radiopharmaceutical Start DateTime (0018,1078) in the
+at the top level, Radiopharmaceutical Start DateTime (0018,1078) in the
 Radiopharmaceutical Information Sequence (0054,0016) of an Enhanced PET
 Image, and Institution Code Sequence (0008,0082), which X/Z/D gives D
 where it is Type 1C, in the Interlock Resolution User Sequence (300A,0746)
@@ -153,8 +152,8 @@ instance, and no preset could release any of the collection; planted in one,
 that instance checks sequestration, :data:`REVIEW_FILE` checks review, and
 the other twenty check each preset's output, the reports where their trees
 are cleaned. Radiopharmaceutical Start
-DateTime, Institution Code Sequence, and the reports' sequestering
-attributes, which CT Image does not define there, are planted in no file, so the Enhanced PET instance, which lacks an
+DateTime and Institution Code Sequence, which CT Image does not define
+there, are planted in no file, so the Enhanced PET instance, which lacks an
 attribute of Type 1, and the treatment record are released and their other
 markers are checked; an Enhanced PET Image instance that conforms to the
 IOD is sequestered under ``basic`` and ``basic-clean-descriptors``.
@@ -233,6 +232,7 @@ from .dummy_values import (
     DUMMY_VRS,
     PERSON_IDENTIFICATION_CODE_SEQUENCE,
     REFERENCED_PERFORMED_PROCEDURE_STEP_SEQUENCE,
+    VERIFYING_OBSERVER_SEQUENCE,
 )
 from .elements import dataset_codecs, new_element
 from .file_layout import ElementPath
@@ -382,7 +382,11 @@ _CONTENT_ITEM_VALUES = types.MappingProxyType(
 )
 # The sequences whose D a reviewed rule writes (D-021).
 _REVIEWED_DUMMY_SEQUENCES = frozenset(
-    {PERSON_IDENTIFICATION_CODE_SEQUENCE, REFERENCED_PERFORMED_PROCEDURE_STEP_SEQUENCE}
+    {
+        PERSON_IDENTIFICATION_CODE_SEQUENCE,
+        REFERENCED_PERFORMED_PROCEDURE_STEP_SEQUENCE,
+        VERIFYING_OBSERVER_SEQUENCE,
+    }
 )
 # Where an RT Structure Set references every CT slice, not only the first.
 _RT_REFERENCED_CONTOUR_IMAGES = ("(3006,0010)", "(3006,0012)", "(3006,0014)")
@@ -1597,12 +1601,14 @@ class _Instance:
         The content tree's identifying values, of its UIDREF, DATETIME, and
         PNAME items, are markers, and the study that an X-ray report's scope
         of accumulation names is the collection's; each is recorded with its
-        item's concept name.
+        item's concept name. The report is VERIFIED, so its Verifying
+        Observer Sequence, whose markers are planted as any attribute's, is
+        one that its IOD requires.
         """
         put = self._set
         put((), "(0008,0060)", ["SR"])
         put((), "(0040,A491)", ["COMPLETE"])  # Completion Flag
-        put((), "(0040,A493)", ["UNVERIFIED"])  # Verification Flag
+        put((), "(0040,A493)", ["VERIFIED"])  # Verification Flag
         template = _items(["(0040,A504)"])  # Content Template Sequence
         put(template, "(0008,0105)", ["DCMR"])  # Mapping Resource
         put(template, "(0040,DB00)", [ROOT_TEMPLATES[self.spec.sop_class]])

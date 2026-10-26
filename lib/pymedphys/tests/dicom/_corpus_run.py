@@ -49,6 +49,7 @@ from pymedphys._imports import pydicom, pytest
 from pymedphys._nomenclature import tg263
 
 from pymedphys._dicom.deidentify import (
+    dummy_values,
     pixel_decoding,
     roi_names,
     run,
@@ -490,7 +491,9 @@ class CorpusRun:
         that holds it, since a sequence's other actions remove, empty,
         replace, or clean what it holds; but a sequence whose content items
         the run cleans and keeps (:attr:`kept_content`) keeps what its
-        items' own actions keep.
+        items' own actions keep, and so does Verifying Observer Sequence
+        for the attributes of its items that its reviewed D keeps
+        (:data:`~pymedphys._dicom.deidentify.dummy_values.KEPT_ITEM_ATTRIBUTES`).
         """
         kept = self.kept_rows()
         passed = kept | self.kept_content
@@ -498,8 +501,13 @@ class CorpusRun:
             own = placement.concept in kept_concepts(self.selected)
         else:
             own = placement.profile_tag in kept
+        tags = [tag for tag, _ in placement.path.items]
+        inner = [*tags[1:], placement.path.tag]
         return own and all(
-            tag in passed or tag not in _listed() for tag, _ in placement.path.items
+            tag in passed
+            or tag not in _listed()
+            or held in dummy_values.KEPT_ITEM_ATTRIBUTES.get(tag, ())
+            for tag, held in zip(tags, inner)
         )
 
     def method_codes(self) -> frozenset[tuple[str, str]]:

@@ -86,6 +86,7 @@ from .dummy_values import (
     ICC_PROFILE,
     PERSON_IDENTIFICATION_CODE_SEQUENCE,
     REFERENCED_PERFORMED_PROCEDURE_STEP_SEQUENCE,
+    VERIFYING_OBSERVER_SEQUENCE,
 )
 from .element_rules import (
     _ENGINE_GROUPS,
@@ -147,6 +148,7 @@ _REVIEWED_DUMMY_ATTRIBUTES = frozenset(
         PERSON_IDENTIFICATION_CODE_SEQUENCE,
         REFERENCED_PERFORMED_PROCEDURE_STEP_SEQUENCE,
         ICC_PROFILE,
+        VERIFYING_OBSERVER_SEQUENCE,
     }
 )
 # What a plain X on Overlay Data removes with it: every attribute of its

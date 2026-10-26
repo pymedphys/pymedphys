@@ -118,7 +118,7 @@ def test_plain_actions_are_resolved_by_type_at_every_place(preset):
 
 
 # The sequences whose D a reviewed rule writes (D-021).
-REVIEWED_DUMMY_SEQUENCES = frozenset({"(0040,1101)", "(0008,1111)"})
+REVIEWED_DUMMY_SEQUENCES = frozenset({"(0040,1101)", "(0008,1111)", "(0040,A073)"})
 
 
 def _has_dummy_value(tag):
@@ -204,21 +204,32 @@ def test_a_plain_d_that_no_supported_iod_defines_is_removed():
 
 
 @pytest.mark.deid_requirement("PS3.15-E.1.3-01")
-@pytest.mark.parametrize("tag", [CONTENT_SEQUENCE, VERIFYING_OBSERVER_SEQUENCE])
-def test_a_plain_d_on_a_dose_reports_sequence_sequesters_it(tag):
+def test_a_plain_d_on_a_dose_reports_content_sequence_sequesters_it():
     # A sequence has no dummy value (D-021), and each dose report requires
-    # both sequences at the top level where its condition holds: Content
-    # Sequence where the root has content items, and Verifying Observer
-    # Sequence where the report is VERIFIED.
-    entry = _entry(_statement("basic"), tag)
+    # Content Sequence at the top level where the root has content items.
+    entry = _entry(_statement("basic"), CONTENT_SEQUENCE)
     assert (entry.action, entry.elsewhere) == ("D", "X")
     assert entry.places == tuple(
         conformance.Place(name, (), conformance.SEQUESTER) for name in DOSE_REPORTS
     )
-    row = _row(conformance_markdown.render_markdown(_statement("basic")), tag)
+    row = _row(
+        conformance_markdown.render_markdown(_statement("basic")), CONTENT_SEQUENCE
+    )
     assert row.endswith(
         "| instance sequestered at the top level in Radiopharmaceutical "
         "Radiation Dose SR and X-Ray Radiation Dose SR. X elsewhere. |"
+    )
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
+def test_a_plain_d_on_a_dose_reports_verifying_observer_sequence_writes_its_rule():
+    # Its reviewed rule keeps each verifier's item with dummy values (D-021),
+    # so the statement gives D, not a sequestration, where a dose report
+    # requires it, at the top level where the report is VERIFIED.
+    entry = _entry(_statement("basic"), VERIFYING_OBSERVER_SEQUENCE)
+    assert (entry.action, entry.elsewhere) == ("D", "X")
+    assert entry.places == tuple(
+        conformance.Place(name, (), "D") for name in DOSE_REPORTS
     )
 
 
