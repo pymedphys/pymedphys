@@ -25,8 +25,8 @@ pack (D-053). :func:`read_readiness_review` reads them, and
 before the run publishes the release:
 
 - **Statistical.** The record, if there is one, must be of this run's
-  collection, policy, and reviewed lists, count the distinct subjects that
-  it releases, and
+  collection, policy, and reviewed lists and region rules, count the
+  distinct subjects that it releases, and
   give a maximum per-subject probability within its threshold, as
   :func:`~pymedphys._dicom.deidentify.risk_assessment.statistical_gate`
   decides.
@@ -50,8 +50,11 @@ before the run publishes the release:
   its series' previews showed it; and every string that the run retains in
   an instance that it releases must be one of the reviewed pack's retained
   strings, which the reviewer reviewed. The policy binding leaves out the
-  reviewed lists, which the risk assessment binds on its own, so this last
-  check is what holds a string that an edited list now keeps.
+  reviewed lists and region rules, whose keyed digests differ under each
+  run's key, and which the risk assessment binds on its own, so this last
+  check is what holds a string that an edited list now keeps, as the pixel
+  data's digests of the pixel and face gate hold pixel data that edited
+  rules now write otherwise.
 
 Each gate fails with the first of its reasons that holds, as a code and no
 value, and passing one passes no other. The reviewed material is
@@ -71,6 +74,7 @@ from pathlib import Path
 
 from . import release_report
 from .face_review import FaceReview, _previews, read_face_review
+from .pixel_region_rules import PixelRegionRules
 from .qc_attestation import Outcome, _attestation_of, _pack_bytes, _reference_of
 from .qc_pack import NO_CONTOURS_SHA256, NO_PIXELS_SHA256, Disposition, QcPack
 from .qc_pack import QcPackError, pack_document
@@ -283,6 +287,7 @@ def readiness(
     policy_sha256: str,
     reviewed_names: ReviewedNames | None,
     reviewed_descriptors: ReviewedDescriptors | None,
+    pixel_region_rules: PixelRegionRules | None,
 ) -> release_report.Readiness:
     """Decide a ``public-release`` run's readiness from an earlier run's review.
 
@@ -302,6 +307,10 @@ def readiness(
         The reviewed lists that the run's descriptor cleaning applied, as it
         read them, or None for each that it was not given, which the
         statistical gate checks against the risk assessment's.
+    pixel_region_rules : PixelRegionRules or None
+        The reviewed region rules that the run's Clean Pixel Data applied,
+        or None without any, which the statistical gate checks in the same
+        way.
 
     Returns
     -------
@@ -315,8 +324,8 @@ def readiness(
         If ``review`` is not a ReadinessReview or None, or ``pack`` is not a
         QcPack.
     RiskAssessmentError
-        If ``subjects``, ``policy_sha256``, or a list is not of its form, as
-        :func:`~.risk_assessment.statistical_gate` raises.
+        If ``subjects``, ``policy_sha256``, a list, or the rules are not of
+        their form, as :func:`~.risk_assessment.statistical_gate` raises.
     """
     if review is not None and not isinstance(review, ReadinessReview):
         raise TypeError("review must be a ReadinessReview or None")
@@ -334,6 +343,7 @@ def readiness(
         policy_sha256=policy_sha256,
         reviewed_names=reviewed_names,
         reviewed_descriptors=reviewed_descriptors,
+        pixel_region_rules=pixel_region_rules,
         subjects=subjects,
     )
     if review is None:
@@ -346,8 +356,8 @@ def readiness(
         )
     bound = _bound(review, collection, policy_sha256)
     # The assessment stands in for face verdicts only where its own gate
-    # passes, so that it is of this collection, policy, lists, and subjects,
-    # and within its threshold.
+    # passes, so that it is of this collection, policy, lists, rules, and
+    # subjects, and within its threshold.
     faces_assessed = (
         statistical.passed
         and record is not None
