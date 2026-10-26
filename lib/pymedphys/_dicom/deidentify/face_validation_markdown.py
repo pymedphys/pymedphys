@@ -249,6 +249,29 @@ def _finder(finder: Mapping[str, Any]) -> list[str]:
             "beyond 15 mm",
             finder["other_pair_places"],
         ),
+        "### Whether each ball lies just under the skin",
+        "",
+        "For the pair at the eyes, and each other pair that passes the other "
+        "tests of a pair: along the horizontal line from each ball's centre "
+        "towards the patient's anterior, perpendicular to the line between "
+        "the pair, the depth from the ball's surface to air, below -500 HU, "
+        "the length of the line through values from -500 HU up to the soft "
+        "tissue before it, excluding the final two voxel lengths before air, "
+        "and whether bone lies on it before it. A pair "
+        "passes where both balls are open to air in front, or both behind.",
+        "",
+    ]
+    for kind, noun in (("eyes", "the pair at the eyes"), ("other", "the others")):
+        front = finder["front"][kind]
+        lines += [
+            *binned(f"Pairs, {noun}", front["pairs"]),
+            *coded(f"Where their balls lie, {noun}", front["places"]),
+            *coded(f"Where both balls are open to air, {noun}", front["side"]),
+            *binned(f"Depth to air in front (mm), {noun}", front["depth"]),
+            *binned(f"Values below soft tissue before it (mm), {noun}", front["fat"]),
+            *coded(f"Bone before it, {noun}", front["bone"]),
+        ]
+    lines += [
         "### Tissue about each kept ball",
         "",
         "Shares of the points of each kept ball's surround test, by its "

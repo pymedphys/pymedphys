@@ -746,7 +746,7 @@ def test_a_device_named_as_the_header_names_it_holds_a_report_for_review(case, e
     (None, DEVICE),
 ])  # fmt: skip
 @pytest.mark.parametrize("name", REPORTS)
-def test_a_verified_report_is_sequestered_by_its_verifying_observer(
+def test_a_verified_report_is_planned_as_an_unverified_one_is(
     with_option, preset, options, name
 ):
     composed = _composed(with_option, preset, options)
@@ -755,11 +755,38 @@ def test_a_verified_report_is_sequestered_by_its_verifying_observer(
     _, plan = _planned(dataset, iod, composed)
 
     # Table E.1-1 gives Verifying Observer Sequence D under every option,
-    # and it is Type 1C, required where the report is VERIFIED; a sequence
-    # has no dummy value (D-021).
-    assert ElementPath((), VERIFYING_OBSERVER) in [s.path for s in plan.sequestrations]
-    unverified, _ = _report(name)
-    _, plan = _planned(unverified, iod, composed)
-    assert ElementPath((), VERIFYING_OBSERVER) not in [
-        s.path for s in plan.sequestrations
+    # and it is Type 1C, required where the report is VERIFIED; D keeps each
+    # verifier's item, with dummy values, so it sequesters nothing (D-021).
+    (observer,) = [
+        e for e in plan.elements if e.path == ElementPath((), VERIFYING_OBSERVER)
     ]
+    assert observer.action == "D"
+    unverified, _ = _report(name)
+    _, unverified_plan = _planned(unverified, iod, composed)
+    assert [s.path for s in plan.sequestrations] == [
+        s.path for s in unverified_plan.sequestrations
+    ]
+    if _kept(unverified, iod, composed):
+        assert not plan.sequestrations
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.4-01")
+@pytest.mark.usefixtures("supported")
+@pytest.mark.parametrize("case", WRITTEN)
+def test_a_verified_report_is_released_with_a_dummy_verifier(case):
+    name, options, rows = _written_rows(case)
+    dataset, _ = _report(name, rows, verified=True)
+
+    data, decision = _released(policy.compose_custom_policy(options), dataset)
+
+    assert isinstance(decision, run.Release), decision
+    for value in (general.VERIFIERS_NAME, f"{reports.SENTINEL} HOSPITAL"):
+        assert value.encode() not in data, value
+    written = pydicom.dcmread(io.BytesIO(data))
+    assert written.VerificationFlag == "VERIFIED"
+    (verifier,) = written.VerifyingObserverSequence
+    assert verifier.VerifyingObserverName == "DEIDENTIFIED"
+    assert verifier.VerifyingOrganization == "DEIDENTIFIED"
+    assert len(verifier.VerifyingObserverIdentificationCodeSequence) == 0
+    if policy.FULL_DATES not in options:
+        assert verifier.VerificationDateTime != general.VERIFICATION_DATETIME

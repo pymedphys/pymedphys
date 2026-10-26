@@ -515,7 +515,7 @@ def test_the_run_reports_an_instance_held_for_its_free_text_naming_no_value(
     assert statuses.count(run.Status.HELD_FOR_REVIEW) == 1
     text = (tmp_path / "release" / RELEASE_REPORT).read_text(encoding="utf-8")
     report = json.loads(text)
-    assert report["format"] == "pymedphys-deid-release-report/30"
+    assert report["format"] == "pymedphys-deid-release-report/31"
     assert {"stage": "descriptors", "code": "unreviewed", "count": 1} in report[
         "held_for_review"
     ]

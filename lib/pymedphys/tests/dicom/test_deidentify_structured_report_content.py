@@ -776,7 +776,7 @@ def test_a_written_cad_report_keeps_its_references(with_option):
 
 @pytest.mark.parametrize("preset", PRESETS)
 @pytest.mark.parametrize("name", VERIFIABLE)
-def test_a_verified_report_is_sequestered_by_its_verifying_observer(
+def test_a_verified_report_is_planned_as_an_unverified_one_is(
     with_option, preset, name
 ):
     dataset, iod = _report(name, verified=True)
@@ -784,11 +784,38 @@ def test_a_verified_report_is_sequestered_by_its_verifying_observer(
     _, plan = _planned(dataset, iod, with_option(preset))
 
     # Table E.1-1 gives Verifying Observer Sequence D under every option,
-    # and it is Type 1C, required where the report is VERIFIED; a sequence
-    # has no dummy value (D-021).
-    assert ElementPath((), VERIFYING_OBSERVER) in [s.path for s in plan.sequestrations]
-    unverified, _ = _report(name)
-    _, plan = _planned(unverified, iod, with_option(preset))
-    assert ElementPath((), VERIFYING_OBSERVER) not in [
-        s.path for s in plan.sequestrations
+    # and it is Type 1C, required where the report is VERIFIED; D keeps each
+    # verifier's item, with dummy values, so it sequesters nothing (D-021).
+    (observer,) = [
+        e for e in plan.elements if e.path == ElementPath((), VERIFYING_OBSERVER)
     ]
+    assert observer.action == "D"
+    unverified, _ = _report(name)
+    _, unverified_plan = _planned(unverified, iod, with_option(preset))
+    assert [s.path for s in plan.sequestrations] == [
+        s.path for s in unverified_plan.sequestrations
+    ]
+
+
+@pytest.mark.usefixtures("supported")
+@pytest.mark.parametrize("name", VERIFIABLE)
+def test_a_verified_report_is_written_with_a_dummy_verifier(with_option, name):
+    dataset, _ = _report(name, verified=True)
+
+    result = _transformed(with_option("public-release"), dataset)
+
+    assert isinstance(result, run.Transformed), result
+    for value in (reports.VERIFIERS_NAME, f"{reports.SENTINEL} HOSPITAL"):
+        assert value.encode() not in result.data, value
+    written = pydicom.dcmread(io.BytesIO(result.data))
+    assert written.VerificationFlag == "VERIFIED"
+    (verifier,) = written.VerifyingObserverSequence
+    assert verifier.VerifyingObserverName == "DEIDENTIFIED"
+    assert verifier.VerifyingOrganization == "DEIDENTIFIED"
+    assert len(verifier.VerifyingObserverIdentificationCodeSequence) == 0
+    # public-release selects Modified Dates, which modifies the time as it
+    # does the instance's other dates.
+    assert verifier.VerificationDateTime not in (
+        reports.VERIFICATION_DATETIME,
+        "19000101000000",
+    )
