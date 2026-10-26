@@ -242,8 +242,20 @@ def test_each_preset_not_enabled_exits_three_before_anything_runs(
     assert not any(tmp_path.iterdir())
 
 
+# The presets that need no face review or text detector, which a run under
+# Clean Recognizable Visual Features or Clean Pixel Data does: all of them so far.
+_PLAIN_PRESETS = tuple(
+    preset
+    for preset, options in policy.PRESETS.items()
+    if not {
+        policy.CLEAN_RECOGNIZABLE_VISUAL_FEATURES,
+        policy.CLEAN_PIXEL_DATA,
+    }.intersection(options)
+)
+
+
 @pytest.mark.usefixtures("edition")
-@pytest.mark.parametrize("preset", tuple(policy.PRESETS))
+@pytest.mark.parametrize("preset", _PLAIN_PRESETS)
 def test_main_builds_each_enabled_presets_transform(tmp_path, monkeypatch, preset):
     monkeypatch.setattr(policy, "ENABLED_PRESETS", frozenset(policy.PRESETS))
     selected = []
