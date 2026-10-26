@@ -122,7 +122,7 @@ from .supplementary_actions import TEXT_VRS, UNCOVERED_TEXT_ACTION
 from .temporal_roles import TemporalRole, load_temporal_roles
 from .uid_registry import load_uid_values
 from .uid_roles import UIDRole, load_uid_roles
-from .walker import DESCENDED
+from .walker import descends
 
 # The CID 7050 code of each option that a policy can compose: those of
 # Table E.1-1, then Clean Pixel Data and Clean Recognizable Visual Features,
@@ -584,9 +584,9 @@ def _removed_with_a_sequence(
 ) -> bool:
     """Whether a sequence enclosing ``path`` is removed with its contents.
 
-    The walker keeps a sequence as a container only under K or U; under any
-    other action, everything in it goes with it, and takes no action of its
-    own.
+    The walker keeps a sequence as a container only under K or U, or under
+    D where a reviewed rule keeps its items (D-021); under any other action,
+    everything in it goes with it, and takes no action of its own.
     """
     for depth, sequence in enumerate(path):
         within = path[:depth]
@@ -597,7 +597,7 @@ def _removed_with_a_sequence(
             action = compound_actions.resolve_plain_in_iod(
                 iod, sequence, within, action
             )
-        if action not in DESCENDED:
+        if not descends(sequence, action):
             return True
     return False
 
