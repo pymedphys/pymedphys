@@ -206,7 +206,7 @@ def test_a_list_records_and_saves_decisions_on_private_text(tmp_path):
     reviewed.save()
 
     document = json.loads(path.read_text(encoding="utf-8"))
-    assert document["format"] == FORMAT == "pymedphys-deid-reviewed-descriptors/2"
+    assert document["format"] == FORMAT == "pymedphys-deid-reviewed-descriptors/3"
     reopened = ReviewedDescriptors.open(path)
     assert reopened.get(SEQUENCE_NAME, "FSE-XL") == ReviewedDescriptor(Review.KEEP)
     assert reopened.keyed_digest(KEY) == reviewed.keyed_digest(KEY)
@@ -250,6 +250,36 @@ def test_a_list_of_the_earlier_format_is_read_without_private_text(tmp_path):
         ),
         encoding="utf-8",
     )
+    with pytest.raises(ReviewedDescriptorsError, match="earlier format"):
+        ReviewedDescriptors.open(earlier)
+
+
+def test_a_list_of_the_second_format_is_read_without_pre_medication(tmp_path):
+    earlier = tmp_path / "earlier.json"
+    attributes = {
+        SEQUENCE_NAME: {"FSE": {"review": "keep"}},
+        "(0010,2110)": {"NONE": {"review": "keep"}},  # Allergies
+    }
+
+    def write(attributes):
+        earlier.write_text(
+            json.dumps(
+                {
+                    "format": "pymedphys-deid-reviewed-descriptors/2",
+                    "attributes": attributes,
+                }
+            ),
+            encoding="utf-8",
+        )
+
+    write(attributes)
+    reviewed = ReviewedDescriptors.open(earlier)
+    assert reviewed.get(SEQUENCE_NAME, "FSE")
+    assert reviewed.get("(0010,2110)", "NONE")
+
+    # Only Retain Patient Characteristics gives Pre-Medication C, which no
+    # list of an earlier format could decide on.
+    write({**attributes, "(0040,0012)": {"NONE": {"review": "keep"}}})
     with pytest.raises(ReviewedDescriptorsError, match="earlier format"):
         ReviewedDescriptors.open(earlier)
 
@@ -606,7 +636,7 @@ def test_the_qc_pack_and_report_name_private_text_by_its_key():
     )
     document = qc_pack.pack_document(pack)
 
-    assert document["format"] == "pymedphys-deid-qc-pack/11"
+    assert document["format"] == "pymedphys-deid-qc-pack/19"
     assert [d["attribute"] for d in document["descriptors"]] == [
         SEQUENCE_NAME,
         "(0008,103E)",

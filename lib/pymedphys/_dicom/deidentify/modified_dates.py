@@ -37,9 +37,14 @@ subject's offset (:mod:`~pymedphys._dicom.deidentify.dates`, D-006):
 - Timezone Offset From UTC becomes the nominal offset ``+0000``.
 
 The subject's offset is derived from the run's key and the subject's identity
-(:func:`~pymedphys._dicom.deidentify.dates.date_offset_weeks`), so every
-instance of a subject in a run moves by the same offset, and runs, whose keys
-differ, by unrelated ones (D-004). The instance's local time is its Timezone
+(:func:`~pymedphys._dicom.deidentify.dates.date_offset_weeks`) when the
+subject is first exported under the key, recorded in its profile, and read
+back afterwards
+(:meth:`~pymedphys._dicom.deidentify.profiles.ProfileStore.date_offset_weeks`),
+so every instance of a subject under one key moves by the same offset: within
+a run under a run-scoped key, whose profiles are kept for the run only, and
+in every run under a project key, whose custodian keeps them (D-004). The
+instance's local time is its Timezone
 Offset From UTC, where it has one, and otherwise the UTC offset of the
 earliest of its DT values that has one
 (:func:`~pymedphys._dicom.deidentify.dates.local_offset`). Each value of a multi-valued
@@ -278,9 +283,12 @@ METHOD = (
     "the subject's identity, its Patient ID with its issuer, in the "
     "`date-offset` domain of the run's key, modulo "
     f"{dates.MAX_OFFSET_WEEKS - dates.MIN_OFFSET_WEEKS + 1}. "
-    "Within a run, every instance of a subject moves by the same offset, so "
-    "intervals, weekdays, and times of day are kept; across runs, whose keys "
-    "differ, offsets are unrelated. A subject-event or radiation-source DA "
+    "The offset is recorded in the subject's profile when the subject is "
+    "first exported under the key, and read back afterwards, so every "
+    "instance of a subject moves by the same offset, within a run under a "
+    "run-scoped key and in every run under a project key, and intervals, "
+    "weekdays, and times of day are kept; under different keys, such as "
+    "two run-scoped keys, offsets are unrelated. A subject-event or radiation-source DA "
     "value moves by the offset; a DT value moves its date and keeps its "
     "time, once a value with its own UTC offset is converted to the "
     f"instance's local time and given the offset `{dates.NOMINAL_UTC_OFFSET}`; "
@@ -316,7 +324,10 @@ class _Unmodified(Exception):
 
 
 def modify_dates(
-    values: Iterable[SourceValue], key: DeidKey, identity: SubjectIdentity | None
+    values: Iterable[SourceValue],
+    key: DeidKey,
+    identity: SubjectIdentity | None,
+    offsets: dates.DateOffsets | None = None,
 ) -> dict[ElementPath, Written]:
     """Return how one instance's dates, times, and datetimes are modified.
 
@@ -331,6 +342,12 @@ def modify_dates(
     identity : SubjectIdentity or None
         The subject's identity, as the run resolves it, or None for an
         instance without one.
+    offsets : callable, optional
+        Gives the subject's date offset in whole weeks, such as the run's
+        profile store's
+        :meth:`~pymedphys._dicom.deidentify.profiles.ProfileStore.date_offset_weeks`.
+        By default, the key's derivation of it, as an ephemeral store gives
+        it.
 
     Returns
     -------
@@ -341,7 +358,9 @@ def modify_dates(
         modified is left out, so that its attribute stays pending.
     """
     given = tuple(values)
-    weeks = None if identity is None else dates.date_offset_weeks(key, identity)
+    if offsets is None:
+        offsets = functools.partial(dates.date_offset_weeks, key)
+    weeks = None if identity is None else offsets(identity)
     roles = load_temporal_roles().rules
     local = _local_offset(given)
     written: dict[ElementPath, Written] = {}

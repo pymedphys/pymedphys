@@ -43,6 +43,7 @@ from .qc_pack import Disposition, DropReason, QcPack, RoiNameOutcome
 from .reasons import PixelDataReason
 from .reference_graph import Finding, FindingKind
 from .release_report import REPORTED_FINDINGS
+from .residual_exemptions import Exemption
 from .reviewed_descriptors import CleanedDescriptor
 from .run_written import REPORTED_ONLY
 from .roi_names import Reason
@@ -66,10 +67,16 @@ class SearchMaterial:
     search : ~pymedphys._dicom.deidentify.residuals.ResidualSearch
     written : bytes
         The file as the gate read it, to cut each finding's excerpt from.
+    exempted : tuple of (Finding, Exemption)
+        The search's text findings inside the data set that are not reasons
+        for review, each with why, as the release condition gives them
+        (:attr:`~pymedphys._dicom.deidentify.release_gate.ReleaseCondition.exempted`),
+        for the release report's counts.
     """
 
     search: residuals.ResidualSearch
     written: bytes
+    exempted: tuple[tuple[residuals.Finding, Exemption], ...] = ()
 
     def __repr__(self) -> str:
         return "SearchMaterial()"
@@ -107,7 +114,12 @@ class RoiNameMaterial:
 class DescriptorMaterial:
     """What descriptor cleaning decided for the values of one free-text descriptor.
 
-    Attributes are those of :class:`~.qc_pack.DescriptorEntry` but its position.
+    Attributes are those of :class:`~.qc_pack.DescriptorEntry` but its
+    position, and ``holds``, whether a held value of the element held its
+    instance for review, as for an attribute that another option's cleaner
+    left to the reviewed descriptors list (D-038), rather than the element
+    taking its action without Clean Descriptors, which the release report
+    counts apart.
     """
 
     path: ElementPath
@@ -115,6 +127,7 @@ class DescriptorMaterial:
     results: tuple[CleanedDescriptor, ...]
     applied: bool
     attribute: str | None = None
+    holds: bool = False
 
     def __repr__(self) -> str:
         return f"DescriptorMaterial(path={str(self.path)!r}, applied={self.applied!r})"
@@ -164,6 +177,14 @@ class RedactionMaterial:
         The source file, from which each frame with regions is shown as
         received, or None where no frame has regions, so that a run keeps no
         source that no preview shows.
+    decoded_sha256 : bytes or None
+        For compressed Pixel Data, the SHA-256 of its frames as decoded,
+        which the pack records with its regions; None for native Pixel Data.
+    rule_boxes : tuple of ~.text_detection.TextBox
+        The regions that reviewed region rules gave, which are among the
+        regions of every frame, as
+        :class:`~pymedphys._dicom.deidentify.qc_pack.RedactionEntry` gives
+        them.
     """
 
     reason: PixelDataReason
@@ -172,6 +193,8 @@ class RedactionMaterial:
     columns: int
     regions: tuple[tuple[int, tuple[TextBox, ...]], ...]
     source: bytes | None
+    decoded_sha256: bytes | None = None
+    rule_boxes: tuple[TextBox, ...] = ()
 
     def __repr__(self) -> str:
         return (
@@ -290,6 +313,7 @@ def qc_pack_of(
     material: Mapping[int, Sequence[object]],
     reference: str | None = None,
     digests: Mapping[int, bytes] | None = None,
+    reviewed_lists: qc_pack.ListsDigest | None = None,
 ) -> QcPack:
     """Return the QC pack of a run.
 
@@ -308,6 +332,11 @@ def qc_pack_of(
     digests : mapping of int to bytes, optional
         The SHA-256 of each source file that the run's first pass read, by
         run position, which the pack records with each instance.
+    reviewed_lists : ~pymedphys._dicom.deidentify.qc_pack.ListsDigest, optional
+        The salted digest of the reviewed lists and region rules that the
+        run applied, from
+        :func:`~pymedphys._dicom.deidentify.risk_assessment.bind_lists`;
+        none by default.
 
     Notes
     -----
@@ -425,6 +454,8 @@ def qc_pack_of(
                 item.rows,
                 item.columns,
                 item.regions,
+                None if item.decoded_sha256 is None else item.decoded_sha256.hex(),
+                item.rule_boxes,
             ),
         )
         for position, item in redactions.items()
@@ -481,6 +512,7 @@ def qc_pack_of(
             qc_pack.SourceGapEntry(position, tuple(found))
             for position, found in sorted(gaps.items())
         ),
+        reviewed_lists=reviewed_lists,
     )
 
 
@@ -548,7 +580,8 @@ def _written_sha256(
     The contours' is None too where the file has contours that the pack's
     contour sheet does not show, and the pixel data's where the file has
     pixel data of which the pack's previews that could show a face do not
-    draw every frame, as none yet does an RT Dose's, so that no verdict
+    draw every frame, which for an RT Dose only its dose-levels previews
+    can, and for a Segmentation only its segments sheet, so that no verdict
     releases either unseen.
     """
     digests: dict[str, str | None] = {"pixel_sha256": None, "contour_sha256": None}

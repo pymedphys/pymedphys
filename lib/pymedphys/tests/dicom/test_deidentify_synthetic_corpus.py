@@ -25,6 +25,7 @@ from pymedphys._imports import pydicom, pytest
 
 from pymedphys._dicom.deidentify import (
     compound_actions,
+    dummy_values,
     elements,
     icc_profiles,
     scope,
@@ -191,6 +192,9 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "15-pet.dcm",
         "16-pet-enhanced.dcm",
         "17-pet-legacy-enhanced.dcm",
+        "18-registration.dcm",
+        "19-registration-deformable.dcm",
+        "20-rt-beams-record.dcm",
     ]
     assert [file.manifest.iod for file in corpus.files] == [
         "CT Image",
@@ -210,6 +214,9 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "Positron Emission Tomography Image",
         "Enhanced PET Image",
         "Legacy Converted Enhanced PET Image",
+        "Spatial Registration",
+        "Deformable Spatial Registration",
+        "RT Beams Treatment Record",
     ]
     # Every IOD of the first supported release.
     assert {file.manifest.iod for file in corpus.files} == scope.SUPPORTED_IODS
@@ -236,7 +243,11 @@ def test_every_attribute_of_table_e1_1_that_the_iod_defines_is_placed(corpus):
             if placement.kind is Kind.NOT_PLANTED:
                 assert placement.reason is not None
             elif placement.kind is Kind.SEQUENCE:
-                assert placement.reason in (None, Reason.NO_MARKER_CARRIER)
+                assert placement.reason in (
+                    None,
+                    Reason.NO_MARKER_CARRIER,
+                    Reason.KEPT_SEQUENCE,
+                )
             else:
                 assert placement.reason is None
 
@@ -265,13 +276,56 @@ def test_attributes_are_not_planted_only_beyond_the_depth_cap(corpus):
     assert set(reasons) == {Reason.DEPTH_CAP, Reason.SEQUESTERS_INSTANCE}
 
 
+# The sequences whose D a reviewed rule writes (D-021).
+REVIEWED_DUMMY_SEQUENCES = {"(0040,1101)", "(0008,1111)"}
+
+
+def _resolved(iod, tag, path):
+    """Return the Basic Profile's action on a place, resolved by Type."""
+    rows = {row.tag: row for row in standard.load_table_e1_1().attributes}
+    if tag not in rows:
+        return None
+    action = rows[tag].basic_profile
+    if action in compound_actions.COMPOUND_ACTIONS:
+        return compound_actions.resolve_in_iod(iod, tag, path, action)
+    return compound_actions.resolve_plain_in_iod(iod, tag, path, action)
+
+
+def _sequesters_at(iod, tag, path, row):
+    """Return whether the Basic Profile's action on a place sequesters.
+
+    A plain X does where it removes an attribute that the IOD requires outside
+    every Type 3 sequence (D-020), and a D where the VR has no dummy value and
+    no reviewed rule gives one, unless a removed sequence encloses it (D-021).
+    """
+    rows = {each.tag: each for each in standard.load_table_e1_1().attributes}
+    if rows[row].basic_profile == "X":
+        return (
+            compound_actions.resolve_plain_x_in_iod(iod, tag, path).extent
+            is compound_actions.RemovalExtent.SEQUESTER
+        )
+    return (
+        tag not in REVIEWED_DUMMY_SEQUENCES
+        and not set(standard.dictionary_attribute(tag).vrs) & dummy_values.DUMMY_VRS
+        and _resolved(iod, tag, path) == "D"
+        and not any(
+            _resolved(iod, path[depth], path[:depth]) == "X"
+            for depth in range(len(path))
+        )
+    )
+
+
 def _sequesters(iod, placement):
-    """Return whether the Basic Profile's plain X on a placement sequesters."""
+    """Return whether the Basic Profile's action on a placement sequesters.
+
+    So it does within a sequence whose own action sequesters.
+    """
     rows = {row.tag: row for row in standard.load_table_e1_1().attributes}
     path = tuple(tag for tag, _ in placement.path.items)
-    return rows[placement.profile_tag].basic_profile == "X" and (
-        compound_actions.resolve_plain_x_in_iod(iod, placement.path.tag, path).extent
-        is compound_actions.RemovalExtent.SEQUESTER
+    return _sequesters_at(iod, placement.path.tag, path, placement.profile_tag) or any(
+        path[depth] in rows
+        and _sequesters_at(iod, path[depth], path[:depth], path[depth])
+        for depth in range(len(path))
     )
 
 
@@ -288,16 +342,18 @@ def test_an_attribute_whose_removal_sequesters_is_planted_in_one_instance(corpus
 
     # Responsible Person and Responsible Organization (D-020), only in the
     # third slice, so that the other instances can be released; and the
-    # Enhanced PET Image's Radiopharmaceutical Start DateTime, in no file.
+    # Enhanced PET Image's Radiopharmaceutical Start DateTime, and the RT
+    # Beams Treatment Record's Institution Code Sequence in an interlock's
+    # resolution user, with the attributes of its item (D-021), in no file.
     both = {"(0010,2297)", "(0010,2299)"}
+    only_in = {
+        "Enhanced PET Image": {"(0018,1078)"},
+        "RT Beams Treatment Record": {"(0008,0082)", "(0008,0106)", "(0008,0107)"},
+    }
     assert planted == {corpus_module.SEQUESTERED_FILE: both}
     assert corpus_module.SEQUESTERED_FILE == corpus.files[2].name
     assert withheld == {
-        file.name: (
-            both | {"(0018,1078)"}
-            if file.manifest.iod == "Enhanced PET Image"
-            else both
-        )
+        file.name: both | only_in.get(file.manifest.iod, set())
         for file in corpus.files
         if file.name != corpus_module.SEQUESTERED_FILE
     }
@@ -412,8 +468,8 @@ def test_the_reference_graph_has_no_findings(corpus):
     # The structure set references every slice, the plan the structure set
     # and the dose, and each dose the plan.
     assert {(3, 0), (3, 1), (3, 2), (4, 3), (4, 5), (5, 4), (6, 4)} <= targets
-    # The MR and PET Images reference the first slice, and each other
-    # instance the single-frame one of its modality.
+    # The MR and PET Images reference the first slice, each other image the
+    # single-frame one of its modality, and the treatment record the plan.
     names = [file.name for file in corpus.files]
     position = names.index
     sources = {
@@ -427,6 +483,7 @@ def test_the_reference_graph_has_no_findings(corpus):
         "15-pet.dcm": "01-ct-1.dcm",
         "16-pet-enhanced.dcm": "15-pet.dcm",
         "17-pet-legacy-enhanced.dcm": "15-pet.dcm",
+        "20-rt-beams-record.dcm": "05-rtplan.dcm",
     }
     assert {
         (position(source), position(target)) for source, target in sources.items()
@@ -499,6 +556,7 @@ def test_the_structure_set_has_a_second_character_set(corpus):
 
 def test_sequences_hold_a_marker_unless_their_item_can_hold_none(corpus):
     without = set()
+    kept = set()
     for file in corpus.files:
         iod = iod_for_sop_class(file.manifest.sop_class)
         placed = file.manifest.placements
@@ -515,6 +573,9 @@ def test_sequences_hold_a_marker_unless_their_item_can_hold_none(corpus):
             ]
             if below:
                 assert sequence.reason is None, sequence.path
+                continue
+            if sequence.reason is Reason.KEPT_SEQUENCE:
+                kept.add(sequence.path.tag)
                 continue
             assert sequence.reason is Reason.NO_MARKER_CARRIER, sequence.path
             path = tuple(tag for tag, _ in inside)
@@ -539,6 +600,10 @@ def test_sequences_hold_a_marker_unless_their_item_can_hold_none(corpus):
         "(0008,1120)",
         "(0008,1140)",
     } <= without
+    # The Referenced Image Sequence that each registration requires in its
+    # Registration Sequence or Deformable Registration Sequence, which the
+    # Basic Profile keeps, replacing its UIDs.
+    assert kept == {"(0008,1140)"}
 
 
 def test_the_manifest_json_is_deterministic_and_matches_the_files(corpus):

@@ -17,6 +17,7 @@ counting crossings, not by the module."""
 
 import fractions
 import itertools
+import math
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pytest
@@ -44,6 +45,25 @@ def even_odd(rings, points):
                 )
             inside ^= straddles & (points[:, 0] < at)
     return inside
+
+
+def winding_numbers(rings, points):
+    """Each point's winding number about the rings, summed, by counting the
+    crossings of a ray towards positive x, each upward one as one and each
+    downward one as minus one, independently of the module."""
+    total = np.zeros(len(points), dtype=int)
+    for ring in rings:
+        x, y = np.asarray(ring)[:, 0], np.asarray(ring)[:, 1]
+        for start in range(len(ring)):
+            end = (start + 1) % len(ring)
+            straddles = (y[start] > points[:, 1]) != (y[end] > points[:, 1])
+            with np.errstate(divide="ignore", invalid="ignore"):
+                at = x[start] + (points[:, 1] - y[start]) * (x[end] - x[start]) / (
+                    y[end] - y[start]
+                )
+            upward = 1 if y[end] > y[start] else -1
+            total += np.where(straddles & (points[:, 0] < at), upward, 0)
+    return total
 
 
 def test_a_ring_is_clipped_to_a_half_space():
@@ -79,6 +99,87 @@ def test_a_u_shape_is_clipped_into_two_rings():
 def test_signed_area_follows_the_winding():
     assert polygons.signed_area(_square(0, 0, 2, 3)) == pytest.approx(6.0)
     assert polygons.signed_area(_square(0, 0, 2, 3)[::-1]) == pytest.approx(-6.0)
+
+
+def _pentagram_area():
+    """The area of a regular pentagram of circumradius 1 with its inner
+    pentagon, as a decagon of ten triangles about its centre, each between
+    an outer point, at radius 1, and an inner corner, at the radius where
+    two of the star's edges cross."""
+    inner = math.cos(math.radians(72)) / math.cos(math.radians(36))
+    return 10 * inner * math.sin(math.radians(36)) / 2
+
+
+_PENTAGRAM = [
+    (math.cos(math.radians(90 + 144 * index)), math.sin(math.radians(90 + 144 * index)))
+    for index in range(5)
+]
+
+
+@pytest.mark.parametrize(
+    ("points", "area"),
+    [
+        ([(0, 0), (2, 0), (2, 3), (0, 3)], 6.0),
+        ([(0, 3), (2, 3), (2, 0), (0, 0)], 6.0),
+        ([(0, 0), (2, 2), (2, 0), (0, 2)], 2.0),  # a bow tie
+        ([(0, 0), (2, 0), (2, 2), (0, 2)] * 2, 4.0),  # wound about twice
+        ([(0, 0), (2, 0), (2, 2), (0, 2), (0, 0), (0, 2), (2, 2), (2, 0)], 0.0),
+        (
+            [(0, 0), (0.8, 0), (0.8, 0.4), (1.4, 0.4), (1.6, 0.6)]
+            + [(1.4, 0.4), (0.8, 0.4), (0.8, 0.8), (0, 0.8)],
+            0.64,
+        ),  # a spike that bends and comes back
+        ([(0, 0), (1, 1), (2, 2)], 0.0),
+        ([(0, 0), (1, 0)], 0.0),
+        (_PENTAGRAM, _pentagram_area()),
+    ],
+    ids=[
+        "anticlockwise",
+        "clockwise",
+        "bow-tie",
+        "twice",
+        "out-and-back",
+        "bent-spike",
+        "line",
+        "two-points",
+        "pentagram",
+    ],
+)
+def test_the_nonzero_area_counts_each_point_wound_about_once(points, area):
+    ring = np.column_stack([np.asarray(points, float), np.full(len(points), 2.5)])
+
+    assert polygons.nonzero_area(ring) == pytest.approx(area, abs=1e-12)
+    far = ring + (3000.0, -4000.0, 0.0)
+    assert polygons.nonzero_area(far) == pytest.approx(area, abs=1e-9)
+
+
+def _nonzero_area_by_faces(ring):
+    """The area of the faces into which a ring's edges divide the plane
+    whose winding number is not zero, the faces found by Shapely and their
+    winding numbers by :func:`winding_numbers`, independently of the module."""
+    # Shapely serves only as an independent oracle here; the private
+    # geometry module does not use it.
+    shapely = pytest.importorskip("shapely")
+    boundary = shapely.LineString(np.vstack([ring[:, :2], ring[:1, :2]]))
+    faces = shapely.get_parts(
+        shapely.polygonize(shapely.get_parts(shapely.node(boundary)))
+    )
+    inner = shapely.point_on_surface(faces)
+    numbers = winding_numbers(
+        [ring], np.column_stack([shapely.get_x(inner), shapely.get_y(inner)])
+    )
+    return float(shapely.area(faces)[numbers != 0].sum())
+
+
+@pytest.mark.parametrize("seed", range(40))
+def test_the_nonzero_area_of_a_ring_that_crosses_itself_is_its_faces(seed):
+    generator = np.random.default_rng(seed)
+    points = generator.uniform(-5, 5, (9, 2))
+    ring = np.column_stack([points, np.zeros(9)])
+
+    area = polygons.nonzero_area(ring)
+
+    assert area == pytest.approx(_nonzero_area_by_faces(ring), abs=1e-9)
 
 
 @pytest.mark.parametrize(
@@ -158,8 +259,8 @@ def test_edges_far_apart_along_one_turned_line_are_not_tested_exactly(
     monkeypatch,
 ):
     # Two runs of 400 points along parallel lines turned to y = 3x, joined
-    # at their ends; testing every pair of edges exactly took about 200,000
-    # exact tests.
+    # at their ends; testing every pair of edges took about 200,000 exact
+    # tests.
     steps = np.arange(400) * 1.7
     line = np.stack([steps * 0.1, steps * 0.3], axis=1)
     ring = np.concatenate([line, line[::-1] + np.array([-5.0, 1.0])])

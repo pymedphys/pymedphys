@@ -103,10 +103,12 @@ before the face is in most scans.
 
 Beyond CT Image instances, the run cleans the same region of an RT Dose
 that :mod:`~pymedphys._dicom.deidentify.dose_defacing` sets to zero there,
-and of an RT Structure Set whose contours, or a PET image whose activity,
+of an RT Structure Set whose contours, or a PET image whose activity,
 :mod:`~pymedphys._dicom.deidentify.region_defacing` cuts or sets to zero
-there, each with that series' Frame of Reference as its only one. Any other
-RT Structure Set, RT Dose with pixel data, or PET instance
+there, and of a Segmentation whose segments
+:mod:`~pymedphys._dicom.deidentify.segmentation_defacing` clears there,
+each with that series' Frame of Reference as its only one. Any other RT
+Structure Set, RT Dose with pixel data, PET instance, or Segmentation
 (:data:`UNDEFACED_IODS`) in the Frame of Reference of a defaced series
 keeps its contours or pixel data, which can still outline the face, so it
 is held for review whatever its verdict, since a reviewer may have judged
@@ -179,6 +181,7 @@ UNDEFACED_IODS = frozenset(
         PET_IMAGE,
         "Enhanced PET Image",
         "Legacy Converted Enhanced PET Image",
+        "Segmentation",
     }
 )
 # How far two slices' direction cosines, or spacings in millimetres, may
@@ -478,23 +481,7 @@ def _series_outcome(
         # the block.
         if not frame:
             raise _Unusable(SeriesProblem.UNREADABLE)
-        normal = np.cross(first.orientation[:3], first.orientation[3:])
-        # Along the patient's superior axis, the slices within HEAD_REACH of
-        # the top; for a stack along another axis, every slice, since each
-        # spans the volume's height.
-        if abs(abs(normal[2]) - 1) <= _SAME:
-            tops = [each.position[2] for each in slices]
-            kept = [i for i, top in enumerate(tops) if top >= max(tops) - HEAD_REACH]
-        else:
-            kept = list(range(len(slices)))
-        finder = defacing.FaceFinder(
-            first.orientation,
-            [slices[i].position for i in kept],
-            first.spacing,
-            first.shape,
-        )
-        for index in kept:
-            finder.add(_hounsfield(read(positions[index]), slices[index]))
+        finder = _finder(slices, positions, read)
         return SeriesDefacing(finder.block(), None, frame), frame
     except _Unusable as unusable:
         return SeriesDefacing(None, unusable.problem), frame
@@ -506,6 +493,62 @@ def _series_outcome(
     # its message, which can quote a value, is dropped.
     except Exception:  # pylint: disable = broad-exception-caught
         return SeriesDefacing(None, SeriesProblem.UNREADABLE), frame
+
+
+def inspect_series(
+    positions: list[int], read: Callable[[int], bytes | None]
+) -> defacing.FaceInspection | None:
+    """What the finder finds in one series' slices, as a run gives them to
+    it, or None where it is given none, for a check on reference masks.
+
+    Parameters
+    ----------
+    positions : list of int
+        The run positions of the series' CT Image instances.
+    read : callable
+        As for :func:`find_face_blocks`.
+    """
+    try:
+        slices = [_slice(read(position)) for position in positions]
+        _check_stack(slices)
+        return _finder(slices, positions, read).inspect()
+    except (_Unusable, FaceBlockRefused):
+        return None
+
+
+def _finder(
+    slices: list[_Slice],
+    positions: list[int],
+    read: Callable[[int], bytes | None],
+) -> defacing.FaceFinder:
+    """The finder of one stack's slices, each added.
+
+    Raises
+    ------
+    _Unusable
+        If a slice can no longer be read.
+    FaceBlockRefused
+        As :class:`~pymedphys._dicom.deidentify.defacing.FaceFinder` does.
+    """
+    first = slices[0]
+    normal = np.cross(first.orientation[:3], first.orientation[3:])
+    # Along the patient's superior axis, the slices within HEAD_REACH of
+    # the top; for a stack along another axis, every slice, since each
+    # spans the volume's height.
+    if abs(abs(normal[2]) - 1) <= _SAME:
+        tops = [each.position[2] for each in slices]
+        kept = [i for i, top in enumerate(tops) if top >= max(tops) - HEAD_REACH]
+    else:
+        kept = list(range(len(slices)))
+    finder = defacing.FaceFinder(
+        first.orientation,
+        [slices[i].position for i in kept],
+        first.spacing,
+        first.shape,
+    )
+    for index in kept:
+        finder.add(_hounsfield(read(positions[index]), slices[index]))
+    return finder
 
 
 def _slice(data: bytes | None) -> _Slice:
@@ -981,8 +1024,8 @@ class CtDefacer:
 def _kept(
     block: FaceBlock, each: _Slice, stored: np.ndarray
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Return a slice's pixels of the cranial cavity that defacing keeps, and
-    those of padding, each of bool, rows by columns."""
+    """Return a slice's pixels of the brain, within the cranial cavity, that
+    defacing keeps, and those of padding, each of bool, rows by columns."""
     slope, intercept = each.rescale
     padded = np.zeros(each.shape, dtype=bool)
     if each.padding is not None:
@@ -1054,7 +1097,7 @@ def _described(dataset: pydicom.Dataset, layout: Layout) -> _Slice:
 @dataclasses.dataclass(frozen=True, repr=False)
 class KeptSlice:
     """A slice of a defaced series that its face block reaches, with the
-    pixels of the block that :class:`CtDefacer` keeps as cranial cavity.
+    pixels of the block that :class:`CtDefacer` keeps as brain.
 
     Its ``repr`` shows nothing of it.
 

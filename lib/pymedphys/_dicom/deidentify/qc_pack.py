@@ -68,28 +68,42 @@ A pack holds, for one run:
   positions of its instances, by which an attestation gives each series'
   face verdict (D-016, D-017); and ``series_risks``: each series of released or held instances with
   findings of its series assessment, a CT, MR, PET, or RT Dose volume, a
-  localizer, the head or neck, or unreadable evidence of any of them, with
-  the instances that show each (D-015, D-017);
+  localizer, an RT Image, a Segmentation, the head or neck, or unreadable
+  evidence of any of them, with the instances that show each (D-015,
+  D-017);
 - ``redactions``: each released or held instance whose Pixel Data the
   Clean Pixel Data Option cleaned, with why it is held, its number of
-  frames, its Rows and Columns, and the regions blacked out in each frame,
+  frames, its Rows and Columns, the regions blacked out in each frame,
   by frame index from 0, each as ``[top, left, bottom, right]`` in pixels
   from the frame's top left corner, with the bottom row and right column
-  excluded, for the review of
-  every frame that the option requires. Each frame with regions is
+  excluded, which of those regions reviewed region rules gave, which are
+  among the regions of every frame, and, for compressed Pixel Data, the
+  SHA-256 of its frames as decoded, which binds a verdict to them (D-048),
+  for the review of every frame that the option requires. Each frame with regions is
   previewed as received, so under the option the pack holds the burned-in
   text that the release lacks;
 - ``previews``: each image preview, by its file in the previews directory
   beside the pack, with what it shows and the file's SHA-256, so that an
   attestation of the pack covers them, among them a contour sheet of each
-  instance with contours, such as an RT Structure Set; and
+  instance with contours, such as an RT Structure Set, and a segments sheet
+  of each Segmentation; and
   ``not_previewed``: each instance whose pixel data could not be previewed,
-  or whose contours could not be shown, with why (D-017). The images are
+  whose contours could not be shown, for an RT Dose, whose dose levels
+  could not be drawn, or, for a Segmentation, whose segments could not be
+  drawn, with why (D-017). The images are
   made by :mod:`~pymedphys._dicom.deidentify.qc_previews`.
 - ``source_gaps``: each instance whose source lacks an attribute that its
   IOD unconditionally requires, with each such attribute's place and Type,
   which the run reports and never acts on (MIDI-BP-03); the release report
-  gives only their counts by attribute and Type.
+  gives only their counts by attribute and Type;
+- ``reviewed_lists``: the salted digest of the reviewed ROI names and
+  descriptors lists that the run's descriptor cleaning applied, and of the
+  reviewed region rules that its Clean Pixel Data applied, as
+  :func:`~pymedphys._dicom.deidentify.risk_assessment.lists_digest` gives
+  it, with its salt, or null for a run whose reporter stated none; a risk
+  assessment of the run binds these lists and rules, so that what its
+  record binds is what the run applied, not what whoever records it
+  supplies (D-053).
 
 Its ``reference`` is an opaque random token that the release report records
 with the attestation's outcome, in place of the review material (D-016). It
@@ -130,7 +144,7 @@ from .reviewed_roi_names import Outcome
 from .text_detection import TextBox
 
 # The format of the pack document. A change to its fields takes a new label.
-FORMAT = "pymedphys-deid-qc-pack/11"
+FORMAT = "pymedphys-deid-qc-pack/19"
 # The bytes of a written file shown on each side of a residual's offset.
 EXCERPT_BYTES = 48
 # The SHA-256 that face_review.contour_data_sha256 gives a file without
@@ -255,8 +269,9 @@ class InstanceEntry:
         that the run wrote; ``None`` for any other input, or one whose
         written file the gate did not hand over or could not be read, or
         whose pixel data the pack's previews that could show a face do not
-        draw in every frame, as none yet does an RT Dose's, so that no
-        verdict releases them.
+        draw in every frame, which for an RT Dose only its dose-levels
+        previews can, and for a Segmentation only its segments sheet, so
+        that no verdict releases them.
     contour_sha256 : str, optional
         Likewise, the :func:`~.face_review.contour_data_sha256` of the file
         written, which binds a series' face verdict to the contours that
@@ -754,7 +769,11 @@ class DescriptorEntry:
         Whether the element was written with those values. Where it was not,
         because a value was held, no value had text, or a kept value was
         beside a mapped or emptied one, or because another attribute's action removed
-        its sequence, it took its action without Clean Descriptors.
+        its sequence, it took its action without Clean Descriptors, except
+        for an attribute that another option's cleaner left to the reviewed
+        descriptors list, such as Allergies under Retain Patient
+        Characteristics, a held value of which holds its instance for review
+        instead (D-038).
     attribute : str or None
         For private text under the Retain Safe Private Option, the key by
         which a reviewer decides on its values
@@ -848,8 +867,12 @@ class PreviewKind(enum.Enum):
 
     SERIES_CINE = "series-cine"  # frames evenly spaced through a series
     SERIES_MIP = "series-mip"  # a frontal maximum intensity projection
-    # renders of a volume's skin surface, from the front, obliques, and profiles
+    # renders of a volume's skin surface, from the front, obliques, profiles,
+    # and behind
     SERIES_SURFACE = "series-surface"
+    # renders of an RT Dose's surfaces at each of a ladder of dose levels,
+    # or a map of one plane's dose by level, drawing every frame listed
+    SERIES_DOSE_LEVELS = "series-dose-levels"
     INSTANCE = "instance"  # a high-risk instance at full resolution
     # a frame that Clean Pixel Data cleaned, at full resolution, with its
     # regions outlined: as received beside as written where it has any
@@ -857,10 +880,15 @@ class PreviewKind(enum.Enum):
     # renders of an RT Structure Set's contours, as written, united in each
     # frame with the image series that they lie on, and of each ROI alone
     STRUCTURE_SET_CONTOURS = "structure-set-contours"
+    # renders of a Segmentation's segments, as written, united with the
+    # image series in their frame, and each alone, drawing every frame of
+    # the Segmentation, listed first
+    SEGMENTATION_SEGMENTS = "segmentation-segments"
 
 
 class NotPreviewedReason(enum.Enum):
-    """Why an instance has no image preview."""
+    """Why an instance has no image preview, or, for an RT Dose, no
+    dose-levels preview."""
 
     # compressed pixel data that no installed plugin is pinned to decode
     COMPRESSED = "compressed-pixel-data"
@@ -876,9 +904,30 @@ class NotPreviewedReason(enum.Enum):
     SOURCE_NOT_SHOWN = "source-not-shown"
     # an instance with contours, such as an RT Structure Set, that a contour
     # sheet cannot show: unreadable, with a contour that it does not draw,
-    # too tall, or with a voxel of hidden marks that the frontal view and
-    # profiles of its rows would not draw, so its verdict gives it none
+    # too tall, or with a voxel of hidden marks that the frontal view, the
+    # view from behind, and the profiles of its rows would not draw, so its
+    # verdict gives it none
     CONTOURS_NOT_SHOWN = "contours-not-shown"
+    # an RT Dose, by face_review.is_rt_dose, that no dose-levels preview
+    # shows whole: one that cannot be placed as a grid or a series of
+    # planes, whose stored values or scaling its levels would not show, or
+    # whose sheet would have too many levels or be too tall. Its other
+    # previews are kept, such as its cine strip, which can leave a low dose
+    # black, and a redaction preview of each frame where it was cleaned.
+    DOSE_LEVELS_NOT_SHOWN = "dose-levels-not-shown"
+    # a Segmentation, by qc_segments.is_segmentation, that no segments sheet
+    # shows whole: one that is FRACTIONAL, cannot be placed, has a pixel in
+    # no segment that it describes, or whose sheet would be too tall. Its
+    # other previews are kept, as an RT Dose's are.
+    SEGMENTS_NOT_SHOWN = "segments-not-shown"
+
+
+# The reasons that say only that no preview that could show a face shows an
+# instance whole, whose other previews, such as a redaction preview of each
+# frame where it was cleaned, are kept.
+FACE_PREVIEW_REASONS = frozenset(
+    {NotPreviewedReason.DOSE_LEVELS_NOT_SHOWN, NotPreviewedReason.SEGMENTS_NOT_SHOWN}
+)
 
 
 PREVIEW_NAME = re.compile(r"P-[0-9]{4,}\.png")
@@ -1035,6 +1084,17 @@ class RedactionEntry:
         Each frame with a region, by frame index from 0, in order, with its
         regions, sorted, each once, and each within its rows and columns;
         none where no text was found.
+    decoded_sha256 : str, optional
+        For compressed Pixel Data, the SHA-256 of its frames as decoded
+        (:attr:`~.pixel_cleaning.Redaction.decoded_sha256`), as 64 lowercase
+        hex digits, which a reviewer's verdict on the instance requires the
+        frames to decode to again (D-048); None for native Pixel Data.
+    rule_boxes : tuple of TextBox, optional
+        The regions that reviewed region rules gave
+        (:attr:`~.pixel_cleaning.Redaction.rule_boxes`), sorted, each once,
+        each of which is among the regions of every frame; none, the
+        default, where no rule matched. Every other region is the text
+        finder's.
     """
 
     position: int
@@ -1043,6 +1103,8 @@ class RedactionEntry:
     rows: int
     columns: int
     regions: tuple[tuple[int, tuple[TextBox, ...]], ...]
+    decoded_sha256: str | None = None
+    rule_boxes: tuple[TextBox, ...] = ()
 
     def __post_init__(self) -> None:
         _check_position("a cleaned instance", self.position)
@@ -1083,11 +1145,36 @@ class RedactionEntry:
             raise QcPackError(
                 f"cleaned instance {self.position} must list each frame once, in order"
             )
+        if self.decoded_sha256 is not None and not (
+            isinstance(self.decoded_sha256, str)
+            and _SHA256.fullmatch(self.decoded_sha256)
+        ):
+            raise QcPackError(
+                f"cleaned instance {self.position} needs its decoded frames' "
+                "SHA-256 as 64 lowercase hex digits, or none"
+            )
         found = self.reason is PixelDataReason.TEXT_BLACKED_OUT
         if found != bool(self.regions):
             raise QcPackError(
                 f"cleaned instance {self.position} has regions exactly where "
                 "text was blacked out"
+            )
+        if not (
+            isinstance(self.rule_boxes, tuple)
+            and all(isinstance(box, TextBox) for box in self.rule_boxes)
+            and list(self.rule_boxes) == sorted(set(self.rule_boxes))
+        ):
+            raise QcPackError(
+                f"cleaned instance {self.position} needs its rules' regions as "
+                "sorted, distinct boxes"
+            )
+        if self.rule_boxes and (
+            indices != list(range(self.frames))
+            or not all(set(self.rule_boxes) <= set(boxes) for _, boxes in self.regions)
+        ):
+            raise QcPackError(
+                f"cleaned instance {self.position} has a rule's region that is "
+                "not among the regions of every frame"
             )
 
 
@@ -1133,6 +1220,37 @@ class SourceGapEntry:
             and all(isinstance(gap, SourceGap) for gap in self.gaps)
         ):
             raise QcPackError(f"instance {self.position} needs its source gaps")
+
+
+@dataclasses.dataclass(frozen=True, repr=False)
+class ListsDigest:
+    """The salted digest of the reviewed lists and region rules that a run applied.
+
+    A digest of a short list, with its salt, can be tested against guesses
+    of the list, which holds source names and values, or of the rules,
+    which hold manufacturers' and model names, so it is kept only in
+    confidential QC material, and its ``repr`` shows neither.
+
+    Attributes
+    ----------
+    salt : str
+        64 hex digits, random for each run.
+    sha256 : str
+        :func:`~pymedphys._dicom.deidentify.risk_assessment.lists_digest` of
+        the lists and rules under ``salt``, 64 hex digits.
+    """
+
+    salt: str
+    sha256: str
+
+    def __post_init__(self) -> None:
+        for name in ("salt", "sha256"):
+            value = getattr(self, name)
+            if not isinstance(value, str) or not _SHA256.fullmatch(value):
+                raise QcPackError(f"the reviewed lists' digest needs its {name}")
+
+    def __repr__(self) -> str:
+        return "ListsDigest()"
 
 
 @dataclasses.dataclass(frozen=True)
@@ -1253,6 +1371,9 @@ class QcPack:
         Each instance in at most one, by its first run position in order;
         each instance released or held for review, with its source's
         SHA-256.
+    reviewed_lists : ListsDigest or None
+        The salted digest of the reviewed lists that the run applied, or
+        None where it stated none.
 
     Raises
     ------
@@ -1272,8 +1393,9 @@ class QcPack:
         a series has an instance without its source's SHA-256; or if an
         instance is listed twice as cleaned, out of order, or neither
         released nor held for review; or if a cleaned instance that is not
-        listed as not previewed lacks a redaction preview of each frame, in
-        order, or a redaction preview shows anything else.
+        listed as not previewed, or is listed only for its dose levels,
+        lacks a redaction preview of each frame, in order, or a redaction
+        preview shows anything else.
     """
 
     reference: str
@@ -1292,12 +1414,17 @@ class QcPack:
     not_previewed: tuple[NotPreviewedEntry, ...] = ()
     source_gaps: tuple[SourceGapEntry, ...] = ()
     series: tuple[SeriesEntry, ...] = ()
+    reviewed_lists: ListsDigest | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.reference, str) or not _REFERENCE.fullmatch(
             self.reference
         ):
             raise QcPackError("a QC pack needs a reference from new_reference()")
+        if self.reviewed_lists is not None and not isinstance(
+            self.reviewed_lists, ListsDigest
+        ):
+            raise QcPackError("reviewed_lists must be a ListsDigest or None")
         sections = {
             "instances": InstanceEntry,
             "residual_findings": ResidualEntry,
@@ -1466,9 +1593,14 @@ class QcPack:
 
     def _check_redaction_previews(self) -> None:
         """Each cleaned instance has a redaction preview of each frame, in
-        order, unless it is listed as not previewed, and no other has one."""
+        order, unless it is listed as not previewed for a reason other than
+        its dose levels or its segments, and no other has one."""
         cleaned = {entry.position: entry.frames for entry in self.redactions}
-        unshown = {entry.position for entry in self.not_previewed}
+        unshown = {
+            entry.position
+            for entry in self.not_previewed
+            if entry.reason not in FACE_PREVIEW_REASONS
+        }
         shown: dict[int, list[int]] = {}
         for preview in self.previews:
             if preview.kind is not PreviewKind.REDACTION:
@@ -1488,7 +1620,8 @@ class QcPack:
             if shown.get(position, []) != expected:
                 raise QcPackError(
                     "a cleaned instance needs a redaction preview of each "
-                    "frame, in order, unless it is listed as not previewed"
+                    "frame, in order, unless it is listed as not previewed "
+                    "for a reason other than its dose levels or its segments"
                 )
 
     def _check_names(self) -> None:
@@ -1533,6 +1666,7 @@ class QcPack:
 def pictured_frames(
     previews: Iterable[tuple[str, Iterable[tuple[int, int]]]],
     not_previewed: Collection[int],
+    kinds: Collection[str] | None = None,
 ) -> dict[int, int]:
     """Return how many frames of each run position a pack's previews show
     in a way that could show a face, from its first frame with none missing.
@@ -1544,37 +1678,32 @@ def pictured_frames(
         frames it lists, by run position and frame index.
     not_previewed : collection of int
         The run positions listed as not previewed, which are left out.
+    kinds : collection of str, optional
+        The kinds of preview to count, as :class:`PreviewKind` values; by
+        default every kind but a contour sheet. Only dose-levels previews
+        show an RT Dose as it could show a face, and only segments sheets a
+        Segmentation.
 
     Returns
     -------
     dict of int to int
         For each position whose frames those previews list from frame 0
-        with none missing, how many they list. A contour sheet's frames do
-        not count, since it shows the volume that it is drawn with only as a
-        surface, and nor do those of the isodose render of an RT Dose grid,
-        which D-017 finds inconclusive. A surface render is a dose grid's
-        where it lists a frame other than a position's first, as a volume's
-        never does, since a volume is of single-frame instances.
+        with none missing, how many they list. A contour sheet's frames
+        never count, since it shows the volume that it is drawn with only
+        as a surface, and a segments sheet's count only for its
+        Segmentation, the position of its first frame, for the same reason.
     """
-    previews = [(kind, tuple(frames)) for kind, frames in previews]
-    surface, contours = (
-        PreviewKind.SERIES_SURFACE.value,
-        PreviewKind.STRUCTURE_SET_CONTOURS.value,
-    )
-    dosed = {
-        position
-        for kind, frames in previews
-        if kind == surface
-        for position, frame in frames
-        if frame
-    }
+    contours = PreviewKind.STRUCTURE_SET_CONTOURS.value
+    segments = PreviewKind.SEGMENTATION_SEGMENTS.value
     framed: dict[int, set[int]] = {}
     for kind, frames in previews:
-        if kind == contours:
+        if kind == contours or (kinds is not None and kind not in kinds):
             continue
-        for position, frame in frames:
-            if not (kind == surface and position in dosed):
-                framed.setdefault(position, set()).add(frame)
+        listed = list(frames)
+        if kind == segments and listed:
+            listed = [frame for frame in listed if frame[0] == listed[0][0]]
+        for position, frame in listed:
+            framed.setdefault(position, set()).add(frame)
     return {
         position: len(frames)
         for position, frames in framed.items()
@@ -1628,7 +1757,8 @@ def pack_document(pack: QcPack) -> dict:
     Returns
     -------
     dict
-        With the keys ``format``, ``reference``, and one for each section.
+        With the keys ``format``, ``reference``, ``reviewed_lists``, and one
+        for each section.
 
     Examples
     --------
@@ -1642,9 +1772,13 @@ def pack_document(pack: QcPack) -> dict:
     """
     if not isinstance(pack, QcPack):
         raise TypeError("pack must be a QcPack")
+    lists = pack.reviewed_lists
     return {
         "format": FORMAT,
         "reference": pack.reference,
+        "reviewed_lists": (
+            None if lists is None else {"salt": lists.salt, "sha256": lists.sha256}
+        ),
         "instances": [_instance(entry) for entry in pack.instances],
         "residual_findings": [_residual(entry) for entry in pack.residual_findings],
         "drops": [
@@ -1756,6 +1890,11 @@ def pack_document(pack: QcPack) -> dict:
                         ],
                     }
                     for index, boxes in entry.regions
+                ],
+                "decoded_sha256": entry.decoded_sha256,
+                "rule_boxes": [
+                    [box.top, box.left, box.bottom, box.right]
+                    for box in entry.rule_boxes
                 ],
             }
             for entry in pack.redactions

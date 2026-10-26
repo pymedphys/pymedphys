@@ -54,6 +54,7 @@ from pymedphys._dicom.deidentify.face_review import (
     FaceReview,
     carries_visual_features,
     contour_data_sha256,
+    holds_deformation_grid,
     pixel_data_sha256,
     read_face_review,
 )
@@ -549,6 +550,8 @@ def test_the_repr_shows_only_the_reference_and_counts():
         (None, "RT Structure Set", True),
         (None, "RT Plan", False),
         (None, "MR Spectroscopy", False),
+        (None, "Spatial Registration", False),
+        (None, "Deformable Spatial Registration", False),
     ],
 )
 def test_an_instance_needs_a_verdict_where_it_can_show_a_face(keyword, iod, carries):
@@ -557,6 +560,46 @@ def test_an_instance_needs_a_verdict_where_it_can_show_a_face(keyword, iod, carr
         setattr(dataset, keyword, b"\x00\x00\x00\x00")
 
     assert carries_visual_features(dataset, iod) is carries
+
+
+def _deformable(*items):
+    dataset = pydicom.Dataset()
+    dataset.DeformableRegistrationSequence = list(items)
+    return dataset
+
+
+def _with_grid():
+    item = pydicom.Dataset()
+    grid = pydicom.Dataset()
+    grid.VectorGridData = b"\x00" * 12
+    item.DeformableRegistrationGridSequence = [grid]
+    return item
+
+
+@pytest.mark.parametrize(
+    "dataset, holds",
+    [
+        (pydicom.Dataset(), False),
+        (_deformable(), False),
+        # Only matrices, before and after a deformation that it does not
+        # give.
+        (_deformable(pydicom.Dataset()), False),
+        (_deformable(pydicom.Dataset(), _with_grid()), True),
+    ],
+)
+def test_a_deformation_grid_can_show_a_face(dataset, holds):
+    iod = "Deformable Spatial Registration"
+
+    assert holds_deformation_grid(dataset) is holds
+    assert carries_visual_features(dataset, iod) is holds
+
+
+def test_a_deformable_registration_sequence_that_cannot_be_read_may_hold_a_grid():
+    dataset = pydicom.Dataset()
+    # Bytes that are not items.
+    dataset[0x00640002] = pydicom.DataElement(0x00640002, "OB", b"\x01\x02")
+
+    assert holds_deformation_grid(dataset)
 
 
 # The markers and the transform.
@@ -651,9 +694,18 @@ def test_the_statement_names_each_supported_iod_that_lacks_the_attribute():
         name for name in SUPPORTED_IODS if not tables.iods[name].lookup("(0028,0302)")
     }
 
-    assert lacking == {"RT Plan", "RT Structure Set", "MR Spectroscopy"}
+    assert lacking == {
+        "RT Plan",
+        "RT Structure Set",
+        "RT Beams Treatment Record",
+        "MR Spectroscopy",
+        "Spatial Registration",
+        "Deformable Spatial Registration",
+    }
     assert (
-        "which of the supported IODs are RT Plan, RT Structure Set, and MR Spectroscopy"
+        "which of the supported IODs are RT Plan, RT Structure Set, RT Beams "
+        "Treatment Record, MR Spectroscopy, Spatial Registration, and Deformable "
+        "Spatial Registration"
     ) in conformance_markdown.render_markdown(
         conformance.conformance_statement(_policy(), vocabulary=None)
     )
@@ -763,6 +815,14 @@ def test_the_report_refuses_a_face_review_that_is_not_a_reference(reference):
 _CT = ("01-ct-1.dcm", "02-ct-2.dcm")
 _DOSE = ("06-rtdose.dcm", "07-rtdose-review.dcm")
 _STRUCTURE_SET = "04-rtstruct.dcm"
+_DEFORMABLE = "19-registration-deformable.dcm"
+# The instances that cannot show a face.
+_FACELESS = (
+    "05-rtplan.dcm",
+    "14-mr-spectroscopy.dcm",
+    "18-registration.dcm",
+    "20-rt-beams-record.dcm",
+)
 
 
 class _CornerFinder:
@@ -820,6 +880,9 @@ def _first_run():
                 by_first[_CT[0]]["positions"][0]: Face.ABSENT,
                 by_first[_STRUCTURE_SET]["positions"][0]: Face.ABSENT,
                 by_first[_DOSE[0]]["positions"][0]: Face.PRESENT,
+                # No preview shows its grid, so this verdict releases none
+                # of it.
+                by_first[_DEFORMABLE]["positions"][0]: Face.ABSENT,
             },
         )
         # The same files, renamed so that they are found in the reverse
@@ -896,10 +959,10 @@ def test_every_other_instance_that_can_show_a_face_is_held(second_run):
         for name in outcomes
         if name not in (*_CT, _STRUCTURE_SET)
         and name != corpus_module.SEQUESTERED_FILE
-        and name not in ("05-rtplan.dcm", "14-mr-spectroscopy.dcm")
+        and name not in _FACELESS
     }
 
-    assert can_show >= set(_DOSE)
+    assert can_show >= {*_DOSE, _DEFORMABLE}
     for name in can_show:
         assert outcomes[name] == ("held-for-review", None), name
     held = {
@@ -944,8 +1007,12 @@ def test_with_clean_pixel_data_a_verdict_covers_only_the_pixel_data_seen(
     assert blacked_out in reasons[_DOSE[0]]
     assert HeldVisualFeatures(VisualFeaturesReason.FACE_PRESENT) in reasons[_DOSE[0]]
     # What has no pixel data is released, and claims both options, since
-    # it has nothing for Clean Pixel Data to clean.
-    released = (_STRUCTURE_SET, "05-rtplan.dcm", "14-mr-spectroscopy.dcm")
+    # it has nothing for Clean Pixel Data to clean, but for the deformable
+    # registration, whose grid no preview shows.
+    assert reasons[_DEFORMABLE] == {
+        HeldVisualFeatures(VisualFeaturesReason.NO_FACE_VERDICT)
+    }
+    released = (_STRUCTURE_SET, *_FACELESS)
     for name in released:
         disposition, dataset = outcomes[name]
         assert disposition == "released", name
@@ -961,12 +1028,12 @@ def test_with_clean_pixel_data_a_verdict_covers_only_the_pixel_data_seen(
 def test_an_instance_that_cannot_show_a_face_satisfies_the_option(second_run):
     _, outcomes, _, _ = second_run
 
-    for name in ("05-rtplan.dcm", "14-mr-spectroscopy.dcm"):
+    for name in _FACELESS:
         disposition, dataset = outcomes[name]
         assert disposition == "released", name
         assert CODE in _codes(dataset)
-        # Neither IOD defines Recognizable Visual Features, but E.3.2 adds
-        # it with the option's code all the same.
+        # None of their IODs defines Recognizable Visual Features, but E.3.2
+        # adds it with the option's code all the same.
         assert dataset.RecognizableVisualFeatures == "NO"
 
 
@@ -974,7 +1041,7 @@ def test_the_report_names_the_attested_pack(second_run):
     attestation, _, report, _ = second_run
 
     assert report["face_review"]["reference"] == attestation.reference
-    assert report["format"] == "pymedphys-deid-release-report/22"
+    assert report["format"] == "pymedphys-deid-release-report/31"
 
 
 def test_the_report_counts_the_ct_series_that_were_not_defaced(second_run):
@@ -1016,34 +1083,39 @@ def test_a_verdict_releases_compressed_pixel_data_as_the_reviewed_run_wrote_them
             continue
         # Marked absent, but with no pixel data seen, it is held; given the
         # pixel data that this run wrote, with each codestream's metadata
-        # cut, it is released, but for an RT Dose, which no preview shows
-        # as it could show a face, so that a run holds it whatever its
-        # verdict.
+        # cut, it is released; an RT Dose only where its dose levels showed
+        # every frame, as a review built by hand says only where asked.
         assert isinstance(unseen.evidence, HeldEvidence)
         assert held in getattr(unseen.evidence, "held")
-        written = pixel_data_sha256(read_source(unseen.data).dataset())
-        contours = contour_data_sha256(read_source(unseen.data).dataset())
-        seen = InstanceTransform(
-            _policy(),
-            KEY,
-            face_review=FaceReview(
-                REFERENCE,
-                frozenset({source}),
-                frozenset(),
-                frozenset({(source, written)}),
-                frozenset({(source, contours)}),
-            ),
-            unvalidated_policy=True,
-        )(file.data, record)
+        dataset = read_source(unseen.data).dataset()
+        written = pixel_data_sha256(dataset)
+        review = FaceReview(
+            REFERENCE,
+            frozenset({source}),
+            frozenset(),
+            frozenset({(source, written)}),
+            frozenset({(source, contour_data_sha256(dataset))}),
+        )
+        seen = _seen(file.data, record, review)
         if record.iod == RT_DOSE:
             assert isinstance(seen.evidence, HeldEvidence), file.name
             assert getattr(seen.evidence, "held") == (held,), file.name
+            frames = int(dataset.get("NumberOfFrames") or 1)
+            review = dataclasses.replace(
+                review, absent_dose_frames=frozenset({(source, written, frames)})
+            )
+            seen = _seen(file.data, record, review)
             doses += 1
-            continue
         assert not isinstance(seen.evidence, HeldEvidence), file.name
         assert CODE in _codes(pydicom.dcmread(io.BytesIO(seen.data)))
         released += 1
         cut += written != pixel_data_sha256(read_source(file.data).dataset())
     assert released and cut
-    # The collection's RT Dose images, in RLE Lossless.
+    # The collection's RT Dose images, in RLE Lossless, are among them.
     assert doses == 2
+
+
+def _seen(data, record, review):
+    return InstanceTransform(
+        _policy(), KEY, face_review=review, unvalidated_policy=True
+    )(data, record)

@@ -48,13 +48,16 @@ exception belongs to the ``tps-import`` preset, which deliberately selects
 both Retain Device Identity (K) and Modified Dates (C). No output can satisfy
 both while one of the eleven attributes they conflict on has a value, so the
 preset modifies each of them as Modified Dates requires, by the attribute's
-temporal role, and makes no PS3.15 conformance claim. The same options chosen
-without the preset, and any other conflict, such as one a new edition of the
-table adds, are rejected.
+temporal role, and makes no PS3.15 conformance claim. The preset's policy
+without one of its options, whose actions apply where that option settles
+nothing (:func:`compose_preset_without`), resolves them in the same way. The
+same options chosen without the preset, and any other conflict, such as one
+a new edition of the table adds, are rejected.
 
 A preset is enabled only once its behaviour is implemented and validated. No
-preset is enabled yet; the first supported release is to enable ``basic`` and
-``basic-clean-descriptors``. A run can select a custom option set in place
+preset is enabled yet; the first supported release is to enable every preset
+and every option, and waits until every one is validated (design document,
+Scope). A run can select a custom option set in place
 of a preset (D-033), which is enabled only once ``basic``, whose Basic
 Profile it applies, is enabled, and each of its options is in
 :data:`ENABLED_OPTIONS`, which an option joins once its behaviour is
@@ -157,7 +160,8 @@ PRESETS: Mapping[str, tuple[str, ...]] = types.MappingProxyType(
 )
 DEFAULT_PRESET = "basic"
 # The presets whose behaviour is implemented and validated. None is yet; the
-# first supported release is to enable ``basic`` and ``basic-clean-descriptors``.
+# first supported release is to enable every preset, and waits until every
+# preset and option is validated (design document, Scope).
 ENABLED_PRESETS: frozenset[str] = frozenset()
 # The options whose behaviour is implemented and validated, each one of
 # ENGINE_OPTIONS, which a custom option set may select once the basic preset
@@ -208,7 +212,9 @@ class Policy:
     Attributes
     ----------
     preset : str or None
-        The preset, such as ``"basic"``, or None for a custom option set.
+        The preset, such as ``"basic"``, or None for a custom option set or
+        a preset's policy without one of its options
+        (:func:`compose_preset_without`).
     edition : str
         The edition of Table E.1-1, such as ``"2026d"``.
     options : tuple of str
@@ -222,7 +228,8 @@ class Policy:
         :attr:`resolved`. Read-only.
     resolved : tuple of ResolvedConflict
         The conflicts between selected options that the preset resolves, in
-        the table's order. Only ``tps-import`` has any.
+        the table's order. Only ``tps-import``'s policy has any, with or
+        without one of its options.
     supplementary_actions : Mapping of str to str
         The action of each reviewed supplementary rule under the selected
         options, keyed by its tag as the data dictionary gives it, such as
@@ -328,9 +335,19 @@ def _conflict_message(conflicts: list[OptionConflict], hint: bool) -> str:
 
 
 def _compose(
-    preset: str | None, options: Iterable[str], table: ProfileTable | None
+    preset: str | None,
+    options: Iterable[str],
+    table: ProfileTable | None,
+    *,
+    resolving: str | None = None,
 ) -> Policy:
-    """Validate ``options`` for ``preset``, or for a custom set if it is None."""
+    """Validate ``options`` for ``preset``, or for a custom set if it is None.
+
+    ``resolving`` names a preset whose resolutions apply to options that are
+    not its own, for :func:`compose_preset_without`; such a policy has no
+    preset and is never enabled.
+    """
+    resolves = (preset if resolving is None else resolving) == _TPS_IMPORT
     selected = _checked_options(options)
     pinned = table is None
     if table is None:
@@ -354,13 +371,15 @@ def _compose(
         roles = load_temporal_roles()
         resolvable = [_resolution(c, roles) for c in conflicts]
     for conflict, resolution in zip(conflicts, resolvable):
-        if preset == _TPS_IMPORT and resolution is not None:
+        if resolves and resolution is not None:
             resolved[conflict.tag] = resolution
         else:
             unresolved.append(conflict)
     if unresolved:
         raise PolicyError(
-            _conflict_message(unresolved, preset is None and all(resolvable))
+            _conflict_message(
+                unresolved, preset is None and resolving is None and all(resolvable)
+            )
         )
 
     composed = Policy(
@@ -378,7 +397,7 @@ def _compose(
         resolved=tuple(resolved.values()),
         supplementary_actions=supplementary.actions,
     )
-    if pinned and _enabled(preset, selected):
+    if pinned and resolving is None and _enabled(preset, selected):
         # The way a frozen dataclass sets a field that is not an argument.
         object.__setattr__(composed, "enabled", True)
     return composed
@@ -480,6 +499,61 @@ def compose_custom_policy(
         of the options give an attribute different actions.
     """
     return _compose(None, options, table)
+
+
+def compose_preset_without(
+    preset: str, option: str, *, table: ProfileTable | None = None
+) -> Policy:
+    """Compose a preset's policy without one of its options, resolving as it does.
+
+    The policy whose actions apply where ``option`` settles nothing, such as
+    the action that an attribute given C takes where Clean Descriptors does
+    not clean it (D-009). The preset's other options are composed as the
+    preset composes them, so the conflicts that ``tps-import`` resolves, which
+    are between Retain Device Identity and Modified Dates, are resolved in
+    the same way, where :func:`compose_custom_policy` would refuse them.
+
+    Parameters
+    ----------
+    preset : str
+        One of :data:`PRESETS`, such as ``"tps-import"``.
+    option : str
+        One of the preset's options, such as ``"clean_descriptors"``.
+    table : ProfileTable, optional
+        Table E.1-1. Defaults to
+        :func:`~pymedphys._dicom.deidentify.standard.load_table_e1_1`.
+
+    Returns
+    -------
+    Policy
+        With no preset, since its options are not the preset's, and the
+        preset's resolutions of the conflicts between them. Never enabled:
+        the engine applies it only within the preset's policy, which is
+        enabled or refused on its own.
+
+    Raises
+    ------
+    TypeError
+        If ``preset`` or ``option`` is not a string.
+    PolicyError
+        If ``preset`` is not one of :data:`PRESETS`, or ``option`` is not
+        one of its options; or for any other reason that
+        :func:`compose_policy` gives.
+    """
+    if not isinstance(preset, str) or not isinstance(option, str):
+        raise TypeError("preset and option must be the names of a preset and option")
+    if preset not in PRESETS:
+        raise PolicyError(
+            f"unknown preset {preset!r}; the presets are {_join(PRESETS)}"
+        )
+    if option not in PRESETS[preset]:
+        raise PolicyError(f"the {preset} preset does not select the option {option}")
+    return _compose(
+        None,
+        (each for each in PRESETS[preset] if each != option),
+        table,
+        resolving=preset,
+    )
 
 
 def select_policy(

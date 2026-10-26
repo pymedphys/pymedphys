@@ -19,6 +19,7 @@ from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom, shapely
 
 from . import get_roi_contour_sequence_by_name
+from .contours import get_contour_data
 
 CONTOUR_GEOMETRIC_TYPE = "CLOSED_PLANAR"
 
@@ -44,7 +45,7 @@ def extract_contours_and_image_sequences(contour_sequence):
         if set(contour.keys()) != expected_contour_keys:
             raise ValueError("Unexpected contour sequence format")
 
-        contour_data = contour.ContourData
+        contour_data = get_contour_data(contour)
 
         x = np.array(contour_data[0::3])
         y = np.array(contour_data[1::3])
