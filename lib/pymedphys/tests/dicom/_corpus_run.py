@@ -356,6 +356,13 @@ WITHHELD_WITHOUT_REPORTS: Mapping[str, Withheld] = types.MappingProxyType(
     }
 )
 
+# Accession Number (0008,0050) and Referenced Study Sequence (0008,1110),
+# which dcentvfy's own tables place in the Study entity for a Structured
+# Report and in the Series entity for an image, whatever the files hold.
+# dcentvfy finds that difference wherever a report is released with an
+# image, in their inputs as often.
+REPORT_ENTITIES = frozenset({"(0008,0050)", "(0008,1110)"})
+
 
 @dataclasses.dataclass(frozen=True)
 class CorpusRun:
@@ -409,7 +416,8 @@ class CorpusRun:
         instances, which the corpus plants, the run keeps or modifies alike,
         so that dcentvfy finds each of them in the released instances as
         often as in their inputs. The Basic Profile removes or replaces
-        every such value alike, so by default there are none.
+        every such value alike, so by default there are none. They include
+        :data:`REPORT_ENTITIES` where the run releases a Structured Report.
     kept_content : frozenset of str
         The sequences of Table E.1-1, by tag, whose content items Clean
         Structured Content cleans, and which the engine keeps, since the
