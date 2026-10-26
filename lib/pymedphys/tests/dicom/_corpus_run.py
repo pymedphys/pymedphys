@@ -487,10 +487,10 @@ class CorpusRun:
         kept = self.kept_rows()
         passed = kept | self.kept_content
         if placement.concept is not None:
-            held = placement.concept in kept_concepts(self.selected)
+            own = placement.concept in kept_concepts(self.selected)
         else:
-            held = placement.profile_tag in kept
-        return held and all(
+            own = placement.profile_tag in kept
+        return own and all(
             tag in passed or tag not in _listed() for tag, _ in placement.path.items
         )
 

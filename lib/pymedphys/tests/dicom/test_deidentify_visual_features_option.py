@@ -963,9 +963,14 @@ def test_every_other_instance_that_can_show_a_face_is_held(second_run):
         if name not in (*_CT, _STRUCTURE_SET)
         and name != corpus_module.SEQUESTERED_FILE
         and name not in _FACELESS
+        and name not in corpus_module.STRUCTURED_REPORT_FILES
     }
 
     assert can_show >= {*_DOSE, _DEFORMABLE}
+    # The reports cannot show a face, and their Content Sequence sequesters
+    # them, as it does without the option (D-021).
+    for name in corpus_module.STRUCTURED_REPORT_FILES:
+        assert outcomes[name] == ("sequestered", None), name
     for name in can_show:
         assert outcomes[name] == ("held-for-review", None), name
     held = {

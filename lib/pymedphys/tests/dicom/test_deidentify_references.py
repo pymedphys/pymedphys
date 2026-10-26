@@ -14,6 +14,10 @@
 
 """Where an instance refers to others, from PS3.3, and what an instance record holds."""
 
+# The reference sites of every supported IOD and the instance records share
+# their synthetic instances, so the checks stay in one module.
+# pylint: disable = too-many-lines
+
 import dataclasses
 import logging
 import pickle

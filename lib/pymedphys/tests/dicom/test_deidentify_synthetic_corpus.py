@@ -14,6 +14,10 @@
 
 """The synthetic corpus, its markers, and its manifest."""
 
+# Every check reads the one corpus and its manifest, so the checks stay in
+# one module.
+# pylint: disable = too-many-lines
+
 import bisect
 import collections
 import datetime
