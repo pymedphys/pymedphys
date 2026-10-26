@@ -20,7 +20,7 @@ fictitious patient and study, with one Frame of Reference: three CT Image
 slices, an RT Structure Set that references the CT series and slices, an RT
 Plan that references the structure set and the dose, an RT Dose that
 references the plan, a second RT Dose of the plan for review (below), and
-one instance of each of the other twelve IODs, each in a series of its own.
+one instance of each of the other thirteen IODs, each in a series of its own.
 The MR Image and PET Image instances reference the first CT slice, and each
 enhanced, legacy converted enhanced, or MR Spectroscopy instance references
 the single-frame instance of its modality: the first CT slice, the MR
@@ -29,9 +29,10 @@ the Frame of Reference by an identity matrix, and the Deformable Spatial
 Registration the PET Image by a two by two by one deformation grid; each
 names its image in Referenced Image Sequence (0008,1140), whose item the
 Basic Profile keeps, and the Spatial Registration's Used RT Structure Set
-ROI Sequence (0070,0315) names the structure set. It is the input for
-validating each preset end to end: once the engine has
-written the collection, the residual search
+ROI Sequence (0070,0315) names the structure set. The RT Image, a
+digitally reconstructed radiograph of 2 by 2 pixels, references the RT
+Plan. It is the input for validating each preset end to end: once the
+engine has written the collection, the residual search
 (:mod:`~pymedphys._dicom.deidentify.residuals`) should find none of the
 markers that had to be removed or replaced.
 
@@ -95,8 +96,9 @@ attribute that the pinned dictionary gives no single VR, and a tag whose element
 are not planted. Each placement not planted is recorded with a
 :class:`NotPlantedReason`. Pixel Data is not an attribute of Table E.1-1 and
 holds only a few synthetic samples: 2 by 2 pixels, in two frames in a
-multi-frame IOD, monochrome but for the Enhanced MR Color instance, whose RGB
-pixels come with the ICC Profile (0028,2000) its IOD requires: an sRGB
+multi-frame IOD but one in the RT Image, monochrome but for the Enhanced MR
+Color instance, whose RGB pixels come with the ICC Profile (0028,2000) its
+IOD requires: an sRGB
 profile (:mod:`~pymedphys._dicom.deidentify.icc_profiles`) whose description,
 :data:`SOURCE_ICC_DESCRIPTION`, begins with the marker prefix, so that a kept
 profile would be found. The MR Spectroscopy instance holds two values of
@@ -118,7 +120,7 @@ Radiopharmaceutical Information Sequence (0054,0016) of an Enhanced PET
 Image. Planted in every file, the first two would sequester every
 instance, and no preset could release any of the collection; planted in one,
 that instance checks sequestration, :data:`REVIEW_FILE` checks review, and
-the other seventeen check each preset's output. Radiopharmaceutical Start
+the other eighteen check each preset's output. Radiopharmaceutical Start
 DateTime, which CT Image does not define, is planted in no file, so the
 Enhanced PET instance, which lacks an attribute of Type 1, is released and
 its other markers are checked; an instance that conforms to the IOD is
@@ -152,7 +154,7 @@ Manufacturer's Model Name (0008,1090), which Table E.1-1 does not list and
 the Basic Profile keeps, a copy of the RT Plan's RT Plan Label marker
 (:attr:`PlacementKind.REVIEW_COPY`), so the residual search finds a source
 value of another instance in its output and sends it to review. The third
-CT slice remains sequestered; the other seventeen files stay releasable.
+CT slice remains sequestered; the other eighteen files stay releasable.
 
 **Manifest.** :class:`CorpusManifest` records, for each file, each
 placement: its element path, VR, values, kind, the Table E.1-1 row it
@@ -220,6 +222,7 @@ LEGACY_CONVERTED_ENHANCED_PET_IMAGE_STORAGE = "1.2.840.10008.5.1.4.1.1.128.1"
 ENHANCED_PET_IMAGE_STORAGE = "1.2.840.10008.5.1.4.1.1.130"
 SPATIAL_REGISTRATION_STORAGE = "1.2.840.10008.5.1.4.1.1.66.1"
 DEFORMABLE_SPATIAL_REGISTRATION_STORAGE = "1.2.840.10008.5.1.4.1.1.66.3"
+RT_IMAGE_STORAGE = "1.2.840.10008.5.1.4.1.1.481.1"
 RT_DOSE_STORAGE = "1.2.840.10008.5.1.4.1.1.481.2"
 RT_STRUCTURE_SET_STORAGE = "1.2.840.10008.5.1.4.1.1.481.3"
 RT_PLAN_STORAGE = "1.2.840.10008.5.1.4.1.1.481.5"
@@ -280,6 +283,8 @@ REGISTRATION_SERIES = f"{LINKED_UID_ROOT}01500"
 REGISTRATION = f"{LINKED_UID_ROOT}01501"
 DEFORMABLE_REGISTRATION_SERIES = f"{LINKED_UID_ROOT}01600"
 DEFORMABLE_REGISTRATION = f"{LINKED_UID_ROOT}01601"
+RT_IMAGE_SERIES = f"{LINKED_UID_ROOT}01800"
+RT_IMAGE = f"{LINKED_UID_ROOT}01801"
 # A patient and a procedure step that the collection names but does not hold.
 PATIENT_REFERENCE = f"{LINKED_UID_ROOT}00003"
 PROCEDURE_STEP = f"{LINKED_UID_ROOT}00004"
@@ -336,9 +341,14 @@ _SOP_CLASSES = types.MappingProxyType(
         LEGACY_PET: LEGACY_CONVERTED_ENHANCED_PET_IMAGE_STORAGE,
         REGISTRATION: SPATIAL_REGISTRATION_STORAGE,
         DEFORMABLE_REGISTRATION: DEFORMABLE_SPATIAL_REGISTRATION_STORAGE,
+        RT_IMAGE: RT_IMAGE_STORAGE,
         PATIENT_REFERENCE: DETACHED_PATIENT_MANAGEMENT,
         PROCEDURE_STEP: MODALITY_PERFORMED_PROCEDURE_STEP,
     }
+)
+# The registrations, whose structure _add_registration adds.
+_REGISTRATIONS = frozenset(
+    {SPATIAL_REGISTRATION_STORAGE, DEFORMABLE_SPATIAL_REGISTRATION_STORAGE}
 )
 # The VR given to an attribute with alternatives, as Implicit VR gives it
 # (PS3.5 Section A.1).
@@ -792,6 +802,14 @@ _SPECS = (
         DEFORMABLE_REGISTRATION_SERIES,
         PET,
     ),
+    # The RT Image, a digitally reconstructed radiograph of a beam of the plan.
+    _Spec(
+        "20-rt-image.dcm",
+        RT_IMAGE_STORAGE,
+        RT_IMAGE,
+        RT_IMAGE_SERIES,
+        PLAN,
+    ),
 )
 
 
@@ -801,14 +819,14 @@ def build_corpus() -> SyntheticCorpus:
     Returns
     -------
     SyntheticCorpus
-        Nineteen files: three CT slices; the RT Structure Set, RT Plan, RT
+        Twenty files: three CT slices; the RT Structure Set, RT Plan, RT
         Dose, and the RT Dose for review; the Enhanced CT Image and Legacy
         Converted Enhanced CT Image; the MR Image, Enhanced MR Image,
         Enhanced MR Color Image, Legacy Converted Enhanced MR Image, and MR
-        Spectroscopy; and the PET Image, Enhanced PET Image, and Legacy
-        Converted Enhanced PET Image; and the Spatial Registration and
-        Deformable Spatial Registration. Two builds give the same bytes and the
-        same manifest.
+        Spectroscopy; the PET Image, Enhanced PET Image, and Legacy
+        Converted Enhanced PET Image; the Spatial Registration and
+        Deformable Spatial Registration; and the RT Image. Two builds give
+        the same bytes and the same manifest.
     """
     markers = _Markers()
     files: list[CorpusFile] = []
@@ -1379,20 +1397,13 @@ class _Instance:
             put((), "(5600,0020)", [struct.pack("<2f", 1.0, 2.0)])
         elif self.spec.sop_class in _IMAGES:
             self._add_image(_IMAGES[self.spec.sop_class])
-        elif self.spec.sop_class == SPATIAL_REGISTRATION_STORAGE:
-            put((), "(0008,0060)", ["REG"])
-            matrix = _items(["(0070,0308)", "(0070,0309)", "(0070,030A)"])
-            put(matrix, "(3006,00C6)", _IDENTITY_MATRIX)
-            put(matrix, "(0070,030C)", ["RIGID"])
-        elif self.spec.sop_class == DEFORMABLE_SPATIAL_REGISTRATION_STORAGE:
-            put((), "(0008,0060)", ["REG"])
-            grid = _items(["(0064,0002)", "(0064,0005)"])
-            put(grid, "(0020,0032)", ["-1", "-1", "0"])
-            put(grid, "(0020,0037)", ["1", "0", "0", "0", "1", "0"])
-            put(grid, "(0064,0007)", [2, 2, 1])
-            put(grid, "(0064,0008)", [1.0, 1.0, 1.0])
-            # A displacement of each of the grid's four points, in mm.
-            put(grid, "(0064,0009)", [struct.pack("<12f", *range(12))])
+        elif self.spec.sop_class in _REGISTRATIONS:
+            self._add_registration()
+        elif self.spec.sop_class == RT_IMAGE_STORAGE:
+            put((), "(0008,0060)", ["RTIMAGE"])
+            put((), "(0008,0008)", ["DERIVED", "SECONDARY", "DRR"])
+            put((), "(3002,000C)", ["NORMAL"])  # RT Image Plane
+            self._add_pixels(16, 0, struct.pack("<4H", 0, 100, 200, 300))
         else:
             put((), "(0008,0060)", ["RTDOSE"])
             put((), "(0020,0032)", ["-1", "-1", "0"])
@@ -1405,6 +1416,23 @@ class _Instance:
             put((), "(3004,000C)", ["0", "2"])
             put((), "(3004,000E)", ["0.001"])
             self._add_pixels(32, 0, struct.pack("<8I", *range(0, 8000, 1000)))
+
+    def _add_registration(self) -> None:
+        """Add the attributes that make the instance a rigid or deformable registration."""
+        put = self._set
+        put((), "(0008,0060)", ["REG"])
+        if self.spec.sop_class == SPATIAL_REGISTRATION_STORAGE:
+            matrix = _items(["(0070,0308)", "(0070,0309)", "(0070,030A)"])
+            put(matrix, "(3006,00C6)", _IDENTITY_MATRIX)
+            put(matrix, "(0070,030C)", ["RIGID"])
+        else:
+            grid = _items(["(0064,0002)", "(0064,0005)"])
+            put(grid, "(0020,0032)", ["-1", "-1", "0"])
+            put(grid, "(0020,0037)", ["1", "0", "0", "0", "1", "0"])
+            put(grid, "(0064,0007)", [2, 2, 1])
+            put(grid, "(0064,0008)", [1.0, 1.0, 1.0])
+            # A displacement of each of the grid's four points, in mm.
+            put(grid, "(0064,0009)", [struct.pack("<12f", *range(12))])
 
     def _add_image(self, image: _Image) -> None:
         """Add the attributes that make the instance an MR, PET, or CT image."""

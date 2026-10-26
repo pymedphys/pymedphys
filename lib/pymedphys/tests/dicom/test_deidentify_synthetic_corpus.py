@@ -193,6 +193,7 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "17-pet-legacy-enhanced.dcm",
         "18-registration.dcm",
         "19-registration-deformable.dcm",
+        "20-rt-image.dcm",
     ]
     assert [file.manifest.iod for file in corpus.files] == [
         "CT Image",
@@ -214,6 +215,7 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "Legacy Converted Enhanced PET Image",
         "Spatial Registration",
         "Deformable Spatial Registration",
+        "RT Image",
     ]
     # Every IOD of the first supported release.
     assert {file.manifest.iod for file in corpus.files} == scope.SUPPORTED_IODS
@@ -812,11 +814,13 @@ def test_each_image_has_its_frames_and_the_colour_image_its_icc_profile(corpus):
             assert dataset.PhotometricInterpretation == "MONOCHROME2"
             assert "ICCProfile" not in dataset
 
-    # Every image but those of the single-frame IODs has two frames.
+    # Every image but those of the single-frame IODs, and the RT Image, whose
+    # IOD allows one frame or more, has two frames.
     assert {iod for iod, count in frames.items() if count == 1} == {
         "CT Image",
         "MR Image",
         "Positron Emission Tomography Image",
+        "RT Image",
     }
     assert set(frames.values()) == {1, 2}
 

@@ -57,6 +57,7 @@ _IMAGES = (
     "15-pet.dcm",
     "16-pet-enhanced.dcm",
     "17-pet-legacy-enhanced.dcm",
+    "20-rt-image.dcm",
 )
 _BLACKED_OUT = Withheld(
     run.Status.HELD_FOR_REVIEW,

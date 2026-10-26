@@ -63,6 +63,7 @@ SUPPORTED = {
     "1.2.840.10008.5.1.4.1.1.128": "Positron Emission Tomography Image",
     "1.2.840.10008.5.1.4.1.1.130": "Enhanced PET Image",
     "1.2.840.10008.5.1.4.1.1.128.1": "Legacy Converted Enhanced PET Image",
+    "1.2.840.10008.5.1.4.1.1.481.1": "RT Image",
     "1.2.840.10008.5.1.4.1.1.481.2": "RT Dose",
     "1.2.840.10008.5.1.4.1.1.481.3": "RT Structure Set",
     "1.2.840.10008.5.1.4.1.1.481.5": "RT Plan",
@@ -85,6 +86,7 @@ def test_the_first_release_supports_ct_mr_pet_rt_and_registration_objects():
         "Enhanced PET Image",
         "Legacy Converted Enhanced PET Image",
         "RT Dose",
+        "RT Image",
         "RT Plan",
         "RT Structure Set",
         "Spatial Registration",
@@ -156,7 +158,8 @@ def test_padding_is_ignored():
         ("1.2.840.10008.5.1.4.1.1.11.1", "Grayscale Softcopy Presentation State"),
         # Outside the first release: other images, CT, MR, and PET objects
         # that are not images, spatial fiducials, RT Ion and second-generation
-        # RT objects, and treatment records.
+        # RT objects, including the second-generation RT images, and treatment
+        # records.
         ("1.2.840.10008.5.1.4.1.1.20", "Nuclear Medicine Image"),
         ("1.2.840.10008.5.1.4.1.1.6.1", "Ultrasound Image"),
         ("1.2.840.10008.5.1.4.1.1.200.2", "CT Performed Procedure Protocol"),
@@ -166,6 +169,8 @@ def test_padding_is_ignored():
         ("1.2.840.10008.5.1.4.1.1.481.8", "RT Ion Plan"),
         ("1.2.840.10008.5.1.4.1.1.481.10", "RT Physician Intent"),
         ("1.2.840.10008.5.1.4.1.1.481.14", "Tomotherapeutic Radiation"),
+        ("1.2.840.10008.5.1.4.1.1.481.23", "Enhanced RT Image"),
+        ("1.2.840.10008.5.1.4.1.1.481.24", "Enhanced Continuous RT Image"),
         ("1.2.840.10008.5.1.4.1.1.481.4", "RT Beams Treatment Record"),
         ("1.2.840.10008.5.1.4.1.1.481.6", "RT Brachy Treatment Record"),
     ],
@@ -328,6 +333,7 @@ def test_pydicom_names_the_same_uids():
         uid.PositronEmissionTomographyImageStorage,
         uid.EnhancedPETImageStorage,
         uid.RTDoseStorage,
+        uid.RTImageStorage,
         uid.RTStructureSetStorage,
         uid.RTPlanStorage,
         uid.SpatialRegistrationStorage,

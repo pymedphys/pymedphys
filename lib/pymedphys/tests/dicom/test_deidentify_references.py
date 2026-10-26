@@ -62,6 +62,10 @@ RT_REFERENCES = [
     ("RT Dose", synthetic.REFERENCED_STRUCTURE_SET, Level.INSTANCE),
     ("RT Dose", ("(300C,0116)", "(300C,0060)", "(0008,1155)"), Level.INSTANCE),
     ("RT Dose", ("(0008,1164)", "(0008,1167)"), Level.INSTANCE),
+    # RT Image: the plan in the RT Image module, and the multi-frame source of
+    # an extracted frame.
+    ("RT Image", synthetic.REFERENCED_PLAN, Level.INSTANCE),
+    ("RT Image", ("(0008,1164)", "(0008,1167)"), Level.INSTANCE),
     # CT Image: the plan in the CT Image module, and General Reference.
     ("CT Image", synthetic.REFERENCED_PLAN, Level.INSTANCE),
     ("CT Image", synthetic.REFERENCED_IMAGE, Level.INSTANCE),
