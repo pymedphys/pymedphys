@@ -1034,7 +1034,7 @@ def test_the_report_names_the_attested_pack(second_run):
     attestation, _, report, _ = second_run
 
     assert report["face_review"]["reference"] == attestation.reference
-    assert report["format"] == "pymedphys-deid-release-report/29"
+    assert report["format"] == "pymedphys-deid-release-report/30"
 
 
 def test_the_report_counts_the_ct_series_that_were_not_defaced(second_run):
