@@ -70,7 +70,6 @@ TARGET_IODS = (
 )
 REGISTRATION_IODS = ("Spatial Registration", "Deformable Spatial Registration")
 REVIEWED_AGAINST = CT_AND_RT_IODS + ADDED_IODS
-SUPPORTED_IODS = REVIEWED_AGAINST + REGISTRATION_IODS
 # The Radiation Dose SR IODs, which the maintainer added to the planned
 # coverage on 25 October 2026, whose text, UID, and date attributes are
 # reviewed ahead of supporting them.
@@ -80,6 +79,17 @@ RADIATION_DOSE_SR_IODS = (
     "Radiopharmaceutical Radiation Dose SR",
     "Patient Radiation Dose SR",
 )
+# The general SR IODs, which the maintainer brought into scope with every
+# other SR IOD on 25 October 2026. They use no attribute that the IODs above
+# do not, so their support needed no review of their attributes.
+GENERAL_SR_IODS = (
+    "Basic Text SR",
+    "Enhanced SR",
+    "Comprehensive SR",
+    "Comprehensive 3D SR",
+    "Extensible SR",
+)
+SUPPORTED_IODS = REVIEWED_AGAINST + REGISTRATION_IODS + GENERAL_SR_IODS
 CLEAN_DESCRIPTORS = "clean_descriptors"
 DEVICE_IDENTITY = "retain_device_identity"
 FULL_DATES = "retain_longitudinal_full_dates"
@@ -343,8 +353,9 @@ def test_every_text_attribute_a_supported_iod_uses_and_table_e1_1_omits_has_a_ru
 
     # Checked by hand against the 2026d PS3.3, PS3.6, and PS3.15; the
     # registration IODs add Content Description and Frame of Reference
-    # Transformation Comment.
-    assert len(omitted) == 143
+    # Transformation Comment, and the general SR IODs Completion Flag
+    # Description and Selector UC Value.
+    assert len(omitted) == 145
     assert omitted <= set(_rules())
     assert {"(0008,0100)", "(300A,00C2)", "(60xx,1500)"} <= omitted
 
@@ -359,7 +370,7 @@ def test_the_rules_for_omitted_text_fall_in_the_reviewed_groups():
 
     assert groups == {
         # Operator-typed labels and text.
-        ("X/Z/D", ((CLEAN_DESCRIPTORS, "C"),)): 64,
+        ("X/Z/D", ((CLEAN_DESCRIPTORS, "C"),)): 66,
         # Accessory and equipment identifiers.
         ("X/Z/D", ((DEVICE_IDENTITY, "K"),)): 24,
         # Coded and technical values, and De-identification Method.
@@ -596,10 +607,29 @@ def test_the_radiation_dose_sr_iods_are_generated_and_not_yet_supported():
     assert not set(RADIATION_DOSE_SR_IODS) & scope.SUPPORTED_IODS
 
 
+def test_the_general_sr_iods_use_no_attribute_that_the_reviewed_iods_do_not():
+    tables = iods.load_iod_tables()
+    reviewed = REVIEWED_AGAINST + TARGET_IODS + RADIATION_DOSE_SR_IODS
+
+    def used(names):
+        return {
+            definition.tag
+            for name in names
+            for definition in tables.iods[name].definitions
+        }
+
+    # Of any VR, at any depth: SR Document General, SR Document Content, and
+    # the Key Object Document, Key Object Document Series, and Timezone
+    # Modules, which some of them add, define nothing new.
+    assert set(GENERAL_SR_IODS) <= set(tables.iods)
+    assert set(GENERAL_SR_IODS) <= scope.SUPPORTED_IODS
+    assert used(GENERAL_SR_IODS) - used(reviewed) == set()
+
+
 @pytest.mark.deid_requirement("MIDI-BP-05", "MIDI-BP-06", "MIDI-BP-11")
 def test_the_text_that_only_the_radiation_dose_sr_iods_use_has_reviewed_rules():
     listed = _table_e1_1()
-    others = SUPPORTED_IODS + TARGET_IODS
+    others = REVIEWED_AGAINST + TARGET_IODS
     added = _used_by(RADIATION_DOSE_SR_IODS, TEXT_VRS) - _used_by(others, TEXT_VRS)
     rules = _rules()
 
@@ -618,7 +648,7 @@ def test_the_text_that_only_the_radiation_dose_sr_iods_use_has_reviewed_rules():
 
 def test_every_uid_and_date_that_the_radiation_dose_sr_iods_use_has_a_role():
     listed = _table_e1_1()
-    others = SUPPORTED_IODS + TARGET_IODS
+    others = REVIEWED_AGAINST + TARGET_IODS
     uids = uid_roles.load_uid_roles()
     temporal = temporal_roles.load_temporal_roles()
     dose_uids = _used_by(RADIATION_DOSE_SR_IODS, {"UI"})
@@ -704,7 +734,7 @@ def test_the_basic_profile_keeps_only_the_reviewed_coded_and_technical_text():
         for tag in _supported_text()
     }
 
-    assert len(basic) == 263
+    assert len(basic) == 268
     assert {tag for tag, action in basic.items() if action == "K"} == (
         KEPT_TEXT | ADDED_KEPT_TEXT
     )

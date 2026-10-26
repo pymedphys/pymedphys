@@ -106,7 +106,7 @@ def test_each_stage_that_sequesters_gives_its_reason_code(basic, cause, stage):
 
 @pytest.mark.deid_requirement("MIDI-BP-06", "MIDI-BP-18")
 @pytest.mark.parametrize(
-    "iod", ["Comprehensive SR", "Nuclear Medicine Image", "12-Lead ECG"]
+    "iod", ["Ultrasound Image", "Nuclear Medicine Image", "12-Lead ECG"]
 )
 def test_an_unsupported_iod_is_named_with_its_reason(basic, iod):
     reason = release_report.sequestration_reason(scope.UnsupportedIod(iod))

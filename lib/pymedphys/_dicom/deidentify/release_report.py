@@ -418,7 +418,7 @@ class SequestrationReason:
     iod : str or None
         For scope's ``"unsupported-iod"``, and only for it, the IOD, as
         PS3.4 Table B.5-1 names it without "IOD", such as
-        ``"Comprehensive SR"`` (D-010).
+        ``"Ultrasound Image"`` (D-010).
     """
 
     stage: str

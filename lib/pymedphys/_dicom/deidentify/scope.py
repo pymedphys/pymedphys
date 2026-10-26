@@ -70,6 +70,11 @@ SUPPORTED_IODS = frozenset(
         "RT Structure Set",
         "Spatial Registration",
         "Deformable Spatial Registration",
+        "Basic Text SR",
+        "Enhanced SR",
+        "Comprehensive SR",
+        "Comprehensive 3D SR",
+        "Extensible SR",
     }
 )
 # Every transfer syntax whose files the engine reads: Implicit VR Little
@@ -106,7 +111,7 @@ class Classification:
     disposition : Disposition
     iod : str or None
         The IOD of the instance's Standard Storage SOP Class, as Table B.5-1
-        names it without "IOD", such as ``"Comprehensive SR"``; ``None``
+        names it without "IOD", such as ``"Ultrasound Image"``; ``None``
         when the table does not list the SOP Class.
     """
 
@@ -128,8 +133,8 @@ class Classification:
 
         Examples
         --------
-        >>> classify("1.2.840.10008.5.1.4.1.1.88.33", "1.2.840.10008.1.2.1").reason
-        UnsupportedIod(iod='Comprehensive SR')
+        >>> classify("1.2.840.10008.5.1.4.1.1.6.1", "1.2.840.10008.1.2.1").reason
+        UnsupportedIod(iod='Ultrasound Image')
         >>> classify(None, "1.2.840.10008.1.2.1").reason
         <Disposition.NO_SOP_CLASS: 'no-sop-class'>
         """
@@ -147,7 +152,7 @@ class UnsupportedIod:
     ----------
     iod : str
         The IOD of the instance's Standard Storage SOP Class, as PS3.4
-        Table B.5-1 names it without "IOD", such as ``"Comprehensive SR"``:
+        Table B.5-1 names it without "IOD", such as ``"Ultrasound Image"``:
         a name from the standard, never a value from the instance.
     code : Disposition
         Always :attr:`Disposition.UNSUPPORTED_IOD`, the reason's code.
@@ -217,7 +222,7 @@ def classify(
     --------
     >>> classify("1.2.840.10008.5.1.4.1.1.481.5", "1.2.840.10008.1.2.1")
     Classification(disposition=<Disposition.SUPPORTED: 'supported'>, iod='RT Plan')
-    >>> classify("1.2.840.10008.5.1.4.1.1.88.33", "1.2.840.10008.1.2.1").sequestered
+    >>> classify("1.2.840.10008.5.1.4.1.1.6.1", "1.2.840.10008.1.2.1").sequestered
     True
     """
     if not isinstance(sop_class_uid, str) or not normalise_uid(sop_class_uid):
