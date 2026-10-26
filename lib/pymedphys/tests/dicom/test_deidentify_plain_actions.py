@@ -619,7 +619,7 @@ def test_a_plain_x_on_a_required_attribute_in_the_first_release_iods(tables):
             (RADIOPHARMACEUTICAL_INFORMATION,),
             RADIOPHARMACEUTICAL_START_DATETIME,
         ): _removal(*SEQUESTER),
-        # Type 2 in each dose report's Type 1C Referenced Request Sequence,
+        # Type 2 in each report's Type 1C Referenced Request Sequence,
         # required where the report was made for a request, which no Type 3
         # sequence encloses.
         **{
@@ -627,6 +627,11 @@ def test_a_plain_x_on_a_required_attribute_in_the_first_release_iods(tables):
             for name in (
                 "X-Ray Radiation Dose SR",
                 "Radiopharmaceutical Radiation Dose SR",
+                "Basic Text SR",
+                "Enhanced SR",
+                "Comprehensive SR",
+                "Comprehensive 3D SR",
+                "Extensible SR",
             )
         },
     }

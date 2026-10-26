@@ -53,7 +53,15 @@ OVERLAY_DATA = "(60xx,3000)"  # X; its Overlay Plane Module is U in CT Image
 VERIFYING_OBSERVER_SEQUENCE = "(0040,A073)"  # D; only Structured Report IODs
 CONTENT_SEQUENCE = "(0040,A730)"  # D; only Structured Report IODs
 GRAPHIC_ANNOTATION_SEQUENCE = "(0070,0001)"  # D; no supported IOD defines it
-DOSE_REPORTS = ("Radiopharmaceutical Radiation Dose SR", "X-Ray Radiation Dose SR")
+STRUCTURED_REPORTS = (
+    "Basic Text SR",
+    "Comprehensive 3D SR",
+    "Comprehensive SR",
+    "Enhanced SR",
+    "Extensible SR",
+    "Radiopharmaceutical Radiation Dose SR",
+    "X-Ray Radiation Dose SR",
+)
 # Attribute Modification DateTime, D, within Original Attributes Sequence,
 # which the Basic Profile gives X.
 ATTRIBUTE_MODIFICATION_DATETIME = "(0400,0562)"
@@ -186,20 +194,23 @@ def test_a_plain_d_that_no_supported_iod_defines_is_removed():
 
 @pytest.mark.deid_requirement("PS3.15-E.1.3-01")
 @pytest.mark.parametrize("tag", [CONTENT_SEQUENCE, VERIFYING_OBSERVER_SEQUENCE])
-def test_a_plain_d_on_a_dose_reports_sequence_sequesters_it(tag):
-    # A sequence has no dummy value (D-021), and each dose report requires
-    # both sequences at the top level where its condition holds: Content
-    # Sequence where the root has content items, and Verifying Observer
-    # Sequence where the report is VERIFIED.
+def test_a_plain_d_on_a_reports_sequence_sequesters_it(tag):
+    # A sequence has no dummy value (D-021), and each Structured Report
+    # requires both sequences at the top level where its condition holds:
+    # Content Sequence where the root has content items, and Verifying
+    # Observer Sequence where the report is VERIFIED.
     entry = _entry(_statement("basic"), tag)
     assert (entry.action, entry.elsewhere) == ("D", "X")
     assert entry.places == tuple(
-        conformance.Place(name, (), conformance.SEQUESTER) for name in DOSE_REPORTS
+        conformance.Place(name, (), conformance.SEQUESTER)
+        for name in STRUCTURED_REPORTS
     )
     row = _row(conformance_markdown.render_markdown(_statement("basic")), tag)
     assert row.endswith(
-        "| instance sequestered at the top level in Radiopharmaceutical "
-        "Radiation Dose SR and X-Ray Radiation Dose SR. X elsewhere. |"
+        "| instance sequestered at the top level in Basic Text SR, "
+        "Comprehensive 3D SR, Comprehensive SR, Enhanced SR, Extensible SR, "
+        "Radiopharmaceutical Radiation Dose SR, and X-Ray Radiation Dose SR. "
+        "X elsewhere. |"
     )
 
 
