@@ -70,6 +70,8 @@ SUPPORTED_IODS = frozenset(
         "RT Structure Set",
         "Spatial Registration",
         "Deformable Spatial Registration",
+        "X-Ray Radiation Dose SR",
+        "Radiopharmaceutical Radiation Dose SR",
     }
 )
 # Every transfer syntax whose files the engine reads: Implicit VR Little
