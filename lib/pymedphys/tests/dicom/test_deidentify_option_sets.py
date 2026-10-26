@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Custom option sets chosen per run, by the library and the command line (D-033)."""
+"""Presets and custom option sets chosen per run, by the library and the command line (D-033)."""
 
 import dataclasses
 import io
@@ -228,6 +228,67 @@ def test_options_not_enabled_exit_three_before_anything_is_loaded(
         "enabled yet\n"
     )
     assert not any(tmp_path.iterdir())
+
+
+@pytest.mark.parametrize("preset", tuple(policy.PRESETS))
+def test_each_preset_not_enabled_exits_three_before_anything_runs(
+    tmp_path, monkeypatch, preset
+):
+    status, out, err, calls = _parsed_call(tmp_path, monkeypatch, "--preset", preset)
+
+    assert status == command.EXIT_NOT_RUN
+    assert (out, calls) == ("", [])
+    assert err.startswith("error: ") and "not enabled" in err
+    assert not any(tmp_path.iterdir())
+
+
+@pytest.mark.usefixtures("edition")
+@pytest.mark.parametrize("preset", tuple(policy.PRESETS))
+def test_main_builds_each_enabled_presets_transform(tmp_path, monkeypatch, preset):
+    monkeypatch.setattr(policy, "ENABLED_PRESETS", frozenset(policy.PRESETS))
+    selected = []
+    real = instance_transform.InstanceTransform
+
+    def recording(chosen, *args, **kwargs):
+        selected.append(chosen)
+        return real(chosen, *args, **kwargs)
+
+    monkeypatch.setattr(instance_transform, "InstanceTransform", recording)
+    clean = policy.CLEAN_DESCRIPTORS in policy.PRESETS[preset]
+    roi_name_options = ("--empty-held-roi-names",) if clean else ()
+    status, _, err, calls = _parsed_call(
+        tmp_path, monkeypatch, "--preset", preset, *roi_name_options
+    )
+
+    assert (status, err) == (command.EXIT_RELEASED, "")
+    ((chosen,), (call,)) = (selected, calls)
+    assert (chosen.preset, chosen.options) == (preset, policy.PRESETS[preset])
+    assert call["transform"].reporter is call["reporter"]
+
+
+def test_roi_name_options_name_every_preset_that_selects_clean_descriptors(
+    tmp_path, monkeypatch
+):
+    _, _, err, _ = _parsed_call(tmp_path, monkeypatch, "--empty-held-roi-names")
+
+    named = err.split("with --preset ")[1].split(", or --option")[0].split(", ")
+    assert named == [
+        preset
+        for preset, options in policy.PRESETS.items()
+        if policy.CLEAN_DESCRIPTORS in options
+    ]
+
+
+def test_the_help_names_every_preset_and_its_use():
+    (action,) = [
+        action
+        for action in command.build_parser()._actions  # pylint: disable = protected-access
+        if action.dest == "preset"
+    ]
+
+    assert tuple(action.choices) == tuple(policy.PRESETS)
+    for preset in policy.PRESETS:
+        assert f"{preset}, " in action.help
 
 
 def test_the_help_names_every_option(capsys):
