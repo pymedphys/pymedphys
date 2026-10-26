@@ -45,6 +45,9 @@ def test_csv_loader_preserves_nul_text(monkeypatch, tmp_path):
 
 
 def test_dataframe_to_sql_preserves_nul_text(monkeypatch, tmp_path):
+    pytest.importorskip(
+        "sqlalchemy", reason="Private mock database generation needs the user extra"
+    )
     # Exercise pandas and SQLAlchemy against a real local database. SQLite's
     # equivalent of SQL Server's NCHAR lets the insertion execute here; the
     # observer checks the transport constraint that pymssql imposes.

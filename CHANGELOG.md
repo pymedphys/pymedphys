@@ -134,6 +134,8 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
 
 ### Bug fixes
 
+- The mock Mosaiq database preserves CSV text containing NUL characters across supported pandas versions. SQL Server reconstructs each NUL between parameterised text fragments, so pymssql can insert the complete value without truncating its query. This restores the database integration tests and the experimental chat app's CSV database-fill action with pandas 3.1. [PR #2511](https://github.com/pymedphys/pymedphys/pull/2511)
+
 - `pymedphys trf detect` works again. Since the TRF decoder began reading each file's row layout from its header, in v0.40.0, the command has failed with `TypeError` before decoding anything. It now prints the header, any item parts that have no column name, and which of the known row layouts fit the file's table, and exits with an error when none do. An item part with no name does not hide the layouts that fit, so the command can show when a file from a newer linac software version needs only a new column name. [PR #2155](https://github.com/pymedphys/pymedphys/pull/2155)
 
 - **[Security]** The experimental Monaco anonymisation app now refuses a patient ID that would place the zip file it creates, and offers to delete, or the anonymised demographic file outside their folders, for example an ID containing `../`. Previously it used the patient ID in these paths without checking it. [PR #2146](https://github.com/pymedphys/pymedphys/pull/2146)
@@ -265,8 +267,6 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
 - Documentation and gamma-scaling example environments now pin setuptools 84.1.0, fixing a Windows path escape in legacy wheel installation. Refresh these environments from the updated dependency files. [PR #2444](https://github.com/pymedphys/pymedphys/pull/2444)
 
 ### Contributor facing changes
-
-- The mock Mosaiq database preserves CSV text containing NUL characters across supported pandas versions. SQL Server reconstructs each NUL between parameterised text fragments, so pymssql can insert the complete value without truncating its query. This restores the database integration tests and the experimental chat app's CSV database-fill action with pandas 3.1. [PR #2511](https://github.com/pymedphys/pymedphys/pull/2511)
 
 - **[Contributor facing only]** The locked pre-commit environment now uses virtualenv 21.14.13, fixing shell-prompt command execution in generated activation scripts. Recreate affected environments with the updated tool to receive the corrected scripts. [PR #2445](https://github.com/pymedphys/pymedphys/pull/2445)
 - **[Contributor facing only]** UID replacement property tests retain valid and invalid inputs while allowing distinct pairs to shrink to small examples. They now pass the input-generation health checks in Hypothesis 6.170.2 used by dependency-update validation. [PR #2411](https://github.com/pymedphys/pymedphys/pull/2411)
