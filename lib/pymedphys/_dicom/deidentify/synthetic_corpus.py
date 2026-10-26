@@ -20,7 +20,7 @@ fictitious patient and study, with one Frame of Reference: three CT Image
 slices, an RT Structure Set that references the CT series and slices, an RT
 Plan that references the structure set and the dose, an RT Dose that
 references the plan, a second RT Dose of the plan for review (below), and
-one instance of each of the other fifteen IODs, each in a series of its own.
+one instance of each of the other twenty IODs, each in a series of its own.
 The MR Image and PET Image instances reference the first CT slice, and each
 enhanced, legacy converted enhanced, or MR Spectroscopy instance references
 the single-frame instance of its modality: the first CT slice, the MR
@@ -31,8 +31,9 @@ names its image in Referenced Image Sequence (0008,1140), whose item the
 Basic Profile keeps, and the Spatial Registration's Used RT Structure Set
 ROI Sequence (0070,0315) names the structure set. The RT Beams Treatment
 Record references the plan. The references of the X-Ray Radiation Dose SR
-name the first CT slice, and those of the Radiopharmaceutical Radiation Dose
-SR the PET Image. It is the input for validating each preset end
+name the first CT slice, those of the Radiopharmaceutical Radiation Dose
+SR the PET Image, and those of the Basic Text SR, Enhanced SR,
+Comprehensive SR, Comprehensive 3D SR, and Extensible SR the MR Image. It is the input for validating each preset end
 to end: once the engine has
 written the collection, the residual search
 (:mod:`~pymedphys._dicom.deidentify.residuals`) should find none of the
@@ -150,7 +151,7 @@ of an RT Beams Treatment Record's Interlock Sequence (300A,0740). Planted in
 every file, the first two would sequester every
 instance, and no preset could release any of the collection; planted in one,
 that instance checks sequestration, :data:`REVIEW_FILE` checks review, and
-the other twenty check each preset's output, the reports where their trees
+the other twenty-five check each preset's output, the reports where their trees
 are cleaned. Radiopharmaceutical Start
 DateTime, Institution Code Sequence, and the reports' sequestering
 attributes, which CT Image does not define there, are planted in no file, so the Enhanced PET instance, which lacks an
@@ -186,7 +187,7 @@ Manufacturer's Model Name (0008,1090), which Table E.1-1 does not list and
 the Basic Profile keeps, a copy of the RT Plan's RT Plan Label marker
 (:attr:`PlacementKind.REVIEW_COPY`), so the residual search finds a source
 value of another instance in its output and sends it to review. The third
-CT slice remains sequestered; the other twenty files stay releasable, the
+CT slice remains sequestered; the other twenty-five files stay releasable, the
 reports where their trees are cleaned.
 
 **Manifest.** :class:`CorpusManifest` records, for each file, each
@@ -250,9 +251,16 @@ from .standard import (
     load_table_e1_1,
 )
 from .synthetic_content_trees import (
+    BASIC_TEXT_SR_STORAGE,
+    COMPREHENSIVE_3D_SR_STORAGE,
+    COMPREHENSIVE_SR_STORAGE,
+    ENHANCED_SR_STORAGE,
+    EXTENSIBLE_SR_STORAGE,
     RADIOPHARMACEUTICAL_RADIATION_DOSE_SR_STORAGE,
     ROOT_TEMPLATES,
     X_RAY_RADIATION_DOSE_SR_STORAGE,
+    imaging_report_tree,
+    measurement_report_tree,
     radiopharmaceutical_dose_tree,
     x_ray_dose_tree,
 )
@@ -297,7 +305,15 @@ SEQUESTERED_FILE = "03-ct-3.dcm"
 REVIEW_FILE = "07-rtdose-review.dcm"
 # The Structured Reports, whose Content Sequence holds a content tree, which
 # the Basic Profile's D sequesters, as a sequence has no dummy value.
-STRUCTURED_REPORT_FILES = ("22-sr-dose-x-ray.dcm", "23-sr-dose-radiopharmaceutical.dcm")
+STRUCTURED_REPORT_FILES = (
+    "22-sr-dose-x-ray.dcm",
+    "23-sr-dose-radiopharmaceutical.dcm",
+    "24-sr-basic-text.dcm",
+    "25-sr-enhanced.dcm",
+    "26-sr-comprehensive.dcm",
+    "27-sr-comprehensive-3d.dcm",
+    "28-sr-extensible.dcm",
+)
 # The directory, within the one that write_corpus is given, of the files.
 INSTANCES_DIRECTORY = "instances"
 
@@ -344,6 +360,16 @@ X_RAY_DOSE_REPORT_SERIES = f"{LINKED_UID_ROOT}01900"
 X_RAY_DOSE_REPORT = f"{LINKED_UID_ROOT}01901"
 RADIOPHARMACEUTICAL_DOSE_REPORT_SERIES = f"{LINKED_UID_ROOT}02000"
 RADIOPHARMACEUTICAL_DOSE_REPORT = f"{LINKED_UID_ROOT}02001"
+BASIC_TEXT_REPORT_SERIES = f"{LINKED_UID_ROOT}02100"
+BASIC_TEXT_REPORT = f"{LINKED_UID_ROOT}02101"
+ENHANCED_REPORT_SERIES = f"{LINKED_UID_ROOT}02200"
+ENHANCED_REPORT = f"{LINKED_UID_ROOT}02201"
+COMPREHENSIVE_REPORT_SERIES = f"{LINKED_UID_ROOT}02300"
+COMPREHENSIVE_REPORT = f"{LINKED_UID_ROOT}02301"
+COMPREHENSIVE_3D_REPORT_SERIES = f"{LINKED_UID_ROOT}02400"
+COMPREHENSIVE_3D_REPORT = f"{LINKED_UID_ROOT}02401"
+EXTENSIBLE_REPORT_SERIES = f"{LINKED_UID_ROOT}02500"
+EXTENSIBLE_REPORT = f"{LINKED_UID_ROOT}02501"
 # A patient and a procedure step that the collection names but does not hold.
 PATIENT_REFERENCE = f"{LINKED_UID_ROOT}00003"
 PROCEDURE_STEP = f"{LINKED_UID_ROOT}00004"
@@ -419,6 +445,11 @@ _SOP_CLASSES = types.MappingProxyType(
         TREATMENT_RECORD: RT_BEAMS_TREATMENT_RECORD_STORAGE,
         X_RAY_DOSE_REPORT: X_RAY_RADIATION_DOSE_SR_STORAGE,
         RADIOPHARMACEUTICAL_DOSE_REPORT: RADIOPHARMACEUTICAL_RADIATION_DOSE_SR_STORAGE,
+        BASIC_TEXT_REPORT: BASIC_TEXT_SR_STORAGE,
+        ENHANCED_REPORT: ENHANCED_SR_STORAGE,
+        COMPREHENSIVE_REPORT: COMPREHENSIVE_SR_STORAGE,
+        COMPREHENSIVE_3D_REPORT: COMPREHENSIVE_3D_SR_STORAGE,
+        EXTENSIBLE_REPORT: EXTENSIBLE_SR_STORAGE,
         PATIENT_REFERENCE: DETACHED_PATIENT_MANAGEMENT,
         PROCEDURE_STEP: MODALITY_PERFORMED_PROCEDURE_STEP,
     }
@@ -917,6 +948,45 @@ _SPECS = (
         RADIOPHARMACEUTICAL_DOSE_REPORT_SERIES,
         PET,
     ),
+    # The general Structured Reports, whose header references the MR Image:
+    # imaging reports of TID 2000 in the IODs that allow no spatial
+    # coordinates in three dimensions, and measurement reports of TID 1500
+    # in those that do.
+    *(
+        _Spec(name, sop_class, instance, series, MR)
+        for name, sop_class, instance, series in (
+            (
+                STRUCTURED_REPORT_FILES[2],
+                BASIC_TEXT_SR_STORAGE,
+                BASIC_TEXT_REPORT,
+                BASIC_TEXT_REPORT_SERIES,
+            ),
+            (
+                STRUCTURED_REPORT_FILES[3],
+                ENHANCED_SR_STORAGE,
+                ENHANCED_REPORT,
+                ENHANCED_REPORT_SERIES,
+            ),
+            (
+                STRUCTURED_REPORT_FILES[4],
+                COMPREHENSIVE_SR_STORAGE,
+                COMPREHENSIVE_REPORT,
+                COMPREHENSIVE_REPORT_SERIES,
+            ),
+            (
+                STRUCTURED_REPORT_FILES[5],
+                COMPREHENSIVE_3D_SR_STORAGE,
+                COMPREHENSIVE_3D_REPORT,
+                COMPREHENSIVE_3D_REPORT_SERIES,
+            ),
+            (
+                STRUCTURED_REPORT_FILES[6],
+                EXTENSIBLE_SR_STORAGE,
+                EXTENSIBLE_REPORT,
+                EXTENSIBLE_REPORT_SERIES,
+            ),
+        )
+    ),
 )
 
 
@@ -926,15 +996,17 @@ def build_corpus() -> SyntheticCorpus:
     Returns
     -------
     SyntheticCorpus
-        Twenty-two files: three CT slices; the RT Structure Set, RT Plan, RT
+        Twenty-seven files: three CT slices; the RT Structure Set, RT Plan, RT
         Dose, and the RT Dose for review; the Enhanced CT Image and Legacy
         Converted Enhanced CT Image; the MR Image, Enhanced MR Image,
         Enhanced MR Color Image, Legacy Converted Enhanced MR Image, and MR
         Spectroscopy; the PET Image, Enhanced PET Image, and Legacy
         Converted Enhanced PET Image; the Spatial Registration and
-        Deformable Spatial Registration; the RT Beams Treatment Record; and
-        the X-Ray Radiation Dose SR and Radiopharmaceutical Radiation Dose
-        SR. Two builds give the same bytes and the same manifest.
+        Deformable Spatial Registration; the RT Beams Treatment Record; the
+        X-Ray Radiation Dose SR and Radiopharmaceutical Radiation Dose SR;
+        and the Basic Text SR, Enhanced SR, Comprehensive SR, Comprehensive
+        3D SR, and Extensible SR. Two builds give the same bytes and the
+        same manifest.
     """
     markers = _Markers()
     files: list[CorpusFile] = []
@@ -1589,7 +1661,9 @@ class _Instance:
         The content tree's identifying values, of its UIDREF, DATETIME, and
         PNAME items, are markers, and the study that an X-ray report's scope
         of accumulation names is the collection's; each is recorded with its
-        item's concept name.
+        item's concept name. A measurement report's volumetric region is in
+        the collection's Frame of Reference, which the run's key replaces as
+        it replaces the collection's other references to it.
         """
         put = self._set
         put((), "(0008,0060)", ["SR"])
@@ -1603,10 +1677,15 @@ class _Instance:
             _, (text,) = self.markers.values(_CONTENT_ITEM_VRS[value_type], 1)
             return text
 
-        if self.spec.sop_class == X_RAY_RADIATION_DOSE_SR_STORAGE:
+        template = ROOT_TEMPLATES[self.spec.sop_class]
+        if template == "10001":
             root = x_ray_dose_tree(values, STUDY)
-        else:
+        elif template == "10021":
             root = radiopharmaceutical_dose_tree(values)
+        elif template == "2000":
+            root = imaging_report_tree(values)
+        else:
+            root = measurement_report_tree(values, FRAME_OF_REFERENCE)
         for element in root:
             self.dataset.add(element)
         self._record_content(root, ())

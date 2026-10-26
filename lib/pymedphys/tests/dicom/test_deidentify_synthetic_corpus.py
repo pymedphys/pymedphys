@@ -77,6 +77,14 @@ REFERENCED_SOP_CLASS = "(0008,1150)"
 REFERENCED_SOP_INSTANCE = "(0008,1155)"
 # The kinds that leave a value that the residual search can find.
 MARKERS = frozenset({Kind.PLANTED, Kind.CONTENT})
+# The general SR IODs, whose reports' trees follow TID 2000 or TID 1500.
+GENERAL_SR_IODS = (
+    "Basic Text SR",
+    "Enhanced SR",
+    "Comprehensive SR",
+    "Comprehensive 3D SR",
+    "Extensible SR",
+)
 LINKED_PATTERNS = {
     Kind.LINKED_UID: r"2\.25\.88888\d{5}",
     Kind.LINKED_PATIENT: r"SYNMK-LINKED-(PATIENT|ISSUER)",
@@ -204,6 +212,11 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "20-rt-beams-record.dcm",
         "22-sr-dose-x-ray.dcm",
         "23-sr-dose-radiopharmaceutical.dcm",
+        "24-sr-basic-text.dcm",
+        "25-sr-enhanced.dcm",
+        "26-sr-comprehensive.dcm",
+        "27-sr-comprehensive-3d.dcm",
+        "28-sr-extensible.dcm",
     ]
     assert [file.manifest.iod for file in corpus.files] == [
         "CT Image",
@@ -228,9 +241,14 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "RT Beams Treatment Record",
         "X-Ray Radiation Dose SR",
         "Radiopharmaceutical Radiation Dose SR",
+        "Basic Text SR",
+        "Enhanced SR",
+        "Comprehensive SR",
+        "Comprehensive 3D SR",
+        "Extensible SR",
     ]
     assert corpus_module.STRUCTURED_REPORT_FILES == tuple(
-        file.name for file in corpus.files[-2:]
+        file.name for file in corpus.files[-7:]
     )
     # Every IOD of the first supported release.
     assert {file.manifest.iod for file in corpus.files} == scope.SUPPORTED_IODS
@@ -395,6 +413,7 @@ def test_an_attribute_whose_removal_sequesters_is_planted_in_one_instance(corpus
         "RT Beams Treatment Record": {"(0008,0082)", "(0008,0106)", "(0008,0107)"},
         "X-Ray Radiation Dose SR": report,
         "Radiopharmaceutical Radiation Dose SR": report,
+        **dict.fromkeys(GENERAL_SR_IODS, report),
     }
     assert planted == {corpus_module.SEQUESTERED_FILE: both}
     assert corpus_module.SEQUESTERED_FILE == corpus.files[2].name
@@ -955,6 +974,17 @@ _CONTENT_CONCEPTS = {
         ("DCM", "123003", "DATETIME"): "DT",  # Start DateTime
         ("DCM", "113870", "PNAME"): "PN",  # Person Name
     },
+    **dict.fromkeys(
+        GENERAL_SR_IODS[:3],
+        {("DCM", "121008", "PNAME"): "PN"},  # Person Observer Name
+    ),
+    **dict.fromkeys(
+        GENERAL_SR_IODS[3:],
+        {
+            ("DCM", "121008", "PNAME"): "PN",  # Person Observer Name
+            ("DCM", "121232", "UIDREF"): "UI",  # Source series for segmentation
+        },
+    ),
 }
 
 
