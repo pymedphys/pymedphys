@@ -19,8 +19,9 @@ Instance UID, which the option keeps everywhere else. Without Clean
 Structured Content, the Basic Profile's D on the report's Content Sequence
 removes it, and a removed UID found in a kept one withholds the file
 (D-042), so with the reports every instance of the subject would be
-withheld; the end-to-end tests show that apart, and this run checks the
-option on the other instances.
+withheld, as it would be were the reports out of scope, since their values
+are still collected for the subject's search; the end-to-end tests show
+that apart, and this run checks the option on the other instances.
 """
 
 from .._corpus_run import WITHHELD_WITHOUT_REPORTS, CorpusRun, without_reports

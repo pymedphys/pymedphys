@@ -32,6 +32,12 @@ InstanceRecord = references.InstanceRecord
 ReferenceSite = references.ReferenceSite
 
 FIRST_RELEASE_IODS = tuple(sorted(scope.SUPPORTED_IODS))
+# The Structured Reports, whose SR Document General Module references their
+# request and evidence in place of the Common Instance Reference Module and
+# the Request Attributes Sequence.
+DOSE_REPORTS = ("Radiopharmaceutical Radiation Dose SR", "X-Ray Radiation Dose SR")
+# Referenced Request Sequence.
+REFERENCED_REQUEST = "(0040,A370)"
 # Paths from the module tables of the 2026d PS3.3, checked against its text.
 RT_REFERENCES = [
     # RT Structure Set: the contour images of each referenced frame, their
@@ -74,16 +80,49 @@ RT_REFERENCES = [
     # CT Image: the plan in the CT Image module, and General Reference.
     ("CT Image", synthetic.REFERENCED_PLAN, Level.INSTANCE),
     ("CT Image", synthetic.REFERENCED_IMAGE, Level.INSTANCE),
-    # Every IOD: Common Instance Reference, and the study in General Study
-    # and in each request.
+    # Every IOD but the reports: Common Instance Reference, and the study in
+    # General Study and in each request.
     *(
         (iod, attribute, level)
         for iod in FIRST_RELEASE_IODS
+        if iod not in DOSE_REPORTS
         for attribute, level in [
             (("(0008,1115)", "(0020,000E)"), Level.SERIES),
             (("(0008,1200)", "(0020,000D)"), Level.STUDY),
             (synthetic.REFERENCED_STUDY, Level.STUDY),
             (synthetic.REQUESTED_REFERENCED_STUDY, Level.STUDY),
+        ]
+    ),
+    # Each report: the study in General Study and in each request; the
+    # study, series, and instances of each evidence sequence, its
+    # predecessors, and its identical documents (Hierarchical SOP Instance
+    # Reference Macro); and the instances of its IMAGE and COMPOSITE content
+    # items.
+    *(
+        (iod, attribute, level)
+        for iod in DOSE_REPORTS
+        for attribute, level in [
+            (synthetic.REFERENCED_STUDY, Level.STUDY),
+            ((REFERENCED_REQUEST, "(0020,000D)"), Level.STUDY),
+            ((REFERENCED_REQUEST, *synthetic.REFERENCED_STUDY), Level.STUDY),
+            *(
+                item
+                for evidence in (
+                    "(0040,A375)",
+                    "(0040,A385)",
+                    "(0040,A360)",
+                    "(0040,A525)",
+                )
+                for item in (
+                    ((evidence, "(0020,000D)"), Level.STUDY),
+                    ((evidence, "(0008,1115)", "(0020,000E)"), Level.SERIES),
+                    (
+                        (evidence, "(0008,1115)", "(0008,1199)", "(0008,1155)"),
+                        Level.INSTANCE,
+                    ),
+                )
+            ),
+            (("(0040,A730)", "(0008,1199)", "(0008,1155)"), Level.INSTANCE),
         ]
     ),
 ]
@@ -99,6 +138,7 @@ OTHER_SEQUENCES = {
     "(0008,1120)",  # Referenced Patient Sequence
     "(0008,1140)",  # Referenced Image Sequence
     "(0008,114A)",  # Referenced Instance Sequence
+    "(0008,114B)",  # Referenced Real World Value Mapping Instance Sequence
     "(0008,1156)",  # Definition Source Sequence
     "(0008,1199)",  # Referenced SOP Sequence
     "(0008,2112)",  # Source Image Sequence
@@ -209,7 +249,13 @@ def test_reference_sites_include_the_rt_references(iod, attribute, level):
 @pytest.mark.parametrize(
     "iod, attribute, type_",
     [
-        *((iod, synthetic.REQUESTED_STUDY, "3") for iod in FIRST_RELEASE_IODS),
+        *(
+            (iod, synthetic.REQUESTED_STUDY, "3")
+            for iod in FIRST_RELEASE_IODS
+            if iod not in DOSE_REPORTS
+        ),
+        # Type 1 in each item of the Type 1C Referenced Request Sequence.
+        *((iod, (REFERENCED_REQUEST, "(0020,000D)"), "1") for iod in DOSE_REPORTS),
         ("RT Plan", synthetic.PERTINENT_DOCUMENTS, "3"),
         ("RT Plan", synthetic.REFERENCED_STRUCTURE_SET, "1"),
         # Referenced Patient Photo Sequence > Study Instance UID, Type 1C.

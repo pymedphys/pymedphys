@@ -191,7 +191,6 @@ def _written(composed, dataset):
     return result.data
 
 
-@pytest.mark.deid_requirement("MIDI-BP-01")
 def test_the_reports_are_of_supported_iods():
     for name, (build, iod) in REPORTS.items():
         dataset = build()

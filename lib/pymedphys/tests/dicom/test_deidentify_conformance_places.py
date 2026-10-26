@@ -25,11 +25,13 @@ from pymedphys._dicom.deidentify import (
     compound_actions,
     conformance,
     conformance_markdown,
+    dummy_values,
     element_rules,
     iods,
     policy,
     scope,
     source,
+    standard,
     walker,
 )
 
@@ -49,6 +51,9 @@ SOURCE_SERIES_INFORMATION = ("(3006,004C)",)
 RESPONSIBLE_PERSON = "(0010,2297)"  # X; Type 2C at the top level
 OVERLAY_DATA = "(60xx,3000)"  # X; its Overlay Plane Module is U in CT Image
 VERIFYING_OBSERVER_SEQUENCE = "(0040,A073)"  # D; only Structured Report IODs
+CONTENT_SEQUENCE = "(0040,A730)"  # D; only Structured Report IODs
+GRAPHIC_ANNOTATION_SEQUENCE = "(0070,0001)"  # D; no supported IOD defines it
+DOSE_REPORTS = ("Radiopharmaceutical Radiation Dose SR", "X-Ray Radiation Dose SR")
 # Attribute Modification DateTime, D, within Original Attributes Sequence,
 # which the Basic Profile gives X.
 ATTRIBUTE_MODIFICATION_DATETIME = "(0400,0562)"
@@ -89,6 +94,8 @@ def test_plain_actions_are_resolved_by_type_at_every_place(preset):
                     action = compound_actions.resolve_plain_in_iod(
                         iod, tag, path, entry.action
                     )
+                    if action == "D" and not _has_dummy_value(tag):
+                        action = conformance.SEQUESTER
                     expected.append(conformance.Place(name, path, action))
                     continue
                 removal = compound_actions.resolve_plain_x_in_iod(iod, tag, path)
@@ -105,6 +112,18 @@ def test_plain_actions_are_resolved_by_type_at_every_place(preset):
                     place = conformance.Place(name, path, "X", path[removal.sequence])
                 expected.append(place)
         assert entry.places == tuple(expected), entry.tag
+
+
+# The sequences whose D a reviewed rule writes (D-021).
+REVIEWED_DUMMY_SEQUENCES = frozenset({"(0040,1101)", "(0008,1111)"})
+
+
+def _has_dummy_value(tag):
+    """Return whether D can write a dummy value for an attribute (D-021)."""
+    if tag in REVIEWED_DUMMY_SEQUENCES:
+        return True
+    attribute = standard.dictionary_attribute(tag)
+    return attribute is None or bool(set(attribute.vrs) & dummy_values.DUMMY_VRS)
 
 
 def _row(text, tag):
@@ -156,13 +175,32 @@ def test_a_plain_x_on_overlay_data_removes_its_overlay_group():
 
 @pytest.mark.deid_requirement("PS3.15-E.1.3-01")
 def test_a_plain_d_that_no_supported_iod_defines_is_removed():
-    entry = _entry(_statement("basic"), VERIFYING_OBSERVER_SEQUENCE)
+    entry = _entry(_statement("basic"), GRAPHIC_ANNOTATION_SEQUENCE)
     assert (entry.action, entry.places, entry.elsewhere) == ("D", (), "X")
     row = _row(
         conformance_markdown.render_markdown(_statement("basic")),
-        VERIFYING_OBSERVER_SEQUENCE,
+        GRAPHIC_ANNOTATION_SEQUENCE,
     )
     assert row.endswith("| X elsewhere. |")
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
+@pytest.mark.parametrize("tag", [CONTENT_SEQUENCE, VERIFYING_OBSERVER_SEQUENCE])
+def test_a_plain_d_on_a_dose_reports_sequence_sequesters_it(tag):
+    # A sequence has no dummy value (D-021), and each dose report requires
+    # both sequences at the top level where its condition holds: Content
+    # Sequence where the root has content items, and Verifying Observer
+    # Sequence where the report is VERIFIED.
+    entry = _entry(_statement("basic"), tag)
+    assert (entry.action, entry.elsewhere) == ("D", "X")
+    assert entry.places == tuple(
+        conformance.Place(name, (), conformance.SEQUESTER) for name in DOSE_REPORTS
+    )
+    row = _row(conformance_markdown.render_markdown(_statement("basic")), tag)
+    assert row.endswith(
+        "| instance sequestered at the top level in Radiopharmaceutical "
+        "Radiation Dose SR and X-Ray Radiation Dose SR. X elsewhere. |"
+    )
 
 
 @pytest.mark.deid_requirement("PS3.15-E.1.3-01")
