@@ -269,7 +269,7 @@ Plain X, Z, and D are resolved by Type at every place too (D-020), except within
 Where an IOD requires an attribute given a plain X, the statement names the enclosing sequence or overlay group that D-020 removes with it, or that the instance is sequestered, and each is checked against the walker's plan of a synthetic instance.
 Under Clean Descriptors, it describes how ROI Name is cleaned in two tiers: automatic renaming against a published TG-263 edition, which it names, and reviewers' decisions, with every reason a name is held, what is written for each, and the condition on which an instance gains the Clean Descriptors code, each checked against the engine (D-009).
 Each run with a release reporter writes the statement of its policy, as `conformance-statement.md` beside the release report at the root of the release, since it holds no instance value; it describes the policy and vocabulary that the report records, and the report gives the run's own method digest and reviewed-names digest.
-The statements of `basic` and `basic-clean-descriptors`, the presets of the first supported release, list nothing as pending.
+The statements of `basic` and `basic-clean-descriptors` list nothing as pending.
 For each selected option that has a cleaner, it gives the attributes that the policy gives C and the cleaner settles, with its method: the AE titles under Retain Device Identity (D-034), the free text under Retain Patient Characteristics, which writes none of its values itself and, under Clean Descriptors too, is given the reviewed descriptors list's decisions (D-038, PS3.15-E.3.7-02), and the dates and times that Modified Dates modifies (D-039, PS3.15-E.3.6-04).
 A statement still lists as pending, and so claims nothing for, the manner of cleaning any other attribute to which the policy gives C other than under Clean Descriptors alone; this completes with those options.
 Under `tps-import`, it describes the synthetic birth dates that Patient's Birth Date takes, how the reference study is chosen, the empty value written where the ages are missing or inconsistent, and the `birth-date-conflict` sequestration of a later run that contradicts the reference (D-008).
@@ -603,7 +603,7 @@ Its five attributes of free text, which it gives C, are written with no value wh
 Where the policy also selects Clean Descriptors, as `tps-import` does, each other value is kept, mapped, or emptied by a reviewer's decision in the custodian's reviewed descriptors list, and an instance with a value that the list does not clean is held for review, as for ROI Names (D-009); without Clean Descriptors, such an instance is sequestered.
 So a released instance retains every characteristic it held, its free text as a reviewer decided (PS3.15-E.3.7-02).
 The measures of the body that Table E.1-1 omits, such as Patient's Body Mass Index, are removed under every option (D-022).
-No preset of the first supported release selects the Option; `tps-import` selects it, and is not yet enabled.
+Of the presets, only `tps-import` selects the Option, and it is not yet enabled.
 '''
 
 [[requirement]]

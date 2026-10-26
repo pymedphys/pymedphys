@@ -55,8 +55,9 @@ same options chosen without the preset, and any other conflict, such as one
 a new edition of the table adds, are rejected.
 
 A preset is enabled only once its behaviour is implemented and validated. No
-preset is enabled yet; the first supported release is to enable ``basic`` and
-``basic-clean-descriptors``. A run can select a custom option set in place
+preset is enabled yet; the first supported release is to enable every preset
+and every option, and waits until every one is validated (design document,
+Scope). A run can select a custom option set in place
 of a preset (D-033), which is enabled only once ``basic``, whose Basic
 Profile it applies, is enabled, and each of its options is in
 :data:`ENABLED_OPTIONS`, which an option joins once its behaviour is
@@ -159,7 +160,8 @@ PRESETS: Mapping[str, tuple[str, ...]] = types.MappingProxyType(
 )
 DEFAULT_PRESET = "basic"
 # The presets whose behaviour is implemented and validated. None is yet; the
-# first supported release is to enable ``basic`` and ``basic-clean-descriptors``.
+# first supported release is to enable every preset, and waits until every
+# preset and option is validated (design document, Scope).
 ENABLED_PRESETS: frozenset[str] = frozenset()
 # The options whose behaviour is implemented and validated, each one of
 # ENGINE_OPTIONS, which a custom option set may select once the basic preset

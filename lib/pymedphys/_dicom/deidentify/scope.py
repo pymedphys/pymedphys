@@ -25,8 +25,8 @@ instance is still sequestered where the plugin pinned to its transfer
 syntax is not installed, or where its frames or codestreams fail the
 engine's checks (:mod:`~pymedphys._dicom.deidentify.instance_transform`),
 and the element rules still sequester some, such as every Enhanced PET
-Image instance that conforms to its IOD, under both presets of the first
-supported release. Every other instance is sequestered: neither
+Image instance that conforms to its IOD, under ``basic`` and
+``basic-clean-descriptors``. Every other instance is sequestered: neither
 de-identified nor written, and listed in the run report by opaque
 identifiers only. That includes Structured Reports, Key Object
 Selection documents, Presentation States, and instances of Private SOP

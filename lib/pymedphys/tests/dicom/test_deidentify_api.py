@@ -84,7 +84,7 @@ def _short_tmp_path(tmp_path):
 
 @pytest.fixture(name="enabled")
 def _enabled(monkeypatch):
-    """Enable the first release's presets, which no release enables yet."""
+    """Enable ``basic`` and ``basic-clean-descriptors``, which nothing enables yet."""
     monkeypatch.setattr(
         policy, "ENABLED_PRESETS", frozenset({"basic", "basic-clean-descriptors"})
     )
