@@ -200,6 +200,7 @@ def _assessment(**changes):
         "linked_records": "Each subject's studies were assessed together",
         "earlier_releases": "No earlier release",
         "device_identity": "Station names identify the department",
+        "institutional_identity": "Local codes were matched on as the site",
         "facial_reconstruction": False,
         "subjects": 2,
         "threshold": risk_assessment.DEFAULT_THRESHOLD,
@@ -418,6 +419,22 @@ def test_no_run_is_ready_without_a_statement_on_keeping_machine_identity(
     # the statement of whether keeping machine identity would raise the risk.
     with pytest.raises(RiskAssessmentError, match="device_identity"):
         _assessment(device_identity=statement)
+    result = _readiness(_reviewed(tmp_path, assessment=False))
+
+    assert result.statistical is StatisticalReason.NO_ASSESSMENT
+    assert not result.ready
+
+
+@pytest.mark.deid_requirement("MIDI-BP-05")
+@pytest.mark.parametrize("statement", [None, "", "   "])
+def test_no_run_is_ready_without_an_assessment_of_the_institutional_identity_kept(
+    tmp_path, statement
+):
+    # The statistical gate needs a record, and no record can be made without
+    # the statement of how the institutional identity that the policy keeps
+    # was assessed, and whether the assessment supports keeping it.
+    with pytest.raises(RiskAssessmentError, match="institutional_identity"):
+        _assessment(institutional_identity=statement)
     result = _readiness(_reviewed(tmp_path, assessment=False))
 
     assert result.statistical is StatisticalReason.NO_ASSESSMENT
