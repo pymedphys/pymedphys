@@ -1,3 +1,4 @@
+# Copyright (C) 2026 Matthew Jennings
 # Copyright (C) 2021 Cancer Care Associates
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -81,6 +82,32 @@ def test_get_patient_fields(connection):
     tx_fields = helpers.get_patient_fields(connection, PATIENT_ID)
     field_id = tx_fields["field_id"].iloc[0]
     assert field_id == FIELD_ID
+
+
+@pytest.mark.mosaiqdb
+def test_csv_text_keeps_nul_characters(connection):
+    # pandas 3.1 preserves NUL in CSV text, whereas earlier releases truncated
+    # it. Read the source independently and compare every affected cell.
+    columns = ["Alert", "kVApplCode", "kVFilterCode"]
+    with open(
+        MOCK_DATA_DIRECTORY / "TxField.csv", newline="", encoding="utf-8"
+    ) as source:
+        expected = [
+            (int(row["FLD_ID"]), *(row[column] for column in columns))
+            for row in csv.DictReader(source)
+            if any("\0" in row[column] for column in columns)
+        ]
+    rows = pymedphys.mosaiq.execute(
+        connection,
+        "SELECT FLD_ID, Alert, kVApplCode, kVFilterCode FROM TxField ORDER BY FLD_ID",
+    )
+    actual = [
+        row
+        for row in rows
+        if any(isinstance(value, str) and "\0" in value for value in row[1:])
+    ]
+    assert expected
+    assert actual == sorted(expected)
 
 
 @pytest.mark.mosaiqdb

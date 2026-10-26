@@ -266,6 +266,8 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
 
 ### Contributor facing changes
 
+- The mock Mosaiq database preserves CSV text containing NUL characters across supported pandas versions. SQL Server reconstructs each NUL between parameterised text fragments, so pymssql can insert the complete value without truncating its query. This restores the database integration tests and the experimental chat app's CSV database-fill action with pandas 3.1. [PR #2511](https://github.com/pymedphys/pymedphys/pull/2511)
+
 - **[Contributor facing only]** The locked pre-commit environment now uses virtualenv 21.14.13, fixing shell-prompt command execution in generated activation scripts. Recreate affected environments with the updated tool to receive the corrected scripts. [PR #2445](https://github.com/pymedphys/pymedphys/pull/2445)
 - **[Contributor facing only]** UID replacement property tests retain valid and invalid inputs while allowing distinct pairs to shrink to small examples. They now pass the input-generation health checks in Hypothesis 6.170.2 used by dependency-update validation. [PR #2411](https://github.com/pymedphys/pymedphys/pull/2411)
 - **[Contributor facing only]** The de-identification tests, including the

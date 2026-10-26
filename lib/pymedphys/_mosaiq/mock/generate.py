@@ -77,10 +77,47 @@ def dataframe_to_sql(
             index=True,
             index_label=index_label,
             dtype=dtype,
+            method=_insert_with_nul_text,
         )
 
     # now get rid of the engine, to close it's connections
     engine.dispose()
+
+
+def _insert_with_nul_text(table, connection, keys, data_iter):
+    """Insert text containing NUL without sending NUL in a pymssql query.
+
+    pymssql quotes parameters into SQL text, where a NUL terminates the query.
+    Build those characters on SQL Server instead, keeping each text fragment
+    parameterised. Rows without NUL retain SQLAlchemy's bulk insertion.
+    """
+    ordinary_rows = []
+    inserted = 0
+    for values in data_iter:
+        row = dict(zip(keys, values, strict=True))
+        nul_columns = [
+            key
+            for key, value in row.items()
+            if isinstance(value, str) and "\0" in value
+        ]
+        if not nul_columns:
+            ordinary_rows.append(row)
+            continue
+
+        for key in nul_columns:
+            parts = row[key].split("\0")
+            expression = sqlalchemy.literal(parts[0])
+            for part in parts[1:]:
+                expression = expression.concat(sqlalchemy.func.nchar(0)).concat(part)
+            row[key] = expression
+
+        connection.execute(table.table.insert().values(row))
+        inserted += 1
+
+    if ordinary_rows:
+        connection.execute(table.table.insert(), ordinary_rows)
+
+    return inserted + len(ordinary_rows)
 
 
 def create_test_db(database=utilities.TEST_DB_NAME):

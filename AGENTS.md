@@ -525,7 +525,7 @@ detailed explanations of individual features.
 
 ### Dependency Updates
 
-When updating dependencies:
+When changing dependency requirements:
 
 1. Update version constraints in `pyproject.toml`
 2. Run `uv lock --upgrade` and then `uv sync --python 3.14 --locked` to regenerate `uv.lock`
@@ -533,6 +533,11 @@ When updating dependencies:
    `requirements.txt`, `dependency-extra.txt`, and `pyproject.hash`; the integration workflow
    fails when these drift from `pyproject.toml` and `uv.lock`
 4. Test changes to ensure nothing breaks
+
+Weekly dependency refreshes update the resolved versions in `uv.lock` and run
+the propagation command without raising supported minimum versions. Raise a
+minimum in `pyproject.toml` only when the package requires a newer version;
+keep the minimum-version CI overlay aligned as described below.
 
 Do not add tests that restate a declared dependency constraint or the locked
 version. The lockfile checks and CI's locked environment already cover them.
