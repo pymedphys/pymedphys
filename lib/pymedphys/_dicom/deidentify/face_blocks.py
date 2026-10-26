@@ -103,10 +103,12 @@ before the face is in most scans.
 
 Beyond CT Image instances, the run cleans the same region of an RT Dose
 that :mod:`~pymedphys._dicom.deidentify.dose_defacing` sets to zero there,
-and of an RT Structure Set whose contours, or a PET image whose activity,
+of an RT Structure Set whose contours, or a PET image whose activity,
 :mod:`~pymedphys._dicom.deidentify.region_defacing` cuts or sets to zero
-there, each with that series' Frame of Reference as its only one. Any other
-RT Structure Set, RT Dose with pixel data, or PET instance
+there, and of a Segmentation whose segments
+:mod:`~pymedphys._dicom.deidentify.segmentation_defacing` clears there,
+each with that series' Frame of Reference as its only one. Any other RT
+Structure Set, RT Dose with pixel data, PET instance, or Segmentation
 (:data:`UNDEFACED_IODS`) in the Frame of Reference of a defaced series
 keeps its contours or pixel data, which can still outline the face, so it
 is held for review whatever its verdict, since a reviewer may have judged
@@ -179,6 +181,7 @@ UNDEFACED_IODS = frozenset(
         PET_IMAGE,
         "Enhanced PET Image",
         "Legacy Converted Enhanced PET Image",
+        "Segmentation",
     }
 )
 # How far two slices' direction cosines, or spacings in millimetres, may
