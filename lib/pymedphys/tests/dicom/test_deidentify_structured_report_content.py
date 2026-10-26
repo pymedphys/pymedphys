@@ -325,9 +325,8 @@ def test_the_required_rows_that_table_e3_4_1_removes(with_option, preset, remove
 
 # Each feature whose concept name is coded in a scheme whose rows the
 # generated table cannot hold: LOINC, NCIt, and UMLS, whose rows the pin
-# leaves out (D-001), and the retired SNOMED designator SRT, which PS3.16
-# Annex O maps to SNOMED CT. Each is given with the report and options that
-# hold it, and the scheme of the concept name that takes the tree out.
+# leaves out (D-001). Each is given with the report and options that hold it,
+# and the scheme of the concept name that takes the tree out.
 UNMATCHED_FEATURES = {
     # Most of CID 7000's titles, for the root of TID 2000.
     "LOINC title": (IMAGING, (), {"title": reports.DIAGNOSTIC_IMAGING_REPORT}, "LN"),
@@ -344,7 +343,6 @@ UNMATCHED_FEATURES = {
     "NCIt activity session": (MEASUREMENT, ("TID 1411 row 1b",), {}, "NCIt"),
     # TID 1502 row 3, required where TID 1411 row 4 includes TID 1502.
     "UMLS time point": (MEASUREMENT, ("TID 1411 row 4",), {}, "UMLS"),
-    "SRT finding site": (MEASUREMENT, ("TID 1419 row 2",), {"snomed_ids": True}, "SRT"),
 }
 
 
@@ -364,10 +362,30 @@ def test_a_concept_name_that_cannot_be_looked_up_takes_the_tree_out(
     assert scheme in content_items.UNMATCHED_SCHEMES
     assert scheme in {key[0] for _, key in _concepts(dataset)}
     assert not _kept(dataset, iod, composed)
-    # The same report without the feature is kept: with a DCM title, and
-    # with the finding site coded in SNOMED CT.
-    plain, _ = _report(name, optional if "snomed_ids" in kwargs else ())
+    # The same report without the feature, with a DCM title, is kept.
+    plain, _ = _report(name)
     assert _kept(plain, iod, composed)
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.4-01")
+@pytest.mark.parametrize("preset, options", [
+    *((preset, None) for preset in PRESETS[2:]),
+    (None, EVERY_OPTION),
+])  # fmt: skip
+def test_a_finding_site_coded_by_its_snomed_ids_is_kept_as_in_snomed_ct(
+    with_option, preset, options
+):
+    composed = _composed(with_option, preset, options)
+    retired, iod = _report(MEASUREMENT, ("TID 1419 row 2",), snomed_ids=True)
+    current, _ = _report(MEASUREMENT, ("TID 1419 row 2",))
+
+    assert "SRT" in {key[0] for _, key in _concepts(retired)}
+    assert "SRT" not in {key[0] for _, key in _concepts(current)}
+    # PS3.16 Table O-1 maps each SNOMED ID to the SNOMED CT code that the
+    # other report gives the same concept, so each item takes the same action.
+    actions, _ = _planned(retired, iod, composed)
+    assert actions == _planned(current, iod, composed)[0]
+    assert actions.get(ElementPath((), CONTENT)) == "K"
 
 
 # The optional rows of TID 1001 that take the tree out under every option
