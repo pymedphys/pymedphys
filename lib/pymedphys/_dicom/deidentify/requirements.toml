@@ -26,7 +26,7 @@ implementation = [
 note = '''
 Patient ID and Patient's Name have keyed replacement values that keep subjects separate and do not contain the source identifier.
 Z writes a zero-length value, and D a conspicuous constant for each VR that does not depend on the source value, or a second constant where the source value equals the first, so the replacement always differs from it; a UI value takes its keyed replacement, and D on an attribute of any other VR is refused until a reviewed rule covers it.
-The one reviewed rule so far gives Person Identification Code Sequence one item with a dummy code (D-021).
+Reviewed rules give Person Identification Code Sequence one item with a dummy code, Referenced Performed Procedure Step Sequence one item for each source item with its UID replaced, and ICC Profile a fixed sRGB profile, and keep each item of Verifying Observer Sequence with only the four attributes that PS3.3 defines there, each under its own rule (D-021).
 The run's instance transform removes or replaces each Attribute to be protected in every instance it writes, and an end-to-end test of `basic` and `basic-clean-descriptors` over the synthetic collection finds none of the collection's markers in the published files (MIDI-BP-01).
 '''
 

@@ -33,6 +33,9 @@ each element of the data set, in file order, an :class:`Edit`:
   (:func:`~pymedphys._dicom.deidentify.dummy_values.items_for_d`, D-021),
   and ICC Profile (0028,2000) with a fixed profile of its colour space
   (:func:`~pymedphys._dicom.deidentify.dummy_values.icc_profile_for_d`);
+  D keeps Verifying Observer Sequence (0040,A073) as a container, as K does,
+  whose items keep only the attributes that the plan does not remove
+  (:func:`~pymedphys._dicom.deidentify.walker.descends`, D-021);
 - U replaces each UID that the pinned tables do not register with its keyed
   replacement, and keeps each that they do
   (:func:`~pymedphys._dicom.deidentify.uids.transform_uid`).
@@ -107,12 +110,12 @@ from .standard import dictionary_attribute
 from .uid_roles import UIDRole, load_uid_roles
 from .uids import UIDOutcome, normalise_uid, transform_uid, well_known_uids
 from .walker import (
-    DESCENDED,
     Consumer,
     ElementPlan,
     InstancePlan,
     SequesterReason,
     Sequestration,
+    descends,
 )
 
 # The attributes that take the subject's pseudonyms under Z and D (D-005).
@@ -408,7 +411,11 @@ def _text(value: ElementValue) -> str | bytes:
 
 
 def _kept_container(element: ElementPlan, container: bool) -> bool:
-    return container and element.removed_with is None and element.action in DESCENDED
+    return (
+        container
+        and element.removed_with is None
+        and descends(element.path.tag, element.action)
+    )
 
 
 def _check_items(reader: _Reader, element: ElementPlan) -> None:
@@ -469,12 +476,12 @@ def _kind(element: ElementPlan, container: bool) -> EditKind:
     """Return what an element becomes, before any value is worked out.
 
     A sequence under K or U is kept as a container, its items edited
-    element by element.
+    element by element, as is one whose D keeps its items (D-021).
     """
     action = element.action
     if element.removed_with is not None or action == "X":
         kind = EditKind.REMOVE
-    elif action == "K" or (container and action in DESCENDED):
+    elif action == "K" or (container and descends(element.path.tag, action)):
         kind = EditKind.KEEP
     elif action == "C" or _takes_pseudonym(element):
         kind = EditKind.PENDING
