@@ -244,7 +244,8 @@ def session_offsets_for_site(
     interval : timedelta
         the interval before the session to look for the offset
         (Offset.Study_DtTm can precede the Dose_Hst records
-        for the session)
+        for the session); the search never reaches back past the
+        previous session's last treatment
 
     session_interval : timedelta, optional
         the treatment session interval passed to sessions_for_site; by
@@ -257,11 +258,17 @@ def session_offsets_for_site(
         * Offset translation as an np.ndarray, or
                 None if no offsets were found for the session
     """
+    previous_session_end: Optional[datetime] = None
     for session_num, start_session, end_session in sessions_for_site(
         connection, sit_set_id, session_interval
     ):
-        # calculate the time window within which the offset may occur
-        window_start, window_end = (start_session - interval, end_session)
+        # calculate the time window within which the offset may occur,
+        #   starting no earlier than the end of the previous session
+        window_start = start_session - interval
+        if previous_session_end is not None:
+            window_start = max(window_start, previous_session_end)
+        window_end = end_session
+        previous_session_end = end_session
 
         # query for offsets within the time window
         offsets = api.execute(
@@ -284,8 +291,8 @@ def session_offsets_for_site(
             """,
             {
                 "sit_set_id": sit_set_id,
-                "window_start": window_start.strftime("%Y-%m-%d %H:%M"),
-                "window_end": window_end.strftime("%Y-%m-%d %H:%M"),
+                "window_start": window_start,
+                "window_end": window_end,
             },
         )
 

@@ -25,6 +25,7 @@ from pymedphys._mosaiq.sessions import (
     cluster_sessions,
     mean_session_offset_for_site,
     session_interval_for_site,
+    session_offsets_for_site,
     sessions_for_site,
 )
 
@@ -118,9 +119,11 @@ def test_matches_mosaiq_rule_on_random_times():
 class FakeConnection:
     """Answers the queries in sessions.py from in-memory rows"""
 
-    def __init__(self, tx_datetimes, intervals=()):
+    def __init__(self, tx_datetimes, intervals=(), offsets=()):
         self.tx_datetimes = tx_datetimes
         self.intervals = intervals
+        # (Study_DtTm, Superior_Offset, Anterior_Offset, Lateral_Offset)
+        self.offsets = offsets
 
 
 def fake_execute(connection, query, parameters=None):  # pylint: disable = unused-argument
@@ -130,7 +133,12 @@ def fake_execute(connection, query, parameters=None):  # pylint: disable = unuse
         assert "WasQAMode = 0" in query
         return [(tx,) for tx in connection.tx_datetimes]
     if "FROM Offset" in query:
-        return []
+        # SQL Server converts string parameters to datetimes for the comparison
+        start, end = (
+            datetime.fromisoformat(value) if isinstance(value, str) else value
+            for value in (parameters["window_start"], parameters["window_end"])
+        )
+        return sorted(row for row in connection.offsets if start < row[0] < end)
     raise AssertionError(f"unexpected query: {query}")
 
 
@@ -165,3 +173,41 @@ def test_empty_site_has_no_sessions_or_mean_offset():
     connection = FakeConnection([])
     assert not list(sessions_for_site(connection, 1))
     assert mean_session_offset_for_site(connection, 1) is None
+
+
+def offsets_by_session(connection):
+    return [
+        (number, None if offset is None else offset.tolist())
+        for number, offset in session_offsets_for_site(connection, 1)
+    ]
+
+
+def test_session_offset_not_taken_from_previous_session():
+    # 11:00:40 is more than 3 hours after 08:00, so it starts session 2,
+    #   whose 1 hour look-back reaches the 10:25 re-image for session 1
+    tx = [at(8), at(10.5), at(11) + timedelta(seconds=40)]
+    offsets = [
+        (at(8) - timedelta(minutes=5), 1.0, 0.0, 0.0),
+        (at(10.5) - timedelta(minutes=5), 2.0, 0.0, 0.0),
+        (at(11) + timedelta(seconds=20), 3.0, 0.0, 0.0),
+    ]
+    connection = FakeConnection(tx, offsets=offsets)
+    assert offsets_by_session(connection) == [
+        (1, [1.0, 0.0, 0.0]),
+        (2, [3.0, 0.0, 0.0]),
+    ]
+
+
+def test_session_offsets_split_within_the_same_minute():
+    # with a 30 minute interval, 08:30:00 ends session 1 and 08:30:50
+    #   starts session 2, which was imaged at 08:30:20
+    tx = [at(8), at(8.5), at(8.5) + timedelta(seconds=50)]
+    offsets = [
+        (at(8) - timedelta(minutes=2), 1.0, 0.0, 0.0),
+        (at(8.5) + timedelta(seconds=20), 2.0, 0.0, 0.0),
+    ]
+    connection = FakeConnection(tx, [180_000], offsets)
+    assert offsets_by_session(connection) == [
+        (1, [1.0, 0.0, 0.0]),
+        (2, [2.0, 0.0, 0.0]),
+    ]
