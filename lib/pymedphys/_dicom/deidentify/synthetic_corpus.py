@@ -304,16 +304,17 @@ SEQUESTERED_FILE = "03-ct-3.dcm"
 # The file that keeps a copy of another file's marker, for review.
 REVIEW_FILE = "07-rtdose-review.dcm"
 # The Structured Reports, whose Content Sequence holds a content tree, which
-# the Basic Profile's D sequesters, as a sequence has no dummy value.
-STRUCTURED_REPORT_FILES = (
-    "22-sr-dose-x-ray.dcm",
-    "23-sr-dose-radiopharmaceutical.dcm",
+# the Basic Profile's D sequesters, as a sequence has no dummy value: the
+# radiation dose reports, and the general reports.
+DOSE_REPORT_FILES = ("22-sr-dose-x-ray.dcm", "23-sr-dose-radiopharmaceutical.dcm")
+GENERAL_REPORT_FILES = (
     "24-sr-basic-text.dcm",
     "25-sr-enhanced.dcm",
     "26-sr-comprehensive.dcm",
     "27-sr-comprehensive-3d.dcm",
     "28-sr-extensible.dcm",
 )
+STRUCTURED_REPORT_FILES = DOSE_REPORT_FILES + GENERAL_REPORT_FILES
 # The directory, within the one that write_corpus is given, of the files.
 INSTANCES_DIRECTORY = "instances"
 
@@ -394,6 +395,8 @@ _PATIENTS_NAME_TAG = "(0010,0010)"
 _FRAME_OF_REFERENCE_TAGS = frozenset({"(0020,0052)", "(3006,0024)", "(0064,0003)"})
 _CONTOUR_IMAGE_SEQUENCE = "(3006,0016)"
 _CONTENT_SEQUENCE = "(0040,A730)"
+# The frame of reference of a SCOORD3D content item's coordinates.
+_REFERENCED_FRAME_OF_REFERENCE = "(3006,0024)"
 # The sequences of a Structured Report's root content item, its Concept Name
 # Code Sequence and Content Sequence, which its template builds.
 _CONTENT_TREE_ROOT = frozenset({"(0040,A043)", _CONTENT_SEQUENCE})
@@ -1662,8 +1665,7 @@ class _Instance:
         PNAME items, are markers, and the study that an X-ray report's scope
         of accumulation names is the collection's; each is recorded with its
         item's concept name. A measurement report's volumetric region is in
-        the collection's Frame of Reference, which the run's key replaces as
-        it replaces the collection's other references to it.
+        the collection's Frame of Reference, recorded as linked.
         """
         put = self._set
         put((), "(0008,0060)", ["SR"])
@@ -1693,10 +1695,22 @@ class _Instance:
     def _record_content(
         self, item: pydicom.Dataset, items: tuple[tuple[str, int], ...]
     ) -> None:
-        """Record the identifying value of each content item below ``item``."""
+        """Record the identifying value of each content item below ``item``.
+
+        The frame of reference of a SCOORD3D item is recorded too, as linked,
+        with no concept name, since it takes its own row of Table E.1-1.
+        """
         for index, child in enumerate(item.get("ContentSequence", ())):
             within = (*items, (_CONTENT_SEQUENCE, index))
             value_type = child.ValueType
+            if value_type == "SCOORD3D":
+                self._record(
+                    ElementPath(within, _REFERENCED_FRAME_OF_REFERENCE),
+                    "UI",
+                    (str(child.ReferencedFrameOfReferenceUID),),
+                    PlacementKind.LINKED_UID,
+                    _REFERENCED_FRAME_OF_REFERENCE,
+                )
             if value_type in _CONTENT_ITEM_VRS:
                 (code,) = child.ConceptNameCodeSequence
                 tag = _CONTENT_ITEM_VALUES[value_type]

@@ -1049,6 +1049,9 @@ def test_no_marker_is_planted_in_a_reports_root_content_item_sequences(corpus):
             top = items[0][0] if items else placement.path.tag
             if top not in ("(0040,A043)", "(0040,A730)"):
                 assert placement.reason is not Reason.CONTENT_TREE
+            elif placement.concept is None and placement.kind is Kind.LINKED_UID:
+                # A SCOORD3D item's frame of reference, the collection's.
+                assert placement.path.tag == "(3006,0024)", placement
             elif placement.concept is None:
                 assert placement.reason is Reason.CONTENT_TREE, placement
                 assert placement.values == ()

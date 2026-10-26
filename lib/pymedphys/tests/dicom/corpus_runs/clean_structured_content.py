@@ -23,6 +23,13 @@ in Table E.3.4-1 with D, so their markers are replaced. A NUMERIC item that
 the table does not list is added after them. The items' other elements take
 their own actions, none of which is K without another option, so no marker
 in the sequence is kept (D-047).
+
+The general Structured Reports' trees hold only rows that their templates
+require and that the option keeps under every option set, so they are
+released, their Person Observer Names and source series replaced; the
+radiation dose reports' required DateTime Started and Radiopharmaceutical
+Start DateTime take their trees out without a Retain Longitudinal Temporal
+Information Option, so they are sequestered.
 """
 
 import dataclasses
@@ -31,7 +38,7 @@ from pymedphys._imports import pydicom
 
 from pymedphys._dicom.deidentify import synthetic_corpus as corpus_module
 
-from .._corpus_run import CorpusRun
+from .._corpus_run import BASIC_WITHHELD, CorpusRun
 
 # Two concept names that Table E.3.4-1 lists, with their Value Types, and
 # one that it does not.
@@ -97,4 +104,9 @@ RUN = CorpusRun(
     "clean-structured-content",
     options=("clean_structured_content",),
     corpus=with_acquisition_context_items,
+    withheld={
+        name: withheld
+        for name, withheld in BASIC_WITHHELD.items()
+        if name not in corpus_module.GENERAL_REPORT_FILES
+    },
 )

@@ -895,7 +895,9 @@ def test_the_multi_frame_instances_keep_their_reviewed_dummy_values(policy_run):
         if kept:
             assert written.get(procedure_step) == source.get(procedure_step)
         if file.manifest.iod not in multi_frame:
-            assert kept or procedure_step not in written, file.name
+            # SR Document General requires it, Type 2, so Z leaves it empty
+            # in a Structured Report.
+            assert kept or not written.get(procedure_step), file.name
             continue
         assert procedure_step in source
         if not kept:
