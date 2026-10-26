@@ -1069,8 +1069,9 @@ def face_review_applies(
 
     It applies under Clean Recognizable Visual Features: with a preset, or a
     custom option set in ``options``, that selects it (D-033, D-046), and the
-    command line and the library refuse one given otherwise. No preset
-    selects it yet. Without either, the run's preset is ``basic``.
+    command line and the library refuse one given otherwise. Of the
+    presets, ``public-release`` selects it. Without either, the run's preset
+    is ``basic``.
     """
     if options is not None:
         return policy.CLEAN_RECOGNIZABLE_VISUAL_FEATURES in options
