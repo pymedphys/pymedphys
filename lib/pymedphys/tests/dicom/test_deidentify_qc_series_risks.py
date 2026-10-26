@@ -442,7 +442,18 @@ def test_a_run_over_the_synthetic_corpus_lists_its_volumes_and_rt_image(tmp_path
         ("pet-volume", released("Legacy Converted Enhanced PET Image")),
         ("rt-image", released("RT Image")),
     ]
-    assert [len(positions) for _, positions in volumes] == [2, 2, 1, 1, 1, 1, 1, 1, 1, 1]
+    assert [len(positions) for _, positions in volumes] == [
+        2,
+        2,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+    ]
     assert pack["series_risks"] == [
         {
             "positions": positions,
