@@ -30,7 +30,9 @@ renders:
 Enhanced multi-frame images are not rendered.
 :mod:`~pymedphys._dicom.deidentify.qc_contours` renders RT Structure Set
 contours by :func:`views`, and by :func:`view_crossings` the surfaces
-that one region hides behind its own.
+that one region hides behind its own, and
+:mod:`~pymedphys._dicom.deidentify.qc_segments` renders a Segmentation's
+segments likewise.
 
 The surface encloses the voxels at or above a threshold, applied after
 Rescale Slope and Rescale Intercept, or after Dose Grid Scaling for RT Dose:
