@@ -119,18 +119,27 @@ def test_matches_mosaiq_rule_on_random_times():
 class FakeConnection:
     """Answers the queries in sessions.py from in-memory rows"""
 
-    def __init__(self, tx_datetimes, intervals=(), offsets=()):
+    def __init__(self, tx_datetimes, intervals=(), offsets=(), excluded_intervals=()):
         self.tx_datetimes = tx_datetimes
         self.intervals = intervals
         # (Study_DtTm, Superior_Offset, Anterior_Offset, Lateral_Offset)
         self.offsets = offsets
+        # department intervals for the site's QA-mode or untimed deliveries
+        self.excluded_intervals = excluded_intervals
+
+
+def treatment_predicates_applied(query):
+    return "WasQAMode = 0" in query and "Tx_DtTm IS NOT NULL" in query
 
 
 def fake_execute(connection, query, parameters=None):  # pylint: disable = unused-argument
     if "Config.Tx_Interval_Time" in query:
-        return [(value,) for value in connection.intervals]
+        intervals = list(connection.intervals)
+        if not treatment_predicates_applied(query):
+            intervals += connection.excluded_intervals
+        return [(value,) for value in sorted(set(intervals))]
     if "FROM Dose_Hst" in query:
-        assert "WasQAMode = 0" in query
+        assert treatment_predicates_applied(query)
         return [(tx,) for tx in connection.tx_datetimes]
     if "FROM Offset" in query:
         # SQL Server converts string parameters to datetimes for the comparison
@@ -160,6 +169,19 @@ def test_department_interval_defaults_without_config():
 def test_conflicting_department_intervals_raise():
     with pytest.raises(ValueError, match="different treatment session intervals"):
         session_interval_for_site(FakeConnection([], [180_000, 1_080_000]), 1)
+
+
+def test_department_interval_ignores_excluded_deliveries():
+    # a 30 minute department's QA or untimed deliveries, with patient
+    #   treatments from a 3 hour department
+    connection = FakeConnection([], [1_080_000], excluded_intervals=[180_000])
+    assert session_interval_for_site(connection, 1) == timedelta(hours=3)
+
+
+def test_excluded_deliveries_do_not_replace_default_interval():
+    # patient treatments without a department setting keep the default
+    connection = FakeConnection([], excluded_intervals=[180_000])
+    assert session_interval_for_site(connection, 1) == DEFAULT_SESSION_INTERVAL
 
 
 def test_sessions_for_site_uses_department_interval():

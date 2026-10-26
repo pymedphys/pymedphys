@@ -116,6 +116,8 @@ def session_interval_for_site(connection: Connection, sit_set_id: int) -> timede
 
     Looks up Config.Tx_Interval_Time (stored in hundredths of a second) for
     the departments (Dose_Hst.Inst_ID) that recorded the site's treatments.
+    As in sessions_for_site, QA-mode deliveries and deliveries without a
+    treatment time are excluded.
 
     Parameters
     ----------
