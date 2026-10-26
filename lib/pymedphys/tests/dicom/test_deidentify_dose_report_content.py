@@ -60,6 +60,7 @@ CONTENT = "(0040,A730)"
 VERIFYING_OBSERVER = "(0040,A073)"
 REFERENCED_REQUEST = "(0040,A370)"
 REQUESTED_PROCEDURE_ID = "(0040,1001)"
+REQUESTED_PROCEDURE = "REQUESTED-PROCEDURE"
 X_RAY = "x-ray"
 RADIOPHARMACEUTICAL = "radiopharmaceutical"
 REPORTS = {
@@ -628,36 +629,62 @@ def test_a_verified_report_is_sequestered_by_its_verifying_observer(
     ]
 
 
-@pytest.mark.parametrize(
-    "preset", ["basic", "basic-clean-descriptors", "tps-import", "public-release"]
-)
-@pytest.mark.parametrize("name", REPORTS)
-def test_a_report_made_for_a_request_is_sequestered_by_its_procedure_id(
-    with_option, preset, name
-):
-    dataset, iod = _report(name)
+def _made_for_a_request(dataset):
+    """Give a report a Referenced Request Sequence that holds its procedure ID."""
     request = pydicom.Dataset()
     request.StudyInstanceUID = reports.STUDY
     request.ReferencedStudySequence = []
     request.AccessionNumber = ""
     request.PlacerOrderNumberImagingServiceRequest = ""
     request.FillerOrderNumberImagingServiceRequest = ""
-    request.RequestedProcedureID = "REQUESTED-PROCEDURE"
+    request.RequestedProcedureID = REQUESTED_PROCEDURE
     request.RequestedProcedureDescription = ""
     request.RequestedProcedureCodeSequence = []
     dataset.ReferencedRequestSequence = [request]
+    return dataset
+
+
+@pytest.mark.parametrize(
+    "preset", ["basic", "basic-clean-descriptors", "tps-import", "public-release"]
+)
+@pytest.mark.parametrize("name", REPORTS)
+def test_a_report_made_for_a_request_has_its_procedure_id_emptied(
+    with_option, preset, name
+):
+    dataset, iod = _report(name)
+    _made_for_a_request(dataset)
     procedure_id = ElementPath(((REFERENCED_REQUEST, 0),), REQUESTED_PROCEDURE_ID)
 
-    _, plan = _planned(dataset, iod, with_option(preset))
+    for composed in (policy.compose_policy(preset), with_option(preset)):
+        _, plan = _planned(dataset, iod, composed)
 
-    # Table E.1-1 gives Requested Procedure ID a plain X, and the IODs
-    # require it (Type 2) in Referenced Request Sequence, which is Type 1C,
-    # required where the report was made for a request, and no Type 3
-    # sequence encloses it, so removing it would make the instance
-    # nonconformant (D-020), even where the option keeps the tree.
-    assert procedure_id in [s.path for s in plan.sequestrations]
-    del request.RequestedProcedureID
-    _, plan = _planned(dataset, iod, with_option(preset))
-    assert all(
-        s.path.items[:1] != ((REFERENCED_REQUEST, 0),) for s in plan.sequestrations
-    )
+        # Table E.1-1 gives Requested Procedure ID a plain X, and the IODs
+        # require it (Type 2) in Referenced Request Sequence, which is Type
+        # 1C, required where the report was made for a request, with no
+        # Type 3 sequence enclosing it. Removing it would sequester the
+        # report, so it is emptied instead, as the maintainer decided
+        # (D-020), with or without the option.
+        (element,) = (e for e in plan.elements if e.path == procedure_id)
+        assert element.action == "Z"
+        assert all(
+            s.path.items[:1] != ((REFERENCED_REQUEST, 0),) for s in plan.sequestrations
+        )
+
+
+# A preset under which the option keeps each report's tree.
+@pytest.mark.deid_requirement("MIDI-BP-03")
+@pytest.mark.parametrize(
+    "name, preset", [(X_RAY, "tps-import"), (RADIOPHARMACEUTICAL, "public-release")]
+)
+def test_a_written_report_made_for_a_request_holds_an_empty_procedure_id(
+    with_option, name, preset
+):
+    dataset, _ = _report(name)
+    _made_for_a_request(dataset)
+
+    data = _written(with_option(preset), dataset)
+
+    assert REQUESTED_PROCEDURE.encode() not in data
+    (request,) = pydicom.dcmread(io.BytesIO(data)).ReferencedRequestSequence
+    assert _int(REQUESTED_PROCEDURE_ID) in request
+    assert request.RequestedProcedureID == ""

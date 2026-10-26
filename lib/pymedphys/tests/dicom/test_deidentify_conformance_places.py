@@ -59,6 +59,8 @@ DOSE_REPORTS = ("Radiopharmaceutical Radiation Dose SR", "X-Ray Radiation Dose S
 ATTRIBUTE_MODIFICATION_DATETIME = "(0400,0562)"
 ORIGINAL_ATTRIBUTES = "(0400,0561)"
 ROI_INTERPRETER_SEQUENCE = "(3006,004E)"  # X in the Basic Profile
+REFERENCED_REQUEST = "(0040,A370)"
+REQUESTED_PROCEDURE_ID = "(0040,1001)"  # X in the Basic Profile
 SOP_CLASS_UID = "(0008,0016)"  # Type 1 at the top level of CT Image
 
 
@@ -107,6 +109,7 @@ def test_plain_actions_are_resolved_by_type_at_every_place(preset):
                     extents.OVERLAY_GROUP: conformance.Place(
                         name, path, "X", conformance.OVERLAY_GROUP
                     ),
+                    extents.EMPTIED: conformance.Place(name, path, "Z"),
                 }.get(removal.extent)
                 if removal.extent is extents.SEQUENCE:
                     place = conformance.Place(name, path, "X", path[removal.sequence])
@@ -128,6 +131,22 @@ def _has_dummy_value(tag):
 
 def _row(text, tag):
     return next(line for line in text.splitlines() if f"| {tag} |" in line)
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
+def test_the_statement_says_a_reports_requested_procedure_id_is_emptied(preset):
+    statement = _statement(preset)
+    places = _entry(statement, REQUESTED_PROCEDURE_ID).places
+
+    # A plain X empties it in a dose report's Referenced Request Sequence,
+    # rather than sequester the report, as the maintainer decided (D-020).
+    assert places == tuple(
+        conformance.Place(name, (REFERENCED_REQUEST,), "Z")
+        for name in ("Radiopharmaceutical Radiation Dose SR", "X-Ray Radiation Dose SR")
+    )
+    text = conformance_markdown.render_markdown(statement)
+    assert "Requested Procedure ID (0040,1001)" in text
+    assert "is emptied there" in text
 
 
 @pytest.mark.deid_requirement("PS3.15-E.1.3-01")

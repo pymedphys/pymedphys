@@ -143,8 +143,7 @@ recorded in the other files with
 item of such a sequence. Of the corpus's IODs these
 are Responsible Person (0010,2297) and Responsible Organization (0010,2299)
 at the top level, each Structured Report's Verifying Observer Sequence
-(0040,A073), and Requested Procedure ID (0040,1001) in its Referenced
-Request Sequence (0040,A370), Radiopharmaceutical Start DateTime (0018,1078) in the
+(0040,A073), Radiopharmaceutical Start DateTime (0018,1078) in the
 Radiopharmaceutical Information Sequence (0054,0016) of an Enhanced PET
 Image, and Institution Code Sequence (0008,0082), which X/Z/D gives D
 where it is Type 1C, in the Interlock Resolution User Sequence (300A,0746)

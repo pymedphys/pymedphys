@@ -1064,7 +1064,13 @@ def render_markdown(statement: ConformanceStatement) -> str:
         "of its overlay group where the IOD's Overlay Plane Module is "
         "user-optional, and ROI Interpreter Sequence (3006,004E) is removed "
         "alone, since its condition lapses once ROI Creator Sequence "
-        "(3006,004D) is removed.",
+        "(3006,004D) is removed. Requested Procedure ID (0040,1001), which "
+        "Table E.1-1 gives X, is Type 2 in Referenced Request Sequence "
+        "(0040,A370), which a Structured Report holds where it was made for "
+        "a request, and no Type 3 sequence encloses it there, so it is "
+        "emptied there instead, rather than sequester the report. This "
+        "departs from the table's X; the zero-length value discloses "
+        "nothing that removal would not.",
         "",
         "For each compound action, and each plain X, Z, or D, the last column "
         "gives the action at each place where a supported IOD defines the "
