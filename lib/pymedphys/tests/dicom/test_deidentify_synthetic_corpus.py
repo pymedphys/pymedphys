@@ -14,6 +14,10 @@
 
 """The synthetic corpus, its markers, and its manifest."""
 
+# Every check reads the one corpus and its manifest, so the checks stay in
+# one module.
+# pylint: disable = too-many-lines
+
 import bisect
 import collections
 import datetime
@@ -287,6 +291,11 @@ def test_every_attribute_of_table_e1_1_that_the_iod_defines_is_placed(corpus):
             else:
                 assert placement.reason is None
 
+        if file.name in corpus_module.STRUCTURED_REPORT_FILES:
+            # The tree's items decide what is below the Content Sequence.
+            expected = {
+                (path, tag) for path, tag in expected if path[:1] != ("(0040,A730)",)
+            }
         assert set(found) == expected, file.name
         assert max(found.values()) == 1, file.name
 
@@ -1049,9 +1058,13 @@ def test_no_marker_is_planted_in_a_reports_root_content_item_sequences(corpus):
             top = items[0][0] if items else placement.path.tag
             if top not in ("(0040,A043)", "(0040,A730)"):
                 assert placement.reason is not Reason.CONTENT_TREE
-            elif placement.concept is None and placement.kind is Kind.LINKED_UID:
-                # A SCOORD3D item's frame of reference, the collection's.
-                assert placement.path.tag == "(3006,0024)", placement
+            elif items and top == "(0040,A730)":
+                # Only the tree's own values are recorded below it, and the
+                # frame of reference of a SCOORD3D item, the collection's,
+                # which takes its own row of Table E.1-1.
+                if placement.concept is None:
+                    assert placement.kind is Kind.LINKED_UID, placement
+                    assert placement.path.tag == "(3006,0024)", placement
             elif placement.concept is None:
                 assert placement.reason is Reason.CONTENT_TREE, placement
                 assert placement.values == ()

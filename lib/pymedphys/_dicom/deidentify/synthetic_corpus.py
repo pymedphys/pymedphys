@@ -63,7 +63,9 @@ holds a content tree that a template builds
 root's Concept Name Code Sequence (0040,A043) the report's title, rather
 than markers: the Content Sequence is recorded with
 :attr:`NotPlantedReason.CONTENT_TREE`, as is each attribute that the IOD
-defines below either sequence. The value of each content item that can
+defines below the Concept Name Code Sequence. The places that the IOD
+defines below the Content Sequence are not recorded, since the tree's
+items, which need not be numbered 0, decide what each holds. The value of each content item that can
 identify a person, a device, or a time, of Value Type UIDREF, DATETIME, or
 PNAME, holds a marker of its VR, but the X-ray report's Study Instance UID
 of its scope of accumulation, which is the collection's study and is
@@ -566,7 +568,7 @@ class NotPlantedReason(enum.Enum):
     # A sequence of a Structured Report's root content item, its Concept
     # Name Code Sequence or the Content Sequence that holds its content tree,
     # which a template (synthetic_content_trees) builds rather than the
-    # markers, and each attribute that the IOD defines below either.
+    # markers, and each attribute that the IOD defines below the first.
     CONTENT_TREE = "content-tree"
 
 
@@ -1298,9 +1300,16 @@ class _Instance:
             self.spec.sop_class in ROOT_TEMPLATES
             and (path[:1] or (tag,))[0] in _CONTENT_TREE_ROOT
         ):
-            # The content tree takes the place of the markers.
-            kind = PlacementKind.SEQUENCE if path == () else PlacementKind.NOT_PLANTED
-            self._record(element_path, vr, (), kind, row, NotPlantedReason.CONTENT_TREE)
+            # The content tree takes the place of the markers. A place below
+            # the Content Sequence is not recorded, since the tree's items,
+            # not items numbered 0, decide what is there.
+            if path[:1] != (_CONTENT_SEQUENCE,):
+                kind = (
+                    PlacementKind.SEQUENCE if path == () else PlacementKind.NOT_PLANTED
+                )
+                self._record(
+                    element_path, vr, (), kind, row, NotPlantedReason.CONTENT_TREE
+                )
             return
         if "x" in written:
             reason = NotPlantedReason.MASKED_ELEMENT

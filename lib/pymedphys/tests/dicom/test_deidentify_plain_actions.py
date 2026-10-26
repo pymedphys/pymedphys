@@ -48,6 +48,8 @@ PROCEDURE_PARAMETER_DESCRIPTION = "(300A,078E)"
 PATIENT_TREATMENT_PREPARATION_PROCEDURE = "(300A,0790)"
 PATIENT_SETUP_PHOTO_DESCRIPTION = "(300A,0794)"
 PATIENT_TREATMENT_PREPARATION = "(300A,079F)"
+REFERENCED_REQUEST = "(0040,A370)"
+REQUESTED_PROCEDURE_ID = "(0040,1001)"
 RADIOPHARMACEUTICAL_START_DATETIME = "(0018,1078)"
 RADIOPHARMACEUTICAL_INFORMATION = "(0054,0016)"
 # The first supported release's IODs that include the Overlay Plane Module.
@@ -617,9 +619,19 @@ def test_a_plain_x_on_a_required_attribute_in_the_first_release_iods(tables):
             (RADIOPHARMACEUTICAL_INFORMATION,),
             RADIOPHARMACEUTICAL_START_DATETIME,
         ): _removal(*SEQUESTER),
+        # Type 2 in each dose report's Type 1C Referenced Request Sequence,
+        # required where the report was made for a request, which no Type 3
+        # sequence encloses.
+        **{
+            (name, (REFERENCED_REQUEST,), REQUESTED_PROCEDURE_ID): _removal(*SEQUESTER)
+            for name in (
+                "X-Ray Radiation Dose SR",
+                "Radiopharmaceutical Radiation Dose SR",
+            )
+        },
     }
-    # Eight attributes in all.
-    assert len({tag for _, _, tag in found}) == 8
+    # Nine attributes in all.
+    assert len({tag for _, _, tag in found}) == 9
 
 
 @pytest.mark.parametrize(
