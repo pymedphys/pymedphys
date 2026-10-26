@@ -26,8 +26,8 @@ given that pack (:func:`read_face_review`). The pack also records the
 SHA-256 of the pixel data of each file that the first run wrote
 (:func:`pixel_data_sha256`), only where previews that could show a face
 draw every frame of them, which for an RT Dose (:func:`is_rt_dose`) only
-dose-levels previews do, and the second run holds pixel data of more frames
-than they listed;
+dose-levels previews do, and for a Segmentation only its segments sheet, and
+the second run holds pixel data of more frames than they listed;
 and of the contours of each RT Structure Set that it wrote
 (:func:`contour_data_sha256`), only where its contour sheet shows them. An
 instance that carries visual features (:func:`carries_visual_features`)

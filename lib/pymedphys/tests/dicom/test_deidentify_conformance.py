@@ -116,7 +116,7 @@ def _removed_with_a_sequence(sequence_action, iod, path):
             action = compound_actions.resolve_plain_in_iod(
                 iod, tag, path[:depth], action
             )
-        if action not in walker.DESCENDED:
+        if not walker.descends(tag, action):
             return True
     return False
 
