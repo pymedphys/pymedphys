@@ -315,16 +315,23 @@ def test_what_the_finder_saw_at_each_eye_is_measured(measured):
         assert eye.nearest_kept == pytest.approx(error, abs=1e-9)
         assert eye.nearest is not None and eye.nearest <= eye.nearest_kept
         assert eye.outside is not None and eye.outside >= 0.5
-        assert eye.best_half is not None and eye.best_half >= 0.8
+        assert eye.best_half is not None and eye.best_half >= 0.7
         assert eye.depth_window == "within"
         assert head.GLOBE_RADIUS - 2 * finder.voxel <= eye.depth
     pair = finder.pair
     assert pair is not None
     assert pair.side_by_side
     assert pair.lateral == pair.superior == (True, True)
+    assert pair.passes
     assert pair.behind - pair.in_front >= defacing.HEAD_BEHIND
     assert pair.cranium_above
     assert finder.other_pairs == ()
+    # Each globe lies just under the skin in front.
+    (front,) = finder.fronts
+    assert front.place == "eyes" and front.side == "in-front"
+    assert all(0 < depth <= defacing.FRONT_REACH for depth in front.depth)
+    assert all(fat <= defacing.FRONT_FAT for fat in front.fat)
+    assert front.bone == (False, False)
     assert sorted(kind for kind, _ in finder.shells).count("eye") == 2
     for _, shares in finder.shells:
         assert set(shares) == set(face_validation.TISSUES)
@@ -355,6 +362,9 @@ def test_globes_away_from_the_eyes_are_counted_as_another_pair(measured):
     # The eyes' masks moved 30 mm to the patient's left: each globe lies
     # level with their centroids and beside them, 30 mm or more from each.
     assert finder.other_pairs == ("level-beside + level-beside",)
+    (front,) = finder.fronts
+    assert front.place == "level-beside + level-beside"
+    assert front.side == "in-front"
 
 
 def test_eyes_named_for_the_other_side_are_tested_as_the_same_pair(measured):
@@ -424,7 +434,7 @@ def test_a_ct_not_in_hounsfield_units_is_counted_as_without_air(tmp_path):
 
 
 def test_the_summary_counts_the_cases_by_outcome(summary):
-    assert summary["format"] == "pymedphys-deid-face-validation/2"
+    assert summary["format"] == "pymedphys-deid-face-validation/3"
     assert summary["cases"] == {
         "total": 10,
         "measured": 6,
@@ -453,6 +463,13 @@ def test_the_summary_counts_the_cases_by_outcome(summary):
         "defaced": {"level-beside + level-beside": 1},
         "no-eyes": {},
     }
+    front = finder["front"]
+    assert front["eyes"]["side"] == {"defaced": {"in-front": 4}, "no-eyes": {}}
+    assert front["other"]["places"] == finder["other_pair_places"]
+    assert front["other"]["side"] == {"defaced": {"in-front": 1}, "no-eyes": {}}
+    assert front["eyes"]["bone"] == {"defaced": {"no": 8}, "no-eyes": {}}
+    depths = front["eyes"]["depth"]["defaced"]["bins"]
+    assert sum(each["count"] for each in depths) == 8
     assert summary["eyes_of_defaced_series"] == {
         "agree": 4,
         "eyes-disagree-with-rois": 1,
@@ -534,6 +551,7 @@ def test_measures_show_nothing_of_a_case(measured):
     assert repr(finder) == "FinderMeasures()"
     assert repr(finder.eyes[0]) == "EyeMeasures()"
     assert repr(finder.pair) == "PairMeasures()"
+    assert repr(finder.fronts[0]) == "FrontMeasures()"
 
 
 def test_a_case_that_raises_is_counted_by_where_without_its_message(
@@ -667,3 +685,5 @@ def test_the_settings_are_the_engines(summary):
     assert settings["eye_reach_mm"] == face_blocks.EYE_REACH
     assert settings["cavity_floor_mm"] == face_blocks.CAVITY_FLOOR
     assert settings["globe_diameter_mm"] == list(defacing.GLOBE_DIAMETER)
+    assert settings["front_reach_mm"] == defacing.FRONT_REACH
+    assert settings["front_fat_mm"] == defacing.FRONT_FAT

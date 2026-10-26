@@ -470,6 +470,9 @@ def test_d_on_any_other_sequence_is_refused():
         "VerifyingObserverSequence",
         "OperatorIdentificationSequence",
     }
+    # Verifying Observer Sequence's reviewed rule keeps its source items
+    # instead of writing items of its own (D-021).
+    assert set(dummy_values.KEPT_ITEM_ATTRIBUTES) == {"(0040,A073)"}
     for attribute in sequences:
         with pytest.raises(dummy_values.NoDummyValueError) as raised:
             dummy_values.items_for_d(attribute.tag, [{CODE_VALUE: "SECRET"}], KEY)
