@@ -41,7 +41,9 @@ def test_csv_loader_preserves_nul_text(monkeypatch, tmp_path):
     (tmp_path / "Text.csv").write_text("id,text\n1,before\0after\n", encoding="utf-8")
     monkeypatch.setattr(paths, "DATA", tmp_path)
 
-    assert utilities._load_tables()["Text"]["text"].tolist() == ["before\0after"]
+    # Exercise the CSV parser directly, without schema conversion or caching.
+    tables = utilities._load_tables()  # pylint: disable = protected-access
+    assert tables["Text"]["text"].tolist() == ["before\0after"]
 
 
 def test_dataframe_to_sql_preserves_nul_text(monkeypatch, tmp_path):
