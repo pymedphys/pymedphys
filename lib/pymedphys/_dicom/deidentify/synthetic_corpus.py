@@ -1228,10 +1228,13 @@ class _Instance:
             # The content tree takes the place of the markers. A place below
             # the Content Sequence is not recorded, since the tree's items,
             # not items numbered 0, decide what is there.
-            if path[:1] == (_CONTENT_SEQUENCE,):
-                return
-            kind = PlacementKind.SEQUENCE if path == () else PlacementKind.NOT_PLANTED
-            self._record(element_path, vr, (), kind, row, NotPlantedReason.CONTENT_TREE)
+            if path[:1] != (_CONTENT_SEQUENCE,):
+                kind = (
+                    PlacementKind.SEQUENCE if path == () else PlacementKind.NOT_PLANTED
+                )
+                self._record(
+                    element_path, vr, (), kind, row, NotPlantedReason.CONTENT_TREE
+                )
             return
         if "x" in written:
             reason = NotPlantedReason.MASKED_ELEMENT
