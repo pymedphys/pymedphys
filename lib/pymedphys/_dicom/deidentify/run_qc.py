@@ -581,7 +581,8 @@ def _written_sha256(
     contour sheet does not show, and the pixel data's where the file has
     pixel data of which the pack's previews that could show a face do not
     draw every frame, which for an RT Dose only its dose-levels previews
-    can, so that no verdict releases either unseen.
+    can, and for a Segmentation only its segments sheet, so that no verdict
+    releases either unseen.
     """
     digests: dict[str, str | None] = {"pixel_sha256": None, "contour_sha256": None}
     try:

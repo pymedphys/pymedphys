@@ -510,6 +510,13 @@ def test_an_inspection_shows_each_globe_kept_and_their_pair_passing(inspection):
     assert (pair.right, pair.left) == (right, left)
     assert pair.side_by_side
     assert pair.lateral == pair.superior == (True, True)
+    # Each globe lies under the skin in front, which an eyelid covers, and
+    # deep in the head behind.
+    assert pair.front is not None and pair.back is not None
+    for front, back in zip(pair.front, pair.back):
+        assert front.open and not back.open
+        assert 0 < front.depth <= defacing.FRONT_REACH
+        assert not front.bone and back.bone
     behind, in_front = inspection.head_fills(right, left)
     assert behind - in_front >= defacing.HEAD_BEHIND
     above, below = inspection.cranium(right, left)
@@ -533,11 +540,12 @@ def test_an_inspection_shows_every_ball_considered_and_why_each_was_kept(inspect
                 for centre, radius in kept
             )
             continue
+        deep = ball.radius - inspection.voxel >= 9.0
         assert ball.kept == (
             ball.outside is not None
             and ball.best_half is not None
             and ball.outside >= 0.5
-            and ball.best_half >= 0.8
+            and ball.best_half >= (0.7 if deep else 0.8)
         )
         if ball.kept:
             kept.append((ball.centre, ball.radius))
@@ -548,6 +556,210 @@ def test_an_inspection_shows_every_ball_considered_and_why_each_was_kept(inspect
         tuple(sorted(two, key=lambda index: inspection.balls[index].centre[0]))
         for two in itertools.combinations(indices, 2)
     }
+
+
+@pytest.mark.parametrize(
+    "front, expected",
+    [
+        (defacing.Front(defacing.FRONT_REACH, defacing.FRONT_FAT, False), True),
+        (defacing.Front(-3.0, 0.0, False), True),
+        (defacing.Front(defacing.FRONT_REACH + 0.5, 0.0, False), False),
+        (defacing.Front(math.inf, 0.0, False), False),
+        (defacing.Front(5.0, defacing.FRONT_FAT + 0.5, False), False),
+        (defacing.Front(5.0, 0.0, True), False),
+    ],
+    ids=["at-the-limits", "air-within-the-radius", "deep", "no-air", "fat", "bone"],
+)
+def test_a_ball_is_open_to_air_only_just_under_the_skin(front, expected):
+    assert front.open is expected
+
+
+@pytest.mark.parametrize(
+    "anatomy, reach",
+    [(head.Head(), 6.0), (head.Head(bolus=True), 15.0)],
+    ids=["eyelids", "bolus-over-the-eyes"],
+)
+def test_globes_deeper_under_the_skin_than_the_front_reach_are_refused(
+    anatomy, reach, monkeypatch
+):
+    scan = head.axial()
+    _assert_around_the_globes(_block(scan, anatomy))
+    monkeypatch.setattr(defacing, "FRONT_REACH", reach)
+
+    with pytest.raises(defacing.FaceBlockRefused) as refused:
+        _block(scan, anatomy)
+
+    assert refused.value.problem is defacing.FaceBlockProblem.NO_EYES
+
+
+def test_a_globe_that_its_muscles_border_on_every_half_is_kept(monkeypatch):
+    # Extraocular muscles and an optic nerve, of soft tissue, touch each
+    # half of the sphere about the globe. In HaN-Seg's CTs, 0.8 refused 7
+    # globes of 0.6 to under 0.8, for soft tissue that the counts cannot
+    # name.
+    anatomy = head.Head(muscles=7.0)
+    inspection = _inspect(head.axial(), anatomy)
+    halves = [
+        inspection.balls[index].best_half
+        for globe in _GLOBES
+        for index in _kept_near(inspection, globe)
+    ]
+
+    assert len(halves) == 2
+    assert min(halves) < 0.8
+    _assert_around_the_globes(inspection.block())
+    monkeypatch.setattr(defacing, "_OUTSIDE_BEHIND_DEEP", 0.8)
+    with pytest.raises(defacing.FaceBlockRefused) as refused:
+        _block(head.axial(), anatomy)
+    assert refused.value.problem is defacing.FaceBlockProblem.NO_EYES
+
+
+@pytest.mark.parametrize("eyes", [(True, True), (False, False)], ids=["eyes", "none"])
+def test_soft_tissue_over_the_face_is_not_taken_for_globes_at_coarse_voxels(
+    eyes, monkeypatch
+):
+    # At 2.5 mm voxels, the layer of soft tissue over the analytic head's
+    # cheekbones gives balls as deep as an infant's globe, with 0.7 to under
+    # 0.8 of their best half outside it, which pair beside and below the
+    # orbits; only a deeper ball, as an adult's globe is, is kept with less
+    # than 0.8.
+    scan = head.axial(
+        spacing=2.5, thickness=5.0, extent=((-100, 100), (-130, 110), (-30, 110))
+    )
+    anatomy = head.Head(eyes=eyes)
+    inspection = _inspect(scan, anatomy)
+    shallow = [
+        ball
+        for ball in inspection.balls
+        if ball.best_half is not None
+        and 0.7 <= ball.best_half < 0.8
+        and ball.radius - inspection.voxel < 9.0
+    ]
+
+    assert shallow and not any(ball.kept for ball in shallow)
+    if any(eyes):
+        _assert_around_the_globes(inspection.block(), within=inspection.voxel)
+    else:
+        with pytest.raises(defacing.FaceBlockRefused) as refused:
+            inspection.block()
+        assert refused.value.problem is defacing.FaceBlockProblem.NO_EYES
+    monkeypatch.setattr(defacing, "_DEEP", 0.0)
+    with pytest.raises(defacing.FaceBlockRefused) as refused:
+        _block(scan, anatomy)
+    assert refused.value.problem is defacing.FaceBlockProblem.AMBIGUOUS_EYES
+
+
+def test_a_volume_ending_just_above_the_globes_tests_them_as_its_edge_shows():
+    # The sphere about each globe reaches 16 mm above its centre, beyond
+    # the volume, whose top slice holds the orbits' roofs: the globes are
+    # kept, and the volume is refused as showing no cranium above them.
+    inspection = _inspect(
+        head.axial(extent=((-100, 100), (-130, 110), (-120, head.GLOBE_Z + 15)))
+    )
+
+    for globe in _GLOBES:
+        assert len(_kept_near(inspection, globe)) == 1
+    with pytest.raises(defacing.FaceBlockRefused) as refused:
+        inspection.block()
+    assert refused.value.problem is defacing.FaceBlockProblem.CRANIUM_NOT_ABOVE_EYES
+
+
+def test_soft_tissue_cut_by_the_edge_of_the_field_of_view_is_not_a_globe():
+    # The field of view's front edge cuts the eyelids and cheeks, 14 mm in
+    # front of the globes' centres, within the spheres about them. Beyond
+    # the edge, a sphere or a line takes the edge's soft tissue, not air, so
+    # no ball is kept at the cut, and the globes, though kept, have no air
+    # in front.
+    inspection = _inspect(
+        head.axial(extent=((-100, 100), (head.GLOBE_Y - 14, 110), (-120, 120)))
+    )
+    kept = [index for index, ball in enumerate(inspection.balls) if ball.kept]
+
+    assert sorted(kept) == sorted(
+        index for globe in _GLOBES for index in _kept_near(inspection, globe)
+    )
+    (pair,) = inspection.pairs
+    assert pair.in_orbits and not pair.eyes
+    assert pair.front is not None
+    assert all(math.isinf(front.depth) for front in pair.front)
+    with pytest.raises(defacing.FaceBlockRefused) as refused:
+        inspection.block()
+    assert refused.value.problem is defacing.FaceBlockProblem.NO_EYES
+
+
+@pytest.mark.parametrize("eyes", [(True, True), (False, False)], ids=["eyes", "none"])
+def test_balls_in_bony_cups_behind_the_eyes_are_not_globes(eyes):
+    # As a temporal lobe's pole lies in a middle cranial fossa. In HaN-Seg,
+    # pairs below and behind the eyes, as such balls would be, passed the
+    # other tests of a pair, leaving volumes with more than one pair, and 2
+    # with only such a pair.
+    anatomy = head.Head(poles=True, eyes=eyes)
+    inspection = _inspect(head.axial(), anatomy)
+    poles = [
+        _kept_near(inspection, (side * head.POLE_X, head.POLE_Y, head.POLE_Z))
+        for side in (-1, 1)
+    ]
+    (pair,) = [
+        pair for pair in inspection.pairs if [[pair.right], [pair.left]] == poles
+    ]
+
+    assert pair.in_orbits and not pair.eyes
+    assert pair.front is not None and pair.back is not None
+    assert all(front.bone for front in pair.front)
+    assert not any(back.open for back in pair.back)
+    if any(eyes):
+        _assert_around_the_globes(inspection.block())
+        return
+    with pytest.raises(defacing.FaceBlockRefused) as refused:
+        inspection.block()
+    assert refused.value.problem is defacing.FaceBlockProblem.NO_EYES
+
+
+def test_a_ball_at_an_orbit_apex_is_not_a_globe():
+    # Paired with the other globe, it passes the other tests of a pair, as
+    # 6 of HaN-Seg's other pairs, of a ball at an eye and one level with the
+    # eyes but behind them, did.
+    inspection = _inspect(head.axial(), head.Head(apex=True))
+    (apex,) = _kept_near(inspection, head.APEX)
+    (right,) = _kept_near(inspection, _GLOBES[0])
+    (pair,) = [
+        pair for pair in inspection.pairs if (pair.right, pair.left) == (right, apex)
+    ]
+
+    assert pair.in_orbits and not pair.eyes
+    assert pair.front is not None
+    front = pair.front[1]
+    assert front.depth > defacing.FRONT_REACH and front.fat > defacing.FRONT_FAT
+    _assert_around_the_globes(inspection.block())
+
+
+def test_balls_one_above_the_other_are_a_pair_given_no_front_test():
+    # Two balls of soft tissue in fat, their centres on the finder's voxels
+    # and one directly above the other, as balls kept on one column of
+    # voxels were in 15 of HaN-Seg's CTs: no horizontal line runs
+    # perpendicular to the line between them, so only a pair in orbits is
+    # given the front test.
+    scan = head.axial(
+        spacing=1.5, thickness=1.5, extent=((-39, 39), (-39, 39), (-39, 39))
+    )
+    finder = _finder(scan)
+    for index in range(len(scan.positions)):
+        points = scan.points(index)
+        values = np.full(points.shape[:-1], -100.0)
+        for z in (-16.5, 16.5):
+            inside = np.linalg.norm(points - (0.0, 0.0, z), axis=-1) <= 11.0
+            values = np.where(inside, 40.0, values)
+        finder.add(values.astype(np.float32))
+    inspection = finder.inspect()
+    centres = [ball.centre for ball in inspection.balls if ball.kept]
+
+    assert sorted(centres) == [(0.0, 0.0, -16.5), (0.0, 0.0, 16.5)]
+    (pair,) = inspection.pairs
+    assert not pair.side_by_side and not pair.in_orbits and not pair.eyes
+    assert pair.front is None and pair.back is None
+    with pytest.raises(defacing.FaceBlockRefused) as refused:
+        inspection.block()
+    assert refused.value.problem is defacing.FaceBlockProblem.NO_EYES
 
 
 def test_the_depth_near_a_globe_is_about_its_radius(inspection):
@@ -564,8 +776,8 @@ def test_the_depth_near_a_globe_is_about_its_radius(inspection):
 def test_the_shell_of_a_ball_is_where_its_surround_was_tested(inspection):
     for index, ball in enumerate(inspection.balls):
         values = inspection.shell(index)
-        if ball.centre is None or ball.outside is None:
-            assert values is None
+        if ball.centre is None:
+            assert values is None and ball.outside is None
             continue
         assert values is not None
         soft = (values >= defacing.SOFT_TISSUE[0]) & (values <= defacing.SOFT_TISSUE[1])

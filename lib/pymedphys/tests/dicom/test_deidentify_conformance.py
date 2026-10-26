@@ -62,7 +62,12 @@ INTERLOCK_USER = ("(3008,0020)", "(300A,0740)", "(300A,0746)")
 INSTITUTION_CODE_SEQUENCE = "(0008,0082)"  # X/Z/D in the Basic Profile
 PIXEL_DATA_PROVIDER_URL = "(0028,7FE0)"  # X/Z/D by a supplementary rule
 # The attributes that a reviewed rule gives a dummy value, whatever their VR.
-REVIEWED_DUMMY_ATTRIBUTES = {"(0040,1101)", "(0008,1111)", "(0028,2000)"}
+REVIEWED_DUMMY_ATTRIBUTES = {
+    "(0040,1101)",
+    "(0008,1111)",
+    "(0028,2000)",
+    "(0040,A073)",
+}
 CT_FOR_PROCESSING = "1.2.840.10008.5.1.4.1.1.2.3"
 UNESCAPED_PIPE = re.compile(r"(?<!\\)\|")
 
@@ -127,7 +132,7 @@ def _removed_with_a_sequence(sequence_action, iod, path):
             action = compound_actions.resolve_plain_in_iod(
                 iod, tag, path[:depth], action
             )
-        if action not in walker.DESCENDED:
+        if not walker.descends(tag, action):
             return True
     return False
 

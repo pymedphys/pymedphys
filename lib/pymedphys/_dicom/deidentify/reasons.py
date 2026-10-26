@@ -206,8 +206,10 @@ class VisualFeaturesReason(enum.Enum):
     # no reviewer's verdict covers its source file: its series has no
     # verdict, the file is not one that the review saw, the reviewed run
     # held it beside a CT series that it defaced, so the verdict was of the
-    # defaced images rather than of the file, or it holds a deformable
-    # registration's grid, which no preview of the QC pack draws
+    # defaced images rather than of the file, it is a Segmentation whose
+    # segments reach such a series' face block, which the QC pack does not
+    # show, or it holds a deformable registration's grid, which no preview
+    # of the QC pack draws
     NO_FACE_VERDICT = "no-face-verdict"
     # its series is marked absent, but the run writes other pixel data of it
     # than the reviewed run did, such as a CT slice defaced since the
@@ -222,9 +224,9 @@ class VisualFeaturesReason(enum.Enum):
     # defaces, whose dose in the series' face block is too great to set to
     # zero there, so that it is written as received
     DOSE_IN_FACE_BLOCK = "dose-in-face-block"
-    # an RT Structure Set, RT Dose, or PET instance in the Frame of
-    # Reference of a CT series that the run defaces, whose outline or pixel
-    # data the run does not clean of the face, such as one in other frames
+    # an RT Structure Set, RT Dose, PET instance, or Segmentation in the
+    # Frame of Reference of a CT series that the run defaces, whose outline
+    # or pixel data the run does not clean of the face, such as one in other frames
     # too or that cannot be cut, and which a reviewer may have judged from
     # the defaced CT
     UNDEFACED_IN_DEFACED_FRAME = "undefaced-in-defaced-frame"
