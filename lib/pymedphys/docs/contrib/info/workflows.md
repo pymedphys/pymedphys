@@ -185,8 +185,10 @@ Runs pre-commit hooks for code formatting and basic checks.
 Dedicated linting workflow for code quality.
 
 - **Jobs**:
-  - `lint`: Comprehensive Python linting with Pylint, one process per CPU
-    (`jobs = 0` in `lib/pymedphys/.pylintrc`)
+  - `lint`: Comprehensive Python linting with Pylint, in one process
+    (`jobs = 1` in `lib/pymedphys/.pylintrc`) over the package's files sorted
+    by path, so that a run's messages do not depend on how files reach
+    workers or on file-system order
 - Ruff linting and formatting run through pre-commit
 - Runs when the selector chooses the Python checks, even if pre-commit fails
 
@@ -504,7 +506,8 @@ Automated dependency updates for Python packages.
 #### `deid-edition-check.yml`
 
 Checks whether NEMA's current edition of the DICOM standard would change the
-de-identification tables generated from the pinned edition, as the
+de-identification tables generated from the pinned edition, including the
+paragraphs of PS3.15 Annex E that the requirements register records, as the
 [de-identification design](deidentification-design.md) requires.
 
 - **Schedule**: Monthly (the 3rd), or manually

@@ -98,7 +98,10 @@ and codes that the engine defines, never by a source value or path:
   Table B.5-1 names it without "IOD" (D-010).
 - ``held_for_review``: how many instances were held for review, by stage and
   reason (D-009), from :func:`held_for_review`: a ROI Name that descriptor
-  cleaning held, why a pixel option held its pixel data (D-037), an
+  cleaning held, a value that it held of an attribute that another
+  option's cleaner left to the reviewed descriptors list, such as Allergies
+  under Retain Patient Characteristics (D-038), why a pixel option held its
+  pixel data (D-037), an
   instance that can show a face without a face verdict of absent for its
   source file and the pixel data that the run writes of it (D-046), a CT
   slice of a series with a target in its face block, an RT Structure Set,
@@ -181,6 +184,7 @@ from .preserving_writer import WriteReason
 from .qc_attestation import AttestationRecord, Outcome
 from .reasons import (
     DescriptorReason,
+    HeldDescriptor,
     HeldPixelData,
     HeldRoiName,
     HeldVisualFeatures,
@@ -209,7 +213,7 @@ from .standard import ALL_OPTIONS, VRS
 from .walker import Sequestration, SequesterReason
 
 # The format of the report document. A change to its fields takes a new label.
-FORMAT = "pymedphys-deid-release-report/28"
+FORMAT = "pymedphys-deid-release-report/29"
 
 _DIGEST = re.compile(r"[0-9a-f]{64}")
 # A key's non-secret identifier, as DeidKey.key_id gives it.
@@ -328,6 +332,7 @@ _CHECK_REASONS = {
 # The reason codes of each stage that holds an instance for review.
 _HOLDING = {
     "roi-names": frozenset(r.value for r in RoiNameReason),
+    "descriptors": frozenset(r.value for r in DescriptorHeld),
     "pixel-data": frozenset(r.value for r in PixelDataReason),
     "visual-features": frozenset(r.value for r in VisualFeaturesReason),
     "release": _SEQUESTERING["release"],
@@ -498,6 +503,9 @@ class HeldForReview:
     ----------
     stage : str
         ``"roi-names"`` (descriptor cleaning held a ROI Name),
+        ``"descriptors"`` (descriptor cleaning held a value of an attribute
+        that another option's cleaner left to the reviewed descriptors list,
+        such as Allergies under Retain Patient Characteristics),
         ``"pixel-data"`` (a pixel option held the instance's pixel data),
         ``"visual-features"`` (an instance that can show a face does not
         satisfy Clean Recognizable Visual Features, a CT slice's series has
@@ -982,13 +990,21 @@ def source_gaps(
 
 def held_for_review(
     instances: Iterable[
-        Iterable[HeldRoiName | HeldPixelData | HeldVisualFeatures | ReleaseReason]
+        Iterable[
+            HeldRoiName
+            | HeldDescriptor
+            | HeldPixelData
+            | HeldVisualFeatures
+            | ReleaseReason
+        ]
     ],
 ) -> tuple[HeldForReview, ...]:
     """Count the instances held for review by stage and reason (D-009).
 
     ``instances`` holds, for each held instance, its reasons: a ROI Name
-    that descriptor cleaning held, why a pixel option held its pixel data
+    that descriptor cleaning held, a value of an attribute that another
+    option's cleaner left to the reviewed descriptors list that descriptor
+    cleaning held (D-038), why a pixel option held its pixel data
     (D-037), the reason that an instance that can show a face does not
     satisfy the Clean Recognizable Visual Features Option, or a release
     gate's reason that requires QC review. An instance
@@ -1005,13 +1021,22 @@ def held_for_review(
     counts: collections.Counter[tuple[str, str]] = collections.Counter()
     for reasons in instances:
         if isinstance(
-            reasons, (HeldRoiName, HeldPixelData, HeldVisualFeatures, ReleaseReason)
+            reasons,
+            (
+                HeldRoiName,
+                HeldDescriptor,
+                HeldPixelData,
+                HeldVisualFeatures,
+                ReleaseReason,
+            ),
         ):
             raise TypeError("reasons must be given for each instance")
         codes = set()
         for reason in reasons:
             if isinstance(reason, HeldRoiName):
                 codes.add(("roi-names", reason.reason.value))
+            elif isinstance(reason, HeldDescriptor):
+                codes.add(("descriptors", reason.reason.value))
             elif isinstance(reason, HeldPixelData):
                 codes.add(("pixel-data", reason.reason.value))
             elif isinstance(reason, HeldVisualFeatures):
@@ -1024,8 +1049,8 @@ def held_for_review(
                 codes.add(("release", reason.code.value))
             else:
                 raise TypeError(
-                    "a held reason must be a HeldRoiName, a HeldPixelData, a "
-                    "HeldVisualFeatures, "
+                    "a held reason must be a HeldRoiName, a HeldDescriptor, a "
+                    "HeldPixelData, a HeldVisualFeatures, "
                     "or a release reason that requires QC review"
                 )
         counts.update(codes)

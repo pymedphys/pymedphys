@@ -217,6 +217,12 @@ REVIEW_CODES = frozenset(
 HOLDING_STAGES: Mapping[str, str] = types.MappingProxyType(
     {
         "roi-names": "descriptor cleaning sent one of its ROI Names to review",
+        "descriptors": (
+            "descriptor cleaning sent to review a value of an attribute that "
+            "another option keeps and the custodian's reviewed descriptors "
+            "list decides on, such as Allergies (0010,2110) under Retain "
+            "Patient Characteristics"
+        ),
         "pixel-data": (
             "Clean Pixel Data blacked out the text that it found in the "
             "instance's pixel data, or found none, and review must look for "
@@ -743,7 +749,7 @@ def release_report() -> list[str]:
         "SR IOD.",
         "",
         "An instance outside the supported scope whose IOD the pinned tables "
-        "define, such as a nuclear medicine image or a spatial registration, "
+        "define, such as a nuclear medicine image or an ultrasound image, "
         "is planned and edited, where its source can be read, only so that its "
         "values are collected for its subject's search; it is never written. "
         "An instance that the first pass read but whose values were not "
