@@ -34,6 +34,7 @@ from pymedphys._dicom.deidentify import (
     qc_pack,
     release_report,
     release_report_markdown,
+    risk_assessment,
     run,
     run_report,
 )
@@ -271,6 +272,17 @@ def test_a_rule_recorded_after_the_transform_is_made_does_not_apply():
     assert result.evidence.held == (  # pylint: disable=no-member
         HeldPixelData(PixelDataReason.NO_TEXT_FOUND),
     )
+    # The run's QC pack binds the rules that it applied, not those recorded
+    # since.
+    applied = transform.reporter.reviewed_lists[2]
+    assert applied.canonical_bytes() == PixelRegionRules.empty().canonical_bytes()
+
+
+def test_a_transform_without_rules_binds_none():
+    transform = InstanceTransform(
+        _policy(), KEY, finder=Finder(), unvalidated_policy=True
+    )
+    assert transform.reporter.reviewed_lists == (None, None, None)
 
 
 # The method digest's member.
@@ -452,6 +464,12 @@ def test_a_reviewed_rules_regions_are_released_again_without_the_rules(tmp_path)
     )
     assert report["pixel_regions"] == {"detected": 3, "rule": 2}
     assert report["method"]["pixel_region_rules"] == _rules().keyed_digest(KEY)
+    # The pack binds the rules that the run applied, under its own salt, for
+    # a risk assessment of the run, since the report's digest is keyed.
+    bound = pack["reviewed_lists"]
+    assert bound["sha256"] == risk_assessment.lists_digest(
+        bound["salt"], None, None, _rules()
+    )
     assert {outcome.status for outcome in first.outcomes} == {
         run.Status.HELD_FOR_REVIEW
     }

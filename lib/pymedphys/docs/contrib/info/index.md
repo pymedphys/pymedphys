@@ -15,6 +15,7 @@ deidentification-requirements
 deidentification-midi-benchmark
 deidentification-dicom-validation
 deidentification-face-validation
+deidentification-pixel-text-validation
 dicom-coordinate-validation
 dicom-coordinates-illustrated
 gamma-performance

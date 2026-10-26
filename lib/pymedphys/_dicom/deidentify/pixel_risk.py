@@ -79,10 +79,11 @@ indicator. Findings name attribute paths, never values.
 :func:`assess_series` reads the indicators that need a whole series:
 every CT, MR, and PET volume, and every RT Dose grid of more than one
 frame, may hold a reconstructable face; so may a CT, MR, or PET localizer,
-which can show the face in profile, and so may a Segmentation, whose
-segment of the skin or body traces the profile; and one whose attributes,
-or a Segmentation's segments, name a region of the head or neck in a
-reviewed list from PS3.16 Annex L says that it does.
+which can show the face in profile, and so may an RT Image, a projection
+such as a lateral DRR, and a Segmentation, whose segment of the skin or
+body traces the profile; and one whose attributes, or a Segmentation's
+segments, name a region of the head or neck in a reviewed list from PS3.16
+Annex L says that it does.
 :func:`series_evidence` gives the part of an instance that it reads.
 
 Reading leaves the data set as it was: pydicom converts an element read from
@@ -137,6 +138,7 @@ class Indicator(enum.Enum):
     PET_VOLUME = "pet-volume"
     RT_DOSE_VOLUME = "rt-dose-volume"
     LOCALIZER = "localizer"
+    RT_IMAGE = "rt-image"
     SEGMENTATION = "segmentation"
     HEAD_OR_NECK = "head-or-neck"
     SUV_UNITS = "suv-units"
@@ -162,6 +164,7 @@ _RISKS = {
     Indicator.PET_VOLUME: Risk.RECONSTRUCTABLE_FACE,
     Indicator.RT_DOSE_VOLUME: Risk.RECONSTRUCTABLE_FACE,
     Indicator.LOCALIZER: Risk.RECONSTRUCTABLE_FACE,
+    Indicator.RT_IMAGE: Risk.RECONSTRUCTABLE_FACE,
     Indicator.SEGMENTATION: Risk.RECONSTRUCTABLE_FACE,
     Indicator.HEAD_OR_NECK: Risk.RECONSTRUCTABLE_FACE,
     Indicator.SUV_UNITS: Risk.BODY_WEIGHT,
@@ -741,6 +744,14 @@ _VOLUME_SOP_CLASSES = {
     # frames, so it is not a volume.
     "1.2.840.10008.5.1.4.1.1.481.2": (Indicator.RT_DOSE_VOLUME, True),
 }
+# RT Image Storage (PS3.4 Table B.5-1). An RT Image is a projection, such
+# as a digitally reconstructed radiograph (DRR) or a simulator or portal
+# image (PS3.3 Section C.8.8.2), so, like a localizer, it can show the face
+# in profile. It is recognised by its SOP Class, whatever its Image Type:
+# the standard Defined Terms of Image Type's third value for it do not
+# include LOCALIZER, though an implementer may extend them (PS3.5 Section
+# 6.3).
+_RT_IMAGE = "1.2.840.10008.5.1.4.1.1.481.1"
 # Segmentation Storage and Label Map Segmentation Storage (PS3.4 Table
 # B.5-1), whose frames are masks of segments. A segment of the skin or body
 # traces the profile, and its label or code need not say that it is one, so
@@ -891,11 +902,15 @@ def assess_series(instances: Sequence[pydicom.Dataset]) -> tuple[SeriesFinding, 
     counts as a frame of each volume that the series' other instances make.
     The localizers of those image classes are reported apart, since a
     localizer can show the face in profile, although no study has measured
-    recognition from one. So is each Segmentation, of Segmentation Storage
-    or Label Map Segmentation Storage, whatever its segments and Number of
-    Frames, since a segment of the skin or body traces the profile and its
-    label or code need not say that it is one; it is no frame of a volume.
-    A volume, localizer, or Segmentation whose Body Part Examined
+    recognition from one. So is each RT Image Storage instance, whatever its
+    Image Type, gantry angle, or Number of Frames, since an RT Image is a
+    projection, and a lateral one, such as a DRR or a simulator or portal
+    image, can show the face in profile as a localizer can; it is no frame
+    of a volume. So is each Segmentation, of Segmentation Storage or Label
+    Map Segmentation Storage, whatever its segments and Number of Frames,
+    since a segment of the skin or body traces the profile and its label or
+    code need not say that it is one; it is no frame of a volume either.
+    A volume, localizer, RT Image, or Segmentation whose Body Part Examined
     (0018,0015) or Anatomic Region Sequence (0008,2218), at the top level or
     in a Frame Anatomy Sequence (0020,9071) of the shared or a per-frame
     functional group, names a region in :func:`load_head_and_neck_regions`
@@ -916,15 +931,16 @@ def assess_series(instances: Sequence[pydicom.Dataset]) -> tuple[SeriesFinding, 
     -------
     tuple of SeriesFinding
         The CT, MR, PET, and RT Dose volumes first, in that order, then the
-        localizers, then the Segmentations, then the head or neck by
-        attribute, then unreadable evidence by instance, which is reported
-        whether or not the series is a volume.
+        localizers, then the RT Images, then the Segmentations, then the head
+        or neck by attribute, then unreadable evidence by instance, which is
+        reported whether or not the series is a volume.
     """
     regions = load_head_and_neck_regions()
     members: dict[Indicator, list[int]] = {}
     frames: dict[Indicator, int] = {}
     unknown: list[int] = []
     localizers: list[int] = []
+    rt_images: list[int] = []
     segmentations: list[int] = []
     head: dict[int, list[ElementPath]] = {}
     unreadable: list[SeriesFinding] = []
@@ -935,6 +951,10 @@ def assess_series(instances: Sequence[pydicom.Dataset]) -> tuple[SeriesFinding, 
             unreadable.append(_unreadable_in(index, ElementPath((), _SOP_CLASS_UID)))
             volume_class = None
         else:
+            if sop_class == _RT_IMAGE:
+                rt_images.append(index)
+                head[index] = list(_head_or_neck(dataset, regions, index, unreadable))
+                continue
             if sop_class in SEGMENTATION_SOP_CLASSES:
                 segmentations.append(index)
                 head[index] = [
@@ -969,6 +989,8 @@ def assess_series(instances: Sequence[pydicom.Dataset]) -> tuple[SeriesFinding, 
     ]
     if localizers:
         shown_by.append(SeriesFinding(Indicator.LOCALIZER, tuple(localizers)))
+    if rt_images:
+        shown_by.append(SeriesFinding(Indicator.RT_IMAGE, tuple(rt_images)))
     if segmentations:
         shown_by.append(SeriesFinding(Indicator.SEGMENTATION, tuple(segmentations)))
     shown = {index for finding in shown_by for index in finding.instances}

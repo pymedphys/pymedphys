@@ -204,9 +204,10 @@ class VisualFeaturesReason(enum.Enum):
     # the reviewer saw a recognisable face in its series' previews
     FACE_PRESENT = "face-present"
     # no reviewer's verdict covers its source file: its series has no
-    # verdict, the file is not one that the review saw, or the reviewed run
+    # verdict, the file is not one that the review saw, the reviewed run
     # held it beside a CT series that it defaced, so the verdict was of the
-    # defaced images rather than of the file
+    # defaced images rather than of the file, or it holds a deformable
+    # registration's grid, which no preview of the QC pack draws
     NO_FACE_VERDICT = "no-face-verdict"
     # its series is marked absent, but the run writes other pixel data of it
     # than the reviewed run did, such as a CT slice defaced since the

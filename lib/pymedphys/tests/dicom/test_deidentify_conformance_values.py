@@ -671,6 +671,7 @@ def test_the_qc_pack_lists_each_ct_mr_pet_and_rt_dose_volume(preset):
     for indicator in (
         *pixel_risk.VOLUME_INDICATORS,
         pixel_risk.Indicator.LOCALIZER,
+        pixel_risk.Indicator.RT_IMAGE,
         pixel_risk.Indicator.SEGMENTATION,
         pixel_risk.Indicator.HEAD_OR_NECK,
         pixel_risk.Indicator.UNREADABLE,
@@ -682,8 +683,11 @@ def test_the_qc_pack_lists_each_ct_mr_pet_and_rt_dose_volume(preset):
         "released or held" in section
     )
     assert "localizers among them, which can show the face in profile" in section
+    assert "the RT Images among them, projections such as a lateral DRR" in section
     assert "the Segmentations among them, whose segment of the skin" in section
-    assert "a Segmentation's segments, name a region" in section
+    assert (
+        "localizer, RT Image, or Segmentation, or a Segmentation's segments" in section
+    )
     assert "PS3.16 Annex L" in section
     assert "Series Instance UID (0020,000E), which it never writes" in section
     assert "assesses only the released and held instances" in section
