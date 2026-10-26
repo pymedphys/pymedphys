@@ -60,13 +60,23 @@ reason that such a finding is not a reason for review (D-032), or returns
   (:func:`~pymedphys._dicom.deidentify.option_kept.retained_value`). It also
   applies to a finding of a date or datetime, which would otherwise
   withhold the file (:func:`retained_date`).
+- :attr:`Exemption.UNWRITTEN_CODE_MEANING`: the finding's source is the Code
+  Meaning (0008,0104) of a code item whose Coding Scheme Designator is one
+  that the pinned PS3.16 Table 8-1 lists, and only instances that the run
+  does not write, such as a sequestered dose report, collected its values
+  for the subject, wherever in the data set the finding is.
+- :attr:`Exemption.UNWRITTEN_UID`: a UID found in a UID that a selected
+  option keeps, equal to a whole value of it, whose source's values only
+  instances that the run does not write collected (:func:`unwritten_uid`).
+  It applies to a finding that would otherwise withhold the file.
 
 The search records one finding of a source in each element, so each
 exemption is decided by the whole element: a CS value is exempt only if
 every one of its values is a term; and a source's values are pooled across
 the subject, so a private creator is exempt only if all of them are a
-vendor's, and a date only if each of them that could be in the element
-equals a whole kept value. A finding in an element that holds a byte
+vendor's, a date only if each of them that could be in the element equals a
+whole kept value, and a Code Meaning or a UID from unwritten instances only
+if no written instance collected any of them. A finding in an element that holds a byte
 outside ISO 646's printable characters, a finding of any other kind, and a
 finding outside the data set are never exempt. Kept values are read from the
 written file's bytes, as text in ISO 646, never decoded by pydicom, and none
@@ -84,12 +94,13 @@ from collections.abc import Mapping
 
 from .codes import load_coding_schemes
 from .file_layout import ElementPath, Region, read_file_layout
-from .option_kept import retained_text, retained_value
+from .option_kept import kept_by, retained_text, retained_value
 from .residuals import Finding, SourceValue
-from .standard import load_table_e3_10_1
+from .standard import dictionary_attribute, load_table_e3_10_1
 from .uid_registry import RegistryTable, RegistryTableSpec, load_registry_table
 
 _DESIGNATOR = "(0008,0102)"
+_CODE_MEANING = "(0008,0104)"
 # Private Creator Reference, in an item of Private Data Element
 # Characteristics Sequence.
 _CREATOR_REFERENCE = "(0008,0302)"
@@ -121,6 +132,9 @@ class Exemption(enum.Enum):
     VENDOR_CREATOR = "vendor-creator"  # a private creator of Table E.3.10-1
     RETAINED_TEXT = "retained-text"  # in text an option keeps, from its own or private
     RETAINED_VALUE = "retained-value"  # equal to a date or time an option keeps
+    # the meaning of a code of a scheme of Table 8-1, from unwritten instances only
+    UNWRITTEN_CODE_MEANING = "unwritten-code-meaning"
+    UNWRITTEN_UID = "unwritten-uid"  # in a UID an option keeps, from unwritten only
 
 
 @dataclasses.dataclass(frozen=True)
@@ -322,6 +336,7 @@ def exemption(
     kept: KeptValues,
     sources: Mapping[ElementPath, tuple[SourceValue, ...]],
     options: tuple[str, ...] = (),
+    unwritten: frozenset[SourceValue] = frozenset(),
 ) -> Exemption | None:
     """Return why a text finding inside the data set is not a reason for review.
 
@@ -335,6 +350,9 @@ def exemption(
         The collected values of each source (:func:`source_values`).
     options : tuple of str, optional
         The run's options. With none, no option explains a finding.
+    unwritten : frozenset of SourceValue, optional
+        The values in ``sources`` that only instances the run does not
+        write collected.
 
     Returns
     -------
@@ -359,7 +377,10 @@ def exemption(
         return Exemption.EQUIPMENT
     if _vendor_creator(finding.source, sources):
         return Exemption.VENDOR_CREATOR
-    return _retained(finding, kept, sources, options)
+    why = _retained(finding, kept, sources, options)
+    if why is None and _unwritten_code_meaning(finding.source, sources, unwritten):
+        why = Exemption.UNWRITTEN_CODE_MEANING
+    return why
 
 
 def _retained(
@@ -404,6 +425,98 @@ def retained_date(
     ):
         return None
     return Exemption.RETAINED_VALUE
+
+
+def unwritten_uid(
+    finding: Finding,
+    kept: KeptValues,
+    sources: Mapping[ElementPath, tuple[SourceValue, ...]],
+    unwritten: frozenset[SourceValue],
+    options: tuple[str, ...],
+) -> Exemption | None:
+    """Return whether a kept UID explains a UID found from unwritten instances.
+
+    Parameters
+    ----------
+    finding : Finding
+        A finding that would otherwise withhold its file.
+    kept : KeptValues
+        The written file's values.
+    sources : mapping
+        The collected values of each source (:func:`source_values`).
+    unwritten : frozenset of SourceValue
+        The values in ``sources`` that only instances the run does not
+        write collected.
+    options : tuple of str
+        The run's options.
+
+    Returns
+    -------
+    Exemption or None
+        :attr:`Exemption.UNWRITTEN_UID` where the finding is in a data set
+        element of an attribute that a selected option keeps
+        (:func:`~pymedphys._dicom.deidentify.option_kept.kept_by`), which the
+        pinned dictionary gives only VR UI, one of the source's values
+        equals a whole value of that element, and every value of the source
+        is in ``unwritten``: the instances that held the source are not
+        released, and the option releases the UID where it is found. A UID
+        that a written instance also collected at the source, such as a
+        reference that the option replaced while keeping the UID it names,
+        one found anywhere else, such as in text or in the File Meta
+        Information, and one that equals no whole kept value, as where it is
+        found only inside a longer kept UID, give ``None``.
+    """
+    element = finding.location.element
+    if finding.location.region is not Region.DATA_SET or element is None:
+        return None
+    attribute = dictionary_attribute(element.tag)
+    if (
+        attribute is None
+        or attribute.vrs != ("UI",)
+        or element.tag not in kept_by(options)
+    ):
+        return None
+    values = sources.get(finding.source, ())
+    if not values or not all(each in unwritten for each in values):
+        return None
+    written = kept.values(element)
+    if written is None:
+        return None
+    if any(
+        part and part in written
+        for each in values
+        if isinstance(each.value, str)
+        for part in (value.strip(" \x00") for value in each.value.split("\\"))
+    ):
+        return Exemption.UNWRITTEN_UID
+    return None
+
+
+def _unwritten_code_meaning(
+    source: ElementPath,
+    sources: Mapping[ElementPath, tuple[SourceValue, ...]],
+    unwritten: frozenset[SourceValue],
+) -> bool:
+    """Return whether a source is a standard code's meaning from unwritten instances.
+
+    The source must be a Code Meaning (0008,0104) in an item, every value of
+    it collected for the subject must be in ``unwritten``, and every value of
+    the item's Coding Scheme Designator (0008,0102) collected for the
+    subject must be, without trailing spaces and NULs, one designator that
+    the pinned PS3.16 Table 8-1 lists. A local designator, such as one
+    starting with 99, or none, gives no exemption, since a local code's
+    meaning can be the site's own text.
+    """
+    if source.tag != _CODE_MEANING or not source.items:
+        return False
+    values = sources.get(source, ())
+    if not values or not all(each in unwritten for each in values):
+        return False
+    designators = sources.get(ElementPath(source.items, _DESIGNATOR), ())
+    return bool(designators) and all(
+        isinstance(each.value, str) and each.value.rstrip(" \x00") in _designators()
+        for each in designators
+    )
 
 
 def _vendor_creator(

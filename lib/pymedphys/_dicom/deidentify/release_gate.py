@@ -57,10 +57,14 @@ value or one to which the dictionary gives no VR, or the search finds other
 text inside the data set, unless a kept standard term, code of a standard
 scheme, or equipment name, a vendor's private creator, or a value that an
 option of the run keeps explains it
-(:func:`~pymedphys._dicom.deidentify.residual_exemptions.exemption`). A date
-or datetime equal to a whole date, time, or datetime that an option keeps
-does not withhold the file either
-(:func:`~pymedphys._dicom.deidentify.residual_exemptions.retained_date`).
+(:func:`~pymedphys._dicom.deidentify.residual_exemptions.exemption`), or the
+text is the meaning of a standard code that only instances the run does not
+write held. A date or datetime equal to a whole date, time, or datetime that
+an option keeps does not withhold the file either
+(:func:`~pymedphys._dicom.deidentify.residual_exemptions.retained_date`), nor
+does a UID equal to a whole UID that an option keeps, where only instances
+that the run does not write held it
+(:func:`~pymedphys._dicom.deidentify.residual_exemptions.unwritten_uid`).
 Otherwise
 it may be released (:attr:`~Decision.RELEASE`). There is no setting that
 changes this.
@@ -100,6 +104,7 @@ from .residual_exemptions import (
     exemption,
     retained_date,
     source_values,
+    unwritten_uid,
 )
 from .residuals import (
     Finding,
@@ -179,10 +184,16 @@ _RESIDUAL_KINDS = {
     ValueKind.DATE: ReasonCode.RESIDUAL_DATE,
     ValueKind.DATETIME: ReasonCode.RESIDUAL_DATETIME,
 }
-# The findings that kept values can explain: text, and dates and datetimes
-# equal to a date or time that an option keeps.
+# The findings that kept values can explain: text, dates and datetimes equal
+# to a date or time that an option keeps, and UIDs from unwritten instances
+# equal to a UID that an option keeps.
 _EXPLICABLE = frozenset(
-    {ReasonCode.RESIDUAL_TEXT, ReasonCode.RESIDUAL_DATE, ReasonCode.RESIDUAL_DATETIME}
+    {
+        ReasonCode.RESIDUAL_TEXT,
+        ReasonCode.RESIDUAL_DATE,
+        ReasonCode.RESIDUAL_DATETIME,
+        ReasonCode.RESIDUAL_UID,
+    }
 )
 
 
@@ -247,11 +258,18 @@ class Coverage:
         can explain, such as one that a kept value explains, or a date that
         Modified Dates shifted onto another source date. With none, no option
         explains a finding.
+    unwritten : frozenset of SourceValue, optional
+        The collected values that only instances the run does not write
+        collected, such as each value of an instance that the transform
+        sequesters. A UID or a Code Meaning found from such values alone
+        can be explained where it would not be from a written instance's.
 
     Raises
     ------
     TypeError
         If an attribute is missing, or not of these types.
+    ValueError
+        If a value is ``unwritten`` that is not collected.
     """
 
     planned: frozenset[ElementPath]
@@ -259,6 +277,7 @@ class Coverage:
     uncollected: tuple[Uncollected, ...] = ()
     decoded_as_bytes: frozenset[ElementPath] = frozenset()
     options: tuple[str, ...] = ()
+    unwritten: frozenset[SourceValue] = frozenset()
 
     def __post_init__(self) -> None:
         for name, container, kind in (
@@ -267,6 +286,7 @@ class Coverage:
             ("uncollected", tuple, Uncollected),
             ("decoded_as_bytes", frozenset, ElementPath),
             ("options", tuple, str),
+            ("unwritten", frozenset, SourceValue),
         ):
             given = getattr(self, name)
             if not isinstance(given, container) or not all(
@@ -275,6 +295,8 @@ class Coverage:
                 raise TypeError(
                     f"{name} must be a {container.__name__} of {kind.__name__}"
                 )
+        if self.unwritten and not self.unwritten <= frozenset(self.collected):
+            raise ValueError("an unwritten value must be a collected value")
 
     @classmethod
     def merge(cls, *coverages: Coverage) -> Coverage:
@@ -282,7 +304,10 @@ class Coverage:
 
         A value that one instance planned but did not report stays a gap,
         as an :class:`Uncollected` with the reason :data:`NOT_REPORTED`,
-        even where another instance collected a value at the same path.
+        even where another instance collected a value at the same path. A
+        value is unwritten only where every coverage that collected it gives
+        it as unwritten, so a value that a written instance shares with an
+        unwritten one is written.
 
         Parameters
         ----------
@@ -317,6 +342,13 @@ class Coverage:
                 *(each.decoded_as_bytes for each in coverages)
             ),
             options=tuple(dict.fromkeys(o for c in coverages for o in c.options)),
+            unwritten=frozenset().union(*(each.unwritten for each in coverages))
+            - {
+                value
+                for each in coverages
+                for value in each.collected
+                if value not in each.unwritten
+            },
         )
 
     def not_reported(self) -> tuple[ElementPath, ...]:
@@ -573,11 +605,16 @@ def release_condition(
         reason = _finding_reason(each, identifiers)
         if reason.code in _EXPLICABLE:
             kept = kept or KeptValues(written)
-            why = (
-                exemption(each, kept, sources, coverage.options)
-                if reason.code is ReasonCode.RESIDUAL_TEXT
-                else retained_date(each, kept, sources, coverage.options)
-            )
+            if reason.code is ReasonCode.RESIDUAL_TEXT:
+                why = exemption(
+                    each, kept, sources, coverage.options, coverage.unwritten
+                )
+            elif reason.code is ReasonCode.RESIDUAL_UID:
+                why = unwritten_uid(
+                    each, kept, sources, coverage.unwritten, coverage.options
+                )
+            else:
+                why = retained_date(each, kept, sources, coverage.options)
             if why is not None:
                 exempted.append((each, why))
                 continue
