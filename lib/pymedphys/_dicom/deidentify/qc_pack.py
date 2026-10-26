@@ -68,8 +68,8 @@ A pack holds, for one run:
   positions of its instances, by which an attestation gives each series'
   face verdict (D-016, D-017); and ``series_risks``: each series of released or held instances with
   findings of its series assessment, a CT, MR, PET, or RT Dose volume, a
-  localizer, the head or neck, or unreadable evidence of any of them, with
-  the instances that show each (D-015, D-017);
+  localizer, an RT Image, the head or neck, or unreadable evidence of any of
+  them, with the instances that show each (D-015, D-017);
 - ``redactions``: each released or held instance whose Pixel Data the
   Clean Pixel Data Option cleaned, with why it is held, its number of
   frames, its Rows and Columns, the regions blacked out in each frame,
@@ -94,12 +94,13 @@ A pack holds, for one run:
   which the run reports and never acts on (MIDI-BP-03); the release report
   gives only their counts by attribute and Type;
 - ``reviewed_lists``: the salted digest of the reviewed ROI names and
-  descriptors lists that the run's descriptor cleaning applied, as
+  descriptors lists that the run's descriptor cleaning applied, and of the
+  reviewed region rules that its Clean Pixel Data applied, as
   :func:`~pymedphys._dicom.deidentify.risk_assessment.lists_digest` gives
-  it, with its salt, or null for a run whose reporter stated no lists; a
-  risk assessment of the run binds these lists, so that what its record
-  binds is what the run applied, not what whoever records it supplies
-  (D-053).
+  it, with its salt, or null for a run whose reporter stated none; a risk
+  assessment of the run binds these lists and rules, so that what its
+  record binds is what the run applied, not what whoever records it
+  supplies (D-053).
 
 Its ``reference`` is an opaque random token that the release report records
 with the attestation's outcome, in place of the review material (D-016). It
@@ -140,7 +141,7 @@ from .reviewed_roi_names import Outcome
 from .text_detection import TextBox
 
 # The format of the pack document. A change to its fields takes a new label.
-FORMAT = "pymedphys-deid-qc-pack/17"
+FORMAT = "pymedphys-deid-qc-pack/18"
 # The bytes of a written file shown on each side of a residual's offset.
 EXCERPT_BYTES = 48
 # The SHA-256 that face_review.contour_data_sha256 gives a file without
@@ -1202,10 +1203,11 @@ class SourceGapEntry:
 
 @dataclasses.dataclass(frozen=True, repr=False)
 class ListsDigest:
-    """The salted digest of the reviewed lists that a run applied.
+    """The salted digest of the reviewed lists and region rules that a run applied.
 
     A digest of a short list, with its salt, can be tested against guesses
-    of the list, which holds source names and values, so it is kept only in
+    of the list, which holds source names and values, or of the rules,
+    which hold manufacturers' and model names, so it is kept only in
     confidential QC material, and its ``repr`` shows neither.
 
     Attributes
@@ -1214,7 +1216,7 @@ class ListsDigest:
         64 hex digits, random for each run.
     sha256 : str
         :func:`~pymedphys._dicom.deidentify.risk_assessment.lists_digest` of
-        the lists under ``salt``, 64 hex digits.
+        the lists and rules under ``salt``, 64 hex digits.
     """
 
     salt: str

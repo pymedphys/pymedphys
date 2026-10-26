@@ -336,9 +336,9 @@ def run(
         the reporter does not admit is sequestered for
         :attr:`RunReason.INVALID_REASON`, followed by its own reasons. The
         QC pack records the salted digest of the reporter's
-        ``reviewed_lists``, the lists that its readiness checks, which a
-        risk assessment of the run binds; without a reporter it records
-        none, and no assessment of the run can be recorded.
+        ``reviewed_lists``, the lists and region rules that its readiness
+        checks, which a risk assessment of the run binds; without a reporter
+        it records none, and no assessment of the run can be recorded.
     written_check : WrittenCheck, optional
         The reference graph's second pass under the run's key, such as an
         :class:`~pymedphys._dicom.deidentify.instance_transform.InstanceTransform`'s
@@ -472,8 +472,9 @@ def _run(  # pylint: disable = too-many-arguments, too-many-positional-arguments
             outcomes,
             material,
             digests=first.digests,
-            # The lists that the report's readiness checks, under a new salt,
-            # so that a risk assessment of the run binds those it applied.
+            # The lists and rules that the report's readiness checks, under a
+            # new salt, so that a risk assessment of the run binds those it
+            # applied.
             reviewed_lists=(
                 None if reporter is None else bind_lists(*reporter.reviewed_lists)
             ),

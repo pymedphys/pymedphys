@@ -45,6 +45,7 @@ from pymedphys._dicom.deidentify.instance_transform import (
     ReleaseGate,
 )
 from pymedphys._dicom.deidentify.keys import DeidKey
+from pymedphys._dicom.deidentify.pixel_region_rules import PixelRegionRules, RuleKey
 from pymedphys._dicom.deidentify.pixel_risk import Finding, Indicator
 from pymedphys._dicom.deidentify.policy import PolicyError
 from pymedphys._dicom.deidentify.qc_attestation import (
@@ -76,6 +77,7 @@ from pymedphys._dicom.deidentify.risk_assessment import (
     Population,
     RiskAssessmentError,
 )
+from pymedphys._dicom.deidentify.text_detection import TextBox
 
 from . import _corpus_run
 
@@ -95,6 +97,9 @@ FACES = {0: Face.ABSENT, 1: Face.ABSENT}
 PATIENTS = {0: "one", 1: "two", 2: "one", 3: "one", 4: "two"}
 MANUFACTURER = ElementPath((), "(0008,0070)")
 BURNED_IN = Finding(Indicator.BURNED_IN_ANNOTATION, ElementPath((), "(0028,0301)"))
+# A region rule of an invented scanner: the top band of its images.
+RULE = RuleKey("1.2.840.10008.5.1.4.1.1.6.1", "Acme Sonics", "Echo 5", 480, 640)
+BAND = TextBox(0, 0, 40, 640)
 
 
 def _digest(n):
@@ -129,7 +134,9 @@ def _entry(position, disposition=Disposition.RELEASED, **changes):
     return InstanceEntry(**fields)
 
 
-def _pack(reference, instances=None, *, series=SERIES, strings=None, risks=(1,)):
+def _pack(  # pylint: disable = too-many-arguments
+    reference, instances=None, *, series=SERIES, strings=None, risks=(1,), rules=None
+):
     """A pack of these instances, released by default, with a preview of each
     frame whose pixel data's SHA-256 it records, as the pack needs."""
     if instances is None:
@@ -158,17 +165,20 @@ def _pack(reference, instances=None, *, series=SERIES, strings=None, risks=(1,))
         pixel_risks=tuple(PixelRiskEntry(p, (BURNED_IN,)) for p in risks),
         series=series,
         previews=previews,
-        # As a run without Clean Descriptors records them.
-        reviewed_lists=risk_assessment.bind_lists(None, None),
+        # As a run without Clean Descriptors records them, with any region
+        # rules that its Clean Pixel Data applied.
+        reviewed_lists=risk_assessment.bind_lists(None, None, rules),
     )
 
 
-def _report_document(reference, preset="public-release"):
+def _report_document(reference, preset="public-release", rules=None):
+    """A run's report, where ``rules`` is its region rules' keyed digest."""
     report = release_report.release_report(
         policy.compose_policy(preset),
         vocabulary=None,
         reviewed_roi_names=None,
         qc_review=AttestationRecord(reference, Outcome.NOT_ATTESTED),
+        pixel_region_rules=rules,
     )
     return release_report.report_document(report)
 
@@ -210,6 +220,7 @@ def _reviewed(  # pylint: disable = too-many-arguments
     accepted=True,
     assessment=None,
     preset="public-release",
+    rules=None,
 ):
     """Write a reviewed pack, attest it unless ``outcome`` is None, record an
     assessment beside it unless ``assessment`` is False, and read it back."""
@@ -220,7 +231,9 @@ def _reviewed(  # pylint: disable = too-many-arguments
         pack, tmp_path / "qc", release_directory=release
     ).parent
     report_file = tmp_path / "release-report.json"
-    report_file.write_text(json.dumps(_report_document(REVIEWED, preset)), "utf-8")
+    report_file.write_text(
+        json.dumps(_report_document(REVIEWED, preset, rules)), "utf-8"
+    )
     if outcome is not None:
         qc_attestation.attest(
             directory,
@@ -243,7 +256,7 @@ def _reviewed(  # pylint: disable = too-many-arguments
 
 
 def _readiness(review, pack=None, **changes):
-    facts = {"subjects": 2, "policy_sha256": POLICY}
+    facts = {"subjects": 2, "policy_sha256": POLICY, "pixel_region_rules": None}
     facts.update(changes)
     return readiness.readiness(
         review,
@@ -346,6 +359,41 @@ def test_an_assessment_of_another_policy_fails_the_statistical_gate(tmp_path):
         ReviewReason.OTHER_POLICY,
         ReviewReason.OTHER_POLICY,
     )
+
+
+def _ruled(*boxes):
+    rules = PixelRegionRules.empty()
+    rules.record(RULE, boxes or (BAND,))
+    return rules
+
+
+@pytest.mark.deid_requirement("MIDI-BP-01", "PS3.15-E.3.1-01")
+def test_a_later_run_with_the_same_region_rules_passes_every_gate(tmp_path):
+    # Each run's report keys the rules' digest under that run's key, so the
+    # reports' digests differ for the same rules, and the policy binding
+    # leaves them out; the lists' salted digest in the pack binds them.
+    review = _reviewed(tmp_path, _pack(REVIEWED, rules=_ruled()), rules="d" * 64)
+    this_run = risk_assessment.policy_digest(_report_document(THIS_RUN, rules="e" * 64))
+    assert this_run == POLICY
+
+    same = _readiness(
+        review,
+        _pack(THIS_RUN, rules=_ruled()),
+        policy_sha256=this_run,
+        pixel_region_rules=_ruled(),
+    )
+    assert _gates(same) == (None, None, None)
+    # Other rules fail the statistical gate. The pixel and face gate holds
+    # what they write otherwise by its pixel data's digests, which these
+    # invented packs keep the same.
+    for other in (_ruled(TextBox(0, 0, 48, 640)), PixelRegionRules.empty(), None):
+        edited = _readiness(
+            review,
+            _pack(THIS_RUN, rules=other),
+            policy_sha256=this_run,
+            pixel_region_rules=other,
+        )
+        assert _gates(edited) == (StatisticalReason.OTHER_LISTS, None, None)
 
 
 @pytest.mark.deid_requirement("MIDI-BP-07")
@@ -665,7 +713,7 @@ def test_the_report_records_the_gates_by_reason_and_reference_alone(tmp_path):
         "attestation": None,
     }
     assert SENTINEL not in json.dumps(document)
-    assert document["format"] == "pymedphys-deid-release-report/29"
+    assert document["format"] == "pymedphys-deid-release-report/30"
 
 
 def test_a_public_release_report_given_no_readiness_is_not_ready():
