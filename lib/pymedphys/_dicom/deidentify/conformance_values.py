@@ -311,6 +311,21 @@ def _icc_profile(named: Callable[[str], str]) -> str:
     )
 
 
+def _kept_items(
+    statement: ConformanceStatement, named: Callable[[str], str]
+) -> list[str]:
+    """Describe the items that D keeps where a reviewed rule keeps them (D-021)."""
+    actions = {entry.tag: entry.action for entry in statement.attributes}
+    return [
+        f"D on {named(tag)} keeps each source item, and in it only these "
+        "attributes, each under the action that the policy gives it: "
+        + "; ".join(f"{named(each)}, {code(actions[each])}" for each in sorted(kept))
+        + ". The item's other attributes are removed, and none of these is "
+        "added to an item that lacks it."
+        for tag, kept in dummy_values.KEPT_ITEM_ATTRIBUTES.items()
+    ]
+
+
 def _naming_pymedphys(named: Callable[[str], str]) -> list[str]:
     """Name each value that a reviewed rule writes and that names PyMedPhys."""
     return [
@@ -361,6 +376,7 @@ def values_written(
         "needs a reviewed rule for that attribute; without one, the instance "
         "is sequestered.",
         *(item for line in _reviewed_items(named) for item in ("", line)),
+        *(item for line in _kept_items(statement, named) for item in ("", line)),
         "",
         f"At the top level of the data set, {pseudonym_tags} take the "
         "subject's keyed pseudonyms wherever Z or D applies to them; "
@@ -586,11 +602,12 @@ def qc_pack(statement: ConformanceStatement, named: Callable[[str], str]) -> lis
     exempt = join(named(tag) for tag in sorted(_NOT_REVIEWED_TAGS))
     unreviewable = code(TransformReason.UNREVIEWABLE_RETAINED_TEXT.value)
     volume = join((code(each.value) for each in pixel_risk.VOLUME_INDICATORS), "or")
-    localizer, rt_image, head, unreadable = (
+    localizer, rt_image, segmentation, head, unreadable = (
         code(indicator.value)
         for indicator in (
             Indicator.LOCALIZER,
             Indicator.RT_IMAGE,
+            Indicator.SEGMENTATION,
             Indicator.HEAD_OR_NECK,
             Indicator.UNREADABLE,
         )
@@ -626,9 +643,11 @@ def qc_pack(statement: ConformanceStatement, named: Callable[[str], str]) -> lis
         "the CT, MR, and PET localizers among them, which can show the face "
         f"in profile, by {localizer}; the RT Images among them, projections "
         "such as a lateral DRR that can show the face in profile too, "
-        f"whatever their gantry angle, by {rt_image}; "
-        "where the attributes of a volume, localizer, or RT Image name a "
-        "region of the "
+        f"whatever their gantry angle, by {rt_image}; the Segmentations among "
+        "them, whose segment of the skin or body traces the profile whatever "
+        f"its label, by {segmentation}; "
+        "where the attributes of a volume, localizer, RT Image, or "
+        "Segmentation, or a Segmentation's segments, name a region of the "
         f"head or neck in a reviewed list from PS3.16 Annex L, by {head}; and "
         f"where such evidence cannot be read, by {unreadable}; each with the "
         "instances that show it. A volume is a series whose instances of one "
