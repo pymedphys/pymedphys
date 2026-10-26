@@ -38,13 +38,14 @@ from pymedphys._imports import pydicom
 
 from pymedphys._dicom.deidentify import synthetic_corpus as corpus_module
 
-from .._corpus_run import BASIC_WITHHELD, CorpusRun
+from .._corpus_run import BASIC_WITHHELD, REPORT_ENTITIES, CorpusRun
 
 # Two concept names that Table E.3.4-1 lists, with their Value Types, and
 # one that it does not.
 CALIBRATION_DATETIME = ("113723", "Calibration DateTime", "DATETIME")
 PERSON_OBSERVER_NAME = ("121008", "Person Observer Name", "PNAME")
 UNLISTED_NUMERIC = ("113845", "Exposure Index", "NUMERIC")
+ACCESSION_NUMBER = "(0008,0050)"
 
 
 def _concept_name(item, concept):
@@ -109,4 +110,8 @@ RUN = CorpusRun(
         for name, withheld in BASIC_WITHHELD.items()
         if name not in corpus_module.GENERAL_REPORT_FILES
     },
+    # Of the attributes that dcentvfy places in another entity for a report,
+    # the Basic Profile keeps Accession Number, emptied, and removes
+    # Referenced Study Sequence.
+    inconsistent=REPORT_ENTITIES & {ACCESSION_NUMBER},
 )
