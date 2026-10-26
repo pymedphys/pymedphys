@@ -82,6 +82,7 @@ from pymedphys._dicom.deidentify.reasons import (
     HeldRoiName,
     PixelDataReason,
 )
+from pymedphys._dicom.deidentify.release_gate import ReasonCode
 from pymedphys._dicom.deidentify.reviewed_roi_names import ReviewedNames
 from pymedphys._dicom.deidentify.roi_names import Reason
 from pymedphys._dicom.deidentify.run_report import (
@@ -1037,6 +1038,87 @@ def test_the_kept_rows_are_those_table_e1_1_gives_k():
     assert "(0018,1000)" in tps_import
     assert "(0018,1200)" not in tps_import
     assert runs.kept_rows(("retain_uids",)) >= {"(0018,1002)", "(0020,000D)"}
+
+
+def test_under_retain_uids_a_report_whose_tree_is_removed_withholds_its_subject(
+    published,
+):  # pylint: disable = unused-argument
+    """The retain-uids run's corpus leaves the reports out, for this.
+
+    The X-ray report's scope of accumulation names the study by its Study
+    Instance UID, which Retain UIDs keeps in every other instance. Without
+    Clean Structured Content, D on the report's Content Sequence removes
+    the tree, so the residual search looks for the UID in the subject's
+    other instances, and a removed UID found in a kept one withholds the
+    file (D-042).
+    """
+    with_reports = runs.CorpusRun("retain-uids-with-reports", options=("retain_uids",))
+    policy_run = _run(with_reports)
+    names = [file.name for file in policy_run.corpus.files]
+    study = ElementPath((), "(0020,000D)")
+
+    for outcome in policy_run.result.outcomes:
+        name = names[outcome.position]
+        assert outcome.status is run.Status.SEQUESTERED, name
+        if name in corpus_module.STRUCTURED_REPORT_FILES:
+            continue
+        if name == corpus_module.SEQUESTERED_FILE:
+            continue
+        assert any(
+            reason.code is ReasonCode.RESIDUAL_UID and reason.location.element == study
+            for reason in outcome.reasons
+        ), name
+
+
+def test_the_kept_concepts_are_those_table_e3_4_1_gives_k():
+    # Device Observer UID is K under Retain UIDs and under Retain Device
+    # Identity; DateTime Started is K under Full Dates and C under Modified
+    # Dates; Person Name has no option's K.
+    device_observer = ("DCM", "121012", "UIDREF")
+    started = ("DCM", "111526", "DATETIME")
+    person = ("DCM", "113870", "PNAME")
+
+    assert not runs.kept_concepts(())
+    assert device_observer in runs.kept_concepts(("retain_uids",))
+    assert device_observer in runs.kept_concepts(
+        ("retain_uids", "retain_device_identity")
+    )
+    assert started in runs.kept_concepts((runs.FULL_DATES,))
+    assert started not in runs.kept_concepts((runs.MODIFIED_DATES,))
+    assert person not in runs.kept_concepts(tuple(standard.OPTIONS))
+
+
+def test_a_reports_content_item_value_is_kept_by_its_concept_not_its_row():
+    """Clean Structured Content keeps a value by its concept name's row.
+
+    Device Observer UID is kept under Retain UIDs, though the row of UID
+    (0040,A124) in Table E.1-1 is U with no option's K; a run's
+    expectations follow Table E.3.4-1 for a content item, and Table E.1-1
+    for the same attribute outside the content tree.
+    """
+    every = next(run for run in CORPUS_RUNS if run.name == "all-composable-options")
+    file = next(
+        file
+        for file in corpus_module.build_corpus().files
+        if file.name in corpus_module.STRUCTURED_REPORT_FILES
+        and file.manifest.iod == "X-Ray Radiation Dose SR"
+    )
+    by_concept = {
+        placement.concept: placement
+        for placement in file.manifest.placements
+        if placement.concept is not None
+    }
+    device_observer = by_concept[("DCM", "121012", "UIDREF")]
+    outside = dataclasses.replace(device_observer, concept=None)
+
+    assert "(0040,A124)" not in every.kept_rows()
+    assert every.keeps(device_observer)
+    assert not every.keeps(outside)
+    assert every.keeps(by_concept[("DCM", "111526", "DATETIME")])
+    # A run that does not keep the Content Sequence keeps nothing in it.
+    assert not dataclasses.replace(every, kept_content=frozenset()).keeps(
+        device_observer
+    )
 
 
 def test_each_option_of_table_e1_1_has_its_code_and_temporal_value():

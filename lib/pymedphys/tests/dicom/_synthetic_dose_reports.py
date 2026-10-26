@@ -22,7 +22,9 @@ content item's relationship, Value Type, and concept name is a row of a
 template of DICOM PS3.16 2026d, cited beside it, and each coded value is one
 of the context group that the row names. Code meanings are those of PS3.16
 Annex D for DCM codes, and those the templates and context groups give for
-the others.
+the others. The codes that the synthetic corpus's reports also use, and
+:func:`item`, which builds a content item, come from
+:mod:`~pymedphys._dicom.deidentify.synthetic_content_trees`.
 
 Each tree is partial: it holds the rows that its templates require where
 they are included, apart from the templates that the builder's docstring
@@ -42,9 +44,58 @@ Text that must never reach a written file under the Basic Profile carries
 fictitious, and no value comes from a real report.
 """
 
-import dataclasses
-
 from pymedphys._imports import pydicom
+
+from pymedphys._dicom.deidentify.synthetic_content_trees import (
+    ACCUMULATED_X_RAY_DOSE_DATA,
+    ACQUISITION_PLANE,
+    ADMINISTERED_ACTIVITY,
+    ADMINISTRATION_EVENT_UID_CONCEPT,
+    ASSOCIATED_PROCEDURE,
+    AUTOMATED_DATA_COLLECTION,
+    CHEST,
+    Code,
+    DATETIME_STARTED,
+    DEVICE,
+    DEVICE_OBSERVER_UID_CONCEPT,
+    DIAGNOSTIC_INTENT,
+    DOSE_AREA_PRODUCT,
+    FDG,
+    FLUORINE_18,
+    GRAY_SQUARE_METRE,
+    HAS_INTENT,
+    INTRAVENOUS_ROUTE,
+    IRRADIATION_ADMINISTERING,
+    IRRADIATION_EVENT_TYPE,
+    IRRADIATION_EVENT_UID_CONCEPT,
+    IRRADIATION_EVENT_X_RAY_DATA,
+    MEGABECQUEREL,
+    OBSERVER_TYPE,
+    PERSON_NAME,
+    PERSON_ROLE_IN_PROCEDURE,
+    PROCEDURE_REPORTED,
+    PROJECTION_X_RAY,
+    RADIONUCLIDE,
+    RADIONUCLIDE_HALF_LIFE,
+    RADIOPHARMACEUTICAL_ADMINISTRATION,
+    RADIOPHARMACEUTICAL_AGENT,
+    RADIOPHARMACEUTICAL_RADIATION_DOSE_REPORT,
+    ROUTE_OF_ADMINISTRATION,
+    SCOPE_OF_ACCUMULATION,
+    SECONDS,
+    SINGLE_PLANE,
+    SITE_OF,
+    SOURCE_OF_DOSE_INFORMATION,
+    START_DATETIME,
+    STATIONARY_ACQUISITION,
+    STUDY_INSTANCE_UID,
+    STUDY_SCOPE,
+    TARGET_REGION,
+    TUMOR_LOCALIZATION,
+    VIA_ARM_VEIN,
+    X_RAY_RADIATION_DOSE_REPORT,
+    item,
+)
 
 X_RAY_RADIATION_DOSE_SR = "1.2.840.10008.5.1.4.1.1.88.67"
 RADIOPHARMACEUTICAL_RADIATION_DOSE_SR = "1.2.840.10008.5.1.4.1.1.88.68"
@@ -92,38 +143,13 @@ DATES = (
 )
 
 
-@dataclasses.dataclass(frozen=True)
-class Code:
-    """A code: its Code Value, Coding Scheme Designator, and Code Meaning."""
-
-    value: str
-    designator: str
-    meaning: str
-
-    def dataset(self):
-        """Return the code as an item of a code sequence."""
-        code = pydicom.Dataset()
-        code.CodeValue = self.value
-        code.CodingSchemeDesignator = self.designator
-        code.CodeMeaning = self.meaning
-        return code
-
-
 # Concept names, by the first template row that uses them.
-X_RAY_RADIATION_DOSE_REPORT = Code("113701", "DCM", "X-Ray Radiation Dose Report")
-PROCEDURE_REPORTED = Code("121058", "DCM", "Procedure reported")
-HAS_INTENT = Code("363703001", "SCT", "Has Intent")
-SCOPE_OF_ACCUMULATION = Code("113705", "DCM", "Scope of Accumulation")
-ACCUMULATED_X_RAY_DOSE_DATA = Code("113702", "DCM", "Accumulated X-Ray Dose Data")
 COMMENT = Code("121106", "DCM", "Comment")
-SOURCE_OF_DOSE_INFORMATION = Code("113854", "DCM", "Source of Dose Information")
 # TID 1002, 1003, and 1004.
-OBSERVER_TYPE = Code("121005", "DCM", "Observer Type")
 PERSON_OBSERVER_NAME = Code("121008", "DCM", "Person Observer Name")
 PERSON_OBSERVERS_ORGANIZATION_NAME = Code(
     "121009", "DCM", "Person Observer's Organization Name"
 )
-DEVICE_OBSERVER_UID_CONCEPT = Code("121012", "DCM", "Device Observer UID")
 DEVICE_OBSERVER_NAME = Code("121013", "DCM", "Device Observer Name")
 DEVICE_OBSERVER_MANUFACTURER = Code("121014", "DCM", "Device Observer Manufacturer")
 DEVICE_OBSERVER_MODEL_NAME = Code("121015", "DCM", "Device Observer Model Name")
@@ -132,8 +158,6 @@ DEVICE_OBSERVER_PHYSICAL_LOCATION = Code(
     "121017", "DCM", "Device Observer Physical Location During Observation"
 )
 # TID 1020 and 1021.
-PERSON_NAME = Code("113870", "DCM", "Person Name")
-PERSON_ROLE_IN_PROCEDURE = Code("113875", "DCM", "Person Role in Procedure")
 PERSON_ID = Code("113871", "DCM", "Person ID")
 ORGANIZATION_NAME = Code("113873", "DCM", "Organization Name")
 DEVICE_ROLE_IN_PROCEDURE = Code("113876", "DCM", "Device Role in Procedure")
@@ -142,7 +166,6 @@ DEVICE_MANUFACTURER = Code("113878", "DCM", "Device Manufacturer")
 DEVICE_MODEL_NAME = Code("113879", "DCM", "Device Model Name")
 DEVICE_SERIAL_NUMBER = Code("113880", "DCM", "Device Serial Number")
 # TID 10002 and 10003.
-ACQUISITION_PLANE = Code("113764", "DCM", "Acquisition Plane")
 CALIBRATION = Code("122505", "DCM", "Calibration")
 DOSE_MEASUREMENT_DEVICE = Code("113794", "DCM", "Dose Measurement Device")
 CALIBRATION_DATETIME_CONCEPT = Code("113723", "DCM", "Calibration DateTime")
@@ -150,37 +173,14 @@ CALIBRATION_FACTOR = Code("122322", "DCM", "Calibration Factor")
 CALIBRATION_UNCERTAINTY = Code("113763", "DCM", "Calibration Uncertainty")
 CALIBRATION_RESPONSIBLE_PARTY = Code("113724", "DCM", "Calibration Responsible Party")
 CALIBRATION_PROTOCOL = Code("113720", "DCM", "Calibration Protocol")
-IRRADIATION_EVENT_X_RAY_DATA = Code("113706", "DCM", "Irradiation Event X-Ray Data")
-IRRADIATION_EVENT_UID_CONCEPT = Code("113769", "DCM", "Irradiation Event UID")
 IRRADIATION_EVENT_LABEL = Code("113605", "DCM", "Irradiation Event Label")
-DATETIME_STARTED = Code("111526", "DCM", "DateTime Started")
-IRRADIATION_EVENT_TYPE = Code("113721", "DCM", "Irradiation Event Type")
 ACQUISITION_PROTOCOL = Code("125203", "DCM", "Acquisition Protocol")
-TARGET_REGION = Code("123014", "DCM", "Target Region")
-DOSE_AREA_PRODUCT = Code("122130", "DCM", "Dose Area Product")
 # TID 10021, 10022, and 10024.
-RADIOPHARMACEUTICAL_RADIATION_DOSE_REPORT = Code(
-    "113500", "DCM", "Radiopharmaceutical Radiation Dose Report"
-)
-ASSOCIATED_PROCEDURE = Code("363589002", "SCT", "Associated Procedure")
-RADIOPHARMACEUTICAL_ADMINISTRATION = Code(
-    "113502", "DCM", "Radiopharmaceutical Administration"
-)
-RADIOPHARMACEUTICAL_AGENT = Code("349358000", "SCT", "Radiopharmaceutical agent")
-RADIONUCLIDE = Code("89457008", "SCT", "Radionuclide")
-RADIONUCLIDE_HALF_LIFE = Code("304283002", "SCT", "Radionuclide Half Life")
-ADMINISTRATION_EVENT_UID_CONCEPT = Code(
-    "113503", "DCM", "Radiopharmaceutical Administration Event UID"
-)
-START_DATETIME = Code("123003", "DCM", "Radiopharmaceutical Start DateTime")
 STOP_DATETIME = Code("123004", "DCM", "Radiopharmaceutical Stop DateTime")
-ADMINISTERED_ACTIVITY = Code("113507", "DCM", "Administered activity")
 PRE_ADMINISTRATION_ACTIVITY = Code(
     "113508", "DCM", "Pre-Administration Measured Activity"
 )
 ACTIVITY_MEASUREMENT_DEVICE = Code("113540", "DCM", "Activity Measurement Device")
-ROUTE_OF_ADMINISTRATION = Code("410675002", "SCT", "Route of administration")
-SITE_OF = Code("272737002", "SCT", "Site of")
 BRAND_NAME = Code("111529", "DCM", "Brand Name")
 DISPENSE_UNIT_IDENTIFIER = Code(
     "113511", "DCM", "Radiopharmaceutical Dispense Unit Identifier"
@@ -194,84 +194,17 @@ PATIENT_WEIGHT = Code("29463-7", "LN", "Patient Weight")
 RECENT_PHYSICAL_ACTIVITY = Code("113552", "DCM", "Recent Physical Activity")
 
 # Coded values, each from the context group that its row names.
-PROJECTION_X_RAY = Code("113704", "DCM", "Projection X-Ray")  # TID 10001 row 2
-DIAGNOSTIC_INTENT = Code("261004008", "SCT", "Diagnostic Intent")  # CID 3629
-DEVICE = Code("121007", "DCM", "Device")  # CID 270
 PERSON = Code("121006", "DCM", "Person")  # CID 270
-STUDY_SCOPE = Code("113014", "DCM", "Study")  # CID 10000
-STUDY_INSTANCE_UID = Code("110180", "DCM", "Study Instance UID")  # CID 10001
-AUTOMATED_DATA_COLLECTION = Code("113856", "DCM", "Automated Data Collection")
-SINGLE_PLANE = Code("113622", "DCM", "Single Plane")  # TID 10001 row 11
 DOSIMETER = Code("15869005", "SCT", "Dosimeter")  # CID 10010
 IRRADIATING_DEVICE = Code("113859", "DCM", "Irradiating Device")  # TID 10002 row 14
-STATIONARY_ACQUISITION = Code("113611", "DCM", "Stationary Acquisition")  # CID 10002
-CHEST = Code("816094009", "SCT", "Chest")  # CID 4031
-IRRADIATION_ADMINISTERING = Code("113851", "DCM", "Irradiation Administering")
 IRRADIATION_AUTHORIZING = Code("113850", "DCM", "Irradiation Authorizing")
-TUMOR_LOCALIZATION = Code(
-    "45316007", "SCT", "Radionuclide localization of tumor"
-)  # CID 3108
-FDG = Code("35321007", "SCT", "Fluorodeoxyglucose F^18^")  # CID 25
-FLUORINE_18 = Code("77004003", "SCT", "^18^Fluorine")  # CID 4020
 DOSE_CALIBRATOR = Code("113541", "DCM", "Dose Calibrator")  # CID 10041
-INTRAVENOUS_ROUTE = Code("47625008", "SCT", "Intravenous route")  # CID 11
-VIA_ARM_VEIN = Code("261459001", "SCT", "Via arm vein")  # CID 3746
 FEMALE = Code("F", "DCM", "Female")  # CID 7455
 # Units, as the rows give them, or from CID 7456 for an age.
-GRAY_SQUARE_METRE = Code("Gy.m2", "UCUM", "Gy.m2")
 NO_UNITS = Code("1", "UCUM", "no units")
 PERCENT = Code("%", "UCUM", "Percent")
-SECONDS = Code("s", "UCUM", "seconds")
-MEGABECQUEREL = Code("MBq", "UCUM", "MBq")
 YEAR = Code("a", "UCUM", "year")
 KILOGRAM = Code("kg", "UCUM", "kg")
-
-
-def item(relationship, value_type, concept, *children, **value):
-    """Return a content item whose Content Sequence holds ``children``.
-
-    Parameters
-    ----------
-    relationship : str or None
-        Its Relationship Type (0040,A010), or None for the root.
-    value_type : str
-        Its Value Type (0040,A040).
-    concept : Code
-        Its concept name.
-    *children : pydicom.Dataset
-        The items of its Content Sequence, if any.
-    **value
-        Its value, by Value Type: ``code`` (a :class:`Code`) for CODE,
-        ``number`` and ``units`` for NUM, and ``text`` for TEXT, PNAME,
-        DATETIME, and UIDREF.
-    """
-    dataset = pydicom.Dataset()
-    if relationship is not None:
-        dataset.RelationshipType = relationship
-    dataset.ValueType = value_type
-    dataset.ConceptNameCodeSequence = pydicom.Sequence([concept.dataset()])
-    if value_type == "CONTAINER":
-        dataset.ContinuityOfContent = "SEPARATE"
-    elif value_type == "CODE":
-        dataset.ConceptCodeSequence = pydicom.Sequence([value["code"].dataset()])
-    elif value_type == "NUM":
-        measured = pydicom.Dataset()
-        measured.NumericValue = value["number"]
-        measured.MeasurementUnitsCodeSequence = pydicom.Sequence(
-            [value["units"].dataset()]
-        )
-        dataset.MeasuredValueSequence = pydicom.Sequence([measured])
-    else:
-        keyword = {
-            "TEXT": "TextValue",
-            "PNAME": "PersonName",
-            "DATETIME": "DateTime",
-            "UIDREF": "UID",
-        }[value_type]
-        setattr(dataset, keyword, value["text"])
-    if children:
-        dataset.ContentSequence = pydicom.Sequence(list(children))
-    return dataset
 
 
 def _chosen(optional, rows):

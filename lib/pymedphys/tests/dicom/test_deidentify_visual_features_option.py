@@ -697,13 +697,15 @@ def test_the_statement_names_each_supported_iod_that_lacks_the_attribute():
     assert lacking == {
         "RT Plan",
         "RT Structure Set",
+        "RT Beams Treatment Record",
         "MR Spectroscopy",
         "Spatial Registration",
         "Deformable Spatial Registration",
     }
     assert (
-        "which of the supported IODs are RT Plan, RT Structure Set, MR "
-        "Spectroscopy, Spatial Registration, and Deformable Spatial Registration"
+        "which of the supported IODs are RT Plan, RT Structure Set, RT Beams "
+        "Treatment Record, MR Spectroscopy, Spatial Registration, and Deformable "
+        "Spatial Registration"
     ) in conformance_markdown.render_markdown(
         conformance.conformance_statement(_policy(), vocabulary=None)
     )
@@ -815,7 +817,12 @@ _DOSE = ("06-rtdose.dcm", "07-rtdose-review.dcm")
 _STRUCTURE_SET = "04-rtstruct.dcm"
 _DEFORMABLE = "19-registration-deformable.dcm"
 # The instances that cannot show a face.
-_FACELESS = ("05-rtplan.dcm", "14-mr-spectroscopy.dcm", "18-registration.dcm")
+_FACELESS = (
+    "05-rtplan.dcm",
+    "14-mr-spectroscopy.dcm",
+    "18-registration.dcm",
+    "20-rt-beams-record.dcm",
+)
 
 
 class _CornerFinder:

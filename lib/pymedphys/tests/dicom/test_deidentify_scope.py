@@ -65,9 +65,12 @@ SUPPORTED = {
     "1.2.840.10008.5.1.4.1.1.128.1": "Legacy Converted Enhanced PET Image",
     "1.2.840.10008.5.1.4.1.1.481.2": "RT Dose",
     "1.2.840.10008.5.1.4.1.1.481.3": "RT Structure Set",
+    "1.2.840.10008.5.1.4.1.1.481.4": "RT Beams Treatment Record",
     "1.2.840.10008.5.1.4.1.1.481.5": "RT Plan",
     "1.2.840.10008.5.1.4.1.1.66.1": "Spatial Registration",
     "1.2.840.10008.5.1.4.1.1.66.3": "Deformable Spatial Registration",
+    "1.2.840.10008.5.1.4.1.1.88.67": "X-Ray Radiation Dose SR",
+    "1.2.840.10008.5.1.4.1.1.88.68": "Radiopharmaceutical Radiation Dose SR",
     "1.2.840.10008.5.1.4.1.1.88.11": "Basic Text SR",
     "1.2.840.10008.5.1.4.1.1.88.22": "Enhanced SR",
     "1.2.840.10008.5.1.4.1.1.88.33": "Comprehensive SR",
@@ -89,11 +92,14 @@ def test_the_first_release_supports_ct_mr_pet_rt_registration_and_sr_objects():
         "Positron Emission Tomography Image",
         "Enhanced PET Image",
         "Legacy Converted Enhanced PET Image",
+        "RT Beams Treatment Record",
         "RT Dose",
         "RT Plan",
         "RT Structure Set",
         "Spatial Registration",
         "Deformable Spatial Registration",
+        "X-Ray Radiation Dose SR",
+        "Radiopharmaceutical Radiation Dose SR",
         "Basic Text SR",
         "Enhanced SR",
         "Comprehensive SR",
@@ -157,16 +163,17 @@ def test_padding_is_ignored():
 @pytest.mark.parametrize(
     "sop_class, iod",
     [
-        # Structured Reports of the IODs not supported yet, including dose
-        # reports and Key Object Selection documents, and Presentation
-        # States, which the design always sequesters.
+        # The other Structured Reports, including the other dose reports,
+        # Key Object Selection documents, and Presentation States, which the
+        # design always sequesters.
         ("1.2.840.10008.5.1.4.1.1.88.50", "Mammography CAD SR"),
-        ("1.2.840.10008.5.1.4.1.1.88.67", "X-Ray Radiation Dose SR"),
+        ("1.2.840.10008.5.1.4.1.1.88.76", "Enhanced X-Ray Radiation Dose SR"),
+        ("1.2.840.10008.5.1.4.1.1.88.73", "Patient Radiation Dose SR"),
         ("1.2.840.10008.5.1.4.1.1.88.59", "Key Object Selection Document"),
         ("1.2.840.10008.5.1.4.1.1.11.1", "Grayscale Softcopy Presentation State"),
         # Outside the first release: other images, CT, MR, and PET objects
         # that are not images, spatial fiducials, RT Ion and second-generation
-        # RT objects, and treatment records.
+        # RT objects, and the treatment records of RT Ion and brachytherapy.
         ("1.2.840.10008.5.1.4.1.1.20", "Nuclear Medicine Image"),
         ("1.2.840.10008.5.1.4.1.1.6.1", "Ultrasound Image"),
         ("1.2.840.10008.5.1.4.1.1.200.2", "CT Performed Procedure Protocol"),
@@ -176,8 +183,8 @@ def test_padding_is_ignored():
         ("1.2.840.10008.5.1.4.1.1.481.8", "RT Ion Plan"),
         ("1.2.840.10008.5.1.4.1.1.481.10", "RT Physician Intent"),
         ("1.2.840.10008.5.1.4.1.1.481.14", "Tomotherapeutic Radiation"),
-        ("1.2.840.10008.5.1.4.1.1.481.4", "RT Beams Treatment Record"),
         ("1.2.840.10008.5.1.4.1.1.481.6", "RT Brachy Treatment Record"),
+        ("1.2.840.10008.5.1.4.1.1.481.9", "RT Ion Beams Treatment Record"),
     ],
 )
 def test_a_standard_sop_class_of_another_iod_is_sequestered(sop_class, iod):
