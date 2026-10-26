@@ -636,7 +636,7 @@ def test_the_qc_pack_and_report_name_private_text_by_its_key():
     )
     document = qc_pack.pack_document(pack)
 
-    assert document["format"] == "pymedphys-deid-qc-pack/18"
+    assert document["format"] == "pymedphys-deid-qc-pack/19"
     assert [d["attribute"] for d in document["descriptors"]] == [
         SEQUENCE_NAME,
         "(0008,103E)",

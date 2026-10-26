@@ -80,8 +80,10 @@ indicator. Findings name attribute paths, never values.
 every CT, MR, and PET volume, and every RT Dose grid of more than one
 frame, may hold a reconstructable face; so may a CT, MR, or PET localizer,
 which can show the face in profile, and so may an RT Image, a projection
-such as a lateral DRR; and one whose attributes name a region of the head
-or neck in a reviewed list from PS3.16 Annex L says that it does.
+such as a lateral DRR, and a Segmentation, whose segment of the skin or
+body traces the profile; and one whose attributes, or a Segmentation's
+segments, name a region of the head or neck in a reviewed list from PS3.16
+Annex L says that it does.
 :func:`series_evidence` gives the part of an instance that it reads.
 
 Reading leaves the data set as it was: pydicom converts an element read from
@@ -137,6 +139,7 @@ class Indicator(enum.Enum):
     RT_DOSE_VOLUME = "rt-dose-volume"
     LOCALIZER = "localizer"
     RT_IMAGE = "rt-image"
+    SEGMENTATION = "segmentation"
     HEAD_OR_NECK = "head-or-neck"
     SUV_UNITS = "suv-units"
     SUV_MAPPING = "suv-mapping"
@@ -162,6 +165,7 @@ _RISKS = {
     Indicator.RT_DOSE_VOLUME: Risk.RECONSTRUCTABLE_FACE,
     Indicator.LOCALIZER: Risk.RECONSTRUCTABLE_FACE,
     Indicator.RT_IMAGE: Risk.RECONSTRUCTABLE_FACE,
+    Indicator.SEGMENTATION: Risk.RECONSTRUCTABLE_FACE,
     Indicator.HEAD_OR_NECK: Risk.RECONSTRUCTABLE_FACE,
     Indicator.SUV_UNITS: Risk.BODY_WEIGHT,
     Indicator.SUV_MAPPING: Risk.BODY_WEIGHT,
@@ -264,6 +268,8 @@ _UNITS = "(0054,1001)"
 _REAL_WORLD_VALUE_MAPPING_SEQUENCE = "(0040,9096)"
 _MEASUREMENT_UNITS_CODE_SEQUENCE = "(0040,08EA)"
 _LONG_CODE_VALUE = "(0008,0119)"
+_SEGMENT_SEQUENCE = "(0062,0002)"
+_SEGMENTED_PROPERTY_TYPE_CODE_SEQUENCE = "(0062,000F)"
 # The interpreted types and ROI names of the patient's outline, and of a
 # bolus or an immobilization device, which lie on it.
 _SURFACE_TERMS = frozenset({"EXTERNAL", "BODY", "SKIN", "BOLUS", "FIXATION"})
@@ -296,6 +302,8 @@ READ_VRS = {
     _REAL_WORLD_VALUE_MAPPING_SEQUENCE: "SQ",
     _MEASUREMENT_UNITS_CODE_SEQUENCE: "SQ",
     _LONG_CODE_VALUE: "UC",
+    _SEGMENT_SEQUENCE: "SQ",
+    _SEGMENTED_PROPERTY_TYPE_CODE_SEQUENCE: "SQ",
 }
 
 _PIXEL_DATA_TAGS = (0x7FE00008, 0x7FE00009, 0x7FE00010)
@@ -744,6 +752,14 @@ _VOLUME_SOP_CLASSES = {
 # include LOCALIZER, though an implementer may extend them (PS3.5 Section
 # 6.3).
 _RT_IMAGE = "1.2.840.10008.5.1.4.1.1.481.1"
+# Segmentation Storage and Label Map Segmentation Storage (PS3.4 Table
+# B.5-1), whose frames are masks of segments. A segment of the skin or body
+# traces the profile, and its label or code need not say that it is one, so
+# each instance is reported, whatever its segments. Surface Segmentation
+# holds meshes, not pixel data, and is out of scope (D-010).
+SEGMENTATION_SOP_CLASSES = frozenset(
+    {"1.2.840.10008.5.1.4.1.1.66.4", "1.2.840.10008.5.1.4.1.1.66.7"}
+)
 VOLUME_INDICATORS = (
     Indicator.CT_VOLUME,
     Indicator.MR_VOLUME,
@@ -890,11 +906,18 @@ def assess_series(instances: Sequence[pydicom.Dataset]) -> tuple[SeriesFinding, 
     Image Type, gantry angle, or Number of Frames, since an RT Image is a
     projection, and a lateral one, such as a DRR or a simulator or portal
     image, can show the face in profile as a localizer can; it is no frame
-    of a volume. A volume, localizer, or RT Image whose Body Part Examined
+    of a volume. So is each Segmentation, of Segmentation Storage or Label
+    Map Segmentation Storage, whatever its segments and Number of Frames,
+    since a segment of the skin or body traces the profile and its label or
+    code need not say that it is one; it is no frame of a volume either.
+    A volume, localizer, RT Image, or Segmentation whose Body Part Examined
     (0018,0015) or Anatomic Region Sequence (0008,2218), at the top level or
     in a Frame Anatomy Sequence (0020,9071) of the shared or a per-frame
     functional group, names a region in :func:`load_head_and_neck_regions`
-    is also reported as showing the head or neck. How finely a series
+    is also reported as showing the head or neck, and so is a Segmentation
+    an item of whose Segment Sequence (0062,0002) names one by its Anatomic
+    Region Sequence or its Segmented Property Type Code Sequence
+    (0062,000F), such as the parotid gland. How finely a series
     samples the face changes how readily it can be recognised (MIDI report
     Section 1.18.3.2), but no spacing makes it safe, so spacing decides
     nothing here.
@@ -908,9 +931,9 @@ def assess_series(instances: Sequence[pydicom.Dataset]) -> tuple[SeriesFinding, 
     -------
     tuple of SeriesFinding
         The CT, MR, PET, and RT Dose volumes first, in that order, then the
-        localizers, then the RT Images, then the head or neck by attribute,
-        then unreadable evidence by instance, which is reported whether or
-        not the series is a volume.
+        localizers, then the RT Images, then the Segmentations, then the head
+        or neck by attribute, then unreadable evidence by instance, which is
+        reported whether or not the series is a volume.
     """
     regions = load_head_and_neck_regions()
     members: dict[Indicator, list[int]] = {}
@@ -918,6 +941,7 @@ def assess_series(instances: Sequence[pydicom.Dataset]) -> tuple[SeriesFinding, 
     unknown: list[int] = []
     localizers: list[int] = []
     rt_images: list[int] = []
+    segmentations: list[int] = []
     head: dict[int, list[ElementPath]] = {}
     unreadable: list[SeriesFinding] = []
     for index, dataset in enumerate(instances):
@@ -930,6 +954,13 @@ def assess_series(instances: Sequence[pydicom.Dataset]) -> tuple[SeriesFinding, 
             if sop_class == _RT_IMAGE:
                 rt_images.append(index)
                 head[index] = list(_head_or_neck(dataset, regions, index, unreadable))
+                continue
+            if sop_class in SEGMENTATION_SOP_CLASSES:
+                segmentations.append(index)
+                head[index] = [
+                    *_head_or_neck(dataset, regions, index, unreadable),
+                    *_segments_head_or_neck(dataset, regions, index, unreadable),
+                ]
                 continue
             volume_class = _VOLUME_SOP_CLASSES.get(sop_class or "")
             if volume_class is None:
@@ -960,6 +991,8 @@ def assess_series(instances: Sequence[pydicom.Dataset]) -> tuple[SeriesFinding, 
         shown_by.append(SeriesFinding(Indicator.LOCALIZER, tuple(localizers)))
     if rt_images:
         shown_by.append(SeriesFinding(Indicator.RT_IMAGE, tuple(rt_images)))
+    if segmentations:
+        shown_by.append(SeriesFinding(Indicator.SEGMENTATION, tuple(segmentations)))
     shown = {index for finding in shown_by for index in finding.instances}
     named: dict[ElementPath, list[int]] = {}
     for index, paths in head.items():
@@ -986,6 +1019,7 @@ _SERIES_EVIDENCE = (
     _NUMBER_OF_FRAMES,
     _SHARED_FUNCTIONAL_GROUPS_SEQUENCE,
     _PER_FRAME_FUNCTIONAL_GROUPS_SEQUENCE,
+    _SEGMENT_SEQUENCE,
 )
 
 
@@ -1009,8 +1043,8 @@ def series_evidence(dataset: pydicom.Dataset) -> pydicom.Dataset:
     -------
     pydicom.Dataset
         A new data set of its SOP Class UID, Image Type, Number of Frames,
-        Body Part Examined, Anatomic Region Sequence, and Shared and
-        Per-frame Functional Groups Sequences, those it has.
+        Body Part Examined, Anatomic Region Sequence, Shared and Per-frame
+        Functional Groups Sequences, and Segment Sequence, those it has.
     """
     evidence = pydicom.Dataset()
     for tag in _SERIES_EVIDENCE:
@@ -1084,6 +1118,30 @@ def _head_or_neck(
                 )
 
 
+def _segments_head_or_neck(
+    dataset: pydicom.Dataset,
+    regions: HeadAndNeckRegions,
+    index: int,
+    unreadable: list[SeriesFinding],
+) -> Iterator[ElementPath]:
+    """Yield the paths at which a Segmentation's segments name the head or neck.
+
+    A segment's anatomy is in its Anatomic Region Sequence, which may be
+    left out where its Segmented Property Type Code Sequence implies it
+    (PS3.3 Section C.8.20.4.1), so the codes of both are compared.
+    """
+    for segment, within in _items(dataset, (), _SEGMENT_SEQUENCE, index, unreadable):
+        yield from _coded_head_or_neck(segment, within, regions, index, unreadable)
+        yield from _coded_head_or_neck(
+            segment,
+            within,
+            regions,
+            index,
+            unreadable,
+            _SEGMENTED_PROPERTY_TYPE_CODE_SEQUENCE,
+        )
+
+
 def _items(
     dataset: pydicom.Dataset,
     within: tuple[tuple[str, int], ...],
@@ -1104,11 +1162,11 @@ def _coded_head_or_neck(
     regions: HeadAndNeckRegions,
     index: int,
     unreadable: list[SeriesFinding],
+    sequence: str = _ANATOMIC_REGION_SEQUENCE,
 ) -> Iterator[ElementPath]:
-    """Yield the paths at which an Anatomic Region Sequence names the head or neck."""
-    for item, nested in _items(
-        dataset, within, _ANATOMIC_REGION_SEQUENCE, index, unreadable
-    ):
+    """Yield the paths at which an Anatomic Region Sequence, or another code
+    sequence of anatomy, names the head or neck."""
+    for item, nested in _items(dataset, within, sequence, index, unreadable):
         # Code Value is Type 1C, absent where Long Code Value or URN Code
         # Value holds a code too long for it, which no code of the list is
         # (PS3.3 Section 8.8).
