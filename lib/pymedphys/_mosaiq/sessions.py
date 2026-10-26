@@ -148,6 +148,8 @@ def session_interval_for_site(connection: Connection, sit_set_id: int) -> timede
             Config ON Config.Inst_ID = Dose_Hst.Inst_ID
         WHERE
             Site.SIT_SET_ID = %(sit_set_id)s
+            AND Dose_Hst.WasQAMode = 0
+            AND Dose_Hst.Tx_DtTm IS NOT NULL
         """,
         {"sit_set_id": sit_set_id},
     )
