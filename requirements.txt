@@ -13,7 +13,7 @@ attrs==26.1.0
     #   jsonschema
     #   pymedphys
     #   referencing
-certifi==2026.10.19
+certifi==2026.10.23
     # via requests
 cffi==2.1.1 ; platform_python_implementation != 'PyPy' and sys_platform == 'linux'
     # via cryptography
@@ -112,7 +112,7 @@ packaging==26.3
     #   matplotlib
     #   plotly
     #   streamlit
-pandas==3.0.6
+pandas==3.1.0
     # via
     #   pymedphys
     #   streamlit
@@ -128,7 +128,7 @@ protobuf==7.36.2
     # via streamlit
 pyarrow==26.0.0
     # via streamlit
-pycparser==3.11 ; implementation_name != 'PyPy' and platform_python_implementation != 'PyPy' and sys_platform == 'linux'
+pycparser==3.12 ; implementation_name != 'PyPy' and platform_python_implementation != 'PyPy' and sys_platform == 'linux'
     # via cffi
 pydeck==0.9.3
     # via streamlit
@@ -140,13 +140,13 @@ pylibjpeg==2.1.0
     # via pymedphys
 pylibjpeg-openjpeg==2.6.0
     # via pymedphys
-pymssql==2.4.4
+pymssql==2.4.5
     # via pymedphys
 pynetdicom==3.0.4
     # via pymedphys
 pyparsing==3.3.3
     # via matplotlib
-python-dateutil==2.9.0.post0
+python-dateutil==3.0.0
     # via
     #   matplotlib
     #   pandas
@@ -185,9 +185,9 @@ shapely==2.2.0
     # via pymedphys
 six==1.17.0
     # via python-dateutil
-sqlalchemy==2.1.5
+sqlalchemy==2.1.6
     # via pymedphys
-starlette==1.9.0
+starlette==1.10.0
     # via streamlit
 streamlit==1.66.1
     # via pymedphys
@@ -211,8 +211,10 @@ typing-extensions==4.16.0
     #   sqlalchemy
     #   starlette
     #   streamlit
-tzdata==2026.5 ; sys_platform == 'emscripten' or sys_platform == 'win32'
-    # via pandas
+tzdata==2026.5
+    # via
+    #   pandas
+    #   python-dateutil
 urllib3==2.8.0
     # via requests
 uvicorn==0.54.0
