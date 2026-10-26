@@ -71,16 +71,23 @@ TARGET_IODS = (
 REGISTRATION_IODS = ("Spatial Registration", "Deformable Spatial Registration")
 SUPPORTED_TARGET_IODS = (*REGISTRATION_IODS, "RT Beams Treatment Record")
 REVIEWED_AGAINST = CT_AND_RT_IODS + ADDED_IODS
-SUPPORTED_IODS = REVIEWED_AGAINST + SUPPORTED_TARGET_IODS
 # The Radiation Dose SR IODs, which the maintainer added to the planned
-# coverage on 25 October 2026, whose text, UID, and date attributes are
-# reviewed ahead of supporting them.
+# coverage on 25 October 2026, whose text, UID, and date attributes were
+# reviewed ahead of supporting them, against the IODs above, and those of
+# them that the first supported release now supports.
 RADIATION_DOSE_SR_IODS = (
     "X-Ray Radiation Dose SR",
     "Enhanced X-Ray Radiation Dose SR",
     "Radiopharmaceutical Radiation Dose SR",
     "Patient Radiation Dose SR",
 )
+SUPPORTED_DOSE_SR_IODS = (
+    "X-Ray Radiation Dose SR",
+    "Radiopharmaceutical Radiation Dose SR",
+)
+# The IODs that the Radiation Dose SR IODs were reviewed against.
+DOSE_SR_REVIEWED_AGAINST = REVIEWED_AGAINST + TARGET_IODS
+SUPPORTED_IODS = REVIEWED_AGAINST + SUPPORTED_TARGET_IODS + SUPPORTED_DOSE_SR_IODS
 CLEAN_DESCRIPTORS = "clean_descriptors"
 DEVICE_IDENTITY = "retain_device_identity"
 FULL_DATES = "retain_longitudinal_full_dates"
@@ -344,9 +351,10 @@ def test_every_text_attribute_a_supported_iod_uses_and_table_e1_1_omits_has_a_ru
 
     # Checked by hand against the 2026d PS3.3, PS3.6, and PS3.15; the
     # registration IODs add Content Description and Frame of Reference
-    # Transformation Comment, and the RT Beams Treatment Record five
-    # operator-typed descriptions.
-    assert len(omitted) == 148
+    # Transformation Comment, the RT Beams Treatment Record five
+    # operator-typed descriptions, and the two Radiation Dose SR IODs
+    # Completion Flag Description and Selector UC Value.
+    assert len(omitted) == 150
     assert omitted <= set(_rules())
     assert {"(0008,0100)", "(300A,00C2)", "(60xx,1500)"} <= omitted
 
@@ -361,7 +369,7 @@ def test_the_rules_for_omitted_text_fall_in_the_reviewed_groups():
 
     assert groups == {
         # Operator-typed labels and text.
-        ("X/Z/D", ((CLEAN_DESCRIPTORS, "C"),)): 69,
+        ("X/Z/D", ((CLEAN_DESCRIPTORS, "C"),)): 71,
         # Accessory and equipment identifiers.
         ("X/Z/D", ((DEVICE_IDENTITY, "K"),)): 24,
         # Coded and technical values, and De-identification Method.
@@ -591,17 +599,19 @@ RADIATION_DOSE_SR_DATES = {
 }
 
 
-def test_the_radiation_dose_sr_iods_are_generated_and_not_yet_supported():
+def test_the_radiation_dose_sr_iods_are_generated_and_only_two_supported():
     tables = iods.load_iod_tables()
 
     assert set(RADIATION_DOSE_SR_IODS) <= set(tables.iods)
-    assert not set(RADIATION_DOSE_SR_IODS) & scope.SUPPORTED_IODS
+    assert set(RADIATION_DOSE_SR_IODS) & scope.SUPPORTED_IODS == set(
+        SUPPORTED_DOSE_SR_IODS
+    )
 
 
 @pytest.mark.deid_requirement("MIDI-BP-05", "MIDI-BP-06", "MIDI-BP-11")
 def test_the_text_that_only_the_radiation_dose_sr_iods_use_has_reviewed_rules():
     listed = _table_e1_1()
-    others = SUPPORTED_IODS + TARGET_IODS
+    others = DOSE_SR_REVIEWED_AGAINST
     added = _used_by(RADIATION_DOSE_SR_IODS, TEXT_VRS) - _used_by(others, TEXT_VRS)
     rules = _rules()
 
@@ -620,7 +630,7 @@ def test_the_text_that_only_the_radiation_dose_sr_iods_use_has_reviewed_rules():
 
 def test_every_uid_and_date_that_the_radiation_dose_sr_iods_use_has_a_role():
     listed = _table_e1_1()
-    others = SUPPORTED_IODS + TARGET_IODS
+    others = DOSE_SR_REVIEWED_AGAINST
     uids = uid_roles.load_uid_roles()
     temporal = temporal_roles.load_temporal_roles()
     dose_uids = _used_by(RADIATION_DOSE_SR_IODS, {"UI"})
@@ -706,7 +716,7 @@ def test_the_basic_profile_keeps_only_the_reviewed_coded_and_technical_text():
         for tag in _supported_text()
     }
 
-    assert len(basic) == 270
+    assert len(basic) == 275
     assert {tag for tag, action in basic.items() if action == "K"} == (
         KEPT_TEXT | ADDED_KEPT_TEXT
     )

@@ -20,7 +20,7 @@ fictitious patient and study, with one Frame of Reference: three CT Image
 slices, an RT Structure Set that references the CT series and slices, an RT
 Plan that references the structure set and the dose, an RT Dose that
 references the plan, a second RT Dose of the plan for review (below), and
-one instance of each of the other thirteen IODs, each in a series of its own.
+one instance of each of the other fifteen IODs, each in a series of its own.
 The MR Image and PET Image instances reference the first CT slice, and each
 enhanced, legacy converted enhanced, or MR Spectroscopy instance references
 the single-frame instance of its modality: the first CT slice, the MR
@@ -30,7 +30,9 @@ Registration the PET Image by a two by two by one deformation grid; each
 names its image in Referenced Image Sequence (0008,1140), whose item the
 Basic Profile keeps, and the Spatial Registration's Used RT Structure Set
 ROI Sequence (0070,0315) names the structure set. The RT Beams Treatment
-Record references the plan. It is the input for validating each preset end
+Record references the plan. The references of the X-Ray Radiation Dose SR
+name the first CT slice, and those of the Radiopharmaceutical Radiation Dose
+SR the PET Image. It is the input for validating each preset end
 to end: once the engine has
 written the collection, the residual search
 (:mod:`~pymedphys._dicom.deidentify.residuals`) should find none of the
@@ -51,7 +53,27 @@ another value of its file. A number of a binary VR, such as US or SS, and an
 age (AS) cannot be made conspicuous: each is distinct, but it is found by
 its place in the manifest, not by searching bytes. Each sequence that holds
 a placement has one item, created along the path where needed, so every
-place is reached through items numbered 0.
+place is reached through items numbered 0, except in a Structured Report's
+content tree (below).
+
+**Content trees.** Each Structured Report's Content Sequence (0040,A730)
+holds a content tree that a template builds
+(:mod:`~pymedphys._dicom.deidentify.synthetic_content_trees`), and its
+root's Concept Name Code Sequence (0040,A043) the report's title, rather
+than markers: the Content Sequence is recorded with
+:attr:`NotPlantedReason.CONTENT_TREE`, as is each attribute that the IOD
+defines below either sequence. The value of each content item that can
+identify a person, a device, or a time, of Value Type UIDREF, DATETIME, or
+PNAME, holds a marker of its VR, but the X-ray report's Study Instance UID
+of its scope of accumulation, which is the collection's study and is
+recorded as linked; each placement records its item's concept name
+(:attr:`Placement.concept`), whose row of PS3.15 Table E.3.4-1 gives its
+action under Clean Structured Content, and its path through the items of
+the tree. The Basic Profile gives the Content Sequence D, which a sequence
+has no dummy value for (D-021), so a report is sequestered unless Clean
+Structured Content can clean every item of its tree, as it can only where
+the other options selected keep every value that would otherwise remove
+the tree (D-047).
 
 Some attributes must stay linked, so the collection's references resolve and
 the reference graph (:mod:`~pymedphys._dicom.deidentify.reference_graph`)
@@ -118,7 +140,9 @@ recorded in the other files with
 :attr:`NotPlantedReason.SEQUESTERS_INSTANCE`, as is each attribute in the
 item of such a sequence. Of the corpus's IODs these
 are Responsible Person (0010,2297) and Responsible Organization (0010,2299)
-at the top level, Radiopharmaceutical Start DateTime (0018,1078) in the
+at the top level, each Structured Report's Verifying Observer Sequence
+(0040,A073), and Requested Procedure ID (0040,1001) in its Referenced
+Request Sequence (0040,A370), Radiopharmaceutical Start DateTime (0018,1078) in the
 Radiopharmaceutical Information Sequence (0054,0016) of an Enhanced PET
 Image, and Institution Code Sequence (0008,0082), which X/Z/D gives D
 where it is Type 1C, in the Interlock Resolution User Sequence (300A,0746)
@@ -126,9 +150,10 @@ of an RT Beams Treatment Record's Interlock Sequence (300A,0740). Planted in
 every file, the first two would sequester every
 instance, and no preset could release any of the collection; planted in one,
 that instance checks sequestration, :data:`REVIEW_FILE` checks review, and
-the other eighteen check each preset's output. Radiopharmaceutical Start
-DateTime and Institution Code Sequence, which CT Image does not define
-there, are planted in no file, so the Enhanced PET instance, which lacks an
+the other twenty check each preset's output, the reports where their trees
+are cleaned. Radiopharmaceutical Start
+DateTime, Institution Code Sequence, and the reports' sequestering
+attributes, which CT Image does not define there, are planted in no file, so the Enhanced PET instance, which lacks an
 attribute of Type 1, and the treatment record are released and their other
 markers are checked; an Enhanced PET Image instance that conforms to the
 IOD is sequestered under ``basic`` and ``basic-clean-descriptors``.
@@ -161,11 +186,13 @@ Manufacturer's Model Name (0008,1090), which Table E.1-1 does not list and
 the Basic Profile keeps, a copy of the RT Plan's RT Plan Label marker
 (:attr:`PlacementKind.REVIEW_COPY`), so the residual search finds a source
 value of another instance in its output and sends it to review. The third
-CT slice remains sequestered; the other eighteen files stay releasable.
+CT slice remains sequestered; the other twenty files stay releasable, the
+reports where their trees are cleaned.
 
 **Manifest.** :class:`CorpusManifest` records, for each file, each
 placement: its element path, VR, values, kind, the Table E.1-1 row it
-covers, and why it was not planted where it was not.
+covers, why it was not planted where it was not, and a content item's
+concept name.
 :meth:`CorpusManifest.to_json` serialises it the same way every time.
 Building reads the bundled tables, writes no files, uses no clock or
 randomness, and logs nothing; :func:`write_corpus` writes the files to the
@@ -222,6 +249,13 @@ from .standard import (
     dictionary_attribute,
     load_table_e1_1,
 )
+from .synthetic_content_trees import (
+    RADIOPHARMACEUTICAL_RADIATION_DOSE_SR_STORAGE,
+    ROOT_TEMPLATES,
+    X_RAY_RADIATION_DOSE_SR_STORAGE,
+    radiopharmaceutical_dose_tree,
+    x_ray_dose_tree,
+)
 from .values import values_problem
 
 IMPLICIT_VR_LITTLE_ENDIAN = "1.2.840.10008.1.2"
@@ -261,6 +295,9 @@ LINKED_UID_ROOT = "2.25.88888"
 SEQUESTERED_FILE = "03-ct-3.dcm"
 # The file that keeps a copy of another file's marker, for review.
 REVIEW_FILE = "07-rtdose-review.dcm"
+# The Structured Reports, whose Content Sequence holds a content tree, which
+# the Basic Profile's D sequesters, as a sequence has no dummy value.
+STRUCTURED_REPORT_FILES = ("22-sr-dose-x-ray.dcm", "23-sr-dose-radiopharmaceutical.dcm")
 # The directory, within the one that write_corpus is given, of the files.
 INSTANCES_DIRECTORY = "instances"
 
@@ -303,6 +340,10 @@ DEFORMABLE_REGISTRATION_SERIES = f"{LINKED_UID_ROOT}01600"
 DEFORMABLE_REGISTRATION = f"{LINKED_UID_ROOT}01601"
 TREATMENT_RECORD_SERIES = f"{LINKED_UID_ROOT}01700"
 TREATMENT_RECORD = f"{LINKED_UID_ROOT}01701"
+X_RAY_DOSE_REPORT_SERIES = f"{LINKED_UID_ROOT}01900"
+X_RAY_DOSE_REPORT = f"{LINKED_UID_ROOT}01901"
+RADIOPHARMACEUTICAL_DOSE_REPORT_SERIES = f"{LINKED_UID_ROOT}02000"
+RADIOPHARMACEUTICAL_DOSE_REPORT = f"{LINKED_UID_ROOT}02001"
 # A patient and a procedure step that the collection names but does not hold.
 PATIENT_REFERENCE = f"{LINKED_UID_ROOT}00003"
 PROCEDURE_STEP = f"{LINKED_UID_ROOT}00004"
@@ -326,6 +367,18 @@ _PATIENTS_NAME_TAG = "(0010,0010)"
 # Frame of Reference UID of a deformable registration.
 _FRAME_OF_REFERENCE_TAGS = frozenset({"(0020,0052)", "(3006,0024)", "(0064,0003)"})
 _CONTOUR_IMAGE_SEQUENCE = "(3006,0016)"
+_CONTENT_SEQUENCE = "(0040,A730)"
+# The sequences of a Structured Report's root content item, its Concept Name
+# Code Sequence and Content Sequence, which its template builds.
+_CONTENT_TREE_ROOT = frozenset({"(0040,A043)", _CONTENT_SEQUENCE})
+# The VR, and the attribute, of the value of each Value Type of a content
+# item that can identify someone or something (PS3.3 Table 10-2).
+_CONTENT_ITEM_VRS = types.MappingProxyType(
+    {"UIDREF": "UI", "DATETIME": "DT", "PNAME": "PN"}
+)
+_CONTENT_ITEM_VALUES = types.MappingProxyType(
+    {"UIDREF": "(0040,A124)", "DATETIME": "(0040,A120)", "PNAME": "(0040,A123)"}
+)
 # The sequences whose D a reviewed rule writes (D-021).
 _REVIEWED_DUMMY_SEQUENCES = frozenset(
     {PERSON_IDENTIFICATION_CODE_SEQUENCE, REFERENCED_PERFORMED_PROCEDURE_STEP_SEQUENCE}
@@ -364,6 +417,8 @@ _SOP_CLASSES = types.MappingProxyType(
         REGISTRATION: SPATIAL_REGISTRATION_STORAGE,
         DEFORMABLE_REGISTRATION: DEFORMABLE_SPATIAL_REGISTRATION_STORAGE,
         TREATMENT_RECORD: RT_BEAMS_TREATMENT_RECORD_STORAGE,
+        X_RAY_DOSE_REPORT: X_RAY_RADIATION_DOSE_SR_STORAGE,
+        RADIOPHARMACEUTICAL_DOSE_REPORT: RADIOPHARMACEUTICAL_RADIATION_DOSE_SR_STORAGE,
         PATIENT_REFERENCE: DETACHED_PATIENT_MANAGEMENT,
         PROCEDURE_STEP: MODALITY_PERFORMED_PROCEDURE_STEP,
     }
@@ -474,6 +529,11 @@ class NotPlantedReason(enum.Enum):
     # that a marker in its item would be kept; the sequence itself is
     # present.
     KEPT_SEQUENCE = "kept-sequence"
+    # A sequence of a Structured Report's root content item, its Concept
+    # Name Code Sequence or the Content Sequence that holds its content tree,
+    # which a template (synthetic_content_trees) builds rather than the
+    # markers, and each attribute that the IOD defines below either.
+    CONTENT_TREE = "content-tree"
 
 
 @dataclasses.dataclass(frozen=True)
@@ -501,11 +561,21 @@ class Placement:
         The tag of the row of Table E.1-1 that the placement covers, such as
         ``"(60xx,3000)"``, or its row for private attributes; ``""`` for
         :attr:`PlacementKind.CONTENT` and :attr:`PlacementKind.REVIEW_COPY`.
+        The value of a content item covers the row of the attribute that
+        holds it, such as DateTime (0040,A120).
     reason : NotPlantedReason or None
-        Why it is not planted, for :attr:`PlacementKind.NOT_PLANTED`; or
-        :attr:`NotPlantedReason.NO_MARKER_CARRIER` for a
-        :attr:`PlacementKind.SEQUENCE` with no marker below it; otherwise
-        ``None``.
+        Why it is not planted, for :attr:`PlacementKind.NOT_PLANTED`; or,
+        for a :attr:`PlacementKind.SEQUENCE` in whose item no marker is
+        planted for it, :attr:`NotPlantedReason.NO_MARKER_CARRIER`,
+        :attr:`NotPlantedReason.KEPT_SEQUENCE`, or
+        :attr:`NotPlantedReason.CONTENT_TREE`; otherwise ``None``.
+    concept : tuple of str or None
+        For the value of a content item of a Structured Report's content
+        tree, the item's concept name, as the key of its row of PS3.15
+        Table E.3.4-1 would be: its Coding Scheme Designator, Code Value,
+        and Value Type, such as ``("DCM", "111526", "DATETIME")``, since
+        Clean Structured Content gives the value the action of that row
+        rather than the attribute's (D-047); otherwise ``None``.
     """
 
     path: ElementPath
@@ -514,6 +584,7 @@ class Placement:
     kind: PlacementKind
     profile_tag: str
     reason: NotPlantedReason | None = None
+    concept: tuple[str, str, str] | None = None
 
     def to_dict(self) -> dict[str, object]:
         """Return the placement as JSON-ready data."""
@@ -525,6 +596,7 @@ class Placement:
             "kind": self.kind.value,
             "profile_tag": self.profile_tag,
             "reason": None if self.reason is None else self.reason.value,
+            "concept": None if self.concept is None else list(self.concept),
         }
 
 
@@ -547,7 +619,8 @@ class FileManifest:
     placements : tuple of Placement
         Those of the IOD's attributes of Table E.1-1 in the order of its
         definitions, then the content markers of sequences, the extra
-        references, the private block, and any review copy.
+        references, the private block, any review copy, and a Structured
+        Report's content items, in the order of its content tree.
     """
 
     name: str
@@ -589,7 +662,7 @@ class CorpusManifest:
     def to_json(self) -> str:
         """Return the manifest as JSON text, the same for the same manifest."""
         document = {
-            "schema": "pymedphys-deid-synthetic-corpus/1",
+            "schema": "pymedphys-deid-synthetic-corpus/2",
             "max_depth": self.max_depth,
             "files": [file.to_dict() for file in self.files],
         }
@@ -828,6 +901,22 @@ _SPECS = (
         TREATMENT_RECORD_SERIES,
         PLAN,
     ),
+    # The radiation dose reports, whose header references the first CT
+    # slice, and the PET Image.
+    _Spec(
+        STRUCTURED_REPORT_FILES[0],
+        X_RAY_RADIATION_DOSE_SR_STORAGE,
+        X_RAY_DOSE_REPORT,
+        X_RAY_DOSE_REPORT_SERIES,
+        CT_SLICES[0],
+    ),
+    _Spec(
+        STRUCTURED_REPORT_FILES[1],
+        RADIOPHARMACEUTICAL_RADIATION_DOSE_SR_STORAGE,
+        RADIOPHARMACEUTICAL_DOSE_REPORT,
+        RADIOPHARMACEUTICAL_DOSE_REPORT_SERIES,
+        PET,
+    ),
 )
 
 
@@ -837,14 +926,15 @@ def build_corpus() -> SyntheticCorpus:
     Returns
     -------
     SyntheticCorpus
-        Twenty files: three CT slices; the RT Structure Set, RT Plan, RT
+        Twenty-two files: three CT slices; the RT Structure Set, RT Plan, RT
         Dose, and the RT Dose for review; the Enhanced CT Image and Legacy
         Converted Enhanced CT Image; the MR Image, Enhanced MR Image,
         Enhanced MR Color Image, Legacy Converted Enhanced MR Image, and MR
         Spectroscopy; the PET Image, Enhanced PET Image, and Legacy
         Converted Enhanced PET Image; the Spatial Registration and
-        Deformable Spatial Registration; and the RT Beams Treatment Record.
-        Two builds give the same bytes and the same manifest.
+        Deformable Spatial Registration; the RT Beams Treatment Record; and
+        the X-Ray Radiation Dose SR and Radiopharmaceutical Radiation Dose
+        SR. Two builds give the same bytes and the same manifest.
     """
     markers = _Markers()
     files: list[CorpusFile] = []
@@ -1129,6 +1219,14 @@ class _Instance:
             attribute.vrs[0] if attribute and len(attribute.vrs) == 1 else ""
         )
         reason = None
+        if (
+            self.spec.sop_class in ROOT_TEMPLATES
+            and (path[:1] or (tag,))[0] in _CONTENT_TREE_ROOT
+        ):
+            # The content tree takes the place of the markers.
+            kind = PlacementKind.SEQUENCE if path == () else PlacementKind.NOT_PLANTED
+            self._record(element_path, vr, (), kind, row, NotPlantedReason.CONTENT_TREE)
+            return
         if "x" in written:
             reason = NotPlantedReason.MASKED_ELEMENT
         elif attribute is None or not vr:
@@ -1285,7 +1383,7 @@ class _Instance:
         profile = {(path, tag) for path, tag, _ in _profile_places(self.iod)}
         for position, sequence in sequences:
             inside = (*sequence.path.items, (sequence.path.tag, 0))
-            if any(
+            if sequence.reason is NotPlantedReason.CONTENT_TREE or any(
                 placement.path.items[: len(inside)] == inside
                 and placement.kind in _MARKER_KINDS
                 for placement in self.placements
@@ -1441,6 +1539,8 @@ class _Instance:
         elif self.spec.sop_class == RT_PLAN_STORAGE:
             put((), "(0008,0060)", ["RTPLAN"])
             put((), "(300A,000C)", ["PATIENT"])
+        elif self.spec.sop_class in ROOT_TEMPLATES:
+            self._add_content_tree()
         elif self.spec.sop_class == RT_BEAMS_TREATMENT_RECORD_STORAGE:
             put((), "(0008,0060)", ["RTRECORD"])
         elif self.spec.sop_class == MR_SPECTROSCOPY_STORAGE:
@@ -1482,6 +1582,65 @@ class _Instance:
             put((), "(3004,000C)", ["0", "2"])
             put((), "(3004,000E)", ["0.001"])
             self._add_pixels(32, 0, struct.pack("<8I", *range(0, 8000, 1000)))
+
+    def _add_content_tree(self) -> None:
+        """Add the attributes that make the instance a Structured Report.
+
+        The content tree's identifying values, of its UIDREF, DATETIME, and
+        PNAME items, are markers, and the study that an X-ray report's scope
+        of accumulation names is the collection's; each is recorded with its
+        item's concept name.
+        """
+        put = self._set
+        put((), "(0008,0060)", ["SR"])
+        put((), "(0040,A491)", ["COMPLETE"])  # Completion Flag
+        put((), "(0040,A493)", ["UNVERIFIED"])  # Verification Flag
+        template = _items(["(0040,A504)"])  # Content Template Sequence
+        put(template, "(0008,0105)", ["DCMR"])  # Mapping Resource
+        put(template, "(0040,DB00)", [ROOT_TEMPLATES[self.spec.sop_class]])
+
+        def values(value_type: str) -> str:
+            _, (text,) = self.markers.values(_CONTENT_ITEM_VRS[value_type], 1)
+            return text
+
+        if self.spec.sop_class == X_RAY_RADIATION_DOSE_SR_STORAGE:
+            root = x_ray_dose_tree(values, STUDY)
+        else:
+            root = radiopharmaceutical_dose_tree(values)
+        for element in root:
+            self.dataset.add(element)
+        self._record_content(root, ())
+
+    def _record_content(
+        self, item: pydicom.Dataset, items: tuple[tuple[str, int], ...]
+    ) -> None:
+        """Record the identifying value of each content item below ``item``."""
+        for index, child in enumerate(item.get("ContentSequence", ())):
+            within = (*items, (_CONTENT_SEQUENCE, index))
+            value_type = child.ValueType
+            if value_type in _CONTENT_ITEM_VRS:
+                (code,) = child.ConceptNameCodeSequence
+                tag = _CONTENT_ITEM_VALUES[value_type]
+                value = str(child[_number(tag)].value)
+                self.placements.append(
+                    Placement(
+                        ElementPath(within, tag),
+                        _CONTENT_ITEM_VRS[value_type],
+                        (value,),
+                        (
+                            PlacementKind.LINKED_UID
+                            if value == STUDY
+                            else PlacementKind.PLANTED
+                        ),
+                        tag,
+                        concept=(
+                            code.CodingSchemeDesignator,
+                            code.CodeValue,
+                            value_type,
+                        ),
+                    )
+                )
+            self._record_content(child, within)
 
     def _add_image(self, image: _Image) -> None:
         """Add the attributes that make the instance an MR, PET, or CT image."""

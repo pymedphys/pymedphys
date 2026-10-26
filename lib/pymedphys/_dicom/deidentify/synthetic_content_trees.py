@@ -119,6 +119,7 @@ AUTOMATED_DATA_COLLECTION = Code("113856", "DCM", "Automated Data Collection")
 SINGLE_PLANE = Code("113622", "DCM", "Single Plane")  # TID 10001 row 11
 STATIONARY_ACQUISITION = Code("113611", "DCM", "Stationary Acquisition")  # CID 10002
 CHEST = Code("816094009", "SCT", "Chest")  # CID 4031
+ABDOMEN = Code("818981001", "SCT", "Abdomen")  # CID 4031
 IRRADIATION_ADMINISTERING = Code("113851", "DCM", "Irradiation Administering")
 TUMOR_LOCALIZATION = Code(
     "45316007", "SCT", "Radionuclide localization of tumor"
@@ -206,7 +207,11 @@ def x_ray_dose_tree(values: Values, study: str) -> pydicom.Dataset:
     to 3, 6, 7, 17, and 18. It leaves out TID 10002 row 10, TID 10004
     "Accumulated Fluoroscopy and Acquisition Projection X-Ray Dose", whose
     rows carry codes and numbers, and TID 10003 rows 27 to 29, TIDs 10003A
-    to 10003C, the detector, source, and mechanical data.
+    to 10003C, the detector, source, and mechanical data. Its target region
+    is the abdomen, a word that no kept technique description of the corpus
+    holds: the residual search looks for each value that the report's
+    removed tree held, Code Meanings included, in the other instances of
+    its subject.
 
     Parameters
     ----------
@@ -258,14 +263,12 @@ def x_ray_dose_tree(values: Values, study: str) -> pydicom.Dataset:
             "CONTAINER",
             IRRADIATION_EVENT_X_RAY_DATA,
             item("HAS CONCEPT MOD", "CODE", ACQUISITION_PLANE, code=SINGLE_PLANE),
-            item(
-                "CONTAINS", "UIDREF", IRRADIATION_EVENT_UID_CONCEPT, text=event_uid
-            ),
+            item("CONTAINS", "UIDREF", IRRADIATION_EVENT_UID_CONCEPT, text=event_uid),
             item("CONTAINS", "DATETIME", DATETIME_STARTED, text=started),
             item(
                 "CONTAINS", "CODE", IRRADIATION_EVENT_TYPE, code=STATIONARY_ACQUISITION
             ),
-            item("CONTAINS", "CODE", TARGET_REGION, code=CHEST),
+            item("CONTAINS", "CODE", TARGET_REGION, code=ABDOMEN),
             item(
                 "CONTAINS",
                 "NUM",
@@ -276,7 +279,10 @@ def x_ray_dose_tree(values: Values, study: str) -> pydicom.Dataset:
         ),
         # TID 10001 row 18, M.
         item(
-            "CONTAINS", "CODE", SOURCE_OF_DOSE_INFORMATION, code=AUTOMATED_DATA_COLLECTION
+            "CONTAINS",
+            "CODE",
+            SOURCE_OF_DOSE_INFORMATION,
+            code=AUTOMATED_DATA_COLLECTION,
         ),
     )
 

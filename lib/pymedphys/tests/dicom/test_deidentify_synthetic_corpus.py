@@ -17,6 +17,7 @@
 import bisect
 import collections
 import datetime
+import io
 import json
 import re
 import warnings
@@ -30,6 +31,8 @@ from pymedphys._dicom.deidentify import (
     icc_profiles,
     scope,
     standard,
+    structured_content,
+    synthetic_content_trees,
 )
 from pymedphys._dicom.deidentify import synthetic_corpus as corpus_module
 from pymedphys._dicom.deidentify.dates import MAX_OFFSET_WEEKS, MIN_OFFSET_WEEKS
@@ -149,6 +152,10 @@ class _Reader:
         )
 
 
+def _number(tag):
+    return int(tag[1:5] + tag[6:10], 16)
+
+
 def _as_text(value):
     if isinstance(value, bytes):
         return value.decode("ascii").rstrip("\x00 ")
@@ -195,6 +202,8 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "18-registration.dcm",
         "19-registration-deformable.dcm",
         "20-rt-beams-record.dcm",
+        "22-sr-dose-x-ray.dcm",
+        "23-sr-dose-radiopharmaceutical.dcm",
     ]
     assert [file.manifest.iod for file in corpus.files] == [
         "CT Image",
@@ -217,7 +226,12 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "Spatial Registration",
         "Deformable Spatial Registration",
         "RT Beams Treatment Record",
+        "X-Ray Radiation Dose SR",
+        "Radiopharmaceutical Radiation Dose SR",
     ]
+    assert corpus_module.STRUCTURED_REPORT_FILES == tuple(
+        file.name for file in corpus.files[-2:]
+    )
     # Every IOD of the first supported release.
     assert {file.manifest.iod for file in corpus.files} == scope.SUPPORTED_IODS
 
@@ -230,6 +244,9 @@ def test_every_attribute_of_table_e1_1_that_the_iod_defines_is_placed(corpus):
         for placement in file.manifest.placements:
             path = placement.path
             if placement.kind in (Kind.PRIVATE, Kind.CONTENT, Kind.REVIEW_COPY):
+                continue
+            if placement.concept is not None:
+                # A content item's value, in its report's content tree.
                 continue
             if any(index for _, index in path.items):
                 # The structure set's references to the other slices.
@@ -247,6 +264,7 @@ def test_every_attribute_of_table_e1_1_that_the_iod_defines_is_placed(corpus):
                     None,
                     Reason.NO_MARKER_CARRIER,
                     Reason.KEPT_SEQUENCE,
+                    Reason.CONTENT_TREE,
                 )
             else:
                 assert placement.reason is None
@@ -265,7 +283,10 @@ def test_attributes_are_not_planted_only_beyond_the_depth_cap(corpus):
             if placement.kind is Kind.NOT_PLANTED:
                 reasons[placement.reason] += 1
                 assert placement.values == ()
-                if placement.reason is Reason.SEQUESTERS_INSTANCE:
+                if placement.reason in (
+                    Reason.SEQUESTERS_INSTANCE,
+                    Reason.CONTENT_TREE,
+                ):
                     continue
                 assert depth + (placement.vr == "SQ") > corpus_module.MAX_DEPTH
                 # Each attribute capped is planted at a shallower place.
@@ -273,7 +294,11 @@ def test_attributes_are_not_planted_only_beyond_the_depth_cap(corpus):
             else:
                 assert depth <= corpus_module.MAX_DEPTH
 
-    assert set(reasons) == {Reason.DEPTH_CAP, Reason.SEQUESTERS_INSTANCE}
+    assert set(reasons) == {
+        Reason.DEPTH_CAP,
+        Reason.SEQUESTERS_INSTANCE,
+        Reason.CONTENT_TREE,
+    }
 
 
 # The sequences whose D a reviewed rule writes (D-021).
@@ -334,6 +359,12 @@ def test_an_attribute_whose_removal_sequesters_is_planted_in_one_instance(corpus
     withheld = collections.defaultdict(set)
     for file, placement in _placements(corpus, Kind.PLANTED, Kind.NOT_PLANTED):
         iod = iod_for_sop_class(file.manifest.sop_class)
+        if placement.concept is not None:
+            # A content item's value, which its report's Content Sequence
+            # holds, and whose D sequesters each report (D-021).
+            assert file.name in corpus_module.STRUCTURED_REPORT_FILES
+            assert _sequesters(iod, placement), placement
+            continue
         if placement.reason is Reason.SEQUESTERS_INSTANCE:
             assert _sequesters(iod, placement), placement
             withheld[file.name].add(placement.path.tag)
@@ -344,11 +375,26 @@ def test_an_attribute_whose_removal_sequesters_is_planted_in_one_instance(corpus
     # third slice, so that the other instances can be released; and the
     # Enhanced PET Image's Radiopharmaceutical Start DateTime, and the RT
     # Beams Treatment Record's Institution Code Sequence in an interlock's
-    # resolution user, with the attributes of its item (D-021), in no file.
+    # resolution user, with the attributes of its item (D-021), in no file;
+    # nor each report's Verifying Observer Sequence (D-021) and the
+    # Requested Procedure ID of its Referenced Request Sequence (D-020),
+    # which the IODs require.
     both = {"(0010,2297)", "(0010,2299)"}
+    report = {
+        "(0040,1001)",
+        "(0040,A073)",
+        "(0040,A027)",
+        "(0040,A030)",
+        "(0040,A075)",
+        "(0040,A088)",
+        "(0008,0106)",
+        "(0008,0107)",
+    }
     only_in = {
         "Enhanced PET Image": {"(0018,1078)"},
         "RT Beams Treatment Record": {"(0008,0082)", "(0008,0106)", "(0008,0107)"},
+        "X-Ray Radiation Dose SR": report,
+        "Radiopharmaceutical Radiation Dose SR": report,
     }
     assert planted == {corpus_module.SEQUESTERED_FILE: both}
     assert corpus_module.SEQUESTERED_FILE == corpus.files[2].name
@@ -557,6 +603,7 @@ def test_the_structure_set_has_a_second_character_set(corpus):
 def test_sequences_hold_a_marker_unless_their_item_can_hold_none(corpus):
     without = set()
     kept = set()
+    tree = set()
     for file in corpus.files:
         iod = iod_for_sop_class(file.manifest.sop_class)
         placed = file.manifest.placements
@@ -576,6 +623,9 @@ def test_sequences_hold_a_marker_unless_their_item_can_hold_none(corpus):
                 continue
             if sequence.reason is Reason.KEPT_SEQUENCE:
                 kept.add(sequence.path.tag)
+                continue
+            if sequence.reason is Reason.CONTENT_TREE:
+                tree.add((file.name, sequence.path))
                 continue
             assert sequence.reason is Reason.NO_MARKER_CARRIER, sequence.path
             path = tuple(tag for tag, _ in inside)
@@ -604,6 +654,11 @@ def test_sequences_hold_a_marker_unless_their_item_can_hold_none(corpus):
     # Registration Sequence or Deformable Registration Sequence, which the
     # Basic Profile keeps, replacing its UIDs.
     assert kept == {"(0008,1140)"}
+    # The Content Sequence that each report's template builds.
+    assert tree == {
+        (name, ElementPath((), "(0040,A730)"))
+        for name in corpus_module.STRUCTURED_REPORT_FILES
+    }
 
 
 def test_the_manifest_json_is_deterministic_and_matches_the_files(corpus):
@@ -884,3 +939,86 @@ def test_the_spectroscopy_instance_holds_spectroscopy_data_only(corpus):
     assert "PixelData" not in dataset
     assert dataset.DataRepresentation == "REAL"
     assert len(dataset.SpectroscopyData) == 4 * points
+
+
+# The concept name of each content item of a report's tree whose value is
+# recorded, by IOD, with the value's VR: each a row of Table E.3.4-1.
+_CONTENT_CONCEPTS = {
+    "X-Ray Radiation Dose SR": {
+        ("DCM", "121012", "UIDREF"): "UI",  # Device Observer UID
+        ("DCM", "110180", "UIDREF"): "UI",  # Study Instance UID
+        ("DCM", "113769", "UIDREF"): "UI",  # Irradiation Event UID
+        ("DCM", "111526", "DATETIME"): "DT",  # DateTime Started
+    },
+    "Radiopharmaceutical Radiation Dose SR": {
+        ("DCM", "113503", "UIDREF"): "UI",  # Administration Event UID
+        ("DCM", "123003", "DATETIME"): "DT",  # Start DateTime
+        ("DCM", "113870", "PNAME"): "PN",  # Person Name
+    },
+}
+
+
+def test_each_report_records_the_identifying_values_of_its_content_tree(corpus):
+    concepts = {
+        concept.key for concept in structured_content.load_table_e3_4_1().concepts
+    }
+    files = {file.name: file for file in corpus.files}
+    for name in corpus_module.STRUCTURED_REPORT_FILES:
+        file = files[name]
+        dataset = pydicom.dcmread(io.BytesIO(file.data))
+        (template,) = dataset.ContentTemplateSequence
+        assert template.MappingResource == "DCMR"
+        assert (
+            template.TemplateIdentifier
+            == synthetic_content_trees.ROOT_TEMPLATES[file.manifest.sop_class]
+        )
+        assert dataset.ValueType == "CONTAINER"
+        assert dataset.Modality == "SR"
+        content = [p for p in file.manifest.placements if p.concept is not None]
+        assert {p.concept: p.vr for p in content} == _CONTENT_CONCEPTS[
+            file.manifest.iod
+        ]
+        assert {p.concept for p in content} <= concepts
+        for placement in content:
+            # Each value is read back by its own test; here, its item.
+            item = dataset
+            for tag, index in placement.path.items:
+                item = item[_number(tag)].value[index]
+            assert (
+                _as_text(item[_number(placement.path.tag)].value)
+                == (placement.values[0])
+            )
+            (code,) = item.ConceptNameCodeSequence
+            assert (
+                code.CodingSchemeDesignator,
+                code.CodeValue,
+                item.ValueType,
+            ) == placement.concept
+            assert placement.profile_tag == placement.path.tag
+            linked = placement.values == (corpus_module.STUDY,)
+            assert placement.kind is (Kind.LINKED_UID if linked else Kind.PLANTED)
+        # Only the scope of accumulation's study is linked, and it names
+        # the collection's.
+        assert [p.concept for p in content if p.kind is Kind.LINKED_UID] == (
+            [("DCM", "110180", "UIDREF")]
+            if file.manifest.iod == "X-Ray Radiation Dose SR"
+            else []
+        )
+
+
+def test_no_marker_is_planted_in_a_reports_root_content_item_sequences(corpus):
+    for file in corpus.files:
+        if file.name not in corpus_module.STRUCTURED_REPORT_FILES:
+            assert all(
+                p.reason is not Reason.CONTENT_TREE for p in file.manifest.placements
+            )
+            assert all(p.concept is None for p in file.manifest.placements)
+            continue
+        for placement in file.manifest.placements:
+            items = placement.path.items
+            top = items[0][0] if items else placement.path.tag
+            if top not in ("(0040,A043)", "(0040,A730)"):
+                assert placement.reason is not Reason.CONTENT_TREE
+            elif placement.concept is None:
+                assert placement.reason is Reason.CONTENT_TREE, placement
+                assert placement.values == ()
