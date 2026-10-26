@@ -577,10 +577,12 @@ def test_a_plain_x_on_a_required_attribute_in_the_first_release_iods(tables):
         for tag in (RESPONSIBLE_PERSON, RESPONSIBLE_ORGANIZATION)
     }
     # At the top level of each image IOD but MR Spectroscopy, and within
-    # Patient Setup Sequence of the RT Plan IOD.
+    # Patient Setup Sequence of the RT Plan and RT Beams Treatment Record
+    # IODs.
     preparation_places = [
         *((name, ()) for name in FIRST_RELEASE_IODS if name in IMAGE_IODS),
         ("RT Plan", (PATIENT_SETUP,)),
+        ("RT Beams Treatment Record", (PATIENT_SETUP,)),
     ]
     preparation = {
         (name, (*outer, PATIENT_TREATMENT_PREPARATION, inner), tag): _removal(
