@@ -131,7 +131,7 @@ DateTime and Institution Code Sequence, which CT Image does not define
 there, are planted in no file, so the Enhanced PET instance, which lacks an
 attribute of Type 1, and the treatment record are released and their other
 markers are checked; an Enhanced PET Image instance that conforms to the
-IOD is sequestered under both presets of the first supported release.
+IOD is sequestered under ``basic`` and ``basic-clean-descriptors``.
 
 **Edge cases.** Each file except the first RT Dose, ``06-rtdose.dcm``, and
 the MR Image, ``10-mr.dcm``, is written in Explicit VR Little Endian, and

@@ -554,6 +554,9 @@ def test_d_writes_the_person_identification_item():
 
     assert isinstance(result, run.Transformed)
     written = pydicom.dcmread(io.BytesIO(result.data))
+    # Pylint's inference of an element's value from a tag is not stable across
+    # its parallel workers, and RT Assertions Sequence has no keyword.
+    # pylint: disable-next = unsubscriptable-object
     (asserter,) = written[0x00440110].value[0][0x00440103].value
     (item,) = asserter.PersonIdentificationCodeSequence
     assert (item.CodeValue, item.CodingSchemeDesignator, item.CodeMeaning) == (

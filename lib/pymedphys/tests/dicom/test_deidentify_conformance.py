@@ -558,7 +558,7 @@ def test_no_enabled_preset_has_an_incomplete_statement():
 @pytest.mark.deid_requirement("PS3.15-E.1.3-01", "PS3.15-E.3.5-02")
 @pytest.mark.parametrize("name", ["basic", "basic-clean-descriptors"])
 def test_the_first_supported_releases_presets_have_complete_statements(name):
-    # The presets that the first supported release is to enable (Scope).
+    # Two of the presets that the first supported release is to enable (Scope).
     assert not _statement(name).pending
 
 

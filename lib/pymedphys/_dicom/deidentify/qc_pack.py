@@ -68,8 +68,8 @@ A pack holds, for one run:
   positions of its instances, by which an attestation gives each series'
   face verdict (D-016, D-017); and ``series_risks``: each series of released or held instances with
   findings of its series assessment, a CT, MR, PET, or RT Dose volume, a
-  localizer, the head or neck, or unreadable evidence of any of them, with
-  the instances that show each (D-015, D-017);
+  localizer, an RT Image, the head or neck, or unreadable evidence of any of
+  them, with the instances that show each (D-015, D-017);
 - ``redactions``: each released or held instance whose Pixel Data the
   Clean Pixel Data Option cleaned, with why it is held, its number of
   frames, its Rows and Columns, the regions blacked out in each frame,
