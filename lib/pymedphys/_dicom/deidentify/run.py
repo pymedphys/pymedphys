@@ -117,7 +117,15 @@ from collections.abc import Callable, Iterator
 from pathlib import Path, PurePosixPath
 from typing import TypeGuard
 
-from . import output_names, qc_store, release_report, run_qc, run_report, run_written
+from . import (
+    output_names,
+    qc_store,
+    readiness,
+    release_report,
+    run_qc,
+    run_report,
+    run_written,
+)
 from .diagnostics import redacted_diagnostics
 from .file_layout import Region, read_file_layout
 from .reference_graph import (
@@ -128,6 +136,7 @@ from .reference_graph import (
 )
 from .references import InstanceRecord, UnreadableSequence, with_series_numberings
 from .reasons import RunReason
+from .risk_assessment import bind_lists
 
 # discover and ReleaseWithheld are part of the run's interface, from here.
 from .run_discovery import (  # pylint: disable = unused-import
@@ -288,6 +297,7 @@ def run(
     qc_destination: str | os.PathLike[str],
     reporter: run_report.Reporter | None = None,
     written_check: WrittenCheck | None = None,
+    before_publish: Callable[[], object] | None = None,
 ) -> RunResult:
     """De-identify the discovered inputs into a new release directory.
 
@@ -315,14 +325,20 @@ def run(
         :func:`~pymedphys._dicom.deidentify.qc_store.check_confidential_destination`
         checks before anything is created. There is no default (D-016).
     reporter : Reporter, optional
-        Given the labelled outcomes, each input's QC material, and the QC
-        pack's reference, returns the report's text, published at the root as
+        Given the labelled outcomes, each input's QC material, the QC pack's
+        reference, and the :class:`~pymedphys._dicom.deidentify.run_report.RunFacts`
+        of the pack and the distinct subjects of the released instances,
+        returns the report's text, published at the root as
         :data:`~pymedphys._dicom.deidentify.run_report.RELEASE_REPORT`, with
         its human-readable form and its policy's conformance statement beside
         it, as :func:`~pymedphys._dicom.deidentify.run_report.release_files`
         gives them. Without one, neither is written. A withheld input whose reasons
         the reporter does not admit is sequestered for
-        :attr:`RunReason.INVALID_REASON`, followed by its own reasons.
+        :attr:`RunReason.INVALID_REASON`, followed by its own reasons. The
+        QC pack records the salted digest of the reporter's
+        ``reviewed_lists``, the lists and region rules that its readiness
+        checks, which a risk assessment of the run binds; without a reporter
+        it records none, and no assessment of the run can be recorded.
     written_check : WrittenCheck, optional
         The reference graph's second pass under the run's key, such as an
         :class:`~pymedphys._dicom.deidentify.instance_transform.InstanceTransform`'s
@@ -332,6 +348,12 @@ def run(
         :attr:`RunReason.INCONSISTENT_REFERENCES`. Without one, what was
         written is not checked, which only a transform that writes no
         keyed replacements, such as a test's, should leave out.
+    before_publish : callable, optional
+        Called with no arguments once every file is gated and the report is
+        built, before the QC pack is written and the release published,
+        such as to save the subject profiles of a project key (D-004), so
+        that a published release always has them. What it raises stops the
+        run: nothing is published, and no QC pack is written.
 
     Returns
     -------
@@ -384,6 +406,7 @@ def run(
             qc_destination,
             reporter,
             written_check,
+            before_publish,
         )
 
 
@@ -395,6 +418,7 @@ def _run(  # pylint: disable = too-many-arguments, too-many-positional-arguments
     qc_destination: str | os.PathLike[str],
     reporter: run_report.Reporter | None,
     written_check: WrittenCheck | None,
+    before_publish: Callable[[], object] | None,
 ) -> RunResult:
     staging = staging_path(release_path)
     _check_directories(discovery.source, release_path, staging)
@@ -444,10 +468,33 @@ def _run(  # pylint: disable = too-many-arguments, too-many-positional-arguments
             outcomes = _admitted(outcomes, reporter)
         outcomes = _labelled(outcomes)
         pack = run_qc.qc_pack_of(
-            discovery.paths, outcomes, material, digests=first.digests
+            discovery.paths,
+            outcomes,
+            material,
+            digests=first.digests,
+            # The lists and rules that the report's readiness checks, under a
+            # new salt, so that a risk assessment of the run binds those it
+            # applied.
+            reviewed_lists=(
+                None if reporter is None else bind_lists(*reporter.reviewed_lists)
+            ),
+        )
+        facts = run_report.RunFacts(
+            pack,
+            readiness.released_subjects(
+                {
+                    position: record.patient
+                    for position, record in first.records.items()
+                },
+                {o.position for o in outcomes if o.status is Status.RELEASED},
+            ),
         )
         # Built before the pack is written, so a failure leaves no QC material.
-        files = run_report.documents(reporter, outcomes, material, pack.reference)
+        files = run_report.documents(
+            reporter, outcomes, material, pack.reference, facts
+        )
+        if before_publish is not None:
+            before_publish()
         staged_release = staging / _STAGED_RELEASE
         staged_release.mkdir(exist_ok=True, mode=0o700)
         _remove_empty_directories(staged_release)

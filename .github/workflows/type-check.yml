@@ -23,9 +23,29 @@ jobs:
           extras: 'tests ai'
           groups: 'lint'
 
+      # The pyright command line always skips dot-directories below its
+      # project root, so .github/scripts is a project of its own whose
+      # pyrightconfig.json extends pyproject.toml's settings. A project that
+      # stops finding its files would pass silently, so each run must check
+      # every Python file in its tree.
       - name: Run pyright
+        shell: bash
         run: |
-          uv run -- pyright
+          status=0
+          check() {
+            local tree="$1" expected found
+            shift
+            expected=$(find "${tree}" \( -name '*.py' -o -name '*.pyi' \) -not -path '*/__pycache__/*' | wc -l)
+            uv run -- pyright --stats "$@" | tee "${RUNNER_TEMP}/pyright.log" || status=1
+            found=$(sed -n 's/^Found \([0-9]*\) source files\{0,1\}$/\1/p' "${RUNNER_TEMP}/pyright.log")
+            if [[ "${found}" != "${expected}" ]]; then
+              echo "::error::pyright checked ${found:-none} of the ${expected} Python files in ${tree}."
+              status=1
+            fi
+          }
+          check lib/pymedphys
+          check .github/scripts --project .github/scripts
+          exit "${status}"
 
       # mypy and its stub packages are in the dev extra, so the result does
       # not drift with whatever version happens to be current. It is

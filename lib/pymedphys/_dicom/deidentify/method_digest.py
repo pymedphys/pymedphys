@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# pylint: disable = too-many-lines
+# One module for the digest's canonical form, its inputs, and its components.
+
 """The de-identification method digest of a policy and the engine that applies it.
 
 Every preset will add the digest to De-identification Method (0012,0063) of
@@ -56,6 +59,11 @@ apply, whether or not the policy's options use it:
   gives them, which for the text detector is the SHA-256 of its model, the
   versions of ONNX Runtime, NumPy, and SciPy that run it, its detection
   parameters, and its renderings, or the absence of a finder;
+- the keyed digest of the reviewed region rules whose regions the Clean
+  Pixel Data Option blacks out beside the finder's, or the absence of
+  rules, in the same way as the reviewed-names list, as
+  :meth:`~pymedphys._dicom.deidentify.pixel_region_rules.PixelRegionRules.keyed_digest`
+  gives it, since the rules hold manufacturers' and model names;
 - under the Retain Safe Private Option, the list whose rules settle private
   attributes: the reviewed rules or TCIA's Private Tag Dictionary (D-035),
   or the absence of a list without the Option. Both lists are also among the
@@ -85,16 +93,26 @@ apply, whether or not the policy's options use it:
   ``importlib.reload`` or Jupyter's autoreload, is not supported, and the
   digest is then not guaranteed to match the code that runs. The engine is
   to compute the digest before it processes anything, so that the digest
-  stands for the code that runs.
+  stands for the code that runs;
+- the source files of PyMedPhys's modules outside this package that its
+  modules import, directly or through one another, such as
+  ``pymedphys._geometry``, which clips contours, and
+  ``pymedphys._nomenclature.roi_list``, which matches ROI names. They are
+  listed by their paths within PyMedPhys in :data:`OUTSIDE_MODULES`, a
+  package's directory standing for each of its files of a covered type at
+  any depth. A test scans the imports, and fails if the engine imports a
+  module that the list leaves out, or the list names one that it does not
+  import. Each is read as the engine's files are, once per process, and named
+  ``pymedphys/`` and its path within PyMedPhys, such as
+  ``pymedphys/_geometry/polygons.py``. The digest is refused if one cannot
+  be found. A package's ``__init__.py`` that runs only because one of its
+  modules is imported is left out, as is ``pymedphys/__init__.py``, which
+  imports PyMedPhys's public API, none of which the engine calls.
 
 The digest therefore also changes when something the policy does not use
 changes, which is harmless; it never stays the same when one of these inputs
 changes, with the files and tables as read at the first digest in the
-process. Of PyMedPhys's code outside this package, including the modules
-that this package imports, ``pymedphys._version``, ``pymedphys._config``,
-``pymedphys._dicom.uid``, ``pymedphys._imports``, and
-``pymedphys._nomenclature.tg263``, the digest covers only PyMedPhys's
-version, which a development build keeps across commits.
+process.
 
 The runtime environment is not an input, apart from the text finder's
 runtime. The Python implementation and version, and the versions of pydicom,
@@ -102,8 +120,11 @@ tomlkit, and other libraries, run the method but are not part of it, so the
 same inputs give the same digest in every environment. A text finder's
 regions are what the method writes, and neither ONNX Runtime nor NumPy and
 SciPy promise the same output from one version to the next, so the text
-detector's description includes their versions. The engine is to record the
-runtime's versions separately, as provenance of each run. Runtime software
+detector's description includes their versions. The engine records the
+Python implementation and version and the versions of pydicom and tomlkit
+separately, as provenance of each run; other libraries' versions reach the
+release report only through the digest of a text finder's description.
+Runtime software
 can affect execution, so equal digests show that these inputs are equal, not
 that two runs executed identically or wrote the same output; reproducing or
 auditing a run also needs its recorded runtime environment.
@@ -115,8 +136,9 @@ table's content digest, the SHA-256 of the canonical bytes of the
 ``l2_rules``, ``l3_rules`` (None while there are none), and
 ``generated_values`` members, the vocabulary's content digest, the
 reviewed-names list's keyed digest, the SHA-256 of the canonical bytes of
-the ``text_finder`` member (None without a text finder), the safe private
-list, and each source and rule file's digest.
+the ``text_finder`` member (None without a text finder), the region rules'
+keyed digest, the safe private list, and each source and rule file's
+digest.
 """
 
 from __future__ import annotations
@@ -152,10 +174,34 @@ from .policy import SAFE_PRIVATE, Policy
 from .safe_private import SafePrivateList
 
 # The format of the canonical form. A change to the form takes a new label.
-FORMAT = "pymedphys-deid-method-digest/5"
+FORMAT = "pymedphys-deid-method-digest/7"
 # The engine's package, whose source and rule files the digest covers.
 PACKAGE_DIR = pathlib.Path(__file__).resolve().parent
 COVERED_SUFFIXES = frozenset({".py", ".toml", ".json", ".csv", ".txt"})
+# PyMedPhys's own package, within which the engine's outside modules lie.
+PYMEDPHYS_DIR = PACKAGE_DIR.parents[1]
+# PyMedPhys's modules outside the engine's package that its modules import,
+# directly or through one another, by their paths within PyMedPhys. A
+# directory stands for each of its files of a covered type at any depth. A
+# test fails if this leaves out a module the engine imports, or names one it
+# does not.
+OUTSIDE_MODULES = (
+    "_config.py",
+    "_data/download.py",
+    "_data/retry.py",
+    "_data/zenodo.py",
+    "_dev/paths.py",
+    "_dicom/uid.py",
+    "_extras.py",
+    "_geometry",
+    "_imports",
+    "_nomenclature/roi_list.py",
+    "_nomenclature/tg263.py",
+    "_nomenclature/tg263_published.py",
+    "_utilities/filehash",
+    "_vendor/apipkg",
+    "_version.py",
+)
 # A keyed digest, as 64 lowercase hexadecimal digits.
 _DIGEST = re.compile(r"[0-9a-f]{64}")
 # The parameters of generated values, by module, which the digest names as
@@ -216,6 +262,9 @@ class MethodDigestInputs:
         The text finder's class and description of its method, as
         :func:`~pymedphys._dicom.deidentify.pixel_cleaning.finder_description`
         gives them, or None without a text finder.
+    pixel_region_rules : str or None
+        The keyed digest of the reviewed region rules, or None without
+        rules.
     safe_private_list : SafePrivateList
         The list whose rules settle private attributes under the Retain Safe
         Private Option, which the canonical form records only for a policy
@@ -226,7 +275,9 @@ class MethodDigestInputs:
     files : Mapping of str to str
         The SHA-256 of each source and rule file, with CRLF line endings read
         as LF, by its path within the package, such as ``"policy.py"`` or
-        ``"_standard/e1_1.json"``.
+        ``"_standard/e1_1.json"``, and of each source file of an outside
+        module, by ``pymedphys/`` and its path within PyMedPhys, such as
+        ``"pymedphys/_geometry/polygons.py"``.
     """
 
     engine_version: str
@@ -238,6 +289,7 @@ class MethodDigestInputs:
     reviewed_descriptors: str | None
     technique_vocabulary: str | None
     text_finder: Mapping[str, object] | None = dataclasses.field(hash=False)
+    pixel_region_rules: str | None
     safe_private_list: SafePrivateList
     generated_values: Mapping[str, object] = dataclasses.field(hash=False)
     files: Mapping[str, str] = dataclasses.field(hash=False)
@@ -286,6 +338,9 @@ class MethodDigestComponents:
     text_finder_digest : str or None
         The SHA-256 of the canonical bytes of the ``text_finder`` member, or
         None without a text finder.
+    pixel_region_rules : str or None
+        The keyed digest of the reviewed region rules, or None without
+        rules.
     safe_private_list : str or None
         The list whose rules settle private attributes under the Retain Safe
         Private Option, ``"reviewed"`` or ``"tcia"``, or None without the
@@ -296,7 +351,9 @@ class MethodDigestComponents:
     engine_files : Mapping of str to str
         The SHA-256 of each source and rule file, with CRLF line endings read
         as LF, by its path within the package, such as ``"policy.py"`` or
-        ``"_standard/e1_1.json"``. Read-only.
+        ``"_standard/e1_1.json"``, and of each source file of an outside
+        module, by ``pymedphys/`` and its path within PyMedPhys, such as
+        ``"pymedphys/_geometry/polygons.py"``. Read-only.
     """
 
     method_digest: str
@@ -311,6 +368,7 @@ class MethodDigestComponents:
     reviewed_descriptors: str | None
     technique_vocabulary_digest: str | None
     text_finder_digest: str | None
+    pixel_region_rules: str | None
     safe_private_list: str | None
     generated_values_digest: str
     engine_files: Mapping[str, str] = dataclasses.field(hash=False)
@@ -417,6 +475,7 @@ def _document(policy: Policy, inputs: MethodDigestInputs) -> dict:
         "technique_vocabulary": inputs.technique_vocabulary,
         # Already JSON values, which _plain keeps as they are.
         "text_finder": finder,
+        "pixel_region_rules": inputs.pixel_region_rules,
         "safe_private_list": _safe_private_list(policy, inputs),
         "generated_values": generated,
         "files": inputs.files,
@@ -431,12 +490,13 @@ def canonical_bytes(policy: Policy, inputs: MethodDigestInputs) -> bytes:
     (:data:`FORMAT`), ``engine_version``, ``policy``, ``tables``,
     ``l2_rules``, ``l3_rules``, ``vocabulary``, ``reviewed_roi_names``,
     ``reviewed_descriptors``, ``technique_vocabulary``, ``text_finder``,
-    ``safe_private_list``, ``generated_values``, and ``files``.
-    ``l3_rules`` is ``null``, since there are no user rules yet, and so are
-    ``vocabulary``, ``reviewed_roi_names``, ``reviewed_descriptors``,
-    ``technique_vocabulary``, ``text_finder``, and ``safe_private_list``
-    without a vocabulary, a reviewed-names list, a reviewed descriptors
-    list, a technique vocabulary, a text finder, or the Retain Safe Private
+    ``pixel_region_rules``, ``safe_private_list``, ``generated_values``, and
+    ``files``. ``l3_rules`` is ``null``, since there are no user rules yet,
+    and so are ``vocabulary``, ``reviewed_roi_names``,
+    ``reviewed_descriptors``, ``technique_vocabulary``, ``text_finder``,
+    ``pixel_region_rules``, and ``safe_private_list`` without a vocabulary,
+    a reviewed-names list, a reviewed descriptors list, a technique
+    vocabulary, a text finder, region rules, or the Retain Safe Private
     Option, under which ``safe_private_list`` is ``"reviewed"`` or
     ``"tcia"``. It
     is encoded so that the same inputs give the same bytes on every platform
@@ -534,6 +594,7 @@ def digest_components(
         reviewed_descriptors=inputs.reviewed_descriptors,
         technique_vocabulary_digest=inputs.technique_vocabulary,
         text_finder_digest=None if finder is None else _sha256(finder),
+        pixel_region_rules=inputs.pixel_region_rules,
         safe_private_list=document["safe_private_list"],
         generated_values_digest=_sha256(document["generated_values"]),
         engine_files=_read_only(inputs.files),
@@ -572,13 +633,7 @@ def _file_digests(directory: pathlib.Path) -> Mapping[str, str]:
     directory without this module's own source is refused, since its files
     cannot be the engine's.
     """
-    digests = {}
-    for path in directory.rglob("*"):
-        relative = path.relative_to(directory)
-        cached = any(p == "__pycache__" or p.startswith(".") for p in relative.parts)
-        if path.suffix in COVERED_SUFFIXES and not cached and path.is_file():
-            data = path.read_bytes().replace(b"\r\n", b"\n")
-            digests[relative.as_posix()] = hashlib.sha256(data).hexdigest()
+    digests = _covered_files(directory)
     if not digests:
         raise MethodDigestError(
             "the method digest found no source or rule files of the engine"
@@ -591,6 +646,50 @@ def _file_digests(directory: pathlib.Path) -> Mapping[str, str]:
     return types.MappingProxyType(digests)
 
 
+def _covered_files(directory: pathlib.Path) -> dict[str, str]:
+    """Return the SHA-256 of each file of a covered type in a directory, at
+    any depth, with CRLF read as LF, by its path within it, leaving out
+    ``__pycache__`` and names that start with ``.``."""
+    digests = {}
+    for path in directory.rglob("*"):
+        relative = path.relative_to(directory)
+        cached = any(p == "__pycache__" or p.startswith(".") for p in relative.parts)
+        if path.suffix in COVERED_SUFFIXES and not cached and path.is_file():
+            data = path.read_bytes().replace(b"\r\n", b"\n")
+            digests[relative.as_posix()] = hashlib.sha256(data).hexdigest()
+    return digests
+
+
+@functools.lru_cache(maxsize=None)
+def _outside_digests(
+    directory: pathlib.Path, modules: tuple[str, ...]
+) -> Mapping[str, str]:
+    """Return the SHA-256 of each source file of the engine's outside modules,
+    with CRLF read as LF, by ``pymedphys/`` and its path within PyMedPhys.
+
+    ``directory`` is PyMedPhys's own, and ``modules`` the modules' paths
+    within it, as :data:`OUTSIDE_MODULES` gives them. Each directory and list
+    is read once and cached. A module that cannot be found is refused, since
+    the digest could not cover it.
+    """
+    digests = {}
+    for module in modules:
+        path = directory / module
+        if path.is_dir():
+            found = {f"{module}/{name}": d for name, d in _covered_files(path).items()}
+        elif path.suffix in COVERED_SUFFIXES and path.is_file():
+            data = path.read_bytes().replace(b"\r\n", b"\n")
+            found = {module: hashlib.sha256(data).hexdigest()}
+        else:
+            found = {}
+        if not found:
+            raise MethodDigestError(
+                f"the method digest cannot find PyMedPhys's module {module}"
+            )
+        digests.update({f"pymedphys/{name}": d for name, d in found.items()})
+    return types.MappingProxyType(digests)
+
+
 def digest_inputs(
     *,
     vocabulary: tg263.Nomenclature | None,
@@ -598,13 +697,14 @@ def digest_inputs(
     reviewed_descriptors: str | None = None,
     technique_vocabulary: str | None = None,
     text_finder: Mapping[str, object] | None = None,
+    pixel_region_rules: str | None = None,
     safe_private_list: SafePrivateList = SafePrivateList.REVIEWED,
 ) -> MethodDigestInputs:
     """Gather everything the method digest covers apart from the policy.
 
     Reads the engine's own files once per process, at the first call: the
-    generated tables, the supplementary rule files, and the package's source
-    and rule files.
+    generated tables, the supplementary rule files, the package's source
+    and rule files, and the source files of its outside modules.
 
     Parameters
     ----------
@@ -633,6 +733,11 @@ def digest_inputs(
         Clean Pixel Data Option applies, as
         :func:`~pymedphys._dicom.deidentify.pixel_cleaning.finder_description`
         gives them, or None, the default, without one.
+    pixel_region_rules : str or None, optional
+        The keyed digest of the reviewed region rules whose regions the
+        Clean Pixel Data Option blacks out beside the text finder's, as
+        :meth:`~pymedphys._dicom.deidentify.pixel_region_rules.PixelRegionRules.keyed_digest`
+        gives it, or None, the default, without rules.
     safe_private_list : SafePrivateList, optional
         Under the Retain Safe Private Option, the list whose rules settle
         private attributes: the reviewed rules, the default, or TCIA's
@@ -647,20 +752,22 @@ def digest_inputs(
     ------
     TypeError
         If ``vocabulary`` is not a TG-263 nomenclature or None, or
-        ``reviewed_roi_names``, ``reviewed_descriptors``, or
-        ``technique_vocabulary`` is not text or None, or ``text_finder`` is
-        not a mapping or None.
+        ``reviewed_roi_names``, ``reviewed_descriptors``,
+        ``technique_vocabulary``, or ``pixel_region_rules`` is not text or
+        None, or ``text_finder`` is not a mapping or None.
     ValueError
         If the vocabulary's entries have text that cannot be encoded as
-        UTF-8, or ``reviewed_roi_names``, ``reviewed_descriptors``, or
-        ``technique_vocabulary`` is not 64 lowercase hexadecimal digits. The
+        UTF-8, or ``reviewed_roi_names``, ``reviewed_descriptors``,
+        ``technique_vocabulary``, or ``pixel_region_rules`` is not 64
+        lowercase hexadecimal digits. The
         message does not quote any.
     ~pymedphys._dicom.deidentify.standard.StandardTableError
         If a generated table cannot be read, or its rows do not match the
         digest it records.
     MethodDigestError
         If the package's source and rule files cannot be found, or do not
-        include this module's own source, ``method_digest.py``.
+        include this module's own source, ``method_digest.py``, or an
+        outside module cannot be found.
     """
     if vocabulary is not None and not isinstance(vocabulary, tg263.Nomenclature):
         raise TypeError("vocabulary must be a TG-263 Nomenclature or None")
@@ -668,6 +775,7 @@ def digest_inputs(
         ("reviewed_roi_names", reviewed_roi_names),
         ("reviewed_descriptors", reviewed_descriptors),
         ("technique_vocabulary", technique_vocabulary),
+        ("pixel_region_rules", pixel_region_rules),
     ):
         if digest is None:
             continue
@@ -706,13 +814,19 @@ def digest_inputs(
         text_finder=(
             None if text_finder is None else types.MappingProxyType(dict(text_finder))
         ),
+        pixel_region_rules=pixel_region_rules,
         safe_private_list=safe_private_list,
         generated_values={
             f"{module.__name__.rpartition('.')[2]}.{name}": getattr(module, name)
             for module, names in GENERATED_VALUE_PARAMETERS
             for name in names
         },
-        files=_file_digests(PACKAGE_DIR.resolve()),
+        files=types.MappingProxyType(
+            {
+                **_file_digests(PACKAGE_DIR.resolve()),
+                **_outside_digests(PYMEDPHYS_DIR.resolve(), OUTSIDE_MODULES),
+            }
+        ),
     )
 
 
@@ -724,6 +838,7 @@ def method_digest(
     reviewed_descriptors: str | None = None,
     technique_vocabulary: str | None = None,
     text_finder: Mapping[str, object] | None = None,
+    pixel_region_rules: str | None = None,
     safe_private_list: SafePrivateList = SafePrivateList.REVIEWED,
 ) -> str:
     """Return the method digest of a policy, as 64 lowercase hexadecimal digits.
@@ -765,6 +880,11 @@ def method_digest(
         Clean Pixel Data Option applies, as
         :func:`~pymedphys._dicom.deidentify.pixel_cleaning.finder_description`
         gives them, or None, the default, without one.
+    pixel_region_rules : str or None, optional
+        The keyed digest of the reviewed region rules whose regions the
+        Clean Pixel Data Option blacks out beside the text finder's, as
+        :meth:`~pymedphys._dicom.deidentify.pixel_region_rules.PixelRegionRules.keyed_digest`
+        gives it, or None, the default, without rules.
     safe_private_list : SafePrivateList, optional
         Under the Retain Safe Private Option, the list whose rules settle
         private attributes: the reviewed rules, the default, or TCIA's
@@ -801,6 +921,7 @@ def method_digest(
                 reviewed_descriptors=reviewed_descriptors,
                 technique_vocabulary=technique_vocabulary,
                 text_finder=text_finder,
+                pixel_region_rules=pixel_region_rules,
                 safe_private_list=safe_private_list,
             ),
         )
@@ -815,6 +936,7 @@ def method_digest_components(
     reviewed_descriptors: str | None = None,
     technique_vocabulary: str | None = None,
     text_finder: Mapping[str, object] | None = None,
+    pixel_region_rules: str | None = None,
     safe_private_list: SafePrivateList = SafePrivateList.REVIEWED,
 ) -> MethodDigestComponents:
     """Return the method digest of a policy with the components it is computed from.
@@ -824,11 +946,12 @@ def method_digest_components(
     the digests of the supplementary and user rules, the vocabulary's
     content digest, the keyed digests of the reviewed-names and reviewed
     descriptors lists, the technique vocabulary's digest, the digest of
-    the text finder's class and description, the digest of the parameters of
+    the text finder's class and description, the keyed digest of the region
+    rules, the digest of the parameters of
     generated values, and the digest of each source and rule file. They come
     from one call of :func:`digest_inputs`, so the digest is the one
     :func:`method_digest` gives for the same policy, vocabularies, reviewed
-    lists, and text finder in the same
+    lists, text finder, and region rules in the same
     process.
 
     Parameters
@@ -861,6 +984,11 @@ def method_digest_components(
         Clean Pixel Data Option applies, as
         :func:`~pymedphys._dicom.deidentify.pixel_cleaning.finder_description`
         gives them, or None, the default, without one.
+    pixel_region_rules : str or None, optional
+        The keyed digest of the reviewed region rules whose regions the
+        Clean Pixel Data Option blacks out beside the text finder's, as
+        :meth:`~pymedphys._dicom.deidentify.pixel_region_rules.PixelRegionRules.keyed_digest`
+        gives it, or None, the default, without rules.
     safe_private_list : SafePrivateList, optional
         Under the Retain Safe Private Option, the list whose rules settle
         private attributes: the reviewed rules, the default, or TCIA's
@@ -890,7 +1018,7 @@ def method_digest_components(
     ... )
     True
     >>> components.method_digest_format, components.l3_rules
-    ('pymedphys-deid-method-digest/5', None)
+    ('pymedphys-deid-method-digest/7', None)
     """
     _check_policy(policy)
     return digest_components(
@@ -901,6 +1029,7 @@ def method_digest_components(
             reviewed_descriptors=reviewed_descriptors,
             technique_vocabulary=technique_vocabulary,
             text_finder=text_finder,
+            pixel_region_rules=pixel_region_rules,
             safe_private_list=safe_private_list,
         ),
     )

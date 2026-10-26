@@ -65,6 +65,7 @@ from pymedphys._dicom.deidentify.policy import (
     compose_policy,
 )
 from pymedphys._dicom.deidentify.qc_attestation import (
+    CleanedShape,
     Coverage,
     Outcome,
     Redaction,
@@ -300,6 +301,30 @@ def test_attesting_refuses_a_region_in_a_frame_that_the_instance_does_not_hold(
         _attest(pack, [verdict])
 
 
+@pytest.mark.parametrize(
+    "box",
+    # The images are of 6 Rows and 8 Columns.
+    [TextBox(4, 0, 7, 2), TextBox(0, 6, 2, 9)],
+)
+def test_attesting_refuses_a_region_past_the_rows_or_columns_of_its_frame(
+    first_run, box
+):
+    pack, positions = first_run
+    verdict = RedactionVerdict(positions[_REVISED], Redaction.REVISED, ((0, (box,)),))
+
+    with pytest.raises(QcPackError, match="a region past its 6 Rows or 8 Columns"):
+        _attest(pack, [verdict])
+    assert not (pack / qc_attestation.ATTESTATION_FILE).exists()
+
+
+def test_attesting_accepts_a_region_that_reaches_the_edge_of_its_frame(first_run):
+    pack, positions = first_run
+    edge = TextBox(4, 6, 6, 8)
+    verdict = RedactionVerdict(positions[_REVISED], Redaction.REVISED, ((0, (edge,)),))
+
+    assert _attest(pack, [verdict]).redactions == (verdict,)
+
+
 # Reading the verdicts.
 
 
@@ -462,7 +487,14 @@ def _entry(position, digest=DIGEST):
 
 
 def _cleaned(position):
-    return {"position": position, "frames": 1, "regions": []}
+    return {
+        "position": position,
+        "frames": 1,
+        "rows": 6,
+        "columns": 8,
+        "regions": [],
+        "decoded_sha256": None,
+    }
 
 
 def test_verdicts_that_disagree_on_one_source_file_are_refused(first_run, monkeypatch):
@@ -499,6 +531,75 @@ def test_verdicts_that_agree_on_one_source_file_are_read_once(first_run, monkeyp
     assert read_redaction_review(pack).rejected == frozenset({DIGEST})
 
 
+def test_the_decoded_frames_of_an_approved_compressed_source_are_read(
+    first_run, monkeypatch
+):
+    pack, _ = first_run
+    decoded = bytes(range(32, 64))
+    attestation = dataclasses.replace(
+        _attest(pack),
+        redactions=(
+            RedactionVerdict(0, Redaction.ACCEPTED),
+            RedactionVerdict(1, Redaction.REJECTED),
+        ),
+    )
+    other = bytes(range(1, 33))
+    _with_pack(
+        monkeypatch,
+        attestation,
+        [_entry(0), _entry(1, other)],
+        [
+            {**_cleaned(0), "decoded_sha256": decoded.hex()},
+            {**_cleaned(1), "decoded_sha256": bytes(32).hex()},
+        ],
+    )
+
+    review = read_redaction_review(pack)
+
+    assert dict(review.decoded) == {DIGEST: decoded}
+    assert review.rejected == frozenset({other})
+
+
+@pytest.mark.parametrize("decoded", ["0" * 63, "F" * 64, 64, "absent"])
+def test_a_decoded_digest_that_is_not_one_is_refused(first_run, monkeypatch, decoded):
+    pack, _ = first_run
+    attestation = dataclasses.replace(
+        _attest(pack), redactions=(RedactionVerdict(0, Redaction.ACCEPTED),)
+    )
+    cleaned = _cleaned(0)
+    if decoded == "absent":
+        del cleaned["decoded_sha256"]
+    else:
+        cleaned["decoded_sha256"] = decoded
+    _with_pack(monkeypatch, attestation, [_entry(0)], [cleaned])
+
+    with pytest.raises(QcPackError, match="not of its format"):
+        read_redaction_review(pack)
+
+
+def test_copies_whose_frames_decoded_otherwise_are_refused(first_run, monkeypatch):
+    pack, _ = first_run
+    attestation = dataclasses.replace(
+        _attest(pack),
+        redactions=(
+            RedactionVerdict(0, Redaction.ACCEPTED),
+            RedactionVerdict(1, Redaction.ACCEPTED),
+        ),
+    )
+    _with_pack(
+        monkeypatch,
+        attestation,
+        [_entry(0), _entry(1)],
+        [
+            {**_cleaned(0), "decoded_sha256": bytes(32).hex()},
+            {**_cleaned(1), "decoded_sha256": bytes(range(32)).hex()},
+        ],
+    )
+
+    with pytest.raises(QcPackError, match="disagree"):
+        read_redaction_review(pack)
+
+
 @pytest.mark.parametrize(
     "instances, redactions, unshown",
     [
@@ -526,12 +627,26 @@ def test_a_verdict_on_an_instance_without_a_cleaned_previewed_source_is_refused(
 def test_only_a_previewed_cleaned_instance_can_be_given_a_verdict():
     data = json.dumps(
         {
-            "redactions": [_cleaned(0), _cleaned(1), {**_cleaned(2), "frames": 3}],
-            "not_previewed": [{"position": 1, "reason": "source-not-shown"}],
+            "redactions": [
+                _cleaned(0),
+                _cleaned(1),
+                {**_cleaned(2), "frames": 3},
+                _cleaned(3),
+            ],
+            "not_previewed": [
+                {"position": 1, "reason": "source-not-shown"},
+                # An RT Dose whose dose levels are not drawn still has its
+                # redaction previews.
+                {"position": 3, "reason": "dose-levels-not-shown"},
+            ],
         }
     ).encode()
 
-    assert qc_attestation.previewed_redactions(data) == {0: 1, 2: 3}
+    assert qc_attestation.previewed_redactions(data) == {
+        0: CleanedShape(1, 6, 8),
+        2: CleanedShape(3, 6, 8),
+        3: CleanedShape(1, 6, 8),
+    }
 
 
 def test_attesting_refuses_a_verdict_on_an_instance_that_was_not_previewed(
@@ -544,8 +659,8 @@ def test_attesting_refuses_a_verdict_on_an_instance_that_was_not_previewed(
         qc_attestation,
         "previewed_redactions",
         lambda data: {
-            position: frames
-            for position, frames in previewed(data).items()
+            position: shape
+            for position, shape in previewed(data).items()
             if position != positions[_ACCEPTED]
         },
     )
@@ -681,7 +796,8 @@ def test_the_statement_gives_the_code_only_after_review():
     assert (
         "also has Burned In Annotation (0028,0301) set to NO, as PS3.15 E.3.1 "
         "requires, including in an IOD that does not define the attribute, which "
-        "of the supported IODs are RT Plan, RT Structure Set, and MR Spectroscopy"
+        "of the supported IODs are RT Plan, RT Structure Set, MR Spectroscopy, "
+        "Spatial Registration, and Deformable Spatial Registration"
     ) in text
     assert (
         "claims Clean Pixel Data only for an instance without top-level pixel "
@@ -695,7 +811,13 @@ def test_the_statement_names_each_supported_iod_that_lacks_the_attribute():
         name for name in SUPPORTED_IODS if not tables.iods[name].lookup("(0028,0301)")
     }
 
-    assert lacking == {"RT Plan", "RT Structure Set", "MR Spectroscopy"}
+    assert lacking == {
+        "RT Plan",
+        "RT Structure Set",
+        "MR Spectroscopy",
+        "Spatial Registration",
+        "Deformable Spatial Registration",
+    }
 
 
 def test_the_report_names_the_reviewed_pack_by_its_reference():
@@ -877,7 +999,24 @@ def _second_run():
         past = RedactionVerdict(
             positions[_PAST], Redaction.REVISED, ((0, (TextBox(0, 0, 2, 9),)),)
         )
-        attestation = _attest(pack, (*_verdicts(positions), past))
+        # Attesting refuses that region, given the pack's Rows and Columns;
+        # this pack is made to list more Columns for the image, so that the
+        # run's own check is what meets it.
+        previewed = qc_attestation.previewed_redactions
+        with pytest.MonkeyPatch.context() as patch:
+            patch.setattr(
+                qc_attestation,
+                "previewed_redactions",
+                lambda data: {
+                    position: (
+                        dataclasses.replace(shape, columns=9)
+                        if position == positions[_PAST]
+                        else shape
+                    )
+                    for position, shape in previewed(data).items()
+                },
+            )
+            attestation = _attest(pack, (*_verdicts(positions), past))
         # The verdicts follow the files' contents alone.
         again = {
             f"{number}{name}": files[name]
@@ -993,4 +1132,61 @@ def test_the_report_names_the_reviewed_pack(second_run):
     attestation, _, report, _, _ = second_run
 
     assert report["redaction_review"] == {"reference": attestation.reference}
-    assert report["format"] == "pymedphys-deid-release-report/22"
+    assert report["format"] == "pymedphys-deid-release-report/31"
+
+
+class _Blind(Finder):
+    """A finder of another method, which finds no text."""
+
+    method = {"finder": "none", "version": 1}
+
+    def __init__(self):
+        super().__init__(boxes=())
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.1-01")
+def test_a_rerun_writes_the_reviewed_regions_whatever_its_finder(first_run, tmp_path):
+    pack, positions = first_run
+    _attest(pack, _verdicts(positions))
+    finder = _Blind()
+    transform = InstanceTransform(
+        _policy(),
+        KEY,
+        finder=finder,
+        redaction_review=read_redaction_review(pack),
+        unvalidated_policy=True,
+    )
+
+    result = _run(tmp_path / "second", tmp_path / "source", transform)
+
+    entries = json.loads(result.qc_pack.read_text("utf-8"))["instances"]
+    released = {
+        Path(entry["source"]).name: pydicom.dcmread(
+            tmp_path / "second" / "release" / entry["output"]
+        )
+        for entry in entries
+        if entry["disposition"] == "released"
+    }
+    for name, regions in [(_ACCEPTED, (BOX,)), (_REVISED, (BOX, REVISED))]:
+        frame = _frame(start=100 * (_IMAGES.index(name) + 1))
+        inside = np.logical_or.reduce([_inside(frame.shape, r) for r in regions])
+        pixels = pydicom.pixels.pixel_array(released[name])
+        assert np.all(pixels[inside] == frame.min())
+        assert np.array_equal(pixels[~inside], frame[~inside])
+    # The finder was shown the two images without a verdict, and neither an
+    # approved image nor the rejected one.
+    assert len(finder.seen) == 2
+    approved = [_frame(start=100 * (_IMAGES.index(n) + 1)) for n in _IMAGES[:2]]
+    assert not any(
+        np.array_equal(seen, frame) for seen in finder.seen for frame in approved
+    )
+    # The images without an approving verdict are not released, though this
+    # finder finds no text in them.
+    dispositions = {
+        Path(entry["source"]).name: entry["disposition"] for entry in entries
+    }
+    assert [dispositions[name] for name in (_REJECTED, _UNJUDGED, _PAST)] == [
+        "sequestered",
+        "held-for-review",
+        "held-for-review",
+    ]

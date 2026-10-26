@@ -388,9 +388,14 @@ def _superseded(statement: ConformanceStatement) -> list[str]:
                 "E.3.3 specifies what the option removes, and Table E.1-1 "
                 "gives the minimum actions. An overlay group without "
                 "Overlay Data may keep its overlay in unused bits of Pixel "
-                "Data, as PS3.3 allowed before 2004, which the engine does not "
-                "change, so under this option such an instance is sequestered "
-                "as `overlay-in-pixel-data`."
+                "Data, as PS3.3 allowed before 2004. Under this option, the "
+                "bit plane of such an overlay above High Bit in native Pixel "
+                "Data is cleared, each bit set as the value's sign gives it, "
+                "the written Pixel Data is checked to differ from the source "
+                "in nothing else, and every attribute of the overlay's group "
+                "is removed. An instance whose overlay cannot be "
+                "so cleared, such as one in compressed Pixel Data or within "
+                "Bits Stored, is sequestered as `overlay-in-pixel-data`."
             )
         else:
             text = (
@@ -670,7 +675,8 @@ _REVIEW_CONDITIONS = {
         "instance where one goes past its frame. Such an instance also has Burned In "
         "Annotation (0028,0301) set to NO, as PS3.15 E.3.1 requires, including "
         "in an IOD that does not define the attribute, which of the supported "
-        "IODs are RT Plan, RT Structure Set, and MR Spectroscopy. There it is a "
+        "IODs are RT Plan, RT Structure Set, MR Spectroscopy, Spatial "
+        "Registration, and Deformable Spatial Registration. There it is a "
         "standard attribute of a Standard Extended SOP Class (PS3.2 Section "
         "7.3), added to the top level of the data set as an attribute of the "
         "instance, where every PS3.3 module that defines it, such as the "
@@ -680,9 +686,10 @@ _REVIEW_CONDITIONS = {
     ),
     markers.OPTION_CODES["clean_recognizable_visual_features"]: (
         "only in an instance that cannot show a face, having no Pixel Data, "
-        "Float Pixel Data, or Double Float Pixel Data and not being an RT "
-        "Structure Set, or whose source file is, by its SHA-256, in a series "
-        "that a reviewer marked free of a recognisable face in the attested "
+        "Float Pixel Data, Double Float Pixel Data, or deformable "
+        "registration grid and not being an RT Structure Set, or whose "
+        "source file is, by its SHA-256, in a series that a reviewer marked "
+        "free of a recognisable face in the attested "
         "QC pack of an earlier run of the same files, and whose pixel data, "
         "by their SHA-256, are written as that run wrote them, which its "
         "review showed, as are an RT Structure Set's contours, which it does "
@@ -690,16 +697,22 @@ _REVIEW_CONDITIONS = {
         "has Recognizable Visual Features (0028,0302) set to NO, as PS3.15 "
         "E.3.2 requires, including in an IOD that does not define the "
         "attribute, which of the supported IODs are RT Plan, RT Structure "
-        "Set, and MR Spectroscopy. There it is a standard attribute of a "
+        "Set, MR Spectroscopy, Spatial Registration, and Deformable Spatial "
+        "Registration. There it is a standard attribute of a "
         "Standard Extended SOP Class (PS3.2 Section 7.3), added to the top "
         "level of the data set as an attribute of the instance, where every "
         "PS3.3 module that defines it, such as the General Image Module, "
-        "places it. Any other instance that can show a face does not gain "
-        "that code, and is held for review, so it is never released. The "
+        "places it. Any other instance that can show a face, including every "
+        "one with a deformable registration grid, which no preview of the "
+        "pack draws, does not gain that code, and is held for review, so it "
+        "is never released. The "
         "run also sets to air the region in front of a plane just behind the "
         "centres of the eyes, from their lower edge up, of each CT Image "
-        "series in which it finds both eyes, keeping the cranial cavity "
-        "above the orbits; this alone never gains the code, a verdict on "
+        "series in which it finds both eyes, keeping the brain in the "
+        "cranial cavity above the orbits, though not the air of a sinus "
+        "ahead of that plane that bone parts from the brain within a "
+        "slice; this alone never "
+        "gains the code, a verdict on "
         "a series seen before it was defaced does not cover it defaced, a "
         "series with a PTV, CTV, or GTV in its Frame of Reference that "
         "reaches that region, judged by the convex hull "
@@ -719,7 +732,8 @@ _REVIEW_CONDITIONS = {
         "Frame of Reference that its structure set does not tie to them, "
         "such as one on a registered MR, does not hold it, as is a series "
         "whose structure set, of those searched for such targets, draws an "
-        "eye, by its ROI Name, in its Frame of Reference or naming none, "
+        "eye, by its ROI Name, in its Frame of Reference or naming none "
+        "that can be read as one UID that the set declares alone, "
         f"more than {EYE_REACH:.0f} mm from the nearer of the eyes that the "
         "run found, and so is "
         "each RT Structure Set, RT Dose with pixel data, and PET "
@@ -728,20 +742,29 @@ _REVIEW_CONDITIONS = {
         "the run does not clean. An RT Structure Set in the Frame of "
         "Reference of only one defaced series, each of whose ROIs is in that "
         "frame, is cleaned instead: each contour that reaches the region "
-        "where it is set to air, other than the cranial cavity kept, is cut "
-        "by the region's two planes, as is each other closed contour of its "
-        "ROI in its plane that enters the region, such as a hole's, a "
-        "contour wholly within it being removed, and every other contour is "
+        "where it is set to air, other than the brain kept, loses "
+        "its part there, keeping its part in the brain kept, where the contour "
+        "is closed and it and each other closed contour of its ROI in its "
+        "plane are simple, but for a point that repeats the one before it, "
+        "lie at one z with every point within them nearest one axial slice "
+        "within half the slices' spacing, and "
+        "have pieces there that join into closed contours, a "
+        "CLOSED_PLANAR contour's being split along edges between columns "
+        "of pixels until none bounds a hole, and otherwise cut "
+        "by the region's two planes, as "
+        "is each other closed "
+        "contour of its ROI in its plane, such as a hole's, a contour wholly "
+        "within the region being removed, and every other contour is "
         "kept as received, unless a contour cannot be cut, such as a closed "
         "one that lies in no one plane in an ROI that is cut, when the "
-        "structure set is held; so is a "
-        "single-frame PET image there, whose activity in that region, less "
-        "the cranial cavity kept, is set to zero. An RT Dose in the Frame of "
+        "structure set is held. A single-frame PET image there is cleaned "
+        "too: its activity in that region, less the brain kept, is "
+        "set to zero. An RT Dose in the Frame of "
         "Reference of only one defaced series, with native pixel data of no "
         "negative value "
         "on a grid placed as PS3.3 Section C.8.8.3.2 defines, is cleaned "
         "instead: its dose in that region, "
-        "less the cranial cavity kept, is set to zero, never recalculated, "
+        "less the brain kept, is set to zero, never recalculated, "
         "and its dose-volume histograms are kept as received; where the "
         f"greatest dose set to zero would be more than {DOSE_FRACTION:.0%} of "
         "the grid's "
@@ -830,6 +853,47 @@ def _compressed(statement: ConformanceStatement) -> list[str]:
         "frame truncated so far that it drops only whole code-blocks is not "
         "detected.",
         "",
+    ]
+
+
+def _key_scope(statement: ConformanceStatement, bits: int) -> list[str]:
+    """Say how far the run's generated values agree, by its key's scope (D-004)."""
+    derived = (
+        "Replacement UIDs and patient pseudonyms are each derived from the "
+        "source as an HMAC-SHA256 under that key, in a domain of their own. "
+    )
+    same = (
+        "every occurrence of a source UID therefore gets the same replacement, "
+        "in every instance, series, study, and patient, including nested "
+        "references and the File Meta Information, and every instance of a "
+        "subject gets the same pseudonyms."
+    )
+    if not statement.project_key:
+        return [
+            f"Each run has its own {bits}-bit key, from a cryptographically "
+            "secure generator, which is discarded after the run. "
+            + derived
+            + "Within a run, "
+            + same
+            + " Across runs they are not consistent: de-identifying the same "
+            "study in two runs gives unrelated replacements, and no map from "
+            "source to replacement values is kept."
+        ]
+    return [
+        f"The run's key is a project key of {bits} bits, from a "
+        "cryptographically secure generator, which its custodian keeps, "
+        "outside the release and the QC pack, for every run of the project. "
+        + derived
+        + "In every run under the key, "
+        + same
+        + " Each subject's date offset is recorded in the custodian's subject "
+        "profiles when the subject is first exported, and read back for every "
+        "later run, so a study de-identified in a later run keeps its "
+        "intervals to the earlier ones. Releases under one key can therefore "
+        "be linked to each other by their replacement values, and anyone who "
+        "holds the key can recompute them from candidate source values, so "
+        "the key is kept as securely as a map from source to replacement "
+        "values would be; the release records only its non-secret identifier."
     ]
 
 
@@ -932,7 +996,7 @@ def render_markdown(statement: ConformanceStatement) -> str:
         "vocabulary of free-text descriptors, "
         + (
             "without a reviewed-names or reviewed descriptors list, and "
-            "without a text finder, "
+            "without a text finder or region rules, "
             if CLEAN_PIXEL_DATA in statement.options
             else "and without a reviewed-names or reviewed descriptors list, "
         )
@@ -1030,7 +1094,7 @@ def render_markdown(statement: ConformanceStatement) -> str:
         *_roi_names(statement),
         *_descriptors(statement, named),
         *_cleaned(statement, named, option),
-        *conformance_values.values_written(named),
+        *conformance_values.values_written(statement, named),
         "",
         *conformance_values.dates_and_times(statement, named, option),
         "",
@@ -1040,16 +1104,7 @@ def render_markdown(statement: ConformanceStatement) -> str:
         "",
         "## Referential integrity",
         "",
-        f"Each run has its own {bits}-bit key, from a cryptographically secure "
-        "generator, which is discarded after the run. Replacement UIDs "
-        "and patient pseudonyms are each derived from the source as an "
-        "HMAC-SHA256 under that key, in a domain of their own. Within a run, "
-        "every occurrence of a source UID therefore gets the same replacement, "
-        "in every instance, series, study, and patient, including nested "
-        "references and the File Meta Information, and every instance of a "
-        "subject gets the same pseudonyms. Across runs they are not "
-        "consistent: de-identifying the same study in two runs gives unrelated "
-        "replacements, and no map from source to replacement values is kept.",
+        *_key_scope(statement, bits),
         *_retained_uids(statement, option),
         "",
         "## Encrypted Attributes",

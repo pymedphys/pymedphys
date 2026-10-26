@@ -330,13 +330,15 @@ def pytest_ignore_collect(collection_path, config):  # pylint: disable = unused-
     """return True to prevent considering this collection_path for collection.
 
     This hook is consulted for all files and directories prior to
-    calling more specific hooks.
+    calling more specific hooks. It returns None, not False, for any other
+    path, since pytest stops at the first answer and would otherwise skip
+    its own checks, such as ``--ignore``.
     """
 
     relative_path = os.path.relpath(str(collection_path), os.path.dirname(__file__))
     relative_path_list = relative_path.split(os.path.sep)
 
-    return (
+    ignored = (
         (len(relative_path_list) > 1 and relative_path_list[0] == "examples")
         or "node_modules" in relative_path_list
         or "site-packages" in relative_path_list
@@ -352,3 +354,4 @@ def pytest_ignore_collect(collection_path, config):  # pylint: disable = unused-
             )
         )
     )
+    return True if ignored else None

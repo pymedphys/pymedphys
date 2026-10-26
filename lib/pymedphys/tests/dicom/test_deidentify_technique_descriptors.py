@@ -265,7 +265,7 @@ def test_an_unreadable_vocabulary_file_is_refused(tmp_path):
         technique.load_technique_vocabulary(path)
 
 
-@pytest.mark.deid_requirement("PS3.15-E.3.5-01")
+@pytest.mark.deid_requirement("PS3.15-E.3.5-01", "MIDI-BP-04")
 def test_cleaning_keeps_vocabulary_values_and_holds_echoes(vocabulary):
     reviewed = ReviewedDescriptors.empty()
 

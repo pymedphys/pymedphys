@@ -35,20 +35,24 @@ on the instances of a run:
 - ``runtime``: the PyMedPhys, Python, pydicom, and tomlkit versions that ran,
   the same values that Software Versions (0018,1020) of the de-identifying
   equipment records
-  (:class:`~pymedphys._dicom.deidentify.runtime.RuntimeEnvironment`).
+  (:class:`~pymedphys._dicom.deidentify.runtime.RuntimeEnvironment`);
+- ``key``: the scope of the run's key, ``"run"`` for a run-scoped key, whose
+  generated values agree with no other run's, or ``"project"`` for a
+  project key, with its non-secret identifier, whose generated values agree
+  with every other run under it, so that its releases are linkable (D-004).
 
 :func:`report_document` gives a report as JSON values, and :func:`to_json`
 as text; each first checks every field's form, as :func:`report_document`
 lists. Every field is built from the policy, the engine's own files, the
 versions that run it, the keyed digests of the reviewed-names and reviewed
-descriptors lists, the digest of the text finder's class and description of
-its method, the QC pack's opaque reference, the replacement identifiers that
+descriptors lists and of the reviewed region rules, the digest of the text
+finder's class and description of its method, the QC pack's opaque reference, the replacement identifiers that
 name released instances, the run's labels, and codes and attribute tags that
 the engine defines, never from DICOM data directly, and the check is a
 backstop: a field of another form, which could be a source value or a path
 outside the package, is refused. A field that fails is named, never quoted.
 
-Twelve sections describe a run, by replacement identifiers, attribute tags,
+Sixteen sections describe a run, by replacement identifiers, attribute tags,
 and codes that the engine defines, never by a source value or path:
 
 - ``qc_review``: the run's QC pack by its opaque reference, with the outcome
@@ -67,6 +71,18 @@ and codes that the engine defines, never by a source value or path:
 - ``redaction_review``: under the Clean Pixel Data Option, the opaque
   reference of the earlier run's attested QC pack whose redaction verdicts
   the run applied; None otherwise.
+- ``pixel_regions``: under the Clean Pixel Data Option, how many regions
+  the option blacked out in the instances that the run released or held
+  without a reviewer's verdict, by what gave them: the text finder or a
+  reviewed region rule, each region once in each frame that has it, as the
+  QC pack lists them (:class:`PixelRegionCounts`, D-037); None otherwise.
+- ``readiness``: under the ``public-release`` preset, whether the run is
+  ready for release, which it is only where its three gates pass: the
+  statistical gate, from the risk assessment recorded beside the earlier
+  run's QC pack that the run was given (D-053), and the pixel and face
+  review and human QC attestation gates, from that pack's attestation,
+  each failed with the first reason that held, and each reference opaque
+  (:class:`Readiness`, D-017); None under any other policy.
 - ``released``: each released instance by its output name, the path below
   the release directory that
   :func:`~pymedphys._dicom.deidentify.output_names.instance_path` gives
@@ -82,7 +98,10 @@ and codes that the engine defines, never by a source value or path:
   Table B.5-1 names it without "IOD" (D-010).
 - ``held_for_review``: how many instances were held for review, by stage and
   reason (D-009), from :func:`held_for_review`: a ROI Name that descriptor
-  cleaning held, why a pixel option held its pixel data (D-037), an
+  cleaning held, a value that it held of an attribute that another
+  option's cleaner left to the reviewed descriptors list, such as Allergies
+  under Retain Patient Characteristics (D-038), why a pixel option held its
+  pixel data (D-037), an
   instance that can show a face without a face verdict of absent for its
   source file and the pixel data that the run writes of it (D-046), a CT
   slice of a series with a target in its face block, an RT Structure Set,
@@ -117,6 +136,14 @@ and codes that the engine defines, never by a source value or path:
   residual search did not search, in full or in part, by reason (D-027),
   from :func:`search_coverage`. The QC pack lists each by instance and
   place.
+- ``exempted_findings``: how many released instances have a residual
+  finding that an exemption kept from review, such as a removed value found
+  in a kept standard term or equipment name (D-032), a date that Modified
+  Dates shifted (D-039), or a value that an option keeps (D-042), by the
+  exemption, the source attribute, and the
+  attribute in which it was found, each instance once for each, from
+  :func:`exempted_findings`. The QC pack lists each finding by instance and
+  place, with its excerpt.
 - ``source_gaps``: how many instances' sources lack each attribute that
   their IOD unconditionally requires, by its tags and Type, from
   :func:`source_gaps`. The run reports these and never acts on them, since
@@ -147,21 +174,24 @@ from . import method_digest, output_names
 from .method_digest import MethodDigestComponents
 from .defacing import FaceBlockProblem
 from .face_blocks import FaceBlockCounts, SeriesProblem
-from .file_layout import TAG_PATTERN, ElementPath
+from .file_layout import TAG_PATTERN, ElementPath, Region
 from .iod_conformance import SourceGap
 from .pixel_risk import Indicator, Risk
 from .labels import LABEL_PATTERN as _LABEL_PATTERN
-from .policy import PRESETS, Policy
+from .policy import CLEAN_PIXEL_DATA, PRESETS, Policy
 from .preservation import PreservationReason
 from .preserving_writer import WriteReason
 from .qc_attestation import AttestationRecord, Outcome
 from .reasons import (
     DescriptorReason,
+    HeldDescriptor,
     HeldPixelData,
     HeldRoiName,
     HeldVisualFeatures,
     PixelDataReason,
+    ReviewReason,
     RunReason,
+    StatisticalReason,
     TransformReason,
     VisualFeaturesReason,
 )
@@ -173,7 +203,8 @@ from .reviewed_descriptors import Outcome as DescriptorOutcome
 from .reviewed_roi_names import Outcome as RoiNameOutcome
 from .reviewed_roi_names import RoiNameCounts
 from .roi_names import Reason as RoiNameReason
-from .residuals import NotSearched, Omission, Unsearched, UnsearchedReason
+from .residual_exemptions import Exemption
+from .residuals import Finding, NotSearched, Omission, Unsearched, UnsearchedReason
 from .runtime import RuntimeEnvironment, runtime_environment
 from .safe_private import SafePrivateList
 from .scope import Disposition, UnsupportedIod, unsupported_iods
@@ -182,9 +213,11 @@ from .standard import ALL_OPTIONS, VRS
 from .walker import Sequestration, SequesterReason
 
 # The format of the report document. A change to its fields takes a new label.
-FORMAT = "pymedphys-deid-release-report/22"
+FORMAT = "pymedphys-deid-release-report/31"
 
 _DIGEST = re.compile(r"[0-9a-f]{64}")
+# A key's non-secret identifier, as DeidKey.key_id gives it.
+_KEY_ID = re.compile(r"[0-9a-f]{32}")
 _EDITION = re.compile(r"[0-9]{4}[a-z]")
 # A version, or a Python implementation's name: no space, separator, or
 # other character that a path or a person's name would need.
@@ -200,6 +233,34 @@ _ATTRIBUTE = re.compile(rf"{TAG_PATTERN.pattern}( > {TAG_PATTERN.pattern})*")
 _ACTIONS = frozenset({"K", "X", "Z", "D", "U", "C"})
 # The QC pack's opaque reference, as qc_pack gives it (D-016).
 _REFERENCE = re.compile(r"A-[0-9a-f]{32}")
+# A risk assessment record's opaque reference, as risk_assessment gives it
+# (D-053).
+_ASSESSMENT_REFERENCE = re.compile(r"R-[0-9a-f]{32}")
+# The preset whose runs the readiness section describes (D-017).
+PUBLIC_RELEASE = "public-release"
+# The reasons of each readiness gate that rests on a reviewed QC pack, those
+# that both give first.
+_REVIEW_REASONS = (
+    ReviewReason.NO_REVIEW,
+    ReviewReason.NOT_ATTESTED,
+    ReviewReason.REJECTED,
+    ReviewReason.OTHER_COLLECTION,
+    ReviewReason.OTHER_POLICY,
+)
+PIXEL_AND_FACE_REASONS = (
+    *_REVIEW_REASONS,
+    ReviewReason.UNREVIEWED_HIGH_RISK,
+    ReviewReason.FACE_PRESENT,
+    ReviewReason.NO_FACE_VERDICT,
+    ReviewReason.OTHER_PIXEL_DATA,
+    ReviewReason.OTHER_CONTOURS,
+)
+ATTESTATION_REASONS = (
+    *_REVIEW_REASONS,
+    ReviewReason.RESIDUAL_RISK_NOT_ACCEPTED,
+    ReviewReason.UNREVIEWED_INSTANCE,
+    ReviewReason.UNREVIEWED_RETAINED_STRING,
+)
 
 # The reason codes of each stage that sequesters an instance.
 _SEQUESTERING = {
@@ -271,6 +332,7 @@ _CHECK_REASONS = {
 # The reason codes of each stage that holds an instance for review.
 _HOLDING = {
     "roi-names": frozenset(r.value for r in RoiNameReason),
+    "descriptors": frozenset(r.value for r in DescriptorHeld),
     "pixel-data": frozenset(r.value for r in PixelDataReason),
     "visual-features": frozenset(r.value for r in VisualFeaturesReason),
     "release": _SEQUESTERING["release"],
@@ -403,6 +465,34 @@ class SearchCoverage:
 
 
 @dataclasses.dataclass(frozen=True)
+class ExemptedFindings:
+    """How many released instances have one kind of exempted residual finding.
+
+    A residual finding inside the data set that an exemption explains does
+    not send its instance to review or withhold it (D-032, D-039, D-042). The report counts
+    the released instances that have each, by place, naming no value.
+
+    Attributes
+    ----------
+    exemption : str
+        An :class:`~pymedphys._dicom.deidentify.residual_exemptions.Exemption`,
+        as its value, such as ``"equipment"``.
+    attribute : str
+        The source attribute whose value was found, by its tags from the
+        outermost sequence, without items.
+    found_in : str
+        The written attribute in which it was found, likewise.
+    count : int
+        How many released instances have such a finding, each once.
+    """
+
+    exemption: str
+    attribute: str
+    found_in: str
+    count: int
+
+
+@dataclasses.dataclass(frozen=True)
 class HeldForReview:
     """How many instances were held for review for one reason.
 
@@ -413,6 +503,9 @@ class HeldForReview:
     ----------
     stage : str
         ``"roi-names"`` (descriptor cleaning held a ROI Name),
+        ``"descriptors"`` (descriptor cleaning held a value of an attribute
+        that another option's cleaner left to the reviewed descriptors list,
+        such as Allergies under Retain Patient Characteristics),
         ``"pixel-data"`` (a pixel option held the instance's pixel data),
         ``"visual-features"`` (an instance that can show a face does not
         satisfy Clean Recognizable Visual Features, a CT slice's series has
@@ -450,6 +543,28 @@ class ReferenceFindings:
 
     kind: str
     count: int
+
+
+@dataclasses.dataclass(frozen=True)
+class PixelRegionCounts:
+    """How many regions Clean Pixel Data blacked out, by what gave them.
+
+    The regions are those of the instances that a run released or held
+    without a reviewer's verdict, each once in each frame that has it, as
+    the QC pack lists them; the regions that a verdict approved are counted
+    by the release report of the run whose pack the reviewer attested.
+
+    Attributes
+    ----------
+    detected : int
+        How many the text finder gave.
+    rule : int
+        How many reviewed region rules gave. A region that both gave counts
+        here.
+    """
+
+    detected: int = 0
+    rule: int = 0
 
 
 @dataclasses.dataclass(frozen=True)
@@ -543,6 +658,48 @@ def _no_checks() -> tuple[StructuralCheck, ...]:
 
 
 @dataclasses.dataclass(frozen=True)
+class Readiness:
+    """Whether a ``public-release`` run is ready for release, by its three gates.
+
+    Each gate is passed, with no reason, or failed, with the first reason
+    that held, and passing one passes no other (D-017).
+    :func:`~pymedphys._dicom.deidentify.readiness.readiness` decides them.
+
+    Attributes
+    ----------
+    review : str or None
+        The opaque reference of the earlier run's QC pack that the run was
+        given, or None without one.
+    assessment : str or None
+        The opaque reference of the risk assessment recorded beside it, or
+        None without one.
+    statistical : ~pymedphys._dicom.deidentify.reasons.StatisticalReason or None
+        Why the statistical gate failed, or None where it passed.
+    pixel_and_face : ~pymedphys._dicom.deidentify.reasons.ReviewReason or None
+        Why the pixel and face review gate failed, one of
+        :data:`PIXEL_AND_FACE_REASONS`, or None where it passed.
+    attestation : ~pymedphys._dicom.deidentify.reasons.ReviewReason or None
+        Why the human QC attestation gate failed, one of
+        :data:`ATTESTATION_REASONS`, or None where it passed.
+    """
+
+    review: str | None
+    assessment: str | None
+    statistical: StatisticalReason | None
+    pixel_and_face: ReviewReason | None
+    attestation: ReviewReason | None
+
+    @property
+    def ready(self) -> bool:
+        """Whether every gate passed."""
+        return (
+            self.statistical is None
+            and self.pixel_and_face is None
+            and self.attestation is None
+        )
+
+
+@dataclasses.dataclass(frozen=True)
 class ReleaseReport:
     """A release report's record of the method, the runtime, and the run.
 
@@ -551,13 +708,19 @@ class ReleaseReport:
     policy : PolicyRecord
     method : ~pymedphys._dicom.deidentify.method_digest.MethodDigestComponents
     runtime : ~pymedphys._dicom.deidentify.runtime.RuntimeEnvironment
+    project_key : str or None
+        The identifier of the run's project key, or None for a run-scoped
+        key.
     qc_review : ~pymedphys._dicom.deidentify.qc_attestation.AttestationRecord or None
     face_review : str or None
     face_blocks : ~pymedphys._dicom.deidentify.face_blocks.FaceBlockCounts or None
     redaction_review : str or None
+    pixel_regions : PixelRegionCounts or None
+    readiness : Readiness or None
     released : tuple of pathlib.PurePosixPath
     sequestered : tuple of SequesteredInstance
     search_coverage : tuple of SearchCoverage
+    exempted_findings : tuple of ExemptedFindings
     held_for_review : tuple of HeldForReview
     roi_names : ~pymedphys._dicom.deidentify.reviewed_roi_names.RoiNameCounts
     descriptors : ~pymedphys._dicom.deidentify.reviewed_descriptors.DescriptorCounts
@@ -570,13 +733,17 @@ class ReleaseReport:
     policy: PolicyRecord
     method: MethodDigestComponents
     runtime: RuntimeEnvironment
+    project_key: str | None = None
     qc_review: AttestationRecord | None = None
     face_review: str | None = None
     face_blocks: FaceBlockCounts | None = None
     redaction_review: str | None = None
+    pixel_regions: PixelRegionCounts | None = None
+    readiness: Readiness | None = None
     released: tuple[PurePosixPath, ...] = ()
     sequestered: tuple[SequesteredInstance, ...] = ()
     search_coverage: tuple[SearchCoverage, ...] = ()
+    exempted_findings: tuple[ExemptedFindings, ...] = ()
     held_for_review: tuple[HeldForReview, ...] = ()
     roi_names: RoiNameCounts = dataclasses.field(
         default_factory=lambda: RoiNameCounts({}, {})
@@ -726,6 +893,71 @@ def search_coverage(
     )
 
 
+def exempted_findings(
+    instances: Iterable[Iterable[tuple[Finding, Exemption]]],
+) -> tuple[ExemptedFindings, ...]:
+    """Count the instances with each kind of exempted residual finding.
+
+    ``instances`` holds, for each instance, its residual findings that an
+    exemption kept from review, each with the exemption, as
+    :attr:`~pymedphys._dicom.deidentify.release_gate.ReleaseCondition.exempted`
+    gives them. An instance counts once for an exemption, source attribute,
+    and attribute found in, however many of its items or values have it. The
+    counts are in the order of their exemptions and attributes.
+
+    Raises
+    ------
+    TypeError
+        If the findings are not given for each instance, or one is not a
+        :class:`~pymedphys._dicom.deidentify.residuals.Finding` with an
+        :class:`~pymedphys._dicom.deidentify.residual_exemptions.Exemption`.
+    ValueError
+        For a finding outside a data set element, which no exemption explains.
+
+    >>> from pymedphys._dicom.deidentify.file_layout import Location
+    >>> from pymedphys._dicom.deidentify.residuals import Form, ValueKind
+    >>> finding = Finding(
+    ...     ElementPath((), "(0009,1012)"),
+    ...     ValueKind.TEXT,
+    ...     Form.VALUE,
+    ...     "ascii",
+    ...     Location(Region.DATA_SET, ElementPath((), "(0008,0070)"), "LO"),
+    ...     200,
+    ... )
+    >>> exempted_findings([[(finding, Exemption.EQUIPMENT)], []])
+    (ExemptedFindings(exemption='equipment', attribute='(0009,1012)', found_in='(0008,0070)', count=1),)
+    """
+    counts: collections.Counter[tuple[str, str, str]] = collections.Counter()
+    for pairs in instances:
+        if isinstance(pairs, tuple) and pairs and isinstance(pairs[0], Finding):
+            raise TypeError("exempted findings must be given for each instance")
+        found = set()
+        for pair in pairs:
+            if not (
+                isinstance(pair, tuple)
+                and len(pair) == 2
+                and isinstance(pair[0], Finding)
+                and isinstance(pair[1], Exemption)
+            ):
+                raise TypeError("an exempted finding must be a Finding and Exemption")
+            finding, exemption = pair
+            element = finding.location.element
+            if finding.location.region is not Region.DATA_SET or element is None:
+                raise ValueError("an exempted finding must be in a data set element")
+            found.add(
+                (
+                    exemption.value,
+                    attribute_tags(finding.source),
+                    attribute_tags(element),
+                )
+            )
+        counts.update(found)
+    return tuple(
+        ExemptedFindings(exemption, attribute, found_in, count)
+        for (exemption, attribute, found_in), count in sorted(counts.items())
+    )
+
+
 def source_gaps(
     instances: Iterable[Iterable[SourceGap]],
 ) -> tuple[SourceGapCount, ...]:
@@ -758,13 +990,21 @@ def source_gaps(
 
 def held_for_review(
     instances: Iterable[
-        Iterable[HeldRoiName | HeldPixelData | HeldVisualFeatures | ReleaseReason]
+        Iterable[
+            HeldRoiName
+            | HeldDescriptor
+            | HeldPixelData
+            | HeldVisualFeatures
+            | ReleaseReason
+        ]
     ],
 ) -> tuple[HeldForReview, ...]:
     """Count the instances held for review by stage and reason (D-009).
 
     ``instances`` holds, for each held instance, its reasons: a ROI Name
-    that descriptor cleaning held, why a pixel option held its pixel data
+    that descriptor cleaning held, a value of an attribute that another
+    option's cleaner left to the reviewed descriptors list that descriptor
+    cleaning held (D-038), why a pixel option held its pixel data
     (D-037), the reason that an instance that can show a face does not
     satisfy the Clean Recognizable Visual Features Option, or a release
     gate's reason that requires QC review. An instance
@@ -781,13 +1021,22 @@ def held_for_review(
     counts: collections.Counter[tuple[str, str]] = collections.Counter()
     for reasons in instances:
         if isinstance(
-            reasons, (HeldRoiName, HeldPixelData, HeldVisualFeatures, ReleaseReason)
+            reasons,
+            (
+                HeldRoiName,
+                HeldDescriptor,
+                HeldPixelData,
+                HeldVisualFeatures,
+                ReleaseReason,
+            ),
         ):
             raise TypeError("reasons must be given for each instance")
         codes = set()
         for reason in reasons:
             if isinstance(reason, HeldRoiName):
                 codes.add(("roi-names", reason.reason.value))
+            elif isinstance(reason, HeldDescriptor):
+                codes.add(("descriptors", reason.reason.value))
             elif isinstance(reason, HeldPixelData):
                 codes.add(("pixel-data", reason.reason.value))
             elif isinstance(reason, HeldVisualFeatures):
@@ -800,8 +1049,8 @@ def held_for_review(
                 codes.add(("release", reason.code.value))
             else:
                 raise TypeError(
-                    "a held reason must be a HeldRoiName, a HeldPixelData, a "
-                    "HeldVisualFeatures, "
+                    "a held reason must be a HeldRoiName, a HeldDescriptor, a "
+                    "HeldPixelData, a HeldVisualFeatures, "
                     "or a release reason that requires QC review"
                 )
         counts.update(codes)
@@ -926,14 +1175,19 @@ def release_report(
     reviewed_descriptors: str | None = None,
     technique_vocabulary: str | None = None,
     text_finder: Mapping[str, object] | None = None,
+    pixel_region_rules: str | None = None,
     safe_private_list: SafePrivateList = SafePrivateList.REVIEWED,
+    project_key: str | None = None,
     qc_review: AttestationRecord | None = None,
     face_review: str | None = None,
     face_blocks: FaceBlockCounts | None = None,
     redaction_review: str | None = None,
+    pixel_regions: PixelRegionCounts | None = None,
+    readiness: Readiness | None = None,
     released: Iterable[PurePosixPath] = (),
     sequestered: Iterable[SequesteredInstance] = (),
     coverage: Iterable[SearchCoverage] = (),
+    exempted: Iterable[ExemptedFindings] = (),
     held: Iterable[HeldForReview] = (),
     roi_names: RoiNameCounts | None = None,
     descriptors: DescriptorCounts | None = None,
@@ -972,11 +1226,23 @@ def release_report(
         :func:`~pymedphys._dicom.deidentify.pixel_cleaning.finder_description`
         gives them, or None, the default, without one. The report records
         only their digest.
+    pixel_region_rules : str or None, optional
+        The keyed digest of the reviewed region rules whose regions the
+        Clean Pixel Data Option blacks out beside the text finder's, as
+        :meth:`~pymedphys._dicom.deidentify.pixel_region_rules.PixelRegionRules.keyed_digest`
+        gives it, or None, the default, without rules. The report records
+        only this digest.
     safe_private_list : SafePrivateList, optional
         Under the Retain Safe Private Option, the list whose rules settle
         private attributes: the reviewed rules, the default, or TCIA's
         Private Tag Dictionary. The report records which, and nothing
         without the Option.
+    project_key : str, optional
+        The identifier of the project key whose subject profiles the run
+        read and recorded (D-004), as
+        :attr:`~pymedphys._dicom.deidentify.keys.DeidKey.key_id` gives it;
+        None, the default, for a run-scoped key. The report records the
+        identifier, never the key.
     qc_review : ~pymedphys._dicom.deidentify.qc_attestation.AttestationRecord, optional
         The run's QC pack by its reference, with its attestation's outcome
         and the releaser's confirmations, from
@@ -996,6 +1262,16 @@ def release_report(
         pack whose redaction verdicts the run applied, from
         :class:`~pymedphys._dicom.deidentify.redaction_review.RedactionReview`;
         None, the default, otherwise.
+    pixel_regions : PixelRegionCounts, optional
+        Under the Clean Pixel Data Option, how many regions the option
+        blacked out in the run's instances without a reviewer's verdict, by
+        what gave them; None, the default, counts none under the option,
+        and is the only value without it.
+    readiness : Readiness, optional
+        Under the ``public-release`` preset, whether the run is ready for
+        release, from
+        :func:`~pymedphys._dicom.deidentify.readiness.readiness`; None, the
+        default, otherwise.
     released : iterable of pathlib.PurePosixPath, optional
         The output name of each released instance, as
         :func:`~pymedphys._dicom.deidentify.output_names.instance_path`
@@ -1005,6 +1281,10 @@ def release_report(
     coverage : iterable of SearchCoverage, optional
         How many values the run's residual search did not search, from
         :func:`search_coverage`.
+    exempted : iterable of ExemptedFindings, optional
+        How many of the run's released instances have each kind of residual
+        finding that an exemption kept from review, from
+        :func:`exempted_findings`.
     held : iterable of HeldForReview, optional
         How many of the run's instances were held for review, by reason,
         from :func:`held_for_review`.
@@ -1052,7 +1332,7 @@ def release_report(
     >>> report.policy.preset, report.policy.options
     ('basic', ())
     >>> list(report_document(report))
-    ['format', 'policy', 'method', 'runtime', 'qc_review', 'face_review', 'redaction_review', 'released', 'sequestered', 'held_for_review', 'roi_names', 'descriptors', 'reference_findings', 'pixel_risks', 'search_coverage', 'source_gaps', 'structural_checks']
+    ['format', 'policy', 'method', 'runtime', 'key', 'qc_review', 'face_review', 'redaction_review', 'pixel_regions', 'readiness', 'released', 'sequestered', 'held_for_review', 'roi_names', 'descriptors', 'reference_findings', 'pixel_risks', 'search_coverage', 'exempted_findings', 'source_gaps', 'structural_checks']
     """
     if not isinstance(policy, Policy):
         raise TypeError("policy must be a Policy")
@@ -1070,16 +1350,25 @@ def release_report(
             reviewed_descriptors=reviewed_descriptors,
             technique_vocabulary=technique_vocabulary,
             text_finder=text_finder,
+            pixel_region_rules=pixel_region_rules,
             safe_private_list=safe_private_list,
         ),
         runtime=runtime_environment(),
+        project_key=project_key,
         qc_review=qc_review,
         face_review=face_review,
         face_blocks=face_blocks,
         redaction_review=redaction_review,
+        pixel_regions=(
+            PixelRegionCounts()
+            if pixel_regions is None and CLEAN_PIXEL_DATA in policy.options
+            else pixel_regions
+        ),
+        readiness=readiness,
         released=tuple(released),
         sequestered=tuple(sequestered),
         search_coverage=tuple(coverage),
+        exempted_findings=tuple(exempted),
         held_for_review=tuple(held),
         roi_names=RoiNameCounts({}, {}) if roi_names is None else roi_names,
         descriptors=DescriptorCounts({}, {}) if descriptors is None else descriptors,
@@ -1176,6 +1465,9 @@ def _method_section(method: MethodDigestComponents) -> dict:
         "text_finder_digest": _optional_digest(
             "text_finder_digest", method.text_finder_digest
         ),
+        "pixel_region_rules": _optional_digest(
+            "pixel_region_rules", method.pixel_region_rules
+        ),
         "safe_private_list": (
             None
             if method.safe_private_list is None
@@ -1197,6 +1489,15 @@ def _runtime_section(environment: RuntimeEnvironment) -> dict:
         field.name: _version(field.name, getattr(environment, field.name))
         for field in dataclasses.fields(environment)
     }
+
+
+def _key_section(project_key: str | None) -> dict:
+    """Return the section that gives the scope of the run's key (D-004)."""
+    if project_key is None:
+        return {"scope": "run", "key_id": None}
+    if _string(project_key) is None or not _KEY_ID.fullmatch(project_key):
+        raise _refuse("key", "is not a key's identifier")
+    return {"scope": "project", "key_id": project_key}
 
 
 def _string(value: object) -> str | None:
@@ -1326,6 +1627,94 @@ def _redaction_review_section(reference: str | None) -> dict | None:
     return {"reference": reference}
 
 
+def _pixel_regions_section(
+    counts: PixelRegionCounts | None, policy: PolicyRecord
+) -> dict | None:
+    """Return the section that counts the regions that Clean Pixel Data
+    blacked out, by what gave them, which only a policy that selects the
+    option has."""
+    selected = isinstance(policy, PolicyRecord) and CLEAN_PIXEL_DATA in policy.options
+    if counts is None:
+        if selected:
+            raise _refuse("pixel_regions", "is missing under Clean Pixel Data")
+        return None
+    if not selected:
+        raise _refuse("pixel_regions", "is given only under Clean Pixel Data")
+    if not isinstance(counts, PixelRegionCounts):
+        raise _refuse("pixel_regions", "is not counts of regions")
+    section = {}
+    for field in ("detected", "rule"):
+        count = getattr(counts, field)
+        if type(count) is not int:  # pylint: disable = unidiomatic-typecheck
+            raise _refuse(f"pixel_regions {field}", "is not a whole number")
+        if count < 0:
+            raise _refuse(f"pixel_regions {field}", "is negative")
+        section[field] = count
+    return section
+
+
+def _readiness_section(
+    readiness: Readiness | None, policy: PolicyRecord
+) -> dict | None:
+    """Return the section that says whether a ``public-release`` run is ready.
+
+    A ``public-release`` report given no readiness is not ready on any gate,
+    as a run given no review is, so that it never reads as having none.
+    """
+    public = isinstance(policy, PolicyRecord) and policy.preset == PUBLIC_RELEASE
+    if readiness is None:
+        if not public:
+            return None
+        readiness = Readiness(
+            review=None,
+            assessment=None,
+            statistical=StatisticalReason.NO_ASSESSMENT,
+            pixel_and_face=ReviewReason.NO_REVIEW,
+            attestation=ReviewReason.NO_REVIEW,
+        )
+    if not isinstance(readiness, Readiness):
+        raise _refuse("readiness", "is not a Readiness")
+    if not public:
+        raise _refuse("readiness", "is given for a policy other than public-release")
+    review, assessment = readiness.review, readiness.assessment
+    if review is not None and (
+        _string(review) is None or not _REFERENCE.fullmatch(review)
+    ):
+        raise _refuse("readiness review", "is not a QC pack's reference")
+    if assessment is not None and (
+        _string(assessment) is None or not _ASSESSMENT_REFERENCE.fullmatch(assessment)
+    ):
+        raise _refuse("readiness assessment", "is not a risk assessment's reference")
+    gates = {
+        "statistical": (readiness.statistical, tuple(StatisticalReason)),
+        "pixel_and_face": (readiness.pixel_and_face, PIXEL_AND_FACE_REASONS),
+        "attestation": (readiness.attestation, ATTESTATION_REASONS),
+    }
+    for name, (reason, reasons) in gates.items():
+        if reason is not None and reason not in reasons:
+            raise _refuse(f"readiness {name}", "is not a reason of its gate")
+    # A run given no reviewed pack has neither review nor assessment, and
+    # a gate fails for the lack of one exactly where it was not given.
+    if assessment is not None and review is None:
+        raise _refuse("readiness assessment", "is given without a review")
+    if (assessment is None) != (
+        readiness.statistical is StatisticalReason.NO_ASSESSMENT
+    ):
+        raise _refuse("readiness statistical", "is no-assessment exactly without one")
+    for name in ("pixel_and_face", "attestation"):
+        if (review is None) != (getattr(readiness, name) is ReviewReason.NO_REVIEW):
+            raise _refuse(f"readiness {name}", "is no-review exactly without one")
+    return {
+        "ready": readiness.ready,
+        "review": review,
+        "assessment": assessment,
+        **{
+            name: None if reason is None else reason.value
+            for name, (reason, _) in gates.items()
+        },
+    }
+
+
 def _is_output_name(path: object) -> bool:
     """Whether ``path`` is one that ``output_names.instance_path`` gives."""
     if type(path) is not PurePosixPath:  # pylint: disable = unidiomatic-typecheck
@@ -1395,6 +1784,34 @@ def _coverage_section(coverage: tuple[SearchCoverage, ...]) -> list:
             }
         )
     return sorted(entries, key=lambda entry: (entry["attribute"], entry["reason"]))
+
+
+_EXEMPTIONS = frozenset(e.value for e in Exemption)
+
+
+def _exempted_section(exempted: tuple[ExemptedFindings, ...]) -> list:
+    entries = []
+    for each in exempted:
+        if not isinstance(each, ExemptedFindings):
+            raise _refuse("exempted_findings", "is not a tuple of exempted counts")
+        if not (isinstance(each.count, int) and not isinstance(each.count, bool)):
+            raise _refuse("exempted_findings count", "is not a whole number")
+        if each.count < 1:
+            raise _refuse("exempted_findings count", "is not positive")
+        entries.append(
+            {
+                "exemption": _code(
+                    "exempted_findings exemption", each.exemption, _EXEMPTIONS
+                ),
+                "attribute": _attribute("exempted_findings attribute", each.attribute),
+                "found_in": _attribute("exempted_findings found_in", each.found_in),
+                "count": each.count,
+            }
+        )
+    return sorted(
+        entries,
+        key=lambda entry: (entry["exemption"], entry["attribute"], entry["found_in"]),
+    )
 
 
 def _held_section(held: tuple[HeldForReview, ...]) -> list:
@@ -1604,23 +2021,33 @@ def report_document(report: ReleaseReport) -> dict:
     """Return a release report as JSON values, after checking every field.
 
     The document is an object with the members ``format`` (:data:`FORMAT`),
-    ``policy``, ``method``, ``runtime``, ``qc_review``, ``face_review``,
-    ``redaction_review``, ``released``, ``sequestered``, ``held_for_review``, ``roi_names``,
+    ``policy``, ``method``, ``runtime``, ``key``, ``qc_review``, ``face_review``,
+    ``redaction_review``, ``pixel_regions``, ``readiness``, ``released``, ``sequestered``, ``held_for_review``, ``roi_names``,
     ``descriptors``,
     ``reference_findings``, ``pixel_risks``, ``search_coverage``,
-    ``source_gaps``, and ``structural_checks``, in that order, each section's
+    ``exempted_findings``, ``source_gaps``, and ``structural_checks``, in
+    that order, each section's
     fields in the order of its class, the digests of tables and files sorted
-    by name, ``qc_review`` null where the run wrote no QC pack,
+    by name, ``key`` with its ``scope``, ``"run"`` or ``"project"``, and
+    ``key_id``, null for a run-scoped key, ``qc_review`` null where the run
+    wrote no QC pack,
     ``face_review`` null or an object with the reference and the CT series'
     ``ct_series`` counts, ``defaced`` and ``not_defaced`` by code,
-    ``redaction_review`` null or an object with the reference, the released
+    ``redaction_review`` null or an object with the reference,
+    ``pixel_regions`` null without the Clean Pixel Data Option and
+    otherwise an object with the ``detected`` and ``rule`` counts,
+    ``readiness`` null or an object with ``ready``, the ``review`` and
+    ``assessment`` references, each null without one, and the
+    ``statistical``, ``pixel_and_face``, and ``attestation`` gates' reason
+    codes, each null where its gate passed, the released
     output names sorted, the sequestered instances by label, each with its
     reasons once, in the order given, the held counts by stage and code, the
     ROI Names' and the descriptors' ``outcomes`` and ``held`` counts each by
     code, the descriptors' ``fell_back`` count of elements, the reference
     findings' counts by kind, the pixel risks' ``instances`` counts by
     disposition and risk and ``indicators`` counts by disposition, risk, and
-    indicator, the coverage by attribute and reason, the source gaps by
+    indicator, the coverage by attribute and reason, the exempted findings
+    by exemption, attribute, and attribute found in, the source gaps by
     attribute and Type, and each structural check once, in the order of
     :data:`STRUCTURAL_CHECKS`. A walker
     reason has its stage, code, attribute, action, and VR, which is null
@@ -1640,9 +2067,15 @@ def report_document(report: ReleaseReport) -> dict:
     ------
     ReleaseReportError
         If a field does not have the form of a digest, a version, a known
-        edition, preset, or option, the method digest's format, a file name
+        edition, preset, or option, the method digest's format, a key's
+        identifier, a file name
         or path within the engine's package, a QC pack's reference and an
         attestation outcome, a confirmation given only with an attestation,
+        a pixel regions section given exactly under the Clean Pixel Data
+        Option, a readiness section given only under ``public-release``, with a
+        risk assessment's reference only with a QC pack's, each gate's own
+        reason codes, and a gate failed for the lack of either exactly where
+        it is not given,
         an output name that
         :func:`~pymedphys._dicom.deidentify.output_names.instance_path`
         gives, listed once, one of the labels ``S-0001`` to ``S-n`` for ``n``
@@ -1657,9 +2090,12 @@ def report_document(report: ReleaseReport) -> dict:
         "policy": _policy_section(report.policy),
         "method": _method_section(report.method),
         "runtime": _runtime_section(report.runtime),
+        "key": _key_section(report.project_key),
         "qc_review": _qc_review_section(report.qc_review),
         "face_review": _face_review_section(report.face_review, report.face_blocks),
         "redaction_review": _redaction_review_section(report.redaction_review),
+        "pixel_regions": _pixel_regions_section(report.pixel_regions, report.policy),
+        "readiness": _readiness_section(report.readiness, report.policy),
         "released": _released_section(report.released),
         "sequestered": _sequestered_section(report.sequestered),
         "held_for_review": _held_section(report.held_for_review),
@@ -1668,6 +2104,7 @@ def report_document(report: ReleaseReport) -> dict:
         "reference_findings": _reference_findings_section(report.reference_findings),
         "pixel_risks": _pixel_risks_section(report.pixel_risks),
         "search_coverage": _coverage_section(report.search_coverage),
+        "exempted_findings": _exempted_section(report.exempted_findings),
         "source_gaps": _gaps_section(report.source_gaps),
         "structural_checks": _checks_section(
             report.structural_checks, report.sequestered

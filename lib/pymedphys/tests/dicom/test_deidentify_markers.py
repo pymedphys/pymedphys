@@ -636,6 +636,7 @@ def test_python_and_library_versions_change_software_versions_not_the_digest(
         # are read again, as in another process.
         # pylint: disable = protected-access
         method_digest._file_digests.cache_clear()
+        method_digest._outside_digests.cache_clear()
         method_digest._table_digests.cache_clear()
         digest = method_digest.method_digest(
             composed, vocabulary=None, reviewed_roi_names=None

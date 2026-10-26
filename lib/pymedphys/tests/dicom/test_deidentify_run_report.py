@@ -32,24 +32,36 @@ from pymedphys._dicom.deidentify import (
     qc_pack,
     release_gate,
     release_report,
+    risk_assessment,
     run,
     run_qc,
     run_report,
 )
 from pymedphys._dicom.deidentify.descriptor_cleaning import HeldRoiName
-from pymedphys._dicom.deidentify.file_layout import ElementPath
+from pymedphys._dicom.deidentify.file_layout import ElementPath, Location, Region
 from pymedphys._dicom.deidentify.iod_conformance import SourceGap
 from pymedphys._dicom.deidentify.instance_transform import (
     InstanceTransform,
     ReleaseGate,
 )
 from pymedphys._dicom.deidentify.keys import DeidKey
+from pymedphys._dicom.deidentify.pixel_region_rules import PixelRegionRules, RuleKey
 from pymedphys._dicom.deidentify.policy import compose_policy
 from pymedphys._dicom.deidentify.reasons import RunReason, TransformReason
-from pymedphys._dicom.deidentify.reviewed_roi_names import Outcome, RoiNameCounts
+from pymedphys._dicom.deidentify.reviewed_roi_names import (
+    Outcome,
+    Review,
+    ReviewedName,
+    ReviewedNames,
+    RoiNameCounts,
+)
 from pymedphys._dicom.deidentify.roi_names import Reason
 from pymedphys._dicom.deidentify.scope import Disposition, UnsupportedIod
 from pymedphys._dicom.deidentify.reference_graph import Finding, FindingKind
+from pymedphys._dicom.deidentify.residual_exemptions import Exemption
+from pymedphys._dicom.deidentify.residuals import (
+    Finding as ResidualFinding,
+)
 from pymedphys._dicom.deidentify.residuals import (
     Form,
     NotSearched,
@@ -57,6 +69,7 @@ from pymedphys._dicom.deidentify.residuals import (
     ResidualSearch,
     Unsearched,
     UnsearchedReason,
+    ValueKind,
 )
 from pymedphys._dicom.deidentify.release_report_markdown import (
     ReleaseReportMarkdownError,
@@ -70,10 +83,12 @@ from pymedphys._dicom.deidentify.run_report import (
     SEQUESTERED,
     ReleaseReporter,
     coverage_records,
+    exempted_findings,
     held_instances,
     release_files,
     roi_name_counts,
 )
+from pymedphys._dicom.deidentify.text_detection import TextBox
 from pymedphys._dicom.deidentify.walker import SequesterReason, Sequestration
 from pymedphys._dicom.deidentify.written_references import (
     WrittenFinding,
@@ -186,6 +201,49 @@ def test_the_report_lists_released_inputs_and_its_qc_pack_not_yet_attested(tmp_p
     }
 
 
+@pytest.mark.deid_requirement("MIDI-BP-01")
+@pytest.mark.pydicom
+def test_the_qc_pack_binds_the_lists_that_the_reporter_checks(tmp_path):
+    _write(tmp_path / "source", synthetic.collection()[:1])
+    names = ReviewedNames.empty()
+    names.record("Parotid L", ReviewedName(Review.KEEP))
+    rules = PixelRegionRules.empty()
+    rules.record(
+        RuleKey("1.2.840.10008.5.1.4.1.1.6.1", "Acme Sonics", "Echo 5", 480, 640),
+        (TextBox(0, 0, 40, 640),),
+    )
+    reporter = ReleaseReporter(
+        compose_policy("basic"),
+        vocabulary=None,
+        reviewed_roi_names=None,
+        reviewed_lists=(names, None, rules),
+    )
+
+    result = _run(tmp_path, Transform(), Gate(), reporter)
+
+    assert reporter.reviewed_lists == (names, None, rules)
+    # A risk assessment of the run binds the lists and region rules that the
+    # run applied, under the salt that the run drew.
+    lists = json.loads(result.qc_pack.read_text("ascii"))["reviewed_lists"]
+    assert set(lists) == {"salt", "sha256"}
+    salt = lists["salt"]
+    assert lists["sha256"] == risk_assessment.lists_digest(salt, names, None, rules)
+    assert lists["sha256"] != risk_assessment.lists_digest(salt, names, None, None)
+    assert lists["sha256"] != risk_assessment.lists_digest(salt, None, None, rules)
+
+
+@pytest.mark.parametrize("lists", [(None, None), [None, None, None], None])
+def test_the_reporter_takes_the_two_lists_and_the_region_rules(lists):
+    # A reporter given the lists alone would leave the rules unbound.
+    with pytest.raises(TypeError, match="region rules"):
+        ReleaseReporter(
+            compose_policy("basic"),
+            vocabulary=None,
+            reviewed_roi_names=None,
+            reviewed_lists=lists,
+        )
+
+
 @pytest.mark.deid_requirement("MIDI-BP-18")
 @pytest.mark.pydicom
 def test_the_report_names_each_sequestered_input_by_its_label(tmp_path):
@@ -243,10 +301,12 @@ def test_the_report_names_the_iod_of_an_input_the_release_does_not_support(tmp_p
 
 
 class _FailingReporter:
+    reviewed_lists = (None, None, None)
+
     def admits(self, status, reasons):  # pylint: disable = unused-argument
         return True
 
-    def __call__(self, outcomes, material, _qc_pack):
+    def __call__(self, outcomes, material, _qc_pack, _facts):
         raise ValueError("no report")
 
 
@@ -262,10 +322,12 @@ def test_a_report_that_cannot_be_written_publishes_nothing(tmp_path):
 
 
 class _UnreadableReporter:
+    reviewed_lists = (None, None, None)
+
     def admits(self, status, reasons):  # pylint: disable = unused-argument
         return True
 
-    def __call__(self, outcomes, material, _qc_pack):
+    def __call__(self, outcomes, material, _qc_pack, _facts):
         return "{}"
 
     def conformance_statement(self):
@@ -382,10 +444,12 @@ def test_an_input_sequestered_for_its_reasons_keeps_whose_copy_it_is():
 def test_without_a_reporter_no_report_is_written(tmp_path):
     _write(tmp_path / "source", synthetic.collection()[:1])
 
-    _run(tmp_path, Transform(), Gate(), None)
+    result = _run(tmp_path, Transform(), Gate(), None)
 
     assert not os.path.lexists(tmp_path / "release" / RELEASE_REPORT)
     assert not os.path.lexists(tmp_path / "release" / CONFORMANCE_STATEMENT)
+    # Nor does its pack bind any lists, so no assessment can be recorded of it.
+    assert json.loads(result.qc_pack.read_text("ascii"))["reviewed_lists"] is None
 
 
 @pytest.mark.deid_requirement("PS3.15-E.1.3-01", "MIDI-BP-18")
@@ -409,14 +473,16 @@ def test_a_run_publishes_the_conformance_statement_of_its_policy(tmp_path):
 
 
 class _StatementlessReporter:
+    reviewed_lists = (None, None, None)
+
     def __init__(self):
         self._reporter = _reporter()
 
     def admits(self, status, reasons):
         return self._reporter.admits(status, reasons)
 
-    def __call__(self, outcomes, material, reference):
-        return self._reporter(outcomes, material, reference)
+    def __call__(self, outcomes, material, reference, facts):
+        return self._reporter(outcomes, material, reference, facts)
 
     def conformance_statement(self):
         raise ValueError("no statement")
@@ -453,6 +519,94 @@ def test_coverage_records_follow_the_drops_and_the_search():
         own,
         omission,
     ]
+
+
+# An invented equipment name, distinctive enough that nothing else in a file
+# matches it.
+SCANNER = "ZARQUON SCANNERS"
+
+
+@pytest.mark.deid_requirement("MIDI-BP-01", "MIDI-BP-18")
+@pytest.mark.pydicom
+def test_the_report_counts_released_instances_with_exempted_findings(tmp_path):
+    datasets = synthetic.collection()
+    for dataset in datasets[:3]:
+        # Basic Profile keeps Manufacturer and removes the secondary capture
+        # device's, which the residual search then finds in Manufacturer.
+        dataset.Manufacturer = SCANNER
+        dataset.SecondaryCaptureDeviceManufacturer = SCANNER
+    _write(tmp_path / "source", datasets)
+    transform = InstanceTransform(compose_policy("basic"), KEY, unvalidated_policy=True)
+
+    result = _run(tmp_path, transform, ReleaseGate(), transform.reporter)
+
+    assert [outcome.status for outcome in result.outcomes] == [run.Status.RELEASED] * 6
+    text = (tmp_path / "release" / RELEASE_REPORT).read_text(encoding="utf-8")
+    assert json.loads(text)["exempted_findings"] == [
+        {
+            "exemption": "equipment",
+            "attribute": "(0018,1016)",
+            "found_in": "(0008,0070)",
+            "count": 3,
+        }
+    ]
+    markdown = (tmp_path / "release" / RELEASE_REPORT_MARKDOWN).read_text(
+        encoding="utf-8"
+    )
+    for written in (text, markdown):
+        assert SCANNER not in written
+
+
+def test_the_release_gate_gives_the_conditions_exempted_findings():
+    finding = _exempted_finding()
+    search = ResidualSearch((finding,), (), True)
+
+    def condition(coverage, _written):
+        return release_gate.ReleaseCondition(
+            release_gate.Decision.RELEASE,
+            coverage.outcome,
+            (),
+            (),
+            search,
+            ((finding, Exemption.EQUIPMENT),),
+        )
+
+    verdict = ReleaseGate(condition)(
+        b"", release_gate.Coverage(planned=frozenset(), collected=()), ()
+    )
+
+    (material,) = verdict.qc
+    assert material.exempted == ((finding, Exemption.EQUIPMENT),)
+
+
+def _exempted_finding(source="(0009,1012)", found_in="(0008,0070)"):
+    return ResidualFinding(
+        ElementPath((), source),
+        ValueKind.TEXT,
+        Form.VALUE,
+        "ascii",
+        Location(Region.DATA_SET, ElementPath((), found_in), "LO"),
+        200,
+    )
+
+
+def test_exempted_findings_are_counted_only_in_released_instances():
+    pair = (_exempted_finding(), Exemption.EQUIPMENT)
+    outcomes = [
+        run.Outcome(0, run.Status.RELEASED),
+        run.Outcome(1, run.Status.HELD_FOR_REVIEW),
+        run.Outcome(2, run.Status.SEQUESTERED, label="S-0001"),
+        run.Outcome(3, run.Status.RELEASED),
+        run.Outcome(4, run.Status.DUPLICATE, duplicate_of=0),
+    ]
+    material = {
+        position: (run_qc.SearchMaterial(ResidualSearch((), (), True), b"", (pair,)),)
+        for position in range(5)
+    }
+
+    assert exempted_findings(outcomes, material) == (
+        release_report.ExemptedFindings("equipment", "(0009,1012)", "(0008,0070)", 2),
+    )
 
 
 def _roi_name(item, source, outcome, held_because=None):
@@ -764,7 +918,15 @@ def test_no_output_name_is_the_release_report(name):
 
 @pytest.mark.parametrize(
     "module",
-    ["release_report", "qc_pack", "run_qc", "descriptor_cleaning", "run", "run_report"],
+    [
+        "release_report",
+        "qc_pack",
+        "run_qc",
+        "descriptor_cleaning",
+        "run",
+        "run_report",
+        "risk_assessment",
+    ],
 )
 def test_each_module_of_the_report_and_the_qc_pack_imports_first(module):
     # The QC pack and the release report import from each other's

@@ -150,6 +150,7 @@ from . import run
 from .compound_actions import COMPOUND_ACTIONS, resolve_in_iod, resolve_plain_in_iod
 from .descriptor_cleaning import CLEAN_DESCRIPTORS, DescriptorCleaning, fallback_policy
 from .diagnostics import redacted_diagnostics
+from .dummy_values import KEPT_ITEM_ATTRIBUTES
 from .element_rules import KEEP, ElementRules
 from .instance_transform import InstanceTransform, ReleaseGate
 from .iods import IOD, IODTables, load_iod_tables
@@ -209,7 +210,7 @@ from .reviewed_roi_names import ReviewedNames
 from .runtime import runtime_environment
 from .scope import classify
 from .text_detection import TextDetectionError, TextDetector
-from .walker import DESCENDED
+from .walker import descends
 
 FORMAT = "pymedphys-deid-midi-benchmark/3"
 RESULTS_JSON = "benchmark.json"
@@ -988,8 +989,12 @@ def _explaining_action(
         except ValueError:
             return None
         if depth < len(tags) - 1:
-            if action not in DESCENDED:
+            if not descends(tag, action):
                 return action
+            if action == "D" and tags[depth + 1] not in KEPT_ITEM_ATTRIBUTES[tag]:
+                # The sequence's reviewed rule keeps only some of its items'
+                # attributes, and removes the others (D-021).
+                return "X"
         elif (action != KEEP) if allowed is None else action in allowed:
             return action
     return None

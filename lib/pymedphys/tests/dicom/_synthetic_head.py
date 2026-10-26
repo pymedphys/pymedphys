@@ -41,6 +41,12 @@ GLOBE_RADIUS = 12.0
 GLOBE_X = 32.0
 GLOBE_Y = -66.0
 GLOBE_Z = 20.0
+POLE_X = 30.0
+POLE_Y = -30.0
+POLE_Z = 0.0
+APEX = (GLOBE_X, -36.0, GLOBE_Z)
+SINUS_CENTRE = (0.0, -89.0, 62.0)
+SINUS_AXES = (12.0, 3.5, 6.0)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -63,6 +69,22 @@ class Head:
     # Whether a bolus of soft-tissue density, 8 mm thick, lies over the
     # eyes and forehead.
     bolus: bool = False
+    # Whether a frontal sinus, of air walled in by a thickened frontal bone
+    # under a mound of soft tissue, lies ahead of the brain at the midline,
+    # from 56 to 68 mm superior.
+    sinus: bool = False
+    # The diameter, in millimetres, of four extraocular muscles about each
+    # globe, rods of soft tissue from its front to behind it, above, below,
+    # and either side of it, and of its optic nerve behind it; 0 for none.
+    muscles: float = 0.0
+    # Whether a ball of brain, 20 mm across, lies either side, 20 mm below
+    # the eyes and 36 mm behind them, in a cup of bone open behind, as a
+    # temporal lobe's pole lies in a middle cranial fossa.
+    poles: bool = False
+    # Whether the left orbit's fat reaches 30 mm further back, walled in by
+    # bone, with a ball of soft tissue, 16 mm across, in it 30 mm behind the
+    # globe's centre, as at an orbit's apex.
+    apex: bool = False
     noise: float = 10.0  # the standard deviation, in Hounsfield units
     seed: int = 0
 
@@ -89,22 +111,60 @@ def hounsfield(points: np.ndarray, head: Head = Head()) -> np.ndarray:
         values[over & (z > 0) & (z < 70)] = SOFT_TISSUE
     values[_inside(x, y, z, (0, 0, 10), (75, 95, 130))] = SOFT_TISSUE
     values[_inside(x, y, z, (0, -100, -15), (12, 22, 30))] = SOFT_TISSUE  # nose
+    if head.sinus:
+        values[_inside(x, y, z, SINUS_CENTRE, (23, 11, 13))] = SOFT_TISSUE
     if head.skull:
         values[_inside(x, y, z, (0, 0, 40), (68, 88, 85))] = BONE
-    values[_inside(x, y, z, (0, 0, 40), (62, 82, 79))] = BRAIN
+    brain = _inside(x, y, z, (0, 0, 40), (62, 82, 79))
+    values[brain] = BRAIN
+    if head.sinus:
+        values[_inside(x, y, z, SINUS_CENTRE, (20, 8, 10)) & ~brain] = BONE
+        values[_inside(x, y, z, SINUS_CENTRE, SINUS_AXES)] = AIR
+    if head.poles:
+        for side in (-1, 1):
+            centre = (side * POLE_X, POLE_Y, POLE_Z)
+            cup = _inside(x, y, z, centre, (16, 16, 16)) & (y < POLE_Y + 8)
+            values[cup] = BONE
+            values[_inside(x, y, z, centre, (10, 10, 10))] = BRAIN
     for side, present in zip((-1, 1), head.eyes):
         centre = (side * GLOBE_X, GLOBE_Y + 6, GLOBE_Z)
         if head.orbits:
             wall = _inside(x, y, z, centre, (21, 21, 21)) & (y > GLOBE_Y - 4)
             values[wall] = BONE
         values[_inside(x, y, z, centre, (18, 18, 18))] = FAT
+        if head.apex and side > 0:
+            behind = (side * GLOBE_X, APEX[1], GLOBE_Z)
+            values[_inside(x, y, z, behind, (15, 19, 15)) & (y > GLOBE_Y)] = BONE
+            values[_inside(x, y, z, behind, (12, 16, 12)) & (y > GLOBE_Y)] = FAT
+            values[_inside(x, y, z, APEX, (8, 8, 8))] = SOFT_TISSUE
         if present:
             globe = (side * GLOBE_X, GLOBE_Y, GLOBE_Z)
             radius = GLOBE_RADIUS
             values[_inside(x, y, z, globe, (radius, radius, radius))] = VITREOUS
             lens = (side * GLOBE_X, GLOBE_Y - radius + 3, GLOBE_Z)
             values[_inside(x, y, z, lens, (4, 2, 4))] = LENS
+            if head.muscles:
+                values[_muscles(x - side * GLOBE_X, y, z, head.muscles)] = SOFT_TISSUE
     return values
+
+
+def _muscles(x, y, z, diameter: float) -> np.ndarray:
+    """Where the muscles and the optic nerve of a globe at x and z of 0
+    lie, as :class:`Head` describes."""
+    half = diameter / 2
+    along = (y > GLOBE_Y - 4) & (y < GLOBE_Y + 30)
+    reach = GLOBE_RADIUS + half
+    rods = (
+        (x - reach) ** 2 + (z - GLOBE_Z) ** 2 <= half**2,
+        (x + reach) ** 2 + (z - GLOBE_Z) ** 2 <= half**2,
+        x**2 + (z - GLOBE_Z - reach) ** 2 <= half**2,
+        x**2 + (z - GLOBE_Z + reach) ** 2 <= half**2,
+    )
+    nerve = (x**2 + (z - GLOBE_Z) ** 2 <= half**2) & (y > GLOBE_Y)
+    found: np.ndarray = (along & np.logical_or.reduce(rods)) | (
+        nerve & (y < GLOBE_Y + 30)
+    )
+    return found
 
 
 @dataclasses.dataclass(frozen=True)

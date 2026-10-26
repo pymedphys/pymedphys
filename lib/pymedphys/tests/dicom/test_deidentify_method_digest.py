@@ -28,6 +28,7 @@ process would. Cached reads are cleared at each module boundary.
 # module.
 # pylint: disable = too-many-lines
 
+import ast
 import dataclasses
 import hashlib
 import importlib
@@ -96,6 +97,7 @@ SYNTHETIC_INPUTS = method_digest.MethodDigestInputs(
     reviewed_descriptors=None,
     technique_vocabulary=None,
     text_finder=None,
+    pixel_region_rules=None,
     safe_private_list=SafePrivateList.REVIEWED,
     generated_values={
         "uids.UID_ROOT": "2.25.",
@@ -110,7 +112,7 @@ SYNTHETIC_INPUTS = method_digest.MethodDigestInputs(
 SYNTHETIC_CANONICAL_BYTES = (
     '{"engine_version":"0.42.0.dev1",'
     '"files":{"policy.py":"' + "f" * 64 + '"},'
-    '"format":"pymedphys-deid-method-digest/5",'
+    '"format":"pymedphys-deid-method-digest/7",'
     '"generated_values":{'
     '"dates.MIN_OFFSET_WEEKS":["int",52],'
     '"dummy_values.CONSTANTS":["map",{"FL":["list",'
@@ -124,6 +126,7 @@ SYNTHETIC_CANONICAL_BYTES = (
     '"note":"Kept \\"as is\\".\\t\\u0001",'
     '"rules":{"(0008,0018)":"instance"}}},'
     '"l3_rules":null,'
+    '"pixel_region_rules":null,'
     '"policy":{"actions":{"(0010,0010)":"Z"},"edition":"2026d","enabled":false,'
     '"options":[],"preset":"basic","resolved":[],'
     '"supplementary_actions":{"(300A,00C2)":"X/Z/D"}},'
@@ -135,7 +138,7 @@ SYNTHETIC_CANONICAL_BYTES = (
     '"text_finder":null,'
     '"vocabulary":null}'
 ).encode("utf-8")
-SYNTHETIC_SHA256 = "8940e6d15d6a285c9c62e436ef6d33fd528e5cdefd49381ee60cef4c2d40daf2"
+SYNTHETIC_SHA256 = "290fecf89d55bc28110bd81b09c6df31a9d51902a740f6f07e560614dc1d0202"
 
 # Each parameter of generated values, and another value for it.
 GENERATED_VALUE_CHANGES = {
@@ -172,6 +175,7 @@ CANONICAL_MEMBERS = {
     "reviewed_descriptors",
     "technique_vocabulary",
     "text_finder",
+    "pixel_region_rules",
     "safe_private_list",
     "generated_values",
     "files",
@@ -212,7 +216,18 @@ def _forget_reads():
     """Forget the engine's files and tables, which are read once per process."""
     # pylint: disable = protected-access
     method_digest._file_digests.cache_clear()
+    method_digest._outside_digests.cache_clear()
     method_digest._table_digests.cache_clear()
+
+
+def _outside_files():
+    """The names of the outside modules' files, as the digest names them."""
+    # pylint: disable = protected-access
+    return set(
+        method_digest._outside_digests(
+            method_digest.PYMEDPHYS_DIR.resolve(), method_digest.OUTSIDE_MODULES
+        )
+    )
 
 
 @pytest.fixture(autouse=True, scope="module")
@@ -794,7 +809,7 @@ def test_every_file_of_the_engine_other_than_caches_has_a_covered_type():
     assert not uncovered, "the method digest does not cover these types of file"
     assert (
         set(method_digest.digest_inputs(vocabulary=None, reviewed_roi_names=None).files)
-        == expected
+        == expected | _outside_files()
     )
 
 
@@ -807,9 +822,10 @@ def test_every_file_is_covered_when_the_engine_is_installed_below_a_hidden_direc
     )
     monkeypatch.setattr(method_digest, "PACKAGE_DIR", engine)
 
-    assert set(
-        method_digest.digest_inputs(vocabulary=None, reviewed_roi_names=None).files
-    ) == set(ENGINE_FILES)
+    assert (
+        set(method_digest.digest_inputs(vocabulary=None, reviewed_roi_names=None).files)
+        == set(ENGINE_FILES) | _outside_files()
+    )
 
 
 @pytest.mark.parametrize(
@@ -913,13 +929,207 @@ def test_caches_and_files_of_other_types_are_not_covered(
     )
     read_again()
 
-    assert set(
-        method_digest.digest_inputs(vocabulary=None, reviewed_roi_names=None).files
-    ) == set(ENGINE_FILES)
+    assert (
+        set(method_digest.digest_inputs(vocabulary=None, reviewed_roi_names=None).files)
+        == set(ENGINE_FILES) | _outside_files()
+    )
     assert (
         method_digest.method_digest(basic, vocabulary=None, reviewed_roi_names=None)
         == before
     )
+
+
+def _outside_copy(directory):
+    """Copy PyMedPhys's outside modules, as the digest finds them, to a
+    synthetic PyMedPhys."""
+    source = method_digest.PYMEDPHYS_DIR
+    for module in method_digest.OUTSIDE_MODULES:
+        if (source / module).is_dir():
+            shutil.copytree(
+                source / module,
+                directory / module,
+                ignore=shutil.ignore_patterns("__pycache__"),
+            )
+        else:
+            (directory / module).parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(source / module, directory / module)
+    return directory
+
+
+@pytest.mark.parametrize(
+    "change, name",
+    [
+        (
+            lambda d: (d / "_geometry" / "polygons.py").write_bytes(
+                (d / "_geometry" / "polygons.py").read_bytes() + b"# edited\n"
+            ),
+            "pymedphys/_geometry/polygons.py",
+        ),
+        (
+            lambda d: (d / "_geometry" / "added.py").write_bytes(b""),
+            "pymedphys/_geometry/added.py",
+        ),
+        (
+            lambda d: (d / "_geometry" / "pixel_grids.py").unlink(),
+            "pymedphys/_geometry/pixel_grids.py",
+        ),
+        (
+            lambda d: (d / "_nomenclature" / "roi_list.py").write_bytes(b""),
+            "pymedphys/_nomenclature/roi_list.py",
+        ),
+    ],
+    ids=["geometry-module", "geometry-added", "geometry-removed", "roi-list"],
+)
+def test_changing_an_outside_module_changes_the_digest_in_its_file_digest(
+    basic, tmp_path, monkeypatch, read_again, change, name
+):
+    outside = _outside_copy(tmp_path / "pymedphys")
+    monkeypatch.setattr(method_digest, "PYMEDPHYS_DIR", outside)
+    before = method_digest.method_digest_components(
+        basic, vocabulary=None, reviewed_roi_names=None
+    )
+    change(outside)
+    read_again()
+    after = method_digest.method_digest_components(
+        basic, vocabulary=None, reviewed_roi_names=None
+    )
+
+    assert after.method_digest != before.method_digest
+    assert (
+        dataclasses.replace(
+            after, method_digest=before.method_digest, engine_files=before.engine_files
+        )
+        == before
+    )
+    changed = {
+        path
+        for path in set(after.engine_files) | set(before.engine_files)
+        if after.engine_files.get(path) != before.engine_files.get(path)
+    }
+    assert changed == {name}
+
+
+def test_the_running_digest_covers_the_outside_modules_as_found():
+    files = method_digest.digest_inputs(vocabulary=None, reviewed_roi_names=None).files
+    polygons = method_digest.PYMEDPHYS_DIR / "_geometry" / "polygons.py"
+
+    assert (
+        files["pymedphys/_geometry/polygons.py"]
+        == hashlib.sha256(polygons.read_bytes().replace(b"\r\n", b"\n")).hexdigest()
+    )
+    assert {"pymedphys/_nomenclature/roi_list.py", "pymedphys/_version.py"} <= set(
+        files
+    )
+
+
+@pytest.mark.parametrize(
+    "module", ["_geometry", "_nomenclature/roi_list.py"], ids=["package", "module"]
+)
+def test_the_digest_is_refused_without_an_outside_module(
+    basic, tmp_path, monkeypatch, read_again, module
+):
+    outside = _outside_copy(tmp_path / "pymedphys")
+    if (outside / module).is_dir():
+        shutil.rmtree(outside / module)
+    else:
+        (outside / module).unlink()
+    monkeypatch.setattr(method_digest, "PYMEDPHYS_DIR", outside)
+    read_again()
+
+    with pytest.raises(method_digest.MethodDigestError, match=module) as raised:
+        method_digest.method_digest(basic, vocabulary=None, reviewed_roi_names=None)
+    assert str(tmp_path) not in str(raised.value)
+
+
+def test_the_outside_modules_are_read_once_per_process(
+    basic, tmp_path, monkeypatch, read_again
+):
+    outside = _outside_copy(tmp_path / "pymedphys")
+    monkeypatch.setattr(method_digest, "PYMEDPHYS_DIR", outside)
+    first = method_digest.method_digest(basic, vocabulary=None, reviewed_roi_names=None)
+    (outside / "_geometry" / "polygons.py").write_bytes(b"")
+
+    assert (
+        method_digest.method_digest(basic, vocabulary=None, reviewed_roi_names=None)
+        == first
+    )
+    read_again()
+    assert (
+        method_digest.method_digest(basic, vocabulary=None, reviewed_roi_names=None)
+        != first
+    )
+
+
+def _module_path(root, name):
+    """The file of a PyMedPhys module named in dots, or None if there is none."""
+    path = root.joinpath(*name.split(".")[1:])
+    for candidate in (path / "__init__.py", path.with_suffix(".py")):
+        if candidate.is_file():
+            return candidate
+    return None
+
+
+def _imported(root, path):
+    """The files of the PyMedPhys modules that a module imports by name,
+    anywhere in it, not those of packages that run only because one of
+    their modules is imported."""
+    package = ["pymedphys", *path.relative_to(root).parent.parts]
+    found = set()
+    for node in ast.walk(ast.parse(path.read_bytes())):
+        if isinstance(node, ast.Import):
+            names = [alias.name for alias in node.names]
+        elif isinstance(node, ast.ImportFrom):
+            base = node.module or ""
+            if node.level:
+                base = ".".join(
+                    package[: len(package) - node.level + 1]
+                    + ([node.module] if node.module else [])
+                )
+            submodules = [f"{base}.{alias.name}" for alias in node.names]
+            names = [n for n in submodules if _module_path(root, n)] or [base]
+        else:
+            continue
+        found.update(
+            _module_path(root, name)
+            for name in names
+            if name.split(".")[0] == "pymedphys" and _module_path(root, name)
+        )
+    return found
+
+
+def test_the_outside_modules_are_those_the_engine_imports():
+    root = method_digest.PYMEDPHYS_DIR
+    engine = method_digest.PACKAGE_DIR
+    waiting = [p for p in engine.rglob("*.py") if "__pycache__" not in p.parts]
+    seen = set()
+    outside = set()
+    while waiting:
+        path = waiting.pop()
+        if path in seen:
+            continue
+        seen.add(path)
+        for imported in _imported(root, path):
+            if engine not in imported.parents:
+                outside.add(imported.relative_to(root).as_posix())
+                waiting.append(imported)
+
+    def covers(module, name):
+        return name == module or name.startswith(f"{module}/")
+
+    assert "_geometry/polygons.py" in outside
+    assert "__init__.py" not in outside
+    left_out = {
+        name
+        for name in outside
+        if not any(covers(m, name) for m in method_digest.OUTSIDE_MODULES)
+    }
+    assert not left_out, "the method digest does not cover these modules"
+    not_imported = {
+        module
+        for module in method_digest.OUTSIDE_MODULES
+        if not any(covers(module, name) for name in outside)
+    }
+    assert not not_imported, "the engine does not import these modules"
 
 
 @pytest.mark.parametrize(
@@ -1020,6 +1230,7 @@ COMPONENT_FIELDS = (
     "reviewed_descriptors",
     "technique_vocabulary_digest",
     "text_finder_digest",
+    "pixel_region_rules",
     "safe_private_list",
     "generated_values_digest",
     "engine_files",
@@ -1043,7 +1254,7 @@ def test_the_components_of_a_small_synthetic_input_are_digests_of_its_members():
     )
     assert components == method_digest.MethodDigestComponents(
         method_digest=SYNTHETIC_SHA256,
-        method_digest_format="pymedphys-deid-method-digest/5",
+        method_digest_format="pymedphys-deid-method-digest/7",
         engine_version="0.42.0.dev1",
         table_digests={"e1_1.json": "0" * 64},
         l2_rules_digest=SYNTHETIC_L2_RULES_SHA256,
@@ -1053,6 +1264,7 @@ def test_the_components_of_a_small_synthetic_input_are_digests_of_its_members():
         reviewed_descriptors=None,
         technique_vocabulary_digest=None,
         text_finder_digest=None,
+        pixel_region_rules=None,
         safe_private_list=None,
         generated_values_digest=SYNTHETIC_GENERATED_VALUES_SHA256,
         engine_files={"policy.py": "f" * 64},

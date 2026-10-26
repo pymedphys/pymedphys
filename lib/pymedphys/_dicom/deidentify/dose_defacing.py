@@ -21,7 +21,7 @@ frame of a CT series that a run defaces
 dose falls away at the skin, so the edge of the dose that a body receives
 outlines the face that the CT no longer shows. A run therefore sets the
 dose to zero in the same region as the CT's, the face block less the
-cranial cavity that defacing keeps, on the grid's own geometry
+brain that defacing keeps, on the grid's own geometry
 (:class:`RtDoseDefacer`), and never recalculates it. A voxel is in the
 region where its centre is in the block, and is kept where the nearest
 pixel of the nearest slice that the block reaches, within half the slices'
@@ -159,9 +159,10 @@ class DoseBlock:
             kept[chosen] = self.slices[index].kept[rows[chosen], columns[chosen]]
         return kept
 
-    def pixels(self, points: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-        """Return the nearest pixel of the nearest slice to each point, within
-        half the slices' spacing, where it has one.
+    def nearest_slices(self, points: np.ndarray) -> np.ndarray:
+        """Return the nearest slice to each point, within half the slices'
+        spacing, by its height along the slices' normal alone, whether or
+        not the point lies within the slice's pixels.
 
         Parameters
         ----------
@@ -170,17 +171,14 @@ class DoseBlock:
 
         Returns
         -------
-        tuple of numpy.ndarray
+        numpy.ndarray
             Of int, one for each point: the index of the slice in
-            :attr:`slices`, or -1 where no slice's pixel is near enough, and
-            the pixel's row and column, which are 0 where there is none.
+            :attr:`slices`, or -1 where no slice is near enough.
         """
         points = np.asarray(points, dtype=float).reshape(-1, 3)
         found = np.full(len(points), -1)
-        found_rows = np.zeros(len(points), dtype=int)
-        found_columns = np.zeros(len(points), dtype=int)
         if not self.slices or not len(points):
-            return found, found_rows, found_columns
+            return found
         orientation = self.slices[0].orientation
         normal = np.cross(orientation[:3], orientation[3:])
         heights = np.array([np.dot(each.position, normal) for each in self.slices])
@@ -201,9 +199,33 @@ class DoseBlock:
         else:
             nearest = np.zeros(len(points), dtype=int)
         near = np.abs(along - heights[nearest]) <= reach
-        for index in np.unique(nearest[near]):
-            each = self.slices[order[index]]
-            chosen = np.flatnonzero(near & (nearest == index))
+        found[near] = order[nearest[near]]
+        return found
+
+    def pixels(self, points: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """Return the nearest pixel of the nearest slice to each point, within
+        half the slices' spacing, where it has one.
+
+        Parameters
+        ----------
+        points : numpy.ndarray
+            The x, y, and z of each point in rows, in millimetres.
+
+        Returns
+        -------
+        tuple of numpy.ndarray
+            Of int, one for each point: the index of the slice in
+            :attr:`slices`, or -1 where no slice's pixel is near enough, and
+            the pixel's row and column, which are 0 where there is none.
+        """
+        points = np.asarray(points, dtype=float).reshape(-1, 3)
+        nearest = self.nearest_slices(points)
+        found = np.full(len(points), -1)
+        found_rows = np.zeros(len(points), dtype=int)
+        found_columns = np.zeros(len(points), dtype=int)
+        for index in np.unique(nearest[nearest >= 0]):
+            each = self.slices[index]
+            chosen = np.flatnonzero(nearest == index)
             offset = points[chosen] - np.asarray(each.position)
             columns = np.rint(
                 offset @ np.asarray(each.orientation[:3]) / each.spacing[1]
@@ -212,7 +234,7 @@ class DoseBlock:
             height, width = each.kept.shape
             within = (rows >= 0) & (rows < height) & (columns >= 0) & (columns < width)
             chosen = chosen[within]
-            found[chosen] = order[index]
+            found[chosen] = index
             found_rows[chosen] = rows[within].astype(int)
             found_columns[chosen] = columns[within].astype(int)
         return found, found_rows, found_columns

@@ -43,6 +43,11 @@ from collections.abc import Iterable
 from pymedphys._config import config_dir_path
 
 KEY_BYTES = 32
+# Whether a run may take a project key and its subject profile store, so that
+# its generated values agree with other runs under that key (D-004). Not yet:
+# the first supported release is to use a run-scoped key until project keys
+# are validated and its release pull request enables them.
+PROJECT_KEYS_ENABLED = False
 KEY_FILE_FORMAT = "pymedphys-deid-key/1"
 # Framed first in every derivation, so a future derivation can take a new
 # version without reproducing any value of this one.
@@ -55,6 +60,7 @@ DOMAINS = frozenset(
         "date-offset",
         "key-id",
         "patient",
+        "pixel-region-rules",
         "reviewed-descriptors",
         "reviewed-roi-names",
         "subject",

@@ -16,16 +16,17 @@
 
 The first supported release de-identifies instances of the CT, MR, and
 PET image IODs, including their Enhanced, Legacy Converted Enhanced, and
-colour variants, of MR Spectroscopy, and of the RT Structure Set, RT Plan,
-and RT Dose IODs, uncompressed or in a transfer syntax that encapsulates
+colour variants, of MR Spectroscopy, of the RT Structure Set, RT Plan,
+and RT Dose IODs, and of the Spatial Registration and Deformable Spatial
+Registration IODs, uncompressed or in a transfer syntax that encapsulates
 Pixel Data that pydicom's decoding plugins decode. Supporting an IOD or a
 transfer syntax does not release every instance in it: a compressed
 instance is still sequestered where the plugin pinned to its transfer
 syntax is not installed, or where its frames or codestreams fail the
 engine's checks (:mod:`~pymedphys._dicom.deidentify.instance_transform`),
 and the element rules still sequester some, such as every Enhanced PET
-Image instance that conforms to its IOD, under both presets of the first
-supported release. Every other instance is sequestered: neither
+Image instance that conforms to its IOD, under ``basic`` and
+``basic-clean-descriptors``. Every other instance is sequestered: neither
 de-identified nor written, and listed in the run report by opaque
 identifiers only. That includes Structured Reports, Key Object
 Selection documents, Presentation States, and instances of Private SOP
@@ -67,6 +68,8 @@ SUPPORTED_IODS = frozenset(
         "RT Dose",
         "RT Plan",
         "RT Structure Set",
+        "Spatial Registration",
+        "Deformable Spatial Registration",
     }
 )
 # Every transfer syntax whose files the engine reads: Implicit VR Little

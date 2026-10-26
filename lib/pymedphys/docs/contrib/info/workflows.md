@@ -25,6 +25,8 @@ Schedule / manual run -> deps.yml
 Schedule / manual run -> deid-edition-check.yml
 Schedule / manual run -> tg263-edition-check.yml
 Schedule / manual run / PR changing it or labelled check-upstream -> tcia-edition-check.yml
+Manual run -> face-validation.yml
+Manual run -> pixel-text-validation.yml
 Published release -> release.yml -> quality checks, publishing, verification, and published-package tests
 Issue comment -> claude.yml
 
@@ -184,8 +186,10 @@ Runs pre-commit hooks for code formatting and basic checks.
 Dedicated linting workflow for code quality.
 
 - **Jobs**:
-  - `lint`: Comprehensive Python linting with Pylint, one process per CPU
-    (`jobs = 0` in `lib/pymedphys/.pylintrc`)
+  - `lint`: Comprehensive Python linting with Pylint, in one process
+    (`jobs = 1` in `lib/pymedphys/.pylintrc`) over the package's files sorted
+    by path, so that a run's messages do not depend on how files reach
+    workers or on file-system order
 - Ruff linting and formatting run through pre-commit
 - Runs when the selector chooses the Python checks, even if pre-commit fails
 
@@ -196,7 +200,14 @@ Static type checking for type safety.
   - `type-check`: Pyright, the blocking type checker, then MyPy, a secondary
     checker run from the locked `lint` dependency group, with the `tests` and `ai` extras so that both checkers see every import. MyPy is optional: its step uses
     `continue-on-error`, so a MyPy failure marks the step and adds a run
-    annotation but leaves the job green. It runs even when Pyright fails
+    annotation but leaves the job green. It runs even when Pyright fails.
+    Pyright checks two projects: `lib/pymedphys`, configured in
+    `pyproject.toml`, and `.github/scripts`, whose `pyrightconfig.json`
+    extends those settings. The Pyright command line always skips
+    dot-directories below its project root, whatever `exclude` says, so the
+    scripts cannot be part of the root project. Each run fails unless it
+    checks every Python file in its tree, so a project that stops finding its
+    files cannot pass silently.
 - Runs when the selector chooses the Python checks, even if pre-commit fails
 
 #### `unit-tests.yml`
@@ -233,10 +244,38 @@ that accepts NumPy 2.0. The job fails first if the overlay did not take effect,
 and then if any installed package's requirements are missing or not met,
 including those of the extras the job installs PyMedPhys with and of the
 extras that those requirements request; when a newly locked package requires a
-newer NumPy or pandas, add it to the overlay. It uploads its JUnit report as
-`junit-dependency-floors`. A
+newer NumPy or pandas, add it to the overlay. Each part uploads its JUnit
+report as `junit-dependency-floors-<part>`. A
 failure fails the unit-test workflow and therefore the required CI or release
 summary.
+
+The `dependency-floors` job and every cell of the unit-test matrix each run in
+two parts on two runners, since a slow runner could take the 30-minute limit
+(60 minutes on Windows) to run the whole suite at once. The `corpus-runs` part runs
+the modules listed in the workflow's `CORPUS_RUN_TESTS`, which run the
+synthetic collection through the engine and take about half the suite's time,
+and the `others` part runs every other test by passing each listed module to
+`--ignore`, so a new module runs in `others` until it is listed. A listed
+module that no longer exists fails both parts before pytest starts, and a
+contract test checks that each listed module exists. The `corpus-runs` parts
+read no downloaded data, so they skip the data cache. Its key ends in the job's
+ID, so every part and cell of a job on one OS shares it, and a part that saved
+it without the data would leave the others re-downloading. Move a module
+between the parts when the `--durations` reports show one part taking much
+longer than the other.
+
+Each cell's parts upload their reports as `junit-py<python>-<part>-<os>`, such
+as `junit-py3.14-corpus-runs-ubuntu-latest`, which the release's
+`junit-*-latest-*` pattern leaves out, since `-latest` ends them. Once the
+unit-test matrix has finished, even after failed tests, the `combined-report`
+job combines each cell's parts into `junit-<os>-<python>`, such as
+`junit-ubuntu-latest-3.14`, the report that the release's requirements matrix
+reads for that environment. It writes no report for a cell if one of its
+parts' reports is missing or a test case ran in both parts. Since every cell
+runs two jobs, a full-matrix run starts six macOS unit-test jobs, and GitHub
+runs at most five macOS jobs at once on its Free, Pro, and Team plans, so some
+parts may queue for a runner; the queue does not count towards a job's time
+limit.
 
 The `pydicom-versions` job runs the de-identification tests (the
 `test_deidentify_*` modules in `tests/dicom` and `tests/dev/test_deid_tables.py`,
@@ -257,11 +296,18 @@ if that is not the one requested. Actual executions upload JUnit reports as
 `junit-pydicom-minimum` and `junit-pydicom-latest`; reused evidence has no copied
 or synthetic JUnit. Each role uploads a coverage manifest naming its requested
 version and evidence source. The normal reference cell records its imported
-versions and checkout revision, and explicitly requires both metadata and
-JUnit before upload. Reuse is established only when the whole unit-test
-workflow succeeds, including that reference cell and both compatibility jobs.
-Lookup, planning, metadata and upload failures fail the workflow. The existing
-jobs retain their parallel scheduling, with no new final verification job.
+versions and checkout revision: each of its two parts records the pydicom and
+Python versions it imported, and the `combined-report` job records the
+combined evidence only when both parts passed on the checked-out commit and
+imported the same pydicom, which must match the lock, under Python 3.14. The
+parts may run different 3.14 patch releases, since each runner image carries
+its own while GitHub rolls out a new one, and the evidence records each part's.
+It explicitly requires both metadata and JUnit before upload. Reuse is
+established only when the whole unit-test workflow succeeds, including both
+parts, the `combined-report` jobs, and both compatibility jobs.
+Lookup, planning, metadata and upload failures fail the workflow. Reuse adds
+no test run: `combined-report`, the only job after the test jobs, combines
+reports and runs no tests.
 A failure fails the
 unit-test workflow and therefore the required CI or release summary, so a
 pydicom release that breaks the de-identification tests fails every unit-test
@@ -382,7 +428,8 @@ Publishes to PyPI behind quality gates.
 - **Requirements evidence**: `deid-matrix` runs after the unit tests, whatever
   their result, and renders the de-identification requirements-to-tests matrix
   with `pymedphys dev deid-matrix --check` from the JUnit report of every
-  environment in the unit-test matrix. It fails when a traced test failed, was
+  environment in the unit-test matrix; each environment reports through its
+  two parts' combined report. It fails when a traced test failed, was
   skipped, or did not run in every environment, or when an environment's
   report is missing, and still writes the matrix. Once the build has passed,
   `upload-deid-matrix`, which runs no repository code, attaches the matrix to
@@ -460,7 +507,8 @@ Automated dependency updates for Python packages.
 #### `deid-edition-check.yml`
 
 Checks whether NEMA's current edition of the DICOM standard would change the
-de-identification tables generated from the pinned edition, as the
+de-identification tables generated from the pinned edition, including the
+paragraphs of PS3.15 Annex E that the requirements register records, as the
 [de-identification design](deidentification-design.md) requires.
 
 - **Schedule**: Monthly (the 3rd), or manually
@@ -532,6 +580,52 @@ Safe Private Option against TCIA's original.
   Once each new edition is reviewed, the pin moved or the edition added to
   `REVIEWED` in `lib/pymedphys/_dev/tcia_edition_check.py`, close the issue; a
   later finding opens a new one
+
+#### `face-validation.yml`
+
+Checks the face block that the de-identification engine finds in head CT, and
+the air that it writes there, under the Clean Recognizable Visual Features
+Option, against the eye and organ masks of the HaN-Seg data set (see
+[Check the face block against HaN-Seg](deidentification-face-validation.md)).
+
+- **Triggers**: manually only
+- **Steps**: installs the project with the `user` extra, downloads HaN-Seg
+  version 1.0 from Zenodo, checks its size and MD5 against the record's, and
+  runs `python -m pymedphys._dicom.deidentify.face_validation_command hanseg`
+  through `.github/scripts/run_redacted.py`, which reports a crash by its type
+  and code locations alone. The command's standard output and standard error
+  stay in files on the runner. Its job can only read the repository
+- **Results**: the job summary shows `face-validation.md`, and the
+  `face-validation-results` artefact, kept for 90 days, holds it with
+  `face-validation.json` and `commit.txt`. They hold only counts, codes,
+  digests, versions, and the engine's settings. HaN-Seg's images are of real
+  patients, so the data set is never cached or uploaded, and nothing else read
+  from it leaves the runner
+
+#### `pixel-text-validation.yml`
+
+Counts the regions that the text detector of the Clean Pixel Data Option finds
+in the slices of the HaN-Seg data set's CT and MR volumes, which hold no
+burned-in text, so that each region is one that a run would black out in error
+(see
+[Check the text detector against HaN-Seg](deidentification-pixel-text-validation.md)).
+
+- **Triggers**: manually only
+- **Steps**: one job for each image, `CT` and `MR_T1`, side by side, each with
+  almost the six hours that a hosted runner allows. Each installs the project
+  with the `user` and `text-detection` extras, downloads HaN-Seg version 1.0
+  from Zenodo, checks its size and MD5 against the record's, and runs
+  `python -m pymedphys._dicom.deidentify.pixel_text_validation_command hanseg`
+  with a worker process for each CPU through `.github/scripts/run_redacted.py`,
+  which reports a crash by its type and code locations alone. The command's
+  standard output and standard error stay in files on the runner. Its jobs can
+  only read the repository
+- **Results**: each job's summary shows `pixel-text-validation.md`, and its
+  `pixel-text-validation-results-<image>` artefact, kept for 90 days, holds it
+  with `pixel-text-validation.json` and `commit.txt`. They hold only counts,
+  codes, digests, versions, and the detector's method. As for the face block
+  check, the data set is never cached or uploaded, and nothing else read from
+  it leaves the runner
 
 ### AI Assistance
 
@@ -876,6 +970,7 @@ uv run pre-commit run --all-files
 uv run ruff check
 uv run ruff format --check
 uv run pyright
+uv run pyright --project .github/scripts
 uv run pymedphys dev lint
 uv run pymedphys dev tests -m "not slow"
 
@@ -913,6 +1008,6 @@ uv run pymedphys dev docs
 ## Version Compatibility
 
 - **Python**: 3.12, 3.13, 3.14 (all in the full unit-test matrix; 3.14 runs the quick matrix and every other job except the NumPy and pandas minimum-version check, which uses 3.12; 3.12 reaches end of life in October 2028)
-- **uv**: 0.12.15, pinned in CI (`setup-uv`) and in the pre-commit `uv-lock` hook
+- **uv**: 0.13.4, pinned in CI (`setup-uv`) and in the pre-commit `uv-lock` hook
 - **GitHub Actions**: Latest Ubuntu, Windows, and macOS runner images
 - **SQL Server**: 2022 Latest (for Mosaiq tests)

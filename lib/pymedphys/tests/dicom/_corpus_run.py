@@ -122,6 +122,7 @@ PIXEL_OPTION_CODES: Mapping[str, str] = types.MappingProxyType(
 )
 FULL_DATES = "retain_longitudinal_full_dates"
 MODIFIED_DATES = "retain_longitudinal_modified_dates"
+CLEAN_STRUCTURED_CONTENT = "clean_structured_content"
 
 # The generic parts of every marker.
 MARKER_SIGNATURES = (
@@ -139,6 +140,7 @@ CLEAN_DESCRIPTORS = "basic-clean-descriptors"
 COMPRESSED = "basic-compressed"
 ROI_SEQUENCE = "(3006,0020)"
 ROI_NAME = "(3006,0026)"
+REFERENCED_FRAME_OF_REFERENCE = "(3006,0024)"
 # The second ROI's name, which the automatic tier renames, and what it and
 # the reviewer write.
 UNCLEANED_NAME = "lung l"
@@ -263,6 +265,14 @@ def kept_rows(options: tuple[str, ...]) -> frozenset[str]:
     return frozenset(kept)
 
 
+@functools.cache
+def _content_item_sequences() -> frozenset[str]:
+    """The sequences to which Clean Structured Content gives C."""
+    return frozenset(
+        row.tag for row in _rows() if row.options.get(CLEAN_STRUCTURED_CONTENT) == "C"
+    )
+
+
 def removed_rows(options: tuple[str, ...]) -> frozenset[str]:
     """Return the tags of the rows of Table E.1-1 removed under the options.
 
@@ -346,6 +356,14 @@ class CorpusRun:
         so that dcentvfy finds each of them in the released instances as
         often as in their inputs. The Basic Profile removes or replaces
         every such value alike, so by default there are none.
+    kept_content : frozenset of str
+        The sequences of Table E.1-1, by tag, whose content items Clean
+        Structured Content cleans, and which the engine keeps, since the
+        run's corpus makes every item one it can clean (D-047). The elements
+        of their items take their own actions, so a marker in one is kept
+        where its row is. Every other sequence that the option gives C may be
+        removed or emptied, as the engine does where an item cannot be
+        cleaned, so nothing in it is kept. Empty without the option.
     marks : tuple
         pytest marks of the run's parameter, such as a skip.
     """
@@ -369,6 +387,7 @@ class CorpusRun:
     codes: frozenset[str] | None = None
     roi_names: tuple[str, ...] | None = ("",)
     inconsistent: frozenset[str] = frozenset()
+    kept_content: frozenset[str] = frozenset()
     marks: tuple = ()
 
     def __post_init__(self):
@@ -376,6 +395,14 @@ class CorpusRun:
             raise TypeError("options must be a tuple of option names")
         if self.preset is not None and self.options:
             raise ValueError(f"{self.name}: give a preset or options, not both")
+        if self.kept_content and CLEAN_STRUCTURED_CONTENT not in self.selected:
+            raise ValueError(
+                f"{self.name}: kept_content needs Clean Structured Content"
+            )
+        if not self.kept_content <= _content_item_sequences():
+            raise ValueError(
+                f"{self.name}: kept_content names no sequence of content items"
+            )
 
     @property
     def selected(self) -> tuple[str, ...]:
@@ -397,11 +424,14 @@ class CorpusRun:
 
         Its row must be kept (:meth:`kept_rows`), and so must every sequence
         of Table E.1-1 that holds it, since a sequence's other actions
-        remove, empty, replace, or clean what it holds.
+        remove, empty, replace, or clean what it holds; but a sequence whose
+        content items the run cleans and keeps (:attr:`kept_content`) keeps
+        what its items' own actions keep.
         """
         kept = self.kept_rows()
+        passed = kept | self.kept_content
         return placement.profile_tag in kept and all(
-            tag in kept or tag not in _listed() for tag, _ in placement.path.items
+            tag in passed or tag not in _listed() for tag, _ in placement.path.items
         )
 
     def method_codes(self) -> frozenset[tuple[str, str]]:
@@ -495,6 +525,9 @@ def with_a_second_roi(
     """Return the corpus with a second ROI, named for the automatic tier.
 
     pydicom writes the structure set again, which keeps every planted value.
+    The second ROI references the first's frame of reference, whose linked
+    UID it copies, so the manifest records the copy as a placement too: an
+    option that keeps the UID, such as Retain UIDs, keeps it at both places.
     """
     file = structure_set(corpus)
     dataset = pydicom.dcmread(pydicom.filebase.DicomBytesIO(file.data))
@@ -507,13 +540,26 @@ def with_a_second_roi(
     dataset.StructureSetROISequence.append(item)
     buffer = pydicom.filebase.DicomBytesIO()
     dataset.save_as(buffer, enforce_file_format=True)
-    data = buffer.getvalue()
+    first_reference = ElementPath(((ROI_SEQUENCE, 0),), REFERENCED_FRAME_OF_REFERENCE)
+    copied = ElementPath(
+        ((ROI_SEQUENCE, len(dataset.StructureSetROISequence) - 1),),
+        REFERENCED_FRAME_OF_REFERENCE,
+    )
+    manifest = dataclasses.replace(
+        file.manifest,
+        placements=(
+            *file.manifest.placements,
+            *(
+                dataclasses.replace(placement, path=copied)
+                for placement in file.manifest.placements
+                if placement.path == first_reference
+            ),
+        ),
+    )
+    replaced = dataclasses.replace(file, data=buffer.getvalue(), manifest=manifest)
     return dataclasses.replace(
         corpus,
-        files=tuple(
-            dataclasses.replace(each, data=data) if each is file else each
-            for each in corpus.files
-        ),
+        files=tuple(replaced if each is file else each for each in corpus.files),
     )
 
 
@@ -537,8 +583,9 @@ def every_face_absent(corpus: corpus_module.SyntheticCorpus) -> FaceReview:
 
     It is matched by each file's SHA-256, and the SHA-256 of the pixel data
     and contours that a run writes of it unchanged, as an attested review's
-    verdicts are, so each instance that can show a face, and whose pixel
-    data and contours the run does not change, satisfies the option.
+    verdicts are, and gives each RT Dose's every frame as shown by its dose
+    levels, so each instance that can show a face, and whose pixel data and
+    contours the run does not change, satisfies the option.
     """
     digests = frozenset(hashlib.sha256(file.data).digest() for file in corpus.files)
     pixels = frozenset(
@@ -546,12 +593,27 @@ def every_face_absent(corpus: corpus_module.SyntheticCorpus) -> FaceReview:
         for file in corpus.files
         if (digest := _written_sha256(pixel_data_sha256, file.data)) is not None
     )
+    doses = frozenset(
+        (hashlib.sha256(file.data).digest(), digest, int(frames))
+        for file in corpus.files
+        if (dataset := pydicom.dcmread(io.BytesIO(file.data))).get("Modality")
+        == "RTDOSE"
+        and (frames := dataset.get("NumberOfFrames") or 1)
+        and (digest := _written_sha256(pixel_data_sha256, file.data)) is not None
+    )
     contours = frozenset(
         (hashlib.sha256(file.data).digest(), digest)
         for file in corpus.files
         if (digest := _written_sha256(contour_data_sha256, file.data)) is not None
     )
-    return FaceReview(FACE_REVIEW_REFERENCE, digests, frozenset(), pixels, contours)
+    return FaceReview(
+        FACE_REVIEW_REFERENCE,
+        digests,
+        frozenset(),
+        pixels,
+        contours,
+        absent_dose_frames=doses,
+    )
 
 
 def _written_sha256(

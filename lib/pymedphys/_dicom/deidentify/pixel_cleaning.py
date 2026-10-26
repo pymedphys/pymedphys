@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# pylint: disable = too-many-lines
+
 """Black out burned-in text in native Pixel Data, under Clean Pixel Data (D-037).
 
 The Clean Pixel Data Option (PS3.15 E.3.1) removes burned-in information
@@ -29,16 +31,50 @@ it is not always black. The finder is an aid to review, not a guarantee, so
 every instance whose pixel data the option cleans is held for review,
 whether or not text was found (:class:`~.reasons.PixelDataReason`).
 
-Only native Pixel Data in whole bytes is cleaned: Bits Allocated 8, 16, or
-32, with High Bit one less than Bits Stored, little endian, as every native
+Only Pixel Data in whole bytes is cleaned: Bits Allocated 8, 16, or 32,
+with High Bit one less than Bits Stored, little endian, as every native
 transfer syntax in scope is, and MONOCHROME1, MONOCHROME2, or RGB with 8
-bits. The new value is written in place of the old, byte for byte, so the
-transfer syntax, the frames' layout, and every byte outside the regions are
-kept. Bits above Bits Stored could hold an overlay (PS3.3 Section C.9.2 before
-2004) or anything else that a viewer does not show, so Pixel Data whose
-unused bits hold more than the value's sign is not cleaned: each stored word
-must have those bits all zero, or all one where the value is negative. A
-value written into a region has them as its sign gives them.
+bits. A :class:`Defacer` alone, without a finder, a reviewer's regions, or
+an overlay to clear, also writes native Pixel Data of single bits, Bits
+Allocated, Bits Stored, and Pixel Representation 1, 1, and 0, packed eight
+to a byte, the first pixel in the lowest bit (PS3.5 Section 8.1.1), as a
+BINARY Segmentation holds its masks, where each frame's pixels fill whole
+bytes, so that each frame starts at a byte's first bit; pydicom 3.0.2
+misreads frames that start within a byte. Such Pixel Data is unpacked and
+written one frame at a time, so that a long segmentation needs no more than
+one frame unpacked beside its bytes. In native Pixel Data, the new value is written in place of the old,
+byte for byte, so the transfer syntax, the frames' layout, and every byte
+outside the regions are kept. Bits above Bits Stored could hold an overlay
+(PS3.3 Section C.9.2 before 2004) or anything else that a viewer does not
+show. The bit plane of an overlay that an overlay group without Overlay Data
+(60xx,3000) places there, which :func:`overlay_planes` finds, is cleared in
+the same write (``overlays``): each of its bits is set as the value's sign
+gives it, zero, or one where a signed value is negative, so that it holds
+nothing that the stored value does not. Pixel Data whose unused bits then
+hold more than the value's sign is not cleaned: each stored word must have
+those bits all zero, or all one where the value is negative. A value written
+into a region has them as its sign gives them.
+
+Compressed Pixel Data, in a transfer syntax that encapsulates it, is
+decoded first, every frame, by :func:`.pixel_decoding.decoded_frames`,
+which decodes in a child process the frames of the plugins that run native
+code; colour of 8 bits as YBR_FULL, YBR_FULL_422, YBR_ICT, or YBR_RCT is
+decoded to RGB. The text finder searches the decoded frames, and the new
+value is the decoded frames with any regions and masks, written
+uncompressed, in Explicit VR Little Endian (:attr:`Redaction.transfer_syntax`),
+since writing into a codestream would mean encoding it again. It is so
+written even where nothing is set, so that the QC pack previews the samples
+that the decoder gave, which a later release writes. The SHA-256 of the
+decoded frames (:attr:`Redaction.decoded_sha256`) binds a reviewer's
+verdict to those samples, since another build of a decoder, or one that its
+codestream subverts, can decode the same codestream otherwise (D-048).
+
+Reviewed region rules (:mod:`~pymedphys._dicom.deidentify.pixel_region_rules`)
+give :func:`black_out` regions to black out in every frame of an instance
+of one kind beside those that the finder finds, such as the header band
+that an ultrasound scanner burns into each image. They are filled in the
+same way, and :attr:`Redaction.rule_boxes` records them, so that the QC
+pack says which regions a rule gave.
 
 Under Clean Recognizable Visual Features, :func:`black_out` also writes
 the masks that a :class:`Defacer` gives each frame, such as the face block
@@ -49,15 +85,19 @@ so that one new value of Pixel Data holds both.
 :func:`redaction_problem` then checks the file written: pydicom must read
 the same stored values from it as from the source outside the regions and
 masks, the fill inside each region outside the masks, and each mask's value
-inside it, and every byte outside them must be the source's. An instance that fails is sequestered, as one is whose Pixel
-Data cannot be cleaned (:class:`PixelDataRefused`).
+inside it, and every byte outside them must be the source's, or, for
+compressed Pixel Data, the decoded frames'. An instance that fails is
+sequestered, as one is whose Pixel Data cannot be cleaned
+(:class:`PixelDataRefused`).
 """
 
 from __future__ import annotations
 
 import dataclasses
+import hashlib
+import io
 import types
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
 from typing import Protocol
 
 from pymedphys._imports import numpy as np
@@ -65,8 +105,14 @@ from pymedphys._imports import pydicom
 
 from .diagnostics import redacted_diagnostics
 from .file_layout import ElementPath
+from .pixel_decoding import FramesRefused, decoded_frames
+from .pixel_risk import overlay_groups_without_data
 from .reasons import PixelDataReason, TransformReason
-from .source import NATIVE_TRANSFER_SYNTAXES, SourceEvidence
+from .source import (
+    EXPLICIT_VR_LITTLE_ENDIAN,
+    NATIVE_TRANSFER_SYNTAXES,
+    SourceEvidence,
+)
 from .text_detection import TextBox
 
 PIXEL_DATA = ElementPath((), "(7FE0,0010)")
@@ -76,8 +122,22 @@ FLOAT_PIXEL_DATA = (
     ElementPath((), "(7FE0,0009)"),  # Double Float Pixel Data
 )
 _BITS_ALLOCATED = (8, 16, 32)
+# The Bits Allocated of Pixel Data packed eight pixels to a byte, which only
+# a defacer's masks are written into.
+_PACKED_BITS = 1
 _MONOCHROME = ("MONOCHROME1", "MONOCHROME2")
 _RGB = "RGB"
+# The colour of compressed Pixel Data that decodes to RGB: by pydicom from
+# YBR_FULL and YBR_FULL_422, and by the JPEG 2000 decoder from YBR_ICT and
+# YBR_RCT, whose multiple component transformation it reverses.
+_DECODED_TO_RGB = (_RGB, "YBR_FULL", "YBR_FULL_422", "YBR_ICT", "YBR_RCT")
+# Overlay Bits Allocated and Overlay Bit Position, by element in an overlay
+# group.
+_OVERLAY_BITS_ALLOCATED = 0x0100
+_OVERLAY_BIT_POSITION = 0x0102
+# Extended Offset Table, its lengths, and Encapsulated Pixel Data Value Total
+# Length, which describe only encapsulated Pixel Data.
+_ENCAPSULATION = (0x7FE00001, 0x7FE00002, 0x7FE00003)
 
 
 class TextFinder(Protocol):
@@ -168,6 +228,19 @@ class PixelDataRefused(Exception):
         self.reason = reason
 
 
+class PixelsNotReviewed(Exception):
+    """Compressed Pixel Data whose frames do not decode to the pixels that a
+    reviewer saw, so that the reviewer's regions are not applied to them."""
+
+
+@dataclasses.dataclass(frozen=True)
+class _Review:
+    """What a review records of compressed Pixel Data: the SHA-256 of its
+    decoded frames, or None where it records none."""
+
+    decoded_sha256: bytes | None
+
+
 @dataclasses.dataclass(frozen=True)
 class Layout:
     """How native Pixel Data holds its frames, from the attributes that say so.
@@ -203,8 +276,23 @@ class Layout:
 
     @property
     def dtype(self) -> np.dtype:
-        """The little-endian unsigned word of one sample."""
+        """The little-endian unsigned word of one sample: for Pixel Data
+        packed eight to a byte, a byte for each bit, once unpacked."""
+        if self.packed:
+            return np.dtype(np.uint8)
         return np.dtype(f"<u{self.bits_allocated // 8}")
+
+    @property
+    def packed(self) -> bool:
+        """Whether each pixel is a single bit, packed eight to a byte."""
+        return self.bits_allocated == _PACKED_BITS
+
+    @property
+    def size(self) -> int:
+        """How many bytes of the value field the frames' words fill."""
+        if self.packed:
+            return self.words // 8
+        return self.words * self.dtype.itemsize
 
     def word_of(self, value: int) -> int:
         """Return the stored word of a value: in two's complement where
@@ -270,24 +358,56 @@ class Redaction:
     Attributes
     ----------
     layout : Layout
+        For compressed Pixel Data, of the decoded frames: RGB for colour,
+        with the samples of each pixel together.
     regions : tuple of FrameRegions
         Each frame with a region, by index from 0.
     value : bytes
-        The new value field of Pixel Data.
+        The new value field of Pixel Data: for compressed Pixel Data, the
+        decoded frames with the regions and masks, padded to an even length.
     masks : tuple of FrameMask
         Each frame with a mask that a :class:`Defacer` gave, by index from
         0, written after the regions.
+    decoded : bytes or None
+        For compressed Pixel Data, its frames as decoded, in the layout
+        that ``value`` has, without padding; None for native Pixel Data.
+    overlays : int
+        The bits of each stored word that were cleared, as
+        :func:`overlay_planes` gives them, before the regions and masks were
+        written; 0 where none were.
+    rule_boxes : tuple of TextBox
+        The regions that reviewed region rules gave, sorted, each once,
+        which are among the regions of every frame; none where no rule
+        matched.
     """
 
     layout: Layout
     regions: tuple[FrameRegions, ...]
     value: bytes = dataclasses.field(repr=False)
     masks: tuple[FrameMask, ...] = ()
+    decoded: bytes | None = dataclasses.field(default=None, repr=False)
+    overlays: int = 0
+    rule_boxes: tuple[TextBox, ...] = ()
 
     @property
     def changed(self) -> bool:
-        """Whether any pixel was set: a region or a mask."""
-        return bool(self.regions or self.masks)
+        """Whether any pixel was set, a region or a mask, or any overlay's
+        bit plane cleared."""
+        return bool(self.regions or self.masks or self.overlays)
+
+    @property
+    def transfer_syntax(self) -> str | None:
+        """The transfer syntax in which ``value`` is written where it is not
+        the source's: Explicit VR Little Endian for compressed Pixel Data,
+        and otherwise None."""
+        if self.decoded is None:
+            return None
+        return EXPLICIT_VR_LITTLE_ENDIAN
+
+    @property
+    def decoded_sha256(self) -> bytes | None:
+        """The SHA-256 of the decoded frames, or None for native Pixel Data."""
+        return None if self.decoded is None else hashlib.sha256(self.decoded).digest()
 
     @property
     def reason(self) -> PixelDataReason:
@@ -302,9 +422,12 @@ def black_out(
     dataset: pydicom.Dataset,
     finder: TextFinder | None,
     defacer: Defacer | None = None,
+    *,
+    rules: Sequence[TextBox] = (),
+    overlays: int = 0,
 ) -> Redaction | None:
-    """Return the instance's Pixel Data with the finder's regions blacked out,
-    and the defacer's masks written.
+    """Return the instance's Pixel Data with the finder's regions and the
+    rules' blacked out, and the defacer's masks written.
 
     Parameters
     ----------
@@ -314,6 +437,15 @@ def black_out(
     finder : TextFinder or None
         None where no text is looked for.
     defacer : Defacer, optional
+    rules : sequence of TextBox, optional
+        The regions that reviewed region rules give the instance, as
+        :meth:`~.pixel_region_rules.PixelRegionRules.boxes_for` gives them,
+        to black out in every frame beside the finder's; only with a
+        finder. Like a reviewer's region, a rule's region is never clipped.
+    overlays : int, optional
+        The bits of each stored word in which an overlay lies, as
+        :func:`overlay_planes` gives them for native Pixel Data, to clear
+        before the regions and masks are written; none by default.
 
     Returns
     -------
@@ -325,17 +457,38 @@ def black_out(
     Raises
     ------
     PixelDataRefused
-        With :attr:`~.reasons.TransformReason.COMPRESSED_PIXEL_DATA` for
-        Pixel Data in an encapsulated transfer syntax, and
-        :attr:`~.reasons.TransformReason.UNCLEANABLE_PIXEL_DATA` for float
-        pixel data, or native Pixel Data that cannot be read as frames.
+        With :attr:`~.reasons.TransformReason.UNCLEANABLE_PIXEL_DATA` for
+        float pixel data, or Pixel Data that cannot be read as frames, or
+        the reason of :class:`~.pixel_decoding.FramesRefused` for
+        compressed Pixel Data whose frames cannot be decoded for cleaning,
+        and with :attr:`~.reasons.TransformReason.REDACTION_MISMATCH` where
+        a rule's region goes past the frame.
+    TypeError
+        If ``rules`` holds anything but TextBox objects, or is given without
+        a finder.
+    ValueError
+        If ``overlays`` is given for compressed Pixel Data, or names a bit
+        that is not above High Bit.
     """
-    return _blacked_out(
-        source,
-        dataset,
-        None if finder is None else lambda _, frame: finder.find(frame),
-        defacer,
-    )
+    if not all(isinstance(box, TextBox) for box in rules):
+        raise TypeError("region rules must give TextBox objects")
+    ruled = tuple(sorted(set(rules)))
+    if finder is None:
+        if ruled:
+            raise TypeError("region rules are applied only beside a text finder")
+        return _blacked_out(source, dataset, None, defacer, overlays=overlays)
+    find = finder.find
+
+    def found(_: int, frame: np.ndarray) -> Sequence[TextBox]:
+        rows, columns = frame.shape[:2]
+        if any(box.bottom > rows or box.right > columns for box in ruled):
+            raise PixelDataRefused(TransformReason.REDACTION_MISMATCH)
+        return (*_checked(find(frame), rows, columns), *ruled)
+
+    redaction = _blacked_out(source, dataset, found, defacer, overlays=overlays)
+    if redaction is None or not ruled:
+        return redaction
+    return dataclasses.replace(redaction, rule_boxes=ruled)
 
 
 def black_out_reviewed(
@@ -343,6 +496,9 @@ def black_out_reviewed(
     dataset: pydicom.Dataset,
     regions: Sequence[tuple[int, Sequence[TextBox]]],
     defacer: Defacer | None = None,
+    *,
+    decoded_sha256: bytes | None = None,
+    overlays: int = 0,
 ) -> Redaction | None:
     """Return the instance's Pixel Data with a reviewer's regions blacked out,
     and the defacer's masks written.
@@ -353,6 +509,18 @@ def black_out_reviewed(
     or columns refuses the instance, since a mistyped or transposed region
     would otherwise leave the text it was meant to cover.
 
+    Parameters
+    ----------
+    source, dataset, defacer, overlays
+        As for :func:`black_out`.
+    regions : sequence of (int, sequence of TextBox)
+        The reviewer's regions, by frame index from 0.
+    decoded_sha256 : bytes, optional
+        For compressed Pixel Data, the SHA-256 of its decoded frames as the
+        reviewed QC pack records it (:attr:`Redaction.decoded_sha256`),
+        which the frames decoded now must have. Ignored for native Pixel
+        Data, whose source file's SHA-256 binds the review.
+
     Raises
     ------
     PixelDataRefused
@@ -360,6 +528,12 @@ def black_out_reviewed(
         :attr:`~.reasons.TransformReason.REDACTION_MISMATCH` where a frame
         given is not one that the Pixel Data hold, or a region goes past
         the frame, so that the review does not fit them.
+    PixelsNotReviewed
+        Where compressed Pixel Data's frames decode to pixels whose SHA-256
+        is not ``decoded_sha256``, or none is given, before any region is
+        applied.
+    ValueError
+        As :func:`black_out` raises it.
     """
     by_frame = {index: tuple(boxes) for index, boxes in regions}
 
@@ -370,7 +544,14 @@ def black_out_reviewed(
             raise PixelDataRefused(TransformReason.REDACTION_MISMATCH)
         return boxes
 
-    redaction = _blacked_out(source, dataset, reviewed, defacer)
+    redaction = _blacked_out(
+        source,
+        dataset,
+        reviewed,
+        defacer,
+        review=_Review(decoded_sha256),
+        overlays=overlays,
+    )
     if redaction is not None and any(
         not 0 <= index < redaction.layout.frames for index in by_frame
     ):
@@ -383,24 +564,48 @@ def _blacked_out(
     dataset: pydicom.Dataset,
     boxes_of: Callable[[int, np.ndarray], Sequence[TextBox]] | None,
     defacer: Defacer | None,
+    review: _Review | None = None,
+    overlays: int = 0,
 ) -> Redaction | None:
-    """Return the instance's Pixel Data with the regions that ``boxes_of``
-    gives each frame, by its index and stored values, blacked out, none
-    where it is None, and the defacer's masks written."""
+    """Return the instance's Pixel Data with the bits that ``overlays``
+    gives cleared, the regions that ``boxes_of`` gives each frame, by its
+    index and stored values, blacked out, none where it is None, and the
+    defacer's masks written.
+
+    Given a ``review``, compressed Pixel Data whose decoded frames have
+    another SHA-256 than it records raises :class:`PixelsNotReviewed`."""
     if any(path in source for path in FLOAT_PIXEL_DATA):
         raise PixelDataRefused(TransformReason.UNCLEANABLE_PIXEL_DATA)
     if PIXEL_DATA not in source:
         return None
-    if source.transfer_syntax not in NATIVE_TRANSFER_SYNTAXES:
-        raise PixelDataRefused(TransformReason.COMPRESSED_PIXEL_DATA)
-    layout = layout_of(dataset)
-    field = source.value_field(PIXEL_DATA)
+    decoded = None
+    if source.transfer_syntax in NATIVE_TRANSFER_SYNTAXES:
+        layout = layout_of(dataset, packed=boxes_of is None and not overlays)
+        field = source.value_field(PIXEL_DATA)
+        if overlays & ~_unused_bits(layout):
+            raise ValueError("an overlay's bit must be above High Bit")
+        if layout.packed:
+            return _bits_masked(layout, field, defacer)
+    else:
+        if overlays:
+            raise ValueError("overlays are cleared only in native Pixel Data")
+        layout, attributes = _decoded_layout(dataset)
+        try:
+            field = decoded = decoded_frames(
+                source, attributes, layout.frames, layout.photometric
+            )
+        except FramesRefused as refused:
+            raise PixelDataRefused(refused.reason) from None
+        if review is not None and review.decoded_sha256 != (
+            hashlib.sha256(decoded).digest()
+        ):
+            raise PixelsNotReviewed()
     words = _words(layout, field)
     if words is None:
         raise PixelDataRefused(TransformReason.UNCLEANABLE_PIXEL_DATA)
     # One frame at a time, so that a long multi-frame image needs no more
     # than a frame's stored values beside its words.
-    stored = layout.shaped(words)
+    stored = layout.shaped(_cleared(layout, words, overlays))
     if not all(_plain_unused_bits(layout, frame) for frame in stored):
         raise PixelDataRefused(TransformReason.UNCLEANABLE_PIXEL_DATA)
     written = stored.copy()
@@ -411,7 +616,7 @@ def _blacked_out(
         boxes = (
             ()
             if boxes_of is None
-            else tuple(sorted(set(_checked(boxes_of(index, frame), layout))))
+            else tuple(sorted(set(_given(boxes_of(index, frame)))))
         )
         if boxes:
             fill = layout.fill(frame)
@@ -423,23 +628,177 @@ def _blacked_out(
             regions.append(FrameRegions(index, boxes, fill))
         mask = None if defacer is None else defacer.mask(index, frame)
         if mask is not None:
-            if (
-                mask.frame != index
-                or layout.samples != 1
-                or np.shape(mask.mask) != (layout.rows, layout.columns)
-                or not _storable(layout, mask.value)
-            ):
-                raise PixelDataRefused(TransformReason.UNCLEANABLE_PIXEL_DATA)
-            mask = dataclasses.replace(mask, mask=np.asarray(mask.mask, dtype=bool))
+            mask = _given_mask(layout, index, mask)
             written[index, mask.mask, 0] = layout.word_of(mask.value)
             masks.append(mask)
-    size = layout.words * layout.dtype.itemsize
-    value = written.tobytes() + field[size:]
-    return Redaction(layout, tuple(regions), value, tuple(masks))
+    size = layout.size
+    # Native Pixel Data keeps any padding after its frames; decoded frames
+    # are padded to an even length (PS3.5 Section 8.1.1).
+    value = written.tobytes() + (field[size:] if decoded is None else bytes(size % 2))
+    return Redaction(layout, tuple(regions), value, tuple(masks), decoded, overlays)
 
 
-def layout_of(dataset: pydicom.Dataset) -> Layout:
+def _given_mask(layout: Layout, index: int, mask: FrameMask) -> FrameMask:
+    """Return a defacer's mask of the frame at ``index``, its pixels of bool.
+
+    Raises
+    ------
+    PixelDataRefused
+        With :attr:`~.reasons.TransformReason.UNCLEANABLE_PIXEL_DATA` where
+        it is of another frame or shape, or of a value that the layout
+        cannot store, or the layout is of more than one sample.
+    """
+    if (
+        mask.frame != index
+        or layout.samples != 1
+        or np.shape(mask.mask) != (layout.rows, layout.columns)
+        or not _storable(layout, mask.value)
+    ):
+        raise PixelDataRefused(TransformReason.UNCLEANABLE_PIXEL_DATA)
+    return dataclasses.replace(mask, mask=np.asarray(mask.mask, dtype=bool))
+
+
+def _bits_masked(layout: Layout, field: bytes, defacer: Defacer | None) -> Redaction:
+    """Return native Pixel Data of single bits, packed eight to a byte, with
+    the defacer's masks written, one frame at a time, keeping any padding
+    after the frames.
+
+    Raises
+    ------
+    PixelDataRefused
+        With :attr:`~.reasons.TransformReason.UNCLEANABLE_PIXEL_DATA` where
+        the value field does not hold the frames with at most one byte of
+        padding, or a mask cannot be written.
+    """
+    if not layout.size <= len(field) <= layout.size + 1:
+        raise PixelDataRefused(TransformReason.UNCLEANABLE_PIXEL_DATA)
+    written = bytearray(field)
+    masks = []
+    for index in range(layout.frames):
+        bits = _frame_bits(layout, field, index)
+        mask = None if defacer is None else defacer.mask(index, bits.astype(np.int64))
+        if mask is None:
+            continue
+        mask = _given_mask(layout, index, mask)
+        bits[mask.mask] = mask.value
+        _put_frame_bits(layout, written, index, bits)
+        masks.append(mask)
+    return Redaction(layout, (), bytes(written), tuple(masks))
+
+
+def _frame_span(layout: Layout, index: int) -> slice:
+    """The bytes of one frame of Pixel Data packed eight to a byte, whose
+    frames each fill whole bytes."""
+    length = layout.rows * layout.columns // 8
+    return slice(index * length, (index + 1) * length)
+
+
+def _frame_bits(layout: Layout, field: bytes | bytearray, index: int) -> np.ndarray:
+    """Return one frame of Pixel Data packed eight to a byte, unpacked, rows
+    by columns, the first pixel in each byte's lowest bit."""
+    packed = np.frombuffer(field[_frame_span(layout, index)], dtype=np.uint8)
+    bits = np.asarray(np.unpackbits(packed, bitorder="little"))
+    return bits.reshape(layout.rows, layout.columns)
+
+
+def _put_frame_bits(
+    layout: Layout, field: bytearray, index: int, bits: np.ndarray
+) -> None:
+    """Write one frame's bits, as :func:`_frame_bits` gives them, packed
+    into its bytes."""
+    packed = np.asarray(np.packbits(np.ravel(bits), bitorder="little"))
+    field[_frame_span(layout, index)] = packed.tobytes()
+
+
+def overlay_planes(source: SourceEvidence, dataset: pydicom.Dataset) -> int | None:
+    """Return the bits of each stored word of native Pixel Data in which an
+    overlay lies, to clear.
+
+    PS3.3 before 2004 let an overlay lie in an unused bit plane of Pixel
+    Data with one sample per pixel (Section C.9.2): its group has no Overlay
+    Data (60xx,3000), its Overlay Bits Allocated (60xx,0100) is Bits
+    Allocated, and its Overlay Bit Position (60xx,0102) is the bit that
+    holds it. Each overlay group without Overlay Data, as
+    :func:`~.pixel_risk.overlay_groups_without_data` finds them, must so
+    place its overlay above High Bit, and clearing every such plane must
+    leave each stored word's unused bits holding nothing but the value's
+    sign, so that no other overlay, whose group is lost, stays there.
+
+    Parameters
+    ----------
+    source : SourceEvidence
+    dataset : pydicom.Dataset
+        The source's data set, as :meth:`SourceEvidence.dataset` reads it.
+
+    Returns
+    -------
+    int or None
+        The bits, as a mask of a stored word; 0 where no overlay group lacks
+        Overlay Data. None where such an overlay cannot be cleared: its
+        group does not place it so, or an attribute that does cannot be
+        read, or the instance has no Pixel Data, or Pixel Data that is
+        compressed, is not monochrome in whole bytes as :func:`layout_of`
+        reads it, does not fit its frames, or whose unused bits hold more
+        once the planes are cleared.
+    """
+    groups = overlay_groups_without_data(dataset)
+    if not groups:
+        return 0
+    if (
+        PIXEL_DATA not in source
+        or source.transfer_syntax not in NATIVE_TRANSFER_SYNTAXES
+    ):
+        return None
+    placed = _placed_overlays(dataset, groups)
+    if placed is None:
+        return None
+    layout, planes = placed
+    words = _words(layout, source.value_field(PIXEL_DATA))
+    if words is None:
+        return None
+    cleared = layout.shaped(_cleared(layout, words, planes))
+    if not all(_plain_unused_bits(layout, frame) for frame in cleared):
+        return None
+    return planes
+
+
+def _placed_overlays(
+    dataset: pydicom.Dataset, groups: Iterable[int]
+) -> tuple[Layout, int] | None:
+    """Return the layout of native Pixel Data and the bits above High Bit in
+    which the overlay groups place their overlays, or None where it is not
+    monochrome in whole bytes, or a group does not place its overlay so."""
+    try:
+        layout = layout_of(dataset)
+        with redacted_diagnostics():
+            placed = [
+                (
+                    _integer(dataset, group << 16 | _OVERLAY_BITS_ALLOCATED),
+                    _integer(dataset, group << 16 | _OVERLAY_BIT_POSITION),
+                )
+                for group in groups
+            ]
+    # pydicom raises many types for a value it cannot convert, and a message
+    # can quote the value.
+    except Exception:  # pylint: disable = broad-exception-caught
+        return None
+    if layout.samples != 1 or not all(
+        allocated == layout.bits_allocated
+        and layout.bits_stored <= position < allocated
+        for allocated, position in placed
+    ):
+        return None
+    planes = 0
+    for _, position in placed:
+        planes |= 1 << position
+    return layout, planes
+
+
+def layout_of(dataset: pydicom.Dataset, *, packed: bool = False) -> Layout:
     """Return how native Pixel Data holds its frames.
+
+    Pixel Data of single bits, packed eight to a byte, is read only where
+    ``packed`` is true, for a defacer's masks alone.
 
     Raises
     ------
@@ -447,6 +806,70 @@ def layout_of(dataset: pydicom.Dataset) -> Layout:
         With :attr:`~.reasons.TransformReason.UNCLEANABLE_PIXEL_DATA` where
         an attribute that says so cannot be read or describes a layout that
         is not cleaned.
+    """
+    layout = _read_layout(dataset, packed=packed)
+    monochrome = layout.samples == 1 and layout.photometric in _MONOCHROME
+    rgb = (
+        layout.samples == 3
+        and layout.photometric == _RGB
+        and layout.bits_allocated == 8
+        and not layout.signed
+    )
+    if not (monochrome or rgb):
+        raise PixelDataRefused(TransformReason.UNCLEANABLE_PIXEL_DATA)
+    return layout
+
+
+def _decoded_layout(
+    dataset: pydicom.Dataset,
+) -> tuple[Layout, Mapping[str, int | str]]:
+    """Return how compressed Pixel Data's frames are held once decoded, and
+    the attributes that describe a frame to its decoder.
+
+    Decoded frames have the samples of each pixel together, and colour of 8
+    bits, unsigned, in any of :data:`_DECODED_TO_RGB` decodes to RGB.
+
+    Raises
+    ------
+    PixelDataRefused
+        As :func:`layout_of` does.
+    """
+    layout = _read_layout(dataset)
+    monochrome = layout.samples == 1 and layout.photometric in _MONOCHROME
+    colour = (
+        layout.samples == 3
+        and layout.photometric in _DECODED_TO_RGB
+        and layout.bits_allocated == 8
+        and not layout.signed
+    )
+    if not (monochrome or colour):
+        raise PixelDataRefused(TransformReason.UNCLEANABLE_PIXEL_DATA)
+    attributes: dict[str, int | str] = {
+        "Rows": layout.rows,
+        "Columns": layout.columns,
+        "SamplesPerPixel": layout.samples,
+        "BitsAllocated": layout.bits_allocated,
+        "BitsStored": layout.bits_stored,
+        "HighBit": layout.bits_stored - 1,
+        "PixelRepresentation": int(layout.signed),
+        "PhotometricInterpretation": layout.photometric,
+    }
+    if colour:
+        attributes["PlanarConfiguration"] = int(layout.planar)
+        layout = dataclasses.replace(layout, photometric=_RGB, planar=False)
+    return layout, attributes
+
+
+def _read_layout(dataset: pydicom.Dataset, *, packed: bool = False) -> Layout:
+    """Return the layout that the attributes give, of whole bytes, or, where
+    ``packed`` is true, of unsigned single bits of one sample, for any
+    photometric interpretation.
+
+    Raises
+    ------
+    PixelDataRefused
+        As :func:`layout_of` does, other than for the photometric
+        interpretation.
     """
     uncleanable = PixelDataRefused(TransformReason.UNCLEANABLE_PIXEL_DATA)
     try:
@@ -473,18 +896,23 @@ def layout_of(dataset: pydicom.Dataset) -> Layout:
     # can quote the value.
     except Exception:  # pylint: disable = broad-exception-caught
         raise uncleanable from None
+    # Pixels of single bits are read only in frames that each fill whole
+    # bytes, which pydicom reads frame by frame.
+    bits = (
+        packed
+        and allocated == _PACKED_BITS
+        and samples == 1
+        and not representation
+        and rows * columns % 8 == 0
+    )
     if not (
         min(frames, rows, columns) > 0
-        and allocated in _BITS_ALLOCATED
+        and (allocated in _BITS_ALLOCATED or bits)
         and 0 < stored <= allocated
         and high == stored - 1
         and representation in (0, 1)
         and planar in (0, 1)
     ):
-        raise uncleanable
-    monochrome = samples == 1 and photometric in _MONOCHROME
-    rgb = samples == 3 and photometric == _RGB and allocated == 8 and not representation
-    if not (monochrome or rgb):
         raise uncleanable
     return Layout(
         frames=frames,
@@ -499,6 +927,44 @@ def layout_of(dataset: pydicom.Dataset) -> Layout:
     )
 
 
+def as_received(source: SourceEvidence, redaction: Redaction) -> bytes | None:
+    """Return the source file with compressed Pixel Data replaced by its
+    frames as :func:`black_out` decoded them, for a QC pack to show as
+    received.
+
+    The frames are those of :attr:`Redaction.decoded`, uncompressed, in
+    Explicit VR Little Endian, with the layout of the redaction, so that the
+    QC pack shows the samples whose SHA-256 binds a verdict, and the engine's
+    process never decodes the codestream with a native decoder to preview
+    it. Native Pixel Data gives None, since the source shows it as it is,
+    and so does a source that pydicom cannot write so, which then cannot be
+    shown beside its frames.
+    """
+    if redaction.decoded is None:
+        return None
+    layout = redaction.layout
+    try:
+        dataset = source.dataset()
+        for tag in _ENCAPSULATION:
+            if tag in dataset:
+                del dataset[tag]
+        dataset.PixelData = redaction.decoded + bytes(len(redaction.decoded) % 2)
+        dataset["PixelData"].VR = "OW" if layout.bits_allocated > 8 else "OB"
+        dataset["PixelData"].is_undefined_length = False
+        dataset.PhotometricInterpretation = layout.photometric
+        if layout.samples > 1:
+            dataset.PlanarConfiguration = int(layout.planar)
+        dataset.file_meta.TransferSyntaxUID = EXPLICIT_VR_LITTLE_ENDIAN
+        buffer = io.BytesIO()
+        with redacted_diagnostics():
+            pydicom.dcmwrite(buffer, dataset, enforce_file_format=True)
+    # pydicom raises many types for a data set it cannot write, and its
+    # message can quote a value.
+    except Exception:  # pylint: disable = broad-exception-caught
+        return None
+    return buffer.getvalue()
+
+
 def redaction_problem(
     source: SourceEvidence, output: SourceEvidence, redaction: Redaction
 ) -> bool:
@@ -506,18 +972,48 @@ def redaction_problem(
 
     pydicom must read, frame by frame, the source's stored values outside
     the regions and the fill inside them, and every byte of the
-    written value field outside the regions must be the source's.
+    written value field outside the regions must be the source's, but for
+    the overlays' bits, which must be cleared as the value's sign gives
+    them. For
+    compressed Pixel Data, the source's are the decoded frames', and the
+    output must be in :attr:`Redaction.transfer_syntax`, with no byte after
+    them but one of padding, of zero.
     """
-    if PIXEL_DATA not in output or output.transfer_syntax != source.transfer_syntax:
+    syntax = redaction.transfer_syntax or source.transfer_syntax
+    if PIXEL_DATA not in output or output.transfer_syntax != syntax:
         return True
-    before, after = source.value_field(PIXEL_DATA), output.value_field(PIXEL_DATA)
-    if after != redaction.value or len(after) != len(before):
-        return True
+    decoded = redaction.decoded
+    before = source.value_field(PIXEL_DATA) if decoded is None else decoded
+    after = output.value_field(PIXEL_DATA)
     layout = redaction.layout
+    size = layout.size
+    length = len(before) if decoded is None else size + size % 2
+    if after != redaction.value or len(after) != length:
+        return True
+    expected = _expected_frames(before, redaction)
+    tail = before[size:] if decoded is None else bytes(size % 2)
+    if expected is None or expected != after[:size] or after[size:] != tail:
+        return True
+    return not _reads_as_planned(source, output, redaction)
+
+
+def _expected_frames(before: bytes, redaction: Redaction) -> bytes | None:
+    """Return the bytes that the frames fill in the value field that
+    ``redaction`` plans, from those of the source's value field, ``before``,
+    or None where they cannot be read: Pixel Data packed eight to a byte one
+    frame at a time, as it was written."""
+    layout = redaction.layout
+    if layout.packed:
+        packed = bytearray(before[: layout.size])
+        for mask in redaction.masks:
+            bits = _frame_bits(layout, before, mask.frame)
+            bits[mask.mask] = mask.value
+            _put_frame_bits(layout, packed, mask.frame, bits)
+        return bytes(packed)
     words = _words(layout, before)
     if words is None:
-        return True
-    expected = layout.shaped(words.copy())
+        return None
+    expected = layout.shaped(_cleared(layout, words, redaction.overlays).copy())
     for regions in redaction.regions:
         for box in regions.boxes:
             for sample, value in enumerate(regions.value):
@@ -526,10 +1022,22 @@ def redaction_problem(
                 )
     for mask in redaction.masks:
         expected[mask.frame, mask.mask, 0] = layout.word_of(mask.value)
-    size = expected.nbytes
-    if expected.tobytes() != after[:size] or after[size:] != before[size:]:
-        return True
-    return not _reads_as_planned(source, output, redaction)
+    return expected.tobytes()
+
+
+def _source_frames(source: SourceEvidence, redaction: Redaction) -> Iterator:
+    """Yield the source's frames as pydicom reads native Pixel Data: from the
+    source itself where it is native, and from the decoded frames where it
+    is compressed, which are never decoded again in this process."""
+    if redaction.transfer_syntax is None:
+        yield from pydicom.pixels.iter_pixels(source.dataset())
+        return
+    layout = redaction.layout
+    words = _words(layout, redaction.decoded or b"")
+    if words is None:
+        raise ValueError("the decoded frames do not fit their layout")
+    for frame in layout.shaped(words):
+        yield _frame(layout, _stored_values(layout, frame))
 
 
 def _reads_as_planned(
@@ -542,7 +1050,7 @@ def _reads_as_planned(
     try:
         with redacted_diagnostics():
             pairs = zip(
-                pydicom.pixels.iter_pixels(source.dataset()),
+                _source_frames(source, redaction),
                 pydicom.pixels.iter_pixels(output.dataset()),
                 strict=True,
             )
@@ -589,7 +1097,9 @@ def _storable(layout: Layout, value: object) -> bool:
     return low <= int(value) <= high
 
 
-def _integer(dataset: pydicom.Dataset, keyword: str, default: int | None = None) -> int:
+def _integer(
+    dataset: pydicom.Dataset, keyword: str | int, default: int | None = None
+) -> int:
     if keyword not in dataset and default is not None:
         return default
     value = dataset[keyword].value
@@ -601,12 +1111,33 @@ def _integer(dataset: pydicom.Dataset, keyword: str, default: int | None = None)
 
 
 def _words(layout: Layout, field: bytes) -> np.ndarray | None:
-    """Return the frames' stored words, or None if the value field does not
-    hold them with at most one byte of padding."""
-    size = layout.words * layout.dtype.itemsize
+    """Return the frames' stored words, of whole bytes, or None if the value
+    field does not hold them with at most one byte of padding."""
+    size = layout.size
     if not size <= len(field) <= size + 1:
         return None
     return np.frombuffer(field[:size], dtype=layout.dtype)
+
+
+def _unused_bits(layout: Layout) -> int:
+    """The bits of a stored word above High Bit, as a mask."""
+    return ((1 << layout.bits_allocated) - 1) & ~((1 << layout.bits_stored) - 1)
+
+
+def _cleared(layout: Layout, words: np.ndarray, overlays: int) -> np.ndarray:
+    """Return the words with the bits of ``overlays`` set as the value's sign
+    gives them: zero, or one where a signed value is negative.
+
+    The words themselves are returned where ``overlays`` is 0.
+    """
+    if not overlays:
+        return words
+    planes = layout.dtype.type(overlays)
+    cleared = words & ~planes
+    if layout.signed:
+        negative = ((words >> (layout.bits_stored - 1)) & 1).astype(bool)
+        cleared = np.where(negative, cleared | planes, cleared)
+    return cleared.astype(layout.dtype)
 
 
 def _plain_unused_bits(layout: Layout, words: np.ndarray) -> bool:
@@ -639,7 +1170,20 @@ def _frame(layout: Layout, frame: np.ndarray) -> np.ndarray:
     return frame[..., 0] if layout.samples == 1 else frame
 
 
-def _checked(boxes: Sequence[TextBox], layout: Layout) -> list[TextBox]:
+def _given(boxes: Sequence[TextBox]) -> Sequence[TextBox]:
+    """Return the boxes given for a frame, each checked to be a TextBox.
+
+    Raises
+    ------
+    TypeError
+        If a box is not a :class:`~.text_detection.TextBox`.
+    """
+    if not all(isinstance(box, TextBox) for box in boxes):
+        raise TypeError("a text finder must give TextBox objects")
+    return boxes
+
+
+def _checked(boxes: Sequence[TextBox], rows: int, columns: int) -> list[TextBox]:
     """Return the finder's boxes, each clipped to the frame.
 
     Raises
@@ -648,10 +1192,8 @@ def _checked(boxes: Sequence[TextBox], layout: Layout) -> list[TextBox]:
         If a box is not a :class:`~.text_detection.TextBox`.
     """
     clipped = []
-    for box in boxes:
-        if not isinstance(box, TextBox):
-            raise TypeError("a text finder must give TextBox objects")
-        bottom, right = min(box.bottom, layout.rows), min(box.right, layout.columns)
+    for box in _given(boxes):
+        bottom, right = min(box.bottom, rows), min(box.right, columns)
         if box.top < bottom and box.left < right:
             clipped.append(TextBox(box.top, box.left, bottom, right))
     return clipped

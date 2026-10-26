@@ -16,6 +16,8 @@
 
 """A toolbox for connecting to Mosaiq SQL."""
 
+from typing import cast
+
 from pymedphys._imports import pymssql
 
 from . import credentials as _credentials
@@ -41,7 +43,7 @@ class Connection:
                 username,
                 password,
                 database=database,
-                port=port,
+                port=str(port),
                 read_only=True,
             )
         except pymssql.OperationalError as error:
@@ -87,9 +89,11 @@ class Cursor:
         self._cursor.execute(query, parameters)
 
     def fetchall(self) -> list[tuple[str, ...]]:
-        results: list[tuple[str, ...]] = self._cursor.fetchall()
-
-        return results
+        # pymssql returns rows as tuples of mixed DB types (datetime, int,
+        # bytes, ...); the public contract pretends they're all str so
+        # callers don't have to switch on union types. The cast is the
+        # smallest honest reconciliation of those two facts.
+        return cast("list[tuple[str, ...]]", self._cursor.fetchall())
 
     def __enter__(self):
         return self

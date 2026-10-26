@@ -32,6 +32,7 @@ from __future__ import annotations
 
 import collections
 import enum
+import functools
 import re
 from collections.abc import Mapping
 from pathlib import Path
@@ -161,7 +162,7 @@ def kept_encoding(
     )
     vr = "none" if raw is None or raw.VR is None else str(raw.VR)
     # Only a VR or a Pixel Representation that the standard defines is named.
-    if vr not in _VRS:
+    if vr not in _vrs():
         vr = "other"
     return syntax, vr, representation, same
 
@@ -183,7 +184,13 @@ def _raw(path: Path, tag: int) -> tuple[str, object, str] | None:
     return name, raw, str(representation) if representation in (0, 1) else "other"
 
 
-_VRS = frozenset({"none", *pydicom.valuerep.VR.__members__})
+@functools.cache
+def _vrs() -> frozenset[str]:
+    """The VRs that the standard defines, with ``none``.
+
+    Read on first use: a base install, which has no pydicom, imports this module.
+    """
+    return frozenset({"none", *pydicom.valuerep.VR.__members__})
 
 
 def integer_shape(text: str) -> str:

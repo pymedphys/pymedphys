@@ -50,7 +50,8 @@ writes it as CommonMark:
 - the values that Z, D, and U write (D-003, D-005, and D-021);
 - how dates and times are handled, by the policy's Retain Longitudinal
   Temporal Information Option, or without one (D-006, D-007, and D-023);
-- the scope of referential integrity under a run-scoped key (D-004);
+- the scope of referential integrity under a run-scoped key or a project
+  key (D-004);
 - that no attribute is encrypted for later re-identification (D-013);
 - what the residual search of each written file covers (D-027);
 - how the release report names sequestered instances and counts the
@@ -115,7 +116,7 @@ from .supplementary_actions import TEXT_VRS, UNCOVERED_TEXT_ACTION
 from .temporal_roles import TemporalRole, load_temporal_roles
 from .uid_registry import load_uid_values
 from .uid_roles import UIDRole, load_uid_roles
-from .walker import DESCENDED
+from .walker import descends
 
 # The CID 7050 code of each option that a policy can compose: those of
 # Table E.1-1, then Clean Pixel Data and Clean Recognizable Visual Features,
@@ -171,26 +172,12 @@ PENDING_CLEANING = (
     "to which the policy gives C and which no cleaner above cleans (PS3.15 "
     "Table E.1-1a)."
 )
-# Pending only for a policy that selects Clean Descriptors and whose other
-# options cannot be composed without it.
-PENDING_FALLBACK = (
-    "A run under this policy, which the engine refuses: an attribute other "
-    "than ROI Name (3006,0026) to which the policy gives C takes the action "
-    "that the policy gives it without Clean Descriptors, and its other "
-    "options cannot be composed into a policy without that option."
-)
 # Pending only for a policy that selects Retain Safe Private and an option
 # that the engine does not yet apply, whose element rules it refuses.
 PENDING_SAFE_PRIVATE = (
     "The safe private attributes that the policy retains, and the basis on "
     "which each is retained (PS3.15 E.3.10)."
 )
-# Pending only for tps-import, whose Z writes a synthetic birth date.
-PENDING_BIRTH_DATES = (
-    "The synthetic birth date that Z writes to Patient's Birth Date "
-    "(0010,0030) in place of a zero-length value."
-)
-_TPS_IMPORT = "tps-import"
 _FULL_DATES = "retain_longitudinal_full_dates"
 _ROI_NAME = "(3006,0026)"
 _CLEAN_DESCRIPTORS = "clean_descriptors"
@@ -205,20 +192,6 @@ _REVIEWED_OPTIONS = (
 # time, or datetime.
 _TEMPORAL_OPTIONS = next(o for o in MUTUALLY_EXCLUSIVE if _FULL_DATES in o)
 _TEMPORAL_VRS = frozenset({"DA", "DT", "TM"})
-
-
-def _falls_back(policy: Policy) -> bool:
-    """Whether a run can give the policy's other attributes given C a fallback.
-
-    A policy without Clean Descriptors needs none.
-    """
-    if _CLEAN_DESCRIPTORS not in policy.options:
-        return True
-    try:
-        fallback_policy(policy)
-    except PolicyError:
-        return False
-    return True
 
 
 @dataclasses.dataclass(frozen=True)
@@ -507,6 +480,9 @@ class ConformanceStatement:
         What the statement cannot yet describe.
     acknowledgements : tuple of str
         The attribution of each table the statement quotes.
+    project_key : bool
+        Whether the run's key is a project key, whose generated values agree
+        with every other run under it, rather than a run-scoped key (D-004).
     """
 
     engine_version: str
@@ -530,6 +506,7 @@ class ConformanceStatement:
     temporal: TemporalHandling
     pending: tuple[str, ...]
     acknowledgements: tuple[str, ...]
+    project_key: bool = False
 
     @property
     def claims_conformance(self) -> bool:
@@ -573,9 +550,9 @@ def _removed_with_a_sequence(
 ) -> bool:
     """Whether a sequence enclosing ``path`` is removed with its contents.
 
-    The walker keeps a sequence as a container only under K or U; under any
-    other action, everything in it goes with it, and takes no action of its
-    own.
+    The walker keeps a sequence as a container only under K or U, or under
+    D where a reviewed rule keeps its items (D-021); under any other action,
+    everything in it goes with it, and takes no action of its own.
     """
     for depth, sequence in enumerate(path):
         within = path[:depth]
@@ -586,7 +563,7 @@ def _removed_with_a_sequence(
             action = compound_actions.resolve_plain_in_iod(
                 iod, sequence, within, action
             )
-        if action not in DESCENDED:
+        if not descends(sequence, action):
             return True
     return False
 
@@ -617,7 +594,7 @@ def _places(
     places = []
     for name in sorted(SUPPORTED_IODS):
         iod = tables.iods[name]
-        for path in dict.fromkeys(d.path for d in iod.definitions if d.tag == tag):
+        for path in iod.paths(tag):
             if not _removed_with_a_sequence(iod, path, sequence_action):
                 places.append(_place(iod, name, concrete, path, action))
     return tuple(places), elsewhere
@@ -722,15 +699,12 @@ def _fallen_back(
     that the policy gives it without that option, at each place, as the
     maintainer decided on 6 October 2026 (D-009). One to which that policy
     also gives C keeps it, as does each attribute of a policy that the engine
-    refuses or whose fallback cannot be composed.
+    refuses.
     """
     fallback: dict[str, AttributeAction] = {}
     if rules is not None and _CLEAN_DESCRIPTORS in policy.options:
-        try:
-            composed = fallback_policy(policy)
-            fallback = {e.tag: e for e in _attributes(composed, ElementRules(composed))}
-        except PolicyError:
-            fallback = {}
+        composed = fallback_policy(policy)
+        fallback = {e.tag: e for e in _attributes(composed, ElementRules(composed))}
     for entry in attributes:
         other = fallback.get(entry.tag)
         if (
@@ -883,6 +857,7 @@ def conformance_statement(
     *,
     vocabulary: tg263.Nomenclature | None,
     safe_private_list: SafePrivateList = SafePrivateList.REVIEWED,
+    project_key: bool = False,
 ) -> ConformanceStatement:
     """Gather what the conformance statement of a policy describes.
 
@@ -904,6 +879,11 @@ def conformance_statement(
         Under the Retain Safe Private Option, the list whose rules settle
         private attributes: the reviewed rules, the default, or TCIA's
         Private Tag Dictionary. The digest is computed with it.
+    project_key : bool, optional
+        Whether the run's key is a project key, whose subject profiles it
+        reads and records, rather than a run-scoped key, the default
+        (D-004). The statement describes referential integrity, and how far
+        generated values agree, for that scope.
 
     Returns
     -------
@@ -984,9 +964,7 @@ def conformance_statement(
         for item, applies in (
             (PENDING_UNAPPLIED, rules is None),
             (PENDING_CLEANING, "C" in actions),
-            (PENDING_FALLBACK, not _falls_back(policy)),
             (PENDING_SAFE_PRIVATE, rules is None and safe_private),
-            (PENDING_BIRTH_DATES, policy.preset == _TPS_IMPORT),
         )
         if applies
     )
@@ -1037,4 +1015,5 @@ def conformance_statement(
             if rules is not None and rules.safe_private_list is SafePrivateList.TCIA
             else ()
         ),
+        project_key=project_key,
     )
