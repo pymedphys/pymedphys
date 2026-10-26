@@ -403,12 +403,11 @@ def test_an_attribute_whose_removal_sequesters_is_planted_in_one_instance(corpus
     # Enhanced PET Image's Radiopharmaceutical Start DateTime, and the RT
     # Beams Treatment Record's Institution Code Sequence in an interlock's
     # resolution user, with the attributes of its item (D-021), in no file;
-    # nor each report's Verifying Observer Sequence (D-021) and the
-    # Requested Procedure ID of its Referenced Request Sequence (D-020),
-    # which the IODs require.
+    # nor each report's Verifying Observer Sequence (D-021), which the IODs
+    # require. The Requested Procedure ID of its Referenced Request Sequence
+    # is planted, since a plain X empties it there (D-020).
     both = {"(0010,2297)", "(0010,2299)"}
     report = {
-        "(0040,1001)",
         "(0040,A073)",
         "(0040,A027)",
         "(0040,A030)",

@@ -565,6 +565,8 @@ def _plain_x_place(iod: IOD, name: str, tag: str, path: tuple[str, ...]) -> Plac
     extent = removal.extent
     if extent is compound_actions.RemovalExtent.SEQUESTER:
         return Place(name, path, SEQUESTER)
+    if extent is compound_actions.RemovalExtent.EMPTIED:
+        return Place(name, path, "Z")
     if extent is compound_actions.RemovalExtent.OVERLAY_GROUP:
         return Place(name, path, "X", OVERLAY_GROUP)
     if extent is compound_actions.RemovalExtent.SEQUENCE:

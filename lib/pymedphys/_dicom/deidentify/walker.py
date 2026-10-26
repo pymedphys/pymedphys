@@ -80,8 +80,11 @@ dictionary gives SQ, and refuses one there that does not read as items
 sequestration is not to be applied; every element is still planned, so that
 every reason is known.
 
-A plain X always removes its attribute (D-020). Where the IOD requires the
-attribute at its place,
+A plain X removes its attribute (D-020), but for Requested Procedure ID
+(0040,1001) in a Structured Report's Referenced Request Sequence (0040,A370),
+which it empties
+(:data:`~pymedphys._dicom.deidentify.compound_actions.EMPTIED_PLAIN_X`).
+Where the IOD requires the attribute at its place,
 :func:`~pymedphys._dicom.deidentify.compound_actions.resolve_plain_x_in_iod`
 says what goes with it: the innermost enclosing sequence that is Type 3 at
 its own place is planned X, with everything in it, before the attribute or
@@ -512,7 +515,7 @@ def _plan(
         lapses = path in lapsed and action != _REMOVED
         if removed_for is not None or lapses:
             action = _REMOVED
-        elif rule.action == _REMOVED and rule.source is not RuleSource.ENGINE:
+        elif action == rule.action == _REMOVED and rule.source is not RuleSource.ENGINE:
             # The engine's own removals apply whatever the Type.
             _plan_plain_x(iod, path, vr, found, sequestrations)
         if action != _REMOVED and _vr_contradicts_dictionary(path.tag, extent.vr):
