@@ -53,6 +53,7 @@ from pymedphys._dicom.deidentify.reviewed_roi_names import ReviewedNames
 from pymedphys._dicom.deidentify.source import read_source
 from pymedphys._dicom.deidentify.walker import plan_instance
 
+from . import _corpus_run
 from . import _synthetic_references as synthetic
 from . import _synthetic_structured_reports as reports
 
@@ -209,7 +210,11 @@ def _transformed(composed, dataset):
         else None
     )
     transform = InstanceTransform(
-        composed, KEY, cleaning=cleaning, unvalidated_policy=True
+        composed,
+        KEY,
+        cleaning=cleaning,
+        face_review=_corpus_run.face_review_for(composed),
+        unvalidated_policy=True,
     )
     # Under tps-import, the subject's synthetic birth date is chosen first.
     transform.prepare({0: record}, [data].__getitem__)
