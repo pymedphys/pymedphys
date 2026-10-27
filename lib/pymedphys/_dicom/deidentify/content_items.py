@@ -36,8 +36,9 @@ the engine cleans three of them (D-047):
   Document Content Module of Structured Reports and Key Object Selection
   documents, and in the Encapsulated Document Module. The data set that
   holds the outermost one, such as a Structured Report's root, is a content
-  item too where it has a Value Type (PS3.3 Section C.17.3). No IOD of the
-  first supported release defines it, so it is cleaned only once one does.
+  item too where it has a Value Type (PS3.3 Section C.17.3). Of the IODs of
+  the first supported release, the X-Ray Radiation Dose SR and
+  Radiopharmaceutical Radiation Dose SR define it.
 
 Under the option, :func:`content_item_actions` gives the walker an action for
 each such sequence and for the value of each content item in it, from the

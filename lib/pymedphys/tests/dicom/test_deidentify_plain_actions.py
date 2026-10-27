@@ -48,6 +48,8 @@ PROCEDURE_PARAMETER_DESCRIPTION = "(300A,078E)"
 PATIENT_TREATMENT_PREPARATION_PROCEDURE = "(300A,0790)"
 PATIENT_SETUP_PHOTO_DESCRIPTION = "(300A,0794)"
 PATIENT_TREATMENT_PREPARATION = "(300A,079F)"
+REFERENCED_REQUEST = "(0040,A370)"
+REQUESTED_PROCEDURE_ID = "(0040,1001)"
 RADIOPHARMACEUTICAL_START_DATETIME = "(0018,1078)"
 RADIOPHARMACEUTICAL_INFORMATION = "(0054,0016)"
 # The first supported release's IODs that include the Overlay Plane Module.
@@ -255,6 +257,7 @@ def _removal(extent, sequence=None):
 ALONE = ("ATTRIBUTE",)
 SEQUESTER = ("SEQUESTER",)
 OVERLAY_GROUP = ("OVERLAY_GROUP",)
+EMPTIED = ("EMPTIED",)
 
 
 @pytest.mark.deid_requirement("PS3.15-E.1.1-09")
@@ -617,9 +620,62 @@ def test_a_plain_x_on_a_required_attribute_in_the_first_release_iods(tables):
             (RADIOPHARMACEUTICAL_INFORMATION,),
             RADIOPHARMACEUTICAL_START_DATETIME,
         ): _removal(*SEQUESTER),
+        # Type 2 in each dose report's Type 1C Referenced Request Sequence,
+        # required where the report was made for a request, which no Type 3
+        # sequence encloses, so it is emptied there instead (D-020).
+        **{
+            (name, (REFERENCED_REQUEST,), REQUESTED_PROCEDURE_ID): _removal(*EMPTIED)
+            for name in (
+                "X-Ray Radiation Dose SR",
+                "Radiopharmaceutical Radiation Dose SR",
+            )
+        },
     }
-    # Eight attributes in all.
-    assert len({tag for _, _, tag in found}) == 8
+    # Nine attributes in all.
+    assert len({tag for _, _, tag in found}) == 9
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.1-09")
+def test_requested_procedure_id_is_emptied_in_each_referenced_request_sequence(
+    tables,
+):
+    # The maintainer decided on 26 October 2026 that a plain X empties
+    # Requested Procedure ID where it is Type 2 in Referenced Request
+    # Sequence and its removal would sequester the instance (D-020). Every
+    # generated IOD that defines it there is a Structured Report or a Key
+    # Object Selection Document, which give the sequence Type 1C at the top
+    # level.
+    assert dict(compound_actions.EMPTIED_PLAIN_X) == {
+        REQUESTED_PROCEDURE_ID: (REFERENCED_REQUEST,)
+    }
+    emptied = [
+        name
+        for name, iod in tables.iods.items()
+        if resolve_plain_x_in_iod(iod, REQUESTED_PROCEDURE_ID, (REFERENCED_REQUEST,))
+        == _removal(*EMPTIED)
+    ]
+    defined = [
+        name
+        for name, iod in tables.iods.items()
+        if strictest_type(iod, REQUESTED_PROCEDURE_ID, (REFERENCED_REQUEST,)) == "2"
+    ]
+    assert emptied == defined
+    assert {"X-Ray Radiation Dose SR", "Comprehensive SR"} <= set(emptied)
+    for name in emptied:
+        iod = tables.iods[name]
+        assert strictest_type(iod, REFERENCED_REQUEST, ()) == "1"
+        assert (
+            resolve_plain_in_iod(
+                iod, REQUESTED_PROCEDURE_ID, (REFERENCED_REQUEST,), "X"
+            )
+            == "Z"
+        )
+    # Elsewhere, a plain X on it is applied as for any attribute.
+    ct = tables.iods["CT Image"]
+    assert resolve_plain_in_iod(ct, REQUESTED_PROCEDURE_ID, (), "X") == "X"
+    assert resolve_plain_x_in_iod(ct, REQUESTED_PROCEDURE_ID, ()) == _removal(*ALONE)
+    report = tables.iods["X-Ray Radiation Dose SR"]
+    assert resolve_plain_in_iod(report, REQUESTED_PROCEDURE_ID, (), "X") == "X"
 
 
 @pytest.mark.parametrize(
@@ -633,6 +689,7 @@ def test_a_plain_x_on_a_required_attribute_in_the_first_release_iods(tables):
         ("ATTRIBUTE", 0),
         ("OVERLAY_GROUP", 0),
         ("SEQUESTER", 0),
+        ("EMPTIED", 0),
     ],
 )
 def test_a_removal_names_a_sequence_only_when_it_removes_one(extent, sequence):

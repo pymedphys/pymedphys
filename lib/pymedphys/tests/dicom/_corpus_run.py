@@ -48,7 +48,14 @@ from pymedphys._imports import pydicom, pytest
 
 from pymedphys._nomenclature import tg263
 
-from pymedphys._dicom.deidentify import pixel_decoding, roi_names, run, standard
+from pymedphys._dicom.deidentify import (
+    dummy_values,
+    pixel_decoding,
+    roi_names,
+    run,
+    standard,
+    structured_content,
+)
 from pymedphys._dicom.deidentify import synthetic_corpus as corpus_module
 from pymedphys._dicom.deidentify.descriptor_cleaning import DescriptorCleaning
 from pymedphys._dicom.deidentify.face_review import (
@@ -123,6 +130,7 @@ PIXEL_OPTION_CODES: Mapping[str, str] = types.MappingProxyType(
 FULL_DATES = "retain_longitudinal_full_dates"
 MODIFIED_DATES = "retain_longitudinal_modified_dates"
 CLEAN_STRUCTURED_CONTENT = "clean_structured_content"
+CONTENT_SEQUENCE = "(0040,A730)"
 CLEAN_RECOGNIZABLE_VISUAL_FEATURES = "clean_recognizable_visual_features"
 
 # The generic parts of every marker.
@@ -224,9 +232,10 @@ def held(decision: Decision, code: ReasonCode, *tags: str) -> Withheld:
 
 # What every run of the corpus withholds under the Basic Profile: the
 # instance whose Responsible Person and Responsible Organization its IOD
-# requires (Type 1C), which the profile removes, and the RT Dose that holds
-# the plan's RT Plan Label in its Manufacturer's Model Name, which the
-# residual search finds.
+# requires (Type 1C), which the profile removes, the RT Dose that holds the
+# plan's RT Plan Label in its Manufacturer's Model Name, which the residual
+# search finds, and each Structured Report, whose Content Sequence the
+# profile gives D, which a sequence has no dummy value for (D-021).
 BASIC_WITHHELD: Mapping[str, Withheld] = types.MappingProxyType(
     {
         corpus_module.SEQUESTERED_FILE: sequestered(
@@ -234,6 +243,10 @@ BASIC_WITHHELD: Mapping[str, Withheld] = types.MappingProxyType(
         ),
         corpus_module.REVIEW_FILE: held(
             Decision.QC_REVIEW, ReasonCode.RESIDUAL_TEXT, "(300A,0002)"
+        ),
+        **dict.fromkeys(
+            corpus_module.STRUCTURED_REPORT_FILES,
+            sequestered(SequesterReason.NO_DUMMY_VALUE, CONTENT_SEQUENCE),
         ),
     }
 )
@@ -263,6 +276,23 @@ def kept_rows(options: tuple[str, ...]) -> frozenset[str]:
         actions = {row.options[o] for o in options if o in row.options}
         if actions == {"K"}:
             kept.add(row.tag)
+    return frozenset(kept)
+
+
+@functools.cache
+def kept_concepts(options: tuple[str, ...]) -> frozenset[tuple[str, str, str]]:
+    """Return the keys of the rows of Table E.3.4-1 that the options keep.
+
+    A content item's concept name is kept, as :func:`kept_rows` keeps a row
+    of Table E.1-1, when every selected option that gives it an action
+    gives K. Each key is the row's Coding Scheme Designator, Code Value, and
+    Value Type, as a content item's placement records its concept name.
+    """
+    kept = set()
+    for concept in structured_content.load_table_e3_4_1().concepts:
+        actions = {concept.options[o] for o in options if o in concept.options}
+        if actions == {"K"}:
+            kept.add(concept.key)
     return frozenset(kept)
 
 
@@ -302,6 +332,38 @@ def _unchanged(
     corpus: corpus_module.SyntheticCorpus,
 ) -> corpus_module.SyntheticCorpus:
     return corpus
+
+
+def without_reports(
+    corpus: corpus_module.SyntheticCorpus,
+) -> corpus_module.SyntheticCorpus:
+    """Return the corpus without its Structured Reports, which no file references."""
+    return dataclasses.replace(
+        corpus,
+        files=tuple(
+            file
+            for file in corpus.files
+            if file.name not in corpus_module.STRUCTURED_REPORT_FILES
+        ),
+    )
+
+
+# BASIC_WITHHELD without the Structured Reports, for a run whose corpus has
+# none.
+WITHHELD_WITHOUT_REPORTS: Mapping[str, Withheld] = types.MappingProxyType(
+    {
+        name: withheld
+        for name, withheld in BASIC_WITHHELD.items()
+        if name not in corpus_module.STRUCTURED_REPORT_FILES
+    }
+)
+
+# Accession Number (0008,0050) and Referenced Study Sequence (0008,1110),
+# which dcentvfy's own tables place in the Study entity for a Structured
+# Report and in the Series entity for an image, whatever the files hold.
+# dcentvfy finds that difference wherever a report is released with an
+# image, in their inputs as often.
+REPORT_ENTITIES = frozenset({"(0008,0050)", "(0008,1110)"})
 
 
 @dataclasses.dataclass(frozen=True)
@@ -356,7 +418,8 @@ class CorpusRun:
         instances, which the corpus plants, the run keeps or modifies alike,
         so that dcentvfy finds each of them in the released instances as
         often as in their inputs. The Basic Profile removes or replaces
-        every such value alike, so by default there are none.
+        every such value alike, so by default there are none. They include
+        :data:`REPORT_ENTITIES` where the run releases a Structured Report.
     kept_content : frozenset of str
         The sequences of Table E.1-1, by tag, whose content items Clean
         Structured Content cleans, and which the engine keeps, since the
@@ -423,16 +486,29 @@ class CorpusRun:
     def keeps(self, placement: corpus_module.Placement) -> bool:
         """Whether the run keeps a placement's marker at its place.
 
-        Its row must be kept (:meth:`kept_rows`), and so must every sequence
-        of Table E.1-1 that holds it, since a sequence's other actions
-        remove, empty, replace, or clean what it holds; but a sequence whose
-        content items the run cleans and keeps (:attr:`kept_content`) keeps
-        what its items' own actions keep.
+        Its row must be kept (:meth:`kept_rows`), or, for the value of a
+        content item, the row of Table E.3.4-1 of its concept name
+        (:func:`kept_concepts`), and so must every sequence of Table E.1-1
+        that holds it, since a sequence's other actions remove, empty,
+        replace, or clean what it holds; but a sequence whose content items
+        the run cleans and keeps (:attr:`kept_content`) keeps what its
+        items' own actions keep, and so does Verifying Observer Sequence
+        for the attributes of its items that its reviewed D keeps
+        (:data:`~pymedphys._dicom.deidentify.dummy_values.KEPT_ITEM_ATTRIBUTES`).
         """
         kept = self.kept_rows()
         passed = kept | self.kept_content
-        return placement.profile_tag in kept and all(
-            tag in passed or tag not in _listed() for tag, _ in placement.path.items
+        if placement.concept is not None:
+            own = placement.concept in kept_concepts(self.selected)
+        else:
+            own = placement.profile_tag in kept
+        tags = [tag for tag, _ in placement.path.items]
+        inner = [*tags[1:], placement.path.tag]
+        return own and all(
+            tag in passed
+            or tag not in _listed()
+            or held in dummy_values.KEPT_ITEM_ATTRIBUTES.get(tag, ())
+            for tag, held in zip(tags, inner)
         )
 
     def method_codes(self) -> frozenset[tuple[str, str]]:

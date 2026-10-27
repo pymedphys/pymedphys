@@ -868,12 +868,17 @@ def test_a_content_sequence_the_iod_does_not_define_there_takes_its_own_rule():
     assert "ContentSequence" not in written.AcquisitionContextSequence[0]
 
 
-def test_no_supported_iod_defines_content_or_waveform_annotation_sequence():
-    """So the engine's output for the supported IODs does not change."""
+def test_only_the_dose_reports_define_content_sequence_and_none_waveform_annotation():
+    """Content Sequence at their root, and nowhere else in a supported IOD."""
     iods = load_iod_tables().iods
+    reports = {"X-Ray Radiation Dose SR", "Radiopharmaceutical Radiation Dose SR"}
     for name in scope.SUPPORTED_IODS:
-        tags = {definition.tag for definition in iods[name].definitions}
-        assert not tags & {CONTENT, WAVEFORM_ANNOTATION}, name
+        definitions = iods[name].definitions
+        tags = {definition.tag for definition in definitions}
+        assert WAVEFORM_ANNOTATION not in tags, name
+        assert {d.path for d in definitions if d.tag == CONTENT} == (
+            {()} if name in reports else set()
+        ), name
 
 
 def test_the_statement_describes_the_cleaning_of_content_items():

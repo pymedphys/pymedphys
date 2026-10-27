@@ -14,14 +14,15 @@
 
 """The Clean Structured Content Option on Radiation Dose Structured Reports.
 
-The X-Ray and Radiopharmaceutical Radiation Dose SR IODs are not supported
-yet, so the engine sequesters their instances. These tests show, ahead of
-supporting them, what the option does with their content trees (D-047):
-which presets, with the option added, keep a report that holds only the
-rows that its templates require; which optional rows take the whole tree
-out under each option set; the action that each value of a kept tree takes;
-and what is written, in the tests that add the IODs to the supported ones
-for that test alone, as supporting them would. The reports are synthetic,
+The X-Ray and Radiopharmaceutical Radiation Dose SR IODs are supported, but
+without the option the engine sequesters each of their instances, since the
+Basic Profile gives Content Sequence (0040,A730) D and a sequence has no
+dummy value (D-021). These tests show what the option does with their
+content trees (D-047): which presets, with the option added, keep a report
+that holds only the rows that its templates require; which optional rows
+take the whole tree out under each option set; the action that each value
+of a kept tree takes; what is written; and which attributes of a report's
+header sequester it whatever the option does. The reports are synthetic,
 built from the templates of PS3.16 2026d by
 :mod:`._synthetic_dose_reports`.
 
@@ -58,6 +59,9 @@ CSC = policy.CLEAN_STRUCTURED_CONTENT
 CSC_CODE = "113104"
 CONTENT = "(0040,A730)"
 VERIFYING_OBSERVER = "(0040,A073)"
+REFERENCED_REQUEST = "(0040,A370)"
+REQUESTED_PROCEDURE_ID = "(0040,1001)"
+REQUESTED_PROCEDURE = "REQUESTED-PROCEDURE"
 X_RAY = "x-ray"
 RADIOPHARMACEUTICAL = "radiopharmaceutical"
 REPORTS = {
@@ -111,16 +115,6 @@ def _with_option(monkeypatch):
         return policy.compose_policy(preset)
 
     return compose
-
-
-@pytest.fixture(name="supported")
-def _supported(monkeypatch):
-    """Add the two IODs to the supported ones, as supporting them would."""
-    monkeypatch.setattr(
-        scope,
-        "SUPPORTED_IODS",
-        scope.SUPPORTED_IODS | {reports.X_RAY_IOD, reports.RADIOPHARMACEUTICAL_IOD},
-    )
 
 
 def _report(name, optional=(), verified=False):
@@ -200,14 +194,16 @@ def _written(composed, dataset):
     return result.data
 
 
-def test_the_reports_are_of_iods_that_are_not_supported_yet():
+def test_the_reports_are_of_supported_iods():
     for name, (build, iod) in REPORTS.items():
         dataset = build()
         classification = scope.classify(
             dataset.SOPClassUID, synthetic.EXPLICIT_VR_LITTLE_ENDIAN
         )
 
-        assert classification.reason == scope.UnsupportedIod(iod), name
+        assert classification == scope.Classification(
+            scope.Disposition.SUPPORTED, iod
+        ), name
         assert load_iod_tables().iods[iod].lookup(CONTENT, ()), name
 
 
@@ -559,7 +555,6 @@ def test_a_kept_tree_of_required_rows_gives_each_listed_value_its_action(
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.4-01")
-@pytest.mark.usefixtures("supported")
 def test_a_written_radiopharmaceutical_report_holds_no_source_value(with_option):
     dataset, _ = _report(RADIOPHARMACEUTICAL)
 
@@ -589,7 +584,6 @@ def test_a_written_radiopharmaceutical_report_holds_no_source_value(with_option)
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.4-01")
-@pytest.mark.usefixtures("supported")
 def test_a_written_x_ray_report_keeps_the_references_between_its_uids(with_option):
     dataset, _ = _report(X_RAY)
 
@@ -643,7 +637,6 @@ def test_a_verified_report_is_planned_as_an_unverified_one_is(
         assert not plan.sequestrations
 
 
-@pytest.mark.usefixtures("supported")
 @pytest.mark.parametrize("name", REPORTS)
 def test_a_verified_report_is_written_with_a_dummy_verifier(with_option, name):
     dataset, _ = _report(name, verified=True)
@@ -666,3 +659,64 @@ def test_a_verified_report_is_written_with_a_dummy_verifier(with_option, name):
         reports.VERIFICATION_DATETIME,
         "19000101000000",
     )
+
+
+def _made_for_a_request(dataset):
+    """Give a report a Referenced Request Sequence that holds its procedure ID."""
+    request = pydicom.Dataset()
+    request.StudyInstanceUID = reports.STUDY
+    request.ReferencedStudySequence = []
+    request.AccessionNumber = ""
+    request.PlacerOrderNumberImagingServiceRequest = ""
+    request.FillerOrderNumberImagingServiceRequest = ""
+    request.RequestedProcedureID = REQUESTED_PROCEDURE
+    request.RequestedProcedureDescription = ""
+    request.RequestedProcedureCodeSequence = []
+    dataset.ReferencedRequestSequence = [request]
+    return dataset
+
+
+@pytest.mark.parametrize(
+    "preset", ["basic", "basic-clean-descriptors", "tps-import", "public-release"]
+)
+@pytest.mark.parametrize("name", REPORTS)
+def test_a_report_made_for_a_request_has_its_procedure_id_emptied(
+    with_option, preset, name
+):
+    dataset, iod = _report(name)
+    _made_for_a_request(dataset)
+    procedure_id = ElementPath(((REFERENCED_REQUEST, 0),), REQUESTED_PROCEDURE_ID)
+
+    for composed in (policy.compose_policy(preset), with_option(preset)):
+        _, plan = _planned(dataset, iod, composed)
+
+        # Table E.1-1 gives Requested Procedure ID a plain X, and the IODs
+        # require it (Type 2) in Referenced Request Sequence, which is Type
+        # 1C, required where the report was made for a request, with no
+        # Type 3 sequence enclosing it. Removing it would sequester the
+        # report, so it is emptied instead, as the maintainer decided
+        # (D-020), with or without the option.
+        (element,) = (e for e in plan.elements if e.path == procedure_id)
+        assert element.action == "Z"
+        assert all(
+            s.path.items[:1] != ((REFERENCED_REQUEST, 0),) for s in plan.sequestrations
+        )
+
+
+# A preset under which the option keeps each report's tree.
+@pytest.mark.deid_requirement("MIDI-BP-03")
+@pytest.mark.parametrize(
+    "name, preset", [(X_RAY, "tps-import"), (RADIOPHARMACEUTICAL, "public-release")]
+)
+def test_a_written_report_made_for_a_request_holds_an_empty_procedure_id(
+    with_option, name, preset
+):
+    dataset, _ = _report(name)
+    _made_for_a_request(dataset)
+
+    data = _written(with_option(preset), dataset)
+
+    assert REQUESTED_PROCEDURE.encode() not in data
+    (request,) = pydicom.dcmread(io.BytesIO(data)).ReferencedRequestSequence
+    assert _int(REQUESTED_PROCEDURE_ID) in request
+    assert request.RequestedProcedureID == ""

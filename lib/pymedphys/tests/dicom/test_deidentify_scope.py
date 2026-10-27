@@ -70,10 +70,12 @@ SUPPORTED = {
     "1.2.840.10008.5.1.4.1.1.481.5": "RT Plan",
     "1.2.840.10008.5.1.4.1.1.66.1": "Spatial Registration",
     "1.2.840.10008.5.1.4.1.1.66.3": "Deformable Spatial Registration",
+    "1.2.840.10008.5.1.4.1.1.88.67": "X-Ray Radiation Dose SR",
+    "1.2.840.10008.5.1.4.1.1.88.68": "Radiopharmaceutical Radiation Dose SR",
 }
 
 
-def test_the_first_release_supports_ct_mr_pet_rt_record_and_registration_objects():
+def test_the_first_release_supports_ct_mr_pet_rt_registration_and_dose_reports():
     assert scope.SUPPORTED_IODS == {
         "CT Image",
         "Enhanced CT Image",
@@ -93,6 +95,8 @@ def test_the_first_release_supports_ct_mr_pet_rt_record_and_registration_objects
         "RT Structure Set",
         "Spatial Registration",
         "Deformable Spatial Registration",
+        "X-Ray Radiation Dose SR",
+        "Radiopharmaceutical Radiation Dose SR",
     }
     assert scope.SUPPORTED_TRANSFER_SYNTAXES == {IMPLICIT_LE, EXPLICIT_LE, *COMPRESSED}
 
@@ -151,11 +155,12 @@ def test_padding_is_ignored():
 @pytest.mark.parametrize(
     "sop_class, iod",
     [
-        # Structured Reports, including dose reports, Key Object Selection
-        # documents, and Presentation States, which the design always
-        # sequesters.
+        # The other Structured Reports, including the other dose reports,
+        # Key Object Selection documents, and Presentation States, which the
+        # design always sequesters.
         ("1.2.840.10008.5.1.4.1.1.88.33", "Comprehensive SR"),
-        ("1.2.840.10008.5.1.4.1.1.88.67", "X-Ray Radiation Dose SR"),
+        ("1.2.840.10008.5.1.4.1.1.88.76", "Enhanced X-Ray Radiation Dose SR"),
+        ("1.2.840.10008.5.1.4.1.1.88.73", "Patient Radiation Dose SR"),
         ("1.2.840.10008.5.1.4.1.1.88.59", "Key Object Selection Document"),
         ("1.2.840.10008.5.1.4.1.1.11.1", "Grayscale Softcopy Presentation State"),
         # Outside the first release: other images, CT, MR, and PET objects

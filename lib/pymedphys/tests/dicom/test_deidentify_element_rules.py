@@ -669,8 +669,9 @@ def test_series_number_has_x_z_d_under_every_option():
 
 @pytest.mark.deid_requirement("MIDI-BP-03", "MIDI-BP-06")
 def test_series_number_resolves_to_z_in_the_supported_iods_but_where_type_1():
-    # Type 2 in the General Series and RT Series Modules; Type 1 only in the
-    # items of the Structure Set Module's Source Series Information Sequence.
+    # Type 2 in the General Series and RT Series Modules; Type 1 in the items
+    # of the Structure Set Module's Source Series Information Sequence and
+    # in the SR Document Series Module of the dose reports.
     # Either way it then takes its rank, or is emptied or given D's dummy
     # value if it has none.
     tables = iods.load_iod_tables()
@@ -689,7 +690,9 @@ def test_series_number_resolves_to_z_in_the_supported_iods_but_where_type_1():
 
     assert {name for name, _, _ in resolved} == set(SUPPORTED_IODS)
     assert {(name, path) for name, path, action in resolved if action != "Z"} == {
-        ("RT Structure Set", ("(3006,004C)",))
+        ("RT Structure Set", ("(3006,004C)",)),
+        ("X-Ray Radiation Dose SR", ()),
+        ("Radiopharmaceutical Radiation Dose SR", ()),
     }
     assert {action for _, _, action in resolved} == {"Z", "D"}
 
