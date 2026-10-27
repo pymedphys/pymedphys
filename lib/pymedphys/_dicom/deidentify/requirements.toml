@@ -922,13 +922,14 @@ id = "MIDI-BP-05"
 text = '''
 Remove or replace the identities of other persons, departments, institutions, and organisations, except where they are needed for utility and a residual risk assessment supports keeping them.
 '''
-status = "partial"
-milestone = "M4"
-decisions = ["D-001", "D-016", "D-017", "D-022"]
+status = "implemented"
+decisions = ["D-001", "D-016", "D-017", "D-022", "D-053"]
 implementation = [
+  "_dicom/deidentify/conformance_markdown.py",
   "_dicom/deidentify/element_rules.py",
   "_dicom/deidentify/instance_transform.py",
   "_dicom/deidentify/readiness.py",
+  "_dicom/deidentify/risk_assessment.py",
   "_dicom/deidentify/supplementary_actions.py",
 ]
 note = '''
@@ -938,14 +939,15 @@ URN Code Value and Coding Scheme URL, which name coding concepts and schemes, ar
 Every other URI and URL attribute that Table E.1-1 omits is removed by Type under every option, as are seven sequences that it omits whose content can identify an institution or other patients or say something about the patient, such as Requesting Service Code Sequence (0032,1034), Issuer of Patient ID Qualifiers Sequence (0010,0024), and Group of Patients Identification Sequence (0010,0027), and three measures of the patient's body, Patient's Body Mass Index (0010,1022), Measured AP Dimension (0010,1023), and Measured Lateral Dimension (0010,1024) (D-022).
 Private Data Element Characteristics Sequence (0008,0300) is removed by Type under every option: without Retain Safe Private no private attribute is kept, so the private creators of removed private blocks do not survive in its items (D-028), and under the Option it is read to find the private attributes that the instance declares safe, and then removed, since its descriptions and the creators of blocks that are not kept can name the institution's software (D-035).
 The conformance statement says that the kept codes of local coding schemes can carry an institution's name or abbreviation, a local scheme's Coding Scheme URL its host, and an in-house device's Manufacturer its name, and that each kept value is listed among the QC pack's retained strings.
-It also says that the engine does not itself assess the residual risk of these values, which `public-release` has a person review, and that for the first release the design assigns to whoever releases the data the confirmation that the output's residual risk, these values included, is acceptable, which the QC pack's attestation records when they give it (D-016).
+It also says that the engine does not itself assess the residual risk of these values; that `public-release` has a person review each of them, and is ready for release only where an external risk assessment of the collection states how the institutional identity that the policy keeps was assessed and whether the assessment supports keeping it; and that for the first release the design assigns to whoever releases the data the confirmation that the output's residual risk, these values included, is acceptable, which the QC pack's attestation records when they give it (D-016).
 The maintainer decided on 6 October 2026 that the kept codes of local coding schemes need no further rule beyond that disclosure (D-022).
 Manufacturer, Manufacturer's Model Name, and Software Versions are kept because they identify products, not devices; an in-house device can carry the hospital as its Manufacturer, a residual risk that D-022 accepts because the value names an institution, not a patient.
 The run's instance transform applies these actions to each instance it de-identifies.
 As for MIDI-BP-01, an end-to-end test of `basic` and `basic-clean-descriptors` over the synthetic collection, which plants markers in the names of other persons, institutions, departments, and stations, finds none of them in the published files; the removals of D-022's other attributes, such as Requesting Service Code Sequence, rest on the tests of the element and supplementary rules.
-The Retain Institution Identity Option is not supported.
-The institutional identity that the first supported release keeps, in an in-house device's Manufacturer and in the codes and Coding Scheme URLs of local coding schemes, is assessed by whoever releases the data, as D-022 and D-016 assign it: a `public-release` run is ready for release only where the attested QC pack lists each string that the run retains in a released instance, so that the reviewer reviewed it, and the releaser confirmed in the attestation that the output's residual risk is acceptable (MIDI-BP-17); otherwise its attestation gate fails (D-017).
-Remaining: a residual risk assessment of that kept institutional identity beyond the releaser's confirmation, which MIDI asks for and the first release does not yet make (M4).
+A `public-release` run, which keeps that institutional identity in an in-house device's Manufacturer and in the codes and Coding Scheme URLs of local coding schemes, is ready for release only where its statistical gate passes with the record of an external assessment of the collection, which cannot be made without the assessor's statement of how the residual risk of the institutional identity that the policy keeps was assessed and whether the assessment supports keeping it (D-053); where its attested QC pack lists each string that the run retains in a released instance, so that the reviewer reviewed it; and where the releaser confirmed in the attestation that the output's residual risk is acceptable (MIDI-BP-17); otherwise a gate fails (D-017).
+The engine records the assessor's statement without interpreting it, as it records every statement of the assessment, so whoever reviews the record reads whether the assessment supports keeping these values; the maintainer decided on 26 October 2026 that this, rather than a gate on the statement's answer, meets the practice for `public-release` (D-017).
+The other presets keep these values without review or assessment, as their conformance statements say, and their output is not thereby ready to share (D-017).
+Retain Institution Identity, which no preset selects, keeps the institution's own attributes as Table E.1-1 gives them (D-044).
 '''
 
 [[requirement]]
