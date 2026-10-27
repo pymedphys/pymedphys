@@ -349,10 +349,9 @@ def test_the_basic_profile_keeps_no_person_name():
 def test_every_text_attribute_a_supported_iod_uses_and_table_e1_1_omits_has_a_rule():
     omitted = _omitted_text()
 
-    # Checked by hand against the 2026d PS3.3, PS3.6, and PS3.15; the
-    # registration IODs add Content Description and Frame of Reference
-    # The combined scope adds both RT objects and the two dose-report IODs.
-    # Their supplementary rules cover 155 text attributes.
+    # Checked against the 2026d PS3.3, PS3.6, and PS3.15: the combined
+    # scope includes both RT objects and the two dose-report IODs, whose
+    # supplementary rules cover 155 text attributes.
     assert len(omitted) == 155
     assert omitted <= set(_rules())
     assert {"(0008,0100)", "(300A,00C2)", "(60xx,1500)"} <= omitted
@@ -718,7 +717,7 @@ def test_the_basic_profile_keeps_only_the_reviewed_coded_and_technical_text():
         for tag in _supported_text()
     }
 
-    assert len(basic) == 275
+    assert len(basic) == 280
     assert {tag for tag, action in basic.items() if action == "K"} == (
         KEPT_TEXT | ADDED_KEPT_TEXT | RT_IMAGE_KEPT_TEXT
     )

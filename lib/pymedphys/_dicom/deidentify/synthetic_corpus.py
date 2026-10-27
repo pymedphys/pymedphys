@@ -74,9 +74,9 @@ recorded as linked; each placement records its item's concept name
 action under Clean Structured Content, and its path through the items of
 the tree. The Basic Profile gives the Content Sequence D, which a sequence
 has no dummy value for (D-021), so a report is sequestered unless Clean
-Structured Content can clean every item of its tree, as it can only where
-the other options selected keep every value that would otherwise remove
-the tree (D-047).
+Structured Content can clean every item of its tree. Its required X/D
+items take dummy values; selected Retain options determine which values
+are kept instead (D-047).
 
 Some attributes must stay linked, so the collection's references resolve and
 the reference graph (:mod:`~pymedphys._dicom.deidentify.reference_graph`)

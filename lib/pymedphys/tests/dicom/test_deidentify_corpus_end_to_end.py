@@ -745,8 +745,14 @@ def test_each_sequence_of_content_items_a_run_keeps_keeps_its_items(policy_run):
                 assert _kept_at(dataset, placement), (file.name, placement.path)
             sequences += 1
             markers += len(inside)
-    # A run names a sequence for the markers that its options keep in it.
-    assert bool(sequences) == bool(markers) == bool(spec.kept_content)
+    assert bool(sequences) == bool(spec.kept_content)
+    if spec.selected == ("clean_structured_content",):
+        # The tree survives, but its identifying values all take dummy
+        # replacements, so no planted marker may remain.
+        assert markers == 0
+    else:
+        # Retain options exercise the retained-marker checks as well.
+        assert bool(markers) == bool(spec.kept_content)
 
 
 @pytest.mark.deid_requirement("MIDI-BP-01", "PS3.15-E.1.1-09")
@@ -866,14 +872,14 @@ def test_every_released_instance_carries_the_profiles_markers(policy_run):
 
 
 @pytest.mark.deid_requirement("PS3.15-E.1.1-01", "MIDI-BP-14")
-def test_the_multi_frame_instances_keep_their_reviewed_dummy_values(policy_run):
-    # Referenced Performed Procedure Step Sequence, which the multi-frame
+def test_instances_keep_their_reviewed_dummy_values(policy_run):
+    # Referenced Performed Procedure Step Sequence, which these image
     # IODs conditionally require (Type 1C), refers to the procedure step by its keyed replacement,
     # the same in each instance, and the colour image's ICC Profile is the
     # fixed sRGB profile (D-021).
     corpus, released = policy_run.corpus, policy_run.released
     procedure_step = "ReferencedPerformedProcedureStepSequence"
-    multi_frame = {
+    step_iods = {
         "Enhanced CT Image",
         "Legacy Converted Enhanced CT Image",
         "Enhanced MR Image",
@@ -894,7 +900,17 @@ def test_the_multi_frame_instances_keep_their_reviewed_dummy_values(policy_run):
         source, written = _read(file.data), _read(data)
         if kept:
             assert written.get(procedure_step) == source.get(procedure_step)
-        if file.manifest.iod not in multi_frame:
+        if file.manifest.iod in {
+            "X-Ray Radiation Dose SR",
+            "Radiopharmaceutical Radiation Dose SR",
+        }:
+            # The SR Document Series Module makes this Type 2: retain the
+            # attribute with no items when the profile resolves its action to Z.
+            assert procedure_step in source
+            if not kept:
+                assert written[procedure_step].value == []
+            continue
+        if file.manifest.iod not in step_iods:
             assert kept or procedure_step not in written, file.name
             continue
         assert procedure_step in source
@@ -912,7 +928,7 @@ def test_the_multi_frame_instances_keep_their_reviewed_dummy_values(policy_run):
         else:
             assert "ICCProfile" not in written
 
-    expected = multi_frame & {
+    expected = step_iods & {
         file.manifest.iod
         for file in corpus.files
         if file.name not in policy_run.spec.withheld

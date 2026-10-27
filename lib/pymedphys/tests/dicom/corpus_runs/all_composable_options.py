@@ -28,7 +28,7 @@ UIDs keeps a Referenced SOP Instance UID there, and Full Dates a date.
 
 Each Structured Report's content tree is one that Clean Structured Content
 can clean too, so its Content Sequence is kept and the reports are
-released, which no other run of the corpus does. The value of each of its
+released, as they are under Clean Structured Content alone. The value of each of its
 content items takes the action of its concept name's row of Table E.3.4-1
 rather than that of its attribute's row of Table E.1-1: Retain UIDs and
 Retain Device Identity keep a Device Observer UID, and Full Dates keeps
