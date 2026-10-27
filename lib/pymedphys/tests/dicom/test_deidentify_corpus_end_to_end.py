@@ -979,6 +979,35 @@ def test_each_registration_ties_its_images_to_the_frame_as_written(policy_run):
     assert checked
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-04", "MIDI-BP-03")
+def test_the_rt_image_names_its_plan_as_written(policy_run):
+    # The RT Image's Referenced RT Plan Sequence names the plan by the UID
+    # that the run's key gives the plan's own, so the written RT Image still
+    # names the written plan.
+    corpus, released = policy_run.corpus, policy_run.released
+    written = {
+        corpus.files[position].manifest.sop_instance: _read(data)
+        for position, data in released.items()
+    }
+    if corpus_module.RT_IMAGE not in written:
+        (name,) = (
+            file.name
+            for file in corpus.files
+            if file.manifest.sop_instance == corpus_module.RT_IMAGE
+        )
+        assert name in policy_run.spec.withheld
+        return
+    image = written[corpus_module.RT_IMAGE]
+    assert image.Modality == "RTIMAGE"
+    (reference,) = image.ReferencedRTPlanSequence
+    expected = corpus_module.PLAN
+    if REFERENCED_SOP_INSTANCE not in policy_run.spec.kept_rows():
+        expected = uids.replacement_uid(KEY, expected)
+    assert reference.ReferencedSOPInstanceUID == expected
+    if corpus_module.PLAN in written:
+        assert expected == written[corpus_module.PLAN].SOPInstanceUID
+
+
 @pytest.mark.deid_requirement("PS3.15-E.3.5-01")
 def test_roi_names_take_the_vocabulary_spelling_or_the_reviewed_decision(
     policy_run,

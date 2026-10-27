@@ -69,7 +69,7 @@ TARGET_IODS = (
     "Segmentation",
 )
 REGISTRATION_IODS = ("Spatial Registration", "Deformable Spatial Registration")
-SUPPORTED_TARGET_IODS = (*REGISTRATION_IODS, "RT Beams Treatment Record")
+SUPPORTED_TARGET_IODS = (*REGISTRATION_IODS, "RT Beams Treatment Record", "RT Image")
 REVIEWED_AGAINST = CT_AND_RT_IODS + ADDED_IODS
 SUPPORTED_IODS = REVIEWED_AGAINST + SUPPORTED_TARGET_IODS
 # The Radiation Dose SR IODs, which the maintainer added to the planned
@@ -344,9 +344,10 @@ def test_every_text_attribute_a_supported_iod_uses_and_table_e1_1_omits_has_a_ru
 
     # Checked by hand against the 2026d PS3.3, PS3.6, and PS3.15; the
     # registration IODs add Content Description and Frame of Reference
-    # Transformation Comment, and the RT Beams Treatment Record five
-    # operator-typed descriptions.
-    assert len(omitted) == 148
+    # Transformation Comment; the treatment record adds five operator-typed
+    # descriptions, and RT Image adds its label, name, description, machine
+    # name, and Modality LUT Type.
+    assert len(omitted) == 153
     assert omitted <= set(_rules())
     assert {"(0008,0100)", "(300A,00C2)", "(60xx,1500)"} <= omitted
 
@@ -361,11 +362,11 @@ def test_the_rules_for_omitted_text_fall_in_the_reviewed_groups():
 
     assert groups == {
         # Operator-typed labels and text.
-        ("X/Z/D", ((CLEAN_DESCRIPTORS, "C"),)): 69,
+        ("X/Z/D", ((CLEAN_DESCRIPTORS, "C"),)): 72,
         # Accessory and equipment identifiers.
-        ("X/Z/D", ((DEVICE_IDENTITY, "K"),)): 24,
+        ("X/Z/D", ((DEVICE_IDENTITY, "K"),)): 25,
         # Coded and technical values, and De-identification Method.
-        ("K", ()): 38,
+        ("K", ()): 39,
         # Names and identifiers of people, organisations, records, and
         # networks, identifiers that a device reads, and the text of overlays.
         ("X/Z/D", ()): 15,
@@ -466,6 +467,9 @@ TARGET_OPERATOR_TEXT = {
 }
 TARGET_DEVICE_IDENTITY = {"(3002,0020)"}  # Radiation Machine Name
 TARGET_KEPT_TEXT = {"(0028,3004)"}  # Modality LUT Type
+# Of them, the text that the Basic Profile keeps in RT Image, which the first
+# supported release now supports.
+RT_IMAGE_KEPT_TEXT = TARGET_KEPT_TEXT
 TARGET_REMOVED_UNDER_EVERY_OPTION = {"(0062,0020)"}  # Tracking ID
 # The UID and temporal attributes that the target IODs use and the supported
 # IODs do not, all listed in Table E.1-1, checked by hand against the 2026d
@@ -501,7 +505,7 @@ def _used_by(names, vrs):
     }
 
 
-def test_the_target_iods_are_generated_and_only_the_record_and_registrations_supported():
+def test_the_target_iods_have_the_documented_support():
     tables = iods.load_iod_tables()
 
     assert set(TARGET_IODS) <= set(tables.iods)
@@ -675,7 +679,7 @@ def test_each_group_takes_the_action_of_its_option(
         assert composed[tag] == operator_text, tag
     for tag in ACCESSORY_IDENTIFIERS:
         assert composed[tag] == accessory_identifier, tag
-    for tag in KEPT_TEXT | ADDED_KEPT_TEXT:
+    for tag in KEPT_TEXT | ADDED_KEPT_TEXT | RT_IMAGE_KEPT_TEXT:
         assert composed[tag] == "K", tag
 
 
@@ -706,9 +710,9 @@ def test_the_basic_profile_keeps_only_the_reviewed_coded_and_technical_text():
         for tag in _supported_text()
     }
 
-    assert len(basic) == 270
+    assert len(basic) == 275
     assert {tag for tag, action in basic.items() if action == "K"} == (
-        KEPT_TEXT | ADDED_KEPT_TEXT
+        KEPT_TEXT | ADDED_KEPT_TEXT | RT_IMAGE_KEPT_TEXT
     )
     assert set(basic.values()) - {"K"} <= REMOVING_ACTIONS
 
@@ -726,6 +730,7 @@ def test_no_option_keeps_more_than_the_coded_text_and_device_identity():
         expected = (
             KEPT_TEXT
             | ADDED_KEPT_TEXT
+            | RT_IMAGE_KEPT_TEXT
             | (device_identity if DEVICE_IDENTITY in composed.options else set())
         )
         assert kept == expected, composed.options
