@@ -226,10 +226,10 @@ def test_without_the_option_a_report_is_sequestered(name):
 @pytest.mark.parametrize(
     "preset, x_ray, radiopharmaceutical",
     [
-        ("basic", False, False),
-        ("basic-clean-descriptors", False, False),
+        ("basic", True, True),
+        ("basic-clean-descriptors", True, True),
         ("tps-import", True, True),
-        ("public-release", False, True),
+        ("public-release", True, True),
     ],
 )
 def test_which_presets_with_the_option_keep_a_report_of_required_rows(
@@ -251,15 +251,15 @@ def test_which_presets_with_the_option_keep_a_report_of_required_rows(
 @pytest.mark.parametrize(
     "options, x_ray, radiopharmaceutical",
     [
-        ((), False, False),
-        ((policy.SAFE_PRIVATE,), False, False),
-        ((policy.UIDS,), False, False),
-        ((policy.DEVICE_IDENTITY,), False, False),
-        ((policy.INSTITUTION_IDENTITY,), False, False),
-        ((policy.PATIENT_CHARACTERISTICS,), False, False),
-        ((policy.FULL_DATES,), False, True),
-        ((policy.MODIFIED_DATES,), False, True),
-        ((policy.CLEAN_DESCRIPTORS,), False, False),
+        ((), True, True),
+        ((policy.SAFE_PRIVATE,), True, True),
+        ((policy.UIDS,), True, True),
+        ((policy.DEVICE_IDENTITY,), True, True),
+        ((policy.INSTITUTION_IDENTITY,), True, True),
+        ((policy.PATIENT_CHARACTERISTICS,), True, True),
+        ((policy.FULL_DATES,), True, True),
+        ((policy.MODIFIED_DATES,), True, True),
+        ((policy.CLEAN_DESCRIPTORS,), True, True),
         ((policy.FULL_DATES, policy.DEVICE_IDENTITY), True, True),
         ((policy.MODIFIED_DATES, policy.UIDS), True, True),
     ],
@@ -301,13 +301,13 @@ DEVICE_OBSERVERS = {
 @pytest.mark.parametrize(
     "options, kept",
     [
-        # Without a dates option the required start datetimes take the tree
-        # out, whatever is retained.
-        ((), set()),
-        ((policy.UIDS,), set()),
-        ((policy.DEVICE_IDENTITY,), set()),
-        ((policy.FULL_DATES,), set()),
-        ((policy.MODIFIED_DATES,), set()),
+        # Required start datetimes and observer UIDs take dummy values.
+        # Names and serial numbers still need Retain Device Identity.
+        ((), {"x-ray, UID", "radiopharmaceutical, UID"}),
+        ((policy.UIDS,), {"x-ray, UID", "radiopharmaceutical, UID"}),
+        ((policy.DEVICE_IDENTITY,), set(DEVICE_OBSERVERS)),
+        ((policy.FULL_DATES,), {"x-ray, UID", "radiopharmaceutical, UID"}),
+        ((policy.MODIFIED_DATES,), {"x-ray, UID", "radiopharmaceutical, UID"}),
         # Retain UIDs keeps the UID but not the name or serial number.
         (
             (policy.MODIFIED_DATES, policy.UIDS),
@@ -329,7 +329,11 @@ def test_which_retain_options_keep_a_report_observed_by_a_device(options, kept):
 
 @pytest.mark.deid_requirement("PS3.15-E.3.4-01")
 @pytest.mark.parametrize(
-    "preset, kept", [("public-release", set()), ("tps-import", set(DEVICE_OBSERVERS))]
+    "preset, kept",
+    [
+        ("public-release", {"x-ray, UID", "radiopharmaceutical, UID"}),
+        ("tps-import", set(DEVICE_OBSERVERS)),
+    ],
 )
 def test_which_presets_keep_a_report_observed_by_a_device(with_option, preset, kept):
     composed = with_option(preset)
@@ -344,18 +348,17 @@ def test_which_presets_keep_a_report_observed_by_a_device(with_option, preset, k
 @pytest.mark.parametrize(
     "preset, name, removed",
     [
-        # TID 1004 row 1 and TID 10003 row 6, both M, are X/D, which the
-        # engine resolves to X, since it checks no template.
-        ("basic", X_RAY, {"Device Observer UID", "DateTime Started"}),
-        ("basic-clean-descriptors", X_RAY, {"Device Observer UID", "DateTime Started"}),
+        # Required X/D rows receive dummy values under every preset.
+        ("basic", X_RAY, set()),
+        ("basic-clean-descriptors", X_RAY, set()),
         ("tps-import", X_RAY, set()),
-        ("public-release", X_RAY, {"Device Observer UID"}),
+        ("public-release", X_RAY, set()),
         # TID 10022 row 9, M, is X/D.
-        ("basic", RADIOPHARMACEUTICAL, {"Radiopharmaceutical Start DateTime"}),
+        ("basic", RADIOPHARMACEUTICAL, set()),
         (
             "basic-clean-descriptors",
             RADIOPHARMACEUTICAL,
-            {"Radiopharmaceutical Start DateTime"},
+            set(),
         ),
         ("tps-import", RADIOPHARMACEUTICAL, set()),
         ("public-release", RADIOPHARMACEUTICAL, set()),
@@ -437,10 +440,8 @@ RADIOPHARMACEUTICAL_INSTITUTION = {"TID 10022 row 23 TID 1020 row 5"}
             RADIOPHARMACEUTICAL_REMOVED_UNDER_EVERY_OPTION
             | RADIOPHARMACEUTICAL_INSTITUTION
             | {
-                # Retain UIDs or Retain Device Identity keeps the dose
-                # calibrator's Device Observer UID, and Retain Device
-                # Identity its name and serial number.
-                "TID 10022 row 13",
+                # Retain Device Identity keeps the dose calibrator's
+                # name and serial number; its UID otherwise takes U.
                 "TID 10022 row 15 TID 1004 row 2",
                 "TID 10022 row 15 TID 1004 row 5",
                 # Retain Patient Characteristics keeps these.
@@ -522,8 +523,8 @@ def test_a_kept_x_ray_tree_gives_each_listed_value_its_action():
             "tps-import",
             {
                 "Device Observer UID": "K",
-                "Study Instance UID": "D",
-                "Irradiation Event UID": "D",
+                "Study Instance UID": "U",
+                "Irradiation Event UID": "U",
                 "DateTime Started": "C",
             },
         ),
@@ -531,7 +532,7 @@ def test_a_kept_x_ray_tree_gives_each_listed_value_its_action():
             RADIOPHARMACEUTICAL,
             "tps-import",
             {
-                "Radiopharmaceutical Administration Event UID": "D",
+                "Radiopharmaceutical Administration Event UID": "U",
                 "Radiopharmaceutical Start DateTime": "C",
                 "Person Name": "D",
             },
@@ -540,7 +541,7 @@ def test_a_kept_x_ray_tree_gives_each_listed_value_its_action():
             RADIOPHARMACEUTICAL,
             "public-release",
             {
-                "Radiopharmaceutical Administration Event UID": "D",
+                "Radiopharmaceutical Administration Event UID": "U",
                 "Radiopharmaceutical Start DateTime": "C",
                 "Person Name": "D",
             },

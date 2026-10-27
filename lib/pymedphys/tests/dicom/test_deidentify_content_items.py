@@ -34,6 +34,7 @@ from pymedphys._dicom.deidentify import (
     scope,
     standard,
     structured_content,
+    uids,
 )
 from pymedphys._dicom.deidentify import synthetic_corpus as corpus_module
 from pymedphys._dicom.deidentify.descriptor_cleaning import DescriptorCleaning
@@ -139,6 +140,11 @@ DEVICE_SERIAL_NUMBER = ("113880", "DCM", "Device Serial Number")
 DEVICE_OBSERVER_UID = ("121012", "DCM", "Device Observer UID")
 FINDING_SITE = ("363698007", "SCT", "Finding Site")
 EQUIPMENT_IDENTIFICATION = ("121122", "DCM", "Equipment Identification")
+FINDING = ("121071", "DCM", "Finding")
+STUDY_DATE = ("111060", "DCM", "Study Date")
+DATETIME_ENDED = ("111527", "DCM", "DateTime Ended")
+ATTENUATOR_MODEL_DATA = ("128470", "DCM", "X-Ray Attenuator Model Data")
+DATETIME = "(0040,A120)"
 
 
 def _written(options, dataset, cleaning=None):
@@ -206,15 +212,27 @@ def test_table_e1_1_gives_c_to_the_four_sequences_of_content_items():
     [
         (PERSON_OBSERVER_NAME, "PNAME", (), "D"),
         (ACCESSION_NUMBER, "TEXT", (), "X"),
-        # X/D removes the item, which no template that the engine checks
-        # requires.
-        (DEVICE_SERIAL_NUMBER, "TEXT", (), "X"),
+        # X/D gives D wherever the concept appears, as though a template
+        # required the item there.
+        (DEVICE_SERIAL_NUMBER, "TEXT", (), "D"),
         (DEVICE_SERIAL_NUMBER, "TEXT", ("retain_device_identity",), "K"),
+        (STUDY_DATE, "DATE", (), "D"),
+        (STUDY_DATE, "DATE", ("retain_longitudinal_modified_dates",), "C"),
+        # Plain X, which gives D for the rows that Enhanced X-Ray Radiation
+        # Dose reports' templates require.
+        (DATETIME_ENDED, "DATETIME", (), "D"),
+        (DATETIME_ENDED, "DATETIME", ("retain_longitudinal_full_dates",), "K"),
+        (ATTENUATOR_MODEL_DATA, "IMAGE", (), "D"),
+        (ATTENUATOR_MODEL_DATA, "COMPOSITE", (), "D"),
+        (ATTENUATOR_MODEL_DATA, "UIDREF", (), "D"),
+        (ATTENUATOR_MODEL_DATA, "UIDREF", ("retain_uids",), "K"),
         (ACQUISITION_DATE, "DATE", ("retain_longitudinal_full_dates",), "K"),
         (ACQUISITION_DATE, "DATE", ("retain_longitudinal_modified_dates",), "C"),
         # Clean Descriptors' C falls back to the action without it (D-009).
         (ACQUISITION_PROTOCOL, "TEXT", ("clean_descriptors",), "X"),
         (FINDING_SITE, "TEXT", ("clean_descriptors",), "D"),
+        # Clean Descriptors' C on an X/D concept falls back to D.
+        (FINDING, "TEXT", ("clean_descriptors",), "D"),
         (
             EQUIPMENT_IDENTIFICATION,
             "TEXT",
@@ -222,7 +240,7 @@ def test_table_e1_1_gives_c_to_the_four_sequences_of_content_items():
             "K",
         ),
         (DEVICE_OBSERVER_UID, "UIDREF", ("retain_uids",), "K"),
-        (DEVICE_OBSERVER_UID, "UIDREF", (), "X"),
+        (DEVICE_OBSERVER_UID, "UIDREF", (), "D"),
     ],
 )
 def test_each_concept_takes_the_action_its_options_give(
@@ -232,6 +250,19 @@ def test_each_concept_takes_the_action_its_options_give(
 
     assert content_items.concept_action(row, (CSC, *options)) == action
     assert content_items.concept_actions((CSC, *options))[row.key] == action
+
+
+def test_every_x_d_concept_and_only_the_reviewed_x_rows_give_d():
+    rows = structured_content.load_table_e3_4_1().concepts
+    either = {row.key for row in rows if row.basic_profile == "X/D"}
+    removed = {row.key for row in rows if row.basic_profile == "X"}
+
+    assert len(either) == 18
+    assert content_items.DUMMY_IN_PLACE_OF_REMOVAL <= removed
+    actions = content_items.concept_actions((CSC,))
+    given = {key for key, action in actions.items() if action == "D"}
+    assert given & removed == content_items.DUMMY_IN_PLACE_OF_REMOVAL
+    assert either <= given
 
 
 def test_c_applies_where_the_options_give_k_and_c():
@@ -370,7 +401,6 @@ def test_the_walker_gives_the_content_item_actions_in_place_of_the_rules():
     "item",
     [
         _text(ACCESSION_NUMBER),
-        _text(DEVICE_SERIAL_NUMBER),
         _item("DATE", ACQUISITION_DATE, Date="20260101"),
         # A concept name coded by a scheme whose rows the table cannot hold.
         _item("DATE", ("11778-8", "LN", "EDD"), Date="20260101"),
@@ -390,6 +420,79 @@ def test_an_item_that_cannot_be_kept_gives_its_sequence_its_basic_action(item):
     # Type 2 here, so X/Z empties it.
     assert len(written.AcquisitionContextSequence) == 0
     assert CSC_CODE in _codes(written)
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.4-01")
+def test_an_x_d_item_is_kept_with_a_dummy_value():
+    source_uid = "1.2.826.0.1.3680043.10.188.5"
+    dataset = _enhanced_ct(
+        _coded(),
+        _text(DEVICE_SERIAL_NUMBER, f"{SENTINEL} SERIAL"),
+        _item("DATE", STUDY_DATE, Date="20260101"),
+        _item("UIDREF", DEVICE_OBSERVER_UID, UID=source_uid),
+        _item("DATETIME", DATETIME_ENDED, DateTime="20260101120000"),
+    )
+
+    assert dict(_actions((CSC,), dataset)) == {
+        _path(tag=ACQUISITION_CONTEXT): "K",
+        _path((ACQUISITION_CONTEXT, 1), tag=TEXT_VALUE): "D",
+        _path((ACQUISITION_CONTEXT, 2), tag=DATE): "D",
+        # D on a UID gives U's replacement.
+        _path((ACQUISITION_CONTEXT, 3), tag=UID): "U",
+        _path((ACQUISITION_CONTEXT, 4), tag=DATETIME): "D",
+    }
+    written = _written((CSC,), dataset)
+    _, serial, date, uid, ended = written.AcquisitionContextSequence
+    # D-021's constants, and U's replacement of a UID.
+    assert serial.TextValue == "DEIDENTIFIED"
+    assert date.Date == "19000101"
+    assert uid.UID == uids.replacement_uid(KEY, source_uid)
+    assert ended.DateTime == "19000101000000"
+    assert CSC_CODE in _codes(written)
+
+
+FRAME_OF_REFERENCE_UID = ("112227", "DCM", "Frame of Reference UID")
+TALAIRACH = "1.2.840.10008.1.4.1.1"
+
+
+@pytest.mark.parametrize("frame", [TALAIRACH, "1.2.826.0.1.3680043.10.188.6"])
+def test_a_uidref_item_names_the_frame_that_the_image_names(frame):
+    dataset = _enhanced_ct(_item("UIDREF", FRAME_OF_REFERENCE_UID, UID=frame))
+    dataset.FrameOfReferenceUID = frame
+
+    written = _written((CSC,), dataset)
+
+    (item,) = written.AcquisitionContextSequence
+    assert item.UID == written.FrameOfReferenceUID
+    # A registered frame names a public definition, so it is kept.
+    assert (item.UID == frame) == (frame == TALAIRACH)
+
+
+@pytest.mark.parametrize("value", [None, ""])
+def test_a_uidref_item_with_no_uid_to_replace_is_not_kept(value):
+    item = _item("UIDREF", DEVICE_OBSERVER_UID)
+    if value is not None:
+        item.UID = value
+
+    assert not _actions((CSC,), _enhanced_ct(_coded(), item))
+
+
+def test_an_x_d_reference_is_kept_with_its_uids_replaced():
+    referenced = _image_reference()
+    referenced.ConceptNameCodeSequence[0] = _code(*ATTENUATOR_MODEL_DATA)
+    referenced.RelationshipType = "CONTAINS"
+    dataset = _report(referenced)
+
+    actions = _actions((CSC,), dataset, REPORT)
+
+    # No value attribute, so the reference's UIDs take their own rules.
+    assert dict(actions) == {_path(tag=CONTENT): "K"}
+    source = read_source(synthetic.written(dataset))
+    iod = load_iod_tables().iods[REPORT]
+    rules = ElementRules(policy.compose_custom_policy([CSC]))
+    planned = {e.path: e for e in plan_instance(source, rules, iod, actions).elements}
+    instance = _path((CONTENT, 0), ("(0008,1199)", 0), tag="(0008,1155)")
+    assert planned[instance].action == "U"
 
 
 def _two_concept_names():
@@ -508,7 +611,8 @@ def test_retain_uids_keeps_a_device_observer_uid():
     written = _written((CSC, "retain_uids"), dataset)
 
     assert written.AcquisitionContextSequence[0].UID == value
-    assert not _actions((CSC,), dataset)
+    item = _path((ACQUISITION_CONTEXT, 0), tag=UID)
+    assert _actions((CSC,), dataset)[item] == "U"
 
 
 def test_clean_descriptors_falls_back_for_content_item_text():
