@@ -325,9 +325,8 @@ def test_the_required_rows_that_table_e3_4_1_removes(with_option, preset, remove
 
 # Each feature whose concept name is coded in a scheme whose rows the
 # generated table cannot hold: LOINC, NCIt, and UMLS, whose rows the pin
-# leaves out (D-001), and the retired SNOMED designator SRT, which PS3.16
-# Annex O maps to SNOMED CT. Each is given with the report and options that
-# hold it, and the scheme of the concept name that takes the tree out.
+# leaves out (D-001). Each is given with the report and options that hold it,
+# and the scheme of the concept name that takes the tree out.
 UNMATCHED_FEATURES = {
     # Most of CID 7000's titles, for the root of TID 2000.
     "LOINC title": (IMAGING, (), {"title": reports.DIAGNOSTIC_IMAGING_REPORT}, "LN"),
@@ -344,7 +343,6 @@ UNMATCHED_FEATURES = {
     "NCIt activity session": (MEASUREMENT, ("TID 1411 row 1b",), {}, "NCIt"),
     # TID 1502 row 3, required where TID 1411 row 4 includes TID 1502.
     "UMLS time point": (MEASUREMENT, ("TID 1411 row 4",), {}, "UMLS"),
-    "SRT finding site": (MEASUREMENT, ("TID 1419 row 2",), {"snomed_ids": True}, "SRT"),
 }
 
 
@@ -364,10 +362,30 @@ def test_a_concept_name_that_cannot_be_looked_up_takes_the_tree_out(
     assert scheme in content_items.UNMATCHED_SCHEMES
     assert scheme in {key[0] for _, key in _concepts(dataset)}
     assert not _kept(dataset, iod, composed)
-    # The same report without the feature is kept: with a DCM title, and
-    # with the finding site coded in SNOMED CT.
-    plain, _ = _report(name, optional if "snomed_ids" in kwargs else ())
+    # The same report without the feature, with a DCM title, is kept.
+    plain, _ = _report(name)
     assert _kept(plain, iod, composed)
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.4-01")
+@pytest.mark.parametrize("preset, options", [
+    *((preset, None) for preset in PRESETS[2:]),
+    (None, EVERY_OPTION),
+])  # fmt: skip
+def test_a_finding_site_coded_by_its_snomed_ids_is_kept_as_in_snomed_ct(
+    with_option, preset, options
+):
+    composed = _composed(with_option, preset, options)
+    retired, iod = _report(MEASUREMENT, ("TID 1419 row 2",), snomed_ids=True)
+    current, _ = _report(MEASUREMENT, ("TID 1419 row 2",))
+
+    assert "SRT" in {key[0] for _, key in _concepts(retired)}
+    assert "SRT" not in {key[0] for _, key in _concepts(current)}
+    # PS3.16 Table O-1 maps each SNOMED ID to the SNOMED CT code that the
+    # other report gives the same concept, so each item takes the same action.
+    actions, _ = _planned(retired, iod, composed)
+    assert actions == _planned(current, iod, composed)[0]
+    assert actions.get(ElementPath((), CONTENT)) == "K"
 
 
 # The optional rows of TID 1001 that take the tree out under every option
@@ -776,7 +794,7 @@ def test_a_written_cad_report_keeps_its_references(with_option):
 
 @pytest.mark.parametrize("preset", PRESETS)
 @pytest.mark.parametrize("name", VERIFIABLE)
-def test_a_verified_report_is_sequestered_by_its_verifying_observer(
+def test_a_verified_report_is_planned_as_an_unverified_one_is(
     with_option, preset, name
 ):
     dataset, iod = _report(name, verified=True)
@@ -784,11 +802,38 @@ def test_a_verified_report_is_sequestered_by_its_verifying_observer(
     _, plan = _planned(dataset, iod, with_option(preset))
 
     # Table E.1-1 gives Verifying Observer Sequence D under every option,
-    # and it is Type 1C, required where the report is VERIFIED; a sequence
-    # has no dummy value (D-021).
-    assert ElementPath((), VERIFYING_OBSERVER) in [s.path for s in plan.sequestrations]
-    unverified, _ = _report(name)
-    _, plan = _planned(unverified, iod, with_option(preset))
-    assert ElementPath((), VERIFYING_OBSERVER) not in [
-        s.path for s in plan.sequestrations
+    # and it is Type 1C, required where the report is VERIFIED; D keeps each
+    # verifier's item, with dummy values, so it sequesters nothing (D-021).
+    (observer,) = [
+        e for e in plan.elements if e.path == ElementPath((), VERIFYING_OBSERVER)
     ]
+    assert observer.action == "D"
+    unverified, _ = _report(name)
+    _, unverified_plan = _planned(unverified, iod, with_option(preset))
+    assert [s.path for s in plan.sequestrations] == [
+        s.path for s in unverified_plan.sequestrations
+    ]
+
+
+@pytest.mark.usefixtures("supported")
+@pytest.mark.parametrize("name", VERIFIABLE)
+def test_a_verified_report_is_written_with_a_dummy_verifier(with_option, name):
+    dataset, _ = _report(name, verified=True)
+
+    result = _transformed(with_option("public-release"), dataset)
+
+    assert isinstance(result, run.Transformed), result
+    for value in (reports.VERIFIERS_NAME, f"{reports.SENTINEL} HOSPITAL"):
+        assert value.encode() not in result.data, value
+    written = pydicom.dcmread(io.BytesIO(result.data))
+    assert written.VerificationFlag == "VERIFIED"
+    (verifier,) = written.VerifyingObserverSequence
+    assert verifier.VerifyingObserverName == "DEIDENTIFIED"
+    assert verifier.VerifyingOrganization == "DEIDENTIFIED"
+    assert len(verifier.VerifyingObserverIdentificationCodeSequence) == 0
+    # public-release selects Modified Dates, which modifies the time as it
+    # does the instance's other dates.
+    assert verifier.VerificationDateTime not in (
+        reports.VERIFICATION_DATETIME,
+        "19000101000000",
+    )

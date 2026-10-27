@@ -62,6 +62,15 @@ RT_REFERENCES = [
     ("RT Dose", synthetic.REFERENCED_STRUCTURE_SET, Level.INSTANCE),
     ("RT Dose", ("(300C,0116)", "(300C,0060)", "(0008,1155)"), Level.INSTANCE),
     ("RT Dose", ("(0008,1164)", "(0008,1167)"), Level.INSTANCE),
+    # RT Beams Treatment Record: the plan, earlier treatment records, and
+    # each beam's verification images.
+    ("RT Beams Treatment Record", synthetic.REFERENCED_PLAN, Level.INSTANCE),
+    ("RT Beams Treatment Record", ("(3008,0030)", "(0008,1155)"), Level.INSTANCE),
+    (
+        "RT Beams Treatment Record",
+        ("(3008,0020)", "(300C,0040)", "(0008,1155)"),
+        Level.INSTANCE,
+    ),
     # CT Image: the plan in the CT Image module, and General Reference.
     ("CT Image", synthetic.REFERENCED_PLAN, Level.INSTANCE),
     ("CT Image", synthetic.REFERENCED_IMAGE, Level.INSTANCE),
@@ -109,6 +118,7 @@ OTHER_SEQUENCES = {
     "(300A,0401)",  # Referenced Setup Image Sequence
     "(300A,078C)",  # Referenced Patient Setup Photo Sequence
     "(300C,0002)",  # Referenced RT Plan Sequence
+    "(300C,0040)",  # Referenced Verification Image Sequence
     "(300C,0042)",  # Referenced Reference Image Sequence
     "(300C,0060)",  # Referenced Structure Set Sequence
     "(300C,0080)",  # Referenced Dose Sequence

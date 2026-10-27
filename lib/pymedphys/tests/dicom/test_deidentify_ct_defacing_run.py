@@ -35,7 +35,13 @@ from pathlib import Path
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom, pytest, shapely
 
-from pymedphys._dicom.deidentify import dose_defacing, face_blocks, markers, run
+from pymedphys._dicom.deidentify import (
+    defacing,
+    dose_defacing,
+    face_blocks,
+    markers,
+    run,
+)
 from pymedphys._dicom.deidentify import synthetic_corpus as corpus_module
 from pymedphys._dicom.deidentify.face_review import FaceReview, read_face_review
 from pymedphys._dicom.deidentify.instance_transform import (
@@ -978,6 +984,39 @@ def test_an_eye_drawn_away_from_the_globes_holds_the_head_ct(eyes_away):
     disposition, dataset = outcomes[_STRUCTURE_SET]
     assert disposition == "released", reasons[_STRUCTURE_SET]
     assert all(contours is not None for contours in _contours(dataset).values())
+
+
+def test_an_unexpected_error_in_the_finder_releases_no_slice_it_would_deface(
+    reviewed_low, defaced, monkeypatch
+):
+    # As the IndexError that an earlier front test raised on real heads: the
+    # series is not defaced, and a slice is released only as the reviewer
+    # saw it, so each slice that defacing changes is held.
+    def fail(*_):
+        raise IndexError("index out of bounds")
+
+    monkeypatch.setattr(defacing.FaceInspection, "_front", fail)
+    slices, outcomes, reasons, report = _second(reviewed_low, name="e")
+    _, written, _, _ = defaced
+    held = HeldVisualFeatures(VisualFeaturesReason.OTHER_PIXEL_DATA)
+    changed = 0
+
+    for index, data in enumerate(slices):
+        name = _head_name(index)
+        before = pydicom.dcmread(pydicom.filebase.DicomBytesIO(data))
+        if written[name][1].PixelData != before.PixelData:
+            changed += 1
+            assert outcomes[name] == ("held-for-review", None), index
+            assert reasons[name] == {held}, index
+        else:
+            disposition, dataset = outcomes[name]
+            assert disposition == "released", index
+            assert dataset.PixelData == before.PixelData, index
+    assert 0 < changed < len(slices)
+    assert report["face_review"]["ct_series"] == {
+        "defaced": 0,
+        "not_defaced": [{"reason": "unreadable", "count": 1}],
+    }
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.1-01", "PS3.15-E.3.2-01")

@@ -55,11 +55,12 @@ item's Value Type (0040,A040) and the code of its Concept Name Code Sequence
   kept item does. A content item cannot be kept where Table E.3.4-1 gives
   it X, or X/D, which removes it, since no template that the engine checks
   requires it; where its Value Type or concept name cannot be read as one
-  Value Type and one code; or where its concept name is coded in a scheme
-  whose rows the generated table cannot hold: the four whose rows the pin
-  leaves out (LOINC, NCDR, NCIt, and UMLS), or the retired SNOMED
-  designators SRT, SNM3, and 99SDM, which PS3.16 Annex O maps to SNOMED CT
-  codes. In Content Sequence, an item that PS3.3 Table C.17-5 lets have no
+  Value Type and one code; where its concept name is coded in a scheme whose
+  rows the pin leaves out (LOINC, NCDR, NCIt, and UMLS); or where it is
+  coded by a retired SNOMED designator, SRT, SNM3, or 99SDM, with a SNOMED
+  ID that PS3.16 Table O-1 does not map to a SNOMED CT Concept ID. One that
+  Table O-1 maps is looked up as that SNOMED CT code, as PS3.16 Section 8.1
+  has a receiver read it (:func:`~.codes.snomed_ct_code`). In Content Sequence, an item that PS3.3 Table C.17-5 lets have no
   concept name, such as an image reference, and has none, is not listed,
   and an item of a by-reference relationship, which has a Referenced
   Content Item Identifier (0040,DB73) in place of a Value Type and a
@@ -96,6 +97,7 @@ import functools
 import types
 from collections.abc import Collection, Iterator, Mapping
 
+from .codes import RETIRED_SNOMED_DESIGNATORS, snomed_ct_code
 from .elements import UndecodableElement, dataset_codecs, read_element
 from .file_layout import ElementPath
 from .iods import IOD
@@ -156,10 +158,11 @@ VALUE_ATTRIBUTES: Mapping[str, str] = types.MappingProxyType(
 # Table E.3.4-1, following Section C.17.3, gives as NUM.
 NUMERIC = "NUMERIC"
 NUM = "NUM"
-# The coding schemes whose concepts the generated table cannot hold: those
-# whose rows the pin leaves out, and the retired SNOMED designators, whose
-# codes PS3.16 Annex O maps to SNOMED CT's.
-UNMATCHED_SCHEMES = frozenset({"LN", "NCDR", "NCIt", "UMLS", "SRT", "SNM3", "99SDM"})
+# The coding schemes whose rows the pin leaves out of the generated table, so
+# that their concepts cannot be matched. A code of a retired SNOMED
+# designator is matched as the SNOMED CT code that PS3.16 Table O-1 maps it
+# to, and cannot be matched where the table maps it to none.
+UNMATCHED_SCHEMES = frozenset({"LN", "NCDR", "NCIt", "UMLS"})
 KEEP = "K"
 REMOVE = "X"
 
@@ -190,11 +193,14 @@ METHOD = (
     "relationship keeps its Referenced Content Item Identifier (0040,DB73), "
     "since its target is cleaned where it is. Where the table "
     "removes an item (X or X/D), where an item's Value Type or concept name "
-    "cannot be read as one Value Type and one code, or where its concept "
+    "cannot be read as one Value Type and one code, where its concept "
     "name is coded in LOINC, NCDR, NCIt, or UMLS, whose rows PyMedPhys does "
-    "not include, or by a retired SNOMED designator, SRT, SNM3, or 99SDM, "
-    "the whole sequence takes its Basic Profile action instead, since a "
-    "single item is not removed on its own."
+    "not include, or where it is coded by a retired SNOMED designator, SRT, "
+    "SNM3, or 99SDM, with a code that PS3.16 Table O-1 does not map to a "
+    "SNOMED CT code, the whole sequence takes its Basic Profile action "
+    "instead, since a single item is not removed on its own. A concept name "
+    "coded by a retired SNOMED designator with a code that Table O-1 maps is "
+    "looked up as that SNOMED CT code."
 )
 
 
@@ -418,14 +424,23 @@ class _Sequences:
         value = self.reader.text(ElementPath(code, CODE_VALUE))
         designator = self.reader.text(ElementPath(code, DESIGNATOR))
         if value is None:
-            # A long or URN code value, which the table does not list.
+            # A long or URN code value, which the table does not list, and
+            # which no SNOMED ID is.
             if any(ElementPath(code, tag) in self.reader for tag in OTHER_CODE_VALUES):
-                if designator in UNMATCHED_SCHEMES:
+                if (
+                    designator in UNMATCHED_SCHEMES
+                    or designator in RETIRED_SNOMED_DESIGNATORS
+                ):
                     raise _Unkept
                 return None
             raise _Unkept
         if not designator or designator in UNMATCHED_SCHEMES:
             raise _Unkept
+        if designator in RETIRED_SNOMED_DESIGNATORS:
+            mapped = snomed_ct_code(designator, value)
+            if mapped is None:
+                raise _Unkept
+            designator, value = mapped
         return self.actions.get((designator, value, value_type))
 
 
