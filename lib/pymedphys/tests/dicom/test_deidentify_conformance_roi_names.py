@@ -34,6 +34,7 @@ from pymedphys._dicom.deidentify import (
 )
 from pymedphys._dicom.deidentify.keys import DeidKey
 from pymedphys._nomenclature import tg263
+from pymedphys.tests.dicom import _corpus_run
 from pymedphys.tests.dicom.test_deidentify_conformance import (
     _entry,
     _section,
@@ -352,6 +353,7 @@ def test_every_preset_with_clean_descriptors_has_a_fallback(preset):
         cleaning=descriptor_cleaning.DescriptorCleaning(
             None, reviewed_roi_names.ReviewedNames.empty()
         ),
+        face_review=_corpus_run.face_review_for(composed),
         unvalidated_policy=True,
     )
 
