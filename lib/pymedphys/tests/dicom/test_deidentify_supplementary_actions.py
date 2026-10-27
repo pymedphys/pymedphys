@@ -44,7 +44,7 @@ TEXT_VRS = {"LO", "SH", "LT", "ST", "UC", "UT"}
 TEMPORAL_VRS = {"DA", "DT", "TM"}
 # The IODs of the first supported release.
 # The CT and RT IODs that the first supported release has always supported,
-# and the CT, MR, and PET IODs that it adds.
+# and the CT, MR, and PET IODs that the maintainer added on 7 October 2026.
 CT_AND_RT_IODS = ("CT Image", "RT Dose", "RT Plan", "RT Structure Set")
 ADDED_IODS = (
     "Enhanced CT Image",
@@ -69,7 +69,7 @@ TARGET_IODS = (
     "Segmentation",
 )
 REGISTRATION_IODS = ("Spatial Registration", "Deformable Spatial Registration")
-SUPPORTED_TARGET_IODS = (*REGISTRATION_IODS, "RT Image")
+SUPPORTED_TARGET_IODS = (*REGISTRATION_IODS, "RT Beams Treatment Record", "RT Image")
 REVIEWED_AGAINST = CT_AND_RT_IODS + ADDED_IODS
 SUPPORTED_IODS = REVIEWED_AGAINST + SUPPORTED_TARGET_IODS
 # The Radiation Dose SR IODs, which the maintainer added to the planned
@@ -344,9 +344,10 @@ def test_every_text_attribute_a_supported_iod_uses_and_table_e1_1_omits_has_a_ru
 
     # Checked by hand against the 2026d PS3.3, PS3.6, and PS3.15; the
     # registration IODs add Content Description and Frame of Reference
-    # Transformation Comment, and RT Image adds RT Image Label, RT Image Name,
-    # RT Image Description, Radiation Machine Name, and Modality LUT Type.
-    assert len(omitted) == 148
+    # Transformation Comment; the treatment record adds five operator-typed
+    # descriptions, and RT Image adds its label, name, description, machine
+    # name, and Modality LUT Type.
+    assert len(omitted) == 153
     assert omitted <= set(_rules())
     assert {"(0008,0100)", "(300A,00C2)", "(60xx,1500)"} <= omitted
 
@@ -361,7 +362,7 @@ def test_the_rules_for_omitted_text_fall_in_the_reviewed_groups():
 
     assert groups == {
         # Operator-typed labels and text.
-        ("X/Z/D", ((CLEAN_DESCRIPTORS, "C"),)): 67,
+        ("X/Z/D", ((CLEAN_DESCRIPTORS, "C"),)): 72,
         # Accessory and equipment identifiers.
         ("X/Z/D", ((DEVICE_IDENTITY, "K"),)): 25,
         # Coded and technical values, and De-identification Method.
@@ -504,7 +505,7 @@ def _used_by(names, vrs):
     }
 
 
-def test_the_target_iods_are_generated_and_only_the_rt_image_and_registrations_supported():
+def test_the_target_iods_have_the_documented_support():
     tables = iods.load_iod_tables()
 
     assert set(TARGET_IODS) <= set(tables.iods)
@@ -709,7 +710,7 @@ def test_the_basic_profile_keeps_only_the_reviewed_coded_and_technical_text():
         for tag in _supported_text()
     }
 
-    assert len(basic) == 268
+    assert len(basic) == 275
     assert {tag for tag, action in basic.items() if action == "K"} == (
         KEPT_TEXT | ADDED_KEPT_TEXT | RT_IMAGE_KEPT_TEXT
     )

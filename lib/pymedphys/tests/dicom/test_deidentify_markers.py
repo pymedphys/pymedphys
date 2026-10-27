@@ -93,7 +93,7 @@ EXPECTED = {
     "tps-import": ("no PS3.15 claim", [], "MODIFIED"),
     "public-release": (
         "PS3.15 2026d",
-        ["113100", "113111", "113107", "113105"],
+        ["113100", "113111", "113107", "113105", "113102"],
         "MODIFIED",
     ),
 }
@@ -135,6 +135,10 @@ def _software_versions(version):
 def _expected(readable, digest, code_values, temporal, version):
     """The markers' data set, built from pydicom's own dictionary."""
     expected = pydicom.Dataset()
+    # Clean Recognizable Visual Features, where satisfied, sets it to NO
+    # (PS3.15 E.3.2).
+    if OPTION_CODES["clean_recognizable_visual_features"] in code_values:
+        expected.RecognizableVisualFeatures = "NO"
     expected.PatientIdentityRemoved = "YES"
     expected.DeidentificationMethod = [digest, readable]
     if code_values:
@@ -302,6 +306,7 @@ def test_codes_follow_the_profile_in_table_e1_1s_order_of_options():
         "113111",
         "113107",
         "113105",
+        "113102",
     ]
 
 
@@ -941,16 +946,16 @@ def _coded(value, designator="DCM", meaning=None, version=None):
                 _coded("113105"),
                 _coded("113100", meaning="Basic Application Confidentiality"),
             ],
-            ["113105", "113100", "113111", "113107"],
+            ["113105", "113100", "113111", "113107", "113102"],
         ),
         # A code of another scheme, or of a stated scheme version, differs.
         (
             [_coded("113100", designator="99SYN")],
-            ["113100", "113100", "113111", "113107", "113105"],
+            ["113100", "113100", "113111", "113107", "113105", "113102"],
         ),
         (
             [_coded("113100", version="01")],
-            ["113100", "113100", "113111", "113107", "113105"],
+            ["113100", "113100", "113111", "113107", "113105", "113102"],
         ),
     ],
     ids=["same-codes", "other-scheme", "scheme-version"],

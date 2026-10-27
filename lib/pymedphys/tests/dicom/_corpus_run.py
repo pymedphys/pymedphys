@@ -123,6 +123,7 @@ PIXEL_OPTION_CODES: Mapping[str, str] = types.MappingProxyType(
 FULL_DATES = "retain_longitudinal_full_dates"
 MODIFIED_DATES = "retain_longitudinal_modified_dates"
 CLEAN_STRUCTURED_CONTENT = "clean_structured_content"
+CLEAN_RECOGNIZABLE_VISUAL_FEATURES = "clean_recognizable_visual_features"
 
 # The generic parts of every marker.
 MARKER_SIGNATURES = (
@@ -575,6 +576,25 @@ def decoders_installed() -> bool:
     return all(
         pixel_decoding.decoder_available(syntax)
         for syntax in compressed.CORPUS_SYNTAXES
+    )
+
+
+# A face review with no verdicts, as the first run of a collection under
+# Clean Recognizable Visual Features is given, which holds every instance
+# that can show a face.
+NO_FACE_VERDICTS = FaceReview(
+    FACE_REVIEW_REFERENCE, frozenset(), frozenset(), frozenset(), frozenset()
+)
+
+
+def face_review_for(composed: Policy) -> FaceReview | None:
+    """Return :data:`NO_FACE_VERDICTS` where the policy selects Clean
+    Recognizable Visual Features, whose transform needs a face review, as
+    ``public-release`` does, or None for any other policy."""
+    return (
+        NO_FACE_VERDICTS
+        if CLEAN_RECOGNIZABLE_VISUAL_FEATURES in composed.options
+        else None
     )
 
 

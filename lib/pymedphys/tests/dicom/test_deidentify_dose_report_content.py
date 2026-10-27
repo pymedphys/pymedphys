@@ -47,6 +47,7 @@ from pymedphys._dicom.deidentify.reviewed_roi_names import ReviewedNames
 from pymedphys._dicom.deidentify.source import read_source
 from pymedphys._dicom.deidentify.walker import plan_instance
 
+from . import _corpus_run
 from . import _synthetic_dose_reports as reports
 from . import _synthetic_references as synthetic
 
@@ -183,6 +184,7 @@ def _transform(composed):
         composed,
         KEY,
         cleaning=DescriptorCleaning(None, ReviewedNames.empty()),
+        face_review=_corpus_run.face_review_for(composed),
         unvalidated_policy=True,
     )
 

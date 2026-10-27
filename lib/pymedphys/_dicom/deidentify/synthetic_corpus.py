@@ -29,10 +29,11 @@ the Frame of Reference by an identity matrix, and the Deformable Spatial
 Registration the PET Image by a two by two by one deformation grid; each
 names its image in Referenced Image Sequence (0008,1140), whose item the
 Basic Profile keeps, and the Spatial Registration's Used RT Structure Set
-ROI Sequence (0070,0315) names the structure set. The RT Image, a
-digitally reconstructed radiograph of 2 by 2 pixels, references the RT
-Plan. It is the input for validating each preset end to end: once the
-engine has written the collection, the residual search
+ROI Sequence (0070,0315) names the structure set. The RT Beams Treatment
+Record references the plan. The RT Image, a digitally reconstructed
+radiograph of 2 by 2 pixels, references the RT Plan. It is the input for validating each preset end
+to end: once the engine has
+written the collection, the residual search
 (:mod:`~pymedphys._dicom.deidentify.residuals`) should find none of the
 markers that had to be removed or replaced.
 
@@ -111,20 +112,28 @@ attribute their IODs require.
 plain X, and whose removal sequesters the instance because the IOD requires
 it at a place no Type 3 sequence encloses
 (:func:`~pymedphys._dicom.deidentify.compound_actions.resolve_plain_x_in_iod`),
+or whose Basic Profile action resolves to D at its place where its VR has
+no dummy value and no reviewed rule gives it one
+(:mod:`~pymedphys._dicom.deidentify.dummy_values`),
 is planted only in :data:`SEQUESTERED_FILE`, the third CT slice, and
 recorded in the other files with
-:attr:`NotPlantedReason.SEQUESTERS_INSTANCE`. Of the corpus's IODs these
+:attr:`NotPlantedReason.SEQUESTERS_INSTANCE`, as is each attribute in the
+item of such a sequence. Of the corpus's IODs these
 are Responsible Person (0010,2297) and Responsible Organization (0010,2299)
-at the top level, and Radiopharmaceutical Start DateTime (0018,1078) in the
+at the top level, Radiopharmaceutical Start DateTime (0018,1078) in the
 Radiopharmaceutical Information Sequence (0054,0016) of an Enhanced PET
-Image. Planted in every file, the first two would sequester every
+Image, and Institution Code Sequence (0008,0082), which X/Z/D gives D
+where it is Type 1C, in the Interlock Resolution User Sequence (300A,0746)
+of an RT Beams Treatment Record's Interlock Sequence (300A,0740). Planted in
+every file, the first two would sequester every
 instance, and no preset could release any of the collection; planted in one,
 that instance checks sequestration, :data:`REVIEW_FILE` checks review, and
 the other eighteen check each preset's output. Radiopharmaceutical Start
-DateTime, which CT Image does not define, is planted in no file, so the
-Enhanced PET instance, which lacks an attribute of Type 1, is released and
-its other markers are checked; an instance that conforms to the IOD is
-sequestered under ``basic`` and ``basic-clean-descriptors``.
+DateTime and Institution Code Sequence, which CT Image does not define
+there, are planted in no file, so the Enhanced PET instance, which lacks an
+attribute of Type 1, and the treatment record are released and their other
+markers are checked; an Enhanced PET Image instance that conforms to the
+IOD is sequestered under ``basic`` and ``basic-clean-descriptors``.
 
 **Edge cases.** Each file except the first RT Dose, ``06-rtdose.dcm``, and
 the MR Image, ``10-mr.dcm``, is written in Explicit VR Little Endian, and
@@ -187,7 +196,18 @@ from collections.abc import Sequence
 from pymedphys._imports import pydicom
 
 from . import icc_profiles
-from .compound_actions import RemovalExtent, resolve_in_iod, resolve_plain_x_in_iod
+from .compound_actions import (
+    COMPOUND_ACTIONS,
+    RemovalExtent,
+    resolve_in_iod,
+    resolve_plain_in_iod,
+    resolve_plain_x_in_iod,
+)
+from .dummy_values import (
+    DUMMY_VRS,
+    PERSON_IDENTIFICATION_CODE_SEQUENCE,
+    REFERENCED_PERFORMED_PROCEDURE_STEP_SEQUENCE,
+)
 from .elements import dataset_codecs, new_element
 from .file_layout import ElementPath
 from .iods import IOD
@@ -225,6 +245,7 @@ DEFORMABLE_SPATIAL_REGISTRATION_STORAGE = "1.2.840.10008.5.1.4.1.1.66.3"
 RT_IMAGE_STORAGE = "1.2.840.10008.5.1.4.1.1.481.1"
 RT_DOSE_STORAGE = "1.2.840.10008.5.1.4.1.1.481.2"
 RT_STRUCTURE_SET_STORAGE = "1.2.840.10008.5.1.4.1.1.481.3"
+RT_BEAMS_TREATMENT_RECORD_STORAGE = "1.2.840.10008.5.1.4.1.1.481.4"
 RT_PLAN_STORAGE = "1.2.840.10008.5.1.4.1.1.481.5"
 # The retired class that PS3.3 Sections 10.6.1 and C.8.8.5.4 give a study in
 # a Referenced Study Sequence or RT Referenced Study Sequence item.
@@ -283,6 +304,8 @@ REGISTRATION_SERIES = f"{LINKED_UID_ROOT}01500"
 REGISTRATION = f"{LINKED_UID_ROOT}01501"
 DEFORMABLE_REGISTRATION_SERIES = f"{LINKED_UID_ROOT}01600"
 DEFORMABLE_REGISTRATION = f"{LINKED_UID_ROOT}01601"
+TREATMENT_RECORD_SERIES = f"{LINKED_UID_ROOT}01700"
+TREATMENT_RECORD = f"{LINKED_UID_ROOT}01701"
 RT_IMAGE_SERIES = f"{LINKED_UID_ROOT}01800"
 RT_IMAGE = f"{LINKED_UID_ROOT}01801"
 # A patient and a procedure step that the collection names but does not hold.
@@ -308,6 +331,10 @@ _PATIENTS_NAME_TAG = "(0010,0010)"
 # Frame of Reference UID of a deformable registration.
 _FRAME_OF_REFERENCE_TAGS = frozenset({"(0020,0052)", "(3006,0024)", "(0064,0003)"})
 _CONTOUR_IMAGE_SEQUENCE = "(3006,0016)"
+# The sequences whose D a reviewed rule writes (D-021).
+_REVIEWED_DUMMY_SEQUENCES = frozenset(
+    {PERSON_IDENTIFICATION_CODE_SEQUENCE, REFERENCED_PERFORMED_PROCEDURE_STEP_SEQUENCE}
+)
 # Where an RT Structure Set references every CT slice, not only the first.
 _RT_REFERENCED_CONTOUR_IMAGES = ("(3006,0010)", "(3006,0012)", "(3006,0014)")
 # The instance a reference names, by the innermost sequence that holds it.
@@ -341,6 +368,7 @@ _SOP_CLASSES = types.MappingProxyType(
         LEGACY_PET: LEGACY_CONVERTED_ENHANCED_PET_IMAGE_STORAGE,
         REGISTRATION: SPATIAL_REGISTRATION_STORAGE,
         DEFORMABLE_REGISTRATION: DEFORMABLE_SPATIAL_REGISTRATION_STORAGE,
+        TREATMENT_RECORD: RT_BEAMS_TREATMENT_RECORD_STORAGE,
         RT_IMAGE: RT_IMAGE_STORAGE,
         PATIENT_REFERENCE: DETACHED_PATIENT_MANAGEMENT,
         PROCEDURE_STEP: MODALITY_PERFORMED_PROCEDURE_STEP,
@@ -802,9 +830,17 @@ _SPECS = (
         DEFORMABLE_REGISTRATION_SERIES,
         PET,
     ),
+    # The treatment record references the plan it records.
+    _Spec(
+        "20-rt-beams-record.dcm",
+        RT_BEAMS_TREATMENT_RECORD_STORAGE,
+        TREATMENT_RECORD,
+        TREATMENT_RECORD_SERIES,
+        PLAN,
+    ),
     # The RT Image, a digitally reconstructed radiograph of a beam of the plan.
     _Spec(
-        "20-rt-image.dcm",
+        "21-rt-image.dcm",
         RT_IMAGE_STORAGE,
         RT_IMAGE,
         RT_IMAGE_SERIES,
@@ -819,14 +855,14 @@ def build_corpus() -> SyntheticCorpus:
     Returns
     -------
     SyntheticCorpus
-        Twenty files: three CT slices; the RT Structure Set, RT Plan, RT
+        Twenty-one files: three CT slices; the RT Structure Set, RT Plan, RT
         Dose, and the RT Dose for review; the Enhanced CT Image and Legacy
         Converted Enhanced CT Image; the MR Image, Enhanced MR Image,
         Enhanced MR Color Image, Legacy Converted Enhanced MR Image, and MR
         Spectroscopy; the PET Image, Enhanced PET Image, and Legacy
         Converted Enhanced PET Image; the Spatial Registration and
-        Deformable Spatial Registration; and the RT Image. Two builds give
-        the same bytes and the same manifest.
+        Deformable Spatial Registration; the RT Beams Treatment Record; and the RT Image.
+        Two builds give the same bytes and the same manifest.
     """
     markers = _Markers()
     files: list[CorpusFile] = []
@@ -1117,8 +1153,8 @@ class _Instance:
             reason = NotPlantedReason.NO_SINGLE_VR
         elif len(path) + (vr == "SQ") > MAX_DEPTH:
             reason = NotPlantedReason.DEPTH_CAP
-        elif self.spec.name != SEQUESTERED_FILE and self._sequesters(
-            path, written, row
+        elif self.spec.name != SEQUESTERED_FILE and (
+            self._sequesters(path, written, row) or self._in_sequestering_sequence(path)
         ):
             reason = NotPlantedReason.SEQUESTERS_INSTANCE
         if reason is not None or attribute is None:
@@ -1165,11 +1201,50 @@ class _Instance:
         self._record(element_path, vr, text, PlacementKind.PLANTED, row)
 
     def _sequesters(self, path: tuple[str, ...], tag: str, row: str) -> bool:
-        """Return whether the Basic Profile's action on a place sequesters."""
+        """Return whether the Basic Profile's action on a place sequesters.
+
+        A plain X sequesters where it removes an attribute that the IOD
+        requires outside any Type 3 sequence, and a D where the attribute's
+        VR has no dummy value and no reviewed rule gives it one, unless the
+        Basic Profile removes a sequence that encloses it.
+        """
+        action = _basic_profile_actions()[row]
+        if action == "X":
+            return (
+                resolve_plain_x_in_iod(self.iod, tag, path).extent
+                is RemovalExtent.SEQUESTER
+            )
+        attribute = dictionary_attribute(tag)
         return (
-            _basic_profile_actions()[row] == "X"
-            and resolve_plain_x_in_iod(self.iod, tag, path).extent
-            is RemovalExtent.SEQUESTER
+            tag not in _REVIEWED_DUMMY_SEQUENCES
+            and attribute is not None
+            and not DUMMY_VRS.intersection(attribute.vrs)
+            and self._resolved(path, tag, action) == "D"
+            and not any(
+                self._resolved(path[:depth], path[depth]) == "X"
+                for depth in range(len(path))
+            )
+        )
+
+    def _resolved(
+        self, path: tuple[str, ...], tag: str, action: str | None = None
+    ) -> str | None:
+        """Return the Basic Profile's action at a place, resolved by Type."""
+        if action is None:
+            action = _basic_profile_actions().get(tag)
+        if action in COMPOUND_ACTIONS:
+            return resolve_in_iod(self.iod, tag, path, action)
+        if action is not None:
+            return resolve_plain_in_iod(self.iod, tag, path, action)
+        return None
+
+    def _in_sequestering_sequence(self, path: tuple[str, ...]) -> bool:
+        """Return whether a sequence that encloses a place sequesters."""
+        actions = _basic_profile_actions()
+        return any(
+            path[depth] in actions
+            and self._sequesters(path[:depth], path[depth], path[depth])
+            for depth in range(len(path))
         )
 
     def _linked(
@@ -1384,6 +1459,8 @@ class _Instance:
         elif self.spec.sop_class == RT_PLAN_STORAGE:
             put((), "(0008,0060)", ["RTPLAN"])
             put((), "(300A,000C)", ["PATIENT"])
+        elif self.spec.sop_class == RT_BEAMS_TREATMENT_RECORD_STORAGE:
+            put((), "(0008,0060)", ["RTRECORD"])
         elif self.spec.sop_class == MR_SPECTROSCOPY_STORAGE:
             put((), "(0008,0060)", ["MR"])
             put((), "(0008,0008)", ["ORIGINAL", "PRIMARY", "SPECTROSCOPY", "NONE"])
