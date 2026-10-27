@@ -155,6 +155,7 @@ SLOW_TEST_FILES = frozenset(
     {
         "lib/pymedphys/tests/delivery/test_deliverydata_trf_dicom_round_trip.py",
         "lib/pymedphys/tests/dicom/test_anonymise.py",
+        "lib/pymedphys/tests/dicom/test_deidentify_pixel_text_validation.py",
         "lib/pymedphys/tests/dicom/test_deidentify_text_detection.py",
         "lib/pymedphys/tests/experimental/pseudonymisation/test_pseudonymisation.py",
         "lib/pymedphys/tests/gamma/test_agnew_mcgarry.py",
@@ -172,6 +173,7 @@ DOCTEST_FILES = frozenset(
         "lib/pymedphys/_dev/deid_tables/ps3_3.py",
         "lib/pymedphys/_dicom/deidentify/ae_titles.py",
         "lib/pymedphys/_dicom/deidentify/birth_dates.py",
+        "lib/pymedphys/_dicom/deidentify/codes.py",
         "lib/pymedphys/_dicom/deidentify/common_instance_reference.py",
         "lib/pymedphys/_dicom/deidentify/compound_actions.py",
         "lib/pymedphys/_dicom/deidentify/content_items.py",

@@ -8,10 +8,10 @@
 # and an IOD of the supported scope uses, at any depth, so that no
 # operator-typed text is kept merely because the table does not list it, and
 # so does every one that an IOD of the target coverage uses but not yet the
-# supported scope: RT Beams Treatment Record, RT Image, Spatial Registration,
-# Deformable Spatial Registration, Segmentation, and the four Radiation Dose
-# SR IODs, reviewed ahead of supporting them. So does every date, time, and
-# datetime (DA, DT, or TM)
+# supported scope: RT Image, Segmentation, and the four Radiation Dose SR
+# IODs, reviewed ahead of supporting them, as RT Beams Treatment Record and
+# the registrations were. So does every date, time, and datetime (DA, DT, or
+# TM)
 # attribute that Table E.1-1 omits, besides the role that the temporal roles
 # file gives it. Other attributes that the table omits have a rule only where
 # one has been reviewed, such as the two URLs below that name coding concepts
@@ -792,7 +792,7 @@ note = "A user or machine supplied identifier for a general accessory. Accessory
 tag = "(0008,0070)"
 keyword = "Manufacturer"
 action = "K"
-note = "The name of the company that made the equipment or device, which the equipment itself writes in the General Equipment Module. It is kept because it is Type 1 in Contributing Equipment Sequence (PS3.3 Table C.12-1), so it cannot be removed there, and because Table E.1-1 omits it deliberately while listing the identifiers of single devices, such as Device Serial Number; for equipment that a company makes, it names the maker of a product that many sites share. A device made in-house, as Patient Treatment Preparation Device Sequence (Table 10.35-1, Type 2), Device Sequence, or Container Component Sequence can record, can carry the hospital as its Manufacturer. That residual risk is accepted because the value names an institution, not a patient: the `public-release` preset has a person review every distinct retained string, but under the presets of the first supported release an in-house device's Manufacturer is kept without review."
+note = "The name of the company that made the equipment or device, which the equipment itself writes in the General Equipment Module. It is kept because it is Type 1 in Contributing Equipment Sequence (PS3.3 Table C.12-1), so it cannot be removed there, and because Table E.1-1 omits it deliberately while listing the identifiers of single devices, such as Device Serial Number; for equipment that a company makes, it names the maker of a product that many sites share. A device made in-house, as Patient Treatment Preparation Device Sequence (Table 10.35-1, Type 2), Device Sequence, or Container Component Sequence can record, can carry the hospital as its Manufacturer. That residual risk is accepted because the value names an institution, not a patient: the `public-release` preset has a person review every distinct retained string, but under the other presets an in-house device's Manufacturer is kept without review."
 
 [[attribute]]
 tag = "(0008,0100)"
@@ -858,7 +858,7 @@ note = "A keyword for a private data element, in the form of the keywords of PS3
 tag = "(0008,1090)"
 keyword = "ManufacturerModelName"
 action = "K"
-note = "The manufacturer's name for the model of the equipment or device, the same for every unit of a commercial model. It identifies a product rather than one device, and Table E.1-1 omits it while listing Device Serial Number, which identifies one device. It is kept, as information about the acquisition. A device made in-house for one patient, such as a bolus that Patient Treatment Preparation Device Sequence (PS3.3 Table 10.35-1, Type 2) records, can have a model name typed by hand that names the hospital; as for Manufacturer, that residual risk is accepted under the first release's presets, and only the `public-release` preset has a person review every distinct retained string."
+note = "The manufacturer's name for the model of the equipment or device, the same for every unit of a commercial model. It identifies a product rather than one device, and Table E.1-1 omits it while listing Device Serial Number, which identifies one device. It is kept, as information about the acquisition. A device made in-house for one patient, such as a bolus that Patient Treatment Preparation Device Sequence (PS3.3 Table 10.35-1, Type 2) records, can have a model name typed by hand that names the hospital; as for Manufacturer, that residual risk is accepted under the other presets, and only the `public-release` preset has a person review every distinct retained string."
 
 [[attribute]]
 tag = "(0010,0213)"

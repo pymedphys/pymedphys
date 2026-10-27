@@ -93,7 +93,7 @@ file's subject, sequestered instances included, and asks
 :func:`~.release_gate.release_condition` about the written file (D-027).
 Where the edits sequester an instance, the values that they did not reach
 are uncollected. An instance out of scope whose IOD the pinned tables
-define, such as a nuclear medicine image or a spatial registration, is
+define, such as a nuclear medicine image or an ultrasound image, is
 planned and edited too when its source is readable, only so that its values
 are collected for its subject's search; it is never written. Where an
 instance of the subject gives no coverage at all, because its source is
@@ -118,6 +118,7 @@ import dataclasses
 import hashlib
 from collections.abc import Callable, Iterable, Mapping
 from pathlib import PurePosixPath
+from typing import TypeAlias
 
 from pymedphys._imports import pydicom
 
@@ -151,6 +152,7 @@ from .face_review import (
     FaceReview,
     carries_visual_features,
     contour_data_sha256,
+    holds_deformation_grid,
     is_rt_dose,
     pixel_data_sha256,
 )
@@ -238,6 +240,7 @@ from .region_defacing import (
     WrittenContour,
     cut_contours,
 )
+from .segmentation_defacing import SEGMENTATION, SegmentationDefacer
 from .run_qc import (
     Dropped,
     PixelRiskMaterial,
@@ -285,6 +288,31 @@ _HELD_SERIES = {
     SeriesProblem.TARGET_IN_BLOCK: VisualFeaturesReason.TARGET_IN_FACE_BLOCK,
     SeriesProblem.EYES_DISAGREE: VisualFeaturesReason.EYES_DISAGREE_WITH_ROIS,
 }
+# Makes the defacer of a PET image or Segmentation from its data set.
+_RegionDefacing: TypeAlias = (
+    "Callable[[pydicom.Dataset], PetDefacer | SegmentationDefacer]"
+)
+
+
+def _region_defacing(iod: IOD, region: DoseBlock | None) -> _RegionDefacing | None:
+    """Return what makes the defacer of a PET image or Segmentation in the
+    block of its frame, ``region``, or None for any other instance, or one
+    without a block."""
+    if region is None:
+        return None
+    if iod.name == PET_IMAGE:
+        return lambda dataset: PetDefacer(region, dataset)
+    if iod.name == SEGMENTATION:
+        return lambda dataset: SegmentationDefacer(region, dataset)
+    return None
+
+
+def _unshown_segments(iod: IOD, redaction: Redaction | None) -> bool:
+    """Whether a Segmentation's segments reach the face block, so that it
+    is held without a verdict, since the QC pack does not yet show
+    segments: one that its defacer gave a mask, which it gives only for
+    pixels in a segment where defacing writes air."""
+    return iod.name == SEGMENTATION and redaction is not None and bool(redaction.masks)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -938,10 +966,15 @@ class InstanceTransform:
     (:attr:`~.reasons.VisualFeaturesReason.DOSE_IN_FACE_BLOCK`). An RT
     Structure Set whose only Frame of Reference is that of one defaced
     series is written with its contours cut by the block
-    (:func:`~.region_defacing.cut_contours`), and a PET image's activity in
+    (:func:`~.region_defacing.cut_contours`), a PET image's activity in
     the block, less that brain, is set to zero
-    (:class:`~.region_defacing.PetDefacer`). Any other RT Structure Set, RT
-    Dose with pixel data, or PET instance in a defaced series' Frame of
+    (:class:`~.region_defacing.PetDefacer`), and a Segmentation's pixels
+    there that lie in a segment are written as its background
+    (:class:`~.segmentation_defacing.SegmentationDefacer`); one with any
+    such pixel is held without a verdict
+    (:attr:`~.reasons.VisualFeaturesReason.NO_FACE_VERDICT`), since the QC
+    pack does not show segments. Any other RT Structure Set, RT Dose with
+    pixel data, PET instance, or Segmentation in a defaced series' Frame of
     Reference, naming none, or referring to a defaced slice, such as one
     whose contours or pixel data cannot be cut, is held whatever its
     verdict (:attr:`~.reasons.VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME`),
@@ -952,7 +985,11 @@ class InstanceTransform:
     written with are those that the reviewed run wrote of that file
     (:attr:`~.reasons.VisualFeaturesReason.OTHER_PIXEL_DATA` or
     :attr:`~.reasons.VisualFeaturesReason.OTHER_CONTOURS` otherwise), and
-    an instance that cannot show a face satisfies it. Each is marked with the option's code and Recognizable
+    an instance that cannot show a face satisfies it. An instance that
+    holds a deformable registration's grid
+    (:func:`~.face_review.holds_deformation_grid`), which no preview of the
+    pack draws, never satisfies it
+    (:attr:`~.reasons.VisualFeaturesReason.NO_FACE_VERDICT`). Each is marked with the option's code and Recognizable
     Visual Features (0028,0302) set to NO, which PS3.15 E.3.2 adds whether
     or not its IOD defines the attribute. Any other instance that can show a
     face is written without them, and its evidence is a
@@ -1115,10 +1152,12 @@ class InstanceTransform:
             face_blocks=self._face_block_counts,
             project_key=key.key_id if profiles.persistent else None,
             readiness_review=readiness_review,
+            # The version of the rules that cleaning applies, as for their
+            # keyed digest.
             reviewed_lists=(
-                (None, None)
-                if cleaning is None
-                else (cleaning.reviewed, cleaning.reviewed_descriptors)
+                None if cleaning is None else cleaning.reviewed,
+                None if cleaning is None else cleaning.reviewed_descriptors,
+                self._region_rules,
             ),
         )
 
@@ -1144,7 +1183,8 @@ class InstanceTransform:
         each CT series, as
         :func:`~pymedphys._dicom.deidentify.face_blocks.find_face_blocks`
         finds them, counted for the release report, and the block in which
-        each RT Dose of a defaced frame is set to zero
+        each RT Dose, RT Structure Set, PET image, and Segmentation of a
+        defaced frame is cleaned
         (:func:`~pymedphys._dicom.deidentify.dose_defacing.find_dose_blocks`).
         """
         if self._birth_dates is not None:
@@ -1155,7 +1195,10 @@ class InstanceTransform:
         self._face_block_counts.record(self._face_blocks.values())
         self._defaced = find_defaced(records, self._face_blocks)
         self._dose_blocks = find_dose_blocks(
-            records, read, self._face_blocks, (RT_DOSE, RT_STRUCTURE_SET, PET_IMAGE)
+            records,
+            read,
+            self._face_blocks,
+            (RT_DOSE, RT_STRUCTURE_SET, PET_IMAGE, SEGMENTATION),
         )
 
     def written_check(
@@ -1244,11 +1287,15 @@ class InstanceTransform:
         and contours that ``writing`` writes. An RT Dose, by its IOD, SOP
         Class UID, or Modality, is held where it has pixel data of more
         frames than the pack's dose-levels previews showed, since only they
-        show its doses as they could show a face (D-017).
+        show its doses as they could show a face (D-017). An instance that
+        holds a deformation grid is held whatever its verdict, since no
+        preview of the pack draws one.
         """
         review = self._face_review
         if review is None or not carries_visual_features(dataset, iod.name):
             return None
+        if holds_deformation_grid(dataset):
+            return HeldVisualFeatures(VisualFeaturesReason.NO_FACE_VERDICT)
         reason = review.hold_reason(
             hashlib.sha256(data).digest(),
             _pixel_digest(writing, dataset),
@@ -1271,8 +1318,8 @@ class InstanceTransform:
 
         An RT Dose without pixel data is not held for its frame, nor one
         that the run sets to zero in its frame's block, nor an RT Structure
-        Set or PET instance that it cleans there, unless it refers to a
-        defaced slice of another series.
+        Set, PET instance, or Segmentation that it cleans there, unless it
+        refers to a defaced slice of another series.
         """
         if iod.name == RT_DOSE and not any(tag in dataset for tag in PIXEL_DATA_TAGS):
             return None
@@ -1301,10 +1348,11 @@ class InstanceTransform:
         return self._dose_blocks.get(next(iter(frames)))
 
     def _region(self, iod: IOD, record: InstanceRecord) -> DoseBlock | None:
-        """Return the block of an RT Structure Set's or PET image's only Frame
-        of Reference, if the run cleans it there
-        (:mod:`~pymedphys._dicom.deidentify.region_defacing`)."""
-        if iod.name not in (RT_STRUCTURE_SET, PET_IMAGE):
+        """Return the block of an RT Structure Set's, PET image's, or
+        Segmentation's only Frame of Reference, if the run cleans it there
+        (:mod:`~pymedphys._dicom.deidentify.region_defacing` and
+        :mod:`~pymedphys._dicom.deidentify.segmentation_defacing`)."""
+        if iod.name not in (RT_STRUCTURE_SET, PET_IMAGE, SEGMENTATION):
             return None
         frames = frames_of(record)
         if len(frames) != 1:
@@ -1324,16 +1372,18 @@ class InstanceTransform:
         dataset: pydicom.Dataset,
         defacing: SeriesDefacing | None,
         dose: DoseBlock | None,
-        pet: DoseBlock | None = None,
+        region: _RegionDefacing | None = None,
         *,
         overlays: int = 0,
     ) -> tuple[Redaction | None, VisualFeaturesReason | None, bool]:
         """Return the instance's Pixel Data blacked out under Clean Pixel Data,
         and, under Clean Recognizable Visual Features, a CT slice's face
-        block written as air, an RT Dose's set to zero, or a PET image's set
-        to zero activity, with why an RT Dose's or PET image's is not, and
-        whether a reviewer approved the regions, with the bit planes of
-        ``overlays`` cleared first (:func:`~.pixel_cleaning.overlay_planes`).
+        block written as air, an RT Dose's set to zero, or a PET image's or
+        Segmentation's cleaned by the defacer that ``region`` makes of its
+        data set, with why an RT Dose's, PET image's, or Segmentation's is
+        not, and whether a reviewer approved the regions, with the bit
+        planes of ``overlays`` cleared first
+        (:func:`~.pixel_cleaning.overlay_planes`).
 
         The redaction is None where nothing applies, or the instance has no
         top-level pixel data. The regions are those that the redaction
@@ -1341,9 +1391,10 @@ class InstanceTransform:
         that the finder finds with those of the region rule whose key is
         the instance's, if any, and none without Clean Pixel Data. An RT Dose
         whose grid :class:`~.dose_defacing.RtDoseDefacer` cannot set to
-        zero, or holds, or a PET image that
-        :class:`~.region_defacing.PetDefacer` cannot clean, is blacked out
-        as though it had no block, with
+        zero, or holds, or a PET image or Segmentation that
+        :class:`~.region_defacing.PetDefacer` or
+        :class:`~.segmentation_defacing.SegmentationDefacer` cannot clean, is
+        blacked out as though it had no block, with
         :attr:`~.reasons.VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME` or
         the defacer's reason.
 
@@ -1365,7 +1416,7 @@ class InstanceTransform:
             self._finder is None
             and block is None
             and dose is None
-            and pet is None
+            and region is None
             and not overlays
         ):
             return None, None, False
@@ -1379,11 +1430,11 @@ class InstanceTransform:
         try:
             try:
                 return self._cleaned(
-                    source, dataset, block, dose, pet, approved, decoded, overlays
+                    source, dataset, block, dose, region, approved, decoded, overlays
                 )
             except PixelsNotReviewed:
                 return self._cleaned(
-                    source, dataset, block, dose, pet, None, None, overlays
+                    source, dataset, block, dose, region, None, None, overlays
                 )
         except PixelDataRefused as refused:
             raise _Refused(refused.reason) from None
@@ -1394,7 +1445,7 @@ class InstanceTransform:
         dataset: pydicom.Dataset,
         block: FaceBlock | None,
         dose: DoseBlock | None,
-        pet: DoseBlock | None,
+        region: _RegionDefacing | None,
         approved: Regions | None,
         decoded: bytes | None,
         overlays: int,
@@ -1417,13 +1468,14 @@ class InstanceTransform:
             if self._region_rules is None or reviewed
             else self._region_rules.boxes_for(dataset)
         )
-        if dose is not None or pet is not None:
+        if dose is not None or region is not None:
             try:
-                defacer = (
-                    RtDoseDefacer(dose, dataset)
-                    if dose is not None
-                    else PetDefacer(pet, dataset)  # type: ignore[arg-type]
-                )
+                defacer: RtDoseDefacer | PetDefacer | SegmentationDefacer
+                if dose is not None:
+                    defacer = RtDoseDefacer(dose, dataset)
+                else:
+                    assert region is not None
+                    defacer = region(dataset)
                 redaction = (
                     black_out(
                         source,
@@ -1643,7 +1695,7 @@ class InstanceTransform:
                 dataset,
                 defacing,
                 dose,
-                region if iod.name == PET_IMAGE else None,
+                _region_defacing(iod, region),
                 overlays=overlays or 0,
             )
             # The markers write no pixel data, so the face review is of the
@@ -1670,11 +1722,12 @@ class InstanceTransform:
                     )
                 except ContoursRefused:
                     undefaced = VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME
-            face = (
-                HeldVisualFeatures(_HELD_SERIES[defacing.problem])
-                if defacing is not None and defacing.held
-                else self._face_hold(data, dataset, iod, writing)
-            )
+            if defacing is not None and defacing.held:
+                face = HeldVisualFeatures(_HELD_SERIES[defacing.problem])
+            elif _unshown_segments(iod, redaction):
+                face = HeldVisualFeatures(VisualFeaturesReason.NO_FACE_VERDICT)
+            else:
+                face = self._face_hold(data, dataset, iod, writing)
             frame = (
                 self._frame_hold(
                     iod, record, dataset, dose if dose is not None else region

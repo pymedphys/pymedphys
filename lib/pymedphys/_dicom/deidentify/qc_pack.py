@@ -68,8 +68,9 @@ A pack holds, for one run:
   positions of its instances, by which an attestation gives each series'
   face verdict (D-016, D-017); and ``series_risks``: each series of released or held instances with
   findings of its series assessment, a CT, MR, PET, or RT Dose volume, a
-  localizer, the head or neck, or unreadable evidence of any of them, with
-  the instances that show each (D-015, D-017);
+  localizer, an RT Image, a Segmentation, the head or neck, or unreadable
+  evidence of any of them, with the instances that show each (D-015,
+  D-017);
 - ``redactions``: each released or held instance whose Pixel Data the
   Clean Pixel Data Option cleaned, with why it is held, its number of
   frames, its Rows and Columns, the regions blacked out in each frame,
@@ -84,22 +85,25 @@ A pack holds, for one run:
 - ``previews``: each image preview, by its file in the previews directory
   beside the pack, with what it shows and the file's SHA-256, so that an
   attestation of the pack covers them, among them a contour sheet of each
-  instance with contours, such as an RT Structure Set; and
+  instance with contours, such as an RT Structure Set, and a segments sheet
+  of each Segmentation; and
   ``not_previewed``: each instance whose pixel data could not be previewed,
-  whose contours could not be shown, or, for an RT Dose, whose dose levels
-  could not be drawn, with why (D-017). The images are
+  whose contours could not be shown, for an RT Dose, whose dose levels
+  could not be drawn, or, for a Segmentation, whose segments could not be
+  drawn, with why (D-017). The images are
   made by :mod:`~pymedphys._dicom.deidentify.qc_previews`.
 - ``source_gaps``: each instance whose source lacks an attribute that its
   IOD unconditionally requires, with each such attribute's place and Type,
   which the run reports and never acts on (MIDI-BP-03); the release report
   gives only their counts by attribute and Type;
 - ``reviewed_lists``: the salted digest of the reviewed ROI names and
-  descriptors lists that the run's descriptor cleaning applied, as
+  descriptors lists that the run's descriptor cleaning applied, and of the
+  reviewed region rules that its Clean Pixel Data applied, as
   :func:`~pymedphys._dicom.deidentify.risk_assessment.lists_digest` gives
-  it, with its salt, or null for a run whose reporter stated no lists; a
-  risk assessment of the run binds these lists, so that what its record
-  binds is what the run applied, not what whoever records it supplies
-  (D-053).
+  it, with its salt, or null for a run whose reporter stated none; a risk
+  assessment of the run binds these lists and rules, so that what its
+  record binds is what the run applied, not what whoever records it
+  supplies (D-053).
 
 Its ``reference`` is an opaque random token that the release report records
 with the attestation's outcome, in place of the review material (D-016). It
@@ -140,7 +144,7 @@ from .reviewed_roi_names import Outcome
 from .text_detection import TextBox
 
 # The format of the pack document. A change to its fields takes a new label.
-FORMAT = "pymedphys-deid-qc-pack/17"
+FORMAT = "pymedphys-deid-qc-pack/19"
 # The bytes of a written file shown on each side of a residual's offset.
 EXCERPT_BYTES = 48
 # The SHA-256 that face_review.contour_data_sha256 gives a file without
@@ -266,7 +270,8 @@ class InstanceEntry:
         written file the gate did not hand over or could not be read, or
         whose pixel data the pack's previews that could show a face do not
         draw in every frame, which for an RT Dose only its dose-levels
-        previews can, so that no verdict releases them.
+        previews can, and for a Segmentation only its segments sheet, so
+        that no verdict releases them.
     contour_sha256 : str, optional
         Likewise, the :func:`~.face_review.contour_data_sha256` of the file
         written, which binds a series' face verdict to the contours that
@@ -875,6 +880,10 @@ class PreviewKind(enum.Enum):
     # renders of an RT Structure Set's contours, as written, united in each
     # frame with the image series that they lie on, and of each ROI alone
     STRUCTURE_SET_CONTOURS = "structure-set-contours"
+    # renders of a Segmentation's segments, as written, united with the
+    # image series in their frame, and each alone, drawing every frame of
+    # the Segmentation, listed first
+    SEGMENTATION_SEGMENTS = "segmentation-segments"
 
 
 class NotPreviewedReason(enum.Enum):
@@ -906,6 +915,19 @@ class NotPreviewedReason(enum.Enum):
     # previews are kept, such as its cine strip, which can leave a low dose
     # black, and a redaction preview of each frame where it was cleaned.
     DOSE_LEVELS_NOT_SHOWN = "dose-levels-not-shown"
+    # a Segmentation, by qc_segments.is_segmentation, that no segments sheet
+    # shows whole: one that is FRACTIONAL, cannot be placed, has a pixel in
+    # no segment that it describes, or whose sheet would be too tall. Its
+    # other previews are kept, as an RT Dose's are.
+    SEGMENTS_NOT_SHOWN = "segments-not-shown"
+
+
+# The reasons that say only that no preview that could show a face shows an
+# instance whole, whose other previews, such as a redaction preview of each
+# frame where it was cleaned, are kept.
+FACE_PREVIEW_REASONS = frozenset(
+    {NotPreviewedReason.DOSE_LEVELS_NOT_SHOWN, NotPreviewedReason.SEGMENTS_NOT_SHOWN}
+)
 
 
 PREVIEW_NAME = re.compile(r"P-[0-9]{4,}\.png")
@@ -1202,10 +1224,11 @@ class SourceGapEntry:
 
 @dataclasses.dataclass(frozen=True, repr=False)
 class ListsDigest:
-    """The salted digest of the reviewed lists that a run applied.
+    """The salted digest of the reviewed lists and region rules that a run applied.
 
     A digest of a short list, with its salt, can be tested against guesses
-    of the list, which holds source names and values, so it is kept only in
+    of the list, which holds source names and values, or of the rules,
+    which hold manufacturers' and model names, so it is kept only in
     confidential QC material, and its ``repr`` shows neither.
 
     Attributes
@@ -1214,7 +1237,7 @@ class ListsDigest:
         64 hex digits, random for each run.
     sha256 : str
         :func:`~pymedphys._dicom.deidentify.risk_assessment.lists_digest` of
-        the lists under ``salt``, 64 hex digits.
+        the lists and rules under ``salt``, 64 hex digits.
     """
 
     salt: str
@@ -1571,12 +1594,12 @@ class QcPack:
     def _check_redaction_previews(self) -> None:
         """Each cleaned instance has a redaction preview of each frame, in
         order, unless it is listed as not previewed for a reason other than
-        its dose levels, and no other has one."""
+        its dose levels or its segments, and no other has one."""
         cleaned = {entry.position: entry.frames for entry in self.redactions}
         unshown = {
             entry.position
             for entry in self.not_previewed
-            if entry.reason is not NotPreviewedReason.DOSE_LEVELS_NOT_SHOWN
+            if entry.reason not in FACE_PREVIEW_REASONS
         }
         shown: dict[int, list[int]] = {}
         for preview in self.previews:
@@ -1598,7 +1621,7 @@ class QcPack:
                 raise QcPackError(
                     "a cleaned instance needs a redaction preview of each "
                     "frame, in order, unless it is listed as not previewed "
-                    "for a reason other than its dose levels"
+                    "for a reason other than its dose levels or its segments"
                 )
 
     def _check_names(self) -> None:
@@ -1658,7 +1681,8 @@ def pictured_frames(
     kinds : collection of str, optional
         The kinds of preview to count, as :class:`PreviewKind` values; by
         default every kind but a contour sheet. Only dose-levels previews
-        show an RT Dose as it could show a face.
+        show an RT Dose as it could show a face, and only segments sheets a
+        Segmentation.
 
     Returns
     -------
@@ -1666,14 +1690,19 @@ def pictured_frames(
         For each position whose frames those previews list from frame 0
         with none missing, how many they list. A contour sheet's frames
         never count, since it shows the volume that it is drawn with only
-        as a surface.
+        as a surface, and a segments sheet's count only for its
+        Segmentation, the position of its first frame, for the same reason.
     """
     contours = PreviewKind.STRUCTURE_SET_CONTOURS.value
+    segments = PreviewKind.SEGMENTATION_SEGMENTS.value
     framed: dict[int, set[int]] = {}
     for kind, frames in previews:
         if kind == contours or (kinds is not None and kind not in kinds):
             continue
-        for position, frame in frames:
+        listed = list(frames)
+        if kind == segments and listed:
+            listed = [frame for frame in listed if frame[0] == listed[0][0]]
+        for position, frame in listed:
             framed.setdefault(position, set()).add(frame)
     return {
         position: len(frames)

@@ -289,7 +289,48 @@ def test_c_applies_where_the_options_give_k_and_c():
 def test_the_schemes_left_out_of_the_table_are_never_matched():
     left_out = set(generate.PIN.left_out_structured_content_schemes)
 
-    assert left_out | {"SRT", "SNM3", "99SDM"} == content_items.UNMATCHED_SCHEMES
+    assert left_out == content_items.UNMATCHED_SCHEMES
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.4-01")
+@pytest.mark.parametrize("designator", ["SRT", "SNM3", "99SDM"])
+def test_a_retired_snomed_code_is_looked_up_as_its_snomed_ct_code(designator):
+    # PS3.16 Table O-1 maps G-C0E3 to Finding Site, SCT 363698007, whose
+    # TEXT row of Table E.3.4-1 gives D.
+    retired = _enhanced_ct(_text(("G-C0E3", designator, "Finding site")))
+    expected = {
+        _path(tag=ACQUISITION_CONTEXT): "K",
+        _path((ACQUISITION_CONTEXT, 0), tag=TEXT_VALUE): "D",
+    }
+
+    assert dict(_actions((CSC,), retired)) == expected
+    assert dict(_actions((CSC,), _enhanced_ct(_text(FINDING_SITE)))) == expected
+    written = _written((CSC,), retired)
+    assert len(written.AcquisitionContextSequence) == 1
+    assert written.AcquisitionContextSequence[0].TextValue
+
+
+def test_a_retired_snomed_code_of_an_unlisted_concept_is_not_listed():
+    # Table O-1 maps T-D1100 to Head structure, SCT 69536005, which Table
+    # E.3.4-1 does not list.
+    head = _item(
+        "CODE",
+        ("T-D1100", "SRT", "Head"),
+        ConceptCodeSequence=pydicom.Sequence([_code("VAL1", "99PMP", "Fixture")]),
+    )
+    dataset = _enhanced_ct(head)
+
+    assert dict(_actions((CSC,), dataset)) == {_path(tag=ACQUISITION_CONTEXT): "K"}
+    (written,) = _written((CSC,), dataset).AcquisitionContextSequence
+    assert written.ConceptNameCodeSequence[0].CodeValue == "T-D1100"
+    assert written.ConceptCodeSequence[0].CodeValue == "VAL1"
+
+
+def test_a_retired_snomed_code_of_a_concept_to_remove_empties_its_sequence():
+    # F-02455 is Social History, SCT 160476009, whose TEXT row gives X.
+    dataset = _enhanced_ct(_coded(), _text(("F-02455", "SRT", "Social history")))
+
+    assert not _actions((CSC,), dataset)
 
 
 def test_nothing_is_given_without_the_option():
@@ -361,10 +402,14 @@ def test_the_walker_gives_the_content_item_actions_in_place_of_the_rules():
     [
         _text(ACCESSION_NUMBER),
         _item("DATE", ACQUISITION_DATE, Date="20260101"),
-        # Concept names coded by a scheme whose rows the table cannot hold.
+        # A concept name coded by a scheme whose rows the table cannot hold.
         _item("DATE", ("11778-8", "LN", "EDD"), Date="20260101"),
+        # Retired SNOMED codes that PS3.16 Table O-1 does not map, one in
+        # another case than the table's.
         _item("CODE", ("R-F0101", "SRT", "Fixture"), ConceptCodeSequence=[]),
         _item("CODE", ("F-0101", "SNM3", "Fixture"), ConceptCodeSequence=[]),
+        _item("CODE", ("Z-99999", "99SDM", "Fixture"), ConceptCodeSequence=[]),
+        _item("CODE", ("t-d1100", "SRT", "Fixture"), ConceptCodeSequence=[]),
     ],
 )
 def test_an_item_that_cannot_be_kept_gives_its_sequence_its_basic_action(item):
@@ -489,15 +534,25 @@ def test_an_item_whose_concept_cannot_be_read_is_not_kept(item):
     assert not _actions((CSC,), _enhanced_ct(_coded(), item))
 
 
-def test_a_long_code_value_is_not_listed():
+def _long_code_value(designator):
     item = _coded()
     code = item.ConceptNameCodeSequence[0]
     del code.CodeValue
     code.LongCodeValue = "FIXTURE-LONG-CODE-VALUE-0001"
+    code.CodingSchemeDesignator = designator
+    return item
 
-    assert dict(_actions((CSC,), _enhanced_ct(item))) == {
+
+def test_a_long_code_value_is_not_listed():
+    assert dict(_actions((CSC,), _enhanced_ct(_long_code_value("99PMP")))) == {
         _path(tag=ACQUISITION_CONTEXT): "K"
     }
+
+
+@pytest.mark.parametrize("designator", ["LN", "SRT"])
+def test_a_long_code_value_of_an_unmatched_or_retired_scheme_is_not_kept(designator):
+    # No SNOMED ID is a Long Code Value, so Table O-1 cannot map it.
+    assert not _actions((CSC,), _enhanced_ct(_long_code_value(designator)))
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.4-01")
@@ -718,6 +773,19 @@ def test_the_walker_gives_content_sequence_items_their_actions():
     # sequence, so the report is sequestered (D-021).
     without = plan_instance(source, rules, iod)
     assert [s.path for s in without.sequestrations] == [outer]
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.4-01")
+def test_a_retired_snomed_code_deep_in_a_report_takes_its_options_action():
+    # G-D321 is Start DateTime, SCT 398201009: D, and K under Full Dates.
+    start = _item("DATETIME", ("G-D321", "SRT", "Start"), DateTime="20260101120000")
+    dataset = _report(_coded(), start, depth=3)
+    *_, innermost = _tree(3)
+    value = _path(*innermost.items, (CONTENT, 1), tag="(0040,A120)")
+
+    assert _actions((CSC,), dataset, REPORT)[value] == "D"
+    full_dates = (CSC, "retain_longitudinal_full_dates")
+    assert _actions(full_dates, dataset, REPORT)[value] == "K"
 
 
 def test_the_root_of_a_report_is_a_content_item_too():

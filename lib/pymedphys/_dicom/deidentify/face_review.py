@@ -26,8 +26,8 @@ given that pack (:func:`read_face_review`). The pack also records the
 SHA-256 of the pixel data of each file that the first run wrote
 (:func:`pixel_data_sha256`), only where previews that could show a face
 draw every frame of them, which for an RT Dose (:func:`is_rt_dose`) only
-dose-levels previews do, and the second run holds pixel data of more frames
-than they listed;
+dose-levels previews do, and for a Segmentation only its segments sheet, and
+the second run holds pixel data of more frames than they listed;
 and of the contours of each RT Structure Set that it wrote
 (:func:`contour_data_sha256`), only where its contour sheet shows them. An
 instance that carries visual features (:func:`carries_visual_features`)
@@ -74,6 +74,11 @@ from .reasons import VisualFeaturesReason
 PIXEL_DATA_TAGS = (0x7FE00008, 0x7FE00009, 0x7FE00010)
 # The IOD whose contours can trace a face, although it has no pixel data.
 _RT_STRUCTURE_SET = "RT Structure Set"
+# Deformable Registration Sequence (0064,0002), and the Deformable
+# Registration Grid Sequence (0064,0005) in its items, whose Vector Grid Data
+# (0064,0009) can follow the patient's outline.
+DEFORMABLE_REGISTRATION_SEQUENCE = 0x00640002
+DEFORMABLE_REGISTRATION_GRID_SEQUENCE = 0x00640005
 _SHA256 = re.compile(r"[0-9a-f]{64}")
 _NO_PIXELS = bytes.fromhex(NO_PIXELS_SHA256)
 
@@ -582,9 +587,37 @@ def carries_visual_features(dataset: pydicom.Dataset, iod: str) -> bool:
     """Whether an instance can show a face, so that it needs a verdict.
 
     An instance does where it holds Pixel Data, Float Pixel Data, or Double
-    Float Pixel Data, or is an RT Structure Set, whose contours can trace
-    the skin surface. Any other, such as an RT Plan or an MR Spectroscopy
-    instance, has nothing that can show a face, so it satisfies the option
-    without a verdict.
+    Float Pixel Data, is an RT Structure Set, whose contours can trace the
+    skin surface, or holds a deformation grid
+    (:func:`holds_deformation_grid`). Any other, such as an RT Plan, an MR
+    Spectroscopy instance, or a spatial registration, has nothing that can
+    show a face, so it satisfies the option without a verdict.
     """
-    return iod == _RT_STRUCTURE_SET or any(tag in dataset for tag in PIXEL_DATA_TAGS)
+    return (
+        iod == _RT_STRUCTURE_SET
+        or any(tag in dataset for tag in PIXEL_DATA_TAGS)
+        or holds_deformation_grid(dataset)
+    )
+
+
+def holds_deformation_grid(dataset: pydicom.Dataset) -> bool:
+    """Whether an instance holds a deformable registration's grid.
+
+    It does where an item of its Deformable Registration Sequence
+    (0064,0002) holds a Deformable Registration Grid Sequence (0064,0005),
+    whose Vector Grid Data (0064,0009) give a displacement at each point of
+    a grid over the patient, which can follow the outline of the face. No
+    preview of the QC pack draws a grid, so no verdict is of one. A
+    Deformable Registration Sequence whose items cannot be read may hold
+    one.
+    """
+    if DEFORMABLE_REGISTRATION_SEQUENCE not in dataset:
+        return False
+    try:
+        return any(
+            DEFORMABLE_REGISTRATION_GRID_SEQUENCE in item
+            for item in dataset[DEFORMABLE_REGISTRATION_SEQUENCE].value
+        )
+    # Whatever reading the sequence raises, it may hold a grid.
+    except Exception:  # pylint: disable = broad-exception-caught
+        return True

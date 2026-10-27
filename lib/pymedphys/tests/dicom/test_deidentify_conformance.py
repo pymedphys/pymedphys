@@ -14,6 +14,10 @@
 
 """The conformance statement generated from a policy and the pinned tables."""
 
+# Every section of the statement is checked against the same composed policies
+# and shared statements, so the checks stay in one module.
+# pylint: disable = too-many-lines
+
 import dataclasses
 import platform
 import re
@@ -52,6 +56,18 @@ REFERRING_PHYSICIAN_IDENTIFICATION = ("(0008,0096)",)
 # Asserter Identification Sequence, which the Basic Profile keeps, within RT
 # Assertions Sequence.
 ASSERTER_IDENTIFICATION = ("(0044,0110)", "(0044,0103)")
+TREATMENT_MACHINE = ("(300A,0206)",)
+# Interlock Resolution User Sequence, in an RT Beams Treatment Record.
+INTERLOCK_USER = ("(3008,0020)", "(300A,0740)", "(300A,0746)")
+INSTITUTION_CODE_SEQUENCE = "(0008,0082)"  # X/Z/D in the Basic Profile
+PIXEL_DATA_PROVIDER_URL = "(0028,7FE0)"  # X/Z/D by a supplementary rule
+# The attributes that a reviewed rule gives a dummy value, whatever their VR.
+REVIEWED_DUMMY_ATTRIBUTES = {
+    "(0040,1101)",
+    "(0008,1111)",
+    "(0028,2000)",
+    "(0040,A073)",
+}
 CT_FOR_PROCESSING = "1.2.840.10008.5.1.4.1.1.2.3"
 UNESCAPED_PIPE = re.compile(r"(?<!\\)\|")
 
@@ -116,7 +132,7 @@ def _removed_with_a_sequence(sequence_action, iod, path):
             action = compound_actions.resolve_plain_in_iod(
                 iod, tag, path[:depth], action
             )
-        if action not in walker.DESCENDED:
+        if not walker.descends(tag, action):
             return True
     return False
 
@@ -209,8 +225,19 @@ def test_compound_actions_are_resolved_at_every_place_a_supported_iod_defines_th
                 action = compound_actions.resolve_in_iod(
                     iod, entry.tag.replace("60xx", "6000"), path, entry.action
                 )
+                if action == "D" and not _has_dummy_value(entry.tag):
+                    action = conformance.SEQUESTER
                 expected.append(conformance.Place(name, path, action))
         assert entry.places == tuple(expected), entry.tag
+
+
+def _has_dummy_value(tag):
+    attribute = standard.dictionary_attribute(tag.replace("60xx", "6000"))
+    return (
+        tag in REVIEWED_DUMMY_ATTRIBUTES
+        or attribute is None
+        or bool(dummy_values.DUMMY_VRS.intersection(attribute.vrs))
+    )
 
 
 @pytest.mark.deid_requirement("PS3.15-E.1.3-01")
@@ -218,6 +245,8 @@ def test_institution_name_is_resolved_by_its_type_at_each_place(statement_for):
     places = _entry(statement_for("basic"), INSTITUTION_NAME).places
     found = {(p.iod, p.path): p.action for p in places}
     assert found[("RT Plan", ASSERTER_IDENTIFICATION)] == "Z"
+    assert found[("RT Beams Treatment Record", TREATMENT_MACHINE)] == "Z"
+    assert found[("RT Beams Treatment Record", INTERLOCK_USER)] == "D"
     assert found[("RT Structure Set", ())] == "X"
     # Places within a sequence that the Basic Profile removes are not listed.
     assert ("RT Structure Set", ROI_CREATOR) not in found
@@ -226,9 +255,36 @@ def test_institution_name_is_resolved_by_its_type_at_each_place(statement_for):
     text = conformance_markdown.render_markdown(statement_for("basic"))
     row = next(line for line in text.splitlines() if f"| {INSTITUTION_NAME} |" in line)
     assert row.endswith(
-        "| Z within RT Assertions Sequence (0044,0110) > Asserter Identification "
-        "Sequence (0044,0103) in RT Plan. X elsewhere. |"
+        "| Z within Treatment Machine Sequence (300A,0206) in RT Beams Treatment "
+        "Record; within RT Assertions Sequence (0044,0110) > Asserter "
+        "Identification Sequence (0044,0103) in RT Plan. D within Treatment "
+        "Session Beam Sequence (3008,0020) > Interlock Sequence (300A,0740) > "
+        "Interlock Resolution User Sequence (300A,0746) in RT Beams Treatment "
+        "Record. X elsewhere. |"
     )
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
+def test_a_d_without_a_dummy_value_is_listed_as_sequestering(statement_for):
+    # D on a VR without a generic dummy value, and without a reviewed rule,
+    # sequesters the instance rather than write an invalid value.
+    statement = statement_for("basic")
+    places = {
+        (p.iod, p.path): p.action
+        for p in _entry(statement, INSTITUTION_CODE_SEQUENCE).places
+    }
+    assert places[("RT Beams Treatment Record", INTERLOCK_USER)] == (
+        conformance.SEQUESTER
+    )
+    assert places[("RT Plan", ASSERTER_IDENTIFICATION)] == "Z"
+    # A required UR value has no dummy value either.
+    url = {p.action for p in _entry(statement, PIXEL_DATA_PROVIDER_URL).places}
+    assert url == {conformance.SEQUESTER}
+    # Reviewed rules give these their dummy values, whatever their VR.
+    for tag in REVIEWED_DUMMY_ATTRIBUTES:
+        assert conformance.SEQUESTER not in {
+            p.action for p in _entry(statement, tag).places
+        }, tag
 
 
 @pytest.mark.deid_requirement("PS3.15-E.1.3-01")
@@ -439,7 +495,7 @@ def test_places_name_their_enclosing_sequences(statement_for):
     text = conformance_markdown.render_markdown(statement_for("basic"))
     row = next(line for line in text.splitlines() if f"| {INSTITUTION_NAME} |" in line)
     assert (
-        "Z within RT Assertions Sequence (0044,0110) > Asserter Identification "
+        "within RT Assertions Sequence (0044,0110) > Asserter Identification "
         "Sequence (0044,0103) in RT Plan." in row
     )
     assert row.endswith(". X elsewhere. |")
@@ -507,7 +563,7 @@ def test_no_enabled_preset_has_an_incomplete_statement():
 @pytest.mark.deid_requirement("PS3.15-E.1.3-01", "PS3.15-E.3.5-02")
 @pytest.mark.parametrize("name", ["basic", "basic-clean-descriptors"])
 def test_the_first_supported_releases_presets_have_complete_statements(name):
-    # The presets that the first supported release is to enable (Scope).
+    # Two of the presets that the first supported release is to enable (Scope).
     assert not _statement(name).pending
 
 

@@ -44,7 +44,7 @@ TEXT_VRS = {"LO", "SH", "LT", "ST", "UC", "UT"}
 TEMPORAL_VRS = {"DA", "DT", "TM"}
 # The IODs of the first supported release.
 # The CT and RT IODs that the first supported release has always supported,
-# and the CT, MR, and PET IODs that it adds.
+# and the CT, MR, and PET IODs that the maintainer added on 7 October 2026.
 CT_AND_RT_IODS = ("CT Image", "RT Dose", "RT Plan", "RT Structure Set")
 ADDED_IODS = (
     "Enhanced CT Image",
@@ -58,9 +58,9 @@ ADDED_IODS = (
     "Enhanced PET Image",
     "Legacy Converted Enhanced PET Image",
 )
-SUPPORTED_IODS = CT_AND_RT_IODS + ADDED_IODS
-# The IODs of the target coverage that the first supported release does not
-# support, whose attributes are reviewed ahead of supporting them.
+# The IODs of the target coverage whose attributes were reviewed ahead of
+# supporting them, against the CT, MR, PET, and RT IODs above, and those of
+# them that the first supported release now supports.
 TARGET_IODS = (
     "RT Beams Treatment Record",
     "RT Image",
@@ -68,6 +68,10 @@ TARGET_IODS = (
     "Deformable Spatial Registration",
     "Segmentation",
 )
+REGISTRATION_IODS = ("Spatial Registration", "Deformable Spatial Registration")
+SUPPORTED_TARGET_IODS = (*REGISTRATION_IODS, "RT Beams Treatment Record")
+REVIEWED_AGAINST = CT_AND_RT_IODS + ADDED_IODS
+SUPPORTED_IODS = REVIEWED_AGAINST + SUPPORTED_TARGET_IODS
 # The Radiation Dose SR IODs, which the maintainer added to the planned
 # coverage on 25 October 2026, whose text, UID, and date attributes are
 # reviewed ahead of supporting them.
@@ -338,8 +342,11 @@ def test_the_basic_profile_keeps_no_person_name():
 def test_every_text_attribute_a_supported_iod_uses_and_table_e1_1_omits_has_a_rule():
     omitted = _omitted_text()
 
-    # Checked by hand against the 2026d PS3.3, PS3.6, and PS3.15.
-    assert len(omitted) == 141
+    # Checked by hand against the 2026d PS3.3, PS3.6, and PS3.15; the
+    # registration IODs add Content Description and Frame of Reference
+    # Transformation Comment, and the RT Beams Treatment Record five
+    # operator-typed descriptions.
+    assert len(omitted) == 148
     assert omitted <= set(_rules())
     assert {"(0008,0100)", "(300A,00C2)", "(60xx,1500)"} <= omitted
 
@@ -354,7 +361,7 @@ def test_the_rules_for_omitted_text_fall_in_the_reviewed_groups():
 
     assert groups == {
         # Operator-typed labels and text.
-        ("X/Z/D", ((CLEAN_DESCRIPTORS, "C"),)): 62,
+        ("X/Z/D", ((CLEAN_DESCRIPTORS, "C"),)): 69,
         # Accessory and equipment identifiers.
         ("X/Z/D", ((DEVICE_IDENTITY, "K"),)): 24,
         # Coded and technical values, and De-identification Method.
@@ -494,11 +501,11 @@ def _used_by(names, vrs):
     }
 
 
-def test_the_target_iods_are_generated_and_not_yet_supported():
+def test_the_target_iods_are_generated_and_only_the_record_and_registrations_supported():
     tables = iods.load_iod_tables()
 
     assert set(TARGET_IODS) <= set(tables.iods)
-    assert not set(TARGET_IODS) & scope.SUPPORTED_IODS
+    assert set(TARGET_IODS) & scope.SUPPORTED_IODS == set(SUPPORTED_TARGET_IODS)
     assert set(SUPPORTED_IODS) == scope.SUPPORTED_IODS
 
 
@@ -506,7 +513,7 @@ def test_the_target_iods_are_generated_and_not_yet_supported():
 def test_the_text_that_only_the_target_iods_use_has_reviewed_rules():
     listed = set(_table_e1_1())
     target = (
-        _used_by(TARGET_IODS, TEXT_VRS) - _used_by(SUPPORTED_IODS, TEXT_VRS) - listed
+        _used_by(TARGET_IODS, TEXT_VRS) - _used_by(REVIEWED_AGAINST, TEXT_VRS) - listed
     )
     rules = _rules()
 
@@ -542,11 +549,11 @@ def test_every_uid_and_date_that_the_target_iods_use_has_a_role():
         assert isinstance(uids.role(tag), uid_roles.UIDRole), tag
     for tag in target_dates:
         assert isinstance(temporal.role(tag), temporal_roles.TemporalRole), tag
-    # Those that no supported IOD uses are all listed in Table E.1-1: the
-    # UIDs are replaced as identifiers of instances, and the dates and times
-    # of treatment move with the subject's other dates.
-    assert target_uids - _used_by(SUPPORTED_IODS, {"UI"}) == TARGET_UIDS
-    assert target_dates - _used_by(SUPPORTED_IODS, TEMPORAL_VRS) == TARGET_DATES
+    # Those that none of the IODs reviewed against uses are all listed in
+    # Table E.1-1: the UIDs are replaced as identifiers of instances, and the
+    # dates and times of treatment move with the subject's other dates.
+    assert target_uids - _used_by(REVIEWED_AGAINST, {"UI"}) == TARGET_UIDS
+    assert target_dates - _used_by(REVIEWED_AGAINST, TEMPORAL_VRS) == TARGET_DATES
     for tag in TARGET_UIDS:
         assert listed[tag].basic_profile == "U", tag
         assert uids.role(tag) is uid_roles.UIDRole.INSTANCE, tag
@@ -699,7 +706,7 @@ def test_the_basic_profile_keeps_only_the_reviewed_coded_and_technical_text():
         for tag in _supported_text()
     }
 
-    assert len(basic) == 261
+    assert len(basic) == 270
     assert {tag for tag, action in basic.items() if action == "K"} == (
         KEPT_TEXT | ADDED_KEPT_TEXT
     )

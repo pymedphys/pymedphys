@@ -333,7 +333,8 @@ def qc_pack_of(
         The SHA-256 of each source file that the run's first pass read, by
         run position, which the pack records with each instance.
     reviewed_lists : ~pymedphys._dicom.deidentify.qc_pack.ListsDigest, optional
-        The salted digest of the reviewed lists that the run applied, from
+        The salted digest of the reviewed lists and region rules that the
+        run applied, from
         :func:`~pymedphys._dicom.deidentify.risk_assessment.bind_lists`;
         none by default.
 
@@ -580,7 +581,8 @@ def _written_sha256(
     contour sheet does not show, and the pixel data's where the file has
     pixel data of which the pack's previews that could show a face do not
     draw every frame, which for an RT Dose only its dose-levels previews
-    can, so that no verdict releases either unseen.
+    can, and for a Segmentation only its segments sheet, so that no verdict
+    releases either unseen.
     """
     digests: dict[str, str | None] = {"pixel_sha256": None, "contour_sha256": None}
     try:

@@ -508,6 +508,31 @@ PS3_16_PAGES = {
     "chtml/part16/sect_CID_7005.html": ("Table CID 7005",),
     "chtml/part16/chapter_L.html": tuple(ANNEX_L),
 }
+# Annex O's Table O-1, with invented Concept IDs that have valid check digits,
+# one of an extension, and one row published twice, as 2026d publishes one.
+TABLE_O_1_HEADER = (
+    "Concept ID (SCT)",
+    "SNOMED ID (SRT)",
+    "SNOMED Fully Specified Name",
+)
+TABLE_O_1_ROWS = (
+    ("900011000", "T-F0001", "Fixture structure (body structure)"),
+    ("900012007", "F-F0002", "Fixture finding (finding)"),
+    ("9000110107", "L-F0003", "Fixture organism (organism)"),
+    ("900012007", "F-F0002", "Fixture finding (finding)"),
+)
+TABLE_O_1_REPEATED = (("900012007", "F-F0002"),)
+TABLE_O_1_PARSED = (
+    codes.SnomedId("900011000", "T-F0001"),
+    codes.SnomedId("900012007", "F-F0002"),
+    codes.SnomedId("9000110107", "L-F0003"),
+)
+ANNEX_O_PATH = "chtml/part16/chapter_O.html"
+
+
+def _table_o_1(header=TABLE_O_1_HEADER, rows=TABLE_O_1_ROWS):
+    page = _page(_table("Table O-1. Fixture Mapping", header, rows))
+    return chtml.select_table(chtml.extract_tables(page), "Table O-1")
 
 
 def _ps3_16_page(labels):
@@ -1387,6 +1412,89 @@ def test_table_8_1_designators_may_share_a_uid():
     schemes = ps3_16.parse_code_table("Table 8-1", _ps3_16("Table 8-1"))
 
     assert schemes[0].uid == schemes[1].uid
+
+
+def test_parse_table_o_1():
+    # Without the names, and without the second of the rows published twice.
+    assert ps3_16.parse_table_o_1(_table_o_1(), TABLE_O_1_REPEATED) == (
+        TABLE_O_1_PARSED
+    )
+
+
+def test_table_o_1_columns_are_mapped_by_header_text():
+    order = (2, 0, 1)
+    header = tuple(TABLE_O_1_HEADER[i] for i in order)
+    rows = tuple(tuple(row[i] for i in order) for row in TABLE_O_1_ROWS)
+
+    parsed = ps3_16.parse_table_o_1(_table_o_1(header, rows), TABLE_O_1_REPEATED)
+
+    assert parsed == TABLE_O_1_PARSED
+
+
+@pytest.mark.parametrize(
+    "header, message",
+    [
+        (TABLE_O_1_HEADER[:2], "missing column 'SNOMED Fully Specified Name'"),
+        (
+            ("Concept ID", *TABLE_O_1_HEADER[1:]),
+            "unknown column 'Concept ID'",
+        ),
+    ],
+)
+def test_table_o_1_unknown_or_missing_columns_fail(header, message):
+    rows = tuple(row[: len(header)] for row in TABLE_O_1_ROWS)
+
+    with pytest.raises(chtml.TableFormatError, match=re.escape(message)):
+        ps3_16.parse_table_o_1(_table_o_1(header, rows), TABLE_O_1_REPEATED)
+
+
+@pytest.mark.parametrize(
+    "row, message",
+    [
+        (("900011001", "T-F0001", "Fixture"), "row 1 has a concept ID"),
+        (("T-F0001", "900011000", "Fixture"), "row 1 has a concept ID"),
+        (("900011000", "t-f0001", "Fixture"), "row 1 has a SNOMED ID"),
+    ],
+)
+def test_table_o_1_invalid_values_fail(row, message):
+    rows = (row,) + TABLE_O_1_ROWS[1:]
+
+    with pytest.raises(chtml.TableFormatError, match=re.escape(message)):
+        ps3_16.parse_table_o_1(_table_o_1(rows=rows), TABLE_O_1_REPEATED)
+
+
+@pytest.mark.parametrize(
+    "row, message",
+    [
+        (("900013002", "T-F0001", "Fixture"), "T-F0001 appears 2 times"),
+        (("900011000", "T-F0009", "Fixture"), "900011000 appears 2 times"),
+    ],
+)
+def test_table_o_1_repeated_concept_or_snomed_ids_fail(row, message):
+    # Only the rows the pin names may repeat, so that each SNOMED ID maps to
+    # one Concept ID.
+    rows = TABLE_O_1_ROWS + (row,)
+
+    with pytest.raises(chtml.TableFormatError, match=re.escape(message)):
+        ps3_16.parse_table_o_1(_table_o_1(rows=rows), TABLE_O_1_REPEATED)
+
+
+@pytest.mark.parametrize(
+    "rows",
+    [
+        TABLE_O_1_ROWS[:3],
+        TABLE_O_1_ROWS + TABLE_O_1_ROWS[1:2],
+        TABLE_O_1_ROWS[:3] + (("900012007", "F-F0002", "Another name"),),
+    ],
+)
+def test_a_row_the_pin_names_must_be_published_twice_the_same(rows):
+    with pytest.raises(chtml.TableFormatError, match="published twice"):
+        ps3_16.parse_table_o_1(_table_o_1(rows=rows), TABLE_O_1_REPEATED)
+
+
+def test_table_o_1_without_rows_fails():
+    with pytest.raises(chtml.TableFormatError, match="has no rows"):
+        ps3_16.parse_table_o_1(_table_o_1(rows=()), ())
 
 
 def test_parse_table_b_5_1():
@@ -2887,7 +2995,13 @@ CHAPTER_E_PATH, SECTION_E3_4_PATH, SECTION_E3_10_PATH = ANNEX_E_PAGES
 FIXTURE_CHAPTER_6_PAGE = _page(TABLE_6_1).encode("utf-8")
 FIXTURE_CHAPTER_A_PAGE = _page(*ANNEX_A_TABLES).encode("utf-8")
 FIXTURE_PS3_16_PAGES = {
-    path: _ps3_16_page(labels).encode("utf-8") for path, labels in PS3_16_PAGES.items()
+    **{
+        path: _ps3_16_page(labels).encode("utf-8")
+        for path, labels in PS3_16_PAGES.items()
+    },
+    ANNEX_O_PATH: _page(
+        _table("Table O-1. Fixture Mapping", TABLE_O_1_HEADER, TABLE_O_1_ROWS)
+    ).encode("utf-8"),
 }
 FIXTURE_B_5_PAGE = _page(TABLE_B_5_1).encode("utf-8")
 FIXTURE_PS3_3_PAGE = _page(*PS3_3_TABLES).encode("utf-8")
@@ -2913,6 +3027,7 @@ FIXTURE_PIN = generate.Pin(
     corrections=PS3_3_CORRECTIONS,
     structured_content_schemes=tuple(sorted(E3_4_1_DESIGNATORS)),
     left_out_structured_content_schemes=tuple(sorted(E3_4_1_LEFT_OUT)),
+    repeated_snomed_ids=TABLE_O_1_REPEATED,
 )
 
 
@@ -3379,6 +3494,24 @@ def test_generate_writes_the_body_part_terms_of_annex_l(source_dir, tmp_path):
     assert [row.term for row in table.rows] == ["FIXTURE LEG", "FIXTUREREGION"]
 
 
+def test_generate_writes_table_o_1_without_its_names(source_dir, tmp_path):
+    output_dir = tmp_path / "tables"
+
+    assert generate.generate(FIXTURE_PIN, output_dir, source_dir=source_dir) == 0
+
+    path = output_dir / codes.SNOMED_ID_TABLE.file
+    document = json.loads(path.read_text("utf-8"))
+    rows = [dataclasses.asdict(row) for row in TABLE_O_1_PARSED]
+    assert document["table"] == "PS3.16 Table O-1"
+    assert document["acknowledgement"] == "DICOM PS3.16 2099a, \u00a9 NEMA"
+    assert document["sources"] == [
+        {"path": ANNEX_O_PATH, "sha256": _fixture_digest(ANNEX_O_PATH)}
+    ]
+    assert document["rows"] == rows
+    assert document["content_sha256"] == standard.content_sha256(rows)
+    assert codes.load_snomed_ids(path).rows == TABLE_O_1_PARSED
+
+
 def _annex_l(header=ANNEX_L_HEADER, rows=(("900011", "Fixture", "FIXTURE"),)):
     page = _page(_table("Table L-1. Fixture", header, rows))
     return {"Table L-1": chtml.select_table(chtml.extract_tables(page), "Table L-1")}
@@ -3560,6 +3693,13 @@ def test_the_pin_keeps_the_dicom_and_snomed_ct_rows_of_table_e3_4_1():
         "NCIt",
         "UMLS",
     )
+
+
+def test_the_pin_names_the_row_table_o_1_publishes_twice():
+    # 2026d publishes Immunohistochemistry procedure twice, the same both
+    # times. Generation fails if an edition corrects it, and so does this test
+    # until it is updated with the pin.
+    assert generate.PIN.repeated_snomed_ids == (("117617002", "P3-44150"),)
 
 
 def test_the_pin_gives_an_iod_the_functional_group_macros_its_text_names():
