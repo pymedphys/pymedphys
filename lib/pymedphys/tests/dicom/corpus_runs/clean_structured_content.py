@@ -33,7 +33,6 @@ from pymedphys._dicom.deidentify import synthetic_corpus as corpus_module
 
 from .._corpus_run import (
     CONTENT_SEQUENCE,
-    REPORT_ENTITIES,
     WITHHELD_WITHOUT_REPORTS,
     CorpusRun,
 )
@@ -104,5 +103,7 @@ RUN = CorpusRun(
     corpus=with_acquisition_context_items,
     kept_content=frozenset({"(0040,0555)", CONTENT_SEQUENCE}),
     withheld=WITHHELD_WITHOUT_REPORTS,
-    inconsistent=REPORT_ENTITIES,
+    # Without Retain UIDs, Referenced Study Sequence is removed. Only
+    # Accession Number remains in different entities for images and reports.
+    inconsistent=frozenset({"(0008,0050)"}),
 )
