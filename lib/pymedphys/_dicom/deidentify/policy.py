@@ -23,8 +23,9 @@ Level Confidentiality Profile:
 - ``tps-import``: Retain Device Identity, Retain Patient Characteristics,
   Retain Longitudinal Temporal Information with Modified Dates, and Clean
   Descriptors, for copies in non-clinical treatment planning systems;
-- ``public-release``: Retain Safe Private, Modified Dates, and Clean
-  Descriptors, for collections being assessed for public sharing.
+- ``public-release``: Retain Safe Private, Modified Dates, Clean
+  Descriptors, and Clean Recognizable Visual Features, for collections being
+  assessed for public sharing.
 
 Composing a policy gives each attribute of Table E.1-1 its action under the
 preset's options (:func:`~pymedphys._dicom.deidentify.actions.effective_actions`),
@@ -155,6 +156,7 @@ PRESETS: Mapping[str, tuple[str, ...]] = types.MappingProxyType(
             SAFE_PRIVATE,
             MODIFIED_DATES,
             CLEAN_DESCRIPTORS,
+            CLEAN_RECOGNIZABLE_VISUAL_FEATURES,
         ),
     }
 )
