@@ -206,6 +206,7 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "18-registration.dcm",
         "19-registration-deformable.dcm",
         "20-rt-beams-record.dcm",
+        "21-rt-image.dcm",
         "22-sr-dose-x-ray.dcm",
         "23-sr-dose-radiopharmaceutical.dcm",
     ]
@@ -230,6 +231,7 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "Spatial Registration",
         "Deformable Spatial Registration",
         "RT Beams Treatment Record",
+        "RT Image",
         "X-Ray Radiation Dose SR",
         "Radiopharmaceutical Radiation Dose SR",
     ]
@@ -914,11 +916,13 @@ def test_each_image_has_its_frames_and_the_colour_image_its_icc_profile(corpus):
             assert dataset.PhotometricInterpretation == "MONOCHROME2"
             assert "ICCProfile" not in dataset
 
-    # Every image but those of the single-frame IODs has two frames.
+    # Every image but those of the single-frame IODs, and the RT Image, whose
+    # IOD allows one frame or more, has two frames.
     assert {iod for iod, count in frames.items() if count == 1} == {
         "CT Image",
         "MR Image",
         "Positron Emission Tomography Image",
+        "RT Image",
     }
     assert set(frames.values()) == {1, 2}
 

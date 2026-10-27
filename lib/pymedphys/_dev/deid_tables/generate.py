@@ -34,7 +34,7 @@ import urllib.error
 from collections.abc import Callable, Mapping
 
 from pymedphys._data.download import download_with_progress
-from pymedphys._dicom.deidentify.codes import CODE_TABLES
+from pymedphys._dicom.deidentify.codes import CODE_TABLES, SNOMED_ID_TABLE
 from pymedphys._dicom.deidentify.iods import IOD_MODULES_TABLE, MODULE_ATTRIBUTES_TABLE
 from pymedphys._dicom.deidentify.requirements import PARAGRAPHS_FILE, PARAGRAPHS_TABLE
 from pymedphys._dicom.deidentify.residual_exemptions import (
@@ -120,6 +120,12 @@ class Pin:
         The coding schemes whose rows of Table E.3.4-1 are left out, because
         their terms have not been accepted for bundling. Generation fails if
         a row's scheme is in neither tuple, or a scheme in them has no row.
+    repeated_snomed_ids : tuple of (str, str)
+        The Concept ID and SNOMED ID of each row of PS3.16 Table O-1 that the
+        edition publishes twice, the same both times, of which one is
+        generated. Generation fails if such a row is not published exactly
+        twice, the same both times, or if any other Concept ID or SNOMED ID
+        repeats.
     """
 
     edition: str
@@ -129,6 +135,7 @@ class Pin:
     corrections: tuple[ps3_3.Correction, ...]
     structured_content_schemes: tuple[str, ...]
     left_out_structured_content_schemes: tuple[str, ...]
+    repeated_snomed_ids: tuple[tuple[str, str], ...]
 
 
 # To move to a new edition, update the edition and every digest, regenerate,
@@ -213,6 +220,11 @@ PIN = Pin(
             "chtml/part16/chapter_L.html",
             "961864cd5810868701227bfb751eb4085b40c8fe2d6a9057f92e193f6d6c85a4",
         ),
+        # Annex O, the SNOMED IDs of the retired SNOMED designators.
+        PinnedSource(
+            "chtml/part16/chapter_O.html",
+            "6ae23902e7053fcad0f1ea866f43c96083bb9f2216efcbb1eeba3090feeb271a",
+        ),
         PinnedSource(
             "chtml/part04/sect_B.5.html",
             "a2e6f76967f3bab769299715c01f59757cede79cb9314b5bad60bb72a11e8846",
@@ -291,6 +303,8 @@ PIN = Pin(
     # and a content item they name takes its sequence's Basic Profile action.
     structured_content_schemes=("DCM", "SCT"),
     left_out_structured_content_schemes=("LN", "NCDR", "NCIt", "UMLS"),
+    # Table O-1 publishes Immunohistochemistry procedure twice.
+    repeated_snomed_ids=(("117617002", "P3-44150"),),
 )
 
 
@@ -345,6 +359,7 @@ _CODE_TABLE_PAGES = {
     "Table CID 7005": "chtml/part16/sect_CID_7005.html",
 }
 _ANNEX_L = "chtml/part16/chapter_L.html"
+_ANNEX_O = "chtml/part16/chapter_O.html"
 _SECTION_B_5 = "chtml/part04/sect_B.5.html"
 _PS3_3 = "html/part03.html"
 _PART = re.compile(r"part([0-9]{2})")
@@ -539,6 +554,19 @@ def _body_part_terms(pin: Pin, pages: Mapping[str, bytes]) -> dict[str, object]:
     return _document(pin, _ANNEX_L, ps3_16.BODY_PART_LABEL, list(rows))
 
 
+def _snomed_ids(pin: Pin, pages: Mapping[str, bytes]) -> dict[str, object]:
+    """Return Table O-1's Concept IDs and SNOMED IDs, without their names."""
+    rows = ps3_16.parse_table_o_1(
+        _select(pages, _ANNEX_O, ps3_16.SNOMED_ID_LABEL), pin.repeated_snomed_ids
+    )
+    return _document(
+        pin,
+        _ANNEX_O,
+        ps3_16.SNOMED_ID_LABEL,
+        [dataclasses.asdict(row) for row in rows],
+    )
+
+
 def _registry_table(
     source: str, label: str, parse: Callable[[str, chtml.HtmlTable], tuple]
 ) -> Callable[[Pin, Mapping[str, bytes]], dict[str, object]]:
@@ -563,6 +591,7 @@ _OUTPUTS: dict[str, Callable[[Pin, Mapping[str, bytes]], dict[str, object]]] = {
     "module_attributes.json": _module_attributes,
     DEFINED_TERMS_TABLE.file: _defined_terms,
     BODY_PART_TERMS_TABLE.file: _body_part_terms,
+    SNOMED_ID_TABLE.file: _snomed_ids,
     STORAGE_SOP_CLASS_TABLE.file: _storage_sop_classes,
     **{
         spec.file: _registry_table(_CHAPTER_A, label, ps3_6.parse_uid_table)

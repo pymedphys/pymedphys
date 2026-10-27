@@ -109,13 +109,25 @@ EXIT_STAGING_LEFT = 4
 EXIT_INTERNAL_ERROR = 70
 
 _RELEASED = (run.Status.RELEASED, run.Status.DUPLICATE)
-# The presets that the command takes so far. The first supported release ships
-# every preset (design document, Scope).
-_PRESETS = ("basic", "basic-clean-descriptors")
+# The presets that the command takes: every preset, each refused until it is
+# enabled (design document, Scope).
+_PRESETS = tuple(policy.PRESETS)
+# What each preset is for, as the command's help gives it.
+_PRESET_USES = {
+    "basic": "the Basic Profile alone, the default",
+    "basic-clean-descriptors": "with Clean Descriptors",
+    "tps-import": "for copies in non-clinical treatment planning systems",
+    "public-release": "for collections being assessed for public sharing",
+}
 _ROI_NAME_OPTIONS = (
     "error: --tg263, --reviewed-names, --empty-held-roi-names, --roi-list, and "
     "--reviewed-descriptors apply only under Clean Descriptors: with --preset "
-    "basic-clean-descriptors, or --option clean_descriptors"
+    + ", ".join(
+        preset
+        for preset, options in policy.PRESETS.items()
+        if CLEAN_DESCRIPTORS in options
+    )
+    + ", or --option clean_descriptors"
 )
 _TG263_UNLOADED = (
     "the TG-263 edition could not be loaded; its details are not "
@@ -454,8 +466,9 @@ def build_parser(
         "--preset",
         choices=_PRESETS,
         help=(
-            "the de-identification policy: the Basic Profile alone (basic, "
-            "the default) or with Clean Descriptors (basic-clean-descriptors)"
+            "the de-identification policy, one of the presets: "
+            + "; ".join(f"{preset}, {_PRESET_USES[preset]}" for preset in _PRESETS)
+            + "; a run is refused unless its preset is enabled"
         ),
     )
     selection.add_argument(
@@ -1069,8 +1082,9 @@ def face_review_applies(
 
     It applies under Clean Recognizable Visual Features: with a preset, or a
     custom option set in ``options``, that selects it (D-033, D-046), and the
-    command line and the library refuse one given otherwise. No preset
-    selects it yet. Without either, the run's preset is ``basic``.
+    command line and the library refuse one given otherwise. Of the
+    presets, ``public-release`` selects it. Without either, the run's preset
+    is ``basic``.
     """
     if options is not None:
         return policy.CLEAN_RECOGNIZABLE_VISUAL_FEATURES in options
@@ -1084,8 +1098,9 @@ def roi_name_options_apply(
 ) -> bool:
     """Return whether the run's policy takes the ROI name and descriptor options.
 
-    They apply under Clean Descriptors: with the ``basic-clean-descriptors``
-    preset, or a custom option set in ``options`` that selects it (D-033).
+    They apply under Clean Descriptors: with a preset that selects it, such as
+    ``basic-clean-descriptors``, or a custom option set in ``options`` that
+    selects it (D-033).
     Without either, the run's preset is ``basic``.
     """
     if options is not None:

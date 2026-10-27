@@ -62,7 +62,12 @@ INTERLOCK_USER = ("(3008,0020)", "(300A,0740)", "(300A,0746)")
 INSTITUTION_CODE_SEQUENCE = "(0008,0082)"  # X/Z/D in the Basic Profile
 PIXEL_DATA_PROVIDER_URL = "(0028,7FE0)"  # X/Z/D by a supplementary rule
 # The attributes that a reviewed rule gives a dummy value, whatever their VR.
-REVIEWED_DUMMY_ATTRIBUTES = {"(0040,1101)", "(0008,1111)", "(0028,2000)"}
+REVIEWED_DUMMY_ATTRIBUTES = {
+    "(0040,1101)",
+    "(0008,1111)",
+    "(0028,2000)",
+    "(0040,A073)",
+}
 CT_FOR_PROCESSING = "1.2.840.10008.5.1.4.1.1.2.3"
 UNESCAPED_PIPE = re.compile(r"(?<!\\)\|")
 
@@ -600,10 +605,18 @@ def _section(text, heading):
     return "\n".join(lines[start:end])
 
 
+# The options whose codes an instance gains only after review.
+REVIEWED_OPTIONS = (
+    "clean_descriptors",
+    "clean_pixel_data",
+    "clean_recognizable_visual_features",
+)
+
+
 def _satisfied(composed):
     unmet = {option for r in composed.resolved for option in r.unmet}
     return tuple(
-        o for o in composed.options if o != "clean_descriptors" and o not in unmet
+        o for o in composed.options if o not in REVIEWED_OPTIONS and o not in unmet
     )
 
 
@@ -622,8 +635,12 @@ def test_the_markers_match_those_the_engine_writes(preset, statement_for):
     assert statement.markers.codes == tuple(c.code_value for c in written.method_codes)
     assert statement.markers.temporal == written.temporal_information_modified
     assert statement.markers.review_codes == (
-        (conformance.OPTION_CODES["clean_descriptors"],)
-        if composed.claims_conformance and "clean_descriptors" in composed.options
+        tuple(
+            conformance.OPTION_CODES[o]
+            for o in composed.options
+            if o in REVIEWED_OPTIONS
+        )
+        if composed.claims_conformance
         else ()
     )
 
@@ -698,7 +715,12 @@ def test_private_attribute_removal_is_described(preset, statement_for):
         ("basic", ("113100",), (), "REMOVED"),
         ("basic-clean-descriptors", ("113100",), ("113105",), "REMOVED"),
         ("tps-import", (), (), "MODIFIED"),
-        ("public-release", ("113100", "113111", "113107"), ("113105",), "MODIFIED"),
+        (
+            "public-release",
+            ("113100", "113111", "113107"),
+            ("113105", "113102"),
+            "MODIFIED",
+        ),
     ],
 )
 def test_each_presets_inserted_codes_and_temporal_value(
