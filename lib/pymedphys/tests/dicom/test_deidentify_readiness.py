@@ -14,9 +14,14 @@
 
 """The readiness of a ``public-release`` run, by its three gates."""
 
+# The gates' tests share the reviewed pack and report helpers below, so they
+# stay in one module.
+# pylint: disable = too-many-lines
+
 import dataclasses
 import datetime
 import hashlib
+import io
 import json
 import shutil
 import tempfile
@@ -39,6 +44,7 @@ from pymedphys._dicom.deidentify import (
 )
 from pymedphys._dicom.deidentify import synthetic_corpus as corpus_module
 from pymedphys._dicom.deidentify.descriptor_cleaning import DescriptorCleaning
+from pymedphys._dicom.deidentify.face_review import FaceReview, read_face_review
 from pymedphys._dicom.deidentify.file_layout import ElementPath
 from pymedphys._dicom.deidentify.instance_transform import (
     InstanceTransform,
@@ -70,6 +76,7 @@ from pymedphys._dicom.deidentify.qc_pack import (
 from pymedphys._dicom.deidentify.readiness import ReadinessReview
 from pymedphys._dicom.deidentify.reasons import ReviewReason, StatisticalReason
 from pymedphys._dicom.deidentify.release_report import Readiness, ReleaseReportError
+from pymedphys._dicom.deidentify.reviewed_roi_names import ReviewedNames
 from pymedphys._dicom.deidentify.risk_assessment import (
     Assessment,
     Attacker,
@@ -824,6 +831,38 @@ def test_only_a_public_release_reporter_takes_a_review(tmp_path):
         )
 
 
+def test_a_public_release_transform_takes_its_reviews_from_one_pack(tmp_path):
+    review = _reviewed(tmp_path)
+    cleaning = DescriptorCleaning(None, ReviewedNames.empty())
+    composed = policy.compose_policy("public-release")
+    key = DeidKey(bytes(range(32)))
+    other = FaceReview(THIS_RUN, frozenset(), frozenset(), frozenset(), frozenset())
+
+    with pytest.raises(PolicyError, match="same QC pack"):
+        InstanceTransform(
+            composed,
+            key,
+            cleaning=cleaning,
+            face_review=other,
+            readiness_review=review,
+            unvalidated_policy=True,
+        )
+    # The verdicts that the readiness review read from the same pack.
+    InstanceTransform(
+        composed,
+        key,
+        cleaning=cleaning,
+        face_review=review.faces,
+        readiness_review=review,
+        unvalidated_policy=True,
+    )
+    # Without a readiness review, the run is not ready, and any face review
+    # is taken.
+    InstanceTransform(
+        composed, key, cleaning=cleaning, face_review=other, unvalidated_policy=True
+    )
+
+
 EMPTY = QcPack(THIS_RUN, ())
 
 
@@ -860,17 +899,18 @@ def test_released_subjects_counts_distinct_patients_of_released_instances():
     assert readiness.released_subjects(PATIENTS, set()) == 0
 
 
-# Two runs of the synthetic collection.
+# Runs of the synthetic collection.
 
 
 _RADIOTHERAPY = frozenset({"CT Image", "RT Structure Set", "RT Dose", "RT Plan"})
 
 
-def _public_release(cleaning, review=None):
+def _public_release(cleaning, faces, review=None):
     return InstanceTransform(
         policy.compose_policy("public-release"),
         _corpus_run.KEY,
         cleaning=cleaning,
+        face_review=faces,
         readiness_review=review,
         unvalidated_policy=True,
     )
@@ -895,6 +935,12 @@ def test_a_second_run_of_a_reviewed_and_assessed_collection_is_ready():
         corpus,
         files=tuple(f for f in corpus.files if f.manifest.iod in _RADIOTHERAPY),
     )
+    subjects = len(
+        {
+            pydicom.dcmread(io.BytesIO(file.data), stop_before_pixels=True).PatientID
+            for file in corpus.files
+        }
+    )
     # A short directory, since a run refuses output paths that could exceed
     # Windows' 259 characters.
     directory = Path(tempfile.mkdtemp(prefix="d"))
@@ -905,7 +951,9 @@ def test_a_second_run_of_a_reviewed_and_assessed_collection_is_ready():
             cleaning = DescriptorCleaning(
                 _corpus_run.VOCABULARY, _corpus_run.mapped_planted_name(corpus)
             )
-            transform = _public_release(cleaning)
+            # The first run, given no face verdicts, holds every instance
+            # that can show a face, and previews it for review.
+            transform = _public_release(cleaning, _corpus_run.NO_FACE_VERDICTS)
             first = run.run(
                 instances,
                 directory / "r1",
@@ -925,6 +973,9 @@ def test_a_second_run_of_a_reviewed_and_assessed_collection_is_ready():
             }
             pack = first.qc_pack.parent
             entries = json.loads(first.qc_pack.read_text("utf-8"))
+            assert Disposition.HELD_FOR_REVIEW.value in {
+                e["disposition"] for e in entries["instances"]
+            }
             qc_attestation.attest(
                 pack,
                 reviewer=REVIEWER,
@@ -934,14 +985,15 @@ def test_a_second_run_of_a_reviewed_and_assessed_collection_is_ready():
                 residual_risk_accepted=True,
                 faces={s["positions"][0]: Face.ABSENT for s in entries["series"]},
             )
-            subjects = len(_released_patients(first.release))
             risk_assessment.record_assessment(
                 pack,
                 first_report,
                 _assessment(subjects=subjects),
             )
+            # The second run takes its face verdicts and its readiness
+            # review from the same pack.
             review = readiness.read_readiness_review(pack, first_report)
-            transform = _public_release(cleaning, review)
+            transform = _public_release(cleaning, read_face_review(pack), review)
             second = run.run(
                 instances,
                 directory / "r2",
@@ -953,10 +1005,12 @@ def test_a_second_run_of_a_reviewed_and_assessed_collection_is_ready():
         document = json.loads(
             (second.release / run_report.RELEASE_REPORT).read_text("utf-8")
         )
+        released = _released_patients(second.release)
     finally:
         shutil.rmtree(directory, ignore_errors=True)
 
     assert subjects >= 1
+    assert len(released) == subjects
     assert document["readiness"] == {
         "ready": True,
         "review": entries["reference"],

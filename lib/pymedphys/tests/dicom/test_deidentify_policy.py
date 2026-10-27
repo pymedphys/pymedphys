@@ -35,6 +35,7 @@ MODIFIED_DATES = "retain_longitudinal_modified_dates"
 PATIENT_CHARACTERISTICS = "retain_patient_characteristics"
 SAFE_PRIVATE = "retain_safe_private"
 CLEAN_DESCRIPTORS = "clean_descriptors"
+VISUAL_FEATURES = "clean_recognizable_visual_features"
 BEAM_HOLD = "(300C,0127)"  # Beam Hold Transition DateTime
 TAG = re.compile(r"\([0-9A-F]{4},[0-9A-F]{4}\)")
 # The options that the presets select, in Table E.1-1's order.
@@ -77,7 +78,12 @@ def test_the_presets_are_the_designs_option_sets_in_the_tables_order():
             MODIFIED_DATES,
             CLEAN_DESCRIPTORS,
         ),
-        "public-release": (SAFE_PRIVATE, MODIFIED_DATES, CLEAN_DESCRIPTORS),
+        "public-release": (
+            SAFE_PRIVATE,
+            MODIFIED_DATES,
+            CLEAN_DESCRIPTORS,
+            VISUAL_FEATURES,
+        ),
     }
     assert list(policy.PRESETS) == [
         "basic",
@@ -178,6 +184,12 @@ def test_public_release_cleans_dates_descriptors_and_safe_private_attributes():
     assert release.claims_conformance
     assert not release.resolved
     assert len(changed) == 311
+    # Clean Recognizable Visual Features has no column in Table E.1-1, so it
+    # gives no attribute an action, and conflicts with none of the others.
+    assert VISUAL_FEATURES in release.options
+    without = policy.compose_preset_without("public-release", VISUAL_FEATURES)
+    assert dict(without.actions) == dict(release.actions)
+    assert dict(without.supplementary_actions) == dict(release.supplementary_actions)
     assert {release.actions[tag] for tag in changed} == {"C"}
     # Checked by hand against Table E.1-1 of the 2026d PS3.15.
     assert release.actions["(0008,0020)"] == "C"  # Study Date
@@ -548,7 +560,7 @@ def test_tps_import_without_clean_descriptors_resolves_as_the_preset_does():
 
 
 def test_a_preset_without_conflicts_without_an_option_is_its_custom_set():
-    others = (SAFE_PRIVATE, MODIFIED_DATES)
+    others = (SAFE_PRIVATE, MODIFIED_DATES, VISUAL_FEATURES)
     without = policy.compose_preset_without("public-release", CLEAN_DESCRIPTORS)
     custom = policy.compose_custom_policy(others)
 
@@ -565,7 +577,9 @@ def test_a_preset_without_an_option_is_never_enabled(monkeypatch):
         assert policy.compose_policy(preset).enabled
         assert not policy.compose_preset_without(preset, CLEAN_DESCRIPTORS).enabled
     # A custom option set of the same options would be.
-    assert policy.compose_custom_policy((SAFE_PRIVATE, MODIFIED_DATES)).enabled
+    assert policy.compose_custom_policy(
+        (SAFE_PRIVATE, MODIFIED_DATES, VISUAL_FEATURES)
+    ).enabled
 
 
 def test_a_preset_without_an_option_still_rejects_another_conflict():
@@ -669,7 +683,9 @@ def test_the_pixel_options_follow_table_e1_1s():
 @pytest.mark.parametrize("option", standard.PIXEL_OPTIONS)
 @pytest.mark.parametrize("preset", policy.PRESETS)
 def test_a_pixel_option_gives_no_attribute_an_action(option, preset):
-    options = policy.PRESETS[preset]
+    # The preset's options of Table E.1-1, which public-release's Clean
+    # Recognizable Visual Features is not.
+    options = tuple(o for o in policy.PRESETS[preset] if o in standard.OPTIONS)
     if preset == "tps-import":
         # Its conflicts are resolved only by the preset itself.
         options = tuple(o for o in options if o != DEVICE_IDENTITY)
@@ -714,14 +730,17 @@ def test_the_engine_refuses_a_pixel_option_that_it_does_not_apply(option, monkey
         policy.refuse_unapplied_options(composed)
 
 
-def test_the_engine_applies_clean_recognizable_visual_features_but_no_preset_has_it():
+def test_the_engine_applies_clean_recognizable_visual_features_in_public_release():
     option = policy.CLEAN_RECOGNIZABLE_VISUAL_FEATURES
     composed = policy.compose_custom_policy([option])
 
     assert option in policy.ENGINE_OPTIONS
     policy.refuse_unapplied_options(composed)
     assert not composed.enabled
-    assert all(option not in options for options in policy.PRESETS.values())
+    assert [p for p, options in policy.PRESETS.items() if option in options] == [
+        "public-release"
+    ]
+    assert not policy.compose_policy("public-release").enabled
 
 
 @pytest.mark.parametrize(
