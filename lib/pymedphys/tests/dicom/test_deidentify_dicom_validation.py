@@ -72,10 +72,12 @@ STRINGS = frozenset(
         "Type 1 Required",
         "Unrecognized enumerated value",
         "String attribute has different value",
+        "Different information entities for attribute",
         "GeneralStudy",
         "NotAKeyword",
         # An entity's name, stored as the end of a longer string.
         "InformationEntityPatient",
+        "Series",
         "Study",
         ORIENTATION,
         EVEN_GROUP,
@@ -383,6 +385,32 @@ def test_dcentvfy_keeps_the_attribute_and_entity_and_not_the_files_or_values():
             "Study",
         ): 1,
         Finding(DCENTVFY, "unrecognised", "", "line not recognised"): 1,
+    }
+
+
+def test_dcentvfy_keeps_both_entities_of_an_attribute_that_two_iods_place_apart():
+    # As dcentvfy compares an image with a Structured Report: the files'
+    # IODs give the attribute different information entities, named in the
+    # order of the files.
+    output = (
+        "Warning - Different information entities for attribute - "
+        "Element=<AccessionNumber> IE <Series> versus <Study> "
+        f"for file <{PLANTED}.dcm> versus <b.dcm>\n"
+        "Warning - Different information entities for attribute - "
+        f"Element=<AccessionNumber> IE <{PLANTED}> versus <Study> "
+        "for file <a> versus <b>\n"
+        "Warning - Different information entities for attribute - "
+        "Element=<AccessionNumber> IE <Study> versus <Series> "
+        "for file <b.dcm> versus <a.dcm>\n"
+    )
+
+    validation = validators.parse_dcentvfy(output, STRINGS)
+
+    assert PLANTED not in repr(validation)
+    message = "Different information entities for attribute"
+    assert validation.findings == {
+        Finding(DCENTVFY, "warning", "(0008,0050)", message, "Series versus Study"): 2,
+        Finding(DCENTVFY, "warning", "(0008,0050)", message): 1,
     }
 
 

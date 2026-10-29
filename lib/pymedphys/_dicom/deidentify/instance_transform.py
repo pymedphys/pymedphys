@@ -847,7 +847,9 @@ class InstanceTransform:
         :func:`~pymedphys._dicom.deidentify.readiness.read_readiness_review`,
         from which the release report says whether the run is ready for
         release (D-017). It changes nothing that the run writes. No other
-        policy takes one.
+        policy takes one. It is of the same QC pack as ``face_review``, so
+        that the verdicts that release the run's instances are those that
+        its readiness checks.
     unvalidated_policy : bool, default False
         Allow a policy that is not enabled, such as a preset whose behaviour
         is not yet validated. For tests and validation runs only; nothing
@@ -865,7 +867,8 @@ class InstanceTransform:
         Features, or left out with it; if ``redaction_review`` or
         ``pixel_region_rules`` is given without Clean Pixel Data; if
         ``readiness_review`` is given with a
-        policy other than the ``public-release`` preset; if
+        policy other than the ``public-release`` preset, or is of another QC
+        pack than ``face_review``; if
         ``safe_private_list`` chooses TCIA's dictionary without the Retain
         Safe Private Option.
     TypeError
@@ -1068,6 +1071,14 @@ class InstanceTransform:
             raise PolicyError(
                 "a face review is given exactly when the policy selects Clean "
                 "Recognizable Visual Features"
+            )
+        if (
+            readiness_review is not None
+            and face_review is not None
+            and readiness_review.reference != face_review.reference
+        ):
+            raise PolicyError(
+                "a readiness review is of the same QC pack as the face review"
             )
         # One description of the finder, for both the markers' digest and
         # the release report's.
