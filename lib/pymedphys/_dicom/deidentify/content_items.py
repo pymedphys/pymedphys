@@ -72,7 +72,11 @@ item's Value Type (0040,A040) and the code of its Concept Name Code Sequence
   a content item itself, since its target is cleaned where it is. The writer
   keeps every item of a kept sequence, so a single item cannot be removed on
   its own, which also keeps the place in the tree that each Referenced
-  Content Item Identifier names;
+  Content Item Identifier names. Nor is a Procedure Log's tree kept where two
+  or more of its entries have an Observation DateTime (0040,A032) that the
+  options neither keep nor modify, since X/D would give each the same dummy
+  value, and PS3.3 Section A.35.7.3.1.2 orders the entries by increasing
+  Observation DateTime;
 - an item whose concept name Table E.3.4-1 lists, which can be kept, gives
   its value attribute the action that the selected options give the concept,
   K, D, or C, as Table E.1-1's options give an attribute. X/D gives D: the
@@ -119,7 +123,13 @@ from .codes import RETIRED_SNOMED_DESIGNATORS, snomed_ct_code
 from .elements import UndecodableElement, dataset_codecs, read_element
 from .file_layout import ElementPath
 from .iods import IOD
-from .policy import CLEAN_DESCRIPTORS, CLEAN_STRUCTURED_CONTENT, Policy
+from .policy import (
+    CLEAN_DESCRIPTORS,
+    CLEAN_STRUCTURED_CONTENT,
+    FULL_DATES,
+    MODIFIED_DATES,
+    Policy,
+)
 from .source import SourceEvidence
 from .structured_content import (
     VALUE_TYPES,
@@ -202,6 +212,14 @@ DUMMY_IN_PLACE_OF_REMOVAL = frozenset(
         ("DCM", "128470", "UIDREF"),
     }
 )
+# A Procedure Log's first-level items, the log's entries, each include
+# Observation DateTime (0040,A032) and are "strictly ordered by monotonically
+# increasing" values of it (PS3.3 Section A.35.7.3.1.2). Its X/D writes one
+# dummy datetime, unless Full Dates keeps it or Modified Dates shifts it, so
+# a tree of two or more entries is not kept, and the log is sequestered,
+# rather than written out of order.
+PROCEDURE_LOG = "Procedure Log"
+OBSERVATION_DATETIME = "(0040,A032)"
 
 # How the conformance statement describes the cleaning, naming no value.
 METHOD = (
@@ -246,7 +264,12 @@ METHOD = (
     "not include, or where it is coded by a retired SNOMED designator, SRT, "
     "SNM3, or 99SDM, with a code that PS3.16 Table O-1 does not map to a "
     "SNOMED CT code, the whole sequence takes its Basic Profile action "
-    "instead, since a single item is not removed on its own. A concept name "
+    "instead, since a single item is not removed on its own. So does a "
+    "Procedure Log's Content Sequence where two or more of its entries have "
+    "an Observation DateTime (0040,A032) that the options neither keep nor "
+    "modify, since each would take the same dummy value and PS3.3 Section "
+    "A.35.7.3.1.2 orders the entries by increasing Observation DateTime. "
+    "A concept name "
     "coded by a retired SNOMED designator with a code that Table O-1 maps is "
     "looked up as that SNOMED CT code."
 )
@@ -529,6 +552,30 @@ def _held(path: ElementPath, sequences: Collection[ElementPath]) -> bool:
     )
 
 
+def _collapses_log_order(
+    reader: _Reader, policy: Policy, iod: IOD, path: ElementPath
+) -> bool:
+    """Return whether the policy would write a Procedure Log's entries unordered.
+
+    That is where ``path`` is a Procedure Log's Content Sequence, two or more
+    of its items have an Observation DateTime, and the policy neither keeps
+    nor shifts that datetime, so that each would take the same dummy value
+    (:data:`PROCEDURE_LOG`).
+    """
+    if (
+        iod.name != PROCEDURE_LOG
+        or path != ElementPath((), CONTENT_SEQUENCE)
+        or FULL_DATES in policy.options
+        or MODIFIED_DATES in policy.options
+    ):
+        return False
+    dated = sum(
+        ElementPath(((CONTENT_SEQUENCE, index),), OBSERVATION_DATETIME) in reader
+        for index in range(reader.count(path))
+    )
+    return dated > 1
+
+
 def content_item_actions(
     source: SourceEvidence, policy: Policy, iod: IOD
 ) -> Mapping[ElementPath, str]:
@@ -573,6 +620,8 @@ def content_item_actions(
             if _held(path, held):
                 continue
             try:
+                if _collapses_log_order(sequences.reader, policy, iod, path):
+                    continue
                 found.update(sequences.outermost(path))
             except (_Unkept, UndecodableElement, IndexError):
                 continue

@@ -915,3 +915,37 @@ def test_the_statement_describes_the_cleaning_of_content_items():
     markdown = conformance_markdown.render_markdown(statement)
     assert "which hold content items, and the engine cleans them" in markdown
     assert "since a single item is not removed on its own." in markdown
+
+
+def _log(*datetimes):
+    """Return a Procedure Log whose entries were observed at ``datetimes``."""
+    entries = [_text() for _ in datetimes]
+    for entry, observed in zip(entries, datetimes):
+        entry.RelationshipType = "CONTAINS"
+        entry.ObservationDateTime = observed
+    return _report(*entries)
+
+
+LOG = "Procedure Log"
+LOG_TIMES = ("20260102030405", "20260102030406")
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.4-01")
+def test_a_log_whose_entries_would_share_a_dummy_datetime_is_not_kept():
+    # PS3.3 A.35.7.3.1.2 orders a log's entries by increasing Observation
+    # DateTime, which X/D would give one dummy value.
+    assert not _actions((CSC,), _log(*LOG_TIMES), LOG)
+
+
+@pytest.mark.parametrize(
+    "options, times, iod",
+    [
+        ((CSC, policy.FULL_DATES), LOG_TIMES, LOG),
+        ((CSC, policy.MODIFIED_DATES), LOG_TIMES, LOG),
+        ((CSC,), LOG_TIMES[:1], LOG),
+        ((CSC,), LOG_TIMES, REPORT),
+    ],
+    ids=["full-dates", "modified-dates", "one-entry", "other-report"],
+)
+def test_a_log_is_kept_where_its_entries_stay_in_order(options, times, iod):
+    assert _actions(options, _log(*times), iod)[_path(tag=CONTENT)] == "K"

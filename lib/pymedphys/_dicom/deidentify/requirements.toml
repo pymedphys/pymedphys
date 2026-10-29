@@ -447,6 +447,7 @@ Where the selected options remove an item, where an item cannot be read as one V
 The synthetic collection's two dose reports carry markers in their content-item values and are released only where Clean Structured Content keeps their trees; each value is kept or replaced by its concept's row of Table E.3.4-1.
 Its five general reports, each a TID 2000 or TID 1500 tree with a marker in the value of each PNAME and UIDREF item, are released under the option alone, their Person Observer Names and source series replaced.
 Its Key Object Selection Document and seven other reports, each built from its IOD's root template, are released under the option alone too, but for the Macular Grid Thickness and Volume Report, whose concepts coded by LOINC keep it sequestered until the table holds their rows.
+A Procedure Log whose two or more entries have an Observation DateTime that the options neither keep nor modify is not kept either, since X/D would give each the same dummy value and PS3.3 Section A.35.7.3.1.2 orders them by it.
 '''
 
 [[requirement]]
