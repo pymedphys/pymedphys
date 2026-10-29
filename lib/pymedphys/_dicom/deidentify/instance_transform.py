@@ -200,6 +200,7 @@ from .release_gate import (
     Uncollected,
     release_condition,
 )
+from .residual_exemptions import standard_code_meanings
 from .residuals import NotSearched, has_written_constant, not_searched_of
 from .retained_uids import output_name_uid, retained_uid_paths, retained_uid_tags
 from .run import NO_EVIDENCE, HoldForReview, Release, Sequestered, Transformed
@@ -466,13 +467,19 @@ def unwritten(evidence: Coverage | HeldEvidence) -> Coverage | HeldEvidence:
     """Return the evidence of an instance that is not written.
 
     Each value that its coverage collected is given as unwritten, as the
-    evidence of an instance that the transform sequesters. The gate of a file
-    of its subject can then tell a value that only such instances held from
-    one that a written instance holds too (D-032, D-042).
+    evidence of an instance that the transform sequesters, and each Code
+    Meaning whose own item gives a designator that PS3.16 Table 8-1 lists as
+    coded, judged within this instance before its values are pooled. The gate
+    of a file of its subject can then tell a value that only such instances
+    held from one that a written instance holds too (D-032, D-042).
     """
     if isinstance(evidence, HeldEvidence):
         return dataclasses.replace(evidence, coverage=unwritten(evidence.coverage))
-    return dataclasses.replace(evidence, unwritten=frozenset(evidence.collected))
+    return dataclasses.replace(
+        evidence,
+        unwritten=frozenset(evidence.collected),
+        coded=standard_code_meanings(evidence.collected),
+    )
 
 
 def coverage_of(

@@ -211,7 +211,7 @@ _gaps = st.builds(
     Uncollected, _paths, st.sampled_from(["could not be decoded", NOT_REPORTED])
 )
 _coverages = st.builds(
-    lambda planned, collected, uncollected, latin_1, unwritten: Coverage(
+    lambda planned, collected, uncollected, latin_1, unwritten, coded: Coverage(
         planned=frozenset(planned),
         collected=tuple(collected),
         uncollected=tuple(uncollected),
@@ -219,11 +219,13 @@ _coverages = st.builds(
         # As an instance that is not written gives its values, or a written
         # one shares some of them.
         unwritten=frozenset(v for v, u in zip(collected, unwritten) if u),
+        coded=frozenset(v for v, c in zip(collected, coded) if c),
     ),
     st.lists(_paths, max_size=4),
     st.lists(_values, max_size=4),
     st.lists(_gaps, max_size=2),
     st.lists(_paths, max_size=1),
+    st.lists(st.booleans(), max_size=4),
     st.lists(st.booleans(), max_size=4),
 )
 

@@ -263,13 +263,22 @@ class Coverage:
         collected, such as each value of an instance that the transform
         sequesters. A UID or a Code Meaning found from such values alone
         can be explained where it would not be from a written instance's.
+    coded : frozenset of SourceValue, optional
+        The collected Code Meanings (0008,0104) whose own code item, in the
+        instance that collected them, gives one Coding Scheme Designator
+        that the pinned PS3.16 Table 8-1 lists, as an instance that the
+        transform sequesters gives them
+        (:func:`~pymedphys._dicom.deidentify.residual_exemptions.standard_code_meanings`).
+        Values are pooled across the subject by their place, so a meaning
+        is qualified by its own item before it is pooled, never by another
+        instance's item at the same place.
 
     Raises
     ------
     TypeError
         If an attribute is missing, or not of these types.
     ValueError
-        If a value is ``unwritten`` that is not collected.
+        If a value is ``unwritten`` or ``coded`` that is not collected.
     """
 
     planned: frozenset[ElementPath]
@@ -278,6 +287,7 @@ class Coverage:
     decoded_as_bytes: frozenset[ElementPath] = frozenset()
     options: tuple[str, ...] = ()
     unwritten: frozenset[SourceValue] = frozenset()
+    coded: frozenset[SourceValue] = frozenset()
 
     def __post_init__(self) -> None:
         for name, container, kind in (
@@ -287,6 +297,7 @@ class Coverage:
             ("decoded_as_bytes", frozenset, ElementPath),
             ("options", tuple, str),
             ("unwritten", frozenset, SourceValue),
+            ("coded", frozenset, SourceValue),
         ):
             given = getattr(self, name)
             if not isinstance(given, container) or not all(
@@ -295,8 +306,10 @@ class Coverage:
                 raise TypeError(
                     f"{name} must be a {container.__name__} of {kind.__name__}"
                 )
-        if self.unwritten and not self.unwritten <= frozenset(self.collected):
-            raise ValueError("an unwritten value must be a collected value")
+        for name in ("unwritten", "coded"):
+            given = getattr(self, name)
+            if given and not given <= frozenset(self.collected):
+                raise ValueError(f"a value that is {name} must be a collected value")
 
     @classmethod
     def merge(cls, *coverages: Coverage) -> Coverage:
@@ -307,7 +320,8 @@ class Coverage:
         even where another instance collected a value at the same path. A
         value is unwritten only where every coverage that collected it gives
         it as unwritten, so a value that a written instance shares with an
-        unwritten one is written.
+        unwritten one is written; and a value is coded only where every
+        coverage that collected it gives it as coded.
 
         Parameters
         ----------
@@ -342,13 +356,8 @@ class Coverage:
                 *(each.decoded_as_bytes for each in coverages)
             ),
             options=tuple(dict.fromkeys(o for c in coverages for o in c.options)),
-            unwritten=frozenset().union(*(each.unwritten for each in coverages))
-            - {
-                value
-                for each in coverages
-                for value in each.collected
-                if value not in each.unwritten
-            },
+            unwritten=_given_by_all(coverages, "unwritten"),
+            coded=_given_by_all(coverages, "coded"),
         )
 
     def not_reported(self) -> tuple[ElementPath, ...]:
@@ -465,6 +474,17 @@ class SubjectCoverages:
         if len(rest) != len(others) or any(a is not b for a, b in zip(rest, others)):
             return Coverage.merge(*coverages)
         return Coverage.merge(own, merged)
+
+
+def _given_by_all(coverages: tuple[Coverage, ...], name: str) -> frozenset[SourceValue]:
+    """Return the values that every coverage that collected them gives as ``name``."""
+    given = frozenset[SourceValue]().union(*(getattr(c, name) for c in coverages))
+    return given - {
+        value
+        for each in coverages
+        for value in each.collected
+        if value not in getattr(each, name)
+    }
 
 
 def _gap_code(reason: str) -> ReasonCode:
@@ -607,7 +627,11 @@ def release_condition(
             kept = kept or KeptValues(written)
             if reason.code is ReasonCode.RESIDUAL_TEXT:
                 why = exemption(
-                    each, kept, sources, coverage.options, coverage.unwritten
+                    each,
+                    kept,
+                    sources,
+                    coverage.options,
+                    coverage.unwritten & coverage.coded,
                 )
             elif reason.code is ReasonCode.RESIDUAL_UID:
                 why = unwritten_uid(

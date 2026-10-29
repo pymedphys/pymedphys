@@ -60,11 +60,12 @@ reason that such a finding is not a reason for review (D-032), or returns
   (:func:`~pymedphys._dicom.deidentify.option_kept.retained_value`). It also
   applies to a finding of a date or datetime, which would otherwise
   withhold the file (:func:`retained_date`).
-- :attr:`Exemption.UNWRITTEN_CODE_MEANING`: the finding's source is the Code
-  Meaning (0008,0104) of a code item whose Coding Scheme Designator is one
-  that the pinned PS3.16 Table 8-1 lists, and only instances that the run
-  does not write, such as a sequestered dose report, collected its values
-  for the subject, wherever in the data set the finding is.
+- :attr:`Exemption.UNWRITTEN_CODE_MEANING`: the finding's source is a Code
+  Meaning (0008,0104), only instances that the run does not write, such as
+  a sequestered dose report, collected its values for the subject, and each
+  of them was collected from a code item whose own Coding Scheme Designator
+  is one that the pinned PS3.16 Table 8-1 lists
+  (:func:`standard_code_meanings`), wherever in the data set the finding is.
 - :attr:`Exemption.UNWRITTEN_UID`: a UID found in a UID that a selected
   option keeps, equal to a whole value of it, whose source's values only
   instances that the run does not write collected (:func:`unwritten_uid`).
@@ -336,7 +337,7 @@ def exemption(
     kept: KeptValues,
     sources: Mapping[ElementPath, tuple[SourceValue, ...]],
     options: tuple[str, ...] = (),
-    unwritten: frozenset[SourceValue] = frozenset(),
+    meanings: frozenset[SourceValue] = frozenset(),
 ) -> Exemption | None:
     """Return why a text finding inside the data set is not a reason for review.
 
@@ -350,9 +351,10 @@ def exemption(
         The collected values of each source (:func:`source_values`).
     options : tuple of str, optional
         The run's options. With none, no option explains a finding.
-    unwritten : frozenset of SourceValue, optional
-        The values in ``sources`` that only instances the run does not
-        write collected.
+    meanings : frozenset of SourceValue, optional
+        The Code Meanings in ``sources`` that only instances the run does
+        not write collected, each from an item whose own Coding Scheme
+        Designator Table 8-1 lists (:func:`standard_code_meanings`).
 
     Returns
     -------
@@ -378,7 +380,7 @@ def exemption(
     if _vendor_creator(finding.source, sources):
         return Exemption.VENDOR_CREATOR
     why = _retained(finding, kept, sources, options)
-    if why is None and _unwritten_code_meaning(finding.source, sources, unwritten):
+    if why is None and _unwritten_code_meaning(finding.source, sources, meanings):
         why = Exemption.UNWRITTEN_CODE_MEANING
     return why
 
@@ -492,31 +494,63 @@ def unwritten_uid(
     return None
 
 
+def standard_code_meanings(
+    collected: tuple[SourceValue, ...],
+) -> frozenset[SourceValue]:
+    """Return the Code Meanings of one instance's values that name a standard code.
+
+    Parameters
+    ----------
+    collected : tuple of SourceValue
+        The values that one instance collected, never values pooled across
+        a subject, whose places can be the same in another instance.
+
+    Returns
+    -------
+    frozenset of SourceValue
+        Each Code Meaning (0008,0104) in an item whose own Coding Scheme
+        Designator (0008,0102), collected from the same instance at the same
+        item, is one value that is, without trailing spaces and NULs, a
+        designator that the pinned PS3.16 Table 8-1 lists. A meaning whose
+        item has a local designator, such as one starting with 99, none, as
+        a URN code may have, or one that the instance did not collect, is
+        not one, since a local code's meaning can be the site's own text.
+    """
+    designators = {
+        each.source.items: each.value
+        for each in collected
+        if each.source.tag == _DESIGNATOR and each.source.items
+    }
+    return frozenset(
+        each
+        for each in collected
+        if each.source.tag == _CODE_MEANING
+        and each.source.items
+        and _listed(designators.get(each.source.items))
+    )
+
+
+def _listed(designator: str | bytes | None) -> bool:
+    """Return whether a designator is one value that Table 8-1 lists."""
+    return isinstance(designator, str) and designator.rstrip(" \x00") in _designators()
+
+
 def _unwritten_code_meaning(
     source: ElementPath,
     sources: Mapping[ElementPath, tuple[SourceValue, ...]],
-    unwritten: frozenset[SourceValue],
+    meanings: frozenset[SourceValue],
 ) -> bool:
     """Return whether a source is a standard code's meaning from unwritten instances.
 
-    The source must be a Code Meaning (0008,0104) in an item, every value of
-    it collected for the subject must be in ``unwritten``, and every value of
-    the item's Coding Scheme Designator (0008,0102) collected for the
-    subject must be, without trailing spaces and NULs, one designator that
-    the pinned PS3.16 Table 8-1 lists. A local designator, such as one
-    starting with 99, or none, gives no exemption, since a local code's
-    meaning can be the site's own text.
+    The source must be a Code Meaning (0008,0104) in an item, and every value
+    of it collected for the subject must be in ``meanings``: collected only
+    by instances that the run does not write, each from an item whose own
+    Coding Scheme Designator Table 8-1 lists.
     """
     if source.tag != _CODE_MEANING or not source.items:
         return False
     values = sources.get(source, ())
-    if not values or not all(each in unwritten for each in values):
-        return False
-    designators = sources.get(ElementPath(source.items, _DESIGNATOR), ())
-    return bool(designators) and all(
-        isinstance(each.value, str) and each.value.rstrip(" \x00") in _designators()
-        for each in designators
-    )
+    return bool(values) and all(each in meanings for each in values)
 
 
 def _vendor_creator(

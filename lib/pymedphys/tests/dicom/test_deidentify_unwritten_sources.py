@@ -53,7 +53,10 @@ from pymedphys._dicom.deidentify.release_gate import (
     ReasonCode,
     release_condition,
 )
-from pymedphys._dicom.deidentify.residual_exemptions import Exemption
+from pymedphys._dicom.deidentify.residual_exemptions import (
+    Exemption,
+    standard_code_meanings,
+)
 from pymedphys._dicom.deidentify.residuals import SourceValue
 from pymedphys._dicom.deidentify.reviewed_descriptors import ReviewedDescriptors
 from pymedphys._dicom.deidentify.reviewed_roi_names import ReviewedNames
@@ -92,20 +95,30 @@ def _written(*elements, meta=b""):
     return bytes(128) + b"DICM" + meta + syntax + b"".join(elements)
 
 
+def _instance(values, options=()):
+    """The coverage of one instance that collected ``values``."""
+    return Coverage(
+        planned=frozenset(value.source for value in values),
+        collected=tuple(values),
+        options=options,
+    )
+
+
+def _pooled(*sequestered, written=(), options=()):
+    """The pooled coverage of sequestered instances' values and a written one's.
+
+    Each of ``sequestered`` is one instance's values, which the transform
+    marks as it marks a sequestered instance's evidence.
+    """
+    return Coverage.merge(
+        _instance(written, options),
+        *(unwritten(_instance(values, options)) for values in sequestered),
+    )
+
+
 def _coverage(*values, written=(), options=()):
     """The pooled coverage of an unwritten instance's values and a written one's."""
-    unwritten_values = Coverage(
-        planned=frozenset(value.source for value in values),
-        collected=values,
-        options=options,
-        unwritten=frozenset(values),
-    )
-    written_values = Coverage(
-        planned=frozenset(value.source for value in written),
-        collected=written,
-        options=options,
-    )
-    return Coverage.merge(written_values, unwritten_values)
+    return _pooled(values, written=written, options=options)
 
 
 def _exempted(condition):
@@ -139,6 +152,20 @@ def test_a_coverage_refuses_an_unwritten_value_that_it_did_not_collect():
         Coverage(planned=frozenset(), collected=(value,), unwritten={value})
     with pytest.raises(TypeError):
         Coverage(planned=frozenset(), collected=(), unwritten=frozenset({STUDY}))
+    with pytest.raises(ValueError):
+        Coverage(planned=frozenset(), collected=(), coded=frozenset({value}))
+
+
+def test_a_meaning_is_coded_only_where_every_coverage_that_collected_it_says_so():
+    meaning = SourceValue(MEANING, "LO", "Chest")
+    standard = Coverage(
+        planned=frozenset({MEANING}), collected=(meaning,), coded=frozenset({meaning})
+    )
+    unqualified = Coverage(planned=frozenset({MEANING}), collected=(meaning,))
+
+    assert Coverage.merge(standard).coded == {meaning}
+    assert not Coverage.merge(standard, unqualified).coded
+    assert not Coverage.merge(unqualified, standard).coded
 
 
 def test_unwritten_evidence_gives_every_collected_value_held_or_not():
@@ -250,12 +277,6 @@ def test_a_standard_codes_meaning_from_unwritten_instances_alone_is_exempt():
             (SourceValue(MEANING, "LO", "Chest"), SourceValue(SCHEME, "SH", "99LOCAL")),
             (),
         ),
-        # Another value collected at the designator is not one that Table 8-1
-        # lists.
-        (
-            (SourceValue(MEANING, "LO", "Chest"), SourceValue(SCHEME, "SH", "SCT")),
-            (SourceValue(SCHEME, "SH", "99LOCAL"),),
-        ),
         # No designator was collected.
         ((SourceValue(MEANING, "LO", "Chest"),), ()),
         # A written instance also held the meaning.
@@ -270,7 +291,6 @@ def test_a_standard_codes_meaning_from_unwritten_instances_alone_is_exempt():
     ],
     ids=[
         "local-scheme",
-        "another-designator",
         "no-designator",
         "written-meaning",
         "free-text",
@@ -287,6 +307,71 @@ def test_other_text_from_unwritten_instances_still_goes_to_review(
     assert condition.decision is Decision.QC_REVIEW
     assert not condition.exempted
     assert [reason.code for reason in condition.reasons] == [ReasonCode.RESIDUAL_TEXT]
+
+
+URN_CODE = "(0008,0120)"
+
+
+@pytest.mark.deid_requirement("MIDI-BP-01")
+@pytest.mark.parametrize(
+    "meaning", ["SYNTHETIC LABEL", "Chest"], ids=["other-meaning", "same-meaning"]
+)
+def test_a_meaning_is_qualified_by_its_own_item_not_another_instances(meaning):
+    """Two sequestered instances hold a code item at the same place.
+
+    One is SCT 816094009 "Chest"; the other is a URN code, whose item needs
+    no Coding Scheme Designator (PS3.3 Table 8.8-1a). The pooled values hold
+    SCT at the designator's place, but the URN code's meaning, whether or not
+    it equals the other, must still go to review where kept text holds it.
+    """
+    standard = (SourceValue(MEANING, "LO", "Chest"), SourceValue(SCHEME, "SH", "SCT"))
+    urn = (
+        SourceValue(ElementPath(REGION, URN_CODE), "UR", "urn:oid:2.25.7999"),
+        SourceValue(MEANING, "LO", meaning),
+    )
+    written = _written(_element(0x00081090, "LO", f"AXIAL {meaning.upper()}"))
+
+    alone = release_condition(_pooled(urn), written)
+    beside = release_condition(_pooled(standard, urn), written)
+    either_order = release_condition(_pooled(urn, standard), written)
+
+    for condition in (alone, beside, either_order):
+        assert condition.decision is Decision.QC_REVIEW
+        assert not condition.exempted
+    # The standard code's meaning alone is still exempt.
+    assert _exempted(release_condition(_pooled(standard), _written(SERIES_DESCRIPTION)))
+
+
+@pytest.mark.deid_requirement("MIDI-BP-01")
+def test_another_instances_local_designator_does_not_disqualify_a_standard_meaning():
+    # A written instance's own code item at the same place is local, but the
+    # meaning found came only from the sequestered report's SCT item.
+    condition = release_condition(
+        _coverage(
+            SourceValue(MEANING, "LO", "Chest"),
+            SourceValue(SCHEME, "SH", "SCT"),
+            written=(SourceValue(SCHEME, "SH", "99LOCAL"),),
+        ),
+        _written(SERIES_DESCRIPTION),
+    )
+
+    assert condition.decision is Decision.RELEASE
+    assert _exempted(condition) == [("(0008,103E)", Exemption.UNWRITTEN_CODE_MEANING)]
+
+
+def test_only_a_meaning_whose_own_item_names_a_listed_scheme_is_coded():
+    meaning = SourceValue(MEANING, "LO", "Chest")
+    other = ElementPath((*CONTENT, ("(0040,A168)", 1)), CODE_MEANING)
+    values = (
+        meaning,
+        SourceValue(SCHEME, "SH", "SCT"),
+        SourceValue(other, "LO", "Chest"),  # an item without a designator
+        SourceValue(ElementPath(other.items, DESIGNATOR), "SH", "99LOCAL\\SCT"),
+    )
+
+    assert standard_code_meanings(values) == {meaning}
+    assert unwritten(_instance(values)).coded == {meaning}
+    assert not standard_code_meanings((SourceValue(SCHEME, "SH", "SCT"),))
 
 
 @pytest.mark.deid_requirement("MIDI-BP-01")
