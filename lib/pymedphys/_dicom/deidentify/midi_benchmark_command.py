@@ -31,13 +31,14 @@ from pathlib import Path
 from . import midi_benchmark, midi_benchmark_flips, midi_script_results, run
 from .midi_answer_key import AnswerKeyError, read_answer_key
 from .policy import PolicyError
+from .safe_private import SafePrivateList
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     """Run the benchmark, compare two runs, or prepare or count the validation script's run.
 
     ``run`` takes ``--source``, ``--answer-key``, ``--work``, and optionally
-    ``--preset`` or one or more ``--option``, ``--collection``, ``--tg263``, and ``--watch``, as :func:`~pymedphys._dicom.deidentify.midi_benchmark.run_benchmark` does, and
+    ``--preset`` or one or more ``--option``, ``--safe-private-list``, ``--collection``, ``--tg263``, and ``--watch``, as :func:`~pymedphys._dicom.deidentify.midi_benchmark.run_benchmark` does, and
     prints the results as CommonMark. ``flip-check`` takes the answer key,
     ``--reference``, the check outcomes of a run under ``basic``,
     ``--compared``, those of a run under one Retain option alone,
@@ -92,7 +93,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         help=(
             "The preset, enabled or not. Defaults to basic. Under "
             "basic-clean-descriptors, ROI Names are cleaned with the pinned "
-            "TG-263 edition, and a name that would be held for review is emptied."
+            "TG-263 edition, and a name that would be held for review is "
+            "emptied. A preset with Clean Recognizable Visual Features runs "
+            "without it."
         ),
     )
     policy.add_argument(
@@ -102,6 +105,16 @@ def main(argv: Sequence[str] | None = None) -> int:
         help=(
             "An option of a custom option set, enabled or not, in place of a "
             "preset, such as retain_uids. May be repeated."
+        ),
+    )
+    benchmark.add_argument(
+        "--safe-private-list",
+        choices=[each.value for each in SafePrivateList],
+        default=SafePrivateList.REVIEWED.value,
+        help=(
+            "Under Retain Safe Private, the list whose rules settle private "
+            "attributes: reviewed (the default) or tcia, TCIA's Private Tag "
+            "Dictionary."
         ),
     )
     benchmark.add_argument(
@@ -187,6 +200,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 arguments.work,
                 preset=arguments.preset,
                 options=arguments.option,
+                safe_private_list=SafePrivateList(arguments.safe_private_list),
                 collection=arguments.collection,
                 tg263_spreadsheet=arguments.tg263,
                 watched=arguments.watch,

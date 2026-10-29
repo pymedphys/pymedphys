@@ -280,14 +280,18 @@ jobs:
         timeout-minutes: 5
         run: python3 -I .github/scripts/midi_b_tcia_answer_keys.py network
 
-      # Each of the group's configurations, as kind:name:scoring, run in
-      # turn. The kind is preset or option, a custom option set of that
-      # option alone; the scoring is full (the harness, the DICOM
-      # validation, and NCI's script), validated (the harness and the DICOM
-      # validation), or reference (the harness alone, for the flip checks).
-      # On the Test subset, the harness took about 62 minutes, the
-      # validation 10, and NCI's script 22, so each group fits the job's
-      # timeout.
+      # Each of the group's configurations, as kind:name:scoring, or
+      # kind:name:scoring:list, run in turn. The kind is preset or option, a
+      # custom option set of that option alone; the scoring is full (the
+      # harness, the DICOM validation, and NCI's script), validated (the
+      # harness and the DICOM validation), or reference (the harness alone,
+      # for the flip checks); the list, under Retain Safe Private, is tcia
+      # for TCIA's Private Tag Dictionary in place of the reviewed list, and
+      # the configuration's results are then named name-list. public-release runs
+      # without Clean Recognizable Visual Features, which needs a reviewer's
+      # face verdicts, as its results record. On the Test subset, the
+      # harness took about 62 minutes, the validation 10, and NCI's script
+      # 22, so each group fits the job's timeout.
       - name: Choose the configurations
         run: |
           case "${GROUP}" in
@@ -300,7 +304,7 @@ jobs:
             retain-2)
               configurations="preset:basic:reference option:retain_institution_identity:validated option:retain_patient_characteristics:validated" ;;
             retain-3)
-              configurations="preset:basic:reference option:retain_longitudinal_full_dates:validated option:retain_longitudinal_modified_dates:validated" ;;
+              configurations="preset:basic:reference option:retain_longitudinal_full_dates:validated option:retain_longitudinal_modified_dates:validated option:retain_safe_private:validated:tcia" ;;
             clean)
               configurations="option:clean_descriptors:validated option:clean_structured_content:validated option:clean_graphics:validated" ;;
             clean-pixel-data)
@@ -447,13 +451,17 @@ jobs:
             rm -rf "${parts}" "${logs}/nci-output"
           }
 
-          # De-identify and score one configuration, kind:name:scoring.
+          # De-identify and score one configuration, kind:name:scoring[:list].
           run_configuration() {
-            local kind label scoring
-            IFS=: read -r kind label scoring <<< "$1"
-            local policy=(--preset "${label}")
+            local kind name scoring list
+            IFS=: read -r kind name scoring list <<< "$1"
+            local label="${name}${list:+-${list}}"
+            local policy=(--preset "${name}")
             if [[ "${kind}" == option ]]; then
-              policy=(--option "${label}")
+              policy=(--option "${name}")
+            fi
+            if [[ -n "${list}" ]]; then
+              policy+=(--safe-private-list "${list}")
             fi
             local work="${RUNNER_TEMP}/midi-b/work-${label}"
             local out="${results}/${label}"
@@ -539,7 +547,8 @@ jobs:
             echo "This group has no flip checks."
           fi
           for configuration in ${CONFIGURATIONS}; do
-            IFS=: read -r kind label _ <<< "${configuration}"
+            IFS=: read -r kind name _ list <<< "${configuration}"
+            label="${name}${list:+-${list}}"
             if [[ "${kind}" != option || " ${CONFIGURATIONS} " != *" preset:basic:reference "* ]]; then
               continue
             fi
@@ -557,7 +566,7 @@ jobs:
               "${data}/answer-key.db" \
               --reference "${private}/outcomes-basic.txt" \
               --compared "${private}/outcomes-${label}.txt" \
-              --option "${label}" \
+              --option "${name}" \
               --out "${out}/flip-check.json" \
               > "${out}/flip-check.md" 2> "${private}/flip-check-${label}-stderr.log" \
               || status=$?
@@ -590,7 +599,8 @@ jobs:
               echo
             fi
             for configuration in ${CONFIGURATIONS:-}; do
-              IFS=: read -r _ label _ <<< "${configuration}"
+              IFS=: read -r _ name _ list <<< "${configuration}"
+              label="${name}${list:+-${list}}"
               out="${results}/${label}"
               [[ -d "${out}" ]] || continue
               echo "## ${label}"

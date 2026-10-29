@@ -39,10 +39,14 @@ from pymedphys._dicom.deidentify.midi_answer_key import (
     read_answer_key,
 )
 from pymedphys._dicom.deidentify.policy import (
+    CLEAN_RECOGNIZABLE_VISUAL_FEATURES,
+    SAFE_PRIVATE,
     PolicyError,
     compose_custom_policy,
     compose_policy,
+    compose_preset_without,
 )
+from pymedphys._dicom.deidentify.safe_private import SafePrivateList
 from pymedphys._dicom.deidentify.text_detection import TextDetectionError
 
 from . import _synthetic_references as synthetic
@@ -220,6 +224,75 @@ def test_clean_recognizable_visual_features_is_refused(tmp_path):
             options=["clean_recognizable_visual_features"],
         )
     assert not (tmp_path / "work").exists()
+
+
+def test_a_preset_with_clean_recognizable_visual_features_runs_without_it(sources):
+    # public-release selects the option, which needs a reviewer's face
+    # verdicts; the run takes its other options as the preset composes them.
+    assert (
+        CLEAN_RECOGNIZABLE_VISUAL_FEATURES in compose_policy("public-release").options
+    )
+    _, document = _run(sources, "option", preset="public-release")
+
+    versions = document["versions"]
+    assert versions["preset"] == "public-release"
+    assert versions["left_out"] == [CLEAN_RECOGNIZABLE_VISUAL_FEATURES]
+    assert versions["options"] == list(
+        compose_preset_without(
+            "public-release", CLEAN_RECOGNIZABLE_VISUAL_FEATURES
+        ).options
+    )
+    assert CLEAN_RECOGNIZABLE_VISUAL_FEATURES not in versions["options"]
+    assert document["coverage"]["instances"]["released"] > 0
+
+
+def test_a_preset_without_that_option_leaves_nothing_out(sources):
+    _, document = _run(sources, "option", preset="basic")
+
+    assert document["versions"]["left_out"] == []
+    assert document["versions"]["safe_private_list"] is None
+
+
+@pytest.mark.parametrize("chosen", list(SafePrivateList))
+def test_the_safe_private_list_is_chosen_and_recorded(sources, chosen):
+    _, document = _run(
+        sources, "option", options=[SAFE_PRIVATE], safe_private_list=chosen
+    )
+
+    assert document["versions"]["safe_private_list"] == chosen.value
+
+
+def test_tcias_dictionary_without_retain_safe_private_is_refused(tmp_path):
+    with pytest.raises(PolicyError, match="Retain Safe Private"):
+        benchmark.run_benchmark(
+            _source(tmp_path),
+            _benchmark_key(tmp_path),
+            tmp_path / "work",
+            options=[UIDS],
+            safe_private_list=SafePrivateList.TCIA,
+        )
+
+
+def test_the_command_passes_the_safe_private_list(sources):
+    status = midi_benchmark_command.main(
+        [
+            "run",
+            "--source",
+            str(_source(sources / "option-source")),
+            "--answer-key",
+            str(_benchmark_key(sources / "option-source")),
+            "--work",
+            str(sources / "option"),
+            "--option",
+            SAFE_PRIVATE,
+            "--safe-private-list",
+            "tcia",
+        ]
+    )
+
+    assert status == 0
+    document = json.loads((sources / "option" / "benchmark.json").read_text())
+    assert document["versions"]["safe_private_list"] == "tcia"
 
 
 def test_clean_pixel_data_runs_the_text_detector(sources, monkeypatch):
