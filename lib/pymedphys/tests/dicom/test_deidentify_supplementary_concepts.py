@@ -15,8 +15,9 @@
 """Supplementary rows for content items whose concepts Table E.3.4-1 omits.
 
 The rows give the patient characteristics that PS3.16 2026d's templates code
-under concepts that the table omits, and Subject ID as a CODE, the actions
-of the attributes that hold the same information (D-047). The reports are
+under concepts that the table omits, a device's UDI as a CODE, and Subject ID
+as a CODE, the actions of the attributes that hold the same information
+(D-047). The reports are
 synthetic, built from the templates of PS3.16 2026d by
 :mod:`._synthetic_dose_reports` and :mod:`._synthetic_structured_reports`,
 and each coded value added here is one of the context group that its row
@@ -54,6 +55,7 @@ pytestmark = [pytest.mark.pydicom, pytest.mark.usefixtures("pydicom_behaviour")]
 KEY = DeidKey(bytes(range(32)))
 CSC = policy.CLEAN_STRUCTURED_CONTENT
 RPC = policy.PATIENT_CHARACTERISTICS
+RDI = policy.DEVICE_IDENTITY
 CONTENT = "(0040,A730)"
 PRESETS = ("basic", "basic-clean-descriptors", "tps-import", "public-release")
 # Every option of Table E.1-1 that can be selected with the others, with
@@ -78,6 +80,7 @@ RACIAL_GROUP = ("SCT", "415229000", "CODE")
 PREGNANCY = ("SCT", "364320009", "CODE")
 SMOKING = ("SCT", "365981007", "CODE")
 BODY_MASS_INDEX = ("SCT", "60621009", "NUM")
+UDI = ("DCM", "128739", "CODE")
 # The rows that Retain Patient Characteristics keeps, and those that are
 # removed under every option.
 KEPT_WITH_CHARACTERISTICS = (
@@ -93,6 +96,8 @@ REMOVED_UNDER_EVERY_OPTION = (
     SEX_PARAMETERS_COMMENT,
     BODY_MASS_INDEX,
 )
+# The row that Retain Device Identity keeps.
+KEPT_WITH_DEVICE_IDENTITY = (UDI,)
 
 # Each concept that a template of PS3.16 2026d uses with a Value Type under
 # which Table E.3.4-1 does not list it, by its key and the Value Types that
@@ -212,7 +217,11 @@ def test_the_shipped_rows_cover_the_concepts_that_the_table_omits():
 
     assert loaded.edition == structured_content.load_table_e3_4_1().edition
     assert loaded.acknowledgement == f"DICOM PS3.16 {loaded.edition}, © NEMA"
-    assert set(_rows()) == {*KEPT_WITH_CHARACTERISTICS, *REMOVED_UNDER_EVERY_OPTION}
+    assert set(_rows()) == {
+        *KEPT_WITH_CHARACTERISTICS,
+        *REMOVED_UNDER_EVERY_OPTION,
+        *KEPT_WITH_DEVICE_IDENTITY,
+    }
     listed = {c.key for c in structured_content.load_table_e3_4_1().concepts}
     assert not listed & set(_rows())
     assert all(row.note.strip() for row in _rows().values())
@@ -223,6 +232,7 @@ def test_the_shipped_rows_cover_the_concepts_that_the_table_omits():
     *((preset, None) for preset in PRESETS),
     (None, (CSC,)),
     (None, (CSC, RPC)),
+    (None, (CSC, RDI)),
     (None, EVERY_OPTION),
 ])  # fmt: skip
 def test_each_row_takes_the_actions_of_its_attribute(with_option, preset, options):
@@ -232,6 +242,8 @@ def test_each_row_takes_the_actions_of_its_attribute(with_option, preset, option
 
     for key in KEPT_WITH_CHARACTERISTICS:
         assert actions[key] == ("K" if retained else "X"), key
+    for key in KEPT_WITH_DEVICE_IDENTITY:
+        assert actions[key] == ("K" if RDI in composed.options else "X"), key
     for key in REMOVED_UNDER_EVERY_OPTION:
         assert actions[key] == "X", key
 
@@ -361,6 +373,57 @@ def _subject(key, meaning, **value):
     )
 
 
+UDI_TEXT = "SENTINEL-UDI-(01)00000000000000(21)FIXTURE"
+
+
+def _udi():
+    """Return TID 11004 row 26, a UDI as a CODE, beside an imaging report's items.
+
+    TID 11004 names no coding scheme for the identifier, so the code is in a
+    local one, and the identifier, longer than a Code Value, is its Long Code
+    Value (0008,0119).
+    """
+    udi = reports.item(
+        "CONTAINS",
+        "CODE",
+        reports.Code(*_code(UDI), "UDI"),
+        code=reports.Code("UDI1", "99PMP", "Syringe UDI"),
+    )
+    code = udi.ConceptCodeSequence[0]
+    del code.CodeValue
+    code.LongCodeValue = UDI_TEXT
+    return udi
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.4-01")
+@pytest.mark.parametrize("preset, options", [
+    *((preset, None) for preset in PRESETS),
+    (None, (CSC,)),
+    (None, (CSC, RDI)),
+    (None, EVERY_OPTION),
+])  # fmt: skip
+def test_a_udi_is_kept_only_with_device_identity(with_option, preset, options):
+    composed = _composed(with_option, preset, options)
+    iod = reports.COMPREHENSIVE_SR_IOD
+    characteristics = RPC in composed.options
+
+    # The imaging report's sex, TID 1007 row 5, is kept only with the
+    # characteristics, as the rows above show.
+    assert _kept(_imaging(), iod, composed) is characteristics
+    assert _kept(_imaging(_udi()), iod, composed) is (
+        characteristics and RDI in composed.options
+    )
+
+
+@pytest.mark.usefixtures("supported")
+def test_a_written_report_holds_no_udi_without_device_identity():
+    result = _transformed(policy.compose_custom_policy((CSC,)), _imaging(_udi()))
+
+    assert isinstance(result, run.Transformed), result
+    assert UDI_TEXT.encode() not in result.data
+    assert b"SENTINEL" not in result.data
+
+
 def _imaging(*extra):
     dataset = reports.imaging_report(("TID 1007 row 5",))
     dataset.ContentSequence.extend(extra)
@@ -487,6 +550,7 @@ def test_a_valid_file_loads(tmp_path):
         _row_with(options={"retain_patient_characteristics": "C"}),
         "other than K",
     ),
+    (_row_with(options={"retain_device_identity": "C"}), "other than K"),
     # Subject ID as TEXT is a row of Table E.3.4-1.
     (
         _row_with(scheme_designator="DCM", code_value="121030", value_type="TEXT"),
