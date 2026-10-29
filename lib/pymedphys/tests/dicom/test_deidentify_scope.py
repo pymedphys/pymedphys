@@ -77,6 +77,14 @@ SUPPORTED = {
     "1.2.840.10008.5.1.4.1.1.88.33": "Comprehensive SR",
     "1.2.840.10008.5.1.4.1.1.88.34": "Comprehensive 3D SR",
     "1.2.840.10008.5.1.4.1.1.88.35": "Extensible SR",
+    "1.2.840.10008.5.1.4.1.1.88.59": "Key Object Selection Document",
+    "1.2.840.10008.5.1.4.1.1.88.50": "Mammography CAD SR",
+    "1.2.840.10008.5.1.4.1.1.88.65": "Chest CAD SR",
+    "1.2.840.10008.5.1.4.1.1.88.69": "Colon CAD SR",
+    "1.2.840.10008.5.1.4.1.1.88.40": "Procedure Log",
+    "1.2.840.10008.5.1.4.1.1.78.6": "Spectacle Prescription Report",
+    "1.2.840.10008.5.1.4.1.1.79.1": "Macular Grid Thickness and Volume Report",
+    "1.2.840.10008.5.1.4.1.1.88.77": "Waveform Annotation SR",
 }
 
 
@@ -107,6 +115,14 @@ def test_the_first_release_supports_ct_mr_pet_rt_registration_and_sr_objects():
         "Comprehensive SR",
         "Comprehensive 3D SR",
         "Extensible SR",
+        "Key Object Selection Document",
+        "Mammography CAD SR",
+        "Chest CAD SR",
+        "Colon CAD SR",
+        "Procedure Log",
+        "Spectacle Prescription Report",
+        "Macular Grid Thickness and Volume Report",
+        "Waveform Annotation SR",
     }
     assert scope.SUPPORTED_TRANSFER_SYNTAXES == {IMPLICIT_LE, EXPLICIT_LE, *COMPRESSED}
 
@@ -166,12 +182,10 @@ def test_padding_is_ignored():
     "sop_class, iod",
     [
         # The other Structured Reports, including the other dose reports,
-        # Key Object Selection documents, and Presentation States, which the
-        # design always sequesters.
-        ("1.2.840.10008.5.1.4.1.1.88.50", "Mammography CAD SR"),
+        # and Presentation States, which the design always sequesters.
+        ("1.2.840.10008.5.1.4.1.1.88.72", "Simplified Adult Echo SR"),
         ("1.2.840.10008.5.1.4.1.1.88.76", "Enhanced X-Ray Radiation Dose SR"),
         ("1.2.840.10008.5.1.4.1.1.88.73", "Patient Radiation Dose SR"),
-        ("1.2.840.10008.5.1.4.1.1.88.59", "Key Object Selection Document"),
         ("1.2.840.10008.5.1.4.1.1.11.1", "Grayscale Softcopy Presentation State"),
         # Outside the first release: other images, CT, MR, and PET objects
         # that are not images, spatial fiducials, RT Ion and second-generation
@@ -359,6 +373,14 @@ def test_pydicom_names_the_same_uids():
         uid.ComprehensiveSRStorage,
         uid.Comprehensive3DSRStorage,
         uid.ExtensibleSRStorage,
+        uid.KeyObjectSelectionDocumentStorage,
+        uid.MammographyCADSRStorage,
+        uid.ChestCADSRStorage,
+        uid.ColonCADSRStorage,
+        uid.ProcedureLogStorage,
+        uid.SpectaclePrescriptionReportStorage,
+        uid.MacularGridThicknessAndVolumeReportStorage,
+        uid.WaveformAnnotationSRStorage,
     ):
         assert scope.classify(sop_class, uid.ExplicitVRLittleEndian).disposition is (
             Disposition.SUPPORTED

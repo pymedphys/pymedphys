@@ -16,16 +16,14 @@
 
 The Chest CAD SR, Colon CAD SR, Procedure Log, Spectacle Prescription
 Report, Macular Grid Thickness and Volume Report, and Waveform Annotation SR
-IODs are not supported yet, so the engine sequesters their instances. As
-:mod:`.test_deidentify_structured_report_content` does for four other SR
-IODs, these tests show, ahead of supporting them, what the option does with
-the content trees of their root templates (D-047): which option sets keep a
+IODs are supported. As :mod:`.test_deidentify_structured_report_content`
+does for four other SR IODs, these tests show what the option does with the
+content trees of their root templates (D-047): which option sets keep a
 report that holds only the rows that its templates require; which optional
 rows take the whole tree out under each option set; the action that each
-listed value of a kept tree takes; and what is written and released, in the
-tests that add the IODs to the supported ones for that test alone, as
-supporting them would. The reports are synthetic, built from the templates
-of PS3.16 2026d by :mod:`._synthetic_specialised_reports`.
+listed value of a kept tree takes; and what is written and released. The
+reports are synthetic, built from the templates of PS3.16 2026d by
+:mod:`._synthetic_specialised_reports`.
 
 A preset with the option added is composed by adding it to every preset's
 options for the test alone, since no preset selects it, so that the policy
@@ -160,16 +158,6 @@ def _with_option(monkeypatch):
     return policy.compose_policy
 
 
-@pytest.fixture(name="supported")
-def _supported(monkeypatch):
-    """Add the six IODs to the supported ones, as supporting them would."""
-    monkeypatch.setattr(
-        scope,
-        "SUPPORTED_IODS",
-        scope.SUPPORTED_IODS | {iod for _, iod, _, _ in REPORTS.values()},
-    )
-
-
 def _report(name, optional=(), **kwargs):
     build, iod, _, _ = REPORTS[name]
     return build(optional, **kwargs), iod
@@ -275,14 +263,14 @@ def _evidence_item(written, sequence="CurrentRequestedProcedureEvidenceSequence"
 
 
 @pytest.mark.parametrize("name", REPORTS)
-def test_each_report_is_of_an_iod_that_is_not_supported_yet(name):
+def test_each_report_is_of_a_supported_iod(name):
     build, iod, _, template = REPORTS[name]
     dataset = build()
     classification = scope.classify(
         dataset.SOPClassUID, synthetic.EXPLICIT_VR_LITTLE_ENDIAN
     )
 
-    assert classification.reason == scope.UnsupportedIod(iod)
+    assert classification == scope.Classification(scope.Disposition.SUPPORTED, iod)
     iod_ = load_iod_tables().iods[iod]
     assert iod_.lookup(CONTENT, ())
     # Each IOD's SR Document General Module has a Verification Flag, so each
@@ -557,7 +545,6 @@ RELEASED_UNDER_BASIC = {
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.4-01")
-@pytest.mark.usefixtures("supported")
 @pytest.mark.parametrize("preset, released", [
     ("basic", RELEASED_UNDER_BASIC),
     ("public-release", RELEASED_UNDER_PUBLIC_RELEASE),
@@ -584,7 +571,6 @@ def test_a_written_report_holds_no_source_value_and_is_released(
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.4-01")
-@pytest.mark.usefixtures("supported")
 @pytest.mark.parametrize("preset", ("basic", "public-release"))
 def test_a_written_colon_report_names_the_replaced_study_and_series(
     with_option, preset
@@ -613,7 +599,6 @@ def test_a_written_colon_report_names_the_replaced_study_and_series(
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.4-01")
-@pytest.mark.usefixtures("supported")
 @pytest.mark.parametrize("preset", ("basic", "public-release"))
 def test_a_written_waveform_annotation_keeps_its_references(with_option, preset):
     dataset, _ = _report(WAVEFORM, reports.with_holders("TID 321 row 3 datetime"))
@@ -661,7 +646,6 @@ def test_a_verified_report_is_planned_as_an_unverified_one_is(
     ]
 
 
-@pytest.mark.usefixtures("supported")
 @pytest.mark.parametrize("name", KEPT)
 def test_a_verified_report_is_written_with_a_dummy_verifier(with_option, name):
     dataset, _ = _report(name, verified=True)

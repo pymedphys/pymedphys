@@ -879,6 +879,14 @@ def test_only_the_reports_define_content_sequence_and_none_waveform_annotation()
         "Comprehensive SR",
         "Comprehensive 3D SR",
         "Extensible SR",
+        "Key Object Selection Document",
+        "Mammography CAD SR",
+        "Chest CAD SR",
+        "Colon CAD SR",
+        "Procedure Log",
+        "Spectacle Prescription Report",
+        "Macular Grid Thickness and Volume Report",
+        "Waveform Annotation SR",
     }
     for name in scope.SUPPORTED_IODS:
         definitions = iods[name].definitions

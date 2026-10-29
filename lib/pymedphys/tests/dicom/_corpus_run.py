@@ -358,6 +358,21 @@ WITHHELD_WITHOUT_REPORTS: Mapping[str, Withheld] = types.MappingProxyType(
     }
 )
 
+# What a run that cleans every report's tree withholds: BASIC_WITHHELD
+# without the Structured Reports but the macular grid report, whose tree
+# Clean Structured Content never keeps, since its template requires rows
+# coded in LOINC, whose rows the pin leaves out (D-047).
+WITHHELD_UNDER_CLEAN_STRUCTURED_CONTENT: Mapping[str, Withheld] = (
+    types.MappingProxyType(
+        {
+            **WITHHELD_WITHOUT_REPORTS,
+            corpus_module.UNKEPT_REPORT_FILE: BASIC_WITHHELD[
+                corpus_module.UNKEPT_REPORT_FILE
+            ],
+        }
+    )
+)
+
 # Accession Number (0008,0050) and Referenced Study Sequence (0008,1110),
 # which dcentvfy's own tables place in the Study entity for a Structured
 # Report and in the Series entity for an image, whatever the files hold.

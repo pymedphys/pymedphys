@@ -32,6 +32,7 @@ from pymedphys._dicom.deidentify import (
     iods,
     policy,
     scope,
+    sop_classes,
     standard,
     supplementary_actions,
     temporal_roles,
@@ -97,8 +98,34 @@ GENERAL_SR_IODS = (
     "Comprehensive 3D SR",
     "Extensible SR",
 )
+# The other SR IODs of PS3.3 Section A.35, which the maintainer brought into
+# scope with the general ones, and those of them that the first supported
+# release now supports. They too use no attribute that the IODs above do
+# not. Rendition Selection Document has no Storage SOP Class in the pinned
+# PS3.4 Table B.5-1, so no instance is classified as it.
+OTHER_SR_IODS = (
+    "Key Object Selection Document",
+    "Mammography CAD SR",
+    "Chest CAD SR",
+    "Colon CAD SR",
+    "Procedure Log",
+    "Spectacle Prescription Report",
+    "Macular Grid Thickness and Volume Report",
+    "Waveform Annotation SR",
+    "Implantation Plan SR Document",
+    "Simplified Adult Echo SR",
+    "Planned Imaging Agent Administration SR",
+    "Performed Imaging Agent Administration SR",
+    "Acquisition Context SR",
+    "Rendition Selection Document",
+)
+SUPPORTED_OTHER_SR_IODS = OTHER_SR_IODS[:8]
 SUPPORTED_IODS = (
-    REVIEWED_AGAINST + SUPPORTED_TARGET_IODS + SUPPORTED_DOSE_SR_IODS + GENERAL_SR_IODS
+    REVIEWED_AGAINST
+    + SUPPORTED_TARGET_IODS
+    + SUPPORTED_DOSE_SR_IODS
+    + GENERAL_SR_IODS
+    + SUPPORTED_OTHER_SR_IODS
 )
 CLEAN_DESCRIPTORS = "clean_descriptors"
 DEVICE_IDENTITY = "retain_device_identity"
@@ -638,6 +665,36 @@ def test_the_general_sr_iods_use_no_attribute_that_the_reviewed_iods_do_not():
     assert set(GENERAL_SR_IODS) <= set(tables.iods)
     assert set(GENERAL_SR_IODS) <= scope.SUPPORTED_IODS
     assert used(GENERAL_SR_IODS) - used(reviewed) == set()
+
+
+def test_the_other_sr_iods_use_no_attribute_that_the_reviewed_iods_do_not():
+    tables = iods.load_iod_tables()
+    reviewed = REVIEWED_AGAINST + TARGET_IODS + RADIATION_DOSE_SR_IODS
+
+    def used(names):
+        return {
+            definition.tag
+            for name in names
+            for definition in tables.iods[name].definitions
+        }
+
+    # Of any VR, at any depth, the header review of every SR IOD left: the
+    # Key Object Document, Synchronization, Enhanced General Equipment, and
+    # Timezone Modules, which some of them add, define nothing new, so none
+    # needs a rule that the reviewed IODs' attributes do not already have.
+    assert set(OTHER_SR_IODS) <= set(tables.iods)
+    assert set(OTHER_SR_IODS) & scope.SUPPORTED_IODS == set(SUPPORTED_OTHER_SR_IODS)
+    assert used(OTHER_SR_IODS) - used(reviewed) == set()
+    # Every IOD of the pinned tables with an SR Document Content Module is a
+    # dose report, a general report, or one of these.
+    assert {
+        name
+        for name, iod in tables.iods.items()
+        if any(usage.module == "SR Document Content" for usage in iod.modules)
+    } == set(RADIATION_DOSE_SR_IODS + GENERAL_SR_IODS + OTHER_SR_IODS)
+    assert "Rendition Selection Document IOD" not in {
+        row.iod for row in sop_classes.load_storage_sop_classes().rows
+    }
 
 
 @pytest.mark.deid_requirement("MIDI-BP-05", "MIDI-BP-06", "MIDI-BP-11")

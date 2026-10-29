@@ -38,7 +38,8 @@ ReferenceSite = references.ReferenceSite
 FIRST_RELEASE_IODS = tuple(sorted(scope.SUPPORTED_IODS))
 # The Structured Reports, whose SR Document General Module references their
 # request and evidence in place of the Common Instance Reference Module and
-# the Request Attributes Sequence.
+# the Request Attributes Sequence, as the Key Object Selection Document's Key
+# Object Document Module does.
 STRUCTURED_REPORTS = (
     "Radiopharmaceutical Radiation Dose SR",
     "X-Ray Radiation Dose SR",
@@ -47,9 +48,22 @@ STRUCTURED_REPORTS = (
     "Comprehensive SR",
     "Comprehensive 3D SR",
     "Extensible SR",
+    "Key Object Selection Document",
+    "Mammography CAD SR",
+    "Chest CAD SR",
+    "Colon CAD SR",
+    "Procedure Log",
+    "Spectacle Prescription Report",
+    "Macular Grid Thickness and Volume Report",
+    "Waveform Annotation SR",
 )
 # Referenced Request Sequence.
 REFERENCED_REQUEST = "(0040,A370)"
+# The evidence sequences of SR Document General: Current Requested Procedure
+# Evidence, Pertinent Other Evidence, Predecessor Documents, and Identical
+# Documents. Key Object Document has only the first and the last.
+EVIDENCE = ("(0040,A375)", "(0040,A385)", "(0040,A360)", "(0040,A525)")
+KEY_OBJECT_EVIDENCE = ("(0040,A375)", "(0040,A525)")
 # Paths from the module tables of the 2026d PS3.3, checked against its text.
 RT_REFERENCES = [
     # RT Structure Set: the contour images of each referenced frame, their
@@ -111,9 +125,9 @@ RT_REFERENCES = [
     ),
     # Each report: the study in General Study and in each request; the
     # study, series, and instances of each evidence sequence, its
-    # predecessors, and its identical documents (Hierarchical SOP Instance
-    # Reference Macro); and the instances of its IMAGE and COMPOSITE content
-    # items.
+    # predecessors, and its identical documents, where its IOD has them
+    # (Hierarchical SOP Instance Reference Macro); and the instances of its
+    # IMAGE and COMPOSITE content items.
     *(
         (iod, attribute, level)
         for iod in STRUCTURED_REPORTS
@@ -124,10 +138,9 @@ RT_REFERENCES = [
             *(
                 item
                 for evidence in (
-                    "(0040,A375)",
-                    "(0040,A385)",
-                    "(0040,A360)",
-                    "(0040,A525)",
+                    KEY_OBJECT_EVIDENCE
+                    if iod == "Key Object Selection Document"
+                    else EVIDENCE
                 )
                 for item in (
                     ((evidence, "(0020,000D)"), Level.STUDY),

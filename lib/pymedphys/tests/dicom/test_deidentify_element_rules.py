@@ -698,6 +698,14 @@ def test_series_number_resolves_to_z_in_the_supported_iods_but_where_type_1():
         ("Comprehensive SR", ()),
         ("Comprehensive 3D SR", ()),
         ("Extensible SR", ()),
+        ("Key Object Selection Document", ()),
+        ("Mammography CAD SR", ()),
+        ("Chest CAD SR", ()),
+        ("Colon CAD SR", ()),
+        ("Procedure Log", ()),
+        ("Spectacle Prescription Report", ()),
+        ("Macular Grid Thickness and Volume Report", ()),
+        ("Waveform Annotation SR", ()),
     }
     assert {action for _, _, action in resolved} == {"Z", "D"}
 

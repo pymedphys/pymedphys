@@ -633,6 +633,14 @@ def test_a_plain_x_on_a_required_attribute_in_the_first_release_iods(tables):
                 "Comprehensive SR",
                 "Comprehensive 3D SR",
                 "Extensible SR",
+                "Key Object Selection Document",
+                "Mammography CAD SR",
+                "Chest CAD SR",
+                "Colon CAD SR",
+                "Procedure Log",
+                "Spectacle Prescription Report",
+                "Macular Grid Thickness and Volume Report",
+                "Waveform Annotation SR",
             )
         },
     }

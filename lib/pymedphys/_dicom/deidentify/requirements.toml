@@ -341,7 +341,7 @@ implementation = [
 ]
 note = '''
 Applies only with the Clean Pixel Data Option.
-An instance that satisfies the option, because it holds no top-level pixel data or a reviewer approved its regions, has Burned In Annotation set to NO, replacing any value present, whether or not its IOD defines the attribute; in the RT Plan, RT Structure Set, RT Beams Treatment Record, MR Spectroscopy, Spatial Registration, Deformable Spatial Registration, X-Ray Radiation Dose SR, Radiopharmaceutical Radiation Dose SR, Basic Text SR, Enhanced SR, Comprehensive SR, Comprehensive 3D SR, and Extensible SR IODs, which do not, it is a standard attribute of a Standard Extended SOP Class (PS3.2 Section 7.3), and the validators' findings of it there are known differences (D-048).
+An instance that satisfies the option, because it holds no top-level pixel data or a reviewer approved its regions, has Burned In Annotation set to NO, replacing any value present, whether or not its IOD defines the attribute; in the RT Plan, RT Structure Set, RT Beams Treatment Record, MR Spectroscopy, Spatial Registration, Deformable Spatial Registration, X-Ray Radiation Dose SR, Radiopharmaceutical Radiation Dose SR, Basic Text SR, Enhanced SR, Comprehensive SR, Comprehensive 3D SR, Extensible SR, Key Object Selection Document, Mammography CAD SR, Chest CAD SR, Colon CAD SR, Procedure Log, Spectacle Prescription Report, Macular Grid Thickness and Volume Report, and Waveform Annotation SR IODs, which do not, it is a standard attribute of a Standard Extended SOP Class (PS3.2 Section 7.3), and the validators' findings of it there are known differences (D-048).
 Any other instance keeps Burned In Annotation as received, and it is never set to NO otherwise (D-015).
 '''
 
@@ -392,7 +392,7 @@ implementation = [
 ]
 note = '''
 Applies only with the Clean Recognizable Visual Features Option.
-An instance that satisfies the option has Recognizable Visual Features set to NO, replacing any value present, whether or not its IOD defines the attribute; in the RT Plan, RT Structure Set, RT Beams Treatment Record, MR Spectroscopy, Spatial Registration, Deformable Spatial Registration, X-Ray Radiation Dose SR, Radiopharmaceutical Radiation Dose SR, Basic Text SR, Enhanced SR, Comprehensive SR, Comprehensive 3D SR, and Extensible SR IODs, which do not, it is a standard attribute of a Standard Extended SOP Class (PS3.2 Section 7.3), and the validators' findings of it there are known differences (D-046).
+An instance that satisfies the option has Recognizable Visual Features set to NO, replacing any value present, whether or not its IOD defines the attribute; in the RT Plan, RT Structure Set, RT Beams Treatment Record, MR Spectroscopy, Spatial Registration, Deformable Spatial Registration, X-Ray Radiation Dose SR, Radiopharmaceutical Radiation Dose SR, Basic Text SR, Enhanced SR, Comprehensive SR, Comprehensive 3D SR, Extensible SR, Key Object Selection Document, Mammography CAD SR, Chest CAD SR, Colon CAD SR, Procedure Log, Spectacle Prescription Report, Macular Grid Thickness and Volume Report, and Waveform Annotation SR IODs, which do not, it is a standard attribute of a Standard Extended SOP Class (PS3.2 Section 7.3), and the validators' findings of it there are known differences (D-046).
 Under any other policy, Recognizable Visual Features is kept as received and never set to NO (D-015).
 '''
 
@@ -438,7 +438,7 @@ implementation = [
 ]
 note = '''
 The engine applies the Clean Structured Content Option to a custom option set; no preset selects it (D-047).
-Of the Structured Reports, the X-Ray and Radiopharmaceutical Radiation Dose SRs, Basic Text SR, Enhanced SR, Comprehensive SR, Comprehensive 3D SR, and Extensible SR are supported and the others sequestered (D-010); of the supported IODs, only those seven define Content Sequence, at their root, and none Waveform Annotation Sequence. Waveform Annotation Sequence takes its Basic Profile action; Content Sequence is cleaned wherever an IOD defines it, at any depth of its nested Content Sequences, with the root content item that holds it, and a report whose tree cannot be kept is sequestered, since the Basic Profile gives Content Sequence D and a sequence has no dummy value (D-021).
+Of the Structured Reports, the X-Ray and Radiopharmaceutical Radiation Dose SRs, Basic Text SR, Enhanced SR, Comprehensive SR, Comprehensive 3D SR, Extensible SR, Mammography CAD SR, Chest CAD SR, Colon CAD SR, Procedure Log, Spectacle Prescription Report, Macular Grid Thickness and Volume Report, and Waveform Annotation SR are supported, as is the Key Object Selection Document, and the others sequestered (D-010); of the supported IODs, only those fifteen define Content Sequence, at their root, and none Waveform Annotation Sequence. Waveform Annotation Sequence takes its Basic Profile action; Content Sequence is cleaned wherever an IOD defines it, at any depth of its nested Content Sequences, with the root content item that holds it, and a report whose tree cannot be kept is sequestered, since the Basic Profile gives Content Sequence D and a sequence has no dummy value (D-021).
 Acquisition Context Sequence and Specimen Preparation Sequence are kept where the IOD defines them, and each content item is cleaned by its Value Type and concept name, as Table E.3.4-1 gives them, generated for the concept names that DICOM and SNOMED CT code (D-001).
 An item whose concept name the table does not list keeps its codes and numbers, and its other values take their own rules, as in any kept sequence.
 A concept name coded by a retired SNOMED designator, SRT, SNM3, or 99SDM, is looked up as the SNOMED CT code that PS3.16 Table O-1 maps it to (D-001).
@@ -446,6 +446,7 @@ X/D gives D wherever the concept appears, as though a template required the item
 Where the selected options remove an item, where an item cannot be read as one Value Type and one concept name, where its concept name is coded in a scheme whose rows the table does not hold, or where it is coded by a retired SNOMED designator with a code that Table O-1 does not map, the whole sequence takes its Basic Profile action, since a single item is not removed on its own.
 The synthetic collection's two dose reports carry markers in their content-item values and are released only where Clean Structured Content keeps their trees; each value is kept or replaced by its concept's row of Table E.3.4-1.
 Its five general reports, each a TID 2000 or TID 1500 tree with a marker in the value of each PNAME and UIDREF item, are released under the option alone, their Person Observer Names and source series replaced.
+Its Key Object Selection Document and seven other reports, each built from its IOD's root template, are released under the option alone too, but for the Macular Grid Thickness and Volume Report, whose concepts coded by LOINC keep it sequestered until the table holds their rows.
 '''
 
 [[requirement]]

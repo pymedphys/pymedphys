@@ -39,7 +39,10 @@ the engine cleans three of them (D-047):
   item too where it has a Value Type (PS3.3 Section C.17.3). Of the IODs of
   the first supported release, the X-Ray Radiation Dose SR,
   Radiopharmaceutical Radiation Dose SR, Basic Text SR, Enhanced SR,
-  Comprehensive SR, Comprehensive 3D SR, and Extensible SR define it.
+  Comprehensive SR, Comprehensive 3D SR, Extensible SR, Key Object Selection
+  Document, Mammography CAD SR, Chest CAD SR, Colon CAD SR, Procedure Log,
+  Spectacle Prescription Report, Macular Grid Thickness and Volume Report,
+  and Waveform Annotation SR define it.
 
 Under the option, :func:`content_item_actions` gives the walker an action for
 each such sequence and for the value of each content item in it, from the
