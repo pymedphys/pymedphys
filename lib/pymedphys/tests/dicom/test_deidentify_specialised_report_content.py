@@ -537,10 +537,15 @@ RELEASED_UNDER_PUBLIC_RELEASE = {
     WAVEFORM: _keepable(WAVEFORM, WAVEFORM_UIDS),
 }
 # The optional rows that basic, with the option added, keeps, where they
-# differ: it keeps no date in the log.
+# differ: it keeps no date in the log, and only one of its events, since
+# events whose times all take one dummy value would sequester it.
 RELEASED_UNDER_BASIC = {
     **RELEASED_UNDER_PUBLIC_RELEASE,
-    LOG: _keepable(LOG, LOG_REMOVED_UNDER_BASIC),
+    LOG: _keepable(
+        LOG,
+        LOG_REMOVED_UNDER_BASIC
+        | {"TID 3001 row 10", "TID 3001 row 12", "TID 3001 row 23"},
+    ),
 }
 
 
@@ -657,9 +662,6 @@ def test_each_log_event_carries_the_time_it_occurred_in_increasing_order():
 
 @pytest.mark.deid_requirement("PS3.15-E.3.4-01")
 @pytest.mark.parametrize("preset, options, action", [
-    # X/D, which gives D in this Type 1 place.
-    ("basic", None, "D"),
-    ("basic-clean-descriptors", None, "D"),
     ("tps-import", None, "C"),
     ("public-release", None, "C"),
     (None, (CSC, policy.FULL_DATES), "K"),
@@ -685,7 +687,6 @@ def test_the_log_events_times_take_their_dates_action(
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.4-01")
-@pytest.mark.usefixtures("supported")
 def test_a_written_log_shifts_its_event_times_under_modified_dates(with_option):
     dataset, _ = _report(LOG, LOG_EVENTS)
 
@@ -706,22 +707,34 @@ def test_a_written_log_shifts_its_event_times_under_modified_dates(with_option):
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.4-01")
-@pytest.mark.usefixtures("supported")
-def test_a_written_log_gives_every_event_the_same_dummy_time_under_basic(
-    with_option,
+@pytest.mark.parametrize("preset", ["basic", "basic-clean-descriptors"])
+def test_a_log_whose_events_would_share_one_dummy_time_is_sequestered(
+    with_option, preset
 ):
-    dataset, _ = _report(LOG, LOG_EVENTS)
+    dataset, iod = _report(LOG, LOG_EVENTS)
+
+    actions, plan = _planned(dataset, iod, with_option(preset))
+
+    # Observation DateTime is X/D, which gives D in this Type 1 place, and D
+    # writes one dummy value, so the written events would lose the order
+    # that A.35.7.3.1.2 requires. The tree is not kept, and its Content
+    # Sequence's D sequesters the log.
+    assert ElementPath((), CONTENT) not in actions
+    assert [s.path for s in plan.sequestrations] == [ElementPath((), CONTENT)]
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.4-01")
+def test_a_written_log_of_one_event_takes_the_dummy_time_under_basic(with_option):
+    dataset, _ = _report(LOG, LOG_EVENTS[:1])
 
     data, decision = _released(with_option("basic"), dataset)
 
-    # D writes D-021's one dummy value for the VR, so the events keep a
-    # time but lose their order: a written log of several events no longer
-    # meets A.35.7.3.1.2's strictly increasing Observation DateTime. This
-    # records the engine as it is; no source time is released.
+    # One event cannot be out of order, so its time takes D-021's dummy
+    # value and the log is released.
     written = pydicom.dcmread(io.BytesIO(data))
     for source in reports.EVENT_DATETIMES:
         assert source.encode() not in data, source
-    assert _event_times(written) == ["19000101000000"] * len(LOG_EVENTS)
+    assert _event_times(written) == ["19000101000000"]
     assert isinstance(decision, run.Release), decision
 
 
