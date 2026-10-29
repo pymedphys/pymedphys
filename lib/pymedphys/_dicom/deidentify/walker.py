@@ -380,6 +380,11 @@ class InstancePlan:
         removed item moves the target of, so that it names the same item in
         the output; empty otherwise. A plain dictionary, as
         ``private_texts`` is.
+    emptied : frozenset of ElementPath
+        Under Clean Structured Content, each Content Sequence that the plan
+        removes because every item of it is removed on its own; empty
+        otherwise. It is Type 1C, required only where its item has
+        relationships (PS3.3 Table C.17-6), so its loss is allowed.
     """
 
     elements: tuple[ElementPlan, ...]
@@ -395,6 +400,7 @@ class InstancePlan:
     renumbered: Mapping[ElementPath, tuple[int, ...]] = dataclasses.field(
         default_factory=dict, hash=False
     )
+    emptied: frozenset[ElementPath] = frozenset()
 
     def to_decode(self) -> tuple[ElementPath, ...]:
         """Return the paths of the elements that a consumer must read, in file order."""
@@ -661,6 +667,11 @@ def _plan(
         for element in elements
         if element.path in content_items.renumbered and element.action == "K"
     }
+    emptied = frozenset(
+        element.path
+        for element in elements
+        if element.path in content_items.emptied and element.action == "X"
+    )
     plan = InstancePlan(
         tuple(elements),
         tuple(sequestrations),
@@ -668,6 +679,7 @@ def _plan(
         vms,
         removed_items,
         renumbered,
+        emptied,
     )
     return plan, found
 
