@@ -89,8 +89,10 @@ item's Value Type (0040,A040) and the code of its Concept Name Code Sequence
   whose concept and Value Type a reviewed supplementary row lists
   (:mod:`.supplementary_concepts`): a patient characteristic that the table
   omits, which is removed, and kept under Retain Patient Characteristics
-  where Table E.1-1 keeps the attribute that holds it, and Subject ID as a
-  CODE, which TID 1007 gives it and the table lists only as TEXT, and which
+  where Table E.1-1 keeps the attribute that holds it; a UDI as a CODE,
+  which is removed, and kept under Retain Device Identity, as Table E.1-1
+  keeps UDI Sequence (0018,100A); and Subject ID as a CODE, which TID 1007
+  gives it and the table lists only as TEXT, and which
   is removed under every option (D-047). X/D gives D: the
   table gives D where a template requires the item, a template of PS3.16
   requires each X/D concept somewhere, and the engine reads every such item
@@ -246,7 +248,9 @@ METHOD = (
     "clinical use, a racial group, a pregnancy or smoking status, which are "
     "removed, and kept under Retain Patient Characteristics, and the comment "
     "on the sex parameters and a body mass index, which are removed under "
-    "every option; and a Subject ID coded as a CODE, which the table lists "
+    "every option; a device's UDI as a CODE is removed, and kept under "
+    "Retain Device Identity, as PS3.15 Table E.1-1 keeps UDI Sequence "
+    "(0018,100A); and a Subject ID coded as a CODE, which the table lists "
     "only as TEXT, is removed under every option. "
     "X/D gives D wherever the concept appears, as "
     "though a template required the item there, since PS3.16's templates "
@@ -636,9 +640,9 @@ class _ContentTree:
     nothing changes, an item that holds a Referenced Content Item Identifier
     (0040,DB73) naming a removed item, or an item inside one, is removed
     too: a by-reference relationship, or an item whose own elements name
-    one, such as a TABLE's row or column definitions; a CONTAINER whose
-    items are all removed is removed; and any other item whose items are
-    all removed loses its Content Sequence, which is Type 1C (PS3.3 Table
+    one, such as a TABLE's Cell Values Sequence (0040,A808); a CONTAINER
+    whose items are all removed is removed; and any other item whose items
+    are all removed loses its Content Sequence, which is Type 1C (PS3.3 Table
     C.17-6). Every Referenced Content Item Identifier that is kept is
     renumbered to name the same item in the output (PS3.3 Section
     C.17.3.2.5). An item that cannot be read, the root where it cannot be

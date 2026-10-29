@@ -33,7 +33,11 @@ says why:
   on the sex parameters, which Table E.1-1 cleans (C) and which is removed
   under every option, since no cleaner of content items settles C;
 - Body Mass Index, removed under every option, as the reviewed rules remove
-  Patient's Body Mass Index (0010,1022); and
+  Patient's Body Mass Index (0010,1022);
+- a UDI as a CODE, as TID 11004 row 26 and TID 11005 row 17 give it,
+  removed (X), and kept (K) under Retain Device Identity, as Table E.1-1
+  treats UDI Sequence (0018,100A) and Unique Device Identifier (0018,1009);
+  and
 - Subject ID as a CODE, as TID 1007 row 3 gives it, removed under every
   option. Table E.3.4-1 lists Subject ID only as TEXT, and of the concepts
   that PS3.16 2026d's templates use with a Value Type that the table does not
@@ -72,10 +76,11 @@ SUPPLEMENTARY_CONCEPTS_PATH = (
 # The Basic Profile action that a row may give: removal.
 BASIC_PROFILE_ACTIONS = frozenset({"X"})
 # The action that each option may give, overriding the Basic Profile action:
-# Retain Patient Characteristics keeps (K) a characteristic, as Table E.1-1
-# keeps the attribute that holds it.
+# Retain Patient Characteristics keeps (K) a characteristic, and Retain Device
+# Identity a device's identifier, as Table E.1-1 keeps the attribute that
+# holds it.
 OPTION_ACTIONS: Mapping[str, str] = types.MappingProxyType(
-    {"retain_patient_characteristics": "K"}
+    {"retain_patient_characteristics": "K", "retain_device_identity": "K"}
 )
 _FIELDS = frozenset(
     {
