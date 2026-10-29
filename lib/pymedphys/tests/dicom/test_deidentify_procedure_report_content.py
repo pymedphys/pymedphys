@@ -662,6 +662,50 @@ def test_a_written_performed_administration_references_its_plan(with_option):
 
 
 @pytest.mark.parametrize("name", [PLANNED, PERFORMED])
+def test_an_administration_phase_is_identified_by_its_ordinal(name):
+    dataset, _ = _report(name, ("TID 11006 row 4",))
+
+    # TID 11008 row 2's content item description requires Imaging Agent
+    # Administration Phase Identifier to be numeric text, the phase's
+    # ordinal within its step: "1" for the first.
+    phase = _by_meaning(dataset, reports.PHASE_IDENTIFIER.meaning)
+    assert phase.TextValue == reports.PHASE_ORDINAL == "1"
+
+
+@pytest.mark.xfail(
+    strict=True,
+    raises=AssertionError,
+    reason=(
+        "Imaging Agent Administration Phase Identifier is not listed in "
+        "Table E.3.4-1, so its Text Value takes Text Value's own rule, a "
+        "dummy value, which is not the numeric ordinal that TID 11008 row 2 "
+        "requires."
+    ),
+)
+@pytest.mark.usefixtures("supported")
+@pytest.mark.parametrize("name", [PLANNED, PERFORMED])
+def test_a_written_administration_phase_is_identified_by_an_ordinal(with_option, name):
+    dataset, _ = _report(name, ("TID 11006 row 4",))
+
+    data, _ = _released(with_option("public-release"), dataset)
+
+    written = pydicom.dcmread(io.BytesIO(data))
+    phase = _by_meaning(written, reports.PHASE_IDENTIFIER.meaning)
+    assert phase.TextValue.isdecimal(), phase.TextValue
+
+
+@pytest.mark.parametrize("name", [PLANNED, PERFORMED])
+def test_a_patient_weight_records_when_it_was_measured(name):
+    dataset, _ = _report(name, ("TID 10024 row 6",))
+
+    # TID 10024 row 6's content item description requires Observation
+    # DateTime (0040,A032). Patient Weight is coded in LOINC, so the tree
+    # goes, and the datetime with it.
+    weight = _by_meaning(dataset, reports.PATIENT_WEIGHT.meaning)
+    assert weight.ObservationDateTime == reports.WEIGHT_MEASURED
+
+
+@pytest.mark.parametrize("name", [PLANNED, PERFORMED])
 @pytest.mark.parametrize("preset, options", [
     *((preset, None) for preset in PRESETS),
     (None, EVERY_OPTION),

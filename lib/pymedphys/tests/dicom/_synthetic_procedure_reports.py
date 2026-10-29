@@ -142,6 +142,7 @@ PHASE_START = "20260412102231"
 ADVERSE_EVENT_DATETIME = "20260412102904"
 HANDLING_START = "20260412081500"
 HANDLING_END = "20260412093000"
+WEIGHT_MEASURED = "20260412074500"
 LIGHTS_ON = "063000"
 DATES = (
     EXPIRATION_DATE,
@@ -149,12 +150,16 @@ DATES = (
     ADVERSE_EVENT_DATETIME,
     HANDLING_START,
     HANDLING_END,
+    WEIGHT_MEASURED,
 )
 # The Unique Device Identifier of a syringe, in the human-readable form of
 # the GS1 issuing agency's, with a serial number (AI 21) that no other value
 # repeats.
 SYRINGE_UDI = "(01)00000000000017(17)290131(10)A42(21)SYNTHUDI0731"
 TIMEZONE = "+1000"
+# The identifier of the first phase of an administration step, which TID
+# 11008 row 2's content item description requires to be its ordinal.
+PHASE_ORDINAL = "1"
 
 # Root concepts.
 IMPLANTATION_PLAN_TITLE = Code("112345", "DCM", "Implantation Plan")
@@ -258,7 +263,7 @@ PATIENT_CHARACTERISTICS = Code("121118", "DCM", "Patient Characteristics")
 PATIENT_WEIGHT = Code("29463-7", "LN", "Patient Weight")
 BODY_MASS_INDEX = Code("60621009", "SCT", "Body Mass Index")
 RECENT_PHYSICAL_ACTIVITY = Code("113552", "DCM", "Recent Physical Activity")
-# TID 8101, 8110, 8121, and 8170.
+# TID 8101, 8110, 8121, and 8150.
 BIOSAFETY_CONDITIONS = Code("127010", "DCM", "Biosafety conditions")
 ANIMAL_HANDLING = Code("127005", "DCM", "Animal handling during specified phase")
 PHASE_OF_ANIMAL_HANDLING = Code("127006", "DCM", "Phase of animal handling")
@@ -299,7 +304,7 @@ HELD_BY = {
     "TID 8101 row 8": "TID 8101 row 6",
     "TID 8101 row 9": "TID 8101 row 6",
     "TID 8101 row 10": "TID 8101 row 6",
-    "TID 8101 row 14": "TID 8101 row 6",
+    "TID 8101 row 13": "TID 8101 row 6",
     "TID 8121 row 2b": "TID 8101 row 10",
     "TID 8121 row 25": "TID 8101 row 10",
 }
@@ -728,14 +733,7 @@ def _patient_characteristics(optional):
                 number="56",
                 units=YEAR,
             ),
-            _row(
-                "TID 10024 row 6",
-                "CONTAINS",
-                "NUM",
-                PATIENT_WEIGHT,
-                number="71",
-                units=KILOGRAM,
-            ),
+            ("TID 10024 row 6", _patient_weight),
             _row(
                 "TID 10024 row 9",
                 "CONTAINS",
@@ -758,6 +756,17 @@ def _patient_characteristics(optional):
     return [item("CONTAINS", "CONTAINER", PATIENT_CHARACTERISTICS, *rows)]
 
 
+def _patient_weight():
+    """Return TID 10024 row 6, the patient's weight, with when it was measured.
+
+    The row's content item description requires Observation DateTime
+    (0040,A032).
+    """
+    weight = item("CONTAINS", "NUM", PATIENT_WEIGHT, number="71", units=KILOGRAM)
+    weight.ObservationDateTime = WEIGHT_MEASURED
+    return weight
+
+
 def _step(performed):
     """Return TID 11006 row 4, TID 11007, one manual step, with its M rows.
 
@@ -766,7 +775,8 @@ def _step(performed):
     that row 5, the role of the person who gave it, from CID 7450, is
     required, and the rows required only of automated administration are
     absent. It has one phase (row 13, TID 11008), whose total volume (row 6)
-    is required. A plan numbers the step (TID 11007 row 20); a performed
+    is required, and identified by its ordinal, "1", as TID 11008 row 2's
+    content item description requires. A plan numbers the step (TID 11007 row 20); a performed
     administration gives the step and its phase UIDs (TID 11007 row 3 and
     TID 11008 row 3) and the phase its start (TID 11008 row 7).
     """
@@ -798,7 +808,7 @@ def _step(performed):
         "CONTAINS",
         "CONTAINER",
         ADMINISTRATION_PHASE,
-        item("CONTAINS", "TEXT", PHASE_IDENTIFIER, text=f"{SENTINEL} PHASE 1"),
+        item("CONTAINS", "TEXT", PHASE_IDENTIFIER, text=PHASE_ORDINAL),
         *phase_uid,
         item("CONTAINS", "NUM", TOTAL_PHASE_VOLUME, number="80", units=MILLILITRE),
         *start,
@@ -957,7 +967,7 @@ ACQUISITION_CONTEXT_OPTIONAL_ROWS = (
     "TID 8101 row 10",
     "TID 8121 row 2b",
     "TID 8121 row 25",
-    "TID 8101 row 14",
+    "TID 8101 row 13",
 )
 
 
@@ -995,8 +1005,8 @@ def _animal_handling(optional):
 
     Its phase (row 7, from CID 634) is required. ``optional`` adds its start
     and end (rows 8 and 9), its housing (row 10, TID 8121), and the
-    circadian effects (row 14, TID 8170), with the time the lights came on
-    (TID 8170 row 4).
+    circadian effects (row 13, TID 8150), with the time the lights came on
+    (TID 8150 row 4).
     """
     circadian = item(
         "CONTAINS",
@@ -1032,7 +1042,7 @@ def _animal_handling(optional):
                     text=HANDLING_END,
                 ),
                 ("TID 8101 row 10", lambda: _housing(optional)),
-                ("TID 8101 row 14", lambda: circadian),
+                ("TID 8101 row 13", lambda: circadian),
             ],
         ),
     )
