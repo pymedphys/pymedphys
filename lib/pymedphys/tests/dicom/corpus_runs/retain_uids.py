@@ -12,8 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""The Retain UIDs Option alone (PS3.15 E.3.9, D-040)."""
+"""The Retain UIDs Option alone (PS3.15 E.3.9, D-040), over the corpus without its reports.
 
-from .._corpus_run import CorpusRun
+The X-ray report's scope of accumulation names the study by its Study
+Instance UID, which the option keeps everywhere else. Without Clean
+Structured Content, the Basic Profile's D on the report's Content Sequence
+removes it, and a removed UID found in a kept one withholds the file
+(D-042), so with the reports every instance of the subject would be
+withheld, as it would be were the reports out of scope, since their values
+are still collected for the subject's search; the end-to-end tests show
+that apart, and this run checks the option on the other instances.
+"""
 
-RUN = CorpusRun("retain-uids", options=("retain_uids",))
+from .._corpus_run import WITHHELD_WITHOUT_REPORTS, CorpusRun, without_reports
+
+RUN = CorpusRun(
+    "retain-uids",
+    options=("retain_uids",),
+    corpus=without_reports,
+    withheld=WITHHELD_WITHOUT_REPORTS,
+)
