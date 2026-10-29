@@ -38,7 +38,7 @@ says why:
   option. Table E.3.4-1 lists Subject ID only as TEXT, and of the concepts
   that PS3.16 2026d's templates use with a Value Type that the table does not
   list for them, it is the only one whose value there holds what the listed
-  row removes (D-047).
+  row removes or replaces (D-047).
 
 A row has the fields of a row of Table E.3.4-1 that the engine reads: a
 concept name, by its Coding Scheme Designator and Code Value, a Value Type,

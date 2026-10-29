@@ -796,8 +796,10 @@ def test_the_statement_gives_the_code_only_after_review():
     assert (
         "also has Burned In Annotation (0028,0301) set to NO, as PS3.15 E.3.1 "
         "requires, including in an IOD that does not define the attribute, which "
-        "of the supported IODs are RT Plan, RT Structure Set, MR Spectroscopy, "
-        "Spatial Registration, and Deformable Spatial Registration"
+        "of the supported IODs are RT Plan, RT Structure Set, RT Beams Treatment "
+        "Record, MR Spectroscopy, Spatial Registration, Deformable Spatial "
+        "Registration, X-Ray Radiation Dose SR, and Radiopharmaceutical Radiation "
+        "Dose SR"
     ) in text
     assert (
         "claims Clean Pixel Data only for an instance without top-level pixel "
@@ -814,9 +816,12 @@ def test_the_statement_names_each_supported_iod_that_lacks_the_attribute():
     assert lacking == {
         "RT Plan",
         "RT Structure Set",
+        "RT Beams Treatment Record",
         "MR Spectroscopy",
         "Spatial Registration",
         "Deformable Spatial Registration",
+        "X-Ray Radiation Dose SR",
+        "Radiopharmaceutical Radiation Dose SR",
     }
 
 

@@ -33,7 +33,7 @@ code_value = "121030"
 value_type = "CODE"
 code_meaning = "Subject ID"
 basic_profile = "X"
-note = "TID 1007 row 3 gives Subject ID the Value Type CODE, required where the subject is not inherited, while Table E.3.4-1 lists the concept only as TEXT, which it removes or replaces (X/D). As a code, the identifier is the Code Value, often in a local coding scheme, which an unlisted item keeps; a code has no dummy value, so the item is removed under every option, as Table E.1-1 empties or replaces Patient ID (0010,0020) under every option. Of the concepts that PS3.16's templates use with a Value Type that the table does not list for them, this is the only one whose value there holds what the listed row removes."
+note = "TID 1007 row 3 gives Subject ID the Value Type CODE, required where the subject is not inherited, while Table E.3.4-1 lists the concept only as TEXT, which it removes or replaces (X/D). As a code, the identifier is the Code Value, often in a local coding scheme, which an unlisted item keeps; a code has no dummy value, so the item is removed under every option, as Table E.1-1 empties or replaces Patient ID (0010,0020) under every option. Of the concepts that PS3.16's templates use with a Value Type that the table does not list for them, this is the only one whose value there holds what the listed row removes or replaces."
 
 [[concept]]
 scheme_designator = "DCM"

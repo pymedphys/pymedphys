@@ -54,7 +54,6 @@ pytestmark = [pytest.mark.pydicom, pytest.mark.usefixtures("pydicom_behaviour")]
 KEY = DeidKey(bytes(range(32)))
 CSC = policy.CLEAN_STRUCTURED_CONTENT
 RPC = policy.PATIENT_CHARACTERISTICS
-DATES = policy.MODIFIED_DATES
 CONTENT = "(0040,A730)"
 PRESETS = ("basic", "basic-clean-descriptors", "tps-import", "public-release")
 # Every option of Table E.1-1 that can be selected with the others, with
@@ -292,11 +291,9 @@ def _body_mass_index():
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.4-01")
-# A report needs a Retain Longitudinal Temporal Information Option for its
-# required Radiopharmaceutical Start DateTime to be kept.
 @pytest.mark.parametrize("preset, options, kept", [
-    (None, (CSC, DATES), False),
-    (None, (CSC, DATES, RPC), True),
+    (None, (CSC,), False),
+    (None, (CSC, RPC), True),
     ("public-release", None, False),
     ("tps-import", None, True),
     (None, EVERY_OPTION, True),
@@ -315,7 +312,7 @@ def test_a_coded_patient_state_in_a_dose_report_is_kept_only_with_the_characteri
 @pytest.mark.parametrize("preset, options", [
     ("tps-import", None),
     ("public-release", None),
-    (None, (CSC, DATES, RPC)),
+    (None, (CSC, RPC)),
     (None, EVERY_OPTION),
 ])  # fmt: skip
 def test_a_body_mass_index_in_a_dose_report_takes_the_tree_out(

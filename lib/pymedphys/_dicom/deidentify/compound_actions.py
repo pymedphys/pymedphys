@@ -61,7 +61,7 @@ attribute that Table E.1-1 removes under the Basic Profile and every option
 (:data:`LAPSED_CONDITIONS`): ROI Interpreter Sequence (3006,004E), and
 Clinical Trial Protocol Ethics Committee Name (0012,0081), which PS3.5
 Section 7.4.2 does not allow once its condition is not met, so that D, its
-action in the table, would leave the output invalid. A plain X always removes the
+action in the table, would leave the output invalid. A plain X removes the
 attribute, as Table E.1-1a defines X, whatever its Type
 (:func:`resolve_plain_x_in_iod`). Where the IOD requires the attribute at
 that place, by its strictest Type, the innermost enclosing sequence that the
@@ -72,7 +72,11 @@ removing Overlay Data (60xx,3000) removes every attribute of its repeating
 group where the IOD's Overlay Plane Module is user-optional, and an
 attribute of :data:`LAPSED_CONDITIONS`, such as ROI Interpreter Sequence
 (3006,004E), whose condition lapses once ROI Creator Sequence (3006,004D) is
-removed, is removed alone.
+removed, is removed alone. One place departs from Table E.1-1's X, as the
+maintainer decided: Requested Procedure ID (0040,1001), Type 2 in Referenced
+Request Sequence (0040,A370) of a Structured Report, where no Type 3
+sequence encloses it, is emptied rather than sequester the report
+(:data:`EMPTIED_PLAIN_X`).
 
 For example, the RT Structure Set IOD makes Series Description (0008,103E),
 which Table E.1-1 gives X, Type 1 in Source Series Information Sequence
@@ -141,6 +145,18 @@ LAPSED_CONDITIONS: Mapping[str, str] = types.MappingProxyType(
 )
 
 
+# Each attribute that Table E.1-1 gives a plain X, mapped to the one place,
+# by the sequences that enclose it, where a plain X empties it rather than
+# sequester the instance, as the maintainer decided on 26 October 2026: there
+# the IOD makes it Type 2 and no Type 3 sequence encloses it. Requested
+# Procedure ID is Type 2 in Referenced Request Sequence, which is Type 1C at
+# the top level of a Structured Report made for a request; its zero-length
+# value discloses nothing that its removal would not.
+EMPTIED_PLAIN_X: Mapping[str, tuple[str, ...]] = types.MappingProxyType(
+    {"(0040,1001)": ("(0040,A370)",)}
+)
+
+
 class RemovalExtent(enum.Enum):
     """What a plain X removes with an attribute, or else sequesters."""
 
@@ -148,6 +164,7 @@ class RemovalExtent(enum.Enum):
     SEQUENCE = "sequence"  # an enclosing sequence, with everything in it
     OVERLAY_GROUP = "overlay group"  # every attribute of the overlay group
     SEQUESTER = "sequester"  # nothing: the instance is sequestered
+    EMPTIED = "emptied"  # nothing: the attribute is emptied (EMPTIED_PLAIN_X)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -161,9 +178,11 @@ class PlainRemoval:
         :attr:`~RemovalExtent.SEQUENCE` to remove the enclosing sequence that
         ``sequence`` names, with every item, and so the attribute;
         :attr:`~RemovalExtent.OVERLAY_GROUP` to remove every attribute of
-        the attribute's overlay group, in the same data set or item; or
+        the attribute's overlay group, in the same data set or item;
         :attr:`~RemovalExtent.SEQUESTER` where no removal keeps the instance
-        valid, so the instance is sequestered.
+        valid, so the instance is sequestered; or
+        :attr:`~RemovalExtent.EMPTIED` where the attribute is emptied in
+        place of that sequestration (:data:`EMPTIED_PLAIN_X`).
     sequence : int or None
         For :attr:`~RemovalExtent.SEQUENCE`, the position in the attribute's
         path of the sequence to remove, counting from 0 at the outermost:
@@ -353,9 +372,11 @@ def resolve_plain_in_iod(iod: IOD, tag: str, path: Sequence[str], action: str) -
     on an attribute of :data:`LAPSED_CONDITIONS` gives X, wherever it is:
     its Type 1C condition never holds in the output, and Clinical Trial
     Protocol Ethics Committee Name (0012,0081), which Table E.1-1 gives D, is
-    not allowed without it (PS3.5 Section 7.4.2). Every other plain action,
-    and D and Z elsewhere, is returned unchanged; a plain Z on an attribute
-    that the IOD does not define there stays Z.
+    not allowed without it (PS3.5 Section 7.4.2). A plain X gives Z at the
+    one place of each attribute of :data:`EMPTIED_PLAIN_X` where its removal
+    would sequester the instance (:func:`resolve_plain_x_in_iod`). Every
+    other plain action, and D, Z, and X elsewhere, is returned unchanged; a
+    plain Z on an attribute that the IOD does not define there stays Z.
 
     Parameters
     ----------
@@ -398,6 +419,13 @@ def resolve_plain_in_iod(iod: IOD, tag: str, path: Sequence[str], action: str) -
 
     >>> resolve_plain_in_iod(iods["CT Image"], "(0012,0081)", (), "D")
     'X'
+
+    Requested Procedure ID (0040,1001), which Table E.1-1 gives X, is Type
+    2 in Referenced Request Sequence (0040,A370) of a Structured Report:
+
+    >>> report = iods["X-Ray Radiation Dose SR"]
+    >>> resolve_plain_in_iod(report, "(0040,1001)", ("(0040,A370)",), "X")
+    'Z'
     """
     definitions = iod.lookup(tag, _checked_path(tag, path))
     if not isinstance(action, str) or action not in PLAIN_ACTIONS:
@@ -407,6 +435,8 @@ def resolve_plain_in_iod(iod: IOD, tag: str, path: Sequence[str], action: str) -
         )
     if tag in LAPSED_CONDITIONS:
         return "X"
+    if action == "X" and _emptied(iod, tag, tuple(path)):
+        return "Z"
     if action == "D" and not definitions:
         return "X"
     if action == "Z" and _strictest(definitions) == "1":
@@ -449,7 +479,10 @@ def resolve_plain_x_in_iod(iod: IOD, tag: str, path: Sequence[str]) -> PlainRemo
     An attribute of :data:`LAPSED_CONDITIONS`, such as ROI Interpreter
     Sequence (3006,004E), is removed alone, since its Type 1C condition needs
     an attribute that Table E.1-1 removes too, here ROI Creator Sequence
-    (3006,004D).
+    (3006,004D). An attribute of :data:`EMPTIED_PLAIN_X` is emptied instead,
+    at its one place there, where it is Type 2 and its removal would
+    sequester the instance, as the maintainer decided: Requested Procedure
+    ID (0040,1001) in Referenced Request Sequence (0040,A370).
 
     This decides from the IOD's Types alone; it changes no data set.
 
@@ -495,9 +528,29 @@ def resolve_plain_x_in_iod(iod: IOD, tag: str, path: Sequence[str]) -> PlainRemo
         return PlainRemoval(RemovalExtent.OVERLAY_GROUP)
     if tag in LAPSED_CONDITIONS:
         return PlainRemoval(RemovalExtent.ATTRIBUTE)
+    if _emptied(iod, tag, checked):
+        return PlainRemoval(RemovalExtent.EMPTIED)
+    return _required_removal(iod, tag, checked)
+
+
+def _required_removal(iod: IOD, tag: str, checked: tuple[str, ...]) -> PlainRemoval:
+    """Return what removing an attribute takes, by the Types alone."""
     if _strictest(iod.lookup(tag, checked)) == "3":
         return PlainRemoval(RemovalExtent.ATTRIBUTE)
     for depth in reversed(range(len(checked))):
         if _strictest(iod.lookup(checked[depth], checked[:depth])) == "3":
             return PlainRemoval(RemovalExtent.SEQUENCE, depth)
     return PlainRemoval(RemovalExtent.SEQUESTER)
+
+
+def _emptied(iod: IOD, tag: str, checked: tuple[str, ...]) -> bool:
+    """Return whether a plain X empties an attribute (:data:`EMPTIED_PLAIN_X`).
+
+    It does at the attribute's one place there, where the IOD makes it Type
+    2 and its removal would sequester the instance.
+    """
+    return (
+        EMPTIED_PLAIN_X.get(tag) == checked
+        and _strictest(iod.lookup(tag, checked)) == "2"
+        and _required_removal(iod, tag, checked).extent is RemovalExtent.SEQUESTER
+    )
