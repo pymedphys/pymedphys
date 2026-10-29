@@ -42,7 +42,9 @@ the engine cleans three of them (D-047):
   Comprehensive SR, Comprehensive 3D SR, Extensible SR, Key Object Selection
   Document, Mammography CAD SR, Chest CAD SR, Colon CAD SR, Procedure Log,
   Spectacle Prescription Report, Macular Grid Thickness and Volume Report,
-  and Waveform Annotation SR define it.
+  Waveform Annotation SR, Implantation Plan SR Document, Simplified Adult
+  Echo SR, Planned and Performed Imaging Agent Administration SR, and
+  Acquisition Context SR define it.
 
 Under the option, :func:`content_item_actions` gives the walker an action for
 each such sequence and for the value of each content item in it, from the

@@ -85,6 +85,11 @@ SUPPORTED = {
     "1.2.840.10008.5.1.4.1.1.78.6": "Spectacle Prescription Report",
     "1.2.840.10008.5.1.4.1.1.79.1": "Macular Grid Thickness and Volume Report",
     "1.2.840.10008.5.1.4.1.1.88.77": "Waveform Annotation SR",
+    "1.2.840.10008.5.1.4.1.1.88.70": "Implantation Plan SR Document",
+    "1.2.840.10008.5.1.4.1.1.88.72": "Simplified Adult Echo SR",
+    "1.2.840.10008.5.1.4.1.1.88.74": "Planned Imaging Agent Administration SR",
+    "1.2.840.10008.5.1.4.1.1.88.75": "Performed Imaging Agent Administration SR",
+    "1.2.840.10008.5.1.4.1.1.88.71": "Acquisition Context SR",
 }
 
 
@@ -123,6 +128,11 @@ def test_the_first_release_supports_ct_mr_pet_rt_registration_and_sr_objects():
         "Spectacle Prescription Report",
         "Macular Grid Thickness and Volume Report",
         "Waveform Annotation SR",
+        "Implantation Plan SR Document",
+        "Simplified Adult Echo SR",
+        "Planned Imaging Agent Administration SR",
+        "Performed Imaging Agent Administration SR",
+        "Acquisition Context SR",
     }
     assert scope.SUPPORTED_TRANSFER_SYNTAXES == {IMPLICIT_LE, EXPLICIT_LE, *COMPRESSED}
 
@@ -181,9 +191,8 @@ def test_padding_is_ignored():
 @pytest.mark.parametrize(
     "sop_class, iod",
     [
-        # The other Structured Reports, including the other dose reports,
+        # The other radiation dose reports, the only Structured Reports left,
         # and Presentation States, which the design always sequesters.
-        ("1.2.840.10008.5.1.4.1.1.88.72", "Simplified Adult Echo SR"),
         ("1.2.840.10008.5.1.4.1.1.88.76", "Enhanced X-Ray Radiation Dose SR"),
         ("1.2.840.10008.5.1.4.1.1.88.73", "Patient Radiation Dose SR"),
         ("1.2.840.10008.5.1.4.1.1.11.1", "Grayscale Softcopy Presentation State"),
@@ -381,6 +390,11 @@ def test_pydicom_names_the_same_uids():
         uid.SpectaclePrescriptionReportStorage,
         uid.MacularGridThicknessAndVolumeReportStorage,
         uid.WaveformAnnotationSRStorage,
+        uid.ImplantationPlanSRStorage,
+        uid.SimplifiedAdultEchoSRStorage,
+        uid.PlannedImagingAgentAdministrationSRStorage,
+        uid.PerformedImagingAgentAdministrationSRStorage,
+        uid.AcquisitionContextSRStorage,
     ):
         assert scope.classify(sop_class, uid.ExplicitVRLittleEndian).disposition is (
             Disposition.SUPPORTED

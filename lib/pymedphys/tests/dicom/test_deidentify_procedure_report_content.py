@@ -16,16 +16,14 @@
 
 The Implantation Plan SR Document, Simplified Adult Echo SR, Planned and
 Performed Imaging Agent Administration SR, and Acquisition Context SR IODs
-are not supported yet, so the engine sequesters their instances. These
-tests show, ahead of supporting them, what the option does with their
-content trees (D-047): that every preset and Retain option, with the option
-added, keeps a report that holds only the rows that its templates require;
-which optional rows take the whole tree out under each option set, among
-them concept names coded in a scheme that the engine cannot look up; the
-action that each listed value of a kept tree takes; and what is written and
-released, in the tests that add the IODs to the supported ones for that
-test alone, as supporting them would. The reports are synthetic, built from
-the templates of PS3.16 2026d by :mod:`._synthetic_procedure_reports`.
+are supported. These tests show what the option does with their content
+trees (D-047): that every preset and Retain option, with the option added,
+keeps a report that holds only the rows that its templates require; which
+optional rows take the whole tree out under each option set, among them
+concept names coded in a scheme that the engine cannot look up; the action
+that each listed value of a kept tree takes; and what is written and
+released. The reports are synthetic, built from the templates of PS3.16
+2026d by :mod:`._synthetic_procedure_reports`.
 
 A preset with the option added is composed by adding it to every preset's
 options for the test alone, since no preset selects it, so that the policy
@@ -134,16 +132,6 @@ def _with_option(monkeypatch):
         ),
     )
     return policy.compose_policy
-
-
-@pytest.fixture(name="supported")
-def _supported(monkeypatch):
-    """Add the five IODs to the supported ones, as supporting them would."""
-    monkeypatch.setattr(
-        scope,
-        "SUPPORTED_IODS",
-        scope.SUPPORTED_IODS | {iod for _, iod in REPORTS.values()},
-    )
 
 
 def _header_sequestrations(name, composed):
@@ -262,14 +250,16 @@ def _released(composed, dataset):
     return result.data, decision
 
 
-def test_the_reports_are_of_iods_that_are_not_supported_yet():
+def test_every_report_is_of_a_supported_iod():
     for name, (build, iod) in REPORTS.items():
         dataset = build()
         classification = scope.classify(
             dataset.SOPClassUID, synthetic.EXPLICIT_VR_LITTLE_ENDIAN
         )
 
-        assert classification.reason == scope.UnsupportedIod(iod), name
+        assert classification == scope.Classification(
+            scope.Disposition.SUPPORTED, iod
+        ), name
         assert load_iod_tables().iods[iod].lookup(CONTENT, ()), name
         # Each IOD has the SR Document General Module, so each report can be
         # verified.
@@ -614,7 +604,6 @@ RELEASED_UNDER_PUBLIC_RELEASE = {
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.4-01")
-@pytest.mark.usefixtures("supported")
 @pytest.mark.parametrize("name", RELEASED_UNDER_PUBLIC_RELEASE)
 def test_a_written_report_holds_no_source_value_and_is_released(with_option, name):
     dataset, _ = _report(name, RELEASED_UNDER_PUBLIC_RELEASE[name])
@@ -635,7 +624,6 @@ def test_a_written_report_holds_no_source_value_and_is_released(with_option, nam
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.4-01")
-@pytest.mark.usefixtures("supported")
 def test_a_written_performed_administration_references_its_plan(with_option):
     dataset, _ = _report(PERFORMED, ("TID 11020 row 11",))
 
@@ -682,7 +670,6 @@ def test_an_administration_phase_is_identified_by_its_ordinal(name):
         "requires."
     ),
 )
-@pytest.mark.usefixtures("supported")
 @pytest.mark.parametrize("name", [PLANNED, PERFORMED])
 def test_a_written_administration_phase_is_identified_by_an_ordinal(with_option, name):
     dataset, _ = _report(name, ("TID 11006 row 4",))
@@ -737,7 +724,6 @@ def test_a_udi_coded_as_tid_11004_gives_it_is_not_looked_up(
         "Device Identity is selected."
     ),
 )
-@pytest.mark.usefixtures("supported")
 @pytest.mark.parametrize("name", [PLANNED, PERFORMED])
 def test_a_udi_is_not_released(with_option, name):
     dataset, _ = _report(name, ("TID 11004 row 26",))
@@ -778,7 +764,6 @@ def test_a_verified_report_is_planned_as_an_unverified_one_is(
     ]
 
 
-@pytest.mark.usefixtures("supported")
 @pytest.mark.parametrize("name", REPORTS)
 def test_a_verified_report_is_written_with_a_dummy_verifier(with_option, name):
     dataset, _ = _report(name, verified=True)
