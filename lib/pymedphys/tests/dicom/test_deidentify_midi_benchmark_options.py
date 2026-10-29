@@ -53,6 +53,11 @@ from . import _synthetic_references as synthetic
 from .corpus_runs.clean_pixel_data import RUN as CLEAN_PIXEL_DATA_RUN
 from .test_deidentify_midi_benchmark import _benchmark_key, _source
 
+# An invented TG-263 edition, for a preset with Clean Descriptors.
+from .test_deidentify_midi_benchmark_presets import (  # noqa: F401  # pylint: disable = unused-import
+    _edition,
+)
+
 # A run needs a base directory short enough for Windows' output path limit.
 from .test_deidentify_run import (  # noqa: F401  # pylint: disable = unused-import
     _short_tmp_path,
@@ -226,14 +231,22 @@ def test_clean_recognizable_visual_features_is_refused(tmp_path):
     assert not (tmp_path / "work").exists()
 
 
-def test_a_preset_with_clean_recognizable_visual_features_runs_without_it(sources):
+def test_a_preset_with_clean_recognizable_visual_features_runs_without_it(
+    sources, edition
+):
     # public-release selects the option, which needs a reviewer's face
     # verdicts; the run takes its other options as the preset composes them.
     assert (
         CLEAN_RECOGNIZABLE_VISUAL_FEATURES in compose_policy("public-release").options
     )
-    _, document = _run(sources, "option", preset="public-release")
+    _, document = _run(
+        sources,
+        "option",
+        preset="public-release",
+        tg263_spreadsheet=sources / "edition.xls",
+    )
 
+    assert edition == [((), {"spreadsheet": sources / "edition.xls"})]
     versions = document["versions"]
     assert versions["preset"] == "public-release"
     assert versions["left_out"] == [CLEAN_RECOGNIZABLE_VISUAL_FEATURES]
