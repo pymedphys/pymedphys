@@ -251,6 +251,19 @@ Past contributors
 * `Paul King <https://github.com/kingrpaul>`_
 * `Jacob McAloney <https://github.com/JacobMcAloney>`_
 
+Third-party content
+*******************
+
+PyMedPhys includes third-party code and data under their own licences, whose
+files the package lists in its metadata. Some of its data tables include
+LOINC codes, which carry this notice:
+
+This material contains content from LOINC (http://loinc.org). LOINC is
+copyright © Regenstrief Institute, Inc. and the Logical Observation
+Identifiers Names and Codes (LOINC) Committee and is available at no cost
+under the license at http://loinc.org/license. LOINC® is a registered United
+States trademark of Regenstrief Institute, Inc.
+
 ..
    Unfortunately :target: being a variable name is no longer supported by
    GitHub within README.rst files. So... unfortunately we have some duplication

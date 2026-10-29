@@ -47,30 +47,31 @@ def _redigested(document):
 
 
 def test_table_e3_4_1_has_the_kept_rows_of_the_2026d_table():
-    # Counts measured from the published 2026d table, whose other 14 rows
+    # Counts measured from the published 2026d table, whose other 7 rows
     # are of the coding schemes the pin leaves out.
     table = structured_content.load_table_e3_4_1()
 
     assert table.edition == "2026d"
     assert table.acknowledgement == "DICOM PS3.15 2026d, © NEMA"
-    assert len(table.concepts) == 200
+    assert len(table.concepts) == 207
     assert collections.Counter(c.scheme_designator for c in table.concepts) == {
         "DCM": 189,
         "SCT": 11,
+        "LN": 7,
     }
     assert collections.Counter(c.basic_profile for c in table.concepts) == {
-        "X": 126,
-        "D": 56,
+        "X": 131,
+        "D": 58,
         "X/D": 18,
     }
     assert collections.Counter(
         option for c in table.concepts for option in c.options
     ) == {
         "retain_uids": 62,
-        "retain_longitudinal_full_dates": 40,
-        "retain_longitudinal_modified_dates": 40,
-        "clean_descriptors": 40,
-        "retain_device_identity": 13,
+        "retain_longitudinal_full_dates": 42,
+        "retain_longitudinal_modified_dates": 42,
+        "clean_descriptors": 43,
+        "retain_device_identity": 14,
         "retain_institution_identity": 7,
         "retain_patient_characteristics": 2,
     }
@@ -146,6 +147,27 @@ def _concept(meaning, value, designator, value_type, basic, options=None):
                 "retain_longitudinal_modified_dates": "C",
             },
         ),
+        # LOINC rows, with DICOM's Code Meanings.
+        _concept(
+            "EDD",
+            "11778-8",
+            "LN",
+            "DATE",
+            "X",
+            {
+                "retain_longitudinal_full_dates": "K",
+                "retain_longitudinal_modified_dates": "C",
+            },
+        ),
+        _concept("Fetus ID", "11951-1", "LN", "TEXT", "D"),
+        _concept(
+            "Unique Device Identifier",
+            "74711-3",
+            "LN",
+            "TEXT",
+            "X",
+            {"retain_device_identity": "K"},
+        ),
     ],
 )
 def test_table_e3_4_1_rows(concept):
@@ -155,10 +177,10 @@ def test_table_e3_4_1_rows(concept):
 
 
 @pytest.mark.parametrize(
-    "designator, value", [("LN", "11778-8"), ("NCDR", "15"), ("UMLS", "C2348792")]
+    "designator, value", [("NCDR", "15"), ("NCIt", "C54627"), ("UMLS", "C2348792")]
 )
 def test_rows_of_the_left_out_schemes_are_not_generated(designator, value):
-    # EDD, Admission DateTime, and Time Point in the published table.
+    # Admission DateTime, Experience, and Time Point in the published table.
     concepts = structured_content.load_table_e3_4_1().concepts
 
     assert not [
@@ -286,7 +308,7 @@ def test_a_repeated_code_and_value_type_is_rejected(tmp_path):
     document = _loaded(E3_4_1)
     document["rows"].append(dict(document["rows"][0], code_meaning="Other"))
 
-    with pytest.raises(standard.StandardTableError, match="row 201 repeats"):
+    with pytest.raises(standard.StandardTableError, match="row 208 repeats"):
         structured_content.load_table_e3_4_1(
             _write(tmp_path / E3_4_1.name, _redigested(document))
         )

@@ -9,7 +9,7 @@
    "sha256": "d3bf68bd69f8623b34060b7599630634634bcd1a1bcefaf7112ef7847f15d3c9"
   }
  ],
- "content_sha256": "fe8f9344515181cbf95f12e5de780a5fe4b042a6d18a8b3271105c27f7ea4313",
+ "content_sha256": "5d58c825169105217d410c9a5dc8dfbbdee104d66b0d7e99fed944a28b36e82e",
  "rows": [
   {
    "code_meaning": "Accession Number",
@@ -338,6 +338,20 @@
    "basic_profile": "X",
    "options": {
     "retain_uids": "K"
+   }
+  },
+  {
+   "code_meaning": "Date of last menstrual period",
+   "code_value": "11955-2",
+   "scheme_designator": "LN",
+   "scheme_version": "",
+   "value_type": "DATE",
+   "retired": false,
+   "in_standard_template": true,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
    }
   },
   {
@@ -797,6 +811,20 @@
    }
   },
   {
+   "code_meaning": "EDD",
+   "code_value": "11778-8",
+   "scheme_designator": "LN",
+   "scheme_version": "",
+   "value_type": "DATE",
+   "retired": false,
+   "in_standard_template": true,
+   "basic_profile": "X",
+   "options": {
+    "retain_longitudinal_full_dates": "K",
+    "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
    "code_meaning": "End of X-Ray Irradiation",
    "code_value": "113810",
    "scheme_designator": "DCM",
@@ -846,6 +874,17 @@
    "retired": false,
    "in_standard_template": true,
    "basic_profile": "X",
+   "options": {}
+  },
+  {
+   "code_meaning": "Fetus ID",
+   "code_value": "11951-1",
+   "scheme_designator": "LN",
+   "scheme_version": "",
+   "value_type": "TEXT",
+   "retired": false,
+   "in_standard_template": true,
+   "basic_profile": "D",
    "options": {}
   },
   {
@@ -924,6 +963,19 @@
    "options": {
     "retain_longitudinal_full_dates": "K",
     "retain_longitudinal_modified_dates": "C"
+   }
+  },
+  {
+   "code_meaning": "History",
+   "code_value": "11329-0",
+   "scheme_designator": "LN",
+   "scheme_version": "",
+   "value_type": "TEXT",
+   "retired": false,
+   "in_standard_template": true,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
    }
   },
   {
@@ -1067,6 +1119,19 @@
    }
   },
   {
+   "code_meaning": "Indications for Procedure",
+   "code_value": "18785-6",
+   "scheme_designator": "LN",
+   "scheme_version": "",
+   "value_type": "TEXT",
+   "retired": false,
+   "in_standard_template": true,
+   "basic_profile": "D",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
    "code_meaning": "Intervention attempt identifier",
    "code_value": "121154",
    "scheme_designator": "DCM",
@@ -1149,6 +1214,19 @@
    "code_meaning": "Key Object Description",
    "code_value": "113012",
    "scheme_designator": "DCM",
+   "scheme_version": "",
+   "value_type": "TEXT",
+   "retired": false,
+   "in_standard_template": true,
+   "basic_profile": "X",
+   "options": {
+    "clean_descriptors": "C"
+   }
+  },
+  {
+   "code_meaning": "LV Wall Motion Segmental Findings",
+   "code_value": "18118-0",
+   "scheme_designator": "LN",
    "scheme_version": "",
    "value_type": "TEXT",
    "retired": false,
@@ -2483,6 +2561,19 @@
    "basic_profile": "D",
    "options": {
     "retain_uids": "K"
+   }
+  },
+  {
+   "code_meaning": "Unique Device Identifier",
+   "code_value": "74711-3",
+   "scheme_designator": "LN",
+   "scheme_version": "",
+   "value_type": "TEXT",
+   "retired": false,
+   "in_standard_template": true,
+   "basic_profile": "X",
+   "options": {
+    "retain_device_identity": "K"
    }
   },
   {

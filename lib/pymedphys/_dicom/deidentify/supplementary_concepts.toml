@@ -10,10 +10,12 @@
 # covers each concept that PS3.16's templates use for a patient
 # characteristic that Table E.1-1 removes, or keeps only under Retain Patient
 # Characteristics, and that the table omits, so that the characteristic is
-# kept in a content item only where it would be kept in its attribute. It
-# also covers the one concept that a template uses with a Value Type other
-# than those under which the table lists it, and whose value there holds what
-# the listed row removes: Subject ID as a CODE.
+# kept in a content item only where it would be kept in its attribute. The
+# three LOINC concepts of patient height, weight, and body surface area are
+# named in _loinc/loinc_terms.toml, as every LOINC code PyMedPhys includes
+# is. A row also covers the one concept that a template uses with a Value
+# Type other than those under which the table lists it, and whose value
+# there holds what the listed row removes: Subject ID as a CODE.
 #
 # "basic_profile" is the action without any option, and is X: the item is
 # removed. "options" can give K under retain_patient_characteristics, which
@@ -104,3 +106,29 @@ value_type = "NUM"
 code_meaning = "Body Mass Index"
 basic_profile = "X"
 note = "TID 3602 row 9 and TID 10024 row 9, the patient's body mass index, which holds what Patient's Body Mass Index (0010,1022) holds. Table E.1-1 omits that attribute, and the reviewed rules remove it under every option, including Retain Patient Characteristics, as a measure of the patient's body derived from Patient's Size (0010,1020) and Patient's Weight (0010,1030), so the item is removed under every option too."
+
+[[concept]]
+scheme_designator = "LN"
+code_value = "8302-2"
+value_type = "NUM"
+code_meaning = "Patient Height"
+basic_profile = "X"
+options = { retain_patient_characteristics = "K" }
+note = "TID 3602 row 4 and TID 10024 row 5, the patient's height, which holds what Patient's Size (0010,1020) holds. Table E.1-1 removes that attribute (X), and keeps it under Retain Patient Characteristics (K)."
+
+[[concept]]
+scheme_designator = "LN"
+code_value = "29463-7"
+value_type = "NUM"
+code_meaning = "Patient Weight"
+basic_profile = "X"
+options = { retain_patient_characteristics = "K" }
+note = "TID 3602 row 5 and TID 10024 row 6, the patient's weight, which holds what Patient's Weight (0010,1030) holds. Table E.1-1 removes that attribute (X), and keeps it under Retain Patient Characteristics (K)."
+
+[[concept]]
+scheme_designator = "LN"
+code_value = "8277-6"
+value_type = "NUM"
+code_meaning = "Body Surface Area"
+basic_profile = "X"
+note = "TID 3602 row 7 and TID 10024 row 7, the patient's body surface area, a measure of the patient's body derived from height and weight, as Body Mass Index is. Table E.1-1 has no attribute for it, so it takes the actions of Body Mass Index's row, which the reviewed rules give Patient's Body Mass Index (0010,1022): it is removed under every option, including Retain Patient Characteristics."
