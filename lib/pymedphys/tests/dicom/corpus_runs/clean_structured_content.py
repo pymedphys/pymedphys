@@ -109,6 +109,9 @@ RUN = CorpusRun(
     kept_content=frozenset({"(0040,0555)", CONTENT_SEQUENCE}),
     withheld=WITHHELD_UNDER_CLEAN_STRUCTURED_CONTENT,
     # Without Retain UIDs, Referenced Study Sequence is removed. Only
-    # Accession Number remains in different entities for images and reports.
-    inconsistent=frozenset({"(0008,0050)"}),
+    # Accession Number remains in different entities for images and reports,
+    # and Patient's Sex Neutered, which Z empties where the other IODs
+    # require it, is absent from the Procedure Log, whose IOD has no Patient
+    # Study Module (PROCEDURE_LOG_ABSENT).
+    inconsistent=frozenset({"(0008,0050)", "(0010,2203)"}),
 )

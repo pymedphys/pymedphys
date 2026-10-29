@@ -37,7 +37,9 @@ Retain Device Identity keep a Device Observer UID, and Full Dates keeps
 the start of an irradiation event. dcentvfy places two of the reports'
 study attributes in another information entity than the images'
 (``REPORT_ENTITIES``), and finds that difference in the outputs as often
-as in the inputs.
+as in the inputs. The Procedure Log's IOD has no Patient Study Module, so
+the attributes of that module that the run keeps elsewhere are absent from
+it (``PROCEDURE_LOG_ABSENT``).
 
 Each option's kept rows are kept, but Clinical Trial Protocol Ethics
 Committee Name (0012,0081), which is removed whatever its action (D-020),
@@ -49,6 +51,7 @@ from pymedphys._dicom.deidentify import synthetic_corpus as corpus_module
 from .._corpus_run import (
     CONTENT_SEQUENCE,
     MAPPED_NAME,
+    PROCEDURE_LOG_ABSENT,
     REPORT_ENTITIES,
     VOCABULARY_NAME,
     WITHHELD_UNDER_CLEAN_STRUCTURED_CONTENT,
@@ -102,5 +105,6 @@ RUN = CorpusRun(
         | retain_institution_identity.KEPT_DIFFERENCES
         | retain_longitudinal_full_dates.INCONSISTENT
         | REPORT_ENTITIES
+        | PROCEDURE_LOG_ABSENT
     ),
 )

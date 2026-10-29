@@ -379,6 +379,12 @@ WITHHELD_UNDER_CLEAN_STRUCTURED_CONTENT: Mapping[str, Withheld] = (
 # dcentvfy finds that difference wherever a report is released with an
 # image, in their inputs as often.
 REPORT_ENTITIES = frozenset({"(0008,0050)", "(0008,1110)"})
+# Patient's Sex Neutered (0010,2203), Allergies (0010,2110), and Patient
+# State (0038,0500), of the Patient Study Module, which the Procedure Log IOD
+# does not include (PS3.3 Section A.35.7). Where a run keeps one, or Z
+# empties Patient's Sex Neutered, which the other IODs make Type 2C,
+# dcentvfy finds it present in another instance and absent from the log.
+PROCEDURE_LOG_ABSENT = frozenset({"(0010,2203)", "(0010,2110)", "(0038,0500)"})
 
 
 @dataclasses.dataclass(frozen=True)
