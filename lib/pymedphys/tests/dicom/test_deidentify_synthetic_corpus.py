@@ -370,11 +370,16 @@ def _sequesters_at(iod, tag, path, row):
 def _sequesters(iod, placement):
     """Return whether the Basic Profile's action on a placement sequesters.
 
-    So it does within a sequence whose own action sequesters.
+    So it does within a sequence whose own action sequesters. A content
+    item's value takes its concept's row of Table E.3.4-1, not a row of
+    Table E.1-1, so only its enclosing sequences are judged here.
     """
     rows = {row.tag: row for row in standard.load_table_e1_1().attributes}
     path = tuple(tag for tag, _ in placement.path.items)
-    return _sequesters_at(iod, placement.path.tag, path, placement.profile_tag) or any(
+    own = placement.concept is None and _sequesters_at(
+        iod, placement.path.tag, path, placement.profile_tag
+    )
+    return own or any(
         path[depth] in rows
         and _sequesters_at(iod, path[depth], path[:depth], path[depth])
         for depth in range(len(path))
@@ -771,10 +776,20 @@ def test_every_marker_number_fits_a_signed_short():
     assert corpus_module.MAX_MARKERS <= 2**15
 
 
-def test_every_planted_placement_covers_a_row_of_table_e1_1(corpus):
+def test_every_planted_placement_covers_a_row_of_table_e1_1_or_e3_4_1(corpus):
+    """A content item's value covers its concept's row of Table E.3.4-1.
+
+    Its Text Value (0040,A160), for one, is not a row of Table E.1-1.
+    """
     rows = set(_profile_rows())
+    concepts = {
+        concept.key for concept in structured_content.load_table_e3_4_1().concepts
+    }
     for _, placement in _placements(corpus, Kind.PLANTED, Kind.SEQUENCE):
-        assert placement.profile_tag in rows, placement.path
+        if placement.concept is not None:
+            assert placement.concept in concepts, placement.path
+        else:
+            assert placement.profile_tag in rows, placement.path
 
 
 def test_every_reference_item_has_its_referenced_sop_class(corpus):

@@ -550,7 +550,8 @@ class PlacementKind(enum.Enum):
     ----------
     PLANTED
         A marker that no other placement holds, in an attribute of Table
-        E.1-1.
+        E.1-1, or in the value of a content item whose concept name is a
+        row of Table E.3.4-1.
     LINKED_UID
         One of the collection's own UIDs, which other placements share so
         that identities and references stay linked: an instance's SOP
@@ -649,8 +650,9 @@ class Placement:
         The tag of the row of Table E.1-1 that the placement covers, such as
         ``"(60xx,3000)"``, or its row for private attributes; ``""`` for
         :attr:`PlacementKind.CONTENT` and :attr:`PlacementKind.REVIEW_COPY`.
-        The value of a content item covers the row of the attribute that
-        holds it, such as DateTime (0040,A120).
+        The value of a content item names the attribute that holds it, such
+        as DateTime (0040,A120), or Text Value (0040,A160), which Table
+        E.1-1 does not list; its ``concept`` gives the row that covers it.
     reason : NotPlantedReason or None
         Why it is not planted, for :attr:`PlacementKind.NOT_PLANTED`; or,
         for a :attr:`PlacementKind.SEQUENCE` in whose item no marker is
