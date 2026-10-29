@@ -337,7 +337,7 @@ def _unchanged(
 def without_reports(
     corpus: corpus_module.SyntheticCorpus,
 ) -> corpus_module.SyntheticCorpus:
-    """Return the corpus without its Structured Reports, which no file references."""
+    """Return the corpus without its Structured Reports, which only a report references."""
     return dataclasses.replace(
         corpus,
         files=tuple(

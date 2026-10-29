@@ -58,7 +58,9 @@ STRUCTURED_REPORTS = (
     "Comprehensive 3D SR",
     "Comprehensive SR",
     "Enhanced SR",
+    "Enhanced X-Ray Radiation Dose SR",
     "Extensible SR",
+    "Patient Radiation Dose SR",
     "Radiopharmaceutical Radiation Dose SR",
     "X-Ray Radiation Dose SR",
 )
@@ -227,7 +229,8 @@ def test_a_plain_d_on_a_reports_content_sequence_sequesters_it():
     )
     assert row.endswith(
         "| instance sequestered at the top level in Basic Text SR, "
-        "Comprehensive 3D SR, Comprehensive SR, Enhanced SR, Extensible SR, "
+        "Comprehensive 3D SR, Comprehensive SR, Enhanced SR, Enhanced X-Ray "
+        "Radiation Dose SR, Extensible SR, Patient Radiation Dose SR, "
         "Radiopharmaceutical Radiation Dose SR, and X-Ray Radiation Dose SR. "
         "X elsewhere. |"
     )

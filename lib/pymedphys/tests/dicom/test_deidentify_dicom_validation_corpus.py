@@ -79,7 +79,15 @@ REPORT_VARIABLE = "PYMEDPHYS_DICOM_VALIDATION_REPORT"
 BOTH_VALIDATED = "input validated, output validated"
 BOTH_FAILED = "input failed, output failed"
 BOTH_UNSUPPORTED = "input unsupported, output unsupported"
-EXTENSIBLE_SR = dicom_validation.sop_class_name(corpus_module.EXTENSIBLE_SR_STORAGE)
+# The SOP Classes that dicom3tools' January 2024 snapshot does not know.
+UNKNOWN_TO_DICOM3TOOLS = tuple(
+    dicom_validation.sop_class_name(sop_class)
+    for sop_class in (
+        corpus_module.EXTENSIBLE_SR_STORAGE,
+        corpus_module.ENHANCED_X_RAY_RADIATION_DOSE_SR_STORAGE,
+        corpus_module.PATIENT_RADIATION_DOSE_SR_STORAGE,
+    )
+)
 
 
 @pytest.fixture(name="toolset", scope="module")
@@ -200,12 +208,15 @@ def test_every_validator_ran_over_every_released_instance(comparison):
     }
     # dciodvfy checks every input and output but the corpus's RT Dose in
     # Implicit VR, whose 32-bit pixels abort it on both, and its Extensible
-    # SR, whose SOP Class dicom3tools' January 2024 snapshot does not know.
+    # SR, Enhanced X-Ray Radiation Dose SR, and Patient Radiation Dose SR,
+    # whose SOP Classes dicom3tools' January 2024 snapshot does not know.
     statuses = dict(comparison.tallies[DCIODVFY]["statuses"])
     failed = statuses.pop(BOTH_FAILED, 0)
     unsupported = statuses.pop(BOTH_UNSUPPORTED, 0)
     assert failed <= 1
-    assert unsupported == comparison.sop_classes.get(EXTENSIBLE_SR, 0)
+    assert unsupported == sum(
+        comparison.sop_classes.get(name, 0) for name in UNKNOWN_TO_DICOM3TOOLS
+    )
     assert statuses == {BOTH_VALIDATED: comparison.pairs - failed - unsupported}
 
 

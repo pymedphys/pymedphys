@@ -627,7 +627,9 @@ def test_a_plain_x_on_a_required_attribute_in_the_first_release_iods(tables):
             (name, (REFERENCED_REQUEST,), REQUESTED_PROCEDURE_ID): _removal(*EMPTIED)
             for name in (
                 "X-Ray Radiation Dose SR",
+                "Enhanced X-Ray Radiation Dose SR",
                 "Radiopharmaceutical Radiation Dose SR",
+                "Patient Radiation Dose SR",
                 "Basic Text SR",
                 "Enhanced SR",
                 "Comprehensive SR",

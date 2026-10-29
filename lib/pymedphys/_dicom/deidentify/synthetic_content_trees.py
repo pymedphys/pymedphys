@@ -15,7 +15,13 @@
 """The content trees of the synthetic corpus's Structured Reports.
 
 :func:`x_ray_dose_tree` gives the root of an X-Ray Radiation Dose SR's tree,
-which follows TID 10001 "Projection X-Ray Radiation Dose",
+which follows TID 10001 "Projection X-Ray Radiation Dose", and
+:func:`ct_dose_tree` that of one which follows TID 10011 "CT Radiation
+Dose", which PS3.3 Section A.35.8 allows at the root too;
+:func:`enhanced_x_ray_dose_tree` that of an Enhanced X-Ray Radiation Dose
+SR, which follows TID 10040 "Enhanced X-Ray Radiation Dose";
+:func:`patient_dose_tree` that of a Patient Radiation Dose SR, which
+follows TID 10030 "Patient Radiation Dose";
 :func:`radiopharmaceutical_dose_tree` that of a Radiopharmaceutical Radiation
 Dose SR, which follows TID 10021 "Radiopharmaceutical Radiation Dose",
 :func:`imaging_report_tree` that of a Basic Text SR, Enhanced SR, or
@@ -32,13 +38,15 @@ meanings are those of PS3.16 Annex D for DCM codes, and those the templates
 and context groups give for the others.
 
 The value of each content item that can identify a person, a device, or a
-time, a UIDREF, DATETIME, or PNAME item, comes from the caller, so that the
-synthetic corpus (:mod:`~pymedphys._dicom.deidentify.synthetic_corpus`) can
-plant a marker in it; but the Study Instance UID that names the scope of
-accumulation, which is the study's own. The frame of reference of a
-measurement report's volumetric region is the caller's too, so that it can
-be the collection's own. Every other value is a code, a number, or a
-coordinate, the same in every tree. The tests build reports with the
+time, a UIDREF, DATETIME, PNAME, or TEXT item, comes from the caller, so
+that the synthetic corpus
+(:mod:`~pymedphys._dicom.deidentify.synthetic_corpus`) can plant a marker in
+it; but the Study Instance UID that names the scope of accumulation, which
+is the study's own. The frame of reference of a measurement report's
+volumetric region is the caller's too, so that it can be the collection's
+own, and so is the report that a patient dose estimate used, so that it can
+be the collection's CT dose report. Every other value is a code, a number,
+or a coordinate, the same in every tree. The tests build reports with the
 optional rows besides, from the same codes
 (``tests/dicom/_synthetic_dose_reports.py`` and
 ``tests/dicom/_synthetic_structured_reports.py``).
@@ -58,16 +66,23 @@ ENHANCED_SR_STORAGE = "1.2.840.10008.5.1.4.1.1.88.22"
 COMPREHENSIVE_SR_STORAGE = "1.2.840.10008.5.1.4.1.1.88.33"
 COMPREHENSIVE_3D_SR_STORAGE = "1.2.840.10008.5.1.4.1.1.88.34"
 EXTENSIBLE_SR_STORAGE = "1.2.840.10008.5.1.4.1.1.88.35"
+ENHANCED_X_RAY_RADIATION_DOSE_SR_STORAGE = "1.2.840.10008.5.1.4.1.1.88.76"
+PATIENT_RADIATION_DOSE_SR_STORAGE = "1.2.840.10008.5.1.4.1.1.88.73"
 # The root template of each, as Content Template Sequence (0040,A504) names it.
 ROOT_TEMPLATES = {
     X_RAY_RADIATION_DOSE_SR_STORAGE: "10001",
     RADIOPHARMACEUTICAL_RADIATION_DOSE_SR_STORAGE: "10021",
+    ENHANCED_X_RAY_RADIATION_DOSE_SR_STORAGE: "10040",
+    PATIENT_RADIATION_DOSE_SR_STORAGE: "10030",
     BASIC_TEXT_SR_STORAGE: "2000",
     ENHANCED_SR_STORAGE: "2000",
     COMPREHENSIVE_SR_STORAGE: "2000",
     COMPREHENSIVE_3D_SR_STORAGE: "1500",
     EXTENSIBLE_SR_STORAGE: "1500",
 }
+# The other root template that PS3.3 Section A.35.8 allows in an X-Ray
+# Radiation Dose SR, of a CT Radiation Dose report.
+CT_RADIATION_DOSE_TEMPLATE = "10011"
 
 
 @dataclasses.dataclass(frozen=True)
@@ -137,6 +152,82 @@ MEASUREMENT_GROUP = Code("125007", "DCM", "Measurement Group")
 VOLUME_SURFACE = Code("121231", "DCM", "Volume Surface")
 SOURCE_SERIES_FOR_SEGMENTATION = Code("121232", "DCM", "Source series for segmentation")
 VOLUME = Code("118565006", "SCT", "Volume")
+# TID 10011 to 10015.
+START_OF_X_RAY_IRRADIATION = Code("113809", "DCM", "Start of X-Ray Irradiation")
+END_OF_X_RAY_IRRADIATION = Code("113810", "DCM", "End of X-Ray Irradiation")
+CT_ACCUMULATED_DOSE_DATA = Code("113811", "DCM", "CT Accumulated Dose Data")
+TOTAL_NUMBER_OF_IRRADIATION_EVENTS = Code(
+    "113812", "DCM", "Total Number of Irradiation Events"
+)
+CT_DOSE_LENGTH_PRODUCT_TOTAL = Code("113813", "DCM", "CT Dose Length Product Total")
+CT_ACQUISITION = Code("113819", "DCM", "CT Acquisition")
+CT_ACQUISITION_TYPE = Code("113820", "DCM", "CT Acquisition Type")
+CT_ACQUISITION_PARAMETERS = Code("113822", "DCM", "CT Acquisition Parameters")
+EXPOSURE_TIME = Code("113824", "DCM", "Exposure Time")
+SCANNING_LENGTH = Code("113825", "DCM", "Scanning Length")
+NOMINAL_SINGLE_COLLIMATION_WIDTH = Code(
+    "113826", "DCM", "Nominal Single Collimation Width"
+)
+NOMINAL_TOTAL_COLLIMATION_WIDTH = Code(
+    "113827", "DCM", "Nominal Total Collimation Width"
+)
+PITCH_FACTOR = Code("113828", "DCM", "Pitch Factor")
+NUMBER_OF_X_RAY_SOURCES = Code("113823", "DCM", "Number of X-Ray Sources")
+CT_X_RAY_SOURCE_PARAMETERS = Code("113831", "DCM", "CT X-Ray Source Parameters")
+IDENTIFICATION_OF_THE_X_RAY_SOURCE = Code(
+    "113832", "DCM", "Identification of the X-Ray Source"
+)
+KVP = Code("113733", "DCM", "KVP")
+MAXIMUM_X_RAY_TUBE_CURRENT = Code("113833", "DCM", "Maximum X-Ray Tube Current")
+X_RAY_TUBE_CURRENT = Code("113734", "DCM", "X-Ray Tube Current")
+EXPOSURE_TIME_PER_ROTATION = Code("113834", "DCM", "Exposure Time per Rotation")
+CT_DOSE = Code("113829", "DCM", "CT Dose")
+MEAN_CTDIVOL = Code("113830", "DCM", "Mean CTDIvol")
+CTDIW_PHANTOM_TYPE = Code("113835", "DCM", "CTDIw Phantom Type")
+DLP = Code("113838", "DCM", "DLP")
+DOSE_CHECK_ALERT_DETAILS = Code("113900", "DCM", "Dose Check Alert Details")
+DLP_ALERT_VALUE_CONFIGURED = Code("113901", "DCM", "DLP Alert Value Configured")
+CTDIVOL_ALERT_VALUE_CONFIGURED = Code("113902", "DCM", "CTDIvol Alert Value Configured")
+DLP_ALERT_VALUE = Code("113903", "DCM", "DLP Alert Value")
+ACCUMULATED_DLP_FORWARD_ESTIMATE = Code(
+    "113905", "DCM", "Accumulated DLP Forward Estimate"
+)
+DOSE_CHECK_NOTIFICATION_DETAILS = Code(
+    "113908", "DCM", "Dose Check Notification Details"
+)
+DLP_NOTIFICATION_VALUE_CONFIGURED = Code(
+    "113909", "DCM", "DLP Notification Value Configured"
+)
+CTDIVOL_NOTIFICATION_VALUE_CONFIGURED = Code(
+    "113910", "DCM", "CTDIvol Notification Value Configured"
+)
+DLP_NOTIFICATION_VALUE = Code("113911", "DCM", "DLP Notification Value")
+DLP_FORWARD_ESTIMATE = Code("113913", "DCM", "DLP Forward Estimate")
+# TID 10040, 10042, and 10043.
+IRRADIATION_EVENT_SUMMARY_DATA = Code("130501", "DCM", "Irradiation Event Summary Data")
+DATETIME_ENDED = Code("111527", "DCM", "DateTime Ended")
+IRRADIATION_DETAILS = Code("130505", "DCM", "Irradiation Details")
+FRAME_OF_REFERENCE_UID_CONCEPT = Code("112227", "DCM", "Frame of Reference UID")
+RDSR_FRAME_OF_REFERENCE_ORIGIN = Code("130506", "DCM", "RDSR Frame of Reference Origin")
+# TID 10030, 10031, and 10033.
+PATIENT_RADIATION_DOSE_REPORT = Code("128401", "DCM", "Patient Radiation Dose Report")
+RADIATION_DOSE_ESTIMATE = Code("128402", "DCM", "Radiation Dose Estimate")
+RADIATION_DOSE_ESTIMATE_NAME = Code("128403", "DCM", "Radiation Dose Estimate Name")
+ORGAN = Code("113343008", "SCT", "Organ")
+ORGAN_DOSE_INFORMATION = Code("113517", "DCM", "Organ Dose Information")
+RADIATION_DOSE_ESTIMATE_METHODOLOGY = Code(
+    "128415", "DCM", "Radiation Dose Estimate Methodology"
+)
+SR_INSTANCE_USED = Code("128416", "DCM", "SR Instance Used")
+PATIENT_RADIATION_DOSE_MODEL = Code("128500", "DCM", "Patient Radiation Dose Model")
+PATIENT_MODEL_TYPE = Code("128417", "DCM", "Patient Model Type")
+RADIATION_TRANSPORT_MODEL_TYPE = Code("128420", "DCM", "Radiation Transport Model Type")
+PATIENT_MODEL_DEMOGRAPHICS = Code("128427", "DCM", "Patient Model Demographics")
+MODEL_MINIMUM_AGE = Code("128428", "DCM", "Model Minimum Age")
+RADIATION_DOSE_ESTIMATE_METHOD = Code("128476", "DCM", "Radiation Dose Estimate Method")
+RADIATION_DOSE_ESTIMATE_METHOD_TYPE = Code(
+    "128477", "DCM", "Radiation Dose Estimate Method Type"
+)
 
 # Coded values, each from the context group that its row names.
 PROJECTION_X_RAY = Code("113704", "DCM", "Projection X-Ray")  # TID 10001 row 2
@@ -158,11 +249,39 @@ FLUORINE_18 = Code("77004003", "SCT", "^18^Fluorine")  # CID 4020
 INTRAVENOUS_ROUTE = Code("47625008", "SCT", "Intravenous route")  # CID 11
 VIA_ARM_VEIN = Code("261459001", "SCT", "Via arm vein")  # CID 3746
 ENGLISH = Code("en", "RFC5646", "English")  # CID 5000
+COMPUTED_TOMOGRAPHY_X_RAY = Code(
+    "77477000", "SCT", "Computed Tomography X-Ray"
+)  # TID 10011 row 2
+SPIRAL_ACQUISITION = Code("116152004", "SCT", "Spiral Acquisition")  # CID 10013
+BODY_PHANTOM = Code("113691", "DCM", "IEC 320mm Body CT Dosimetry Phantom")  # CID 4053
+YES = Code("373066001", "SCT", "Yes")  # CID 230
+NO = Code("373067005", "SCT", "No")  # CID 230
+IRRADIATION_AUTHORIZING = Code("113850", "DCM", "Irradiation Authorizing")
+PLAIN_RADIOGRAPHY = Code("168537006", "SCT", "Plain radiography")  # CID 10005
+EQUIPMENT_ORIGIN = Code("130537", "DCM", "Equipment Origin")  # CID 10074
+ENTIRE_BODY = Code("38266002", "SCT", "Entire body")  # CID 10060
+MEAN_ABSORBED_RADIATION_DOSE = Code(
+    "128533", "DCM", "Mean Absorbed Radiation Dose"
+)  # CID 10061
+ANTHROPOMORPHIC_MODEL = Code("128404", "DCM", "Anthropomorphic Model")  # CID 10064
+VOXELIZED_TRANSPORT_MODEL = Code(
+    "128422", "DCM", "Voxelized Radiation Transport Model"
+)  # CID 10065
+ANALYTICAL_ALGORITHM = Code("128480", "DCM", "Analytical Algorithm")  # CID 10068
 # Units, as the rows give them.
 GRAY_SQUARE_METRE = Code("Gy.m2", "UCUM", "Gy.m2")
 SECONDS = Code("s", "UCUM", "seconds")
 MEGABECQUEREL = Code("MBq", "UCUM", "MBq")
 CUBIC_MILLIMETRE = Code("mm3", "UCUM", "cubic millimeter")  # CID 7181, by 7462
+EVENTS = Code("{events}", "UCUM", "events")
+MILLIGRAY_CENTIMETRE = Code("mGy.cm", "UCUM", "mGy.cm")
+MILLIMETRE = Code("mm", "UCUM", "mm")
+RATIO = Code("{ratio}", "UCUM", "ratio")
+X_RAY_SOURCES = Code("{X-Ray sources}", "UCUM", "X-Ray sources")
+KILOVOLT = Code("kV", "UCUM", "kV")
+MILLIAMPERE = Code("mA", "UCUM", "mA")
+MILLIGRAY = Code("mGy", "UCUM", "mGy")
+YEAR = Code("a", "UCUM", "year")  # CID 7456
 
 # The attribute of the value of each Value Type that ``item`` takes as text
 # (PS3.3 Table 10-2).
@@ -196,7 +315,8 @@ def item(
     **value
         Its value, by Value Type: ``code`` (a :class:`Code`) for CODE,
         ``number`` and ``units`` for NUM, ``text`` for TEXT, PNAME,
-        DATETIME, and UIDREF, and ``graphic_type``, ``points``, and
+        DATETIME, and UIDREF, ``sop_class`` and ``sop_instance`` for
+        COMPOSITE, and ``graphic_type``, ``points``, and
         ``frame_of_reference`` for SCOORD3D.
     """
     dataset = pydicom.Dataset()
@@ -217,6 +337,11 @@ def item(
         measured.NumericValue = value["number"]
         measured.MeasurementUnitsCodeSequence = pydicom.Sequence([units.dataset()])
         dataset.MeasuredValueSequence = pydicom.Sequence([measured])
+    elif value_type == "COMPOSITE":
+        referenced = pydicom.Dataset()
+        referenced.ReferencedSOPClassUID = value["sop_class"]
+        referenced.ReferencedSOPInstanceUID = value["sop_instance"]
+        dataset.ReferencedSOPSequence = pydicom.Sequence([referenced])
     elif value_type == "SCOORD3D":
         dataset.GraphicType = value["graphic_type"]
         dataset.GraphicData = list(value["points"])  # type: ignore[call-overload]
@@ -511,6 +636,344 @@ def measurement_report_tree(values: Values, frame_of_reference: str) -> pydicom.
                     number="1840",
                     units=CUBIC_MILLIMETRE,
                 ),
+            ),
+        ),
+    )
+
+
+def _device_observer(uid: str) -> tuple[pydicom.Dataset, pydicom.Dataset]:
+    """Return TID 1002 row 1 and TID 1004 row 1, M, for the recording device."""
+    return (
+        item("HAS OBS CONTEXT", "CODE", OBSERVER_TYPE, code=DEVICE),
+        item("HAS OBS CONTEXT", "UIDREF", DEVICE_OBSERVER_UID_CONCEPT, text=uid),
+    )
+
+
+def _procedure(procedure: Code) -> pydicom.Dataset:
+    """Return the Procedure reported, M, with its Has Intent, diagnostic."""
+    return item(
+        "HAS CONCEPT MOD",
+        "CODE",
+        PROCEDURE_REPORTED,
+        item("HAS CONCEPT MOD", "CODE", HAS_INTENT, code=DIAGNOSTIC_INTENT),
+        code=procedure,
+    )
+
+
+def _number(concept: Code, number: str, units: Code) -> pydicom.Dataset:
+    """Return a NUM item that the root's tree CONTAINS."""
+    return item("CONTAINS", "NUM", concept, number=number, units=units)
+
+
+def _code(concept: Code, code: Code) -> pydicom.Dataset:
+    """Return a CODE item that the root's tree CONTAINS."""
+    return item("CONTAINS", "CODE", concept, code=code)
+
+
+def _dose_check(person: str) -> tuple[pydicom.Dataset, pydicom.Dataset]:
+    """Return TID 10015 "CT Dose Check Details" of a scanner that implements it.
+
+    Rows 1 and 10, the alert and notification containers, are required
+    where the scanner implements dose alerts and notifications. Each is of
+    an event whose forward estimate exceeded its configured DLP value, so
+    that rows 2 to 4 and 6, and rows 11 to 13 and 15, are required, with
+    row 9, TID 1020 rows 1 and 2, the person who authorised the event. The
+    CTDIvol values are not configured, and the optional reasons for
+    proceeding, rows 8 and 17, which are free text, are left out.
+    """
+    return (
+        item(
+            "CONTAINS",
+            "CONTAINER",
+            DOSE_CHECK_ALERT_DETAILS,
+            _code(DLP_ALERT_VALUE_CONFIGURED, YES),
+            _code(CTDIVOL_ALERT_VALUE_CONFIGURED, NO),
+            _number(DLP_ALERT_VALUE, "1000", MILLIGRAY_CENTIMETRE),
+            _number(ACCUMULATED_DLP_FORWARD_ESTIMATE, "1210", MILLIGRAY_CENTIMETRE),
+            item(
+                "CONTAINS",
+                "PNAME",
+                PERSON_NAME,
+                item(
+                    "HAS PROPERTIES",
+                    "CODE",
+                    PERSON_ROLE_IN_PROCEDURE,
+                    code=IRRADIATION_AUTHORIZING,
+                ),
+                text=person,
+            ),
+        ),
+        item(
+            "CONTAINS",
+            "CONTAINER",
+            DOSE_CHECK_NOTIFICATION_DETAILS,
+            _code(DLP_NOTIFICATION_VALUE_CONFIGURED, YES),
+            _code(CTDIVOL_NOTIFICATION_VALUE_CONFIGURED, NO),
+            _number(DLP_NOTIFICATION_VALUE, "500", MILLIGRAY_CENTIMETRE),
+            _number(DLP_FORWARD_ESTIMATE, "640", MILLIGRAY_CENTIMETRE),
+        ),
+    )
+
+
+def ct_dose_tree(values: Values, study: str) -> pydicom.Dataset:
+    """Return the root of a CT Radiation Dose report's tree, TID 10011.
+
+    The report, an X-Ray Radiation Dose SR's, is of one spiral scan of the
+    abdomen, whose dose was collected automatically (TID 10011 row 12) by
+    the scanner, which recorded it and implements dose checks, so that TID
+    10011 rows 1 to 10 and 12, TID 10012 rows 1 to 3, TID 10013 rows 1, 3,
+    4, 6 to 19, 21 to 23, 26, and 35, TID 10014 row 1, and the rows of TID
+    10015 that :func:`_dose_check` names are required. It leaves out TID
+    10012 row 3a, the subtotals for events whose DLP used different
+    phantoms, which carry codes and numbers. Its target region is the
+    abdomen, as :func:`x_ray_dose_tree`'s is.
+
+    Parameters
+    ----------
+    values : callable
+        Returns the value of the Device Observer UID, the Start and End of
+        X-Ray Irradiation, the Irradiation Event UID, the Identification of
+        the X-Ray Source, and the Person Name of the person who authorised
+        the dose check's alert, given each one's Value Type, in that order.
+    study : str
+        The Study Instance UID that the scope of accumulation names.
+    """
+    observer_uid = values("UIDREF")
+    started = values("DATETIME")
+    ended = values("DATETIME")
+    event_uid = values("UIDREF")
+    source = values("TEXT")
+    person = values("PNAME")
+    parameters = item(
+        "CONTAINS",
+        "CONTAINER",
+        CT_ACQUISITION_PARAMETERS,
+        # TID 10013 rows 8 to 14, with TID 10014 row 1 by row 9.
+        _number(EXPOSURE_TIME, "9.6", SECONDS),
+        _number(SCANNING_LENGTH, "412", MILLIMETRE),
+        _number(NOMINAL_SINGLE_COLLIMATION_WIDTH, "0.625", MILLIMETRE),
+        _number(NOMINAL_TOTAL_COLLIMATION_WIDTH, "40", MILLIMETRE),
+        _number(PITCH_FACTOR, "0.984", RATIO),
+        _number(NUMBER_OF_X_RAY_SOURCES, "1", X_RAY_SOURCES),
+        # TID 10013 rows 14 to 19.
+        item(
+            "CONTAINS",
+            "CONTAINER",
+            CT_X_RAY_SOURCE_PARAMETERS,
+            item("CONTAINS", "TEXT", IDENTIFICATION_OF_THE_X_RAY_SOURCE, text=source),
+            _number(KVP, "120", KILOVOLT),
+            _number(MAXIMUM_X_RAY_TUBE_CURRENT, "380", MILLIAMPERE),
+            _number(X_RAY_TUBE_CURRENT, "210", MILLIAMPERE),
+            _number(EXPOSURE_TIME_PER_ROTATION, "0.5", SECONDS),
+        ),
+    )
+    return item(
+        None,
+        "CONTAINER",
+        X_RAY_RADIATION_DOSE_REPORT,
+        # TID 10011 rows 2 and 3, M.
+        _procedure(COMPUTED_TOMOGRAPHY_X_RAY),
+        # TID 10011 row 4, TID 1002 row 1 and TID 1004 row 1.
+        *_device_observer(observer_uid),
+        # TID 10011 rows 5 to 8, M.
+        item("HAS OBS CONTEXT", "DATETIME", START_OF_X_RAY_IRRADIATION, text=started),
+        item("HAS OBS CONTEXT", "DATETIME", END_OF_X_RAY_IRRADIATION, text=ended),
+        item(
+            "HAS OBS CONTEXT",
+            "CODE",
+            SCOPE_OF_ACCUMULATION,
+            item("HAS PROPERTIES", "UIDREF", STUDY_INSTANCE_UID, text=study),
+            code=STUDY_SCOPE,
+        ),
+        # TID 10011 row 9, TID 10012 rows 1 to 3.
+        item(
+            "CONTAINS",
+            "CONTAINER",
+            CT_ACCUMULATED_DOSE_DATA,
+            _number(TOTAL_NUMBER_OF_IRRADIATION_EVENTS, "1", EVENTS),
+            _number(CT_DOSE_LENGTH_PRODUCT_TOTAL, "640", MILLIGRAY_CENTIMETRE),
+        ),
+        # TID 10011 row 10, TID 10013 rows 1, 3, 4, 6, 7, and 21.
+        item(
+            "CONTAINS",
+            "CONTAINER",
+            CT_ACQUISITION,
+            _code(TARGET_REGION, ABDOMEN),
+            _code(CT_ACQUISITION_TYPE, SPIRAL_ACQUISITION),
+            item("CONTAINS", "UIDREF", IRRADIATION_EVENT_UID_CONCEPT, text=event_uid),
+            parameters,
+            # TID 10013 rows 21 to 23, 26, and 35, which includes TID 10015.
+            item(
+                "CONTAINS",
+                "CONTAINER",
+                CT_DOSE,
+                _number(MEAN_CTDIVOL, "11.3", MILLIGRAY),
+                _code(CTDIW_PHANTOM_TYPE, BODY_PHANTOM),
+                _number(DLP, "640", MILLIGRAY_CENTIMETRE),
+                *_dose_check(person),
+            ),
+        ),
+        # TID 10011 row 12, M.
+        _code(SOURCE_OF_DOSE_INFORMATION, AUTOMATED_DATA_COLLECTION),
+    )
+
+
+def enhanced_x_ray_dose_tree(values: Values) -> pydicom.Dataset:
+    """Return the root of an Enhanced X-Ray Radiation Dose SR's tree, TID 10040.
+
+    The report is of one stationary radiograph whose dose was collected
+    automatically (TID 10040 row 12) by the device that recorded it, so
+    that TID 10040 rows 1 to 6, 8, 9, and 12, TID 10042 rows 1 to 5 and 8,
+    and TID 10043 rows 1 to 5 are required. TID 10040 row 7, TID 10041
+    "Accumulated Dose Data", is optional and left out. Of the rows required
+    where they are included, it leaves out TID 10043 rows 7, 8, and 11 to
+    14, TID 10044 "Radiation Source Characteristics", 10045 "Radiation
+    Technique", 10048 "Radiation Output", 10049 "Radiation Field Area",
+    10050 "X-Ray Source Reference Coordinate System", and 10051 "Beam
+    Position", and the filtration and attenuator templates that rows 9, 10,
+    15, and 16 include where they apply, whose values are mostly of the
+    Value Types TABLE and SCOORD3D. Its DateTime Ended items, which Table
+    E.3.4-1 gives X, are required.
+
+    Parameters
+    ----------
+    values : callable
+        Returns the value of the Device Observer UID; the Irradiation Event
+        UID, DateTime Started, DateTime Ended, and Identification of the
+        X-Ray Source of the event summary; and the DateTime Started,
+        DateTime Ended, and Frame of Reference UID of the irradiation
+        details, given each one's Value Type, in that order.
+    """
+    observer_uid = values("UIDREF")
+    event_uid = values("UIDREF")
+    event_started = values("DATETIME")
+    event_ended = values("DATETIME")
+    source = values("TEXT")
+    details_started = values("DATETIME")
+    details_ended = values("DATETIME")
+    frame_of_reference = values("UIDREF")
+    return item(
+        None,
+        "CONTAINER",
+        X_RAY_RADIATION_DOSE_REPORT,
+        # TID 10040 rows 2 to 4, M; row 2 is TID 1204 row 1.
+        item("HAS CONCEPT MOD", "CODE", LANGUAGE, code=ENGLISH),
+        _procedure(PLAIN_RADIOGRAPHY),
+        # TID 10040 row 5, TID 1002 row 1 and TID 1004 row 1.
+        *_device_observer(observer_uid),
+        # TID 10040 row 6, M.
+        item("HAS OBS CONTEXT", "CODE", SCOPE_OF_ACCUMULATION, code=STUDY_SCOPE),
+        # TID 10040 row 8, TID 10042 rows 1 to 5 and 8.
+        item(
+            "CONTAINS",
+            "CONTAINER",
+            IRRADIATION_EVENT_SUMMARY_DATA,
+            item("CONTAINS", "UIDREF", IRRADIATION_EVENT_UID_CONCEPT, text=event_uid),
+            item("CONTAINS", "DATETIME", DATETIME_STARTED, text=event_started),
+            item("CONTAINS", "DATETIME", DATETIME_ENDED, text=event_ended),
+            item("CONTAINS", "TEXT", IDENTIFICATION_OF_THE_X_RAY_SOURCE, text=source),
+            _code(IRRADIATION_EVENT_TYPE, STATIONARY_ACQUISITION),
+        ),
+        # TID 10040 row 9, TID 10043 rows 1 to 5.
+        item(
+            "CONTAINS",
+            "CONTAINER",
+            IRRADIATION_DETAILS,
+            item("CONTAINS", "DATETIME", DATETIME_STARTED, text=details_started),
+            item("CONTAINS", "DATETIME", DATETIME_ENDED, text=details_ended),
+            item(
+                "CONTAINS",
+                "UIDREF",
+                FRAME_OF_REFERENCE_UID_CONCEPT,
+                text=frame_of_reference,
+            ),
+            _code(RDSR_FRAME_OF_REFERENCE_ORIGIN, EQUIPMENT_ORIGIN),
+        ),
+        # TID 10040 row 12, M.
+        _code(SOURCE_OF_DOSE_INFORMATION, AUTOMATED_DATA_COLLECTION),
+    )
+
+
+def patient_dose_tree(values: Values, report: str) -> pydicom.Dataset:
+    """Return the root of a Patient Radiation Dose SR's tree, TID 10030.
+
+    The report gives one estimate, the mean dose to the entire body,
+    observed by the device, an application, that estimated it from a CT
+    Radiation Dose report, with an anthropomorphic model for adults, whose
+    minimum age TID 10033 row 14 gives, and an analytical method. So TID
+    10030 rows 1 to 4, TID 10031 rows 1, 2, 4, 6, 7, and 10, and TID 10033
+    rows 1, 2, 5 to 7, 13, 14, 40, and 41 are required. It leaves out the
+    model's data (TID 10033 rows 8 to 10), required only where the model
+    has data of its own, and rows 21 to 39, the model's registration and
+    the beam attenuators, required only where the estimate used them.
+
+    Parameters
+    ----------
+    values : callable
+        Returns the value of the Device Observer UID and of the Radiation
+        Dose Estimate Name, given each one's Value Type, in that order.
+    report : str
+        The SOP Instance UID of the X-Ray Radiation Dose SR that the
+        estimate used (TID 10033 row 2).
+    """
+    observer_uid = values("UIDREF")
+    name = values("TEXT")
+    methodology = item(
+        "CONTAINS",
+        "CONTAINER",
+        RADIATION_DOSE_ESTIMATE_METHODOLOGY,
+        # TID 10033 row 2.
+        item(
+            "CONTAINS",
+            "COMPOSITE",
+            SR_INSTANCE_USED,
+            sop_class=X_RAY_RADIATION_DOSE_SR_STORAGE,
+            sop_instance=report,
+        ),
+        # TID 10033 rows 5 to 7, 13, and 14.
+        item(
+            "CONTAINS",
+            "CONTAINER",
+            PATIENT_RADIATION_DOSE_MODEL,
+            _code(PATIENT_MODEL_TYPE, ANTHROPOMORPHIC_MODEL),
+            _code(RADIATION_TRANSPORT_MODEL_TYPE, VOXELIZED_TRANSPORT_MODEL),
+            item(
+                "CONTAINS",
+                "CONTAINER",
+                PATIENT_MODEL_DEMOGRAPHICS,
+                _number(MODEL_MINIMUM_AGE, "18", YEAR),
+            ),
+        ),
+        # TID 10033 rows 40 and 41.
+        item(
+            "CONTAINS",
+            "CONTAINER",
+            RADIATION_DOSE_ESTIMATE_METHOD,
+            _code(RADIATION_DOSE_ESTIMATE_METHOD_TYPE, ANALYTICAL_ALGORITHM),
+        ),
+    )
+    return item(
+        None,
+        "CONTAINER",
+        PATIENT_RADIATION_DOSE_REPORT,
+        # TID 10030 row 2, TID 1204 row 1.
+        item("HAS CONCEPT MOD", "CODE", LANGUAGE, code=ENGLISH),
+        # TID 10030 row 3, TID 1002 row 1 and TID 1004 row 1.
+        *_device_observer(observer_uid),
+        # TID 10030 row 4, TID 10031 rows 1, 2, 4, and 6.
+        item(
+            "CONTAINS",
+            "CONTAINER",
+            RADIATION_DOSE_ESTIMATE,
+            item("HAS CONCEPT MOD", "TEXT", RADIATION_DOSE_ESTIMATE_NAME, text=name),
+            methodology,
+            # TID 10031 rows 6, 7, and 10.
+            item(
+                "CONTAINS",
+                "CONTAINER",
+                ORGAN_DOSE_INFORMATION,
+                _code(ORGAN, ENTIRE_BODY),
+                _number(MEAN_ABSORBED_RADIATION_DOSE, "3.2", MILLIGRAY),
             ),
         ),
     )

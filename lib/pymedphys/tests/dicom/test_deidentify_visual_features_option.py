@@ -702,7 +702,9 @@ def test_the_statement_names_each_supported_iod_that_lacks_the_attribute():
         "Spatial Registration",
         "Deformable Spatial Registration",
         "X-Ray Radiation Dose SR",
+        "Enhanced X-Ray Radiation Dose SR",
         "Radiopharmaceutical Radiation Dose SR",
+        "Patient Radiation Dose SR",
         "Basic Text SR",
         "Enhanced SR",
         "Comprehensive SR",
@@ -712,7 +714,8 @@ def test_the_statement_names_each_supported_iod_that_lacks_the_attribute():
     assert (
         "which of the supported IODs are RT Plan, RT Structure Set, RT Beams "
         "Treatment Record, MR Spectroscopy, Spatial Registration, Deformable "
-        "Spatial Registration, X-Ray Radiation Dose SR, Radiopharmaceutical "
+        "Spatial Registration, X-Ray Radiation Dose SR, Enhanced X-Ray "
+        "Radiation Dose SR, Radiopharmaceutical Radiation Dose SR, Patient "
         "Radiation Dose SR, Basic Text SR, Enhanced SR, Comprehensive SR, "
         "Comprehensive 3D SR, and Extensible SR."
     ) in conformance_markdown.render_markdown(

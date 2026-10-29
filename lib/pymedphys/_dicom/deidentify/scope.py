@@ -19,8 +19,9 @@ PET image IODs, including their Enhanced, Legacy Converted Enhanced, and
 colour variants, of MR Spectroscopy, of the RT Structure Set, RT Plan, RT
 Dose, RT Image, and RT Beams Treatment Record IODs, of the Spatial
 Registration and Deformable Spatial Registration IODs, of the X-Ray
-Radiation Dose SR and Radiopharmaceutical Radiation Dose SR IODs, and of
-the Basic Text SR, Enhanced SR, Comprehensive SR, Comprehensive 3D SR, and
+Radiation Dose SR, Enhanced X-Ray Radiation Dose SR, Radiopharmaceutical
+Radiation Dose SR, and Patient Radiation Dose SR IODs, and of the Basic
+Text SR, Enhanced SR, Comprehensive SR, Comprehensive 3D SR, and
 Extensible SR IODs, uncompressed or in a transfer syntax that encapsulates
 Pixel Data that pydicom's decoding plugins decode. Supporting an IOD or a
 transfer syntax does not release every instance in it: a compressed
@@ -79,7 +80,9 @@ SUPPORTED_IODS = frozenset(
         "Spatial Registration",
         "Deformable Spatial Registration",
         "X-Ray Radiation Dose SR",
+        "Enhanced X-Ray Radiation Dose SR",
         "Radiopharmaceutical Radiation Dose SR",
+        "Patient Radiation Dose SR",
         "Basic Text SR",
         "Enhanced SR",
         "Comprehensive SR",

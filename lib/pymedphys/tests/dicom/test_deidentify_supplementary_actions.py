@@ -73,18 +73,15 @@ SUPPORTED_TARGET_IODS = (*REGISTRATION_IODS, "RT Beams Treatment Record", "RT Im
 REVIEWED_AGAINST = CT_AND_RT_IODS + ADDED_IODS
 # The Radiation Dose SR IODs, which the maintainer added to the planned
 # coverage on 25 October 2026, whose text, UID, and date attributes were
-# reviewed ahead of supporting them, against the IODs above, and those of
-# them that the first supported release now supports.
+# reviewed ahead of supporting them, against the IODs above, all of which
+# the first supported release now supports.
 RADIATION_DOSE_SR_IODS = (
     "X-Ray Radiation Dose SR",
     "Enhanced X-Ray Radiation Dose SR",
     "Radiopharmaceutical Radiation Dose SR",
     "Patient Radiation Dose SR",
 )
-SUPPORTED_DOSE_SR_IODS = (
-    "X-Ray Radiation Dose SR",
-    "Radiopharmaceutical Radiation Dose SR",
-)
+SUPPORTED_DOSE_SR_IODS = RADIATION_DOSE_SR_IODS
 # The IODs that the Radiation Dose SR IODs were reviewed against.
 DOSE_SR_REVIEWED_AGAINST = REVIEWED_AGAINST + TARGET_IODS
 # The general SR IODs, which the maintainer brought into scope with every
@@ -612,7 +609,7 @@ RADIATION_DOSE_SR_DATES = {
 }
 
 
-def test_the_radiation_dose_sr_iods_are_generated_and_only_two_supported():
+def test_the_radiation_dose_sr_iods_are_generated_and_supported():
     tables = iods.load_iod_tables()
 
     assert set(RADIATION_DOSE_SR_IODS) <= set(tables.iods)
