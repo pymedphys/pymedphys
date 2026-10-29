@@ -93,7 +93,7 @@ EXPECTED = {
     "tps-import": ("no PS3.15 claim", [], "MODIFIED"),
     "public-release": (
         "PS3.15 2026d",
-        ["113100", "113111", "113107", "113105", "113102"],
+        ["113100", "113111", "113107", "113105", "113104", "113102"],
         "MODIFIED",
     ),
 }
@@ -306,6 +306,7 @@ def test_codes_follow_the_profile_in_table_e1_1s_order_of_options():
         "113111",
         "113107",
         "113105",
+        "113104",
         "113102",
     ]
 
@@ -946,16 +947,32 @@ def _coded(value, designator="DCM", meaning=None, version=None):
                 _coded("113105"),
                 _coded("113100", meaning="Basic Application Confidentiality"),
             ],
-            ["113105", "113100", "113111", "113107", "113102"],
+            ["113105", "113100", "113111", "113107", "113104", "113102"],
         ),
         # A code of another scheme, or of a stated scheme version, differs.
         (
             [_coded("113100", designator="99SYN")],
-            ["113100", "113100", "113111", "113107", "113105", "113102"],
+            [
+                "113100",
+                "113100",
+                "113111",
+                "113107",
+                "113105",
+                "113104",
+                "113102",
+            ],
         ),
         (
             [_coded("113100", version="01")],
-            ["113100", "113100", "113111", "113107", "113105", "113102"],
+            [
+                "113100",
+                "113100",
+                "113111",
+                "113107",
+                "113105",
+                "113104",
+                "113102",
+            ],
         ),
     ],
     ids=["same-codes", "other-scheme", "scheme-version"],
@@ -1774,8 +1791,12 @@ def test_a_satisfied_list_that_leaves_out_a_selected_option_is_refused(
         ("basic-clean-descriptors", [], ["113100"], "REMOVED"),
         (
             "public-release",
-            ["retain_safe_private", "retain_longitudinal_modified_dates"],
-            ["113100", "113111", "113107"],
+            [
+                "retain_safe_private",
+                "retain_longitudinal_modified_dates",
+                "clean_structured_content",
+            ],
+            ["113100", "113111", "113107", "113104"],
             "MODIFIED",
         ),
     ],
@@ -1818,6 +1839,7 @@ def test_an_option_that_the_policy_records_as_unmet_is_never_required(monkeypatc
         satisfied=[
             "retain_patient_characteristics",
             "retain_longitudinal_modified_dates",
+            "clean_structured_content",
         ],
     )
     with pytest.raises(ValueError, match="leaves out") as raised:
@@ -1827,6 +1849,7 @@ def test_an_option_that_the_policy_records_as_unmet_is_never_required(monkeypatc
         "113100",
         "113108",
         "113107",
+        "113104",
     ]
     assert "retain_patient_characteristics" in str(raised.value)
     assert "retain_device_identity" not in str(raised.value)

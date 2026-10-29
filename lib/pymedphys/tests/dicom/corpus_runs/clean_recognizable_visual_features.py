@@ -28,13 +28,16 @@ from pymedphys._dicom.deidentify.reasons import (
 
 from .._corpus_run import BASIC_WITHHELD, CorpusRun, Withheld, every_face_absent
 
+# The deformable registration, which the option holds.
+DEFORMABLE_REGISTRATION = "19-registration-deformable.dcm"
+
 RUN = CorpusRun(
     "clean-recognizable-visual-features",
     options=("clean_recognizable_visual_features",),
     face_review=every_face_absent,
     withheld={
         **BASIC_WITHHELD,
-        "19-registration-deformable.dcm": Withheld(
+        DEFORMABLE_REGISTRATION: Withheld(
             run.Status.HELD_FOR_REVIEW,
             frozenset({HeldVisualFeatures(VisualFeaturesReason.NO_FACE_VERDICT)}),
         ),

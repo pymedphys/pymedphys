@@ -147,12 +147,18 @@ def _code(key):
 
 @pytest.fixture(name="with_option")
 def _with_option(monkeypatch):
-    """Return a function that composes a preset's policy with the option added."""
+    """Return a function that composes a preset's policy with the option added.
+
+    The option is added only to the presets that do not select it.
+    """
     monkeypatch.setattr(
         policy,
         "PRESETS",
         types.MappingProxyType(
-            {preset: (*options, CSC) for preset, options in policy.PRESETS.items()}
+            {
+                preset: options if CSC in options else (*options, CSC)
+                for preset, options in policy.PRESETS.items()
+            }
         ),
     )
     return policy.compose_policy
