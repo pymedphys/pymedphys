@@ -149,6 +149,15 @@ CONTENT_DATE = "20260518"
 CONTENT_TIME = "151500"
 BIRTH_DATE = "19640823"
 LOG_DATETIME = "20260517094512"
+# The times at which the log's events occurred, in the order of its first
+# level items, each before the note's recording (LOG_DATETIME).
+EVENT_DATETIMES = (
+    "20260517093105",
+    "20260517093340",
+    "20260517093716",
+    "20260517094058",
+    "20260517094231",
+)
 ANNOTATED_DATETIME = "20260517101203.250000"
 VERIFICATION_DATETIME = "20260519080000"
 DATES = (
@@ -156,6 +165,7 @@ DATES = (
     CONTENT_DATE,
     BIRTH_DATE,
     LOG_DATETIME,
+    *EVENT_DATETIMES,
     ANNOTATED_DATETIME[:14],
     VERIFICATION_DATETIME,
 )
@@ -802,7 +812,10 @@ def log_tree(optional=()):
     TID 3001 rows 1 to 3 are required: the title, from CID 3400, an
     observer, a person, by TID 1002, and TID 3601, all of whose rows are
     optional. The other rows are the log's entries and the room and
-    equipment of the procedure.
+    equipment of the procedure. PS3.3 Section A.35.7.3.1.2 has each first
+    level item that the root CONTAINS, a log event, give the time at which
+    the event occurred in Observation DateTime (0040,A032), Type 1, in
+    strictly increasing order; they take :data:`EVENT_DATETIMES` in turn.
 
     Parameters
     ----------
@@ -811,7 +824,7 @@ def log_tree(optional=()):
         3010's are included only with ``"TID 3001 row 6"``.
     """
     _checked(optional, LOG_OPTIONAL_ROWS)
-    return item(
+    root = item(
         None,
         "CONTAINER",
         CATH_LAB_PROCEDURE_LOG,
@@ -872,6 +885,10 @@ def log_tree(optional=()):
             ],
         ),
     )
+    events = [i for i in root.ContentSequence if i.RelationshipType == "CONTAINS"]
+    for event, occurred in zip(events, EVENT_DATETIMES[: len(events)], strict=True):
+        event.ObservationDateTime = occurred
+    return root
 
 
 SPECTACLE_OPTIONAL_ROWS = ("TID 2020 row 4", "TID 2020 row 6", "TID 2020 row 8")

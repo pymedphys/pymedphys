@@ -638,6 +638,108 @@ def test_a_written_waveform_annotation_keeps_its_references(with_option, preset)
     assert coordinates.TemporalRangeType == "POINT"
 
 
+# The log's events that every option set keeps: a technologist's note, a
+# staff action, an equipment event, and a complication.
+LOG_EVENTS = ("TID 3001 row 6", "TID 3001 row 10", "TID 3001 row 12", "TID 3001 row 23")
+OBSERVATION_DATETIME = "(0040,A032)"
+
+
+def _event_times(dataset):
+    """Return the Observation DateTime of each first level item that the root CONTAINS."""
+    return [
+        event.get("ObservationDateTime")
+        for event in dataset.ContentSequence
+        if event.RelationshipType == "CONTAINS"
+    ]
+
+
+def test_each_log_event_carries_the_time_it_occurred_in_increasing_order():
+    dataset, _ = _report(LOG, REPORTS[LOG][2])
+
+    # PS3.3 Section A.35.7.3.1.2: each first level item that the root
+    # CONTAINS has Observation DateTime (0040,A032), Type 1, the time the
+    # event occurred, not that of its recording, strictly increasing.
+    times = _event_times(dataset)
+    assert len(times) == 5
+    assert times == sorted(set(times)) == list(reports.EVENT_DATETIMES)
+    assert reports.LOG_DATETIME not in times
+    for event in dataset.ContentSequence:
+        if event.RelationshipType != "CONTAINS":
+            assert "ObservationDateTime" not in event
+    # A log with no events has none.
+    assert _event_times(_report(LOG)[0]) == []
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.4-01")
+@pytest.mark.parametrize("preset, options, action", [
+    # X/D, which gives D in this Type 1 place.
+    ("basic", None, "D"),
+    ("basic-clean-descriptors", None, "D"),
+    ("tps-import", None, "C"),
+    ("public-release", None, "C"),
+    (None, (CSC, policy.FULL_DATES), "K"),
+    (None, EVERY_OPTION, "K"),
+])  # fmt: skip
+def test_the_log_events_times_take_their_dates_action(
+    with_option, preset, options, action
+):
+    dataset, iod = _report(LOG, LOG_EVENTS)
+
+    actions, plan = _planned(dataset, iod, _composed(with_option, preset, options))
+
+    # Observation DateTime is not a content item's value, so the option
+    # gives it no action of its own; Table E.1-1 gives it X/D, K under Full
+    # Dates, and C under Modified Dates, in each kept event.
+    assert actions.get(ElementPath((), CONTENT)) == "K"
+    assert not plan.sequestrations
+    assert [
+        element.action
+        for element in plan.elements
+        if element.path.tag == OBSERVATION_DATETIME
+    ] == [action] * len(LOG_EVENTS)
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.4-01")
+@pytest.mark.usefixtures("supported")
+def test_a_written_log_shifts_its_event_times_under_modified_dates(with_option):
+    dataset, _ = _report(LOG, LOG_EVENTS)
+
+    data, decision = _released(with_option("public-release"), dataset)
+
+    written = pydicom.dcmread(io.BytesIO(data))
+    times = _event_times(written)
+    for source in reports.EVENT_DATETIMES:
+        assert source.encode() not in data, source
+    # Modified Dates shifts every date of the instance alike, so the events
+    # keep their order and spacing.
+    assert len(times) == len(LOG_EVENTS)
+    assert times == sorted(set(times))
+    assert [time[8:] for time in times] == [
+        time[8:] for time in reports.EVENT_DATETIMES[: len(LOG_EVENTS)]
+    ]
+    assert isinstance(decision, run.Release), decision
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.4-01")
+@pytest.mark.usefixtures("supported")
+def test_a_written_log_gives_every_event_the_same_dummy_time_under_basic(
+    with_option,
+):
+    dataset, _ = _report(LOG, LOG_EVENTS)
+
+    data, decision = _released(with_option("basic"), dataset)
+
+    # D writes D-021's one dummy value for the VR, so the events keep a
+    # time but lose their order: a written log of several events no longer
+    # meets A.35.7.3.1.2's strictly increasing Observation DateTime. This
+    # records the engine as it is; no source time is released.
+    written = pydicom.dcmread(io.BytesIO(data))
+    for source in reports.EVENT_DATETIMES:
+        assert source.encode() not in data, source
+    assert _event_times(written) == ["19000101000000"] * len(LOG_EVENTS)
+    assert isinstance(decision, run.Release), decision
+
+
 @pytest.mark.parametrize("preset", PRESETS)
 @pytest.mark.parametrize("name", REPORTS)
 def test_a_verified_report_is_planned_as_an_unverified_one_is(
