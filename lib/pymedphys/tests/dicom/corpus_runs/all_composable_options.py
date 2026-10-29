@@ -26,6 +26,17 @@ item is then one that Clean Structured Content can clean, so the sequence is
 kept, and each element of its items takes its own action (D-047): Retain
 UIDs keeps a Referenced SOP Instance UID there, and Full Dates a date.
 
+Each Structured Report's content tree is one that Clean Structured Content
+can clean too, so its Content Sequence is kept and the reports are
+released, as they are under Clean Structured Content alone. The value of each of its
+content items takes the action of its concept name's row of Table E.3.4-1
+rather than that of its attribute's row of Table E.1-1: Retain UIDs and
+Retain Device Identity keep a Device Observer UID, and Full Dates keeps
+the start of an irradiation event. dcentvfy places two of the reports'
+study attributes in another information entity than the images'
+(``REPORT_ENTITIES``), and finds that difference in the outputs as often
+as in the inputs.
+
 Each option's kept rows are kept, but Clinical Trial Protocol Ethics
 Committee Name (0012,0081), which is removed whatever its action (D-020),
 and the attributes that each option's run keeps alike differ as before.
@@ -34,8 +45,11 @@ and the attributes that each option's run keeps alike differ as before.
 from pymedphys._dicom.deidentify import synthetic_corpus as corpus_module
 
 from .._corpus_run import (
+    CONTENT_SEQUENCE,
     MAPPED_NAME,
+    REPORT_ENTITIES,
     VOCABULARY_NAME,
+    WITHHELD_WITHOUT_REPORTS,
     CorpusRun,
     kept_rows,
     mapped_planted_name,
@@ -79,10 +93,12 @@ RUN = CorpusRun(
     reviewed_roi_names=mapped_planted_name,
     kept=kept_rows(OPTIONS) - {retain_institution_identity.ETHICS_COMMITTEE_NAME},
     roi_names=(MAPPED_NAME, VOCABULARY_NAME),
-    kept_content=frozenset({ACQUISITION_CONTEXT}),
+    kept_content=frozenset({ACQUISITION_CONTEXT, CONTENT_SEQUENCE}),
+    withheld=WITHHELD_WITHOUT_REPORTS,
     inconsistent=(
         retain_patient_characteristics.KEPT_DIFFERENCES
         | retain_institution_identity.KEPT_DIFFERENCES
         | retain_longitudinal_full_dates.INCONSISTENT
+        | REPORT_ENTITIES
     ),
 )

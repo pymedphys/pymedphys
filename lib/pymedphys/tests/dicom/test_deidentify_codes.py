@@ -19,7 +19,12 @@ import re
 
 from pymedphys._imports import pytest
 
-from pymedphys._dicom.deidentify import codes, standard, uid_registry
+from pymedphys._dicom.deidentify import (
+    codes,
+    standard,
+    structured_content,
+    uid_registry,
+)
 
 
 def _loaded(path):
@@ -278,3 +283,108 @@ def test_the_context_groups_agree_with_pydicom(cid):
     }
 
     assert ours == expected
+
+
+def test_table_o_1_maps_every_snomed_code_dicom_has_used_in_2026d():
+    # 8,162 rows published in 2026d, one of them twice.
+    table = codes.load_snomed_ids()
+
+    assert table.edition == "2026d"
+    assert table.acknowledgement == "DICOM PS3.16 2026d, © NEMA"
+    assert len(table.rows) == 8161
+    assert table.rows[0] == codes.SnomedId("111002", "T-B7000")
+    assert codes.SnomedId("69536005", "T-D1100") in table.rows
+    assert codes.SnomedId("117617002", "P3-44150") in table.rows
+
+
+def test_table_o_1_maps_each_snomed_ct_concept_of_table_e3_4_1():
+    concepts = {
+        concept.code_value
+        for concept in structured_content.load_table_e3_4_1().concepts
+        if concept.scheme_designator == "SCT"
+    }
+    mapped = {row.concept_id for row in codes.load_snomed_ids().rows}
+
+    assert len(concepts) == 10
+    assert concepts <= mapped
+
+
+@pytest.mark.parametrize("designator", ["SRT", "SNM3", "99SDM"])
+def test_a_retired_snomed_code_maps_to_its_snomed_ct_code(designator):
+    assert codes.snomed_ct_code(designator, "G-C0E3") == ("SCT", "363698007")
+
+
+@pytest.mark.parametrize(
+    "designator, code_value",
+    [
+        # Not in Table O-1, in another case, or padded.
+        ("SRT", "T-FIXTURE"),
+        ("SRT", "g-c0e3"),
+        ("SRT", "G-C0E3 "),
+        # Only the retired designators give SNOMED IDs.
+        ("SCT", "G-C0E3"),
+        ("DCM", "G-C0E3"),
+        ("srt", "G-C0E3"),
+    ],
+)
+def test_only_a_snomed_id_of_a_retired_designator_maps(designator, code_value):
+    assert codes.snomed_ct_code(designator, code_value) is None
+
+
+@pytest.mark.parametrize(
+    "value, valid",
+    [
+        ("69536005", True),
+        ("363698007", True),
+        # A concept of an extension, whose partition identifier is 10.
+        ("321000119108", True),
+        ("69536006", False),  # Wrong check digit.
+        ("069536005", False),  # Leading zero.
+        ("12345", False),  # Too short.
+        ("1" * 19, False),  # Too long.
+        # A valid check digit, but partition 01, which identifies a
+        # description, not a concept.
+        ("69536014", False),
+        ("T-D1100", False),
+        (69536005, False),
+        (None, False),
+    ],
+)
+def test_snomed_ct_concept_ids_are_checked(value, valid):
+    assert codes.is_snomed_ct_concept_id(value) is valid
+
+
+@pytest.mark.parametrize(
+    "field, value, message",
+    [
+        ("concept_id", "69536006", "row 1 has a concept ID"),
+        ("concept_id", "", "row 1 has a concept ID"),
+        ("snomed_id", "T-B7000\\T-B7001", "row 1 has a SNOMED ID"),
+        ("snomed_id", "t-b7000", "row 1 has a SNOMED ID"),
+        ("snomed_id", "TB7000", "row 1 has a SNOMED ID"),
+        ("snomed_id", "T-" + "B" * 15, "row 1 has a SNOMED ID"),
+        ("snomed_id", None, "row 1 has a SNOMED ID"),
+    ],
+)
+def test_a_malformed_table_o_1_row_is_rejected(tmp_path, field, value, message):
+    spec = codes.SNOMED_ID_TABLE
+    document = _loaded(standard.STANDARD_DIR / spec.file)
+    document["rows"][0][field] = value
+
+    with pytest.raises(standard.StandardTableError, match=re.escape(message)):
+        codes.load_snomed_ids(_write(tmp_path / spec.file, _redigested(document)))
+
+
+@pytest.mark.parametrize(
+    "field, message",
+    [("concept_id", "repeats the concept id"), ("snomed_id", "repeats the snomed id")],
+)
+def test_a_repeated_concept_id_or_snomed_id_is_rejected(tmp_path, field, message):
+    # Each identifies one concept, so that a SNOMED ID maps to one code.
+    spec = codes.SNOMED_ID_TABLE
+    document = _loaded(standard.STANDARD_DIR / spec.file)
+    rows = document["rows"]
+    rows[1][field] = rows[0][field]
+
+    with pytest.raises(standard.StandardTableError, match=f"row 2 {message}"):
+        codes.load_snomed_ids(_write(tmp_path / spec.file, _redigested(document)))

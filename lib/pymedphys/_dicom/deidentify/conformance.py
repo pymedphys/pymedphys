@@ -81,6 +81,13 @@ from .codes import load_context_group
 from .content_items import CONTENT_ITEM_SEQUENCES
 from .content_items import METHOD as CONTENT_ITEMS_METHOD
 from .descriptor_cleaning import fallback_policy
+from .dummy_values import (
+    DUMMY_VRS,
+    ICC_PROFILE,
+    PERSON_IDENTIFICATION_CODE_SEQUENCE,
+    REFERENCED_PERFORMED_PROCEDURE_STEP_SEQUENCE,
+    VERIFYING_OBSERVER_SEQUENCE,
+)
 from .element_rules import (
     _ENGINE_GROUPS,
     _ENGINE_TAGS,
@@ -116,7 +123,7 @@ from .supplementary_actions import TEXT_VRS, UNCOVERED_TEXT_ACTION
 from .temporal_roles import TemporalRole, load_temporal_roles
 from .uid_registry import load_uid_values
 from .uid_roles import UIDRole, load_uid_roles
-from .walker import DESCENDED
+from .walker import descends
 
 # The CID 7050 code of each option that a policy can compose: those of
 # Table E.1-1, then Clean Pixel Data and Clean Recognizable Visual Features,
@@ -134,6 +141,16 @@ UID_DEFINITION = "UID role: definition"
 
 # The action at a place where the instance is sequestered rather than written.
 SEQUESTER = "sequester"
+# The attributes whose dummy value a reviewed rule gives, whatever their VR
+# (D-021).
+_REVIEWED_DUMMY_ATTRIBUTES = frozenset(
+    {
+        PERSON_IDENTIFICATION_CODE_SEQUENCE,
+        REFERENCED_PERFORMED_PROCEDURE_STEP_SEQUENCE,
+        ICC_PROFILE,
+        VERIFYING_OBSERVER_SEQUENCE,
+    }
+)
 # What a plain X on Overlay Data removes with it: every attribute of its
 # overlay group.
 OVERLAY_GROUP = "overlay group"
@@ -522,17 +539,36 @@ class ConformanceStatement:
 def _place(iod: IOD, name: str, tag: str, path: tuple[str, ...], action: str) -> Place:
     """Return the action that the Type gives ``action`` at one place."""
     if action in compound_actions.COMPOUND_ACTIONS:
-        return Place(
-            name, path, compound_actions.resolve_in_iod(iod, tag, path, action)
-        )
-    if action != "X":
-        return Place(
-            name, path, compound_actions.resolve_plain_in_iod(iod, tag, path, action)
-        )
+        resolved = compound_actions.resolve_in_iod(iod, tag, path, action)
+    elif action != "X":
+        resolved = compound_actions.resolve_plain_in_iod(iod, tag, path, action)
+    else:
+        return _plain_x_place(iod, name, tag, path)
+    if resolved == "D" and not _has_dummy_value(tag):
+        return Place(name, path, SEQUESTER)
+    return Place(name, path, resolved)
+
+
+def _has_dummy_value(tag: str) -> bool:
+    """Whether D can write a dummy value for ``tag`` (D-021).
+
+    It can where the attribute's VR has a generic dummy value or a reviewed
+    rule gives the attribute one; otherwise D sequesters the instance.
+    """
+    if tag in _REVIEWED_DUMMY_ATTRIBUTES:
+        return True
+    attribute = dictionary_attribute(tag)
+    return attribute is None or bool(DUMMY_VRS.intersection(attribute.vrs))
+
+
+def _plain_x_place(iod: IOD, name: str, tag: str, path: tuple[str, ...]) -> Place:
+    """Return what a plain X removes at one place."""
     removal = compound_actions.resolve_plain_x_in_iod(iod, tag, path)
     extent = removal.extent
     if extent is compound_actions.RemovalExtent.SEQUESTER:
         return Place(name, path, SEQUESTER)
+    if extent is compound_actions.RemovalExtent.EMPTIED:
+        return Place(name, path, "Z")
     if extent is compound_actions.RemovalExtent.OVERLAY_GROUP:
         return Place(name, path, "X", OVERLAY_GROUP)
     if extent is compound_actions.RemovalExtent.SEQUENCE:
@@ -550,9 +586,9 @@ def _removed_with_a_sequence(
 ) -> bool:
     """Whether a sequence enclosing ``path`` is removed with its contents.
 
-    The walker keeps a sequence as a container only under K or U; under any
-    other action, everything in it goes with it, and takes no action of its
-    own.
+    The walker keeps a sequence as a container only under K or U, or under
+    D where a reviewed rule keeps its items (D-021); under any other action,
+    everything in it goes with it, and takes no action of its own.
     """
     for depth, sequence in enumerate(path):
         within = path[:depth]
@@ -563,7 +599,7 @@ def _removed_with_a_sequence(
             action = compound_actions.resolve_plain_in_iod(
                 iod, sequence, within, action
             )
-        if action not in DESCENDED:
+        if not descends(sequence, action):
             return True
     return False
 

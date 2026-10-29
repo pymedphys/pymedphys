@@ -95,6 +95,7 @@ def _assessment(**changes):
         "linked_records": "Each subject's studies were assessed together",
         "earlier_releases": "No earlier release",
         "device_identity": "Station names identify the department, so are omitted",
+        "institutional_identity": "Local codes were matched on as the site",
         "facial_reconstruction": False,
         "subjects": 3,
         "threshold": risk_assessment.DEFAULT_THRESHOLD,
@@ -219,7 +220,7 @@ def test_the_record_is_written_beside_the_pack_and_read_back(pack, report_file):
     document = json.loads(written.read_text("ascii"))
     digest = hashlib.sha256((pack / qc_store.PACK_FILE).read_bytes()).hexdigest()
     assert document == {
-        "format": "pymedphys-deid-risk-assessment/1",
+        "format": "pymedphys-deid-risk-assessment/2",
         "reference": record.reference,
         "pack": PACK,
         "pack_digest": digest,
@@ -253,6 +254,7 @@ def test_the_record_is_written_beside_the_pack_and_read_back(pack, report_file):
         "linked_records": "Each subject's studies were assessed together",
         "earlier_releases": "No earlier release",
         "device_identity": "Station names identify the department, so are omitted",
+        "institutional_identity": "Local codes were matched on as the site",
         "facial_reconstruction": False,
         "subjects": 3,
         "threshold": 0.09,
@@ -309,6 +311,7 @@ def test_the_reprs_show_no_statement(pack, report_file):
         "linked_records",
         "earlier_releases",
         "device_identity",
+        "institutional_identity",
         "assessor",
     ],
 )
@@ -979,6 +982,7 @@ def test_a_record_whose_collection_was_edited_is_refused(pack, report_file):
         lambda document: document.pop("earlier_releases"),
         lambda document: document.pop("linked_records"),
         lambda document: document.pop("device_identity"),
+        lambda document: document.pop("institutional_identity"),
         lambda document: document.pop("model"),
         lambda document: document["model"].pop("version"),
         lambda document: document["attacker"].update(extra=1),
@@ -998,6 +1002,21 @@ def test_a_record_not_of_its_format_is_refused(pack, report_file, change):
     with pytest.raises(RiskAssessmentError, match="not of its format") as raised:
         risk_assessment.read_assessment(pack)
     assert SENTINEL not in str(raised.value)
+
+
+@pytest.mark.deid_requirement("MIDI-BP-05")
+def test_a_record_of_the_earlier_format_is_refused(pack, report_file):
+    # Format 1 held no statement on the institutional identity that the
+    # policy keeps, so no record of it can stand as an assessment of that.
+    _record(pack, report_file, _assessment())
+
+    def earlier(document):
+        document.update(format="pymedphys-deid-risk-assessment/1")
+        del document["institutional_identity"]
+
+    _rewrite(pack, earlier)
+    with pytest.raises(RiskAssessmentError, match="not of its format"):
+        risk_assessment.read_assessment(pack)
 
 
 def test_a_record_naming_a_member_twice_is_refused(pack, report_file):
