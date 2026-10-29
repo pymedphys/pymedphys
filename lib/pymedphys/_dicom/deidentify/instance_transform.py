@@ -348,6 +348,10 @@ class WriterPlan:
         The items of kept sequences that the plan removes on their own
         (:attr:`~pymedphys._dicom.deidentify.walker.InstancePlan.removed_items`),
         each element of which is in ``removed``.
+    emptied : frozenset of ElementPath
+        The Content Sequences that the plan removes because every item of
+        each is removed on its own
+        (:attr:`~pymedphys._dicom.deidentify.walker.InstancePlan.emptied`).
     """
 
     kept: frozenset[ElementPath]
@@ -358,6 +362,7 @@ class WriterPlan:
     introduced: frozenset[ElementPath] = frozenset()
     transfer_syntax: str | None = None
     removed_items: frozenset[tuple[tuple[str, int], ...]] = frozenset()
+    emptied: frozenset[ElementPath] = frozenset()
 
     @property
     def expectations(self) -> Expectations:
@@ -589,6 +594,7 @@ def writer_plan(
         replacements,
         frozenset(introduced),
         removed_items=plan.removed_items,
+        emptied=plan.emptied,
     )
 
 
@@ -683,6 +689,7 @@ def with_markers(
         frozenset(introduced),
         writing.transfer_syntax,
         writing.removed_items,
+        writing.emptied,
     )
 
 
@@ -1943,6 +1950,7 @@ def _written(
         iod,
         frozenset(writing.replacements),
         writing.removed_items,
+        writing.emptied,
     ):
         raise _Refused(TransformReason.REQUIRED_ATTRIBUTE_LOST)
     if redaction is not None:
@@ -2083,6 +2091,7 @@ def _with_cut_contours(
         frozenset(introduced),
         writing.transfer_syntax,
         writing.removed_items,
+        writing.emptied,
     )
 
 
