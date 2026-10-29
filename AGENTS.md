@@ -283,16 +283,11 @@ Extras (`[project.optional-dependencies]`) are published and are for people who 
   licence or removing the last code under one. Treat bundled data, such as
   vocabularies, datasets, and tables generated from standards, like code:
   bundle it only under terms compatible with Apache-2.0, never under
-  non-commercial or no-derivatives terms, and include any required
-  attribution. The one exception is LOINC, whose licence forbids changing its
-  fields and grants no right to make derivative works: the de-identification
-  tables include the LOINC codes that Clean Structured Content looks up, each
-  with its LOINC name and status, unchanged, under `LicenseRef-LOINC`, with
-  LOINC's notice in the package and on its PyPI page (D-001). Bundle no other
-  LOINC content, and no other data under such terms, without the maintainers'
-  agreement. Keep the independent licence
-  expectations in `.github/scripts/check_distributions.py` and its test
-  fixtures in sync with these settings. Check declarations as well as file
+  non-commercial or no-derivatives terms (the LOINC codes in the
+  de-identification tables are the one exception), and include any required
+  attribution. Keep the independent licence expectations in
+  `.github/scripts/check_distributions.py` and its test fixtures in sync with
+  these settings. Check declarations as well as file
   presence, so removing a metadata entry cannot bypass the release guard.
 - Keep `version` in `pyproject.toml` in canonical PEP 440 form (`0.42.0.dev0`,
   not `0.42.0-dev0`); the release tag must be `v` followed by it. The build
