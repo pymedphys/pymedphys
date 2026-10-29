@@ -14,20 +14,21 @@
 
 """The Clean Structured Content Option on CT, Enhanced X-Ray, and Patient dose reports.
 
-The X-Ray, Enhanced X-Ray, and Patient Radiation Dose SR IODs are not
-supported yet, so the engine sequesters their instances. These tests show,
-ahead of supporting them, what the option does with the content trees of a
-CT Radiation Dose report (TID 10011, with TID 10015), an Enhanced X-Ray
-Radiation Dose report (TID 10040), and a Patient Radiation Dose report (TID
-10030), as :mod:`.test_deidentify_dose_report_content` does for TID 10001
-and TID 10021 (D-047): which option sets, chiefly the option alone, with
-Retain UIDs, and with Retain Device Identity, and which presets, with the
-option added, keep a report that holds only the rows that its templates
-require; which required rows take the tree out; which optional rows take it
+The X-Ray Radiation Dose SR IOD, whose root may be TID 10011, is supported,
+but the Enhanced X-Ray and Patient Radiation Dose SR IODs are not yet, so
+the engine sequesters their instances. These tests show what the option
+does with the content trees of a CT Radiation Dose report (TID 10011, with
+TID 10015), an Enhanced X-Ray Radiation Dose report (TID 10040), and a
+Patient Radiation Dose report (TID 10030), as
+:mod:`.test_deidentify_dose_report_content` does for TID 10001 and TID
+10021 (D-047): which option sets, chiefly the option alone, with Retain
+UIDs, and with Retain Device Identity, and which presets, with the option
+added, keep a report that holds only the rows that its templates require;
+the action that its required rows take; which optional rows take the tree
 out under each option set; the action that each value of a kept tree takes;
-and what is written and released, in the tests that add the IODs to the
-supported ones for that test alone, as supporting them would. The reports
-are synthetic, built from the templates of PS3.16 2026d by
+and what is written and released, in the tests that add the two IODs to
+the supported ones for that test alone, as supporting them would. The
+reports are synthetic, built from the templates of PS3.16 2026d by
 :mod:`._synthetic_further_dose_reports`.
 
 A preset with the option added is composed by adding it to every preset's
@@ -86,8 +87,7 @@ OPTIONAL_ROWS = {
 PRESETS = ("basic", "basic-clean-descriptors", "tps-import", "public-release")
 UIDS = (CSC, policy.UIDS)
 DEVICE = (CSC, policy.DEVICE_IDENTITY)
-# The Enhanced X-Ray report's required DateTime Started and Ended need a
-# dates option, and Retain Device Identity conflicts with Modified Dates.
+# Retain Device Identity conflicts with Modified Dates.
 DATED_UIDS = (CSC, policy.FULL_DATES, policy.UIDS)
 # Every option of Table E.1-1 that can be selected with the others, with
 # Full Dates, which Retain Device Identity does not conflict with.
@@ -131,11 +131,11 @@ def _with_option(monkeypatch):
 
 @pytest.fixture(name="supported")
 def _supported(monkeypatch):
-    """Add the three IODs to the supported ones, as supporting them would."""
+    """Add the two unsupported IODs to the supported ones, as supporting them would."""
     monkeypatch.setattr(
         scope,
         "SUPPORTED_IODS",
-        scope.SUPPORTED_IODS | {iod for _, iod in REPORTS.values()},
+        scope.SUPPORTED_IODS | {reports.ENHANCED_IOD, reports.PATIENT_IOD},
     )
 
 
@@ -245,14 +245,19 @@ def _released(composed, dataset):
     return result.data, decision
 
 
-def test_the_reports_are_of_iods_that_are_not_supported_yet():
+def test_only_the_ct_report_is_of_a_supported_iod():
     for name, (build, iod) in REPORTS.items():
         dataset = build()
         classification = scope.classify(
             dataset.SOPClassUID, synthetic.EXPLICIT_VR_LITTLE_ENDIAN
         )
 
-        assert classification.reason == scope.UnsupportedIod(iod), name
+        if name == CT:
+            assert classification == scope.Classification(
+                scope.Disposition.SUPPORTED, iod
+            ), name
+        else:
+            assert classification.reason == scope.UnsupportedIod(iod), name
         assert load_iod_tables().iods[iod].lookup(CONTENT, ()), name
         assert load_iod_tables().iods[iod].lookup(VERIFYING_OBSERVER, ()), name
 
@@ -269,94 +274,133 @@ def test_without_the_option_a_report_is_sequestered(name):
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.4-01")
-@pytest.mark.parametrize("options, kept", [
-    # Each report is observed by the device that recorded it, whose Device
-    # Observer UID (TID 1004 row 1, M) is X/D, which the engine resolves to
-    # X, since it checks no template, unless Retain UIDs or Retain Device
-    # Identity keeps it.
-    ((), set()),
-    ((policy.SAFE_PRIVATE,), set()),
-    ((policy.INSTITUTION_IDENTITY,), set()),
-    ((policy.PATIENT_CHARACTERISTICS,), set()),
-    ((policy.CLEAN_DESCRIPTORS,), set()),
-    ((policy.FULL_DATES,), set()),
-    ((policy.MODIFIED_DATES,), set()),
-    # The Enhanced X-Ray report's DateTime Started and Ended (TID 10042
-    # rows 3 and 4, and TID 10043 rows 2 and 3) need a dates option too, and
-    # its RDSR Frame of Reference UID (TID 10043 row 4, X/D) Retain UIDs.
-    ((policy.UIDS,), {CT, PATIENT}),
-    ((policy.DEVICE_IDENTITY,), {CT, PATIENT}),
-    ((policy.FULL_DATES, policy.UIDS), {CT, ENHANCED, PATIENT}),
-    ((policy.MODIFIED_DATES, policy.UIDS), {CT, ENHANCED, PATIENT}),
-    ((policy.FULL_DATES, policy.DEVICE_IDENTITY), {CT, PATIENT}),
+@pytest.mark.parametrize("options", [
+    (),
+    (policy.SAFE_PRIVATE,),
+    (policy.INSTITUTION_IDENTITY,),
+    (policy.PATIENT_CHARACTERISTICS,),
+    (policy.CLEAN_DESCRIPTORS,),
+    (policy.FULL_DATES,),
+    (policy.MODIFIED_DATES,),
+    (policy.UIDS,),
+    (policy.DEVICE_IDENTITY,),
+    (policy.FULL_DATES, policy.UIDS),
+    (policy.MODIFIED_DATES, policy.UIDS),
+    (policy.FULL_DATES, policy.DEVICE_IDENTITY),
 ])  # fmt: skip
-def test_which_option_sets_keep_a_report_of_required_rows(options, kept):
+def test_every_option_set_keeps_a_report_of_required_rows(options):
     composed = policy.compose_custom_policy((CSC, *options))
 
-    assert {name for name in REPORTS if _kept(*_report(name), composed)} == kept
+    # Each report is observed by the device that recorded it, whose Device
+    # Observer UID (TID 1004 row 1, M) is X/D, as are the Enhanced X-Ray
+    # report's DateTime Started (TID 10042 row 3 and TID 10043 row 2) and
+    # RDSR Frame of Reference UID (TID 10043 row 4); X/D gives D, and so does
+    # the X of its DateTime Ended (TID 10042 row 4 and TID 10043 row 3), so
+    # none of them takes the tree out (D-047).
+    for name in REPORTS:
+        assert _kept(*_report(name), composed), name
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.4-01")
-@pytest.mark.parametrize("preset, kept", [
-    ("basic", set()),
-    ("basic-clean-descriptors", set()),
-    # Retain Device Identity keeps the Device Observer UIDs; with no Retain
-    # UIDs, the RDSR Frame of Reference UID takes the Enhanced X-Ray tree
-    # out.
-    ("tps-import", {CT, PATIENT}),
-    ("public-release", set()),
-])  # fmt: skip
-def test_which_presets_with_the_option_keep_a_report_of_required_rows(
-    with_option, preset, kept
+@pytest.mark.parametrize("preset", PRESETS)
+def test_every_preset_with_the_option_keeps_a_report_of_required_rows(
+    with_option, preset
 ):
     composed = with_option(preset)
 
     for name in REPORTS:
         dataset, iod = _report(name)
         _, plan = _planned(dataset, iod, composed)
-        assert _kept(dataset, iod, composed) is (name in kept), name
-        assert bool(plan.sequestrations) is (name not in kept), name
+        assert _kept(dataset, iod, composed), name
+        assert not plan.sequestrations, name
         # A report with every optional row is never kept.
         everything, _ = _report(name, OPTIONAL_ROWS[name])
         assert not _kept(everything, iod, composed), name
 
 
-@pytest.mark.parametrize("preset, options, removed", [
-    # TID 1004 row 1, M, is X/D, as are TID 10042 row 3 and TID 10043 rows
-    # 2 and 4; TID 10042 row 4 and TID 10043 row 3 are X.
+# The required rows that Table E.3.4-1 gives X/D, or, for DateTime Ended, X.
+REQUIRED_X_D = {
+    "Device Observer UID",
+    "DateTime Started",
+    "DateTime Ended",
+    "Frame of Reference UID",
+}
+
+
+@pytest.mark.parametrize("preset, options, taken", [
     (
         None,
         (CSC,),
         {
-            CT: {"Device Observer UID"},
+            CT: {"Device Observer UID": "D"},
             ENHANCED: {
-                "Device Observer UID",
-                "DateTime Started",
-                "DateTime Ended",
-                "Frame of Reference UID",
+                "Device Observer UID": "D",
+                "DateTime Started": "D",
+                "DateTime Ended": "D",
+                "Frame of Reference UID": "D",
             },
-            PATIENT: {"Device Observer UID"},
+            PATIENT: {"Device Observer UID": "D"},
         },
     ),
-    (None, UIDS, {ENHANCED: {"DateTime Started", "DateTime Ended"}}),
+    (
+        None,
+        UIDS,
+        {
+            CT: {"Device Observer UID": "K"},
+            ENHANCED: {
+                "Device Observer UID": "K",
+                "DateTime Started": "D",
+                "DateTime Ended": "D",
+                "Frame of Reference UID": "K",
+            },
+            PATIENT: {"Device Observer UID": "K"},
+        },
+    ),
     (
         None,
         DEVICE,
-        {ENHANCED: {"DateTime Started", "DateTime Ended", "Frame of Reference UID"}},
+        {
+            CT: {"Device Observer UID": "K"},
+            ENHANCED: {
+                "Device Observer UID": "K",
+                "DateTime Started": "D",
+                "DateTime Ended": "D",
+                "Frame of Reference UID": "D",
+            },
+            PATIENT: {"Device Observer UID": "K"},
+        },
     ),
-    ("tps-import", None, {ENHANCED: {"Frame of Reference UID"}}),
+    (
+        "tps-import",
+        None,
+        {
+            CT: {"Device Observer UID": "K"},
+            ENHANCED: {
+                "Device Observer UID": "K",
+                "DateTime Started": "C",
+                "DateTime Ended": "C",
+                "Frame of Reference UID": "D",
+            },
+            PATIENT: {"Device Observer UID": "K"},
+        },
+    ),
     (
         "public-release",
         None,
         {
-            CT: {"Device Observer UID"},
-            ENHANCED: {"Device Observer UID", "Frame of Reference UID"},
-            PATIENT: {"Device Observer UID"},
+            CT: {"Device Observer UID": "D"},
+            ENHANCED: {
+                "Device Observer UID": "D",
+                "DateTime Started": "C",
+                "DateTime Ended": "C",
+                "Frame of Reference UID": "D",
+            },
+            PATIENT: {"Device Observer UID": "D"},
         },
     ),
 ])  # fmt: skip
-def test_the_required_rows_that_table_e3_4_1_removes(
-    with_option, preset, options, removed
+def test_the_action_that_the_required_x_d_rows_take(
+    with_option, preset, options, taken
 ):
     actions = content_items.concept_actions(
         _composed(with_option, preset, options).options
@@ -364,11 +408,15 @@ def test_the_required_rows_that_table_e3_4_1_removes(
 
     for name in REPORTS:
         dataset, _ = _report(name)
+        found = {meaning: actions.get(key) for meaning, key in _concepts(dataset)}
+        assert content_items.REMOVE not in found.values(), name
+        # A UIDREF item's D is a replacement UID (U) in the plan, as the
+        # next tests show.
         assert {
-            meaning
-            for meaning, key in _concepts(dataset)
-            if actions.get(key) == content_items.REMOVE
-        } == removed.get(name, set()), name
+            meaning: action
+            for meaning, action in found.items()
+            if meaning in REQUIRED_X_D
+        } == taken[name], name
 
 
 # Under every option set, these optional rows take the tree out: Table
@@ -418,13 +466,11 @@ ENHANCED_DEVICE = {
     "TID 10042 row 47",
 }
 PATIENT_DEVICE = {"TID 1004 row 2", "TID 1004 row 5"}
-# Retain UIDs keeps these, X or X/D: the CT scan's Frame of Reference UID,
-# and the Spatial Fiducials and the model's data that the patient's estimate
-# used.
-CT_UIDS = {"TID 10014 row 8"}
+# Retain UIDs keeps these, X: the Spatial Fiducials and the model's data
+# that the patient's estimate used. The CT scan's Frame of Reference UID
+# (TID 10014 row 8) and the CT event's DateTime Started (TID 10013 row 6f),
+# X/D, take D under every option set.
 PATIENT_UIDS = {"TID 10033 row 3", "TID 10033 row 10"}
-# A dates option keeps the CT event's DateTime Started, X/D.
-CT_DATES = {"TID 10013 row 6f"}
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.4-01")
@@ -432,24 +478,53 @@ CT_DATES = {"TID 10013 row 6f"}
     (
         CT,
         None,
-        UIDS,
-        CT_REMOVED_UNDER_EVERY_OPTION | CT_INSTITUTION | CT_DEVICE | CT_DATES,
+        (CSC,),
+        CT_REMOVED_UNDER_EVERY_OPTION | CT_INSTITUTION | CT_DEVICE,
     ),
+    (CT, None, UIDS, CT_REMOVED_UNDER_EVERY_OPTION | CT_INSTITUTION | CT_DEVICE),
+    (CT, None, DEVICE, CT_REMOVED_UNDER_EVERY_OPTION | CT_INSTITUTION),
+    (CT, "tps-import", None, CT_REMOVED_UNDER_EVERY_OPTION | CT_INSTITUTION),
     (
         CT,
+        "public-release",
         None,
-        DEVICE,
-        CT_REMOVED_UNDER_EVERY_OPTION | CT_INSTITUTION | CT_UIDS | CT_DATES,
+        CT_REMOVED_UNDER_EVERY_OPTION | CT_INSTITUTION | CT_DEVICE,
     ),
-    (CT, "tps-import", None, CT_REMOVED_UNDER_EVERY_OPTION | CT_INSTITUTION | CT_UIDS),
     (CT, None, EVERY_OPTION, CT_REMOVED_UNDER_EVERY_OPTION),
     (
         ENHANCED,
         None,
-        DATED_UIDS,
+        (CSC,),
         ENHANCED_REMOVED_UNDER_EVERY_OPTION | ENHANCED_INSTITUTION | ENHANCED_DEVICE,
     ),
+    (
+        ENHANCED,
+        None,
+        UIDS,
+        ENHANCED_REMOVED_UNDER_EVERY_OPTION | ENHANCED_INSTITUTION | ENHANCED_DEVICE,
+    ),
+    (
+        ENHANCED,
+        None,
+        DEVICE,
+        ENHANCED_REMOVED_UNDER_EVERY_OPTION | ENHANCED_INSTITUTION,
+    ),
+    (
+        ENHANCED,
+        "tps-import",
+        None,
+        ENHANCED_REMOVED_UNDER_EVERY_OPTION | ENHANCED_INSTITUTION,
+    ),
     (ENHANCED, None, EVERY_OPTION, ENHANCED_REMOVED_UNDER_EVERY_OPTION),
+    (
+        PATIENT,
+        None,
+        (CSC,),
+        PATIENT_REMOVED_UNDER_EVERY_OPTION
+        | PATIENT_INSTITUTION
+        | PATIENT_DEVICE
+        | PATIENT_UIDS,
+    ),
     (
         PATIENT,
         None,
@@ -489,12 +564,31 @@ def _keepable(name, removed):
     return tuple(key for key in OPTIONAL_ROWS[name] if key not in removed)
 
 
+# A listed UIDREF item that is not kept takes U's replacement rather than
+# D-021's dummy, so that it names what the rest of the output names (D-047).
 @pytest.mark.deid_requirement("PS3.15-E.3.4-01")
 @pytest.mark.parametrize("name, options, removed, values", [
     (
         CT,
+        (CSC,),
+        CT_REMOVED_UNDER_EVERY_OPTION | CT_INSTITUTION | CT_DEVICE,
+        {
+            "Device Observer UID": "U",
+            "Start of X-Ray Irradiation": "D",
+            "End of X-Ray Irradiation": "D",
+            "Study Instance UID": "U",
+            "Patient Model": "D",
+            "Irradiation Event UID": "U",
+            "DateTime Started": "D",
+            "Frame of Reference UID": "U",
+            "Identification of the X-Ray Source": "D",
+            "Person Name": "D",
+        },
+    ),
+    (
+        CT,
         UIDS,
-        CT_REMOVED_UNDER_EVERY_OPTION | CT_INSTITUTION | CT_DEVICE | CT_DATES,
+        CT_REMOVED_UNDER_EVERY_OPTION | CT_INSTITUTION | CT_DEVICE,
         {
             "Device Observer UID": "K",
             "Start of X-Ray Irradiation": "D",
@@ -502,6 +596,7 @@ def _keepable(name, removed):
             "Study Instance UID": "K",
             "Patient Model": "D",
             "Irradiation Event UID": "K",
+            "DateTime Started": "D",
             "Frame of Reference UID": "K",
             "Identification of the X-Ray Source": "D",
             "Person Name": "D",
@@ -510,19 +605,38 @@ def _keepable(name, removed):
     (
         CT,
         DEVICE,
-        CT_REMOVED_UNDER_EVERY_OPTION | CT_INSTITUTION | CT_UIDS | CT_DATES,
+        CT_REMOVED_UNDER_EVERY_OPTION | CT_INSTITUTION,
         {
             "Device Observer UID": "K",
             "Device Observer Name": "K",
             "Device Observer Serial Number": "K",
             "Start of X-Ray Irradiation": "D",
             "End of X-Ray Irradiation": "D",
-            "Study Instance UID": "D",
+            "Study Instance UID": "U",
             "Patient Model": "D",
             "Device Name": "K",
             "Device Serial Number": "K",
-            "Irradiation Event UID": "D",
+            "Irradiation Event UID": "U",
+            "DateTime Started": "D",
+            "Frame of Reference UID": "U",
             "Identification of the X-Ray Source": "K",
+            "Person Name": "D",
+        },
+    ),
+    (
+        ENHANCED,
+        UIDS,
+        ENHANCED_REMOVED_UNDER_EVERY_OPTION | ENHANCED_INSTITUTION | ENHANCED_DEVICE,
+        {
+            "Device Observer UID": "K",
+            "Identification of the X-Ray Source": "D",
+            "Calibration DateTime": "D",
+            # D, with C under Clean Descriptors, which falls back to D.
+            "Calibration Responsible Party": "D",
+            "Irradiation Event UID": "K",
+            "DateTime Started": "D",
+            "DateTime Ended": "D",
+            "Frame of Reference UID": "K",
             "Person Name": "D",
         },
     ),
@@ -534,13 +648,45 @@ def _keepable(name, removed):
             "Device Observer UID": "K",
             "Identification of the X-Ray Source": "D",
             "Calibration DateTime": "K",
-            # D, with C under Clean Descriptors, which falls back to D.
             "Calibration Responsible Party": "D",
             "Irradiation Event UID": "K",
             "DateTime Started": "K",
             "DateTime Ended": "K",
             "Frame of Reference UID": "K",
             "Person Name": "D",
+        },
+    ),
+    (
+        ENHANCED,
+        DEVICE,
+        ENHANCED_REMOVED_UNDER_EVERY_OPTION | ENHANCED_INSTITUTION,
+        {
+            "Device Observer UID": "K",
+            "Device Observer Name": "K",
+            "Device Observer Serial Number": "K",
+            "Identification of the X-Ray Source": "K",
+            "Calibration DateTime": "D",
+            "Calibration Responsible Party": "D",
+            "Device Name": "K",
+            "Device Serial Number": "K",
+            "Irradiation Event UID": "U",
+            "DateTime Started": "D",
+            "DateTime Ended": "D",
+            "Frame of Reference UID": "U",
+            "Person Name": "D",
+        },
+    ),
+    (
+        PATIENT,
+        (CSC,),
+        PATIENT_REMOVED_UNDER_EVERY_OPTION
+        | PATIENT_INSTITUTION
+        | PATIENT_DEVICE
+        | PATIENT_UIDS,
+        {
+            "Device Observer UID": "U",
+            "Radiation Dose Estimate Name": "D",
+            "Event UID Used": "U",
         },
     ),
     (
@@ -563,7 +709,7 @@ def _keepable(name, removed):
             "Device Observer Name": "K",
             "Device Observer Serial Number": "K",
             "Radiation Dose Estimate Name": "D",
-            "Event UID Used": "D",
+            "Event UID Used": "U",
         },
     ),
 ])  # fmt: skip
@@ -622,20 +768,43 @@ def test_the_unlisted_text_of_each_report(name):
 # that take its tree out under them, and the irradiating device and the
 # device observer's Manufacturer and Model Name, tested on their own.
 WRITTEN = {
+    "CT, option alone": (
+        CT,
+        (CSC,),
+        CT_REMOVED_UNDER_EVERY_OPTION | CT_INSTITUTION | CT_DEVICE,
+    ),
     "CT, Retain UIDs": (
         CT,
         UIDS,
-        CT_REMOVED_UNDER_EVERY_OPTION | CT_INSTITUTION | CT_DEVICE | CT_DATES,
+        CT_REMOVED_UNDER_EVERY_OPTION | CT_INSTITUTION | CT_DEVICE,
     ),
     "CT, Retain Device Identity": (
         CT,
         DEVICE,
-        CT_REMOVED_UNDER_EVERY_OPTION | CT_INSTITUTION | CT_UIDS | CT_DATES,
+        CT_REMOVED_UNDER_EVERY_OPTION | CT_INSTITUTION,
+    ),
+    "enhanced X-ray, option alone": (
+        ENHANCED,
+        (CSC,),
+        ENHANCED_REMOVED_UNDER_EVERY_OPTION | ENHANCED_INSTITUTION | ENHANCED_DEVICE,
     ),
     "enhanced X-ray, Retain UIDs and Full Dates": (
         ENHANCED,
         DATED_UIDS,
         ENHANCED_REMOVED_UNDER_EVERY_OPTION | ENHANCED_INSTITUTION | ENHANCED_DEVICE,
+    ),
+    "enhanced X-ray, Retain Device Identity": (
+        ENHANCED,
+        DEVICE,
+        ENHANCED_REMOVED_UNDER_EVERY_OPTION | ENHANCED_INSTITUTION,
+    ),
+    "patient, option alone": (
+        PATIENT,
+        (CSC,),
+        PATIENT_REMOVED_UNDER_EVERY_OPTION
+        | PATIENT_INSTITUTION
+        | PATIENT_DEVICE
+        | PATIENT_UIDS,
     ),
     "patient, Retain UIDs": (
         PATIENT,
@@ -691,28 +860,37 @@ def test_a_written_report_is_released(case):
                 assert uid.encode() in data, uid
     else:
         # Retain Device Identity keeps the Device Observer UID, Name, and
-        # Serial Number, and only them of the report's identifying values.
+        # Serial Number, and only them of the report's identifying values;
+        # without it, none is kept.
+        device = policy.DEVICE_IDENTITY in options
         kept = {
             item.ConceptNameCodeSequence[0].CodeMeaning
             for item in _items(written)
             if reports.SENTINEL in str(item.get("TextValue", ""))
         }
-        assert kept == {"Device Observer Name", "Device Observer Serial Number"}
+        assert kept == (
+            {"Device Observer Name", "Device Observer Serial Number"}
+            if device
+            else set()
+        )
         observers = {
             reports.CT_DEVICE_OBSERVER_UID,
+            reports.ENHANCED_DEVICE_OBSERVER_UID,
             reports.PATIENT_DEVICE_OBSERVER_UID,
         }
-        for uid in set(reports.UIDS) - observers:
+        for uid in set(reports.UIDS) - (observers if device else set()):
             assert uid.encode() not in data, uid
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.4-01")
 @pytest.mark.usefixtures("supported")
 @pytest.mark.parametrize("case, extra", [
+    ("CT, option alone", DEVICE_OBSERVER_MAKE),
     ("CT, Retain UIDs", DEVICE_OBSERVER_MAKE),
     ("CT, Retain Device Identity", DEVICE_OBSERVER_MAKE),
     ("CT, Retain Device Identity", ("TID 10013 row 39",)),
     ("enhanced X-ray, Retain UIDs and Full Dates", DEVICE_OBSERVER_MAKE),
+    ("enhanced X-ray, Retain Device Identity", ("TID 10042 row 47",)),
     ("patient, Retain UIDs", DEVICE_OBSERVER_MAKE),
     ("patient, Retain Device Identity", DEVICE_OBSERVER_MAKE),
 ])  # fmt: skip

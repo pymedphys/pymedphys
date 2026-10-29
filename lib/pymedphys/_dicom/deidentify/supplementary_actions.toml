@@ -8,9 +8,11 @@
 # and an IOD of the supported scope uses, at any depth, so that no
 # operator-typed text is kept merely because the table does not list it, and
 # so does every one that an IOD of the target coverage uses but not yet the
-# supported scope: RT Beams Treatment Record, RT Image, Segmentation, and the
-# four Radiation Dose SR IODs, reviewed ahead of supporting them. So does
-# every date, time, and datetime (DA, DT, or TM)
+# supported scope: Segmentation, and the Enhanced X-Ray and Patient
+# Radiation Dose SR IODs, reviewed ahead of supporting them, as RT Image, RT Beams
+# Treatment Record, the registrations, and the X-Ray and Radiopharmaceutical
+# Radiation Dose SR IODs were. So does every date, time, and datetime (DA, DT, or
+# TM)
 # attribute that Table E.1-1 omits, besides the role that the temporal roles
 # file gives it. Other attributes that the table omits have a rule only where
 # one has been reviewed, such as the two URLs below that name coding concepts

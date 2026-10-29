@@ -17,7 +17,8 @@
 :func:`collection` gives three CT slices, an RT Structure Set that references
 them from its Referenced Frame of Reference Sequence and its ROI Contour
 Sequence, an RT Plan that references the structure set and the dose, and an
-RT Dose that references the plan and the structure set. Every instance UID is
+RT Dose that references the plan and the structure set; :func:`treatment_record`
+gives an RT Beams Treatment Record of the plan. Every instance UID is
 invented under ``2.25.``, and the patient is fictitious. :func:`written` writes
 an instance to a file in memory, and :func:`record` records the file.
 """
@@ -37,6 +38,7 @@ MR_IMAGE_STORAGE = "1.2.840.10008.5.1.4.1.1.4"
 NM_IMAGE_STORAGE = "1.2.840.10008.5.1.4.1.1.20"
 RT_DOSE_STORAGE = "1.2.840.10008.5.1.4.1.1.481.2"
 RT_STRUCTURE_SET_STORAGE = "1.2.840.10008.5.1.4.1.1.481.3"
+RT_BEAMS_TREATMENT_RECORD_STORAGE = "1.2.840.10008.5.1.4.1.1.481.4"
 RT_PLAN_STORAGE = "1.2.840.10008.5.1.4.1.1.481.5"
 ENCAPSULATED_PDF_STORAGE = "1.2.840.10008.5.1.4.1.1.104.1"
 # SOP Classes of other service classes, which PS3.4 Table B.5-1 does not
@@ -61,6 +63,8 @@ PLAN_SERIES = "2.25.400"
 PLAN = "2.25.401"
 DOSE_SERIES = "2.25.500"
 DOSE = "2.25.501"
+TREATMENT_RECORD_SERIES = "2.25.650"
+TREATMENT_RECORD = "2.25.651"
 OTHER_SERIES = "2.25.600"
 OTHER = "2.25.601"
 PATIENT_ID = "SYNTHETIC-7Q2K"
@@ -206,6 +210,15 @@ def rt_dose():
         ReferencedStructureSetSequence=[
             reference(RT_STRUCTURE_SET_STORAGE, STRUCTURE_SET)
         ],
+    )
+
+
+def treatment_record():
+    return instance(
+        RT_BEAMS_TREATMENT_RECORD_STORAGE,
+        TREATMENT_RECORD,
+        TREATMENT_RECORD_SERIES,
+        ReferencedRTPlanSequence=[reference(RT_PLAN_STORAGE, PLAN)],
     )
 
 

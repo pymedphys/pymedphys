@@ -22,10 +22,12 @@ this Study", and Studies Containing Other Referenced Instances Sequence
 (0008,1200), "Required if this Instance references Instances in other
 Studies". Neither says "May be present otherwise", so PS3.5 Section 7.4.2
 does not allow either once its condition fails. Every IOD of the first
-supported release includes the module, as user-optional but for Spatial
-Registration and Deformable Spatial Registration, which make it
-mandatory; since both sequences are conditional, the module holds neither
-once both conditions fail, whatever its usage.
+supported release but the two radiation dose reports, whose SR Document
+General Module references their evidence instead, includes the module, as
+user-optional but for Spatial Registration and Deformable Spatial
+Registration, which make it mandatory; since both sequences are
+conditional, the module holds neither once both conditions fail, whatever
+its usage.
 
 Table E.1-1 lists neither sequence, so the engine keeps them, with their
 UIDs replaced. It can remove every other reference that an instance

@@ -14,20 +14,25 @@
 
 """The ``public-release`` preset, with a reviewed ROI Name.
 
-Retain Safe Private, Modified Dates, and Clean Descriptors. The corpus's
-private blocks are reserved by a creator that no reviewed rule names, so
-every private attribute is removed; Modified Dates keeps the TM rows that its
-cleaner keeps, as in its own run; and the structure set is as the
-``basic-clean-descriptors`` run has it.
+Retain Safe Private, Modified Dates, Clean Descriptors, and Clean
+Recognizable Visual Features. The corpus's private blocks are reserved by a
+creator that no reviewed rule names, so every private attribute is removed;
+Modified Dates keeps the TM rows that its cleaner keeps, as in its own run;
+the structure set is as the ``basic-clean-descriptors`` run has it; and
+every file is marked free of a face, so every released instance claims
+Clean Recognizable Visual Features, and the deformable registration is held,
+as in that option's own run.
 """
 
 from .._corpus_run import (
     MAPPED_NAME,
     VOCABULARY_NAME,
     CorpusRun,
+    every_face_absent,
     mapped_planted_name,
     with_a_second_roi,
 )
+from .clean_recognizable_visual_features import RUN as VISUAL_FEATURES
 from .retain_longitudinal_full_dates import INCONSISTENT
 from .retain_longitudinal_modified_dates import RUN as MODIFIED_DATES
 
@@ -36,6 +41,8 @@ RUN = CorpusRun(
     preset="public-release",
     corpus=with_a_second_roi,
     reviewed_roi_names=mapped_planted_name,
+    face_review=every_face_absent,
+    withheld=VISUAL_FEATURES.withheld,
     kept=MODIFIED_DATES.kept,
     roi_names=(MAPPED_NAME, VOCABULARY_NAME),
     inconsistent=INCONSISTENT,

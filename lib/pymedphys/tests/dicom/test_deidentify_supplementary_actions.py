@@ -44,7 +44,7 @@ TEXT_VRS = {"LO", "SH", "LT", "ST", "UC", "UT"}
 TEMPORAL_VRS = {"DA", "DT", "TM"}
 # The IODs of the first supported release.
 # The CT and RT IODs that the first supported release has always supported,
-# and the CT, MR, and PET IODs that it adds.
+# and the CT, MR, and PET IODs that the maintainer added on 7 October 2026.
 CT_AND_RT_IODS = ("CT Image", "RT Dose", "RT Plan", "RT Structure Set")
 ADDED_IODS = (
     "Enhanced CT Image",
@@ -69,17 +69,25 @@ TARGET_IODS = (
     "Segmentation",
 )
 REGISTRATION_IODS = ("Spatial Registration", "Deformable Spatial Registration")
+SUPPORTED_TARGET_IODS = (*REGISTRATION_IODS, "RT Beams Treatment Record", "RT Image")
 REVIEWED_AGAINST = CT_AND_RT_IODS + ADDED_IODS
-SUPPORTED_IODS = REVIEWED_AGAINST + REGISTRATION_IODS
 # The Radiation Dose SR IODs, which the maintainer added to the planned
-# coverage on 25 October 2026, whose text, UID, and date attributes are
-# reviewed ahead of supporting them.
+# coverage on 25 October 2026, whose text, UID, and date attributes were
+# reviewed ahead of supporting them, against the IODs above, and those of
+# them that the first supported release now supports.
 RADIATION_DOSE_SR_IODS = (
     "X-Ray Radiation Dose SR",
     "Enhanced X-Ray Radiation Dose SR",
     "Radiopharmaceutical Radiation Dose SR",
     "Patient Radiation Dose SR",
 )
+SUPPORTED_DOSE_SR_IODS = (
+    "X-Ray Radiation Dose SR",
+    "Radiopharmaceutical Radiation Dose SR",
+)
+# The IODs that the Radiation Dose SR IODs were reviewed against.
+DOSE_SR_REVIEWED_AGAINST = REVIEWED_AGAINST + TARGET_IODS
+SUPPORTED_IODS = REVIEWED_AGAINST + SUPPORTED_TARGET_IODS + SUPPORTED_DOSE_SR_IODS
 CLEAN_DESCRIPTORS = "clean_descriptors"
 DEVICE_IDENTITY = "retain_device_identity"
 FULL_DATES = "retain_longitudinal_full_dates"
@@ -341,10 +349,10 @@ def test_the_basic_profile_keeps_no_person_name():
 def test_every_text_attribute_a_supported_iod_uses_and_table_e1_1_omits_has_a_rule():
     omitted = _omitted_text()
 
-    # Checked by hand against the 2026d PS3.3, PS3.6, and PS3.15; the
-    # registration IODs add Content Description and Frame of Reference
-    # Transformation Comment.
-    assert len(omitted) == 143
+    # Checked against the 2026d PS3.3, PS3.6, and PS3.15: the combined
+    # scope includes both RT objects and the two dose-report IODs, whose
+    # supplementary rules cover 155 text attributes.
+    assert len(omitted) == 155
     assert omitted <= set(_rules())
     assert {"(0008,0100)", "(300A,00C2)", "(60xx,1500)"} <= omitted
 
@@ -359,11 +367,11 @@ def test_the_rules_for_omitted_text_fall_in_the_reviewed_groups():
 
     assert groups == {
         # Operator-typed labels and text.
-        ("X/Z/D", ((CLEAN_DESCRIPTORS, "C"),)): 64,
+        ("X/Z/D", ((CLEAN_DESCRIPTORS, "C"),)): 74,
         # Accessory and equipment identifiers.
-        ("X/Z/D", ((DEVICE_IDENTITY, "K"),)): 24,
+        ("X/Z/D", ((DEVICE_IDENTITY, "K"),)): 25,
         # Coded and technical values, and De-identification Method.
-        ("K", ()): 38,
+        ("K", ()): 39,
         # Names and identifiers of people, organisations, records, and
         # networks, identifiers that a device reads, and the text of overlays.
         ("X/Z/D", ()): 15,
@@ -464,6 +472,9 @@ TARGET_OPERATOR_TEXT = {
 }
 TARGET_DEVICE_IDENTITY = {"(3002,0020)"}  # Radiation Machine Name
 TARGET_KEPT_TEXT = {"(0028,3004)"}  # Modality LUT Type
+# Of them, the text that the Basic Profile keeps in RT Image, which the first
+# supported release now supports.
+RT_IMAGE_KEPT_TEXT = TARGET_KEPT_TEXT
 TARGET_REMOVED_UNDER_EVERY_OPTION = {"(0062,0020)"}  # Tracking ID
 # The UID and temporal attributes that the target IODs use and the supported
 # IODs do not, all listed in Table E.1-1, checked by hand against the 2026d
@@ -499,11 +510,11 @@ def _used_by(names, vrs):
     }
 
 
-def test_the_target_iods_are_generated_and_only_the_registrations_supported():
+def test_the_target_iods_have_the_documented_support():
     tables = iods.load_iod_tables()
 
     assert set(TARGET_IODS) <= set(tables.iods)
-    assert set(TARGET_IODS) & scope.SUPPORTED_IODS == set(REGISTRATION_IODS)
+    assert set(TARGET_IODS) & scope.SUPPORTED_IODS == set(SUPPORTED_TARGET_IODS)
     assert set(SUPPORTED_IODS) == scope.SUPPORTED_IODS
 
 
@@ -589,17 +600,19 @@ RADIATION_DOSE_SR_DATES = {
 }
 
 
-def test_the_radiation_dose_sr_iods_are_generated_and_not_yet_supported():
+def test_the_radiation_dose_sr_iods_are_generated_and_only_two_supported():
     tables = iods.load_iod_tables()
 
     assert set(RADIATION_DOSE_SR_IODS) <= set(tables.iods)
-    assert not set(RADIATION_DOSE_SR_IODS) & scope.SUPPORTED_IODS
+    assert set(RADIATION_DOSE_SR_IODS) & scope.SUPPORTED_IODS == set(
+        SUPPORTED_DOSE_SR_IODS
+    )
 
 
 @pytest.mark.deid_requirement("MIDI-BP-05", "MIDI-BP-06", "MIDI-BP-11")
 def test_the_text_that_only_the_radiation_dose_sr_iods_use_has_reviewed_rules():
     listed = _table_e1_1()
-    others = SUPPORTED_IODS + TARGET_IODS
+    others = DOSE_SR_REVIEWED_AGAINST
     added = _used_by(RADIATION_DOSE_SR_IODS, TEXT_VRS) - _used_by(others, TEXT_VRS)
     rules = _rules()
 
@@ -618,7 +631,7 @@ def test_the_text_that_only_the_radiation_dose_sr_iods_use_has_reviewed_rules():
 
 def test_every_uid_and_date_that_the_radiation_dose_sr_iods_use_has_a_role():
     listed = _table_e1_1()
-    others = SUPPORTED_IODS + TARGET_IODS
+    others = DOSE_SR_REVIEWED_AGAINST
     uids = uid_roles.load_uid_roles()
     temporal = temporal_roles.load_temporal_roles()
     dose_uids = _used_by(RADIATION_DOSE_SR_IODS, {"UI"})
@@ -673,7 +686,7 @@ def test_each_group_takes_the_action_of_its_option(
         assert composed[tag] == operator_text, tag
     for tag in ACCESSORY_IDENTIFIERS:
         assert composed[tag] == accessory_identifier, tag
-    for tag in KEPT_TEXT | ADDED_KEPT_TEXT:
+    for tag in KEPT_TEXT | ADDED_KEPT_TEXT | RT_IMAGE_KEPT_TEXT:
         assert composed[tag] == "K", tag
 
 
@@ -704,9 +717,9 @@ def test_the_basic_profile_keeps_only_the_reviewed_coded_and_technical_text():
         for tag in _supported_text()
     }
 
-    assert len(basic) == 263
+    assert len(basic) == 280
     assert {tag for tag, action in basic.items() if action == "K"} == (
-        KEPT_TEXT | ADDED_KEPT_TEXT
+        KEPT_TEXT | ADDED_KEPT_TEXT | RT_IMAGE_KEPT_TEXT
     )
     assert set(basic.values()) - {"K"} <= REMOVING_ACTIONS
 
@@ -724,6 +737,7 @@ def test_no_option_keeps_more_than_the_coded_text_and_device_identity():
         expected = (
             KEPT_TEXT
             | ADDED_KEPT_TEXT
+            | RT_IMAGE_KEPT_TEXT
             | (device_identity if DEVICE_IDENTITY in composed.options else set())
         )
         assert kept == expected, composed.options

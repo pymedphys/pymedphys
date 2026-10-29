@@ -381,7 +381,7 @@ def test_the_transform_gives_each_source_series_evidence():
 
 
 @pytest.mark.deid_requirement("MIDI-BP-15", "MIDI-BP-17")
-def test_a_run_over_the_synthetic_corpus_lists_its_volumes(tmp_path):
+def test_a_run_over_the_synthetic_corpus_lists_its_volumes_and_rt_image(tmp_path):
     corpus = corpus_module.build_corpus()
     # A short directory, since a run refuses output paths that could exceed
     # Windows' 259 characters.
@@ -428,7 +428,8 @@ def test_a_run_over_the_synthetic_corpus_lists_its_volumes(tmp_path):
     # frames, is a volume too, and so is each RT Dose, a grid of two frames,
     # the one released and the one held for review, in one series; the MR Image and PET Image instances are one
     # slice each, so not volumes, and MR Spectroscopy has no pixels. None of
-    # the PET instances is SUV-scaled, so none shows the body weight.
+    # the PET instances is SUV-scaled, so none shows the body weight. The RT
+    # Image, a projection, can show the face in profile.
     volumes = [
         ("ct-volume", released("CT Image")),
         ("rt-dose-volume", released("RT Dose", held=True)),
@@ -439,8 +440,20 @@ def test_a_run_over_the_synthetic_corpus_lists_its_volumes(tmp_path):
         ("mr-volume", released("Legacy Converted Enhanced MR Image")),
         ("pet-volume", released("Enhanced PET Image")),
         ("pet-volume", released("Legacy Converted Enhanced PET Image")),
+        ("rt-image", released("RT Image")),
     ]
-    assert [len(positions) for _, positions in volumes] == [2, 2, 1, 1, 1, 1, 1, 1, 1]
+    assert [len(positions) for _, positions in volumes] == [
+        2,
+        2,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+        1,
+    ]
     assert pack["series_risks"] == [
         {
             "positions": positions,
