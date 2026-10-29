@@ -20,7 +20,7 @@ fictitious patient and study, with one Frame of Reference: three CT Image
 slices, an RT Structure Set that references the CT series and slices, an RT
 Plan that references the structure set and the dose, an RT Dose that
 references the plan, a second RT Dose of the plan for review (below), and
-one instance of each of the other twenty IODs, each in a series of its own.
+one instance of each of the other twenty-one IODs, each in a series of its own.
 The MR Image and PET Image instances reference the first CT slice, and each
 enhanced, legacy converted enhanced, or MR Spectroscopy instance references
 the single-frame instance of its modality: the first CT slice, the MR
@@ -30,10 +30,12 @@ Registration the PET Image by a two by two by one deformation grid; each
 names its image in Referenced Image Sequence (0008,1140), whose item the
 Basic Profile keeps, and the Spatial Registration's Used RT Structure Set
 ROI Sequence (0070,0315) names the structure set. The RT Beams Treatment
-Record references the plan. The references of the X-Ray Radiation Dose SR
-name the first CT slice, those of the Radiopharmaceutical Radiation Dose
-SR the PET Image, and those of the Basic Text SR, Enhanced SR,
-Comprehensive SR, Comprehensive 3D SR, and Extensible SR the MR Image. It is the input for validating each preset end
+Record references the plan. The RT Image, a digitally reconstructed
+radiograph of 2 by 2 pixels, references the RT Plan. The X-Ray Radiation
+Dose SR references the first CT slice, the Radiopharmaceutical Radiation
+Dose SR the PET Image, and the Basic Text SR, Enhanced SR, Comprehensive
+SR, Comprehensive 3D SR, and Extensible SR the MR Image. It is the input for
+validating each preset end
 to end: once the engine has
 written the collection, the residual search
 (:mod:`~pymedphys._dicom.deidentify.residuals`) should find none of the
@@ -74,9 +76,9 @@ recorded as linked; each placement records its item's concept name
 action under Clean Structured Content, and its path through the items of
 the tree. The Basic Profile gives the Content Sequence D, which a sequence
 has no dummy value for (D-021), so a report is sequestered unless Clean
-Structured Content can clean every item of its tree, as it can only where
-the other options selected keep every value that would otherwise remove
-the tree (D-047).
+Structured Content can clean every item of its tree. Its required X/D
+items take dummy values; selected Retain options determine which values
+are kept instead (D-047).
 
 Some attributes must stay linked, so the collection's references resolve and
 the reference graph (:mod:`~pymedphys._dicom.deidentify.reference_graph`)
@@ -121,8 +123,9 @@ attribute that the pinned dictionary gives no single VR, and a tag whose element
 are not planted. Each placement not planted is recorded with a
 :class:`NotPlantedReason`. Pixel Data is not an attribute of Table E.1-1 and
 holds only a few synthetic samples: 2 by 2 pixels, in two frames in a
-multi-frame IOD, monochrome but for the Enhanced MR Color instance, whose RGB
-pixels come with the ICC Profile (0028,2000) its IOD requires: an sRGB
+multi-frame IOD but one in the RT Image, monochrome but for the Enhanced MR
+Color instance, whose RGB pixels come with the ICC Profile (0028,2000) its
+IOD requires: an sRGB
 profile (:mod:`~pymedphys._dicom.deidentify.icc_profiles`) whose description,
 :data:`SOURCE_ICC_DESCRIPTION`, begins with the marker prefix, so that a kept
 profile would be found. The MR Spectroscopy instance holds two values of
@@ -143,8 +146,7 @@ recorded in the other files with
 :attr:`NotPlantedReason.SEQUESTERS_INSTANCE`, as is each attribute in the
 item of such a sequence. Of the corpus's IODs these
 are Responsible Person (0010,2297) and Responsible Organization (0010,2299)
-at the top level, each Structured Report's Verifying Observer Sequence
-(0040,A073), Radiopharmaceutical Start DateTime (0018,1078) in the
+at the top level, Radiopharmaceutical Start DateTime (0018,1078) in the
 Radiopharmaceutical Information Sequence (0054,0016) of an Enhanced PET
 Image, and Institution Code Sequence (0008,0082), which X/Z/D gives D
 where it is Type 1C, in the Interlock Resolution User Sequence (300A,0746)
@@ -152,10 +154,10 @@ of an RT Beams Treatment Record's Interlock Sequence (300A,0740). Planted in
 every file, the first two would sequester every
 instance, and no preset could release any of the collection; planted in one,
 that instance checks sequestration, :data:`REVIEW_FILE` checks review, and
-the other twenty-five check each preset's output, the reports where their trees
+the other twenty-six check each preset's output, the reports where their trees
 are cleaned. Radiopharmaceutical Start
-DateTime, Institution Code Sequence, and the reports' sequestering
-attributes, which CT Image does not define there, are planted in no file, so the Enhanced PET instance, which lacks an
+DateTime and Institution Code Sequence, which CT Image does not define
+there, are planted in no file, so the Enhanced PET instance, which lacks an
 attribute of Type 1, and the treatment record are released and their other
 markers are checked; an Enhanced PET Image instance that conforms to the
 IOD is sequestered under ``basic`` and ``basic-clean-descriptors``.
@@ -188,7 +190,7 @@ Manufacturer's Model Name (0008,1090), which Table E.1-1 does not list and
 the Basic Profile keeps, a copy of the RT Plan's RT Plan Label marker
 (:attr:`PlacementKind.REVIEW_COPY`), so the residual search finds a source
 value of another instance in its output and sends it to review. The third
-CT slice remains sequestered; the other twenty-five files stay releasable, the
+CT slice remains sequestered; the other twenty-six files stay releasable, the
 reports where their trees are cleaned.
 
 **Manifest.** :class:`CorpusManifest` records, for each file, each
@@ -234,6 +236,7 @@ from .dummy_values import (
     DUMMY_VRS,
     PERSON_IDENTIFICATION_CODE_SEQUENCE,
     REFERENCED_PERFORMED_PROCEDURE_STEP_SEQUENCE,
+    VERIFYING_OBSERVER_SEQUENCE,
 )
 from .elements import dataset_codecs, new_element
 from .file_layout import ElementPath
@@ -283,6 +286,7 @@ LEGACY_CONVERTED_ENHANCED_PET_IMAGE_STORAGE = "1.2.840.10008.5.1.4.1.1.128.1"
 ENHANCED_PET_IMAGE_STORAGE = "1.2.840.10008.5.1.4.1.1.130"
 SPATIAL_REGISTRATION_STORAGE = "1.2.840.10008.5.1.4.1.1.66.1"
 DEFORMABLE_SPATIAL_REGISTRATION_STORAGE = "1.2.840.10008.5.1.4.1.1.66.3"
+RT_IMAGE_STORAGE = "1.2.840.10008.5.1.4.1.1.481.1"
 RT_DOSE_STORAGE = "1.2.840.10008.5.1.4.1.1.481.2"
 RT_STRUCTURE_SET_STORAGE = "1.2.840.10008.5.1.4.1.1.481.3"
 RT_BEAMS_TREATMENT_RECORD_STORAGE = "1.2.840.10008.5.1.4.1.1.481.4"
@@ -358,6 +362,8 @@ DEFORMABLE_REGISTRATION_SERIES = f"{LINKED_UID_ROOT}01600"
 DEFORMABLE_REGISTRATION = f"{LINKED_UID_ROOT}01601"
 TREATMENT_RECORD_SERIES = f"{LINKED_UID_ROOT}01700"
 TREATMENT_RECORD = f"{LINKED_UID_ROOT}01701"
+RT_IMAGE_SERIES = f"{LINKED_UID_ROOT}01800"
+RT_IMAGE = f"{LINKED_UID_ROOT}01801"
 X_RAY_DOSE_REPORT_SERIES = f"{LINKED_UID_ROOT}01900"
 X_RAY_DOSE_REPORT = f"{LINKED_UID_ROOT}01901"
 RADIOPHARMACEUTICAL_DOSE_REPORT_SERIES = f"{LINKED_UID_ROOT}02000"
@@ -411,7 +417,11 @@ _CONTENT_ITEM_VALUES = types.MappingProxyType(
 )
 # The sequences whose D a reviewed rule writes (D-021).
 _REVIEWED_DUMMY_SEQUENCES = frozenset(
-    {PERSON_IDENTIFICATION_CODE_SEQUENCE, REFERENCED_PERFORMED_PROCEDURE_STEP_SEQUENCE}
+    {
+        PERSON_IDENTIFICATION_CODE_SEQUENCE,
+        REFERENCED_PERFORMED_PROCEDURE_STEP_SEQUENCE,
+        VERIFYING_OBSERVER_SEQUENCE,
+    }
 )
 # Where an RT Structure Set references every CT slice, not only the first.
 _RT_REFERENCED_CONTOUR_IMAGES = ("(3006,0010)", "(3006,0012)", "(3006,0014)")
@@ -447,6 +457,7 @@ _SOP_CLASSES = types.MappingProxyType(
         REGISTRATION: SPATIAL_REGISTRATION_STORAGE,
         DEFORMABLE_REGISTRATION: DEFORMABLE_SPATIAL_REGISTRATION_STORAGE,
         TREATMENT_RECORD: RT_BEAMS_TREATMENT_RECORD_STORAGE,
+        RT_IMAGE: RT_IMAGE_STORAGE,
         X_RAY_DOSE_REPORT: X_RAY_RADIATION_DOSE_SR_STORAGE,
         RADIOPHARMACEUTICAL_DOSE_REPORT: RADIOPHARMACEUTICAL_RADIATION_DOSE_SR_STORAGE,
         BASIC_TEXT_REPORT: BASIC_TEXT_SR_STORAGE,
@@ -457,6 +468,10 @@ _SOP_CLASSES = types.MappingProxyType(
         PATIENT_REFERENCE: DETACHED_PATIENT_MANAGEMENT,
         PROCEDURE_STEP: MODALITY_PERFORMED_PROCEDURE_STEP,
     }
+)
+# The registrations, whose structure _add_registration adds.
+_REGISTRATIONS = frozenset(
+    {SPATIAL_REGISTRATION_STORAGE, DEFORMABLE_SPATIAL_REGISTRATION_STORAGE}
 )
 # The VR given to an attribute with alternatives, as Implicit VR gives it
 # (PS3.5 Section A.1).
@@ -936,6 +951,14 @@ _SPECS = (
         TREATMENT_RECORD_SERIES,
         PLAN,
     ),
+    # The RT Image, a digitally reconstructed radiograph of a beam of the plan.
+    _Spec(
+        "21-rt-image.dcm",
+        RT_IMAGE_STORAGE,
+        RT_IMAGE,
+        RT_IMAGE_SERIES,
+        PLAN,
+    ),
     # The radiation dose reports, whose header references the first CT
     # slice, and the PET Image.
     _Spec(
@@ -1000,17 +1023,17 @@ def build_corpus() -> SyntheticCorpus:
     Returns
     -------
     SyntheticCorpus
-        Twenty-seven files: three CT slices; the RT Structure Set, RT Plan, RT
+        Twenty-eight files: three CT slices; the RT Structure Set, RT Plan, RT
         Dose, and the RT Dose for review; the Enhanced CT Image and Legacy
         Converted Enhanced CT Image; the MR Image, Enhanced MR Image,
         Enhanced MR Color Image, Legacy Converted Enhanced MR Image, and MR
         Spectroscopy; the PET Image, Enhanced PET Image, and Legacy
         Converted Enhanced PET Image; the Spatial Registration and
         Deformable Spatial Registration; the RT Beams Treatment Record; the
-        X-Ray Radiation Dose SR and Radiopharmaceutical Radiation Dose SR;
-        and the Basic Text SR, Enhanced SR, Comprehensive SR, Comprehensive
-        3D SR, and Extensible SR. Two builds give the same bytes and the
-        same manifest.
+        RT Image; the X-Ray Radiation Dose SR and Radiopharmaceutical
+        Radiation Dose SR; and the Basic Text SR, Enhanced SR, Comprehensive
+        SR, Comprehensive 3D SR, and Extensible SR. Two builds give the same
+        bytes and the same manifest.
     """
     markers = _Markers()
     files: list[CorpusFile] = []
@@ -1639,20 +1662,13 @@ class _Instance:
             put((), "(5600,0020)", [struct.pack("<2f", 1.0, 2.0)])
         elif self.spec.sop_class in _IMAGES:
             self._add_image(_IMAGES[self.spec.sop_class])
-        elif self.spec.sop_class == SPATIAL_REGISTRATION_STORAGE:
-            put((), "(0008,0060)", ["REG"])
-            matrix = _items(["(0070,0308)", "(0070,0309)", "(0070,030A)"])
-            put(matrix, "(3006,00C6)", _IDENTITY_MATRIX)
-            put(matrix, "(0070,030C)", ["RIGID"])
-        elif self.spec.sop_class == DEFORMABLE_SPATIAL_REGISTRATION_STORAGE:
-            put((), "(0008,0060)", ["REG"])
-            grid = _items(["(0064,0002)", "(0064,0005)"])
-            put(grid, "(0020,0032)", ["-1", "-1", "0"])
-            put(grid, "(0020,0037)", ["1", "0", "0", "0", "1", "0"])
-            put(grid, "(0064,0007)", [2, 2, 1])
-            put(grid, "(0064,0008)", [1.0, 1.0, 1.0])
-            # A displacement of each of the grid's four points, in mm.
-            put(grid, "(0064,0009)", [struct.pack("<12f", *range(12))])
+        elif self.spec.sop_class in _REGISTRATIONS:
+            self._add_registration()
+        elif self.spec.sop_class == RT_IMAGE_STORAGE:
+            put((), "(0008,0060)", ["RTIMAGE"])
+            put((), "(0008,0008)", ["DERIVED", "SECONDARY", "DRR"])
+            put((), "(3002,000C)", ["NORMAL"])  # RT Image Plane
+            self._add_pixels(16, 0, struct.pack("<4H", 0, 100, 200, 300))
         else:
             put((), "(0008,0060)", ["RTDOSE"])
             put((), "(0020,0032)", ["-1", "-1", "0"])
@@ -1666,6 +1682,23 @@ class _Instance:
             put((), "(3004,000E)", ["0.001"])
             self._add_pixels(32, 0, struct.pack("<8I", *range(0, 8000, 1000)))
 
+    def _add_registration(self) -> None:
+        """Add the attributes that make the instance a rigid or deformable registration."""
+        put = self._set
+        put((), "(0008,0060)", ["REG"])
+        if self.spec.sop_class == SPATIAL_REGISTRATION_STORAGE:
+            matrix = _items(["(0070,0308)", "(0070,0309)", "(0070,030A)"])
+            put(matrix, "(3006,00C6)", _IDENTITY_MATRIX)
+            put(matrix, "(0070,030C)", ["RIGID"])
+        else:
+            grid = _items(["(0064,0002)", "(0064,0005)"])
+            put(grid, "(0020,0032)", ["-1", "-1", "0"])
+            put(grid, "(0020,0037)", ["1", "0", "0", "0", "1", "0"])
+            put(grid, "(0064,0007)", [2, 2, 1])
+            put(grid, "(0064,0008)", [1.0, 1.0, 1.0])
+            # A displacement of each of the grid's four points, in mm.
+            put(grid, "(0064,0009)", [struct.pack("<12f", *range(12))])
+
     def _add_content_tree(self) -> None:
         """Add the attributes that make the instance a Structured Report.
 
@@ -1673,12 +1706,14 @@ class _Instance:
         PNAME items, are markers, and the study that an X-ray report's scope
         of accumulation names is the collection's; each is recorded with its
         item's concept name. A measurement report's volumetric region is in
-        the collection's Frame of Reference, recorded as linked.
+        the collection's Frame of Reference, recorded as linked. The report
+        is VERIFIED, so its Verifying Observer Sequence, whose markers are
+        planted as any attribute's, is one that its IOD requires.
         """
         put = self._set
         put((), "(0008,0060)", ["SR"])
         put((), "(0040,A491)", ["COMPLETE"])  # Completion Flag
-        put((), "(0040,A493)", ["UNVERIFIED"])  # Verification Flag
+        put((), "(0040,A493)", ["VERIFIED"])  # Verification Flag
         template = _items(["(0040,A504)"])  # Content Template Sequence
         put(template, "(0008,0105)", ["DCMR"])  # Mapping Resource
         put(template, "(0040,DB00)", [ROOT_TEMPLATES[self.spec.sop_class]])

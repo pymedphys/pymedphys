@@ -125,6 +125,15 @@ def test_the_releaser_accepts_the_residual_risk_of_these_values(preset):
     assert "The engine does not itself assess the residual risk" in section
     assert "names an institution, not a patient" in section
     assert "`public-release` preset has a person review every distinct" in section
+    # And an assessor states how they were assessed, without which no record
+    # of an assessment can be made, so no public-release run is ready.
+    assert (
+        "is ready for release only where an external risk assessment of the "
+        "collection states how the institutional identity that the policy "
+        "keeps, these values among it, was assessed, and whether the "
+        "assessment supports keeping it"
+    ) in section
+    assert "the other presets keep these values without review or" in section
     assert (
         "the residual risk of the output, these values included, is for "
         "whoever releases the data to accept, which they may confirm, yes or "
@@ -672,6 +681,7 @@ def test_the_qc_pack_lists_each_ct_mr_pet_and_rt_dose_volume(preset):
         *pixel_risk.VOLUME_INDICATORS,
         pixel_risk.Indicator.LOCALIZER,
         pixel_risk.Indicator.RT_IMAGE,
+        pixel_risk.Indicator.SEGMENTATION,
         pixel_risk.Indicator.HEAD_OR_NECK,
         pixel_risk.Indicator.UNREADABLE,
     ):
@@ -683,7 +693,10 @@ def test_the_qc_pack_lists_each_ct_mr_pet_and_rt_dose_volume(preset):
     )
     assert "localizers among them, which can show the face in profile" in section
     assert "the RT Images among them, projections such as a lateral DRR" in section
-    assert "a volume, localizer, or RT Image name a region" in section
+    assert "the Segmentations among them, whose segment of the skin" in section
+    assert (
+        "localizer, RT Image, or Segmentation, or a Segmentation's segments" in section
+    )
     assert "PS3.16 Annex L" in section
     assert "Series Instance UID (0020,000E), which it never writes" in section
     assert "assesses only the released and held instances" in section

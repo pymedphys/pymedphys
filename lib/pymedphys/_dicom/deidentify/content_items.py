@@ -54,27 +54,41 @@ item's Value Type (0040,A040) and the code of its Concept Name Code Sequence
   removes or empties it, or sequesters the instance where it is D, since a
   sequence has no dummy value (D-021). A nested Content Sequence that the
   IOD does not define at its place takes its own rule, as any element of a
-  kept item does. A content item cannot be kept where Table E.3.4-1 gives
-  it X, or X/D, which removes it, since no template that the engine checks
-  requires it; where its Value Type or concept name cannot be read as one
-  Value Type and one code; or where its concept name is coded in a scheme
-  whose rows the generated table cannot hold: the four whose rows the pin
-  leaves out (LOINC, NCDR, NCIt, and UMLS), or the retired SNOMED
-  designators SRT, SNM3, and 99SDM, which PS3.16 Annex O maps to SNOMED CT
-  codes. In Content Sequence, an item that PS3.3 Table C.17-5 lets have no
-  concept name, such as an image reference, and has none, is not listed,
-  and an item of a by-reference relationship, which has a Referenced
-  Content Item Identifier (0040,DB73) in place of a Value Type and a
-  concept name, is not a content item itself, since its target is cleaned
-  where it is. The writer keeps every item of a kept sequence, so a single
-  item cannot be removed on its own, which also keeps the place in the
-  tree that each Referenced Content Item Identifier names;
+  kept item does. A content item cannot be kept where the selected options
+  give it X, which removes it; where its Value Type or concept name cannot be
+  read as one Value Type and one code; where its concept name is coded in a
+  scheme whose rows the pin leaves out (LOINC, NCDR, NCIt, and UMLS); or
+  where it is coded by a retired SNOMED designator, SRT, SNM3, or 99SDM, with
+  a SNOMED ID that PS3.16 Table O-1 does not map to a SNOMED CT Concept ID.
+  One that Table O-1 maps is looked up as that SNOMED CT code, as PS3.16
+  Section 8.1 has a receiver read it (:func:`~.codes.snomed_ct_code`). In
+  Content Sequence, an item that PS3.3 Table C.17-5 lets have no concept
+  name, such as an image reference, and has none, is not listed, and an item
+  of a by-reference relationship, which has a Referenced Content Item
+  Identifier (0040,DB73) in place of a Value Type and a concept name, is not
+  a content item itself, since its target is cleaned where it is. The writer
+  keeps every item of a kept sequence, so a single item cannot be removed on
+  its own, which also keeps the place in the tree that each Referenced
+  Content Item Identifier names;
 - an item whose concept name Table E.3.4-1 lists, which can be kept, gives
   its value attribute the action that the selected options give the concept,
-  K, D, or C, as Table E.1-1's options give an attribute. C under Clean
-  Descriptors, which no cleaner of content items settles, falls back to the
-  action that the concept takes without that option, as an attribute's does
-  where descriptor cleaning does not write it (D-009). Where the remaining options give K and C, C applies, as
+  K, D, or C, as Table E.1-1's options give an attribute. X/D gives D: the
+  table gives D where a template requires the item, a template of PS3.16
+  requires each X/D concept somewhere, and the engine reads every such item
+  as required rather than matching it to the template row it fills, as a
+  compound action resolves from the strictest Type (D-020); so do the X rows
+  of DateTime Ended and X-Ray Attenuator Model Data
+  (:data:`DUMMY_IN_PLACE_OF_REMOVAL`), which the templates of Enhanced X-Ray
+  Radiation Dose reports require. D writes D-021's dummy value, a constant,
+  for TEXT, DATE, TIME, and DATETIME; gives a UIDREF item's UID U's
+  replacement, which keeps a UID that the pinned tables register, such as a
+  public frame of reference, so that the item names what the attributes that
+  U replaces name, and makes an item with no UID unkeepable, as D refuses
+  one; and leaves an IMAGE or COMPOSITE item its reference, whose UIDs take
+  their own rules. C under Clean Descriptors, which no cleaner of content
+  items settles, falls back to the action that the concept takes without
+  that option, as an attribute's does where descriptor cleaning does not
+  write it (D-009). Where the remaining options give K and C, C applies, as
   ``tps-import`` resolves Retain Device Identity's K and Modified Dates' C;
   in 2026d no concept has both. C under Modified Dates is settled by its
   cleaner (:mod:`.modified_dates`), by the temporal role of the value
@@ -98,6 +112,7 @@ import functools
 import types
 from collections.abc import Collection, Iterator, Mapping
 
+from .codes import RETIRED_SNOMED_DESIGNATORS, snomed_ct_code
 from .elements import UndecodableElement, dataset_codecs, read_element
 from .file_layout import ElementPath
 from .iods import IOD
@@ -108,6 +123,7 @@ from .structured_content import (
     ContentItemConcept,
     load_table_e3_4_1,
 )
+from .uids import normalise_uid
 
 ACQUISITION_CONTEXT = "(0040,0555)"
 SPECIMEN_PREPARATION = "(0040,0610)"
@@ -158,12 +174,31 @@ VALUE_ATTRIBUTES: Mapping[str, str] = types.MappingProxyType(
 # Table E.3.4-1, following Section C.17.3, gives as NUM.
 NUMERIC = "NUMERIC"
 NUM = "NUM"
-# The coding schemes whose concepts the generated table cannot hold: those
-# whose rows the pin leaves out, and the retired SNOMED designators, whose
-# codes PS3.16 Annex O maps to SNOMED CT's.
-UNMATCHED_SCHEMES = frozenset({"LN", "NCDR", "NCIt", "UMLS", "SRT", "SNM3", "99SDM"})
+# The coding schemes whose rows the pin leaves out of the generated table, so
+# that their concepts cannot be matched. A code of a retired SNOMED
+# designator is matched as the SNOMED CT code that PS3.16 Table O-1 maps it
+# to, and cannot be matched where the table maps it to none.
+UNMATCHED_SCHEMES = frozenset({"LN", "NCDR", "NCIt", "UMLS"})
 KEEP = "K"
 REMOVE = "X"
+DUMMY = "D"
+REPLACE_UID = "U"
+UID_VALUE = "(0040,A124)"
+EITHER = "X/D"
+# The rows that Table E.3.4-1 gives X whose concepts the templates of
+# Enhanced X-Ray Radiation Dose reports require, which take D as an X/D
+# concept does, so that such a report keeps the rows its templates require
+# (D-047): DateTime Ended, required by TID 10042 to TID 10054, and X-Ray
+# Attenuator Model Data, of which TID 10051 and TID 10052 each require
+# exactly one of the three Value Types. By each row's key.
+DUMMY_IN_PLACE_OF_REMOVAL = frozenset(
+    {
+        ("DCM", "111527", "DATETIME"),
+        ("DCM", "128470", "COMPOSITE"),
+        ("DCM", "128470", "IMAGE"),
+        ("DCM", "128470", "UIDREF"),
+    }
+)
 
 # How the conformance statement describes the cleaning, naming no value.
 METHOD = (
@@ -180,7 +215,18 @@ METHOD = (
     "root, where it has a Value Type. An item whose "
     "concept name the table lists takes the action that the selected "
     "options give it, or else its Basic Profile action, on the attribute "
-    "that holds its value; C under Clean Descriptors takes the action "
+    "that holds its value. X/D gives D wherever the concept appears, as "
+    "though a template required the item there, since PS3.16's templates "
+    "require each X/D concept in at least one place; X gives D too for "
+    "DateTime Ended (111527, DCM) and X-Ray Attenuator Model Data (128470, "
+    "DCM), which the templates of Enhanced X-Ray Radiation Dose reports "
+    "require. D writes the dummy value of the value's VR; a UID takes the "
+    "replacement that U gives it elsewhere, which keeps a UID that names a "
+    "public definition, such as a registered frame of reference, and an "
+    "item without one is not kept; and an image or "
+    "composite reference is kept, with its UIDs taking their own rules. C "
+    "under Clean Descriptors "
+    "takes the action "
     "without that option, as for an attribute that descriptor cleaning "
     "does not write, and C under "
     "Retain Longitudinal Temporal Information with Modified Dates modifies "
@@ -190,13 +236,16 @@ METHOD = (
     "Sequence, an item that PS3.3 lets have no concept name, such as an "
     "image reference, and has none, is not listed, and a by-reference "
     "relationship keeps its Referenced Content Item Identifier (0040,DB73), "
-    "since its target is cleaned where it is. Where the table "
-    "removes an item (X or X/D), where an item's Value Type or concept name "
+    "since its target is cleaned where it is. Where the options "
+    "remove an item (X), where an item's Value Type or concept name "
     "cannot be read as one Value Type and one code, or where its concept "
     "name is coded in LOINC, NCDR, NCIt, or UMLS, whose rows PyMedPhys does "
-    "not include, or by a retired SNOMED designator, SRT, SNM3, or 99SDM, "
-    "the whole sequence takes its Basic Profile action instead, since a "
-    "single item is not removed on its own."
+    "not include, or where it is coded by a retired SNOMED designator, SRT, "
+    "SNM3, or 99SDM, with a code that PS3.16 Table O-1 does not map to a "
+    "SNOMED CT code, the whole sequence takes its Basic Profile action "
+    "instead, since a single item is not removed on its own. A concept name "
+    "coded by a retired SNOMED designator with a code that Table O-1 maps is "
+    "looked up as that SNOMED CT code."
 )
 
 
@@ -213,12 +262,13 @@ def concept_action(concept: ContentItemConcept, options: Collection[str]) -> str
     Returns
     -------
     str
-        ``"X"`` where the item is to be removed, from X or X/D; otherwise
-        ``"K"``, ``"D"``, or ``"C"``. C under Clean Descriptors is left out,
-        so that the concept takes the action without that option (D-009);
-        where the remaining options give K and C, C applies; and an action
-        other than K or C from an option, which the 2026d table does not
-        give, removes the item.
+        ``"X"`` where the item is to be removed; otherwise ``"K"``,
+        ``"D"``, or ``"C"``. X/D gives D, as does X for a row of
+        :data:`DUMMY_IN_PLACE_OF_REMOVAL`. C under Clean Descriptors is left
+        out, so that the concept takes the action without that option
+        (D-009); where the remaining options give K and C, C applies; and an
+        action other than K or C from an option, which the 2026d table does
+        not give, removes the item.
 
     Examples
     --------
@@ -230,6 +280,8 @@ def concept_action(concept: ContentItemConcept, options: Collection[str]) -> str
     'D'
     >>> concept_action(rows["Acquisition Protocol"], ("clean_descriptors",))
     'X'
+    >>> concept_action(rows["Device Serial Number"], ())
+    'D'
     """
     given = {
         action
@@ -237,7 +289,11 @@ def concept_action(concept: ContentItemConcept, options: Collection[str]) -> str
         if option in options and not (option == CLEAN_DESCRIPTORS and action == "C")
     }
     if not given:
-        return REMOVE if concept.basic_profile == "X/D" else concept.basic_profile
+        if concept.basic_profile == EITHER or (
+            concept.basic_profile == REMOVE and concept.key in DUMMY_IN_PLACE_OF_REMOVAL
+        ):
+            return DUMMY
+        return concept.basic_profile
     if given == {KEEP}:
         return KEEP
     return "C" if given <= {KEEP, "C"} else REMOVE
@@ -402,7 +458,7 @@ class _Sequences:
         found = {}
         value = ElementPath(items, VALUE_ATTRIBUTES.get(value_type, VALUE_TYPE))
         if action is not None and value.tag != VALUE_TYPE:
-            found[value] = action
+            found[value] = self._value_action(value, action)
         modifiers = ElementPath(items, MODIFIERS)
         for index in range(self.reader.count(modifiers)):
             found.update(self.item((*items, (MODIFIERS, index))))
@@ -410,6 +466,23 @@ class _Sequences:
         if contents and nested in self.reader and _defined(self.iod, nested):
             found.update(self.sequence(nested))
         return found
+
+    def _value_action(self, value: ElementPath, action: str) -> str:
+        """Return the action of a listed content item's value attribute.
+
+        D on the UID of a UIDREF item gives U's replacement, which keeps a
+        UID that the pinned tables register, such as a public frame of
+        reference, so that the item names what the attributes that U
+        replaces name in the output, such as Frame of Reference UID
+        (0020,0052). An item with no UID to replace cannot be kept,
+        as D refuses one (D-021).
+        """
+        if value.tag != UID_VALUE or action != DUMMY:
+            return action
+        uid = self.reader.text(value)
+        if uid is None or not normalise_uid(uid):
+            raise _Unkept
+        return REPLACE_UID
 
     def _concept_action(self, items: tuple, value_type: str) -> str | None:
         """Return the action of a content item's concept, or None if unlisted."""
@@ -420,14 +493,23 @@ class _Sequences:
         value = self.reader.text(ElementPath(code, CODE_VALUE))
         designator = self.reader.text(ElementPath(code, DESIGNATOR))
         if value is None:
-            # A long or URN code value, which the table does not list.
+            # A long or URN code value, which the table does not list, and
+            # which no SNOMED ID is.
             if any(ElementPath(code, tag) in self.reader for tag in OTHER_CODE_VALUES):
-                if designator in UNMATCHED_SCHEMES:
+                if (
+                    designator in UNMATCHED_SCHEMES
+                    or designator in RETIRED_SNOMED_DESIGNATORS
+                ):
                     raise _Unkept
                 return None
             raise _Unkept
         if not designator or designator in UNMATCHED_SCHEMES:
             raise _Unkept
+        if designator in RETIRED_SNOMED_DESIGNATORS:
+            mapped = snomed_ct_code(designator, value)
+            if mapped is None:
+                raise _Unkept
+            designator, value = mapped
         return self.actions.get((designator, value, value_type))
 
 

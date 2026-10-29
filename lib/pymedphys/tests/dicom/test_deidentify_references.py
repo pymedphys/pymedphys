@@ -89,6 +89,10 @@ RT_REFERENCES = [
         ("(3008,0020)", "(300C,0040)", "(0008,1155)"),
         Level.INSTANCE,
     ),
+    # RT Image: the plan in the RT Image module, and the multi-frame source of
+    # an extracted frame.
+    ("RT Image", synthetic.REFERENCED_PLAN, Level.INSTANCE),
+    ("RT Image", ("(0008,1164)", "(0008,1167)"), Level.INSTANCE),
     # CT Image: the plan in the CT Image module, and General Reference.
     ("CT Image", synthetic.REFERENCED_PLAN, Level.INSTANCE),
     ("CT Image", synthetic.REFERENCED_IMAGE, Level.INSTANCE),
@@ -267,7 +271,10 @@ def test_reference_sites_include_the_rt_references(iod, attribute, level):
             if iod not in STRUCTURED_REPORTS
         ),
         # Type 1 in each item of the Type 1C Referenced Request Sequence.
-        *((iod, (REFERENCED_REQUEST, "(0020,000D)"), "1") for iod in STRUCTURED_REPORTS),
+        *(
+            (iod, (REFERENCED_REQUEST, "(0020,000D)"), "1")
+            for iod in STRUCTURED_REPORTS
+        ),
         ("RT Plan", synthetic.PERTINENT_DOCUMENTS, "3"),
         ("RT Plan", synthetic.REFERENCED_STRUCTURE_SET, "1"),
         # Referenced Patient Photo Sequence > Study Instance UID, Type 1C.

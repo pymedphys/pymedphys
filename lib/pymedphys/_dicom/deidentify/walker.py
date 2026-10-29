@@ -39,9 +39,10 @@ each element of the data set, in file order:
 
 A sequence whose action is K or U is kept as a container, and its items'
 elements take their own rules: K does not keep a sequence's contents
-wholesale. Under any other action, the sequence's descendants go with it:
-they take no rule of their own, and each is planned as removed with the
-outermost sequence that removes it. Removing a sequence does not waive
+wholesale. So is a sequence whose D a reviewed rule gives by keeping its
+items (:func:`descends`). Under any other action, the sequence's
+descendants go with it: they take no rule of their own, and each is planned
+as removed with the outermost sequence that removes it. Removing a sequence does not waive
 collecting its descendants' values.
 
 Every element whose value is removed or replaced, a descendant of a removed
@@ -67,8 +68,13 @@ Sequence (0040,1101), whose items' Code Value (0008,0100) and Code Meaning
 (0008,0104) are compared, for Referenced Performed Procedure Step Sequence
 (0008,1111), whose items' Referenced SOP Instance UID (0008,1155) is read
 for its keyed replacement, and for ICC Profile (0028,2000) of VR OB
-(D-021). A dummy value on any other element, such as another sequence, adds
-a :class:`Sequestration` to the plan, as
+(D-021). D on Verifying Observer Sequence (0040,A073) keeps the sequence as
+a container, as K does, but each element of its items other than the
+attributes of
+:data:`~pymedphys._dicom.deidentify.dummy_values.KEPT_ITEM_ATTRIBUTES` is
+removed, with everything in it, whatever its own rule (D-021). A dummy
+value on any other element, such as another sequence, adds a
+:class:`Sequestration` to the plan, as
 :func:`~pymedphys._dicom.deidentify.dummy_values.values_for_d` would refuse
 it. So does an attribute of the pinned data dictionary that is not removed
 but whose value the source evidence holds in a form that the dictionary does
@@ -168,7 +174,7 @@ from .compound_actions import (
     resolve_plain_in_iod,
     resolve_plain_x_in_iod,
 )
-from .dummy_values import DUMMY_VRS, ICC_PROFILE
+from .dummy_values import DUMMY_VRS, ICC_PROFILE, KEPT_ITEM_ATTRIBUTES
 from .element_rules import ElementRule, ElementRules, RuleSource
 from .file_layout import ElementPath
 from .iods import IOD
@@ -189,6 +195,17 @@ REVIEWED_DUMMY_SEQUENCES = {
     "(0040,1101)": frozenset({"(0008,0100)", "(0008,0104)"}),
     "(0008,1111)": frozenset({"(0008,1155)"}),
 }
+
+
+def descends(tag: str, action: str) -> bool:
+    """Return whether a sequence under ``action`` is kept as a container.
+
+    Its items' elements then take their own rules: under K and U, and under
+    D for a sequence whose reviewed rule keeps its source items
+    (:data:`~pymedphys._dicom.deidentify.dummy_values.KEPT_ITEM_ATTRIBUTES`,
+    D-021), which keeps only some of their attributes.
+    """
+    return action in DESCENDED or (action == "D" and tag in KEPT_ITEM_ATTRIBUTES)
 
 
 class Consumer(enum.Enum):
@@ -383,7 +400,9 @@ def _vr_contradicts_dictionary(tag: str, written: str | None) -> bool:
 def _has_dummy(tag: str, vr: str | None, container: bool, action: str) -> bool:
     """Whether a generic or reviewed dummy value exists for the element."""
     if container:
-        return action == "D" and tag in REVIEWED_DUMMY_SEQUENCES
+        return action == "D" and (
+            tag in REVIEWED_DUMMY_SEQUENCES or tag in KEPT_ITEM_ATTRIBUTES
+        )
     return vr in DUMMY_VRS or (tag == ICC_PROFILE and vr == "OB")
 
 
@@ -396,6 +415,17 @@ def _removing_ancestor(
         if container in removing:
             return container
     return None
+
+
+def _left_out_of_kept_item(
+    path: ElementPath, kept_items: Mapping[ElementPath, frozenset[str]]
+) -> bool:
+    """Whether a kept item's reviewed rule leaves this element out (D-021)."""
+    if not path.items:
+        return False
+    tag, _ = path.items[-1]
+    attributes = kept_items.get(ElementPath(path.items[:-1], tag))
+    return attributes is not None and path.tag not in attributes
 
 
 def _compared_in_reviewed_dummy(
@@ -486,6 +516,8 @@ def _plan(
     sequestrations: list[Sequestration] = []
     found = _PlainRemovals()
     removing: dict[ElementPath, str] = {}  # each removing sequence's action
+    # Each sequence whose D keeps its items, with the attributes it keeps.
+    kept_items: dict[ElementPath, frozenset[str]] = {}
     for path in source.paths():
         extent = source.element(path)
         vr = extent.location.vr
@@ -506,6 +538,8 @@ def _plan(
             rule = ElementRule(
                 path.tag, RuleSource.CONTENT_ITEM, content_items[path], path.tag
             )
+        if _left_out_of_kept_item(path, kept_items):
+            rule = ElementRule(path.tag, RuleSource.ENGINE, _REMOVED, path.tag)
         if rule.source is RuleSource.PRIVATE and private is not None:
             action = private.actions.get(path, _REMOVED)
             vr = private.vrs.get(path, vr)
@@ -528,8 +562,10 @@ def _plan(
             sequestrations.append(
                 Sequestration(path, action, vr, SequesterReason.NO_DUMMY_VALUE)
             )
-        if container and action not in DESCENDED:
+        if container and not descends(path.tag, action):
             removing[path] = action
+        elif container and action == "D":
+            kept_items[path] = KEPT_ITEM_ATTRIBUTES[path.tag]
         consumers = _consumers(action, container, False)
         elements.append(
             ElementPlan(path, vr, rule, action, None, consumers, removed_for, lapses)

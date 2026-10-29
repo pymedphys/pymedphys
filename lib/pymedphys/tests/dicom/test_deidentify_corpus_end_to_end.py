@@ -745,8 +745,14 @@ def test_each_sequence_of_content_items_a_run_keeps_keeps_its_items(policy_run):
                 assert _kept_at(dataset, placement), (file.name, placement.path)
             sequences += 1
             markers += len(inside)
-    # A run names a sequence for the markers that its options keep in it.
-    assert bool(sequences) == bool(markers) == bool(spec.kept_content)
+    assert bool(sequences) == bool(spec.kept_content)
+    if spec.selected == ("clean_structured_content",):
+        # The tree survives, but its identifying values all take dummy
+        # replacements, so no planted marker may remain.
+        assert markers == 0
+    else:
+        # Retain options exercise the retained-marker checks as well.
+        assert bool(markers) == bool(spec.kept_content)
 
 
 @pytest.mark.deid_requirement("MIDI-BP-01", "PS3.15-E.1.1-09")
@@ -866,14 +872,14 @@ def test_every_released_instance_carries_the_profiles_markers(policy_run):
 
 
 @pytest.mark.deid_requirement("PS3.15-E.1.1-01", "MIDI-BP-14")
-def test_the_multi_frame_instances_keep_their_reviewed_dummy_values(policy_run):
-    # Referenced Performed Procedure Step Sequence, which the multi-frame
+def test_instances_keep_their_reviewed_dummy_values(policy_run):
+    # Referenced Performed Procedure Step Sequence, which these image
     # IODs conditionally require (Type 1C), refers to the procedure step by its keyed replacement,
     # the same in each instance, and the colour image's ICC Profile is the
     # fixed sRGB profile (D-021).
     corpus, released = policy_run.corpus, policy_run.released
     procedure_step = "ReferencedPerformedProcedureStepSequence"
-    multi_frame = {
+    step_iods = {
         "Enhanced CT Image",
         "Legacy Converted Enhanced CT Image",
         "Enhanced MR Image",
@@ -894,10 +900,15 @@ def test_the_multi_frame_instances_keep_their_reviewed_dummy_values(policy_run):
         source, written = _read(file.data), _read(data)
         if kept:
             assert written.get(procedure_step) == source.get(procedure_step)
-        if file.manifest.iod not in multi_frame:
-            # SR Document General requires it, Type 2, so Z leaves it empty
-            # in a Structured Report.
-            assert kept or not written.get(procedure_step), file.name
+        if file.name in corpus_module.STRUCTURED_REPORT_FILES:
+            # The SR Document Series Module makes this Type 2: retain the
+            # attribute with no items when the profile resolves its action to Z.
+            assert procedure_step in source
+            if not kept:
+                assert written[procedure_step].value == []
+            continue
+        if file.manifest.iod not in step_iods:
+            assert kept or procedure_step not in written, file.name
             continue
         assert procedure_step in source
         if not kept:
@@ -914,7 +925,7 @@ def test_the_multi_frame_instances_keep_their_reviewed_dummy_values(policy_run):
         else:
             assert "ICCProfile" not in written
 
-    expected = multi_frame & {
+    expected = step_iods & {
         file.manifest.iod
         for file in corpus.files
         if file.name not in policy_run.spec.withheld
@@ -980,6 +991,35 @@ def test_each_registration_ties_its_images_to_the_frame_as_written(policy_run):
             assert reference.ReferencedSOPInstanceUID == written[image].SOPInstanceUID
         checked += 1
     assert checked
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.1-04", "MIDI-BP-03")
+def test_the_rt_image_names_its_plan_as_written(policy_run):
+    # The RT Image's Referenced RT Plan Sequence names the plan by the UID
+    # that the run's key gives the plan's own, so the written RT Image still
+    # names the written plan.
+    corpus, released = policy_run.corpus, policy_run.released
+    written = {
+        corpus.files[position].manifest.sop_instance: _read(data)
+        for position, data in released.items()
+    }
+    if corpus_module.RT_IMAGE not in written:
+        (name,) = (
+            file.name
+            for file in corpus.files
+            if file.manifest.sop_instance == corpus_module.RT_IMAGE
+        )
+        assert name in policy_run.spec.withheld
+        return
+    image = written[corpus_module.RT_IMAGE]
+    assert image.Modality == "RTIMAGE"
+    (reference,) = image.ReferencedRTPlanSequence
+    expected = corpus_module.PLAN
+    if REFERENCED_SOP_INSTANCE not in policy_run.spec.kept_rows():
+        expected = uids.replacement_uid(KEY, expected)
+    assert reference.ReferencedSOPInstanceUID == expected
+    if corpus_module.PLAN in written:
+        assert expected == written[corpus_module.PLAN].SOPInstanceUID
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.5-01")

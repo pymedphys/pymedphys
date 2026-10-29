@@ -54,6 +54,7 @@ from pymedphys._dicom.deidentify.reviewed_roi_names import ReviewedNames
 from pymedphys._dicom.deidentify.source import read_source
 from pymedphys._dicom.deidentify.walker import plan_instance
 
+from . import _corpus_run
 from . import _synthetic_references as synthetic
 from . import _synthetic_structured_reports as reports
 
@@ -212,7 +213,11 @@ def _transformed(composed, dataset):
         else None
     )
     transform = InstanceTransform(
-        composed, KEY, cleaning=cleaning, unvalidated_policy=True
+        composed,
+        KEY,
+        cleaning=cleaning,
+        face_review=_corpus_run.face_review_for(composed),
+        unvalidated_policy=True,
     )
     # Under tps-import, the subject's synthetic birth date is chosen first.
     transform.prepare({0: record}, [data].__getitem__)
@@ -267,8 +272,8 @@ def test_without_the_option_a_report_is_sequestered(name):
 
 @pytest.mark.deid_requirement("PS3.15-E.3.4-01")
 @pytest.mark.parametrize("preset, cad", [
-    ("basic", False),
-    ("basic-clean-descriptors", False),
+    ("basic", True),
+    ("basic-clean-descriptors", True),
     ("tps-import", True),
     ("public-release", True),
 ])  # fmt: skip
@@ -283,22 +288,23 @@ def test_which_presets_with_the_option_keep_a_report_of_required_rows(
         _, plan = _planned(dataset, iod, composed)
         assert _kept(dataset, iod, composed) is kept, name
         assert bool(plan.sequestrations) is not kept, name
-        # A report with every optional row is never kept.
+        # The CAD optional rows can all be cleaned; the other reports
+        # include optional identifiers that still require removal.
         everything, _ = _report(name, OPTIONAL_ROWS[name])
-        assert not _kept(everything, iod, composed), name
+        assert _kept(everything, iod, composed) is (name == CAD), name
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.4-01")
 @pytest.mark.parametrize("options, cad", [
-    ((), False),
-    ((policy.SAFE_PRIVATE,), False),
-    ((policy.UIDS,), False),
-    ((policy.DEVICE_IDENTITY,), False),
-    ((policy.INSTITUTION_IDENTITY,), False),
-    ((policy.PATIENT_CHARACTERISTICS,), False),
+    ((), True),
+    ((policy.SAFE_PRIVATE,), True),
+    ((policy.UIDS,), True),
+    ((policy.DEVICE_IDENTITY,), True),
+    ((policy.INSTITUTION_IDENTITY,), True),
+    ((policy.PATIENT_CHARACTERISTICS,), True),
     ((policy.FULL_DATES,), True),
     ((policy.MODIFIED_DATES,), True),
-    ((policy.CLEAN_DESCRIPTORS,), False),
+    ((policy.CLEAN_DESCRIPTORS,), True),
 ])  # fmt: skip
 def test_which_retain_options_with_the_option_keep_a_report_of_required_rows(
     options, cad
@@ -311,11 +317,9 @@ def test_which_retain_options_with_the_option_keep_a_report_of_required_rows(
 
 
 @pytest.mark.parametrize("preset, removed", [
-    # TID 4020 rows 7 and 8, required where the image has a Study Date and
-    # Time, are X/D, which the engine resolves to X, since it checks no
-    # template.
-    ("basic", {"Study Date", "Study Time"}),
-    ("basic-clean-descriptors", {"Study Date", "Study Time"}),
+    # TID 4020 rows 7 and 8 receive dummy dates and times under X/D.
+    ("basic", set()),
+    ("basic-clean-descriptors", set()),
     ("tps-import", set()),
     ("public-release", set()),
 ])  # fmt: skip
@@ -333,9 +337,8 @@ def test_the_required_rows_that_table_e3_4_1_removes(with_option, preset, remove
 
 # Each feature whose concept name is coded in a scheme whose rows the
 # generated table cannot hold: LOINC, NCIt, and UMLS, whose rows the pin
-# leaves out (D-001), and the retired SNOMED designator SRT, which PS3.16
-# Annex O maps to SNOMED CT. Each is given with the report and options that
-# hold it, and the scheme of the concept name that takes the tree out.
+# leaves out (D-001). Each is given with the report and options that hold it,
+# and the scheme of the concept name that takes the tree out.
 UNMATCHED_FEATURES = {
     # Most of CID 7000's titles, for the root of TID 2000.
     "LOINC title": (IMAGING, (), {"title": reports.DIAGNOSTIC_IMAGING_REPORT}, "LN"),
@@ -352,7 +355,6 @@ UNMATCHED_FEATURES = {
     "NCIt activity session": (MEASUREMENT, ("TID 1411 row 1b",), {}, "NCIt"),
     # TID 1502 row 3, required where TID 1411 row 4 includes TID 1502.
     "UMLS time point": (MEASUREMENT, ("TID 1411 row 4",), {}, "UMLS"),
-    "SRT finding site": (MEASUREMENT, ("TID 1419 row 2",), {"snomed_ids": True}, "SRT"),
 }
 
 
@@ -372,30 +374,50 @@ def test_a_concept_name_that_cannot_be_looked_up_takes_the_tree_out(
     assert scheme in content_items.UNMATCHED_SCHEMES
     assert scheme in {key[0] for _, key in _concepts(dataset)}
     assert not _kept(dataset, iod, composed)
-    # The same report without the feature is kept: with a DCM title, and
-    # with the finding site coded in SNOMED CT.
-    plain, _ = _report(name, optional if "snomed_ids" in kwargs else ())
+    # The same report without the feature, with a DCM title, is kept.
+    plain, _ = _report(name)
     assert _kept(plain, iod, composed)
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.4-01")
+@pytest.mark.parametrize("preset, options", [
+    *((preset, None) for preset in PRESETS[2:]),
+    (None, EVERY_OPTION),
+])  # fmt: skip
+def test_a_finding_site_coded_by_its_snomed_ids_is_kept_as_in_snomed_ct(
+    with_option, preset, options
+):
+    composed = _composed(with_option, preset, options)
+    retired, iod = _report(MEASUREMENT, ("TID 1419 row 2",), snomed_ids=True)
+    current, _ = _report(MEASUREMENT, ("TID 1419 row 2",))
+
+    assert "SRT" in {key[0] for _, key in _concepts(retired)}
+    assert "SRT" not in {key[0] for _, key in _concepts(current)}
+    # PS3.16 Table O-1 maps each SNOMED ID to the SNOMED CT code that the
+    # other report gives the same concept, so each item takes the same action.
+    actions, _ = _planned(retired, iod, composed)
+    assert actions == _planned(current, iod, composed)[0]
+    assert actions.get(ElementPath((), CONTENT)) == "K"
 
 
 # The optional rows of TID 1001 that take the tree out under every option
 # set: Table E.3.4-1 gives each X under every option, or X with C under Clean
-# Descriptors, which falls back to X (D-009), or X/D, or its concept name is
+# Descriptors, which falls back to X (D-009), or its concept name is
 # coded in LOINC.
 OBSERVATION_REMOVED_UNDER_EVERY_OPTION = {
     "TID 1003 row 1a",  # Person Observer's Login Name
     "TID 1004 row 10",  # Unique Device Identifier, coded in LOINC
     "TID 1005 row 7",  # Accession Number
-    "TID 1007 row 3 TEXT",  # Subject ID, X/D
     "TID 1007 row 4",  # Subject Birth Date
 }
 # Retain Institution Identity keeps Person Observer's Organization Name.
 OBSERVATION_INSTITUTION = {"TID 1003 row 2"}
-# Retain UIDs keeps Procedure Study Instance UID and Subject UID.
+# Retain UIDs keeps Procedure Study Instance UID and Subject UID,
+# whose plain X actions otherwise remove their items.
 OBSERVATION_UIDS = {"TID 1005 row 1", "TID 1007 row 1"}
-# Retain Device Identity keeps Device Observer Name, and it or Retain UIDs
-# keeps the device observer's Device Observer UID, X/D.
-OBSERVATION_DEVICE = {"TID 1004 row 2", "TID 1001 row 1 device"}
+# Retain Device Identity keeps Device Observer Name; the observer UID
+# otherwise takes U under the dummy action.
+OBSERVATION_DEVICE = {"TID 1004 row 2"}
 # Retain Patient Characteristics keeps Subject Sex and Subject Age.
 OBSERVATION_PATIENT = {"TID 1007 row 5", "TID 1007 row 6"}
 OBSERVATION_REMOVED_UNDER_BASIC = (
@@ -416,10 +438,9 @@ MEASUREMENT_REMOVED_UNDER_EVERY_OPTION = {
 }
 # Retain UIDs keeps the Frame of Reference UID, X/D, and the Illustration of
 # ROI, X.
-MEASUREMENT_UIDS = {"TID 1602 row 10", "TID 1411 row 13"}
-# A Retain Longitudinal Temporal Information Option keeps Study Date and
-# Content Date, both X/D.
-MEASUREMENT_DATES = {"TID 1602 row 4", "TID 1602 row 6"}
+MEASUREMENT_UIDS = {"TID 1411 row 13"}
+# Study Date and Content Date take dummy values without a dates option.
+# Frame of Reference UID takes U without Retain UIDs.
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.4-01")
@@ -449,8 +470,7 @@ MEASUREMENT_DATES = {"TID 1602 row 4", "TID 1602 row 6"}
         None,
         OBSERVATION_REMOVED_UNDER_BASIC
         | MEASUREMENT_REMOVED_UNDER_EVERY_OPTION
-        | MEASUREMENT_UIDS
-        | MEASUREMENT_DATES,
+        | MEASUREMENT_UIDS,
     ),
     (
         MEASUREMENT,
@@ -485,11 +505,11 @@ MEASUREMENT_DATES = {"TID 1602 row 4", "TID 1602 row 6"}
         EVERY_OPTION,
         {"TID 2010 row 7", "TID 2010 row 6 TID 1003 row 1a"},
     ),
-    # Retain UIDs keeps the Frame of Reference UID, X/D; Modified Dates
+    # Frame of Reference UID takes U under its dummy action; Modified Dates
     # modifies the Content Date and Time and the Recommended Follow-up Date,
     # X/D, and the Impression Description is D.
-    (CAD, "tps-import", None, {"TID 4020 row 17"}),
-    (CAD, "public-release", None, {"TID 4020 row 17"}),
+    (CAD, "tps-import", None, set()),
+    (CAD, "public-release", None, set()),
     (CAD, None, EVERY_OPTION, set()),
 ])  # fmt: skip
 def test_the_optional_rows_that_take_the_tree_out(
@@ -526,6 +546,7 @@ def _keepable(name, removed):
             "Procedure Study Instance UID": "K",
             "Subject UID": "K",
             "Subject Name": "D",
+            "Subject ID": "D",
             "Study Date": "K",
             "Series Instance UID": "K",
             "Content Date": "K",
@@ -544,18 +565,21 @@ def _keepable(name, removed):
         {
             "Person Observer Name": "D",
             "Subject Name": "D",
+            "Subject ID": "D",
             "Study Date": "C",
-            "Series Instance UID": "D",
+            "Series Instance UID": "U",
             "Content Date": "C",
-            "Tracking Unique Identifier": "D",
-            "Source series for segmentation": "D",
+            "Tracking Unique Identifier": "U",
+            "Source series for segmentation": "U",
+            "Device Observer UID": "U",
+            "Frame of Reference UID": "U",
         },
     ),
     (
         CAD,
         "tps-import",
         None,
-        {"TID 4020 row 17"},
+        set(),
         {
             "Study Date": "C",
             "Study Time": "C",
@@ -564,6 +588,7 @@ def _keepable(name, removed):
             # D, with C under Clean Descriptors, which falls back to D.
             "Impression Description": "D",
             "Recommended Follow-up Date": "C",
+            "Frame of Reference UID": "U",
         },
     ),
 ])  # fmt: skip
@@ -610,9 +635,9 @@ def test_the_narrative_of_an_imaging_report_keeps_only_unlisted_text(
     assert found == {
         "History": "unmatched",
         "Request": "unmatched",
-        "Procedure Description": "X",
+        "Procedure Description": "D",
         "Previous Finding": None,
-        "Finding": "X",
+        "Finding": "D",
         "Impression": None,
         "Recommendation": "X",
         "Conclusion": "X",
@@ -784,7 +809,7 @@ def test_a_written_cad_report_keeps_its_references(with_option):
 
 @pytest.mark.parametrize("preset", PRESETS)
 @pytest.mark.parametrize("name", VERIFIABLE)
-def test_a_verified_report_is_sequestered_by_its_verifying_observer(
+def test_a_verified_report_is_planned_as_an_unverified_one_is(
     with_option, preset, name
 ):
     dataset, iod = _report(name, verified=True)
@@ -792,11 +817,38 @@ def test_a_verified_report_is_sequestered_by_its_verifying_observer(
     _, plan = _planned(dataset, iod, with_option(preset))
 
     # Table E.1-1 gives Verifying Observer Sequence D under every option,
-    # and it is Type 1C, required where the report is VERIFIED; a sequence
-    # has no dummy value (D-021).
-    assert ElementPath((), VERIFYING_OBSERVER) in [s.path for s in plan.sequestrations]
-    unverified, _ = _report(name)
-    _, plan = _planned(unverified, iod, with_option(preset))
-    assert ElementPath((), VERIFYING_OBSERVER) not in [
-        s.path for s in plan.sequestrations
+    # and it is Type 1C, required where the report is VERIFIED; D keeps each
+    # verifier's item, with dummy values, so it sequesters nothing (D-021).
+    (observer,) = [
+        e for e in plan.elements if e.path == ElementPath((), VERIFYING_OBSERVER)
     ]
+    assert observer.action == "D"
+    unverified, _ = _report(name)
+    _, unverified_plan = _planned(unverified, iod, with_option(preset))
+    assert [s.path for s in plan.sequestrations] == [
+        s.path for s in unverified_plan.sequestrations
+    ]
+
+
+@pytest.mark.usefixtures("supported")
+@pytest.mark.parametrize("name", VERIFIABLE)
+def test_a_verified_report_is_written_with_a_dummy_verifier(with_option, name):
+    dataset, _ = _report(name, verified=True)
+
+    result = _transformed(with_option("public-release"), dataset)
+
+    assert isinstance(result, run.Transformed), result
+    for value in (reports.VERIFIERS_NAME, f"{reports.SENTINEL} HOSPITAL"):
+        assert value.encode() not in result.data, value
+    written = pydicom.dcmread(io.BytesIO(result.data))
+    assert written.VerificationFlag == "VERIFIED"
+    (verifier,) = written.VerifyingObserverSequence
+    assert verifier.VerifyingObserverName == "DEIDENTIFIED"
+    assert verifier.VerifyingOrganization == "DEIDENTIFIED"
+    assert len(verifier.VerifyingObserverIdentificationCodeSequence) == 0
+    # public-release selects Modified Dates, which modifies the time as it
+    # does the instance's other dates.
+    assert verifier.VerificationDateTime not in (
+        reports.VERIFICATION_DATETIME,
+        "19000101000000",
+    )
