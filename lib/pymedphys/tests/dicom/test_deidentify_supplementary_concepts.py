@@ -178,12 +178,17 @@ def _composed(with_option, preset, options):
 
 
 def _kept(dataset, iod, composed):
-    """Return whether the option keeps the report's content tree."""
+    """Return whether the option keeps every item of the report's content tree.
+
+    An item that it does not keep is removed on its own, so the tree itself
+    is kept either way.
+    """
     source = read_source(synthetic.written(dataset))
     actions = content_items.content_item_actions(
         source, composed, load_iod_tables().iods[iod]
     )
-    return actions.get(ElementPath((), CONTENT)) == "K"
+    assert actions.get(ElementPath((), CONTENT)) == "K"
+    return not (actions.removed_items or actions.emptied)
 
 
 def _transformed(composed, dataset):
@@ -315,7 +320,7 @@ def test_a_coded_patient_state_in_a_dose_report_is_kept_only_with_the_characteri
     (None, (CSC, RPC)),
     (None, EVERY_OPTION),
 ])  # fmt: skip
-def test_a_body_mass_index_in_a_dose_report_takes_the_tree_out(
+def test_a_body_mass_index_in_a_dose_report_is_removed_on_its_own(
     with_option, preset, options
 ):
     composed = _composed(with_option, preset, options)

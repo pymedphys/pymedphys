@@ -445,9 +445,9 @@ def test_the_written_file_is_checked_against_its_iod(monkeypatch):
     checked = []
     original = instance_transform.lost_requirements
 
-    def recording(source, output, iod, replaced):
+    def recording(source, output, iod, replaced, removed_items):
         checked.append((iod.name, output.size))
-        return original(source, output, iod, replaced)
+        return original(source, output, iod, replaced, removed_items)
 
     monkeypatch.setattr(instance_transform, "lost_requirements", recording)
     result = _transformed(_ct())
