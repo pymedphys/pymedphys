@@ -410,8 +410,6 @@ def _evidence(*references):
 # Each optional row that another optional row holds, with the row that holds
 # it, for every report.
 HELD_BY = {
-    "TID 10012 row 5": "TID 10012 row 4",
-    "TID 10012 row 8": "TID 10012 row 4",
     "TID 10015 row 8": "TID 10015 row 1",
     "TID 10015 row 17": "TID 10015 row 10",
     "TID 10015 row 18": "TID 10015 row 10",
@@ -579,29 +577,20 @@ def _ct_accumulated(optional):
             "CONTAINS",
             "NUM",
             CT_EFFECTIVE_DOSE_TOTAL,
-            *_chosen(
-                optional,
-                [
-                    _text(
-                        "TID 10012 row 5",
-                        "HAS PROPERTIES",
-                        REFERENCE_AUTHORITY,
-                        f"{SENTINEL} AUTHORITY",
-                    )
-                ],
+            # Row 5, required where row 6 is absent, row 7, M, and row 8,
+            # required for a Monte Carlo conversion.
+            item(
+                "HAS PROPERTIES",
+                "TEXT",
+                REFERENCE_AUTHORITY,
+                text=f"{SENTINEL} AUTHORITY",
             ),
-            # Rows 7 and 8, required for a Monte Carlo conversion.
             item("HAS CONCEPT MOD", "CODE", MEASUREMENT_METHOD, code=DLP_TO_E_VIA_MC),
-            *_chosen(
-                optional,
-                [
-                    _text(
-                        "TID 10012 row 8",
-                        "HAS PROPERTIES",
-                        PATIENT_MODEL,
-                        f"{SENTINEL} PATIENT MODEL",
-                    )
-                ],
+            item(
+                "HAS PROPERTIES",
+                "TEXT",
+                PATIENT_MODEL,
+                text=f"{SENTINEL} PATIENT MODEL",
             ),
             number="9.1",
             units=MILLISIEVERT,
@@ -816,8 +805,6 @@ def _ct_acquisition(optional):
 CT_OPTIONAL_ROWS = (
     *DEVICE_OBSERVER_ROWS,
     "TID 10012 row 4",
-    "TID 10012 row 5",
-    "TID 10012 row 8",
     "TID 10012 row 12",
     "TID 10012 row 13",
     "TID 10013 row 2",
