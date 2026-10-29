@@ -317,7 +317,7 @@ _SMALLEST_JPEG_2000 = 32
 def compressed_corpus(corpus):
     """Return the synthetic corpus with each image written again, compressed.
 
-    The images, the instances with Pixel Data, take :data:`CORPUS_SYNTAXES`
+    The images, the instances with Pixel Data in whole bytes, take :data:`CORPUS_SYNTAXES`
     in turn, each the next that can encode it, so that RLE Lossless takes
     any that the others cannot, such as 32-bit samples, and JPEG 2000 none
     smaller than 32 by 32. Each frame of a JPEG
@@ -325,7 +325,8 @@ def compressed_corpus(corpus):
     and each of a JPEG 2000 codestream a comment at the end of its main
     header, holding :data:`CODESTREAM_TEXT` and the file's name. Every other
     element is written as pydicom reads it, in Explicit VR Little Endian, so
-    the planted attributes and their places are unchanged.
+    the planted attributes and their places are unchanged. A file of single
+    bits, as a BINARY Segmentation, is kept as it is.
 
     Parameters
     ----------
@@ -341,7 +342,9 @@ def compressed_corpus(corpus):
     files, images = [], 0
     for file in corpus.files:
         dataset = pydicom.dcmread(io.BytesIO(file.data))
-        if "PixelData" not in dataset:
+        # Single bits, as a BINARY Segmentation's, stay native: the encoders
+        # here code each sample in whole bytes.
+        if "PixelData" not in dataset or dataset.BitsAllocated == 1:
             files.append(file)
             continue
         start = images % len(CORPUS_SYNTAXES)

@@ -20,7 +20,8 @@ fictitious patient and study, with one Frame of Reference: three CT Image
 slices, an RT Structure Set that references the CT series and slices, an RT
 Plan that references the structure set and the dose, an RT Dose that
 references the plan, a second RT Dose of the plan for review (below), and
-one instance of each of the other twenty-one IODs, each in a series of its own.
+one instance of each of twenty-one other IODs, and two of the Segmentation
+IOD, one of each of its SOP Classes, each in a series of its own.
 The MR Image and PET Image instances reference the first CT slice, and each
 enhanced, legacy converted enhanced, or MR Spectroscopy instance references
 the single-frame instance of its modality: the first CT slice, the MR
@@ -34,7 +35,10 @@ Record references the plan. The RT Image, a digitally reconstructed
 radiograph of 2 by 2 pixels, references the RT Plan. The X-Ray Radiation
 Dose SR references the first CT slice, the Radiopharmaceutical Radiation
 Dose SR the PET Image, and the Basic Text SR, Enhanced SR, Comprehensive
-SR, Comprehensive 3D SR, and Extensible SR the MR Image. It is the input for
+SR, Comprehensive 3D SR, and Extensible SR the MR Image. The Segmentations,
+a BINARY one of Segmentation Storage and a LABELMAP one of Label Map
+Segmentation Storage, reference the CT series and its first slice, and each
+segments the planes of the first two slices. It is the input for
 validating each preset end
 to end: once the engine has
 written the collection, the residual search
@@ -123,7 +127,8 @@ attribute that the pinned dictionary gives no single VR, and a tag whose element
 are not planted. Each placement not planted is recorded with a
 :class:`NotPlantedReason`. Pixel Data is not an attribute of Table E.1-1 and
 holds only a few synthetic samples: 2 by 2 pixels, in two frames in a
-multi-frame IOD but one in the RT Image, monochrome but for the Enhanced MR
+multi-frame IOD but one in the RT Image, and 4 by 4 in the BINARY
+Segmentation, whose 1-bit frames then each fill whole bytes, monochrome but for the Enhanced MR
 Color instance, whose RGB pixels come with the ICC Profile (0028,2000) its
 IOD requires: an sRGB
 profile (:mod:`~pymedphys._dicom.deidentify.icc_profiles`) whose description,
@@ -154,7 +159,7 @@ of an RT Beams Treatment Record's Interlock Sequence (300A,0740). Planted in
 every file, the first two would sequester every
 instance, and no preset could release any of the collection; planted in one,
 that instance checks sequestration, :data:`REVIEW_FILE` checks review, and
-the other twenty-six check each preset's output, the reports where their trees
+the other twenty-eight check each preset's output, the reports where their trees
 are cleaned. Radiopharmaceutical Start
 DateTime and Institution Code Sequence, which CT Image does not define
 there, are planted in no file, so the Enhanced PET instance, which lacks an
@@ -190,7 +195,7 @@ Manufacturer's Model Name (0008,1090), which Table E.1-1 does not list and
 the Basic Profile keeps, a copy of the RT Plan's RT Plan Label marker
 (:attr:`PlacementKind.REVIEW_COPY`), so the residual search finds a source
 value of another instance in its output and sends it to review. The third
-CT slice remains sequestered; the other twenty-six files stay releasable, the
+CT slice remains sequestered; the other twenty-eight files stay releasable, the
 reports where their trees are cleaned.
 
 **Manifest.** :class:`CorpusManifest` records, for each file, each
@@ -291,6 +296,8 @@ RT_DOSE_STORAGE = "1.2.840.10008.5.1.4.1.1.481.2"
 RT_STRUCTURE_SET_STORAGE = "1.2.840.10008.5.1.4.1.1.481.3"
 RT_BEAMS_TREATMENT_RECORD_STORAGE = "1.2.840.10008.5.1.4.1.1.481.4"
 RT_PLAN_STORAGE = "1.2.840.10008.5.1.4.1.1.481.5"
+SEGMENTATION_STORAGE = "1.2.840.10008.5.1.4.1.1.66.4"
+LABEL_MAP_SEGMENTATION_STORAGE = "1.2.840.10008.5.1.4.1.1.66.7"
 # The retired class that PS3.3 Sections 10.6.1 and C.8.8.5.4 give a study in
 # a Referenced Study Sequence or RT Referenced Study Sequence item.
 DETACHED_STUDY_MANAGEMENT = "1.2.840.10008.3.1.2.3.1"
@@ -320,6 +327,9 @@ GENERAL_REPORT_FILES = (
     "28-sr-extensible.dcm",
 )
 STRUCTURED_REPORT_FILES = DOSE_REPORT_FILES + GENERAL_REPORT_FILES
+# The Segmentations, of Segmentation Storage and Label Map Segmentation
+# Storage.
+SEGMENTATION_FILES = ("32-seg.dcm", "33-seg-label-map.dcm")
 # The directory, within the one that write_corpus is given, of the files.
 INSTANCES_DIRECTORY = "instances"
 
@@ -378,6 +388,10 @@ COMPREHENSIVE_3D_REPORT_SERIES = f"{LINKED_UID_ROOT}02400"
 COMPREHENSIVE_3D_REPORT = f"{LINKED_UID_ROOT}02401"
 EXTENSIBLE_REPORT_SERIES = f"{LINKED_UID_ROOT}02500"
 EXTENSIBLE_REPORT = f"{LINKED_UID_ROOT}02501"
+SEGMENTATION_SERIES = f"{LINKED_UID_ROOT}02900"
+SEGMENTATION = f"{LINKED_UID_ROOT}02901"
+LABEL_MAP_SEGMENTATION_SERIES = f"{LINKED_UID_ROOT}03000"
+LABEL_MAP_SEGMENTATION = f"{LINKED_UID_ROOT}03001"
 # A patient and a procedure step that the collection names but does not hold.
 PATIENT_REFERENCE = f"{LINKED_UID_ROOT}00003"
 PROCEDURE_STEP = f"{LINKED_UID_ROOT}00004"
@@ -465,6 +479,8 @@ _SOP_CLASSES = types.MappingProxyType(
         COMPREHENSIVE_REPORT: COMPREHENSIVE_SR_STORAGE,
         COMPREHENSIVE_3D_REPORT: COMPREHENSIVE_3D_SR_STORAGE,
         EXTENSIBLE_REPORT: EXTENSIBLE_SR_STORAGE,
+        SEGMENTATION: SEGMENTATION_STORAGE,
+        LABEL_MAP_SEGMENTATION: LABEL_MAP_SEGMENTATION_STORAGE,
         PATIENT_REFERENCE: DETACHED_PATIENT_MANAGEMENT,
         PROCEDURE_STEP: MODALITY_PERFORMED_PROCEDURE_STEP,
     }
@@ -473,6 +489,8 @@ _SOP_CLASSES = types.MappingProxyType(
 _REGISTRATIONS = frozenset(
     {SPATIAL_REGISTRATION_STORAGE, DEFORMABLE_SPATIAL_REGISTRATION_STORAGE}
 )
+# The Segmentations, whose structure _add_segmentation adds.
+_SEGMENTATIONS = frozenset({SEGMENTATION_STORAGE, LABEL_MAP_SEGMENTATION_STORAGE})
 # The VR given to an attribute with alternatives, as Implicit VR gives it
 # (PS3.5 Section A.1).
 _DECIDED_VRS = types.MappingProxyType({"(60xx,3000)": "OW"})
@@ -1014,6 +1032,22 @@ _SPECS = (
             ),
         )
     ),
+    # The Segmentations, each of a segment in the first two CT slices'
+    # planes, which reference the CT series and its first slice.
+    _Spec(
+        SEGMENTATION_FILES[0],
+        SEGMENTATION_STORAGE,
+        SEGMENTATION,
+        SEGMENTATION_SERIES,
+        CT_SLICES[0],
+    ),
+    _Spec(
+        SEGMENTATION_FILES[1],
+        LABEL_MAP_SEGMENTATION_STORAGE,
+        LABEL_MAP_SEGMENTATION,
+        LABEL_MAP_SEGMENTATION_SERIES,
+        CT_SLICES[0],
+    ),
 )
 
 
@@ -1023,7 +1057,7 @@ def build_corpus() -> SyntheticCorpus:
     Returns
     -------
     SyntheticCorpus
-        Twenty-eight files: three CT slices; the RT Structure Set, RT Plan, RT
+        Thirty files: three CT slices; the RT Structure Set, RT Plan, RT
         Dose, and the RT Dose for review; the Enhanced CT Image and Legacy
         Converted Enhanced CT Image; the MR Image, Enhanced MR Image,
         Enhanced MR Color Image, Legacy Converted Enhanced MR Image, and MR
@@ -1032,8 +1066,9 @@ def build_corpus() -> SyntheticCorpus:
         Deformable Spatial Registration; the RT Beams Treatment Record; the
         RT Image; the X-Ray Radiation Dose SR and Radiopharmaceutical
         Radiation Dose SR; and the Basic Text SR, Enhanced SR, Comprehensive
-        SR, Comprehensive 3D SR, and Extensible SR. Two builds give the same
-        bytes and the same manifest.
+        SR, Comprehensive 3D SR, and Extensible SR; and the Segmentation and
+        label map Segmentation. Two builds give the same bytes and the same
+        manifest.
     """
     markers = _Markers()
     files: list[CorpusFile] = []
@@ -1664,6 +1699,8 @@ class _Instance:
             self._add_image(_IMAGES[self.spec.sop_class])
         elif self.spec.sop_class in _REGISTRATIONS:
             self._add_registration()
+        elif self.spec.sop_class in _SEGMENTATIONS:
+            self._add_segmentation()
         elif self.spec.sop_class == RT_IMAGE_STORAGE:
             put((), "(0008,0060)", ["RTIMAGE"])
             put((), "(0008,0008)", ["DERIVED", "SECONDARY", "DRR"])
@@ -1698,6 +1735,61 @@ class _Instance:
             put(grid, "(0064,0008)", [1.0, 1.0, 1.0])
             # A displacement of each of the grid's four points, in mm.
             put(grid, "(0064,0009)", [struct.pack("<12f", *range(12))])
+
+    def _add_segmentation(self) -> None:
+        """Add the attributes that make the instance a Segmentation.
+
+        Its one segment, of Tissue, is in two frames, in the planes of the
+        first two CT slices, placed by their functional groups, so that a
+        segments sheet can draw it. A BINARY Segmentation's frames are 4 by
+        4 pixels, so that each fills whole bytes of its 1-bit Pixel Data, in
+        which the segment holds the pixels of the first two rows; a LABELMAP
+        one's are 2 by 2 pixels of 8 bits, in which the segment holds the
+        first row's and the rest are its Pixel Padding Value, 0, which a
+        second item of its Segment Sequence describes, as PS3.3 C.8.20.2.3.3
+        requires of each value that a label map's pixels hold.
+        """
+        put = self._set
+        labelmap = self.spec.sop_class == LABEL_MAP_SEGMENTATION_STORAGE
+        put((), "(0008,0060)", ["SEG"])
+        put((), "(0008,0008)", ["DERIVED", "PRIMARY"])
+        put((), "(0070,0080)", ["SEGMENTS"])  # Content Label
+        put((), "(0062,0001)", ["LABELMAP" if labelmap else "BINARY"])
+        for index, (number, label) in enumerate(
+            ((1, "TISSUE"), (0, "BACKGROUND"))[: 1 + labelmap]
+        ):
+            segment = (("(0062,0002)", index),)
+            put(segment, "(0062,0004)", [number])  # Segment Number
+            put(segment, "(0062,0005)", [label])  # Segment Label
+            put(segment, "(0062,0008)", ["MANUAL"])  # Segment Algorithm Type
+            for sequence in ("(0062,0003)", "(0062,000F)"):
+                code = (*segment, (sequence, 0))
+                put(code, "(0008,0100)", ["85756007"])
+                put(code, "(0008,0102)", ["SCT"])
+                put(code, "(0008,0104)", ["Tissue"])
+        shared = _items(["(5200,9229)"])
+        put(
+            (*shared, ("(0020,9116)", 0)), "(0020,0037)", ["1", "0", "0", "0", "1", "0"]
+        )
+        measures = (*shared, ("(0028,9110)", 0))
+        put(measures, "(0028,0030)", ["1", "1"])
+        put(measures, "(0018,0050)", ["2"])
+        put(measures, "(0018,0088)", ["2"])
+        for frame in range(2):
+            groups = (("(5200,9230)", frame),)
+            put(
+                (*groups, ("(0020,9113)", 0)),
+                "(0020,0032)",
+                ["-1", "-1", str(2 * frame)],
+            )
+            if not labelmap:
+                put((*groups, ("(0062,000A)", 0)), "(0062,000B)", [1])
+        put((), "(0028,0008)", ["2"])
+        if labelmap:
+            put((), "(0028,0120)", [0])  # Pixel Padding Value
+            self._add_pixels(8, 0, bytes([1, 1, 0, 0] * 2))
+        else:
+            self._add_pixels(1, 0, bytes([0xFF, 0x00] * 2), size=4)
 
     def _add_content_tree(self) -> None:
         """Add the attributes that make the instance a Structured Report.
@@ -1806,9 +1898,16 @@ class _Instance:
             )
 
     def _add_pixels(
-        self, bits: int, representation: int, data: bytes, *, colour: bool = False
+        self,
+        bits: int,
+        representation: int,
+        data: bytes,
+        *,
+        colour: bool = False,
+        size: int = 2,
     ) -> None:
-        """Add 2 by 2 monochrome, or RGB, frames of ``bits``-bit samples."""
+        """Add ``size`` by ``size`` monochrome, or RGB, frames of
+        ``bits``-bit samples."""
         put = self._set
         if colour:
             put((), "(0028,0002)", [3])
@@ -1817,9 +1916,10 @@ class _Instance:
         else:
             put((), "(0028,0002)", [1])
             put((), "(0028,0004)", ["MONOCHROME2"])
-        put((), "(0028,0010)", [2])
-        put((), "(0028,0011)", [2])
-        put((), "(0028,0030)", ["1", "1"])
+        put((), "(0028,0010)", [size])
+        put((), "(0028,0011)", [size])
+        if self.spec.sop_class not in _SEGMENTATIONS:
+            put((), "(0028,0030)", ["1", "1"])
         put((), "(0028,0100)", [bits])
         put((), "(0028,0101)", [bits])
         put((), "(0028,0102)", [bits - 1])

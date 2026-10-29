@@ -18,7 +18,8 @@ The first supported release de-identifies instances of the CT, MR, and
 PET image IODs, including their Enhanced, Legacy Converted Enhanced, and
 colour variants, of MR Spectroscopy, of the RT Structure Set, RT Plan, RT
 Dose, RT Image, and RT Beams Treatment Record IODs, of the Spatial
-Registration and Deformable Spatial Registration IODs, of the X-Ray
+Registration and Deformable Spatial Registration IODs, of the Segmentation
+IOD, of both Segmentation Storage and Label Map Segmentation Storage, of the X-Ray
 Radiation Dose SR and Radiopharmaceutical Radiation Dose SR IODs, and of
 the Basic Text SR, Enhanced SR, Comprehensive SR, Comprehensive 3D SR, and
 Extensible SR IODs, uncompressed or in a transfer syntax that encapsulates
@@ -76,6 +77,7 @@ SUPPORTED_IODS = frozenset(
         "RT Image",
         "RT Plan",
         "RT Structure Set",
+        "Segmentation",
         "Spatial Registration",
         "Deformable Spatial Registration",
         "X-Ray Radiation Dose SR",
