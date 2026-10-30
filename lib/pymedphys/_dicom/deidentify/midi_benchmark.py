@@ -12,18 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# pylint: disable = too-many-lines
+# One module runs the benchmark and scores every action of an answer key, so
+# it is long.
+
 """Benchmark the engine against an NCI MIDI test data set (D-018).
 
 A development tool. It is not registered with the ``pymedphys`` command,
 and stays out of the public command line until the first supported release;
 :mod:`~pymedphys._dicom.deidentify.midi_benchmark_command` runs it as
 ``python -m pymedphys._dicom.deidentify.midi_benchmark_command``, with the
-subcommands ``run`` and ``script-results``. :func:`run_benchmark`
-de-identifies a local copy of a
-MIDI-B test data set through the run pipeline, under a preset and a key
-drawn for the run, and scores the released files against the data set's
-answer key (:mod:`~pymedphys._dicom.deidentify.midi_answer_key`). It writes,
-into a work directory that must not exist:
+subcommands ``run``, ``released-answer-key``, ``script-results``, and
+``flip-check``. :func:`run_benchmark` de-identifies a local copy of a
+MIDI-B test data set through the run pipeline, under a preset or a custom
+option set and a key drawn for the run, and scores the released files
+against the data set's answer key
+(:mod:`~pymedphys._dicom.deidentify.midi_answer_key`). It writes, into a
+work directory that must not exist:
 
 - ``release/``, the run's release, with its release report and conformance
   statement;
@@ -35,7 +40,12 @@ into a work directory that must not exist:
   those the run wrote. They hold the test data set's identifiers, so they
   are confidential, as the QC pack is, and the work directory, this one, and
   the files are made for their owner alone where the platform allows;
-- ``benchmark.json`` and ``benchmark.md``, the results.
+- ``benchmark.json`` and ``benchmark.md``, the results;
+- ``check-outcomes.txt``, the outcome of each check of the answer key, in
+  the key's order, as one letter each, which
+  :func:`~pymedphys._dicom.deidentify.midi_benchmark_flips.flip_check`
+  compares between two runs. It names no instance, attribute, or value, but
+  it stays beside the release, as the results' working file.
 
 The results hold no attribute value from the data set's files: only
 versions, digests, counts, attribute tags, and what the answer key names:
@@ -75,7 +85,20 @@ separately for each answer-key category rather than as one score:
   and by whether the answer key's text is the whole value
   (:mod:`~pymedphys._dicom.deidentify.midi_benchmark_sources`).
 
-Under a preset with Clean Descriptors, ROI Names are cleaned with the
+Under Clean Pixel Data, the pinned text detector
+(:class:`~pymedphys._dicom.deidentify.text_detection.TextDetector`) finds
+the text, and every instance that the option cleans is held for review,
+since no reviewer attests a benchmark's regions. Under Clean Recognizable
+Visual Features, as under ``public-release``, a run is given a face review
+with no verdicts (:data:`NO_FACE_VERDICTS`), as the first run of a
+collection is (D-050): every instance that can show a face is held, since
+no reviewer has seen a benchmark's previews, and the results say so. HaN-Seg's
+face block check is the option's public evidence of what it removes (D-054).
+
+Under Retain Safe Private, a run may choose TCIA's Private Tag Dictionary in
+place of the reviewed list (D-035), and the results record which.
+
+Under Clean Descriptors, ROI Names are cleaned with the
 pinned TG-263 edition and an empty reviewed-names list, since a benchmark
 has no custodian to review them: a name that would be held for review is
 emptied, as ``--empty-held-roi-names`` empties it, so that its instance is
@@ -123,7 +146,7 @@ import hashlib
 import json
 import re
 from collections.abc import Collection, Mapping, Sequence
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 
 from pymedphys._imports import pydicom
 from pymedphys._nomenclature import tg263, tg263_published
@@ -134,6 +157,7 @@ from .descriptor_cleaning import CLEAN_DESCRIPTORS, DescriptorCleaning, fallback
 from .diagnostics import redacted_diagnostics
 from .dummy_values import KEPT_ITEM_ATTRIBUTES
 from .element_rules import KEEP, ElementRules
+from .face_review import FaceReview
 from .instance_transform import InstanceTransform, ReleaseGate
 from .iods import IOD, IODTables, load_iod_tables
 from .keys import DeidKey
@@ -178,13 +202,25 @@ from .midi_benchmark_values import (
     unbracketed,
 )
 from .midi_script_results import write_mapping_files
-from .policy import Policy, compose_policy
+from .midi_benchmark_flips import CHECK_OUTCOMES, outcome_code, write_check_outcomes
+from .pixel_cleaning import TextFinder
+from .policy import (
+    CLEAN_PIXEL_DATA,
+    CLEAN_RECOGNIZABLE_VISUAL_FEATURES,
+    DEFAULT_PRESET,
+    SAFE_PRIVATE,
+    Policy,
+    compose_custom_policy,
+    compose_policy,
+)
 from .reviewed_roi_names import ReviewedNames
 from .runtime import runtime_environment
+from .safe_private import SafePrivateList
 from .scope import classify
+from .text_detection import TextDetectionError, TextDetector
 from .walker import descends
 
-FORMAT = "pymedphys-deid-midi-benchmark/2"
+FORMAT = "pymedphys-deid-midi-benchmark/3"
 RESULTS_JSON = "benchmark.json"
 RESULTS_MARKDOWN = "benchmark.md"
 SCRIPT_INPUTS = "validation-script"
@@ -270,9 +306,20 @@ class CategoryCounts:
 
 @dataclasses.dataclass(frozen=True)
 class Benchmark:
-    """The results of a benchmark run, without a value from the data set."""
+    """The results of a benchmark run, without a value from the data set.
+
+    Attributes
+    ----------
+    document : dict
+        The results, as ``benchmark.json`` holds them.
+    check_outcomes : bytes
+        The outcome of each check of the answer key, in the key's order, as
+        :func:`~pymedphys._dicom.deidentify.midi_benchmark_flips.outcome_code`
+        gives it.
+    """
 
     document: dict[str, object]
+    check_outcomes: bytes = b""
 
     def json(self) -> str:
         return json.dumps(self.document, indent=2, sort_keys=False) + "\n"
@@ -296,7 +343,9 @@ def run_benchmark(
     answer_key: str | Path,
     work: str | Path,
     *,
-    preset: str = "basic",
+    preset: str | None = None,
+    options: Collection[str] | None = None,
+    safe_private_list: SafePrivateList = SafePrivateList.REVIEWED,
     collection: str | None = None,
     tg263_spreadsheet: str | Path | None = None,
     watched: Collection[str] = (),
@@ -312,10 +361,19 @@ def run_benchmark(
     work : str or Path
         A directory that does not exist, whose parent does, for the release,
         the QC pack, the validation script's inputs, and the results.
-    preset : str, default "basic"
+    preset : str, optional
         The preset, which need not be enabled: this is a validation run.
-        Under Clean Descriptors, ROI Names are cleaned with the pinned TG-263
-        edition, and a name that would be held for review is emptied.
+        Defaults to ``"basic"``, unless ``options`` is given. Under Clean
+        Descriptors, ROI Names are cleaned with the pinned TG-263 edition,
+        and a name that would be held for review is emptied. Under Clean
+        Recognizable Visual Features, each instance that can show a face is
+        held (:data:`NO_FACE_VERDICTS`).
+    options : collection of str, optional
+        A custom option set in place of a preset, which the Basic Profile
+        is applied with (D-033), and which need not be enabled either.
+    safe_private_list : SafePrivateList, optional
+        Under Retain Safe Private, the list whose rules settle private
+        attributes: by default the reviewed list.
     collection : str, optional
         The name and version of the test data set, recorded as given.
     tg263_spreadsheet : str or Path, optional
@@ -328,30 +386,31 @@ def run_benchmark(
     Raises
     ------
     BenchmarkError
-        If the work directory exists or its parent does not, the pinned
-        TG-263 edition cannot be loaded, or a spreadsheet is given for a
-        preset without Clean Descriptors.
+        If the work directory exists or its parent does not; both a preset
+        and options are given; the pinned TG-263 edition or text detector
+        cannot be loaded; or a spreadsheet is given for a policy without Clean
+        Descriptors.
+    ~pymedphys._dicom.deidentify.policy.PolicyError
+        If the preset or option set cannot be composed, or TCIA's dictionary
+        is chosen without Retain Safe Private.
     ~pymedphys._dicom.deidentify.midi_answer_key.AnswerKeyError
         If the answer key cannot be read.
     """
     work = Path(work)
     if work.exists() or not work.parent.is_dir():
         raise BenchmarkError("the work directory must not exist, and its parent must")
+    policy = _policy(preset, options)
     key = read_answer_key(answer_key)
-    policy = compose_policy(preset)
     cleaning = _cleaning(policy, tg263_spreadsheet)
     deid_key = DeidKey.generate()
     transform = InstanceTransform(
-        policy, deid_key, cleaning=cleaning, unvalidated_policy=True
-    )
-    # The method digest that the transform's markers and release report
-    # record, computed as the transform computes it.
-    digest = method_digest(
         policy,
-        vocabulary=None if cleaning is None else cleaning.nomenclature,
-        reviewed_roi_names=(
-            None if cleaning is None else cleaning.reviewed.keyed_digest(deid_key)
-        ),
+        deid_key,
+        cleaning=cleaning,
+        finder=_finder(policy),
+        safe_private_list=safe_private_list,
+        face_review=_face_review(policy),
+        unvalidated_policy=True,
     )
     discovery = run.discover(source)
     # The work directory holds the QC pack and the mapping files, which hold
@@ -369,7 +428,7 @@ def run_benchmark(
         written_check=transform.written_check,
     )
     headers = _headers(discovery)
-    mapping = released_mapping(headers, result.outcomes)
+    mapping = released_mapping(headers, result.outcomes, release)
     write_mapping_files(work / SCRIPT_INPUTS, mapping.uids, mapping.patient_ids)
     benchmark = score(
         key,
@@ -378,19 +437,65 @@ def run_benchmark(
         release,
         mapping,
         policy,
-        preset=preset,
+        preset=policy.preset,
+        safe_private_list=safe_private_list,
         collection=collection,
-        method=digest,
+        # The method digest that the transform's markers and release report
+        # record.
+        method=transform.method_digest,
         roi_names=None if cleaning is None else _roi_names_used(),
         internal_errors=errors.records(),
         sources=discovery.paths,
         watched=frozenset(watched),
     )
     (work / RESULTS_JSON).write_text(benchmark.json(), encoding="utf-8", newline="\n")
+    write_check_outcomes(
+        work / CHECK_OUTCOMES, key.sha256, policy, benchmark.check_outcomes
+    )
     (work / RESULTS_MARKDOWN).write_text(
         benchmark.markdown(), encoding="utf-8", newline="\n"
     )
     return benchmark
+
+
+def _policy(preset: str | None, options: Collection[str] | None) -> Policy:
+    """Compose a benchmark's policy, which need not be enabled."""
+    if options is None:
+        return compose_policy(DEFAULT_PRESET if preset is None else preset)
+    if preset is not None:
+        raise BenchmarkError(
+            "a benchmark runs under a preset or a custom option set, not both"
+        )
+    return compose_custom_policy(options)
+
+
+# The face review of a run under Clean Recognizable Visual Features: no
+# verdicts, so that each instance that can show a face is held, as in the
+# first run of a collection (D-050). Its reference names no QC pack: no
+# reviewer has attested one, and the all-zero digits say so.
+NO_FACE_VERDICTS = FaceReview(
+    "A-" + "0" * 32, frozenset(), frozenset(), frozenset(), frozenset()
+)
+
+
+def _face_review(policy: Policy) -> FaceReview | None:
+    """Return :data:`NO_FACE_VERDICTS` under Clean Recognizable Visual
+    Features, or None."""
+    return (
+        NO_FACE_VERDICTS
+        if CLEAN_RECOGNIZABLE_VISUAL_FEATURES in policy.options
+        else None
+    )
+
+
+def _finder(policy: Policy) -> TextFinder | None:
+    """Return the pinned text detector under Clean Pixel Data, or None."""
+    if CLEAN_PIXEL_DATA not in policy.options:
+        return None
+    try:
+        return TextDetector()
+    except (TextDetectionError, OSError):
+        raise BenchmarkError("the pinned text detector could not be loaded") from None
 
 
 def _cleaning(
@@ -400,7 +505,7 @@ def _cleaning(
     if CLEAN_DESCRIPTORS not in policy.options:
         if tg263_spreadsheet is not None:
             raise BenchmarkError(
-                "a TG-263 spreadsheet applies only to a preset with Clean Descriptors"
+                "a TG-263 spreadsheet applies only to a policy with Clean Descriptors"
             )
         return None
     try:
@@ -467,27 +572,36 @@ def _text_of(value: object) -> str | None:
 
 
 def released_mapping(
-    headers: Sequence[_Header | None], outcomes: Sequence[run.Outcome]
+    headers: Sequence[_Header | None],
+    outcomes: Sequence[run.Outcome],
+    release: Path,
 ) -> IdentifierMapping:
-    """Map each released input's identifiers to those named by its output."""
+    """Map each released input's identifiers to those its released file holds.
+
+    They are read from the file rather than its name: under Retain UIDs, a
+    file holds its source's UIDs but is named by their keyed replacements
+    (D-016).
+    """
     uids: dict[str, str] = {}
     patient_ids: dict[str, str] = {}
-    for header, outcome in zip(headers, outcomes):
-        if header is None or outcome.output is None:
-            continue
-        if outcome.status not in (run.Status.RELEASED, run.Status.DUPLICATE):
-            continue
-        patient, study, series, name = outcome.output.parts
-        instance = PurePosixPath(name).stem
-        for old, new in (
-            (header.study, study),
-            (header.series, series),
-            (header.instance, instance),
-        ):
-            if old is not None:
-                uids.setdefault(old, new)
-        if header.patient_id is not None:
-            patient_ids.setdefault(header.patient_id, patient)
+    with redacted_diagnostics():
+        for header, outcome in zip(headers, outcomes):
+            if header is None or outcome.output is None:
+                continue
+            if outcome.status not in (run.Status.RELEASED, run.Status.DUPLICATE):
+                continue
+            written = _header(release / outcome.output)
+            if written is None:
+                continue
+            for old, new in (
+                (header.study, written.study),
+                (header.series, written.series),
+                (header.instance, written.instance),
+            ):
+                if old is not None and new is not None:
+                    uids.setdefault(old, new)
+            if header.patient_id is not None and written.patient_id is not None:
+                patient_ids.setdefault(header.patient_id, written.patient_id)
     return IdentifierMapping(uids, patient_ids)
 
 
@@ -499,8 +613,9 @@ def score(  # pylint: disable = too-many-arguments, too-many-locals
     mapping: IdentifierMapping,
     policy: Policy,
     *,
-    preset: str,
+    preset: str | None,
     collection: str | None,
+    safe_private_list: SafePrivateList = SafePrivateList.REVIEWED,
     method: str | None = None,
     roi_names: str | None = None,
     internal_errors: Sequence[Mapping[str, object]] = (),
@@ -509,7 +624,9 @@ def score(  # pylint: disable = too-many-arguments, too-many-locals
 ) -> Benchmark:
     """Score each check of the answer key against the run's outcome.
 
-    ``method`` is the run's method digest, by default that of ``policy``
+    ``safe_private_list`` is the list that the run took under Retain
+    Safe Private. ``method`` is the run's method digest, by default that of
+    ``policy``
     without a vocabulary or reviewed-names list; ``roi_names``, given under
     Clean Descriptors, says what ROI Names were cleaned with; and
     ``internal_errors``, from
@@ -525,9 +642,9 @@ def score(  # pylint: disable = too-many-arguments, too-many-locals
     for position, header in enumerate(headers):
         if header is not None and header.instance is not None:
             positions.setdefault(header.instance, position)
-    rules = ElementRules(policy)
+    rules = ElementRules(policy, safe_private_list=safe_private_list)
     fallback = (
-        ElementRules(fallback_policy(policy))
+        ElementRules(fallback_policy(policy), safe_private_list=safe_private_list)
         if CLEAN_DESCRIPTORS in policy.options
         else None
     )
@@ -553,6 +670,7 @@ def score(  # pylint: disable = too-many-arguments, too-many-locals
     not_released: dict[tuple[str, str | None, str, str], list[int]] = (
         collections.defaultdict(lambda: [0, 0])
     )
+    check_outcomes = bytearray()
     with redacted_diagnostics():
         for answer in key.by_sop_instance().values():  # one per instance
             position = positions.get(answer.sop_instance_uid)
@@ -587,6 +705,7 @@ def score(  # pylint: disable = too-many-arguments, too-many-locals
                 if dataset is None:
                     field = context.value.replace("-", "_")
                     setattr(tally, field, getattr(tally, field) + 1)
+                    check_outcomes += outcome_code(field)
                     if watch:
                         watching[(*described, context.value)] += 1
                     continue
@@ -606,6 +725,7 @@ def score(  # pylint: disable = too-many-arguments, too-many-locals
                         scored = Scored(Result.FAILED, _GAP, source_gap=True)
                 outcome = _outcome(scored)
                 setattr(tally, outcome, getattr(tally, outcome) + 1)
+                check_outcomes += outcome_code(outcome)
                 if watch:
                     watching[(*described, outcome.replace("_", " "))] += 1
                 if outcome == "deliberate":
@@ -632,6 +752,15 @@ def score(  # pylint: disable = too-many-arguments, too-many-locals
         "python": (f"{environment.python_implementation} {environment.python_version}"),
         "pydicom": environment.pydicom_version,
         "preset": preset,
+        "options": list(policy.options),
+        # Under Clean Recognizable Visual Features, the face review's
+        # verdicts: none, so each instance that can show a face is held.
+        "face_verdicts": (
+            "none" if CLEAN_RECOGNIZABLE_VISUAL_FEATURES in policy.options else None
+        ),
+        "safe_private_list": (
+            safe_private_list.value if SAFE_PRIVATE in policy.options else None
+        ),
         "table_edition": policy.edition,
         "method_digest": method,
         "answer_key_sha256": key.sha256,
@@ -706,7 +835,7 @@ def score(  # pylint: disable = too-many-arguments, too-many-locals
         "failed_at_source": explained_rows(explained),
         "watched": counted_rows(watching, WATCHED),
     }
-    return Benchmark(document)
+    return Benchmark(document, bytes(check_outcomes))
 
 
 def _outcome(scored: Scored) -> str:

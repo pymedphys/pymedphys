@@ -878,6 +878,9 @@ class InstanceTransform:
 
     Attributes
     ----------
+    method_digest : str
+        The method digest that the markers and the release report record
+        (:func:`~.method_digest.method_digest`).
     review_queue : ReviewQueue
         The distinct ROI Names that the run's instances held for review,
         for the confidential QC material; empty without ``cleaning``.
@@ -1129,6 +1132,7 @@ class InstanceTransform:
             pixel_region_rules=region_rules,
             safe_private_list=safe_private_list,
         )
+        self.method_digest = digest
         satisfied = satisfied_options(policy)
         # The markers of each set of per-instance options that an instance
         # can satisfy.

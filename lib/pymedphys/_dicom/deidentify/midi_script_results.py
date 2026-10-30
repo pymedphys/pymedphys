@@ -45,6 +45,9 @@ import sqlite3
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 
+from pymedphys._imports import pydicom
+
+from .diagnostics import redacted_diagnostics
 from .midi_answer_key import (
     ANSWER_TABLE,
     Action,
@@ -202,8 +205,10 @@ def write_released_answer_key(
     answer_key : str or Path
         The answer key, an SQLite database with the table ``answer_data``.
     release : str or Path
-        The release, whose files are named by their SOP Instance UID with the
-        suffix ``.dcm``, as a run names them.
+        The release, or links to its files, each with the suffix ``.dcm``.
+        Each file's SOP Instance UID is read from the file, not its name:
+        under Retain UIDs, a file holds its source's UID but is named by
+        that UID's keyed replacement.
     uid_mapping : str or Path
         The harness's UID mapping file, with the columns ``id_old`` and
         ``id_new``.
@@ -221,9 +226,10 @@ def write_released_answer_key(
     Raises
     ------
     ScriptResultsError
-        If the destination exists, the mapping lacks a column or a released
-        file, or the answer key has no table ``answer_data``. Nothing is
-        written then.
+        If the destination exists, a released file's SOP Instance UID
+        cannot be read, the mapping lacks a column or a released file, or
+        the answer key has no table ``answer_data``. Nothing is written
+        then.
     """
     destination = Path(destination)
     if destination.exists():
@@ -255,16 +261,34 @@ def _released_inputs(release: Path, uid_mapping: Path) -> set[str]:
                     "the UID mapping needs the columns id_old and id_new"
                 )
             inputs = {row["id_new"]: row["id_old"] for row in reader}
-        outputs = [path.stem for path in release.rglob("*.dcm") if path.is_file()]
+        paths = [path for path in release.rglob("*.dcm") if path.is_file()]
     except OSError:
         raise ScriptResultsError(
             "the release or the UID mapping could not be read"
         ) from None
+    with redacted_diagnostics():
+        outputs = [_stored_uid(path) for path in paths]
+    if None in outputs:
+        raise ScriptResultsError("a released file's SOP Instance UID could not be read")
     if any(output not in inputs for output in outputs):
         raise ScriptResultsError(
             "the release has a file that the UID mapping maps from no input"
         )
     return {inputs[output] for output in outputs}
+
+
+def _stored_uid(path: Path) -> str | None:
+    """Return the SOP Instance UID that a released file holds, or None."""
+    try:
+        dataset = pydicom.dcmread(
+            path, stop_before_pixels=True, specific_tags=["SOPInstanceUID"]
+        )
+        value = dataset.get("SOPInstanceUID")
+    except Exception:  # pylint: disable = broad-exception-caught
+        # Any file that cannot be read is refused; the message names none.
+        return None
+    text = None if value is None else str(value).strip(" \x00")
+    return text or None
 
 
 def _copy_released_rows(
