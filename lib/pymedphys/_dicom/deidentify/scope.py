@@ -17,19 +17,21 @@
 The first supported release de-identifies instances of the CT, MR, and
 PET image IODs, including their Enhanced, Legacy Converted Enhanced, and
 colour variants, of MR Spectroscopy, of the RT Structure Set, RT Plan, RT
-Dose, RT Image, and RT Beams Treatment Record IODs, of the Spatial Registration
-and Deformable Spatial Registration IODs, and of the X-Ray Radiation Dose SR
-and Radiopharmaceutical Radiation Dose SR IODs, uncompressed or in a transfer
-syntax that encapsulates Pixel Data that pydicom's decoding plugins decode.
-Supporting an IOD or a transfer syntax does not release every instance in
-it: a compressed instance is still sequestered where the plugin pinned to
-its transfer syntax is not installed, or where its frames or codestreams
-fail the engine's checks
+Dose, RT Image, and RT Beams Treatment Record IODs, of the Spatial
+Registration and Deformable Spatial Registration IODs, of the X-Ray
+Radiation Dose SR and Radiopharmaceutical Radiation Dose SR IODs, and of
+the Basic Text SR, Enhanced SR, Comprehensive SR, Comprehensive 3D SR, and
+Extensible SR IODs, uncompressed or in a transfer syntax that encapsulates
+Pixel Data that pydicom's decoding plugins decode. Supporting an IOD or a
+transfer syntax does not release every instance in it: a compressed
+instance is still sequestered where the plugin pinned to its transfer
+syntax is not installed, or where its frames or codestreams fail the
+engine's checks
 (:mod:`~pymedphys._dicom.deidentify.instance_transform`), and the element
 rules still sequester some, such as every Enhanced PET Image instance that
 conforms to its IOD, under ``basic`` and ``basic-clean-descriptors``, and
-every radiation dose report whose content tree the policy does not clean
-and keep, since the Basic Profile gives its Content Sequence (0040,A730) D,
+every Structured Report whose content tree the policy does not clean and
+keep, since the Basic Profile gives its Content Sequence (0040,A730) D,
 which a sequence has no dummy value for. Every other instance is
 sequestered: neither de-identified nor written, and listed in the run
 report by opaque identifiers only. That includes the other Structured
@@ -78,6 +80,11 @@ SUPPORTED_IODS = frozenset(
         "Deformable Spatial Registration",
         "X-Ray Radiation Dose SR",
         "Radiopharmaceutical Radiation Dose SR",
+        "Basic Text SR",
+        "Enhanced SR",
+        "Comprehensive SR",
+        "Comprehensive 3D SR",
+        "Extensible SR",
     }
 )
 # Every transfer syntax whose files the engine reads: Implicit VR Little
@@ -114,7 +121,7 @@ class Classification:
     disposition : Disposition
     iod : str or None
         The IOD of the instance's Standard Storage SOP Class, as Table B.5-1
-        names it without "IOD", such as ``"Comprehensive SR"``; ``None``
+        names it without "IOD", such as ``"Ultrasound Image"``; ``None``
         when the table does not list the SOP Class.
     """
 
@@ -136,8 +143,8 @@ class Classification:
 
         Examples
         --------
-        >>> classify("1.2.840.10008.5.1.4.1.1.88.33", "1.2.840.10008.1.2.1").reason
-        UnsupportedIod(iod='Comprehensive SR')
+        >>> classify("1.2.840.10008.5.1.4.1.1.6.1", "1.2.840.10008.1.2.1").reason
+        UnsupportedIod(iod='Ultrasound Image')
         >>> classify(None, "1.2.840.10008.1.2.1").reason
         <Disposition.NO_SOP_CLASS: 'no-sop-class'>
         """
@@ -155,7 +162,7 @@ class UnsupportedIod:
     ----------
     iod : str
         The IOD of the instance's Standard Storage SOP Class, as PS3.4
-        Table B.5-1 names it without "IOD", such as ``"Comprehensive SR"``:
+        Table B.5-1 names it without "IOD", such as ``"Ultrasound Image"``:
         a name from the standard, never a value from the instance.
     code : Disposition
         Always :attr:`Disposition.UNSUPPORTED_IOD`, the reason's code.
@@ -225,7 +232,7 @@ def classify(
     --------
     >>> classify("1.2.840.10008.5.1.4.1.1.481.5", "1.2.840.10008.1.2.1")
     Classification(disposition=<Disposition.SUPPORTED: 'supported'>, iod='RT Plan')
-    >>> classify("1.2.840.10008.5.1.4.1.1.88.33", "1.2.840.10008.1.2.1").sequestered
+    >>> classify("1.2.840.10008.5.1.4.1.1.6.1", "1.2.840.10008.1.2.1").sequestered
     True
     """
     if not isinstance(sop_class_uid, str) or not normalise_uid(sop_class_uid):

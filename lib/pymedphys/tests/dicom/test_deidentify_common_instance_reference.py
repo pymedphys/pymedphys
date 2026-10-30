@@ -28,17 +28,25 @@ MODULE = "Common Instance Reference"
 # The supported IODs that make the module mandatory, from the 2026d PS3.3
 # Tables A.39.1-1 and A.39.2-1.
 MANDATORY = {"Spatial Registration", "Deformable Spatial Registration"}
-# The supported IODs without the module: the dose reports, whose SR Document
-# General Module references their evidence instead (PS3.3 Table A.35.8-1 and
-# Table A.35.14-1).
-WITHOUT = {"X-Ray Radiation Dose SR", "Radiopharmaceutical Radiation Dose SR"}
+# The supported IODs without the module: the Structured Reports, whose SR
+# Document General Module references their evidence instead (PS3.3 Section
+# A.35).
+WITHOUT = {
+    "X-Ray Radiation Dose SR",
+    "Radiopharmaceutical Radiation Dose SR",
+    "Basic Text SR",
+    "Enhanced SR",
+    "Comprehensive SR",
+    "Comprehensive 3D SR",
+    "Extensible SR",
+}
 
 
 def _path(*steps):
     return ElementPath(tuple((tag, 0) for tag in steps[:-1]), steps[-1])
 
 
-def test_every_supported_iod_but_the_dose_reports_includes_the_module_and_its_sequences():
+def test_every_supported_iod_but_the_reports_includes_the_module_and_its_sequences():
     # Where an IOD makes the module mandatory, it still holds neither
     # sequence once both conditions fail, since both are Type 1C.
     tables = iods.load_iod_tables()

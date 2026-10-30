@@ -868,10 +868,18 @@ def test_a_content_sequence_the_iod_does_not_define_there_takes_its_own_rule():
     assert "ContentSequence" not in written.AcquisitionContextSequence[0]
 
 
-def test_only_the_dose_reports_define_content_sequence_and_none_waveform_annotation():
+def test_only_the_reports_define_content_sequence_and_none_waveform_annotation():
     """Content Sequence at their root, and nowhere else in a supported IOD."""
     iods = load_iod_tables().iods
-    reports = {"X-Ray Radiation Dose SR", "Radiopharmaceutical Radiation Dose SR"}
+    reports = {
+        "X-Ray Radiation Dose SR",
+        "Radiopharmaceutical Radiation Dose SR",
+        "Basic Text SR",
+        "Enhanced SR",
+        "Comprehensive SR",
+        "Comprehensive 3D SR",
+        "Extensible SR",
+    }
     for name in scope.SUPPORTED_IODS:
         definitions = iods[name].definitions
         tags = {definition.tag for definition in definitions}

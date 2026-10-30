@@ -72,10 +72,15 @@ SUPPORTED = {
     "1.2.840.10008.5.1.4.1.1.66.3": "Deformable Spatial Registration",
     "1.2.840.10008.5.1.4.1.1.88.67": "X-Ray Radiation Dose SR",
     "1.2.840.10008.5.1.4.1.1.88.68": "Radiopharmaceutical Radiation Dose SR",
+    "1.2.840.10008.5.1.4.1.1.88.11": "Basic Text SR",
+    "1.2.840.10008.5.1.4.1.1.88.22": "Enhanced SR",
+    "1.2.840.10008.5.1.4.1.1.88.33": "Comprehensive SR",
+    "1.2.840.10008.5.1.4.1.1.88.34": "Comprehensive 3D SR",
+    "1.2.840.10008.5.1.4.1.1.88.35": "Extensible SR",
 }
 
 
-def test_the_first_release_supports_ct_mr_pet_rt_registration_and_dose_reports():
+def test_the_first_release_supports_ct_mr_pet_rt_registration_and_sr_objects():
     assert scope.SUPPORTED_IODS == {
         "CT Image",
         "Enhanced CT Image",
@@ -97,6 +102,11 @@ def test_the_first_release_supports_ct_mr_pet_rt_registration_and_dose_reports()
         "Deformable Spatial Registration",
         "X-Ray Radiation Dose SR",
         "Radiopharmaceutical Radiation Dose SR",
+        "Basic Text SR",
+        "Enhanced SR",
+        "Comprehensive SR",
+        "Comprehensive 3D SR",
+        "Extensible SR",
     }
     assert scope.SUPPORTED_TRANSFER_SYNTAXES == {IMPLICIT_LE, EXPLICIT_LE, *COMPRESSED}
 
@@ -158,7 +168,7 @@ def test_padding_is_ignored():
         # The other Structured Reports, including the other dose reports,
         # Key Object Selection documents, and Presentation States, which the
         # design always sequesters.
-        ("1.2.840.10008.5.1.4.1.1.88.33", "Comprehensive SR"),
+        ("1.2.840.10008.5.1.4.1.1.88.50", "Mammography CAD SR"),
         ("1.2.840.10008.5.1.4.1.1.88.76", "Enhanced X-Ray Radiation Dose SR"),
         ("1.2.840.10008.5.1.4.1.1.88.73", "Patient Radiation Dose SR"),
         ("1.2.840.10008.5.1.4.1.1.88.59", "Key Object Selection Document"),
@@ -280,7 +290,7 @@ def test_an_unsupported_iods_reason_holds_its_iod_and_code_alone():
 
 
 def test_the_sop_class_decides_before_the_transfer_syntax():
-    found = scope.classify("1.2.840.10008.5.1.4.1.1.88.33", "1.2.840.10008.1.2.4.50")
+    found = scope.classify("1.2.840.10008.5.1.4.1.1.6.1", "1.2.840.10008.1.2.4.50")
 
     assert found.disposition is Disposition.UNSUPPORTED_IOD
 
@@ -344,6 +354,11 @@ def test_pydicom_names_the_same_uids():
         uid.RTPlanStorage,
         uid.SpatialRegistrationStorage,
         uid.DeformableSpatialRegistrationStorage,
+        uid.BasicTextSRStorage,
+        uid.EnhancedSRStorage,
+        uid.ComprehensiveSRStorage,
+        uid.Comprehensive3DSRStorage,
+        uid.ExtensibleSRStorage,
     ):
         assert scope.classify(sop_class, uid.ExplicitVRLittleEndian).disposition is (
             Disposition.SUPPORTED

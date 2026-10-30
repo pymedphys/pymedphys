@@ -900,10 +900,7 @@ def test_instances_keep_their_reviewed_dummy_values(policy_run):
         source, written = _read(file.data), _read(data)
         if kept:
             assert written.get(procedure_step) == source.get(procedure_step)
-        if file.manifest.iod in {
-            "X-Ray Radiation Dose SR",
-            "Radiopharmaceutical Radiation Dose SR",
-        }:
+        if file.name in corpus_module.STRUCTURED_REPORT_FILES:
             # The SR Document Series Module makes this Type 2: retain the
             # attribute with no items when the profile resolves its action to Z.
             assert procedure_step in source

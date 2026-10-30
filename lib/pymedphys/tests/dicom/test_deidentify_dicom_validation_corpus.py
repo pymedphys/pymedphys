@@ -78,6 +78,8 @@ REQUIRE_VARIABLE = "PYMEDPHYS_DICOM_VALIDATORS"
 REPORT_VARIABLE = "PYMEDPHYS_DICOM_VALIDATION_REPORT"
 BOTH_VALIDATED = "input validated, output validated"
 BOTH_FAILED = "input failed, output failed"
+BOTH_UNSUPPORTED = "input unsupported, output unsupported"
+EXTENSIBLE_SR = dicom_validation.sop_class_name(corpus_module.EXTENSIBLE_SR_STORAGE)
 
 
 @pytest.fixture(name="toolset", scope="module")
@@ -160,8 +162,9 @@ def fixture_comparison(validated):
 def _consistency(pairs, toolset):
     """Return dcentvfy's findings in the inputs and in the outputs.
 
-    As in the comparison, a pair that dciodvfy cannot read to the end, input
-    or output, is left out, since dcentvfy stops at it.
+    As in the comparison, a pair that dciodvfy cannot read to the end, or
+    whose SOP Class it does not know, input or output, is left out, since
+    dcentvfy stops at it or cannot place its attributes.
     """
     readable = [
         pair
@@ -196,11 +199,14 @@ def test_every_validator_ran_over_every_released_instance(comparison):
         BOTH_VALIDATED: comparison.pairs
     }
     # dciodvfy checks every input and output but the corpus's RT Dose in
-    # Implicit VR, whose 32-bit pixels abort it on both.
+    # Implicit VR, whose 32-bit pixels abort it on both, and its Extensible
+    # SR, whose SOP Class dicom3tools' January 2024 snapshot does not know.
     statuses = dict(comparison.tallies[DCIODVFY]["statuses"])
     failed = statuses.pop(BOTH_FAILED, 0)
+    unsupported = statuses.pop(BOTH_UNSUPPORTED, 0)
     assert failed <= 1
-    assert statuses == {BOTH_VALIDATED: comparison.pairs - failed}
+    assert unsupported == comparison.sop_classes.get(EXTENSIBLE_SR, 0)
+    assert statuses == {BOTH_VALIDATED: comparison.pairs - failed - unsupported}
 
 
 def test_each_patients_outputs_are_consistent(validated):

@@ -15,13 +15,17 @@
 """The content trees of the synthetic corpus's Structured Reports.
 
 :func:`x_ray_dose_tree` gives the root of an X-Ray Radiation Dose SR's tree,
-which follows TID 10001 "Projection X-Ray Radiation Dose", and
+which follows TID 10001 "Projection X-Ray Radiation Dose",
 :func:`radiopharmaceutical_dose_tree` that of a Radiopharmaceutical Radiation
-Dose SR, which follows TID 10021 "Radiopharmaceutical Radiation Dose". Each
-holds only the rows that its templates require where they are included, for
-the procedure that its docstring names, apart from the templates that it
-names as left out: the report that Clean Structured Content is first
-assessed on (D-047). Each content item's relationship, Value Type, and
+Dose SR, which follows TID 10021 "Radiopharmaceutical Radiation Dose",
+:func:`imaging_report_tree` that of a Basic Text SR, Enhanced SR, or
+Comprehensive SR, which follows TID 2000 "Basic Diagnostic Imaging Report",
+and :func:`measurement_report_tree` that of a Comprehensive 3D SR or
+Extensible SR, which follows TID 1500 "Measurement Report". Each holds only
+the rows that its templates require where they are included, for the
+procedure that its docstring names, apart from the templates that it names
+as left out: the report that Clean Structured Content is first assessed on
+(D-047). Each content item's relationship, Value Type, and
 concept name is a row of a template of DICOM PS3.16 2026d, cited beside it,
 and each coded value is one of the context group that the row names. Code
 meanings are those of PS3.16 Annex D for DCM codes, and those the templates
@@ -31,9 +35,13 @@ The value of each content item that can identify a person, a device, or a
 time, a UIDREF, DATETIME, or PNAME item, comes from the caller, so that the
 synthetic corpus (:mod:`~pymedphys._dicom.deidentify.synthetic_corpus`) can
 plant a marker in it; but the Study Instance UID that names the scope of
-accumulation, which is the study's own. Every other value is a code or a
-number, the same in every tree. The tests build reports with the optional
-rows besides, from the same codes (``tests/dicom/_synthetic_dose_reports.py``).
+accumulation, which is the study's own. The frame of reference of a
+measurement report's volumetric region is the caller's too, so that it can
+be the collection's own. Every other value is a code, a number, or a
+coordinate, the same in every tree. The tests build reports with the
+optional rows besides, from the same codes
+(``tests/dicom/_synthetic_dose_reports.py`` and
+``tests/dicom/_synthetic_structured_reports.py``).
 """
 
 from __future__ import annotations
@@ -45,10 +53,20 @@ from pymedphys._imports import pydicom
 
 X_RAY_RADIATION_DOSE_SR_STORAGE = "1.2.840.10008.5.1.4.1.1.88.67"
 RADIOPHARMACEUTICAL_RADIATION_DOSE_SR_STORAGE = "1.2.840.10008.5.1.4.1.1.88.68"
+BASIC_TEXT_SR_STORAGE = "1.2.840.10008.5.1.4.1.1.88.11"
+ENHANCED_SR_STORAGE = "1.2.840.10008.5.1.4.1.1.88.22"
+COMPREHENSIVE_SR_STORAGE = "1.2.840.10008.5.1.4.1.1.88.33"
+COMPREHENSIVE_3D_SR_STORAGE = "1.2.840.10008.5.1.4.1.1.88.34"
+EXTENSIBLE_SR_STORAGE = "1.2.840.10008.5.1.4.1.1.88.35"
 # The root template of each, as Content Template Sequence (0040,A504) names it.
 ROOT_TEMPLATES = {
     X_RAY_RADIATION_DOSE_SR_STORAGE: "10001",
     RADIOPHARMACEUTICAL_RADIATION_DOSE_SR_STORAGE: "10021",
+    BASIC_TEXT_SR_STORAGE: "2000",
+    ENHANCED_SR_STORAGE: "2000",
+    COMPREHENSIVE_SR_STORAGE: "2000",
+    COMPREHENSIVE_3D_SR_STORAGE: "1500",
+    EXTENSIBLE_SR_STORAGE: "1500",
 }
 
 
@@ -108,6 +126,17 @@ START_DATETIME = Code("123003", "DCM", "Radiopharmaceutical Start DateTime")
 ADMINISTERED_ACTIVITY = Code("113507", "DCM", "Administered activity")
 ROUTE_OF_ADMINISTRATION = Code("410675002", "SCT", "Route of administration")
 SITE_OF = Code("272737002", "SCT", "Site of")
+# TID 2000, 1204, and 1002; the title is from CID 7000.
+BREAST_IMAGING_REPORT = Code("111400", "DCM", "Breast Imaging Report")
+LANGUAGE = Code("121049", "DCM", "Language of Content Item and Descendants")
+PERSON_OBSERVER_NAME = Code("121008", "DCM", "Person Observer Name")
+# TID 1500, 1411, and 1419; the volume is from CID 218, by CID 7469 and 7472.
+IMAGING_MEASUREMENT_REPORT = Code("126000", "DCM", "Imaging Measurement Report")
+IMAGING_MEASUREMENTS = Code("126010", "DCM", "Imaging Measurements")
+MEASUREMENT_GROUP = Code("125007", "DCM", "Measurement Group")
+VOLUME_SURFACE = Code("121231", "DCM", "Volume Surface")
+SOURCE_SERIES_FOR_SEGMENTATION = Code("121232", "DCM", "Source series for segmentation")
+VOLUME = Code("118565006", "SCT", "Volume")
 
 # Coded values, each from the context group that its row names.
 PROJECTION_X_RAY = Code("113704", "DCM", "Projection X-Ray")  # TID 10001 row 2
@@ -127,10 +156,12 @@ FDG = Code("35321007", "SCT", "Fluorodeoxyglucose F^18^")  # CID 25
 FLUORINE_18 = Code("77004003", "SCT", "^18^Fluorine")  # CID 4020
 INTRAVENOUS_ROUTE = Code("47625008", "SCT", "Intravenous route")  # CID 11
 VIA_ARM_VEIN = Code("261459001", "SCT", "Via arm vein")  # CID 3746
+ENGLISH = Code("en", "RFC5646", "English")  # CID 5000
 # Units, as the rows give them.
 GRAY_SQUARE_METRE = Code("Gy.m2", "UCUM", "Gy.m2")
 SECONDS = Code("s", "UCUM", "seconds")
 MEGABECQUEREL = Code("MBq", "UCUM", "MBq")
+CUBIC_MILLIMETRE = Code("mm3", "UCUM", "cubic millimeter")  # CID 7181, by 7462
 
 # The attribute of the value of each Value Type that ``item`` takes as text
 # (PS3.3 Table 10-2).
@@ -163,8 +194,9 @@ def item(
         The items of its Content Sequence, if any.
     **value
         Its value, by Value Type: ``code`` (a :class:`Code`) for CODE,
-        ``number`` and ``units`` for NUM, and ``text`` for TEXT, PNAME,
-        DATETIME, and UIDREF.
+        ``number`` and ``units`` for NUM, ``text`` for TEXT, PNAME,
+        DATETIME, and UIDREF, and ``graphic_type``, ``points``, and
+        ``frame_of_reference`` for SCOORD3D.
     """
     dataset = pydicom.Dataset()
     if relationship is not None:
@@ -184,6 +216,10 @@ def item(
         measured.NumericValue = value["number"]
         measured.MeasurementUnitsCodeSequence = pydicom.Sequence([units.dataset()])
         dataset.MeasuredValueSequence = pydicom.Sequence([measured])
+    elif value_type == "SCOORD3D":
+        dataset.GraphicType = value["graphic_type"]
+        dataset.GraphicData = list(value["points"])  # type: ignore[call-overload]
+        dataset.ReferencedFrameOfReferenceUID = value["frame_of_reference"]
     else:
         setattr(dataset, _TEXT_VALUES[value_type], value["text"])
     if children:
@@ -378,6 +414,104 @@ def radiopharmaceutical_dose_tree(values: Values) -> pydicom.Dataset:
                     code=IRRADIATION_ADMINISTERING,
                 ),
                 text=person,
+            ),
+        ),
+    )
+
+
+def imaging_report_tree(values: Values) -> pydicom.Dataset:
+    """Return the root of a diagnostic imaging report's tree, TID 2000.
+
+    TID 2000 rows 1, 5, and 7 are required: the title, a code of CID 7000
+    that the engine can look up, the language (TID 1204 row 1), and the
+    observation context (TID 1001), whose observer is a person, named by
+    TID 1002 row 2 and TID 1003 row 1. The report has no sections (TID 2000
+    row 8), so its tree holds no text, and every Value Type in it is one
+    that a Basic Text SR allows.
+
+    Parameters
+    ----------
+    values : callable
+        Returns the value of the Person Observer Name, given its Value Type.
+    """
+    observer = values("PNAME")
+    return item(
+        None,
+        "CONTAINER",
+        BREAST_IMAGING_REPORT,
+        # TID 2000 row 5, TID 1204 row 1.
+        item("HAS CONCEPT MOD", "CODE", LANGUAGE, code=ENGLISH),
+        # TID 2000 row 7, TID 1001 row 1, TID 1002 row 2, TID 1003 row 1.
+        item("HAS OBS CONTEXT", "PNAME", PERSON_OBSERVER_NAME, text=observer),
+    )
+
+
+def measurement_report_tree(values: Values, frame_of_reference: str) -> pydicom.Dataset:
+    """Return the root of a measurement report's tree, TID 1500.
+
+    TID 1500 rows 1, 3, and 6 are required: the title, from CID 7021, the
+    observation context (TID 1001), whose observer is a person, named, and
+    the Imaging Measurements, since neither row 10 nor row 12 is present.
+    Row 2, the language (TID 1204 row 1), which is optional, comes first,
+    as in the imaging report, so that the first item of each tree is a
+    code.
+    They hold one volumetric region (row 8, TID 1411), a point given by a
+    Volume Surface (row 10), in three dimensions, so that its source series
+    (row 12) is required too, and TID 1419 (row 15) gives its volume (row
+    5, M).
+
+    Parameters
+    ----------
+    values : callable
+        Returns the value of the Person Observer Name and of the source
+        series's Series Instance UID, given each one's Value Type, in that
+        order.
+    frame_of_reference : str
+        The Frame of Reference UID that the Volume Surface's coordinates are
+        in.
+    """
+    observer = values("PNAME")
+    series = values("UIDREF")
+    return item(
+        None,
+        "CONTAINER",
+        IMAGING_MEASUREMENT_REPORT,
+        # TID 1500 row 2, TID 1204 row 1.
+        item("HAS CONCEPT MOD", "CODE", LANGUAGE, code=ENGLISH),
+        # TID 1500 row 3, TID 1001 row 1, TID 1002 row 2, TID 1003 row 1.
+        item("HAS OBS CONTEXT", "PNAME", PERSON_OBSERVER_NAME, text=observer),
+        # TID 1500 rows 6 and 8.
+        item(
+            "CONTAINS",
+            "CONTAINER",
+            IMAGING_MEASUREMENTS,
+            item(
+                "CONTAINS",
+                "CONTAINER",
+                MEASUREMENT_GROUP,
+                # TID 1411 rows 10 and 12.
+                item(
+                    "CONTAINS",
+                    "SCOORD3D",
+                    VOLUME_SURFACE,
+                    graphic_type="POINT",
+                    points=(12.5, -40.0, 63.25),
+                    frame_of_reference=frame_of_reference,
+                ),
+                item(
+                    "CONTAINS",
+                    "UIDREF",
+                    SOURCE_SERIES_FOR_SEGMENTATION,
+                    text=series,
+                ),
+                # TID 1411 row 15, TID 1419 row 5.
+                item(
+                    "CONTAINS",
+                    "NUM",
+                    VOLUME,
+                    number="1840",
+                    units=CUBIC_MILLIMETRE,
+                ),
             ),
         ),
     )

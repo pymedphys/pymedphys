@@ -81,6 +81,14 @@ REFERENCED_SOP_CLASS = "(0008,1150)"
 REFERENCED_SOP_INSTANCE = "(0008,1155)"
 # The kinds that leave a value that the residual search can find.
 MARKERS = frozenset({Kind.PLANTED, Kind.CONTENT})
+# The general SR IODs, whose reports' trees follow TID 2000 or TID 1500.
+GENERAL_SR_IODS = (
+    "Basic Text SR",
+    "Enhanced SR",
+    "Comprehensive SR",
+    "Comprehensive 3D SR",
+    "Extensible SR",
+)
 LINKED_PATTERNS = {
     Kind.LINKED_UID: r"2\.25\.88888\d{5}",
     Kind.LINKED_PATIENT: r"SYNMK-LINKED-(PATIENT|ISSUER)",
@@ -209,6 +217,11 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "21-rt-image.dcm",
         "22-sr-dose-x-ray.dcm",
         "23-sr-dose-radiopharmaceutical.dcm",
+        "24-sr-basic-text.dcm",
+        "25-sr-enhanced.dcm",
+        "26-sr-comprehensive.dcm",
+        "27-sr-comprehensive-3d.dcm",
+        "28-sr-extensible.dcm",
     ]
     assert [file.manifest.iod for file in corpus.files] == [
         "CT Image",
@@ -234,9 +247,14 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "RT Image",
         "X-Ray Radiation Dose SR",
         "Radiopharmaceutical Radiation Dose SR",
+        "Basic Text SR",
+        "Enhanced SR",
+        "Comprehensive SR",
+        "Comprehensive 3D SR",
+        "Extensible SR",
     ]
     assert corpus_module.STRUCTURED_REPORT_FILES == tuple(
-        file.name for file in corpus.files[-2:]
+        file.name for file in corpus.files[-7:]
     )
     # Every IOD of the first supported release.
     assert {file.manifest.iod for file in corpus.files} == scope.SUPPORTED_IODS
@@ -957,6 +975,17 @@ _CONTENT_CONCEPTS = {
         ("DCM", "123003", "DATETIME"): "DT",  # Start DateTime
         ("DCM", "113870", "PNAME"): "PN",  # Person Name
     },
+    **dict.fromkeys(
+        GENERAL_SR_IODS[:3],
+        {("DCM", "121008", "PNAME"): "PN"},  # Person Observer Name
+    ),
+    **dict.fromkeys(
+        GENERAL_SR_IODS[3:],
+        {
+            ("DCM", "121008", "PNAME"): "PN",  # Person Observer Name
+            ("DCM", "121232", "UIDREF"): "UI",  # Source series for segmentation
+        },
+    ),
 }
 
 
@@ -1022,8 +1051,12 @@ def test_no_marker_is_planted_in_a_reports_root_content_item_sequences(corpus):
             if top not in ("(0040,A043)", "(0040,A730)"):
                 assert placement.reason is not Reason.CONTENT_TREE
             elif items and top == "(0040,A730)":
-                # Only the tree's own values are recorded below it.
-                assert placement.concept is not None, placement
+                # Only the tree's own values are recorded below it, and the
+                # frame of reference of a SCOORD3D item, the collection's,
+                # which takes its own row of Table E.1-1.
+                if placement.concept is None:
+                    assert placement.kind is Kind.LINKED_UID, placement
+                    assert placement.path.tag == "(3006,0024)", placement
             elif placement.concept is None:
                 assert placement.reason is Reason.CONTENT_TREE, placement
                 assert placement.values == ()

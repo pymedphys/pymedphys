@@ -14,18 +14,19 @@
 
 """The Clean Structured Content Option on general Structured Reports.
 
-The Comprehensive SR, Comprehensive 3D SR, Key Object Selection Document,
-and Mammography CAD SR IODs are not supported yet, so the engine
-sequesters their instances. These tests show, ahead of supporting them,
-what the option does with their content trees (D-047): which presets and
-Retain options, with the option added, keep a report that holds only the
-rows that its templates require; which features take the whole tree out,
-among them concept names coded in a scheme that the engine cannot look up;
-which optional rows take it out under each option set; the action that each
-value of a kept tree takes; and what is written and released, in the tests
-that add the IODs to the supported ones for that test alone, as supporting
-them would. The reports are synthetic, built from the templates of PS3.16
-2026d by :mod:`._synthetic_structured_reports`.
+The Comprehensive SR and Comprehensive 3D SR IODs are supported; the Key
+Object Selection Document and Mammography CAD SR IODs are not yet, so the
+engine sequesters their instances. These tests show what the option does
+with the four IODs' content trees (D-047), ahead of supporting the other
+two: which presets and Retain options, with the option added, keep a
+report that holds only the rows that its templates require; which features
+take the whole tree out, among them concept names coded in a scheme that
+the engine cannot look up; which optional rows take it out under each
+option set; the action that each value of a kept tree takes; and what is
+written and released, in the tests that add the two IODs not supported yet
+to the supported ones for that test alone, as supporting them would. The
+reports are synthetic, built from the templates of PS3.16 2026d by
+:mod:`._synthetic_structured_reports`.
 
 A preset with the option added is composed by adding it to every preset's
 options for the test alone, since no preset selects it, so that the policy
@@ -85,6 +86,8 @@ OPTIONAL_ROWS = {
 }
 # The reports whose IOD has a Verification Flag.
 VERIFIABLE = (IMAGING, MEASUREMENT, CAD)
+# The reports whose IOD is not supported yet.
+NOT_SUPPORTED_YET = (KEY_OBJECTS, CAD)
 PRESETS = ("basic", "basic-clean-descriptors", "tps-import", "public-release")
 # Every option of Table E.1-1 that can be selected with the others, with
 # Full Dates, which Retain Device Identity does not conflict with.
@@ -124,11 +127,11 @@ def _with_option(monkeypatch):
 
 @pytest.fixture(name="supported")
 def _supported(monkeypatch):
-    """Add the four IODs to the supported ones, as supporting them would."""
+    """Add the two IODs not supported yet to the supported ones, as support would."""
     monkeypatch.setattr(
         scope,
         "SUPPORTED_IODS",
-        scope.SUPPORTED_IODS | {iod for _, iod in REPORTS.values()},
+        scope.SUPPORTED_IODS | {REPORTS[name][1] for name in NOT_SUPPORTED_YET},
     )
 
 
@@ -228,14 +231,19 @@ def _released(composed, dataset):
     return result.data, decision
 
 
-def test_the_reports_are_of_iods_that_are_not_supported_yet():
+def test_only_the_comprehensive_and_comprehensive_3d_reports_are_supported():
     for name, (build, iod) in REPORTS.items():
         dataset = build()
         classification = scope.classify(
             dataset.SOPClassUID, synthetic.EXPLICIT_VR_LITTLE_ENDIAN
         )
 
-        assert classification.reason == scope.UnsupportedIod(iod), name
+        if name in NOT_SUPPORTED_YET:
+            assert classification.reason == scope.UnsupportedIod(iod), name
+        else:
+            assert classification == scope.Classification(
+                scope.Disposition.SUPPORTED, iod
+            ), name
         assert load_iod_tables().iods[iod].lookup(CONTENT, ()), name
 
 

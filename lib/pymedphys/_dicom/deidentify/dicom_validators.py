@@ -95,6 +95,9 @@ UNRECOGNISED_MESSAGE = "line not recognised"
 UNPROVEN_MESSAGE = "message not shown"
 # What a finding that names no attribute gives as its path.
 NO_PATH = ""
+# What dciodvfy prints, in place of an IOD's name, for a SOP Class that it
+# does not know, such as Extensible SR in its January 2024 snapshot.
+_NO_IOD = "Information Object Not found"
 
 # Each validator run on one file is stopped after this many seconds.
 TIMEOUT_SECONDS = 600
@@ -450,12 +453,15 @@ def parse_dciodvfy(
     file in Implicit VR, ``implicit_vr``, an attribute that dciodvfy's
     dictionary lacks is one whose contents it cannot parse; in Explicit VR
     it reads them from the VR the file gives, unless that is UN. The status is
-    :attr:`Status.VALIDATED`; :func:`run_dciodvfy` gives another where
+    :attr:`Status.VALIDATED`, or :attr:`Status.UNSUPPORTED`, with no
+    findings, where dciodvfy names no IOD and says that it found none, since
+    it then checks no module; :func:`run_dciodvfy` gives another where
     dciodvfy did not run to the end.
     """
     findings: collections.Counter[Finding] = collections.Counter()
     unparsed = set()
     iod = ""
+    no_iod = False
     for line in output.splitlines():
         line = line.rstrip()
         if not line:
@@ -468,6 +474,8 @@ def parse_dciodvfy(
                 findings[_unrecognised(DCIODVFY)] += 1
             continue
         path = _dciodvfy_path(found["path"] or "")
+        if not iod and not path and found["message"] == _NO_IOD:
+            no_iod = True
         message, module = message_type(found["message"], strings)
         findings[
             Finding(DCIODVFY, found["severity"].lower(), path, message, module)
@@ -477,6 +485,8 @@ def parse_dciodvfy(
             or (implicit_vr and message in _UNPARSED_IN_IMPLICIT_VR)
         ):
             unparsed.add(path)
+    if no_iod and not iod:
+        return Validation(DCIODVFY, Status.UNSUPPORTED, {})
     return Validation(
         DCIODVFY, Status.VALIDATED, dict(findings), frozenset(unparsed), iod
     )

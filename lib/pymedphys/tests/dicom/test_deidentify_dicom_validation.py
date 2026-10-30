@@ -335,6 +335,23 @@ def test_an_unknown_attribute_is_unparsed_in_implicit_vr_alone():
     assert explicit.unparsed == {"(300A,07A0)"}
 
 
+def test_a_sop_class_that_dciodvfy_does_not_know_is_unsupported():
+    # dciodvfy names no IOD and checks no module of a SOP Class that it does
+    # not know, as its January 2024 snapshot does not know Extensible SR.
+    unknown = validators.parse_dciodvfy(
+        f"Error - Information Object Not found\nError - {PLANTED}\n", STRINGS
+    )
+    # A line of that form below the IOD's name is any other message.
+    known = validators.parse_dciodvfy(
+        "CTImage\nError - Information Object Not found\n", STRINGS
+    )
+
+    assert (unknown.status, unknown.findings) == (Status.UNSUPPORTED, {})
+    assert PLANTED not in repr(unknown)
+    assert known.status is Status.VALIDATED
+    assert known.iod == "CTImage"
+
+
 def test_reading_a_transfer_syntax_reports_no_invalid_value(tmp_path, caplog):
     dataset = pydicom.Dataset()
     dataset.SOPClassUID = pydicom.uid.CTImageStorage
