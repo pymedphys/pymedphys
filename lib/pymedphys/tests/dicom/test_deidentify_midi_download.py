@@ -45,8 +45,8 @@ def _archive(members: dict[str, bytes]) -> bytes:
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w") as zipped:
         for name, data in members.items():
-            # A fixed date and time, so that the archive's bytes, which name
-            # the parametrised cases, are the same in every xdist worker.
+            # A fixed date, so that the bytes, and the test IDs that hold
+            # them, are the same in every pytest-xdist worker.
             zipped.writestr(
                 zipfile.ZipInfo(name, date_time=(1980, 1, 1, 0, 0, 0)), data
             )
