@@ -45,7 +45,11 @@ def _archive(members: dict[str, bytes]) -> bytes:
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w") as zipped:
         for name, data in members.items():
-            zipped.writestr(name, data)
+            # A fixed date and time, so that the archive's bytes, which name
+            # the parametrised cases, are the same in every xdist worker.
+            zipped.writestr(
+                zipfile.ZipInfo(name, date_time=(1980, 1, 1, 0, 0, 0)), data
+            )
     return buffer.getvalue()
 
 
