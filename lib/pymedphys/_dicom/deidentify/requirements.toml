@@ -430,6 +430,7 @@ decisions = ["D-001", "D-010", "D-047"]
 implementation = [
   "_dicom/deidentify/content_items.py",
   "_dicom/deidentify/structured_content.py",
+  "_dicom/deidentify/supplementary_concepts.py",
   "_dicom/deidentify/codes.py",
   "_dicom/deidentify/walker.py",
   "_dicom/deidentify/instance_transform.py",
@@ -440,7 +441,8 @@ note = '''
 The engine applies the Clean Structured Content Option to a custom option set; no preset selects it (D-047).
 Of the Structured Reports, the X-Ray and Radiopharmaceutical Radiation Dose SRs are supported and the others sequestered (D-010); of the supported IODs, only those two define Content Sequence, at their root, and none Waveform Annotation Sequence. Waveform Annotation Sequence takes its Basic Profile action; Content Sequence is cleaned wherever an IOD defines it, at any depth of its nested Content Sequences, with the root content item that holds it, and a report whose tree cannot be kept is sequestered, since the Basic Profile gives Content Sequence D and a sequence has no dummy value (D-021).
 Acquisition Context Sequence and Specimen Preparation Sequence are kept where the IOD defines them, and each content item is cleaned by its Value Type and concept name, as Table E.3.4-1 gives them, generated for the concept names that DICOM and SNOMED CT code (D-001).
-An item whose concept name the table does not list keeps its codes and numbers, and its other values take their own rules, as in any kept sequence.
+A reviewed list gives the table's actions to the concepts that it omits where PS3.16's templates use them for a patient characteristic that Table E.1-1 removes, each removed, and kept under Retain Patient Characteristics where Table E.1-1 keeps the attribute that holds it, and to Subject ID as a CODE, which TID 1007 gives it and the table lists only as TEXT, removed under every option (D-047).
+An item whose concept name neither the table nor the list gives keeps its codes and numbers, and its other values take their own rules, as in any kept sequence.
 A concept name coded by a retired SNOMED designator, SRT, SNM3, or 99SDM, is looked up as the SNOMED CT code that PS3.16 Table O-1 maps it to (D-001).
 X/D gives D wherever the concept appears, as though a template required the item there, and so do the X rows of DateTime Ended and X-Ray Attenuator Model Data, which Enhanced X-Ray Radiation Dose reports' templates require; D writes the dummy value of the value's VR, and gives a UIDREF item's UID the replacement that U gives, which keeps a registered UID such as a public frame of reference.
 Where the selected options remove an item, where an item cannot be read as one Value Type and one concept name, where its concept name is coded in a scheme whose rows the table does not hold, or where it is coded by a retired SNOMED designator with a code that Table O-1 does not map, the whole sequence takes its Basic Profile action, since a single item is not removed on its own.
@@ -661,16 +663,18 @@ text = '''
 When this Option is specified in addition to an Application Level Confidentiality Profile, UIDs shall be retained, as described in Table E.1-1.
 '''
 status = "implemented"
-decisions = ["D-003", "D-040"]
+decisions = ["D-003", "D-040", "D-042"]
 implementation = [
   "_dicom/deidentify/instance_transform.py",
   "_dicom/deidentify/policy.py",
+  "_dicom/deidentify/residual_exemptions.py",
   "_dicom/deidentify/retained_uids.py",
   "_dicom/deidentify/written_references.py",
 ]
 note = '''
 The 55 UIDs that Table E.1-1 gives K under the Option are kept wherever they occur, and its five reference sequences are kept as containers whose items' elements take their own rules; every other UID is replaced with the run's key, including those the table omits, such as Multi-frame Source SOP Instance UID (D-040).
 Media Storage SOP Instance UID is the kept SOP Instance UID, output files are named by the kept UIDs' keyed replacements, the reference graph's second pass expects the kept UIDs, and the residual search leaves a kept UID out where its enclosing sequence is removed.
+A removed UID that only instances the run does not write held, such as a sequestered dose report's scope of accumulation, does not withhold a sibling that keeps it, while a reference that a written instance replaced still withholds the instances that keep the UID it names (D-042).
 No preset selects the Option.
 '''
 
@@ -805,6 +809,8 @@ The release gate runs that search itself, for exactly the values collected acros
 It withholds any output file that still holds a source person name, UID, date, datetime, or direct identifier, or a source value outside its data set, or whose collection of person names, UIDs, dates, datetimes, direct identifiers, or sequences was incomplete, and sends other text findings and other incomplete collection, including of private values, to confidential review; a search that finds nothing does not on its own release a file (D-027).
 A text finding is not sent to review where it is in a kept CS value made only of its attribute's terms in the pinned PS3.3 (for Body Part Examined, PS3.16 Annex L), in a code item of a scheme that PS3.16 Table 8-1 lists, or in Manufacturer, Manufacturer's Model Name, or Software Versions with a private or equipment source, or where its source is a private creator that PS3.15 Table E.3.10-1 lists, and the QC pack still lists it (D-032).
 Nor is a finding inside a value that a selected option keeps, where its source is a private data element or an attribute of that option, or where it equals a whole kept date or time, and in that case a date finding does not withhold the file either (D-042).
+Nor is a finding whose source is the Code Meaning of a code of a scheme that PS3.16 Table 8-1 lists, judged by the meaning's own item in its own instance, where only instances that the run does not write, such as a sequestered dose report, held it for the subject; free text from such an instance, and a local code's meaning, still go to review (D-032).
+A UID equal to a whole UID that a selected option keeps does not withhold the file where only instances that the run does not write held it for the subject; one that a written instance also held still does (D-042).
 The release report counts the released instances with each finding that these exemptions keep from review, by exemption, source attribute, and the attribute it was found in, naming no value (D-032).
 An external statistical assessment of a run's collection is recorded beside its QC pack, bound to the pack, to the source files it records, to the policy, and to the reviewed lists and region rules that the run applied, by the salted digest that the run records in its pack, and the statistical gate passes only for the same files, policy, lists, and rules, the run's number of distinct subjects, and a maximum per-subject re-identification probability within the threshold of 0.09 or 0.05 that the assessment states (D-017, D-053).
 A deterministic synthetic collection, with an instance of each IOD of the first supported release, plants a conspicuous marker wherever its IODs define an attribute of Table E.1-1, down to a nesting depth of 4 items, and records each deeper place as not planted; Responsible Person and Responsible Organization, whose removal sequesters an instance (D-020), are planted in one instance only, so the others can be released, and the Enhanced PET Image's Radiopharmaceutical Start DateTime, whose removal sequesters it, the RT Beams Treatment Record's Institution Code Sequence in the item of an interlock's resolution user, whose dummy value has no reviewed rule (D-021), in none; the dose reports are VERIFIED, and their Verifying Observer Sequence, which a reviewed rule keeps with dummy values (D-021), and Requested Procedure ID in their Referenced Request Sequence, which a plain X empties there (D-020), are planted in each report; each dose report's content tree is built by its template, with a marker in the value of each content item that can identify a person, a device, or a time.
