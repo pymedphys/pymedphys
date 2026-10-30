@@ -329,7 +329,7 @@ def concept_actions(options: tuple[str, ...]) -> Mapping[tuple[str, str, str], s
     the row's coding scheme designator, code value, and Value Type
     (:attr:`~.structured_content.ContentItemConcept.key`).
     """
-    rows = (
+    rows: tuple[ContentItemConcept | SupplementaryConcept, ...] = (
         *load_table_e3_4_1().concepts,
         *load_supplementary_concepts().concepts,
     )
