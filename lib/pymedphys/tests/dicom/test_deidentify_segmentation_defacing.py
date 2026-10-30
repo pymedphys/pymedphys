@@ -15,8 +15,7 @@
 """Segmentations cleaned in a defaced CT series' face block. Every UID and
 value here is invented."""
 
-# Segmentation stays out of scope, so the transform's steps for it are
-# tested one by one.
+# The transform's steps for a Segmentation are tested one by one too.
 # pylint: disable = protected-access
 
 from __future__ import annotations
@@ -29,7 +28,7 @@ import io
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom, pytest
 
-from pymedphys._dicom.deidentify import face_blocks, instance_transform, scope
+from pymedphys._dicom.deidentify import face_blocks, instance_transform
 from pymedphys._dicom.deidentify.defacing import FaceBlock
 from pymedphys._dicom.deidentify.dose_defacing import DoseBlock
 from pymedphys._dicom.deidentify.face_blocks import KeptSlice
@@ -563,7 +562,7 @@ def _iod(transform, name=SEGMENTATION):
     return transform._iods.iods[name]
 
 
-def test_a_segmentation_in_a_defaced_frame_is_cleaned_in_its_block_and_held():
+def test_a_segmentation_in_a_defaced_frame_is_cleaned_in_its_block():
     slices = _head_files()
     data = _head_segmentation()
     transform, records = _prepared(*slices, data)
@@ -587,7 +586,6 @@ def test_a_segmentation_in_a_defaced_frame_is_cleaned_in_its_block_and_held():
     columns = np.rint((np.array([head.GLOBE_X, 0.0]) + 124) / 8).astype(int)
     rows = np.rint((np.array([head.GLOBE_Y - 5.0, 100.0]) + 124) / 8).astype(int)
     assert mask.mask[rows[0], columns[0]] and not mask.mask[rows[1], columns[1]]
-    assert instance_transform._unshown_segments(iod, redaction)
 
 
 def test_no_block_for_a_segmentation_in_another_frame_so_it_stays_held():
@@ -599,31 +597,9 @@ def test_no_block_for_a_segmentation_in_another_frame_so_it_stays_held():
     assert instance_transform._region_defacing(iod, None) is None
 
 
-class _NoMask:  # pylint: disable = too-few-public-methods
-    def mask(self, frame, stored):  # pylint: disable = unused-argument
-        return None
-
-
-def test_only_a_segmentation_given_a_mask_is_held_for_its_segments():
-    transform, _ = _prepared()
-    unshown = instance_transform._unshown_segments
-    source = _source(_segmentation())
-    unmasked = black_out(source, source.dataset(), None, _NoMask())
-    masked = black_out(
-        source,
-        source.dataset(),
-        None,
-        SegmentationDefacer(_REGION, source.dataset()),
-    )
-
-    assert unshown(_iod(transform), masked)
-    assert not unshown(_iod(transform), unmasked)
-    assert not unshown(_iod(transform), None)
-    assert not unshown(_iod(transform, "Positron Emission Tomography Image"), masked)
-
-
 def _reviewed_absent(data, written):
-    """A face review that marks a segmentation absent as ``written``."""
+    """A face review that marks a segmentation absent as ``written``, whose
+    every frame the review showed."""
     digest = hashlib.sha256(data).digest()
     dataset = pydicom.dcmread(io.BytesIO(written))
     return FaceReview(
@@ -632,16 +608,14 @@ def _reviewed_absent(data, written):
         frozenset(),
         frozenset({(digest, pixel_data_sha256(dataset))}),
         frozenset({(digest, contour_data_sha256(dataset))}),
+        absent_frames=frozenset(
+            {(digest, pixel_data_sha256(dataset), int(dataset.NumberOfFrames))}
+        ),
     )
 
 
 @pytest.mark.parametrize("reaches", [True, False], ids=["reaches", "behind"])
-def test_a_segmentation_that_reaches_the_face_is_held_whatever_its_verdict(
-    monkeypatch, reaches
-):
-    # Segmentation is out of scope until it is supported, so the run would
-    # sequester it before cleaning it.
-    monkeypatch.setattr(scope, "SUPPORTED_IODS", scope.SUPPORTED_IODS | {SEGMENTATION})
+def test_a_segmentation_is_released_on_a_verdict_on_its_segments_as_written(reaches):
     slices = _head_files()
     # Rows from 16, at y of 4 mm and more, lie well behind the globes, and
     # so behind the block's plane.
@@ -654,15 +628,27 @@ def test_a_segmentation_that_reaches_the_face_is_held_whatever_its_verdict(
     second = transform(data, record)
 
     written = pydicom.pixels.pixel_array(pydicom.dcmread(io.BytesIO(second.data)))
-    held = getattr(second.evidence, "held", ())
+    assert not getattr(second.evidence, "held", ())
     if reaches:
-        # Its eyes' pixels are cleared, and it is held, since the pack does
-        # not show segments.
+        # Its eyes' pixels are cleared, as the review saw them.
         eyes = round((head.GLOBE_Y - 5.0 + 124) / 8)
         assert written[eyes].sum() < 32 and written[16:].all()
-        assert held == (HeldVisualFeatures(VisualFeaturesReason.NO_FACE_VERDICT),)
     else:
         assert (
             np.array_equal(written[16:], np.ones((16, 32))) and not written[:16].any()
         )
-        assert not held
+
+
+def test_a_verdict_on_a_segmentation_as_received_holds_it_once_cleared():
+    slices = _head_files()
+    data = _head_segmentation()
+    transform, records = _prepared(*slices, data)
+    # The review showed its segments as received, which the run, clearing
+    # them in the block, no longer writes.
+    transform._face_review = _reviewed_absent(data, data)
+
+    written = transform(data, records[len(slices)])
+
+    assert getattr(written.evidence, "held") == (
+        HeldVisualFeatures(VisualFeaturesReason.OTHER_PIXEL_DATA),
+    )

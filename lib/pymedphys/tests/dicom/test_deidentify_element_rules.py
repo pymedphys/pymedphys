@@ -603,7 +603,9 @@ def test_the_new_rules_remove_by_type_where_the_supported_iods_allow_it():
     # patient are Type 3 wherever the first supported release's IODs define
     # them, so they are removed, and so is ICC Profile, except at the top
     # level of three enhanced IODs, where it is Type 1 and needs a dummy
-    # value. Retrieve URL and Retrieve URI are required only in sequences
+    # value, and of Segmentation, whose ICC Profile Module is required where
+    # a label map is PALETTE COLOR. Retrieve URL and Retrieve URI are
+    # required only in sequences
     # that the table removes, and three UR attributes are required at places
     # where removal by Type needs a dummy value.
     tables = iods.load_iod_tables()
@@ -639,6 +641,7 @@ def test_the_new_rules_remove_by_type_where_the_supported_iods_allow_it():
             "Enhanced CT Image",
             "Enhanced MR Image",
             "Enhanced MR Color Image",
+            "Segmentation",
         )
     }
 
@@ -670,8 +673,9 @@ def test_series_number_has_x_z_d_under_every_option():
 @pytest.mark.deid_requirement("MIDI-BP-03", "MIDI-BP-06")
 def test_series_number_resolves_to_z_in_the_supported_iods_but_where_type_1():
     # Type 2 in the General Series and RT Series Modules; Type 1 in the items
-    # of the Structure Set Module's Source Series Information Sequence and
-    # in the SR Document Series Module of the Structured Reports.
+    # of the Structure Set Module's Source Series Information Sequence, in
+    # the Segmentation Series Module, and in the SR Document Series Module of
+    # the Structured Reports.
     # Either way it then takes its rank, or is emptied or given D's dummy
     # value if it has none.
     tables = iods.load_iod_tables()
@@ -691,6 +695,7 @@ def test_series_number_resolves_to_z_in_the_supported_iods_but_where_type_1():
     assert {name for name, _, _ in resolved} == set(SUPPORTED_IODS)
     assert {(name, path) for name, path, action in resolved if action != "Z"} == {
         ("RT Structure Set", ("(3006,004C)",)),
+        ("Segmentation", ()),
         ("X-Ray Radiation Dose SR", ()),
         ("Radiopharmaceutical Radiation Dose SR", ()),
         ("Basic Text SR", ()),

@@ -197,6 +197,7 @@ NOT_FOLLOWED = {
     "(0040,E031)": "identifies a community of repositories",
     "(0044,0102)": "identifies an assertion within a plan",
     "(0044,0108)": "refers to an assertion within a plan",
+    "(0062,0021)": "identifies a finding or feature tracked across instances",
     "(0070,031A)": "refers to a fiducial within an instance",
     "(0070,031B)": "refers to a fiducial within an instance",
     "(0088,0140)": "identifies a file set",

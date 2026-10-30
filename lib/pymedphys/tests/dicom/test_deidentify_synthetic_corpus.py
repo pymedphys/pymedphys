@@ -222,6 +222,8 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "26-sr-comprehensive.dcm",
         "27-sr-comprehensive-3d.dcm",
         "28-sr-extensible.dcm",
+        "32-seg.dcm",
+        "33-seg-label-map.dcm",
     ]
     assert [file.manifest.iod for file in corpus.files] == [
         "CT Image",
@@ -252,9 +254,14 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "Comprehensive SR",
         "Comprehensive 3D SR",
         "Extensible SR",
+        "Segmentation",
+        "Segmentation",
     ]
     assert corpus_module.STRUCTURED_REPORT_FILES == tuple(
-        file.name for file in corpus.files[-7:]
+        file.name for file in corpus.files[-9:-2]
+    )
+    assert corpus_module.SEGMENTATION_FILES == tuple(
+        file.name for file in corpus.files[-2:]
     )
     # Every IOD of the first supported release.
     assert {file.manifest.iod for file in corpus.files} == scope.SUPPORTED_IODS
