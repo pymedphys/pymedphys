@@ -361,7 +361,8 @@ jobs:
             exit 0
           fi
           echo "ran=true" >> "${GITHUB_OUTPUT}"
-          name="$(jq -r '.name' "${data}/download.json")"
+          # The downloaded collection's name, apart from each configuration's.
+          collection_name="$(jq -r '.name' "${data}/download.json")"
 
           setup_nci() {
             [[ -d "${RUNNER_TEMP}/nci-venv" ]] && return 0
@@ -476,7 +477,7 @@ jobs:
               --source "${data}/images" \
               --answer-key "${data}/answer-key.db" \
               --work "${work}" \
-              --collection "${name}" \
+              --collection "${collection_name}" \
               "${policy[@]}" \
               --watch "(0020,0011)" --watch "(0028,0106)" --watch "(0008,0008)" \
               2> "${logs}/benchmark-stderr.log"; then
