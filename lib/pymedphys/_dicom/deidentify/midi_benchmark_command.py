@@ -94,8 +94,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             "The preset, enabled or not. Defaults to basic. Under "
             "basic-clean-descriptors, ROI Names are cleaned with the pinned "
             "TG-263 edition, and a name that would be held for review is "
-            "emptied. A preset with Clean Recognizable Visual Features runs "
-            "without it."
+            "emptied. Under Clean Recognizable Visual Features, every instance "
+            "that can show a face is held, since a benchmark has no face verdicts."
         ),
     )
     policy.add_argument(

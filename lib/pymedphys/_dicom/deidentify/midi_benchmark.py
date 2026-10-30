@@ -88,12 +88,12 @@ separately for each answer-key category rather than as one score:
 Under Clean Pixel Data, the pinned text detector
 (:class:`~pymedphys._dicom.deidentify.text_detection.TextDetector`) finds
 the text, and every instance that the option cleans is held for review,
-since no reviewer attests a benchmark's regions. Clean Recognizable Visual
-Features needs a reviewer's verdict on each series that can show a face,
-which a benchmark has none of; its public evidence is HaN-Seg's face block
-check (D-054). A custom option set with it is refused, and a preset with it,
-such as ``public-release``, runs without it, composed as the preset composes
-its other options; the results record the option as left out.
+since no reviewer attests a benchmark's regions. Under Clean Recognizable
+Visual Features, as under ``public-release``, a run is given a face review
+with no verdicts (:data:`NO_FACE_VERDICTS`), as the first run of a
+collection is (D-050): every instance that can show a face is held, since
+no reviewer has seen a benchmark's previews, and the results say so. HaN-Seg's
+face block check is the option's public evidence of what it removes (D-054).
 
 Under Retain Safe Private, a run may choose TCIA's Private Tag Dictionary in
 place of the reviewed list (D-035), and the results record which.
@@ -157,6 +157,7 @@ from .descriptor_cleaning import CLEAN_DESCRIPTORS, DescriptorCleaning, fallback
 from .diagnostics import redacted_diagnostics
 from .dummy_values import KEPT_ITEM_ATTRIBUTES
 from .element_rules import KEEP, ElementRules
+from .face_review import FaceReview
 from .instance_transform import InstanceTransform, ReleaseGate
 from .iods import IOD, IODTables, load_iod_tables
 from .keys import DeidKey
@@ -211,7 +212,6 @@ from .policy import (
     Policy,
     compose_custom_policy,
     compose_policy,
-    compose_preset_without,
 )
 from .reviewed_roi_names import ReviewedNames
 from .runtime import runtime_environment
@@ -365,8 +365,9 @@ def run_benchmark(
         The preset, which need not be enabled: this is a validation run.
         Defaults to ``"basic"``, unless ``options`` is given. Under Clean
         Descriptors, ROI Names are cleaned with the pinned TG-263 edition,
-        and a name that would be held for review is emptied. A preset with
-        Clean Recognizable Visual Features runs without it.
+        and a name that would be held for review is emptied. Under Clean
+        Recognizable Visual Features, each instance that can show a face is
+        held (:data:`NO_FACE_VERDICTS`).
     options : collection of str, optional
         A custom option set in place of a preset, which the Basic Profile
         is applied with (D-033), and which need not be enabled either.
@@ -386,9 +387,8 @@ def run_benchmark(
     ------
     BenchmarkError
         If the work directory exists or its parent does not; both a preset
-        and options are given; the option set selects Clean Recognizable
-        Visual Features; the pinned TG-263 edition or text detector cannot
-        be loaded; or a spreadsheet is given for a policy without Clean
+        and options are given; the pinned TG-263 edition or text detector
+        cannot be loaded; or a spreadsheet is given for a policy without Clean
         Descriptors.
     ~pymedphys._dicom.deidentify.policy.PolicyError
         If the preset or option set cannot be composed, or TCIA's dictionary
@@ -399,7 +399,7 @@ def run_benchmark(
     work = Path(work)
     if work.exists() or not work.parent.is_dir():
         raise BenchmarkError("the work directory must not exist, and its parent must")
-    policy, left_out = _policy(preset, options)
+    policy = _policy(preset, options)
     key = read_answer_key(answer_key)
     cleaning = _cleaning(policy, tg263_spreadsheet)
     deid_key = DeidKey.generate()
@@ -409,6 +409,7 @@ def run_benchmark(
         cleaning=cleaning,
         finder=_finder(policy),
         safe_private_list=safe_private_list,
+        face_review=_face_review(policy),
         unvalidated_policy=True,
     )
     discovery = run.discover(source)
@@ -436,9 +437,7 @@ def run_benchmark(
         release,
         mapping,
         policy,
-        # A preset run without an option names the preset and the option.
-        preset=preset if left_out else policy.preset,
-        left_out=left_out,
+        preset=policy.preset,
         safe_private_list=safe_private_list,
         collection=collection,
         # The method digest that the transform's markers and release report
@@ -459,30 +458,34 @@ def run_benchmark(
     return benchmark
 
 
-def _policy(
-    preset: str | None, options: Collection[str] | None
-) -> tuple[Policy, tuple[str, ...]]:
-    """Compose a benchmark's policy, which need not be enabled, and return it
-    with the preset's options that it leaves out."""
+def _policy(preset: str | None, options: Collection[str] | None) -> Policy:
+    """Compose a benchmark's policy, which need not be enabled."""
     if options is None:
-        name = DEFAULT_PRESET if preset is None else preset
-        policy = compose_policy(name)
-        if CLEAN_RECOGNIZABLE_VISUAL_FEATURES in policy.options:
-            # Its other options as the preset composes them.
-            without = compose_preset_without(name, CLEAN_RECOGNIZABLE_VISUAL_FEATURES)
-            return without, (CLEAN_RECOGNIZABLE_VISUAL_FEATURES,)
-        return policy, ()
+        return compose_policy(DEFAULT_PRESET if preset is None else preset)
     if preset is not None:
         raise BenchmarkError(
             "a benchmark runs under a preset or a custom option set, not both"
         )
-    policy = compose_custom_policy(options)
-    if CLEAN_RECOGNIZABLE_VISUAL_FEATURES in policy.options:
-        raise BenchmarkError(
-            "Clean Recognizable Visual Features needs a reviewer's verdict on "
-            "each series that can show a face, which a benchmark has none of"
-        )
-    return policy, ()
+    return compose_custom_policy(options)
+
+
+# The face review of a run under Clean Recognizable Visual Features: no
+# verdicts, so that each instance that can show a face is held, as in the
+# first run of a collection (D-050). Its reference names no QC pack: no
+# reviewer has attested one, and the all-zero digits say so.
+NO_FACE_VERDICTS = FaceReview(
+    "A-" + "0" * 32, frozenset(), frozenset(), frozenset(), frozenset()
+)
+
+
+def _face_review(policy: Policy) -> FaceReview | None:
+    """Return :data:`NO_FACE_VERDICTS` under Clean Recognizable Visual
+    Features, or None."""
+    return (
+        NO_FACE_VERDICTS
+        if CLEAN_RECOGNIZABLE_VISUAL_FEATURES in policy.options
+        else None
+    )
 
 
 def _finder(policy: Policy) -> TextFinder | None:
@@ -612,7 +615,6 @@ def score(  # pylint: disable = too-many-arguments, too-many-locals
     *,
     preset: str | None,
     collection: str | None,
-    left_out: Sequence[str] = (),
     safe_private_list: SafePrivateList = SafePrivateList.REVIEWED,
     method: str | None = None,
     roi_names: str | None = None,
@@ -622,8 +624,7 @@ def score(  # pylint: disable = too-many-arguments, too-many-locals
 ) -> Benchmark:
     """Score each check of the answer key against the run's outcome.
 
-    ``left_out`` names the options of ``preset`` that ``policy`` leaves
-    out, and ``safe_private_list`` is the list that the run took under Retain
+    ``safe_private_list`` is the list that the run took under Retain
     Safe Private. ``method`` is the run's method digest, by default that of
     ``policy``
     without a vocabulary or reviewed-names list; ``roi_names``, given under
@@ -752,7 +753,11 @@ def score(  # pylint: disable = too-many-arguments, too-many-locals
         "pydicom": environment.pydicom_version,
         "preset": preset,
         "options": list(policy.options),
-        "left_out": list(left_out),
+        # Under Clean Recognizable Visual Features, the face review's
+        # verdicts: none, so each instance that can show a face is held.
+        "face_verdicts": (
+            "none" if CLEAN_RECOGNIZABLE_VISUAL_FEATURES in policy.options else None
+        ),
         "safe_private_list": (
             safe_private_list.value if SAFE_PRIVATE in policy.options else None
         ),

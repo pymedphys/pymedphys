@@ -22,7 +22,7 @@ import csv
 import json
 import sqlite3
 
-from pymedphys._imports import pytest
+from pymedphys._imports import pydicom, pytest
 
 from pymedphys._dicom.deidentify import (
     dicom_validation,
@@ -44,7 +44,6 @@ from pymedphys._dicom.deidentify.policy import (
     PolicyError,
     compose_custom_policy,
     compose_policy,
-    compose_preset_without,
 )
 from pymedphys._dicom.deidentify.safe_private import SafePrivateList
 from pymedphys._dicom.deidentify.text_detection import TextDetectionError
@@ -220,22 +219,26 @@ def test_an_option_set_that_cannot_be_composed_is_refused(tmp_path):
     assert not (tmp_path / "work").exists()
 
 
-def test_clean_recognizable_visual_features_is_refused(tmp_path):
-    with pytest.raises(benchmark.BenchmarkError, match="reviewer's verdict"):
-        benchmark.run_benchmark(
-            _source(tmp_path),
-            _benchmark_key(tmp_path),
-            tmp_path / "work",
-            options=["clean_recognizable_visual_features"],
-        )
-    assert not (tmp_path / "work").exists()
+def test_under_clean_recognizable_visual_features_each_face_is_held(sources):
+    # No reviewer has seen a benchmark's previews, so the run has no face
+    # verdicts, and holds each instance that can show a face.
+    work, document = _run(
+        sources, "option", options=[CLEAN_RECOGNIZABLE_VISUAL_FEATURES]
+    )
+    _, basic = _run(sources, "basic")
+
+    assert document["versions"]["face_verdicts"] == "none"
+    assert basic["versions"]["face_verdicts"] is None
+    released = {
+        str(pydicom.dcmread(path).SOPInstanceUID)
+        for path in (work / "release").rglob("*.dcm")
+    }
+    assert released and not released & {*synthetic.CT_SLICES, synthetic.DOSE}
+    withheld = document["coverage"]["instances"]["withheld"]
+    assert withheld > basic["coverage"]["instances"]["withheld"]
 
 
-def test_a_preset_with_clean_recognizable_visual_features_runs_without_it(
-    sources, edition
-):
-    # public-release selects the option, which needs a reviewer's face
-    # verdicts; the run takes its other options as the preset composes them.
+def test_public_release_runs_with_clean_recognizable_visual_features(sources, edition):
     assert (
         CLEAN_RECOGNIZABLE_VISUAL_FEATURES in compose_policy("public-release").options
     )
@@ -249,20 +252,13 @@ def test_a_preset_with_clean_recognizable_visual_features_runs_without_it(
     assert edition == [((), {"spreadsheet": sources / "edition.xls"})]
     versions = document["versions"]
     assert versions["preset"] == "public-release"
-    assert versions["left_out"] == [CLEAN_RECOGNIZABLE_VISUAL_FEATURES]
-    assert versions["options"] == list(
-        compose_preset_without(
-            "public-release", CLEAN_RECOGNIZABLE_VISUAL_FEATURES
-        ).options
-    )
-    assert CLEAN_RECOGNIZABLE_VISUAL_FEATURES not in versions["options"]
-    assert document["coverage"]["instances"]["released"] > 0
+    assert versions["options"] == list(compose_policy("public-release").options)
+    assert versions["face_verdicts"] == "none"
 
 
-def test_a_preset_without_that_option_leaves_nothing_out(sources):
+def test_a_policy_without_retain_safe_private_records_no_list(sources):
     _, document = _run(sources, "option", preset="basic")
 
-    assert document["versions"]["left_out"] == []
     assert document["versions"]["safe_private_list"] is None
 
 

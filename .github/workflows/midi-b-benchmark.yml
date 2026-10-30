@@ -287,9 +287,10 @@ jobs:
       # harness and the DICOM validation), or reference (the harness alone,
       # for the flip checks); the list, under Retain Safe Private, is tcia
       # for TCIA's Private Tag Dictionary in place of the reviewed list, and
-      # the configuration's results are then named name-list. public-release runs
-      # without Clean Recognizable Visual Features, which needs a reviewer's
-      # face verdicts, as its results record. On the Test subset, the
+      # the configuration's results are then named name-list. Under Clean
+      # Recognizable Visual Features, which public-release selects, a run
+      # has no face verdicts, so it holds every instance that can show a
+      # face, as its results record. On the Test subset, the
       # harness took about 62 minutes, the validation 10, and NCI's script
       # 22, so each group fits the job's timeout.
       - name: Choose the configurations
@@ -306,7 +307,7 @@ jobs:
             retain-3)
               configurations="preset:basic:reference option:retain_longitudinal_full_dates:validated option:retain_longitudinal_modified_dates:validated option:retain_safe_private:validated:tcia" ;;
             clean)
-              configurations="option:clean_descriptors:validated option:clean_structured_content:validated option:clean_graphics:validated" ;;
+              configurations="option:clean_descriptors:validated option:clean_structured_content:validated option:clean_graphics:validated option:clean_recognizable_visual_features:validated" ;;
             clean-pixel-data)
               configurations="option:clean_pixel_data:validated" ;;
             *)
