@@ -384,8 +384,9 @@ def test_an_echo_measurement_coded_in_loinc_takes_the_tree_out(
 
 # The optional rows that take the tree out under every option set: Table
 # E.3.4-1 gives each X under every option, or X with C under Clean
-# Descriptors, which falls back to X (D-009), or its concept name is coded
-# in a scheme whose rows the pin leaves out (D-001).
+# Descriptors, which falls back to X (D-009), or the supplementary concepts
+# remove it, or its concept name is coded in a scheme whose rows the pin
+# leaves out (D-001).
 IMPLANTATION_REMOVED_UNDER_EVERY_OPTION = {"TID 7000 row 37"}  # Physician Note
 # Retain UIDs keeps the references to the implant assembly, the CT image,
 # the fiducials, and the registration, each X without it; the fiducial's
@@ -405,6 +406,7 @@ ADMINISTRATION_REMOVED_UNDER_EVERY_OPTION = {
     "TID 11004 row 19",  # Medical Product Expiration Date, coded in NCIt
     "TID 11004 row 20",  # Manufacturer Name, coded in UMLS
     "TID 10024 row 6",  # Patient Weight, coded in LOINC
+    "TID 10024 row 9",  # Body Mass Index, a supplementary concept
     "TID 10024 row 14",  # Recent Physical Activity
 }
 PLANNED_REMOVED_UNDER_EVERY_OPTION = ADMINISTRATION_REMOVED_UNDER_EVERY_OPTION | {
