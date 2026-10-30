@@ -36,10 +36,16 @@ the plane of its slices, their size and spacing, how many regions each
 slice gives, and of each region its area as a share of the slice, its
 shorter side, its longer side over its shorter, and, for a CT, the share
 of its pixels above -900 Hounsfield units, where it would black out more
-than air.
+than air. Where the finder also gives what each of its renderings found
+(:class:`ScoringFinder`), as the text detector does, it measures each
+region's score margin, the highest mean probability that a rendering gave
+its box less the detector's box threshold, and which renderings gave it.
+A region's score margin is how far the box threshold can rise before the
+region is lost, since a box is kept while any rendering gives it.
 
 The volumes' measures are summarised (:func:`summarise`) as counts, of
-volumes by outcome, format, and plane, and of measures in fixed bins, never
+volumes by outcome, format, and plane, and of measures in fixed bins, also
+by the larger side of a slice and by the larger spacing within one, never
 a value or a case's name, so that the summary can be published from a run
 on real patients' scans. A volume that cannot be read is counted by why,
 and one whose measuring raises anything else by the exception's type and
@@ -66,7 +72,7 @@ import platform
 import re
 import zipfile
 from collections.abc import Callable, Iterable, Mapping, Sequence
-from typing import Any, cast
+from typing import Any, Protocol, cast, runtime_checkable
 
 from pymedphys._imports import numpy as np
 
@@ -80,9 +86,9 @@ from .face_validation import (
     file_digest,
 )
 from .pixel_cleaning import TextFinder, finder_description
-from .text_detection import TextBox
+from .text_detection import RENDERINGS, Detection, DetectionParameters, TextBox
 
-FORMAT = "pymedphys-deid-pixel-text-validation/1"
+FORMAT = "pymedphys-deid-pixel-text-validation/2"
 # HaN-Seg's images, by the name after ``IMG_`` in their files' names.
 IMAGES = ("CT", "MR_T1")
 _HANSEG_IMAGE = re.compile(r"(?:.*/)?(case_[0-9]+)/\1_IMG_(CT|MR_T1)\.nrrd")
@@ -102,10 +108,32 @@ REGION_AREA = Bins(
 REGION_SHORTER_SIDE = Bins("pixels", (0, 8, 12, 16, 24, 32, 48, 64, 96))
 REGION_ELONGATION = Bins("ratio", (1.0, 1.5, 2.0, 3.0, 5.0, 10.0))
 SLICE_SIDE = Bins("pixels", (0, 256, 384, 512, 640, 768, 1024))
+SCORE_MARGIN = Bins(
+    "mean probability above the box threshold",
+    (0.0, 0.025, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45),
+)
 
 
 class PixelTextValidationRefused(Exception):
     """The data set cannot be checked; the message quotes no value."""
+
+
+@runtime_checkable
+class ScoringFinder(Protocol):
+    """A finder that also gives what each of its renderings found, as
+    :class:`~.text_detection.TextDetector` does, so that each region's
+    score margin can be measured."""
+
+    @property
+    def parameters(self) -> DetectionParameters:
+        """The settings of detection, whose box threshold each region's
+        mean probability reaches."""
+
+    def find(self, frame: np.ndarray) -> Sequence[TextBox]:
+        """As :meth:`~.text_detection.TextDetector.find` does."""
+
+    def detections(self, frame: np.ndarray) -> Sequence[Detection]:
+        """As :meth:`~.text_detection.TextDetector.detections` does."""
 
 
 @dataclasses.dataclass(frozen=True, repr=False)
@@ -138,6 +166,13 @@ class VolumeMeasures:
     not_air : tuple of float or None
         For a CT, the share of each region's pixels above -900 Hounsfield
         units; otherwise None.
+    score_margins : tuple of float or None
+        For a :class:`ScoringFinder`, each region's highest mean
+        probability less the box threshold; otherwise None.
+    renderings : tuple of str or None
+        For a :class:`ScoringFinder`, the renderings that gave each region,
+        in the order of :data:`~.text_detection.RENDERINGS`, joined by
+        ``+``; otherwise None.
     """
 
     format: str
@@ -149,6 +184,8 @@ class VolumeMeasures:
     shorter_sides: tuple[int, ...] = ()
     elongations: tuple[float, ...] = ()
     not_air: tuple[float, ...] | None = None
+    score_margins: tuple[float, ...] | None = None
+    renderings: tuple[str, ...] | None = None
 
     def __repr__(self) -> str:
         return "VolumeMeasures()"
@@ -188,7 +225,9 @@ def measure_volume(volume: nrrd.Volume, finder: TextFinder, ct: bool) -> VolumeM
     ----------
     volume : nrrd.Volume
     finder : TextFinder
-        As a run under the Clean Pixel Data Option is given.
+        As a run under the Clean Pixel Data Option is given. A
+        :class:`ScoringFinder` is asked for its detections instead of its
+        boxes, which give the same regions, each once.
     ct : bool
         Whether the volume is a CT in Hounsfield units, whose regions'
         shares of pixels above air are measured.
@@ -201,13 +240,26 @@ def measure_volume(volume: nrrd.Volume, finder: TextFinder, ct: bool) -> VolumeM
     stored = _stored(volume.values)
     rows, columns = stored.shape[1:]
     along_row, down_column = volume.axes[0], volume.axes[1]
+    scoring = isinstance(finder, ScoringFinder)
     regions: list[int] = []
     areas: list[float] = []
     shorter: list[int] = []
     elongations: list[float] = []
     not_air: list[float] = []
+    margins: list[float] = []
+    renderings: list[str] = []
     for frame in stored:
-        boxes = _clipped(finder.find(frame), rows, columns)
+        if scoring:
+            found = _scored(cast(ScoringFinder, finder), frame)
+        else:
+            found = [(box, math.nan, "") for box in finder.find(frame)]
+        boxes = []
+        for box, margin, rendering in found:
+            clipped = _clipped(box, rows, columns)
+            if clipped is not None:
+                boxes.append(clipped)
+                margins.append(margin)
+                renderings.append(rendering)
         regions.append(len(boxes))
         for box in boxes:
             height, width = box.bottom - box.top, box.right - box.left
@@ -229,6 +281,8 @@ def measure_volume(volume: nrrd.Volume, finder: TextFinder, ct: bool) -> VolumeM
         shorter_sides=tuple(shorter),
         elongations=tuple(elongations),
         not_air=tuple(not_air) if ct else None,
+        score_margins=tuple(margins) if scoring else None,
+        renderings=tuple(renderings) if scoring else None,
     )
 
 
@@ -246,23 +300,57 @@ def _stored(values: np.ndarray) -> np.ndarray:
     return values
 
 
-def _clipped(boxes: Sequence[TextBox], rows: int, columns: int) -> list[TextBox]:
-    """The finder's boxes, each clipped to the slice, as a run clips them;
-    a box that the slice does not hold is dropped.
+def _scored(
+    finder: ScoringFinder, frame: np.ndarray
+) -> list[tuple[TextBox, float, str]]:
+    """Each box that the finder's renderings give, once, sorted, as
+    :meth:`~.text_detection.TextDetector.find` gives them, with its score
+    margin and the renderings that gave it.
 
     Raises
     ------
     TypeError
-        If a box is not a :class:`~.text_detection.TextBox`.
+        If a detection is not a :class:`~.text_detection.Detection`.
+    ValueError
+        If a detection's rendering is not one of
+        :data:`~.text_detection.RENDERINGS`; the message quotes no value.
     """
-    clipped = []
-    for box in boxes:
-        if not isinstance(box, TextBox):
-            raise TypeError("a text finder must give TextBox objects")
-        bottom, right = min(box.bottom, rows), min(box.right, columns)
-        if box.top < bottom and box.left < right:
-            clipped.append(TextBox(box.top, box.left, bottom, right))
-    return clipped
+    highest: dict[TextBox, float] = {}
+    gave: dict[TextBox, set[str]] = {}
+    for each in finder.detections(frame):
+        if not isinstance(each, Detection):
+            raise TypeError("a scoring finder must give Detection objects")
+        if each.rendering not in RENDERINGS:
+            raise ValueError("A detection's rendering is not a known one.")
+        box = each.box
+        highest[box] = max(highest.get(box, -math.inf), each.mean_probability)
+        gave.setdefault(box, set()).add(each.rendering)
+    threshold = finder.parameters.box_threshold
+    return [
+        (
+            box,
+            highest[box] - threshold,
+            "+".join(name for name in RENDERINGS if name in gave[box]),
+        )
+        for box in sorted(highest)
+    ]
+
+
+def _clipped(box: TextBox, rows: int, columns: int) -> TextBox | None:
+    """The finder's box clipped to the slice, as a run clips it, or None
+    where the slice does not hold it.
+
+    Raises
+    ------
+    TypeError
+        If the box is not a :class:`~.text_detection.TextBox`.
+    """
+    if not isinstance(box, TextBox):
+        raise TypeError("a text finder must give TextBox objects")
+    bottom, right = min(box.bottom, rows), min(box.right, columns)
+    if box.top < bottom and box.left < right:
+        return TextBox(box.top, box.left, bottom, right)
+    return None
 
 
 def _plane(axes: np.ndarray) -> str:
@@ -308,6 +396,7 @@ def summarise(
     not_air = [
         share for each in measured if each.not_air is not None for share in each.not_air
     ]
+    scored = bool(measured) and all(each.score_margins is not None for each in measured)
     return {
         "format": FORMAT,
         "image": image,
@@ -350,7 +439,60 @@ def summarise(
                 ratio for each in measured for ratio in each.elongations
             ),
             "share_not_air": SHARE.counts(not_air) if image == "CT" else None,
+            **_scores(measured, scored),
         },
+        "by_slice_side": _grouped(
+            SLICE_SIDE, measured, [each.slice_side for each in measured], scored
+        ),
+        "by_pixel_spacing": _grouped(
+            PIXEL_SPACING, measured, [each.pixel_spacing for each in measured], scored
+        ),
+    }
+
+
+def _scores(measured: Sequence[VolumeMeasures], scored: bool) -> dict[str, Any]:
+    """The volumes' regions by score margin and by the renderings that gave
+    them, or None for each where the finder gives no scores."""
+    if not scored:
+        return {"score_margin": None, "renderings": None}
+    return {
+        "score_margin": SCORE_MARGIN.counts(
+            margin for each in measured for margin in each.score_margins or ()
+        ),
+        "renderings": _counted(
+            code for each in measured for code in each.renderings or ()
+        ),
+    }
+
+
+def _grouped(
+    bins: Bins,
+    measured: Sequence[VolumeMeasures],
+    values: Sequence[float],
+    scored: bool,
+) -> dict[str, Any]:
+    """The volumes, their slices, and their regions, counted in each of
+    the bins that hold the volumes' values, with the regions by score
+    margin and by the renderings that gave them."""
+    groups: list[list[VolumeMeasures]] = [[] for _ in bins.counts(())["bins"]]
+    for each, value in zip(measured, values, strict=True):
+        groups[bins.index(value)].append(each)
+    return {
+        "unit": bins.unit,
+        "bins": [
+            {
+                "from": edges["from"],
+                "to": edges["to"],
+                "volumes": len(group),
+                "slices_searched": sum(len(each.regions) for each in group),
+                "slices_with_a_region": sum(
+                    count > 0 for each in group for count in each.regions
+                ),
+                "regions": sum(sum(each.regions) for each in group),
+                **_scores(group, scored),
+            }
+            for edges, group in zip(bins.counts(())["bins"], groups, strict=True)
+        ],
     }
 
 
@@ -631,7 +773,75 @@ def markdown(summary: Mapping[str, Any]) -> str:
             regions["share_not_air"],
             "Regions",
         )
+    if regions["score_margin"] is not None:
+        lines += [
+            *_bins("Score margin", regions["score_margin"], "Regions"),
+            *_codes(
+                "Renderings that gave the region", regions["renderings"], "Regions"
+            ),
+        ]
+    lines += [
+        *_grouped_tables("larger side of a slice", summary["by_slice_side"]),
+        *_grouped_tables("larger spacing within a slice", summary["by_pixel_spacing"]),
+    ]
     return "\n".join(lines).rstrip("\n") + "\n"
+
+
+def _grouped_tables(title: str, grouped: Mapping[str, Any]) -> list[str]:
+    """The tables of :func:`_grouped`'s counts: the volumes, slices, and
+    regions in each bin, then, for the bins that hold a volume, the regions
+    by score margin and by the renderings that gave them."""
+    unit = grouped["unit"]
+    lines = [
+        f"## By the {title}",
+        "",
+        f"| {title.capitalize()} ({unit}) | Volumes | Slices searched "
+        "| Slices with a region | Regions |",
+        "| --- | ---: | ---: | ---: | ---: |",
+        *(
+            f"| {_range(each)} | {each['volumes']} | {each['slices_searched']} "
+            f"| {each['slices_with_a_region']} | {each['regions']} |"
+            for each in grouped["bins"]
+        ),
+        "",
+    ]
+    held = [each for each in grouped["bins"] if each["volumes"]]
+    if not held or held[0]["score_margin"] is None:
+        return lines
+    header = " | ".join(f"{_range(each)} {unit}" for each in held)
+    alignment = " | ".join("---:" for _ in held)
+    margins = held[0]["score_margin"]
+    lines += [
+        f"Regions by score margin ({margins['unit']}) and {title}:",
+        "",
+        f"| Score margin | {header} |",
+        f"| --- | {alignment} |",
+        *(
+            f"| {_range(margin)} | "
+            + " | ".join(
+                str(each["score_margin"]["bins"][row]["count"]) for each in held
+            )
+            + " |"
+            for row, margin in enumerate(margins["bins"])
+        ),
+        "",
+    ]
+    codes = sorted({code for each in held for code in each["renderings"]})
+    if not codes:
+        return lines + [f"Regions by renderings and {title}: none.", ""]
+    return lines + [
+        f"Regions by the renderings that gave them and {title}:",
+        "",
+        f"| Renderings | {header} |",
+        f"| --- | {alignment} |",
+        *(
+            f"| `{code}` | "
+            + " | ".join(str(each["renderings"].get(code, 0)) for each in held)
+            + " |"
+            for code in codes
+        ),
+        "",
+    ]
 
 
 def _codes(title: str, counts: Mapping[str, int], noun: str) -> list[str]:

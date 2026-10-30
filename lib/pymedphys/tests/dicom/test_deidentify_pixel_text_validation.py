@@ -39,7 +39,12 @@ from pymedphys._dicom.deidentify.pixel_text_validation import (
     VolumeMeasures,
     VolumeNotMeasured,
 )
-from pymedphys._dicom.deidentify.text_detection import TextBox
+from pymedphys._dicom.deidentify.text_detection import (
+    Detection,
+    DetectionParameters,
+    TextBox,
+    TextDetector,
+)
 
 from . import _synthetic_nrrd as files
 
@@ -89,6 +94,26 @@ class _Overhanging(MarkFinder):
             *super().find(frame),
             TextBox(rows - 2, columns - 3, rows + 5, columns + 5),
             TextBox(rows + 1, 0, rows + 4, 3),
+        )
+
+
+class ScoringMarkFinder(MarkFinder):
+    """Gives each mark's box from the full-range rendering, with a mean
+    probability of 0.52, and from the white top-hat, with 0.92, where the
+    mark is 6 columns wide or more, as the text detector gives its
+    detections."""
+
+    parameters = DetectionParameters()
+
+    def detections(self, frame: np.ndarray) -> tuple[Detection, ...]:
+        boxes = self.find(frame)
+        return (
+            *(Detection(box, "full-range", 0.52) for box in boxes),
+            *(
+                Detection(box, "white-top-hat", 0.92)
+                for box in boxes
+                if box.right - box.left >= 6
+            ),
         )
 
 
@@ -163,6 +188,11 @@ def fixture_measured(archive):
 @pytest.fixture(name="summary", scope="module")
 def fixture_summary(archive):
     return pixel_text_validation.check_hanseg(archive, "CT", finder=MarkFinder)
+
+
+@pytest.fixture(name="scored", scope="module")
+def fixture_scored(archive):
+    return pixel_text_validation.check_hanseg(archive, "CT", finder=ScoringMarkFinder)
 
 
 def test_each_slice_is_searched_and_each_region_measured(measured):
@@ -321,7 +351,7 @@ def test_workers_find_what_one_process_finds(archive, measured):
 
 
 def test_the_summary_counts_the_volumes_slices_and_regions(summary):
-    assert summary["format"] == "pymedphys-deid-pixel-text-validation/1"
+    assert summary["format"] == "pymedphys-deid-pixel-text-validation/2"
     assert summary["image"] == "CT"
     assert summary["volumes"] == {
         "total": 5,
@@ -375,6 +405,174 @@ def test_the_summary_counts_the_volumes_slices_and_regions(summary):
         0,
     ]
     assert regions["share_not_air"] == face_validation.SHARE.counts([1.0] * 6)
+
+
+def test_a_scoring_finder_gives_each_regions_margin_and_renderings():
+    measures = pixel_text_validation.measure_volume(
+        _volume(_ct(), _CT_GRID), ScoringMarkFinder(), ct=True
+    )
+    plain = pixel_text_validation.measure_volume(
+        _volume(_ct(), _CT_GRID), MarkFinder(), ct=True
+    )
+    for field in ("regions", "areas", "shorter_sides", "elongations", "not_air"):
+        assert getattr(measures, field) == getattr(plain, field)
+    # By top row: the line in the air, 12 columns wide, the square, 4 wide,
+    # and the line in the body, 6 wide.
+    assert measures.score_margins == pytest.approx((0.42, 0.02, 0.42))
+    assert measures.renderings == (
+        "full-range+white-top-hat",
+        "full-range",
+        "full-range+white-top-hat",
+    )
+    assert plain.score_margins is None and plain.renderings is None
+
+
+def test_a_regions_margin_is_its_highest_mean_less_the_box_threshold():
+    class Repeating(MarkFinder):
+        parameters = DetectionParameters(box_threshold=0.4)
+
+        def detections(self, frame):
+            boxes = self.find(frame)
+            return (
+                *(Detection(box, "black-top-hat", 0.7) for box in boxes),
+                *(Detection(box, "full-range", 0.45) for box in boxes),
+                *(Detection(box, "black-top-hat", 0.5) for box in boxes),
+            )
+
+    measures = pixel_text_validation.measure_volume(
+        _volume(_ct(), _CT_GRID), Repeating(), ct=True
+    )
+    assert measures.regions == (0, 1, 0, 2)
+    assert measures.score_margins == pytest.approx((0.3, 0.3, 0.3))
+    assert set(measures.renderings) == {"full-range+black-top-hat"}
+
+
+def test_scored_regions_are_clipped_and_dropped_as_a_runs_are():
+    class Overhanging(ScoringMarkFinder):
+        def detections(self, frame):
+            rows, columns = frame.shape
+            return (
+                *super().detections(frame),
+                Detection(
+                    TextBox(rows - 2, columns - 3, rows + 5, columns + 5),
+                    "black-top-hat",
+                    0.6,
+                ),
+                Detection(TextBox(rows + 1, 0, rows + 4, 3), "full-range", 0.6),
+            )
+
+    measures = pixel_text_validation.measure_volume(
+        _volume(_ct(), _CT_GRID), Overhanging(), ct=True
+    )
+    assert measures.regions == (1, 2, 1, 3)
+    assert len(measures.score_margins) == len(measures.renderings) == 7
+    assert measures.renderings.count("black-top-hat") == 4
+
+
+@pytest.mark.parametrize(
+    "detection, error",
+    [
+        ((TextBox(0, 0, 1, 1), "full-range", 0.6), "TypeError"),
+        (Detection(TextBox(0, 0, 1, 1), "edges", 0.6), "ValueError"),
+    ],
+)
+def test_a_scoring_finder_that_gives_a_wrong_detection_is_counted_as_crashed(
+    tmp_path, detection, error
+):
+    class Wrong(ScoringMarkFinder):
+        def detections(self, frame):  # pylint: disable = unused-argument
+            return (detection,)
+
+    path = tmp_path / "HaN-Seg.zip"
+    files.hanseg_zip(
+        path, {"case_01": {"IMG_CT.nrrd": files.nrrd_file(_ct(), _CT_GRID)}}
+    )
+    (volume,) = pixel_text_validation.measure_hanseg(path, "CT", finder=Wrong)
+    assert volume.reason == "crashed"
+    assert volume.where.startswith(f"{error} at pixel_text_validation.py:")
+
+
+def test_the_text_detector_is_a_scoring_finder():
+    # Made without its model, which isinstance does not need.
+    detector = object.__new__(TextDetector)
+    assert isinstance(detector, pixel_text_validation.ScoringFinder)
+    assert not isinstance(MarkFinder(), pixel_text_validation.ScoringFinder)
+
+
+def test_a_finder_without_scores_gives_none_by_score(summary):
+    assert summary["regions"]["score_margin"] is None
+    assert summary["regions"]["renderings"] is None
+    for grouping in ("by_slice_side", "by_pixel_spacing"):
+        for each in summary[grouping]["bins"]:
+            assert each["score_margin"] is None and each["renderings"] is None
+    page = pixel_text_validation.markdown(summary)
+    assert "Score margin" not in page
+    assert "| 0 to under 256 | 2 | 8 | 4 | 6 |" in page
+
+
+def test_the_summary_counts_the_regions_by_score_margin_and_rendering(scored):
+    margins = pixel_text_validation.SCORE_MARGIN
+    regions = scored["regions"]
+    assert regions["score_margin"] == margins.counts([0.42, 0.02, 0.42] * 2)
+    assert [each["count"] for each in regions["score_margin"]["bins"]] == [
+        2,
+        *[0] * 8,
+        4,
+        0,
+    ]
+    assert regions["renderings"] == {
+        "full-range": 2,
+        "full-range+white-top-hat": 4,
+    }
+
+
+def test_the_summary_counts_by_slice_side_and_pixel_spacing(scored):
+    by_side = scored["by_slice_side"]
+    assert by_side["unit"] == "pixels"
+    assert [(each["from"], each["to"]) for each in by_side["bins"]] == [
+        (each["from"], each["to"])
+        for each in pixel_text_validation.SLICE_SIDE.counts(())["bins"]
+    ]
+    # Both CTs' slices are 40 columns wide.
+    first, *others = by_side["bins"]
+    assert first == {
+        "from": 0,
+        "to": 256,
+        "volumes": 2,
+        "slices_searched": 8,
+        "slices_with_a_region": 4,
+        "regions": 6,
+        "score_margin": scored["regions"]["score_margin"],
+        "renderings": scored["regions"]["renderings"],
+    }
+    empty = pixel_text_validation.SCORE_MARGIN.counts(())
+    for each in others:
+        assert (each["volumes"], each["slices_searched"], each["regions"]) == (0, 0, 0)
+        assert each["score_margin"] == empty and each["renderings"] == {}
+    # Rows 1.2 mm apart.
+    by_spacing = scored["by_pixel_spacing"]
+    assert by_spacing["unit"] == "mm"
+    held = [each for each in by_spacing["bins"] if each["volumes"]]
+    assert [(each["from"], each["to"], each["regions"]) for each in held] == [
+        (1.0, 1.25, 6)
+    ]
+
+
+def test_the_page_shows_the_counts_by_score_and_size(scored):
+    page = pixel_text_validation.markdown(scored)
+    assert "| Score margin (mean probability above the box threshold) | Regions |" in (
+        page
+    )
+    assert "| `full-range+white-top-hat` | 4 |" in page
+    assert "## By the larger side of a slice\n" in page
+    assert "| 0 to under 256 | 2 | 8 | 4 | 6 |" in page
+    assert "| Score margin | 0 to under 256 pixels |" in page
+    assert "| 0.4 to under 0.45 | 4 |" in page
+    assert "| Score margin | 1 to under 1.25 mm |" in page
+    assert "| `full-range` | 2 |" in page
+    for block in page.split("\n\n"):
+        rows = [line for line in block.splitlines() if line.startswith("|")]
+        assert len({row.count("|") for row in rows}) <= 1
 
 
 def test_an_mr_summary_gives_no_share_above_air(archive):
@@ -535,3 +733,8 @@ def test_the_text_detector_runs_as_a_run_makes_it_in_one_process_or_several(
         text_detection.DetectionParameters()
     )
     assert one["slices"]["searched"] == 4
+    assert one["regions"]["score_margin"] is not None
+    assert (
+        sum(each["count"] for each in one["regions"]["score_margin"]["bins"])
+        == one["regions"]["total"]
+    )

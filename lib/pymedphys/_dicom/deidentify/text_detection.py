@@ -297,6 +297,25 @@ class TextBox:
 RENDERINGS = ("full-range", "white-top-hat", "black-top-hat")
 
 
+@dataclasses.dataclass(frozen=True)
+class Detection:
+    """A box that one rendering of a frame gives.
+
+    Attributes
+    ----------
+    box : TextBox
+    rendering : str
+        One of :data:`RENDERINGS`.
+    mean_probability : float
+        The mean probability of the box's region, which reaches
+        :attr:`DetectionParameters.box_threshold`.
+    """
+
+    box: TextBox
+    rendering: str
+    mean_probability: float
+
+
 class TextDetector:
     """Propose boxes around burned-in text in frames.
 
@@ -365,15 +384,31 @@ class TextDetector:
             Stored values of one frame: rows by columns for monochrome, or
             rows by columns by 3 for RGB, which is searched by its luminance.
         """
-        values = _luminance(frame)
-        boxes: set[TextBox] = set()
-        for image in renderings(values, self.parameters):
-            boxes.update(self._boxes(image))
-        return tuple(sorted(boxes))
+        return tuple(sorted({each.box for each in self.detections(frame)}))
 
-    def _boxes(self, image: np.ndarray) -> list[TextBox]:
-        probability = self._probability(image)
-        return boxes_from_probability(probability, image.shape, self.parameters)
+    def detections(self, frame: np.ndarray) -> tuple[Detection, ...]:
+        """Return the boxes that each rendering of one frame gives, with
+        their regions' mean probabilities, in the order of
+        :data:`RENDERINGS`; :meth:`find` gives each of their boxes once.
+
+        Parameters
+        ----------
+        frame : numpy.ndarray
+            As :meth:`find` takes it.
+        """
+        values = _luminance(frame)
+        found = []
+        for rendering, image in zip(
+            RENDERINGS, renderings(values, self.parameters), strict=True
+        ):
+            probability = self._probability(image)
+            found += [
+                Detection(box, rendering, mean)
+                for box, mean in scored_boxes_from_probability(
+                    probability, image.shape, self.parameters
+                )
+            ]
+        return tuple(found)
 
     def _probability(self, image: np.ndarray) -> np.ndarray:
         parameters = self.parameters
@@ -451,6 +486,21 @@ def boxes_from_probability(
     parameters: DetectionParameters,
 ) -> list[TextBox]:
     """Turn the network's probability map into boxes in frame pixels."""
+    return [
+        box
+        for box, _ in scored_boxes_from_probability(
+            probability, frame_shape, parameters
+        )
+    ]
+
+
+def scored_boxes_from_probability(
+    probability: np.ndarray,
+    frame_shape: tuple[int, int],
+    parameters: DetectionParameters,
+) -> list[tuple[TextBox, float]]:
+    """Turn the network's probability map into boxes in frame pixels, each
+    with its region's mean probability."""
     net_rows, net_columns = probability.shape
     row_scale = frame_shape[0] / net_rows
     column_scale = frame_shape[1] / net_columns
@@ -483,14 +533,13 @@ def boxes_from_probability(
         bottom = (rows.stop + offset) * row_scale + margin
         left = (columns.start - offset) * column_scale - margin
         right = (columns.stop + offset) * column_scale + margin
-        boxes.append(
-            TextBox(
-                top=max(0, int(np.floor(top))),
-                left=max(0, int(np.floor(left))),
-                bottom=min(frame_shape[0], int(np.ceil(bottom))),
-                right=min(frame_shape[1], int(np.ceil(right))),
-            )
+        box = TextBox(
+            top=max(0, int(np.floor(top))),
+            left=max(0, int(np.floor(left))),
+            bottom=min(frame_shape[0], int(np.ceil(bottom))),
+            right=min(frame_shape[1], int(np.ceil(right))),
         )
+        boxes.append((box, float(means[region])))
     return boxes
 
 
