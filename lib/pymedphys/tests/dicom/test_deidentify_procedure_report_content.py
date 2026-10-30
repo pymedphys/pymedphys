@@ -533,6 +533,8 @@ def _keepable(name, removed):
             "Person Observer Name": "D",
             # X/D, which Modified Dates modifies.
             "DateTime Started": "C",
+            # Not listed, but an ordinal, which is kept.
+            "Imaging Agent Administration Phase Identifier": "K",
         },
     ),
     (
@@ -660,25 +662,69 @@ def test_an_administration_phase_is_identified_by_its_ordinal(name):
     assert phase.TextValue == reports.PHASE_ORDINAL == "1"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason=(
-        "Imaging Agent Administration Phase Identifier is not listed in "
-        "Table E.3.4-1, so its Text Value takes Text Value's own rule, a "
-        "dummy value, which is not the numeric ordinal that TID 11008 row 2 "
-        "requires."
-    ),
-)
 @pytest.mark.parametrize("name", [PLANNED, PERFORMED])
-def test_a_written_administration_phase_is_identified_by_an_ordinal(with_option, name):
+@pytest.mark.parametrize("preset, options", EVERY_OPTION_SET)
+def test_a_written_administration_phase_is_identified_by_an_ordinal(
+    with_option, name, preset, options
+):
     dataset, _ = _report(name, ("TID 11006 row 4",))
 
-    data, _ = _released(with_option("public-release"), dataset)
+    data, _ = _released(_composed(with_option, preset, options), dataset)
 
+    # Table E.3.4-1 does not list Imaging Agent Administration Phase
+    # Identifier, but its ordinal is kept, as the maintainer decided on 30
+    # October 2026, since TID 11007 is Order Non-Significant and the ordinal
+    # alone gives the phases' order.
     written = pydicom.dcmread(io.BytesIO(data))
     phase = _by_meaning(written, reports.PHASE_IDENTIFIER.meaning)
-    assert phase.TextValue.isdecimal(), phase.TextValue
+    assert phase.TextValue == reports.PHASE_ORDINAL
+
+
+@pytest.mark.parametrize(
+    "text, kept",
+    [
+        ("1", True),
+        ("2", True),
+        ("12", True),
+        ("07", True),
+        ("123", False),
+        ("1A", False),
+        ("1.5", False),
+        ("-1", False),
+        ("PHASE 1", False),
+        ("", False),
+    ],
+)
+def test_only_a_phase_identifier_of_one_or_two_digits_is_kept(with_option, text, kept):
+    composed = with_option("basic")
+    dataset, iod = _report(PERFORMED, ("TID 11006 row 4",))
+    phase = _by_meaning(dataset, reports.PHASE_IDENTIFIER.meaning)
+    phase.TextValue = text
+
+    actions, _ = _planned(dataset, iod, composed)
+
+    # Any other value takes Text Value's own rule (D-022), as the value of
+    # an item whose concept Table E.3.4-1 does not list does, and gives no
+    # action here, while the tree is kept either way.
+    assert actions.get(ElementPath((), CONTENT)) == "K"
+    assert _values_by_concept(dataset, actions).get(
+        reports.PHASE_IDENTIFIER.meaning
+    ) == ("K" if kept else None)
+
+
+def test_another_text_item_of_digits_takes_its_own_rule(with_option):
+    composed = with_option("basic")
+    dataset, iod = _report(PERFORMED, ("TID 11006 row 4",))
+    steps = _by_meaning(dataset, reports.STEPS_NAME.meaning)
+    steps.TextValue = reports.PHASE_ORDINAL
+
+    actions, _ = _planned(dataset, iod, composed)
+
+    # The ordinal is kept by its concept, not by its value.
+    assert reports.STEPS_NAME.meaning not in _values_by_concept(dataset, actions)
+    assert content_items.PHASE_IDENTIFIER not in content_items.concept_actions(
+        composed.options
+    )
 
 
 @pytest.mark.parametrize("name", [PLANNED, PERFORMED])

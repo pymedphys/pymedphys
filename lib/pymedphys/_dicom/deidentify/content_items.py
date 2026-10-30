@@ -106,9 +106,12 @@ item's Value Type (0040,A040) and the code of its Concept Name Code Sequence
   Name (0040,A123), Date (0040,A121), Time (0040,A122), and DateTime
   (0040,A120) D, and UID (0040,A124) U; Text Value (0040,A160) has a
   supplementary rule; and codes and numbers are kept, as in any kept
-  sequence (D-022). The one exception is the Observation DateTime of a
+  sequence (D-022). The exceptions are the Observation DateTime of a
   Procedure Log's entries, which D gives the dummy datetime of its rank
-  (:func:`log_dummy_datetimes`).
+  (:func:`log_dummy_datetimes`), and the Text Value of an Imaging Agent
+  Administration Phase Identifier (130203, DCM), the ordinal that TID 11008
+  row 2 requires, which is kept where it is one or two digits
+  (:data:`PHASE_IDENTIFIER`).
 
 Waveform Annotation Sequence (0040,B020), which only IODs outside the first
 supported release define, takes its Basic Profile action, as any sequence
@@ -158,6 +161,7 @@ CONTENT_ITEM_SEQUENCES: Mapping[str, tuple[str, ...]] = types.MappingProxyType(
     }
 )
 VALUE_TYPE = "(0040,A040)"
+TEXT_VALUE = "(0040,A160)"
 CONCEPT_NAME = "(0040,A043)"
 # A content item's modifiers, themselves content items (PS3.3 Table 10.2.1-1).
 MODIFIERS = "(0040,0441)"
@@ -186,7 +190,7 @@ VALUE_ATTRIBUTES: Mapping[str, str] = types.MappingProxyType(
         "TIME": "(0040,A122)",
         "PNAME": "(0040,A123)",
         "UIDREF": "(0040,A124)",
-        "TEXT": "(0040,A160)",
+        "TEXT": TEXT_VALUE,
     }
 )
 # The Content Item Macro's Value Type of a number (PS3.3 Table 10-2), which
@@ -218,6 +222,15 @@ DUMMY_IN_PLACE_OF_REMOVAL = frozenset(
         ("DCM", "128470", "UIDREF"),
     }
 )
+# Imaging Agent Administration Phase Identifier, which TID 11008 row 2
+# requires to be the phase's ordinal within its administration step, as
+# numeric text, and which Table E.3.4-1 does not list. TID 11007 is Order
+# Non-Significant, so the ordinal alone gives the phases' order, which Text
+# Value's own rule would replace with its dummy value. A value of one or two
+# digits is kept, as the maintainer decided on 30 October 2026, and any other
+# takes that rule (D-022).
+PHASE_IDENTIFIER = ("DCM", "130203", "TEXT")
+_ORDINAL = re.compile(r"[0-9]{1,2}")
 # A Procedure Log's first-level items, the log's entries, each include
 # Observation DateTime (0040,A032) and are "strictly ordered by monotonically
 # increasing" values of it (PS3.3 Section A.35.7.3.1.2). Where X/D gives it
@@ -284,6 +297,10 @@ METHOD = (
     "dummy and the order is kept; where those source values are not in "
     "increasing order, cannot be read as datetimes, or have different UTC "
     "offsets, the Content Sequence takes its Basic Profile action instead. "
+    "An Imaging Agent Administration Phase Identifier (130203, DCM), which "
+    "PS3.16 TID 11008 requires to be the phase's ordinal within its step, "
+    "keeps a value of one or two digits, which gives the phases' order, and "
+    "any other value takes its own rule. "
     "A concept name "
     "coded by a retired SNOMED designator with a code that Table O-1 maps is "
     "looked up as that SNOMED CT code."
@@ -551,7 +568,22 @@ class _Sequences:
             if mapped is None:
                 raise _Unkept
             designator, value = mapped
-        return self.actions.get((designator, value, value_type))
+        key = (designator, value, value_type)
+        if key == PHASE_IDENTIFIER:
+            return KEEP if self._ordinal(items) else None
+        return self.actions.get(key)
+
+    def _ordinal(self, items: tuple) -> bool:
+        """Return whether a TEXT item's value is one or two digits.
+
+        A value that cannot be read as one string is not, and takes Text
+        Value's own rule, as any unlisted item's value does.
+        """
+        try:
+            text = self.reader.text(ElementPath(items, TEXT_VALUE))
+        except (_Unkept, UndecodableElement):
+            return False
+        return text is not None and _ORDINAL.fullmatch(text) is not None
 
 
 def _defined(iod: IOD, path: ElementPath) -> bool:
