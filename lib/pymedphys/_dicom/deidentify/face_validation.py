@@ -148,18 +148,13 @@ class Bins:
         Raises
         ------
         ValueError
-            For a value that no bin holds: one that is not a number, or,
-            without ``below``, one below the first edge. The message quotes
-            no value.
+            As :meth:`index` does.
         """
-        lows: list[float | None] = [None] if self.below else []
-        lows += list(self.edges)
+        lows = self._lows()
         highs: list[float | None] = [*lows[1:], None]
         counts = [0] * len(lows)
         for value in values:
-            if math.isnan(value) or not (self.below or value >= self.edges[0]):
-                raise ValueError("A value is in no bin.")
-            counts[sum(1 for low in lows if low is None or value >= low) - 1] += 1
+            counts[self.index(value)] += 1
         return {
             "unit": self.unit,
             "bins": [
@@ -167,6 +162,25 @@ class Bins:
                 for low, high, count in zip(lows, highs, counts)
             ],
         }
+
+    def index(self, value: float) -> int:
+        """The position of the bin that holds a value, among those that
+        :meth:`counts` gives.
+
+        Raises
+        ------
+        ValueError
+            For a value that no bin holds: one that is not a number, or,
+            without ``below``, one below the first edge. The message quotes
+            no value.
+        """
+        if math.isnan(value) or not (self.below or value >= self.edges[0]):
+            raise ValueError("A value is in no bin.")
+        return sum(1 for low in self._lows() if low is None or value >= low) - 1
+
+    def _lows(self) -> list[float | None]:
+        lows: list[float | None] = [None] if self.below else []
+        return lows + list(self.edges)
 
 
 GLOBE_ERROR = Bins("mm", (0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 7.5, 10.0, 15.0))

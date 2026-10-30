@@ -534,12 +534,16 @@ def test_each_value_is_counted_in_the_bin_from_its_lower_edge(bins, values, coun
     highs = [each["to"] for each in result["bins"]]
     assert lows == ([None] if bins.below else []) + list(bins.edges)
     assert highs == lows[1:] + [None]
+    positions = [bins.index(value) for value in values]
+    assert [positions.count(each) for each in range(len(counts))] == counts
 
 
 @pytest.mark.parametrize("value", [-0.5, math.nan])
 def test_a_value_that_no_bin_holds_is_refused_without_quoting_it(value):
     with pytest.raises(ValueError, match="^A value is in no bin.$"):
         face_validation.Bins("mm", (0.0, 1.0)).counts([0.25, value])
+    with pytest.raises(ValueError, match="^A value is in no bin.$"):
+        face_validation.Bins("mm", (0.0, 1.0)).index(value)
 
 
 def test_measures_show_nothing_of_a_case(measured):
