@@ -180,6 +180,8 @@ def test_a_valid_file_loads(tmp_path):
         (_document(terms=[_term(LONG_COMMON_NAME=" Body weight")]), "long common"),
         (_document(terms=[_term(LONG_COMMON_NAME="x" * 256)]), "long common name"),
         (_document(terms=[_term(STATUS="RETIRED")]), "status"),
+        (_document(terms=[_term(STATUS=[])]), "status"),
+        (_document(terms=[_term(STATUS={"value": "ACTIVE"})]), "status"),
         (_document(terms=[_term(), _term()]), "term 2 repeats 29463-7"),
     ],
 )

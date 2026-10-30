@@ -145,7 +145,7 @@ def _term_problem(entry: object) -> str | None:
         return "does not have a LOINC code with a valid check digit"
     if not _is_text(entry["LONG_COMMON_NAME"]):
         return "does not have a long common name of at most 255 characters"
-    if entry["STATUS"] not in STATUSES:
+    if not isinstance(entry["STATUS"], str) or entry["STATUS"] not in STATUSES:
         return f"does not have a status of {', '.join(sorted(STATUSES))}"
     return None
 
