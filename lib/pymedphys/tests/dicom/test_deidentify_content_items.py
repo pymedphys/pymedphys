@@ -19,6 +19,8 @@ the text ``SENTINEL``. Content items whose concept names Table E.3.4-1 does
 not list are coded in the invented local scheme ``99PMP``.
 """
 
+# pylint: disable = too-many-lines
+
 import functools
 import io
 
@@ -918,34 +920,121 @@ def test_the_statement_describes_the_cleaning_of_content_items():
 
 
 def _log(*datetimes):
-    """Return a Procedure Log whose entries were observed at ``datetimes``."""
+    """Return a Procedure Log whose entries were observed at ``datetimes``.
+
+    An entry whose datetime is ``None`` has no Observation DateTime.
+    """
     entries = [_text() for _ in datetimes]
     for entry, observed in zip(entries, datetimes):
         entry.RelationshipType = "CONTAINS"
-        entry.ObservationDateTime = observed
+        if observed is not None:
+            entry.ObservationDateTime = observed
     return _report(*entries)
 
 
 LOG = "Procedure Log"
 LOG_TIMES = ("20260102030405", "20260102030406")
+OBSERVED = "(0040,A032)"
+
+
+def _log_dummies(options, dataset, iod=LOG, actions=None):
+    source = read_source(synthetic.written(dataset))
+    chosen = policy.compose_custom_policy(options)
+    found = load_iod_tables().iods[iod]
+    if actions is None:
+        actions = content_items.content_item_actions(source, chosen, found)
+    return content_items.log_dummy_datetimes(source, chosen, found, actions)
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.4-01")
-def test_a_log_whose_entries_would_share_a_dummy_datetime_is_not_kept():
+@pytest.mark.filterwarnings("ignore:Invalid value for VR DT:UserWarning")
+@pytest.mark.parametrize(
+    "times",
+    [
+        ("20260102030406", "20260102030405"),
+        ("20260102030405", "2026-01-02"),
+        ("20260102030405+1000", "20260102030406+1100"),
+        ("20260102030405+1000", "20260102030406"),
+        ("20260102030405", "202601020304.5"),
+    ],
+    ids=["out-of-order", "not-a-datetime", "offsets", "offset-and-none", "fraction"],
+)
+def test_a_log_whose_entries_cannot_be_shown_in_order_is_not_kept(times):
     # PS3.3 A.35.7.3.1.2 orders a log's entries by increasing Observation
-    # DateTime, which X/D would give one dummy value.
-    assert not _actions((CSC,), _log(*LOG_TIMES), LOG)
+    # DateTime, which the dummies of their ranks keep only where the source
+    # values are in that order, as datetimes that can be compared.
+    assert not _actions((CSC,), _log(*times), LOG)
 
 
 @pytest.mark.parametrize(
     "options, times, iod",
     [
-        ((CSC, policy.FULL_DATES), LOG_TIMES, LOG),
-        ((CSC, policy.MODIFIED_DATES), LOG_TIMES, LOG),
-        ((CSC,), LOG_TIMES[:1], LOG),
-        ((CSC,), LOG_TIMES, REPORT),
+        ((CSC,), LOG_TIMES, LOG),
+        ((CSC,), (LOG_TIMES[0], LOG_TIMES[0], None, LOG_TIMES[1]), LOG),
+        ((CSC,), ("20260102030405+1000", "20260102030406+1000"), LOG),
+        ((CSC, policy.FULL_DATES), LOG_TIMES[::-1], LOG),
+        ((CSC, policy.MODIFIED_DATES), LOG_TIMES[::-1], LOG),
+        ((CSC,), LOG_TIMES[::-1], REPORT),
     ],
-    ids=["full-dates", "modified-dates", "one-entry", "other-report"],
+    ids=[
+        "increasing",
+        "equal-and-absent",
+        "same-offset",
+        "full-dates",
+        "modified-dates",
+        "other-report",
+    ],
 )
 def test_a_log_is_kept_where_its_entries_stay_in_order(options, times, iod):
     assert _actions(options, _log(*times), iod)[_path(tag=CONTENT)] == "K"
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.4-01")
+@pytest.mark.parametrize(
+    "times, expected",
+    [
+        (LOG_TIMES, ("19000101000000", "19000101000001")),
+        (
+            ("2026", "20260101", "20260101000000.5", None, "20260102"),
+            ("19000101000000", "19000101000000", "19000101000001", None)
+            + ("19000101000002",),
+        ),
+        (
+            ("20260102030405+1000", "20260102030405.000000+1000"),
+            ("19000101000000", "19000101000000"),
+        ),
+        # A series that would write a source value moves on by its length.
+        (
+            ("19000101000000", "19000101000001", "19000101000003"),
+            ("19000101000006", "19000101000007", "19000101000008"),
+        ),
+        (("1900", "20260101"), ("19000101000002", "19000101000003")),
+    ],
+    ids=["increasing", "equal", "fraction", "second-run", "constant"],
+)
+def test_each_log_entry_takes_the_dummy_datetime_of_its_rank(times, expected):
+    dummies = _log_dummies((CSC,), _log(*times))
+    assert dummies == {
+        _path((CONTENT, index), tag=OBSERVED): dummy
+        for index, dummy in enumerate(expected)
+        if dummy is not None
+    }
+
+
+@pytest.mark.parametrize(
+    "options, iod",
+    [
+        ((CSC, policy.FULL_DATES), LOG),
+        ((CSC, policy.MODIFIED_DATES), LOG),
+        ((CSC,), REPORT),
+        ((), LOG),
+    ],
+    ids=["full-dates", "modified-dates", "other-report", "no-option"],
+)
+def test_only_a_kept_log_whose_datetimes_take_d_has_dummy_datetimes(options, iod):
+    assert not _log_dummies(options, _log(*LOG_TIMES), iod)
+
+
+def test_log_dummy_datetimes_refuses_actions_that_keep_an_unordered_log():
+    with pytest.raises(ValueError, match="not in order"):
+        _log_dummies((CSC,), _log(*LOG_TIMES[::-1]), actions={_path(tag=CONTENT): "K"})

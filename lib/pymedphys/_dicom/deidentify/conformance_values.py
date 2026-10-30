@@ -48,11 +48,13 @@ from collections.abc import Callable, Iterable, Mapping
 from . import birth_dates, dates, dummy_values, pixel_risk, pseudonyms, residuals, uids
 from . import release_report as report
 from .conformance import ConformanceStatement
+from .content_items import OBSERVATION_DATETIME
 from .edits import PSEUDONYM_TAGS
 from .pixel_risk import Indicator
 from .policy import (
     CLEAN_PIXEL_DATA,
     CLEAN_RECOGNIZABLE_VISUAL_FEATURES,
+    CLEAN_STRUCTURED_CONTENT,
     FULL_DATES,
     MODIFIED_DATES,
 )
@@ -403,6 +405,7 @@ def values_written(
         "has no rank, as where the run holds no instance of its series, is "
         "emptied under Z and takes D's constant under D. The numbering spans "
         "one run.",
+        *(("", _log_datetimes(named)) if _writes_log_datetimes(statement) else ()),
         "",
         f"U replaces a UID with `{uids.UID_ROOT}` followed by the decimal form "
         f"of a name-based (version 5) UUID, at most {uid_length} characters "
@@ -423,6 +426,31 @@ def values_written(
             else "."
         ),
     ]
+
+
+def _writes_log_datetimes(statement: ConformanceStatement) -> bool:
+    """Return whether D writes the ranked datetimes of a Procedure Log's entries."""
+    return CLEAN_STRUCTURED_CONTENT in statement.options and not {
+        FULL_DATES,
+        MODIFIED_DATES,
+    }.intersection(statement.options)
+
+
+def _log_datetimes(named: Callable[[str], str]) -> str:
+    """Return the paragraph on the datetimes that D writes in a Procedure Log."""
+    first = dummy_values.CONSTANTS["DT"][0]
+    return (
+        f"D on {named(OBSERVATION_DATETIME)} of each entry of a Procedure "
+        "Log, a first-level item of its Content Sequence, writes in place of "
+        "the constant the dummy datetime of its rank among the entries' "
+        f"distinct source values: `{first}` for the earliest, and one second "
+        "more for each later one, so entries with equal source values share "
+        "one and the log keeps the increasing order that PS3.3 Section "
+        "A.35.7.3.1.2 requires. Where any of these would equal an entry's "
+        "source value, as D compares them, the series moves on by its own "
+        "length until none does. A log whose entries are not in increasing "
+        "order is sequestered."
+    )
 
 
 def _birth_dates(named: Callable[[str], str]) -> str:
