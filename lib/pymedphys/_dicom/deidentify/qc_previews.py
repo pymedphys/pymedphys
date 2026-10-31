@@ -44,7 +44,15 @@ frame with such regions, also from the file as received:
   ID and Temporal Position Index of their Frame Content functional group,
   form a volume of their own, so that frames at one position at two time
   points, whose union could hide the surface of either, are in none
-  together. A series with a colour instance or a Segmentation forms none.
+  together; and slices that still repeat a position, such as the
+  single-frame instances of a respiratory-correlated CT's time points,
+  are parted into phases by the time point or acquisition that each
+  names (:func:`~pymedphys._dicom.deidentify.phases.split`), each forming
+  a volume of its own, or form none where nothing parts them. The surface
+  renders of a series are sampled in batches of at most
+  :data:`SAMPLED_AT_ONCE` voxels, so that its memory does not grow with
+  the number of its volumes. A series with a colour instance or a
+  Segmentation forms none.
   It is projected along the anterior-posterior axis and shown
   with the patient's head at the top and right on the viewer's left, sampled
   to square pixels by nearest neighbour, at most :data:`MIP_PIXELS` a side,
@@ -158,6 +166,7 @@ from .pixel_decoding import DECODING_PLUGINS, decoder_available
 from . import qc_contours, qc_segments, qc_surfaces
 from .face_review import is_rt_dose
 from .functional_groups import frame_group
+from .phases import FRAME, Named, named_by_frame, named_by_instance, split
 from .qc_pack import (
     NotPreviewedEntry,
     NotPreviewedReason,
@@ -261,6 +270,10 @@ class _Instance:
     # for one with them, where every frame's Pixel Value Transformation
     # group gives Rescale Slope, Rescale Intercept, and a Rescale Type of HU.
     hounsfield: bool = False
+    # What each frame names of its phase (phases.split), where it can be
+    # read: a single-frame instance's own, or each frame's Frame Content
+    # group's.
+    named: tuple[Named, ...] | None = None
 
     def plane_of(self, frame: int) -> _Plane | None:
         """The plane of a frame, from 0, or None where it has none."""
@@ -276,6 +289,13 @@ class _Instance:
         """The Stack ID and Temporal Position Index of a frame, from 0, or
         empty strings where it gives none."""
         return ("", "") if self.stacks is None else self.stacks[frame]
+
+    def named_of(self, frame: int) -> Named:
+        """What a frame, from 0, names of its phase, or nothing where that
+        could not be read."""
+        if self.named is None:
+            return Named(FRAME, ("", ""))
+        return self.named[frame]
 
 
 @dataclasses.dataclass(frozen=True)
@@ -596,6 +616,7 @@ def _described(
         rescales=framed.rescales,
         stacks=framed.stacks,
         hounsfield=hounsfield,
+        named=framed.named if framed.described else _named(dataset, frames),
     )
 
 
@@ -710,6 +731,7 @@ class _Framed:
     rescales: tuple[tuple[float, float], ...] | None = None
     stacks: tuple[tuple[str, str], ...] | None = None
     hounsfield: bool = False
+    named: tuple[Named, ...] | None = None
 
 
 def _framed(dataset: pydicom.Dataset, frames: int, shape: tuple[int, int]) -> _Framed:
@@ -727,7 +749,9 @@ def _framed(dataset: pydicom.Dataset, frames: int, shape: tuple[int, int]) -> _F
     Hounsfield units only where every frame's Rescale Type, which PS3.3
     Table C.7.6.16-10 requires, is HU. A frame's stack is its Frame
     Content group's Stack ID and Temporal Position Index, each empty where
-    it gives none. Whatever cannot be read leaves out what it would give.
+    it gives none, and what it names of its phase is read from the same
+    group (:func:`~.phases.named_by_frame`). Whatever cannot be read leaves
+    out what it would give.
     """
     try:
         if not any(keyword in dataset for keyword in _FUNCTIONAL_GROUPS):
@@ -744,6 +768,7 @@ def _read_framed(
     planes: list[_Plane] | None = []
     rescales: list[tuple[float, float]] | None = []
     stacks: list[tuple[str, str]] = []
+    named: list[Named] = []
     rescaled = _in_groups(dataset, _RESCALING)
     hounsfield = rescaled
     for frame in range(frames):
@@ -783,12 +808,14 @@ def _read_framed(
         stacks.append(
             (_text(content, "StackID"), _text(content, "TemporalPositionIndex"))
         )
+        named.append(named_by_frame(content))
     return _Framed(
         described=True,
         planes=None if planes is None else tuple(planes),
         rescales=None if not rescaled or rescales is None else tuple(rescales),
         stacks=tuple(stacks),
         hounsfield=hounsfield,
+        named=tuple(named),
     )
 
 
@@ -829,6 +856,15 @@ def _hounsfield(dataset: pydicom.Dataset) -> bool:
     except Exception:  # pylint: disable = broad-exception-caught
         return False
     return isinstance(value, str) and value.strip().upper() == "HU"
+
+
+def _named(dataset: pydicom.Dataset, frames: int) -> tuple[Named, ...]:
+    """What each frame of an instance without functional groups names of
+    its phase: a single-frame instance's own attributes, and nothing for a
+    frame of a multi-frame one."""
+    if frames == 1:
+        return (named_by_instance(dataset),)
+    return (named_by_frame(None),) * frames
 
 
 # The attributes by which stored values pad, and so are read as no patient.
@@ -1109,12 +1145,9 @@ def _series_images(
     # that no preview that could show a face draws its slices beyond its
     # cine strip, and their pixel data are held.
     projections = [
-        None if render.surface.large else _Projection(volume)
+        None if render.large else _Projection(volume)
         for volume, render in zip(volumes, renders)
     ]
-    wanted = {
-        each for render in renders if not render.surface.large for each in render.places
-    }
     in_volume = {each for volume in volumes for each in volume.slices}
     # Each RT Dose plane in no volume, mapped by the levels of its dose.
     planes = {
@@ -1124,44 +1157,96 @@ def _series_images(
         and instance.dose_scale is not None
         and (instance.position, 0) not in in_volume
     }
+    reference = series[0].frame
+    # Whether the guide drawn behind the contours and segments in the
+    # series' Frame of Reference is still to be found: from the first
+    # volume whose surface can be placed.
+    guiding = (
+        guides is not None
+        and reference in guides
+        and all(instance.frame == reference for instance in series)
+    )
     tiles: list[tuple[int, int, np.ndarray, _Instance]] = []
     # Each slice's map is drawn as soon as it is decoded, so that only its
     # 8-bit map, or None, and not its pixels, is kept to the series' end.
     maps: list[tuple[_Instance, np.ndarray | None]] = []
-    for instance in series:
-        needed = [
-            frame
-            for frame in range(instance.frames)
-            if (instance.position, frame) in chosen
-            or (instance.position, frame) in wanted
-            or instance.position in planes
-        ]
-        # Each file is read once for the frames that its previews draw,
-        # which are decoded one at a time, in order.
-        count = 0
-        for pixels in decoder.frames(instance, needed):
-            frame = needed[count]
-            count += 1
-            each = (instance.position, frame)
-            if each in chosen:
-                tiles.append(
-                    (instance.position, frame, _fitted(pixels, instance), instance)
+    # Each render's projection, then its surface render, once drawn.
+    images: dict[int, list] = {}
+    # The renders are sampled a batch at a time (_batches), the first with
+    # the cine strip and the maps, so that a series of many volumes, such
+    # as the phases of a respiratory-correlated CT, holds only one batch's
+    # samples at once; each later batch reads its files again.
+    for number, batch in enumerate(_batches(renders)):
+        first = number == 0
+        for index in batch:
+            renders[index].begin()
+        wanted = {
+            each
+            for index in batch
+            if not renders[index].large
+            for each in renders[index].places
+        }
+        for instance in series:
+            needed = [
+                frame
+                for frame in range(instance.frames)
+                if (instance.position, frame) in wanted
+                or (
+                    first
+                    and (
+                        (instance.position, frame) in chosen
+                        or instance.position in planes
+                    )
                 )
-            for projection, render in zip(projections, renders):
-                if projection is not None and each in render.places:
-                    projection.add(render.places[each], instance, pixels)
-            for render in renders:
-                if each in render.places:
+            ]
+            # Each file is read once a batch for the frames that its
+            # previews draw, which are decoded one at a time, in order.
+            count = 0
+            for pixels in decoder.frames(instance, needed):
+                frame = needed[count]
+                count += 1
+                each = (instance.position, frame)
+                if first and each in chosen:
+                    tiles.append(
+                        (instance.position, frame, _fitted(pixels, instance), instance)
+                    )
+                for index in batch:
+                    render = renders[index]
+                    if each not in render.places:
+                        continue
+                    projection = (
+                        projections[index] if index < len(projections) else None
+                    )
+                    if projection is not None:
+                        projection.add(render.places[each], instance, pixels)
                     # A volume of RT Dose planes scales each by its own.
-                    render.surface.add(
+                    render.sampled.add(
                         pixels,
                         instance.dose_scale if render.planed else None,
                         render.places[each],
                     )
-            if instance.position in planes:
-                maps.append((instance, _level_map(instance, pixels)))
-            # Freed before the next frame is decoded, so no two are held.
-            del pixels
+                if first and instance.position in planes:
+                    maps.append((instance, _level_map(instance, pixels)))
+                # Freed before the next frame is decoded, so no two are held.
+                del pixels
+        for index in batch:
+            render = renders[index]
+            if guiding and index < len(volumes):
+                guide = _guide(volumes[index], render.sampled)
+                if guide is not None:
+                    assert guides is not None
+                    guides[reference].append(((guide, render.shown), series[0].series))
+                    guiding = False
+            drawn = []
+            if index < len(projections) and projections[index] is not None:
+                projected = projections[index].image()
+                if projected is not None:
+                    drawn.append(projected)
+            image = render.sampled.image()
+            if image is not None:
+                drawn.append((render.kind, render.shown, len(render.shown), image))
+            images[index] = drawn
+            render.end()
     if tiles:
         image = _sheet(
             _windowed_tiles([(tile, instance) for _, _, tile, instance in tiles]),
@@ -1174,28 +1259,9 @@ def _series_images(
             len(frames),
             image,
         )
-    frame = series[0].frame
-    if (
-        guides is not None
-        and frame in guides
-        and all(instance.frame == frame for instance in series)
-    ):
-        # The first volume whose surface can be placed is drawn behind the
-        # contours and segments in its Frame of Reference.
-        for volume, render in zip(volumes, renders):
-            guide = _guide(volume, render.surface)
-            if guide is not None:
-                guides[frame].append(((guide, render.shown), series[0].series))
-                break
     # Each volume's projection, then its surface render.
-    for index, render in enumerate(renders):
-        if index < len(projections) and projections[index] is not None:
-            projected = projections[index].image()
-            if projected is not None:
-                yield projected
-        image = render.surface.image()
-        if image is not None:
-            yield render.kind, render.shown, len(render.shown), image
+    for index in range(len(renders)):
+        yield from images.get(index, [])
     for instance, level_map in maps:
         if level_map is not None:
             yield (
@@ -1204,6 +1270,30 @@ def _series_images(
                 1,
                 level_map,
             )
+
+
+# The most voxels that the surface renders of one series sample at once,
+# 256 MiB as float32: the renders of a series of many volumes, such as the
+# phases of a respiratory-correlated CT or the time points of a perfusion
+# scan, are sampled in batches within it, in order, and a volume that
+# samples more alone is sampled alone, so that a series' memory does not
+# grow with the number of its volumes.
+SAMPLED_AT_ONCE = 1 << 26
+
+
+def _batches(renders: Sequence[_Render]) -> list[list[int]]:
+    """The indices of the renders, in order, in batches that each sample no
+    more than :data:`SAMPLED_AT_ONCE` voxels in all, or one render alone;
+    always at least one batch, which may be empty."""
+    batches: list[list[int]] = [[]]
+    total = 0
+    for index, render in enumerate(renders):
+        if batches[-1] and total + render.size > SAMPLED_AT_ONCE:
+            batches.append([])
+            total = 0
+        batches[-1].append(index)
+        total += render.size
+    return batches
 
 
 def _level_map(instance: _Instance, pixels: np.ndarray) -> np.ndarray | None:
@@ -1232,17 +1322,40 @@ class _Render:
 
     ``planed`` is whether each is scaled by its own Dose Grid Scaling, as
     the planes of a volume of RT Dose planes are, and ``places`` gives each
-    frame's place along the slice axis.
+    frame's place along the slice axis. Its surface samples the volume
+    only from :meth:`begin` to :meth:`end`, so that its samples are held
+    only while its batch is drawn (:func:`_batches`); ``size`` is how many
+    voxels it samples, and ``large`` whether the volume is too large to
+    render.
     """
 
     kind: PreviewKind
     shown: tuple[tuple[int, int], ...]
-    surface: qc_surfaces.Surface
+    grid: qc_surfaces.Grid
     planed: bool = False
     places: dict[tuple[int, int], int] = dataclasses.field(init=False)
+    size: int = dataclasses.field(init=False)
+    large: bool = dataclasses.field(init=False)
+    surface: qc_surfaces.Surface | None = dataclasses.field(init=False, default=None)
 
     def __post_init__(self) -> None:
         self.places = {each: index for index, each in enumerate(self.shown)}
+        self.large = qc_surfaces.too_large(self.grid)
+        self.size = qc_surfaces.sampled_voxels(self.grid)
+
+    def begin(self) -> None:
+        """Start sampling the volume."""
+        self.surface = qc_surfaces.Surface(self.grid)
+
+    def end(self) -> None:
+        """Let the samples go, once the render is drawn."""
+        self.surface = None
+
+    @property
+    def sampled(self) -> qc_surfaces.Surface:
+        """The surface, between :meth:`begin` and :meth:`end`."""
+        assert self.surface is not None
+        return self.surface
 
 
 def _renders(series: list[_Instance], volumes: Sequence[_Volume]) -> list[_Render]:
@@ -1274,20 +1387,14 @@ def _renders(series: list[_Instance], volumes: Sequence[_Volume]) -> list[_Rende
         grid = qc_surfaces.grid(
             volume.directions, volume.positions, volume.spacing, volume.shape, threshold
         )
-        renders.append(
-            _Render(kind, volume.slices, qc_surfaces.Surface(grid), planed=planed)
-        )
+        renders.append(_Render(kind, volume.slices, grid, planed=planed))
     for instance in series:
         if instance.grid is not None:
             shown = tuple(
                 (instance.position, frame) for frame in range(instance.frames)
             )
             renders.append(
-                _Render(
-                    PreviewKind.SERIES_DOSE_LEVELS,
-                    shown,
-                    qc_surfaces.Surface(instance.grid),
-                )
+                _Render(PreviewKind.SERIES_DOSE_LEVELS, shown, instance.grid)
             )
     return renders
 
@@ -1621,8 +1728,14 @@ def _volumes(series: list[_Instance]) -> list[_Volume]:
     their Frame Content functional groups give them, so that the frames of
     a multi-frame instance at each time point, or in each stack, can each
     form a volume; a single-frame instance, and a frame without them, is in
-    the group of neither. A series with a colour instance, or a
-    Segmentation, which only its segments sheet shows (D-017), forms none.
+    the group of neither. A group whose slices repeat a position is parted
+    into its phases, by the time point or acquisition that each slice names
+    (:func:`~.phases.split`), each of which may form a volume, so that the
+    single-frame instances of a respiratory-correlated CT or a perfusion
+    scan form one for each time point, and no volume holds two slices at
+    one position, whose union could hide the surface of either. A series
+    with a colour instance, or a Segmentation, which only its segments
+    sheet shows (D-017), forms none.
     """
     if any(instance.colour or instance.segmentation for instance in series):
         return []
@@ -1630,8 +1743,29 @@ def _volumes(series: list[_Instance]) -> list[_Volume]:
     for instance in series:
         for frame in range(instance.frames):
             groups.setdefault(instance.stack_of(frame), []).append((instance, frame))
-    found = (_volume(group) for group in groups.values())
+    found = (_volume(part) for group in groups.values() for part in _phases_of(group))
     return [volume for volume in found if volume is not None]
+
+
+def _phases_of(
+    group: list[tuple[_Instance, int]],
+) -> list[list[tuple[_Instance, int]]]:
+    """A group's slices parted into phases where they repeat a position, as
+    :func:`~.phases.split` parts them along the first slice's normal; the
+    group whole where any slice has no plane, or where they cannot be
+    parted, so that :func:`_volume` refuses it as it would."""
+    planes = [instance.plane_of(frame) for instance, frame in group]
+    if not planes or any(plane is None for plane in planes):
+        return [group]
+    placed = [plane for plane in planes if plane is not None]
+    normal = np.cross(placed[0].row, placed[0].column)
+    parts = split(
+        [float(np.dot(normal, plane.origin)) for plane in placed],
+        [instance.named_of(frame) for instance, frame in group],
+    )
+    if parts is None:
+        return [group]
+    return [[group[index] for index in part] for part in parts]
 
 
 def _volume(group: list[tuple[_Instance, int]]) -> _Volume | None:

@@ -55,7 +55,21 @@ kind, or both. A series is defaced only where all of these hold:
 - :class:`~pymedphys._dicom.deidentify.defacing.FaceFinder` finds the
   block from the slices within :data:`HEAD_REACH` millimetres of the
   volume's superior end, which bounds the memory that a long volume needs,
-  no two slices lying at one position, as two phases of one stack do; and
+  no two slices lying at one position; slices that repeat a position, as
+  the time points of a respiratory-correlated CT or a perfusion scan, the
+  phases of a contrast study, or two overlapping acquisitions do, are
+  parted into phases by the time point or acquisition that each names
+  (:func:`~pymedphys._dicom.deidentify.phases.split`), each found from its
+  own slices alone, and the series is defaced only where they part
+  (:attr:`SeriesProblem.REPEATED_POSITIONS`), lie on one grid within their
+  planes (:attr:`SeriesProblem.NOT_ONE_STACK`), and each phase's globes lie
+  within :data:`PHASE_REACH` of every other's
+  (:attr:`SeriesProblem.PHASES_DISAGREE`), and where each phase gives a
+  block, but for one from which the finder finds no globes and whose
+  slices the others' block reaches none of; the series is then defaced by
+  one block that holds every pixel of its slices that any phase's block
+  holds (:func:`_enclosing`), against which targets are checked, and each
+  eye against each phase's globes; and
 - no contour of a target, an ROI whose RT ROI Interpreted Type is
   :data:`TARGET_TYPES`, of any RT Structure Set of the run searched for the
   series (:func:`_searched`), in the series' Frame of Reference, or naming
@@ -162,6 +176,7 @@ from . import defacing
 from .defacing import FaceBlock, FaceBlockProblem, FaceBlockRefused
 from .diagnostics import redacted_diagnostics
 from .functional_groups import frame_group
+from .phases import COINCIDENT, Named, named_by_frame, named_by_instance, split
 from .pixel_cleaning import (
     FrameMask,
     Layout,
@@ -212,6 +227,16 @@ TARGET_TYPES = frozenset({"PTV", "CTV", "GTV"})
 # more for an eye drawn with a margin, or a globe found off its centre. A
 # placeholder, to be set by validation.
 EYE_REACH = defacing.GLOBE_DIAMETER[1] / 2 + 10.0
+# How far, in millimetres, the centre of each globe found from one phase of
+# a series whose slices repeat their positions may lie from the same
+# globe's centre found from any other phase: half the smallest diameter of
+# a globe that the finder accepts, so that each centre lies within the
+# other's globe. A placeholder, to be set by validation.
+PHASE_REACH = defacing.GLOBE_DIAMETER[0] / 2
+# How far, in millimetres, the plane of a block that encloses the blocks of
+# a series' phases lies behind the nearest point of theirs, so that a point
+# on their boundary is strictly inside it.
+_ENCLOSING = 1e-6
 # The IODs whose instances in a defaced series' Frame of Reference are held
 # unless the run cleans them of the face.
 UNDEFACED_IODS = frozenset({RT_STRUCTURE_SET, "RT Dose", *PET_IODS, "Segmentation"})
@@ -231,8 +256,15 @@ class SeriesProblem(enum.Enum):
     # encoded again
     COMPRESSED = "compressed-pixel-data"
     # slices or frames of more than one sample, orientation, size, spacing,
-    # or Frame of Reference, or a CT Image instance of more than one frame
+    # or Frame of Reference, a CT Image instance of more than one frame, or
+    # phases whose slices are not placed on one grid within their planes
     NOT_ONE_STACK = "not-one-stack"
+    # slices at one position that no time point or acquisition that they
+    # name parts into phases (phases.split)
+    REPEATED_POSITIONS = "repeated-positions"
+    # phases whose globes lie apart, as a head moved between them, or
+    # globes found wrongly in one of them, would leave them
+    PHASES_DISAGREE = "phases-disagree"
     # stored values whose Rescale Type is not Hounsfield units, as a
     # material map of a multi-energy CT can be
     NOT_HOUNSFIELD = "not-hounsfield-units"
@@ -321,6 +353,8 @@ class _Slice:
     padding: tuple[int, int] | None
     air: int
     frame: str | None
+    # What the slice names of its phase (phases.split).
+    named: Named
 
 
 class _Unusable(Exception):
@@ -360,7 +394,8 @@ def find_face_blocks(
             structure_sets.append(position)
     outcomes = {}
     for uid, positions in series.items():
-        outcome, frame = _series_outcome(positions, read)
+        found = _series_found(positions, read)
+        outcome, frame = found.outcome, found.frame
         if outcome.block is not None and frame:
             searched = [
                 position
@@ -369,7 +404,11 @@ def find_face_blocks(
             ]
             if _target_in(outcome.block, frame, slices[uid], searched, read):
                 outcome = SeriesDefacing(None, SeriesProblem.TARGET_IN_BLOCK)
-            elif _eyes_disagree(outcome.block, frame, searched, read):
+            # An eye is checked against the globes of each phase that they
+            # were found in.
+            elif any(
+                _eyes_disagree(block, frame, searched, read) for block in found.blocks
+            ):
                 outcome = SeriesDefacing(None, SeriesProblem.EYES_DISAGREE)
         outcomes[uid] = outcome
     return outcomes
@@ -499,11 +538,34 @@ def find_defaced(
     )
 
 
+@dataclasses.dataclass(frozen=True)
+class _Found:
+    """One series' outcome, its Frame of Reference UID, and the block found
+    from each of its phases that gave one, in the order of the phases."""
+
+    outcome: SeriesDefacing
+    frame: str | None
+    blocks: tuple[FaceBlock, ...] = ()
+
+
 def _series_outcome(
     positions: list[int], read: Callable[[int], bytes | None]
 ) -> tuple[SeriesDefacing, str | None]:
     """Find one series' block, or why it has none, and its Frame of
     Reference UID."""
+    found = _series_found(positions, read)
+    return found.outcome, found.frame
+
+
+def _series_found(positions: list[int], read: Callable[[int], bytes | None]) -> _Found:
+    """Find one series' block, or why it has none, its Frame of Reference
+    UID, and the block of each of its phases.
+
+    A series whose slices repeat their positions is found phase by phase
+    (:func:`_phases`), each phase's block from its own slices, as the
+    module describes; the series' block encloses them all
+    (:func:`_enclosing`).
+    """
     frame = None
     try:
         slices, places = _stack(positions, read)
@@ -513,25 +575,172 @@ def _series_outcome(
         # the block.
         if not frame:
             raise _Unusable(SeriesProblem.UNREADABLE)
-        finder = _finder(slices, places, read)
-        return SeriesDefacing(finder.block(), None, frame), frame
+        groups = _phases(slices)
+        blocks: list[FaceBlock] = []
+        eyeless: list[list[int]] = []
+        for group in groups:
+            finder = _finder(
+                [slices[i] for i in group], [places[i] for i in group], read
+            )
+            try:
+                found = finder.block()
+            except FaceBlockRefused as refused:
+                # Only a phase of several that finds no globes may be left
+                # to the block of the others, and only where that reaches
+                # none of its slices, checked once every block is found.
+                if len(groups) == 1 or refused.problem is not FaceBlockProblem.NO_EYES:
+                    raise
+                eyeless.append(group)
+                continue
+            if not _agree([*blocks, found]):
+                raise _Unusable(SeriesProblem.PHASES_DISAGREE)
+            blocks.append(found)
+        if not blocks:
+            raise FaceBlockRefused(FaceBlockProblem.NO_EYES)
+        block = blocks[0] if len(groups) == 1 else _enclosing(blocks, slices)
+        if any(_reaches(block, slices[i]) for group in eyeless for i in group):
+            raise FaceBlockRefused(FaceBlockProblem.NO_EYES)
+        return _Found(SeriesDefacing(block, None, frame), frame, tuple(blocks))
     except _Unusable as unusable:
-        return SeriesDefacing(None, unusable.problem), frame
+        return _Found(SeriesDefacing(None, unusable.problem), frame)
     except FaceBlockRefused as refused:
-        return SeriesDefacing(None, refused.problem), frame
+        return _Found(SeriesDefacing(None, refused.problem), frame)
     # Whatever else a series' data raises, such as the finder's ValueError
     # for geometry that it cannot use, or MemoryError for a volume too large
     # to sample, leaves the series undefaced rather than stopping the run;
     # its message, which can quote a value, is dropped.
     except Exception:  # pylint: disable = broad-exception-caught
-        return SeriesDefacing(None, SeriesProblem.UNREADABLE), frame
+        return _Found(SeriesDefacing(None, SeriesProblem.UNREADABLE), frame)
+
+
+def _phases(slices: list[_Slice]) -> list[list[int]]:
+    """The indices of each phase's slices, as :func:`~.phases.split` parts
+    them by their heights along the first slice's normal.
+
+    Raises
+    ------
+    _Unusable
+        With :attr:`SeriesProblem.REPEATED_POSITIONS` where the slices
+        repeat a position but cannot be parted, and with
+        :attr:`SeriesProblem.NOT_ONE_STACK` where they are parted into more
+        than one phase but do not all lie on the first slice's grid within
+        their planes, within
+        :data:`~pymedphys._dicom.deidentify.defacing.STACKING_TOLERANCE`, so
+        that the slices at one position of two phases are of the same
+        pixels' centres.
+    """
+    first = slices[0]
+    normal = np.cross(first.orientation[:3], first.orientation[3:])
+    origins = np.array([each.position for each in slices], dtype=float)
+    heights = origins @ normal
+    groups = split([float(height) for height in heights], [s.named for s in slices])
+    if groups is None:
+        raise _Unusable(SeriesProblem.REPEATED_POSITIONS)
+    if len(groups) > 1:
+        in_plane = (origins - origins[0]) - np.outer(heights - heights[0], normal)
+        if np.abs(in_plane).max() > defacing.STACKING_TOLERANCE:
+            raise _Unusable(SeriesProblem.NOT_ONE_STACK)
+    return groups
+
+
+def _agree(blocks: Sequence[FaceBlock]) -> bool:
+    """Whether each globe's centre in each block lies within
+    :data:`PHASE_REACH` of the same globe's centre in every other."""
+    globes = np.array([block.globes for block in blocks], dtype=float)
+    apart = np.linalg.norm(globes[:, np.newaxis] - globes[np.newaxis, :], axis=-1)
+    return bool(np.all(apart <= PHASE_REACH))
+
+
+def _reaches(block: FaceBlock, each: _Slice) -> bool:
+    """Whether a block holds the centre of any pixel of a slice."""
+    return bool(
+        block.slice_mask(
+            each.position, each.orientation, each.spacing, each.shape
+        ).any()
+    )
+
+
+def _enclosing(blocks: Sequence[FaceBlock], slices: Sequence[_Slice]) -> FaceBlock:
+    """One block that holds every pixel of the slices that any of the
+    phases' blocks holds.
+
+    Its plane faces the mean of their anterior directions, and lies
+    :data:`_ENCLOSING` behind the point furthest back along it of each
+    block's region within the slices' extent across the axial plane, the
+    rectangle of their pixels' centres, which the finder has placed along
+    the patient's axes; its inferior limit is the lowest of theirs; and its
+    globes are those of the block whose higher globe is highest, so that
+    the brain is kept above the highest floor (:data:`CAVITY_FLOOR`). Both
+    planes of each block are vertical or horizontal, so its region within
+    the extent is the rectangle cut by its vertical plane, and the point
+    furthest back along the enclosing plane's normal is one of that
+    region's corners.
+    """
+    anterior = np.sum([block.anterior for block in blocks], axis=0)
+    anterior[2] = 0.0
+    anterior /= np.linalg.norm(anterior)
+    corners = np.concatenate([_corners(each) for each in slices])
+    low, high = corners[:, :2].min(axis=0), corners[:, :2].max(axis=0)
+    rectangle = np.array(
+        [[low[0], low[1]], [high[0], low[1]], [high[0], high[1]], [low[0], high[1]]]
+    )
+    nearest = math.inf
+    for block in blocks:
+        region = _cut(
+            rectangle, np.array(block.anterior[:2]), np.array(block.origin[:2])
+        )
+        if len(region):
+            nearest = min(nearest, float(np.min(region @ anterior[:2])))
+    origin = np.array(blocks[0].origin, dtype=float)
+    if math.isfinite(nearest):
+        origin += (nearest - _ENCLOSING - float(origin @ anterior)) * anterior
+    highest = max(blocks, key=lambda block: max(globe[2] for globe in block.globes))
+    return FaceBlock(
+        (float(origin[0]), float(origin[1]), float(origin[2])),
+        (float(anterior[0]), float(anterior[1]), float(anterior[2])),
+        min(block.inferior_limit for block in blocks),
+        highest.globes,
+    )
+
+
+def _corners(each: _Slice) -> np.ndarray:
+    """The x, y, and z of the centres of a slice's four corner pixels."""
+    rows, columns = each.shape
+    along_row = np.asarray(each.orientation[:3], dtype=float) * each.spacing[1]
+    down_column = np.asarray(each.orientation[3:], dtype=float) * each.spacing[0]
+    origin = np.asarray(each.position, dtype=float)
+    return np.array(
+        [
+            origin + row * down_column + column * along_row
+            for row in (0, rows - 1)
+            for column in (0, columns - 1)
+        ]
+    )
+
+
+def _cut(polygon: np.ndarray, normal: np.ndarray, point: np.ndarray) -> np.ndarray:
+    """The vertices of the part of a convex polygon, in order, on the side of
+    a line through ``point`` that ``normal`` points to, the line included,
+    by clipping the polygon against it."""
+    sides = (polygon - point) @ normal
+    kept = []
+    for index, vertex in enumerate(polygon):
+        following = polygon[(index + 1) % len(polygon)]
+        side, next_side = sides[index], sides[(index + 1) % len(polygon)]
+        if side >= 0:
+            kept.append(vertex)
+        if (side < 0 < next_side) or (next_side < 0 < side):
+            kept.append(vertex + side / (side - next_side) * (following - vertex))
+    return np.array(kept).reshape(-1, 2)
 
 
 def inspect_series(
     positions: list[int], read: Callable[[int], bytes | None]
 ) -> defacing.FaceInspection | None:
     """What the finder finds in one series' slices, as a run gives them to
-    it, or None where it is given none, for a check on reference masks.
+    it, or None where it is given none, for a check on reference masks: the
+    slices of its first phase, where they repeat their positions
+    (:func:`_phases`).
 
     Parameters
     ----------
@@ -542,7 +751,10 @@ def inspect_series(
     """
     try:
         slices, places = _stack(positions, read)
-        return _finder(slices, places, read).inspect()
+        group = _phases(slices)[0]
+        return _finder(
+            [slices[i] for i in group], [places[i] for i in group], read
+        ).inspect()
     except (_Unusable, FaceBlockRefused):
         return None
 
@@ -1180,10 +1392,19 @@ def _described(dataset: pydicom.Dataset, layout: Layout) -> tuple[_Slice, ...]:
     if iod == CT_IMAGE:
         if layout.frames != 1:
             raise _Unusable(SeriesProblem.NOT_ONE_STACK)
-        return (_described_slice(dataset, layout, (dataset,) * 4, multi_frame=False),)
+        return (
+            _described_slice(
+                dataset,
+                layout,
+                (dataset,) * 4,
+                named_by_instance(dataset),
+                multi_frame=False,
+            ),
+        )
     if iod not in MULTI_FRAME_CT_IODS:
         raise _Unusable(SeriesProblem.UNREADABLE)
     groups = []
+    named = []
     for frame in range(layout.frames):
         try:
             groups.append(
@@ -1199,8 +1420,15 @@ def _described(dataset: pydicom.Dataset, layout: Layout) -> tuple[_Slice, ...]:
             )
         except ValueError:
             raise _Unusable(SeriesProblem.UNREADABLE) from None
+        # A frame without one Frame Content group names no phase.
+        try:
+            content = frame_group(dataset, layout.frames, frame, "FrameContentSequence")
+        except ValueError:
+            content = None
+        named.append(named_by_frame(content))
     return tuple(
-        _described_slice(dataset, layout, each, multi_frame=True) for each in groups
+        _described_slice(dataset, layout, each, name, multi_frame=True)
+        for each, name in zip(groups, named, strict=True)
     )
 
 
@@ -1208,13 +1436,14 @@ def _described_slice(
     dataset: pydicom.Dataset,
     layout: Layout,
     groups: tuple[pydicom.Dataset, ...],
+    named: Named,
     *,
     multi_frame: bool,
 ) -> _Slice:
     """What defacing needs of one slice, from the data sets that hold its
     Image Position (Patient), Image Orientation (Patient), Pixel Spacing,
     and rescale, in that order: the instance's own for CT Image, or the
-    frame's functional groups' items.
+    frame's functional groups' items, with what it names of its phase.
 
     A CT Image's Rescale Slope and Rescale Intercept default to 1 and 0
     where absent, and its Rescale Type, which PS3.3 C.8.2.1 requires where
@@ -1253,6 +1482,7 @@ def _described_slice(
         padding=_padding(dataset, layout),
         air=int(air),
         frame=None if frame is None else normalise_uid(str(frame)) or None,
+        named=named,
     )
 
 
@@ -1318,7 +1548,9 @@ def kept_slices(
 ) -> tuple[KeptSlice, ...]:
     """Return each slice of a defaced series that its block reaches, with
     the pixels that defacing keeps there, in the order of ``positions``,
-    and of the frames of each multi-frame instance.
+    and of the frames of each multi-frame instance; slices at one position,
+    of a series' phases, are one, keeping only what each keeps
+    (:func:`_merged`).
 
     Parameters
     ----------
@@ -1360,4 +1592,35 @@ def kept_slices(
                 )
         except (_Unusable, ValueError):
             raise ValueError("a slice can no longer be read") from None
-    return tuple(slices)
+    return _merged(slices)
+
+
+def _merged(slices: list[KeptSlice]) -> tuple[KeptSlice, ...]:
+    """The slices, with those at one position, within
+    :data:`~.phases.COINCIDENT` along their normal, as the phases of a
+    series that repeats its positions give them, merged into the first of
+    them, keeping only the pixels that each of them keeps, so that whatever
+    is cleaned beside the series is kept only where every phase keeps it.
+
+    The phases of such a series lie on one grid (:func:`_phases`), so the
+    slices at one position are of the same pixels.
+    """
+    if not slices:
+        return ()
+    orientation = slices[0].orientation
+    normal = np.cross(orientation[:3], orientation[3:])
+    heights = [float(np.dot(each.position, normal)) for each in slices]
+    order = sorted(range(len(slices)), key=lambda i: (heights[i], i))
+    clusters = [[order[0]]]
+    for earlier, later in zip(order, order[1:]):
+        if heights[later] - heights[earlier] <= COINCIDENT:
+            clusters[-1].append(later)
+        else:
+            clusters.append([later])
+    merged = {}
+    for cluster in clusters:
+        kept = slices[cluster[0]].kept
+        for index in cluster[1:]:
+            kept = kept & slices[index].kept
+        merged[min(cluster)] = dataclasses.replace(slices[min(cluster)], kept=kept)
+    return tuple(merged[index] for index in sorted(merged))

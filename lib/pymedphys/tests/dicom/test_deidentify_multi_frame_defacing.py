@@ -26,7 +26,6 @@ import io
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom, pytest
 
-from pymedphys._dicom.deidentify.defacing import FaceBlockProblem
 from pymedphys._dicom.deidentify.dose_defacing import find_dose_blocks
 from pymedphys._dicom.deidentify.face_blocks import (
     RT_STRUCTURE_SET,
@@ -375,9 +374,9 @@ def test_ct_images_whose_rescale_type_is_hounsfield_units_are_defaced():
     assert _outcome(*slices).block == _single().block
 
 
-def test_frames_at_one_position_are_not_one_stack_for_the_finder():
+def test_frames_at_one_position_that_nothing_parts_are_repeated_positions():
     # Every frame at the first's position, as two phases of one stack can
-    # put two.
+    # put two, and no Frame Content group to part them into phases.
     data = files.multi_frame(
         _slices(),
         shared=(
@@ -388,7 +387,7 @@ def test_frames_at_one_position_are_not_one_stack_for_the_finder():
         ),
     )
 
-    assert _outcome(data).problem is FaceBlockProblem.NOT_ALONG_PATIENT_AXES
+    assert _outcome(data).problem is SeriesProblem.REPEATED_POSITIONS
 
 
 def test_frames_of_another_size_or_frame_of_reference_are_not_one_stack():

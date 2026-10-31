@@ -27,6 +27,7 @@ from __future__ import annotations
 import contextlib
 import copy
 import dataclasses
+import io
 import json
 import shutil
 import tempfile
@@ -132,8 +133,21 @@ def _dose(low):
     return stored
 
 
-def _head_name(index):
-    return f"01-head-{index:03d}.dcm"
+def _head_name(index, phase=0):
+    return (
+        f"01-head-{index:03d}.dcm" if not phase else f"01-head-t{phase}-{index:03d}.dcm"
+    )
+
+
+def _phased(data, phase):
+    """A head slice as one of a time point's, from 0, which names it by its
+    Temporal Position Identifier, with a SOP Instance UID of its own."""
+    dataset = pydicom.dcmread(io.BytesIO(data))
+    dataset.TemporalPositionIdentifier = phase + 1
+    if phase:
+        dataset.SOPInstanceUID = f"{dataset.SOPInstanceUID}.{phase}"
+        dataset.file_meta.MediaStorageSOPInstanceUID = dataset.SOPInstanceUID
+    return files.written(dataset)
 
 
 def _section(ellipsoid, z, scale=1.0):
@@ -288,9 +302,12 @@ def _reviewed(
     dose=None,
     edges=False,
     multi_frame=False,
+    phases=1,
 ):
     """Run the collection, with its CT slices replaced by the head's, as one
-    Enhanced CT Image instance if ``multi_frame``, its RT Structure Set by
+    Enhanced CT Image instance if ``multi_frame``, or as ``phases`` time
+    points of one series at the same positions, each naming its Temporal
+    Position Identifier where there are more than one (:func:`_phased`), its RT Structure Set by
     the head's ROIs, or by a target in the block if ``target``, its PET
     Image by :data:`_PET_SLICES`, and, if ``multi_frame``, its Enhanced PET
     Image by those slices as one instance, and its first RT Dose
@@ -318,8 +335,11 @@ def _reviewed(
                 files.multi_frame(slices, instance=corpus_module.CT_SERIES + ".1000")
             )
         else:
-            for index, data in enumerate(slices):
-                (instances / _head_name(index)).write_bytes(data)
+            for phase in range(phases):
+                for index, data in enumerate(slices):
+                    (instances / _head_name(index, phase)).write_bytes(
+                        data if phases == 1 else _phased(data, phase)
+                    )
         if dose is not None:
             grid = pydicom.dcmread(instances / _DOSE[0])
             (instances / _DOSE[0]).write_bytes(
@@ -512,6 +532,12 @@ def fixture_defaced(reviewed_low):
 @pytest.fixture(name="multi_frame", scope="module")
 def fixture_multi_frame():
     with _runs(first=(), dose=_dose(_LOW), multi_frame=True) as found:
+        yield found
+
+
+@pytest.fixture(name="phased", scope="module")
+def fixture_phased():
+    with _runs(first=(), dose=_dose(_LOW), phases=2) as found:
         yield found
 
 
@@ -1294,3 +1320,42 @@ def test_a_multi_frame_pet_is_set_to_zero_activity_and_released(multi_frame):
         HeldVisualFeatures(VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME)
         in (reasons[_PET[2]])
     )
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.2-01", "PS3.15-E.3.2-02")
+def test_a_head_ct_of_two_time_points_is_defaced_and_released(phased, defaced):
+    _, outcomes, reasons, report = phased
+    _, single, _, _ = defaced
+
+    # Each time point's slices are written as the one time point's are,
+    # and the QC pack draws each time point as a volume of its own, so the
+    # verdict on them releases them all.
+    count = sum(name.startswith("01-head-") and "-t" not in name for name in single)
+    assert count > qc_previews.CINE_FRAMES
+    for phase in range(2):
+        for index in range(count):
+            name = _head_name(index, phase)
+            disposition, dataset = outcomes[name]
+            assert disposition == "released", reasons[name]
+            assert dataset.RecognizableVisualFeatures == "NO"
+            assert np.array_equal(
+                dataset.pixel_array, single[_head_name(index)][1].pixel_array
+            ), name
+    assert report["face_review"]["ct_series"] == {
+        "defaced": 1,
+        "not_defaced": [{"reason": "unreadable", "count": _UNPLACED}],
+    }
+    # Beside them, the RT Structure Set, RT Dose, and PET are cleaned as
+    # beside one time point, since both keep the same brain.
+    for name in (_STRUCTURE_SET, _DOSE[0], *_PET_SLICES):
+        disposition, dataset = outcomes[name]
+        assert disposition == "released", reasons[name]
+        if name == _STRUCTURE_SET:
+            found, expected = _contour_points(dataset), _contour_points(single[name][1])
+            assert len(found) == len(expected)
+            for one, other in zip(found, expected):
+                assert len(one) == len(other)
+                for a, b in zip(one, other):
+                    np.testing.assert_allclose(a, b)
+        else:
+            assert np.array_equal(dataset.pixel_array, single[name][1].pixel_array)

@@ -241,21 +241,12 @@ class Surface:
 
     def __init__(self, volume: Grid) -> None:
         self._grid = volume
-        spans = [0.0, 0.0, 0.0]
-        for coordinates, axis in zip(volume.coordinates, volume.axes):
-            spans[axis] = max(coordinates) - min(coordinates)
         # Whether the volume is too large to render, found before any of it
-        # is sampled.
-        self._large = spans[2] > LONGEST or max(spans[:2]) > WIDEST
-        voxel = voxel_side(volume.coordinates)
+        # is sampled, and for each of the volume's axes, the index sampled
+        # at each voxel along its patient axis: from superior, anterior, and
+        # the patient's right.
+        self._large, voxel, self._taken = _sampling(volume)
         none = np.zeros(0, np.intp)
-        # For each of the volume's axes, the index sampled at each voxel
-        # along its patient axis: from superior, anterior, and the patient's
-        # right.
-        self._taken = tuple(
-            none if self._large else sampled_indices(np.asarray(values), axis, voxel)
-            for values, axis in zip(volume.coordinates, volume.axes)
-        )
         # The voxel nearest each slice along the slice axis.
         self._nearest = (
             none
@@ -627,6 +618,36 @@ def side_by_side(tiles: Sequence[np.ndarray]) -> np.ndarray:
     gap = np.zeros((tiles[0].shape[0], _GAP_PIXELS, *tiles[0].shape[2:]), np.uint8)
     parts = [part for tile in tiles for part in (gap, tile)][1:]
     return np.concatenate(parts, axis=1)
+
+
+def too_large(volume: Grid) -> bool:
+    """Whether a volume is too large to render, as :class:`Surface` finds
+    before it samples any of it."""
+    return _sampling(volume)[0]
+
+
+def sampled_voxels(volume: Grid) -> int:
+    """How many voxels a :class:`Surface` of a volume samples, and so holds
+    as float32 until it is rendered: none for a volume too large to render."""
+    large, _, taken = _sampling(volume)
+    return 0 if large else math.prod(len(each) for each in taken)
+
+
+def _sampling(volume: Grid) -> tuple[bool, float, tuple[np.ndarray, ...]]:
+    """Whether a volume is too large to render, the side of its voxels, and
+    for each of its axes the index sampled at each voxel along its patient
+    axis, none where it is too large."""
+    spans = [0.0, 0.0, 0.0]
+    for coordinates, axis in zip(volume.coordinates, volume.axes):
+        spans[axis] = max(coordinates) - min(coordinates)
+    large = spans[2] > LONGEST or max(spans[:2]) > WIDEST
+    voxel = voxel_side(volume.coordinates)
+    none = np.zeros(0, np.intp)
+    taken = tuple(
+        none if large else sampled_indices(np.asarray(values), axis, voxel)
+        for values, axis in zip(volume.coordinates, volume.axes)
+    )
+    return large, voxel, taken
 
 
 def voxel_side(
