@@ -439,7 +439,7 @@ implementation = [
   "_dicom/deidentify/policy.py",
 ]
 note = '''
-The engine applies the Clean Structured Content Option to a custom option set; no preset selects it (D-047).
+The engine applies the Clean Structured Content Option to the `tps-import` and `public-release` presets and to a custom option set (D-047).
 Of the Structured Reports, the X-Ray and Radiopharmaceutical Radiation Dose SRs are supported and the others sequestered (D-010); of the supported IODs, only those two define Content Sequence, at their root, and none Waveform Annotation Sequence. Waveform Annotation Sequence takes its Basic Profile action; Content Sequence is cleaned wherever an IOD defines it, at any depth of its nested Content Sequences, with the root content item that holds it, and a report whose tree cannot be kept is sequestered, since the Basic Profile gives Content Sequence D and a sequence has no dummy value (D-021).
 Acquisition Context Sequence and Specimen Preparation Sequence are kept where the IOD defines them, and each content item is cleaned by its Value Type and concept name, as Table E.3.4-1 gives them, generated for the concept names that DICOM and SNOMED CT code (D-001).
 A reviewed list gives the table's actions to the concepts that it omits where PS3.16's templates use them for a patient characteristic that Table E.1-1 removes, each removed, and kept under Retain Patient Characteristics where Table E.1-1 keeps the attribute that holds it, to a device's UDI as a CODE, removed, and kept under Retain Device Identity as Table E.1-1 keeps UDI Sequence (0018,100A), and to Subject ID as a CODE, which TID 1007 gives it and the table lists only as TEXT, removed under every option (D-047).

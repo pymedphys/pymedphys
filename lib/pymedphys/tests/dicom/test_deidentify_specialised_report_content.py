@@ -27,9 +27,10 @@ tests that add the IODs to the supported ones for that test alone, as
 supporting them would. The reports are synthetic, built from the templates
 of PS3.16 2026d by :mod:`._synthetic_specialised_reports`.
 
-A preset with the option added is composed by adding it to every preset's
-options for the test alone, since no preset selects it, so that the policy
-that Clean Descriptors falls back to, another preset's, selects it too.
+A preset with the option added is composed by adding it, for the test
+alone, to the options of every preset that does not select it, ``basic``
+and ``basic-clean-descriptors``, so that the policy that Clean Descriptors
+falls back to, another preset's, selects it too.
 """
 
 import io
@@ -149,12 +150,18 @@ SOURCE_VALUES = (
 
 @pytest.fixture(name="with_option")
 def _with_option(monkeypatch):
-    """Return a function that composes a preset's policy with the option added."""
+    """Return a function that composes a preset's policy with the option added.
+
+    The option is added only to the presets that do not select it.
+    """
     monkeypatch.setattr(
         policy,
         "PRESETS",
         types.MappingProxyType(
-            {preset: (*options, CSC) for preset, options in policy.PRESETS.items()}
+            {
+                preset: options if CSC in options else (*options, CSC)
+                for preset, options in policy.PRESETS.items()
+            }
         ),
     )
     return policy.compose_policy

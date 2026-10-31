@@ -346,15 +346,27 @@ def test_clean_descriptors_cleans_exactly_what_the_table_and_rules_clean():
 @pytest.mark.deid_requirement("PS3.15-E.1.1-09")
 def test_a_sequence_given_c_takes_its_basic_profile_action():
     dictionary = _dictionary()
-    for preset in ("basic-clean-descriptors", "tps-import"):
+    basic = policy.compose_policy("basic").actions
+    # Clean Structured Content, which tps-import selects, gives C to the
+    # sequences of content items, whose items the engine cleans by their
+    # concept names (D-047); their rules still give the Basic Profile action.
+    content_items = {
+        row.tag: basic[row.tag]
+        for row in standard.load_table_e1_1().attributes
+        if row.options.get(policy.CLEAN_STRUCTURED_CONTENT) == "C"
+    }
+    for preset, expected in (
+        ("basic-clean-descriptors", CLEANED_SEQUENCES),
+        ("tps-import", {**CLEANED_SEQUENCES, **content_items}),
+    ):
         composed = policy.compose_policy(preset)
         cleaned = {
             tag
             for tag, action in composed.actions.items()
             if action == "C" and tag in dictionary and "SQ" in dictionary[tag].vrs
         }
-        assert cleaned == set(CLEANED_SEQUENCES), preset
-        for tag, action in CLEANED_SEQUENCES.items():
+        assert cleaned == set(expected), preset
+        for tag, action in expected.items():
             assert ElementRules(composed).rule(tag) == ElementRule(
                 tag, TABLE, action, tag
             )

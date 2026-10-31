@@ -27,6 +27,7 @@ from pymedphys._imports import pydicom, pytest, tomlkit
 from pymedphys._dicom.deidentify import (
     codes,
     compound_actions,
+    content_items,
     conformance,
     conformance_markdown,
     descriptor_cleaning,
@@ -717,7 +718,7 @@ def test_private_attribute_removal_is_described(preset, statement_for):
         ("tps-import", (), (), "MODIFIED"),
         (
             "public-release",
-            ("113100", "113111", "113107"),
+            ("113100", "113111", "113107", "113104"),
             ("113105", "113102"),
             "MODIFIED",
         ),
@@ -789,6 +790,20 @@ def test_every_listed_action_is_the_one_the_engine_applies(name):
             )
             assert (rule.action, entry.policy_action) == ("C", "C"), entry.tag
             assert entry.action == fallen_back.action, entry.tag
+            continue
+        if (
+            policy.CLEAN_STRUCTURED_CONTENT in composed.options
+            and entry.tag in content_items.CONTENT_ITEM_SEQUENCES
+        ):
+            # The element rules give the sequence its Basic Profile action;
+            # the engine cleans its content items by their concept names and
+            # keeps it where it can (D-047).
+            assert (entry.action, entry.policy_action, entry.superseded_by) == (
+                "C",
+                "",
+                "",
+            ), entry.tag
+            assert rule.source is element_rules.RuleSource.TABLE, entry.tag
             continue
         assert entry.action == rule.action, entry.tag
         policy_action = given.get(entry.tag, "U")
