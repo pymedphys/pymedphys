@@ -28,21 +28,24 @@ no warning or log record of pydicom's, or of the transform's or gate's,
 shows a source value or path, and the summary says how many were redacted.
 :func:`main` parses the source and release directories, the QC
 destination, the preset or custom option set (D-033), under Clean
-Descriptors what ROI Names and free-text descriptors are cleaned with, and,
-under Clean Pixel Data, the attested QC pack whose redaction verdicts apply
-and the custodian's region rules, and, under Clean Recognizable Visual
-Features, the attested QC pack whose face verdicts apply, from the command
-line's arguments. It builds the policy's transform for a new run-scoped key
-with :func:`build_transform`, with the text detector under Clean Pixel Data,
-and runs it with the release gate, the transform's release report, and the
+Descriptors what ROI Names and free-text descriptors are cleaned with, under
+Clean Pixel Data, the attested QC pack whose redaction verdicts apply and
+the custodian's region rules, under Clean Recognizable Visual Features, the
+attested QC pack whose face verdicts apply, and, under the
+``public-release`` preset, the readiness review read from that pack and its
+run's release report (D-017), from the command line's arguments. It builds
+the policy's transform for a new run-scoped key with
+:func:`build_transform`, with the text detector under Clean Pixel Data, and
+runs it with the release gate, the transform's release report, and the
 reference graph's second pass under its key, for the ``pymedphys`` command
 to call once the engine is public; nothing registers it yet. No preset or
 option is enabled yet, so until one is, the command refuses to run.
 
 The summary and every message name inputs only by count, reasons only by
 their type and the names of enum members (their own, or those of a
-dataclass reason's fields), and directories only where the caller chose
-them: the release directory, its staging area, and the QC destination. A
+dataclass reason's fields), or, for the readiness gates, by their codes,
+and directories only where the caller chose them: the release directory,
+its staging area, and the QC destination. A
 failure that the run does not expect is reported by its exception's type
 alone, since its message could quote a value.
 
@@ -55,15 +58,18 @@ Exit statuses:
 - :data:`EXIT_USAGE`, 2: the arguments could not be parsed, as for any
   :mod:`argparse` command, though the message quotes none of them, or
   they give ROI name or descriptor options without Clean Descriptors, a
-  redaction review or region rules without Clean Pixel Data, or a face
-  review without Clean Recognizable Visual Features;
+  redaction review or region rules without Clean Pixel Data, a face
+  review without Clean Recognizable Visual Features, or a readiness review
+  or its release report without the other or without the ``public-release``
+  preset;
 - :data:`EXIT_NOT_RUN`, 3: the run could not start, because its preset or
   option set is not enabled, it has no face review under Clean
   Recognizable Visual Features, or what it cleans ROI Names or descriptors
-  with, its text detector, redaction review, region rules, or face review,
-  or its project key or profile store, cannot be used, among other
-  reasons, the first pass stopped it, or its QC pack or profile store could
-  not be written, and nothing was published;
+  with, its text detector, redaction review, region rules, face review, or
+  readiness review, or its project key or profile store, cannot be used, or
+  its readiness review is of another QC pack than its face review, among
+  other reasons, the first pass stopped it, or its QC pack or profile store
+  could not be written, and nothing was published;
 - :data:`EXIT_STAGING_LEFT`, 4: the staging area could not be deleted, and
   may hold output that still identifies people, whatever else happened;
 - :data:`EXIT_INTERNAL_ERROR`, 70: anything else failed, and nothing was
@@ -76,15 +82,16 @@ import argparse
 import collections
 import dataclasses
 import enum
+import json
 import os
 import sys
 from collections.abc import Callable, Collection, Sequence
 from pathlib import Path
-from typing import NoReturn, TextIO
+from typing import NoReturn, TextIO, TypeVar
 
 from pymedphys._nomenclature import roi_list, tg263, tg263_published
 
-from . import instance_transform, keys, policy, run, run_report
+from . import instance_transform, keys, policy, release_report, run, run_report
 from .descriptor_cleaning import CLEAN_DESCRIPTORS, DescriptorCleaning
 from .diagnostics import RedactionCounts, redacted_diagnostics
 from .face_review import FaceReview, read_face_review
@@ -94,12 +101,16 @@ from .pixel_region_rules import PixelRegionRules, PixelRegionRulesError
 from .policy import CLEAN_PIXEL_DATA
 from .profiles import ProfileError, ProfileStore
 from .qc_pack import QcPackError
+from .readiness import ReadinessReview, read_readiness_review
+from .reasons import ReviewReason, StatisticalReason
 from .redaction_review import RedactionReview, read_redaction_review
 from .reviewed_descriptors import ReviewedDescriptors, ReviewedDescriptorsError
 from .reviewed_roi_names import ReviewedNames, ReviewedNamesError
 from .safe_private import SafePrivateList
 from .standard import ALL_OPTIONS
 from .text_detection import TextDetectionError, TextDetector
+
+ReasonT = TypeVar("ReasonT", bound=enum.Enum)
 
 EXIT_RELEASED = 0
 EXIT_WITHHELD = 1
@@ -204,6 +215,36 @@ _FACE_REVIEW_UNREAD = "the face review could not be read: {error}"
 _FACE_REVIEW_UNOPENED = (
     "the face review could not be read; its details are not shown because "
     "they can contain file paths"
+)
+_READINESS_OPTION = (
+    "error: --readiness-review and --readiness-report apply only under the "
+    "public-release preset: with --preset public-release"
+)
+_READINESS_HALF = (
+    "a readiness review and its release report are given together, or neither"
+)
+_READINESS_NOT_PUBLIC = (
+    "a readiness review is given only under the public-release preset"
+)
+_READINESS_UNREAD = "the readiness review could not be read: {error}"
+_READINESS_UNOPENED = (
+    "the readiness review could not be read; its details are not shown because "
+    "they can contain file paths"
+)
+_READINESS_OTHER_PACK = (
+    "the readiness review is of another QC pack than the face review: both are "
+    "the QC pack of the same earlier run, which a reviewer attested"
+)
+_READINESS_UNKNOWN = (
+    "readiness for release: unknown, since the release report's readiness "
+    "could not be read"
+)
+# The readiness gates in the order that the summary gives them, by the names
+# that the release report gives them and those that the summary does.
+_GATES = (
+    ("statistical", "statistical"),
+    ("pixel_and_face", "pixel and face review"),
+    ("attestation", "attestation"),
 )
 
 
@@ -343,8 +384,11 @@ def summary_lines(result: run.RunResult, redacted: RedactionCounts) -> list[str]
     It gives the release directory; the number of inputs, and of each status
     that any input has; how many inputs each reason withheld; how many
     first-pass findings, and second-pass findings of what was written, there
-    were of each kind; and, if any were, how many warnings and log records
-    were redacted.
+    were of each kind; if any were, how many warnings and log records were
+    redacted; and, where the release report says whether the run is ready
+    for release, as that of a ``public-release`` run does, whether it is,
+    and each gate's reason code where it failed (D-017), so that a run
+    whose every input was released is not taken for one that is ready.
     """
     statuses = collections.Counter(outcome.status for outcome in result.outcomes)
     # Each input counts once for each type of reason it has, and reasons
@@ -383,7 +427,90 @@ def summary_lines(result: run.RunResult, redacted: RedactionCounts) -> list[str]
             f"redacted diagnostics: {redacted.warnings} warnings, "
             f"{redacted.log_records} log records"
         )
+    return lines + _readiness_lines(result.release)
+
+
+def _readiness_lines(release: Path) -> list[str]:
+    """Return the summary's lines on whether the release is ready, if it says."""
+    try:
+        readiness = release_readiness(release)
+    except release_report.ReleaseReportError:
+        return [_READINESS_UNKNOWN]
+    if readiness is None:
+        return []
+    lines = [f"readiness for release: {'ready' if readiness.ready else 'not ready'}"]
+    for name, label in _GATES:
+        reason = getattr(readiness, name)
+        lines.append(f"  {label}: {'passed' if reason is None else reason.value}")
     return lines
+
+
+def release_readiness(
+    release: str | os.PathLike[str],
+) -> release_report.Readiness | None:
+    """Return whether a published release is ready for release, as its report says.
+
+    A ``public-release`` run's release report says, by its three gates
+    (D-017); that of any other policy does not.
+
+    Parameters
+    ----------
+    release : str or os.PathLike
+        The release directory that a run published.
+
+    Returns
+    -------
+    ~pymedphys._dicom.deidentify.release_report.Readiness or None
+        The readiness that the release report records, or None where it
+        records none, or the release has no report, as a run without a
+        release reporter publishes.
+
+    Raises
+    ------
+    ~pymedphys._dicom.deidentify.release_report.ReleaseReportError
+        If the release report cannot be read or is not a JSON object, or
+        records a readiness that is not of its format, with a message that
+        names no path and no value.
+    """
+    path = Path(release) / run_report.RELEASE_REPORT
+    if not os.path.lexists(path):
+        return None
+    unreadable = release_report.ReleaseReportError(
+        "the release report's readiness could not be read"
+    )
+    try:
+        document = json.loads(path.read_bytes().decode("utf-8"))
+    except (OSError, ValueError):  # UnicodeError and JSONDecodeError are ValueErrors
+        raise unreadable from None
+    if not isinstance(document, dict):
+        raise unreadable
+    section = document.get("readiness")
+    if section is None:
+        return None
+    try:
+        readiness = release_report.Readiness(
+            review=_reference(section["review"]),
+            assessment=_reference(section["assessment"]),
+            statistical=_gate_reason(StatisticalReason, section["statistical"]),
+            pixel_and_face=_gate_reason(ReviewReason, section["pixel_and_face"]),
+            attestation=_gate_reason(ReviewReason, section["attestation"]),
+        )
+    except (KeyError, TypeError, ValueError):
+        raise unreadable from None
+    if section.get("ready") is not readiness.ready:
+        raise unreadable
+    return readiness
+
+
+def _reference(value: object) -> str | None:
+    if value is not None and not isinstance(value, str):
+        raise TypeError("a reference is text or null")
+    return value
+
+
+def _gate_reason(reasons: type[ReasonT], value: object) -> ReasonT | None:
+    """Return a gate's reason by its code, or None for a gate that passed."""
+    return None if value is None else reasons(value)
 
 
 def _reason_name(reason: object) -> str:
@@ -570,6 +697,26 @@ def build_parser(
         ),
     )
     parser.add_argument(
+        "--readiness-review",
+        metavar="DIRECTORY",
+        help=(
+            "under the public-release preset, the QC pack given as "
+            "--face-review, with any risk assessment recorded beside it, from "
+            "which the release report says whether the run is ready for "
+            "release by its statistical, pixel and face review, and "
+            "attestation gates; given with --readiness-report; by default, "
+            "none, so the run is not ready"
+        ),
+    )
+    parser.add_argument(
+        "--readiness-report",
+        metavar="FILE",
+        help=(
+            "the release report, release-report.json, of the run whose QC "
+            "pack is --readiness-review; given with --readiness-review"
+        ),
+    )
+    parser.add_argument(
         "--safe-private-list",
         choices=[each.value for each in SafePrivateList],
         default=SafePrivateList.REVIEWED.value,
@@ -618,6 +765,7 @@ def build_transform(
     safe_private_list: SafePrivateList = SafePrivateList.REVIEWED,
     profiles: ProfileStore | None = None,
     face_review: FaceReview | None = None,
+    readiness_review: ReadinessReview | None = None,
     unvalidated_policy: bool = False,
 ) -> instance_transform.InstanceTransform:
     """Return the run's transform under ``preset``, or ``options``, and ``key``.
@@ -655,6 +803,11 @@ def build_transform(
         The face verdicts of an earlier run's attested QC pack, which a
         policy with Clean Recognizable Visual Features needs and no other
         policy takes (D-046).
+    readiness_review : ReadinessReview, optional
+        Under the ``public-release`` preset, the review of an earlier run of
+        the same files, of the same QC pack as ``face_review``, from which
+        the release report says whether the run is ready for release
+        (D-017), which no other policy takes.
     unvalidated_policy : bool, optional
         Whether a preset or option set that is not enabled is used, for a
         validation run such as the pilot command's, as
@@ -670,7 +823,9 @@ def build_transform(
         ``safe_private_list`` does not fit it, with a message that quotes
         nothing but the names of presets and options. So too if
         ``face_review`` is given without Clean Recognizable Visual Features,
-        or left out with it.
+        or left out with it, and if ``readiness_review`` is given with a
+        policy other than the ``public-release`` preset, or is of another QC
+        pack than ``face_review``.
     """
     return instance_transform.InstanceTransform(
         _policy(preset, options, unvalidated_policy),
@@ -682,6 +837,7 @@ def build_transform(
         safe_private_list=safe_private_list,
         profiles=profiles,
         face_review=face_review,
+        readiness_review=readiness_review,
         unvalidated_policy=unvalidated_policy,
     )
 
@@ -814,6 +970,40 @@ def _face_review(pack: str | os.PathLike[str] | None) -> FaceReview:
         raise TransformNotBuilt(_FACE_REVIEW_UNREAD.format(error=error)) from None
     except OSError:
         raise TransformNotBuilt(_FACE_REVIEW_UNOPENED) from None
+
+
+def _readiness_review(
+    pack: str | os.PathLike[str],
+    report: str | os.PathLike[str],
+    faces: FaceReview | None,
+) -> ReadinessReview:
+    """Return the readiness review of an earlier run's QC pack (D-017).
+
+    It is read from the pack and that run's release report, with any risk
+    assessment recorded beside the pack (D-053), and must be of the same
+    pack as the face review, ``faces``, so that the verdicts that release
+    the run's instances are those that its readiness checks.
+
+    Raises
+    ------
+    TransformNotBuilt
+        If the pack or the release report cannot be read, are not of their
+        formats, or are of different runs, or the pack changed after it was
+        attested or assessed, or its assessment cannot be used, with
+        :func:`~pymedphys._dicom.deidentify.readiness.read_readiness_review`'s
+        message, which names no path and no value, or with none for an
+        operating system's error; or if the pack is not that of ``faces``,
+        where it is given, as it always is under ``public-release``.
+    """
+    try:
+        review = read_readiness_review(pack, report)
+    except QcPackError as error:  # a RiskAssessmentError is one too
+        raise TransformNotBuilt(_READINESS_UNREAD.format(error=error)) from None
+    except OSError:
+        raise TransformNotBuilt(_READINESS_UNOPENED) from None
+    if faces is not None and review.reference != faces.reference:
+        raise TransformNotBuilt(_READINESS_OTHER_PACK)
+    return review
 
 
 def _descriptor_cleaning(  # pylint: disable = too-many-arguments
@@ -968,6 +1158,8 @@ def transform_for(  # pylint: disable = too-many-arguments
     safe_private_list: SafePrivateList = SafePrivateList.REVIEWED,
     profiles: ProfileStore | None = None,
     face_review: str | os.PathLike[str] | None = None,
+    readiness_review: str | os.PathLike[str] | None = None,
+    readiness_report: str | os.PathLike[str] | None = None,
     unvalidated_policy: bool = False,
 ) -> instance_transform.InstanceTransform:
     """Return :func:`build_transform`'s transform for a run's options.
@@ -1001,18 +1193,29 @@ def transform_for(  # pylint: disable = too-many-arguments
     what ROI Names or descriptors are cleaned with (D-046); the run needs
     them, so without a pack, or with one that cannot be used, no transform
     is built.
-    Under any other policy, ``face_review`` is not read.
+    Under any other policy, ``face_review`` is not read. Under the
+    ``public-release`` preset, the readiness review of the QC pack in
+    ``readiness_review``, which must be the pack in ``face_review``, is read
+    with that run's release report, ``readiness_report``, and any risk
+    assessment recorded beside the pack, after the face verdicts (D-017,
+    D-053); the two are given together, and with no other policy, which is
+    refused before anything is read. Without them, the release report of a
+    ``public-release`` run says that it is not ready for release.
 
     Raises
     ------
     TransformNotBuilt
         If the preset or option set is not enabled, ``safe_private_list``
         does not fit it, the policy selects Clean Recognizable Visual
-        Features and ``face_review`` is not given, or what ROI Names or
-        descriptors are cleaned with, the redaction review, the region
-        rules, the face review, or the text detector cannot be used, with a
-        message that quotes nothing but the names of presets and options,
-        or a reason that names no path or value.
+        Features and ``face_review`` is not given, only one of
+        ``readiness_review`` and ``readiness_report`` is given, or they are
+        given with a policy other than the ``public-release`` preset, or
+        what ROI Names or descriptors are cleaned with, the redaction
+        review, the region rules, the face review, the readiness review, or
+        the text detector cannot be used, or the readiness review is of
+        another QC pack than the face review, with a message that quotes
+        nothing but the names of presets and options, or a reason that
+        names no path or value.
     """
     try:
         selected = _policy(preset, options, unvalidated_policy)
@@ -1026,9 +1229,19 @@ def transform_for(  # pylint: disable = too-many-arguments
             "a safe private list can be chosen only under the Retain Safe "
             "Private Option"
         )
+    readiness_given = readiness_review is not None or readiness_report is not None
+    if readiness_given and (readiness_review is None or readiness_report is None):
+        raise TransformNotBuilt(_READINESS_HALF)
+    if readiness_given and selected.preset != release_report.PUBLIC_RELEASE:
+        raise TransformNotBuilt(_READINESS_NOT_PUBLIC)
     review = (
         _face_review(face_review)
         if policy.CLEAN_RECOGNIZABLE_VISUAL_FEATURES in selected.options
+        else None
+    )
+    readiness = (
+        _readiness_review(readiness_review, readiness_report, review)
+        if readiness_review is not None and readiness_report is not None
         else None
     )
     cleaning = (
@@ -1069,6 +1282,7 @@ def transform_for(  # pylint: disable = too-many-arguments
             safe_private_list=safe_private_list,
             profiles=profiles,
             face_review=review,
+            readiness_review=readiness,
             unvalidated_policy=unvalidated_policy,
         )
     except policy.PolicyError as error:
@@ -1091,6 +1305,19 @@ def face_review_applies(
     return policy.CLEAN_RECOGNIZABLE_VISUAL_FEATURES in policy.PRESETS.get(
         policy.DEFAULT_PRESET if preset is None else preset, ()
     )
+
+
+def readiness_review_applies(
+    preset: str | None, options: Collection[str] | None = None
+) -> bool:
+    """Return whether the run's policy takes a readiness review.
+
+    It applies under the ``public-release`` preset alone, whose release
+    report says whether the run is ready for release (D-017), and the
+    command line and the library refuse one given otherwise, as with a
+    custom option set in ``options``, even one of the preset's options.
+    """
+    return options is None and preset == release_report.PUBLIC_RELEASE
 
 
 def roi_name_options_apply(
@@ -1147,7 +1374,24 @@ def _built(
         safe_private_list=SafePrivateList(arguments.safe_private_list),
         profiles=profiles,
         face_review=arguments.face_review,
+        readiness_review=arguments.readiness_review,
+        readiness_report=arguments.readiness_report,
     )
+
+
+def _readiness_usage(arguments: argparse.Namespace) -> str | None:
+    """Return why the readiness arguments cannot be used, if they cannot.
+
+    They are given together, and only under the ``public-release`` preset.
+    """
+    review, report = arguments.readiness_review, arguments.readiness_report
+    if review is None and report is None:
+        return None
+    if not readiness_review_applies(arguments.preset, arguments.options):
+        return _READINESS_OPTION
+    if review is None or report is None:
+        return f"error: {_READINESS_HALF}"
+    return None
 
 
 def main(
@@ -1165,7 +1409,11 @@ def main(
     key and its subject profiles, which :func:`run_key` refuses until
     project keys are enabled; the transform is :func:`build_transform`'s for
     the key, and the release report is that transform's. A project key's
-    profiles are saved before the release is published.
+    profiles are saved before the release is published. Under the
+    ``public-release`` preset, ``--readiness-review`` and
+    ``--readiness-report`` give the review from which the release report
+    says whether the run is ready for release, and the summary says
+    whether it is.
 
     Parameters
     ----------
@@ -1218,6 +1466,10 @@ def main(
         arguments.preset, arguments.options
     ):
         _print(_FACE_REVIEW_OPTION, error_stream)
+        return EXIT_USAGE
+    readiness_problem = _readiness_usage(arguments)
+    if readiness_problem is not None:
+        _print(readiness_problem, error_stream)
         return EXIT_USAGE
     reporter = written_check = before_publish = None
     if transform is None:

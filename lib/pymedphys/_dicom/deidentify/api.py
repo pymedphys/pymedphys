@@ -29,7 +29,12 @@ start, it raises.
 
 Under the Clean Recognizable Visual Features Option, it takes the QC
 pack of an earlier run of the same files, attested with face verdicts
-(D-046), which the command does not take yet.
+(D-046), as the command's ``--face-review`` does. Under the
+``public-release`` preset, it also takes that pack as a readiness review,
+with that run's release report, as the command's ``--readiness-review``
+and ``--readiness-report`` do, from which the run's release report says
+whether it is ready for release (D-017); :attr:`Deidentified.readiness`
+says whether it is.
 
 It is private until the release, which is to export it as
 ``pymedphys.dicom.deidentify``; nothing exports it yet. No preset or option
@@ -42,7 +47,7 @@ import dataclasses
 import os
 from collections.abc import Collection
 
-from . import command, instance_transform, policy, run
+from . import command, instance_transform, policy, release_report, run
 from .diagnostics import RedactionCounts, redacted_diagnostics
 from .safe_private import SafePrivateList
 
@@ -51,8 +56,10 @@ class DeidentifyError(Exception):
     """A run that could not start, with a message that quotes no path or value.
 
     Its preset or option set is not enabled, what it cleans ROI Names
-    with cannot be used, or it has no usable face review under the Clean
-    Recognizable Visual Features Option. Nothing was created.
+    with cannot be used, it has no usable face review under the Clean
+    Recognizable Visual Features Option, or its readiness review cannot be
+    used or is of another QC pack than its face review. Nothing was
+    created.
     """
 
 
@@ -89,8 +96,31 @@ class Deidentified:
         """
         return self.exit_status == command.EXIT_RELEASED
 
+    @property
+    def readiness(self) -> release_report.Readiness | None:
+        """Whether the release is ready for release, as its report says.
+
+        Under the ``public-release`` preset, the release report says, by
+        the statistical, pixel and face review, and attestation gates,
+        each passed or failed with its reason code, and it is ready only
+        where all three pass; a run given no readiness review fails each.
+        None under any other policy, whose release report does not say.
+        A run whose every input was released need not be ready.
+
+        Raises
+        ------
+        ~pymedphys._dicom.deidentify.release_report.ReleaseReportError
+            If the published release report's readiness cannot be read,
+            with a message that names no path and no value.
+        """
+        return command.release_readiness(self.result.release)
+
     def summary(self) -> list[str]:
-        """Return the command line's summary of the run, line by line."""
+        """Return the command line's summary of the run, line by line.
+
+        Under the ``public-release`` preset, it ends by saying whether the
+        release is ready for release, and why not.
+        """
         return command.summary_lines(self.result, self.redacted)
 
 
@@ -112,6 +142,8 @@ def deidentify(  # pylint: disable = too-many-arguments
     key_file: str | os.PathLike[str] | None = None,
     profile_store: str | os.PathLike[str] | None = None,
     face_review: str | os.PathLike[str] | None = None,
+    readiness_review: str | os.PathLike[str] | None = None,
+    readiness_report: str | os.PathLike[str] | None = None,
 ) -> Deidentified:
     """De-identify the DICOM files below a source directory into a new release.
 
@@ -130,9 +162,13 @@ def deidentify(  # pylint: disable = too-many-arguments
         The confidential directory for the run's QC pack, outside
         ``source`` and ``release``, which must not exist or must be empty.
     preset : str, optional
-        The de-identification policy: ``"basic"``, the Basic Profile alone
-        (the default, unless ``options`` is given), or
-        ``"basic-clean-descriptors"``, with Clean Descriptors.
+        The de-identification policy, one of the presets: ``"basic"``, the
+        Basic Profile alone (the default, unless ``options`` is given);
+        ``"basic-clean-descriptors"``, with Clean Descriptors;
+        ``"tps-import"``, for copies in non-clinical treatment planning
+        systems; or ``"public-release"``, for collections being assessed
+        for public sharing, which needs ``face_review``. A run is refused
+        unless its preset is enabled.
     options : collection of str, optional
         A custom option set in place of a preset (D-033): the names of
         options of PS3.15 Table E.1-1, such as ``"clean_descriptors"``, or
@@ -209,6 +245,24 @@ def deidentify(  # pylint: disable = too-many-arguments
         under the option gives a verdict on it as received, which does not
         release a slice that this run defaces, so the slices are held, and
         the pack of this run gives the verdicts that release them.
+    readiness_review : str or os.PathLike, optional
+        Under the ``public-release`` preset, the QC pack given as
+        ``face_review``, with any risk assessment recorded beside it, from
+        which the release report says whether the run is ready for release
+        by its three gates: statistical disclosure control, by the
+        assessment; pixel and face review, by the reviewer's verdicts on
+        what this run writes; and the human QC attestation, by the
+        releaser's acceptance of the residual risk and the reviewed pack's
+        instances and retained strings. The gates are checked against this
+        run's own QC pack, so a run of other files, or under another policy,
+        fails each of them, and one with other reviewed lists fails the
+        statistical gate. It is given with
+        ``readiness_report``. By default, none, so the run is not ready
+        for release.
+    readiness_report : str or os.PathLike, optional
+        The release report, ``release-report.json``, of the run whose QC
+        pack is ``readiness_review``, which records that run's policy. It
+        is given with ``readiness_review``.
 
     Returns
     -------
@@ -230,8 +284,10 @@ def deidentify(  # pylint: disable = too-many-arguments
         ``region_rules`` with a policy without Clean Pixel Data, or if ``safe_private_list`` is not
         ``"reviewed"`` or ``"tcia"``, or is ``"tcia"`` with a policy without
         Retain Safe Private, or if ``face_review`` is given with a policy
-        without Clean Recognizable Visual Features. Nothing is read or
-        created.
+        without Clean Recognizable Visual Features, or if
+        ``readiness_review`` or ``readiness_report`` is given without the
+        other, or with a policy other than the ``public-release`` preset.
+        Nothing is read or created.
     DeidentifyError
         If the preset or an option is unknown or not enabled, the options
         cannot be composed, or the TG-263 edition, the reviewed-names list,
@@ -241,7 +297,11 @@ def deidentify(  # pylint: disable = too-many-arguments
         project keys are not enabled, or either cannot be used; or if the
         policy selects Clean Recognizable Visual Features and
         ``face_review`` is not given, or its pack cannot be read, has not
-        been attested, or its verdicts cannot be used. Nothing is created.
+        been attested, or its verdicts cannot be used; or if the readiness
+        review's pack or release report cannot be read or are of different
+        runs, the pack changed after it was attested or assessed, its risk
+        assessment cannot be used, or it is another pack than
+        ``face_review``. Nothing is created.
     ~pymedphys._dicom.deidentify.profiles.ProfileError
         If the profile store could not be saved. Nothing is published.
     ~pymedphys._dicom.deidentify.run.RunError
@@ -301,6 +361,14 @@ def deidentify(  # pylint: disable = too-many-arguments
             "face_review applies only under Clean Recognizable Visual Features: "
             "with options that include clean_recognizable_visual_features"
         )
+    readiness_given = readiness_review is not None or readiness_report is not None
+    if readiness_given and not command.readiness_review_applies(preset, chosen):
+        raise ValueError(
+            "readiness_review and readiness_report apply only under the "
+            'public-release preset: with preset="public-release"'
+        )
+    if readiness_given and (readiness_review is None or readiness_report is None):
+        raise ValueError("give readiness_review and readiness_report together")
     with redacted_diagnostics() as counts:
         try:
             key, profiles = command.run_key(
@@ -327,6 +395,8 @@ def deidentify(  # pylint: disable = too-many-arguments
                 safe_private_list=chosen_list,
                 profiles=profiles,
                 face_review=face_review,
+                readiness_review=readiness_review,
+                readiness_report=readiness_report,
             )
         except command.TransformNotBuilt as error:
             raise DeidentifyError(str(error)) from None

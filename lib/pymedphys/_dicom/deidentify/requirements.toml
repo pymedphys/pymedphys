@@ -790,6 +790,8 @@ For public sharing, remove or replace all known direct identifiers and relevant 
 status = "implemented"
 decisions = ["D-001", "D-015", "D-016", "D-017", "D-022", "D-023", "D-027", "D-032", "D-042", "D-053"]
 implementation = [
+  "_dicom/deidentify/api.py",
+  "_dicom/deidentify/command.py",
   "_dicom/deidentify/file_layout.py",
   "_dicom/deidentify/instance_transform.py",
   "_dicom/deidentify/option_kept.py",
@@ -820,6 +822,7 @@ The Basic Profile removes Patient's Weight but keeps PET values scaled to an SUV
 An end-to-end test runs `basic` and `basic-clean-descriptors` over that collection and searches every published file for its markers, independently of the gate.
 A `public-release` run's release report says whether it is ready for release, which it is only where the statistical gate, the pixel and face review gate, and the attestation gate all pass, each decided from the run's own QC pack against an earlier run's attested pack of the same files and policy, and each failing on its own with a reason code (D-017).
 The pixel and face review gate needs every released instance at high risk to have been reviewed as one, and every released instance that can show a face to have a verdict that it shows none, on the pixel data and contours that the run writes, or a passing assessment that covers facial reconstruction; the attestation gate needs the releaser's acceptance of the residual risk, and every released instance and every string that it retains to have been in the reviewed pack (D-017).
+The library's run under the preset, and the private command's, take that pack, which must be their face review's, and the earlier run's release report as their readiness review, and say whether the run is ready, with each failed gate's reason code; a run given neither is not ready on any gate (D-017).
 Collection descriptions and supporting data outside the DICOM files are not written by the engine, and whoever releases the data reviews them.
 Pixel data are assessed for risk, not cleaned (D-015).
 '''
