@@ -33,6 +33,25 @@ credential and endpoint fields. Passwords containing reserved URL characters
 URL delimiters, avoiding connection failures or unintended destinations.
 [PR #2634](https://github.com/pymedphys/pymedphys/pull/2634)
 
+### Deterministic largest circle for electron inserts
+
+`pymedphys.electronfactors.parameterise_insert` now finds the largest circle
+that fits inside an insert in a fixed repeatable way. Before, it searched from
+random starting points. On an insert with a narrow section next to a wider
+pocket, such as an L shape, it could return a different and often too small
+width on every run, with no error or warning. The width sets the equivalent
+ellipse length and the perimeter to area ratio used by the insert factor model,
+so both could be wrong. **Re-run `parameterise_insert` for concave inserts that
+were parameterised earlier.** Convex inserts such as ellipses should change very
+little. The electron demo's modelled factor changes from 1.0618 to 1.0571, which
+an independent calculation confirms. The `callback` argument is still accepted
+and is now called once, with the final result, instead of at every search step,
+so progress updates and early stopping no longer happen. The minimum supported
+Shapely version is now 2.1. How the corrected values change predicted insert
+factors against measured data has not been assessed.
+[Issue #2346](https://github.com/pymedphys/pymedphys/issues/2346)
+[PR #2527](https://github.com/pymedphys/pymedphys/pull/2527)
+
 ### Mosaiq treatment sessions follow Mosaiq's rule
 
 The private Mosaiq session helpers in `pymedphys._mosaiq.sessions` now group
