@@ -908,10 +908,14 @@ def test_each_image_has_its_frames_and_the_colour_image_its_icc_profile(corpus):
 
         if file.manifest.iod == "Enhanced MR Color Image":
             assert dataset.PhotometricInterpretation == "RGB"
-            assert dataset.ICCProfile == icc_profiles.srgb_profile(
-                corpus_module.SOURCE_ICC_DESCRIPTION
+            assert dataset.ICCProfile == corpus_module.SOURCE_ICC_PROFILE
+            assert icc_profiles.data_colour_space(dataset.ICCProfile) == (
+                icc_profiles.RGB
             )
-            assert corpus_module.MARKER_PREFIX.encode() in dataset.ICCProfile
+            # The marker is in the description, the copyright, the device
+            # manufacturer and model descriptions, and a private tag.
+            marker = corpus_module.MARKER_PREFIX.encode()
+            assert dataset.ICCProfile.count(marker) == 5
         else:
             assert dataset.PhotometricInterpretation == "MONOCHROME2"
             assert "ICCProfile" not in dataset

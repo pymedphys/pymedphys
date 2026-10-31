@@ -876,7 +876,7 @@ def test_instances_keep_their_reviewed_dummy_values(policy_run):
     # Referenced Performed Procedure Step Sequence, which these image
     # IODs conditionally require (Type 1C), refers to the procedure step by its keyed replacement,
     # the same in each instance, and the colour image's ICC Profile is the
-    # fixed sRGB profile (D-021).
+    # source's cleaned of everything but its colorimetry (D-021).
     corpus, released = policy_run.corpus, policy_run.released
     procedure_step = "ReferencedPerformedProcedureStepSequence"
     step_iods = {
@@ -921,10 +921,11 @@ def test_instances_keep_their_reviewed_dummy_values(policy_run):
             )
             steps.add(item.ReferencedSOPInstanceUID)
         if file.manifest.iod == "Enhanced MR Color Image":
-            assert written.ICCProfile == dummy_values.icc_profile_for_d(
-                source.ICCProfile
-            )
+            outcome = dummy_values.icc_profile_outcome(source.ICCProfile)
+            assert outcome.refusal is None
+            assert written.ICCProfile == outcome.profile
             assert written.ICCProfile != source.ICCProfile
+            assert corpus_module.MARKER_PREFIX.encode() not in written.ICCProfile
         else:
             assert "ICCProfile" not in written
 

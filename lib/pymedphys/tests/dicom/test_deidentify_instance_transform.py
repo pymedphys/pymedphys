@@ -33,6 +33,7 @@ from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom, pytest
 
 from pymedphys._dicom.deidentify import (
+    icc_cleaning,
     icc_profiles,
     instance_transform,
     output_names,
@@ -501,7 +502,10 @@ def test_d_writes_the_reviewed_procedure_step_and_icc_profile_in_an_added_iod():
     assert step.ReferencedSOPClassUID == "1.2.840.10008.3.1.2.3.3"
     assert step.ReferencedSOPInstanceUID == replacement_uid(KEY, PROCEDURE_STEP)
     assert written[0x00282000].VR == "OB"
-    assert written[0x00282000].value == icc_profiles.srgb_profile("DEIDENTIFIED sRGB")
+    # The source profile, cleaned of everything but its colorimetry (D-021).
+    assert written[0x00282000].value == icc_cleaning.clean_profile(
+        icc_profiles.srgb_profile("A scanner's profile"), "DEIDENTIFIED"
+    )
     # Color Space named the source profile's colour space, which the profile
     # written may contradict, so it is removed (D-022).
     assert "ColorSpace" not in written
@@ -520,7 +524,8 @@ def test_d_writes_an_item_for_each_procedure_step_and_the_second_profile():
     second.ReferencedSOPClassUID = "1.2.840.10008.3.1.2.3.3"
     second.ReferencedSOPInstanceUID = "2.25.1000"
     dataset.ReferencedPerformedProcedureStepSequence.append(second)
-    _icc_profile(dataset, icc_profiles.srgb_profile("DEIDENTIFIED sRGB"))
+    source = icc_profiles.srgb_profile("A scanner's profile")
+    _icc_profile(dataset, icc_cleaning.clean_profile(source, "DEIDENTIFIED"))
 
     result = _transformed(dataset)
 
@@ -531,8 +536,29 @@ def test_d_writes_an_item_for_each_procedure_step_and_the_second_profile():
         replacement_uid(KEY, PROCEDURE_STEP),
         replacement_uid(KEY, "2.25.1000"),
     ]
-    # The source equals the first profile, so the second is written.
-    assert written[0x00282000].value == icc_profiles.srgb_profile("DE-IDENTIFIED sRGB")
+    # The source equals its cleaned profile, so the second text is written.
+    assert written[0x00282000].value == icc_cleaning.clean_profile(
+        source, "DE-IDENTIFIED"
+    )
+
+
+@pytest.mark.deid_requirement("MIDI-BP-14")
+def test_d_writes_the_fixed_srgb_profile_where_the_source_cannot_be_cleaned():
+    dataset = synthetic.instance(
+        "1.2.840.10008.5.1.4.1.1.4.3",  # Enhanced MR Color Image Storage
+        synthetic.OTHER,
+        synthetic.OTHER_SERIES,
+    )
+    profile = icc_profiles.srgb_profile("A scanner's profile")
+    # An output device profile, which has no input transform to keep.
+    _icc_profile(dataset, profile[:12] + b"prtr" + profile[16:])
+
+    result = _transformed(dataset)
+
+    assert isinstance(result, run.Transformed)
+    written = pydicom.dcmread(io.BytesIO(result.data))
+    assert written[0x00282000].value == icc_profiles.srgb_profile("DEIDENTIFIED sRGB")
+    assert b"scanner" not in result.data
 
 
 @pytest.mark.deid_requirement("PS3.15-E.1.1-01")

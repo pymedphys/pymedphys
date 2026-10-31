@@ -36,8 +36,10 @@ item in Person Identification Code Sequence (0040,1101), with Code Value
 Sequence (0008,1111), it writes, for each source item, an item that refers
 to a Modality Performed Procedure Step by the keyed replacement of the
 source item's Referenced SOP Instance UID. ICC Profile (0028,2000), of VR
-OB, has a rule too (:func:`icc_profile_for_d`): D writes a fixed sRGB
-profile in place of an RGB one
+OB, has a rule too (:func:`icc_profile_for_d`): D writes an RGB source
+profile cleaned of everything but its colorimetry
+(:mod:`~pymedphys._dicom.deidentify.icc_cleaning`), or a fixed sRGB profile
+where the source cannot be cleaned
 (:mod:`~pymedphys._dicom.deidentify.icc_profiles`).
 
 Verifying Observer Sequence (0040,A073) has a rule of another kind
@@ -75,7 +77,7 @@ import types
 from collections.abc import Mapping, Sequence
 from typing import NamedTuple
 
-from . import icc_profiles
+from . import icc_cleaning, icc_profiles
 from .keys import DeidKey
 from .standard import VRS
 from .uids import normalise_uid, replacement_uid
@@ -481,15 +483,77 @@ def _procedure_step_items(
     )
 
 
+class IccProfileOutcome(NamedTuple):
+    """The profile that D writes in place of ICC Profile, and how it was made.
+
+    Attributes
+    ----------
+    profile : bytes
+        The profile written.
+    refusal : Refusal or None
+        None where the profile is the source cleaned of everything but its
+        colorimetry; otherwise why the source could not be cleaned, so the
+        fixed sRGB profile was written instead.
+    """
+
+    profile: bytes
+    refusal: icc_cleaning.Refusal | None
+
+
+def icc_profile_outcome(source: bytes) -> IccProfileOutcome:
+    """Return the profile that D writes in place of ICC Profile (0028,2000).
+
+    PS3.3 Section C.11.15.1.1 requires the profile's data colour space to be
+    RGB, which its header gives, so only an RGB source profile is replaced.
+    The profile written is the source cleaned by
+    :func:`~pymedphys._dicom.deidentify.icc_cleaning.clean_profile`, keeping
+    its colorimetry, with ``DEIDENTIFIED`` as its description and copyright.
+    Where the source cannot be cleaned, it is the fixed sRGB profile of
+    :func:`~pymedphys._dicom.deidentify.icc_profiles.srgb_profile`, described
+    ``DEIDENTIFIED sRGB``, which can itself be cleaned, so it never has the
+    source's bytes. Where the source has the same bytes as its cleaned
+    profile, the profile written takes the second text constant,
+    ``DE-IDENTIFIED``, in place of the first, so the value always changes.
+
+    Raises
+    ------
+    NoDummyValueError
+        If the source is not an ICC profile, or its data colour space is not
+        RGB.
+    TypeError
+        If ``source`` is not bytes.
+
+    Examples
+    --------
+    >>> from pymedphys._dicom.deidentify import icc_profiles
+    >>> source = icc_profiles.srgb_profile("A scanner's profile")
+    >>> outcome = icc_profile_outcome(source)
+    >>> outcome.refusal is None
+    True
+    >>> b"scanner" in outcome.profile
+    False
+    """
+    if not isinstance(source, (bytes, bytearray)):
+        raise TypeError("the source ICC Profile must be bytes")
+    source = bytes(source)
+    if icc_profiles.data_colour_space(source) != icc_profiles.RGB:
+        raise NoDummyValueError("OB", "the source ICC Profile is not an RGB profile")
+    try:
+        cleaned = icc_cleaning.clean_profile(source, _TEXT[0])
+    except icc_cleaning.UncleanableProfileError as refused:
+        # The fixed profile can itself be cleaned, so a source that could
+        # not be never has its bytes.
+        fixed = icc_profiles.srgb_profile(f"{_TEXT[0]} sRGB")
+        return IccProfileOutcome(fixed, refused.refusal)
+    if source == cleaned:
+        cleaned = icc_cleaning.clean_profile(source, _TEXT[1])
+    return IccProfileOutcome(cleaned, None)
+
+
 def icc_profile_for_d(source: bytes) -> bytes:
     """Return the profile that D writes in place of ICC Profile (0028,2000).
 
-    The profile is the fixed sRGB profile of
-    :func:`~pymedphys._dicom.deidentify.icc_profiles.srgb_profile`, described
-    ``DEIDENTIFIED sRGB``, or ``DE-IDENTIFIED sRGB`` where the source has the
-    same bytes, so the value always changes. PS3.3 Section C.11.15.1.1
-    requires the profile's data colour space to be RGB, which its header
-    gives, so only an RGB source profile is replaced.
+    The profile is that of :func:`icc_profile_outcome`.
 
     Raises
     ------
@@ -506,11 +570,4 @@ def icc_profile_for_d(source: bytes) -> bytes:
     >>> icc_profiles.data_colour_space(icc_profile_for_d(source))
     b'RGB '
     """
-    if not isinstance(source, (bytes, bytearray)):
-        raise TypeError("the source ICC Profile must be bytes")
-    if icc_profiles.data_colour_space(bytes(source)) != icc_profiles.RGB:
-        raise NoDummyValueError("OB", "the source ICC Profile is not an RGB profile")
-    first = icc_profiles.srgb_profile(f"{_TEXT[0]} sRGB")
-    if bytes(source) == first:
-        return icc_profiles.srgb_profile(f"{_TEXT[1]} sRGB")
-    return first
+    return icc_profile_outcome(source).profile
