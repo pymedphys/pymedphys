@@ -115,7 +115,10 @@ shown, so that no verdict releases its pixel data. Colour pixel data with
 8 bits allocated are shown as RGB: as they are, or converted from YBR_FULL
 or YBR_FULL_422 by pydicom, while JPEG 2000's YBR_ICT and YBR_RCT are
 decoded to RGB. Compressed pixel data are decoded by the plugin
-that :data:`.pixel_decoding.DECODING_PLUGINS` pins for its transfer syntax.
+that :func:`.pixel_decoding.pinned_plugin` pins for its transfer syntax
+and attributes, in process, but for those of
+:data:`.pixel_decoding.CHILD_ONLY_PLUGINS`, whose frames are decoded in the
+decoding child by :func:`.pixel_decoding.isolated_frames` (D-055).
 An instance whose pixel data cannot be previewed is reported with why,
 rather than left out: pixel data in a compressed transfer syntax that no
 installed plugin is pinned to decode; a photometric interpretation other
@@ -142,7 +145,12 @@ from collections.abc import Collection, Iterator, Mapping, Sequence
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom
 
-from .pixel_decoding import DECODING_PLUGINS, decoder_available
+from .pixel_decoding import (
+    CHILD_ONLY_PLUGINS,
+    decoder_available,
+    isolated_frames,
+    pinned_plugin,
+)
 from . import qc_contours, qc_segments, qc_surfaces
 from .face_review import is_rt_dose
 from .qc_pack import (
@@ -470,8 +478,10 @@ def _described(
         syntax = str(dataset.file_meta.TransferSyntaxUID)
         plugin = ""
         if dataset.file_meta.TransferSyntaxUID.is_compressed:
-            plugin = DECODING_PLUGINS.get(syntax, "")
-            if not plugin or not decoder_available(syntax):
+            plugin = pinned_plugin(
+                syntax, dataset.get("BitsStored"), dataset.get("PixelRepresentation")
+            )
+            if not plugin or not decoder_available(syntax, plugin):
                 return NotPreviewedReason.COMPRESSED
         photometric = str(dataset.PhotometricInterpretation).strip()
         samples = int(dataset.SamplesPerPixel)
@@ -713,6 +723,8 @@ class _Decoder:
         try:
             if instance.packed:
                 (pixels,) = _packed_frames(instance, [index])
+            elif instance.plugin in CHILD_ONLY_PLUGINS:
+                (pixels,) = isolated_frames(instance.data, [index])
             else:
                 pixels = np.asarray(
                     pydicom.pixels.pixel_array(
@@ -748,6 +760,8 @@ class _Decoder:
                     instance, range(instance.frames) if indices is None else indices
                 )
                 if instance.packed
+                else isolated_frames(instance.data, indices)
+                if instance.plugin in CHILD_ONLY_PLUGINS
                 else pydicom.pixels.iter_pixels(
                     io.BytesIO(instance.data),
                     indices=indices,

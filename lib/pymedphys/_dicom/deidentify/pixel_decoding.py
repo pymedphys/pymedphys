@@ -53,9 +53,15 @@ Each transfer syntax of :data:`.source.ENCAPSULATED_TRANSFER_SYNTAXES` is
 decoded by one pydicom decoding plugin, :data:`DECODING_PLUGINS`, whatever
 else is installed, so that the outcome never depends on which optional
 packages happen to be present or on the order in which pydicom tries them.
-Where that plugin's packages are not installed, the instance is sequestered
-as :attr:`.reasons.TransformReason.NO_DECODER`: it is never released
-without its frames decoded.
+pydicom 3.0.2's GDCM plugin refuses three kinds of frame before GDCM sees
+them, by Bits Stored (0028,0101) and Pixel Representation (0028,0103):
+JPEG Extended at 12 bits, JPEG-LS at 6 or 7 bits, and signed JPEG-LS
+Near-Lossless below 8 bits. :func:`pinned_plugin` pins those to
+:data:`IMAGECODECS`, the plugin of :mod:`.imagecodecs_plugin`, instead,
+whatever GDCM would do, so that each kind of frame still has one decoder
+(D-055). Where the pinned plugin's packages are not installed, the
+instance is sequestered as :attr:`.reasons.TransformReason.NO_DECODER`: it
+is never released without its frames decoded.
 
 Frames are decoded one at a time, as stored (pydicom's ``raw``), with no
 conversion of colour space, so a run never holds more than one decoded
@@ -64,10 +70,14 @@ are redacted by :func:`.diagnostics.redacted_diagnostics`, and an error it
 raises is replaced by a reason, never chained, since its message can quote
 a value.
 
-GDCM and pylibjpeg, :data:`ISOLATED_PLUGINS`, decode in a child process, by
-:func:`.isolated_decoding.run`, since their native libraries can end the
-process that calls them on a malformed codestream, as GDCM does for a JPEG
-frame whose header makes libjpeg warn. A frame whose decoder ends the child
+GDCM, pylibjpeg, and imagecodecs, :data:`ISOLATED_PLUGINS`, decode in a
+child process, by :func:`.isolated_decoding.run`, since their native
+libraries can end the process that calls them on a malformed codestream,
+as GDCM does for a JPEG frame whose header makes libjpeg warn. imagecodecs
+is never added to pydicom's own decoders: the child decodes with a decoder
+of its own that holds it, so it decodes nothing in the engine's process,
+not even to preview a file, for which :func:`isolated_frames` decodes in
+the child (D-055). A frame whose decoder ends the child
 is undecodable, like any other, and the next instance is decoded by a new
 child; where :func:`same_pixels` decodes it, the frames are not the same.
 Where the child cannot be started, the instance is sequestered as
@@ -94,16 +104,18 @@ from __future__ import annotations
 import base64
 import binascii
 import dataclasses
+import functools
+import importlib.util
 import io
 import itertools
 import struct
 import types
-from collections.abc import Iterator, Mapping
+from collections.abc import Iterator, Mapping, Sequence
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom
 
-from . import isolated_decoding
+from . import imagecodecs_plugin, isolated_decoding
 from .diagnostics import redacted_diagnostics
 from .file_layout import ElementPath
 from .frame_headers import Declared, header_problem
@@ -112,6 +124,13 @@ from .source import SourceEvidence, encapsulated_pixel_data
 
 _GDCM = "gdcm"
 _PYLIBJPEG = "pylibjpeg"
+IMAGECODECS = "pymedphys-imagecodecs"
+"""The label of :mod:`.imagecodecs_plugin` in the decoders that hold it,
+which are never pydicom's own."""
+_JPEG_EXTENDED = imagecodecs_plugin.JPEG_EXTENDED
+_JPEG_LS = frozenset(
+    {imagecodecs_plugin.JPEG_LS_LOSSLESS, imagecodecs_plugin.JPEG_LS_NEAR_LOSSLESS}
+)
 _PIXEL_DATA = ElementPath((), "(7FE0,0010)")
 _EXTENDED_OFFSET_TABLE = ElementPath((), "(7FE0,0001)")
 _EXTENDED_OFFSET_TABLE_LENGTHS = ElementPath((), "(7FE0,0002)")
@@ -150,21 +169,144 @@ _SAMPLE_TYPES = types.MappingProxyType(
         (32, True): "<i4",
     }
 )
-ISOLATED_PLUGINS = frozenset({_GDCM, _PYLIBJPEG})
-"""The plugins of :data:`DECODING_PLUGINS` whose native libraries can end
-the process that calls them on a malformed codestream, and so decode in a
-child process (:mod:`.isolated_decoding`). pydicom's own decoder of RLE
-Lossless is Python, and decodes in process."""
+ISOLATED_PLUGINS = frozenset({_GDCM, _PYLIBJPEG, IMAGECODECS})
+"""The plugins whose native libraries can end the process that calls them
+on a malformed codestream, and so decode in a child process
+(:mod:`.isolated_decoding`). pydicom's own decoder of RLE Lossless is
+Python, and decodes in process."""
+CHILD_ONLY_PLUGINS = frozenset({IMAGECODECS})
+"""The plugins that never decode in the engine's process, even to preview a
+file that a check in the child has already decoded: QC previews decode
+their frames by :func:`isolated_frames`."""
+# Whether the decoding child can decode each transfer syntax with
+# imagecodecs, once it has been asked.
+_IMAGECODECS_READY: dict[str, bool] = {}
 
 
-def decoder_available(transfer_syntax: str) -> bool:
-    """Return whether the plugin that decodes ``transfer_syntax`` is installed."""
+def gdcm_refuses(transfer_syntax: str, bits_stored: int, signed: bool) -> bool:
+    """Return whether pydicom 3.0.2's GDCM plugin refuses frames of
+    ``transfer_syntax`` with that Bits Stored and sign, before GDCM sees
+    them: JPEG Extended at other than 8 bits, JPEG-LS at 6 or 7 bits, and
+    signed JPEG-LS Near-Lossless below 8 bits."""
+    if transfer_syntax == _JPEG_EXTENDED:
+        return bits_stored != 8
+    if transfer_syntax not in _JPEG_LS:
+        return False
+    return bits_stored in (6, 7) or (
+        transfer_syntax == imagecodecs_plugin.JPEG_LS_NEAR_LOSSLESS
+        and signed
+        and bits_stored < 8
+    )
+
+
+def pinned_plugin(
+    transfer_syntax: str, bits_stored: object, pixel_representation: object
+) -> str | None:
+    """Return the plugin pinned to decode frames of ``transfer_syntax`` with
+    that Bits Stored and Pixel Representation, or ``None`` for a transfer
+    syntax that does not encapsulate Pixel Data.
+
+    The plugin of :data:`DECODING_PLUGINS`, but :data:`IMAGECODECS` for the
+    frames that :func:`gdcm_refuses`. Where Bits Stored or Pixel
+    Representation cannot be read as an integer, the transfer syntax's own
+    plugin, whose check of the attributes then refuses the frames.
+    """
     plugin = DECODING_PLUGINS.get(transfer_syntax)
+    if plugin != _GDCM:
+        return plugin
+    try:
+        bits = int(bits_stored)  # type: ignore[call-overload]
+        signed = int(pixel_representation) == 1  # type: ignore[call-overload]
+    except (TypeError, ValueError):
+        return plugin
+    return IMAGECODECS if gdcm_refuses(transfer_syntax, bits, signed) else plugin
+
+
+def _dataset_plugin(transfer_syntax: str, dataset: pydicom.Dataset) -> str | None:
+    """Return :func:`pinned_plugin` for the frames of ``dataset``."""
+    return pinned_plugin(
+        transfer_syntax,
+        dataset.get("BitsStored"),
+        dataset.get("PixelRepresentation"),
+    )
+
+
+def decoder_available(transfer_syntax: str, plugin: str | None = None) -> bool:
+    """Return whether ``plugin``, by default the plugin of
+    :data:`DECODING_PLUGINS`, can decode ``transfer_syntax``.
+
+    Whether :data:`IMAGECODECS` can is asked of the decoding child, once
+    per transfer syntax, since imagecodecs is never imported in the
+    engine's process; it cannot where imagecodecs is not installed or the
+    child cannot be started.
+    """
     if plugin is None:
+        plugin = DECODING_PLUGINS.get(transfer_syntax)
+    if plugin == IMAGECODECS:
+        return _imagecodecs_available(transfer_syntax)
+    if plugin is None or DECODING_PLUGINS.get(transfer_syntax) != plugin:
         return False
     with redacted_diagnostics():
         decoder = pydicom.pixels.get_decoder(transfer_syntax)
         return plugin in decoder.available_plugins
+
+
+def _imagecodecs_available(transfer_syntax: str) -> bool:
+    """Return whether the decoding child can decode ``transfer_syntax`` with
+    imagecodecs, as :func:`decoder_available` describes."""
+    if transfer_syntax not in imagecodecs_plugin.DECODER_DEPENDENCIES:
+        return False
+    if importlib.util.find_spec("imagecodecs") is None:
+        return False
+    ready = _IMAGECODECS_READY.get(transfer_syntax)
+    if ready is None:
+        try:
+            with redacted_diagnostics():
+                ready = (
+                    isolated_decoding.run(_imagecodecs_ready, transfer_syntax) is True
+                )
+        # Not remembered: a later child may start.
+        except isolated_decoding.DecoderUnavailable:
+            return False
+        except isolated_decoding.DecodingFailed:
+            ready = False
+        _IMAGECODECS_READY[transfer_syntax] = ready
+    return ready
+
+
+def _imagecodecs_ready(transfer_syntax: str) -> bool:
+    """Return whether imagecodecs can decode ``transfer_syntax`` here, in
+    the decoding child."""
+    return IMAGECODECS in _decoder(transfer_syntax, IMAGECODECS).available_plugins
+
+
+@functools.lru_cache(maxsize=None)
+def _imagecodecs_decoder(transfer_syntax: str) -> pydicom.pixels.decoders.base.Decoder:
+    """Return a decoder of ``transfer_syntax`` that holds only
+    :mod:`.imagecodecs_plugin`, as :data:`IMAGECODECS`: never pydicom's own,
+    so that adding the plugin changes nothing that pydicom decodes."""
+    decoder = pydicom.pixels.decoders.base.Decoder(pydicom.uid.UID(transfer_syntax))
+    decoder.add_plugin(IMAGECODECS, (imagecodecs_plugin.__name__, "_decode_frame"))
+    return decoder
+
+
+def _decoder(transfer_syntax: str, plugin: str) -> pydicom.pixels.decoders.base.Decoder:
+    """Return the decoder that holds ``plugin`` for ``transfer_syntax``:
+    pydicom's own, but for :data:`IMAGECODECS`."""
+    if plugin == IMAGECODECS:
+        return _imagecodecs_decoder(transfer_syntax)
+    return pydicom.pixels.get_decoder(transfer_syntax)
+
+
+def _iter_frames(dataset: pydicom.Dataset, plugin: str) -> Iterator["np.ndarray"]:
+    """Yield each frame of ``dataset`` decoded by ``plugin``, as stored, as
+    :func:`pydicom.pixels.iter_pixels` yields them with ``raw``."""
+    syntax = str(dataset.file_meta.TransferSyntaxUID)
+    options = pydicom.pixels.as_pixel_options(dataset)
+    for frame, _ in _decoder(syntax, plugin).iter_array(
+        dataset, validate=True, raw=True, decoding_plugin=plugin, **options
+    ):
+        yield frame
 
 
 def frames_problem(source: SourceEvidence) -> TransformReason | None:
@@ -185,14 +327,16 @@ def frames_problem(source: SourceEvidence) -> TransformReason | None:
         :attr:`~.reasons.TransformReason.UNDECODABLE_PIXEL_DATA`, or
         :attr:`~.reasons.TransformReason.FRAME_MISMATCH`.
     """
-    plugin = DECODING_PLUGINS.get(source.transfer_syntax)
-    if plugin is None or _PIXEL_DATA not in source:
+    if source.transfer_syntax not in DECODING_PLUGINS or _PIXEL_DATA not in source:
         return None
-    if not decoder_available(source.transfer_syntax):
-        return TransformReason.NO_DECODER
     try:
         with redacted_diagnostics():
-            return _decoded_problem(source, plugin)
+            dataset = source.dataset()
+            plugin = _dataset_plugin(source.transfer_syntax, dataset)
+        if plugin is None or not decoder_available(source.transfer_syntax, plugin):
+            return TransformReason.NO_DECODER
+        with redacted_diagnostics():
+            return _decoded_problem(source, dataset, plugin)
     # The plugin is installed, but the process that runs it cannot be.
     except isolated_decoding.DecoderUnavailable:
         return TransformReason.NO_DECODER
@@ -202,7 +346,9 @@ def frames_problem(source: SourceEvidence) -> TransformReason | None:
         return TransformReason.UNDECODABLE_PIXEL_DATA
 
 
-def _decoded_problem(source: SourceEvidence, plugin: str) -> TransformReason | None:
+def _decoded_problem(
+    source: SourceEvidence, dataset: pydicom.Dataset, plugin: str
+) -> TransformReason | None:
     """Return why the frames do not match the attributes, if they do not,
     having checked the offset tables and each frame's codestream header and
     decoded each frame with ``plugin``.
@@ -212,7 +358,6 @@ def _decoded_problem(source: SourceEvidence, plugin: str) -> TransformReason | N
     Exception
         Whatever pydicom or the plugin raises for a frame it cannot decode.
     """
-    dataset = source.dataset()
     expected = _expected(dataset)
     if expected is None:
         return TransformReason.FRAME_MISMATCH
@@ -246,7 +391,7 @@ def _decoded(
     """Return :attr:`~.reasons.TransformReason.FRAME_MISMATCH` unless
     ``plugin`` decodes ``frames`` frames, each of ``shape``."""
     decoded = 0
-    for frame in pydicom.pixels.iter_pixels(dataset, raw=True, decoding_plugin=plugin):
+    for frame in _iter_frames(dataset, plugin):
         if decoded == frames or frame.shape != shape:
             return TransformReason.FRAME_MISMATCH
         decoded += 1
@@ -403,11 +548,16 @@ def same_pixels(source: SourceEvidence, output: SourceEvidence) -> bool:
     Frames are decoded one pair at a time. A frame that does not decode,
     another number of frames, or another transfer syntax gives ``False``.
     """
-    plugin = DECODING_PLUGINS.get(source.transfer_syntax)
-    if plugin is None or output.transfer_syntax != source.transfer_syntax:
+    if (
+        source.transfer_syntax not in DECODING_PLUGINS
+        or output.transfer_syntax != source.transfer_syntax
+    ):
         return False
     try:
         with redacted_diagnostics():
+            plugin = _dataset_plugin(source.transfer_syntax, source.dataset())
+            if plugin is None:
+                return False
             if plugin in ISOLATED_PLUGINS:
                 # The child sends back only data.
                 return (
@@ -431,9 +581,7 @@ def _same(before: pydicom.Dataset, after: pydicom.Dataset, plugin: str) -> bool:
     frames, as :func:`same_pixels` describes."""
     sentinel = object()
     pairs = itertools.zip_longest(
-        pydicom.pixels.iter_pixels(before, raw=True, decoding_plugin=plugin),
-        pydicom.pixels.iter_pixels(after, raw=True, decoding_plugin=plugin),
-        fillvalue=sentinel,
+        _iter_frames(before, plugin), _iter_frames(after, plugin), fillvalue=sentinel
     )
     for first, second in pairs:
         if first is sentinel or second is sentinel:
@@ -504,9 +652,155 @@ def decoded_frames(
         samples are not of the expected type, shape, or size, or the frames
         are not ``frames`` in number.
     """
-    plugin = DECODING_PLUGINS.get(source.transfer_syntax)
-    if plugin is None or not decoder_available(source.transfer_syntax):
+    plugin = pinned_plugin(
+        source.transfer_syntax,
+        attributes["BitsStored"],
+        attributes["PixelRepresentation"],
+    )
+    if plugin is None or not decoder_available(source.transfer_syntax, plugin):
         raise FramesRefused(TransformReason.NO_DECODER)
+    expected = _expected_frame(attributes, photometric)
+    described = tuple(sorted(attributes.items()))
+    decoded: list[bytes] = []
+    try:
+        with redacted_diagnostics():
+            for codestream in _codestreams(source, frames):
+                decoded.append(
+                    _decoded_frame(
+                        source.transfer_syntax, plugin, codestream, described, expected
+                    )
+                )
+    except FramesRefused:
+        raise
+    # The plugin is installed, but the process that runs it cannot be.
+    except isolated_decoding.DecoderUnavailable:
+        raise FramesRefused(TransformReason.NO_DECODER) from None
+    # pydicom and its plugins raise many types for pixel data they cannot
+    # decode, and a message can quote a value.
+    except Exception:  # pylint: disable = broad-exception-caught
+        raise FramesRefused(TransformReason.UNDECODABLE_PIXEL_DATA) from None
+    if len(decoded) != frames:
+        raise FramesRefused(TransformReason.FRAME_MISMATCH)
+    return b"".join(decoded)
+
+
+def isolated_frames(
+    data: bytes, indices: Sequence[int] | None = None
+) -> Iterator["np.ndarray"]:
+    """Yield frames of the compressed Pixel Data of the file ``data``, each
+    decoded in the decoding child, for a QC preview.
+
+    For the plugins of :data:`CHILD_ONLY_PLUGINS`, which never decode in
+    the engine's process. Each frame is decoded as :func:`decoded_frames`
+    decodes it, from its own codestream, and what the child sends back is
+    checked in the same way, so that the frames are those that
+    :func:`pydicom.pixels.iter_pixels` would give in process: monochrome as
+    stored, and YBR_FULL and YBR_FULL_422 converted to RGB.
+
+    Parameters
+    ----------
+    data : bytes
+        The file.
+    indices : sequence of int, optional
+        The frames to decode, in the order to yield them; every frame, in
+        order, by default.
+
+    Raises
+    ------
+    FramesRefused
+        As :func:`decoded_frames` raises it.
+    """
+    try:
+        with redacted_diagnostics():
+            dataset = pydicom.dcmread(io.BytesIO(data))
+            syntax = str(dataset.file_meta.TransferSyntaxUID)
+            attributes = _described_frame(dataset)
+            frames = int(dataset.get("NumberOfFrames") or 1)
+            extended = None
+            if "ExtendedOffsetTable" in dataset:
+                extended = (
+                    dataset.ExtendedOffsetTable,
+                    dataset.ExtendedOffsetTableLengths,
+                )
+            pixel_data = dataset.PixelData
+    # pydicom raises many types for a file it cannot read, and a message can
+    # quote a value.
+    except Exception:  # pylint: disable = broad-exception-caught
+        raise FramesRefused(TransformReason.UNDECODABLE_PIXEL_DATA) from None
+    plugin = pinned_plugin(
+        syntax, attributes["BitsStored"], attributes["PixelRepresentation"]
+    )
+    if plugin is None or not decoder_available(syntax, plugin):
+        raise FramesRefused(TransformReason.NO_DECODER)
+    samples = int(attributes["SamplesPerPixel"])
+    photometric = str(attributes["PhotometricInterpretation"])
+    if samples == 3 and photometric in _CONVERTED_TO_RGB:
+        photometric = "RGB"
+    expected = _expected_frame(attributes, photometric)
+    described = tuple(sorted(attributes.items()))
+    for index in range(frames) if indices is None else indices:
+        try:
+            with redacted_diagnostics():
+                codestream = pydicom.encaps.get_frame(
+                    pixel_data,
+                    index,
+                    number_of_frames=frames,
+                    extended_offsets=extended,
+                )
+                frame = _decoded_frame(syntax, plugin, codestream, described, expected)
+        except FramesRefused:
+            raise
+        except isolated_decoding.DecoderUnavailable:
+            raise FramesRefused(TransformReason.NO_DECODER) from None
+        # As in decoded_frames.
+        except Exception:  # pylint: disable = broad-exception-caught
+            raise FramesRefused(TransformReason.UNDECODABLE_PIXEL_DATA) from None
+        yield np.frombuffer(frame, dtype=expected.kind).reshape(expected.shape)
+
+
+# The photometric interpretations that pydicom converts to RGB as it decodes,
+# where asked.
+_CONVERTED_TO_RGB = frozenset({"RGB", "YBR_FULL", "YBR_FULL_422"})
+_DESCRIBING = (
+    "Rows",
+    "Columns",
+    "SamplesPerPixel",
+    "BitsAllocated",
+    "BitsStored",
+    "HighBit",
+    "PixelRepresentation",
+)
+
+
+def _described_frame(dataset: pydicom.Dataset) -> dict[str, int | str]:
+    """Return the attributes that describe one frame of ``dataset`` to its
+    decoder, as :func:`decoded_frames` takes them.
+
+    Raises
+    ------
+    Exception
+        Whatever pydicom raises for an attribute that is absent or cannot be
+        read as an integer or text.
+    """
+    attributes: dict[str, int | str] = {
+        keyword: int(dataset[keyword].value) for keyword in _DESCRIBING
+    }
+    attributes["PhotometricInterpretation"] = str(dataset.PhotometricInterpretation)
+    if int(attributes["SamplesPerPixel"]) > 1:
+        attributes["PlanarConfiguration"] = int(dataset.PlanarConfiguration)
+    return attributes
+
+
+def _expected_frame(attributes: Mapping[str, int | str], photometric: str) -> _Expected:
+    """Return what a frame that ``attributes`` describe must decode to, with
+    the photometric interpretation ``photometric``.
+
+    Raises
+    ------
+    FramesRefused
+        With :attr:`~.reasons.TransformReason.UNCLEANABLE_PIXEL_DATA` where
+        Bits Allocated and Pixel Representation give no NumPy type.
+    """
     rows, columns, samples = (
         int(attributes[keyword]) for keyword in ("Rows", "Columns", "SamplesPerPixel")
     )
@@ -515,45 +809,45 @@ def decoded_frames(
     )
     if kind is None:
         raise FramesRefused(TransformReason.UNCLEANABLE_PIXEL_DATA)
-    expected = _Expected(
+    return _Expected(
         photometric,
         kind,
         (rows, columns) if samples == 1 else (rows, columns, samples),
         rows * columns * samples * int(kind[2:]),
     )
-    described = tuple(sorted(attributes.items()))
-    decoded: list[bytes] = []
-    refused: TransformReason | None = None
-    try:
-        with redacted_diagnostics():
-            for codestream in _codestreams(source, frames):
-                arguments = (source.transfer_syntax, plugin, codestream, described)
-                if plugin in ISOLATED_PLUGINS:
-                    sent = isolated_decoding.run(
-                        _frame_decoded,
-                        *arguments,
-                        # The samples' size once encoded as base64.
-                        result_bytes=4 * -(-expected.size // 3),
-                    )
-                else:
-                    sent = _frame_decoded(*arguments)
-                frame = expected.checked(sent)
-                if isinstance(frame, TransformReason):
-                    refused = frame
-                    break
-                decoded.append(frame)
-    # The plugin is installed, but the process that runs it cannot be.
-    except isolated_decoding.DecoderUnavailable:
-        raise FramesRefused(TransformReason.NO_DECODER) from None
-    # pydicom and its plugins raise many types for pixel data they cannot
-    # decode, and a message can quote a value.
-    except Exception:  # pylint: disable = broad-exception-caught
-        raise FramesRefused(TransformReason.UNDECODABLE_PIXEL_DATA) from None
-    if refused is not None:
-        raise FramesRefused(refused)
-    if len(decoded) != frames:
-        raise FramesRefused(TransformReason.FRAME_MISMATCH)
-    return b"".join(decoded)
+
+
+def _decoded_frame(
+    transfer_syntax: str,
+    plugin: str,
+    codestream: bytes,
+    described: tuple[tuple[str, int | str], ...],
+    expected: _Expected,
+) -> bytes:
+    """Return one frame decoded by ``plugin``, in the decoding child for
+    :data:`ISOLATED_PLUGINS`, once what was sent back is checked.
+
+    Raises
+    ------
+    FramesRefused
+        With the reason that :meth:`_Expected.checked` gives.
+    Exception
+        Whatever the child or the decoder raises.
+    """
+    arguments = (transfer_syntax, plugin, codestream, described)
+    if plugin in ISOLATED_PLUGINS:
+        sent = isolated_decoding.run(
+            _frame_decoded,
+            *arguments,
+            # The samples' size once encoded as base64.
+            result_bytes=4 * -(-expected.size // 3),
+        )
+    else:
+        sent = _frame_decoded(*arguments)
+    frame = expected.checked(sent)
+    if isinstance(frame, TransformReason):
+        raise FramesRefused(frame)
+    return frame
 
 
 @dataclasses.dataclass(frozen=True)
@@ -616,9 +910,10 @@ def _frame_decoded(
         setattr(dataset, keyword, value)
     dataset.PixelData = pydicom.encaps.encapsulate([codestream])
     dataset["PixelData"].VR = "OB"
-    decoder = pydicom.pixels.get_decoder(transfer_syntax)
     frame, properties = next(
-        decoder.iter_array(dataset, decoding_plugin=plugin, as_rgb=True)
+        _decoder(transfer_syntax, plugin).iter_array(
+            dataset, decoding_plugin=plugin, as_rgb=True
+        )
     )
     photometric = properties["photometric_interpretation"]
     return [

@@ -43,6 +43,8 @@ idna==3.20
     # via
     #   anyio
     #   requests
+imagecodecs==2026.10.10
+    # via pymedphys
 imageio==2.38.1
     # via pymedphys
 itsdangerous==2.2.0
@@ -93,6 +95,7 @@ numba==0.68.0
 numpy==2.5.4
     # via
     #   contourpy
+    #   imagecodecs
     #   imageio
     #   matplotlib
     #   numba

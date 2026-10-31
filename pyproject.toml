@@ -50,6 +50,9 @@ user = [
   "altair>=6.0.0; python_version >= '3.14'",  # Altair 5.5 cannot import on 3.14
   "attrs",
   "dbfread",
+  # Decodes the JPEG and JPEG-LS frames that pydicom's GDCM plugin refuses
+  # for DICOM de-identification.
+  "imagecodecs>=2025.11.11",
   "imageio[tifffile]",
   "keyring",
   "matplotlib",
