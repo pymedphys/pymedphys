@@ -1022,6 +1022,44 @@ def test_the_rt_image_names_its_plan_as_written(policy_run):
         assert expected == written[corpus_module.PLAN].SOPInstanceUID
 
 
+def _composite_items(item):
+    """Yield each COMPOSITE content item below ``item``, at any depth."""
+    for child in item.get("ContentSequence", ()):
+        if child.ValueType == "COMPOSITE":
+            yield child
+        yield from _composite_items(child)
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.4-01", "MIDI-BP-03")
+def test_the_patient_dose_report_names_the_ct_dose_report_as_written(policy_run):
+    # The patient dose estimate's SR Instance Used names the CT dose report
+    # by the UID that the run's key gives the report's own, so the written
+    # patient dose report still names the written CT dose report.
+    corpus, released = policy_run.corpus, policy_run.released
+    names = {file.manifest.sop_instance: file.name for file in corpus.files}
+    written = {
+        corpus.files[position].manifest.sop_instance: _read(data)
+        for position, data in released.items()
+    }
+    if corpus_module.PATIENT_DOSE_REPORT not in written:
+        name = names.get(corpus_module.PATIENT_DOSE_REPORT)
+        assert name is None or name in policy_run.spec.withheld
+        return
+    report = written[corpus_module.PATIENT_DOSE_REPORT]
+    used = list(_composite_items(report))
+    assert len(used) == 1
+    (reference,) = used[0].ReferencedSOPSequence
+    expected = corpus_module.CT_DOSE_REPORT
+    if REFERENCED_SOP_INSTANCE not in policy_run.spec.kept_rows():
+        expected = uids.replacement_uid(KEY, expected)
+    assert reference.ReferencedSOPInstanceUID == expected
+    assert reference.ReferencedSOPClassUID == (
+        corpus_module.X_RAY_RADIATION_DOSE_SR_STORAGE
+    )
+    if corpus_module.CT_DOSE_REPORT in written:
+        assert expected == written[corpus_module.CT_DOSE_REPORT].SOPInstanceUID
+
+
 @pytest.mark.deid_requirement("PS3.15-E.3.5-01")
 def test_roi_names_take_the_vocabulary_spelling_or_the_reviewed_decision(
     policy_run,

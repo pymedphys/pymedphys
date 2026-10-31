@@ -873,7 +873,9 @@ def test_only_the_reports_define_content_sequence_and_none_waveform_annotation()
     iods = load_iod_tables().iods
     reports = {
         "X-Ray Radiation Dose SR",
+        "Enhanced X-Ray Radiation Dose SR",
         "Radiopharmaceutical Radiation Dose SR",
+        "Patient Radiation Dose SR",
         "Basic Text SR",
         "Enhanced SR",
         "Comprehensive SR",

@@ -692,7 +692,9 @@ def test_series_number_resolves_to_z_in_the_supported_iods_but_where_type_1():
     assert {(name, path) for name, path, action in resolved if action != "Z"} == {
         ("RT Structure Set", ("(3006,004C)",)),
         ("X-Ray Radiation Dose SR", ()),
+        ("Enhanced X-Ray Radiation Dose SR", ()),
         ("Radiopharmaceutical Radiation Dose SR", ()),
+        ("Patient Radiation Dose SR", ()),
         ("Basic Text SR", ()),
         ("Enhanced SR", ()),
         ("Comprehensive SR", ()),
