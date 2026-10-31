@@ -27,6 +27,7 @@ from __future__ import annotations
 import contextlib
 import copy
 import dataclasses
+import io
 import json
 import shutil
 import tempfile
@@ -113,6 +114,23 @@ _GRID = {
 }
 _HIGHEST = 20000
 _LOW = round(dose_defacing.DOSE_FRACTION * _HIGHEST)
+# Deformable registrations, each with a grid that the run does not cut,
+# named by how they are tied to the head's Frame of Reference: as their own
+# frame, the Registered Frame of Reference, in which the grid lies; as the
+# Source Frame of Reference of an item; by a reference to a slice of the
+# head; by an item that names no Source Frame of Reference; or not at all.
+_ELSEWHERE = files.ROOT + ".81"
+_TIED = (
+    "19-registration-own-frame.dcm",
+    "19-registration-source-frame.dcm",
+    "19-registration-slice.dcm",
+    "19-registration-no-source.dcm",
+)
+_UNTIED = "19-registration-elsewhere.dcm"
+_REGISTRATIONS = (*_TIED, _UNTIED)
+# The collection's own deformable registration, of the PET Image to the
+# head's Frame of Reference, which no series of its own marks absent.
+_COLLECTION_REGISTRATION = "19-registration-deformable.dcm"
 
 
 def _dose(low):
@@ -271,15 +289,58 @@ def _runs(*others, without_ct=False, accepted=False, revised=None, **first_run):
         )
 
 
+def _registrations(slices):
+    """Each deformable registration of :data:`_REGISTRATIONS`, by name."""
+    vectors = np.zeros((2, 3, 4, 3), np.float32)
+    vectors[1, 1, 1:3] = (1.0, -2.0, 0.5)
+    grid = (vectors, (-20.0, -90.0, 10.0), (5.0, 5.0, 5.0))
+    frame = corpus_module.FRAME_OF_REFERENCE
+    ties = {
+        _TIED[0]: {"frame": frame, "sources": (_ELSEWHERE,)},
+        _TIED[1]: {"frame": _ELSEWHERE, "sources": (frame,)},
+        _TIED[2]: {"frame": _ELSEWHERE},
+        _TIED[3]: {"frame": _ELSEWHERE},
+        _UNTIED: {"frame": _ELSEWHERE},
+    }
+    found = {}
+    for index, (name, tie) in enumerate(ties.items()):
+        dataset = pydicom.dcmread(
+            io.BytesIO(
+                files.registration(
+                    [grid], instance=f"{files.ROOT}.9.{index + 2}", **tie
+                )
+            )
+        )
+        (item,) = dataset.DeformableRegistrationSequence
+        if name == _TIED[2]:
+            slice_ = pydicom.dcmread(io.BytesIO(slices[0]))
+            reference = pydicom.Dataset()
+            reference.ReferencedSOPClassUID = slice_.SOPClassUID
+            reference.ReferencedSOPInstanceUID = slice_.SOPInstanceUID
+            item.ReferencedImageSequence = [reference]
+        if name == _TIED[3]:
+            del item.SourceFrameOfReferenceUID
+        found[name] = files.written(dataset)
+    return found
+
+
 @contextlib.contextmanager
-def _reviewed(first=None, target=False, eyes_away=False, dose=None, edges=False):
+def _reviewed(
+    first=None,
+    target=False,
+    eyes_away=False,
+    dose=None,
+    edges=False,
+    registrations=False,
+):
     """Run the collection, with its CT slices replaced by the head's, its RT
     Structure Set by the head's ROIs, or by a target in the block if
     ``target``, its PET Image by :data:`_PET_SLICES`, and its first RT Dose
     by a grid over the head of ``dose`` where given, with the RT Dose
     instances of :data:`_UNPLACEABLE` and :data:`_DVH_ONLY` in its series if
-    ``edges``, under ``basic``, or under the option and ``first`` with a
-    face review that gives no verdicts."""
+    ``edges``, and the deformable registrations of :data:`_REGISTRATIONS`
+    if ``registrations``, under ``basic``, or under the option and
+    ``first`` with a face review that gives no verdicts."""
     corpus = corpus_module.build_corpus()
     directory = Path(tempfile.mkdtemp(prefix="d"))
     try:
@@ -297,6 +358,9 @@ def _reviewed(first=None, target=False, eyes_away=False, dose=None, edges=False)
         )
         for index, data in enumerate(slices):
             (instances / _head_name(index)).write_bytes(data)
+        if registrations:
+            for name, data in _registrations(slices).items():
+                (instances / name).write_bytes(data)
         if dose is not None:
             grid = pydicom.dcmread(instances / _DOSE[0])
             (instances / _DOSE[0]).write_bytes(
@@ -361,7 +425,9 @@ def _reviewed(first=None, target=False, eyes_away=False, dose=None, edges=False)
             s["positions"][0]
             for s in entries["series"]
             if any(
-                names[p].startswith("01-head") or names[p] in _IN_FRAME
+                names[p].startswith("01-head")
+                or names[p] in _IN_FRAME
+                or names[p] in _REGISTRATIONS
                 for p in s["positions"]
             )
         ]
@@ -373,7 +439,7 @@ def _reviewed(first=None, target=False, eyes_away=False, dose=None, edges=False)
 def _second(reviewed, *others, name, without_ct=False, accepted=False, revised=None):
     """Attest a copy of the reviewed run's pack, in ``name`` beside it, with
     the head's series, and those of the RT Structure Set, RT Dose, and PET
-    in its frame, marked absent, and, if ``accepted``, the regions of each
+    in its frame, and of the deformable registrations, marked absent, and, if ``accepted``, the regions of each
     of the head's CT and PET slices that the pack previews accepted, or, if
     ``revised``, those of each of its CT slices, revised with that region
     added in their first frame; and run the collection again under the
@@ -458,7 +524,7 @@ def _transform(options, face_review, redaction_review=None):
 # is made once.
 @pytest.fixture(name="reviewed_low", scope="module")
 def fixture_reviewed_low():
-    with _reviewed(first=(), dose=_dose(_LOW)) as found:
+    with _reviewed(first=(), dose=_dose(_LOW), registrations=True) as found:
         yield found
 
 
@@ -633,7 +699,45 @@ def test_pet_instances_in_the_defaced_frame_that_are_not_cleaned_are_held(
         for entry in report["held_for_review"]
         if entry["stage"] == "visual-features"
     }
-    assert counts[held.reason.value] == len(_UNDEFACED)
+    # Besides them, the deformable registrations tied to the head's frame,
+    # which the run does not clean either.
+    registrations = [
+        name for name in (*_TIED, _COLLECTION_REGISTRATION) if name in outcomes
+    ]
+    for name in registrations:
+        assert held in reasons[name], name
+    assert counts[held.reason.value] == len(_UNDEFACED) + len(registrations)
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.2-01", "PS3.15-E.3.2-02")
+def test_a_registration_whose_grid_is_tied_to_the_defaced_frame_is_held(defaced):
+    _, outcomes, reasons, report = defaced
+    held = HeldVisualFeatures(VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME)
+
+    # Marked absent, a registration's grid in the head's Frame of Reference,
+    # or registering it, or tied to its slices, can still trace the face
+    # that the defaced CT no longer shows, and the run does not cut it; so
+    # can one that names no Source Frame of Reference, which may be the
+    # head's. Since the reviewed run defaced that frame too, it held them
+    # for it, so the verdict of absent on them does not count either.
+    for name in _TIED:
+        assert outcomes[name] == ("held-for-review", None), name
+        assert reasons[name] == {
+            held,
+            HeldVisualFeatures(VisualFeaturesReason.NO_FACE_VERDICT),
+        }, name
+    # One tied to the head in no way is released on its verdict, with the
+    # grid that the reviewed run wrote and its grid sheets showed.
+    disposition, dataset = outcomes[_UNTIED]
+    assert disposition == "released", reasons[_UNTIED]
+    assert not reasons[_UNTIED]
+    assert dataset.RecognizableVisualFeatures == "NO"
+    assert _codes(dataset)[-2:] == [markers.PROFILE_CODE, CODE]
+    (item,) = dataset.DeformableRegistrationSequence
+    (grid,) = item.DeformableRegistrationGridSequence
+    vectors = np.frombuffer(grid.VectorGridData, "<f4").reshape(2, 3, 4, 3)
+    assert vectors[1, 1, 1:3].tolist() == [[1.0, -2.0, 0.5]] * 2
+    assert report["face_review"]["ct_series"] == {"defaced": 1, "not_defaced": []}
 
 
 def _contours(dataset):
@@ -931,6 +1035,12 @@ def test_rt_instances_judged_beside_a_defaced_ct_are_held_in_a_run_without_it(
     assert reasons[_DOSE[0]] == {
         HeldVisualFeatures(VisualFeaturesReason.OTHER_PIXEL_DATA)
     }
+    # Nor the deformable registrations that the reviewed run held for their
+    # frame, while the one tied to the head in no way is released.
+    for name in _TIED:
+        assert outcomes[name] == ("held-for-review", None), name
+        assert reasons[name] == {held}, name
+    assert outcomes[_UNTIED][0] == "released"
     assert report["face_review"]["ct_series"] == {"defaced": 0, "not_defaced": []}
 
 

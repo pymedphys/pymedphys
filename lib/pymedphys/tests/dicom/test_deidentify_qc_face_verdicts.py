@@ -33,6 +33,7 @@ from pymedphys._dicom.deidentify import qc_attestation, qc_store, run, run_qc
 from pymedphys._dicom.deidentify import synthetic_corpus as corpus_module
 from pymedphys._dicom.deidentify.face_review import (
     contour_data_sha256,
+    grid_data_sha256,
     pixel_data_sha256,
 )
 from pymedphys._dicom.deidentify.instance_transform import (
@@ -304,7 +305,14 @@ def test_a_run_binds_each_series_to_the_digests_of_its_source_files(tmp_path):
     assert attestation.faces == (FaceVerdict(volume[0], Face.ABSENT),)
 
 
-@pytest.mark.parametrize("digester", ["pixel_data_sha256", "contour_data_sha256"])
+_FIELDS = {
+    "pixel_data_sha256": "pixel_sha256",
+    "contour_data_sha256": "contour_sha256",
+    "grid_data_sha256": "grid_sha256",
+}
+
+
+@pytest.mark.parametrize("digester", list(_FIELDS))
 def test_a_written_file_that_cannot_be_read_has_no_digests(monkeypatch, digester):
     def fails(dataset):
         raise RuntimeError("anything")
@@ -318,19 +326,20 @@ def test_a_written_file_that_cannot_be_read_has_no_digests(monkeypatch, digester
     expected = {
         "pixel_sha256": pixel_data_sha256(dataset).hex(),
         "contour_sha256": contour_data_sha256(dataset).hex(),
+        "grid_sha256": grid_data_sha256(dataset).hex(),
     }
     digests = run_qc._written_sha256  # pylint: disable = protected-access
-    # A file without contours has the digest of none, shown or not.
+    # A file without contours or grids has the digest of none, shown or not.
     assert digests(data, False, True) == expected
     monkeypatch.setattr(run_qc, digester, fails)
     # Whatever taking a digest raises, the pack is still built, and no
     # verdict can clear the instance, which lacks that digest; nor one that
     # cannot be read.
-    field = "pixel_sha256" if digester == "pixel_data_sha256" else "contour_sha256"
-    assert digests(data, False, True) == {**expected, field: None}
-    assert digests(b"not DICOM", True, True) == {
+    assert digests(data, False, True) == {**expected, _FIELDS[digester]: None}
+    assert digests(b"not DICOM", True, True, True) == {
         "pixel_sha256": None,
         "contour_sha256": None,
+        "grid_sha256": None,
     }
 
 

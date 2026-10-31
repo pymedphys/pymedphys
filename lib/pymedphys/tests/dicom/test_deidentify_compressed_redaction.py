@@ -739,7 +739,7 @@ def test_a_reviewed_compressed_image_is_released_as_its_previews_showed_it(
         },
     )
 
-    assert document["format"] == qc_pack.FORMAT == "pymedphys-deid-qc-pack/19"
+    assert document["format"] == qc_pack.FORMAT == "pymedphys-deid-qc-pack/20"
     assert {entry["decoded_sha256"] for entry in document["redactions"]} == {
         hashlib.sha256(frame.tobytes()).hexdigest()
         for frame in (*frames.values(), _monochrome(3))

@@ -208,8 +208,8 @@ class VisualFeaturesReason(enum.Enum):
     # held it beside a CT series that it defaced, so the verdict was of the
     # defaced images rather than of the file, it is a Segmentation whose
     # segments reach such a series' face block, which the QC pack does not
-    # show, or it holds a deformable registration's grid, which no preview
-    # of the QC pack draws
+    # show, or the QC pack could not show its contours or deformation grids,
+    # so the verdict was given without them
     NO_FACE_VERDICT = "no-face-verdict"
     # its series is marked absent, but the run writes other pixel data of it
     # than the reviewed run did, such as a CT slice defaced since the
@@ -220,6 +220,11 @@ class VisualFeaturesReason(enum.Enum):
     # that the reviewed run did not find, so the verdict is not of what it
     # releases
     OTHER_CONTOURS = "face-verdict-on-other-contours"
+    # its series is marked absent, but the run writes other deformation
+    # grids of it than the reviewed run did, or grids that the QC pack's
+    # grid sheets did not all show, so the verdict is not of what it
+    # releases
+    OTHER_GRIDS = "face-verdict-on-other-grids"
     # an RT Dose in the Frame of Reference of a CT series that the run
     # defaces, whose dose in the series' face block is too great to set to
     # zero there, so that it is written as received
@@ -227,8 +232,10 @@ class VisualFeaturesReason(enum.Enum):
     # an RT Structure Set, RT Dose, PET instance, or Segmentation in the
     # Frame of Reference of a CT series that the run defaces, whose outline
     # or pixel data the run does not clean of the face, such as one in other frames
-    # too or that cannot be cut, and which a reviewer may have judged from
-    # the defaced CT
+    # too or that cannot be cut, or a deformable registration with a grid
+    # that names such a frame as its own or as a source, whose grid the run
+    # does not clean, and which a reviewer may have judged from the defaced
+    # CT
     UNDEFACED_IN_DEFACED_FRAME = "undefaced-in-defaced-frame"
     # a CT slice of a series whose face block a target may reach, so that
     # the series is not defaced
@@ -313,3 +320,6 @@ class ReviewReason(enum.Enum):
     # its series is marked absent, but the run writes contours of it that
     # the reviewed run's contour sheet did not show
     OTHER_CONTOURS = VisualFeaturesReason.OTHER_CONTOURS.value
+    # its series is marked absent, but the run writes deformation grids of
+    # it that the reviewed run's grid sheets did not all show
+    OTHER_GRIDS = VisualFeaturesReason.OTHER_GRIDS.value
