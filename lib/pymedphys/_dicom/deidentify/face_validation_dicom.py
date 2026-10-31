@@ -22,10 +22,10 @@
 Under the Clean Recognizable Visual Features Option, a run finds the face
 block of each CT series (:mod:`~pymedphys._dicom.deidentify.face_blocks`),
 holds a series with a target in its block or an eye ROI away from the
-globes it found, sets an RT Dose in a defaced frame to zero in the block or
-holds it where that dose is too great
+globes it found, sets an RT Dose in a defaced frame to zero in the block of
+each defaced series of that frame or holds it where that dose is too great
 (:mod:`~pymedphys._dicom.deidentify.dose_defacing`), and cuts an RT
-Structure Set's contours by the block
+Structure Set's contours in each defaced frame by that frame's blocks
 (:mod:`~pymedphys._dicom.deidentify.region_defacing`). This module runs the
 same code on a directory of DICOM files, such as the CT Image series, RT
 Structure Sets, RT Plans, and RT Doses that a planning system exports
@@ -70,8 +70,9 @@ longer be read, as a run gives it. Of each series of CT Image instances
 
 Of each RT Dose and RT Structure Set that a run holds or cleans for a
 defaced series' frame, it counts the outcome: an RT Dose set to zero in the
-block or held, with the greatest stored value that a run would set to zero
-as a fraction of the grid's greatest, which a run compares with
+blocks or held, with the greatest stored value that a run would set to
+zero as a fraction of the grid's greatest, by magnitude for a grid of Dose
+Type ERROR, which a run compares with
 :data:`~pymedphys._dicom.deidentify.dose_defacing.DOSE_FRACTION`; and an RT
 Structure Set cut, unchanged, or held, with the ROIs that a run would cut
 by RT ROI Interpreted Type. It counts the RT Plans that name a defaced
@@ -109,9 +110,12 @@ from .diagnostics import redacted_diagnostics
 from .dose_defacing import (
     DOSE_FRACTION,
     RT_DOSE,
-    DoseBlock,
+    FrameRegion,
     RtDoseDefacer,
     find_dose_blocks,
+    frame_region,
+    joined,
+    structure_set_regions,
 )
 from .face_blocks import (
     CT_IMAGE,
@@ -947,7 +951,7 @@ def _measure_dose(
     record: InstanceRecord,
     data: bytes | None,
     defaced: Defaced,
-    dose_blocks: Mapping[str, DoseBlock],
+    dose_blocks: Mapping[str, FrameRegion],
 ) -> DoseMeasures | None:
     """What a run does with an RT Dose, as ``_dose_block``, ``_cleaned``,
     and ``_frame_hold`` of the instance transform decide it, or None for
@@ -956,8 +960,7 @@ def _measure_dose(
     dataset = pydicom.dcmread(io.BytesIO(data or b""))
     if not any(tag in dataset for tag in PIXEL_DATA_TAGS):
         return None
-    frames = frames_of(record)
-    dose = dose_blocks.get(next(iter(frames))) if len(frames) == 1 else None
+    dose = frame_region(record, dose_blocks)
     undefaced = VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME.value
     if dose is None:
         return DoseMeasures(undefaced) if defaced.holds(RT_DOSE, record) else None
@@ -993,11 +996,12 @@ class _Recorder:
 
     def mask(self, frame: int, stored: np.ndarray) -> FrameMask | None:
         stored = np.asarray(stored)
+        compared = self._defacer.compared(stored)
         if stored.size:
-            self._greatest = max(self._greatest, int(stored.max()))
+            self._greatest = max(self._greatest, int(compared.max()))
         mask = self._defacer.mask(frame, stored)
         if mask is not None:
-            self._zeroed = max(self._zeroed, int(stored[np.asarray(mask.mask)].max()))
+            self._zeroed = max(self._zeroed, int(compared[np.asarray(mask.mask)].max()))
         return mask
 
     @property
@@ -1011,21 +1015,21 @@ def _measure_structure_set(
     record: InstanceRecord,
     data: bytes | None,
     defaced: Defaced,
-    dose_blocks: Mapping[str, DoseBlock],
+    dose_blocks: Mapping[str, FrameRegion],
 ) -> StructureSetMeasures | None:
-    """What a run does with an RT Structure Set, as ``_region`` and
+    """What a run does with an RT Structure Set, as ``_contour_regions`` and
     ``_frame_hold`` of the instance transform decide it, or None for one
     that it neither holds nor cleans for a defaced frame."""
-    frames = frames_of(record)
-    region = dose_blocks.get(next(iter(frames))) if len(frames) == 1 else None
+    regions = structure_set_regions(record, dose_blocks, defaced)
     undefaced = VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME.value
-    if region is None:
+    if regions is None:
         if defaced.holds(RT_STRUCTURE_SET, record):
             return StructureSetMeasures(undefaced)
         return None
+    region = joined(regions)
     dataset = pydicom.dcmread(io.BytesIO(data or b""))
     try:
-        cut = cut_contours(region, dataset, next(iter(frames)))
+        cut = cut_contours(regions, dataset, defaced.frames)
     except ContoursRefused:
         return StructureSetMeasures(undefaced)
     kinds = _interpreted_types(dataset)

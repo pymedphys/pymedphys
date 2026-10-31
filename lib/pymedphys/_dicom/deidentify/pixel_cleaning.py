@@ -38,11 +38,15 @@ bits. A :class:`Defacer` alone, without a finder, a reviewer's regions, or
 an overlay to clear, also writes native Pixel Data of single bits, Bits
 Allocated, Bits Stored, and Pixel Representation 1, 1, and 0, packed eight
 to a byte, the first pixel in the lowest bit (PS3.5 Section 8.1.1), as a
-BINARY Segmentation holds its masks, where each frame's pixels fill whole
-bytes, so that each frame starts at a byte's first bit; pydicom 3.0.2
-misreads frames that start within a byte. Such Pixel Data is unpacked and
-written one frame at a time, so that a long segmentation needs no more than
-one frame unpacked beside its bytes. In native Pixel Data, the new value is written in place of the old,
+BINARY Segmentation holds its masks, packed across frames, so that a frame
+whose pixels do not fill whole bytes ends within a byte and the next
+starts there. Such Pixel Data is unpacked and written one frame at a time,
+the bytes that a frame spans unpacked and the bits of its neighbours in
+the bytes it shares with them written as they were, so that a long
+segmentation needs no more than one frame unpacked beside its bytes. Since
+pydicom 3.0.2 can fail to read a single frame that starts within a byte,
+such Pixel Data is checked as written from pydicom's reading of every
+frame at once. In native Pixel Data, the new value is written in place of the old,
 byte for byte, so the transfer syntax, the frames' layout, and every byte
 outside the regions are kept. Bits above Bits Stored could hold an overlay
 (PS3.3 Section C.9.2 before 2004) or anything else that a viewer does not
@@ -136,6 +140,9 @@ _BITS_ALLOCATED = (8, 16, 32)
 # a defacer's masks are written into.
 _PACKED_BITS = 1
 _MONOCHROME = ("MONOCHROME1", "MONOCHROME2")
+# Of one sample whose stored values index a palette, as a label map's
+# Segment Numbers can be coloured; written only by a defacer.
+_PALETTE_COLOR = "PALETTE COLOR"
 _RGB = "RGB"
 # The colour of compressed Pixel Data that decodes to RGB: by pydicom from
 # YBR_FULL and YBR_FULL_422, and by the JPEG 2000 decoder from YBR_ICT and
@@ -301,7 +308,7 @@ class Layout:
     def size(self) -> int:
         """How many bytes of the value field the frames' words fill."""
         if self.packed:
-            return self.words // 8
+            return -(-self.words // 8)
         return self.words * self.dtype.itemsize
 
     def word_of(self, value: int) -> int:
@@ -590,7 +597,8 @@ def _blacked_out(
         return None
     decoded = None
     if source.transfer_syntax in NATIVE_TRANSFER_SYNTAXES:
-        layout = layout_of(dataset, packed=boxes_of is None and not overlays)
+        alone = boxes_of is None and not overlays
+        layout = layout_of(dataset, packed=alone, palette=alone)
         field = source.value_field(PIXEL_DATA)
         if overlays & ~_unused_bits(layout):
             raise ValueError("an overlay's bit must be above High Bit")
@@ -599,7 +607,7 @@ def _blacked_out(
     else:
         if overlays:
             raise ValueError("overlays are cleared only in native Pixel Data")
-        layout, attributes = _decoded_layout(dataset)
+        layout, attributes = _decoded_layout(dataset, palette=boxes_of is None)
         try:
             field = decoded = decoded_frames(
                 source, attributes, layout.frames, layout.photometric
@@ -696,28 +704,40 @@ def _bits_masked(layout: Layout, field: bytes, defacer: Defacer | None) -> Redac
     return Redaction(layout, (), bytes(written), tuple(masks))
 
 
-def _frame_span(layout: Layout, index: int) -> slice:
-    """The bytes of one frame of Pixel Data packed eight to a byte, whose
-    frames each fill whole bytes."""
-    length = layout.rows * layout.columns // 8
-    return slice(index * length, (index + 1) * length)
+def _frame_span(layout: Layout, index: int) -> tuple[slice, int]:
+    """The bytes that one frame of Pixel Data packed eight to a byte spans,
+    and the bit within the first of them at which the frame starts."""
+    length = layout.rows * layout.columns
+    start = index * length
+    first, stop = start // 8, -(-(start + length) // 8)
+    return slice(first, stop), start - 8 * first
 
 
 def _frame_bits(layout: Layout, field: bytes | bytearray, index: int) -> np.ndarray:
     """Return one frame of Pixel Data packed eight to a byte, unpacked, rows
     by columns, the first pixel in each byte's lowest bit."""
-    packed = np.frombuffer(field[_frame_span(layout, index)], dtype=np.uint8)
+    span, offset = _frame_span(layout, index)
+    packed = np.frombuffer(bytes(field[span]), dtype=np.uint8)
     bits = np.asarray(np.unpackbits(packed, bitorder="little"))
-    return bits.reshape(layout.rows, layout.columns)
+    length = layout.rows * layout.columns
+    return bits[offset : offset + length].reshape(layout.rows, layout.columns)
 
 
 def _put_frame_bits(
     layout: Layout, field: bytearray, index: int, bits: np.ndarray
 ) -> None:
     """Write one frame's bits, as :func:`_frame_bits` gives them, packed
-    into its bytes."""
-    packed = np.asarray(np.packbits(np.ravel(bits), bitorder="little"))
-    field[_frame_span(layout, index)] = packed.tobytes()
+    into the bytes it spans, keeping the bits of the frames beside it in the
+    bytes that it shares with them."""
+    span, offset = _frame_span(layout, index)
+    around = np.asarray(
+        np.unpackbits(
+            np.frombuffer(bytes(field[span]), dtype=np.uint8), bitorder="little"
+        )
+    )
+    around[offset : offset + layout.rows * layout.columns] = np.ravel(bits)
+    packed = np.asarray(np.packbits(around, bitorder="little"))
+    field[span] = packed.tobytes()
 
 
 def overlay_planes(source: SourceEvidence, dataset: pydicom.Dataset) -> int | None:
@@ -804,11 +824,15 @@ def _placed_overlays(
     return layout, planes
 
 
-def layout_of(dataset: pydicom.Dataset, *, packed: bool = False) -> Layout:
+def layout_of(
+    dataset: pydicom.Dataset, *, packed: bool = False, palette: bool = False
+) -> Layout:
     """Return how native Pixel Data holds its frames.
 
     Pixel Data of single bits, packed eight to a byte, is read only where
-    ``packed`` is true, for a defacer's masks alone.
+    ``packed`` is true, and PALETTE COLOR of one sample, whose stored
+    values index its palette, only where ``palette`` is, each for a
+    defacer's masks alone.
 
     Raises
     ------
@@ -818,7 +842,10 @@ def layout_of(dataset: pydicom.Dataset, *, packed: bool = False) -> Layout:
         is not cleaned.
     """
     layout = _read_layout(dataset, packed=packed)
-    monochrome = layout.samples == 1 and layout.photometric in _MONOCHROME
+    monochrome = layout.samples == 1 and (
+        layout.photometric in _MONOCHROME
+        or (palette and layout.photometric == _PALETTE_COLOR)
+    )
     rgb = (
         layout.samples == 3
         and layout.photometric == _RGB
@@ -831,13 +858,15 @@ def layout_of(dataset: pydicom.Dataset, *, packed: bool = False) -> Layout:
 
 
 def _decoded_layout(
-    dataset: pydicom.Dataset,
+    dataset: pydicom.Dataset, *, palette: bool = False
 ) -> tuple[Layout, Mapping[str, int | str]]:
     """Return how compressed Pixel Data's frames are held once decoded, and
     the attributes that describe a frame to its decoder.
 
     Decoded frames have the samples of each pixel together, and colour of 8
     bits, unsigned, in any of :data:`_DECODED_TO_RGB` decodes to RGB.
+    PALETTE COLOR of one sample decodes to the indices that it holds, and
+    is read only where ``palette`` is true, for a defacer's masks alone.
 
     Raises
     ------
@@ -845,7 +874,10 @@ def _decoded_layout(
         As :func:`layout_of` does.
     """
     layout = _read_layout(dataset)
-    monochrome = layout.samples == 1 and layout.photometric in _MONOCHROME
+    monochrome = layout.samples == 1 and (
+        layout.photometric in _MONOCHROME
+        or (palette and layout.photometric == _PALETTE_COLOR)
+    )
     colour = (
         layout.samples == 3
         and layout.photometric in _DECODED_TO_RGB
@@ -870,10 +902,13 @@ def _decoded_layout(
     return layout, attributes
 
 
-def frames_layout(dataset: pydicom.Dataset, transfer_syntax: str) -> Layout:
+def frames_layout(
+    dataset: pydicom.Dataset, transfer_syntax: str, *, palette: bool = False
+) -> Layout:
     """Return how :func:`black_out` holds an instance's frames: as native
     Pixel Data holds them, by :func:`layout_of`, or, for compressed Pixel
-    Data, as its frames are held once decoded.
+    Data, as its frames are held once decoded, with PALETTE COLOR read
+    where ``palette`` is true.
 
     Raises
     ------
@@ -881,8 +916,8 @@ def frames_layout(dataset: pydicom.Dataset, transfer_syntax: str) -> Layout:
         As :func:`layout_of` does.
     """
     if transfer_syntax in NATIVE_TRANSFER_SYNTAXES:
-        return layout_of(dataset)
-    return _decoded_layout(dataset)[0]
+        return layout_of(dataset, palette=palette)
+    return _decoded_layout(dataset, palette=palette)[0]
 
 
 def decoded_stored_values(
@@ -963,15 +998,9 @@ def _read_layout(dataset: pydicom.Dataset, *, packed: bool = False) -> Layout:
     # can quote the value.
     except Exception:  # pylint: disable = broad-exception-caught
         raise uncleanable from None
-    # Pixels of single bits are read only in frames that each fill whole
-    # bytes, which pydicom reads frame by frame.
-    bits = (
-        packed
-        and allocated == _PACKED_BITS
-        and samples == 1
-        and not representation
-        and rows * columns % 8 == 0
-    )
+    # Pixels of single bits are read only for a defacer, of one sample and
+    # unsigned, whether or not each frame fills whole bytes.
+    bits = packed and allocated == _PACKED_BITS and samples == 1 and not representation
     if not (
         min(frames, rows, columns) > 0
         and (allocated in _BITS_ALLOCATED or bits)
@@ -1097,7 +1126,7 @@ def _source_frames(source: SourceEvidence, redaction: Redaction) -> Iterator:
     source itself where it is native, and from the decoded frames where it
     is compressed, which are never decoded again in this process."""
     if redaction.transfer_syntax is None:
-        yield from pydicom.pixels.iter_pixels(source.dataset())
+        yield from _pydicom_frames(source, redaction.layout)
         return
     layout = redaction.layout
     words = _words(layout, redaction.decoded or b"")
@@ -1105,6 +1134,17 @@ def _source_frames(source: SourceEvidence, redaction: Redaction) -> Iterator:
         raise ValueError("the decoded frames do not fit their layout")
     for frame in layout.shaped(words):
         yield _frame(layout, _stored_values(layout, frame))
+
+
+def _pydicom_frames(evidence: SourceEvidence, layout: Layout) -> Iterator:
+    """Yield native Pixel Data's frames as pydicom reads them: one at a
+    time, but for frames of single bits that start within a byte, which
+    pydicom 3.0.2 reads reliably only all at once."""
+    if layout.packed and layout.frames > 1 and layout.rows * layout.columns % 8:
+        whole = np.asarray(pydicom.pixels.pixel_array(evidence.dataset()))
+        yield from whole.reshape(layout.frames, layout.rows, layout.columns)
+        return
+    yield from pydicom.pixels.iter_pixels(evidence.dataset())
 
 
 def _reads_as_planned(
@@ -1118,7 +1158,7 @@ def _reads_as_planned(
         with redacted_diagnostics():
             pairs = zip(
                 _source_frames(source, redaction),
-                pydicom.pixels.iter_pixels(output.dataset()),
+                _pydicom_frames(output, layout),
                 strict=True,
             )
             for index, (before, after) in enumerate(pairs):

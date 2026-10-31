@@ -180,18 +180,100 @@ _ROIS = {
 }
 
 
-def _head_structure_set(template, *, eyes_away=False):
+def _head_structure_set(template, *, eyes_away=False, frames=False):
     rois = dict(_ROIS)
     if eyes_away:
         # The left eye drawn 40 mm below its globe, where the finder found
         # none.
         rois["Eye_L"] = ("ORGAN", _eye(1, below=40.0))
-    return files.structure_set(
+    data = files.structure_set(
         list(rois.values()),
         frame=corpus_module.FRAME_OF_REFERENCE,
         template=template,
         names=list(rois),
     )
+    if not frames:
+        return data
+    # A frame that the run holds no image of, declared, with an ROI there
+    # that reaches where the block would be in the head's frame.
+    dataset = pydicom.dcmread(pydicom.filebase.DicomBytesIO(data))
+    other = files.structure_set(
+        [("ORGAN", files.square(_IN_THE_BLOCK, 10.0))],
+        frame=_OTHER_FRAME,
+        names=["Other"],
+    )
+    added = pydicom.dcmread(pydicom.filebase.DicomBytesIO(other))
+    number = len(rois) + 1
+    for keyword in (
+        "ReferencedFrameOfReferenceSequence",
+        "StructureSetROISequence",
+        "ROIContourSequence",
+        "RTROIObservationsSequence",
+    ):
+        (item,) = getattr(added, keyword)
+        for attribute in ("ROINumber", "ReferencedROINumber", "ObservationNumber"):
+            if attribute in item:
+                setattr(item, attribute, number)
+        getattr(dataset, keyword).append(item)
+    return files.written(dataset)
+
+
+# A second series of the head's slices in their frame, and the frame that
+# the structure set also declares, of no image of the run.
+_PHASE_SERIES = corpus_module.CT_SERIES + ".900"
+_OTHER_FRAME = corpus_module.FRAME_OF_REFERENCE + ".9"
+_ERROR_DOSE = "06-rtdose-error.dcm"
+_SLAB_STRUCTURE_SET = "04-rtstruct-slab.dcm"
+
+
+def _phase_name(index):
+    return f"01-head-phase-{index:03d}.dcm"
+
+
+def _error(stored):
+    """A grid of differences: of either sign at the low dose in the block,
+    and of the greatest magnitude, negative, behind the head."""
+    signs = np.where(np.indices(stored.shape).sum(axis=0) % 2, 1, -1)
+    differences = (stored.astype(np.int64) * signs).astype(np.int32)
+    differences[:, 36:, :] = -_HIGHEST
+    return differences
+
+
+def _slab_structure_set(template):
+    """A structure set of the head's frame, in the template's series, with
+    one ROI whose contour, 40 mm below the globes and across the block's
+    vertical plane, has a slab 100 mm thick, which reaches the block, so
+    that its part behind the plane is kept."""
+    data = files.structure_set(
+        [
+            (
+                "ORGAN",
+                files.square((-32.0, head.GLOBE_Y + 5.0, head.GLOBE_Z - 40.0), 10.0),
+            )
+        ],
+        frame=corpus_module.FRAME_OF_REFERENCE,
+        template=template,
+        names=["Slab"],
+    )
+    dataset = pydicom.dcmread(pydicom.filebase.DicomBytesIO(data))
+    dataset.SOPInstanceUID = f"{template.SOPInstanceUID}.30"
+    dataset.file_meta.MediaStorageSOPInstanceUID = dataset.SOPInstanceUID
+    (contour,) = dataset.ROIContourSequence[0].ContourSequence
+    contour.ContourSlabThickness = "100"
+    return files.written(dataset)
+
+
+def _error_dose(grid):
+    data = files.dose(
+        _error(_dose(_LOW)),
+        **_GRID,
+        frame=corpus_module.FRAME_OF_REFERENCE,
+        instance=f"{grid.SOPInstanceUID}.20",
+        template=grid,
+    )
+    dataset = pydicom.dcmread(pydicom.filebase.DicomBytesIO(data))
+    dataset.DoseType = "ERROR"
+    return files.written(dataset)
 
 
 def _pet_points(z):
@@ -293,6 +375,7 @@ def _reviewed(
     edges=False,
     multi_frame=False,
     compressed=False,
+    phases=False,
 ):
     """Run the collection, with its CT slices replaced by the head's, as one
     Enhanced CT Image instance if ``multi_frame``, its RT Structure Set by
@@ -303,7 +386,14 @@ def _reviewed(
     instances of :data:`_UNPLACEABLE` and :data:`_DVH_ONLY` in its series if
     ``edges``, the head's CT and PET slices and that RT Dose compressed in
     :data:`_COMPRESSED` in turn if ``compressed``, under ``basic``, or under
-    the option and ``first`` with a face review that gives no verdicts."""
+    the option and ``first`` with a face review that gives no verdicts. If
+    ``phases``, the head's slices are written again as a second series in
+    their frame (:data:`_PHASE_SERIES`), as a 4D CT's average and phase
+    series share one, the structure set also declares a frame that the run
+    holds nothing of, with an ROI there, and an RT Dose of Dose Type ERROR
+    over the head (:data:`_ERROR_DOSE`), and a structure set in its series
+    with a contour whose slab reaches the block
+    (:data:`_SLAB_STRUCTURE_SET`), are added."""
     corpus = corpus_module.build_corpus()
     directory = Path(tempfile.mkdtemp(prefix="d"))
     try:
@@ -326,6 +416,17 @@ def _reviewed(
         else:
             for index, data in enumerate(slices):
                 (instances / _head_name(index)).write_bytes(data)
+        if phases:
+            for index, data in enumerate(
+                files.ct_files(
+                    _SCAN,
+                    head.Head(noise=0.0),
+                    series=_PHASE_SERIES,
+                    frame=corpus_module.FRAME_OF_REFERENCE,
+                    template=template,
+                )
+            ):
+                (instances / _phase_name(index)).write_bytes(data)
         if dose is not None:
             grid = pydicom.dcmread(instances / _DOSE[0])
             (instances / _DOSE[0]).write_bytes(
@@ -359,8 +460,12 @@ def _reviewed(
                 template=rtss,
             )
             if target
-            else _head_structure_set(rtss, eyes_away=eyes_away)
+            else _head_structure_set(rtss, eyes_away=eyes_away, frames=phases)
         )
+        if phases:
+            grid = pydicom.dcmread(instances / _DOSE[0])
+            (instances / _ERROR_DOSE).write_bytes(_error_dose(grid))
+            (instances / _SLAB_STRUCTURE_SET).write_bytes(_slab_structure_set(rtss))
         pet = pydicom.dcmread(instances / _PET[0])
         pet_slices = [
             files.pet(
@@ -531,6 +636,12 @@ def fixture_defaced(reviewed_low):
 @pytest.fixture(name="multi_frame", scope="module")
 def fixture_multi_frame():
     with _runs(first=(), dose=_dose(_LOW), multi_frame=True) as found:
+        yield found
+
+
+@pytest.fixture(name="phases", scope="module")
+def fixture_phases():
+    with _runs(first=(), dose=_dose(_LOW), phases=True) as found:
         yield found
 
 
@@ -985,6 +1096,114 @@ def test_low_dose_in_the_block_is_set_to_zero_there_and_released(defaced):
     brain = inside & (values == head.BRAIN) & (points[..., 2] > floor + 5)
     assert brain.any() and np.array_equal(written[brain], source[brain])
     assert np.count_nonzero(written[inside] == 0) > np.count_nonzero(brain)
+
+
+def _released(outcomes, reasons, name):
+    disposition, dataset = outcomes[name]
+    assert disposition == "released", (name, reasons[name])
+    assert dataset.RecognizableVisualFeatures == "NO"
+    assert _codes(dataset)[-2:] == [markers.PROFILE_CODE, CODE]
+    return dataset
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.2-01", "PS3.15-E.3.2-02")
+def test_two_defaced_series_in_one_frame_are_each_defaced_by_their_own_block(
+    phases, defaced
+):
+    slices, outcomes, reasons, report = phases
+    _, alone, _, _ = defaced
+
+    # The phase series is the head's slices again, so its block, and what
+    # each series is written as, is what the head's series alone is.
+    for index in range(len(slices)):
+        expected = alone[_head_name(index)][1].PixelData
+        for name in (_head_name(index), _phase_name(index)):
+            assert _released(outcomes, reasons, name).PixelData == expected, name
+    assert report["face_review"]["ct_series"] == {
+        "defaced": 2,
+        "not_defaced": [{"reason": "unreadable", "count": _UNPLACED}],
+    }
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.2-01", "PS3.15-E.3.2-02")
+def test_what_lies_in_a_frame_of_two_defaced_series_is_cleaned_by_both_blocks(
+    phases, defaced
+):
+    _, outcomes, reasons, _ = phases
+    _, alone, _, _ = defaced
+
+    # The PET slices and the low dose grid, cleaned by the two blocks, one
+    # the other's, are written as by the head's block alone, and released.
+    for name in (*_PET_SLICES, _DOSE[0]):
+        dataset = _released(outcomes, reasons, name)
+        assert dataset.PixelData == alone[name][1].PixelData, name
+
+
+def _roi_contours(dataset):
+    return {
+        int(item.ReferencedROINumber): [
+            [float(v) for v in contour.ContourData]
+            for contour in item.get("ContourSequence", [])
+        ]
+        for item in dataset.ROIContourSequence
+    }
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.2-01", "PS3.15-E.3.2-02")
+def test_a_structure_set_of_two_frames_is_cut_in_the_defaced_one_and_released(
+    phases, defaced
+):
+    _, outcomes, reasons, _ = phases
+    _, alone, _, _ = defaced
+    dataset = _released(outcomes, reasons, _STRUCTURE_SET)
+    written = _roi_contours(dataset)
+    expected = _roi_contours(alone[_STRUCTURE_SET][1])
+
+    # The head's ROIs, in the defaced frame, are cut as the head's series
+    # alone cuts them; the ROI in the frame that the run holds nothing of
+    # is as it was, though it lies where the block would be in the head's.
+    assert {k: v for k, v in written.items() if k in expected} == expected
+    (other,) = set(written) - set(expected)
+    (contour,) = written[other]
+    assert np.allclose(
+        np.reshape(contour, (-1, 3)), files.square(_IN_THE_BLOCK, 10.0), atol=1e-4
+    )
+    frames = {
+        item.FrameOfReferenceUID for item in dataset.ReferencedFrameOfReferenceSequence
+    }
+    assert len(frames) == 2
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.2-01")
+def test_a_structure_set_cut_by_a_slab_is_held_since_the_pack_shows_no_slab(
+    phases,
+):
+    _, outcomes, reasons, _ = phases
+
+    # Its contour's slab reaches the block, so the run cuts it rather than
+    # holding it as undefaced, but the contour sheet draws no slab, which
+    # its part behind the plane keeps, so the pack showed no contours of it,
+    # and no verdict releases it.
+    assert outcomes[_SLAB_STRUCTURE_SET] == ("held-for-review", None)
+    assert reasons[_SLAB_STRUCTURE_SET] == {
+        HeldVisualFeatures(VisualFeaturesReason.NO_FACE_VERDICT)
+    }
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.2-01")
+def test_an_error_dose_is_cleaned_but_held_since_the_pack_shows_no_signed_dose(
+    phases,
+):
+    _, outcomes, reasons, _ = phases
+
+    # Its differences of either sign are within the fraction of its greatest
+    # magnitude, so the run sets those in the block to zero rather than
+    # holding it as undefaced, but the pack's dose levels show no dose below
+    # 0, so it recorded no pixel data of it, and no verdict releases it.
+    assert outcomes[_ERROR_DOSE] == ("held-for-review", None)
+    assert reasons[_ERROR_DOSE] == {
+        HeldVisualFeatures(VisualFeaturesReason.OTHER_PIXEL_DATA)
+    }
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.2-01")

@@ -12,6 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# pylint: disable = too-many-lines
+
 """RT Structure Set contours and PET images in the Frame of Reference of a
 defaced CT series, cleaned of the face in its block.
 
@@ -21,8 +23,11 @@ Structure Set in the frame of a CT series that a run defaces
 the CT no longer shows, as an outline of the skin does, and so can a PET
 image's uptake at the skin. A run therefore cleans each in the same block,
 as :mod:`~pymedphys._dicom.deidentify.dose_defacing` sets RT Dose to zero
-there, on the block of the frame's one defaced series
-(:class:`~.dose_defacing.DoseBlock`).
+there, on the block of each defaced series of the frame in turn
+(:class:`~.dose_defacing.DoseBlock`, :class:`~.dose_defacing.FrameRegion`):
+a contour is cut by each block, the pieces of one cut being cut by the
+next, and a PET image is set to zero activity wherever any block writes
+its CT as air.
 
 A contour is written as received where none of its segments enters the
 block at a point whose nearest pixel, of the nearest slice that the block
@@ -96,11 +101,26 @@ first piece written of a contour keeps its Contour Number, and the others
 have none, since a number names one contour of its ROI. An ROI left with no
 contour is written without a Contour Sequence, which is Type 3.
 
-A structure set is cut only where each of its ROIs names the defaced
-series' frame, and each contour has a known Contour Geometric Type, Contour
-Data of finite coordinates, in threes, none greater in magnitude than
-:data:`_FARTHEST`, and no Contour Offset Vector or Contour Slab Thickness,
-which would place it elsewhere or give it depth. Any other stays held as an
+A contour with a retired Contour Slab Thickness or Contour Offset Vector
+may lie anywhere along its span
+(:mod:`~pymedphys._dicom.deidentify.contour_slabs`). Where that span
+reaches the block, it is cut by the region of every point whose span meets
+the block, the kept brain not spared (:func:`_shadow`), so that no reading
+of what is written enters the block, and the closed contours of its ROI in
+its plane are cut together by the region that their common span gives,
+only where they carry the same thickness and offset. The QC pack's contour
+sheet draws no such contour (:mod:`~pymedphys._dicom.deidentify.qc_contours`),
+so a structure set so cut is still held without a verdict.
+
+A structure set's ROIs in each defaced frame are cut by that frame's
+blocks, and those in a frame that it declares as one UID in one item and
+that holds no defaced series are written as received, still read as
+contours are. A structure set is cut only where each of its ROIs names
+such a frame, under an ROI Number given once, each contour has a known
+Contour Geometric Type, Contour Data of finite coordinates, in threes,
+none greater in magnitude than :data:`_FARTHEST`, and a slab that can be
+placed, and no contour, nor a frame's list of contour images, refers to a
+defaced slice of a series in another frame. Any other stays held as an
 instance in a defaced frame
 (:attr:`~.reasons.VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME`), as does
 one whose contours an ROI Contour Sequence item gives for an ROI that it
@@ -134,6 +154,8 @@ from __future__ import annotations
 
 import dataclasses
 import math
+from collections.abc import Collection, Mapping
+from typing import TypeAlias
 
 from pymedphys._geometry.pixel_grids import PixelGrid, within_pixels
 from pymedphys._geometry.polygons import (
@@ -146,9 +168,16 @@ from pymedphys._geometry.polygons import (
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom
 
+from .contour_slabs import Slab, SlabRefused, SlabValues, slab_of, slab_values
 from .defacing import ALIGNMENT_TOLERANCE, FaceBlock
 from .diagnostics import redacted_diagnostics
-from .dose_defacing import DoseBlock, _check_directions, _check_reach, _numbers
+from .dose_defacing import (
+    DoseBlock,
+    Region,
+    _check_directions,
+    _check_reach,
+    _numbers,
+)
 from .face_blocks import MULTI_FRAME_PET_IODS, PET_IMAGE, _padding, iod_of
 from .functional_groups import frame_group
 from .pixel_cleaning import (
@@ -161,6 +190,7 @@ from .pixel_cleaning import (
 from .pixel_decoding import DECODING_PLUGINS
 from .reasons import TransformReason, VisualFeaturesReason
 from .source import NATIVE_TRANSFER_SYNTAXES
+from .uid_registry import is_uid
 from .uids import normalise_uid
 
 CLOSED_PLANAR = "CLOSED_PLANAR"
@@ -235,19 +265,23 @@ class WrittenContour:
 
 
 def cut_contours(
-    region: DoseBlock, dataset: pydicom.Dataset, frame: str
+    regions: Mapping[str, Region],
+    dataset: pydicom.Dataset,
+    defaced: Collection[str] = (),
 ) -> dict[int, tuple[WrittenContour, ...]]:
-    """Return the contours of each ROI that the block changes, as the module
+    """Return the contours of each ROI that the blocks change, as the module
     describes.
 
     Parameters
     ----------
-    region : DoseBlock
-        The block of the structure set's Frame of Reference.
+    regions : mapping of str to DoseBlock or FrameRegion
+        The blocks of each defaced Frame of Reference that the structure set
+        names, by its UID.
     dataset : pydicom.Dataset
         The structure set's data set.
-    frame : str
-        The Frame of Reference UID of the defaced series.
+    defaced : collection of str
+        The Frame of Reference UID of each defaced series of the run; an ROI
+        in one of them without a region is refused.
 
     Returns
     -------
@@ -261,24 +295,30 @@ def cut_contours(
     ContoursRefused
         Where the structure set is not one that the module cuts.
     """
-    step = (
-        min(min(each.spacing) for each in region.slices) / 2 if region.slices else _STEP
-    )
     try:
         with redacted_diagnostics():
-            frames = {
-                int(item.ROINumber): normalise_uid(
-                    str(item.get("ReferencedFrameOfReferenceUID") or "")
-                )
-                for item in dataset.get("StructureSetROISequence") or []
-            }
-            if any(each != frame for each in frames.values()):
+            frames = _roi_frames_of(dataset)
+            certain = _declared(dataset)
+            if any(
+                frame not in regions and (frame in defaced or frame not in certain)
+                for frame in frames.values()
+            ):
                 raise ContoursRefused()
+            _check_images(dataset, frames, regions)
             cut = {}
             for index, item in enumerate(dataset.get("ROIContourSequence") or []):
-                if int(item.ReferencedROINumber) not in frames:
+                number = int(item.ReferencedROINumber)
+                if number not in frames:
                     raise ContoursRefused()
-                written = _written(region, item.get("ContourSequence") or [], step)
+                region = regions.get(frames[number])
+                contours = item.get("ContourSequence") or []
+                if region is None:
+                    # Read all the same, so that a contour that the module
+                    # cannot read refuses the set wherever its ROI lies.
+                    for contour in contours:
+                        _contour(contour, 0)
+                    continue
+                written = _written(region, contours)
                 if written is not None:
                     cut[index] = written
             return cut
@@ -290,10 +330,145 @@ def cut_contours(
         raise ContoursRefused() from None
 
 
+def _roi_frames_of(dataset: pydicom.Dataset) -> dict[int, str]:
+    """Return the Frame of Reference UID of each ROI of a structure set, by
+    its ROI Number.
+
+    Raises
+    ------
+    ContoursRefused
+        Where an ROI Number is given twice, so that its frame is not one.
+    """
+    frames: dict[int, str] = {}
+    for item in dataset.get("StructureSetROISequence") or []:
+        number = int(item.ROINumber)
+        if number in frames:
+            raise ContoursRefused()
+        frames[number] = normalise_uid(
+            str(item.get("ReferencedFrameOfReferenceUID") or "")
+        )
+    return frames
+
+
+def _declared(dataset: pydicom.Dataset) -> frozenset[str]:
+    """Return each Frame of Reference UID that a structure set declares as
+    one UID in one item of Referenced Frame of Reference Sequence, the
+    frames in which an ROI can be left as received."""
+    declared = set()
+    for item in dataset.get("ReferencedFrameOfReferenceSequence") or []:
+        value = item.get("FrameOfReferenceUID")
+        if isinstance(value, str):
+            frame = normalise_uid(value)
+            if is_uid(frame):
+                declared.add(frame)
+    return frozenset(declared)
+
+
+def _check_images(
+    dataset: pydicom.Dataset,
+    frames: Mapping[int, str],
+    regions: Mapping[str, Region],
+) -> None:
+    """Check that no contour, and no frame's list of contour images, of a
+    structure set refers to a defaced slice of a series in another frame,
+    whose contours would be drawn on it uncut by its block.
+
+    Raises
+    ------
+    ContoursRefused
+        Where one does.
+    """
+    owner = {
+        instance: frame
+        for frame, region in regions.items()
+        for instance in region.instances
+    }
+
+    def check(images: pydicom.Sequence, frame: str) -> None:
+        for image in images or []:
+            uid = normalise_uid(str(image.get("ReferencedSOPInstanceUID") or ""))
+            if owner.get(uid, frame) != frame:
+                raise ContoursRefused()
+
+    for item in dataset.get("ROIContourSequence") or []:
+        frame = frames.get(int(item.ReferencedROINumber), "")
+        for contour in item.get("ContourSequence") or []:
+            check(contour.get("ContourImageSequence"), frame)
+    for use in dataset.get("ReferencedFrameOfReferenceSequence") or []:
+        frame = normalise_uid(str(use.get("FrameOfReferenceUID") or ""))
+        for study in use.get("RTReferencedStudySequence") or []:
+            for series in study.get("RTReferencedSeriesSequence") or []:
+                check(series.get("ContourImageSequence"), frame)
+
+
+@dataclasses.dataclass(frozen=True, repr=False)
+class _Contour:
+    """One contour of an ROI as a cut has left it.
+
+    Its ``repr`` shows nothing of it.
+
+    Attributes
+    ----------
+    source : int
+        The index, from 0, of the source contour in its ROI's Contour
+        Sequence.
+    kind : str
+        Its Contour Geometric Type.
+    points : numpy.ndarray
+        Its points, the x, y, and z of each in rows, in millimetres, in its
+        Contour Data's place, not moved by its slab.
+    slab : SlabValues or None
+        Its source's Contour Slab Thickness and Contour Offset Vector, which
+        each piece of it keeps.
+    numbered : bool
+        Whether it keeps its source's Contour Number.
+    changed : bool
+        Whether a cut has changed it.
+    """
+
+    source: int
+    kind: str
+    points: np.ndarray
+    slab: SlabValues | None
+    numbered: bool = True
+    changed: bool = False
+
+    def __repr__(self) -> str:
+        return "_Contour()"
+
+
 def _written(
-    region: DoseBlock, contours: pydicom.Sequence, step: float
+    region: Region, contours: pydicom.Sequence
 ) -> tuple[WrittenContour, ...] | None:
-    """Return one ROI's contours as written, or None where none is cut.
+    """Return one ROI's contours as written, cut by each block of its frame
+    in turn (:func:`_cut_by`), or None where none is cut.
+
+    Raises
+    ------
+    ContoursRefused
+        Where a contour cannot be read, or a block's cut refuses them.
+    """
+    parsed = [_contour(contour, index) for index, contour in enumerate(contours)]
+    cut = False
+    for dose in region.blocks:
+        pieces = _cut_by(dose, parsed)
+        if pieces is not None:
+            parsed, cut = pieces, True
+    if not cut:
+        return None
+    return tuple(
+        WrittenContour(
+            each.source,
+            _decimals(each.points) if each.changed else None,
+            each.numbered,
+        )
+        for each in parsed
+    )
+
+
+def _cut_by(dose: DoseBlock, parsed: list[_Contour]) -> list[_Contour] | None:
+    """Return one ROI's contours cut by one series' block, or None where
+    none is cut.
 
     Closed contours in one plane bound one region together, as a hole's
     contour does within its outer one, so where one of them reaches the
@@ -301,21 +476,31 @@ def _written(
     pixels that defacing does not write as air where :class:`_Spare` can
     cut them all so, or else the whole block, and the region that they
     bound together loses just its part in it. Where any is cut, a closed
-    contour that lies in no one plane is refused.
+    contour that lies in no one plane is refused. A contour with a slab
+    (:mod:`~.contour_slabs`) is cut by the points whose span meets the
+    block (:func:`_shadow`), and closed contours in one plane, where one of
+    them has a slab, only where each has the same thickness and offset.
 
     Raises
     ------
     ContoursRefused
-        Where a contour cannot be read, or a closed contour that lies in no
-        one plane is in an ROI of which a contour is cut.
+        Where a closed contour that lies in no one plane is in an ROI of
+        which a contour is cut, or contours in one plane that are cut have
+        another slab each, or a slab cannot be placed.
     """
-    parsed = [_contour(contour) for contour in contours]
-    cutting = [_reaches_face(region, kind, points, step) for kind, points in parsed]
+    step = min(min(each.spacing) for each in dose.slices) / 2 if dose.slices else _STEP
+    halves = [_halves_of(dose.block, each) for each in parsed]
+    cutting = [
+        _reaches_face(dose, each.kind, each.points, step)
+        if halves[index] is None
+        else _meets(halves[index], each.kind, each.points)
+        for index, each in enumerate(parsed)
+    ]
     # Grouping only spreads a cut, so an ROI with none needs no grouping.
     if not any(cutting):
         return None
-    closed = [index for index, (kind, _) in enumerate(parsed) if kind in CLOSED]
-    groups, unplaced = coplanar([parsed[index][1] for index in closed], _COPLANAR)
+    closed = [index for index, each in enumerate(parsed) if each.kind in CLOSED]
+    groups, unplaced = coplanar([parsed[index].points for index in closed], _COPLANAR)
     # A closed contour in no one plane cannot be decided with those it may
     # bound a region with, so an ROI that is cut with one is refused.
     if unplaced:
@@ -325,42 +510,169 @@ def _written(
         members = [closed[member] for member in group]
         if not any(cutting[index] for index in members):
             continue
+        slabs = {parsed[index].slab for index in members}
+        if slabs != {None}:
+            # Contours that bound a region together share its slab, which
+            # is placed by the plane of them all.
+            if len(slabs) != 1:
+                raise ContoursRefused()
+            shared = _shadow(
+                dose.block,
+                _placed(
+                    parsed[members[0]].slab,
+                    np.concatenate([parsed[index].points for index in members]),
+                ),
+            )
+            for index in members:
+                halves[index] = shared
+                cutting[index] = _enters(shared, parsed[index].points)
+            continue
         # Every contour of a plane is cut by the same region, the block less
         # the brain that defacing keeps where the plane allows, or the whole
         # block, so that the region they bound together loses just its part
         # in it.
-        polygons = [_distinct(parsed[index][1]) for index in members]
-        spare = _Spare.of(region, polygons)
+        polygons = [_distinct(parsed[index].points) for index in members]
+        spare = _Spare.of(dose, polygons)
         cuts = (
             []
             if spare is None
             else [
-                spare.cut(each, parsed[index][0])
+                spare.cut(each, parsed[index].kind)
                 for index, each in zip(members, polygons, strict=True)
             ]
         )
         joined = [each for each in cuts if each is not None]
         if len(joined) != len(members):
+            whole = _block_halves(dose.block)
             for index in members:
-                cutting[index] = _enters(region.block, parsed[index][1])
+                cutting[index] = _enters(whole, parsed[index].points)
             continue
         for index, (cut, pieces) in zip(members, joined, strict=True):
             cutting[index], spared[index] = cut, pieces
     if not any(cutting):
         return None
-    written: list[WrittenContour] = []
-    for index, ((kind, points), cut) in enumerate(zip(parsed, cutting, strict=True)):
+    written: list[_Contour] = []
+    for index, (each, cut) in enumerate(zip(parsed, cutting, strict=True)):
         if not cut:
-            written.append(WrittenContour(index))
+            written.append(each)
             continue
         pieces = (
-            spared[index] if index in spared else _pieces(region.block, kind, points)
+            spared[index]
+            if index in spared
+            else _pieces(
+                halves[index] or _block_halves(dose.block), each.kind, each.points
+            )
         )
         written.extend(
-            WrittenContour(index, _decimals(piece), first == 0)
+            dataclasses.replace(
+                each, points=piece, numbered=each.numbered and first == 0, changed=True
+            )
             for first, piece in enumerate(pieces)
         )
-    return tuple(written)
+    return written
+
+
+def _halves_of(block: FaceBlock, contour: _Contour) -> _Halves | None:
+    """Return the region by which a contour with a slab is cut, or None for
+    one without, which is cut as the block cuts it.
+
+    Raises
+    ------
+    ContoursRefused
+        Where its slab cannot be placed.
+    """
+    if contour.slab is None:
+        return None
+    return _shadow(block, _placed(contour.slab, contour.points))
+
+
+def _placed(values: SlabValues | None, points: np.ndarray) -> Slab:
+    """The span of a contour's slab, as :func:`~.contour_slabs.slab_of`
+    finds it.
+
+    Raises
+    ------
+    ContoursRefused
+        Where it cannot be placed.
+    """
+    assert values is not None
+    try:
+        return slab_of(values, points)
+    except SlabRefused:
+        raise ContoursRefused() from None
+
+
+# The open half-spaces whose intersection is a region that a contour is cut
+# by, each as a normal and an offset: the points whose dot product with the
+# normal is more than the offset.
+_Halves: TypeAlias = "tuple[tuple[np.ndarray, float], ...]"
+
+
+def _block_halves(block: FaceBlock) -> _Halves:
+    """The block as the intersection of its two open half-spaces: ahead of
+    its vertical plane, and above its axial plane."""
+    anterior = np.asarray(block.anterior, dtype=float)
+    return (
+        (anterior, float(np.dot(block.origin, anterior))),
+        (np.array([0.0, 0.0, 1.0]), float(block.inferior_limit)),
+    )
+
+
+def _shadow(block: FaceBlock, slab: Slab) -> _Halves:
+    """The points whose span, moved along a slab's direction from its near
+    to its far end, meets the block, as an intersection of open
+    half-spaces.
+
+    For a point ``p``, the span meets the block where some ``t`` from
+    ``near`` to ``far`` puts ``p + t d`` ahead of the vertical plane and
+    above the axial plane: each is an affine function of ``t``, ``g + t a``,
+    so with ``c`` the span's centre and ``h`` its half-length, each holds
+    for some ``t`` of the span exactly where ``g + c a + h |a|`` is
+    positive, and both hold for one ``t`` where, besides, the two do not
+    pull ``t`` apart: where their ``a`` have opposite signs, the two roots
+    must be in order, which is a third half-space, ``(g1 + c a1) |a2| +
+    (g2 + c a2) |a1| > 0``.
+    """
+    direction = np.asarray(slab.direction, dtype=float)
+    centre = (slab.near + slab.far) / 2
+    half = (slab.far - slab.near) / 2
+    planes = _block_halves(block)
+    found = []
+    rates = []
+    for normal, offset in planes:
+        rate = float(direction @ normal)
+        rates.append(rate)
+        found.append((normal, offset - centre * rate - half * abs(rate)))
+    (first, first_offset), (second, second_offset) = planes
+    if rates[0] * rates[1] < 0:
+        found.append(
+            (
+                abs(rates[1]) * first + abs(rates[0]) * second,
+                abs(rates[1]) * (first_offset - centre * rates[0])
+                + abs(rates[0]) * (second_offset - centre * rates[1]),
+            )
+        )
+    return tuple(found)
+
+
+def _meets(halves: _Halves, kind: str, points: np.ndarray) -> bool:
+    """Whether a contour meets the open region of ``halves``: a closed one
+    where the region it bounds does, an open one where a segment enters it,
+    and a point where it lies in it."""
+    if kind == POINT or len(points) == 1:
+        return bool(_inside(halves, points).any())
+    if kind in CLOSED:
+        return _enters(halves, points)
+    lower, upper = _intervals(halves, *_segments(kind, points))
+    return bool((lower < upper).any())
+
+
+def _inside(halves: _Halves, points: np.ndarray) -> np.ndarray:
+    """Whether each point lies in the open region of ``halves``."""
+    inside = np.ones(len(points), dtype=bool)
+    for normal, offset in halves:
+        inside &= points @ normal > offset
+    return inside
 
 
 @dataclasses.dataclass(frozen=True, repr=False)
@@ -447,7 +759,7 @@ class _Spare:
         """
         clockwise = signed_area(points) <= 0
         ring = points[::-1] if clockwise else points
-        outside = _pieces(self.block, CLOSED_PLANAR, ring)
+        outside = _pieces(_block_halves(self.block), CLOSED_PLANAR, ring)
         ahead = clip(ring, *_ahead(self.block))
         kept = [
             piece
@@ -554,8 +866,9 @@ def _distinct(points: np.ndarray) -> np.ndarray:
     return distinct
 
 
-def _contour(contour: pydicom.Dataset) -> tuple[str, np.ndarray]:
-    """Return a contour's geometric type and points.
+def _contour(contour: pydicom.Dataset, index: int) -> _Contour:
+    """Return a contour, the ``index``-th of its ROI's Contour Sequence, as
+    read for a cut.
 
     Raises
     ------
@@ -565,9 +878,10 @@ def _contour(contour: pydicom.Dataset) -> tuple[str, np.ndarray]:
     kind = str(contour.get("ContourGeometricType") or "").strip().upper()
     if kind not in CLOSED | OPEN | {POINT}:
         raise ContoursRefused()
-    for keyword in ("ContourOffsetVector", "ContourSlabThickness"):
-        if keyword in contour and contour[keyword].value not in (None, "", []):
-            raise ContoursRefused()
+    try:
+        slab = slab_values(contour)
+    except SlabRefused:
+        raise ContoursRefused() from None
     data = contour.get("ContourData")
     values = (
         [float(each) for each in data]
@@ -579,7 +893,7 @@ def _contour(contour: pydicom.Dataset) -> tuple[str, np.ndarray]:
     points = np.asarray(values).reshape(-1, 3)
     if not (np.abs(points) <= _FARTHEST).all():
         raise ContoursRefused()
-    return kind, points
+    return _Contour(index, kind, points, slab)
 
 
 def _segments(kind: str, points: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
@@ -600,61 +914,52 @@ def _reaches_face(
     return _reaches(region, *_segments(kind, points), step)
 
 
-def _enters(block: FaceBlock, points: np.ndarray) -> bool:
-    """Whether a closed contour's segments enter the open block, which,
-    since the block's part of the contour's plane is unbounded, is whether
-    the region it bounds meets the block."""
-    lower, upper = _intervals(block, *_segments(CLOSED_PLANAR, points))
+def _enters(halves: _Halves, points: np.ndarray) -> bool:
+    """Whether a closed contour's segments enter the open region of
+    ``halves``, which, since that region's part of the contour's plane is
+    unbounded, is whether the region it bounds meets it."""
+    lower, upper = _intervals(halves, *_segments(CLOSED_PLANAR, points))
     return bool((lower < upper).any())
 
 
-def _pieces(block: FaceBlock, kind: str, points: np.ndarray) -> list[np.ndarray]:
-    """Return the pieces of a contour outside the block, written in its
-    place."""
+def _pieces(halves: _Halves, kind: str, points: np.ndarray) -> list[np.ndarray]:
+    """Return the pieces of a contour outside the open region of ``halves``,
+    written in its place: a closed one's part outside the first half-space,
+    then its part within the first and outside the second, and so on, each
+    disjoint from the others but for the planes between them."""
     if kind == POINT or len(points) == 1:
-        return []
+        return [] if _inside(halves, points).any() else [points]
     if kind in OPEN:
-        return _outside_polyline(block, points)
-    pieces = clip(points, *_behind(block))
-    for part in clip(points, *_ahead(block)):
-        pieces.extend(clip(part, *_below(block)))
+        return _outside_polyline(halves, points)
+    pieces: list[np.ndarray] = []
+    within = [points]
+    for normal, offset in halves:
+        for part in within:
+            pieces.extend(clip(part, normal, offset))
+        within = [piece for part in within for piece in clip(part, -normal, -offset)]
     return [piece for piece in pieces if len(piece) >= 3]
 
 
-def _behind(block: FaceBlock) -> tuple[np.ndarray, float]:
-    """The half-space behind the block's vertical plane, as a normal and an
-    offset, the half-space being where a point's dot product with the
-    normal is at most the offset."""
-    anterior = np.asarray(block.anterior, dtype=float)
-    return anterior, float(np.dot(block.origin, anterior))
-
-
 def _ahead(block: FaceBlock) -> tuple[np.ndarray, float]:
-    """The half-space ahead of the block's vertical plane, as for
-    :func:`_behind`."""
-    normal, offset = _behind(block)
+    """The half-space ahead of the block's vertical plane, as a normal and
+    an offset, the half-space being where a point's dot product with the
+    normal is at most the offset, as
+    :func:`~pymedphys._geometry.polygons.clip` keeps it."""
+    normal, offset = _block_halves(block)[0]
     return -normal, -offset
 
 
-def _below(block: FaceBlock) -> tuple[np.ndarray, float]:
-    """The half-space not above the block's axial plane, as for
-    :func:`_behind`."""
-    return np.array([0.0, 0.0, 1.0]), float(block.inferior_limit)
-
-
 def _intervals(
-    block: FaceBlock, starts: np.ndarray, ends: np.ndarray
+    halves: _Halves, starts: np.ndarray, ends: np.ndarray
 ) -> tuple[np.ndarray, np.ndarray]:
     """Return, for each segment, the bounds of the open interval of its
-    parameter from 0 to 1 within the block, which is empty where the lower
-    is not less than the upper."""
-    anterior, origin = np.asarray(block.anterior), np.asarray(block.origin)
+    parameter from 0 to 1 within the open region of ``halves``, which is
+    empty where the lower is not less than the upper."""
     lower = np.zeros(len(starts))
     upper = np.ones(len(starts))
-    for first, last in (
-        ((starts - origin) @ anterior, (ends - origin) @ anterior),
-        (starts[:, 2] - block.inferior_limit, ends[:, 2] - block.inferior_limit),
-    ):
+    for normal, offset in halves:
+        first = starts @ normal - offset
+        last = ends @ normal - offset
         rise = last - first
         with np.errstate(divide="ignore", invalid="ignore"):
             root = np.where(rise != 0, -first / np.where(rise != 0, rise, 1), 0.0)
@@ -669,7 +974,7 @@ def _reaches(
 ) -> bool:
     """Whether a segment enters the block at a point that defacing writes
     as air, sampled at midpoints no more than ``step`` apart."""
-    lower, upper = _intervals(region.block, starts, ends)
+    lower, upper = _intervals(_block_halves(region.block), starts, ends)
     inside = np.flatnonzero(lower < upper)
     if not len(inside):
         return False
@@ -710,10 +1015,10 @@ def _defaced(region: DoseBlock, points: np.ndarray) -> np.ndarray:
     return defaced
 
 
-def _outside_polyline(block: FaceBlock, points: np.ndarray) -> list[np.ndarray]:
-    """Return the pieces of an open contour outside the open block, each of
-    two points or more and some length."""
-    lower, upper = _intervals(block, points[:-1], points[1:])
+def _outside_polyline(halves: _Halves, points: np.ndarray) -> list[np.ndarray]:
+    """Return the pieces of an open contour outside the open region of
+    ``halves``, each of two points or more and some length."""
+    lower, upper = _intervals(halves, points[:-1], points[1:])
     pieces: list[list[np.ndarray]] = []
     current: list[np.ndarray] = []
     for index in range(len(points) - 1):
@@ -752,8 +1057,9 @@ class PetDefacer:
 
     Parameters
     ----------
-    region : DoseBlock
-        The block of the slice's Frame of Reference.
+    region : DoseBlock or FrameRegion
+        The block of the slice's Frame of Reference, or the blocks of each
+        series defaced in it.
     dataset : pydicom.Dataset
         The slice's data set.
 
@@ -764,7 +1070,7 @@ class PetDefacer:
         the slice is not one that the module cleans.
     """
 
-    def __init__(self, region: DoseBlock, dataset: pydicom.Dataset) -> None:
+    def __init__(self, region: Region, dataset: pydicom.Dataset) -> None:
         try:
             syntax = str(dataset.file_meta.TransferSyntaxUID)
             if syntax not in NATIVE_TRANSFER_SYNTAXES and syntax not in (
@@ -820,21 +1126,9 @@ class PetDefacer:
         """Return the pixels of one frame to write as its zero activity, as
         the module describes, or None where the frame has none."""
         plane = self._planes[frame]
-        inside = self._region.block.slice_mask(
+        inside = self._region.written(
             plane.position, plane.orientation, plane.spacing, self._shape
         )
-        if inside.any():
-            rows, columns = np.nonzero(inside)
-            points = (
-                np.asarray(plane.position)
-                + columns[:, np.newaxis]
-                * plane.spacing[1]
-                * np.asarray(plane.orientation[:3])
-                + rows[:, np.newaxis]
-                * plane.spacing[0]
-                * np.asarray(plane.orientation[3:])
-            )
-            inside[rows, columns] = ~self._region.kept(points)
         if self._padding is not None:
             low, high = self._padding
             stored = np.asarray(stored)

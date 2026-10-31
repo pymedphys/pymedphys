@@ -37,9 +37,9 @@ placed otherwise, whose direction cosines are not two orthogonal unit
 vectors, as PS3.3 C.7.6.2.1.1 requires, within :data:`_UNIT`, with a
 spacing, or a coordinate of a corner of a frame, of magnitude above
 :data:`_FARTHEST`, of more than one sample, with compressed Pixel Data whose
-frames do not decode, or with a negative stored value, as an RT Dose of
-Dose Type ERROR can hold, is not set to zero, and stays held as an instance
-in a defaced frame
+frames do not decode, or with a negative stored value other than in a grid
+of Dose Type ERROR, is not set to zero, and stays held as an instance in a
+defaced frame
 (:attr:`~.reasons.VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME`).
 Compressed Pixel Data is decoded as Clean Pixel Data decodes it, set to
 zero there, and written uncompressed, in Explicit VR Little Endian, as
@@ -53,24 +53,35 @@ zero, and the instance is held for review instead
 (:attr:`~.reasons.VisualFeaturesReason.DOSE_IN_FACE_BLOCK`). The fraction is
 of the grid's own maximum rather than of the prescription, which only an RT
 Plan that may not be in the run holds. Dose Grid Scaling multiplies every
-stored value alike, so the stored values are compared.
+stored value alike, so the stored values are compared. A grid of Dose Type
+ERROR holds the difference between two doses, as signed stored values
+(PS3.3 C.8.8.3.4.6), so its zero is no difference, and the magnitudes of
+its stored values are compared; a negative stored value in any other grid,
+whose Pixel Representation PS3.3 C.8.8.3.4.6 makes unsigned, holds it as
+above.
 
-Only an RT Dose that names exactly one Frame of Reference, in which exactly
-one series is defaced, is set to zero (:func:`find_dose_blocks`). Any other
-RT Dose in a defaced frame, naming none, or referring to a defaced slice
-stays held, as :class:`~.face_blocks.Defaced` holds it, as does one set to
-zero that refers to a defaced slice of another series. An RT Dose without
-pixel data, which holds only dose-volume histograms, shows no face, and is
-not held for its frame. Its dose-volume histograms and any other RT Dose's
-are kept as they are, as the dose-volume histograms of the voxels before
-any were set to zero.
+An RT Dose that names exactly one Frame of Reference, in which a run
+defaces a series, is set to zero (:func:`find_dose_blocks`): where it
+defaces more than one, as a 4D CT's average, maximum intensity projection,
+and phase series share one frame, in the block of each series in turn, by
+its own slices, so that a voxel is set to zero where any series' defacing
+writes air at it (:class:`FrameRegion`). Any other RT Dose in a defaced
+frame, naming none, or referring to a defaced slice stays held, as
+:class:`~.face_blocks.Defaced` holds it, as does one set to zero that
+refers to a defaced slice of a series in another frame, and one in a frame
+of which a series' slices can no longer be read. An RT Dose without pixel
+data, which holds only dose-volume histograms, shows no face, and is not
+held for its frame. Its dose-volume histograms and any other RT Dose's are
+kept as they are, as the dose-volume histograms of the voxels before any
+were set to zero.
 """
 
 from __future__ import annotations
 
 import dataclasses
 import math
-from collections.abc import Callable, Collection, Mapping
+from collections.abc import Callable, Collection, Mapping, Sequence
+from typing import TypeAlias
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom
@@ -90,6 +101,9 @@ from .reasons import TransformReason, VisualFeaturesReason
 from .references import InstanceRecord
 
 RT_DOSE = "RT Dose"
+# The Dose Type of a grid of differences between doses, whose stored values
+# are signed (PS3.3 C.8.8.3.4.6).
+ERROR = "ERROR"
 # The greatest fraction of the grid's maximum dose that the run sets to zero
 # in the face block. A placeholder, to be set by validation.
 DOSE_FRACTION = 0.05
@@ -133,15 +147,52 @@ class DoseBlock:
     def __repr__(self) -> str:
         return f"DoseBlock(slices={len(self.slices)})"
 
+    @property
+    def blocks(self) -> tuple[DoseBlock, ...]:
+        """The block alone, as :attr:`FrameRegion.blocks` gives a frame's."""
+        return (self,)
+
     def holds(self, defaced: Defaced, record: InstanceRecord) -> bool:
         """Whether an RT Dose set to zero in the block is still held for a
         defaced frame: it refers to a defaced slice of another series, as
         :meth:`~.face_blocks.Defaced.holds` would hold it for."""
-        return any(
-            reference.target in defaced.instances
-            and reference.target not in self.instances
-            for reference in record.references
-        )
+        return _refers_elsewhere(self.instances, defaced, record)
+
+    def written(
+        self,
+        position: Sequence[float],
+        orientation: Sequence[float],
+        spacing: Sequence[float],
+        shape: tuple[int, int],
+    ) -> np.ndarray:
+        """Which pixels of a plane defacing writes over: those whose centres
+        lie in the block, other than one whose nearest pixel, of the nearest
+        slice, defacing keeps (:meth:`kept`).
+
+        Parameters
+        ----------
+        position, orientation, spacing, shape
+            As for :meth:`~.defacing.FaceBlock.slice_mask`.
+
+        Returns
+        -------
+        numpy.ndarray
+            Of bool, of ``shape``.
+        """
+        inside = self.block.slice_mask(position, orientation, spacing, shape)
+        if inside.any():
+            rows, columns = np.nonzero(inside)
+            points = (
+                np.asarray(position, dtype=float)
+                + columns[:, np.newaxis]
+                * float(spacing[1])
+                * np.asarray(orientation[:3], dtype=float)
+                + rows[:, np.newaxis]
+                * float(spacing[0])
+                * np.asarray(orientation[3:], dtype=float)
+            )
+            inside[rows, columns] = ~self.kept(points)
+        return inside
 
     def kept(self, points: np.ndarray) -> np.ndarray:
         """Whether defacing keeps the nearest pixel of the nearest slice to
@@ -245,57 +296,174 @@ class DoseBlock:
         return found, found_rows, found_columns
 
 
+@dataclasses.dataclass(frozen=True, repr=False)
+class FrameRegion:
+    """The block of each series that a run defaces in one Frame of
+    Reference, by which an instance in that frame is cleaned, in each block
+    in turn.
+
+    Its ``repr`` shows only the number of blocks.
+
+    Attributes
+    ----------
+    blocks : tuple of DoseBlock
+        One for each defaced series, in the order of their Series Instance
+        UIDs; never empty.
+    """
+
+    blocks: tuple[DoseBlock, ...]
+
+    def __post_init__(self) -> None:
+        if not self.blocks:
+            raise ValueError("a frame's region has a block")
+
+    def __repr__(self) -> str:
+        return f"FrameRegion(blocks={len(self.blocks)})"
+
+    @property
+    def instances(self) -> frozenset[str]:
+        """The SOP Instance UID of each instance of the frame's defaced
+        series."""
+        return frozenset().union(*(each.instances for each in self.blocks))
+
+    def holds(self, defaced: Defaced, record: InstanceRecord) -> bool:
+        """Whether an instance cleaned in the frame's blocks is still held
+        for a defaced frame: it refers to a defaced slice of a series in
+        another frame, as :meth:`~.face_blocks.Defaced.holds` would hold it
+        for."""
+        return _refers_elsewhere(self.instances, defaced, record)
+
+    def written(
+        self,
+        position: Sequence[float],
+        orientation: Sequence[float],
+        spacing: Sequence[float],
+        shape: tuple[int, int],
+    ) -> np.ndarray:
+        """Which pixels of a plane the defacing of any of the frame's series
+        writes over, as :meth:`DoseBlock.written` gives each."""
+        written = np.zeros(shape, dtype=bool)
+        for each in self.blocks:
+            written |= each.written(position, orientation, spacing, shape)
+        return written
+
+
+# The block of an instance's frame, by which a defacer cleans it: one
+# series' block, or the blocks of every series defaced in the frame.
+Region: TypeAlias = "DoseBlock | FrameRegion"
+
+
+def _refers_elsewhere(
+    instances: frozenset[str], defaced: Defaced, record: InstanceRecord
+) -> bool:
+    """Whether an instance refers to a defaced slice other than one of
+    ``instances``."""
+    return any(
+        reference.target in defaced.instances and reference.target not in instances
+        for reference in record.references
+    )
+
+
+def frame_region(
+    record: InstanceRecord, regions: Mapping[str, FrameRegion]
+) -> FrameRegion | None:
+    """Return the region of an RT Dose's, PET image's, or Segmentation's
+    only Frame of Reference, where it names exactly one and the run cleans
+    instances there, or None."""
+    frames = frames_of(record)
+    if len(frames) != 1:
+        return None
+    return regions.get(next(iter(frames)))
+
+
+def structure_set_regions(
+    record: InstanceRecord, regions: Mapping[str, FrameRegion], defaced: Defaced
+) -> dict[str, FrameRegion] | None:
+    """Return the region of each defaced Frame of Reference that an RT
+    Structure Set names, by which
+    :func:`~.region_defacing.cut_contours` cuts its ROIs there, where it
+    names one and each has a region; None where it names none, so that
+    :meth:`~.face_blocks.Defaced.holds` decides it, or where one has no
+    region, so that it stays held."""
+    named = frames_of(record) & defaced.frames
+    if not named or not named <= regions.keys():
+        return None
+    return {frame: regions[frame] for frame in sorted(named)}
+
+
+def joined(regions: Mapping[str, FrameRegion]) -> FrameRegion:
+    """Return the blocks of every region of ``regions`` as one region, whose
+    :attr:`~FrameRegion.instances` and :meth:`~FrameRegion.holds` are those
+    of all of them."""
+    return FrameRegion(
+        tuple(block for each in regions.values() for block in each.blocks)
+    )
+
+
 def find_dose_blocks(
     records: Mapping[int, InstanceRecord],
     read: Callable[[int], bytes | None],
     outcomes: Mapping[str, SeriesDefacing],
     iods: Collection[str] = (RT_DOSE,),
-) -> dict[str, DoseBlock]:
-    """Return the block of each Frame of Reference whose RT Dose instances
+) -> dict[str, FrameRegion]:
+    """Return the blocks of each Frame of Reference whose RT Dose instances
     the run sets to zero there, by its UID.
 
-    That is each frame in which exactly one series is defaced, as
+    That is each frame in which a series is defaced, as
     :func:`~.face_blocks.find_face_blocks`' ``outcomes`` give them, and
-    which an RT Dose of the run names as its only frame, or an instance of
-    any other of ``iods``, whose instances
+    which an RT Dose of the run names, or an instance of any other of
+    ``iods``, whose instances
     :mod:`~pymedphys._dicom.deidentify.region_defacing` cleans in the same
-    block. A frame whose series' slices can no longer be read has none, so
-    that its instances stay held.
+    blocks, with the block of each series defaced in it. A frame of which
+    any defaced series' slices can no longer be read has none, so that its
+    instances stay held.
     """
     defaced: dict[str, list[str]] = {}
-    for uid, outcome in outcomes.items():
+    for uid, outcome in sorted(outcomes.items()):
         if outcome.frame is not None and outcome.block is not None:
             defaced.setdefault(outcome.frame, []).append(uid)
-    named = set()
+    named: set[str] = set()
     for record in records.values():
         if record.iod in iods:
-            frames = frames_of(record)
-            if len(frames) == 1:
-                named |= frames
-    blocks = {}
-    for frame in sorted(named):
-        if len(defaced.get(frame, ())) != 1:
-            continue
-        (uid,) = defaced[frame]
-        block = outcomes[uid].block
-        assert block is not None
-        positions = sorted(
-            position
-            for position, record in records.items()
-            if record.iod in CT_IODS and record.series == uid
-        )
-        instances = frozenset(
-            uid
-            for position in positions
-            if (uid := records[position].sop_instance) is not None
-        )
+            named |= frames_of(record)
+    regions = {}
+    for frame in sorted(named & set(defaced)):
         try:
-            blocks[frame] = DoseBlock(
-                block, kept_slices(block, positions, read), instances
+            blocks = tuple(
+                _dose_block(records, read, uid, outcomes[uid]) for uid in defaced[frame]
             )
         except ValueError:
             continue
-    return blocks
+        regions[frame] = FrameRegion(blocks)
+    return regions
+
+
+def _dose_block(
+    records: Mapping[int, InstanceRecord],
+    read: Callable[[int], bytes | None],
+    series: str,
+    outcome: SeriesDefacing,
+) -> DoseBlock:
+    """Return the block of one defaced series, with its slices.
+
+    Raises
+    ------
+    ValueError
+        Where a slice can no longer be read, without its message.
+    """
+    block = outcome.block
+    assert block is not None
+    positions = sorted(
+        position
+        for position, record in records.items()
+        if record.iod in CT_IODS and record.series == series
+    )
+    instances = frozenset(
+        uid
+        for position in positions
+        if (uid := records[position].sop_instance) is not None
+    )
+    return DoseBlock(block, kept_slices(block, positions, read), instances)
 
 
 class RtDoseDefacer:
@@ -305,8 +473,9 @@ class RtDoseDefacer:
 
     Parameters
     ----------
-    dose : DoseBlock
-        The block of the grid's Frame of Reference.
+    dose : DoseBlock or FrameRegion
+        The block of the grid's Frame of Reference, or the blocks of each
+        series defaced in it.
     dataset : pydicom.Dataset
         The RT Dose's data set.
 
@@ -317,7 +486,7 @@ class RtDoseDefacer:
         the grid is not one that the module sets to zero.
     """
 
-    def __init__(self, dose: DoseBlock, dataset: pydicom.Dataset) -> None:
+    def __init__(self, dose: Region, dataset: pydicom.Dataset) -> None:
         try:
             layout = frames_layout(dataset, str(dataset.file_meta.TransferSyntaxUID))
             if layout.samples != 1:
@@ -332,6 +501,8 @@ class RtDoseDefacer:
                     if "GridFrameOffsetVector" in dataset or layout.frames > 1
                     else (0.0,)
                 )
+                kind = dataset.get("DoseType")
+                error = isinstance(kind, str) and kind.strip().upper() == ERROR
             self._origins = _origins(position, orientation, offsets)
             _check_reach(self._origins, orientation, spacing, layout)
         # Whatever the data set raises refuses the grid, without its message,
@@ -344,6 +515,7 @@ class RtDoseDefacer:
         self._orientation = orientation
         self._spacing = (spacing[0], spacing[1])
         self._shape = (layout.rows, layout.columns)
+        self._error = error
         self._greatest = 0
         self._zeroed = 0
         self._negative = False
@@ -355,32 +527,30 @@ class RtDoseDefacer:
         """Return the voxels of one frame to set to zero, as the module
         describes, or None where the frame has none."""
         stored = np.asarray(stored)
+        compared = self.compared(stored)
         if stored.size:
-            self._greatest = max(self._greatest, int(stored.max()))
+            self._greatest = max(self._greatest, int(compared.max()))
             self._negative |= bool(int(stored.min()) < 0)
-        inside = self._dose.block.slice_mask(
+        inside = self._dose.written(
             self._origins[frame], self._orientation, self._spacing, self._shape
         )
-        if inside.any():
-            rows, columns = np.nonzero(inside)
-            points = (
-                np.asarray(self._origins[frame])
-                + columns[:, None]
-                * self._spacing[1]
-                * np.asarray(self._orientation[:3])
-                + rows[:, None] * self._spacing[0] * np.asarray(self._orientation[3:])
-            )
-            inside[rows, columns] = ~self._dose.kept(points)
         if not inside.any():
             return None
-        self._zeroed = max(self._zeroed, int(stored[inside].max()))
+        self._zeroed = max(self._zeroed, int(compared[inside].max()))
         return FrameMask(frame, inside, 0)
+
+    def compared(self, stored: np.ndarray) -> np.ndarray:
+        """Return the values of a frame's stored values that
+        :data:`DOSE_FRACTION` compares: the stored values, or for a grid of
+        Dose Type ERROR, of differences, their magnitudes."""
+        stored = np.asarray(stored)
+        return np.abs(stored.astype(np.int64)) if self._error else stored
 
     @property
     def held(self) -> VisualFeaturesReason | None:
         """Why the grid is held rather than set to zero, once every frame's
         mask has been given, or None where it is set to zero."""
-        if self._negative:
+        if self._negative and not self._error:
             return VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME
         if self._zeroed > DOSE_FRACTION * self._greatest:
             return VisualFeaturesReason.DOSE_IN_FACE_BLOCK

@@ -134,28 +134,33 @@ top of the slice. Where air's stored value is itself padding, the pixels
 written are padding, which a viewer shows as outside the image, as the air
 before the face is in most scans.
 
-Beyond CT instances, the run cleans the same region of an RT Dose
-that :mod:`~pymedphys._dicom.deidentify.dose_defacing` sets to zero there,
-of an RT Structure Set whose contours, or a PET image, of :data:`PET_IODS`,
+Beyond CT instances, the run cleans the same region, the block of each
+defaced series in the frame in turn, of an RT Dose that
+:mod:`~pymedphys._dicom.deidentify.dose_defacing` sets to zero there, of
+an RT Structure Set whose contours, or a PET image, of :data:`PET_IODS`,
 whose activity, :mod:`~pymedphys._dicom.deidentify.region_defacing` cuts or
 sets to zero there, frame by frame for a multi-frame PET image, and of a
 Segmentation whose segments
 :mod:`~pymedphys._dicom.deidentify.segmentation_defacing` clears there,
-each with that series' Frame of Reference as its only one. Any other RT
+each with that frame as its only one but a structure set, whose ROIs in
+each defaced frame are cut by that frame's blocks. Any other RT
 Structure Set, RT Dose with pixel data, PET instance, or Segmentation
 (:data:`UNDEFACED_IODS`) in the Frame of Reference of a defaced series
 keeps its contours or pixel data, which can still outline the face, so it
 is held for review whatever its verdict, since a reviewer may have judged
 it from the defaced CT's previews
-(:attr:`~.reasons.VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME`), until
-the run can clean it too (:class:`Defaced`). So is one that names no Frame
-of Reference, in a run that defaces any series, or that refers to an
-instance of a defaced series, whatever frame it declares. A structure set is searched for targets
-in the block of a series where it is in the series' frame, names no valid
+(:attr:`~.reasons.VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME`), as
+where a series of the frame can no longer be read to find what defacing
+keeps (:class:`Defaced`). So is one that names no Frame of Reference, in
+a run that defaces any series, or that refers to an instance of a defaced
+series whose block does not clean it, whatever frame it declares. A
+structure set is searched for targets in the block of a series where it is in the series' frame, names no valid
 frame, or is drawn on its slices, and otherwise unless it and every slice
 give Patient IDs that differ, and a target in another frame holds a series
 whose slices its structure set ties to that frame, whatever other frames
-the set declares.
+the set declares. Each contour is searched, and cut, wherever its retired
+Contour Slab Thickness and Contour Offset Vector may put it
+(:mod:`~pymedphys._dicom.deidentify.contour_slabs`).
 """
 
 from __future__ import annotations
@@ -173,6 +178,7 @@ from pymedphys._imports import pydicom
 from pymedphys._imports import scipy
 
 from . import defacing
+from .contour_slabs import SlabRefused, slab_of, slab_values, spread
 from .defacing import FaceBlock, FaceBlockProblem, FaceBlockRefused
 from .diagnostics import redacted_diagnostics
 from .functional_groups import frame_group
@@ -939,7 +945,9 @@ def _eyes_far(dataset: pydicom.Dataset, frame: str, block: FaceBlock) -> bool:
         if int(item.ReferencedROINumber) not in eyes:
             continue
         for contour in item.get("ContourSequence") or []:
-            points = np.asarray([float(v) for v in contour.ContourData]).reshape(-1, 3)
+            points = _spread(contour)
+            if points is None:
+                return True
             nearest = np.min(
                 np.linalg.norm(points[:, np.newaxis, :] - globes, axis=2), axis=1
             )
@@ -991,13 +999,26 @@ def _targets_reach(
             return True
         # A target that names no Frame of Reference may be in this one.
         if frames & {"", frame}:
-            points = [
-                np.asarray([float(v) for v in contour.ContourData]).reshape(-1, 3)
-                for contour in item.get("ContourSequence", [])
-            ]
+            points = [_spread(contour) for contour in item.get("ContourSequence", [])]
+            if any(each is None for each in points):
+                return True
             if points and _hull_reaches(block, np.concatenate(points)):
                 return True
     return False
+
+
+def _spread(contour: pydicom.Dataset) -> np.ndarray | None:
+    """Return a contour's points, with those that its retired Contour Slab
+    Thickness and Contour Offset Vector may move them to
+    (:func:`~.contour_slabs.spread`), so that a target or an eye is
+    searched wherever any reading of them puts it, or None where its slab
+    cannot be placed."""
+    points = np.asarray([float(v) for v in contour.ContourData]).reshape(-1, 3)
+    try:
+        values = slab_values(contour)
+        return spread(points, None if values is None else slab_of(values, points))
+    except SlabRefused:
+        return None
 
 
 def _tied_frames(

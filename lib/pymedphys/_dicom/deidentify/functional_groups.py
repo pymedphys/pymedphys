@@ -27,8 +27,10 @@ A group in both sequences is refused rather than one taken over the other,
 since PS3.3 C.7.6.16.1.1 lets a group be in only one of them and gives
 neither precedence; so is a group in neither, a sequence of other than one
 item, and a Per-frame Functional Groups Sequence of other than one item for
-each frame, as is an instance without it, which PS3.3 A.51.5 permits a
-Segmentation where it would be empty. Whatever is refused raises
+each frame, as is an instance without it, but for a Segmentation, which
+PS3.3 A.51.5 permits to omit it where no per-frame group would have
+content, and whose frames a caller may then read from the Shared
+Functional Groups Sequence alone. Whatever is refused raises
 :class:`ValueError`, without any value, so that a caller can leave the
 instance as it is.
 """
@@ -41,7 +43,12 @@ from .diagnostics import redacted_diagnostics
 
 
 def frame_group(
-    dataset: pydicom.Dataset, frames: int, frame: int, keyword: str
+    dataset: pydicom.Dataset,
+    frames: int,
+    frame: int,
+    keyword: str,
+    *,
+    shared_alone: bool = False,
 ) -> pydicom.Dataset:
     """Return the one item of a functional group's sequence for a frame.
 
@@ -56,6 +63,11 @@ def frame_group(
     keyword : str
         The functional group's sequence, such as
         ``"PlanePositionSequence"``.
+    shared_alone : bool
+        Whether an instance without the Per-frame Functional Groups Sequence
+        is read from the Shared Functional Groups Sequence alone, as PS3.3
+        A.51.5 lets a Segmentation omit it; one with the sequence, even of
+        no items, still needs an item for each frame.
 
     Raises
     ------
@@ -68,14 +80,14 @@ def frame_group(
     if not 0 <= frame < frames:
         raise ValueError("no such frame")
     with redacted_diagnostics():
+        omitted = shared_alone and "PerFrameFunctionalGroupsSequence" not in dataset
         each = dataset.get("PerFrameFunctionalGroupsSequence") or []
         shared = dataset.get("SharedFunctionalGroupsSequence") or []
-        if len(each) != frames or len(shared) > 1:
+        if (not omitted and len(each) != frames) or len(shared) > 1:
             raise ValueError("not one item for each frame")
+        own = () if omitted else (each[frame],)
         found = [
-            groups[keyword].value
-            for groups in (each[frame], *shared)
-            if keyword in groups
+            groups[keyword].value for groups in (*own, *shared) if keyword in groups
         ]
         if len(found) != 1:
             raise ValueError("not one functional group")
