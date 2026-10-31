@@ -52,7 +52,7 @@ each instance it may process. It joins the engine's per-instance steps:
    verdict on its source file is given,
    :func:`~pymedphys._dicom.deidentify.pixel_cleaning.black_out_reviewed`
    the regions that the reviewer approved, and under Clean Recognizable
-   Visual Features writes air in the face block of a CT slice
+   Visual Features writes air in the face block of a CT slice or frame
    (:mod:`~pymedphys._dicom.deidentify.face_blocks`);
 5. :func:`writer_plan` turns those edits into what the byte-preserving
    writer takes, and
@@ -221,8 +221,8 @@ from .pixel_cleaning import (
 from .defacing import FaceBlock
 from .dose_defacing import RT_DOSE, DoseBlock, RtDoseDefacer, find_dose_blocks
 from .face_blocks import (
-    CT_IMAGE,
-    PET_IMAGE,
+    CT_IODS,
+    PET_IODS,
     RT_STRUCTURE_SET,
     CtDefacer,
     FaceBlockCounts,
@@ -304,7 +304,7 @@ def _region_defacing(iod: IOD, region: DoseBlock | None) -> _RegionDefacing | No
     without a block."""
     if region is None:
         return None
-    if iod.name == PET_IMAGE:
+    if iod.name in PET_IODS:
         return lambda dataset: PetDefacer(region, dataset)
     if iod.name == SEGMENTATION:
         return lambda dataset: SegmentationDefacer(region, dataset)
@@ -974,12 +974,13 @@ class InstanceTransform:
     adds whether or not its IOD defines the attribute.
 
     Under Clean Recognizable Visual Features, :meth:`prepare` finds the face
-    block of each series of CT Image instances before the run writes any
-    (:func:`~.face_blocks.find_face_blocks`), and each slice of a series
-    with one is written with air in its block, as
+    block of each series of CT Image, Enhanced CT Image, and Legacy
+    Converted Enhanced CT Image instances before the run writes any
+    (:func:`~.face_blocks.find_face_blocks`), and each instance of a series
+    with one is written with air in its block, in each of its frames, as
     :func:`~.pixel_cleaning.black_out` writes a
-    :class:`~.face_blocks.CtDefacer`'s masks, checked as a redaction is; a
-    slice that cannot be is sequestered. A slice of a series with a
+    :class:`~.face_blocks.CtDefacer`'s masks, checked as a redaction is; an
+    instance that cannot be is sequestered. An instance of a series with a
     target's contour in its block is not defaced, and is held for review
     (:attr:`~.reasons.VisualFeaturesReason.TARGET_IN_FACE_BLOCK`), as is
     one of a series whose structure set draws an eye away from the globes
@@ -993,7 +994,8 @@ class InstanceTransform:
     Structure Set whose only Frame of Reference is that of one defaced
     series is written with its contours cut by the block
     (:func:`~.region_defacing.cut_contours`), a PET image's activity in
-    the block, less that brain, is set to zero
+    the block, less that brain, is set to zero, in each frame of an
+    Enhanced PET Image or Legacy Converted Enhanced PET Image
     (:class:`~.region_defacing.PetDefacer`), and a Segmentation's pixels
     there that lie in a segment are written as its background
     (:class:`~.segmentation_defacing.SegmentationDefacer`); one with any
@@ -1232,7 +1234,7 @@ class InstanceTransform:
             records,
             read,
             self._face_blocks,
-            (RT_DOSE, RT_STRUCTURE_SET, PET_IMAGE, SEGMENTATION),
+            (RT_DOSE, RT_STRUCTURE_SET, *sorted(PET_IODS), SEGMENTATION),
         )
 
     def written_check(
@@ -1386,7 +1388,10 @@ class InstanceTransform:
         Segmentation's only Frame of Reference, if the run cleans it there
         (:mod:`~pymedphys._dicom.deidentify.region_defacing` and
         :mod:`~pymedphys._dicom.deidentify.segmentation_defacing`)."""
-        if iod.name not in (RT_STRUCTURE_SET, PET_IMAGE, SEGMENTATION):
+        if (
+            iod.name not in (RT_STRUCTURE_SET, SEGMENTATION)
+            and iod.name not in PET_IODS
+        ):
             return None
         frames = frames_of(record)
         if len(frames) != 1:
@@ -1394,8 +1399,8 @@ class InstanceTransform:
         return self._dose_blocks.get(next(iter(frames)))
 
     def _defacing(self, iod: IOD, record: InstanceRecord) -> SeriesDefacing | None:
-        """Return the outcome of a CT slice's series, if it has one."""
-        if iod.name != CT_IMAGE or record.series is None:
+        """Return the outcome of a CT instance's series, if it has one."""
+        if iod.name not in CT_IODS or record.series is None:
             return None
         return self._face_blocks.get(record.series)
 
@@ -1411,7 +1416,7 @@ class InstanceTransform:
         overlays: int = 0,
     ) -> tuple[Redaction | None, VisualFeaturesReason | None, bool]:
         """Return the instance's Pixel Data blacked out under Clean Pixel Data,
-        and, under Clean Recognizable Visual Features, a CT slice's face
+        and, under Clean Recognizable Visual Features, a CT instance's face
         block written as air, an RT Dose's set to zero, or a PET image's or
         Segmentation's cleaned by the defacer that ``region`` makes of its
         data set, with why an RT Dose's, PET image's, or Segmentation's is
