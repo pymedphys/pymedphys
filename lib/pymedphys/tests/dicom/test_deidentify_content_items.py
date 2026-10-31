@@ -889,6 +889,11 @@ def test_only_the_reports_define_content_sequence_and_none_waveform_annotation()
         "Spectacle Prescription Report",
         "Macular Grid Thickness and Volume Report",
         "Waveform Annotation SR",
+        "Implantation Plan SR Document",
+        "Simplified Adult Echo SR",
+        "Planned Imaging Agent Administration SR",
+        "Performed Imaging Agent Administration SR",
+        "Acquisition Context SR",
     }
     for name in scope.SUPPORTED_IODS:
         definitions = iods[name].definitions

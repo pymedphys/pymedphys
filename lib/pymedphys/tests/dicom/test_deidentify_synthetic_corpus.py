@@ -101,6 +101,15 @@ TEMPLATE_IODS = (
     "Macular Grid Thickness and Volume Report",
     "Waveform Annotation SR",
 )
+# The planning, procedure, and acquisition context reports' IODs, in the
+# order of their files.
+PROCEDURE_IODS = (
+    "Implantation Plan SR Document",
+    "Simplified Adult Echo SR",
+    "Planned Imaging Agent Administration SR",
+    "Performed Imaging Agent Administration SR",
+    "Acquisition Context SR",
+)
 LINKED_PATTERNS = {
     Kind.LINKED_UID: r"2\.25\.88888\d{5}",
     Kind.LINKED_PATIENT: r"SYNMK-LINKED-(PATIENT|ISSUER)",
@@ -242,6 +251,11 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "39-sr-spectacle-prescription.dcm",
         "40-sr-macular-grid.dcm",
         "41-sr-waveform-annotation.dcm",
+        "42-sr-implantation-plan.dcm",
+        "43-sr-echo.dcm",
+        "44-sr-imaging-agent-planned.dcm",
+        "45-sr-imaging-agent-performed.dcm",
+        "46-sr-acquisition-context.dcm",
     ]
     assert [file.manifest.iod for file in corpus.files] == [
         "CT Image",
@@ -273,11 +287,13 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "Comprehensive 3D SR",
         "Extensible SR",
         *TEMPLATE_IODS,
+        *PROCEDURE_IODS,
     ]
     assert corpus_module.STRUCTURED_REPORT_FILES == tuple(
-        file.name for file in corpus.files[-15:]
+        file.name for file in corpus.files[-20:]
     )
     assert corpus_module.UNKEPT_REPORT_FILE in corpus_module.TEMPLATE_REPORT_FILES
+    assert corpus_module.TIMEZONE_REPORT_FILE in corpus_module.PROCEDURE_REPORT_FILES
     # Every IOD of the first supported release.
     assert {file.manifest.iod for file in corpus.files} == scope.SUPPORTED_IODS
 
@@ -433,7 +449,9 @@ def test_an_attribute_whose_removal_sequesters_is_planted_in_one_instance(corpus
     # third slice, so that the other instances can be released; and the
     # Enhanced PET Image's Radiopharmaceutical Start DateTime, and the RT
     # Beams Treatment Record's Institution Code Sequence in an interlock's
-    # resolution user, with the attributes of its item (D-021), in no file.
+    # resolution user, with the attributes of its item (D-021), in no file;
+    # and the Simplified Adult Echo SR's Timezone Offset From UTC, Type 1 in
+    # its Timezone Module, which only that IOD requires (D-020), in no file.
     # Each report's Verifying Observer Sequence, which a reviewed rule keeps
     # with dummy values (D-021), and the Requested Procedure ID of its
     # Referenced Request Sequence, which a plain X empties there (D-020), are
@@ -442,6 +460,7 @@ def test_an_attribute_whose_removal_sequesters_is_planted_in_one_instance(corpus
     only_in = {
         "Enhanced PET Image": {"(0018,1078)"},
         "RT Beams Treatment Record": {"(0008,0082)", "(0008,0106)", "(0008,0107)"},
+        "Simplified Adult Echo SR": {"(0008,0201)"},
     }
     assert planted == {corpus_module.SEQUESTERED_FILE: both}
     assert corpus_module.SEQUESTERED_FILE == corpus.files[2].name
@@ -1041,6 +1060,15 @@ _CONTENT_CONCEPTS = {
         {("DCM", "121008", "PNAME"): "PN"},  # Person Observer Name
     ),
     "Spectacle Prescription Report": {},
+    # The implantation plan's component has its own Frame of Reference UID.
+    "Implantation Plan SR Document": {
+        ("DCM", "121008", "PNAME"): "PN",  # Person Observer Name
+        ("DCM", "112227", "UIDREF"): "UI",  # Frame of Reference UID
+    },
+    **dict.fromkeys(
+        PROCEDURE_IODS[1:],
+        {("DCM", "121008", "PNAME"): "PN"},  # Person Observer Name
+    ),
 }
 # The content items whose values are the collection's own UIDs, by IOD:
 # the study that the X-ray report's scope of accumulation names, and the

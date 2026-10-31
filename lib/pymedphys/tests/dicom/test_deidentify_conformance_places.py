@@ -56,6 +56,7 @@ GRAPHIC_ANNOTATION_SEQUENCE = "(0070,0001)"  # D; no supported IOD defines it
 # The Structured Reports and the Key Object Selection Document, in the
 # statement's order.
 STRUCTURED_REPORTS = (
+    "Acquisition Context SR",
     "Basic Text SR",
     "Chest CAD SR",
     "Colon CAD SR",
@@ -63,11 +64,15 @@ STRUCTURED_REPORTS = (
     "Comprehensive SR",
     "Enhanced SR",
     "Extensible SR",
+    "Implantation Plan SR Document",
     "Key Object Selection Document",
     "Macular Grid Thickness and Volume Report",
     "Mammography CAD SR",
+    "Performed Imaging Agent Administration SR",
+    "Planned Imaging Agent Administration SR",
     "Procedure Log",
     "Radiopharmaceutical Radiation Dose SR",
+    "Simplified Adult Echo SR",
     "Spectacle Prescription Report",
     "Waveform Annotation SR",
     "X-Ray Radiation Dose SR",
