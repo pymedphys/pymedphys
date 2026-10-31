@@ -87,6 +87,14 @@ resolve. A decoder that a codestream subverts can therefore give the engine
 no more than other samples of the expected size, which become output bytes
 only through an instance held for review, whose every frame the QC pack
 shows as written (D-037, D-048).
+
+Under Clean Recognizable Visual Features, :func:`decoded_frames_at` decodes
+the frames of a compressed CT instance in the same way, one at a time and
+only those asked for, so that the face block's finder and the brain that
+defacing keeps see the samples that a defaced instance is written from
+(D-050). It may run before :func:`frames_problem` has shown the frames
+sound, so it first checks the offset tables and each frame's codestream
+header as that does.
 """
 
 from __future__ import annotations
@@ -98,7 +106,7 @@ import io
 import itertools
 import struct
 import types
-from collections.abc import Iterator, Mapping
+from collections.abc import Collection, Iterator, Mapping
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom
@@ -504,6 +512,79 @@ def decoded_frames(
         samples are not of the expected type, shape, or size, or the frames
         are not ``frames`` in number.
     """
+    return b"".join(_each_decoded(source, attributes, frames, photometric))
+
+
+def decoded_frames_at(
+    source: SourceEvidence,
+    attributes: Mapping[str, int | str],
+    frames: int,
+    photometric: str,
+    indices: Collection[int],
+) -> Iterator[bytes]:
+    """Yield the frames at ``indices`` of compressed Pixel Data, in
+    ascending order, each decoded as :func:`decoded_frames` decodes it, one
+    at a time, for defacing (D-050).
+
+    The source need not have been shown sound by :func:`frames_problem`:
+    its offset tables and each frame's codestream header are checked
+    first, as that checks them, and every frame is counted, but only those
+    at ``indices`` are decoded.
+
+    Parameters
+    ----------
+    source, attributes, frames, photometric
+        As for :func:`decoded_frames`.
+    indices : collection of int
+        The frames to decode, by index from 0.
+
+    Raises
+    ------
+    FramesRefused
+        As :func:`decoded_frames` raises it, and with
+        :attr:`~.reasons.TransformReason.OFFSET_TABLE_MISMATCH` or the
+        header's reason where :func:`frames_problem` gives one, before any
+        frame is decoded, and with
+        :attr:`~.reasons.TransformReason.FRAME_MISMATCH` where an index is
+        not that of a frame.
+    """
+    wanted = frozenset(indices)
+    if any(not 0 <= index < frames for index in wanted):
+        raise FramesRefused(TransformReason.FRAME_MISMATCH)
+    try:
+        with redacted_diagnostics():
+            problem = (
+                None
+                if _offsets_match(source, frames)
+                else TransformReason.OFFSET_TABLE_MISMATCH
+            )
+            if problem is None:
+                problem = _headers_problem(source, source.dataset(), frames)
+    # A header that cannot be read raises many types, and a message can
+    # quote a value.
+    except Exception:  # pylint: disable = broad-exception-caught
+        raise FramesRefused(TransformReason.UNDECODABLE_PIXEL_DATA) from None
+    if problem is not None:
+        raise FramesRefused(problem)
+    yield from _each_decoded(source, attributes, frames, photometric, wanted)
+
+
+def _each_decoded(
+    source: SourceEvidence,
+    attributes: Mapping[str, int | str],
+    frames: int,
+    photometric: str,
+    wanted: frozenset[int] | None = None,
+) -> Iterator[bytes]:
+    """Yield each frame at an index in ``wanted``, or every frame where it
+    is None, decoded as :func:`decoded_frames` describes, having counted
+    every frame.
+
+    Raises
+    ------
+    FramesRefused
+        As :func:`decoded_frames` raises it.
+    """
     plugin = DECODING_PLUGINS.get(source.transfer_syntax)
     if plugin is None or not decoder_available(source.transfer_syntax):
         raise FramesRefused(TransformReason.NO_DECODER)
@@ -522,11 +603,17 @@ def decoded_frames(
         rows * columns * samples * int(kind[2:]),
     )
     described = tuple(sorted(attributes.items()))
-    decoded: list[bytes] = []
-    refused: TransformReason | None = None
-    try:
-        with redacted_diagnostics():
-            for codestream in _codestreams(source, frames):
+    codestreams = _codestreams(source, frames)
+    given = 0
+    while True:
+        try:
+            with redacted_diagnostics():
+                codestream = next(codestreams, None)
+                if codestream is None:
+                    break
+                index, given = given, given + 1
+                if wanted is not None and index not in wanted:
+                    continue
                 arguments = (source.transfer_syntax, plugin, codestream, described)
                 if plugin in ISOLATED_PLUGINS:
                     sent = isolated_decoding.run(
@@ -537,23 +624,19 @@ def decoded_frames(
                     )
                 else:
                     sent = _frame_decoded(*arguments)
-                frame = expected.checked(sent)
-                if isinstance(frame, TransformReason):
-                    refused = frame
-                    break
-                decoded.append(frame)
-    # The plugin is installed, but the process that runs it cannot be.
-    except isolated_decoding.DecoderUnavailable:
-        raise FramesRefused(TransformReason.NO_DECODER) from None
-    # pydicom and its plugins raise many types for pixel data they cannot
-    # decode, and a message can quote a value.
-    except Exception:  # pylint: disable = broad-exception-caught
-        raise FramesRefused(TransformReason.UNDECODABLE_PIXEL_DATA) from None
-    if refused is not None:
-        raise FramesRefused(refused)
-    if len(decoded) != frames:
+        # The plugin is installed, but the process that runs it cannot be.
+        except isolated_decoding.DecoderUnavailable:
+            raise FramesRefused(TransformReason.NO_DECODER) from None
+        # pydicom and its plugins raise many types for pixel data they
+        # cannot decode, and a message can quote a value.
+        except Exception:  # pylint: disable = broad-exception-caught
+            raise FramesRefused(TransformReason.UNDECODABLE_PIXEL_DATA) from None
+        frame = expected.checked(sent)
+        if isinstance(frame, TransformReason):
+            raise FramesRefused(frame)
+        yield frame
+    if given != frames:
         raise FramesRefused(TransformReason.FRAME_MISMATCH)
-    return b"".join(decoded)
 
 
 @dataclasses.dataclass(frozen=True)

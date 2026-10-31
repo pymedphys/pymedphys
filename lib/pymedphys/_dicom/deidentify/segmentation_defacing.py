@@ -54,14 +54,19 @@ Image Position (Patient), Image Orientation (Patient) of two orthogonal unit
 vectors within :data:`~.dose_defacing._UNIT`, and Pixel Spacing, finite and
 positive, every corner of the frame within :data:`~.dose_defacing._FARTHEST`,
 as :class:`~.dose_defacing.RtDoseDefacer` checks a dose grid. A
-segmentation of native Pixel Data, one sample, MONOCHROME2, and unsigned
-pixels, of 1 bit for BINARY, 8 for FRACTIONAL, and 8 or 16 for LABELMAP, as
-PS3.3 C.8.20.2 enumerates them, packed eight to a byte for BINARY with each
-frame filling whole bytes
-(:func:`~pymedphys._dicom.deidentify.pixel_cleaning.black_out`), is cleaned
-so. Any other, such as one that a Derivation Image functional group places
-on its source images instead, one of TILED_FULL frames, compressed, or of
-PALETTE COLOR, is refused, and stays held as an instance in a defaced frame
+segmentation of one sample, MONOCHROME2, and unsigned pixels, of 1 bit for
+BINARY, 8 for FRACTIONAL, and 8 or 16 for LABELMAP, as PS3.3 C.8.20.2
+enumerates them, is cleaned so: of native Pixel Data, packed eight to a
+byte for BINARY with each frame filling whole bytes
+(:func:`~pymedphys._dicom.deidentify.pixel_cleaning.black_out`), or of
+FRACTIONAL or LABELMAP compressed Pixel Data whose frames decode as Clean
+Pixel Data decodes them, which is written uncompressed, in Explicit VR
+Little Endian, as Clean Pixel Data writes it, unless nothing is cleaned
+(D-037, D-052). Any other, such as one that a Derivation Image functional
+group places on its source images instead, one of TILED_FULL frames, a
+compressed BINARY one, whose single bits are not decoded for cleaning, one
+whose frames do not decode, or one of PALETTE COLOR, is refused, and stays
+held as an instance in a defaced frame
 (:attr:`~.reasons.VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME`).
 """
 
@@ -74,7 +79,14 @@ from .diagnostics import redacted_diagnostics
 from .dose_defacing import DoseBlock, _check_directions, _check_reach, _numbers
 from .face_blocks import _padding
 from .functional_groups import frame_group
-from .pixel_cleaning import FrameMask, PixelDataRefused, layout_of, stored_range
+from .pixel_cleaning import (
+    FrameMask,
+    PixelDataRefused,
+    frames_layout,
+    layout_of,
+    stored_range,
+)
+from .pixel_decoding import DECODING_PLUGINS
 from .reasons import TransformReason, VisualFeaturesReason
 from .source import NATIVE_TRANSFER_SYNTAXES
 
@@ -109,9 +121,15 @@ class SegmentationDefacer:
 
     def __init__(self, region: DoseBlock, dataset: pydicom.Dataset) -> None:
         try:
-            if str(dataset.file_meta.TransferSyntaxUID) not in NATIVE_TRANSFER_SYNTAXES:
-                raise ValueError("compressed")
-            layout = layout_of(dataset, packed=True)
+            syntax = str(dataset.file_meta.TransferSyntaxUID)
+            if syntax in NATIVE_TRANSFER_SYNTAXES:
+                layout = layout_of(dataset, packed=True)
+            elif syntax in DECODING_PLUGINS:
+                # Decoded frames are of whole bytes, so a BINARY one's
+                # single bits are refused here.
+                layout = frames_layout(dataset, syntax)
+            else:
+                raise ValueError("not decoded")
             with redacted_diagnostics():
                 kind = str(dataset.SegmentationType).strip().upper()
                 tiled = str(dataset.get("DimensionOrganizationType") or "")

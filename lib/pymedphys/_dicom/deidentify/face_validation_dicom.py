@@ -32,7 +32,10 @@ Structure Sets, RT Plans, and RT Doses that a planning system exports
 (:func:`check_dicom`), and counts what a run would do and how the block
 that it finds compares with the planners' own eye ROIs and targets. It
 renders nothing, writes no instance, and reads each file from where it
-lies.
+lies. Compressed Pixel Data is decoded as a run decodes it, by the plugin
+pinned to its transfer syntax, in the decoding child where that plugin runs
+native code (:func:`~.pixel_cleaning.decoded_stored_values`), never in this
+process.
 
 The files below the directory are found as a run's first pass finds them
 (:func:`~pymedphys._dicom.deidentify.run_discovery.discover`), each is read
@@ -145,7 +148,12 @@ from .face_validation import (
     _software,
     crash_site,
 )
-from .pixel_cleaning import FrameMask, PixelDataRefused, black_out
+from .pixel_cleaning import (
+    FrameMask,
+    PixelDataRefused,
+    black_out,
+    decoded_stored_values,
+)
 from .reasons import VisualFeaturesReason
 from .references import InstanceRecord
 from .region_defacing import ContoursRefused, cut_contours
@@ -153,7 +161,7 @@ from .run_discovery import RunError, discover
 from .source import NATIVE_TRANSFER_SYNTAXES, SourceRefused, read_source
 from .uids import normalise_uid
 
-FORMAT = "pymedphys-deid-face-validation-dicom/1"
+FORMAT = "pymedphys-deid-face-validation-dicom/4"
 RT_PLAN = "RT Plan"
 CLOSED = frozenset({"CLOSED_PLANAR", "CLOSEDPLANAR_XOR"})
 # The defined terms of RT ROI Interpreted Type (PS3.3 C.8.8.8): any other
@@ -260,7 +268,7 @@ class SeriesMeasures:
         not measured.
     air : bool or None
         Whether at least 1% of its voxels are at -900 Hounsfield units or
-        below; None where its pixel data is compressed or cannot be read.
+        below; None where its pixel data cannot be read or decoded.
     eye_rois : int
         How many eye ROIs, by ``_is_eye``, in its frame or naming none, the
         structure sets searched for it hold.
@@ -296,7 +304,7 @@ class DoseMeasures:
     Attributes
     ----------
     outcome : str
-        ``"set-to-zero"``, ``"not-measured/compressed"``, the reason that it
+        ``"set-to-zero"``, the reason that it
         is held, such as ``"dose-in-face-block"``, or, for a file that a run
         sequesters, ``"sequestered/"`` and the
         :class:`~.source.SourceReason`'s value.
@@ -616,10 +624,11 @@ def _stored(
     heights = []
     air = total = 0
     storage = pixel_spacing = normal = None
-    compressed = False
+    undecoded = False
     try:
         for position in positions:
-            dataset = pydicom.dcmread(io.BytesIO(read(position) or b""))
+            data = read(position) or b""
+            dataset = pydicom.dcmread(io.BytesIO(data), stop_before_pixels=True)
             native = str(dataset.file_meta.TransferSyntaxUID) in (
                 NATIVE_TRANSFER_SYNTAXES
             )
@@ -636,13 +645,17 @@ def _stored(
                     )
                 )
             )
-            compressed |= not native
-            if not compressed:
-                values = dataset.pixel_array.astype(np.float64) * float(
-                    dataset.get("RescaleSlope", 1)
-                ) + float(dataset.get("RescaleIntercept", 0))
-                air += int(np.count_nonzero(values <= _AIR))
-                total += values.size
+            if undecoded:
+                continue
+            stored = _slice_values(data, native)
+            if stored is None:
+                undecoded = True
+                continue
+            values = stored.astype(np.float64) * float(
+                dataset.get("RescaleSlope", 1)
+            ) + float(dataset.get("RescaleIntercept", 0))
+            air += int(np.count_nonzero(values <= _AIR))
+            total += values.size
     # A slice that cannot be read, or whose attributes cannot be read as
     # numbers, raises many types, and a message can quote a value.
     except Exception:  # pylint: disable = broad-exception-caught
@@ -653,8 +666,32 @@ def _stored(
         "storage": storage,
         "pixel_spacing": _spacing(pixel_spacing),
         "slice_spacing": _spacing(float(np.median(steps)) if len(steps) else None),
-        "air": None if compressed or not total else air >= _AIR_SHARE * total,
+        "air": None if undecoded or not total else air >= _AIR_SHARE * total,
     }
+
+
+def _slice_values(data: bytes, native: bool) -> np.ndarray | None:
+    """A CT Image slice's stored values, decoded as a run decodes them where
+    they are compressed, or None where compressed Pixel Data cannot be
+    decoded.
+
+    Raises
+    ------
+    Exception
+        Whatever pydicom raises for native Pixel Data that it cannot read.
+    """
+    if native:
+        return pydicom.dcmread(io.BytesIO(data)).pixel_array
+    try:
+        with redacted_diagnostics():
+            source = read_source(data)
+            dataset = source.dataset()
+        (values,) = decoded_stored_values(source, dataset, [0])
+    # A file that the reader refuses, or whose frames do not decode, as a
+    # run would sequester it, is not measured.
+    except (SourceRefused, PixelDataRefused, ValueError):
+        return None
+    return values
 
 
 def _spacing(value: float | None) -> float | None:
@@ -924,10 +961,6 @@ def _measure_dose(
     undefaced = VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME.value
     if dose is None:
         return DoseMeasures(undefaced) if defaced.holds(RT_DOSE, record) else None
-    if str(dataset.file_meta.TransferSyntaxUID) not in NATIVE_TRANSFER_SYNTAXES:
-        # A run decodes it in a process of its own; this check decodes no
-        # compressed Pixel Data.
-        return DoseMeasures("not-measured/compressed")
     try:
         source = read_source(data or b"")
     except SourceRefused as refused:

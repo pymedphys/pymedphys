@@ -67,18 +67,18 @@ The same engine code can be checked on DICOM files that you may process, such as
    uv run -- python -m pymedphys._dicom.deidentify.face_validation_command dicom <exports> --out <results>
    ```
 
-   `<results>` must not exist. The command reads each file where it lies and writes nothing beside it, creates `<results>` with `face-validation.json`, labelled `pymedphys-deid-face-validation-dicom/1`, and `face-validation.md`, and prints the page.
+   `<results>` must not exist. The command reads each file where it lies and writes nothing beside it, creates `<results>` with `face-validation.json`, labelled `pymedphys-deid-face-validation-dicom/4`, and `face-validation.md`, and prints the page.
 3. The check succeeds when the command exits with status 0. It refuses a directory that cannot be listed or that holds no CT Image series, and reports anything else that stops it by the exception's type and place in the code alone.
 4. Read `face-validation.md` before you share it. It holds counts, codes, bin edges, versions, and settings alone: no UID, name, date, path, ROI name, or value. Never commit, cache, or attach the exports or a value read from them.
 
 | Section | What it counts |
 | --- | --- |
 | Files | The files found, read, not read, and refused, by why, and the files read by IOD. |
-| CT series | How each series' first slice is stored, whether at least 1% of its voxels are at -900 HU or below (not measured for compressed slices), and its spacings. |
+| CT series | How each series' first slice is stored, whether at least 1% of its voxels are at -900 HU or below (compressed slices decoded as a run decodes them; not measured for a series with a slice that does not decode), and its spacings. |
 | Outcomes | The series defaced, those not defaced by the reason that a release report gives, such as `target-in-block` or `eyes-disagree-with-rois`, and, by outcome, the series whose searched structure sets hold an eye ROI. |
 | Eye ROIs against the globes found | For each series with a block, defaced or held: whether its eye ROIs agree with the globes found; for each eye ROI, the side that its name gives, the distance from the globe found to the centroid of its contours, weighted by their areas (for a name that gives no side, from each globe to its own contours), whether it is nearer the other side's globe, the distance from its farthest point to the nearer globe, which a run compares with 25 mm, and the height of its lowest point above the block's inferior limit. |
 | Targets | For each series with a block, its targets (PTV, CTV, and GTV) by whether they hold the series and why, and the clearance from the block of each that does not. |
-| RT Doses in a defaced frame | Each RT Dose with pixel data set to zero in the block or held, by why, and the greatest dose that a run would set to zero as a fraction of the grid's greatest, which a run compares with 5%; each grid goes through the run's own cleaner, so one whose Pixel Data a run refuses is counted as held; a compressed RT Dose is not measured. |
+| RT Doses in a defaced frame | Each RT Dose with pixel data set to zero in the block or held, by why, and the greatest dose that a run would set to zero as a fraction of the grid's greatest, which a run compares with 5%; each grid goes through the run's own cleaner, so one whose Pixel Data a run refuses, compressed Pixel Data that does not decode among it, is counted as held; a compressed RT Dose is decoded as a run decodes it. |
 | RT Structure Sets in a defaced frame | Each structure set cut, unchanged, or held, and the ROIs that a run would cut, by RT ROI Interpreted Type. |
 | RT Plans | The RT Plans, and those in a defaced series' frame. |
 | Settings | The engine's settings that the counts depend on. |

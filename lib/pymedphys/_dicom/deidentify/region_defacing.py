@@ -106,7 +106,8 @@ instance in a defaced frame
 one whose contours an ROI Contour Sequence item gives for an ROI that it
 does not declare.
 
-A PET image of native Pixel Data and one sample is written with each pixel
+A PET image of one sample, of native Pixel Data or compressed Pixel Data
+whose frames decode as Clean Pixel Data decodes them, is written with each pixel
 whose centre is in the block, other than one that defacing keeps or one of
 Pixel Padding Value or its range, set to the stored value of zero activity
 (:class:`PetDefacer`): a Positron Emission Tomography Image instance of one
@@ -123,7 +124,10 @@ vectors, a positive Pixel Spacing, every corner within :data:`_FARTHEST`
 millimetres, a Rescale Slope finite and positive, and a Rescale Intercept
 whose zero activity, -intercept / slope, a stored value can hold, rounded;
 each frame is set to its own zero activity, since its rescale is its own.
-Any other PET image stays held.
+Compressed Pixel Data is decoded, set to zero activity there, and written
+uncompressed, in Explicit VR Little Endian, as Clean Pixel Data writes it,
+unless nothing is set (D-037, D-052). Any other PET image stays held, as
+does one whose frames do not decode.
 """
 
 from __future__ import annotations
@@ -151,9 +155,10 @@ from .pixel_cleaning import (
     FrameMask,
     Layout,
     PixelDataRefused,
-    layout_of,
+    frames_layout,
     stored_range,
 )
+from .pixel_decoding import DECODING_PLUGINS
 from .reasons import TransformReason, VisualFeaturesReason
 from .source import NATIVE_TRANSFER_SYNTAXES
 from .uids import normalise_uid
@@ -761,9 +766,12 @@ class PetDefacer:
 
     def __init__(self, region: DoseBlock, dataset: pydicom.Dataset) -> None:
         try:
-            if str(dataset.file_meta.TransferSyntaxUID) not in NATIVE_TRANSFER_SYNTAXES:
-                raise ValueError("compressed")
-            layout = layout_of(dataset)
+            syntax = str(dataset.file_meta.TransferSyntaxUID)
+            if syntax not in NATIVE_TRANSFER_SYNTAXES and syntax not in (
+                DECODING_PLUGINS
+            ):
+                raise ValueError("not decoded")
+            layout = frames_layout(dataset, syntax)
             if layout.samples != 1:
                 raise ValueError("not one sample")
             iod = iod_of(dataset)

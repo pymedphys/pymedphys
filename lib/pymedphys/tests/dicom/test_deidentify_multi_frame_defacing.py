@@ -400,11 +400,14 @@ def test_frames_of_another_size_or_frame_of_reference_are_not_one_stack():
     )
 
 
-def test_a_compressed_multi_frame_instance_is_not_defaced():
+def test_a_compressed_multi_frame_instance_has_the_face_block_of_its_slices():
     dataset = _dataset(files.multi_frame(_slices()))
-    dataset.compress(pydicom.uid.RLELossless)
+    dataset.compress(pydicom.uid.RLELossless, generate_instance_uid=False)
 
-    assert _outcome(files.written(dataset)).problem is SeriesProblem.COMPRESSED
+    outcome = _outcome(files.written(dataset))
+
+    assert outcome.problem is None
+    assert outcome.block == _single().block
 
 
 def test_a_ct_image_of_two_frames_is_not_one_stack():
@@ -592,9 +595,15 @@ def test_a_pet_image_of_two_frames_is_refused():
         PetDefacer(_region(), _dataset(_changed(_pet_slices()[0], doubled)))
 
 
-def test_a_compressed_multi_frame_pet_is_refused():
+def test_a_compressed_multi_frame_pet_is_set_to_zero_activity_as_its_native_frames_are():
+    native = _dataset(_pet_frames(files.ENHANCED_PET_IMAGE_STORAGE))
     dataset = _dataset(_pet_frames(files.ENHANCED_PET_IMAGE_STORAGE))
-    dataset.compress(pydicom.uid.RLELossless)
+    dataset.compress(pydicom.uid.RLELossless, generate_instance_uid=False)
+    defacer = PetDefacer(_region(), _dataset(files.written(dataset)))
+    expected = PetDefacer(_region(), native)
 
-    with pytest.raises(PixelDataRefused):
-        PetDefacer(_region(), _dataset(files.written(dataset)))
+    for index, stored in enumerate(native.pixel_array):
+        found, wanted = defacer.mask(index, stored), expected.mask(index, stored)
+        assert (found is None) == (wanted is None), index
+        if wanted is not None:
+            np.testing.assert_array_equal(found.mask, wanted.mask)

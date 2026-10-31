@@ -80,7 +80,10 @@ Under Clean Recognizable Visual Features, :func:`black_out` also writes
 the masks that a :class:`Defacer` gives each frame, such as the face block
 of a head CT (:mod:`~pymedphys._dicom.deidentify.face_blocks`), each pixel
 of a mask set to its one stored value after any region of text is filled,
-so that one new value of Pixel Data holds both.
+so that one new value of Pixel Data holds both. Compressed Pixel Data is
+decoded for a defacer as for a finder, and written uncompressed in the same
+way; :func:`decoded_stored_values` gives defacing the same decoded frames,
+one at a time, to find the face block and what it keeps from.
 
 :func:`redaction_problem` then checks the file written: pydicom must read
 the same stored values from it as from the source outside the regions and
@@ -97,7 +100,14 @@ import dataclasses
 import hashlib
 import io
 import types
-from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
+from collections.abc import (
+    Callable,
+    Collection,
+    Iterable,
+    Iterator,
+    Mapping,
+    Sequence,
+)
 from typing import Protocol
 
 from pymedphys._imports import numpy as np
@@ -105,7 +115,7 @@ from pymedphys._imports import pydicom
 
 from .diagnostics import redacted_diagnostics
 from .file_layout import ElementPath
-from .pixel_decoding import FramesRefused, decoded_frames
+from .pixel_decoding import FramesRefused, decoded_frames, decoded_frames_at
 from .pixel_risk import overlay_groups_without_data
 from .reasons import PixelDataReason, TransformReason
 from .source import (
@@ -858,6 +868,63 @@ def _decoded_layout(
         attributes["PlanarConfiguration"] = int(layout.planar)
         layout = dataclasses.replace(layout, photometric=_RGB, planar=False)
     return layout, attributes
+
+
+def frames_layout(dataset: pydicom.Dataset, transfer_syntax: str) -> Layout:
+    """Return how :func:`black_out` holds an instance's frames: as native
+    Pixel Data holds them, by :func:`layout_of`, or, for compressed Pixel
+    Data, as its frames are held once decoded.
+
+    Raises
+    ------
+    PixelDataRefused
+        As :func:`layout_of` does.
+    """
+    if transfer_syntax in NATIVE_TRANSFER_SYNTAXES:
+        return layout_of(dataset)
+    return _decoded_layout(dataset)[0]
+
+
+def decoded_stored_values(
+    source: SourceEvidence, dataset: pydicom.Dataset, indices: Collection[int]
+) -> Iterator[np.ndarray]:
+    """Yield the stored values of the frames at ``indices`` of compressed
+    Pixel Data, in ascending order, one at a time, decoded as
+    :func:`black_out` decodes them, rows by columns, and by samples for
+    colour, as signed integers.
+
+    So defacing finds the face block and the brain that it keeps in the
+    samples that :func:`black_out` writes air into (D-050), without
+    decoding the frames that it does not ask for.
+
+    Parameters
+    ----------
+    source : SourceEvidence
+        Of compressed Pixel Data, whose frames need not yet have been shown
+        sound (:func:`~.pixel_decoding.decoded_frames_at`).
+    dataset : pydicom.Dataset
+        The source's data set, as :meth:`SourceEvidence.dataset` reads it.
+    indices : collection of int
+        The frames to decode, by index from 0.
+
+    Raises
+    ------
+    PixelDataRefused
+        As :func:`black_out` raises it for compressed Pixel Data, before or
+        after decoding.
+    """
+    layout, attributes = _decoded_layout(dataset)
+    shape = (layout.rows, layout.columns, layout.samples)
+    try:
+        for frame in decoded_frames_at(
+            source, attributes, layout.frames, layout.photometric, indices
+        ):
+            words = np.frombuffer(frame, dtype=layout.dtype).reshape(shape)
+            if not _plain_unused_bits(layout, words):
+                raise PixelDataRefused(TransformReason.UNCLEANABLE_PIXEL_DATA)
+            yield _frame(layout, _stored_values(layout, words))
+    except FramesRefused as refused:
+        raise PixelDataRefused(refused.reason) from None
 
 
 def _read_layout(dataset: pydicom.Dataset, *, packed: bool = False) -> Layout:

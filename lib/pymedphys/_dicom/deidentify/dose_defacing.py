@@ -36,10 +36,14 @@ whose first offset is the position's z, the frames' z coordinates. A grid
 placed otherwise, whose direction cosines are not two orthogonal unit
 vectors, as PS3.3 C.7.6.2.1.1 requires, within :data:`_UNIT`, with a
 spacing, or a coordinate of a corner of a frame, of magnitude above
-:data:`_FARTHEST`, compressed, of more than one sample, or with a negative
-stored value, as an RT Dose of Dose Type ERROR can hold, is not set to
-zero, and stays held as an instance in a defaced frame
+:data:`_FARTHEST`, of more than one sample, with compressed Pixel Data whose
+frames do not decode, or with a negative stored value, as an RT Dose of
+Dose Type ERROR can hold, is not set to zero, and stays held as an instance
+in a defaced frame
 (:attr:`~.reasons.VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME`).
+Compressed Pixel Data is decoded as Clean Pixel Data decodes it, set to
+zero there, and written uncompressed, in Explicit VR Little Endian, as
+Clean Pixel Data writes it, unless nothing is set to zero (D-037, D-051).
 
 Setting dose to zero must never take dose from a target that the
 structure set does not mark, since RT ROI Interpreted Type is Type 2, nor
@@ -81,7 +85,7 @@ from .face_blocks import (
     frames_of,
     kept_slices,
 )
-from .pixel_cleaning import FrameMask, Layout, PixelDataRefused, layout_of
+from .pixel_cleaning import FrameMask, Layout, PixelDataRefused, frames_layout
 from .reasons import TransformReason, VisualFeaturesReason
 from .references import InstanceRecord
 
@@ -315,7 +319,7 @@ class RtDoseDefacer:
 
     def __init__(self, dose: DoseBlock, dataset: pydicom.Dataset) -> None:
         try:
-            layout = layout_of(dataset)
+            layout = frames_layout(dataset, str(dataset.file_meta.TransferSyntaxUID))
             if layout.samples != 1:
                 raise ValueError("more than one sample")
             with redacted_diagnostics():

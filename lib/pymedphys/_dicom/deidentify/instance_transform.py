@@ -980,8 +980,13 @@ class InstanceTransform:
     with one is written with air in its block, in each of its frames, as
     :func:`~.pixel_cleaning.black_out` writes a
     :class:`~.face_blocks.CtDefacer`'s masks, checked as a redaction is; an
-    instance that cannot be is sequestered. An instance of a series with a
-    target's contour in its block is not defaced, and is held for review
+    instance that cannot be is sequestered. Compressed Pixel Data is decoded
+    to be defaced and written uncompressed, in Explicit VR Little Endian, as
+    Clean Pixel Data writes it, and one that defacing does not change, as
+    where its block does not reach it, is written as received; so are an RT
+    Dose's, a PET image's, and a Segmentation's below. An instance of a
+    series with a target's contour in its block is not defaced, and is held
+    for review
     (:attr:`~.reasons.VisualFeaturesReason.TARGET_IN_FACE_BLOCK`), as is
     one of a series whose structure set draws an eye away from the globes
     that its block was found from
@@ -1552,8 +1557,14 @@ class InstanceTransform:
                     redaction = black_out(
                         source, dataset, self._finder, rules=rules, overlays=overlays
                     )
-            return redaction, why, reviewed
+            return self._as_received_unless_changed(redaction), why, reviewed
         defacer = None if block is None else CtDefacer(block, dataset)
+        # An instance that its block does not reach is written as it would
+        # be without one, and compressed Pixel Data is not decoded for it.
+        if defacer is not None and not defacer.reaches:
+            defacer = None
+            if self._finder is None and not overlays:
+                return None, None, False
         if approved is not None:
             return (
                 black_out_reviewed(
@@ -1568,17 +1579,43 @@ class InstanceTransform:
                 True,
             )
         return (
-            black_out(
-                source,
-                dataset,
-                self._finder,
-                defacer,
-                rules=rules,
-                overlays=overlays,
+            self._as_received_unless_changed(
+                black_out(
+                    source,
+                    dataset,
+                    self._finder,
+                    defacer,
+                    rules=rules,
+                    overlays=overlays,
+                )
             ),
             None,
             False,
         )
+
+    def _as_received_unless_changed(
+        self, redaction: Redaction | None
+    ) -> Redaction | None:
+        """Return None in place of a redaction of compressed Pixel Data that
+        changes no stored value, without Clean Pixel Data, so that defacing
+        writes it as received rather than uncompressed; otherwise
+        ``redaction``.
+
+        A mask may change none, as where it writes air over air. Under Clean
+        Pixel Data, compressed Pixel Data is written uncompressed whether or
+        not a region is blacked out, since a reviewer may add one to the
+        frames that the QC pack previews (D-037); a defacer's mask is never
+        reviewed so, and native Pixel Data whose words are unchanged is
+        written as it was in any case.
+        """
+        if (
+            redaction is not None
+            and self._finder is None
+            and redaction.decoded is not None
+            and redaction.value[: len(redaction.decoded)] == redaction.decoded
+        ):
+            return None
+        return redaction
 
     def _kept_descriptors(
         self, plan: InstancePlan, edits: InstanceEdits

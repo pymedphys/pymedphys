@@ -17,6 +17,7 @@ planning system's exports. Every UID and value here is invented."""
 
 from __future__ import annotations
 
+import dataclasses
 import io
 import json
 import math
@@ -43,8 +44,10 @@ from pymedphys._dicom.deidentify.face_validation_dicom import (
 )
 from pymedphys._dicom.deidentify.face_validation_dicom_markdown import markdown
 
+from . import _synthetic_compressed as compressed_files
 from . import _synthetic_head as head
 from . import _synthetic_head_dicom as files
+from ._corpus_run import decoders_installed
 
 # Coarser than the finder's own tests, as the face block tests' scan is.
 _SCAN = head.axial(
@@ -381,7 +384,7 @@ def test_rt_plans_in_a_defaced_frame_are_counted(measured):
 
 
 def test_the_summary_counts_the_measures(summary):
-    assert summary["format"] == "pymedphys-deid-face-validation-dicom/1"
+    assert summary["format"] == "pymedphys-deid-face-validation-dicom/4"
     assert summary["series"] == {
         "defaced": 1,
         "not_defaced": {
@@ -738,3 +741,118 @@ def test_rt_roi_interpreted_types_are_counted_by_their_defined_terms(kind, count
     assert face_validation_dicom._interpreted_types(  # pylint: disable = protected-access
         dataset
     ) == {1: counted}
+
+
+_NEEDS_DECODERS = pytest.mark.skipif(
+    not decoders_installed(), reason="needs a decoder of each compressed syntax"
+)
+
+
+def _case_one(block: FaceBlock) -> dict[str, bytes]:
+    """Case 1's CT series, its eye ROIs, and its two RT Doses, of low and
+    high dose in the block."""
+    contents = {f"CT{i:03d}.dcm": each for i, each in enumerate(_ct(1))}
+    contents["RS.dcm"] = _structure_set(
+        1,
+        [("ORGAN", _globe(_RIGHT)), ("ORGAN", _globe(_LEFT))],
+        ["Eye_R", "Eye_L"],
+    )
+    contents["RD1.dcm"] = _dose(1, block, _DOSE_LOW, 1)
+    contents["RD2.dcm"] = _dose(1, block, _DOSE_HIGH, 2)
+    return contents
+
+
+def _measure_files(directory, contents: dict[str, bytes]) -> DicomMeasures:
+    directory.mkdir()
+    for name, data in contents.items():
+        (directory / name).write_bytes(data)
+    return face_validation_dicom.measure_dicom(directory)
+
+
+def _with_rle_segments(data: bytes, count: int) -> bytes:
+    """The RLE Lossless file ``data`` with its first frame's header giving
+    ``count`` segments, which its samples do not fill, so that it does not
+    decode."""
+    dataset = pydicom.dcmread(io.BytesIO(data))
+    frames = list(pydicom.encaps.generate_frames(dataset.PixelData, number_of_frames=1))
+    first = count.to_bytes(4, "little") + frames[0][4:]
+    dataset.PixelData = compressed_files.encapsulated([first, *frames[1:]])
+    return files.written(dataset)
+
+
+@_NEEDS_DECODERS
+@pytest.mark.parametrize(
+    "syntax", [compressed_files.RLE_LOSSLESS, compressed_files.JPEG_2000_LOSSLESS]
+)
+def test_a_compressed_series_and_its_rt_doses_are_measured_as_native_ones_are(
+    tmp_path, block, syntax
+):
+    """Lossless Pixel Data decodes to the native stored values, so every
+    measure but the storage code is that of the native files."""
+    native = _case_one(block)
+    encoded = {
+        name: compressed_files.compressed_file(
+            data,
+            # RLE Lossless takes the RT Doses' 32-bit samples.
+            compressed_files.RLE_LOSSLESS if name.startswith("RD") else syntax,
+        )
+        if name.startswith(("CT", "RD"))
+        else data
+        for name, data in native.items()
+    }
+
+    expected = _measure_files(tmp_path / "native", native)
+    measured = _measure_files(tmp_path / "compressed", encoded)
+
+    (series,) = measured.series
+    (expected_series,) = expected.series
+    assert series.outcome == "defaced"
+    assert series.storage == "compressed 16/16 signed"
+    assert series.air is True
+    assert series == dataclasses.replace(expected_series, storage=series.storage)
+    assert sorted((each.outcome, each.share) for each in measured.doses) == sorted(
+        (each.outcome, each.share) for each in expected.doses
+    )
+    assert sorted(each.outcome for each in measured.doses) == [
+        "dose-in-face-block",
+        "set-to-zero",
+    ]
+    assert measured.crashed == {}
+
+
+@_NEEDS_DECODERS
+def test_a_compressed_series_with_a_slice_that_does_not_decode_is_not_measured_for_air(
+    tmp_path, block
+):
+    """The run leaves the series undefaced, as it finds no block, and air
+    is not measured from the slices that do decode."""
+    contents = {
+        name: compressed_files.compressed_file(data, compressed_files.RLE_LOSSLESS)
+        for name, data in _case_one(block).items()
+        if name.startswith("CT")
+    }
+    contents["CT040.dcm"] = _with_rle_segments(contents["CT040.dcm"], 3)
+
+    (series,) = _measure_files(tmp_path / "exports", contents).series
+
+    assert series.outcome == "undecodable-pixel-data"
+    assert series.storage == "compressed 16/16 signed"
+    assert series.air is None
+    assert series.pixel_spacing == pytest.approx(2.0)
+    assert series.slice_spacing == pytest.approx(3.0)
+
+
+@_NEEDS_DECODERS
+def test_a_compressed_rt_dose_that_does_not_decode_is_counted_as_held(tmp_path, block):
+    contents = _case_one(block)
+    del contents["RS.dcm"], contents["RD2.dcm"]
+    contents["RD1.dcm"] = _with_rle_segments(
+        compressed_files.compressed_file(
+            contents["RD1.dcm"], compressed_files.RLE_LOSSLESS
+        ),
+        3,
+    )
+
+    (dose,) = _measure_files(tmp_path / "exports", contents).doses
+
+    assert (dose.outcome, dose.share) == ("undefaced-in-defaced-frame", None)
