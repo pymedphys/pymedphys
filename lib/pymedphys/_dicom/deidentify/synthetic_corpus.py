@@ -20,7 +20,7 @@ fictitious patient and study, with one Frame of Reference: three CT Image
 slices, an RT Structure Set that references the CT series and slices, an RT
 Plan that references the structure set and the dose, an RT Dose that
 references the plan, a second RT Dose of the plan for review (below), and
-one instance of each of the other twenty-one IODs, each in a series of its own.
+one instance of each of the other twenty-nine IODs, each in a series of its own.
 The MR Image and PET Image instances reference the first CT slice, and each
 enhanced, legacy converted enhanced, or MR Spectroscopy instance references
 the single-frame instance of its modality: the first CT slice, the MR
@@ -34,9 +34,13 @@ Record references the plan. The RT Image, a digitally reconstructed
 radiograph of 2 by 2 pixels, references the RT Plan. The X-Ray Radiation
 Dose SR references the first CT slice, the Radiopharmaceutical Radiation
 Dose SR the PET Image, and the Basic Text SR, Enhanced SR, Comprehensive
-SR, Comprehensive 3D SR, and Extensible SR the MR Image. It is the input for
-validating each preset end
-to end: once the engine has
+SR, Comprehensive 3D SR, and Extensible SR the MR Image. The Key Object
+Selection Document selects the MR Image; the Mammography CAD SR and Chest
+CAD SR name the RT Image, the collection's one projection radiograph, as
+the image that their CAD read, and the Colon CAD SR the CT series; and the
+Procedure Log, Spectacle Prescription Report, Macular Grid Thickness and
+Volume Report, and Waveform Annotation SR reference the MR Image. It is the
+input for validating each preset end to end: once the engine has
 written the collection, the residual search
 (:mod:`~pymedphys._dicom.deidentify.residuals`) should find none of the
 markers that had to be removed or replaced.
@@ -59,8 +63,9 @@ a placement has one item, created along the path where needed, so every
 place is reached through items numbered 0, except in a Structured Report's
 content tree (below).
 
-**Content trees.** Each Structured Report's Content Sequence (0040,A730)
-holds a content tree that a template builds
+**Content trees.** Each Structured Report's and the Key Object Selection
+Document's Content Sequence (0040,A730) holds a content tree that a
+template builds
 (:mod:`~pymedphys._dicom.deidentify.synthetic_content_trees`), and its
 root's Concept Name Code Sequence (0040,A043) the report's title, rather
 than markers: the Content Sequence is recorded with
@@ -68,10 +73,13 @@ than markers: the Content Sequence is recorded with
 defines below the Concept Name Code Sequence. The places that the IOD
 defines below the Content Sequence are not recorded, since the tree's
 items, which need not be numbered 0, decide what each holds. The value of each content item that can
-identify a person, a device, or a time, of Value Type UIDREF, DATETIME, or
-PNAME, holds a marker of its VR, but the X-ray report's Study Instance UID
-of its scope of accumulation, which is the collection's study and is
-recorded as linked; each placement records its item's concept name
+identify a person, a device, or a time, of Value Type UIDREF, DATE, TIME,
+DATETIME, or PNAME, holds a marker of its VR, but the UIDs that name the
+collection's study, series, or Frame of Reference, such as the X-ray
+report's Study Instance UID of its scope of accumulation and the colon CAD
+report's image set and CT series, which are recorded as linked; an IMAGE
+item references the instance that the report's header references. Each
+placement records its item's concept name
 (:attr:`Placement.concept`), whose row of PS3.15 Table E.3.4-1 gives its
 action under Clean Structured Content, and its path through the items of
 the tree. The Basic Profile gives the Content Sequence D, which a sequence
@@ -154,8 +162,9 @@ of an RT Beams Treatment Record's Interlock Sequence (300A,0740). Planted in
 every file, the first two would sequester every
 instance, and no preset could release any of the collection; planted in one,
 that instance checks sequestration, :data:`REVIEW_FILE` checks review, and
-the other twenty-six check each preset's output, the reports where their trees
-are cleaned. Radiopharmaceutical Start
+the other thirty-four check each preset's output, the reports where their
+trees are cleaned, but for :data:`UNKEPT_REPORT_FILE`, whose tree no option
+set keeps. Radiopharmaceutical Start
 DateTime and Institution Code Sequence, which CT Image does not define
 there, are planted in no file, so the Enhanced PET instance, which lacks an
 attribute of Type 1, and the treatment record are released and their other
@@ -190,7 +199,7 @@ Manufacturer's Model Name (0008,1090), which Table E.1-1 does not list and
 the Basic Profile keeps, a copy of the RT Plan's RT Plan Label marker
 (:attr:`PlacementKind.REVIEW_COPY`), so the residual search finds a source
 value of another instance in its output and sends it to review. The third
-CT slice remains sequestered; the other twenty-six files stay releasable, the
+CT slice remains sequestered; the other thirty-four files stay releasable, the
 reports where their trees are cleaned.
 
 **Manifest.** :class:`CorpusManifest` records, for each file, each
@@ -256,16 +265,33 @@ from .standard import (
 )
 from .synthetic_content_trees import (
     BASIC_TEXT_SR_STORAGE,
+    CHEST_CAD_SR_STORAGE,
+    COLON_CAD_SR_STORAGE,
     COMPREHENSIVE_3D_SR_STORAGE,
     COMPREHENSIVE_SR_STORAGE,
     ENHANCED_SR_STORAGE,
     EXTENSIBLE_SR_STORAGE,
+    KEY_OBJECT_SELECTION_DOCUMENT_STORAGE,
+    MACULAR_GRID_THICKNESS_AND_VOLUME_REPORT_STORAGE,
+    MAMMOGRAPHY_CAD_SR_STORAGE,
+    PROCEDURE_LOG_STORAGE,
     RADIOPHARMACEUTICAL_RADIATION_DOSE_SR_STORAGE,
     ROOT_TEMPLATES,
+    SPECTACLE_PRESCRIPTION_REPORT_STORAGE,
+    WAVEFORM_ANNOTATION_SR_STORAGE,
     X_RAY_RADIATION_DOSE_SR_STORAGE,
+    Image,
+    chest_cad_tree,
+    colon_cad_tree,
     imaging_report_tree,
+    key_object_selection_tree,
+    macular_grid_tree,
+    mammography_cad_tree,
     measurement_report_tree,
+    procedure_log_tree,
     radiopharmaceutical_dose_tree,
+    spectacle_prescription_tree,
+    waveform_annotation_tree,
     x_ray_dose_tree,
 )
 from .values import values_problem
@@ -308,9 +334,10 @@ LINKED_UID_ROOT = "2.25.88888"
 SEQUESTERED_FILE = "03-ct-3.dcm"
 # The file that keeps a copy of another file's marker, for review.
 REVIEW_FILE = "07-rtdose-review.dcm"
-# The Structured Reports, whose Content Sequence holds a content tree, which
-# the Basic Profile's D sequesters, as a sequence has no dummy value: the
-# radiation dose reports, and the general reports.
+# The Structured Reports and the Key Object Selection Document, whose Content
+# Sequence holds a content tree, which the Basic Profile's D sequesters, as a
+# sequence has no dummy value: the radiation dose reports, the general
+# reports, and the documents of the IODs that each name their root template.
 DOSE_REPORT_FILES = ("22-sr-dose-x-ray.dcm", "23-sr-dose-radiopharmaceutical.dcm")
 GENERAL_REPORT_FILES = (
     "24-sr-basic-text.dcm",
@@ -319,7 +346,23 @@ GENERAL_REPORT_FILES = (
     "27-sr-comprehensive-3d.dcm",
     "28-sr-extensible.dcm",
 )
-STRUCTURED_REPORT_FILES = DOSE_REPORT_FILES + GENERAL_REPORT_FILES
+TEMPLATE_REPORT_FILES = (
+    "34-sr-key-object-selection.dcm",
+    "35-sr-mammography-cad.dcm",
+    "36-sr-chest-cad.dcm",
+    "37-sr-colon-cad.dcm",
+    "38-sr-procedure-log.dcm",
+    "39-sr-spectacle-prescription.dcm",
+    "40-sr-macular-grid.dcm",
+    "41-sr-waveform-annotation.dcm",
+)
+STRUCTURED_REPORT_FILES = (
+    DOSE_REPORT_FILES + GENERAL_REPORT_FILES + TEMPLATE_REPORT_FILES
+)
+# The report whose tree Clean Structured Content never keeps: TID 2101 codes
+# rows that the Macular Grid Thickness and Volume Report requires in LOINC,
+# whose rows the pin leaves out (D-001, D-047).
+UNKEPT_REPORT_FILE = "40-sr-macular-grid.dcm"
 # The directory, within the one that write_corpus is given, of the files.
 INSTANCES_DIRECTORY = "instances"
 
@@ -378,6 +421,22 @@ COMPREHENSIVE_3D_REPORT_SERIES = f"{LINKED_UID_ROOT}02400"
 COMPREHENSIVE_3D_REPORT = f"{LINKED_UID_ROOT}02401"
 EXTENSIBLE_REPORT_SERIES = f"{LINKED_UID_ROOT}02500"
 EXTENSIBLE_REPORT = f"{LINKED_UID_ROOT}02501"
+KEY_OBJECT_SELECTION_SERIES = f"{LINKED_UID_ROOT}03100"
+KEY_OBJECT_SELECTION = f"{LINKED_UID_ROOT}03101"
+MAMMOGRAPHY_CAD_REPORT_SERIES = f"{LINKED_UID_ROOT}03200"
+MAMMOGRAPHY_CAD_REPORT = f"{LINKED_UID_ROOT}03201"
+CHEST_CAD_REPORT_SERIES = f"{LINKED_UID_ROOT}03300"
+CHEST_CAD_REPORT = f"{LINKED_UID_ROOT}03301"
+COLON_CAD_REPORT_SERIES = f"{LINKED_UID_ROOT}03400"
+COLON_CAD_REPORT = f"{LINKED_UID_ROOT}03401"
+PROCEDURE_LOG_SERIES = f"{LINKED_UID_ROOT}03500"
+PROCEDURE_LOG = f"{LINKED_UID_ROOT}03501"
+SPECTACLE_PRESCRIPTION_SERIES = f"{LINKED_UID_ROOT}03600"
+SPECTACLE_PRESCRIPTION = f"{LINKED_UID_ROOT}03601"
+MACULAR_GRID_REPORT_SERIES = f"{LINKED_UID_ROOT}03700"
+MACULAR_GRID_REPORT = f"{LINKED_UID_ROOT}03701"
+WAVEFORM_ANNOTATION_SERIES = f"{LINKED_UID_ROOT}03800"
+WAVEFORM_ANNOTATION = f"{LINKED_UID_ROOT}03801"
 # A patient and a procedure step that the collection names but does not hold.
 PATIENT_REFERENCE = f"{LINKED_UID_ROOT}00003"
 PROCEDURE_STEP = f"{LINKED_UID_ROOT}00004"
@@ -404,17 +463,29 @@ _CONTOUR_IMAGE_SEQUENCE = "(3006,0016)"
 _CONTENT_SEQUENCE = "(0040,A730)"
 # The frame of reference of a SCOORD3D content item's coordinates.
 _REFERENCED_FRAME_OF_REFERENCE = "(3006,0024)"
+# The instance that an IMAGE content item references.
+_REFERENCED_SOP = "(0008,1199)"
+_REFERENCED_SOP_INSTANCE = "(0008,1155)"
 # The sequences of a Structured Report's root content item, its Concept Name
 # Code Sequence and Content Sequence, which its template builds.
 _CONTENT_TREE_ROOT = frozenset({"(0040,A043)", _CONTENT_SEQUENCE})
 # The VR, and the attribute, of the value of each Value Type of a content
 # item that can identify someone or something (PS3.3 Table 10-2).
 _CONTENT_ITEM_VRS = types.MappingProxyType(
-    {"UIDREF": "UI", "DATETIME": "DT", "PNAME": "PN"}
+    {"UIDREF": "UI", "DATE": "DA", "TIME": "TM", "DATETIME": "DT", "PNAME": "PN"}
 )
 _CONTENT_ITEM_VALUES = types.MappingProxyType(
-    {"UIDREF": "(0040,A124)", "DATETIME": "(0040,A120)", "PNAME": "(0040,A123)"}
+    {
+        "UIDREF": "(0040,A124)",
+        "DATE": "(0040,A121)",
+        "TIME": "(0040,A122)",
+        "DATETIME": "(0040,A120)",
+        "PNAME": "(0040,A123)",
+    }
 )
+# The collection's own UIDs that a content tree's UIDREF items can name, and
+# that are then recorded as linked.
+_COLLECTION_UIDS = frozenset({STUDY, FRAME_OF_REFERENCE, CT_SERIES})
 # The sequences whose D a reviewed rule writes (D-021).
 _REVIEWED_DUMMY_SEQUENCES = frozenset(
     {
@@ -465,6 +536,14 @@ _SOP_CLASSES = types.MappingProxyType(
         COMPREHENSIVE_REPORT: COMPREHENSIVE_SR_STORAGE,
         COMPREHENSIVE_3D_REPORT: COMPREHENSIVE_3D_SR_STORAGE,
         EXTENSIBLE_REPORT: EXTENSIBLE_SR_STORAGE,
+        KEY_OBJECT_SELECTION: KEY_OBJECT_SELECTION_DOCUMENT_STORAGE,
+        MAMMOGRAPHY_CAD_REPORT: MAMMOGRAPHY_CAD_SR_STORAGE,
+        CHEST_CAD_REPORT: CHEST_CAD_SR_STORAGE,
+        COLON_CAD_REPORT: COLON_CAD_SR_STORAGE,
+        PROCEDURE_LOG: PROCEDURE_LOG_STORAGE,
+        SPECTACLE_PRESCRIPTION: SPECTACLE_PRESCRIPTION_REPORT_STORAGE,
+        MACULAR_GRID_REPORT: MACULAR_GRID_THICKNESS_AND_VOLUME_REPORT_STORAGE,
+        WAVEFORM_ANNOTATION: WAVEFORM_ANNOTATION_SR_STORAGE,
         PATIENT_REFERENCE: DETACHED_PATIENT_MANAGEMENT,
         PROCEDURE_STEP: MODALITY_PERFORMED_PROCEDURE_STEP,
     }
@@ -1014,6 +1093,73 @@ _SPECS = (
             ),
         )
     ),
+    # The documents of the IODs that each name their root template. The Key
+    # Object Selection Document selects the MR Image; the mammography and
+    # chest CAD reports name the RT Image, the collection's one projection
+    # radiograph, as the image that they were computed on, and the colon
+    # CAD report the CT series; the others reference the MR Image, as the
+    # general reports do.
+    *(
+        _Spec(name, sop_class, instance, series, target)
+        for name, sop_class, instance, series, target in (
+            (
+                TEMPLATE_REPORT_FILES[0],
+                KEY_OBJECT_SELECTION_DOCUMENT_STORAGE,
+                KEY_OBJECT_SELECTION,
+                KEY_OBJECT_SELECTION_SERIES,
+                MR,
+            ),
+            (
+                TEMPLATE_REPORT_FILES[1],
+                MAMMOGRAPHY_CAD_SR_STORAGE,
+                MAMMOGRAPHY_CAD_REPORT,
+                MAMMOGRAPHY_CAD_REPORT_SERIES,
+                RT_IMAGE,
+            ),
+            (
+                TEMPLATE_REPORT_FILES[2],
+                CHEST_CAD_SR_STORAGE,
+                CHEST_CAD_REPORT,
+                CHEST_CAD_REPORT_SERIES,
+                RT_IMAGE,
+            ),
+            (
+                TEMPLATE_REPORT_FILES[3],
+                COLON_CAD_SR_STORAGE,
+                COLON_CAD_REPORT,
+                COLON_CAD_REPORT_SERIES,
+                CT_SLICES[0],
+            ),
+            (
+                TEMPLATE_REPORT_FILES[4],
+                PROCEDURE_LOG_STORAGE,
+                PROCEDURE_LOG,
+                PROCEDURE_LOG_SERIES,
+                MR,
+            ),
+            (
+                TEMPLATE_REPORT_FILES[5],
+                SPECTACLE_PRESCRIPTION_REPORT_STORAGE,
+                SPECTACLE_PRESCRIPTION,
+                SPECTACLE_PRESCRIPTION_SERIES,
+                MR,
+            ),
+            (
+                TEMPLATE_REPORT_FILES[6],
+                MACULAR_GRID_THICKNESS_AND_VOLUME_REPORT_STORAGE,
+                MACULAR_GRID_REPORT,
+                MACULAR_GRID_REPORT_SERIES,
+                MR,
+            ),
+            (
+                TEMPLATE_REPORT_FILES[7],
+                WAVEFORM_ANNOTATION_SR_STORAGE,
+                WAVEFORM_ANNOTATION,
+                WAVEFORM_ANNOTATION_SERIES,
+                MR,
+            ),
+        )
+    ),
 )
 
 
@@ -1023,7 +1169,7 @@ def build_corpus() -> SyntheticCorpus:
     Returns
     -------
     SyntheticCorpus
-        Twenty-eight files: three CT slices; the RT Structure Set, RT Plan, RT
+        Thirty-six files: three CT slices; the RT Structure Set, RT Plan, RT
         Dose, and the RT Dose for review; the Enhanced CT Image and Legacy
         Converted Enhanced CT Image; the MR Image, Enhanced MR Image,
         Enhanced MR Color Image, Legacy Converted Enhanced MR Image, and MR
@@ -1031,8 +1177,11 @@ def build_corpus() -> SyntheticCorpus:
         Converted Enhanced PET Image; the Spatial Registration and
         Deformable Spatial Registration; the RT Beams Treatment Record; the
         RT Image; the X-Ray Radiation Dose SR and Radiopharmaceutical
-        Radiation Dose SR; and the Basic Text SR, Enhanced SR, Comprehensive
-        SR, Comprehensive 3D SR, and Extensible SR. Two builds give the same
+        Radiation Dose SR; the Basic Text SR, Enhanced SR, Comprehensive SR,
+        Comprehensive 3D SR, and Extensible SR; and the Key Object Selection
+        Document, Mammography CAD SR, Chest CAD SR, Colon CAD SR, Procedure
+        Log, Spectacle Prescription Report, Macular Grid Thickness and
+        Volume Report, and Waveform Annotation SR. Two builds give the same
         bytes and the same manifest.
     """
     markers = _Markers()
@@ -1702,35 +1851,57 @@ class _Instance:
     def _add_content_tree(self) -> None:
         """Add the attributes that make the instance a Structured Report.
 
-        The content tree's identifying values, of its UIDREF, DATETIME, and
-        PNAME items, are markers, and the study that an X-ray report's scope
-        of accumulation names is the collection's; each is recorded with its
-        item's concept name. A measurement report's volumetric region is in
-        the collection's Frame of Reference, recorded as linked. The report
-        is VERIFIED, so its Verifying Observer Sequence, whose markers are
-        planted as any attribute's, is one that its IOD requires.
+        The content tree's identifying values, of its UIDREF, DATE, TIME,
+        DATETIME, and PNAME items, are markers, but the UIDs that name the
+        collection's study, series, or Frame of Reference, such as the study
+        that an X-ray report's scope of accumulation names, which are the
+        collection's; each is recorded with its item's concept name. A
+        measurement report's volumetric region is in the collection's Frame
+        of Reference, recorded as linked, and an IMAGE item references the
+        instance that the report's header references. A report is
+        VERIFIED, so its Verifying Observer Sequence, whose markers are
+        planted as any attribute's, is one that its IOD requires; a Key
+        Object Selection Document has no Verification Flag. A Procedure Log
+        has the Synchronization Module that its IOD requires.
         """
         put = self._set
-        put((), "(0008,0060)", ["SR"])
-        put((), "(0040,A491)", ["COMPLETE"])  # Completion Flag
-        put((), "(0040,A493)", ["VERIFIED"])  # Verification Flag
-        template = _items(["(0040,A504)"])  # Content Template Sequence
-        put(template, "(0008,0105)", ["DCMR"])  # Mapping Resource
-        put(template, "(0040,DB00)", [ROOT_TEMPLATES[self.spec.sop_class]])
+        template = ROOT_TEMPLATES[self.spec.sop_class]
+        if template == "2010":
+            put((), "(0008,0060)", ["KO"])
+        else:
+            put((), "(0008,0060)", ["SR"])
+            put((), "(0040,A491)", ["COMPLETE"])  # Completion Flag
+            put((), "(0040,A493)", ["VERIFIED"])  # Verification Flag
+        if template == "3001":
+            put((), "(0018,106A)", ["NO TRIGGER"])  # Synchronization Trigger
+            put((), "(0018,1800)", ["N"])  # Acquisition Time Synchronized
+        content_template = _items(["(0040,A504)"])  # Content Template Sequence
+        put(content_template, "(0008,0105)", ["DCMR"])  # Mapping Resource
+        put(content_template, "(0040,DB00)", [template])
 
         def values(value_type: str) -> str:
             _, (text,) = self.markers.values(_CONTENT_ITEM_VRS[value_type], 1)
             return text
 
-        template = ROOT_TEMPLATES[self.spec.sop_class]
-        if template == "10001":
-            root = x_ray_dose_tree(values, STUDY)
-        elif template == "10021":
-            root = radiopharmaceutical_dose_tree(values)
-        elif template == "2000":
-            root = imaging_report_tree(values)
-        else:
-            root = measurement_report_tree(values, FRAME_OF_REFERENCE)
+        target = self.spec.default_target
+        image = Image(_SOP_CLASSES[target], target)
+        trees = {
+            "10001": lambda: x_ray_dose_tree(values, STUDY),
+            "10021": lambda: radiopharmaceutical_dose_tree(values),
+            "2000": lambda: imaging_report_tree(values),
+            "1500": lambda: measurement_report_tree(values, FRAME_OF_REFERENCE),
+            "2010": lambda: key_object_selection_tree(image),
+            "4000": lambda: mammography_cad_tree(values, image),
+            "4100": lambda: chest_cad_tree(image),
+            "4120": lambda: colon_cad_tree(
+                values, STUDY, FRAME_OF_REFERENCE, CT_SERIES
+            ),
+            "3001": lambda: procedure_log_tree(values),
+            "2020": spectacle_prescription_tree,
+            "2100": lambda: macular_grid_tree(values),
+            "3750": lambda: waveform_annotation_tree(values),
+        }
+        root = trees[template]()
         for element in root:
             self.dataset.add(element)
         self._record_content(root, ())
@@ -1740,12 +1911,13 @@ class _Instance:
     ) -> None:
         """Record the identifying value of each content item below ``item``.
 
-        The frame of reference of a SCOORD3D item is recorded too, as linked,
-        with no concept name, since it takes its own row of Table E.1-1.
+        The frame of reference of a SCOORD3D item, and the instance that an
+        IMAGE item references, are recorded too, as linked, with no concept
+        name, since each takes its own row of Table E.1-1.
         """
         for index, child in enumerate(item.get("ContentSequence", ())):
             within = (*items, (_CONTENT_SEQUENCE, index))
-            value_type = child.ValueType
+            value_type = child.get("ValueType")
             if value_type == "SCOORD3D":
                 self._record(
                     ElementPath(within, _REFERENCED_FRAME_OF_REFERENCE),
@@ -1753,6 +1925,17 @@ class _Instance:
                     (str(child.ReferencedFrameOfReferenceUID),),
                     PlacementKind.LINKED_UID,
                     _REFERENCED_FRAME_OF_REFERENCE,
+                )
+            if value_type == "IMAGE":
+                (reference,) = child.ReferencedSOPSequence
+                self._record(
+                    ElementPath(
+                        (*within, (_REFERENCED_SOP, 0)), _REFERENCED_SOP_INSTANCE
+                    ),
+                    "UI",
+                    (str(reference.ReferencedSOPInstanceUID),),
+                    PlacementKind.LINKED_UID,
+                    _REFERENCED_SOP_INSTANCE,
                 )
             if value_type in _CONTENT_ITEM_VRS:
                 (code,) = child.ConceptNameCodeSequence
@@ -1765,7 +1948,7 @@ class _Instance:
                         (value,),
                         (
                             PlacementKind.LINKED_UID
-                            if value == STUDY
+                            if value in _COLLECTION_UIDS
                             else PlacementKind.PLANTED
                         ),
                         tag,

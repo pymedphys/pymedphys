@@ -51,16 +51,30 @@ SOURCE_SERIES_INFORMATION = ("(3006,004C)",)
 RESPONSIBLE_PERSON = "(0010,2297)"  # X; Type 2C at the top level
 OVERLAY_DATA = "(60xx,3000)"  # X; its Overlay Plane Module is U in CT Image
 VERIFYING_OBSERVER_SEQUENCE = "(0040,A073)"  # D; only Structured Report IODs
-CONTENT_SEQUENCE = "(0040,A730)"  # D; only Structured Report IODs
+CONTENT_SEQUENCE = "(0040,A730)"  # D; only Structured Report and Key Object IODs
 GRAPHIC_ANNOTATION_SEQUENCE = "(0070,0001)"  # D; no supported IOD defines it
+# The Structured Reports and the Key Object Selection Document, in the
+# statement's order.
 STRUCTURED_REPORTS = (
     "Basic Text SR",
+    "Chest CAD SR",
+    "Colon CAD SR",
     "Comprehensive 3D SR",
     "Comprehensive SR",
     "Enhanced SR",
     "Extensible SR",
+    "Key Object Selection Document",
+    "Macular Grid Thickness and Volume Report",
+    "Mammography CAD SR",
+    "Procedure Log",
     "Radiopharmaceutical Radiation Dose SR",
+    "Spectacle Prescription Report",
+    "Waveform Annotation SR",
     "X-Ray Radiation Dose SR",
+)
+# A Key Object Selection Document has no Verifying Observer Sequence.
+VERIFIABLE_REPORTS = tuple(
+    name for name in STRUCTURED_REPORTS if name != "Key Object Selection Document"
 )
 # Attribute Modification DateTime, D, within Original Attributes Sequence,
 # which the Basic Profile gives X.
@@ -226,10 +240,9 @@ def test_a_plain_d_on_a_reports_content_sequence_sequesters_it():
         conformance_markdown.render_markdown(_statement("basic")), CONTENT_SEQUENCE
     )
     assert row.endswith(
-        "| instance sequestered at the top level in Basic Text SR, "
-        "Comprehensive 3D SR, Comprehensive SR, Enhanced SR, Extensible SR, "
-        "Radiopharmaceutical Radiation Dose SR, and X-Ray Radiation Dose SR. "
-        "X elsewhere. |"
+        "| instance sequestered at the top level in "
+        + ", ".join(STRUCTURED_REPORTS[:-1])
+        + f", and {STRUCTURED_REPORTS[-1]}. X elsewhere. |"
     )
 
 
@@ -241,7 +254,7 @@ def test_a_plain_d_on_a_reports_verifying_observer_sequence_writes_its_rule():
     entry = _entry(_statement("basic"), VERIFYING_OBSERVER_SEQUENCE)
     assert (entry.action, entry.elsewhere) == ("D", "X")
     assert entry.places == tuple(
-        conformance.Place(name, (), "D") for name in STRUCTURED_REPORTS
+        conformance.Place(name, (), "D") for name in VERIFIABLE_REPORTS
     )
 
 

@@ -14,18 +14,15 @@
 
 """The Clean Structured Content Option on general Structured Reports.
 
-The Comprehensive SR and Comprehensive 3D SR IODs are supported; the Key
-Object Selection Document and Mammography CAD SR IODs are not yet, so the
-engine sequesters their instances. These tests show what the option does
-with the four IODs' content trees (D-047), ahead of supporting the other
-two: which presets and Retain options, with the option added, keep a
-report that holds only the rows that its templates require; which features
-take the whole tree out, among them concept names coded in a scheme that
-the engine cannot look up; which optional rows take it out under each
-option set; the action that each value of a kept tree takes; and what is
-written and released, in the tests that add the two IODs not supported yet
-to the supported ones for that test alone, as supporting them would. The
-reports are synthetic, built from the templates of PS3.16 2026d by
+The Comprehensive SR, Comprehensive 3D SR, Key Object Selection Document,
+and Mammography CAD SR IODs are supported. These tests show what the
+option does with their content trees (D-047): which presets and Retain
+options, with the option added, keep a report that holds only the rows
+that its templates require; which features take the whole tree out, among
+them concept names coded in a scheme that the engine cannot look up; which
+optional rows take it out under each option set; the action that each
+value of a kept tree takes; and what is written and released. The reports
+are synthetic, built from the templates of PS3.16 2026d by
 :mod:`._synthetic_structured_reports`.
 
 A preset with the option added is composed by adding it to every preset's
@@ -86,8 +83,6 @@ OPTIONAL_ROWS = {
 }
 # The reports whose IOD has a Verification Flag.
 VERIFIABLE = (IMAGING, MEASUREMENT, CAD)
-# The reports whose IOD is not supported yet.
-NOT_SUPPORTED_YET = (KEY_OBJECTS, CAD)
 PRESETS = ("basic", "basic-clean-descriptors", "tps-import", "public-release")
 # Every option of Table E.1-1 that can be selected with the others, with
 # Full Dates, which Retain Device Identity does not conflict with.
@@ -123,16 +118,6 @@ def _with_option(monkeypatch):
         ),
     )
     return policy.compose_policy
-
-
-@pytest.fixture(name="supported")
-def _supported(monkeypatch):
-    """Add the two IODs not supported yet to the supported ones, as support would."""
-    monkeypatch.setattr(
-        scope,
-        "SUPPORTED_IODS",
-        scope.SUPPORTED_IODS | {REPORTS[name][1] for name in NOT_SUPPORTED_YET},
-    )
 
 
 def _report(name, optional=(), **kwargs):
@@ -231,19 +216,16 @@ def _released(composed, dataset):
     return result.data, decision
 
 
-def test_only_the_comprehensive_and_comprehensive_3d_reports_are_supported():
+def test_every_report_is_of_a_supported_iod():
     for name, (build, iod) in REPORTS.items():
         dataset = build()
         classification = scope.classify(
             dataset.SOPClassUID, synthetic.EXPLICIT_VR_LITTLE_ENDIAN
         )
 
-        if name in NOT_SUPPORTED_YET:
-            assert classification.reason == scope.UnsupportedIod(iod), name
-        else:
-            assert classification == scope.Classification(
-                scope.Disposition.SUPPORTED, iod
-            ), name
+        assert classification == scope.Classification(
+            scope.Disposition.SUPPORTED, iod
+        ), name
         assert load_iod_tables().iods[iod].lookup(CONTENT, ()), name
 
 
@@ -670,7 +652,6 @@ def test_a_section_under_an_equivalent_dcm_heading_is_kept(
     assert _values_by_concept(dataset, actions) == {"Person Observer Name": "D"}
 
 
-@pytest.mark.usefixtures("supported")
 def test_a_section_under_an_equivalent_dcm_heading_is_written_and_released(
     with_option,
 ):
@@ -705,7 +686,6 @@ def test_a_subject_id_coded_as_tid_1007_gives_it_takes_the_tree_out(
 
 
 @pytest.mark.parametrize("subject_id", [reports.PATIENT_ID, "SYNTHETIC-OTHER9"])
-@pytest.mark.usefixtures("supported")
 def test_a_subject_id_coded_as_tid_1007_gives_it_is_not_released(
     with_option, subject_id
 ):
@@ -740,7 +720,6 @@ RELEASED_UNDER_PUBLIC_RELEASE = {
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.4-01")
-@pytest.mark.usefixtures("supported")
 @pytest.mark.parametrize("name", RELEASED_UNDER_PUBLIC_RELEASE)
 def test_a_written_report_holds_no_source_value_and_is_released(with_option, name):
     dataset, _ = _report(name, RELEASED_UNDER_PUBLIC_RELEASE[name])
@@ -758,7 +737,6 @@ def test_a_written_report_holds_no_source_value_and_is_released(with_option, nam
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.4-01")
-@pytest.mark.usefixtures("supported")
 def test_a_written_cad_report_keeps_its_references(with_option):
     dataset, _ = _report(CAD)
 
@@ -809,7 +787,6 @@ def test_a_verified_report_is_planned_as_an_unverified_one_is(
     ]
 
 
-@pytest.mark.usefixtures("supported")
 @pytest.mark.parametrize("name", VERIFIABLE)
 def test_a_verified_report_is_written_with_a_dummy_verifier(with_option, name):
     dataset, _ = _report(name, verified=True)

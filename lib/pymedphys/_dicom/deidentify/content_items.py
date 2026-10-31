@@ -39,7 +39,10 @@ the engine cleans three of them (D-047):
   item too where it has a Value Type (PS3.3 Section C.17.3). Of the IODs of
   the first supported release, the X-Ray Radiation Dose SR,
   Radiopharmaceutical Radiation Dose SR, Basic Text SR, Enhanced SR,
-  Comprehensive SR, Comprehensive 3D SR, and Extensible SR define it.
+  Comprehensive SR, Comprehensive 3D SR, Extensible SR, Key Object Selection
+  Document, Mammography CAD SR, Chest CAD SR, Colon CAD SR, Procedure Log,
+  Spectacle Prescription Report, Macular Grid Thickness and Volume Report,
+  and Waveform Annotation SR define it.
 
 Under the option, :func:`content_item_actions` gives the walker an action for
 each such sequence and for the value of each content item in it, from the
@@ -69,7 +72,10 @@ item's Value Type (0040,A040) and the code of its Concept Name Code Sequence
   a content item itself, since its target is cleaned where it is. The writer
   keeps every item of a kept sequence, so a single item cannot be removed on
   its own, which also keeps the place in the tree that each Referenced
-  Content Item Identifier names;
+  Content Item Identifier names. Nor is a Procedure Log's tree kept where
+  the options neither keep nor modify the Observation DateTime (0040,A032)
+  of its entries and their source values are not in increasing order, as
+  :func:`log_dummy_datetimes` describes;
 - an item whose concept name Table E.3.4-1 lists, which can be kept, gives
   its value attribute the action that the selected options give the concept,
   K, D, or C, as Table E.1-1's options give an attribute. So does an item
@@ -105,7 +111,9 @@ item's Value Type (0040,A040) and the code of its Concept Name Code Sequence
   Name (0040,A123), Date (0040,A121), Time (0040,A122), and DateTime
   (0040,A120) D, and UID (0040,A124) U; Text Value (0040,A160) has a
   supplementary rule; and codes and numbers are kept, as in any kept
-  sequence (D-022).
+  sequence (D-022). The one exception is the Observation DateTime of a
+  Procedure Log's entries, which D gives the dummy datetime of its rank
+  (:func:`log_dummy_datetimes`).
 
 Waveform Annotation Sequence (0040,B020), which only IODs outside the first
 supported release define, takes its Basic Profile action, as any sequence
@@ -115,15 +123,24 @@ given C does (:class:`~.element_rules.ElementRules`).
 from __future__ import annotations
 
 import dataclasses
+import datetime
 import functools
+import re
 import types
 from collections.abc import Collection, Iterator, Mapping
 
 from .codes import RETIRED_SNOMED_DESIGNATORS, snomed_ct_code
+from .dummy_values import CONSTANTS, comparison_key
 from .elements import UndecodableElement, dataset_codecs, read_element
 from .file_layout import ElementPath
 from .iods import IOD
-from .policy import CLEAN_DESCRIPTORS, CLEAN_STRUCTURED_CONTENT, Policy
+from .policy import (
+    CLEAN_DESCRIPTORS,
+    CLEAN_STRUCTURED_CONTENT,
+    FULL_DATES,
+    MODIFIED_DATES,
+    Policy,
+)
 from .source import SourceEvidence
 from .structured_content import (
     VALUE_TYPES,
@@ -207,6 +224,20 @@ DUMMY_IN_PLACE_OF_REMOVAL = frozenset(
         ("DCM", "128470", "UIDREF"),
     }
 )
+# A Procedure Log's first-level items, the log's entries, each include
+# Observation DateTime (0040,A032) and are "strictly ordered by monotonically
+# increasing" values of it (PS3.3 Section A.35.7.3.1.2). Where X/D gives it
+# D, D-021's one constant would collapse that order, so each entry's takes
+# the dummy datetime of its rank instead (:func:`log_dummy_datetimes`).
+PROCEDURE_LOG = "Procedure Log"
+OBSERVATION_DATETIME = "(0040,A032)"
+# The first dummy datetime of a log's entries, D's constant for DT (D-021).
+_FIRST_DUMMY = datetime.datetime.strptime(str(CONSTANTS["DT"][0]), "%Y%m%d%H%M%S")
+# A DT value of PS3.5 Table 6.2-1: a date and time of 4 to 14 digits, a
+# fraction of a second after all 14, and a UTC offset.
+_DATETIME = re.compile(r"([0-9]{4}(?:[0-9]{2}){0,5})(?:\.([0-9]{1,6}))?([+-][0-9]{4})?")
+# The least value of each component of a DT that may be absent.
+_LEAST = "00000101000000"
 
 # How the conformance statement describes the cleaning, naming no value.
 METHOD = (
@@ -260,7 +291,15 @@ METHOD = (
     "not include, or where it is coded by a retired SNOMED designator, SRT, "
     "SNM3, or 99SDM, with a code that PS3.16 Table O-1 does not map to a "
     "SNOMED CT code, the whole sequence takes its Basic Profile action "
-    "instead, since a single item is not removed on its own. A concept name "
+    "instead, since a single item is not removed on its own. In a "
+    "Procedure Log, whose entries PS3.3 Section A.35.7.3.1.2 orders by "
+    "increasing Observation DateTime (0040,A032), D writes in each entry's "
+    "Observation DateTime the dummy datetime of its rank among the entries' "
+    "source values, one second apart, so that equal values take the same "
+    "dummy and the order is kept; where those source values are not in "
+    "increasing order, cannot be read as datetimes, or have different UTC "
+    "offsets, the Content Sequence takes its Basic Profile action instead. "
+    "A concept name "
     "coded by a retired SNOMED designator with a code that Table O-1 maps is "
     "looked up as that SNOMED CT code."
 )
@@ -548,6 +587,148 @@ def _held(path: ElementPath, sequences: Collection[ElementPath]) -> bool:
     )
 
 
+def _dated_log(policy: Policy, iod: IOD, path: ElementPath) -> bool:
+    """Return whether ``path`` is a Procedure Log's entries, whose datetimes D writes.
+
+    That is where the policy neither keeps nor modifies Observation
+    DateTime (0040,A032), so that X/D gives it D.
+    """
+    return (
+        iod.name == PROCEDURE_LOG
+        and path == ElementPath((), CONTENT_SEQUENCE)
+        and FULL_DATES not in policy.options
+        and MODIFIED_DATES not in policy.options
+    )
+
+
+def _entry_datetimes(reader: _Reader, path: ElementPath) -> dict[ElementPath, str]:
+    """Return the Observation DateTime of each entry of a log that has one."""
+    found = {}
+    for index in range(reader.count(path)):
+        observed = ElementPath(((CONTENT_SEQUENCE, index),), OBSERVATION_DATETIME)
+        text = reader.text(observed)
+        if text is not None:
+            found[observed] = text
+    return found
+
+
+def _instant(text: str) -> tuple[str | None, str, str] | None:
+    """Return a DT value's UTC offset, and its date and time as they sort.
+
+    Absent components take their least values, as D compares a DT (D-021),
+    and the fraction of a second is padded to six digits. Returns ``None``
+    where the value is not a DT.
+    """
+    match = _DATETIME.fullmatch(text.strip(" \x00"))
+    if match is None:
+        return None
+    whole, fraction, offset = match.groups()
+    if fraction is not None and len(whole) != len(_LEAST):
+        return None
+    return offset, whole + _LEAST[len(whole) :], (fraction or "").ljust(6, "0")
+
+
+def _ranked_dummies(
+    datetimes: Mapping[ElementPath, str],
+) -> dict[ElementPath, str] | None:
+    """Return the dummy datetime of each entry by its rank, or None if unordered.
+
+    The entries are in increasing order where each source value, read as
+    :func:`_instant` reads it, is no earlier than the one before it; all
+    must be DT values with the same UTC offset, or none, to be compared.
+    """
+    instants = {}
+    for path, text in datetimes.items():
+        instant = _instant(text)
+        if instant is None:
+            return None
+        instants[path] = instant
+    if len({offset for offset, *_ in instants.values()}) > 1:
+        return None
+    ordered = list(instants.values())
+    if ordered != sorted(ordered):
+        return None
+    distinct = sorted(set(ordered))
+    sources = {comparison_key("DT", text) for text in datetimes.values()}
+    start = 0
+    while True:
+        written = [
+            (_FIRST_DUMMY + datetime.timedelta(seconds=start + rank)).strftime(
+                "%Y%m%d%H%M%S"
+            )
+            for rank in range(len(distinct))
+        ]
+        if sources.isdisjoint(comparison_key("DT", each) for each in written):
+            break
+        start += len(distinct)
+    ranks = dict(zip(distinct, written))
+    return {path: ranks[instant] for path, instant in instants.items()}
+
+
+def log_dummy_datetimes(
+    source: SourceEvidence,
+    policy: Policy,
+    iod: IOD,
+    actions: Mapping[ElementPath, str],
+) -> Mapping[ElementPath, str]:
+    """Return the dummy datetime that D writes in each Procedure Log entry.
+
+    PS3.3 Section A.35.7.3.1.2 has a Procedure Log's first-level content
+    items, its entries, "strictly ordered by monotonically increasing"
+    Observation DateTime (0040,A032). Where the policy neither keeps nor
+    modifies that datetime, X/D gives it D, and D-021's one constant would
+    give every entry the same value. So each entry's Observation DateTime
+    takes, instead, the dummy datetime of its rank among the distinct
+    source values of the entries: D's constant for DT, ``19000101000000``,
+    for the earliest, and one second later for each later value, so that
+    entries with equal source values take the same dummy. As D's second
+    constant does, the series moves on by its own length where any dummy
+    would equal any entry's source value, as D compares them, until none
+    does, so that no source value is written, as a second run over the
+    output would otherwise do.
+
+    :func:`content_item_actions` does not keep a log's tree where its
+    entries' source values are not in increasing order, are not DT values,
+    or have different UTC offsets, or where one is empty or has more than
+    one value, so the log is sequestered rather than written out of order.
+    An entry without Observation DateTime takes no rank.
+
+    Parameters
+    ----------
+    source : SourceEvidence
+        The instance's source.
+    policy : Policy
+        The policy whose actions ``actions`` are.
+    iod : IOD
+        The instance's IOD.
+    actions : Mapping of ElementPath to str
+        :func:`content_item_actions` of the same source, policy, and IOD.
+
+    Returns
+    -------
+    Mapping of ElementPath to str
+        By the path of each entry's Observation DateTime. Empty unless the
+        instance is a Procedure Log whose Content Sequence ``actions`` keeps,
+        under a policy that neither keeps nor modifies the datetimes.
+
+    Raises
+    ------
+    ValueError
+        If ``actions`` keeps a log whose entries are not in order, which
+        :func:`content_item_actions` never does.
+    """
+    path = ElementPath((), CONTENT_SEQUENCE)
+    if actions.get(path) != KEEP or not _dated_log(policy, iod, path):
+        return types.MappingProxyType({})
+    try:
+        dummies = _ranked_dummies(_entry_datetimes(_Reader(source), path))
+    except (_Unkept, UndecodableElement, IndexError):
+        dummies = None
+    if dummies is None:
+        raise ValueError("the actions keep a log whose entries are not in order")
+    return types.MappingProxyType(dummies)
+
+
 def content_item_actions(
     source: SourceEvidence, policy: Policy, iod: IOD
 ) -> Mapping[ElementPath, str]:
@@ -592,6 +773,12 @@ def content_item_actions(
             if _held(path, held):
                 continue
             try:
+                if (
+                    _dated_log(policy, iod, path)
+                    and _ranked_dummies(_entry_datetimes(sequences.reader, path))
+                    is None
+                ):
+                    continue
                 found.update(sequences.outermost(path))
             except (_Unkept, UndecodableElement, IndexError):
                 continue

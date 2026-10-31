@@ -769,3 +769,35 @@ def test_the_statement_cites_no_design_decision_by_number(preset_name, options):
         conformance.conformance_statement(selected, vocabulary=None)
     )
     assert re.search(r"\bD-\d{3}\b", text) is None
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
+@pytest.mark.parametrize(
+    "options, described",
+    [
+        ((policy.CLEAN_STRUCTURED_CONTENT,), True),
+        ((policy.CLEAN_STRUCTURED_CONTENT, policy.FULL_DATES), False),
+        ((policy.CLEAN_STRUCTURED_CONTENT, policy.MODIFIED_DATES), False),
+        ((), False),
+    ],
+    ids=["option", "full-dates", "modified-dates", "no-option"],
+)
+def test_values_written_describes_a_procedure_logs_ranked_datetimes(options, described):
+    lines = conformance_markdown.render_markdown(
+        conformance.conformance_statement(
+            policy.compose_custom_policy(options), vocabulary=None
+        )
+    ).splitlines()
+    start = lines.index("## Values written") + 1
+    end = next(i for i in range(start, len(lines)) if lines[i].startswith("## "))
+    section = " ".join(lines[start:end])
+
+    # Only where D gives a log's entries their Observation DateTime does the
+    # statement say which dummy each takes.
+    paragraph = "Observation DateTime (0040,A032) of each entry of a Procedure Log"
+    assert (paragraph in section) is described
+    if described:
+        assert "`19000101000000` for the earliest, and one second more" in section
+        assert "A log whose entries are not in increasing order is sequestered." in (
+            section
+        )

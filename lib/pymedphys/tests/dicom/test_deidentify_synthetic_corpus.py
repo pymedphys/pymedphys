@@ -79,6 +79,7 @@ MARKER_PATTERNS = {
 TEXT_VRS = frozenset(MARKER_PATTERNS) - {"OB", "OW", "UN", "US"}
 REFERENCED_SOP_CLASS = "(0008,1150)"
 REFERENCED_SOP_INSTANCE = "(0008,1155)"
+CONTENT_SEQUENCE = "(0040,A730)"
 # The kinds that leave a value that the residual search can find.
 MARKERS = frozenset({Kind.PLANTED, Kind.CONTENT})
 # The general SR IODs, whose reports' trees follow TID 2000 or TID 1500.
@@ -88,6 +89,17 @@ GENERAL_SR_IODS = (
     "Comprehensive SR",
     "Comprehensive 3D SR",
     "Extensible SR",
+)
+# The IODs that each name their root template, in the order of their files.
+TEMPLATE_IODS = (
+    "Key Object Selection Document",
+    "Mammography CAD SR",
+    "Chest CAD SR",
+    "Colon CAD SR",
+    "Procedure Log",
+    "Spectacle Prescription Report",
+    "Macular Grid Thickness and Volume Report",
+    "Waveform Annotation SR",
 )
 LINKED_PATTERNS = {
     Kind.LINKED_UID: r"2\.25\.88888\d{5}",
@@ -222,6 +234,14 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "26-sr-comprehensive.dcm",
         "27-sr-comprehensive-3d.dcm",
         "28-sr-extensible.dcm",
+        "34-sr-key-object-selection.dcm",
+        "35-sr-mammography-cad.dcm",
+        "36-sr-chest-cad.dcm",
+        "37-sr-colon-cad.dcm",
+        "38-sr-procedure-log.dcm",
+        "39-sr-spectacle-prescription.dcm",
+        "40-sr-macular-grid.dcm",
+        "41-sr-waveform-annotation.dcm",
     ]
     assert [file.manifest.iod for file in corpus.files] == [
         "CT Image",
@@ -252,12 +272,19 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "Comprehensive SR",
         "Comprehensive 3D SR",
         "Extensible SR",
+        *TEMPLATE_IODS,
     ]
     assert corpus_module.STRUCTURED_REPORT_FILES == tuple(
-        file.name for file in corpus.files[-7:]
+        file.name for file in corpus.files[-15:]
     )
+    assert corpus_module.UNKEPT_REPORT_FILE in corpus_module.TEMPLATE_REPORT_FILES
     # Every IOD of the first supported release.
     assert {file.manifest.iod for file in corpus.files} == scope.SUPPORTED_IODS
+
+
+def _in_content_tree(path):
+    """Return whether a path is below a report's Content Sequence."""
+    return bool(path.items) and path.items[0][0] == CONTENT_SEQUENCE
 
 
 def test_every_attribute_of_table_e1_1_that_the_iod_defines_is_placed(corpus):
@@ -269,8 +296,9 @@ def test_every_attribute_of_table_e1_1_that_the_iod_defines_is_placed(corpus):
             path = placement.path
             if placement.kind in (Kind.PRIVATE, Kind.CONTENT, Kind.REVIEW_COPY):
                 continue
-            if placement.concept is not None:
-                # A content item's value, in its report's content tree.
+            if placement.concept is not None or _in_content_tree(path):
+                # A content item's value, or a reference, in its report's
+                # content tree, whose template decides where it is.
                 continue
             if any(index for _, index in path.items):
                 # The structure set's references to the other slices.
@@ -320,7 +348,8 @@ def test_attributes_are_not_planted_only_beyond_the_depth_cap(corpus):
                 assert depth + (placement.vr == "SQ") > corpus_module.MAX_DEPTH
                 # Each attribute capped is planted at a shallower place.
                 assert placement.path.tag in planted_tags
-            else:
+            elif not _in_content_tree(placement.path):
+                # A report's template, not the cap, decides its tree's depth.
                 assert depth <= corpus_module.MAX_DEPTH
 
     assert set(reasons) == {
@@ -628,6 +657,11 @@ def test_sequences_hold_a_marker_unless_their_item_can_hold_none(corpus):
         for sequence in placed:
             if sequence.kind is not Kind.SEQUENCE:
                 continue
+            if sequence.reason is Reason.CONTENT_TREE:
+                # The tree's items, which hold its own markers, decide what
+                # the sequence holds.
+                tree.add((file.name, sequence.path))
+                continue
             inside = (*sequence.path.items, (sequence.path.tag, 0))
             # Linked UIDs survive a preset that keeps the sequence and
             # remaps its UIDs, so only a marker counts.
@@ -641,9 +675,6 @@ def test_sequences_hold_a_marker_unless_their_item_can_hold_none(corpus):
                 continue
             if sequence.reason is Reason.KEPT_SEQUENCE:
                 kept.add(sequence.path.tag)
-                continue
-            if sequence.reason is Reason.CONTENT_TREE:
-                tree.add((file.name, sequence.path))
                 continue
             assert sequence.reason is Reason.NO_MARKER_CARRIER, sequence.path
             path = tuple(tag for tag, _ in inside)
@@ -986,6 +1017,43 @@ _CONTENT_CONCEPTS = {
             ("DCM", "121232", "UIDREF"): "UI",  # Source series for segmentation
         },
     ),
+    # A key object selection's and a chest CAD report's required rows, and a
+    # spectacle prescription's, hold no identifying value.
+    "Key Object Selection Document": {},
+    "Mammography CAD SR": {
+        ("DCM", "111060", "DATE"): "DA",  # Study Date
+        ("DCM", "111061", "TIME"): "TM",  # Study Time
+    },
+    "Chest CAD SR": {},
+    "Colon CAD SR": {
+        ("DCM", "112227", "UIDREF"): "UI",  # Frame of Reference UID
+        ("DCM", "110180", "UIDREF"): "UI",  # Study Instance UID
+        ("DCM", "111060", "DATE"): "DA",  # Study Date
+        ("DCM", "111061", "TIME"): "TM",  # Study Time
+        ("DCM", "112002", "UIDREF"): "UI",  # Series Instance UID
+    },
+    **dict.fromkeys(
+        (
+            "Procedure Log",
+            "Macular Grid Thickness and Volume Report",
+            "Waveform Annotation SR",
+        ),
+        {("DCM", "121008", "PNAME"): "PN"},  # Person Observer Name
+    ),
+    "Spectacle Prescription Report": {},
+}
+# The content items whose values are the collection's own UIDs, by IOD:
+# the study that the X-ray report's scope of accumulation names, and the
+# colon CAD report's image set and CT series.
+_LINKED_CONCEPTS = {
+    "X-Ray Radiation Dose SR": {
+        ("DCM", "110180", "UIDREF"): corpus_module.STUDY,
+    },
+    "Colon CAD SR": {
+        ("DCM", "112227", "UIDREF"): corpus_module.FRAME_OF_REFERENCE,
+        ("DCM", "110180", "UIDREF"): corpus_module.STUDY,
+        ("DCM", "112002", "UIDREF"): corpus_module.CT_SERIES,
+    },
 }
 
 
@@ -1004,7 +1072,9 @@ def test_each_report_records_the_identifying_values_of_its_content_tree(corpus):
             == synthetic_content_trees.ROOT_TEMPLATES[file.manifest.sop_class]
         )
         assert dataset.ValueType == "CONTAINER"
-        assert dataset.Modality == "SR"
+        assert dataset.Modality == (
+            "KO" if file.manifest.iod == "Key Object Selection Document" else "SR"
+        )
         content = [p for p in file.manifest.placements if p.concept is not None]
         assert {p.concept: p.vr for p in content} == _CONTENT_CONCEPTS[
             file.manifest.iod
@@ -1026,14 +1096,12 @@ def test_each_report_records_the_identifying_values_of_its_content_tree(corpus):
                 item.ValueType,
             ) == placement.concept
             assert placement.profile_tag == placement.path.tag
-            linked = placement.values == (corpus_module.STUDY,)
-            assert placement.kind is (Kind.LINKED_UID if linked else Kind.PLANTED)
-        # Only the scope of accumulation's study is linked, and it names
-        # the collection's.
-        assert [p.concept for p in content if p.kind is Kind.LINKED_UID] == (
-            [("DCM", "110180", "UIDREF")]
-            if file.manifest.iod == "X-Ray Radiation Dose SR"
-            else []
+        # Only the collection's own study, series, and frame are linked.
+        assert {
+            p.concept: p.values[0] for p in content if p.kind is Kind.LINKED_UID
+        } == _LINKED_CONCEPTS.get(file.manifest.iod, {})
+        assert all(
+            p.kind is Kind.PLANTED for p in content if p.kind is not Kind.LINKED_UID
         )
 
 
@@ -1051,12 +1119,16 @@ def test_no_marker_is_planted_in_a_reports_root_content_item_sequences(corpus):
             if top not in ("(0040,A043)", "(0040,A730)"):
                 assert placement.reason is not Reason.CONTENT_TREE
             elif items and top == "(0040,A730)":
-                # Only the tree's own values are recorded below it, and the
+                # Only the tree's own values are recorded below it, the
                 # frame of reference of a SCOORD3D item, the collection's,
-                # which takes its own row of Table E.1-1.
+                # and the instance an IMAGE item references, each of which
+                # takes its own row of Table E.1-1.
                 if placement.concept is None:
                     assert placement.kind is Kind.LINKED_UID, placement
-                    assert placement.path.tag == "(3006,0024)", placement
+                    assert placement.path.tag in (
+                        "(3006,0024)",
+                        REFERENCED_SOP_INSTANCE,
+                    )
             elif placement.concept is None:
                 assert placement.reason is Reason.CONTENT_TREE, placement
                 assert placement.values == ()

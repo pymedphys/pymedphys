@@ -128,7 +128,7 @@ from pymedphys._imports import pydicom
 from . import output_names
 from .birth_dates import BIRTH_DATE_PRESET, BirthDates, with_birth_date
 from .clean_graphics import CLEAN_GRAPHICS, overlay_in_pixel_data
-from .content_items import content_item_actions
+from .content_items import content_item_actions, log_dummy_datetimes
 from .cleaners import apply_cleaners, cleaners_for
 from .descriptor_cleaning import (
     CLEAN_DESCRIPTORS,
@@ -1627,11 +1627,15 @@ class InstanceTransform:
             if {CLEAN_GRAPHICS, CLEAN_PIXEL_DATA}.intersection(self._policy.options)
             else 0
         )
-        plan = plan_instance(
-            source, self._rules, iod, content_item_actions(source, self._policy, iod)
-        )
+        content_items = content_item_actions(source, self._policy, iod)
+        plan = plan_instance(source, self._rules, iod, content_items)
         edits = edit_instance(
-            source, plan, self._key, record.patient, record.series_numberings
+            source,
+            plan,
+            self._key,
+            record.patient,
+            record.series_numberings,
+            log_dummy_datetimes(source, self._policy, iod, content_items),
         )
         kept_uids = retained_uid_paths(plan.elements, self._retained_uids)
         evidence: Coverage | HeldEvidence = coverage_of(
@@ -1674,17 +1678,14 @@ class InstanceTransform:
             fallback = self._fallback
 
             def fallen_back() -> InstanceEdits:
+                actions = content_item_actions(source, fallback.policy, iod)
                 return edit_instance(
                     source,
-                    plan_instance(
-                        source,
-                        fallback,
-                        iod,
-                        content_item_actions(source, fallback.policy, iod),
-                    ),
+                    plan_instance(source, fallback, iod, actions),
                     self._key,
                     record.patient,
                     record.series_numberings,
+                    log_dummy_datetimes(source, fallback.policy, iod, actions),
                 )
 
             try:

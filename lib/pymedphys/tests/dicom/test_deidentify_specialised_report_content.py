@@ -16,16 +16,14 @@
 
 The Chest CAD SR, Colon CAD SR, Procedure Log, Spectacle Prescription
 Report, Macular Grid Thickness and Volume Report, and Waveform Annotation SR
-IODs are not supported yet, so the engine sequesters their instances. As
-:mod:`.test_deidentify_structured_report_content` does for four other SR
-IODs, these tests show, ahead of supporting them, what the option does with
-the content trees of their root templates (D-047): which option sets keep a
+IODs are supported. As :mod:`.test_deidentify_structured_report_content`
+does for four other SR IODs, these tests show what the option does with the
+content trees of their root templates (D-047): which option sets keep a
 report that holds only the rows that its templates require; which optional
 rows take the whole tree out under each option set; the action that each
-listed value of a kept tree takes; and what is written and released, in the
-tests that add the IODs to the supported ones for that test alone, as
-supporting them would. The reports are synthetic, built from the templates
-of PS3.16 2026d by :mod:`._synthetic_specialised_reports`.
+listed value of a kept tree takes; and what is written and released. The
+reports are synthetic, built from the templates of PS3.16 2026d by
+:mod:`._synthetic_specialised_reports`.
 
 A preset with the option added is composed by adding it to every preset's
 options for the test alone, since no preset selects it, so that the policy
@@ -160,16 +158,6 @@ def _with_option(monkeypatch):
     return policy.compose_policy
 
 
-@pytest.fixture(name="supported")
-def _supported(monkeypatch):
-    """Add the six IODs to the supported ones, as supporting them would."""
-    monkeypatch.setattr(
-        scope,
-        "SUPPORTED_IODS",
-        scope.SUPPORTED_IODS | {iod for _, iod, _, _ in REPORTS.values()},
-    )
-
-
 def _report(name, optional=(), **kwargs):
     build, iod, _, _ = REPORTS[name]
     return build(optional, **kwargs), iod
@@ -275,14 +263,14 @@ def _evidence_item(written, sequence="CurrentRequestedProcedureEvidenceSequence"
 
 
 @pytest.mark.parametrize("name", REPORTS)
-def test_each_report_is_of_an_iod_that_is_not_supported_yet(name):
+def test_each_report_is_of_a_supported_iod(name):
     build, iod, _, template = REPORTS[name]
     dataset = build()
     classification = scope.classify(
         dataset.SOPClassUID, synthetic.EXPLICIT_VR_LITTLE_ENDIAN
     )
 
-    assert classification.reason == scope.UnsupportedIod(iod)
+    assert classification == scope.Classification(scope.Disposition.SUPPORTED, iod)
     iod_ = load_iod_tables().iods[iod]
     assert iod_.lookup(CONTENT, ())
     # Each IOD's SR Document General Module has a Verification Flag, so each
@@ -557,7 +545,6 @@ RELEASED_UNDER_BASIC = {
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.4-01")
-@pytest.mark.usefixtures("supported")
 @pytest.mark.parametrize("preset, released", [
     ("basic", RELEASED_UNDER_BASIC),
     ("public-release", RELEASED_UNDER_PUBLIC_RELEASE),
@@ -584,7 +571,6 @@ def test_a_written_report_holds_no_source_value_and_is_released(
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.4-01")
-@pytest.mark.usefixtures("supported")
 @pytest.mark.parametrize("preset", ("basic", "public-release"))
 def test_a_written_colon_report_names_the_replaced_study_and_series(
     with_option, preset
@@ -613,7 +599,6 @@ def test_a_written_colon_report_names_the_replaced_study_and_series(
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.4-01")
-@pytest.mark.usefixtures("supported")
 @pytest.mark.parametrize("preset", ("basic", "public-release"))
 def test_a_written_waveform_annotation_keeps_its_references(with_option, preset):
     dataset, _ = _report(WAVEFORM, reports.with_holders("TID 321 row 3 datetime"))
@@ -700,7 +685,6 @@ def test_the_log_events_times_take_their_dates_action(
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.4-01")
-@pytest.mark.usefixtures("supported")
 def test_a_written_log_shifts_its_event_times_under_modified_dates(with_option):
     dataset, _ = _report(LOG, LOG_EVENTS)
 
@@ -721,23 +705,47 @@ def test_a_written_log_shifts_its_event_times_under_modified_dates(with_option):
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.4-01")
-@pytest.mark.usefixtures("supported")
-def test_a_written_log_gives_every_event_the_same_dummy_time_under_basic(
-    with_option,
+@pytest.mark.parametrize("preset", ["basic", "basic-clean-descriptors"])
+def test_a_written_log_gives_its_events_increasing_dummy_times_under_basic(
+    with_option, preset
 ):
     dataset, _ = _report(LOG, LOG_EVENTS)
 
-    data, decision = _released(with_option("basic"), dataset)
+    data, decision = _released(with_option(preset), dataset)
 
-    # D writes D-021's one dummy value for the VR, so the events keep a
-    # time but lose their order: a written log of several events no longer
-    # meets A.35.7.3.1.2's strictly increasing Observation DateTime. This
-    # records the engine as it is; no source time is released.
+    # D writes, in each event's Observation DateTime, the dummy datetime of
+    # its rank among the events' times, one second apart, so the written log
+    # keeps the strictly increasing order that A.35.7.3.1.2 requires.
     written = pydicom.dcmread(io.BytesIO(data))
     for source in reports.EVENT_DATETIMES:
         assert source.encode() not in data, source
-    assert _event_times(written) == ["19000101000000"] * len(LOG_EVENTS)
+    assert _event_times(written) == [
+        "19000101000000",
+        "19000101000001",
+        "19000101000002",
+        "19000101000003",
+    ]
     assert isinstance(decision, run.Release), decision
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.4-01")
+@pytest.mark.parametrize("preset", ["basic", "basic-clean-descriptors"])
+def test_a_log_whose_events_are_out_of_order_is_sequestered(with_option, preset):
+    dataset, iod = _report(LOG, LOG_EVENTS)
+    events = [e for e in dataset.ContentSequence if "ObservationDateTime" in e]
+    first, second = events[:2]
+    first.ObservationDateTime, second.ObservationDateTime = (
+        second.ObservationDateTime,
+        first.ObservationDateTime,
+    )
+
+    actions, plan = _planned(dataset, iod, with_option(preset))
+
+    # The dummies of the events' ranks would write them out of order, as the
+    # source is, so the tree is not kept, and its Content Sequence's D
+    # sequesters the log.
+    assert ElementPath((), CONTENT) not in actions
+    assert [s.path for s in plan.sequestrations] == [ElementPath((), CONTENT)]
 
 
 @pytest.mark.parametrize("preset", PRESETS)
@@ -763,7 +771,6 @@ def test_a_verified_report_is_planned_as_an_unverified_one_is(
     ]
 
 
-@pytest.mark.usefixtures("supported")
 @pytest.mark.parametrize("name", KEPT)
 def test_a_verified_report_is_written_with_a_dummy_verifier(with_option, name):
     dataset, _ = _report(name, verified=True)

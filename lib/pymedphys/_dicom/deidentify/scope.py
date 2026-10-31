@@ -19,9 +19,12 @@ PET image IODs, including their Enhanced, Legacy Converted Enhanced, and
 colour variants, of MR Spectroscopy, of the RT Structure Set, RT Plan, RT
 Dose, RT Image, and RT Beams Treatment Record IODs, of the Spatial
 Registration and Deformable Spatial Registration IODs, of the X-Ray
-Radiation Dose SR and Radiopharmaceutical Radiation Dose SR IODs, and of
-the Basic Text SR, Enhanced SR, Comprehensive SR, Comprehensive 3D SR, and
-Extensible SR IODs, uncompressed or in a transfer syntax that encapsulates
+Radiation Dose SR and Radiopharmaceutical Radiation Dose SR IODs, of the
+Basic Text SR, Enhanced SR, Comprehensive SR, Comprehensive 3D SR, and
+Extensible SR IODs, of the Key Object Selection Document, and of the
+Mammography CAD SR, Chest CAD SR, Colon CAD SR, Procedure Log, Spectacle
+Prescription Report, Macular Grid Thickness and Volume Report, and Waveform
+Annotation SR IODs, uncompressed or in a transfer syntax that encapsulates
 Pixel Data that pydicom's decoding plugins decode. Supporting an IOD or a
 transfer syntax does not release every instance in it: a compressed
 instance is still sequestered where the plugin pinned to its transfer
@@ -30,13 +33,13 @@ engine's checks
 (:mod:`~pymedphys._dicom.deidentify.instance_transform`), and the element
 rules still sequester some, such as every Enhanced PET Image instance that
 conforms to its IOD, under ``basic`` and ``basic-clean-descriptors``, and
-every Structured Report whose content tree the policy does not clean and
-keep, since the Basic Profile gives its Content Sequence (0040,A730) D,
-which a sequence has no dummy value for. Every other instance is
-sequestered: neither de-identified nor written, and listed in the run
-report by opaque identifiers only. That includes the other Structured
-Reports, Key Object Selection documents, Presentation States, and instances
-of Private SOP Classes, which the design always sequesters.
+every Structured Report or Key Object Selection Document whose content
+tree the policy does not clean and keep, since the Basic Profile gives its
+Content Sequence (0040,A730) D, which a sequence has no dummy value for.
+Every other instance is sequestered: neither de-identified nor written, and
+listed in the run report by opaque identifiers only. That includes the
+other Structured Reports, Presentation States, and instances of Private SOP
+Classes, which the design always sequesters.
 
 :func:`classify` decides from the instance's SOP Class UID (0008,0016), which
 PS3.4 Table B.5-1 maps to its IOD, and from the transfer syntax of its file.
@@ -85,6 +88,14 @@ SUPPORTED_IODS = frozenset(
         "Comprehensive SR",
         "Comprehensive 3D SR",
         "Extensible SR",
+        "Key Object Selection Document",
+        "Mammography CAD SR",
+        "Chest CAD SR",
+        "Colon CAD SR",
+        "Procedure Log",
+        "Spectacle Prescription Report",
+        "Macular Grid Thickness and Volume Report",
+        "Waveform Annotation SR",
     }
 )
 # Every transfer syntax whose files the engine reads: Implicit VR Little
