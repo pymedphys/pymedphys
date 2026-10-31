@@ -82,7 +82,7 @@ from pymedphys._dicom.deidentify.reasons import (
     HeldRoiName,
     PixelDataReason,
 )
-from pymedphys._dicom.deidentify.release_gate import ReasonCode
+from pymedphys._dicom.deidentify.residual_exemptions import Exemption
 from pymedphys._dicom.deidentify.reviewed_roi_names import ReviewedNames
 from pymedphys._dicom.deidentify.roi_names import Reason
 from pymedphys._dicom.deidentify.run_report import (
@@ -1120,34 +1120,49 @@ def test_the_kept_rows_are_those_table_e1_1_gives_k():
     assert runs.kept_rows(("retain_uids",)) >= {"(0018,1002)", "(0020,000D)"}
 
 
-def test_under_retain_uids_a_report_whose_tree_is_removed_withholds_its_subject(
+def test_under_retain_uids_a_sequestered_reports_study_uid_withholds_nothing(
     published,
 ):  # pylint: disable = unused-argument
-    """The retain-uids run's corpus leaves the reports out, for this.
+    """The X-ray report's removed scope of accumulation is explained.
 
-    The X-ray report's scope of accumulation names the study by its Study
-    Instance UID, which Retain UIDs keeps in every other instance. Without
-    Clean Structured Content, D on the report's Content Sequence removes
-    the tree, so the residual search looks for the UID in the subject's
-    other instances, and a removed UID found in a kept one withholds the
-    file (D-042).
+    The report names the study by its Study Instance UID, which Retain UIDs
+    keeps in every other instance. Without Clean Structured Content, D on
+    the report's Content Sequence sequesters the report, and the residual
+    search finds its removed UID in each kept one. The UID's only source is
+    an instance that the run does not write, so each finding is explained
+    (D-042) and counted in the release report, and the retain-uids run
+    withholds only what the Basic Profile does.
     """
-    with_reports = runs.CorpusRun("retain-uids-with-reports", options=("retain_uids",))
-    policy_run = _run(with_reports)
+    retain_uids = next(each for each in CORPUS_RUNS if each.name == "retain-uids")
+    policy_run = _run(retain_uids)
     names = [file.name for file in policy_run.corpus.files]
-    study = ElementPath((), "(0020,000D)")
+    x_ray_report = next(
+        file
+        for file in policy_run.corpus.files
+        if file.manifest.iod == "X-Ray Radiation Dose SR"
+    )
+    study = _read(x_ray_report.data).StudyInstanceUID
+    report = json.loads(policy_run.published[RELEASE_REPORT])
+    exempted = {
+        entry["found_in"]: entry["count"]
+        for entry in report["exempted_findings"]
+        if entry["exemption"] == Exemption.UNWRITTEN_UID.value
+    }
+    of_the_study = sum(
+        _read(data).StudyInstanceUID == study for data in policy_run.released.values()
+    )
 
-    for outcome in policy_run.result.outcomes:
-        name = names[outcome.position]
-        assert outcome.status is run.Status.SEQUESTERED, name
-        if name in corpus_module.STRUCTURED_REPORT_FILES:
-            continue
-        if name == corpus_module.SEQUESTERED_FILE:
-            continue
-        assert any(
-            reason.code is ReasonCode.RESIDUAL_UID and reason.location.element == study
-            for reason in outcome.reasons
-        ), name
+    withheld = {
+        names[outcome.position]
+        for outcome in policy_run.result.outcomes
+        if outcome.status is not run.Status.RELEASED
+    }
+
+    assert withheld == set(runs.BASIC_WITHHELD)
+    assert of_the_study
+    # Each released instance of the study; other kept UIDs that hold the
+    # study's, such as Referenced Study Sequence's, are exempted too.
+    assert exempted["(0020,000D)"] == of_the_study
 
 
 def test_the_kept_concepts_are_those_table_e3_4_1_gives_k():
