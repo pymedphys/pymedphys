@@ -304,7 +304,7 @@ text = '''
 When this Option is specified in addition to the Basic Application Level Confidentiality Profile, any information burned in to the Pixel Data (7FE0,0010) corresponding to the Attribute information specified to be removed by the Profile and any other Options specified shall also be removed, as described in Table E.1-1.
 '''
 status = "implemented"
-decisions = ["D-015", "D-033", "D-037", "D-048"]
+decisions = ["D-015", "D-033", "D-037", "D-048", "D-056"]
 implementation = [
   "_dicom/deidentify/api.py",
   "_dicom/deidentify/command.py",
@@ -325,6 +325,7 @@ In native Pixel Data, the bit plane of an overlay that an overlay group without 
 A later run of the same files, given the attested QC pack, blacks out the regions that the reviewer accepted, with any that the reviewer added, without the finder, and releases the instance with the option's code; for compressed Pixel Data, only where its frames decode to the SHA-256 that the pack records, and otherwise the instance is held again. An instance that the reviewer rejected is sequestered (D-048).
 The private command's run under the option, and the library's, makes the text detector with the pinned model, and takes the attested QC pack whose verdicts apply and the custodian's region rules (D-033).
 A workflow run by hand counts the regions that the text detector finds in the slices of the HaN-Seg data set's 42 head and neck planning CTs and 42 T1-weighted MRs, which hold no burned-in text, on a hosted runner that alone downloads it, and publishes only counts, which bear on how many regions a reviewer clears; it claims no result (D-037).
+The detector's evaluation and tuning, on images with and without burned-in text across the IODs in scope, against acceptance criteria set before tuning and confirmed once on held-out data, is designed and not yet built (D-056).
 '''
 
 [[requirement]]

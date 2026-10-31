@@ -9,6 +9,8 @@ Under the Clean Pixel Data Option, the de-identification engine gives each frame
 
 HaN-Seg's images hold no burned-in text, as far as the project knows, so each region counted is one that a run would black out in error, over anatomy unless the region is all air, and that a reviewer would have to clear. That is an inference, not something the check measures; the counts are the option's only evidence on real images of the anatomy in scope.
 
+The check counts false positives alone, on two IODs of one body site. Measuring missed text and false positives together, on images with and without burned-in text across the IODs in scope, and tuning the detector against criteria set beforehand, is designed in D-056 and not yet built.
+
 ## The data set
 
 The check uses HaN-Seg version 1.0, as the face block check does, under the same rules (D-054): only the workflow's runner downloads it, from Zenodo, and checks it against the size and MD5 that the record gives; the runner reads it from its ZIP file without extracting it; and only counts, codes, digests, versions, and the detector's method leave the runner. Its images are of real patients, so the project treats them as real patient data: never commit, cache, or attach any part of the data set, or a value read from it. See [Check the face block against HaN-Seg](deidentification-face-validation.md) for the record, its licence, and its citation.
