@@ -273,7 +273,7 @@ def test_injected_text_changes_only_its_footprint_and_is_recorded():
     for text in injected.texts:
         assert set(text.strata) == {
             "font", "height", "contrast", "contrast_drawn", "polarity",
-            "style", "orientation", "position", "content", "zone",
+            "style", "orientation", "position", "content", "zone", "truth",
         }  # fmt: skip
 
 
@@ -428,11 +428,27 @@ def test_plans_with_unknown_values_are_refused(change):
         injection.InjectionPlan(**change)
 
 
-def test_frames_with_text_or_colour_are_not_injected():
+def test_text_a_frame_holds_is_kept_and_kept_clear_of():
+    plan = injection.InjectionPlan(texts=4, heights=(10.0,), contents=("identifier",))
+    held = injection.inject(_ct(3), plan).frame.texts[:1]
+    annotated = dataclasses.replace(_ct(4), texts=held, known_text="annotated")
+    texts = injection.inject(annotated, plan).frame.texts
+    assert texts[0] is held[0]
+    assert len(texts) > 1
+    assert {text.strata["truth"] for text in texts[1:]} == {"injected"}
+    zone = held[0].zone(annotated.shape)
+    for text in texts[1:]:
+        extent = text.extent
+        assert (
+            extent.bottom <= zone.top
+            or extent.top >= zone.bottom
+            or extent.right <= zone.left
+            or extent.left >= zone.right
+        )
+
+
+def test_colour_frames_are_not_injected():
     plan = injection.InjectionPlan()
-    with_text = injection.inject(_ct(), plan).frame
-    with pytest.raises(frames.EvaluationRefused):
-        injection.inject(with_text, plan)
     rgb = _frame(np.zeros((8, 8, 3), np.uint8), stored_range=(0, 255))
     with pytest.raises(frames.EvaluationRefused):
         injection.inject(rgb, plan)

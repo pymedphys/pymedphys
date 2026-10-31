@@ -19,6 +19,7 @@ be derived by hand. Every value is invented."""
 
 import dataclasses
 import json
+import pathlib
 import re
 
 from pymedphys._imports import numpy as np
@@ -35,6 +36,7 @@ from pymedphys._dicom.deidentify.text_detection import (
     RENDERINGS,
     DetectionParameters,
     RenderedProbability,
+    TextBox,
 )
 from pymedphys._dicom.deidentify.text_evaluation_detector import PostProcessing
 from pymedphys._dicom.deidentify.text_evaluation_frames import (
@@ -274,6 +276,64 @@ def test_a_frame_without_text_is_measured_as_it_is_and_with_text():
         "iod",
         "iod+contrast+height",
     } <= set(by)
+
+
+def _known(frame, known_text):
+    return dataclasses.replace(frame, known_text=known_text)
+
+
+def test_frames_whose_text_is_unknown_are_counted_apart_from_false_positives():
+    plan = injection.InjectionPlan(
+        texts=2, heights=(7.0,), positions=("air", "edge"), contents=("letter",)
+    )
+    phantom = phantoms.Phantom("ct-thorax", 96, 4.0)
+    frame = _known(
+        phantoms.phantom_frame(phantom, np.random.default_rng(1), case="a"), "unknown"
+    )
+    summary = _run([Frames("c", "a", (frame,))], plan=plan)
+    point = summary["points"][0]
+    assert point["false_positives"]["frames"] == 0
+    assert point["away_from_text"]["frames"] == 0
+    assert point["text_unknown"]["frames"] == 1
+    assert point["text_unknown"]["regions"] == 2
+    assert point["text_unknown_away_from_injected"]["frames"] == 1
+    assert point["sensitivity"]["texts"] >= 1
+    known = {row["value"]["known_text"]: row for row in point["by"]["known_text"]}
+    assert set(known) == {"unknown"}
+    assert known["unknown"]["sensitivity"]["texts"] == point["sensitivity"]["texts"]
+    assert sum(point["zones"]["unknown"].values()) == 2
+    page = markdown.markdown(summary)
+    assert "## Where text is unknown" in page
+    assert "## Where text is unknown" not in markdown.markdown(
+        _run([Frames("c", "a", (_frame(),))])
+    )
+
+
+def test_annotated_text_is_counted_once_and_injected_text_beside_it():
+    phantom = phantoms.Phantom("ct-thorax", 96, 4.0)
+    frame = phantoms.phantom_frame(phantom, np.random.default_rng(1), case="a")
+    annotated = BurnedText(9, 10, np.ones((6, 28)), 6.0, {"truth": "annotated"})
+    frame = dataclasses.replace(frame, texts=(annotated,), known_text="annotated")
+    plan = injection.InjectionPlan(
+        texts=2, heights=(7.0,), positions=("air", "edge"), contents=("letter",)
+    )
+    alone = _run([Frames("c", "a", (frame,))])["points"][0]
+    assert alone["sensitivity"]["texts"] == 1
+    assert alone["away_from_text"]["frames"] == 1
+    point = _run([Frames("c", "a", (frame,))], plan=plan)["points"][0]
+    truths = {
+        row["value"]["truth"]: row["sensitivity"]["texts"]
+        for row in point["by"]["truth"]
+    }
+    assert truths["annotated"] == 1
+    assert truths.get("injected", 0) == point["sensitivity"]["texts"] - 1
+    assert point["away_from_text"]["frames"] == 1 + (truths.get("injected", 0) > 0)
+    assert point["false_positives"]["frames"] == 0
+
+
+def test_what_is_known_of_a_frames_text_must_be_known():
+    with pytest.raises(EvaluationRefused):
+        _frame(known_text="maybe")
 
 
 def test_counts_are_kept_by_each_stratum_and_cross():
@@ -646,3 +706,171 @@ def test_hanseg_volumes_are_cases_of_slices(tmp_path):
     assert read[0].stored_range == (-32768, 32767)
     assert read[0].hounsfield
     assert isinstance(cases[1], sources.CaseSource)
+
+
+# -- Folders of DICOM files, such as a clinic's own -------------------------
+
+PATIENT_A = "PATIENT^A^0001"
+PATIENT_B = "PATIENT^B^0002"
+
+
+def _rt_image(patient, series, instance, number, value=24):
+    dataset = _ct_dataset(
+        np.full((1, *SHAPE), value),
+        Modality="RTIMAGE",
+        ImagePlanePixelSpacing=[0.4, 0.4],
+        PatientID=patient,
+        StudyInstanceUID=f"{series}.0",
+        SeriesInstanceUID=series,
+        SOPInstanceUID=instance,
+        InstanceNumber=number,
+    )
+    dataset.SOPClassUID = sources.RT_IMAGE_STORAGE
+    return synthetic.written(dataset)
+
+
+def _clinic(tmp_path):
+    root = tmp_path / "clinic export"
+    (root / "a" / "deeper").mkdir(parents=True)
+    (root / "b").mkdir()
+    (root / "a" / "2.dcm").write_bytes(_rt_image(PATIENT_A, "2.25.10", "2.25.12", 2))
+    (root / "a" / "deeper" / "1.dcm").write_bytes(
+        _rt_image(PATIENT_A, "2.25.10", "2.25.11", 1)
+    )
+    (root / "b" / "1.dcm").write_bytes(_rt_image(PATIENT_B, "2.25.20", "2.25.21", 1))
+    ct = _ct_dataset(np.zeros((1, 4, 4)), PatientID=PATIENT_B)
+    (root / "b" / "ct.dcm").write_bytes(synthetic.written(ct))
+    (root / "notes.txt").write_text("not DICOM")
+    annotations = tmp_path / "annotations.csv"
+    annotations.write_text(
+        "sop_instance_uid,frame,top,left,bottom,right\n"
+        "2.25.11,1,9,10,15,38\n"
+        "2.25.21,,,,,\n"
+        "2.25.99,1,0,0,4,4\n"
+    )
+    return root, sources.TextAnnotations.from_csv(annotations)
+
+
+def test_a_folder_is_grouped_by_patient_and_names_no_one(tmp_path):
+    root, annotations = _clinic(tmp_path)
+    cases = sources.dicom_folder_cases(
+        root,
+        collection="clinic RT Images",
+        sop_classes=(sources.RT_IMAGE_STORAGE,),
+        annotations=annotations,
+    )
+    dicom = [each for each in cases if isinstance(each, sources.DicomCase)]
+    patients = [each for each in dicom if each.case.startswith("patient/")]
+    assert sorted(len(each.paths) for each in patients) == [1, 2]
+    (two,) = [each for each in patients if len(each.paths) == 2]
+    # In order of Instance Number, not of path.
+    assert [pathlib.Path(each).name for each in two.paths] == ["1.dcm", "2.dcm"]
+    for each in cases:
+        for secret in (PATIENT_A, PATIENT_B, "2.25.1", str(tmp_path)):
+            assert secret not in each.case
+    skipped = {
+        each.reason: each.count
+        for each in cases
+        if isinstance(each, sources.SkippedFiles)
+    }
+    assert skipped == {"sop-class-not-selected": 1, "annotation-not-found": 1}
+    by_series = sources.dicom_folder_cases(root, collection="c", group_by="series")
+    assert sum(each.case.startswith("series/") for each in by_series) == 3
+    by_file = sources.dicom_folder_cases(root, collection="c", group_by="file")
+    assert sum(each.case.startswith("file/") for each in by_file) == 4
+    again = sources.dicom_folder_cases(
+        root,
+        collection="clinic RT Images",
+        sop_classes=(sources.RT_IMAGE_STORAGE,),
+        annotations=annotations,
+    )
+    assert again == cases
+
+
+def test_a_folder_is_measured_by_counts_alone(tmp_path):
+    root, annotations = _clinic(tmp_path)
+    cases = sources.dicom_folder_cases(
+        root,
+        collection="clinic RT Images",
+        sop_classes=(sources.RT_IMAGE_STORAGE,),
+        annotations=annotations,
+    )
+    summary = _run(cases)
+    point = summary["points"][0]
+    assert summary["frames"] == {"RT Image Storage": 3}
+    assert summary["skipped"] == {
+        "annotation-not-found": 1,
+        "not-read": 1,
+        "sop-class-not-selected": 1,
+    }
+    known = {
+        row["value"]["known_text"]: row["false_positives"]["frames"]
+        + row["away_from_text"]["frames"]
+        + row["text_unknown"]["frames"]
+        for row in point["by"]["known_text"]
+    }
+    assert known == {"annotated": 2, "unknown": 1}
+    # The box drawn around 2.25.11's text is the only text, and is covered.
+    assert point["sensitivity"]["texts"] == 1
+    assert point["sensitivity"]["fully_covered"] == 1
+    assert point["text_unknown"]["frames"] == 1
+    assert point["false_positives"]["frames"] == 1  # 2.25.21, annotated empty
+    published = json.dumps(summary) + markdown.markdown(summary)
+    for secret in (PATIENT_A, PATIENT_B, "2.25.11", "2.25.21", "2.25.99", "notes"):
+        assert secret not in published
+    assert str(tmp_path) not in published
+    assert "clinic export" not in published
+
+
+def test_an_annotated_box_outside_its_frame_skips_the_file():
+    data = _rt_image(PATIENT_A, "2.25.10", "2.25.11", 1)
+    annotations = sources.TextAnnotations({"2.25.11": ((0, TextBox(60, 60, 70, 70)),)})
+    found = sources.dicom_frames(
+        data, collection="c", case="a", annotations=annotations
+    )
+    assert found == sources.Skipped("annotation-outside-frame")
+    (frame,) = sources.dicom_frames(
+        data, collection="c", case="a", known_text="unknown"
+    )
+    assert frame.known_text == "unknown" and not frame.texts
+
+
+@pytest.mark.parametrize(
+    "content",
+    [
+        "uid,frame,top,left,bottom,right\n",
+        "sop_instance_uid,frame,top,left,bottom,right\n2.25.5,1,0,0,4\n",
+        "sop_instance_uid,frame,top,left,bottom,right\n2.25.5,one,0,0,4,4\n",
+        "sop_instance_uid,frame,top,left,bottom,right\n2.25.5,1,4,0,4,4\n",
+        "sop_instance_uid,frame,top,left,bottom,right\n2.25.5,0,0,0,4,4\n",
+        "sop_instance_uid,frame,top,left,bottom,right\n,1,0,0,4,4\n",
+        "",
+    ],
+)
+def test_annotations_not_of_the_form_are_refused_without_a_value(tmp_path, content):
+    path = tmp_path / "annotations.csv"
+    path.write_text(content)
+    with pytest.raises(EvaluationRefused) as refused:
+        sources.TextAnnotations.from_csv(path)
+    assert "2.25.5" not in str(refused.value)
+
+
+def test_annotations_are_read_by_instance_and_frame(tmp_path):
+    path = tmp_path / "annotations.csv"
+    path.write_text(
+        "sop_instance_uid, frame, top, left, bottom, right\n"
+        "2.25.5,2,1,2,5,10\n"
+        "2.25.5,,0,0,3,3\n"
+        "\n"
+        "2.25.6,,,,,\n"
+    )
+    annotations = sources.TextAnnotations.from_csv(path)
+    assert annotations.instances == {"2.25.5", "2.25.6"}
+    assert repr(annotations) == "TextAnnotations()"
+    (second,) = annotations.texts("2.25.5", 1, (16, 16))
+    assert (second.top, second.left, second.coverage.shape) == (1, 2, (4, 8))
+    assert second.height == 4.0
+    assert second.strata == {"truth": "annotated"}
+    assert len(annotations.texts("2.25.5", 0, (16, 16))) == 1
+    assert not annotations.texts("2.25.6", 0, (16, 16))
+    assert annotations.subset(["2.25.6", "2.25.7"]).instances == {"2.25.6"}

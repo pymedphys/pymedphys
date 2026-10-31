@@ -49,6 +49,12 @@ AIR_HU = -900.0
 # A CT is any of these modalities with monochrome frames and a rescale to
 # Hounsfield units.
 CT_MODALITIES = frozenset({"CT"})
+# What is known of the text that a frame held as it was read: ``"none"``,
+# from a collection taken to hold none, so that every region is a false
+# positive; ``"annotated"``, whose every text its ``texts`` give, as boxes
+# that someone drew; or ``"unknown"``, such as a clinic's RT Images, whose
+# regions as read may be text or not and are counted apart.
+KNOWN_TEXT = ("none", "annotated", "unknown")
 
 
 class EvaluationRefused(Exception):
@@ -159,6 +165,9 @@ class EvaluationFrame:
         For a synthetic frame, the kind of phantom.
     texts : tuple of BurnedText
         The text in it, with its ground truth; none for a frame without text.
+    known_text : str
+        What is known of the text it held as it was read: one of
+        :data:`KNOWN_TEXT`.
     """
 
     stored: np.ndarray
@@ -174,8 +183,11 @@ class EvaluationFrame:
     number: int = 0
     background: str | None = None
     texts: tuple[BurnedText, ...] = ()
+    known_text: str = "none"
 
     def __post_init__(self):
+        if self.known_text not in KNOWN_TEXT:
+            raise EvaluationRefused("What is known of a frame's text must be known.")
         stored = np.asarray(self.stored)
         rgb = stored.ndim == 3 and stored.shape[2] == 3
         if not (stored.ndim == 2 or rgb) or min(stored.shape[:2]) < 1:

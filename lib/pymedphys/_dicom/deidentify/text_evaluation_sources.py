@@ -27,6 +27,10 @@ value.
     them to the text detector: through :func:`~.pixel_cleaning.black_out`
     itself, decoded by the pinned plugins and with overlays in unused bits
     cleared, so that the frames searched are the frames a run would search.
+    :func:`dicom_folder_cases` makes them from a folder, such as a clinic's
+    own RT Images on its own machine, grouped by patient, study, or series,
+    with what is known of their text and any boxes that someone drew around
+    it (:class:`TextAnnotations`).
 :class:`NrrdCase`
     One volume of an NRRD file in a ZIP file, such as HaN-Seg's, each slice
     a frame, as the Text Detector Check gives them.
@@ -34,16 +38,20 @@ value.
     Synthetic frames.
 
 Real patients' scans are read only on CI runners, under the project's data
-rules; nothing here writes, logs, or returns a value of them other than
-the frames, which stay in memory.
+rules, or on the machine of someone allowed to use them; nothing here
+writes, logs, or returns a value of them other than the frames, which stay
+in memory. A case's name is a digest, never a path or identifier.
 """
 
 from __future__ import annotations
 
+import csv
 import dataclasses
+import hashlib
+import math
 import pathlib
 import zipfile
-from collections.abc import Iterable, Iterator, Mapping, Sequence
+from collections.abc import Collection, Iterable, Iterator, Mapping, Sequence
 from typing import Protocol, runtime_checkable
 
 from pymedphys._imports import numpy as np
@@ -53,10 +61,23 @@ from . import nrrd
 from .pixel_cleaning import PixelDataRefused, black_out, overlay_planes
 from .pixel_text_validation import hanseg_volumes
 from .source import SourceRefused, read_source
-from .text_evaluation_frames import EvaluationFrame
+from .text_detection import TextBox
+from .text_evaluation_frames import (
+    KNOWN_TEXT,
+    BurnedText,
+    EvaluationFrame,
+    EvaluationRefused,
+)
 
 PRIVATE_SOP_CLASS = "private SOP class"
 UNKNOWN_SOP_CLASS = "unknown SOP class"
+RT_IMAGE_STORAGE = "1.2.840.10008.5.1.4.1.1.481.1"
+# How a folder's files are grouped into cases, which the split keeps
+# together and the bootstrap resamples: by patient, so that no patient is
+# in both parts, unless asked otherwise.
+GROUPINGS = ("patient", "study", "series", "file")
+_CASE_SALT = "pymedphys-text-detector-evaluation-case/1"
+ANNOTATION_COLUMNS = ("sop_instance_uid", "frame", "top", "left", "bottom", "right")
 
 
 @dataclasses.dataclass(frozen=True)
@@ -98,11 +119,23 @@ class _Frames:
 
 
 def dicom_frames(
-    data: bytes, *, collection: str, case: str, first: int = 0
+    data: bytes,
+    *,
+    collection: str,
+    case: str,
+    first: int = 0,
+    known_text: str = "none",
+    annotations: TextAnnotations | None = None,
 ) -> list[EvaluationFrame] | Skipped:
     """The frames of one DICOM file's top-level Pixel Data, as a run gives
     them to the text detector, numbered from ``first``, or why there are
-    none."""
+    none.
+
+    Each frame's text is ``known_text``, unless ``annotations`` holds the
+    instance, whose frames then hold the boxes drawn on them, and are
+    ``"annotated"``."""
+    if known_text not in KNOWN_TEXT:
+        raise EvaluationRefused("What is known of a frame's text must be known.")
     try:
         source = read_source(data)
         dataset = source.dataset()
@@ -128,9 +161,21 @@ def dicom_frames(
         stored_range = (0, (1 << layout.bits_stored) - 1)
     iod = _sop_class_name(dataset)
     modality = _text(dataset, "Modality") or "unknown"
+    instance = _text(dataset, "SOPInstanceUID")
+    annotated = (
+        annotations
+        if annotations is not None and instance in annotations.instances
+        else None
+    )
     frames = []
     for index, frame in enumerate(finder.frames):
         slope, intercept = _rescale(dataset, index)
+        texts: tuple[BurnedText, ...] = ()
+        if annotated is not None and instance is not None:
+            try:
+                texts = annotated.texts(instance, index, frame.shape[:2])
+            except EvaluationRefused:
+                return Skipped("annotation-outside-frame")
         frames.append(
             EvaluationFrame(
                 stored=frame,
@@ -144,6 +189,8 @@ def dicom_frames(
                 stored_range=stored_range,
                 photometric=layout.photometric,
                 number=first + index,
+                texts=texts,
+                known_text="annotated" if annotated is not None else known_text,
             )
         )
     return frames
@@ -256,11 +303,19 @@ class DicomCase:
     case : str
         The series or patient, never published.
     paths : tuple of str
+    known_text : str
+        What is known of the text of its frames as read, one of
+        :data:`~.text_evaluation_frames.KNOWN_TEXT`, except for annotated
+        instances.
+    annotations : TextAnnotations or None
+        Boxes drawn around the text of some of its instances.
     """
 
     collection: str
     case: str
     paths: tuple[str, ...]
+    known_text: str = "none"
+    annotations: TextAnnotations | None = None
 
     def read(self) -> Iterator[EvaluationFrame | Skipped]:
         number = 0
@@ -271,7 +326,12 @@ class DicomCase:
                 yield Skipped("not-opened")
                 continue
             found = dicom_frames(
-                data, collection=self.collection, case=self.case, first=number
+                data,
+                collection=self.collection,
+                case=self.case,
+                first=number,
+                known_text=self.known_text,
+                annotations=self.annotations,
             )
             if isinstance(found, Skipped):
                 yield found
@@ -353,3 +413,288 @@ def hanseg_cases(path: pathlib.Path | str, image: str) -> tuple[NrrdCase, ...]:
         members = [info.filename for info in hanseg_volumes(archive, image)]
     modality = "CT" if image == "CT" else "MR"
     return tuple(NrrdCase("HaN-Seg", str(path), member, modality) for member in members)
+
+
+@dataclasses.dataclass(frozen=True)
+class SkippedFiles:
+    """Files of a folder that are not read, counted as one case's skips:
+    those of a SOP Class not asked for, or annotated instances not found."""
+
+    collection: str
+    case: str
+    reason: str
+    count: int
+
+    def read(self) -> Iterator[Skipped]:
+        for _ in range(self.count):
+            yield Skipped(self.reason)
+
+
+@dataclasses.dataclass(frozen=True, repr=False)
+class TextAnnotations:
+    """Boxes that someone drew around the text of DICOM instances, as the
+    ground truth of that text.
+
+    An instance that the annotations hold is **annotated**: the text of
+    each of its frames is the boxes drawn on that frame, and a frame with
+    none holds no text. Each box is taken as text whose ink fills it, so a
+    text is fully covered only where the detector's boxes cover the whole
+    box: draw boxes tight to the text.
+
+    Attributes
+    ----------
+    boxes : mapping of str to tuple
+        For each SOP Instance UID, its boxes, each a frame index from 0 and
+        a :class:`~.text_detection.TextBox` of rows and columns from 0, its
+        bottom and right excluded.
+    """
+
+    boxes: Mapping[str, tuple[tuple[int, TextBox], ...]]
+
+    def __repr__(self) -> str:
+        return "TextAnnotations()"
+
+    @property
+    def instances(self) -> frozenset[str]:
+        """The instances annotated."""
+        return frozenset(self.boxes)
+
+    def subset(self, instances: Iterable[str]) -> TextAnnotations:
+        """The annotations of the given instances alone."""
+        return TextAnnotations(
+            {each: self.boxes[each] for each in instances if each in self.boxes}
+        )
+
+    def texts(
+        self, instance: str, index: int, shape: tuple[int, int]
+    ) -> tuple[BurnedText, ...]:
+        """The text of one frame of an annotated instance.
+
+        Raises
+        ------
+        EvaluationRefused
+            If a box lies outside the frame.
+        """
+        texts = []
+        for frame, box in self.boxes.get(instance, ()):
+            if frame != index:
+                continue
+            if box.bottom > shape[0] or box.right > shape[1]:
+                raise EvaluationRefused("An annotated box lies outside its frame.")
+            rows, columns = box.bottom - box.top, box.right - box.left
+            texts.append(
+                BurnedText(
+                    box.top,
+                    box.left,
+                    np.ones((rows, columns)),
+                    float(min(rows, columns)),
+                    {"truth": "annotated"},
+                )
+            )
+        return tuple(texts)
+
+    @classmethod
+    def from_csv(cls, path: pathlib.Path | str) -> TextAnnotations:
+        """Read annotations from a CSV file with the header row
+        :data:`ANNOTATION_COLUMNS`: an instance's SOP Instance UID; its
+        frame number, from 1, as DICOM numbers frames, or empty for 1; and
+        a box's top row, left column, bottom row, and right column, in
+        pixels from 0, the bottom and right excluded. A row whose box is
+        empty marks an instance annotated as holding no text.
+
+        Raises
+        ------
+        EvaluationRefused
+            For a file not of this form, by its line, never quoting a value.
+        """
+        boxes: dict[str, list[tuple[int, TextBox]]] = {}
+        with open(path, newline="", encoding="utf-8") as stream:
+            reader = csv.reader(stream)
+            header = next(reader, None)
+            if (
+                header is None
+                or tuple(each.strip() for each in header) != ANNOTATION_COLUMNS
+            ):
+                raise EvaluationRefused(
+                    "The annotations' first row must name the columns "
+                    + ", ".join(ANNOTATION_COLUMNS)
+                    + "."
+                )
+            for line, row in enumerate(reader, start=2):
+                if not any(each.strip() for each in row):
+                    continue
+                instance, box = _annotation(row, line)
+                listed = boxes.setdefault(instance, [])
+                if box is not None:
+                    listed.append(box)
+        return cls({key: tuple(value) for key, value in boxes.items()})
+
+
+def _annotation(
+    row: Sequence[str], line: int
+) -> tuple[str, tuple[int, TextBox] | None]:
+    """One row of an annotations file."""
+    if len(row) != len(ANNOTATION_COLUMNS):
+        raise EvaluationRefused(
+            f"Line {line} of the annotations has too few or many cells."
+        )
+    cells = [each.strip() for each in row]
+    instance, frame, *edges = cells
+    if not instance:
+        raise EvaluationRefused(f"Line {line} of the annotations names no instance.")
+    if not any(edges):
+        return instance, None
+    try:
+        number = int(frame) if frame else 1
+        top, left, bottom, right = (int(each) for each in edges)
+    except ValueError as error:
+        raise EvaluationRefused(
+            f"Line {line} of the annotations has a cell that is not a whole number."
+        ) from error
+    if number < 1 or top < 0 or left < 0 or bottom <= top or right <= left:
+        raise EvaluationRefused(
+            f"Line {line} of the annotations has a frame below 1 or an empty box."
+        )
+    return instance, (number - 1, TextBox(top, left, bottom, right))
+
+
+@dataclasses.dataclass(frozen=True)
+class _Header:
+    path: pathlib.Path
+    sop_class: str | None
+    instance: str | None
+    keys: Mapping[str, str | None]
+    order: tuple
+
+
+def _header(path: pathlib.Path) -> _Header | None:
+    """What grouping needs of one file, or None for a file that a run would
+    not read."""
+    try:
+        dataset = read_source(path.read_bytes()).dataset()
+    except (SourceRefused, OSError):
+        return None
+    patient = _text(dataset, "PatientID")
+    issuer = _text(dataset, "IssuerOfPatientID") or ""
+    series = _text(dataset, "SeriesInstanceUID")
+    number = _numbers(dataset, "InstanceNumber")
+    return _Header(
+        path=path,
+        sop_class=_text(dataset, "SOPClassUID"),
+        instance=_text(dataset, "SOPInstanceUID"),
+        keys={
+            "patient": None if patient is None else f"{patient}\0{issuer}",
+            "study": _text(dataset, "StudyInstanceUID"),
+            "series": series,
+        },
+        order=(series or "", number[0] if number else math.inf),
+    )
+
+
+def _case_name(level: str, key: str) -> str:
+    digest = hashlib.sha256("\0".join((_CASE_SALT, level, key)).encode()).hexdigest()
+    return f"{level}/{digest}"
+
+
+def dicom_folder_cases(
+    root: pathlib.Path | str,
+    *,
+    collection: str,
+    group_by: str = "patient",
+    sop_classes: Collection[str] | None = None,
+    known_text: str = "unknown",
+    annotations: TextAnnotations | None = None,
+) -> tuple[DicomCase | SkippedFiles, ...]:
+    """The DICOM files under a folder, as cases.
+
+    Each file is read once here, as a run reads a source, for what groups
+    it, and again when its case is read. Files are grouped by ``group_by``,
+    one of :data:`GROUPINGS`; a file without the attribute that groups it
+    falls to the next finer grouping, down to the file alone. Each case is
+    named by a salted SHA-256 of what groups it, so that the split is
+    fixed and no identifier or path is held as its name, and its files are
+    read in order of series and Instance Number.
+
+    Parameters
+    ----------
+    root : path
+        The folder, searched to any depth.
+    collection : str
+        The name the summary gives these files, such as ``"clinic RT
+        Images"``.
+    group_by : str
+    sop_classes : collection of str, optional
+        The SOP Class UIDs to read, such as ``(RT_IMAGE_STORAGE,)``; files
+        of others are counted as skipped (``sop-class-not-selected``). All
+        are read where not given.
+    known_text : str
+        What is known of the text of frames that no annotation covers;
+        ``"unknown"``, where they may hold text, unless the folder is known
+        to hold none.
+    annotations : TextAnnotations, optional
+        Boxes around the text of some instances; annotated instances not
+        found are counted as skipped (``annotation-not-found``).
+
+    Returns
+    -------
+    tuple of DicomCase and SkippedFiles
+        In order of their names. Files that a run would not read form one
+        case, whose reading counts each as skipped.
+    """
+    if group_by not in GROUPINGS:
+        raise EvaluationRefused("A folder's files must be grouped by a known way.")
+    if known_text not in KNOWN_TEXT:
+        raise EvaluationRefused("What is known of a frame's text must be known.")
+    selected = None if sop_classes is None else frozenset(sop_classes)
+    root = pathlib.Path(root)
+    groups: dict[str, list[_Header]] = {}
+    unread: list[str] = []
+    excluded = 0
+    for path in sorted(each for each in root.rglob("*") if each.is_file()):
+        header = _header(path)
+        if header is None:
+            unread.append(str(path))
+            continue
+        if selected is not None and header.sop_class not in selected:
+            excluded += 1
+            continue
+        levels = GROUPINGS[GROUPINGS.index(group_by) :]
+        level, key = next(
+            ((each, header.keys[each]) for each in levels[:-1] if header.keys[each]),
+            ("file", str(path.relative_to(root))),
+        )
+        groups.setdefault(_case_name(level, key), []).append(header)
+    found = {header.instance for members in groups.values() for header in members} - {
+        None
+    }
+    cases: list[DicomCase | SkippedFiles] = []
+    for name in sorted(groups):
+        members = sorted(groups[name], key=lambda each: (each.order, str(each.path)))
+        cases.append(
+            DicomCase(
+                collection,
+                name,
+                tuple(str(each.path) for each in members),
+                known_text=known_text,
+                annotations=(
+                    None
+                    if annotations is None
+                    else annotations.subset(
+                        each.instance for each in members if each.instance
+                    )
+                ),
+            )
+        )
+    if unread:
+        cases.append(DicomCase(collection, "not-read", tuple(unread), known_text))
+    if excluded:
+        cases.append(
+            SkippedFiles(collection, "excluded", "sop-class-not-selected", excluded)
+        )
+    if annotations is not None:
+        missing = len(annotations.instances - found)
+        if missing:
+            cases.append(
+                SkippedFiles(collection, "annotated", "annotation-not-found", missing)
+            )
+    return tuple(cases)

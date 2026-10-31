@@ -37,17 +37,25 @@ false positives
     annotations sit, or the centre;
 away from text
     the same for frames with text, counting only the boxes that meet no
-    text's zone (:meth:`~.text_evaluation_frames.BurnedText.zone`).
+    text's zone (:meth:`~.text_evaluation_frames.BurnedText.zone`);
+where text is unknown
+    the same for frames whose text as read is unknown
+    (:data:`~.text_evaluation_frames.KNOWN_TEXT`), such as a clinic's RT
+    Images, as they are and away from the text injected into them: their
+    regions may be text, so they are counted apart, never as false
+    positives.
 
-A frame without text is measured as it is (a **negative** pass) and, where
-an :class:`~.text_evaluation_injection.InjectionPlan` is given, again with
-the plan's text burned in. A frame that already holds text, such as one
-whose text an answer key marks, is measured with its text.
+Each frame is measured as it is read (where frames without text are
+measured, or it holds text, such as text that an answer key or annotation
+marks) and, where an :class:`~.text_evaluation_injection.InjectionPlan` is
+given, again with the plan's text burned in clear of any text it holds;
+that pass counts only the injected text, which the first counted.
 
 Each count is kept overall and by **strata**: the frame's collection, IOD,
-modality, slice size, spacing, photometric interpretation, and phantom, and
-each text's font, height in pixels and in millimetres, contrast, polarity,
-style, orientation, position, content, and zone, singly and in the crosses
+modality, slice size, spacing, photometric interpretation, phantom, and what
+is known of its text, and each text's truth (injected or annotated), font,
+height in pixels and in millimetres, contrast, polarity, style,
+orientation, position, content, and zone, singly and in the crosses
 that the acceptance criteria need (IOD by contrast by height). Each share
 has a Wilson interval; overall and for each IOD, a percentile interval from
 a bootstrap that resamples cases, since frames of one case are correlated.
@@ -69,6 +77,7 @@ from __future__ import annotations
 
 import concurrent.futures
 import dataclasses
+import functools
 import hashlib
 import importlib.metadata
 import math
@@ -115,8 +124,10 @@ FRAME_DIMENSIONS = (
     "pixel_spacing",
     "photometric",
     "background",
+    "known_text",
 )
 TEXT_DIMENSIONS = (
+    "truth",
     "font",
     "height",
     "height_mm",
@@ -147,7 +158,13 @@ _CLUSTER_FIELDS = (
     "tissue",
     "tissue_blacked_out",
 )
-_KINDS = ("negative", "away")
+# The kinds of frame measure, by their names in the summary.
+_KINDS = {
+    "negative": "false_positives",
+    "away": "away_from_text",
+    "unknown": "text_unknown",
+    "unknown-away": "text_unknown_away_from_injected",
+}
 _Z = 1.959963984540054
 
 
@@ -213,7 +230,7 @@ class Tally:
     """Counts, which merge by adding; for :func:`summarise` alone.
 
     Keys of ``texts`` are a point's index, a grouping, and its values; of
-    ``frames``, also the kind (``"negative"`` or ``"away"``). Each value of
+    ``frames``, also the kind, a key of :data:`_KINDS`. Each value of
     ``texts`` is the texts, those fully covered, those fully covered with
     any coverage, then the texts in each bin of :data:`SHARE` by the share
     of ink covered; of ``frames``, the frames, those with a region, the
@@ -364,12 +381,18 @@ def _frame(
     strata = frame_strata(frame)
     tally.count("frames", strata["iod"])
     tissue = tissue_mask(frame)
-    points = settings.points
-    if frame.texts:
-        _measure(frame, detector, points, tissue, strata, settings, result)
-        return
-    if settings.negatives:
-        _measure(frame, detector, points, tissue, strata, settings, result)
+    unknown = frame.known_text == "unknown"
+    measure = functools.partial(
+        _measure,
+        detector=detector,
+        tissue=tissue,
+        strata=strata,
+        settings=settings,
+        result=result,
+    )
+    if frame.texts or settings.negatives:
+        kind = "unknown" if unknown else ("away" if frame.texts else "negative")
+        measure(frame, kind=kind, first=0)
     if settings.plan is None:
         return
     if frame.rgb:
@@ -378,8 +401,9 @@ def _frame(
     injected = inject(frame, settings.plan)
     for reason, count in injected.not_placed.items():
         tally.count("not-placed", reason, by=count)
-    if injected.frame.texts:
-        _measure(injected.frame, detector, points, tissue, strata, settings, result)
+    if len(injected.frame.texts) > len(frame.texts):
+        kind = "unknown-away" if unknown else "away"
+        measure(injected.frame, kind=kind, first=len(frame.texts))
 
 
 def frame_strata(frame: EvaluationFrame) -> dict[str, str]:
@@ -396,6 +420,7 @@ def frame_strata(frame: EvaluationFrame) -> dict[str, str]:
         ),
         "photometric": frame.photometric,
         "background": frame.background or "none",
+        "known_text": frame.known_text,
     }
 
 
@@ -422,21 +447,25 @@ class _Covered:
 
 def _measure(
     frame: EvaluationFrame,
+    *,
     detector: EvaluationDetector,
-    points: Sequence[PostProcessing],
     tissue: np.ndarray,
     strata: Mapping[str, str],
     settings: EvaluationSettings,
     result: CaseResult,
+    kind: str,
+    first: int,
 ) -> None:
-    boxes_of_points = grid_boxes(detector.probabilities(frame), points)
+    """Count one pass over a frame, as the module describes: its texts from
+    ``first`` for sensitivity, and its regions clear of every text's zone as
+    ``kind``."""
+    boxes_of_points = grid_boxes(detector.probabilities(frame), settings.points)
     shape = frame.shape
     inks = [(text.ink(shape, INK_LEVEL), text.ink(shape, 0.0)) for text in frame.texts]
     zones = np.zeros(shape, bool)
     zone_boxes = [text.zone(shape) for text in frame.texts]
     for zone in zone_boxes:
         zones[zone.top : zone.bottom, zone.left : zone.right] = True
-    kind = "away" if frame.texts else "negative"
     text_strata = [_text_strata(text, frame, strata) for text in frame.texts]
     pixels = shape[0] * shape[1]
     tissue_pixels = int(np.count_nonzero(tissue))
@@ -447,7 +476,9 @@ def _measure(
         if boxes not in measured:
             measured[boxes] = _covered(boxes, inks, zone_boxes, zones, tissue)
         covered = measured[boxes]
-        for each, (full, full_any, share) in zip(text_strata, covered.texts):
+        for each, (full, full_any, share) in zip(
+            text_strata[first:], covered.texts[first:]
+        ):
             row = [1, int(full), int(full_any)] + [0] * len(SHARE.edges)
             row[3 + SHARE.index(share)] = 1
             for grouping in groupings:
@@ -736,7 +767,8 @@ def _point(
                 **_measures(index, grouping, value, tally),
             }
             if per_text:
-                del row["false_positives"], row["away_from_text"]
+                for name in _KINDS.values():
+                    del row[name]
             if grouping == ("iod",):
                 _intervals(row, index, value[0], clusters, replicates)
             rows.append(row)
@@ -764,7 +796,7 @@ def _measures(
 ) -> dict[str, Any]:
     texts = tally.texts.get((index, grouping, value))
     found: dict[str, Any] = {"sensitivity": _sensitivity(texts)}
-    for kind, name in (("negative", "false_positives"), ("away", "away_from_text")):
+    for kind, name in _KINDS.items():
         found[name] = _false_positives(tally.frames.get((index, kind, grouping, value)))
     return found
 

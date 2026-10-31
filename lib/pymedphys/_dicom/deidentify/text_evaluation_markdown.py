@@ -83,9 +83,49 @@ def markdown(
     lines += _codes("Texts not placed", summary["not_placed"], "Texts")
     lines += _codes("Frames not injected", summary["not_injected"], "Frames")
     lines += _trade_off(summary["points"], assessment)
+    lines += _unknown(summary["points"])
     for point in summary["points"]:
         lines += _detail(point)
     return "\n".join(lines).rstrip("\n") + "\n"
+
+
+_ZONE_KINDS = (
+    ("negative", "Frames without text"),
+    ("away", "Away from text"),
+    ("unknown", "Where text is unknown, as read"),
+    ("unknown-away", "Where text is unknown, away from injected text"),
+)
+
+
+def _unknown(points: Sequence[Mapping[str, Any]]) -> list[str]:
+    """Regions on frames whose text is unknown, which may be text, so are
+    shown apart from false positives; nothing where there are none."""
+    if not any(
+        point["text_unknown"]["frames"]
+        or point["text_unknown_away_from_injected"]["frames"]
+        for point in points
+    ):
+        return []
+    lines = [
+        "## Where text is unknown",
+        "",
+        "Frames whose text as read is unknown, such as a clinic's RT Images: "
+        "their regions may be text, so they are not false positives.",
+        "",
+        "| Point | Frames | With a region | Wilson | Regions | Tissue blacked out "
+        "| With injected text | With a region away from it |",
+        "| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
+    ]
+    for point in points:
+        as_read = point["text_unknown"]
+        away = point["text_unknown_away_from_injected"]
+        lines.append(
+            f"| {point['index']} | {as_read['frames']} | {_share(as_read['share'])} "
+            f"| {_interval(as_read['wilson'])} | {as_read['regions']} "
+            f"| {_share(as_read['tissue_blacked_out'], 3)} | {away['frames']} "
+            f"| {_share(away['share'])} |"
+        )
+    return [*lines, ""]
 
 
 def _model(method: Mapping[str, Any]) -> str:
@@ -220,10 +260,7 @@ def _detail(point: Mapping[str, Any]) -> list[str]:
         *(
             f"| {label} | {zones[kind]['corner']} | {zones[kind]['edge']} "
             f"| {zones[kind]['centre']} |"
-            for kind, label in (
-                ("negative", "Frames without text"),
-                ("away", "Away from text"),
-            )
+            for kind, label in _ZONE_KINDS
         ),
         "",
     ]

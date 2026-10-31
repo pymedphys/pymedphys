@@ -223,14 +223,15 @@ def frame_rng(seed: int, frame: EvaluationFrame) -> np.random.Generator:
 def inject(frame: EvaluationFrame, plan: InjectionPlan) -> Injected:
     """Burn the plan's text into a frame, as the module describes.
 
+    Text that the frame already holds, such as annotated text, stays in its
+    texts, first, and the plan's text is placed clear of it, as of each
+    other.
+
     Raises
     ------
     EvaluationRefused
-        If the frame already holds text, or is RGB, whose text this module
-        does not draw.
+        If the frame is RGB, whose text this module does not draw.
     """
-    if frame.texts:
-        raise EvaluationRefused("The frame already holds text.")
     if frame.rgb:
         raise EvaluationRefused("Text is injected only into monochrome frames.")
     rng = frame_rng(plan.seed, frame)
@@ -241,6 +242,16 @@ def inject(frame: EvaluationFrame, plan: InjectionPlan) -> Injected:
     inked = np.zeros(frame.shape, bool)
     texts: list[BurnedText] = []
     not_placed: dict[str, int] = {}
+
+    def occupy(text: BurnedText) -> None:
+        zone = text.zone(frame.shape)
+        taken[zone.top : zone.bottom, zone.left : zone.right] = True
+        inked[text.top : text.top + text.coverage.shape[0],
+              text.left : text.left + text.coverage.shape[1]] = True  # fmt: skip
+        texts.append(text)
+
+    for text in frame.texts:
+        occupy(text)
     for _ in range(plan.texts):
         drawn = _draw(plan, rng, frame.pixel_spacing)
         placed = _place(drawn, frame, rng, tissue, (taken, inked), values, sigma)
@@ -248,11 +259,7 @@ def inject(frame: EvaluationFrame, plan: InjectionPlan) -> Injected:
             not_placed[placed] = not_placed.get(placed, 0) + 1
             continue
         values, text = placed
-        zone = text.zone(frame.shape)
-        taken[zone.top : zone.bottom, zone.left : zone.right] = True
-        inked[text.top : text.top + text.coverage.shape[0],
-              text.left : text.left + text.coverage.shape[1]] = True  # fmt: skip
-        texts.append(text)
+        occupy(text)
     low, high = frame.stored_range
     stored = np.clip(np.rint(values), low, high).astype(frame.stored.dtype)
     return Injected(
@@ -452,6 +459,7 @@ def _place(
     achieved = weight * abs(ink - behind) / sigma
     strata = {
         **_strata(drawn),
+        "truth": "injected",
         "contrast": contrast_label(achieved),
         "zone": zone_of(burned.extent, frame.shape),
     }
