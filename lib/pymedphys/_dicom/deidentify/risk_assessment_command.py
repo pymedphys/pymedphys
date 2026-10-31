@@ -18,7 +18,8 @@ Run as ``python -m pymedphys._dicom.deidentify.risk_assessment_command PACK
 REPORT STATEMENT``, or with ``--check`` to make every check and record
 nothing. It is not registered with the ``pymedphys`` command: nothing
 de-identification related joins the public command line before the first
-supported release.
+supported release, which publishes it as ``pymedphys dicom
+deidentify-assess``, as the maintainer decided on 31 October 2026.
 
 ``PACK`` is the directory that a run wrote its QC pack into, ``REPORT`` the
 ``release-report.json`` that the same run published, which names the pack
@@ -428,7 +429,8 @@ def build_parser(*, stderr: TextIO | None = None) -> argparse.ArgumentParser:
             "Record an external statistical risk assessment of a run's "
             "collection beside the run's QC pack, once, from the assessor's "
             f"statement, a JSON object labelled {STATEMENT_FORMAT}. For use "
-            "before the first supported release."
+            "before the first supported release, which makes it pymedphys "
+            "dicom deidentify-assess."
         ),
         epilog=_EPILOG,
     )
