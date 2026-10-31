@@ -289,9 +289,16 @@ def test_a_report_that_cannot_be_read_is_said_so_without_its_content(tmp_path, c
         _result(release, run.Status.RELEASED), diagnostics.RedactionCounts()
     )
 
+    # A report that is not a JSON object cannot say whether the run is ready
+    # either, and the command's summary says so.
+    unknown = [
+        "readiness for release: unknown, since the release report's readiness "
+        "could not be read"
+    ]
     assert lines == [
         "inputs: 1",
         "  released: 1",
+        *(unknown if content in ("not json", "[]") else []),
         "release report: could not be read, so its reason counts are not shown",
     ]
 

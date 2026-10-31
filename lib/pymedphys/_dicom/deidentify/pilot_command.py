@@ -29,9 +29,9 @@ the whole pipeline, with the release gate, the transform's release report,
 and the reference graph's second pass, under a new run-scoped key
 (:func:`~pymedphys._dicom.deidentify.command.transform_for` with
 ``unvalidated_policy``). It takes what the run command takes for Clean
-Descriptors, Clean Pixel Data, Clean Recognizable Visual Features, and
-Retain Safe Private, but no project key, which a run refuses until project
-keys are enabled.
+Descriptors, Clean Pixel Data, Clean Recognizable Visual Features, Retain
+Safe Private, and the readiness of a ``public-release`` run, but no project
+key, which a run refuses until project keys are enabled.
 
 The release is written to the new directory given with ``--release``, such
 as one whose files are to be imported into a treatment planning system
@@ -42,8 +42,10 @@ owner can read, and deletes that directory before it exits. A release of a
 policy that is not enabled is for validation only.
 
 Standard output gives only counts: of the inputs by status, of the reasons
-that withheld them by type (:func:`~pymedphys._dicom.deidentify.command.summary_lines`),
-and, from the run's release report, of the sequestered instances by each
+that withheld them by type, with, under ``public-release``, whether the run
+is ready for release and each failed readiness gate's reason code
+(:func:`~pymedphys._dicom.deidentify.command.summary_lines`), and, from the
+run's release report, of the sequestered instances by each
 reason's stage, code, and attribute tags or IOD, and of the instances held
 for review by stage and code, so that the summary can be shared. It names
 no source value, path, or identifier: not the release directory, the
@@ -100,6 +102,13 @@ _PIXEL_DATA_OPTIONS = (
 )
 _FACE_REVIEW_OPTION = (
     "error: --face-review applies only under Clean Recognizable Visual Features"
+)
+_READINESS_OPTION = (
+    "error: --readiness-review and --readiness-report apply only under the "
+    "public-release preset"
+)
+_READINESS_HALF = (
+    "error: --readiness-review and --readiness-report are given together, or neither"
 )
 _TEMPORARY_LEFT = (
     "error: the temporary directory {work} could not be deleted; it may hold "
@@ -234,6 +243,24 @@ def _add_input_arguments(parser: argparse.ArgumentParser) -> None:
         ),
     )
     parser.add_argument(
+        "--readiness-review",
+        metavar="DIRECTORY",
+        help=(
+            "under the public-release preset, the QC pack given as "
+            "--face-review, with any risk assessment recorded beside it, from "
+            "which the release report says whether the run is ready for "
+            "release; given with --readiness-report"
+        ),
+    )
+    parser.add_argument(
+        "--readiness-report",
+        metavar="FILE",
+        help=(
+            "the release report of the run whose QC pack is "
+            "--readiness-review; given with --readiness-review"
+        ),
+    )
+    parser.add_argument(
         "--safe-private-list",
         choices=[each.value for each in SafePrivateList],
         default=SafePrivateList.REVIEWED.value,
@@ -352,6 +379,13 @@ def _usage_problem(arguments: argparse.Namespace) -> str | None:
         preset, options
     ):
         return _FACE_REVIEW_OPTION
+    review, report = arguments.readiness_review, arguments.readiness_report
+    if (review is not None or report is not None) and not (
+        command.readiness_review_applies(preset, options)
+    ):
+        return _READINESS_OPTION
+    if (review is None) != (report is None):
+        return _READINESS_HALF
     return None
 
 
@@ -375,6 +409,8 @@ def _transform(
         region_rules=arguments.region_rules,
         safe_private_list=SafePrivateList(arguments.safe_private_list),
         face_review=arguments.face_review,
+        readiness_review=arguments.readiness_review,
+        readiness_report=arguments.readiness_report,
         unvalidated_policy=True,
     )
 

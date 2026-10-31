@@ -583,9 +583,9 @@ def planted_roi_name(corpus: corpus_module.SyntheticCorpus) -> str:
 
 
 def with_a_second_roi(
-    corpus: corpus_module.SyntheticCorpus,
+    corpus: corpus_module.SyntheticCorpus, name: str = UNCLEANED_NAME
 ) -> corpus_module.SyntheticCorpus:
-    """Return the corpus with a second ROI, named for the automatic tier.
+    """Return the corpus with a second ROI, by default named for the automatic tier.
 
     pydicom writes the structure set again, which keeps every planted value.
     The second ROI references the first's frame of reference, whose linked
@@ -598,7 +598,7 @@ def with_a_second_roi(
     item = pydicom.Dataset()
     item.ROINumber = max(each.ROINumber for each in dataset.StructureSetROISequence) + 1
     item.ReferencedFrameOfReferenceUID = first.ReferencedFrameOfReferenceUID
-    item.ROIName = UNCLEANED_NAME
+    item.ROIName = name
     item.ROIGenerationAlgorithm = "MANUAL"
     dataset.StructureSetROISequence.append(item)
     buffer = pydicom.filebase.DicomBytesIO()
