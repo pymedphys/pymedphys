@@ -85,7 +85,8 @@ def test_a_run_without_instances_shows_each_check_with_none(basic):
     assert document["structural_checks"] == [
         {"check": check, "sequestered": 0, "reported": 0} for check in STRUCTURAL_CHECKS
     ]
-    assert list(document)[-1] == "structural_checks"
+    # Only the run's choice for studies with several patients follows it.
+    assert list(document)[-2:] == ["structural_checks", "studies_with_several_patients"]
 
 
 _SEQUESTERED = (
