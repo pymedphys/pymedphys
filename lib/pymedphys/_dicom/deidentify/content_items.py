@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# pylint: disable = too-many-lines
+# The content tree's cleaning, cascade, and renumbering belong together.
+
 """The Clean Structured Content Option: content items by their concept names.
 
 PS3.15 E.3.4 has the option remove "any information encoded in SR Content
@@ -62,14 +65,17 @@ item's Value Type (0040,A040) and the code of its Concept Name Code Sequence
   whose items are all removed; any other item whose items are all removed
   loses its Content Sequence, which is Type 1C (PS3.3 Table C.17-6). A
   CONTAINER, the root among them, is kept without its removed HAS CONCEPT
-  MOD item. Each Referenced Content
-  Item Identifier that is kept is renumbered, so that it names the same
-  item once the items before it are gone (PS3.3 Section C.17.3.2.5). The
-  outermost Content Sequence takes its Basic Profile action instead, which
-  sequesters a Structured Report, since its D has no dummy value (D-021),
-  where the content item that holds it cannot be kept or is left with no
-  items, where any item cannot be read, or where an item is removed and a
-  Referenced Content Item Identifier names no item of the source. A nested
+  MOD item. A TABLE whose cell, an item of Cell Values Sequence
+  (0040,A808), holds such an identifier loses only that cell, since a table
+  may be sparse, and is removed only where it loses every cell (PS3.3
+  Section C.18.10). Each Referenced Content Item Identifier that is kept is
+  renumbered, so that it names the same item once the items before it are
+  gone (PS3.3 Section C.17.3.2.5). The outermost Content Sequence takes its
+  Basic Profile action instead, which sequesters a Structured Report, since
+  its D has no dummy value (D-021), where the content item that holds it
+  cannot be kept or is left with no items, where any item cannot be read,
+  or where an item is removed and a Referenced Content Item Identifier has
+  no value or names no item of the source. A nested
   Content Sequence that the IOD does not define at its place takes its own
   rule, as any element of a kept item does. A content item cannot be kept
   where the selected options give it X; where its concept name is coded in
@@ -178,6 +184,11 @@ HAS_CONCEPT_MOD = "HAS CONCEPT MOD"
 # relationship, an item of Content Sequence that is not a content item
 # itself (PS3.3 Table C.17-6).
 REFERENCED_CONTENT_ITEM = "(0040,DB73)"
+# A TABLE's one item of Tabulated Values Sequence, and its cells, each item of
+# which may name the content item that is its value by Referenced Content
+# Item Identifier (PS3.3 Table C.18.10-1).
+TABULATED_VALUES = "(0040,A801)"
+CELL_VALUES = "(0040,A808)"
 # The Value Type of an item that holds other items, under a heading.
 CONTAINER = "CONTAINER"
 # The Value Types of the items of Content Sequence that may have no concept
@@ -296,14 +307,17 @@ METHOD = (
     "Content Item Identifier, such as a by-reference relationship, each "
     "item other than a CONTAINER whose HAS CONCEPT MOD item is removed, and "
     "each CONTAINER whose items are all removed, while any other item whose "
-    "items are all removed loses its Content Sequence, and a CONTAINER loses "
-    "only its removed HAS CONCEPT MOD item; each Referenced "
+    "items are all removed loses its Content Sequence, a CONTAINER loses "
+    "only its removed HAS CONCEPT MOD item, and a TABLE loses only each cell "
+    "that names a removed item, and is removed where it loses every cell; "
+    "each Referenced "
     "Content Item Identifier that is kept is renumbered, so that it names "
     "the same item in the output. The whole Content Sequence takes its "
     "Basic Profile action instead where its root cannot be kept or is left "
     "with no items, where an item's Value Type or concept name cannot be "
     "read as one Value Type and one code, or where an item is removed and "
-    "a Referenced Content Item Identifier names no item. A concept name "
+    "a Referenced Content Item Identifier has no value or names no item. A "
+    "concept name "
     "coded by a retired SNOMED designator with a code that Table O-1 maps is "
     "looked up as that SNOMED CT code."
 )
@@ -450,13 +464,16 @@ class _Reader:
             raise _Unkept
         return values[0].strip(" ")
 
-    def numbers(self, path: ElementPath) -> tuple[int, ...]:
-        """Return an element's values as integers, such as those of an UL."""
+    def numbers(self, path: ElementPath, empty: bool = False) -> tuple[int, ...]:
+        """Return an element's values as integers, such as those of an UL.
+
+        An element with no value has none, where ``empty`` allows it.
+        """
         dataset, ancestors, codecs = self._holder(path.items)
         values = read_element(
             dataset, path, codecs, ancestors, source=self._source
         ).values
-        if not values or not all(
+        if (not values and not empty) or not all(
             isinstance(value, int) and not isinstance(value, bool) for value in values
         ):
             raise _Unkept
@@ -630,9 +647,10 @@ class _Node:
 class _Reference:
     """A Referenced Content Item Identifier in the tree, and what it names.
 
-    ``holder`` is the content item that holds it, which is removed with its
-    target, and ``target`` the item it names, or ``None`` where it names
-    none that the source holds.
+    ``holder`` is what is removed with its target: the TABLE cell, an item
+    of Cell Values Sequence (0040,A808), that holds it, or else the content
+    item that holds it. ``target`` is the item it names, or ``None`` where it
+    has no value or names none that the source holds.
     """
 
     path: ElementPath
@@ -650,19 +668,22 @@ class _ContentTree:
     nothing changes, an item that holds a Referenced Content Item Identifier
     (0040,DB73) naming a removed item, or an item inside one, is removed
     too: a by-reference relationship, or an item whose own elements name
-    one, such as a TABLE's Cell Values Sequence (0040,A808); an item other
-    than a CONTAINER whose item of Relationship Type HAS CONCEPT MOD is
-    removed is removed, since what is left would no longer say what its
-    concept name means, while a CONTAINER, the root among them, is kept
-    without it; a CONTAINER whose items are all removed is removed; and any
-    other item whose items are all removed loses its Content Sequence, which
-    is Type 1C (PS3.3 Table C.17-6). Every Referenced Content Item Identifier that is kept is
-    renumbered to name the same item in the output (PS3.3 Section
+    one, except that a TABLE whose cell, an item of its Cell Values Sequence
+    (0040,A808), names one loses only that cell, since a table may be
+    sparse, and is removed only where it loses every cell, since the
+    sequence is Type 1 (PS3.3 Section C.18.10); an item other than a
+    CONTAINER whose item of Relationship Type HAS CONCEPT MOD is removed is
+    removed, since what is left would no longer say what its concept name
+    means, while a CONTAINER, the root among them, is kept without it; a
+    CONTAINER whose items are all removed is removed; and any other item
+    whose items are all removed loses its Content Sequence, which is Type 1C
+    (PS3.3 Table C.17-6). Every Referenced Content Item Identifier that is
+    kept is renumbered to name the same item in the output (PS3.3 Section
     C.17.3.2.5). An item that cannot be read, the root where it cannot be
     kept or is left with no items, the root other than a CONTAINER whose
-    HAS CONCEPT MOD item is removed, or an identifier that names no item
-    where an item is removed, leaves the whole sequence to take its Basic
-    Profile action, raising :class:`_Unkept`.
+    HAS CONCEPT MOD item is removed, or an identifier that has no value or
+    names no item where an item is removed, leaves the whole sequence to
+    take its Basic Profile action, raising :class:`_Unkept`.
     """
 
     def __init__(self, sequences: _Sequences, path: ElementPath) -> None:
@@ -672,6 +693,8 @@ class _ContentTree:
         self._root: Item = path.items
         self._nodes: dict[Item, _Node] = {}
         self._removed: set[Item] = set()
+        # The Cell Values Sequence of each TABLE whose cells name items.
+        self._cells: dict[Item, ElementPath] = {}
 
     def outcome(self) -> _Outcome:
         """Return the tree's actions, removed items, and renumbering."""
@@ -757,7 +780,15 @@ class _ContentTree:
             holder = self._holder(path)
             if holder is None or self._gone(holder):
                 continue
-            values = self._reader.numbers(path)
+            values = self._reader.numbers(path, empty=True)
+            cell = path.items[len(holder) :]
+            if (
+                len(cell) == 2
+                and cell[0] == (TABULATED_VALUES, 0)
+                and cell[1][0] == CELL_VALUES
+            ):
+                self._cells[holder] = ElementPath((*holder, cell[0]), CELL_VALUES)
+                holder = path.items
             found.append(_Reference(path, holder, values, self._target(values)))
         return tuple(found)
 
@@ -768,7 +799,7 @@ class _ContentTree:
         of an item in the Content Sequence of the one before (PS3.3 Section
         C.17.3.2.5).
         """
-        if values[0] != 1 or any(value < 1 for value in values):
+        if not values or values[0] != 1 or any(value < 1 for value in values):
             return None
         target = (
             *self._root,
@@ -795,6 +826,13 @@ class _ContentTree:
             for items in tuple(self._removed):
                 if self._modifies(items):
                     self._removed.add(items[:-1])
+                    changed = True
+            for table, cells in self._cells.items():
+                if not self._gone(table) and all(
+                    (*cells.items, (cells.tag, index)) in self._removed
+                    for index in range(self._reader.count(cells))
+                ):
+                    self._removed.add(table)
                     changed = True
             for items, node in self._nodes.items():
                 nested = ElementPath(items, CONTENT_SEQUENCE)

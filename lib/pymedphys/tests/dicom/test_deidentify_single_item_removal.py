@@ -228,8 +228,8 @@ def test_a_root_left_with_no_items_takes_the_tree_out(items):
 @pytest.mark.deid_requirement("PS3.15-E.3.4-01")
 @pytest.mark.parametrize(
     "reference",
-    [_by_reference(1, 9), _by_reference(2, 1), _by_reference(1, 0)],
-    ids=["no-such-item", "not-from-the-root", "position-zero"],
+    [_by_reference(1, 9), _by_reference(2, 1), _by_reference(1, 0), _by_reference()],
+    ids=["no-such-item", "not-from-the-root", "position-zero", "no-value"],
 )
 def test_a_reference_that_names_no_item_takes_the_tree_out_where_an_item_goes(
     reference,
@@ -241,10 +241,6 @@ def test_a_reference_that_names_no_item_takes_the_tree_out_where_an_item_goes(
     assert not _actions((CSC,), removing, REPORT)
 
 
-def test_a_reference_with_no_value_cannot_be_read():
-    assert not _actions((CSC,), _report(_coded(), _by_reference()), REPORT)
-
-
 @pytest.mark.deid_requirement("PS3.15-E.3.4-01")
 def test_an_item_with_a_modifier_that_cannot_be_kept_is_removed():
     modified = _coded()
@@ -254,6 +250,75 @@ def test_an_item_with_a_modifier_that_cannot_be_kept_is_removed():
     actions = _actions((CSC,), dataset, REPORT)
 
     assert actions.removed_items == {_at(1)}
+
+
+TABLE = ("TBL1", "99PMP", "Fixture table")
+TABULATED_VALUES = "(0040,A801)"
+CELL_VALUES = "(0040,A808)"
+
+
+def _table(*references):
+    """Return a TABLE whose cells, one row, each name an item of the tree.
+
+    Each of ``references`` gives the positions of a cell's item, or ``None``
+    for a cell with a value of its own.
+    """
+    cells = []
+    for column, positions in enumerate(references, start=1):
+        cell = pydicom.Dataset()
+        cell.TableRowNumber = 1
+        cell.TableColumnNumber = column
+        if positions is None:
+            cell.SelectorAttributeVR = "FD"
+            cell.SelectorFDValue = 1.5
+        else:
+            cell.ReferencedContentItemIdentifier = list(positions)
+        cells.append(cell)
+    values = pydicom.Dataset()
+    values.NumberOfTableRows = 1
+    values.NumberOfTableColumns = len(references)
+    values.CellValuesSequence = pydicom.Sequence(cells)
+    return _item("TABLE", TABLE, TabulatedValuesSequence=pydicom.Sequence([values]))
+
+
+def _cell(index, *at):
+    """Return the TABLE cell, from 0, of the item at ``at``."""
+    return (*_at(*at), (TABULATED_VALUES, 0), (CELL_VALUES, index))
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.4-01")
+def test_a_table_cell_that_names_a_removed_item_is_removed_on_its_own():
+    # PS3.3 Section C.18.10 lets a table be sparse, so the cell goes and
+    # the table, with its other cells, is kept.
+    dataset = _report(_coded(), _removed(), _table((1, 1), (1, 2), None))
+
+    actions = _actions((CSC,), dataset, REPORT)
+
+    assert actions.removed_items == {_at(1), _cell(1, 2)}
+    assert dict(actions) == {_path(tag=CONTENT): "K"}
+    assert not actions.renumbered
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.4-01")
+def test_a_table_whose_cells_are_all_removed_is_removed():
+    # Cell Values Sequence is Type 1, so a table with no cell goes, and so
+    # does the reference to it.
+    dataset = _report(_coded(), _removed(), _table((1, 2)), _by_reference(1, 3))
+
+    actions = _actions((CSC,), dataset, REPORT)
+
+    assert actions.removed_items == {_at(1), _at(2), _at(3)}
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.4-01")
+def test_a_table_cell_is_renumbered_as_a_reference_is():
+    dataset = _report(_removed(), _coded(), _table((1, 2)))
+
+    actions = _actions((CSC,), dataset, REPORT)
+
+    reference = ElementPath(_cell(0, 2), REFERENCED_CONTENT_ITEM)
+    assert actions.removed_items == {_at(0)}
+    assert dict(actions.renumbered) == {reference: (1, 1)}
 
 
 def _modifier():
@@ -365,6 +430,26 @@ def _meaning(item):
 
 def _meanings(sequence):
     return [_meaning(item) for item in sequence if "ConceptNameCodeSequence" in item]
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.4-01")
+def test_a_written_table_keeps_the_cells_that_name_kept_items():
+    first = len(reports.x_ray_dose_report(()).ContentSequence) + 1
+    dataset = _dose_report(
+        _removed(),
+        _coded("Fixture kept"),
+        _table((1, first), (1, first + 1), None),
+    )
+
+    written = _transformed(dataset)
+
+    table = written.ContentSequence[-1]
+    assert table.ValueType == "TABLE"
+    assert _meaning(written.ContentSequence[-2]) == "Fixture kept"
+    cells = table.TabulatedValuesSequence[0].CellValuesSequence
+    assert [cell.TableColumnNumber for cell in cells] == [2, 3]
+    assert list(cells[0].ReferencedContentItemIdentifier) == [1, first]
+    assert cells[1].SelectorFDValue == 1.5
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.4-01")

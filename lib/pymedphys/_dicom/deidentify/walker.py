@@ -114,10 +114,11 @@ Under Clean Structured Content, each element that
 :func:`~pymedphys._dicom.deidentify.content_items.content_item_actions` names,
 a content-item sequence that is kept or the value of one of its content
 items, takes the action that it gives in place of its rule's (D-047). Each
-element of an item of Content Sequence that it removes on its own is
-removed with that item, whatever its rule, and so is a nested Content
-Sequence that it empties, with everything in it, whatever its Type, since
-its Type 1C condition lapses; neither removal takes anything else with it.
+element of an item of Content Sequence, or of a TABLE's Cell Values
+Sequence, that it removes on its own is removed with that item, whatever
+its rule, and so is a nested Content Sequence that it empties, with
+everything in it, whatever its Type, since its Type 1C condition lapses;
+neither removal takes anything else with it.
 The plan gives those items in :attr:`InstancePlan.removed_items`, and the
 new values of the Referenced Content Item Identifiers (0040,DB73) that the
 removals renumber, which the plan keeps, in :attr:`InstancePlan.renumbered`.
