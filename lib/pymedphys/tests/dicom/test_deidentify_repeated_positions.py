@@ -403,17 +403,21 @@ def _eyes(towards_left: float):
     )
 
 
-def test_an_eye_far_from_the_globes_of_any_phase_holds_the_series():
+@pytest.mark.parametrize("drawn", [16.0, -10.0])
+def test_an_eye_far_from_the_globes_of_any_phase_holds_the_series(drawn):
     # The second phase's head is 6 mm to the left, within PHASE_REACH, so
     # the phases agree. Eyes drawn 16 mm to the left lie within EYE_REACH
     # of its globes, 10 mm and a globe's radius away, but not of the first
-    # phase's, 16 mm and a radius away.
-    shift, drawn = 6.0, 16.0
-    assert drawn - shift + head.GLOBE_RADIUS < face_blocks.EYE_REACH - 2
-    assert drawn + head.GLOBE_RADIUS > face_blocks.EYE_REACH + 2
+    # phase's, 16 mm and a radius away; eyes drawn 10 mm to the right lie
+    # within reach of the first phase's globes but not of the second's.
+    shift = 6.0
+    near, far = sorted((abs(drawn - shift), abs(drawn)))
+    assert near + head.GLOBE_RADIUS < face_blocks.EYE_REACH - 2
+    assert far + head.GLOBE_RADIUS > face_blocks.EYE_REACH + 2
     first, second = _phase(1), _phase(2, shift=shift)
     assert _outcome(*first, *second).problem is None
-    assert _outcome(*_phase(None, None, shift=shift), _eyes(drawn)).problem is None
+    nearer = _phase(None, None, shift=shift) if drawn > 0 else _phase()
+    assert _outcome(*nearer, _eyes(drawn)).problem is None
 
     outcome = _outcome(*first, *second, _eyes(drawn))
 
