@@ -58,6 +58,7 @@ import scipy.ndimage
 import scipy.ndimage.measurements
 import scipy.optimize
 import scipy.signal
+import scipy.spatial
 import scipy.special
 import shapely
 import shapely.affinity
