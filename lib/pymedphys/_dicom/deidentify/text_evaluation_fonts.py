@@ -28,11 +28,16 @@ its strokes, as a device that smooths its annotations does.
     The same glyphs scaled to any height by exact area sampling, at a
     sub-pixel offset, so that each pixel's coverage is the share of its area
     under the scaled glyphs' ink: an anti-aliased font without a font file.
+:class:`PillowBitmapFont`
+    Pillow's own built-in bitmap font, crisp at whole multiples of its size
+    or area sampled to any height: a second bitmap design, which needs
+    Pillow but no font file.
 :class:`PillowFont`
     Any TrueType or OpenType font file that the caller names, drawn by
     Pillow's FreeType rasteriser at four times the height and area sampled
-    down. PyMedPhys ships no font file; which fonts to evaluate is a
-    parameter, as are their files and licences.
+    down. PyMedPhys ships no font file:
+    :mod:`.text_evaluation_font_files` fetches fonts under the SIL Open Font
+    License, each pinned by its URL and SHA-256, for tests and checks.
 
 Every font measures height as the rows from the top of a capital to the
 baseline, the cap height, so that heights compare across fonts.
@@ -328,6 +333,58 @@ class PillowFont:
         if bottom <= top:
             raise FontRefused("The font has no capital H to measure.")
         return (bottom - top) / reference
+
+
+@dataclasses.dataclass(frozen=True)
+class PillowBitmapFont:
+    """Pillow's built-in bitmap font, its cap height measured from the ink
+    of a capital H: crisp, each font pixel a whole number of frame pixels a
+    side, the nearest to the height asked for; otherwise area sampled to
+    the height exactly, at the phase given."""
+
+    crisp: bool = False
+
+    @property
+    def name(self) -> str:
+        return "pillow-bitmap" if self.crisp else "pillow-bitmap-smooth"
+
+    def coverage(
+        self, text: str, height: float, phase: tuple[float, float] = (0.0, 0.0)
+    ) -> np.ndarray:
+        if not text:
+            raise FontRefused("There is no text to draw.")
+        height = _checked_height(height)
+        drawn, cap = _bitmap_drawn(text)
+        if self.crisp:
+            scale = max(1, round(height / cap))
+            return np.kron(drawn, np.ones((scale, scale)))
+        return area_resampled(drawn, height / cap, phase)
+
+
+def _bitmap_drawn(text: str) -> tuple[np.ndarray, int]:
+    """The ink of ``text`` in Pillow's bitmap font, from the top of a
+    capital, and the font's cap height in its pixels."""
+    image_module, draw_module = _pillow("PIL.Image"), _pillow("PIL.ImageDraw")
+    font = _pillow("PIL.ImageFont").load_default_imagefont()
+
+    def ink(string: str) -> np.ndarray:
+        left, top, right, bottom = font.getbbox(string)
+        canvas = image_module.new("L", (max(1, right - left), max(1, bottom - top)), 0)
+        draw_module.Draw(canvas).text((-left, -top), string, fill=255, font=font)
+        return np.asarray(canvas) > 127
+
+    capital = np.flatnonzero(ink("H").any(axis=1))
+    if not capital.size:
+        raise FontRefused("The font has no capital H to measure.")
+    mask = ink(text)
+    rows = np.flatnonzero(mask.any(axis=1))
+    columns = np.flatnonzero(mask.any(axis=0))
+    if not rows.size:
+        raise FontRefused("The font draws nothing for the text.")
+    top = min(int(rows[0]), int(capital[0]))
+    bottom = max(int(rows[-1]), int(capital[-1])) + 1
+    drawn = mask[top:bottom, columns[0] : columns[-1] + 1].astype(np.float64)
+    return drawn, int(capital[-1] - capital[0] + 1)
 
 
 @functools.lru_cache(maxsize=64)
