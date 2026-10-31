@@ -56,7 +56,8 @@ from __future__ import annotations
 import dataclasses
 import itertools
 import math
-from collections.abc import Callable, Iterable, Mapping, Sequence
+from collections.abc import Iterable, Mapping, Sequence
+from typing import TYPE_CHECKING, TypeAlias
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import scipy
@@ -82,12 +83,16 @@ from .text_evaluation_frames import (
     tissue_mask,
 )
 
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
 SCALINGS = ("limit-side", "millimetres", "working-size")
 NOISE_REGIONS = ("frame", "tissue")
 
 # A network: the input tensor, one batch of three channels, to the
-# probability map of its rows and columns.
-Network = Callable[[np.ndarray], np.ndarray]
+# probability map of its rows and columns. A string, so that the module
+# imports without NumPy.
+Network: TypeAlias = "Callable[[np.ndarray], np.ndarray]"
 
 
 @dataclasses.dataclass(frozen=True)
