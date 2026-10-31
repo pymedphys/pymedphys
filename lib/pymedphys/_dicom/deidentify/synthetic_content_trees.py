@@ -720,14 +720,14 @@ def ct_dose_tree(values: Values, study: str) -> pydicom.Dataset:
     """Return the root of a CT Radiation Dose report's tree, TID 10011.
 
     The report, an X-Ray Radiation Dose SR's, is of one spiral scan of the
-    abdomen, whose dose was collected automatically (TID 10011 row 12) by
+    chest, whose dose was collected automatically (TID 10011 row 12) by
     the scanner, which recorded it and implements dose checks, so that TID
     10011 rows 1 to 10 and 12, TID 10012 rows 1 to 3, TID 10013 rows 1, 3,
     4, 6 to 19, 21 to 23, 26, and 35, TID 10014 row 1, and the rows of TID
     10015 that :func:`_dose_check` names are required. It leaves out TID
     10012 row 3a, the subtotals for events whose DLP used different
     phantoms, which carry codes and numbers. Its target region is the
-    abdomen, as :func:`x_ray_dose_tree`'s is.
+    chest, as :func:`x_ray_dose_tree`'s is.
 
     Parameters
     ----------
@@ -799,7 +799,7 @@ def ct_dose_tree(values: Values, study: str) -> pydicom.Dataset:
             "CONTAINS",
             "CONTAINER",
             CT_ACQUISITION,
-            _code(TARGET_REGION, ABDOMEN),
+            _code(TARGET_REGION, CHEST),
             _code(CT_ACQUISITION_TYPE, SPIRAL_ACQUISITION),
             item("CONTAINS", "UIDREF", IRRADIATION_EVENT_UID_CONCEPT, text=event_uid),
             parameters,
