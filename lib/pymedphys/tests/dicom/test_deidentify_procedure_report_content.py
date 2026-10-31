@@ -20,7 +20,7 @@ are not supported yet, so the engine sequesters their instances. These
 tests show, ahead of supporting them, what the option does with their
 content trees (D-047): that every preset and Retain option, with the option
 added, keeps a report that holds only the rows that its templates require;
-which optional rows take the whole tree out under each option set, among
+which optional rows are removed on their own under each option set, among
 them concept names coded in a scheme that the engine cannot look up; the
 action that each listed value of a kept tree takes; and what is written and
 released, in the tests that add the IODs to the supported ones for that
@@ -184,6 +184,20 @@ def _kept(dataset, iod, composed):
     """Return whether the option keeps the report's content tree."""
     actions, _ = _planned(dataset, iod, composed)
     return actions.get(ElementPath((), CONTENT)) == "K"
+
+
+def _removes(dataset, iod, composed):
+    """Return whether the option keeps the tree but removes items from it.
+
+    An item is removed on its own, or with the others of the Content
+    Sequence that an item other than a CONTAINER holds, which goes with them.
+    """
+    actions, plan = _planned(dataset, iod, composed)
+    return (
+        actions.get(ElementPath((), CONTENT)) == "K"
+        and bool(actions.removed_items or actions.emptied)
+        and plan.removed_items == actions.removed_items
+    )
 
 
 def _int(tag):
@@ -369,7 +383,7 @@ def test_an_echo_reports_timezone_sequesters_it_without_a_dates_option(
 
 @pytest.mark.deid_requirement("PS3.15-E.3.4-01")
 @pytest.mark.parametrize("preset, options", EVERY_OPTION_SET)
-def test_an_echo_measurement_coded_in_loinc_takes_the_tree_out(
+def test_an_echo_measurement_coded_in_loinc_is_removed_on_its_own(
     with_option, preset, options
 ):
     composed = _composed(with_option, preset, options)
@@ -377,12 +391,13 @@ def test_an_echo_measurement_coded_in_loinc_takes_the_tree_out(
 
     # TID 5301 row 1 takes its concept name from CID 12300, whose 196
     # measurements are coded in LOINC, and the 13 that it includes from CID
-    # 12309 in DCM, so that a report of any but those 13 cannot be kept.
+    # 12309 in DCM, so that any but those 13 is removed.
     assert "LN" in content_items.UNMATCHED_SCHEMES
-    assert not _kept(dataset, iod, composed)
+    assert _removes(dataset, iod, composed)
+    assert not _removes(_report(ECHO)[0], iod, composed)
 
 
-# The optional rows that take the tree out under every option set: Table
+# The optional rows that are removed on their own under every option set: Table
 # E.3.4-1 gives each X under every option, or X with C under Clean
 # Descriptors, which falls back to X (D-009), or the supplementary concepts
 # remove it, or its concept name is coded in a scheme whose rows the pin
@@ -420,6 +435,9 @@ PERFORMED_REMOVED_UNDER_EVERY_OPTION = ADMINISTRATION_REMOVED_UNDER_EVERY_OPTION
 # Characteristics Subject Age.
 ADMINISTRATION_UIDS = {"TID 1005 row 1"}
 ADMINISTRATION_PATIENT = {"TID 10024 row 3"}
+# Retain Device Identity keeps the UDI coded as TID 11004 row 26 gives it, a
+# supplementary concept.
+ADMINISTRATION_DEVICE = {"TID 11004 row 26"}
 ACQUISITION_CONTEXT_REMOVED_UNDER_EVERY_OPTION = {
     "TID 8101 row 5",  # Comment, in TID 8110
     "TID 8121 row 25",  # Environmental temperature, coded in NCIt
@@ -444,7 +462,8 @@ ACQUISITION_CONTEXT_REMOVED_UNDER_EVERY_OPTION = {
         None,
         PLANNED_REMOVED_UNDER_EVERY_OPTION
         | ADMINISTRATION_UIDS
-        | ADMINISTRATION_PATIENT,
+        | ADMINISTRATION_PATIENT
+        | ADMINISTRATION_DEVICE,
     ),
     (
         PLANNED,
@@ -458,7 +477,8 @@ ACQUISITION_CONTEXT_REMOVED_UNDER_EVERY_OPTION = {
         None,
         PLANNED_REMOVED_UNDER_EVERY_OPTION
         | ADMINISTRATION_UIDS
-        | ADMINISTRATION_PATIENT,
+        | ADMINISTRATION_PATIENT
+        | ADMINISTRATION_DEVICE,
     ),
     (PLANNED, None, EVERY_OPTION, PLANNED_REMOVED_UNDER_EVERY_OPTION),
     (
@@ -473,7 +493,8 @@ ACQUISITION_CONTEXT_REMOVED_UNDER_EVERY_OPTION = {
         None,
         PERFORMED_REMOVED_UNDER_EVERY_OPTION
         | ADMINISTRATION_UIDS
-        | ADMINISTRATION_PATIENT,
+        | ADMINISTRATION_PATIENT
+        | ADMINISTRATION_DEVICE,
     ),
     (PERFORMED, None, EVERY_OPTION, PERFORMED_REMOVED_UNDER_EVERY_OPTION),
     (
@@ -489,17 +510,20 @@ ACQUISITION_CONTEXT_REMOVED_UNDER_EVERY_OPTION = {
         ACQUISITION_CONTEXT_REMOVED_UNDER_EVERY_OPTION,
     ),
 ])  # fmt: skip
-def test_the_optional_rows_that_take_the_tree_out(
+def test_the_optional_rows_that_are_removed_on_their_own(
     with_option, name, preset, options, removed
 ):
     composed = _composed(with_option, preset, options)
     build, iod = REPORTS[name]
 
     assert _kept(build(()), iod, composed)
+    assert not _removes(build(()), iod, composed)
+    for key in OPTIONAL_ROWS[name]:
+        assert _kept(build(reports.with_holders(key)), iod, composed), key
     assert {
         key
         for key in OPTIONAL_ROWS[name]
-        if not _kept(build(reports.with_holders(key)), iod, composed)
+        if _removes(build(reports.with_holders(key)), iod, composed)
     } == removed
 
 
@@ -589,7 +613,7 @@ def test_a_kept_tree_gives_each_listed_value_its_action(
 
 
 # The optional rows of each report that public-release, with the option
-# added, keeps, other than the UDI coded as TID 11004 row 26 gives it.
+# added, keeps.
 RELEASED_UNDER_PUBLIC_RELEASE = {
     IMPLANTATION: _keepable(
         IMPLANTATION, IMPLANTATION_REMOVED_UNDER_EVERY_OPTION | IMPLANTATION_UIDS
@@ -600,14 +624,14 @@ RELEASED_UNDER_PUBLIC_RELEASE = {
         PLANNED_REMOVED_UNDER_EVERY_OPTION
         | ADMINISTRATION_UIDS
         | ADMINISTRATION_PATIENT
-        | {"TID 11004 row 26"},
+        | ADMINISTRATION_DEVICE,
     ),
     PERFORMED: _keepable(
         PERFORMED,
         PERFORMED_REMOVED_UNDER_EVERY_OPTION
         | ADMINISTRATION_UIDS
         | ADMINISTRATION_PATIENT
-        | {"TID 11004 row 26"},
+        | ADMINISTRATION_DEVICE,
     ),
     ACQUISITION_CONTEXT: _keepable(
         ACQUISITION_CONTEXT, ACQUISITION_CONTEXT_REMOVED_UNDER_EVERY_OPTION
@@ -619,7 +643,10 @@ RELEASED_UNDER_PUBLIC_RELEASE = {
 @pytest.mark.usefixtures("supported")
 @pytest.mark.parametrize("name", RELEASED_UNDER_PUBLIC_RELEASE)
 def test_a_written_report_holds_no_source_value_and_is_released(with_option, name):
-    dataset, _ = _report(name, RELEASED_UNDER_PUBLIC_RELEASE[name])
+    expected, _ = _report(name, RELEASED_UNDER_PUBLIC_RELEASE[name])
+    # The UDI, which public-release removes on its own, is written without.
+    udi = ADMINISTRATION_DEVICE if name in (PLANNED, PERFORMED) else set()
+    dataset, _ = _report(name, (*RELEASED_UNDER_PUBLIC_RELEASE[name], *udi))
 
     data, decision = _released(with_option("public-release"), dataset)
 
@@ -630,7 +657,7 @@ def test_a_written_report_holds_no_source_value_and_is_released(with_option, nam
         assert value.encode() not in data, value
     assert isinstance(decision, run.Release), decision
     written = pydicom.dcmread(io.BytesIO(data))
-    assert _shape(written) == _shape(dataset)
+    assert _shape(written) == _shape(expected)
     assert CSC_CODE in [
         code.get("CodeValue") for code in written.DeidentificationMethodCodeSequence
     ]
@@ -712,49 +739,33 @@ def test_a_patient_weight_records_when_it_was_measured(name):
     *((preset, None) for preset in PRESETS),
     (None, EVERY_OPTION),
 ])  # fmt: skip
-def test_a_udi_coded_as_tid_11004_gives_it_is_not_looked_up(
+def test_a_udi_coded_as_tid_11004_gives_it_is_kept_only_with_device_identity(
     with_option, name, preset, options
 ):
     composed = _composed(with_option, preset, options)
     dataset, iod = _report(name, ("TID 11004 row 26",))
-    actions, _ = _planned(dataset, iod, composed)
+    retained = policy.DEVICE_IDENTITY in composed.options
 
-    # UDI (128739, DCM) is not listed in Table E.3.4-1, so the tree is kept,
-    # and the identifier, the code's Long Code Value, keeps its own rule, as
-    # a code in any kept sequence does.
-    assert all(
-        key[:2] != ("DCM", "128739")
-        for key in content_items.concept_actions(composed.options)
-    )
-    assert actions.get(ElementPath((), CONTENT)) == "K"
+    # UDI (128739, DCM) as a CODE is a supplementary concept, which takes
+    # the actions of UDI Sequence (0018,100A): removed, and kept under
+    # Retain Device Identity (D-047).
+    actions = content_items.concept_actions(composed.options)
+    assert actions[("DCM", "128739", "CODE")] == ("K" if retained else "X")
+    assert _kept(dataset, iod, composed)
+    assert _removes(dataset, iod, composed) is not retained
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "A UDI content item with the Value Type CODE, as TID 11004 row 26 "
-        "gives it, is not listed in Table E.3.4-1, so its code, the device's "
-        "Unique Device Identifier, is kept and released, while Table E.1-1 "
-        "removes UDI Sequence and Unique Device Identifier unless Retain "
-        "Device Identity is selected."
-    ),
-)
+@pytest.mark.deid_requirement("PS3.15-E.3.4-01")
 @pytest.mark.usefixtures("supported")
 @pytest.mark.parametrize("name", [PLANNED, PERFORMED])
 def test_a_udi_is_not_released(with_option, name):
     dataset, _ = _report(name, ("TID 11004 row 26",))
 
-    result = _transformed(with_option("public-release"), dataset)
+    data, decision = _released(with_option("public-release"), dataset)
 
-    # Removing the item, sequestering the instance for it, or withholding the
-    # written file at the release gate each keep the identifier unreleased.
-    if not isinstance(result, run.Transformed):
-        assert isinstance(result, run.Sequestered), result
-        return
-    decision = ReleaseGate()(result.data, result.evidence, (result.evidence,))
-    assert reports.SYRINGE_UDI.encode() not in result.data or not isinstance(
-        decision, run.Release
-    )
+    # The item is removed on its own, so the written file holds no UDI.
+    assert reports.SYRINGE_UDI.encode() not in data
+    assert isinstance(decision, run.Release), decision
 
 
 @pytest.mark.parametrize("preset", PRESETS)

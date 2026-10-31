@@ -10,15 +10,16 @@
 # covers each concept that PS3.16's templates use for a patient
 # characteristic that Table E.1-1 removes, or keeps only under Retain Patient
 # Characteristics, and that the table omits, so that the characteristic is
-# kept in a content item only where it would be kept in its attribute. It
-# also covers the one concept that a template uses with a Value Type other
+# kept in a content item only where it would be kept in its attribute, and a
+# device's Unique Device Identifier as a code, which Table E.1-1 removes, or
+# keeps only under Retain Device Identity. It also covers the one concept that a template uses with a Value Type other
 # than those under which the table lists it, and whose value there holds what
 # the listed row removes: Subject ID as a CODE.
 #
 # "basic_profile" is the action without any option, and is X: the item is
-# removed. "options" can give K under retain_patient_characteristics, which
-# keeps the item when that option is selected, as Table E.1-1 keeps the
-# attribute. No other action is given: a characteristic's free text, which
+# removed. "options" can give K under retain_patient_characteristics or
+# retain_device_identity, which keeps the item when that option is selected,
+# as Table E.1-1 keeps the attribute. No other action is given: a characteristic's free text, which
 # Table E.1-1 cleans (C), is removed, since no cleaner of content items
 # settles C there. A row never covers a concept and Value Type that Table
 # E.3.4-1 lists.
@@ -104,3 +105,12 @@ value_type = "NUM"
 code_meaning = "Body Mass Index"
 basic_profile = "X"
 note = "TID 3602 row 9 and TID 10024 row 9, the patient's body mass index, which holds what Patient's Body Mass Index (0010,1022) holds. Table E.1-1 omits that attribute, and the reviewed rules remove it under every option, including Retain Patient Characteristics, as a measure of the patient's body derived from Patient's Size (0010,1020) and Patient's Weight (0010,1030), so the item is removed under every option too."
+
+[[concept]]
+scheme_designator = "DCM"
+code_value = "128739"
+value_type = "CODE"
+code_meaning = "UDI"
+basic_profile = "X"
+options = { retain_device_identity = "K" }
+note = "TID 11004 row 26 and TID 11005 row 17, the Unique Device Identifier of an imaging agent component or of a consumable of its administration, whose code holds the entire Human Readable Form of the identifier as the Issuing Agency defines it (PS3.16 Annex D), often in Long Code Value (0008,0119), since it is longer than a Code Value. It holds what UDI Sequence (0018,100A) and Unique Device Identifier (0018,1009) hold, which Table E.1-1 removes (X), and keeps under Retain Device Identity (K). Table E.3.4-1 does not list the concept, so an unlisted item would keep the code, and with it the identifier."

@@ -348,6 +348,14 @@ class WriterPlan:
         The transfer syntax written where it is not the source's: Explicit
         VR Little Endian, where Clean Pixel Data writes compressed Pixel
         Data uncompressed (D-037); None otherwise.
+    removed_items : frozenset of tuple of (str, int)
+        The items of kept sequences that the plan removes on their own
+        (:attr:`~pymedphys._dicom.deidentify.walker.InstancePlan.removed_items`),
+        each element of which is in ``removed``.
+    emptied : frozenset of ElementPath
+        The Content Sequences that the plan removes because every item of
+        each is removed on its own
+        (:attr:`~pymedphys._dicom.deidentify.walker.InstancePlan.emptied`).
     """
 
     kept: frozenset[ElementPath]
@@ -357,6 +365,8 @@ class WriterPlan:
     )
     introduced: frozenset[ElementPath] = frozenset()
     transfer_syntax: str | None = None
+    removed_items: frozenset[tuple[tuple[str, int], ...]] = frozenset()
+    emptied: frozenset[ElementPath] = frozenset()
 
     @property
     def expectations(self) -> Expectations:
@@ -366,6 +376,7 @@ class WriterPlan:
             changed=frozenset(self.replacements) | self.introduced,
             removed=self.removed - self.introduced,
             transfer_syntax=self.transfer_syntax,
+            removed_items=self.removed_items,
         )
 
 
@@ -605,6 +616,8 @@ def writer_plan(
         frozenset(removed),
         replacements,
         frozenset(introduced),
+        removed_items=plan.removed_items,
+        emptied=plan.emptied,
     )
 
 
@@ -698,6 +711,8 @@ def with_markers(
         replacements,
         frozenset(introduced),
         writing.transfer_syntax,
+        writing.removed_items,
+        writing.emptied,
     )
 
 
@@ -710,7 +725,8 @@ def _as_planned(
 
     Inside a kept sequence, each element that the plan removes is left out,
     each that it replaces is its replacement, and each that it keeps is
-    copied, a kept sequence with the edits within it in turn.
+    copied, a kept sequence with the edits within it in turn; an item that
+    the plan removes on its own is left out.
 
     Raises
     ------
@@ -724,6 +740,8 @@ def _as_planned(
     edited = pydicom.Sequence()
     for index, item in enumerate(element.value):
         held = items + ((tag, index),)
+        if held in writing.removed_items:
+            continue
         written = pydicom.Dataset()
         for inner in item:
             path = ElementPath(held, _tag_text(inner.tag))
@@ -1931,6 +1949,7 @@ def _written(
             removed=writing.removed,
             replacements=writing.replacements,
             transfer_syntax=writing.transfer_syntax,
+            removed_items=writing.removed_items,
         )
         data = write_file_bytes(
             data_set,
@@ -1948,7 +1967,14 @@ def _written(
         verify_preservation(source, output, writing.expectations)
     except PreservationFailed as failed:
         raise _Refused(failed.reason) from None
-    if lost_requirements(source, output, iod, frozenset(writing.replacements)):
+    if lost_requirements(
+        source,
+        output,
+        iod,
+        frozenset(writing.replacements),
+        writing.removed_items,
+        writing.emptied,
+    ):
         raise _Refused(TransformReason.REQUIRED_ATTRIBUTE_LOST)
     if redaction is not None:
         if redaction_problem(source, output, redaction):
@@ -2087,6 +2113,8 @@ def _with_cut_contours(
         replacements,
         frozenset(introduced),
         writing.transfer_syntax,
+        writing.removed_items,
+        writing.emptied,
     )
 
 

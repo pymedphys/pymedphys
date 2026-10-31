@@ -145,7 +145,10 @@ class Edit:
     ----------
     path : ElementPath
     action : str
-        The plan's action, such as ``"D"``.
+        The plan's action, such as ``"D"``. A Referenced Content Item
+        Identifier (0040,DB73) that the plan keeps and renumbers
+        (:attr:`~pymedphys._dicom.deidentify.walker.InstancePlan.renumbered`)
+        keeps ``"K"``, with :attr:`EditKind.REPLACE` and its new values.
     kind : EditKind
     values : tuple of str, int, float, or bytes
         The values that replace the element's, for :attr:`EditKind.REPLACE`
@@ -782,6 +785,15 @@ def edit_instance(
                 _check_items(reader, element)
             value = gathered.read(reader, element) if element.consumers else None
             edit = _edit(element, container, value, key, identity, series_numberings)
+            if edit.kind is EditKind.KEEP and element.path in plan.renumbered:
+                # The identifier names the same item, which the items removed
+                # before it move (D-047).
+                edit = Edit(
+                    element.path,
+                    element.action,
+                    EditKind.REPLACE,
+                    plan.renumbered[element.path],
+                )
             if container and edit.kind is EditKind.REPLACE:
                 reviewed[edit.path] = (len(found), items or 0)
             found.append(edit)

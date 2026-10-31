@@ -20,7 +20,7 @@ Basic Profile gives Content Sequence (0040,A730) D and a sequence has no
 dummy value (D-021). These tests show what the option does with their
 content trees (D-047): which presets, with the option added, keep a report
 that holds only the rows that its templates require; which optional rows
-take the whole tree out under each option set; the action that each value
+are removed on their own under each option set; the action that each value
 of a kept tree takes; what is written; and which attributes of a report's
 header sequester it whatever the option does. The reports are synthetic,
 built from the templates of PS3.16 2026d by
@@ -136,6 +136,20 @@ def _kept(dataset, iod, composed):
     return actions.get(ElementPath((), CONTENT)) == "K"
 
 
+def _removes(dataset, iod, composed):
+    """Return whether the option keeps the tree but removes items from it.
+
+    An item is removed on its own, or with the others of the Content
+    Sequence that an item other than a CONTAINER holds, which goes with them.
+    """
+    actions, plan = _planned(dataset, iod, composed)
+    return (
+        actions.get(ElementPath((), CONTENT)) == "K"
+        and bool(actions.removed_items or actions.emptied)
+        and plan.removed_items == actions.removed_items
+    )
+
+
 def _int(tag):
     return int(tag[1:5] + tag[6:10], 16)
 
@@ -238,9 +252,11 @@ def test_which_presets_with_the_option_keep_a_report_of_required_rows(
         _, plan = _planned(dataset, iod, composed)
         assert _kept(dataset, iod, composed) is kept, name
         assert bool(plan.sequestrations) is not kept, name
-        # A report with every optional row is never kept.
+        # A report with every optional row is kept, with the rows that the
+        # preset does not keep removed on their own.
         everything, _ = _report(name, OPTIONAL_ROWS[name])
-        assert not _kept(everything, iod, composed), name
+        assert _kept(everything, iod, composed), name
+        assert _removes(everything, iod, composed), name
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.4-01")
@@ -272,7 +288,8 @@ def test_which_retain_options_with_the_option_keep_a_report_of_required_rows(
 
 # A report made by a modality is observed by a device (TID 1004): its Device
 # Observer UID (row 1) is X/D, and its Name (row 2) and Serial Number (row 5)
-# are X unless Retain Device Identity is selected. The X-ray report's required
+# are X unless Retain Device Identity is selected, which removes each on its
+# own. The X-ray report's required
 # rows hold one; a radiopharmaceutical report holds one only through the dose
 # calibrator (TID 10022 rows 13 and 15).
 DEVICE_OBSERVERS = {
@@ -316,10 +333,14 @@ DEVICE_OBSERVERS = {
 def test_which_retain_options_keep_a_report_observed_by_a_device(options, kept):
     composed = policy.compose_custom_policy((CSC, *options))
 
+    assert all(
+        _kept(*_report(name, optional), composed)
+        for name, optional in DEVICE_OBSERVERS.values()
+    )
     assert {
         case
         for case, (name, optional) in DEVICE_OBSERVERS.items()
-        if _kept(*_report(name, optional), composed)
+        if not _removes(*_report(name, optional), composed)
     } == kept
 
 
@@ -334,10 +355,14 @@ def test_which_retain_options_keep_a_report_observed_by_a_device(options, kept):
 def test_which_presets_keep_a_report_observed_by_a_device(with_option, preset, kept):
     composed = with_option(preset)
 
+    assert all(
+        _kept(*_report(name, optional), composed)
+        for name, optional in DEVICE_OBSERVERS.values()
+    )
     assert {
         case
         for case, (name, optional) in DEVICE_OBSERVERS.items()
-        if _kept(*_report(name, optional), composed)
+        if not _removes(*_report(name, optional), composed)
     } == kept
 
 
@@ -374,7 +399,7 @@ def test_the_required_rows_that_table_e3_4_1_removes(
     } == removed
 
 
-# Under every option set, these optional rows take the tree out: Table
+# Under every option set, these optional rows are removed on their own: Table
 # E.3.4-1 gives each X under every option, or X with C under Clean
 # Descriptors, which falls back to X (D-009), or its concept name is coded in
 # LOINC, whose rows the generated table leaves out (D-001).
@@ -460,7 +485,7 @@ RADIOPHARMACEUTICAL_INSTITUTION = {"TID 10022 row 23 TID 1020 row 5"}
         ),
     ],
 )
-def test_the_optional_rows_that_take_the_tree_out(
+def test_the_optional_rows_that_are_removed_on_their_own(
     with_option, name, preset, options, removed
 ):
     composed = (
@@ -471,10 +496,13 @@ def test_the_optional_rows_that_take_the_tree_out(
     build, iod = REPORTS[name]
 
     assert _kept(build(()), iod, composed)
+    assert not _removes(build(()), iod, composed)
+    for key in OPTIONAL_ROWS[name]:
+        assert _kept(build(reports.with_holders(key)), iod, composed), key
     assert {
         key
         for key in OPTIONAL_ROWS[name]
-        if not _kept(build(reports.with_holders(key)), iod, composed)
+        if _removes(build(reports.with_holders(key)), iod, composed)
     } == removed
 
 
@@ -581,6 +609,51 @@ def test_a_written_radiopharmaceutical_report_holds_no_source_value(with_option)
     started = by_meaning["Radiopharmaceutical Start DateTime"].DateTime
     assert started[:8] == written.StudyDate
     assert started[8:] == reports.ADMINISTRATION_START[8:]
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.4-01")
+@pytest.mark.parametrize("name", REPORTS)
+def test_a_report_with_every_optional_row_is_written_without_those_removed(
+    with_option, name
+):
+    composed = with_option("public-release")
+    dataset, _ = _report(name, OPTIONAL_ROWS[name])
+
+    data = _written(composed, dataset)
+
+    for value in SOURCE_VALUES:
+        assert value.encode() not in data, value
+    written = pydicom.dcmread(io.BytesIO(data))
+    expected = _without_removed(
+        dataset, content_items.concept_actions(composed.options)
+    )
+    assert [meaning for meaning, _ in _concepts(written)] == expected
+    assert len(expected) < len(list(_concepts(dataset)))
+
+
+def _without_removed(item, actions):
+    """Return the concepts' meanings of a tree with its removed items left out.
+
+    An item that the table, or a supplementary row, gives X, or whose concept
+    name is coded in a scheme whose rows it leaves out, is removed with its
+    items, and so is a CONTAINER whose items are all removed. ``None`` where
+    ``item`` is removed.
+    """
+    meaning, key = next(_concepts(item))
+    if (
+        actions.get(key) == content_items.REMOVE
+        or key[0] in content_items.UNMATCHED_SCHEMES
+    ):
+        return None
+    children = item.get("ContentSequence", [])
+    kept = [
+        found
+        for found in (_without_removed(child, actions) for child in children)
+        if found is not None
+    ]
+    if children and not kept and item.ValueType == "CONTAINER":
+        return None
+    return [meaning, *(each for found in kept for each in found)]
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.4-01")
