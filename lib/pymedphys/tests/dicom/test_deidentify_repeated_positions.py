@@ -13,8 +13,9 @@
 # limitations under the License.
 
 # pylint: disable = protected-access
-# The tests check the merging of kept slices and the batching of surface
-# renders, which are private to their modules, directly.
+# The tests check the merging of kept slices, the batching of surface
+# renders, and the DICOM check's measures of one eye, which are private to
+# their modules, directly.
 
 """Tests of CT series whose slices repeat their positions, such as the time
 points of a respiratory-correlated CT or a perfusion scan, the phases of a
@@ -23,7 +24,9 @@ contrast study, or two acquisitions that overlap.
 Such a series is parted into phases by the time point or acquisition that
 each slice names; each phase's face block is found from its own slices,
 and the series is defaced by one block that encloses them all; the QC pack
-draws each phase as a volume of its own. Every image is synthetic.
+draws each phase as a volume of its own; and the DICOM check counts each
+series' phases and how far their globes lie apart. Every image is
+synthetic.
 """
 
 from __future__ import annotations
@@ -35,8 +38,13 @@ import zlib
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom, pytest
 
-from pymedphys._dicom.deidentify import face_blocks, phases, qc_previews
-from pymedphys._dicom.deidentify.defacing import FaceBlockProblem
+from pymedphys._dicom.deidentify import (
+    face_blocks,
+    face_validation_dicom,
+    phases,
+    qc_previews,
+)
+from pymedphys._dicom.deidentify.defacing import FaceBlock, FaceBlockProblem
 from pymedphys._dicom.deidentify.dose_defacing import find_dose_blocks
 from pymedphys._dicom.deidentify.face_blocks import (
     PHASE_REACH,
@@ -54,6 +62,7 @@ from pymedphys._dicom.deidentify.references import InstanceRecord
 from . import _synthetic_head as head
 from . import _synthetic_head_dicom as files
 from .test_deidentify_qc_multi_frame_volumes import _multi_frame as _qc_multi_frame
+from .test_deidentify_face_validation_dicom import _LEFT, _RIGHT, _globe
 from .test_deidentify_qc_previews import _file
 from .test_deidentify_qc_surfaces import SIDE, _axial, _body
 
@@ -724,3 +733,214 @@ def test_batches_hold_no_more_than_the_samples_at_once_unless_one_alone():
 
     assert qc_previews._batches(renders) == [[0, 1], [2], [3]]
     assert qc_previews._batches([]) == [[]]
+
+
+# The DICOM check's measures of a series of phases (D-054)
+
+
+def _as_case(data: bytes, case: int) -> bytes:
+    """A file of a series, Frame of Reference, and patient of its own case."""
+    dataset = pydicom.dcmread(io.BytesIO(data))
+    dataset.SeriesInstanceUID = f"2.25.7301{case}"
+    dataset.FrameOfReferenceUID = f"2.25.7302{case}"
+    dataset.PatientID = f"P{case}"
+    return files.written(dataset)
+
+
+def _eye_set(case: int) -> bytes:
+    """Eye ROIs drawn at the head's own globes, in a case's frame."""
+    template = pydicom.Dataset()
+    template.PatientName = "Head^Analytic"
+    template.PatientID = f"P{case}"
+    template.StudyInstanceUID = f"2.25.7303{case}"
+    template.SeriesInstanceUID = f"2.25.7304{case}"
+    return files.structure_set(
+        [("ORGAN", _globe(_RIGHT)), ("ORGAN", _globe(_LEFT))],
+        frame=f"2.25.7302{case}",
+        template=template,
+        names=["Eye_R", "Eye_L"],
+    )
+
+
+def _own(*data: bytes) -> FaceBlock:
+    """The block of one phase's slices alone."""
+    block = _outcome(*data).block
+    assert block is not None
+    return block
+
+
+_MOVED = {"shift": 3.0, "turn": 2.0}
+_APART = {"shift": PHASE_REACH + 4.0}
+
+
+@pytest.fixture(scope="module", name="checked")
+def _checked(tmp_path_factory):
+    """The DICOM check's measures of a directory of five series, one to a
+    directory in order:
+
+    1. two time points, the second of the head moved a little, with eye
+       ROIs drawn at the first's globes;
+    2. two time points whose globes lie too far apart;
+    3. two acquisitions, the second below the eyes;
+    4. slices at one position that nothing parts; and
+    5. two time points of one Enhanced CT Image instance.
+    """
+    count = len(_phase())
+    cases = {
+        1: (*_phase(1), *_phase(2, **_MOVED)),
+        2: (*_phase(1), *_phase(2, **_APART)),
+        3: (*_phase(None, 1), *_phase(None, 2, high=-20.0)),
+        4: (*_phase(None, 1), *_phase(None, 1, shift=0.5)),
+        5: (_enhanced([("", 1 + k // count) for k in range(2 * count)]),),
+    }
+    root = tmp_path_factory.mktemp("phases")
+    for case, data in cases.items():
+        (root / str(case)).mkdir()
+        for index, each in enumerate(data):
+            (root / str(case) / f"CT{index:03d}.dcm").write_bytes(_as_case(each, case))
+    (root / "1" / "RS.dcm").write_bytes(_eye_set(1))
+    return face_validation_dicom.measure_dicom(root)
+
+
+def test_the_dicom_check_counts_each_series_phases(checked):
+    assert checked.crashed == {}
+    assert [each.outcome for each in checked.series] == [
+        "defaced",
+        "phases-disagree",
+        "defaced",
+        "repeated-positions",
+        "defaced",
+    ]
+    assert [each.phases for each in checked.series] == [2, 2, 2, None, 2]
+    assert [each.phases_without_eyes for each in checked.series] == [0, 0, 1, 0, 0]
+
+
+def test_the_dicom_check_measures_how_far_each_globe_lies_from_itself():
+    right, left = (-30.0, -70.0, 0.0), (30.0, -70.0, 0.0)
+
+    def block(*globes):
+        return FaceBlock((0.0, 0.0, 0.0), (0.0, -1.0, 0.0), -50.0, globes)
+
+    blocks = [
+        block(right, left),
+        block((-29.0, -70.0, 0.0), (30.0, -70.0, 0.0)),
+        block(right, (30.0, -73.0, 4.0)),
+    ]
+
+    # Each globe against itself, never against the other side's.
+    assert face_validation_dicom.globe_spread(blocks) == pytest.approx(5.0)
+    assert face_validation_dicom.globe_spread(blocks[:2]) == pytest.approx(1.0)
+    assert face_validation_dicom.globe_spread(blocks[:1]) is None
+
+
+def test_the_globe_spread_is_of_every_phase_whether_they_agree_or_not(checked):
+    single, moved, apart = (
+        _single().block,
+        _own(*_phase(None, None, **_MOVED)),
+        (_own(*_phase(None, None, **_APART))),
+    )
+    spreads = [each.globe_spread for each in checked.series]
+
+    assert spreads[0] == pytest.approx(
+        face_validation_dicom.globe_spread([single, moved])
+    )
+    assert spreads[1] == pytest.approx(
+        face_validation_dicom.globe_spread([single, apart])
+    )
+    assert spreads[1] > PHASE_REACH >= spreads[0]
+    # Only one phase of the third found a block; the fourth was not parted.
+    assert spreads[2] is None
+    assert spreads[3] is None
+    assert spreads[4] == 0.0
+
+
+def test_an_eye_is_measured_against_the_phase_whose_globes_lie_farthest(checked):
+    single, moved = _single().block, _own(*_phase(None, None, **_MOVED))
+    eyes = face_validation_dicom._eye_rois(
+        pydicom.dcmread(io.BytesIO(_eye_set(1))), "2.25.73021"
+    )
+    limit = min(single.inferior_limit, moved.inferior_limit)
+
+    measured = checked.series[0].eyes
+
+    assert len(measured) == len(eyes) == 2
+    for eye, (side, contours) in zip(measured, eyes, strict=True):
+        against = [
+            face_validation_dicom._eye_against(block, limit, side, contours)
+            for block in (single, moved)
+        ]
+        reaches = [each.reach for each in against]
+        assert reaches[1] > reaches[0]
+        assert eye.reach == pytest.approx(max(reaches))
+        assert eye.globe_errors == pytest.approx(against[1].globe_errors)
+        assert eye.above_limit == pytest.approx(against[1].above_limit)
+
+
+def test_an_eye_swapped_against_any_phase_is_counted_as_swapped():
+    def block(*globes):
+        return FaceBlock((0.0, 0.0, 0.0), (0.0, -1.0, 0.0), -50.0, globes)
+
+    # The first phase's right globe found 3 mm off, so that the eye lies
+    # farthest from it, and the second's globes found the other way round.
+    off = block((-33.0, -70.0, 0.0), (30.0, -70.0, 0.0))
+    swapped = block((30.0, -70.0, 0.0), (-30.0, -70.0, 0.0))
+    contours = [
+        ("CLOSED_PLANAR", np.array([[-30.0, -70.0, z] for z in (0.0, 1.0, 2.0)]))
+    ]
+
+    for blocks in ([off, swapped], [swapped, off]):
+        eye = face_validation_dicom._eye_measures(blocks, -50.0, 0, contours)
+        # Measured against the phase it lies farthest from, yet swapped.
+        assert eye.reach == pytest.approx(np.hypot(3.0, 2.0))
+        assert eye.swapped is True
+    assert (
+        face_validation_dicom._eye_measures([off], -50.0, 0, contours).swapped is False
+    )
+
+
+def test_the_dicom_check_measures_multi_frame_ct_as_the_finder_reads_it(checked):
+    enhanced = checked.series[4]
+
+    assert enhanced.storage == "native 16/16 signed"
+    assert enhanced.pixel_spacing == pytest.approx(2.0)
+    assert enhanced.air is True
+
+
+def test_slices_at_one_position_are_not_counted_as_a_spacing(checked):
+    # Two phases at the same heights, and two slices half a micrometre apart.
+    assert all(each.slice_spacing == pytest.approx(3.0) for each in checked.series)
+    data = list(_phase()[:2])
+    dataset = pydicom.dcmread(io.BytesIO(data[0]))
+    x, y, z = (float(v) for v in dataset.ImagePositionPatient)
+    dataset.ImagePositionPatient = [x, y, z + phases.COINCIDENT / 2]
+    dataset.SOPInstanceUID = f"{dataset.SOPInstanceUID}.9"
+    data.append(files.written(dataset))
+
+    stored = face_validation_dicom._stored(list(range(3)), lambda i: data[i])
+
+    assert stored["slice_spacing"] == pytest.approx(3.0, abs=phases.COINCIDENT)
+
+
+def test_the_dicom_check_summarises_the_phases(checked):
+    summary = face_validation_dicom.summarise(checked)
+    counted = summary["phases"]
+
+    assert counted["not_parted"] == 1
+    assert [
+        (each["from"], each["count"])
+        for each in counted["by_series"]["bins"]
+        if each["count"]
+    ] == [(2, 4)]
+    assert counted["outcomes_of_several"] == {"defaced": 3, "phases-disagree": 1}
+    assert counted["series_with_phases_without_eyes"] == 1
+    assert counted["phases_without_eyes"] == 1
+    spread = counted["globe_spread"]
+    assert spread["unit"] == "mm"
+    assert sum(each["count"] for each in spread["bins"]) == 3
+    # The bins part spreads that a run accepts from those it does not.
+    assert PHASE_REACH in face_validation_dicom.GLOBE_SPREAD.edges
+    assert (
+        sum(each["count"] for each in spread["bins"] if each["from"] >= PHASE_REACH)
+        == 1
+    )
+    assert summary["settings"]["phase_reach_mm"] == PHASE_REACH

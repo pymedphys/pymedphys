@@ -279,6 +279,13 @@ def test_each_series_storage_spacings_and_air_are_measured(measured):
         assert each.air is True
 
 
+def test_a_series_without_repeated_positions_is_one_phase(measured):
+    for each in measured.series:
+        assert each.phases == 1
+        assert each.phases_without_eyes == 0
+        assert each.globe_spread is None
+
+
 def _expected_eye(block: FaceBlock, contours, side: int | None) -> dict:
     """An eye ROI's measures from its circles: their centroid weighted by
     each circle's area, pi r squared, rather than its polygon's."""
@@ -381,7 +388,7 @@ def test_rt_plans_in_a_defaced_frame_are_counted(measured):
 
 
 def test_the_summary_counts_the_measures(summary):
-    assert summary["format"] == "pymedphys-deid-face-validation-dicom/1"
+    assert summary["format"] == "pymedphys-deid-face-validation-dicom/5"
     assert summary["series"] == {
         "defaced": 1,
         "not_defaced": {
@@ -419,6 +426,8 @@ def test_the_summary_counts_the_measures(summary):
         "rois_cut": {"EXTERNAL": 1, "ORGAN": 3},
     }
     assert summary["rt_plans"] == {"total": 2, "in_defaced_frames": 1}
+    assert summary["phases"]["not_parted"] == 0
+    assert summary["phases"]["outcomes_of_several"] == {}
     assert summary["ct"]["air_in_hounsfield_units"] == {
         "yes": 4,
         "no": 0,
@@ -467,6 +476,7 @@ def test_the_settings_are_the_engines(summary):
     assert settings["margin_mm"] == defacing.MARGIN
     assert settings["cavity_floor_mm"] == face_blocks.CAVITY_FLOOR
     assert settings["dose_fraction"] == dose_defacing.DOSE_FRACTION
+    assert settings["phase_reach_mm"] == face_blocks.PHASE_REACH
 
 
 def test_measures_show_nothing_of_the_files(measured):
@@ -581,6 +591,8 @@ def test_the_page_shows_the_counts_as_commonmark(summary):
     assert "| Defaced | 1 |\n" in page
     assert "| Not defaced: `target-in-block` | 1 |\n" in page
     assert "| `EXTERNAL` | 1 |\n" in page
+    assert "## Phases\n" in page
+    assert "| 1 to under 2 | 4 |\n" in page
     lines = page.split("\n")
     # markdownlint's MD009, MD012, and MD022: no trailing spaces, no blank
     # lines in a row, and a blank line around each heading.
@@ -616,7 +628,7 @@ def test_the_command_writes_the_counts_and_prints_the_page(
 @pytest.mark.parametrize(
     "make, message",
     [
-        (lambda path: path, "The directory holds no CT Image series."),
+        (lambda path: path, "The directory holds no CT series."),
         (
             lambda path: path / "missing",
             "The input is not a directory whose files can be listed.",

@@ -382,6 +382,15 @@ def find_face_blocks(
         Gives the file at a run position as the first pass read it, or None
         if it can no longer be read or has changed.
     """
+    return {uid: outcome for uid, (outcome, _) in _outcomes(records, read).items()}
+
+
+def _outcomes(
+    records: Mapping[int, InstanceRecord],
+    read: Callable[[int], bytes | None],
+) -> dict[str, tuple[SeriesDefacing, _Found]]:
+    """Each series' outcome, as :func:`find_face_blocks` gives it, with what
+    was found of it before its holds, for the DICOM check (D-054)."""
     series: dict[str, list[int]] = collections.defaultdict(list)
     slices: dict[str, set[str]] = collections.defaultdict(set)
     structure_sets: list[int] = []
@@ -392,7 +401,7 @@ def find_face_blocks(
                 slices[record.series].add(record.sop_instance)
         elif record.iod == RT_STRUCTURE_SET:
             structure_sets.append(position)
-    outcomes = {}
+    outcomes: dict[str, tuple[SeriesDefacing, _Found]] = {}
     for uid, positions in series.items():
         found = _series_found(positions, read)
         outcome, frame = found.outcome, found.frame
@@ -410,7 +419,7 @@ def find_face_blocks(
                 _eyes_disagree(block, frame, searched, read) for block in found.blocks
             ):
                 outcome = SeriesDefacing(None, SeriesProblem.EYES_DISAGREE)
-        outcomes[uid] = outcome
+        outcomes[uid] = (outcome, found)
     return outcomes
 
 
@@ -540,12 +549,21 @@ def find_defaced(
 
 @dataclasses.dataclass(frozen=True)
 class _Found:
-    """One series' outcome, its Frame of Reference UID, and the block found
-    from each of its phases that gave one, in the order of the phases."""
+    """One series' outcome, its Frame of Reference UID, the block found
+    from each of its phases that gave one, in the order of the phases, how
+    many phases its slices were parted into, or None where they were not,
+    and how many of a series of several phases found no eyes, of those
+    searched before the finder stopped.
+
+    The blocks are given for a series that is not defaced too, such as one
+    whose phases disagree, so that how far apart their globes lie can be
+    measured (D-054)."""
 
     outcome: SeriesDefacing
     frame: str | None
     blocks: tuple[FaceBlock, ...] = ()
+    phases: int | None = None
+    eyeless: int = 0
 
 
 def _series_outcome(
@@ -566,7 +584,20 @@ def _series_found(positions: list[int], read: Callable[[int], bytes | None]) -> 
     module describes; the series' block encloses them all
     (:func:`_enclosing`).
     """
-    frame = None
+    frame: str | None = None
+    # How many phases the slices are parted into, once known, and of those
+    # how many find no eyes, once every phase is searched.
+    parted: int | None = None
+    eyeless: list[list[int]] = []
+    blocks: list[FaceBlock] = []
+
+    def found(
+        problem: FaceBlockProblem | SeriesProblem | None,
+        block: FaceBlock | None = None,
+    ) -> _Found:
+        outcome = SeriesDefacing(block, problem, None if block is None else frame)
+        return _Found(outcome, frame, tuple(blocks), parted, len(eyeless))
+
     try:
         slices, places = _stack(positions, read)
         first = slices[0]
@@ -576,14 +607,13 @@ def _series_found(positions: list[int], read: Callable[[int], bytes | None]) -> 
         if not frame:
             raise _Unusable(SeriesProblem.UNREADABLE)
         groups = _phases(slices)
-        blocks: list[FaceBlock] = []
-        eyeless: list[list[int]] = []
+        parted = len(groups)
         for group in groups:
             finder = _finder(
                 [slices[i] for i in group], [places[i] for i in group], read
             )
             try:
-                found = finder.block()
+                blocks.append(finder.block())
             except FaceBlockRefused as refused:
                 # Only a phase of several that finds no globes may be left
                 # to the block of the others, and only where that reaches
@@ -591,26 +621,26 @@ def _series_found(positions: list[int], read: Callable[[int], bytes | None]) -> 
                 if len(groups) == 1 or refused.problem is not FaceBlockProblem.NO_EYES:
                     raise
                 eyeless.append(group)
-                continue
-            if not _agree([*blocks, found]):
-                raise _Unusable(SeriesProblem.PHASES_DISAGREE)
-            blocks.append(found)
         if not blocks:
             raise FaceBlockRefused(FaceBlockProblem.NO_EYES)
+        # Every phase's block is found before they are compared, so that a
+        # series whose phases disagree gives each of them to be measured.
+        if not _agree(blocks):
+            return found(SeriesProblem.PHASES_DISAGREE)
         block = blocks[0] if len(groups) == 1 else _enclosing(blocks, slices)
         if any(_reaches(block, slices[i]) for group in eyeless for i in group):
             raise FaceBlockRefused(FaceBlockProblem.NO_EYES)
-        return _Found(SeriesDefacing(block, None, frame), frame, tuple(blocks))
+        return found(None, block)
     except _Unusable as unusable:
-        return _Found(SeriesDefacing(None, unusable.problem), frame)
+        return found(unusable.problem)
     except FaceBlockRefused as refused:
-        return _Found(SeriesDefacing(None, refused.problem), frame)
+        return found(refused.problem)
     # Whatever else a series' data raises, such as the finder's ValueError
     # for geometry that it cannot use, or MemoryError for a volume too large
     # to sample, leaves the series undefaced rather than stopping the run;
     # its message, which can quote a value, is dropped.
     except Exception:  # pylint: disable = broad-exception-caught
-        return _Found(SeriesDefacing(None, SeriesProblem.UNREADABLE), frame)
+        return found(SeriesProblem.UNREADABLE)
 
 
 def _phases(slices: list[_Slice]) -> list[list[int]]:
