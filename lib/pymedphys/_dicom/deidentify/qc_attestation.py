@@ -70,6 +70,21 @@ file and the block, so the choice is bound, through the pack, to them, and
 records the choice that its run applied, which a later run applies again
 where the attestation gives none. A choice releases nothing by itself.
 
+The attestation may also give a face verdict of its own for any instance
+that the pack lists in its ``undefaced_instances`` as shown, by its run
+position: an instance in a defaced CT series' Frame of Reference, naming
+none, or referring to a defaced slice, whose outline or pixel data the run
+does not clean of the face (D-050). A verdict on its series does not cover
+it, since the reviewer may have judged the series beside the defaced CT,
+while the outline or pixel data of the instance itself were left as they
+were; its own verdict is the reviewer's judgement of its own previews, the
+pack's previews that draw its pixel data or contours as written, which the
+pack lists as shown only where they draw every frame and every contour of
+it. The pack records the SHA-256 of its source file, so the verdict is
+bound, through the pack, to that file, as a series' verdict is to its
+files, and a later run releases it on a verdict of absent only where it
+writes the pixel data and contours that the pack showed.
+
 The attestation may likewise give a redaction verdict for any instance whose
 Pixel Data the Clean Pixel Data Option cleaned and the pack previewed, by
 its run position, as the pack's ``redactions`` lists it, from the previews
@@ -113,7 +128,7 @@ from .reasons import DoseChoice
 from .text_detection import TextBox
 
 # The format of the attestation document. A change to its fields takes a new label.
-FORMAT = "pymedphys-deid-qc-attestation/5"
+FORMAT = "pymedphys-deid-qc-attestation/6"
 ATTESTATION_FILE = "attestation.json"
 
 _DIGEST = re.compile(r"[0-9a-f]{64}")
@@ -164,6 +179,35 @@ class FaceVerdict:
             raise QcPackError("a face verdict needs its series' first run position")
         if not isinstance(self.face, Face):
             raise QcPackError(f"the face verdict on series {self.series} needs a Face")
+
+
+@dataclasses.dataclass(frozen=True)
+class InstanceFaceVerdict:
+    """A reviewer's face verdict of its own on one instance of the pack's
+    ``undefaced_instances``, from its own previews.
+
+    Attributes
+    ----------
+    position : int
+        The instance's run position, as the pack's ``undefaced_instances``
+        lists it.
+    face : Face
+    """
+
+    position: int
+    face: Face
+
+    def __post_init__(self) -> None:
+        if (
+            not isinstance(self.position, int)
+            or isinstance(self.position, bool)
+            or self.position < 0
+        ):
+            raise QcPackError("an instance's face verdict needs its run position")
+        if not isinstance(self.face, Face):
+            raise QcPackError(
+                f"the face verdict on run position {self.position} needs a Face"
+            )
 
 
 class Redaction(enum.Enum):
@@ -338,6 +382,9 @@ class Attestation:
     dose_choices : tuple of DoseChoiceVerdict
         The dose choices, by RT Dose in run position order, each once;
         empty where the reviewer gave none.
+    instance_faces : tuple of InstanceFaceVerdict
+        The face verdicts of their own on undefaced instances, by run
+        position in order, each once; empty where the reviewer gave none.
     """
 
     reference: str
@@ -352,6 +399,7 @@ class Attestation:
     redactions: tuple[RedactionVerdict, ...] = ()
     confirmed_blocks: tuple[int, ...] = ()
     dose_choices: tuple[DoseChoiceVerdict, ...] = ()
+    instance_faces: tuple[InstanceFaceVerdict, ...] = ()
 
     def __post_init__(self) -> None:
         if not isinstance(self.reference, str) or not _REFERENCE.fullmatch(
@@ -421,6 +469,18 @@ class Attestation:
         if doses != sorted(set(doses)):
             raise QcPackError(
                 "an attestation gives each RT Dose at most one dose choice, in order"
+            )
+        if not isinstance(self.instance_faces, tuple) or not all(
+            isinstance(verdict, InstanceFaceVerdict) for verdict in self.instance_faces
+        ):
+            raise QcPackError(
+                "an attestation's instance face verdicts must be InstanceFaceVerdicts"
+            )
+        own = [verdict.position for verdict in self.instance_faces]
+        if own != sorted(set(own)):
+            raise QcPackError(
+                "an attestation gives each instance at most one face verdict of "
+                "its own, in order"
             )
 
     def __repr__(self) -> str:
@@ -509,6 +569,10 @@ def attestation_document(attestation: Attestation) -> dict:
             {"position": verdict.position, "choice": verdict.choice.value}
             for verdict in attestation.dose_choices
         ],
+        "instance_faces": [
+            {"position": verdict.position, "face": verdict.face.value}
+            for verdict in attestation.instance_faces
+        ],
     }
 
 
@@ -525,6 +589,7 @@ def attest(
     redactions: Iterable[RedactionVerdict] = (),
     confirmed_blocks: Iterable[int] = (),
     dose_choices: Mapping[int, DoseChoice] | None = None,
+    instance_faces: Mapping[int, Face] | None = None,
 ) -> Attestation:
     """Attest to a QC pack, and write the attestation beside it.
 
@@ -560,6 +625,10 @@ def attest(
         A dose choice for each RT Dose that the reviewer chose for, by its
         run position, as the pack's ``dose_checks`` lists it; none if not
         given.
+    instance_faces : mapping of int to Face, optional
+        A face verdict of its own for each instance that the reviewer judged
+        from its own previews, by its run position, as the pack's
+        ``undefaced_instances`` lists it as shown; none if not given.
 
     Returns
     -------
@@ -577,9 +646,11 @@ def attest(
         or a confirmed block names a run position that begins none of the
         pack's eye checks, or one without a sheet of its eyes, or a dose
         choice names a run position that the pack's ``dose_checks`` does not
-        list, or it has already been attested; if an outcome of rejected is
-        given a verdict, a confirmation, or a dose choice; or for any reason
-        that :class:`Attestation` gives.
+        list, or an instance's own face verdict names one that the pack's
+        ``undefaced_instances`` does not list, or lists as not shown, or it
+        has already been attested; if an outcome of rejected is given a
+        verdict, a confirmation, or a dose choice; or for any reason that
+        :class:`Attestation` gives.
     """
     directory = Path(pack_directory)
     data = _pack_bytes(directory)
@@ -590,7 +661,8 @@ def attest(
     by_position = _redaction_verdicts(redactions)
     blocks = _confirmed_blocks(confirmed_blocks)
     doses = _dose_choices({} if dose_choices is None else dose_choices)
-    if outcome is Outcome.REJECTED and (verdicts or by_position or blocks or doses):
+    own = _instance_faces({} if instance_faces is None else instance_faces)
+    if outcome is Outcome.REJECTED and any((verdicts, by_position, blocks, doses, own)):
         # A rejected attestation's verdicts release nothing, and a pack is
         # attested once, so a verdict given with it is refused (D-016).
         raise QcPackError(
@@ -614,6 +686,18 @@ def attest(
             raise QcPackError(
                 f"a dose choice names run position {verdict.position}, which the "
                 "QC pack's dose_checks does not list"
+            )
+    listed = undefaced_instances(data)
+    for verdict in own:
+        if verdict.position not in listed:
+            raise QcPackError(
+                f"an instance's face verdict names run position {verdict.position}, "
+                "which the QC pack's undefaced_instances does not list"
+            )
+        if not listed[verdict.position]:
+            raise QcPackError(
+                f"an instance's face verdict names run position {verdict.position}, "
+                "whose previews do not show all of its pixel data and contours"
             )
     firsts = _firsts(data)
     unknown = [verdict.series for verdict in verdicts if verdict.series not in firsts]
@@ -664,6 +748,7 @@ def attest(
         redactions=by_position,
         confirmed_blocks=blocks,
         dose_choices=doses,
+        instance_faces=own,
     )
     text = json.dumps(attestation_document(attestation), indent=2, ensure_ascii=True)
     try:
@@ -692,6 +777,17 @@ def _dose_choices(choices: Mapping[int, DoseChoice]) -> tuple[DoseChoiceVerdict,
     verdicts = [
         DoseChoiceVerdict(position, choice) for position, choice in choices.items()
     ]
+    return tuple(sorted(verdicts, key=lambda verdict: verdict.position))
+
+
+def _instance_faces(faces: Mapping[int, Face]) -> tuple[InstanceFaceVerdict, ...]:
+    """Return instances' own face verdicts in run position order, after
+    checking them."""
+    if not isinstance(faces, Mapping):
+        raise QcPackError(
+            "instance_faces must map an instance's run position to a Face"
+        )
+    verdicts = [InstanceFaceVerdict(position, face) for position, face in faces.items()]
     return tuple(sorted(verdicts, key=lambda verdict: verdict.position))
 
 
@@ -830,6 +926,35 @@ def dose_checks(data: bytes) -> dict[int, DoseCheck]:
             digest, None if choice is None else DoseChoice(choice)
         )
     return checks
+
+
+def undefaced_instances(data: bytes) -> dict[int, bool]:
+    """Return whether the previews of each undefaced instance of the QC pack
+    ``data`` show it, by its run position.
+
+    Raises
+    ------
+    QcPackError
+        If the pack's ``undefaced_instances`` are not of its format.
+    """
+    malformed = QcPackError("the QC pack is not of its format")
+    entries = json.loads(data.decode("ascii")).get("undefaced_instances")
+    if not isinstance(entries, list):
+        raise malformed
+    listed: dict[int, bool] = {}
+    for entry in entries:
+        if not isinstance(entry, dict):
+            raise malformed
+        position, shown = entry.get("position"), entry.get("shown")
+        if (
+            not isinstance(position, int)
+            or isinstance(position, bool)
+            or position in listed
+            or not isinstance(shown, bool)
+        ):
+            raise malformed
+        listed[position] = shown
+    return listed
 
 
 def _redaction_verdicts(
@@ -1038,14 +1163,15 @@ def _attestation_from(content: bytes) -> Attestation:
             redactions = document["redactions"]
             blocks = document["confirmed_blocks"]
             doses = document["dose_choices"]
+            own = document["instance_faces"]
             if (
                 isinstance(coverage, dict)
                 and isinstance(releaser, dict)
                 and all(
                     isinstance(each, list)
-                    for each in (faces, redactions, blocks, doses)
+                    for each in (faces, redactions, blocks, doses, own)
                 )
-                and all(isinstance(verdict, dict) for verdict in doses)
+                and all(isinstance(verdict, dict) for verdict in (*doses, *own))
             ):
                 if set(releaser) - {"intended_use_checked", "residual_risk_accepted"}:
                     raise QcPackError("the attestation is not of its format")
@@ -1071,6 +1197,10 @@ def _attestation_from(content: bytes) -> Attestation:
                             verdict["position"], DoseChoice(verdict["choice"])
                         )
                         for verdict in doses
+                    ),
+                    instance_faces=tuple(
+                        InstanceFaceVerdict(verdict["position"], Face(verdict["face"]))
+                        for verdict in own
                     ),
                 )
     # UnicodeError and QcPackError are ValueErrors; TypeError covers wrong

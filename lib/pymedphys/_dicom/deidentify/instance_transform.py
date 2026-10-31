@@ -256,6 +256,7 @@ from .run_qc import (
     DoseCheckMaterial,
     Dropped,
     EyeCheckMaterial,
+    UndefacedMaterial,
     PixelRiskMaterial,
     RedactionMaterial,
     SearchMaterial,
@@ -299,6 +300,7 @@ _CONTOURS = "(3006,0040)"  # Contour Sequence
 # Why each slice of a CT series that is held is held: not defaced, for a
 # target that the run cannot keep, or defaced, for eyes that disagree with
 # the globes until a reviewer confirms the block.
+_UNDEFACED = VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME
 _HELD_SERIES = {
     SeriesProblem.TARGET_IN_BLOCK: VisualFeaturesReason.TARGET_IN_FACE_BLOCK,
     SeriesProblem.EYES_DISAGREE: VisualFeaturesReason.EYES_DISAGREE_WITH_ROIS,
@@ -1030,8 +1032,14 @@ class InstanceTransform:
     pixel data, PET instance, or Segmentation in a defaced series' Frame of
     Reference, naming none, or referring to a defaced slice, such as one
     whose contours or pixel data cannot be cut, is held whatever its
-    verdict (:attr:`~.reasons.VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME`),
-    since the run does not clean it of the face. An instance that can show
+    series' verdict
+    (:attr:`~.reasons.VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME`),
+    since the run does not clean it of the face, with its QC material
+    (:class:`~.run_qc.UndefacedMaterial`), unless the face review gives it a
+    verdict of its own (:meth:`~.face_review.FaceReview.own_verdict`), from
+    its own previews, which then holds it as a series' verdict would, in
+    place of its frame and whatever its frame's eyes, since no block cleans
+    anything of it. An instance that can show
     a face (:func:`~.face_review.carries_visual_features`) satisfies the
     option only where the SHA-256 of its source file is in a series that the
     face review marks absent, and the pixel data and contours that it is
@@ -1896,10 +1904,24 @@ class InstanceTransform:
                 if undefaced is None
                 else HeldVisualFeatures(undefaced)
             )
+            # An instance in a defaced frame that the run does not clean of
+            # the face is listed for a verdict of its own, which, where the
+            # review gives one, decides it in place of its frame, as the face
+            # hold already gives it.
+            own = False
+            if frame is not None and frame.reason is _UNDEFACED:
+                own = self._face_review is not None and self._face_review.own_verdict(
+                    hashlib.sha256(data).digest()
+                )
+                qc = (*qc, UndefacedMaterial(own))
+                if own:
+                    frame = None
             # An RT Dose written as received on a reviewer's choice is cleaned
-            # by no block, so a wrong block would leave nothing in it.
+            # by no block, so a wrong block would leave nothing in it, and
+            # likewise an instance released on its own verdict.
             if (
                 frame is None
+                and not own
                 and not (checked and chosen_dose is DoseChoice.AS_WRITTEN)
                 and self._unconfirmed(record, dose if dose is not None else region)
             ):

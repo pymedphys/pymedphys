@@ -49,7 +49,7 @@ from pymedphys._dicom.deidentify.instance_transform import (
     ReleaseGate,
 )
 from pymedphys._dicom.deidentify.policy import CLEAN_PIXEL_DATA, compose_policy
-from pymedphys._dicom.deidentify.qc_pack import new_reference
+from pymedphys._dicom.deidentify.qc_pack import QcPackError, new_reference
 from pymedphys._dicom.deidentify.qc_attestation import (
     Face,
     Redaction,
@@ -451,6 +451,7 @@ def _second(
     confirmed=False,
     dose_choices=None,
     present=(),
+    instance_faces=None,
 ):
     """Attest a copy of the reviewed run's pack, in ``name`` beside it, with
     the head's series, and those of the RT Structure Set, RT Dose, and PET
@@ -459,8 +460,10 @@ def _second(
     of the head's CT and PET slices that the pack previews accepted, or, if
     ``revised``, those of each of its CT slices, revised with that region
     added in their first frame, and, if ``confirmed``, each face block that
-    the pack shows beside the eyes drawn confirmed, and the choice for each
-    RT Dose that ``dose_choices`` names by its file; and run the collection
+    the pack shows beside the eyes drawn confirmed, the choice for each
+    RT Dose that ``dose_choices`` names by its file, and the face verdict of
+    its own for each instance that ``instance_faces`` names by its file; and
+    run the collection
     again under the option and ``others``, given those verdicts, without
     the head's slices if ``without_ct``.
 
@@ -504,6 +507,9 @@ def _second(
         ),
         dose_choices={
             by_name[file]: choice for file, choice in (dose_choices or {}).items()
+        },
+        instance_faces={
+            by_name[file]: face for file, face in (instance_faces or {}).items()
         },
     )
     instances = reviewed.instances
@@ -576,6 +582,77 @@ def fixture_reviewed_with_pixel_data():
 @pytest.fixture(name="defaced", scope="module")
 def fixture_defaced(reviewed_low):
     return _second(reviewed_low, name="d")
+
+
+# The reviewer saw no face in the own previews of each PET instance that the
+# run did not clean in the defaced frame.
+@pytest.fixture(name="own_absent", scope="module")
+def fixture_own_absent(reviewed_low):
+    return _second(
+        reviewed_low,
+        name="o",
+        instance_faces=dict.fromkeys(_UNDEFACED, Face.ABSENT),
+    )
+
+
+# The reviewer saw no face in the first's own previews, and saw one in the
+# second's.
+@pytest.fixture(name="own_mixed", scope="module")
+def fixture_own_mixed(reviewed_low):
+    return _second(
+        reviewed_low,
+        name="om",
+        instance_faces={_UNDEFACED[0]: Face.ABSENT, _UNDEFACED[1]: Face.PRESENT},
+    )
+
+
+# As own_absent, but with the series of the first marked present.
+@pytest.fixture(name="own_series_present", scope="module")
+def fixture_own_series_present(reviewed_low):
+    return _second(
+        reviewed_low,
+        name="op",
+        instance_faces=dict.fromkeys(_UNDEFACED, Face.ABSENT),
+        present=(_UNDEFACED[0],),
+    )
+
+
+# As own_absent, in a run without the head's slices, which defaces nothing.
+@pytest.fixture(name="own_without_ct", scope="module")
+def fixture_own_without_ct(reviewed_low):
+    return _second(
+        reviewed_low,
+        name="ow",
+        without_ct=True,
+        instance_faces=dict.fromkeys(_UNDEFACED, Face.ABSENT),
+    )
+
+
+# The run that own_absent made, reviewed in turn with its series marked absent
+# and no verdict of an instance's own.
+@pytest.fixture(name="own_reviewed_again", scope="module")
+def fixture_own_reviewed_again(reviewed_low, own_absent):
+    assert own_absent
+    return _second(_reviewed_again(reviewed_low, "o"), name="o3")
+
+
+# The reviewer saw no face in the dose levels of the grid placed too far for
+# the block to be found on it, which the run does not set to zero.
+_FAR_DOSE = "06-rtdose-huge-position.dcm"
+
+
+@pytest.fixture(name="hot_own", scope="module")
+def fixture_hot_own(reviewed_hot):
+    return _second(reviewed_hot, name="ho", instance_faces={_FAR_DOSE: Face.ABSENT})
+
+
+@pytest.fixture(name="eyes_away_own", scope="module")
+def fixture_eyes_away_own(reviewed_eyes_away):
+    return _second(
+        reviewed_eyes_away,
+        name="eo",
+        instance_faces=dict.fromkeys(_UNDEFACED, Face.ABSENT),
+    )
 
 
 @pytest.fixture(name="multi_frame", scope="module")
@@ -855,6 +932,206 @@ def test_pet_instances_in_the_defaced_frame_that_are_not_cleaned_are_held(
         if entry["stage"] == "visual-features"
     }
     assert counts[held.reason.value] == len(_UNDEFACED)
+
+
+def _undefaced_listed(reviewed, name=None):
+    """The undefaced instances of the reviewed run's pack, or of the run that
+    :func:`_second` made of it in ``name``, by file name."""
+    again = reviewed if name is None else _reviewed_again(reviewed, name)
+    document = json.loads(again.pack.read_text("utf-8"))
+    return {
+        again.names[entry["position"]]: entry
+        for entry in document["undefaced_instances"]
+    }
+
+
+def _undefaced_report(held=0, released=(), held_with_own_verdict=0):
+    return {
+        "held": held,
+        "released": sorted(released),
+        "held_with_own_verdict": held_with_own_verdict,
+    }
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.2-01")
+def test_the_pack_lists_each_undefaced_instance_for_a_verdict_of_its_own(
+    reviewed_low, defaced
+):
+    _, _, _, report = defaced
+    listed = _undefaced_listed(reviewed_low)
+
+    # Only the PET instances that the run did not clean are listed, each
+    # shown, since its previews drew every frame, and nothing else in the
+    # frame is, since the run cleaned it.
+    assert set(listed) == set(_UNDEFACED)
+    assert all(entry["shown"] for entry in listed.values())
+    entries = {
+        reviewed_low.names[e["position"]]: e
+        for e in json.loads(reviewed_low.pack.read_text("utf-8"))["instances"]
+    }
+    for name in _UNDEFACED:
+        assert entries[name]["pixel_sha256"] is not None
+        assert entries[name]["contour_sha256"] is not None
+    assert report["face_review"]["undefaced_in_defaced_frame"] == _undefaced_report(
+        held=len(_UNDEFACED)
+    )
+    # The run without verdicts of their own lists them again, held.
+    assert set(_undefaced_listed(reviewed_low, "d")) == set(_UNDEFACED)
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.2-01", "PS3.15-E.3.2-02")
+def test_an_undefaced_instance_is_released_on_a_verdict_of_absent_of_its_own(
+    reviewed_low, own_absent
+):
+    _, outcomes, reasons, report = own_absent
+
+    # The reviewer judged each from its own previews, which drew every frame
+    # as written, so each is released as received, with the option's code,
+    # though the run does not clean it in its defaced frame.
+    names = []
+    for name in _UNDEFACED:
+        disposition, dataset = outcomes[name]
+        assert disposition == "released", reasons[name]
+        assert dataset.RecognizableVisualFeatures == "NO"
+        assert _codes(dataset)[-2:] == [markers.PROFILE_CODE, CODE]
+        source = pydicom.dcmread(reviewed_low.instances / name)
+        assert dataset.PixelData == source.PixelData
+        names.append(_output_name(dataset))
+    assert report["face_review"]["undefaced_in_defaced_frame"] == _undefaced_report(
+        released=names
+    )
+    assert set(names) <= set(report["released"])
+    # Everything else in the frame is as without such verdicts.
+    assert outcomes[_STRUCTURE_SET][0] == "released", reasons[_STRUCTURE_SET]
+    assert outcomes[_DOSE[0]][0] == "released", reasons[_DOSE[0]]
+    # The run lists them again for the next review, released.
+    listed = _undefaced_listed(reviewed_low, "o")
+    assert set(listed) == set(_UNDEFACED)
+    assert all(entry["shown"] for entry in listed.values())
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.2-01")
+def test_a_verdict_of_present_of_its_own_or_on_its_series_holds_it(
+    own_mixed, own_series_present
+):
+    _, outcomes, reasons, report = own_mixed
+    present = HeldVisualFeatures(VisualFeaturesReason.FACE_PRESENT)
+
+    # Its own verdict decides it in place of its frame, so the instance in
+    # which the reviewer saw a face is held for that face alone.
+    assert outcomes[_UNDEFACED[0]][0] == "released", reasons[_UNDEFACED[0]]
+    assert outcomes[_UNDEFACED[1]] == ("held-for-review", None)
+    assert reasons[_UNDEFACED[1]] == {present}
+    section = report["face_review"]["undefaced_in_defaced_frame"]
+    assert section["held"] == 0
+    assert section["held_with_own_verdict"] == 1
+    assert len(section["released"]) == 1
+
+    # A face seen in its series holds it whatever its own verdict.
+    _, outcomes, reasons, report = own_series_present
+    assert outcomes[_UNDEFACED[0]] == ("held-for-review", None)
+    assert reasons[_UNDEFACED[0]] == {present}
+    assert (
+        report["face_review"]["undefaced_in_defaced_frame"]["held_with_own_verdict"]
+        >= 1
+    )
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.2-01", "PS3.15-E.3.2-02")
+def test_a_verdict_of_its_own_is_on_its_pixel_data_whatever_is_defaced(
+    reviewed_low, own_without_ct
+):
+    _, outcomes, reasons, report = own_without_ct
+
+    # Without the head's slices nothing is defaced, and each is written as
+    # the reviewed run wrote it, which its own verdict judged, so it is
+    # released; it is not in a defaced frame, so it is not counted as such.
+    for name in _UNDEFACED:
+        disposition, dataset = outcomes[name]
+        assert disposition == "released", reasons[name]
+        source = pydicom.dcmread(reviewed_low.instances / name)
+        assert dataset.PixelData == source.PixelData
+    assert report["face_review"]["undefaced_in_defaced_frame"] == _undefaced_report()
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.2-01")
+def test_a_released_undefaced_instance_needs_a_new_verdict_of_its_own(
+    own_reviewed_again,
+):
+    _, outcomes, reasons, report = own_reviewed_again
+    held = HeldVisualFeatures(VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME)
+
+    # The earlier run released each on its own verdict, and its pack listed
+    # each again, so the verdict of absent on its series in that pack does
+    # not cover it either, and with none of its own it is held.
+    for name in _UNDEFACED:
+        assert outcomes[name] == ("held-for-review", None), name
+        assert reasons[name] == {
+            held,
+            HeldVisualFeatures(VisualFeaturesReason.NO_FACE_VERDICT),
+        }, name
+    assert report["face_review"]["undefaced_in_defaced_frame"] == _undefaced_report(
+        held=len(_UNDEFACED)
+    )
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.2-01", "PS3.15-E.3.2-02")
+def test_a_verdict_of_its_own_needs_no_confirmed_block(eyes_away_own):
+    _, outcomes, reasons, _ = eyes_away_own
+
+    # No block cleans anything of an instance written as received, so the
+    # eyes that disagree with the block, which hold the head's slices, do
+    # not hold it.
+    assert outcomes[_head_name(0)][0] == "held-for-review"
+    for name in _UNDEFACED:
+        assert outcomes[name][0] == "released", reasons[name]
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.2-01", "PS3.15-E.3.2-02")
+def test_an_rt_dose_not_set_to_zero_is_released_on_its_own_dose_levels(
+    reviewed_hot, hot_own
+):
+    _, outcomes, reasons, report = hot_own
+    disposition, dataset = outcomes[_FAR_DOSE]
+
+    # Its own verdict was on its dose levels, which drew every frame as
+    # written, so it is released as received, while the other grids that
+    # cannot be placed, without one, are still held for their frame.
+    assert disposition == "released", reasons[_FAR_DOSE]
+    assert dataset.RecognizableVisualFeatures == "NO"
+    source = pydicom.dcmread(reviewed_hot.instances / _FAR_DOSE)
+    assert dataset.PixelData == source.PixelData
+    held = HeldVisualFeatures(VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME)
+    for name in set(_UNPLACEABLE) - {_FAR_DOSE}:
+        assert outcomes[name] == ("held-for-review", None), name
+        assert held in reasons[name], name
+    section = report["face_review"]["undefaced_in_defaced_frame"]
+    assert section["released"] == [_output_name(dataset)]
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.2-01")
+def test_an_undefaced_instance_its_pack_does_not_show_gets_no_verdict(
+    reviewed_hot,
+):
+    listed = _undefaced_listed(reviewed_hot)
+    by_name = {name: position for position, name in reviewed_hot.names.items()}
+
+    # No dose-levels preview draws a grid of direction cosines that PS3.3
+    # does not allow, or of a spacing or offsets too great to sample, so the
+    # pack lists each as not shown, and refuses a verdict of its own on it.
+    # One placed too far for its block to be found on it is still drawn in
+    # its own grid, which needs no place in the patient, so it is shown.
+    assert set(_UNPLACEABLE) <= set(listed)
+    far = _FAR_DOSE
+    assert listed[far]["shown"]
+    unshown = sorted(set(_UNPLACEABLE) - {far})
+    assert not any(listed[name]["shown"] for name in unshown)
+    directory = reviewed_hot.directory / "unshown"
+    shutil.copytree(reviewed_hot.pack.parent, directory)
+    for name in unshown:
+        with pytest.raises(QcPackError, match="do not show all"):
+            _attest(directory, {}, instance_faces={by_name[name]: Face.ABSENT})
+    assert not (directory / "attestation.json").exists()
 
 
 def _contours(dataset, target=False):

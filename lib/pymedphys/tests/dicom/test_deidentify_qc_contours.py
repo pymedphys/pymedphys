@@ -1503,8 +1503,11 @@ def test_the_reader_takes_a_contours_digest_only_where_a_sheet_shows_them():
     document["previews"] = [
         {"kind": "structure-set-contours", "frames": [{"position": 0, "frame": 0}]}
     ]
-    files_of = face_review._series_files(json.dumps(document).encode("ascii"))
+    files_of, by_position = face_review._series_files(
+        json.dumps(document).encode("ascii")
+    )
     (entry,) = files_of[0]
+    assert by_position == {0: entry}
     assert entry[2] == bytes.fromhex("2f" * 32) and not entry[3]
 
 

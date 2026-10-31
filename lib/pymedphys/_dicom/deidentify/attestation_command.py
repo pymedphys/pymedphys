@@ -39,7 +39,15 @@ its run position: ``--dose-as-written POSITION`` to write it as received,
 to be released on a verdict of absent on its series from its own
 dose-levels previews, and ``--dose-set-to-zero POSITION`` to set it to zero
 in the block anyway, to be released only on a verdict on the later run's
-previews of the grid as set to zero, each repeatable. Likewise, they may give a
+previews of the grid as set to zero, each repeatable. They may give a face
+verdict of its own on any instance that the pack lists in its
+``undefaced_instances`` as shown, which lies in a defaced series' Frame of
+Reference, names none, or refers to a defaced slice, and whose outline or
+pixel data the run did not clean of the face, by its run position, from
+its own previews, which a verdict on its series does not cover:
+``--instance-face-absent POSITION`` where they saw no recognisable face in
+them, and ``--instance-face-present POSITION`` where they saw one, each
+repeatable. Likewise, they may give a
 redaction verdict on any instance whose Pixel Data the Clean Pixel Data
 Option cleaned and the pack previewed, by its run position:
 ``--redaction-accepted POSITION`` where the pack's regions cover every
@@ -64,8 +72,10 @@ reviews, a face verdict on a position that begins none of the pack's series,
 a series given both verdicts, a confirmed block on a position that begins
 none of the pack's eye checks, or one without a sheet of its eyes, a dose
 choice on a position that the pack's ``dose_checks`` does not list, an RT
-Dose given both choices, a verdict, a confirmation, or a choice with an
-outcome of rejected, a
+Dose given both choices, an instance's own face verdict on a position that
+the pack's ``undefaced_instances`` does not list, or lists as not shown, an
+instance given both of its own face verdicts, a verdict, a confirmation, or
+a choice with an outcome of rejected, a
 redaction verdict on a position that the
 pack does not list as cleaned and previewed, an instance given more than
 one redaction verdict, a revised instance without a region, and a region
@@ -84,7 +94,8 @@ that a release report records (D-016).
 The reviewer's name and the pack's path can identify people, so neither the
 summary nor any message quotes them; the summary gives the outcome, the
 reviews done, how many series have each face verdict, how many blocks were
-confirmed, how many RT Doses were given each dose choice, how many instances
+confirmed, how many RT Doses were given each dose choice, how many
+undefaced instances have each face verdict of their own, how many instances
 have each redaction verdict, each region that a revised verdict adds, by
 run position and frame, with the preview of that frame, so that the
 reviewer can check the region against the frame it was read from, and the
@@ -143,8 +154,9 @@ def summary_lines(
     It gives the pack's reference, the outcome, whether each review that
     D-017 requires was done, the releaser's confirmations, how many series
     have each face verdict, how many blocks the reviewer confirmed, how
-    many RT Doses have each dose choice, how many instances have each
-    redaction verdict,
+    many RT Doses have each dose choice, how many undefaced instances have
+    each face verdict of their own, how many instances have each redaction
+    verdict,
     each region that a revised verdict adds, with the file in the pack that
     previews its frame where ``previews``, by run position and frame, names
     one, and that the published release report is unchanged.
@@ -154,6 +166,7 @@ def summary_lines(
     faces = [verdict.face for verdict in attestation.faces]
     redactions = [verdict.redaction for verdict in attestation.redactions]
     doses = [verdict.choice for verdict in attestation.dose_choices]
+    own = [verdict.face for verdict in attestation.instance_faces]
     return [
         f"QC pack {attestation.reference}: {attestation.outcome.value}",
         *(
@@ -184,6 +197,10 @@ def summary_lines(
                 ("to set to zero", DoseChoice.SET_TO_ZERO),
             )
         ),
+        "  undefaced instances without a recognisable face in their own "
+        f"previews: {own.count(Face.ABSENT)}",
+        "  undefaced instances with a recognisable face in their own "
+        f"previews: {own.count(Face.PRESENT)}",
         *(
             f"  cleaned instances {verdict}: {redactions.count(redaction)}"
             for verdict, redaction in (
@@ -321,6 +338,21 @@ def build_parser(*, stderr: TextIO | None = None) -> argparse.ArgumentParser:
                 f"checks, a later run is to {chosen}; repeatable"
             ),
         )
+    for flag, seen in (
+        ("--instance-face-absent", "no recognisable face"),
+        ("--instance-face-present", "a recognisable face"),
+    ):
+        parser.add_argument(
+            flag,
+            action="append",
+            type=int,
+            default=[],
+            metavar="POSITION",
+            help=(
+                f"you saw {seen} in the own previews of the instance at this run "
+                "position in the QC pack's undefaced instances; repeatable"
+            ),
+        )
     for flag, verdict in (
         ("--redaction-accepted", "its regions cover every burned-in text"),
         (
@@ -445,6 +477,15 @@ def main(
             stderr,
         )
         return EXIT_NOT_RECORDED
+    own_absent = set(arguments.instance_face_absent)
+    own_present = set(arguments.instance_face_present)
+    if own_absent & own_present:
+        _print(
+            "error: an instance is given both face verdicts of its own; nothing "
+            "was recorded",
+            stderr,
+        )
+        return EXIT_NOT_RECORDED
     try:
         redactions = _redaction_verdicts(arguments)
     except ValueError as error:
@@ -472,6 +513,10 @@ def main(
             dose_choices={
                 **dict.fromkeys(as_written, DoseChoice.AS_WRITTEN),
                 **dict.fromkeys(set_to_zero, DoseChoice.SET_TO_ZERO),
+            },
+            instance_faces={
+                **dict.fromkeys(own_absent, Face.ABSENT),
+                **dict.fromkeys(own_present, Face.PRESENT),
             },
         )
     except QcPackError as error:

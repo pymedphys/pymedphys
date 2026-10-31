@@ -193,6 +193,7 @@ def _attest(
     redactions=(),
     confirmed_blocks=(),
     dose_choices=None,
+    instance_faces=None,
 ):
     return qc_attestation.attest(
         directory,
@@ -204,6 +205,7 @@ def _attest(
         redactions=redactions,
         confirmed_blocks=confirmed_blocks,
         dose_choices=dose_choices,
+        instance_faces=instance_faces,
     )
 
 
@@ -550,7 +552,7 @@ def test_the_repr_shows_only_the_reference_and_counts():
 
     assert repr(review) == (
         f"FaceReview(reference={REFERENCE!r}, absent=2, present=1, "
-        "confirmed_blocks=0, dose_choices=0)"
+        "confirmed_blocks=0, dose_choices=0, own_verdicts=0)"
     )
 
 
@@ -810,6 +812,11 @@ def test_the_report_names_the_reviewed_pack_by_its_reference():
             "held_as_written": 0,
             "released_set_to_zero": [],
             "held_set_to_zero": 0,
+        },
+        "undefaced_in_defaced_frame": {
+            "held": 0,
+            "released": [],
+            "held_with_own_verdict": 0,
         },
     }
     assert document["held_for_review"] == [
@@ -1179,7 +1186,7 @@ def test_the_report_names_the_attested_pack(second_run):
     attestation, _, report, _ = second_run
 
     assert report["face_review"]["reference"] == attestation.reference
-    assert report["format"] == "pymedphys-deid-release-report/39"
+    assert report["format"] == "pymedphys-deid-release-report/42"
 
 
 def test_the_report_counts_the_ct_series_that_were_not_defaced(second_run):

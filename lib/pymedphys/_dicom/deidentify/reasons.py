@@ -229,7 +229,8 @@ class VisualFeaturesReason(enum.Enum):
     # Frame of Reference of a CT series that the run defaces, whose outline
     # or pixel data the run does not clean of the face, such as one in other frames
     # too or that cannot be cut, and which a reviewer may have judged from
-    # the defaced CT
+    # the defaced CT, so that only a verdict of its own, from its own
+    # previews, which no reviewed QC pack gave it, could decide it
     UNDEFACED_IN_DEFACED_FRAME = "undefaced-in-defaced-frame"
     # a CT slice of a series whose face block a target may reach, so that
     # the series is not defaced

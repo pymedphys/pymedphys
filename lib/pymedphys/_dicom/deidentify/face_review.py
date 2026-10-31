@@ -50,6 +50,20 @@ gives each dose choice, the attestation's or else the one that the reviewed
 run applied, by the digest that binds it to the RT Dose's source file and
 the block (:attr:`FaceReview.dose_choices`).
 
+An instance that the reviewed run released or held in a defaced CT series'
+Frame of Reference, naming none, or referring to a defaced slice, whose
+outline or pixel data it did not clean of the face, which the pack lists
+in its ``undefaced_instances``, is never covered by a verdict on its
+series, since the reviewer may have judged that beside the defaced CT. It
+is covered only by a face verdict of its own, which the attestation gives
+by its run position, from the pack's previews of it alone, which the pack
+lists as shown only where they draw every frame of its pixel data and
+every contour as written (:attr:`FaceReview.own_verdicts`). Its own
+verdict counts as a verdict on its file as a series' does, so a verdict of
+absent releases it only where a later run writes the pixel data and
+contours that the pack showed, and a verdict of present on it, or on its
+series, holds it.
+
 The verdicts are read by digest, never by path or run position, so the
 second run may discover the files in another order, or among others, which
 have no verdict.
@@ -66,7 +80,14 @@ import struct
 
 from pymedphys._imports import pydicom
 
-from .qc_attestation import Face, Outcome, attested_pack, dose_checks, eye_checks
+from .qc_attestation import (
+    Face,
+    Outcome,
+    attested_pack,
+    dose_checks,
+    eye_checks,
+    undefaced_instances,
+)
 from .qc_pack import (
     NO_CONTOURS_SHA256,
     NO_PIXELS_SHA256,
@@ -111,9 +132,12 @@ class FaceReview:
         by its frame, by naming none, or by a reference to a defaced slice,
         or held as an RT Dose with too much dose in that series' block to
         set to zero (:attr:`~.reasons.VisualFeaturesReason.DOSE_IN_FACE_BLOCK`)
-        where the attestation did not choose to have it written as received.
+        where the attestation did not choose to have it written as received,
+        and that of each source file of an instance that the reviewer gave
+        a face verdict of its own of absent.
     present : frozenset of bytes
-        Likewise, of each series marked :attr:`~.qc_attestation.Face.PRESENT`.
+        Likewise, of each series marked :attr:`~.qc_attestation.Face.PRESENT`,
+        and of each instance given a face verdict of its own of present.
     absent_pixels : frozenset of (bytes, bytes)
         The SHA-256 of each source file in ``absent`` whose written file the
         pack had, with the :func:`pixel_data_sha256` of that file's pixel
@@ -148,6 +172,14 @@ class FaceReview:
         gives it, the choice, and whether the reviewed run wrote it set to
         zero, so that its previews showed it so. Each digest once; none by
         default.
+    own_verdicts : frozenset of bytes, optional
+        The SHA-256 of each source file of an instance that the reviewed
+        pack lists in its ``undefaced_instances`` and that the reviewer gave
+        a face verdict of its own, of either kind, which is in ``absent`` or
+        ``present`` by that verdict; a run given the review holds such an
+        instance, which it does not clean of the face in a defaced frame,
+        by that verdict, as :meth:`hold_reason` gives it, in place of
+        holding it for its frame. None by default.
     """
 
     reference: str
@@ -159,13 +191,19 @@ class FaceReview:
     absent_dose_frames: frozenset[tuple[bytes, bytes, int]] | None = None
     confirmed_blocks: frozenset[bytes] = frozenset()
     dose_choices: frozenset[tuple[bytes, DoseChoice, bool]] = frozenset()
+    own_verdicts: frozenset[bytes] = frozenset()
 
     def __post_init__(self) -> None:
         if not isinstance(self.reference, str) or not re.fullmatch(
             r"A-[0-9a-f]{32}", self.reference
         ):
             raise QcPackError("a face review needs the reviewed pack's reference")
-        for digests in (self.absent, self.present, self.confirmed_blocks):
+        for digests in (
+            self.absent,
+            self.present,
+            self.confirmed_blocks,
+            self.own_verdicts,
+        ):
             if not isinstance(digests, frozenset) or not all(
                 isinstance(d, bytes) and len(d) == 32 for d in digests
             ):
@@ -216,14 +254,25 @@ class FaceReview:
                 "a face review's dose choices are a choice and whether it was "
                 "seen set to zero, for each dose check's SHA-256 once"
             )
+        if not self.own_verdicts <= self.absent | self.present:
+            raise QcPackError(
+                "a face review's own verdicts are of files it marks absent or present"
+            )
 
     def __repr__(self) -> str:
         return (
             f"FaceReview(reference={self.reference!r}, absent={len(self.absent)}, "
             f"present={len(self.present)}, "
             f"confirmed_blocks={len(self.confirmed_blocks)}, "
-            f"dose_choices={len(self.dose_choices)})"
+            f"dose_choices={len(self.dose_choices)}, "
+            f"own_verdicts={len(self.own_verdicts)})"
         )
+
+    def own_verdict(self, digest: bytes) -> bool:
+        """Whether the reviewer gave the instance of a source file, by its
+        SHA-256, a face verdict of its own, which then decides it in place
+        of a hold for its defaced frame."""
+        return digest in self.own_verdicts
 
     def dose_choice(self, check: bytes) -> tuple[DoseChoice, bool] | None:
         """Return the choice for the RT Dose and block that a dose check's
@@ -321,7 +370,9 @@ def read_face_review(pack_directory: os.PathLike | str) -> FaceReview:
         so; nor is one whose contours the pack could not show, since its
         verdict was on none of them. Each RT Dose of the pack's
         ``dose_checks`` has the attestation's dose choice, or else the one
-        that the pack's run applied, if any.
+        that the pack's run applied, if any. A file of the pack's
+        ``undefaced_instances`` is never taken by its series' verdict, but
+        by a verdict of its own where the attestation gives one.
 
     Raises
     ------
@@ -334,8 +385,9 @@ def read_face_review(pack_directory: os.PathLike | str) -> FaceReview:
         list, or an instance's contours' or pixel data's SHA-256 has no
         preview that shows them, or a confirmed block names no eye check
         of the pack with a sheet of its eyes, or a dose choice names no
-        dose check of the pack, or two dose checks share a digest. The
-        message names no path and no value.
+        dose check of the pack, or two dose checks share a digest, or an
+        instance's own face verdict names no undefaced instance of the pack
+        that it lists as shown. The message names no path and no value.
     """
     attestation, data = attested_pack(pack_directory)
     if attestation.outcome is not Outcome.ATTESTED:
@@ -350,11 +402,19 @@ def read_face_review(pack_directory: os.PathLike | str) -> FaceReview:
         position: chosen.get(position, check.choice)
         for position, check in doses.items()
     }
-    files = _series_files(
+    listed = undefaced_instances(data)
+    own = {verdict.position: verdict.face for verdict in attestation.instance_faces}
+    if not all(listed.get(position) for position in own):
+        raise QcPackError(
+            "an instance's face verdict names no undefaced instance of the QC "
+            "pack that it shows"
+        )
+    files, by_position = _series_files(
         data,
         frozenset(
             p for p, choice in choices.items() if choice is DoseChoice.AS_WRITTEN
         ),
+        frozenset(listed),
     )
     checks = eye_checks(data)
     if not all(
@@ -378,6 +438,18 @@ def read_face_review(pack_directory: os.PathLike | str) -> FaceReview:
     # whatever a later run defaces. One whose contours no contour sheet
     # showed was judged without them.
     absent = {each for each in by_face[Face.ABSENT] if not each[3]}
+    # Such a file, in a defaced frame and not cleaned of the face, is judged
+    # by its own verdict instead, from its own previews, which showed all of
+    # it, so the pack recorded the digests that bind the verdict to them.
+    for position, face in own.items():
+        if position not in by_position:
+            raise QcPackError(
+                "an instance's face verdict names an instance without its "
+                "source's SHA-256"
+            )
+        (absent if face is Face.ABSENT else by_face[Face.PRESENT]).add(
+            by_position[position]
+        )
     return FaceReview(
         attestation.reference,
         frozenset(each[0] for each in absent),
@@ -405,6 +477,7 @@ def read_face_review(pack_directory: os.PathLike | str) -> FaceReview:
             for first in attestation.confirmed_blocks
         ),
         _dose_choices(doses, choices),
+        frozenset(by_position[position][0] for position in own),
     )
 
 
@@ -436,9 +509,10 @@ def _dose_choices(
 
 
 # A source file's SHA-256, those of the pixel data and the contours written
-# of it, if any, whether a verdict of absent leaves it out: where the run
-# held it beside a CT series that it defaced, as received, or the pack could
-# not show its contours; and how many frames of pixel data other than none
+# of it, if any, whether a verdict of absent on its series leaves it out:
+# where the run held it beside a CT series that it defaced, as received, or
+# released it on a verdict of its own, or the pack could not show its
+# contours; and how many frames of pixel data other than none
 # its previews showed, from the first, where it has their digest, and how
 # many its dose-levels previews showed, where they show any so.
 _File = tuple[bytes, bytes | None, bytes | None, bool, int | None, int | None]
@@ -454,12 +528,17 @@ DOSE_IN_FACE_BLOCK_TEXT = (
 
 
 def _series_files(
-    data: bytes, as_written: frozenset[int] = frozenset()
-) -> dict[int, frozenset[_File]]:
+    data: bytes,
+    as_written: frozenset[int] = frozenset(),
+    undefaced: frozenset[int] = frozenset(),
+) -> tuple[dict[int, frozenset[_File]], dict[int, _File]]:
     """Return each series' files, by the series' first run position, a verdict
     of absent leaving out each file held as an RT Dose with too much dose in
     a face block to set to zero there unless it is at a run position of
-    ``as_written``, chosen to be written as received."""
+    ``as_written``, chosen to be written as received, and each at a run
+    position of ``undefaced``, released or held, which only a verdict of its
+    own covers; and each instance's file with a source digest, by its run
+    position."""
     malformed = QcPackError("the QC pack is not of its format")
     document = json.loads(data.decode("ascii"))  # attested_pack has parsed it
     instances = document.get("instances")
@@ -501,6 +580,7 @@ def _series_files(
                 None if pixels is None else bytes.fromhex(pixels),
                 None if contours is None else bytes.fromhex(contours),
                 UNDEFACED_TEXT in reasons
+                or position in undefaced
                 or (DOSE_IN_FACE_BLOCK_TEXT in reasons and position not in as_written)
                 or position in unshown,
                 frames,
@@ -514,7 +594,7 @@ def _series_files(
         if not all(isinstance(p, int) and p in digests for p in positions):
             raise malformed
         files[positions[0]] = frozenset(digests[p] for p in positions)
-    return files
+    return files, digests
 
 
 def _previews(

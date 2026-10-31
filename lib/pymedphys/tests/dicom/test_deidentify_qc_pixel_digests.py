@@ -623,8 +623,11 @@ def test_the_reader_takes_pixel_data_s_digest_only_where_a_preview_shows_them():
     document["previews"] = [
         {"kind": "instance", "frames": [{"position": 0, "frame": 0}]}
     ]
-    files_of = face_review._series_files(json.dumps(document).encode("ascii"))
+    files_of, by_position = face_review._series_files(
+        json.dumps(document).encode("ascii")
+    )
     (entry,) = files_of[0]
+    assert by_position == {0: entry}
     assert entry[1] == bytes.fromhex("1e" * 32)
     # It carries how many frames, from the first, the previews showed, and
     # none that dose levels showed.
@@ -633,13 +636,13 @@ def test_the_reader_takes_pixel_data_s_digest_only_where_a_preview_shows_them():
     with pytest.raises(QcPackError, match="not of its format"):
         face_review._series_files(json.dumps(document).encode("ascii"))
     document["previews"][0]["frames"][1]["frame"] = 1
-    (entry,) = face_review._series_files(json.dumps(document).encode("ascii"))[0]
+    (entry,) = face_review._series_files(json.dumps(document).encode("ascii"))[0][0]
     assert entry[4] == 2
     # Dose levels' frames count for both.
     document["previews"].append(
         {"kind": "series-dose-levels", "frames": [{"position": 0, "frame": 0}]}
     )
-    (entry,) = face_review._series_files(json.dumps(document).encode("ascii"))[0]
+    (entry,) = face_review._series_files(json.dumps(document).encode("ascii"))[0][0]
     assert entry[4:] == (2, 1)
     document["not_previewed"] = [{"position": 0, "reason": "unreadable-pixel-data"}]
     with pytest.raises(QcPackError, match="not of its format"):

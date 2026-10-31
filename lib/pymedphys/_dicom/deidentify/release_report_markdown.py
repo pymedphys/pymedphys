@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# pylint: disable = too-many-lines
+# One module renders every section of the report, each checked as it is
+# read, so it is long.
+
 """The release report's human-readable form.
 
 :func:`to_markdown` gives the text of a release report as CommonMark with
@@ -359,7 +363,14 @@ def _face_review(section: object) -> list[Block]:
     if section is None:
         return []
     section = _fields(
-        "face_review", section, ("reference", "ct_series", "rt_doses_in_face_block")
+        "face_review",
+        section,
+        (
+            "reference",
+            "ct_series",
+            "rt_doses_in_face_block",
+            "undefaced_in_defaced_frame",
+        ),
     )
     series = _fields(
         "face_review ct_series",
@@ -422,6 +433,38 @@ def _face_review(section: object) -> list[Block]:
         ],
         _table(("Reason", "Series"), rows) if rows else [_NONE],
         *_doses_in_face_block(section["rt_doses_in_face_block"]),
+        *_undefaced_in_defaced_frame(section["undefaced_in_defaced_frame"]),
+    ]
+
+
+def _undefaced_in_defaced_frame(section: object) -> list[Block]:
+    field = "face_review undefaced_in_defaced_frame"
+    undefaced = _fields(field, section, ("held", "released", "held_with_own_verdict"))
+    rows = [
+        (_code(f"{field} released", output),)
+        for output in _list(f"{field} released", undefaced["released"])
+    ]
+    return [
+        [
+            "RT Structure Sets, RT Doses, PET images, and Segmentations in the "
+            "Frame of Reference of a defaced CT series, naming none, or "
+            "referring to a defaced slice, whose outlines or pixel data the "
+            "run does not clean of the face, which a verdict on their series "
+            "does not release, since it may have been given beside the "
+            "defaced CT, and which are released only where a reviewer saw no "
+            "recognisable face in each one's own previews: held without such "
+            "a verdict: "
+            + _tally(f"{field} held", undefaced["held"])
+            + "; held with one, since it or its series showed a face, or the "
+            "run writes other pixel data or contours of it than the QC pack "
+            "showed: "
+            + _tally(
+                f"{field} held_with_own_verdict", undefaced["held_with_own_verdict"]
+            )
+            + ". Each released on its own verdict, by its output name, is "
+            "written with its outlines and pixel data not cleaned of the face:"
+        ],
+        _table(("Output name",), rows) if rows else [_NONE],
     ]
 
 

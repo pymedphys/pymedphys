@@ -81,7 +81,14 @@ A pack holds, for one run:
   to its source file and the block, the choice that the run applied, if
   any, and the greatest dose there as a fraction of the grid's greatest,
   by which an attestation chooses whether a later run writes it as
-  received or sets it to zero anyway (D-051);
+  received or sets it to zero anyway (D-051); and ``undefaced_instances``:
+  each instance that the run released or held in a defaced CT series'
+  Frame of Reference, naming none, or referring to a defaced slice, whose
+  outline or pixel data it does not clean of the face, with whether the
+  pack's previews show its pixel data and contours as written, which they
+  do only where they draw every frame and contour in a way that could show
+  a face, by which an attestation gives it a face verdict of its own
+  (D-050);
 - ``redactions``: each released or held instance whose Pixel Data the
   Clean Pixel Data Option cleaned, with why it is held, its number of
   frames, its Rows and Columns, the regions blacked out in each frame,
@@ -157,7 +164,7 @@ from .reviewed_roi_names import Outcome
 from .text_detection import TextBox
 
 # The format of the pack document. A change to its fields takes a new label.
-FORMAT = "pymedphys-deid-qc-pack/24"
+FORMAT = "pymedphys-deid-qc-pack/26"
 # The bytes of a written file shown on each side of a residual's offset.
 EXCERPT_BYTES = 48
 # The SHA-256 that face_review.contour_data_sha256 gives a file without
@@ -1386,6 +1393,36 @@ class DoseCheckEntry:
 
 
 @dataclasses.dataclass(frozen=True)
+class UndefacedEntry:
+    """An instance in a defaced CT series' Frame of Reference, naming none,
+    or referring to a defaced slice, whose outline or pixel data its run
+    does not clean of the face, which a reviewer may give a face verdict of
+    its own, from its own previews (D-050).
+
+    A verdict on its series does not cover it, since the reviewer may have
+    judged the series beside the defaced CT, so an attestation gives its
+    own verdict by its run position here, and only where :attr:`shown`.
+
+    Attributes
+    ----------
+    position : int
+        Its run position.
+    shown : bool
+        Whether the pack's previews that could show a face draw every frame
+        of the pixel data and every contour that the run wrote of it, as
+        its instance entry's pixel and contour digests, both given, record.
+    """
+
+    position: int
+    shown: bool
+
+    def __post_init__(self) -> None:
+        _check_position("an undefaced instance", self.position)
+        if not isinstance(self.shown, bool):
+            raise QcPackError("an undefaced instance's shown is true or false")
+
+
+@dataclasses.dataclass(frozen=True)
 class SeriesRiskEntry:
     """A series with indicators of risk as a whole, and the instances that show each.
 
@@ -1489,6 +1526,10 @@ class QcPack:
     dose_checks : tuple of DoseCheckEntry
         Each instance once, in run position order, each released or held
         for review, and held where no choice applied.
+    undefaced_instances : tuple of UndefacedEntry
+        Each instance once, in run position order, each released or held
+        for review, with its source's SHA-256, and shown exactly where its
+        instance entry has both its pixel and its contour digests.
 
     Raises
     ------
@@ -1512,7 +1553,9 @@ class QcPack:
         lacks a redaction preview of each frame, in order, or a redaction
         preview shows anything else; or if an instance is listed twice as a
         dose check, out of order, without its source's SHA-256, neither
-        released nor held for review, or released without a choice.
+        released nor held for review, or released without a choice; or if
+        the same holds of an undefaced instance, but for a choice, or one is
+        shown without both its digests, or not shown with both.
     """
 
     reference: str
@@ -1534,6 +1577,7 @@ class QcPack:
     reviewed_lists: ListsDigest | None = None
     eye_checks: tuple[EyeCheckEntry, ...] = ()
     dose_checks: tuple[DoseCheckEntry, ...] = ()
+    undefaced_instances: tuple[UndefacedEntry, ...] = ()
 
     def __post_init__(self) -> None:
         if not isinstance(self.reference, str) or not _REFERENCE.fullmatch(
@@ -1562,6 +1606,7 @@ class QcPack:
             "series": SeriesEntry,
             "eye_checks": EyeCheckEntry,
             "dose_checks": DoseCheckEntry,
+            "undefaced_instances": UndefacedEntry,
         }
         for name, kind in sections.items():
             entries = getattr(self, name)
@@ -1587,6 +1632,7 @@ class QcPack:
             "not_previewed",
             "source_gaps",
             "dose_checks",
+            "undefaced_instances",
         ):
             if any(entry.position >= positions for entry in getattr(self, name)):
                 raise QcPackError(f"{name} names a run position without an instance")
@@ -1607,6 +1653,7 @@ class QcPack:
             "not_previewed",
             "source_gaps",
             "dose_checks",
+            "undefaced_instances",
         ):
             listed = [entry.position for entry in getattr(self, name)]
             if listed != sorted(set(listed)):
@@ -1622,6 +1669,7 @@ class QcPack:
                 "held for review"
             )
         self._check_dose_checks()
+        self._check_undefaced()
 
     def _check_dose_checks(self) -> None:
         """Each dose check is of an instance released or held for review,
@@ -1643,6 +1691,31 @@ class QcPack:
             ):
                 raise QcPackError(
                     "dose_checks names an instance released without a choice"
+                )
+
+    def _check_undefaced(self) -> None:
+        """Each undefaced instance is released or held for review, with its
+        source's SHA-256, and shown exactly where its entry has both its
+        pixel and its contour digests."""
+        for entry in self.undefaced_instances:
+            instance = self.instances[entry.position]
+            if instance.disposition not in _REVIEWED:
+                raise QcPackError(
+                    "undefaced_instances names an instance that was neither "
+                    "released nor held for review"
+                )
+            if instance.source_sha256 is None:
+                raise QcPackError(
+                    "undefaced_instances names an instance without its source's SHA-256"
+                )
+            digested = (
+                instance.pixel_sha256 is not None
+                and instance.contour_sha256 is not None
+            )
+            if entry.shown is not digested:
+                raise QcPackError(
+                    "an undefaced instance is shown exactly where its pixel "
+                    "and contour digests are both given"
                 )
 
     def _check_series(self) -> None:
@@ -1841,7 +1914,8 @@ class QcPack:
             f"not_previewed={len(self.not_previewed)}, "
             f"source_gaps={len(self.source_gaps)}, series={len(self.series)}, "
             f"eye_checks={len(self.eye_checks)}, "
-            f"dose_checks={len(self.dose_checks)})"
+            f"dose_checks={len(self.dose_checks)}, "
+            f"undefaced_instances={len(self.undefaced_instances)})"
         )
 
 
@@ -2059,6 +2133,10 @@ def pack_document(pack: QcPack) -> dict:
                 "fraction": entry.fraction,
             }
             for entry in pack.dose_checks
+        ],
+        "undefaced_instances": [
+            {"position": entry.position, "shown": entry.shown}
+            for entry in pack.undefaced_instances
         ],
         "series_risks": [
             {
