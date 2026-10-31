@@ -292,6 +292,11 @@ def test_counts_are_kept_by_each_stratum_and_cross():
         ("6 px", 1),
         ("4 px", 1),
     }
+    # A frame has no font or height, so only a grouping of frames' own
+    # dimensions counts frames.
+    assert all("false_positives" not in row for row in by["font"] + cells)
+    assert all("away_from_text" not in row for row in by["font"] + cells)
+    assert all("false_positives" in row for row in by["iod"])
 
 
 def test_points_that_differ_count_differently_from_one_pass():
@@ -464,10 +469,18 @@ def test_the_page_shows_the_trade_off_and_the_criteria():
     assert "| Point | box threshold |" in page
     assert "Meets the criteria" in page
     assert "Point 1 fails" in page
+    columns = None
     for line in page.splitlines():
         assert line == line.rstrip()
-        if line.startswith("|"):
-            assert line.endswith("|")
+        if not line.startswith("|"):
+            columns = None
+            continue
+        assert line.endswith("|")
+        # Every row of a table has as many cells as its header.
+        cells = line.count("|") - line.count("\\|")
+        columns = cells if columns is None else columns
+        assert cells == columns, line
+    assert "| Font | Texts | Fully covered | Wilson |\n" in page
 
 
 # -- Readers ------------------------------------------------------------------

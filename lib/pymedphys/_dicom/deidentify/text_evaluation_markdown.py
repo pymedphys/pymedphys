@@ -230,28 +230,39 @@ def _detail(point: Mapping[str, Any]) -> list[str]:
     for grouping in groupings:
         rows = point["by"][grouping]
         names = grouping.split("+")
+        # A grouping by a text's dimension counts only texts.
+        per_frame = all("false_positives" in row for row in rows)
         lines += [
             f"By {', '.join(name.replace('_', ' ') for name in names)}:",
             "",
             "| "
             + " | ".join(name.replace("_", " ").capitalize() for name in names)
-            + " | Texts | Fully covered | Wilson | Frames without text "
-            "| With a region | Tissue blacked out |",
+            + " | Texts | Fully covered | Wilson |"
+            + (
+                " Frames without text | With a region | Tissue blacked out |"
+                if per_frame
+                else ""
+            ),
             "| "
             + " | ".join("---" for _ in names)
-            + " | ---: | ---: | ---: | ---: | ---: | ---: |",
+            + " | ---: | ---: | ---: |"
+            + (" ---: | ---: | ---: |" if per_frame else ""),
         ]
         for row in rows:
             sensitivity = row["sensitivity"]
-            negatives = row["false_positives"]
-            lines.append(
+            line = (
                 "| "
                 + " | ".join(_cell(str(row["value"][name])) for name in names)
                 + f" | {sensitivity['texts']} | {_share(sensitivity['share'])} "
-                f"| {_interval(sensitivity['wilson'])} | {negatives['frames']} "
-                f"| {_share(negatives['share'])} "
-                f"| {_share(negatives['tissue_blacked_out'], 3)} |"
+                f"| {_interval(sensitivity['wilson'])} |"
             )
+            if per_frame:
+                negatives = row["false_positives"]
+                line += (
+                    f" {negatives['frames']} | {_share(negatives['share'])} "
+                    f"| {_share(negatives['tissue_blacked_out'], 3)} |"
+                )
+            lines.append(line)
         lines.append("")
     return lines
 

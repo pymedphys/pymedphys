@@ -216,6 +216,8 @@ def _losses(
                 failures.append(
                     f"loss: {label}: sensitivity {new_share:.3f} from {old_share:.3f}"
                 )
+            if "false_positives" not in row:
+                continue
             new_fp = row["false_positives"]["share"]
             old_fp = old["false_positives"]["share"]
             if new_fp is not None and old_fp is not None and new_fp > old_fp + margin:

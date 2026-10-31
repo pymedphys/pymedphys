@@ -722,12 +722,17 @@ def _point(
             {key[2] for key in tally.texts if key[0] == index and key[1] == grouping}
             | {key[3] for key in tally.frames if key[0] == index and key[2] == grouping}
         )
+        # A frame has no text dimension, so a grouping with one counts only
+        # texts; its frames' measures would be empty, not zero.
+        per_text = any(name in TEXT_DIMENSIONS for name in grouping)
         rows = []
         for value in values:
             row = {
                 "value": dict(zip(grouping, value)),
                 **_measures(index, grouping, value, tally),
             }
+            if per_text:
+                del row["false_positives"], row["away_from_text"]
             if grouping == ("iod",):
                 _intervals(row, index, value[0], clusters, replicates)
             rows.append(row)
