@@ -287,6 +287,7 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
 
 ### Contributor facing changes
 
+- **[Contributor facing only]** The release workflow now publishes to PyPI with `pypa/gh-action-pypi-publish` v1.14.3. Versions up to and including 1.14.2 are affected by GHSA-5xjx-3w67-w9x9: their certifi trust store, which Sigstore uses for Trusted Publishing and attestations, still includes the emSign root certificate authority that certifi has since removed. v1.14.3 updates certifi to 2026.10.19 and sigstore to 4.5.1. The Security workflow's zizmor audit fails while the release workflow uses an affected version. [PR #2526](https://github.com/pymedphys/pymedphys/pull/2526)
 - **[Contributor facing only]** The locked pre-commit environment now uses virtualenv 21.14.13, fixing shell-prompt command execution in generated activation scripts. Recreate affected environments with the updated tool to receive the corrected scripts. [PR #2445](https://github.com/pymedphys/pymedphys/pull/2445)
 - **[Contributor facing only]** UID replacement property tests retain valid and invalid inputs while allowing distinct pairs to shrink to small examples. They now pass the input-generation health checks in Hypothesis 6.170.2 used by dependency-update validation. [PR #2411](https://github.com/pymedphys/pymedphys/pull/2411)
 - **[Contributor facing only]** The de-identification tests, including the
