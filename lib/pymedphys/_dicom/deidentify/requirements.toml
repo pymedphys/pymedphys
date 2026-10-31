@@ -799,6 +799,7 @@ implementation = [
   "_dicom/deidentify/residual_exemptions.py",
   "_dicom/deidentify/residuals.py",
   "_dicom/deidentify/risk_assessment.py",
+  "_dicom/deidentify/risk_assessment_command.py",
   "_dicom/deidentify/run_report.py",
 ]
 note = '''
@@ -911,6 +912,7 @@ implementation = [
   "_dicom/deidentify/policy.py",
   "_dicom/deidentify/readiness.py",
   "_dicom/deidentify/risk_assessment.py",
+  "_dicom/deidentify/risk_assessment_command.py",
   "_dicom/deidentify/technique_descriptors.py",
 ]
 note = '''
@@ -936,6 +938,7 @@ implementation = [
   "_dicom/deidentify/instance_transform.py",
   "_dicom/deidentify/readiness.py",
   "_dicom/deidentify/risk_assessment.py",
+  "_dicom/deidentify/risk_assessment_command.py",
   "_dicom/deidentify/supplementary_actions.py",
 ]
 note = '''
@@ -1003,11 +1006,13 @@ decisions = ["D-017", "D-053"]
 implementation = [
   "_dicom/deidentify/readiness.py",
   "_dicom/deidentify/risk_assessment.py",
+  "_dicom/deidentify/risk_assessment_command.py",
 ]
 note = '''
 `tps-import` retains patient characteristics for non-clinical databases, not for public sharing, and `public-release` does not select Retain Patient Characteristics (D-038).
 `public-release` keeps other indirect identifiers, such as modified dates, coded values, and characteristics that can be derived from the pixel data.
 The record of an external statistical assessment of a collection lists its matching variables and how characteristics derivable from the pixel data were considered, with every other statement that D-017 requires, each required, and the statistical gate checks it against the run, counting distinct subjects rather than images, frames, or visits (D-053).
+An assessor records it with a command that reads their statement from a JSON file of its own format, refuses a statement that lacks any of them or holds anything else, and can make every check without recording, since a record is never overwritten (D-053).
 A `public-release` run is ready for release only where that gate passes for the distinct subjects of the instances that it releases and the reviewed lists and region rules that it applied; a run without a record fails it (D-017).
 '''
 
