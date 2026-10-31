@@ -70,8 +70,13 @@ and codes that the engine defines, never by a source value or path:
   their block was found from, until a reviewer confirms the block, and how
   many of those it defaced with a block that a reviewer confirmed, and how
   many it did not deface, by why
-  (:class:`~pymedphys._dicom.deidentify.face_blocks.FaceBlockCounts`);
-  None otherwise.
+  (:class:`~pymedphys._dicom.deidentify.face_blocks.FaceBlockCounts`), and,
+  of the RT Doses that it released or held with more dose in a defaced
+  series' face block than it sets to zero there, how many it held without
+  a reviewer's choice, and, by the choice that it applied, written as
+  received or set to zero there anyway, how many it held and the output
+  name of each that it released (:class:`DosesInFaceBlock`); None
+  otherwise.
 - ``redaction_review``: under the Clean Pixel Data Option, the opaque
   reference of the earlier run's attested QC pack whose redaction verdicts
   the run applied; None otherwise.
@@ -111,8 +116,9 @@ and codes that the engine defines, never by a source value or path:
   slice of a series with a target in its face block, an RT Structure Set,
   RT Dose, or PET instance in a defaced series' Frame of Reference, naming
   none, or referring to a defaced slice (D-050), an RT Dose with too much
-  dose in a defaced series' face block to set to zero there (D-051), or a
-  release gate's
+  dose in a defaced series' face block to set to zero there, or one set to
+  zero there anyway on a reviewer's choice whose grid as set to zero no
+  reviewed QC pack has shown (D-051), or a release gate's
   reason that requires QC review. A held
   instance has neither an output name nor a label.
 - ``roi_names``: the outcome of each ROI Name of the structure sets that
@@ -217,7 +223,7 @@ from .standard import ALL_OPTIONS, VRS
 from .walker import Sequestration, SequesterReason
 
 # The format of the report document. A change to its fields takes a new label.
-FORMAT = "pymedphys-deid-release-report/37"
+FORMAT = "pymedphys-deid-release-report/39"
 
 _DIGEST = re.compile(r"[0-9a-f]{64}")
 # A key's non-secret identifier, as DeidKey.key_id gives it.
@@ -704,6 +710,33 @@ class Readiness:
 
 
 @dataclasses.dataclass(frozen=True)
+class DosesInFaceBlock:
+    """The RT Doses that a run released or held with more dose in a defaced
+    series' face block than it sets to zero there, by what it did with them
+    (D-051).
+
+    An identical copy of an input is the same instance, so it is not counted
+    again.
+
+    Attributes
+    ----------
+    held : int
+        How many it wrote as received and held, without a reviewer's choice.
+    released_as_written, released_set_to_zero : tuple of pathlib.PurePosixPath
+        The output name of each that it released written as received, or
+        set to zero in the block beyond the fraction, as a reviewer chose.
+    held_as_written, held_set_to_zero : int
+        How many it held, so written, as a reviewer chose.
+    """
+
+    held: int = 0
+    released_as_written: tuple[PurePosixPath, ...] = ()
+    held_as_written: int = 0
+    released_set_to_zero: tuple[PurePosixPath, ...] = ()
+    held_set_to_zero: int = 0
+
+
+@dataclasses.dataclass(frozen=True)
 class ReleaseReport:
     """A release report's record of the method, the runtime, and the run.
 
@@ -718,6 +751,7 @@ class ReleaseReport:
     qc_review : ~pymedphys._dicom.deidentify.qc_attestation.AttestationRecord or None
     face_review : str or None
     face_blocks : ~pymedphys._dicom.deidentify.face_blocks.FaceBlockCounts or None
+    doses_in_face_block : DosesInFaceBlock or None
     redaction_review : str or None
     pixel_regions : PixelRegionCounts or None
     readiness : Readiness or None
@@ -741,6 +775,7 @@ class ReleaseReport:
     qc_review: AttestationRecord | None = None
     face_review: str | None = None
     face_blocks: FaceBlockCounts | None = None
+    doses_in_face_block: DosesInFaceBlock | None = None
     redaction_review: str | None = None
     pixel_regions: PixelRegionCounts | None = None
     readiness: Readiness | None = None
@@ -1185,6 +1220,7 @@ def release_report(
     qc_review: AttestationRecord | None = None,
     face_review: str | None = None,
     face_blocks: FaceBlockCounts | None = None,
+    doses_in_face_block: DosesInFaceBlock | None = None,
     redaction_review: str | None = None,
     pixel_regions: PixelRegionCounts | None = None,
     readiness: Readiness | None = None,
@@ -1362,6 +1398,11 @@ def release_report(
         qc_review=qc_review,
         face_review=face_review,
         face_blocks=face_blocks,
+        doses_in_face_block=(
+            DosesInFaceBlock()
+            if doses_in_face_block is None and face_review is not None
+            else doses_in_face_block
+        ),
         redaction_review=redaction_review,
         pixel_regions=(
             PixelRegionCounts()
@@ -1589,11 +1630,16 @@ def _qc_review_section(record: AttestationRecord | None) -> dict | None:
 
 
 def _face_review_section(
-    reference: str | None, counts: FaceBlockCounts | None
+    reference: str | None,
+    counts: FaceBlockCounts | None,
+    doses: DosesInFaceBlock | None = None,
+    released: tuple[PurePosixPath, ...] = (),
 ) -> dict | None:
     if reference is None:
         if counts is not None:
             raise _refuse("face_review", "counts CT series without a face review")
+        if doses is not None:
+            raise _refuse("face_review", "counts RT Doses without a face review")
         return None
     if _string(reference) is None or not _REFERENCE.fullmatch(reference):
         raise _refuse("face_review", "is not a QC pack's reference")
@@ -1644,7 +1690,49 @@ def _face_review_section(
                 )
             ],
         },
+        "rt_doses_in_face_block": _doses_section(
+            DosesInFaceBlock() if doses is None else doses, released
+        ),
     }
+
+
+def _doses_section(
+    doses: DosesInFaceBlock, released: tuple[PurePosixPath, ...]
+) -> dict[str, int | list[str]]:
+    """The RT Doses with too much dose in a face block, each name one that
+    the report releases, and none named twice."""
+    field = "face_review rt_doses_in_face_block"
+    if not isinstance(doses, DosesInFaceBlock):
+        raise _refuse(field, "is not counts of RT Doses")
+    section: dict[str, int | list[str]] = {}
+    named: list[str] = []
+    for name in (
+        "held",
+        "released_as_written",
+        "held_as_written",
+        "released_set_to_zero",
+        "held_set_to_zero",
+    ):
+        value = getattr(doses, name)
+        if name.startswith("released_"):
+            if not isinstance(value, tuple) or not all(
+                _is_output_name(path) for path in value
+            ):
+                raise _refuse(f"{field} {name}", "is not a tuple of output names")
+            if not set(value) <= set(released):
+                raise _refuse(f"{field} {name}", "names an instance not released")
+            names = sorted(str(path) for path in value)
+            named.extend(names)
+            section[name] = names
+            continue
+        if type(value) is not int:  # pylint: disable = unidiomatic-typecheck
+            raise _refuse(f"{field} {name}", "is not a whole number")
+        if value < 0:
+            raise _refuse(f"{field} {name}", "is negative")
+        section[name] = value
+    if len(set(named)) != len(named):
+        raise _refuse(field, "names an instance twice")
+    return section
 
 
 def _redaction_review_section(reference: str | None) -> dict | None:
@@ -2124,7 +2212,12 @@ def report_document(report: ReleaseReport) -> dict:
         "runtime": _runtime_section(report.runtime),
         "key": _key_section(report.project_key),
         "qc_review": _qc_review_section(report.qc_review),
-        "face_review": _face_review_section(report.face_review, report.face_blocks),
+        "face_review": _face_review_section(
+            report.face_review,
+            report.face_blocks,
+            report.doses_in_face_block,
+            report.released,
+        ),
         "redaction_review": _redaction_review_section(report.redaction_review),
         "pixel_regions": _pixel_regions_section(report.pixel_regions, report.policy),
         "readiness": _readiness_section(report.readiness, report.policy),

@@ -358,7 +358,9 @@ def _qc_review(section: object) -> list[Block]:
 def _face_review(section: object) -> list[Block]:
     if section is None:
         return []
-    section = _fields("face_review", section, ("reference", "ct_series"))
+    section = _fields(
+        "face_review", section, ("reference", "ct_series", "rt_doses_in_face_block")
+    )
     series = _fields(
         "face_review ct_series",
         section["ct_series"],
@@ -419,6 +421,51 @@ def _face_review(section: object) -> list[Block]:
             "within the images, holds for review:"
         ],
         _table(("Reason", "Series"), rows) if rows else [_NONE],
+        *_doses_in_face_block(section["rt_doses_in_face_block"]),
+    ]
+
+
+def _doses_in_face_block(section: object) -> list[Block]:
+    field = "face_review rt_doses_in_face_block"
+    doses = _fields(
+        field,
+        section,
+        (
+            "held",
+            "released_as_written",
+            "held_as_written",
+            "released_set_to_zero",
+            "held_set_to_zero",
+        ),
+    )
+    rows = [
+        (_code(f"{field} {name}", output), what)
+        for name, what in (
+            ("released_as_written", "written as received"),
+            ("released_set_to_zero", "set to zero in the face block"),
+        )
+        for output in _list(f"{field} {name}", doses[name])
+    ]
+    return [
+        [
+            "RT Doses with more dose in a face block than the run sets to zero "
+            "there, which it writes as received and holds for review until a "
+            "reviewer chooses, for a later run, to have each written as "
+            "received, released only where the reviewer saw no recognisable "
+            "face in its own dose levels, or set to zero there anyway, "
+            "released only where a reviewer saw no recognisable face in a "
+            "later QC pack's dose levels of it so: held without a choice: "
+            + _tally(f"{field} held", doses["held"])
+            + "; held, written as received on a reviewer's choice: "
+            + _tally(f"{field} held_as_written", doses["held_as_written"])
+            + "; held, set to zero on a reviewer's choice: "
+            + _tally(f"{field} held_set_to_zero", doses["held_set_to_zero"])
+            + ". Each released on a reviewer's choice, by its output name; one "
+            "set to zero may have lost dose that matters for planning, such as "
+            "a target's that the structure set does not mark, and its "
+            "dose-volume histograms are those of the grid as received:"
+        ],
+        _table(("Output name", "Dose in the face block"), rows) if rows else [_NONE],
     ]
 
 

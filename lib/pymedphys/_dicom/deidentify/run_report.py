@@ -34,8 +34,11 @@ material that the transform gives and the assessment of their series, as
 the QC pack lists them (D-015), and how many source values the
 residual searches did not search, by attribute and reason, each counted at
 the instance that holds it among those that the transform gave material for
-(D-027), and how many released instances have each kind of residual finding
-that an exemption kept from review, from the gate's material (D-032). The
+(D-027), how many released instances have each kind of residual finding
+that an exemption kept from review, from the gate's material (D-032), and,
+under a face review, the RT Doses that the run released or held with more
+dose in a face block than it sets to zero there, by what it did with them,
+from the transform's material (:func:`doses_in_face_block`, D-051). The
 report holds no source value or path (D-016), and
 :func:`~pymedphys._dicom.deidentify.release_report.to_json` refuses any
 field that could hold one. Before the run labels its outcomes, it asks the
@@ -81,7 +84,7 @@ from .qc_attestation import AttestationRecord, Outcome
 from .qc_pack import QcPack
 from .readiness import ReadinessReview
 from .risk_assessment import policy_digest
-from .reasons import RunReason
+from .reasons import DoseChoice, RunReason
 from .residuals import NotSearched, Unsearched, UnsearchedReason
 from .iod_conformance import SourceGap
 from .reviewed_descriptors import (
@@ -98,6 +101,7 @@ from .reviewed_roi_names import (
 from .safe_private import SafePrivateList
 from .run_qc import (
     DescriptorMaterial,
+    DoseCheckMaterial,
     Dropped,
     PixelRiskMaterial,
     RedactionMaterial,
@@ -399,6 +403,11 @@ class ReleaseReporter:
                 for position in sorted(material)
             ),
             checks=structural_checks(outcomes, material),
+            doses_in_face_block=(
+                None
+                if self._face_review is None
+                else doses_in_face_block(outcomes, material)
+            ),
         )
         if self._readiness:
             if not isinstance(facts, RunFacts):
@@ -558,6 +567,50 @@ def released_instances(outcomes: Sequence[object]) -> tuple[PurePosixPath, ...]:
         getattr(outcome, "output")
         for outcome in outcomes
         if getattr(outcome, "status").value == RELEASED
+    )
+
+
+def doses_in_face_block(
+    outcomes: Sequence[object], material: Mapping[int, Sequence[object]]
+) -> release_report.DosesInFaceBlock:
+    """Count the released and held RT Doses with more dose in a face block
+    than the run sets to zero there, by the choice that the run applied,
+    naming each released one by its output name.
+
+    Each input's choice comes from its
+    :class:`~pymedphys._dicom.deidentify.run_qc.DoseCheckMaterial`. An
+    identical copy of an input is the same instance, so it is not counted
+    again, and a sequestered one reaches no recipient.
+    """
+    choices: dict[int, DoseChoice | None] = {}
+    for position in sorted(material):
+        for item in material[position]:
+            if isinstance(item, DoseCheckMaterial):
+                choices[position] = item.choice
+                break
+    held: dict[DoseChoice | None, int] = dict.fromkeys(
+        (None, DoseChoice.AS_WRITTEN, DoseChoice.SET_TO_ZERO), 0
+    )
+    released: dict[DoseChoice, list[PurePosixPath]] = {
+        DoseChoice.AS_WRITTEN: [],
+        DoseChoice.SET_TO_ZERO: [],
+    }
+    for outcome in outcomes:
+        position = getattr(outcome, "position")
+        if position not in choices or getattr(outcome, "duplicate_of") is not None:
+            continue
+        status = getattr(outcome, "status").value
+        choice = choices[position]
+        if status == RELEASED and choice is not None:
+            released[choice].append(getattr(outcome, "output"))
+        elif status == HELD_FOR_REVIEW:
+            held[choice] += 1
+    return release_report.DosesInFaceBlock(
+        held=held[None],
+        released_as_written=tuple(released[DoseChoice.AS_WRITTEN]),
+        held_as_written=held[DoseChoice.AS_WRITTEN],
+        released_set_to_zero=tuple(released[DoseChoice.SET_TO_ZERO]),
+        held_set_to_zero=held[DoseChoice.SET_TO_ZERO],
     )
 
 

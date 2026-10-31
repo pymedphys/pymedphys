@@ -53,6 +53,15 @@ of the grid's own maximum rather than of the prescription, which only an RT
 Plan that may not be in the run holds. Dose Grid Scaling multiplies every
 stored value alike, so the stored values are compared.
 
+A reviewer may then choose, for a later run of the same files, what is
+done with such an RT Dose (:class:`~.reasons.DoseChoice`): write it as
+received, to be released on a verdict on its own dose-levels previews, or
+set it to zero in the block anyway, beyond the fraction
+(:class:`RtDoseDefacer`'s ``beyond_fraction``), to be released only on a
+verdict on the previews of the grid as set to zero. The choice is bound to
+the RT Dose's source file and to the block, by :func:`dose_check_digest`,
+so that it covers neither another file nor another block.
+
 Only an RT Dose that names exactly one Frame of Reference, in which exactly
 one series is defaced, is set to zero (:func:`find_dose_blocks`). Any other
 RT Dose in a defaced frame, naming none, or referring to a defaced slice
@@ -70,6 +79,9 @@ import dataclasses
 import math
 from collections.abc import Callable, Collection, Mapping
 
+import hashlib
+import struct
+
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom
 
@@ -80,6 +92,7 @@ from .face_blocks import (
     Defaced,
     KeptSlice,
     SeriesDefacing,
+    block_digest,
     frames_of,
     kept_slices,
 )
@@ -106,6 +119,9 @@ _UNIT = 1e-4
 # block anywhere on the grid.
 _FARTHEST = 1e6
 _AXIAL = (1.0, 0.0, 0.0, 0.0, 1.0, 0.0)
+# Labels the digest that binds a reviewer's choice for an RT Dose with too
+# much dose in a face block to the RT Dose and the block.
+_DOSE_CHECK_LABEL = b"pymedphys-deid-dose-in-face-block/1"
 
 
 @dataclasses.dataclass(frozen=True, repr=False)
@@ -126,12 +142,25 @@ class DoseBlock:
     targets : KeptTargets, optional
         The hulls of the targets that defacing keeps in the block, as the
         series' outcome gives them; none by default.
+    block_sha256 : bytes, optional
+        :func:`~pymedphys._dicom.deidentify.face_blocks.block_digest` of the
+        series' source files and the block, which binds a reviewer's choice
+        for an RT Dose with too much dose in it (:func:`dose_check_digest`),
+        where an RT Dose names the frame; None by default, when no choice
+        applies.
     """
 
     block: FaceBlock
     slices: tuple[KeptSlice, ...]
     instances: frozenset[str] = frozenset()
     targets: KeptTargets = KeptTargets()
+    block_sha256: bytes | None = None
+
+    def __post_init__(self) -> None:
+        if self.block_sha256 is not None and not (
+            isinstance(self.block_sha256, bytes) and len(self.block_sha256) == 32
+        ):
+            raise ValueError("a dose block's digest is a SHA-256")
 
     def __repr__(self) -> str:
         return f"DoseBlock(slices={len(self.slices)})"
@@ -261,25 +290,33 @@ def find_dose_blocks(
     any other of ``iods``, whose instances
     :mod:`~pymedphys._dicom.deidentify.region_defacing` cleans in the same
     block. A frame whose series' slices can no longer be read has none, so
-    that its instances stay held.
+    that its instances stay held. A frame that an RT Dose names has the
+    digest of its series' source files and block
+    (:attr:`DoseBlock.block_sha256`), which binds a reviewer's choice for
+    an RT Dose with too much dose in the block: the series' outcome's, where
+    it has one, or else that of the slices as the first pass read them.
     """
     defaced: dict[str, list[str]] = {}
     for uid, outcome in outcomes.items():
         if outcome.frame is not None and outcome.block is not None:
             defaced.setdefault(outcome.frame, []).append(uid)
     named = set()
+    dosed = set()
     for record in records.values():
         if record.iod in iods:
             frames = frames_of(record)
             if len(frames) == 1:
                 named |= frames
+                if record.iod == RT_DOSE:
+                    dosed |= frames
     blocks = {}
     for frame in sorted(named):
         if len(defaced.get(frame, ())) != 1:
             continue
         (uid,) = defaced[frame]
-        block = outcomes[uid].block
-        targets = outcomes[uid].targets
+        outcome = outcomes[uid]
+        block = outcome.block
+        targets = outcome.targets
         assert block is not None
         positions = sorted(
             position
@@ -287,20 +324,48 @@ def find_dose_blocks(
             if record.iod in CT_IODS and record.series == uid
         )
         instances = frozenset(
-            uid
+            instance
             for position in positions
-            if (uid := records[position].sop_instance) is not None
+            if (instance := records[position].sop_instance) is not None
         )
         try:
-            blocks[frame] = DoseBlock(
-                block,
-                kept_slices(block, positions, read, targets),
-                instances,
-                targets,
-            )
+            slices = kept_slices(block, positions, read, targets)
         except ValueError:
             continue
+        digest = None
+        if frame in dosed:
+            digest = outcome.block_sha256 or block_digest(
+                (hashlib.sha256(read(p) or b"").digest() for p in positions), block
+            )
+        blocks[frame] = DoseBlock(block, slices, instances, targets, digest)
     return blocks
+
+
+def dose_check_digest(source: bytes, block_sha256: bytes) -> bytes:
+    """Return the SHA-256 that binds a reviewer's choice for an RT Dose with
+    too much dose in a face block (:class:`~.reasons.DoseChoice`) to the RT
+    Dose and the block.
+
+    It is of a label, the SHA-256 of the RT Dose's source file, and the
+    block's :attr:`DoseBlock.block_sha256`, so that a choice covers this
+    file in this block and no other: the file changed, or a block found
+    otherwise, or from other slices, gives another digest, which no choice
+    covers.
+
+    Raises
+    ------
+    ValueError
+        If either is not a SHA-256.
+    """
+    if not all(
+        isinstance(each, bytes) and len(each) == 32 for each in (source, block_sha256)
+    ):
+        raise ValueError("a dose check is of two SHA-256 digests")
+    digest = hashlib.sha256(_DOSE_CHECK_LABEL)
+    digest.update(struct.pack(">Q", 2))
+    digest.update(source)
+    digest.update(block_sha256)
+    return digest.digest()
 
 
 class RtDoseDefacer:
@@ -314,6 +379,11 @@ class RtDoseDefacer:
         The block of the grid's Frame of Reference.
     dataset : pydicom.Dataset
         The RT Dose's data set.
+    beyond_fraction : bool, optional
+        Whether to set the region to zero however much dose it holds, as a
+        reviewer chose (:attr:`~.reasons.DoseChoice.SET_TO_ZERO`), rather
+        than hold the grid where that is more than :data:`DOSE_FRACTION` of
+        its greatest; False by default.
 
     Raises
     ------
@@ -322,7 +392,13 @@ class RtDoseDefacer:
         the grid is not one that the module sets to zero.
     """
 
-    def __init__(self, dose: DoseBlock, dataset: pydicom.Dataset) -> None:
+    def __init__(
+        self,
+        dose: DoseBlock,
+        dataset: pydicom.Dataset,
+        *,
+        beyond_fraction: bool = False,
+    ) -> None:
         try:
             layout = layout_of(dataset)
             if layout.samples != 1:
@@ -352,6 +428,7 @@ class RtDoseDefacer:
         self._greatest = 0
         self._zeroed = 0
         self._negative = False
+        self._beyond = bool(beyond_fraction)
 
     def __repr__(self) -> str:
         return "RtDoseDefacer()"
@@ -384,11 +461,21 @@ class RtDoseDefacer:
     @property
     def held(self) -> VisualFeaturesReason | None:
         """Why the grid is held rather than set to zero, once every frame's
-        mask has been given, or None where it is set to zero."""
+        mask has been given, or None where it is set to zero: also where
+        its dose there is more than the fraction, if ``beyond_fraction``."""
         if self._negative:
             return VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME
-        if self._zeroed > DOSE_FRACTION * self._greatest:
+        if self.exceeded is not None and not self._beyond:
             return VisualFeaturesReason.DOSE_IN_FACE_BLOCK
+        return None
+
+    @property
+    def exceeded(self) -> float | None:
+        """The greatest stored value in the region, as a fraction of the
+        grid's greatest, once every frame's mask has been given, where that
+        is more than :data:`DOSE_FRACTION`; None otherwise."""
+        if self._zeroed > DOSE_FRACTION * self._greatest:
+            return self._zeroed / self._greatest
         return None
 
 

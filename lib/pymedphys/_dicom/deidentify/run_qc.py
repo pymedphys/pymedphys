@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import dataclasses
 import enum
+import math
 from collections.abc import Iterable, Mapping, Sequence
 from pathlib import Path, PurePosixPath
 
@@ -40,7 +41,7 @@ from .iod_conformance import SourceGap
 from .face_review import PIXEL_DATA_TAGS, contour_data_sha256, pixel_data_sha256
 from .file_layout import ElementPath
 from .qc_pack import Disposition, DropReason, QcPack, RoiNameOutcome
-from .reasons import PixelDataReason
+from .reasons import DoseChoice, PixelDataReason
 from .reference_graph import Finding, FindingKind
 from .release_report import REPORTED_FINDINGS
 from .residual_exemptions import Exemption
@@ -238,6 +239,52 @@ class EyeCheckMaterial:
         return f"EyeCheckMaterial(sheet={self.sheet is not None})"
 
 
+@dataclasses.dataclass(frozen=True, repr=False)
+class DoseCheckMaterial:
+    """An RT Dose with more dose in a defaced CT series' face block than the
+    fraction that the run sets to zero
+    (:data:`~pymedphys._dicom.deidentify.dose_defacing.DOSE_FRACTION`).
+
+    The pack lists it in ``dose_checks``, where it is released or held, so
+    that a reviewer can choose what a later run does with it, and so that
+    the choice that the run applied is recorded; the release report counts
+    it, and names it where released.
+
+    Attributes
+    ----------
+    check_sha256 : bytes
+        :func:`~pymedphys._dicom.deidentify.dose_defacing.dose_check_digest`
+        of its source file and the block.
+    choice : ~pymedphys._dicom.deidentify.reasons.DoseChoice or None
+        The choice that the run applied: written as received, or set to
+        zero in the block; None where none applied, and the run wrote it as
+        received and held it.
+    fraction : float
+        The greatest stored value in the region, as a fraction of the
+        grid's greatest.
+    """
+
+    check_sha256: bytes
+    choice: DoseChoice | None
+    fraction: float
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.check_sha256, bytes) or len(self.check_sha256) != 32:
+            raise ValueError("a dose check needs its SHA-256")
+        if self.choice is not None and not isinstance(self.choice, DoseChoice):
+            raise ValueError("a dose check's choice is a DoseChoice or None")
+        if not (
+            isinstance(self.fraction, float)
+            and math.isfinite(self.fraction)
+            and 0 < self.fraction <= 1
+        ):
+            raise ValueError("a dose check's fraction is above 0 and at most 1")
+
+    def __repr__(self) -> str:
+        choice = None if self.choice is None else self.choice.value
+        return f"DoseCheckMaterial(choice={choice!r})"
+
+
 @dataclasses.dataclass(frozen=True)
 class ReferenceFindingMaterial:
     """A reference finding at an input that the run reports without acting on it.
@@ -394,6 +441,9 @@ def qc_pack_of(
     only they reach a recipient, so a series of which one image was
     released is not a volume. Each series of them whose instances all have a
     digest is listed in ``series``, for the reviewer's face verdicts.
+    Each released or held RT Dose that gives a :class:`DoseCheckMaterial`
+    is listed in ``dose_checks``, with its fraction to four decimal places,
+    for the reviewer's choice.
 
     Raises
     ------
@@ -422,9 +472,20 @@ def qc_pack_of(
     series: dict[int, SeriesEvidence] = {}
     redactions: dict[int, RedactionMaterial] = {}
     eyes: dict[bytes, tuple[EyeCheckMaterial, list[int]]] = {}
+    doses: list[qc_pack.DoseCheckEntry] = []
     for position in sorted(material):
         for item in material[position]:
-            if isinstance(item, EyeCheckMaterial):
+            if isinstance(item, DoseCheckMaterial):
+                if instances[position].disposition in _PREVIEWED:
+                    doses.append(
+                        qc_pack.DoseCheckEntry(
+                            position,
+                            item.check_sha256.hex(),
+                            item.choice,
+                            round(item.fraction, 4),
+                        )
+                    )
+            elif isinstance(item, EyeCheckMaterial):
                 if instances[position].disposition is Disposition.HELD_FOR_REVIEW:
                     eyes.setdefault(item.block_sha256, (item, []))[1].append(position)
             elif isinstance(item, PixelRiskMaterial):
@@ -564,6 +625,7 @@ def qc_pack_of(
         ),
         reviewed_lists=reviewed_lists,
         eye_checks=tuple(entry for entry, _ in checks),
+        dose_checks=tuple(doses),
     )
 
 

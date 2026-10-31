@@ -178,6 +178,7 @@ from .preserving_writer import WriteRefused, write_data_set, write_file_bytes
 from .qc_pack import DropReason
 from .qc_retained import retained_paths, retained_text
 from .reasons import (
+    DoseChoice,
     HeldDescriptor,
     HeldPixelData,
     HeldVisualFeatures,
@@ -218,7 +219,13 @@ from .pixel_cleaning import (
     overlay_planes,
     redaction_problem,
 )
-from .dose_defacing import RT_DOSE, DoseBlock, RtDoseDefacer, find_dose_blocks
+from .dose_defacing import (
+    RT_DOSE,
+    DoseBlock,
+    RtDoseDefacer,
+    dose_check_digest,
+    find_dose_blocks,
+)
 from .face_blocks import (
     CT_IODS,
     PET_IODS,
@@ -246,6 +253,7 @@ from .region_defacing import (
 )
 from .segmentation_defacing import SEGMENTATION, SegmentationDefacer
 from .run_qc import (
+    DoseCheckMaterial,
     Dropped,
     EyeCheckMaterial,
     PixelRiskMaterial,
@@ -999,7 +1007,15 @@ class InstanceTransform:
     brain and targets that defacing keeps
     (:class:`~.dose_defacing.RtDoseDefacer`), or,
     where the dose there is too great, written as received and held
-    (:attr:`~.reasons.VisualFeaturesReason.DOSE_IN_FACE_BLOCK`). An RT
+    (:attr:`~.reasons.VisualFeaturesReason.DOSE_IN_FACE_BLOCK`), with its
+    QC material (:class:`~.run_qc.DoseCheckMaterial`), unless the face review
+    gives a choice for it in that block
+    (:attr:`~.face_review.FaceReview.dose_choices`): to write it as received,
+    when it is not held for its dose and a verdict on its own dose-levels
+    previews of it so releases it, whatever its series' eyes, since its
+    block cleans nothing of it; or to set it to zero there anyway, when it
+    is held, until a face review that showed it so releases it, as
+    :attr:`~.reasons.VisualFeaturesReason.DOSE_SET_TO_ZERO_ON_REVIEW`. An RT
     Structure Set whose only Frame of Reference is that of one defaced
     series is written with its contours cut by the block
     (:func:`~.region_defacing.cut_contours`), a PET image's activity in
@@ -1381,6 +1397,22 @@ class InstanceTransform:
             return None
         return HeldVisualFeatures(VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME)
 
+    def _dose_choice(
+        self, data: bytes, dose: DoseBlock | None
+    ) -> tuple[bytes, DoseChoice | None, bool] | None:
+        """Return the digest that binds a reviewer's choice for an RT Dose
+        in its block, with the choice that the face review gives for it, if
+        any, and whether the reviewed run wrote it set to zero; None for an
+        instance that the run does not set to zero in a block whose digest
+        it has."""
+        if self._face_review is None or dose is None or dose.block_sha256 is None:
+            return None
+        check = dose_check_digest(hashlib.sha256(data).digest(), dose.block_sha256)
+        found = self._face_review.dose_choice(check)
+        if found is None:
+            return check, None, False
+        return check, *found
+
     def _unconfirmed(self, record: InstanceRecord, block: DoseBlock | None) -> bool:
         """Whether an RT Dose, RT Structure Set, PET image, or Segmentation
         that the run cleans by a block is held until a reviewer confirms
@@ -1439,15 +1471,21 @@ class InstanceTransform:
         region: _RegionDefacing | None = None,
         *,
         overlays: int = 0,
-    ) -> tuple[Redaction | None, VisualFeaturesReason | None, bool]:
+        zero_beyond: bool = False,
+    ) -> tuple[Redaction | None, VisualFeaturesReason | None, bool, float | None]:
         """Return the instance's Pixel Data blacked out under Clean Pixel Data,
         and, under Clean Recognizable Visual Features, a CT instance's face
         block written as air, an RT Dose's set to zero, or a PET image's or
         Segmentation's cleaned by the defacer that ``region`` makes of its
         data set, with why an RT Dose's, PET image's, or Segmentation's is
-        not, and whether a reviewer approved the regions, with the bit
+        not, whether a reviewer approved the regions, and, for an RT Dose
+        with more dose in its block than
+        :data:`~.dose_defacing.DOSE_FRACTION` of its greatest, that fraction
+        (:attr:`~.dose_defacing.RtDoseDefacer.exceeded`), with the bit
         planes of ``overlays`` cleared first
-        (:func:`~.pixel_cleaning.overlay_planes`).
+        (:func:`~.pixel_cleaning.overlay_planes`). With ``zero_beyond``, an
+        RT Dose is set to zero in its block however much dose is there, as
+        a reviewer chose.
 
         The redaction is None where nothing applies, or the instance has no
         top-level pixel data. The regions are those that the redaction
@@ -1483,7 +1521,7 @@ class InstanceTransform:
             and region is None
             and not overlays
         ):
-            return None, None, False
+            return None, None, False, None
         approved = decoded = None
         if self._finder is not None and self._redaction_review is not None:
             digest = hashlib.sha256(data).digest()
@@ -1494,11 +1532,27 @@ class InstanceTransform:
         try:
             try:
                 return self._cleaned(
-                    source, dataset, defacing, dose, region, approved, decoded, overlays
+                    source,
+                    dataset,
+                    defacing,
+                    dose,
+                    region,
+                    approved,
+                    decoded,
+                    overlays,
+                    zero_beyond,
                 )
             except PixelsNotReviewed:
                 return self._cleaned(
-                    source, dataset, defacing, dose, region, None, None, overlays
+                    source,
+                    dataset,
+                    defacing,
+                    dose,
+                    region,
+                    None,
+                    None,
+                    overlays,
+                    zero_beyond,
                 )
         except PixelDataRefused as refused:
             raise _Refused(refused.reason) from None
@@ -1513,11 +1567,13 @@ class InstanceTransform:
         approved: Regions | None,
         decoded: bytes | None,
         overlays: int,
-    ) -> tuple[Redaction | None, VisualFeaturesReason | None, bool]:
+        zero_beyond: bool = False,
+    ) -> tuple[Redaction | None, VisualFeaturesReason | None, bool, float | None]:
         """Return what :meth:`_black_out` returns, with the regions that a
         reviewer ``approved``, if any, the SHA-256 that the review records
-        of the decoded frames, if any, and the bit planes of ``overlays``
-        cleared.
+        of the decoded frames, if any, the bit planes of ``overlays``
+        cleared, and an RT Dose set to zero beyond the fraction where
+        ``zero_beyond``.
 
         Raises
         ------
@@ -1533,10 +1589,11 @@ class InstanceTransform:
             else self._region_rules.boxes_for(dataset)
         )
         if dose is not None or region is not None:
+            exceeded = None
             try:
                 defacer: RtDoseDefacer | PetDefacer | SegmentationDefacer
                 if dose is not None:
-                    defacer = RtDoseDefacer(dose, dataset)
+                    defacer = RtDoseDefacer(dose, dataset, beyond_fraction=zero_beyond)
                 else:
                     assert region is not None
                     defacer = region(dataset)
@@ -1560,6 +1617,8 @@ class InstanceTransform:
                     )
                 )
                 why = defacer.held
+                if isinstance(defacer, RtDoseDefacer):
+                    exceeded = defacer.exceeded
             except PixelDataRefused:
                 redaction = None
                 why = VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME
@@ -1577,7 +1636,7 @@ class InstanceTransform:
                     redaction = black_out(
                         source, dataset, self._finder, rules=rules, overlays=overlays
                     )
-            return redaction, why, reviewed
+            return redaction, why, reviewed, exceeded
         defacer = (
             None
             if defacing is None or defacing.block is None
@@ -1595,6 +1654,7 @@ class InstanceTransform:
                 ),
                 None,
                 True,
+                None,
             )
         return (
             black_out(
@@ -1607,6 +1667,7 @@ class InstanceTransform:
             ),
             None,
             False,
+            None,
         )
 
     def _kept_descriptors(
@@ -1753,11 +1814,13 @@ class InstanceTransform:
         defacing = self._defacing(iod, record)
         dose = self._dose_block(iod, record, dataset)
         region = self._region(iod, record)
+        choice = self._dose_choice(data, dose)
+        chosen_dose = None if choice is None else choice[1]
         qc = (*risk, *dropped_of(edits, retained), *omissions_of(evidence), *names)
         chosen = {CLEAN_DESCRIPTORS} if satisfied else set()
         try:
             qc = (*qc, *_retained(source, plan, edits))
-            redaction, undefaced, reviewed = self._black_out(
+            redaction, undefaced, reviewed, exceeded = self._black_out(
                 data,
                 source,
                 dataset,
@@ -1765,7 +1828,26 @@ class InstanceTransform:
                 dose,
                 _region_defacing(iod, region),
                 overlays=overlays or 0,
+                zero_beyond=chosen_dose is DoseChoice.SET_TO_ZERO,
             )
+            # An RT Dose with too much dose in its block: held without a
+            # choice, written as received on one, or set to zero on the
+            # other, and recorded for the QC pack and the release report.
+            checked = (
+                choice is not None
+                and exceeded is not None
+                and undefaced
+                in (
+                    (None,)
+                    if chosen_dose is DoseChoice.SET_TO_ZERO
+                    else (VisualFeaturesReason.DOSE_IN_FACE_BLOCK,)
+                )
+            )
+            if checked:
+                assert choice is not None and exceeded is not None
+                if chosen_dose is DoseChoice.AS_WRITTEN:
+                    undefaced = None
+                qc = (*qc, DoseCheckMaterial(choice[0], chosen_dose, exceeded))
             # The markers write no pixel data, so the face review is of the
             # pixel data that this plan writes.
             # Compressed Pixel Data written uncompressed holds no codestream
@@ -1796,6 +1878,17 @@ class InstanceTransform:
                 face = HeldVisualFeatures(VisualFeaturesReason.NO_FACE_VERDICT)
             else:
                 face = self._face_hold(data, dataset, iod, writing)
+            if (
+                checked
+                and chosen_dose is DoseChoice.SET_TO_ZERO
+                and choice is not None
+                and not choice[2]
+            ):
+                # No reviewed pack showed the grid set to zero, whatever its
+                # verdict on the grid as received.
+                face = HeldVisualFeatures(
+                    VisualFeaturesReason.DOSE_SET_TO_ZERO_ON_REVIEW
+                )
             frame = (
                 self._frame_hold(
                     iod, record, dataset, dose if dose is not None else region
@@ -1803,8 +1896,12 @@ class InstanceTransform:
                 if undefaced is None
                 else HeldVisualFeatures(undefaced)
             )
-            if frame is None and self._unconfirmed(
-                record, dose if dose is not None else region
+            # An RT Dose written as received on a reviewer's choice is cleaned
+            # by no block, so a wrong block would leave nothing in it.
+            if (
+                frame is None
+                and not (checked and chosen_dose is DoseChoice.AS_WRITTEN)
+                and self._unconfirmed(record, dose if dose is not None else region)
             ):
                 frame = HeldVisualFeatures(VisualFeaturesReason.EYES_DISAGREE_WITH_ROIS)
             if defacing is not None and defacing.eyes is EyeCheck.DISAGREE:
