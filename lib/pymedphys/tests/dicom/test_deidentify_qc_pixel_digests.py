@@ -889,7 +889,7 @@ def test_a_run_releases_an_rt_dose_only_where_its_dose_levels_showed_every_frame
                 dose_frames,
                 # Every frame on a segments sheet, since a Modality of two
                 # values may be SEG too.
-                frozenset({(source, pixels, 12)}),
+                absent_segment_frames=frozenset({(source, pixels, 12)}),
             ),
             unvalidated_policy=True,
         )(data, record)

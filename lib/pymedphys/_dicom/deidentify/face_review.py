@@ -346,7 +346,7 @@ def read_face_review(pack_directory: os.PathLike | str) -> FaceReview:
             for source, pixels, _, _, _, shown, _ in absent
             if pixels is not None and shown is not None
         ),
-        frozenset(
+        absent_segment_frames=frozenset(
             (source, pixels, shown)
             for source, pixels, *_, shown in absent
             if pixels is not None and shown is not None

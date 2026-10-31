@@ -187,8 +187,8 @@ def test_a_review_holds_a_segmentation_unless_its_segments_sheet_showed_every_fr
             frozenset({(source, pixels), (source, bytes.fromhex(NO_PIXELS_SHA256))}),
             frozenset({(source, contours)}),
             frozenset({(source, pixels, 16)}),
-            dose_frames,
-            segment_frames,
+            absent_dose_frames=dose_frames,
+            absent_segment_frames=segment_frames,
         )
 
     held = VisualFeaturesReason.OTHER_PIXEL_DATA
@@ -274,8 +274,8 @@ def test_a_run_releases_a_segmentation_only_where_its_segments_sheet_showed_ever
                 frozenset({(source, pixels, frames)}),
                 # Every frame in dose levels, since a Modality of two values
                 # may be RTDOSE too.
-                frozenset({(source, pixels, frames)}),
-                segment_frames,
+                absent_dose_frames=frozenset({(source, pixels, frames)}),
+                absent_segment_frames=segment_frames,
             ),
             unvalidated_policy=True,
         )(data, record)
