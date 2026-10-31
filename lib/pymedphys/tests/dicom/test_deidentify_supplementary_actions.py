@@ -29,6 +29,8 @@ from pymedphys._imports import pytest, tomlkit
 
 from pymedphys._dicom.deidentify import (
     actions,
+    compound_actions,
+    element_rules,
     iods,
     policy,
     scope,
@@ -88,6 +90,11 @@ SUPPORTED_DOSE_SR_IODS = (
 # The IODs that the Radiation Dose SR IODs were reviewed against.
 DOSE_SR_REVIEWED_AGAINST = REVIEWED_AGAINST + TARGET_IODS
 SUPPORTED_IODS = REVIEWED_AGAINST + SUPPORTED_TARGET_IODS + SUPPORTED_DOSE_SR_IODS
+# The RT Ion IODs, which the maintainer added to the target coverage on 31
+# October 2026, whose text, UID, and date attributes were reviewed ahead of
+# supporting them, against every IOD above.
+ION_IODS = ("RT Ion Plan", "RT Ion Beams Treatment Record")
+ION_REVIEWED_AGAINST = DOSE_SR_REVIEWED_AGAINST + RADIATION_DOSE_SR_IODS
 CLEAN_DESCRIPTORS = "clean_descriptors"
 DEVICE_IDENTITY = "retain_device_identity"
 FULL_DATES = "retain_longitudinal_full_dates"
@@ -649,6 +656,160 @@ def test_every_uid_and_date_that_the_radiation_dose_sr_iods_use_has_a_role():
     for tag, role in RADIATION_DOSE_SR_DATES.items():
         assert listed[tag].basic_profile in REMOVING_ACTIONS, tag
         assert temporal.role(tag) is role, tag
+
+
+# The text attributes that the RT Ion IODs use and that neither Table E.1-1 nor
+# the IODs reviewed before them use, by group, checked by hand against the
+# 2026d PS3.3 Tables C.8.8.25-1, C.8.8.26-1, and C.8.8.28-1 and Section
+# C.8.8.25.5.
+ION_OPERATOR_TEXT = {
+    "(300A,0322)",  # Range Shifter Description
+    "(300A,033A)",  # Lateral Spreading Device Description
+    "(300A,034A)",  # Range Modulator Description
+}
+ION_DEVICE_IDENTITY = {
+    "(300A,030F)",  # Snout ID
+    "(300A,0318)",  # Range Shifter ID
+    "(300A,0336)",  # Lateral Spreading Device ID
+    "(300A,0346)",  # Range Modulator ID
+    "(300A,0352)",  # Patient Support ID
+}
+ION_KEPT_TEXT = {
+    "(300A,034C)",  # Beam Current Modulation ID
+    "(300A,0362)",  # Range Shifter Setting
+    "(300A,0372)",  # Lateral Spreading Device Setting
+    "(300A,0390)",  # Scan Spot Tune ID
+}
+ION_REMOVED_UNDER_EVERY_OPTION = {"(300A,0354)"}  # Patient Support Accessory Code
+ION_TEXT_GROUPS = (
+    (ION_OPERATOR_TEXT, "X/Z/D", {CLEAN_DESCRIPTORS: "C"}),
+    (ION_DEVICE_IDENTITY, "X/Z/D", {DEVICE_IDENTITY: "K"}),
+    (ION_KEPT_TEXT, "K", {}),
+    (ION_REMOVED_UNDER_EVERY_OPTION, "X/Z/D", {}),
+)
+# What removal by Type gives each removed attribute where the RT Ion IODs
+# define it, as its note says: the accessories' identifiers are Type 1 in the
+# items that describe them, their descriptions and the patient support's
+# identifiers Type 3.
+ION_RESOLVED = {
+    **dict.fromkeys(ION_OPERATOR_TEXT, "X"),
+    **dict.fromkeys(ION_DEVICE_IDENTITY - {"(300A,0352)"}, "D"),
+    "(300A,0352)": "X",
+    "(300A,0354)": "X",
+}
+# The other attributes that the RT Ion IODs use and the IODs reviewed before
+# them do not, by VR, checked by hand against the 2026d PS3.3 and PS3.6:
+# codes, numbers, and sequences of the ion beams, their accessories, and
+# their delivery, none of which Table E.1-1 lists.
+ION_OTHER_VRS = {"FL": 46, "SQ": 26, "IS": 15, "CS": 12, "DS": 8, "US": 1, "SS": 1}
+
+
+def test_the_ion_iods_are_generated_and_not_yet_supported():
+    tables = iods.load_iod_tables()
+
+    assert set(ION_IODS) <= set(tables.iods)
+    assert not set(ION_IODS) & scope.SUPPORTED_IODS
+
+
+@pytest.mark.deid_requirement("MIDI-BP-05", "MIDI-BP-06", "MIDI-BP-11")
+def test_the_text_that_only_the_ion_iods_use_has_reviewed_rules():
+    listed = set(_table_e1_1())
+    added = _used_by(ION_IODS, TEXT_VRS) - _used_by(ION_REVIEWED_AGAINST, TEXT_VRS)
+    rules = _rules()
+
+    assert not added & listed
+    assert added == (
+        ION_OPERATOR_TEXT
+        | ION_DEVICE_IDENTITY
+        | ION_KEPT_TEXT
+        | ION_REMOVED_UNDER_EVERY_OPTION
+    )
+    assert len(added) == 13
+    for tags, action, options in ION_TEXT_GROUPS:
+        for tag in tags:
+            assert (rules[tag].action, dict(rules[tag].options)) == (
+                action,
+                options,
+            ), tag
+            assert rules[tag].note.strip(), tag
+
+
+def test_each_policy_gives_the_ion_text_the_action_of_its_group():
+    for composed in _every_policy():
+        for tags, action, options in ION_TEXT_GROUPS:
+            selected = [a for o, a in options.items() if o in composed.options]
+            for tag in tags:
+                assert composed.supplementary_actions[tag] == (
+                    selected[0] if selected else action
+                ), (tag, composed.options)
+
+
+def test_the_ion_text_that_is_removed_resolves_by_its_type_as_its_note_says():
+    tables = iods.load_iod_tables()
+    rules = _rules()
+
+    for name in ION_IODS:
+        iod = tables.iods[name]
+        for definition in iod.definitions:
+            if definition.tag not in ION_RESOLVED:
+                continue
+            resolved = compound_actions.resolve_in_iod(
+                iod, definition.tag, definition.path, rules[definition.tag].action
+            )
+            assert resolved == ION_RESOLVED[definition.tag], (name, definition)
+    # Each note says what removal by Type gives it where that differs from X.
+    for tag, resolved in ION_RESOLVED.items():
+        said = "dummy value where it is Type 1" in rules[tag].note
+        assert said == (resolved == "D"), tag
+
+
+def test_every_uid_date_and_name_that_the_ion_iods_use_has_a_role():
+    uids = uid_roles.load_uid_roles()
+    temporal = temporal_roles.load_temporal_roles()
+    ion_uids = _used_by(ION_IODS, {"UI"})
+    ion_dates = _used_by(ION_IODS, TEMPORAL_VRS)
+
+    for tag in ion_uids:
+        assert isinstance(uids.role(tag), uid_roles.UIDRole), tag
+    for tag in ion_dates:
+        assert isinstance(temporal.role(tag), temporal_roles.TemporalRole), tag
+    # The IODs reviewed before them use every UID, date, time, datetime,
+    # person name, and URL that the RT Ion IODs use.
+    for vrs in ({"UI"}, TEMPORAL_VRS, {"PN"}, {"UR"}):
+        assert not _used_by(ION_IODS, vrs) - _used_by(ION_REVIEWED_AGAINST, vrs), vrs
+
+
+def test_the_ion_iods_other_new_attributes_are_kept_by_the_default():
+    dictionary = _dictionary()
+    tables = iods.load_iod_tables()
+    every_vr = {vr for attribute in dictionary.values() for vr in attribute.vrs}
+    other = (
+        _used_by(ION_IODS, every_vr)
+        - _used_by(ION_REVIEWED_AGAINST, every_vr)
+        - _used_by(ION_IODS, TEXT_VRS)
+    )
+    listed = set(_table_e1_1())
+    rules = _rules()
+    uids = set(uid_roles.load_uid_roles().rules)
+    by_vr = collections.Counter(vr for tag in other for vr in dictionary[tag].vrs)
+
+    assert by_vr == ION_OTHER_VRS
+    assert all(len(dictionary[tag].vrs) == 1 for tag in other)
+    assert not other & (listed | set(rules) | uids)
+    # So each takes the default, which keeps it where these IODs define it,
+    # under every preset, with a sequence's items handled by their own rules.
+    for preset in policy.PRESETS:
+        rules_of = element_rules.ElementRules(policy.compose_policy(preset))
+        for name in ION_IODS:
+            iod = tables.iods[name]
+            for definition in iod.definitions:
+                if definition.tag not in other:
+                    continue
+                rule = rules_of.rule(definition.tag, definition.path, iod=iod)
+                assert (rule.source, rule.action) == (
+                    element_rules.RuleSource.DEFAULT,
+                    element_rules.KEEP,
+                ), (preset, name, definition)
 
 
 def test_names_identifiers_and_overlay_text_are_removed_under_every_option():

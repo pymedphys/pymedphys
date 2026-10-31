@@ -8,15 +8,14 @@
 # and an IOD of the supported scope uses, at any depth, so that no
 # operator-typed text is kept merely because the table does not list it, and
 # so does every one that an IOD of the target coverage uses but not yet the
-# supported scope: Segmentation, and the Enhanced X-Ray and Patient
-# Radiation Dose SR IODs, reviewed ahead of supporting them, as RT Image, RT Beams
-# Treatment Record, the registrations, and the X-Ray and Radiopharmaceutical
-# Radiation Dose SR IODs were. So does every date, time, and datetime (DA, DT, or
-# TM)
-# attribute that Table E.1-1 omits, besides the role that the temporal roles
-# file gives it. Other attributes that the table omits have a rule only where
-# one has been reviewed, such as the two URLs below that name coding concepts
-# and schemes.
+# supported scope: Segmentation, the Enhanced X-Ray and Patient Radiation
+# Dose SR IODs, RT Ion Plan, and RT Ion Beams Treatment Record, reviewed ahead
+# of supporting them, as RT Image, RT Beams Treatment Record, the
+# registrations, and the X-Ray and Radiopharmaceutical Radiation Dose SR IODs
+# were. So does every date, time, and datetime (DA, DT, or TM) attribute that
+# Table E.1-1 omits, besides the role that the temporal roles file gives it.
+# Other attributes that the table omits have a rule only where one has been
+# reviewed, such as the two URLs below that name coding concepts and schemes.
 # A rule never covers an attribute that Table E.1-1 lists, or a UI attribute,
 # which the UID roles file gives a role.
 #
@@ -582,6 +581,27 @@ options = { clean_descriptors = "C" }
 note = "A user-defined name for a channel shield. Names of accessories are treated as typed text, like Block Name, while their identifiers, such as Channel Shield ID, are device identity: removed by Type, and cleaned as a descriptor under Clean Descriptors."
 
 [[attribute]]
+tag = "(300A,0322)"
+keyword = "RangeShifterDescription"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "A user-defined description of a range shifter in an ion beam. It is removed by Type, and cleaned as a descriptor under Clean Descriptors, as Table E.1-1 does for Compensator Description and Bolus Description."
+
+[[attribute]]
+tag = "(300A,033A)"
+keyword = "LateralSpreadingDeviceDescription"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "A user-defined description of a lateral spreading device, such as a scatterer, in an ion beam. It is removed by Type, and cleaned as a descriptor under Clean Descriptors, as Table E.1-1 does for Compensator Description and Bolus Description."
+
+[[attribute]]
+tag = "(300A,034A)"
+keyword = "RangeModulatorDescription"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "A user-defined description of a range modulator, such as a modulator wheel or ridge filter, in an ion beam. It is removed by Type, and cleaned as a descriptor under Clean Descriptors, as Table E.1-1 does for Compensator Description and Bolus Description."
+
+[[attribute]]
 tag = "(300A,0402)"
 keyword = "SetupImageComment"
 action = "X/Z/D"
@@ -779,6 +799,41 @@ keyword = "ChannelShieldID"
 action = "X/Z/D"
 options = { retain_device_identity = "K" }
 note = "A user or machine supplied identifier for a channel shield. Accessory identifiers are device identity: removed by Type, which empties it where it is Type 2, and kept under Retain Device Identity, as Table E.1-1 does for Treatment Machine Name."
+
+[[attribute]]
+tag = "(300A,030F)"
+keyword = "SnoutID"
+action = "X/Z/D"
+options = { retain_device_identity = "K" }
+note = "A user or machine supplied identifier for the snout of an ion beam, an accessory of one treatment machine. Accessory identifiers are device identity: removed by Type, which replaces it with a dummy value where it is Type 1, and kept under Retain Device Identity, as Table E.1-1 does for Treatment Machine Name."
+
+[[attribute]]
+tag = "(300A,0318)"
+keyword = "RangeShifterID"
+action = "X/Z/D"
+options = { retain_device_identity = "K" }
+note = "A user or machine supplied identifier for a range shifter in an ion beam, an accessory of one treatment machine. Accessory identifiers are device identity: removed by Type, which replaces it with a dummy value where it is Type 1, and kept under Retain Device Identity, as Table E.1-1 does for Treatment Machine Name."
+
+[[attribute]]
+tag = "(300A,0336)"
+keyword = "LateralSpreadingDeviceID"
+action = "X/Z/D"
+options = { retain_device_identity = "K" }
+note = "A user or machine supplied identifier for a lateral spreading device in an ion beam, an accessory of one treatment machine. Accessory identifiers are device identity: removed by Type, which replaces it with a dummy value where it is Type 1, and kept under Retain Device Identity, as Table E.1-1 does for Treatment Machine Name."
+
+[[attribute]]
+tag = "(300A,0346)"
+keyword = "RangeModulatorID"
+action = "X/Z/D"
+options = { retain_device_identity = "K" }
+note = "A user or machine supplied identifier for a range modulator in an ion beam, an accessory of one treatment machine. Accessory identifiers are device identity: removed by Type, which replaces it with a dummy value where it is Type 1, and kept under Retain Device Identity, as Table E.1-1 does for Treatment Machine Name."
+
+[[attribute]]
+tag = "(300A,0352)"
+keyword = "PatientSupportID"
+action = "X/Z/D"
+options = { retain_device_identity = "K" }
+note = "A user-specified identifier for a manufacturer-specific patient support device, such as a treatment table or chair (PS3.3 Table C.8.8.28-1), so it identifies one device. It is device identity: removed by Type, and kept under Retain Device Identity, as Table E.1-1 does for Treatment Machine Name."
 
 [[attribute]]
 tag = "(300A,0421)"
@@ -1000,6 +1055,30 @@ action = "K"
 note = "The name of a brachytherapy source's isotope, such as Ir-192, from the planning system's source library. It names an isotope and identifies no one, and it is Type 1, so replacing it would lose the source's physics; it is kept."
 
 [[attribute]]
+tag = "(300A,034C)"
+keyword = "BeamCurrentModulationID"
+action = "K"
+note = "A user-supplied identifier for the beam current modulation pattern that a modulator wheel is delivered with, required where Range Modulator Type is WHL_MODWEIGHTS. It names a pattern in the treatment machine's configuration, as Fluence Mode ID names a fluence mode, not a device or a person, and it is needed to reproduce the beam's depth dose, so it is kept, as Fluence Mode ID is. Keeping it accepts the residual risk that a site writes a name in it, since PS3.3 lets a user supply it."
+
+[[attribute]]
+tag = "(300A,0362)"
+keyword = "RangeShifterSetting"
+action = "K"
+note = "The presence or thickness of a range shifter at a control point, in an encoding that PS3.3 Section C.8.8.25.5 says is machine specific and documented in the machine's Conformance Statement, such as a water-equivalent thickness or a pattern of 0s and 1s for the plates in the beam. It is a setting of the machine that identifies no one, it is Type 1, and replacing it would lose the beam's range, so it is kept."
+
+[[attribute]]
+tag = "(300A,0372)"
+keyword = "LateralSpreadingDeviceSetting"
+action = "K"
+note = "The presence or characteristics of a lateral spreading device at a control point, in an encoding that PS3.3 Section C.8.8.25.5 says is machine specific and documented in the machine's Conformance Statement. It is a setting of the machine that identifies no one, it is Type 1, and replacing it would lose how the beam was spread, so it is kept."
+
+[[attribute]]
+tag = "(300A,0390)"
+keyword = "ScanSpotTuneID"
+action = "K"
+note = "The identifier of the treatment machine's configuration that produces a scanned beam's spots, which PS3.3 says may be the nominal spot size or another machine-specific value, required for a modulated scanned beam. It is a technical value that identifies no one, and it is needed to reproduce the spots, so it is kept, as Fluence Mode ID is. Keeping it accepts the residual risk that a site writes a name in it, since PS3.3 lets a user supply it."
+
+[[attribute]]
 tag = "(3010,001A)"
 keyword = "ManufacturerModelVersion"
 action = "K"
@@ -1127,6 +1206,12 @@ tag = "(300A,0355)"
 keyword = "TrayAccessoryCode"
 action = "X/Z/D"
 note = "A machine-readable identifier for the tray of a block or compensator, which PS3.3 Table C.8-50 describes as 'intended to be read by a device such as a bar-code reader', nearly the words in which Table 10.36-1 describes Device Alternate Identifier (3010,001B). Table E.1-1 empties that attribute (Z) and gives it no action under Retain Device Identity. The tray carries a block or compensator, which is usually made for one patient, and the labels of such items are cleaned rather than kept, so it is removed by Type under every option, like Accessory Code."
+
+[[attribute]]
+tag = "(300A,0354)"
+keyword = "PatientSupportAccessoryCode"
+action = "X/Z/D"
+note = "A machine-readable identifier for an accessory of a patient support device, which PS3.3 Table C.8.8.28-1 describes as 'to be read by a device such as a bar code reader', nearly the words in which Table 10.36-1 describes Device Alternate Identifier (3010,001B). Table E.1-1 empties that attribute (Z) and gives it no action under Retain Device Identity, so it is removed by Type under every option, like Accessory Code and Tray Accessory Code."
 
 [[attribute]]
 tag = "(60xx,0022)"
