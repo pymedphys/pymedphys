@@ -72,11 +72,12 @@ removing Overlay Data (60xx,3000) removes every attribute of its repeating
 group where the IOD's Overlay Plane Module is user-optional, and an
 attribute of :data:`LAPSED_CONDITIONS`, such as ROI Interpreter Sequence
 (3006,004E), whose condition lapses once ROI Creator Sequence (3006,004D) is
-removed, is removed alone. One place departs from Table E.1-1's X, as the
+removed, is removed alone. Two places depart from Table E.1-1's X, as the
 maintainer decided: Requested Procedure ID (0040,1001), Type 2 in Referenced
-Request Sequence (0040,A370) of a Structured Report, where no Type 3
-sequence encloses it, is emptied rather than sequester the report
-(:data:`EMPTIED_PLAIN_X`).
+Request Sequence (0040,A370) of a Structured Report, and Source Manufacturer
+(300A,0216), Type 2 in Recorded Source Sequence (3008,0100) of an RT Brachy
+Treatment Record, where no Type 3 sequence encloses either, are emptied
+rather than sequester the instance (:data:`EMPTIED_PLAIN_X`).
 
 For example, the RT Structure Set IOD makes Series Description (0008,103E),
 which Table E.1-1 gives X, Type 1 in Source Series Information Sequence
@@ -147,13 +148,20 @@ LAPSED_CONDITIONS: Mapping[str, str] = types.MappingProxyType(
 
 # Each attribute that Table E.1-1 gives a plain X, mapped to the one place,
 # by the sequences that enclose it, where a plain X empties it rather than
-# sequester the instance, as the maintainer decided on 26 October 2026: there
-# the IOD makes it Type 2 and no Type 3 sequence encloses it. Requested
-# Procedure ID is Type 2 in Referenced Request Sequence, which is Type 1C at
-# the top level of a Structured Report made for a request; its zero-length
-# value discloses nothing that its removal would not.
+# sequester the instance, as the maintainer decided: there the IOD makes it
+# Type 2 and no Type 3 sequence encloses it, and its zero-length value
+# discloses nothing that its removal would not. Requested Procedure ID
+# (26 October 2026) is Type 2 in Referenced Request Sequence, which is Type
+# 1C at the top level of a Structured Report made for a request. Source
+# Manufacturer is Type 2 in Recorded Source Sequence, which is Type 1 at the
+# top level of an RT Brachy Treatment Record, so every conforming record
+# holds it; Table E.1-1's X/Z empties Source Serial Number (3008,0105) in the
+# same item.
 EMPTIED_PLAIN_X: Mapping[str, tuple[str, ...]] = types.MappingProxyType(
-    {"(0040,1001)": ("(0040,A370)",)}
+    {
+        "(0040,1001)": ("(0040,A370)",),
+        "(300A,0216)": ("(3008,0100)",),
+    }
 )
 
 
@@ -426,6 +434,13 @@ def resolve_plain_in_iod(iod: IOD, tag: str, path: Sequence[str], action: str) -
     >>> report = iods["X-Ray Radiation Dose SR"]
     >>> resolve_plain_in_iod(report, "(0040,1001)", ("(0040,A370)",), "X")
     'Z'
+
+    So is Source Manufacturer (300A,0216) in Recorded Source Sequence
+    (3008,0100) of an RT Brachy Treatment Record:
+
+    >>> record = iods["RT Brachy Treatment Record"]
+    >>> resolve_plain_in_iod(record, "(300A,0216)", ("(3008,0100)",), "X")
+    'Z'
     """
     definitions = iod.lookup(tag, _checked_path(tag, path))
     if not isinstance(action, str) or action not in PLAIN_ACTIONS:
@@ -482,7 +497,8 @@ def resolve_plain_x_in_iod(iod: IOD, tag: str, path: Sequence[str]) -> PlainRemo
     (3006,004D). An attribute of :data:`EMPTIED_PLAIN_X` is emptied instead,
     at its one place there, where it is Type 2 and its removal would
     sequester the instance, as the maintainer decided: Requested Procedure
-    ID (0040,1001) in Referenced Request Sequence (0040,A370).
+    ID (0040,1001) in Referenced Request Sequence (0040,A370), and Source
+    Manufacturer (300A,0216) in Recorded Source Sequence (3008,0100).
 
     This decides from the IOD's Types alone; it changes no data set.
 

@@ -211,6 +211,8 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "23-sr-dose-radiopharmaceutical.dcm",
         "47-rt-ion-plan.dcm",
         "48-rt-ion-beams-record.dcm",
+        "49-rt-brachy-record.dcm",
+        "50-rt-treatment-summary-record.dcm",
     ]
     assert [file.manifest.iod for file in corpus.files] == [
         "CT Image",
@@ -238,13 +240,19 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "Radiopharmaceutical Radiation Dose SR",
         "RT Ion Plan",
         "RT Ion Beams Treatment Record",
+        "RT Brachy Treatment Record",
+        "RT Treatment Summary Record",
     ]
     assert corpus_module.STRUCTURED_REPORT_FILES == tuple(
-        file.name for file in corpus.files[-4:-2]
+        file.name for file in corpus.files[-6:-4]
     )
     assert (
         corpus_module.ION_PLAN_FILE,
         corpus_module.ION_TREATMENT_RECORD_FILE,
+    ) == tuple(file.name for file in corpus.files[-4:-2])
+    assert (
+        corpus_module.BRACHY_TREATMENT_RECORD_FILE,
+        corpus_module.TREATMENT_SUMMARY_RECORD_FILE,
     ) == tuple(file.name for file in corpus.files[-2:])
     # Every IOD of the first supported release.
     assert {file.manifest.iod for file in corpus.files} == scope.SUPPORTED_IODS
@@ -399,7 +407,8 @@ def test_an_attribute_whose_removal_sequesters_is_planted_in_one_instance(corpus
     # Each report's Verifying Observer Sequence, which a reviewed rule keeps
     # with dummy values (D-021), and the Requested Procedure ID of its
     # Referenced Request Sequence, which a plain X empties there (D-020), are
-    # planted.
+    # planted, as is the RT Brachy Treatment Record's Source Manufacturer in
+    # its Recorded Source Sequence, which a plain X empties there too.
     both = {"(0010,2297)", "(0010,2299)"}
     only_in = {
         "Enhanced PET Image": {"(0018,1078)"},
@@ -530,8 +539,10 @@ def test_the_reference_graph_has_no_findings(corpus):
     assert {(3, 0), (3, 1), (3, 2), (4, 3), (4, 5), (5, 4), (6, 4)} <= targets
     # The MR and PET Images reference the first slice, each other image the
     # single-frame one of its modality, the treatment record the plan, the RT
-    # Ion Plan the structure set, the dose, and the plan, and the RT Ion
-    # Beams Treatment Record the RT Ion Plan.
+    # Ion Plan the structure set, the dose, and the plan, the RT Ion Beams
+    # Treatment Record the RT Ion Plan, the RT Brachy Treatment Record the
+    # plan and the RT Beams Treatment Record, and the RT Treatment Summary
+    # Record the plan and the RT Brachy Treatment Record.
     names = [file.name for file in corpus.files]
     position = names.index
     sources = {
@@ -547,18 +558,25 @@ def test_the_reference_graph_has_no_findings(corpus):
         "17-pet-legacy-enhanced.dcm": "15-pet.dcm",
         "20-rt-beams-record.dcm": "05-rtplan.dcm",
         "48-rt-ion-beams-record.dcm": "47-rt-ion-plan.dcm",
+        "49-rt-brachy-record.dcm": "05-rtplan.dcm",
     }
     assert {
         (position(source), position(target)) for source, target in sources.items()
     } <= targets
     ion_plan = position("47-rt-ion-plan.dcm")
     assert {(ion_plan, 3), (ion_plan, 4), (ion_plan, 5)} <= targets
+    summary = position("50-rt-treatment-summary-record.dcm")
+    brachy = position("49-rt-brachy-record.dcm")
+    beams = position("20-rt-beams-record.dcm")
+    assert {(brachy, beams), (summary, 4), (summary, brachy)} <= targets
 
 
 def test_each_treatment_record_names_its_own_plan_with_its_class(corpus):
     # The RT Ion Beams Treatment Record's Referenced RT Plan Sequence names the
     # RT Ion Plan, with its Storage SOP Class, as the RT Beams Treatment
-    # Record's names the RT Plan.
+    # Record's names the RT Plan, and the RT Brachy Treatment Record's and the
+    # RT Treatment Summary Record's name the RT Plan, whose application setups
+    # the brachy record records.
     files = {file.name: file for file in corpus.files}
     for record, plan, sop_class in (
         (
@@ -571,6 +589,16 @@ def test_each_treatment_record_names_its_own_plan_with_its_class(corpus):
             corpus_module.ION_PLAN,
             corpus_module.RT_ION_PLAN_STORAGE,
         ),
+        (
+            corpus_module.BRACHY_TREATMENT_RECORD_FILE,
+            corpus_module.PLAN,
+            corpus_module.RT_PLAN_STORAGE,
+        ),
+        (
+            corpus_module.TREATMENT_SUMMARY_RECORD_FILE,
+            corpus_module.PLAN,
+            corpus_module.RT_PLAN_STORAGE,
+        ),
     ):
         dataset = pydicom.dcmread(pydicom.filebase.DicomBytesIO(files[record].data))
         (reference,) = dataset.ReferencedRTPlanSequence
@@ -578,6 +606,48 @@ def test_each_treatment_record_names_its_own_plan_with_its_class(corpus):
         assert reference.ReferencedSOPClassUID == sop_class, record
     ion_plan = files[corpus_module.ION_PLAN_FILE].manifest
     assert ion_plan.sop_class == corpus_module.RT_ION_PLAN_STORAGE
+    plan = pydicom.dcmread(pydicom.filebase.DicomBytesIO(files["05-rtplan.dcm"].data))
+    assert "ApplicationSetupSequence" in plan
+
+
+def test_the_brachy_and_summary_records_name_the_records_they_relate_to(corpus):
+    # The RT Treatment Summary Record's Referenced Treatment Record Sequence
+    # names the RT Brachy Treatment Record, and the RT Brachy Treatment
+    # Record's names the RT Beams Treatment Record, each with its Storage SOP
+    # Class, so the collection holds references from a record to a record of
+    # another IOD.
+    files = {file.name: file for file in corpus.files}
+    for record, named, sop_class in (
+        (
+            corpus_module.TREATMENT_SUMMARY_RECORD_FILE,
+            corpus_module.BRACHY_TREATMENT_RECORD,
+            corpus_module.RT_BRACHY_TREATMENT_RECORD_STORAGE,
+        ),
+        (
+            corpus_module.BRACHY_TREATMENT_RECORD_FILE,
+            corpus_module.TREATMENT_RECORD,
+            corpus_module.RT_BEAMS_TREATMENT_RECORD_STORAGE,
+        ),
+    ):
+        dataset = pydicom.dcmread(pydicom.filebase.DicomBytesIO(files[record].data))
+        assert dataset.Modality == "RTRECORD", record
+        (reference,) = dataset.ReferencedTreatmentRecordSequence
+        assert reference.ReferencedSOPInstanceUID == named, record
+        assert reference.ReferencedSOPClassUID == sop_class, record
+    for name, sop_class, iod in (
+        (
+            corpus_module.BRACHY_TREATMENT_RECORD_FILE,
+            corpus_module.RT_BRACHY_TREATMENT_RECORD_STORAGE,
+            "RT Brachy Treatment Record",
+        ),
+        (
+            corpus_module.TREATMENT_SUMMARY_RECORD_FILE,
+            corpus_module.RT_TREATMENT_SUMMARY_RECORD_STORAGE,
+            "RT Treatment Summary Record",
+        ),
+    ):
+        manifest = files[name].manifest
+        assert (manifest.sop_class, manifest.iod) == (sop_class, iod)
 
 
 def test_two_instances_are_in_implicit_vr_and_the_rest_explicit(corpus):

@@ -95,14 +95,19 @@ DOSE_SR_REVIEWED_AGAINST = REVIEWED_AGAINST + TARGET_IODS
 # release now supports.
 ION_IODS = ("RT Ion Plan", "RT Ion Beams Treatment Record")
 ION_REVIEWED_AGAINST = DOSE_SR_REVIEWED_AGAINST + RADIATION_DOSE_SR_IODS
-SUPPORTED_IODS = (
-    REVIEWED_AGAINST + SUPPORTED_TARGET_IODS + SUPPORTED_DOSE_SR_IODS + ION_IODS
-)
 # RT Brachy Treatment Record and RT Treatment Summary Record, which the
 # maintainer added to the target coverage on 31 October 2026, whose
-# attributes were reviewed ahead of supporting them, against every IOD above.
+# attributes were reviewed ahead of supporting them, against every IOD above,
+# and which the first supported release now supports.
 RECORD_IODS = ("RT Brachy Treatment Record", "RT Treatment Summary Record")
 RECORD_REVIEWED_AGAINST = ION_REVIEWED_AGAINST + ION_IODS
+SUPPORTED_IODS = (
+    REVIEWED_AGAINST
+    + SUPPORTED_TARGET_IODS
+    + SUPPORTED_DOSE_SR_IODS
+    + ION_IODS
+    + RECORD_IODS
+)
 CLEAN_DESCRIPTORS = "clean_descriptors"
 DEVICE_IDENTITY = "retain_device_identity"
 FULL_DATES = "retain_longitudinal_full_dates"
@@ -367,8 +372,9 @@ def test_every_text_attribute_a_supported_iod_uses_and_table_e1_1_omits_has_a_ru
 
     # Checked against the 2026d PS3.3, PS3.6, and PS3.15: the combined
     # scope includes the RT objects, among them the two RT Ion IODs, which
-    # add 13, and the two dose-report IODs, whose supplementary rules cover
-    # 168 text attributes.
+    # add 13, and the brachy and summary treatment records, which add none,
+    # and the two dose-report IODs, whose supplementary rules cover 168 text
+    # attributes.
     assert len(omitted) == 168
     assert omitted <= set(_rules())
     assert {"(0008,0100)", "(300A,00C2)", "(60xx,1500)"} <= omitted
@@ -869,11 +875,11 @@ def _resolved_in(names, tag, action):
     }
 
 
-def test_the_brachy_and_summary_records_are_generated_and_not_yet_supported():
+def test_the_brachy_and_summary_records_are_generated_and_supported():
     tables = iods.load_iod_tables()
 
     assert set(RECORD_IODS) <= set(tables.iods)
-    assert not set(RECORD_IODS) & scope.SUPPORTED_IODS
+    assert set(RECORD_IODS) <= scope.SUPPORTED_IODS
 
 
 def test_the_brachy_and_summary_records_add_only_the_brachy_session_record():
