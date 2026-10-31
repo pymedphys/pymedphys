@@ -40,6 +40,7 @@ from pymedphys._dicom.deidentify import (
     dose_defacing,
     face_blocks,
     markers,
+    qc_previews,
     run,
 )
 from pymedphys._dicom.deidentify import synthetic_corpus as corpus_module
@@ -1259,13 +1260,17 @@ def test_a_multi_frame_head_ct_gives_its_frame_the_block_of_its_slices(
         "defaced": 1,
         "not_defaced": [{"reason": "unreadable", "count": _UNPLACED}],
     }
-    # The QC pack shows a multi-frame instance by its cine strip alone,
-    # fewer frames than the head's, so no verdict yet releases the defaced
-    # instance, which is held.
-    assert outcomes[_HEAD_ENHANCED] == ("held-for-review", None)
-    assert reasons[_HEAD_ENHANCED] == {
-        HeldVisualFeatures(VisualFeaturesReason.OTHER_PIXEL_DATA)
-    }
+    # The QC pack draws the defaced instance's frames as a volume, by its
+    # projection and surface render, more than its cine strip shows, so the
+    # verdict on them releases it, each frame written as its slice is.
+    disposition, dataset = outcomes[_HEAD_ENHANCED]
+    assert disposition == "released", reasons[_HEAD_ENHANCED]
+    assert dataset.RecognizableVisualFeatures == "NO"
+    assert _codes(dataset)[-2:] == [markers.PROFILE_CODE, CODE]
+    frames = dataset.pixel_array
+    assert len(frames) > qc_previews.CINE_FRAMES
+    for index, frame in enumerate(frames):
+        assert np.array_equal(frame, single[_head_name(index)][1].pixel_array), index
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.2-01", "PS3.15-E.3.2-02")

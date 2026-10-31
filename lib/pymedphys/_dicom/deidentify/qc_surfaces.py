@@ -21,13 +21,15 @@ shows. :class:`Surface` renders that surface from the six directions of
 face can see one where it is. :mod:`~pymedphys._dicom.deidentify.qc_previews`
 renders:
 
-- each series that forms a volume, as it describes; and
+- each volume that a series forms, as it describes; and
 - each RT Dose instance of two or more frames, placed by Image Position
   (Patient), Image Orientation (Patient), Pixel Spacing, and Grid Frame
   Offset Vector, whose axes lie along the patient's three directions and
   whose frames are evenly spaced, at each of a ladder of dose levels.
 
-Enhanced multi-frame images are not rendered.
+A series' slices may be single-frame instances, or the frames of
+multi-frame instances placed by their functional groups, added in any
+order (:meth:`Surface.add`).
 :mod:`~pymedphys._dicom.deidentify.qc_contours` renders RT Structure Set
 contours by :func:`views`, and by :func:`view_crossings` the surfaces
 that one region hides behind its own, and
@@ -36,8 +38,10 @@ segments likewise.
 
 The surface encloses the voxels at or above a threshold, applied after
 Rescale Slope and Rescale Intercept, or after Dose Grid Scaling for RT Dose:
-:data:`CT_THRESHOLD` Hounsfield units for a CT series; and Otsu's threshold
-over the sampled volume for any other series, such as MR or PET, with pixel
+:data:`CT_THRESHOLD` Hounsfield units for a CT series whose values are
+Hounsfield units, as :mod:`~pymedphys._dicom.deidentify.qc_previews` finds
+them; and Otsu's threshold over the sampled volume for any other series,
+such as MR or PET, or CT of other units, with pixel
 padding counted below its lowest value, since padding marks where there is
 no patient. Pixel padding, which is NaN, lies below every threshold.
 
@@ -263,7 +267,11 @@ class Surface:
         self._samples = np.full(
             tuple(len(taken) for taken in self._taken), np.nan, np.float32
         )
-        self._added = 0
+        # The slices added, by their place along the slice axis, and the
+        # place of the next slice where none is given.
+        self._added: set[int] = set()
+        self._next = 0
+        self._stray = False
         # An RT Dose's greatest dose, and its smallest above 0, over every
         # pixel of every slice.
         self._peak = -math.inf
@@ -271,16 +279,28 @@ class Surface:
         # Whether an RT Dose's scaling lost a dose of a slice (dose_values).
         self._lost = False
 
-    def add(self, frame: np.ndarray, scale: float | None = None) -> None:
-        """Add the next slice, rescaled, with padding as NaN.
+    def add(
+        self, frame: np.ndarray, scale: float | None = None, index: int | None = None
+    ) -> None:
+        """Add a slice, rescaled, with padding as NaN.
 
         ``scale`` multiplies it in place of the grid's, as each plane of a
-        series of RT Dose planes has its own Dose Grid Scaling.
+        series of RT Dose planes has its own Dose Grid Scaling. ``index`` is
+        its place along the grid's slice axis, from 0, so that the frames of
+        a multi-frame instance can be added in the order that they are
+        decoded; by default, the slice after the last one added. A slice
+        added twice counts once.
         """
-        index = self._added
-        self._added += 1
-        if self._large or index >= len(self._grid.coordinates[0]):
+        if index is None:
+            index = self._next
+        self._next = index + 1
+        if not 0 <= index < len(self._grid.coordinates[0]):
+            # A slice that the grid has no place for leaves it unrendered.
+            self._stray = True
             return
+        if self._large:
+            return
+        self._added.add(index)
         scale = self._grid.scale if scale is None else scale
         values = frame
         if self._grid.threshold is Threshold.DOSE:
@@ -315,7 +335,12 @@ class Surface:
         For an RT Dose, the voxels at or above ``level``, or of any dose
         above 0 where it is 0 or not given.
         """
-        if self._added != len(self._grid.coordinates[0]) or self._lost or self._large:
+        if (
+            len(self._added) != len(self._grid.coordinates[0])
+            or self._stray
+            or self._lost
+            or self._large
+        ):
             return None
         samples = self._samples
         # NaN, padding, is below every level, and compares so.
