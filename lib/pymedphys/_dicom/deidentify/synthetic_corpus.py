@@ -20,7 +20,7 @@ fictitious patient and study, with one Frame of Reference: three CT Image
 slices, an RT Structure Set that references the CT series and slices, an RT
 Plan that references the structure set and the dose, an RT Dose that
 references the plan, a second RT Dose of the plan for review (below), and
-one instance of each of the other fifteen IODs, each in a series of its own.
+one instance of each of the other eighteen IODs, each in a series of its own.
 The MR Image and PET Image instances reference the first CT slice, and each
 enhanced, legacy converted enhanced, or MR Spectroscopy instance references
 the single-frame instance of its modality: the first CT slice, the MR
@@ -30,7 +30,10 @@ Registration the PET Image by a two by two by one deformation grid; each
 names its image in Referenced Image Sequence (0008,1140), whose item the
 Basic Profile keeps, and the Spatial Registration's Used RT Structure Set
 ROI Sequence (0070,0315) names the structure set. The RT Beams Treatment
-Record references the plan. The RT Image, a digitally reconstructed
+Record references the plan. The RT Ion Plan references what the RT Plan
+does, the structure set, the RT Dose, and the RT Plan, which it names as a
+related plan, and the RT Ion Beams Treatment Record references the RT Ion
+Plan. The RT Image, a digitally reconstructed
 radiograph of 2 by 2 pixels, references the RT Plan. The X-Ray Radiation Dose SR references the first CT slice, and the
 Radiopharmaceutical Radiation Dose SR the PET Image. It is the input for
 validating each preset end
@@ -148,15 +151,16 @@ at the top level, Radiopharmaceutical Start DateTime (0018,1078) in the
 Radiopharmaceutical Information Sequence (0054,0016) of an Enhanced PET
 Image, and Institution Code Sequence (0008,0082), which X/Z/D gives D
 where it is Type 1C, in the Interlock Resolution User Sequence (300A,0746)
-of an RT Beams Treatment Record's Interlock Sequence (300A,0740). Planted in
+of an RT Beams Treatment Record's or RT Ion Beams Treatment Record's
+Interlock Sequence (300A,0740). Planted in
 every file, the first two would sequester every
 instance, and no preset could release any of the collection; planted in one,
 that instance checks sequestration, :data:`REVIEW_FILE` checks review, and
-the other twenty check each preset's output, the reports where their trees
-are cleaned. Radiopharmaceutical Start
+the other twenty-three check each preset's output, the reports where their
+trees are cleaned. Radiopharmaceutical Start
 DateTime and Institution Code Sequence, which CT Image does not define
 there, are planted in no file, so the Enhanced PET instance, which lacks an
-attribute of Type 1, and the treatment record are released and their other
+attribute of Type 1, and the treatment records are released and their other
 markers are checked; an Enhanced PET Image instance that conforms to the
 IOD is sequestered under ``basic`` and ``basic-clean-descriptors``.
 
@@ -188,7 +192,7 @@ Manufacturer's Model Name (0008,1090), which Table E.1-1 does not list and
 the Basic Profile keeps, a copy of the RT Plan's RT Plan Label marker
 (:attr:`PlacementKind.REVIEW_COPY`), so the residual search finds a source
 value of another instance in its output and sends it to review. The third
-CT slice remains sequestered; the other twenty files stay releasable, the
+CT slice remains sequestered; the other twenty-three files stay releasable, the
 reports where their trees are cleaned.
 
 **Manifest.** :class:`CorpusManifest` records, for each file, each
@@ -282,6 +286,8 @@ RT_DOSE_STORAGE = "1.2.840.10008.5.1.4.1.1.481.2"
 RT_STRUCTURE_SET_STORAGE = "1.2.840.10008.5.1.4.1.1.481.3"
 RT_BEAMS_TREATMENT_RECORD_STORAGE = "1.2.840.10008.5.1.4.1.1.481.4"
 RT_PLAN_STORAGE = "1.2.840.10008.5.1.4.1.1.481.5"
+RT_ION_PLAN_STORAGE = "1.2.840.10008.5.1.4.1.1.481.8"
+RT_ION_BEAMS_TREATMENT_RECORD_STORAGE = "1.2.840.10008.5.1.4.1.1.481.9"
 # The retired class that PS3.3 Sections 10.6.1 and C.8.8.5.4 give a study in
 # a Referenced Study Sequence or RT Referenced Study Sequence item.
 DETACHED_STUDY_MANAGEMENT = "1.2.840.10008.3.1.2.3.1"
@@ -302,6 +308,10 @@ REVIEW_FILE = "07-rtdose-review.dcm"
 # The Structured Reports, whose Content Sequence holds a content tree, which
 # the Basic Profile's D sequesters, as a sequence has no dummy value.
 STRUCTURED_REPORT_FILES = ("22-sr-dose-x-ray.dcm", "23-sr-dose-radiopharmaceutical.dcm")
+# The RT Ion Plan and the RT Ion Beams Treatment Record of it, numbered after
+# the files that open pull requests add.
+ION_PLAN_FILE = "47-rt-ion-plan.dcm"
+ION_TREATMENT_RECORD_FILE = "48-rt-ion-beams-record.dcm"
 # The directory, within the one that write_corpus is given, of the files.
 INSTANCES_DIRECTORY = "instances"
 
@@ -350,6 +360,10 @@ X_RAY_DOSE_REPORT_SERIES = f"{LINKED_UID_ROOT}01900"
 X_RAY_DOSE_REPORT = f"{LINKED_UID_ROOT}01901"
 RADIOPHARMACEUTICAL_DOSE_REPORT_SERIES = f"{LINKED_UID_ROOT}02000"
 RADIOPHARMACEUTICAL_DOSE_REPORT = f"{LINKED_UID_ROOT}02001"
+ION_PLAN_SERIES = f"{LINKED_UID_ROOT}04400"
+ION_PLAN = f"{LINKED_UID_ROOT}04401"
+ION_TREATMENT_RECORD_SERIES = f"{LINKED_UID_ROOT}04500"
+ION_TREATMENT_RECORD = f"{LINKED_UID_ROOT}04501"
 # A patient and a procedure step that the collection names but does not hold.
 PATIENT_REFERENCE = f"{LINKED_UID_ROOT}00003"
 PROCEDURE_STEP = f"{LINKED_UID_ROOT}00004"
@@ -395,10 +409,11 @@ _REVIEWED_DUMMY_SEQUENCES = frozenset(
 )
 # Where an RT Structure Set references every CT slice, not only the first.
 _RT_REFERENCED_CONTOUR_IMAGES = ("(3006,0010)", "(3006,0012)", "(3006,0014)")
+_REFERENCED_RT_PLAN_SEQUENCE = "(300C,0002)"
 # The instance a reference names, by the innermost sequence that holds it.
 _TARGETS = types.MappingProxyType(
     {
-        "(300C,0002)": PLAN,  # Referenced RT Plan Sequence
+        _REFERENCED_RT_PLAN_SEQUENCE: PLAN,
         "(300C,0060)": STRUCTURE_SET,  # Referenced Structure Set Sequence
         "(300C,0080)": DOSE,  # Referenced Dose Sequence
         "(0070,0315)": STRUCTURE_SET,  # Used RT Structure Set ROI Sequence
@@ -430,6 +445,8 @@ _SOP_CLASSES = types.MappingProxyType(
         RT_IMAGE: RT_IMAGE_STORAGE,
         X_RAY_DOSE_REPORT: X_RAY_RADIATION_DOSE_SR_STORAGE,
         RADIOPHARMACEUTICAL_DOSE_REPORT: RADIOPHARMACEUTICAL_RADIATION_DOSE_SR_STORAGE,
+        ION_PLAN: RT_ION_PLAN_STORAGE,
+        ION_TREATMENT_RECORD: RT_ION_BEAMS_TREATMENT_RECORD_STORAGE,
         PATIENT_REFERENCE: DETACHED_PATIENT_MANAGEMENT,
         PROCEDURE_STEP: MODALITY_PERFORMED_PROCEDURE_STEP,
     }
@@ -757,6 +774,9 @@ class _Spec:
     # file that holds the marker, and the tag of its top-level attribute.
     review_copy: tuple[str, str, str] | None = None
     slice_index: int = 0
+    # The instance that a reference names, by the innermost sequence that
+    # holds it, where it differs from _TARGETS.
+    targets: tuple[tuple[str, str], ...] = ()
 
 
 _SPECS = (
@@ -940,6 +960,25 @@ _SPECS = (
         RADIOPHARMACEUTICAL_DOSE_REPORT_SERIES,
         PET,
     ),
+    # The RT Ion Plan references what the RT Plan does: the structure set,
+    # the RT Dose, and the RT Plan, which it names as a related plan. The RT
+    # Ion Beams Treatment Record references the RT Ion Plan, as the RT Beams
+    # Treatment Record references the RT Plan.
+    _Spec(
+        ION_PLAN_FILE,
+        RT_ION_PLAN_STORAGE,
+        ION_PLAN,
+        ION_PLAN_SERIES,
+        STRUCTURE_SET,
+    ),
+    _Spec(
+        ION_TREATMENT_RECORD_FILE,
+        RT_ION_BEAMS_TREATMENT_RECORD_STORAGE,
+        ION_TREATMENT_RECORD,
+        ION_TREATMENT_RECORD_SERIES,
+        ION_PLAN,
+        targets=((_REFERENCED_RT_PLAN_SEQUENCE, ION_PLAN),),
+    ),
 )
 
 
@@ -949,15 +988,16 @@ def build_corpus() -> SyntheticCorpus:
     Returns
     -------
     SyntheticCorpus
-        Twenty-three files: three CT slices; the RT Structure Set, RT Plan, RT
+        Twenty-five files: three CT slices; the RT Structure Set, RT Plan, RT
         Dose, and the RT Dose for review; the Enhanced CT Image and Legacy
         Converted Enhanced CT Image; the MR Image, Enhanced MR Image,
         Enhanced MR Color Image, Legacy Converted Enhanced MR Image, and MR
         Spectroscopy; the PET Image, Enhanced PET Image, and Legacy
         Converted Enhanced PET Image; the Spatial Registration and
-        Deformable Spatial Registration; the RT Beams Treatment Record; the RT Image; and
-        the X-Ray Radiation Dose SR and Radiopharmaceutical Radiation Dose
-        SR. Two builds give the same bytes and the same manifest.
+        Deformable Spatial Registration; the RT Beams Treatment Record; the
+        RT Image; the X-Ray Radiation Dose SR and Radiopharmaceutical
+        Radiation Dose SR; and the RT Ion Plan and RT Ion Beams Treatment
+        Record. Two builds give the same bytes and the same manifest.
     """
     markers = _Markers()
     files: list[CorpusFile] = []
@@ -1380,7 +1420,9 @@ class _Instance:
             return PlacementKind.LINKED_UID, STUDY
         if level is Level.SERIES:
             return PlacementKind.LINKED_UID, CT_SERIES
-        target = _TARGETS.get(path[-1], self.spec.default_target)
+        target = dict(self.spec.targets).get(
+            path[-1], _TARGETS.get(path[-1], self.spec.default_target)
+        )
         self._set_class(path, _SOP_CLASSES[target], 0)
         return PlacementKind.LINKED_UID, target
 
@@ -1566,12 +1608,15 @@ class _Instance:
             put(contour, "(3006,0042)", ["POINT"])
             put(contour, "(3006,0046)", ["1"])
             put(contour, "(3006,0050)", ["0", "0", "0"])
-        elif self.spec.sop_class == RT_PLAN_STORAGE:
+        elif self.spec.sop_class in (RT_PLAN_STORAGE, RT_ION_PLAN_STORAGE):
             put((), "(0008,0060)", ["RTPLAN"])
             put((), "(300A,000C)", ["PATIENT"])
         elif self.spec.sop_class in ROOT_TEMPLATES:
             self._add_content_tree()
-        elif self.spec.sop_class == RT_BEAMS_TREATMENT_RECORD_STORAGE:
+        elif self.spec.sop_class in (
+            RT_BEAMS_TREATMENT_RECORD_STORAGE,
+            RT_ION_BEAMS_TREATMENT_RECORD_STORAGE,
+        ):
             put((), "(0008,0060)", ["RTRECORD"])
         elif self.spec.sop_class == MR_SPECTROSCOPY_STORAGE:
             put((), "(0008,0060)", ["MR"])

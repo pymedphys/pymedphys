@@ -1025,6 +1025,51 @@ def test_the_rt_image_names_its_plan_as_written(policy_run):
         assert expected == written[corpus_module.PLAN].SOPInstanceUID
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-04", "MIDI-BP-03")
+def test_the_rt_ion_plan_and_its_record_name_what_they_reference_as_written(
+    policy_run,
+):
+    # The RT Ion Plan names the structure set, the RT Dose, and the RT Plan,
+    # and the RT Ion Beams Treatment Record the RT Ion Plan, by the UIDs that
+    # the run's key gives the referenced instances' own, so each written
+    # instance still names the written instances that it references.
+    corpus, released = policy_run.corpus, policy_run.released
+    written = {
+        corpus.files[position].manifest.sop_instance: _read(data)
+        for position, data in released.items()
+    }
+    names = {file.manifest.sop_instance: file.name for file in corpus.files}
+
+    def expected(target):
+        if REFERENCED_SOP_INSTANCE in policy_run.spec.kept_rows():
+            return target
+        return uids.replacement_uid(KEY, target)
+
+    references = {
+        corpus_module.ION_PLAN: (
+            ("ReferencedStructureSetSequence", corpus_module.STRUCTURE_SET),
+            ("ReferencedDoseSequence", corpus_module.DOSE),
+            ("ReferencedRTPlanSequence", corpus_module.PLAN),
+        ),
+        corpus_module.ION_TREATMENT_RECORD: (
+            ("ReferencedRTPlanSequence", corpus_module.ION_PLAN),
+        ),
+    }
+    for source, named in references.items():
+        if source not in written:
+            assert names[source] in policy_run.spec.withheld
+            continue
+        dataset = written[source]
+        assert dataset.Modality == (
+            "RTPLAN" if source == corpus_module.ION_PLAN else "RTRECORD"
+        )
+        for keyword, target in named:
+            (reference,) = dataset[keyword].value
+            assert reference.ReferencedSOPInstanceUID == expected(target), keyword
+            if target in written:
+                assert expected(target) == written[target].SOPInstanceUID, keyword
+
+
 @pytest.mark.deid_requirement("PS3.15-E.3.5-01")
 def test_roi_names_take_the_vocabulary_spelling_or_the_reviewed_decision(
     policy_run,

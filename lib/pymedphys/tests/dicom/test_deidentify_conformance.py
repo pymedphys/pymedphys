@@ -57,8 +57,10 @@ REFERRING_PHYSICIAN_IDENTIFICATION = ("(0008,0096)",)
 # Assertions Sequence.
 ASSERTER_IDENTIFICATION = ("(0044,0110)", "(0044,0103)")
 TREATMENT_MACHINE = ("(300A,0206)",)
-# Interlock Resolution User Sequence, in an RT Beams Treatment Record.
+# Interlock Resolution User Sequence, in an RT Beams Treatment Record and in
+# an RT Ion Beams Treatment Record.
 INTERLOCK_USER = ("(3008,0020)", "(300A,0740)", "(300A,0746)")
+ION_INTERLOCK_USER = ("(3008,0021)", "(300A,0740)", "(300A,0746)")
 INSTITUTION_CODE_SEQUENCE = "(0008,0082)"  # X/Z/D in the Basic Profile
 PIXEL_DATA_PROVIDER_URL = "(0028,7FE0)"  # X/Z/D by a supplementary rule
 # The attributes that a reviewed rule gives a dummy value, whatever their VR.
@@ -245,8 +247,11 @@ def test_institution_name_is_resolved_by_its_type_at_each_place(statement_for):
     places = _entry(statement_for("basic"), INSTITUTION_NAME).places
     found = {(p.iod, p.path): p.action for p in places}
     assert found[("RT Plan", ASSERTER_IDENTIFICATION)] == "Z"
+    assert found[("RT Ion Plan", ASSERTER_IDENTIFICATION)] == "Z"
     assert found[("RT Beams Treatment Record", TREATMENT_MACHINE)] == "Z"
+    assert found[("RT Ion Beams Treatment Record", TREATMENT_MACHINE)] == "Z"
     assert found[("RT Beams Treatment Record", INTERLOCK_USER)] == "D"
+    assert found[("RT Ion Beams Treatment Record", ION_INTERLOCK_USER)] == "D"
     assert found[("RT Structure Set", ())] == "X"
     # Places within a sequence that the Basic Profile removes are not listed.
     assert ("RT Structure Set", ROI_CREATOR) not in found
@@ -256,11 +261,14 @@ def test_institution_name_is_resolved_by_its_type_at_each_place(statement_for):
     row = next(line for line in text.splitlines() if f"| {INSTITUTION_NAME} |" in line)
     assert row.endswith(
         "| Z within Treatment Machine Sequence (300A,0206) in RT Beams Treatment "
-        "Record; within RT Assertions Sequence (0044,0110) > Asserter "
-        "Identification Sequence (0044,0103) in RT Plan. D within Treatment "
-        "Session Beam Sequence (3008,0020) > Interlock Sequence (300A,0740) > "
-        "Interlock Resolution User Sequence (300A,0746) in RT Beams Treatment "
-        "Record. X elsewhere. |"
+        "Record and RT Ion Beams Treatment Record; within RT Assertions Sequence "
+        "(0044,0110) > Asserter Identification Sequence (0044,0103) in RT Ion "
+        "Plan and RT Plan. D within Treatment Session Beam Sequence (3008,0020) "
+        "> Interlock Sequence (300A,0740) > Interlock Resolution User Sequence "
+        "(300A,0746) in RT Beams Treatment Record; within Treatment Session Ion "
+        "Beam Sequence (3008,0021) > Interlock Sequence (300A,0740) > Interlock "
+        "Resolution User Sequence (300A,0746) in RT Ion Beams Treatment Record. "
+        "X elsewhere. |"
     )
 
 
@@ -276,7 +284,11 @@ def test_a_d_without_a_dummy_value_is_listed_as_sequestering(statement_for):
     assert places[("RT Beams Treatment Record", INTERLOCK_USER)] == (
         conformance.SEQUESTER
     )
+    assert places[("RT Ion Beams Treatment Record", ION_INTERLOCK_USER)] == (
+        conformance.SEQUESTER
+    )
     assert places[("RT Plan", ASSERTER_IDENTIFICATION)] == "Z"
+    assert places[("RT Ion Plan", ASSERTER_IDENTIFICATION)] == "Z"
     # A required UR value has no dummy value either.
     url = {p.action for p in _entry(statement, PIXEL_DATA_PROVIDER_URL).places}
     assert url == {conformance.SEQUESTER}
@@ -307,14 +319,16 @@ def test_a_place_that_sequesters_the_instance_is_listed_as_such(monkeypatch):
     monkeypatch.setattr(compound_actions, "resolve_in_iod", sequestering)
     statement = _statement("basic")
     places = _entry(statement, INSTITUTION_NAME).places
-    assert conformance.Place(
-        "RT Plan", ASSERTER_IDENTIFICATION, conformance.SEQUESTER
-    ) in (places)
+    for iod in ("RT Plan", "RT Ion Plan"):
+        assert conformance.Place(
+            iod, ASSERTER_IDENTIFICATION, conformance.SEQUESTER
+        ) in (places)
     text = conformance_markdown.render_markdown(statement)
     row = next(line for line in text.splitlines() if f"| {INSTITUTION_NAME} |" in line)
     assert (
         "instance sequestered within RT Assertions Sequence (0044,0110) > "
-        "Asserter Identification Sequence (0044,0103) in RT Plan." in row
+        "Asserter Identification Sequence (0044,0103) in RT Ion Plan and RT "
+        "Plan." in row
     )
 
 
@@ -496,7 +510,7 @@ def test_places_name_their_enclosing_sequences(statement_for):
     row = next(line for line in text.splitlines() if f"| {INSTITUTION_NAME} |" in line)
     assert (
         "within RT Assertions Sequence (0044,0110) > Asserter Identification "
-        "Sequence (0044,0103) in RT Plan." in row
+        "Sequence (0044,0103) in RT Ion Plan and RT Plan." in row
     )
     assert row.endswith(". X elsewhere. |")
 

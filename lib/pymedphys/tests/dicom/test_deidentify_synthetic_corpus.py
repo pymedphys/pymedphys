@@ -209,6 +209,8 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "21-rt-image.dcm",
         "22-sr-dose-x-ray.dcm",
         "23-sr-dose-radiopharmaceutical.dcm",
+        "47-rt-ion-plan.dcm",
+        "48-rt-ion-beams-record.dcm",
     ]
     assert [file.manifest.iod for file in corpus.files] == [
         "CT Image",
@@ -234,10 +236,16 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "RT Image",
         "X-Ray Radiation Dose SR",
         "Radiopharmaceutical Radiation Dose SR",
+        "RT Ion Plan",
+        "RT Ion Beams Treatment Record",
     ]
     assert corpus_module.STRUCTURED_REPORT_FILES == tuple(
-        file.name for file in corpus.files[-2:]
+        file.name for file in corpus.files[-4:-2]
     )
+    assert (
+        corpus_module.ION_PLAN_FILE,
+        corpus_module.ION_TREATMENT_RECORD_FILE,
+    ) == tuple(file.name for file in corpus.files[-2:])
     # Every IOD of the first supported release.
     assert {file.manifest.iod for file in corpus.files} == scope.SUPPORTED_IODS
 
@@ -384,9 +392,10 @@ def test_an_attribute_whose_removal_sequesters_is_planted_in_one_instance(corpus
 
     # Responsible Person and Responsible Organization (D-020), only in the
     # third slice, so that the other instances can be released; and the
-    # Enhanced PET Image's Radiopharmaceutical Start DateTime, and the RT
-    # Beams Treatment Record's Institution Code Sequence in an interlock's
-    # resolution user, with the attributes of its item (D-021), in no file.
+    # Enhanced PET Image's Radiopharmaceutical Start DateTime, and the
+    # Institution Code Sequence of the RT Beams Treatment Record's and the RT
+    # Ion Beams Treatment Record's interlock resolution users, with the
+    # attributes of its item (D-021), in no file.
     # Each report's Verifying Observer Sequence, which a reviewed rule keeps
     # with dummy values (D-021), and the Requested Procedure ID of its
     # Referenced Request Sequence, which a plain X empties there (D-020), are
@@ -395,6 +404,11 @@ def test_an_attribute_whose_removal_sequesters_is_planted_in_one_instance(corpus
     only_in = {
         "Enhanced PET Image": {"(0018,1078)"},
         "RT Beams Treatment Record": {"(0008,0082)", "(0008,0106)", "(0008,0107)"},
+        "RT Ion Beams Treatment Record": {
+            "(0008,0082)",
+            "(0008,0106)",
+            "(0008,0107)",
+        },
     }
     assert planted == {corpus_module.SEQUESTERED_FILE: both}
     assert corpus_module.SEQUESTERED_FILE == corpus.files[2].name
@@ -515,7 +529,9 @@ def test_the_reference_graph_has_no_findings(corpus):
     # and the dose, and each dose the plan.
     assert {(3, 0), (3, 1), (3, 2), (4, 3), (4, 5), (5, 4), (6, 4)} <= targets
     # The MR and PET Images reference the first slice, each other image the
-    # single-frame one of its modality, and the treatment record the plan.
+    # single-frame one of its modality, the treatment record the plan, the RT
+    # Ion Plan the structure set, the dose, and the plan, and the RT Ion
+    # Beams Treatment Record the RT Ion Plan.
     names = [file.name for file in corpus.files]
     position = names.index
     sources = {
@@ -530,10 +546,38 @@ def test_the_reference_graph_has_no_findings(corpus):
         "16-pet-enhanced.dcm": "15-pet.dcm",
         "17-pet-legacy-enhanced.dcm": "15-pet.dcm",
         "20-rt-beams-record.dcm": "05-rtplan.dcm",
+        "48-rt-ion-beams-record.dcm": "47-rt-ion-plan.dcm",
     }
     assert {
         (position(source), position(target)) for source, target in sources.items()
     } <= targets
+    ion_plan = position("47-rt-ion-plan.dcm")
+    assert {(ion_plan, 3), (ion_plan, 4), (ion_plan, 5)} <= targets
+
+
+def test_each_treatment_record_names_its_own_plan_with_its_class(corpus):
+    # The RT Ion Beams Treatment Record's Referenced RT Plan Sequence names the
+    # RT Ion Plan, with its Storage SOP Class, as the RT Beams Treatment
+    # Record's names the RT Plan.
+    files = {file.name: file for file in corpus.files}
+    for record, plan, sop_class in (
+        (
+            "20-rt-beams-record.dcm",
+            corpus_module.PLAN,
+            corpus_module.RT_PLAN_STORAGE,
+        ),
+        (
+            corpus_module.ION_TREATMENT_RECORD_FILE,
+            corpus_module.ION_PLAN,
+            corpus_module.RT_ION_PLAN_STORAGE,
+        ),
+    ):
+        dataset = pydicom.dcmread(pydicom.filebase.DicomBytesIO(files[record].data))
+        (reference,) = dataset.ReferencedRTPlanSequence
+        assert reference.ReferencedSOPInstanceUID == plan, record
+        assert reference.ReferencedSOPClassUID == sop_class, record
+    ion_plan = files[corpus_module.ION_PLAN_FILE].manifest
+    assert ion_plan.sop_class == corpus_module.RT_ION_PLAN_STORAGE
 
 
 def test_two_instances_are_in_implicit_vr_and_the_rest_explicit(corpus):
