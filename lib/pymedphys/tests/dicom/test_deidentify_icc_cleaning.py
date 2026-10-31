@@ -385,6 +385,15 @@ def test_the_header_keeps_only_the_colorimetric_fields(source):
     assert cleaned[100:128] == bytes(28)
 
 
+def test_the_tests_profile_id_is_the_one_lcms_writes():
+    # pydicom's profile was written by LittleCMS with its profile ID, so the
+    # digest that these tests compute is checked against another writer's.
+    profile = _pydicom_profile()
+
+    assert profile[84:100] != bytes(16)
+    assert icc.profile_id(profile) == profile[84:100]
+
+
 def test_a_version_4_profile_id_is_the_digest_of_the_cleaned_profile(source):
     _, profile = source
     cleaned = icc_cleaning.clean_profile(profile, TEXT)

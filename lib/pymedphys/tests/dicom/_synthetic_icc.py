@@ -30,7 +30,7 @@ import hashlib
 import struct
 
 MARKER = b"ZZSYNTHETICICCMARKER"
-# D50 as s15Fixed16Number encodings (ICC.1 Section 7.2.16).
+# D50 as s15Fixed16Number encodings, as the PCS illuminant of a header holds it.
 D50 = (0x0000F6D6, 0x00010000, 0x0000D32D)
 # The sRGB primaries adapted to D50, and the D50 white, as XYZ.
 SRGB_MATRIX = (
@@ -455,7 +455,7 @@ def tags_of(written: bytes) -> dict[bytes, bytes]:
 
 
 def profile_id(written: bytes) -> bytes:
-    """Return the MD5 profile ID of a profile, as ICC.1:2010 Section 7.2.18 defines it."""
+    """Return the MD5 profile ID of a profile, as ICC.1:2022 Section 7.2.18 defines it."""
     unsigned = bytearray(written)
     unsigned[44:48] = bytes(4)
     unsigned[64:68] = bytes(4)
