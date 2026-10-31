@@ -74,6 +74,7 @@ import importlib.metadata
 import math
 import multiprocessing
 import platform
+import re
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from typing import Any
 
@@ -720,7 +721,10 @@ def _point(
     for grouping in groupings:
         values = sorted(
             {key[2] for key in tally.texts if key[0] == index and key[1] == grouping}
-            | {key[3] for key in tally.frames if key[0] == index and key[2] == grouping}
+            | {
+                key[3] for key in tally.frames if key[0] == index and key[2] == grouping
+            },
+            key=_in_order,
         )
         # A frame has no text dimension, so a grouping with one counts only
         # texts; its frames' measures would be empty, not zero.
@@ -738,6 +742,21 @@ def _point(
             rows.append(row)
         entry["by"]["+".join(grouping)] = rows
     return entry
+
+
+_NUMBER = re.compile(r"(\d+(?:\.\d+)?)")
+
+
+def _in_order(value: tuple) -> tuple:
+    """Order a stratum's labels by the numbers in them, so that bins of
+    contrast, height, or spacing read from low to high."""
+    return tuple(
+        tuple(
+            (0, float(part), "") if position % 2 else (1, 0.0, part)
+            for position, part in enumerate(_NUMBER.split(str(each)))
+        )
+        for each in value
+    )
 
 
 def _measures(

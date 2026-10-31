@@ -299,6 +299,30 @@ def test_counts_are_kept_by_each_stratum_and_cross():
     assert all("false_positives" in row for row in by["iod"])
 
 
+def test_strata_read_from_low_to_high():
+    texts = tuple(
+        _text(2 + 12 * row, 4, 6, 10, font="f", contrast=contrast, height=height)
+        for row, (contrast, height) in enumerate(
+            (
+                ("16 to under 32 sigma", "40 px"),
+                ("2 to under 4 sigma", "5 px"),
+                ("64 sigma or more", "10 px"),
+            )
+        )
+    )
+    by = _run([Frames("c", "a", (_frame(texts=texts),))])["points"][0]["by"]
+    assert [row["value"]["contrast"] for row in by["contrast"]] == [
+        "2 to under 4 sigma",
+        "16 to under 32 sigma",
+        "64 sigma or more",
+    ]
+    assert [row["value"]["height"] for row in by["height"]] == [
+        "5 px",
+        "10 px",
+        "40 px",
+    ]
+
+
 def test_points_that_differ_count_differently_from_one_pass():
     points = (
         PostProcessing(),
