@@ -746,6 +746,7 @@ def test_every_module_rule_file_and_table_of_the_engine_is_covered():
         "uid_roles.toml",
         "temporal_roles.toml",
         "supplementary_actions.toml",
+        "supplementary_concepts.toml",
         "safe_private.toml",
         "requirements.toml",
         "_tcia/TCIAPrivateTagKB-02-01-2024-formatted.csv",
