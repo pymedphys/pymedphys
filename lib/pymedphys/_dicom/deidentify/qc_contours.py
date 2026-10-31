@@ -75,6 +75,24 @@ separated by grey rows of :data:`GUTTER_PIXELS`, are:
   one contour's marks fill a patch, as a line drawn back and forth with no
   gap between its passes does, no sheet is drawn.
 
+Those rows draw the contours as written. Contour Slab Thickness (3006,0044)
+and Contour Offset Vector (3006,0045), which PS3.3 retired in 2021, made a
+contour a slab of that thickness whose central plane is its Contour Data
+moved by the offset (PS3.3-2020e C.8.8.6.2); a reader written since may
+ignore both, and one written before may honour either alone. So where a
+contour has either, the sheet also draws each further reading of
+:data:`READINGS` that places a contour otherwise than every earlier one:
+the offset alone, the thickness alone, and both. Each such reading's rows
+follow a gutter of white, not grey: the united row of each frame, with its
+volume's render where there is one, as above, then the rows of each item
+whose contours the reading places otherwise than as written. A reading moves
+each point of a contour by the whole offset vector. It gives a closed
+contour's plane a slab along z, half its thickness below and above it,
+which covers every slice of voxels within it, or the slice nearest the plane
+where none is, and draws the contour's marks through it, at most half a
+voxel apart; and it sweeps an open contour likewise along the normal of the
+plane within :data:`COPLANAR` millimetres of which its points lie.
+
 Each region is sampled to cubic voxels over the extent of what it draws,
 with a voxel more on each low side across, 0 to 1 voxel more on each high
 side, and up to a voxel more below, so that its edge and its lowest point
@@ -109,12 +127,17 @@ itself, is drawn as its line.
 A sheet is drawn only of contours that it can show (:func:`contours_of`):
 each of Contour Geometric Type CLOSED_PLANAR, CLOSEDPLANAR_XOR, OPEN_PLANAR,
 OPEN_NONPLANAR, or POINT, of finite coordinates, in threes, none greater in
-magnitude than :data:`FARTHEST`, without a Contour Offset Vector or Contour
-Slab Thickness, which would place it elsewhere or give it depth, and, for a
-closed contour of three or more points, with every point within
+magnitude than :data:`FARTHEST`, as each reading places it, with any Contour
+Slab Thickness and Contour Offset Vector of one and three finite values,
+none greater in magnitude than :data:`FARTHEST`, and no thickness below 0;
+a thickness only where a reading gives it a plane to be normal to, so not
+on a point, a closed contour of fewer than three points, or an open
+contour on one line or not within :data:`COPLANAR` millimetres of a plane;
+for a closed contour of three or more points, with every point within
 :data:`COPLANAR` millimetres of one axial plane, as
-:mod:`~.region_defacing` groups contours; and the ROIs of each frame
-spanning at most :data:`LONGEST` millimetres along each axis, and at most
+:mod:`~.region_defacing` groups contours, and the closed contours of each
+such plane of one slab or none, since one may be a hole in another; and
+the ROIs of each frame, as each reading places them, spanning at most :data:`LONGEST` millimetres along each axis, and at most
 :data:`WIDEST` across, from left to right and from front to back, so that
 its rows stay within the sheet's bounds at voxels fine enough to show a
 face. A closed contour in an oblique,
@@ -127,7 +150,7 @@ from __future__ import annotations
 
 import dataclasses
 import math
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Collection, Mapping, Sequence
 
 from pymedphys._geometry.rasters import even_odd
 from pymedphys._imports import numpy as np
@@ -138,6 +161,20 @@ from . import qc_surfaces
 from .uids import normalise_uid
 
 CLOSED = frozenset({"CLOSED_PLANAR", "CLOSEDPLANAR_XOR"})
+THICKNESS_KEYWORD = "ContourSlabThickness"
+OFFSET_KEYWORD = "ContourOffsetVector"
+# The readings of a contour's retired Contour Offset Vector and Contour Slab
+# Thickness, in the order that a sheet draws them: neither, as a reader
+# written since their retirement does; the offset alone; the thickness
+# alone; and both, as PS3.3-2020e defines them.
+AS_WRITTEN = "as-written"
+OFFSET = "offset"
+THICKNESS = "thickness"
+BOTH = "offset-and-thickness"
+READINGS = (AS_WRITTEN, OFFSET, THICKNESS, BOTH)
+# The colour of the gutter above the first row of each further reading, so
+# that each reading's rows can be told apart from the grey between rows.
+_READING_GUTTER = (255, 255, 255)
 OPEN = frozenset({"OPEN_PLANAR", "OPEN_NONPLANAR"})
 POINT = "POINT"
 # How far, in millimetres, a closed contour's points may lie from one axial
@@ -177,6 +214,43 @@ _GUTTER = (128, 128, 128)
 
 
 @dataclasses.dataclass(frozen=True, repr=False)
+class Sweep:
+    """The span along which a contour with depth lies: each of its points
+    moved by ``t`` times :attr:`direction`, for each ``t`` from :attr:`near`
+    to :attr:`far`, in millimetres.
+
+    Its ``repr`` shows nothing of it.
+    """
+
+    direction: tuple[float, float, float]
+    near: float
+    far: float
+
+    def at(self, points: np.ndarray, distance: float) -> np.ndarray:
+        """The points moved ``distance`` along :attr:`direction`."""
+        return points + distance * np.asarray(self.direction)
+
+    def swept(self, points: np.ndarray, step: float) -> np.ndarray:
+        """The points at each end of the span and between, at most ``step``
+        apart along it."""
+        count = max(1, math.ceil((self.far - self.near) / step))
+        return np.concatenate(
+            [
+                self.at(points, self.near + (self.far - self.near) * index / count)
+                for index in range(count + 1)
+            ]
+        )
+
+    def __repr__(self) -> str:
+        return "Sweep()"
+
+
+def _along_z(slab: tuple[float, float] | None) -> Sweep | None:
+    """A closed contour's slab as the span of its points along z."""
+    return None if slab is None else Sweep((0.0, 0.0, 1.0), slab[0], slab[1])
+
+
+@dataclasses.dataclass(frozen=True, repr=False)
 class RoiContours:
     """The contours of one item of an ROI Contour Sequence that a sheet draws.
 
@@ -195,6 +269,15 @@ class RoiContours:
         (n, 3).
     frame : str or None
         The Frame of Reference UID of its ROI, or None where none is named.
+    slabs : tuple of (float, float) or None
+        For each closed contour, where a reading of its Contour Slab
+        Thickness gives it depth, how far its slab reaches along z below and
+        above its height, in millimetres, the first at most 0 and the second
+        at least 0; or None where it is a plane. Empty where none has depth.
+    sweeps : tuple of Sweep or None
+        Likewise, for each open contour, the span along which its depth
+        moves its points; or None where it has none. Empty where none has
+        depth.
     """
 
     closed: tuple[tuple[float, np.ndarray], ...] = ()
@@ -203,6 +286,16 @@ class RoiContours:
     )
     lines: tuple[np.ndarray, ...] = ()
     frame: str | None = None
+    slabs: tuple[tuple[float, float] | None, ...] = ()
+    sweeps: tuple[Sweep | None, ...] = ()
+
+    def slab(self, index: int) -> tuple[float, float] | None:
+        """The slab of its closed contour at ``index``, or None."""
+        return self.slabs[index] if self.slabs else None
+
+    def sweep(self, index: int) -> Sweep | None:
+        """The sweep of its open contour at ``index``, or None."""
+        return self.sweeps[index] if self.sweeps else None
 
     @property
     def empty(self) -> bool:
@@ -210,12 +303,25 @@ class RoiContours:
         return not self.closed and not len(self.points) and not self.lines
 
     def coordinates(self) -> np.ndarray:
-        """Every point that it draws, as x, y, and z, of shape (m, 3)."""
-        rings = [
-            np.column_stack([ring, np.full(len(ring), height)])
-            for height, ring in self.closed
-        ]
-        return np.concatenate([*rings, *self.lines, self.points])
+        """Every point that it draws, as x, y, and z, of shape (m, 3), with
+        each point of a contour with depth at both ends of its span, whose
+        extent then holds the whole span."""
+        rings = []
+        for index, (height, ring) in enumerate(self.closed):
+            slab = self.slab(index)
+            for reach in (0.0,) if slab is None else slab:
+                rings.append(
+                    np.column_stack([ring, np.full(len(ring), height + reach)])
+                )
+        lines = []
+        for index, line in enumerate(self.lines):
+            sweep = self.sweep(index)
+            lines.extend(
+                [line]
+                if sweep is None
+                else [sweep.at(line, sweep.near), sweep.at(line, sweep.far)]
+            )
+        return np.concatenate([*rings, *lines, self.points])
 
     def marks(self, step: float) -> np.ndarray:
         """Its points, and points along each open contour's segments, and
@@ -228,13 +334,21 @@ class RoiContours:
     def contour_marks(self, step: float) -> list[np.ndarray]:
         """The marks of :meth:`marks`, by contour: each point alone, then
         each open contour's, then each closed contour's, each as x, y, and
-        z, of shape (m, 3)."""
+        z, of shape (m, 3). A contour with depth has its marks repeated
+        along its span, at most ``step`` apart, from one end to the other."""
         sampled = [point[np.newaxis] for point in self.points]
         rings = [
             np.column_stack([ring, np.full(len(ring), height)])
             for height, ring in self.closed
         ]
-        for line in [*self.lines, *(np.vstack([ring, ring[:1]]) for ring in rings)]:
+        spans = [self.sweep(index) for index in range(len(self.lines))] + [
+            _along_z(self.slab(index)) for index in range(len(self.closed))
+        ]
+        for line, span in zip(
+            [*self.lines, *(np.vstack([ring, ring[:1]]) for ring in rings)],
+            spans,
+            strict=True,
+        ):
             starts, steps = line[:-1], np.diff(line, axis=0)
             counts = np.maximum(
                 1, np.ceil(np.linalg.norm(steps, axis=1) / step).astype(np.intp)
@@ -245,14 +359,13 @@ class RoiContours:
             fractions = (np.arange(int(counts.sum())) - first[segment]) / counts[
                 segment
             ]
-            sampled.append(
-                np.concatenate(
-                    [
-                        line[-1:],
-                        starts[segment] + fractions[:, np.newaxis] * steps[segment],
-                    ]
-                )
+            along = np.concatenate(
+                [
+                    line[-1:],
+                    starts[segment] + fractions[:, np.newaxis] * steps[segment],
+                ]
             )
+            sampled.append(along if span is None else span.swept(along, step))
         return sampled
 
     def __repr__(self) -> str:
@@ -268,13 +381,26 @@ class Contours:
     Attributes
     ----------
     rois : tuple of RoiContours
-        For each item of the ROI Contour Sequence, in order.
+        For each item of the ROI Contour Sequence, in order, as written,
+        without the retired Contour Offset Vector or Contour Slab
+        Thickness.
     series : frozenset of str
         The Series Instance UIDs of the image series that it references.
+    readings : tuple of tuple of RoiContours
+        For each further reading of those retired attributes, in the order
+        of :data:`READINGS`, that moves or gives depth to a contour, as
+        ``rois`` gives them, the ROIs as that reading places them; a reading
+        that places every contour as an earlier one does is left out.
     """
 
     rois: tuple[RoiContours, ...]
     series: frozenset[str] = frozenset()
+    readings: tuple[tuple[RoiContours, ...], ...] = ()
+
+    @property
+    def drawn(self) -> tuple[tuple[RoiContours, ...], ...]:
+        """The ROIs as written, then as each further reading places them."""
+        return (self.rois, *self.readings)
 
     @property
     def frames(self) -> tuple[str | None, ...]:
@@ -333,25 +459,38 @@ def has_contours(dataset: pydicom.Dataset) -> bool:
 def contours_of(dataset: pydicom.Dataset) -> Contours | None:
     """Return the contours of a structure set, or None where a sheet cannot
     show every one of them, as the module describes."""
+    drawn: list[tuple[RoiContours, ...]] = []
+    keys: set[tuple[bytes, ...]] = set()
     try:
         frames = _frames(dataset)
-        rois = tuple(
-            _roi(item.get("ContourSequence") or [], frames.get(_number(item)))
-            for item in dataset.get("ROIContourSequence") or []
-        )
+        for reading in READINGS:
+            rois = tuple(
+                _roi(
+                    item.get("ContourSequence") or [],
+                    frames.get(_number(item)),
+                    reading,
+                )
+                for item in dataset.get("ROIContourSequence") or []
+            )
+            if any(roi is None for roi in rois):
+                return None
+            placed = tuple(roi for roi in rois if roi is not None)
+            key = tuple(_key(roi) for roi in placed)
+            if key not in keys:
+                keys.add(key)
+                drawn.append(placed)
     # pydicom raises many types for a value that it cannot read.
     except Exception:  # pylint: disable = broad-exception-caught
         return None
-    if any(roi is None for roi in rois):
-        return None
-    found = Contours(tuple(roi for roi in rois if roi is not None), _series(dataset))
-    for frame in found.frames:
-        points = np.concatenate(
-            [roi.coordinates() for roi in found.rois if roi.frame == frame]
-        )
-        spans = np.ptp(points, axis=0)
-        if spans.max() > LONGEST or spans[:2].max() > WIDEST:
-            return None
+    found = Contours(drawn[0], _series(dataset), tuple(drawn[1:]))
+    for rois in found.drawn:
+        for frame in found.frames:
+            points = np.concatenate(
+                [roi.coordinates() for roi in rois if roi.frame == frame]
+            )
+            spans = np.ptp(points, axis=0)
+            if spans.max() > LONGEST or spans[:2].max() > WIDEST:
+                return None
     return found
 
 
@@ -391,17 +530,25 @@ def _series(dataset: pydicom.Dataset) -> frozenset[str]:
     return frozenset(found - {""})
 
 
-def _roi(contours: pydicom.Sequence, frame: str | None) -> RoiContours | None:
+def _roi(  # pylint: disable = too-many-return-statements
+    contours: pydicom.Sequence, frame: str | None, reading: str = AS_WRITTEN
+) -> RoiContours | None:
+    """The contours of one item of an ROI Contour Sequence, as ``reading``
+    places them, or None where a sheet cannot draw them so."""
     closed: list[tuple[float, np.ndarray]] = []
     points: list[np.ndarray] = []
     lines: list[np.ndarray] = []
+    slabs: list[tuple[float, float] | None] = []
+    sweeps: list[Sweep | None] = []
     for contour in contours:
         kind = str(contour.get("ContourGeometricType") or "").strip().upper()
         if kind not in CLOSED | OPEN | {POINT}:
             return None
-        for keyword in ("ContourOffsetVector", "ContourSlabThickness"):
-            if keyword in contour and contour[keyword].value not in (None, "", []):
-                return None
+        retired = _retired(contour)
+        if retired is None:
+            return None
+        depth = retired[0] if reading in (THICKNESS, BOTH) else 0.0
+        moved = retired[1] if reading in (OFFSET, BOTH) else np.zeros(3)
         data = contour.get("ContourData")
         values = (
             [float(each) for each in data]
@@ -412,24 +559,96 @@ def _roi(contours: pydicom.Sequence, frame: str | None) -> RoiContours | None:
         )
         if not values or len(values) % 3 or not all(math.isfinite(v) for v in values):
             return None
-        found = np.asarray(values).reshape(-1, 3)
+        found = np.asarray(values).reshape(-1, 3) + moved
         if not (np.abs(found) <= FARTHEST).all():
             return None
         if kind in OPEN and len(found) > 1:
+            sweep = None
+            if depth:
+                normal = _normal(found)
+                if normal is None:
+                    return None
+                sweep = Sweep(normal, -depth / 2, depth / 2)
             lines.append(found)
+            sweeps.append(sweep)
             continue
         if kind == POINT or len(found) < 3:
+            # A point, or a closed contour that bounds nothing, has no
+            # plane for a thickness to be normal to.
+            if depth:
+                return None
             points.append(found)
             continue
         low, high = float(found[:, 2].min()), float(found[:, 2].max())
         if not high - low <= 2 * COPLANAR:
             return None
         closed.append((float(found[:, 2].mean()), found[:, :2]))
-    return RoiContours(
+        slabs.append((-depth / 2, depth / 2) if depth else None)
+    roi = RoiContours(
         tuple(closed),
         np.concatenate(points) if points else np.zeros((0, 3), float),
         tuple(lines),
         frame,
+        tuple(slabs) if any(slabs) else (),
+        tuple(sweeps) if any(sweeps) else (),
+    )
+    return roi if _slabs_agree(roi) else None
+
+
+def _retired(contour: pydicom.Dataset) -> tuple[float, np.ndarray] | None:
+    """A contour's Contour Slab Thickness and Contour Offset Vector, 0 and
+    (0, 0, 0) where absent or empty; or None where either has another number
+    of values than 1 and 3, or a value that is not finite or is beyond
+    :data:`FARTHEST`, or the thickness is below 0."""
+    found = []
+    for keyword, count in ((THICKNESS_KEYWORD, 1), (OFFSET_KEYWORD, 3)):
+        value = contour[keyword].value if keyword in contour else None
+        if value in (None, "", []):
+            found.append(np.zeros(count))
+            continue
+        values = np.asarray(
+            [float(each) for each in value]
+            if isinstance(value, (list, tuple, pydicom.multival.MultiValue))
+            else [float(value)]
+        )
+        if len(values) != count or not (
+            np.isfinite(values).all() and (np.abs(values) <= FARTHEST).all()
+        ):
+            return None
+        found.append(values)
+    thickness, offset = found
+    if thickness[0] < 0:
+        return None
+    return float(thickness[0]), offset
+
+
+def _normal(points: np.ndarray) -> tuple[float, float, float] | None:
+    """The unit normal of the plane within :data:`COPLANAR` millimetres of
+    which a contour's points lie, or None where they lie on one line, or
+    off any such plane, so that no thickness can be given them."""
+    if len(points) < 3:
+        return None
+    centre = points.mean(axis=0)
+    _, spread, axes = np.linalg.svd(points - centre, full_matrices=False)
+    if len(spread) < 3 or not spread[1] > 1e-9 * spread[0]:
+        return None
+    normal = axes[2]
+    if not np.max(np.abs((points - centre) @ normal)) <= COPLANAR:
+        return None
+    return (float(normal[0]), float(normal[1]), float(normal[2]))
+
+
+def _slabs_agree(roi: RoiContours) -> bool:
+    """Whether the closed contours of each of an ROI's planes have one slab,
+    or none, so that a plane's even-odd fill, in which one may be a hole in
+    another, has one depth."""
+    if not roi.slabs:
+        return True
+    planes = _planes(roi)
+    of = _plane_of(roi, planes)
+    return all(
+        len({roi.slab(index) for index in np.flatnonzero(of == plane)}) <= 1
+        for plane in range(len(planes))
     )
 
 
@@ -486,8 +705,9 @@ def contour_sheet(
     # slices.
     if tallest is not None and _least_height(contours, guides) > tallest:
         return None
-    planes = [_planes(roi) for roi in contours.rois]
     rows: list[np.ndarray] = []
+    # The rows that start a further reading.
+    readings: set[int] = set()
     height = -GUTTER_PIXELS
 
     def fits(more: Sequence[np.ndarray]) -> bool:
@@ -496,35 +716,43 @@ def contour_sheet(
         height += sum(row.shape[0] + GUTTER_PIXELS for row in more)
         return tallest is None or height <= tallest
 
-    for frame in contours.frames:
-        chosen = [i for i, roi in enumerate(contours.rois) if roi.frame == frame]
-        rois = [contours.rois[i] for i in chosen]
-        grid = _grid(rois, _united_voxel)
-        shown = [planes[i] for i in chosen]
-        if not fits([rgb(_views(_mask(rois, grid, shown)))]):
-            return None
-        guide = guides.get(frame)
-        if guide is not None and not fits(
-            [guided(guide, _mask(rois, _of(guide), shown))]
-        ):
-            return None
     # An ROI the same as an earlier one, as a copied item is, is rendered
     # once, though each has its rows.
     rendered: dict[bytes, list[np.ndarray] | None] = {}
-    for roi, own in zip(contours.rois, planes):
-        if roi.empty:
-            if not fits([np.zeros((GUTTER_PIXELS, 1, 3), np.uint8)]):
+    for index, drawn in enumerate(contours.drawn):
+        if index:
+            readings.add(len(rows))
+        planes = [_planes(roi) for roi in drawn]
+        for frame in contours.frames:
+            chosen = [i for i, roi in enumerate(drawn) if roi.frame == frame]
+            rois = [drawn[i] for i in chosen]
+            grid = _grid(rois, _united_voxel)
+            shown = [planes[i] for i in chosen]
+            if not fits([rgb(_views(_mask(rois, grid, shown)))]):
                 return None
-            continue
-        key = _key(roi)
-        if key not in rendered:
-            rendered[key] = _item_rows(
-                roi, own, None if tallest is None else tallest - height
-            )
-        shown = rendered[key]
-        if shown is None or not fits(shown):
-            return None
-    return stacked(rows)
+            guide = guides.get(frame)
+            if guide is not None and not fits(
+                [guided(guide, _mask(rois, _of(guide), shown))]
+            ):
+                return None
+        for item, (roi, own) in enumerate(zip(drawn, planes, strict=True)):
+            # A further reading draws only the items that it places
+            # otherwise than as written.
+            if index and _key(roi) == _key(contours.rois[item]):
+                continue
+            if roi.empty:
+                if not fits([np.zeros((GUTTER_PIXELS, 1, 3), np.uint8)]):
+                    return None
+                continue
+            key = _key(roi)
+            if key not in rendered:
+                rendered[key] = _item_rows(
+                    roi, own, None if tallest is None else tallest - height
+                )
+            shown = rendered[key]
+            if shown is None or not fits(shown):
+                return None
+    return stacked(rows, readings)
 
 
 def _item_rows(
@@ -579,16 +807,18 @@ def _least_height(contours: Contours, guides: Mapping[str | None, Guide]) -> int
     cavities, of the surfaces that it hides behind its own, or of the marks
     that it hides, found without drawing it."""
     heights = []
-    for frame in contours.frames:
-        rois = [roi for roi in contours.rois if roi.frame == frame]
-        heights.append(len(_grid(rois, _united_voxel).zs))
-        guide = guides.get(frame)
-        if guide is not None:
-            heights.append(guide.inside.shape[0])
-    heights.extend(
-        GUTTER_PIXELS if roi.empty else len(_grid([roi], _roi_voxel).zs)
-        for roi in contours.rois
-    )
+    for index, drawn in enumerate(contours.drawn):
+        for frame in contours.frames:
+            rois = [roi for roi in drawn if roi.frame == frame]
+            heights.append(len(_grid(rois, _united_voxel).zs))
+            guide = guides.get(frame)
+            if guide is not None:
+                heights.append(guide.inside.shape[0])
+        heights.extend(
+            GUTTER_PIXELS if roi.empty else len(_grid([roi], _roi_voxel).zs)
+            for item, roi in enumerate(drawn)
+            if not index or _key(roi) != _key(contours.rois[item])
+        )
     return sum(heights) + GUTTER_PIXELS * (len(heights) - 1)
 
 
@@ -655,11 +885,19 @@ def _tiles(depths: Sequence[np.ndarray]) -> np.ndarray:
 def _key(roi: RoiContours) -> bytes:
     """What an ROI draws, and in which frame, as bytes."""
     parts = [str(roi.frame).encode("utf-8", "surrogateescape"), b"|"]
-    for height, ring in roi.closed:
+    for index, (height, ring) in enumerate(roi.closed):
         parts.extend([b"c", np.float64(height).tobytes(), _sized(ring)])
+        slab = roi.slab(index)
+        if slab is not None:
+            parts.extend([b"s", _sized(np.asarray(slab))])
     parts.extend([b"p", _sized(roi.points)])
-    for line in roi.lines:
+    for index, line in enumerate(roi.lines):
         parts.extend([b"l", _sized(line)])
+        sweep = roi.sweep(index)
+        if sweep is not None:
+            parts.extend(
+                [b"w", _sized(np.asarray([*sweep.direction, sweep.near, sweep.far]))]
+            )
     return b"".join(parts)
 
 
@@ -758,17 +996,32 @@ def _mask(
     return inside
 
 
+def _plane_of(roi: RoiContours, planes: np.ndarray) -> np.ndarray:
+    """For each of an ROI's closed contours, the index of its plane among
+    ``planes``: the nearest, within which it lies."""
+    heights = np.array([height for height, _ in roi.closed])
+    return np.abs(heights[:, np.newaxis] - planes[np.newaxis, :]).argmin(axis=1)
+
+
 def _filled(roi: RoiContours, grid: _Grid, planes: np.ndarray) -> np.ndarray:
     """The voxels that an ROI's closed contours fill, indexed as a surface's
-    mask, its slices of voxels covered by its ``planes``."""
+    mask, its slices of voxels covered by its ``planes``; or, for a plane
+    whose contours have a slab, the slices within it, or the slice nearest
+    the plane where none is."""
     filled = np.zeros((len(grid.zs), len(grid.ys), len(grid.xs)), bool)
     if roi.closed:
         covering = _covering(planes, grid.zs, grid.voxel)
-        heights = np.array([height for height, _ in roi.closed])
-        # Each contour's plane: the nearest, within which it lies.
-        of = np.abs(heights[:, np.newaxis] - planes[np.newaxis, :]).argmin(axis=1)
+        of = _plane_of(roi, planes)
         for plane in np.unique(of):
-            slices = np.flatnonzero(covering == plane)
+            first = int(np.flatnonzero(of == plane)[0])
+            slab = roi.slab(first)
+            if slab is None:
+                slices = np.flatnonzero(covering == plane)
+            else:
+                low, high = planes[plane] + slab[0], planes[plane] + slab[1]
+                slices = np.flatnonzero((grid.zs >= low) & (grid.zs <= high))
+                if not slices.size:
+                    slices = np.abs(grid.zs - planes[plane]).argmin(keepdims=True)
             if not slices.size:
                 continue
             rings = [ring for (_, ring), at in zip(roi.closed, of) if at == plane]
@@ -964,15 +1217,20 @@ def rgb(image: np.ndarray) -> np.ndarray:
     return np.repeat(image[..., np.newaxis], 3, axis=2)
 
 
-def stacked(rows: Sequence[np.ndarray]) -> np.ndarray:
+def stacked(rows: Sequence[np.ndarray], white: Collection[int] = ()) -> np.ndarray:
     """Lay RGB rows out from top to bottom, each padded with black on the
-    right to the widest, with a grey gutter between each and the next."""
+    right to the widest, with a grey gutter between each and the next, or a
+    white one above each row whose index is in ``white``, as above each
+    further reading's first row of a contour sheet."""
     width = max(row.shape[1] for row in rows)
     gutter = np.empty((GUTTER_PIXELS, width, 3), np.uint8)
     gutter[...] = _GUTTER
+    ruled = np.empty((GUTTER_PIXELS, width, 3), np.uint8)
+    ruled[...] = _READING_GUTTER
     laid: list[np.ndarray] = []
-    for row in rows:
+    for index, row in enumerate(rows):
         padded = np.zeros((row.shape[0], width, 3), np.uint8)
         padded[:, : row.shape[1]] = row
-        laid.extend([gutter, padded] if laid else [padded])
+        above = ruled if index in white else gutter
+        laid.extend([above, padded] if laid else [padded])
     return np.vstack(laid)
