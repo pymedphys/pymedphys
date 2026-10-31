@@ -79,6 +79,7 @@ pytestmark = [pytest.mark.pydicom, pytest.mark.usefixtures("pydicom_behaviour")]
 BEAMS = _path(tag="(300A,00B0)")
 BEAM_NUMBER = "(300A,00C0)"
 HAS_PROPERTIES = "HAS PROPERTIES"
+HAS_CONCEPT_MOD = "HAS CONCEPT MOD"
 
 
 def _removed():
@@ -253,6 +254,66 @@ def test_an_item_with_a_modifier_that_cannot_be_kept_is_removed():
     actions = _actions((CSC,), dataset, REPORT)
 
     assert actions.removed_items == {_at(1)}
+
+
+def _modifier():
+    """Return a HAS CONCEPT MOD item that cannot be kept.
+
+    Its concept name is coded in UMLS, whose rows the pin leaves out.
+    """
+    item = _item(
+        "CODE",
+        ("C0000001", "UMLS", "Fixture modifier"),
+        ConceptCodeSequence=pydicom.Sequence([_coded().ConceptCodeSequence[0]]),
+    )
+    item.RelationshipType = HAS_CONCEPT_MOD
+    return item
+
+
+def _modified(item, *children):
+    """Return ``item`` holding a modifier that cannot be kept, then ``children``."""
+    item = _with_child(item, *children) if children else item
+    item.ContentSequence = pydicom.Sequence(
+        [_modifier(), *item.get("ContentSequence", [])]
+    )
+    return item
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.4-01")
+def test_a_concept_modifier_that_cannot_be_kept_removes_the_item_it_modifies():
+    # The item goes, with its other items, and so do the reference to it and
+    # the section it leaves with no items.
+    section = _container(SECTION, _modified(_coded(), _coded()))
+    dataset = _report(_coded(), section, _by_reference(1, 2, 1))
+
+    actions = _actions((CSC,), dataset, REPORT)
+
+    assert actions.removed_items == {_at(1), _at(2)}
+    assert dict(actions) == {_path(tag=CONTENT): "K"}
+    assert not actions.emptied
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.4-01")
+def test_a_section_is_kept_without_a_concept_modifier_that_cannot_be_kept():
+    section = _container(SECTION, _coded())
+    section.ContentSequence.insert(0, _modifier())
+    dataset = _report(section, _by_reference(1, 1, 2))
+
+    actions = _actions((CSC,), dataset, REPORT)
+
+    assert actions.removed_items == {_at(0, 0)}
+    assert dict(actions) == {_path(tag=CONTENT): "K", _path(*_at(0), tag=CONTENT): "K"}
+    assert dict(actions.renumbered) == {_reference_at(1): (1, 1, 1)}
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.4-01")
+def test_the_root_is_kept_without_a_concept_modifier_that_cannot_be_kept():
+    dataset = _report(_modifier(), _coded())
+
+    actions = _actions((CSC,), dataset, REPORT)
+
+    assert actions.removed_items == {_at(0)}
+    assert dict(actions) == {_path(tag=CONTENT): "K"}
 
 
 def test_the_walker_removes_the_elements_of_a_removed_item_and_keeps_its_siblings():

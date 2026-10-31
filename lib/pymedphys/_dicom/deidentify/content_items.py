@@ -57,9 +57,12 @@ item's Value Type (0040,A040) and the code of its Concept Name Code Sequence
   is removed on its own, with everything in it, and so, until nothing
   changes, is every item whose own elements hold a Referenced Content Item
   Identifier (0040,DB73) that names a removed item, or one inside it, such
-  as a by-reference relationship, and every CONTAINER whose items are all
-  removed; any other item whose items are all removed loses its Content
-  Sequence, which is Type 1C (PS3.3 Table C.17-6). Each Referenced Content
+  as a by-reference relationship, every item other than a CONTAINER whose
+  item of Relationship Type HAS CONCEPT MOD is removed, and every CONTAINER
+  whose items are all removed; any other item whose items are all removed
+  loses its Content Sequence, which is Type 1C (PS3.3 Table C.17-6). A
+  CONTAINER, the root among them, is kept without its removed HAS CONCEPT
+  MOD item. Each Referenced Content
   Item Identifier that is kept is renumbered, so that it names the same
   item once the items before it are gone (PS3.3 Section C.17.3.2.5). The
   outermost Content Sequence takes its Basic Profile action instead, which
@@ -166,6 +169,11 @@ VALUE_TYPE = "(0040,A040)"
 CONCEPT_NAME = "(0040,A043)"
 # A content item's modifiers, themselves content items (PS3.3 Table 10.2.1-1).
 MODIFIERS = "(0040,0441)"
+# The relationship of an item of Content Sequence to the item that holds it,
+# and the one by which it modifies that item's concept name (PS3.3 Section
+# C.17.3.2.4).
+RELATIONSHIP_TYPE = "(0040,A010)"
+HAS_CONCEPT_MOD = "HAS CONCEPT MOD"
 # The position in the content tree of the target of a by-reference
 # relationship, an item of Content Sequence that is not a content item
 # itself (PS3.3 Table C.17-6).
@@ -285,9 +293,11 @@ METHOD = (
     "Content Sequence, an item that cannot be kept is "
     "removed on its own, with every item that it contains, and so is each "
     "item that names a removed item, or one inside it, by a Referenced "
-    "Content Item Identifier, such as a by-reference relationship, and each "
-    "CONTAINER whose items are all removed, while any other item whose "
-    "items are all removed loses its Content Sequence; each Referenced "
+    "Content Item Identifier, such as a by-reference relationship, each "
+    "item other than a CONTAINER whose HAS CONCEPT MOD item is removed, and "
+    "each CONTAINER whose items are all removed, while any other item whose "
+    "items are all removed loses its Content Sequence, and a CONTAINER loses "
+    "only its removed HAS CONCEPT MOD item; each Referenced "
     "Content Item Identifier that is kept is renumbered, so that it names "
     "the same item in the output. The whole Content Sequence takes its "
     "Basic Profile action instead where its root cannot be kept or is left "
@@ -640,13 +650,17 @@ class _ContentTree:
     nothing changes, an item that holds a Referenced Content Item Identifier
     (0040,DB73) naming a removed item, or an item inside one, is removed
     too: a by-reference relationship, or an item whose own elements name
-    one, such as a TABLE's Cell Values Sequence (0040,A808); a CONTAINER
-    whose items are all removed is removed; and any other item whose items
-    are all removed loses its Content Sequence, which is Type 1C (PS3.3 Table
-    C.17-6). Every Referenced Content Item Identifier that is kept is
+    one, such as a TABLE's Cell Values Sequence (0040,A808); an item other
+    than a CONTAINER whose item of Relationship Type HAS CONCEPT MOD is
+    removed is removed, since what is left would no longer say what its
+    concept name means, while a CONTAINER, the root among them, is kept
+    without it; a CONTAINER whose items are all removed is removed; and any
+    other item whose items are all removed loses its Content Sequence, which
+    is Type 1C (PS3.3 Table C.17-6). Every Referenced Content Item Identifier that is kept is
     renumbered to name the same item in the output (PS3.3 Section
     C.17.3.2.5). An item that cannot be read, the root where it cannot be
-    kept or is left with no items, or an identifier that names no item
+    kept or is left with no items, the root other than a CONTAINER whose
+    HAS CONCEPT MOD item is removed, or an identifier that names no item
     where an item is removed, leaves the whole sequence to take its Basic
     Profile action, raising :class:`_Unkept`.
     """
@@ -778,6 +792,10 @@ class _ContentTree:
                         raise _Unkept
                     self._removed.add(reference.holder)
                     changed = True
+            for items in tuple(self._removed):
+                if self._modifies(items):
+                    self._removed.add(items[:-1])
+                    changed = True
             for items, node in self._nodes.items():
                 nested = ElementPath(items, CONTENT_SEQUENCE)
                 if (
@@ -798,6 +816,32 @@ class _ContentTree:
         ):
             raise _Unkept
         return emptied
+
+    def _modifies(self, items: Item) -> bool:
+        """Return whether a removed item takes the item holding it with it.
+
+        That is an item of Relationship Type HAS CONCEPT MOD held by a kept
+        item other than a CONTAINER. The root, if it is not a CONTAINER,
+        cannot go, so it leaves the whole sequence to take its Basic Profile
+        action, raising :class:`_Unkept`.
+        """
+        holder = items[:-1]
+        if holder != self._root and (holder not in self._nodes or self._gone(holder)):
+            return False
+        if holder == self._root:
+            value_type = ElementPath(holder, VALUE_TYPE)
+            if (
+                value_type in self._reader
+                and self._reader.text(value_type) == CONTAINER
+            ):
+                return False
+        elif self._nodes[holder].container:
+            return False
+        if self._reader.text(ElementPath(items, RELATIONSHIP_TYPE)) != HAS_CONCEPT_MOD:
+            return False
+        if holder == self._root:
+            raise _Unkept
+        return True
 
     def _gone(self, items: Item, strict: bool = False) -> bool:
         """Return whether a removed item is, or holds, the item ``items``."""
