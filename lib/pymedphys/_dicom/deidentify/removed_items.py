@@ -16,7 +16,8 @@
 
 Under Clean Structured Content, an item of Content Sequence (0040,A730)
 that cannot be kept is removed on its own, with everything in it, while the
-sequence and its other items are kept (D-047). The plan names every element
+sequence and its other items are kept, and so is a TABLE's cell, an item of
+Cell Values Sequence (0040,A808), that names a removed item (D-047). The plan names every element
 by its path in the source; the written file numbers the items of such a
 sequence without the removed ones, so the items after a removed item move
 up. :class:`RemovedItems` maps a path between the two numberings, for the
