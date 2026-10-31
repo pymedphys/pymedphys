@@ -915,7 +915,7 @@ class NotPreviewedReason(enum.Enum):
     # previews are kept, such as its cine strip, which can leave a low dose
     # black, and a redaction preview of each frame where it was cleaned.
     DOSE_LEVELS_NOT_SHOWN = "dose-levels-not-shown"
-    # a Segmentation, by qc_segments.is_segmentation, that no segments sheet
+    # a Segmentation, by face_review.is_segmentation, that no segments sheet
     # shows whole: one that is FRACTIONAL, cannot be placed, has a pixel in
     # no segment that it describes, or whose sheet would be too tall. Its
     # other previews are kept, as an RT Dose's are.

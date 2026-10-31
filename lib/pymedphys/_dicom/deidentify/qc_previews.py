@@ -144,7 +144,7 @@ from pymedphys._imports import pydicom
 
 from .pixel_decoding import DECODING_PLUGINS, decoder_available
 from . import qc_contours, qc_segments, qc_surfaces
-from .face_review import is_rt_dose
+from .face_review import is_rt_dose, is_segmentation
 from .qc_pack import (
     NotPreviewedEntry,
     NotPreviewedReason,
@@ -229,7 +229,7 @@ class _Instance:
     # frame's bits are not a whole number of bytes, as a Segmentation's
     # BINARY masks are (_packed_frames).
     packed: bool = False
-    # Whether it is a Segmentation (qc_segments.is_segmentation), which only
+    # Whether it is a Segmentation (face_review.is_segmentation), which only
     # a segments sheet shows as it could show a face (D-017), and what the
     # sheet needs of it, or None where none can show it.
     segmentation: bool = False
@@ -496,7 +496,7 @@ def _described(
     except Exception:  # pylint: disable = broad-exception-caught
         modality = ""
     colour = photometric in _COLOUR and samples == 3 and allocated == 8
-    segmentation = qc_segments.is_segmentation(dataset)
+    segmentation = is_segmentation(dataset)
     if not colour and not (photometric in _MONOCHROME and samples == 1):
         return NotPreviewedReason.UNSUPPORTED
     if frames < 1 or rows < 1 or columns < 1:

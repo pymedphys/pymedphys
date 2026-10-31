@@ -430,9 +430,10 @@ def _pixel_and_face(
         return ReviewReason.NO_FACE_VERDICT
     # How many frames the run's own previews show of each instance, from
     # the first, which its pack records a pixel data digest only where they
-    # are every frame, and of each that its dose-levels previews show,
-    # which alone show an RT Dose as it could show a face.
-    _, _, pictured, dosed = _previews(pack_document(pack))
+    # are every frame, of each that its dose-levels previews show, which
+    # alone show an RT Dose as it could show a face, and of each that its
+    # segments sheets show, which alone show a Segmentation so.
+    _, _, pictured, dosed, segmented = _previews(pack_document(pack))
     found = set()
     for position, entry in released.items():
         pixels = _digest(entry.pixel_sha256)
@@ -445,6 +446,7 @@ def _pixel_and_face(
             contours,
             pictured.get(position),
             dose=position in dosed,
+            segmentation=position in segmented,
         )
         if held is not None:
             found.add(ReviewReason(held.value))

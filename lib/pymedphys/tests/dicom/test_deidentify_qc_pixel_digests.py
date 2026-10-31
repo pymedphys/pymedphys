@@ -628,7 +628,7 @@ def test_the_reader_takes_pixel_data_s_digest_only_where_a_preview_shows_them():
     assert entry[1] == bytes.fromhex("1e" * 32)
     # It carries how many frames, from the first, the previews showed, and
     # none that dose levels showed.
-    assert entry[4] == 1 and entry[5] is None
+    assert entry[4] == 1 and entry[5] is None and entry[6] is None
     document["previews"][0]["frames"].append({"position": 0, "frame": 2})
     with pytest.raises(QcPackError, match="not of its format"):
         face_review._series_files(json.dumps(document).encode("ascii"))
@@ -640,7 +640,7 @@ def test_the_reader_takes_pixel_data_s_digest_only_where_a_preview_shows_them():
         {"kind": "series-dose-levels", "frames": [{"position": 0, "frame": 0}]}
     )
     (entry,) = face_review._series_files(json.dumps(document).encode("ascii"))[0]
-    assert entry[4:] == (2, 1)
+    assert entry[4:] == (2, 1, None)
     document["not_previewed"] = [{"position": 0, "reason": "unreadable-pixel-data"}]
     with pytest.raises(QcPackError, match="not of its format"):
         face_review._series_files(json.dumps(document).encode("ascii"))
@@ -887,6 +887,9 @@ def test_a_run_releases_an_rt_dose_only_where_its_dose_levels_showed_every_frame
                 frozenset({(source, face_review.contour_data_sha256(written))}),
                 frozenset({(source, pixels, 12)}),
                 dose_frames,
+                # Every frame on a segments sheet, since a Modality of two
+                # values may be SEG too.
+                frozenset({(source, pixels, 12)}),
             ),
             unvalidated_policy=True,
         )(data, record)
