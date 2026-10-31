@@ -31,8 +31,9 @@ each element of the data set, in file order, an :class:`Edit`:
   removed with them, with their reviewed dummy items, built from each source
   item's compared values
   (:func:`~pymedphys._dicom.deidentify.dummy_values.items_for_d`, D-021),
-  and ICC Profile (0028,2000) with a fixed profile of its colour space
-  (:func:`~pymedphys._dicom.deidentify.dummy_values.icc_profile_for_d`);
+  and ICC Profile (0028,2000) with the source profile cleaned of everything
+  but its colorimetry, or a fixed sRGB profile where it cannot be cleaned
+  (:func:`~pymedphys._dicom.deidentify.dummy_values.icc_profile_outcome`);
   D keeps Verifying Observer Sequence (0040,A073) as a container, as K does,
   whose items keep only the attributes that the plan does not remove
   (:func:`~pymedphys._dicom.deidentify.walker.descends`, D-021);
@@ -94,12 +95,13 @@ from .dummy_values import (
     ICC_PROFILE,
     DummyElement,
     NoDummyValueError,
-    icc_profile_for_d,
+    icc_profile_outcome,
     items_for_d,
     values_for_d,
 )
 from .elements import ElementValue, OutsideDefaultRepertoire, UndecodableElement
 from .file_layout import ElementPath
+from .icc_cleaning import Refusal
 from .keys import DeidKey
 from .pseudonyms import SubjectIdentity, patient_pseudonym
 from .residuals import SourceValue
@@ -161,6 +163,11 @@ class Edit:
         of their tags, for :attr:`EditKind.REPLACE` of a sequence, such as
         D's on Person Identification Code Sequence (0040,1101); otherwise
         ``()``. The source items are removed with the sequence.
+    icc_refusal : ~pymedphys._dicom.deidentify.icc_cleaning.Refusal or None
+        For the dummy value of ICC Profile (0028,2000), why the source
+        profile could not be cleaned, so that the fixed sRGB profile
+        replaces it; otherwise, and where the cleaned source replaces it,
+        None.
     """
 
     path: ElementPath
@@ -170,6 +177,7 @@ class Edit:
     uid_outcomes: tuple[UIDOutcome, ...] = ()
     removed_with: ElementPath | None = None
     items: tuple[tuple[DummyElement, ...], ...] = ()
+    icc_refusal: Refusal | None = None
 
     def __repr__(self) -> str:
         return (
@@ -495,20 +503,21 @@ def _kind(element: ElementPlan, container: bool) -> EditKind:
 def _dummy(path: ElementPath, value: ElementValue, key: DeidKey) -> Edit:
     attribute = dictionary_attribute(path.tag)
     vm = attribute.vm if attribute is not None else "1"
+    refusal = None
     try:
         if path.tag == ICC_PROFILE and value.vr == "OB":
             if len(value.values) != 1 or not isinstance(value.values[0], bytes):
                 raise NoDummyValueError(value.vr, "ICC Profile is not one value")
-            values: tuple[str | int | float | bytes, ...] = (
-                icc_profile_for_d(value.values[0]),
-            )
+            outcome = icc_profile_outcome(value.values[0])
+            values: tuple[str | int | float | bytes, ...] = (outcome.profile,)
+            refusal = outcome.refusal
         else:
             values = values_for_d(value.vr, vm, value.values, key)
     except NoDummyValueError:
         raise _Sequester(
             Sequestration(path, "D", value.vr, SequesterReason.NO_DUMMY_VALUE)
         ) from None
-    return Edit(path, "D", EditKind.REPLACE, values)
+    return Edit(path, "D", EditKind.REPLACE, values, icc_refusal=refusal)
 
 
 def _uids(path: ElementPath, value: ElementValue, key: DeidKey) -> Edit:

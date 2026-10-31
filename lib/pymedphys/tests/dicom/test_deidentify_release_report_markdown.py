@@ -30,6 +30,7 @@ from pymedphys._dicom.deidentify import (
     qc_attestation,
     reference_graph,
     release_gate,
+    icc_cleaning,
     release_report,
     reviewed_roi_names,
     roi_names,
@@ -120,6 +121,13 @@ def _full_report():
             outcomes={
                 reviewed_roi_names.Outcome.RENAMED: 7,
                 reviewed_roi_names.Outcome.EMPTIED_UNREVIEWED: 1,
+            },
+        ),
+        icc_profiles=release_report.IccProfileCounts(
+            cleaned=3,
+            replaced={
+                icc_cleaning.Refusal.TAG_DATA: 1,
+                icc_cleaning.Refusal.DEVICE_CLASS: 2,
             },
         ),
         findings=(release_report.ReferenceFindings("dangling-reference", 2),),
@@ -245,6 +253,7 @@ def test_the_sections_follow_the_documents_order():
         "## Instances held for review",
         "## ROI names",
         "## Descriptors",
+        "## ICC profiles",
         "## Reference findings",
         "## Pixel data risks",
         "## Values not searched",
@@ -281,6 +290,20 @@ def test_the_roi_names_are_counted_by_outcome_and_held_reason():
         "| Reason | Distinct names |",
         "| --- | --- |",
         "| `echoes identifier` | `1` |",
+    ]
+
+
+@pytest.mark.deid_requirement("MIDI-BP-14", "MIDI-BP-18")
+def test_the_icc_profiles_are_counted_as_cleaned_or_replaced_by_reason():
+    markdown = to_markdown(release_report.to_json(_full_report()))
+    section = markdown.split("## ICC profiles", 1)[1].split("\n## ", 1)[0]
+    rows = [line for line in section.splitlines() if line.startswith("| ")]
+    assert "Cleaned source profiles: `3`." in section
+    assert rows == [
+        "| Reason | Profiles |",
+        "| --- | --- |",
+        "| `device-class` | `2` |",
+        "| `tag-data` | `1` |",
     ]
 
 
@@ -326,7 +349,8 @@ def test_the_pixel_risks_are_counted_by_disposition_risk_and_indicator():
 def test_an_empty_run_says_so_in_each_run_section():
     markdown = to_markdown(release_report.to_json(_report()))
     assert "No QC pack was written for this run." in markdown
-    assert markdown.count("None.") == 13
+    assert markdown.count("None.") == 14
+    assert "Cleaned source profiles: `0`." in markdown
     run = markdown.split("## QC review", 1)[1].split("## Structural checks", 1)[0]
     assert "|" not in run
 
@@ -387,6 +411,15 @@ def _changed(change):
         lambda d: d["qc_review"].pop("residual_risk_accepted"),
         lambda d: d["qc_review"].update(intended_use_checked="yes"),
         lambda d: d["qc_review"].update(residual_risk_accepted=1),
+        lambda d: d.pop("icc_profiles"),
+        lambda d: d["icc_profiles"].update(cleaned=-1),
+        lambda d: d["icc_profiles"].update(cleaned="3"),
+        lambda d: d["icc_profiles"].pop("replaced"),
+        lambda d: d["icc_profiles"]["replaced"][0].update(count=0),
+        lambda d: d["icc_profiles"]["replaced"][0].update(extra="x"),
+        lambda d: d["icc_profiles"]["replaced"].append(
+            {"reason": "`SENTINEL`", "count": 1}
+        ),
         lambda d: d.pop("reference_findings"),
         lambda d: d["reference_findings"][0].update(count=0),
         lambda d: d["reference_findings"][0].update(extra="x"),

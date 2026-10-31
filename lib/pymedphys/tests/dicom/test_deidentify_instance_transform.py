@@ -46,6 +46,7 @@ from pymedphys._dicom.deidentify import (
 from pymedphys._dicom.deidentify.edits import EditKind, InstanceEdits, edit_instance
 from pymedphys._dicom.deidentify.element_rules import ElementRules
 from pymedphys._dicom.deidentify.file_layout import ElementPath
+from pymedphys._dicom.deidentify.icc_cleaning import Refusal
 from pymedphys._dicom.deidentify.instance_transform import (
     InstanceTransform,
     PendingEdit,
@@ -82,7 +83,12 @@ from pymedphys._dicom.deidentify.residuals import (
     not_searched_of,
     written_constants,
 )
-from pymedphys._dicom.deidentify.run_qc import Dropped, SearchMaterial, SeriesEvidence
+from pymedphys._dicom.deidentify.run_qc import (
+    Dropped,
+    IccProfileMaterial,
+    SearchMaterial,
+    SeriesEvidence,
+)
 from pymedphys._dicom.deidentify.scope import Disposition, UnsupportedIod
 from pymedphys._dicom.deidentify.source import (
     SourceEvidence,
@@ -506,6 +512,9 @@ def test_d_writes_the_reviewed_procedure_step_and_icc_profile_in_an_added_iod():
     assert written[0x00282000].value == icc_cleaning.clean_profile(
         icc_profiles.srgb_profile("A scanner's profile"), "DEIDENTIFIED"
     )
+    assert [item for item in result.qc if isinstance(item, IccProfileMaterial)] == [
+        IccProfileMaterial(ElementPath((), "(0028,2000)"), None)
+    ]
     # Color Space named the source profile's colour space, which the profile
     # written may contradict, so it is removed (D-022).
     assert "ColorSpace" not in written
@@ -559,6 +568,10 @@ def test_d_writes_the_fixed_srgb_profile_where_the_source_cannot_be_cleaned():
     written = pydicom.dcmread(io.BytesIO(result.data))
     assert written[0x00282000].value == icc_profiles.srgb_profile("DEIDENTIFIED sRGB")
     assert b"scanner" not in result.data
+    # The release report counts it by why the source could not be cleaned.
+    assert [item for item in result.qc if isinstance(item, IccProfileMaterial)] == [
+        IccProfileMaterial(ElementPath((), "(0028,2000)"), Refusal.DEVICE_CLASS)
+    ]
 
 
 @pytest.mark.deid_requirement("PS3.15-E.1.1-01")
