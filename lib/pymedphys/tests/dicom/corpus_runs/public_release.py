@@ -20,7 +20,7 @@ creator that no reviewed rule names, so every private attribute is removed;
 Modified Dates keeps the TM rows that its cleaner keeps, as in its own run;
 the structure set is as the ``basic-clean-descriptors`` run has it; and
 every file is marked free of a face, so every released instance claims
-Clean Recognizable Visual Features, and the deformable registration is held,
+Clean Recognizable Visual Features, the deformable registration included,
 as in that option's own run.
 """
 

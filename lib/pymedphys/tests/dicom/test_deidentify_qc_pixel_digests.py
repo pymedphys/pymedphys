@@ -640,7 +640,7 @@ def test_the_reader_takes_pixel_data_s_digest_only_where_a_preview_shows_them():
         {"kind": "series-dose-levels", "frames": [{"position": 0, "frame": 0}]}
     )
     (entry,) = face_review._series_files(json.dumps(document).encode("ascii"))[0]
-    assert entry[4:] == (2, 1)
+    assert entry[4:6] == (2, 1)
     document["not_previewed"] = [{"position": 0, "reason": "unreadable-pixel-data"}]
     with pytest.raises(QcPackError, match="not of its format"):
         face_review._series_files(json.dumps(document).encode("ascii"))
