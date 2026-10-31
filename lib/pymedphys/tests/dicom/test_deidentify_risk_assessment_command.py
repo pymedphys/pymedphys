@@ -660,9 +660,8 @@ def test_a_member_named_twice_is_refused(tmp_path, pack, report_file, content):
         b"\xff\xfe{}",
         "{}".encode("utf-16"),
         b'{"format": ',
-        b"[" * 100_000 + b"]" * 100_000,
     ],
-    ids=["empty", "text", "not-utf-8", "utf-16", "truncated", "too-deep"],
+    ids=["empty", "text", "not-utf-8", "utf-16", "truncated"],
 )
 def test_a_statement_that_is_not_utf_8_json_is_refused(
     tmp_path, pack, report_file, content
@@ -672,6 +671,43 @@ def test_a_statement_that_is_not_utf_8_json_is_refused(
     )
 
     _assert_refused(pack, status, stdout, stderr, "the statement is not UTF-8 JSON")
+
+
+def test_a_statement_too_deep_for_the_parser_is_refused(
+    tmp_path, pack, report_file, monkeypatch
+):
+    # How deep the parser can go depends on the platform's stack, so the
+    # parser's refusal is made certain here; the next test nests for real.
+    def too_deep(*_args, **_kwargs):
+        raise RecursionError("maximum recursion depth exceeded")
+
+    monkeypatch.setattr(command.json, "loads", too_deep)
+
+    status, stdout, stderr = _run(
+        pack, report_file, _write_statement(tmp_path, _statement())
+    )
+
+    _assert_refused(pack, status, stdout, stderr, "the statement is not UTF-8 JSON")
+
+
+def test_a_deeply_nested_statement_is_refused_whatever_the_parser_reaches(
+    tmp_path, pack, report_file
+):
+    # Nested deeper than CPython's parser goes on a default stack: it is
+    # refused as JSON where the parser gives up, or as not a statement
+    # where it does not, and never raises.
+    content = b"[" * 100_000 + b"]" * 100_000
+
+    status, stdout, stderr = _run(
+        pack, report_file, _write_statement(tmp_path, content)
+    )
+
+    assert status == command.EXIT_NOT_RECORDED
+    assert (
+        "the statement is not UTF-8 JSON" in stderr
+        or f"the statement is not of its format, {command.STATEMENT_FORMAT}" in stderr
+    )
+    _assert_refused(pack, status, stdout, stderr, "the statement is not")
 
 
 @pytest.mark.parametrize("constant", ["NaN", "Infinity", "-Infinity"])
