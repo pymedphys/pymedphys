@@ -900,6 +900,63 @@ def test_a_pack_is_assessed_once(pack, report_file):
     assert risk_assessment.read_assessment(pack) == first
 
 
+def test_binding_checks_as_recording_does_and_writes_nothing(pack, report_file):
+    bound = risk_assessment.bind_assessment(pack, report_file, _assessment())
+
+    assert not (pack / risk_assessment.ASSESSMENT_FILE).exists()
+    assert risk_assessment.read_assessment(pack) is None
+    recorded = _record(pack, report_file, _assessment())
+    # Each draws its own reference; everything else is bound alike.
+    assert bound.reference != recorded.reference
+    assert dataclasses.replace(bound, reference=recorded.reference) == recorded
+
+
+def test_binding_refuses_a_pack_that_has_an_assessment(pack, report_file):
+    first = _record(pack, report_file, _assessment())
+    before = (pack / risk_assessment.ASSESSMENT_FILE).read_bytes()
+
+    with pytest.raises(RiskAssessmentError, match="already has a risk assessment"):
+        risk_assessment.bind_assessment(pack, report_file, _assessment())
+
+    assert (pack / risk_assessment.ASSESSMENT_FILE).read_bytes() == before
+    assert risk_assessment.read_assessment(pack) == first
+
+
+def test_binding_refuses_what_recording_refuses(tmp_path, pack, report_file):
+    other = tmp_path / "other.json"
+    other.write_text(json.dumps(_report(OTHER_PACK)), "utf-8")
+    with pytest.raises(RiskAssessmentError, match="another QC pack"):
+        risk_assessment.bind_assessment(pack, other, _assessment())
+    with pytest.raises(QcPackError, match="no QC pack"):
+        risk_assessment.bind_assessment(tmp_path, report_file, _assessment())
+    unbound = _write_pack(tmp_path, "unbound", lists=None)
+    with pytest.raises(RiskAssessmentError, match="records no digest"):
+        risk_assessment.bind_assessment(unbound, report_file, _assessment())
+    with pytest.raises(TypeError, match="must be an Assessment"):
+        risk_assessment.bind_assessment(pack, report_file, None)
+
+
+@pytest.mark.deid_requirement("MIDI-BP-01")
+def test_a_record_that_appears_after_binding_is_not_overwritten(
+    pack, report_file, monkeypatch
+):
+    # Recording checks again as it writes, so a record written by another
+    # process between the check and the write is kept.
+    bind = risk_assessment.bind_assessment
+    earlier = (pack / risk_assessment.ASSESSMENT_FILE, b"another process's record")
+
+    def bind_then_another_records(*args):
+        record = bind(*args)
+        earlier[0].write_bytes(earlier[1])
+        return record
+
+    monkeypatch.setattr(risk_assessment, "bind_assessment", bind_then_another_records)
+
+    with pytest.raises(RiskAssessmentError, match="already has a risk assessment"):
+        _record(pack, report_file, _assessment())
+    assert earlier[0].read_bytes() == earlier[1]
+
+
 @pytest.mark.deid_requirement("MIDI-BP-01")
 def test_a_pack_changed_after_it_was_assessed_is_refused(pack, report_file):
     _record(pack, report_file, _assessment())
