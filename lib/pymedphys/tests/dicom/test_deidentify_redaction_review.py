@@ -1154,7 +1154,7 @@ def test_the_report_names_the_reviewed_pack(second_run):
     attestation, _, report, _, _ = second_run
 
     assert report["redaction_review"] == {"reference": attestation.reference}
-    assert report["format"] == "pymedphys-deid-release-report/31"
+    assert report["format"] == "pymedphys-deid-release-report/32"
 
 
 class _Blind(Finder):

@@ -46,7 +46,6 @@ from pymedphys._dicom.deidentify.instance_transform import (
 from pymedphys._dicom.deidentify.iods import load_iod_tables
 from pymedphys._dicom.deidentify.keys import DeidKey
 from pymedphys._dicom.deidentify.references import InstanceRecord
-from pymedphys._dicom.deidentify.release_gate import ReasonCode
 from pymedphys._dicom.deidentify.reviewed_roi_names import ReviewedNames
 from pymedphys._dicom.deidentify.source import read_source
 from pymedphys._dicom.deidentify.walker import plan_instance
@@ -383,13 +382,14 @@ def test_a_finding_site_coded_by_its_snomed_ids_is_kept_as_in_snomed_ct(
 
 
 # The optional rows of TID 1001 that take the tree out under every option
-# set: Table E.3.4-1 gives each X under every option, or X with C under Clean
-# Descriptors, which falls back to X (D-009), or its concept name is
-# coded in LOINC.
+# set: Table E.3.4-1, or a supplementary row, gives each X under every
+# option, or X with C under Clean Descriptors, which falls back to X (D-009),
+# or its concept name is coded in LOINC.
 OBSERVATION_REMOVED_UNDER_EVERY_OPTION = {
     "TID 1003 row 1a",  # Person Observer's Login Name
     "TID 1004 row 10",  # Unique Device Identifier, coded in LOINC
     "TID 1005 row 7",  # Accession Number
+    "TID 1007 row 3",  # Subject ID as a CODE, a supplementary row
     "TID 1007 row 4",  # Subject Birth Date
 }
 # Retain Institution Identity keeps Person Observer's Organization Name.
@@ -668,48 +668,29 @@ def test_a_section_under_an_equivalent_dcm_heading_is_written_and_released(
     *((preset, None) for preset in PRESETS),
     (None, EVERY_OPTION),
 ])  # fmt: skip
-def test_a_subject_id_coded_as_tid_1007_gives_it_is_not_looked_up(
+def test_a_subject_id_coded_as_tid_1007_gives_it_takes_the_tree_out(
     with_option, preset, options
 ):
     composed = _composed(with_option, preset, options)
     dataset, iod = _report(IMAGING, ("TID 1007 row 3",))
-    actions, _ = _planned(dataset, iod, composed)
 
     # TID 1007 row 3 gives Subject ID the Value Type CODE, and Table E.3.4-1
-    # lists it only as TEXT, so the item is not listed: the tree is kept,
-    # and the identifier, its Code Value, keeps its own rule, K.
-    assert ("DCM", "121030", "CODE") not in content_items.concept_actions(
-        composed.options
+    # lists it only as TEXT. The identifier is the Code Value, which an
+    # unlisted item would keep, so a supplementary row removes the item
+    # under every option.
+    assert (
+        content_items.concept_actions(composed.options)[("DCM", "121030", "CODE")]
+        == "X"
     )
-    assert actions.get(ElementPath((), CONTENT)) == "K"
-    assert _values_by_concept(dataset, actions) == {"Person Observer Name": "D"}
+    assert not _kept(dataset, iod, composed)
 
 
-def test_the_residual_search_withholds_a_subject_id_that_is_the_patient_id(
-    with_option,
+@pytest.mark.parametrize("subject_id", [reports.PATIENT_ID, "SYNTHETIC-OTHER9"])
+def test_a_subject_id_coded_as_tid_1007_gives_it_is_not_released(
+    with_option, subject_id
 ):
-    dataset, _ = _report(IMAGING, ("TID 1007 row 3",))
-
-    data, decision = _released(with_option("public-release"), dataset)
-
-    assert reports.PATIENT_ID.encode() in data
-    assert isinstance(decision, run.Sequestered)
-    assert {reason.code for reason in decision.reasons} == {
-        ReasonCode.RESIDUAL_DIRECT_IDENTIFIER
-    }
-
-
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "A Subject ID content item with the Value Type CODE, as TID 1007 "
-        "gives it, is not listed in Table E.3.4-1, so its Code Value is kept; "
-        "the residual search finds it only where it is the header's Patient ID."
-    ),
-)
-def test_a_subject_id_other_than_the_patient_id_is_not_released(with_option):
     dataset, _ = _report(IMAGING)
-    dataset.ContentSequence.append(reports.subject_identifier("SYNTHETIC-OTHER9"))
+    dataset.ContentSequence.append(reports.subject_identifier(subject_id))
 
     result = _transformed(with_option("public-release"), dataset)
 
@@ -719,20 +700,19 @@ def test_a_subject_id_other_than_the_patient_id_is_not_released(with_option):
         assert isinstance(result, run.Sequestered), result
         return
     decision = ReleaseGate()(result.data, result.evidence, (result.evidence,))
-    assert b"SYNTHETIC-OTHER9" not in result.data or not isinstance(
+    assert subject_id.encode() not in result.data or not isinstance(
         decision, run.Release
     )
 
 
 # The optional rows of each report that public-release, with the option
-# added, keeps, other than the Subject ID coded as TID 1007 gives it.
+# added, keeps.
 RELEASED_UNDER_PUBLIC_RELEASE = {
     MEASUREMENT: _keepable(
         MEASUREMENT,
         OBSERVATION_REMOVED_UNDER_BASIC
         | MEASUREMENT_REMOVED_UNDER_EVERY_OPTION
-        | MEASUREMENT_UIDS
-        | {"TID 1007 row 3"},
+        | MEASUREMENT_UIDS,
     ),
     KEY_OBJECTS: ("TID 2010 row 5", "TID 2010 row 6"),
     CAD: _keepable(CAD, {"TID 4020 row 17"}),

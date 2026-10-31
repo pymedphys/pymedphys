@@ -95,7 +95,10 @@ Where the edits sequester an instance, the values that they did not reach
 are uncollected. An instance out of scope whose IOD the pinned tables
 define, such as a nuclear medicine image or an ultrasound image, is
 planned and edited too when its source is readable, only so that its values
-are collected for its subject's search; it is never written. Where an
+are collected for its subject's search; it is never written. The coverage of
+an instance that the transform sequesters gives every value it collected as
+unwritten (:attr:`~.release_gate.Coverage.unwritten`), so that the gate can
+tell a value that only instances which are not written held. Where an
 instance of the subject gives no coverage at all, because its source is
 refused, its SOP Class names no IOD of the tables, its Specific Character
 Set cannot be decoded, the transform raises, or it changed during the run,
@@ -197,6 +200,7 @@ from .release_gate import (
     Uncollected,
     release_condition,
 )
+from .residual_exemptions import standard_code_meanings
 from .residuals import NotSearched, has_written_constant, not_searched_of
 from .retained_uids import output_name_uid, retained_uid_paths, retained_uid_tags
 from .run import NO_EVIDENCE, HoldForReview, Release, Sequestered, Transformed
@@ -457,6 +461,25 @@ def omissions_of(
         Dropped(path, DropReason.WRITTEN_CONSTANT) for path in dict.fromkeys(paths)
     )
     return (*constants, *not_searched_of(coverage.collected))
+
+
+def unwritten(evidence: Coverage | HeldEvidence) -> Coverage | HeldEvidence:
+    """Return the evidence of an instance that is not written.
+
+    Each value that its coverage collected is given as unwritten, as the
+    evidence of an instance that the transform sequesters, and each Code
+    Meaning whose own item gives a designator that PS3.16 Table 8-1 lists as
+    coded, judged within this instance before its values are pooled. The gate
+    of a file of its subject can then tell a value that only such instances
+    held from one that a written instance holds too (D-032, D-042).
+    """
+    if isinstance(evidence, HeldEvidence):
+        return dataclasses.replace(evidence, coverage=unwritten(evidence.coverage))
+    return dataclasses.replace(
+        evidence,
+        unwritten=frozenset(evidence.collected),
+        coded=standard_code_meanings(evidence.collected),
+    )
 
 
 def coverage_of(
@@ -1636,7 +1659,7 @@ class InstanceTransform:
                 evidence = coverage_of(plan, edits, withheld, self._options)
             return Sequestered(
                 reasons,
-                evidence,
+                unwritten(evidence),
                 (*risk, *dropped_of(edits, withheld), *omissions_of(evidence)),
             )
         satisfied = False
@@ -1683,7 +1706,7 @@ class InstanceTransform:
                     evidence = coverage_of(plan, edits, withheld, self._options)
                 return Sequestered(
                     (refused.reason,),
-                    evidence,
+                    unwritten(evidence),
                     (*risk, *dropped_of(edits, withheld), *omissions_of(evidence)),
                 )
             edits, satisfied = cleaned.edits, cleaned.satisfied
@@ -1774,7 +1797,7 @@ class InstanceTransform:
                 TransformReason.PENDING_EDIT if isinstance(r, PendingEdit) else r
                 for r in refused.reasons
             )
-            return Sequestered(tuple(dict.fromkeys(reasons)), evidence, qc)
+            return Sequestered(tuple(dict.fromkeys(reasons)), unwritten(evidence), qc)
 
 
 def _pixel_risk(

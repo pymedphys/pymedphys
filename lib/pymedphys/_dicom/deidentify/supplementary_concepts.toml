@@ -1,0 +1,106 @@
+# Supplementary rows for content items whose concepts Table E.3.4-1 of PS3.15
+# omits, curated by hand for one edition of PS3.16's templates. Each row
+# gives a concept name, by its code, and a Value Type, with an action of
+# Table E.1-1a, as a row of Table E.3.4-1 does, and says why it has it.
+#
+# PS3.15 E.3.4 has Clean Structured Content remove the information in content
+# items "corresponding to the Attribute information specified to be removed
+# by the Profile and any other Options specified". A content item whose
+# concept the table does not list keeps its codes and numbers, so a row here
+# covers each concept that PS3.16's templates use for a patient
+# characteristic that Table E.1-1 removes, or keeps only under Retain Patient
+# Characteristics, and that the table omits, so that the characteristic is
+# kept in a content item only where it would be kept in its attribute. It
+# also covers the one concept that a template uses with a Value Type other
+# than those under which the table lists it, and whose value there holds what
+# the listed row removes: Subject ID as a CODE.
+#
+# "basic_profile" is the action without any option, and is X: the item is
+# removed. "options" can give K under retain_patient_characteristics, which
+# keeps the item when that option is selected, as Table E.1-1 keeps the
+# attribute. No other action is given: a characteristic's free text, which
+# Table E.1-1 cleans (C), is removed, since no cleaner of content items
+# settles C there. A row never covers a concept and Value Type that Table
+# E.3.4-1 lists.
+
+schema = "pymedphys-deid-supplementary-concepts/1"
+edition = "2026d"
+acknowledgement = "DICOM PS3.16 2026d, © NEMA"
+
+[[concept]]
+scheme_designator = "DCM"
+code_value = "121030"
+value_type = "CODE"
+code_meaning = "Subject ID"
+basic_profile = "X"
+note = "TID 1007 row 3 gives Subject ID the Value Type CODE, required where the subject is not inherited, while Table E.3.4-1 lists the concept only as TEXT, which it removes or replaces (X/D). As a code, the identifier is the Code Value, often in a local coding scheme, which an unlisted item keeps; a code has no dummy value, so the item is removed under every option, as Table E.1-1 empties or replaces Patient ID (0010,0020) under every option. Of the concepts that PS3.16's templates use with a Value Type that the table does not list for them, this is the only one whose value there holds what the listed row removes or replaces."
+
+[[concept]]
+scheme_designator = "DCM"
+code_value = "109054"
+value_type = "CODE"
+code_meaning = "Patient State"
+basic_profile = "X"
+options = { retain_patient_characteristics = "K" }
+note = "The patient's state as a code, which nine templates use, among them TID 10024 row 2 of radiopharmaceutical dose reports and TID 3704 row 8, while Table E.3.4-1 lists the concept only as TEXT. It holds what Patient State (0038,0500) holds, which Table E.1-1 removes (X), and cleans (C) under Retain Patient Characteristics. A code from a context group is already a value of similar meaning that contains no identifying information, which is what C asks for, so the option keeps it (K). The table cleans the text form under Clean Descriptors, a C that falls back to removal for content items, so the code is removed there too."
+
+[[concept]]
+scheme_designator = "DCM"
+code_value = "131233"
+value_type = "CODE"
+code_meaning = "Subject Sex Parameters for Clinical Use Category"
+basic_profile = "X"
+options = { retain_patient_characteristics = "K" }
+note = "TID 1007 row 5a, which defaults to Sex Parameters for Clinical Use Category Sequence (0010,0043). Table E.1-1 removes that sequence and its Code Sequence (0010,0046) (X), and keeps them under Retain Patient Characteristics (K)."
+
+[[concept]]
+scheme_designator = "DCM"
+code_value = "131234"
+value_type = "TEXT"
+code_meaning = "Subject Sex Parameters for Clinical Use Category Comment"
+basic_profile = "X"
+note = "TID 1007 row 5b, the free text of Sex Parameters for Clinical Use Category Comment (0010,0042), which Table E.1-1 removes (X), and cleans (C) under Retain Patient Characteristics and Clean Descriptors. No cleaner of content items settles C, so the item is removed under every option, as the table's C under Clean Descriptors falls back to removal for other free text."
+
+[[concept]]
+scheme_designator = "DCM"
+code_value = "131235"
+value_type = "TEXT"
+code_meaning = "Subject Sex Parameters for Clinical Use Category Reference"
+basic_profile = "X"
+options = { retain_patient_characteristics = "K" }
+note = "TID 1007 row 5c, which holds what Sex Parameters for Clinical Use Category Reference (0010,0047) holds. Table E.1-1 removes that attribute (X), and keeps it under Retain Patient Characteristics (K)."
+
+[[concept]]
+scheme_designator = "SCT"
+code_value = "415229000"
+value_type = "CODE"
+code_meaning = "Racial group"
+basic_profile = "X"
+options = { retain_patient_characteristics = "K" }
+note = "TID 1007 row 9, which defaults to Ethnic Group Code Sequence (0010,2161) or Ethnic Groups (0010,2162), and TID 8300 row 2. Table E.1-1 removes Ethnic Group (0010,2160), its Code Sequence, and Ethnic Groups (X), and keeps them under Retain Patient Characteristics (K)."
+
+[[concept]]
+scheme_designator = "SCT"
+code_value = "364320009"
+value_type = "CODE"
+code_meaning = "Pregnancy observable"
+basic_profile = "X"
+options = { retain_patient_characteristics = "K" }
+note = "TID 2008 row 3 and TID 9001 row 21, a pregnancy status as a code. Table E.1-1 removes Pregnancy Status (0010,21C0) (X), and keeps it under Retain Patient Characteristics (K)."
+
+[[concept]]
+scheme_designator = "SCT"
+code_value = "365981007"
+value_type = "CODE"
+code_meaning = "Tobacco Smoking Behavior"
+basic_profile = "X"
+options = { retain_patient_characteristics = "K" }
+note = "TID 3802 row 15 and TID 4301 row 8, a smoking status as a code. Table E.1-1 removes Smoking Status (0010,21A0) (X), and keeps it under Retain Patient Characteristics (K)."
+
+[[concept]]
+scheme_designator = "SCT"
+code_value = "60621009"
+value_type = "NUM"
+code_meaning = "Body Mass Index"
+basic_profile = "X"
+note = "TID 3602 row 9 and TID 10024 row 9, the patient's body mass index, which holds what Patient's Body Mass Index (0010,1022) holds. Table E.1-1 omits that attribute, and the reviewed rules remove it under every option, including Retain Patient Characteristics, as a measure of the patient's body derived from Patient's Size (0010,1020) and Patient's Weight (0010,1030), so the item is removed under every option too."
