@@ -78,6 +78,10 @@ RACIAL_GROUP = ("SCT", "415229000", "CODE")
 PREGNANCY = ("SCT", "364320009", "CODE")
 SMOKING = ("SCT", "365981007", "CODE")
 BODY_MASS_INDEX = ("SCT", "60621009", "NUM")
+# PS3.16 codes these in LOINC.
+PATIENT_HEIGHT = ("LN", "8302-2", "NUM")
+PATIENT_WEIGHT = ("LN", "29463-7", "NUM")
+BODY_SURFACE_AREA = ("LN", "8277-6", "NUM")
 # The rows that Retain Patient Characteristics keeps, and those that are
 # removed under every option.
 KEPT_WITH_CHARACTERISTICS = (
@@ -87,11 +91,14 @@ KEPT_WITH_CHARACTERISTICS = (
     RACIAL_GROUP,
     PREGNANCY,
     SMOKING,
+    PATIENT_HEIGHT,
+    PATIENT_WEIGHT,
 )
 REMOVED_UNDER_EVERY_OPTION = (
     SUBJECT_ID_CODE,
     SEX_PARAMETERS_COMMENT,
     BODY_MASS_INDEX,
+    BODY_SURFACE_AREA,
 )
 
 # Each concept that a template of PS3.16 2026d uses with a Value Type under
@@ -124,6 +131,12 @@ VALUE_TYPE_MISMATCHES = {
     ("SCT", "116224001", "CODE"): ("TEXT",),
     ("SCT", "271921002", "CODE"): ("TEXT",),  # ECG Finding, 4 templates
     ("SCT", "363698007", "CODE"): ("TEXT",),  # Finding Site, 49 templates
+    # History, the heading of TID 2006 row 10 and the root of TID 3802.
+    ("LN", "11329-0", "CONTAINER"): ("TEXT",),
+    # Indications for Procedure, TID 4201 row 4.
+    ("LN", "18785-6", "CODE"): ("TEXT",),
+    # Indications for Procedure, the heading of TID 1025, 3807, and 5320.
+    ("LN", "18785-6", "CONTAINER"): ("TEXT",),
 }
 
 # Values from the context groups that the rows below name.
@@ -131,6 +144,8 @@ LOW_THYROID_UPTAKE = dose_reports.Code("113561", "DCM", "Low Thyroid Uptake")
 FEMALE_TYPICAL = reports.Code("131230", "DCM", "Female-typical")  # CID 7459
 ASIAN_RACE = reports.Code("413582008", "SCT", "Asian race")  # CID 6099
 KILOGRAM_PER_SQUARE_METRE = dose_reports.Code("kg/m2", "UCUM", "kg/m2")
+CENTIMETRE = dose_reports.Code("cm", "UCUM", "cm")
+SQUARE_METRE = dose_reports.Code("m2", "UCUM", "m2")
 
 
 def _rows():
@@ -235,7 +250,7 @@ def test_only_subject_id_and_patient_state_of_the_value_type_mismatches_have_row
     table = {c.key for c in structured_content.load_table_e3_4_1().concepts}
     actions = content_items.concept_actions(EVERY_OPTION)
 
-    assert len(VALUE_TYPE_MISMATCHES) == 20
+    assert len(VALUE_TYPE_MISMATCHES) == 23
     for key, listed in VALUE_TYPE_MISMATCHES.items():
         designator, value, _ = key
         assert key not in table, key
@@ -244,7 +259,7 @@ def test_only_subject_id_and_patient_state_of_the_value_type_mismatches_have_row
         ), key
     with_rows = {key for key in VALUE_TYPE_MISMATCHES if key in actions}
     # Subject ID's CODE holds the identifier; a coded Patient State is a
-    # patient characteristic. The other 18 hold codes from coding schemes,
+    # patient characteristic. The other 21 hold codes from coding schemes,
     # numbers, coordinates, references, or no value, which an unlisted item
     # keeps or whose UIDs take their own rules.
     assert with_rows == {SUBJECT_ID_CODE, PATIENT_STATE_CODE}
@@ -290,7 +305,60 @@ def _body_mass_index():
     )
 
 
+def _measure(key, meaning, number, units):
+    """Return a TID 10024 measure of the patient, coded in LOINC."""
+    return dose_reports.item(
+        "CONTAINS",
+        "NUM",
+        dose_reports.Code(*_code(key), meaning),
+        number=number,
+        units=units,
+    )
+
+
+# TID 10024's patient characteristics that a supplementary row covers, by
+# its row: rows 5 and 7, which the synthetic report leaves out, and row 6,
+# which it holds.
+CHARACTERISTICS = {
+    "TID 10024 row 2": _patient_state,
+    "TID 10024 row 5": lambda: _measure(
+        PATIENT_HEIGHT, "Patient Height", "165", CENTIMETRE
+    ),
+    "TID 10024 row 6": lambda: dose_reports.item(
+        "CONTAINS",
+        "NUM",
+        dose_reports.PATIENT_WEIGHT,
+        number="71",
+        units=dose_reports.KILOGRAM,
+    ),
+    "TID 10024 row 7": lambda: _measure(
+        BODY_SURFACE_AREA, "Body Surface Area", "1.79", SQUARE_METRE
+    ),
+    "TID 10024 row 9": _body_mass_index,
+}
+KEPT_CHARACTERISTICS = ("TID 10024 row 2", "TID 10024 row 5", "TID 10024 row 6")
+REMOVED_CHARACTERISTICS = ("TID 10024 row 7", "TID 10024 row 9")
+
+
+def test_the_dose_report_rows_are_those_of_the_supplementary_rows():
+    weight = dose_reports.PATIENT_WEIGHT
+    assert (weight.value, weight.designator) == _code(PATIENT_WEIGHT)
+    actions = content_items.concept_actions((CSC, RPC))
+    for row in KEPT_CHARACTERISTICS:
+        (key,) = _keys(CHARACTERISTICS[row]())
+        assert actions[key] == "K", row
+    for row in REMOVED_CHARACTERISTICS:
+        (key,) = _keys(CHARACTERISTICS[row]())
+        assert actions[key] == "X", row
+
+
+def _keys(item):
+    code = item.ConceptNameCodeSequence[0]
+    return {(code.CodingSchemeDesignator, code.CodeValue, item.ValueType)}
+
+
 @pytest.mark.deid_requirement("PS3.15-E.3.4-01")
+@pytest.mark.parametrize("row", KEPT_CHARACTERISTICS)
 @pytest.mark.parametrize("preset, options, kept", [
     (None, (CSC,), False),
     (None, (CSC, RPC), True),
@@ -298,31 +366,32 @@ def _body_mass_index():
     ("tps-import", None, True),
     (None, EVERY_OPTION, True),
 ])  # fmt: skip
-def test_a_coded_patient_state_in_a_dose_report_is_kept_only_with_the_characteristics(
-    with_option, preset, options, kept
+def test_a_characteristic_in_a_dose_report_is_kept_only_with_the_characteristics(
+    with_option, row, preset, options, kept
 ):
     composed = _composed(with_option, preset, options)
     iod = dose_reports.RADIOPHARMACEUTICAL_IOD
 
     assert _kept(_radiopharmaceutical(), iod, composed)
-    assert _kept(_radiopharmaceutical(_patient_state()), iod, composed) is kept
+    assert _kept(_radiopharmaceutical(CHARACTERISTICS[row]()), iod, composed) is kept
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.4-01")
+@pytest.mark.parametrize("row", REMOVED_CHARACTERISTICS)
 @pytest.mark.parametrize("preset, options", [
     ("tps-import", None),
     ("public-release", None),
     (None, (CSC, RPC)),
     (None, EVERY_OPTION),
 ])  # fmt: skip
-def test_a_body_mass_index_in_a_dose_report_takes_the_tree_out(
-    with_option, preset, options
+def test_a_body_mass_index_or_surface_area_in_a_dose_report_takes_the_tree_out(
+    with_option, row, preset, options
 ):
     composed = _composed(with_option, preset, options)
     iod = dose_reports.RADIOPHARMACEUTICAL_IOD
 
     assert _kept(_radiopharmaceutical(), iod, composed)
-    assert not _kept(_radiopharmaceutical(_body_mass_index()), iod, composed)
+    assert not _kept(_radiopharmaceutical(CHARACTERISTICS[row]()), iod, composed)
 
 
 @pytest.mark.usefixtures("supported")

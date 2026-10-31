@@ -1,0 +1,67 @@
+# The LOINC codes that PyMedPhys's DICOM de-identification includes, each
+# with its long common name and status, copied unchanged from the LOINC Table
+# (LoincTable/Loinc.csv) of the LOINC release named by loinc_version. The keys
+# are the LOINC Table's own field names. LICENSE-LOINC.txt, beside this file,
+# holds LOINC's notice and licence.
+#
+# The codes are exactly those that the generated PS3.15 Table E.3.4-1
+# (../_standard/e3_4_1.json) and the supplementary rows
+# (../supplementary_concepts.toml) give, which a test checks, and the table
+# generator refuses a LOINC row of Table E.3.4-1 whose code is not here.
+
+schema = "pymedphys-deid-loinc-terms/1"
+loinc_version = "2.83"
+
+# Table E.3.4-1's seven LOINC rows.
+
+[[term]]
+LOINC_NUM = "11955-2"
+LONG_COMMON_NAME = "Deprecated Last menstrual period"
+STATUS = "DEPRECATED"
+
+[[term]]
+LOINC_NUM = "11778-8"
+LONG_COMMON_NAME = "Delivery date Estimated"
+STATUS = "ACTIVE"
+
+[[term]]
+LOINC_NUM = "11951-1"
+LONG_COMMON_NAME = "Fetal [Identifier] Identifier"
+STATUS = "ACTIVE"
+
+[[term]]
+LOINC_NUM = "11329-0"
+LONG_COMMON_NAME = "History general Narrative - Reported"
+STATUS = "ACTIVE"
+
+[[term]]
+LOINC_NUM = "18785-6"
+LONG_COMMON_NAME = "Radiology Reason for study (narrative)"
+STATUS = "ACTIVE"
+
+[[term]]
+LOINC_NUM = "18118-0"
+LONG_COMMON_NAME = "Left ventricular Segmental wall motion Narrative by US"
+STATUS = "ACTIVE"
+
+[[term]]
+LOINC_NUM = "74711-3"
+LONG_COMMON_NAME = "Unique device identifier"
+STATUS = "ACTIVE"
+
+# The supplementary rows' three LOINC concepts.
+
+[[term]]
+LOINC_NUM = "8302-2"
+LONG_COMMON_NAME = "Body height"
+STATUS = "ACTIVE"
+
+[[term]]
+LOINC_NUM = "29463-7"
+LONG_COMMON_NAME = "Body weight"
+STATUS = "ACTIVE"
+
+[[term]]
+LOINC_NUM = "8277-6"
+LONG_COMMON_NAME = "Body surface area"
+STATUS = "ACTIVE"

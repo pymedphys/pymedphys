@@ -376,8 +376,7 @@ def test_the_required_rows_that_table_e3_4_1_removes(
 
 # Under every option set, these optional rows take the tree out: Table
 # E.3.4-1 gives each X under every option, or X with C under Clean
-# Descriptors, which falls back to X (D-009), or its concept name is coded in
-# LOINC, whose rows the generated table leaves out (D-001).
+# Descriptors, which falls back to X (D-009).
 X_RAY_REMOVED_UNDER_EVERY_OPTION = {
     "TID 10002 row 9",  # Calibration Protocol
     "TID 10003 row 4",  # Irradiation Event Label
@@ -392,7 +391,6 @@ RADIOPHARMACEUTICAL_REMOVED_UNDER_EVERY_OPTION = {
     "TID 10022 row 28",  # Radiopharmaceutical Lot Identifier
     "TID 10022 row 31",  # Prescription Identifier
     "TID 10022 row 32",  # Comment
-    "TID 10024 row 6",  # Patient Weight, coded in LOINC
     "TID 10024 row 14",  # Recent Physical Activity
     "TID 10021 row 6",  # Comment
 }
@@ -440,9 +438,11 @@ RADIOPHARMACEUTICAL_INSTITUTION = {"TID 10022 row 23 TID 1020 row 5"}
                 # name and serial number; its UID otherwise takes U.
                 "TID 10022 row 15 TID 1004 row 2",
                 "TID 10022 row 15 TID 1004 row 5",
-                # Retain Patient Characteristics keeps these.
+                # Retain Patient Characteristics keeps these, Patient
+                # Weight, coded in LOINC, by its supplementary row.
                 "TID 10024 row 3",  # Subject Age
                 "TID 10024 row 4",  # Subject Sex
+                "TID 10024 row 6",  # Patient Weight
             },
         ),
         (

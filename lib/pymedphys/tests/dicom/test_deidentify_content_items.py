@@ -138,6 +138,12 @@ ACQUISITION_DATE = ("126201", "DCM", "Acquisition Date")
 ACQUISITION_PROTOCOL = ("125203", "DCM", "Acquisition Protocol")
 DEVICE_SERIAL_NUMBER = ("113880", "DCM", "Device Serial Number")
 DEVICE_OBSERVER_UID = ("121012", "DCM", "Device Observer UID")
+# LOINC concepts: two that Table E.3.4-1 lists, and a macular grid
+# measurement of TID 2101 that neither the table nor a supplementary row
+# lists.
+EDD = ("11778-8", "LN", "EDD")
+FETUS_ID = ("11951-1", "LN", "Fetus ID")
+CENTER_POINT_THICKNESS = ("57108-3", "LN", "Macular Grid.Center Point Thickness")
 FINDING_SITE = ("363698007", "SCT", "Finding Site")
 EQUIPMENT_IDENTIFICATION = ("121122", "DCM", "Equipment Identification")
 FINDING = ("121071", "DCM", "Finding")
@@ -241,6 +247,11 @@ def test_table_e1_1_gives_c_to_the_four_sequences_of_content_items():
         ),
         (DEVICE_OBSERVER_UID, "UIDREF", ("retain_uids",), "K"),
         (DEVICE_OBSERVER_UID, "UIDREF", (), "D"),
+        # LOINC's rows are generated, and take their actions as others do.
+        (EDD, "DATE", (), "X"),
+        (EDD, "DATE", ("retain_longitudinal_full_dates",), "K"),
+        (EDD, "DATE", ("retain_longitudinal_modified_dates",), "C"),
+        (FETUS_ID, "TEXT", (), "D"),
     ],
 )
 def test_each_concept_takes_the_action_its_options_give(
@@ -403,7 +414,9 @@ def test_the_walker_gives_the_content_item_actions_in_place_of_the_rules():
         _text(ACCESSION_NUMBER),
         _item("DATE", ACQUISITION_DATE, Date="20260101"),
         # A concept name coded by a scheme whose rows the table cannot hold.
-        _item("DATE", ("11778-8", "LN", "EDD"), Date="20260101"),
+        _item("DATETIME", ("15", "NCDR", "Admission DateTime"), DateTime="20260101"),
+        # A LOINC concept that the table removes.
+        _item("DATE", EDD, Date="20260101"),
         # Retired SNOMED codes that PS3.16 Table O-1 does not map, one in
         # another case than the table's.
         _item("CODE", ("R-F0101", "SRT", "Fixture"), ConceptCodeSequence=[]),
@@ -549,7 +562,7 @@ def test_a_long_code_value_is_not_listed():
     }
 
 
-@pytest.mark.parametrize("designator", ["LN", "SRT"])
+@pytest.mark.parametrize("designator", ["NCIt", "SRT"])
 def test_a_long_code_value_of_an_unmatched_or_retired_scheme_is_not_kept(designator):
     # No SNOMED ID is a Long Code Value, so Table O-1 cannot map it.
     assert not _actions((CSC,), _enhanced_ct(_long_code_value(designator)))
@@ -584,6 +597,29 @@ def test_retain_device_identity_keeps_a_device_serial_number():
     )
     written = _written(options, dataset)
     assert written.AcquisitionContextSequence[0].TextValue == value
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.4-01")
+def test_an_unlisted_loinc_concept_is_kept_as_an_unlisted_dicom_one_is():
+    item = _item("NUMERIC", CENTER_POINT_THICKNESS, NumericValue="250")
+    item.MeasurementUnitsCodeSequence = pydicom.Sequence([_code("um", "UCUM", "um")])
+    dataset = _enhanced_ct(item)
+
+    assert dict(_actions((CSC,), dataset)) == {_path(tag=ACQUISITION_CONTEXT): "K"}
+    written = _written((CSC,), dataset)
+    kept = written.AcquisitionContextSequence[0]
+    assert kept.ConceptNameCodeSequence[0].CodeValue == "57108-3"
+    assert kept.NumericValue == 250
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.4-01")
+def test_full_dates_keep_a_loinc_edd():
+    dataset = _enhanced_ct(_item("DATE", EDD, Date="20260101"))
+
+    assert not _actions((CSC,), dataset)
+    written = _written((CSC, "retain_longitudinal_full_dates"), dataset)
+
+    assert written.AcquisitionContextSequence[0].Date == "20260101"
 
 
 def test_full_dates_keep_an_acquisition_date():

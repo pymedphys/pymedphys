@@ -56,7 +56,7 @@ item's Value Type (0040,A040) and the code of its Concept Name Code Sequence
   kept item does. A content item cannot be kept where the selected options
   give it X, which removes it; where its Value Type or concept name cannot be
   read as one Value Type and one code; where its concept name is coded in a
-  scheme whose rows the pin leaves out (LOINC, NCDR, NCIt, and UMLS); or
+  scheme whose rows the pin leaves out (NCDR, NCIt, and UMLS); or
   where it is coded by a retired SNOMED designator, SRT, SNM3, or 99SDM, with
   a SNOMED ID that PS3.16 Table O-1 does not map to a SNOMED CT Concept ID.
   One that Table O-1 maps is looked up as that SNOMED CT code, as PS3.16
@@ -184,8 +184,10 @@ NUM = "NUM"
 # The coding schemes whose rows the pin leaves out of the generated table, so
 # that their concepts cannot be matched. A code of a retired SNOMED
 # designator is matched as the SNOMED CT code that PS3.16 Table O-1 maps it
-# to, and cannot be matched where the table maps it to none.
-UNMATCHED_SCHEMES = frozenset({"LN", "NCDR", "NCIt", "UMLS"})
+# to, and cannot be matched where the table maps it to none. LOINC's rows are
+# generated (D-001), so a LOINC concept that neither the table nor a
+# supplementary row lists is an unlisted item, as a DICOM one is.
+UNMATCHED_SCHEMES = frozenset({"NCDR", "NCIt", "UMLS"})
 KEEP = "K"
 REMOVE = "X"
 DUMMY = "D"
@@ -226,10 +228,11 @@ METHOD = (
     "table omits takes the action of a reviewed row instead where it holds "
     "a patient characteristic that PS3.15 Table E.1-1 removes: a coded "
     "patient state, the sex parameters for "
-    "clinical use, a racial group, a pregnancy or smoking status, which are "
-    "removed, and kept under Retain Patient Characteristics, and the comment "
-    "on the sex parameters and a body mass index, which are removed under "
-    "every option; and a Subject ID coded as a CODE, which the table lists "
+    "clinical use, a racial group, a pregnancy or smoking status, and the "
+    "patient's height and weight, which are removed, and kept under Retain "
+    "Patient Characteristics, and the comment on the sex parameters, a body "
+    "mass index, and a body surface area, which are removed under every "
+    "option; and a Subject ID coded as a CODE, which the table lists "
     "only as TEXT, is removed under every option. "
     "X/D gives D wherever the concept appears, as "
     "though a template required the item there, since PS3.16's templates "
@@ -255,7 +258,7 @@ METHOD = (
     "since its target is cleaned where it is. Where the options "
     "remove an item (X), where an item's Value Type or concept name "
     "cannot be read as one Value Type and one code, or where its concept "
-    "name is coded in LOINC, NCDR, NCIt, or UMLS, whose rows PyMedPhys does "
+    "name is coded in NCDR, NCIt, or UMLS, whose rows PyMedPhys does "
     "not include, or where it is coded by a retired SNOMED designator, SRT, "
     "SNM3, or 99SDM, with a code that PS3.16 Table O-1 does not map to a "
     "SNOMED CT code, the whole sequence takes its Basic Profile action "
@@ -326,7 +329,7 @@ def concept_actions(options: tuple[str, ...]) -> Mapping[tuple[str, str, str], s
     the row's coding scheme designator, code value, and Value Type
     (:attr:`~.structured_content.ContentItemConcept.key`).
     """
-    rows = (
+    rows: tuple[ContentItemConcept | SupplementaryConcept, ...] = (
         *load_table_e3_4_1().concepts,
         *load_supplementary_concepts().concepts,
     )
