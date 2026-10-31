@@ -257,28 +257,36 @@ def _summary(measured):
 
 def _by_outcome(measured: DicomMeasures) -> dict[str, SeriesMeasures]:
     """Each series by its outcome, a series defaced around a target in its
-    block by ``"defaced-around-targets"``."""
+    block by ``"defaced-around-targets"``, and one defaced and held for its
+    eyes by ``"defaced-eyes-unconfirmed"``."""
     return {
-        "defaced-around-targets" if each.around_targets else each.outcome: each
+        "defaced-around-targets"
+        if each.around_targets
+        else "defaced-eyes-unconfirmed"
+        if each.eyes_unconfirmed
+        else each.outcome: each
         for each in measured.series
     }
 
 
 def test_each_series_has_its_outcome_as_a_run_finds_it(measured):
+    # The series whose eye ROIs disagree with its globes is defaced, and a
+    # run without a reviewer's confirmation of its block holds it.
     assert sorted(each.outcome for each in measured.series) == [
         "defaced",
         "defaced",
-        "eyes-disagree-with-rois",
+        "defaced",
         "no-eyes",
         "target-in-block",
     ]
     assert sorted(_by_outcome(measured)) == [
         "defaced",
         "defaced-around-targets",
-        "eyes-disagree-with-rois",
+        "defaced-eyes-unconfirmed",
         "no-eyes",
         "target-in-block",
     ]
+    assert [each.eyes_unconfirmed for each in measured.series].count(True) == 1
     assert measured.crashed == {}
 
 
@@ -351,7 +359,7 @@ def test_eye_rois_are_measured_against_the_globes_found(measured, block):
 
 
 def test_an_eye_named_for_the_other_side_and_one_far_off_are_measured(measured, block):
-    held = _by_outcome(measured)["eyes-disagree-with-rois"]
+    held = _by_outcome(measured)["defaced-eyes-unconfirmed"]
     swapped, far = held.eyes
 
     assert swapped.swapped is True
@@ -407,16 +415,19 @@ def test_rt_doses_in_the_defaced_frame_are_set_to_zero_or_held(measured):
 
 
 def test_the_structure_sets_in_the_defaced_frames_are_cut(measured):
-    first, around = sorted(
+    first, *others = sorted(
         measured.structure_sets, key=lambda each: sum(each.cut.values())
     )[::-1]
 
-    assert first.outcome == around.outcome == "cut"
+    assert [each.outcome for each in (first, *others)] == ["cut"] * 3
     # The body and the three eye ROIs reach the face; the target behind the
     # block and the organ within the head do not.
     assert first.cut == {"EXTERNAL": 1, "ORGAN": 3}
-    # The eyes reach the face, and the target kept in the block is not cut.
-    assert around.cut == {"ORGAN": 2}
+    # Defaced around the target in the block, the eyes reach the face, and
+    # the target is not cut; defaced with eyes that disagree, held until a
+    # reviewer confirms the block, the eye drawn at the other globe and the
+    # one drawn far off both reach the face.
+    assert [each.cut for each in others] == [{"ORGAN": 2}, {"ORGAN": 2}]
 
 
 def test_rt_plans_in_a_defaced_frame_are_counted(measured):
@@ -424,21 +435,13 @@ def test_rt_plans_in_a_defaced_frame_are_counted(measured):
 
 
 def test_the_summary_counts_the_measures(summary):
-    assert summary["format"] == "pymedphys-deid-face-validation-dicom/2"
+    assert summary["format"] == "pymedphys-deid-face-validation-dicom/3"
     assert summary["series"] == {
-        "defaced": 2,
+        "defaced": 3,
         "defaced_around_targets": 1,
-        "not_defaced": {
-            "eyes-disagree-with-rois": 1,
-            "no-eyes": 1,
-            "target-in-block": 1,
-        },
-        "with_eye_rois": {
-            "defaced": 2,
-            "eyes-disagree-with-rois": 1,
-            "no-eyes": 1,
-            "target-in-block": 1,
-        },
+        "defaced_eyes_unconfirmed": 1,
+        "not_defaced": {"no-eyes": 1, "target-in-block": 1},
+        "with_eye_rois": {"defaced": 3, "no-eyes": 1, "target-in-block": 1},
     }
     eyes = summary["eye_rois"]
     assert eyes["series_with_a_block"] == 4
@@ -463,8 +466,8 @@ def test_the_summary_counts_the_measures(summary):
     # 3% and 30% of the grid's greatest.
     assert shares == [0, 0, 1, 0, 0, 1, 0]
     assert summary["rt_structure_sets"] == {
-        "outcomes": {"cut": 2},
-        "rois_cut": {"EXTERNAL": 1, "ORGAN": 5},
+        "outcomes": {"cut": 3},
+        "rois_cut": {"EXTERNAL": 1, "ORGAN": 7},
     }
     assert summary["rt_plans"] == {"total": 2, "in_defaced_frames": 1}
     assert summary["ct"]["air_in_hounsfield_units"] == {
@@ -626,8 +629,12 @@ def test_the_page_shows_the_counts_as_commonmark(summary):
 
     assert page.startswith("# Face block check on DICOM files\n\n")
     assert page.endswith("|\n")
-    assert "| Defaced | 2 |\n" in page
+    assert "| Defaced | 3 |\n" in page
     assert "| Defaced around a target in the block | 1 |\n" in page
+    assert (
+        "| Defaced and held until a reviewer confirms the block, for an eye ROI "
+        "away from the globes | 1 |\n"
+    ) in page
     assert "| Not defaced: `target-in-block` | 1 |\n" in page
     assert "| `EXTERNAL` | 1 |\n" in page
     lines = page.split("\n")
@@ -657,7 +664,7 @@ def test_the_command_writes_the_counts_and_prints_the_page(
     assert status == 0
     summary = json.loads((out / "face-validation.json").read_text(encoding="utf-8"))
     page = (out / "face-validation.md").read_text(encoding="utf-8")
-    assert summary["series"]["defaced"] == 2
+    assert summary["series"]["defaced"] == 3
     assert page == markdown(summary)
     assert capsys.readouterr().out == page
 

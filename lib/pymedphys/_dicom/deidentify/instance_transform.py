@@ -225,6 +225,7 @@ from .face_blocks import (
     RT_STRUCTURE_SET,
     CtDefacer,
     FaceBlockCounts,
+    EyeCheck,
     SeriesDefacing,
     SeriesProblem,
     Defaced,
@@ -246,6 +247,7 @@ from .region_defacing import (
 from .segmentation_defacing import SEGMENTATION, SegmentationDefacer
 from .run_qc import (
     Dropped,
+    EyeCheckMaterial,
     PixelRiskMaterial,
     RedactionMaterial,
     SearchMaterial,
@@ -286,7 +288,9 @@ _BURNED_IN_ANNOTATION = "(0028,0301)"
 _RECOGNIZABLE_VISUAL_FEATURES = "(0028,0302)"
 _ROI_CONTOURS = "(3006,0039)"  # ROI Contour Sequence
 _CONTOURS = "(3006,0040)"  # Contour Sequence
-# Why each slice of a CT series that is held rather than defaced is held.
+# Why each slice of a CT series that is held is held: not defaced, for a
+# target that the run cannot keep, or defaced, for eyes that disagree with
+# the globes until a reviewer confirms the block.
 _HELD_SERIES = {
     SeriesProblem.TARGET_IN_BLOCK: VisualFeaturesReason.TARGET_IN_FACE_BLOCK,
     SeriesProblem.EYES_DISAGREE: VisualFeaturesReason.EYES_DISAGREE_WITH_ROIS,
@@ -983,10 +987,13 @@ class InstanceTransform:
     reaches kept (:class:`~.target_hulls.KeptTargets`). An instance of a
     series with a target that cannot be kept within its slices is not
     defaced, and is held for review
-    (:attr:`~.reasons.VisualFeaturesReason.TARGET_IN_FACE_BLOCK`), as is
-    one of a series whose structure set draws an eye away from the globes
-    that its block was found from
-    (:attr:`~.reasons.VisualFeaturesReason.EYES_DISAGREE_WITH_ROIS`). An RT
+    (:attr:`~.reasons.VisualFeaturesReason.TARGET_IN_FACE_BLOCK`). An
+    instance of a series whose structure set draws an eye away from the
+    globes that its block was found from is defaced, and held for review
+    (:attr:`~.reasons.VisualFeaturesReason.EYES_DISAGREE_WITH_ROIS`), with
+    its QC material (:class:`~.run_qc.EyeCheckMaterial`), as is each
+    instance cleaned by that block, until the face review confirms the block
+    (:attr:`~.face_review.FaceReview.confirmed_blocks`). An RT
     Dose whose only Frame of Reference is that of one defaced series is
     written with its dose set to zero in the series' block, less the
     brain and targets that defacing keeps
@@ -1229,7 +1236,13 @@ class InstanceTransform:
             self._birth_dates.prepare(records, read)
         if self._face_block_counts is None:
             return
-        self._face_blocks = find_face_blocks(records, read)
+        self._face_blocks = find_face_blocks(
+            records,
+            read,
+            frozenset()
+            if self._face_review is None
+            else self._face_review.confirmed_blocks,
+        )
         self._face_block_counts.record(self._face_blocks.values())
         self._defaced = find_defaced(records, self._face_blocks)
         self._dose_blocks = find_dose_blocks(
@@ -1367,6 +1380,16 @@ class InstanceTransform:
         elif not self._defaced.holds(iod.name, record):
             return None
         return HeldVisualFeatures(VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME)
+
+    def _unconfirmed(self, record: InstanceRecord, block: DoseBlock | None) -> bool:
+        """Whether an RT Dose, RT Structure Set, PET image, or Segmentation
+        that the run cleans by a block is held until a reviewer confirms
+        that block, since the eye ROIs of its series disagree with the
+        globes that it was found from
+        (:attr:`~.face_blocks.EyeCheck.DISAGREE`)."""
+        return block is not None and not frames_of(record).isdisjoint(
+            self._defaced.unconfirmed
+        )
 
     def _dose_block(
         self, iod: IOD, record: InstanceRecord, dataset: pydicom.Dataset
@@ -1767,8 +1790,8 @@ class InstanceTransform:
                     )
                 except ContoursRefused:
                     undefaced = VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME
-            if defacing is not None and defacing.held:
-                face = HeldVisualFeatures(_HELD_SERIES[defacing.problem])
+            if defacing is not None and defacing.hold is not None:
+                face = HeldVisualFeatures(_HELD_SERIES[defacing.hold])
             elif _unshown_segments(iod, redaction):
                 face = HeldVisualFeatures(VisualFeaturesReason.NO_FACE_VERDICT)
             else:
@@ -1780,6 +1803,13 @@ class InstanceTransform:
                 if undefaced is None
                 else HeldVisualFeatures(undefaced)
             )
+            if frame is None and self._unconfirmed(
+                record, dose if dose is not None else region
+            ):
+                frame = HeldVisualFeatures(VisualFeaturesReason.EYES_DISAGREE_WITH_ROIS)
+            if defacing is not None and defacing.eyes is EyeCheck.DISAGREE:
+                assert defacing.block_sha256 is not None
+                qc = (*qc, EyeCheckMaterial(defacing.block_sha256, defacing.sheet))
             holds = [held for held in (face, frame) if held is not None]
             for held in holds:
                 evidence = _held(evidence, held)

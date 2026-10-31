@@ -70,6 +70,11 @@ frame with such regions, also from the file as received:
   :mod:`~pymedphys._dicom.deidentify.qc_segments` describes. A
   Segmentation that no segments sheet shows whole, whatever the cause, is
   reported, though its other previews are kept;
+- a sheet of the globes found beside the eye ROIs of each CT series that
+  the run defaced and held until a reviewer confirms its face block, which
+  :mod:`~pymedphys._dicom.deidentify.qc_eyes` draws from the slices as
+  received before the run writes any, and which never counts as showing
+  the pixel data written;
 - each high-risk instance at full resolution: every frame, or
   :data:`CINE_FRAMES` evenly spaced, unscaled, since burned-in text may be
   small;
@@ -143,7 +148,7 @@ from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom
 
 from .pixel_decoding import DECODING_PLUGINS, decoder_available
-from . import qc_contours, qc_segments, qc_surfaces
+from . import qc_contours, qc_eyes, qc_segments, qc_surfaces
 from .face_review import is_rt_dose
 from .qc_pack import (
     NotPreviewedEntry,
@@ -247,7 +252,8 @@ class PreviewSet:
         if it forms a volume, then the dose-levels render of each RT Dose
         grid in it, then the dose-levels map of each RT Dose plane in it in
         no volume, series in the order of their first run position; then each
-        contour sheet, in run position order; then each segments sheet, in
+        sheet of a series' eyes, as given; then each contour sheet, in run
+        position order; then each segments sheet, in
         run position order; then each high-risk instance, in run position
         order; then each frame of each instance that Clean Pixel Data
         cleaned, in run position and frame order. Named ``P-0001.png``
@@ -293,6 +299,7 @@ def previews_of(
     written: Mapping[int, bytes],
     high_risk: Collection[int],
     redactions: Mapping[int, tuple[bytes | None, RedactionEntry]] | None = None,
+    eye_sheets: Sequence[qc_eyes.EyeSheet] = (),
 ) -> PreviewSet:
     """Return the previews of the files that a run wrote, as the module describes.
 
@@ -307,6 +314,11 @@ def previews_of(
         The source file of each instance that Clean Pixel Data cleaned, or
         None where no frame has regions, and what it cleaned, by run
         position. A position without a written file is ignored.
+    eye_sheets : sequence of ~pymedphys._dicom.deidentify.qc_eyes.EyeSheet, optional
+        The sheet of each CT series held until a reviewer confirms its face
+        block, drawn from its slices as received, in order of its first
+        frame's run position, each listing only frames of held instances;
+        none by default.
 
     Returns
     -------
@@ -338,6 +350,15 @@ def previews_of(
     }
     for series in _series(instances):
         images.extend(_encoded(_series_images(series, decoded, guides)))
+    for sheet in eye_sheets:
+        images.append(
+            (
+                PreviewKind.SERIES_EYES,
+                sheet.frames,
+                sheet.total_frames,
+                png(sheet.image),
+            )
+        )
     for position, contours in sorted(contoured.items()):
         sheet = _contour_image(position, contours, guides)
         if sheet is None:

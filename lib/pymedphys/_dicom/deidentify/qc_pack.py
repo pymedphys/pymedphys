@@ -70,7 +70,11 @@ A pack holds, for one run:
   findings of its series assessment, a CT, MR, PET, or RT Dose volume, a
   localizer, an RT Image, a Segmentation, the head or neck, or unreadable
   evidence of any of them, with the instances that show each (D-015,
-  D-017);
+  D-017); and ``eye_checks``: each CT series that the run defaced and
+  held because its eye ROIs disagree with the globes that its face block
+  was found from, by the run positions of its held instances, with the
+  digest that binds a reviewer's confirmation of the block to the series'
+  source files and the block, by which an attestation confirms it (D-050);
 - ``redactions``: each released or held instance whose Pixel Data the
   Clean Pixel Data Option cleaned, with why it is held, its number of
   frames, its Rows and Columns, the regions blacked out in each frame,
@@ -85,8 +89,9 @@ A pack holds, for one run:
 - ``previews``: each image preview, by its file in the previews directory
   beside the pack, with what it shows and the file's SHA-256, so that an
   attestation of the pack covers them, among them a contour sheet of each
-  instance with contours, such as an RT Structure Set, and a segments sheet
-  of each Segmentation; and
+  instance with contours, such as an RT Structure Set, a segments sheet
+  of each Segmentation, and a sheet of each eye check's globes beside its
+  eye ROIs, drawn from the slices as received; and
   ``not_previewed``: each instance whose pixel data could not be previewed,
   whose contours could not be shown, for an RT Dose, whose dose levels
   could not be drawn, or, for a Segmentation, whose segments could not be
@@ -144,7 +149,7 @@ from .reviewed_roi_names import Outcome
 from .text_detection import TextBox
 
 # The format of the pack document. A change to its fields takes a new label.
-FORMAT = "pymedphys-deid-qc-pack/19"
+FORMAT = "pymedphys-deid-qc-pack/22"
 # The bytes of a written file shown on each side of a residual's offset.
 EXCERPT_BYTES = 48
 # The SHA-256 that face_review.contour_data_sha256 gives a file without
@@ -884,6 +889,9 @@ class PreviewKind(enum.Enum):
     # image series in their frame, and each alone, drawing every frame of
     # the Segmentation, listed first
     SEGMENTATION_SEGMENTS = "segmentation-segments"
+    # a CT series' globes found beside its eye ROIs, drawn from its slices
+    # as received, for a reviewer to confirm its face block (qc_eyes)
+    SERIES_EYES = "series-eyes"
 
 
 class NotPreviewedReason(enum.Enum):
@@ -1280,6 +1288,44 @@ class SeriesEntry:
 
 
 @dataclasses.dataclass(frozen=True)
+class EyeCheckEntry:
+    """A CT series defaced and held because its eye ROIs disagree with the
+    globes that its face block was found from, which a reviewer may confirm
+    (D-050).
+
+    An attestation confirms the block by the series' first run position
+    here, and :attr:`block_sha256`, which
+    :func:`~pymedphys._dicom.deidentify.face_blocks.block_digest` gives of
+    the series' source files and the block, binds the confirmation to them,
+    so that a later run of the same files, which finds the same block,
+    defaces the series without holding it for its eyes.
+
+    Attributes
+    ----------
+    positions : tuple of int
+        The run positions of the series' held instances, in order, each
+        once.
+    block_sha256 : str
+        The block's digest, in lower-case hexadecimal.
+    """
+
+    positions: tuple[int, ...]
+    block_sha256: str
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.positions, tuple) or not self.positions:
+            raise QcPackError("an eye check needs its instances' run positions")
+        for position in self.positions:
+            _check_position("an eye check", position)
+        if list(self.positions) != sorted(set(self.positions)):
+            raise QcPackError("an eye check must list each instance once, in order")
+        if not isinstance(self.block_sha256, str) or not re.fullmatch(
+            "[0-9a-f]{64}", self.block_sha256
+        ):
+            raise QcPackError("an eye check needs its block's SHA-256")
+
+
+@dataclasses.dataclass(frozen=True)
 class SeriesRiskEntry:
     """A series with indicators of risk as a whole, and the instances that show each.
 
@@ -1374,6 +1420,12 @@ class QcPack:
     reviewed_lists : ListsDigest or None
         The salted digest of the reviewed lists that the run applied, or
         None where it stated none.
+    eye_checks : tuple of EyeCheckEntry
+        Each instance in at most one, by its first run position in order;
+        each instance held for review. Each has at most one sheet of its
+        globes beside its eye ROIs (:attr:`PreviewKind.SERIES_EYES`), which
+        shows only its instances' frames, and no such sheet shows any
+        other's.
 
     Raises
     ------
@@ -1415,6 +1467,7 @@ class QcPack:
     source_gaps: tuple[SourceGapEntry, ...] = ()
     series: tuple[SeriesEntry, ...] = ()
     reviewed_lists: ListsDigest | None = None
+    eye_checks: tuple[EyeCheckEntry, ...] = ()
 
     def __post_init__(self) -> None:
         if not isinstance(self.reference, str) or not _REFERENCE.fullmatch(
@@ -1441,6 +1494,7 @@ class QcPack:
             "not_previewed": NotPreviewedEntry,
             "source_gaps": SourceGapEntry,
             "series": SeriesEntry,
+            "eye_checks": EyeCheckEntry,
         }
         for name, kind in sections.items():
             entries = getattr(self, name)
@@ -1495,7 +1549,7 @@ class QcPack:
             )
 
     def _check_series(self) -> None:
-        for name in ("series", "series_risks"):
+        for name in ("series", "series_risks", "eye_checks"):
             entries = getattr(self, name)
             firsts = [entry.positions[0] for entry in entries]
             if firsts != sorted(firsts):
@@ -1518,6 +1572,12 @@ class QcPack:
             for position in entry.positions
         ):
             raise QcPackError("series names an instance without its source's SHA-256")
+        if any(
+            self.instances[position].disposition is not Disposition.HELD_FOR_REVIEW
+            for entry in self.eye_checks
+            for position in entry.positions
+        ):
+            raise QcPackError("eye_checks names an instance not held for review")
 
     def _check_previews(self) -> None:
         width = max(4, len(str(len(self.previews))))
@@ -1538,6 +1598,29 @@ class QcPack:
         self._check_redaction_previews()
         self._check_contour_previews()
         self._check_pixel_previews()
+        self._check_eye_previews()
+
+    def _check_eye_previews(self) -> None:
+        """Each eye check has at most one sheet of its globes, which shows
+        only its own instances' frames, and every such sheet is one's."""
+        owner = {
+            position: entry.positions[0]
+            for entry in self.eye_checks
+            for position in entry.positions
+        }
+        sheets: set[int] = set()
+        for preview in self.previews:
+            if preview.kind is not PreviewKind.SERIES_EYES:
+                continue
+            owners = {owner.get(position) for position, _ in preview.frames}
+            if len(owners) != 1 or None in owners:
+                raise QcPackError(
+                    "a sheet of a series' eyes must show the frames of one eye check"
+                )
+            (first,) = owners
+            if first in sheets:
+                raise QcPackError("an eye check has at most one sheet of its eyes")
+            sheets.add(first)
 
     def _check_pixel_previews(self) -> None:
         """An instance's pixel data's SHA-256, other than that of none, is
@@ -1659,7 +1742,8 @@ class QcPack:
             f"series_risks={len(self.series_risks)}, "
             f"redactions={len(self.redactions)}, previews={len(self.previews)}, "
             f"not_previewed={len(self.not_previewed)}, "
-            f"source_gaps={len(self.source_gaps)}, series={len(self.series)})"
+            f"source_gaps={len(self.source_gaps)}, series={len(self.series)}, "
+            f"eye_checks={len(self.eye_checks)})"
         )
 
 
@@ -1680,9 +1764,9 @@ def pictured_frames(
         The run positions listed as not previewed, which are left out.
     kinds : collection of str, optional
         The kinds of preview to count, as :class:`PreviewKind` values; by
-        default every kind but a contour sheet. Only dose-levels previews
-        show an RT Dose as it could show a face, and only segments sheets a
-        Segmentation.
+        default every kind but a contour sheet and a sheet of a series'
+        eyes. Only dose-levels previews show an RT Dose as it could show a
+        face, and only segments sheets a Segmentation.
 
     Returns
     -------
@@ -1692,12 +1776,17 @@ def pictured_frames(
         never count, since it shows the volume that it is drawn with only
         as a surface, and a segments sheet's count only for its
         Segmentation, the position of its first frame, for the same reason.
+        Nor do a sheet of a series' eyes', since it shows the slices as
+        received, not the pixel data written of them.
     """
-    contours = PreviewKind.STRUCTURE_SET_CONTOURS.value
+    uncounted = {
+        PreviewKind.STRUCTURE_SET_CONTOURS.value,
+        PreviewKind.SERIES_EYES.value,
+    }
     segments = PreviewKind.SEGMENTATION_SEGMENTS.value
     framed: dict[int, set[int]] = {}
     for kind, frames in previews:
-        if kind == contours or (kinds is not None and kind not in kinds):
+        if kind in uncounted or (kinds is not None and kind not in kinds):
             continue
         listed = list(frames)
         if kind == segments and listed:
@@ -1860,6 +1949,10 @@ def pack_document(pack: QcPack) -> dict:
             for entry in pack.pixel_risks
         ],
         "series": [{"positions": list(entry.positions)} for entry in pack.series],
+        "eye_checks": [
+            {"positions": list(entry.positions), "block_sha256": entry.block_sha256}
+            for entry in pack.eye_checks
+        ],
         "series_risks": [
             {
                 "positions": list(entry.positions),
