@@ -153,10 +153,10 @@ LAPSED_CONDITIONS: Mapping[str, str] = types.MappingProxyType(
 # discloses nothing that its removal would not. Requested Procedure ID
 # (26 October 2026) is Type 2 in Referenced Request Sequence, which is Type
 # 1C at the top level of a Structured Report made for a request. Source
-# Manufacturer is Type 2 in Recorded Source Sequence, which is Type 1 at the
-# top level of an RT Brachy Treatment Record, so every conforming record
-# holds it; Table E.1-1's X/Z empties Source Serial Number (3008,0105) in the
-# same item.
+# Manufacturer (31 October 2026) is Type 2 in Recorded Source Sequence,
+# which is Type 1 at the top level of an RT Brachy Treatment Record, so every
+# conforming record holds it; Table E.1-1's X/Z empties Source Serial Number
+# (3008,0105) in the same item.
 EMPTIED_PLAIN_X: Mapping[str, tuple[str, ...]] = types.MappingProxyType(
     {
         "(0040,1001)": ("(0040,A370)",),
