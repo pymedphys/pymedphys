@@ -27,10 +27,11 @@ unknown, and those with a region. It holds no pixel value and no crop.
 Every other case, such as a clinic's, MIDI-B's, or HaN-Seg's, is only
 counted as withheld.
 
-The seven openly licensed collections taken from The Cancer Imaging
-Archive (:data:`TCIA_COLLECTIONS`) are reported by collection name and
-Series Instance UID only where :data:`TCIA_PER_CASE` is set; it is not, as
-that is not yet confirmed.
+The seven collections taken from The Cancer Imaging Archive under CC BY or
+CC BY-NC (:data:`TCIA_COLLECTIONS`) are reported by collection name and
+Series Instance UID, with their licence and DOI, while :data:`TCIA_PER_CASE`
+is set, as the maintainer confirmed on 1 November 2026; a case of one of
+them under any other licence is withheld.
 """
 
 from __future__ import annotations
@@ -51,9 +52,9 @@ from .text_evaluation_frames import EvaluationRefused
 from .text_evaluation_idc import OPEN_COLLECTIONS, OPEN_LICENCES
 
 FORMAT = "pymedphys-deid-text-detector-cases/1"
-# Whether cases of TCIA_COLLECTIONS are reported; until confirmed, they are
-# withheld. Removing the switch removes TCIA's cases from the report.
-TCIA_PER_CASE = False
+# Whether cases of TCIA_COLLECTIONS are reported, as confirmed on
+# 1 November 2026. Clearing the switch withholds TCIA's cases again.
+TCIA_PER_CASE = True
 TCIA_COLLECTIONS = frozenset(
     {
         "4D-Lung",
@@ -64,6 +65,10 @@ TCIA_COLLECTIONS = frozenset(
         "Pancreatic-CT-CBCT-SEG",
         "Pediatric-CT-SEG",
     }
+)
+# The licences under which TCIA's cases were confirmed: CC BY and CC BY-NC.
+_TCIA_LICENCES = frozenset(
+    licence for licence in OPEN_LICENCES if licence.startswith("CC BY ")
 )
 _UID = re.compile(r"[0-9]+(?:\.[0-9]+)*")
 _DOI = re.compile(r"10\.[0-9]{4,9}/\S+")
@@ -81,7 +86,11 @@ def reported(public: Mapping[str, str] | None) -> dict[str, str] | None:
     if keys == {"collection_id", *_IDENTITY}:
         allowed = OPEN_COLLECTIONS.get(public["collection_id"]) == licence
     elif keys == {"collection", *_IDENTITY}:
-        allowed = TCIA_PER_CASE and public["collection"] in TCIA_COLLECTIONS
+        allowed = (
+            TCIA_PER_CASE
+            and public["collection"] in TCIA_COLLECTIONS
+            and licence in _TCIA_LICENCES
+        )
     else:
         allowed = False
     held_up = bool(

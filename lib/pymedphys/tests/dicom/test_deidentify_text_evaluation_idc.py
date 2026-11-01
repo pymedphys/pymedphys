@@ -332,18 +332,23 @@ def test_a_public_identity_must_hold_up():
     assert cases_module.reported(None) is None
 
 
-def test_tcias_collections_wait_on_their_switch(monkeypatch):
+def test_tcias_collections_are_reported_under_cc_by_and_cc_by_nc(monkeypatch):
     tcia = {
         "collection": "NSCLC-Radiomics",
         "series_instance_uid": "2.25.5",
         "licence": "CC BY NC 3.0",
         "doi": DOI,
     }
-    assert not cases_module.TCIA_PER_CASE
-    assert cases_module.reported(tcia) is None
-    monkeypatch.setattr(cases_module, "TCIA_PER_CASE", True)
+    assert cases_module.TCIA_PER_CASE
     assert cases_module.reported(tcia) == tcia
+    by = {**tcia, "collection": "4D-Lung", "licence": "CC BY 3.0"}
+    assert cases_module.reported(by) == by
     assert cases_module.reported({**tcia, "collection": "HaN-Seg"}) is None
+    # Confirmed for CC BY and CC BY-NC alone, so any other licence withholds.
+    for licence in ("CC0 1.0", "PDDL 1.0", "CC BY-SA 4.0"):
+        assert cases_module.reported({**tcia, "licence": licence}) is None
+    monkeypatch.setattr(cases_module, "TCIA_PER_CASE", False)
+    assert cases_module.reported(tcia) is None
 
 
 def test_a_series_reported_twice_is_refused(tmp_path):
