@@ -629,6 +629,22 @@ class WorkflowContractTests(unittest.TestCase):
         self.assertIn('if [[ "${found}" != "${expected}" ]]; then\n', job)
         self.assertIn("uv run -- pyright --stats", job)
 
+    def test_the_model_pin_check_reads_only_and_holds_no_secret(self):
+        text = (WORKFLOWS / "text-detection-model-pins.yml").read_text(encoding="utf-8")
+        self.assertIn(
+            "\non:\n  workflow_dispatch:\n\npermissions:\n  contents: read\n", text
+        )
+        self.assertEqual(
+            re.findall(r"(?m)^      [a-z-]+: (?:read|write)$", text),
+            ["      contents: read"],
+        )
+        self.assertNotIn("secrets.", text)
+        self.assertIn("persist-credentials: false", text)
+        self.assertIn(
+            "python -m pymedphys._dicom.deidentify.text_evaluation_model_pins", text
+        )
+        self.assertIn("set -o pipefail", text)
+
 
 if __name__ == "__main__":
     unittest.main()

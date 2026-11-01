@@ -27,6 +27,7 @@ Schedule / manual run -> tg263-edition-check.yml
 Schedule / manual run / PR changing it or labelled check-upstream -> tcia-edition-check.yml
 Manual run -> face-validation.yml
 Manual run -> pixel-text-validation.yml
+Manual run -> text-detection-model-pins.yml
 Published release -> release.yml -> quality checks, publishing, verification, and published-package tests
 Issue comment -> claude.yml
 
@@ -626,6 +627,22 @@ burned-in text, so that each region is one that a run would black out in error
   codes, digests, versions, and the detector's method. As for the face block
   check, the data set is never cached or uploaded, and nothing else read from
   it leaves the runner
+
+#### `text-detection-model-pins.yml`
+
+Checks that a GitHub-hosted runner can download each pinned text detection
+model, today's and each candidate for the text detector's evaluation, and that
+each file has its pinned SHA-256.
+
+- **Triggers**: manually only
+- **Steps**: one job, which installs the project with the `user` extra and
+  runs `python -m pymedphys._dicom.deidentify.text_evaluation_model_pins`. It
+  downloads each pin's file into memory, never to disk, checks its SHA-256
+  and, for a model inside a wheel, the model's, and runs nothing it
+  downloads. Its job can only read the repository and holds no secret
+- **Results**: the job's summary shows a table of each pin's URL, host, size
+  in bytes, and hash result, `unreachable` with only the kind of failure where
+  a download fails. The job fails unless every pin matches
 
 ### AI Assistance
 
