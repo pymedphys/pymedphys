@@ -190,6 +190,7 @@ DOCTEST_FILES = frozenset(
         "lib/pymedphys/_dicom/deidentify/icc_cleaning.py",
         "lib/pymedphys/_dicom/deidentify/icc_profiles.py",
         "lib/pymedphys/_dicom/deidentify/keys.py",
+        "lib/pymedphys/_dicom/deidentify/loinc_terms.py",
         "lib/pymedphys/_dicom/deidentify/markers.py",
         "lib/pymedphys/_dicom/deidentify/method_digest.py",
         "lib/pymedphys/_dicom/deidentify/midi_answer_key.py",
