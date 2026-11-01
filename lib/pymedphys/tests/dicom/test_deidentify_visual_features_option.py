@@ -1054,11 +1054,16 @@ def test_the_report_names_the_attested_pack(second_run):
 def test_the_report_counts_the_ct_series_that_were_not_defaced(second_run):
     _, _, report, _ = second_run
 
-    # The collection's one CT series, of slices two pixels square, holds no
-    # head to find.
+    # The collection's CT Image series, of slices two pixels square, holds no
+    # head to find, and its Enhanced CT Image and Legacy Converted Enhanced
+    # CT Image instances, whose frames no functional groups place, cannot be
+    # read as slices.
     assert report["face_review"]["ct_series"] == {
         "defaced": 0,
-        "not_defaced": [{"reason": "no-eyes", "count": 1}],
+        "not_defaced": [
+            {"reason": "no-eyes", "count": 1},
+            {"reason": "unreadable", "count": 2},
+        ],
     }
 
 

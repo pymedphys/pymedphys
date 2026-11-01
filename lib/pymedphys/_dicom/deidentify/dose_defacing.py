@@ -74,7 +74,7 @@ from pymedphys._imports import pydicom
 from .defacing import FaceBlock
 from .diagnostics import redacted_diagnostics
 from .face_blocks import (
-    CT_IMAGE,
+    CT_IODS,
     Defaced,
     KeptSlice,
     SeriesDefacing,
@@ -116,9 +116,10 @@ class DoseBlock:
     ----------
     block : FaceBlock
     slices : tuple of KeptSlice
-        Each slice of the series that the block reaches.
+        Each slice of the series that the block reaches: each CT Image
+        instance, or frame of a multi-frame CT instance.
     instances : frozenset of str
-        The SOP Instance UID of each slice of the series.
+        The SOP Instance UID of each instance of the series.
     """
 
     block: FaceBlock
@@ -277,7 +278,7 @@ def find_dose_blocks(
         positions = sorted(
             position
             for position, record in records.items()
-            if record.iod == CT_IMAGE and record.series == uid
+            if record.iod in CT_IODS and record.series == uid
         )
         instances = frozenset(
             uid
