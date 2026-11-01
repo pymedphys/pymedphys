@@ -254,6 +254,7 @@ PIXEL_AND_FACE_REASONS = (
     ReviewReason.NO_FACE_VERDICT,
     ReviewReason.OTHER_PIXEL_DATA,
     ReviewReason.OTHER_CONTOURS,
+    ReviewReason.OTHER_GRIDS,
 )
 ATTESTATION_REASONS = (
     *_REVIEW_REASONS,
