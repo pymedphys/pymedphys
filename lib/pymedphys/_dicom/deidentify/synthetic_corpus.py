@@ -1722,12 +1722,12 @@ class _Instance:
             _, (text,) = self.markers.values(_CONTENT_ITEM_VRS[value_type], 1)
             return text
 
-        template = ROOT_TEMPLATES[self.spec.sop_class]
-        if template == "10001":
+        template_id = ROOT_TEMPLATES[self.spec.sop_class]
+        if template_id == "10001":
             root = x_ray_dose_tree(values, STUDY)
-        elif template == "10021":
+        elif template_id == "10021":
             root = radiopharmaceutical_dose_tree(values)
-        elif template == "2000":
+        elif template_id == "2000":
             root = imaging_report_tree(values)
         else:
             root = measurement_report_tree(values, FRAME_OF_REFERENCE)
