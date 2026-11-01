@@ -64,6 +64,32 @@ def test_an_error_is_counted_by_kind_and_raised_again():
     assert SECRET not in json.dumps(record)
 
 
+class _Prepared:
+    """A transform with a prepare method, as the run calls it."""
+
+    def __init__(self):
+        self.prepared = None
+
+    def prepare(self, records, read):
+        self.prepared = (records, read)
+
+    def __call__(self, data, record):
+        return Sequestered(())
+
+
+def test_a_transform_keeps_its_prepare_method():
+    # The run gives a transform with a prepare method the run's records
+    # before any instance; without it, tps-import has no subject's birth date
+    # and sequesters every instance with Patient's Birth Date.
+    prepared = _Prepared()
+    transform = errors.ErrorRecorder().transform(prepared)
+
+    getattr(transform, "prepare")({0: None}, len)
+
+    assert prepared.prepared == ({0: None}, len)
+    assert not hasattr(errors.ErrorRecorder().transform(_raising), "prepare")
+
+
 def test_a_gate_error_names_an_unreadable_file_as_such():
     recorder = errors.ErrorRecorder()
     with pytest.raises(ValueError):

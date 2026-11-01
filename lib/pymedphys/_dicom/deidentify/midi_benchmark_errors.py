@@ -150,7 +150,13 @@ class ErrorRecorder:
             self._counts[kind] += 1
 
     def transform(self, transform: Transform) -> Transform:
-        """Return ``transform``, recording what it raises."""
+        """Return ``transform``, recording what it raises.
+
+        A transform's ``prepare`` method, which the run calls before any
+        instance, as an :class:`~.instance_transform.InstanceTransform` needs
+        to choose ``tps-import``'s synthetic birth dates and find face blocks,
+        is kept.
+        """
 
         def recorded(data: bytes, record: InstanceRecord) -> Transformed | Sequestered:
             try:
@@ -159,6 +165,9 @@ class ErrorRecorder:
                 self._record("transform", error, data)
                 raise
 
+        prepare = getattr(transform, "prepare", None)
+        if callable(prepare):
+            setattr(recorded, "prepare", prepare)
         return recorded
 
     def gate(self, gate: Gate) -> Gate:
