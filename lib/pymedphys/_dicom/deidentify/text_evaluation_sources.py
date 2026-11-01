@@ -64,6 +64,7 @@ from .source import SourceRefused, read_source
 from .text_detection import TextBox
 from .text_evaluation_frames import (
     KNOWN_TEXT,
+    TIERS,
     BurnedText,
     EvaluationFrame,
     EvaluationRefused,
@@ -126,6 +127,7 @@ def dicom_frames(
     first: int = 0,
     known_text: str = "none",
     annotations: TextAnnotations | None = None,
+    tier: str = "none",
 ) -> list[EvaluationFrame] | Skipped:
     """The frames of one DICOM file's top-level Pixel Data, as a run gives
     them to the text detector, numbered from ``first``, or why there are
@@ -133,7 +135,7 @@ def dicom_frames(
 
     Each frame's text is ``known_text``, unless ``annotations`` holds the
     instance, whose frames then hold the boxes drawn on them, and are
-    ``"annotated"``."""
+    ``"annotated"``. Each frame is of the corpus's ``tier``."""
     if known_text not in KNOWN_TEXT:
         raise EvaluationRefused("What is known of a frame's text must be known.")
     try:
@@ -191,6 +193,7 @@ def dicom_frames(
                 number=first + index,
                 texts=texts,
                 known_text="annotated" if annotated is not None else known_text,
+                tier=tier,
             )
         )
     return frames
@@ -309,6 +312,9 @@ class DicomCase:
         instances.
     annotations : TextAnnotations or None
         Boxes drawn around the text of some of its instances.
+    tier : str
+        The tier of the corpus, one of
+        :data:`~.text_evaluation_frames.TIERS`.
     """
 
     collection: str
@@ -316,6 +322,7 @@ class DicomCase:
     paths: tuple[str, ...]
     known_text: str = "none"
     annotations: TextAnnotations | None = None
+    tier: str = "none"
 
     def read(self) -> Iterator[EvaluationFrame | Skipped]:
         number = 0
@@ -332,6 +339,7 @@ class DicomCase:
                 first=number,
                 known_text=self.known_text,
                 annotations=self.annotations,
+                tier=self.tier,
             )
             if isinstance(found, Skipped):
                 yield found
@@ -403,6 +411,7 @@ class NrrdCase:
                 pixel_spacing=spacing if spacing > 0 else None,
                 stored_range=stored_range,
                 number=number,
+                tier="T3",
             )
 
 
@@ -604,6 +613,7 @@ def dicom_folder_cases(
     sop_classes: Collection[str] | None = None,
     known_text: str = "unknown",
     annotations: TextAnnotations | None = None,
+    tier: str = "T6",
 ) -> tuple[DicomCase | SkippedFiles, ...]:
     """The DICOM files under a folder, as cases.
 
@@ -634,6 +644,10 @@ def dicom_folder_cases(
     annotations : TextAnnotations, optional
         Boxes around the text of some instances; annotated instances not
         found are counted as skipped (``annotation-not-found``).
+    tier : str
+        The tier of the corpus, one of
+        :data:`~.text_evaluation_frames.TIERS`: by default ``"T6"``, images
+        read only on a person's own machine.
 
     Returns
     -------
@@ -645,6 +659,8 @@ def dicom_folder_cases(
         raise EvaluationRefused("A folder's files must be grouped by a known way.")
     if known_text not in KNOWN_TEXT:
         raise EvaluationRefused("What is known of a frame's text must be known.")
+    if tier not in TIERS:
+        raise EvaluationRefused("A frame's tier must be a known one.")
     selected = None if sop_classes is None else frozenset(sop_classes)
     root = pathlib.Path(root)
     groups: dict[str, list[_Header]] = {}
@@ -683,10 +699,13 @@ def dicom_folder_cases(
                         each.instance for each in members if each.instance
                     )
                 ),
+                tier=tier,
             )
         )
     if unread:
-        cases.append(DicomCase(collection, "not-read", tuple(unread), known_text))
+        cases.append(
+            DicomCase(collection, "not-read", tuple(unread), known_text, tier=tier)
+        )
     if excluded:
         cases.append(
             SkippedFiles(collection, "excluded", "sop-class-not-selected", excluded)

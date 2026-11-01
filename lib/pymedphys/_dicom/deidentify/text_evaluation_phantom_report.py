@@ -265,7 +265,11 @@ class PhantomDicomCase:
                 yield Skipped(reason)
                 continue
             found = dicom_frames(
-                data, collection=self.collection, case=self.case, first=number
+                data,
+                collection=self.collection,
+                case=self.case,
+                first=number,
+                tier="T2",
             )
             if isinstance(found, Skipped):
                 yield found

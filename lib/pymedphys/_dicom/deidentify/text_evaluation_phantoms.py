@@ -298,6 +298,7 @@ def phantom_frame(
         intercept=kind.intercept,
         stored_range=(0, high),
         photometric="MONOCHROME2",
+        tier="T1",
         number=number,
         background=phantom.kind,
     )

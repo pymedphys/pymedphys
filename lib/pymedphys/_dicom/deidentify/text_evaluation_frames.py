@@ -55,6 +55,8 @@ CT_MODALITIES = frozenset({"CT"})
 # that someone drew; or ``"unknown"``, such as a clinic's RT Images, whose
 # regions as read may be text or not and are counted apart.
 KNOWN_TEXT = ("none", "annotated", "unknown")
+# The tiers of the corpus that a frame may come from.
+TIERS = ("T1", "T2", "T3", "T5", "T6", "none")
 
 
 class EvaluationRefused(Exception):
@@ -168,6 +170,13 @@ class EvaluationFrame:
     known_text : str
         What is known of the text it held as it was read: one of
         :data:`KNOWN_TEXT`.
+    tier : str
+        The tier of the corpus its source belongs to, one of :data:`TIERS`:
+        ``"T1"`` synthetic frames, ``"T2"`` viewable phantoms, ``"T3"`` real
+        images without text, into which T4's text is burned, ``"T5"`` text
+        that someone else burned in with its coordinates, such as MIDI-B's
+        answer key, and ``"T6"`` images read only on a person's own
+        machine; ``"none"`` where unstated.
     """
 
     stored: np.ndarray
@@ -184,10 +193,13 @@ class EvaluationFrame:
     background: str | None = None
     texts: tuple[BurnedText, ...] = ()
     known_text: str = "none"
+    tier: str = "none"
 
     def __post_init__(self):
         if self.known_text not in KNOWN_TEXT:
             raise EvaluationRefused("What is known of a frame's text must be known.")
+        if self.tier not in TIERS:
+            raise EvaluationRefused("A frame's tier must be a known one.")
         stored = np.asarray(self.stored)
         rgb = stored.ndim == 3 and stored.shape[2] == 3
         if not (stored.ndim == 2 or rgb) or min(stored.shape[:2]) < 1:

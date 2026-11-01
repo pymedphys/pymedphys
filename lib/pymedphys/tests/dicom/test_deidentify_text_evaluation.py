@@ -281,7 +281,7 @@ def test_a_frame_without_text_is_measured_as_it_is_and_with_text():
         "style",
         "position",
         "iod",
-        "iod+contrast+height",
+        "iod+contrast+height_px",
     } <= set(by)
 
 
@@ -354,11 +354,10 @@ def test_counts_are_kept_by_each_stratum_and_cross():
         row["value"]["font"]: row["sensitivity"]["fully_covered"] for row in by["font"]
     }
     assert fonts == {"a": 1, "b": 0}
-    cells = by["iod+contrast+height"]
-    assert {(row["value"]["height"], row["sensitivity"]["texts"]) for row in cells} == {
-        ("6 px", 1),
-        ("4 px", 1),
-    }
+    cells = by["iod+contrast+height_px"]
+    assert {
+        (row["value"]["height_px"], row["sensitivity"]["texts"]) for row in cells
+    } == {("5 to under 7 px", 1), ("3 to under 5 px", 1)}
     # A frame has no font or height, so only a grouping of frames' own
     # dimensions counts frames.
     assert all("false_positives" not in row for row in by["font"] + cells)
@@ -470,9 +469,9 @@ def test_many_points_are_detailed_only_at_the_first():
     assert "font" in summary["points"][0]["by"]
     assert set(summary["points"][1]["by"]) == {
         "iod",
-        "iod+contrast+height",
+        "iod+contrast+height_px",
         "iod+slice_side",
-        "collection+truth",
+        "tier+truth",
     }
 
 
@@ -538,7 +537,7 @@ def test_too_little_evidence_fails():
     )
     (first, _) = criteria_module.assess(summary, criteria)
     assert first["failures"] == [
-        "sensitivity: CT Image Storage, 8 to under 16 sigma, 6 px: too few texts"
+        "sensitivity: CT Image Storage, 8 to under 16 sigma, 5 to under 7 px: too few texts"
     ]
 
 
@@ -946,3 +945,28 @@ def test_annotations_are_read_by_instance_and_frame(tmp_path):
     assert len(annotations.texts("2.25.5", 0, (16, 16))) == 1
     assert not annotations.texts("2.25.6", 0, (16, 16))
     assert annotations.subset(["2.25.6", "2.25.7"]).instances == {"2.25.6"}
+
+
+def test_each_frame_names_its_tier_of_the_corpus(tmp_path):
+    root, _ = _clinic(tmp_path)
+    cases = sources.dicom_folder_cases(
+        root, collection="c", sop_classes=(sources.RT_IMAGE_STORAGE,)
+    )
+    frames = [
+        frame
+        for case in cases
+        if isinstance(case, sources.DicomCase)
+        for frame in case.read()
+        if isinstance(frame, EvaluationFrame)
+    ]
+    assert frames and {frame.tier for frame in frames} == {"T6"}
+    phantom = phantoms.phantom_frame(
+        phantoms.Phantom("ct-thorax", 64, 4.0), np.random.default_rng(0), case="a"
+    )
+    assert phantom.tier == "T1"
+    # T4 is text burned into T3's frames: injected truth on a T3 frame.
+    for tier in ("T4", "T7", ""):
+        with pytest.raises(EvaluationRefused):
+            _frame(tier=tier)
+    with pytest.raises(EvaluationRefused):
+        sources.dicom_folder_cases(root, collection="c", tier="T4")

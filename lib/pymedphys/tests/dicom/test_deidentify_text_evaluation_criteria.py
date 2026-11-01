@@ -30,6 +30,8 @@ RT = "RT Image Storage"
 HIGH = "16 to under 32 sigma"
 MIDDLE = "4 to under 8 sigma"
 LOW = "2 to under 4 sigma"
+SEVEN = "7 to under 10 px"
+TEN = "10 to under 14 px"
 
 
 def _sensitivity(texts, full, missed=0, wilson=None, bootstrap=None):
@@ -59,7 +61,7 @@ def _false_positives(frames, flagged, tissue=0.0, wilson=None, bootstrap=None):
 
 def _cell(iod, contrast, height, **measure):
     return {
-        "value": {"iod": iod, "contrast": contrast, "height": height},
+        "value": {"iod": iod, "contrast": contrast, "height_px": height},
         "sensitivity": _sensitivity(**measure),
     }
 
@@ -68,7 +70,7 @@ def _point(index=0, cells=(), iods=(), sides=(), truths=()):
     return {
         "index": index,
         "by": {
-            "iod+contrast+height": list(cells),
+            "iod+contrast+height_px": list(cells),
             "iod": [
                 {
                     "value": {"iod": iod},
@@ -84,12 +86,12 @@ def _point(index=0, cells=(), iods=(), sides=(), truths=()):
                 }
                 for iod, side, fp in sides
             ],
-            "collection+truth": [
+            "tier+truth": [
                 {
-                    "value": {"collection": collection, "truth": truth},
+                    "value": {"tier": tier, "truth": truth},
                     "sensitivity": _sensitivity(**measure),
                 }
-                for collection, truth, measure in truths
+                for tier, truth, measure in truths
             ],
         },
     }
@@ -99,12 +101,12 @@ def _passing(index=0):
     return _point(
         index,
         cells=[
-            _cell(CT, HIGH, "7 px", texts=1000, full=1000),
-            _cell(CT, MIDDLE, "10 px", texts=1000, full=980),
+            _cell(CT, HIGH, SEVEN, texts=1000, full=1000),
+            _cell(CT, MIDDLE, TEN, texts=1000, full=980),
             # Reported only: below either contrast or height.
-            _cell(CT, LOW, "10 px", texts=1000, full=10),
-            _cell(CT, HIGH, "5 px", texts=1000, full=10),
-            _cell(CT, HIGH, "2 mm", texts=1000, full=10),
+            _cell(CT, LOW, TEN, texts=1000, full=10),
+            _cell(CT, HIGH, "5 to under 7 px", texts=1000, full=10),
+            _cell(CT, HIGH, "0 to under 3 px", texts=1000, full=10),
         ],
         iods=[
             (CT, {"frames": 1000, "flagged": 10}),
@@ -112,10 +114,20 @@ def _passing(index=0):
         ],
         sides=[(CT, "512 to under 768 pixels", {"frames": 600, "flagged": 6})],
         truths=[
-            ("MIDI-B-Synthetic-Validation", "annotated", {"texts": 50, "full": 45}),
-            ("NSCLC-Radiomics", "injected", {"texts": 10, "full": 0, "missed": 10}),
+            ("T5", "annotated", {"texts": 50, "full": 45}),
+            ("T3", "injected", {"texts": 10, "full": 0, "missed": 10}),
         ],
     )
+
+
+class Nothing:
+    """A detector that finds nothing."""
+
+    method = {"network": "nothing"}
+
+    def boxes_of_points(self, frame, points):
+        del frame
+        return [()] * len(points)
 
 
 def _failures(point, chosen=criteria.CHOSEN_CRITERIA):
@@ -152,31 +164,29 @@ def test_the_chosen_criteria_are_as_picked():
 
 def test_sensitivity_is_held_by_contrast_and_height():
     weak = _passing()
-    weak["by"]["iod+contrast+height"][0] = _cell(
-        CT, HIGH, "7 px", texts=1000, full=1000, wilson=[0.985, 1.0]
+    weak["by"]["iod+contrast+height_px"][0] = _cell(
+        CT, HIGH, SEVEN, texts=1000, full=1000, wilson=[0.985, 1.0]
     )
     assert _failures(weak) == [
-        f"sensitivity: {CT}, {HIGH}, 7 px: Wilson 0.985 below 0.99"
+        f"sensitivity: {CT}, {HIGH}, {SEVEN}: Wilson 0.985 below 0.99"
     ]
     few = _passing()
-    few["by"]["iod+contrast+height"][1] = _cell(
-        CT, MIDDLE, "10 px", texts=399, full=399
-    )
-    assert _failures(few) == [f"sensitivity: {CT}, {MIDDLE}, 10 px: too few texts"]
+    few["by"]["iod+contrast+height_px"][1] = _cell(CT, MIDDLE, TEN, texts=399, full=399)
+    assert _failures(few) == [f"sensitivity: {CT}, {MIDDLE}, {TEN}: too few texts"]
 
 
 def test_the_bootstrap_bound_must_pass_too():
     clustered = _passing()
-    clustered["by"]["iod+contrast+height"][1] = _cell(
-        CT, MIDDLE, "10 px", texts=1000, full=980, bootstrap=[0.9, 0.99]
+    clustered["by"]["iod+contrast+height_px"][1] = _cell(
+        CT, MIDDLE, TEN, texts=1000, full=980, bootstrap=[0.9, 0.99]
     )
     assert _failures(clustered) == [
-        f"sensitivity: {CT}, {MIDDLE}, 10 px: bootstrap 0.900 below 0.95"
+        f"sensitivity: {CT}, {MIDDLE}, {TEN}: bootstrap 0.900 below 0.95"
     ]
     lone = _passing()
-    lone["by"]["iod+contrast+height"][0]["sensitivity"]["bootstrap"] = None
+    lone["by"]["iod+contrast+height_px"][0]["sensitivity"]["bootstrap"] = None
     assert _failures(lone) == [
-        f"sensitivity: {CT}, {HIGH}, 7 px: no bootstrap interval"
+        f"sensitivity: {CT}, {HIGH}, {SEVEN}: no bootstrap interval"
     ]
     without = dataclasses.replace(criteria.CHOSEN_CRITERIA, bootstrap=False)
     assert not _failures(clustered, without)
@@ -212,12 +222,10 @@ def test_false_positives_are_held_by_iod_and_slice_size():
 
 def test_no_answer_key_text_may_be_missed():
     point = _passing()
-    point["by"]["collection+truth"][0]["sensitivity"] = _sensitivity(50, 45, missed=1)
-    assert _failures(point) == [
-        "missed: MIDI-B-Synthetic-Validation: 1 annotated texts missed, above 0"
-    ]
-    point["by"]["collection+truth"] = []
-    assert _failures(point) == ["missed: no annotated texts of MIDI-B"]
+    point["by"]["tier+truth"][0]["sensitivity"] = _sensitivity(50, 45, missed=1)
+    assert _failures(point) == ["missed: T5: 1 annotated texts missed, above 0"]
+    point["by"]["tier+truth"] = []
+    assert _failures(point) == ["missed: no annotated texts of T5"]
 
 
 @pytest.mark.parametrize(
@@ -229,7 +237,8 @@ def test_no_answer_key_text_may_be_missed():
         lambda: criteria.SensitivityCriterion(0.9, iod=("*",)),
         lambda: criteria.SensitivityCriterion(0.9, contrast=()),
         lambda: criteria.FalsePositiveCriterion(max_with_a_region=-0.1),
-        lambda: criteria.MissedTextCriterion(""),
+        lambda: criteria.MissedTextCriterion("none"),
+        lambda: criteria.MissedTextCriterion("T4"),
         lambda: criteria.contrasts_from(5.0),
         lambda: criteria.contrasts_between(4.0, 15.0),
     ],
@@ -246,15 +255,6 @@ def test_a_summary_gives_every_cell_the_criteria_read():
         for seed in range(3)
     ]
 
-    class Nothing:
-        """A detector that finds nothing."""
-
-        method = {"network": "nothing"}
-
-        def boxes_of_points(self, frame, points):
-            del frame
-            return [()] * len(points)
-
     summary = evaluation.summarise(
         evaluation.evaluate(
             cases,
@@ -266,13 +266,45 @@ def test_a_summary_gives_every_cell_the_criteria_read():
         replicates=50,
     )
     by = summary["points"][0]["by"]
-    for grouping in ("iod+contrast+height", "iod+slice_side", "collection+truth"):
+    for grouping in ("iod+contrast+height_px", "iod+slice_side", "tier+truth"):
         assert by[grouping], grouping
         assert all("bootstrap" in row["sensitivity"] for row in by[grouping])
     assert all("bootstrap" in row["false_positives"] for row in by["iod+slice_side"])
-    texts = sum(row["sensitivity"]["texts"] for row in by["collection+truth"])
-    missed = sum(row["sensitivity"]["missed"] for row in by["collection+truth"])
-    assert texts == missed > 0
+    assert [row["value"] for row in by["tier+truth"]] == [
+        {"tier": "T1", "truth": "injected"}
+    ]
+    (row,) = by["tier+truth"]
+    assert row["sensitivity"]["texts"] == row["sensitivity"]["missed"] > 0
     failures = criteria.assess(summary, criteria.CHOSEN_CRITERIA)[0]["failures"]
-    assert "missed: no annotated texts of MIDI-B" in failures
+    assert "missed: no annotated texts of T5" in failures
     assert any("too few" in each for each in failures)
+
+
+def test_heights_drawn_in_millimetres_are_judged_in_pixels():
+    plan = injection.InjectionPlan(
+        texts=2, heights_mm=(5.0,), contrasts=(16.0,), contents=("letter",)
+    )
+    case = phantoms.PhantomCase(phantoms.Phantom("ct-thorax", 192, 0.5), seed=1)
+    summary = evaluation.summarise(
+        evaluation.evaluate(
+            [case],
+            Nothing,
+            evaluation.EvaluationSettings(
+                points=(PostProcessing(),), plan=plan, evaluated="all"
+            ),
+        ),
+        replicates=20,
+    )
+    by = summary["points"][0]["by"]
+    assert {row["value"]["height"] for row in by["height"]} == {"5 mm"}
+    assert {row["value"]["height_px"] for row in by["iod+contrast+height_px"]} == {
+        "10 to under 14 px"
+    }
+    cell = {"iod": CT, "contrast": HIGH, "height_px": "10 to under 14 px"}
+    assert criteria.CHOSEN_CRITERIA.sensitivity[0].matches(cell)
+    assert not criteria.CHOSEN_CRITERIA.sensitivity[0].matches(
+        {**cell, "height_px": "5 to under 7 px"}
+    )
+    assert criteria.CHOSEN_CRITERIA.sensitivity[0].matches(
+        {**cell, "height_px": "40 px or more"}
+    )

@@ -128,11 +128,13 @@ FRAME_DIMENSIONS = (
     "photometric",
     "background",
     "known_text",
+    "tier",
 )
 TEXT_DIMENSIONS = (
     "truth",
     "font",
     "height",
+    "height_px",
     "height_mm",
     "contrast",
     "contrast_drawn",
@@ -144,16 +146,19 @@ TEXT_DIMENSIONS = (
     "zone",
 )
 # The crosses of strata that the acceptance criteria read: sensitivity by
-# IOD, contrast, and height; false positives by IOD and slice size; and
-# texts missed by collection and truth.
+# IOD, contrast, and height in frame pixels, however the height was drawn;
+# false positives by IOD and slice size; and texts missed by tier and truth.
 CROSSES = (
-    ("iod", "contrast", "height"),
+    ("iod", "contrast", "height_px"),
     ("iod", "slice_side"),
-    ("collection", "truth"),
+    ("tier", "truth"),
 )
 # A text's ink is its pixels of more coverage than this.
 INK_LEVEL = 0.5
 HEIGHT_MM = Bins("mm", (0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 7.5, 10.0, 15.0))
+# A text's cap height in frame pixels, with an edge at the criteria's floor
+# of 7 pixels.
+HEIGHT_PX = Bins("px", (0.0, 3.0, 5.0, 7.0, 10.0, 14.0, 20.0, 28.0, 40.0))
 FRAME_AREA = Bins(
     "share of the frame",
     (0.0, 0.0005, 0.001, 0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2),
@@ -435,6 +440,7 @@ def frame_strata(frame: EvaluationFrame) -> dict[str, str]:
         "photometric": frame.photometric,
         "background": frame.background or "none",
         "known_text": frame.known_text,
+        "tier": frame.tier,
     }
 
 
@@ -578,6 +584,7 @@ def _text_strata(
     found.update(
         {key: value for key, value in text.strata.items() if key in TEXT_DIMENSIONS}
     )
+    found["height_px"] = _label(HEIGHT_PX, text.height)
     if frame.pixel_spacing is not None:
         found["height_mm"] = _label(HEIGHT_MM, text.height * frame.pixel_spacing)
     else:

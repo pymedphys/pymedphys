@@ -19,14 +19,15 @@ Criteria are set before tuning. :func:`assess` reads only a summary of
 again, once published, against other criteria. A point meets the criteria
 where every cell that a criterion names does:
 
-- each cell of IOD, contrast, and height that a
+- each cell of IOD, contrast, and height in frame pixels that a
   :class:`SensitivityCriterion` matches has at least its share of texts
   fully covered;
 - each IOD that a :class:`FalsePositiveCriterion` matches, and each cell of
   that IOD and slice size, has at most its share of frames without text
   with a region, and at most its share of their tissue blacked out;
-- each collection that a :class:`MissedTextCriterion` matches has at most
-  its number of texts of its truth missed, with none of their ink covered;
+- each tier of the corpus that a :class:`MissedTextCriterion` names has at
+  most its number of texts of its truth missed, with none of their ink
+  covered;
 - no single stratum's share of texts fully covered falls, nor its share of
   frames with a region rises, by more than
   :attr:`AcceptanceCriteria.max_loss` from the baseline point's.
@@ -52,14 +53,17 @@ import re
 from collections.abc import Mapping
 from typing import Any
 
-from .text_evaluation_frames import EvaluationRefused
+from .text_evaluation_frames import TIERS, EvaluationRefused
 from .text_evaluation_injection import CONTRAST, contrast_label
 
 ANY = "*"
-# Labels of a text's height in pixels, as a plan draws them: "7 px".
-_PIXELS = re.compile(r"(\d+(?:\.\d+)?) px")
+# Labels of a bin of a text's height in frame pixels, such as "7 to under
+# 10 px" or "40 px or more": the first number is the bin's least height.
+_PIXELS = re.compile(r"(\d+(?:\.\d+)?) (?:to under \d+(?:\.\d+)? )?px(?: or more)?")
 
 Labels = str | tuple[str, ...]
+# The strata of a sensitivity cell.
+_CELL = ("iod", "contrast", "height_px")
 
 
 def _matches(wanted: Labels, value: str) -> bool:
@@ -87,36 +91,35 @@ def _check_share(name: str, value: float | None) -> None:
 @dataclasses.dataclass(frozen=True)
 class SensitivityCriterion:
     """The least share of texts fully covered in every cell of IOD,
-    contrast, and height that matches.
+    contrast, and height in frame pixels that matches.
 
-    Each of ``iod``, ``contrast``, and ``height`` is a label, ``"*"`` for
+    Each of ``iod``, ``contrast``, and ``height_px`` is a label, ``"*"`` for
     any, or a tuple of labels, any of which matches. ``min_height_px``,
-    where given, matches only cells whose height is drawn in pixels, as
-    ``"7 px"`` is, at least that many; a height in millimetres matches no
-    such criterion.
+    where given, matches only cells whose bin of height in frame pixels
+    starts at that many or more, whether the text was drawn in pixels or in
+    millimetres; it must be an edge of the bins
+    (:data:`~.text_evaluation.HEIGHT_PX`) for every text at least that high
+    to be judged.
     """
 
     minimum: float
     iod: Labels = ANY
     contrast: Labels = ANY
-    height: Labels = ANY
+    height_px: Labels = ANY
     min_height_px: float | None = None
 
     def __post_init__(self):
         _check_share("minimum", self.minimum)
-        for name in ("iod", "contrast", "height"):
+        for name in _CELL:
             _check_labels(name, getattr(self, name))
 
     def matches(self, value: Mapping[str, str]) -> bool:
         """Whether a cell of IOD, contrast, and height is the criterion's."""
-        if not all(
-            _matches(getattr(self, name), value[name])
-            for name in ("iod", "contrast", "height")
-        ):
+        if not all(_matches(getattr(self, name), value[name]) for name in _CELL):
             return False
         if self.min_height_px is None:
             return True
-        pixels = _PIXELS.fullmatch(value["height"])
+        pixels = _PIXELS.fullmatch(value["height_px"])
         return pixels is not None and float(pixels[1]) >= self.min_height_px
 
 
@@ -138,19 +141,19 @@ class FalsePositiveCriterion:
 
 @dataclasses.dataclass(frozen=True)
 class MissedTextCriterion:
-    """The most texts of a truth, in collections whose names start with a
-    prefix, that may be missed, with none of their ink covered.
+    """The most texts of a truth, in frames of a tier of the corpus, that
+    may be missed, with none of their ink covered.
 
-    The counts are read from the summary's cells of collection and truth.
+    The counts are read from the summary's cells of tier and truth.
     """
 
-    collection_prefix: str
+    tier: str
     truth: str = "annotated"
     max_missed: int = 0
 
     def __post_init__(self):
-        if not self.collection_prefix or self.max_missed < 0:
-            raise EvaluationRefused("A missed-text criterion needs its collections.")
+        if self.tier not in TIERS or self.tier == "none" or self.max_missed < 0:
+            raise EvaluationRefused("A missed-text criterion needs a tier.")
 
 
 @dataclasses.dataclass(frozen=True)
@@ -248,7 +251,8 @@ PROJECTION_IODS = (
 # each IOD and each slice size, and at most 0.01% of tissue blacked out in
 # any; 400 texts and 300 frames at the least in each cell; both intervals'
 # bounds; no single stratum 2 percentage points worse than today's
-# defaults, the first point; and no MIDI-B answer-key text missed.
+# defaults, the first point; and no text of MIDI-B's answer key, tier T5,
+# missed. A text's height is judged in frame pixels, however it was drawn.
 CHOSEN_CRITERIA = AcceptanceCriteria(
     sensitivity=(
         SensitivityCriterion(0.99, contrast=contrasts_from(16.0), min_height_px=7.0),
@@ -261,7 +265,7 @@ CHOSEN_CRITERIA = AcceptanceCriteria(
         FalsePositiveCriterion(iod=PROJECTION_IODS, max_with_a_region=0.05),
         FalsePositiveCriterion(max_tissue_blacked_out=0.0001),
     ),
-    missed=(MissedTextCriterion("MIDI-B", truth="annotated", max_missed=0),),
+    missed=(MissedTextCriterion("T5", truth="annotated", max_missed=0),),
     max_loss=0.02,
     baseline=0,
     bound="interval",
@@ -330,7 +334,7 @@ def _sensitivity_failures(
     point: Mapping[str, Any], criteria: AcceptanceCriteria
 ) -> list[str]:
     failures = []
-    cells = point["by"].get("iod+contrast+height", [])
+    cells = point["by"].get("iod+contrast+height_px", [])
     if criteria.sensitivity and not cells:
         failures.append(
             "sensitivity: the summary has no IOD, contrast, and height cells"
@@ -341,7 +345,7 @@ def _sensitivity_failures(
             if not criterion.matches(value):
                 continue
             measure = cell["sensitivity"]
-            label = f"{value['iod']}, {value['contrast']}, {value['height']}"
+            label = f"{value['iod']}, {value['contrast']}, {value['height_px']}"
             if measure["texts"] == 0 or measure["texts"] < criteria.min_texts:
                 failures.append(f"sensitivity: {label}: too few texts")
                 continue
@@ -426,25 +430,22 @@ def _missed_failures(
     point: Mapping[str, Any], criteria: AcceptanceCriteria
 ) -> list[str]:
     failures = []
-    rows = point["by"].get("collection+truth", [])
+    rows = point["by"].get("tier+truth", [])
     for criterion in criteria.missed:
         matched = [
             row
             for row in rows
-            if row["value"]["collection"].startswith(criterion.collection_prefix)
-            and row["value"]["truth"] == criterion.truth
+            if row["value"] == {"tier": criterion.tier, "truth": criterion.truth}
         ]
-        if not matched:
+        if not matched or matched[0]["sensitivity"]["texts"] == 0:
+            failures.append(f"missed: no {criterion.truth} texts of {criterion.tier}")
+            continue
+        missed = matched[0]["sensitivity"]["missed"]
+        if missed > criterion.max_missed:
             failures.append(
-                f"missed: no {criterion.truth} texts of {criterion.collection_prefix}"
+                f"missed: {criterion.tier}: {missed} {criterion.truth} texts "
+                f"missed, above {criterion.max_missed}"
             )
-        for row in matched:
-            missed = row["sensitivity"]["missed"]
-            if missed > criterion.max_missed:
-                failures.append(
-                    f"missed: {row['value']['collection']}: {missed} "
-                    f"{criterion.truth} texts missed, above {criterion.max_missed}"
-                )
     return failures
 
 
