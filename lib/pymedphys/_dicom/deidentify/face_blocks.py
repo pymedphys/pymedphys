@@ -130,7 +130,9 @@ bone enclosing an orbit within a slice, or a thin orbital roof that the
 slice's bone does not seal, keeps no part of an eye. A pixel kept for a
 target is kept whatever it holds, the eye included.
 Where no bone encloses the cavity within a slice, the slice's part in the
-block is air, to the top of the slice.
+block is air, to the top of the slice. Where air's stored value is itself
+padding, the pixels written are padding, which a viewer shows as outside
+the image, as the air before the face is in most scans.
 
 A slice need not lie along the patient's axes: one turned by a gantry tilt,
 or oblique, spans heights, and each of these rules is applied pixel by
@@ -145,12 +147,11 @@ an axial slice through each of its pixels would. A target is judged
 against the slices nearest its part in the block
 (:class:`~pymedphys._dicom.deidentify.target_hulls.SliceExtent`), since a
 tilt that steps the slices along the table offsets each slice's pixels
-within the plane from the last's. The finder still refuses a stack whose
-slices do not lie along the patient's axes
-(:attr:`~pymedphys._dicom.deidentify.defacing.FaceBlockProblem.NOT_ALONG_PATIENT_AXES`),
-so a run defaces such a stack only once the finder takes it. Where air's stored value is itself padding, the pixels
-written are padding, which a viewer shows as outside the image, as the air
-before the face is in most scans.
+within the plane from the last's. The finder samples such a stack to voxels
+along the patient's axes
+(:mod:`~pymedphys._dicom.deidentify.stack_sampling`), and refuses only
+what it still cannot take
+(:attr:`~pymedphys._dicom.deidentify.defacing.FaceBlockProblem.NOT_ALONG_PATIENT_AXES`).
 
 Beyond CT instances, the run cleans the same region of an RT Dose
 that :mod:`~pymedphys._dicom.deidentify.dose_defacing` sets to zero there,

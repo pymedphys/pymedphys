@@ -16,12 +16,12 @@
 gantry tilt, a shear, or an oblique stack lays them, on an analytic head.
 Every UID and value here is invented.
 
-The face block's finder refuses such a stack until it samples one onto the
-patient's axes, so these tests give each tilted scan of the analytic head
-the block found from its untilted scan: the block lies in the patient's
-coordinates, where the head is the same however it is scanned. Where a test
-needs a run's outcome, a stand-in finder gives that block, so that
-everything after the finder is the run's own.
+Most tests give each tilted scan of the analytic head the block found from
+its untilted scan, so that what each pixel should become is known exactly:
+the block lies in the patient's coordinates, where the head is the same
+however it is scanned. Those of a run's outcome use the block that the
+finder finds from the tilted slices themselves, and those of the slices it
+is given use a stand-in finder that records them.
 """
 
 from __future__ import annotations
@@ -34,11 +34,7 @@ from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom, pytest
 
 from pymedphys._dicom.deidentify import face_blocks
-from pymedphys._dicom.deidentify.defacing import (
-    FaceBlock,
-    FaceBlockProblem,
-    FaceBlockRefused,
-)
+from pymedphys._dicom.deidentify.defacing import FaceBlock
 from pymedphys._dicom.deidentify.dose_defacing import DoseBlock
 from pymedphys._dicom.deidentify.face_blocks import (
     CtDefacer,
@@ -51,7 +47,6 @@ from pymedphys._dicom.deidentify.target_hulls import SliceExtent
 
 from . import _synthetic_head as head
 from . import _synthetic_head_dicom as files
-from .test_deidentify_stack_sampling import _oblique, _rotation, _sheared
 
 # Coarse, as in the face block tests, to keep the files small.
 _SPACING = 2.0
@@ -78,7 +73,7 @@ TILTED = {
     "gantry-tilt-30": _tilted(30.0, (-160, 200)),
     "gantry-tilt-minus-15": _tilted(-15.0, (-60, 190)),
     "gantry-tilt-minus-30": _tilted(-30.0, (-60, 260)),
-    "gantry-tilt-15-sheared": _sheared(
+    "gantry-tilt-15-sheared": head.sheared(
         head.axial(
             spacing=_SPACING,
             thickness=_THICKNESS,
@@ -86,8 +81,8 @@ TILTED = {
         ),
         15.0,
     ),
-    "oblique-about-z-10": _oblique(_AXIAL, _rotation(about_z=10.0)),
-    "compound-oblique": _oblique(_AXIAL, _rotation(about_x=12.0, about_y=-8.0)),
+    "oblique-about-z-10": head.oblique(_AXIAL, head.rotation(about_z=10.0)),
+    "compound-oblique": head.oblique(_AXIAL, head.rotation(about_x=12.0, about_y=-8.0)),
 }
 
 HEADS = {
@@ -303,12 +298,26 @@ def test_every_slice_of_a_sagittal_stack_is_given_to_the_finder(
     assert len(given_finder.given) == len(scan.positions)
 
 
-def test_a_refused_tilted_stack_is_left_undefaced():
-    # Until the finder samples a tilted stack, it refuses it.
-    outcome = _outcome(_files("gantry-tilt-15"))
+@pytest.mark.parametrize(
+    "scan_name", ["gantry-tilt-30", "gantry-tilt-15-sheared", "compound-oblique"]
+)
+def test_a_tilted_series_is_defaced_by_its_own_block_as_each_pixel_lies(scan_name):
+    """The finder finds the block from the tilted slices themselves, near
+    the untilted head's, and the run writes air by it as each pixel lies."""
+    scan, data = TILTED[scan_name], _files(scan_name)
+    outcome = _outcome(data)
 
-    assert outcome.problem is FaceBlockProblem.NOT_ALONG_PATIENT_AXES
-    assert outcome.block is None
+    assert outcome.problem is None and outcome.frame == files.FRAME
+    np.testing.assert_allclose(outcome.block.globes, _block().globes, atol=2.0)
+    floor = max(globe[2] for globe in outcome.block.globes) + face_blocks.CAVITY_FLOOR
+    for index, each in enumerate(data):
+        points = scan.points(index)
+        brain = (head.hounsfield(points, HEADS["plain"]) == head.BRAIN) & (
+            points[..., 2] > floor
+        )
+        np.testing.assert_array_equal(
+            _mask(outcome.block, each), outcome.block.contains(points) & ~brain
+        )
 
 
 # Targets on tilted slices.
@@ -325,10 +334,7 @@ def _distance_to_square(points: np.ndarray, centre, half: float) -> np.ndarray:
 
 
 @pytest.mark.parametrize("scan_name", ["gantry-tilt-30", "gantry-tilt-15-sheared"])
-def test_a_target_on_a_tilted_ct_keeps_the_pixels_whose_boxes_meet_it(
-    given_finder, scan_name
-):
-    del given_finder
+def test_a_target_on_a_tilted_ct_keeps_the_pixels_whose_boxes_meet_it(scan_name):
     scan = TILTED[scan_name]
     data = _files(scan_name)
     outcome = _outcome(data, files.structure_set([("PTV", files.square(_GLOBE_FRONT))]))
@@ -374,13 +380,10 @@ def test_a_target_on_a_tilted_ct_keeps_the_pixels_whose_boxes_meet_it(
     assert kept_for_target > 0
 
 
-def test_a_tilted_stack_s_far_slices_do_not_decide_whether_a_target_is_shown(
-    given_finder,
-):
+def test_a_tilted_stack_s_far_slices_do_not_decide_whether_a_target_is_shown():
     """A tilt steps each slice's pixels within the plane, so the slices far
     from a target share little of the plane with those that show it: only
     the slices nearest the target decide."""
-    del given_finder
     scan = TILTED["gantry-tilt-30"]
     outcome = _outcome(
         _files("gantry-tilt-30"),
@@ -406,10 +409,7 @@ def test_a_tilted_stack_s_far_slices_do_not_decide_whether_a_target_is_shown(
     [(-128.0, False), (-133.0, True)],
     ids=["within-the-nearest-slices", "beyond-the-nearest-slices"],
 )
-def test_a_target_beyond_its_nearest_tilted_slices_holds_the_series(
-    given_finder, y, held
-):
-    del given_finder
+def test_a_target_beyond_its_nearest_tilted_slices_holds_the_series(y, held):
     target = files.square((-head.GLOBE_X, y, head.GLOBE_Z), half=0.5)
 
     outcome = _outcome(_files("gantry-tilt-30"), files.structure_set([("PTV", target)]))
@@ -546,16 +546,3 @@ def test_contours_on_a_tilted_ct_are_cut_by_the_whole_block():
         points = np.asarray([float(v) for v in contour.values]).reshape(-1, 3)
         ahead = (points - np.array(_block().origin)) @ np.array(_block().anterior)
         assert (ahead <= 1e-6).all()
-
-
-def test_a_finder_refusal_is_still_a_refusal(monkeypatch):
-    """A stand-in finder that refuses leaves the series undefaced, as the
-    run's finder does."""
-
-    class _Refusing(_GivenFinder):
-        def block(self) -> FaceBlock:
-            raise FaceBlockRefused(FaceBlockProblem.NO_EYES)
-
-    monkeypatch.setattr(face_blocks.defacing, "FaceFinder", _Refusing)
-
-    assert _outcome(_files("gantry-tilt-15")).problem is FaceBlockProblem.NO_EYES
