@@ -147,12 +147,13 @@ recorded in the other files with
 :attr:`NotPlantedReason.SEQUESTERS_INSTANCE`, as is each attribute in the
 item of such a sequence. Of the corpus's IODs these
 are Responsible Person (0010,2297) and Responsible Organization (0010,2299)
-at the top level, Radiopharmaceutical Start DateTime (0018,1078) in the
+at the top level, and Radiopharmaceutical Start DateTime (0018,1078) in the
 Radiopharmaceutical Information Sequence (0054,0016) of an Enhanced PET
-Image, and Institution Code Sequence (0008,0082), which X/Z/D gives D
-where it is Type 1C, in the Interlock Resolution User Sequence (300A,0746)
-of an RT Beams Treatment Record's or RT Ion Beams Treatment Record's
-Interlock Sequence (300A,0740). Planted in
+Image. Institution Code Sequence (0008,0082), which X/Z/D gives D where it
+is Type 1C, in the Interlock Resolution User Sequence (300A,0746) of an RT
+Beams Treatment Record's or RT Ion Beams Treatment Record's Interlock
+Sequence (300A,0740), is planted there, since a reviewed rule gives it a
+dummy item at that place and only there. Planted in
 every file, the first two would sequester every
 instance, and no preset could release any of the collection; planted in one,
 that instance checks sequestration, :data:`REVIEW_FILE` checks review, and
@@ -236,9 +237,11 @@ from .compound_actions import (
 )
 from .dummy_values import (
     DUMMY_VRS,
+    INSTITUTION_CODE_SEQUENCE,
     PERSON_IDENTIFICATION_CODE_SEQUENCE,
     REFERENCED_PERFORMED_PROCEDURE_STEP_SEQUENCE,
     VERIFYING_OBSERVER_SEQUENCE,
+    reviewed_within,
 )
 from .elements import dataset_codecs, new_element
 from .file_layout import ElementPath
@@ -399,9 +402,11 @@ _CONTENT_ITEM_VRS = types.MappingProxyType(
 _CONTENT_ITEM_VALUES = types.MappingProxyType(
     {"UIDREF": "(0040,A124)", "DATETIME": "(0040,A120)", "PNAME": "(0040,A123)"}
 )
-# The sequences whose D a reviewed rule writes (D-021).
+# The sequences whose D a reviewed rule writes (D-021), Institution Code
+# Sequence's only where reviewed_within says.
 _REVIEWED_DUMMY_SEQUENCES = frozenset(
     {
+        INSTITUTION_CODE_SEQUENCE,
         PERSON_IDENTIFICATION_CODE_SEQUENCE,
         REFERENCED_PERFORMED_PROCEDURE_STEP_SEQUENCE,
         VERIFYING_OBSERVER_SEQUENCE,
@@ -1355,8 +1360,8 @@ class _Instance:
 
         A plain X sequesters where it removes an attribute that the IOD
         requires outside any Type 3 sequence, and a D where the attribute's
-        VR has no dummy value and no reviewed rule gives it one, unless the
-        Basic Profile removes a sequence that encloses it.
+        VR has no dummy value and no reviewed rule gives it one at the place,
+        unless the Basic Profile removes a sequence that encloses it.
         """
         action = _basic_profile_actions()[row]
         if action == "X":
@@ -1366,7 +1371,7 @@ class _Instance:
             )
         attribute = dictionary_attribute(tag)
         return (
-            tag not in _REVIEWED_DUMMY_SEQUENCES
+            not (tag in _REVIEWED_DUMMY_SEQUENCES and reviewed_within(tag, path))
             and attribute is not None
             and not DUMMY_VRS.intersection(attribute.vrs)
             and self._resolved(path, tag, action) == "D"
