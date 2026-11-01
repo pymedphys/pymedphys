@@ -90,8 +90,11 @@ multiplicity, the orientation as above, the position finite and within
 above 0, the dimensions at least 1, and the Vector Grid Data, of a data set
 read in little endian, of exactly three 32-bit floats for each point, each
 vector either finite or undefined in all three of its components; and where
-its points span at most :data:`~.qc_surfaces.LONGEST` millimetres along the
-patient's z axis and :data:`~.qc_surfaces.WIDEST` across. A grid is not
+its cells, each point's and half its Grid Resolution to either side of it
+along each of the grid's axes, an axis of one point included, span at most
+:data:`~.qc_surfaces.LONGEST` millimetres along the patient's z axis and
+:data:`~.qc_surfaces.WIDEST` across, so that the voxels sampled are at most
+as many as an RT Dose's render takes. A grid is not
 drawn either where a sheet would be taller than
 :data:`MAXIMUM_SHEET_PIXELS`, or a quantity's value would be too large, or
 a level too small, for 32-bit floating point, as a voxel holds them. An
@@ -258,8 +261,12 @@ def _grid(item: pydicom.Dataset) -> DeformationGrid | None:  # pylint: disable =
         (resolution[0], resolution[1], resolution[2]),
         vectors,
     )
+    # The cells, each point's and half a cell to either side of it along
+    # each of the grid's axes, which are sampled, so that the sampled
+    # volume is bounded as an RT Dose's render is, along an axis of one
+    # point as along any other.
     low, high = _extent(placed)
-    spans = high - low
+    spans = high - low + np.abs(directions).T @ np.array(resolution)
     if spans[2] > qc_surfaces.LONGEST or max(spans[:2]) > qc_surfaces.WIDEST:
         return None
     return placed

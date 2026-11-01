@@ -214,6 +214,36 @@ def test_a_grid_that_cannot_be_drawn_is_refused(change):
     assert qc_grids.grids_of(_changed(change)) is None
 
 
+@pytest.mark.parametrize("orientation", list(_ORIENTATIONS))
+@pytest.mark.parametrize("axis", [0, 1, 2])
+def test_a_grid_whose_cells_span_too_far_along_an_axis_of_one_point_is_refused(
+    orientation, axis
+):
+    # One point along ``axis``, whose cell alone is wider than any patient,
+    # and two along the others.
+    shape = [2, 2, 2]
+    shape[2 - axis] = 1
+    resolution = [1.0, 1.0, 1.0]
+    resolution[axis] = 1e9
+    vectors = np.zeros((*shape, 3), np.float32)
+
+    refused = _registration(
+        vectors, resolution=resolution, orientation=_ORIENTATIONS[orientation]
+    )
+    assert qc_grids.grids_of(refused) is None
+    assert qc_previews.previews_of({0: files.written(refused)}, ()).not_previewed == (
+        NotPreviewedEntry(0, NotPreviewedReason.GRIDS_NOT_SHOWN),
+    )
+    # One whose cell fits, at the bound across the patient, is drawn.
+    resolution[axis] = 998.0
+    kept = _registration(
+        vectors, resolution=resolution, orientation=_ORIENTATIONS[orientation]
+    )
+    (grid,) = qc_grids.grids_of(kept)
+    sampling = qc_grids._Sampling(grid)
+    assert max(sampling.shape) <= qc_surfaces.LONGEST / qc_surfaces.MINIMUM_VOXEL + 3
+
+
 def test_a_grid_read_in_big_endian_is_refused():
     dataset = _registration(np.zeros((1, 1, 1, 3), np.float32))
     dataset.set_original_encoding(False, False)
