@@ -49,7 +49,7 @@ Each measure is counted in fixed bins, and no case is named, so the summary give
 
 ## Limits
 
-- Nothing here renders a surface or tests whether a defaced face can be recognised. The check on the Visible Human's CT renders one face (below).
+- Nothing here renders a surface or tests whether a defaced face can be recognised. The checks on the Visible Human's CT and on Steven Keating's cranial CT render faces (below).
 - HaN-Seg's masks include no targets, so the hold for a target in the block is not tested.
 - They include no brain either, so neither the brain that defacing keeps within the cranial cavity nor the 30 mm floor below which it keeps none is tested; the brainstem, chiasm, and pituitary are no reference for them.
 - Each CT volume is written as the CT Image instances of one series in memory, so the check tests the finder and the defacer, not the reading of a scanner's DICOM files, which the engine's own tests cover.
@@ -113,3 +113,37 @@ To run it on your own machine, download the series with `python .github/scripts/
 | Defacing | For each block found and the reference block placed from the reference centres: the slices and volume written as air, the tissue written and the tissue in the block kept, any pixel written outside the block, each reference globe's share written and whether its anterior pole is, and how a found block lies against the reference block. |
 
 The reference centres were placed by hand on the native slices, within 3 mm, before any measure against them was taken; the renders of each head's globes show them, so that a reader can judge them. The scans are post-mortem, from an early 1990s scanner, and one of the male's was made frozen, when water reads as ice, below the finder's soft tissue window, so they bear on the finder's tests of real anatomy, not on its yield on clinical CT.
+
+## Check against PDDCA
+
+The `Face Block Check on PDDCA` workflow runs the same check against the Public Domain Database for Computational Anatomy (PDDCA), version 1.4.1: the planning CTs of 48 head and neck patients of the RTOG 0522 trial, with expert masks of the brainstem, chiasm, mandible, optic nerves (`OpticNerve_R` and `OpticNerve_L`), parotids, and submandibular glands, as NRRD files (D-054). It is re-hosted on Zenodo in three ZIP files, [doi:10.5281/zenodo.19657912](https://doi.org/10.5281/zenodo.19657912), [doi:10.5281/zenodo.19658040](https://doi.org/10.5281/zenodo.19658040), and [doi:10.5281/zenodo.19658102](https://doi.org/10.5281/zenodo.19658102), whose records give its licence as CC BY 3.0, as first distributed. Cite it as:
+
+> P. F. Raudaschl, P. Zaffino, G. C. Sharp, M. F. Spadea, and others, "Evaluation of segmentation methods on head and neck CT: Auto-segmentation challenge 2015", Medical Physics, 2017, [doi:10.1002/mp.12197](https://doi.org/10.1002/mp.12197).
+
+TCIA now distributes the trial's images under controlled access, since they could be used to reconstruct a face, so the check renders nothing, and only counts, codes, digests, versions, and the engine's settings leave the runner, as for HaN-Seg. The cases are held-out evidence: the finder's settings were not set from them and are not to be tuned to them. Never commit, cache, or attach any part of the data set, or a value read from it.
+
+1. In the repository's **Actions** tab, choose **Face Block Check on PDDCA**, then **Run workflow**, and pick the branch whose engine to check.
+2. The job downloads the three ZIP files, about 1.6 GB, from Zenodo, checks each one's size and MD5 against its record's, and runs `python -m pymedphys._dicom.deidentify.face_validation_command pddca <part1> <part2> <part3> --out <results>` through `.github/scripts/run_redacted.py`. The command also checks each file's SHA-256 against the one that `face_validation_pddca.PARTS` pins, and reads the files without extracting them.
+3. The job's summary shows `face-validation.md`, and its artefact `face-validation-pddca-results`, kept for 90 days, holds it with `face-validation.json`, labelled `pymedphys-deid-face-validation-pddca/1`, and `commit.txt`.
+
+PDDCA has no masks of the eyes, so its counts are the HaN-Seg check's without those against the reference eyes and without what the finder saw at them, and add a section of their own:
+
+| Section | What it counts |
+| --- | --- |
+| Defaced series against the optic nerves | The defaced series with both optic nerves' masks, and those without; the series whose globes found are nearer the other side's nerve tip; the distance from each globe found to the anterior tip of its side's optic nerve, the nerve's voxel farthest towards the patient's anterior; and how far that tip lies behind the globe, along the block's anterior. |
+
+Each optic nerve runs back from its globe, so its anterior tip lies about a globe's radius behind the globe's centre. A globe found far from its own nerve's tip, or nearer the other side's, was placed wrongly; a tip in front of its globe, a depth below 0, means the globe found lies behind where the nerve meets the eye. The nerves' masks are the reference: where a mask stops short of the globe, the distance counts against the finder.
+
+## Check on Steven Keating's cranial CT
+
+The `Face Block Check on Keating` workflow checks the finder and the defacer on a living adult's head, and renders its face: Steven Keating's cranial CT, which he released on Zenodo in 2014 as "Open access (CC0) with approval from patient" ([doi:10.5281/zenodo.16816](https://doi.org/10.5281/zenodo.16816)) (D-058). It is one acquisition, from below the chin to the vertex, three months after an astrocytoma was resected, reconstructed as two axial series of 216 slices 1.25 mm apart, on 284 mm and 500 mm fields of view. No endorsement by him of PyMedPhys or of these results is implied.
+
+The scan is held-out evidence: the finder's settings were not set from it, and none is to be changed from what it shows. Never commit, cache, or attach the scan itself; its headers carry its subject's identifiers.
+
+1. In the repository's **Actions** tab, choose **Face Block Check on Keating**, then **Run workflow**, and pick the branch whose engine to check.
+2. The job downloads the record's ZIP file, 84,560,647 bytes, from Zenodo, checks its size and MD5 against the record's, and runs `python -m pymedphys._dicom.deidentify.face_validation_command keating <zip> --out <results>`, which refuses the file unless its SHA-256, and each axial series' file count and digest, are those that `face_validation_keating` pins.
+3. The job's summary shows `face-validation-keating.md`, and its artefact `face-validation-keating-results`, kept for 90 days, holds it with `face-validation-keating.json`, labelled `pymedphys-deid-face-validation-keating/1`, `commit.txt`, and `renders/`: for each series, the skin surface as received and as each block would deface it, and slices through each globe, with `NOTICE.txt`.
+
+To run it on your own machine, download the ZIP file from the record and run the same command in a development environment of this repository.
+
+Each series is checked, and its page laid out, as the Visible Human check checks and lays out a series (above). The reference centres were placed by hand, before the finder was run on the scan, as the midpoint of each globe's extent along each axis between the peaks of its sclera and from its cornea's front, within 3 mm; the renders of the globes show them, so that a reader can judge them. The two series image one acquisition, so they differ only in field of view, pixel spacing, and reconstruction. The skull has a craniotomy, so the brain that defacing keeps, which bone of at least 300 HU must enclose within a slice, is tested on a skull that is not intact.

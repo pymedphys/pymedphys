@@ -27,6 +27,8 @@ Schedule / manual run -> tg263-edition-check.yml
 Schedule / manual run / PR changing it or labelled check-upstream -> tcia-edition-check.yml
 Manual run -> face-validation.yml
 Manual run -> face-validation-visible-human.yml
+Manual run -> face-validation-keating.yml
+Manual run -> face-validation-pddca.yml
 Manual run -> pixel-text-validation.yml
 Published release -> release.yml -> quality checks, publishing, verification, and published-package tests
 Issue comment -> claude.yml
@@ -622,6 +624,48 @@ Courtesy of the U.S. National Library of Medicine.
   `face-validation-vhp-results` artefact, kept for 90 days, holds it with
   `face-validation-vhp.json`, `commit.txt`, and renders of each head.
   The series themselves are never cached or uploaded
+
+#### `face-validation-keating.yml`
+
+Checks the face block finder and CT defacing of the Clean Recognizable Visual
+Features Option on Steven Keating's cranial CT, which he released on Zenodo
+under CC0 1.0 with his approval (see
+[Check the face block against HaN-Seg](deidentification-face-validation.md)).
+
+- **Triggers**: manually only
+- **Steps**: installs the project with the `user` extra, downloads the
+  record's ZIP file from Zenodo, checks its size and MD5 against the
+  record's, and runs
+  `python -m pymedphys._dicom.deidentify.face_validation_command keating`,
+  which refuses the file unless its SHA-256 and each axial series' file count
+  and digest are those that the check pins. Its job can only read the
+  repository
+- **Results**: the job summary shows `face-validation-keating.md`, and the
+  `face-validation-keating-results` artefact, kept for 90 days, holds it with
+  `face-validation-keating.json`, `commit.txt`, and renders of each series.
+  The ZIP file itself is never cached or uploaded
+
+#### `face-validation-pddca.yml`
+
+Checks the face block and the air written there against the optic nerve and
+organ masks of the PDDCA 1.4.1 data set, re-hosted on Zenodo in three parts
+(see
+[Check the face block against HaN-Seg](deidentification-face-validation.md)).
+
+- **Triggers**: manually only
+- **Steps**: installs the project with the `user` extra, downloads the three
+  ZIP files from Zenodo, checks each one's size and MD5 against its record's,
+  and runs
+  `python -m pymedphys._dicom.deidentify.face_validation_command pddca`
+  through `.github/scripts/run_redacted.py`, as `face-validation.yml` runs
+  the HaN-Seg check; the command also checks each file's SHA-256. Its job can
+  only read the repository
+- **Results**: the job summary shows `face-validation.md`, and the
+  `face-validation-pddca-results` artefact, kept for 90 days, holds it with
+  `face-validation.json` and `commit.txt`. They hold only counts, codes,
+  digests, versions, and the engine's settings. PDDCA's images are of real
+  patients, so the data set is never cached or uploaded, and nothing else read
+  from it leaves the runner
 
 #### `pixel-text-validation.yml`
 

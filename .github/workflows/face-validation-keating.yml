@@ -1,0 +1,104 @@
+name: Face Block Check on Keating
+
+# On demand, download Steven Keating's cranial CT from Zenodo
+# (https://doi.org/10.5281/zenodo.16816), which he released as open access
+# under CC0 1.0 with his approval, check it against the size, MD5, and
+# SHA-256 that the check pins, and check the face block finder and CT
+# defacing of the Clean Recognizable Visual Features Option on its two axial
+# series, rendering its face (D-058). The scan is held-out evidence: the
+# finder's settings are not to be tuned to it.
+#
+# Its subject made it public, so the results give the measures, and the
+# artefact holds renders of his face. The archive itself is never cached or
+# uploaded.
+on:
+  workflow_dispatch:
+  # Temporary, so that the check can run before the workflow is on the
+  # default branch: removed before the pull request that adds it is ready.
+  push:
+    branches:
+      - claude/project-thread-rii3gy
+    paths:
+      - .github/workflows/face-validation-keating.yml
+      - lib/pymedphys/_dicom/deidentify/face_validation_keating.py
+      - lib/pymedphys/_dicom/deidentify/face_validation_keating_markdown.py
+
+permissions:
+  contents: read
+
+concurrency:
+  group: face-validation-keating-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  check:
+    name: Face block check on Keating
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    env:
+      # Zenodo record 16816: its one file, with the size and MD5 that the
+      # record gives; the check also pins its SHA-256.
+      KEATING_URL: https://zenodo.org/api/records/16816/files/CT_Scan_-_Steven_Keating_-_Nov_19_2014_MGH.zip/content
+      KEATING_SIZE: '84560647'
+      KEATING_MD5: 30583051d773ba5f6bc182e6e183f618
+      # A re-run's artefact is named apart from the first attempt's.
+      ATTEMPT_SUFFIX: >-
+        ${{ github.run_attempt != '1'
+        && format('-attempt-{0}', github.run_attempt) || '' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # The user extra holds pydicom, NumPy, SciPy, and Matplotlib.
+      - uses: ./.github/actions/setup-project
+        with:
+          extras: 'user'
+
+      - name: Download the CT from Zenodo
+        timeout-minutes: 15
+        run: |
+          mkdir -p "${RUNNER_TEMP}/keating"
+          archive="${RUNNER_TEMP}/keating/keating.zip"
+          curl -sSfL --retry 3 --retry-all-errors --retry-delay 60 \
+            -o "${archive}" "${KEATING_URL}"
+          size="$(stat -c %s "${archive}")"
+          if [[ "${size}" != "${KEATING_SIZE}" ]]; then
+            echo "The archive is ${size} bytes, not the ${KEATING_SIZE} that its Zenodo record gives."
+            exit 1
+          fi
+          echo "${KEATING_MD5}  ${archive}" | md5sum --check --strict -
+
+      # The command refuses an archive or series that is not the one pinned,
+      # and writes face-validation-keating.json, face-validation-keating.md,
+      # and the renders of each series.
+      - name: Run the check
+        timeout-minutes: 30
+        run: |
+          results="${RUNNER_TEMP}/keating/results"
+          uv run --no-sync python -m \
+            pymedphys._dicom.deidentify.face_validation_command keating \
+            "${RUNNER_TEMP}/keating/keating.zip" --out "${results}" > /dev/null
+          echo "${GITHUB_SHA}" > "${results}/commit.txt"
+
+      - name: Show the results
+        if: ${{ !cancelled() }}
+        run: |
+          page="${RUNNER_TEMP}/keating/results/face-validation-keating.md"
+          if [[ -f "${page}" ]]; then
+            tee -a "${GITHUB_STEP_SUMMARY}" < "${page}"
+          else
+            echo "The check wrote no results; the log shows why." \
+              | tee -a "${GITHUB_STEP_SUMMARY}"
+          fi
+
+      - name: Upload the results
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: face-validation-keating-results${{ env.ATTEMPT_SUFFIX }}
+          path: ${{ runner.temp }}/keating/results/
+          if-no-files-found: warn
+          retention-days: 90
