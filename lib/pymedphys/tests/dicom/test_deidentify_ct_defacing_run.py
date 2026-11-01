@@ -433,8 +433,9 @@ def _reviewed(
                     pet_slices,
                     sop_class=files.ENHANCED_PET_IMAGE_STORAGE,
                     instance=enhanced.SOPInstanceUID,
-                    rescale_type="BQML",
+                    rescale_type="US",
                     template=enhanced,
+                    mapped=True,
                 )
             )
         reviewed = run.run(
