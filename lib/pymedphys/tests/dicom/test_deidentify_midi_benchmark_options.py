@@ -28,6 +28,7 @@ from pymedphys._dicom.deidentify import (
     dicom_validation,
     dicom_validation_command,
     dicom_validators,
+    instance_transform,
 )
 from pymedphys._dicom.deidentify import midi_benchmark as benchmark
 from pymedphys._dicom.deidentify import midi_benchmark_command, midi_script_results
@@ -236,6 +237,23 @@ def test_under_clean_recognizable_visual_features_each_face_is_held(sources):
     assert released and not released & {*synthetic.CT_SLICES, synthetic.DOSE}
     withheld = document["coverage"]["instances"]["withheld"]
     assert withheld > basic["coverage"]["instances"]["withheld"]
+
+
+def test_the_run_prepares_the_transform_before_any_instance(sources, monkeypatch):
+    # The run's records reach InstanceTransform.prepare through the error
+    # recorder's wrapper; without them tps-import has no synthetic birth
+    # dates, and Clean Recognizable Visual Features finds no face block.
+    prepared = []
+    original = instance_transform.InstanceTransform.prepare
+
+    def recording(self, records, read):
+        prepared.append(len(records))
+        original(self, records, read)
+
+    monkeypatch.setattr(instance_transform.InstanceTransform, "prepare", recording)
+    _run(sources, "option", options=[CLEAN_RECOGNIZABLE_VISUAL_FEATURES])
+
+    assert len(prepared) == 1 and prepared[0] > 0
 
 
 def test_public_release_runs_with_clean_recognizable_visual_features(sources, edition):
