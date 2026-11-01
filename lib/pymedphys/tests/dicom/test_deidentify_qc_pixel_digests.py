@@ -382,7 +382,6 @@ def _padded(data, tag):
 def _unshown_doses():
     """RT Dose instances of 12 frames, or a series of planes, whose dose
     levels cannot be drawn, by name."""
-    oblique = (0.866025, 0.5, 0.0, -0.5, 0.866025, 0.0)
     longer = pydicom.dcmread(io.BytesIO(_dose(12)))
     longer.PixelData += bytes(4 * 20 * 20)
     return {
@@ -391,7 +390,6 @@ def _unshown_doses():
         "negative-scaling": [_altered(_dose(12), DoseGridScaling=-0.001)],
         "signed": [_altered(_dose(12), PixelRepresentation=1)],
         "rescaled": [_altered(_dose(12), RescaleSlope=2, RescaleIntercept=0)],
-        "oblique": [_altered(_dose(12), ImageOrientationPatient=list(oblique))],
         "uneven": [
             _altered(_dose(12), GridFrameOffsetVector=[0.0, 3.0, 7.0, *range(9, 18)])
         ],

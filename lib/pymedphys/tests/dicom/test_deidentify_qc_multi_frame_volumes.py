@@ -409,7 +409,6 @@ def _oblique(dataset):
         _unreadable_slope,
         _two_items,
         _too_few_items,
-        _oblique,
     ],
 )
 def test_frames_that_their_groups_cannot_place_or_rescale_form_no_volume(changed):
@@ -421,6 +420,23 @@ def test_frames_that_their_groups_cannot_place_or_rescale_form_no_volume(changed
     # stay held whatever a verdict says.
     assert _kinds(previews) == [PreviewKind.SERIES_CINE]
     assert previews.pixels_shown == frozenset()
+
+
+@pytest.mark.pydicom
+def test_oblique_frames_offset_within_their_plane_form_a_volume():
+    # Turned obliquely, the frames, still placed one above another, are
+    # offset within their plane; each is sampled where it lies, so every
+    # frame is drawn and a verdict can release the instance.
+    written = {0: _multi_frame(_single(), changed=_oblique)}
+
+    previews = qc_previews.previews_of(written, ())
+
+    assert _kinds(previews) == [
+        PreviewKind.SERIES_CINE,
+        PreviewKind.SERIES_MIP,
+        PreviewKind.SERIES_SURFACE,
+    ]
+    assert previews.pixels_shown == frozenset(written)
 
 
 # A coarse scan of the analytic head, to draw contour and segments sheets on.

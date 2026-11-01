@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# pylint: disable = too-many-lines
+# One module samples every volume, whether a grid or a stack places it, and
+# renders every kind of surface sheet from the same views, so it is long.
 """Skin-surface renders for the confidential QC pack's face review (D-017).
 
 A face-recognition system matches the skin surface reconstructed from a
@@ -24,8 +27,15 @@ renders:
 - each volume that a series forms, as it describes; and
 - each RT Dose instance of two or more frames, placed by Image Position
   (Patient), Image Orientation (Patient), Pixel Spacing, and Grid Frame
-  Offset Vector, whose axes lie along the patient's three directions and
-  whose frames are evenly spaced, at each of a ladder of dose levels.
+  Offset Vector, whose frames are evenly spaced, at each of a ladder of
+  dose levels.
+
+A volume whose axes lie along the patient's three directions, with its
+slices stacked along the normal, is placed by a :class:`Grid`; any other,
+such as one with a gantry tilt, sheared, or oblique, by a :class:`Stacked`
+volume, which :mod:`~pymedphys._dicom.deidentify.stack_sampling` samples
+by the same nearest-neighbour rule along its slices' normal and within
+each slice, to the same voxels where its axes do lie along the patient's.
 
 A series' slices may be single-frame instances, or the frames of
 multi-frame instances placed by their functional groups, added in any
@@ -78,10 +88,14 @@ right or from front to back, is not rendered, so that its views stay
 within bounds at those voxels. Its slices are sampled as they are decoded,
 so that it is never held at full resolution, and its views are rendered a
 few slices at a time. Each slice is also taken into
-the voxels nearest it along the slice axis by their maximum, so that every
-slice is drawn, as it would not be by nearest neighbour alone where slices
-are closer than the voxels: a voxel is in the surface where any of its
-slices is there. Each view looks along
+the voxels nearest it along the slice axis by their maximum, or, for a
+:class:`Stacked` volume, into each voxel that its plane crosses
+(:meth:`~.stack_sampling.StackSampler.crossed`), so that every slice is
+drawn, as it would not be by nearest neighbour alone where slices are
+closer than the voxels: a voxel is in the surface where any of its slices
+is there. A :class:`Stacked` volume's lattice is sampled in slabs of at
+most :data:`SLAB_VOXELS` voxels (:class:`Slabs`), so that the voxels that
+one slice gives stay within bounds however few slices it has. Each view looks along
 horizontal rays, turned about the superior-inferior axis by its angle in
 degrees from anterior towards the patient's left. It shows the first voxel
 on each ray that is in the surface, shaded by Lambert's law from the slope
@@ -102,10 +116,13 @@ from __future__ import annotations
 import dataclasses
 import enum
 import math
-from collections.abc import Sequence
+from collections.abc import Iterator, Sequence
+from typing import NamedTuple
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import scipy
+
+from . import stack_sampling
 
 # Each view's angle about the superior-inferior axis, in degrees from anterior
 # towards the patient's left: frontal, the two obliques, the two profiles,
@@ -155,6 +172,10 @@ _ALONG = (0, 90, -90, 180)
 # How many slices are rendered at once, so that a long volume's rays are
 # held in memory a few slices at a time.
 _SLICES_AT_A_TIME = 64
+# The most voxels of a lattice that a slab of it holds (Slabs), so that the
+# voxels that one slice gives, and the arrays that place them, stay within
+# bounds however few slices a stack has.
+SLAB_VOXELS = 1 << 22
 
 
 class Threshold(enum.Enum):
@@ -236,11 +257,164 @@ def grid(
     return Grid((axes[0], axes[1], axes[2]), (slices, rows, columns), threshold, scale)
 
 
-class Surface:
-    """Samples a volume slice by slice, and renders its skin surface."""
+@dataclasses.dataclass(frozen=True)
+class Stacked:
+    """A volume of parallel slices that a stack places, such as a stack
+    with a gantry tilt, sheared, or oblique, and its threshold.
 
-    def __init__(self, volume: Grid) -> None:
+    Attributes
+    ----------
+    stack : stack_sampling.Stack
+        Its slices, in the order in which they are added.
+    threshold : Threshold
+    scale : float
+        What each slice is multiplied by before the threshold is applied:
+        Dose Grid Scaling, or 1.
+    """
+
+    stack: stack_sampling.Stack
+    threshold: Threshold
+    scale: float = 1.0
+
+
+class Slabs:
+    """A lattice cut into slabs, each sampled from a stack on its own.
+
+    The lattice is cut across the axis along which each
+    :class:`~.stack_sampling.StackSampler` runs its lines of voxels, the one
+    that the stack's normal lies most nearly along, into slabs of at most
+    ``most`` voxels where a slab one voxel thick allows. A sampler finds
+    each voxel's slice and pixel from the voxel's centre, and the voxel that
+    a slice crosses from the line it lies on, so each slab's voxels are
+    sampled as one sampler of the whole lattice samples them, while the
+    voxels that one slice gives are found a slab at a time. ``most`` is
+    :data:`SLAB_VOXELS` by default.
+    """
+
+    def __init__(
+        self,
+        stack: stack_sampling.Stack,
+        lattice: stack_sampling.Lattice,
+        most: int | None = None,
+    ) -> None:
+        most = SLAB_VOXELS if most is None else most
+        normal = np.abs(stack.normal)
+        # The lattice's axis along each patient axis is (2, 1, 0), as
+        # stack_sampling indexes it.
+        run = (2, 1, 0)[int(np.argmax(normal))]
+        across = [axis for axis in range(3) if axis != run]
+        # Across the longer of the other two, so that the slabs are thinnest.
+        self._axis = max(across, key=lambda axis: lattice.shape[axis])
+        shape = lattice.shape
+        layer = math.prod(shape) // shape[self._axis]
+        thickness = max(1, most // max(layer, 1))
+        steps = lattice.steps
+        self._starts: list[int] = []
+        self._samplers: list[stack_sampling.StackSampler] = []
+        for start in range(0, shape[self._axis], thickness):
+            first = np.array(lattice.first) + start * steps[self._axis]
+            sizes = list(shape)
+            sizes[self._axis] = min(thickness, shape[self._axis] - start)
+            part = stack_sampling.Lattice(
+                (float(first[0]), float(first[1]), float(first[2])),
+                lattice.voxel,
+                (sizes[0], sizes[1], sizes[2]),
+            )
+            self._starts.append(start)
+            self._samplers.append(stack_sampling.StackSampler(stack, part))
+        self._lattice = lattice
+
+    @property
+    def axis(self) -> int:
+        """The lattice's axis across which it is cut."""
+        return self._axis
+
+    @property
+    def lattice(self) -> stack_sampling.Lattice:
+        """The whole lattice."""
+        return self._lattice
+
+    @property
+    def samplers(self) -> tuple[stack_sampling.StackSampler, ...]:
+        """Each slab's sampler, in order along :attr:`axis`."""
+        return tuple(self._samplers)
+
+    def taken(self, index: int) -> Iterator[Placed]:
+        """Yield, a slab at a time, the voxels of the whole lattice that take
+        a pixel of the slice at ``index``, as its nearest slice
+        (:meth:`~.stack_sampling.StackSampler.nearest`) and as a slice that
+        crosses them (:meth:`~.stack_sampling.StackSampler.crossed`)."""
+        for start, sampler in zip(self._starts, self._samplers):
+            for found in (sampler.nearest(index), sampler.crossed(index)):
+                indices = list(np.unravel_index(found.voxels, sampler.lattice.shape))
+                indices[self._axis] = indices[self._axis] + start
+                yield Placed(
+                    (indices[0], indices[1], indices[2]), found.rows, found.columns
+                )
+
+
+class Placed(NamedTuple):
+    """Voxels of a lattice that take pixels of one slice, and which.
+
+    Attributes
+    ----------
+    indices : tuple of numpy.ndarray
+        Each voxel's index from superior, from anterior, then from the
+        patient's right.
+    rows, columns : numpy.ndarray
+        The row and the column of the pixel that each voxel takes.
+    """
+
+    indices: tuple[np.ndarray, np.ndarray, np.ndarray]
+    rows: np.ndarray
+    columns: np.ndarray
+
+
+class Surface:
+    """Samples a volume slice by slice, and renders its skin surface.
+
+    A :class:`Grid`'s volume is sampled one index along each of its axes at
+    a time, and a :class:`Stacked` volume's by
+    :mod:`~pymedphys._dicom.deidentify.stack_sampling`, to the same voxels
+    by the same rule where its axes lie along the patient's, with every
+    slice drawn (:class:`~.stack_sampling.SampledVolume`).
+    """
+
+    def __init__(self, volume: Grid | Stacked) -> None:
         self._grid = volume
+        # The slices added, by their place along the slice axis, or in the
+        # stack, and the place of the next slice where none is given.
+        self._added: set[int] = set()
+        self._next = 0
+        self._stray = False
+        # An RT Dose's greatest dose, and its smallest above 0, over every
+        # pixel of every slice.
+        self._peak = -math.inf
+        self._floor = math.inf
+        # Whether an RT Dose's scaling lost a dose of a slice (dose_values).
+        self._lost = False
+        none = np.zeros(0, np.intp)
+        self._taken: tuple[np.ndarray, ...] = (none, none, none)
+        self._nearest = none
+        self._samples = np.zeros((0, 0, 0), np.float32)
+        # A stacked volume's sampled slabs, in order across Slabs.axis.
+        self._slabs: Slabs | None = None
+        self._sampled: list[stack_sampling.SampledVolume] = []
+        if isinstance(volume, Stacked):
+            self._count = len(volume.stack.offsets)
+            low, high = volume.stack.bounds
+            spans = [float(span) for span in high - low]
+            self._large = spans[2] > LONGEST or max(spans[:2]) > WIDEST
+            if not self._large:
+                # As voxel_side gives it for a grid of the same spacings.
+                voxel = max(MINIMUM_VOXEL, volume.stack.smallest_spacing)
+                self._slabs = Slabs(volume.stack, volume.stack.lattice(voxel))
+                self._sampled = [
+                    stack_sampling.SampledVolume(sampler, every_slice=True)
+                    for sampler in self._slabs.samplers
+                ]
+            return
+        self._count = len(volume.coordinates[0])
         spans = [0.0, 0.0, 0.0]
         for coordinates, axis in zip(volume.coordinates, volume.axes):
             spans[axis] = max(coordinates) - min(coordinates)
@@ -248,7 +422,6 @@ class Surface:
         # is sampled.
         self._large = spans[2] > LONGEST or max(spans[:2]) > WIDEST
         voxel = voxel_side(volume.coordinates)
-        none = np.zeros(0, np.intp)
         # For each of the volume's axes, the index sampled at each voxel
         # along its patient axis: from superior, anterior, and the patient's
         # right.
@@ -267,17 +440,6 @@ class Surface:
         self._samples = np.full(
             tuple(len(taken) for taken in self._taken), np.nan, np.float32
         )
-        # The slices added, by their place along the slice axis, and the
-        # place of the next slice where none is given.
-        self._added: set[int] = set()
-        self._next = 0
-        self._stray = False
-        # An RT Dose's greatest dose, and its smallest above 0, over every
-        # pixel of every slice.
-        self._peak = -math.inf
-        self._floor = math.inf
-        # Whether an RT Dose's scaling lost a dose of a slice (dose_values).
-        self._lost = False
 
     def add(
         self, frame: np.ndarray, scale: float | None = None, index: int | None = None
@@ -286,15 +448,16 @@ class Surface:
 
         ``scale`` multiplies it in place of the grid's, as each plane of a
         series of RT Dose planes has its own Dose Grid Scaling. ``index`` is
-        its place along the grid's slice axis, from 0, so that the frames of
-        a multi-frame instance can be added in the order that they are
-        decoded; by default, the slice after the last one added. A slice
-        added twice counts once.
+        its place along the grid's slice axis, or in the order of a stacked
+        volume's slices, from 0, so that the frames of a multi-frame
+        instance can be added in the order that they are decoded; by
+        default, the slice after the last one added. A slice added twice
+        counts once.
         """
         if index is None:
             index = self._next
         self._next = index + 1
-        if not 0 <= index < len(self._grid.coordinates[0]):
+        if not 0 <= index < self._count:
             # A slice that the grid has no place for leaves it unrendered.
             self._stray = True
             return
@@ -317,6 +480,10 @@ class Surface:
                 self._floor = min(self._floor, float(positive.min()))
         elif scale != 1.0:
             values = frame * np.float32(scale)
+        if self._slabs is not None:
+            for sampled in self._sampled:
+                sampled.add(values, index)
+            return
         wanted = np.union1d(
             np.flatnonzero(self._taken[0] == index), self._nearest[index]
         )
@@ -335,14 +502,9 @@ class Surface:
         For an RT Dose, the voxels at or above ``level``, or of any dose
         above 0 where it is 0 or not given.
         """
-        if (
-            len(self._added) != len(self._grid.coordinates[0])
-            or self._stray
-            or self._lost
-            or self._large
-        ):
+        if len(self._added) != self._count or self._stray or self._lost or self._large:
             return None
-        samples = self._samples
+        samples = self._ordered()
         # NaN, padding, is below every level, and compares so.
         with np.errstate(invalid="ignore"):
             if self._grid.threshold is Threshold.DOSE:
@@ -353,7 +515,7 @@ class Surface:
                     inside = np.zeros(samples.shape, bool)
                 else:
                     inside = samples >= level
-        return np.transpose(inside, [self._grid.axes.index(axis) for axis in (2, 1, 0)])
+        return inside
 
     @property
     def large(self) -> bool:
@@ -428,10 +590,30 @@ class Surface:
         ]
         return None if height > MAXIMUM_DOSE_SHEET_PIXELS else np.concatenate(parts[1:])
 
+    @property
+    def lattice(self) -> stack_sampling.Lattice | None:
+        """A stacked volume's lattice, whose voxels :meth:`mask` indexes, or
+        None for a grid's, or for one too large to render."""
+        return None if self._slabs is None else self._slabs.lattice
+
+    def _ordered(self) -> np.ndarray:
+        """The sampled values, indexed from superior, from anterior, then
+        from the patient's right."""
+        if self._slabs is not None:
+            return np.concatenate(
+                [sampled.values for sampled in self._sampled], axis=self._slabs.axis
+            )
+        assert isinstance(self._grid, Grid)
+        return np.transpose(
+            self._samples, [self._grid.axes.index(axis) for axis in (2, 1, 0)]
+        )
+
     def _level(self) -> float | None:
         if self._grid.threshold is Threshold.CT:
             return CT_THRESHOLD
-        return _otsu(self._samples, padding=True)
+        return _otsu(
+            self._samples if self._slabs is None else self._ordered(), padding=True
+        )
 
 
 def dose_levels(peak: float, floor: float) -> tuple[float, ...]:
