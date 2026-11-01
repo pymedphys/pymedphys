@@ -32,7 +32,7 @@ from pymedphys._dicom.deidentify.text_evaluation_detector import PostProcessing
 from pymedphys._dicom.deidentify.text_evaluation_frames import EvaluationRefused
 
 from . import _synthetic_references as synthetic
-from .test_deidentify_text_evaluation import SHAPE, _ct_dataset, box_detector
+from ._text_evaluation_stand_ins import SHAPE, _ct_dataset, box_detector
 
 UUID = "0123abcd-0000-4000-8000-{:012d}"
 DOI = "10.7937/K9/TCIA.2015.LO9QL9SX"

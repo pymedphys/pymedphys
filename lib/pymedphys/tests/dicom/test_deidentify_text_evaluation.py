@@ -32,16 +32,8 @@ from pymedphys._dicom.deidentify import text_evaluation_injection as injection
 from pymedphys._dicom.deidentify import text_evaluation_markdown as markdown
 from pymedphys._dicom.deidentify import text_evaluation_phantoms as phantoms
 from pymedphys._dicom.deidentify import text_evaluation_sources as sources
-from pymedphys._dicom.deidentify.text_detection import (
-    RENDERINGS,
-    DetectionParameters,
-    RenderedProbability,
-    TextBox,
-)
-from pymedphys._dicom.deidentify.text_evaluation_detector import (
-    PostProcessing,
-    grid_boxes,
-)
+from pymedphys._dicom.deidentify.text_detection import DetectionParameters, TextBox
+from pymedphys._dicom.deidentify.text_evaluation_detector import PostProcessing
 from pymedphys._dicom.deidentify.text_evaluation_frames import (
     BurnedText,
     EvaluationFrame,
@@ -49,105 +41,20 @@ from pymedphys._dicom.deidentify.text_evaluation_frames import (
 )
 
 from . import _synthetic_nrrd as files
+from ._text_evaluation_stand_ins import (
+    SECRET,
+    SHAPE,
+    BoxDetector,
+    box_detector,
+    Frames,
+    Raising,
+    _frame,
+    _text,
+    _settings,
+    _run,
+    _ct_dataset,
+)
 from . import _synthetic_references as synthetic
-
-SECRET = "SECRET^CASE^4711"
-SHAPE = (64, 64)
-# A detector's probability is 0.9 inside these regions of every frame, and
-# a region of 8 or more network pixels at the default settings gives a box
-# grown by the unclip offset and the margin.
-REGION_TEXT = (8, 8, 16, 40)
-REGION_ANATOMY = (40, 20, 50, 30)
-
-
-class BoxDetector:
-    """A stand-in detector: its full-range map is 0.9 inside its regions,
-    on the frame's own grid, and its other maps are empty."""
-
-    def __init__(self, regions=(REGION_TEXT, REGION_ANATOMY)):
-        self.regions = tuple(regions)
-
-    @property
-    def method(self):
-        return {"network": "boxes", "variant": {"name": "boxes"}}
-
-    def probabilities(self, frame):
-        maps = []
-        for name in RENDERINGS:
-            probability = np.zeros(frame.shape, np.float32)
-            if name == "full-range":
-                for top, left, bottom, right in self.regions:
-                    probability[top:bottom, left:right] = 0.9
-            maps.append(RenderedProbability(name, frame.shape, probability))
-        return tuple(maps)
-
-    def boxes_of_points(self, frame, points):
-        return grid_boxes(self.probabilities(frame), points)
-
-
-def box_detector():
-    """Makes a :class:`BoxDetector`, picklable for worker processes."""
-    return BoxDetector()
-
-
-def _frame(stored=None, *, case=SECRET, collection="collection", texts=(), **options):
-    stored = np.full(SHAPE, 1024, np.uint16) if stored is None else stored
-    return EvaluationFrame(
-        stored=stored,
-        collection=collection,
-        case=case,
-        iod=options.pop("iod", "CT Image Storage"),
-        modality=options.pop("modality", "CT"),
-        intercept=-1024.0,
-        pixel_spacing=options.pop("pixel_spacing", 1.0),
-        texts=tuple(texts),
-        **options,
-    )
-
-
-def _text(top, left, rows, columns, **strata):
-    return BurnedText(top, left, np.ones((rows, columns)), float(rows), strata)
-
-
-@dataclasses.dataclass(frozen=True)
-class Frames:
-    """A case whose frames are given."""
-
-    collection: str
-    case: str
-    frames: tuple
-
-    def read(self):
-        yield from self.frames
-
-
-@dataclasses.dataclass(frozen=True)
-class Raising:
-    """A case whose reading raises, with a message that quotes a value."""
-
-    collection: str = "collection"
-    case: str = SECRET
-
-    def read(self):
-        yield _frame()
-        raise ValueError(SECRET)
-
-
-def _settings(**options):
-    return evaluation.EvaluationSettings(
-        points=options.pop("points", (PostProcessing(),)),
-        evaluated=options.pop("evaluated", "all"),
-        **options,
-    )
-
-
-def _run(cases, **options):
-    workers = options.pop("workers", 1)
-    run = evaluation.evaluate(
-        cases, box_detector, _settings(**options), workers=workers
-    )
-    return evaluation.summarise(run, replicates=200)
-
 
 # -- Split --------------------------------------------------------------------
 
@@ -467,7 +374,7 @@ def test_a_case_that_raises_is_counted_by_where_and_never_by_its_message():
     assert list(crashed.values()) == [1]
     (site,) = crashed
     assert re.fullmatch(
-        r"ValueError at test_deidentify_text_evaluation\.py:\d+ in read", site
+        r"ValueError at _text_evaluation_stand_ins\.py:\d+ in read", site
     )
     assert SECRET not in json.dumps(summary)
     assert summary["points"][0]["false_positives"]["frames"] == 1
@@ -644,23 +551,6 @@ def test_the_page_shows_the_trade_off_and_the_criteria():
 
 
 # -- Readers ------------------------------------------------------------------
-
-
-def _ct_dataset(frames, **attributes):
-    words = np.asarray(frames)
-    dataset = synthetic.ct_slice(0)
-    dataset.Modality = "CT"
-    dataset.SamplesPerPixel = 1
-    dataset.PhotometricInterpretation = "MONOCHROME2"
-    dataset.Rows, dataset.Columns = words.shape[1:]
-    dataset.BitsAllocated, dataset.BitsStored, dataset.HighBit = 16, 12, 11
-    dataset.PixelRepresentation = 0
-    if words.shape[0] > 1:
-        dataset.NumberOfFrames = words.shape[0]
-    for keyword, value in attributes.items():
-        setattr(dataset, keyword, value)
-    dataset.PixelData = words.astype("<u2").tobytes()
-    return dataset
 
 
 def test_dicom_frames_are_the_stored_values_a_run_searches():
