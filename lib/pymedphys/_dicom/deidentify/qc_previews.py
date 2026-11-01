@@ -264,6 +264,12 @@ class _Instance:
     planes: tuple[_Plane, ...] | None = None
     rescales: tuple[tuple[float, float], ...] | None = None
     stacks: tuple[tuple[str, str], ...] | None = None
+    # What its Stack IDs and Temporal Position Indices are unique within,
+    # and so which other instances' frames its frames may share a volume
+    # with (_scope): for an instance whose functional groups describe its
+    # frames, its Concatenation, or else itself alone; for any other, its
+    # series' other instances without functional groups, as "".
+    scope: str = ""
     # Whether its rescaled values are Hounsfield units: for an instance
     # without functional groups, where its Rescale Type is HU or absent,
     # which PS3.3 C.8.2.1 allows only for Hounsfield units in a CT Image;
@@ -281,10 +287,12 @@ class _Instance:
         """The Rescale Slope and Rescale Intercept of a frame, from 0."""
         return self.rescale if self.rescales is None else self.rescales[frame]
 
-    def stack_of(self, frame: int) -> tuple[str, str]:
-        """The Stack ID and Temporal Position Index of a frame, from 0, or
-        empty strings where it gives none."""
-        return ("", "") if self.stacks is None else self.stacks[frame]
+    def stack_of(self, frame: int) -> tuple[str, str, str]:
+        """The scope of an instance's stacks, then the Stack ID and Temporal
+        Position Index of a frame, from 0, or empty strings where it gives
+        none."""
+        stack, time = ("", "") if self.stacks is None else self.stacks[frame]
+        return self.scope, stack, time
 
 
 @dataclasses.dataclass(frozen=True)
@@ -666,8 +674,27 @@ def _described(
         planes=planes,
         rescales=framed.rescales,
         stacks=framed.stacks,
+        scope=_scope(position, dataset) if framed.described else "",
         hounsfield=hounsfield,
     )
+
+
+def _scope(position: int, dataset: pydicom.Dataset) -> str:
+    """What the Stack IDs and Temporal Position Indices of an instance with
+    functional groups are unique within: its Concatenation, whose SOP
+    Instances hold one Multi-frame Image between them, or else itself.
+
+    PS3.3 C.7.6.16.2.2.4 lets another SOP Instance reuse a Stack ID, which
+    is unique only within a Dimension Organization UID, if present, or else
+    a Concatenation UID; so frames of two instances that a Concatenation
+    does not join never share a volume, though their labels match, since
+    one acquisition's surface could otherwise hide another's while both are
+    counted as shown.
+    """
+    concatenation = _uid(dataset, "ConcatenationUID")
+    if concatenation is not None:
+        return f"concatenation {concatenation}"
+    return f"instance {position}"
 
 
 def _uid(dataset: pydicom.Dataset, keyword: str) -> str | None:
@@ -812,7 +839,10 @@ def _framed(dataset: pydicom.Dataset, frames: int, shape: tuple[int, int]) -> _F
 def _read_framed(
     dataset: pydicom.Dataset, frames: int, shape: tuple[int, int]
 ) -> _Framed:
-    planes: list[_Plane] | None = []
+    # A Stack ID is unique only within a Dimension Organization UID, so
+    # the frames of an instance of more than one have no stacks that can be
+    # told apart, and none is placed.
+    planes: list[_Plane] | None = [] if _organisations(dataset) <= 1 else None
     rescales: list[tuple[float, float]] | None = []
     stacks: list[tuple[str, str]] = []
     rescaled = _in_groups(dataset, _RESCALING)
@@ -861,6 +891,23 @@ def _read_framed(
         stacks=tuple(stacks),
         hounsfield=hounsfield,
     )
+
+
+def _organisations(dataset: pydicom.Dataset) -> int:
+    """How many distinct Dimension Organization UIDs an instance names.
+
+    Its Dimension Organization Sequence, where present, must hold an item
+    with a Dimension Organization UID for each; one that cannot be read
+    raises, which :func:`_framed` takes as leaving its frames unplaced.
+    """
+    items = dataset.get("DimensionOrganizationSequence") or []
+    uids = set()
+    for item in items:
+        uid = _uid(item, "DimensionOrganizationUID")
+        if uid is None:
+            raise ValueError("no Dimension Organization UID")
+        uids.add(uid)
+    return len(uids)
 
 
 def _group(
@@ -1688,16 +1735,19 @@ class _Volume:
 def _volumes(series: list[_Instance]) -> list[_Volume]:
     """The volumes of a series, one for each stack and time point that forms one.
 
-    Its frames are grouped by their Stack ID and Temporal Position Index, as
+    Its frames are grouped by the scope of their instance's stacks
+    (:func:`_scope`), then by their Stack ID and Temporal Position Index, as
     their Frame Content functional groups give them, so that the frames of
     a multi-frame instance at each time point, or in each stack, can each
-    form a volume; a single-frame instance, and a frame without them, is in
-    the group of neither. A series with a colour instance, or a
-    Segmentation, which only its segments sheet shows (D-017), forms none.
+    form a volume, and frames of instances that no Concatenation joins never
+    share one. The instances without functional groups, such as single-frame
+    CT Images, form one group of their own. A series with a colour
+    instance, or a Segmentation, which only its segments sheet shows
+    (D-017), forms none.
     """
     if any(instance.colour or instance.segmentation for instance in series):
         return []
-    groups: dict[tuple[str, str], list[tuple[_Instance, int]]] = {}
+    groups: dict[tuple[str, str, str], list[tuple[_Instance, int]]] = {}
     for instance in series:
         for frame in range(instance.frames):
             groups.setdefault(instance.stack_of(frame), []).append((instance, frame))
