@@ -274,7 +274,7 @@ def _detail(point: Mapping[str, Any]) -> list[str]:
             "",
             "| "
             + " | ".join(name.replace("_", " ").capitalize() for name in names)
-            + " | Texts | Fully covered | Wilson |"
+            + " | Texts | Fully covered | Wilson | Partly covered | Missed |"
             + (
                 " Frames without text | With a region | Tissue blacked out |"
                 if per_frame
@@ -282,7 +282,7 @@ def _detail(point: Mapping[str, Any]) -> list[str]:
             ),
             "| "
             + " | ".join("---" for _ in names)
-            + " | ---: | ---: | ---: |"
+            + " | ---: | ---: | ---: | ---: | ---: |"
             + (" ---: | ---: | ---: |" if per_frame else ""),
         ]
         for row in rows:
@@ -291,7 +291,8 @@ def _detail(point: Mapping[str, Any]) -> list[str]:
                 "| "
                 + " | ".join(_cell(str(row["value"][name])) for name in names)
                 + f" | {sensitivity['texts']} | {_share(sensitivity['share'])} "
-                f"| {_interval(sensitivity['wilson'])} |"
+                f"| {_interval(sensitivity['wilson'])} "
+                f"| {sensitivity['partly_covered']} | {sensitivity['missed']} |"
             )
             if per_frame:
                 negatives = row["false_positives"]

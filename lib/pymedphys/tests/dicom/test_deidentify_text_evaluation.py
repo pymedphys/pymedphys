@@ -246,6 +246,7 @@ def test_text_is_fully_covered_only_where_every_pixel_of_its_ink_is():
     assert sensitivity["texts"] == 3
     assert sensitivity["fully_covered"] == 1
     assert sensitivity["share"] == pytest.approx(1 / 3)
+    assert (sensitivity["partly_covered"], sensitivity["missed"]) == (1, 1)
     shares = [each["count"] for each in sensitivity["ink_covered"]["bins"]]
     assert shares[-1] == 1  # all of its ink
     assert shares[0] == 1  # none of its ink
@@ -564,7 +565,9 @@ def test_the_page_shows_the_trade_off_and_the_criteria():
         cells = line.count("|") - line.count("\\|")
         columns = cells if columns is None else columns
         assert cells == columns, line
-    assert "| Font | Texts | Fully covered | Wilson |\n" in page
+    assert (
+        "| Font | Texts | Fully covered | Wilson | Partly covered | Missed |\n" in page
+    )
 
 
 # -- Readers ------------------------------------------------------------------
@@ -820,6 +823,64 @@ def test_a_folder_is_measured_by_counts_alone(tmp_path):
         assert secret not in published
     assert str(tmp_path) not in published
     assert "clinic export" not in published
+
+
+def _files(root):
+    return {
+        str(path.relative_to(root)): (path.stat().st_mtime_ns, path.read_bytes())
+        for path in sorted(root.rglob("*"))
+        if path.is_file()
+    }
+
+
+def test_text_is_injected_into_a_folders_rt_images_in_memory_alone(
+    tmp_path, monkeypatch
+):
+    """Synthetic text drawn into a local folder's RT Images is counted as
+    fully covered, partly covered, or missed, and nothing is written."""
+    root, _ = _clinic(tmp_path / "read")
+    for path in root.rglob("*"):
+        path.chmod(0o555 if path.is_dir() else 0o444)
+    root.chmod(0o555)
+    working = tmp_path / "working"
+    working.mkdir()
+    monkeypatch.chdir(working)
+    monkeypatch.setenv("PYMEDPHYS_DATA_DIR", str(tmp_path / "data"))
+    before = _files(tmp_path)
+    plan = injection.InjectionPlan(
+        texts=3, heights=(6.0,), positions=("air", "edge"), contents=("letter",)
+    )
+    cases = sources.dicom_folder_cases(
+        root, collection="clinic RT Images", sop_classes=(sources.RT_IMAGE_STORAGE,)
+    )
+    try:
+        summary = _run(cases, plan=plan)
+        page = markdown.markdown(summary)
+    finally:
+        for path in [root, *root.rglob("*")]:
+            path.chmod(0o755 if path.is_dir() else 0o644)
+    assert _files(tmp_path) == before
+    assert not list(working.iterdir())
+    assert not (tmp_path / "data").exists()
+    sensitivity = summary["points"][0]["sensitivity"]
+    assert summary["frames"] == {"RT Image Storage": 3}
+    assert sensitivity["texts"] + sum(summary["not_placed"].values()) == 9
+    assert sensitivity["texts"] > 0
+    assert (
+        sensitivity["fully_covered"]
+        + sensitivity["partly_covered"]
+        + sensitivity["missed"]
+        == sensitivity["texts"]
+    )
+    bins = [each["count"] for each in sensitivity["ink_covered"]["bins"]]
+    assert sum(bins) == sensitivity["texts"]
+    assert bins[0] >= sensitivity["missed"]  # the first bin is under 10%
+    truths = {row["value"]["truth"] for row in summary["points"][0]["by"]["truth"]}
+    assert truths == {"injected"}
+    published = json.dumps(summary) + page
+    for secret in (PATIENT_A, PATIENT_B, "2.25.11", "2.25.21", "clinic export"):
+        assert secret not in published
+    assert str(tmp_path) not in published
 
 
 def test_an_annotated_box_outside_its_frame_skips_the_file():

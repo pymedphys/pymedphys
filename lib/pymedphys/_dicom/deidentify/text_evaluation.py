@@ -232,8 +232,8 @@ class Tally:
     Keys of ``texts`` are a point's index, a grouping, and its values; of
     ``frames``, also the kind, a key of :data:`_KINDS`. Each value of
     ``texts`` is the texts, those fully covered, those fully covered with
-    any coverage, then the texts in each bin of :data:`SHARE` by the share
-    of ink covered; of ``frames``, the frames, those with a region, the
+    any coverage, those missed, with none of their ink covered, then the
+    texts in each bin of :data:`SHARE` by the share of ink covered; of ``frames``, the frames, those with a region, the
     regions, the pixels, those blacked out, the tissue, the tissue blacked
     out, then the frames with a region in each bin of :data:`FRAME_AREA`.
     """
@@ -479,8 +479,9 @@ def _measure(
         for each, (full, full_any, share) in zip(
             text_strata[first:], covered.texts[first:]
         ):
-            row = [1, int(full), int(full_any)] + [0] * len(SHARE.edges)
-            row[3 + SHARE.index(share)] = 1
+            row = [1, int(full), int(full_any), int(share == 0.0)]
+            row += [0] * len(SHARE.edges)
+            row[4 + SHARE.index(share)] = 1
             for grouping in groupings:
                 key = (
                     index,
@@ -802,17 +803,19 @@ def _measures(
 
 
 def _sensitivity(row: Sequence[int] | None) -> dict[str, Any]:
-    row = list(row) if row is not None else [0, 0, 0] + [0] * len(SHARE.edges)
-    texts, full, full_any = row[:3]
+    row = list(row) if row is not None else [0] * (4 + len(SHARE.edges))
+    texts, full, full_any, missed = row[:4]
     bins = SHARE.counts(())
     for position, each in enumerate(bins["bins"]):
-        each["count"] = row[3 + position]
+        each["count"] = row[4 + position]
     return {
         "texts": texts,
         "fully_covered": full,
         "share": full / texts if texts else None,
         "wilson": _pair(wilson(full, texts)),
         "fully_covered_any_ink": full_any,
+        "partly_covered": texts - full - missed,
+        "missed": missed,
         "ink_covered": bins,
     }
 
