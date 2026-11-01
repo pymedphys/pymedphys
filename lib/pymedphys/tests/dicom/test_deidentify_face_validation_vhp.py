@@ -183,6 +183,40 @@ def test_the_reference_block_is_placed_as_the_finder_places_one():
     )
 
 
+def test_a_slice_stands_for_its_gaps_across_stacks_but_not_an_unscanned_one():
+    def at(z: float, name: str) -> vhp._Header:  # pylint: disable = protected-access
+        return vhp._Header(  # pylint: disable = protected-access
+            pathlib.Path(name),
+            (0.0, 0.0, z),
+            (1.0, 0.0, 0.0, 0.0, 1.0, 0.0),
+            (1.0, 1.0),
+            (4, 4),
+            (1.0, 0.0),
+        )
+
+    # A 3 mm stack either side of a 207 mm gap, a 1 mm stack in the gap's
+    # far end, and a slice that two stacks share.
+    headers = [
+        at(0.0, "a0"),
+        at(3.0, "a3"),
+        at(210.0, "a210"),
+        at(211.0, "b211"),
+        at(212.0, "b212"),
+        at(212.0, "c212"),
+        at(213.0, "b213"),
+    ]
+    gaps = vhp._gaps(headers)  # pylint: disable = protected-access
+    assert gaps[pathlib.Path("a0")] == pytest.approx(3.0)
+    # The 207 mm left unscanned is left out.
+    assert gaps[pathlib.Path("a3")] == pytest.approx(3.0)
+    assert gaps[pathlib.Path("a210")] == pytest.approx(1.0)
+    assert gaps[pathlib.Path("b211")] == pytest.approx(1.0)
+    # Two slices at one position share its millimetre.
+    assert gaps[pathlib.Path("b212")] == pytest.approx(0.5)
+    assert gaps[pathlib.Path("c212")] == pytest.approx(0.5)
+    assert gaps[pathlib.Path("b213")] == pytest.approx(1.0)
+
+
 def test_the_tissue_about_the_reference_globes_is_measured(summary):
     for tissue in _series(summary)["reference_tissue"]:
         assert tissue["core"]["soft_tissue_share"] > 0.9

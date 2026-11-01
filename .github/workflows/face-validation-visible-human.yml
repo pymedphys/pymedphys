@@ -25,6 +25,9 @@ on:
       - claude/project-thread-gh9w58
     paths:
       - .github/workflows/face-validation-visible-human.yml
+      - .github/scripts/fetch_idc_series.py
+      - lib/pymedphys/_dicom/deidentify/face_validation_vhp.py
+      - lib/pymedphys/_dicom/deidentify/face_validation_vhp_markdown.py
 
 permissions:
   contents: read

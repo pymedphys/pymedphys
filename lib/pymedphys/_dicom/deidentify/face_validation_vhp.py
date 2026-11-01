@@ -164,6 +164,9 @@ HEAD_BELOW = 110.0  # millimetres below the lower globe's centre
 HEAD_ABOVE = 130.0  # millimetres above the higher globe's centre
 # How near a slice must lie to a globe's height for its stack to hold it.
 GLOBE_SLICE = 3.0  # millimetres
+# The longest gap between slices that a volume spans; the series' slices
+# are 1 to 6 mm apart, except where part of the body was left unscanned.
+_LONGEST_GAP = 10.0  # millimetres
 JSON_NAME = "face-validation-vhp.json"
 MARKDOWN_NAME = "face-validation-vhp.md"
 RENDERS = "renders"
@@ -900,21 +903,38 @@ def _against(block: FaceBlock, reference: FaceBlock) -> dict[str, Any]:
 
 
 def _gaps(headers: Sequence[_Header]) -> dict[pathlib.Path, float]:
-    """Each slice's thickness for volumes: the mean of its gaps to its
-    neighbours along the normal, in its own stack where it has one, or
-    1 mm for a single slice."""
+    """Each slice's thickness for volumes.
+
+    Slices of the same orientation are taken together whatever their stack,
+    since one stack's slices can lie either side of another's. Each distinct
+    position along the normal stands for the mean of its gaps to the
+    distinct positions either side of it, leaving out a gap longer than
+    :data:`_LONGEST_GAP`, where part of the body was left unscanned, or for
+    1 mm where no gap is left. That thickness is shared among the slices at
+    the position, so that a volume that two stacks image is counted once."""
     gaps: dict[pathlib.Path, float] = {}
-    for stack in stacks_of(headers):
-        offsets = [
-            float(np.asarray(headers[i].position) @ headers[i].normal) for i in stack
-        ]
-        for k, index in enumerate(stack):
+    by_orientation: dict[tuple[float, ...], list[_Header]] = collections.defaultdict(
+        list
+    )
+    for each in headers:
+        by_orientation[tuple(round(v, 4) for v in each.orientation)].append(each)
+    for group in by_orientation.values():
+        normal = group[0].normal
+        offsets = [float(np.asarray(each.position) @ normal) for each in group]
+        distinct = sorted({round(offset, 2) for offset in offsets})
+        share = collections.Counter(round(offset, 2) for offset in offsets)
+        thickness: dict[float, float] = {}
+        for k, offset in enumerate(distinct):
             near = [
-                abs(offsets[j] - offsets[k])
+                gap
                 for j in (k - 1, k + 1)
-                if 0 <= j < len(stack)
+                if 0 <= j < len(distinct)
+                and (gap := abs(distinct[j] - offset)) <= _LONGEST_GAP
             ]
-            gaps[headers[index].path] = float(np.mean(near)) if near else 1.0
+            thickness[offset] = float(np.mean(near)) if near else 1.0
+        for each, offset in zip(group, offsets):
+            key = round(offset, 2)
+            gaps[each.path] = thickness[key] / share[key]
     return gaps
 
 
