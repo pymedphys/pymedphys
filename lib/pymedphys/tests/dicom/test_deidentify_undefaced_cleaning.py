@@ -292,13 +292,148 @@ def test_an_offset_alone_moves_a_contour_into_the_block_and_is_cut(sign):
     assert _area([_points(each) for each in written]) == pytest.approx(20 * 15)
 
 
-def test_a_slab_in_the_kept_brain_is_cut_by_the_whole_block():
-    in_brain = _rectangle(-4, 4, -9, -2, 20.0)
+@pytest.mark.parametrize(
+    "z, thickness",
+    [(20.0, "1"), (22.0, "8")],
+    ids=["one slice", "two slices"],
+)
+def test_a_slab_in_the_brain_that_each_slice_it_reaches_keeps_is_kept(z, thickness):
+    in_brain = _rectangle(-4, 4, -9, -2, z)
 
     assert _cut_one(_contour("CLOSED_PLANAR", in_brain)) is None
-    # Its slab is cut by the whole of the block, the kept brain with it,
-    # since a slab's depth has no one slice's kept pixels.
-    assert _cut_one(_contour("CLOSED_PLANAR", in_brain, ContourSlabThickness="1")) == ()
+    # Its span reaches the slices at 20 mm, or 20 and 30 mm, each of which
+    # keeps the brain that it lies in.
+    assert (
+        _cut_one(_contour("CLOSED_PLANAR", in_brain, ContourSlabThickness=thickness))
+        is None
+    )
+
+
+def test_a_slab_that_reaches_a_slice_keeping_no_brain_is_cut_by_the_whole_block():
+    in_brain = _rectangle(-4, 4, -9, -2, 20.0)
+
+    # From 14 to 26 mm, it reaches the slice at 10 mm, which keeps nothing,
+    # so no pixel in the block is kept on each slice it reaches.
+    assert (
+        _cut_one(_contour("CLOSED_PLANAR", in_brain, ContourSlabThickness="12")) == ()
+    )
+
+
+def _narrower(z: float) -> KeptSlice:
+    """:func:`_kept_slice`, keeping only the pixels with x up to 0 mm."""
+    each = _kept_slice(z)
+    kept = each.kept.copy()
+    kept[:, 21:] = False
+    return KeptSlice(each.position, each.orientation, each.spacing, kept)
+
+
+def test_a_slab_keeps_only_the_brain_that_every_slice_it_reaches_keeps():
+    region = DoseBlock(_BLOCK, (_kept_slice(10.0), _kept_slice(20.0), _narrower(30.0)))
+    in_brain = _rectangle(-4, 4, -9, -2, 24.0)
+
+    assert _cut_one(_contour("CLOSED_PLANAR", in_brain), region) is None
+    # From 22 to 26 mm, it reaches the slices at 20 and 30 mm, and the one
+    # at 30 mm writes the pixels from x = 1 mm as air, whose squares start
+    # at 0.5 mm.
+    (written,) = _cut_one(
+        _contour("CLOSED_PLANAR", in_brain, ContourSlabThickness="4"), region
+    )
+    got = _points(written)
+    assert got[:, 2] == pytest.approx(24.0)
+    assert _area([got]) == pytest.approx(4.5 * 7)
+    assert got[:, 0].max() == pytest.approx(0.5)
+
+
+@pytest.mark.parametrize(
+    "slices, z, thickness",
+    [
+        # Beyond the last slice's reach, at 35 mm.
+        (_SLICES, 30.0, "20"),
+        # Two slices at one height.
+        ((_kept_slice(10.0), _kept_slice(20.0), _kept_slice(20.0)), 20.0, "2"),
+        # Slices whose grids differ.
+        (
+            (
+                _kept_slice(20.0),
+                KeptSlice(
+                    (-19.5, -20.0, 30.0),
+                    files.AXIAL,
+                    (1.0, 1.0),
+                    _kept_slice(30.0).kept,
+                ),
+            ),
+            25.0,
+            "2",
+        ),
+        # Rows that are not along x.
+        (
+            (
+                KeptSlice(
+                    (-20.0, -20.0, 20.0),
+                    (1.0, 0.0, 0.0, 0.0, 1 - 1e-6, 0.0014142),
+                    (1.0, 1.0),
+                    _kept_slice(20.0).kept,
+                ),
+            ),
+            20.0,
+            "1",
+        ),
+    ],
+    ids=["beyond reach", "one height", "grids differ", "tilted"],
+)
+def test_a_slab_whose_slices_cannot_be_judged_together_is_cut_by_the_whole_block(
+    slices, z, thickness
+):
+    in_brain = _rectangle(-4, 4, -9, -2, z)
+
+    assert (
+        _cut_one(
+            _contour("CLOSED_PLANAR", in_brain, ContourSlabThickness=thickness),
+            DoseBlock(_BLOCK, slices),
+        )
+        == ()
+    )
+
+
+@pytest.mark.parametrize("seed", range(8))
+def test_no_reading_of_a_slab_cut_with_the_kept_brain_meets_air(seed):
+    rng = np.random.default_rng(seed)
+    region = DoseBlock(_BLOCK, (_kept_slice(10.0), _kept_slice(20.0), _narrower(30.0)))
+    x0, y0 = rng.uniform(-12, 2), rng.uniform(-14, -4)
+    plane = _rectangle(x0, x0 + rng.uniform(4, 12), y0, y0 + rng.uniform(4, 16), 24.0)
+    thickness = rng.uniform(0.5, 5.0)
+    offset = rng.uniform(-1.0, 1.0)
+    contour = _contour(
+        "CLOSED_PLANAR",
+        plane,
+        ContourSlabThickness=f"{thickness:.6g}",
+        ContourOffsetVector=["0", "0", f"{offset:.6g}"],
+    )
+
+    written = _cut_one(contour, region)
+
+    pieces = [] if written is None else [_points(each) for each in written]
+    kept = (
+        shapely.geometry.Polygon(plane[:, :2])
+        if written is None
+        else shapely.ops.unary_union(
+            [shapely.geometry.Polygon(each[:, :2]) for each in pieces]
+        )
+    ).buffer(-1e-6)
+    samples = rng.uniform(-20, 20, size=(4000, 2))
+    inside = samples[[kept.contains(shapely.geometry.Point(*p)) for p in samples]]
+    slab = slab_of(
+        SlabValues(float(f"{thickness:.6g}"), (0, 0, float(f"{offset:.6g}"))), plane
+    )
+    for t in np.linspace(slab.near, slab.far, 41):
+        points = np.column_stack([inside, np.full(len(inside), 24.0 + t)])
+        assert not region_defacing._defaced(region, points).any(), t
+    # It keeps more than the whole block would leave it, wherever the brain
+    # is kept on each slice that it reaches.
+    whole = shapely.geometry.Polygon(plane[:, :2]).intersection(
+        shapely.geometry.box(-100, 0, 100, 100)
+    )
+    assert kept.area >= whole.area - 1e-3
 
 
 def test_a_slab_behind_the_block_is_written_as_received():

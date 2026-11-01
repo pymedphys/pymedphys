@@ -104,11 +104,17 @@ contour is written without a Contour Sequence, which is Type 3.
 A contour with a retired Contour Slab Thickness or Contour Offset Vector
 may lie anywhere along its span
 (:mod:`~pymedphys._dicom.deidentify.contour_slabs`). Where that span
-reaches the block, it is cut by the region of every point whose span meets
-the block, the kept brain not spared (:func:`_shadow`), so that no reading
-of what is written enters the block, and the closed contours of its ROI in
-its plane are cut together by the region that their common span gives,
-only where they carry the same thickness and offset. The QC pack's contour
+reaches the block, the closed contours of its ROI in its plane, only where
+they carry the same thickness and offset, are cut together, as a flat
+contour is, by the squares of the pixels that any slice that their span
+reaches writes as air, so that they keep the brain kept on every such
+slice and no reading of what is written has a nearest pixel written as
+air (:meth:`_Spare.slab`): where they lie in one axial plane, their span
+runs along the patient's z axis, every point of it has a slice within
+reach, and those slices share one grid along x and y. Any other such
+contour, and an open or POINT one, is cut by the region of every point
+whose span meets the block (:func:`_shadow`), the kept brain not spared,
+so that no reading of what is written enters the block. The QC pack's contour
 sheet draws no such contour (:mod:`~pymedphys._dicom.deidentify.qc_contours`),
 so a structure set so cut is still held without a verdict.
 
@@ -215,6 +221,12 @@ _COPLANAR = 0.15
 # that a split leaves, at or below which it is taken for an artefact of
 # floating point.
 _SLIVER = 1e-9
+# How far, in millimetres or in a unit vector's components, a slab's span
+# may depart from the patient's z axis, the block's vertical plane from
+# upright, and the slices that a slab reaches from rows and columns along x
+# and y and from one another's grid, for the slab to keep the kept brain:
+# within this, a point's pixel is the same whatever its height.
+_UPRIGHT = 1e-9
 # How far apart, in millimetres, two points of the pieces of a cut contour
 # may be and be joined as one.
 _SAME_POINT = 1e-9
@@ -477,9 +489,12 @@ def _cut_by(dose: DoseBlock, parsed: list[_Contour]) -> list[_Contour] | None:
     cut them all so, or else the whole block, and the region that they
     bound together loses just its part in it. Where any is cut, a closed
     contour that lies in no one plane is refused. A contour with a slab
-    (:mod:`~.contour_slabs`) is cut by the points whose span meets the
-    block (:func:`_shadow`), and closed contours in one plane, where one of
-    them has a slab, only where each has the same thickness and offset.
+    (:mod:`~.contour_slabs`) is cut only where its span meets the block
+    (:func:`_shadow`), and closed contours in one plane, where one of them
+    has a slab, only where each has the same thickness and offset; they are
+    cut by the pixels that some slice their span reaches writes as air,
+    where :meth:`_Spare.slab` can cut them so, and otherwise by every point
+    whose span meets the block.
 
     Raises
     ------
@@ -511,28 +526,29 @@ def _cut_by(dose: DoseBlock, parsed: list[_Contour]) -> list[_Contour] | None:
         if not any(cutting[index] for index in members):
             continue
         slabs = {parsed[index].slab for index in members}
+        polygons = [_distinct(parsed[index].points) for index in members]
         if slabs != {None}:
             # Contours that bound a region together share its slab, which
             # is placed by the plane of them all.
             if len(slabs) != 1:
                 raise ContoursRefused()
-            shared = _shadow(
-                dose.block,
-                _placed(
-                    parsed[members[0]].slab,
-                    np.concatenate([parsed[index].points for index in members]),
-                ),
+            slab = _placed(
+                parsed[members[0]].slab,
+                np.concatenate([parsed[index].points for index in members]),
             )
+            shared = _shadow(dose.block, slab)
             for index in members:
                 halves[index] = shared
                 cutting[index] = _enters(shared, parsed[index].points)
-            continue
-        # Every contour of a plane is cut by the same region, the block less
-        # the brain that defacing keeps where the plane allows, or the whole
-        # block, so that the region they bound together loses just its part
-        # in it.
-        polygons = [_distinct(parsed[index].points) for index in members]
-        spare = _Spare.of(dose, polygons)
+            spare = _Spare.slab(dose, polygons, slab)
+            if spare is None:
+                continue
+        else:
+            # Every contour of a plane is cut by the same region, the block
+            # less the brain that defacing keeps where the plane allows, or
+            # the whole block, so that the region they bound together loses
+            # just its part in it.
+            spare = _Spare.of(dose, polygons)
         cuts = (
             []
             if spare is None
@@ -543,7 +559,7 @@ def _cut_by(dose: DoseBlock, parsed: list[_Contour]) -> list[_Contour] | None:
         )
         joined = [each for each in cuts if each is not None]
         if len(joined) != len(members):
-            whole = _block_halves(dose.block)
+            whole = halves[members[0]] or _block_halves(dose.block)
             for index in members:
                 cutting[index] = _enters(whole, parsed[index].points)
             continue
@@ -680,14 +696,28 @@ class _Spare:
     """The pixels of the slice nearest one axial plane of an ROI's closed
     contours that defacing does not write as air, those of the brain kept
     in the block and those whose centres lie outside it, whose squares a
-    contour cut in that plane keeps.
+    contour cut in that plane keeps; or, for contours with a slab, the
+    pixels that no slice that the slab reaches writes as air (:meth:`slab`).
 
     Its ``repr`` shows nothing of it.
+
+    Attributes
+    ----------
+    block : FaceBlock
+        The block.
+    grid : PixelGrid
+        The pixels' grid.
+    spared : numpy.ndarray
+        Of bool, rows by columns: the pixels whose squares are kept.
+    outside : _Halves
+        The region whose complement a contour keeps whole: the block, or,
+        for a slab, the part of space ahead of its vertical plane.
     """
 
     block: FaceBlock
     grid: PixelGrid
     spared: np.ndarray
+    outside: _Halves
 
     def __repr__(self) -> str:
         return "_Spare()"
@@ -741,6 +771,76 @@ class _Spare:
             region.block,
             PixelGrid(each.position, each.orientation, each.spacing),
             each.kept | ~inside,
+            _block_halves(region.block),
+        )
+
+    @classmethod
+    def slab(
+        cls, region: DoseBlock, polygons: list[np.ndarray], slab: Slab
+    ) -> _Spare | None:
+        """Return the pixels that no slice that the polygons' slab reaches
+        writes as air, so that no point of any reading of them that lies in
+        those pixels' squares has a nearest pixel that defacing writes as
+        air, or None where they are cut by the block moved back along the
+        span instead (:func:`_shadow`).
+
+        That is where the polygons are not all simple and in one axial
+        plane; where the span is not along the patient's z axis, or the
+        block's vertical plane not upright, within a hair; where some point
+        of the span has no slice within reach, or two slices share a
+        height (:meth:`~.dose_defacing.DoseBlock.spanned`); where the
+        slices that it reaches do not share one grid of pixels, its rows and
+        columns along the patient's x and y axes, so that a point's pixel is
+        the same in each whatever its z; and where no pixel whose centre
+        lies in the block on any of them is kept on all of them.
+        """
+        z = float(polygons[0][0, 2])
+        direction = np.asarray(slab.direction, dtype=float)
+        if (
+            not region.slices
+            or any(
+                (points[:, 2] != z).any() or not is_simple(points)
+                for points in polygons
+            )
+            or abs(abs(direction[2]) - 1) > _UPRIGHT
+            or abs(float(region.block.anterior[2])) > _UPRIGHT
+        ):
+            return None
+        found = region.spanned(np.concatenate(polygons), direction, slab.near, slab.far)
+        if found is None:
+            return None
+        reached = [region.slices[index] for index in found]
+        first = reached[0]
+        orientation = np.asarray(first.orientation, dtype=float)
+        if (
+            abs(orientation[2]) > _UPRIGHT
+            or abs(orientation[5]) > _UPRIGHT
+            or any(
+                tuple(each.orientation) != tuple(first.orientation)
+                or tuple(each.spacing) != tuple(first.spacing)
+                or each.kept.shape != first.kept.shape
+                or abs(each.position[0] - first.position[0]) > _UPRIGHT
+                or abs(each.position[1] - first.position[1]) > _UPRIGHT
+                for each in reached
+            )
+        ):
+            return None
+        spared = np.ones(first.kept.shape, dtype=bool)
+        anywhere = np.zeros(first.kept.shape, dtype=bool)
+        for each in reached:
+            inside = region.block.slice_mask(
+                each.position, each.orientation, each.spacing, each.kept.shape
+            )
+            spared &= each.kept | ~inside
+            anywhere |= inside
+        if not (spared & anywhere).any():
+            return None
+        anterior = np.asarray(region.block.anterior, dtype=float)
+        return cls(
+            region.block,
+            PixelGrid(first.position, first.orientation, first.spacing),
+            spared,
+            ((anterior, float(np.dot(region.block.origin, anterior))),),
         )
 
     def cut(
@@ -759,7 +859,7 @@ class _Spare:
         """
         clockwise = signed_area(points) <= 0
         ring = points[::-1] if clockwise else points
-        outside = _pieces(_block_halves(self.block), CLOSED_PLANAR, ring)
+        outside = _pieces(self.outside, CLOSED_PLANAR, ring)
         ahead = clip(ring, *_ahead(self.block))
         kept = [
             piece

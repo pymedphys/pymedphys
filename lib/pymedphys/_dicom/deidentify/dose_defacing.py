@@ -258,6 +258,65 @@ class DoseBlock:
         found[near] = order[nearest[near]]
         return found
 
+    def spanned(
+        self, points: np.ndarray, direction: Sequence[float], near: float, far: float
+    ) -> tuple[int, ...] | None:
+        """Return every slice that :meth:`nearest_slices` gives a point
+        within the convex hull of ``points`` moved along ``direction`` by any
+        distance from ``near`` to ``far``, or None where it gives such a
+        point none, or two slices lie at one height.
+
+        Each such point's height along the slices' normal lies between the
+        least and the greatest of the points' heights at either end, so a
+        slice counts where the heights nearer it than any other, within
+        half the slices' spacing, meet that interval, both ends included.
+
+        Parameters
+        ----------
+        points : numpy.ndarray
+            The x, y, and z of each point in rows, in millimetres.
+        direction : sequence of float
+            A unit vector.
+        near, far : float
+            In millimetres, ``near`` at most ``far``.
+
+        Returns
+        -------
+        tuple of int or None
+            The indices in :attr:`slices`, ascending.
+        """
+        points = np.asarray(points, dtype=float).reshape(-1, 3)
+        if not self.slices or not len(points):
+            return None
+        orientation = self.slices[0].orientation
+        normal = np.cross(orientation[:3], orientation[3:])
+        heights = np.array([np.dot(each.position, normal) for each in self.slices])
+        order = np.argsort(heights)
+        ordered = heights[order]
+        steps = np.diff(ordered)
+        if (steps <= 0).any():
+            return None
+        reach = (
+            float(np.min(steps)) / 2 if len(steps) else max(self.slices[0].spacing) / 2
+        )
+        along = points @ normal
+        rate = float(np.dot(np.asarray(direction, dtype=float), normal))
+        low = float(np.min(along) + min(near * rate, far * rate))
+        high = float(np.max(along) + max(near * rate, far * rate))
+        # The heights within reach of a slice, and nearer it than any other.
+        middles = (ordered[1:] + ordered[:-1]) / 2
+        lower = np.maximum(ordered - reach, np.concatenate([[-np.inf], middles]))
+        upper = np.minimum(ordered + reach, np.concatenate([middles, [np.inf]]))
+        met = (lower <= high) & (upper >= low)
+        if not met.any():
+            return None
+        # Every height of the interval must be within some slice's reach.
+        first, last = np.flatnonzero(met)[[0, -1]]
+        gaps = upper[first:last] < lower[first + 1 : last + 1]
+        if lower[first] > low or upper[last] < high or gaps.any():
+            return None
+        return tuple(sorted(int(order[index]) for index in np.flatnonzero(met)))
+
     def pixels(self, points: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Return the nearest pixel of the nearest slice to each point, within
         half the slices' spacing, where it has one.
