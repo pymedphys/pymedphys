@@ -264,6 +264,45 @@ class BoxDecoder(Protocol):
 
 
 @dataclasses.dataclass(frozen=True)
+class PublishedSettings:
+    """How a model's publishers run it, as their own files give it, so that
+    it can be measured as published beside today's settings.
+
+    Attributes
+    ----------
+    longest_side : int
+        The longest side of the network's input: a rendering's longer side
+        is scaled down to at most this, never up.
+    threshold, box_threshold, unclip_ratio : float
+        Differentiable Binarization's post-processing.
+    max_candidates : int
+        The most regions kept from a map; recorded, not applied, as the
+        harness keeps every region.
+    evidence : tuple of str
+        Where each setting was read, over HTTPS, at a fixed revision.
+    """
+
+    longest_side: int
+    threshold: float
+    box_threshold: float
+    unclip_ratio: float
+    max_candidates: int
+    evidence: tuple[str, ...]
+
+    def __post_init__(self):
+        if self.longest_side < 32 or self.max_candidates < 1:
+            raise EvaluationRefused("A published setting must be in range.")
+        if not all(0 < each < 1 for each in (self.threshold, self.box_threshold)):
+            raise EvaluationRefused("A published threshold must be a share.")
+        if not (math.isfinite(self.unclip_ratio) and self.unclip_ratio > 0):
+            raise EvaluationRefused("A published unclip ratio must be positive.")
+        if not self.evidence or not all(
+            urllib.parse.urlsplit(each).scheme == "https" for each in self.evidence
+        ):
+            raise EvaluationRefused("A published setting needs its evidence.")
+
+
+@dataclasses.dataclass(frozen=True)
 class DetectionModel:
     """A model's adapter, as the module describes.
 
@@ -284,6 +323,8 @@ class DetectionModel:
     training_data : str
         What the model was trained on, as its publishers describe it, or
         empty where they do not.
+    published : PublishedSettings or None
+        How its publishers run it, where they say.
     """
 
     name: str
@@ -295,6 +336,7 @@ class DetectionModel:
     network_input: ModelInput = ModelInput()
     output: ProbabilityOutput | BoxDecoder = ProbabilityOutput()
     training_data: str = ""
+    published: PublishedSettings | None = None
 
     def __post_init__(self):
         if not (self.name and self.copyright):
@@ -337,6 +379,11 @@ class DetectionModel:
             "input": _plain(dataclasses.asdict(self.network_input)),
             "output": self.output.described(),
             "training_data": self.training_data,
+            "published": (
+                None
+                if self.published is None
+                else _plain(dataclasses.asdict(self.published))
+            ),
         }
 
 
@@ -444,6 +491,93 @@ RAPIDOCR_MODELS: tuple[DetectionModel, ...] = tuple(
         "PP-OCRv5 server",
         "PP-OCRv5 mobile",
     )
+)
+
+# PaddlePaddle's own files, each with its own inference.yml's input and
+# post-processing, read at the pinned revision on 1 November 2026: a BGR
+# image normalised by ImageNet's means and deviations, in that channel
+# order; and, where the file states no resize, PaddleX's defaults for text
+# detection, which scale the longer side down to at most 960.
+_PADDLEX_DEFAULTS = (
+    "https://github.com/PaddlePaddle/PaddleX/blob/"
+    "4c968d30b9d0d4a693d9eaaef0881c20f8d7d0e0/"
+    "paddlex/inference/models/text_detection/predictor.py"
+)
+_IMAGENET = ModelInput(mean=(0.485, 0.456, 0.406), deviation=(0.229, 0.224, 0.225))
+_PUBLISHED = {
+    # name: (repository, revision, threshold, box threshold, unclip, candidates)
+    "PP-OCRv6 small": (
+        "PP-OCRv6_small_det_onnx",
+        "28fe5895c24fd108c19eb3e8479f4ab385fbfc62",
+        0.2,
+        0.45,
+        1.4,
+        3000,
+    ),
+    "PP-OCRv6 medium": (
+        "PP-OCRv6_medium_det_onnx",
+        "61323801669c338b7891481ec7bac61ce31b576a",
+        0.2,
+        0.45,
+        1.4,
+        3000,
+    ),
+    "PP-OCRv6 tiny": (
+        "PP-OCRv6_tiny_det_onnx",
+        "2ba1506c0380b8f0b03dd142459aac66d4421f6c",
+        0.2,
+        0.4,
+        1.4,
+        3000,
+    ),
+    "PP-OCRv5 server": (
+        "PP-OCRv5_server_det_onnx",
+        "dcf248c4dcc064c6d030db241255f9e8fbc6733a",
+        0.3,
+        0.6,
+        1.5,
+        1000,
+    ),
+    "PP-OCRv5 mobile": (
+        "PP-OCRv5_mobile_det_onnx",
+        "e6f4fa85f00e168c862bc462aebca69eef9b3d3d",
+        0.3,
+        0.6,
+        1.5,
+        1000,
+    ),
+}
+PADDLE_MODELS: tuple[DetectionModel, ...] = tuple(
+    DetectionModel(
+        name=f"{name} (PaddlePaddle)",
+        source=PADDLE_FILES[name],
+        code_licence="Apache-2.0",
+        weights_licence="Apache-2.0",
+        copyright="Baidu and the PaddleOCR rights holders",
+        homepage=f"https://huggingface.co/PaddlePaddle/{repository}",
+        network_input=_IMAGENET,
+        training_data=_PADDLE_TRAINING_DATA,
+        published=PublishedSettings(
+            longest_side=960,
+            threshold=threshold,
+            box_threshold=box_threshold,
+            unclip_ratio=unclip_ratio,
+            max_candidates=candidates,
+            evidence=(
+                f"https://huggingface.co/PaddlePaddle/{repository}/blob/"
+                f"{revision}/inference.yml",
+                _PADDLEX_DEFAULTS,
+            ),
+        ),
+    )
+    for name, (
+        repository,
+        revision,
+        threshold,
+        box_threshold,
+        unclip_ratio,
+        candidates,
+    ) in _PUBLISHED.items()
 )
 
 

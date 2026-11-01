@@ -112,6 +112,92 @@ def test_rapidocrs_conversions_are_adapted_as_todays_model_is():
     assert len({model.sha256 for model in models.RAPIDOCR_MODELS}) == 4
 
 
+def test_paddlepaddles_own_files_are_adapted_as_published():
+    names = [model.name for model in models.PADDLE_MODELS]
+    assert names == [
+        "PP-OCRv6 small (PaddlePaddle)",
+        "PP-OCRv6 medium (PaddlePaddle)",
+        "PP-OCRv6 tiny (PaddlePaddle)",
+        "PP-OCRv5 server (PaddlePaddle)",
+        "PP-OCRv5 mobile (PaddlePaddle)",
+    ]
+    thresholds = {
+        model.name.split(" (")[0]: (
+            model.published.threshold,
+            model.published.box_threshold,
+            model.published.unclip_ratio,
+            model.published.max_candidates,
+        )
+        for model in models.PADDLE_MODELS
+        if model.published is not None
+    }
+    assert thresholds == {
+        "PP-OCRv6 small": (0.2, 0.45, 1.4, 3000),
+        "PP-OCRv6 medium": (0.2, 0.45, 1.4, 3000),
+        "PP-OCRv6 tiny": (0.2, 0.4, 1.4, 3000),
+        "PP-OCRv5 server": (0.3, 0.6, 1.5, 1000),
+        "PP-OCRv5 mobile": (0.3, 0.6, 1.5, 1000),
+    }
+    for model in models.PADDLE_MODELS:
+        assert model.source.url.startswith("https://huggingface.co/PaddlePaddle/")
+        # ImageNet's normalisation, in BGR order, on a grey rendering.
+        assert model.network_input.mean == (0.485, 0.456, 0.406)
+        assert model.network_input.deviation == (0.229, 0.224, 0.225)
+        assert model.gives_maps
+        published = model.published
+        assert published is not None and published.longest_side == 960
+        # The settings were read from the very revision the weights are at.
+        revision = model.source.url.split("/resolve/")[1].split("/")[0]
+        assert published.evidence[0].endswith(f"/blob/{revision}/inference.yml")
+        assert model.described()["published"]["longest_side"] == 960
+    assert models.PP_OCRV6_SMALL.described()["published"] is None
+
+
+def test_a_model_is_measured_at_its_published_settings_and_todays():
+    model = models.PADDLE_MODELS[0]
+    variant = detector.published_variant(model)
+    assert variant.network_input.scaling == "longest-at-most"
+    # Scaled down to 960 at most, never up.
+    assert detector.input_shape((2000, 1000), None, variant) == (960, 480)
+    assert detector.input_shape((512, 400), None, variant) == (512, 384)
+    today = detector.DetectorVariant()
+    assert detector.input_shape((512, 400), None, today) == (928, 736)
+    point = detector.published_point(model)
+    assert (point.threshold, point.box_threshold, point.unclip_ratio) == (
+        0.2,
+        0.45,
+        1.4,
+    )
+    with pytest.raises(EvaluationRefused):
+        detector.published_variant(models.PP_OCRV6_SMALL)
+    with pytest.raises(EvaluationRefused):
+        detector.published_point(models.PP_OCRV6_SMALL)
+
+
+@pytest.mark.parametrize(
+    "fields",
+    [
+        {"longest_side": 16},
+        {"threshold": 1.0},
+        {"unclip_ratio": 0.0},
+        {"max_candidates": 0},
+        {"evidence": ()},
+        {"evidence": ("http://example.org/inference.yml",)},
+    ],
+)
+def test_published_settings_out_of_range_are_refused(fields):
+    good = {
+        "longest_side": 960,
+        "threshold": 0.2,
+        "box_threshold": 0.45,
+        "unclip_ratio": 1.4,
+        "max_candidates": 3000,
+        "evidence": ("https://example.org/inference.yml",),
+    }
+    with pytest.raises(EvaluationRefused):
+        models.PublishedSettings(**{**good, **fields})
+
+
 @pytest.mark.parametrize(
     "fields",
     [

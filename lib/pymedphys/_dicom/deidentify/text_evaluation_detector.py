@@ -37,8 +37,9 @@ renderings (:class:`RenderingVariant`)
 network input (:class:`InputVariant`)
     whether frames are scaled as a run scales them (``"limit-side"``), to a
     pixel size in millimetres (``"millimetres"``), or to a working size for
-    their longer side (``"working-size"``), and a normalisation of the
-    network's input in place of the model's own.
+    their longer side (``"working-size"``), or down to at most one
+    (``"longest-at-most"``), and a normalisation of the network's input in
+    place of the model's own.
 model
     any ONNX model of a Differentiable Binarization network, given as bytes,
     or a model's adapter (:class:`~.text_evaluation_models.DetectionModel`);
@@ -101,7 +102,7 @@ from .text_evaluation_models import model_bytes as adapted_model_bytes
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-SCALINGS = ("limit-side", "millimetres", "working-size")
+SCALINGS = ("limit-side", "millimetres", "working-size", "longest-at-most")
 NOISE_REGIONS = ("frame", "tissue")
 
 # A network: the input tensor, one batch of three channels, to the
@@ -162,7 +163,10 @@ class InputVariant:
     millimetres : float
         The size of the network's pixel, for ``"millimetres"``.
     working_side : int
-        The longer side of the network's input, for ``"working-size"``.
+        The longer side of the network's input, for ``"working-size"``, or
+        the most it may be, for ``"longest-at-most"``, which scales a
+        rendering down to it but never up, as PaddleOCR's own pipeline
+        does.
     mean, deviation : float or None
         Where given, the network's input is the rendering over 255, less
         ``mean``, over ``deviation``, in every channel, in place of the
@@ -323,6 +327,8 @@ def input_shape(
     if options.scaling == "millimetres":
         assert spacing is not None
         scale = spacing / options.millimetres
+    elif options.scaling == "longest-at-most":
+        scale = min(1.0, options.working_side / max(rows, columns))
     else:
         scale = options.working_side / max(rows, columns)
     scale = min(scale, parameters.max_side / max(rows, columns))
@@ -869,3 +875,29 @@ def grid_boxes(
             boxes.update(box for box, _ in _scored(cache[key], by_name[name], point))
         found.append(tuple(sorted(boxes)))
     return found
+
+
+def published_variant(model: DetectionModel) -> DetectorVariant:
+    """The variant that scales a rendering as the model's publishers do,
+    with the model's own normalisation; today's renderings and top-hats
+    are kept, as no publisher's pipeline has them."""
+    if model.published is None:
+        raise EvaluationRefused("The model's publishers give no settings.")
+    return DetectorVariant(
+        name=f"published by {model.name}",
+        network_input=InputVariant(
+            scaling="longest-at-most", working_side=model.published.longest_side
+        ),
+    )
+
+
+def published_point(model: DetectionModel) -> PostProcessing:
+    """The post-processing point at the model's published thresholds, with
+    today's other settings."""
+    if model.published is None:
+        raise EvaluationRefused("The model's publishers give no settings.")
+    return PostProcessing(
+        threshold=model.published.threshold,
+        box_threshold=model.published.box_threshold,
+        unclip_ratio=model.published.unclip_ratio,
+    )
