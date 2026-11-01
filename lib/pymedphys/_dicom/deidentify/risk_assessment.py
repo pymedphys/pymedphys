@@ -173,7 +173,16 @@ class Model:
     implementation_version: str
 
     def __post_init__(self) -> None:
-        _check_texts("the model", **dataclasses.asdict(self))
+        # The fields as given, not dataclasses.asdict, which copies each
+        # value recursively and so overflows the stack on a value nested
+        # deeply enough, such as a list read from a statement.
+        _check_texts(
+            "the model",
+            **{
+                field.name: getattr(self, field.name)
+                for field in dataclasses.fields(self)
+            },
+        )
 
 
 @dataclasses.dataclass(frozen=True)

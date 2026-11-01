@@ -23,6 +23,7 @@ import hmac
 import json
 import os
 import stat
+import sys
 from pathlib import PurePosixPath
 
 from pymedphys._imports import pytest
@@ -336,6 +337,28 @@ def test_the_model_and_its_implementation_are_versioned(field):
     fields[field] = " "
     with pytest.raises(RiskAssessmentError, match=field):
         Model(**fields)
+
+
+@pytest.mark.parametrize(
+    "field", ["name", "version", "implementation", "implementation_version"]
+)
+def test_a_model_field_nested_beyond_the_recursion_limit_is_refused(field):
+    # A list nested deeper than Python recurses, as a statement's JSON can
+    # give, is refused as not text, as a shallow list is, not by
+    # overflowing the stack while the fields are checked.
+    nested: list = []
+    for _ in range(2 * sys.getrecursionlimit()):
+        nested = [nested]
+    fields = {
+        "name": "Model",
+        "version": "1",
+        "implementation": "Tool",
+        "implementation_version": "1.0",
+        field: nested,
+    }
+    with pytest.raises(RiskAssessmentError) as raised:
+        Model(**fields)
+    assert str(raised.value) == f"the model needs its {field} as text"
 
 
 def test_the_attacker_states_knowledge_and_membership():

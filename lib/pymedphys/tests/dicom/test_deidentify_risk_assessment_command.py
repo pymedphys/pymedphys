@@ -710,6 +710,81 @@ def test_a_deeply_nested_statement_is_refused_whatever_the_parser_reaches(
     _assert_refused(pack, status, stdout, stderr, "the statement is not")
 
 
+def _nested(depth):
+    """An empty array nested ``depth`` times, built without recursing."""
+    nested: list = []
+    for _ in range(depth):
+        nested = [nested]
+    return nested
+
+
+# Every place that a statement holds a value: a member, a member of a
+# section, or a matching variable.
+_VALUES = (
+    ("format",),
+    *(("model", member) for member in command.SECTIONS["model"]),
+    *(("attacker", member) for member in command.SECTIONS["attacker"]),
+    *(("population", member) for member in command.SECTIONS["population"]),
+    *((member,) for member in MEMBERS if member not in command.SECTIONS),
+    ("matching_variables", 0),
+)
+
+
+def _statement_holding(where, value):
+    """A statement that holds ``value`` at ``where``, a path of members."""
+    statement = _statement()
+    if where[0] == "population" and where[-1] != "in_cohort":
+        statement["population"] = {
+            "reference": "Numbat registry",
+            "sampling": "Numbat consecutive patients",
+        }
+    holder = statement
+    for key in where[:-1]:
+        holder = holder[key]
+    holder[where[-1]] = value
+    return statement
+
+
+@pytest.mark.parametrize("where", _VALUES, ids=lambda where: "-".join(map(str, where)))
+def test_a_value_nested_beyond_the_recursion_limit_is_refused_as_a_shallow_one_is(
+    where,
+):
+    # The parser can give a value nested deeper than Python recurses; every
+    # check after it refuses that value as it refuses an array nested
+    # twice, which is not text even where an array is read as a tuple,
+    # rather than overflowing the stack.
+    with pytest.raises(risk_assessment.RiskAssessmentError) as shallow:
+        command.assessment_of(_statement_holding(where, [["Numbat"]]))
+    with pytest.raises(risk_assessment.RiskAssessmentError) as deep:
+        command.assessment_of(
+            _statement_holding(where, _nested(2 * sys.getrecursionlimit()))
+        )
+
+    assert str(deep.value) == str(shallow.value)
+
+
+@pytest.mark.parametrize("member", command.SECTIONS["model"])
+def test_a_model_member_nested_deeply_in_the_file_is_refused(
+    tmp_path, pack, report_file, member
+):
+    # Nested 2,000 arrays deep, which CPython's parser reads on a default
+    # stack and Python's default recursion limit of 1,000 does not reach.
+    statement = _statement()
+    statement["model"][member] = "NESTED"
+    text = json.dumps(statement).replace('"NESTED"', "[" * 2_000 + "]" * 2_000)
+
+    status, stdout, stderr = _run(
+        pack, report_file, _write_statement(tmp_path, text.encode("ascii"))
+    )
+
+    assert status == command.EXIT_NOT_RECORDED
+    assert (
+        f"the model needs its {member} as text" in stderr
+        or "the statement is not UTF-8 JSON" in stderr
+    )
+    _assert_refused(pack, status, stdout, stderr, "")
+
+
 @pytest.mark.parametrize("constant", ["NaN", "Infinity", "-Infinity"])
 def test_a_number_that_is_not_finite_is_refused(tmp_path, pack, report_file, constant):
     text = json.dumps(_statement()).replace(
