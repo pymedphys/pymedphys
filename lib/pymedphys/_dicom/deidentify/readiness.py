@@ -76,7 +76,13 @@ from . import release_report
 from .face_review import FaceReview, _previews, read_face_review
 from .pixel_region_rules import PixelRegionRules
 from .qc_attestation import Outcome, _attestation_of, _pack_bytes, _reference_of
-from .qc_pack import NO_CONTOURS_SHA256, NO_PIXELS_SHA256, Disposition, QcPack
+from .qc_pack import (
+    NO_CONTOURS_SHA256,
+    NO_GRIDS_SHA256,
+    NO_PIXELS_SHA256,
+    Disposition,
+    QcPack,
+)
 from .qc_pack import QcPackError, pack_document
 from .reasons import ReviewReason
 from .reviewed_descriptors import ReviewedDescriptors
@@ -104,9 +110,11 @@ _FACE_REASONS = (
     ReviewReason.NO_FACE_VERDICT,
     ReviewReason.OTHER_PIXEL_DATA,
     ReviewReason.OTHER_CONTOURS,
+    ReviewReason.OTHER_GRIDS,
 )
 _NO_PIXELS = bytes.fromhex(NO_PIXELS_SHA256)
 _NO_CONTOURS = bytes.fromhex(NO_CONTOURS_SHA256)
+_NO_GRIDS = bytes.fromhex(NO_GRIDS_SHA256)
 _REFERENCE = re.compile(r"A-[0-9a-f]{32}")
 _SHA256 = re.compile(r"[0-9a-f]{64}")
 
@@ -437,7 +445,8 @@ def _pixel_and_face(
     for position, entry in released.items():
         pixels = _digest(entry.pixel_sha256)
         contours = _digest(entry.contour_sha256)
-        if pixels == _NO_PIXELS and contours == _NO_CONTOURS:
+        grids = _digest(entry.grid_sha256)
+        if pixels == _NO_PIXELS and contours == _NO_CONTOURS and grids == _NO_GRIDS:
             continue  # nothing of it can show a face
         held = faces.hold_reason(
             _digest(entry.source_sha256) or b"",
@@ -445,6 +454,7 @@ def _pixel_and_face(
             contours,
             pictured.get(position),
             dose=position in dosed,
+            grids=grids,
         )
         if held is not None:
             found.add(ReviewReason(held.value))

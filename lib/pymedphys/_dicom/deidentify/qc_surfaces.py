@@ -98,7 +98,7 @@ from __future__ import annotations
 import dataclasses
 import enum
 import math
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import scipy
@@ -368,40 +368,7 @@ class Surface:
         if levels is None:
             inside = self.mask()
             return None if inside is None else side_by_side(views(inside))
-        if len(levels) > MAXIMUM_DOSE_LEVELS:
-            return None
-        height = -_GAP_PIXELS
-        rows = []
-        # Each level's rows, after the first level's, start a new group.
-        starts = set()
-        for index, level in enumerate(levels):
-            inside = self.mask(level)
-            if inside is None:
-                return None
-            # Each level has a row at least, so a sheet that cannot fit is
-            # refused before the rest is drawn, and so is a level's hidden
-            # rows that would not fit in what the levels below leave.
-            rest = (len(levels) - index) * (inside.shape[0] + _GAP_PIXELS)
-            if height + rest > MAXIMUM_DOSE_SHEET_PIXELS:
-                return None
-            hidden = hidden_rows(inside, MAXIMUM_DOSE_SHEET_PIXELS - height - rest)
-            if hidden is None:
-                return None
-            if rows:
-                starts.add(len(rows))
-            # A sheet now too tall is refused by the next level's bound, before
-            # it is drawn, or after the last level.
-            for row in (side_by_side(views(inside)), *hidden):
-                rows.append(row)
-                height += row.shape[0] + _GAP_PIXELS
-        gap = np.zeros((_GAP_PIXELS, rows[0].shape[1]), np.uint8)
-        rule = np.full(gap.shape, LEVEL_RULE, np.uint8)
-        parts = [
-            part
-            for index, row in enumerate(rows)
-            for part in (rule if index in starts else gap, row)
-        ]
-        return None if height > MAXIMUM_DOSE_SHEET_PIXELS else np.concatenate(parts[1:])
+        return level_sheet(self.mask, levels)
 
     def _level(self) -> float | None:
         if self._grid.threshold is Threshold.CT:
@@ -437,6 +404,75 @@ def dose_levels(peak: float, floor: float) -> tuple[float, ...]:
                 return (0.0, *reversed(levels))
             levels.append(level)
         decade /= 10
+
+
+def level_sheet(
+    mask: Callable[[float], np.ndarray | None],
+    levels: Sequence[float],
+    tallest: int | None = None,
+) -> np.ndarray | None:
+    """Return a row of views at each of ``levels``, as 8-bit grey, as an RT
+    Dose's sheet lays them out.
+
+    Each level's row is followed by the rows of :func:`hidden_rows`; the
+    rows of a level are separated by black rows, and each level's from the
+    next by grey rows of :data:`LEVEL_RULE`.
+
+    Parameters
+    ----------
+    mask : callable
+        Given a level, the voxels at or above it, or of any value above 0
+        where it is 0, indexed as :meth:`Surface.mask` gives them, or None
+        where they cannot be found.
+    levels : sequence of float
+        Ascending, as :func:`dose_levels` gives them.
+    tallest : int, optional
+        The most pixels that the sheet may be tall; by default
+        :data:`MAXIMUM_DOSE_SHEET_PIXELS`.
+
+    Returns
+    -------
+    numpy.ndarray or None
+        None where there are more than :data:`MAXIMUM_DOSE_LEVELS` levels,
+        before any is drawn, where ``mask`` gives None, or where the sheet
+        would be taller than ``tallest``, which is drawn only until it is.
+    """
+    if len(levels) > MAXIMUM_DOSE_LEVELS:
+        return None
+    if tallest is None:
+        tallest = MAXIMUM_DOSE_SHEET_PIXELS
+    height = -_GAP_PIXELS
+    rows = []
+    # Each level's rows, after the first level's, start a new group.
+    starts = set()
+    for index, level in enumerate(levels):
+        inside = mask(level)
+        if inside is None:
+            return None
+        # Each level has a row at least, so a sheet that cannot fit is
+        # refused before the rest is drawn, and so is a level's hidden
+        # rows that would not fit in what the levels below leave.
+        rest = (len(levels) - index) * (inside.shape[0] + _GAP_PIXELS)
+        if height + rest > tallest:
+            return None
+        hidden = hidden_rows(inside, tallest - height - rest)
+        if hidden is None:
+            return None
+        if rows:
+            starts.add(len(rows))
+        # A sheet now too tall is refused by the next level's bound, before
+        # it is drawn, or after the last level.
+        for row in (side_by_side(views(inside)), *hidden):
+            rows.append(row)
+            height += row.shape[0] + _GAP_PIXELS
+    gap = np.zeros((_GAP_PIXELS, rows[0].shape[1]), np.uint8)
+    rule = np.full(gap.shape, LEVEL_RULE, np.uint8)
+    parts = [
+        part
+        for index, row in enumerate(rows)
+        for part in (rule if index in starts else gap, row)
+    ]
+    return None if height > tallest else np.concatenate(parts[1:])
 
 
 def dose_values(frame: np.ndarray, scale: float) -> np.ndarray | None:
