@@ -94,6 +94,10 @@ _PET_ABOVE = "15-pet-above.dcm"
 _IN_FRAME = (_STRUCTURE_SET, *_DOSE, *_PET, _PET_ABOVE)
 # The PET instances that the run does not clean.
 _UNDEFACED = _PET[1:]
+# The head's slices as one Enhanced CT Image instance, and its PET slices as
+# one Enhanced PET Image instance in place of the collection's.
+_HEAD_ENHANCED = "01-head-enhanced.dcm"
+_PET_ENHANCED = _PET[1]
 # The PET slices of the head, by file name, at heights below and above the
 # floor of the kept brain.
 _PET_SLICES = {_PET[0]: 20.0, _PET_ABOVE: 70.0}
@@ -114,6 +118,10 @@ _GRID = {
 }
 _HIGHEST = 20000
 _LOW = round(dose_defacing.DOSE_FRACTION * _HIGHEST)
+# The synthetic collection's Enhanced CT Image and Legacy Converted Enhanced
+# CT Image instances, whose frames no functional groups place, are each a
+# CT series that the run cannot deface.
+_UNPLACED = 2
 # Deformable registrations, each with a grid that the run does not cut,
 # named by how they are tied to the head's Frame of Reference: as their own
 # frame, the Registered Frame of Reference, in which the grid lies; as the
@@ -331,11 +339,14 @@ def _reviewed(
     eyes_away=False,
     dose=None,
     edges=False,
+    multi_frame=False,
     registrations=False,
 ):
-    """Run the collection, with its CT slices replaced by the head's, its RT
-    Structure Set by the head's ROIs, or by a target in the block if
-    ``target``, its PET Image by :data:`_PET_SLICES`, and its first RT Dose
+    """Run the collection, with its CT slices replaced by the head's, as one
+    Enhanced CT Image instance if ``multi_frame``, its RT Structure Set by
+    the head's ROIs, or by a target in the block if ``target``, its PET
+    Image by :data:`_PET_SLICES`, and, if ``multi_frame``, its Enhanced PET
+    Image by those slices as one instance, and its first RT Dose
     by a grid over the head of ``dose`` where given, with the RT Dose
     instances of :data:`_UNPLACEABLE` and :data:`_DVH_ONLY` in its series if
     ``edges``, and the deformable registrations of :data:`_REGISTRATIONS`
@@ -356,8 +367,13 @@ def _reviewed(
             frame=corpus_module.FRAME_OF_REFERENCE,
             template=template,
         )
-        for index, data in enumerate(slices):
-            (instances / _head_name(index)).write_bytes(data)
+        if multi_frame:
+            (instances / _HEAD_ENHANCED).write_bytes(
+                files.multi_frame(slices, instance=corpus_module.CT_SERIES + ".1000")
+            )
+        else:
+            for index, data in enumerate(slices):
+                (instances / _head_name(index)).write_bytes(data)
         if registrations:
             for name, data in _registrations(slices).items():
                 (instances / name).write_bytes(data)
@@ -397,15 +413,29 @@ def _reviewed(
             else _head_structure_set(rtss, eyes_away=eyes_away)
         )
         pet = pydicom.dcmread(instances / _PET[0])
-        for index, (name, z) in enumerate(_PET_SLICES.items()):
-            (instances / name).write_bytes(
-                files.pet(
-                    _pet_uptake(z),
-                    position=(*_PET_GRID["position"], z),
-                    spacing=_PET_GRID["spacing"],
-                    frame=corpus_module.FRAME_OF_REFERENCE,
-                    instance=pet.SOPInstanceUID + ("" if index == 0 else ".1"),
-                    template=pet,
+        pet_slices = [
+            files.pet(
+                _pet_uptake(z),
+                position=(*_PET_GRID["position"], z),
+                spacing=_PET_GRID["spacing"],
+                frame=corpus_module.FRAME_OF_REFERENCE,
+                instance=pet.SOPInstanceUID + ("" if index == 0 else ".1"),
+                template=pet,
+            )
+            for index, z in enumerate(_PET_SLICES.values())
+        ]
+        for name, data in zip(_PET_SLICES, pet_slices):
+            (instances / name).write_bytes(data)
+        if multi_frame:
+            enhanced = pydicom.dcmread(instances / _PET_ENHANCED)
+            (instances / _PET_ENHANCED).write_bytes(
+                files.multi_frame(
+                    pet_slices,
+                    sop_class=files.ENHANCED_PET_IMAGE_STORAGE,
+                    instance=enhanced.SOPInstanceUID,
+                    rescale_type="US",
+                    template=enhanced,
+                    mapped=True,
                 )
             )
         reviewed = run.run(
@@ -539,6 +569,12 @@ def fixture_defaced(reviewed_low):
     return _second(reviewed_low, name="d")
 
 
+@pytest.fixture(name="multi_frame", scope="module")
+def fixture_multi_frame():
+    with _runs(first=(), dose=_dose(_LOW), multi_frame=True) as found:
+        yield found
+
+
 # With the RT Dose instances that cannot be placed or have no grid, which
 # its run holds or releases alike, so that one run tests them all.
 @pytest.fixture(name="hot", scope="module")
@@ -661,7 +697,10 @@ def test_a_head_ct_marked_absent_as_received_is_held_where_defaced(
             assert outcomes[name][0] == "released", index
             assert _codes(outcomes[name][1])[-2:] == [markers.PROFILE_CODE, CODE]
     assert 0 < changed < len(slices)
-    assert report["face_review"]["ct_series"] == {"defaced": 1, "not_defaced": []}
+    assert report["face_review"]["ct_series"] == {
+        "defaced": 1,
+        "not_defaced": [{"reason": "unreadable", "count": _UNPLACED}],
+    }
     counts = {
         entry["code"]: entry["count"]
         for entry in report["held_for_review"]
@@ -693,7 +732,10 @@ def test_pet_instances_in_the_defaced_frame_that_are_not_cleaned_are_held(
     for name in _UNDEFACED:
         assert outcomes[name] == ("held-for-review", None), name
         assert reasons[name] == expected, name
-    assert report["face_review"]["ct_series"] == {"defaced": 1, "not_defaced": []}
+    assert report["face_review"]["ct_series"] == {
+        "defaced": 1,
+        "not_defaced": [{"reason": "unreadable", "count": _UNPLACED}],
+    }
     counts = {
         entry["code"]: entry["count"]
         for entry in report["held_for_review"]
@@ -737,7 +779,10 @@ def test_a_registration_whose_grid_is_tied_to_the_defaced_frame_is_held(defaced)
     (grid,) = item.DeformableRegistrationGridSequence
     vectors = np.frombuffer(grid.VectorGridData, "<f4").reshape(2, 3, 4, 3)
     assert vectors[1, 1, 1:3].tolist() == [[1.0, -2.0, 0.5]] * 2
-    assert report["face_review"]["ct_series"] == {"defaced": 1, "not_defaced": []}
+    assert report["face_review"]["ct_series"] == {
+        "defaced": 1,
+        "not_defaced": [{"reason": "unreadable", "count": _UNPLACED}],
+    }
 
 
 def _contours(dataset):
@@ -1041,7 +1086,10 @@ def test_rt_instances_judged_beside_a_defaced_ct_are_held_in_a_run_without_it(
         assert outcomes[name] == ("held-for-review", None), name
         assert reasons[name] == {held}, name
     assert outcomes[_UNTIED][0] == "released"
-    assert report["face_review"]["ct_series"] == {"defaced": 0, "not_defaced": []}
+    assert report["face_review"]["ct_series"] == {
+        "defaced": 0,
+        "not_defaced": [{"reason": "unreadable", "count": _UNPLACED}],
+    }
 
 
 def test_a_target_in_the_block_holds_the_head_ct(targeted):
@@ -1053,7 +1101,10 @@ def test_a_target_in_the_block_holds_the_head_ct(targeted):
         assert held in reasons[_head_name(index)]
     assert report["face_review"]["ct_series"] == {
         "defaced": 0,
-        "not_defaced": [{"reason": "target-in-block", "count": 1}],
+        "not_defaced": [
+            {"reason": "target-in-block", "count": 1},
+            {"reason": "unreadable", "count": _UNPLACED},
+        ],
     }
     counts = {
         entry["code"]: entry["count"]
@@ -1082,7 +1133,10 @@ def test_an_eye_drawn_away_from_the_globes_holds_the_head_ct(eyes_away):
         assert held in reasons[_head_name(index)]
     assert report["face_review"]["ct_series"] == {
         "defaced": 0,
-        "not_defaced": [{"reason": "eyes-disagree-with-rois", "count": 1}],
+        "not_defaced": [
+            {"reason": "eyes-disagree-with-rois", "count": 1},
+            {"reason": "unreadable", "count": _UNPLACED},
+        ],
     }
     counts = {
         entry["code"]: entry["count"]
@@ -1125,7 +1179,7 @@ def test_an_unexpected_error_in_the_finder_releases_no_slice_it_would_deface(
     assert 0 < changed < len(slices)
     assert report["face_review"]["ct_series"] == {
         "defaced": 0,
-        "not_defaced": [{"reason": "unreadable", "count": 1}],
+        "not_defaced": [{"reason": "unreadable", "count": 1 + _UNPLACED}],
     }
 
 
@@ -1142,7 +1196,10 @@ def test_with_clean_pixel_data_the_head_ct_is_held_for_its_pixel_data(
         assert outcomes[name] == ("held-for-review", None), index
         assert HeldPixelData(PixelDataReason.TEXT_BLACKED_OUT) in reasons[name]
         assert not any(isinstance(r, HeldVisualFeatures) for r in reasons[name])
-    assert report["face_review"]["ct_series"] == {"defaced": 1, "not_defaced": []}
+    assert report["face_review"]["ct_series"] == {
+        "defaced": 1,
+        "not_defaced": [{"reason": "unreadable", "count": _UNPLACED}],
+    }
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.1-01", "PS3.15-E.3.2-01")
@@ -1170,7 +1227,10 @@ def test_with_both_options_reviewed_the_head_ct_is_released_with_both(accepted):
         untouched = ~inside & ~corner
         assert np.array_equal(written[untouched], source[untouched]), index
         assert len(np.unique(written[corner])) == 1, index
-    assert report["face_review"]["ct_series"] == {"defaced": 1, "not_defaced": []}
+    assert report["face_review"]["ct_series"] == {
+        "defaced": 1,
+        "not_defaced": [{"reason": "unreadable", "count": _UNPLACED}],
+    }
     assert report["redaction_review"] is not None
 
 
@@ -1196,7 +1256,10 @@ def test_a_revised_region_that_changes_a_defaced_slice_holds_it_for_its_face(
         assert reasons[name] == {
             HeldVisualFeatures(VisualFeaturesReason.OTHER_PIXEL_DATA)
         }, index
-    assert report["face_review"]["ct_series"] == {"defaced": 1, "not_defaced": []}
+    assert report["face_review"]["ct_series"] == {
+        "defaced": 1,
+        "not_defaced": [{"reason": "unreadable", "count": _UNPLACED}],
+    }
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.2-01")
@@ -1223,3 +1286,114 @@ def test_with_both_options_reviewed_the_head_pet_is_released_with_both(accepted)
         assert np.all((written[inside] == 0) | (written[inside] == source[inside]))
         assert (written[inside] != source[inside]).any(), name
         assert len(np.unique(written[corner])) == 1, name
+
+
+def _written_by_transform(data):
+    """Each file of ``data`` as the option's first run writes it, one
+    series' files prepared together."""
+    transform = _transform((), FaceReview(new_reference(), frozenset(), frozenset()))
+    records = {p: InstanceRecord.from_file(each) for p, each in enumerate(data)}
+    transform.prepare(records, lambda position: data[position])
+    return [
+        pydicom.dcmread(pydicom.filebase.DicomBytesIO(transform(each, records[p]).data))
+        for p, each in enumerate(data)
+    ]
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.2-01")
+def test_a_multi_frame_head_ct_is_written_as_air_where_its_slices_are(tmp_path):
+    corpus_module.write_corpus(corpus_module.build_corpus(), tmp_path)
+    instances = tmp_path / corpus_module.INSTANCES_DIRECTORY
+    template = pydicom.dcmread(instances / _CT_FILES[0])
+    slices = files.ct_files(
+        _SCAN,
+        head.Head(noise=0.0),
+        series=corpus_module.CT_SERIES,
+        frame=corpus_module.FRAME_OF_REFERENCE,
+        template=template,
+    )
+    enhanced = files.multi_frame(slices, instance=corpus_module.CT_SERIES + ".1000")
+
+    (written,) = _written_by_transform([enhanced])
+    expected = _written_by_transform(slices)
+
+    # Each frame is written as its slice is, air in the block but for the
+    # kept brain, and the instance keeps its frames' functional groups.
+    frames = written.pixel_array
+    assert frames.shape == (len(slices), *_SCAN.shape)
+    changed = 0
+    for index, (frame, single) in enumerate(zip(frames, expected)):
+        assert np.array_equal(frame, single.pixel_array), index
+        source = pydicom.dcmread(pydicom.filebase.DicomBytesIO(slices[index]))
+        changed += int(np.count_nonzero(frame != source.pixel_array))
+    assert changed > 0
+    assert len(written.PerFrameFunctionalGroupsSequence) == len(slices)
+
+
+def _contour_points(dataset):
+    return [
+        [
+            np.array([float(v) for v in contour.ContourData])
+            for contour in item.get("ContourSequence", [])
+        ]
+        for item in dataset.ROIContourSequence
+    ]
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.2-01", "PS3.15-E.3.2-02")
+def test_a_multi_frame_head_ct_gives_its_frame_the_block_of_its_slices(
+    multi_frame, defaced
+):
+    _, outcomes, reasons, report = multi_frame
+    _, single, _, _ = defaced
+
+    # The RT Structure Set, RT Dose, and PET slices in its frame are cleaned
+    # by the block that the run found from its frames, and written as they
+    # are beside the same CT's slices.
+    for name in (_STRUCTURE_SET, _DOSE[0], *_PET_SLICES):
+        disposition, dataset = outcomes[name]
+        assert disposition == "released", reasons[name]
+        assert dataset.RecognizableVisualFeatures == "NO"
+        if name == _STRUCTURE_SET:
+            found, expected = _contour_points(dataset), _contour_points(single[name][1])
+            assert len(found) == len(expected)
+            for one, other in zip(found, expected):
+                assert len(one) == len(other)
+                for a, b in zip(one, other):
+                    np.testing.assert_allclose(a, b)
+        else:
+            assert np.array_equal(dataset.pixel_array, single[name][1].pixel_array)
+    assert report["face_review"]["ct_series"] == {
+        "defaced": 1,
+        "not_defaced": [{"reason": "unreadable", "count": _UNPLACED}],
+    }
+    # The QC pack shows a multi-frame instance by its cine strip alone,
+    # fewer frames than the head's, so no verdict yet releases the defaced
+    # instance, which is held.
+    assert outcomes[_HEAD_ENHANCED] == ("held-for-review", None)
+    assert reasons[_HEAD_ENHANCED] == {
+        HeldVisualFeatures(VisualFeaturesReason.OTHER_PIXEL_DATA)
+    }
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.2-01", "PS3.15-E.3.2-02")
+def test_a_multi_frame_pet_is_set_to_zero_activity_and_released(multi_frame):
+    _, outcomes, reasons, _ = multi_frame
+    disposition, dataset = outcomes[_PET_ENHANCED]
+
+    # Each frame is written as its PET slice is, beside it in the run.
+    assert disposition == "released", reasons[_PET_ENHANCED]
+    assert dataset.RecognizableVisualFeatures == "NO"
+    assert _codes(dataset)[-2:] == [markers.PROFILE_CODE, CODE]
+    frames = dataset.pixel_array
+    assert len(frames) == len(_PET_SLICES)
+    for frame, (name, z) in zip(frames, _PET_SLICES.items()):
+        assert np.array_equal(frame, outcomes[name][1].pixel_array), name
+        assert not np.array_equal(frame, _pet_uptake(z)), name
+    # The collection's Legacy Converted Enhanced PET, whose frames no
+    # functional groups place, is still held.
+    assert outcomes[_PET[2]] == ("held-for-review", None)
+    assert (
+        HeldVisualFeatures(VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME)
+        in (reasons[_PET[2]])
+    )
