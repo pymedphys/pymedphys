@@ -85,16 +85,19 @@ def _levels(seed=0, signed=False):
     return levels
 
 
-def _image(syntax, codestreams, *, bits, signed=False, samples=1, frames=None):
+def _image(
+    syntax, codestreams, *, bits, signed=False, samples=1, frames=None, allocated=None
+):
     """A CT image, or an RGB one of ``samples`` 3, whose Pixel Data
-    encapsulates ``codestreams``, one to a frame."""
+    encapsulates ``codestreams``, one to a frame, in samples of ``allocated``
+    bits: by default, the fewest bytes that hold ``bits``."""
     dataset = synthetic.ct_slice(0)
     dataset.SamplesPerPixel = samples
     dataset.PhotometricInterpretation = "MONOCHROME2" if samples == 1 else "RGB"
     if samples > 1:
         dataset.PlanarConfiguration = 0
     dataset.Rows, dataset.Columns = ROWS, COLUMNS
-    dataset.BitsAllocated = 16 if bits > 8 else 8
+    dataset.BitsAllocated = _allocated(bits, allocated)
     dataset.BitsStored = bits
     dataset.HighBit = bits - 1
     dataset.PixelRepresentation = int(signed)
@@ -105,18 +108,22 @@ def _image(syntax, codestreams, *, bits, signed=False, samples=1, frames=None):
     return synthetic.written(dataset, syntax)
 
 
+def _allocated(bits, allocated=None):
+    return (16 if bits > 8 else 8) if allocated is None else allocated
+
+
 def _signed(values, bits):
     """The two's complement values of ``bits``-bit patterns."""
     values = np.asarray(values, dtype=np.int64)
     return np.where(values >= 1 << (bits - 1), values - (1 << bits), values)
 
 
-def _attributes(bits, signed=False, samples=1):
+def _attributes(bits, signed=False, samples=1, allocated=None):
     attributes = {
         "Rows": ROWS,
         "Columns": COLUMNS,
         "SamplesPerPixel": samples,
-        "BitsAllocated": 16 if bits > 8 else 8,
+        "BitsAllocated": _allocated(bits, allocated),
         "BitsStored": bits,
         "HighBit": bits - 1,
         "PixelRepresentation": int(signed),
@@ -138,7 +145,7 @@ def _jpeg_extended(levels, *, signed=False, frames=None):
     return data, _signed(expected, 12) if signed else expected
 
 
-def _jpeg_ls(syntax, *, bits, near=0, signed=False, samples=1, seed=0):
+def _jpeg_ls(syntax, *, bits, near=0, signed=False, samples=1, seed=0, allocated=None):
     """A JPEG-LS image of random samples, and its samples as a decoder
     reconstructs and stores them."""
     rng = np.random.default_rng(_RNG_SEED + seed)
@@ -147,7 +154,14 @@ def _jpeg_ls(syntax, *, bits, near=0, signed=False, samples=1, seed=0):
     # Runs of one value too, which run mode codes.
     patterns[3:6, 4:20] = patterns[3, 4]
     codestream, reconstructed = jpeg_ls.encode(patterns, precision=bits, near=near)
-    data = _image(syntax, [codestream], bits=bits, signed=signed, samples=samples)
+    data = _image(
+        syntax,
+        [codestream],
+        bits=bits,
+        signed=signed,
+        samples=samples,
+        allocated=allocated,
+    )
     return data, _signed(reconstructed, bits) if signed else reconstructed
 
 
@@ -253,6 +267,51 @@ def test_each_kind_decodes_to_the_samples_it_codes(name):
         np.frombuffer(decoded, dtype=kind).reshape(expected.shape), expected
     )
     frame = np.asarray(next(isolated_frames(data)))
+    assert np.array_equal(frame, expected)
+
+
+# JPEG-LS at 6 or 7 bits in either container that DICOM allows: PS3.5
+# Table 8.2.3-1 permits Bits Allocated 8 or 16 for these precisions, and
+# the MR Image Module, for one, requires 16 (PS3.3 C.8.3.1.1.4).
+_CONTAINERS = [
+    pytest.param(
+        syntax, bits, signed, allocated, id=f"{name}-{bits}{sign}-in-{allocated}"
+    )
+    for syntax, name in ((JPEG_LS, "lossless"), (JPEG_LS_NEAR, "near"))
+    for bits in (6, 7)
+    for signed, sign in ((False, ""), (True, "-signed"))
+    for allocated in (8, 16)
+]
+
+
+@pytest.mark.parametrize("syntax, bits, signed, allocated", _CONTAINERS)
+def test_low_precision_jpeg_ls_decodes_to_its_bits_allocated(
+    syntax, bits, signed, allocated
+):
+    # imagecodecs gives samples of at most 8 bits in one byte each, so those
+    # of a 16-bit container must be widened to two bytes, and their sign
+    # corrected at that width.
+    _needs(syntax)
+    data, expected = _jpeg_ls(
+        syntax,
+        bits=bits,
+        near=int(syntax == JPEG_LS_NEAR),
+        signed=signed,
+        allocated=allocated,
+    )
+    source = read_source(data)
+    kind = f"{'<' if allocated > 8 else ''}{'i' if signed else 'u'}{allocated // 8}"
+
+    assert frames_problem(source) is None
+    decoded = decoded_frames(
+        source, _attributes(bits, signed, allocated=allocated), 1, "MONOCHROME2"
+    )
+    assert len(decoded) == ROWS * COLUMNS * allocated // 8
+    assert np.array_equal(
+        np.frombuffer(decoded, dtype=kind).reshape(expected.shape), expected
+    )
+    frame = np.asarray(next(isolated_frames(data)))
+    assert frame.dtype == np.dtype(kind)
     assert np.array_equal(frame, expected)
 
 
@@ -453,6 +512,43 @@ def test_clean_pixel_data_blacks_out_and_writes_the_decoded_frames(name):
     inside = _inside(expected.shape)
     assert np.all(pixels[inside] == expected.min())
     assert np.array_equal(pixels[~inside], expected[~inside])
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.1-01")
+@pytest.mark.parametrize(
+    "syntax, bits, signed, near",
+    [(JPEG_LS, 6, False, 0), (JPEG_LS_NEAR, 7, True, 2)],
+    ids=["lossless-6", "near-7-signed"],
+)
+def test_clean_pixel_data_cleans_low_precision_jpeg_ls_in_a_16_bit_container(
+    syntax, bits, signed, near
+):
+    _needs(syntax)
+    data, expected = _jpeg_ls(syntax, bits=bits, near=near, signed=signed, allocated=16)
+    finder = Finder()
+
+    result = _cleaning_transform(finder)(data, InstanceRecord.from_file(data))
+
+    assert isinstance(result, run.Transformed), result
+    assert np.array_equal(finder.seen[0], expected)
+    written = pydicom.dcmread(io.BytesIO(result.data))
+    assert written.file_meta.TransferSyntaxUID == EXPLICIT_VR_LITTLE_ENDIAN
+    assert written.BitsAllocated == 16
+    pixels = pydicom.pixels.pixel_array(written)
+    inside = _inside(expected.shape)
+    assert np.all(pixels[inside] == expected.min())
+    assert np.array_equal(pixels[~inside], expected[~inside])
+
+
+@pytest.mark.parametrize("signed", [False, True], ids=["unsigned", "signed"])
+def test_a_qc_preview_shows_low_precision_jpeg_ls_in_a_16_bit_container(signed):
+    _needs(JPEG_LS)
+    data, expected = _jpeg_ls(JPEG_LS, bits=6, signed=signed, allocated=16)
+
+    shown = qc_previews.previews_of({0: data}, {0})
+
+    assert not shown.not_previewed
+    assert _pngs({0: data}, {0}) == _pngs({0: _native(data, expected)}, {0})
 
 
 @pytest.mark.parametrize("name", ["jpeg-extended-12-signed", "jpeg-ls-lossless-6-rgb"])

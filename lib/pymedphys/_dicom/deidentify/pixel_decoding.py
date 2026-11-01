@@ -910,9 +910,13 @@ def _frame_decoded(
         setattr(dataset, keyword, value)
     dataset.PixelData = pydicom.encaps.encapsulate([codestream])
     dataset["PixelData"].VR = "OB"
+    # Indexed, as pydicom then widens samples that a plugin gives in fewer
+    # bytes than Bits Allocated, such as imagecodecs's JPEG-LS at a precision
+    # of at most 8 bits in a 16-bit container, to Bits Allocated before
+    # correcting their sign; iterated without indices, it keeps them narrow.
     frame, properties = next(
         _decoder(transfer_syntax, plugin).iter_array(
-            dataset, decoding_plugin=plugin, as_rgb=True
+            dataset, indices=[0], decoding_plugin=plugin, as_rgb=True
         )
     )
     photometric = properties["photometric_interpretation"]
