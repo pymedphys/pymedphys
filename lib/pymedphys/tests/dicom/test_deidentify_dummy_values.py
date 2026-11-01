@@ -16,6 +16,7 @@
 
 import datetime
 import io
+import struct
 
 from pymedphys._imports import hypothesis, pydicom, pytest
 
@@ -595,6 +596,22 @@ def _with_colour_space(profile, colour_space):
     return profile[:16] + colour_space + profile[20:]
 
 
+def _display_with_d65_white(profile):
+    """Return ``profile`` as a display profile whose media white point is D65."""
+    written = bytearray(profile[:12] + b"mntr" + profile[16:])
+    (count,) = struct.unpack_from(">I", written, 128)
+    for index in range(count):
+        tag, offset, _ = struct.unpack_from(">4sII", written, 132 + 12 * index)
+        if tag == b"wtpt":
+            struct.pack_into(
+                ">3i",
+                written,
+                offset + 8,
+                *(round(v * 65536) for v in (0.9505, 1.0, 1.0891)),
+            )
+    return bytes(written)
+
+
 @pytest.mark.deid_requirement("MIDI-BP-14")
 def test_d_on_icc_profile_writes_the_source_cleaned_of_all_but_its_colorimetry():
     outcome = dummy_values.icc_profile_outcome(RGB_SOURCE)
@@ -634,8 +651,14 @@ def test_the_fixed_srgb_profile_is_cleaned_like_any_source():
             icc_cleaning.Refusal.VERSION,
         ),
         (RGB_SOURCE[:-4], icc_cleaning.Refusal.STRUCTURE),
+        # A version 2 display profile whose white point colour management
+        # modules read by its class, which the cleaned profile would change.
+        (
+            _display_with_d65_white(RGB_SOURCE),
+            icc_cleaning.Refusal.DISPLAY_WHITE_POINT,
+        ),
     ],
-    ids=["output-device", "version-5", "truncated"],
+    ids=["output-device", "version-5", "truncated", "display-d65-white"],
 )
 def test_d_writes_the_fixed_srgb_profile_where_the_source_cannot_be_cleaned(
     source, refusal

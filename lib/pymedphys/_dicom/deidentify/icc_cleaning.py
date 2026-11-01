@@ -42,13 +42,22 @@ The source's colorimetric tags must be ones that its version defines, of a
 type that the version defines for the tag. These are, for version 2
 (ICC.1:2001-04), the matrix and tone curve tags, the media white and black
 points, luminance, the 8-bit and 16-bit lookup tables of each rendering
-intent in both directions, chromaticity, measurement, and viewing
-conditions; and, for version 4 (ICC.1:2010 and ICC.1:2022), the same without
-the media black point, which version 4 removed, with parametric curves and
-the A-to-B and B-to-A lookup tables, the floating-point multiProcessElements
-transforms (``D2B0`` to ``D2B3`` and ``B2D0`` to ``B2D3``), chromatic
-adaptation, coding-independent code points, the colorimetric intent image
+intent in both directions, chromatic adaptation, chromaticity, measurement,
+and viewing conditions; and, for version 4 (ICC.1:2010 and ICC.1:2022), the
+same without the media black point, which version 4 removed, with parametric
+curves and the A-to-B and B-to-A lookup tables, the floating-point
+multiProcessElements transforms (``D2B0`` to ``D2B3`` and ``B2D0`` to
+``B2D3``), coding-independent code points, the colorimetric intent image
 state, and the perceptual and saturation rendering intent gamuts.
+
+The written profile is an input device profile whatever the source's class.
+A colour management module reads a version 2 display profile's media white
+point, and the chromatic adaptation that it derives where the profile has no
+``chad`` tag, by its class: LittleCMS takes D50 as the media white point of
+such a profile, and adapts from the stored white point to D50, while it takes
+an input profile's stored white point as it is. A version 2 display profile is
+therefore cleaned only where its media white point is D50, where both classes
+read the same white point and adaptation.
 
 A profile is cleaned only where every byte that it keeps can be accounted
 for. :class:`UncleanableProfileError` is raised, with a :class:`Refusal`,
@@ -56,8 +65,9 @@ where the source is of another version or device class, has another PCS or a
 PCS illuminant that is not D50, has an undefined rendering intent, has a
 header, tag table, or tag whose bounds do not parse, holds a tag twice,
 holds a colorimetric tag of a type that its version does not define for it,
-or one whose data do not parse, or lacks the media white point or a complete
-device-to-PCS transform. A tag that only describes the colorimetry
+or one whose data do not parse, lacks the media white point or a complete
+device-to-PCS transform, or is a version 2 display profile whose media white
+point is not D50. A tag that only describes the colorimetry
 (chromaticity, measurement, viewing conditions, the colorimetric intent
 image state, and the rendering intent gamuts) and whose data do not parse is
 removed instead, since no transform reads it.
@@ -87,6 +97,12 @@ _CONNECTION_SPACES = frozenset({b"XYZ ", b"Lab "})
 # any component from it that a header's PCS illuminant may have.
 _D50 = (0.9642, 1.0, 0.8249)
 _ILLUMINANT_TOLERANCE = 0.001
+# D50 as s15Fixed16Numbers, each the nearest to the value above, and the
+# largest difference, in units of the last place, that a version 2 display
+# profile's media white point may have from it, which covers writers that
+# truncate rather than round.
+_D50_ENCODED = tuple(round(value * 65536) for value in _D50)
+_WHITE_POINT_TOLERANCE = 1
 # The rendering intents that ICC.1 defines: perceptual, media-relative
 # colorimetric, saturation, and ICC-absolute colorimetric.
 _RENDERING_INTENTS = range(4)
@@ -137,6 +153,9 @@ class Refusal(enum.Enum):
 
     NO_TRANSFORM = "no-transform"
     """The profile has no complete transform from device values to the PCS."""
+
+    DISPLAY_WHITE_POINT = "display-white-point"
+    """The profile is a version 2 display profile whose media white point is not D50."""
 
 
 class UncleanableProfileError(ValueError):
@@ -248,9 +267,25 @@ def clean_profile(source: bytes, text: str) -> bytes:
     matrix_and_curves = header.connection_space == b"XYZ " and _MATRIX_TAGS <= set(kept)
     if b"A2B0" not in kept and not matrix_and_curves:
         raise UncleanableProfileError(Refusal.NO_TRANSFORM)
+    if (
+        header.version[0] == 2
+        and profile[12:16] == b"mntr"
+        and not _is_d50(kept[b"wtpt"])
+    ):
+        raise UncleanableProfileError(Refusal.DISPLAY_WHITE_POINT)
     tags = [*_text_tags(header.version[0], text)]
     tags += [(signature, kept[signature]) for signature in allowed if signature in kept]
     return icc_profiles.assemble(header, tags)
+
+
+def _is_d50(white_point: bytes) -> bool:
+    """Return whether a cleaned XYZType holds D50, as the ICC specification encodes it."""
+    return all(
+        abs(value - expected) <= _WHITE_POINT_TOLERANCE
+        for value, expected in zip(
+            struct.unpack_from(">3i", white_point, 8), _D50_ENCODED
+        )
+    )
 
 
 def _sized(profile: bytes) -> bytes:
@@ -685,6 +720,7 @@ _V2_LUT = _Kind({b"mft1": _lut8, b"mft2": _lut16})
 _V4_A2B = _Kind({b"mft1": _lut8, b"mft2": _lut16, b"mAB ": _lut_ab})
 _V4_B2A = _Kind({b"mft1": _lut8, b"mft2": _lut16, b"mBA ": _lut_ab})
 _MULTI_PROCESS = _Kind({b"mpet": _multi_process_elements})
+_CHROMATIC_ADAPTATION = _Kind({b"sf32": _s15_fixed16_array})
 _DESCRIPTIVE = {
     b"chrm": _Kind({b"chrm": _chromaticity}, transform=False),
     b"meas": _Kind({b"meas": _measurement}, transform=False),
@@ -698,6 +734,7 @@ _V2_TAGS: Mapping[bytes, _Kind] = {
     b"wtpt": _XYZ,
     b"bkpt": _XYZ,
     b"lumi": _XYZ,
+    b"chad": _CHROMATIC_ADAPTATION,
     b"rXYZ": _XYZ,
     b"gXYZ": _XYZ,
     b"bXYZ": _XYZ,
@@ -715,7 +752,7 @@ _V2_TAGS: Mapping[bytes, _Kind] = {
 _V4_TAGS: Mapping[bytes, _Kind] = {
     b"wtpt": _XYZ,
     b"lumi": _XYZ,
-    b"chad": _Kind({b"sf32": _s15_fixed16_array}),
+    b"chad": _CHROMATIC_ADAPTATION,
     b"rXYZ": _XYZ,
     b"gXYZ": _XYZ,
     b"bXYZ": _XYZ,

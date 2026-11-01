@@ -37,6 +37,13 @@ TEXT = "DEIDENTIFIED"
 V2 = bytes([2, 0x40, 0, 0])
 V4 = bytes([4, 0x30, 0, 0])
 IDENTITY = ((1.0, 0.0, 0.0), (0.0, 1.0, 0.0), (0.0, 0.0, 1.0))
+ABSOLUTE = 3
+# The D65 white point, as XYZ, and the Bradford adaptation from D65 to D50,
+# as the chromatic adaptation tag holds it.
+D65 = (0.9505, 1.0, 1.0891)
+BRADFORD_D65 = icc.sf32(
+    1.0479, 0.0229, -0.0502, 0.0296, 0.9904, -0.0171, -0.0092, 0.0151, 0.7519
+)
 
 
 def _linear_curves():
@@ -155,20 +162,7 @@ def _v4_matrix(careless=True):
         icc.text_tags(4)
         + icc.matrix_tags(4, careless)
         + [
-            (
-                b"chad",
-                icc.sf32(
-                    1.0479,
-                    0.0229,
-                    -0.0502,
-                    0.0296,
-                    0.9904,
-                    -0.0171,
-                    -0.0092,
-                    0.0151,
-                    0.7519,
-                ),
-            ),
+            (b"chad", BRADFORD_D65),
             (b"cicp", icc.cicp(1, 13, 0, 1)),
             (b"ciis", icc.signature(b"scoe")),
             (b"rig0", icc.signature(b"prmg")),
@@ -177,6 +171,42 @@ def _v4_matrix(careless=True):
         + icc.chromaticity_tags(),
         careless=careless,
     )
+
+
+def _with_white_point(tags, white_point):
+    """Return matrix and tone curve tags with another media white point."""
+    return [(tag, white_point if tag == b"wtpt" else data) for tag, data in tags]
+
+
+def _v2_input_adapted(careless=True):
+    """Return a version 2.4 input profile of a D65 device, with its adaptation."""
+    return icc.profile(
+        icc.Header(version=V2),
+        icc.text_tags(2)
+        + _with_white_point(
+            icc.matrix_tags(2, careless), icc.xyz(*D65, careless=careless)
+        )
+        + [(b"chad", BRADFORD_D65), (b"bkpt", icc.xyz(0.0, 0.0, 0.0))],
+        careless=careless,
+    )
+
+
+def _display(version, white_point, chad=True):
+    """Return a display profile with the given media white point."""
+    major = version[0]
+    return icc.profile(
+        icc.Header(version=version, device_class=b"mntr"),
+        icc.text_tags(major)
+        + _with_white_point(icc.matrix_tags(major), white_point)
+        + ([(b"chad", BRADFORD_D65)] if chad else []),
+        careless=True,
+    )
+
+
+# D50 as a writer that truncates, rather than rounds, encodes it.
+TRUNCATED_D50 = (
+    b"XYZ " + bytes(4) + icc.u32(0xF6D5) + icc.u32(0x10000) + icc.u32(0xD32C)
+)
 
 
 def _v2_lut():
@@ -253,6 +283,9 @@ SOURCES = {
     "v2-matrix": _v2_matrix,
     "v4-matrix": _v4_matrix,
     "v2-lut16-lut8": _v2_lut,
+    "v2-input-chad-d65": _v2_input_adapted,
+    "v2-display-truncated-d50": lambda: _display(V2, TRUNCATED_D50, chad=False),
+    "v4-display-d65": lambda: _display(V4, icc.xyz(*D65)),
     "v4-a2b-b": lambda: _v4_lut("B"),
     "v4-a2b-m-matrix-b": lambda: _v4_lut("B", "matrix", "M"),
     "v4-a2b-a-clut-b": lambda: _v4_lut("A", "CLUT", "B"),
@@ -267,6 +300,9 @@ SOURCES = {
 # and tone curves, which LittleCMS inverts, so that they can be an output.
 INVERTIBLE = {
     "v2-matrix",
+    "v2-input-chad-d65",
+    "v2-display-truncated-d50",
+    "v4-display-d65",
     "v4-matrix",
     "v2-lut16-lut8",
     "v4-a2b-b2a",
@@ -323,6 +359,28 @@ def test_the_floating_point_transform_is_kept_where_it_differs():
 
     assert _mapped(profile, 0) != _mapped(without, 0)
     assert _mapped(cleaned, 0) == _mapped(profile, 0)
+
+
+@pytest.mark.parametrize("chad", [True, False], ids=["chad", "no-chad"])
+def test_lcms_reads_a_version_2_display_profiles_white_point_by_its_class(chad):
+    # LittleCMS takes D50 as a version 2 display profile's media white point,
+    # and an input profile's stored one, so writing a display profile with a
+    # D65 white point as an input profile would change absolute rendering;
+    # the cleaner refuses it. With a D50 white point, both classes agree.
+    def relabelled(profile):
+        return profile[:12] + b"scnr" + profile[16:]
+
+    d65 = _display(V2, icc.xyz(*D65), chad=chad)
+    d50 = _display(V2, icc.xyz(*icc.WHITE), chad=chad)
+
+    assert _mapped(relabelled(d65), ABSOLUTE) != _mapped(d65, ABSOLUTE)
+    assert _mapped(relabelled(d50), ABSOLUTE) == _mapped(d50, ABSOLUTE)
+    with pytest.raises(UncleanableProfileError) as raised:
+        icc_cleaning.clean_profile(d65, TEXT)
+    assert raised.value.refusal is Refusal.DISPLAY_WHITE_POINT
+    cleaned = icc_cleaning.clean_profile(d50, TEXT)
+    assert cleaned[12:16] == b"scnr"
+    assert _mapped(cleaned, ABSOLUTE) == _mapped(d50, ABSOLUTE)
 
 
 def test_lcms_reads_the_text_given(source):
@@ -467,8 +525,24 @@ def test_every_tag_is_one_its_version_defines_within_the_profile(source):
             },
         ),
         (_v2_lut, {b"desc", b"cprt", b"wtpt", b"A2B0", b"A2B1", b"B2A0"}),
+        (
+            _v2_input_adapted,
+            {
+                b"desc",
+                b"cprt",
+                b"wtpt",
+                b"bkpt",
+                b"chad",
+                b"rXYZ",
+                b"gXYZ",
+                b"bXYZ",
+                b"rTRC",
+                b"gTRC",
+                b"bTRC",
+            },
+        ),
     ],
-    ids=["v2-matrix", "v4-matrix", "v2-lut"],
+    ids=["v2-matrix", "v4-matrix", "v2-lut", "v2-input-chad"],
 )
 def test_the_colorimetric_tags_are_kept_and_no_others(make, expected):
     assert set(icc.tags_of(icc_cleaning.clean_profile(make(), TEXT))) == expected
@@ -481,6 +555,19 @@ def test_the_colorimetric_tags_are_kept_value_for_value():
 
     for tag in (b"wtpt", b"chad", b"rXYZ", b"rTRC", b"chrm", b"cicp", b"meas", b"ciis"):
         assert cleaned[tag] == source[tag]
+
+
+def test_a_version_2_profiles_chromatic_adaptation_is_kept_value_for_value():
+    # ICC.1:2001-04 (version 2.4) defines the chromatic adaptation tag, which
+    # LittleCMS reads for absolute colorimetric rendering with incomplete
+    # adaptation, a setting that Pillow does not expose.
+    profile = _v2_input_adapted(careless=False)
+    source = icc.tags_of(profile)
+    cleaned = icc.tags_of(icc_cleaning.clean_profile(profile, TEXT))
+
+    for tag in (b"wtpt", b"bkpt", b"chad", b"rXYZ", b"rTRC"):
+        assert cleaned[tag] == source[tag]
+    assert cleaned[b"chad"] == BRADFORD_D65
 
 
 def test_cleaning_is_deterministic_and_a_cleaned_profile_cleans_to_itself(source):
@@ -638,6 +725,20 @@ MATRIX_V4 = icc.profile(icc.Header(), icc.matrix_tags(4))
                 ]
             ),
             Refusal.TAG_DATA,
+        ),
+        (_display(V2, icc.xyz(*D65)), Refusal.DISPLAY_WHITE_POINT),
+        (_display(V2, icc.xyz(*D65), chad=False), Refusal.DISPLAY_WHITE_POINT),
+        # Two units of the last place from D50 in X.
+        (
+            _display(
+                V2,
+                b"XYZ "
+                + bytes(4)
+                + icc.u32(0xF6D8)
+                + icc.u32(0x10000)
+                + icc.u32(0xD32D),
+            ),
+            Refusal.DISPLAY_WHITE_POINT,
         ),
         (_with_tags(icc.matrix_tags(4)[1:]), Refusal.NO_WHITE_POINT),
         (_with_tags(icc.matrix_tags(4)[:-1]), Refusal.NO_TRANSFORM),
