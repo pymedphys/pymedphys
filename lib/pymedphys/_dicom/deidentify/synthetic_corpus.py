@@ -159,11 +159,11 @@ instance, and no preset could release any of the collection; planted in one,
 that instance checks sequestration, :data:`REVIEW_FILE` checks review, and
 the other twenty-three check each preset's output, the reports where their
 trees are cleaned. Radiopharmaceutical Start
-DateTime and Institution Code Sequence, which CT Image does not define
-there, are planted in no file, so the Enhanced PET instance, which lacks an
-attribute of Type 1, and the treatment records are released and their other
-markers are checked; an Enhanced PET Image instance that conforms to the
-IOD is sequestered under ``basic`` and ``basic-clean-descriptors``.
+DateTime, which CT Image does not define there, is planted in no file, so
+the Enhanced PET instance, which lacks an attribute of Type 1, is released
+and its other markers are checked; an Enhanced PET Image instance that
+conforms to the IOD is sequestered under ``basic`` and
+``basic-clean-descriptors``.
 
 **Edge cases.** Each file except the first RT Dose, ``06-rtdose.dcm``, and
 the MR Image, ``10-mr.dcm``, is written in Explicit VR Little Endian, and
