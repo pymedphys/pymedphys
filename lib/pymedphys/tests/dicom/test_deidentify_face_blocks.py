@@ -447,6 +447,29 @@ def test_padding_in_the_block_is_kept():
 _TARGET = files.square(_EYES_FRONT[0])
 
 
+@pytest.mark.parametrize(
+    ("keyword", "value", "held"),
+    [
+        ("ContourSlabThickness", 10.0, True),
+        ("ContourOffsetVector", [0.0, 0.0, 6.0], True),
+        ("ContourSlabThickness", None, False),
+        ("ContourOffsetVector", None, False),
+    ],
+    ids=["thickness", "offset", "empty-thickness", "empty-offset"],
+)
+def test_a_target_in_a_slab_holds_the_series(keyword, value, held):
+    rtss = pydicom.dcmread(io.BytesIO(files.structure_set([("PTV", _TARGET)])))
+    (contour,) = rtss.ROIContourSequence[0].ContourSequence
+    setattr(contour, keyword, value)
+
+    # A slab, retired in PS3.3, lies off the contour's points, which alone
+    # place the target, so the region to keep is unknown: the series is
+    # held, as it was before targets were kept. An empty value is no slab.
+    outcome = _outcome(files.written(rtss))
+
+    assert _fate(outcome) == (SeriesProblem.TARGET_IN_BLOCK if held else _AROUND)
+
+
 def _meets_target(points: np.ndarray, centre=_EYES_FRONT[0]) -> np.ndarray:
     """Whether each pixel's 2 mm square meets the target's 4 mm square
     about ``centre``, from the two squares' half widths alone."""
