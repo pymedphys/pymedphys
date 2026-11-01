@@ -24,7 +24,9 @@ where every cell that a criterion names does:
   fully covered;
 - each IOD that a :class:`FalsePositiveCriterion` matches, and each cell of
   that IOD and slice size, has at most its share of frames without text
-  with a region, and at most its share of their tissue blacked out;
+  with a region, and at most its share of their tissue blacked out; an IOD
+  matched without enough frames known to be free of text, or with none,
+  fails;
 - each tier of the corpus that a :class:`MissedTextCriterion` names has at
   most its number of texts of its truth missed, with none of their ink
   covered;
@@ -127,16 +129,32 @@ class SensitivityCriterion:
 class FalsePositiveCriterion:
     """The most that frames without text of a matching IOD may show, in
     all and in each bin of slice size: the share with a region, and the
-    share of their tissue blacked out."""
+    share of their tissue blacked out.
+
+    With ``iod`` of ``"*"``, ``other_than`` names IODs that the criterion
+    does not match, so that a criterion can hold every IOD that no other
+    names.
+    """
 
     iod: Labels = ANY
     max_with_a_region: float | None = None
     max_tissue_blacked_out: float | None = None
+    other_than: tuple[str, ...] = ()
 
     def __post_init__(self):
         _check_labels("iod", self.iod)
+        if self.other_than:
+            _check_labels("other_than", self.other_than)
+            if self.iod != ANY:
+                raise EvaluationRefused(
+                    "Only a criterion of every IOD can leave some out."
+                )
         _check_share("max_with_a_region", self.max_with_a_region)
         _check_share("max_tissue_blacked_out", self.max_tissue_blacked_out)
+
+    def matches(self, iod: str) -> bool:
+        """Whether the criterion holds frames of ``iod``."""
+        return _matches(self.iod, iod) and iod not in self.other_than
 
 
 @dataclasses.dataclass(frozen=True)
@@ -234,6 +252,9 @@ TOMOGRAPHIC_IODS = (
     "Enhanced MR Image Storage",
     "Positron Emission Tomography Image Storage",
     "Enhanced PET Image Storage",
+    "Legacy Converted Enhanced CT Image Storage",
+    "Legacy Converted Enhanced MR Image Storage",
+    "Legacy Converted Enhanced PET Image Storage",
 )
 PROJECTION_IODS = (
     "RT Image Storage",
@@ -248,8 +269,9 @@ PROJECTION_IODS = (
 # texts at least 7 pixels high fully covered in at least 99% of texts of 16
 # times the noise or more, and 95% from 4 to under 16 times; at most 2% of
 # text-free tomographic frames and 5% of projection frames with a region, in
-# each IOD and each slice size, and at most 0.01% of tissue blacked out in
-# any; 400 texts and 300 frames at the least in each cell; both intervals'
+# each IOD and each slice size, with every other image IOD held to the
+# stricter 2% until it is given a group, and at most 0.01% of tissue blacked
+# out in any; 400 texts and 300 frames at the least in each cell; both intervals'
 # bounds; no single stratum 2 percentage points worse than today's
 # defaults, the first point; and no text of MIDI-B's answer key, tier T5,
 # missed. A text's height is judged in frame pixels, however it was drawn.
@@ -263,6 +285,9 @@ CHOSEN_CRITERIA = AcceptanceCriteria(
     false_positives=(
         FalsePositiveCriterion(iod=TOMOGRAPHIC_IODS, max_with_a_region=0.02),
         FalsePositiveCriterion(iod=PROJECTION_IODS, max_with_a_region=0.05),
+        FalsePositiveCriterion(
+            max_with_a_region=0.02, other_than=TOMOGRAPHIC_IODS + PROJECTION_IODS
+        ),
         FalsePositiveCriterion(max_tissue_blacked_out=0.0001),
     ),
     missed=(MissedTextCriterion("T5", truth="annotated", max_missed=0),),
@@ -371,17 +396,19 @@ def _false_positive_failures(
     point: Mapping[str, Any], criteria: AcceptanceCriteria
 ) -> list[str]:
     failures = []
-    cells = [(row, row["value"]["iod"]) for row in point["by"].get("iod", [])]
+    # An IOD's own cell fails without frames known to be free of text; a
+    # cell of its slice sizes without any is left to the IOD's.
+    cells = [(row, row["value"]["iod"], True) for row in point["by"].get("iod", [])]
     cells += [
-        (row, f"{row['value']['iod']}, {row['value']['slice_side']}")
+        (row, f"{row['value']['iod']}, {row['value']['slice_side']}", False)
         for row in point["by"].get("iod+slice_side", [])
     ]
     for criterion in criteria.false_positives:
-        for cell, label in cells:
-            if not _matches(criterion.iod, cell["value"]["iod"]):
+        for cell, label, whole in cells:
+            if not criterion.matches(cell["value"]["iod"]):
                 continue
-            measure = cell["false_positives"]
-            if measure["frames"] == 0:
+            measure = cell.get("false_positives", {"frames": 0})
+            if measure["frames"] == 0 and not whole:
                 continue
             if measure["frames"] < criteria.min_frames:
                 failures.append(f"false positives: {label}: too few frames")
@@ -409,7 +436,8 @@ def _false_positive_failures(
                     "of tissue blacked out",
                     4,
                 )
-    return failures
+    # A cell that two criteria match is too thin only once.
+    return list(dict.fromkeys(failures))
 
 
 def _over(

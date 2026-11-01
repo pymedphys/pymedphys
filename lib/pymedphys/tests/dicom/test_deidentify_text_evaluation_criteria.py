@@ -158,6 +158,17 @@ def test_the_chosen_criteria_are_as_picked():
     assert limits == {0.02, 0.05}
     assert chosen.false_positives[-1].iod == "*"
     assert chosen.false_positives[-1].max_tissue_blacked_out == 0.0001
+    # Every image IOD is gated: those not named take the stricter limit.
+    (other,) = [each for each in chosen.false_positives if each.other_than]
+    assert other.max_with_a_region == 0.02
+    assert set(other.other_than) == set(
+        criteria.TOMOGRAPHIC_IODS + criteria.PROJECTION_IODS
+    )
+    assert {
+        "Legacy Converted Enhanced CT Image Storage",
+        "Legacy Converted Enhanced MR Image Storage",
+        "Legacy Converted Enhanced PET Image Storage",
+    } <= set(criteria.TOMOGRAPHIC_IODS)
     assert criteria.HELD_OUT_COLLECTIONS == ("Pediatric-CT-SEG",)
     assert criteria.assess({"points": [_passing()]}, chosen)[0]["meets"]
 
@@ -220,6 +231,80 @@ def test_false_positives_are_held_by_iod_and_slice_size():
     ]
 
 
+@pytest.mark.parametrize(
+    "iod",
+    [
+        "Secondary Capture Image Storage",
+        "Multi-frame True Color Secondary Capture Image Storage",
+        "Ultrasound Image Storage",
+        "Breast Tomosynthesis Image Storage",
+        "Nuclear Medicine Image Storage",
+        "X-Ray Radiofluoroscopic Image Storage",
+        "Legacy Converted Enhanced CT Image Storage",
+        "Legacy Converted Enhanced MR Image Storage",
+        "Legacy Converted Enhanced PET Image Storage",
+    ],
+)
+def test_every_other_image_iod_is_held_to_the_stricter_limit(iod):
+    point = _passing()
+    point["by"]["iod"].append(
+        {
+            "value": {"iod": iod},
+            "sensitivity": _sensitivity(0, 0),
+            "false_positives": _false_positives(400, 16),
+        }
+    )
+    assert _failures(point) == [
+        f"false positives: {iod}: Wilson 0.040 of frames with a region, above 0.02",
+        f"false positives: {iod}: bootstrap 0.040 of frames with a region, above 0.02",
+    ]
+    point["by"]["iod"][-1]["false_positives"] = _false_positives(400, 4, 0.0002)
+    assert _failures(point) == [
+        f"false positives: {iod}: 0.0002 of tissue blacked out, above 0.0001",
+        f"false positives: {iod}: bootstrap 0.0002 of tissue blacked out, above 0.0001",
+    ]
+
+
+def test_an_iod_without_enough_text_free_frames_stays_held():
+    point = _passing()
+    point["by"]["iod"].append(
+        {
+            "value": {"iod": "Ultrasound Image Storage"},
+            "sensitivity": _sensitivity(0, 0),
+            "false_positives": _false_positives(299, 0),
+        }
+    )
+    # Two criteria match it, but it is too thin once.
+    assert _failures(point) == [
+        "false positives: Ultrasound Image Storage: too few frames"
+    ]
+    # Frames whose text is unknown, or that all hold text, are no evidence.
+    del point["by"]["iod"][-1]["false_positives"]
+    assert _failures(point) == [
+        "false positives: Ultrasound Image Storage: too few frames"
+    ]
+    point["by"]["iod"][-1]["false_positives"] = _false_positives(0, 0)
+    assert _failures(point) == [
+        "false positives: Ultrasound Image Storage: too few frames"
+    ]
+    # A slice size without text-free frames is left to its IOD's cell.
+    point = _passing()
+    point["by"]["iod+slice_side"].append(
+        {
+            "value": {"iod": CT, "slice_side": "1024 pixels or more"},
+            "false_positives": _false_positives(0, 0),
+        }
+    )
+    assert not _failures(point)
+
+
+def test_only_a_criterion_of_every_iod_can_leave_some_out():
+    with pytest.raises(EvaluationRefused):
+        criteria.FalsePositiveCriterion(iod=(CT,), other_than=(RT,))
+    criterion = criteria.FalsePositiveCriterion(other_than=(CT,))
+    assert not criterion.matches(CT) and criterion.matches(RT)
+
+
 def test_no_answer_key_text_may_be_missed():
     point = _passing()
     point["by"]["tier+truth"][0]["sensitivity"] = _sensitivity(50, 45, missed=1)
@@ -237,6 +322,7 @@ def test_no_answer_key_text_may_be_missed():
         lambda: criteria.SensitivityCriterion(0.9, iod=("*",)),
         lambda: criteria.SensitivityCriterion(0.9, contrast=()),
         lambda: criteria.FalsePositiveCriterion(max_with_a_region=-0.1),
+        lambda: criteria.FalsePositiveCriterion(other_than=("*",)),
         lambda: criteria.MissedTextCriterion("none"),
         lambda: criteria.MissedTextCriterion("T4"),
         lambda: criteria.contrasts_from(5.0),
