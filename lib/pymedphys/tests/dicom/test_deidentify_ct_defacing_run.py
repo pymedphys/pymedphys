@@ -385,10 +385,15 @@ def _second(reviewed, *others, name, without_ct=False, accepted=False, revised=N
     directory = reviewed.directory / name
     pack = directory / "qc1"
     shutil.copytree(reviewed.pack.parent, pack)
+    # Each slice is one frame, which the reviewer was shown.
     verdict = (
-        {"redaction": Redaction.ACCEPTED}
+        {"redaction": Redaction.ACCEPTED, "seen": (0,)}
         if revised is None
-        else {"redaction": Redaction.REVISED, "regions": ((0, (revised,)),)}
+        else {
+            "redaction": Redaction.REVISED,
+            "regions": ((0, (revised,)),),
+            "seen": (0,),
+        }
     )
     redactions = (
         [

@@ -491,7 +491,7 @@ def test_the_command_records_each_verdict(pack):
         "  series without a recognisable face: 1",
         "  series with a recognisable face: 1",
         "  cleaned instances with their regions accepted: 0",
-        "  cleaned instances with the reviewer's regions added: 0",
+        "  cleaned instances with their regions revised: 0",
         "  cleaned instances rejected: 0",
         "the release report published with the run is unchanged",
     ]

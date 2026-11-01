@@ -44,9 +44,14 @@ Pixel Data the Clean Pixel Data Option cleaned and the pack previewed, by
 its run position, as the pack's ``redactions`` lists it, from the previews
 of each of its frames: :attr:`Redaction.ACCEPTED` where the pack's regions
 cover every burned-in text and may be blacked out, :attr:`Redaction.REVISED`
-with regions of the reviewer's own, which are blacked out as well as the
-pack's, so that together they cover every burned-in text, and
-:attr:`Redaction.REJECTED` where the instance is not to be released. Each
+where the reviewer dropped regions of the text finder's that cover no text,
+or drew regions of their own, which are blacked out with the pack's that they
+kept, so that together they cover every burned-in text, and
+:attr:`Redaction.REJECTED` where the instance is not to be released (D-048).
+A region that a reviewed region rule gave cannot be dropped, since rules
+change only through their store (D-037). A verdict that accepts or revises
+an instance records the frames that the reviewer was shown, which must
+include every frame that the instance's review requires (D-059). Each
 is bound to the instance's source file as a face verdict is to its series'.
 
 The person releasing the data may also confirm, yes or no, that the output
@@ -81,7 +86,7 @@ from .qc_pack import FACE_PREVIEW_REASONS, QcPackError
 from .text_detection import TextBox
 
 # The format of the attestation document. A change to its fields takes a new label.
-FORMAT = "pymedphys-deid-qc-attestation/3"
+FORMAT = "pymedphys-deid-qc-attestation/7"
 ATTESTATION_FILE = "attestation.json"
 
 _DIGEST = re.compile(r"[0-9a-f]{64}")
@@ -139,7 +144,8 @@ class Redaction(enum.Enum):
 
     # the pack's regions cover every burned-in text, and may be blacked out
     ACCEPTED = "accepted"
-    # the reviewer's own regions are to be blacked out as well as the pack's
+    # the pack's regions that the reviewer kept, and those they drew, are to
+    # be blacked out, and those they dropped are not
     REVISED = "revised"
     # the instance is not to be released
     REJECTED = "rejected"
@@ -155,15 +161,28 @@ class RedactionVerdict:
         The instance's run position, as the pack's ``redactions`` lists it.
     redaction : Redaction
     regions : tuple of (int, tuple of TextBox)
-        Under :attr:`Redaction.REVISED`, the regions to black out as well as
-        the pack's, which the finder missed: each frame with a region, by
-        index from 0, in order, with its regions, sorted, each once, as the
-        pack gives them; at least one. Empty under any other verdict.
+        Under :attr:`Redaction.REVISED`, the regions that the reviewer drew,
+        to black out with the pack's that they kept: each frame with a
+        region, by index from 0, in order, with its regions, sorted, each
+        once, as the pack gives them. Empty under any other verdict.
+    dropped : tuple of (int, tuple of TextBox)
+        Under :attr:`Redaction.REVISED`, the pack's regions, each among those
+        that the pack lists for its frame and none given by a region rule,
+        that the reviewer judged to cover no text, and so are not blacked
+        out; laid out as ``regions`` is. Empty under any other verdict. A
+        revised verdict draws or drops at least one region, and never both
+        draws and drops one region in one frame.
+    seen : tuple of int
+        The indices of the frames that the reviewer was shown, sorted, each
+        once. Under an accepted or revised verdict, attesting refuses one
+        that leaves out a frame that the instance's review requires (D-059).
     """
 
     position: int
     redaction: Redaction
     regions: tuple[tuple[int, tuple[TextBox, ...]], ...] = ()
+    dropped: tuple[tuple[int, tuple[TextBox, ...]], ...] = ()
+    seen: tuple[int, ...] = ()
 
     def __post_init__(self) -> None:
         if (
@@ -176,23 +195,43 @@ class RedactionVerdict:
             raise QcPackError(
                 f"the redaction verdict on instance {self.position} needs a Redaction"
             )
-        if not isinstance(self.regions, tuple) or not all(
-            _is_frame_regions(entry) for entry in self.regions
+        for name, given in (("regions", self.regions), ("dropped", self.dropped)):
+            if not isinstance(given, tuple) or not all(
+                _is_frame_regions(entry) for entry in given
+            ):
+                raise QcPackError(
+                    f"the redaction verdict on instance {self.position} needs "
+                    f"{name} of its frames, each a frame index with sorted, "
+                    "distinct boxes"
+                )
+            frames = [index for index, _ in given]
+            if frames != sorted(set(frames)):
+                raise QcPackError(
+                    f"the redaction verdict on instance {self.position} must list "
+                    f"each frame of its {name} once, in order"
+                )
+        if bool(self.regions or self.dropped) != (self.redaction is Redaction.REVISED):
+            raise QcPackError(
+                f"the redaction verdict on instance {self.position} draws or drops "
+                "regions exactly where it revises them"
+            )
+        drawn = dict(self.regions)
+        if any(set(boxes) & set(drawn.get(index, ())) for index, boxes in self.dropped):
+            raise QcPackError(
+                f"the redaction verdict on instance {self.position} both draws and "
+                "drops one region in one frame"
+            )
+        if (
+            not isinstance(self.seen, tuple)
+            or not all(
+                isinstance(index, int) and not isinstance(index, bool) and index >= 0
+                for index in self.seen
+            )
+            or list(self.seen) != sorted(set(self.seen))
         ):
             raise QcPackError(
-                f"the redaction verdict on instance {self.position} needs regions "
-                "of its frames, each a frame index with sorted, distinct boxes"
-            )
-        frames = [index for index, _ in self.regions]
-        if frames != sorted(set(frames)):
-            raise QcPackError(
-                f"the redaction verdict on instance {self.position} must list each "
-                "frame once, in order"
-            )
-        if bool(self.regions) != (self.redaction is Redaction.REVISED):
-            raise QcPackError(
-                f"the redaction verdict on instance {self.position} gives regions "
-                "exactly where it revises them"
+                f"the redaction verdict on instance {self.position} needs the "
+                "frames shown, as sorted, distinct indices from 0"
             )
 
 
@@ -403,19 +442,23 @@ def attestation_document(attestation: Attestation) -> dict:
             {
                 "position": verdict.position,
                 "redaction": verdict.redaction.value,
-                "regions": [
-                    {
-                        "frame": index,
-                        "boxes": [
-                            [box.top, box.left, box.bottom, box.right] for box in boxes
-                        ],
-                    }
-                    for index, boxes in verdict.regions
-                ],
+                "regions": _regions_document(verdict.regions),
+                "dropped": _regions_document(verdict.dropped),
+                "seen": list(verdict.seen),
             }
             for verdict in attestation.redactions
         ],
     }
+
+
+def _regions_document(regions) -> list[dict]:
+    return [
+        {
+            "frame": index,
+            "boxes": [[box.top, box.left, box.bottom, box.right] for box in boxes],
+        }
+        for index, boxes in regions
+    ]
 
 
 def attest(
@@ -494,6 +537,7 @@ def attest(
             + ", which begins none of the QC pack's series"
         )
     cleaned = previewed_redactions(data)
+    proposals = pack_proposals(data)
     for verdict in by_position:
         if verdict.position not in cleaned:
             raise QcPackError(
@@ -506,6 +550,21 @@ def attest(
                 f"the redaction verdict on run position {verdict.position} gives "
                 "a region in a frame that its Pixel Data do not hold"
             )
+        if any(index >= shape.frames for index in verdict.seen):
+            raise QcPackError(
+                f"the redaction verdict on run position {verdict.position} was "
+                "shown a frame that its Pixel Data do not hold"
+            )
+        listed, ruled = proposals[verdict.position]
+        if any(
+            not set(boxes) <= set(listed.get(index, ())) - ruled
+            for index, boxes in verdict.dropped
+        ):
+            raise QcPackError(
+                f"the redaction verdict on run position {verdict.position} drops "
+                "a region that the QC pack does not list for its frame, or that "
+                "a region rule gave"
+            )
         # Refused here, before the pack's only attestation is written, as
         # well as on the later run, which sequesters the instance (D-048).
         if any(
@@ -517,6 +576,14 @@ def attest(
                 f"the redaction verdict on run position {verdict.position} gives "
                 f"a region past its {shape.rows} Rows or {shape.columns} Columns"
             )
+        if verdict.redaction is not Redaction.REJECTED:
+            unseen = sorted(set(required_frames(shape)) - set(verdict.seen))
+            if unseen:
+                raise QcPackError(
+                    f"the redaction verdict on run position {verdict.position} "
+                    f"was not shown {len(unseen)} frame(s) that its review "
+                    "requires"
+                )
     attestation = Attestation(
         reference=reference,
         pack_digest=hashlib.sha256(data).hexdigest(),
@@ -573,6 +640,43 @@ class CleanedShape:
     frames: int
     rows: int
     columns: int
+
+
+def required_frames(shape: CleanedShape) -> range:
+    """Return the frames of a cleaned instance that a reviewer must be shown
+    before accepting or revising it: every frame, whatever the IOD, until
+    the maintainer's acceptance criteria are met for it (D-059)."""
+    return range(shape.frames)
+
+
+def pack_proposals(
+    data: bytes,
+) -> dict[int, tuple[dict[int, tuple[TextBox, ...]], frozenset[TextBox]]]:
+    """Return each cleaned instance's regions by frame, and those of them that
+    region rules gave, by run position, as the QC pack ``data`` lists them.
+
+    Raises
+    ------
+    QcPackError
+        If the pack's ``redactions`` is not of its format.
+    """
+    document = json.loads(data.decode("ascii"))
+    redactions = document.get("redactions")
+    if not isinstance(redactions, list):
+        raise QcPackError("the QC pack is not of its format")
+    proposals = {}
+    try:
+        for entry in redactions:
+            proposals[entry["position"]] = (
+                {
+                    regions["frame"]: tuple(TextBox(*box) for box in regions["boxes"])
+                    for regions in entry["regions"]
+                },
+                frozenset(TextBox(*box) for box in entry["rule_boxes"]),
+            )
+    except (KeyError, TypeError, ValueError):
+        raise QcPackError("the QC pack is not of its format") from None
+    return proposals
 
 
 def previewed_redactions(data: bytes) -> dict[int, CleanedShape]:
@@ -655,6 +759,20 @@ def redaction_previews(pack_directory: os.PathLike | str) -> dict[tuple[int, int
                 raise QcPackError("the QC pack is not of its format")
             files[(position, frame)] = name
     return files
+
+
+def pack_reference(pack_directory: os.PathLike | str) -> tuple[str, str]:
+    """Return a QC pack's opaque reference and the SHA-256 of its file, in
+    lower-case hexadecimal, to which an attestation, or the drafts of one,
+    are bound.
+
+    Raises
+    ------
+    QcPackError
+        If the directory holds no QC pack, or one that is not of its format.
+    """
+    data = _pack_bytes(Path(pack_directory))
+    return _reference_of(data), hashlib.sha256(data).hexdigest()
 
 
 def _firsts(data: bytes) -> frozenset[int]:
@@ -793,13 +911,16 @@ def _redaction_verdict_from(verdict: dict) -> RedactionVerdict:
     return RedactionVerdict(
         verdict["position"],
         Redaction(verdict["redaction"]),
-        tuple(
-            (
-                regions["frame"],
-                tuple(TextBox(*box) for box in regions["boxes"]),
-            )
-            for regions in verdict["regions"]
-        ),
+        _regions_from(verdict["regions"]),
+        _regions_from(verdict["dropped"]),
+        tuple(verdict["seen"]),
+    )
+
+
+def _regions_from(regions: list) -> tuple[tuple[int, tuple[TextBox, ...]], ...]:
+    return tuple(
+        (entry["frame"], tuple(TextBox(*box) for box in entry["boxes"]))
+        for entry in regions
     )
 
 
