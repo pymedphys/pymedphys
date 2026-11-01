@@ -15,11 +15,14 @@
 """Measure the text detector's sensitivity and false positives (D-056).
 
 :func:`evaluate` gives each frame of each case
-(:class:`~.text_evaluation_sources.CaseSource`) to an
-:class:`~.text_evaluation_detector.EvaluationDetector` once for each pass,
-turns its probability maps into the boxes of every point of a
-post-processing grid (:func:`~.text_evaluation_detector.grid_boxes`), and
-counts, for every point:
+(:class:`~.text_evaluation_sources.CaseSource`) to a detector
+(:class:`~.text_evaluation_detector.MeasuredDetector`) once for each pass,
+which gives the boxes of every point: for a model that gives probability
+maps (:class:`~.text_evaluation_detector.EvaluationDetector`), every point of
+a post-processing grid from one pass of the network
+(:func:`~.text_evaluation_detector.grid_boxes`); for one that gives boxes
+(:class:`~.text_evaluation_detector.BoxModelDetector`), each of the model's
+own settings. It counts, for every point:
 
 sensitivity
     for each piece of text in a frame
@@ -93,9 +96,8 @@ from .face_validation import PIXEL_SPACING, SHARE, Bins, crash_site
 from .pixel_text_validation import SLICE_SIDE
 from .text_detection import TextBox
 from .text_evaluation_detector import (
-    EvaluationDetector,
+    MeasuredDetector,
     PostProcessing,
-    grid_boxes,
 )
 from .text_evaluation_frames import (
     BurnedText,
@@ -104,6 +106,7 @@ from .text_evaluation_frames import (
     tissue_mask,
 )
 from .text_evaluation_injection import InjectionPlan, inject, zone_of
+from .text_evaluation_models import BoxPoint
 from .text_evaluation_sources import CaseSource, Skipped
 
 FORMAT = "pymedphys-deid-text-detector-evaluation/1"
@@ -184,9 +187,11 @@ class EvaluationSettings:
 
     Attributes
     ----------
-    points : tuple of PostProcessing
-        The grid; its first point is the baseline that the criteria compare
-        others with, by default.
+    points : tuple of PostProcessing or of BoxPoint
+        The grid, or a box model's settings
+        (:class:`~.text_evaluation_models.BoxPoint`), all of one class; the
+        first point is the baseline that the criteria compare others with,
+        by default.
     plan : InjectionPlan or None
         The text to burn into frames without text; None burns none.
     negatives : bool
@@ -200,7 +205,7 @@ class EvaluationSettings:
         Crosses of strata to count, beside each stratum singly.
     """
 
-    points: tuple[PostProcessing, ...]
+    points: tuple[PostProcessing, ...] | tuple[BoxPoint, ...]
     plan: InjectionPlan | None = None
     negatives: bool = True
     evaluated: str = "tuning"
@@ -210,6 +215,8 @@ class EvaluationSettings:
     def __post_init__(self):
         if not self.points:
             raise EvaluationRefused("The grid must have a point.")
+        if len({type(point) for point in self.points}) != 1:
+            raise EvaluationRefused("The points must all be of one class.")
         if self.evaluated not in EVALUATED:
             raise EvaluationRefused("The part evaluated must be a known one.")
         known = set(FRAME_DIMENSIONS) | set(TEXT_DIMENSIONS)
@@ -301,7 +308,7 @@ class Evaluation:
 
 def evaluate(
     cases: Sequence[CaseSource],
-    detector: Callable[[], EvaluationDetector],
+    detector: Callable[[], MeasuredDetector],
     settings: EvaluationSettings,
     *,
     workers: int = 1,
@@ -337,10 +344,10 @@ def evaluate(
     return Evaluation(settings, method, results)
 
 
-_WORKER: dict[str, EvaluationDetector] = {}
+_WORKER: dict[str, MeasuredDetector] = {}
 
 
-def _start_worker(detector: Callable[[], EvaluationDetector]) -> None:
+def _start_worker(detector: Callable[[], MeasuredDetector]) -> None:
     _WORKER["detector"] = detector()
 
 
@@ -349,7 +356,7 @@ def _case_in_worker(source: CaseSource, settings: EvaluationSettings) -> CaseRes
 
 
 def _case(
-    source: CaseSource, detector: EvaluationDetector, settings: EvaluationSettings
+    source: CaseSource, detector: MeasuredDetector, settings: EvaluationSettings
 ) -> CaseResult:
     split = split_of(source.collection, source.case, settings.held_out_collections)
     evaluated = settings.evaluated in ("all", split)
@@ -373,7 +380,7 @@ def _case(
 
 def _frame(
     frame: EvaluationFrame,
-    detector: EvaluationDetector,
+    detector: MeasuredDetector,
     settings: EvaluationSettings,
     result: CaseResult,
 ) -> None:
@@ -448,7 +455,7 @@ class _Covered:
 def _measure(
     frame: EvaluationFrame,
     *,
-    detector: EvaluationDetector,
+    detector: MeasuredDetector,
     tissue: np.ndarray,
     strata: Mapping[str, str],
     settings: EvaluationSettings,
@@ -459,7 +466,7 @@ def _measure(
     """Count one pass over a frame, as the module describes: its texts from
     ``first`` for sensitivity, and its regions clear of every text's zone as
     ``kind``."""
-    boxes_of_points = grid_boxes(detector.probabilities(frame), settings.points)
+    boxes_of_points = detector.boxes_of_points(frame, settings.points)
     shape = frame.shape
     inks = [(text.ink(shape, INK_LEVEL), text.ink(shape, 0.0)) for text in frame.texts]
     zones = np.zeros(shape, bool)
@@ -723,7 +730,7 @@ def _counted(tally: Tally, kind: str) -> dict[str, int]:
 
 def _point(
     index: int,
-    point: PostProcessing,
+    point: PostProcessing | BoxPoint,
     tally: Tally,
     clusters: Sequence[Mapping[tuple, list[int]]],
     settings: EvaluationSettings,

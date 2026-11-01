@@ -38,7 +38,10 @@ from pymedphys._dicom.deidentify.text_detection import (
     RenderedProbability,
     TextBox,
 )
-from pymedphys._dicom.deidentify.text_evaluation_detector import PostProcessing
+from pymedphys._dicom.deidentify.text_evaluation_detector import (
+    PostProcessing,
+    grid_boxes,
+)
 from pymedphys._dicom.deidentify.text_evaluation_frames import (
     BurnedText,
     EvaluationFrame,
@@ -77,6 +80,9 @@ class BoxDetector:
                     probability[top:bottom, left:right] = 0.9
             maps.append(RenderedProbability(name, frame.shape, probability))
         return tuple(maps)
+
+    def boxes_of_points(self, frame, points):
+        return grid_boxes(self.probabilities(frame), points)
 
 
 def box_detector():

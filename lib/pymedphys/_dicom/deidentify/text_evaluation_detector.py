@@ -37,11 +37,18 @@ renderings (:class:`RenderingVariant`)
 network input (:class:`InputVariant`)
     whether frames are scaled as a run scales them (``"limit-side"``), to a
     pixel size in millimetres (``"millimetres"``), or to a working size for
-    their longer side (``"working-size"``), and the normalisation of the
-    network's input, which another detection model may need.
+    their longer side (``"working-size"``), and a normalisation of the
+    network's input in place of the model's own.
 model
-    any ONNX model of a Differentiable Binarization network, given as bytes;
+    any ONNX model of a Differentiable Binarization network, given as bytes,
+    or a model's adapter (:class:`~.text_evaluation_models.DetectionModel`);
     the default is the pinned model that a run uses.
+
+A model whose adapter gives boxes rather than probability maps has no maps
+to keep, so :class:`BoxModelDetector` measures each of its own settings as a
+pass of its own, reusing the network's outputs for every setting that does
+not reach the network. Both detectors give the harness the boxes of each of
+its points (:class:`MeasuredDetector`).
 
 The default variant, with the default post-processing, gives the boxes that
 a run's :class:`~.text_detection.TextDetector` gives. Every variant is
@@ -57,7 +64,7 @@ import dataclasses
 import itertools
 import math
 from collections.abc import Iterable, Mapping, Sequence
-from typing import TYPE_CHECKING, TypeAlias
+from typing import TYPE_CHECKING, Any, Protocol, TypeAlias
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import scipy
@@ -75,13 +82,21 @@ from .text_detection import (
     _window,
     model_bytes,
     network_shape,
-    network_tensor,
 )
 from .text_evaluation_frames import (
     EvaluationFrame,
     EvaluationRefused,
     tissue_mask,
 )
+from .text_evaluation_models import (
+    BoxDecoder,
+    DetectionModel,
+    ModelInput,
+    frame_boxes,
+    model_tensor,
+    probability_map,
+)
+from .text_evaluation_models import model_bytes as adapted_model_bytes
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -148,27 +163,31 @@ class InputVariant:
         The size of the network's pixel, for ``"millimetres"``.
     working_side : int
         The longer side of the network's input, for ``"working-size"``.
-    mean, deviation : float
-        The network's input is the rendering over 255, less ``mean``, over
-        ``deviation``.
+    mean, deviation : float or None
+        Where given, the network's input is the rendering over 255, less
+        ``mean``, over ``deviation``, in every channel, in place of the
+        model's own normalisation (:class:`~.text_evaluation_models.ModelInput`),
+        which for today's model is 0.5 and 0.5.
     """
 
     scaling: str = "limit-side"
     millimetres: float = 1.0
     working_side: int = 736
-    mean: float = 0.5
-    deviation: float = 0.5
+    mean: float | None = None
+    deviation: float | None = None
 
     def __post_init__(self):
         if self.scaling not in SCALINGS:
             raise EvaluationRefused("The scaling must be a known one.")
+        mean = 0.0 if self.mean is None else self.mean
+        deviation = 1.0 if self.deviation is None else self.deviation
         if not (
             math.isfinite(self.millimetres)
             and self.millimetres > 0
             and self.working_side >= 32
-            and math.isfinite(self.deviation)
-            and self.deviation > 0
-            and math.isfinite(self.mean)
+            and math.isfinite(deviation)
+            and deviation > 0
+            and math.isfinite(mean)
         ):
             raise EvaluationRefused("The network input's settings must be in range.")
 
@@ -284,10 +303,16 @@ def _hat(
 
 
 def input_shape(
-    shape: tuple[int, ...], spacing: float | None, variant: DetectorVariant
+    shape: tuple[int, ...],
+    spacing: float | None,
+    variant: DetectorVariant,
+    fixed: tuple[int, int] | None = None,
 ) -> tuple[int, int]:
     """The rows and columns of the network's input for a rendering of this
-    shape, under the variant's scaling."""
+    shape, under the variant's scaling, or ``fixed`` for a model that takes
+    only that shape."""
+    if fixed is not None:
+        return (int(fixed[0]), int(fixed[1]))
     parameters = variant.parameters
     options = variant.network_input
     if options.scaling == "limit-side" or (
@@ -304,51 +329,102 @@ def input_shape(
     return (_multiple_of_32(rows * scale), _multiple_of_32(columns * scale))
 
 
+class MeasuredDetector(Protocol):
+    """What the harness measures: a detector that gives the boxes of each
+    of its points for a frame, and the method that decides them."""
+
+    @property
+    def method(self) -> Mapping[str, object]:
+        """What decides the boxes."""
+        ...  # pylint: disable = unnecessary-ellipsis
+
+    def boxes_of_points(
+        self, frame: EvaluationFrame, points: Sequence[Any]
+    ) -> list[tuple[TextBox, ...]]:
+        """The boxes of each point, for one frame."""
+        ...  # pylint: disable = unnecessary-ellipsis
+
+
+def _onnx_network(content: bytes) -> Callable[..., list[np.ndarray]]:
+    """Runs a model in ONNX Runtime, as a run does: its first input is the
+    tensor, and further inputs are given by name."""
+    session = _session(content)
+    name = session.get_inputs()[0].name
+
+    def run(tensor: np.ndarray, feeds: Mapping[str, np.ndarray] | None = None):
+        return list(session.run(None, {name: tensor, **(feeds or {})}))
+
+    return run
+
+
+def _model_method(model: DetectionModel | None, content: bytes) -> dict[str, object]:
+    if model is None:
+        return {"model_sha256": _sha256(content)}
+    return {"model_sha256": _sha256(content), "model": model.described()}
+
+
 class EvaluationDetector:
     """The text detector under a variant, for evaluation alone.
 
     Parameters
     ----------
     variant : DetectorVariant, optional
-    model : bytes, optional
-        The ONNX model. Defaults to the pinned model that a run uses.
+    model : bytes or DetectionModel, optional
+        The ONNX model of a Differentiable Binarization network, or the
+        adapter of a model that gives probability maps. Defaults to the
+        pinned model that a run uses.
     network : callable, optional
         Runs the network instead of ONNX Runtime, for tests: the input
-        tensor to the probability map. It needs ``network_name``.
+        tensor to the probability map, or, with an adapter, to the model's
+        outputs. It needs ``network_name``.
     network_name : str, optional
         What the method calls ``network``.
 
     Raises
     ------
     TextDetectionError
-        As :class:`~.text_detection.TextDetector` raises it.
+        As :class:`~.text_detection.TextDetector` raises it, or where the
+        adapter's weights do not have their pinned SHA-256.
+    EvaluationRefused
+        For an adapter of a model that gives boxes, which
+        :class:`BoxModelDetector` measures.
     """
 
     def __init__(
         self,
         variant: DetectorVariant | None = None,
-        model: bytes | None = None,
+        model: bytes | DetectionModel | None = None,
         *,
-        network: Network | None = None,
+        network: Network | Callable[..., list[np.ndarray]] | None = None,
         network_name: str | None = None,
     ):
         self._variant = DetectorVariant() if variant is None else variant
+        adapter = model if isinstance(model, DetectionModel) else None
+        if adapter is not None and not adapter.gives_maps:
+            raise EvaluationRefused(
+                "A model that gives boxes is measured by a BoxModelDetector."
+            )
+        self._adapter = adapter
+        self._input = ModelInput() if adapter is None else adapter.network_input
         if network is not None:
             if not network_name:
                 raise EvaluationRefused("A network given for tests needs a name.")
             self._network = network
-            self._model = {"network": network_name}
+            self._model: dict[str, object] = {"network": network_name}
+            if adapter is not None:
+                self._model["model"] = adapter.described()
             return
-        content = model_bytes() if model is None else model
-        session = _session(content)
-        name = session.get_inputs()[0].name
-
-        def run(tensor: np.ndarray) -> np.ndarray:
-            (output,) = session.run(None, {name: tensor})
-            return np.asarray(output[0, 0], dtype=np.float32)
-
-        self._network = run
-        self._model = {"model_sha256": _sha256(content)}
+        if adapter is not None:
+            content = adapted_model_bytes(adapter)
+        else:
+            content = model_bytes() if model is None else model
+            assert isinstance(content, bytes)
+        run = _onnx_network(content)
+        if adapter is None:
+            self._network = lambda tensor: np.asarray(run(tensor)[0][0, 0], np.float32)
+        else:
+            self._network = run
+        self._model = _model_method(adapter, content)
 
     @property
     def variant(self) -> DetectorVariant:
@@ -380,15 +456,35 @@ class EvaluationDetector:
         options = self._variant.network_input
         found = []
         for name, image in variant_renderings(frame, self._variant).items():
-            shape = input_shape(image.shape, frame.pixel_spacing, self._variant)
-            tensor = network_tensor(image, shape, options.mean, options.deviation)
-            probability = np.asarray(self._network(tensor), dtype=np.float32)
+            shape = input_shape(
+                image.shape,
+                frame.pixel_spacing,
+                self._variant,
+                self._input.fixed_shape,
+            )
+            tensor = model_tensor(
+                image, shape, self._input, options.mean, options.deviation
+            )
+            if self._adapter is None:
+                probability = np.asarray(self._network(tensor), dtype=np.float32)
+            else:
+                outputs = self._network(tensor)
+                probability = probability_map(outputs, self._adapter.output, shape)
             if probability.shape != shape:
                 raise EvaluationRefused(
                     "The network's map is not the shape of its input."
                 )
             found.append(RenderedProbability(name, frame.shape, probability))
         return tuple(found)
+
+    def boxes_of_points(
+        self, frame: EvaluationFrame, points: Sequence[Any]
+    ) -> list[tuple[TextBox, ...]]:
+        """The boxes of each point of the post-processing grid, from one
+        pass of the network (:func:`grid_boxes`)."""
+        if not all(isinstance(point, PostProcessing) for point in points):
+            raise EvaluationRefused("A model that gives maps takes the grid's points.")
+        return grid_boxes(self.probabilities(frame), points)
 
     def detections(self, frame: np.ndarray) -> tuple[Detection, ...]:
         """The boxes of each rendering of a frame of stored values, under
@@ -409,6 +505,145 @@ class EvaluationDetector:
         """The boxes around text in a frame of stored values, each once,
         sorted, as :meth:`~.text_detection.TextDetector.find` gives them."""
         return tuple(sorted({each.box for each in self.detections(frame)}))
+
+
+class BoxModelDetector:
+    """A model whose adapter gives boxes, under a variant, for evaluation
+    alone: each of the model's own settings is a point, measured as a pass
+    of its own.
+
+    The variant's renderings and network input apply as they do to
+    :class:`EvaluationDetector`; its post-processing parameters do not,
+    since the model's settings take their place.
+
+    Parameters
+    ----------
+    model : DetectionModel
+        An adapter whose output is a
+        :class:`~.text_evaluation_models.BoxDecoder`.
+    variant : DetectorVariant, optional
+    network : callable, optional
+        Runs the network instead of ONNX Runtime, for tests: the input
+        tensor and further inputs by name to the model's outputs. It needs
+        ``network_name``.
+    network_name : str, optional
+
+    Raises
+    ------
+    TextDetectionError
+        Where the adapter's weights do not have their pinned SHA-256, or
+        ONNX Runtime cannot run.
+    EvaluationRefused
+        For an adapter of a model that gives maps, which
+        :class:`EvaluationDetector` measures with the grid.
+    """
+
+    def __init__(
+        self,
+        model: DetectionModel,
+        variant: DetectorVariant | None = None,
+        *,
+        network: Callable[..., list[np.ndarray]] | None = None,
+        network_name: str | None = None,
+    ):
+        if not isinstance(model.output, BoxDecoder) or model.gives_maps:
+            raise EvaluationRefused(
+                "A model that gives maps is measured by an EvaluationDetector."
+            )
+        self._adapter = model
+        self._decoder: BoxDecoder = model.output
+        self._variant = DetectorVariant() if variant is None else variant
+        if network is not None:
+            if not network_name:
+                raise EvaluationRefused("A network given for tests needs a name.")
+            self._network = network
+            self._model: dict[str, object] = {
+                "network": network_name,
+                "model": model.described(),
+            }
+            return
+        content = adapted_model_bytes(model)
+        self._network = _onnx_network(content)
+        self._model = _model_method(model, content)
+
+    @property
+    def variant(self) -> DetectorVariant:
+        """The variant, fixed when the detector is made."""
+        return self._variant
+
+    @property
+    def method(self) -> Mapping[str, object]:
+        """What decides the boxes: the model and its adapter, or the test
+        network, the variant, and, for ONNX Runtime, its version."""
+        method: dict[str, object] = {
+            **self._model,
+            "variant": self._variant.described(),
+            "numpy": np.__version__,
+            "scipy": scipy.__version__,
+        }
+        if "model_sha256" in self._model:
+            method["onnxruntime"] = _onnxruntime().__version__
+        return method
+
+    def boxes_of_points(
+        self, frame: EvaluationFrame, points: Sequence[Any]
+    ) -> list[tuple[TextBox, ...]]:
+        """The boxes of each of the model's settings, for one frame: for
+        each, the boxes of the renderings it joins, each once, sorted.
+
+        Raises
+        ------
+        EvaluationRefused
+            For a point not of the decoder's settings, or one that joins a
+            rendering that the variant does not compute.
+        """
+        if not all(isinstance(point, self._decoder.point_type) for point in points):
+            raise EvaluationRefused("A point is not one of the model's settings.")
+        renderings = variant_renderings(frame, self._variant)
+        options = self._variant.network_input
+        model_input = self._adapter.network_input
+        outputs: dict[tuple[str, tuple], tuple[tuple[int, int], list[np.ndarray]]] = {}
+        found = []
+        for point in points:
+            if not set(point.renderings) <= set(renderings):
+                raise EvaluationRefused(
+                    "A point joins a rendering that was not computed."
+                )
+            feeds = dict(self._decoder.feeds(point))
+            boxes: set[TextBox] = set()
+            for name in point.renderings:
+                key = (name, _feeds_key(feeds))
+                if key not in outputs:
+                    image = renderings[name]
+                    shape = input_shape(
+                        image.shape,
+                        frame.pixel_spacing,
+                        self._variant,
+                        model_input.fixed_shape,
+                    )
+                    tensor = model_tensor(
+                        image, shape, model_input, options.mean, options.deviation
+                    )
+                    outputs[key] = (shape, list(self._network(tensor, feeds)))
+                shape, network_outputs = outputs[key]
+                decoded = self._decoder.boxes(network_outputs, shape, point)
+                boxes.update(frame_boxes(decoded, shape, frame.shape, point.margin))
+            found.append(tuple(sorted(boxes)))
+        return found
+
+
+def _feeds_key(feeds: Mapping[str, np.ndarray]) -> tuple:
+    """A key that two settings share only where they give the network the
+    same further inputs."""
+    return tuple(
+        (
+            name,
+            str(np.asarray(value).dtype),
+            np.asarray(value).shape,
+            np.asarray(value).tobytes(),
+        )
+        for name, value in sorted(feeds.items())
+    )
 
 
 def _bare(frame: np.ndarray) -> EvaluationFrame:

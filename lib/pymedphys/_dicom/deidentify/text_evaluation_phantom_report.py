@@ -57,7 +57,7 @@ from pymedphys._imports import numpy as np
 from .source import SourceRefused, read_source
 from .text_detection import TextBox
 from .text_evaluation import INK_LEVEL, EvaluationSettings
-from .text_evaluation_detector import EvaluationDetector, grid_boxes
+from .text_evaluation_detector import MeasuredDetector
 from .text_evaluation_frames import BurnedText, EvaluationFrame, EvaluationRefused
 from .text_evaluation_injection import inject
 from .text_evaluation_phantoms import COLLECTION as SYNTHETIC_COLLECTION
@@ -343,7 +343,7 @@ class PreviewSettings:
 
 def phantom_report(
     case: PhantomSource,
-    detector: EvaluationDetector,
+    detector: MeasuredDetector,
     settings: EvaluationSettings,
     out: pathlib.Path | str,
     previews: PreviewSettings = PreviewSettings(),
@@ -408,12 +408,12 @@ def phantom_report(
 def _frame_entry(
     frame: EvaluationFrame,
     name: str,
-    detector: EvaluationDetector,
+    detector: MeasuredDetector,
     settings: EvaluationSettings,
     previews: PreviewSettings,
 ) -> tuple[dict[str, Any], list[tuple[str, np.ndarray]]]:
     shape = frame.shape
-    boxes_of_points = grid_boxes(detector.probabilities(frame), settings.points)
+    boxes_of_points = detector.boxes_of_points(frame, settings.points)
     zones = [text.zone(shape) for text in frame.texts]
     inks = [text.ink(shape, INK_LEVEL) for text in frame.texts]
     entry: dict[str, Any] = {
@@ -621,7 +621,7 @@ def attribution_markdown(collections: Sequence[PhantomCollection]) -> str:
 
 def write_phantom_reports(
     cases: Sequence[PhantomSource | SkippedFiles],
-    detector: Callable[[], EvaluationDetector],
+    detector: Callable[[], MeasuredDetector],
     settings: EvaluationSettings,
     out: pathlib.Path | str,
     previews: PreviewSettings = PreviewSettings(),

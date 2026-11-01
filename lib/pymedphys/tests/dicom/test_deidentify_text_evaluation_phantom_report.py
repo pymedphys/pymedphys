@@ -30,7 +30,10 @@ from pymedphys._dicom.deidentify import text_evaluation_phantom_report as report
 from pymedphys._dicom.deidentify import text_evaluation_phantoms as phantoms
 from pymedphys._dicom.deidentify import text_evaluation_sources as sources
 from pymedphys._dicom.deidentify.text_detection import RENDERINGS, RenderedProbability
-from pymedphys._dicom.deidentify.text_evaluation_detector import PostProcessing
+from pymedphys._dicom.deidentify.text_evaluation_detector import (
+    PostProcessing,
+    grid_boxes,
+)
 from pymedphys._dicom.deidentify.text_evaluation_frames import (
     EvaluationFrame,
     EvaluationRefused,
@@ -61,6 +64,9 @@ class BoxDetector:
                     probability[top:bottom, left:right] = 0.9
             maps.append(RenderedProbability(name, frame.shape, probability))
         return tuple(maps)
+
+    def boxes_of_points(self, frame, points):
+        return grid_boxes(self.probabilities(frame), points)
 
 
 def _settings(**options):
