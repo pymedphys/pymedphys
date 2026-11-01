@@ -787,3 +787,34 @@ def test_rt_roi_interpreted_types_are_counted_by_their_defined_terms(kind, count
     assert face_validation_dicom._interpreted_types(  # pylint: disable = protected-access
         dataset
     ) == {1: counted}
+
+
+@pytest.mark.parametrize(
+    ("keyword", "value", "code"),
+    [
+        ("ContourSlabThickness", 10.0, ("not-placed", None)),
+        ("ContourOffsetVector", [0.0, 0.0, 6.0], ("not-placed", None)),
+        ("ContourSlabThickness", None, ("clear", pytest.approx(4.0))),
+        ("ContourOffsetVector", None, ("clear", pytest.approx(4.0))),
+    ],
+    ids=["thickness", "offset", "empty-thickness", "empty-offset"],
+)
+def test_a_target_in_a_slab_is_reported_as_not_placed(keyword, value, code):
+    # A square 4 mm behind a block of the points with y below 0 and z above
+    # 0, which would be clear of it by its points alone.
+    target = files.square((0.0, 6.0, 20.0))
+    rtss = pydicom.dcmread(io.BytesIO(files.structure_set([("PTV", target)])))
+    (contour,) = rtss.ROIContourSequence[0].ContourSequence
+    setattr(contour, keyword, value)
+    block = FaceBlock((0.0, 0.0, 0.0), (0.0, -1.0, 0.0), 0.0, ((0, 0, 0), (0, 0, 0)))
+    fates = face_blocks._TargetFates(  # pylint: disable = protected-access
+        block, block, (), 0.0
+    )
+
+    # The run holds the series for a slab, whose region its points do not
+    # give, so the check reports it as the run judges it.
+    codes = face_validation_dicom._target_codes(  # pylint: disable = protected-access
+        rtss, files.FRAME, set(), fates
+    )
+
+    assert list(codes) == [code]

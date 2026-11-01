@@ -62,7 +62,7 @@ from __future__ import annotations
 
 import dataclasses
 import math
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable, Iterator, Sequence
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import scipy
@@ -82,9 +82,11 @@ _FLAT = 1e-3
 # allows, placing a pixel within hundredths of a millimetre of where a unit
 # basis would.
 _MARGIN = 1e-2
-# How many points are tested against a hull's half-spaces at a time, which
-# bounds the memory that a test needs.
-_CHUNK = 4096
+# How many values, of points by half-spaces, a hull's construction or test
+# works on at a time (8 MiB of float64), which bounds the memory that either
+# needs whatever the number of points or of facets: a densely sampled
+# boundary, such as a circle of N points, has as many facets as points.
+_WORKING = 1 << 20
 
 
 @dataclasses.dataclass(frozen=True, repr=False, eq=False)
@@ -154,7 +156,7 @@ class TargetHull:
         stacked = stacked / np.linalg.norm(stacked, axis=1, keepdims=True)
         # Each triangle of a facet gives its plane again.
         unique = np.unique(np.round(stacked, 12), axis=0)
-        return cls(points, unique, (points @ unique.T).max(axis=0))
+        return cls(points, unique, _support(points, unique))
 
     def contains(self, points: np.ndarray) -> np.ndarray:
         """Whether each point lies in the hull, within :data:`_MARGIN`.
@@ -207,15 +209,39 @@ class TargetHull:
 
     def _within(self, points: np.ndarray, slack: np.ndarray) -> np.ndarray:
         points = np.asarray(points, dtype=float).reshape(-1, 3)
-        found = np.zeros(len(points), dtype=bool)
+        found = np.ones(len(points), dtype=bool)
         bounds = self.offsets + slack + _MARGIN
-        for start in range(0, len(points), _CHUNK):
-            chunk = points[start : start + _CHUNK]
+        for rows, columns in _blocks(len(points), len(self.normals)):
+            # A point that is not finite is in no half-space.
             with np.errstate(invalid="ignore"):
-                found[start : start + _CHUNK] = (chunk @ self.normals.T <= bounds).all(
-                    axis=1
-                )
+                found[rows] &= (
+                    points[rows] @ self.normals[columns].T <= bounds[columns]
+                ).all(axis=1)
         return found
+
+
+def _blocks(points: int, normals: int) -> Iterator[tuple[slice, slice]]:
+    """The blocks of a matrix of ``points`` rows by ``normals`` columns,
+    each of at most :data:`_WORKING` values, that together cover it."""
+    columns = max(1, min(normals, _WORKING))
+    rows = max(1, _WORKING // columns)
+    for first_row in range(0, points, rows):
+        for first_column in range(0, normals, columns):
+            yield (
+                slice(first_row, first_row + rows),
+                slice(first_column, first_column + columns),
+            )
+
+
+def _support(points: np.ndarray, normals: np.ndarray) -> np.ndarray:
+    """The greatest dot product of any of the points with each normal, found
+    a block at a time (:func:`_blocks`)."""
+    support = np.full(len(normals), -np.inf)
+    for rows, columns in _blocks(len(points), len(normals)):
+        support[columns] = np.maximum(
+            support[columns], (points[rows] @ normals[columns].T).max(axis=0)
+        )
+    return support
 
 
 def _facets(coordinates: np.ndarray) -> np.ndarray | None:
