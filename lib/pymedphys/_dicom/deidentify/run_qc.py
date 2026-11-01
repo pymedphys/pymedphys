@@ -37,7 +37,13 @@ from pymedphys._imports import pydicom
 
 from . import pixel_risk, qc_contours, qc_pack, qc_previews, residuals
 from .iod_conformance import SourceGap
-from .face_review import PIXEL_DATA_TAGS, contour_data_sha256, pixel_data_sha256
+from .face_review import (
+    PIXEL_DATA_TAGS,
+    contour_data_sha256,
+    grid_data_sha256,
+    holds_deformation_grid,
+    pixel_data_sha256,
+)
 from .file_layout import ElementPath
 from .qc_pack import Disposition, DropReason, QcPack, RoiNameOutcome
 from .reasons import PixelDataReason
@@ -347,11 +353,13 @@ def qc_pack_of(
     frames of each instance that a :class:`RedactionMaterial` gives, which
     the pack lists in ``redactions``. A released or held instance without
     one is listed as not previewed. Each such file's pixel
-    data and contours are recorded with its instance as
-    :func:`~.face_review.pixel_data_sha256` and
-    :func:`~.face_review.contour_data_sha256` give them, unless the file
+    data, contours, and deformation grids are recorded with its instance as
+    :func:`~.face_review.pixel_data_sha256`,
+    :func:`~.face_review.contour_data_sha256`, and
+    :func:`~.face_review.grid_data_sha256` give them, unless the file
     cannot be read again, or, for its contours, unless it has contours that
-    no contour sheet shows.
+    no contour sheet shows, or, for its grids, unless it has grids that the
+    grid sheets do not all show.
 
     The released and held instances that give :class:`SeriesEvidence` are
     grouped by series, in run position order, and each series is assessed
@@ -468,6 +476,7 @@ def qc_pack_of(
                 written[position],
                 position in previews.contours_shown,
                 position in previews.pixels_shown,
+                position in previews.grids_shown,
             ),
         )
         if position in written
@@ -572,19 +581,28 @@ def assessed_series(
 
 
 def _written_sha256(
-    written: bytes, contours_shown: bool, pixels_shown: bool
+    written: bytes,
+    contours_shown: bool,
+    pixels_shown: bool,
+    grids_shown: bool = False,
 ) -> dict[str, str | None]:
-    """Return the SHA-256 of a written file's pixel data and contours, as an
-    instance entry's fields, each None if unreadable.
+    """Return the SHA-256 of a written file's pixel data, contours, and
+    deformation grids, as an instance entry's fields, each None if
+    unreadable.
 
     The contours' is None too where the file has contours that the pack's
-    contour sheet does not show, and the pixel data's where the file has
+    contour sheet does not show, the pixel data's where the file has
     pixel data of which the pack's previews that could show a face do not
     draw every frame, which for an RT Dose only its dose-levels previews
-    can, and for a Segmentation only its segments sheet, so that no verdict
-    releases either unseen.
+    can, and for a Segmentation only its segments sheet, and the grids'
+    where the file holds a deformation grid that the pack's grid sheets do
+    not all show, so that no verdict releases any unseen.
     """
-    digests: dict[str, str | None] = {"pixel_sha256": None, "contour_sha256": None}
+    digests: dict[str, str | None] = {
+        "pixel_sha256": None,
+        "contour_sha256": None,
+        "grid_sha256": None,
+    }
     try:
         dataset = read_source(written).dataset()
     # Whatever reading the file raises, its instance has no digests, so no
@@ -596,6 +614,8 @@ def _written_sha256(
         taken.append(("pixel_sha256", pixel_data_sha256))
     if contours_shown or not qc_contours.has_contours(dataset):
         taken.append(("contour_sha256", contour_data_sha256))
+    if grids_shown or not holds_deformation_grid(dataset):
+        taken.append(("grid_sha256", grid_data_sha256))
     for field, digest in taken:
         try:
             digests[field] = digest(dataset).hex()
