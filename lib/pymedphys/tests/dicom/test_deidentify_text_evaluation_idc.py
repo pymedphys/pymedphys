@@ -15,7 +15,10 @@
 """Series of NCI's Imaging Data Commons, selected from invented rows of its
 index, and the per-case report of them. No IDC file is read."""
 
+import hashlib
+import io
 import json
+import zipfile
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pytest
@@ -41,6 +44,7 @@ def _row(number=1, **fields):
         "SeriesInstanceUID": f"2.25.{number}",
         "crdc_series_uuid": uuid,
         "Modality": "CT",
+        "SOPClassUID": "1.2.840.10008.5.1.4.1.1.2",
         "license_short_name": "CC BY 3.0",
         "source_DOI": DOI,
         "series_size_MB": 10.0,
@@ -49,9 +53,38 @@ def _row(number=1, **fields):
     }
 
 
+def test_the_index_is_read_only_from_the_pinned_wheel(tmp_path):
+    wheel = tmp_path / idc.INDEX_WHEEL
+    wheel.write_bytes(b"not the wheel")
+    with pytest.raises(EvaluationRefused):
+        idc.index_rows(wheel)
+
+
+def test_the_index_is_read_from_the_wheels_parquet(tmp_path):
+    pyarrow = pytest.importorskip("pyarrow")
+    parquet = pytest.importorskip("pyarrow.parquet")
+    rows = [{**_row(1), "PatientID": "never read"}, _row(2)]
+    sink = io.BytesIO()
+    parquet.write_table(pyarrow.Table.from_pylist(rows), sink)
+    wheel = tmp_path / idc.INDEX_WHEEL
+    with zipfile.ZipFile(wheel, "w") as archive:
+        archive.writestr(idc.INDEX_MEMBER, sink.getvalue())
+    digest = hashlib.sha256(wheel.read_bytes()).hexdigest()
+    found = idc.index_rows(wheel, digest)
+    assert found == [_row(1), _row(2)]
+    assert len(idc.select_series(found).series) == 2
+
+
 def test_licences_are_compared_in_one_spelling():
     assert idc.canonical_licence("CC BY-NC 4.0") == "CC BY NC 4.0"
     assert idc.canonical_licence(" cc  by_4.0 ") == "CC BY 4.0"
+    # As IDC's index spells the NLM's terms.
+    assert (
+        idc.canonical_licence(
+            "National Library of Medicine Terms and Conditions; May 21, 2019"
+        )
+        in idc.OPEN_LICENCES
+    )
     assert set(idc.OPEN_COLLECTIONS.values()) <= idc.OPEN_LICENCES
     assert idc.OPEN_COLLECTIONS["midrc_ricord_1c"] == "CC BY NC 4.0"
     assert idc.OPEN_COLLECTIONS["lidc_idri"] == "CC BY 3.0"
@@ -72,6 +105,7 @@ def test_licences_are_compared_in_one_spelling():
         ({"series_aws_url": "s3://idc-open-data/elsewhere/*"}, "malformed"),
         ({"series_aws_url": "https://example.org/x/*"}, "malformed"),
         ({"SeriesInstanceUID": "PATIENT^A"}, "malformed"),
+        ({"SOPClassUID": "secondary capture"}, "malformed"),
     ],
 )
 def test_a_series_is_refused_by_why(fields, reason):
@@ -126,6 +160,21 @@ def test_a_selection_is_fixed_and_limited():
     sized = idc.select_series(rows, max_mb=35.0)
     assert len(sized.series) == 3
     assert dict(sized.refused) == {"over-size-limit": 17}
+    huge = idc.select_series([_row(1, series_size_MB=5000.0), _row(2)])
+    assert [each.series_instance_uid for each in huge.series] == ["2.25.2"]
+    assert dict(huge.refused) == {"over-series-size-limit": 1}
+    # Collections take turns, so the size limit is not spent on the first.
+    mixed = rows + [
+        _row(number, collection_id="cmmd", license_short_name="CC BY 4.0")
+        for number in range(21, 41)
+    ]
+    shared = idc.select_series(mixed, max_mb=40.0)
+    assert sorted(each.collection_id for each in shared.series) == [
+        "cmmd",
+        "cmmd",
+        "lidc_idri",
+        "lidc_idri",
+    ]
     with pytest.raises(EvaluationRefused):
         idc.select_series(rows, per_collection=0)
 
@@ -145,12 +194,21 @@ def test_a_selection_is_described_by_collection_without_a_series():
     )
     described = selection.described()
     assert described["collections"] == {
-        "cmmd": {"series": 1, "size_mb": 10.0, "licence": "CC BY 4.0", "dois": [DOI]},
+        "cmmd": {
+            "series": 1,
+            "size_mb": 10.0,
+            "licence": "CC BY 4.0",
+            "dois": [DOI],
+            "sop_classes": {"1.2.840.10008.5.1.4.1.1.2": 1},
+            "modalities": {"MG": 1},
+        },
         "lidc_idri": {
             "series": 1,
             "size_mb": 10.0,
             "licence": "CC BY 3.0",
             "dois": [DOI],
+            "sop_classes": {"1.2.840.10008.5.1.4.1.1.2": 1},
+            "modalities": {"CT": 1},
         },
     }
     assert described["refused"] == {"collection-not-vetted": 1}

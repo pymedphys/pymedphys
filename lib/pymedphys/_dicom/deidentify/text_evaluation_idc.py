@@ -25,8 +25,10 @@ series carries a DOI, and its modality is one of :data:`IMAGE_MODALITIES`;
 where IDC's licence and the vetted one differ, the series is refused, so
 that the stricter terms are never missed. Every refusal is counted by its
 reason. Each collection's series are taken in an order fixed by a SHA-256
-of the series, up to a number and a size, so that a selection is the same
-on every run of the same index.
+of the series, up to a number and a size of each series, and the
+collections take turns until the selection reaches its size, so that a
+selection is the same on every run of the same index and spreads over the
+collections.
 
 :func:`manifest` writes the selected series as an ``s5cmd`` manifest, and
 :class:`IdcSeriesCase` reads a downloaded series as a case of tier T3,
@@ -42,9 +44,11 @@ from __future__ import annotations
 
 import dataclasses
 import hashlib
+import io
 import math
 import pathlib
 import re
+import zipfile
 from collections.abc import Iterable, Iterator, Mapping
 from types import MappingProxyType
 
@@ -68,6 +72,8 @@ OPEN_LICENCES = frozenset(
         "CC BY NC 4.0",
         "CC0 1.0",
         "PDDL 1.0",
+        # As IDC's index gives the NLM's terms for the Visible Human data.
+        "NATIONAL LIBRARY OF MEDICINE TERMS AND CONDITIONS; MAY 21, 2019",
     }
 )
 # The collections vetted for T3, by IDC collection_id, with the licence of
@@ -125,6 +131,7 @@ COLUMNS = (
     "SeriesInstanceUID",
     "crdc_series_uuid",
     "Modality",
+    "SOPClassUID",
     "license_short_name",
     "source_DOI",
     "series_size_MB",
@@ -153,6 +160,7 @@ class IdcSeries:
     crdc_series_uuid : str
         IDC's own identifier of the series' files.
     modality : str
+    sop_class_uid : str
     licence : str
         Canonical, one of :data:`OPEN_LICENCES`.
     doi : str
@@ -166,6 +174,7 @@ class IdcSeries:
     series_instance_uid: str
     crdc_series_uuid: str
     modality: str
+    sop_class_uid: str
     licence: str
     doi: str
     size_mb: float
@@ -176,8 +185,11 @@ class IdcSeries:
             raise EvaluationRefused("A series must be of a vetted collection.")
         if self.licence not in OPEN_LICENCES:
             raise EvaluationRefused("A series must be openly licensed.")
-        if not _UID.fullmatch(self.series_instance_uid):
-            raise EvaluationRefused("A series needs its Series Instance UID.")
+        if not (
+            _UID.fullmatch(self.series_instance_uid)
+            and _UID.fullmatch(self.sop_class_uid)
+        ):
+            raise EvaluationRefused("A series needs its UIDs.")
         if not _UUID.fullmatch(self.crdc_series_uuid):
             raise EvaluationRefused("A series needs IDC's identifier of it.")
         if not _DOI.fullmatch(self.doi):
@@ -220,6 +232,8 @@ class Selection:
                 "size_mb": sum(each.size_mb for each in members),
                 "licence": members[0].licence,
                 "dois": sorted({each.doi for each in members}),
+                "sop_classes": _counts(each.sop_class_uid for each in members),
+                "modalities": _counts(each.modality for each in members),
             }
         return {
             "source": SOURCE,
@@ -228,11 +242,19 @@ class Selection:
         }
 
 
+def _counts(values: Iterable[str]) -> dict[str, int]:
+    found: dict[str, int] = {}
+    for value in values:
+        found[value] = found.get(value, 0) + 1
+    return dict(sorted(found.items()))
+
+
 def select_series(
     rows: Iterable[Mapping[str, object]],
     *,
     per_collection: int = 50,
     max_mb: float = 20_000.0,
+    max_series_mb: float = 1_000.0,
     answer_keyed_series: Mapping[str, frozenset[str]] | None = None,
 ) -> Selection:
     """Select series from rows of IDC's index, as the module describes.
@@ -245,12 +267,16 @@ def select_series(
         The most series taken from one collection.
     max_mb : float
         The most megabytes taken in all.
+    max_series_mb : float
+        The most megabytes of one series.
     answer_keyed_series : mapping, optional
         For each collection of :data:`ANSWER_KEYED`, the Series Instance
         UIDs that MIDI-B's answer key marks; without one, that collection
         is refused whole.
     """
-    if per_collection < 1 or not (math.isfinite(max_mb) and max_mb > 0):
+    if per_collection < 1 or not all(
+        math.isfinite(each) and each > 0 for each in (max_mb, max_series_mb)
+    ):
         raise EvaluationRefused("A selection must take something.")
     keyed = dict(answer_keyed_series or {})
     refused: dict[str, int] = {}
@@ -265,20 +291,27 @@ def select_series(
             continue
         seen.add(series.series_instance_uid)
         found.setdefault(series.collection_id, []).append(series)
+    # Taken a series from each collection in turn, so that the size limit
+    # spreads over the collections rather than falling to the first.
+    queues = {name: sorted(found[name], key=_order) for name in sorted(found)}
     taken: list[IdcSeries] = []
     total = 0.0
-    for name in sorted(found):
-        ordered = sorted(found[name], key=_order)
-        for position, series in enumerate(ordered):
+    for position in range(max((len(each) for each in queues.values()), default=0)):
+        for queue in queues.values():
+            if position >= len(queue):
+                continue
+            series = queue[position]
             if position >= per_collection:
-                refused["over-collection-limit"] = (
-                    refused.get("over-collection-limit", 0) + 1
-                )
+                reason = "over-collection-limit"
+            elif series.size_mb > max_series_mb:
+                reason = "over-series-size-limit"
             elif total + series.size_mb > max_mb:
-                refused["over-size-limit"] = refused.get("over-size-limit", 0) + 1
+                reason = "over-size-limit"
             else:
                 taken.append(series)
                 total += series.size_mb
+                continue
+            refused[reason] = refused.get(reason, 0) + 1
     return Selection(tuple(taken), MappingProxyType(refused))
 
 
@@ -317,6 +350,7 @@ def _series(
             series_instance_uid=uid,
             crdc_series_uuid=str(row["crdc_series_uuid"]),
             modality=str(row["Modality"]),
+            sop_class_uid=str(row["SOPClassUID"]),
             licence=licence,
             doi=doi,
             size_mb=float(str(row["series_size_MB"])),
@@ -324,6 +358,34 @@ def _series(
         )
     except (EvaluationRefused, ValueError):
         return "malformed", None
+
+
+# The wheel of idc-index-data that holds IDC's index, pinned: the version of
+# IDC's data that a selection reads.
+INDEX_WHEEL = "idc_index_data-25.0.5-py3-none-any.whl"
+INDEX_WHEEL_SHA256 = "1ea4ec812688759b71798249b6488eb2bce7178aabb3dccb00366b7a555de25c"
+INDEX_MEMBER = "idc_index_data/idc_index.parquet"
+
+
+def index_rows(
+    wheel: pathlib.Path | str, sha256: str = INDEX_WHEEL_SHA256
+) -> list[dict[str, object]]:
+    """The rows of IDC's index, with :data:`COLUMNS` alone, from the pinned
+    wheel of idc-index-data, which must have the SHA-256 ``sha256``; read
+    in memory, never unpacked. Reading Parquet needs pyarrow, which only
+    the evaluation's CI runs install."""
+    data = pathlib.Path(wheel).read_bytes()
+    if hashlib.sha256(data).hexdigest() != sha256:
+        raise EvaluationRefused("IDC's index is not the pinned one.")
+    with zipfile.ZipFile(io.BytesIO(data)) as archive:
+        parquet = archive.read(INDEX_MEMBER)
+    import pyarrow  # pylint: disable = import-outside-toplevel, import-error
+    import pyarrow.parquet  # pylint: disable = import-outside-toplevel, import-error
+
+    table = pyarrow.parquet.read_table(
+        pyarrow.BufferReader(parquet), columns=list(COLUMNS)
+    )
+    return table.to_pylist()
 
 
 def manifest(selection: Selection, destination: str = ".") -> str:
