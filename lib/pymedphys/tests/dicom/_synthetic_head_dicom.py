@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""CT Image, RT Structure Set, RT Dose, PET Image, and Segmentation files of
-the analytic head, for the defacing tests. Every UID and value here is
-invented."""
+"""CT Image, RT Structure Set, RT Dose, PET Image, Segmentation, and
+Deformable Spatial Registration files of the analytic head, for the
+defacing tests. Every UID and value here is invented."""
 
 from __future__ import annotations
 
@@ -33,6 +33,7 @@ RT_DOSE_STORAGE = "1.2.840.10008.5.1.4.1.1.481.2"
 PET_IMAGE_STORAGE = "1.2.840.10008.5.1.4.1.1.128"
 SEGMENTATION_STORAGE = "1.2.840.10008.5.1.4.1.1.66.4"
 LABEL_MAP_SEGMENTATION_STORAGE = "1.2.840.10008.5.1.4.1.1.66.7"
+DEFORMABLE_SPATIAL_REGISTRATION_STORAGE = "1.2.840.10008.5.1.4.1.1.66.3"
 AXIAL = (1.0, 0.0, 0.0, 0.0, 1.0, 0.0)
 EXPLICIT_VR_LITTLE_ENDIAN = "1.2.840.10008.1.2.1"
 ROOT = "2.25.1234567890123456789"
@@ -386,6 +387,45 @@ def square(centre: Sequence[float], half: float = 2.0) -> np.ndarray:
             (x - half, y + half, z),
         ]
     )
+
+
+def registration(
+    grids: Sequence[tuple[np.ndarray, Sequence[float], Sequence[float]]],
+    *,
+    orientation: Sequence[float] = AXIAL,
+    frame: str = FRAME,
+    sources: Sequence[str] | None = None,
+    instance: str = ROOT + ".9.1",
+) -> bytes:
+    """A Deformable Spatial Registration with an item for each grid.
+
+    Each grid is its vectors, of shape (planes, rows, columns, 3), in
+    millimetres, its Image Position (Patient), and its Grid Resolution, all
+    in the orientation ``orientation``. Each item's Source Frame of
+    Reference UID is that of ``sources``, by default ``frame``, and the
+    registration's own Frame of Reference UID is ``frame``.
+    """
+    dataset = _dataset(DEFORMABLE_SPATIAL_REGISTRATION_STORAGE, instance, None)
+    dataset.Modality = "REG"
+    dataset.FrameOfReferenceUID = frame
+    dataset.ContentDate = "20260101"
+    dataset.ContentTime = "120000"
+    items = []
+    for index, (vectors, position, resolution) in enumerate(grids):
+        planes, rows, columns, _ = np.shape(vectors)
+        grid = pydicom.Dataset()
+        grid.ImageOrientationPatient = [_ds(v) for v in orientation]
+        grid.ImagePositionPatient = [_ds(v) for v in position]
+        grid.GridDimensions = [columns, rows, planes]
+        grid.GridResolution = [float(v) for v in resolution]
+        grid.VectorGridData = np.asarray(vectors, "<f4").tobytes()
+        item = pydicom.Dataset()
+        item.SourceFrameOfReferenceUID = frame if sources is None else sources[index]
+        item.RegistrationTypeCodeSequence = []
+        item.DeformableRegistrationGridSequence = [grid]
+        items.append(item)
+    dataset.DeformableRegistrationSequence = items
+    return written(dataset)
 
 
 def _dataset(
