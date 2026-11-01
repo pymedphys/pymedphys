@@ -124,17 +124,26 @@ def _values(released, keyword):
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.5-01")
+@pytest.mark.parametrize(
+    "added",
+    [
+        # The vocabulary keeps the first two values but not the third,
+        # which takes its action without the option, X.
+        "AXIAL CHEST SENTINEL",
+        # It keeps all three, since GRAY is a common name that it keeps as
+        # a reviewed exception, but the third differs from the others.
+        "AXIAL CHEST GRAY",
+    ],
+)
 def test_a_series_whose_values_differ_takes_the_action_without_the_option(
-    tmp_path,
+    tmp_path, added
 ):
-    # The vocabulary keeps the first two values but not the third, which
-    # takes its action without the option, X.
     result = _run(
         tmp_path,
         [
             _slice(0, SeriesDescription="AXIAL CHEST"),
             _slice(1, SeriesDescription="AXIAL CHEST"),
-            _slice(2, SeriesDescription="AXIAL CHEST SENTINEL"),
+            _slice(2, SeriesDescription=added),
         ],
     )
 
