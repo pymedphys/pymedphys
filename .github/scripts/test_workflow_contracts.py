@@ -631,9 +631,18 @@ class WorkflowContractTests(unittest.TestCase):
 
     def test_the_model_pin_check_reads_only_and_holds_no_secret(self):
         text = (WORKFLOWS / "text-detection-model-pins.yml").read_text(encoding="utf-8")
-        self.assertIn(
-            "\non:\n  workflow_dispatch:\n\npermissions:\n  contents: read\n", text
+        triggers = text.split("\non:\n", 1)[1].split("\npermissions:\n", 1)[0]
+        # Started by hand; until the file is on the default branch, a push to
+        # the branch that adds it may run it too, and no other event may.
+        self.assertEqual(
+            re.findall(r"(?m)^  ([a-z_]+):", triggers),
+            ["workflow_dispatch", "push"]
+            if "\n  push:" in triggers
+            else ["workflow_dispatch"],
         )
+        if "\n  push:" in triggers:
+            self.assertIn("    branches: [claude/project-thread-l8453e]\n", triggers)
+        self.assertIn("\npermissions:\n  contents: read\n", text)
         self.assertEqual(
             re.findall(r"(?m)^      [a-z-]+: (?:read|write)$", text),
             ["      contents: read"],

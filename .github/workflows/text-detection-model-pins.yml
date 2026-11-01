@@ -9,6 +9,11 @@ name: Text Detection Model Pins
 # result; it fails unless every pin matches.
 on:
   workflow_dispatch:
+  # Temporary: a manual run needs this file on the default branch, so until
+  # then a push to this branch runs the check. Remove before the pull
+  # request is ready for review.
+  push:
+    branches: [claude/project-thread-l8453e]
 
 permissions:
   contents: read
