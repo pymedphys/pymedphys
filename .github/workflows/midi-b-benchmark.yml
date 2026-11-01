@@ -1,7 +1,8 @@
 name: MIDI-B Benchmark
 
-# On demand, download one subset of NCI's MIDI-B test data from TCIA
-# (https://doi.org/10.7937/cf2p-aw56, CC BY 4.0), de-identify it with the
+# On demand, download one subset of NCI's MIDI-B test data, from TCIA
+# (https://doi.org/10.7937/cf2p-aw56, CC BY 4.0) or a pinned copy of TCIA's
+# files, de-identify it with the
 # development benchmark harness under each preset, and score the release
 # against the subset's answer key, both with the harness and with NCI's own
 # validation script (D-018).
@@ -36,6 +37,14 @@ on:
         description: >-
           Where the answer key comes from: the pinned copy, or TCIA's own
           Aspera package, checked against the pin
+        type: choice
+        options: [pinned, tcia]
+        default: pinned
+      images-from:
+        description: >-
+          Where the images come from: the pinned copy, falling back to TCIA
+          if it cannot be fetched, or TCIA's NBIA API, checked against the
+          pins
         type: choice
         options: [pinned, tcia]
         default: pinned
@@ -90,6 +99,7 @@ jobs:
       CHOSEN: ${{ inputs.subset }}
       # A push (temporary, above) has no inputs, and checks TCIA's packages.
       ANSWER_KEYS_FROM: ${{ inputs.answer-keys-from || 'tcia' }}
+      IMAGES_FROM: ${{ inputs.images-from || 'pinned' }}
       # IBM's Aspera command line client, Apache-2.0; it installs IBM's
       # transfer daemon, which carries IBM's own licence, on the runner only.
       # Not ASCLI_*: ascli reads environment variables so named as options.
@@ -231,11 +241,15 @@ jobs:
           fi
           echo "ANSWER_KEY_FILE=${keys[0]}" >> "${GITHUB_ENV}"
 
-      # The downloader prints only counts, digests, and positions.
-      - name: Download the subset from TCIA
+      # The downloader prints only counts, digests, and positions. With
+      # images-from: pinned, it fetches the images' ZIP file pinned in
+      # midi_data.toml, when one is pinned, and takes the images from TCIA
+      # only if that file cannot be fetched; download.json records which.
+      - name: Download the subset
         run: |
           note="runner ${MIDI_B_RUNNER_ADDRESS:-unknown}; run ${GITHUB_RUN_ID}/${GITHUB_RUN_ATTEMPT}; ${SUBSET} ${PRESET}"
-          args=(--subset "${SUBSET}" --dest "${RUNNER_TEMP}/midi-b/data" --user-agent-note "${note}")
+          args=(--subset "${SUBSET}" --dest "${RUNNER_TEMP}/midi-b/data" --user-agent-note "${note}"
+            --images-from "${IMAGES_FROM}")
           if [[ -n "${ANSWER_KEY_URL}" ]]; then
             if [[ "${CHOSEN}" == both ]]; then
               echo "An answer key belongs to one subset: choose validation or test to give one."
