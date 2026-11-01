@@ -720,7 +720,7 @@ def score(  # pylint: disable = too-many-arguments, too-many-locals
                 ):
                     if not source:
                         source.append(read_source(sources[position]))
-                    describe_source(check, source[0], described, explained)
+                    describe_source(check, source[0], described, explained, dataset)
                     if is_source_gap(check, source[0]):
                         scored = Scored(Result.FAILED, _GAP, source_gap=True)
                 outcome = _outcome(scored)

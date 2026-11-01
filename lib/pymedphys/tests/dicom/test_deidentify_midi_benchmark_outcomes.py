@@ -236,6 +236,31 @@ def test_a_removed_text_of_another_vr_is_described_by_its_vr():
 
 
 @pytest.mark.parametrize(
+    "written, answer, expected",
+    [
+        # A common surname kept as a reviewed exception, and a short number.
+        ("AX FLAIR GRAY 123", "GRAY 123", "bare number, named exception"),
+        # A number-like label: a vocabulary word and a bare number.
+        ("AX T1 NO 12", "no 12", "bare number, vocabulary word"),
+        ("AX T1 B30 MM", "B30 mm", "kernel, unit"),
+        ("AX T1 SMITH", "SMITH", "name"),
+        ("AX T1 XQZ", "XQZ", "other"),
+        ("AX T1", "GRAY", "none"),
+    ],
+)
+def test_a_removed_text_is_described_by_the_kinds_of_its_kept_words(
+    written, answer, expected
+):
+    released = pydicom.Dataset()
+    released.SeriesDescription = written
+    check = read_answer_check("text_removed", "<(0008,103E)>", text=answer)
+
+    assert sources.kept_word_kinds(released, check) == expected
+    assert sources.kept_word_kinds(None, check) == "unknown"
+    assert sources.kept_word_kinds(pydicom.Dataset(), check) == "unknown"
+
+
+@pytest.mark.parametrize(
     "place, expected",
     [
         ("<(0018,0060)>", "absent"),
