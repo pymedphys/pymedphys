@@ -619,11 +619,22 @@ def _descriptors(
         "cleaning gives its values only where every value is cleaned, at "
         "least one is written with text, and no kept value is written beside "
         "one that a reviewer mapped or emptied, whose source the residual "
-        "search must still look for. Every other such element takes the action that the "
+        "search must still look for. A descriptor of a patient, study, "
+        "series, or frame of reference, one that a module of the instance's "
+        "IOD defines at the top level for that entity, such as Series "
+        "Description (0008,103E) or Study Description (0008,1030), is written "
+        "so only where every instance of that entity in the run would write "
+        "the same values, as their Patient ID and Issuer of Patient ID, "
+        "Study Instance UID, Series Instance UID, or Frame of Reference UID "
+        "name the entity, and an instance without the attribute counts as one "
+        "that writes other values, so that the instances of the entity hold it "
+        "alike. Every other such element takes the action that the "
         "policy gives it without Clean Descriptors, as the Actions table "
         "shows, and the confidential QC pack lists its values, so that a "
         "reviewer can record decisions for later runs. A value kept is "
-        "left out of the residual search, as other retained values are.",
+        "left out of the residual search, as other retained values are, and "
+        "so is one that cleaning keeps but does not write since another "
+        "instance of its entity would write other values.",
         "",
     ]
 
