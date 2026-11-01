@@ -21,7 +21,7 @@ IODs are not supported yet, so the engine sequesters their instances. As
 IODs, these tests show, ahead of supporting them, what the option does with
 the content trees of their root templates (D-047): which option sets keep a
 report that holds only the rows that its templates require; which optional
-rows take the whole tree out under each option set; the action that each
+rows are removed on their own under each option set; the action that each
 listed value of a kept tree takes; and what is written and released, in the
 tests that add the IODs to the supported ones for that test alone, as
 supporting them would. The reports are synthetic, built from the templates
@@ -188,6 +188,20 @@ def _kept(dataset, iod, composed):
     return actions.get(ElementPath((), CONTENT)) == "K"
 
 
+def _removes(dataset, iod, composed):
+    """Return whether the option keeps the tree but removes items from it.
+
+    An item is removed on its own, or with the others of the Content
+    Sequence that an item other than a CONTAINER holds, which goes with them.
+    """
+    actions, plan = _planned(dataset, iod, composed)
+    return (
+        actions.get(ElementPath((), CONTENT)) == "K"
+        and bool(actions.removed_items or actions.emptied)
+        and plan.removed_items == actions.removed_items
+    )
+
+
 def _composed(with_option, preset, options):
     return (
         with_option(preset)
@@ -315,6 +329,7 @@ def test_which_option_sets_keep_a_report_of_required_rows(with_option, preset, o
         _, plan = _planned(dataset, iod, composed)
         assert _kept(dataset, iod, composed), name
         assert not plan.sequestrations, name
+        assert not _removes(dataset, iod, composed), name
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.4-01")
@@ -338,10 +353,11 @@ def test_a_macular_grid_report_keeps_its_loinc_coded_rows(with_option, preset, o
     assert "LN" not in content_items.UNMATCHED_SCHEMES
     assert not {key for _, key in concepts if key[0] == "LN" and key in actions}
     assert _kept(dataset, iod, composed)
+    assert not _removes(dataset, iod, composed)
 
 
-# The optional rows of the procedure log that take the tree out under every
-# option set: Table E.3.4-1 gives each X, or X with C under Clean
+# The optional rows of the procedure log that are removed on their own under
+# every option set: Table E.3.4-1 gives each X, or X with C under Clean
 # Descriptors, which falls back to X (D-009).
 LOG_REMOVED_UNDER_EVERY_OPTION = {
     "TID 1003 row 1a",  # Person Observer's Login Name
@@ -396,17 +412,20 @@ WAVEFORM_UIDS = {"TID 3750 row 19"}
     (WAVEFORM, None, (CSC, policy.UIDS), set()),
     (WAVEFORM, None, EVERY_OPTION, set()),
 ])  # fmt: skip
-def test_the_optional_rows_that_take_the_tree_out(
+def test_the_optional_rows_that_are_removed_on_their_own(
     with_option, name, preset, options, removed
 ):
     composed = _composed(with_option, preset, options)
     build, iod, optional, _ = REPORTS[name]
 
     assert _kept(build(()), iod, composed)
+    assert not _removes(build(()), iod, composed)
+    for key in optional:
+        assert _kept(build(reports.with_holders(key)), iod, composed), key
     assert {
         key
         for key in optional
-        if not _kept(build(reports.with_holders(key)), iod, composed)
+        if _removes(build(reports.with_holders(key)), iod, composed)
     } == removed
 
 
@@ -576,6 +595,27 @@ def test_a_written_report_holds_no_source_value_and_is_released(
     assert CSC_CODE in [
         code.get("CodeValue") for code in written.DeidentificationMethodCodeSequence
     ]
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.4-01")
+@pytest.mark.usefixtures("supported")
+@pytest.mark.parametrize("name", REPORTS)
+def test_a_report_with_every_optional_row_is_written_without_those_removed(
+    with_option, name
+):
+    build, _, optional, _ = REPORTS[name]
+    dataset = build(optional)
+
+    result = _transformed(with_option("public-release"), dataset)
+
+    assert isinstance(result, run.Transformed), result
+    for value in SOURCE_VALUES:
+        assert value.encode() not in result.data, value
+    written = pydicom.dcmread(io.BytesIO(result.data))
+    # Every report holds a row that public-release removes, but the colon
+    # CAD's and the macular grid's, which has no optional row.
+    kept, held = len(list(_concepts(written))), len(list(_concepts(dataset)))
+    assert kept < held if name not in (COLON, MACULAR) else kept == held
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.4-01")
