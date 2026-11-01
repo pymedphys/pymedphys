@@ -304,7 +304,7 @@ text = '''
 When this Option is specified in addition to the Basic Application Level Confidentiality Profile, any information burned in to the Pixel Data (7FE0,0010) corresponding to the Attribute information specified to be removed by the Profile and any other Options specified shall also be removed, as described in Table E.1-1.
 '''
 status = "implemented"
-decisions = ["D-015", "D-033", "D-037", "D-048"]
+decisions = ["D-015", "D-033", "D-037", "D-048", "D-059"]
 implementation = [
   "_dicom/deidentify/api.py",
   "_dicom/deidentify/command.py",
@@ -314,6 +314,8 @@ implementation = [
   "_dicom/deidentify/pixel_region_rules.py",
   "_dicom/deidentify/pixel_region_rules_command.py",
   "_dicom/deidentify/redaction_review.py",
+  "_dicom/deidentify/redaction_review_app.py",
+  "_dicom/deidentify/redaction_verdicts.py",
   "_dicom/deidentify/text_detection.py",
 ]
 note = '''
@@ -322,7 +324,8 @@ Reviewed region rules, kept by the custodian and keyed by SOP Class UID, Manufac
 A private command records a rule from an attested QC pack, holding only regions that the reviewer's verdict approved for the image, keyed by the image's source file, which must have the SHA-256 that the pack records (D-037, D-048).
 Compressed Pixel Data is decoded first, in the isolated decoding child for the native decoders, and its frames are written uncompressed, in Explicit VR Little Endian, as decoded, with or without a region, so that the QC pack previews the samples that a release writes (D-037).
 In native Pixel Data, the bit plane of an overlay that an overlay group without Overlay Data places above High Bit is cleared in the same write, and its group removed, so the instance is cleaned rather than sequestered as uncleanable-pixel-data (D-037).
-A later run of the same files, given the attested QC pack, blacks out the regions that the reviewer accepted, with any that the reviewer added, without the finder, and releases the instance with the option's code; for compressed Pixel Data, only where its frames decode to the SHA-256 that the pack records, and otherwise the instance is held again. An instance that the reviewer rejected is sequestered (D-048).
+A later run of the same files, given the attested QC pack, blacks out the regions that the reviewer accepted, without any finder's region that the reviewer dropped and with any that the reviewer drew, without the finder, and releases the instance with the option's code; for compressed Pixel Data, only where its frames decode to the SHA-256 that the pack records, and otherwise the instance is held again. An instance that the reviewer rejected is sequestered (D-048).
+A private local app shows the reviewer every frame of each cleaned instance at full depth, with the finder's regions as proposals to keep or drop and a rule's regions locked, lets them draw regions over text that the finder missed, and saves their verdicts for the attestation command; attesting refuses an accepted or revised verdict until the reviewer has been shown every frame that its review requires, which is every frame of every IOD for now, and the release report counts the frames of approved instances that were not shown (D-059).
 The private command's run under the option, and the library's, makes the text detector with the pinned model, and takes the attested QC pack whose verdicts apply and the custodian's region rules (D-033).
 A workflow run by hand counts the regions that the text detector finds in the slices of the HaN-Seg data set's 42 head and neck planning CTs and 42 T1-weighted MRs, which hold no burned-in text, on a hosted runner that alone downloads it, and publishes only counts, which bear on how many regions a reviewer clears; it claims no result (D-037).
 '''

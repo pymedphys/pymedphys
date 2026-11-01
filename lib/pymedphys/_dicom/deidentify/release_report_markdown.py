@@ -395,16 +395,20 @@ def _face_review(section: object) -> list[Block]:
 def _redaction_review(section: object) -> list[Block]:
     if section is None:
         return []
-    section = _fields("redaction_review", section, ("reference",))
+    section = _fields("redaction_review", section, ("reference", "frames_not_shown"))
+    not_shown = _tally("redaction_review frames_not_shown", section["frames_not_shown"])
     return [
         ["## Redaction review"],
         [
             "Under the Clean Pixel Data Option, an instance with Pixel Data is "
-            "released only where a reviewer accepted its blacked-out regions, "
-            "or gave their own, in the earlier run's confidential QC pack with "
+            "released only where a reviewer confirmed the regions to black "
+            "out, keeping or dropping those that the text finder proposed and "
+            "adding their own, in the earlier run's confidential QC pack with "
             "this opaque reference: "
             + _code("redaction_review reference", section["reference"])
-            + "."
+            + ". Frames of the instances so approved that the reviewer was "
+            "not shown, which only an instance of an IOD whose text finder "
+            f"met the acceptance criteria can have: {not_shown}."
         ],
     ]
 

@@ -642,6 +642,7 @@ def _cleaned(position):
         "regions": [],
         "decoded_sha256": None,
         "rule_boxes": [],
+        "sop_class_uid": "",
     }
 
 
@@ -975,14 +976,39 @@ def test_the_statement_names_each_supported_iod_that_lacks_the_attribute():
 
 def test_the_report_names_the_reviewed_pack_by_its_reference():
     report = release_report.release_report(
-        _policy(), vocabulary=None, reviewed_roi_names=None, redaction_review=REFERENCE
+        _policy(),
+        vocabulary=None,
+        reviewed_roi_names=None,
+        redaction_review=REFERENCE,
+        redaction_frames_not_shown=3,
     )
     document = release_report.report_document(report)
 
-    assert document["redaction_review"] == {"reference": REFERENCE}
+    assert document["redaction_review"] == {
+        "reference": REFERENCE,
+        "frames_not_shown": 3,
+    }
     text = release_report_markdown.to_markdown(release_report.to_json(report))
     assert "## Redaction review" in text
     assert f"`{REFERENCE}`" in text
+    assert "not shown" in text and "can have: `3`." in " ".join(text.split())
+
+
+@pytest.mark.parametrize(
+    "fields",
+    [
+        {"redaction_review": REFERENCE},
+        {"redaction_review": REFERENCE, "redaction_frames_not_shown": -1},
+        {"redaction_review": REFERENCE, "redaction_frames_not_shown": True},
+        {"redaction_frames_not_shown": 0},
+    ],
+)
+def test_the_report_refuses_a_count_of_frames_not_shown_out_of_place(fields):
+    report = release_report.release_report(
+        _policy(), vocabulary=None, reviewed_roi_names=None, **fields
+    )
+    with pytest.raises(ValueError, match="redaction_review"):
+        release_report.report_document(report)
 
 
 def test_a_report_without_a_redaction_review_has_none():
@@ -1365,8 +1391,12 @@ def test_an_instance_without_pixel_data_claims_the_option(second_run, name):
 def test_the_report_names_the_reviewed_pack(second_run):
     attestation, _, report, _, _ = second_run
 
-    assert report["redaction_review"] == {"reference": attestation.reference}
-    assert report["format"] == "pymedphys-deid-release-report/32"
+    # Every frame of each approved image was shown.
+    assert report["redaction_review"] == {
+        "reference": attestation.reference,
+        "frames_not_shown": 0,
+    }
+    assert report["format"] == "pymedphys-deid-release-report/43"
 
 
 class _Blind(Finder):

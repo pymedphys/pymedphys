@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<!--
+Copyright (C) 2026 Matthew Jennings
+Licensed under the Apache License, Version 2.0; see redaction_review_app.py.
+The redaction review app's page. It loads nothing from anywhere but the
+local server that serves it.
+-->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="referrer" content="no-referrer">
+  <title>Redaction review</title>
+  <link rel="stylesheet" href="/app.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <header class="bar">
+    <h1>Redaction review</h1>
+    <span id="pack" class="muted"></span>
+    <span id="progress" class="muted"></span>
+    <span class="spacer"></span>
+    <span id="saved" class="muted" aria-live="polite"></span>
+    <button id="summary-button" type="button" title="Summary (S)">Summary</button>
+    <button id="help-button" type="button" title="Keys (?)">Keys</button>
+  </header>
+  <main>
+    <nav id="queue" aria-label="Cleaned instances">
+      <div class="queue-head">
+        <label><input id="undecided-only" type="checkbox"> Undecided only</label>
+      </div>
+      <ol id="instances"></ol>
+    </nav>
+    <section id="viewer" aria-label="Frame">
+      <div class="toolbar">
+        <span id="instance-title"></span>
+        <span id="frame-label"></span>
+        <span id="seen-label" class="muted"></span>
+        <span class="spacer"></span>
+        <button id="window-button" type="button" title="Window (W); right-drag to adjust">Window: percentile</button>
+        <button id="blackout-button" type="button" title="Blackout preview (B)" aria-pressed="false">Blackout preview</button>
+        <button id="fit-button" type="button" title="Fit (F); 1:1 (1)">Fit</button>
+      </div>
+      <div id="stage">
+        <canvas id="canvas" tabindex="0" aria-label="The frame, with its regions"></canvas>
+        <div id="loading" class="overlay hidden">Loading frame</div>
+      </div>
+      <canvas id="scrubber" height="28" aria-label="Frames: click to go to one"></canvas>
+      <div class="verdict-bar">
+        <span id="verdict-label"></span>
+        <span class="spacer"></span>
+        <button id="undecide-button" type="button" title="Clear the verdict (U)">Clear verdict</button>
+        <button id="reject-button" type="button" class="danger" title="Reject the instance (R)">Reject</button>
+        <button id="confirm-button" type="button" class="primary" title="Confirm the regions (Enter)">Confirm regions</button>
+      </div>
+    </section>
+    <aside id="panel" aria-label="Regions of this frame">
+      <h2>Regions in this frame</h2>
+      <ul class="legend">
+        <li><span class="swatch proposal"></span>Finder's, kept: blacked out</li>
+        <li><span class="swatch dropped"></span>Finder's, dropped: left as is</li>
+        <li><span class="swatch drawn"></span>Yours: blacked out</li>
+        <li><span class="swatch rule"></span>Region rule's: always blacked out</li>
+      </ul>
+      <ol id="regions"></ol>
+      <p class="muted small">Click a finder's region to drop or keep it. Drag anywhere else to draw a region over text. Select one of yours and press Delete to remove it.</p>
+      <button id="clear-frame-button" type="button" title="Drop every finder's region in this frame (C)">Drop all finder's regions here</button>
+    </aside>
+  </main>
+  <div id="toast" class="toast hidden" role="status" aria-live="assertive"></div>
+  <dialog id="help">
+    <h2>Keys</h2>
+    <table>
+      <tbody>
+        <tr><th>N, P or arrows</th><td>Next or previous frame</td></tr>
+        <tr><th>Shift+N</th><td>Next frame with a finder's region</td></tr>
+        <tr><th>J, K</th><td>Next or previous instance</td></tr>
+        <tr><th>Drag</th><td>Draw a region</td></tr>
+        <tr><th>Click a region</th><td>Drop or keep a finder's; select one of yours</td></tr>
+        <tr><th>Delete</th><td>Remove the selected region of yours</td></tr>
+        <tr><th>C</th><td>Drop every finder's region in this frame</td></tr>
+        <tr><th>Z, Shift+Z</th><td>Undo, redo</td></tr>
+        <tr><th>B</th><td>Blackout preview: the frame as it will be written</td></tr>
+        <tr><th>W, right-drag</th><td>Window presets; adjust window and level</td></tr>
+        <tr><th>Wheel, Space+drag</th><td>Zoom, pan</td></tr>
+        <tr><th>F, 1</th><td>Fit, 1:1</td></tr>
+        <tr><th>Enter</th><td>Confirm the regions (needs every frame shown)</td></tr>
+        <tr><th>R, U</th><td>Reject the instance; clear its verdict</td></tr>
+        <tr><th>S, ?</th><td>Summary; this list</td></tr>
+      </tbody>
+    </table>
+    <p class="muted small">A frame counts as shown once the whole of it has been on screen for a moment. That records that it was displayed, not that it was examined.</p>
+    <button id="help-close" type="button">Close</button>
+  </dialog>
+  <dialog id="summary">
+    <h2>Summary</h2>
+    <p id="summary-counts"></p>
+    <p class="muted small">Every region you dropped and every region you drew, magnified. A dropped region over text would release that text: check each before you attest.</p>
+    <div id="crops"></div>
+    <h3>To attest</h3>
+    <p class="small">Stop this app, then record the attestation by running the command below, once you have also reviewed every distinct retained string, every series, and every instance in high-risk categories, as the attestation requires:</p>
+    <pre id="attest-command"></pre>
+    <button id="summary-close" type="button">Close</button>
+  </dialog>
+</body>
+</html>

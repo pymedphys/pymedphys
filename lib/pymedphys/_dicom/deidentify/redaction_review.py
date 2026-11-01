@@ -94,6 +94,11 @@ class RedactionReview:
         For each approved source file whose Pixel Data is compressed, by
         its SHA-256, the SHA-256 of its frames as the reviewed run decoded
         them.
+    not_shown : int
+        How many frames of the approved source files, each file once, the
+        reviewer was not shown, which only an instance whose review needs
+        only its flagged frames can have (D-059); the release report records
+        it.
     """
 
     reference: str
@@ -102,6 +107,7 @@ class RedactionReview:
     decoded: Mapping[bytes, bytes] = dataclasses.field(
         default_factory=lambda: types.MappingProxyType({})
     )
+    not_shown: int = 0
 
     def __post_init__(self) -> None:
         if not isinstance(self.reference, str) or not re.fullmatch(
@@ -125,6 +131,12 @@ class RedactionReview:
             raise QcPackError(
                 "a redaction review's regions are frames, in order, with boxes"
             )
+        if (
+            not isinstance(self.not_shown, int)
+            or isinstance(self.not_shown, bool)
+            or self.not_shown < 0
+        ):
+            raise QcPackError("a redaction review counts the frames not shown")
         if self.rejected & set(self.approved):
             raise QcPackError(
                 "a redaction review cannot both approve and reject a source file"
@@ -228,6 +240,9 @@ def redaction_review_of(attestation: Attestation, data: bytes) -> RedactionRevie
         )
     digests, cleaned = _cleaned(data)
     proposals = pack_proposals(data)
+    shapes = previewed_redactions(data)
+    # Frames that each approved source file's verdict was not shown.
+    unseen: dict[bytes, int] = {}
     # The regions to black out in each source file, or None to reject it,
     # and the SHA-256 of its decoded frames, if compressed.
     decisions: dict[bytes, tuple[Regions | None, bytes | None]] = {}
@@ -256,6 +271,12 @@ def redaction_review_of(attestation: Attestation, data: bytes) -> RedactionRevie
             decided = regions
         else:
             decided = _revised(regions, verdict.regions, verdict.dropped)
+        if decided is not None:
+            unseen[digest] = max(
+                unseen.get(digest, 0),
+                shapes[verdict.position].frames
+                - len(set(verdict.seen) & set(range(shapes[verdict.position].frames))),
+            )
         if decisions.setdefault(digest, (decided, decoded)) != (decided, decoded):
             raise QcPackError(
                 "the redaction verdicts disagree on a source file that the QC "
@@ -277,6 +298,7 @@ def redaction_review_of(attestation: Attestation, data: bytes) -> RedactionRevie
             for digest, (_, decoded) in approved.items()
             if decoded is not None
         },
+        sum(unseen.values()),
     )
 
 

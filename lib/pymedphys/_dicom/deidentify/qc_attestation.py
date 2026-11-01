@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# pylint: disable = too-many-lines
+# The attestation, its verdicts of both kinds, and their checks against the
+# pack are one format, written and read here, so the module is long.
 """A reviewer's attestation of a QC pack, and its record for the release report.
 
 A reviewer who has worked through a run's QC pack
@@ -577,7 +580,7 @@ def attest(
                 f"a region past its {shape.rows} Rows or {shape.columns} Columns"
             )
         if verdict.redaction is not Redaction.REJECTED:
-            unseen = sorted(set(required_frames(shape)) - set(verdict.seen))
+            unseen = sorted(set(required_frames(shape, listed)) - set(verdict.seen))
             if unseen:
                 raise QcPackError(
                     f"the redaction verdict on run position {verdict.position} "
@@ -634,19 +637,45 @@ def _redaction_verdicts(
 
 @dataclasses.dataclass(frozen=True)
 class CleanedShape:
-    """How many frames a cleaned instance holds, and the Rows and Columns
-    that each of them has, as the QC pack lists them."""
+    """How many frames a cleaned instance holds, the Rows and Columns that
+    each of them has, and its SOP Class UID, empty where it has none, as the
+    QC pack lists them."""
 
     frames: int
     rows: int
     columns: int
+    sop_class_uid: str = ""
 
 
-def required_frames(shape: CleanedShape) -> range:
+# The SOP Classes for which a reviewer need be shown only the frames in which
+# the text finder proposed a region, by their UIDs: those of the IODs whose
+# text finder has met the maintainer's acceptance criteria of 1 November 2026
+# (D-056), as the maintainer decides for each (D-059). None has yet, so every
+# frame of every cleaned instance must be shown.
+FLAGGED_ONLY_SOP_CLASSES: frozenset[str] = frozenset()
+
+
+def required_frames(
+    shape: CleanedShape, flagged: Iterable[int] = ()
+) -> tuple[int, ...]:
     """Return the frames of a cleaned instance that a reviewer must be shown
-    before accepting or revising it: every frame, whatever the IOD, until
-    the maintainer's acceptance criteria are met for it (D-059)."""
-    return range(shape.frames)
+    before accepting or revising it, in order.
+
+    Parameters
+    ----------
+    shape : CleanedShape
+    flagged : iterable of int
+        The frames in which the pack lists a region.
+
+    Returns
+    -------
+    tuple of int
+        Only the flagged frames where the instance's SOP Class is one of
+        :data:`FLAGGED_ONLY_SOP_CLASSES`, and every frame otherwise (D-059).
+    """
+    if shape.sop_class_uid and shape.sop_class_uid in FLAGGED_ONLY_SOP_CLASSES:
+        return tuple(sorted({index for index in flagged if 0 <= index < shape.frames}))
+    return tuple(range(shape.frames))
 
 
 def pack_proposals(
@@ -718,8 +747,11 @@ def previewed_redactions(data: bytes) -> dict[int, CleanedShape]:
             for size in sizes
         ):
             raise QcPackError("the QC pack is not of its format")
+        sop_class = entry.get("sop_class_uid")
+        if not isinstance(sop_class, str):
+            raise QcPackError("the QC pack is not of its format")
         if position not in hidden:
-            shapes[position] = CleanedShape(*sizes)
+            shapes[position] = CleanedShape(*sizes, sop_class)
     return shapes
 
 
@@ -759,6 +791,29 @@ def redaction_previews(pack_directory: os.PathLike | str) -> dict[tuple[int, int
                 raise QcPackError("the QC pack is not of its format")
             files[(position, frame)] = name
     return files
+
+
+def unattested_pack(pack_directory: os.PathLike | str) -> bytes:
+    """Return the bytes of a QC pack that has not been attested, for its review.
+
+    Raises
+    ------
+    QcPackError
+        If the directory holds no QC pack, the pack is not of its format, a
+        preview that it lists is missing or changed, or it has been attested,
+        since a pack is attested once.
+    """
+    directory = Path(pack_directory)
+    data = _pack_bytes(directory)
+    _reference_of(data)
+    if not _previews_intact(directory, data):
+        raise QcPackError("a preview of the QC pack is missing or changed")
+    status = qc_store.path_status(
+        directory / ATTESTATION_FILE, "the attestation could not be read", follow=False
+    )
+    if status is not None:
+        raise QcPackError("the QC pack has already been attested")
+    return data
 
 
 def pack_reference(pack_directory: os.PathLike | str) -> tuple[str, str]:
