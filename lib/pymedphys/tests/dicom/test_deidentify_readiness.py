@@ -62,6 +62,7 @@ from pymedphys._dicom.deidentify.qc_attestation import (
 )
 from pymedphys._dicom.deidentify.qc_pack import (
     NO_CONTOURS_SHA256,
+    NO_GRIDS_SHA256,
     NO_PIXELS_SHA256,
     Disposition,
     InstanceEntry,
@@ -130,6 +131,7 @@ def _entry(position, disposition=Disposition.RELEASED, **changes):
         fields.update(
             pixel_sha256=_pixels(position) if position in IMAGES else NO_PIXELS_SHA256,
             contour_sha256=NO_CONTOURS_SHA256,
+            grid_sha256=NO_GRIDS_SHA256,
         )
     if disposition is Disposition.HELD_FOR_REVIEW:
         fields.update(reasons=("held",))
@@ -609,6 +611,34 @@ def test_a_verdict_covers_only_the_contours_that_the_reviewed_run_showed(tmp_pat
     result = _readiness(review, _pack(THIS_RUN, instances))
 
     assert result.pixel_and_face is ReviewReason.OTHER_CONTOURS
+
+
+@pytest.mark.deid_requirement("MIDI-BP-15")
+def test_a_verdict_covers_only_the_grids_that_the_reviewed_run_showed(tmp_path):
+    review = _reviewed(tmp_path)
+    # A file, of a series marked absent, whose deformation grids this run's
+    # grid sheets could not all show.
+    instances = tuple(
+        _entry(n, grid_sha256=None) if n == 1 else _entry(n) for n in range(5)
+    )
+
+    result = _readiness(review, _pack(THIS_RUN, instances))
+
+    assert result.pixel_and_face is ReviewReason.OTHER_GRIDS
+
+
+@pytest.mark.deid_requirement("MIDI-BP-15")
+def test_an_instance_with_grids_alone_needs_a_verdict(tmp_path):
+    review = _reviewed(tmp_path)
+    # Instance 4's series has no verdict, and it has neither pixel data nor
+    # contours, but grids.
+    instances = tuple(
+        _entry(n, grid_sha256=None) if n == 4 else _entry(n) for n in range(5)
+    )
+
+    result = _readiness(review, _pack(THIS_RUN, instances))
+
+    assert result.pixel_and_face is ReviewReason.NO_FACE_VERDICT
 
 
 @pytest.mark.deid_requirement("MIDI-BP-15")
