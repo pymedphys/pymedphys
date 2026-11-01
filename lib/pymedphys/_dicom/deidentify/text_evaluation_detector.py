@@ -90,6 +90,7 @@ from .text_evaluation_frames import (
     tissue_mask,
 )
 from .text_evaluation_models import (
+    RESAMPLERS,
     BoxDecoder,
     DetectionModel,
     ModelInput,
@@ -172,6 +173,10 @@ class InputVariant:
         ``mean``, over ``deviation``, in every channel, in place of the
         model's own normalisation (:class:`~.text_evaluation_models.ModelInput`),
         which for today's model is 0.5 and 0.5.
+    resampler : str
+        ``"harness"``, the harness's own bilinear resize, or ``"cv2"``, the
+        resize and normalisation of PaddleOCR's own pipeline, which needs
+        OpenCV (:func:`~.text_evaluation_models.model_tensor`).
     """
 
     scaling: str = "limit-side"
@@ -179,10 +184,13 @@ class InputVariant:
     working_side: int = 736
     mean: float | None = None
     deviation: float | None = None
+    resampler: str = "harness"
 
     def __post_init__(self):
         if self.scaling not in SCALINGS:
             raise EvaluationRefused("The scaling must be a known one.")
+        if self.resampler not in RESAMPLERS:
+            raise EvaluationRefused("The resampler must be a known one.")
         mean = 0.0 if self.mean is None else self.mean
         deviation = 1.0 if self.deviation is None else self.deviation
         if not (
@@ -324,15 +332,41 @@ def input_shape(
     ):
         return network_shape(shape, parameters)
     rows, columns = int(shape[0]), int(shape[1])
+    if options.scaling == "longest-at-most":
+        return paddle_shape((rows, columns), options.working_side)
     if options.scaling == "millimetres":
         assert spacing is not None
         scale = spacing / options.millimetres
-    elif options.scaling == "longest-at-most":
-        scale = min(1.0, options.working_side / max(rows, columns))
     else:
         scale = options.working_side / max(rows, columns)
     scale = min(scale, parameters.max_side / max(rows, columns))
     return (_multiple_of_32(rows * scale), _multiple_of_32(columns * scale))
+
+
+# PaddleX's own limit on the longer side of a scaled image.
+PADDLE_MAX_SIDE = 4000
+
+
+def paddle_shape(shape: tuple[int, int], limit: int) -> tuple[int, int]:
+    """The rows and columns that PaddleX's ``DetResizeForTest`` gives an
+    image under ``limit_type`` "max": the longer side scaled down to at most
+    ``limit``, never up; each side truncated to an integer, then rounded to
+    a multiple of 32, at least 32. Read from PaddleX's
+    ``text_detection/processors.py`` at commit
+    4c968d30b9d0d4a693d9eaaef0881c20f8d7d0e0."""
+    rows, columns = shape
+    ratio = 1.0
+    if max(rows, columns) > limit:
+        ratio = float(limit) / (rows if rows > columns else columns)
+    rows_scaled, columns_scaled = int(rows * ratio), int(columns * ratio)
+    if max(rows_scaled, columns_scaled) > PADDLE_MAX_SIDE:
+        ratio = float(PADDLE_MAX_SIDE) / max(rows_scaled, columns_scaled)
+        rows_scaled = int(rows_scaled * ratio)
+        columns_scaled = int(columns_scaled * ratio)
+    return (
+        max(int(round(rows_scaled / 32) * 32), 32),
+        max(int(round(columns_scaled / 32) * 32), 32),
+    )
 
 
 class MeasuredDetector(Protocol):
@@ -469,7 +503,12 @@ class EvaluationDetector:
                 self._input.fixed_shape,
             )
             tensor = model_tensor(
-                image, shape, self._input, options.mean, options.deviation
+                image,
+                shape,
+                self._input,
+                options.mean,
+                options.deviation,
+                options.resampler,
             )
             if self._adapter is None:
                 probability = np.asarray(self._network(tensor), dtype=np.float32)
@@ -628,7 +667,12 @@ class BoxModelDetector:
                         model_input.fixed_shape,
                     )
                     tensor = model_tensor(
-                        image, shape, model_input, options.mean, options.deviation
+                        image,
+                        shape,
+                        model_input,
+                        options.mean,
+                        options.deviation,
+                        options.resampler,
                     )
                     outputs[key] = (shape, list(self._network(tensor, feeds)))
                 shape, network_outputs = outputs[key]
@@ -877,16 +921,20 @@ def grid_boxes(
     return found
 
 
-def published_variant(model: DetectionModel) -> DetectorVariant:
+def published_variant(model: DetectionModel, resampler: str = "cv2") -> DetectorVariant:
     """The variant that scales a rendering as the model's publishers do,
     with the model's own normalisation; today's renderings and top-hats
-    are kept, as no publisher's pipeline has them."""
+    are kept, as no publisher's pipeline has them. By default it resizes
+    with OpenCV, as their pipeline does; ``"harness"`` resizes as today's
+    settings do, so that the two can be compared."""
     if model.published is None:
         raise EvaluationRefused("The model's publishers give no settings.")
     return DetectorVariant(
         name=f"published by {model.name}",
         network_input=InputVariant(
-            scaling="longest-at-most", working_side=model.published.longest_side
+            scaling="longest-at-most",
+            working_side=model.published.longest_side,
+            resampler=resampler,
         ),
     )
 

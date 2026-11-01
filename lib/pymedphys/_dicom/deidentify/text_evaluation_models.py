@@ -645,26 +645,70 @@ def model_file_path(
     return path
 
 
+RESAMPLERS = ("harness", "cv2")
+
+
 def model_tensor(
     image: np.ndarray,
     shape: tuple[int, int],
     network_input: ModelInput,
     mean: float | None = None,
     deviation: float | None = None,
+    resampler: str = "harness",
 ) -> np.ndarray:
     """A model's input for an 8-bit rendering: resized to ``shape``, scaled
     to 0 to 1, and normalised by the model's means and deviations, or by
     ``mean`` and ``deviation`` for every channel where they are given; for
-    today's model, :func:`~.text_detection.network_tensor`'s tensor."""
-    resized = _resized(image.astype(np.float32), shape) / 255.0
+    today's model, :func:`~.text_detection.network_tensor`'s tensor.
+
+    With the ``"cv2"`` resampler, the rendering is resized and normalised
+    as PaddleOCR's own pipeline does it (:func:`_paddle_planes`), which
+    needs OpenCV; it is installed only where an evaluation asks for it."""
+    if resampler not in RESAMPLERS:
+        raise EvaluationRefused("The resampler must be a known one.")
     channels = network_input.channels
     means = network_input.mean if mean is None else (mean,) * channels
     deviations = (
         network_input.deviation if deviation is None else (deviation,) * channels
     )
-    planes = [(resized - means[index]) / deviations[index] for index in range(channels)]
+    if resampler == "cv2":
+        planes = _paddle_planes(image, shape, means, deviations)
+    else:
+        resized = _resized(image.astype(np.float32), shape) / 255.0
+        planes = [
+            (resized - means[index]) / deviations[index] for index in range(channels)
+        ]
     axis = 0 if network_input.layout == "nchw" else -1
     return np.ascontiguousarray(np.stack(planes, axis=axis)[np.newaxis], np.float32)
+
+
+def _paddle_planes(
+    image: np.ndarray,
+    shape: tuple[int, int],
+    means: Sequence[float],
+    deviations: Sequence[float],
+) -> list[np.ndarray]:
+    """Each channel of a model's input as PaddleOCR makes it from an 8-bit
+    image: the image as three equal channels of bytes, resized by
+    ``cv2.resize`` with its default bilinear interpolation, which gives
+    bytes; then each channel as 32-bit floats, times the scale over the
+    channel's deviation, plus minus its mean over its deviation, as
+    PaddleX's ``NormalizeImage`` does, in that order."""
+    if image.dtype != np.uint8 or image.ndim != 2:
+        raise EvaluationRefused("PaddleOCR's resize takes an 8-bit grey image.")
+    import cv2  # pylint: disable = import-outside-toplevel, import-error
+
+    three = np.ascontiguousarray(np.repeat(image[:, :, np.newaxis], 3, axis=2))
+    rows, columns = shape
+    if (rows, columns) != image.shape:
+        three = cv2.resize(three, (columns, rows))
+    planes = []
+    for index, (mean, deviation) in enumerate(zip(means, deviations, strict=True)):
+        plane = three[:, :, index].astype(np.float32)
+        plane *= (1.0 / 255.0) / deviation
+        plane += -mean / deviation
+        planes.append(plane)
+    return planes
 
 
 def probability_map(

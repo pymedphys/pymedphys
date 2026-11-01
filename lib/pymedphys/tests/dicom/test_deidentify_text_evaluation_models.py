@@ -157,6 +157,11 @@ def test_a_model_is_measured_at_its_published_settings_and_todays():
     model = models.PADDLE_MODELS[0]
     variant = detector.published_variant(model)
     assert variant.network_input.scaling == "longest-at-most"
+    assert variant.network_input.resampler == "cv2"
+    assert (
+        detector.published_variant(model, "harness").network_input.resampler
+        == "harness"
+    )
     # Scaled down to 960 at most, never up.
     assert detector.input_shape((2000, 1000), None, variant) == (960, 480)
     assert detector.input_shape((512, 400), None, variant) == (512, 384)
@@ -172,6 +177,59 @@ def test_a_model_is_measured_at_its_published_settings_and_todays():
         detector.published_variant(models.PP_OCRV6_SMALL)
     with pytest.raises(EvaluationRefused):
         detector.published_point(models.PP_OCRV6_SMALL)
+
+
+@pytest.mark.parametrize(
+    "shape, expected",
+    [
+        ((2000, 1000), (960, 480)),
+        ((1000, 2000), (480, 960)),
+        ((960, 960), (960, 960)),
+        # Never scaled up, but still rounded to a multiple of 32.
+        ((512, 400), (512, 384)),
+        ((20, 20), (32, 32)),
+        # PaddleX truncates each side before it rounds: 167 * 0.48 is 80.16,
+        # truncated to 80, which is 2.5 times 32 and rounds to even, 64,
+        # where rounding 80.16 itself would give 96.
+        ((2000, 167), (960, 64)),
+    ],
+)
+def test_paddlex_sizes_are_matched_exactly(shape, expected):
+    assert detector.paddle_shape(shape, 960) == expected
+
+
+def test_a_resampler_must_be_known():
+    with pytest.raises(EvaluationRefused):
+        detector.InputVariant(resampler="pillow")
+    with pytest.raises(EvaluationRefused):
+        models.model_tensor(
+            np.zeros((8, 8), np.uint8), (32, 32), models.ModelInput(), resampler="x"
+        )
+
+
+def test_paddles_resize_is_opencvs_own():
+    cv2 = pytest.importorskip("cv2")
+    rng = np.random.default_rng(5)
+    image = rng.integers(0, 256, (70, 90), dtype=np.uint8)
+    network_input = models.PADDLE_MODELS[0].network_input
+    tensor = models.model_tensor(image, (64, 96), network_input, resampler="cv2")
+    assert tensor.shape == (1, 3, 64, 96) and tensor.dtype == np.float32
+    resized = cv2.resize(np.dstack([image] * 3), (96, 64))
+    for index, (mean, deviation) in enumerate(
+        zip(network_input.mean, network_input.deviation)
+    ):
+        plane = resized[:, :, index].astype(np.float32)
+        plane *= (1.0 / 255.0) / deviation
+        plane += -mean / deviation
+        assert np.array_equal(tensor[0, index], plane)
+    # Close to the harness's own resize, but not the same.
+    harness = models.model_tensor(image, (64, 96), network_input)
+    assert not np.array_equal(tensor, harness)
+    assert np.abs(tensor - harness).max() < 2 * 255 / 255 / 0.224
+    with pytest.raises(EvaluationRefused):
+        models.model_tensor(
+            image.astype(np.uint16), (64, 96), network_input, resampler="cv2"
+        )
 
 
 @pytest.mark.parametrize(
