@@ -133,11 +133,12 @@ BUILD_BACKEND = textwrap.dedent(
 )
 
 
-LICENCE_EXPRESSION = "Apache-2.0 AND MIT AND CC-BY-3.0"
+LICENCE_EXPRESSION = "Apache-2.0 AND MIT AND CC-BY-3.0 AND LicenseRef-LOINC"
 LICENCE_FILES = (
     "LICENSE",
     "lib/pymedphys/_pinnacle/LICENSE-MIT",
     "lib/pymedphys/_dicom/deidentify/_tcia/LICENSE-CC-BY-3.0.txt",
+    "lib/pymedphys/_dicom/deidentify/_loinc/LICENSE-LOINC.txt",
 )
 
 
@@ -179,6 +180,7 @@ def _write_sdist(
         ),
         "lib/pymedphys/_pinnacle/LICENSE-MIT": "",
         "lib/pymedphys/_dicom/deidentify/_tcia/LICENSE-CC-BY-3.0.txt": "",
+        "lib/pymedphys/_dicom/deidentify/_loinc/LICENSE-LOINC.txt": "",
         "pyproject.toml": BUILDABLE_PYPROJECT if buildable else "",
         "README.rst": "",
         "CHANGELOG.md": "",
