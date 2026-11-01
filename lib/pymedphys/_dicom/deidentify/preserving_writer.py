@@ -27,7 +27,10 @@ element path, in the source's transfer syntax:
   ended by the Item and Sequence Delimitation Items (PS3.5 Sections 7.5.1
   and 7.5.2; for UN, Section 6.2.2), so that no length needs to be worked
   out again. Every item is written, even one whose elements are all
-  removed, so the number of items is kept;
+  removed, so the number of items is kept, but for an item that the plan
+  removes on its own, with everything in it, as Clean Structured Content
+  removes an item of Content Sequence (D-047), after which the items that
+  follow move up (:mod:`.removed_items`);
 - a removed element is left out, with everything in it;
 - a replacement, or an element introduced into a data set or item that is
   written, is encoded by pydicom's writer for one element, with the VR that
@@ -97,6 +100,7 @@ from .elements import (
 )
 from .file_layout import ElementPath
 from .preservation import TEXT_VRS, Expectations
+from .removed_items import Item, RemovedItems
 from .source import (
     ENCAPSULATED_TRANSFER_SYNTAXES,
     EXPLICIT_VR_LITTLE_ENDIAN,
@@ -170,6 +174,7 @@ def write_data_set(
     removed: frozenset[ElementPath],
     replacements: Mapping[ElementPath, pydicom.DataElement],
     transfer_syntax: str | None = None,
+    removed_items: frozenset[Item] = frozenset(),
 ) -> bytes:
     """Return the encoded data set that the plan makes of ``source``.
 
@@ -188,6 +193,11 @@ def write_data_set(
         Explicit VR Little Endian, for a source in a transfer syntax that
         encapsulates Pixel Data, whose replacement of Pixel Data is then
         native, as Clean Pixel Data writes it. By default, the source's.
+    removed_items : frozenset of tuple of (str, int)
+        Each item to leave out on its own, by the items tuple of a path that
+        ends with it, in the source's numbering. Each must be an item of a
+        sequence in ``kept``, and every element in it must be in
+        ``removed``. By default, none.
 
     Returns
     -------
@@ -198,7 +208,8 @@ def write_data_set(
     ------
     ValueError
         If a path is in more than one of ``kept``, ``removed``, and
-        ``replacements``.
+        ``replacements``, or one of ``removed_items`` is not an item of a
+        kept sequence of ``source``, or holds a path that is not removed.
     WriteRefused
         If the data set cannot be written as planned.
     """
@@ -215,7 +226,16 @@ def write_data_set(
         changed=frozenset(replacements),
         removed=removed,
         transfer_syntax=transfer_syntax,
+        removed_items=removed_items,
     )
+    for item in removed_items:
+        sequence = ElementPath(item[:-1], item[-1][0])
+        if (
+            sequence not in kept
+            or sequence not in source
+            or item[-1][1] >= (source.element(sequence).items or 0)
+        ):
+            raise ValueError(f"{sequence} has no kept item {item[-1][1]} to remove")
     with redacted_diagnostics():
         writer = _Writer(source, plan, replacements)
         data = writer.data_set((), source.transfer_syntax != _IMPLICIT)
@@ -257,14 +277,22 @@ class _Writer:
         replacements: Mapping[ElementPath, pydicom.DataElement],
     ) -> None:
         self.source, self.plan, self.replacements = source, plan, replacements
+        self.removed_items = RemovedItems(plan.removed_items)
         self.written: set[ElementPath] = set()
         self.copied: set[ElementPath] = set()  # containers copied whole
         self.children: dict[tuple, list[ElementPath]] = {}
-        self.edited = {  # the containers that hold a change
-            _container(path, depth)
-            for path in plan.changed | plan.removed
-            for depth in range(len(path.items))
-        }
+        self.edited = (
+            {  # the containers that hold a change
+                _container(path, depth)
+                for path in plan.changed | plan.removed
+                for depth in range(len(path.items))
+            }
+            | {
+                ElementPath(item[:depth], item[depth][0])
+                for item in plan.removed_items
+                for depth in range(len(item))
+            }
+        )
         planned = plan.kept | plan.changed | plan.removed
         governing = {_CHARACTER_SET} & {path.tag for path in planned - plan.kept}
         for path in source.paths():
@@ -325,6 +353,7 @@ class _Writer:
         items = [
             self.data_set((*path.items, (path.tag, index)), extent.vr == "SQ")
             for index in range(extent.items or 0)
+            if (*path.items, (path.tag, index)) not in self.removed_items.items
         ]
         return _sequence(tag, extent.vr, items)
 

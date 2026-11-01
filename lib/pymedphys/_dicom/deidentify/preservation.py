@@ -32,11 +32,15 @@ element as the bytes encode it, and decodes no value:
   each element of the output was kept or changed; each kept element is in
   both; each changed element, being emptied, replaced, or introduced, is in
   the output; and no removed element is in the output. Paths in the output
-  number items as the source does, so an item is never dropped on its own;
+  number items as the source does, but for the items of a kept sequence
+  that the plan removes on their own, with everything in them, as Clean
+  Structured Content removes an item of Content Sequence (D-047): the
+  items after one move up, and each output path is compared as the source
+  path that it maps back to (:mod:`.removed_items`);
 - a kept element that holds items, such as a sequence, has the same VR as
-  written and the same number of items, and its items' elements are checked
-  by their own paths, so its length may be defined in one file and undefined
-  in the other;
+  written and the same number of items, less those removed on their own,
+  and its items' elements are checked by their own paths, so its length may
+  be defined in one file and undefined in the other;
 - any other kept element has the same VR as written, which is ``None`` in
   implicit VR, the same header length and length form, and the same Value
   Field, byte for byte. Encapsulated Pixel Data (7FE0,0010) of the
@@ -79,6 +83,7 @@ import enum
 
 from .elements import CHARACTER_SET_VRS
 from .file_layout import ElementPath, Extent
+from .removed_items import Item, RemovedItems
 from .source import (
     ENCAPSULATED_TRANSFER_SYNTAXES,
     EXPLICIT_VR_LITTLE_ENDIAN,
@@ -162,21 +167,26 @@ class Expectations:
         The output's transfer syntax where it is not the source's: Explicit
         VR Little Endian, for compressed Pixel Data written uncompressed;
         None otherwise.
+    removed_items : frozenset of tuple of (str, int)
+        Each item of a kept sequence that is removed on its own, with every
+        element in it, by the items tuple of a path that ends with it.
 
-    Paths name items by their index in the source, which the output must
-    keep: an item is never removed on its own, so that the items after it
-    keep their indices.
+    Paths name items by their index in the source, which the output keeps
+    but where an item is removed on its own: the items after it then move
+    up (:class:`~.removed_items.RemovedItems`).
 
     Raises
     ------
     ValueError
-        If a path is in more than one set.
+        If a path is in more than one set, or a kept or changed path is in
+        a removed item.
     """
 
     kept: frozenset[ElementPath] = frozenset()
     changed: frozenset[ElementPath] = frozenset()
     removed: frozenset[ElementPath] = frozenset()
     transfer_syntax: str | None = None
+    removed_items: frozenset[Item] = frozenset()
 
     def __post_init__(self) -> None:
         twice = (
@@ -186,6 +196,10 @@ class Expectations:
         )
         if twice:
             raise ValueError(f"{min(twice, key=str)} is planned more than once")
+        removed = RemovedItems(self.removed_items)
+        inside = [path for path in self.kept | self.changed if removed.holds(path)]
+        if inside:
+            raise ValueError(f"{min(inside, key=str)} is kept in a removed item")
 
 
 def verify_preservation(
@@ -216,7 +230,10 @@ def verify_preservation(
     for path in source.paths():
         if path not in planned:
             raise PreservationFailed(PreservationReason.UNPLANNED, path)
-    for path in output.paths():
+    removed = RemovedItems(expected.removed_items)
+    for written in output.paths():
+        # Named by its place in the source, as the plan names it.
+        path = removed.source_path(written)
         if path in expected.removed:
             raise PreservationFailed(PreservationReason.NOT_REMOVED, path)
         if path not in expected.kept and path not in expected.changed:
@@ -226,43 +243,53 @@ def verify_preservation(
     if strays:
         raise PreservationFailed(PreservationReason.MISSING, min(strays, key=str))
     for path in kept:
-        if path not in output:
+        if removed.output_path(path) not in output:
             raise PreservationFailed(PreservationReason.MISSING, path)
     # Each change is written: emptied, replaced, or introduced.
-    unwritten = [path for path in expected.changed if path not in output]
+    unwritten = [
+        path for path in expected.changed if removed.output_path(path) not in output
+    ]
     if unwritten:
         raise PreservationFailed(PreservationReason.MISSING, min(unwritten, key=str))
     for path in kept:
-        _check_kept(source, output, path)
+        _check_kept(source, output, path, removed)
 
 
 def _check_kept(
-    source: SourceEvidence, output: SourceEvidence, path: ElementPath
+    source: SourceEvidence,
+    output: SourceEvidence,
+    path: ElementPath,
+    removed: RemovedItems,
 ) -> None:
     """Check one kept element, which both files hold."""
-    before, after = source.element(path), output.element(path)
+    written = removed.output_path(path)
+    assert written is not None  # Expectations refuses a kept removed path
+    before, after = source.element(path), output.element(written)
     if before.vr != after.vr:
         raise PreservationFailed(PreservationReason.VR, path)
-    if before.items != after.items:
+    left = None if before.items is None else before.items - removed.count(path)
+    if left != after.items:
         raise PreservationFailed(PreservationReason.STRUCTURE, path)
     if before.items is None:  # a container's items are checked by their paths
         if _length_form(before) != _length_form(after):
             raise PreservationFailed(PreservationReason.LENGTH, path)
         if not before.undefined_length:
-            if source.value_field(path) != output.value_field(path):
+            if source.value_field(path) != output.value_field(written):
                 raise PreservationFailed(PreservationReason.VALUE, path)
         elif not encapsulated_pixel_data(source, path):
             raise PreservationFailed(PreservationReason.UNVERIFIABLE, path)
-        elif source.encoded(path) != output.encoded(path):
+        elif source.encoded(path) != output.encoded(written):
             raise PreservationFailed(PreservationReason.VALUE, path)
     creator = _private_creator(path)
-    if creator and _field(source, creator, path) != _field(output, creator, path):
+    if creator and _field(source, creator, path) != _field(
+        output, ElementPath(written.items, creator.tag), path
+    ):
         raise PreservationFailed(PreservationReason.PRIVATE_CREATOR, path)
     if before.items is not None:
         return
     if before.location.vr in TEXT_VRS and _character_set(
         source, path
-    ) != _character_set(output, path):
+    ) != _character_set(output, written, path):
         raise PreservationFailed(PreservationReason.CHARACTER_SET, path)
 
 
@@ -305,16 +332,20 @@ def _field(
     return evidence.value_field(holder)
 
 
-def _character_set(evidence: SourceEvidence, path: ElementPath) -> bytes | None:
-    """Return the Specific Character Set in force at ``path``, as encoded.
+def _character_set(
+    evidence: SourceEvidence, at: ElementPath, path: ElementPath | None = None
+) -> bytes | None:
+    """Return the Specific Character Set in force at ``at``, as encoded.
 
     That is the one in the element's own data set, or else in the nearest
     item or data set that holds it (PS3.5 Section 7.5.3), or ``None``. An
     empty value, once its padding is stripped, is ``None`` too, since both
-    give the Default Character Repertoire (PS3.3 Section C.12.1.1.2).
+    give the Default Character Repertoire (PS3.3 Section C.12.1.1.2). A
+    failure names ``path``, the element's place in the source, which is
+    ``at`` by default.
     """
-    for depth in range(len(path.items), -1, -1):
-        holder = ElementPath(path.items[:depth], _CHARACTER_SET)
+    for depth in range(len(at.items), -1, -1):
+        holder = ElementPath(at.items[:depth], _CHARACTER_SET)
         if holder in evidence:
-            return (_field(evidence, holder, path) or b"").strip(b" ") or None
+            return (_field(evidence, holder, path or at) or b"").strip(b" ") or None
     return None
