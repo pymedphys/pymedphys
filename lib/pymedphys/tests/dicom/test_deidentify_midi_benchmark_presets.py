@@ -178,3 +178,29 @@ def test_a_withheld_instance_is_described_by_status_and_reasons():
         "RT Structure Set Storage",
         "other",
     )
+
+
+def test_tps_import_gives_each_subject_a_synthetic_birth_date(tmp_path):
+    # The run gives the transform the run's records before any instance, and
+    # tps-import then chooses each subject's synthetic birth date. The harness
+    # wraps the transform to count what it raises, and must keep that step,
+    # or every instance with a Patient's Birth Date stays pending and is
+    # sequestered.
+    source = _source(tmp_path)
+    for path in source.iterdir():
+        dataset = pydicom.dcmread(path)
+        dataset.PatientBirthDate = "19700101"
+        dataset.PatientAge = "054Y"
+        dataset.save_as(path)
+
+    document = benchmark.run_benchmark(
+        source, _benchmark_key(tmp_path), tmp_path / "work", preset="tps-import"
+    ).document
+
+    assert document["coverage"]["instances"]["released"] == 2
+    assert document["coverage"]["instances"]["withheld"] == 0
+    released = sorted((tmp_path / "work" / "release").rglob("*.dcm"))
+    birth_dates = {pydicom.dcmread(path).PatientBirthDate for path in released}
+    assert len(released) == 6
+    assert len(birth_dates) == 1
+    assert not birth_dates & {"", "19700101"}
