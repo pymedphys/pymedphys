@@ -264,6 +264,97 @@ def _cut_one(contour, region=None):
     return next(iter(cut.values()))
 
 
+@pytest.mark.parametrize("seed", range(6))
+def test_a_grown_shadow_holds_every_reading_within_its_margin(seed):
+    rng = np.random.default_rng(seed)
+    block = FaceBlock(
+        (0.0, 0.0, 0.0),
+        tuple(np.append(rng.normal(size=2), 0.0) / 1),
+        float(rng.uniform(-5, 5)),
+        ((0, 0, 0), (0, 0, 0)),
+    )
+    block = FaceBlock(
+        block.origin,
+        tuple(np.asarray(block.anterior) / np.linalg.norm(block.anterior)),
+        block.inferior_limit,
+        block.globes,
+    )
+    shared = Slab((0.0, 0.0, 1.0), -2.0, 3.0)
+    # Readings tilted from the shared span, and reaching beyond it.
+    owns = []
+    for _ in range(3):
+        tilt = np.append(rng.normal(scale=0.05, size=2), 1.0)
+        tilt /= np.linalg.norm(tilt)
+        owns.append(
+            (
+                Slab(tuple(tilt), float(rng.uniform(-3, 0)), float(rng.uniform(0, 4))),
+                0.0,
+            )
+        )
+    span, margin = region_defacing._enclosing(shared, owns)
+    grown = region_defacing._shadow(block, span, margin)
+    points = rng.uniform(-20, 20, size=(3000, 3))
+
+    assert margin > 0
+    for reading, _ in owns:
+        direction = np.asarray(reading.direction)
+        met = np.zeros(len(points), dtype=bool)
+        for t in np.linspace(reading.near, reading.far, 81):
+            met |= block.contains(points + t * direction)
+        assert met.any()
+        assert region_defacing._inside(grown, points[met]).all()
+
+
+def test_contours_of_one_oblique_plane_are_cut_by_a_shadow_holding_each_reading():
+    # A contour and its hole in a plane tilted about x, their points written
+    # to 0.01 mm, so that the hole's own plane differs from theirs.
+    angle = np.radians(20.0)
+
+    def tilted(points):
+        y, z = points[:, 1], points[:, 2]
+        return np.round(
+            np.column_stack(
+                [
+                    points[:, 0],
+                    y * np.cos(angle) - z * np.sin(angle),
+                    y * np.sin(angle) + z * np.cos(angle) + 10,
+                ]
+            ),
+            2,
+        )
+
+    outer = tilted(_rectangle(-10, 10, -15, 15, 0.0))
+    hole = tilted(_rectangle(-0.3, 0.3, 5, 5.2, 0.0))[::-1]
+    slab = {"ContourSlabThickness": "4"}
+
+    cut = cut_contours(
+        {_FRAME: DoseBlock(_BLOCK, ())},
+        _structure_set(
+            (
+                _FRAME,
+                [
+                    _contour("CLOSED_PLANAR", outer, **slab),
+                    _contour("CLOSED_PLANAR", hole, **slab),
+                ],
+            )
+        ),
+    )
+
+    assert len(cut) == 1
+    pieces = next(iter(cut.values()))
+    # Each piece, read along its own plane's normal from its points as
+    # written, keeps every reading out of the block.
+    assert any(piece.values is not None for piece in pieces)
+    for piece in pieces:
+        points = (
+            (outer, hole)[piece.contour] if piece.values is None else _points(piece)
+        )
+        reading = slab_of(SlabValues(4.0, (0.0, 0.0, 0.0)), points)
+        for t in np.linspace(reading.near, reading.far, 41):
+            moved = points + t * np.asarray(reading.direction)
+            assert not _BLOCK.contains(moved).any()
+
+
 def test_a_slab_below_the_block_that_reaches_into_it_is_cut():
     plane = _rectangle(-10, 10, -15, 15, -1.0)
 
@@ -491,9 +582,17 @@ def test_a_point_or_open_contour_with_a_slab_is_cut_where_its_span_meets_the_blo
 
     assert _cut_one(_contour("POINT", point)) is None
     assert _cut_one(_contour("POINT", point, **offset)) == ()
+    bent = np.array([[5.0, 10.0, -1.0], [0.0, 2.0, -1.0], [0.0, -10.0, -1.0]])
+
     assert _cut_one(_contour("OPEN_PLANAR", line)) is None
-    (piece,) = _cut_one(_contour("OPEN_PLANAR", line, ContourSlabThickness="4"))
-    assert _points(piece) == pytest.approx(np.array([[0, 10, -1.0], [0, 0, -1.0]]))
+    (piece,) = _cut_one(_contour("OPEN_PLANAR", bent, ContourSlabThickness="4"))
+    assert _points(piece) == pytest.approx(
+        np.array([[5, 10, -1.0], [0, 2, -1.0], [0, 0, -1.0]])
+    )
+    # Cut to a straight piece, it would keep a thickness that no reader can
+    # place, having no plane, so the set is refused.
+    with pytest.raises(ContoursRefused):
+        _cut_one(_contour("OPEN_PLANAR", line, ContourSlabThickness="4"))
     # A thickness without a plane cannot be placed.
     with pytest.raises(ContoursRefused):
         _cut_one(_contour("POINT", point, ContourSlabThickness="2"))

@@ -114,7 +114,14 @@ runs along the patient's z axis, every point of it has a slice within
 reach, and those slices share one grid along x and y. Any other such
 contour, and an open or POINT one, is cut by the region of every point
 whose span meets the block (:func:`_shadow`), the kept brain not spared,
-so that no reading of what is written enters the block. The QC pack's contour
+so that no reading of what is written enters the block. A reader places
+each contour's slab by its own points, so a plane's contours are cut by a
+span holding each one's reading, the block grown by as far as their
+readings can lie from it (:func:`_enclosing`), and every contour with a
+slab that a cut writes is read again from its points as written, the
+structure set being refused where one would be read elsewhere, as a
+straight piece of a thick open contour, which has no plane, would be
+(:func:`_check_slabs`). The QC pack's contour
 sheet draws no such contour (:mod:`~pymedphys._dicom.deidentify.qc_contours`),
 so a structure set so cut is still held without a verdict.
 
@@ -160,7 +167,7 @@ from __future__ import annotations
 
 import dataclasses
 import math
-from collections.abc import Collection, Mapping
+from collections.abc import Collection, Mapping, Sequence
 from typing import TypeAlias
 
 from pymedphys._geometry.pixel_grids import PixelGrid, within_pixels
@@ -227,6 +234,10 @@ _SLIVER = 1e-9
 # and y and from one another's grid, for the slab to keep the kept brain:
 # within this, a point's pixel is the same whatever its height.
 _UPRIGHT = 1e-9
+# How far, in millimetres, a contour's slab as written may be read beyond
+# the span that its cut judged it by: the rounding of its points' decimal
+# strings, and of arithmetic on them.
+_PLACED = 1e-9
 # How far apart, in millimetres, two points of the pieces of a cut contour
 # may be and be joined as one.
 _SAME_POINT = 1e-9
@@ -436,6 +447,11 @@ class _Contour:
         Whether it keeps its source's Contour Number.
     changed : bool
         Whether a cut has changed it.
+    judged : tuple of (Slab, float)
+        For a contour with a slab, the span along which each block's cut
+        that wrote its ROI judged it, and how far, in millimetres, beyond
+        that span the cut reached (:func:`_shadow`), so that what is
+        written can be checked to be read along it (:func:`_check_slabs`).
     """
 
     source: int
@@ -444,6 +460,7 @@ class _Contour:
     slab: SlabValues | None
     numbered: bool = True
     changed: bool = False
+    judged: tuple[tuple[Slab, float], ...] = ()
 
     def __repr__(self) -> str:
         return "_Contour()"
@@ -468,6 +485,7 @@ def _written(
             parsed, cut = pieces, True
     if not cut:
         return None
+    _check_slabs(parsed)
     return tuple(
         WrittenContour(
             each.source,
@@ -504,7 +522,13 @@ def _cut_by(dose: DoseBlock, parsed: list[_Contour]) -> list[_Contour] | None:
         another slab each, or a slab cannot be placed.
     """
     step = min(min(each.spacing) for each in dose.slices) / 2 if dose.slices else _STEP
-    halves = [_halves_of(dose.block, each) for each in parsed]
+    # Each contour with a slab is judged along its own span, as a reader
+    # places it, until a plane's contours are cut together below.
+    judged: list[tuple[Slab, float] | None] = [
+        None if each.slab is None else (_placed(each.slab, each.points), 0.0)
+        for each in parsed
+    ]
+    halves = [None if each is None else _shadow(dose.block, *each) for each in judged]
     cutting = [
         _reaches_face(dose, each.kind, each.points, step)
         if halves[index] is None
@@ -532,15 +556,19 @@ def _cut_by(dose: DoseBlock, parsed: list[_Contour]) -> list[_Contour] | None:
             # is placed by the plane of them all.
             if len(slabs) != 1:
                 raise ContoursRefused()
-            slab = _placed(
-                parsed[members[0]].slab,
-                np.concatenate([parsed[index].points for index in members]),
+            slab, margin = _enclosing(
+                _placed(
+                    parsed[members[0]].slab,
+                    np.concatenate([parsed[index].points for index in members]),
+                ),
+                [judged[index] for index in members],
             )
-            shared = _shadow(dose.block, slab)
+            shared = _shadow(dose.block, slab, margin)
             for index in members:
                 halves[index] = shared
+                judged[index] = (slab, margin)
                 cutting[index] = _enters(shared, parsed[index].points)
-            spare = _Spare.slab(dose, polygons, slab)
+            spare = None if margin > _PLACED else _Spare.slab(dose, polygons, slab)
             if spare is None:
                 continue
         else:
@@ -568,7 +596,13 @@ def _cut_by(dose: DoseBlock, parsed: list[_Contour]) -> list[_Contour] | None:
     if not any(cutting):
         return None
     written: list[_Contour] = []
-    for index, (each, cut) in enumerate(zip(parsed, cutting, strict=True)):
+    for index, (source, cut) in enumerate(zip(parsed, cutting, strict=True)):
+        mark = judged[index]
+        each = (
+            source
+            if mark is None
+            else dataclasses.replace(source, judged=(*source.judged, mark))
+        )
         if not cut:
             written.append(each)
             continue
@@ -586,20 +620,6 @@ def _cut_by(dose: DoseBlock, parsed: list[_Contour]) -> list[_Contour] | None:
             for first, piece in enumerate(pieces)
         )
     return written
-
-
-def _halves_of(block: FaceBlock, contour: _Contour) -> _Halves | None:
-    """Return the region by which a contour with a slab is cut, or None for
-    one without, which is cut as the block cuts it.
-
-    Raises
-    ------
-    ContoursRefused
-        Where its slab cannot be placed.
-    """
-    if contour.slab is None:
-        return None
-    return _shadow(block, _placed(contour.slab, contour.points))
 
 
 def _placed(values: SlabValues | None, points: np.ndarray) -> Slab:
@@ -634,9 +654,10 @@ def _block_halves(block: FaceBlock) -> _Halves:
     )
 
 
-def _shadow(block: FaceBlock, slab: Slab) -> _Halves:
+def _shadow(block: FaceBlock, slab: Slab, margin: float = 0.0) -> _Halves:
     """The points whose span, moved along a slab's direction from its near
-    to its far end, meets the block, as an intersection of open
+    to its far end, meets the block, or the block grown by ``margin``
+    millimetres beyond each of its planes, as an intersection of open
     half-spaces.
 
     For a point ``p``, the span meets the block where some ``t`` from
@@ -652,7 +673,7 @@ def _shadow(block: FaceBlock, slab: Slab) -> _Halves:
     direction = np.asarray(slab.direction, dtype=float)
     centre = (slab.near + slab.far) / 2
     half = (slab.far - slab.near) / 2
-    planes = _block_halves(block)
+    planes = [(normal, offset - margin) for normal, offset in _block_halves(block)]
     found = []
     rates = []
     for normal, offset in planes:
@@ -669,6 +690,80 @@ def _shadow(block: FaceBlock, slab: Slab) -> _Halves:
             )
         )
     return tuple(found)
+
+
+def _beyond(reading: Slab, span: Slab) -> float:
+    """How far, in millimetres, a point read along ``reading`` can lie from
+    every point read along ``span`` from the same place: by the angle
+    between their directions, over the reading's length, and by any part of
+    the reading beyond the span's ends; infinite where the directions are
+    perpendicular."""
+    direction = np.asarray(reading.direction, dtype=float)
+    along = np.asarray(span.direction, dtype=float)
+    dot = float(direction @ along)
+    if dot == 0 or not math.isfinite(dot):
+        return math.inf
+    sign = 1.0 if dot > 0 else -1.0
+    near, far = sorted((sign * reading.near, sign * reading.far))
+    length = max(abs(reading.near), abs(reading.far))
+    turned = float(np.linalg.norm(direction - sign * along))
+    return length * turned + max(0.0, span.near - near, far - span.far)
+
+
+def _enclosing(
+    shared: Slab, owns: Sequence[tuple[Slab, float] | None]
+) -> tuple[Slab, float]:
+    """Return a span, along the direction of ``shared``, the slab of a
+    plane's contours, holding the span of each and of ``shared``, and how
+    far each contour's own reading of its slab can lie beyond it, so that
+    the block grown by that much and moved back along that span holds every
+    point that any of their readings puts in the block (:func:`_shadow`)."""
+    near, far, margin = shared.near, shared.far, 0.0
+    along = np.asarray(shared.direction, dtype=float)
+    for own in owns:
+        assert own is not None
+        reading = own[0]
+        dot = float(np.asarray(reading.direction, dtype=float) @ along)
+        sign = 1.0 if dot >= 0 else -1.0
+        ends = sorted((sign * reading.near, sign * reading.far))
+        near, far = min(near, ends[0]), max(far, ends[1])
+    span = Slab(shared.direction, near, far)
+    for own in owns:
+        assert own is not None
+        margin = max(margin, _beyond(own[0], span))
+    if not math.isfinite(margin):
+        raise ContoursRefused()
+    return span, margin
+
+
+def _check_slabs(contours: Sequence[_Contour]) -> None:
+    """Check that each contour with a slab, as it is written, is read along
+    a span within reach of each span that a cut judged it by, its own
+    direction found from its points as written, as a reader finds it.
+
+    Raises
+    ------
+    ContoursRefused
+        Where one is not, as a piece of an open contour whose cut leaves it
+        straight, which has no plane for its thickness, or a sliver of a
+        closed contour, whose plane its points no longer fix.
+    """
+    for each in contours:
+        if each.slab is None or not each.judged:
+            continue
+        points = (
+            np.array([float(v) for v in _decimals(each.points)]).reshape(-1, 3)
+            if each.changed
+            else each.points
+        )
+        try:
+            reading = slab_of(each.slab, points)
+        except SlabRefused:
+            raise ContoursRefused() from None
+        if any(
+            _beyond(reading, span) > margin + _PLACED for span, margin in each.judged
+        ):
+            raise ContoursRefused()
 
 
 def _meets(halves: _Halves, kind: str, points: np.ndarray) -> bool:
