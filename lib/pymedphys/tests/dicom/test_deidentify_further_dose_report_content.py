@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# The three reports share their option sets and expected rows, so their
+# checks stay in one module.
+# pylint: disable = too-many-lines
+
 """The Clean Structured Content Option on CT, Enhanced X-Ray, and Patient dose reports.
 
 The X-Ray Radiation Dose SR IOD, whose root may be TID 10011, is supported,
