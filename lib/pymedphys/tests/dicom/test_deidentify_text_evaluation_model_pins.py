@@ -19,13 +19,14 @@ Every download here is served from memory; nothing reaches the network."""
 import hashlib
 import io
 import urllib.error
+import urllib.parse
 import zipfile
 
 
 from pymedphys._dicom.deidentify import text_detection
 from pymedphys._dicom.deidentify import text_evaluation_model_pins as pins
 from pymedphys._dicom.deidentify.text_detection import PinnedModel
-from pymedphys._dicom.deidentify.text_evaluation_models import ModelFile
+from pymedphys._dicom.deidentify.text_evaluation_models import PADDLE_FILES, ModelFile
 
 MODEL = b"an invented model"
 
@@ -155,11 +156,18 @@ def test_the_table_gives_only_url_host_size_and_result(capsys):
         assert line == line.rstrip()
 
 
-def test_todays_model_is_checked_from_each_of_its_hosts():
+def test_todays_model_and_each_paddle_file_are_checked():
     sources = [pin.source for pin in pins.CHECKED_PINS]
     assert text_detection.PP_OCRV6_DET_SMALL in sources
     files = [source for source in sources if isinstance(source, ModelFile)]
-    assert {source.sha256 for source in files} <= {
-        text_detection.PP_OCRV6_DET_SMALL.member_sha256
-    }
+    assert files == list(PADDLE_FILES.values())
+    # RapidOCR's conversion of today's model on ModelScope is the very
+    # file inside the wheel.
+    assert (
+        PADDLE_FILES["RapidOCR PP-OCRv6 small"].sha256
+        == text_detection.PP_OCRV6_DET_SMALL.member_sha256
+    )
+    hosts = {urllib.parse.urlsplit(source.url).hostname for source in files}
+    assert hosts == {"huggingface.co", "www.modelscope.cn"}
+    assert len({source.sha256 for source in files}) == len(files)
     assert len({pin.label for pin in pins.CHECKED_PINS}) == len(pins.CHECKED_PINS)

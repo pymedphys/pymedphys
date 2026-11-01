@@ -42,7 +42,7 @@ from collections.abc import Callable, Sequence
 from typing import BinaryIO
 
 from .text_detection import PP_OCRV6_DET_SMALL, PinnedModel
-from .text_evaluation_models import ModelFile
+from .text_evaluation_models import PADDLE_FILES, ModelFile
 
 # The most bytes a pinned file may have: more is reported, not read on.
 MAX_BYTES = 512 * 1024 * 1024
@@ -75,21 +75,13 @@ class CheckedPin:
     source: PinnedModel | ModelFile
 
 
-# Today's model, from the wheel that a run takes it from, and from the
-# ModelScope file that the same wheel's default_models.yaml lists for it
-# with the same SHA-256. Candidates join as their pins are vetted.
+# Today's model, from the wheel that a run takes it from; then each file
+# that the adapters may pin: PaddlePaddle's own on Hugging Face, and
+# RapidOCR's conversions on ModelScope, which the wheel's own model list
+# pins with the same SHA-256s. Further candidates join as they are vetted.
 CHECKED_PINS: tuple[CheckedPin, ...] = (
     CheckedPin("PP-OCRv6 small (RapidOCR wheel on PyPI)", PP_OCRV6_DET_SMALL),
-    CheckedPin(
-        "PP-OCRv6 small (ModelScope)",
-        ModelFile(
-            url=(
-                "https://www.modelscope.cn/models/RapidAI/RapidOCR/resolve/"
-                "v3.10.0/onnx/PP-OCRv6/det/PP-OCRv6_det_small.onnx"
-            ),
-            sha256=PP_OCRV6_DET_SMALL.member_sha256,
-        ),
-    ),
+    *(CheckedPin(name, source) for name, source in PADDLE_FILES.items()),
 )
 
 

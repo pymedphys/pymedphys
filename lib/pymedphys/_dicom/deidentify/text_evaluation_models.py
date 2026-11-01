@@ -48,6 +48,7 @@ import posixpath
 import re
 import urllib.parse
 from collections.abc import Mapping, Sequence
+from types import MappingProxyType
 from typing import Any, Protocol, TypeAlias, runtime_checkable
 
 from pymedphys._imports import numpy as np
@@ -332,6 +333,61 @@ class DetectionModel:
             "input": _plain(dataclasses.asdict(self.network_input)),
             "output": self.output.described(),
         }
+
+
+# PaddlePaddle's own ONNX files of its text detection models on Hugging
+# Face, whose model cards each declare the Apache License 2.0, read
+# first-hand on 1 November 2026; and RapidOCR 3.10.0's conversions of the
+# same models on ModelScope, as its default_models.yaml pins them, kept as a
+# second host. The two differ byte for byte, so each is a model of its own.
+_HUGGING_FACE = "https://huggingface.co/PaddlePaddle/{}/resolve/main/inference.onnx"
+_MODELSCOPE = (
+    "https://www.modelscope.cn/models/RapidAI/RapidOCR/resolve/v3.10.0/onnx/{}"
+)
+PADDLE_FILES: Mapping[str, ModelFile] = MappingProxyType(
+    {
+        "PP-OCRv6 small": ModelFile(
+            _HUGGING_FACE.format("PP-OCRv6_small_det_onnx"),
+            "d73e0058b7a8086bbd57f3d10b8bcd4ff95363f67e06e2762b5e814fe9c9410e",
+        ),
+        "PP-OCRv6 medium": ModelFile(
+            _HUGGING_FACE.format("PP-OCRv6_medium_det_onnx"),
+            "eb13b44b25bb36f89528b68720af8a61d9cf381176107f465db1757b65d086e1",
+        ),
+        "PP-OCRv6 tiny": ModelFile(
+            _HUGGING_FACE.format("PP-OCRv6_tiny_det_onnx"),
+            "193bab7a04fca699a6c82e6abb5b81bdb28177f0abd4062552b04908dafb19f8",
+        ),
+        "PP-OCRv5 server": ModelFile(
+            _HUGGING_FACE.format("PP-OCRv5_server_det_onnx"),
+            "10803475a591f7dc623e24670fb5752ec94d39a1f8cf069aac1b6f0ce19cfc85",
+        ),
+        "PP-OCRv5 mobile": ModelFile(
+            _HUGGING_FACE.format("PP-OCRv5_mobile_det_onnx"),
+            "a431985659dc921974177a95adcfbb90fd9e51989a5e04d70d0b75f597b6e61d",
+        ),
+        "RapidOCR PP-OCRv6 small": ModelFile(
+            _MODELSCOPE.format("PP-OCRv6/det/PP-OCRv6_det_small.onnx"),
+            "090f04abcd9d9a7498bc4ebf677e4cb9bdce1fe4197ddb7e529f1ef44e1ff94f",
+        ),
+        "RapidOCR PP-OCRv6 medium": ModelFile(
+            _MODELSCOPE.format("PP-OCRv6/det/PP-OCRv6_det_medium.onnx"),
+            "92078b7355007ccfffcd4c8cd441a3afd4538904d06881b29a155e1e679907c2",
+        ),
+        "RapidOCR PP-OCRv6 tiny": ModelFile(
+            _MODELSCOPE.format("PP-OCRv6/det/PP-OCRv6_det_tiny.onnx"),
+            "f42c0fbd294d95eac1a550e131b277dac97462c8025fa4b6c3cec1b7894bd3d5",
+        ),
+        "RapidOCR PP-OCRv5 server": ModelFile(
+            _MODELSCOPE.format("PP-OCRv5/det/ch_PP-OCRv5_det_server.onnx"),
+            "0f8846b1d4bba223a2a2f9d9b44022fbc22cc019051a602b41a7fda9667e4cad",
+        ),
+        "RapidOCR PP-OCRv5 mobile": ModelFile(
+            _MODELSCOPE.format("PP-OCRv5/det/ch_PP-OCRv5_det_mobile.onnx"),
+            "4d97c44a20d30a81aad087d6a396b08f786c4635742afc391f6621f5c6ae78ae",
+        ),
+    }
+)
 
 
 # Today's model, as D-037 pins it, through its adapter: RapidOCR's wheel and
