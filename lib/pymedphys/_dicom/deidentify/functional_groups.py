@@ -28,7 +28,8 @@ since PS3.3 C.7.6.16.1.1 lets a group be in only one of them and gives
 neither precedence; so is a group in neither, a sequence of other than one
 item, and a Per-frame Functional Groups Sequence of other than one item for
 each frame, as is an instance without it, which PS3.3 A.51.5 permits a
-Segmentation where it would be empty. Whatever is refused raises
+Segmentation where it would be empty, and a sequence that pydicom cannot
+parse. Whatever is refused raises
 :class:`ValueError`, without any value, so that a caller can leave the
 instance as it is.
 """
@@ -63,23 +64,35 @@ def frame_group(
         Where the Per-frame Functional Groups Sequence does not have one item
         for each of the ``frames`` frames, the Shared Functional Groups
         Sequence has more than one, or the group is not in exactly one of
-        them, in one item; without any value.
+        them, in one item, or a sequence cannot be read; without any
+        value.
     """
     if not 0 <= frame < frames:
         raise ValueError("no such frame")
-    with redacted_diagnostics():
-        each = dataset.get("PerFrameFunctionalGroupsSequence") or []
-        shared = dataset.get("SharedFunctionalGroupsSequence") or []
-        if len(each) != frames or len(shared) > 1:
-            raise ValueError("not one item for each frame")
-        found = [
-            groups[keyword].value
-            for groups in (each[frame], *shared)
-            if keyword in groups
-        ]
-        if len(found) != 1:
-            raise ValueError("not one functional group")
-        (items,) = found
-        if items is None or len(items) != 1:
-            raise ValueError("not one item")
-        return items[0]
+    try:
+        with redacted_diagnostics():
+            each = dataset.get("PerFrameFunctionalGroupsSequence") or []
+            shared = dataset.get("SharedFunctionalGroupsSequence") or []
+            if len(each) != frames or len(shared) > 1:
+                raise ValueError("not one item for each frame")
+            found = [
+                groups[keyword].value
+                for groups in (each[frame], *shared)
+                if keyword in groups
+            ]
+            if len(found) != 1:
+                raise ValueError("not one functional group")
+            (items,) = found
+            if items is None or len(items) != 1:
+                raise ValueError("not one item")
+            item = items[0]
+            if not isinstance(item, pydicom.Dataset):
+                raise ValueError("not an item")
+            return item
+    except ValueError:
+        raise
+    # pydicom raises many types for a sequence it cannot parse, such as
+    # OSError for an item's bytes that hold no tag, and a message can quote
+    # a value.
+    except Exception:  # pylint: disable = broad-exception-caught
+        raise ValueError("unreadable functional groups") from None

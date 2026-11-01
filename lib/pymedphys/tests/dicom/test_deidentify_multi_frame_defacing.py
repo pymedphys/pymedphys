@@ -34,8 +34,10 @@ from pymedphys._dicom.deidentify.face_blocks import (
     SeriesProblem,
     find_defaced,
     find_face_blocks,
+    inspect_series,
     kept_slices,
 )
+from pymedphys._dicom.deidentify.functional_groups import frame_group
 from pymedphys._dicom.deidentify.pixel_cleaning import PixelDataRefused
 from pymedphys._dicom.deidentify.references import InstanceRecord
 from pymedphys._dicom.deidentify.region_defacing import PetDefacer
@@ -340,6 +342,32 @@ def test_frames_whose_groups_cannot_be_read_leave_the_series_undefaced(change):
     data = _changed(files.multi_frame(_slices()), change)
 
     assert _outcome(data).problem is SeriesProblem.UNREADABLE
+    with pytest.raises(PixelDataRefused):
+        CtDefacer(_single().block, _dataset(data))
+
+
+def _unparseable(dataset: pydicom.Dataset) -> None:
+    """A frame's Plane Position Sequence whose bytes hold no item."""
+    tag = pydicom.tag.Tag("PlanePositionSequence")
+    dataset.PerFrameFunctionalGroupsSequence[3][tag] = pydicom.dataelem.RawDataElement(
+        tag, "SQ", 4, b"\x01\x02\x03\x04", 0, False, True
+    )
+
+
+def test_a_functional_group_that_cannot_be_parsed_is_refused_by_value_error():
+    dataset = _dataset(_changed(files.multi_frame(_slices()), _unparseable))
+    frames = int(dataset.NumberOfFrames)
+
+    with pytest.raises(ValueError):
+        frame_group(dataset, frames, 3, "PlanePositionSequence")
+    assert frame_group(dataset, frames, 2, "PlanePositionSequence") is not None
+
+
+def test_frames_whose_groups_cannot_be_parsed_leave_the_series_undefaced():
+    data = _changed(files.multi_frame(_slices()), _unparseable)
+
+    assert _outcome(data).problem is SeriesProblem.UNREADABLE
+    assert inspect_series([0], lambda _: data) is None
     with pytest.raises(PixelDataRefused):
         CtDefacer(_single().block, _dataset(data))
 
