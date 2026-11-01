@@ -18,7 +18,9 @@
 :func:`~.text_evaluation.summarise`, and of
 :func:`~.text_evaluation.assess` where given, and nothing else, so that the
 page shows no more than the JSON does: a trade-off table of every point of
-the grid, then each detailed point's counts by stratum.
+the grid, then the counts by stratum of each point shown in detail, every
+point of a grid of ten or fewer and otherwise the first, with the others'
+in the JSON.
 """
 
 from __future__ import annotations
@@ -28,9 +30,14 @@ from typing import Any
 
 
 def markdown(
-    summary: Mapping[str, Any], assessment: Sequence[Mapping[str, Any]] | None = None
+    summary: Mapping[str, Any],
+    assessment: Sequence[Mapping[str, Any]] | None = None,
+    *,
+    detailed: Sequence[int] | None = None,
 ) -> str:
-    """Render a summary, and its assessment against criteria, as a page."""
+    """Render a summary, and its assessment against criteria, as a page,
+    with the counts by stratum of the points ``detailed``: by default every
+    point of a grid of ten or fewer, otherwise the first."""
     detector = summary["detector"]
     method = detector.get("method", detector)
     variant = method.get("variant", {})
@@ -95,8 +102,20 @@ def markdown(
     lines += _codes("Frames not injected", summary["not_injected"], "Frames")
     lines += _trade_off(summary["points"], assessment)
     lines += _unknown(summary["points"])
-    for point in summary["points"]:
-        lines += _detail(point)
+    points = summary["points"]
+    shown = set(
+        (range(len(points)) if len(points) <= 10 else (0,))
+        if detailed is None
+        else detailed
+    )
+    for point in points:
+        if point["index"] in shown:
+            lines += _detail(point)
+    if len(shown) < len(points):
+        lines += [
+            "The other points' counts by stratum are in the JSON summary.",
+            "",
+        ]
     return "\n".join(lines).rstrip("\n") + "\n"
 
 

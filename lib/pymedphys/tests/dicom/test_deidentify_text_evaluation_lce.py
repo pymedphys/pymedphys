@@ -323,6 +323,7 @@ def _series(tmp_path, datasets, number=1, sop_class=classic.MODALITIES["CT"]):
         doi="10.7937/K9/TCIA.2015.LO9QL9SX",
         size_mb=1.0,
         aws_url=f"s3://idc-open-data/{uuid}/*",
+        subject=idc.subject_key("lidc_idri", "INVENTED-1"),
     )
     folder = tmp_path / uuid
     folder.mkdir()

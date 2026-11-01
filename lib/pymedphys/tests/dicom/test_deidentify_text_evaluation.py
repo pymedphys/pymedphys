@@ -172,6 +172,54 @@ def test_only_the_part_asked_for_is_evaluated():
     assert held["points"][0]["false_positives"]["frames"] == split["held-out"]
 
 
+@dataclasses.dataclass(frozen=True)
+class Subjected:
+    """A case whose frames are given, of a subject that other cases share."""
+
+    collection: str
+    case: str
+    subject: str
+    frames: tuple
+
+    def read(self):
+        yield from self.frames
+
+
+def _parted(part, count):
+    """Case names that the split puts in ``part``, by their own names."""
+    names = (f"case-{index}" for index in range(1000))
+    return [name for name in names if evaluation.split_of("c", name) == part][:count]
+
+
+def test_a_subjects_cases_stay_in_one_part_and_resample_as_one():
+    (tuning,) = _parted("tuning", 1)
+    (held,) = _parted("held-out", 1)
+    subject = "patient/one"
+    cases = [
+        Subjected("c", name, subject, (_frame(case=name),)) for name in (tuning, held)
+    ]
+    run = evaluation.evaluate(cases, box_detector, _settings())
+    part = evaluation.split_of("c", subject)
+    assert [each.split for each in run.results] == [part, part]
+    assert "patient/one" not in repr(run.results)
+    # One subject is one cluster, too few for the bootstrap's interval.
+    summary = evaluation.summarise(run, replicates=200)
+    assert summary["points"][0]["false_positives"]["bootstrap"] is None
+    other = Subjected("c", "case-x", "patient/two", (_frame(case="case-x"),))
+    run = evaluation.evaluate([*cases, other], box_detector, _settings())
+    summary = evaluation.summarise(run, replicates=200)
+    assert summary["points"][0]["false_positives"]["bootstrap"] is not None
+    published = json.dumps(summary)
+    assert "patient/one" not in published and "patient/two" not in published
+
+
+def test_a_subject_must_be_a_name():
+    case = Subjected("c", "a", "", (_frame(),))
+    with pytest.raises(EvaluationRefused):
+        evaluation.subject_of(case)
+    assert evaluation.subject_of(Frames("c", "a", ())) == "a"
+
+
 # -- Intervals ----------------------------------------------------------------
 
 
@@ -459,20 +507,25 @@ def test_settings_that_measure_nothing_are_refused():
         )
 
 
-def test_many_points_are_detailed_only_at_the_first():
+def test_every_point_keeps_every_stratum_and_the_page_details_the_first():
+    # The loss rule compares every point with the baseline in every
+    # stratum, so no point's strata may be left out of the summary; only
+    # the page shows fewer, for a large grid.
     points = tuple(
         PostProcessing(box_threshold=0.5 + index / 100) for index in range(11)
     )
     summary = _run(
         [Frames("c", "a", (_frame(texts=(_text(9, 10, 6, 28),)),))], points=points
     )
-    assert "font" in summary["points"][0]["by"]
-    assert set(summary["points"][1]["by"]) == {
-        "iod",
-        "iod+contrast+height_px",
-        "iod+slice_side",
-        "tier+truth",
-    }
+    groupings = {"+".join(each) for each in _settings().dimensions if each}
+    assert all(set(point["by"]) == groupings for point in summary["points"])
+    page = markdown.markdown(summary)
+    assert "## Point 0 by stratum" in page
+    assert "## Point 1 by stratum" not in page
+    assert "The other points' counts by stratum are in the JSON summary." in page
+    every = markdown.markdown(summary, detailed=range(11))
+    assert "## Point 10 by stratum" in every
+    assert "in the JSON summary" not in every
 
 
 # -- Criteria -----------------------------------------------------------------
@@ -497,7 +550,9 @@ def test_criteria_are_checked_against_each_cell():
     summary = _summary_for_criteria()
     criteria = criteria_module.AcceptanceCriteria(
         sensitivity=(
-            criteria_module.SensitivityCriterion(0.9, contrast="8 to under 16 sigma"),
+            criteria_module.SensitivityCriterion(
+                0.9, contrast="8 to under 16 sigma", height_px="5 to under 7 px"
+            ),
         ),
         false_positives=(
             criteria_module.FalsePositiveCriterion(max_with_a_region=0.5),
@@ -516,7 +571,11 @@ def test_criteria_are_checked_against_each_cell():
 
 def test_the_interval_bound_is_stricter_than_the_estimate():
     summary = _summary_for_criteria()
-    criterion = (criteria_module.SensitivityCriterion(0.95),)
+    criterion = (
+        criteria_module.SensitivityCriterion(
+            0.95, contrast="8 to under 16 sigma", height_px="5 to under 7 px"
+        ),
+    )
     estimate = criteria_module.assess(
         summary,
         criteria_module.AcceptanceCriteria(sensitivity=criterion, bound="estimate"),
@@ -531,7 +590,11 @@ def test_the_interval_bound_is_stricter_than_the_estimate():
 def test_too_little_evidence_fails():
     summary = _summary_for_criteria()
     criteria = criteria_module.AcceptanceCriteria(
-        sensitivity=(criteria_module.SensitivityCriterion(0.5),),
+        sensitivity=(
+            criteria_module.SensitivityCriterion(
+                0.5, contrast="8 to under 16 sigma", height_px="5 to under 7 px"
+            ),
+        ),
         min_texts=41,
         bound="estimate",
     )
@@ -789,8 +852,19 @@ def test_a_folder_is_grouped_by_patient_and_names_no_one(tmp_path):
     assert skipped == {"sop-class-not-selected": 1, "annotation-not-found": 1}
     by_series = sources.dicom_folder_cases(root, collection="c", group_by="series")
     assert sum(each.case.startswith("series/") for each in by_series) == 3
+    # Grouped more finely than by patient, a case gives its patient as its
+    # subject, so that the split and the bootstrap keep a patient whole.
+    subjects = [
+        evaluation.subject_of(each)
+        for each in by_series
+        if isinstance(each, sources.DicomCase) and each.case.startswith("series/")
+    ]
+    assert sorted(subjects.count(each) for each in set(subjects)) == [1, 2]
+    assert all(each.startswith("patient/") for each in subjects)
     by_file = sources.dicom_folder_cases(root, collection="c", group_by="file")
     assert sum(each.case.startswith("file/") for each in by_file) == 4
+    assert len({evaluation.subject_of(each) for each in by_file}) < len(by_file)
+    assert all(each.subject is None for each in patients)
     again = sources.dicom_folder_cases(
         root,
         collection="clinic RT Images",

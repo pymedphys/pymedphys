@@ -65,6 +65,7 @@ import re
 from collections.abc import Mapping
 from typing import Any
 
+from .text_evaluation import HEIGHT_PX, _label
 from .text_evaluation_frames import TIERS, EvaluationRefused
 from .text_evaluation_injection import CONTRAST, contrast_label
 
@@ -370,6 +371,7 @@ def _failures(
     point: Mapping[str, Any], baseline: Mapping[str, Any], criteria: AcceptanceCriteria
 ) -> list[_Failure]:
     failures = _sensitivity_failures(point, criteria)
+    failures += _unmeasured_failures(point, criteria)
     failures += _false_positive_failures(point, criteria)
     failures += _missed_failures(point, criteria)
     if criteria.max_loss is not None:
@@ -431,6 +433,42 @@ def _sensitivity_failures(
                             f"below {criterion.minimum:g}",
                         )
                     )
+    return failures
+
+
+# Every label of a sensitivity cell's contrast and height in frame pixels,
+# so that a cell that no text reached is known to be missing.
+_CONTRASTS = tuple(contrast_label(edge) for edge in CONTRAST)
+_HEIGHTS_PX = tuple(_label(HEIGHT_PX, edge) for edge in HEIGHT_PX.edges)
+
+
+def _unmeasured_failures(
+    point: Mapping[str, Any], criteria: AcceptanceCriteria
+) -> list[_Failure]:
+    """A failure of each IOD of the point for each cell of contrast and
+    height that a sensitivity criterion matches but no text reached, so
+    that an IOD without texts, such as one whose frames take no injection,
+    or without texts of some contrast or height, is not judged on cells it
+    lacks."""
+    present = {
+        tuple(cell["value"][name] for name in _CELL)
+        for cell in point["by"].get("iod+contrast+height_px", [])
+    }
+    failures: list[_Failure] = []
+    for iod in _iods(point):
+        for criterion in criteria.sensitivity:
+            for contrast in _CONTRASTS:
+                for height in _HEIGHTS_PX:
+                    value = {"iod": iod, "contrast": contrast, "height_px": height}
+                    if criterion.matches(value) and (
+                        (iod, contrast, height) not in present
+                    ):
+                        failures.append(
+                            (
+                                iod,
+                                f"sensitivity: {iod}, {contrast}, {height}: no texts",
+                            )
+                        )
     return failures
 
 
@@ -541,8 +579,15 @@ def _losses(
     point: Mapping[str, Any], baseline: Mapping[str, Any], margin: float
 ) -> list[_Failure]:
     # A loss in a stratum of one IOD is of that IOD; one in any other
-    # stratum, such as a collection or a modality, is of every IOD.
+    # stratum, such as a collection or a modality, is of every IOD. A
+    # stratum that only one of the two summarises cannot be compared, so
+    # it fails rather than passing unjudged.
     failures: list[_Failure] = []
+    singles = {name for name in point["by"] if "+" not in name}
+    for grouping in sorted(
+        singles ^ {name for name in baseline["by"] if "+" not in name}
+    ):
+        failures.append((None, f"loss: {grouping}: not counted at both points"))
     for grouping, rows in point["by"].items():
         if "+" in grouping:
             continue

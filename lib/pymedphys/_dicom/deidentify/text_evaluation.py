@@ -61,12 +61,15 @@ height in pixels and in millimetres, contrast, polarity, style,
 orientation, position, content, and zone, singly and in the crosses
 that the acceptance criteria need (IOD by contrast by height). Each share
 has a Wilson interval; overall and for each IOD, a percentile interval from
-a bootstrap that resamples cases, since frames of one case are correlated.
+a bootstrap that resamples subjects, since frames of one subject are
+correlated: a case's subject (:func:`subject_of`) is its patient, where its
+source knows it, and otherwise the case itself.
 
 Cases are split (:func:`split_of`) by a rule fixed here: about two-thirds
-for tuning and one-third held out, by a SHA-256 of the collection and case,
-so that the split needs no list of cases and names none; a collection can
-be held out whole. A run evaluates one part, or both.
+for tuning and one-third held out, by a SHA-256 of the collection and the
+case's subject, so that the split needs no list of cases and names none,
+and no subject is in both parts; a collection can be held out whole. A run
+evaluates one part, or both.
 
 :func:`summarise` gives the counts, and nothing else, for JSON
 (:data:`FORMAT`);
@@ -116,9 +119,10 @@ EVALUATED = (*SPLITS, "all")
 SPLIT_SALT = "pymedphys-text-detector-evaluation-split/1"
 SPLIT_RULE = (
     "A case is held out where the first 8 bytes of the SHA-256 of "
-    f"'{SPLIT_SALT}', its collection, and its case, joined by NUL, read as "
-    "a big-endian integer, are a multiple of 3, or its collection is held "
-    "out whole; otherwise it is for tuning."
+    f"'{SPLIT_SALT}', its collection, and its subject (its patient where "
+    "known, otherwise the case), joined by NUL, read as a big-endian "
+    "integer, are a multiple of 3, or its collection is held out whole; "
+    "otherwise it is for tuning. The bootstrap resamples subjects."
 )
 FRAME_DIMENSIONS = (
     "collection",
@@ -183,10 +187,24 @@ _KINDS = {
 _Z = 1.959963984540054
 
 
+def subject_of(source: object) -> str:
+    """The subject that a case's frames are of, which the split keeps in
+    one part and the bootstrap resamples whole: the source's ``subject``
+    where it gives one, a private key of its patient that no summary or
+    report names, and otherwise its case."""
+    subject = getattr(source, "subject", None)
+    if subject is None:
+        return str(getattr(source, "case"))
+    if not isinstance(subject, str) or not subject:
+        raise EvaluationRefused("A case's subject must be a name.")
+    return subject
+
+
 def split_of(
     collection: str, case: str, held_out_collections: Iterable[str] = ()
 ) -> str:
-    """The part of the split that a case belongs to, by :data:`SPLIT_RULE`."""
+    """The part of the split that a case belongs to, by :data:`SPLIT_RULE`,
+    for a case's subject (:func:`subject_of`) as ``case``."""
     if collection in set(held_out_collections):
         return "held-out"
     digest = hashlib.sha256("\0".join((SPLIT_SALT, collection, case)).encode()).digest()
@@ -304,6 +322,9 @@ class CaseResult:
         For a case of a public collection that names it by public
         identifiers, those and its licence and DOI, for the per-case report
         (:mod:`~.text_evaluation_cases`); the summary never reads them.
+    subject : str
+        Its subject (:func:`subject_of`), whose cases' clusters the
+        bootstrap resamples as one; no summary or report names it.
     """
 
     collection: str
@@ -313,6 +334,7 @@ class CaseResult:
     clusters: dict[tuple, list[int]] = dataclasses.field(default_factory=dict)
     crashed: str | None = None
     public: dict[str, str] | None = None
+    subject: str = dataclasses.field(default="", repr=False)
 
 
 @dataclasses.dataclass
@@ -376,7 +398,8 @@ def _case_in_worker(source: CaseSource, settings: EvaluationSettings) -> CaseRes
 def _case(
     source: CaseSource, detector: MeasuredDetector, settings: EvaluationSettings
 ) -> CaseResult:
-    split = split_of(source.collection, source.case, settings.held_out_collections)
+    subject = subject_of(source)
+    split = split_of(source.collection, subject, settings.held_out_collections)
     evaluated = settings.evaluated in ("all", split)
     public = getattr(source, "public", None)
     public = (
@@ -384,7 +407,9 @@ def _case(
         if isinstance(public, Mapping)
         else None
     )
-    result = CaseResult(source.collection, split, evaluated, public=public)
+    result = CaseResult(
+        source.collection, split, evaluated, public=public, subject=subject
+    )
     if not evaluated:
         return result
     try:
@@ -402,6 +427,7 @@ def _case(
             evaluated,
             crashed=crash_site(error),
             public=public,
+            subject=subject,
         )
     return result
 
@@ -698,34 +724,27 @@ def _seed(*parts: object) -> int:
     return int.from_bytes(digest[:8], "big")
 
 
-def summarise(
-    evaluation: Evaluation,
-    *,
-    replicates: int = 2000,
-    detailed: Sequence[int] | None = None,
-) -> dict[str, Any]:
+def summarise(evaluation: Evaluation, *, replicates: int = 2000) -> dict[str, Any]:
     """Return the evaluation's counts, as the module describes, for JSON.
+
+    Every point's counts are given by every stratum and cross, since the
+    acceptance criteria compare each point with the baseline in every
+    stratum (:func:`~.text_evaluation_criteria.assess`); the page
+    (:func:`~.text_evaluation_markdown.markdown`) may show fewer.
 
     Parameters
     ----------
     evaluation : Evaluation
     replicates : int
         The bootstrap's replicates.
-    detailed : sequence of int, optional
-        The points whose counts are given by every stratum; the others are
-        given overall, by IOD, and by the crosses. By default every point
-        where the grid has ten or fewer, otherwise the first.
     """
     settings = evaluation.settings
     points = settings.points
-    if detailed is None:
-        detailed = range(len(points)) if len(points) <= 10 else (0,)
-    detailed = set(detailed)
     tally = Tally()
     evaluated = [each for each in evaluation.results if each.evaluated]
     for each in evaluated:
         tally.add(each.tally)
-    clusters = [each.clusters for each in evaluated if each.crashed is None]
+    clusters = _by_subject(each for each in evaluated if each.crashed is None)
     return {
         "format": FORMAT,
         "software": _software(),
@@ -748,12 +767,21 @@ def summarise(
         "not_placed": _counted(tally, "not-placed"),
         "not_injected": _counted(tally, "not-injected"),
         "points": [
-            _point(
-                index, point, tally, clusters, settings, replicates, index in detailed
-            )
+            _point(index, point, tally, clusters, settings, replicates)
             for index, point in enumerate(points)
         ],
     }
+
+
+def _by_subject(results: Iterable[CaseResult]) -> list[dict[tuple, list[int]]]:
+    """The bootstrap's clusters: the counts of each subject's cases, added,
+    in the order that each subject first appears."""
+    found: dict[tuple[str, str], dict[tuple, list[int]]] = {}
+    for result in results:
+        merged = found.setdefault((result.collection, result.subject), {})
+        for key, row in result.clusters.items():
+            _added(merged, key, row)
+    return list(found.values())
 
 
 def _collections(results: Sequence[CaseResult]) -> dict[str, Any]:
@@ -783,14 +811,8 @@ def _point(
     clusters: Sequence[Mapping[tuple, list[int]]],
     settings: EvaluationSettings,
     replicates: int,
-    detailed: bool,
 ) -> dict[str, Any]:
-    groupings = [
-        grouping
-        for grouping in settings.dimensions
-        if grouping
-        and (detailed or grouping == ("iod",) or grouping in settings.crosses)
-    ]
+    groupings = [grouping for grouping in settings.dimensions if grouping]
     entry: dict[str, Any] = {
         "index": index,
         "post_processing": point.described(),

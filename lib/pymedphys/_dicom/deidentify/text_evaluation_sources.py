@@ -90,7 +90,13 @@ class Skipped:
 
 @runtime_checkable
 class CaseSource(Protocol):
-    """A case, which reads its frames when asked."""
+    """A case, which reads its frames when asked.
+
+    A source may also give a ``subject``, a private key of the patient its
+    frames are of, which the split and the bootstrap read in place of its
+    case (:func:`~.text_evaluation.subject_of`), so that one patient's
+    cases are kept together.
+    """
 
     @property
     def collection(self) -> str:
@@ -328,6 +334,10 @@ class DicomCase:
     tier : str
         The tier of the corpus, one of
         :data:`~.text_evaluation_frames.TIERS`.
+    subject : str or None
+        Its patient, by a salted SHA-256 (:func:`case_name`), where its
+        files are grouped more finely than by patient and all name one;
+        None where its case is its subject.
     """
 
     collection: str
@@ -336,6 +346,7 @@ class DicomCase:
     known_text: str = "none"
     annotations: TextAnnotations | None = None
     tier: str = "none"
+    subject: str | None = dataclasses.field(default=None, repr=False)
 
     def read(self) -> Iterator[EvaluationFrame | Skipped]:
         number = 0
@@ -638,7 +649,10 @@ def dicom_folder_cases(
     falls to the next finer grouping, down to the file alone. Each case is
     named by a salted SHA-256 of what groups it, so that the split is
     fixed and no identifier or path is held as its name, and its files are
-    read in order of series and Instance Number.
+    read in order of series and Instance Number. A case grouped more finely
+    than by patient, whose files all name one patient, gives that patient
+    as its subject, by the same digest, so that the split and the bootstrap
+    keep the patient's cases together.
 
     Parameters
     ----------
@@ -701,6 +715,8 @@ def dicom_folder_cases(
     cases: list[DicomCase | SkippedFiles] = []
     for name in sorted(groups):
         members = sorted(groups[name], key=lambda each: (each.order, str(each.path)))
+        patients = {each.keys["patient"] for each in members}
+        (patient,) = patients if len(patients) == 1 else (None,)
         cases.append(
             DicomCase(
                 collection,
@@ -715,6 +731,11 @@ def dicom_folder_cases(
                     )
                 ),
                 tier=tier,
+                subject=(
+                    None
+                    if patient is None or name.startswith("patient/")
+                    else case_name("patient", patient)
+                ),
             )
         )
     if unread:

@@ -36,7 +36,13 @@ from pymedphys._imports import numpy as np
 
 from .face_validation import crash_site
 from .text_detection import TextBox
-from .text_evaluation import INK_LEVEL, EvaluationSettings, _covered, split_of
+from .text_evaluation import (
+    INK_LEVEL,
+    EvaluationSettings,
+    _covered,
+    split_of,
+    subject_of,
+)
 from .text_evaluation_detector import (
     DetectorVariant,
     EvaluationDetector,
@@ -92,7 +98,9 @@ def resize_parity(
     counts = [dict.fromkeys(_FIELDS, 0) for _ in settings.points]
     tally = {"cases": 0, "skipped": 0, "crashed": {}}
     for case in cases:
-        split = split_of(case.collection, case.case, settings.held_out_collections)
+        split = split_of(
+            case.collection, subject_of(case), settings.held_out_collections
+        )
         if settings.evaluated not in ("all", split):
             continue
         tally["cases"] += 1

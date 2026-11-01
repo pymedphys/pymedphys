@@ -147,12 +147,17 @@ def test_a_series_file_not_of_the_selection_is_refused(tmp_path):
         "doi": "10.7937/K9/TCIA.2015.LO9QL9SX",
         "size_mb": 1.0,
         "aws_url": f"s3://idc-open-data/{UUID.format(1)}/*",
+        "subject": idc.subject_key("lidc_idri", "INVENTED-1"),
     }
     assert command.read_series(_written(tmp_path, [record])) == (
         idc.IdcSeries(**record),
     )
     with pytest.raises(Exception, match="not idc-select's"):
         command.read_series(_written(tmp_path, [record, record]))
+    # A series without its subject's key is not idc-select's.
+    unkeyed = {key: value for key, value in record.items() if key != "subject"}
+    with pytest.raises(Exception, match="not idc-select's"):
+        command.read_series(_written(tmp_path, [unkeyed]))
 
 
 def _written(tmp_path, records):

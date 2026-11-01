@@ -34,7 +34,11 @@ collections.
 :class:`IdcSeriesCase` reads a downloaded series as a case of tier T3,
 named by its public identifiers, collection and Series Instance UID, with
 its licence and DOI, for the per-case report
-(:mod:`~.text_evaluation_cases`).
+(:mod:`~.text_evaluation_cases`). Each series also carries a private key of
+its patient (:func:`subject_key`), a salted SHA-256 of its collection and
+IDC's Patient ID, so that a patient's series fall in one part of the split
+and are resampled together by the bootstrap; the key is never published,
+and the Patient ID itself is not kept.
 
 ``idc-index`` and ``s5cmd`` run only on CI, pinned there; neither is a
 dependency of PyMedPhys.
@@ -137,11 +141,13 @@ COLUMNS = (
     "source_DOI",
     "series_size_MB",
     "series_aws_url",
+    "PatientID",
 )
 _UID = re.compile(r"[0-9]+(?:\.[0-9]+)*")
 _UUID = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
 _DOI = re.compile(r"10\.[0-9]{4,9}/\S+")
 _BUCKET = re.compile(r"s3://[a-z0-9][a-z0-9.-]{1,61}[a-z0-9]/")
+_SUBJECT = re.compile(r"subject/[0-9a-f]{64}")
 
 
 def canonical_licence(name: str) -> str:
@@ -169,6 +175,11 @@ class IdcSeries:
     size_mb : float
     aws_url : str
         Where IDC keeps its files, ``s3://<bucket>/<crdc_series_uuid>/*``.
+    subject : str
+        A salted SHA-256 of its collection and IDC's Patient ID
+        (:func:`subject_key`), so that the split keeps a patient's series
+        in one part and the bootstrap resamples them together; never in the
+        summary, the selection's counts, or the per-case report.
     """
 
     collection_id: str
@@ -180,6 +191,7 @@ class IdcSeries:
     doi: str
     size_mb: float
     aws_url: str
+    subject: str = dataclasses.field(repr=False)
 
     def __post_init__(self):
         if self.collection_id not in OPEN_COLLECTIONS:
@@ -203,6 +215,8 @@ class IdcSeries:
             or self.aws_url[bucket.end() :] != f"{self.crdc_series_uuid}/*"
         ):
             raise EvaluationRefused("A series' files must be IDC's own.")
+        if not _SUBJECT.fullmatch(self.subject):
+            raise EvaluationRefused("A series needs its subject's key.")
 
     @property
     def public(self) -> dict[str, str]:
@@ -230,6 +244,7 @@ class Selection:
             members = [each for each in self.series if each.collection_id == name]
             collections[name] = {
                 "series": len(members),
+                "subjects": len({each.subject for each in members}),
                 "size_mb": sum(each.size_mb for each in members),
                 "licence": members[0].licence,
                 "dois": sorted({each.doi for each in members}),
@@ -316,6 +331,15 @@ def select_series(
     return Selection(tuple(taken), MappingProxyType(refused))
 
 
+def subject_key(collection_id: str, patient_id: str) -> str:
+    """The private key of a patient of a collection: a salted SHA-256, so
+    that no Patient ID is held."""
+    digest = hashlib.sha256(
+        "\0".join((SALT, "subject", collection_id, patient_id)).encode()
+    ).hexdigest()
+    return f"subject/{digest}"
+
+
 def _order(series: IdcSeries) -> bytes:
     return hashlib.sha256(
         "\0".join((SALT, series.collection_id, series.series_instance_uid)).encode()
@@ -343,6 +367,9 @@ def _series(
     reason = next((name for name, holds in reasons if holds), None)
     if reason is not None:
         return reason, None
+    patient = str(row["PatientID"] or "").strip()
+    if not patient:
+        return "no-patient", None
     doi = str(row["source_DOI"] or "").strip()
     doi = re.sub(r"^https?://(?:dx\.)?doi\.org/", "", doi, flags=re.IGNORECASE)
     try:
@@ -356,6 +383,7 @@ def _series(
             doi=doi,
             size_mb=float(str(row["series_size_MB"])),
             aws_url=str(row["series_aws_url"]),
+            subject=subject_key(collection, patient),
         )
     except (EvaluationRefused, ValueError):
         return "malformed", None
@@ -424,6 +452,11 @@ class IdcSeriesCase:
     @property
     def case(self) -> str:
         return self.series.series_instance_uid
+
+    @property
+    def subject(self) -> str:
+        """The series' patient, by its private key."""
+        return self.series.subject
 
     @property
     def public(self) -> dict[str, str]:

@@ -79,6 +79,10 @@ class ConvertedCase:
     def case(self) -> str:
         return self.source.case
 
+    @property
+    def subject(self) -> str | None:
+        return self.source.subject
+
     def read(self) -> Iterator[EvaluationFrame | Skipped]:
         images: list[ClassicImage] = []
         known = []

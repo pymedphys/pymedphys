@@ -97,12 +97,40 @@ def _point(index=0, cells=(), iods=(), sides=(), truths=()):
     }
 
 
+# The cells of contrast and height that the chosen criteria judge: 16 times
+# the noise or more at 0.99, and 4 to under 16 times at 0.95, for texts at
+# least 7 pixels high.
+JUDGED_HEIGHTS = (
+    SEVEN,
+    TEN,
+    "14 to under 20 px",
+    "20 to under 28 px",
+    "28 to under 40 px",
+    "40 px or more",
+)
+STRICT = ("16 to under 32 sigma", "32 to under 64 sigma", "64 sigma or more")
+LENIENT = (MIDDLE, "8 to under 16 sigma")
+
+
+def _complete(iod, leaving_out=()):
+    """Passing cells for every judged contrast and height of an IOD."""
+    return [
+        _cell(iod, contrast, height, texts=1000, full=full)
+        for contrasts, full in ((STRICT, 1000), (LENIENT, 980))
+        for contrast in contrasts
+        for height in JUDGED_HEIGHTS
+        if (contrast, height) not in leaving_out
+    ]
+
+
 def _passing(index=0):
     return _point(
         index,
         cells=[
             _cell(CT, HIGH, SEVEN, texts=1000, full=1000),
             _cell(CT, MIDDLE, TEN, texts=1000, full=980),
+            *_complete(CT, leaving_out=((HIGH, SEVEN), (MIDDLE, TEN))),
+            *_complete(RT),
             # Reported only: below either contrast or height.
             _cell(CT, LOW, TEN, texts=1000, full=10),
             _cell(CT, HIGH, "5 to under 7 px", texts=1000, full=10),
@@ -247,6 +275,7 @@ def test_false_positives_are_held_by_iod_and_slice_size():
 )
 def test_every_other_image_iod_is_held_to_the_stricter_limit(iod):
     point = _passing()
+    point["by"]["iod+contrast+height_px"] += _complete(iod)
     point["by"]["iod"].append(
         {
             "value": {"iod": iod},
@@ -267,6 +296,7 @@ def test_every_other_image_iod_is_held_to_the_stricter_limit(iod):
 
 def test_an_iod_without_enough_text_free_frames_stays_held():
     point = _passing()
+    point["by"]["iod+contrast+height_px"] += _complete("Ultrasound Image Storage")
     point["by"]["iod"].append(
         {
             "value": {"iod": "Ultrasound Image Storage"},
@@ -296,6 +326,60 @@ def test_an_iod_without_enough_text_free_frames_stays_held():
         }
     )
     assert not _failures(point)
+
+
+def test_an_iod_without_sensitivity_evidence_needs_every_frame_reviewed():
+    # Enough text-free ultrasound frames, but no text measured on them, as
+    # for colour frames, which take no injection: ultrasound is not judged
+    # on cells it lacks, so its frames all need review.
+    us = "Ultrasound Image Storage"
+    point = _passing()
+    point["by"]["iod"].append(
+        {
+            "value": {"iod": us},
+            "sensitivity": _sensitivity(0, 0),
+            "false_positives": _false_positives(2000, 0),
+        }
+    )
+    failures = _failures(point)
+    assert len(failures) == len(STRICT + LENIENT) * len(JUDGED_HEIGHTS)
+    assert f"sensitivity: {us}, {HIGH}, {SEVEN}: no texts" in failures
+    assert _review(point) == {
+        CT: criteria.FLAGGED_ONLY,
+        RT: criteria.FLAGGED_ONLY,
+        us: criteria.EVERY_FRAME,
+    }
+    # Nor may one judged cell of contrast and height be missing.
+    point = _passing()
+    point["by"]["iod+contrast+height_px"] = [
+        cell
+        for cell in point["by"]["iod+contrast+height_px"]
+        if cell["value"]
+        != {"iod": RT, "contrast": "64 sigma or more", "height_px": TEN}
+    ]
+    assert _failures(point) == [f"sensitivity: {RT}, 64 sigma or more, {TEN}: no texts"]
+    assert _review(point) == {CT: criteria.FLAGGED_ONLY, RT: criteria.EVERY_FRAME}
+    # Cells below the criteria's contrast or height may be missing.
+    point = _passing()
+    point["by"]["iod+contrast+height_px"] = [
+        cell
+        for cell in point["by"]["iod+contrast+height_px"]
+        if cell["value"]["contrast"] != LOW
+    ]
+    assert not _failures(point)
+
+
+def test_a_stratum_counted_at_only_one_point_fails_the_loss_rule():
+    baseline = _passing()
+    baseline["by"]["font"] = [
+        {"value": {"font": "rare"}, "sensitivity": _sensitivity(10, 10)}
+    ]
+    point = _passing()
+    summary = {"points": [baseline, {**point, "index": 1}]}
+    (first, second) = criteria.assess(summary, criteria.CHOSEN_CRITERIA)
+    assert first["meets"]
+    assert second["failures"] == ["loss: font: not counted at both points"]
+    assert set(second["review"].values()) == {criteria.EVERY_FRAME}
 
 
 def test_only_a_criterion_of_every_iod_can_leave_some_out():

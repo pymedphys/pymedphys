@@ -15,6 +15,7 @@
 """Series of NCI's Imaging Data Commons, selected from invented rows of its
 index, and the per-case report of them. No IDC file is read."""
 
+import dataclasses
 import hashlib
 import io
 import json
@@ -49,6 +50,7 @@ def _row(number=1, **fields):
         "source_DOI": DOI,
         "series_size_MB": 10.0,
         "series_aws_url": f"s3://idc-open-data/{uuid}/*",
+        "PatientID": f"INVENTED-{number}",
         **fields,
     }
 
@@ -63,7 +65,7 @@ def test_the_index_is_read_only_from_the_pinned_wheel(tmp_path):
 def test_the_index_is_read_from_the_wheels_parquet(tmp_path):
     pyarrow = pytest.importorskip("pyarrow")
     parquet = pytest.importorskip("pyarrow.parquet")
-    rows = [{**_row(1), "PatientID": "never read"}, _row(2)]
+    rows = [{**_row(1), "PatientAge": "never read"}, _row(2)]
     sink = io.BytesIO()
     parquet.write_table(pyarrow.Table.from_pylist(rows), sink)
     wheel = tmp_path / idc.INDEX_WHEEL
@@ -72,7 +74,16 @@ def test_the_index_is_read_from_the_wheels_parquet(tmp_path):
     digest = hashlib.sha256(wheel.read_bytes()).hexdigest()
     found = idc.index_rows(wheel, digest)
     assert found == [_row(1), _row(2)]
-    assert len(idc.select_series(found).series) == 2
+    selected = idc.select_series(found).series
+    assert len(selected) == 2
+    # The Patient ID is kept only as its salted digest.
+    held = json.dumps([dataclasses.asdict(each) for each in selected])
+    assert "INVENTED" not in held
+    assert {each.subject for each in selected} == {
+        idc.subject_key("lidc_idri", "INVENTED-1"),
+        idc.subject_key("lidc_idri", "INVENTED-2"),
+    }
+    assert "INVENTED" not in repr(selected) and "subject/" not in repr(selected)
 
 
 def test_licences_are_compared_in_one_spelling():
@@ -196,6 +207,7 @@ def test_a_selection_is_described_by_collection_without_a_series():
     assert described["collections"] == {
         "cmmd": {
             "series": 1,
+            "subjects": 1,
             "size_mb": 10.0,
             "licence": "CC BY 4.0",
             "dois": [DOI],
@@ -204,6 +216,7 @@ def test_a_selection_is_described_by_collection_without_a_series():
         },
         "lidc_idri": {
             "series": 1,
+            "subjects": 1,
             "size_mb": 10.0,
             "licence": "CC BY 3.0",
             "dois": [DOI],
@@ -255,6 +268,32 @@ def test_a_downloaded_series_is_read_as_a_t3_case(tmp_path):
     assert {frame.tier for frame in frames} == {"T3"}
     assert {frame.known_text for frame in frames} == {"none"}
     assert isinstance(case, evaluation.CaseSource)
+
+
+def test_one_patients_series_are_one_subject(tmp_path):
+    # Two series of one invented patient, and one of another: the first
+    # two take one part of the split, whichever their own UIDs would take.
+    rows = [_row(1, PatientID="INVENTED-A"), _row(2, PatientID="INVENTED-A"), _row(3)]
+    series = idc.select_series(rows).series
+    cases = [idc.IdcSeriesCase(each, tmp_path) for each in series]
+    by_uid = {each.case: each for each in cases}
+    first, second = by_uid["2.25.1"], by_uid["2.25.2"]
+    assert first.subject == second.subject != by_uid["2.25.3"].subject
+    assert evaluation.subject_of(first) == idc.subject_key("lidc_idri", "INVENTED-A")
+    run = _evaluated(cases)
+    parts = {
+        result.public["series_instance_uid"]: result.split for result in run.results
+    }
+    assert (
+        parts["2.25.1"]
+        == parts["2.25.2"]
+        == evaluation.split_of("lidc_idri", first.subject)
+    )
+    report = json.dumps(cases_module.cases_report(run))
+    assert "INVENTED" not in report and "subject/" not in report
+    summary = json.dumps(evaluation.summarise(run, replicates=50))
+    assert "INVENTED" not in summary and "subject/" not in summary
+    assert idc.select_series([_row(4, PatientID=" ")]).refused == {"no-patient": 1}
 
 
 def test_a_folder_not_of_its_series_is_not_read(tmp_path):
