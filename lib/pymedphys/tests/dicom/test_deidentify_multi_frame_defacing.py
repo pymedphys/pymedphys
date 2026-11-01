@@ -491,9 +491,32 @@ def _region():
     return find_dose_blocks(records, read, outcomes, (RT_STRUCTURE_SET,))[files.FRAME]
 
 
+# A display rescale of unspecified units, as a multi-frame PET frame's Pixel
+# Value Transformation is (PS3.3 C.7.6.16.2.9), independent of the Real
+# World Value Mapping that gives its activity; zero after it is not zero
+# activity.
+_DISPLAY = (2.0, -100.0)
+
+
 def _pet_frames(sop_class: str, **options) -> bytes:
     return files.multi_frame(
-        _pet_slices(), sop_class=sop_class, rescale_type="BQML", **options
+        _pet_slices(),
+        sop_class=sop_class,
+        **{"rescale_type": "US", "mapped": True, "display": _DISPLAY, **options},
+    )
+
+
+def _mapping(dataset: pydicom.Dataset, frame: int) -> pydicom.Dataset:
+    """A frame's one Real World Value Mapping item."""
+    (item,) = dataset.PerFrameFunctionalGroupsSequence[
+        frame
+    ].RealWorldValueMappingSequence
+    return item
+
+
+def _activity(item: pydicom.Dataset, stored: int) -> float:
+    return float(item.RealWorldValueSlope) * stored + float(
+        item.RealWorldValueIntercept
     )
 
 
@@ -519,23 +542,112 @@ def test_each_pet_frame_is_set_to_zero_activity_as_its_slice_would_be(
     assert defacer.held is None
 
 
-def test_each_pet_frame_is_set_to_its_own_zero_activity():
-    def rescaled(dataset: pydicom.Dataset) -> None:
-        group = dataset.PerFrameFunctionalGroupsSequence[1]
-        item = group.PixelValueTransformationSequence[0]
-        item.RescaleSlope = "2"
-        item.RescaleIntercept = "-100"
-
-    data = _changed(_pet_frames(files.ENHANCED_PET_IMAGE_STORAGE, shared=()), rescaled)
-    dataset = _dataset(data)
+@pytest.mark.parametrize("sop_class", _MULTI_FRAME_PET)
+def test_a_pet_frame_is_set_to_zero_activity_by_its_mapping_not_its_display(
+    sop_class,
+):
+    # Zero after the display rescale, slope 2 and intercept -100, is stored
+    # value 50, which the mapping, slope 1 and intercept 0 Bq/ml, gives as
+    # 50 Bq/ml; zero activity is stored value 0.
+    dataset = _dataset(_pet_frames(sop_class))
     defacer = PetDefacer(_region(), dataset)
 
     masks = [
-        defacer.mask(index, stored) for index, stored in enumerate(dataset.pixel_array)
+        (index, defacer.mask(index, stored))
+        for index, stored in enumerate(dataset.pixel_array)
     ]
 
+    reached = [(index, mask) for index, mask in masks if mask is not None]
+    assert reached
+    for index, mask in reached:
+        assert mask.value == 0
+        assert _activity(_mapping(dataset, index), mask.value) == 0.0
+
+
+def test_each_pet_frame_is_set_to_its_own_zero_activity():
+    def calibrated(dataset: pydicom.Dataset) -> None:
+        for frame, (slope, intercept) in ((1, (2.0, -100.0)), (3, (0.5, -10.0))):
+            item = _mapping(dataset, frame)
+            item.RealWorldValueSlope = slope
+            item.RealWorldValueIntercept = intercept
+
+    dataset = _dataset(
+        _changed(_pet_frames(files.ENHANCED_PET_IMAGE_STORAGE), calibrated)
+    )
+    defacer = PetDefacer(_region(), dataset)
+
+    masks = {
+        index: defacer.mask(index, stored)
+        for index, stored in enumerate(dataset.pixel_array)
+    }
+
     assert masks[1] is not None and masks[1].value == 50
-    assert {mask.value for i, mask in enumerate(masks) if mask and i != 1} == {0}
+    assert masks[3] is not None and masks[3].value == 20
+    for index, mask in masks.items():
+        if mask is not None:
+            # Zero activity by the mapping that the frame is written with.
+            assert _activity(_mapping(dataset, index), mask.value) == 0.0, index
+    assert {mask.value for i, mask in masks.items() if mask and i not in (1, 3)} == {0}
+
+
+def _two_mappings(dataset: pydicom.Dataset, second: dict) -> None:
+    """Give every frame a second mapping item, a copy of its first with the
+    values of ``second``."""
+    for group in dataset.PerFrameFunctionalGroupsSequence:
+        (item,) = group.RealWorldValueMappingSequence
+        other = copy.deepcopy(item)
+        for keyword, value in second.items():
+            setattr(other, keyword, value)
+        group.RealWorldValueMappingSequence = [item, other]
+
+
+def test_a_pet_frame_of_two_mappings_that_agree_on_zero_is_cleaned():
+    # Activity concentration and an SUV of the same stored values, each
+    # without offset, are zero at the same stored value.
+    def suv(dataset: pydicom.Dataset) -> None:
+        unit = pydicom.Dataset()
+        unit.CodeValue = "g/ml{SUVbw}"
+        unit.CodingSchemeDesignator = "UCUM"
+        unit.CodeMeaning = "Standardized Uptake Value body weight"
+        _two_mappings(
+            dataset,
+            {
+                "RealWorldValueSlope": 0.001,
+                "LUTLabel": "SUVBW",
+                "MeasurementUnitsCodeSequence": [unit],
+            },
+        )
+
+    dataset = _dataset(_changed(_pet_frames(files.ENHANCED_PET_IMAGE_STORAGE), suv))
+    defacer = PetDefacer(_region(), dataset)
+
+    values = {
+        mask.value
+        for index, stored in enumerate(dataset.pixel_array)
+        if (mask := defacer.mask(index, stored)) is not None
+    }
+    assert values == {0}
+
+
+def test_a_mapping_of_double_float_first_and_last_values_is_read():
+    def double(dataset: pydicom.Dataset) -> None:
+        for frame in range(int(dataset.NumberOfFrames)):
+            item = _mapping(dataset, frame)
+            del item.RealWorldValueFirstValueMapped
+            del item.RealWorldValueLastValueMapped
+            item.DoubleFloatRealWorldValueFirstValueMapped = 0.0
+            item.DoubleFloatRealWorldValueLastValueMapped = 65535.0
+            item.RealWorldValueIntercept = -30.0
+
+    dataset = _dataset(_changed(_pet_frames(files.ENHANCED_PET_IMAGE_STORAGE), double))
+    defacer = PetDefacer(_region(), dataset)
+
+    values = {
+        mask.value
+        for index, stored in enumerate(dataset.pixel_array)
+        if (mask := defacer.mask(index, stored)) is not None
+    }
+    assert values == {30}
 
 
 def test_a_pet_frame_keeps_pixel_padding():
@@ -553,8 +665,64 @@ def test_a_pet_frame_keeps_pixel_padding():
 
 
 def _pet_zero_not_stored(dataset: pydicom.Dataset) -> None:
-    group = dataset.PerFrameFunctionalGroupsSequence[2]
-    group.PixelValueTransformationSequence[0].RescaleIntercept = "10"
+    item = _mapping(dataset, 2)
+    item.RealWorldValueFirstValueMapped = 0
+    item.RealWorldValueIntercept = 10.0
+    item.RealWorldValueSlope = 1.0
+
+
+def _pet_zero_not_stored_but_mapped(dataset: pydicom.Dataset) -> None:
+    # The mapping maps no stored value to zero activity that the frame's
+    # stored values can hold.
+    item = _mapping(dataset, 2)
+    item.RealWorldValueSlope = 1e-9
+    item.RealWorldValueIntercept = -1.0
+
+
+def _pet_lookup_table(dataset: pydicom.Dataset) -> None:
+    item = _mapping(dataset, 1)
+    del item.RealWorldValueSlope
+    del item.RealWorldValueIntercept
+    item.RealWorldValueLUTData = [0.0] * 65536
+
+
+def _pet_mappings_disagree(dataset: pydicom.Dataset) -> None:
+    _two_mappings(dataset, {"RealWorldValueIntercept": -100.0})
+
+
+def _pet_other_mapping_gives_activity(dataset: pydicom.Dataset) -> None:
+    # Its own zero lies outside the values it maps, but it maps stored value
+    # 0 to 5 units.
+    _two_mappings(
+        dataset,
+        {
+            "RealWorldValueLastValueMapped": 50,
+            "RealWorldValueIntercept": 5.0,
+        },
+    )
+
+
+def _pet_zero_not_mapped(dataset: pydicom.Dataset) -> None:
+    _mapping(dataset, 0).RealWorldValueFirstValueMapped = 10
+
+
+def _pet_first_above_last(dataset: pydicom.Dataset) -> None:
+    item = _mapping(dataset, 0)
+    item.RealWorldValueFirstValueMapped = 100
+    item.RealWorldValueLastValueMapped = 50
+
+
+def _pet_without_last(dataset: pydicom.Dataset) -> None:
+    del _mapping(dataset, 0).RealWorldValueLastValueMapped
+
+
+def _pet_without_mapping(dataset: pydicom.Dataset) -> None:
+    for item in dataset.PerFrameFunctionalGroupsSequence:
+        del item.RealWorldValueMappingSequence
+
+
+def _pet_empty_mapping(dataset: pydicom.Dataset) -> None:
+    dataset.PerFrameFunctionalGroupsSequence[0].RealWorldValueMappingSequence = []
 
 
 def _pet_not_unit(dataset: pydicom.Dataset) -> None:
@@ -569,11 +737,6 @@ def _pet_in_both(dataset: pydicom.Dataset) -> None:
         )
 
 
-def _pet_without_rescale(dataset: pydicom.Dataset) -> None:
-    for item in dataset.PerFrameFunctionalGroupsSequence:
-        del item.PixelValueTransformationSequence
-
-
 def _pet_one_item_short(dataset: pydicom.Dataset) -> None:
     dataset.PerFrameFunctionalGroupsSequence = list(
         dataset.PerFrameFunctionalGroupsSequence
@@ -585,28 +748,36 @@ def _pet_of_ct(dataset: pydicom.Dataset) -> None:
 
 
 def _pet_zero_slope(dataset: pydicom.Dataset) -> None:
-    group = dataset.PerFrameFunctionalGroupsSequence[0]
-    group.PixelValueTransformationSequence[0].RescaleSlope = "0"
+    _mapping(dataset, 0).RealWorldValueSlope = 0.0
 
 
 @pytest.mark.parametrize(
     "change",
     [
         _pet_zero_not_stored,
+        _pet_zero_not_stored_but_mapped,
+        _pet_lookup_table,
+        _pet_mappings_disagree,
+        _pet_other_mapping_gives_activity,
+        _pet_zero_not_mapped,
+        _pet_first_above_last,
+        _pet_without_last,
+        _pet_without_mapping,
+        _pet_empty_mapping,
         _pet_not_unit,
         _pet_in_both,
-        _pet_without_rescale,
         _pet_one_item_short,
         _pet_of_ct,
         _pet_zero_slope,
     ],
     ids=lambda change: change.__name__.removeprefix("_pet_"),
 )
-def test_a_pet_frame_that_cannot_be_placed_or_cleaned_refuses_the_image(change):
+@pytest.mark.parametrize("sop_class", _MULTI_FRAME_PET)
+def test_a_pet_frame_that_cannot_be_placed_or_cleaned_refuses_the_image(
+    change, sop_class
+):
     data = _changed(
-        _pet_frames(
-            files.ENHANCED_PET_IMAGE_STORAGE, shared=("PlaneOrientationSequence",)
-        ),
+        _pet_frames(sop_class, shared=("PlaneOrientationSequence",)),
         change,
     )
 

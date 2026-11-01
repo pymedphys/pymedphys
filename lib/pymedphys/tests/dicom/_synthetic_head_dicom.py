@@ -115,6 +115,8 @@ GROUPS = {
         "RescaleType",
     ),
 }
+# The functional group that gives a multi-frame PET frame's activity.
+REAL_WORLD_VALUE_MAPPING = "RealWorldValueMappingSequence"
 
 
 def multi_frame(
@@ -129,6 +131,8 @@ def multi_frame(
     ),
     rescale_type: str | None = "HU",
     template: pydicom.Dataset | None = None,
+    mapped: bool = False,
+    display: tuple[float, float] | None = None,
 ) -> bytes:
     """One multi-frame instance of ``sop_class`` whose frames are the
     single-frame files' slices, in their order.
@@ -137,7 +141,13 @@ def multi_frame(
     in ``shared`` in the Shared Functional Groups Sequence, from the first
     slice, and every other in the frame's item of the Per-frame Functional
     Groups Sequence, from its slice. Rescale Type is ``rescale_type``, or
-    left out where it is None. Every other attribute is the first slice's,
+    left out where it is None. Where ``display`` is given, every frame's
+    Pixel Value Transformation is that slope and intercept instead of its
+    slice's rescale. Where ``mapped``, each frame also has a Real World Value
+    Mapping functional group, shared or per frame as the others, whose one
+    item maps every stored value linearly by its slice's Rescale Slope and
+    Rescale Intercept to Bq/ml, as PET quantifies activity in a multi-frame
+    PET instance. Every other attribute is the first slice's,
     less those that the groups hold, or, where ``template`` is given, such
     as the synthetic corpus' Enhanced PET Image, the template's, with the
     first slice's Image Pixel attributes and Frame of Reference UID.
@@ -177,6 +187,8 @@ def multi_frame(
     dataset.InstanceNumber = 1
 
     def group(source: pydicom.Dataset, keyword: str) -> pydicom.Dataset:
+        if keyword == REAL_WORLD_VALUE_MAPPING:
+            return _real_world_mapping(source)
         item = pydicom.Dataset()
         for attribute in GROUPS[keyword]:
             if attribute == "RescaleType":
@@ -189,8 +201,12 @@ def multi_frame(
                 item.RescaleIntercept = "0"
             if "RescaleSlope" not in item:
                 item.RescaleSlope = "1"
+            if display is not None:
+                item.RescaleSlope = str(display[0])
+                item.RescaleIntercept = str(display[1])
         return item
 
+    keywords = (*GROUPS, REAL_WORLD_VALUE_MAPPING) if mapped else tuple(GROUPS)
     common = pydicom.Dataset()
     for keyword in shared:
         setattr(common, keyword, [group(first, keyword)])
@@ -198,7 +214,7 @@ def multi_frame(
     dataset.PerFrameFunctionalGroupsSequence = []
     for each in datasets:
         item = pydicom.Dataset()
-        for keyword in GROUPS:
+        for keyword in keywords:
             if keyword not in shared:
                 setattr(item, keyword, [group(each, keyword)])
         dataset.PerFrameFunctionalGroupsSequence.append(item)
@@ -206,6 +222,33 @@ def multi_frame(
     dataset.PixelData = b"".join(each.PixelData for each in datasets)
     dataset["PixelData"].VR = "OW"
     return written(dataset)
+
+
+def _real_world_mapping(source: pydicom.Dataset) -> pydicom.Dataset:
+    """A Real World Value Mapping item that maps every stored value of a
+    slice by its Rescale Slope and Rescale Intercept to Bq/ml."""
+    signed = int(source.get("PixelRepresentation", 0)) == 1
+    bits = int(source.BitsStored)
+    low, high = (
+        (-(2 ** (bits - 1)), 2 ** (bits - 1) - 1) if signed else (0, 2**bits - 1)
+    )
+    item = pydicom.Dataset()
+    for keyword, value in (
+        ("RealWorldValueFirstValueMapped", low),
+        ("RealWorldValueLastValueMapped", high),
+    ):
+        setattr(item, keyword, value)
+        item[keyword].VR = "SS" if signed else "US"
+    item.RealWorldValueSlope = float(source.get("RescaleSlope", 1))
+    item.RealWorldValueIntercept = float(source.get("RescaleIntercept", 0))
+    item.LUTExplanation = "Activity concentration"
+    item.LUTLabel = "BQML"
+    unit = pydicom.Dataset()
+    unit.CodeValue = "Bq/ml"
+    unit.CodingSchemeDesignator = "UCUM"
+    unit.CodeMeaning = "Becquerels/milliliter"
+    item.MeasurementUnitsCodeSequence = [unit]
+    return item
 
 
 def structure_set(
