@@ -1218,6 +1218,7 @@ def _pet(stored=None, *, slope="1", intercept="0", **changes):
     """A PET slice at z = 20 mm over x and y from -20 to 20 mm at 2 mm, of
     100 everywhere by default."""
     dataset = pydicom.Dataset()
+    dataset.SOPClassUID = files.PET_IMAGE_STORAGE
     dataset.ImagePositionPatient = ["-20", "-20", "20"]
     dataset.ImageOrientationPatient = [str(v) for v in files.AXIAL]
     dataset.PixelSpacing = ["2", "2"]
