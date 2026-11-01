@@ -195,6 +195,27 @@ def test_files_not_of_the_collections_phantoms_are_skipped_unread(
     assert list(case.read()) == [sources.Skipped(reason)]
 
 
+class PatientFramesInPhantomClothing(phantoms.PhantomCase):
+    """A source that passes as a phantom's but gives a patient's tier."""
+
+    def read(self):
+        for frame in super().read():
+            yield dataclasses.replace(frame, tier="T3")
+
+
+def test_a_frame_of_a_patients_tier_is_never_previewed(tmp_path):
+    case = PatientFramesInPhantomClothing(
+        phantoms.Phantom("ct-thorax", 96, 4.0), seed=1
+    )
+    plan = injection.InjectionPlan(texts=2, heights=(7.0,), contents=("letter",))
+    with pytest.raises(EvaluationRefused):
+        report.phantom_report(
+            case, BoxDetector(), _settings(plan=plan), tmp_path / "case"
+        )
+    assert not list((tmp_path / "case" / "previews").iterdir())
+    assert report.PREVIEWED_TIERS == {"T1", "T2"}
+
+
 def test_files_of_the_collection_are_read_as_a_run_reads_them(tmp_path):
     path = tmp_path / "file.dcm"
     path.write_bytes(_phantom_file())

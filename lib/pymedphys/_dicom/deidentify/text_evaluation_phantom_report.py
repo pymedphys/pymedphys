@@ -21,7 +21,7 @@ regions and texts (:data:`PHANTOM_REPORT_FORMAT`) and previews: PNG crops of
 each region away from text and of each injected text not fully covered, and
 an overview of each frame that has either, with the boxes outlined.
 
-Only phantoms reach it, by two gates that do not depend on a caller's flag:
+Only phantoms reach it, by three gates that do not depend on a caller's flag:
 
 type
     :func:`phantom_report` takes only a :class:`PhantomDicomCase` or a
@@ -34,7 +34,10 @@ allow-list
     reads only files that name that collection as the archive's project in
     the private block that The Cancer Imaging Archive's de-identification
     adds, and, where the entry lists them, only the Patient IDs of its
-    phantoms. A file that fails is skipped by a code, never read.
+    phantoms. A file that fails is skipped by a code, never read;
+tier
+    each frame must be of tier T1 or T2 (:data:`PREVIEWED_TIERS`), so that
+    no frame of a patient is drawn, even with synthetic text burned in.
 
 Each entry carries the collection's citation, DOI, and licence, which every
 report and the ``ATTRIBUTION.md`` that :func:`write_phantom_reports` writes
@@ -71,6 +74,9 @@ from .text_evaluation_sources import (
 )
 
 PHANTOM_REPORT_FORMAT = "pymedphys-deid-text-detector-phantom-report/1"
+# The tiers of the corpus whose frames may be previewed: wholly synthetic
+# frames and allow-listed phantoms' frames.
+PREVIEWED_TIERS = frozenset({"T1", "T2"})
 # The private block that The Cancer Imaging Archive's de-identification adds,
 # and its Project Name, the collection, within it.
 _CTP_GROUP = 0x0013
@@ -388,6 +394,11 @@ def phantom_report(
             continue
         if item.collection != phantom.name:
             raise EvaluationRefused("A frame is not of the case's collection.")
+        # A third gate, on each frame: only a wholly synthetic frame, T1, or
+        # an allow-listed phantom's, T2, is drawn; never a patient's, even
+        # with synthetic text burned into it.
+        if item.tier not in PREVIEWED_TIERS:
+            raise EvaluationRefused("Only a phantom's frame is previewed.")
         passes = [("as read", item)]
         if settings.plan is not None and not item.rgb:
             injected = inject(item, settings.plan).frame
