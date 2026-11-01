@@ -103,8 +103,10 @@ def test_the_pinned_series_are_the_collections_ct_series():
     assert len({each.uuid for each in vhp.SERIES}) == 11
     assert {each.subject for each in vhp.SERIES} == {"VHP-F", "VHP-M"}
     assert sum(each.globes is not None for each in vhp.SERIES) == 3
-    # Only the female cadaver's face is rendered.
-    assert [each.subject for each in vhp.SERIES if each.rendered] == ["VHP-F"]
+    # Each head is rendered, under a name of its own.
+    rendered = [each for each in vhp.SERIES if each.rendered]
+    assert rendered == [each for each in vhp.SERIES if each.globes is not None]
+    assert len({each.name or each.subject for each in rendered}) == 3
     for each in vhp.SERIES:
         assert len(each.sha256) == 64
         if each.globes is not None:

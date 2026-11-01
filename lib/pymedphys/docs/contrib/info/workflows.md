@@ -620,7 +620,7 @@ Courtesy of the U.S. National Library of Medicine.
   that the check pins. Its job can only read the repository
 - **Results**: the job summary shows `face-validation-vhp.md`, and the
   `face-validation-vhp-results` artefact, kept for 90 days, holds it with
-  `face-validation-vhp.json`, `commit.txt`, and the female cadaver's renders.
+  `face-validation-vhp.json`, `commit.txt`, and renders of each head.
   The series themselves are never cached or uploaded
 
 #### `pixel-text-validation.yml`

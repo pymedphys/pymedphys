@@ -14,8 +14,8 @@ name: Face Block Check on Visible Human
 # accurate data available from NLM.
 #
 # As the maintainer allowed, the results name the series and give the
-# measures, and the artefact holds renders of the female cadaver's face, and
-# of no other. The series themselves are never cached or uploaded.
+# measures, and the artefact holds renders of both cadavers' heads. The
+# series themselves are never cached or uploaded.
 on:
   workflow_dispatch:
   # Temporary, so that the check can run before the workflow is on the
@@ -68,7 +68,7 @@ jobs:
 
       # The command refuses any series whose files are not those pinned,
       # and writes face-validation-vhp.json, face-validation-vhp.md, and the
-      # female cadaver's renders.
+      # renders of each head.
       - name: Run the check
         timeout-minutes: 60
         run: |

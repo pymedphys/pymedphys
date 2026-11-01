@@ -79,9 +79,12 @@ Hounsfield units in its core and in a shell about it, where a living
 globe's orbital fat lies, and each one's share within the finder's soft
 tissue window.
 
-Only :attr:`VhpSeries.rendered` series, the female cadaver's head, are
+Only :attr:`VhpSeries.rendered` series, the three heads, are
 rendered (:func:`render_series`): the QC pack's skin surface views of its
-head, as received and as each block would deface it, and slices through
+head alone, its axial slices from :data:`HEAD_BELOW` below the reference
+globes to :data:`HEAD_ABOVE` above them, of any stack, resampled onto the
+grid of the stack that holds the globes, as received and as each block
+would deface each slice in its own geometry, and slices through
 each reference globe with the globes and blocks marked, each image carrying
 NLM's attribution (:data:`ATTRIBUTION`) and :data:`NOTICE`.
 
@@ -155,6 +158,12 @@ CORE = 6.0  # millimetres
 SHELL = (1.1 * REFERENCE_RADIUS, 1.5 * REFERENCE_RADIUS)  # millimetres
 _ROUND = 1  # decimals of millimetres reported
 ANTERIOR = (0.0, -1.0, 0.0)  # the patient's anterior, in patient coordinates
+# The heights about the reference globes that a render shows: from below
+# the chin to above the vertex of an adult head.
+HEAD_BELOW = 110.0  # millimetres below the lower globe's centre
+HEAD_ABOVE = 130.0  # millimetres above the higher globe's centre
+# How near a slice must lie to a globe's height for its stack to hold it.
+GLOBE_SLICE = 3.0  # millimetres
 JSON_NAME = "face-validation-vhp.json"
 MARKDOWN_NAME = "face-validation-vhp.md"
 RENDERS = "renders"
@@ -185,6 +194,8 @@ class VhpSeries:
         a head.
     rendered : bool
         Whether its face is rendered.
+    name : str
+        The name of its renders' files; its subject's where empty.
     """
 
     uuid: str
@@ -194,6 +205,7 @@ class VhpSeries:
     sha256: str
     globes: tuple[Point, Point] | None = None
     rendered: bool = False
+    name: str = ""
 
 
 # Placed on 1 November 2026 from axial, coronal, and sagittal views and
@@ -223,6 +235,8 @@ SERIES: tuple[VhpSeries, ...] = (
         417,
         "92f4961414cf99fddde2bb55832799ec06386df47e55d87fd007f93f45f8ea20",
         ((-33.5, -145.5, 295.0), (30.0, -145.0, 295.0)),
+        rendered=True,
+        name="VHP-M-before-freezing",
     ),
     VhpSeries(
         "29c772e1-1ea7-4c7e-8de0-dedafb72e347",
@@ -238,6 +252,8 @@ SERIES: tuple[VhpSeries, ...] = (
         844,
         "4873a77612efa11702c6063541a0f957d80a1f7982235eacf4b7e625fa7818c3",
         ((-32.5, -103.0, -121.0), (38.0, -103.0, -123.5)),
+        rendered=True,
+        name="VHP-M-frozen",
     ),
     VhpSeries(
         "aa81356d-32f2-4b71-ad81-c1defa3175ca",
@@ -626,34 +642,15 @@ def resampled_inspection(
         )
 
     target = max(kept, key=extent)
-    along_row = np.asarray(orientation[:3])
-    down_column = np.asarray(orientation[3:])
-    in_plane = np.asarray(target.position) - target.position[2] * np.array(
-        [0.0, 0.0, 1.0]
-    )
+    in_plane = _in_plane(target)
     finder = FaceFinder(
         orientation,
         [(in_plane[0], in_plane[1], each.position[2]) for each in kept],
         target.spacing,
         target.shape,
     )
-    rows = np.arange(target.shape[0], dtype=float)[:, None] * target.spacing[0]
-    columns = np.arange(target.shape[1], dtype=float)[None, :] * target.spacing[1]
     for each in kept:
-        offset = in_plane - np.asarray(each.position)
-        # Each target pixel's row and column in the slice's own grid.
-        across = offset @ along_row + columns * float(along_row @ along_row)
-        down = offset @ down_column + rows * float(down_column @ down_column)
-        source_columns = np.broadcast_to(across / each.spacing[1], target.shape)
-        source_rows = np.broadcast_to(down / each.spacing[0], target.shape)
-        values = scipy.ndimage.map_coordinates(
-            each.hounsfield().astype(np.float32),
-            [source_rows, source_columns],
-            order=1,
-            mode="constant",
-            cval=np.nan,
-        )
-        finder.add(values.astype(np.float32))
+        finder.add(_on_grid(each.hounsfield(), each, target))
     grid = {
         "slices": len(kept),
         "pixel_spacing_mm": list(target.spacing),
@@ -661,6 +658,46 @@ def resampled_inspection(
         "origin_mm": [round(float(v), _ROUND) for v in in_plane[:2]],
     }
     return grid, finder.inspect()
+
+
+def _in_plane(target: _Header) -> np.ndarray:
+    """The x and y of an axial slice's first pixel, at z of 0."""
+    return np.array([target.position[0], target.position[1], 0.0])
+
+
+def _on_grid(values: np.ndarray, each: _Header, target: _Header) -> np.ndarray:
+    """An axial slice's values resampled by linear interpolation onto
+    another axial slice's in-plane grid, as float32, a point outside the
+    slice's own field of view as NaN, which the finder and the renders take
+    as padding."""
+    along_row = np.asarray(each.orientation[:3])
+    down_column = np.asarray(each.orientation[3:])
+    offset = _in_plane(target) - _in_plane(each)
+    target_row = np.asarray(target.orientation[:3])
+    target_column = np.asarray(target.orientation[3:])
+    rows = np.arange(target.shape[0], dtype=float)[:, None] * target.spacing[0]
+    columns = np.arange(target.shape[1], dtype=float)[None, :] * target.spacing[1]
+    # Each target pixel's row and column in the slice's own grid.
+    across = (
+        offset @ along_row
+        + columns * float(target_row @ along_row)
+        + rows * float(target_column @ along_row)
+    )
+    down = (
+        offset @ down_column
+        + columns * float(target_row @ down_column)
+        + rows * float(target_column @ down_column)
+    )
+    return scipy.ndimage.map_coordinates(
+        np.asarray(values, dtype=np.float32),
+        [
+            np.broadcast_to(down / each.spacing[0], target.shape),
+            np.broadcast_to(across / each.spacing[1], target.shape),
+        ],
+        order=1,
+        mode="constant",
+        cval=np.nan,
+    ).astype(np.float32)
 
 
 def finding(
@@ -1006,15 +1043,16 @@ def render_series(
     out.mkdir(parents=True, exist_ok=True)
     stack = _head_stack(headers, stacks, each.globes)
     slices = [headers[i] for i in stack]
-    first = slices[0]
+    target = slices[0]
+    head = _head_slices(headers, stack, each.globes)
     directions = [
-        first.normal,
-        np.asarray(first.orientation[3:]),
-        np.asarray(first.orientation[:3]),
+        target.normal,
+        np.asarray(target.orientation[3:]),
+        np.asarray(target.orientation[:3]),
     ]
-    offsets = [float(np.asarray(s.position) @ first.normal) for s in slices]
+    offsets = [float(np.asarray(s.position) @ target.normal) for s in head]
     grid = qc_surfaces.grid(
-        directions, offsets, first.spacing, first.shape, qc_surfaces.Threshold.CT
+        directions, offsets, target.spacing, target.shape, qc_surfaces.Threshold.CT
     )
     surfaces = {"as received": qc_surfaces.Surface(grid)}
     for label in blocks:
@@ -1025,23 +1063,23 @@ def render_series(
         for index, s in enumerate(slices)
         if min(abs(s.position[2] - globe[2]) for globe in each.globes) <= 40.0
     }
-    for s in slices:
+    for s in head:
         dataset = pydicom.dcmread(s.path)
         stored = dataset.pixel_array
         values = (stored * s.rescale[0] + s.rescale[1]).astype(np.float32)
-        surfaces["as received"].add(values)
+        surfaces["as received"].add(_on_grid(values, s, target))
         for label, block in blocks.items():
             mask = CtDefacer(block, dataset).mask(0, stored)
             defaced = values.copy()
             if mask is not None:
                 defaced[mask.mask] = mask.value * s.rescale[0] + s.rescale[1]
-            surfaces[label].add(defaced)
+            surfaces[label].add(_on_grid(defaced, s, target))
     names = []
     for label, surface in surfaces.items():
         image = surface.image()
         if image is None:
             continue
-        name = f"{each.subject}-surface-{label.replace(' ', '-')}.png"
+        name = f"{each.name or each.subject}-surface-{label.replace(' ', '-')}.png"
         width, height = image.shape[1] / 100, image.shape[0] / 100
         figure = plt.figure(figsize=(max(width, 6.0), height + 1.2))
         axes = figure.add_axes(
@@ -1054,11 +1092,11 @@ def render_series(
             if label == "as received"
             else f"Skin surface defaced by the {label} block"
         )
-        _caption(figure, f"{each.subject}: {title}")
+        _caption(figure, f"{each.name or each.subject}: {title}")
         figure.savefig(out / name, dpi=100, metadata={"Software": None})
         plt.close(figure)
         names.append(name)
-    name = f"{each.subject}-globes.png"
+    name = f"{each.name or each.subject}-globes.png"
     _globe_panels(plt, each, slices, near, blocks, out / name)
     names.append(name)
     (out / "NOTICE.txt").write_text(f"{ATTRIBUTION}\n\n{NOTICE}\n", encoding="utf-8")
@@ -1069,21 +1107,38 @@ def render_series(
 def _head_stack(
     headers: Sequence[_Header], stacks: Sequence[list[int]], globes: tuple[Point, Point]
 ) -> list[int]:
-    """The stack that holds both reference globes' heights, the longest
-    where more than one does."""
-    holding = [
-        stack
-        for stack in stacks
-        if all(
-            min(headers[i].position[2] for i in stack)
-            <= globe[2]
-            <= max(headers[i].position[2] for i in stack)
-            for globe in globes
-        )
-    ]
+    """The stack with a slice within :data:`GLOBE_SLICE` of each reference
+    globe's height, the one with most slices there where more than one
+    has."""
+
+    def near(stack: list[int], globe: Point) -> int:
+        return sum(abs(headers[i].position[2] - globe[2]) <= GLOBE_SLICE for i in stack)
+
+    holding = [stack for stack in stacks if all(near(stack, globe) for globe in globes)]
     if not holding:
         raise ValueError("no stack holds the reference globes")
-    return max(holding, key=len)
+    return max(holding, key=lambda stack: sum(near(stack, g) for g in globes))
+
+
+def _head_slices(
+    headers: Sequence[_Header], stack: list[int], globes: tuple[Point, Point]
+) -> list[_Header]:
+    """The axial slices of the head, from :data:`HEAD_BELOW` below the lower
+    reference globe to :data:`HEAD_ABOVE` above the higher, of any stack,
+    in order of height, the globes' stack's where two lie at one height."""
+    low = min(globe[2] for globe in globes) - HEAD_BELOW
+    high = max(globe[2] for globe in globes) + HEAD_ABOVE
+    chosen: dict[float, _Header] = {}
+    for index in sorted(stack) + [i for i in range(len(headers)) if i not in stack]:
+        each = headers[index]
+        height = round(each.position[2], 3)
+        if (
+            low <= height <= high
+            and abs(abs(float(each.normal[2])) - 1) <= 1e-4
+            and height not in chosen
+        ):
+            chosen[height] = each
+    return [chosen[height] for height in sorted(chosen)]
 
 
 def _caption(figure: Any, title: str) -> None:
@@ -1184,7 +1239,7 @@ def _globe_panels(
     axes[0, 0].legend(fontsize=7, loc="lower right")
     _caption(
         figure,
-        f"{each.subject}: reference globes (+, red) and each block's globes (x) "
+        f"{each.name or each.subject}: reference globes (+, red) and each block's globes (x) "
         "and edges",
     )
     figure.savefig(path, dpi=80, metadata={"Software": None})

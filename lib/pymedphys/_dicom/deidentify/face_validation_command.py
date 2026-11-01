@@ -54,7 +54,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     ``--out`` likewise, and writes
     :func:`~pymedphys._dicom.deidentify.face_validation_vhp.check_visible_human`'s
     summary there, as ``face-validation-vhp.json`` and
-    ``face-validation-vhp.md``, with the female cadaver's renders in
+    ``face-validation-vhp.md``, with each head's renders in
     ``renders``, and prints the Markdown.
 
     Raises
@@ -117,7 +117,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         help=(
             "Check the face block finder and CT defacing on the NLM Visible "
             "Human Project's CT series from NCI Imaging Data Commons, and "
-            "render the female cadaver's face."
+            "render each head's face."
         ),
     )
     visible_human.add_argument(
