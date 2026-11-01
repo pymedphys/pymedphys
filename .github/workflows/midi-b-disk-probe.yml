@@ -1,0 +1,81 @@
+# Temporary: measures the disks of GitHub's Ubuntu 24.04 runners for the
+# MIDI-B benchmark. Some now have a 72 GB disk, half the 145 GB of others,
+# so the benchmark's cleanup, swap, and NCI install must fit both. Remove
+# before #2335 is marked ready.
+name: MIDI-B disk probe
+
+on:
+  push:
+    branches: [claude/deid-midi-b-ci-ko3ghq]
+    paths: [.github/workflows/midi-b-disk-probe.yml]
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    name: Probe ${{ matrix.n }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        n: [1, 2, 3, 4, 5, 6]
+    env:
+      NCI_SCRIPT_COMMIT: ccc0939317d5ffd14edda33bc04641490d6f2254
+    steps:
+      - name: Disks, memory, and swap
+        run: |
+          df -h -x tmpfs -x devtmpfs -x squashfs -x overlay
+          lsblk -o NAME,SIZE,TYPE,FSTYPE,MOUNTPOINTS
+          free -m
+          swapon --show
+          nproc
+
+      - name: Largest directories
+        run: |
+          sudo du -xsh /opt/* /opt/hostedtoolcache/* /usr/local/* /usr/local/lib/* \
+            /usr/local/share/* /usr/share/* /usr/lib/* /home/runner/.[a-z]* \
+            /etc/skel/.[a-z]* /var/lib/docker /swapfile /mnt/* 2> /dev/null \
+            | sort -h | tail -n 45
+          docker image ls --format '{{.Repository}}:{{.Tag}} {{.Size}}' || true
+
+      - name: Remove what the benchmark does not use
+        run: |
+          df -h /
+          start=$(date +%s)
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc \
+            /usr/local/.ghcup /opt/hostedtoolcache/CodeQL /usr/local/share/boost
+          echo "The benchmark's current list took $(( $(date +%s) - start )) s."
+          df -h /
+          start=$(date +%s)
+          sudo rm -rf /usr/share/swift /usr/local/share/powershell \
+            /usr/local/share/chromium /usr/local/lib/node_modules /usr/lib/jvm \
+            /usr/lib/google-cloud-sdk /opt/microsoft /opt/google /opt/az /opt/pipx \
+            /usr/share/miniconda /usr/local/julia* /opt/hostedtoolcache/go \
+            /opt/hostedtoolcache/PyPy /usr/local/aws-cli /usr/local/aws-sam-cli
+          echo "The candidates took $(( $(date +%s) - start )) s."
+          df -h /
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@1c37ad07a6a961277cf70c0d37d6f313000f5884 # v10.3.0
+        with:
+          version: "0.13.4"
+
+      - name: Install NCI's validation script with CPU-only torch
+        run: |
+          nci="${RUNNER_TEMP}/nci"
+          git init -q "${nci}"
+          git -C "${nci}" fetch -q --depth 1 https://github.com/CBIIT/midi_validation_script.git \
+            "${NCI_SCRIPT_COMMIT}"
+          git -C "${nci}" checkout -q FETCH_HEAD
+          df -h /
+          uv venv -q --python 3.10 "${RUNNER_TEMP}/nci-venv"
+          uv pip install -q --torch-backend cpu --python "${RUNNER_TEMP}/nci-venv/bin/python" \
+            -r "${nci}/requirements.txt"
+          uv pip freeze --python "${RUNNER_TEMP}/nci-venv/bin/python" \
+            | grep -Ei '^(torch|torchvision|easyocr|nvidia|triton|cuda)' || true
+          "${RUNNER_TEMP}/nci-venv/bin/python" -c \
+            'import easyocr, torch; print("torch", torch.__version__, "CUDA", torch.cuda.is_available())'
+          du -sh "${RUNNER_TEMP}/nci-venv" "$(uv cache dir)"
+          df -h /
