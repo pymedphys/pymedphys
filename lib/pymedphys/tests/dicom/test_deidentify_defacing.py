@@ -12,18 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# The analytic head's cases, untilted and tilted, share its helpers, so they
+# stay in one module.
+# pylint: disable = too-many-lines
+
 """Finding the face block of a head CT, on an analytic head."""
 
 from __future__ import annotations
 
 import dataclasses
+import functools
 import itertools
 import math
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pytest
 
-from pymedphys._dicom.deidentify import defacing
+from pymedphys._dicom.deidentify import defacing, stack_sampling
 
 from . import _synthetic_head as head
 
@@ -249,30 +254,280 @@ def test_a_head_recorded_facing_the_wrong_way_is_refused():
     assert refused.value.problem is defacing.FaceBlockProblem.HEAD_NOT_BEHIND_EYES
 
 
+_TILTED = {
+    **head.tilted_heads(),
+    "gantry-tilt-20-feet-first": head.oblique(
+        head.axial(feet_first=True), head.rotation(about_x=-20.0)
+    ),
+    "oblique-sagittal": head.oblique(head.sagittal(), head.rotation(about_z=8.0)),
+}
+
+
+@functools.cache
+def _untilted_block() -> defacing.FaceBlock:
+    return _block(head.axial(), head.Head(seed=3))
+
+
+@pytest.mark.parametrize("scan", _TILTED.values(), ids=_TILTED.keys())
+def test_a_tilted_sheared_or_oblique_volume_gives_the_untilted_heads_block(scan):
+    block = _block(scan, head.Head(seed=3))
+
+    _assert_around_the_globes(block)
+    expected = _untilted_block()
+    voxel = defacing.MINIMUM_VOXEL
+    np.testing.assert_allclose(block.globes, expected.globes, atol=voxel)
+    np.testing.assert_allclose(block.origin, expected.origin, atol=voxel)
+
+
+@pytest.mark.parametrize(
+    "anatomy, problem",
+    [
+        (head.Head(eyes=(True, False)), defacing.FaceBlockProblem.NO_EYES),
+        (head.Head(facing_back=True), defacing.FaceBlockProblem.HEAD_NOT_BEHIND_EYES),
+        (head.Head(upside_down=True), defacing.FaceBlockProblem.CRANIUM_NOT_ABOVE_EYES),
+    ],
+    ids=["no-left-eye", "facing-back", "upside-down"],
+)
+def test_a_tilted_volume_is_refused_as_an_untilted_one_is(anatomy, problem):
+    with pytest.raises(defacing.FaceBlockRefused) as refused:
+        _block(_TILTED["gantry-tilt-15"], anatomy)
+
+    assert refused.value.problem is problem
+
+
+def test_tilted_slices_added_out_of_order_give_the_same_block():
+    scan = _TILTED["gantry-tilt-15"]
+    order = np.random.default_rng(5).permutation(len(scan.positions))
+    shuffled = dataclasses.replace(
+        scan, positions=tuple(scan.positions[index] for index in order)
+    )
+    anatomy = head.Head(noise=0.0)
+    # The slices are generated in the order of their positions, so the
+    # shuffled scan's slices are the same images in another order.
+    assert _block(shuffled, anatomy) == _block(scan, anatomy)
+
+
+def _stack(scan: head.Scan) -> stack_sampling.Stack:
+    return stack_sampling.Stack(
+        scan.orientation, scan.positions, scan.spacing, scan.shape
+    )
+
+
+@pytest.mark.parametrize(
+    "scan, rise",
+    [
+        (head.axial(), 2.5),
+        (head.axial(feet_first=True, prone=True), 2.5),
+        (head.sagittal(), 1.0),
+        (head.axial(spacing=0.8, extent=((-100, 100), (-130, 110), (20, 20))), 0.0),
+        (
+            head.tilted(degrees=15.0),
+            2.5 * math.cos(math.radians(15.0)) ** 2 + math.sin(math.radians(15.0)),
+        ),
+        (head.sheared(head.axial(), 15.0), 2.5),
+        (
+            head.oblique(head.axial(), head.rotation(about_y=10.0)),
+            # Turned with the rows, the slices stay 2.5 mm apart along the
+            # normal.
+            2.5 * math.cos(math.radians(10.0)) + 1.0 * math.sin(math.radians(10.0)),
+        ),
+    ],
+    ids=[
+        "axial",
+        "prone-feet-first",
+        "sagittal",
+        "one-slice",
+        "gantry-tilt-15",
+        "sheared",
+        "oblique-about-y",
+    ],
+)
+def test_a_samples_height_is_its_slices_rows_and_columns_along_the_superior_axis(
+    scan, rise
+):
+    # About the globes: the box of the analytic head's globes.
+    low = np.array([-head.GLOBE_X, head.GLOBE_Y, head.GLOBE_Z]) - head.GLOBE_RADIUS
+    high = np.array([head.GLOBE_X, head.GLOBE_Y, head.GLOBE_Z]) + head.GLOBE_RADIUS
+
+    spacing = defacing.SampleSpacing.of(_stack(scan))
+
+    assert spacing.across(low, high) == pytest.approx(rise, abs=1e-9)
+
+
+def test_a_samples_height_takes_the_widest_gap_between_slices_about_the_globes():
+    scan = head.axial()
+    # Slices every 40 mm below the head, and every 5 mm from just below the
+    # globes' inferior edge to above them.
+    heights = [*np.arange(-400.0, -120.0, 40.0), *np.arange(-120.0, 7.5, 2.5)]
+    heights += [*np.arange(7.5, 120.0, 5.0)]
+    scan = dataclasses.replace(
+        scan,
+        positions=tuple(
+            (scan.positions[0][0], scan.positions[0][1], float(height))
+            for height in heights
+        ),
+    )
+    spacing = defacing.SampleSpacing.of(_stack(scan))
+
+    def across(bottom: float, top: float) -> float:
+        return spacing.across(np.array([0.0, 0.0, bottom]), np.array([0, 0, top]))
+
+    assert across(8.0, 32.0) == pytest.approx(5.0)
+    assert across(-50.0, -10.0) == pytest.approx(2.5)
+    assert across(-300.0, -200.0) == pytest.approx(40.0)
+
+
+def _coded(scan: head.Scan) -> list[np.ndarray]:
+    """Each slice's pixels, each coded by its slice, row, and column."""
+    rows, columns = np.indices(scan.shape)
+    return [
+        (10000 * index + 100 * rows + columns).astype(np.float32)
+        for index in range(len(scan.positions))
+    ]
+
+
+def _small(orientation, along, steps=(0.0, 2.1, 4.2, 6.3, 8.4, 10.5)) -> head.Scan:
+    positions = tuple(
+        tuple(float(value) for value in step * np.array(along)) for step in steps
+    )
+    return head.Scan(tuple(orientation), positions, (1.3, 0.9), (9, 11))
+
+
+def _turned(turn: np.ndarray) -> tuple[float, ...]:
+    along_row = turn @ np.array([1.0, 0.0, 0.0])
+    down_column = turn @ np.array([0.0, 1.0, 0.0])
+    return tuple(float(value) for value in (*along_row, *down_column))
+
+
+_SMALL_TILTED = {
+    "gantry-tilt-15": _small(
+        _turned(head.rotation(about_x=-15.0)),
+        head.rotation(about_x=-15.0) @ np.array([0.0, 0.0, 1.0]),
+    ),
+    "gantry-tilt-15-along-the-table": _small(
+        _turned(head.rotation(about_x=-15.0)), (0.0, 0.0, 1.0)
+    ),
+    "sheared": _small(
+        (1.0, 0.0, 0.0, 0.0, 1.0, 0.0), (0.0, -math.tan(math.radians(15.0)), 1.0)
+    ),
+    "compound-oblique": _small(
+        _turned(head.rotation(about_x=25.0, about_y=-35.0, about_z=50.0)),
+        head.rotation(about_x=25.0, about_y=-35.0, about_z=50.0)
+        @ np.array([0.2, -0.1, 1.0]),
+        steps=(6.0, 0.0, 1.0, 9.5, 2.5, 3.0),
+    ),
+}
+
+
+@pytest.mark.parametrize("scan", _SMALL_TILTED.values(), ids=_SMALL_TILTED.keys())
+def test_a_voxel_beyond_a_tilted_stack_takes_the_pixel_at_its_edge_nearest_it(scan):
+    stack = _stack(scan)
+    sampler = stack_sampling.StackSampler(stack, stack.lattice(0.7))
+    beyond = defacing._Beyond.of(sampler)  # pylint: disable = protected-access
+    frames = _coded(scan)
+    values = np.full(math.prod(sampler.lattice.shape), np.nan)
+    reached = np.zeros(values.shape, dtype=bool)
+    for index, frame in enumerate(frames):
+        taken = sampler.nearest(index)
+        values[taken.voxels] = frame[taken.rows, taken.columns]
+        reached[taken.voxels] = True
+        edge = beyond.of_slice(index)
+        values[edge.voxels] = frame[edge.rows, edge.columns]
+
+    # Every voxel takes a pixel, and those beyond the stack are the rest.
+    assert np.isfinite(values).all()
+    assert beyond.count == int((~reached).sum()) > 0
+    # Each found by brute force: the nearest slice along the normal, then
+    # the pixel nearest the voxel's projection, clipped to the slice's.
+    voxels = np.flatnonzero(~reached)
+    points = sampler.lattice.points(np.unravel_index(voxels, sampler.lattice.shape))
+    distances = np.abs(points @ stack.normal - stack.offsets[:, np.newaxis])
+    nearest = np.argmin(distances, axis=0)
+    relative = points - stack.origins[nearest]
+    rows = np.clip(
+        np.rint(relative @ stack.down_column / stack.spacing[0]), 0, scan.shape[0] - 1
+    )
+    columns = np.clip(
+        np.rint(relative @ stack.along_row / stack.spacing[1]), 0, scan.shape[1] - 1
+    )
+    np.testing.assert_array_equal(
+        values[voxels], 10000 * nearest + 100 * rows + columns
+    )
+
+
+@pytest.mark.parametrize(
+    "scan",
+    [
+        head.axial(),
+        head.axial(feet_first=True),
+        head.axial(prone=True, feet_first=True),
+        head.sagittal(),
+        dataclasses.replace(head.axial(), positions=head.axial().positions[::-1]),
+    ],
+    ids=["axial", "feet-first", "prone-feet-first", "sagittal", "from-superior"],
+)
+def test_nothing_lies_beyond_a_stack_along_the_patient_axes(scan):
+    stack = _stack(scan)
+    sampler = stack_sampling.StackSampler(stack, stack.lattice(defacing.MINIMUM_VOXEL))
+
+    assert defacing._Beyond.of(sampler).count == 0  # pylint: disable = protected-access
+
+
+@pytest.mark.parametrize(
+    "orientation",
+    [(1.0, 0.0, 0.0, 0.0, 1.0, 0.0), _turned(head.rotation(about_x=-15.0))],
+    ids=["axial", "gantry-tilt-15"],
+)
+def test_the_finder_samples_each_voxel_by_its_nearest_slice_and_pixel(orientation):
+    scan = _small(orientation, (0.0, 0.0, 1.0))
+    finder = _finder(scan)
+    frames = _coded(scan)
+    for frame in frames:
+        finder.add(frame)
+    stack = _stack(scan)
+    volume = stack_sampling.SampledVolume(
+        stack_sampling.StackSampler(stack, stack.lattice(defacing.MINIMUM_VOXEL))
+    )
+    for frame in frames:
+        volume.add(frame)
+
+    samples = finder._samples  # pylint: disable = protected-access
+    taken = np.isfinite(volume.values)
+    np.testing.assert_array_equal(samples[taken], volume.values[taken])
+    assert np.isfinite(samples).all()
+
+
 @pytest.mark.parametrize(
     "scan",
     [
         head.tilted(degrees=15.0),
-        head.tilted(degrees=0.5),
+        head.sheared(head.axial(), 15.0),
+        head.oblique(head.axial(), head.rotation(about_z=10.0)),
+    ],
+    ids=["gantry-tilt-15", "sheared", "oblique-10"],
+)
+def test_a_stack_off_the_patient_axes_is_not_along_them(scan):
+    assert not defacing.along_patient_axes(scan.orientation, scan.positions)
+
+
+@pytest.mark.parametrize(
+    "scan",
+    [
+        head.axial(),
+        head.axial(prone=True, feet_first=True),
+        head.sagittal(),
         dataclasses.replace(
             head.axial(),
-            orientation=(
-                float(np.cos(np.radians(10))),
-                float(np.sin(np.radians(10))),
-                0.0,
-                float(-np.sin(np.radians(10))),
-                float(np.cos(np.radians(10))),
-                0.0,
+            positions=tuple(
+                (x + 0.9 * defacing.STACKING_TOLERANCE * index / 96, y, z)
+                for index, (x, y, z) in enumerate(head.axial().positions)
             ),
         ),
     ],
-    ids=["gantry-tilt-15", "gantry-tilt-half-degree", "oblique-10"],
+    ids=["axial", "prone-feet-first", "sagittal", "offset-within-tolerance"],
 )
-def test_a_volume_not_along_the_patient_axes_is_refused(scan):
-    with pytest.raises(defacing.FaceBlockRefused) as refused:
-        _finder(scan)
-
-    assert refused.value.problem is defacing.FaceBlockProblem.NOT_ALONG_PATIENT_AXES
+def test_a_stack_along_the_patient_axes_is_along_them(scan):
+    assert defacing.along_patient_axes(scan.orientation, scan.positions)
 
 
 def test_two_slices_at_one_position_are_refused():
@@ -331,21 +586,6 @@ def test_a_wide_gap_between_slices_far_from_the_eyes_does_not_move_the_block():
     assert block == _block(scan, anatomy)
 
 
-def test_slices_sheared_within_their_plane_are_refused():
-    # Axial slices whose positions step anteriorly, as a gantry tilt does
-    # when the scanner records axial direction cosines.
-    scan = head.axial()
-    step = 2.5 * math.tan(math.radians(15.0))
-    sheared = tuple(
-        (x, y - index * step, z) for index, (x, y, z) in enumerate(scan.positions)
-    )
-
-    with pytest.raises(defacing.FaceBlockRefused) as refused:
-        _finder(dataclasses.replace(scan, positions=sheared))
-
-    assert refused.value.problem is defacing.FaceBlockProblem.NOT_ALONG_PATIENT_AXES
-
-
 def test_slices_offset_within_their_plane_by_less_than_the_tolerance_are_kept():
     scan = head.axial()
     offset = 0.9 * defacing.STACKING_TOLERANCE
@@ -358,9 +598,17 @@ def test_slices_offset_within_their_plane_by_less_than_the_tolerance_are_kept():
     _assert_around_the_globes(_block(dataclasses.replace(scan, positions=shifted)))
 
 
-def test_direction_cosines_not_of_unit_length_are_refused():
-    # Their cross product, the slices' normal, is still of unit length.
-    scan = dataclasses.replace(head.axial(), orientation=(1.01, 0, 0, 0, 1 / 1.01, 0))
+@pytest.mark.parametrize(
+    "orientation",
+    [(1.01, 0, 0, 0, 1 / 1.01, 0), (1, 0, 0, 0.01, 1, 0)],
+    ids=["not-of-unit-length", "not-perpendicular"],
+)
+def test_direction_cosines_not_of_unit_length_or_not_perpendicular_are_refused(
+    orientation,
+):
+    # Unit length: their cross product, the slices' normal, is still of
+    # unit length.
+    scan = dataclasses.replace(head.axial(), orientation=orientation)
 
     with pytest.raises(defacing.FaceBlockRefused) as refused:
         _finder(scan)

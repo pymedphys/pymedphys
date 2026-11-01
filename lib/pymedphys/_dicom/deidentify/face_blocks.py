@@ -52,6 +52,12 @@ kind, or both. A series is defaced only where all of these hold:
   Reference UID, which they have, and the stored values of each can hold
   air, -1000 Hounsfield units, as one stored value, rounded, without
   clipping, each slice by its own rescale;
+- the slices that the finder is given lie along the patient's axes
+  (:func:`~pymedphys._dicom.deidentify.defacing.along_patient_axes`), as a
+  gantry-tilted, sheared, or oblique stack does not: the finder samples
+  such a stack, but the air written is not yet defined for a slice that
+  spans heights, so it is left undefaced as
+  :attr:`~pymedphys._dicom.deidentify.defacing.FaceBlockProblem.NOT_ALONG_PATIENT_AXES`;
 - :class:`~pymedphys._dicom.deidentify.defacing.FaceFinder` finds the
   block from the slices within :data:`HEAD_REACH` millimetres of the
   volume's superior end, which bounds the memory that a long volume needs,
@@ -513,7 +519,7 @@ def _series_outcome(
         # the block.
         if not frame:
             raise _Unusable(SeriesProblem.UNREADABLE)
-        finder = _finder(slices, places, read)
+        finder = _finder(slices, places, read, along_axes=True)
         return SeriesDefacing(finder.block(), None, frame), frame
     except _Unusable as unusable:
         return SeriesDefacing(None, unusable.problem), frame
@@ -533,6 +539,11 @@ def inspect_series(
     """What the finder finds in one series' slices, as a run gives them to
     it, or None where it is given none, for a check on reference masks.
 
+    Unlike a run, this gives the finder a stack whose slices do not lie
+    along the patient's axes, such as a gantry-tilted or oblique one, so
+    that a check can measure the finder on such a series, which a run does
+    not yet deface (:func:`_finder`).
+
     Parameters
     ----------
     positions : list of int
@@ -542,7 +553,7 @@ def inspect_series(
     """
     try:
         slices, places = _stack(positions, read)
-        return _finder(slices, places, read).inspect()
+        return _finder(slices, places, read, along_axes=False).inspect()
     except (_Unusable, FaceBlockRefused):
         return None
 
@@ -572,6 +583,8 @@ def _finder(
     slices: list[_Slice],
     places: list[tuple[int, int]],
     read: Callable[[int], bytes | None],
+    *,
+    along_axes: bool,
 ) -> defacing.FaceFinder:
     """The finder of one stack's slices, each added, with each slice's run
     position and frame index in ``places``.
@@ -579,12 +592,23 @@ def _finder(
     Each instance is read once, and its frames decoded one at a time, so
     that a multi-frame instance is never held decoded whole.
 
+    Where ``along_axes``, as for a run, the slices given to the finder must
+    lie along the patient's axes
+    (:func:`~pymedphys._dicom.deidentify.defacing.along_patient_axes`),
+    checked before any pixel data are decoded: the finder samples a
+    gantry-tilted, sheared, or oblique stack, but the air that defacing
+    writes is not yet defined for a slice that spans heights, so a run does
+    not deface one.
+
     Raises
     ------
     _Unusable
         If a slice can no longer be read.
     FaceBlockRefused
-        As :class:`~pymedphys._dicom.deidentify.defacing.FaceFinder` does.
+        As :class:`~pymedphys._dicom.deidentify.defacing.FaceFinder` does,
+        and, where ``along_axes``, with
+        :attr:`~pymedphys._dicom.deidentify.defacing.FaceBlockProblem.NOT_ALONG_PATIENT_AXES`
+        for slices that do not lie along the patient's axes.
     """
     first = slices[0]
     normal = np.cross(first.orientation[:3], first.orientation[3:])
@@ -602,6 +626,10 @@ def _finder(
     for index in kept:
         by_instance.setdefault(places[index][0], []).append(index)
     order = [index for indices in by_instance.values() for index in indices]
+    if along_axes and not defacing.along_patient_axes(
+        first.orientation, [slices[i].position for i in order]
+    ):
+        raise FaceBlockRefused(FaceBlockProblem.NOT_ALONG_PATIENT_AXES)
     finder = defacing.FaceFinder(
         first.orientation,
         [slices[i].position for i in order],
