@@ -27,13 +27,15 @@ rules to attributes that Table E.1-1 omits (D-022), each with a note that
 says why:
 
 - the patient characteristics that Table E.1-1 keeps only under Retain
-  Patient Characteristics, as codes or text: coded patient state, the sex
-  parameters for clinical use, racial group, pregnancy, and smoking, each
+  Patient Characteristics, as codes, numbers, or text: coded patient state,
+  the sex parameters for clinical use, racial group, pregnancy, smoking, and
+  the patient's height and weight, which PS3.16 codes in LOINC, each
   removed (X), and kept (K) under that option, except the free-text comment
   on the sex parameters, which Table E.1-1 cleans (C) and which is removed
   under every option, since no cleaner of content items settles C;
-- Body Mass Index, removed under every option, as the reviewed rules remove
-  Patient's Body Mass Index (0010,1022);
+- Body Mass Index, and Body Surface Area, which PS3.16 codes in LOINC,
+  removed under every option, as the reviewed rules remove Patient's Body
+  Mass Index (0010,1022);
 - a UDI as a CODE, as TID 11004 row 26 and TID 11005 row 17 give it,
   removed (X), and kept (K) under Retain Device Identity, as Table E.1-1
   treats UDI Sequence (0018,100A) and Unique Device Identifier (0018,1009);

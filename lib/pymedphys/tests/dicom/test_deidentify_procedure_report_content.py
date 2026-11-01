@@ -383,18 +383,17 @@ def test_an_echo_reports_timezone_sequesters_it_without_a_dates_option(
 
 @pytest.mark.deid_requirement("PS3.15-E.3.4-01")
 @pytest.mark.parametrize("preset, options", EVERY_OPTION_SET)
-def test_an_echo_measurement_coded_in_loinc_is_removed_on_its_own(
-    with_option, preset, options
-):
+def test_an_echo_measurement_coded_in_loinc_is_kept(with_option, preset, options):
     composed = _composed(with_option, preset, options)
     dataset, iod = _report(ECHO, measurement=reports.AORTIC_ANNULUS_DIAMETER)
 
     # TID 5301 row 1 takes its concept name from CID 12300, whose 196
     # measurements are coded in LOINC, and the 13 that it includes from CID
-    # 12309 in DCM, so that any but those 13 is removed.
-    assert "LN" in content_items.UNMATCHED_SCHEMES
-    assert _removes(dataset, iod, composed)
-    assert not _removes(_report(ECHO)[0], iod, composed)
+    # 12309 in DCM. LOINC's rows are generated (D-001), and the table lists
+    # none of these, so the measurement is unlisted, as a DICOM one is.
+    assert "LN" not in content_items.UNMATCHED_SCHEMES
+    assert _kept(dataset, iod, composed)
+    assert not _removes(dataset, iod, composed)
 
 
 # The optional rows that are removed on their own under every option set: Table
@@ -413,14 +412,12 @@ IMPLANTATION_UIDS = {
     "TID 7000 row 35",
     "TID 7000 row 40",
 }
-# The heading of the procedure's description, coded in LOINC.
-ECHO_REMOVED_UNDER_EVERY_OPTION = {"TID 5300 row 4"}
+ECHO_REMOVED_UNDER_EVERY_OPTION = set()
 ADMINISTRATION_REMOVED_UNDER_EVERY_OPTION = {
     "TID 1005 row 7",  # Accession Number
     "TID 11004 row 18",  # Description of Material
     "TID 11004 row 19",  # Medical Product Expiration Date, coded in NCIt
     "TID 11004 row 20",  # Manufacturer Name, coded in UMLS
-    "TID 10024 row 6",  # Patient Weight, coded in LOINC
     "TID 10024 row 9",  # Body Mass Index, a supplementary concept
     "TID 10024 row 14",  # Recent Physical Activity
 }
@@ -428,13 +425,12 @@ PLANNED_REMOVED_UNDER_EVERY_OPTION = ADMINISTRATION_REMOVED_UNDER_EVERY_OPTION |
     "TID 11001 row 8"  # Comment
 }
 PERFORMED_REMOVED_UNDER_EVERY_OPTION = ADMINISTRATION_REMOVED_UNDER_EVERY_OPTION | {
-    "TID 11020 row 8",  # Summary, coded in LOINC
     "TID 11020 row 13",  # Adverse Event, coded in NCIt
 }
 # Retain UIDs keeps Procedure Study Instance UID, and Retain Patient
-# Characteristics Subject Age.
+# Characteristics Subject Age and Patient Weight, a supplementary concept.
 ADMINISTRATION_UIDS = {"TID 1005 row 1"}
-ADMINISTRATION_PATIENT = {"TID 10024 row 3"}
+ADMINISTRATION_PATIENT = {"TID 10024 row 3", "TID 10024 row 6"}
 # Retain Device Identity keeps the UDI coded as TID 11004 row 26 gives it, a
 # supplementary concept.
 ADMINISTRATION_DEVICE = {"TID 11004 row 26"}
@@ -728,8 +724,8 @@ def test_a_patient_weight_records_when_it_was_measured(name):
     dataset, _ = _report(name, ("TID 10024 row 6",))
 
     # TID 10024 row 6's content item description requires Observation
-    # DateTime (0040,A032). Patient Weight is coded in LOINC, so the tree
-    # goes, and the datetime with it.
+    # DateTime (0040,A032). Patient Weight takes the tree out, and the
+    # datetime with it, unless Retain Patient Characteristics keeps it.
     weight = _by_meaning(dataset, reports.PATIENT_WEIGHT.meaning)
     assert weight.ObservationDateTime == reports.WEIGHT_MEASURED
 
