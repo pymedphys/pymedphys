@@ -18,6 +18,7 @@ voxels and contours that they keep. Every value here is invented."""
 from __future__ import annotations
 
 import itertools
+import tracemalloc
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom, pytest, scipy
@@ -100,6 +101,24 @@ def test_a_flat_hull_holds_its_points_and_no_thickness(points):
     for axis in axes[np.ptp((points - centre) @ axes.T, axis=0) <= 1e-9]:
         assert not hull.contains((centre + 0.05 * axis)[np.newaxis]).any()
         assert hull.contains((centre + 0.005 * axis)[np.newaxis]).all()
+
+
+def test_a_dense_target_s_hull_needs_memory_in_proportion_to_its_points():
+    # Contours of 20,000 distinct points, as a finely drawn target can have:
+    # a square of them, as the full factors of a decomposition would hold,
+    # would take 3.2 GB.
+    rng = np.random.default_rng(1)
+    points = rng.normal(size=(20_000, 3)) * (15.0, 10.0, 8.0)
+
+    tracemalloc.start()
+    try:
+        hull = TargetHull.of(points)
+        _, peak = tracemalloc.get_traced_memory()
+    finally:
+        tracemalloc.stop()
+
+    assert peak < 200e6
+    assert hull.contains(points).all()
 
 
 def test_a_hull_needs_finite_points():

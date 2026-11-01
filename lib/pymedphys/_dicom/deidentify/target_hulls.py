@@ -132,8 +132,11 @@ class TargetHull:
             raise ValueError("a hull needs finite points")
         centre = points.mean(axis=0)
         # The rows of the last factor are the points' principal axes, a
-        # basis of all three dimensions whatever the number of points.
-        _, _, axes = np.linalg.svd(points - centre)
+        # basis of all three dimensions whatever the number of points. The
+        # reduced factors suffice for three points or more, and keep the
+        # first factor to as many columns as the points have, rather than a
+        # square of the number of points.
+        _, _, axes = np.linalg.svd(points - centre, full_matrices=len(points) < 3)
         coordinates = (points - centre) @ axes.T
         spread = np.ptp(coordinates, axis=0)
         wide = [int(i) for i in np.argsort(-spread, kind="stable") if spread[i] > _FLAT]
