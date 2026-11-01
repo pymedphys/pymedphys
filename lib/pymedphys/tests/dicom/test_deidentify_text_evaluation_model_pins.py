@@ -18,6 +18,7 @@ Every download here is served from memory; nothing reaches the network."""
 
 import hashlib
 import io
+import re
 import urllib.error
 import urllib.parse
 import zipfile
@@ -169,5 +170,9 @@ def test_todays_model_and_each_paddle_file_are_checked():
     )
     hosts = {urllib.parse.urlsplit(source.url).hostname for source in files}
     assert hosts == {"huggingface.co", "www.modelscope.cn"}
+    # PaddlePaddle's own files are pinned at a commit, not a branch.
+    for source in files:
+        if "huggingface.co" in source.url:
+            assert re.search(r"/resolve/[0-9a-f]{40}/inference\.onnx$", source.url)
     assert len({source.sha256 for source in files}) == len(files)
     assert len({pin.label for pin in pins.CHECKED_PINS}) == len(pins.CHECKED_PINS)

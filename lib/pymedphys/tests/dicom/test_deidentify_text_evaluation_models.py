@@ -93,6 +93,25 @@ def test_todays_model_has_an_adapter_of_its_pin():
     assert described["weights_licence"] == "Apache-2.0"
 
 
+def test_rapidocrs_conversions_are_adapted_as_todays_model_is():
+    names = [model.name for model in models.RAPIDOCR_MODELS]
+    assert names == [
+        "PP-OCRv6 medium (RapidOCR conversion)",
+        "PP-OCRv6 tiny (RapidOCR conversion)",
+        "PP-OCRv5 server (RapidOCR conversion)",
+        "PP-OCRv5 mobile (RapidOCR conversion)",
+    ]
+    today = models.PP_OCRV6_SMALL
+    for model in models.RAPIDOCR_MODELS:
+        assert model.source in models.PADDLE_FILES.values()
+        assert "modelscope.cn" in model.source.url
+        assert model.network_input == today.network_input
+        assert model.output == today.output
+        assert model.described()["training_data"] == today.training_data
+        assert model.sha256 != today.sha256
+    assert len({model.sha256 for model in models.RAPIDOCR_MODELS}) == 4
+
+
 @pytest.mark.parametrize(
     "fields",
     [

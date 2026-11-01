@@ -281,6 +281,9 @@ class DetectionModel:
         The model's published home, over HTTPS.
     network_input : ModelInput
     output : ProbabilityOutput or BoxDecoder
+    training_data : str
+        What the model was trained on, as its publishers describe it, or
+        empty where they do not.
     """
 
     name: str
@@ -291,6 +294,7 @@ class DetectionModel:
     homepage: str
     network_input: ModelInput = ModelInput()
     output: ProbabilityOutput | BoxDecoder = ProbabilityOutput()
+    training_data: str = ""
 
     def __post_init__(self):
         if not (self.name and self.copyright):
@@ -332,6 +336,7 @@ class DetectionModel:
             "homepage": self.homepage,
             "input": _plain(dataclasses.asdict(self.network_input)),
             "output": self.output.described(),
+            "training_data": self.training_data,
         }
 
 
@@ -340,30 +345,41 @@ class DetectionModel:
 # first-hand on 1 November 2026; and RapidOCR 3.10.0's conversions of the
 # same models on ModelScope, as its default_models.yaml pins them, kept as a
 # second host. The two differ byte for byte, so each is a model of its own.
-_HUGGING_FACE = "https://huggingface.co/PaddlePaddle/{}/resolve/main/inference.onnx"
+# Each at the repository's commit, so that the URL names one file for good.
+_HUGGING_FACE = "https://huggingface.co/PaddlePaddle/{}/resolve/{}/inference.onnx"
 _MODELSCOPE = (
     "https://www.modelscope.cn/models/RapidAI/RapidOCR/resolve/v3.10.0/onnx/{}"
 )
 PADDLE_FILES: Mapping[str, ModelFile] = MappingProxyType(
     {
         "PP-OCRv6 small": ModelFile(
-            _HUGGING_FACE.format("PP-OCRv6_small_det_onnx"),
+            _HUGGING_FACE.format(
+                "PP-OCRv6_small_det_onnx", "28fe5895c24fd108c19eb3e8479f4ab385fbfc62"
+            ),
             "d73e0058b7a8086bbd57f3d10b8bcd4ff95363f67e06e2762b5e814fe9c9410e",
         ),
         "PP-OCRv6 medium": ModelFile(
-            _HUGGING_FACE.format("PP-OCRv6_medium_det_onnx"),
+            _HUGGING_FACE.format(
+                "PP-OCRv6_medium_det_onnx", "61323801669c338b7891481ec7bac61ce31b576a"
+            ),
             "eb13b44b25bb36f89528b68720af8a61d9cf381176107f465db1757b65d086e1",
         ),
         "PP-OCRv6 tiny": ModelFile(
-            _HUGGING_FACE.format("PP-OCRv6_tiny_det_onnx"),
+            _HUGGING_FACE.format(
+                "PP-OCRv6_tiny_det_onnx", "2ba1506c0380b8f0b03dd142459aac66d4421f6c"
+            ),
             "193bab7a04fca699a6c82e6abb5b81bdb28177f0abd4062552b04908dafb19f8",
         ),
         "PP-OCRv5 server": ModelFile(
-            _HUGGING_FACE.format("PP-OCRv5_server_det_onnx"),
+            _HUGGING_FACE.format(
+                "PP-OCRv5_server_det_onnx", "dcf248c4dcc064c6d030db241255f9e8fbc6733a"
+            ),
             "10803475a591f7dc623e24670fb5752ec94d39a1f8cf069aac1b6f0ce19cfc85",
         ),
         "PP-OCRv5 mobile": ModelFile(
-            _HUGGING_FACE.format("PP-OCRv5_mobile_det_onnx"),
+            _HUGGING_FACE.format(
+                "PP-OCRv5_mobile_det_onnx", "e6f4fa85f00e168c862bc462aebca69eef9b3d3d"
+            ),
             "a431985659dc921974177a95adcfbb90fd9e51989a5e04d70d0b75f597b6e61d",
         ),
         "RapidOCR PP-OCRv6 small": ModelFile(
@@ -390,6 +406,9 @@ PADDLE_FILES: Mapping[str, ModelFile] = MappingProxyType(
 )
 
 
+# As PaddleOCR's publishers describe its models' training data.
+_PADDLE_TRAINING_DATA = "Per PaddleOCR's technical report (arXiv 2606.13108)."
+
 # Today's model, as D-037 pins it, through its adapter: RapidOCR's wheel and
 # PaddleOCR are under the Apache License 2.0, and the wheel's
 # MODEL_LICENSES.md gives the weights as Apache-2.0.
@@ -400,6 +419,31 @@ PP_OCRV6_SMALL = DetectionModel(
     weights_licence="Apache-2.0",
     copyright="Baidu and the PaddleOCR rights holders",
     homepage="https://github.com/PaddlePaddle/PaddleOCR",
+    training_data=_PADDLE_TRAINING_DATA,
+)
+
+# RapidOCR 3.10.0's conversions of PaddleOCR's other text detection models,
+# from ModelScope at the SHA-256s that the wheel's default_models.yaml pins.
+# RapidOCR runs each with one detection configuration, today's, so each
+# takes today's input and gives maps as today's model does. PaddlePaddle's
+# own files take adapters of their own once their published preprocessing
+# is read.
+RAPIDOCR_MODELS: tuple[DetectionModel, ...] = tuple(
+    DetectionModel(
+        name=f"{name} (RapidOCR conversion)",
+        source=PADDLE_FILES[f"RapidOCR {name}"],
+        code_licence="Apache-2.0",
+        weights_licence="Apache-2.0",
+        copyright="Baidu and the PaddleOCR rights holders",
+        homepage="https://github.com/PaddlePaddle/PaddleOCR",
+        training_data=_PADDLE_TRAINING_DATA,
+    )
+    for name in (
+        "PP-OCRv6 medium",
+        "PP-OCRv6 tiny",
+        "PP-OCRv5 server",
+        "PP-OCRv5 mobile",
+    )
 )
 
 
