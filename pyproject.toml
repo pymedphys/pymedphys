@@ -8,12 +8,15 @@ requires-python = ">=3.12"
 # own Apache-2.0 code: the Pinnacle exporter (LICENSE-MIT), a copy of pydicom's
 # DICOM dictionary, and the vendored apipkg and deprecated modules. It also
 # ships TCIA's Private Tag Dictionary unchanged, under CC BY 3.0, with TCIA's
-# attribution (LICENSE-CC-BY-3.0.txt).
-license = "Apache-2.0 AND MIT AND CC-BY-3.0"
+# attribution (LICENSE-CC-BY-3.0.txt), and the LOINC codes of the
+# de-identification tables, each with its LOINC name, under LOINC's licence,
+# which SPDX does not list, with LOINC's notice (LICENSE-LOINC.txt).
+license = "Apache-2.0 AND MIT AND CC-BY-3.0 AND LicenseRef-LOINC"
 license-files = [
   "LICENSE",
   "lib/pymedphys/_pinnacle/LICENSE-MIT",
   "lib/pymedphys/_dicom/deidentify/_tcia/LICENSE-CC-BY-3.0.txt",
+  "lib/pymedphys/_dicom/deidentify/_loinc/LICENSE-LOINC.txt",
 ]
 authors = [
   { name = "PyMedPhys Contributors", email = "developers@pymedphys.com" }
