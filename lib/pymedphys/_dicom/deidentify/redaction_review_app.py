@@ -82,7 +82,7 @@ from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import TextIO
 
-import numpy as np
+from pymedphys._imports import numpy as np
 
 from . import command, qc_pack, redaction_verdicts
 from .command import _Parser, _print

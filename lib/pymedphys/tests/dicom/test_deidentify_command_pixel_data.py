@@ -362,7 +362,10 @@ def test_a_second_run_given_the_attested_pack_releases_the_reviewed_images(
         (tmp_path / "second" / "release" / run_report.RELEASE_REPORT).read_text("utf-8")
     )
     reference = json.loads((pack / qc_store.PACK_FILE).read_text("utf-8"))
-    assert report["redaction_review"] == {"reference": reference["reference"]}
+    assert report["redaction_review"] == {
+        "reference": reference["reference"],
+        "frames_not_shown": 0,
+    }
 
 
 @pytest.mark.usefixtures("enabled")
