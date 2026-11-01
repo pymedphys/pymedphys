@@ -253,7 +253,7 @@ def test_a_downloaded_series_is_read_as_a_t3_case(tmp_path):
     frames = list(case.read())
     assert len(frames) == 2
     assert {frame.tier for frame in frames} == {"T3"}
-    assert {frame.known_text for frame in frames} == {"unknown"}
+    assert {frame.known_text for frame in frames} == {"none"}
     assert isinstance(case, evaluation.CaseSource)
 
 
@@ -301,7 +301,8 @@ def test_the_per_case_report_names_only_idc_series(tmp_path):
     assert (case["licence"], case["doi"]) == ("CC BY 3.0", DOI)
     assert case["frames"] == {"CT Image Storage": 2}
     (point,) = case["points"]
-    assert point["text_unknown"]["frames"] == 2
+    assert point["false_positives"]["frames"] == 2
+    assert point["text_unknown"]["frames"] == 0
     assert point["texts"] == 0
     text = json.dumps(report)
     assert "2.25.77" not in text and "clinic" not in text

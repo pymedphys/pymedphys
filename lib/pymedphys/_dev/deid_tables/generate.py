@@ -34,7 +34,11 @@ import urllib.error
 from collections.abc import Callable, Mapping
 
 from pymedphys._data.download import download_with_progress
-from pymedphys._dicom.deidentify.codes import CODE_TABLES, SNOMED_ID_TABLE
+from pymedphys._dicom.deidentify.codes import (
+    ANATOMIC_REGIONS_TABLE,
+    CODE_TABLES,
+    SNOMED_ID_TABLE,
+)
 from pymedphys._dicom.deidentify.iods import IOD_MODULES_TABLE, MODULE_ATTRIBUTES_TABLE
 from pymedphys._dicom.deidentify.requirements import PARAGRAPHS_FILE, PARAGRAPHS_TABLE
 from pymedphys._dicom.deidentify.residual_exemptions import (
@@ -554,6 +558,15 @@ def _body_part_terms(pin: Pin, pages: Mapping[str, bytes]) -> dict[str, object]:
     return _document(pin, _ANNEX_L, ps3_16.BODY_PART_LABEL, list(rows))
 
 
+def _anatomic_regions(pin: Pin, pages: Mapping[str, bytes]) -> dict[str, object]:
+    """Return the anatomic region code of each Body Part Examined term."""
+    tables = {
+        label: _select(pages, _ANNEX_L, label) for label in ps3_16.BODY_PART_TABLES
+    }
+    rows = ps3_16.parse_anatomic_regions(tables)
+    return _document(pin, _ANNEX_L, ps3_16.ANATOMIC_REGION_LABEL, list(rows))
+
+
 def _snomed_ids(pin: Pin, pages: Mapping[str, bytes]) -> dict[str, object]:
     """Return Table O-1's Concept IDs and SNOMED IDs, without their names."""
     rows = ps3_16.parse_table_o_1(
@@ -591,6 +604,7 @@ _OUTPUTS: dict[str, Callable[[Pin, Mapping[str, bytes]], dict[str, object]]] = {
     "module_attributes.json": _module_attributes,
     DEFINED_TERMS_TABLE.file: _defined_terms,
     BODY_PART_TERMS_TABLE.file: _body_part_terms,
+    ANATOMIC_REGIONS_TABLE.file: _anatomic_regions,
     SNOMED_ID_TABLE.file: _snomed_ids,
     STORAGE_SOP_CLASS_TABLE.file: _storage_sop_classes,
     **{

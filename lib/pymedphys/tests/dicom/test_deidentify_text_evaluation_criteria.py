@@ -313,6 +313,71 @@ def test_no_answer_key_text_may_be_missed():
     assert _failures(point) == ["missed: no annotated texts of T5"]
 
 
+def _review(point, tier="adoptable"):
+    summary = {"points": [_passing(), {**point, "index": 1}], "tier": tier}
+    return criteria.assess(summary, criteria.CHOSEN_CRITERIA)[1]["review"]
+
+
+def test_frames_of_an_iod_that_passes_need_review_only_where_flagged():
+    assert _review(_passing()) == {
+        CT: criteria.FLAGGED_ONLY,
+        RT: criteria.FLAGGED_ONLY,
+    }
+    # A benchmark-only detector is never adopted, so every frame is reviewed.
+    assert set(_review(_passing(), tier="benchmark-only").values()) == {
+        criteria.EVERY_FRAME
+    }
+
+
+def test_every_frame_of_an_iod_that_fails_needs_review():
+    point = _passing()
+    point["by"]["iod"][1]["false_positives"] = _false_positives(400, 24)
+    assert _review(point) == {CT: criteria.FLAGGED_ONLY, RT: criteria.EVERY_FRAME}
+    point = _passing()
+    point["by"]["iod+contrast+height_px"][0] = _cell(
+        CT, HIGH, SEVEN, texts=1000, full=900
+    )
+    assert _review(point) == {CT: criteria.EVERY_FRAME, RT: criteria.FLAGGED_ONLY}
+    # An IOD named only by a cell of its slice size is named too, but was
+    # not judged whole.
+    point = _passing()
+    point["by"]["iod+slice_side"].append(
+        {
+            "value": {"iod": RT, "slice_side": "1024 pixels or more"},
+            "false_positives": _false_positives(400, 100),
+        }
+    )
+    point["by"]["iod+slice_side"].append(
+        {
+            "value": {"iod": "Ultrasound Image Storage", "slice_side": "any"},
+            "false_positives": _false_positives(0, 0),
+        }
+    )
+    assert _review(point) == {
+        CT: criteria.FLAGGED_ONLY,
+        RT: criteria.EVERY_FRAME,
+        "Ultrasound Image Storage": criteria.EVERY_FRAME,
+    }
+
+
+def test_a_failure_of_no_single_iod_is_of_every_iod():
+    point = _passing()
+    point["by"]["tier+truth"][0]["sensitivity"] = _sensitivity(50, 45, missed=1)
+    assert set(_review(point).values()) == {criteria.EVERY_FRAME}
+    # A loss in a stratum of modality, for one.
+    point = _passing()
+    baseline = _passing()
+    row = {"value": {"modality": "CT"}, "sensitivity": _sensitivity(1000, 1000)}
+    baseline["by"]["modality"] = [row]
+    point["by"]["modality"] = [
+        {**row, "sensitivity": _sensitivity(1000, 900)},
+    ]
+    summary = {"points": [baseline, {**point, "index": 1}]}
+    (_, second) = criteria.assess(summary, criteria.CHOSEN_CRITERIA)
+    assert second["failures"] == ["loss: modality CT: sensitivity 0.900 from 1.000"]
+    assert set(second["review"].values()) == {criteria.EVERY_FRAME}
+
+
 @pytest.mark.parametrize(
     "factory",
     [

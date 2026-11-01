@@ -538,8 +538,11 @@ jobs:
           export PYMEDPHYS_DICOM_VALIDATION_REPORT="${GITHUB_WORKSPACE}/test-results/dicom-validation"
           # One process: each policy's run and validation is a module-scoped
           # fixture, which workers would each repeat.
+          # The text detector evaluation's Legacy Converted Enhanced
+          # instances are checked with dciodvfy too.
           uv run -- pymedphys dev tests --dicom-validators \
             lib/pymedphys/tests/dicom/test_deidentify_dicom_validation_corpus.py \
+            lib/pymedphys/tests/dicom/test_deidentify_text_evaluation_lce.py \
             --durations=15 \
             --junitxml="${GITHUB_WORKSPACE}/test-results/dicom-validation.xml"
 

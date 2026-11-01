@@ -58,7 +58,7 @@ from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom
 
 from . import nrrd
-from .pixel_cleaning import PixelDataRefused, black_out, overlay_planes
+from .pixel_cleaning import Layout, PixelDataRefused, black_out, overlay_planes
 from .pixel_text_validation import hanseg_volumes
 from .source import SourceRefused, read_source
 from .text_detection import TextBox
@@ -138,22 +138,10 @@ def dicom_frames(
     ``"annotated"``. Each frame is of the corpus's ``tier``."""
     if known_text not in KNOWN_TEXT:
         raise EvaluationRefused("What is known of a frame's text must be known.")
-    try:
-        source = read_source(data)
-        dataset = source.dataset()
-    except SourceRefused:
-        return Skipped("not-read")
-    planes = overlay_planes(source, dataset)
-    if planes is None:
-        return Skipped("overlay-not-cleared")
-    finder = _Frames()
-    try:
-        redaction = black_out(source, dataset, finder, overlays=planes)
-    except PixelDataRefused as refused:
-        return Skipped(f"pixel-data-refused/{refused.reason.value}")
-    if redaction is None:
-        return Skipped("no-pixel-data")
-    layout = redaction.layout
+    decoded = decoded_frames(data)
+    if isinstance(decoded, Skipped):
+        return decoded
+    dataset, layout, stored_frames = decoded
     if layout.signed:
         stored_range = (
             -(1 << (layout.bits_stored - 1)),
@@ -170,7 +158,7 @@ def dicom_frames(
         else None
     )
     frames = []
-    for index, frame in enumerate(finder.frames):
+    for index, frame in enumerate(stored_frames):
         slope, intercept = _rescale(dataset, index)
         texts: tuple[BurnedText, ...] = ()
         if annotated is not None and instance is not None:
@@ -197,6 +185,31 @@ def dicom_frames(
             )
         )
     return frames
+
+
+def decoded_frames(
+    data: bytes,
+) -> tuple[pydicom.Dataset, Layout, list[np.ndarray]] | Skipped:
+    """A DICOM file's data set, the layout of its top-level Pixel Data, and
+    its frames of stored values, as a run gives them to the text detector:
+    decoded by the pinned plugins, with overlays in unused bits cleared; or
+    why there are none."""
+    try:
+        source = read_source(data)
+        dataset = source.dataset()
+    except SourceRefused:
+        return Skipped("not-read")
+    planes = overlay_planes(source, dataset)
+    if planes is None:
+        return Skipped("overlay-not-cleared")
+    finder = _Frames()
+    try:
+        redaction = black_out(source, dataset, finder, overlays=planes)
+    except PixelDataRefused as refused:
+        return Skipped(f"pixel-data-refused/{refused.reason.value}")
+    if redaction is None:
+        return Skipped("no-pixel-data")
+    return dataset, redaction.layout, finder.frames
 
 
 def _sop_class_name(dataset: pydicom.Dataset) -> str:

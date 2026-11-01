@@ -34,6 +34,16 @@ where every cell that a criterion names does:
   frames with a region rises, by more than
   :attr:`AcceptanceCriteria.max_loss` from the baseline point's.
 
+:func:`assess` also gives, for each IOD of the summary, the review that a
+point allows its frames (:data:`REVIEW_MODES`): ``"flagged-only"``, where
+only the frames that the detector flags need review, for an IOD of an
+adoptable detector whose own cell, in the summary's cells by IOD, no
+failure is of; and ``"every-frame"`` otherwise, as for any IOD the summary
+does not hold. A failure that no single IOD's
+cells hold, such as missed texts of a tier or a loss in a stratum of
+modality, is taken to be of every IOD. An IOD that fails may still be
+cleaned; its frames are only all reviewed.
+
 With the ``"interval"`` bound, the least favourable end of each share's
 Wilson interval is compared, so that a cell of few texts cannot pass by
 chance, and, where :attr:`AcceptanceCriteria.bootstrap` is set, the least
@@ -57,6 +67,14 @@ from typing import Any
 
 from .text_evaluation_frames import TIERS, EvaluationRefused
 from .text_evaluation_injection import CONTRAST, contrast_label
+
+# The review that frames of an IOD need: only those the detector flags, or
+# every one. An IOD that :func:`assess` does not name needs every frame's.
+FLAGGED_ONLY = "flagged-only"
+EVERY_FRAME = "every-frame"
+REVIEW_MODES = (FLAGGED_ONLY, EVERY_FRAME)
+# A failure is of one IOD, or, where no single IOD's cells hold it, of all.
+_Failure = tuple[str | None, str]
 
 ANY = "*"
 # Labels of a bin of a text's height in frame pixels, such as "7 to under
@@ -306,9 +324,10 @@ def assess(
     summary: Mapping[str, Any], criteria: AcceptanceCriteria
 ) -> list[dict[str, Any]]:
     """Whether each point of a summary meets the criteria, and which cells
-    fail and why, and whether it could be adopted: never for a
-    benchmark-only detector, whatever it meets. It reads only the summary,
-    so it can be run again on a published one with other criteria."""
+    fail and why, whether it could be adopted: never for a benchmark-only
+    detector, whatever it meets; and the review that it allows each IOD of
+    the summary, as the module describes. It reads only the summary, so it
+    can be run again on a published one with other criteria."""
     points = summary["points"]
     if not 0 <= criteria.baseline < len(points):
         raise EvaluationRefused("The baseline must be a point of the summary.")
@@ -316,21 +335,40 @@ def assess(
     adoptable = summary.get("tier", "adoptable") == "adoptable"
     assessed = []
     for point in points:
-        failures = _failures(point, baseline, criteria)
+        failures = list(dict.fromkeys(_failures(point, baseline, criteria)))
+        failed = {iod for iod, _ in failures}
+        # An IOD without a cell of its own was not judged whole.
+        whole = {row["value"]["iod"] for row in point["by"].get("iod", [])}
+        review = {
+            iod: FLAGGED_ONLY
+            if adoptable and None not in failed and iod in whole - failed
+            else EVERY_FRAME
+            for iod in _iods(point)
+        }
         assessed.append(
             {
                 "index": point["index"],
                 "meets": not failures,
                 "adoptable": adoptable and not failures,
-                "failures": failures,
+                "failures": list(dict.fromkeys(message for _, message in failures)),
+                "review": review,
             }
         )
     return assessed
 
 
+def _iods(point: Mapping[str, Any]) -> list[str]:
+    """The IODs of a point's cells, sorted."""
+    found = set()
+    for grouping, rows in point["by"].items():
+        if "iod" in grouping.split("+"):
+            found.update(row["value"]["iod"] for row in rows)
+    return sorted(found)
+
+
 def _failures(
     point: Mapping[str, Any], baseline: Mapping[str, Any], criteria: AcceptanceCriteria
-) -> list[str]:
+) -> list[_Failure]:
     failures = _sensitivity_failures(point, criteria)
     failures += _false_positive_failures(point, criteria)
     failures += _missed_failures(point, criteria)
@@ -364,12 +402,12 @@ def _bounds(
 
 def _sensitivity_failures(
     point: Mapping[str, Any], criteria: AcceptanceCriteria
-) -> list[str]:
-    failures = []
+) -> list[_Failure]:
+    failures: list[_Failure] = []
     cells = point["by"].get("iod+contrast+height_px", [])
     if criteria.sensitivity and not cells:
         failures.append(
-            "sensitivity: the summary has no IOD, contrast, and height cells"
+            (None, "sensitivity: the summary has no IOD, contrast, and height cells")
         )
     for criterion in criteria.sensitivity:
         for cell in cells:
@@ -378,24 +416,28 @@ def _sensitivity_failures(
                 continue
             measure = cell["sensitivity"]
             label = f"{value['iod']}, {value['contrast']}, {value['height_px']}"
+            iod = value["iod"]
             if measure["texts"] == 0 or measure["texts"] < criteria.min_texts:
-                failures.append(f"sensitivity: {label}: too few texts")
+                failures.append((iod, f"sensitivity: {label}: too few texts"))
                 continue
             for name, share in _bounds(measure, criteria, 0):
                 if share is None:
-                    failures.append(f"sensitivity: {label}: no {name}interval")
+                    failures.append((iod, f"sensitivity: {label}: no {name}interval"))
                 elif share < criterion.minimum:
                     failures.append(
-                        f"sensitivity: {label}: {name}{share:.3f} "
-                        f"below {criterion.minimum:g}"
+                        (
+                            iod,
+                            f"sensitivity: {label}: {name}{share:.3f} "
+                            f"below {criterion.minimum:g}",
+                        )
                     )
     return failures
 
 
 def _false_positive_failures(
     point: Mapping[str, Any], criteria: AcceptanceCriteria
-) -> list[str]:
-    failures = []
+) -> list[_Failure]:
+    failures: list[_Failure] = []
     # An IOD's own cell fails without frames known to be free of text; a
     # cell of its slice sizes without any is left to the IOD's.
     cells = [(row, row["value"]["iod"], True) for row in point["by"].get("iod", [])]
@@ -405,16 +447,18 @@ def _false_positive_failures(
     ]
     for criterion in criteria.false_positives:
         for cell, label, whole in cells:
-            if not criterion.matches(cell["value"]["iod"]):
+            iod = cell["value"]["iod"]
+            if not criterion.matches(iod):
                 continue
             measure = cell.get("false_positives", {"frames": 0})
             if measure["frames"] == 0 and not whole:
                 continue
             if measure["frames"] < criteria.min_frames:
-                failures.append(f"false positives: {label}: too few frames")
+                failures.append((iod, f"false positives: {label}: too few frames"))
                 continue
             if criterion.max_with_a_region is not None:
                 failures += _over(
+                    iod,
                     f"false positives: {label}",
                     _bounds(measure, criteria, 1),
                     criterion.max_with_a_region,
@@ -423,6 +467,7 @@ def _false_positive_failures(
                 )
             if criterion.max_tissue_blacked_out is not None:
                 failures += _over(
+                    iod,
                     f"false positives: {label}",
                     _bounds(
                         measure,
@@ -440,31 +485,34 @@ def _false_positive_failures(
     return list(dict.fromkeys(failures))
 
 
-def _over(
+def _over(  # pylint: disable = too-many-arguments
+    iod: str,
     label: str,
     bounds: list[tuple[str, float | None]],
     limit: float,
     what: str,
     digits: int,
-) -> list[str]:
+) -> list[_Failure]:
     """The failures of the values that exceed a limit, or that are missing
     where an interval is needed."""
-    failures = []
+    failures: list[_Failure] = []
     for name, share in bounds:
         if share is None:
             if name:
-                failures.append(f"{label}: no {name}interval {what}")
+                failures.append((iod, f"{label}: no {name}interval {what}"))
         elif share > limit:
             failures.append(
-                f"{label}: {name}{share:.{digits}f} {what}, above {limit:g}"
+                (iod, f"{label}: {name}{share:.{digits}f} {what}, above {limit:g}")
             )
     return failures
 
 
 def _missed_failures(
     point: Mapping[str, Any], criteria: AcceptanceCriteria
-) -> list[str]:
-    failures = []
+) -> list[_Failure]:
+    # A tier's texts are of whichever IODs its frames are, so each failure
+    # is of every IOD.
+    failures: list[_Failure] = []
     rows = point["by"].get("tier+truth", [])
     for criterion in criteria.missed:
         matched = [
@@ -473,21 +521,28 @@ def _missed_failures(
             if row["value"] == {"tier": criterion.tier, "truth": criterion.truth}
         ]
         if not matched or matched[0]["sensitivity"]["texts"] == 0:
-            failures.append(f"missed: no {criterion.truth} texts of {criterion.tier}")
+            failures.append(
+                (None, f"missed: no {criterion.truth} texts of {criterion.tier}")
+            )
             continue
         missed = matched[0]["sensitivity"]["missed"]
         if missed > criterion.max_missed:
             failures.append(
-                f"missed: {criterion.tier}: {missed} {criterion.truth} texts "
-                f"missed, above {criterion.max_missed}"
+                (
+                    None,
+                    f"missed: {criterion.tier}: {missed} {criterion.truth} texts "
+                    f"missed, above {criterion.max_missed}",
+                )
             )
     return failures
 
 
 def _losses(
     point: Mapping[str, Any], baseline: Mapping[str, Any], margin: float
-) -> list[str]:
-    failures = []
+) -> list[_Failure]:
+    # A loss in a stratum of one IOD is of that IOD; one in any other
+    # stratum, such as a collection or a modality, is of every IOD.
+    failures: list[_Failure] = []
     for grouping, rows in point["by"].items():
         if "+" in grouping:
             continue
@@ -502,6 +557,7 @@ def _losses(
             label = (
                 f"{grouping} {', '.join(str(each) for each in row['value'].values())}"
             )
+            iod = row["value"]["iod"] if grouping == "iod" else None
             new_share, old_share = (
                 row["sensitivity"]["share"],
                 old["sensitivity"]["share"],
@@ -512,7 +568,11 @@ def _losses(
                 and new_share < old_share - margin
             ):
                 failures.append(
-                    f"loss: {label}: sensitivity {new_share:.3f} from {old_share:.3f}"
+                    (
+                        iod,
+                        f"loss: {label}: sensitivity {new_share:.3f} "
+                        f"from {old_share:.3f}",
+                    )
                 )
             if "false_positives" not in row:
                 continue
@@ -520,6 +580,10 @@ def _losses(
             old_fp = old["false_positives"]["share"]
             if new_fp is not None and old_fp is not None and new_fp > old_fp + margin:
                 failures.append(
-                    f"loss: {label}: frames with a region {new_fp:.3f} from {old_fp:.3f}"
+                    (
+                        iod,
+                        f"loss: {label}: frames with a region {new_fp:.3f} "
+                        f"from {old_fp:.3f}",
+                    )
                 )
     return failures

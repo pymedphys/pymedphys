@@ -51,6 +51,9 @@ on:
       - .github/text-evaluation/requirements.txt
       - lib/pymedphys/_dicom/deidentify/text_evaluation_command.py
       - lib/pymedphys/_dicom/deidentify/text_evaluation_idc.py
+      - lib/pymedphys/_dicom/deidentify/text_evaluation_converted.py
+      - lib/pymedphys/_dicom/deidentify/text_evaluation_lce.py
+      - lib/pymedphys/_dicom/deidentify/text_evaluation_lce_values.py
 
 permissions:
   contents: read
@@ -150,6 +153,27 @@ jobs:
           cp "${RUNNER_TEMP}/idc/selection/selection.json" "${RUNNER_TEMP}/idc/results/"
           echo "${GITHUB_SHA}" > "${RUNNER_TEMP}/idc/results/commit.txt"
 
+      # The classic CT, MR, and PET series again, each converted in memory
+      # to Legacy Converted Enhanced instances, whose frames hold the same
+      # stored values, so that the multi-frame path is measured on real
+      # images. Fewer workers, as each holds a series and its instance.
+      - name: Measure the series as converted
+        if: ${{ !cancelled() }}
+        timeout-minutes: 120
+        run: |
+          uv run --no-sync python .github/scripts/run_redacted.py \
+            --private-stdout "${RUNNER_TEMP}/idc/private/converted-stdout.log" \
+            pymedphys._dicom.deidentify.text_evaluation_command idc-measure \
+            "${RUNNER_TEMP}/idc/selection/series.json" \
+            "${RUNNER_TEMP}/idc/data" \
+            --model "${MODEL}" \
+            --settings "${SETTINGS}" \
+            --evaluated "${EVALUATED}" \
+            --workers 2 \
+            --converted \
+            --out "${RUNNER_TEMP}/idc/results/converted" \
+            2> "${RUNNER_TEMP}/idc/private/converted-stderr.log"
+
       # At a model's publishers' settings, count what OpenCV's resize alone
       # changes beside the harness's own.
       - name: Measure the resize's parity
@@ -170,13 +194,15 @@ jobs:
       - name: Show the results
         if: ${{ !cancelled() }}
         run: |
-          page="${RUNNER_TEMP}/idc/results/summary.md"
-          if [[ -f "${page}" ]]; then
-            tee -a "${GITHUB_STEP_SUMMARY}" < "${page}"
-          else
-            echo "The evaluation wrote no results; the log shows why." \
-              | tee -a "${GITHUB_STEP_SUMMARY}"
-          fi
+          for page in "${RUNNER_TEMP}/idc/results/summary.md" \
+            "${RUNNER_TEMP}/idc/results/converted/summary.md"; do
+            if [[ -f "${page}" ]]; then
+              tee -a "${GITHUB_STEP_SUMMARY}" < "${page}"
+            else
+              echo "A measurement wrote no results; the log shows why." \
+                | tee -a "${GITHUB_STEP_SUMMARY}"
+            fi
+          done
 
       - name: Upload the results
         if: ${{ !cancelled() }}

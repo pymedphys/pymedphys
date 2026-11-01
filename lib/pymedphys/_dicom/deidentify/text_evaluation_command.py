@@ -29,7 +29,9 @@ before the first supported release.
     publishers', and writes the counts-only summary
     (``summary.json`` and ``summary.md``), the per-case report
     (``cases.json``), and the assessment against the chosen criteria
-    (``assessment.json``);
+    (``assessment.json``); with ``--converted``, it measures the classic
+    CT, MR, and PET series alone, each read as the Legacy Converted
+    Enhanced instances that its images convert to;
 ``idc-parity``
     counts what the resize alone changes for a model at its publishers'
     settings (``parity.json``).
@@ -66,6 +68,7 @@ from .text_evaluation_idc import (
     select_series,
 )
 from .text_evaluation_injection import InjectionPlan
+from .text_evaluation_lce import TARGETS
 from .text_evaluation_markdown import markdown
 from .text_evaluation_models import (
     PADDLE_MODELS,
@@ -142,6 +145,11 @@ def _parser() -> argparse.ArgumentParser:
         if name == "idc-measure":
             command.add_argument("--settings", choices=SETTINGS, default="today")
             command.add_argument("--workers", type=int, default=1)
+            command.add_argument(
+                "--converted",
+                action="store_true",
+                help="Read classic CT, MR, and PET series as converted.",
+            )
     for command in commands.choices.values():
         command.add_argument(
             "--out", required=True, help="A directory, which must not exist."
@@ -182,7 +190,12 @@ def read_series(path: pathlib.Path | str) -> tuple[IdcSeries, ...]:
 
 def _cases(arguments: argparse.Namespace) -> list[IdcSeriesCase]:
     downloads = pathlib.Path(arguments.downloads)
-    return [IdcSeriesCase(each, downloads) for each in read_series(arguments.series)]
+    converted = getattr(arguments, "converted", False)
+    return [
+        IdcSeriesCase(each, downloads, converted=converted)
+        for each in read_series(arguments.series)
+        if not converted or each.sop_class_uid in TARGETS
+    ]
 
 
 def _settings(points: tuple[PostProcessing, ...], evaluated: str) -> EvaluationSettings:

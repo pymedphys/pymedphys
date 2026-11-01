@@ -52,6 +52,7 @@ import zipfile
 from collections.abc import Iterable, Iterator, Mapping
 from types import MappingProxyType
 
+from .text_evaluation_converted import ConvertedCase
 from .text_evaluation_frames import EvaluationFrame, EvaluationRefused
 from .text_evaluation_sources import (
     DicomCase,
@@ -406,11 +407,15 @@ class IdcSeriesCase:
     """A downloaded IDC series, read as a case of tier T3.
 
     Its files are those under ``folder`` named by IDC's identifier of the
-    series, as :func:`manifest` places them.
+    series, as :func:`manifest` places them. Where ``converted`` is set,
+    its classic CT, MR, and PET images are read as the Legacy Converted
+    Enhanced instances that they convert to
+    (:class:`~.text_evaluation_converted.ConvertedCase`).
     """
 
     series: IdcSeries
     folder: pathlib.Path
+    converted: bool = False
 
     @property
     def collection(self) -> str:
@@ -431,13 +436,16 @@ class IdcSeriesCase:
             yield Skipped("not-downloaded")
             return
         # Grouped by series, the folder must hold the one series it is named
-        # for, whose case dicom_folder_cases names by the series' UID; its
-        # text is unknown.
+        # for, whose case dicom_folder_cases names by the series' UID. Its
+        # images are taken to hold no text, as D-056's T3 takes them, so a
+        # region on one as read counts as a false positive; the zones that
+        # regions are counted by show whether curation left text in them.
         expected = case_name("series", self.series.series_instance_uid)
         cases = dicom_folder_cases(
             found,
             collection=self.series.collection_id,
             group_by="series",
+            known_text="none",
             tier=TIER,
         )
         series = [each for each in cases if isinstance(each, DicomCase)]
@@ -445,4 +453,7 @@ class IdcSeriesCase:
             yield Skipped("not-the-series")
             return
         for each in cases:
-            yield from each.read()
+            if self.converted and isinstance(each, DicomCase):
+                yield from ConvertedCase(each).read()
+            else:
+                yield from each.read()
