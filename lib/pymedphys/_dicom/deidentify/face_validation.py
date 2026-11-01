@@ -275,6 +275,18 @@ class CaseMeasures:
         How many masks have a voxel outside the CT, which is left out.
     finder : FinderMeasures or None
         Where the reference eyes are given, what the finder saw.
+    nerve_tips : tuple of float
+        Where the series is defaced and both reference optic nerves are
+        given: the distance from each globe found, the patient's right
+        first, to the anterior tip of that side's optic nerve, its voxel
+        farthest towards the patient's anterior, in millimetres; otherwise
+        empty.
+    nerve_tips_behind : tuple of float
+        How far each of those tips lies behind its globe found, along the
+        block's anterior, in millimetres.
+    nerve_sides_swapped : bool or None
+        Whether each globe found is nearer the other side's tip, taken
+        together, than its own; None where not measured.
     """
 
     outcome: str
@@ -295,6 +307,9 @@ class CaseMeasures:
     mask_problems: Mapping[str, int] = dataclasses.field(default_factory=dict)
     masks_outside: int = 0
     finder: FinderMeasures | None = None
+    nerve_tips: tuple[float, ...] = ()
+    nerve_tips_behind: tuple[float, ...] = ()
+    nerve_sides_swapped: bool | None = None
 
     def __repr__(self) -> str:
         return "CaseMeasures()"
@@ -485,7 +500,8 @@ class _NotMeasured(Exception):
 def measure_case(
     ct: nrrd.Volume,
     organs: Mapping[str, Callable[[], nrrd.Volume]],
-    eyes: tuple[Sequence[str], Sequence[str]] = HANSEG_EYES,
+    eyes: tuple[Sequence[str], Sequence[str]] | None = HANSEG_EYES,
+    nerves: tuple[str, str] | None = None,
 ) -> CaseMeasures:
     """Measure one case, as the module describes.
 
@@ -496,9 +512,12 @@ def measure_case(
     organs : mapping of str to callable
         Each reference mask's loader, by the mask's name; each is loaded
         once, in turn, so that one mask at a time is in memory.
-    eyes : tuple of two sequences of str
+    eyes : tuple of two sequences of str, optional
         The names of the masks of each eye's parts, the patient's right
-        first.
+        first, or None where the data set has none.
+    nerves : tuple of two str, optional
+        The names of the masks of the optic nerves, the patient's right
+        first, or None where they are not to be measured.
 
     Raises
     ------
@@ -522,9 +541,9 @@ def measure_case(
         "mask_problems": dict(sorted(problems.items())),
         "masks_outside": outside,
     }
-    sides = [_union(voxels, names) for names in eyes]
+    sides = [] if eyes is None else [_union(voxels, names) for names in eyes]
     reference = None
-    if all(side is not None and len(side) for side in sides):
+    if sides and all(side is not None and len(side) for side in sides):
         reference = [ct.positions(side) for side in sides if side is not None]
         measures.update(_reference_geometry(reference, _voxel_volume(ct.axes)))
     if block is not None and written is not None:
@@ -536,6 +555,9 @@ def measure_case(
         measures["eyes"] = "no-reference-eyes"
         if reference is not None:
             measures.update(_against_block(block, reference))
+        if nerves is not None and all(len(voxels.get(name, ())) for name in nerves):
+            tips = [_anterior_tip(ct.positions(voxels[name])) for name in nerves]
+            measures.update(_against_nerves(block, tips))
     if reference is not None:
         inspection = series.inspection()
         if inspection is not None:
@@ -817,6 +839,33 @@ def _against_block(
         "sides_swapped": bool(swapped.sum() < errors.sum()),
         "eye_reach": reach,
         "eyes_above_limit": float(np.min(points[:, 2]) - block.inferior_limit),
+    }
+
+
+def _anterior_tip(points: np.ndarray) -> np.ndarray:
+    """The point farthest towards the patient's anterior, where y is least
+    in patient coordinates; the mean of those at that y, should several
+    be."""
+    least = points[:, 1].min()
+    return np.mean(points[points[:, 1] <= least + 1e-6], axis=0)
+
+
+def _against_nerves(
+    block: defacing.FaceBlock, tips: Sequence[np.ndarray]
+) -> dict[str, Any]:
+    """How the globes found lie against the optic nerves' anterior tips,
+    the patient's right first."""
+    globes = np.asarray(block.globes, dtype=float)
+    ends = np.asarray(tips, dtype=float)
+    distances = np.linalg.norm(globes - ends, axis=1)
+    swapped = np.linalg.norm(globes - ends[::-1], axis=1)
+    anterior = np.asarray(block.anterior, dtype=float)
+    return {
+        "nerve_tips": tuple(float(each) for each in distances),
+        "nerve_tips_behind": tuple(
+            float((globe - end) @ anterior) for globe, end in zip(globes, ends)
+        ),
+        "nerve_sides_swapped": bool(swapped.sum() < distances.sum()),
     }
 
 
