@@ -249,9 +249,11 @@ def _trade_off(
     lines = [
         "## Trade-off",
         "",
-        "Fully covered: texts all of whose ink the boxes cover. With a region: "
-        "frames without text given at least one box. Intervals are 95%: "
-        "Wilson's for the share, and a bootstrap that resamples cases.",
+        "Fully covered: texts every pixel of whose core ink, the pixels more "
+        "than half ink (or all its ink, where none is), the boxes cover. With "
+        "a region: frames without text given at least one box. Intervals are "
+        "95%: Wilson's for the share, and a bootstrap that resamples subjects "
+        "(patients where known, cases otherwise).",
         "",
         "| " + " | ".join(header) + " |",
         "| " + " | ".join("---:" for _ in header) + " |",
