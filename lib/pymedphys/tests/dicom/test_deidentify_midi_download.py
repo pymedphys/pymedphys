@@ -12,7 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Tests of the MIDI-B downloader (D-018).
+# pylint: disable = too-many-lines
+
+"""Tests of the MIDI-B downloader and its images' ZIP file (D-018).
 
 Nothing here touches the network: every URL is served from memory, and every
 manifest, archive, and file is made up for the tests.
@@ -21,18 +23,21 @@ manifest, archive, and file is made up for the tests.
 import hashlib
 import io
 import json
+import os
 import re
 import urllib.error
 import urllib.parse
+import warnings
 import zipfile
 
 from pymedphys._imports import pytest
 
-from pymedphys._dicom.deidentify import midi_download
+from pymedphys._dicom.deidentify import midi_download, midi_images
 from pymedphys._dicom.deidentify.midi_download import DownloadError
 
 MANIFEST_URL = "https://example.org/manifest.tcia"
 KEY_URL = "https://example.org/answer-key.db"
+IMAGES_URL = "https://example.org/images.zip"
 SERIES = ("2.25.9001", "2.25.9002")
 KEY = b"SQLite format 3\x00 synthetic answer key"
 
@@ -63,8 +68,8 @@ def _manifest(series=SERIES) -> bytes:
     return ("\n".join(lines) + "\n").encode("ascii")
 
 
-# File names inside the archives are UIDs, as NBIA's are; none may reach a
-# path or the record.
+# File names inside the archives here hold UIDs, which NBIA's could, to show
+# that none reaches a path or the record.
 ARCHIVES = {
     SERIES[0]: _archive(
         {
@@ -96,6 +101,8 @@ def _subset(**changes) -> midi_download.Subset:
         "series": len(SERIES),
         "instances": len(FILES),
         "content_sha256": _content(),
+        "images_url": "",
+        "images_sha256": "",
         "answer_key_url": KEY_URL,
         "answer_key_sha256": _sha256(KEY),
     }
@@ -104,12 +111,14 @@ def _subset(**changes) -> midi_download.Subset:
 
 
 class Server:
-    """Serves the made-up manifest, archives, and answer key from memory."""
+    """Serves the made-up manifest, archives, answer key, and, if given, the
+    images' ZIP file from memory."""
 
-    def __init__(self, manifest=None, archives=None, failures=0):
+    def __init__(self, manifest=None, archives=None, failures=0, images=None):
         self.manifest = _manifest() if manifest is None else manifest
         self.archives = ARCHIVES if archives is None else archives
         self.failures = failures
+        self.images = images
         self.requests: list[str] = []
 
     def __call__(self, url: str):
@@ -121,6 +130,10 @@ class Server:
             return io.BytesIO(self.manifest)
         if url == KEY_URL:
             return io.BytesIO(KEY)
+        if url == IMAGES_URL:
+            if self.images is None:
+                raise urllib.error.HTTPError(url, 404, "not found", {}, None)
+            return io.BytesIO(self.images)
         base, _, query = url.partition("?")
         assert base == midi_download.NBIA_IMAGES
         (uid,) = urllib.parse.parse_qs(query)["SeriesInstanceUID"]
@@ -156,27 +169,51 @@ def test_the_packaged_pins_name_both_subsets():
         assert subset.manifest_url.startswith("https://www.cancerimagingarchive.net/")
 
 
+def _pins(**changes) -> str:
+    """A subset's entry in midi_data.toml, every pin empty unless changed."""
+    pins = {
+        "collection": "X",
+        "name": "X",
+        "manifest_url": "https://x",
+        "manifest_sha256": "",
+        "series": 1,
+        "instances": 1,
+        "content_sha256": "",
+        "images_url": "",
+        "images_sha256": "",
+        "answer_key_url": "",
+        "answer_key_sha256": "",
+    }
+    pins.update(changes)
+    return "\n".join(
+        f"{key} = {json.dumps(value)}"
+        for key, value in pins.items()
+        if value is not None
+    )
+
+
+def test_complete_pins_load():
+    subset = midi_download.load_subsets(f"[subset]\n{_pins()}\n")["subset"]
+    assert (subset.key, subset.images_url, subset.images_sha256) == ("subset", "", "")
+
+
 @pytest.mark.parametrize(
-    "entry, message",
+    "changes, message",
     [
-        ('collection = "X"', "incomplete"),
-        (
-            'collection = "X"\nname = "X"\nmanifest_url = "http://x"\n'
-            'manifest_sha256 = ""\nseries = 1\ninstances = 1\n'
-            'content_sha256 = ""\nanswer_key_url = ""\nanswer_key_sha256 = ""',
-            "not HTTPS",
-        ),
-        (
-            'collection = "X"\nname = "X"\nmanifest_url = "https://x"\n'
-            'manifest_sha256 = "ABC"\nseries = 1\ninstances = 1\n'
-            'content_sha256 = ""\nanswer_key_url = ""\nanswer_key_sha256 = ""',
-            "malformed",
-        ),
+        ({"images_url": None}, "incomplete"),
+        ({"manifest_url": "http://x"}, "not HTTPS"),
+        ({"images_url": "http://x", "images_sha256": "a" * 64}, "not HTTPS"),
+        ({"manifest_sha256": "ABC"}, "malformed"),
+        ({"images_sha256": "a" * 63}, "malformed"),
+        ({"images_url": "https://x"}, "has no SHA-256"),
+        ({"answer_key_url": "https://x"}, "has no SHA-256"),
+        ({"collection": "../X"}, "not a plain name"),
+        ({"collection": "X Y"}, "not a plain name"),
     ],
 )
-def test_malformed_pins_are_refused(entry, message):
+def test_malformed_pins_are_refused(changes, message):
     with pytest.raises(DownloadError, match=message):
-        midi_download.load_subsets(f"[subset]\n{entry}\n")
+        midi_download.load_subsets(f"[subset]\n{_pins(**changes)}\n")
 
 
 def test_a_manifest_lists_its_series_in_order():
@@ -211,6 +248,7 @@ def test_a_download_writes_files_by_position_and_records_no_value(tmp_path):
     assert record == json.loads((destination / "download.json").read_text())
     assert record["files"] == 3
     assert record["series"] == 2
+    assert record["images"] == {"source": "tcia"}
     assert record["skipped_members_not_dicom"] == 1
     assert record["bytes"] == sum(len(data) for data in FILES)
     assert record["content"] == {"sha256": _content(), "pin": "matched"}
@@ -659,3 +697,482 @@ def test_a_wrong_answer_key_fails_before_the_images_download(tmp_path):
             _subset(answer_key_sha256="0" * 64), tmp_path / "midi", opener=server
         )
     assert server.requests == [KEY_URL]
+
+
+ROOT = "SYNTHETIC-COLLECTION"
+DATE = (1980, 1, 1, 0, 0, 0)
+
+
+def _downloaded(directory):
+    """The made-up subset, downloaded from the made-up TCIA."""
+    midi_download.download(_subset(), directory, opener=Server())
+    return directory
+
+
+def _packed(tmp_path, **changes) -> bytes:
+    """The made-up subset's images, as pack writes them."""
+    archive = tmp_path / "packed" / "images.zip"
+    archive.parent.mkdir()
+    midi_download.pack(
+        _subset(**changes), _downloaded(tmp_path / "packed" / "midi"), archive
+    )
+    return archive.read_bytes()
+
+
+def _tree(directory) -> dict[str, bytes]:
+    images = directory / "images"
+    return {
+        path.relative_to(images).as_posix(): path.read_bytes()
+        for path in sorted(images.rglob("*"))
+        if path.is_file()
+    }
+
+
+def test_pack_writes_a_readme_and_the_files_by_position(tmp_path):
+    archive = tmp_path / "images.zip"
+    record = midi_download.pack(_subset(), _downloaded(tmp_path / "midi"), archive)
+
+    with zipfile.ZipFile(archive) as zipped:
+        infos = zipped.infolist()
+        assert [info.filename for info in infos] == [
+            f"{ROOT}/README.txt",
+            f"{ROOT}/images/0001/00001.dcm",
+            f"{ROOT}/images/0001/00002.dcm",
+            f"{ROOT}/images/0002/00001.dcm",
+        ]
+        assert [zipped.read(info) for info in infos[1:]] == list(FILES)
+        # The same attributes for every member, whatever the platform.
+        for info in infos:
+            assert info.compress_type == zipfile.ZIP_STORED
+            assert info.date_time == DATE
+            assert info.create_system == 3
+            assert info.external_attr == 0o100644 << 16
+            assert info.extra == b""
+        readme = zipped.read(infos[0]).decode("ascii")
+    assert "the 3 DICOM files of the 2 series that TCIA's manifest" in readme
+    assert "manifest.tcia" in readme
+    assert "https://doi.org/10.7937/cf2p-aw56" in readme
+    assert midi_images.LICENCE in readme
+    assert midi_images.POLICY in readme
+    assert _content() in readme
+    assert all(len(line) <= 76 or " " not in line for line in readme.splitlines())
+
+    assert record == {
+        "format": midi_download.PACK_FORMAT,
+        "subset": "validation",
+        "collection": ROOT,
+        "series": 2,
+        "files": 3,
+        "bytes": sum(len(data) for data in FILES),
+        "content": {"sha256": _content(), "pin": "matched"},
+        "zip": {
+            "name": "images.zip",
+            "bytes": archive.stat().st_size,
+            "sha256": _sha256(archive.read_bytes()),
+            "pin": "not pinned",
+        },
+        "python": record["python"],
+    }
+    assert "2.25.900" not in json.dumps(record) + readme
+
+
+def test_packing_gives_the_same_bytes_every_time(tmp_path):
+    first = _packed(tmp_path)
+    # Another download of the same files, packed later, with other times.
+    again = _downloaded(tmp_path / "again")
+    for path in (again / "images").rglob("*.dcm"):
+        os.utime(path, (1_900_000_000, 1_900_000_000))
+    archive = tmp_path / "again.zip"
+    midi_download.pack(_subset(), again, archive)
+    assert archive.read_bytes() == first
+
+
+@pytest.mark.parametrize(
+    "pin, status, returned", [("", "not pinned", 0), ("0" * 64, "differs", 1)]
+)
+def test_the_command_packs_and_compares_with_the_pin(
+    tmp_path, capsys, pin, status, returned
+):
+    downloaded = _downloaded(tmp_path / "midi")
+    archive = tmp_path / "images.zip"
+    assert (
+        midi_download.main(
+            ["--subset", "validation", "--pack", str(downloaded), "--to", str(archive)],
+            subsets={"validation": _subset(images_sha256=pin)},
+        )
+        == returned
+    )
+    assert json.loads(capsys.readouterr().out)["zip"]["pin"] == status
+
+
+def test_a_zip_that_matches_its_pin_is_reported(tmp_path):
+    packed = _packed(tmp_path)
+    archive = tmp_path / "images.zip"
+    record = midi_download.pack(
+        _subset(images_sha256=_sha256(packed)), tmp_path / "packed" / "midi", archive
+    )
+    assert record["zip"]["pin"] == "matched"
+
+
+def _rename(old, new):
+    old.rename(new)
+
+
+@pytest.mark.parametrize(
+    "change, message",
+    [
+        (lambda images: (images / "LICENSE").write_text("x"), "only the series"),
+        (
+            lambda images: (images / "0001" / "notes.txt").write_text("x"),
+            "series folder 1 must hold only",
+        ),
+        (
+            lambda images: _rename(images / "0002", images / "0003"),
+            "only the series folders",
+        ),
+        (
+            lambda images: _rename(
+                images / "0001" / "00002.dcm", images / "0001" / "00003.dcm"
+            ),
+            "series folder 1 must hold only",
+        ),
+        (
+            lambda images: (images / "0002" / "00001.dcm").write_bytes(b"not DICOM"),
+            "not a DICOM file",
+        ),
+        (
+            lambda images: (images / "0002" / "00001.dcm").write_bytes(
+                _dicom("changed")
+            ),
+            "image set's SHA-256",
+        ),
+    ],
+)
+def test_pack_refuses_what_a_download_would_not_hold(tmp_path, change, message):
+    downloaded = _downloaded(tmp_path / "midi")
+    change(downloaded / "images")
+    with pytest.raises(DownloadError, match=message) as raised:
+        midi_download.pack(_subset(), downloaded, tmp_path / "images.zip")
+    # Neither the ZIP file nor a partial one is left behind.
+    assert sorted(path.name for path in tmp_path.iterdir()) == ["midi"]
+    assert "2.25.900" not in str(raised.value)
+
+
+def test_pack_refuses_counts_that_differ_from_the_pins(tmp_path):
+    downloaded = _downloaded(tmp_path / "midi")
+    with pytest.raises(DownloadError, match="2 series and 3 files, not the expected"):
+        midi_download.pack(_subset(instances=4), downloaded, tmp_path / "images.zip")
+
+
+def test_pack_needs_a_pinned_content_digest_and_a_new_zip(tmp_path):
+    downloaded = _downloaded(tmp_path / "midi")
+    with pytest.raises(DownloadError, match="content_sha256 is pinned"):
+        midi_download.pack(
+            _subset(content_sha256=""), downloaded, tmp_path / "images.zip"
+        )
+    (tmp_path / "images.zip").write_bytes(b"")
+    with pytest.raises(DownloadError, match="must not exist"):
+        midi_download.pack(_subset(), downloaded, tmp_path / "images.zip")
+
+
+def test_the_command_needs_pack_and_to_together(tmp_path, capsys):
+    for arguments in (["--pack", str(tmp_path)], ["--dest", "x", "--to", "y.zip"]):
+        with pytest.raises(SystemExit):
+            midi_download.main(
+                ["--subset", "validation", *arguments],
+                subsets={"validation": _subset()},
+            )
+        assert "--pack and --to go together" in capsys.readouterr().err
+
+
+def test_the_pinned_copy_replaces_tcia(tmp_path):
+    packed = _packed(tmp_path)
+    server = Server(images=packed)
+    destination = tmp_path / "midi"
+    record = midi_download.download(
+        _subset(images_url=IMAGES_URL, images_sha256=_sha256(packed)),
+        destination,
+        opener=server,
+    )
+    # Neither TCIA's manifest nor NBIA is asked for anything.
+    assert server.requests == [KEY_URL, IMAGES_URL]
+    assert _tree(destination) == _tree(tmp_path / "packed" / "midi")
+    assert record["images"] == {
+        "source": "pinned",
+        "url": IMAGES_URL,
+        "sha256": _sha256(packed),
+        "pin": "matched",
+    }
+    assert record["manifest"] is None
+    assert record["skipped_members_not_dicom"] is None
+    assert (record["series"], record["files"]) == (2, 3)
+    assert record["bytes"] == sum(len(data) for data in FILES)
+    assert record["content"] == {"sha256": _content(), "pin": "matched"}
+    assert sorted(path.name for path in destination.iterdir()) == [
+        "answer-key.db",
+        "download.json",
+        "images",
+    ]
+
+
+def test_a_copy_that_cannot_be_fetched_falls_back_to_tcia(tmp_path, no_sleep):
+    server = Server()  # Answers the images' URL with 404.
+    lines: list[str] = []
+    record = midi_download.download(
+        _subset(images_url=IMAGES_URL, images_sha256="0" * 64),
+        tmp_path / "midi",
+        opener=server,
+        progress=lines.append,
+    )
+    failure = (
+        "the images' ZIP file could not be fetched after 6 attempts (HTTPError 404)"
+    )
+    assert record["images"] == {
+        "source": "tcia",
+        "fallback": {"from": IMAGES_URL, "failure": failure},
+    }
+    assert record["manifest"]["pin"] == "matched"
+    assert record["content"] == {"sha256": _content(), "pin": "matched"}
+    assert server.requests.count(IMAGES_URL) == midi_download.ATTEMPTS
+    assert f"Taking the images from TCIA instead: {failure}" in lines
+    assert len(no_sleep) == midi_download.ATTEMPTS - 1
+    assert _tree(tmp_path / "midi") == {
+        "0001/00001.dcm": FILES[0],
+        "0001/00002.dcm": FILES[1],
+        "0002/00001.dcm": FILES[2],
+    }
+
+
+def test_a_copy_that_differs_from_its_pin_stops_the_download(tmp_path):
+    server = Server(images=_packed(tmp_path))
+    with pytest.raises(DownloadError, match="images' ZIP file's SHA-256"):
+        midi_download.download(
+            _subset(images_url=IMAGES_URL, images_sha256="0" * 64),
+            tmp_path / "midi",
+            opener=server,
+        )
+    # It does not fall back to TCIA.
+    assert server.requests == [KEY_URL, IMAGES_URL]
+
+
+def test_images_from_tcia_skip_the_pinned_copy(tmp_path):
+    packed = _packed(tmp_path)
+    server = Server(images=packed)
+    record = midi_download.download(
+        _subset(images_url=IMAGES_URL, images_sha256=_sha256(packed)),
+        tmp_path / "midi",
+        opener=server,
+        images_from="tcia",
+    )
+    assert IMAGES_URL not in server.requests
+    assert record["images"] == {"source": "tcia"}
+
+
+@pytest.mark.parametrize("pinned", [True, False])
+def test_a_local_copy_of_the_images_zip_is_unpacked(tmp_path, pinned):
+    packed = _packed(tmp_path)
+    copy = tmp_path / "from-zenodo.zip"
+    copy.write_bytes(packed)
+    server = Server()
+    record = midi_download.download(
+        _subset(images_sha256=_sha256(packed) if pinned else ""),
+        tmp_path / "midi",
+        opener=server,
+        images_file=copy,
+    )
+    assert server.requests == [KEY_URL]
+    assert record["images"] == {
+        "source": "file",
+        "sha256": _sha256(packed),
+        "pin": "matched" if pinned else "not pinned",
+    }
+    assert record["content"] == {"sha256": _content(), "pin": "matched"}
+    assert _tree(tmp_path / "midi") == _tree(tmp_path / "packed" / "midi")
+
+
+@pytest.mark.parametrize(
+    "arguments, message",
+    [
+        ({"images_from": "nbia"}, "the pinned copy or from TCIA"),
+        ({"images_file": "missing.zip"}, "is not a file"),
+        ({"images_file": __file__, "images_from": "tcia"}, "not both"),
+    ],
+)
+def test_unusable_image_sources_are_refused(tmp_path, arguments, message):
+    with pytest.raises(DownloadError, match=message):
+        midi_download.download(
+            _subset(), tmp_path / "midi", opener=Server(), **arguments
+        )
+    assert not (tmp_path / "midi").exists()
+
+
+def _zip(members, compression=zipfile.ZIP_STORED) -> bytes:
+    """A ZIP file of ``members``, a list of names and bytes, in order."""
+    buffer = io.BytesIO()
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")  # A duplicate name, on purpose.
+        with zipfile.ZipFile(buffer, "w", compression) as zipped:
+            for name, data in members:
+                info = zipfile.ZipInfo(name, date_time=DATE)
+                info.compress_type = compression
+                zipped.writestr(info, data)
+    return buffer.getvalue()
+
+
+def _images(*names):
+    return [(f"{ROOT}/images/{name}", _dicom(name)) for name in names]
+
+
+@pytest.mark.parametrize(
+    "data, message",
+    [
+        (b"not a ZIP file", r"not readable \(BadZipFile\)"),
+        (_zip([(f"{ROOT}/README.txt", b"x")]), "does not number"),
+        (_zip([("../evil.dcm", _dicom("x"))]), "holds a member that is not"),
+        (
+            _zip([(f"/{ROOT}/images/0001/00001.dcm", _dicom("x"))]),
+            "member that is not",
+        ),
+        (_zip(_images("0001/../../evil.dcm")), "holds a member that is not"),
+        (_zip([("OTHER/images/0001/00001.dcm", _dicom("x"))]), "member that is not"),
+        (
+            _zip([(f"{ROOT}/LICENSE", b"x"), *_images("0001/00001.dcm")]),
+            "member that is not",
+        ),
+        (_zip(_images("0001/00001.dcm", "0001/00003.dcm")), "does not number"),
+        (_zip(_images("0002/00001.dcm")), "does not number"),
+        (_zip(_images("0001/00001.dcm", "0001/00001.dcm")), "each once"),
+        (
+            _zip(_images("0001/00001.dcm"), zipfile.ZIP_DEFLATED),
+            "compressed member",
+        ),
+        (_zip([(f"{ROOT}/images/0001/00001.dcm", b"not DICOM")]), "not a DICOM"),
+    ],
+    ids=[
+        "not a ZIP file",
+        "README alone",
+        "parent folder",
+        "absolute path",
+        "path through parents",
+        "another folder",
+        "another file",
+        "file numbers with a gap",
+        "series numbers with a gap",
+        "a file twice",
+        "compressed",
+        "not DICOM",
+    ],
+)
+def test_a_zip_that_pack_would_not_write_is_refused(tmp_path, data, message):
+    copy = tmp_path / "copy.zip"
+    copy.write_bytes(data)
+    with pytest.raises(DownloadError, match=message) as raised:
+        midi_download.download(
+            _subset(), tmp_path / "midi", opener=Server(), images_file=copy
+        )
+    assert "evil" not in str(raised.value)
+    # Nothing is written outside the destination's images folder.
+    assert sorted(path.name for path in tmp_path.iterdir()) == ["copy.zip", "midi"]
+    assert not (tmp_path / "midi" / "evil.dcm").exists()
+
+
+def test_a_zip_of_another_subset_is_refused_before_unpacking(tmp_path):
+    copy = tmp_path / "copy.zip"
+    copy.write_bytes(_packed(tmp_path))
+    with pytest.raises(DownloadError, match="member that is not"):
+        midi_download.download(
+            _subset(collection="ANOTHER-COLLECTION"),
+            tmp_path / "midi",
+            opener=Server(),
+            images_file=copy,
+        )
+    assert not any((tmp_path / "midi" / "images").iterdir())
+
+
+class Truncated(io.BytesIO):
+    """A response that declares more bytes than it holds."""
+
+    def __init__(self, data: bytes, declared: int):
+        super().__init__(data)
+        self.headers = {"Content-Length": str(declared)}
+
+
+def test_a_transfer_that_ends_early_is_fetched_again(tmp_path, no_sleep):
+    class EndsEarly(Server):
+        served = False
+
+        def __call__(self, url):
+            if url == MANIFEST_URL and not self.served:
+                self.served = True
+                self.requests.append(url)
+                return Truncated(self.manifest[:10], len(self.manifest))
+            return super().__call__(url)
+
+    lines: list[str] = []
+    record = midi_download.download(
+        _subset(), tmp_path / "midi", opener=EndsEarly(), progress=lines.append
+    )
+    stamp = r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ"
+    assert [re.sub(stamp, "<time>", line) for line in lines if "failed" in line] == [
+        "Fetching the manifest: attempt 1 of 6 failed at <time> (the transfer "
+        f"ended after 10 of {len(_manifest())} bytes); trying again in 10 s"
+    ]
+    assert no_sleep == [midi_download.WAITS[0]]
+    assert record["manifest"]["pin"] == "matched"
+
+
+def test_a_long_fetch_reports_each_gibibyte(tmp_path, monkeypatch):
+    packed = _packed(tmp_path)
+    # A "gibibyte" of 1,000 bytes, read 300 bytes at a time.
+    monkeypatch.setattr(midi_download, "GIB", 1000)
+    monkeypatch.setattr(midi_download, "CHUNK", 300)
+    lines: list[str] = []
+    midi_download.download(
+        _subset(images_url=IMAGES_URL, images_sha256=_sha256(packed)),
+        tmp_path / "midi",
+        opener=Server(images=packed),
+        progress=lines.append,
+    )
+    assert len(packed) >= 2000
+    assert [line for line in lines if "GiB" in line] == [
+        f"{size} GiB of the images' ZIP file received"
+        for size in range(1, len(packed) // 1000 + 1)
+    ]
+
+
+def test_the_command_takes_the_images_from_a_local_copy(tmp_path, capsys):
+    packed = _packed(tmp_path)
+    copy = tmp_path / "copy.zip"
+    copy.write_bytes(packed)
+    original = midi_download.download
+
+    def download(*args, **kwargs):
+        return original(*args, **{**kwargs, "opener": Server()})
+
+    with pytest.MonkeyPatch.context() as patch:
+        patch.setattr(midi_download, "download", download)
+        status = midi_download.main(
+            [
+                "--subset",
+                "validation",
+                "--dest",
+                str(tmp_path / "midi"),
+                "--images-file",
+                str(copy),
+            ],
+            subsets={"validation": _subset()},
+        )
+    assert status == 0
+    assert json.loads(capsys.readouterr().out)["images"]["source"] == "file"
+
+
+@pytest.mark.parametrize(
+    "arguments", [["--images-file", "x.zip"], ["--images-from", "tcia"]]
+)
+def test_image_sources_go_only_with_a_download(tmp_path, capsys, arguments):
+    with pytest.raises(SystemExit):
+        midi_download.main(
+            ["--subset", "validation", "--verify", str(tmp_path), *arguments],
+            subsets={"validation": _subset()},
+        )
+    assert "goes with --dest" in capsys.readouterr().err

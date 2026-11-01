@@ -56,7 +56,7 @@ item's Value Type (0040,A040) and the code of its Concept Name Code Sequence
   kept item does. A content item cannot be kept where the selected options
   give it X, which removes it; where its Value Type or concept name cannot be
   read as one Value Type and one code; where its concept name is coded in a
-  scheme whose rows the pin leaves out (LOINC, NCDR, NCIt, and UMLS); or
+  scheme whose rows the pin leaves out (NCDR, NCIt, and UMLS); or
   where it is coded by a retired SNOMED designator, SRT, SNM3, or 99SDM, with
   a SNOMED ID that PS3.16 Table O-1 does not map to a SNOMED CT Concept ID.
   One that Table O-1 maps is looked up as that SNOMED CT code, as PS3.16
@@ -71,7 +71,13 @@ item's Value Type (0040,A040) and the code of its Concept Name Code Sequence
   Content Item Identifier names;
 - an item whose concept name Table E.3.4-1 lists, which can be kept, gives
   its value attribute the action that the selected options give the concept,
-  K, D, or C, as Table E.1-1's options give an attribute. X/D gives D: the
+  K, D, or C, as Table E.1-1's options give an attribute. So does an item
+  whose concept and Value Type a reviewed supplementary row lists
+  (:mod:`.supplementary_concepts`): a patient characteristic that the table
+  omits, which is removed, and kept under Retain Patient Characteristics
+  where Table E.1-1 keeps the attribute that holds it, and Subject ID as a
+  CODE, which TID 1007 gives it and the table lists only as TEXT, and which
+  is removed under every option (D-047). X/D gives D: the
   table gives D where a template requires the item, a template of PS3.16
   requires each X/D concept somewhere, and the engine reads every such item
   as required rather than matching it to the template row it fills, as a
@@ -92,8 +98,9 @@ item's Value Type (0040,A040) and the code of its Concept Name Code Sequence
   in 2026d no concept has both. C under Modified Dates is settled by its
   cleaner (:mod:`.modified_dates`), by the temporal role of the value
   attribute;
-- the value of an item whose concept name the table does not list, and every
-  other element of a kept item, takes its own rule: Table E.1-1 gives Person
+- the value of an item whose concept name neither the table nor a
+  supplementary row lists, and every other element of a kept item, takes
+  its own rule: Table E.1-1 gives Person
   Name (0040,A123), Date (0040,A121), Time (0040,A122), and DateTime
   (0040,A120) D, and UID (0040,A124) U; Text Value (0040,A160) has a
   supplementary rule; and codes and numbers are kept, as in any kept
@@ -122,6 +129,7 @@ from .structured_content import (
     ContentItemConcept,
     load_table_e3_4_1,
 )
+from .supplementary_concepts import SupplementaryConcept, load_supplementary_concepts
 from .uids import normalise_uid
 
 ACQUISITION_CONTEXT = "(0040,0555)"
@@ -176,8 +184,10 @@ NUM = "NUM"
 # The coding schemes whose rows the pin leaves out of the generated table, so
 # that their concepts cannot be matched. A code of a retired SNOMED
 # designator is matched as the SNOMED CT code that PS3.16 Table O-1 maps it
-# to, and cannot be matched where the table maps it to none.
-UNMATCHED_SCHEMES = frozenset({"LN", "NCDR", "NCIt", "UMLS"})
+# to, and cannot be matched where the table maps it to none. LOINC's rows are
+# generated (D-001), so a LOINC concept that neither the table nor a
+# supplementary row lists is an unlisted item, as a DICOM one is.
+UNMATCHED_SCHEMES = frozenset({"NCDR", "NCIt", "UMLS"})
 KEEP = "K"
 REMOVE = "X"
 DUMMY = "D"
@@ -214,7 +224,17 @@ METHOD = (
     "root, where it has a Value Type. An item whose "
     "concept name the table lists takes the action that the selected "
     "options give it, or else its Basic Profile action, on the attribute "
-    "that holds its value. X/D gives D wherever the concept appears, as "
+    "that holds its value. An item whose concept name and Value Type the "
+    "table omits takes the action of a reviewed row instead where it holds "
+    "a patient characteristic that PS3.15 Table E.1-1 removes: a coded "
+    "patient state, the sex parameters for "
+    "clinical use, a racial group, a pregnancy or smoking status, and the "
+    "patient's height and weight, which are removed, and kept under Retain "
+    "Patient Characteristics, and the comment on the sex parameters, a body "
+    "mass index, and a body surface area, which are removed under every "
+    "option; and a Subject ID coded as a CODE, which the table lists "
+    "only as TEXT, is removed under every option. "
+    "X/D gives D wherever the concept appears, as "
     "though a template required the item there, since PS3.16's templates "
     "require each X/D concept in at least one place; X gives D too for "
     "DateTime Ended (111527, DCM) and X-Ray Attenuator Model Data (128470, "
@@ -230,15 +250,15 @@ METHOD = (
     "does not write, and C under "
     "Retain Longitudinal Temporal Information with Modified Dates modifies "
     "the date, time, or datetime by its temporal role. Every other element "
-    "of an item, and the value of an item whose concept name the table does "
-    "not list, takes its own rule, as in any kept sequence. In Content "
+    "of an item, and the value of an item whose concept name is not listed, "
+    "takes its own rule, as in any kept sequence. In Content "
     "Sequence, an item that PS3.3 lets have no concept name, such as an "
     "image reference, and has none, is not listed, and a by-reference "
     "relationship keeps its Referenced Content Item Identifier (0040,DB73), "
     "since its target is cleaned where it is. Where the options "
     "remove an item (X), where an item's Value Type or concept name "
     "cannot be read as one Value Type and one code, or where its concept "
-    "name is coded in LOINC, NCDR, NCIt, or UMLS, whose rows PyMedPhys does "
+    "name is coded in NCDR, NCIt, or UMLS, whose rows PyMedPhys does "
     "not include, or where it is coded by a retired SNOMED designator, SRT, "
     "SNM3, or 99SDM, with a code that PS3.16 Table O-1 does not map to a "
     "SNOMED CT code, the whole sequence takes its Basic Profile action "
@@ -248,13 +268,15 @@ METHOD = (
 )
 
 
-def concept_action(concept: ContentItemConcept, options: Collection[str]) -> str:
+def concept_action(
+    concept: ContentItemConcept | SupplementaryConcept, options: Collection[str]
+) -> str:
     """Return the action that a policy's options give a content item's value.
 
     Parameters
     ----------
-    concept : ContentItemConcept
-        The row of Table E.3.4-1.
+    concept : ContentItemConcept or SupplementaryConcept
+        The row of Table E.3.4-1, or the supplementary row.
     options : collection of str
         The policy's options, as named in Table E.1-1.
 
@@ -300,16 +322,19 @@ def concept_action(concept: ContentItemConcept, options: Collection[str]) -> str
 
 @functools.lru_cache(maxsize=None)
 def concept_actions(options: tuple[str, ...]) -> Mapping[tuple[str, str, str], str]:
-    """Return :func:`concept_action` of each row of the table, by its key.
+    """Return :func:`concept_action` of each row, by its key.
 
-    The key is the row's coding scheme designator, code value, and Value
-    Type (:attr:`~.structured_content.ContentItemConcept.key`).
+    The rows are those of Table E.3.4-1 and the supplementary rows
+    (:mod:`.supplementary_concepts`), which never share a key. The key is
+    the row's coding scheme designator, code value, and Value Type
+    (:attr:`~.structured_content.ContentItemConcept.key`).
     """
+    rows: tuple[ContentItemConcept | SupplementaryConcept, ...] = (
+        *load_table_e3_4_1().concepts,
+        *load_supplementary_concepts().concepts,
+    )
     return types.MappingProxyType(
-        {
-            concept.key: concept_action(concept, options)
-            for concept in load_table_e3_4_1().concepts
-        }
+        {concept.key: concept_action(concept, options) for concept in rows}
     )
 
 
@@ -546,8 +571,8 @@ def content_item_actions(
         Empty unless the policy selects Clean Structured Content. Otherwise,
         each sequence of :data:`CONTENT_ITEM_SEQUENCES` that is kept gives
         ``"K"``, and the value attribute of each content item in it whose
-        concept name Table E.3.4-1 lists gives the action that
-        :func:`concept_action` gives the concept, at each place. A sequence
+        concept name Table E.3.4-1 or a supplementary row lists gives the
+        action that :func:`concept_action` gives the concept, at each place. A sequence
         that is not kept, and everything in it, is left out, so that it
         takes the action that the element rules give it. So is one whose
         items cannot be decoded, or whose character set is not supported.

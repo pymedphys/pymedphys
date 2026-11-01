@@ -13,6 +13,13 @@
 # hexadecimal digests of every DICOM file in the subset, so it depends on the
 # files' bytes alone, not on their names or the order they arrive in.
 #
+# ``images_sha256`` is the SHA-256 of one ZIP file holding every DICOM file of
+# the subset, which the downloader's ``--pack`` wrote from a download from
+# TCIA whose files matched ``content_sha256``, and ``images_url`` a copy of
+# it on Zenodo. When one is pinned, the downloader fetches it in place of
+# TCIA's manifest and series, and takes them from TCIA only if the copy
+# cannot be fetched; a copy whose digest differs stops the download.
+#
 # ``answer_key_sha256`` is the SHA-256 of the ZIP file holding the subset's
 # answer key as TCIA publishes it, in its Aspera (Faspex) package
 # ``MIDI-B-Answer-Key-Validation`` or ``MIDI-B-Answer-Key-Test``: the MIDI-B
@@ -29,6 +36,8 @@ manifest_sha256 = "e6dceb5fcc354121049aee001333724fcc931ab214c9e78e9dbc406878f5a
 series = 280
 instances = 23921
 content_sha256 = "fc61a4fef81b8037d91b86a07079f82e9d732f8994455dd1d09bfe21353ee42e"
+images_url = ""
+images_sha256 = ""
 answer_key_url = ""
 answer_key_sha256 = "29969c1eeab775aca65bbe5110dec578b9f4d2df0f9ce18b6c331dd4781748f3"
 
@@ -40,5 +49,7 @@ manifest_sha256 = "7352096ef8fd7892898e465569487f15e0ac5894e2b9c01d045128c222eb3
 series = 428
 instances = 29660
 content_sha256 = "aa8306c349891e75d3891334e9221abecc6b1c14a214edea45fecbc84c80750e"
+images_url = ""
+images_sha256 = ""
 answer_key_url = ""
 answer_key_sha256 = "dfa352e47f99fb75407b6f09364370b87c9b63aeaaac7f8a428e83ed8f282deb"

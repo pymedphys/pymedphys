@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# pylint: disable = too-many-lines
+# One module for the downloader's pins, its sources, and its command line.
+
 """Download an NCI MIDI-B test data set for the MIDI benchmark (D-018).
 
 A development tool, run as
@@ -21,22 +24,30 @@ command line until the first supported release.
 
 :func:`download` fetches one subset of MIDI-B
 (https://doi.org/10.7937/cf2p-aw56, CC BY 4.0), as ``midi_data.toml``
-pins it: TCIA's dated manifest for the subset's synthetic collection, each
-series it lists from TCIA's public NBIA API, and, when one is pinned or
-given, the subset's answer key. It writes, into a destination directory that
-must not exist:
+pins it, and, when one is pinned or given, the subset's answer key. It
+takes the images from TCIA itself, as TCIA's dated manifest for the
+subset's synthetic collection and each series it lists from TCIA's public
+NBIA API, or from a copy of them pinned as one ZIP file that :func:`pack`
+wrote, such as on Zenodo, falling back to TCIA when that copy cannot be
+fetched. It writes, into a destination directory that must not exist:
 
 - ``images/``, every DICOM file of the subset, renamed
   ``<series>/<instance>.dcm`` by the series' position in the manifest and
   the file's position in its series' archive, so no path carries a value
-  from the data set;
+  from the data set. The pinned copy holds the same files under the same
+  names;
 - ``answer-key.db``, the answer key, when there is one. TCIA publishes
   each subset's key as a ZIP file holding one SQLite database; the digest
   pinned for it is the ZIP file's, so a copy elsewhere, such as on Zenodo,
   is checked as byte for byte TCIA's file, and the database is extracted
   from it;
-- ``download.json``, what was downloaded: counts, digests, whether each
-  digest matched its pin, and the versions, and no value from the files.
+- ``download.json``, what was downloaded and from where: counts, digests,
+  whether each digest matched its pin, and the versions, and no value from
+  the files.
+
+:func:`pack` writes a download's images into one ZIP file, the same bytes
+each time, for such a copy, and :func:`verify` checks a copy of the images,
+however it was downloaded.
 
 The manifest and the series archives list the data set's UIDs, and its
 files carry synthetic identifiers, which the project treats as it would
@@ -70,25 +81,34 @@ from importlib import resources
 from pathlib import Path
 from typing import BinaryIO, TypeVar
 
+from . import midi_images
+
 FORMAT = "pymedphys-deid-midi-download/1"
+PACK_FORMAT = "pymedphys-deid-midi-pack/1"
 PINS = "midi_data.toml"
 NBIA_IMAGES = "https://services.cancerimagingarchive.net/nbia-api/services/v1/getImage"
 USER_AGENT = "pymedphys-midi-download"
 DOWNLOAD_JSON = "download.json"
 ANSWER_KEY = "answer-key.db"
-IMAGES = "images"
+IMAGES = midi_images.IMAGES
+# Where download takes the images from: the pinned copy, when one is pinned
+# and can be fetched, else TCIA; or TCIA alone.
+IMAGES_FROM = ("pinned", "tcia")
 ATTEMPTS = 6
 # Seconds to wait before each retry: TCIA's servers can refuse or drop
 # connections for minutes at a time.
 WAITS = (10.0, 20.0, 40.0, 80.0, 120.0)
 TIMEOUT_SECONDS = 600
 CHUNK = 1 << 20
-# A Part 10 file holds "DICM" after its 128-byte preamble.
-_PREAMBLE = 128
-_MAGIC = b"DICM"
+# A long fetch reports its progress after each gibibyte.
+GIB = 1 << 30
+_PREAMBLE = midi_images.PREAMBLE
+_MAGIC = midi_images.MAGIC
 _SQLITE = b"SQLite format 3\x00"
 _UID = re.compile(r"[0-9]+(\.[0-9]+)+")
 _SHA256 = re.compile(r"[0-9a-f]{64}")
+# A collection's name also names the folder in its images' ZIP file.
+_COLLECTION = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]*")
 # What a note in the User-Agent header may hold: characters that an RFC 9110
 # comment allows unquoted.
 _AGENT_NOTE = re.compile(r"[A-Za-z0-9 .:;/_=,+-]{1,200}")
@@ -113,6 +133,8 @@ class Subset:
     series: int
     instances: int
     content_sha256: str
+    images_url: str
+    images_sha256: str
     answer_key_url: str
     answer_key_sha256: str
 
@@ -139,7 +161,9 @@ def load_subsets(text: str | None = None) -> dict[str, Subset]:
     Raises
     ------
     DownloadError
-        If an entry is incomplete, or a URL or digest is malformed.
+        If an entry is incomplete, a URL or digest is malformed, a copy's
+        URL is pinned without its digest, or the collection is not a plain
+        name.
     """
     if text is None:
         text = (
@@ -153,16 +177,26 @@ def load_subsets(text: str | None = None) -> dict[str, Subset]:
             subset = Subset(key=key, **entry)
         except TypeError as error:
             raise DownloadError(f"the pins of {key} are incomplete") from error
-        for url in (subset.manifest_url, subset.answer_key_url):
+        for url in (subset.manifest_url, subset.images_url, subset.answer_key_url):
             if url and not url.startswith("https://"):
                 raise DownloadError(f"a URL pinned for {key} is not HTTPS")
         for digest in (
             subset.manifest_sha256,
             subset.content_sha256,
+            subset.images_sha256,
             subset.answer_key_sha256,
         ):
             if digest and not _SHA256.fullmatch(digest):
                 raise DownloadError(f"a digest pinned for {key} is malformed")
+        # A copy is trusted only as byte for byte the file its digest pins.
+        for url, digest in (
+            (subset.images_url, subset.images_sha256),
+            (subset.answer_key_url, subset.answer_key_sha256),
+        ):
+            if url and not digest:
+                raise DownloadError(f"a URL pinned for {key} has no SHA-256")
+        if not _COLLECTION.fullmatch(subset.collection):
+            raise DownloadError(f"the collection pinned for {key} is not a plain name")
         subsets[key] = subset
     return subsets
 
@@ -276,19 +310,50 @@ class _Retry(Exception):
     """A fetch that may succeed if tried again. The message quotes no value."""
 
 
-def _fetch_once(url: str, destination: Path, opener: Opener) -> str:
-    """Fetch ``url`` to ``destination`` once, and return its SHA-256."""
+def _fetch_once(
+    url: str,
+    destination: Path,
+    opener: Opener,
+    report: Callable[[int], None] | None = None,
+) -> str:
+    """Fetch ``url`` to ``destination`` once, and return its SHA-256.
+
+    ``report``, if given, is called with the bytes received so far after
+    each gibibyte.
+    """
     digest = hashlib.sha256()
+    received = 0
     try:
         with opener(url) as response, destination.open("wb") as file:
+            expected = _content_length(response)
             while chunk := response.read(CHUNK):
                 digest.update(chunk)
                 file.write(chunk)
+                before, received = received, received + len(chunk)
+                if report is not None and received // GIB > before // GIB:
+                    report(received)
     except (OSError, http.client.HTTPException) as error:
         # HTTPError, URLError, and timeouts are all OSErrors. Name the type
         # alone: its message can quote the URL, which can hold a UID.
         raise _Retry(_failure(error)) from None
+    if expected is not None and received != expected:
+        # urllib ends the data quietly when the server closes the connection
+        # early, rather than raise IncompleteRead.
+        raise _Retry(f"the transfer ended after {received} of {expected} bytes")
     return digest.hexdigest()
+
+
+def _content_length(response: object) -> int | None:
+    """The length that a response's headers declare, if they declare one.
+
+    >>> _content_length(object()) is None
+    True
+    """
+    headers = getattr(response, "headers", None)
+    value = None if headers is None else headers.get("Content-Length")
+    if value is None or not str(value).isdigit():
+        return None
+    return int(value)
 
 
 def _retrying(
@@ -330,10 +395,14 @@ def _fetch(
     what: str,
     sleep: Callable[[float], None] | None = None,
     say: Callable[[str], None] | None = None,
+    report: Callable[[int], None] | None = None,
 ) -> str:
     """Fetch ``url`` to ``destination``, retrying, and return its SHA-256."""
     return _retrying(
-        what, lambda: _fetch_once(url, destination, opener), sleep=sleep, say=say
+        what,
+        lambda: _fetch_once(url, destination, opener, report),
+        sleep=sleep,
+        say=say,
     )
 
 
@@ -406,13 +475,15 @@ def _series(
     return _retrying(f"series {index} of {total}", attempt, say=say)
 
 
-def download(  # pylint: disable = too-many-locals
+def download(
     subset: Subset,
     destination: str | Path,
     *,
     answer_key_url: str | None = None,
     answer_key_sha256: str | None = None,
     answer_key_file: str | Path | None = None,
+    images_from: str = "pinned",
+    images_file: str | Path | None = None,
     workers: int = 8,
     opener: Opener = open_url,
     progress: Callable[[str], None] | None = None,
@@ -431,8 +502,17 @@ def download(  # pylint: disable = too-many-locals
         A local copy of the answer key, such as the ZIP file received from
         TCIA, to use in place of fetching the pinned one, checked against
         the pinned digest.
+    images_from : {"pinned", "tcia"}, default "pinned"
+        Where the images come from. ``"pinned"`` fetches the copy of them
+        pinned as one ZIP file, when one is pinned, and takes them from TCIA
+        when there is none or it cannot be fetched; ``"tcia"`` takes them
+        from TCIA.
+    images_file : str or Path, optional
+        A local copy of the images' ZIP file, such as one downloaded from
+        Zenodo, to use in place of fetching the images, checked against the
+        pinned digest when one is pinned.
     workers : int, default 8
-        How many series to fetch at once.
+        How many series to fetch from TCIA at once.
     opener : callable, optional
         Opens a URL for reading; the tests replace it.
     progress : callable, optional
@@ -448,16 +528,26 @@ def download(  # pylint: disable = too-many-locals
     ------
     DownloadError
         If the destination exists or its parent does not, a fetch fails, the
-        manifest, the images, or the answer key do not match the pinned
-        digests or counts, an answer key is given without its digest, both a
-        URL and a file are given for it, or it is neither an SQLite database
-        nor a ZIP file holding exactly one.
+        manifest, the images, their ZIP file, or the answer key do not match
+        the pinned digests or counts, the images' ZIP file is not as
+        :func:`pack` writes one, an answer key is given without its digest,
+        both a URL and a file are given for it, or it is neither an SQLite
+        database nor a ZIP file holding exactly one.
     """
     destination = Path(destination)
     if destination.exists() or not destination.parent.is_dir():
         raise DownloadError("the destination must not exist, and its parent must")
     if answer_key_url is not None and answer_key_file is not None:
         raise DownloadError("give an answer key's URL or its file, not both")
+    if images_from not in IMAGES_FROM:
+        raise DownloadError("the images come from the pinned copy or from TCIA")
+    if images_file is not None:
+        if images_from == "tcia":
+            raise DownloadError(
+                "give the images' ZIP file or take the images from TCIA, not both"
+            )
+        if not Path(images_file).is_file():
+            raise DownloadError("the images' ZIP file is not a file")
     if answer_key_file is not None:
         if not Path(answer_key_file).is_file():
             raise DownloadError("the answer key file is not a file")
@@ -481,57 +571,39 @@ def download(  # pylint: disable = too-many-locals
         )
         if answer_key is not None:
             answer_key = {"source": key_source, **answer_key}
-        manifest_path = scratch / "manifest.tcia"
-        manifest = _check(
-            _fetch(
-                subset.manifest_url, manifest_path, opener, what="manifest", say=say
-            ),
-            subset.manifest_sha256,
-            "manifest",
+        fetched = _images(
+            subset,
+            images,
+            scratch,
+            images_from=images_from,
+            images_file=None if images_file is None else Path(images_file),
+            opener=opener,
+            workers=workers,
+            say=say,
         )
-        uids = parse_manifest(manifest_path.read_text(encoding="utf-8"))
-        if len(uids) != subset.series:
-            raise DownloadError(
-                f"the manifest lists {len(uids)} series, not the expected {subset.series}"
-            )
-        say(f"Fetching {len(uids)} series of {subset.collection}")
-        digests: list[str] = []
-        size = skipped = done = 0
-        pool = concurrent.futures.ThreadPoolExecutor(max_workers=workers)
-        try:
-            futures = [
-                pool.submit(
-                    _series, index, uid, images, scratch, opener, len(uids), say
-                )
-                for index, uid in enumerate(uids, start=1)
-            ]
-            for future in concurrent.futures.as_completed(futures):
-                series_digests, series_size, series_skipped = future.result()
-                digests += series_digests
-                size += series_size
-                skipped += series_skipped
-                done += 1
-                if done % 20 == 0 or done == len(uids):
-                    say(f"{done} of {len(uids)} series, {len(digests)} files")
-        finally:
-            # On a failure, stop at once rather than fetch the rest.
-            pool.shutdown(wait=True, cancel_futures=True)
-    if len(digests) != subset.instances:
+    if fetched.series != subset.series:
         raise DownloadError(
-            f"the series hold {len(digests)} DICOM files, not the expected "
+            f"the images hold {fetched.series} series, not the expected {subset.series}"
+        )
+    if len(fetched.digests) != subset.instances:
+        raise DownloadError(
+            f"the series hold {len(fetched.digests)} DICOM files, not the expected "
             f"{subset.instances}"
         )
-    content = _check(content_digest(digests), subset.content_sha256, "image set")
+    content = _check(
+        content_digest(fetched.digests), subset.content_sha256, "image set"
+    )
     record: dict[str, object] = {
         "format": FORMAT,
         "subset": subset.key,
         "collection": subset.collection,
         "name": subset.name,
-        "manifest": {"url": subset.manifest_url, **manifest.as_dict()},
-        "series": len(uids),
-        "files": len(digests),
-        "bytes": size,
-        "skipped_members_not_dicom": skipped,
+        "images": fetched.source,
+        "manifest": fetched.manifest,
+        "series": fetched.series,
+        "files": len(fetched.digests),
+        "bytes": fetched.size,
+        "skipped_members_not_dicom": fetched.skipped,
         "content": content.as_dict(),
         "answer_key": answer_key,
         "python": sys.version.split()[0],
@@ -540,6 +612,143 @@ def download(  # pylint: disable = too-many-locals
         json.dumps(record, indent=2) + "\n", encoding="utf-8", newline="\n"
     )
     return record
+
+
+@dataclasses.dataclass(frozen=True)
+class _Images:
+    """Where a download's images came from, and what they hold."""
+
+    source: dict[str, object]
+    manifest: dict[str, str] | None
+    series: int
+    digests: Sequence[str]
+    size: int
+    # Members of TCIA's series archives that were not DICOM files; None for
+    # a ZIP file that pack wrote, which holds only its README besides.
+    skipped: int | None
+
+
+def _images(
+    subset: Subset,
+    images: Path,
+    scratch: Path,
+    *,
+    images_from: str,
+    images_file: Path | None,
+    opener: Opener,
+    workers: int,
+    say: Callable[[str], None],
+) -> _Images:
+    """Write the subset's images into ``images``, from where they are asked for."""
+    if images_file is not None:
+        checked = _check(_sha256(images_file), subset.images_sha256, "images' ZIP file")
+        return _from_zip(
+            images_file, {"source": "file", **checked.as_dict()}, subset, images, say
+        )
+    source: dict[str, object] = {"source": "tcia"}
+    if images_from == "pinned" and subset.images_url:
+        archive = scratch / "images.zip"
+        try:
+            sha256 = _fetch(
+                subset.images_url,
+                archive,
+                opener,
+                what="images' ZIP file",
+                say=say,
+                report=lambda received: say(
+                    f"{received // GIB} GiB of the images' ZIP file received"
+                ),
+            )
+        except DownloadError as error:
+            # Only a failed fetch falls back to TCIA. A copy that does not
+            # match its pin stops the download, below, to be looked into.
+            archive.unlink(missing_ok=True)
+            say(f"Taking the images from TCIA instead: {error}")
+            source["fallback"] = {"from": subset.images_url, "failure": str(error)}
+        else:
+            checked = _check(sha256, subset.images_sha256, "images' ZIP file")
+            fetched = _from_zip(
+                archive,
+                {"source": "pinned", "url": subset.images_url, **checked.as_dict()},
+                subset,
+                images,
+                say,
+            )
+            archive.unlink()
+            return fetched
+    return _from_tcia(subset, source, images, scratch, opener, workers, say)
+
+
+def _from_zip(
+    archive: Path,
+    source: dict[str, object],
+    subset: Subset,
+    images: Path,
+    say: Callable[[str], None],
+) -> _Images:
+    say(f"Unpacking the images of {subset.collection}")
+    try:
+        files = midi_images.unpack(archive, images, root=subset.collection)
+    except midi_images.ArchiveError as error:
+        raise DownloadError(str(error)) from None
+    return _Images(source, None, files.series, files.digests, files.size, None)
+
+
+def _from_tcia(
+    subset: Subset,
+    source: dict[str, object],
+    images: Path,
+    scratch: Path,
+    opener: Opener,
+    workers: int,
+    say: Callable[[str], None],
+) -> _Images:
+    """Fetch TCIA's manifest for the subset, and each series it lists from NBIA."""
+    manifest_path = scratch / "manifest.tcia"
+    manifest = _check(
+        _fetch(subset.manifest_url, manifest_path, opener, what="manifest", say=say),
+        subset.manifest_sha256,
+        "manifest",
+    )
+    uids = parse_manifest(manifest_path.read_text(encoding="utf-8"))
+    if len(uids) != subset.series:
+        raise DownloadError(
+            f"the manifest lists {len(uids)} series, not the expected {subset.series}"
+        )
+    say(f"Fetching {len(uids)} series of {subset.collection}")
+    # Each series' digests, by its position in the manifest, so that the
+    # files' digests are in the same order as a copy unpacked from a ZIP.
+    by_series: dict[int, list[str]] = {}
+    size = skipped = 0
+    pool = concurrent.futures.ThreadPoolExecutor(max_workers=workers)
+    try:
+        futures = {
+            pool.submit(
+                _series, index, uid, images, scratch, opener, len(uids), say
+            ): index
+            for index, uid in enumerate(uids, start=1)
+        }
+        for future in concurrent.futures.as_completed(futures):
+            series_digests, series_size, series_skipped = future.result()
+            by_series[futures[future]] = series_digests
+            size += series_size
+            skipped += series_skipped
+            done = len(by_series)
+            if done % 20 == 0 or done == len(uids):
+                files = sum(map(len, by_series.values()))
+                say(f"{done} of {len(uids)} series, {files} files")
+    finally:
+        # On a failure, stop at once rather than fetch the rest.
+        pool.shutdown(wait=True, cancel_futures=True)
+    digests = [digest for index in sorted(by_series) for digest in by_series[index]]
+    return _Images(
+        source,
+        {"url": subset.manifest_url, **manifest.as_dict()},
+        len(uids),
+        digests,
+        size,
+        skipped,
+    )
 
 
 def _answer_key(
@@ -705,13 +914,104 @@ def _compare(sha256: str, pinned: str) -> str:
     return "matched" if sha256 == pinned else "differs"
 
 
+def pack(
+    subset: Subset, directory: str | Path, archive: str | Path
+) -> dict[str, object]:
+    """Pack the images of a download of ``subset`` into one ZIP file.
+
+    ``directory`` is the destination that :func:`download` wrote, and
+    ``archive`` a ZIP file that must not exist, in a folder that does. The
+    ZIP file holds a README and the DICOM files of ``images/``, under the
+    same names, stored uncompressed with fixed dates and attributes, so that
+    packing the same files gives the same bytes: a copy of the subset that
+    :func:`download` can fetch in place of TCIA's, once its URL and digest
+    are pinned. The files are checked against the pinned counts and content
+    digest as they are packed, and the ZIP file is kept only if they match.
+
+    Returns
+    -------
+    dict
+        Counts, the content digest, and the ZIP file's name, size, and
+        SHA-256, with ``"matched"``, ``"not pinned"``, or ``"differs"`` for
+        how it compares with the pinned ``images_sha256``. Nothing in it
+        quotes a value.
+
+    Raises
+    ------
+    DownloadError
+        If the subset's content digest is not pinned, ``archive`` exists or
+        its folder does not, ``directory`` does not hold the images folder
+        that a download writes, or the files do not match the pins.
+    """
+    directory, archive = Path(directory), Path(archive)
+    if not subset.content_sha256:
+        raise DownloadError("only a subset whose content_sha256 is pinned is packed")
+    if archive.exists() or not archive.parent.is_dir():
+        raise DownloadError("the ZIP file must not exist, and its folder must")
+    try:
+        series = midi_images.layout(directory / IMAGES)
+    except midi_images.ArchiveError as error:
+        raise DownloadError(str(error)) from None
+    files = sum(map(len, series))
+    if (len(series), files) != (subset.series, subset.instances):
+        raise DownloadError(
+            f"the images folder holds {len(series)} series and {files} files, "
+            f"not the expected {subset.series} and {subset.instances}"
+        )
+    text = midi_images.readme(
+        collection=subset.collection,
+        series=subset.series,
+        files=subset.instances,
+        manifest=subset.manifest_url.rsplit("/", 1)[-1],
+        content_sha256=subset.content_sha256,
+    )
+    with tempfile.NamedTemporaryFile(
+        dir=archive.parent, prefix=f".{archive.name}.", suffix=".partial", delete=False
+    ) as partial_file:
+        partial = Path(partial_file.name)
+    try:
+        packed = midi_images.pack(
+            series, partial, root=subset.collection, readme_text=text
+        )
+        content = _check(
+            content_digest(packed.digests), subset.content_sha256, "image set"
+        )
+        sha256 = _sha256(partial)
+        partial.replace(archive)
+    except midi_images.ArchiveError as error:
+        partial.unlink(missing_ok=True)
+        raise DownloadError(str(error)) from None
+    except BaseException:
+        partial.unlink(missing_ok=True)
+        raise
+    return {
+        "format": PACK_FORMAT,
+        "subset": subset.key,
+        "collection": subset.collection,
+        "series": packed.series,
+        "files": len(packed.digests),
+        "bytes": packed.size,
+        "content": content.as_dict(),
+        "zip": {
+            "name": archive.name,
+            "bytes": archive.stat().st_size,
+            "sha256": sha256,
+            "pin": _compare(sha256, subset.images_sha256),
+        },
+        "python": sys.version.split()[0],
+    }
+
+
 def main(
     argv: Sequence[str] | None = None, subsets: Mapping[str, Subset] | None = None
 ) -> int:
-    """Download a MIDI-B subset and print ``download.json``, or verify a copy.
+    """Download a MIDI-B subset and print ``download.json``, or check or
+    pack a copy.
 
     With ``--verify``, print :func:`verify`'s record and return 1 when the
-    copy's file count or content digest differs from the pins.
+    copy's file count or content digest differs from the pins. With
+    ``--pack``, print :func:`pack`'s record and return 1 when the ZIP file
+    differs from the pinned one.
 
     Raises
     ------
@@ -722,11 +1022,61 @@ def main(
         subsets = load_subsets() if subsets is None else subsets
     except DownloadError as error:
         raise SystemExit(str(error)) from None
+    parser = _parser(subsets)
+    arguments = parser.parse_args(argv)
+    if arguments.dest is None:
+        for option, value in (
+            ("--images-from", arguments.images_from),
+            ("--images-file", arguments.images_file),
+        ):
+            if value is not None:
+                parser.error(f"{option} goes with --dest")
+    if (arguments.pack is None) != (arguments.to is None):
+        parser.error("--pack and --to go together")
+    subset = subsets[arguments.subset]
+    if arguments.pack is not None:
+        try:
+            packed = pack(subset, arguments.pack, arguments.to)
+        except DownloadError as error:
+            raise SystemExit(str(error)) from None
+        sys.stdout.write(json.dumps(packed, indent=2) + "\n")
+        archive = packed["zip"]
+        return 1 if isinstance(archive, dict) and archive["pin"] == "differs" else 0
+    if arguments.verify is not None:
+        try:
+            checked = verify(subset, arguments.verify, arguments.answer_key_file)
+        except DownloadError as error:
+            raise SystemExit(str(error)) from None
+        sys.stdout.write(json.dumps(checked, indent=2) + "\n")
+        pins = [checked["content"], checked["answer_key"]]
+        differs = any(isinstance(pin, dict) and pin["pin"] == "differs" for pin in pins)
+        return 1 if differs or checked["files"] != checked["expected_files"] else 0
+    try:
+        agent = user_agent(arguments.user_agent_note)
+        record = download(
+            subset,
+            arguments.dest,
+            answer_key_url=arguments.answer_key_url,
+            answer_key_sha256=arguments.answer_key_sha256,
+            answer_key_file=arguments.answer_key_file,
+            images_from=arguments.images_from or "pinned",
+            images_file=arguments.images_file,
+            workers=arguments.workers,
+            opener=functools.partial(open_url, agent=agent),
+            progress=lambda line: print(line, file=sys.stderr, flush=True),
+        )
+    except DownloadError as error:
+        raise SystemExit(str(error)) from None
+    sys.stdout.write(json.dumps(record, indent=2) + "\n")
+    return 0
+
+
+def _parser(subsets: Mapping[str, Subset]) -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="python -m pymedphys._dicom.deidentify.midi_download",
         description=(
-            "Download a MIDI-B test data set from TCIA for the MIDI benchmark. "
-            "For development only."
+            "Download a MIDI-B test data set for the MIDI benchmark, from TCIA "
+            "or its pinned copy, or check or pack a copy. For development only."
         ),
     )
     parser.add_argument("--subset", required=True, choices=sorted(subsets))
@@ -739,6 +1089,32 @@ def main(
         help=(
             "Instead of downloading, check the DICOM files below this "
             "directory, however they were downloaded, against the pins."
+        ),
+    )
+    where.add_argument(
+        "--pack",
+        help=(
+            "Instead of downloading, pack the images of the download in this "
+            "directory, which --dest wrote, into the ZIP file given with --to, "
+            "the same bytes each time, checking them against the pins."
+        ),
+    )
+    parser.add_argument("--to", help="The ZIP file that --pack writes.")
+    parser.add_argument(
+        "--images-from",
+        choices=IMAGES_FROM,
+        help=(
+            "Where the images come from: their pinned copy, when one is "
+            "pinned, falling back to TCIA if it cannot be fetched (the "
+            "default), or TCIA."
+        ),
+    )
+    parser.add_argument(
+        "--images-file",
+        help=(
+            "A local copy of the images' ZIP file, such as one downloaded "
+            "from Zenodo, used in place of fetching the images and checked "
+            "against the pins."
         ),
     )
     parser.add_argument(
@@ -762,34 +1138,7 @@ def main(
             "to, so that TCIA can find the run's requests in its logs."
         ),
     )
-    arguments = parser.parse_args(argv)
-    if arguments.verify is not None:
-        try:
-            checked = verify(
-                subsets[arguments.subset], arguments.verify, arguments.answer_key_file
-            )
-        except DownloadError as error:
-            raise SystemExit(str(error)) from None
-        sys.stdout.write(json.dumps(checked, indent=2) + "\n")
-        pins = [checked["content"], checked["answer_key"]]
-        differs = any(isinstance(pin, dict) and pin["pin"] == "differs" for pin in pins)
-        return 1 if differs or checked["files"] != checked["expected_files"] else 0
-    try:
-        agent = user_agent(arguments.user_agent_note)
-        record = download(
-            subsets[arguments.subset],
-            arguments.dest,
-            answer_key_url=arguments.answer_key_url,
-            answer_key_sha256=arguments.answer_key_sha256,
-            answer_key_file=arguments.answer_key_file,
-            workers=arguments.workers,
-            opener=functools.partial(open_url, agent=agent),
-            progress=lambda line: print(line, file=sys.stderr, flush=True),
-        )
-    except DownloadError as error:
-        raise SystemExit(str(error)) from None
-    sys.stdout.write(json.dumps(record, indent=2) + "\n")
-    return 0
+    return parser
 
 
 if __name__ == "__main__":
