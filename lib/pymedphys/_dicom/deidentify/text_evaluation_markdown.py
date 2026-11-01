@@ -36,9 +36,19 @@ def markdown(
     variant = method.get("variant", {})
     plan = summary["plan"]
     split = summary["split"]
+    benchmark = summary.get("tier") == "benchmark-only"
     lines = [
         "# Text detector evaluation",
         "",
+        *(
+            [
+                "**Benchmark only**: this detector is measured for comparison "
+                "and cannot be adopted, whatever its counts.",
+                "",
+            ]
+            if benchmark
+            else []
+        ),
         "Each frame given to a text detector variant, each frame without "
         "text also with synthetic text burned in where a plan is given, and "
         "the boxes of every post-processing setting counted against the "
@@ -54,6 +64,7 @@ def markdown(
         + " |",
         f"| Variant | `{_cell(variant.get('name', 'unknown'))}` |",
         f"| Model | {_model(method)} |",
+        f"| Tier | {summary.get('tier', 'adoptable')} |",
         f"| Part evaluated | {split['evaluated']} |",
         f"| Cases by part | tuning {split['cases']['tuning']}, "
         f"held out {split['cases']['held-out']} |",
@@ -129,10 +140,23 @@ def _unknown(points: Sequence[Mapping[str, Any]]) -> list[str]:
 
 
 def _model(method: Mapping[str, Any]) -> str:
+    model = method.get("model")
+    rule = method.get("rule")
+    if isinstance(rule, Mapping) and isinstance(model, Mapping):
+        return f"{_model(model)} with rule `{_cell(str(rule.get('rule')))}`"
+    named = (
+        f"{_cell(str(model['name']))}, "
+        if isinstance(model, Mapping) and "name" in model
+        else ""
+    )
     if "model_sha256" in method:
-        return f"SHA-256 `{method['model_sha256']}`"
+        return f"{named}SHA-256 `{method['model_sha256']}`"
+    if "rule" in method:
+        return f"rule `{_cell(str(method['rule']))}`"
     if "network" in method:
-        return f"test network `{_cell(str(method['network']))}`"
+        return f"{named}test network `{_cell(str(method['network']))}`"
+    if "runner" in method:
+        return f"{named}runner `{_cell(str(method['runner']))}`"
     return "unknown"
 
 

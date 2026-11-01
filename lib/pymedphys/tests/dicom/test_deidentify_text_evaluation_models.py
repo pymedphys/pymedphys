@@ -172,7 +172,9 @@ def test_a_model_file_is_fetched_once_and_checked(data_dir):
     assert models.model_bytes(model, download=_serving(MODEL, calls)) == MODEL
     assert models.model_bytes(model, download=_serving(MODEL, calls)) == MODEL
     assert len(calls) == 1
-    cached = data_dir / models.CACHE_DIRECTORY / "invented-det.onnx"
+    cached = (
+        data_dir / models.CACHE_DIRECTORY / f"{_sha256(MODEL)[:16]}-invented-det.onnx"
+    )
     assert cached.read_bytes() == MODEL
 
 

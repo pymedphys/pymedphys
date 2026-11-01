@@ -281,17 +281,24 @@ def assess(
     summary: Mapping[str, Any], criteria: AcceptanceCriteria
 ) -> list[dict[str, Any]]:
     """Whether each point of a summary meets the criteria, and which cells
-    fail and why. It reads only the summary, so it can be run again on a
-    published one with other criteria."""
+    fail and why, and whether it could be adopted: never for a
+    benchmark-only detector, whatever it meets. It reads only the summary,
+    so it can be run again on a published one with other criteria."""
     points = summary["points"]
     if not 0 <= criteria.baseline < len(points):
         raise EvaluationRefused("The baseline must be a point of the summary.")
     baseline = points[criteria.baseline]
+    adoptable = summary.get("tier", "adoptable") == "adoptable"
     assessed = []
     for point in points:
         failures = _failures(point, baseline, criteria)
         assessed.append(
-            {"index": point["index"], "meets": not failures, "failures": failures}
+            {
+                "index": point["index"],
+                "meets": not failures,
+                "adoptable": adoptable and not failures,
+                "failures": failures,
+            }
         )
     return assessed
 

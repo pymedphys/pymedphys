@@ -106,6 +106,7 @@ from .text_evaluation_frames import (
     tissue_mask,
 )
 from .text_evaluation_injection import InjectionPlan, inject, zone_of
+from .text_evaluation_benchmarks import tier_of
 from .text_evaluation_models import BoxPoint
 from .text_evaluation_sources import CaseSource, Skipped
 
@@ -714,6 +715,7 @@ def summarise(
         "format": FORMAT,
         "software": _software(),
         "detector": _plain(evaluation.detector),
+        "tier": tier_of(evaluation.detector),
         "plan": None if settings.plan is None else settings.plan.described(),
         "negatives": settings.negatives,
         "split": {

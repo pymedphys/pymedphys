@@ -371,7 +371,27 @@ def model_bytes(model: DetectionModel, *, download: Download | None = None) -> b
     source = model.source
     if isinstance(source, PinnedModel):
         return text_detection.model_bytes(source, download=download)
-    path: pathlib.Path = get_data_dir() / CACHE_DIRECTORY / source.file
+    return model_file_path(source, download=download).read_bytes()
+
+
+def model_file_path(
+    source: ModelFile, *, download: Download | None = None
+) -> pathlib.Path:
+    """The path of a pinned file in the PyMedPhys data directory, which is
+    downloaded if it is not there, and kept only once it has its pinned
+    SHA-256; the name begins with that digest, so that two files of one name
+    from different places are kept apart.
+
+    Raises
+    ------
+    TextDetectionError
+        If the bytes downloaded do not have their pinned SHA-256.
+    OSError
+        If they cannot be downloaded or written.
+    """
+    path: pathlib.Path = (
+        get_data_dir() / CACHE_DIRECTORY / f"{source.sha256[:16]}-{source.file}"
+    )
     path.parent.mkdir(parents=True, exist_ok=True)
     with download_lock(path):
         if not (path.exists() and _sha256(path.read_bytes()) == source.sha256):
@@ -388,7 +408,7 @@ def model_bytes(model: DetectionModel, *, download: Download | None = None) -> b
                 os.replace(partial, path)
             finally:
                 partial.unlink(missing_ok=True)
-        return path.read_bytes()
+    return path
 
 
 def model_tensor(
