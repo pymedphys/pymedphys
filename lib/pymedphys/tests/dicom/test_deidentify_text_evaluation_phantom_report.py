@@ -75,7 +75,9 @@ def _settings(**options):
     )
 
 
-def _phantom_file(project=CC, patient="PHANTOM-01", series="2.25.40", number=1):
+def _phantom_file(
+    project=CC, patient="PHANTOM-01", series="2.25.40", number=1, unknown_vr=False
+):
     dataset = synthetic.ct_slice(0)
     dataset.Modality = "CT"
     dataset.SamplesPerPixel = 1
@@ -90,7 +92,11 @@ def _phantom_file(project=CC, patient="PHANTOM-01", series="2.25.40", number=1):
     dataset.PixelSpacing = [0.5, 0.5]
     if project is not None:
         block = dataset.private_block(0x0013, "CTP", create=True)
-        block.add_new(0x10, "LO", project)
+        if unknown_vr:
+            # As an implicit-VR file reads: pydicom knows no VR for it.
+            block.add_new(0x10, "UN", project.encode("ascii"))
+        else:
+            block.add_new(0x10, "LO", project)
     stored = np.full(SHAPE, 24, np.uint16)
     stored[32:] = 1064
     dataset.PixelData = stored.astype("<u2").tobytes()
@@ -140,7 +146,15 @@ def test_only_allow_listed_phantom_collections_are_admitted():
         "CC-Radiomics-Phantom-3",
         "RIDER PHANTOM PET-CT",
         "MRI-DIR",
+        "VICTRE",
     }
+    victre = report.phantom_collection("VICTRE")
+    assert victre.patients is None
+    assert victre.doi == "10.7937/TCIA.2019.ho23nxaw"
+    assert victre.licence == "CC BY 3.0"
+    assert victre.citation.endswith(
+        "Digital Breast Tomosynthesis . 2018. DOI: 10.7937/TCIA.2019.ho23nxaw"
+    )
     with pytest.raises(EvaluationRefused):
         report.phantom_collection("NSCLC-Radiomics")
     forged = dataclasses.replace(report.phantom_collection(CC), name="NSCLC-Radiomics")
@@ -214,6 +228,29 @@ def test_a_frame_of_a_patients_tier_is_never_previewed(tmp_path):
         )
     assert not list((tmp_path / "case" / "previews").iterdir())
     assert report.PREVIEWED_TIERS == {"T1", "T2"}
+
+
+@pytest.mark.parametrize("project", ["VICTRE", "VICTRE  ", "VICTRE\0\0"])
+def test_a_project_name_of_unknown_vr_is_read_as_text(tmp_path, project):
+    path = tmp_path / "file.dcm"
+    path.write_bytes(_phantom_file(project=project, unknown_vr=True))
+    case = report.PhantomDicomCase(
+        report.phantom_collection("VICTRE"), "a", (str(path),)
+    )
+    (frame,) = list(case.read())
+    assert isinstance(frame, EvaluationFrame)
+    assert frame.collection == "VICTRE"
+    assert frame.tier == "T2"
+
+
+def test_a_project_name_not_of_ascii_is_not_read(tmp_path):
+    path = tmp_path / "file.dcm"
+    dataset_bytes = _phantom_file(project="VICTRE", unknown_vr=True)
+    path.write_bytes(dataset_bytes.replace(b"VICTRE", b"VICTR\xe9"))
+    case = report.PhantomDicomCase(
+        report.phantom_collection("VICTRE"), "a", (str(path),)
+    )
+    assert list(case.read()) == [sources.Skipped("not-phantom/no-project")]
 
 
 def test_files_of_the_collection_are_read_as_a_run_reads_them(tmp_path):

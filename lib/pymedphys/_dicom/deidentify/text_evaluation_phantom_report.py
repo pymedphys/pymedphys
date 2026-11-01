@@ -181,6 +181,22 @@ PHANTOM_COLLECTIONS: Mapping[str, PhantomCollection] = types.MappingProxyType(
                 project_names=("MRI-DIR",),
                 patients=frozenset(),
             ),
+            # In-silico breast phantoms, computational subjects all, as TCIA
+            # cites them; NCI's Imaging Data Commons carries the collection
+            # as victre.
+            PhantomCollection(
+                name="VICTRE",
+                citation=(
+                    "Badano A, Graff CG, Badal A, Sharma D, Zeng R, Samuelson FW, "
+                    "Glick S, Myers KJ. The VICTRE Trial: Open-Source, In-Silico "
+                    "Clinical Trial for Evaluating Digital Breast Tomosynthesis . "
+                    "2018. DOI: 10.7937/TCIA.2019.ho23nxaw"
+                ),
+                doi="10.7937/TCIA.2019.ho23nxaw",
+                licence="CC BY 3.0",
+                licence_url=_CC_BY_3,
+                project_names=("VICTRE",),
+            ),
         )
     }
 )
@@ -216,7 +232,7 @@ def _not_phantom(data: bytes, phantom: PhantomCollection) -> str | None:
         return "not-read"
     try:
         block = dataset.private_block(_CTP_GROUP, _CTP_CREATOR)
-        project = str(block[_CTP_PROJECT].value).strip()
+        project = _project_name(block[_CTP_PROJECT].value)
     # pydicom raises KeyError where the block or element is absent, and
     # others for a value it cannot read; each means the project is unknown.
     except Exception:  # pylint: disable = broad-exception-caught
@@ -228,6 +244,15 @@ def _not_phantom(data: bytes, phantom: PhantomCollection) -> str | None:
         if patient is None or str(patient).strip() not in phantom.patients:
             return "not-phantom/patient-not-listed"
     return None
+
+
+def _project_name(value: object) -> str:
+    """The Project Name as text. pydicom's private dictionary has no entry
+    for TCIA's block, so a file of implicit VR gives the value as bytes of
+    VR UN, which must be ASCII; any other bytes raise."""
+    if isinstance(value, bytes):
+        value = value.decode("ascii")
+    return str(value).strip(" \0")
 
 
 @dataclasses.dataclass(frozen=True)
