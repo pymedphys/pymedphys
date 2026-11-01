@@ -600,7 +600,9 @@ def _header(path: pathlib.Path) -> _Header | None:
     )
 
 
-def _case_name(level: str, key: str) -> str:
+def case_name(level: str, key: str) -> str:
+    """The name of a case of files grouped at ``level`` by ``key``: a salted
+    SHA-256, so that no identifier is held as its name."""
     digest = hashlib.sha256("\0".join((_CASE_SALT, level, key)).encode()).hexdigest()
     return f"{level}/{digest}"
 
@@ -679,7 +681,7 @@ def dicom_folder_cases(
             ((each, header.keys[each]) for each in levels[:-1] if header.keys[each]),
             ("file", str(path.relative_to(root))),
         )
-        groups.setdefault(_case_name(level, key), []).append(header)
+        groups.setdefault(case_name(level, key), []).append(header)
     found = {header.instance for members in groups.values() for header in members} - {
         None
     }

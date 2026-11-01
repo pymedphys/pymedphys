@@ -285,7 +285,7 @@ class Tally:
 
 @dataclasses.dataclass
 class CaseResult:
-    """One case's counts, with no name of it.
+    """One case's counts, with no name of it but a public one.
 
     Attributes
     ----------
@@ -300,6 +300,10 @@ class CaseResult:
         bootstrap.
     crashed : str or None
         Where its frames raised, if they did.
+    public : dict or None
+        For a case of a public collection that names it by public
+        identifiers, those and its licence and DOI, for the per-case report
+        (:mod:`~.text_evaluation_cases`); the summary never reads them.
     """
 
     collection: str
@@ -308,6 +312,7 @@ class CaseResult:
     tally: Tally = dataclasses.field(default_factory=Tally)
     clusters: dict[tuple, list[int]] = dataclasses.field(default_factory=dict)
     crashed: str | None = None
+    public: dict[str, str] | None = None
 
 
 @dataclasses.dataclass
@@ -373,7 +378,13 @@ def _case(
 ) -> CaseResult:
     split = split_of(source.collection, source.case, settings.held_out_collections)
     evaluated = settings.evaluated in ("all", split)
-    result = CaseResult(source.collection, split, evaluated)
+    public = getattr(source, "public", None)
+    public = (
+        {str(key): str(value) for key, value in public.items()}
+        if isinstance(public, Mapping)
+        else None
+    )
+    result = CaseResult(source.collection, split, evaluated, public=public)
     if not evaluated:
         return result
     try:
@@ -386,7 +397,11 @@ def _case(
     # message, which could quote a value, is never kept.
     except Exception as error:  # pylint: disable = broad-exception-caught
         return CaseResult(
-            source.collection, split, evaluated, crashed=crash_site(error)
+            source.collection,
+            split,
+            evaluated,
+            crashed=crash_site(error),
+            public=public,
         )
     return result
 
