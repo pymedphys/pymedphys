@@ -334,22 +334,8 @@ def _unchanged(
     return corpus
 
 
-def without_reports(
-    corpus: corpus_module.SyntheticCorpus,
-) -> corpus_module.SyntheticCorpus:
-    """Return the corpus without its Structured Reports, which no file references."""
-    return dataclasses.replace(
-        corpus,
-        files=tuple(
-            file
-            for file in corpus.files
-            if file.name not in corpus_module.STRUCTURED_REPORT_FILES
-        ),
-    )
-
-
-# BASIC_WITHHELD without the Structured Reports, for a run whose corpus has
-# none.
+# BASIC_WITHHELD without the Structured Reports, for a run that releases
+# them.
 WITHHELD_WITHOUT_REPORTS: Mapping[str, Withheld] = types.MappingProxyType(
     {
         name: withheld
