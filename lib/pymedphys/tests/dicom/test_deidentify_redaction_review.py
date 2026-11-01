@@ -1396,7 +1396,7 @@ def test_the_report_names_the_reviewed_pack(second_run):
         "reference": attestation.reference,
         "frames_not_shown": 0,
     }
-    assert report["format"] == "pymedphys-deid-release-report/44"
+    assert report["format"] == "pymedphys-deid-release-report/45"
 
 
 class _Blind(Finder):
