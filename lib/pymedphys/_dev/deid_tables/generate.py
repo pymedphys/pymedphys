@@ -40,6 +40,7 @@ from pymedphys._dicom.deidentify.codes import (
     SNOMED_ID_TABLE,
 )
 from pymedphys._dicom.deidentify.iods import IOD_MODULES_TABLE, MODULE_ATTRIBUTES_TABLE
+from pymedphys._dicom.deidentify.loinc_terms import load_loinc_terms
 from pymedphys._dicom.deidentify.requirements import PARAGRAPHS_FILE, PARAGRAPHS_TABLE
 from pymedphys._dicom.deidentify.residual_exemptions import (
     BODY_PART_TERMS_TABLE,
@@ -119,7 +120,10 @@ class Pin:
         if one no longer applies.
     structured_content_schemes : tuple of str
         The coding schemes, by designator, whose rows of Table E.3.4-1 are
-        generated, such as ``"DCM"``.
+        generated, such as ``"DCM"``. Generation fails if a generated LOINC
+        (``"LN"``) row's code is not one that
+        :func:`~pymedphys._dicom.deidentify.loinc_terms.load_loinc_terms`
+        names.
     left_out_structured_content_schemes : tuple of str
         The coding schemes whose rows of Table E.3.4-1 are left out, because
         their terms have not been accepted for bundling. Generation fails if
@@ -300,13 +304,15 @@ PIN = Pin(
             "Table C.8.31.7-1", "Include Table C.8-36b", ">Include Table C.8-36b"
         ),
     ),
-    # DICOM's own codes, and the SNOMED CT codes of the subset DICOM
-    # publishes (PS3.16 Section 2.19), which head_and_neck_regions.toml also
-    # bundles. The LOINC, NCDR, NCIt, and UMLS codes carry their own terms,
-    # which have not been accepted for bundling, so their rows are left out
-    # and a content item they name takes its sequence's Basic Profile action.
-    structured_content_schemes=("DCM", "SCT"),
-    left_out_structured_content_schemes=("LN", "NCDR", "NCIt", "UMLS"),
+    # DICOM's own codes; the SNOMED CT codes of the subset DICOM publishes
+    # (PS3.16 Section 2.19), which head_and_neck_regions.toml also bundles;
+    # and the LOINC codes, each of which loinc_terms.toml names, under the
+    # notice in _loinc/LICENSE-LOINC.txt. The NCDR, NCIt, and UMLS codes
+    # carry their own terms, which have not been accepted for bundling, so
+    # their rows are left out and a content item they name takes its
+    # sequence's Basic Profile action.
+    structured_content_schemes=("DCM", "LN", "SCT"),
+    left_out_structured_content_schemes=("NCDR", "NCIt", "UMLS"),
     # Table O-1 publishes Immunohistochemistry procedure twice.
     repeated_snomed_ids=(("117617002", "P3-44150"),),
 )
@@ -350,6 +356,8 @@ def _read_sources(pin: Pin, source_dir: pathlib.Path | None) -> dict[str, bytes]
         }
 
 
+# The Coding Scheme Designator of LOINC (PS3.16 Table 8-1).
+LOINC = "LN"
 _CHAPTER_E = "chtml/part15/chapter_E.html"
 _SECTION_E3_4 = "chtml/part15/sect_E.3.4.html"
 _SECTION_E3_10 = "chtml/part15/sect_E.3.10.html"
@@ -438,6 +446,17 @@ def _table_e3_4_1(pin: Pin, pages: Mapping[str, bytes]) -> dict[str, object]:
         frozenset(pin.structured_content_schemes),
         frozenset(pin.left_out_structured_content_schemes),
     )
+    named = load_loinc_terms().terms
+    unnamed = sorted(
+        concept.code_value
+        for concept in concepts
+        if concept.scheme_designator == LOINC and concept.code_value not in named
+    )
+    if unnamed:
+        raise chtml.TableFormatError(
+            f"{annex_e.TABLE_E3_4_1} has LOINC rows whose codes loinc_terms.toml "
+            "does not name: " + ", ".join(unnamed)
+        )
     rows: list[dict[str, object]] = [
         {
             "code_meaning": concept.code_meaning,
