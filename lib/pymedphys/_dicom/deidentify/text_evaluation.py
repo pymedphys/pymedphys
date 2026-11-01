@@ -143,8 +143,14 @@ TEXT_DIMENSIONS = (
     "content",
     "zone",
 )
-# The crosses of strata that the acceptance criteria read.
-CROSSES = (("iod", "contrast", "height"),)
+# The crosses of strata that the acceptance criteria read: sensitivity by
+# IOD, contrast, and height; false positives by IOD and slice size; and
+# texts missed by collection and truth.
+CROSSES = (
+    ("iod", "contrast", "height"),
+    ("iod", "slice_side"),
+    ("collection", "truth"),
+)
 # A text's ink is its pixels of more coverage than this.
 INK_LEVEL = 0.5
 HEIGHT_MM = Bins("mm", (0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 7.5, 10.0, 15.0))
@@ -283,8 +289,9 @@ class CaseResult:
         Whether its part of the split was evaluated.
     tally : Tally
     clusters : dict
-        By ``(point, iod)``, ``iod`` None for all, the counts of
-        :data:`_CLUSTER_FIELDS`, for the bootstrap.
+        By ``(point, grouping, value)``, for every point overall, by IOD,
+        and by each cross, the counts of :data:`_CLUSTER_FIELDS`, for the
+        bootstrap.
     crashed : str or None
         Where its frames raised, if they did.
     """
@@ -496,7 +503,7 @@ def _measure(
                     tuple(each.get(name, "none") for name in grouping),
                 )
                 _added(tally.texts, key, row)
-            _cluster(result, index, strata["iod"], [1, int(full), 0, 0, 0, 0])
+            _cluster(result, index, each, settings, [1, int(full), 0, 0, 0, 0])
         area = covered.blacked_out / pixels
         row = [
             1,
@@ -518,7 +525,8 @@ def _measure(
             _cluster(
                 result,
                 index,
-                strata["iod"],
+                strata,
+                settings,
                 [
                     0,
                     0,
@@ -542,9 +550,25 @@ def _added(table: dict[tuple, list[int]], key: tuple, row: Sequence[int]) -> Non
             existing[position] += value
 
 
-def _cluster(result: CaseResult, point: int, iod: str, row: Sequence[int]) -> None:
-    for key in ((point, None), (point, iod)):
-        _added(result.clusters, key, row)
+def _cluster(
+    result: CaseResult,
+    point: int,
+    strata: Mapping[str, str],
+    settings: EvaluationSettings,
+    row: Sequence[int],
+) -> None:
+    """Add a text's or a frame's counts to its case's, overall, by IOD, and
+    by each cross that its strata give."""
+    for grouping in _bootstrapped(settings):
+        if not all(name in strata for name in grouping):
+            continue
+        value = tuple(strata[name] for name in grouping)
+        _added(result.clusters, (point, grouping, value), row)
+
+
+def _bootstrapped(settings: EvaluationSettings) -> tuple[tuple[str, ...], ...]:
+    """The groupings whose shares get the bootstrap's intervals."""
+    return ((), ("iod",), *settings.crosses)
 
 
 def _text_strata(
@@ -756,7 +780,7 @@ def _point(
         },
         "by": {},
     }
-    _intervals(entry, index, None, clusters, replicates)
+    _intervals(entry, index, (), (), clusters, replicates)
     for grouping in groupings:
         values = sorted(
             {key[2] for key in tally.texts if key[0] == index and key[1] == grouping}
@@ -777,8 +801,8 @@ def _point(
             if per_text:
                 for name in _KINDS.values():
                     del row[name]
-            if grouping == ("iod",):
-                _intervals(row, index, value[0], clusters, replicates)
+            if grouping in _bootstrapped(settings):
+                _intervals(row, index, grouping, value, clusters, replicates)
             rows.append(row)
         entry["by"]["+".join(grouping)] = rows
     return entry
@@ -849,19 +873,24 @@ def _false_positives(row: Sequence[int] | None) -> dict[str, Any]:
 def _intervals(
     entry: dict[str, Any],
     index: int,
-    iod: str | None,
+    grouping: tuple[str, ...],
+    value: tuple,
     clusters: Sequence[Mapping[tuple, list[int]]],
     replicates: int,
 ) -> None:
-    """Add the bootstrap's intervals over cases to an entry's shares."""
+    """Add the bootstrap's intervals over cases to an entry's shares: its
+    sensitivity's, and, where it counts frames, its false positives'."""
+    key = (index, grouping, value)
     rows = np.array(
-        [each.get((index, iod), [0] * len(_CLUSTER_FIELDS)) for each in clusters],
+        [each.get(key, [0] * len(_CLUSTER_FIELDS)) for each in clusters],
         dtype=np.float64,
     ).reshape(-1, len(_CLUSTER_FIELDS))
-    seed = _seed(FORMAT, index, iod)
+    seed = _seed(FORMAT, index, "+".join(grouping), *value)
     entry["sensitivity"]["bootstrap"] = _pair(
         cluster_bootstrap(rows[:, 1], rows[:, 0], replicates=replicates, seed=seed)
     )
+    if "false_positives" not in entry:
+        return
     entry["false_positives"]["bootstrap"] = _pair(
         cluster_bootstrap(rows[:, 3], rows[:, 2], replicates=replicates, seed=seed + 1)
     )

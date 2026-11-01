@@ -468,7 +468,12 @@ def test_many_points_are_detailed_only_at_the_first():
         [Frames("c", "a", (_frame(texts=(_text(9, 10, 6, 28),)),))], points=points
     )
     assert "font" in summary["points"][0]["by"]
-    assert set(summary["points"][1]["by"]) == {"iod", "iod+contrast+height"}
+    assert set(summary["points"][1]["by"]) == {
+        "iod",
+        "iod+contrast+height",
+        "iod+slice_side",
+        "collection+truth",
+    }
 
 
 # -- Criteria -----------------------------------------------------------------
