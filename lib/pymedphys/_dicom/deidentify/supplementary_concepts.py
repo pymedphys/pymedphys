@@ -27,13 +27,15 @@ rules to attributes that Table E.1-1 omits (D-022), each with a note that
 says why:
 
 - the patient characteristics that Table E.1-1 keeps only under Retain
-  Patient Characteristics, as codes or text: coded patient state, the sex
-  parameters for clinical use, racial group, pregnancy, and smoking, each
+  Patient Characteristics, as codes, numbers, or text: coded patient state,
+  the sex parameters for clinical use, racial group, pregnancy, smoking, and
+  the patient's height and weight, which PS3.16 codes in LOINC, each
   removed (X), and kept (K) under that option, except the free-text comment
   on the sex parameters, which Table E.1-1 cleans (C) and which is removed
   under every option, since no cleaner of content items settles C;
-- Body Mass Index, removed under every option, as the reviewed rules remove
-  Patient's Body Mass Index (0010,1022); and
+- Body Mass Index, and Body Surface Area, which PS3.16 codes in LOINC,
+  removed under every option, as the reviewed rules remove Patient's Body
+  Mass Index (0010,1022); and
 - Subject ID as a CODE, as TID 1007 row 3 gives it, removed under every
   option. Table E.3.4-1 lists Subject ID only as TEXT, and of the concepts
   that PS3.16 2026d's templates use with a Value Type that the table does not
