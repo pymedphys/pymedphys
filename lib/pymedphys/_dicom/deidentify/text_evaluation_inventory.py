@@ -38,8 +38,9 @@ counts the files of each collection, and of all together, by:
 - whether the file holds Pixel Data;
 
 and in the crosses that sampling needs (:data:`CROSSES`). It also counts
-the distinct patients, studies, and series of each collection, and the
-frames of each SOP Class, which sets how long the detector takes.
+the distinct patients, studies, and series of each collection, a patient
+being an ID with its issuer within one collection, and the frames of each
+SOP Class, which sets how long the detector takes.
 
 Every label is a defined term or standard value, a bin, or one of the
 fixed codes ``absent`` (the attribute is not there or is empty),
@@ -296,6 +297,18 @@ def _digest(value: str | None) -> bytes | None:
     return hashlib.sha256(f"{_DIGEST_SALT}\0{value}".encode()).digest()
 
 
+def _patient(collection: str, dataset: Any) -> bytes | None:
+    """A digest of the patient, by the ID and its issuer within the
+    collection, since an ID names a patient only for the authority that
+    assigned it (PS3.3 Table 10-18), and two collections' IDs are not known
+    to name the same patients; None where the file gives no ID."""
+    patient = _text(dataset, "PatientID")
+    if patient is None:
+        return None
+    issuer = _text(dataset, "IssuerOfPatientID") or ""
+    return _digest("\0".join(("patient", collection, patient, issuer)))
+
+
 ABSENT, MALFORMED, OTHER = "absent", "malformed", "other"
 
 
@@ -502,7 +515,7 @@ def inventory(
                 else int(has_pixels)
             )
             identifiers = (
-                _digest(_text(dataset, "PatientID")),
+                _patient(file.collection, dataset),
                 _digest(_text(dataset, "StudyInstanceUID")),
                 _digest(_text(dataset, "SeriesInstanceUID")),
             )

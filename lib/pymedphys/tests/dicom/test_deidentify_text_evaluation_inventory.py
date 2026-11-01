@@ -130,6 +130,31 @@ def test_files_are_counted_by_fixed_labels_alone(tmp_path):
     assert summary["overall"]["read"] == 4
 
 
+def test_patients_are_told_apart_by_issuer_and_collection(tmp_path):
+    # One invented ID, from two issuers in one collection, and from one
+    # issuer in another collection: three patients, since an ID names a
+    # patient only for the authority that assigned it.
+    for name, collection, issuer in (
+        ("first", "a", "INVENTED-HOSPITAL-1"),
+        ("second", "a", "INVENTED-HOSPITAL-2"),
+        ("third", "b", "INVENTED-HOSPITAL-1"),
+        ("again", "a", "INVENTED-HOSPITAL-1"),
+    ):
+        folder = tmp_path / collection
+        folder.mkdir(exist_ok=True)
+        (folder / f"{name}.dcm").write_bytes(
+            _image(PatientID="INVENTED-1", IssuerOfPatientID=issuer)
+        )
+    files = inventory.folder_files(tmp_path / "a", "a") + inventory.folder_files(
+        tmp_path / "b", "b"
+    )
+    summary = inventory.inventory(files)
+    assert summary["collections"]["a"]["read"] == 3
+    assert summary["collections"]["a"]["patients"] == 2
+    assert summary["collections"]["b"]["patients"] == 1
+    assert summary["overall"]["patients"] == 3
+
+
 def test_no_value_identifier_or_path_reaches_the_inventory(tmp_path):
     root = _collection(tmp_path)
     summary = inventory.inventory(inventory.folder_files(root, "c"))
