@@ -219,6 +219,49 @@ def test_regions_that_are_not_text_give_no_box(regions):
     assert not text_detection.boxes_from_probability(probability, (64, 64), parameters)
 
 
+def test_each_box_is_scored_by_its_regions_mean_probability():
+    probability = np.zeros((64, 64), np.float32)
+    probability[10:14, 8:40] = 0.9
+    probability[30:34, 8:40] = 0.8
+    parameters = DetectionParameters(unclip_ratio=0.0, margin=0)
+    scored = text_detection.scored_boxes_from_probability(
+        probability, (64, 64), parameters
+    )
+    # The 2 by 2 dilation pulls a row and a column of zeros into each region.
+    assert [mean for _, mean in scored] == pytest.approx(
+        [0.9 * 4 * 32 / (5 * 33), 0.8 * 4 * 32 / (5 * 33)]
+    )
+    assert [box for box, _ in scored] == text_detection.boxes_from_probability(
+        probability, (64, 64), parameters
+    )
+
+
+def test_find_gives_each_box_that_a_rendering_detects_once(monkeypatch):
+    detector = _unloaded_detector(monkeypatch)
+    first = np.zeros((64, 64), np.float32)
+    first[10:14, 8:40] = 0.9
+    second = first.copy()
+    second[30:34, 8:40] = 0.95
+    maps = iter([first, second, first])
+    monkeypatch.setattr(detector, "_probability", lambda image: next(maps))
+    frame = np.arange(64 * 64, dtype=np.int16).reshape(64, 64)
+
+    detections = detector.detections(frame)
+
+    assert [each.rendering for each in detections] == [
+        "full-range",
+        "white-top-hat",
+        "white-top-hat",
+        "black-top-hat",
+    ]
+    assert detections[0].box == detections[1].box == detections[3].box
+    assert detections[2].mean_probability > detections[1].mean_probability
+    maps = iter([first, second, first])
+    found = detector.find(frame)
+    assert found == tuple(sorted({each.box for each in detections}))
+    assert len(found) == 2
+
+
 def test_regions_narrower_than_the_minimum_give_no_box():
     # Dilation makes a region of two rows three rows high.
     probability = _probability((64, 64), [((10, 10, 12, 30), 0.9)])
