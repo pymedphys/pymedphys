@@ -30,13 +30,17 @@ Each volume is given to the detector as a run gives it a series of its slices: o
 | Volumes | The volumes of the image in the ZIP file, those measured, those not measured by why, such as `not-read/data-length`, and crashes by the exception's type and place in the code; how each was stored; the plane of its slices, named by the patient's axis within 10 degrees of their normal, or `oblique`; the larger side of a slice, in pixels; and the larger spacing within a slice. |
 | Slices | The slices searched, those with a region, the regions, and the slices by how many regions each gives. |
 | Volumes by their regions | The volumes with a region, the volumes by how many regions each gives, and by the share of their slices with a region. |
-| Regions | Each region's area as a share of its slice's, its shorter side in pixels, its longer side over its shorter, and, for CT, the share of its pixels above -900 HU, where the region would black out more than air. |
+| Regions | Each region's area as a share of its slice's, its shorter side in pixels, its longer side over its shorter, and, for CT, the share of its pixels above -900 HU, where the region would black out more than air; then each region's score margin and the renderings that gave it. |
+| By the larger side of a slice | For each bin of the larger side of a slice, in pixels: the volumes, the slices searched, the slices with a region, and the regions; and, for the bins that hold a volume, the regions by score margin and by the renderings that gave them. |
+| By the larger spacing within a slice | The same, for each bin of the larger spacing within a slice, in millimetres. |
 
-The summary is labelled `pymedphys-deid-pixel-text-validation/1`. It also gives the detector's method as the method digest of a run takes it: the finder's class, the model's SHA-256, the ONNX Runtime version and distributions, the NumPy and SciPy versions, the detection parameters, and the renderings. Each measure is counted in fixed bins, and no case is named, so the summary gives no value of any case.
+A region's score margin is the highest mean probability that any of the detector's three renderings (its full range and its white and black top-hats) gave the region's box, less the detector's box threshold, 0.5 by default. A box is kept while any rendering gives it, so the regions with a margin of at least some amount are those that the same detector would keep with its box threshold raised by that amount, every other parameter unchanged. Raising the box threshold could also lose text that the detector now finds, which this check cannot show, since HaN-Seg holds none.
+
+The summary is labelled `pymedphys-deid-pixel-text-validation/2`. It also gives the detector's method as the method digest of a run takes it: the finder's class, the model's SHA-256, the ONNX Runtime version and distributions, the NumPy and SciPy versions, the detection parameters, and the renderings. Each measure is counted in fixed bins, and no case is named, so the summary gives no value of any case.
 
 ## Results on main
 
-The check ran on main at commit `d3c67ee1e56e9d161a131061484f7ceec364cf26` on 26 October 2026, in run [40286977414](https://github.com/pymedphys/pymedphys/actions/runs/40286977414), whose two jobs both succeeded. Their artefacts expire on 24 January 2027, so their counts are recorded here, as the job summaries give them.
+The check ran on main at commit `d3c67ee1e56e9d161a131061484f7ceec364cf26` on 26 October 2026, in run [40286977414](https://github.com/pymedphys/pymedphys/actions/runs/40286977414), whose two jobs both succeeded. Their artefacts expire on 24 January 2027, so their counts are recorded here, as the job summaries give them. The run predates the `/2` summary: its summaries are labelled `/1`, and have no score margins, no renderings, and no counts by the larger side of a slice or the larger spacing within one.
 
 | About | |
 | --- | --- |
@@ -185,5 +189,5 @@ Every volume of each image gave at least one region: 42 CTs and 42 MRs.
 - On CT, the detector found a region in 94.5% of the slices searched and in every volume, 4.38 regions for each slice searched. Of its 33,183 regions, 22,659 (68%) have half or more of their pixels above -900 HU, and 10,078 (30%) have all of them, so most would black out tissue rather than air.
 - On MR, it found a region in 19.9% of the slices and in every volume, 0.26 regions for each slice searched.
 - If, as above, HaN-Seg's images hold no burned-in text, every one of these regions is a false positive. A reviewer can add a region to a cleaned instance but cannot remove one that the finder found (D-048), so a cleaned slice like these is released with every region blacked out, or rejected.
-- 35 of the 42 CTs have slices of 1024 pixels or more on their larger side, and every MR has slices of 512 to under 640. The summaries do not count regions by slice size, so they do not show whether size explains the difference between CT and MR.
+- 35 of the 42 CTs have slices of 1024 pixels or more on their larger side, and every MR has slices of 512 to under 640. These `/1` summaries do not count regions by slice size, so they do not show whether size explains the difference between CT and MR; the `/2` summary counts them so.
 - The counts are evidence, not a verdict: whether the option's false positives on CT and MR are acceptable is for the maintainer to decide, and the validation table of the design doc records that decision as not yet made.

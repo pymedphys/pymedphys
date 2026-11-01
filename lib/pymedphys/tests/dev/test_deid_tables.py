@@ -52,6 +52,7 @@ from pymedphys._dev.deid_tables import (
 from pymedphys._dicom.deidentify import (
     codes,
     iods,
+    loinc_terms,
     requirements,
     residual_exemptions,
     sop_classes,
@@ -3682,17 +3683,43 @@ def test_the_pin_leaves_out_the_real_time_iods():
     }
 
 
-def test_the_pin_keeps_the_dicom_and_snomed_ct_rows_of_table_e3_4_1():
+def test_the_pin_keeps_the_dicom_snomed_ct_and_loinc_rows_of_table_e3_4_1():
     # The schemes of the 2026d table's 214 rows: DCM 189, SCT 11, LN 7,
     # NCDR 4, NCIt 2, and UMLS 1. Generation fails if an edition adds or
     # drops a scheme, and so does this test until it is updated with the pin.
-    assert generate.PIN.structured_content_schemes == ("DCM", "SCT")
+    assert generate.PIN.structured_content_schemes == ("DCM", "LN", "SCT")
     assert generate.PIN.left_out_structured_content_schemes == (
-        "LN",
         "NCDR",
         "NCIt",
         "UMLS",
     )
+    assert generate.LOINC == "LN"
+
+
+@pytest.mark.parametrize("named, fails", [
+    (set(), True),
+    ({"990001"}, True),
+    ({"990001", "990002", "990003"}, False),
+])  # fmt: skip
+def test_a_generated_loinc_row_must_have_its_loinc_name(
+    monkeypatch, source_dir, tmp_path, named, fails
+):
+    # The fixture's 99FIX rows stand in for LOINC's.
+    terms = loinc_terms.LoincTerms(
+        "2.83",
+        {code: loinc_terms.LoincTerm(code, "Fixture", "ACTIVE") for code in named},
+    )
+    monkeypatch.setattr(generate, "LOINC", "99FIX")
+    monkeypatch.setattr(generate, "load_loinc_terms", lambda: terms)
+
+    output_dir = tmp_path / "tables"
+
+    if fails:
+        with pytest.raises(chtml.TableFormatError, match="loinc_terms.toml"):
+            generate.generate(FIXTURE_PIN, output_dir, source_dir=source_dir)
+        assert not output_dir.exists()
+    else:
+        assert generate.generate(FIXTURE_PIN, output_dir, source_dir=source_dir) == 0
 
 
 def test_the_pin_names_the_row_table_o_1_publishes_twice():

@@ -41,9 +41,11 @@ the same attributes hold received values only under the options that keep
 them: under Modified Dates the dates that Full Dates keeps are shifted, and
 a shifted date equal to its own source would mean that the shift failed.
 Values that an option writes by C, such as shifted dates and AE-title
-tokens, are therefore never explained, nor are person names, UIDs, direct
+tokens, are therefore never explained, nor are person names and direct
 identifiers, which the release gate never exempts, or a kept value outside
-ISO 646, which :class:`~.residual_exemptions.KeptValues` does not read.
+ISO 646, which :class:`~.residual_exemptions.KeptValues` does not read. A
+UID is explained only where instances that the run does not write alone
+held it (:func:`~.residual_exemptions.unwritten_uid`).
 """
 
 from __future__ import annotations
