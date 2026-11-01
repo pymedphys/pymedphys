@@ -29,9 +29,10 @@ import sys
 from collections.abc import Sequence
 from typing import Any
 
-from . import face_validation, face_validation_dicom
+from . import face_validation, face_validation_dicom, face_validation_vhp
 from .face_validation_dicom_markdown import markdown as dicom_markdown
 from .face_validation_markdown import markdown
+from .face_validation_vhp_markdown import markdown as vhp_markdown
 
 JSON_NAME = "face-validation.json"
 MARKDOWN_NAME = "face-validation.md"
@@ -39,7 +40,8 @@ MARKDOWN_NAME = "face-validation.md"
 
 def main(argv: Sequence[str] | None = None) -> int:
     """Check the face block and CT defacing against a data set's masks,
-    or the face block and its holds on a directory of DICOM files.
+    the face block and its holds on a directory of DICOM files, or the
+    face block and CT defacing on the NLM Visible Human Project's CT.
 
     ``hanseg`` takes HaN-Seg's ZIP file and ``--out``, a directory that
     must not exist, and writes :func:`~pymedphys._dicom.deidentify.face_validation.summarise`'s
@@ -47,7 +49,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     and prints the Markdown. ``dicom`` takes a directory of DICOM files and
     ``--out`` likewise, and writes
     :func:`~pymedphys._dicom.deidentify.face_validation_dicom.summarise`'s
-    counts.
+    counts. ``visible-human`` takes a directory holding each series that
+    :data:`~pymedphys._dicom.deidentify.face_validation_vhp.SERIES` pins and
+    ``--out`` likewise, and writes
+    :func:`~pymedphys._dicom.deidentify.face_validation_vhp.check_visible_human`'s
+    summary there, as ``face-validation-vhp.json`` and
+    ``face-validation-vhp.md``, with the female cadaver's renders in
+    ``renders``, and prints the Markdown.
 
     Raises
     ------
@@ -104,10 +112,32 @@ def main(argv: Sequence[str] | None = None) -> int:
             "face-validation.md."
         ),
     )
+    visible_human = commands.add_parser(
+        "visible-human",
+        help=(
+            "Check the face block finder and CT defacing on the NLM Visible "
+            "Human Project's CT series from NCI Imaging Data Commons, and "
+            "render the female cadaver's face."
+        ),
+    )
+    visible_human.add_argument(
+        "directory",
+        help="A directory holding each pinned series in a folder named by its UUID.",
+    )
+    visible_human.add_argument(
+        "--out",
+        required=True,
+        help=(
+            "A directory, which must not exist, for face-validation-vhp.json, "
+            "face-validation-vhp.md, and the renders."
+        ),
+    )
     arguments = parser.parse_args(argv)
     out = pathlib.Path(arguments.out)
     if out.exists():
         raise SystemExit("The output directory must not exist.")
+    if arguments.command == "visible-human":
+        return _visible_human(pathlib.Path(arguments.directory), out)
     try:
         if arguments.command == "dicom":
             summary = _check_dicom(pathlib.Path(arguments.directory))
@@ -120,6 +150,32 @@ def main(argv: Sequence[str] | None = None) -> int:
     out.mkdir(parents=True)
     (out / JSON_NAME).write_text(json.dumps(summary, indent=2) + "\n", encoding="utf-8")
     (out / MARKDOWN_NAME).write_text(page, encoding="utf-8")
+    sys.stdout.write(page)
+    return 0
+
+
+def _visible_human(directory: pathlib.Path, out: pathlib.Path) -> int:
+    """Check the Visible Human series, and write the summary, the page, and
+    the renders.
+
+    Raises
+    ------
+    SystemExit
+        With a refusal's message, as for a series that is missing or not
+        the one pinned.
+    """
+    try:
+        summary = face_validation_vhp.check_visible_human(
+            directory, out / face_validation_vhp.RENDERS
+        )
+    except face_validation.FaceValidationRefused as refused:
+        raise SystemExit(str(refused)) from None
+    out.mkdir(parents=True, exist_ok=True)
+    page = vhp_markdown(summary)
+    (out / face_validation_vhp.JSON_NAME).write_text(
+        json.dumps(summary, indent=2) + "\n", encoding="utf-8"
+    )
+    (out / face_validation_vhp.MARKDOWN_NAME).write_text(page, encoding="utf-8")
     sys.stdout.write(page)
     return 0
 
