@@ -1299,12 +1299,29 @@ def test_a_pet_slice_that_cannot_be_placed_or_cleaned_is_refused(changes):
         PetDefacer(_REGION, dataset)
 
 
-def test_compressed_pet_is_refused():
+def test_pet_in_a_transfer_syntax_that_no_run_decodes_is_refused():
     dataset = _pet()
-    dataset.file_meta.TransferSyntaxUID = "1.2.840.10008.1.2.5"
+    # MPEG-2 Main Profile / Main Level, which encapsulates Pixel Data but
+    # which no run decodes.
+    dataset.file_meta.TransferSyntaxUID = "1.2.840.10008.1.2.4.100"
 
     with pytest.raises(PixelDataRefused):
         PetDefacer(_REGION, dataset)
+
+
+def test_compressed_pet_is_placed_as_native_pet_is():
+    dataset = _pet()
+    stored = dataset.pixel_array
+    expected = PetDefacer(_REGION, dataset).mask(0, stored)
+    # RLE Lossless: its frames, once decoded, are given to the mask as
+    # native frames are.
+    dataset.file_meta.TransferSyntaxUID = "1.2.840.10008.1.2.5"
+
+    found = PetDefacer(_REGION, dataset).mask(0, stored)
+
+    assert found is not None and expected is not None
+    np.testing.assert_array_equal(found.mask, expected.mask)
+    assert found.value == expected.value
 
 
 def test_a_pet_defacer_shows_nothing_and_holds_nothing():

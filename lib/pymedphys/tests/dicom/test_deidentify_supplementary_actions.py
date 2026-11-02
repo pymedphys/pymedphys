@@ -89,20 +89,36 @@ SUPPORTED_DOSE_SR_IODS = (
 )
 # The IODs that the Radiation Dose SR IODs were reviewed against.
 DOSE_SR_REVIEWED_AGAINST = REVIEWED_AGAINST + TARGET_IODS
+# The general SR IODs, which the maintainer brought into scope with every
+# other SR IOD on 25 October 2026. They use no attribute that the IODs above
+# do not, so their support needed no review of their attributes.
+GENERAL_SR_IODS = (
+    "Basic Text SR",
+    "Enhanced SR",
+    "Comprehensive SR",
+    "Comprehensive 3D SR",
+    "Extensible SR",
+)
 # The RT Ion IODs, which the maintainer added to the target coverage on 31
 # October 2026, whose text, UID, and date attributes were reviewed ahead of
 # supporting them, against every IOD above, and which the first supported
 # release now supports.
 ION_IODS = ("RT Ion Plan", "RT Ion Beams Treatment Record")
 ION_REVIEWED_AGAINST = DOSE_SR_REVIEWED_AGAINST + RADIATION_DOSE_SR_IODS
-SUPPORTED_IODS = (
-    REVIEWED_AGAINST + SUPPORTED_TARGET_IODS + SUPPORTED_DOSE_SR_IODS + ION_IODS
-)
 # RT Brachy Treatment Record and RT Treatment Summary Record, which the
 # maintainer added to the target coverage on 31 October 2026, whose
-# attributes were reviewed ahead of supporting them, against every IOD above.
+# attributes were reviewed ahead of supporting them, against every IOD above,
+# and which the first supported release now supports.
 RECORD_IODS = ("RT Brachy Treatment Record", "RT Treatment Summary Record")
 RECORD_REVIEWED_AGAINST = ION_REVIEWED_AGAINST + ION_IODS
+SUPPORTED_IODS = (
+    REVIEWED_AGAINST
+    + SUPPORTED_TARGET_IODS
+    + SUPPORTED_DOSE_SR_IODS
+    + GENERAL_SR_IODS
+    + ION_IODS
+    + RECORD_IODS
+)
 CLEAN_DESCRIPTORS = "clean_descriptors"
 DEVICE_IDENTITY = "retain_device_identity"
 FULL_DATES = "retain_longitudinal_full_dates"
@@ -367,8 +383,9 @@ def test_every_text_attribute_a_supported_iod_uses_and_table_e1_1_omits_has_a_ru
 
     # Checked against the 2026d PS3.3, PS3.6, and PS3.15: the combined
     # scope includes the RT objects, among them the two RT Ion IODs, which
-    # add 13, and the two dose-report IODs, whose supplementary rules cover
-    # 168 text attributes.
+    # add 13, and the brachy and summary treatment records, which add none,
+    # and the two dose-report IODs, whose supplementary rules cover 168 text
+    # attributes.
     assert len(omitted) == 168
     assert omitted <= set(_rules())
     assert {"(0008,0100)", "(300A,00C2)", "(60xx,1500)"} <= omitted
@@ -626,6 +643,25 @@ def test_the_radiation_dose_sr_iods_are_generated_and_only_two_supported():
     )
 
 
+def test_the_general_sr_iods_use_no_attribute_that_the_reviewed_iods_do_not():
+    tables = iods.load_iod_tables()
+    reviewed = REVIEWED_AGAINST + TARGET_IODS + RADIATION_DOSE_SR_IODS
+
+    def used(names):
+        return {
+            definition.tag
+            for name in names
+            for definition in tables.iods[name].definitions
+        }
+
+    # Of any VR, at any depth: SR Document General, SR Document Content, and
+    # the Key Object Document, Key Object Document Series, and Timezone
+    # Modules, which some of them add, define nothing new.
+    assert set(GENERAL_SR_IODS) <= set(tables.iods)
+    assert set(GENERAL_SR_IODS) <= scope.SUPPORTED_IODS
+    assert used(GENERAL_SR_IODS) - used(reviewed) == set()
+
+
 @pytest.mark.deid_requirement("MIDI-BP-05", "MIDI-BP-06", "MIDI-BP-11")
 def test_the_text_that_only_the_radiation_dose_sr_iods_use_has_reviewed_rules():
     listed = _table_e1_1()
@@ -869,11 +905,11 @@ def _resolved_in(names, tag, action):
     }
 
 
-def test_the_brachy_and_summary_records_are_generated_and_not_yet_supported():
+def test_the_brachy_and_summary_records_are_generated_and_supported():
     tables = iods.load_iod_tables()
 
     assert set(RECORD_IODS) <= set(tables.iods)
-    assert not set(RECORD_IODS) & scope.SUPPORTED_IODS
+    assert set(RECORD_IODS) <= scope.SUPPORTED_IODS
 
 
 def test_the_brachy_and_summary_records_add_only_the_brachy_session_record():

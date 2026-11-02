@@ -188,16 +188,19 @@ def test_stored_values_that_cannot_hold_air_leave_the_series_undefaced():
     assert _outcome(slices=tuple(unsigned)).problem is SeriesProblem.AIR_NOT_STORED
 
 
-def test_compressed_slices_are_not_defaced():
+def test_compressed_slices_have_the_face_block_of_native_ones():
     compressed = []
     for each in _head_files():
         dataset = pydicom.dcmread(io.BytesIO(each))
-        dataset.compress(pydicom.uid.RLELossless)
+        dataset.compress(pydicom.uid.RLELossless, generate_instance_uid=False)
         buffer = io.BytesIO()
         dataset.save_as(buffer, enforce_file_format=True)
         compressed.append(buffer.getvalue())
 
-    assert _outcome(slices=tuple(compressed)).problem is SeriesProblem.COMPRESSED
+    outcome = _outcome(slices=tuple(compressed))
+
+    assert outcome.problem is None
+    assert outcome.block == _outcome().block
 
 
 @pytest.mark.parametrize("kind", ["PTV", "CTV", "GTV", "PTV "])
