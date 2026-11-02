@@ -34,7 +34,7 @@ on:
           Which configurations run: basic and basic-clean-descriptors; the
           other presets; each Retain option alone, with its flip check; each
           Clean option alone, Clean Pixel Data in eight shards; or all of
-          them, in fourteen jobs for each subset
+          them, in fourteen jobs for Validation and twenty-one for Test
         type: choice
         options: [basic-presets, other-presets, retain, clean, all]
         default: basic-presets
@@ -92,25 +92,84 @@ env:
   # Clean Pixel Data's run takes longer than a job may: its text detector
   # would read the Validation subset for an estimated 7 to 8 hours, and the
   # Test subset for 9 to 10, from its times on HaN-Seg's frames in run
-  # 41145832882 (at most 1.1 s for a 512 by 512 slice). So it runs in this many shards, each of the patients that
-  # midi_benchmark_shards.assign gives it, in a job of its own; the
-  # "combine" job adds their results up. The clean-pixel-data groups below
-  # number them; each shard should take about 1 to 1.5 hours.
+  # 41145832882 (at most 1.1 s for a 512 by 512 slice). So it runs in this
+  # many shards, each of the patients that midi_benchmark_shards.assign
+  # gives it, in a job of its own; the "combine" job adds their results up.
+  # The clean-pixel-data groups below number them; each shard should take
+  # about 1 to 1.5 hours.
   CLEAN_PIXEL_DATA_SHARDS: 8
 
 jobs:
-  # Each engine ref's commit, found once, so that every job of the run,
-  # whenever it starts, benchmarks the same engine, and a re-run of a job
-  # does too: the combined shards must be of one engine.
-  engine:
-    name: Pin the engine refs
+  # The run's jobs, and each engine ref's commit, found once, so that every
+  # job of the run, whenever it starts, benchmarks the same engine, and a
+  # re-run of a job does too: the combined shards must be of one engine.
+  plan:
+    name: Plan the run
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:
       contents: read
     outputs:
       pins: ${{ steps.pin.outputs.pins }}
+      jobs: ${{ steps.jobs.outputs.jobs }}
     steps:
+      # Each subset's groups. The Test subset takes 2.1 to 2.6 times as long
+      # as Validation, and runners differ about twofold in speed, so on a
+      # slow runner a Test job of more than one run scored by NCI's script,
+      # or of more than two runs, passes the step's 320 minutes. So Test runs
+      # each preset scored by the script in a job of its own, apart from
+      # other-presets, in which public-release releases nothing to score;
+      # each Retain option in a job of its own with its basic reference; and
+      # the Clean options two to a job. Validation's groups fit a slow
+      # runner. A push (temporary, above) has no inputs, and runs
+      # basic-presets on both subsets.
+      - name: Choose the jobs
+        id: jobs
+        env:
+          CHOSEN_SUBSET: ${{ inputs.subset }}
+          CHOSEN_CONFIGURATIONS: ${{ inputs.configurations }}
+        run: |
+          case "${CHOSEN_SUBSET:-both}" in
+            validation) subsets=(validation) ;;
+            test) subsets=(test) ;;
+            both) subsets=(validation test) ;;
+            *) echo "Unknown subset ${CHOSEN_SUBSET}."; exit 1 ;;
+          esac
+          case "${CHOSEN_CONFIGURATIONS:-basic-presets}" in
+            basic-presets|other-presets|retain|clean) kinds=("${CHOSEN_CONFIGURATIONS:-basic-presets}") ;;
+            all) kinds=(basic-presets other-presets retain clean) ;;
+            *) echo "Unknown configurations ${CHOSEN_CONFIGURATIONS}."; exit 1 ;;
+          esac
+          shards=()
+          for number in $(seq 1 "${CLEAN_PIXEL_DATA_SHARDS}"); do
+            shards+=("clean-pixel-data-${number}")
+          done
+          rows=()
+          for subset in "${subsets[@]}"; do
+            for kind in "${kinds[@]}"; do
+              case "${subset}:${kind}" in
+                validation:basic-presets) groups=(basic-presets) ;;
+                test:basic-presets) groups=(basic basic-clean-descriptors) ;;
+                *:other-presets) groups=(other-presets) ;;
+                validation:retain) groups=(retain-1 retain-2 retain-3) ;;
+                test:retain)
+                  groups=(flip-retain_safe_private flip-retain_uids flip-retain_device_identity
+                    flip-retain_institution_identity flip-retain_patient_characteristics
+                    flip-retain_longitudinal_full_dates flip-retain_longitudinal_modified_dates
+                    flip-retain_safe_private-tcia) ;;
+                validation:clean) groups=(clean "${shards[@]}") ;;
+                test:clean) groups=(clean-1 clean-2 "${shards[@]}") ;;
+              esac
+              for group in "${groups[@]}"; do
+                rows+=("$(jq -cn --arg subset "${subset}" --arg group "${group}" \
+                  '{subset: $subset, group: $group}')")
+              done
+            done
+          done
+          jobs="$(printf '%s\n' "${rows[@]}" | jq -cs '{include: .}')"
+          echo "${jobs}" | jq -r '.include[] | "\(.subset) \(.group)"'
+          echo "jobs=${jobs}" >> "${GITHUB_OUTPUT}"
+
       - name: Find each engine ref's commit
         id: pin
         env:
@@ -137,27 +196,14 @@ jobs:
 
   benchmark:
     name: MIDI-B ${{ matrix.subset }} ${{ matrix.group }}
-    needs: engine
+    needs: plan
     strategy:
       fail-fast: false
       # Each job downloads its subset from TCIA: no more than four at once.
       max-parallel: 4
-      matrix:
-        # A push (temporary, above) has no inputs, and runs both.
-        subset: >-
-          ${{ fromJSON(inputs.subset == 'validation' && '["validation"]'
-          || inputs.subset == 'test' && '["test"]'
-          || '["validation", "test"]') }}
-        # Each group's configurations are chosen in "Choose the
-        # configurations" below. A push (temporary, above) runs basic-presets.
-        group: >-
-          ${{ fromJSON(inputs.configurations == 'other-presets' && '["other-presets"]'
-          || inputs.configurations == 'retain' && '["retain-1", "retain-2", "retain-3"]'
-          || inputs.configurations == 'clean'
-            && '["clean", "clean-pixel-data-1", "clean-pixel-data-2", "clean-pixel-data-3", "clean-pixel-data-4", "clean-pixel-data-5", "clean-pixel-data-6", "clean-pixel-data-7", "clean-pixel-data-8"]'
-          || inputs.configurations == 'all'
-            && '["basic-presets", "other-presets", "retain-1", "retain-2", "retain-3", "clean", "clean-pixel-data-1", "clean-pixel-data-2", "clean-pixel-data-3", "clean-pixel-data-4", "clean-pixel-data-5", "clean-pixel-data-6", "clean-pixel-data-7", "clean-pixel-data-8"]'
-          || '["basic-presets"]') }}
+      # Each subset and group, as the plan chose them. Each group's
+      # configurations are chosen in "Choose the configurations" below.
+      matrix: ${{ fromJSON(needs.plan.outputs.jobs) }}
     # The dicom3tools package that setup-dicom-validators pins is Ubuntu
     # 24.04's.
     runs-on: ubuntu-24.04
@@ -179,7 +225,7 @@ jobs:
       ANSWER_KEY_URL: ${{ inputs.answer-key-url }}
       ANSWER_KEY_SHA256: ${{ inputs.answer-key-sha256 }}
       ENGINE_REF: ${{ inputs.engine-ref }}
-      ENGINE_PINS: ${{ needs.engine.outputs.pins }}
+      ENGINE_PINS: ${{ needs.plan.outputs.pins }}
       # NCI's validation script (https://github.com/CBIIT/midi_validation_script,
       # Apache-2.0) at a pinned commit. It pins pydicom 2.2.1, so it runs in
       # an environment of its own, on Python 3.10.
@@ -201,7 +247,7 @@ jobs:
           # Merging an engine ref needs the history back to the merge base.
           fetch-depth: ${{ env.ENGINE_REF != '' && '0' || '1' }}
 
-      # Each engine ref's commit, as the engine job found it. The merge stays
+      # Each engine ref's commit, as the plan found it. The merge stays
       # on the runner, which is deleted when the job ends.
       - name: Merge the engine ref
         if: env.ENGINE_REF != ''
@@ -388,15 +434,18 @@ jobs:
       # the configuration's results are then named name-list. Under Clean
       # Recognizable Visual Features, which public-release selects, a run
       # has no face verdicts, so it holds every instance that can show a
-      # face, as its results record. On the Test subset, the
-      # harness took about 62 minutes, the validation 10, and NCI's script
-      # 22, so each group fits the job's timeout. Clean Pixel Data's group
-      # is one shard of its run, which the "combine" job adds up.
+      # face, as its results record. On the Test subset, on a fast runner,
+      # the harness took about 62 minutes, the validation 10, and NCI's
+      # script 22; the plan splits Test's groups so that each fits a slow
+      # runner too. Clean Pixel Data's group is one shard of its run, which
+      # the "combine" job adds up.
       - name: Choose the configurations
         run: |
           case "${GROUP}" in
             basic-presets)
               configurations="preset:basic:full preset:basic-clean-descriptors:full" ;;
+            basic|basic-clean-descriptors)
+              configurations="preset:${GROUP}:full" ;;
             other-presets)
               configurations="preset:tps-import:full preset:public-release:full" ;;
             retain-1)
@@ -405,8 +454,18 @@ jobs:
               configurations="preset:basic:reference option:retain_institution_identity:validated option:retain_patient_characteristics:validated" ;;
             retain-3)
               configurations="preset:basic:reference option:retain_longitudinal_full_dates:validated option:retain_longitudinal_modified_dates:validated option:retain_safe_private:validated:tcia" ;;
+            # One Retain option and its basic reference, flip-<option> or
+            # flip-<option>-tcia for TCIA's Private Tag Dictionary.
+            flip-retain_safe_private-tcia)
+              configurations="preset:basic:reference option:retain_safe_private:validated:tcia" ;;
+            flip-retain_safe_private|flip-retain_uids|flip-retain_device_identity|flip-retain_institution_identity|flip-retain_patient_characteristics|flip-retain_longitudinal_full_dates|flip-retain_longitudinal_modified_dates)
+              configurations="preset:basic:reference option:${GROUP#flip-}:validated" ;;
             clean)
               configurations="option:clean_descriptors:validated option:clean_structured_content:validated option:clean_graphics:validated option:clean_recognizable_visual_features:validated" ;;
+            clean-1)
+              configurations="option:clean_descriptors:validated option:clean_structured_content:validated" ;;
+            clean-2)
+              configurations="option:clean_graphics:validated option:clean_recognizable_visual_features:validated" ;;
             clean-pixel-data-[1-9]*)
               number="${GROUP##*-}"
               if [[ ! "${number}" =~ ^[1-9][0-9]*$ ]] || (( number > CLEAN_PIXEL_DATA_SHARDS )); then
