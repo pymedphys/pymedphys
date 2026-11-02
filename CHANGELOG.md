@@ -12,6 +12,16 @@ This project adheres to
 
 ## Unreleased
 
+### Head & neck DVH constraint library
+
+- Added ``pymedphys._constraints.head_neck_dvh``: a head & neck DVH
+  constraint library with per-number sourced OAR limits for conventional
+  and SBRT fractionations (QUANTEC 2010, AAPM TG-101, UK SABR 2022),
+  BED/EQD2 helpers, plan checking that reports hard, soft, incomplete and
+  not-evaluated outcomes (an unevaluated check never passes), the QUANTEC
+  paired-parotid rule, and prescription-level re-irradiation dose
+  estimation.
+
 ### Mosaiq treatment sessions follow Mosaiq's rule
 
 The private Mosaiq session helpers in `pymedphys._mosaiq.sessions` now group

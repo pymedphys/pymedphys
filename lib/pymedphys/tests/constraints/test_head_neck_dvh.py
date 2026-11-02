@@ -13,7 +13,6 @@ import pytest
 from pymedphys._constraints.head_neck_dvh import (
     HEAD_NECK_CONSTRAINTS,
     Modality,
-    ViolationLevel,
     bed,
     check_constraint,
     check_plan,
@@ -62,7 +61,7 @@ class TestBED:
     def test_cumulative_bed_2yr_gap(self):
         regimens = [(2.0, 30, 1.0)]
         cb = cumulative_bed(regimens, 2.0, 3, True)
-        assert 25 < cb < 35  # ~50% repair
+        assert 25 < cb < 35  # >=2 yr boundary -> 70% repair (100 x 0.3)
 
 
 class TestConstraints:
@@ -80,7 +79,15 @@ class TestConstraints:
 
     def test_brainstem_sbrt_5fx(self):
         c = HEAD_NECK_CONSTRAINTS["brainstem"]
-        assert c["sbrt_5fx"]["dmax"] == 25.0
+        assert c["sbrt_5fx"]["d0_03cc"] == 31.0  # UK SABR 2022 Table 6
+
+    def test_spinal_cord_sbrt_uk_sabr_values(self):
+        """SBRT cord limits match UK SABR 2022 (PMID:35272913) Table 5."""
+        c = HEAD_NECK_CONSTRAINTS["spinal_cord"]
+        assert c["sbrt_1fx"]["d0_03cc"] == 14.0
+        assert c["sbrt_3fx"]["d0_03cc"] == 20.3
+        assert c["sbrt_5fx"]["d0_03cc"] == 25.3
+        assert "UK SABR 2022" in c["source"]
 
     def test_parotid_mean(self):
         c = HEAD_NECK_CONSTRAINTS["parotid_contralateral"]
@@ -309,7 +316,7 @@ class TestReirradiation:
     def test_sbrt_course_bed_not_scaled_per_cycle(self):
         """P1: SBRT entry is one 5-fx course; its BED must not be multiplied."""
         results = {r["regimen"]: r for r in screen_reirradiation(60, 30, 2.0)}
-        sbrt = results["SBRT 5-6 Gy x 5 + IO"]
+        sbrt = results["SBRT 5.5 Gy x 5 (institutional)"]
         assert sbrt["new_course_total_dose_gy"] == 27.5
         expected_eqd2 = eqd2(bed(5.5, 5, 3), 3)  # ≈46.7
         assert abs(sbrt["new_course_eqd2"] - expected_eqd2) < 0.2

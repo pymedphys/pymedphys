@@ -1,10 +1,19 @@
-# pymedphys contribution: Head & Neck DVH constraint library
-# To be placed at: lib/pymedphys/_constraints/head_neck_dvh.py
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
 #
-# Unless an entry states otherwise, values are departmental planning targets
-# (Shanghai Ninth People's Hospital Head & Neck RT Series) informed by
-# QUANTEC (IJROBP 2010;76(3 Suppl)), AAPM TG-101 and UK SABR 2022. QUANTEC /
-# TG-101 are named as the source only where the number is taken from them.
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+# Head & Neck DVH constraint library.
+# Each limit carries its own source in HEAD_NECK_CONSTRAINTS: published
+# values name the publication and table where available; values without a
+# published source are labelled as departmental planning targets.
 # Clinical source: Shanghai Ninth People's Hospital Head & Neck RT Series
 # GitHub: https://github.com/antica1
 
@@ -14,7 +23,8 @@ from enum import Enum
 # ── Constants ─────────────────────────────────────────────
 
 ALPHA_BETA_TUMOR = 10  # Gy (HNSCC)
-ALPHA_BETA_LATE = 3  # Gy (CNS, bone, soft tissue late effects)
+ALPHA_BETA_LATE = 3  # Gy (default for late endpoints in this module; see
+# screen_reirradiation for the α/β discussion)
 
 
 class ViolationLevel(Enum):
@@ -38,40 +48,40 @@ HEAD_NECK_CONSTRAINTS: dict[str, dict] = {
     "spinal_cord": {
         "level": "hard",
         "conventional": {"dmax": 45.0, "unit": "Gy"},
-        "sbrt_1fx": {"dmax": 14.0},
-        "sbrt_3fx": {"dmax": 21.0},
-        "sbrt_5fx": {"dmax": 25.0},
-        "source": "Institutional hard limit (45 Gy); dose-risk data: QUANTEC 2010, AAPM TG-101, UK SABR 2022",
-        "note": "Animal model extrapolation: Dmax 50 Gy at 2 Gy/fx = 0.2% myelopathy risk (QUANTEC 2010). 45 Gy is the departmental conservative limit.",
+        "sbrt_1fx": {"d0_03cc": 14.0},
+        "sbrt_3fx": {"d0_03cc": 20.3},
+        "sbrt_5fx": {"d0_03cc": 25.3},
+        "source": "conventional 45 Gy: departmental hard limit (risk data: QUANTEC 2010, Kirkpatrick - Dmax 50 Gy at 2 Gy/fx ~0.2% myelopathy); SBRT 14/20.3/25.3 Gy: UK SABR 2022 (PMID:35272913) Table 5, D0.035 cc",
+        "note": "Animal model extrapolation for the conventional limit; the SBRT numbers are consensus tolerance doses for D0.035 cc.",
     },
     "brainstem": {
         "level": "hard",
         "conventional": {"dmax": 54.0, "unit": "Gy"},
-        "sbrt_1fx": {"dmax": 14.0},
-        "sbrt_3fx": {"dmax": 21.0},
-        "sbrt_5fx": {"dmax": 25.0},
-        "source": "QUANTEC 2010 (conventional); AAPM TG-101, UK SABR 2022 (SBRT)",
+        "sbrt_1fx": {"d0_03cc": 15.0},
+        "sbrt_3fx": {"d0_03cc": 23.1},
+        "sbrt_5fx": {"d0_03cc": 31.0},
+        "source": "conventional 54 Gy: QUANTEC 2010 (Dmax <54 Gy); SBRT 15/23.1/31 Gy: UK SABR 2022 (PMID:35272913) Table 6, D0.035 cc",
     },
     "optic_chiasm": {
         "level": "hard",
         "conventional": {"dmax": 54.0, "unit": "Gy"},
-        "sbrt_1fx": {"dmax": 10.0},
-        "sbrt_3fx": {"d0_03cc": 17.0},
-        "sbrt_5fx": {"d0_03cc": 23.0},
-        "source": "QUANTEC 2010 (Dmax <55 Gy; institutional limit 54 Gy); AAPM TG-101 (SBRT)",
+        "sbrt_1fx": {"d0_03cc": 10.0},
+        "sbrt_3fx": {"d0_03cc": 20.0},
+        "sbrt_5fx": {"d0_03cc": 25.0},
+        "source": "conventional 54 Gy: departmental limit (QUANTEC 2010 gives Dmax <55 Gy); SBRT 10/20/25 Gy: UK SABR 2022 (PMID:35272913) Table 6, D0.035 cc",
     },
     "optic_nerve": {
         "level": "hard",
         "conventional": {"dmax": 54.0, "unit": "Gy"},
-        "sbrt_1fx": {"dmax": 10.0},
-        "sbrt_3fx": {"d0_03cc": 17.0},
-        "sbrt_5fx": {"d0_03cc": 23.0},
-        "source": "QUANTEC 2010 (Dmax <55 Gy; institutional limit 54 Gy); AAPM TG-101 (SBRT)",
+        "sbrt_1fx": {"d0_03cc": 10.0},
+        "sbrt_3fx": {"d0_03cc": 20.0},
+        "sbrt_5fx": {"d0_03cc": 25.0},
+        "source": "conventional 54 Gy: departmental limit (QUANTEC 2010 gives Dmax <55 Gy); SBRT 10/20/25 Gy: UK SABR 2022 (PMID:35272913) Table 6, D0.035 cc",
     },
     "lens": {
         "level": "hard",
         "conventional": {"dmax": 10.0, "unit": "Gy"},
-        "source": "Institutional H&N protocol (lens tolerance literature; QUANTEC has no lens recommendation)",
+        "source": "Institutional H&N protocol (lens tolerance literature; the QUANTEC 2010 supplement has no lens review)",
     },
     # --- Soft constraints ---
     "parotid_contralateral": {
@@ -89,12 +99,12 @@ HEAD_NECK_CONSTRAINTS: dict[str, dict] = {
     "cochlea": {
         "level": "soft",
         "conventional": {"dmean": 45.0, "unit": "Gy"},
-        "source": "QUANTEC 2010 (Dmean <=45 Gy)",
+        "source": "QUANTEC 2010 (mean dose <=45 Gy, Dmean for hearing loss)",
     },
     "mandible": {
         "level": "soft",
         "conventional": {"dmax": 70.0, "v60": 30.0, "unit": "Gy"},
-        "source": "Institutional H&N protocol (ORN literature; QUANTEC has no mandible recommendation)",
+        "source": "Institutional H&N protocol (ORN literature; the QUANTEC 2010 supplement has no mandible review)",
     },
     "pharyngeal_constrictors": {
         "level": "soft",
@@ -104,7 +114,7 @@ HEAD_NECK_CONSTRAINTS: dict[str, dict] = {
     "lacrimal_gland": {
         "level": "soft",
         "conventional": {"dmean": 25.0, "unit": "Gy"},
-        "source": "Shanghai Ninth People's Hospital",
+        "source": "Shanghai Ninth People's Hospital departmental target",
     },
     "brachial_plexus": {
         "level": "soft",
@@ -112,7 +122,7 @@ HEAD_NECK_CONSTRAINTS: dict[str, dict] = {
         "sbrt_1fx": {"dmax": 17.5},
         "sbrt_3fx": {"dmax": 24.0},
         "sbrt_5fx": {"dmax": 30.5},
-        "source": "Conventional: RTOG H&N protocols (60-66 Gy). SBRT: AAPM TG-101 Table III, max point dose <3 cc",
+        "source": "conventional 66 Gy: RTOG H&N protocols (60-66 Gy); SBRT 17.5/24/30.5 Gy: AAPM TG-101 2010 Table III, maximum point dose (<3 cc)",
     },
     "oral_cavity": {
         "level": "soft",
@@ -131,32 +141,66 @@ HEAD_NECK_CONSTRAINTS: dict[str, dict] = {
 
 
 def bed(dose_per_fx: float, n_fractions: int, alpha_beta: float) -> float:
-    """Biological Effective Dose.
+    """Biological Effective Dose: BED = n * d * (1 + d / (alpha/beta)).
 
-    BED = n × d × (1 + d / (α/β))
+    Parameters
+    ----------
+    dose_per_fx : float
+        Dose per fraction in Gy.
+    n_fractions : int
+        Number of fractions.
+    alpha_beta : float
+        Tissue alpha/beta ratio in Gy.
+
+    Returns
+    -------
+    float
+        BED in Gy.
     """
     return n_fractions * dose_per_fx * (1 + dose_per_fx / alpha_beta)
 
 
 def eqd2(bed_value: float, alpha_beta: float) -> float:
-    """Equivalent dose in 2 Gy fractions.
+    """Equivalent dose in 2 Gy fractions: EQD2 = BED / (1 + 2 / (alpha/beta)).
 
-    EQD2 = BED / (1 + 2 / (α/β))
+    Parameters
+    ----------
+    bed_value : float
+        Biological effective dose in Gy.
+    alpha_beta : float
+        Tissue alpha/beta ratio in Gy.
+
+    Returns
+    -------
+    float
+        Equivalent dose in Gy.
     """
     return bed_value / (1 + 2 / alpha_beta)
 
 
 def ser_adjusted_dose(physical_dose: float, ser: float = 1.0) -> float:
-    """Apply a Sensitizer Enhancement Ratio (SER) supplied by the caller.
+    """Apply a caller-supplied Sensitizer Enhancement Ratio (SER).
 
-    SER is a research assumption, not clinical guidance. The default of 1.0
-    applies no enhancement.
+    SER here is a research assumption, not clinical guidance. The default of
+    1.0 applies no enhancement.
 
-    Published SER ranges are model-specific:
-      1.1-1.3 = cisplatin/cetuximab (phase III tumour data)
-      1.2-1.5 = ADC/IO (preclinical only, e.g. PMID:34074654 - a single
-                anti-TIP1 ADC in NSCLC cell lines and xenografts)
+    Parameters
+    ----------
+    physical_dose : float
+        Physical dose in Gy.
+    ser : float, optional
+        Enhancement ratio supplied by the caller. Published ranges are
+        model-specific: 1.1-1.3 for cisplatin/cetuximab (phase III tumour
+        data); 1.2-1.5 for ADC/IO (preclinical only, e.g. PMID:34074654, a
+        single anti-TIP1 ADC in NSCLC cell lines and xenografts).
 
+    Returns
+    -------
+    float
+        SER-adjusted dose in Gy.
+
+    Notes
+    -----
     No prospective clinical data establish a general SER for ADCs or
     immunotherapy in head-and-neck normal tissues, and tumour-derived SERs
     must not be applied to normal-tissue BED without tissue-specific
@@ -171,27 +215,32 @@ def cumulative_bed(
     alpha_beta: float = ALPHA_BETA_LATE,
     gap_repair: bool = True,
 ) -> float:
-    """Cumulative BED from multiple RT courses with gap repair correction.
+    """Cumulative BED of prior courses with a gap-repair correction.
 
-    Args:
-        regimens: list of (dose_per_fx, n_fractions, ser) tuples. SER defaults
-            to 1.0 in this library; see ser_adjusted_dose() for why a
-            non-unit SER is a caller-supplied research assumption and should
-            not be used for normal-tissue BED without tissue-specific
-            evidence.
-        gap_years: time since last course
-        alpha_beta: tissue α/β ratio
-        gap_repair: apply gap repair correction for late effects
+    Parameters
+    ----------
+    regimens : list of (dose_per_fx, n_fractions, ser) tuples
+        The courses to sum. Every regimen passed here is treated as a PRIOR
+        course; the gap repair is applied to their combined total. Deliver
+        any new course outside this function (see screen_reirradiation).
+        SER defaults to 1.0; see ser_adjusted_dose for why a non-unit SER is
+        a caller-supplied research assumption.
+    gap_years : float, optional
+        Time elapsed since the prior course(s).
+    alpha_beta : float, optional
+        Tissue alpha/beta ratio in Gy.
+    gap_repair : bool, optional
+        Apply the gap-repair fraction to the total.
 
-    Returns:
-        Cumulative BED (Gy)
+    Returns
+    -------
+    float
+        Cumulative BED in Gy.
 
-    Gap repair estimates (late-responding tissue only; departmental
-    heuristic, applied to the PRIOR course):
-      <6 months  → 0% repair
-      6-12 months → 30% repair
-      1-2 years   → 50% repair
-      >2 years    → 70% repair
+    Notes
+    -----
+    Gap-repair estimates for late-responding tissue (departmental heuristic):
+    <6 months 0%; 6 to <12 months 30%; 1 to <2 years 50%; >=2 years 70%.
     """
     total_bed = sum(
         bed(ser_adjusted_dose(d, ser), n, alpha_beta) for d, n, ser in regimens
@@ -226,33 +275,37 @@ def _is_valid_number(value) -> bool:
 def check_constraint(
     oar_name: str, modality: Modality, metrics: dict[str, float]
 ) -> dict:
-    """Check a single OAR against constraints.
+    """Check a single OAR against the limits for the requested modality.
 
-    Args:
-        oar_name: key from HEAD_NECK_CONSTRAINTS
-        modality: fractionation scheme
-        metrics: dict of measured values (e.g. {"dmax": 47.2, "dmean": 12.5})
+    Parameters
+    ----------
+    oar_name : str
+        Key from HEAD_NECK_CONSTRAINTS.
+    modality : Modality
+        Fractionation scheme whose limits are to be applied. Conventional
+        limits are never borrowed for SBRT.
+    metrics : dict of str to float
+        Measured values, e.g. {"dmax": 47.2}. Every metric defined for this
+        OAR under this modality must be present and finite, otherwise the
+        check is incomplete.
 
-    Returns:
-        {
-            "oar": str,
-            "violations": [{"metric": "dmax", "limit": 45.0, "value": 47.2,
-                           "excess_pct": 4.9, "level": "hard_fail"}],
-            "overall": "pass" | "near_limit" | "soft_fail" | "hard_fail"
-                       | "incomplete" | "not_evaluated" | "error"
-        }
+    Returns
+    -------
+    dict
+        With keys ``oar``, ``level``, ``violations``, ``overall`` and
+        ``source``; ``missing`` is added when a required metric was absent
+        or invalid, and ``reason``/``error`` for not-evaluated/unknown OARs.
+        ``overall`` is one of:
 
-    Overall levels:
-      - "hard_fail": ANY exceedance of a hard-level constraint (level
-        "hard"), or >30% over a soft-level limit.
-      - "soft_fail": 10-30% over a soft-level limit.
-      - "near_limit": <10% over a soft-level limit.
-      - "incomplete": one or more metrics required by this modality were not
-        supplied, or were not finite numbers (e.g. NaN). An incomplete check
-        is never a pass.
-      - "not_evaluated": no limit is defined for the requested modality.
-        Conventional limits are deliberately NOT borrowed for SBRT.
-      - "error": unknown OAR name.
+        - ``hard_fail``: ANY exceedance of a hard-level constraint, or >30%
+          over a soft-level limit.
+        - ``soft_fail``: 10-30% over a soft-level limit.
+        - ``near_limit``: <10% over a soft-level limit.
+        - ``incomplete``: a required metric was missing or not a finite
+          number (e.g. NaN). An incomplete check is never a pass.
+        - ``not_evaluated``: no limit is defined for this modality.
+        - ``error``: unknown OAR name.
+        - ``pass``: all supplied values within limits.
     """
     if oar_name not in HEAD_NECK_CONSTRAINTS:
         return {"oar": oar_name, "error": "unknown OAR", "overall": "error"}
@@ -291,8 +344,8 @@ def check_constraint(
         if measured > limit_value:
             excess_pct = (measured - limit_value) / limit_value * 100
             if is_hard_oar:
-                # Any exceedance of a hard constraint is a hard fail.
-                # The percentage over the limit is still reported as info.
+                # Any exceedance of a hard constraint is a hard fail; the
+                # percentage over the limit is still reported as info.
                 level = ViolationLevel.HARD_FAIL
             elif excess_pct > 30:
                 level = ViolationLevel.HARD_FAIL
@@ -373,36 +426,46 @@ def check_plan(
 ) -> dict:
     """Full plan check against head & neck constraints.
 
-    Args:
-        modality: fractionation scheme
-        metrics: {"spinal_cord": {"dmax": 43.0}, "brainstem": {"dmax": 52.0}, ...}
-        corrections: NOT SUPPORTED - passing any value raises ValueError.
-            (The argument used to be accepted and silently ignored.) BED or
-            partial-volume adjustments must be applied by the caller before
-            comparing against these limits.
+    Parameters
+    ----------
+    modality : Modality
+        Fractionation scheme of the plan being checked.
+    metrics : dict of str to dict of str to float
+        Measured values per OAR, e.g.
+        {"spinal_cord": {"dmax": 43.0}, "brainstem": {"dmax": 52.0}}. Only
+        the organs supplied by the caller are checked.
+    corrections : dict, optional
+        NOT SUPPORTED: passing any value raises ValueError. (The argument
+        used to be accepted and silently ignored.) BED or partial-volume
+        adjustments must be applied to the measured values by the caller
+        before calling.
 
-    Returns:
-        {
-            "plan_pass": bool,      # True only if every requested check was
-                                    # completed AND no hard constraint was
-                                    # exceeded
-            "plan_status": "pass" | "fail" | "incomplete",
-            "hard_fails": [...],
-            "soft_fails": [...],    # reported; do not by themselves block pass
-            "near_limits": [...],
-            "incomplete": [...],    # missing/invalid metrics, unknown OARs,
-                                    # or modalities with no defined limit
-            "all_results": [...],
-            "parotid_pair_quantec": {...} | None,  # reported when both
-                                    # parotids supplied; informational
-        }
+    Returns
+    -------
+    dict
+        ``plan_pass`` is True only when every requested check completed and
+        no hard constraint was exceeded. ``plan_status`` is ``pass``,
+        ``fail`` or ``incomplete``. ``hard_fails``, ``soft_fails``,
+        ``near_limits``, ``incomplete`` and ``all_results`` hold the
+        per-OAR results; ``incomplete`` collects missing/invalid metrics,
+        unknown OARs and modalities with no defined limit.
+        ``parotid_pair_quantec`` reports the QUANTEC paired-gland rule when
+        both parotids are supplied (informational; it does not change
+        ``plan_pass``).
 
-    Example:
-        >>> metrics = {"spinal_cord": {"dmax": 47.0}, "brainstem": {"dmax": 53.0},
-        ...            "parotid_contralateral": {"dmean": 24.0}}
-        >>> result = check_plan(Modality.CONVENTIONAL, metrics)
-        >>> result["plan_pass"]
-        False  # spinal cord hard constraint exceeded
+    Raises
+    ------
+    ValueError
+        If ``corrections`` is not None.
+
+    Example
+    -------
+    >>> metrics = {"spinal_cord": {"dmax": 47.0}, "brainstem": {"dmax": 53.0},
+    ...            "parotid_contralateral": {"dmean": 24.0}}
+    >>> result = check_plan(Modality.CONVENTIONAL, metrics)
+    >>> # the spinal cord hard constraint (45 Gy) is exceeded
+    >>> result["plan_pass"]
+    False
     """
     if corrections is not None:
         raise ValueError(
@@ -467,7 +530,7 @@ REIRRADIATION_REGIMENS = {
         "dose_per_fx": 3.5,
         "fractions_per_cycle": 1,
         "cycles": 6,  # 6 fx, 21.0 Gy total
-        "evidence": "Shanghai Ninth People's Hospital institutional regimen",
+        "evidence": "Institutional regimen, unpublished (Shanghai Ninth People's Hospital)",
         "min_gap_years": 0.5,
         "screening_threshold_eqd2": 50.0,
     },
@@ -482,12 +545,17 @@ REIRRADIATION_REGIMENS = {
         "screening_threshold_eqd2": 60.0,  # cumulative BED3 = 100 Gy
     },
     "sbrt_continuous": {
-        "name": "SBRT 5-6 Gy x 5 + IO",
-        "prescription": "5.5 Gy x 5 fx (midpoint of 5-6 Gy range)",
+        "name": "SBRT 5.5 Gy x 5 (institutional)",
+        "prescription": "5.5 Gy x 5 fx (midpoint of a departmental 5-6 Gy range)",
         "dose_per_fx": 5.5,
         "fractions_per_cycle": 5,
         "cycles": 1,  # 5 fx, 27.5 Gy total
-        "evidence": "Phase I/II (PMID:37105404, PMID:38892731)",
+        "evidence": (
+            "Dose: institutional protocol, unpublished. Gap: Tham et al. 2024 "
+            "review (PMID:38892731, section 5.1 prefers >2 yr). Echevarria "
+            "et al. 2023 phase 1 (PMID:37105404) tested 6-8 Gy x 5 with "
+            "cisplatin, a different schedule"
+        ),
         "min_gap_years": 2.0,
         "screening_threshold_eqd2": 50.0,
     },
@@ -502,30 +570,48 @@ def screen_reirradiation(
     Computes cumulative EQD2 (alpha/beta = 3 Gy) = prior course (gap-repair
     adjusted) + each option at the dose and fraction count it actually lists.
 
+    Parameters
+    ----------
+    prior_dose : float
+        Total prescription dose of the prior course in Gy.
+    prior_fractions : int
+        Number of fractions of the prior course.
+    gap_years : float
+        Years since the prior course.
+
+    Returns
+    -------
+    list of dict
+        One entry per eligible regimen, sorted by ``cumulative_eqd2``:
+        ``regimen``, ``prescription``, ``new_course_total_dose_gy``,
+        ``new_course_eqd2``, ``prior_residual_eqd2``, ``cumulative_eqd2``,
+        ``screening_threshold_eqd2``, ``below_screening_threshold`` and
+        ``evidence``.
+
+    Notes
+    -----
     Scope and documented assumptions - the output is an estimate, not a
     clinical safety determination:
-      - The prior course is assumed to deliver its prescription dose to the
-        organs at risk. Actual organ doses and old/new field overlap are NOT
-        known to this function and must be judged separately per organ.
-      - Prior-course gap repair (late tissue) uses cumulative_bed():
-        <6 mo 0%, 6-12 mo 30%, 1-2 yr 50%, >2 yr 70% - a departmental
-        heuristic.
-      - No intra-course recovery is credited for the new course
-        (conservative).
-      - "screening_threshold_eqd2" values are institutional screening
-        references (departmental practice), NOT organ-specific tolerance
-        limits - e.g. spinal cord and bowel re-irradiation tolerances differ
-        and must be checked separately.
 
-    Returns:
-        List of dicts, sorted by cumulative_eqd2:
-        {
-            "regimen", "prescription",
-            "new_course_total_dose_gy", "new_course_eqd2",
-            "prior_residual_eqd2", "cumulative_eqd2",
-            "screening_threshold_eqd2", "below_screening_threshold": bool,
-            "evidence",
-        }
+    - The prior course is assumed to deliver its prescription dose to the
+      organs at risk. Actual organ doses and old/new field overlap are NOT
+      known to this function and must be judged separately per organ.
+    - Prior-course gap repair (late tissue) uses cumulative_bed():
+      <6 mo 0%, 6 to <12 mo 30%, 1 to <2 yr 50%, >=2 yr 70% - a
+      departmental heuristic.
+    - No intra-course recovery is credited for the new course
+      (conservative).
+    - ``screening_threshold_eqd2`` values are institutional screening
+      references (departmental practice), NOT organ-specific tolerance
+      limits - e.g. spinal cord and bowel re-irradiation tolerances differ
+      and must be checked separately.
+    - alpha/beta = 3 Gy is the default late-tissue value and matches the
+      re-irradiation constraints in the cited Tham review (section 5.3).
+      The choice is debatable: QUANTEC's spinal cord review (Kirkpatrick
+      2010) fitted alpha/beta ~0.87 Gy and Nieder et al. 2006 used 2 Gy for
+      cervical/thoracic cord, and it materially moves cumulative EQD2.
+      Callers computing their own totals can override via
+      cumulative_bed(alpha_beta=...).
     """
     residual_bed = cumulative_bed(
         [(prior_dose / prior_fractions, prior_fractions, 1.0)],
