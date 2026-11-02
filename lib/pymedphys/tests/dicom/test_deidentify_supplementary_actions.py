@@ -89,12 +89,15 @@ SUPPORTED_DOSE_SR_IODS = (
 )
 # The IODs that the Radiation Dose SR IODs were reviewed against.
 DOSE_SR_REVIEWED_AGAINST = REVIEWED_AGAINST + TARGET_IODS
-SUPPORTED_IODS = REVIEWED_AGAINST + SUPPORTED_TARGET_IODS + SUPPORTED_DOSE_SR_IODS
 # The RT Ion IODs, which the maintainer added to the target coverage on 31
 # October 2026, whose text, UID, and date attributes were reviewed ahead of
-# supporting them, against every IOD above.
+# supporting them, against every IOD above, and which the first supported
+# release now supports.
 ION_IODS = ("RT Ion Plan", "RT Ion Beams Treatment Record")
 ION_REVIEWED_AGAINST = DOSE_SR_REVIEWED_AGAINST + RADIATION_DOSE_SR_IODS
+SUPPORTED_IODS = (
+    REVIEWED_AGAINST + SUPPORTED_TARGET_IODS + SUPPORTED_DOSE_SR_IODS + ION_IODS
+)
 CLEAN_DESCRIPTORS = "clean_descriptors"
 DEVICE_IDENTITY = "retain_device_identity"
 FULL_DATES = "retain_longitudinal_full_dates"
@@ -191,6 +194,7 @@ REMOVED_UNDER_EVERY_OPTION = {
     "(0040,E001)",  # HL7 Instance Identifier
     "(0088,0130)",  # Storage Media File-set ID
     "(300A,00F9)",  # Accessory Code
+    "(300A,0354)",  # Patient Support Accessory Code
     "(300A,0355)",  # Tray Accessory Code
     "(60xx,0022)",  # Overlay Description
     "(60xx,1500)",  # Overlay Label
@@ -357,9 +361,10 @@ def test_every_text_attribute_a_supported_iod_uses_and_table_e1_1_omits_has_a_ru
     omitted = _omitted_text()
 
     # Checked against the 2026d PS3.3, PS3.6, and PS3.15: the combined
-    # scope includes both RT objects and the two dose-report IODs, whose
-    # supplementary rules cover 155 text attributes.
-    assert len(omitted) == 155
+    # scope includes the RT objects, among them the two RT Ion IODs, which
+    # add 13, and the two dose-report IODs, whose supplementary rules cover
+    # 168 text attributes.
+    assert len(omitted) == 168
     assert omitted <= set(_rules())
     assert {"(0008,0100)", "(300A,00C2)", "(60xx,1500)"} <= omitted
 
@@ -374,14 +379,14 @@ def test_the_rules_for_omitted_text_fall_in_the_reviewed_groups():
 
     assert groups == {
         # Operator-typed labels and text.
-        ("X/Z/D", ((CLEAN_DESCRIPTORS, "C"),)): 74,
+        ("X/Z/D", ((CLEAN_DESCRIPTORS, "C"),)): 77,
         # Accessory and equipment identifiers.
-        ("X/Z/D", ((DEVICE_IDENTITY, "K"),)): 25,
+        ("X/Z/D", ((DEVICE_IDENTITY, "K"),)): 30,
         # Coded and technical values, and De-identification Method.
-        ("K", ()): 39,
+        ("K", ()): 43,
         # Names and identifiers of people, organisations, records, and
         # networks, identifiers that a device reads, and the text of overlays.
-        ("X/Z/D", ()): 15,
+        ("X/Z/D", ()): 16,
         # Patient's Birth and Death Dates in Alternative Calendar.
         ("X", ()): 2,
     }
@@ -704,11 +709,11 @@ ION_RESOLVED = {
 ION_OTHER_VRS = {"FL": 46, "SQ": 26, "IS": 15, "CS": 12, "DS": 8, "US": 1, "SS": 1}
 
 
-def test_the_ion_iods_are_generated_and_not_yet_supported():
+def test_the_ion_iods_are_generated_and_supported():
     tables = iods.load_iod_tables()
 
     assert set(ION_IODS) <= set(tables.iods)
-    assert not set(ION_IODS) & scope.SUPPORTED_IODS
+    assert set(ION_IODS) <= scope.SUPPORTED_IODS
 
 
 @pytest.mark.deid_requirement("MIDI-BP-05", "MIDI-BP-06", "MIDI-BP-11")
@@ -847,7 +852,7 @@ def test_each_group_takes_the_action_of_its_option(
         assert composed[tag] == operator_text, tag
     for tag in ACCESSORY_IDENTIFIERS:
         assert composed[tag] == accessory_identifier, tag
-    for tag in KEPT_TEXT | ADDED_KEPT_TEXT | RT_IMAGE_KEPT_TEXT:
+    for tag in KEPT_TEXT | ADDED_KEPT_TEXT | RT_IMAGE_KEPT_TEXT | ION_KEPT_TEXT:
         assert composed[tag] == "K", tag
 
 
@@ -878,9 +883,9 @@ def test_the_basic_profile_keeps_only_the_reviewed_coded_and_technical_text():
         for tag in _supported_text()
     }
 
-    assert len(basic) == 280
+    assert len(basic) == 293
     assert {tag for tag, action in basic.items() if action == "K"} == (
-        KEPT_TEXT | ADDED_KEPT_TEXT | RT_IMAGE_KEPT_TEXT
+        KEPT_TEXT | ADDED_KEPT_TEXT | RT_IMAGE_KEPT_TEXT | ION_KEPT_TEXT
     )
     assert set(basic.values()) - {"K"} <= REMOVING_ACTIONS
 
@@ -899,6 +904,7 @@ def test_no_option_keeps_more_than_the_coded_text_and_device_identity():
             KEPT_TEXT
             | ADDED_KEPT_TEXT
             | RT_IMAGE_KEPT_TEXT
+            | ION_KEPT_TEXT
             | (device_identity if DEVICE_IDENTITY in composed.options else set())
         )
         assert kept == expected, composed.options
