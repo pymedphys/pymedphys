@@ -392,16 +392,23 @@ def _radiopharmaceutical(dataset):
 # Treatment Session Beam Sequence > Interlock Sequence > Interlock
 # Resolution User Sequence, whose item is the Person Identification Macro.
 INTERLOCK_USER = (("(3008,0020)", 0), ("(300A,0740)", 0), ("(300A,0746)", 0))
+RT_ION_BEAMS_TREATMENT_RECORD_STORAGE = "1.2.840.10008.5.1.4.1.1.481.9"
+# Treatment Session Beam Sequence, or Treatment Session Ion Beam Sequence,
+# by the treatment record's SOP Class.
+BEAM_SESSIONS = {
+    synthetic.RT_BEAMS_TREATMENT_RECORD_STORAGE: 0x30080020,
+    RT_ION_BEAMS_TREATMENT_RECORD_STORAGE: 0x30080021,
+}
 
 
-def _interlock_user(dataset, **attributes):
+def _interlock_user(dataset, session=0x30080020, **attributes):
     """Give a treatment record a beam whose interlock a person resolved."""
     user = synthetic.item(**attributes)
     interlock = pydicom.Dataset()
     interlock.add_new(0x300A0746, "SQ", [user])
     beam = pydicom.Dataset()
     beam.add_new(0x300A0740, "SQ", [interlock])
-    dataset.TreatmentSessionBeamSequence = [beam]
+    dataset.add_new(session, "SQ", [beam])
     return user
 
 
@@ -413,11 +420,9 @@ def _person_code():
     )
 
 
-def _interlock_institution_code(dataset):
-    _interlock_user(
-        dataset,
-        PersonIdentificationCodeSequence=[_person_code()],
-        InstitutionCodeSequence=[_person_code()],
+def _institution_code(value="SENTINEL", meaning="SENTINEL HOSPITAL"):
+    return synthetic.item(
+        CodeValue=value, CodingSchemeDesignator="99LOCAL", CodeMeaning=meaning
     )
 
 
@@ -461,15 +466,6 @@ def _interlock_institution_code(dataset):
             "X",
             SequesterReason.REQUIRED_BY_IOD,
         ),
-        # X/Z/D, Type 1C in the Person Identification Macro of the user who
-        # resolved an interlock; a sequence has no dummy value (D-021).
-        (
-            synthetic.RT_BEAMS_TREATMENT_RECORD_STORAGE,
-            _interlock_institution_code,
-            ElementPath(INTERLOCK_USER, "(0008,0082)"),
-            "D",
-            SequesterReason.NO_DUMMY_VALUE,
-        ),
     ],
 )
 def test_a_required_attribute_without_a_value_to_write_sequesters_an_added_iod(
@@ -487,6 +483,91 @@ def test_a_required_attribute_without_a_value_to_write_sequesters_an_added_iod(
         action,
         reason,
     )
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.1-01")
+@pytest.mark.parametrize("sop_class", sorted(BEAM_SESSIONS))
+@pytest.mark.parametrize(
+    "code, written",
+    [
+        (_institution_code(), ("DEIDENTIFIED", "99PYMEDPHYS", "DEIDENTIFIED")),
+        # A source Code Value or Code Meaning equal to the first constant
+        # takes the second (D-021).
+        (
+            _institution_code(value="DEIDENTIFIED"),
+            ("DE-IDENTIFIED", "99PYMEDPHYS", "DE-IDENTIFIED"),
+        ),
+        (
+            _institution_code(meaning="deidentified"),
+            ("DE-IDENTIFIED", "99PYMEDPHYS", "DE-IDENTIFIED"),
+        ),
+    ],
+)
+def test_d_writes_the_institution_item_of_the_user_who_resolved_an_interlock(
+    sop_class, code, written
+):
+    # X/Z/D, Type 1C in the Person Identification Macro of the user who
+    # resolved an interlock; its reviewed rule writes one item there, as the
+    # maintainer chose on 1 November 2026, so the record is released (D-021).
+    dataset = synthetic.instance(sop_class, synthetic.OTHER, synthetic.OTHER_SERIES)
+    _interlock_user(
+        dataset,
+        session=BEAM_SESSIONS[sop_class],
+        PersonIdentificationCodeSequence=[_person_code()],
+        InstitutionCodeSequence=[code, _institution_code(value="SECOND")],
+        InstitutionName="SENTINEL HOSPITAL",
+    )
+
+    result = _transformed(dataset)
+
+    assert isinstance(result, run.Transformed)
+    written_dataset = pydicom.dcmread(io.BytesIO(result.data))
+    # pylint: disable-next = unsubscriptable-object
+    beam = written_dataset[BEAM_SESSIONS[sop_class]].value[0]
+    (user,) = beam[0x300A0740].value[0][0x300A0746].value
+    # PS3.3 Table 10-1 allows a single item, whatever the source held.
+    (institution,) = user.InstitutionCodeSequence
+    assert (
+        institution.CodeValue,
+        institution.CodingSchemeDesignator,
+        institution.CodeMeaning,
+    ) == written
+    assert set(institution.keys()) == {0x00080100, 0x00080102, 0x00080104}
+    (person,) = user.PersonIdentificationCodeSequence
+    assert person.CodeMeaning == "DEIDENTIFIED^DEIDENTIFIED"
+    assert user.InstitutionName == "DEIDENTIFIED"
+    assert b"SENTINEL" not in result.data
+    assert b"SECOND" not in result.data
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.1-01")
+@pytest.mark.parametrize("sop_class", sorted(BEAM_SESSIONS))
+def test_an_override_operators_institution_code_sequence_goes_with_its_sequence(
+    sop_class,
+):
+    # Operator Identification Sequence is Type 3 in Override Sequence, and
+    # X/D, so it is removed with any Institution Code Sequence in it; the
+    # reviewed rule is not needed there (D-021).
+    dataset = synthetic.instance(sop_class, synthetic.OTHER, synthetic.OTHER_SERIES)
+    operator = synthetic.item(InstitutionCodeSequence=[_institution_code()])
+    override = pydicom.Dataset()
+    override.add_new(0x00081072, "SQ", [operator])
+    control_point = pydicom.Dataset()
+    control_point.add_new(0x30080060, "SQ", [override])
+    beam = pydicom.Dataset()
+    # Control Point Delivery Sequence, or Ion Control Point Delivery Sequence.
+    beam.add_new(BEAM_SESSIONS[sop_class] + 0x20, "SQ", [control_point])
+    dataset.add_new(BEAM_SESSIONS[sop_class], "SQ", [beam])
+
+    result = _transformed(dataset)
+
+    assert isinstance(result, run.Transformed)
+    written = pydicom.dcmread(io.BytesIO(result.data))
+    # pylint: disable-next = unsubscriptable-object
+    beam = written[BEAM_SESSIONS[sop_class]].value[0]
+    (override,) = beam[BEAM_SESSIONS[sop_class] + 0x20].value[0][0x30080060].value
+    assert 0x00081072 not in override
+    assert b"SENTINEL" not in result.data
 
 
 @pytest.mark.deid_requirement("MIDI-BP-14")

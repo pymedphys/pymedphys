@@ -231,19 +231,48 @@ def test_the_reviewed_icc_profile_is_described():
 
 
 @pytest.mark.deid_requirement("PS3.15-E.1.3-01")
+def test_the_reviewed_institution_item_is_described_with_its_place():
+    section = _section("basic", "Values written")
+    tag = dummy_values.INSTITUTION_CODE_SEQUENCE
+    user = dummy_values.INTERLOCK_RESOLUTION_USER_SEQUENCE
+
+    assert (
+        f"D on {_named(tag)} in an item of {_named(user)} writes one item, with "
+        f"{_named('(0008,0100)')} `DEIDENTIFIED`, {_named('(0008,0102)')} "
+        f"`99PYMEDPHYS`, and {_named('(0008,0104)')} `DEIDENTIFIED`."
+    ) in section
+    assert (
+        f"the item has {_named('(0008,0100)')} `DE-IDENTIFIED` and "
+        f"{_named('(0008,0104)')} `DE-IDENTIFIED` instead. Elsewhere, D on it "
+        "has no reviewed rule, so the instance is sequestered."
+    ) in section
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
 def test_only_the_reviewed_items_coding_scheme_names_pymedphys():
     section = _section("basic", "Values written")
-    tag = dummy_values.PERSON_IDENTIFICATION_CODE_SEQUENCE
-    named = [
-        element
-        for item in dummy_values.items_for_d(tag, [])
-        for element in item
-        if "PYMEDPHYS" in element.value.upper()
-    ]
-    assert [e.tag for e in named] == ["(0008,0102)"]
+    person = dummy_values.PERSON_IDENTIFICATION_CODE_SEQUENCE
+    institution = dummy_values.INSTITUTION_CODE_SEQUENCE
+    within = {institution: (dummy_values.INTERLOCK_RESOLUTION_USER_SEQUENCE,)}
+    named = {
+        tag: [
+            element
+            for item in dummy_values.items_for_d(tag, [], within=within.get(tag, ()))
+            for element in item
+            if "PYMEDPHYS" in element.value.upper()
+        ]
+        for tag in (person, institution)
+    }
+    assert {tag: [e.tag for e in found] for tag, found in named.items()} == {
+        person: ["(0008,0102)"],
+        institution: ["(0008,0102)"],
+    }
     assert (
         "No value that Z, D, or U writes names PyMedPhys, except the "
-        f"{_named('(0008,0102)')} `{named[0].value}`"
+        f"{_named('(0008,0102)')} `{named[person][0].value}` of the item that D "
+        f"writes in {_named(person)} and the {_named('(0008,0102)')} "
+        f"`{named[institution][0].value}` of the item that D writes in "
+        f"{_named(institution)}, which name who defines their codes."
     ) in section
     assert not any(
         "PYMEDPHYS" in str(value).upper()
@@ -253,7 +282,8 @@ def test_only_the_reviewed_items_coding_scheme_names_pymedphys():
     # The procedure step's items hold only UIDs, and the ICC profile's only
     # text is its description and copyright.
     assert set(walker.REVIEWED_DUMMY_SEQUENCES) == {
-        tag,
+        person,
+        institution,
         dummy_values.REFERENCED_PERFORMED_PROCEDURE_STEP_SEQUENCE,
     }
     assert b"PYMEDPHYS" not in icc_profiles.srgb_profile("DEIDENTIFIED sRGB").upper()

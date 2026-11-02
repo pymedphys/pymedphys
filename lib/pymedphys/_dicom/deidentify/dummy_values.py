@@ -29,10 +29,15 @@ Every other VR, such as CS, SQ, AE, AS, AT, OB, OW, UN, and UR, has no
 generic dummy value. D on an attribute of such a VR raises
 :class:`NoDummyValueError`: the attribute needs a reviewed rule of its own,
 and without one its instance is sequestered rather than given an invalid
-value. Two sequences have such a rule (:func:`items_for_d`). D writes one
+value. Three sequences have such a rule (:func:`items_for_d`). D writes one
 item in Person Identification Code Sequence (0040,1101), with Code Value
 ``DEIDENTIFIED``, Coding Scheme Designator ``99PYMEDPHYS``, and Code Meaning
-``DEIDENTIFIED^DEIDENTIFIED``. In Referenced Performed Procedure Step
+``DEIDENTIFIED^DEIDENTIFIED``. It writes one item in Institution Code
+Sequence (0008,0082) too, with Code Value ``DEIDENTIFIED``, Coding Scheme
+Designator ``99PYMEDPHYS``, and Code Meaning ``DEIDENTIFIED``, but only in
+an item of Interlock Resolution User Sequence (300A,0746)
+(:data:`REVIEWED_WITHIN`), the one place of the supported IODs where D
+applies to it; elsewhere it has no rule. In Referenced Performed Procedure Step
 Sequence (0008,1111), it writes, for each source item, an item that refers
 to a Modality Performed Procedure Step by the keyed replacement of the
 source item's Referenced SOP Instance UID. ICC Profile (0028,2000), of VR
@@ -118,7 +123,15 @@ _MAX_COUNT = 64
 _TAG_PATTERN = re.compile(r"\([0-9A-F]{4},[0-9A-F]{4}\)")
 
 PERSON_IDENTIFICATION_CODE_SEQUENCE = "(0040,1101)"
+INSTITUTION_CODE_SEQUENCE = "(0008,0082)"
+INTERLOCK_RESOLUTION_USER_SEQUENCE = "(300A,0746)"
 REFERENCED_PERFORMED_PROCEDURE_STEP_SEQUENCE = "(0008,1111)"
+# The sequences whose reviewed rule holds only in an item of certain
+# sequences, by the sequences whose items must hold them directly (D-021).
+# Elsewhere D on them has no rule, and sequesters. Read-only.
+REVIEWED_WITHIN: Mapping[str, frozenset[str]] = types.MappingProxyType(
+    {INSTITUTION_CODE_SEQUENCE: frozenset({INTERLOCK_RESOLUTION_USER_SEQUENCE})}
+)
 ICC_PROFILE = "(0028,2000)"
 VERIFYING_OBSERVER_SEQUENCE = "(0040,A073)"
 # The sequences whose D a reviewed rule gives by keeping each source item,
@@ -149,6 +162,17 @@ _DESIGNATOR = "99PYMEDPHYS"
 # Code Meaning follows the rules of PN there, but not as a single component
 # (PS3.3 Table 10-1), so each constant has two.
 _MEANINGS = tuple(f"{text}^{text}" for text in _TEXT)
+# Each coded sequence with a reviewed item: the VR as which its source Code
+# Meaning is compared, and its Code Meanings, first and second. Institution
+# Code Sequence's Code Meaning is plain text (PS3.3 Section 8.3), since the
+# Person Identification Macro gives the rules of PN only to Person
+# Identification Code Sequence's.
+_CODED_ITEMS: Mapping[str, tuple[str, tuple[str, str]]] = types.MappingProxyType(
+    {
+        PERSON_IDENTIFICATION_CODE_SEQUENCE: ("PN", _MEANINGS),
+        INSTITUTION_CODE_SEQUENCE: ("LO", _TEXT),
+    }
+)
 
 
 class DummyElement(NamedTuple):
@@ -357,10 +381,12 @@ def items_for_d(
     tag: str,
     source: Sequence[Mapping[str, str]],
     key: DeidKey | None = None,
+    *,
+    within: Sequence[str] = (),
 ) -> tuple[tuple[DummyElement, ...], ...]:
     """Return the items that D writes in a sequence with a reviewed rule.
 
-    Two sequences have one; the rule of Verifying Observer Sequence
+    Three sequences have one; the rule of Verifying Observer Sequence
     (0040,A073) keeps its source items instead (:data:`KEPT_ITEM_ATTRIBUTES`),
     so it gives no items here:
 
@@ -372,6 +398,16 @@ def items_for_d(
       ``DEIDENTIFIED^DEIDENTIFIED`` as a PN, as :func:`values_for_d` compares
       them, the item takes ``DE-IDENTIFIED`` and
       ``DE-IDENTIFIED^DE-IDENTIFIED`` instead, with the same designator.
+    - Institution Code Sequence (0008,0082), only in an item of Interlock
+      Resolution User Sequence (300A,0746), as :data:`REVIEWED_WITHIN`
+      gives: one item, with Code Value ``DEIDENTIFIED``, Coding Scheme
+      Designator ``99PYMEDPHYS``, and Code Meaning ``DEIDENTIFIED``, as
+      plain text, since PS3.3 Table 10-1 gives the rules of PN only to
+      Person Identification Code Sequence's Code Meaning. Where any source
+      item's Code Value equals ``DEIDENTIFIED`` as SH text, or its Code
+      Meaning equals it as LO text, the item takes ``DE-IDENTIFIED`` for
+      both instead, with the same designator. Elsewhere, the sequence has
+      no dummy value.
     - Referenced Performed Procedure Step Sequence (0008,1111): for each
       source item, one item, with Referenced SOP Class UID (0008,1150) the
       Modality Performed Procedure Step SOP Class,
@@ -392,6 +428,10 @@ def items_for_d(
     key : DeidKey, optional
         The run's key, which Referenced Performed Procedure Step Sequence
         needs.
+    within : sequence of str, optional
+        The tags of the sequences that enclose this one, outermost first,
+        as the path to its place gives them. Only a sequence of
+        :data:`REVIEWED_WITHIN` reads them.
 
     Returns
     -------
@@ -401,8 +441,8 @@ def items_for_d(
     Raises
     ------
     NoDummyValueError
-        If no reviewed rule gives the sequence items, or the source has no
-        UID for its rule to replace.
+        If no reviewed rule gives the sequence items at its place, or the
+        source has no UID for its rule to replace.
     TypeError
         If ``source`` is not a sequence of mappings, a value it reads is not
         text, or Referenced Performed Procedure Step Sequence is given no key.
@@ -415,6 +455,10 @@ def items_for_d(
     >>> (item,) = items_for_d("(0040,1101)", [])
     >>> [element.value for element in item]
     ['DEIDENTIFIED', '99PYMEDPHYS', 'DEIDENTIFIED^DEIDENTIFIED']
+    >>> user = ("(3008,0020)", "(300A,0740)", "(300A,0746)")
+    >>> (item,) = items_for_d("(0008,0082)", [], within=user)
+    >>> [element.value for element in item]
+    ['DEIDENTIFIED', '99PYMEDPHYS', 'DEIDENTIFIED']
     >>> source = [{"(0008,1155)": "1.2.3.4"}]
     >>> (item,) = items_for_d("(0008,1111)", source, DeidKey(bytes(32)))
     >>> item[0].value
@@ -430,19 +474,22 @@ def items_for_d(
         or not all(isinstance(item, Mapping) for item in source)
     ):
         raise TypeError("source must be a sequence of items, each a mapping")
+    if isinstance(within, str) or not all(isinstance(each, str) for each in within):
+        raise TypeError("within must be a sequence of tags, outermost first")
     if tag == REFERENCED_PERFORMED_PROCEDURE_STEP_SEQUENCE:
         if key is None:
             raise TypeError("a key is needed to replace a Referenced SOP Instance UID")
         return _procedure_step_items(source, key)
-    if tag != PERSON_IDENTIFICATION_CODE_SEQUENCE:
+    if tag not in _CODED_ITEMS or not reviewed_within(tag, within):
         raise NoDummyValueError("SQ", "no reviewed rule gives this sequence items")
+    meaning_vr, meanings = _CODED_ITEMS[tag]
     # Each source value with the VR as which it is compared, and its constant.
     compared = [
         (vr, item[t], constant)
         for item in source
         for t, vr, constant in (
             (_CODE_VALUE, "SH", _TEXT[0]),
-            (_CODE_MEANING, "PN", _MEANINGS[0]),
+            (_CODE_MEANING, meaning_vr, meanings[0]),
         )
         if t in item
     ]
@@ -454,9 +501,30 @@ def items_for_d(
         (
             DummyElement(_CODE_VALUE, "SH", _TEXT[index]),
             DummyElement(_CODING_SCHEME_DESIGNATOR, "SH", _DESIGNATOR),
-            DummyElement(_CODE_MEANING, "LO", _MEANINGS[index]),
+            DummyElement(_CODE_MEANING, "LO", meanings[index]),
         ),
     )
+
+
+def reviewed_within(tag: str, within: Sequence[str]) -> bool:
+    """Return whether a sequence's reviewed rule holds at a place (D-021).
+
+    A sequence of :data:`REVIEWED_WITHIN` has its reviewed rule only directly
+    in an item of one of the sequences it gives; every other sequence that
+    has a reviewed rule has it everywhere. ``within`` holds the tags of the
+    sequences that enclose the place, outermost first.
+
+    Examples
+    --------
+    >>> reviewed_within("(0008,0082)", ("(3008,0020)", "(300A,0740)", "(300A,0746)"))
+    True
+    >>> reviewed_within("(0008,0082)", ())
+    False
+    >>> reviewed_within("(0040,1101)", ())
+    True
+    """
+    parents = REVIEWED_WITHIN.get(tag)
+    return parents is None or (bool(within) and within[-1] in parents)
 
 
 def _procedure_step_items(

@@ -26,9 +26,11 @@ each element of the data set, in file order, an :class:`Edit`:
 - D replaces it with its VR's dummy value, or the second one where the
   source value equals the first, or, for a UI value, its keyed replacement
   (:func:`~pymedphys._dicom.deidentify.dummy_values.values_for_d`); D
-  replaces Person Identification Code Sequence (0040,1101) and Referenced
-  Performed Procedure Step Sequence (0008,1111), whose source items are
-  removed with them, with their reviewed dummy items, built from each source
+  replaces Person Identification Code Sequence (0040,1101), Institution Code
+  Sequence (0008,0082) in an item of Interlock Resolution User Sequence
+  (300A,0746), and Referenced Performed Procedure Step Sequence
+  (0008,1111), whose source items are removed with them, with their
+  reviewed dummy items, built from each source
   item's compared values
   (:func:`~pymedphys._dicom.deidentify.dummy_values.items_for_d`, D-021),
   and ICC Profile (0028,2000) with the source profile cleaned of everything
@@ -607,7 +609,12 @@ def _with_items(
     """
     source_items = [compared.get(index, {}) for index in range(items)]
     try:
-        written = items_for_d(edit.path.tag, source_items, key)
+        written = items_for_d(
+            edit.path.tag,
+            source_items,
+            key,
+            within=tuple(tag for tag, _ in edit.path.items),
+        )
     except NoDummyValueError:
         raise _Sequester(
             Sequestration(edit.path, "D", "SQ", SequesterReason.NO_DUMMY_VALUE)
