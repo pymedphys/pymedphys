@@ -543,8 +543,7 @@ def test_the_repr_shows_only_the_reference_and_counts():
     review = FaceReview(REFERENCE, _sha(0, 2), _sha(1))
 
     assert repr(review) == (
-        f"FaceReview(reference={REFERENCE!r}, absent=2, present=1, "
-        "confirmed_blocks=0)"
+        f"FaceReview(reference={REFERENCE!r}, absent=2, present=1, confirmed_blocks=0)"
     )
 
 
