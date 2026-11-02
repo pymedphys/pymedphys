@@ -150,6 +150,82 @@ def parse_body_part_terms(tables: Mapping[str, HtmlTable]) -> list[dict[str, str
     return [{"term": term} for term in sorted(terms)]
 
 
+ANATOMIC_REGION_LABEL = "Annex L Anatomic Region Codes"
+_CODE_COLUMNS = {
+    "Coding Scheme Designator": "scheme_designator",
+    "Code Value": "code_value",
+    "Code Meaning": "code_meaning",
+}
+
+
+def parse_anatomic_regions(tables: Mapping[str, HtmlTable]) -> list[dict[str, str]]:
+    """Parse the anatomic region code of each Body Part Examined term from
+    Annex L of PS3.16.
+
+    The Frame Anatomy Functional Group Macro of the Legacy Converted
+    Enhanced Image IODs is required where Body Part Examined (0018,0015) of a
+    converted image holds a term of Annex L, and records the term's code in
+    Anatomic Region Sequence (0008,2218). Rows whose Body Part Examined cell
+    is empty are skipped. A term that Annex L gives without a code, such as
+    a fetal part in Table L-1, has empty code fields. Where tables give a
+    term's code different meanings, the first table's meaning is kept, in
+    the order of ``tables``.
+
+    Parameters
+    ----------
+    tables : mapping of str to HtmlTable
+        Each of :data:`BODY_PART_TABLES`, by its label, as
+        :func:`~pymedphys._dev.deid_tables.chtml.select_table` returns it.
+
+    Returns
+    -------
+    list of dict
+        For each distinct term, in order, its ``term`` and the
+        ``scheme_designator``, ``code_value``, and ``code_meaning`` of its
+        code.
+
+    Raises
+    ------
+    TableFormatError
+        If a table does not have exactly one of each column used, if a term
+        is not a value that VR CS can hold, if two rows give one term
+        different codes (by designator and value), or if no table gives a
+        term.
+    """
+    found: dict[str, dict[str, str]] = {}
+    for label, table in tables.items():
+        columns = {}
+        for column in (_BODY_PART_COLUMN, *_CODE_COLUMNS):
+            if table.header.count(column) != 1:
+                raise TableFormatError(f"{label} does not have one {column!r} column")
+            columns[column] = table.header.index(column)
+        for number, row in enumerate(table.rows, start=1):
+            term = row[columns[_BODY_PART_COLUMN]]
+            if not term:
+                continue
+            if not _CS_VALUE.fullmatch(term):
+                raise TableFormatError(
+                    f"{label}: row {number} has a term that VR CS cannot hold"
+                )
+            entry = {"term": term} | {
+                field: row[columns[column]] for column, field in _CODE_COLUMNS.items()
+            }
+            # A later table can give the same code another meaning, as Table
+            # L-3 does for CHEEK; the first table's, Table L-1 for human use,
+            # is kept.
+            kept = found.setdefault(term, entry)
+            if (kept["scheme_designator"], kept["code_value"]) != (
+                entry["scheme_designator"],
+                entry["code_value"],
+            ):
+                raise TableFormatError(
+                    f"{label}: row {number} gives a term another code"
+                )
+    if not found:
+        raise TableFormatError(f"PS3.16 gives no {ANATOMIC_REGION_LABEL}")
+    return [found[term] for term in sorted(found)]
+
+
 SNOMED_ID_LABEL = "Table O-1"
 _FULLY_SPECIFIED_NAME = "SNOMED Fully Specified Name"
 # Table O-1's columns, by header text, and the fields they fill. The Fully
