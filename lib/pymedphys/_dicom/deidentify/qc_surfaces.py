@@ -133,12 +133,13 @@ import enum
 import functools
 import math
 from collections.abc import Callable, Iterator, Sequence
-from typing import NamedTuple
+from typing import TYPE_CHECKING, NamedTuple
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import scipy
 
-from . import stack_sampling
+if TYPE_CHECKING:
+    from . import stack_sampling
 
 # Each view's angle about the superior-inferior axis, in degrees from anterior
 # towards the patient's left: frontal, the two obliques, the two profiles,
@@ -331,6 +332,10 @@ class Slabs:
         lattice: stack_sampling.Lattice,
         most: int | None = None,
     ) -> None:
+        # The sampler reuses this module's grid helpers, so defer the import.
+        # pylint: disable-next=import-outside-toplevel
+        from . import stack_sampling as sampling
+
         most = SLAB_VOXELS if most is None else most
         normal = np.abs(stack.normal)
         # The lattice's axis along each patient axis is (2, 1, 0), as
@@ -349,13 +354,13 @@ class Slabs:
             first = np.array(lattice.first) + start * steps[self._axis]
             sizes = list(shape)
             sizes[self._axis] = min(thickness, shape[self._axis] - start)
-            part = stack_sampling.Lattice(
+            part = sampling.Lattice(
                 (float(first[0]), float(first[1]), float(first[2])),
                 lattice.voxel,
                 (sizes[0], sizes[1], sizes[2]),
             )
             self._starts.append(start)
-            self._samplers.append(stack_sampling.StackSampler(stack, part))
+            self._samplers.append(sampling.StackSampler(stack, part))
         self._lattice = lattice
 
     @property
@@ -415,6 +420,10 @@ class Surface:
     """
 
     def __init__(self, volume: Grid | Stacked) -> None:
+        # Import after the shared grid helpers are defined to avoid a cycle.
+        # pylint: disable-next=import-outside-toplevel
+        from . import stack_sampling as sampling
+
         self._grid = volume
         # The slices added, by their place along the slice axis, or in the
         # stack, and the place of the next slice where none is given.
@@ -448,12 +457,12 @@ class Surface:
                 voxel = max(MINIMUM_VOXEL, volume.stack.smallest_spacing)
                 self._slabs = Slabs(volume.stack, volume.stack.lattice(voxel))
                 self._sampled = [
-                    stack_sampling.SampledVolume(sampler, every_slice=True)
+                    sampling.SampledVolume(sampler, every_slice=True)
                     for sampler in self._slabs.samplers
                 ]
                 if self._signed:
                     self._sampled_below = [
-                        stack_sampling.SampledVolume(sampler, every_slice=True)
+                        sampling.SampledVolume(sampler, every_slice=True)
                         for sampler in self._slabs.samplers
                     ]
             return
