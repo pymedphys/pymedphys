@@ -451,26 +451,42 @@ _TARGET = files.square(_EYES_FRONT[0])
 
 
 @pytest.mark.parametrize(
-    ("keyword", "value", "held"),
+    ("keyword", "value", "held", "span"),
     [
-        ("ContourSlabThickness", 10.0, True),
-        ("ContourOffsetVector", [0.0, 0.0, 6.0], True),
-        ("ContourSlabThickness", None, False),
-        ("ContourOffsetVector", None, False),
+        ("ContourSlabThickness", 10.0, False, (15.0, 25.0)),
+        ("ContourOffsetVector", [0.0, 0.0, 6.0], False, (20.0, 26.0)),
+        ("ContourSlabThickness", None, False, (20.0, 20.0)),
+        ("ContourOffsetVector", None, False, (20.0, 20.0)),
+        ("ContourSlabThickness", -1.0, True, None),
+        ("ContourOffsetVector", [6.0, 0.0, 0.0], True, None),
     ],
-    ids=["thickness", "offset", "empty-thickness", "empty-offset"],
+    ids=[
+        "thickness",
+        "offset",
+        "empty-thickness",
+        "empty-offset",
+        "negative-thickness",
+        "offset-outside-normal",
+    ],
 )
-def test_a_target_in_a_slab_holds_the_series(keyword, value, held):
+def test_a_target_in_a_slab_keeps_its_span_or_holds_if_unplaceable(
+    keyword, value, held, span
+):
     rtss = pydicom.dcmread(io.BytesIO(files.structure_set([("PTV", _TARGET)])))
     (contour,) = rtss.ROIContourSequence[0].ContourSequence
     setattr(contour, keyword, value)
 
-    # A slab, retired in PS3.3, lies off the contour's points, which alone
-    # place the target, so the region to keep is unknown: the series is
-    # held, as it was before targets were kept. An empty value is no slab.
+    # The target lies at z=20 mm: 10 mm thickness reaches 15..25 mm, and
+    # a 6 mm axial offset reaches 20..26 mm. Empty values leave it planar.
+    # Every valid reading must be kept; an unplaceable span still holds.
     outcome = _outcome(files.written(rtss))
 
     assert _fate(outcome) == (SeriesProblem.TARGET_IN_BLOCK if held else _AROUND)
+    if span is not None:
+        (hull,) = outcome.targets.hulls
+        assert (np.min(hull.vertices[:, 2]), np.max(hull.vertices[:, 2])) == pytest.approx(
+            span
+        )
 
 
 def _meets_target(points: np.ndarray, centre=_EYES_FRONT[0]) -> np.ndarray:
