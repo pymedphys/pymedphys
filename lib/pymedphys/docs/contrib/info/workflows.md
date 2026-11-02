@@ -26,6 +26,7 @@ Schedule / manual run -> deid-edition-check.yml
 Schedule / manual run -> tg263-edition-check.yml
 Schedule / manual run / PR changing it or labelled check-upstream -> tcia-edition-check.yml
 Manual run -> face-validation.yml
+Manual run -> face-validation-visible-human.yml
 Manual run -> pixel-text-validation.yml
 Manual run -> text-detection-model-pins.yml
 Manual run -> text-detector-evaluation-idc.yml
@@ -606,6 +607,26 @@ Option, against the eye and organ masks of the HaN-Seg data set (see
   digests, versions, and the engine's settings. HaN-Seg's images are of real
   patients, so the data set is never cached or uploaded, and nothing else read
   from it leaves the runner
+
+#### `face-validation-visible-human.yml`
+
+Checks the face block finder and CT defacing of the Clean Recognizable Visual
+Features Option on the NLM Visible Human Project's CT, from NCI Imaging Data
+Commons (see
+[Check the face block against HaN-Seg](deidentification-face-validation.md)).
+Courtesy of the U.S. National Library of Medicine.
+
+- **Triggers**: manually only
+- **Steps**: installs the project with the `user` extra, downloads the
+  collection's 11 CT series from IDC's public bucket with
+  `.github/scripts/fetch_idc_series.py`, and runs
+  `python -m pymedphys._dicom.deidentify.face_validation_command visible-human`,
+  which refuses the set unless each series' file count and digest are those
+  that the check pins. Its job can only read the repository
+- **Results**: the job summary shows `face-validation-vhp.md`, and the
+  `face-validation-vhp-results` artefact, kept for 90 days, holds it with
+  `face-validation-vhp.json`, `commit.txt`, and renders of each head.
+  The series themselves are never cached or uploaded
 
 #### `pixel-text-validation.yml`
 

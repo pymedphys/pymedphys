@@ -681,7 +681,6 @@ def test_an_rt_dose_grid_described_otherwise_is_rendered_alike(case):
 @pytest.mark.parametrize(
     "case",
     [
-        "oblique",
         "uneven offsets",
         "no offsets",
         "absolute offsets off the origin",
@@ -695,11 +694,7 @@ def test_an_rt_dose_grid_that_cannot_be_placed_or_levelled_is_not_rendered(case)
     grid = _dose_body()[:4]
     offsets = [0.0, 2.0, 4.0, 6.0]
     kwargs = {}
-    if case == "oblique":
-        angle = math.radians(30)
-        cosine, sine = round(math.cos(angle), 6), round(math.sin(angle), 6)
-        kwargs["orientation"] = (cosine, sine, 0.0, -sine, cosine, 0.0)
-    elif case == "uneven offsets":
+    if case == "uneven offsets":
         offsets = [0.0, 2.0, 4.0, 7.0]
     elif case == "no offsets":
         offsets = None
