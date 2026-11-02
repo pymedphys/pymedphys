@@ -24,9 +24,10 @@ turned about the patient's left-right axis while its slices step along the
 table, or its slices are recorded as axial while each is offset within its
 plane from the last, which shears the stack. Nor does an oblique stack,
 whose rows and columns are turned about any axis. This module samples any
-of them, and any stack whose axes do lie along the patient's, by nearest
-neighbour as those modules do, in the same voxels and with the same
-results there.
+of them by nearest neighbour, along the stack's own directions, and samples
+a stack that today's sampling takes (:attr:`Stack.aligned`) exactly as
+today's sampling does, by the same functions, so that either module can
+take every stack through it without changing what it gives today.
 
 A :class:`Stack` is a stack of slices that share one Image Orientation
 (Patient), Pixel Spacing, and number of rows and columns, each placed by its
@@ -36,7 +37,13 @@ offset within their plane, unevenly spaced along the normal, and given in
 any order. Its row and column directions must each be of unit length, and
 perpendicular, within :data:`ORTHONORMAL_TOLERANCE`, and no two slices may
 lie within :data:`SAME_POSITION` millimetres of each other along the
-normal; any other is refused with a :class:`StackRefused`.
+normal; any other is refused with a :class:`StackRefused`. A stack is
+:attr:`~Stack.aligned` where its rows, its columns, and the normal, the
+cross product, each lie along a different patient axis, no other component
+of any of them exceeding :data:`ALIGNMENT_TOLERANCE`, and no slice's origin
+lies further than :data:`STACKING_TOLERANCE` millimetres within the plane
+from the first slice's normal, as the face finder and the QC pack's volume
+previews require of a stack today.
 
 A :class:`Lattice` holds cubic voxels of a given side whose axes lie along
 the patient's, indexed from superior, from anterior, then from the
@@ -44,7 +51,11 @@ patient's right, as the face finder and :meth:`qc_surfaces.Surface.mask
 <pymedphys._dicom.deidentify.qc_surfaces.Surface.mask>` index theirs. It
 spans the centres of every pixel of every slice, from the lowest x, the
 lowest y, and the highest z, with as many voxels along each axis as fit
-within that span, give or take a millionth of a voxel.
+within that span, give or take a millionth of a voxel. An aligned stack's
+lattice is found as the face finder finds its own, from
+:func:`~pymedphys._dicom.deidentify.qc_surfaces.grid`'s coordinates, which
+lay the slices along the unnormalised cross product, so that it is the same
+lattice in the same arithmetic.
 
 A :class:`StackSampler` maps each voxel of a lattice to one pixel at most:
 :meth:`StackSampler.nearest` gives, for a slice, the voxels that take one of
@@ -63,15 +74,20 @@ A voxel that meets neither proviso takes no pixel, and is not a number in
 a :class:`SampledVolume`, as padding is. Where two slices, or two rows or
 columns, lie within :data:`_TIE` of equally near, the one of lower
 coordinate along the patient axis that the normal, or the row or column
-direction, lies most nearly along wins, as
+direction, lies most nearly along wins. Each slice's pixels are its own,
+placed by its own position, so a sheared stack is sampled as the shear lays
+its slices.
+
+An aligned stack sampled to its own lattice is instead sampled by
 :func:`qc_surfaces.sampled_indices
-<pymedphys._dicom.deidentify.qc_surfaces.sampled_indices>` gives it. So a
-stack whose axes lie along the patient's is sampled exactly as by
-:func:`qc_surfaces.grid <pymedphys._dicom.deidentify.qc_surfaces.grid>` and
-:func:`~pymedphys._dicom.deidentify.qc_surfaces.sampled_indices`, and a
-tilted or oblique one by the same rule along its own normal and within its
-own slices. Each slice's pixels are its own, placed by its own position, so
-a sheared stack is sampled as the shear lays its slices.
+<pymedphys._dicom.deidentify.qc_surfaces.sampled_indices>` along each of
+its axes, on the coordinates of :func:`qc_surfaces.grid
+<pymedphys._dicom.deidentify.qc_surfaces.grid>`, as the face finder and
+:class:`~pymedphys._dicom.deidentify.qc_surfaces.Surface` sample it today.
+The two rules agree but for voxels nearly equally near two slices, rows, or
+columns, where today's compares the distances as rounded in its own
+coordinates, and so can take either; taking today's functions keeps its
+choice there too.
 
 Where slices are closer than the voxels, some slice may be nearest no
 voxel's centre, and so is not sampled at all. :meth:`StackSampler.crossed`
@@ -84,10 +100,10 @@ by step 2. Every slice that meets a line then has a voxel on it, so that a
 :class:`SampledVolume` that takes each voxel's greatest value over its
 nearest slice and every slice that crosses it, as
 :class:`~pymedphys._dicom.deidentify.qc_surfaces.Surface` does, draws every
-slice. Where the stack's axes lie along the patient's, this is the voxel
-nearest each slice along the slice axis, as
+slice. For an aligned stack sampled to its own lattice, this is the layer
+of voxels nearest each slice along the slice axis, by
 :func:`qc_surfaces.nearest_voxels
-<pymedphys._dicom.deidentify.qc_surfaces.nearest_voxels>` gives it.
+<pymedphys._dicom.deidentify.qc_surfaces.nearest_voxels>`, as today.
 
 The sampler holds no voxels: for each slice it finds, along each line of
 voxels, the run of voxels whose nearest slice it is, from the slices'
@@ -107,9 +123,17 @@ from typing import NamedTuple
 
 from pymedphys._imports import numpy as np
 
+from . import qc_surfaces
+
 # Of a direction cosine's length off 1, and of the cosine of the angle
 # between the row and column directions off 0.
 ORTHONORMAL_TOLERANCE = 1e-4
+# Of a direction cosine off its patient axis, and millimetres of a slice's
+# origin within the plane off the first slice's normal, within which a stack
+# lies along the patient's axes, as the face finder and the QC pack's
+# previews take one today.
+ALIGNMENT_TOLERANCE = 1e-4
+STACKING_TOLERANCE = 0.01
 # Millimetres along the normal within which two slices are at one position.
 SAME_POSITION = 1e-6
 # Within this, in millimetres along the normal or in pixels within a slice,
@@ -287,6 +311,49 @@ class Stack:
         self._offsets = offsets
         self._spacing = (float(spacings[0]), float(spacings[1]))
         self._shape = (int(shape[0]), int(shape[1]))
+        # As the face finder and the previews lay a stack along the
+        # patient's axes: by the unnormalised cross product.
+        cross = np.cross(along_row, down_column)
+        raw = origins @ cross
+        in_plane = (origins - origins[0]) - np.outer(raw - raw[0], cross)
+        directions = (cross, down_column, along_row)
+        axes = tuple(int(np.argmax(np.abs(direction))) for direction in directions)
+        self._aligned = (
+            len(set(axes)) == 3
+            and all(
+                float(np.delete(np.abs(direction), axis).max()) <= ALIGNMENT_TOLERANCE
+                for direction, axis in zip(directions, axes)
+            )
+            and float(np.abs(in_plane).max()) <= STACKING_TOLERANCE
+        )
+        self._directions = directions
+        self._raw = raw
+
+    @property
+    def aligned(self) -> bool:
+        """Whether the stack lies along the patient's axes, as the module
+        describes, so that today's sampling takes it."""
+        return self._aligned
+
+    def grid(self) -> qc_surfaces.Grid:
+        """An aligned stack's grid, as the face finder and the QC pack's
+        previews make it: its slices placed along the unnormalised cross
+        product, and its rows and columns from its first pixel.
+
+        Raises
+        ------
+        ValueError
+            If the stack is not aligned.
+        """
+        if not self._aligned:
+            raise ValueError("only a stack along the patient's axes has a grid")
+        return qc_surfaces.grid(
+            self._directions,
+            [float(offset) for offset in self._raw],
+            self._spacing,
+            self._shape,
+            qc_surfaces.Threshold.CT,
+        )
 
     @property
     def along_row(self) -> np.ndarray:
@@ -369,6 +436,8 @@ class Stack:
         """
         if not (math.isfinite(voxel) and voxel > 0):
             raise ValueError("a voxel's side is a positive finite number")
+        if self._aligned:
+            return _grid_lattice(self.grid(), self._origins[0], float(voxel))
         low, high = self.bounds
         counts = [
             math.floor((float(high[axis]) - float(low[axis])) / voxel + _SPAN) + 1
@@ -387,6 +456,26 @@ class StackSampler:
     def __init__(self, stack: Stack, lattice: Lattice) -> None:
         self._stack = stack
         self._lattice = lattice
+        # An aligned stack sampled to its own lattice is sampled as today:
+        # for each of its grid's axes, the index sampled at each voxel along
+        # the lattice's axis along it, and the voxel nearest each slice.
+        self._today: tuple[tuple[int, int, int], list[np.ndarray], np.ndarray] | None
+        self._today = None
+        if stack.aligned and lattice == stack.lattice(lattice.voxel):
+            grid = stack.grid()
+            taken = [
+                qc_surfaces.sampled_indices(np.asarray(values), axis, lattice.voxel)
+                for values, axis in zip(grid.coordinates, grid.axes)
+            ]
+            nearest = qc_surfaces.nearest_voxels(
+                np.asarray(grid.coordinates[0]), grid.axes[0], lattice.voxel
+            )
+            places = (
+                _LATTICE_AXIS[grid.axes[0]],
+                _LATTICE_AXIS[grid.axes[1]],
+                _LATTICE_AXIS[grid.axes[2]],
+            )
+            self._today = (places, taken, nearest)
         normal = stack.normal
         # The patient axis that the normal lies most nearly along, and the
         # lattice's axis along it, along which each line of voxels runs.
@@ -468,7 +557,11 @@ class StackSampler:
         IndexError
             If there is no slice at ``index``.
         """
-        rank = self._rank[self._slice(index)]
+        index = self._slice(index)
+        if self._today is not None:
+            taken = self._today[1]
+            return self._today_taken(np.flatnonzero(taken[0] == index))
+        rank = self._rank[index]
         low, high = self._boundaries[rank], self._boundaries[rank + 1]
         if self._increment > 0:
             start, stop = self._cut(low), self._cut(high)
@@ -494,6 +587,9 @@ class StackSampler:
             If there is no slice at ``index``.
         """
         index = self._slice(index)
+        if self._today is not None:
+            nearest = self._today[2]
+            return self._today_taken(np.array([nearest[index]], np.intp))
         offset = float(self._stack.offsets[index])
         length = self._lattice.shape[self._run]
         exact = (offset - self._base) / self._increment
@@ -502,6 +598,30 @@ class StackSampler:
         apart = np.abs(self._base + along * self._increment - offset)
         lines = np.flatnonzero(apart.ravel() <= self._reach + _TIE)
         return self._taken(index, lines, along.ravel()[lines])
+
+    def _today_taken(self, along: np.ndarray) -> Taken:
+        """The voxels at ``along`` on the lattice's axis along an aligned
+        stack's slice axis, each taking the row and column that today's
+        sampling takes along the other two axes."""
+        assert self._today is not None
+        places, taken, _ = self._today
+        indices: list[np.ndarray] = [np.empty(0, np.intp)] * 3
+        grids = np.meshgrid(
+            along,
+            np.arange(len(taken[1])),
+            np.arange(len(taken[2])),
+            indexing="ij",
+        )
+        for place, each in zip(places, grids):
+            indices[place] = each.ravel()
+        voxels = np.ravel_multi_index(tuple(indices), self._lattice.shape)
+        rows = taken[1][grids[1].ravel()]
+        columns = taken[2][grids[2].ravel()]
+        return Taken(
+            np.asarray(voxels, np.intp),
+            np.asarray(rows, np.intp),
+            np.asarray(columns, np.intp),
+        )
 
     def _slice(self, index: int) -> int:
         count = len(self._rank)
@@ -647,3 +767,24 @@ def _finite(values: object, name: str) -> np.ndarray:
     if not np.isfinite(array).all():
         raise ValueError(f"{name} is not of finite numbers")
     return array
+
+
+def _grid_lattice(grid: qc_surfaces.Grid, origin: np.ndarray, voxel: float) -> Lattice:
+    """The lattice of an aligned stack's grid, as the face finder finds its
+    own: each axis's voxels as
+    :func:`~pymedphys._dicom.deidentify.qc_surfaces.sampled_indices` counts
+    them, from the grid's coordinates, the rows and columns shifted by the
+    first slice's ``origin``."""
+    counts = [0, 0, 0]
+    lowest = [0.0, 0.0, 0.0]
+    highest = [0.0, 0.0, 0.0]
+    for place, (values, axis) in enumerate(zip(grid.coordinates, grid.axes)):
+        shift = 0.0 if place == 0 else float(origin[axis])
+        counts[axis] = len(qc_surfaces.sampled_indices(np.asarray(values), axis, voxel))
+        lowest[axis] = min(values) + shift
+        highest[axis] = max(values) + shift
+    return Lattice(
+        (float(lowest[0]), float(lowest[1]), float(highest[2])),
+        voxel,
+        (counts[2], counts[1], counts[0]),
+    )

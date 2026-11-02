@@ -125,6 +125,14 @@ SMALL = {
     "one-slice-oblique": _small(
         orientation=_orientation(_rotation(about_y=20.0)), steps=(0.0,)
     ),
+    # Axial slices sheared by half their step: at 2 mm voxels, voxels lie
+    # exactly midway between rows, between columns, between slices along
+    # the normal, and between voxels where a slice's plane crosses a line.
+    "sheared-with-ties": _small(
+        steps=(0.0, 1.0, 4.0, 8.0, 12.0),
+        along=(0.0, -0.5, 1.0),
+        spacing=(0.8, 0.8),
+    ),
 }
 
 
@@ -215,16 +223,81 @@ def _expected_nearest(scan: head.Scan, voxel: float) -> np.ndarray:
     return expected.reshape(shape)
 
 
-@pytest.mark.parametrize("voxel", [0.7, 1.0, 1.7])
+def _expected_pixels(scan: head.Scan, centres: np.ndarray, index: int):
+    """Whether each centre's projection onto a slice lies within half a
+    pixel of the slice, and the row and column nearest it, of lower
+    coordinate where two are within the tie."""
+    along_row = np.array(scan.orientation[:3])
+    down_column = np.array(scan.orientation[3:])
+    offsets = centres - np.array(scan.positions[index])
+    picked = []
+    for direction, spacing in (
+        (down_column, scan.spacing[0]),
+        (along_row, scan.spacing[1]),
+    ):
+        lower = direction[int(np.argmax(np.abs(direction)))] > 0
+        fraction = offsets @ direction / spacing
+        picked.append(np.floor(fraction + 0.5 + (-TIE if lower else TIE)).astype(int))
+    row, column = picked
+    rows, columns = scan.shape
+    return (row >= 0) & (row < rows) & (column >= 0) & (column < columns), row, column
+
+
+def _expected_drawn(scan: head.Scan, voxel: float) -> np.ndarray:
+    """The coded value each voxel takes where every slice is drawn: the
+    greatest over its nearest slice's and, for each slice, along each line
+    of voxels along the patient axis nearest the normal, the voxel nearest
+    where the slice's plane crosses the line, of lower index where two are
+    within the tie, within a voxel's extent along the normal of the plane."""
+    expected = _expected_nearest(scan, voxel)
+    first, shape = _expected_lattice(scan, voxel)
+    along_row = np.array(scan.orientation[:3])
+    down_column = np.array(scan.orientation[3:])
+    normal = np.cross(along_row, down_column)
+    normal /= np.linalg.norm(normal)
+    # The lattice's axis along the patient axis nearest the normal, and the
+    # step along it.
+    run = (2, 1, 0)[int(np.argmax(np.abs(normal)))]
+    steps = np.array([[0, 0, -voxel], [0, voxel, 0], [voxel, 0, 0]], dtype=float)
+    across = [axis for axis in range(3) if axis != run]
+    lines = np.indices([shape[axis] for axis in across]).reshape(2, -1)
+    starts = np.array(first, dtype=float) + lines[0][:, None] * steps[across[0]]
+    starts += lines[1][:, None] * steps[across[1]]
+    rows, columns = scan.shape
+    flat = expected.reshape(-1)
+    for index, position in enumerate(scan.positions):
+        offset = float(np.array(position) @ normal)
+        exact = (offset - starts @ normal) / float(steps[run] @ normal)
+        along = np.clip(np.ceil(exact - 0.5 - TIE), 0, shape[run] - 1).astype(int)
+        centres = starts + along[:, None] * steps[run]
+        near = np.abs(centres @ normal - offset) <= voxel * np.abs(normal).sum() + TIE
+        valid, row, column = _expected_pixels(scan, centres, index)
+        keep = near & valid
+        indices = [np.empty(0, int)] * 3
+        indices[run] = along[keep]
+        indices[across[0]] = lines[0][keep]
+        indices[across[1]] = lines[1][keep]
+        voxels = np.ravel_multi_index(tuple(indices), shape)
+        codes = (index * rows * columns + row[keep] * columns + column[keep]).astype(
+            np.float32
+        )
+        flat[voxels] = np.fmax(flat[voxels], codes)
+    return expected
+
+
+@pytest.mark.parametrize("every_slice", [False, True], ids=["nearest", "every-slice"])
+@pytest.mark.parametrize("voxel", [0.7, 1.0, 1.7, 2.0])
 @pytest.mark.parametrize("scan", SMALL.values(), ids=SMALL.keys())
-def test_each_voxel_takes_the_nearest_slice_then_the_nearest_pixel_in_it(scan, voxel):
-    volume = _sampled(scan, voxel, _coded(scan))
+def test_each_voxel_takes_the_nearest_slice_then_the_nearest_pixel_in_it(
+    scan, voxel, every_slice
+):
+    volume = _sampled(scan, voxel, _coded(scan), every_slice)
 
     first, shape = _expected_lattice(scan, voxel)
     lattice = volume.sampler.lattice
     assert lattice.shape == shape
     np.testing.assert_allclose(lattice.first, first, atol=1e-9)
-    expected = _expected_nearest(scan, voxel)
+    expected = (_expected_drawn if every_slice else _expected_nearest)(scan, voxel)
     np.testing.assert_array_equal(volume.values, expected)
     # Some voxels, but not every one of a tilted or oblique stack's, take a
     # pixel.
@@ -301,6 +374,98 @@ def test_a_stack_along_the_patient_axes_is_sampled_as_today(scan, voxel, every_s
         volume.values, _today(scan, voxel, frames, every_slice)
     )
     assert np.isfinite(volume.values).all()
+
+
+@pytest.mark.parametrize("every_slice", [False, True], ids=["nearest", "every-slice"])
+def test_reversed_columns_of_decimal_spacing_take_todays_pixels(every_slice):
+    # Columns to the patient's right, 0.8 mm apart, sampled to 2 mm voxels:
+    # the voxels lie nominally midway between columns, where today's
+    # sampling compares the distances as rounded and takes columns 7 and 2.
+    scan = head.Scan(
+        (-1.0, 0.0, 0.0, 0.0, 1.0, 0.0), ((0.0, 0.0, 0.0),), (0.8, 0.8), (4, 11)
+    )
+    frame = np.tile(np.arange(11, dtype=np.float32), (4, 1))
+
+    volume = _sampled(scan, 2.0, [frame], every_slice)
+
+    np.testing.assert_array_equal(volume.values[0, 0], [10, 7, 5, 2, 0])
+    np.testing.assert_array_equal(
+        volume.values, _today(scan, 2.0, [frame], every_slice)
+    )
+
+
+def _aligned_stack(generator: np.random.Generator) -> head.Scan:
+    """A random stack along the patient's axes: any of the six orders of
+    its axes, each either way, decimal spacings, uneven gaps, an origin
+    anywhere, and the slices in any order."""
+    axes = generator.permutation(3)
+    signs = generator.choice([-1.0, 1.0], size=2)
+    along_row = np.zeros(3)
+    along_row[axes[0]] = signs[0]
+    down_column = np.zeros(3)
+    down_column[axes[1]] = signs[1]
+    normal = np.cross(along_row, down_column)
+    spacing = tuple(
+        float(value) for value in generator.choice([0.488, 0.7, 0.8, 0.9765625, 1.3], 2)
+    )
+    gaps = generator.choice(
+        [0.4, 0.5, 1.25, 2.5, 3.0], size=int(generator.integers(1, 12))
+    )
+    steps = np.concatenate([[0.0], np.cumsum(gaps)])
+    origin = np.round(generator.uniform(-250, 250, 3), 3)
+    positions = tuple(
+        tuple(float(value) for value in origin + step * normal)
+        for step in generator.permutation(steps)
+    )
+    shape = (int(generator.integers(1, 23)), int(generator.integers(1, 23)))
+    return head.Scan(
+        tuple(float(value) for value in (*along_row, *down_column)),
+        positions,
+        spacing,
+        shape,
+    )
+
+
+@pytest.mark.parametrize("seed", range(40))
+def test_random_aligned_stacks_take_todays_pixels(seed):
+    generator = np.random.default_rng(seed)
+    scan = _aligned_stack(generator)
+    frames = _coded(scan)
+
+    for voxel in (0.6, 1.0, 1.5, 2.0):
+        for every_slice in (False, True):
+            volume = _sampled(scan, voxel, frames, every_slice)
+
+            assert volume.sampler.stack.aligned
+            np.testing.assert_array_equal(
+                volume.values,
+                _today(scan, voxel, frames, every_slice),
+                err_msg=f"voxel {voxel}, every slice {every_slice}",
+            )
+
+
+def test_a_stack_is_aligned_as_today_within_the_tolerances():
+    scan = _small()
+    off = 0.9 * stack_sampling.ALIGNMENT_TOLERANCE
+    nudged = (1.0, off, 0.0, -off, 1.0, 0.0)
+    shifted = tuple(
+        (x + 0.9 * stack_sampling.STACKING_TOLERANCE * index, y, z)
+        for index, (x, y, z) in enumerate(scan.positions)
+    )
+
+    def aligned(orientation, positions):
+        return stack_sampling.Stack(
+            orientation, positions, scan.spacing, scan.shape
+        ).aligned
+
+    assert aligned(scan.orientation, scan.positions)
+    assert aligned(nudged, scan.positions)
+    assert aligned(scan.orientation, shifted[:2])
+    assert not aligned(_TILT_15, scan.positions)
+    assert not aligned(scan.orientation, SMALL["sheared"].positions)
+    turned = 3 * off
+    cosine = math.sqrt(1 - turned**2)
+    assert not aligned((cosine, turned, 0.0, -turned, cosine, 0.0), scan.positions)
 
 
 @pytest.mark.parametrize("every_slice", [False, True], ids=["nearest", "every-slice"])

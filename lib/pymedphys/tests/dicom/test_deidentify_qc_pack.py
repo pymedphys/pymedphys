@@ -682,7 +682,9 @@ def test_the_document_holds_every_section():
         "previews",
         "not_previewed",
         "source_gaps",
+        "several_patient_studies",
     ]
+    assert document["several_patient_studies"] == []
 
 
 def test_a_pack_records_its_runs_lists_or_none():

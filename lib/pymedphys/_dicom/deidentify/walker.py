@@ -90,7 +90,8 @@ every reason is known.
 
 A plain X removes its attribute (D-020), but for Requested Procedure ID
 (0040,1001) in a Structured Report's Referenced Request Sequence (0040,A370),
-which it empties
+and Source Manufacturer (300A,0216) in an RT Brachy Treatment Record's
+Recorded Source Sequence (3008,0100), which it empties
 (:data:`~pymedphys._dicom.deidentify.compound_actions.EMPTIED_PLAIN_X`).
 Where the IOD requires the attribute at its place,
 :func:`~pymedphys._dicom.deidentify.compound_actions.resolve_plain_x_in_iod`
