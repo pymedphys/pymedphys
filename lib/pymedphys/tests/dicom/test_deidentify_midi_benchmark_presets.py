@@ -125,7 +125,7 @@ def test_an_unloadable_edition_is_refused_before_the_run(tmp_path, monkeypatch):
 
 
 def test_a_spreadsheet_without_clean_descriptors_is_refused(tmp_path):
-    with pytest.raises(benchmark.BenchmarkError, match="only to a preset"):
+    with pytest.raises(benchmark.BenchmarkError, match="only to a policy"):
         benchmark.run_benchmark(
             _source(tmp_path),
             _benchmark_key(tmp_path),

@@ -126,3 +126,17 @@ def compare_text(text: str, answer: str, *, keep: bool) -> bool | None:
         return None
     found = sum(word in text for word in words)
     return found == len(words) if keep else found == 0
+
+
+def held_words(text: str, answer: str) -> list[str]:
+    """Return the words of the answer key's text that a text holds.
+
+    Each is in capitals, and held as :func:`compare_text` finds it: within
+    the text, ignoring case.
+
+    >>> held_words("AX T1 GRAY", "<gray 2>")
+    ['GRAY']
+    """
+    text = unbracketed(text).lower()
+    words = _WORD.findall(unbracketed(answer).lower())
+    return [word.upper() for word in words if word in text]

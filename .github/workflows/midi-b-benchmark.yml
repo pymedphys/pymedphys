@@ -3,9 +3,13 @@ name: MIDI-B Benchmark
 # On demand, download one subset of NCI's MIDI-B test data, from TCIA
 # (https://doi.org/10.7937/cf2p-aw56, CC BY 4.0) or a pinned copy of TCIA's
 # files, de-identify it with the
-# development benchmark harness under each preset, and score the release
-# against the subset's answer key, both with the harness and with NCI's own
-# validation script (D-018).
+# development benchmark harness under each configuration of a group, a
+# preset or one option alone, and score each release against the subset's
+# answer key with the harness, and a preset's with NCI's own validation
+# script too (D-018). Each job downloads its subset once and runs its
+# group's configurations in turn, since the data never leaves the runner:
+# no artefact or cache holds it. A group of Retain options runs basic first
+# and compares each option's run with it, check by check (the flip check).
 #
 # MIDI-B's files carry synthetic identifiers, which the project treats as
 # real, and this repository's logs and artefacts are public. So the logs and
@@ -25,6 +29,15 @@ on:
         type: choice
         options: [validation, test, both]
         default: validation
+      configurations:
+        description: >-
+          Which configurations run: basic and basic-clean-descriptors; the
+          other presets; each Retain option alone, with its flip check; each
+          Clean option alone, Clean Pixel Data in eight shards; or all of
+          them, in fourteen jobs for Validation and twenty-one for Test
+        type: choice
+        options: [basic-presets, other-presets, retain, clean, all]
+        default: basic-presets
       answer-key-url:
         description: An answer key to use in place of the pinned one (HTTPS)
         type: string
@@ -75,18 +88,122 @@ concurrency:
   group: midi-b-benchmark
   cancel-in-progress: false
 
+env:
+  # Clean Pixel Data's run takes longer than a job may: its text detector
+  # would read the Validation subset for an estimated 7 to 8 hours, and the
+  # Test subset for 9 to 10, from its times on HaN-Seg's frames in run
+  # 41145832882 (at most 1.1 s for a 512 by 512 slice). So it runs in this
+  # many shards, each of the patients that midi_benchmark_shards.assign
+  # gives it, in a job of its own; the "combine" job adds their results up.
+  # The clean-pixel-data groups below number them; each shard should take
+  # about 1 to 1.5 hours.
+  CLEAN_PIXEL_DATA_SHARDS: 8
+
 jobs:
+  # The run's jobs, and each engine ref's commit, found once, so that every
+  # job of the run, whenever it starts, benchmarks the same engine, and a
+  # re-run of a job does too: the combined shards must be of one engine.
+  plan:
+    name: Plan the run
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      pins: ${{ steps.pin.outputs.pins }}
+      jobs: ${{ steps.jobs.outputs.jobs }}
+    steps:
+      # Each subset's groups. The Test subset takes 2.1 to 2.6 times as long
+      # as Validation, and runners differ about twofold in speed, so on a
+      # slow runner a Test job of more than one run scored by NCI's script,
+      # or of more than two runs, passes the step's 320 minutes. So Test runs
+      # each preset scored by the script in a job of its own, apart from
+      # other-presets, in which public-release releases nothing to score;
+      # each Retain option in a job of its own with its basic reference; and
+      # the Clean options two to a job. Validation's groups fit a slow
+      # runner. A push (temporary, above) has no inputs, and runs
+      # basic-presets on both subsets.
+      - name: Choose the jobs
+        id: jobs
+        env:
+          CHOSEN_SUBSET: ${{ inputs.subset }}
+          CHOSEN_CONFIGURATIONS: ${{ inputs.configurations }}
+        run: |
+          case "${CHOSEN_SUBSET:-both}" in
+            validation) subsets=(validation) ;;
+            test) subsets=(test) ;;
+            both) subsets=(validation test) ;;
+            *) echo "Unknown subset ${CHOSEN_SUBSET}."; exit 1 ;;
+          esac
+          case "${CHOSEN_CONFIGURATIONS:-basic-presets}" in
+            basic-presets|other-presets|retain|clean) kinds=("${CHOSEN_CONFIGURATIONS:-basic-presets}") ;;
+            all) kinds=(basic-presets other-presets retain clean) ;;
+            *) echo "Unknown configurations ${CHOSEN_CONFIGURATIONS}."; exit 1 ;;
+          esac
+          shards=()
+          for number in $(seq 1 "${CLEAN_PIXEL_DATA_SHARDS}"); do
+            shards+=("clean-pixel-data-${number}")
+          done
+          rows=()
+          for subset in "${subsets[@]}"; do
+            for kind in "${kinds[@]}"; do
+              case "${subset}:${kind}" in
+                validation:basic-presets) groups=(basic-presets) ;;
+                test:basic-presets) groups=(basic basic-clean-descriptors) ;;
+                *:other-presets) groups=(other-presets) ;;
+                validation:retain) groups=(retain-1 retain-2 retain-3) ;;
+                test:retain)
+                  groups=(flip-retain_safe_private flip-retain_uids flip-retain_device_identity
+                    flip-retain_institution_identity flip-retain_patient_characteristics
+                    flip-retain_longitudinal_full_dates flip-retain_longitudinal_modified_dates
+                    flip-retain_safe_private-tcia) ;;
+                validation:clean) groups=(clean "${shards[@]}") ;;
+                test:clean) groups=(clean-1 clean-2 "${shards[@]}") ;;
+              esac
+              for group in "${groups[@]}"; do
+                rows+=("$(jq -cn --arg subset "${subset}" --arg group "${group}" \
+                  '{subset: $subset, group: $group}')")
+              done
+            done
+          done
+          jobs="$(printf '%s\n' "${rows[@]}" | jq -cs '{include: .}')"
+          echo "${jobs}" | jq -r '.include[] | "\(.subset) \(.group)"'
+          echo "jobs=${jobs}" >> "${GITHUB_OUTPUT}"
+
+      - name: Find each engine ref's commit
+        id: pin
+        env:
+          ENGINE_REF: ${{ inputs.engine-ref }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          read -r -a refs <<< "${ENGINE_REF}"
+          pins=""
+          for ref in "${refs[@]}"; do
+            if [[ ! "${ref}" =~ ^refs/(pull/[0-9]+/head|heads/[A-Za-z0-9._/-]+)$ ]]; then
+              echo "Each engine ref must be refs/pull/<n>/head or refs/heads/<branch>."
+              exit 1
+            fi
+            commit="$(git ls-remote "https://github.com/${REPOSITORY}.git" "${ref}" \
+              | awk -v ref="${ref}" '$2 == ref { print $1 }')"
+            if [[ ! "${commit}" =~ ^[0-9a-f]{40}$ ]]; then
+              echo "The engine ref ${ref} was not found."
+              exit 1
+            fi
+            echo "${ref} is at ${commit}."
+            pins="${pins:+${pins} }${ref}@${commit}"
+          done
+          echo "pins=${pins}" >> "${GITHUB_OUTPUT}"
+
   benchmark:
-    name: MIDI-B ${{ matrix.subset }} ${{ matrix.preset }}
+    name: MIDI-B ${{ matrix.subset }} ${{ matrix.group }}
+    needs: plan
     strategy:
       fail-fast: false
-      matrix:
-        # A push (temporary, above) has no inputs, and runs both.
-        subset: >-
-          ${{ fromJSON(inputs.subset == 'validation' && '["validation"]'
-          || inputs.subset == 'test' && '["test"]'
-          || '["validation", "test"]') }}
-        preset: [basic, basic-clean-descriptors]
+      # Each job downloads its subset from TCIA: no more than four at once.
+      max-parallel: 4
+      # Each subset and group, as the plan chose them. Each group's
+      # configurations are chosen in "Choose the configurations" below.
+      matrix: ${{ fromJSON(needs.plan.outputs.jobs) }}
     # The dicom3tools package that setup-dicom-validators pins is Ubuntu
     # 24.04's.
     runs-on: ubuntu-24.04
@@ -95,7 +212,7 @@ jobs:
       contents: read
     env:
       SUBSET: ${{ matrix.subset }}
-      PRESET: ${{ matrix.preset }}
+      GROUP: ${{ matrix.group }}
       CHOSEN: ${{ inputs.subset }}
       # A push (temporary, above) has no inputs, and checks TCIA's packages.
       ANSWER_KEYS_FROM: ${{ inputs.answer-keys-from || 'tcia' }}
@@ -108,6 +225,7 @@ jobs:
       ANSWER_KEY_URL: ${{ inputs.answer-key-url }}
       ANSWER_KEY_SHA256: ${{ inputs.answer-key-sha256 }}
       ENGINE_REF: ${{ inputs.engine-ref }}
+      ENGINE_PINS: ${{ needs.plan.outputs.pins }}
       # NCI's validation script (https://github.com/CBIIT/midi_validation_script,
       # Apache-2.0) at a pinned commit. It pins pydicom 2.2.1, so it runs in
       # an environment of its own, on Python 3.10.
@@ -129,21 +247,29 @@ jobs:
           # Merging an engine ref needs the history back to the merge base.
           fetch-depth: ${{ env.ENGINE_REF != '' && '0' || '1' }}
 
-      # The merge stays on the runner, which is deleted when the job ends.
+      # Each engine ref's commit, as the plan found it. The merge stays
+      # on the runner, which is deleted when the job ends.
       - name: Merge the engine ref
         if: env.ENGINE_REF != ''
         run: |
-          read -r -a refs <<< "${ENGINE_REF}"
+          read -r -a pins <<< "${ENGINE_PINS}"
           merged=""
-          for ref in "${refs[@]}"; do
-            if [[ ! "${ref}" =~ ^refs/(pull/[0-9]+/head|heads/[A-Za-z0-9._/-]+)$ ]]; then
-              echo "Each engine ref must be refs/pull/<n>/head or refs/heads/<branch>."
+          for pin in "${pins[@]}"; do
+            ref="${pin%@*}"
+            commit="${pin##*@}"
+            if [[ ! "${ref}" =~ ^refs/(pull/[0-9]+/head|heads/[A-Za-z0-9._/-]+)$ \
+              || ! "${commit}" =~ ^[0-9a-f]{40}$ ]]; then
+              echo "Each engine ref must be refs/pull/<n>/head or refs/heads/<branch>, at a commit."
               exit 1
             fi
-            git fetch --no-tags origin "${ref}"
+            git fetch --no-tags origin "${commit}"
+            if [[ "$(git rev-parse FETCH_HEAD)" != "${commit}" ]]; then
+              echo "The commit of ${ref} could not be fetched."
+              exit 1
+            fi
             git -c user.name="MIDI-B Benchmark" -c user.email="midi-b-benchmark@invalid" \
               merge --no-edit --no-ff FETCH_HEAD
-            merged="${merged:+${merged}, then }${ref} at $(git rev-parse FETCH_HEAD)"
+            merged="${merged:+${merged}, then }${ref} at ${commit}"
           done
           echo "ENGINE_MERGES=${merged}" >> "${GITHUB_ENV}"
 
@@ -164,7 +290,8 @@ jobs:
           df -h /
 
       # The user extra holds the decoders for compressed transfer syntaxes,
-      # and the tests extra dicom-validator.
+      # and the tests extra dicom-validator and, for Clean Pixel Data, the
+      # text-detection extra.
       - uses: ./.github/actions/setup-project
         with:
           extras: 'user tests'
@@ -225,7 +352,7 @@ jobs:
             echo "Installing IBM's transfer daemon: attempt ${attempt} of 3 failed at $(date -u +%FT%TZ); trying again in $((60 * attempt)) s."
             sleep $((60 * attempt))
           done
-          note="runner ${MIDI_B_RUNNER_ADDRESS:-unknown}; run ${GITHUB_RUN_ID}/${GITHUB_RUN_ATTEMPT}; ${SUBSET} ${PRESET}"
+          note="runner ${MIDI_B_RUNNER_ADDRESS:-unknown}; run ${GITHUB_RUN_ID}/${GITHUB_RUN_ATTEMPT}; ${SUBSET} ${GROUP}"
           python3 -I .github/scripts/midi_b_tcia_answer_keys.py fetch "${RUNNER_TEMP}/midi-b/tcia" \
             --user-agent-note "${note}"
           python3 -I .github/scripts/midi_b_tcia_answer_keys.py list "${RUNNER_TEMP}/midi-b/tcia" \
@@ -244,7 +371,7 @@ jobs:
       # only if that file cannot be fetched; download.json records which.
       - name: Download the subset
         run: |
-          note="runner ${MIDI_B_RUNNER_ADDRESS:-unknown}; run ${GITHUB_RUN_ID}/${GITHUB_RUN_ATTEMPT}; ${SUBSET} ${PRESET}"
+          note="runner ${MIDI_B_RUNNER_ADDRESS:-unknown}; run ${GITHUB_RUN_ID}/${GITHUB_RUN_ATTEMPT}; ${SUBSET} ${GROUP}"
           args=(--subset "${SUBSET}" --dest "${RUNNER_TEMP}/midi-b/data" --user-agent-note "${note}"
             --images-from "${IMAGES_FROM}")
           if [[ -n "${ANSWER_KEY_URL}" ]]; then
@@ -297,19 +424,294 @@ jobs:
           sudo swapon /midi-b-swapfile
           free -m
 
-      - name: Run the benchmark
-        id: benchmark
+      # Each of the group's configurations, as kind:name:scoring, or
+      # kind:name:scoring:list, run in turn. The kind is preset or option, a
+      # custom option set of that option alone; the scoring is full (the
+      # harness, the DICOM validation, and NCI's script), validated (the
+      # harness and the DICOM validation), or reference (the harness alone,
+      # for the flip checks); the list, under Retain Safe Private, is tcia
+      # for TCIA's Private Tag Dictionary in place of the reviewed list, and
+      # the configuration's results are then named name-list. Under Clean
+      # Recognizable Visual Features, which public-release selects, a run
+      # has no face verdicts, so it holds every instance that can show a
+      # face, as its results record. On the Test subset, on a fast runner,
+      # the harness took about 62 minutes, the validation 10, and NCI's
+      # script 22; the plan splits Test's groups so that each fits a slow
+      # runner too. Clean Pixel Data's group is one shard of its run, which
+      # the "combine" job adds up.
+      - name: Choose the configurations
         run: |
+          case "${GROUP}" in
+            basic-presets)
+              configurations="preset:basic:full preset:basic-clean-descriptors:full" ;;
+            basic|basic-clean-descriptors)
+              configurations="preset:${GROUP}:full" ;;
+            other-presets)
+              configurations="preset:tps-import:full preset:public-release:full" ;;
+            retain-1)
+              configurations="preset:basic:reference option:retain_safe_private:validated option:retain_uids:validated option:retain_device_identity:validated" ;;
+            retain-2)
+              configurations="preset:basic:reference option:retain_institution_identity:validated option:retain_patient_characteristics:validated" ;;
+            retain-3)
+              configurations="preset:basic:reference option:retain_longitudinal_full_dates:validated option:retain_longitudinal_modified_dates:validated option:retain_safe_private:validated:tcia" ;;
+            # One Retain option and its basic reference, flip-<option> or
+            # flip-<option>-tcia for TCIA's Private Tag Dictionary.
+            flip-retain_safe_private-tcia)
+              configurations="preset:basic:reference option:retain_safe_private:validated:tcia" ;;
+            flip-retain_safe_private|flip-retain_uids|flip-retain_device_identity|flip-retain_institution_identity|flip-retain_patient_characteristics|flip-retain_longitudinal_full_dates|flip-retain_longitudinal_modified_dates)
+              configurations="preset:basic:reference option:${GROUP#flip-}:validated" ;;
+            clean)
+              configurations="option:clean_descriptors:validated option:clean_structured_content:validated option:clean_graphics:validated option:clean_recognizable_visual_features:validated" ;;
+            clean-1)
+              configurations="option:clean_descriptors:validated option:clean_structured_content:validated" ;;
+            clean-2)
+              configurations="option:clean_graphics:validated option:clean_recognizable_visual_features:validated" ;;
+            clean-pixel-data-[1-9]*)
+              number="${GROUP##*-}"
+              if [[ ! "${number}" =~ ^[1-9][0-9]*$ ]] || (( number > CLEAN_PIXEL_DATA_SHARDS )); then
+                echo "Unknown group ${GROUP}."
+                exit 1
+              fi
+              configurations="option:clean_pixel_data:validated"
+              shard="${number}/${CLEAN_PIXEL_DATA_SHARDS}" ;;
+            *)
+              echo "Unknown group ${GROUP}."
+              exit 1 ;;
+          esac
+          echo "CONFIGURATIONS=${configurations}" >> "${GITHUB_ENV}"
+          echo "SHARD=${shard:-}" >> "${GITHUB_ENV}"
+          echo "${GROUP}: ${configurations}${shard:+, shard ${shard}}"
+
+      # Each configuration de-identifies the subset into a work directory of
+      # its own, is scored, and its release and QC pack are deleted before
+      # the next, so that the disk holds one at a time. Its results go to a
+      # results directory of its own; its check outcomes, for the flip
+      # checks, stay on the runner. dciodvfy, dcentvfy, and dicom-validator
+      # check each released file and its input (D-030); their findings do
+      # not fail the job: they are results. Standard error and standard
+      # output, where a library's log records could quote a value, stay on
+      # the runner; the log shows the wrapper's report of a refusal or a
+      # crash, and each configuration's Markdown results as it finishes, in
+      # case the runner is lost.
+      #
+      # NCI's script scores a preset's release from the mapping files that
+      # the harness wrote. It logs values from the files, so its logs and
+      # its results database stay on the runner, and only the harness's
+      # count of its results, which holds none, is kept. The script scores
+      # each withheld instance as missing and holds every result in memory,
+      # which ran a 16 GB runner out on the Test subset, so it is given the
+      # released instances' rows alone. It scores the released files as it
+      # would with the whole key. Where most of the Test subset is released,
+      # the results alone nearly fill memory and swap, so it scores the
+      # release in parts of NCI_PART_FILES files, each with its own answer
+      # key; it scores each file on its own, so the parts' results add up to
+      # the whole's. Each of its worker processes holds its own copy of the
+      # answer key and loads its own OCR model, which ran a 16 GB runner out
+      # of memory with four; one process scores each part.
+      - name: Run the configurations
+        id: configurations
+        timeout-minutes: 320
+        env:
+          PYMEDPHYS_DICOM_VALIDATOR_STANDARD: ${{ steps.validators.outputs.standard-path }}
+        run: |
+          umask 077
           data="${RUNNER_TEMP}/midi-b/data"
-          work="${RUNNER_TEMP}/midi-b/work"
+          private="${RUNNER_TEMP}/midi-b/private"
           results="${RUNNER_TEMP}/midi-b/results"
+          nci="${RUNNER_TEMP}/nci"
           if [[ ! -f "${data}/answer-key.db" ]]; then
             echo "No answer key is pinned for ${SUBSET} or given, so the benchmark did not run." \
               | tee "${results}/benchmark.md"
             echo "ran=false" >> "${GITHUB_OUTPUT}"
             exit 0
           fi
-          name="$(jq -r '.name' "${data}/download.json")"
+          echo "ran=true" >> "${GITHUB_OUTPUT}"
+          # The downloaded collection's name, apart from each configuration's.
+          collection_name="$(jq -r '.name' "${data}/download.json")"
+
+          # Install NCI's script once per job. The marker is written only
+          # after a whole install, so a later configuration retries one that
+          # failed part way, from nothing. The runner has no GPU, so torch
+          # and torchvision come from PyTorch's index in their CPU builds:
+          # the environment is then 1.3 GB. With PyPI's builds, which add
+          # 3 GB of wheels of CUDA's libraries, it took about 5 GB, more than
+          # a runner with a 72 GB disk had left.
+          setup_nci() {
+            local venv="${RUNNER_TEMP}/nci-venv"
+            [[ -f "${venv}/.midi-b-installed" ]] && return 0
+            rm -rf "${nci}" "${venv}"
+            git init -q "${nci}" \
+              && git -C "${nci}" fetch -q --depth 1 https://github.com/CBIIT/midi_validation_script.git \
+                "${NCI_SCRIPT_COMMIT}" \
+              && git -C "${nci}" checkout -q FETCH_HEAD \
+              && uv venv -q --python 3.10 "${venv}" \
+              && uv pip install -q --torch-backend cpu --python "${venv}/bin/python" \
+                -r "${nci}/requirements.txt" \
+              && {
+                echo "NCI validation script commit ${NCI_SCRIPT_COMMIT}"
+                uv pip freeze --python "${venv}/bin/python"
+              } > "${results}/nci-script-environment.txt" \
+              && touch "${venv}/.midi-b-installed"
+          }
+
+          # Score one configuration's release with NCI's script.
+          score_with_nci() {
+            local work="$1" out="$2" logs="$3"
+            local parts="${logs}/nci-parts"
+            if ! setup_nci; then
+              echo "NCI's validation script could not be installed." | tee "${out}/script-results.txt"
+              return 1
+            fi
+            mkdir -p "${parts}"
+            find "${work}/release" -type f -name '*.dcm' | LC_ALL=C sort > "${parts}/files.txt"
+            split -l "${NCI_PART_FILES}" -d -a 3 "${parts}/files.txt" "${parts}/list-"
+            shopt -s nullglob
+            local lists=("${parts}"/list-*)
+            local status=0 list part part_status
+            local databases=()
+            for list in "${lists[@]}"; do
+              part="part-${list##*/list-}"
+              # Links to the part's files, which the script follows.
+              mkdir "${parts}/${part}"
+              xargs -d '\n' -a "${list}" cp -s --parents -t "${parts}/${part}"
+              uv run --no-sync python .github/scripts/run_redacted.py \
+                pymedphys._dicom.deidentify.midi_benchmark_command released-answer-key \
+                "${data}/answer-key.db" \
+                --release "${parts}/${part}" \
+                --uid-mapping "${work}/validation-script/uid_mapping.csv" \
+                --out "${parts}/${part}-answer-key.db" \
+                > "${parts}/${part}-answer-key.json"
+              jq -n \
+                --arg name "${part}" \
+                --arg release "${parts}/${part}" \
+                --arg output "${logs}/nci-output" \
+                --arg key "${parts}/${part}-answer-key.db" \
+                --arg uids "${work}/validation-script/uid_mapping.csv" \
+                --arg patients "${work}/validation-script/patid_mapping.csv" \
+                --arg logs "${logs}/nci-logs" \
+                '{run_name: $name, input_data_path: $release,
+                  output_data_path: $output, answer_db_file: $key,
+                  uid_mapping_file: $uids, patid_mapping_file: $patients,
+                  multiprocessing: "False", multiprocessing_cpus: "1",
+                  log_path: $logs, log_level: "info", report_series: "False"}' \
+                > "${parts}/${part}-config.json"
+              part_status=0
+              (cd "${nci}" && timeout 150m "${RUNNER_TEMP}/nci-venv/bin/python" run_validation.py \
+                "${parts}/${part}-config.json") >> "${logs}/nci-script.log" 2>&1 \
+                || part_status=$?
+              echo "NCI's validation script exited with ${part_status} on ${part}."
+              if (( part_status != 0 )); then status=${part_status}; fi
+              databases+=("${logs}/nci-output/${part}/validation_results.db")
+            done
+            # The answer keys' counts, added up over the parts.
+            cat /dev/null "${parts}"/part-*-answer-key.json \
+              | jq -s '{parts: length,
+                        released_instances: (map(.released_instances) | add // 0),
+                        answer_key_instances: (map(.answer_key_instances) | add // 0),
+                        rows: (map(.rows) | add // 0)}' \
+              | tee "${out}/nci-answer-key.json"
+            echo "NCI's validation script exited with ${status}."
+            local missing=0 database
+            for database in "${databases[@]}"; do
+              [[ -f "${database}" ]] || missing=$((missing + 1))
+            done
+            if (( ${#databases[@]} > 0 && missing == 0 )); then
+              uv run --no-sync python .github/scripts/run_redacted.py \
+                pymedphys._dicom.deidentify.midi_benchmark_command script-results \
+                "${databases[@]}" > "${out}/script-results.json" \
+                || echo "The script's results could not be counted." \
+                  | tee "${out}/script-results.txt"
+            else
+              echo "NCI's validation script wrote no results for ${missing} of ${#databases[@]} parts (exit status ${status})." \
+                | tee "${out}/script-results.txt"
+            fi
+            rm -rf "${parts}" "${logs}/nci-output"
+          }
+
+          # De-identify and score one configuration, kind:name:scoring[:list].
+          run_configuration() {
+            local kind name scoring list
+            IFS=: read -r kind name scoring list <<< "$1"
+            local label="${name}${list:+-${list}}"
+            local policy=(--preset "${name}")
+            if [[ "${kind}" == option ]]; then
+              policy=(--option "${name}")
+            fi
+            if [[ -n "${list}" ]]; then
+              policy+=(--safe-private-list "${list}")
+            fi
+            if [[ -n "${SHARD}" ]]; then
+              policy+=(--shard "${SHARD}")
+            fi
+            local work="${RUNNER_TEMP}/midi-b/work-${label}"
+            local out="${results}/${label}"
+            local logs="${private}/${label}"
+            local validation="${RUNNER_TEMP}/midi-b/dicom-validation-${label}"
+            mkdir -p "${out}" "${logs}" || return 1
+            echo "${label} (${scoring}) started at $(date -u +%FT%TZ)."
+            if ! uv run --no-sync python .github/scripts/run_redacted.py \
+              --private-stdout "${logs}/benchmark-stdout.log" \
+              pymedphys._dicom.deidentify.midi_benchmark_command run \
+              --source "${data}/images" \
+              --answer-key "${data}/answer-key.db" \
+              --work "${work}" \
+              --collection "${collection_name}" \
+              "${policy[@]}" \
+              --watch "(0020,0011)" --watch "(0028,0106)" --watch "(0008,0008)" \
+              2> "${logs}/benchmark-stderr.log"; then
+              echo "The benchmark did not finish under ${label}." | tee "${out}/benchmark-status.txt"
+              rm -rf "${work}"
+              return 1
+            fi
+            cp "${work}/benchmark.md" "${work}/benchmark.json" "${out}/" || return 1
+            cp "${work}/check-outcomes.txt" "${private}/outcomes-${label}.txt" || return 1
+            cat "${out}/benchmark.md"
+            free -m
+            # A run that released nothing, as one under Clean Recognizable
+            # Visual Features can, leaves nothing to validate or score.
+            local first
+            first="$(find "${work}/release" -type f -name '*.dcm' -print -quit 2> /dev/null)"
+            if [[ "${scoring}" != reference && -z "${first}" ]]; then
+              echo "Not applicable: the run released no instance, so there is nothing to validate." \
+                | tee "${out}/dicom-validation-status.txt"
+              if [[ "${scoring}" == full ]]; then
+                echo "Not applicable: the run released no instance, so NCI's script had nothing to score." \
+                  | tee "${out}/script-results.txt"
+              fi
+              rm -rf "${work}" "${validation}"
+              echo "${label} finished at $(date -u +%FT%TZ)."
+              return 0
+            fi
+            if [[ "${scoring}" != reference ]]; then
+              local status=0
+              timeout 120m uv run --no-sync python .github/scripts/run_redacted.py \
+                --private-stdout "${logs}/dicom-validation-stdout.log" \
+                pymedphys._dicom.deidentify.dicom_validation_command midi \
+                --source "${data}/images" \
+                --work "${work}" \
+                --out "${validation}" \
+                2> "${logs}/dicom-validation-stderr.log" \
+                || status=$?
+              echo "The DICOM validation comparison exited with ${status} (0 passed, 1 unexplained findings, 2 could not compare, 124 timed out)." \
+                | tee "${out}/dicom-validation-status.txt"
+              local file
+              for file in dicom-validation.json dicom-validation.md; do
+                if [[ -f "${validation}/${file}" ]]; then
+                  cp "${validation}/${file}" "${out}/"
+                fi
+              done
+              if [[ -f "${out}/dicom-validation.md" ]]; then
+                cat "${out}/dicom-validation.md"
+              fi
+            fi
+            if [[ "${scoring}" == full ]]; then
+              score_with_nci "${work}" "${out}" "${logs}"
+            fi
+            rm -rf "${work}" "${validation}"
+            echo "${label} finished at $(date -u +%FT%TZ)."
+            df -h /
+          }
+
           # Memory and swap in use every five minutes, so that a lost runner
           # shows whether memory ran out.
           (while sleep 300; do
@@ -317,197 +719,65 @@ jobs:
               print "Memory used " m " MB, swap used " s " MB" }'
           done) &
           sampler=$!
-          uv run --no-sync python .github/scripts/run_redacted.py \
-            --private-stdout "${RUNNER_TEMP}/midi-b/private/benchmark-stdout.log" \
-            pymedphys._dicom.deidentify.midi_benchmark_command run \
-            --source "${data}/images" \
-            --answer-key "${data}/answer-key.db" \
-            --work "${work}" \
-            --collection "${name}" \
-            --preset "${PRESET}" \
-            --watch "(0020,0011)" --watch "(0028,0106)" --watch "(0008,0008)" \
-            2> "${RUNNER_TEMP}/midi-b/private/benchmark-stderr.log"
+          failed=0
+          for configuration in ${CONFIGURATIONS}; do
+            run_configuration "${configuration}" || failed=1
+          done
           kill "${sampler}"
-          free -m
-          cp "${work}/benchmark.md" "${work}/benchmark.json" "${results}/"
-          echo "ran=true" >> "${GITHUB_OUTPUT}"
-          df -h /
+          exit "${failed}"
 
-      # dciodvfy, dcentvfy, and dicom-validator on each released file and its
-      # input (D-030). The result files name no value or path. Standard error
-      # and standard output, where a library's log records could quote a
-      # value, stay on the runner; the log shows only the wrapper's report of
-      # a crash, and the summary the Markdown results. Findings do not fail
-      # the job: they are results.
-      - name: Validate the release against its inputs
-        if: steps.benchmark.outputs.ran == 'true'
-        timeout-minutes: 120
-        env:
-          PYMEDPHYS_DICOM_VALIDATOR_STANDARD: ${{ steps.validators.outputs.standard-path }}
+      # Each Retain option's run against basic's, check by check: the flip
+      # check fails where a check that the option does not govern changed,
+      # or where none that it governs did. Its results hold only counts,
+      # codes, and tags.
+      - name: Compare each Retain option's run with basic's
+        id: flips
+        if: ${{ !cancelled() && steps.configurations.outputs.ran == 'true' }}
         run: |
-          results="${RUNNER_TEMP}/midi-b/results"
-          status=0
-          uv run --no-sync python .github/scripts/run_redacted.py \
-            --private-stdout "${RUNNER_TEMP}/midi-b/private/dicom-validation-stdout.log" \
-            pymedphys._dicom.deidentify.dicom_validation_command midi \
-            --source "${RUNNER_TEMP}/midi-b/data/images" \
-            --work "${RUNNER_TEMP}/midi-b/work" \
-            --out "${RUNNER_TEMP}/midi-b/dicom-validation" \
-            2> "${RUNNER_TEMP}/midi-b/private/dicom-validation-stderr.log" \
-            || status=$?
-          echo "The DICOM validation comparison exited with ${status} (0 passed, 1 unexplained findings, 2 could not compare)." \
-            | tee "${results}/dicom-validation-status.txt"
-          for file in dicom-validation.json dicom-validation.md; do
-            if [[ -f "${RUNNER_TEMP}/midi-b/dicom-validation/${file}" ]]; then
-              cp "${RUNNER_TEMP}/midi-b/dicom-validation/${file}" "${results}/"
-            fi
-          done
-          df -h /
-
-      # Kept and shown now, in case the runner is lost in NCI's script, which
-      # takes longest; the last steps replace them with every result.
-      - name: Upload the benchmark's results
-        if: ${{ !cancelled() && steps.benchmark.outputs.ran == 'true' }}
-        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-        with:
-          name: midi-b-${{ env.SUBSET }}-${{ env.PRESET }}-results${{ env.ATTEMPT_SUFFIX }}
-          path: ${{ runner.temp }}/midi-b/results/
-          if-no-files-found: warn
-          retention-days: 90
-
-      - name: Show the benchmark's results
-        if: ${{ !cancelled() && steps.benchmark.outputs.ran == 'true' }}
-        run: |
-          results="${RUNNER_TEMP}/midi-b/results"
-          for file in benchmark.md dicom-validation-status.txt dicom-validation.md; do
-            if [[ -f "${results}/${file}" ]]; then
-              cat "${results}/${file}"
-              echo
-            fi
-          done
-
-      # NCI's script scores the same release from the mapping files that the
-      # harness wrote. It logs values from the files, so its logs and its
-      # results database stay on the runner, and only the harness's count of
-      # its results, which holds none, is kept.
-      - name: Score the release with NCI's validation script
-        if: steps.benchmark.outputs.ran == 'true'
-        timeout-minutes: 150
-        run: |
-          nci="${RUNNER_TEMP}/nci"
+          data="${RUNNER_TEMP}/midi-b/data"
           private="${RUNNER_TEMP}/midi-b/private"
-          work="${RUNNER_TEMP}/midi-b/work"
           results="${RUNNER_TEMP}/midi-b/results"
-          git init -q "${nci}"
-          git -C "${nci}" fetch -q --depth 1 https://github.com/CBIIT/midi_validation_script.git \
-            "${NCI_SCRIPT_COMMIT}"
-          git -C "${nci}" checkout -q FETCH_HEAD
-          uv venv -q --python 3.10 "${RUNNER_TEMP}/nci-venv"
-          # The runner has no GPU, so torch and torchvision come from
-          # PyTorch's index in their CPU builds: the environment is then
-          # 1.3 GB. With PyPI's builds, which add 3 GB of wheels of CUDA's
-          # libraries, it took about 5 GB, more than a runner with a 72 GB
-          # disk had left.
-          uv pip install -q --torch-backend cpu --python "${RUNNER_TEMP}/nci-venv/bin/python" \
-            -r "${nci}/requirements.txt"
-          {
-            echo "NCI validation script commit ${NCI_SCRIPT_COMMIT}"
-            uv pip freeze --python "${RUNNER_TEMP}/nci-venv/bin/python"
-          } > "${results}/nci-script-environment.txt"
-          # The script scores each withheld instance as missing and holds
-          # every result in memory, which ran a 16 GB runner out on the Test
-          # subset, so it is given the released instances' rows alone. It
-          # scores the released files as it would with the whole key. Where
-          # most of the Test subset is released, the results alone nearly
-          # fill memory and swap, so it scores the release in parts of
-          # NCI_PART_FILES files, each with its own answer key; it scores
-          # each file on its own, so the parts' results add up to the
-          # whole's.
-          parts="${private}/nci-parts"
-          mkdir -p "${parts}"
-          find "${work}/release" -type f -name '*.dcm' | LC_ALL=C sort \
-            > "${parts}/files.txt"
-          split -l "${NCI_PART_FILES}" -d -a 3 "${parts}/files.txt" "${parts}/list-"
-          shopt -s nullglob
-          lists=("${parts}"/list-*)
-          # Each of the script's worker processes holds its own copy of the
-          # answer key and loads its own OCR model, which ran a 16 GB runner
-          # out of memory with four; one process scores each part.
-          free -m
-          # Memory and swap every five minutes, as in the benchmark step.
-          (while sleep 300; do
-            free -m | awk '/^Mem:/ {m = $3} /^Swap:/ {s = $3} END {
-              print "Memory used " m " MB, swap used " s " MB" }'
-          done) &
-          sampler=$!
-          status=0
-          databases=()
-          for list in "${lists[@]}"; do
-            part="part-${list##*/list-}"
-            # Links to the part's files, which the script follows.
-            mkdir "${parts}/${part}"
-            xargs -d '\n' -a "${list}" cp -s --parents -t "${parts}/${part}"
-            uv run --no-sync python .github/scripts/run_redacted.py \
-              pymedphys._dicom.deidentify.midi_benchmark_command released-answer-key \
-              "${RUNNER_TEMP}/midi-b/data/answer-key.db" \
-              --release "${parts}/${part}" \
-              --uid-mapping "${work}/validation-script/uid_mapping.csv" \
-              --out "${parts}/${part}-answer-key.db" \
-              > "${parts}/${part}-answer-key.json"
-            jq -n \
-              --arg name "${part}" \
-              --arg release "${parts}/${part}" \
-              --arg output "${private}/nci-output" \
-              --arg key "${parts}/${part}-answer-key.db" \
-              --arg uids "${work}/validation-script/uid_mapping.csv" \
-              --arg patients "${work}/validation-script/patid_mapping.csv" \
-              --arg logs "${private}/nci-logs" \
-              '{run_name: $name, input_data_path: $release,
-                output_data_path: $output, answer_db_file: $key,
-                uid_mapping_file: $uids, patid_mapping_file: $patients,
-                multiprocessing: "False", multiprocessing_cpus: "1",
-                log_path: $logs, log_level: "info", report_series: "False"}' \
-              > "${parts}/${part}-config.json"
-            part_status=0
-            (cd "${nci}" && "${RUNNER_TEMP}/nci-venv/bin/python" run_validation.py \
-              "${parts}/${part}-config.json") >> "${private}/nci-script.log" 2>&1 \
-              || part_status=$?
-            echo "NCI's validation script exited with ${part_status} on ${part}."
-            if (( part_status != 0 )); then status=${part_status}; fi
-            databases+=("${private}/nci-output/${part}/validation_results.db")
-          done
-          kill "${sampler}"
-          free -m
-          # The answer keys' counts, added up over the parts.
-          cat /dev/null "${parts}"/part-*-answer-key.json \
-            | jq -s '{parts: length,
-                      released_instances: (map(.released_instances) | add // 0),
-                      answer_key_instances: (map(.answer_key_instances) | add // 0),
-                      rows: (map(.rows) | add // 0)}' \
-            | tee "${results}/nci-answer-key.json"
-          echo "NCI's validation script exited with ${status}."
-          missing=0
-          for database in "${databases[@]}"; do
-            [[ -f "${database}" ]] || missing=$((missing + 1))
-          done
-          if (( ${#databases[@]} > 0 && missing == 0 )); then
-            uv run --no-sync python .github/scripts/run_redacted.py \
-              pymedphys._dicom.deidentify.midi_benchmark_command script-results \
-              "${databases[@]}" > "${results}/script-results.json" \
-              || echo "The script's results could not be counted." \
-                | tee "${results}/script-results.txt"
-          else
-            echo "NCI's validation script wrote no results for ${missing} of ${#databases[@]} parts (exit status ${status})." \
-              | tee "${results}/script-results.txt"
+          failed=0
+          if [[ " ${CONFIGURATIONS} " != *" preset:basic:reference "* ]]; then
+            echo "This group has no flip checks."
           fi
-          df -h /
+          for configuration in ${CONFIGURATIONS}; do
+            IFS=: read -r kind name _ list <<< "${configuration}"
+            label="${name}${list:+-${list}}"
+            if [[ "${kind}" != option || " ${CONFIGURATIONS} " != *" preset:basic:reference "* ]]; then
+              continue
+            fi
+            out="${results}/${label}"
+            mkdir -p "${out}"
+            if [[ ! -f "${private}/outcomes-basic.txt" || ! -f "${private}/outcomes-${label}.txt" ]]; then
+              echo "The flip check of ${label} did not run: a run did not finish." \
+                | tee "${out}/flip-check.md"
+              failed=1
+              continue
+            fi
+            status=0
+            uv run --no-sync python .github/scripts/run_redacted.py \
+              pymedphys._dicom.deidentify.midi_benchmark_command flip-check \
+              "${data}/answer-key.db" \
+              --reference "${private}/outcomes-basic.txt" \
+              --compared "${private}/outcomes-${label}.txt" \
+              --option "${name}" \
+              --out "${out}/flip-check.json" \
+              > "${out}/flip-check.md" 2> "${private}/flip-check-${label}-stderr.log" \
+              || status=$?
+            cat "${out}/flip-check.md"
+            echo "The flip check of ${label} exited with ${status} (0 passed, 1 failed, found no effect, or could not compare, 2 crashed)." \
+              | tee "${out}/flip-check-status.txt"
+            if (( status != 0 )); then failed=1; fi
+          done
+          echo "failed=${failed}" >> "${GITHUB_OUTPUT}"
 
       - name: Summarise
         if: ${{ !cancelled() }}
         run: |
           results="${RUNNER_TEMP}/midi-b/results"
           {
-            echo "# MIDI-B ${SUBSET}, ${PRESET}"
+            echo "# MIDI-B ${SUBSET}, ${GROUP}"
             echo
             if [[ -f "${results}/engine.txt" ]]; then
               echo "Engine: $(cat "${results}/engine.txt")"
@@ -523,31 +793,51 @@ jobs:
               cat "${results}/benchmark.md"
               echo
             fi
-            if [[ -f "${results}/dicom-validation-status.txt" ]]; then
-              echo "## DICOM validation"
+            for configuration in ${CONFIGURATIONS:-}; do
+              IFS=: read -r _ name _ list <<< "${configuration}"
+              label="${name}${list:+-${list}}"
+              out="${results}/${label}"
+              [[ -d "${out}" ]] || continue
+              echo "## ${label}"
               echo
-              cat "${results}/dicom-validation-status.txt"
-              echo
-              if [[ -f "${results}/dicom-validation.md" ]]; then
-                cat "${results}/dicom-validation.md"
-                echo
-              fi
-            fi
-            for file in script-results.json script-results.txt; do
-              if [[ -f "${results}/${file}" ]]; then
-                echo "## NCI validation script"
-                echo
-                if [[ -f "${results}/nci-answer-key.json" ]]; then
-                  echo "The answer key it was given, the released instances' rows:"
-                  echo
-                  echo '```json'
-                  cat "${results}/nci-answer-key.json"
-                  echo '```'
+              for file in benchmark-status.txt benchmark.md; do
+                if [[ -f "${out}/${file}" ]]; then
+                  # Its headings two levels down, under the configuration's.
+                  sed 's/^#/###/' "${out}/${file}"
                   echo
                 fi
-                if [[ "${file}" == *.json ]]; then echo '```json'; fi
-                cat "${results}/${file}"
-                if [[ "${file}" == *.json ]]; then echo '```'; fi
+              done
+              if [[ -f "${out}/dicom-validation-status.txt" ]]; then
+                echo "### DICOM validation"
+                echo
+                cat "${out}/dicom-validation-status.txt"
+                echo
+                if [[ -f "${out}/dicom-validation.md" ]]; then
+                  sed 's/^#/###/' "${out}/dicom-validation.md"
+                  echo
+                fi
+              fi
+              for file in script-results.json script-results.txt; do
+                if [[ -f "${out}/${file}" ]]; then
+                  echo "### NCI validation script"
+                  echo
+                  if [[ -f "${out}/nci-answer-key.json" ]]; then
+                    echo "The answer key it was given, the released instances' rows:"
+                    echo
+                    echo '```json'
+                    cat "${out}/nci-answer-key.json"
+                    echo '```'
+                    echo
+                  fi
+                  if [[ "${file}" == *.json ]]; then echo '```json'; fi
+                  cat "${out}/${file}"
+                  if [[ "${file}" == *.json ]]; then echo '```'; fi
+                  echo
+                fi
+              done
+              if [[ -f "${out}/flip-check.md" ]]; then
+                sed 's/^#/###/' "${out}/flip-check.md"
+                echo
               fi
             done
           } | tee -a "${GITHUB_STEP_SUMMARY}"
@@ -556,7 +846,173 @@ jobs:
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: midi-b-${{ env.SUBSET }}-${{ env.PRESET }}-results${{ env.ATTEMPT_SUFFIX }}
+          name: midi-b-${{ env.SUBSET }}-${{ env.GROUP }}-results${{ env.ATTEMPT_SUFFIX }}
+          path: ${{ runner.temp }}/midi-b/results/
+          if-no-files-found: warn
+          retention-days: 90
+          overwrite: true
+
+      # After the results are kept: a failed flip check fails the job.
+      - name: Fail on a failed flip check
+        if: ${{ !cancelled() && steps.flips.outputs.failed == '1' }}
+        run: |
+          echo "A flip check failed, found no effect, or could not run; see the summary."
+          exit 1
+
+  # Clean Pixel Data's shards' results, added up, for each subset: each
+  # check was scored in one shard. The shards' DICOM validation is not added
+  # up: each shard's status and results stay in the combined artefact as
+  # they are. This job reads only the shards' artefacts, which hold no
+  # MIDI-B data. A shard that did not finish leaves the run's results
+  # uncombined; re-run its job, and then this one.
+  combine:
+    name: MIDI-B ${{ matrix.subset }} clean-pixel-data, combined
+    needs: benchmark
+    if: >-
+      ${{ !cancelled()
+      && (inputs.configurations == 'clean' || inputs.configurations == 'all') }}
+    strategy:
+      fail-fast: false
+      matrix:
+        subset: >-
+          ${{ fromJSON(inputs.subset == 'validation' && '["validation"]'
+          || inputs.subset == 'test' && '["test"]'
+          || '["validation", "test"]') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    env:
+      SUBSET: ${{ matrix.subset }}
+      ATTEMPT_SUFFIX: >-
+        ${{ github.run_attempt != '1'
+        && format('-attempt-{0}', github.run_attempt) || '' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup-project
+        with:
+          extras: 'user tests'
+
+      # Every attempt's artefact of each shard: the latest of each is taken.
+      - name: Download the shards' results
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: midi-b-${{ matrix.subset }}-clean-pixel-data-*-results*
+          path: ${{ runner.temp }}/shards/
+
+      - name: Combine the shards
+        id: combine
+        run: |
+          shards="${RUNNER_TEMP}/shards"
+          results="${RUNNER_TEMP}/midi-b/results"
+          mkdir -p "${results}/shards"
+          inputs=()
+          missing=()
+          engines=()
+          for number in $(seq 1 "${CLEAN_PIXEL_DATA_SHARDS}"); do
+            base="midi-b-${SUBSET}-clean-pixel-data-${number}-results"
+            chosen=""
+            latest=0
+            for directory in "${shards}/${base}" "${shards}/${base}"-attempt-*; do
+              [[ -d "${directory}" ]] || continue
+              attempt=1
+              if [[ "${directory}" == *-attempt-* ]]; then
+                attempt="${directory##*-attempt-}"
+                [[ "${attempt}" =~ ^[0-9]+$ ]] || continue
+              fi
+              if (( attempt > latest )); then
+                latest=${attempt}
+                chosen="${directory}"
+              fi
+            done
+            out="${results}/shards/${number}"
+            mkdir -p "${out}"
+            if [[ -z "${chosen}" ]]; then
+              missing+=("${number}")
+              continue
+            fi
+            echo "Shard ${number}: attempt ${latest}."
+            if [[ -d "${chosen}/clean_pixel_data" ]]; then
+              cp -R "${chosen}/clean_pixel_data/." "${out}/"
+            fi
+            for file in engine.txt download.json; do
+              if [[ -f "${chosen}/${file}" ]]; then cp "${chosen}/${file}" "${out}/"; fi
+            done
+            engines+=("$(cat "${chosen}/engine.txt" 2> /dev/null || echo "the dispatched commit")")
+            if [[ -f "${out}/benchmark.json" ]]; then
+              inputs+=("${out}/benchmark.json")
+            else
+              missing+=("${number}")
+            fi
+          done
+          if (( ${#missing[@]} > 0 )); then
+            echo "Shards ${missing[*]} of ${CLEAN_PIXEL_DATA_SHARDS} did not finish, so the results were not combined. Re-run their jobs, and then this one." \
+              | tee "${results}/combine-status.txt"
+            exit 1
+          fi
+          mapfile -t distinct < <(printf '%s\n' "${engines[@]}" | sort -u)
+          if (( ${#distinct[@]} != 1 )); then
+            echo "The shards benchmarked different engines, so the results were not combined." \
+              | tee "${results}/combine-status.txt"
+            exit 1
+          fi
+          if [[ -f "${results}/shards/1/engine.txt" ]]; then
+            cp "${results}/shards/1/engine.txt" "${results}/"
+          fi
+          uv run --no-sync python .github/scripts/run_redacted.py \
+            pymedphys._dicom.deidentify.midi_benchmark_command combine \
+            "${inputs[@]}" --out "${results}/clean_pixel_data" > /dev/null \
+            || { echo "The shards' results could not be combined." \
+              | tee "${results}/combine-status.txt"; exit 1; }
+          echo "Combined ${#inputs[@]} shards." | tee "${results}/combine-status.txt"
+
+      - name: Summarise
+        if: ${{ !cancelled() }}
+        run: |
+          results="${RUNNER_TEMP}/midi-b/results"
+          {
+            echo "# MIDI-B ${SUBSET}, clean-pixel-data, combined"
+            echo
+            if [[ -f "${results}/engine.txt" ]]; then
+              echo "Engine: $(cat "${results}/engine.txt")"
+              echo
+            fi
+            if [[ -f "${results}/combine-status.txt" ]]; then
+              cat "${results}/combine-status.txt"
+              echo
+            fi
+            if [[ -f "${results}/clean_pixel_data/benchmark.md" ]]; then
+              sed 's/^#/##/' "${results}/clean_pixel_data/benchmark.md"
+              echo
+            fi
+            echo "## Each shard"
+            for number in $(seq 1 "${CLEAN_PIXEL_DATA_SHARDS}"); do
+              out="${results}/shards/${number}"
+              echo
+              echo "### Shard ${number}"
+              echo
+              found=0
+              for file in benchmark-status.txt dicom-validation-status.txt; do
+                if [[ -f "${out}/${file}" ]]; then
+                  cat "${out}/${file}"
+                  echo
+                  found=1
+                fi
+              done
+              if (( found == 0 )); then
+                echo "No status."
+              fi
+            done
+          } | tee -a "${GITHUB_STEP_SUMMARY}"
+
+      - name: Upload the combined results
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: midi-b-${{ env.SUBSET }}-clean-pixel-data-results${{ env.ATTEMPT_SUFFIX }}
           path: ${{ runner.temp }}/midi-b/results/
           if-no-files-found: warn
           retention-days: 90

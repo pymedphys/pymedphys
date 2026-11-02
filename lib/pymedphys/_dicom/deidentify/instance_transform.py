@@ -901,6 +901,9 @@ class InstanceTransform:
 
     Attributes
     ----------
+    method_digest : str
+        The method digest that the markers and the release report record
+        (:func:`~.method_digest.method_digest`).
     review_queue : ReviewQueue
         The distinct ROI Names that the run's instances held for review,
         for the confidential QC material; empty without ``cleaning``.
@@ -1152,6 +1155,7 @@ class InstanceTransform:
             pixel_region_rules=region_rules,
             safe_private_list=safe_private_list,
         )
+        self.method_digest = digest
         satisfied = satisfied_options(policy)
         # The markers of each set of per-instance options that an instance
         # can satisfy.
@@ -1197,6 +1201,19 @@ class InstanceTransform:
 
     def __repr__(self) -> str:
         return "InstanceTransform()"
+
+    @property
+    def face_block_counts(self) -> FaceBlockCounts | None:
+        """The CT series that :meth:`prepare` found a face block of, and
+        those it did not, by why; ``None`` without a face review."""
+        return self._face_block_counts
+
+    @property
+    def dose_block_frames(self) -> int:
+        """How many Frames of Reference :meth:`prepare` found a dose block
+        in, where the run cleans the RT Doses, RT Structure Sets, PET
+        images, and Segmentations of a defaced series' frame."""
+        return len(self._dose_blocks)
 
     def prepare(
         self,

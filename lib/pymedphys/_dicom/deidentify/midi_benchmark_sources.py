@@ -20,8 +20,10 @@ source never held it. :func:`source_state` says whether the source holds the
 attribute at the check's place, and with a value. A text that a check asks
 to be removed, and the release keeps, is described by :func:`removed_shape`
 in coarse, value-free terms, such as the number of digits of an Integer
-String and which of the instance's own dates it equals, so that a reviewer
-can judge whether it could carry an identifier. Any other finding is
+String and which of the instance's own dates it equals, and
+:func:`kept_word_kinds` names how the technique vocabulary reads each of its
+words that the release holds, so that a reviewer can judge whether it could
+carry an identifier. Any other finding is
 counted by whether it fails on the source instance too, and a kept text
 that differs by how its source encodes it (:func:`kept_encoding`).
 :func:`reason_places` says where the reasons that withheld an instance were
@@ -41,7 +43,8 @@ from pymedphys._imports import pydicom
 
 from .midi_answer_key import Action, Check
 from .midi_benchmark_errors import uid_name
-from .midi_benchmark_values import element_text, find_element, unbracketed
+from .midi_benchmark_values import element_text, find_element, held_words, unbracketed
+from .technique_descriptors import TechniqueVocabulary, load_technique_vocabulary
 
 ABSENT = "absent"
 EMPTY = "empty"
@@ -110,6 +113,41 @@ def removed_shape(source: pydicom.Dataset, check: Check) -> tuple[str, str, bool
     shape = integer_shape(text)
     dates = same_dates(source, text) if shape == DATE_SHAPED else NOT_A_DATE
     return "IS", shape, whole, dates
+
+
+def kept_word_kinds(written: pydicom.Dataset | None, check: Check) -> str:
+    """Name the kinds of the answer key's words that the released value holds.
+
+    Each word of the key's text that the written value holds, as the
+    benchmark's comparison finds it (:func:`.held_words`), is named by how
+    the bundled technique vocabulary reads it
+    (:meth:`~.technique_descriptors.TechniqueVocabulary.word_kind`), such as
+    ``named exception`` or ``bare number``, never by the word. The names are
+    sorted and joined, or ``none``, or ``unknown`` without a written value.
+
+    >>> from .midi_answer_key import parse_check
+    >>> written = pydicom.Dataset()
+    >>> written.SeriesDescription = "AX FLAIR GRAY 123"
+    >>> check = parse_check({"action": "<text_removed>", "tag_ds": "<(0008,103E)>",
+    ...                      "action_text": "<GRAY 123>"})
+    >>> kept_word_kinds(written, check)
+    'bare number, named exception'
+    """
+    element = (
+        None
+        if written is None or check.path is None
+        else find_element(written, check.path)
+    )
+    if element is None:
+        return "unknown"
+    words = held_words(element_text(element), check.action_text or "")
+    vocabulary = _technique_vocabulary()
+    return ", ".join(sorted({vocabulary.word_kind(word) for word in words})) or "none"
+
+
+@functools.cache
+def _technique_vocabulary() -> TechniqueVocabulary:
+    return load_technique_vocabulary()
 
 
 NOT_A_DATE = "not a date"
@@ -249,6 +287,7 @@ EXPLAINED = {
         "shape",
         "whole_value",
         "same_date_as",
+        "kept_words",
     ),
     "finding": ("category", "action", "attribute", "fails_at_source"),
     "encoding": (
@@ -268,14 +307,20 @@ def describe_source(
     source: pydicom.Dataset | None,
     described: tuple[str, ...],
     explained: Mapping[str, collections.Counter],
+    written: pydicom.Dataset | None = None,
 ) -> None:
-    """Count a failed check by what its source instance holds, without a value."""
+    """Count a failed check by what its source instance holds, without a value.
+
+    A text that the check asks to be removed is also counted by the kinds
+    of its words that the written instance holds (:func:`kept_word_kinds`).
+    """
     if source is None:
         return
     if check.action in (Action.TAG_RETAINED, Action.TEXT_NOTNULL):
         explained["present"][(*described, source_state(source, check))] += 1
     elif check.action is Action.TEXT_REMOVED:
-        explained["removed"][(*described, *removed_shape(source, check))] += 1
+        shape = (*removed_shape(source, check), kept_word_kinds(written, check))
+        explained["removed"][(*described, *shape)] += 1
 
 
 def describe_finding(  # pylint: disable = too-many-arguments

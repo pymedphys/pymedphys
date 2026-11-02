@@ -75,6 +75,19 @@ def render_markdown(document: Mapping[str, object]) -> str:
             _table(("Reason", "Times given"), list(reasons.items())),
             "",
         ]
+    defacing = coverage.get("defacing")
+    if isinstance(defacing, Mapping):
+        not_defaced = defacing["ct_series_not_defaced"]
+        assert isinstance(not_defaced, Mapping)
+        lines += [
+            "What the run found to deface under Clean Recognizable Visual "
+            f"Features: {defacing['ct_series_defaced']} CT series with a face "
+            f"block, and {defacing['dose_block_frames']} Frames of Reference "
+            "with a dose block. CT series without a face block, by why:",
+            "",
+            *_rows_or_none(("Reason", "CT series"), list(not_defaced.items())),
+            "",
+        ]
     places = coverage.get("withheld_places", [])
     if places:
         lines += [
@@ -336,10 +349,11 @@ _AT_SOURCE = {
     "removed": (
         "Each failed check that asked for a text to be removed, by the source "
         "value's VR, its shape where it is an Integer String, whether the "
-        "answer key's text is the whole value, and, for an Integer String "
-        "shaped as a date, which of the instance's Study, Series, "
-        "Acquisition, Content, and Patient's Birth Dates equal it:",
-        ("VR", "Shape", "Whole value", "Same date as"),
+        "answer key's text is the whole value, for an Integer String shaped "
+        "as a date, which of the instance's Study, Series, Acquisition, "
+        "Content, and Patient's Birth Dates equal it, and how the technique "
+        "vocabulary reads each word of the key's text that the release holds:",
+        ("VR", "Shape", "Whole value", "Same date as", "Kept words"),
     ),
     "finding": (
         "Each finding, by whether the same check fails on the source instance too:",
@@ -404,6 +418,9 @@ def _table(header: Sequence[str], rows: Iterable[Sequence[object]]) -> str:
 
 
 def _cell(value: object) -> str:
+    if isinstance(value, list):
+        # A policy's options.
+        value = ", ".join(str(each) for each in value) or None
     if value is None:
         return "none"
     return " ".join(str(value).split()).replace("|", "\\|")

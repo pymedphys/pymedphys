@@ -651,6 +651,7 @@ def test_a_benchmark_run_scores_each_category_and_writes_the_scripts_inputs(
         "shape": "not IS",
         "whole_value": True,
         "same_date_as": "not a date",
+        "kept_words": "vocabulary word",
         "checks": 1,
     }
     # The source holds the text that the key asks to be removed.

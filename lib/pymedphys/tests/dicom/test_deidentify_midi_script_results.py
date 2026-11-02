@@ -25,6 +25,8 @@ from pymedphys._imports import pytest
 
 from pymedphys._dicom.deidentify import midi_benchmark_command, midi_script_results
 
+from . import _synthetic_references as synthetic
+
 RELEASED = "2.25.101"
 WITHHELD = "2.25.102"
 WRAPPED = "2.25.103"
@@ -58,10 +60,19 @@ def _mapping(path):
     return path
 
 
+def _written(uid):
+    """Return a file that holds the SOP Instance UID ``uid``."""
+    return synthetic.written(
+        synthetic.instance(synthetic.CT_IMAGE_STORAGE, uid, synthetic.CT_SERIES)
+    )
+
+
 def _release(directory, *old_uids):
     directory.mkdir()
     for uid in old_uids:
-        (directory / f"{REPLACEMENTS[uid]}.dcm").write_bytes(b"")
+        (directory / f"{REPLACEMENTS[uid]}.dcm").write_bytes(
+            _written(REPLACEMENTS[uid])
+        )
     return directory
 
 
@@ -136,9 +147,43 @@ def test_a_part_of_the_release_may_link_to_its_files(tmp_path):
     assert [row[1] for row in _rows(out)] == [RELEASED]
 
 
+def test_a_file_is_looked_up_by_the_uid_it_holds_not_its_name(tmp_path):
+    # Under Retain UIDs, a file holds its source's UID, which the mapping
+    # maps to itself, but is named by the UID's keyed replacement.
+    release = tmp_path / "release"
+    release.mkdir()
+    (release / "2.25.999.dcm").write_bytes(_written(RELEASED))
+    mapping = tmp_path / "uids.csv"
+    mapping.write_text(f"id_old,id_new\n{RELEASED},{RELEASED}\n", encoding="utf-8")
+    out = tmp_path / "released.db"
+
+    counts = midi_script_results.write_released_answer_key(
+        _answer_key(tmp_path / "key.db", [RELEASED, WITHHELD]), release, mapping, out
+    )
+
+    assert counts == {"released_instances": 1, "answer_key_instances": 1, "rows": 1}
+    assert [row[1] for row in _rows(out)] == [RELEASED]
+
+
+def test_a_file_whose_uid_cannot_be_read_is_refused(tmp_path):
+    release = _release(tmp_path / "release", RELEASED)
+    (release / "2.25.998.dcm").write_bytes(b"SYNTHETIC NOT DICOM")
+
+    with pytest.raises(
+        midi_script_results.ScriptResultsError, match="could not be read"
+    ):
+        midi_script_results.write_released_answer_key(
+            _answer_key(tmp_path / "key.db", [RELEASED]),
+            release,
+            _mapping(tmp_path / "uids.csv"),
+            tmp_path / "released.db",
+        )
+    assert not (tmp_path / "released.db").exists()
+
+
 def test_an_output_without_a_mapped_input_is_refused(tmp_path):
     release = _release(tmp_path / "release", RELEASED)
-    (release / "2.25.999.dcm").write_bytes(b"")
+    (release / "2.25.999.dcm").write_bytes(_written("2.25.999"))
 
     with pytest.raises(midi_script_results.ScriptResultsError, match="UID mapping"):
         midi_script_results.write_released_answer_key(
