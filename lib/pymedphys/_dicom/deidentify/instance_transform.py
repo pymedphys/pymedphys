@@ -504,6 +504,7 @@ def coverage_of(
     edits: InstanceEdits,
     retained: frozenset[ElementPath] = frozenset(),
     options: tuple[str, ...] = (),
+    safe_private_list: SafePrivateList | None = None,
 ) -> Coverage:
     """Return the residual search's coverage of an instance's plan and edits.
 
@@ -519,6 +520,9 @@ def coverage_of(
     that its collection is incomplete (D-027). ``options``, the policy's,
     say which findings an option can explain, such as one that a kept value
     explains, or a date that Modified Dates shifted onto another source date.
+    ``safe_private_list``, the list that the run chose under the Retain Safe
+    Private Option, says which kept private creators can explain a finding
+    in them (D-042).
     """
     left_out: set[ElementPath] = set(retained) | set(_left_out(edits))
     planned = frozenset(
@@ -552,6 +556,7 @@ def coverage_of(
         uncollected=tuple(uncollected),
         decoded_as_bytes=frozenset(edits.read_as_latin_1) - left_out,
         options=options,
+        safe_private_list=safe_private_list,
     )
 
 
@@ -1153,6 +1158,7 @@ class InstanceTransform:
         self._rules = ElementRules(policy, safe_private_list=safe_private_list)
         self._policy = policy
         self._options = policy.options
+        self._safe_private_list = self._rules.safe_private_list
         self._key = key
         self._retained_uids = retained_uid_tags(policy)
         self._cleaners = cleaners_for(policy)
@@ -1798,7 +1804,7 @@ class InstanceTransform:
         )
         kept_uids = retained_uid_paths(plan.elements, self._retained_uids)
         evidence: Coverage | HeldEvidence = coverage_of(
-            plan, edits, kept_uids, self._options
+            plan, edits, kept_uids, self._options, self._safe_private_list
         )
         if classification.sequestered:
             reasons: tuple[object, ...] = (classification.reason,)
@@ -1815,7 +1821,9 @@ class InstanceTransform:
             # its identifiers are collected for its subject's search (D-027).
             withheld = kept_uids | self._kept_descriptors(plan, edits)
             if withheld != kept_uids:
-                evidence = coverage_of(plan, edits, withheld, self._options)
+                evidence = coverage_of(
+                    plan, edits, withheld, self._options, self._safe_private_list
+                )
             return Sequestered(
                 reasons,
                 unwritten(evidence),
@@ -1831,7 +1839,9 @@ class InstanceTransform:
         )
         edits, retained = settled.edits, settled.retained | kept_uids
         if settled.retained:
-            evidence = coverage_of(plan, edits, retained, self._options)
+            evidence = coverage_of(
+                plan, edits, retained, self._options, self._safe_private_list
+            )
         names: tuple[object, ...] = ()
         if self._cleaning is not None and self._fallback is not None:
             fallback = self._fallback
@@ -1866,7 +1876,9 @@ class InstanceTransform:
             except DescriptorsRefused as refused:
                 withheld = retained | self._kept_descriptors(plan, edits)
                 if withheld != retained:
-                    evidence = coverage_of(plan, edits, withheld, self._options)
+                    evidence = coverage_of(
+                        plan, edits, withheld, self._options, self._safe_private_list
+                    )
                 return Sequestered(
                     (refused.reason,),
                     unwritten(evidence),
@@ -1875,7 +1887,9 @@ class InstanceTransform:
             edits, satisfied = cleaned.edits, cleaned.satisfied
             retained |= cleaned.retained
             names = cleaned.qc
-            evidence = coverage_of(plan, edits, retained, self._options)
+            evidence = coverage_of(
+                plan, edits, retained, self._options, self._safe_private_list
+            )
             if cleaned.held:
                 evidence = HeldEvidence(evidence, cleaned.held)
         if self._birth_dates is not None:

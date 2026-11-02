@@ -140,7 +140,8 @@ and codes that the engine defines, never by a source value or path:
 - ``exempted_findings``: how many released instances have a residual
   finding that an exemption kept from review, such as a removed value found
   in a kept standard term or equipment name (D-032), a date that Modified
-  Dates shifted (D-039), or a value that an option keeps (D-042), by the
+  Dates shifted (D-039), a value that an option keeps, or text in a private
+  creator that the run's safe private list keeps (D-042), by the
   exemption, the source attribute, and the
   attribute in which it was found, each instance once for each, from
   :func:`exempted_findings`. The QC pack lists each finding by instance and
@@ -221,7 +222,7 @@ from .standard import ALL_OPTIONS, VRS
 from .walker import Sequestration, SequesterReason
 
 # The format of the report document. A change to its fields takes a new label.
-FORMAT = "pymedphys-deid-release-report/45"
+FORMAT = "pymedphys-deid-release-report/46"
 
 _DIGEST = re.compile(r"[0-9a-f]{64}")
 # A key's non-secret identifier, as DeidKey.key_id gives it.
