@@ -67,6 +67,7 @@ from pymedphys._dicom.deidentify.reasons import (
 from pymedphys._dicom.deidentify.redaction_review import read_redaction_review
 from pymedphys._dicom.deidentify.references import InstanceRecord
 from pymedphys._dicom.deidentify.release_gate import ReleaseReason
+from pymedphys._dicom.deidentify.target_hulls import TargetHull
 from pymedphys._dicom.deidentify.text_detection import TextBox
 
 from . import _synthetic_head as head
@@ -192,10 +193,39 @@ _ROIS = {
     ),
     "PTV": ("PTV", [files.square((0.0, 30.0, 40.0))]),
 }
+# A target in the block, before the right globe, on three slices, which the
+# run keeps with whatever lies between its contours.
+_KEPT_TARGET_HALF = 4.0
+_KEPT_TARGET = (
+    "PTV",
+    [
+        files.square((*_IN_THE_BLOCK[:2], z), _KEPT_TARGET_HALF)
+        for z in (15.0, 20.0, 25.0)
+    ],
+)
+# A target in the block drawn past the front of the scan's field of view,
+# whose part beyond the slices no image shows, so that the run cannot keep
+# it within the images.
+_BEYOND_TARGET = (
+    "PTV",
+    [
+        files.square((_IN_THE_BLOCK[0], _SCAN.positions[0][1] + 2.0, z), 4.0)
+        for z in (15.0, 20.0, 25.0)
+    ],
+)
+# The ROIs that the run adds to the head's, by ``target``.
+_TARGETS = {"kept": _KEPT_TARGET, "beyond": _BEYOND_TARGET}
+_TARGET_NAME = "PTV_Orbit"
 
 
-def _head_structure_set(template, *, eyes_away=False):
-    rois = dict(_ROIS)
+def _rois(target=False):
+    """The head's ROIs, by name, with a target in the block, by
+    :data:`_TARGETS`, if ``target``."""
+    return {**_ROIS, _TARGET_NAME: _TARGETS[target]} if target else dict(_ROIS)
+
+
+def _head_structure_set(template, *, eyes_away=False, target=False):
+    rois = _rois(target)
     if eyes_away:
         # The left eye drawn 40 mm below its globe, where the finder found
         # none.
@@ -345,7 +375,8 @@ def _reviewed(
 ):
     """Run the collection, with its CT slices replaced by the head's, as one
     Enhanced CT Image instance if ``multi_frame``, its RT Structure Set by
-    the head's ROIs, or by a target in the block if ``target``, its PET
+    the head's ROIs, with a target in the block, by :data:`_TARGETS`, if
+    ``target``, its PET
     Image by :data:`_PET_SLICES`, and, if ``multi_frame``, its Enhanced PET
     Image by those slices as one instance, and its first RT Dose
     by a grid over the head of ``dose`` where given, with the RT Dose
@@ -405,13 +436,7 @@ def _reviewed(
                 )
         rtss = pydicom.dcmread(instances / _STRUCTURE_SET)
         (instances / _STRUCTURE_SET).write_bytes(
-            files.structure_set(
-                [("PTV", files.square(_IN_THE_BLOCK))],
-                frame=corpus_module.FRAME_OF_REFERENCE,
-                template=rtss,
-            )
-            if target
-            else _head_structure_set(rtss, eyes_away=eyes_away)
+            _head_structure_set(rtss, eyes_away=eyes_away, target=target)
         )
         pet = pydicom.dcmread(instances / _PET[0])
         pet_slices = [
@@ -590,9 +615,16 @@ def fixture_as_received():
         yield found
 
 
+# Marked absent as the run wrote them, around the target that it kept.
 @pytest.fixture(name="targeted", scope="module")
 def fixture_targeted():
-    with _runs(target=True) as found:
+    with _runs(first=(), target="kept", dose=_dose(_LOW)) as found:
+        yield found
+
+
+@pytest.fixture(name="beyond_slices", scope="module")
+def fixture_beyond_slices():
+    with _runs(target="beyond") as found:
         yield found
 
 
@@ -700,6 +732,7 @@ def test_a_head_ct_marked_absent_as_received_is_held_where_defaced(
     assert 0 < changed < len(slices)
     assert report["face_review"]["ct_series"] == {
         "defaced": 1,
+        "defaced_around_targets": 0,
         "not_defaced": [{"reason": "unreadable", "count": _UNPLACED}],
     }
     counts = {
@@ -735,6 +768,7 @@ def test_pet_instances_in_the_defaced_frame_that_are_not_cleaned_are_held(
         assert reasons[name] == expected, name
     assert report["face_review"]["ct_series"] == {
         "defaced": 1,
+        "defaced_around_targets": 0,
         "not_defaced": [{"reason": "unreadable", "count": _UNPLACED}],
     }
     counts = {
@@ -782,17 +816,18 @@ def test_a_registration_whose_grid_is_tied_to_the_defaced_frame_is_held(defaced)
     assert vectors[1, 1, 1:3].tolist() == [[1.0, -2.0, 0.5]] * 2
     assert report["face_review"]["ct_series"] == {
         "defaced": 1,
+        "defaced_around_targets": 0,
         "not_defaced": [{"reason": "unreadable", "count": _UNPLACED}],
     }
 
 
-def _contours(dataset):
-    """Each ROI's contours by its name in :data:`_ROIS`, as points, or None
-    where it has no Contour Sequence.
+def _contours(dataset, target=False):
+    """Each ROI's contours by its name in :func:`_rois` of ``target``, as
+    points, or None where it has no Contour Sequence.
 
     The ROIs are known by their numbers, from 1 in that order, since the run
     cleans their names."""
-    names = list(_ROIS)
+    names = list(_rois(target))
     return {
         names[int(item.ReferencedROINumber) - 1]: (
             [
@@ -1089,19 +1124,157 @@ def test_rt_instances_judged_beside_a_defaced_ct_are_held_in_a_run_without_it(
     assert outcomes[_UNTIED][0] == "released"
     assert report["face_review"]["ct_series"] == {
         "defaced": 0,
+        "defaced_around_targets": 0,
         "not_defaced": [{"reason": "unreadable", "count": _UNPLACED}],
     }
 
 
-def test_a_target_in_the_block_holds_the_head_ct(targeted):
-    slices, outcomes, reasons, report = targeted
-    held = HeldVisualFeatures(VisualFeaturesReason.TARGET_IN_FACE_BLOCK)
+def _near_target(points):
+    """Whether each of the head's CT pixels at ``points`` has a square, on
+    its slice, that meets the kept target's region, read from its contours:
+    those that the run must not write as air."""
+    reach = _KEPT_TARGET_HALF + _SCAN.spacing[0] / 2
+    heights = [contour[0, 2] for contour in _KEPT_TARGET[1]]
+    return (
+        (np.abs(points[..., 0] - _IN_THE_BLOCK[0]) <= reach)
+        & (np.abs(points[..., 1] - _IN_THE_BLOCK[1]) <= reach)
+        & (points[..., 2] >= min(heights))
+        & (points[..., 2] <= max(heights))
+    )
 
+
+@pytest.mark.deid_requirement("PS3.15-E.3.2-01", "PS3.15-E.3.2-02")
+def test_a_head_ct_with_a_target_in_the_block_is_defaced_around_it(targeted):
+    slices, outcomes, reasons, report = targeted
+    block = _block(slices)
+    kept = 0
+
+    # The run writes air in the block but where the target lies, and the
+    # verdict of absent, on the slices as written, releases them.
+    for index, data in enumerate(slices):
+        disposition, dataset = outcomes[_head_name(index)]
+        assert disposition == "released", reasons[_head_name(index)]
+        assert dataset.RecognizableVisualFeatures == "NO"
+        assert _codes(dataset)[-2:] == [markers.PROFILE_CODE, CODE]
+        before = pydicom.dcmread(pydicom.filebase.DicomBytesIO(data))
+        source = pydicom.pixels.apply_rescale(
+            pydicom.pixels.pixel_array(before), before
+        )
+        written = pydicom.pixels.apply_rescale(
+            pydicom.pixels.pixel_array(dataset), dataset
+        )
+        points = _SCAN.points(index)
+        inside = block.contains(points)
+        near = _near_target(points)
+        assert np.array_equal(written[~inside], source[~inside]), index
+        assert np.array_equal(written[near], source[near]), index
+        assert np.all((written[inside] == -1000) | (written[inside] == source[inside]))
+        # Below the kept brain's floor, all else in the block is air.
+        floor = head.GLOBE_Z + face_blocks.CAVITY_FLOOR
+        if points[0, 0, 2] <= floor:
+            assert np.all(written[inside & ~near] == -1000), index
+        kept += int(np.count_nonzero(inside & near & (source != -1000)))
+    assert kept > 0
+    assert report["face_review"]["ct_series"] == {
+        "defaced": 1,
+        "defaced_around_targets": 1,
+        "not_defaced": [{"reason": "unreadable", "count": _UNPLACED}],
+    }
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.2-01", "PS3.15-E.3.2-02")
+def test_the_structure_set_is_cut_around_a_target_in_the_block(targeted):
+    slices, outcomes, reasons, _ = targeted
+    block = _block(slices)
+    disposition, dataset = outcomes[_STRUCTURE_SET]
+
+    assert disposition == "released", reasons[_STRUCTURE_SET]
+    assert dataset.RecognizableVisualFeatures == "NO"
+    written = _contours(dataset, "kept")
+    # The target is written as received, all of it in the block.
+    for source, got in zip(_KEPT_TARGET[1], written[_TARGET_NAME], strict=True):
+        assert block.contains(source).all()
+        assert np.allclose(got, source, atol=1e-4)
+    # On the target's slices, the outline and the right eye lose exactly what
+    # the CT writes as air, and so keep the part of them that the target
+    # reaches.
+    target = shapely.geometry.box(
+        _IN_THE_BLOCK[0] - _KEPT_TARGET_HALF,
+        _IN_THE_BLOCK[1] - _KEPT_TARGET_HALF,
+        _IN_THE_BLOCK[0] + _KEPT_TARGET_HALF,
+        _IN_THE_BLOCK[1] + _KEPT_TARGET_HALF,
+    )
+    heights = {contour[0, 2] for contour in _KEPT_TARGET[1]}
+    checked = 0
+    for name in ("External", "Eye_R"):
+        for source in _ROIS[name][1]:
+            z = source[0, 2]
+            if z not in heights:
+                continue
+            got = _region([each for each in written[name] if each[0, 2] == z])
+            whole = shapely.geometry.Polygon(source[:, :2])
+            expected = whole.difference(_written_as_air(outcomes, block, z))
+            assert got.symmetric_difference(expected).area < 1e-6 * whole.area
+            assert got.area < whole.area, (name, z)
+            reached = whole.intersection(target)
+            assert reached.area > 0, (name, z)
+            assert got.intersection(reached).area == pytest.approx(
+                reached.area, rel=1e-4
+            )
+            checked += 1
+    assert checked > 0
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.2-01", "PS3.15-E.3.2-02")
+def test_dose_and_activity_within_a_target_in_the_block_are_kept(targeted):
+    slices, outcomes, reasons, _ = targeted
+    block = _block(slices)
+    target = TargetHull.of(np.concatenate(_KEPT_TARGET[1]))
+
+    disposition, dataset = outcomes[_DOSE[0]]
+    assert disposition == "released", reasons[_DOSE[0]]
+    points = rtdose.voxel_positions(dataset)
+    written = dataset.pixel_array
+    source = _dose(_LOW)
+    within = target.contains(points).reshape(points.shape[:-1])
+    assert within.any() and block.contains(points[within]).all()
+    assert np.array_equal(written[within], source[within])
+    inside = block.contains(points)
+    floor = head.GLOBE_Z + face_blocks.CAVITY_FLOOR
+    assert np.all(written[inside & ~within & (points[..., 2] <= floor)] == 0)
+    # The PET slice through the target keeps its activity there, and the one
+    # above it is set to zero as without it.
+    kept = 0
+    for name, z in _PET_SLICES.items():
+        disposition, dataset = outcomes[name]
+        assert disposition == "released", reasons[name]
+        points = _pet_points(z)
+        within = target.contains(points).reshape(points.shape[:-1])
+        expected = _pet_uptake(z)
+        assert np.array_equal(dataset.pixel_array[within], expected[within]), name
+        if z <= floor:
+            low = block.contains(points) & ~within
+            assert np.all(dataset.pixel_array[low] == 0), name
+        kept += int(np.count_nonzero(within & (expected > 0)))
+    assert kept > 0
+
+
+def test_a_target_in_the_block_beyond_the_slices_holds_the_head_ct(beyond_slices):
+    slices, outcomes, reasons, report = beyond_slices
+    held = HeldVisualFeatures(VisualFeaturesReason.TARGET_IN_FACE_BLOCK)
+    block = _block(slices)
+
+    # It is drawn in the block past the front of the slices, where no image
+    # shows it, so the run cannot keep it within the images: the series is
+    # not defaced, and is held.
+    for contour in _BEYOND_TARGET[1]:
+        assert block.contains(contour).all()
     for index in range(len(slices)):
         assert outcomes[_head_name(index)] == ("held-for-review", None), index
         assert held in reasons[_head_name(index)]
     assert report["face_review"]["ct_series"] == {
         "defaced": 0,
+        "defaced_around_targets": 0,
         "not_defaced": [
             {"reason": "target-in-block", "count": 1},
             {"reason": "unreadable", "count": _UNPLACED},
@@ -1114,13 +1287,18 @@ def test_a_target_in_the_block_holds_the_head_ct(targeted):
     }
     assert counts["target-in-face-block"] == len(slices)
     # With no series defaced, the RT instances marked absent are released,
-    # but for the RT Dose that its release gate holds for review.
+    # but for the RT Dose that its release gate holds for review, and the
+    # structure set is written as received.
     for name in _IN_FRAME:
         assert not any(isinstance(r, HeldVisualFeatures) for r in reasons[name])
         if name != _DOSE[1]:
             disposition, dataset = outcomes[name]
             assert disposition == "released", name
             assert _codes(dataset)[-2:] == [markers.PROFILE_CODE, CODE]
+    _, dataset = outcomes[_STRUCTURE_SET]
+    assert all(
+        contours is not None for contours in _contours(dataset, "beyond").values()
+    )
 
 
 def test_an_eye_drawn_away_from_the_globes_holds_the_head_ct(eyes_away):
@@ -1134,6 +1312,7 @@ def test_an_eye_drawn_away_from_the_globes_holds_the_head_ct(eyes_away):
         assert held in reasons[_head_name(index)]
     assert report["face_review"]["ct_series"] == {
         "defaced": 0,
+        "defaced_around_targets": 0,
         "not_defaced": [
             {"reason": "eyes-disagree-with-rois", "count": 1},
             {"reason": "unreadable", "count": _UNPLACED},
@@ -1180,6 +1359,7 @@ def test_an_unexpected_error_in_the_finder_releases_no_slice_it_would_deface(
     assert 0 < changed < len(slices)
     assert report["face_review"]["ct_series"] == {
         "defaced": 0,
+        "defaced_around_targets": 0,
         "not_defaced": [{"reason": "unreadable", "count": 1 + _UNPLACED}],
     }
 
@@ -1199,6 +1379,7 @@ def test_with_clean_pixel_data_the_head_ct_is_held_for_its_pixel_data(
         assert not any(isinstance(r, HeldVisualFeatures) for r in reasons[name])
     assert report["face_review"]["ct_series"] == {
         "defaced": 1,
+        "defaced_around_targets": 0,
         "not_defaced": [{"reason": "unreadable", "count": _UNPLACED}],
     }
 
@@ -1230,6 +1411,7 @@ def test_with_both_options_reviewed_the_head_ct_is_released_with_both(accepted):
         assert len(np.unique(written[corner])) == 1, index
     assert report["face_review"]["ct_series"] == {
         "defaced": 1,
+        "defaced_around_targets": 0,
         "not_defaced": [{"reason": "unreadable", "count": _UNPLACED}],
     }
     assert report["redaction_review"] is not None
@@ -1259,6 +1441,7 @@ def test_a_revised_region_that_changes_a_defaced_slice_holds_it_for_its_face(
         }, index
     assert report["face_review"]["ct_series"] == {
         "defaced": 1,
+        "defaced_around_targets": 0,
         "not_defaced": [{"reason": "unreadable", "count": _UNPLACED}],
     }
 
@@ -1366,6 +1549,7 @@ def test_a_multi_frame_head_ct_gives_its_frame_the_block_of_its_slices(
             assert np.array_equal(dataset.pixel_array, single[name][1].pixel_array)
     assert report["face_review"]["ct_series"] == {
         "defaced": 1,
+        "defaced_around_targets": 0,
         "not_defaced": [{"reason": "unreadable", "count": _UNPLACED}],
     }
     # The QC pack draws the defaced instance's frames as a volume, by its
