@@ -40,6 +40,9 @@ from pymedphys._dicom.deidentify.midi_benchmark_shards import (
 )
 
 from .test_deidentify_midi_benchmark import _benchmark_key, _source
+from .test_deidentify_midi_benchmark_presets import (  # noqa: F401  # pylint: disable = unused-import
+    _edition,
+)
 
 # A run needs a base directory short enough for Windows' output path limit.
 from .test_deidentify_run import (  # noqa: F401  # pylint: disable = unused-import
@@ -442,3 +445,56 @@ def test_the_command_refuses_a_shard_it_cannot_read(tmp_path, capsys):
         midi_benchmark_command.main(
             ["combine", str(tmp_path / "bad.json"), "--out", str(tmp_path / "out")]
         )
+
+
+@pytest.mark.usefixtures("edition")
+@pytest.mark.parametrize("preset", ["basic-clean-descriptors", "tps-import"])
+def test_a_policy_whose_digest_depends_on_the_key_runs_in_one_shard_alone(
+    tmp_path, preset
+):
+    # Each shard draws its own key, and Clean Descriptors' method digest
+    # covers its reviewed lists' keyed digests, so its shards could not be
+    # combined: the run is refused before it reads or writes anything.
+    _source(tmp_path)
+    _benchmark_key(tmp_path)
+
+    with pytest.raises(benchmark.BenchmarkError, match="more than one shard"):
+        benchmark.run_benchmark(
+            tmp_path / "source",
+            tmp_path / "key.db",
+            tmp_path / "shard",
+            preset=preset,
+            shard=Shard(1, 2),
+        )
+    assert not (tmp_path / "shard").exists()
+
+    # One shard of one is the whole run.
+    whole = benchmark.run_benchmark(
+        tmp_path / "source",
+        tmp_path / "key.db",
+        tmp_path / "whole",
+        preset=preset,
+        shard=Shard(1, 1),
+    ).document
+    assert whole["versions"]["shard"] == "1/1"
+    assert whole["headline"]["checks"] > 0
+
+
+@pytest.mark.usefixtures("edition")
+def test_the_refused_policys_digest_does_differ_by_key(tmp_path):
+    # What the refusal rests on: two runs of basic-clean-descriptors, each
+    # with its own key, record different method digests, so their shards'
+    # results could not be combined.
+    _source(tmp_path)
+    _benchmark_key(tmp_path)
+    digests = {
+        benchmark.run_benchmark(
+            tmp_path / "source",
+            tmp_path / "key.db",
+            tmp_path / name,
+            preset="basic-clean-descriptors",
+        ).document["versions"]["method_digest"]
+        for name in ("first", "second")
+    }
+
+    assert len(digests) == 2

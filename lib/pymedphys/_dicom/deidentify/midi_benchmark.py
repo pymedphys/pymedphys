@@ -399,15 +399,19 @@ def run_benchmark(
         gives the shard, balanced by their pixels, and scores the checks of
         their instances alone, and, in the first shard, those of the
         answer-key instances that the input does not hold. By default, the
-        whole run.
+        whole run. A policy whose method digest depends on the run's key, as
+        one with Clean Descriptors does, runs in one shard alone, since each
+        shard draws its own key and the shards combine only with one digest.
 
     Raises
     ------
     BenchmarkError
         If the work directory exists or its parent does not; both a preset
         and options are given; the pinned TG-263 edition or text detector
-        cannot be loaded; or a spreadsheet is given for a policy without Clean
-        Descriptors.
+        cannot be loaded; a spreadsheet is given for a policy without Clean
+        Descriptors; or one of more than one shard is asked for under a
+        policy whose method digest depends on the run's key, as one with
+        Clean Descriptors does.
     ~pymedphys._dicom.deidentify.policy.PolicyError
         If the preset or option set cannot be composed, or TCIA's dictionary
         is chosen without Retain Safe Private.
@@ -421,15 +425,34 @@ def run_benchmark(
     key = read_answer_key(answer_key)
     cleaning = _cleaning(policy, tg263_spreadsheet)
     deid_key = DeidKey.generate()
-    transform = InstanceTransform(
-        policy,
-        deid_key,
-        cleaning=cleaning,
-        finder=_finder(policy),
-        safe_private_list=safe_private_list,
-        face_review=_face_review(policy),
-        unvalidated_policy=True,
-    )
+    finder = _finder(policy)
+
+    def transform_under(run_key: DeidKey) -> InstanceTransform:
+        return InstanceTransform(
+            policy,
+            run_key,
+            cleaning=cleaning,
+            finder=finder,
+            safe_private_list=safe_private_list,
+            face_review=_face_review(policy),
+            unvalidated_policy=True,
+        )
+
+    transform = transform_under(deid_key)
+    # Each shard draws its own key, and the shards combine only with one
+    # method digest. Under Clean Descriptors it covers the reviewed lists'
+    # keyed digests, which differ from key to key, so such a run is refused
+    # before it reads anything, rather than when its shards are combined.
+    if (
+        shard is not None
+        and shard.count > 1
+        and transform_under(DeidKey.generate()).method_digest != transform.method_digest
+    ):
+        raise BenchmarkError(
+            "this policy cannot run in more than one shard: its method digest "
+            "depends on the run's key, as Clean Descriptors' does, so its "
+            "shards could not be combined"
+        )
     discovery = run.discover(source)
     headers = _headers(discovery)
     outside: frozenset[str] = frozenset()
