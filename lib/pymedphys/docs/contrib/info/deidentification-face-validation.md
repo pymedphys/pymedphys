@@ -49,7 +49,7 @@ Each measure is counted in fixed bins, and no case is named, so the summary give
 
 ## Limits
 
-- Nothing here renders a surface or tests whether a defaced face can be recognised. The check on the Visible Human's CT renders one face (below).
+- Nothing here renders a surface or tests whether a defaced face can be recognised. The check on the Visible Human's CT renders each cadaver's head (below).
 - HaN-Seg's masks include no targets, so the hold for a target in the block is not tested.
 - They include no brain either, so neither the brain that defacing keeps within the cranial cavity nor the 30 mm floor below which it keeps none is tested; the brainstem, chiasm, and pituitary are no reference for them.
 - Each CT volume is written as the CT Image instances of one series in memory, so the check tests the finder and the defacer, not the reading of a scanner's DICOM files, which the engine's own tests cover.

@@ -18,16 +18,6 @@ name: Face Block Check on Visible Human
 # series themselves are never cached or uploaded.
 on:
   workflow_dispatch:
-  # Temporary, so that the check can run before the workflow is on the
-  # default branch: removed before the pull request that adds it is ready.
-  push:
-    branches:
-      - claude/project-thread-gh9w58
-    paths:
-      - .github/workflows/face-validation-visible-human.yml
-      - .github/scripts/fetch_idc_series.py
-      - lib/pymedphys/_dicom/deidentify/face_validation_vhp.py
-      - lib/pymedphys/_dicom/deidentify/face_validation_vhp_markdown.py
 
 permissions:
   contents: read
