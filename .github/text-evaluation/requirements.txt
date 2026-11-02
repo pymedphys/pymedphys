@@ -1,0 +1,18 @@
+# Tools that only the text detector evaluation's CI runs install (D-056),
+# each pinned by version and by the SHA-256 of the one wheel that a
+# GitHub-hosted Ubuntu x86-64 runner with Python 3.14 takes, and installed
+# with --require-hashes --no-deps into the project's environment after it is
+# synced. None is a dependency of PyMedPhys, so none is in pyproject.toml or
+# uv.lock. NumPy, which OpenCV and pyarrow need, comes from the lock.
+#
+# pyarrow reads IDC's index from idc-index-data's Parquet file (Apache-2.0);
+# its version and hash are the lock's own, where Streamlit pulls it in.
+pyarrow==26.0.0 \
+    --hash=sha256:ab6914db225d7f399652ae1f08588dfbc9efe617612715701e3d9d5cfa5ca19f
+# OpenCV resizes as PaddleOCR's own pipeline does, for a model measured at
+# its publishers' settings (Apache-2.0).
+opencv-python-headless==5.0.0.93 \
+    --hash=sha256:ed709fdf9aa0bd1f2ed8549e71d19449b03a675bb581eb292285f6861953be37
+# s5cmd downloads the selected series from IDC's public buckets (MIT).
+s5cmd==0.3.3 \
+    --hash=sha256:51c3c8b567bba82efc4b88192f30bb54a8b7fd81b701a90b73d3fccb6e5d44a6
