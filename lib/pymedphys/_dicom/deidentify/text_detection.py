@@ -297,6 +297,51 @@ class TextBox:
 RENDERINGS = ("full-range", "white-top-hat", "black-top-hat")
 
 
+@dataclasses.dataclass(frozen=True)
+class Detection:
+    """A box that one rendering of a frame gives.
+
+    Attributes
+    ----------
+    box : TextBox
+    rendering : str
+        One of :data:`RENDERINGS`.
+    mean_probability : float
+        The mean probability of the box's region, which reaches
+        :attr:`DetectionParameters.box_threshold`.
+    """
+
+    box: TextBox
+    rendering: str
+    mean_probability: float
+
+
+@dataclasses.dataclass(frozen=True, repr=False)
+class RenderedProbability:
+    """The network's probability map of one rendering of a frame.
+
+    Its ``repr`` shows nothing of it, since the map follows the frame's
+    content.
+
+    Attributes
+    ----------
+    rendering : str
+        One of :data:`RENDERINGS`.
+    frame_shape : tuple of int
+        The frame's rows and columns, to which boxes are scaled.
+    probability : numpy.ndarray
+        The probability that each pixel of the network's input belongs to
+        text.
+    """
+
+    rendering: str
+    frame_shape: tuple[int, int]
+    probability: np.ndarray
+
+    def __repr__(self) -> str:
+        return f"RenderedProbability({self.rendering!r})"
+
+
 class TextDetector:
     """Propose boxes around burned-in text in frames.
 
@@ -365,29 +410,80 @@ class TextDetector:
             Stored values of one frame: rows by columns for monochrome, or
             rows by columns by 3 for RGB, which is searched by its luminance.
         """
-        values = _luminance(frame)
-        boxes: set[TextBox] = set()
-        for image in renderings(values, self.parameters):
-            boxes.update(self._boxes(image))
-        return tuple(sorted(boxes))
+        return tuple(sorted({each.box for each in self.detections(frame)}))
 
-    def _boxes(self, image: np.ndarray) -> list[TextBox]:
-        probability = self._probability(image)
-        return boxes_from_probability(probability, image.shape, self.parameters)
+    def detections(self, frame: np.ndarray) -> tuple[Detection, ...]:
+        """Return the boxes that each rendering of one frame gives, with
+        their regions' mean probabilities, in the order of
+        :data:`RENDERINGS`; :meth:`find` gives each of their boxes once.
+
+        Parameters
+        ----------
+        frame : numpy.ndarray
+            As :meth:`find` takes it.
+        """
+        found = []
+        for each in self.probabilities(frame):
+            found += [
+                Detection(box, each.rendering, mean)
+                for box, mean in scored_boxes_from_probability(
+                    each.probability, each.frame_shape, self.parameters
+                )
+            ]
+        return tuple(found)
+
+    def probabilities(self, frame: np.ndarray) -> tuple[RenderedProbability, ...]:
+        """Return the network's probability map of each rendering of one
+        frame, in the order of :data:`RENDERINGS`, from which
+        :meth:`detections` takes its boxes.
+
+        Parameters
+        ----------
+        frame : numpy.ndarray
+            As :meth:`find` takes it.
+        """
+        values = _luminance(frame)
+        shape = (int(values.shape[0]), int(values.shape[1]))
+        return tuple(
+            RenderedProbability(rendering, shape, self._probability(image))
+            for rendering, image in zip(
+                RENDERINGS, renderings(values, self.parameters), strict=True
+            )
+        )
 
     def _probability(self, image: np.ndarray) -> np.ndarray:
-        parameters = self.parameters
-        rows, columns = image.shape
-        scale = max(1.0, parameters.limit_side / min(rows, columns))
-        scale = min(scale, parameters.max_side / max(rows, columns))
-        shape = (_multiple_of_32(rows * scale), _multiple_of_32(columns * scale))
-        resized = _resized(image.astype(np.float32), shape)
-        normalised = (resized / 255.0 - 0.5) / 0.5
-        tensor = np.ascontiguousarray(
-            np.broadcast_to(normalised, (1, 3) + shape), dtype=np.float32
-        )
-        (output,) = self._session.run(None, {self._input: tensor})
+        shape = network_shape(image.shape, self.parameters)
+        (output,) = self._session.run(None, {self._input: network_tensor(image, shape)})
         return np.asarray(output[0, 0], dtype=np.float32)
+
+
+def network_shape(
+    shape: tuple[int, ...], parameters: DetectionParameters
+) -> tuple[int, int]:
+    """The rows and columns of the network's input for an image of this
+    shape: its shorter side scaled up to at least
+    :attr:`DetectionParameters.limit_side`, its longer down to at most
+    :attr:`DetectionParameters.max_side`, each a multiple of 32."""
+    rows, columns = shape[:2]
+    scale = max(1.0, parameters.limit_side / min(rows, columns))
+    scale = min(scale, parameters.max_side / max(rows, columns))
+    return (_multiple_of_32(rows * scale), _multiple_of_32(columns * scale))
+
+
+def network_tensor(
+    image: np.ndarray,
+    shape: tuple[int, int],
+    mean: float = 0.5,
+    deviation: float = 0.5,
+) -> np.ndarray:
+    """The network's input for an 8-bit image: the image resized to
+    ``shape``, scaled to 0 to 1, less ``mean``, over ``deviation``, as one
+    batch of three equal channels."""
+    resized = _resized(image.astype(np.float32), shape)
+    normalised = (resized / 255.0 - mean) / deviation
+    return np.ascontiguousarray(
+        np.broadcast_to(normalised, (1, 3) + shape), dtype=np.float32
+    )
 
 
 def _multiple_of_32(length: float) -> int:
@@ -451,6 +547,21 @@ def boxes_from_probability(
     parameters: DetectionParameters,
 ) -> list[TextBox]:
     """Turn the network's probability map into boxes in frame pixels."""
+    return [
+        box
+        for box, _ in scored_boxes_from_probability(
+            probability, frame_shape, parameters
+        )
+    ]
+
+
+def scored_boxes_from_probability(
+    probability: np.ndarray,
+    frame_shape: tuple[int, int],
+    parameters: DetectionParameters,
+) -> list[tuple[TextBox, float]]:
+    """Turn the network's probability map into boxes in frame pixels, each
+    with its region's mean probability."""
     net_rows, net_columns = probability.shape
     row_scale = frame_shape[0] / net_rows
     column_scale = frame_shape[1] / net_columns
@@ -483,14 +594,13 @@ def boxes_from_probability(
         bottom = (rows.stop + offset) * row_scale + margin
         left = (columns.start - offset) * column_scale - margin
         right = (columns.stop + offset) * column_scale + margin
-        boxes.append(
-            TextBox(
-                top=max(0, int(np.floor(top))),
-                left=max(0, int(np.floor(left))),
-                bottom=min(frame_shape[0], int(np.ceil(bottom))),
-                right=min(frame_shape[1], int(np.ceil(right))),
-            )
+        box = TextBox(
+            top=max(0, int(np.floor(top))),
+            left=max(0, int(np.floor(left))),
+            bottom=min(frame_shape[0], int(np.ceil(bottom))),
+            right=min(frame_shape[1], int(np.ceil(right))),
         )
+        boxes.append((box, float(means[region])))
     return boxes
 
 

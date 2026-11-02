@@ -306,9 +306,9 @@ def test_the_command_writes_the_summary_page_and_renders(
         face_validation_command.main(["visible-human", str(root), "--out", str(out)])
         == 0
     )
-    summary = json.loads((out / vhp.JSON_NAME).read_text())
+    summary = json.loads((out / vhp.JSON_NAME).read_text(encoding="utf-8"))
     assert summary["series"][0]["engine"]["outcome"] == "not-one-stack"
-    page = (out / vhp.MARKDOWN_NAME).read_text()
+    page = (out / vhp.MARKDOWN_NAME).read_text(encoding="utf-8")
     assert capsys.readouterr().out == page
     assert (out / vhp.RENDERS / "VHP-F-globes.png").is_file()
     with pytest.raises(SystemExit, match="must not exist"):
