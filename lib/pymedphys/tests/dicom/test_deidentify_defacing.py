@@ -658,6 +658,30 @@ def test_direction_cosines_not_of_unit_length_or_not_perpendicular_are_refused(
     assert refused.value.problem is defacing.FaceBlockProblem.NOT_ALONG_PATIENT_AXES
 
 
+@pytest.mark.parametrize(
+    "orientation, heights",
+    [
+        # Each direction within 1e-4 of its axis and of unit length, but
+        # not perpendicular within 1e-4: their dot product is 1.8e-4.
+        ((1, 9e-5, 0, 9e-5, 1, 0), (0.0, 2.0)),
+        # Two slices whose offsets, rounded to 1e-6 mm, differ, but which
+        # lie within 1e-6 mm of each other.
+        ((1, 0, 0, 0, 1, 0), (4.9e-7, 1.39e-6)),
+    ],
+    ids=["not-perpendicular-within-the-alignment-tolerance", "nearly-one-position"],
+)
+def test_a_stack_the_old_test_takes_but_the_sampler_refuses_is_refused(
+    orientation, heights
+):
+    positions = [(0.0, 0.0, height) for height in heights]
+    assert defacing.along_patient_axes(orientation, positions)
+
+    with pytest.raises(defacing.FaceBlockRefused) as refused:
+        defacing.FaceFinder(orientation, positions, (1.0, 1.0), (6, 6))
+
+    assert refused.value.problem is defacing.FaceBlockProblem.NOT_ALONG_PATIENT_AXES
+
+
 def test_a_volume_without_slices_is_an_error():
     with pytest.raises(ValueError, match="position"):
         defacing.FaceFinder((1, 0, 0, 0, 1, 0), [], (1.0, 1.0), (10, 10))

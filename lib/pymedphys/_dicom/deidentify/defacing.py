@@ -62,7 +62,16 @@ sampler samples by the functions that the finder always sampled it by,
 :class:`~pymedphys._dicom.deidentify.qc_surfaces.Surface` does, and the
 finder takes its voxels' side and the heights of its samples
 (:class:`SampleSpacing`) from that grid, as it always did, so such a stack
-gives the voxels, values, and block that it always gave. A
+gives the voxels, values, and block that it always gave, where the sampler
+takes it. The sampler's checks are stricter than the finder's were: it
+refuses row and column directions that are not perpendicular within
+:data:`~pymedphys._dicom.deidentify.stack_sampling.ORTHONORMAL_TOLERANCE`,
+which the finder did not test, and two slices within
+:data:`~pymedphys._dicom.deidentify.stack_sampling.SAME_POSITION`
+millimetres of each other along the normal, where the finder compared
+offsets rounded to a millionth of a millimetre; such a stack, not
+orthonormal or repeating a plane, is refused as
+:attr:`FaceBlockProblem.NOT_ALONG_PATIENT_AXES`. A
 voxel beyond the stack, as a tilted or oblique stack leaves the corners of the
 voxels, takes the pixel at the stack's edge nearest it, as a point beyond the
 voxels takes the value at their edge (step 2). The voxels are of
