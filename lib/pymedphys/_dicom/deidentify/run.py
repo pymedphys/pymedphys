@@ -717,12 +717,14 @@ def _first_pass(discovery: Discovery, several_patients: SeveralPatients) -> _Fir
         )
         for finding in graph.findings
     )
-    sequestering = _SEQUESTERING_FINDINGS
+    sequestering: tuple[FindingKind, ...] = _SEQUESTERING_FINDINGS
     if several_patients is SeveralPatients.SEQUESTER:
         sequestering += (FindingKind.STUDY_WITH_SEVERAL_PATIENTS,)
     kinds: dict[int, list[FindingKind]] = collections.defaultdict(list)
     copies = {}
-    pools = {position: (_subject(record),) for position, record in records.items()}
+    pools: dict[int, tuple[object, ...]] = {
+        position: (_subject(record),) for position, record in records.items()
+    }
     studies = []
     for finding in findings:
         if (
