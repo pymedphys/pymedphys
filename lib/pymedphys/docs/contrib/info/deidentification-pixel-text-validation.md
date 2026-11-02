@@ -9,6 +9,8 @@ Under the Clean Pixel Data Option, the de-identification engine gives each frame
 
 HaN-Seg's images hold no burned-in text, as far as the project knows, so each region counted is one that a run would black out in error, over anatomy unless the region is all air, and that a reviewer would have to clear. That is an inference, not something the check measures; the counts are the option's only evidence on real images of the anatomy in scope.
 
+The check counts false positives alone, on two IODs of one body site. Measuring missed text and false positives together, on images with and without burned-in text across the IODs in scope, and tuning the detector against criteria set beforehand, is designed in D-056; its library is described under [Measuring missed text as well](#measuring-missed-text-as-well), and its tuning runs and the adoption of a tuned detector are not yet made, so this check's counts remain the detector's evidence on these images until then.
+
 ## The data set
 
 The check uses HaN-Seg version 1.0, as the face block check does, under the same rules (D-054): only the workflow's runner downloads it, from Zenodo, and checks it against the size and MD5 that the record gives; the runner reads it from its ZIP file without extracting it; and only counts, codes, digests, versions, and the detector's method leave the runner. Its images are of real patients, so the project treats them as real patient data: never commit, cache, or attach any part of the data set, or a value read from it. See [Check the face block against HaN-Seg](deidentification-face-validation.md) for the record, its licence, and its citation.
@@ -190,7 +192,7 @@ Every volume of each image gave at least one region: 42 CTs and 42 MRs.
 - On MR, it found a region in 19.9% of the slices and in every volume, 0.26 regions for each slice searched.
 - If, as above, HaN-Seg's images hold no burned-in text, every one of these regions is a false positive. A reviewer can add a region to a cleaned instance but cannot remove one that the finder found (D-048), so a cleaned slice like these is released with every region blacked out, or rejected.
 - 35 of the 42 CTs have slices of 1024 pixels or more on their larger side, and every MR has slices of 512 to under 640. These `/1` summaries do not count regions by slice size, so they do not show whether size explains the difference between CT and MR; the `/2` summary counts them so, and its [rerun](#results-by-slice-size-and-score-margin) is recorded below.
-- The counts are evidence, not a verdict: whether the option's false positives on CT and MR are acceptable is for the maintainer to decide, and the validation table of the design doc records that decision as not yet made.
+- The counts are evidence, not a verdict: whether the detector's false positives on CT and MR are acceptable is decided by the evaluation that D-056 designs, which measures them with missed text on the same images against acceptance criteria set before tuning, and the validation table of the design doc waits on its held-out confirmation.
 
 ## Results by slice size and score margin
 
