@@ -28,7 +28,13 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 
-from . import midi_benchmark, midi_benchmark_flips, midi_script_results, run
+from . import (
+    midi_benchmark,
+    midi_benchmark_flips,
+    midi_benchmark_shards,
+    midi_script_results,
+    run,
+)
 from .midi_answer_key import AnswerKeyError, read_answer_key
 from .policy import PolicyError
 from .safe_private import SafePrivateList
@@ -38,8 +44,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     """Run the benchmark, compare two runs, or prepare or count the validation script's run.
 
     ``run`` takes ``--source``, ``--answer-key``, ``--work``, and optionally
-    ``--preset`` or one or more ``--option``, ``--safe-private-list``, ``--collection``, ``--tg263``, and ``--watch``, as :func:`~pymedphys._dicom.deidentify.midi_benchmark.run_benchmark` does, and
-    prints the results as CommonMark. ``flip-check`` takes the answer key,
+    ``--preset`` or one or more ``--option``, ``--safe-private-list``, ``--collection``, ``--tg263``, ``--watch``, and ``--shard``, as :func:`~pymedphys._dicom.deidentify.midi_benchmark.run_benchmark` does, and
+    prints the results as CommonMark. ``combine`` takes every shard's
+    ``benchmark.json`` and ``--out``, a directory that must not exist,
+    writes :func:`~pymedphys._dicom.deidentify.midi_benchmark_shards.combine`'s
+    results there as JSON and CommonMark, and prints the CommonMark. ``flip-check`` takes the answer key,
     ``--reference``, the check outcomes of a run under ``basic``,
     ``--compared``, those of a run under one Retain option alone,
     ``--option``, and ``--out``, writes :func:`~pymedphys._dicom.deidentify.midi_benchmark_flips.flip_check`'s
@@ -138,6 +147,31 @@ def main(argv: Sequence[str] | None = None) -> int:
             "by where it ended up. May be repeated."
         ),
     )
+    benchmark.add_argument(
+        "--shard",
+        type=_shard,
+        metavar="NUMBER/COUNT",
+        help=(
+            "Run one shard of the run, such as 2/6: the patients that it is "
+            "given, balanced by their pixels, and the checks of their "
+            "instances. The shards' results are added up with combine."
+        ),
+    )
+    combined = commands.add_parser(
+        "combine",
+        help=(
+            "Add up the results of every shard of one run, write them as JSON "
+            "and CommonMark, and print the CommonMark."
+        ),
+    )
+    combined.add_argument(
+        "results", nargs="+", help="Each shard's results, benchmark.json."
+    )
+    combined.add_argument(
+        "--out",
+        required=True,
+        help="A directory, which must not exist, for the combined results.",
+    )
     released = commands.add_parser(
         "released-answer-key",
         help=(
@@ -204,7 +238,10 @@ def main(argv: Sequence[str] | None = None) -> int:
                 collection=arguments.collection,
                 tg263_spreadsheet=arguments.tg263,
                 watched=arguments.watch,
+                shard=arguments.shard,
             ).markdown()
+        elif arguments.command == "combine":
+            text = _combine(arguments)
         elif arguments.command == "released-answer-key":
             text = (
                 json.dumps(
@@ -236,6 +273,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     except (
         midi_benchmark.BenchmarkError,
         midi_benchmark_flips.FlipCheckError,
+        midi_benchmark_shards.ShardError,
         midi_script_results.ScriptResultsError,
         AnswerKeyError,
         PolicyError,
@@ -245,6 +283,43 @@ def main(argv: Sequence[str] | None = None) -> int:
         raise SystemExit(str(error)) from None
     sys.stdout.write(text)
     return status
+
+
+def _shard(text: str) -> midi_benchmark_shards.Shard:
+    try:
+        return midi_benchmark_shards.Shard.parse(text)
+    except midi_benchmark_shards.ShardError as error:
+        raise argparse.ArgumentTypeError(str(error)) from None
+
+
+def _combine(arguments: argparse.Namespace) -> str:
+    """Combine the shards' results, write them, and return the CommonMark."""
+    out = Path(arguments.out)
+    if out.exists() or not out.parent.is_dir():
+        raise midi_benchmark_shards.ShardError(
+            "the combined results' directory must not exist, and its parent must"
+        )
+    documents = []
+    for each in arguments.results:
+        try:
+            document = json.loads(Path(each).read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            raise midi_benchmark_shards.ShardError(
+                "a shard's results could not be read"
+            ) from None
+        if not isinstance(document, dict):
+            raise midi_benchmark_shards.ShardError("a file is not a shard's results")
+        documents.append(document)
+    combined = midi_benchmark.Benchmark(midi_benchmark_shards.combine(documents), b"")
+    out.mkdir()
+    (out / midi_benchmark.RESULTS_JSON).write_text(
+        combined.json(), encoding="utf-8", newline="\n"
+    )
+    text = combined.markdown()
+    (out / midi_benchmark.RESULTS_MARKDOWN).write_text(
+        text, encoding="utf-8", newline="\n"
+    )
+    return text
 
 
 def _flip_check(arguments: argparse.Namespace) -> tuple[str, int]:

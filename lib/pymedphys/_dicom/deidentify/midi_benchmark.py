@@ -180,6 +180,7 @@ from .midi_benchmark_errors import (
 )
 from .midi_benchmark_exemptions import exemption_rows, would_release
 from .midi_benchmark_markdown import render_markdown
+from .midi_benchmark_shards import Shard, assign
 from .midi_benchmark_sources import (
     WATCHED,
     counted_order,
@@ -202,7 +203,12 @@ from .midi_benchmark_values import (
     unbracketed,
 )
 from .midi_script_results import write_mapping_files
-from .midi_benchmark_flips import CHECK_OUTCOMES, outcome_code, write_check_outcomes
+from .midi_benchmark_flips import (
+    CHECK_OUTCOMES,
+    IN_OTHER_SHARD,
+    outcome_code,
+    write_check_outcomes,
+)
 from .pixel_cleaning import TextFinder
 from .policy import (
     CLEAN_PIXEL_DATA,
@@ -336,6 +342,8 @@ class _Header:
     instance: str | None
     sop_class: object
     transfer_syntax: object
+    # The text detector's work: see _pixel_weight.
+    pixel_weight: int = 0
 
 
 def run_benchmark(
@@ -349,6 +357,7 @@ def run_benchmark(
     collection: str | None = None,
     tg263_spreadsheet: str | Path | None = None,
     watched: Collection[str] = (),
+    shard: Shard | None = None,
 ) -> Benchmark:
     """De-identify a MIDI test data set and score the release.
 
@@ -382,6 +391,15 @@ def run_benchmark(
     watched : collection of str, optional
         Attributes, such as ``(0020,0011)``, each of whose checks is counted
         by where it ended up.
+    shard : Shard, optional
+        One shard of the run, by patient
+        (:mod:`~pymedphys._dicom.deidentify.midi_benchmark_shards`): the
+        run de-identifies the inputs that
+        :func:`~pymedphys._dicom.deidentify.midi_benchmark_shards.assign`
+        gives the shard, balanced by their pixels, and scores the checks of
+        their instances alone, and, in the first shard, those of the
+        answer-key instances that the input does not hold. By default, the
+        whole run.
 
     Raises
     ------
@@ -413,6 +431,10 @@ def run_benchmark(
         unvalidated_policy=True,
     )
     discovery = run.discover(source)
+    headers = _headers(discovery)
+    outside: frozenset[str] = frozenset()
+    if shard is not None:
+        discovery, headers, outside = _shard_of(discovery, headers, shard)
     # The work directory holds the QC pack and the mapping files, which hold
     # the test data set's identifiers: for its owner alone, as the QC store's.
     work.mkdir(mode=0o700)
@@ -427,7 +449,6 @@ def run_benchmark(
         reporter=transform.reporter,
         written_check=transform.written_check,
     )
-    headers = _headers(discovery)
     mapping = released_mapping(headers, result.outcomes, release)
     write_mapping_files(work / SCRIPT_INPUTS, mapping.uids, mapping.patient_ids)
     benchmark = score(
@@ -448,6 +469,8 @@ def run_benchmark(
         sources=discovery.paths,
         watched=frozenset(watched),
         defacing=defacing_counts(transform),
+        shard=shard,
+        outside=outside,
     )
     (work / RESULTS_JSON).write_text(benchmark.json(), encoding="utf-8", newline="\n")
     write_check_outcomes(
@@ -553,6 +576,37 @@ def _roi_names_used() -> str:
     )
 
 
+def _shard_of(
+    discovery: run.Discovery, headers: Sequence[_Header | None], shard: Shard
+) -> tuple[run.Discovery, tuple[_Header | None, ...], frozenset[str]]:
+    """Return a shard's inputs, their headers, and the instances of the others.
+
+    An instance is scored in the shard of the first input that holds it,
+    as an unsharded run scores it by its first input.
+    """
+    shards = assign(
+        [None if header is None else header.patient_id for header in headers],
+        [0 if header is None else header.pixel_weight for header in headers],
+        shard.count,
+    )
+    owners: dict[str, int] = {}
+    for header, number in zip(headers, shards):
+        if header is not None and header.instance is not None:
+            owners.setdefault(header.instance, number)
+    kept = [
+        position for position, number in enumerate(shards) if number == shard.number
+    ]
+    return (
+        dataclasses.replace(
+            discovery, entries=tuple(discovery.entries[position] for position in kept)
+        ),
+        tuple(headers[position] for position in kept),
+        frozenset(
+            instance for instance, number in owners.items() if number != shard.number
+        ),
+    )
+
+
 def _headers(discovery: run.Discovery) -> tuple[_Header | None, ...]:
     """Each input's identifiers, or ``None`` where it cannot be read."""
     headers: list[_Header | None] = []
@@ -568,7 +622,15 @@ _HEADER_TAGS = (
     "SeriesInstanceUID",
     "SOPInstanceUID",
     "SOPClassUID",
+    "Rows",
+    "Columns",
+    "NumberOfFrames",
 )
+# What the text detector's work on a frame costs beyond its pixels, as a
+# number of pixels. An assumption: that a frame costs a fixed amount as well
+# as one that grows with its pixels, so that many small frames are not
+# weighed as nothing.
+_FRAME_PIXELS = 512 * 512
 
 
 def _header(path: Path) -> _Header | None:
@@ -579,6 +641,7 @@ def _header(path: Path) -> _Header | None:
         values = [_text_of(dataset.get(keyword)) for keyword in _HEADER_TAGS[:4]]
         sop_class = dataset.get("SOPClassUID")
         transfer_syntax = dataset.file_meta.get("TransferSyntaxUID")
+        pixel_weight = _pixel_weight(dataset)
     except Exception:  # pylint: disable = broad-exception-caught
         # The run refuses or sequesters what cannot be read; so does this.
         return None
@@ -586,7 +649,28 @@ def _header(path: Path) -> _Header | None:
         *values,
         sop_class=None if sop_class is None else str(sop_class),
         transfer_syntax=None if transfer_syntax is None else str(transfer_syntax),
+        pixel_weight=pixel_weight,
     )
+
+
+def _pixel_weight(dataset: pydicom.Dataset) -> int:
+    """Weigh an instance by the text detector's work: 0 without an image.
+
+    Each frame counts as its pixels and :data:`_FRAME_PIXELS` more. A value
+    that cannot be read counts as one frame, or as no pixels.
+    """
+
+    def whole(keyword: str, default: int) -> int:
+        try:
+            value = int(str(dataset.get(keyword, default)).strip(" \x00"))
+        except (TypeError, ValueError):
+            return default
+        return max(value, 0)
+
+    rows, columns = whole("Rows", 0), whole("Columns", 0)
+    if not rows or not columns:
+        return 0
+    return max(whole("NumberOfFrames", 1), 1) * (rows * columns + _FRAME_PIXELS)
 
 
 def _text_of(value: object) -> str | None:
@@ -647,6 +731,8 @@ def score(  # pylint: disable = too-many-arguments, too-many-locals
     sources: Sequence[Path] = (),
     watched: Collection[str] = (),
     defacing: Mapping[str, object] | None = None,
+    shard: Shard | None = None,
+    outside: Collection[str] = frozenset(),
 ) -> Benchmark:
     """Score each check of the answer key against the run's outcome.
 
@@ -665,6 +751,11 @@ def score(  # pylint: disable = too-many-arguments, too-many-locals
     where it ended up. ``defacing``, under Clean Recognizable Visual
     Features, counts what the transform found to deface
     (:func:`defacing_counts`).
+
+    In a ``shard`` of a run, the checks of the instances in ``outside``,
+    which other shards hold, are not scored, and nor, outside the first
+    shard, are those of the instances that the input does not hold: each
+    one's outcome is :data:`~pymedphys._dicom.deidentify.midi_benchmark_flips.IN_OTHER_SHARD`.
     """
     positions: dict[str, int] = {}
     for position, header in enumerate(headers):
@@ -702,6 +793,12 @@ def score(  # pylint: disable = too-many-arguments, too-many-locals
     with redacted_diagnostics():
         for answer in key.by_sop_instance().values():  # one per instance
             position = positions.get(answer.sop_instance_uid)
+            if shard is not None and (
+                answer.sop_instance_uid in outside
+                or (position is None and shard.number != 1)
+            ):
+                check_outcomes += outcome_code(IN_OTHER_SHARD) * len(answer.checks)
+                continue
             context, dataset, iod_name = _context(position, headers, outcomes, release)
             iod = None if iod_name is None else iod_tables.iods.get(iod_name)
             instances[context] += 1
@@ -793,6 +890,8 @@ def score(  # pylint: disable = too-many-arguments, too-many-locals
         "method_digest": method,
         "answer_key_sha256": key.sha256,
         "collection": collection,
+        # The shard of the run, as number/count, or None for a whole run.
+        "shard": None if shard is None else str(shard),
     }
     if roi_names is not None:
         versions["roi_names"] = roi_names

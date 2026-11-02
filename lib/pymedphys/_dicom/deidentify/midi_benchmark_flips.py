@@ -99,8 +99,12 @@ RETAIN_OPTIONS = (
 # selected.
 MARKERS = frozenset({"(0012,0062)", "(0012,0063)", "(0012,0064)", "(0028,0303)"})
 
+# The outcome, in one shard of a run, of a check that another shard scores.
+IN_OTHER_SHARD = "in_other_shard"
+
 # A letter for each outcome of a check, by the name of the benchmark's count
-# that it adds to; the first five are of released instances.
+# that it adds to, or IN_OTHER_SHARD; the first five are of released
+# instances.
 _CODES: Mapping[str, str] = {
     "passed": "P",
     "failed": "F",
@@ -110,6 +114,7 @@ _CODES: Mapping[str, str] = {
     "withheld": "W",
     "outside_coverage": "O",
     "not_in_input": "I",
+    IN_OTHER_SHARD: "S",
 }
 _NAMES = {code: name for name, code in _CODES.items()}
 _RELEASED = frozenset("PFDGN")
@@ -131,7 +136,7 @@ def outcome_code(outcome: str) -> bytes:
     ----------
     outcome : str
         The name of a field of the benchmark's counts, such as ``"passed"``,
-        ``"deliberate"``, or ``"withheld"``.
+        ``"deliberate"``, or ``"withheld"``, or :data:`IN_OTHER_SHARD`.
     """
     return _CODES[outcome].encode("ascii")
 
@@ -292,8 +297,8 @@ def flip_check(
     ------
     FlipCheckError
         If the option is not a Retain option; the runs were not under
-        ``basic`` and under the option alone; or either run's outcomes are
-        not of this answer key.
+        ``basic`` and under the option alone; either run's outcomes are not
+        of this answer key; or either is one shard's.
     """
     if option not in RETAIN_OPTIONS:
         raise FlipCheckError(
@@ -310,6 +315,8 @@ def flip_check(
     for run in (reference, compared):
         if run.answer_key_sha256 != key.sha256 or len(run.codes) != total:
             raise FlipCheckError("a run's check outcomes are not of this answer key")
+        if _CODES[IN_OTHER_SHARD].encode("ascii") in run.codes:
+            raise FlipCheckError("a shard's check outcomes cannot be compared")
 
     governance = _Governance(option)
     checks: collections.Counter = collections.Counter()
