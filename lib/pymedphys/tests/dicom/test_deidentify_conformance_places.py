@@ -104,7 +104,7 @@ def test_plain_actions_are_resolved_by_type_at_every_place(preset):
                     action = compound_actions.resolve_plain_in_iod(
                         iod, tag, path, entry.action
                     )
-                    if action == "D" and not _has_dummy_value(tag):
+                    if action == "D" and not _has_dummy_value(tag, path):
                         action = conformance.SEQUESTER
                     expected.append(conformance.Place(name, path, action))
                     continue
@@ -127,10 +127,16 @@ def test_plain_actions_are_resolved_by_type_at_every_place(preset):
 
 # The sequences whose D a reviewed rule writes (D-021).
 REVIEWED_DUMMY_SEQUENCES = frozenset({"(0040,1101)", "(0008,1111)", "(0040,A073)"})
+# Institution Code Sequence's reviewed rule holds only directly in an item of
+# Interlock Resolution User Sequence (D-021).
+INSTITUTION_CODE_SEQUENCE = "(0008,0082)"
+INTERLOCK_RESOLUTION_USER = "(300A,0746)"
 
 
-def _has_dummy_value(tag):
-    """Return whether D can write a dummy value for an attribute (D-021)."""
+def _has_dummy_value(tag, path):
+    """Return whether D can write a dummy value for an attribute at a place (D-021)."""
+    if tag == INSTITUTION_CODE_SEQUENCE:
+        return path[-1:] == (INTERLOCK_RESOLUTION_USER,)
     if tag in REVIEWED_DUMMY_SEQUENCES:
         return True
     attribute = standard.dictionary_attribute(tag)
