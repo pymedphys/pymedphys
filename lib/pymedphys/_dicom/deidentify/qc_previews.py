@@ -70,6 +70,14 @@ frame with such regions, also from the file as received:
   :mod:`~pymedphys._dicom.deidentify.qc_segments` describes. A
   Segmentation that no segments sheet shows whole, whatever the cause, is
   reported, though its other previews are kept;
+- the sheets of each deformation grid of each instance that holds one
+  (:func:`~.face_review.holds_deformation_grid`), such as a deformable
+  registration, high-risk or not, for the same reason: each grid as
+  written, placed by its own geometry, as
+  :mod:`~pymedphys._dicom.deidentify.qc_grids` describes, one sheet of each
+  of its quantities. An instance any of whose grids' sheets are not all
+  drawn, whatever the cause, has none of them, and is reported, though its
+  other previews, if any, are kept;
 - each high-risk instance at full resolution: every frame, or
   :data:`CINE_FRAMES` evenly spaced, unscaled, since burned-in text may be
   small;
@@ -115,7 +123,10 @@ shown, so that no verdict releases its pixel data. Colour pixel data with
 8 bits allocated are shown as RGB: as they are, or converted from YBR_FULL
 or YBR_FULL_422 by pydicom, while JPEG 2000's YBR_ICT and YBR_RCT are
 decoded to RGB. Compressed pixel data are decoded by the plugin
-that :data:`.pixel_decoding.DECODING_PLUGINS` pins for its transfer syntax.
+that :func:`.pixel_decoding.pinned_plugin` pins for its transfer syntax
+and attributes, in process, but for those of
+:data:`.pixel_decoding.CHILD_ONLY_PLUGINS`, whose frames are decoded in the
+decoding child by :func:`.pixel_decoding.isolated_frames` (D-055).
 An instance whose pixel data cannot be previewed is reported with why,
 rather than left out: pixel data in a compressed transfer syntax that no
 installed plugin is pinned to decode; a photometric interpretation other
@@ -142,10 +153,16 @@ from collections.abc import Collection, Iterator, Mapping, Sequence
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom
 
-from .pixel_decoding import DECODING_PLUGINS, decoder_available
-from . import qc_contours, qc_segments, qc_surfaces
-from .face_review import is_rt_dose
+from .pixel_decoding import (
+    CHILD_ONLY_PLUGINS,
+    decoder_available,
+    isolated_frames,
+    pinned_plugin,
+)
+from . import qc_contours, qc_grids, qc_segments, qc_surfaces
+from .face_review import holds_deformation_grid, is_rt_dose
 from .qc_pack import (
+    GRID_KINDS,
     NotPreviewedEntry,
     NotPreviewedReason,
     Preview,
@@ -248,8 +265,9 @@ class PreviewSet:
         grid in it, then the dose-levels map of each RT Dose plane in it in
         no volume, series in the order of their first run position; then each
         contour sheet, in run position order; then each segments sheet, in
-        run position order; then each high-risk instance, in run position
-        order; then each frame of each instance that Clean Pixel Data
+        run position order; then each grid sheet, in run position order,
+        grid order, and the order of :data:`~.qc_pack.GRID_KINDS`; then each
+        high-risk instance, in run position order; then each frame of each instance that Clean Pixel Data
         cleaned, in run position and frame order. Named ``P-0001.png``
         onwards in that order. A contour sheet shows its instance's frame
         0, then the frames of each volume that it is drawn with, if any; a
@@ -260,10 +278,16 @@ class PreviewSet:
         whole, whatever the cause, is listed as ``DOSE_LEVELS_NOT_SHOWN``,
         though its other previews are kept, unless another reason is listed
         first. Likewise, a Segmentation that no segments sheet shows whole
-        is listed as ``SEGMENTS_NOT_SHOWN``.
+        is listed as ``SEGMENTS_NOT_SHOWN``, and an instance that holds a
+        deformation grid whose sheets are not all drawn as
+        ``GRIDS_NOT_SHOWN``.
     contours_shown : frozenset of int
         The run positions of the files with contours that a contour sheet
         shows.
+    grids_shown : frozenset of int
+        The run positions of the files that hold a deformation grid each of
+        whose grids a sheet of each kind of :data:`~.qc_pack.GRID_KINDS`
+        shows, and that are not listed as not previewed.
     pixels_shown : frozenset of int
         The run positions of the files with pixel data every frame of which
         a preview that could show a face draws, and that are not listed as
@@ -287,6 +311,7 @@ class PreviewSet:
     not_previewed: tuple[NotPreviewedEntry, ...]
     contours_shown: frozenset[int] = frozenset()
     pixels_shown: frozenset[int] = frozenset()
+    grids_shown: frozenset[int] = frozenset()
 
 
 def previews_of(
@@ -316,15 +341,30 @@ def previews_of(
     instances: list[_Instance] = []
     refused: dict[int, NotPreviewedReason] = {}
     contoured: dict[int, qc_contours.Contours] = {}
+    # Each instance's grid sheets, drawn as it is read, so that its grids
+    # are not all held at once, and those whose sheets were not all drawn.
+    gridded: dict[int, list[_Encoded]] = {}
+    ungridded: set[int] = set()
     for position in sorted(written):
-        found = _instance(position, written[position])
+        dataset = _read(written[position])
+        if dataset is not None and holds_deformation_grid(dataset):
+            sheets = _grid_images(position, dataset)
+            if sheets is None:
+                ungridded.add(position)
+            else:
+                gridded[position] = sheets
+        found = _instance(position, written[position], dataset)
         if isinstance(found, _Instance):
             instances.append(found)
         elif isinstance(found, NotPreviewedReason):
             refused[position] = found
         elif found is not None:
             contoured[position] = found
-        elif position in high_risk:
+        elif (
+            position in high_risk
+            and position not in gridded
+            and position not in ungridded
+        ):
             refused[position] = NotPreviewedReason.NO_PIXEL_DATA
     # Each image is encoded as it is made, so that only its PNG is kept.
     images: list[_Encoded] = []
@@ -349,6 +389,9 @@ def previews_of(
             segmented = _segments_image(instance, decoded, guides)
             if segmented is not None:
                 images.extend(_encoded([segmented]))
+    for position, sheets in sorted(gridded.items()):
+        if position not in refused:
+            images.extend(sheets)
     for instance in instances:
         if instance.position in high_risk:
             image = _instance_image(instance, decoded)
@@ -382,6 +425,10 @@ def previews_of(
             and segmented.get(instance.position) != instance.frames
         ):
             refused.setdefault(instance.position, NotPreviewedReason.SEGMENTS_NOT_SHOWN)
+    # Likewise an instance with a deformation grid whose sheets were not
+    # all drawn.
+    for position in sorted(ungridded):
+        refused.setdefault(position, NotPreviewedReason.GRIDS_NOT_SHOWN)
     pictured = pictured_frames(listed, refused)
     dosed = pictured_frames(listed, refused, levels)
     segmented = pictured_frames(listed, refused, sheets)
@@ -405,6 +452,7 @@ def previews_of(
             and _shown_by(instance, pictured, dosed, segmented).get(instance.position)
             == instance.frames
         ),
+        frozenset(gridded) - frozenset(refused),
     )
 
 
@@ -436,19 +484,50 @@ def _encoded(images) -> Iterator[_Encoded]:
         yield kind, frames, total, png(image)
 
 
+def _read(data: bytes) -> pydicom.Dataset | None:
+    """A written file's data set, or None where it cannot be read."""
+    try:
+        return pydicom.dcmread(io.BytesIO(data))
+    except Exception:  # pylint: disable = broad-exception-caught
+        # Whatever pydicom raises, the reviewer is told, never the error.
+        return None
+
+
+def _grid_images(position: int, dataset: pydicom.Dataset) -> list[_Encoded] | None:
+    """The sheets of each deformation grid of a data set, each as its kind,
+    its grid by run position and index among the data set's grids, and how
+    many grids it holds; or None where any cannot be drawn
+    (:mod:`~pymedphys._dicom.deidentify.qc_grids`)."""
+    grids = qc_grids.grids_of(dataset)
+    if grids is None:
+        return None
+    found: list[_Encoded] = []
+    for index, grid in enumerate(grids):
+        sheets = qc_grids.grid_sheets(grid)
+        if sheets is None:
+            return None
+        found.extend(
+            _encoded(
+                (kind, ((position, index),), len(grids), sheet)
+                for kind, sheet in zip(GRID_KINDS, sheets, strict=True)
+            )
+        )
+    return found
+
+
 def _instance(
-    position: int, data: bytes
+    position: int, data: bytes, dataset: pydicom.Dataset | None = None
 ) -> _Instance | NotPreviewedReason | qc_contours.Contours | None:
     """Read what a preview needs of a file, or why it cannot be previewed.
 
     A file without pixel data gives its contours, where it has any that a
     sheet can show, or ``CONTOURS_NOT_SHOWN`` where it has others, or
-    ``None`` where it has none.
+    ``None`` where it has none. ``dataset``, where given, is the file's,
+    already read.
     """
-    try:
-        dataset = pydicom.dcmread(io.BytesIO(data))
-    except Exception:  # pylint: disable = broad-exception-caught
-        # Whatever pydicom raises, the reviewer is told, never the error.
+    if dataset is None:
+        dataset = _read(data)
+    if dataset is None:
         return NotPreviewedReason.UNREADABLE
     if any(keyword in dataset for keyword in _FLOAT_PIXEL_DATA):
         return NotPreviewedReason.UNSUPPORTED
@@ -470,8 +549,10 @@ def _described(
         syntax = str(dataset.file_meta.TransferSyntaxUID)
         plugin = ""
         if dataset.file_meta.TransferSyntaxUID.is_compressed:
-            plugin = DECODING_PLUGINS.get(syntax, "")
-            if not plugin or not decoder_available(syntax):
+            plugin = pinned_plugin(
+                syntax, dataset.get("BitsStored"), dataset.get("PixelRepresentation")
+            )
+            if not plugin or not decoder_available(syntax, plugin):
                 return NotPreviewedReason.COMPRESSED
         photometric = str(dataset.PhotometricInterpretation).strip()
         samples = int(dataset.SamplesPerPixel)
@@ -713,6 +794,8 @@ class _Decoder:
         try:
             if instance.packed:
                 (pixels,) = _packed_frames(instance, [index])
+            elif instance.plugin in CHILD_ONLY_PLUGINS:
+                (pixels,) = isolated_frames(instance.data, [index])
             else:
                 pixels = np.asarray(
                     pydicom.pixels.pixel_array(
@@ -748,6 +831,8 @@ class _Decoder:
                     instance, range(instance.frames) if indices is None else indices
                 )
                 if instance.packed
+                else isolated_frames(instance.data, indices)
+                if instance.plugin in CHILD_ONLY_PLUGINS
                 else pydicom.pixels.iter_pixels(
                     io.BytesIO(instance.data),
                     indices=indices,

@@ -140,11 +140,10 @@ def test_jpeg_baseline_frames_pass():
     assert frames_problem(read_source(data)) is None
 
 
-def test_a_twelve_bit_jpeg_extended_frame_is_set_aside_by_its_pinned_decoder():
+def test_a_twelve_bit_jpeg_extended_frame_is_decoded_by_imagecodecs():
     # The frame is valid: every sample decodes to 2048. pydicom 3.0.2's GDCM
-    # plugin refuses JPEG Extended at 12 bits, which pylibjpeg-libjpeg, under
-    # the GNU GPL, decoded, so such a frame is never released.
-    _needs(compressed.JPEG_EXTENDED)
+    # plugin refuses JPEG Extended at 12 bits, so imagecodecs decodes it
+    # (D-055), or, where it cannot, the frame is never released.
     codestream = compressed.jpeg_extended_mid_grey(16, 24)
     declared = Declared(16, 24, 1, 12, False, "MONOCHROME2")
     data = compressed.ct_image(
@@ -152,7 +151,17 @@ def test_a_twelve_bit_jpeg_extended_frame_is_set_aside_by_its_pinned_decoder():
     )
 
     assert header_problem(compressed.JPEG_EXTENDED, codestream, declared) is None
-    assert frames_problem(read_source(data)) is TransformReason.UNDECODABLE_PIXEL_DATA
+    assert pixel_decoding.pinned_plugin(compressed.JPEG_EXTENDED, 12, 0) == (
+        pixel_decoding.IMAGECODECS
+    )
+    if pixel_decoding.decoder_available(
+        compressed.JPEG_EXTENDED, pixel_decoding.IMAGECODECS
+    ):
+        assert frames_problem(read_source(data)) is None
+        frame = np.asarray(next(pixel_decoding.isolated_frames(data)))
+        assert frame.tolist() == np.full((16, 24), 2048).tolist()
+    else:
+        assert frames_problem(read_source(data)) is TransformReason.NO_DECODER
 
 
 def test_jpeg_2000_frames_pass():
@@ -726,13 +735,14 @@ def test_without_its_decoder_an_instance_is_refused(monkeypatch):
 def test_the_pinned_decoder_is_used_whatever_else_is_installed(monkeypatch):
     data = _lossless()
     plugins = []
-    iter_pixels = pydicom.pixels.iter_pixels
+    decoder = pydicom.pixels.decoders.base.Decoder
+    iter_array = decoder.iter_array
 
-    def recording(*args, **kwargs):
+    def recording(self, *args, **kwargs):
         plugins.append(kwargs.get("decoding_plugin"))
-        return iter_pixels(*args, **kwargs)
+        return iter_array(self, *args, **kwargs)
 
-    monkeypatch.setattr(pydicom.pixels, "iter_pixels", recording)
+    monkeypatch.setattr(decoder, "iter_array", recording)
     # The child would not see the recording, so the call is made here.
     monkeypatch.setattr(
         pixel_decoding.isolated_decoding, "run", lambda task, *args: task(*args)
