@@ -740,6 +740,7 @@ def _exempted(section: object) -> list[Block]:
             "because what it is or where it was found explains it: a standard "
             "term or code, an equipment name, a vendor's private creator, a date "
             "that Modified Dates shifted, a value that a selected option keeps, "
+            "text in a private creator that the run's safe private list keeps, "
             "or a standard code's meaning, or a UID that a selected option "
             "keeps, that only instances the run did not write held. Each is "
             "counted by why it was exempted, the attribute that "

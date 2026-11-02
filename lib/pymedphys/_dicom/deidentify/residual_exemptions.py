@@ -49,6 +49,18 @@ reason that such a finding is not a reason for review (D-032), or returns
   collected for the subject is, without trailing spaces and NULs, exactly
   one of the private creators that the pinned PS3.15 Table E.3.10-1 lists
   (:func:`vendor_creators`), wherever in the data set the finding is.
+- :attr:`Exemption.RETAINED_CREATOR`: the finding is in a private creator,
+  (gggg,0010) to (gggg,00FF) of a group open to private use, at any depth,
+  whose whole value, without trailing spaces and NULs, is a private creator
+  that the run's safe private list keeps in that group
+  (:func:`kept_creators`), and its source is a private creator or private
+  data element, at any depth, or one of the six equipment attributes that
+  :attr:`EQUIPMENT` reads. It applies only under the Retain Safe Private
+  Option, whose list the coverage records. The kept creator holds the block
+  name that the list matched, so any text found in it is that name; a
+  finding from Institution Name (0008,0080), Station Name (0008,1010), or
+  any other source stays under review, so an in-house block named after the
+  institution is still seen (D-042).
 - :attr:`Exemption.RETAINED_TEXT`: the finding is in a text attribute that
   a selected option keeps, such as Station Name (0008,1010) under Retain
   Device Identity, and its source is a private data element or an attribute
@@ -111,7 +123,9 @@ from .option_kept import (
     whole_values,
 )
 from .residuals import Finding, SourceValue
-from .standard import dictionary_attribute, load_table_e3_10_1
+from .safe_private import SafePrivateList, load_safe_private_rules
+from .standard import _RESERVED_ODD_GROUPS, dictionary_attribute, load_table_e3_10_1
+from .tcia_private_tags import tcia_safe_private_rules
 from .uid_registry import RegistryTable, RegistryTableSpec, load_registry_table
 
 _DESIGNATOR = "(0008,0102)"
@@ -145,6 +159,9 @@ class Exemption(enum.Enum):
     EQUIPMENT = "equipment"  # an equipment name, found from equipment or private
     SHIFTED_DATE = "shifted-date"  # equal to a date that Modified Dates shifted
     VENDOR_CREATOR = "vendor-creator"  # a private creator of Table E.3.10-1
+    # in a private creator that the run's safe private list keeps, from a
+    # private element or an equipment attribute
+    RETAINED_CREATOR = "retained-creator"
     RETAINED_TEXT = "retained-text"  # in text an option keeps, from its own or private
     RETAINED_VALUE = "retained-value"  # equal to a date or time an option keeps
     # the meaning of a code of a scheme of Table 8-1, from unwritten instances only
@@ -280,6 +297,41 @@ def vendor_creators() -> frozenset[str]:
     return frozenset(row.private_creator for row in load_table_e3_10_1().attributes)
 
 
+@functools.cache
+def kept_creators(safe_private_list: SafePrivateList) -> frozenset[tuple[int, str]]:
+    """Return the private creators that a safe private list keeps, by group.
+
+    Parameters
+    ----------
+    safe_private_list : SafePrivateList
+        The list that a run under the Retain Safe Private Option chose.
+
+    Returns
+    -------
+    frozenset of (int, str)
+        The group and private creator, without padding, of each rule of the
+        shipped list that can retain a value: the reviewed rules
+        (:func:`~pymedphys._dicom.deidentify.safe_private.load_safe_private_rules`)
+        or TCIA's
+        (:func:`~pymedphys._dicom.deidentify.tcia_private_tags.tcia_safe_private_rules`).
+        A creator that a list keeps in one group is not kept in another:
+        TCIA's dictionary keeps ``GEMS_PETD_01`` in group 0009, not 0011.
+
+    Raises
+    ------
+    TypeError
+        If ``safe_private_list`` is not a SafePrivateList.
+    """
+    if not isinstance(safe_private_list, SafePrivateList):
+        raise TypeError("safe_private_list must be a SafePrivateList")
+    rules = (
+        tcia_safe_private_rules()
+        if safe_private_list is SafePrivateList.TCIA
+        else load_safe_private_rules()
+    )
+    return frozenset((rule.group, rule.private_creator) for rule in rules.retained())
+
+
 def source_values(
     collected: tuple[SourceValue, ...],
 ) -> Mapping[ElementPath, tuple[SourceValue, ...]]:
@@ -353,6 +405,7 @@ def exemption(
     sources: Mapping[ElementPath, tuple[SourceValue, ...]],
     options: tuple[str, ...] = (),
     meanings: frozenset[SourceValue] = frozenset(),
+    safe_private_list: SafePrivateList | None = None,
 ) -> Exemption | None:
     """Return why a text finding inside the data set is not a reason for review.
 
@@ -370,6 +423,9 @@ def exemption(
         The Code Meanings in ``sources`` that only instances the run does
         not write collected, each from an item whose own Coding Scheme
         Designator Table 8-1 lists (:func:`standard_code_meanings`).
+    safe_private_list : SafePrivateList, optional
+        The run's safe private list, under the Retain Safe Private Option.
+        With none, no kept private creator explains a finding.
 
     Returns
     -------
@@ -394,7 +450,12 @@ def exemption(
         return Exemption.EQUIPMENT
     if _vendor_creator(finding.source, sources):
         return Exemption.VENDOR_CREATOR
-    why = _retained(finding, kept, sources, options)
+    if safe_private_list is not None and _retained_creator(
+        finding.source, element, kept, safe_private_list
+    ):
+        why: Exemption | None = Exemption.RETAINED_CREATOR
+    else:
+        why = _retained(finding, kept, sources, options)
     if why is None and _unwritten_code_meaning(finding.source, sources, meanings):
         why = Exemption.UNWRITTEN_CODE_MEANING
     return why
@@ -540,7 +601,8 @@ def removed_uid(
         element of an attribute that a selected option keeps
         (:func:`~pymedphys._dicom.deidentify.option_kept.kept_by`), which the
         pinned dictionary gives only VR UI; its source is a private data
-        element, (gggg,1000) to (gggg,FFFF) of an odd group, at any depth;
+        element, (gggg,1000) to (gggg,FFFF) of a group open to private use,
+        at any depth;
         every value of the source is in ``removed``; and one of them equals
         a whole value of the element, and each other that the search could
         find there does too
@@ -561,7 +623,7 @@ def removed_uid(
         attribute is None
         or attribute.vrs != ("UI",)
         or element.tag not in kept_by(options)
-        or not _private_data(finding.source)
+        or not _private_data(finding.source.tag)
     ):
         return None
     values = sources.get(finding.source, ())
@@ -660,12 +722,53 @@ def _vendor_creator(
     )
 
 
+def _retained_creator(
+    source: ElementPath,
+    element: ElementPath,
+    kept: KeptValues,
+    safe_private_list: SafePrivateList,
+) -> bool:
+    """Return whether a kept private creator of the list explains a finding.
+
+    ``element``, where the finding is, must be a private creator whose whole
+    written value, without trailing spaces and NULs, is a creator that
+    ``safe_private_list`` keeps in its group, compared exactly, as the
+    engine compares creators; ``source`` must be a private creator or
+    private data element, or name equipment.
+    """
+    if not _private_creator(element.tag):
+        return False
+    if not (
+        _private_creator(source.tag)
+        or _private_data(source.tag)
+        or source.tag in EQUIPMENT_SOURCES
+    ):
+        return False
+    text = kept.text(element)
+    if text is None or "\\" in text:
+        return False
+    group = int(element.tag[1:5], 16)
+    return (group, text.rstrip(" \x00")) in kept_creators(safe_private_list)
+
+
+def _private_group(tag: str) -> bool:
+    """Return whether a tag's group is open to private use (PS3.5 7.8.1)."""
+    group = int(tag[1:5], 16)
+    return group % 2 == 1 and group not in _RESERVED_ODD_GROUPS
+
+
+def _private_creator(tag: str) -> bool:
+    """Return whether a tag is a private creator, (gggg,0010) to (gggg,00FF)."""
+    return _private_group(tag) and 0x0010 <= int(tag[6:10], 16) <= 0x00FF
+
+
+def _private_data(tag: str) -> bool:
+    """Return whether a tag is a private data element, (gggg,1000) or later."""
+    return _private_group(tag) and int(tag[6:10], 16) >= 0x1000
+
+
 def _equipment_source(source: ElementPath) -> bool:
     """Return whether a source names equipment or is a private data element."""
-    return _private_data(source) or source.tag in EQUIPMENT_SOURCES
-
-
-def _private_data(source: ElementPath) -> bool:
-    """Return whether a source is a private data element, not a creator."""
     group, element = int(source.tag[1:5], 16), int(source.tag[6:10], 16)
-    return group % 2 == 1 and element >= 0x1000
+    private_data = group % 2 == 1 and element >= 0x1000
+    return private_data or source.tag in EQUIPMENT_SOURCES
