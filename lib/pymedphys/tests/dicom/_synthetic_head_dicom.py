@@ -13,8 +13,9 @@
 # limitations under the License.
 
 """CT Image, RT Structure Set, RT Dose, PET Image, Segmentation, and
-Deformable Spatial Registration files of the analytic head, for the
-defacing tests. Every UID and value here is invented."""
+Deformable Spatial Registration files of the analytic head, and multi-frame
+CT and PET instances of its slices, for the defacing tests. Every UID and
+value here is invented."""
 
 from __future__ import annotations
 
@@ -28,6 +29,10 @@ from pymedphys._imports import pydicom
 from . import _synthetic_head as head
 
 CT_IMAGE_STORAGE = "1.2.840.10008.5.1.4.1.1.2"
+ENHANCED_CT_IMAGE_STORAGE = "1.2.840.10008.5.1.4.1.1.2.1"
+LEGACY_CONVERTED_ENHANCED_CT_IMAGE_STORAGE = "1.2.840.10008.5.1.4.1.1.2.2"
+ENHANCED_PET_IMAGE_STORAGE = "1.2.840.10008.5.1.4.1.1.130"
+LEGACY_CONVERTED_ENHANCED_PET_IMAGE_STORAGE = "1.2.840.10008.5.1.4.1.1.128.1"
 RT_STRUCTURE_SET_STORAGE = "1.2.840.10008.5.1.4.1.1.481.3"
 RT_DOSE_STORAGE = "1.2.840.10008.5.1.4.1.1.481.2"
 PET_IMAGE_STORAGE = "1.2.840.10008.5.1.4.1.1.128"
@@ -96,6 +101,154 @@ def ct_files(
         dataset["PixelData"].VR = "OW"
         files.append(written(dataset))
     return files
+
+
+# The functional groups that place and rescale a frame, by the attributes
+# that each holds.
+GROUPS = {
+    "PlanePositionSequence": ("ImagePositionPatient",),
+    "PlaneOrientationSequence": ("ImageOrientationPatient",),
+    "PixelMeasuresSequence": ("PixelSpacing",),
+    "PixelValueTransformationSequence": (
+        "RescaleIntercept",
+        "RescaleSlope",
+        "RescaleType",
+    ),
+}
+# The functional group that gives a multi-frame PET frame's activity.
+REAL_WORLD_VALUE_MAPPING = "RealWorldValueMappingSequence"
+
+
+def multi_frame(
+    slices: Sequence[bytes],
+    *,
+    sop_class: str = ENHANCED_CT_IMAGE_STORAGE,
+    instance: str = ROOT + ".6.1",
+    shared: Sequence[str] = (
+        "PlaneOrientationSequence",
+        "PixelMeasuresSequence",
+        "PixelValueTransformationSequence",
+    ),
+    rescale_type: str | None = "HU",
+    template: pydicom.Dataset | None = None,
+    mapped: bool = False,
+    display: tuple[float, float] | None = None,
+) -> bytes:
+    """One multi-frame instance of ``sop_class`` whose frames are the
+    single-frame files' slices, in their order.
+
+    Each frame is placed and rescaled by functional groups: each group named
+    in ``shared`` in the Shared Functional Groups Sequence, from the first
+    slice, and every other in the frame's item of the Per-frame Functional
+    Groups Sequence, from its slice. Rescale Type is ``rescale_type``, or
+    left out where it is None. Where ``display`` is given, every frame's
+    Pixel Value Transformation is that slope and intercept instead of its
+    slice's rescale. Where ``mapped``, each frame also has a Real World Value
+    Mapping functional group, shared or per frame as the others, whose one
+    item maps every stored value linearly by its slice's Rescale Slope and
+    Rescale Intercept to Bq/ml, as PET quantifies activity in a multi-frame
+    PET instance. Every other attribute is the first slice's,
+    less those that the groups hold, or, where ``template`` is given, such
+    as the synthetic corpus' Enhanced PET Image, the template's, with the
+    first slice's Image Pixel attributes and Frame of Reference UID.
+    """
+    datasets = [pydicom.dcmread(io.BytesIO(each)) for each in slices]
+    first = datasets[0]
+    dataset = copy.deepcopy(first if template is None else template)
+    for keyword in (
+        *(k for held in GROUPS.values() for k in held),
+        "PixelData",
+        "PixelPaddingValue",
+        "SharedFunctionalGroupsSequence",
+        "PerFrameFunctionalGroupsSequence",
+    ):
+        if keyword in dataset:
+            del dataset[keyword]
+    for keyword in (
+        "Rows",
+        "Columns",
+        "SamplesPerPixel",
+        "PhotometricInterpretation",
+        "BitsAllocated",
+        "BitsStored",
+        "HighBit",
+        "PixelRepresentation",
+        "PixelPaddingValue",
+        "FrameOfReferenceUID",
+    ):
+        if keyword in first:
+            dataset[keyword] = copy.deepcopy(first[keyword])
+    if template is not None:
+        dataset.file_meta = copy.deepcopy(first.file_meta)
+    dataset.SOPClassUID = sop_class
+    dataset.SOPInstanceUID = instance
+    dataset.file_meta.MediaStorageSOPClassUID = sop_class
+    dataset.file_meta.MediaStorageSOPInstanceUID = instance
+    dataset.InstanceNumber = 1
+
+    def group(source: pydicom.Dataset, keyword: str) -> pydicom.Dataset:
+        if keyword == REAL_WORLD_VALUE_MAPPING:
+            return _real_world_mapping(source)
+        item = pydicom.Dataset()
+        for attribute in GROUPS[keyword]:
+            if attribute == "RescaleType":
+                if rescale_type is not None:
+                    item.RescaleType = rescale_type
+            elif attribute in source:
+                setattr(item, attribute, source[attribute].value)
+        if keyword == "PixelValueTransformationSequence":
+            if "RescaleIntercept" not in item:
+                item.RescaleIntercept = "0"
+            if "RescaleSlope" not in item:
+                item.RescaleSlope = "1"
+            if display is not None:
+                item.RescaleSlope = str(display[0])
+                item.RescaleIntercept = str(display[1])
+        return item
+
+    keywords = (*GROUPS, REAL_WORLD_VALUE_MAPPING) if mapped else tuple(GROUPS)
+    common = pydicom.Dataset()
+    for keyword in shared:
+        setattr(common, keyword, [group(first, keyword)])
+    dataset.SharedFunctionalGroupsSequence = [common]
+    dataset.PerFrameFunctionalGroupsSequence = []
+    for each in datasets:
+        item = pydicom.Dataset()
+        for keyword in keywords:
+            if keyword not in shared:
+                setattr(item, keyword, [group(each, keyword)])
+        dataset.PerFrameFunctionalGroupsSequence.append(item)
+    dataset.NumberOfFrames = len(datasets)
+    dataset.PixelData = b"".join(each.PixelData for each in datasets)
+    dataset["PixelData"].VR = "OW"
+    return written(dataset)
+
+
+def _real_world_mapping(source: pydicom.Dataset) -> pydicom.Dataset:
+    """A Real World Value Mapping item that maps every stored value of a
+    slice by its Rescale Slope and Rescale Intercept to Bq/ml."""
+    signed = int(source.get("PixelRepresentation", 0)) == 1
+    bits = int(source.BitsStored)
+    low, high = (
+        (-(2 ** (bits - 1)), 2 ** (bits - 1) - 1) if signed else (0, 2**bits - 1)
+    )
+    item = pydicom.Dataset()
+    for keyword, value in (
+        ("RealWorldValueFirstValueMapped", low),
+        ("RealWorldValueLastValueMapped", high),
+    ):
+        setattr(item, keyword, value)
+        item[keyword].VR = "SS" if signed else "US"
+    item.RealWorldValueSlope = float(source.get("RescaleSlope", 1))
+    item.RealWorldValueIntercept = float(source.get("RescaleIntercept", 0))
+    item.LUTExplanation = "Activity concentration"
+    item.LUTLabel = "BQML"
+    unit = pydicom.Dataset()
+    unit.CodeValue = "Bq/ml"
+    unit.CodingSchemeDesignator = "UCUM"
+    unit.CodeMeaning = "Becquerels/milliliter"
+    item.MeasurementUnitsCodeSequence = [unit]
+    return item
 
 
 def structure_set(
