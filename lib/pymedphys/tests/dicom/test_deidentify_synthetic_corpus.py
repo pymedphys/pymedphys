@@ -322,6 +322,17 @@ def test_attributes_are_not_planted_only_beyond_the_depth_cap(corpus):
 
 # The sequences whose D a reviewed rule writes (D-021).
 REVIEWED_DUMMY_SEQUENCES = {"(0040,1101)", "(0008,1111)", "(0040,A073)"}
+# Institution Code Sequence's reviewed rule holds only directly in an item of
+# Interlock Resolution User Sequence (D-021).
+INSTITUTION_CODE_SEQUENCE = "(0008,0082)"
+INTERLOCK_RESOLUTION_USER = "(300A,0746)"
+
+
+def _reviewed(tag, path):
+    """Return whether a reviewed rule writes D's value for a sequence at a place."""
+    if tag == INSTITUTION_CODE_SEQUENCE:
+        return path[-1:] == (INTERLOCK_RESOLUTION_USER,)
+    return tag in REVIEWED_DUMMY_SEQUENCES
 
 
 def _resolved(iod, tag, path):
@@ -349,7 +360,7 @@ def _sequesters_at(iod, tag, path, row):
             is compound_actions.RemovalExtent.SEQUESTER
         )
     return (
-        tag not in REVIEWED_DUMMY_SEQUENCES
+        not _reviewed(tag, path)
         and not set(standard.dictionary_attribute(tag).vrs) & dummy_values.DUMMY_VRS
         and _resolved(iod, tag, path) == "D"
         and not any(
@@ -392,24 +403,15 @@ def test_an_attribute_whose_removal_sequesters_is_planted_in_one_instance(corpus
 
     # Responsible Person and Responsible Organization (D-020), only in the
     # third slice, so that the other instances can be released; and the
-    # Enhanced PET Image's Radiopharmaceutical Start DateTime, and the
-    # Institution Code Sequence of the RT Beams Treatment Record's and the RT
-    # Ion Beams Treatment Record's interlock resolution users, with the
-    # attributes of its item (D-021), in no file.
+    # Enhanced PET Image's Radiopharmaceutical Start DateTime in no file.
     # Each report's Verifying Observer Sequence, which a reviewed rule keeps
-    # with dummy values (D-021), and the Requested Procedure ID of its
-    # Referenced Request Sequence, which a plain X empties there (D-020), are
+    # with dummy values (D-021), the Requested Procedure ID of its Referenced
+    # Request Sequence, which a plain X empties there (D-020), and the
+    # Institution Code Sequence of each treatment record's interlock
+    # resolution user, whose dummy item a reviewed rule writes (D-021), are
     # planted.
     both = {"(0010,2297)", "(0010,2299)"}
-    only_in = {
-        "Enhanced PET Image": {"(0018,1078)"},
-        "RT Beams Treatment Record": {"(0008,0082)", "(0008,0106)", "(0008,0107)"},
-        "RT Ion Beams Treatment Record": {
-            "(0008,0082)",
-            "(0008,0106)",
-            "(0008,0107)",
-        },
-    }
+    only_in = {"Enhanced PET Image": {"(0018,1078)"}}
     assert planted == {corpus_module.SEQUESTERED_FILE: both}
     assert corpus_module.SEQUESTERED_FILE == corpus.files[2].name
     assert withheld == {
@@ -417,6 +419,38 @@ def test_an_attribute_whose_removal_sequesters_is_planted_in_one_instance(corpus
         for file in corpus.files
         if file.name != corpus_module.SEQUESTERED_FILE
     }
+
+
+@pytest.mark.parametrize(
+    ("name", "session"),
+    [
+        ("20-rt-beams-record.dcm", "(3008,0020)"),
+        (corpus_module.ION_TREATMENT_RECORD_FILE, "(3008,0021)"),
+    ],
+)
+def test_each_interlock_users_institution_code_sequence_is_planted(
+    corpus, name, session
+):
+    # A reviewed rule writes its dummy item there (D-021), so the corpus
+    # plants it, with markers in the Table E.1-1 attributes of its item, for
+    # the runs to check that they are gone.
+    (file,) = (each for each in corpus.files if each.name == name)
+    user = (session, "(300A,0740)", "(300A,0746)")
+    placements = [
+        placement
+        for placement in file.manifest.placements
+        if tuple(tag for tag, _ in placement.path.items) == user
+        and placement.path.tag == INSTITUTION_CODE_SEQUENCE
+    ]
+    assert [placement.kind for placement in placements] == [Kind.SEQUENCE]
+    item = (*user, INSTITUTION_CODE_SEQUENCE)
+    inside = {
+        placement.path.tag: placement.kind
+        for placement in file.manifest.placements
+        if tuple(tag for tag, _ in placement.path.items) == item
+    }
+    # Context Group Version and Context Group Local Version.
+    assert inside == {"(0008,0106)": Kind.PLANTED, "(0008,0107)": Kind.PLANTED}
 
 
 def test_markers_are_unique_and_conspicuous(corpus):

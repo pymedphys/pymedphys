@@ -1070,6 +1070,45 @@ def test_the_rt_ion_plan_and_its_record_name_what_they_reference_as_written(
                 assert expected(target) == written[target].SOPInstanceUID, keyword
 
 
+@pytest.mark.deid_requirement("PS3.15-E.1.1-01", "MIDI-BP-03")
+def test_each_interlock_users_institution_code_sequence_is_released_as_reviewed(
+    policy_run,
+):
+    # D writes one dummy item in the Institution Code Sequence of the user
+    # who resolved an interlock, so each treatment record is released with it,
+    # unless Retain Institution Identity keeps the source item (D-021).
+    corpus, released = policy_run.corpus, policy_run.released
+    written = {
+        corpus.files[position].manifest.sop_instance: _read(data)
+        for position, data in released.items()
+    }
+    names = {file.manifest.sop_instance: file.name for file in corpus.files}
+    sessions = {
+        corpus_module.TREATMENT_RECORD: 0x30080020,
+        corpus_module.ION_TREATMENT_RECORD: 0x30080021,
+    }
+    kept = "(0008,0082)" in policy_run.spec.kept_rows()
+    for record, session in sessions.items():
+        if record not in written:
+            assert names[record] in policy_run.spec.withheld
+            continue
+        # pylint: disable-next = unsubscriptable-object
+        beam = written[record][session].value[0]
+        (user,) = beam[0x300A0740].value[0][0x300A0746].value
+        (institution,) = user.InstitutionCodeSequence
+        if kept:
+            # The planted item holds Context Group Version, which D's item
+            # does not.
+            assert 0x00080106 in institution
+            continue
+        assert (
+            institution.CodeValue,
+            institution.CodingSchemeDesignator,
+            institution.CodeMeaning,
+        ) == ("DEIDENTIFIED", "99PYMEDPHYS", "DEIDENTIFIED")
+        assert set(institution.keys()) == {0x00080100, 0x00080102, 0x00080104}
+
+
 @pytest.mark.deid_requirement("PS3.15-E.3.5-01")
 def test_roi_names_take_the_vocabulary_spelling_or_the_reviewed_decision(
     policy_run,

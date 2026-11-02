@@ -691,7 +691,7 @@ ION_KEPT_TEXT = {
     "(300A,0390)",  # Scan Spot Tune ID
 }
 ION_REMOVED_UNDER_EVERY_OPTION = {"(300A,0354)"}  # Patient Support Accessory Code
-ION_TEXT_GROUPS = (
+ION_TEXT_GROUPS: tuple[tuple[set[str], str, dict[str, str]], ...] = (
     (ION_OPERATOR_TEXT, "X/Z/D", {CLEAN_DESCRIPTORS: "C"}),
     (ION_DEVICE_IDENTITY, "X/Z/D", {DEVICE_IDENTITY: "K"}),
     (ION_KEPT_TEXT, "K", {}),
