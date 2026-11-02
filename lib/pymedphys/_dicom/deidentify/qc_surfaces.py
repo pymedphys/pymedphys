@@ -65,6 +65,21 @@ any of whose stored doses its Dose Grid Scaling, held in float32, would
 lose (:func:`dose_values`): the whole grid, not only that slice, is then
 held. A single plane is shown by :func:`level_bands`.
 
+A signed grid, of Pixel Representation 1, such as an RT Dose of Dose Type
+ERROR, which stores the difference between two doses, can hold doses below
+0, which no level above shows, and a face can be outlined by them as by
+doses above 0. Its sheet is therefore two ladders, each as above: first that
+of its doses above 0, then, after white rows of :data:`SIGN_RULE`, that of
+the magnitudes of its doses below 0, from their support, the voxels of any
+dose below 0, down to each fraction of the greatest magnitude below 0 above
+the smallest. Each voxel takes the least of its slices into the second
+ladder, as it takes the greatest into the first, so that every slice is
+drawn there too. Every edge of the region at or above a dose of either sign
+is then an edge in one ladder or the other, including one where the dose
+changes sign, which a ladder of magnitudes would not show. A signed grid of
+no dose below 0 still has the second ladder, its empty support, so that
+every signed grid's sheet is laid out alike.
+
 The volume is sampled by nearest neighbour to cubic voxels of
 :data:`MINIMUM_VOXEL` millimetres, or of its smallest spacing where that is
 larger, however large the volume, so that a long one's views are taller
@@ -97,8 +112,9 @@ from __future__ import annotations
 
 import dataclasses
 import enum
+import functools
 import math
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import scipy
@@ -134,6 +150,12 @@ MAXIMUM_DOSE_LEVELS = 40
 # that each level's group of rows can be told apart; the rows within a
 # group are separated by black.
 LEVEL_RULE = 128
+# The grey of the rows between a signed grid's ladder of doses above 0 and
+# its ladder of doses below 0, and of the columns between a signed plane's
+# two maps, so that the two can be told apart from the rules between levels.
+SIGN_RULE = 255
+# The width of the white columns between a signed plane's two maps.
+SIGN_RULE_PIXELS = 4
 RT_DOSE_STORAGE = "1.2.840.10008.5.1.4.1.1.481.2"
 
 _OTSU_BINS = 256
@@ -178,12 +200,16 @@ class Grid:
     scale : float
         What each slice is multiplied by before the threshold is applied:
         Dose Grid Scaling, or 1.
+    signed : bool
+        Whether an RT Dose's stored values are signed, so that it is shown
+        at the levels of its doses below 0 as well as above.
     """
 
     axes: tuple[int, int, int]
     coordinates: tuple[tuple[float, ...], tuple[float, ...], tuple[float, ...]]
     threshold: Threshold
     scale: float = 1.0
+    signed: bool = False
 
 
 def grid(
@@ -193,6 +219,7 @@ def grid(
     shape: tuple[int, int],
     threshold: Threshold,
     scale: float = 1.0,
+    signed: bool = False,
 ) -> Grid:
     """Return the grid of a volume whose axes lie along the patient's axes.
 
@@ -212,6 +239,8 @@ def grid(
     threshold : Threshold
     scale : float, optional
         What each slice is multiplied by before the threshold is applied.
+    signed : bool, optional
+        Whether an RT Dose's stored values are signed.
 
     Returns
     -------
@@ -229,7 +258,9 @@ def grid(
         tuple(float(value) for value in np.sign(direction[axis]) * distance)
         for direction, axis, distance in zip(directions, axes, distances)
     )
-    return Grid((axes[0], axes[1], axes[2]), (slices, rows, columns), threshold, scale)
+    return Grid(
+        (axes[0], axes[1], axes[2]), (slices, rows, columns), threshold, scale, signed
+    )
 
 
 class Surface:
@@ -260,14 +291,25 @@ class Surface:
                 np.asarray(volume.coordinates[0]), volume.axes[0], voxel
             )
         )
-        self._samples = np.full(
-            tuple(len(taken) for taken in self._taken), np.nan, np.float32
+        shape = tuple(len(taken) for taken in self._taken)
+        self._samples = np.full(shape, np.nan, np.float32)
+        # A signed RT Dose's least dose of each voxel's slices, from which
+        # its ladder of doses below 0 is drawn, as its greatest is from the
+        # samples.
+        self._signed = volume.threshold is Threshold.DOSE and volume.signed
+        self._lows = (
+            np.full(shape, np.nan, np.float32)
+            if self._signed
+            else np.zeros((0, 0, 0), np.float32)
         )
         self._added = 0
         # An RT Dose's greatest dose, and its smallest above 0, over every
-        # pixel of every slice.
+        # pixel of every slice; and of a signed one, the greatest and the
+        # smallest magnitudes of its doses below 0.
         self._peak = -math.inf
         self._floor = math.inf
+        self._deepest = -math.inf
+        self._shallowest = math.inf
         # Whether an RT Dose's scaling lost a dose of a slice (dose_values).
         self._lost = False
 
@@ -295,29 +337,41 @@ class Surface:
             positive = finite[finite > 0]
             if positive.size:
                 self._floor = min(self._floor, float(positive.min()))
+            negative = -finite[finite < 0]
+            if negative.size:
+                self._deepest = max(self._deepest, float(negative.max()))
+                self._shallowest = min(self._shallowest, float(negative.min()))
         elif scale != 1.0:
             values = frame * np.float32(scale)
         wanted = np.union1d(
             np.flatnonzero(self._taken[0] == index), self._nearest[index]
         )
+        taken = values[np.ix_(self._taken[1], self._taken[2])]
         # fmax keeps a voxel's highest slice, and ignores NaN, which is
-        # padding or a voxel not yet sampled, unless every value is.
-        self._samples[wanted] = np.fmax(
-            self._samples[wanted], values[np.ix_(self._taken[1], self._taken[2])]
-        )
+        # padding or a voxel not yet sampled, unless every value is; fmin
+        # likewise keeps its lowest, for a signed RT Dose.
+        self._samples[wanted] = np.fmax(self._samples[wanted], taken)
+        if self._signed:
+            self._lows[wanted] = np.fmin(self._lows[wanted], taken)
 
-    def mask(self, level: float | None = None) -> np.ndarray | None:
+    def mask(
+        self, level: float | None = None, below: bool = False
+    ) -> np.ndarray | None:
         """The voxels in the surface, or None if a slice is missing, if an
         RT Dose's scaling lost a dose (:func:`dose_values`), or if the volume
         is too large to render.
 
         Indexed from superior, from anterior, then from the patient's right.
         For an RT Dose, the voxels at or above ``level``, or of any dose
-        above 0 where it is 0 or not given.
+        above 0 where it is 0 or not given; or, where ``below`` is true, of
+        a signed one, the voxels of a dose at or below minus ``level``, or
+        of any dose below 0 where it is 0 or not given.
         """
         if self._added != len(self._grid.coordinates[0]) or self._lost or self._large:
             return None
-        samples = self._samples
+        if below and not self._signed:
+            raise ValueError("only a signed RT Dose has doses below 0")
+        samples = -self._lows if below else self._samples
         # NaN, padding, is below every level, and compares so.
         with np.errstate(invalid="ignore"):
             if self._grid.threshold is Threshold.DOSE:
@@ -345,6 +399,25 @@ class Surface:
         return dose_levels(self._peak, self._floor)
 
     @property
+    def levels_below(self) -> tuple[float, ...] | None:
+        """A signed RT Dose's :func:`dose_levels` of the magnitudes of its
+        doses below 0, or None for another volume."""
+        if not self._signed:
+            return None
+        return dose_levels(self._deepest, self._shallowest)
+
+    @property
+    def ladders(self) -> tuple[tuple[tuple[float, ...], bool], ...] | None:
+        """An RT Dose's ladders of levels, in the order its sheet draws
+        them, each with whether it is of doses below 0: its doses above 0,
+        then, for a signed one, below; or None for another volume."""
+        levels = self.levels
+        if levels is None:
+            return None
+        below = self.levels_below
+        return ((levels, False),) if below is None else ((levels, False), (below, True))
+
+    @property
     def sampled(self) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """For each of the volume's axes, the index sampled at each voxel
         along its patient axis, from superior, anterior, and the patient's
@@ -360,48 +433,46 @@ class Surface:
         An RT Dose's has a row of views for each of its levels, from the
         support down, each followed by the rows of :func:`hidden_rows`; the
         rows of a level are separated by black rows, and each level's from
-        the next by grey rows of :data:`LEVEL_RULE`. It is None where it
-        would have more than :data:`MAXIMUM_DOSE_LEVELS` levels, before any
-        is drawn, or would be taller than :data:`MAXIMUM_DOSE_SHEET_PIXELS`.
+        the next by grey rows of :data:`LEVEL_RULE`. A signed one's ladder
+        of doses below 0 follows its ladder above, after white rows of
+        :data:`SIGN_RULE`. It is None where either ladder would have more
+        than :data:`MAXIMUM_DOSE_LEVELS` levels, before any is drawn, or
+        where it would be taller than :data:`MAXIMUM_DOSE_SHEET_PIXELS`.
         """
-        levels = self.levels
-        if levels is None:
+        ladders = self.ladders
+        if ladders is None:
             inside = self.mask()
             return None if inside is None else side_by_side(views(inside))
-        if len(levels) > MAXIMUM_DOSE_LEVELS:
+        if any(len(levels) > MAXIMUM_DOSE_LEVELS for levels, _ in ladders):
             return None
-        height = -_GAP_PIXELS
-        rows = []
-        # Each level's rows, after the first level's, start a new group.
-        starts = set()
-        for index, level in enumerate(levels):
-            inside = self.mask(level)
-            if inside is None:
+        inside = self.mask()
+        if inside is None:
+            return None
+        # Each level has a row at least, so a sheet that cannot fit is
+        # refused before any is drawn, and each ladder is drawn within what
+        # the ladders after it leave.
+        least = [len(levels) * (inside.shape[0] + _GAP_PIXELS) for levels, _ in ladders]
+        if sum(least) - _GAP_PIXELS > MAXIMUM_DOSE_SHEET_PIXELS:
+            return None
+        parts: list[np.ndarray] = []
+        height = 0
+        for index, (levels, below) in enumerate(ladders):
+            if parts:
+                height += _GAP_PIXELS
+            drawn = level_sheet(
+                functools.partial(self.mask, below=below),
+                levels,
+                MAXIMUM_DOSE_SHEET_PIXELS - height - sum(least[index + 1 :]),
+            )
+            if drawn is None:
                 return None
-            # Each level has a row at least, so a sheet that cannot fit is
-            # refused before the rest is drawn, and so is a level's hidden
-            # rows that would not fit in what the levels below leave.
-            rest = (len(levels) - index) * (inside.shape[0] + _GAP_PIXELS)
-            if height + rest > MAXIMUM_DOSE_SHEET_PIXELS:
-                return None
-            hidden = hidden_rows(inside, MAXIMUM_DOSE_SHEET_PIXELS - height - rest)
-            if hidden is None:
-                return None
-            if rows:
-                starts.add(len(rows))
-            # A sheet now too tall is refused by the next level's bound, before
-            # it is drawn, or after the last level.
-            for row in (side_by_side(views(inside)), *hidden):
-                rows.append(row)
-                height += row.shape[0] + _GAP_PIXELS
-        gap = np.zeros((_GAP_PIXELS, rows[0].shape[1]), np.uint8)
-        rule = np.full(gap.shape, LEVEL_RULE, np.uint8)
-        parts = [
-            part
-            for index, row in enumerate(rows)
-            for part in (rule if index in starts else gap, row)
-        ]
-        return None if height > MAXIMUM_DOSE_SHEET_PIXELS else np.concatenate(parts[1:])
+            if parts:
+                parts.append(
+                    np.full((_GAP_PIXELS, drawn.shape[1]), SIGN_RULE, np.uint8)
+                )
+            parts.append(drawn)
+            height += drawn.shape[0]
+        return np.concatenate(parts)
 
     def _level(self) -> float | None:
         if self._grid.threshold is Threshold.CT:
@@ -439,24 +510,94 @@ def dose_levels(peak: float, floor: float) -> tuple[float, ...]:
         decade /= 10
 
 
+def level_sheet(
+    mask: Callable[[float], np.ndarray | None],
+    levels: Sequence[float],
+    tallest: int | None = None,
+) -> np.ndarray | None:
+    """Return a row of views at each of ``levels``, as 8-bit grey, as an RT
+    Dose's sheet lays them out.
+
+    Each level's row is followed by the rows of :func:`hidden_rows`; the
+    rows of a level are separated by black rows, and each level's from the
+    next by grey rows of :data:`LEVEL_RULE`.
+
+    Parameters
+    ----------
+    mask : callable
+        Given a level, the voxels at or above it, or of any value above 0
+        where it is 0, indexed as :meth:`Surface.mask` gives them, or None
+        where they cannot be found.
+    levels : sequence of float
+        Ascending, as :func:`dose_levels` gives them.
+    tallest : int, optional
+        The most pixels that the sheet may be tall; by default
+        :data:`MAXIMUM_DOSE_SHEET_PIXELS`.
+
+    Returns
+    -------
+    numpy.ndarray or None
+        None where there are more than :data:`MAXIMUM_DOSE_LEVELS` levels,
+        before any is drawn, where ``mask`` gives None, or where the sheet
+        would be taller than ``tallest``, which is drawn only until it is.
+    """
+    if len(levels) > MAXIMUM_DOSE_LEVELS:
+        return None
+    if tallest is None:
+        tallest = MAXIMUM_DOSE_SHEET_PIXELS
+    height = -_GAP_PIXELS
+    rows = []
+    # Each level's rows, after the first level's, start a new group.
+    starts = set()
+    for index, level in enumerate(levels):
+        inside = mask(level)
+        if inside is None:
+            return None
+        # Each level has a row at least, so a sheet that cannot fit is
+        # refused before the rest is drawn, and so is a level's hidden
+        # rows that would not fit in what the levels below leave.
+        rest = (len(levels) - index) * (inside.shape[0] + _GAP_PIXELS)
+        if height + rest > tallest:
+            return None
+        hidden = hidden_rows(inside, tallest - height - rest)
+        if hidden is None:
+            return None
+        if rows:
+            starts.add(len(rows))
+        # A sheet now too tall is refused by the next level's bound, before
+        # it is drawn, or after the last level.
+        for row in (side_by_side(views(inside)), *hidden):
+            rows.append(row)
+            height += row.shape[0] + _GAP_PIXELS
+    gap = np.zeros((_GAP_PIXELS, rows[0].shape[1]), np.uint8)
+    rule = np.full(gap.shape, LEVEL_RULE, np.uint8)
+    parts = [
+        part
+        for index, row in enumerate(rows)
+        for part in (rule if index in starts else gap, row)
+    ]
+    return None if height > tallest else np.concatenate(parts[1:])
+
+
 def dose_values(frame: np.ndarray, scale: float) -> np.ndarray | None:
     """Return an RT Dose slice's doses as float32, or None if scaling loses one.
 
     Each stored value is multiplied by ``scale``, its Dose Grid Scaling, in
     float64, then held in float32 as a surface samples it. A scaling far
-    from 1 can take a stored value above 0 to 0, or below a normal float32,
-    where doses run together, or take a finite one to infinity; no level
-    would then show what that stored value held, so the slice is refused,
-    and its grid held, rather than shown without it.
+    from 1 can take a stored value other than 0 to 0, or to a magnitude
+    below a normal float32, where doses run together, or take a finite one
+    to infinity; no level would then show what that stored value held, so
+    the slice is refused, and its grid held, rather than shown without it.
+    A signed grid's stored values below 0 are checked as those above are.
     """
     stored = np.asarray(frame, np.float64)
     with np.errstate(over="ignore", under="ignore", invalid="ignore"):
         values = (stored * scale).astype(np.float32)
     finite = np.isfinite(stored)
-    positive = finite & (stored > 0)
+    dosed = finite & (stored != 0)
     if (
         not np.isfinite(values[finite]).all()
-        or not (values[positive] >= np.finfo(np.float32).tiny).all()
+        or not (np.abs(values[dosed]) >= np.finfo(np.float32).tiny).all()
     ):
         return None
     return values
@@ -531,15 +672,19 @@ def most_crossings(inside: np.ndarray, axis: int) -> int:
     )
 
 
-def level_bands(values: np.ndarray, levels: Sequence[float]) -> np.ndarray:
+def level_bands(
+    values: np.ndarray, levels: Sequence[float], below: bool = False
+) -> np.ndarray:
     """Return an RT Dose plane as 8-bit grey by the levels its dose reaches.
 
     Each pixel is ``255 * k / len(levels)``, rounded, where ``k`` levels of
     ``levels``, as :func:`dose_levels` gives them, are at or below its dose,
     the support counting where its dose is above 0; padding, NaN, is black.
-    So each level's outline is an edge between two greys.
+    So each level's outline is an edge between two greys. Where ``below``
+    is true, its doses below 0 are mapped so by their magnitudes, and every
+    other pixel is black.
     """
-    finite = np.nan_to_num(values, nan=-np.inf)
+    finite = np.nan_to_num(-values if below else values, nan=-np.inf)
     reached = (finite > 0).astype(np.intp)
     for level in levels[1:]:
         reached += finite >= level

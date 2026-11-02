@@ -41,7 +41,13 @@ Sequence (0008,1200), where the output holds no other reference to an
 instance, so that neither condition holds
 (:mod:`~pymedphys._dicom.deidentify.common_instance_reference`). Nor are the
 items of a sequence that the engine replaced, such as the dummy item that D
-writes, compared with the source's.
+writes, compared with the source's. An item that the engine removed on its
+own, as Clean Structured Content removes an item of Content Sequence
+(D-047), is not kept, so nothing in it is checked; each attribute of the
+items after it is checked where the output holds it once that item is gone
+(:mod:`~pymedphys._dicom.deidentify.removed_items`); and a Type 1C sequence
+whose items were all so removed, such as an item's Content Sequence, whose
+condition is that the item has relationships, may go with them.
 
 What the source lacks is reported instead, by :func:`source_gaps`, and never
 acted on. Since no condition is evaluated, only an unconditional requirement
@@ -68,6 +74,7 @@ from .common_instance_reference import (
 from .compound_actions import RemovalExtent, resolve_plain_x_in_iod, strictest_type
 from .file_layout import ElementPath
 from .iods import IOD
+from .removed_items import Item, RemovedItems
 from .source import SourceEvidence
 
 # Each attribute of an overlay group, one of the even groups 6000 to 601E
@@ -172,6 +179,8 @@ def lost_requirements(
     output: SourceEvidence,
     iod: IOD,
     replaced: Collection[ElementPath] = (),
+    removed_items: Collection[Item] = (),
+    emptied: Collection[ElementPath] = (),
 ) -> tuple[LostRequirement, ...]:
     """Return each required attribute of the source that the output lost.
 
@@ -188,6 +197,15 @@ def lost_requirements(
         replaced sequence, such as the dummy item that D writes, are the
         engine's own, so the source's items there are not compared with
         them.
+    removed_items : collection of tuple of (str, int), optional
+        The items that the engine removed on their own, by the items tuple
+        of a path that ends with each, in the source's numbering.
+    emptied : collection of ElementPath, optional
+        The sequences that the engine removed because it removed every item
+        of each on its own, by their paths in the source. The loss of one
+        is allowed where the IOD gives it Type 1C alone, as it does Content
+        Sequence (0040,A730), required only where its item has
+        relationships (PS3.3 Table C.17-6), which it no longer has.
 
     Returns
     -------
@@ -196,19 +214,33 @@ def lost_requirements(
         requirement that its source met.
     """
     lost: list[LostRequirement] = []
+    removed = RemovedItems(removed_items)
     for path in source.paths():
-        if _in_replaced_sequence(path, replaced):
+        written = removed.output_path(path)
+        if written is None or _in_replaced_sequence(path, replaced):
             continue
         tags = tuple(tag for tag, _ in path.items)
         required = strictest_type(iod, path.tag, tags)
-        if required == "3" or not _item_kept(output, path):
+        if required == "3" or not _item_kept(output, written):
             continue
-        if path not in output:
-            if not _allowed_removal(iod, path, output):
+        if written not in output:
+            if not _allowed_removal(iod, written, output) and not _emptied(
+                iod, path, emptied
+            ):
                 lost.append(LostRequirement(path, required, emptied=False))
-        elif required == "1" and _empty(output, path) and not _empty(source, path):
+        elif required == "1" and _empty(output, written) and not _empty(source, path):
             lost.append(LostRequirement(path, required, emptied=True))
     return tuple(lost)
+
+
+def _emptied(iod: IOD, path: ElementPath, emptied: Collection[ElementPath]) -> bool:
+    """Return whether a Type 1C sequence went with every item of it."""
+    definitions = iod.lookup(path.tag, tuple(tag for tag, _ in path.items))
+    return (
+        path in emptied
+        and bool(definitions)
+        and all(definition.type == "1C" for definition in definitions)
+    )
 
 
 def _in_replaced_sequence(path: ElementPath, replaced: Collection[ElementPath]) -> bool:

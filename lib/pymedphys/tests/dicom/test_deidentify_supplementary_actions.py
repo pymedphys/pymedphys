@@ -89,6 +89,16 @@ SUPPORTED_DOSE_SR_IODS = (
 )
 # The IODs that the Radiation Dose SR IODs were reviewed against.
 DOSE_SR_REVIEWED_AGAINST = REVIEWED_AGAINST + TARGET_IODS
+# The general SR IODs, which the maintainer brought into scope with every
+# other SR IOD on 25 October 2026. They use no attribute that the IODs above
+# do not, so their support needed no review of their attributes.
+GENERAL_SR_IODS = (
+    "Basic Text SR",
+    "Enhanced SR",
+    "Comprehensive SR",
+    "Comprehensive 3D SR",
+    "Extensible SR",
+)
 # The RT Ion IODs, which the maintainer added to the target coverage on 31
 # October 2026, whose text, UID, and date attributes were reviewed ahead of
 # supporting them, against every IOD above, and which the first supported
@@ -105,6 +115,7 @@ SUPPORTED_IODS = (
     REVIEWED_AGAINST
     + SUPPORTED_TARGET_IODS
     + SUPPORTED_DOSE_SR_IODS
+    + GENERAL_SR_IODS
     + ION_IODS
     + RECORD_IODS
 )
@@ -632,6 +643,25 @@ def test_the_radiation_dose_sr_iods_are_generated_and_only_two_supported():
     )
 
 
+def test_the_general_sr_iods_use_no_attribute_that_the_reviewed_iods_do_not():
+    tables = iods.load_iod_tables()
+    reviewed = REVIEWED_AGAINST + TARGET_IODS + RADIATION_DOSE_SR_IODS
+
+    def used(names):
+        return {
+            definition.tag
+            for name in names
+            for definition in tables.iods[name].definitions
+        }
+
+    # Of any VR, at any depth: SR Document General, SR Document Content, and
+    # the Key Object Document, Key Object Document Series, and Timezone
+    # Modules, which some of them add, define nothing new.
+    assert set(GENERAL_SR_IODS) <= set(tables.iods)
+    assert set(GENERAL_SR_IODS) <= scope.SUPPORTED_IODS
+    assert used(GENERAL_SR_IODS) - used(reviewed) == set()
+
+
 @pytest.mark.deid_requirement("MIDI-BP-05", "MIDI-BP-06", "MIDI-BP-11")
 def test_the_text_that_only_the_radiation_dose_sr_iods_use_has_reviewed_rules():
     listed = _table_e1_1()
@@ -697,7 +727,7 @@ ION_KEPT_TEXT = {
     "(300A,0390)",  # Scan Spot Tune ID
 }
 ION_REMOVED_UNDER_EVERY_OPTION = {"(300A,0354)"}  # Patient Support Accessory Code
-ION_TEXT_GROUPS = (
+ION_TEXT_GROUPS: tuple[tuple[set[str], str, dict[str, str]], ...] = (
     (ION_OPERATOR_TEXT, "X/Z/D", {CLEAN_DESCRIPTORS: "C"}),
     (ION_DEVICE_IDENTITY, "X/Z/D", {DEVICE_IDENTITY: "K"}),
     (ION_KEPT_TEXT, "K", {}),

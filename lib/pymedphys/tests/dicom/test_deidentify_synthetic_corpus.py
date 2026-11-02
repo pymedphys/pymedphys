@@ -81,6 +81,14 @@ REFERENCED_SOP_CLASS = "(0008,1150)"
 REFERENCED_SOP_INSTANCE = "(0008,1155)"
 # The kinds that leave a value that the residual search can find.
 MARKERS = frozenset({Kind.PLANTED, Kind.CONTENT})
+# The general SR IODs, whose reports' trees follow TID 2000 or TID 1500.
+GENERAL_SR_IODS = (
+    "Basic Text SR",
+    "Enhanced SR",
+    "Comprehensive SR",
+    "Comprehensive 3D SR",
+    "Extensible SR",
+)
 LINKED_PATTERNS = {
     Kind.LINKED_UID: r"2\.25\.88888\d{5}",
     Kind.LINKED_PATIENT: r"SYNMK-LINKED-(PATIENT|ISSUER)",
@@ -209,6 +217,11 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "21-rt-image.dcm",
         "22-sr-dose-x-ray.dcm",
         "23-sr-dose-radiopharmaceutical.dcm",
+        "24-sr-basic-text.dcm",
+        "25-sr-enhanced.dcm",
+        "26-sr-comprehensive.dcm",
+        "27-sr-comprehensive-3d.dcm",
+        "28-sr-extensible.dcm",
         "47-rt-ion-plan.dcm",
         "48-rt-ion-beams-record.dcm",
         "49-rt-brachy-record.dcm",
@@ -238,13 +251,18 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "RT Image",
         "X-Ray Radiation Dose SR",
         "Radiopharmaceutical Radiation Dose SR",
+        "Basic Text SR",
+        "Enhanced SR",
+        "Comprehensive SR",
+        "Comprehensive 3D SR",
+        "Extensible SR",
         "RT Ion Plan",
         "RT Ion Beams Treatment Record",
         "RT Brachy Treatment Record",
         "RT Treatment Summary Record",
     ]
     assert corpus_module.STRUCTURED_REPORT_FILES == tuple(
-        file.name for file in corpus.files[-6:-4]
+        file.name for file in corpus.files[-11:-4]
     )
     assert (
         corpus_module.ION_PLAN_FILE,
@@ -330,6 +348,17 @@ def test_attributes_are_not_planted_only_beyond_the_depth_cap(corpus):
 
 # The sequences whose D a reviewed rule writes (D-021).
 REVIEWED_DUMMY_SEQUENCES = {"(0040,1101)", "(0008,1111)", "(0040,A073)"}
+# Institution Code Sequence's reviewed rule holds only directly in an item of
+# Interlock Resolution User Sequence (D-021).
+INSTITUTION_CODE_SEQUENCE = "(0008,0082)"
+INTERLOCK_RESOLUTION_USER = "(300A,0746)"
+
+
+def _reviewed(tag, path):
+    """Return whether a reviewed rule writes D's value for a sequence at a place."""
+    if tag == INSTITUTION_CODE_SEQUENCE:
+        return path[-1:] == (INTERLOCK_RESOLUTION_USER,)
+    return tag in REVIEWED_DUMMY_SEQUENCES
 
 
 def _resolved(iod, tag, path):
@@ -357,7 +386,7 @@ def _sequesters_at(iod, tag, path, row):
             is compound_actions.RemovalExtent.SEQUESTER
         )
     return (
-        tag not in REVIEWED_DUMMY_SEQUENCES
+        not _reviewed(tag, path)
         and not set(standard.dictionary_attribute(tag).vrs) & dummy_values.DUMMY_VRS
         and _resolved(iod, tag, path) == "D"
         and not any(
@@ -400,25 +429,16 @@ def test_an_attribute_whose_removal_sequesters_is_planted_in_one_instance(corpus
 
     # Responsible Person and Responsible Organization (D-020), only in the
     # third slice, so that the other instances can be released; and the
-    # Enhanced PET Image's Radiopharmaceutical Start DateTime, and the
-    # Institution Code Sequence of the RT Beams Treatment Record's and the RT
-    # Ion Beams Treatment Record's interlock resolution users, with the
-    # attributes of its item (D-021), in no file.
+    # Enhanced PET Image's Radiopharmaceutical Start DateTime in no file.
     # Each report's Verifying Observer Sequence, which a reviewed rule keeps
-    # with dummy values (D-021), and the Requested Procedure ID of its
-    # Referenced Request Sequence, which a plain X empties there (D-020), are
-    # planted, as is the RT Brachy Treatment Record's Source Manufacturer in
-    # its Recorded Source Sequence, which a plain X empties there too.
+    # with dummy values (D-021), the Requested Procedure ID of its Referenced
+    # Request Sequence, which a plain X empties there (D-020), the
+    # Institution Code Sequence of each treatment record's interlock
+    # resolution user, whose dummy item a reviewed rule writes (D-021), and
+    # Source Manufacturer in the RT Brachy Treatment Record's Recorded Source
+    # Sequence, which a plain X empties there too, are planted.
     both = {"(0010,2297)", "(0010,2299)"}
-    only_in = {
-        "Enhanced PET Image": {"(0018,1078)"},
-        "RT Beams Treatment Record": {"(0008,0082)", "(0008,0106)", "(0008,0107)"},
-        "RT Ion Beams Treatment Record": {
-            "(0008,0082)",
-            "(0008,0106)",
-            "(0008,0107)",
-        },
-    }
+    only_in = {"Enhanced PET Image": {"(0018,1078)"}}
     assert planted == {corpus_module.SEQUESTERED_FILE: both}
     assert corpus_module.SEQUESTERED_FILE == corpus.files[2].name
     assert withheld == {
@@ -426,6 +446,38 @@ def test_an_attribute_whose_removal_sequesters_is_planted_in_one_instance(corpus
         for file in corpus.files
         if file.name != corpus_module.SEQUESTERED_FILE
     }
+
+
+@pytest.mark.parametrize(
+    ("name", "session"),
+    [
+        ("20-rt-beams-record.dcm", "(3008,0020)"),
+        (corpus_module.ION_TREATMENT_RECORD_FILE, "(3008,0021)"),
+    ],
+)
+def test_each_interlock_users_institution_code_sequence_is_planted(
+    corpus, name, session
+):
+    # A reviewed rule writes its dummy item there (D-021), so the corpus
+    # plants it, with markers in the Table E.1-1 attributes of its item, for
+    # the runs to check that they are gone.
+    (file,) = (each for each in corpus.files if each.name == name)
+    user = (session, "(300A,0740)", "(300A,0746)")
+    placements = [
+        placement
+        for placement in file.manifest.placements
+        if tuple(tag for tag, _ in placement.path.items) == user
+        and placement.path.tag == INSTITUTION_CODE_SEQUENCE
+    ]
+    assert [placement.kind for placement in placements] == [Kind.SEQUENCE]
+    item = (*user, INSTITUTION_CODE_SEQUENCE)
+    inside = {
+        placement.path.tag: placement.kind
+        for placement in file.manifest.placements
+        if tuple(tag for tag, _ in placement.path.items) == item
+    }
+    # Context Group Version and Context Group Local Version.
+    assert inside == {"(0008,0106)": Kind.PLANTED, "(0008,0107)": Kind.PLANTED}
 
 
 def test_markers_are_unique_and_conspicuous(corpus):
@@ -1071,6 +1123,17 @@ _CONTENT_CONCEPTS = {
         ("DCM", "123003", "DATETIME"): "DT",  # Start DateTime
         ("DCM", "113870", "PNAME"): "PN",  # Person Name
     },
+    **dict.fromkeys(
+        GENERAL_SR_IODS[:3],
+        {("DCM", "121008", "PNAME"): "PN"},  # Person Observer Name
+    ),
+    **dict.fromkeys(
+        GENERAL_SR_IODS[3:],
+        {
+            ("DCM", "121008", "PNAME"): "PN",  # Person Observer Name
+            ("DCM", "121232", "UIDREF"): "UI",  # Source series for segmentation
+        },
+    ),
 }
 
 
@@ -1136,8 +1199,12 @@ def test_no_marker_is_planted_in_a_reports_root_content_item_sequences(corpus):
             if top not in ("(0040,A043)", "(0040,A730)"):
                 assert placement.reason is not Reason.CONTENT_TREE
             elif items and top == "(0040,A730)":
-                # Only the tree's own values are recorded below it.
-                assert placement.concept is not None, placement
+                # Only the tree's own values are recorded below it, and the
+                # frame of reference of a SCOORD3D item, the collection's,
+                # which takes its own row of Table E.1-1.
+                if placement.concept is None:
+                    assert placement.kind is Kind.LINKED_UID, placement
+                    assert placement.path.tag == "(3006,0024)", placement
             elif placement.concept is None:
                 assert placement.reason is Reason.CONTENT_TREE, placement
                 assert placement.values == ()

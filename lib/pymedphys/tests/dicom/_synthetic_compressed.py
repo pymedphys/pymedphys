@@ -194,6 +194,63 @@ def jpeg_extended_mid_grey(rows: int, columns: int) -> bytes:
     )
 
 
+def jpeg_extended_blocks(levels, rows: int, columns: int) -> bytes:
+    """Return a 12-bit JPEG Extended (SOF1) codestream of one component
+    whose every 8 by 8 block holds one value, ``levels[i, j]`` for the
+    block in row ``i`` and column ``j`` of blocks.
+
+    With a quantisation table of ones, a block of value ``v`` has the DC
+    coefficient ``8 (v - 2048)`` and every AC coefficient zero (T.81
+    Sections A.3.1 and A.3.3), and decodes to ``v`` exactly, since the
+    inverse DCT of a DC coefficient alone is that coefficient over 8. Each
+    DC difference is coded in a table whose 16 categories each have a
+    5-bit code, then its additional bits, then an end of block, with the
+    one 1-bit code of its table. A decoder's expected output is therefore
+    known without another decoder.
+    """
+    levels = np.asarray(levels, dtype=np.int64)
+    if levels.shape != (-(-rows // 8), -(-columns // 8)):
+        raise ValueError("one level is needed for each block")
+    if levels.min() < 0 or levels.max() > 4095:
+        raise ValueError("a level does not fit 12 bits")
+    bits = []
+    previous = 0
+    for level in levels.ravel():
+        coefficient = 8 * (int(level) - 2048)
+        difference, previous = coefficient - previous, coefficient
+        category = _category(difference)
+        bits.append(format(category, "05b"))
+        if category:
+            extra = difference if difference > 0 else difference - 1
+            bits.append(format(extra & ((1 << category) - 1), f"0{category}b"))
+        bits.append("0")
+    stream = "".join(bits)
+    stream += "1" * (-len(stream) % 8)
+    entropy = bytearray()
+    for start in range(0, len(stream), 8):
+        entropy.append(int(stream[start : start + 8], 2))
+        if entropy[-1] == 0xFF:
+            entropy.append(0x00)
+    dc_table = bytes([0x00]) + bytes(4) + bytes([16]) + bytes(11) + bytes(range(16))
+    only_code = bytes([1]) + bytes(15)
+    return (
+        b"\xff\xd8"
+        + _segment(0xDB, bytes([0]) + bytes([1]) * 64)
+        + _segment(0xC1, struct.pack(">BHHB3B", 12, rows, columns, 1, 1, 0x11, 0))
+        + _segment(0xC4, dc_table)
+        + _segment(0xC4, bytes([0x10]) + only_code + bytes([0x00]))
+        + _segment(0xDA, bytes([1, 1, 0x00, 0, 63, 0]))
+        + bytes(entropy)
+        + b"\xff\xd9"
+    )
+
+
+def block_levels_image(levels, rows: int, columns: int):
+    """Return the rows by columns image whose 8 by 8 blocks hold ``levels``,
+    as :func:`jpeg_extended_blocks` codes it."""
+    return np.kron(np.asarray(levels), np.ones((8, 8), dtype=np.int64))[:rows, :columns]
+
+
 def jpeg_baseline(frame) -> bytes:
     """Return one 8-bit monochrome frame as a JPEG Baseline codestream, by Pillow."""
     from pymedphys._imports import PIL  # pylint: disable = import-outside-toplevel

@@ -70,6 +70,9 @@ REVIEWED_DUMMY_ATTRIBUTES = {
     "(0028,2000)",
     "(0040,A073)",
 }
+# Institution Code Sequence has a reviewed rule only directly in an item of
+# Interlock Resolution User Sequence (D-021).
+INTERLOCK_RESOLUTION_USER = "(300A,0746)"
 CT_FOR_PROCESSING = "1.2.840.10008.5.1.4.1.1.2.3"
 UNESCAPED_PIPE = re.compile(r"(?<!\\)\|")
 
@@ -227,13 +230,15 @@ def test_compound_actions_are_resolved_at_every_place_a_supported_iod_defines_th
                 action = compound_actions.resolve_in_iod(
                     iod, entry.tag.replace("60xx", "6000"), path, entry.action
                 )
-                if action == "D" and not _has_dummy_value(entry.tag):
+                if action == "D" and not _has_dummy_value(entry.tag, path):
                     action = conformance.SEQUESTER
                 expected.append(conformance.Place(name, path, action))
         assert entry.places == tuple(expected), entry.tag
 
 
-def _has_dummy_value(tag):
+def _has_dummy_value(tag, path):
+    if tag == INSTITUTION_CODE_SEQUENCE:
+        return path[-1:] == (INTERLOCK_RESOLUTION_USER,)
     attribute = standard.dictionary_attribute(tag.replace("60xx", "6000"))
     return (
         tag in REVIEWED_DUMMY_ATTRIBUTES
@@ -279,26 +284,51 @@ def test_a_d_without_a_dummy_value_is_listed_as_sequestering(statement_for):
     # D on a VR without a generic dummy value, and without a reviewed rule,
     # sequesters the instance rather than write an invalid value.
     statement = statement_for("basic")
+    # A required UR value has no dummy value.
+    url = {p.action for p in _entry(statement, PIXEL_DATA_PROVIDER_URL).places}
+    assert url == {conformance.SEQUESTER}
+    # Reviewed rules give these their dummy values, whatever their VR.
+    for tag in REVIEWED_DUMMY_ATTRIBUTES | {INSTITUTION_CODE_SEQUENCE}:
+        assert conformance.SEQUESTER not in {
+            p.action for p in _entry(statement, tag).places
+        }, tag
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
+def test_an_interlock_users_institution_code_sequence_is_listed_as_d(statement_for):
+    # The reviewed rule writes a dummy item there, as the maintainer chose on
+    # 1 November 2026, so the record is no longer sequestered (D-021).
+    statement = statement_for("basic")
     places = {
         (p.iod, p.path): p.action
         for p in _entry(statement, INSTITUTION_CODE_SEQUENCE).places
     }
-    assert places[("RT Beams Treatment Record", INTERLOCK_USER)] == (
-        conformance.SEQUESTER
-    )
-    assert places[("RT Ion Beams Treatment Record", ION_INTERLOCK_USER)] == (
-        conformance.SEQUESTER
-    )
+    assert places[("RT Beams Treatment Record", INTERLOCK_USER)] == "D"
+    assert places[("RT Ion Beams Treatment Record", ION_INTERLOCK_USER)] == "D"
     assert places[("RT Plan", ASSERTER_IDENTIFICATION)] == "Z"
     assert places[("RT Ion Plan", ASSERTER_IDENTIFICATION)] == "Z"
-    # A required UR value has no dummy value either.
-    url = {p.action for p in _entry(statement, PIXEL_DATA_PROVIDER_URL).places}
-    assert url == {conformance.SEQUESTER}
-    # Reviewed rules give these their dummy values, whatever their VR.
-    for tag in REVIEWED_DUMMY_ATTRIBUTES:
-        assert conformance.SEQUESTER not in {
-            p.action for p in _entry(statement, tag).places
-        }, tag
+    assert {place for place, action in places.items() if action == "D"} == {
+        ("RT Beams Treatment Record", INTERLOCK_USER),
+        ("RT Ion Beams Treatment Record", ION_INTERLOCK_USER),
+    }
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
+@pytest.mark.parametrize(
+    "path",
+    [
+        (),
+        ("(3008,0020)", "(3008,0040)", "(3008,0060)", "(0008,1072)"),
+        ("(0044,0110)", "(0044,0103)"),
+    ],
+)
+def test_d_on_institution_code_sequence_elsewhere_would_sequester(path):
+    # The rule was reviewed only for the interlock's resolution user, so a D
+    # anywhere else, as a later IOD might give, sequesters (D-021).
+    has_dummy_value = conformance._has_dummy_value  # pylint: disable=protected-access
+    assert not has_dummy_value(INSTITUTION_CODE_SEQUENCE, path)
+    assert has_dummy_value(INSTITUTION_CODE_SEQUENCE, INTERLOCK_USER)
+    assert has_dummy_value(INSTITUTION_CODE_SEQUENCE, ION_INTERLOCK_USER)
 
 
 @pytest.mark.deid_requirement("PS3.15-E.1.3-01")

@@ -65,7 +65,9 @@ source value is read to compare (D-021). Only the VRs of
 :data:`~pymedphys._dicom.deidentify.dummy_values.DUMMY_VRS` have a generic
 dummy value. Reviewed ones exist besides for Person Identification Code
 Sequence (0040,1101), whose items' Code Value (0008,0100) and Code Meaning
-(0008,0104) are compared, for Referenced Performed Procedure Step Sequence
+(0008,0104) are compared, for Institution Code Sequence (0008,0082) in an
+item of Interlock Resolution User Sequence (300A,0746), and only there,
+whose items' are compared too, for Referenced Performed Procedure Step Sequence
 (0008,1111), whose items' Referenced SOP Instance UID (0008,1155) is read
 for its keyed replacement, and for ICC Profile (0028,2000) of VR OB
 (D-021). D on Verifying Observer Sequence (0040,A073) keeps the sequence as
@@ -114,7 +116,15 @@ and modified dates, are added with those options.
 Under Clean Structured Content, each element that
 :func:`~pymedphys._dicom.deidentify.content_items.content_item_actions` names,
 a content-item sequence that is kept or the value of one of its content
-items, takes the action that it gives in place of its rule's (D-047).
+items, takes the action that it gives in place of its rule's (D-047). Each
+element of an item of Content Sequence, or of a TABLE's Cell Values
+Sequence, that it removes on its own is removed with that item, whatever
+its rule, and so is a nested Content Sequence that it empties, with
+everything in it, whatever its Type, since its Type 1C condition lapses;
+neither removal takes anything else with it.
+The plan gives those items in :attr:`InstancePlan.removed_items`, and the
+new values of the Referenced Content Item Identifiers (0040,DB73) that the
+removals renumber, which the plan keeps, in :attr:`InstancePlan.renumbered`.
 
 Under the Retain Safe Private Option, the C that Table E.1-1 gives each
 element of a private group is settled here, by the reviewed safe private
@@ -161,13 +171,13 @@ from __future__ import annotations
 
 import dataclasses
 import enum
-import types
 from collections.abc import Mapping
 
 from .common_instance_reference import (
     is_common_instance_reference,
     is_instance_reference,
 )
+from .content_items import NO_CONTENT_ITEMS, ContentItemPlan
 from .compound_actions import (
     COMPOUND_ACTIONS,
     RemovalExtent,
@@ -175,7 +185,7 @@ from .compound_actions import (
     resolve_plain_in_iod,
     resolve_plain_x_in_iod,
 )
-from .dummy_values import DUMMY_VRS, ICC_PROFILE, KEPT_ITEM_ATTRIBUTES
+from .dummy_values import DUMMY_VRS, ICC_PROFILE, KEPT_ITEM_ATTRIBUTES, reviewed_within
 from .element_rules import ElementRule, ElementRules, RuleSource
 from .file_layout import ElementPath
 from .iods import IOD
@@ -187,15 +197,28 @@ from .standard import dictionary_attribute
 # The actions under which a sequence is kept as a container, so that its
 # items' elements take their own rules.
 DESCENDED = frozenset({"K", "U"})
-# No element takes another action than its rule's.
-_NONE: Mapping[ElementPath, str] = types.MappingProxyType({})
 _REMOVED = "X"
 # The sequences whose dummy value a reviewed rule gives, and the attributes
-# of their items that are compared with it (D-021).
+# of their items that are compared with it (D-021). Institution Code
+# Sequence's rule holds only where
+# :func:`~pymedphys._dicom.deidentify.dummy_values.reviewed_within` says.
 REVIEWED_DUMMY_SEQUENCES = {
     "(0040,1101)": frozenset({"(0008,0100)", "(0008,0104)"}),
+    "(0008,0082)": frozenset({"(0008,0100)", "(0008,0104)"}),
     "(0008,1111)": frozenset({"(0008,1155)"}),
 }
+
+
+def has_reviewed_items(path: ElementPath) -> bool:
+    """Return whether a reviewed rule gives D's items for a sequence at its place.
+
+    So it does for each sequence of :data:`REVIEWED_DUMMY_SEQUENCES`, where
+    :func:`~pymedphys._dicom.deidentify.dummy_values.reviewed_within` holds
+    for the sequences that enclose it (D-021).
+    """
+    return path.tag in REVIEWED_DUMMY_SEQUENCES and reviewed_within(
+        path.tag, tuple(tag for tag, _ in path.items)
+    )
 
 
 def descends(tag: str, action: str) -> bool:
@@ -328,6 +351,10 @@ class ElementPlan:
         is removed, which its own rule would not remove, because the plan
         keeps no other reference to an instance, so its Type 1C condition
         does not hold in the output. Otherwise ``False``.
+    removed_item : tuple of (str, int) or None
+        Under Clean Structured Content, the item of a kept Content Sequence
+        that is removed on its own and holds this element, which is removed
+        with it, as a removed sequence's descendants are; ``None`` otherwise.
     """
 
     path: ElementPath
@@ -338,6 +365,7 @@ class ElementPlan:
     consumers: frozenset[Consumer]
     removed_for: ElementPath | None = None
     lapsed: bool = False
+    removed_item: tuple[tuple[str, int], ...] | None = None
 
 
 @dataclasses.dataclass(frozen=True)
@@ -360,6 +388,22 @@ class InstancePlan:
     private_text_vms : mapping of ElementPath to str
         The VM of the rule of each private element that the plan cleans,
         which its decoded values must meet; as ``private_texts`` otherwise.
+    removed_items : frozenset of tuple of (str, int)
+        Under Clean Structured Content, each item of a kept Content Sequence
+        that is removed on its own, with everything in it, by the items
+        tuple of a path that ends with it, in the source's numbering
+        (:mod:`~pymedphys._dicom.deidentify.removed_items`); empty otherwise.
+    renumbered : mapping of ElementPath to tuple of int
+        Under Clean Structured Content, the new values of each Referenced
+        Content Item Identifier (0040,DB73) that the plan keeps and that a
+        removed item moves the target of, so that it names the same item in
+        the output; empty otherwise. A plain dictionary, as
+        ``private_texts`` is.
+    emptied : frozenset of ElementPath
+        Under Clean Structured Content, each Content Sequence that the plan
+        removes because every item of it is removed on its own; empty
+        otherwise. It is Type 1C, required only where its item has
+        relationships (PS3.3 Table C.17-6), so its loss is allowed.
     """
 
     elements: tuple[ElementPlan, ...]
@@ -371,6 +415,11 @@ class InstancePlan:
     private_text_vms: Mapping[ElementPath, str] = dataclasses.field(
         default_factory=dict, hash=False
     )
+    removed_items: frozenset[tuple[tuple[str, int], ...]] = frozenset()
+    renumbered: Mapping[ElementPath, tuple[int, ...]] = dataclasses.field(
+        default_factory=dict, hash=False
+    )
+    emptied: frozenset[ElementPath] = frozenset()
 
     def to_decode(self) -> tuple[ElementPath, ...]:
         """Return the paths of the elements that a consumer must read, in file order."""
@@ -398,13 +447,13 @@ def _vr_contradicts_dictionary(tag: str, written: str | None) -> bool:
     )
 
 
-def _has_dummy(tag: str, vr: str | None, container: bool, action: str) -> bool:
+def _has_dummy(path: ElementPath, vr: str | None, container: bool, action: str) -> bool:
     """Whether a generic or reviewed dummy value exists for the element."""
     if container:
         return action == "D" and (
-            tag in REVIEWED_DUMMY_SEQUENCES or tag in KEPT_ITEM_ATTRIBUTES
+            has_reviewed_items(path) or path.tag in KEPT_ITEM_ATTRIBUTES
         )
-    return vr in DUMMY_VRS or (tag == ICC_PROFILE and vr == "OB")
+    return vr in DUMMY_VRS or (path.tag == ICC_PROFILE and vr == "OB")
 
 
 def _removing_ancestor(
@@ -415,6 +464,16 @@ def _removing_ancestor(
         container = ElementPath(path.items[:depth], tag)
         if container in removing:
             return container
+    return None
+
+
+def _removing_item(
+    path: ElementPath, removed: frozenset[tuple[tuple[str, int], ...]]
+) -> tuple[tuple[str, int], ...] | None:
+    """Return the outermost removed item that holds ``path``, if any."""
+    for depth in range(1, len(path.items) + 1):
+        if path.items[:depth] in removed:
+            return path.items[:depth]
     return None
 
 
@@ -436,6 +495,7 @@ def _compared_in_reviewed_dummy(
     compared = REVIEWED_DUMMY_SEQUENCES.get(removed_with.tag, frozenset())
     return (
         action == "D"
+        and has_reviewed_items(removed_with)
         and len(path.items) == len(removed_with.items) + 1
         and path.tag in compared
     )
@@ -501,14 +561,16 @@ def _plan(
     rules: ElementRules,
     iod: IOD,
     forced: _PlainRemovals,
-    content_items: Mapping[ElementPath, str],
+    content_items: ContentItemPlan,
     lapsed: frozenset[ElementPath] = frozenset(),
     private: PrivatePlan | None = None,
 ) -> tuple[InstancePlan, _PlainRemovals]:
     """Plan every element, removing what ``forced`` says plain X removes.
 
     An element in ``content_items`` takes the action given there in place of
-    its rule's. The sequences in ``lapsed`` are removed too. ``private`` gives
+    its rule's, and each element in an item that it removes, or a Content
+    Sequence that it empties, is removed, whatever its Type, as the
+    engine's own removals are. The sequences in ``lapsed`` are removed too. ``private`` gives
     the action of each element of a private group under the Retain Safe
     Private Option. Also return what each plain X found removes with its
     attribute.
@@ -534,11 +596,28 @@ def _plan(
                 ElementPlan(path, vr, None, _REMOVED, removed_with, consumers)
             )
             continue
+        removed_item = _removing_item(path, content_items.removed_items)
+        if removed_item is not None:
+            consumers = _consumers(_REMOVED, container, False)
+            elements.append(
+                ElementPlan(
+                    path,
+                    vr,
+                    None,
+                    _REMOVED,
+                    None,
+                    consumers,
+                    removed_item=removed_item,
+                )
+            )
+            continue
         rule = rules.rule(path.tag, tuple(tag for tag, _ in path.items), iod=iod)
         if path in content_items:
             rule = ElementRule(
                 path.tag, RuleSource.CONTENT_ITEM, content_items[path], path.tag
             )
+        elif path in content_items.emptied:
+            rule = ElementRule(path.tag, RuleSource.CONTENT_ITEM, _REMOVED, path.tag)
         if _left_out_of_kept_item(path, kept_items):
             rule = ElementRule(path.tag, RuleSource.ENGINE, _REMOVED, path.tag)
         if rule.source is RuleSource.PRIVATE and private is not None:
@@ -550,8 +629,13 @@ def _plan(
         lapses = path in lapsed and action != _REMOVED
         if removed_for is not None or lapses:
             action = _REMOVED
-        elif action == rule.action == _REMOVED and rule.source is not RuleSource.ENGINE:
-            # The engine's own removals apply whatever the Type.
+        elif (
+            action == rule.action == _REMOVED
+            and rule.source is not RuleSource.ENGINE
+            and path not in content_items.emptied
+        ):
+            # The engine's own removals apply whatever the Type, as does
+            # emptying a Content Sequence, whose Type 1C condition lapses.
             _plan_plain_x(iod, path, vr, found, sequestrations)
         if action != _REMOVED and _vr_contradicts_dictionary(path.tag, extent.vr):
             sequestrations.append(
@@ -559,7 +643,7 @@ def _plan(
                     path, action, extent.vr, SequesterReason.VR_NOT_IN_DICTIONARY
                 )
             )
-        elif action == "D" and not _has_dummy(path.tag, vr, container, action):
+        elif action == "D" and not _has_dummy(path, vr, container, action):
             sequestrations.append(
                 Sequestration(path, action, vr, SequesterReason.NO_DUMMY_VALUE)
             )
@@ -592,7 +676,32 @@ def _plan(
             else element
             for element in elements
         ]
-    return InstancePlan(tuple(elements), tuple(sequestrations), texts, vms), found
+    kept = {element.path for element in elements if element.action in DESCENDED}
+    removed_items = frozenset(
+        item
+        for item in content_items.removed_items
+        if ElementPath(item[:-1], item[-1][0]) in kept
+    )
+    renumbered = {
+        element.path: content_items.renumbered[element.path]
+        for element in elements
+        if element.path in content_items.renumbered and element.action == "K"
+    }
+    emptied = frozenset(
+        element.path
+        for element in elements
+        if element.path in content_items.emptied and element.action == "X"
+    )
+    plan = InstancePlan(
+        tuple(elements),
+        tuple(sequestrations),
+        texts,
+        vms,
+        removed_items,
+        renumbered,
+        emptied,
+    )
+    return plan, found
 
 
 def _keeps_a_reference(plan: InstancePlan, source: SourceEvidence) -> bool:
@@ -672,7 +781,7 @@ def plan_instance(
     source: SourceEvidence,
     rules: ElementRules,
     iod: IOD,
-    content_items: Mapping[ElementPath, str] = _NONE,
+    content_items: ContentItemPlan = NO_CONTENT_ITEMS,
 ) -> InstancePlan:
     """Return the plan of every element of a source file's data set.
 
@@ -699,10 +808,13 @@ def plan_instance(
     iod : IOD
         The instance's IOD, from its SOP Class UID
         (:func:`~pymedphys._dicom.deidentify.scope.classify`).
-    content_items : Mapping of ElementPath to str, optional
+    content_items : ContentItemPlan, optional
         Under Clean Structured Content, the action of each content-item
         sequence that is kept, K, and of the value of each content item in
-        it whose concept name Table E.3.4-1 lists, in place of its rule's
+        it whose concept name Table E.3.4-1 or a supplementary row lists, in
+        place of its rule's, with the items of a Content Sequence that it
+        removes on their own, the nested Content Sequences that it empties,
+        and the identifiers that it renumbers
         (:func:`~pymedphys._dicom.deidentify.content_items.content_item_actions`,
         D-047). Its rule's source is then
         :attr:`~pymedphys._dicom.deidentify.element_rules.RuleSource.CONTENT_ITEM`.
