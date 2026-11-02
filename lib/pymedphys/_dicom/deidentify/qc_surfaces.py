@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# pylint: disable = too-many-lines
+# One module builds, renders, and checks every skin surface of the QC pack, so it is long.
+
 """Skin-surface renders for the confidential QC pack's face review (D-017).
 
 A face-recognition system matches the skin surface reconstructed from a
