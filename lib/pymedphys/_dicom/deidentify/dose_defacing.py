@@ -25,7 +25,9 @@ brain that defacing keeps, on the grid's own geometry
 (:class:`RtDoseDefacer`), and never recalculates it. A voxel is in the
 region where its centre is in the block, and is kept where the nearest
 pixel of the nearest slice that the block reaches, within half the slices'
-spacing, is one that defacing keeps (:class:`DoseBlock`); a voxel beyond
+spacing, is one that defacing keeps (:class:`DoseBlock`), of the brain or
+of a target's hull, or where its centre lies in a target's hull
+(:mod:`~pymedphys._dicom.deidentify.target_hulls`); any other voxel beyond
 the slices is not kept.
 
 The grid is placed by Image Position (Patient), Image Orientation
@@ -88,6 +90,7 @@ from .face_blocks import (
 from .pixel_cleaning import FrameMask, Layout, PixelDataRefused, frames_layout
 from .reasons import TransformReason, VisualFeaturesReason
 from .references import InstanceRecord
+from .target_hulls import KeptTargets, slice_reach
 
 RT_DOSE = "RT Dose"
 # The greatest fraction of the grid's maximum dose that the run sets to zero
@@ -124,11 +127,15 @@ class DoseBlock:
         instance, or frame of a multi-frame CT instance.
     instances : frozenset of str
         The SOP Instance UID of each instance of the series.
+    targets : KeptTargets, optional
+        The hulls of the targets that defacing keeps in the block, as the
+        series' outcome gives them; none by default.
     """
 
     block: FaceBlock
     slices: tuple[KeptSlice, ...]
     instances: frozenset[str] = frozenset()
+    targets: KeptTargets = KeptTargets()
 
     def __repr__(self) -> str:
         return f"DoseBlock(slices={len(self.slices)})"
@@ -145,7 +152,9 @@ class DoseBlock:
 
     def kept(self, points: np.ndarray) -> np.ndarray:
         """Whether defacing keeps the nearest pixel of the nearest slice to
-        each point, within half the slices' spacing.
+        each point, within half the slices' spacing, or the point lies in a
+        target's hull, which defacing keeps wherever no slice's pixel is
+        near enough.
 
         Parameters
         ----------
@@ -162,7 +171,7 @@ class DoseBlock:
         for index in np.unique(slices[slices >= 0]):
             chosen = slices == index
             kept[chosen] = self.slices[index].kept[rows[chosen], columns[chosen]]
-        return kept
+        return kept | self.targets.contains(points)
 
     def nearest_slices(self, points: np.ndarray) -> np.ndarray:
         """Return the nearest slice to each point, within half the slices'
@@ -189,12 +198,8 @@ class DoseBlock:
         heights = np.array([np.dot(each.position, normal) for each in self.slices])
         order = np.argsort(heights)
         heights = heights[order]
-        steps = np.diff(heights)
-        steps = steps[steps > 0]
         # A single slice is taken to span no more than its own pixels.
-        reach = (
-            float(np.min(steps)) / 2 if len(steps) else max(self.slices[0].spacing) / 2
-        )
+        reach = slice_reach(heights, self.slices[0].spacing)
         along = points @ normal
         nearest = np.clip(np.searchsorted(heights, along), 1, max(len(heights) - 1, 1))
         if len(heights) > 1:
@@ -278,6 +283,7 @@ def find_dose_blocks(
             continue
         (uid,) = defaced[frame]
         block = outcomes[uid].block
+        targets = outcomes[uid].targets
         assert block is not None
         positions = sorted(
             position
@@ -291,7 +297,10 @@ def find_dose_blocks(
         )
         try:
             blocks[frame] = DoseBlock(
-                block, kept_slices(block, positions, read), instances
+                block,
+                kept_slices(block, positions, read, targets),
+                instances,
+                targets,
             )
         except ValueError:
             continue

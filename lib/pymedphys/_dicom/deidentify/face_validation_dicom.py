@@ -21,8 +21,8 @@
 
 Under the Clean Recognizable Visual Features Option, a run finds the face
 block of each CT series (:mod:`~pymedphys._dicom.deidentify.face_blocks`),
-holds a series with a target in its block or an eye ROI away from the
-globes it found, sets an RT Dose in a defaced frame to zero in the block or
+keeps the targets in its block, holds a series with a target that it cannot
+keep within its slices or an eye ROI away from the globes it found, sets an RT Dose in a defaced frame to zero in the block or
 holds it where that dose is too great
 (:mod:`~pymedphys._dicom.deidentify.dose_defacing`), and cuts an RT
 Structure Set's contours by the block
@@ -62,10 +62,12 @@ longer be read, as a run gives it. Of each series of CT Image instances
   the nearer globe, which a run compares with
   :data:`~pymedphys._dicom.deidentify.face_blocks.EYE_REACH`; and the height
   of its lowest point above the block's inferior limit;
-- for a series with a block, each target of those structure sets, an ROI of
-  RT ROI Interpreted Type PTV, CTV, or GTV, by whether it holds the series
-  and why, and for one in the series' frame that does not, its clearance
-  from the block (:func:`clearance`); and
+- for a series with a block, whether the run defaces it around a target,
+  and each target of those structure sets, an ROI of RT ROI Interpreted
+  Type PTV, CTV, or GTV, by whether the run keeps it in the block, holds
+  the series for it and why, or neither (:func:`_target_codes`), and for one
+  in the series' frame that does not reach the block, its clearance from
+  it (:func:`clearance`); and
 - for any other series, whether those structure sets hold an eye ROI.
 
 Of each RT Dose and RT Structure Set that a run holds or cleans for a
@@ -119,11 +121,16 @@ from .face_blocks import (
     RT_STRUCTURE_SET,
     Defaced,
     SeriesDefacing,
+    _FARTHEST,
     _hull_reaches,
+    _in_slab,
     _is_eye,
     _roi_frames,
     _searched,
     _series_outcome,
+    _stack,
+    _target_fates,
+    _TargetFates,
     _targets,
     _tied_frames,
     find_defaced,
@@ -272,6 +279,9 @@ class SeriesMeasures:
     eye_rois : int
         How many eye ROIs, by ``_is_eye``, in its frame or naming none, the
         structure sets searched for it hold.
+    around_targets : bool
+        Whether it is defaced around a target in its block, whose region the
+        run keeps.
     eyes : tuple of EyeMeasures
         For a series with a block, each of those eye ROIs.
     targets : mapping of str to int
@@ -288,6 +298,7 @@ class SeriesMeasures:
     slice_spacing: float | None = None
     air: bool | None = None
     eye_rois: int = 0
+    around_targets: bool = False
     eyes: tuple[EyeMeasures, ...] = ()
     targets: Mapping[str, int] = dataclasses.field(default_factory=dict)
     clearances: tuple[float, ...] = ()
@@ -550,10 +561,11 @@ def _measure_series(
 ) -> SeriesMeasures:
     """Measure one CT series, given its outcome in a run."""
     block, frame = outcome.block, outcome.frame
+    stack = None
     if outcome.held:
         # A held series' block is dropped from its outcome, so it is found
         # again, as the run found it, for the holds to be measured against.
-        found, frame = _series_outcome(positions, read)
+        found, frame, stack = _series_outcome(positions, read)
         block = found.block
     if frame is None:
         frame = normalise_uid(str(records[positions[0]].frame_of_reference or ""))
@@ -582,15 +594,19 @@ def _measure_series(
         "outcome": "defaced" if outcome.problem is None else _code(outcome.problem),
         **storage,
         "eye_rois": len(eyes),
+        "around_targets": outcome.targets.in_block,
     }
     if block is not None:
+        fates = _target_fates(
+            block, stack if stack is not None else _stack(positions, read)[0]
+        )
         targets: collections.Counter[str] = collections.Counter()
         clearances: list[float] = []
         for dataset in structure_sets:
             if dataset is None:
                 targets["structure-set-not-read"] += 1
                 continue
-            for code, distance in _target_codes(dataset, frame, slices, block):
+            for code, distance in _target_codes(dataset, frame, slices, fates):
                 targets[code] += 1
                 if distance is not None:
                     clearances.append(distance)
@@ -836,15 +852,21 @@ def _eye_measures(
 
 
 def _target_codes(
-    dataset: pydicom.Dataset, frame: str, slices: set[str], block: FaceBlock
+    dataset: pydicom.Dataset, frame: str, slices: set[str], fates: _TargetFates
 ) -> Iterable[tuple[str, float | None]]:
-    """Where each target of a structure set lies, as ``_targets_reach`` in
-    :mod:`~.face_blocks` judges it, with the clearance of each that does not
-    reach the block: ``"tied-to-another-frame"`` for one in another frame
-    that the set ties to the series' slices, which holds the series;
-    ``"reaches-block"``, which holds it too; ``"clear"``; ``"no-contours"``;
-    and ``"in-another-frame"`` for one in a frame that the set does not tie
-    to the series' slices."""
+    """Where each target of a structure set lies, as ``_target_points`` and
+    ``_target_fates`` in :mod:`~.face_blocks` judge it, with the clearance
+    of each that does not reach the block: ``"tied-to-another-frame"`` for
+    one in another frame that the set ties to the series' slices, which
+    holds the series; ``"not-placed"`` for one with a coordinate that is
+    not finite or too far to place, or with a contour in a slab
+    (``_in_slab``), which holds it too; ``"kept-in-block"``
+    for one whose hull reaches the block within the slices, around which
+    the series is defaced; ``"beyond-slices"`` for one whose hull's part in
+    the block reaches beyond the slices, which holds the series;
+    ``"clear"``; ``"no-contours"``; and ``"in-another-frame"`` for one in a
+    frame that the set does not tie to the series' slices."""
+    block = fates.block
     frames_of_roi = _roi_frames(dataset)
     targets = _targets(dataset)
     tied = _tied_frames(dataset, frames_of_roi, slices)
@@ -856,18 +878,25 @@ def _target_codes(
         if (frames - {"", frame}) & tied:
             yield "tied-to-another-frame", None
         elif frames & {"", frame}:
+            items = list(item.get("ContourSequence") or [])
+            if any(_in_slab(contour) for contour in items):
+                yield "not-placed", None
+                continue
             contours = [
                 np.asarray([float(v) for v in contour.ContourData]).reshape(-1, 3)
-                for contour in item.get("ContourSequence") or []
+                for contour in items
             ]
             if not contours:
                 yield "no-contours", None
                 continue
             points = np.concatenate(contours)
-            if _hull_reaches(block, points):
-                yield "reaches-block", None
-            else:
+            if not (np.abs(points) <= _FARTHEST).all():
+                yield "not-placed", None
+            elif not _hull_reaches(block, points):
                 yield "clear", clearance(block, points)
+            else:
+                fate, _ = fates.fate(points)
+                yield fate.value, None
         else:
             yield "in-another-frame", None
 
@@ -1087,6 +1116,7 @@ def summarise(measures: DicomMeasures) -> dict[str, Any]:
         },
         "series": {
             "defaced": sum(each.outcome == "defaced" for each in series),
+            "defaced_around_targets": sum(each.around_targets for each in series),
             "not_defaced": _counted(
                 each.outcome for each in series if each.outcome != "defaced"
             ),

@@ -207,6 +207,33 @@ def test_each_frame_is_written_as_air_as_its_slice_would_be(sop_class):
     assert reached > 0
 
 
+@pytest.mark.parametrize("sop_class", _MULTI_FRAME_CT)
+def test_each_frame_is_written_around_a_target_as_its_slice_would_be(sop_class):
+    rtss = files.structure_set(
+        [("PTV", files.square((-32.0, -76.0, 20.0)))], frame=files.FRAME
+    )
+    data = files.multi_frame(_slices(), sop_class=sop_class)
+    single = _outcome(*_slices(), rtss)
+    outcome = _outcome(data, rtss)
+    dataset = _dataset(data)
+    defacer = CtDefacer(outcome.block, dataset, outcome.targets)
+
+    assert outcome.targets.in_block and single.targets.in_block
+    assert outcome.targets.depth == single.targets.depth
+    differs = 0
+    for index, (stored, each) in enumerate(zip(dataset.pixel_array, _slices())):
+        expected = CtDefacer(single.block, _dataset(each), single.targets).mask(
+            0, stored
+        )
+        plain = CtDefacer(single.block, _dataset(each)).mask(0, stored)
+        found = defacer.mask(index, stored)
+        assert (found is None) == (expected is None), index
+        if expected is not None:
+            np.testing.assert_array_equal(found.mask, expected.mask)
+            differs += not np.array_equal(expected.mask, plain.mask)
+    assert differs > 0
+
+
 def test_a_multi_frame_series_keeps_the_brain_of_its_slices():
     block = _single().block
     data = files.multi_frame(_slices())
