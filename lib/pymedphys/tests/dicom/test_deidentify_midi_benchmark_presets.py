@@ -180,12 +180,15 @@ def test_a_withheld_instance_is_described_by_status_and_reasons():
     )
 
 
+@pytest.mark.usefixtures("edition")
 def test_tps_import_gives_each_subject_a_synthetic_birth_date(tmp_path):
     # The run gives the transform the run's records before any instance, and
     # tps-import then chooses each subject's synthetic birth date. The harness
     # wraps the transform to count what it raises, and must keep that step,
     # or every instance with a Patient's Birth Date stays pending and is
     # sequestered.
+    # tps-import selects Clean Descriptors, so the invented edition stands in
+    # for TG-263's, whose spreadsheet needs xlrd, in the user extra alone.
     source = _source(tmp_path)
     for path in source.iterdir():
         dataset = pydicom.dcmread(path)
