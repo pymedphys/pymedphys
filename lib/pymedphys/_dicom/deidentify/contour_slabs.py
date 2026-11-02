@@ -24,9 +24,11 @@ contour's plane, and without a thickness the offset is to be zero. A reader
 written since may ignore both, and one written before may honour either
 alone, so the points that a contour may cover are those of its Contour Data
 moved along one direction by any distance from the least to the greatest
-that any reading gives (:class:`Slab`, :func:`slab_values`, :func:`slab_of`): from 0, its
-Contour Data as written, to the offset, less and plus half the thickness,
-along the plane's normal. A run that cuts such a contour by a face block,
+that any of the four readings gives (:class:`Slab`, :func:`slab_values`,
+:func:`slab_of`): its Contour Data as written, at 0; moved by the offset
+alone; thickened about the Contour Data alone, from less to plus half the
+thickness; and thickened about the moved plane, from the offset less half
+the thickness to the offset plus half, each along the plane's normal. A run that cuts such a contour by a face block,
 or searches it for a target or an eye, takes every point of that span
 (:func:`spread`).
 
@@ -177,10 +179,14 @@ def slab_of(values: SlabValues, points: np.ndarray) -> Slab:
     across = float(np.linalg.norm(moved - along * normal))
     if not math.isfinite(across) or across > COPLANAR:
         raise SlabRefused()
+    # The four readings: the Contour Data as written (0), moved by the
+    # offset alone (along), thickened about it alone (-depth/2 to depth/2),
+    # and thickened about the moved plane (along - depth/2 to along +
+    # depth/2), whose least and greatest bound every point of each.
     return Slab(
         _triple(normal),
-        min(0.0, along - depth / 2),
-        max(0.0, along + depth / 2),
+        min(0.0, -depth / 2, along - depth / 2),
+        max(0.0, depth / 2, along + depth / 2),
     )
 
 

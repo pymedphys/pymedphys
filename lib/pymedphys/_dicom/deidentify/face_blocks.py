@@ -72,7 +72,8 @@ kind, or both. A series is defaced only where all of these hold:
   target whose ROI names no frame, or one that is malformed, counting as
   one in the series' frame and in each frame that its structure set
   declares;
-- every point of each eye, an ROI in the series' Frame of Reference or
+- every point of each eye, and of each point's span where its contour has
+  one (:func:`_eye_far`), an ROI in the series' Frame of Reference or
   naming none, a malformed frame counting as none
   (:func:`_roi_frames`), whose ROI Name names an eye, a globe, or an eyeball
   (:func:`_is_eye`), of those structure sets lies within
@@ -920,9 +921,9 @@ def _is_eye(name: str) -> bool:
 
 def _eyes_far(dataset: pydicom.Dataset, frame: str, block: FaceBlock) -> bool:
     """Whether a point of the contours of an ROI in this Frame of Reference,
-    or naming none, whose name is an eye's (:func:`_is_eye`) lies farther
-    than :data:`EYE_REACH` from both of the block's globes' centres, or
-    cannot be placed.
+    or naming none, whose name is an eye's (:func:`_is_eye`), or of a
+    point's span, lies farther than :data:`EYE_REACH` from both of the
+    block's globes' centres, or cannot be placed (:func:`_eye_far`).
 
     So an eye drawn where the finder found no globe, as where it took
     something else for one, holds the series. Each eye is checked alone,
@@ -945,16 +946,61 @@ def _eyes_far(dataset: pydicom.Dataset, frame: str, block: FaceBlock) -> bool:
         if int(item.ReferencedROINumber) not in eyes:
             continue
         for contour in item.get("ContourSequence") or []:
-            points = _spread(contour)
-            if points is None:
-                return True
-            nearest = np.min(
-                np.linalg.norm(points[:, np.newaxis, :] - globes, axis=2), axis=1
-            )
-            # Written so that a coordinate that is not a number fails it too.
-            if not (nearest <= EYE_REACH).all():
+            if _eye_far(contour, globes):
                 return True
     return False
+
+
+def _eye_far(contour: pydicom.Dataset, globes: np.ndarray) -> bool:
+    """Whether a point of an eye's contour, or of its span where its retired
+    Contour Slab Thickness and Contour Offset Vector give it one, lies
+    farther than :data:`EYE_REACH` from every one of ``globes``' centres, or
+    the contour cannot be placed.
+
+    Each point's span is a segment, so it is checked whole, not at its
+    ends alone: the heights along it within reach of each globe form one
+    interval, found exactly, and those intervals must together cover the
+    span. A span whose ends lie near different globes may leave both
+    between them.
+    """
+    points = np.asarray([float(v) for v in contour.ContourData]).reshape(-1, 3)
+    try:
+        values = slab_values(contour)
+        slab = None if values is None else slab_of(values, points)
+    except SlabRefused:
+        return True
+    if slab is None:
+        nearest = np.min(
+            np.linalg.norm(points[:, np.newaxis, :] - globes, axis=2), axis=1
+        )
+        # Written so that a coordinate that is not a number fails it too.
+        return not (nearest <= EYE_REACH).all()
+    direction = np.asarray(slab.direction, dtype=float)
+    # Along p + t * direction, with direction a unit vector, the heights t
+    # within EYE_REACH of a centre g are those where
+    # t**2 + 2 * t * b + c <= 0, with b = (p - g) . direction and
+    # c = |p - g|**2 - EYE_REACH**2: from -b - root to -b + root, with
+    # root = sqrt(b**2 - c), and none where b**2 - c is negative.
+    offsets = points[:, np.newaxis, :] - globes[np.newaxis, :, :]
+    b = offsets @ direction
+    c = np.sum(offsets**2, axis=2) - EYE_REACH**2
+    discriminant = b**2 - c
+    # Written so that a coordinate that is not a number reaches no globe.
+    reached = discriminant >= 0
+    root = np.sqrt(np.where(reached, discriminant, 0.0))
+    low = np.where(reached, -b - root, np.inf)
+    high = np.where(reached, -b + root, -np.inf)
+    order = np.argsort(low, axis=1)
+    low = np.take_along_axis(low, order, axis=1)
+    high = np.take_along_axis(high, order, axis=1)
+    # Sweep each point's intervals from the span's near end, in order of
+    # their low ends: the span is covered where the sweep passes its far
+    # end without a gap.
+    covered = np.full(len(points), slab.near)
+    for each in range(low.shape[1]):
+        joins = low[:, each] <= covered
+        covered = np.where(joins, np.maximum(covered, high[:, each]), covered)
+    return not (covered >= slab.far).all()
 
 
 def _targets(dataset: pydicom.Dataset) -> set[int]:
@@ -1010,9 +1056,9 @@ def _targets_reach(
 def _spread(contour: pydicom.Dataset) -> np.ndarray | None:
     """Return a contour's points, with those that its retired Contour Slab
     Thickness and Contour Offset Vector may move them to
-    (:func:`~.contour_slabs.spread`), so that a target or an eye is
-    searched wherever any reading of them puts it, or None where its slab
-    cannot be placed."""
+    (:func:`~.contour_slabs.spread`), whose convex hull holds every point
+    that any reading of them puts it at, so that a target is searched
+    wherever one does, or None where its slab cannot be placed."""
     points = np.asarray([float(v) for v in contour.ContourData]).reshape(-1, 3)
     try:
         values = slab_values(contour)

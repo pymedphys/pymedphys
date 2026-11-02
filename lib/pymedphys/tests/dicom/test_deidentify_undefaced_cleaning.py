@@ -18,7 +18,7 @@ several frames, of a dose of differences, and of contours with slabs.
 Every UID and value here is invented."""
 
 # The cleaning's private geometry is tested directly.
-# pylint: disable = protected-access
+# pylint: disable = protected-access, too-many-lines
 
 from __future__ import annotations
 
@@ -152,10 +152,20 @@ def test_a_contour_without_a_slab_or_offset_has_none():
         ({"ContourSlabThickness": "4"}, -2.0, 2.0),
         ({"ContourOffsetVector": ["0", "0", "3"]}, 0.0, 3.0),
         ({"ContourOffsetVector": ["0", "0", "-3"]}, -3.0, 0.0),
-        # The slab's centre moved 5 mm, its faces 4 and 6 mm along, and the
-        # Contour Data at 0, as a reader that ignores both places it.
-        ({"ContourSlabThickness": "2", "ContourOffsetVector": ["0", "0", "5"]}, 0, 6),
-        ({"ContourSlabThickness": "4", "ContourOffsetVector": ["0", "0", "1"]}, -1, 3),
+        # With both: the Contour Data at 0, as a reader that ignores both
+        # places it; moved 5 mm, by the offset alone; from -1 to 1 mm, by
+        # the thickness alone; and from 4 to 6 mm, by both.
+        ({"ContourSlabThickness": "2", "ContourOffsetVector": ["0", "0", "5"]}, -1, 6),
+        ({"ContourSlabThickness": "2", "ContourOffsetVector": ["0", "0", "-5"]}, -6, 1),
+        # From -2 to 2 mm by the thickness alone, and -1 to 3 mm by both.
+        ({"ContourSlabThickness": "4", "ContourOffsetVector": ["0", "0", "1"]}, -2, 3),
+        ({"ContourSlabThickness": "4", "ContourOffsetVector": ["0", "0", "-1"]}, -3, 2),
+        # From -2 to 2 mm by the thickness alone, and -12 to -8 mm by both.
+        (
+            {"ContourSlabThickness": "4", "ContourOffsetVector": ["0", "0", "-10"]},
+            -12,
+            2,
+        ),
     ],
 )
 def test_a_slab_spans_every_reading_of_its_thickness_and_offset(attributes, near, far):
@@ -383,6 +393,31 @@ def test_an_offset_alone_moves_a_contour_into_the_block_and_is_cut(sign):
     assert _area([_points(each) for each in written]) == pytest.approx(20 * 15)
 
 
+@pytest.mark.parametrize("sign", [1, -1])
+def test_a_slab_thickened_about_its_contour_alone_is_cut_where_that_meets_the_block(
+    sign,
+):
+    # At z = -1 mm, 4 mm thick, and offset 10 mm down: both together put it
+    # from -13 to -9 mm, and the offset alone at -11 mm, all below the
+    # block; the thickness alone, about the Contour Data, reaches z = 1 mm.
+    # Offset 10 mm up, both put it from 7 to 11 mm, in the block, so it is
+    # cut either way; down, only the thickness alone reaches the block.
+    plane = _rectangle(-10, 10, -15, 15, -1.0)
+    contour = _contour(
+        "CLOSED_PLANAR",
+        plane,
+        ContourSlabThickness="4",
+        ContourOffsetVector=["0", "0", str(-10.0 * sign)],
+    )
+
+    (written,) = _cut_one(contour)
+
+    got = _points(written)
+    assert got[:, 2] == pytest.approx(-1.0)
+    assert (got[:, 1] >= -1e-9).all()
+    assert _area([got]) == pytest.approx(20 * 15)
+
+
 @pytest.mark.parametrize(
     "z, thickness",
     [(20.0, "1"), (22.0, "8")],
@@ -493,7 +528,7 @@ def test_no_reading_of_a_slab_cut_with_the_kept_brain_meets_air(seed):
     x0, y0 = rng.uniform(-12, 2), rng.uniform(-14, -4)
     plane = _rectangle(x0, x0 + rng.uniform(4, 12), y0, y0 + rng.uniform(4, 16), 24.0)
     thickness = rng.uniform(0.5, 5.0)
-    offset = rng.uniform(-1.0, 1.0)
+    offset = rng.uniform(-6.0, 6.0)
     contour = _contour(
         "CLOSED_PLANAR",
         plane,
@@ -513,10 +548,18 @@ def test_no_reading_of_a_slab_cut_with_the_kept_brain_meets_air(seed):
     ).buffer(-1e-6)
     samples = rng.uniform(-20, 20, size=(4000, 2))
     inside = samples[[kept.contains(shapely.geometry.Point(*p)) for p in samples]]
-    slab = slab_of(
-        SlabValues(float(f"{thickness:.6g}"), (0, 0, float(f"{offset:.6g}"))), plane
+    # Each of the four readings, found here from the values alone: the
+    # Contour Data as written, moved by the offset, thickened about it, and
+    # thickened about the moved plane.
+    depth, along = float(f"{thickness:.6g}"), float(f"{offset:.6g}")
+    heights = np.concatenate(
+        [
+            [0.0, along],
+            np.linspace(-depth / 2, depth / 2, 21),
+            np.linspace(along - depth / 2, along + depth / 2, 21),
+        ]
     )
-    for t in np.linspace(slab.near, slab.far, 41):
+    for t in heights:
         points = np.column_stack([inside, np.full(len(inside), 24.0 + t)])
         assert not region_defacing._defaced(region, points).any(), t
     # It keeps more than the whole block would leave it, wherever the brain
@@ -921,6 +964,30 @@ def test_a_target_whose_slab_reaches_the_block_reaches_it():
     )
 
 
+@pytest.mark.parametrize("offset", ["-10", "10"])
+def test_a_target_whose_thickness_alone_reaches_the_block_reaches_it(offset):
+    # At z = -1 mm and 4 mm thick: about the Contour Data alone it reaches
+    # z = 1 mm, in the block, however far the offset moves the slab that
+    # honours both.
+    below = files.structure_set([("PTV", _rectangle(-10, 10, -15, 15, -1.0))])
+    shifted = _with_slab(
+        below, ContourSlabThickness="4", ContourOffsetVector=["0", "0", offset]
+    )
+
+    assert face_blocks._targets_reach(shifted, _FRAME, set(), _BLOCK)
+    # Below the block by more than half its thickness, no reading reaches it
+    # with the offset down.
+    deeper = files.structure_set([("PTV", _rectangle(-10, 10, -15, 15, -3.0))])
+    assert face_blocks._targets_reach(
+        _with_slab(
+            deeper, ContourSlabThickness="4", ContourOffsetVector=["0", "0", offset]
+        ),
+        _FRAME,
+        set(),
+        _BLOCK,
+    ) == (offset == "10")
+
+
 def test_an_eye_whose_slab_moves_it_from_the_globes_disagrees():
     block = FaceBlock(
         (0.0, 0.0, 0.0), (0.0, -1.0, 0.0), 0.0, ((-30, -60, 0), (30, -60, 0))
@@ -938,4 +1005,42 @@ def test_an_eye_whose_slab_moves_it_from_the_globes_disagrees():
     )
     assert face_blocks._eyes_far(
         _with_slab(eye, ContourOffsetVector=["0", "40", "0"]), _FRAME, block
+    )
+
+
+def test_an_eye_whose_span_leaves_both_globes_between_its_ends_disagrees():
+    block = FaceBlock(
+        (0.0, 0.0, 0.0), (0.0, -1.0, 0.0), 0.0, ((-30, -60, 0), (30, -60, 0))
+    )
+    # A 2 by 2 mm sagittal square at x = -20 mm, near the right globe, 40 mm
+    # thick and offset 20 mm along +x: its readings span x from -40 to
+    # 20 mm, whose ends lie near one globe or the other, but whose middle,
+    # as at (0, -61, -1) mm, lies 30 mm from both.
+    square = np.array(
+        [(-20, -61, -1), (-20, -59, -1), (-20, -59, 1), (-20, -61, 1)], float
+    )
+    eye = files.structure_set([("ORGAN", square)], names=["Eye_L"])
+
+    assert not face_blocks._eyes_far(_with_slab(eye), _FRAME, block)
+    assert face_blocks._eyes_far(
+        _with_slab(
+            eye, ContourSlabThickness="40", ContourOffsetVector=["20", "0", "0"]
+        ),
+        _FRAME,
+        block,
+    )
+    # A span that stays within reach of one globe, or passes from one
+    # globe's reach into the other's without a gap, does not.
+    assert not face_blocks._eyes_far(
+        _with_slab(eye, ContourSlabThickness="8"), _FRAME, block
+    )
+    near = FaceBlock(
+        (0.0, 0.0, 0.0), (0.0, -1.0, 0.0), 0.0, ((-20, -60, 0), (20, -60, 0))
+    )
+    assert not face_blocks._eyes_far(
+        _with_slab(
+            eye, ContourSlabThickness="40", ContourOffsetVector=["20", "0", "0"]
+        ),
+        _FRAME,
+        near,
     )
