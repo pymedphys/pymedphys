@@ -96,6 +96,44 @@ def test_a_head_ct_series_has_its_face_block():
     )
 
 
+_TILTED_SCANS = {
+    "gantry-tilt-15": head.tilted(
+        degrees=15.0,
+        spacing=2.0,
+        thickness=3.0,
+        extent=((-100, 100), (-130, 110), (-30, 160)),
+    ),
+    "sheared": head.sheared(
+        head.axial(
+            spacing=2.0, thickness=3.0, extent=((-100, 100), (-130, 160), (-60, 120))
+        ),
+        15.0,
+    ),
+}
+
+
+@pytest.mark.parametrize("scan", _TILTED_SCANS.values(), ids=_TILTED_SCANS.keys())
+def test_a_tilted_series_is_not_yet_defaced_though_the_finder_finds_its_block(scan):
+    slices = tuple(files.ct_files(scan, head.Head(noise=0.0)))
+
+    outcome = _outcome(slices=slices)
+    inspection = face_blocks.inspect_series(
+        list(range(len(slices))), lambda position: slices[position]
+    )
+
+    assert outcome.block is None
+    assert outcome.problem is FaceBlockProblem.NOT_ALONG_PATIENT_AXES
+    assert inspection is not None
+    np.testing.assert_allclose(
+        inspection.block().globes,
+        (
+            (-head.GLOBE_X, head.GLOBE_Y, head.GLOBE_Z),
+            (head.GLOBE_X, head.GLOBE_Y, head.GLOBE_Z),
+        ),
+        atol=2.0,
+    )
+
+
 def test_each_series_is_found_by_its_series_instance_uid():
     other = files.ct_files(
         _SCAN, head.Head(eyes=(True, False)), series=files.ROOT + ".9"
