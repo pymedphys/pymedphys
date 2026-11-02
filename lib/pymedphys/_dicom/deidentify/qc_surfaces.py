@@ -16,7 +16,7 @@
 
 A face-recognition system matches the skin surface reconstructed from a
 volume, which neither a cine strip nor a frontal maximum intensity projection
-shows. :class:`Surface` renders that surface from the five directions of
+shows. :class:`Surface` renders that surface from the six directions of
 :data:`VIEWS`, so that a reviewer attesting that a set holds no recognisable
 face can see one where it is. :mod:`~pymedphys._dicom.deidentify.qc_previews`
 renders:
@@ -25,28 +25,59 @@ renders:
 - each RT Dose instance of two or more frames, placed by Image Position
   (Patient), Image Orientation (Patient), Pixel Spacing, and Grid Frame
   Offset Vector, whose axes lie along the patient's three directions and
-  whose frames are evenly spaced.
+  whose frames are evenly spaced, at each of a ladder of dose levels.
 
-Enhanced multi-frame images and RT Structure Set contours are not rendered.
+Enhanced multi-frame images are not rendered.
+:mod:`~pymedphys._dicom.deidentify.qc_contours` renders RT Structure Set
+contours by :func:`views`, and by :func:`view_crossings` the surfaces
+that one region hides behind its own, and
+:mod:`~pymedphys._dicom.deidentify.qc_segments` renders a Segmentation's
+segments likewise.
 
 The surface encloses the voxels at or above a threshold, applied after
 Rescale Slope and Rescale Intercept, or after Dose Grid Scaling for RT Dose:
-:data:`CT_THRESHOLD` Hounsfield units for a CT series; Otsu's threshold over
-the sampled volume for any other series, such as MR or PET, with pixel
+:data:`CT_THRESHOLD` Hounsfield units for a CT series; and Otsu's threshold
+over the sampled volume for any other series, such as MR or PET, with pixel
 padding counted below its lowest value, since padding marks where there is
-no patient; and :data:`DOSE_FRACTION` of the maximum of every voxel of the
-grid for RT Dose. Pixel padding, which is NaN, lies below every threshold.
+no patient. Pixel padding, which is NaN, lies below every threshold.
 
-An RT Dose render is a preview of one isodose surface. Lower doses can
-outline the patient where it does not, so a render that shows no face is
-inconclusive: it does not show that no face can be reconstructed from the
-grid.
+An RT Dose, or a series of RT Dose planes, is rendered at each level of
+:func:`dose_levels`, one row of views a level, from the top: its support,
+the voxels of any dose above 0, then each fraction of its greatest dose of
+0.5, 0.2, 0.1, 0.05, and so on down, whose dose is above its smallest dose
+above 0, so that no two neighbouring rows, nor the lowest and the smallest
+dose, differ by more than a factor of 2.5. A planning system either sets
+dose to zero outside the body, so that the support outlines the skin
+wherever the grid reaches past it, or computes a dose in air, so that dose
+falls steeply across the skin. The region at or above a level lies inside
+the region at or above any lower one, so an outline that holds over a band
+of dose wider than a factor of 2.5 shows in at least one row; one that
+holds only over a narrower band may show in none. The band is that at each
+point of an outline, so one whose dose varies along it can show in parts
+across rows. Each level's row is followed by the rows of
+:func:`hidden_rows`, where its surface hides some of itself, so that a lower
+dose enclosed by a higher one is shown. Each level's rows are separated
+from the next level's by grey rows of :data:`LEVEL_RULE`, and from each
+other by black, so that each level's group of rows can be told apart. A
+sheet taller than :data:`MAXIMUM_DOSE_SHEET_PIXELS`, or of more than
+:data:`MAXIMUM_DOSE_LEVELS` levels, is not drawn. Nor is the sheet of a grid
+any of whose stored doses its Dose Grid Scaling, held in float32, would
+lose (:func:`dose_values`): the whole grid, not only that slice, is then
+held. A single plane is shown by :func:`level_bands`.
 
 The volume is sampled by nearest neighbour to cubic voxels of
 :data:`MINIMUM_VOXEL` millimetres, or of its smallest spacing where that is
-larger, enlarged where needed to keep each axis within
-:data:`MAXIMUM_VOXELS` voxels. Its slices are sampled as they are decoded,
-so that it is never held at full resolution. Each view looks along
+larger, however large the volume, so that a long one's views are taller
+rather than coarser. A volume more than :data:`LONGEST` millimetres in
+extent along any axis, or more than :data:`WIDEST` across, from left to
+right or from front to back, is not rendered, so that its views stay
+within bounds at those voxels. Its slices are sampled as they are decoded,
+so that it is never held at full resolution, and its views are rendered a
+few slices at a time. Each slice is also taken into
+the voxels nearest it along the slice axis by their maximum, so that every
+slice is drawn, as it would not be by nearest neighbour alone where slices
+are closer than the voxels: a voxel is in the surface where any of its
+slices is there. Each view looks along
 horizontal rays, turned about the superior-inferior axis by its angle in
 degrees from anterior towards the patient's left. It shows the first voxel
 on each ray that is in the surface, shaded by Lambert's law from the slope
@@ -55,8 +86,11 @@ viewer, on black. The views are
 side by side in the order of :data:`VIEWS`, each with the patient's head at
 the top: the frontal view, like the frontal projection, with the patient's
 right on the viewer's left; at 90 degrees, from the patient's left, with the
-face on the viewer's left; and at -90 degrees, from the patient's right,
-with the face on the viewer's right.
+face on the viewer's left; at -90 degrees, from the patient's right,
+with the face on the viewer's right; and at 180 degrees, from behind, with
+the patient's left on the viewer's left. So a surface that faces the
+front, the back, or either side is seen face on by some view, where
+nothing nearer that view hides it.
 """
 
 from __future__ import annotations
@@ -67,17 +101,44 @@ import math
 from collections.abc import Sequence
 
 from pymedphys._imports import numpy as np
+from pymedphys._imports import scipy
 
 # Each view's angle about the superior-inferior axis, in degrees from anterior
-# towards the patient's left: frontal, the two obliques, and the two profiles.
-VIEWS = (0, 45, -45, 90, -90)
+# towards the patient's left: frontal, the two obliques, the two profiles,
+# and from behind.
+VIEWS = (0, 45, -45, 90, -90, 180)
 CT_THRESHOLD = -300.0  # Hounsfield units, between air and soft tissue
-DOSE_FRACTION = 0.05
+# The fractions of an RT Dose's greatest dose that dose_levels takes, in
+# each decade, and the greatest.
+DOSE_STEPS = (5.0, 2.0, 1.0)
+DOSE_TOP = 0.5
 MINIMUM_VOXEL = 2.0  # millimetres
-MAXIMUM_VOXELS = 256
+# The longest extent, in millimetres, along any axis, of a volume that is
+# rendered, longer than a patient, and the widest across, from left to right
+# or front to back, wider than any scanner's bore, as for a contour sheet's
+# frame; so a view of 2 mm voxels is at most about 1,000 pixels tall and 711
+# wide.
+LONGEST = 2000.0
+WIDEST = 1000.0
+# The most pixels that an RT Dose's sheet may be tall, as a contour sheet; a
+# taller one is not drawn, so that its grid is held rather than shown in an
+# image that a viewer may scale down or refuse.
+MAXIMUM_DOSE_SHEET_PIXELS = 32768
+# The most levels at which an RT Dose is shown. One grid of 32-bit stored
+# values needs at most 29, from a greatest dose of 2**32 - 1 times the
+# smallest; the rest allows for a series of planes whose scalings differ.
+# More are not drawn, so that planes whose scalings span float32's range
+# cannot take minutes to render, and their grid is held.
+MAXIMUM_DOSE_LEVELS = 40
+# The grey of the rows between one level's rows and the next level's, so
+# that each level's group of rows can be told apart; the rows within a
+# group are separated by black.
+LEVEL_RULE = 128
 RT_DOSE_STORAGE = "1.2.840.10008.5.1.4.1.1.481.2"
 
 _OTSU_BINS = 256
+# How many values Otsu's threshold counts at once.
+_OTSU_PART = 1 << 22
 # The brightness of a surface seen edge on, so that it stands out from black.
 _AMBIENT = 0.2
 # The binomial weights by which depths are averaged along each axis before
@@ -85,6 +146,11 @@ _AMBIENT = 0.2
 _SMOOTHING = (1.0, 4.0, 6.0, 4.0, 1.0)
 # Black columns between views.
 _GAP_PIXELS = 4
+# The views whose rays look along an axis of the voxels.
+_ALONG = (0, 90, -90, 180)
+# How many slices are rendered at once, so that a long volume's rays are
+# held in memory a few slices at a time.
+_SLICES_AT_A_TIME = 64
 
 
 class Threshold(enum.Enum):
@@ -92,7 +158,7 @@ class Threshold(enum.Enum):
 
     CT = "ct"  # CT_THRESHOLD
     OTSU = "otsu"  # Otsu's threshold over the sampled volume, padding lowest
-    DOSE = "dose"  # DOSE_FRACTION of the grid's maximum
+    DOSE = "dose"  # each of dose_levels, a row of views each
 
 
 @dataclasses.dataclass(frozen=True)
@@ -171,80 +237,383 @@ class Surface:
 
     def __init__(self, volume: Grid) -> None:
         self._grid = volume
+        spans = [0.0, 0.0, 0.0]
+        for coordinates, axis in zip(volume.coordinates, volume.axes):
+            spans[axis] = max(coordinates) - min(coordinates)
+        # Whether the volume is too large to render, found before any of it
+        # is sampled.
+        self._large = spans[2] > LONGEST or max(spans[:2]) > WIDEST
         voxel = voxel_side(volume.coordinates)
+        none = np.zeros(0, np.intp)
         # For each of the volume's axes, the index sampled at each voxel
         # along its patient axis: from superior, anterior, and the patient's
         # right.
         self._taken = tuple(
-            sampled_indices(np.asarray(coordinates), axis, voxel)
-            for coordinates, axis in zip(volume.coordinates, volume.axes)
+            none if self._large else sampled_indices(np.asarray(values), axis, voxel)
+            for values, axis in zip(volume.coordinates, volume.axes)
+        )
+        # The voxel nearest each slice along the slice axis.
+        self._nearest = (
+            none
+            if self._large
+            else nearest_voxels(
+                np.asarray(volume.coordinates[0]), volume.axes[0], voxel
+            )
         )
         self._samples = np.full(
             tuple(len(taken) for taken in self._taken), np.nan, np.float32
         )
         self._added = 0
+        # An RT Dose's greatest dose, and its smallest above 0, over every
+        # pixel of every slice.
         self._peak = -math.inf
+        self._floor = math.inf
+        # Whether an RT Dose's scaling lost a dose of a slice (dose_values).
+        self._lost = False
 
-    def add(self, frame: np.ndarray) -> None:
-        """Add the next slice, rescaled, with padding as NaN."""
+    def add(self, frame: np.ndarray, scale: float | None = None) -> None:
+        """Add the next slice, rescaled, with padding as NaN.
+
+        ``scale`` multiplies it in place of the grid's, as each plane of a
+        series of RT Dose planes has its own Dose Grid Scaling.
+        """
         index = self._added
         self._added += 1
-        if index >= len(self._grid.coordinates[0]):
+        if self._large or index >= len(self._grid.coordinates[0]):
             return
+        scale = self._grid.scale if scale is None else scale
         values = frame
-        if self._grid.scale != 1.0:
-            values = frame * np.float32(self._grid.scale)
         if self._grid.threshold is Threshold.DOSE:
+            scaled = dose_values(frame, scale)
+            if scaled is None:
+                self._lost = True
+                return
+            values = scaled
             finite = values[np.isfinite(values)]
             if finite.size:
                 self._peak = max(self._peak, float(finite.max()))
-        wanted = np.flatnonzero(self._taken[0] == index)
-        if wanted.size:
-            self._samples[wanted] = values[np.ix_(self._taken[1], self._taken[2])]
+            positive = finite[finite > 0]
+            if positive.size:
+                self._floor = min(self._floor, float(positive.min()))
+        elif scale != 1.0:
+            values = frame * np.float32(scale)
+        wanted = np.union1d(
+            np.flatnonzero(self._taken[0] == index), self._nearest[index]
+        )
+        # fmax keeps a voxel's highest slice, and ignores NaN, which is
+        # padding or a voxel not yet sampled, unless every value is.
+        self._samples[wanted] = np.fmax(
+            self._samples[wanted], values[np.ix_(self._taken[1], self._taken[2])]
+        )
 
-    def mask(self) -> np.ndarray | None:
-        """The voxels in the surface, or None if a slice is missing.
+    def mask(self, level: float | None = None) -> np.ndarray | None:
+        """The voxels in the surface, or None if a slice is missing, if an
+        RT Dose's scaling lost a dose (:func:`dose_values`), or if the volume
+        is too large to render.
 
         Indexed from superior, from anterior, then from the patient's right.
+        For an RT Dose, the voxels at or above ``level``, or of any dose
+        above 0 where it is 0 or not given.
         """
-        if self._added != len(self._grid.coordinates[0]):
+        if self._added != len(self._grid.coordinates[0]) or self._lost or self._large:
             return None
-        level = self._level()
-        if level is None:
-            inside = np.zeros(self._samples.shape, bool)
-        else:
-            inside = np.nan_to_num(self._samples, nan=-np.inf) >= level
+        samples = self._samples
+        # NaN, padding, is below every level, and compares so.
+        with np.errstate(invalid="ignore"):
+            if self._grid.threshold is Threshold.DOSE:
+                inside = samples >= level if level else samples > 0
+            else:
+                level = self._level()
+                if level is None:
+                    inside = np.zeros(samples.shape, bool)
+                else:
+                    inside = samples >= level
         return np.transpose(inside, [self._grid.axes.index(axis) for axis in (2, 1, 0)])
 
-    def image(self) -> np.ndarray | None:
-        """The views side by side, as 8-bit grey, or None if a slice is missing."""
-        inside = self.mask()
-        if inside is None:
+    @property
+    def large(self) -> bool:
+        """Whether the volume is too large to render: more than
+        :data:`LONGEST` millimetres in extent along z, or more than
+        :data:`WIDEST` along x or y."""
+        return self._large
+
+    @property
+    def levels(self) -> tuple[float, ...] | None:
+        """An RT Dose's :func:`dose_levels`, or None for another volume."""
+        if self._grid.threshold is not Threshold.DOSE:
             return None
-        tiles = [_shaded(_depths(inside, view)) for view in VIEWS]
-        gap = np.zeros((tiles[0].shape[0], _GAP_PIXELS), np.uint8)
-        parts = [part for tile in tiles for part in (gap, tile)][1:]
-        return np.concatenate(parts, axis=1)
+        return dose_levels(self._peak, self._floor)
+
+    @property
+    def sampled(self) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """For each of the volume's axes, the index sampled at each voxel
+        along its patient axis, from superior, anterior, and the patient's
+        right."""
+        first, second, third = self._taken
+        return first, second, third
+
+    def image(self) -> np.ndarray | None:
+        """The views side by side, as 8-bit grey, or None if a slice is
+        missing, if an RT Dose's scaling lost a dose, or if the volume is
+        too large to render.
+
+        An RT Dose's has a row of views for each of its levels, from the
+        support down, each followed by the rows of :func:`hidden_rows`; the
+        rows of a level are separated by black rows, and each level's from
+        the next by grey rows of :data:`LEVEL_RULE`. It is None where it
+        would have more than :data:`MAXIMUM_DOSE_LEVELS` levels, before any
+        is drawn, or would be taller than :data:`MAXIMUM_DOSE_SHEET_PIXELS`.
+        """
+        levels = self.levels
+        if levels is None:
+            inside = self.mask()
+            return None if inside is None else side_by_side(views(inside))
+        if len(levels) > MAXIMUM_DOSE_LEVELS:
+            return None
+        height = -_GAP_PIXELS
+        rows = []
+        # Each level's rows, after the first level's, start a new group.
+        starts = set()
+        for index, level in enumerate(levels):
+            inside = self.mask(level)
+            if inside is None:
+                return None
+            # Each level has a row at least, so a sheet that cannot fit is
+            # refused before the rest is drawn, and so is a level's hidden
+            # rows that would not fit in what the levels below leave.
+            rest = (len(levels) - index) * (inside.shape[0] + _GAP_PIXELS)
+            if height + rest > MAXIMUM_DOSE_SHEET_PIXELS:
+                return None
+            hidden = hidden_rows(inside, MAXIMUM_DOSE_SHEET_PIXELS - height - rest)
+            if hidden is None:
+                return None
+            if rows:
+                starts.add(len(rows))
+            # A sheet now too tall is refused by the next level's bound, before
+            # it is drawn, or after the last level.
+            for row in (side_by_side(views(inside)), *hidden):
+                rows.append(row)
+                height += row.shape[0] + _GAP_PIXELS
+        gap = np.zeros((_GAP_PIXELS, rows[0].shape[1]), np.uint8)
+        rule = np.full(gap.shape, LEVEL_RULE, np.uint8)
+        parts = [
+            part
+            for index, row in enumerate(rows)
+            for part in (rule if index in starts else gap, row)
+        ]
+        return None if height > MAXIMUM_DOSE_SHEET_PIXELS else np.concatenate(parts[1:])
 
     def _level(self) -> float | None:
-        threshold = self._grid.threshold
-        if threshold is Threshold.CT:
+        if self._grid.threshold is Threshold.CT:
             return CT_THRESHOLD
-        if threshold is Threshold.DOSE:
-            return DOSE_FRACTION * self._peak if self._peak > 0 else None
         return _otsu(self._samples, padding=True)
+
+
+def dose_levels(peak: float, floor: float) -> tuple[float, ...]:
+    """Return the levels at which an RT Dose is shown, ascending.
+
+    0, its support, of any dose above 0; then each fraction of ``peak`` of
+    :data:`DOSE_STEPS` in each decade, from :data:`DOSE_TOP` down, whose
+    dose is above ``floor``, so that the lowest is within a factor of 2.5
+    of it. Only the support where ``peak`` is not above 0 and finite, as for
+    a grid of no dose.
+
+    Parameters
+    ----------
+    peak : float
+        The greatest dose.
+    floor : float
+        The smallest dose above 0.
+    """
+    if not (math.isfinite(peak) and peak > 0):
+        return (0.0,)
+    levels: list[float] = []
+    decade = DOSE_TOP / DOSE_STEPS[0]
+    while True:
+        for step in DOSE_STEPS:
+            level = step * decade * peak
+            # The level falls by at least half a step, so this ends.
+            if not level > floor:
+                return (0.0, *reversed(levels))
+            levels.append(level)
+        decade /= 10
+
+
+def dose_values(frame: np.ndarray, scale: float) -> np.ndarray | None:
+    """Return an RT Dose slice's doses as float32, or None if scaling loses one.
+
+    Each stored value is multiplied by ``scale``, its Dose Grid Scaling, in
+    float64, then held in float32 as a surface samples it. A scaling far
+    from 1 can take a stored value above 0 to 0, or below a normal float32,
+    where doses run together, or take a finite one to infinity; no level
+    would then show what that stored value held, so the slice is refused,
+    and its grid held, rather than shown without it.
+    """
+    stored = np.asarray(frame, np.float64)
+    with np.errstate(over="ignore", under="ignore", invalid="ignore"):
+        values = (stored * scale).astype(np.float32)
+    finite = np.isfinite(stored)
+    positive = finite & (stored > 0)
+    if (
+        not np.isfinite(values[finite]).all()
+        or not (values[positive] >= np.finfo(np.float32).tiny).all()
+    ):
+        return None
+    return values
+
+
+def hidden_rows(inside: np.ndarray, room: int | None = None) -> list[np.ndarray] | None:
+    """Return the rows of views that show the surfaces of ``inside`` that
+    its first surfaces hide, each as 8-bit grey; none where it hides none.
+    None, before any is drawn, where its rows of crossings, each with the
+    gap above it, would take more than ``room`` pixels.
+
+    The rays of the frontal view, the view from behind, and the profiles
+    look along axes of the voxels, and so meet every voxel of the surface;
+    where one crosses the surface more than twice, the region hides some of
+    its surface behind its own, as a lower dose enclosed by a higher one is
+    hidden behind it. The rows are then, as a contour sheet draws an ROI that
+    hides its own surface, one of its cavities, the voxels that each slice
+    encloses but does not hold, as a region of their own, where it has any;
+    and one for each further crossing, in which each ray shows the surface
+    where it crosses it, into or out of the region, that many times from
+    the viewer, so that every surface that those rays cross is shown. One
+    surface may be shown in parts across those rows, where rays cross
+    different numbers of surfaces before it, so they are read together. The
+    oblique views are black in those rows, since their rays, which step
+    between voxels, cross a surface falsely where they graze it. The rows
+    of crossings are counted (:func:`most_crossings`) before any is drawn,
+    so that, within a sheet's height bound, the crossings found are at
+    most about 32,768 by 711 for each of four views, as 16-bit integers,
+    some 190 MB, however intricate the region.
+
+    ``inside`` is indexed from superior, from anterior, and from the
+    patient's right, as :meth:`Surface.mask` gives it.
+    """
+    most = max(most_crossings(inside, axis) for axis in (1, 2))
+    if most <= 2:
+        return []
+    if room is not None and (most - 1) * (len(inside) + _GAP_PIXELS) > room:
+        return None
+    rows = []
+    # Each slice's cavities: what its region encloses, but does not hold.
+    within = np.zeros((3, 3, 3), bool)
+    within[1] = [[False, True, False], [True, True, True], [False, True, False]]
+    cavities = scipy.ndimage.binary_fill_holes(inside, within) & ~inside
+    if cavities.any():
+        rows.append(side_by_side(views(cavities)))
+    along = dict(zip(_ALONG, view_crossings(inside, _ALONG)))
+    none = np.full(along[0].shape[1:], -1)
+    for crossing in range(1, max(len(each) for each in along.values())):
+        depths = []
+        for view in VIEWS:
+            each = along.get(view)
+            depths.append(
+                none if each is None or crossing >= len(each) else each[crossing]
+            )
+        rows.append(side_by_side([shaded(each) for each in depths]))
+    return rows
+
+
+def most_crossings(inside: np.ndarray, axis: int) -> int:
+    """The most times that a line of voxels along an axis within a slice
+    crosses in or out of the region, found a few slices at a time.
+
+    For axis 1, from anterior, it is the most crossings of any ray of the
+    frontal view or the view from behind, and for axis 2, from the
+    patient's right, of either profile.
+    """
+    padding = [(0, 0)] * inside.ndim
+    padding[axis] = (1, 1)
+    return max(
+        int(np.diff(np.pad(part, padding), axis=axis).sum(axis=axis).max(initial=0))
+        for part in _slice_runs(inside)
+    )
+
+
+def level_bands(values: np.ndarray, levels: Sequence[float]) -> np.ndarray:
+    """Return an RT Dose plane as 8-bit grey by the levels its dose reaches.
+
+    Each pixel is ``255 * k / len(levels)``, rounded, where ``k`` levels of
+    ``levels``, as :func:`dose_levels` gives them, are at or below its dose,
+    the support counting where its dose is above 0; padding, NaN, is black.
+    So each level's outline is an edge between two greys.
+    """
+    finite = np.nan_to_num(values, nan=-np.inf)
+    reached = (finite > 0).astype(np.intp)
+    for level in levels[1:]:
+        reached += finite >= level
+    return np.rint(reached * (255.0 / len(levels))).astype(np.uint8)
+
+
+def views(inside: np.ndarray) -> list[np.ndarray]:
+    """Render voxels from each direction of :data:`VIEWS`, as the module
+    describes, each as 8-bit grey.
+
+    ``inside`` is indexed from superior, from anterior, and from the
+    patient's right, as :meth:`Surface.mask` gives it.
+    """
+    return [shaded(depths) for depths in view_depths(inside)]
+
+
+def view_depths(inside: np.ndarray) -> list[np.ndarray]:
+    """For each direction of :data:`VIEWS`, the depth along each ray of the
+    first voxel in ``inside``, or -1 where a ray meets none.
+
+    Each is indexed from superior, and across from the viewer's left, as
+    the tiles of :func:`views` are. Each slice's rays are stepped alone, so
+    the slices are rendered a few at a time.
+    """
+    parts = [[_depths(part, view) for view in VIEWS] for part in _slice_runs(inside)]
+    return [np.concatenate(each) for each in zip(*parts)]
+
+
+def view_crossings(
+    inside: np.ndarray, directions: Sequence[float] = VIEWS
+) -> list[np.ndarray]:
+    """For each of ``directions``, by default :data:`VIEWS`, the depth along
+    each ray of each voxel at which it crosses the surface, entering or
+    leaving it, in order from the viewer.
+
+    Each is of shape (crossings, rows, across), indexed from superior, and
+    across from the viewer's left, as the tiles of :func:`views` are, with
+    -1 where a ray crosses the surface fewer times; its first crossings are
+    :func:`view_depths`. A crossing into the surface is at the first voxel
+    in it, and one out of it at the last. They are 16-bit integers, since
+    no ray is 32,768 voxels long, found a few slices at a time.
+    """
+    parts = [
+        [_crossings(part, view) for view in directions] for part in _slice_runs(inside)
+    ]
+    found = []
+    for each in zip(*parts):
+        most = max(len(part) for part in each)
+        padded = [
+            np.pad(part, ((0, most - len(part)), (0, 0), (0, 0)), constant_values=-1)
+            for part in each
+        ]
+        found.append(np.concatenate(padded, axis=1))
+    return found
+
+
+def side_by_side(tiles: Sequence[np.ndarray]) -> np.ndarray:
+    """Lay the tiles of one height out from left to right, each separated
+    from the next by black columns."""
+    gap = np.zeros((tiles[0].shape[0], _GAP_PIXELS, *tiles[0].shape[2:]), np.uint8)
+    parts = [part for tile in tiles for part in (gap, tile)][1:]
+    return np.concatenate(parts, axis=1)
 
 
 def voxel_side(
     coordinates: Sequence[Sequence[float]],
     minimum: float = MINIMUM_VOXEL,
-    maximum_voxels: int = MAXIMUM_VOXELS,
+    maximum_voxels: int | None = None,
 ) -> float:
     """The side of a cubic voxel, in millimetres, to sample a volume to.
 
     ``minimum``, or the volume's smallest spacing where that is larger,
     enlarged where needed to keep each axis within ``maximum_voxels``
-    voxels. ``coordinates`` are a :class:`Grid`'s.
+    voxels, if given. ``coordinates`` are a :class:`Grid`'s.
     """
     spacings = [
         float(np.abs(np.diff(values)).min())
@@ -252,6 +621,8 @@ def voxel_side(
         if len(values) > 1
     ]
     voxel = max(minimum, min(spacings, default=minimum))
+    if maximum_voxels is None:
+        return voxel
     extent = max(max(values) - min(values) for values in coordinates)
     return max(voxel, extent / (maximum_voxels - 1))
 
@@ -263,20 +634,34 @@ def sampled_indices(coordinates: np.ndarray, axis: int, voxel: float) -> np.ndar
     The voxels are ``voxel`` millimetres apart, from the highest coordinate
     along z and from the lowest along x and y.
     """
-    low, high = float(coordinates.min()), float(coordinates.max())
-    # The end is kept, though the division may fall a little short of it.
-    count = math.floor((high - low) / voxel + 1e-6) + 1
-    wanted = (
-        high - np.arange(count) * voxel if axis == 2 else low + np.arange(count) * voxel
-    )
+    wanted = _voxel_coordinates(coordinates, axis, voxel)
     if len(coordinates) == 1:
-        return np.zeros(count, np.intp)
+        return np.zeros(len(wanted), np.intp)
     order = np.argsort(coordinates, kind="stable")
     ascending = coordinates[order]
     right = np.clip(np.searchsorted(ascending, wanted), 1, len(ascending) - 1)
     left = right - 1
     closer_left = (wanted - ascending[left]) <= (ascending[right] - wanted)
     return order[np.where(closer_left, left, right)]
+
+
+def nearest_voxels(coordinates: np.ndarray, axis: int, voxel: float) -> np.ndarray:
+    """The index of the voxel nearest each coordinate along one axis, the
+    voxels being those of :func:`sampled_indices`."""
+    wanted = _voxel_coordinates(coordinates, axis, voxel)
+    return np.abs(coordinates[:, np.newaxis] - wanted[np.newaxis, :]).argmin(axis=1)
+
+
+def _voxel_coordinates(coordinates: np.ndarray, axis: int, voxel: float) -> np.ndarray:
+    """The coordinate of each voxel along one axis, ``voxel`` millimetres
+    apart, from the highest coordinate along z and from the lowest along x
+    and y."""
+    low, high = float(coordinates.min()), float(coordinates.max())
+    # The end is kept, though the division may fall a little short of it.
+    count = math.floor((high - low) / voxel + 1e-6) + 1
+    return (
+        high - np.arange(count) * voxel if axis == 2 else low + np.arange(count) * voxel
+    )
 
 
 def _otsu(values: np.ndarray, padding: bool = False) -> float | None:
@@ -293,15 +678,31 @@ def _otsu(values: np.ndarray, padding: bool = False) -> float | None:
     are all one then has the threshold of that value, so its padding still
     outlines it. Where padding is the only background and the patient's
     values vary, the threshold can still fall among them.
+
+    The values are counted a few million at a time, each bin by value
+    alone, so the counts are those of all of them at once.
     """
-    finite = values[np.isfinite(values)].astype(np.float64)
-    padded = int(np.isnan(values).sum()) if padding else 0
-    if finite.size == 0:
+    flat = values.reshape(-1)
+    parts = [
+        flat[start : start + _OTSU_PART] for start in range(0, flat.size, _OTSU_PART)
+    ]
+    low, high, padded = math.inf, -math.inf, 0
+    for part in parts:
+        finite = part[np.isfinite(part)]
+        if finite.size:
+            low = min(low, float(finite.min()))
+            high = max(high, float(finite.max()))
+        if padding:
+            padded += int(np.isnan(part).sum())
+    if low > high:
         return None
-    low, high = float(finite.min()), float(finite.max())
     if high <= low:
         return low if padded else None
-    counts, edges = np.histogram(finite, bins=_OTSU_BINS, range=(low, high))
+    counts = np.zeros(_OTSU_BINS, np.int64)
+    for part in parts:
+        finite = part[np.isfinite(part)].astype(np.float64)
+        counts += np.histogram(finite, bins=_OTSU_BINS, range=(low, high))[0]
+    edges = np.histogram_bin_edges(np.zeros(0), bins=_OTSU_BINS, range=(low, high))
     centres = (edges[:-1] + edges[1:]) / 2
     if padded:
         # In float64, a bin's width below a float32 value stays distinct from it.
@@ -325,9 +726,50 @@ def _depths(inside: np.ndarray, view: float) -> np.ndarray:
 
     ``inside`` is indexed from superior, from anterior, and from the
     patient's right. The result is indexed from superior, and across from
-    the viewer's left, with -1 where a ray meets no voxel. Rays turn about
-    a voxel at or next to the middle, and reach every voxel in every view.
+    the viewer's left, with -1 where a ray meets no voxel.
     """
+    rays = _rays(inside, view)
+    met = rays.any(axis=1)
+    return np.where(met, rays.argmax(axis=1), -1)
+
+
+def _crossings(inside: np.ndarray, view: float) -> np.ndarray:
+    """For each ray of a view, the depth of each voxel at which it crosses
+    the surface, as :func:`view_crossings` gives them."""
+    rays = _rays(inside, view)
+    rows, steps, across = rays.shape
+    # Each ray's voxels in order, so that its crossings are found in order,
+    # and one beyond its end, so that a ray that ends in the surface leaves it.
+    along = np.zeros((rows, across, steps + 1), bool)
+    along[..., :steps] = np.moveaxis(rays, 1, 2)
+    before = np.zeros_like(along)
+    before[..., 1:] = along[..., :-1]
+    row, column, step = np.nonzero(along != before)
+    depth = np.where(along[row, column, step], step, step - 1)
+    ray = row * across + column
+    counts = np.bincount(ray, minlength=rows * across)
+    rank = np.arange(len(ray)) - (np.cumsum(counts) - counts)[ray]
+    crossings = np.full(
+        (max(1, int(np.max(counts, initial=0))), rows, across), -1, np.int16
+    )
+    crossings[rank, row, column] = depth
+    return crossings
+
+
+def _slice_runs(inside: np.ndarray) -> list[np.ndarray]:
+    """Runs of up to ``_SLICES_AT_A_TIME`` slices, in order, as views; one
+    run where there are no slices."""
+    return [
+        inside[start : start + _SLICES_AT_A_TIME]
+        for start in range(0, max(len(inside), 1), _SLICES_AT_A_TIME)
+    ]
+
+
+def _rays(inside: np.ndarray, view: float) -> np.ndarray:
+    """The voxels along each ray of a view, indexed from superior, by depth
+    from the viewer, and across from the viewer's left, with False beyond
+    ``inside``. Rays turn about a voxel at or next to the middle, and reach
+    every voxel in every view."""
     rows, deep, wide = inside.shape
     middle_y, middle_x = (deep - 1) // 2, (wide - 1) // 2
     reach = math.ceil(
@@ -345,17 +787,18 @@ def _depths(inside: np.ndarray, view: float) -> np.ndarray:
     outside = (x < 0) | (x >= wide) | (y < 0) | (y >= deep)
     padded = np.zeros((rows, deep + 1, wide + 1), bool)
     padded[:, :deep, :wide] = inside
-    rays = padded[
+    rays: np.ndarray = padded[
         :,
         np.asarray(np.where(outside, deep, y), dtype=np.intp),
         np.asarray(np.where(outside, wide, x), dtype=np.intp),
     ]
-    met = rays.any(axis=1)
-    return np.where(met, rays.argmax(axis=1), -1)
+    return rays
 
 
-def _shaded(depths: np.ndarray) -> np.ndarray:
-    """Shade each surface voxel by Lambert's law, lit from the viewer."""
+def shaded(depths: np.ndarray) -> np.ndarray:
+    """Shade each surface voxel of a view by Lambert's law, lit from the
+    viewer, as 8-bit grey, from the depth along each ray, or -1 where a ray
+    meets none."""
     met = depths >= 0
     depth = _smoothed(depths.astype(np.float64), met)
     down, across = _slope(depth, met, 0), _slope(depth, met, 1)

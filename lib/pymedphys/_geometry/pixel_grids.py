@@ -30,12 +30,13 @@ import dataclasses
 
 from pymedphys._imports import numpy as np
 
-from .polygons import clip
+from .polygons import clip, nonzero_area, signed_area
 
 # The area, in pixels, at or below which a piece bounds nothing: a sliver
-# that rounding leaves where a ring's vertex lies on a pixel's corner.
-# Pieces are measured by :func:`_area_bound`, so that a self-crossing
-# piece's opposite windings cannot cancel to below it.
+# that rounding leaves where a ring's vertex lies on a pixel's corner, or a
+# spike that runs into a pixel and back. Pieces are measured by
+# :func:`_has_area`, so that a self-crossing piece's opposite windings
+# cannot cancel to below it.
 NO_AREA = 1e-9
 
 
@@ -119,9 +120,12 @@ def within_pixels(
         are the ring's region within the chosen squares: for each run of
         chosen pixels along a row, the ring's part within the run's
         rectangle, each with the ring's winding where the ring is simple.
-        A piece is left out only where its region's area is at most
-        :data:`NO_AREA` of a pixel's, by a bound that a self-crossing
-        piece's opposite windings do not cancel.
+        A piece is left out where its signed area, and its region's area
+        by the nonzero rule, are each at most :data:`NO_AREA` of a
+        pixel's, so that a piece that bounds nothing, such as a spike that
+        runs into a chosen pixel and turns back or a sliver along two of a
+        pixel's edges, is left out, while a self-crossing piece whose
+        lobes' signed areas cancel keeps its region.
 
     Raises
     ------
@@ -157,24 +161,43 @@ def within_pixels(
                     pieces.extend(clip(part, right_normal, right))
         if not rest:
             break
-    return [
-        piece
-        for piece in pieces
-        if len(piece) >= 3 and _area_bound(grid, piece) > NO_AREA
-    ]
+    return [piece for piece in pieces if len(piece) >= 3 and _has_area(grid, piece)]
 
 
-def _area_bound(grid: PixelGrid, piece: np.ndarray) -> float:
-    """An upper bound of the area, in pixels, of a piece's region by its
-    projection onto the grid: the absolute areas of the triangles from its
-    mean point to each of its edges, summed.
+def _has_area(grid: PixelGrid, piece: np.ndarray) -> bool:
+    """Whether a piece's signed area, or else its region's area by the
+    nonzero rule, by its projection onto the grid, is more than
+    :data:`NO_AREA` of a pixel's.
 
-    A point's winding number about the piece is the sum of its signed
-    windings about those triangles, so the region where it is not zero
-    lies within them, whereas the piece's signed area can cancel to zero
-    over a self-crossing piece's lobes.
+    The signed area alone settles most pieces. Where it is within
+    :data:`NO_AREA` of zero, the piece either bounds nothing or crosses
+    itself with lobes that cancel, which only the area by the nonzero rule
+    tells apart. Since that costs time growing at least with the square of
+    the piece's edges, and faster where it crosses itself many times, a
+    piece is first measured by a bound of both areas that costs time in
+    proportion to them, which settles a piece that lies along one line,
+    such as a sliver along a pixel's edge.
     """
     rows, columns = grid.indices(piece)
-    x = columns - columns.mean()
-    y = rows - rows.mean()
+    plane = np.column_stack([columns, rows])
+    if abs(signed_area(plane)) > NO_AREA:
+        return True
+    if _area_bound(plane) <= NO_AREA:
+        return False
+    return nonzero_area(plane) > NO_AREA
+
+
+def _area_bound(plane: np.ndarray) -> float:
+    """An upper bound of a ring's signed area in magnitude and of its area
+    by the nonzero rule, by its x and y: the absolute areas of the
+    triangles from its mean point to each of its edges, summed.
+
+    A point's winding number about the ring is the sum of its windings
+    about those triangles, so the points that the ring winds about lie
+    within them, and the signed area is the sum of the triangles' signed
+    areas. The bound is zero where every edge lies on a line through the
+    mean point, as for a ring that lies along one line.
+    """
+    x = plane[:, 0] - plane[:, 0].mean()
+    y = plane[:, 1] - plane[:, 1].mean()
     return float(np.abs(x * np.roll(y, -1) - np.roll(x, -1) * y).sum()) / 2

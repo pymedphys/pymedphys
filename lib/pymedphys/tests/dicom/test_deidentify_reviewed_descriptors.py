@@ -25,7 +25,7 @@ from unittest import mock
 
 from pymedphys._imports import pytest
 
-from pymedphys._dicom.deidentify import keys
+from pymedphys._dicom.deidentify import keys, patient_characteristics
 from pymedphys._dicom.deidentify import reviewed_descriptors as reviewed
 from pymedphys._dicom.deidentify.reviewed_descriptors import (
     Held,
@@ -83,6 +83,22 @@ def test_the_attributes_are_the_text_descriptors_that_clean_descriptors_cleans()
     assert set(attributes.values()) <= set(reviewed.MAX_CHARACTERS)
     with pytest.raises(TypeError):
         attributes[SERIES_DESCRIPTION] = "SH"
+
+
+def test_the_attributes_include_retain_patient_characteristics_free_text():
+    attributes = reviewed.descriptor_attributes()
+
+    # Clean Descriptors gives C to three of the five, and the Option alone to
+    # Pre-Medication and Special Needs (D-038).
+    assert {tag: attributes.get(tag) for tag in patient_characteristics.TAGS} == {
+        "(0010,0042)": "UT",
+        "(0010,2110)": "LO",
+        "(0038,0050)": "LO",
+        "(0038,0500)": "LO",
+        "(0040,0012)": "LO",
+    }
+    listed = _list(("(0040,0012)", "ASPIRIN", KEEP))
+    assert listed.get("(0040,0012)", "ASPIRIN") == KEEP
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.5-01")

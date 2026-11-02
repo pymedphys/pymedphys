@@ -50,8 +50,9 @@ its logger, and reads with pydicom's configuration as it is when pydicom
 is imported for the rest.
 
 What the child sends back is read as JSON, never unpickled, and is checked
-to have the form that :func:`_serve` gives it, in no more than 16 MiB, so
-that a child whose decoder a codestream subverted can give the caller only
+to have the form that :func:`_serve` gives it, in no more than 16 MiB, or
+that and the room that a call says its result needs, such as a decoded
+frame's samples, so that a child whose decoder a codestream subverted can give the caller only
 that data: through what it sends back, it cannot make the caller run code,
 import a module, or change an object, and showing one of its warnings reads
 at most a line of a module that the caller has already imported. A result
@@ -123,7 +124,8 @@ _LINES = (1 << 31) - 1
 # Where a warning is said to be from when the caller has not imported the
 # module that the child names.
 _ELSEWHERE = "<decoding process>"
-# Far more than any result, with its warnings and log records, needs.
+# Far more than any result, with its warnings and log records, needs, beyond
+# the samples of a decoded frame, for which a call makes room of its own.
 _RESULT_BYTES = 1 << 24
 # Where the warnings that the child returns are registered as shown, for each
 # module that they are said to be from, as its own registry would register
@@ -193,24 +195,28 @@ class _Child:
         assert self.process.stdout is not None
         return self.process.stdout
 
-    def call(self, task: Callable[..., Any], args: tuple) -> _Returned:
-        """Return what ``task(*args)`` gave in the child."""
+    def call(
+        self, task: Callable[..., Any], args: tuple, result_bytes: int = 0
+    ) -> _Returned:
+        """Return what ``task(*args)`` gave in the child, in no more than
+        ``result_bytes`` beyond 16 MiB."""
         _send(self.stdin, (task, args, _configuration()))
-        return _returned(self.result())
+        return _returned(self.result(result_bytes))
 
-    def result(self) -> Any:
+    def result(self, result_bytes: int = 0) -> Any:
         """Read what the child sent, as JSON.
 
         Raises
         ------
         EOFError
-            If the child ended first, or sent more than 16 MiB.
+            If the child ended first, or sent more than 16 MiB and
+            ``result_bytes``.
         ValueError
             If what it sent is not JSON.
         RecursionError
             If what it sent is JSON nested too deeply to read.
         """
-        return json.loads(_received(self.stdout, _RESULT_BYTES))
+        return json.loads(_received(self.stdout, _RESULT_BYTES + result_bytes))
 
     def close(self) -> None:
         """End the child, if it has not ended, and close its pipes.
@@ -284,13 +290,16 @@ if hasattr(os, "register_at_fork"):
     os.register_at_fork(after_in_child=_after_fork)
 
 
-def run(task: Callable[..., Any], *args: Any) -> Any:
+def run(task: Callable[..., Any], *args: Any, result_bytes: int = 0) -> Any:
     """Return ``task(*args)``, called in the child, as JSON gives it back.
 
     ``task`` must be a function defined at the top level of a module, and
     ``args`` must be picklable. A result that JSON cannot encode makes the
     call fail; a tuple is returned as a list, and the caller checks the
-    result's type before relying on it.
+    result's type before relying on it. What the child sends back may be
+    16 MiB, with its warnings and log records, and ``result_bytes`` more,
+    which a call whose result holds a decoded frame gives as that frame's
+    size once encoded.
 
     Raises
     ------
@@ -334,7 +343,7 @@ def run(task: Callable[..., Any], *args: Any) -> Any:
             _discard()
             raise DecoderUnavailable()
         try:
-            returned = child.call(task, args)
+            returned = child.call(task, args, result_bytes)
         # RecursionError is for JSON nested too deeply to read.
         except (EOFError, OSError, ValueError, RecursionError):
             _discard()

@@ -119,7 +119,7 @@ def test_the_cleaner_covers_exactly_what_modified_dates_gives_c():
     assert cleaner.clean_instance is modified_dates.modify_dates
 
 
-@pytest.mark.deid_requirement("PS3.15-E.3.6-02")
+@pytest.mark.deid_requirement("PS3.15-E.3.6-02", "MIDI-BP-12")
 def test_subject_dates_move_back_by_whole_weeks_keeping_intervals_and_weekdays():
     written = _modified(
         _value(_STUDY_DATE, "DA", "20260927"),
@@ -152,7 +152,7 @@ def test_times_are_kept_and_left_out_of_the_search():
     assert _modified(_value(_STUDY_TIME, "TM", ""))[_STUDY_TIME] == ((), False)
 
 
-@pytest.mark.deid_requirement("PS3.15-E.3.6-02")
+@pytest.mark.deid_requirement("PS3.15-E.3.6-02", "MIDI-BP-12")
 def test_a_sources_decay_interval_to_treatment_is_kept():
     written = _modified(
         _value(_SOURCE_DATE, "DA", "20260901"),
@@ -339,7 +339,7 @@ def _written(transform, dataset):
     return pydicom.dcmread(io.BytesIO(result.data)), result
 
 
-@pytest.mark.deid_requirement("PS3.15-E.3.6-02")
+@pytest.mark.deid_requirement("PS3.15-E.3.6-02", "MIDI-BP-12")
 @pytest.mark.deid_requirement("PS3.15-E.3.6-03")
 def test_an_instance_is_written_with_every_date_modified_and_released():
     weeks = dates.date_offset_weeks(
@@ -373,6 +373,7 @@ def _values(element):
     return value if isinstance(value, (list, pydicom.multival.MultiValue)) else [value]
 
 
+@pytest.mark.deid_requirement("MIDI-BP-12")
 def test_a_subject_moves_by_one_offset_in_every_instance_and_other_subjects_apart():
     transform = _transform([MODIFIED_DATES])
     first, _ = _written(transform, _plan())

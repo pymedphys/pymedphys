@@ -120,6 +120,26 @@ pinned edition, finds nothing there.
 
 [[difference]]
 validator = "dciodvfy"
+severity = "warning"
+message = "Attribute is not present in standard DICOM IOD"
+paths = [
+  "(3008,0020)/(300A,0740)/(300A,0746)/(0040,1101)/(0008,0100)",
+  "(3008,0020)/(300A,0740)/(300A,0746)/(0040,1101)/(0008,0102)",
+  "(3008,0020)/(300A,0740)/(300A,0746)/(0040,1101)/(0008,0104)",
+]
+category = "validator"
+reason = """
+In an RT Beams Treatment Record, Interlock Resolution User Sequence
+(300A,0746) includes the Person Identification Macro (PS3.3 Table 10-1),
+whose Person Identification Code Sequence (0040,1101) holds a Code Sequence
+Macro item. The dicom3tools snapshot knows no attribute of that item there.
+The findings are the Code Value, Coding Scheme Designator, and Code Meaning
+of the dummy item that the Basic Profile's action D writes; dicom-validator,
+which reads the pinned edition, finds nothing there.
+"""
+
+[[difference]]
+validator = "dciodvfy"
 severity = "error"
 message = "ReferencedSeriesSequence present but Instance does not reference Instances"
 paths = ["(0008,1115)"]

@@ -52,6 +52,7 @@ def _write(path, document):
         ("iod_modules.json", "html/part03.html"),
         ("module_attributes.json", "html/part03.html"),
         ("sop_classes.json", "chtml/part04/sect_B.5.html"),
+        ("snomed_ids.json", "chtml/part16/chapter_O.html"),
     ],
 )
 def test_each_table_is_generated_from_the_pinned_edition(name, source):

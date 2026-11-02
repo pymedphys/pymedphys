@@ -19,6 +19,8 @@ from functools import reduce
 
 from pymedphys._imports import numpy as np
 
+from .contours import get_contour_data
+
 # pylint: disable=C0103
 
 
@@ -45,7 +47,7 @@ def create_contour_sequence_dict(structure: Structure):
 
 
 def pull_coords_from_contour_sequence(contour_sequence):
-    contours_by_slice_raw = [item.ContourData for item in contour_sequence]
+    contours_by_slice_raw = [get_contour_data(item) for item in contour_sequence]
 
     x = [np.array(item[0::3]) for item in contours_by_slice_raw]
     y = [np.array(item[1::3]) for item in contours_by_slice_raw]

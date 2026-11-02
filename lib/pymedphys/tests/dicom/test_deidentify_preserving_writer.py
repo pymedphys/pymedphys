@@ -342,7 +342,7 @@ def test_an_introduced_sequence_is_written_with_its_items():
         source, output, Expectations(kept=kept, changed=frozenset(introduced))
     )
     dataset = pydicom.dcmread(io.BytesIO(_with_source_meta(data, source, written)))
-    assert dataset[0x00120064].value[0].CodeValue == "113100"
+    assert dataset.DeidentificationMethodCodeSequence[0].CodeValue == "113100"
 
 
 def _refused(source, **plan):

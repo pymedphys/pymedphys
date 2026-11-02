@@ -18,7 +18,9 @@
 that contains "shall", and each best practice of the MIDI Task Group report,
 with its status and what satisfies it. It is curated by hand, so this loader
 checks its structure; the tests check that the decisions and paths it cites
-exist and that pytest collects the tests that cite it. The design document's
+exist, that pytest collects the tests that cite it, and that its PS3.15
+entries are exactly the paragraphs that :func:`load_annex_e_paragraphs` reads
+from the tables generated from the pinned edition. The design document's
 "Requirements register" section describes the fields and statuses.
 
 A test cites the requirements it shows are met with a marker,
@@ -35,12 +37,15 @@ from __future__ import annotations
 import ast
 import collections
 import dataclasses
+import functools
 import pathlib
 import re
 from collections.abc import Iterator, Mapping, Sequence
 from typing import TypeGuard
 
 from pymedphys._imports import tomlkit
+
+from .standard import _checked_rows, _default, _read
 
 SCHEMA = "pymedphys-deid-requirements/2"
 
@@ -169,6 +174,127 @@ class RequirementsRegister:
     requirements: tuple[Requirement, ...]
 
 
+# The generated paragraphs of Annex E that the register's PS3.15 entries must
+# match, in order.
+PARAGRAPHS_FILE = "e_shall_paragraphs.json"
+PARAGRAPHS_TABLE = "PS3.15 Annex E paragraphs containing shall"
+_PARAGRAPH_FIELDS = frozenset({"section", "page", "anchor", "text"})
+_SECTION_PATTERN = re.compile(r"E(?:\.[0-9]+)+")
+_PAGE_PATTERN = re.compile(r"chtml/part15/(?:chapter_E|sect_E(?:\.[0-9]+)+)\.html")
+_ANCHOR_PATTERN = re.compile(
+    r"para_[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"
+)
+_SHALL = re.compile(r"\bshall\b")
+
+
+@dataclasses.dataclass(frozen=True)
+class AnnexEParagraph:
+    """A paragraph of DICOM PS3.15 Annex E that contains "shall".
+
+    Attributes
+    ----------
+    section : str
+        The section the paragraph is in, such as ``"E.1.1"``.
+    page : str
+        The chtml page that publishes it, below ``output/``, such as
+        ``"chtml/part15/chapter_E.html"``.
+    anchor : str
+        Its anchor on that page, such as
+        ``"para_daa1954b-9af4-4bad-aa35-41690a97fc7f"``.
+    text : str
+        The paragraph as published, with its whitespace normalised, followed
+        by any list it introduces, one item per line after a blank line.
+    """
+
+    section: str
+    page: str
+    anchor: str
+    text: str
+
+    @property
+    def url(self) -> str:
+        """The paragraph on the current edition's pages, as the register gives it."""
+        return f"https://dicom.nema.org/medical/dicom/current/output/{self.page}#{self.anchor}"
+
+
+@dataclasses.dataclass(frozen=True)
+class AnnexEParagraphs:
+    """The paragraphs of Annex E that contain "shall", generated from an edition.
+
+    Attributes
+    ----------
+    edition : str
+        The edition of DICOM PS3.15 they were generated from.
+    paragraphs : tuple of AnnexEParagraph
+        In the standard's order.
+    """
+
+    edition: str
+    paragraphs: tuple[AnnexEParagraph, ...]
+
+
+def _paragraph_problem(row: dict) -> str | None:
+    """Return what is wrong with a generated paragraph, or None if it is valid."""
+    if not (
+        isinstance(row["section"], str) and _SECTION_PATTERN.fullmatch(row["section"])
+    ):
+        return "has a section that is not of the form E.1.1"
+    if not (isinstance(row["page"], str) and _PAGE_PATTERN.fullmatch(row["page"])):
+        return "has a page that is not a chtml page of PS3.15 Annex E"
+    if not (
+        isinstance(row["anchor"], str) and _ANCHOR_PATTERN.fullmatch(row["anchor"])
+    ):
+        return "has an anchor that is not a paragraph's"
+    if not (_is_text(row["text"]) and _SHALL.search(row["text"])):
+        return "has text that does not contain 'shall'"
+    return None
+
+
+def load_annex_e_paragraphs(path: pathlib.Path | None = None) -> AnnexEParagraphs:
+    """Load the paragraphs of PS3.15 Annex E that contain "shall".
+
+    They are generated from the pinned edition with the other tables, and the
+    register records exactly these paragraphs as its PS3.15 entries. Each file
+    is read once and cached, keyed by its resolved path.
+
+    Parameters
+    ----------
+    path : pathlib.Path, optional
+        The generated file. Defaults to the one shipped with PyMedPhys.
+
+    Returns
+    -------
+    AnnexEParagraphs
+
+    Raises
+    ------
+    StandardTableError
+        For any of the file-level problems
+        :func:`~pymedphys._dicom.deidentify.standard.load_table_e1_1` rejects;
+        if a row does not have exactly a section such as ``"E.1.1"``, a chtml
+        page of Annex E, a paragraph's anchor, and text that contains
+        "shall"; or if an anchor repeats.
+    """
+    return _load_annex_e_paragraphs(_default(path, PARAGRAPHS_FILE))
+
+
+@functools.lru_cache(maxsize=None)
+def _load_annex_e_paragraphs(path: pathlib.Path) -> AnnexEParagraphs:
+    document = _read(path, PARAGRAPHS_TABLE)
+    rows = _checked_rows(
+        path,
+        document,
+        _PARAGRAPH_FIELDS,
+        _paragraph_problem,
+        lambda row: row["anchor"],
+        "an anchor",
+    )
+    return AnnexEParagraphs(
+        edition=document["edition"],
+        paragraphs=tuple(AnnexEParagraph(**row) for row in rows),
+    )
+
+
 def _is_text(value: object) -> TypeGuard[str]:
     return isinstance(value, str) and bool(value.strip())
 
@@ -193,7 +319,7 @@ def _source_problem(entry: dict, source: str) -> str | None:
         return "has a url that is not a paragraph of PS3.15 on dicom.nema.org"
     if not _is_text(entry["text"]):
         return "has text that is not non-empty"
-    if source == "PS3.15" and not re.search(r"\bshall\b", entry["text"]):
+    if source == "PS3.15" and not _SHALL.search(entry["text"]):
         return "has text that does not contain 'shall'"
     return None
 

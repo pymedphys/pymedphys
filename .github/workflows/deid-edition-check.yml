@@ -97,7 +97,7 @@ jobs:
             echo
             echo "Run: ${RUN_URL}"
             echo
-            echo "To move to the new edition, update the pin in \`lib/pymedphys/_dev/deid_tables/generate.py\`, regenerate the tables with \`pymedphys dev deid-tables\`, and compare the requirements register with every Annex E page of that edition, as the de-identification design describes."
+            echo "To move to the new edition, update the pin in \`lib/pymedphys/_dev/deid_tables/generate.py\`, listing every page of Annex E, regenerate the tables with \`pymedphys dev deid-tables\`, and bring the requirements register's PS3.15 entries into line with the regenerated Annex E paragraphs, which its tests compare, as the de-identification design describes."
           } > "${body}"
           number=$(gh issue list --state open --search "\"${title}\" in:title" \
             --json number,title --jq "map(select(.title == \"${title}\")) | first | .number // empty")

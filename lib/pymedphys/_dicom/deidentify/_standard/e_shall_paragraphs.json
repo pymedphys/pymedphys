@@ -1,0 +1,273 @@
+{
+ "schema": "pymedphys-deid-table/1",
+ "table": "PS3.15 Annex E paragraphs containing shall",
+ "edition": "2026d",
+ "acknowledgement": "DICOM PS3.15 2026d, © NEMA",
+ "sources": [
+  {
+   "path": "chtml/part15/chapter_E.html",
+   "sha256": "cb214710fce798ed3688b4cb1d6b2d62ebd254e6946aa3efb3fc14038a41d58d"
+  },
+  {
+   "path": "chtml/part15/sect_E.2.html",
+   "sha256": "a531a1b3a2800f4a3b458da4342c9593caf123c4a63d52891d5375dc4c4f2852"
+  },
+  {
+   "path": "chtml/part15/sect_E.3.html",
+   "sha256": "4632ccf53339f22200870d337ba5d3214d9521827a4a856e00261d64b9c17e9b"
+  },
+  {
+   "path": "chtml/part15/sect_E.3.2.html",
+   "sha256": "833c887370775884439566f302c9cadf5f2d019d9220352ccaaabedafa514f62"
+  },
+  {
+   "path": "chtml/part15/sect_E.3.3.html",
+   "sha256": "e6774d9abb2929ca89550dbcdeb3183bada55f6b78f33e3eed0101b2b1d60d4b"
+  },
+  {
+   "path": "chtml/part15/sect_E.3.4.html",
+   "sha256": "d3bf68bd69f8623b34060b7599630634634bcd1a1bcefaf7112ef7847f15d3c9"
+  },
+  {
+   "path": "chtml/part15/sect_E.3.5.html",
+   "sha256": "43b1753b409cdc57ae7e7ede37c38e2fa9b173c2b793fd8ad4ffc4d3ebc7af44"
+  },
+  {
+   "path": "chtml/part15/sect_E.3.6.html",
+   "sha256": "383d3e53c8b31d8e75e38769faa662e7f72c16fda15ddafeb7e643b9d9becad4"
+  },
+  {
+   "path": "chtml/part15/sect_E.3.7.html",
+   "sha256": "5831237c2a2ac8133536287341b92f8e933b5062a84a6bb2ea565b075dd755ec"
+  },
+  {
+   "path": "chtml/part15/sect_E.3.8.html",
+   "sha256": "69c61c790299838082f0e9471fed8a2560012a3daa339944ac78139db554fd63"
+  },
+  {
+   "path": "chtml/part15/sect_E.3.9.html",
+   "sha256": "eb72f4d70acffc480977797bf94533a06242d0b8838bfd650933af0dc406072c"
+  },
+  {
+   "path": "chtml/part15/sect_E.3.10.html",
+   "sha256": "101ac4aedd9d45fba8adaa35cab22820d6c0cbda82cdf51d7456f4bf3dafe3a0"
+  },
+  {
+   "path": "chtml/part15/sect_E.3.11.html",
+   "sha256": "374f953bbe0bda7e8029b14d532b2f5b1648140b74ec329fe45c521dfc7f048f"
+  }
+ ],
+ "content_sha256": "3a16f7d9ac88b5ba882b6d7eb793682d3a74e2f04c819df7c9d4b17efb5d065c",
+ "rows": [
+  {
+   "section": "E.1.1",
+   "page": "chtml/part15/chapter_E.html",
+   "anchor": "para_daa1954b-9af4-4bad-aa35-41690a97fc7f",
+   "text": "Each Attribute to be protected shall then either be removed from the Data Set, or have its value replaced by a different \"replacement value\" that does not allow identification of the patient."
+  },
+  {
+   "section": "E.1.1",
+   "page": "chtml/part15/chapter_E.html",
+   "anchor": "para_08a36063-841b-4499-9a4e-8501cc83acae",
+   "text": "Each Attribute specified to be retained shall be retained. At the discretion of the de-identifier, Attributes may be added to the Data Set to be protected."
+  },
+  {
+   "section": "E.1.1",
+   "page": "chtml/part15/chapter_E.html",
+   "anchor": "para_1c3d937e-b42b-4cd7-80db-092f09622605",
+   "text": "If used, all instances of the Encrypted Attributes Data Set shall be encoded with a DICOM Transfer Syntax, encrypted, and stored in the Data Set to be protected as an Item of the Encrypted Attributes Sequence (0400,0500). The encryption shall be done using RSA [RFC 2313] for the key transport of the content-encryption keys. A de-identifier conforming to this security Profile may use either AES or Triple-DES for content-encryption. The AES key length may be any length allowed by the RFCs. The Triple-DES key length is 168 bits as defined by [ANSI X9.52]. Encoding shall be performed according to the specifications for RSA Key Transport and Triple DES Content Encryption in [RFC 3370] and for AES Content Encryption in [RFC 3565]."
+  },
+  {
+   "section": "E.1.1",
+   "page": "chtml/part15/chapter_E.html",
+   "anchor": "para_bf62b269-f6b0-4598-ab70-36dec5b54ea5",
+   "text": "No requirements on the size of the asymmetric key pairs used for RSA key transport are defined in this confidentiality scheme. Implementations claiming conformance to the Basic Application Level Confidentiality Profile as a de-identifier shall always protect (e.g., encrypt and replace) the SOP Instance UID (0008,0018) Attribute as well as all references to other SOP Instances, whether contained in the main Data Set or embedded in an Item of a Sequence of Items, that could potentially be used by unauthorized entities to identify the patient."
+  },
+  {
+   "section": "E.1.1",
+   "page": "chtml/part15/chapter_E.html",
+   "anchor": "para_7a8255cd-d599-4fca-9414-99cca6ed47a7",
+   "text": "The Attribute Patient Identity Removed (0012,0062) shall be replaced or added to the Data Set with a value of YES. Additionally, one or more codes from CID 7050 “De-identification Method” corresponding to the Profile and Options used shall be added to De-identification Method Code Sequence (0012,0064), and/or a text string describing the method used shall be inserted in or added to De-identification Method (0012,0063)."
+  },
+  {
+   "section": "E.1.1",
+   "page": "chtml/part15/chapter_E.html",
+   "anchor": "para_41258edc-da3a-43bb-ae04-3734051a876b",
+   "text": "If the Data Set being de-identified is being stored within a DICOM File, then the File Meta Information including the 128 byte preamble, if present, shall be replaced with a description of the de-identifying application. Otherwise, there is a risk that identity information may leak through unmodified File Meta Information or preamble. See PS3.10. This includes information regarding Application Entity Titles, Presentation Addresses, implementation information, and private information."
+  },
+  {
+   "section": "E.1.1",
+   "page": "chtml/part15/chapter_E.html",
+   "anchor": "para_3f2a2e5f-92da-442a-847e-232d77a14d9d",
+   "text": "If the Data Set being de-identified is being communicated by DICOM Real-Time Video, then the File Meta Information including the 128 byte preamble, if present, shall be replaced with a description of the de-identifying application. Otherwise, there is a risk that identity information may leak through unmodified File Meta Information or preamble. See PS3.22. This includes information regarding Application Entity Titles, Presentation Addresses, implementation information, and private information."
+  },
+  {
+   "section": "E.1.1",
+   "page": "chtml/part15/chapter_E.html",
+   "anchor": "para_04d7f07b-6ab7-4580-9294-c8bb7cbfec9e",
+   "text": "All Data Elements with a Group Number of 0004 shall be removed from any SOP Instance or DICOM File other than a DICOMDIR File. If a DICOMDIR File is required, it shall either be created from the de-identified DICOM Files it references, or an existing DICOMDIR File shall be de-identifed according to this Profile. Any existing non-de-identified DICOMDIR File shall be removed from the File-set."
+  },
+  {
+   "section": "E.1.1",
+   "page": "chtml/part15/chapter_E.html",
+   "anchor": "para_3980cc0a-c52c-4abd-bb2d-5598fedad2ea",
+   "text": "The Attributes listed in Table E.1-1 for each Profile or Option are contained in Standard IODs, or may be contained in Standard Extended IODs. An implementation claiming conformance to the Basic Application Level Confidentiality Profile as a de-identifier shall protect or retain all instances of the Attributes listed in Table E.1-1, whether contained in the top level Data Set or embedded in an Item of a Sequence of Items. The action codes in Table E.1-1a are used in Table E.1-1."
+  },
+  {
+   "section": "E.1.2",
+   "page": "chtml/part15/chapter_E.html",
+   "anchor": "para_5b59ff63-97b3-463c-b620-baaf9c1d98c8",
+   "text": "The application shall decrypt, using its recipient key, one instance of the Encrypted Content (0400,0520) Attribute within the Encrypted Attributes Sequence (0400,0500) and decode the resulting block of bytes into a DICOM Data Set using the Transfer Syntax specified in the Encrypted Content Transfer Syntax UID (0400,0510). Re-identifiers claiming conformance to this Profile shall be capable of decrypting the Encrypted Content using either AES or Triple-DES in all possible key lengths specified in this Profile."
+  },
+  {
+   "section": "E.1.2",
+   "page": "chtml/part15/chapter_E.html",
+   "anchor": "para_f6c7c02e-f2ab-455f-a868-449791d534b6",
+   "text": "The application shall move all Attributes contained in the single item of the Modified Attributes Sequence (0400,0550) of the decoded Data Set into the top level Data Set, replacing \"dummy value\" Attributes that may be present in the top level Data Set."
+  },
+  {
+   "section": "E.1.2",
+   "page": "chtml/part15/chapter_E.html",
+   "anchor": "para_f9cea275-9cd9-4112-bd77-630521aaecf7",
+   "text": "The Attribute Patient Identity Removed (0012,0062) shall be replaced or added to the Data Set with a value of NO and De-identification Method (0012,0063) and De-identification Method Code Sequence (0012,0064) shall be removed."
+  },
+  {
+   "section": "E.1.3",
+   "page": "chtml/part15/chapter_E.html",
+   "anchor": "para_6d2a4608-8e1e-4783-9841-ff86b8e54bf1",
+   "text": "The Conformance Statement of an application that claims conformance to the Basic Application Level Confidentiality Profile shall describe:\n\n- which Attributes are removed during protection;\n- which Attributes are replaced by dummy values and how the dummy values are generated;\n- which Attributes are included in Encrypted Attributes Data Sets for later re-identification, and any pertinent details about how keys are selected for performing the encryption;\n- the scope across which the application is able to ensure referential integrity of replacement values for references such as SOP Instance UID, Frame of Reference UID, etc. if multiple SOP instances are protected (e.g., across multiple Studies, consistent replacement if the same Study processed more than once, etc.);\n- which Attributes and Attribute Values are inserted during protection of a SOP instance;\n- which Transfer Syntaxes are supported for encoding/decoding of the Encrypted Attributes Data Set;\n- which Options are supported;\n- any additional restrictions (e. g. key sizes for public keys)."
+  },
+  {
+   "section": "E.2",
+   "page": "chtml/part15/sect_E.2.html",
+   "anchor": "para_5279f5b8-f623-45dc-85f9-a64d7842b064",
+   "text": "The Attribute Longitudinal Temporal Information Modified (0028,0303) shall be added to the Data Set with a Value of \"REMOVED\" if none of the Retain Longitudinal Temporal Information Options is applied."
+  },
+  {
+   "section": "E.3.1",
+   "page": "chtml/part15/sect_E.3.html",
+   "anchor": "para_10d107c2-b55c-4b9f-8817-f317d1e756c4",
+   "text": "When this Option is specified in addition to the Basic Application Level Confidentiality Profile, any information burned in to the Pixel Data (7FE0,0010) corresponding to the Attribute information specified to be removed by the Profile and any other Options specified shall also be removed, as described in Table E.1-1."
+  },
+  {
+   "section": "E.3.1",
+   "page": "chtml/part15/sect_E.3.html",
+   "anchor": "para_caede39a-46e2-4eec-9a38-1a37dbd70926",
+   "text": "The Attribute Burned In Annotation (0028,0301) shall be added to the Data Set with a Value of \"NO\"."
+  },
+  {
+   "section": "E.3.2",
+   "page": "chtml/part15/sect_E.3.2.html",
+   "anchor": "para_e022456d-4042-4795-88e5-80e9fc6aa308",
+   "text": "When this Option is specified in addition to the Basic Application Level Confidentiality Profile, if there is sufficient visual information within the Pixel Data of a set of instances to allow an individual to be recognized from the instances themselves or a reconstruction of a set of instances, then sufficient removal or distortion of the Pixel Data shall be applied to prevent recognition."
+  },
+  {
+   "section": "E.3.2",
+   "page": "chtml/part15/sect_E.3.2.html",
+   "anchor": "para_94fec0c3-65fa-465b-a269-59d262066345",
+   "text": "The Attribute Recognizable Visual Features (0028,0302) shall be added to the Data Set with a Value of \"NO\"."
+  },
+  {
+   "section": "E.3.3",
+   "page": "chtml/part15/sect_E.3.3.html",
+   "anchor": "para_628bbc9f-6ba4-4316-bfcd-fdc7bc2d3076",
+   "text": "When this Option is specified in addition to the Basic Application Level Confidentiality Profile, any information encoded in graphics, text annotations or overlays corresponding to the Attribute information specified to be removed by the Profile and any other Options specified shall also be removed, as described in Table E.1-1."
+  },
+  {
+   "section": "E.3.4",
+   "page": "chtml/part15/sect_E.3.4.html",
+   "anchor": "para_004bdf87-7f40-48e2-b5f4-eab3e21d7103",
+   "text": "When this Option is specified in addition to the Basic Application Level Confidentiality Profile, any information encoded in SR Content Items or Acquisition Context or Specimen Preparation Sequence Items corresponding to the Attribute information specified to be removed by the Profile and any other Options specified shall also be removed."
+  },
+  {
+   "section": "E.3.5",
+   "page": "chtml/part15/sect_E.3.5.html",
+   "anchor": "para_eb16943f-79ba-4765-bedf-94a66b6744ac",
+   "text": "When this Option is specified in addition to the Basic Application Level Confidentiality Profile, any information that is embedded in text or string Attributes corresponding to the Attribute information specified to be removed by the Profile and any other Options specified shall also be removed, as described in Table E.1-1."
+  },
+  {
+   "section": "E.3.5",
+   "page": "chtml/part15/sect_E.3.5.html",
+   "anchor": "para_aa4daf86-3e83-4fb1-bb77-75ca192fa98b",
+   "text": "The manner of cleaning shall be described in the Conformance Statement."
+  },
+  {
+   "section": "E.3.6",
+   "page": "chtml/part15/sect_E.3.6.html",
+   "anchor": "para_389c7767-f03f-4716-970d-72a2766aabfa",
+   "text": "When the Retain Longitudinal Temporal Information With Full Dates Option is specified in addition to the Basic Application Level Confidentiality Profile, any dates and times present in the Attributes shall be retained, as described in Table E.1-1. The Attribute Longitudinal Temporal Information Modified (0028,0303) shall be added to the Data Set with a Value of \"UNMODIFIED\"."
+  },
+  {
+   "section": "E.3.6",
+   "page": "chtml/part15/sect_E.3.6.html",
+   "anchor": "para_b71081d0-569f-4426-aa01-b0765ce1ab32",
+   "text": "When the Retain Longitudinal Temporal Information With Modified Dates Option is specified in addition to the Basic Application Level Confidentiality Profile, any dates and times present in the Attributes listed in Table E.1-1 shall be modified. The modification of the dates and times shall be performed in a manner that:\n\n- aggregates or transforms dates so as to reduce the possibility of matching for re-identification\n- preserves the gross longitudinal temporal relationships between images obtained on different dates to the extent necessary for the application\n- preserves the fine temporal relationships between images and real-world events to the extent necessary for analysis of the images for the application"
+  },
+  {
+   "section": "E.3.6",
+   "page": "chtml/part15/sect_E.3.6.html",
+   "anchor": "para_eb42e924-3cfc-4d91-aa01-0f153b41b88c",
+   "text": "The Attribute Longitudinal Temporal Information Modified (0028,0303) shall be added to the Data Set with a Value of \"MODIFIED\"."
+  },
+  {
+   "section": "E.3.6",
+   "page": "chtml/part15/sect_E.3.6.html",
+   "anchor": "para_cc45149e-ac5e-4b26-bb5f-b8af861cc54d",
+   "text": "The manner of date modification shall be described in the Conformance Statement."
+  },
+  {
+   "section": "E.3.7",
+   "page": "chtml/part15/sect_E.3.7.html",
+   "anchor": "para_2c0a8a67-3b2e-4aad-9153-8491ced6d071",
+   "text": "When this Option is specified in addition to the Basic Application Level Confidentiality Profile, information about age, sex, height and weight and other characteristics present in the Attributes shall be retained, as described in Table E.1-1."
+  },
+  {
+   "section": "E.3.7",
+   "page": "chtml/part15/sect_E.3.7.html",
+   "anchor": "para_324c4b43-2572-4a19-917c-cab57003b769",
+   "text": "The manner of cleaning of retained Attributes shall be described in the Conformance Statement."
+  },
+  {
+   "section": "E.3.8",
+   "page": "chtml/part15/sect_E.3.8.html",
+   "anchor": "para_b25bc4b3-fc71-4f14-b464-79b8a6591b62",
+   "text": "When this Option is specified in addition to the Basic Application Level Confidentiality Profile, information about the identity of the device in the Attributes shall be retained, as described in Table E.1-1."
+  },
+  {
+   "section": "E.3.9",
+   "page": "chtml/part15/sect_E.3.9.html",
+   "anchor": "para_d44e046d-c417-4283-9556-695a778ca4f5",
+   "text": "When this Option is specified in addition to an Application Level Confidentiality Profile, UIDs shall be retained, as described in Table E.1-1."
+  },
+  {
+   "section": "E.3.10",
+   "page": "chtml/part15/sect_E.3.10.html",
+   "anchor": "para_bb1aaf5b-ab3d-4b05-8226-c7282cf98dc9",
+   "text": "When this Option is specified in addition to the Basic Application Level Confidentiality Profile, Private Attributes that are known by the de-identifier to be safe from identity leakage shall be retained, together with the Private Creator IDs that are required to fully define the retained Private Attributes; all other Private Attributes shall be removed or processed in the element-specific manner recommended by Deidentification Action (0008,0307), if present within Private Data Element Characteristics Sequence (0008,0300) (see PS3.3 Section C.12.1)."
+  },
+  {
+   "section": "E.3.10",
+   "page": "chtml/part15/sect_E.3.10.html",
+   "anchor": "para_0c838fa8-6930-4559-a492-67c204358848",
+   "text": "When this Option is not specified, all Private Attributes shall be removed, as described in Table E.1-1."
+  },
+  {
+   "section": "E.3.10",
+   "page": "chtml/part15/sect_E.3.10.html",
+   "anchor": "para_d9eb6fdb-b5c9-44d8-91f9-e0fe71983689",
+   "text": "When an entire Sequence (SQ VR) Private Attribute is not known to always only contain safe content, whether that content consists of Standard Attributes or Private Attributes or a combination of both, then when the Retain Safe Private Option is used, any such Sequence Attribute shall be parsed in its entirety and each of the nested Attributes handled on its own merits, rather than removing the Sequence in its entirety without further consideration. Reviewing the content may be a sensible practice to apply even to nominally known safe Private Sequence Attributes."
+  },
+  {
+   "section": "E.3.10",
+   "page": "chtml/part15/sect_E.3.10.html",
+   "anchor": "para_74598302-fb52-4831-9a57-fa49e4698746",
+   "text": "The safe Private Attributes that are retained shall be described in the Conformance Statement."
+  },
+  {
+   "section": "E.3.11",
+   "page": "chtml/part15/sect_E.3.11.html",
+   "anchor": "para_00ca9c5a-ce04-4906-ae1f-920d2e0c2c40",
+   "text": "When this Option is specified in addition to the Basic Application Level Confidentiality Profile, information about the identity of the institution in the Attributes shall be retained, as described in Table E.1-1."
+  }
+ ]
+}

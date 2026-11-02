@@ -52,6 +52,6 @@ repos:
         require_serial: true
   - repo: https://github.com/astral-sh/uv-pre-commit
     # Keep in step with the setup-uv version in .github/actions/setup-project.
-    rev: 0.12.15
+    rev: 0.13.4
     hooks:
       - id: uv-lock

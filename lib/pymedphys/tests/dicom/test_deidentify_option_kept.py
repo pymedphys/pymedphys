@@ -430,7 +430,7 @@ def _transformed(plan):
 
 @pytest.mark.pydicom
 @pytest.mark.usefixtures("pydicom_behaviour")
-@pytest.mark.deid_requirement("PS3.15-E.3.8-01")
+@pytest.mark.deid_requirement("PS3.15-E.3.8-01", "MIDI-BP-04")
 def test_a_station_named_as_its_ae_title_and_in_private_values_is_released():
     plan = _plan(StationAETitle=STATION, StationName=STATION)
 

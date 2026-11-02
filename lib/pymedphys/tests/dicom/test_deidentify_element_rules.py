@@ -392,6 +392,34 @@ def test_a_policy_composed_from_another_table_is_refused():
         ElementRules(policy.compose_policy("basic", table=other))
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.10-02", "MIDI-BP-13")
+@pytest.mark.parametrize("preset", sorted(policy.PRESETS))
+def test_each_preset_removes_private_attributes_unless_it_retains_safe_ones(preset):
+    composed = policy.compose_policy(preset)
+    retains = policy.SAFE_PRIVATE in composed.options
+
+    rule = ElementRules(composed).rule("(0009,1001)")
+
+    assert (rule.source, rule.action) == (PRIVATE, "C" if retains else "X")
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.10-02", "MIDI-BP-13")
+@pytest.mark.parametrize(
+    "preset, action",
+    [("basic", "K"), ("basic", "C"), ("public-release", "X"), ("public-release", "K")],
+)
+def test_private_attributes_take_only_the_action_their_option_gives(preset, action):
+    # Without Retain Safe Private, Table E.1-1 gives Private Attributes X
+    # (E.3.10); with it, the reviewed rules settle the C that it gives them.
+    composed = policy.compose_policy(preset)
+    changed = dataclasses.replace(
+        composed, actions={**composed.actions, PRIVATE_ROW: action}
+    )
+
+    with pytest.raises(policy.PolicyError, match="Private Attributes"):
+        ElementRules(changed)
+
+
 @pytest.mark.parametrize(
     "tag, iod, path, action",
     [
@@ -517,6 +545,7 @@ def test_only_codes_numbers_tags_sequences_and_binary_values_reach_the_default()
     }
 
 
+@pytest.mark.deid_requirement("MIDI-BP-04")
 def test_the_default_keeps_the_vrs_that_the_design_names():
     # From the design document: codes, tags, and the numeric VRs are kept,
     # and binary values and sequences only where the IOD defines the

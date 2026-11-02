@@ -1,0 +1,1064 @@
+# Copyright (C) 2026 Matthew Jennings
+
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+
+#     http://www.apache.org/licenses/LICENSE-2.0
+
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# pylint: disable = too-many-lines
+
+"""The record of an external statistical risk assessment, and the statistical gate."""
+
+import dataclasses
+import datetime
+import hashlib
+import hmac
+import json
+import os
+import stat
+from pathlib import PurePosixPath
+
+from pymedphys._imports import pytest
+
+from pymedphys._dicom.deidentify import (
+    policy,
+    qc_store,
+    release_report,
+    risk_assessment,
+)
+from pymedphys._dicom.deidentify.qc_attestation import AttestationRecord, Outcome
+from pymedphys._dicom.deidentify.pixel_region_rules import (
+    PixelRegionRules,
+    RuleKey,
+)
+from pymedphys._dicom.deidentify.qc_pack import (
+    Disposition,
+    InstanceEntry,
+    ListsDigest,
+    QcPack,
+    QcPackError,
+)
+from pymedphys._dicom.deidentify.reviewed_descriptors import (
+    ReviewedDescriptor,
+    ReviewedDescriptors,
+)
+from pymedphys._dicom.deidentify.reviewed_roi_names import (
+    Review,
+    ReviewedName,
+    ReviewedNames,
+)
+from pymedphys._dicom.deidentify.risk_assessment import (
+    Assessment,
+    AssessmentRecord,
+    Attacker,
+    Model,
+    Population,
+    RiskAssessmentError,
+    StatisticalGate,
+    StatisticalReason,
+)
+from pymedphys._dicom.deidentify.text_detection import TextBox
+
+PACK = "A-" + "0123456789abcdef" * 2
+OTHER_PACK = "A-" + "fedcba9876543210" * 2
+WHEN = datetime.datetime(2026, 10, 23, 9, 30, tzinfo=datetime.timezone.utc)
+# Text that must never reach an error message or a repr.
+SENTINEL = "SENTINEL^Assessor"
+# The SHA-256 of three source files, the last read twice, as identical
+# copies are.
+SOURCES = (bytes([1]) * 32, bytes([2]) * 32, bytes([3]) * 32, bytes([3]) * 32)
+SALT = "5a" * 32
+SERIES_DESCRIPTION = "(0008,103E)"
+# A region rule of an invented scanner: the top band of its images.
+RULE = RuleKey("1.2.840.10008.5.1.4.1.1.6.1", "Acme Sonics", "Echo 5", 480, 640)
+BAND = TextBox(0, 0, 40, 640)
+
+
+def _assessment(**changes):
+    fields = {
+        "model": Model("Population uniqueness", "2", "Invented Estimator", "1.4.0"),
+        "attacker": Attacker("Public registries and news reports", True),
+        "population": Population(in_cohort="Every subject is in the release"),
+        "matching_variables": ("sex", "age at study", "body habitus from images"),
+        "pixel_derived": "Body habitus and implants were matched on",
+        "generalisation": "Ages in 5-year bands",
+        "missing_data": "Missing values match any value",
+        "uncertainty": "95% interval from bootstrap",
+        "exclusions": "None",
+        "linked_records": "Each subject's studies were assessed together",
+        "earlier_releases": "No earlier release",
+        "device_identity": "Station names identify the department, so are omitted",
+        "facial_reconstruction": False,
+        "subjects": 3,
+        "threshold": risk_assessment.DEFAULT_THRESHOLD,
+        "maximum_risk": 0.04,
+        "assessor": SENTINEL,
+        "assessed_at": WHEN,
+    }
+    fields.update(changes)
+    return Assessment(**fields)
+
+
+def _report(reference=PACK, preset="basic", **fields):
+    report = release_report.release_report(
+        policy.compose_policy(preset),
+        vocabulary=None,
+        reviewed_roi_names=fields.pop("reviewed_roi_names", None),
+        reviewed_descriptors=fields.pop("reviewed_descriptors", None),
+        qc_review=AttestationRecord(reference, Outcome.NOT_ATTESTED),
+        **fields,
+    )
+    return release_report.report_document(report)
+
+
+def _names(*decisions):
+    names = ReviewedNames.empty()
+    for name, decision in decisions:
+        names.record(name, decision)
+    return names
+
+
+def _descriptors(*decisions):
+    descriptors = ReviewedDescriptors.empty()
+    for value, decision in decisions:
+        descriptors.record(SERIES_DESCRIPTION, value, decision)
+    return descriptors
+
+
+def _rules(*boxes):
+    rules = PixelRegionRules.empty()
+    rules.record(RULE, boxes or (BAND,))
+    return rules
+
+
+# The lists that the runs below applied, unless a test says otherwise: none,
+# as without Clean Descriptors.
+_NO_LISTS = object()
+
+
+def _write_pack(tmp_path, name, instances=None, lists=_NO_LISTS):
+    release = tmp_path / "release"
+    release.mkdir(exist_ok=True)
+    if instances is None:
+        instances = _instances()
+    if lists is _NO_LISTS:
+        lists = risk_assessment.bind_lists(None, None, None)
+    return qc_store.write_qc_pack(
+        QcPack(PACK, instances, reviewed_lists=lists),
+        tmp_path / name,
+        release_directory=release,
+    ).parent
+
+
+def _pack_lists(pack_directory):
+    document = json.loads((pack_directory / qc_store.PACK_FILE).read_text("ascii"))
+    return document["reviewed_lists"]
+
+
+def _instances():
+    return tuple(
+        InstanceEntry(
+            position,
+            f"/imports/{position}.dcm",
+            Disposition.RELEASED,
+            output=PurePosixPath(f"ZQ0001/2.25.1/2.25.2/2.25.{position + 3}.dcm"),
+            source_sha256=digest.hex(),
+        )
+        for position, digest in enumerate(SOURCES)
+    ) + (
+        # A file that the run could not read has no digest.
+        InstanceEntry(
+            len(SOURCES),
+            "/imports/unreadable",
+            Disposition.REFUSED,
+            reasons=("unreadable file",),
+        ),
+    )
+
+
+@pytest.fixture(name="pack")
+def fixture_pack(tmp_path):
+    return _write_pack(tmp_path, "qc")
+
+
+@pytest.fixture(name="report_file")
+def fixture_report_file(tmp_path):
+    path = tmp_path / "release-report.json"
+    path.write_text(json.dumps(_report()), "utf-8")
+    return path
+
+
+def _record(pack_directory, report_file, assessment):
+    return risk_assessment.record_assessment(pack_directory, report_file, assessment)
+
+
+def _gate(record, **changes):
+    run = {
+        "collection_sha256": risk_assessment.collection_digest(SOURCES),
+        "policy_sha256": risk_assessment.policy_digest(_report()),
+        "reviewed_names": None,
+        "reviewed_descriptors": None,
+        "pixel_region_rules": None,
+        "subjects": 3,
+    }
+    run.update(changes)
+    return risk_assessment.statistical_gate(record, **run)
+
+
+@pytest.mark.deid_requirement("MIDI-BP-01", "MIDI-BP-07")
+def test_the_record_is_written_beside_the_pack_and_read_back(pack, report_file):
+    record = _record(pack, report_file, _assessment())
+    written = pack / risk_assessment.ASSESSMENT_FILE
+    document = json.loads(written.read_text("ascii"))
+    digest = hashlib.sha256((pack / qc_store.PACK_FILE).read_bytes()).hexdigest()
+    assert document == {
+        "format": "pymedphys-deid-risk-assessment/1",
+        "reference": record.reference,
+        "pack": PACK,
+        "pack_digest": digest,
+        "collection_sha256": risk_assessment.collection_digest(SOURCES),
+        "policy_sha256": risk_assessment.policy_digest(_report()),
+        "lists_salt": record.lists_salt,
+        "lists_sha256": risk_assessment.lists_digest(
+            record.lists_salt, None, None, None
+        ),
+        "model": {
+            "name": "Population uniqueness",
+            "version": "2",
+            "implementation": "Invented Estimator",
+            "implementation_version": "1.4.0",
+        },
+        "attacker": {
+            "knowledge": "Public registries and news reports",
+            "membership_known": True,
+        },
+        "population": {
+            "reference": None,
+            "sampling": None,
+            "in_cohort": "Every subject is in the release",
+        },
+        "matching_variables": ["sex", "age at study", "body habitus from images"],
+        "pixel_derived": "Body habitus and implants were matched on",
+        "generalisation": "Ages in 5-year bands",
+        "missing_data": "Missing values match any value",
+        "uncertainty": "95% interval from bootstrap",
+        "exclusions": "None",
+        "linked_records": "Each subject's studies were assessed together",
+        "earlier_releases": "No earlier release",
+        "device_identity": "Station names identify the department, so are omitted",
+        "facial_reconstruction": False,
+        "subjects": 3,
+        "threshold": 0.09,
+        "maximum_risk": 0.04,
+        "assessor": SENTINEL,
+        "assessed_at": "2026-10-23T09:30:00+00:00",
+    }
+    assert record.reference.startswith("R-") and len(record.reference) == 34
+    assert record.pack_digest == digest
+    # The lists' digest is the one that the run recorded in its pack.
+    assert _pack_lists(pack) == {
+        "salt": record.lists_salt,
+        "sha256": record.lists_sha256,
+    }
+    assert risk_assessment.read_assessment(pack) == record
+    if os.name == "posix":
+        assert stat.S_IMODE(written.stat().st_mode) == 0o600
+
+
+def test_each_record_has_a_new_random_reference(tmp_path, report_file):
+    records = [
+        _record(_write_pack(tmp_path, name), report_file, _assessment())
+        for name in ("one", "two")
+    ]
+    assert len({record.reference for record in records}) == 2
+    # Each run salted its lists' digest anew.
+    assert len({record.lists_salt for record in records}) == 2
+    assert len({record.lists_sha256 for record in records}) == 2
+
+
+def test_a_pack_without_a_record_has_none(pack):
+    assert risk_assessment.read_assessment(pack) is None
+
+
+def test_the_reprs_show_no_statement(pack, report_file):
+    record = _record(pack, report_file, _assessment())
+    for shown in (repr(record), repr(record.assessment)):
+        assert SENTINEL not in shown
+        assert "registries" not in shown
+    assert repr(record.assessment) == (
+        "Assessment(threshold=0.09, within_threshold=True)"
+    )
+
+
+@pytest.mark.deid_requirement("MIDI-BP-07")
+@pytest.mark.parametrize(
+    "field",
+    [
+        "pixel_derived",
+        "generalisation",
+        "missing_data",
+        "uncertainty",
+        "exclusions",
+        "linked_records",
+        "earlier_releases",
+        "device_identity",
+        "assessor",
+    ],
+)
+@pytest.mark.parametrize("value", [None, "", "   ", 3])
+def test_every_statement_is_required(field, value):
+    with pytest.raises(RiskAssessmentError) as raised:
+        _assessment(**{field: value})
+    assert field in str(raised.value)
+
+
+@pytest.mark.deid_requirement("MIDI-BP-07")
+@pytest.mark.parametrize(
+    "field", ["name", "version", "implementation", "implementation_version"]
+)
+def test_the_model_and_its_implementation_are_versioned(field):
+    fields = {
+        "name": "Model",
+        "version": "1",
+        "implementation": "Tool",
+        "implementation_version": "1.0",
+    }
+    fields[field] = " "
+    with pytest.raises(RiskAssessmentError, match=field):
+        Model(**fields)
+
+
+def test_the_attacker_states_knowledge_and_membership():
+    with pytest.raises(RiskAssessmentError, match="knowledge"):
+        Attacker("", True)
+    with pytest.raises(RiskAssessmentError, match="membership"):
+        Attacker("Registries", None)  # type: ignore[arg-type]
+    for name in ("model", "attacker", "population"):
+        with pytest.raises(RiskAssessmentError, match=name):
+            _assessment(**{name: None})
+
+
+@pytest.mark.parametrize(
+    "fields",
+    [
+        {},
+        {"reference": "State cancer registry"},
+        {"sampling": "Every patient treated in 2025"},
+        {
+            "reference": "State cancer registry",
+            "sampling": "Every patient treated in 2025",
+            "in_cohort": "Every subject is in the release",
+        },
+        {"reference": "State cancer registry", "in_cohort": "The release"},
+        {"in_cohort": " "},
+    ],
+)
+def test_the_population_is_a_reference_with_sampling_or_the_cohort(fields):
+    with pytest.raises(RiskAssessmentError, match="population"):
+        Population(**fields)
+
+
+def test_a_reference_population_needs_its_sampling():
+    population = Population("State cancer registry", "Every patient treated in 2025")
+    assert _assessment(population=population).population == population
+
+
+@pytest.mark.deid_requirement("MIDI-BP-07")
+@pytest.mark.parametrize(
+    "variables",
+    [(), ["sex"], ("sex", ""), ("sex", "sex"), ("sex", " Sex"), ("sex", None)],
+)
+def test_the_matching_variables_are_listed_each_once(variables):
+    with pytest.raises(RiskAssessmentError, match="matching variable"):
+        _assessment(matching_variables=variables)
+
+
+@pytest.mark.parametrize("subjects", [0, -1, True, 2.0, "3", None])
+def test_subjects_are_a_whole_number_of_at_least_one(subjects):
+    with pytest.raises(RiskAssessmentError, match="subjects"):
+        _assessment(subjects=subjects)
+
+
+@pytest.mark.parametrize("threshold", [0.1, 0.0, 0.08999, True, "0.09", None])
+def test_the_threshold_is_the_default_or_the_strict_one(threshold):
+    with pytest.raises(RiskAssessmentError, match="threshold"):
+        _assessment(threshold=threshold)
+
+
+@pytest.mark.parametrize(
+    "risk", [-0.001, 1.001, float("nan"), float("inf"), True, "0.01", None]
+)
+def test_the_maximum_probability_is_from_zero_to_one(risk):
+    with pytest.raises(RiskAssessmentError, match="maximum"):
+        _assessment(maximum_risk=risk)
+
+
+@pytest.mark.parametrize(
+    "when",
+    [
+        datetime.datetime(2026, 10, 23, 9, 30),
+        datetime.datetime(
+            2026, 10, 23, 9, 30, tzinfo=datetime.timezone(datetime.timedelta(hours=11))
+        ),
+        "2026-10-23T09:30:00+00:00",
+    ],
+)
+def test_the_time_of_the_assessment_is_in_utc(when):
+    with pytest.raises(RiskAssessmentError, match="UTC"):
+        _assessment(assessed_at=when)
+
+
+def test_the_assessment_is_not_from_the_future():
+    later = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=1)
+    with pytest.raises(RiskAssessmentError, match="future"):
+        _assessment(assessed_at=later)
+
+
+def test_facial_reconstruction_is_true_or_false():
+    with pytest.raises(RiskAssessmentError, match="facial"):
+        _assessment(facial_reconstruction=None)
+
+
+def test_a_record_checks_its_binding():
+    good = {
+        "reference": "R-" + "0" * 32,
+        "pack": PACK,
+        "pack_digest": "a" * 64,
+        "collection_sha256": "b" * 64,
+        "policy_sha256": "c" * 64,
+        "lists_salt": SALT,
+        "lists_sha256": "d" * 64,
+        "assessment": _assessment(),
+    }
+    assert AssessmentRecord(**good).reference == good["reference"]
+    for name, value in (
+        ("reference", PACK),
+        ("pack", "R-" + "0" * 32),
+        ("pack_digest", "A" * 64),
+        ("collection_sha256", None),
+        ("policy_sha256", "c" * 63),
+        ("lists_salt", None),
+        ("lists_sha256", "d" * 65),
+        ("assessment", None),
+    ):
+        with pytest.raises(RiskAssessmentError):
+            AssessmentRecord(**{**good, name: value})
+
+
+@pytest.mark.deid_requirement("MIDI-BP-01", "MIDI-BP-07")
+def test_the_gate_passes_a_bound_assessment_within_its_threshold(pack, report_file):
+    record = _record(pack, report_file, _assessment())
+    gate = _gate(risk_assessment.read_assessment(pack))
+    assert gate == StatisticalGate(record.reference, None)
+    assert gate.passed
+
+
+@pytest.mark.deid_requirement("MIDI-BP-01")
+def test_the_gate_fails_without_an_assessment():
+    gate = _gate(None)
+    assert gate == StatisticalGate(None, StatisticalReason.NO_ASSESSMENT)
+    assert not gate.passed
+
+
+@pytest.mark.deid_requirement("MIDI-BP-01", "MIDI-BP-07")
+@pytest.mark.parametrize(
+    ("threshold", "risk", "reason"),
+    [
+        (0.09, 0.09, None),
+        (0.09, 0.0, None),
+        (0.09, 0.09000000000000001, StatisticalReason.ABOVE_THRESHOLD),
+        (0.09, 1, StatisticalReason.ABOVE_THRESHOLD),
+        (0.05, 0.05, None),
+        (0.05, 0.0500001, StatisticalReason.ABOVE_THRESHOLD),
+        (0.05, 0.07, StatisticalReason.ABOVE_THRESHOLD),
+    ],
+)
+def test_the_threshold_is_met_at_its_boundary(
+    pack, report_file, threshold, risk, reason
+):
+    _record(pack, report_file, _assessment(threshold=threshold, maximum_risk=risk))
+    record = risk_assessment.read_assessment(pack)
+    assert record.assessment.maximum_risk == risk
+    assert _gate(record).reason is reason
+
+
+@pytest.mark.deid_requirement("MIDI-BP-07")
+@pytest.mark.parametrize(
+    ("subjects", "reason"),
+    [
+        (2, StatisticalReason.FEWER_SUBJECTS),
+        (3, None),
+        # Counting files, or visits, rather than subjects.
+        (4, StatisticalReason.MORE_SUBJECTS),
+    ],
+)
+def test_the_gate_counts_subjects_not_instances(pack, report_file, subjects, reason):
+    _record(pack, report_file, _assessment(subjects=subjects))
+    assert _gate(risk_assessment.read_assessment(pack)).reason is reason
+
+
+@pytest.mark.deid_requirement("MIDI-BP-01")
+@pytest.mark.parametrize(
+    "collection",
+    [
+        SOURCES[:3],  # one copy fewer
+        SOURCES + SOURCES[:1],
+        SOURCES[:3] + (bytes([4]) * 32,),  # a file changed
+        (),
+    ],
+)
+def test_the_gate_fails_for_another_collection(pack, report_file, collection):
+    _record(pack, report_file, _assessment())
+    gate = _gate(
+        risk_assessment.read_assessment(pack),
+        collection_sha256=risk_assessment.collection_digest(collection),
+    )
+    assert gate.reason is StatisticalReason.OTHER_COLLECTION
+
+
+@pytest.mark.deid_requirement("MIDI-BP-01")
+def test_the_gate_fails_for_another_policy(pack, report_file):
+    _record(pack, report_file, _assessment())
+    gate = _gate(
+        risk_assessment.read_assessment(pack),
+        policy_sha256=risk_assessment.policy_digest(
+            _report(preset="basic-clean-descriptors")
+        ),
+    )
+    assert gate.reason is StatisticalReason.OTHER_POLICY
+
+
+def _report_file(tmp_path, **fields):
+    path = tmp_path / "listed-report.json"
+    path.write_text(json.dumps(_report(**fields)), "utf-8")
+    return path
+
+
+@pytest.mark.deid_requirement("MIDI-BP-01")
+@pytest.mark.parametrize(
+    ("names", "descriptors"),
+    [
+        # Another decision on the same name.
+        (
+            _names(("Parotid L", ReviewedName(Review.EMPTY))),
+            _descriptors(("AX T1", ReviewedDescriptor(Review.KEEP))),
+        ),
+        # Another value of the descriptors list.
+        (
+            _names(("Parotid L", ReviewedName(Review.KEEP))),
+            _descriptors(("AX T2", ReviewedDescriptor(Review.KEEP))),
+        ),
+        # A list left out, or given empty.
+        (None, _descriptors(("AX T1", ReviewedDescriptor(Review.KEEP)))),
+        (
+            ReviewedNames.empty(),
+            _descriptors(("AX T1", ReviewedDescriptor(Review.KEEP))),
+        ),
+        # The descriptors list left out.
+        (_names(("Parotid L", ReviewedName(Review.KEEP))), None),
+    ],
+)
+def test_the_gate_fails_for_other_lists(tmp_path, names, descriptors):
+    pack = _write_pack(
+        tmp_path,
+        "listed",
+        lists=risk_assessment.bind_lists(
+            _names(("Parotid L", ReviewedName(Review.KEEP))),
+            _descriptors(("AX T1", ReviewedDescriptor(Review.KEEP))),
+            None,
+        ),
+    )
+    listed = _report_file(
+        tmp_path, reviewed_roi_names="d" * 64, reviewed_descriptors="e" * 64
+    )
+    _record(pack, listed, _assessment())
+    record = risk_assessment.read_assessment(pack)
+    # The same lists, read again by another run under another key, pass.
+    same = _gate(
+        record,
+        reviewed_names=_names(("Parotid L", ReviewedName(Review.KEEP))),
+        reviewed_descriptors=_descriptors(("AX T1", ReviewedDescriptor(Review.KEEP))),
+    )
+    assert same.passed
+    gate = _gate(record, reviewed_names=names, reviewed_descriptors=descriptors)
+    assert gate.reason is StatisticalReason.OTHER_LISTS
+
+
+@pytest.mark.deid_requirement("MIDI-BP-01", "PS3.15-E.3.1-01")
+@pytest.mark.parametrize(
+    "rules",
+    [
+        # Another region in the same rule.
+        _rules(TextBox(0, 0, 48, 640)),
+        # A rule left out, or none given.
+        PixelRegionRules.empty(),
+        None,
+    ],
+)
+def test_the_gate_fails_for_other_region_rules(tmp_path, rules):
+    pack = _write_pack(
+        tmp_path, "ruled", lists=risk_assessment.bind_lists(None, None, _rules())
+    )
+    ruled = _report_file(tmp_path, pixel_region_rules="c" * 64)
+    _record(pack, ruled, _assessment())
+    record = risk_assessment.read_assessment(pack)
+    # The same rules, read again by another run under another key, pass.
+    assert _gate(record, pixel_region_rules=_rules().snapshot()).passed
+    gate = _gate(record, pixel_region_rules=rules)
+    assert gate.reason is StatisticalReason.OTHER_LISTS
+
+
+@pytest.mark.deid_requirement("MIDI-BP-01")
+def test_the_record_binds_the_lists_that_the_run_applied(tmp_path):
+    applied = _names(("Parotid L", ReviewedName(Review.KEEP)))
+    pack = _write_pack(
+        tmp_path, "listed", lists=risk_assessment.bind_lists(applied, None, None)
+    )
+    record = _record(
+        pack, _report_file(tmp_path, reviewed_roi_names="d" * 64), _assessment()
+    )
+    # Nothing that whoever records the assessment gives can bind other lists:
+    # the record takes the digest that the run recorded.
+    assert record.lists_sha256 == risk_assessment.lists_digest(
+        record.lists_salt, applied, None, None
+    )
+    edited = _names(("Parotid L", ReviewedName(Review.EMPTY)))
+    assert record.lists_sha256 != risk_assessment.lists_digest(
+        record.lists_salt, edited, None, None
+    )
+
+
+@pytest.mark.deid_requirement("MIDI-BP-01")
+def test_a_pack_that_records_no_lists_is_refused(tmp_path, report_file):
+    pack = _write_pack(tmp_path, "unlisted", lists=None)
+    assert _pack_lists(pack) is None
+    with pytest.raises(RiskAssessmentError, match="reviewed lists"):
+        _record(pack, report_file, _assessment())
+    assert not (pack / risk_assessment.ASSESSMENT_FILE).exists()
+
+
+@pytest.mark.parametrize(
+    "lists",
+    [
+        [],
+        {"salt": SALT},
+        {"salt": SALT, "sha256": "d" * 64, "extra": 1},
+        {"salt": SALT.upper(), "sha256": "d" * 64},
+        {"salt": SALT, "sha256": None},
+    ],
+)
+def test_a_pack_whose_lists_are_not_of_its_format_is_refused(pack, report_file, lists):
+    file = pack / qc_store.PACK_FILE
+    document = json.loads(file.read_text("ascii"))
+    document["reviewed_lists"] = lists
+    os.chmod(file, 0o600)
+    file.write_text(json.dumps(document), "ascii")
+    with pytest.raises(QcPackError, match="not of its format"):
+        _record(pack, report_file, _assessment())
+
+
+def test_the_lists_are_bound_under_a_new_salt():
+    names = _names(("Parotid L", ReviewedName(Review.KEEP)))
+    first, second = (risk_assessment.bind_lists(names, None, None) for _ in range(2))
+    assert isinstance(first, ListsDigest)
+    assert first.salt != second.salt and first.sha256 != second.sha256
+    assert first.sha256 == risk_assessment.lists_digest(first.salt, names, None, None)
+    assert repr(first) == "ListsDigest()"
+    with pytest.raises(TypeError):
+        risk_assessment.bind_lists(None, names, None)
+    with pytest.raises(TypeError):
+        risk_assessment.bind_lists(None, None, names)
+
+
+def test_the_lists_digest_is_salted_and_tells_each_list_apart():
+    names = _names(("Parotid L", ReviewedName(Review.KEEP)))
+    descriptors = _descriptors(("AX T1", ReviewedDescriptor(Review.KEEP)))
+    rules = _rules()
+    digest = risk_assessment.lists_digest(SALT, names, descriptors, rules)
+    expected = hmac.new(
+        bytes.fromhex(SALT),
+        json.dumps(
+            [
+                hashlib.sha256(names.canonical_bytes()).hexdigest(),
+                hashlib.sha256(descriptors.canonical_bytes()).hexdigest(),
+                hashlib.sha256(rules.canonical_bytes()).hexdigest(),
+            ],
+            separators=(",", ":"),
+        ).encode("ascii"),
+        hashlib.sha256,
+    ).hexdigest()
+    assert digest == expected
+    assert digest != risk_assessment.lists_digest("a5" * 32, names, descriptors, rules)
+    digests = {
+        risk_assessment.lists_digest(SALT, *lists)
+        for lists in (
+            (None, None, None),
+            (ReviewedNames.empty(), None, None),
+            (None, ReviewedDescriptors.empty(), None),
+            (None, None, PixelRegionRules.empty()),
+            (ReviewedNames.empty(), ReviewedDescriptors.empty(), None),
+            (names, None, None),
+            (None, descriptors, None),
+            (None, None, rules),
+            (names, descriptors, None),
+        )
+    }
+    assert len(digests) == 9 and digest not in digests
+    salt = risk_assessment.new_salt()
+    assert len(salt) == 64 and salt != risk_assessment.new_salt()
+    for bad in ("5A" * 32, "5a" * 31, None):
+        with pytest.raises(RiskAssessmentError, match="salt"):
+            risk_assessment.lists_digest(bad, None, None, None)
+    with pytest.raises(TypeError):
+        risk_assessment.lists_digest(SALT, descriptors, None, None)
+    with pytest.raises(TypeError):
+        risk_assessment.lists_digest(SALT, None, names, None)
+    with pytest.raises(TypeError):
+        risk_assessment.lists_digest(SALT, None, None, names)
+
+
+def test_the_first_failure_is_given():
+    record = AssessmentRecord(
+        "R-" + "0" * 32,
+        PACK,
+        "a" * 64,
+        "b" * 64,
+        "c" * 64,
+        SALT,
+        risk_assessment.lists_digest(SALT, None, None, None),
+        _assessment(subjects=2, maximum_risk=0.5),
+    )
+    run = {
+        "collection_sha256": "b" * 64,
+        "policy_sha256": "c" * 64,
+        "reviewed_names": None,
+        "reviewed_descriptors": None,
+        "pixel_region_rules": None,
+        "subjects": 3,
+    }
+    assert (
+        risk_assessment.statistical_gate(
+            record, **{**run, "collection_sha256": "f" * 64, "policy_sha256": "f" * 64}
+        ).reason
+        is StatisticalReason.OTHER_COLLECTION
+    )
+    assert (
+        risk_assessment.statistical_gate(
+            record, **{**run, "policy_sha256": "f" * 64}
+        ).reason
+        is StatisticalReason.OTHER_POLICY
+    )
+    assert (
+        risk_assessment.statistical_gate(
+            record, **{**run, "reviewed_names": ReviewedNames.empty()}
+        ).reason
+        is StatisticalReason.OTHER_LISTS
+    )
+    assert (
+        risk_assessment.statistical_gate(record, **run).reason
+        is StatisticalReason.FEWER_SUBJECTS
+    )
+    assert (
+        risk_assessment.statistical_gate(record, **{**run, "subjects": 2}).reason
+        is StatisticalReason.ABOVE_THRESHOLD
+    )
+
+
+@pytest.mark.parametrize(
+    "run",
+    [
+        {"collection_sha256": "B" * 64},
+        {"policy_sha256": None},
+        {"subjects": -1},
+        {"subjects": True},
+    ],
+)
+def test_the_gate_checks_the_run(run):
+    with pytest.raises(RiskAssessmentError):
+        _gate(None, **run)
+
+
+def test_the_gate_checks_the_lists_types_without_a_record():
+    with pytest.raises(TypeError):
+        _gate(None, reviewed_names=ReviewedDescriptors.empty())
+
+
+def test_the_gate_names_a_record_exactly_where_one_was_given():
+    with pytest.raises(RiskAssessmentError):
+        StatisticalGate(None, None)
+    with pytest.raises(RiskAssessmentError):
+        StatisticalGate("R-" + "0" * 32, StatisticalReason.NO_ASSESSMENT)
+    with pytest.raises(RiskAssessmentError):
+        StatisticalGate(PACK, None)
+
+
+def test_the_collection_is_the_files_read_whatever_their_order():
+    digest = risk_assessment.collection_digest(SOURCES)
+    assert digest == risk_assessment.collection_digest(reversed(SOURCES))
+    assert digest == hashlib.sha256(b"".join(sorted(SOURCES))).hexdigest()
+    assert digest != risk_assessment.collection_digest(SOURCES[:3])
+    with pytest.raises(RiskAssessmentError):
+        risk_assessment.collection_digest([bytes(31)])
+    with pytest.raises(RiskAssessmentError):
+        risk_assessment.collection_digest(["0" * 64])
+
+
+def test_the_policy_digest_leaves_out_only_what_each_run_keys():
+    plain = risk_assessment.policy_digest(_report())
+    # Another pack, and the keyed digests of the same lists under another
+    # key, give the same digest.
+    assert risk_assessment.policy_digest(_report(OTHER_PACK)) == plain
+    # The lists' own digest binds them instead.
+    assert plain == risk_assessment.policy_digest(
+        _report(reviewed_roi_names="d" * 64, reviewed_descriptors="e" * 64)
+    )
+    # So do the region rules' keyed digests, under each run's key, which
+    # the lists' own digest binds too.
+    assert plain == risk_assessment.policy_digest(_report(pixel_region_rules="c" * 64))
+    document = _report()
+    document["method"] = {**document["method"], "method_digest": "f" * 64}
+    assert risk_assessment.policy_digest(document) == plain
+    # Every other component of the method is bound, such as an engine file.
+    document["method"]["engine_files"] = {
+        **document["method"]["engine_files"],
+        "policy.py": "0" * 64,
+    }
+    assert risk_assessment.policy_digest(document) != plain
+
+
+@pytest.mark.parametrize(
+    "document",
+    [
+        {},
+        {"policy": {}},
+        {
+            "policy": {},
+            "method": {"method_digest": None, "reviewed_roi_names": None},
+        },
+        {"policy": [], "method": {}},
+        [],
+    ],
+)
+def test_the_policy_digest_needs_the_report_sections(document):
+    with pytest.raises(RiskAssessmentError, match="format"):
+        risk_assessment.policy_digest(document)
+
+
+def test_a_report_of_another_pack_is_refused(pack, tmp_path):
+    other = tmp_path / "other.json"
+    other.write_text(json.dumps(_report(OTHER_PACK)), "utf-8")
+    with pytest.raises(RiskAssessmentError, match="another QC pack"):
+        _record(pack, other, _assessment())
+    assert not (pack / risk_assessment.ASSESSMENT_FILE).exists()
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "",
+        "[]",
+        "not json",
+        json.dumps({"format": "pymedphys-deid-release-report/1"}),
+    ],
+)
+def test_a_report_not_of_its_format_is_refused(pack, tmp_path, text):
+    path = tmp_path / SENTINEL
+    path.write_text(text, "utf-8")
+    with pytest.raises(RiskAssessmentError, match="format") as raised:
+        _record(pack, path, _assessment())
+    assert SENTINEL not in str(raised.value)
+
+
+def test_a_missing_report_is_refused_without_its_path(pack, tmp_path):
+    with pytest.raises(QcPackError) as raised:
+        _record(pack, tmp_path / SENTINEL, _assessment())
+    assert SENTINEL not in str(raised.value)
+
+
+def test_a_directory_without_a_pack_is_refused(tmp_path, report_file):
+    with pytest.raises(QcPackError, match="no QC pack"):
+        _record(tmp_path, report_file, _assessment())
+    with pytest.raises(QcPackError, match="no QC pack"):
+        risk_assessment.read_assessment(tmp_path)
+
+
+@pytest.mark.deid_requirement("MIDI-BP-01")
+def test_a_pack_is_assessed_once(pack, report_file):
+    first = _record(pack, report_file, _assessment())
+    with pytest.raises(RiskAssessmentError, match="already"):
+        _record(pack, report_file, _assessment(maximum_risk=0.01))
+    assert risk_assessment.read_assessment(pack) == first
+
+
+@pytest.mark.deid_requirement("MIDI-BP-01")
+def test_a_pack_changed_after_it_was_assessed_is_refused(pack, report_file):
+    _record(pack, report_file, _assessment())
+    file = pack / qc_store.PACK_FILE
+    document = json.loads(file.read_text("ascii"))
+    document["instances"][0]["source_sha256"] = "9" * 64
+    os.chmod(file, 0o600)
+    file.write_text(json.dumps(document), "ascii")
+    with pytest.raises(RiskAssessmentError, match="changed"):
+        risk_assessment.read_assessment(pack)
+
+
+@pytest.mark.deid_requirement("MIDI-BP-01")
+@pytest.mark.parametrize(
+    "instances",
+    [
+        (),
+        (InstanceEntry(0, "/imports/0", Disposition.REFUSED, reasons=("no",)),),
+        tuple(
+            InstanceEntry(
+                position,
+                f"/imports/{position}.dcm",
+                disposition,
+                output=PurePosixPath(f"ZQ0001/2.25.1/2.25.2/2.25.{position + 3}.dcm")
+                if disposition is Disposition.RELEASED
+                else None,
+                reasons=() if disposition is Disposition.RELEASED else ("held",),
+                source_sha256=None if position else SOURCES[0].hex(),
+            )
+            for position, disposition in enumerate(
+                (Disposition.RELEASED, Disposition.HELD_FOR_REVIEW)
+            )
+        ),
+        tuple(
+            InstanceEntry(
+                position,
+                f"/imports/{position}.dcm",
+                Disposition.RELEASED,
+                output=PurePosixPath(f"ZQ0001/2.25.1/2.25.2/2.25.{position + 3}.dcm"),
+                source_sha256=None if position else SOURCES[0].hex(),
+            )
+            for position in range(2)
+        ),
+    ],
+)
+def test_a_pack_that_binds_no_collection_is_refused(tmp_path, report_file, instances):
+    pack = _write_pack(tmp_path, "unbound", instances)
+    with pytest.raises(RiskAssessmentError, match="source"):
+        _record(pack, report_file, _assessment())
+    assert not (pack / risk_assessment.ASSESSMENT_FILE).exists()
+
+
+def _rewrite(pack, change):
+    file = pack / risk_assessment.ASSESSMENT_FILE
+    document = json.loads(file.read_text("ascii"))
+    change(document)
+    os.chmod(file, 0o600)
+    file.write_text(json.dumps(document), "ascii")
+
+
+def test_a_record_for_another_pack_is_refused(pack, report_file):
+    _record(pack, report_file, _assessment())
+    _rewrite(pack, lambda document: document.update(pack=OTHER_PACK))
+    with pytest.raises(RiskAssessmentError, match="another QC pack"):
+        risk_assessment.read_assessment(pack)
+
+
+def test_a_record_whose_collection_was_edited_is_refused(pack, report_file):
+    _record(pack, report_file, _assessment())
+    _rewrite(pack, lambda document: document.update(collection_sha256="0" * 64))
+    with pytest.raises(RiskAssessmentError, match="changed"):
+        risk_assessment.read_assessment(pack)
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        lambda document: document.update(format="pymedphys-deid-risk-assessment/0"),
+        lambda document: document.update(extra=1),
+        lambda document: document.pop("earlier_releases"),
+        lambda document: document.pop("linked_records"),
+        lambda document: document.pop("device_identity"),
+        lambda document: document.pop("model"),
+        lambda document: document["model"].pop("version"),
+        lambda document: document["attacker"].update(extra=1),
+        lambda document: document.update(threshold=0.2),
+        lambda document: document.update(maximum_risk="0.01"),
+        lambda document: document.update(subjects=0),
+        lambda document: document.update(assessed_at="23 October 2026"),
+        lambda document: document.update(matching_variables="sex"),
+        lambda document: document.update(reference=PACK),
+        lambda document: document.update(lists_salt="0" * 63),
+        lambda document: document.pop("lists_sha256"),
+    ],
+)
+def test_a_record_not_of_its_format_is_refused(pack, report_file, change):
+    _record(pack, report_file, _assessment())
+    _rewrite(pack, change)
+    with pytest.raises(RiskAssessmentError, match="not of its format") as raised:
+        risk_assessment.read_assessment(pack)
+    assert SENTINEL not in str(raised.value)
+
+
+def test_a_record_naming_a_member_twice_is_refused(pack, report_file):
+    _record(pack, report_file, _assessment())
+    file = pack / risk_assessment.ASSESSMENT_FILE
+    text = file.read_text("ascii")
+    # A second subjects member, which a plain JSON reader would take.
+    text = text.replace('"subjects": 3,', '"subjects": 3,\n  "subjects": 1,', 1)
+    os.chmod(file, 0o600)
+    file.write_text(text, "ascii")
+    with pytest.raises(RiskAssessmentError, match="not of its format"):
+        risk_assessment.read_assessment(pack)
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        {"lists_salt": "0" * 64},
+        {"lists_sha256": "0" * 64},
+        # Both, consistently, for lists other than those the run applied.
+        {
+            "lists_salt": SALT,
+            "lists_sha256": risk_assessment.lists_digest(
+                SALT, ReviewedNames.empty(), None, None
+            ),
+        },
+    ],
+)
+def test_a_record_whose_lists_were_edited_is_refused(pack, report_file, change):
+    _record(pack, report_file, _assessment())
+    _rewrite(pack, lambda document: document.update(change))
+    with pytest.raises(RiskAssessmentError, match="other reviewed lists"):
+        risk_assessment.read_assessment(pack)
+
+
+def test_a_record_of_a_pack_that_records_no_lists_is_refused(pack, report_file):
+    _record(pack, report_file, _assessment())
+    file = pack / qc_store.PACK_FILE
+    document = json.loads(file.read_text("ascii"))
+    document["reviewed_lists"] = None
+    os.chmod(file, 0o600)
+    file.write_text(json.dumps(document), "ascii")
+    with pytest.raises(RiskAssessmentError, match="changed"):
+        risk_assessment.read_assessment(pack)
+    # Nor does a record edited to match the changed pack bind its lists.
+    digest = hashlib.sha256(file.read_bytes()).hexdigest()
+    _rewrite(pack, lambda record: record.update(pack_digest=digest))
+    with pytest.raises(RiskAssessmentError, match="other reviewed lists"):
+        risk_assessment.read_assessment(pack)
+
+
+def test_errors_quote_no_statement():
+    for changes in (
+        {"generalisation": ""},
+        {"matching_variables": (SENTINEL, SENTINEL)},
+        {"threshold": 0.5},
+    ):
+        with pytest.raises(RiskAssessmentError) as raised:
+            _assessment(**changes)
+        assert SENTINEL not in str(raised.value)
+    # Every field of the statement is checked when a record is made, whatever
+    # changed it.
+    with pytest.raises(RiskAssessmentError):
+        dataclasses.replace(_assessment(), assessor="")

@@ -21,7 +21,10 @@ a run held for review and keeps it, maps it to another value, or has it
 emptied, as for ROI Names (:mod:`.reviewed_roi_names`). The decisions are kept
 in a :class:`ReviewedDescriptors` list for the site or project and reused on
 later runs, which is the pooled human review that D-009 requires before a
-descriptor string is retained.
+descriptor string is retained. Under the Retain Patient Characteristics
+Option with Clean Descriptors, the same list decides on the values of the
+Option's five attributes of free text, such as Allergies (0010,2110) and
+Pre-Medication (0040,0012), which the Option's cleaner cannot clean (D-038).
 
 A decision is for one attribute, by its tag, and one value, by its exact
 spelling once padding is removed, and applies wherever that attribute holds
@@ -83,12 +86,17 @@ from .supplementary_actions import load_supplementary_actions
 if TYPE_CHECKING:
     from .technique_descriptors import TechniqueVocabulary
 
-FORMAT = "pymedphys-deid-reviewed-descriptors/2"
-# The earlier format, without private attributes, which a list may still be.
-_FORMATS = frozenset({"pymedphys-deid-reviewed-descriptors/1", FORMAT})
+FORMAT = "pymedphys-deid-reviewed-descriptors/3"
+# The earlier formats, which a list may still be: the first without private
+# attributes, and neither with an attribute that only Retain Patient
+# Characteristics gives C.
+_FORMAT_1 = "pymedphys-deid-reviewed-descriptors/1"
+_FORMAT_2 = "pymedphys-deid-reviewed-descriptors/2"
+_FORMATS = frozenset({_FORMAT_1, _FORMAT_2, FORMAT})
 # The domain of the list's keyed digest, which no other derivation uses.
 DIGEST_DOMAIN = "reviewed-descriptors"
 CLEAN_DESCRIPTORS = "clean_descriptors"
+PATIENT_CHARACTERISTICS = "retain_patient_characteristics"
 _ROI_NAME = "(3006,0026)"
 # The most characters a value of each text VR can hold (PS3.5 Section 6.2).
 # UC and UT are limited only by the length of a value field.
@@ -133,6 +141,20 @@ class ReviewedDescriptorsError(ValueError):
 
 
 @functools.cache
+def _characteristics_only() -> frozenset[str]:
+    """Return the attributes that only Retain Patient Characteristics gives C.
+
+    No list of an earlier format than :data:`FORMAT` can hold one.
+    """
+    return frozenset(
+        row.tag
+        for row in load_table_e1_1().attributes
+        if row.options.get(PATIENT_CHARACTERISTICS) == "C"
+        and row.options.get(CLEAN_DESCRIPTORS) != "C"
+    )
+
+
+@functools.cache
 def descriptor_attributes() -> Mapping[str, str]:
     """Return the attributes whose values a reviewer can decide on, with their VRs.
 
@@ -141,6 +163,10 @@ def descriptor_attributes() -> Mapping[str, str]:
     that the pinned data dictionary gives VR SH, LO, ST, LT, UC, or UT, other
     than ROI Name (3006,0026), which the reviewed-names list decides on. The
     sequences, binary values, and code strings given C are not among them.
+    So are the five attributes of free text that Table E.1-1 gives C under
+    the Retain Patient Characteristics Option, two of which, Pre-Medication
+    (0040,0012) and Special Needs (0038,0050), Clean Descriptors does not
+    clean (D-038).
 
     Returns
     -------
@@ -151,6 +177,7 @@ def descriptor_attributes() -> Mapping[str, str]:
         row.tag
         for row in load_table_e1_1().attributes
         if row.options.get(CLEAN_DESCRIPTORS) == "C"
+        or row.options.get(PATIENT_CHARACTERISTICS) == "C"
     } | {
         tag
         for tag, rule in load_supplementary_actions().rules.items()
@@ -246,7 +273,7 @@ def _decision_problem(tag: object, value: object, decision: object) -> str | Non
     """Return why a decision cannot be recorded, without the value, or None."""
     vr = descriptor_vr(tag) if isinstance(tag, str) else None
     if vr is None:
-        return "the attribute is not a descriptor that Clean Descriptors cleans"
+        return "the attribute is not a descriptor that a reviewer can decide on"
     problem = _value_problem(value, vr)
     if problem:
         return f"the value {problem}"
@@ -348,10 +375,10 @@ class ReviewedDescriptors:
         ------
         ReviewedDescriptorsError
             If ``path`` is inside a protected directory, or an existing list
-            cannot be read, is not a :data:`FORMAT` file, nor one of the
-            earlier format without a private attribute, which is read as
-            one, or has a malformed or repeated attribute, value, or
-            decision. The message holds no value.
+            cannot be read, is not a :data:`FORMAT` file, nor one of an
+            earlier format, which is read as one, without an attribute that
+            its format could not hold, or has a malformed or repeated
+            attribute, value, or decision. The message holds no value.
         """
         resolved = custodian_lists.custodian_path(
             path,
@@ -496,11 +523,18 @@ def _read(path: pathlib.Path) -> dict[str, dict[str, ReviewedDescriptor]]:
         or not isinstance(document["attributes"], dict)
     ):
         raise ReviewedDescriptorsError(f"the file is not a {FORMAT} file")
-    if document["format"] != FORMAT and any(
+    if document["format"] != FORMAT and set(document["attributes"]) & (
+        _characteristics_only()
+    ):
+        raise ReviewedDescriptorsError(
+            f"a file of an earlier format than {FORMAT} has an attribute that "
+            "only Retain Patient Characteristics gives C"
+        )
+    if document["format"] == _FORMAT_1 and any(
         is_private_descriptor(tag) for tag in document["attributes"]
     ):
         raise ReviewedDescriptorsError(
-            f"a file of an earlier format than {FORMAT} has a private attribute"
+            f"a file of an earlier format than {_FORMAT_2} has a private attribute"
         )
     decisions: dict[str, dict[str, ReviewedDescriptor]] = {}
     for number, (tag, values) in enumerate(document["attributes"].items(), start=1):
@@ -621,7 +655,7 @@ def clean_descriptor_values(
     """
     if descriptor_vr(tag) is None:
         raise ValueError(
-            "the attribute is not a descriptor that Clean Descriptors cleans"
+            "the attribute is not a descriptor that a reviewer can decide on"
         )
     if isinstance(values, (str, bytes)) or isinstance(identifiers, (str, bytes)):
         raise TypeError("values and identifiers must be sequences of strings")
@@ -770,12 +804,16 @@ class DescriptorReviewQueue:
         results: Sequence[CleanedDescriptor],
         *,
         applied: bool = True,
+        holds: bool = False,
     ) -> None:
         """Add the values of one element, with what is written for each.
 
         ``applied`` is whether the element was written with what cleaning
         gave its values; one that took its action without Clean Descriptors
-        instead is counted as having fallen back.
+        instead is counted as having fallen back. ``holds`` is whether a
+        held value of an element not applied held its instance for review
+        instead, as for an attribute that another option's cleaner left to
+        the list (D-038), which is not counted as having fallen back.
 
         Raises
         ------
@@ -792,7 +830,7 @@ class DescriptorReviewQueue:
             self._reasons[(tag, value)] |= reasons
             self._counts[(tag, value)] += 1
         self._outcomes.update(result.outcome for result in results)
-        if not applied:
+        if not applied and not holds:
             self._fell_back += 1
 
     def entries(self) -> tuple[PendingDescriptor, ...]:

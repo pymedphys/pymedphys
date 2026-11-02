@@ -73,6 +73,8 @@ LISTED = {
     "(0038,0061)": "Issuer of Service Episode ID",
     "(0040,050A)": "Specimen Accession Number",
     "(0040,A354)": "Telephone Number (Trial)",
+    "(0012,0040)": "Clinical Trial Subject ID",
+    "(0012,0042)": "Clinical Trial Subject Reading ID",
 }
 
 
@@ -238,6 +240,8 @@ def test_a_planned_text_value_not_reported_goes_to_qc_review():
         ("(0010,0020)", (("(0010,1002)", 0),)),  # a direct identifier in an item
         ("(0040,A354)", ()),  # a retired direct identifier
         ("(0032,0012)", ()),  # a retired direct identifier of group 0032
+        ("(0012,0040)", ()),  # a named direct identifier of group 0012
+        ("(0012,0042)", ()),  # the other one
         ("(0010,1002)", ()),  # a sequence whose items could not be read
     ],
 )
@@ -256,6 +260,10 @@ def test_an_uncollected_value_of_a_required_kind_is_withheld(tag, items):
         "(0010,1020)",  # DS, which the search never searches
         "(0019,1001)",  # private, so the dictionary gives no VR
         "(0008,0202)",  # a retired placeholder without a VR
+        "(0012,0020)",  # LO, a clinical trial identifier that names the trial
+        "(0012,0030)",  # LO, one that names a site
+        "(0012,0050)",  # LO, one that names a time point
+        "(0012,0071)",  # LO, one that names a series
     ],
 )
 def test_other_uncollected_values_go_to_qc_review(tag):
@@ -438,6 +446,18 @@ def test_an_unreadable_file_is_withheld():
             ReasonCode.RESIDUAL_DATETIME,
         ),
         (OTHER_ID_PATH, "LO", PATIENT_ID, ReasonCode.RESIDUAL_DIRECT_IDENTIFIER),
+        (
+            ElementPath((), "(0012,0040)"),
+            "LO",
+            PATIENT_ID,
+            ReasonCode.RESIDUAL_DIRECT_IDENTIFIER,
+        ),
+        (
+            ElementPath((), "(0012,0042)"),
+            "LO",
+            PATIENT_ID,
+            ReasonCode.RESIDUAL_DIRECT_IDENTIFIER,
+        ),
     ],
 )
 def test_a_finding_of_a_required_kind_is_withheld(path, vr, value, code):
@@ -489,9 +509,22 @@ def test_a_text_finding_inside_the_data_set_goes_to_qc_review():
     assert _codes(condition) == [ReasonCode.RESIDUAL_TEXT]
 
 
+@pytest.mark.deid_requirement("MIDI-BP-01")
+@pytest.mark.parametrize(
+    "tag", ["(0012,0020)", "(0012,0030)", "(0012,0050)", "(0012,0071)"]
+)
+def test_a_trial_site_series_or_time_point_id_found_goes_to_qc_review(tag):
+    # Only the two subject IDs of group 0012 are direct identifiers (D-027).
+    coverage = _coverage(SourceValue(ElementPath((), tag), "LO", PATIENT_ID))
+    condition = release_condition(coverage, _written(PATIENT_ID))
+    assert condition.decision is Decision.QC_REVIEW
+    assert _codes(condition) == [ReasonCode.RESIDUAL_TEXT]
+
+
 def test_a_person_name_found_in_a_retained_rt_label_is_withheld():
-    # The design leaves open whether such findings go to QC review instead;
-    # until it is decided, they fail the file. Beam Name is retained here.
+    # A removed value is still searched for where the policy retains a copy,
+    # and a person name found in a retained label withholds the file (D-027).
+    # Beam Name is retained here.
     beam_name = struct.pack("<HH2sH", 0x300A, 0x00C2, b"LO", 8) + b"QUILLON "
     coverage = _coverage(SourceValue(NAME_PATH, "PN", PERSON))
     written = _written() + beam_name

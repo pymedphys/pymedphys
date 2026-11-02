@@ -65,6 +65,7 @@ _METHOD = {
     "reviewed_descriptors": "Reviewed descriptors digest",
     "technique_vocabulary_digest": "Technique vocabulary digest",
     "text_finder_digest": "Text finder digest",
+    "pixel_region_rules": "Pixel region rules digest",
     "safe_private_list": "Safe private list",
     "generated_values_digest": "Generated values digest",
     "engine_files": None,
@@ -78,6 +79,7 @@ _OPTIONAL_METHOD = frozenset(
         "reviewed_descriptors",
         "technique_vocabulary_digest",
         "text_finder_digest",
+        "pixel_region_rules",
         "safe_private_list",
     }
 )
@@ -97,9 +99,12 @@ _SECTIONS = (
     "policy",
     "method",
     "runtime",
+    "key",
     "qc_review",
     "face_review",
     "redaction_review",
+    "pixel_regions",
+    "readiness",
     "released",
     "sequestered",
     "held_for_review",
@@ -108,10 +113,18 @@ _SECTIONS = (
     "reference_findings",
     "pixel_risks",
     "search_coverage",
+    "exempted_findings",
     "source_gaps",
     "structural_checks",
 )
 _NONE = "None."
+# The readiness section's gates, as a reader sees them, in the order of the
+# document.
+_GATES = {
+    "statistical": "Statistical gate",
+    "pixel_and_face": "Pixel and face review gate",
+    "attestation": "Attestation gate",
+}
 
 
 class ReleaseReportMarkdownError(ValueError):
@@ -163,9 +176,12 @@ def to_markdown(report: str) -> str:
         *_policy(document["policy"]),
         *_method(document["method"]),
         *_runtime(document["runtime"]),
+        *_key(document["key"]),
         *_qc_review(document["qc_review"]),
         *_face_review(document["face_review"]),
         *_redaction_review(document["redaction_review"]),
+        *_pixel_regions(document["pixel_regions"]),
+        *_readiness(document["readiness"]),
         *_released(document["released"]),
         *_sequestered(document["sequestered"]),
         *_held(document["held_for_review"]),
@@ -174,6 +190,7 @@ def to_markdown(report: str) -> str:
         *_reference_findings(document["reference_findings"]),
         *_pixel_risks(document["pixel_risks"]),
         *_coverage(document["search_coverage"]),
+        *_exempted(document["exempted_findings"]),
         *_gaps(document["source_gaps"]),
         *_structural_checks(document["structural_checks"]),
     ]
@@ -281,6 +298,31 @@ def _runtime(section: object) -> list[Block]:
     ]
 
 
+def _key(section: object) -> list[Block]:
+    section = _fields("key", section, ("scope", "key_id"))
+    scope, key_id = section["scope"], section["key_id"]
+    if (scope, key_id is None) not in (("run", True), ("project", False)):
+        raise _refuse("key")
+    return [
+        ["## Key"],
+        [
+            "The scope of the key that the run's replacement UIDs, "
+            "pseudonyms, and date offsets were derived under: run, for a key "
+            "of this run alone, whose values agree with no other run's, or "
+            "project, for a project key, named by its non-secret identifier, "
+            "whose values agree with every other release under that key, so "
+            "that those releases can be linked to each other."
+        ],
+        _table(
+            ("Field", "Value"),
+            [
+                ("Scope", _code("key scope", scope)),
+                ("Key identifier", _optional("key key_id", key_id)),
+            ],
+        ),
+    ]
+
+
 def _qc_review(section: object) -> list[Block]:
     heading = ["## QC review"]
     if section is None:
@@ -364,6 +406,68 @@ def _redaction_review(section: object) -> list[Block]:
             + _code("redaction_review reference", section["reference"])
             + "."
         ],
+    ]
+
+
+def _pixel_regions(section: object) -> list[Block]:
+    if section is None:
+        return []
+    section = _fields("pixel_regions", section, ("detected", "rule"))
+    return [
+        ["## Pixel regions"],
+        [
+            "Under the Clean Pixel Data Option, the regions blacked out in the "
+            "instances released or held without a reviewer's verdict, each "
+            "region once in each frame that has it, by what gave them. A "
+            "reviewed region rule gives regions to every frame of an instance "
+            "of one kind, beside those that the text finder finds."
+        ],
+        _table(
+            ("Source", "Regions"),
+            [
+                ("Text finder", _tally("pixel_regions detected", section["detected"])),
+                ("Region rules", _tally("pixel_regions rule", section["rule"])),
+            ],
+        ),
+    ]
+
+
+def _readiness(section: object) -> list[Block]:
+    if section is None:
+        return []
+    section = _fields("readiness", section, ("ready", "review", "assessment", *_GATES))
+    return [
+        ["## Readiness for public release"],
+        [
+            "Under the `public-release` preset, the run is ready for release "
+            "only where three gates pass: the statistical gate, from the risk "
+            "assessment recorded beside the earlier run's confidential QC pack "
+            "that the run was given, and the pixel and face review and human "
+            "QC attestation gates, from that pack's attestation. Passing one "
+            "passes no other, and a gate that failed gives the first reason "
+            "that held."
+        ],
+        _table(
+            ("Field", "Value"),
+            [
+                ("Ready", _boolean("readiness ready", section["ready"])),
+                (
+                    "Reviewed QC pack",
+                    _optional("readiness review", section["review"]),
+                ),
+                (
+                    "Risk assessment",
+                    _optional("readiness assessment", section["assessment"]),
+                ),
+                *(
+                    (
+                        label,
+                        _optional(f"readiness {name}", section[name], "passed"),
+                    )
+                    for name, label in _GATES.items()
+                ),
+            ],
+        ),
     ]
 
 
@@ -611,6 +715,39 @@ def _coverage(section: object) -> list[Block]:
             "pack lists each by instance and place."
         ],
         _table(("Attribute", "Reason", "Values"), rows) if rows else [_NONE],
+    ]
+
+
+def _exempted(section: object) -> list[Block]:
+    rows = []
+    for entry in _list("exempted_findings", section):
+        entry = _fields(
+            "exempted_findings", entry, ("exemption", "attribute", "found_in", "count")
+        )
+        rows.append(
+            (
+                _code("exempted_findings exemption", entry["exemption"]),
+                _code("exempted_findings attribute", entry["attribute"]),
+                _code("exempted_findings found_in", entry["found_in"]),
+                _count("exempted_findings count", entry["count"]),
+            )
+        )
+    return [
+        ["## Residual findings exempted from review"],
+        [
+            "How many released instances have a source value that the residual "
+            "search found but that neither held nor withheld the instance, "
+            "because what it is or where it was found explains it: a standard "
+            "term or code, an equipment name, a vendor's private creator, a date "
+            "that Modified Dates shifted, or a value that a selected option "
+            "keeps. Each is counted by why it was exempted, the attribute that "
+            "held the source value, and the attribute it was found in, each "
+            "instance once for each. The QC pack lists each finding by instance "
+            "and place."
+        ],
+        _table(("Exemption", "Attribute", "Found in", "Instances"), rows)
+        if rows
+        else [_NONE],
     ]
 
 

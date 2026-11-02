@@ -48,8 +48,10 @@ uv run -- pymedphys dev doctests
 uv run -- ruff check --fix .
 uv run -- ruff format .
 
-# Run type checking with pyright
+# Run type checking with pyright: the package, then the CI scripts, which
+# are a project of their own because pyright skips dot-directories
 uv run -- pyright
+uv run -- pyright --project .github/scripts
 
 # Run pre-commit on all files
 uv run -- pre-commit run --all-files

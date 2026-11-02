@@ -20,8 +20,9 @@ pieces into which the half-space's plane cuts it; rings are grouped by the
 plane they lie in by :func:`coplanar`; and pieces that tile a region, such
 as those of a ring clipped to each of several regions that meet only at
 their boundaries, are joined back into the region's rings by
-:func:`dissolve`. :func:`signed_area` and :func:`is_simple` read a ring
-lying in a plane of constant z by its x and y.
+:func:`dissolve`. :func:`signed_area`, :func:`nonzero_area`, and
+:func:`is_simple` read a ring lying in a plane of constant z by its x and
+y.
 """
 
 from __future__ import annotations
@@ -239,6 +240,86 @@ def signed_area(points: np.ndarray) -> float:
     return float(np.dot(x, np.roll(y, -1)) - np.dot(np.roll(x, -1), y)) / 2
 
 
+def nonzero_area(points: np.ndarray) -> float:
+    """The area, by a ring's x and y, of the points about which its
+    winding number is not zero: its region's area by the nonzero rule.
+
+    Unlike the magnitude of :func:`signed_area`, it counts each such point
+    once, so the lobes of a ring that crosses itself do not cancel where
+    they wind opposite ways, a part wound about twice counts once, and a
+    ring that bounds nothing, such as one that runs out along a path and
+    back, has none. The plane is cut into slabs of constant y at each
+    vertex and at each crossing of two edges. Within a slab no two edges
+    cross, so the length of the points wound about varies linearly with y,
+    and its value at the slab's middle, times the slab's height, is exact.
+
+    The points are taken relative to their mean, as for
+    :func:`signed_area`. Finding the crossings takes work in proportion to
+    the square of the number of edges, and measuring the slabs to the
+    number of edges times the number of slabs, the vertices and crossings
+    together: about the square of the edges for a ring that crosses itself
+    a few times, but up to their cube for one that crosses itself
+    throughout.
+    """
+    xy = np.asarray(points, dtype=float)[:, :2]
+    if len(xy) < 3:
+        return 0.0
+    xy = xy - xy.mean(axis=0)
+    starts = xy
+    ends = np.roll(xy, -1, axis=0)
+    # An edge of constant y lies along a cut, so it bounds no slab.
+    moving = starts[:, 1] != ends[:, 1]
+    starts, ends = starts[moving], ends[moving]
+    directions = ends - starts
+    count = len(starts)
+    block = max(1, (1 << 22) // max(count, 1))
+    cuts = [xy[:, 1]]
+    for first in range(0, count, block):
+        rows = slice(first, min(first + block, count))
+        a, d = starts[rows, None], directions[rows, None]
+        offset = starts[None, :] - a
+        denominator = _cross_z(d, directions[None, :])
+        with np.errstate(divide="ignore", invalid="ignore"):
+            along = _cross_z(offset, directions[None, :]) / denominator
+            other = _cross_z(offset, d) / denominator
+        # A cut too many divides a slab without changing its result, so
+        # crossings within rounding of an edge's end are cut as well.
+        meet = (
+            (denominator != 0)
+            & (along >= -1e-9)
+            & (along <= 1 + 1e-9)
+            & (other >= -1e-9)
+            & (other <= 1 + 1e-9)
+        )
+        cuts.append((a[..., 1] + along * d[..., 1])[meet])
+    levels = np.unique(np.concatenate(cuts))
+    middles = (levels[:-1] + levels[1:]) / 2
+    heights = np.diff(levels)
+    low = np.minimum(starts[:, 1], ends[:, 1])
+    high = np.maximum(starts[:, 1], ends[:, 1])
+    slopes = directions[:, 0] / directions[:, 1]
+    area = 0.0
+    for first in range(0, len(middles), block):
+        y = middles[first : first + block, None]
+        spans = (low < y) & (y < high)
+        # An edge that does not span the slab is placed at x of zero with
+        # no winding, where it only divides an interval between two others.
+        x = np.where(spans, starts[:, 0] + (y - starts[:, 1]) * slopes, 0.0)
+        winds = np.where(spans, np.sign(directions[:, 1]), 0.0)
+        order = np.argsort(x, axis=1)
+        x = np.take_along_axis(x, order, axis=1)
+        winding = np.cumsum(np.take_along_axis(winds, order, axis=1), axis=1)
+        lengths = (np.diff(x, axis=1) * (winding[:, :-1] != 0)).sum(axis=1)
+        area += float(lengths @ heights[first : first + block])
+    return area
+
+
+def _cross_z(one: np.ndarray, other: np.ndarray) -> np.ndarray:
+    """The z of the cross product of two vectors in x and y, broadcast."""
+    cross: np.ndarray = one[..., 0] * other[..., 1] - one[..., 1] * other[..., 0]
+    return cross
+
+
 def is_simple(points: np.ndarray) -> bool:
     """Whether a ring, by its x and y, has three points or more, no edge of
     no length, and no two edges that meet but at the vertex they share as
@@ -256,22 +337,31 @@ def is_simple(points: np.ndarray) -> bool:
     block = max(1, (1 << 22) // count)
     for first in range(0, count, block):
         rows = np.arange(first, min(first + block, count))
-        meet = _meet(
-            starts[rows, None], ends[rows, None], starts[None, :], ends[None, :]
+        a, b, c, d = (
+            starts[rows, None],
+            ends[rows, None],
+            starts[None, :],
+            ends[None, :],
         )
         later = np.arange(count)[None, :] > rows[:, None]
         neighbours = (np.arange(count)[None, :] == rows[:, None] + 1) | (
             (rows[:, None] == 0) & (np.arange(count)[None, :] == count - 1)
         )
-        if (meet & later & ~neighbours).any():
-            return False
-        if (
-            _overlap(
-                starts[rows, None], ends[rows, None], starts[None, :], ends[None, :]
+        # Two edges can meet only where their closed bounding boxes do, so
+        # only those pairs are tested exactly and can count as meeting, which
+        # spares the exact tests of the many pairs of edges far apart along
+        # one line; every pair is still tested with rounding.
+        boxes = np.ones(later.shape, dtype=bool)
+        for axis in (0, 1):
+            boxes &= np.minimum(a[..., axis], b[..., axis]) <= np.maximum(
+                c[..., axis], d[..., axis]
             )
-            & later
-            & neighbours
-        ).any():
+            boxes &= np.minimum(c[..., axis], d[..., axis]) <= np.maximum(
+                a[..., axis], b[..., axis]
+            )
+        if _meet(a, b, c, d, boxes & later & ~neighbours).any():
+            return False
+        if _overlap(a, b, c, d, later & neighbours).any():
             return False
     return True
 
@@ -285,6 +375,59 @@ def _cross(origin: np.ndarray, one: np.ndarray, other: np.ndarray) -> np.ndarray
     return cross
 
 
+# Shewchuk's bound on the rounding error of :func:`_cross`, relative to the
+# sum of its two products' magnitudes, for doubles ("Adaptive Precision
+# Floating-Point Arithmetic and Fast Robust Geometric Predicates", 1997, as
+# ccwerrboundA), which assumes that no product underflows, as none does but
+# for points within about 1e-154 of each other. A cross product of less
+# magnitude than the bound may have the wrong sign.
+_CROSS_ERROR = (3 + 16 * 2.0**-53) * 2.0**-53
+
+
+def _side(
+    origin: np.ndarray,
+    one: np.ndarray,
+    other: np.ndarray,
+    where: np.ndarray | bool = True,
+) -> np.ndarray:
+    """The sign of :func:`_cross`, broadcast, found exactly for the points as
+    given, where ``where`` holds, wherever rounding could have changed it,
+    as it can for points in a line that no axis runs along. Where ``where``
+    does not hold, the sign is as rounded, which callers mask away."""
+    left = (one[..., 0] - origin[..., 0]) * (other[..., 1] - origin[..., 1])
+    right = (one[..., 1] - origin[..., 1]) * (other[..., 0] - origin[..., 0])
+    cross = left - right
+    side: np.ndarray = np.array(np.sign(cross))
+    unsure = (np.abs(cross) < _CROSS_ERROR * (np.abs(left) + np.abs(right))) & where
+    if unsure.any():
+        shape = cross.shape + (2,)
+        o, p, q = (
+            np.broadcast_to(each[..., :2], shape)[unsure]
+            for each in (origin, one, other)
+        )
+        # Where two of the points are one, it is exactly zero.
+        apart = ~((p == o).all(axis=1) | (q == o).all(axis=1) | (q == p).all(axis=1))
+        exact = np.zeros(len(o), dtype=side.dtype)
+        exact[apart] = [
+            _exact_side(*each)
+            for each in zip(o[apart].tolist(), p[apart].tolist(), q[apart].tolist())
+        ]
+        side[unsure] = exact
+    return side
+
+
+def _exact_side(origin: list[float], one: list[float], other: list[float]) -> int:
+    """The sign of :func:`_cross` for three points, found exactly by
+    integers, each coordinate being an integer over a power of two."""
+    ratios = [value.as_integer_ratio() for value in (*origin, *one, *other)]
+    scale = max(denominator for _, denominator in ratios)
+    ox, oy, px, py, qx, qy = (
+        numerator * (scale // denominator) for numerator, denominator in ratios
+    )
+    exact = (px - ox) * (qy - oy) - (py - oy) * (qx - ox)
+    return (exact > 0) - (exact < 0)
+
+
 def _between(start: np.ndarray, end: np.ndarray, point: np.ndarray) -> np.ndarray:
     """Whether a point collinear with a segment lies on it, ends included."""
     between: np.ndarray = (
@@ -296,32 +439,43 @@ def _between(start: np.ndarray, end: np.ndarray, point: np.ndarray) -> np.ndarra
     return between
 
 
-def _meet(a: np.ndarray, b: np.ndarray, c: np.ndarray, d: np.ndarray) -> np.ndarray:
-    """Whether segments ab and cd share a point, ends included."""
-    first, second = _cross(a, b, c), _cross(a, b, d)
-    third, fourth = _cross(c, d, a), _cross(c, d, b)
-    proper = (np.sign(first) * np.sign(second) < 0) & (
-        np.sign(third) * np.sign(fourth) < 0
-    )
+def _meet(
+    a: np.ndarray,
+    b: np.ndarray,
+    c: np.ndarray,
+    d: np.ndarray,
+    where: np.ndarray | bool = True,
+) -> np.ndarray:
+    """Whether segments ab and cd share a point, ends included, where
+    ``where`` holds; false elsewhere."""
+    first, second = _side(a, b, c, where), _side(a, b, d, where)
+    third, fourth = _side(c, d, a, where), _side(c, d, b, where)
+    proper = (first * second < 0) & (third * fourth < 0)
     touching = (
         ((first == 0) & _between(a, b, c))
         | ((second == 0) & _between(a, b, d))
         | ((third == 0) & _between(c, d, a))
         | ((fourth == 0) & _between(c, d, b))
     )
-    meet: np.ndarray = proper | touching
+    meet: np.ndarray = (proper | touching) & where
     return meet
 
 
-def _overlap(a: np.ndarray, b: np.ndarray, c: np.ndarray, d: np.ndarray) -> np.ndarray:
+def _overlap(
+    a: np.ndarray,
+    b: np.ndarray,
+    c: np.ndarray,
+    d: np.ndarray,
+    where: np.ndarray | bool = True,
+) -> np.ndarray:
     """Whether neighbouring segments ab and cd, sharing a vertex, also share
-    more than it: they lie along one line and double back over each
-    other."""
-    collinear = (_cross(a, b, c) == 0) & (_cross(a, b, d) == 0)
+    more than it: they lie along one line and double back over each other,
+    where ``where`` holds; false elsewhere."""
+    collinear = (_side(a, b, c, where) == 0) & (_side(a, b, d, where) == 0)
     forward = (b[..., 0] - a[..., 0]) * (d[..., 0] - c[..., 0]) + (
         b[..., 1] - a[..., 1]
     ) * (d[..., 1] - c[..., 1])
-    overlap: np.ndarray = collinear & (forward < 0)
+    overlap: np.ndarray = collinear & (forward < 0) & where
     return overlap
 
 

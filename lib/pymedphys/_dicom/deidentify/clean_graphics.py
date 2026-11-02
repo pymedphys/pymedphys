@@ -36,54 +36,52 @@ removes, and Table E.1-1 gives the minimum actions, as for Clean Descriptors
 
 One overlay escapes those actions. PS3.3 before 2004 let an overlay lie in
 unused bits of Pixel Data (PS3.3 Section C.9.2), so an overlay group
-without Overlay Data may keep its graphics in Pixel Data, which the engine
-does not change, when the group's attributes are removed.
-:func:`overlay_in_pixel_data` sequesters such an instance under the option,
-by the same indicator as
-:func:`~pymedphys._dicom.deidentify.pixel_risk.assess_pixel_risk` reports
-for review under every policy, since writing it with the option's code would
-claim a removal that did not happen.
+without Overlay Data may keep its graphics in Pixel Data when the group's
+attributes are removed. Under the option, the transform clears the bit plane
+of each such overlay in native Pixel Data, where
+:func:`~pymedphys._dicom.deidentify.pixel_cleaning.overlay_planes` finds it
+above High Bit, in the same write as Clean Pixel Data's redaction, checks
+that the written Pixel Data differs from the source in nothing else
+(:func:`~pymedphys._dicom.deidentify.pixel_cleaning.redaction_problem`), and
+removes every attribute of the overlay's group, since in signed Pixel Data
+the cleared bit gives each value's sign, which a viewer would draw as the
+overlay.
+:func:`overlay_in_pixel_data` sequesters an instance whose overlay cannot be
+so cleared, such as one in compressed Pixel Data or within Bits Stored,
+since writing it with the option's code would claim a removal that did not
+happen.
 """
 
 from __future__ import annotations
 
-from collections.abc import Iterable
-
-from .pixel_risk import Indicator
 from .policy import CLEAN_GRAPHICS, Policy
 from .reasons import TransformReason
-from .run_qc import PixelRiskMaterial
 
 __all__ = ["CLEAN_GRAPHICS", "overlay_in_pixel_data"]
 
 
 def overlay_in_pixel_data(
-    policy: Policy, risk: Iterable[object]
+    policy: Policy, overlays: int | None
 ) -> tuple[TransformReason, ...]:
-    """Return why an instance whose overlay may lie in Pixel Data is sequestered.
+    """Return why an instance whose overlay lies in Pixel Data is sequestered.
 
     Parameters
     ----------
     policy : Policy
         The run's policy.
-    risk : iterable
-        The QC material of the source's indicators of risk in its pixel data,
-        among which a :class:`~.run_qc.PixelRiskMaterial` gives the source's
-        own.
+    overlays : int or None
+        The bits of Pixel Data that hold the source's overlays, as
+        :func:`~pymedphys._dicom.deidentify.pixel_cleaning.overlay_planes`
+        gives them: None where an overlay group without Overlay Data
+        (60xx,3000) places its overlay where it cannot be cleared.
 
     Returns
     -------
     tuple of TransformReason
         :attr:`~.reasons.TransformReason.OVERLAY_IN_PIXEL_DATA` where the
-        policy selects Clean Graphics and the source has an overlay group
-        without Overlay Data (60xx,3000); otherwise ``()``.
+        policy selects Clean Graphics and ``overlays`` is None; otherwise
+        ``()``.
     """
-    if CLEAN_GRAPHICS not in policy.options:
+    if CLEAN_GRAPHICS not in policy.options or overlays is not None:
         return ()
-    embedded = any(
-        finding.indicator is Indicator.EMBEDDED_OVERLAY
-        for material in risk
-        if isinstance(material, PixelRiskMaterial)
-        for finding in material.assessment.findings
-    )
-    return (TransformReason.OVERLAY_IN_PIXEL_DATA,) if embedded else ()
+    return (TransformReason.OVERLAY_IN_PIXEL_DATA,)

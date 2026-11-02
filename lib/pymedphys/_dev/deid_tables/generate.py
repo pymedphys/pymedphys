@@ -34,8 +34,9 @@ import urllib.error
 from collections.abc import Callable, Mapping
 
 from pymedphys._data.download import download_with_progress
-from pymedphys._dicom.deidentify.codes import CODE_TABLES
+from pymedphys._dicom.deidentify.codes import CODE_TABLES, SNOMED_ID_TABLE
 from pymedphys._dicom.deidentify.iods import IOD_MODULES_TABLE, MODULE_ATTRIBUTES_TABLE
+from pymedphys._dicom.deidentify.requirements import PARAGRAPHS_FILE, PARAGRAPHS_TABLE
 from pymedphys._dicom.deidentify.residual_exemptions import (
     BODY_PART_TERMS_TABLE,
     DEFINED_TERMS_TABLE,
@@ -119,6 +120,12 @@ class Pin:
         The coding schemes whose rows of Table E.3.4-1 are left out, because
         their terms have not been accepted for bundling. Generation fails if
         a row's scheme is in neither tuple, or a scheme in them has no row.
+    repeated_snomed_ids : tuple of (str, str)
+        The Concept ID and SNOMED ID of each row of PS3.16 Table O-1 that the
+        edition publishes twice, the same both times, of which one is
+        generated. Generation fails if such a row is not published exactly
+        twice, the same both times, or if any other Concept ID or SNOMED ID
+        repeats.
     """
 
     edition: str
@@ -128,6 +135,7 @@ class Pin:
     corrections: tuple[ps3_3.Correction, ...]
     structured_content_schemes: tuple[str, ...]
     left_out_structured_content_schemes: tuple[str, ...]
+    repeated_snomed_ids: tuple[tuple[str, str], ...]
 
 
 # To move to a new edition, update the edition and every digest, regenerate,
@@ -146,6 +154,47 @@ PIN = Pin(
         PinnedSource(
             "chtml/part15/sect_E.3.10.html",
             "101ac4aedd9d45fba8adaa35cab22820d6c0cbda82cdf51d7456f4bf3dafe3a0",
+        ),
+        # The other pages of Annex E, which publish only paragraphs.
+        PinnedSource(
+            "chtml/part15/sect_E.2.html",
+            "a531a1b3a2800f4a3b458da4342c9593caf123c4a63d52891d5375dc4c4f2852",
+        ),
+        PinnedSource(
+            "chtml/part15/sect_E.3.html",
+            "4632ccf53339f22200870d337ba5d3214d9521827a4a856e00261d64b9c17e9b",
+        ),
+        PinnedSource(
+            "chtml/part15/sect_E.3.2.html",
+            "833c887370775884439566f302c9cadf5f2d019d9220352ccaaabedafa514f62",
+        ),
+        PinnedSource(
+            "chtml/part15/sect_E.3.3.html",
+            "e6774d9abb2929ca89550dbcdeb3183bada55f6b78f33e3eed0101b2b1d60d4b",
+        ),
+        PinnedSource(
+            "chtml/part15/sect_E.3.5.html",
+            "43b1753b409cdc57ae7e7ede37c38e2fa9b173c2b793fd8ad4ffc4d3ebc7af44",
+        ),
+        PinnedSource(
+            "chtml/part15/sect_E.3.6.html",
+            "383d3e53c8b31d8e75e38769faa662e7f72c16fda15ddafeb7e643b9d9becad4",
+        ),
+        PinnedSource(
+            "chtml/part15/sect_E.3.7.html",
+            "5831237c2a2ac8133536287341b92f8e933b5062a84a6bb2ea565b075dd755ec",
+        ),
+        PinnedSource(
+            "chtml/part15/sect_E.3.8.html",
+            "69c61c790299838082f0e9471fed8a2560012a3daa339944ac78139db554fd63",
+        ),
+        PinnedSource(
+            "chtml/part15/sect_E.3.9.html",
+            "eb72f4d70acffc480977797bf94533a06242d0b8838bfd650933af0dc406072c",
+        ),
+        PinnedSource(
+            "chtml/part15/sect_E.3.11.html",
+            "374f953bbe0bda7e8029b14d532b2f5b1648140b74ec329fe45c521dfc7f048f",
         ),
         PinnedSource(
             "chtml/part06/chapter_6.html",
@@ -170,6 +219,11 @@ PIN = Pin(
         PinnedSource(
             "chtml/part16/chapter_L.html",
             "961864cd5810868701227bfb751eb4085b40c8fe2d6a9057f92e193f6d6c85a4",
+        ),
+        # Annex O, the SNOMED IDs of the retired SNOMED designators.
+        PinnedSource(
+            "chtml/part16/chapter_O.html",
+            "6ae23902e7053fcad0f1ea866f43c96083bb9f2216efcbb1eeba3090feeb271a",
         ),
         PinnedSource(
             "chtml/part04/sect_B.5.html",
@@ -249,6 +303,8 @@ PIN = Pin(
     # and a content item they name takes its sequence's Basic Profile action.
     structured_content_schemes=("DCM", "SCT"),
     left_out_structured_content_schemes=("LN", "NCDR", "NCIt", "UMLS"),
+    # Table O-1 publishes Immunohistochemistry procedure twice.
+    repeated_snomed_ids=(("117617002", "P3-44150"),),
 )
 
 
@@ -303,9 +359,11 @@ _CODE_TABLE_PAGES = {
     "Table CID 7005": "chtml/part16/sect_CID_7005.html",
 }
 _ANNEX_L = "chtml/part16/chapter_L.html"
+_ANNEX_O = "chtml/part16/chapter_O.html"
 _SECTION_B_5 = "chtml/part04/sect_B.5.html"
 _PS3_3 = "html/part03.html"
 _PART = re.compile(r"part([0-9]{2})")
+_ANNEX_E_PAGE = re.compile(r"chtml/part15/(?:chapter_E|sect_E(?:\.[0-9]+)+)\.html")
 
 
 @functools.lru_cache(maxsize=8)
@@ -319,22 +377,26 @@ def _select(pages: Mapping[str, bytes], source: str, label: str) -> chtml.HtmlTa
 
 
 def _document(
-    pin: Pin, source: str, label: str, rows: list[dict[str, object]]
+    pin: Pin,
+    source: str | tuple[str, ...],
+    label: str,
+    rows: list[dict[str, object]],
 ) -> dict[str, object]:
-    """Return a table's document, recording only the page it came from."""
+    """Return a table's document, recording only the pages it came from."""
     digests = {pinned.path: pinned.sha256 for pinned in pin.sources}
-    # The page's path names the part, as in "chtml/part06/chapter_6.html" or
-    # "html/part03.html".
-    match = _PART.search(source)
+    sources = (source,) if isinstance(source, str) else source
+    # The first page's path names the part, as in "chtml/part06/chapter_6.html"
+    # or "html/part03.html".
+    match = _PART.search(sources[0])
     if match is None:
-        raise ValueError(f"{source} does not name a part of the standard")
+        raise ValueError(f"{sources[0]} does not name a part of the standard")
     part = f"PS3.{int(match[1])}"
     return {
         "schema": SCHEMA,
         "table": f"{part} {label}",
         "edition": pin.edition,
         "acknowledgement": f"DICOM {part} {pin.edition}, © NEMA",
-        "sources": [{"path": source, "sha256": digests[source]}],
+        "sources": [{"path": path, "sha256": digests[path]} for path in sources],
         "content_sha256": content_sha256(rows),
         "rows": rows,
     }
@@ -404,6 +466,16 @@ def _table_e3_10_1(pin: Pin, pages: Mapping[str, bytes]) -> dict[str, object]:
         for attribute in attributes
     ]
     return _document(pin, _SECTION_E3_10, annex_e.TABLE_E3_10_1, rows)
+
+
+def _annex_e_paragraphs(pin: Pin, pages: Mapping[str, bytes]) -> dict[str, object]:
+    """Return the paragraphs of Annex E that contain "shall", from every page."""
+    pinned = [
+        source.path for source in pin.sources if _ANNEX_E_PAGE.fullmatch(source.path)
+    ]
+    paragraphs, read = annex_e.parse_annex_e_paragraphs(pages, pinned)
+    rows = [dataclasses.asdict(paragraph) for paragraph in paragraphs]
+    return _document(pin, read, PARAGRAPHS_TABLE.removeprefix("PS3.15 "), rows)
 
 
 def _data_dictionary(pin: Pin, pages: Mapping[str, bytes]) -> dict[str, object]:
@@ -482,6 +554,19 @@ def _body_part_terms(pin: Pin, pages: Mapping[str, bytes]) -> dict[str, object]:
     return _document(pin, _ANNEX_L, ps3_16.BODY_PART_LABEL, list(rows))
 
 
+def _snomed_ids(pin: Pin, pages: Mapping[str, bytes]) -> dict[str, object]:
+    """Return Table O-1's Concept IDs and SNOMED IDs, without their names."""
+    rows = ps3_16.parse_table_o_1(
+        _select(pages, _ANNEX_O, ps3_16.SNOMED_ID_LABEL), pin.repeated_snomed_ids
+    )
+    return _document(
+        pin,
+        _ANNEX_O,
+        ps3_16.SNOMED_ID_LABEL,
+        [dataclasses.asdict(row) for row in rows],
+    )
+
+
 def _registry_table(
     source: str, label: str, parse: Callable[[str, chtml.HtmlTable], tuple]
 ) -> Callable[[Pin, Mapping[str, bytes]], dict[str, object]]:
@@ -500,11 +585,13 @@ _OUTPUTS: dict[str, Callable[[Pin, Mapping[str, bytes]], dict[str, object]]] = {
     "e1_1a.json": _table_e1_1a,
     STRUCTURED_CONTENT_FILE: _table_e3_4_1,
     "e3_10_1.json": _table_e3_10_1,
+    PARAGRAPHS_FILE: _annex_e_paragraphs,
     "data_dictionary.json": _data_dictionary,
     "iod_modules.json": _iod_modules,
     "module_attributes.json": _module_attributes,
     DEFINED_TERMS_TABLE.file: _defined_terms,
     BODY_PART_TERMS_TABLE.file: _body_part_terms,
+    SNOMED_ID_TABLE.file: _snomed_ids,
     STORAGE_SOP_CLASS_TABLE.file: _storage_sop_classes,
     **{
         spec.file: _registry_table(_CHAPTER_A, label, ps3_6.parse_uid_table)

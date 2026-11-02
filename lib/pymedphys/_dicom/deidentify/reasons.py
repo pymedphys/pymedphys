@@ -21,7 +21,10 @@ them without importing either; and those of descriptor cleaning, which
 :mod:`~pymedphys._dicom.deidentify.descriptor_cleaning` re-exports, since
 it imports the QC pack, which imports the release report; and those of the
 face review (:mod:`~pymedphys._dicom.deidentify.face_review`), for the same
-reason.
+reason; and those of the readiness gates of a ``public-release`` run
+(:mod:`~pymedphys._dicom.deidentify.readiness`), whose statistical gate's
+module, :mod:`~pymedphys._dicom.deidentify.risk_assessment`, re-exports its
+own, since it imports the release report.
 """
 
 from __future__ import annotations
@@ -30,6 +33,7 @@ import dataclasses
 import enum
 
 from .file_layout import ElementPath
+from .reviewed_descriptors import Held
 from .roi_names import Reason
 
 
@@ -105,19 +109,19 @@ class TransformReason(enum.Enum):
     # decode to the same pixels as before
     CUT_CHANGED_PIXELS = "cut-changed-pixels"
     # under Clean Graphics, an overlay group without Overlay Data (60xx,3000),
-    # whose overlay may lie in unused bits of Pixel Data, which the engine
-    # does not change
+    # whose overlay may lie in Pixel Data where it cannot be cleared: within
+    # Bits Stored, in compressed Pixel Data, or otherwise than
+    # pixel_cleaning.overlay_planes allows (D-041)
     OVERLAY_IN_PIXEL_DATA = "overlay-in-pixel-data"
-    # under Clean Pixel Data, compressed Pixel Data, which the engine does not
-    # yet black out (D-037)
-    COMPRESSED_PIXEL_DATA = "compressed-pixel-data"
     # under Clean Pixel Data, top-level Float Pixel Data or Double Float Pixel
-    # Data, or native Pixel Data that cannot be read as frames of stored
-    # values: a layout other than whole bytes of 8, 16, or 32 bits with its
-    # High Bit one less than Bits Stored, a photometric interpretation other
-    # than MONOCHROME1, MONOCHROME2, or 8-bit RGB, a length that does not fit
-    # its frames, or bits above Bits Stored that hold more than the value's
-    # sign, such as an overlay (D-037)
+    # Data, or Pixel Data that cannot be read as frames of stored values: a
+    # layout other than whole bytes of 8, 16, or 32 bits with its High Bit one
+    # less than Bits Stored, a photometric interpretation other than
+    # MONOCHROME1, MONOCHROME2, or 8-bit RGB, or, compressed, 8-bit YBR_FULL,
+    # YBR_FULL_422, YBR_ICT, or YBR_RCT, which decode to RGB, a length that
+    # does not fit its frames, or bits above Bits Stored that hold more than
+    # the value's sign once any overlay that an overlay group without Overlay
+    # Data places there is cleared (D-037)
     UNCLEANABLE_PIXEL_DATA = "uncleanable-pixel-data"
     # under Clean Pixel Data, written Pixel Data that differs from its source
     # other than by the blacked-out regions (D-037), or reviewed regions in a
@@ -126,6 +130,11 @@ class TransformReason(enum.Enum):
     # under Clean Pixel Data, an instance whose cleaned Pixel Data a reviewer
     # rejected in an attested QC pack, so that it is never released
     REDACTION_REJECTED = "redaction-rejected"
+    # under tps-import, an instance of a subject whose instances in the run
+    # contradict the reference study from which its profile's synthetic
+    # birth date was derived, so that the subject is stopped for review
+    # (D-008)
+    BIRTH_DATE_CONFLICT = "birth-date-conflict"
 
 
 class DescriptorReason(enum.Enum):
@@ -158,6 +167,23 @@ class HeldRoiName:
 
 
 @dataclasses.dataclass(frozen=True)
+class HeldDescriptor:
+    """A descriptor value held for review, by its element and reason, never its value.
+
+    Descriptor cleaning holds one where the reviewed descriptors list does not
+    clean a value of an attribute that another option's cleaner left to it,
+    such as Allergies (0010,2110) under Retain Patient Characteristics (D-038).
+    """
+
+    path: ElementPath
+    reason: Held
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.reason, Held):
+            raise TypeError("a held descriptor value needs its reason")
+
+
+@dataclasses.dataclass(frozen=True)
 class HeldPixelData:
     """An instance held for review because its pixel data await review."""
 
@@ -178,9 +204,12 @@ class VisualFeaturesReason(enum.Enum):
     # the reviewer saw a recognisable face in its series' previews
     FACE_PRESENT = "face-present"
     # no reviewer's verdict covers its source file: its series has no
-    # verdict, the file is not one that the review saw, or the reviewed run
+    # verdict, the file is not one that the review saw, the reviewed run
     # held it beside a CT series that it defaced, so the verdict was of the
-    # defaced images rather than of the file
+    # defaced images rather than of the file, it is a Segmentation whose
+    # segments reach such a series' face block, which the QC pack does not
+    # show, or it holds a deformable registration's grid, which no preview
+    # of the QC pack draws
     NO_FACE_VERDICT = "no-face-verdict"
     # its series is marked absent, but the run writes other pixel data of it
     # than the reviewed run did, such as a CT slice defaced since the
@@ -195,9 +224,9 @@ class VisualFeaturesReason(enum.Enum):
     # defaces, whose dose in the series' face block is too great to set to
     # zero there, so that it is written as received
     DOSE_IN_FACE_BLOCK = "dose-in-face-block"
-    # an RT Structure Set, RT Dose, or PET instance in the Frame of
-    # Reference of a CT series that the run defaces, whose outline or pixel
-    # data the run does not clean of the face, such as one in other frames
+    # an RT Structure Set, RT Dose, PET instance, or Segmentation in the
+    # Frame of Reference of a CT series that the run defaces, whose outline
+    # or pixel data the run does not clean of the face, such as one in other frames
     # too or that cannot be cut, and which a reviewer may have judged from
     # the defaced CT
     UNDEFACED_IN_DEFACED_FRAME = "undefaced-in-defaced-frame"
@@ -219,3 +248,68 @@ class HeldVisualFeatures:
     def __post_init__(self) -> None:
         if not isinstance(self.reason, VisualFeaturesReason):
             raise TypeError("a held instance's visual features need their reason")
+
+
+class StatisticalReason(enum.Enum):
+    """Why the statistical gate failed, as a release report records it (D-053)."""
+
+    # no assessment was given
+    NO_ASSESSMENT = "no-assessment"
+    # the assessment is of other source files
+    OTHER_COLLECTION = "other-collection"
+    # the assessment is of another policy, or of another engine
+    OTHER_POLICY = "other-policy"
+    # the assessment is of other reviewed ROI names or descriptors lists
+    OTHER_LISTS = "other-lists"
+    # the assessment counts fewer subjects than the run releases
+    FEWER_SUBJECTS = "fewer-subjects"
+    # the assessment counts more subjects than the run releases, as an
+    # assessment that counted images, frames, or visits would
+    MORE_SUBJECTS = "more-subjects"
+    # the maximum per-subject probability is above the threshold
+    ABOVE_THRESHOLD = "above-threshold"
+
+
+class ReviewReason(enum.Enum):
+    """Why a readiness gate that rests on a reviewed QC pack failed.
+
+    The pixel and face gate and the attestation gate of a ``public-release``
+    run each read the QC pack of an earlier run of the collection, which a
+    reviewer attested (D-017); some reasons are of one gate alone.
+    """
+
+    # the run was given no reviewed QC pack
+    NO_REVIEW = "no-review"
+    # no reviewer has attested to the reviewed pack
+    NOT_ATTESTED = "not-attested"
+    # the reviewer rejected it
+    REJECTED = "rejected"
+    # the reviewed pack is of other source files
+    OTHER_COLLECTION = "other-collection"
+    # the reviewed run had another policy, or another engine, so what the
+    # reviewer saw is not what this run writes
+    OTHER_POLICY = "other-policy"
+    # the attestation gate: the releaser did not confirm in the attestation
+    # that the output's residual risk was accepted
+    RESIDUAL_RISK_NOT_ACCEPTED = "residual-risk-not-accepted"
+    # the attestation gate: the run releases an instance that the reviewed
+    # run neither released nor held, so that no series preview showed it
+    UNREVIEWED_INSTANCE = "unreviewed-instance"
+    # the attestation gate: the run releases a retained string that the
+    # reviewed pack does not list
+    UNREVIEWED_RETAINED_STRING = "unreviewed-retained-string"
+    # the pixel and face gate: the run releases an instance in a high-risk
+    # category that the reviewed pack did not list as one, released or held
+    UNREVIEWED_HIGH_RISK = "unreviewed-high-risk-instance"
+    # the pixel and face gate, for an instance that the run releases that
+    # can show a face, without an assessment that covers faces: the
+    # reviewer saw a recognisable face in its series' previews
+    FACE_PRESENT = VisualFeaturesReason.FACE_PRESENT.value
+    # no verdict of absent covers its source file
+    NO_FACE_VERDICT = VisualFeaturesReason.NO_FACE_VERDICT.value
+    # its series is marked absent, but the run writes pixel data of it that
+    # the reviewed run's previews did not show in every frame
+    OTHER_PIXEL_DATA = VisualFeaturesReason.OTHER_PIXEL_DATA.value
+    # its series is marked absent, but the run writes contours of it that
+    # the reviewed run's contour sheet did not show
+    OTHER_CONTOURS = VisualFeaturesReason.OTHER_CONTOURS.value

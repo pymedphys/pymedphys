@@ -20,8 +20,10 @@ engine's own constants and functions, so that it changes when they do:
 
 - :func:`values_written`: the values that Z, D, and U write, from
   :mod:`~pymedphys._dicom.deidentify.dummy_values`,
-  :mod:`~pymedphys._dicom.deidentify.pseudonyms`, and
-  :mod:`~pymedphys._dicom.deidentify.uids` (D-003, D-005, and D-021);
+  :mod:`~pymedphys._dicom.deidentify.pseudonyms`,
+  :mod:`~pymedphys._dicom.deidentify.uids`, and, under ``tps-import``,
+  :mod:`~pymedphys._dicom.deidentify.birth_dates` (D-003, D-005, D-008, and
+  D-021);
 - :func:`dates_and_times`: how the policy handles dates and times, by its
   Retain Longitudinal Temporal Information Option or without one (D-006,
   D-007, and D-023);
@@ -43,7 +45,7 @@ import base64
 import types
 from collections.abc import Callable, Iterable, Mapping
 
-from . import dates, dummy_values, pixel_risk, pseudonyms, residuals, uids
+from . import birth_dates, dates, dummy_values, pixel_risk, pseudonyms, residuals, uids
 from . import release_report as report
 from .conformance import ConformanceStatement
 from .edits import PSEUDONYM_TAGS
@@ -215,6 +217,12 @@ REVIEW_CODES = frozenset(
 HOLDING_STAGES: Mapping[str, str] = types.MappingProxyType(
     {
         "roi-names": "descriptor cleaning sent one of its ROI Names to review",
+        "descriptors": (
+            "descriptor cleaning sent to review a value of an attribute that "
+            "another option keeps and the custodian's reviewed descriptors "
+            "list decides on, such as Allergies (0010,2110) under Retain "
+            "Patient Characteristics"
+        ),
         "pixel-data": (
             "Clean Pixel Data blacked out the text that it found in the "
             "instance's pixel data, or found none, and review must look for "
@@ -303,6 +311,21 @@ def _icc_profile(named: Callable[[str], str]) -> str:
     )
 
 
+def _kept_items(
+    statement: ConformanceStatement, named: Callable[[str], str]
+) -> list[str]:
+    """Describe the items that D keeps where a reviewed rule keeps them (D-021)."""
+    actions = {entry.tag: entry.action for entry in statement.attributes}
+    return [
+        f"D on {named(tag)} keeps each source item, and in it only these "
+        "attributes, each under the action that the policy gives it: "
+        + "; ".join(f"{named(each)}, {code(actions[each])}" for each in sorted(kept))
+        + ". The item's other attributes are removed, and none of these is "
+        "added to an item that lacks it."
+        for tag, kept in dummy_values.KEPT_ITEM_ATTRIBUTES.items()
+    ]
+
+
 def _naming_pymedphys(named: Callable[[str], str]) -> list[str]:
     """Name each value that a reviewed rule writes and that names PyMedPhys."""
     return [
@@ -316,7 +339,9 @@ def _naming_pymedphys(named: Callable[[str], str]) -> list[str]:
     ]
 
 
-def values_written(named: Callable[[str], str]) -> list[str]:
+def values_written(
+    statement: ConformanceStatement, named: Callable[[str], str]
+) -> list[str]:
     """Return the lines of the section on the values that Z, D, and U write.
 
     ``named`` gives an attribute's name and tag, such as ``"Patient ID
@@ -351,6 +376,7 @@ def values_written(named: Callable[[str], str]) -> list[str]:
         "needs a reviewed rule for that attribute; without one, the instance "
         "is sequestered.",
         *(item for line in _reviewed_items(named) for item in ("", line)),
+        *(item for line in _kept_items(statement, named) for item in ("", line)),
         "",
         f"At the top level of the data set, {pseudonym_tags} take the "
         "subject's keyed pseudonyms wherever Z or D applies to them; "
@@ -363,6 +389,11 @@ def values_written(named: Callable[[str], str]) -> list[str]:
         f"{pseudonyms.CODE_BYTES * 8} bits of the key's `patient` derivation "
         "of the subject's identity: a Patient ID with its "
         f"{named('(0010,0021)')}, or a curated subject identifier.",
+        *(
+            ("", _birth_dates(named))
+            if statement.preset == birth_dates.BIRTH_DATE_PRESET
+            else ()
+        ),
         "",
         f"Wherever Z or D applies to {named(SERIES_NUMBER)}, it takes its "
         "rank among the distinct Series Numbers that the run holds for the "
@@ -392,6 +423,41 @@ def values_written(named: Callable[[str], str]) -> list[str]:
             else "."
         ),
     ]
+
+
+def _birth_dates(named: Callable[[str], str]) -> str:
+    """Return the paragraph on the synthetic birth dates that Z writes."""
+    birth_date = named(birth_dates.PATIENTS_BIRTH_DATE.tag)
+    study_date = named(birth_dates.STUDY_DATE.tag)
+    age = named(birth_dates.PATIENTS_AGE.tag)
+    conflict = code(TransformReason.BIRTH_DATE_CONFLICT.value)
+    return (
+        f"At the top level of the data set, {birth_date} takes the subject's "
+        "synthetic birth date wherever Z or D applies to it. It is chosen "
+        "once for each subject, from the instances of the first run that "
+        "holds the subject, and kept with the subject's date offset, so that "
+        "every later run under the same project key writes the same date; "
+        "under a run-scoped key it lasts for the run. Each study of the "
+        "subject, by Study Instance UID, whose instances hold, at the top "
+        f"level, exactly one {study_date} that is a valid date and exactly "
+        f"one {age} in years (`nnnY`) gives an observation. The reference "
+        "study is the observation with the earliest Study Date, and of "
+        "those on that date, the one with the least replacement Study "
+        "Instance UID. The synthetic birth date is the reference study's "
+        "shifted Study Date moved back by the age in calendar years, with "
+        "29 February becoming 28 February in a year without one, so the "
+        "subject has that age, in completed years, on the shifted date. It "
+        "expresses the approximate age at the reference study, not the true "
+        "birthday; the retained Patient's Age remains the source for "
+        "analyses of age. Where no study gives an observation, a study's "
+        "instances hold different values of either attribute, or no birth "
+        "date gives every observation its age, the attribute is emptied for "
+        "that subject, in that run and every later one. A later run whose "
+        "instances of the subject disagree with the reference study, by "
+        "holding it with another Study Date or Patient's Age, or by ages "
+        "that no birth date reconciles with its own, sequesters every "
+        f"instance of the subject as {conflict}, for review."
+    )
 
 
 def dates_and_times(
@@ -536,10 +602,12 @@ def qc_pack(statement: ConformanceStatement, named: Callable[[str], str]) -> lis
     exempt = join(named(tag) for tag in sorted(_NOT_REVIEWED_TAGS))
     unreviewable = code(TransformReason.UNREVIEWABLE_RETAINED_TEXT.value)
     volume = join((code(each.value) for each in pixel_risk.VOLUME_INDICATORS), "or")
-    localizer, head, unreadable = (
+    localizer, rt_image, segmentation, head, unreadable = (
         code(indicator.value)
         for indicator in (
             Indicator.LOCALIZER,
+            Indicator.RT_IMAGE,
+            Indicator.SEGMENTATION,
             Indicator.HEAD_OR_NECK,
             Indicator.UNREADABLE,
         )
@@ -573,8 +641,13 @@ def qc_pack(statement: ConformanceStatement, named: Callable[[str], str]) -> lis
         f"be reconstructed, by {volume}, whether or not it covers the face, "
         "since the engine cannot tell without inspecting its pixel data; "
         "the CT, MR, and PET localizers among them, which can show the face "
-        f"in profile, by {localizer}; "
-        "where the attributes of a volume or localizer name a region of the "
+        f"in profile, by {localizer}; the RT Images among them, projections "
+        "such as a lateral DRR that can show the face in profile too, "
+        f"whatever their gantry angle, by {rt_image}; the Segmentations among "
+        "them, whose segment of the skin or body traces the profile whatever "
+        f"its label, by {segmentation}; "
+        "where the attributes of a volume, localizer, RT Image, or "
+        "Segmentation, or a Segmentation's segments, name a region of the "
         f"head or neck in a reviewed list from PS3.16 Annex L, by {head}; and "
         f"where such evidence cannot be read, by {unreadable}; each with the "
         "instances that show it. A volume is a series whose instances of one "
@@ -622,31 +695,41 @@ def _pixel_data(statement: ConformanceStatement) -> str:
     )
     return (
         "Under the Clean Pixel Data Option, the engine replaces each region "
-        "of text that its text finder finds in each frame of native Pixel "
-        "Data (7FE0,0010) with one stored value, in place: the frame's "
+        "of text that its text finder finds in each frame of Pixel Data "
+        "(7FE0,0010), and each region that a reviewed region rule gives "
+        "every frame of an image with the rule's SOP Class UID, Manufacturer, "
+        "Manufacturer's Model Name, Rows, and Columns, with one stored value: "
+        "the frame's "
         "smallest for MONOCHROME2, its largest for MONOCHROME1, or zero for "
-        "RGB. This erases the text's pattern, but how bright the region is "
+        "RGB. Native Pixel Data is changed in place; compressed Pixel Data is "
+        "decoded first, YBR colour as RGB, and written uncompressed, in "
+        "Explicit VR Little Endian, whether or not a region is blacked out. "
+        "This erases the text's pattern, but how bright the region is "
         "displayed depends on the Modality and VOI LUT attributes, which are "
         "kept, so it is not always black. The engine holds every instance "
         "whose Pixel Data it searched for review, whether or not it found "
         "text, until a reviewer has checked the regions and looked for text "
         "that the finder missed. A later run of the same files, given the "
         "reviewer's verdicts in the attested QC pack, blacks out exactly the "
-        "finder's regions that the reviewer accepted, with any that the "
-        "reviewer added, without the finder, and releases the instance, and it "
+        "finder's and the rules' regions that the reviewer accepted, with any "
+        "that the reviewer added, without the finder or the rules, and "
+        "releases the instance, and it "
         "sequesters an instance that the reviewer rejected. It sequesters an instance with "
-        "top-level Float or Double Float Pixel Data, or whose Pixel Data are "
-        "compressed, have a photometric interpretation other than MONOCHROME1, MONOCHROME2, or "
-        "8-bit RGB or another layout that cannot be read as frames of stored "
-        "values, hold more than the value's sign in the bits above Bits "
+        "top-level Float or Double Float Pixel Data, or whose Pixel Data "
+        "have a photometric interpretation other than MONOCHROME1, "
+        "MONOCHROME2, or 8-bit RGB, or, compressed, 8-bit YBR_FULL, "
+        "YBR_FULL_422, YBR_ICT, or YBR_RCT, or another layout that cannot be "
+        "read as frames of stored values, are compressed and cannot be "
+        "decoded by the plugin pinned to their transfer syntax, hold more than the value's sign in the bits above Bits "
         "Stored, such as an overlay, or differ when written from its source "
         "other than in those regions. It writes other Pixel Data "
         f"unchanged{face or ','} and "
         + claims
         + "A run's method digest also covers its text finder's class and "
         "description of its method, such as the text detector's model, ONNX "
-        "Runtime, NumPy, and SciPy versions, and parameters, so it is not the "
-        "digest that this statement gives. "
+        "Runtime, NumPy, and SciPy versions, and parameters, and the keyed "
+        "digest of its region rules, so it is not the digest that this "
+        "statement gives. "
     )
 
 
@@ -689,7 +772,7 @@ def release_report() -> list[str]:
         "SR IOD.",
         "",
         "An instance outside the supported scope whose IOD the pinned tables "
-        "define, such as a nuclear medicine image or a spatial registration, "
+        "define, such as a nuclear medicine image or an ultrasound image, "
         "is planned and edited, where its source can be read, only so that its "
         "values are collected for its subject's search; it is never written. "
         "An instance that the first pass read but whose values were not "

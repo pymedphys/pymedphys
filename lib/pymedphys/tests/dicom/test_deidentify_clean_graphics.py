@@ -220,8 +220,8 @@ def test_a_graphic_annotation_sequence_is_removed_where_the_iod_omits_it():
 @pytest.mark.deid_requirement("PS3.15-E.3.3-01")
 def test_an_overlay_that_may_lie_in_pixel_data_sequesters_the_instance():
     # Without Overlay Data, the overlay may lie in unused bits of Pixel
-    # Data (PS3.3 before 2004), which the engine does not change, so its
-    # graphics would stay in the written file.
+    # Data (PS3.3 before 2004). This slice has no Pixel Data in which to
+    # clear it, so the option cannot be shown to remove it.
     source = _with_overlay(_ct(), data=False)
 
     result = _transformed(_transform([CLEAN_GRAPHICS]), source)

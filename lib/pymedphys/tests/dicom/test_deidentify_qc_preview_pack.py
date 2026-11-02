@@ -545,4 +545,8 @@ def test_a_run_previews_its_images_in_the_qc_pack(tmp_path):
     assert kinds == ["series-cine", "instance"]
     for preview in pack["previews"]:
         assert (result.qc_pack.parent / preview["file"]).is_file()
-    assert not pack["not_previewed"]
+    # A plane without the geometry and scaling of dose levels is listed as
+    # having none, beside its other previews.
+    assert pack["not_previewed"] == [
+        {"position": dose_position, "reason": "dose-levels-not-shown"}
+    ]

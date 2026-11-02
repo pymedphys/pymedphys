@@ -375,6 +375,30 @@ def test_an_attribute_of_a_repeating_group_matches_its_group(tables):
     assert ct.lookup("(6001,3000)") == ()
 
 
+def test_the_paths_of_a_tag_are_those_of_its_definitions_in_order(tables):
+    # The conformance statement lists each place in this order, so the index
+    # must give exactly what a scan of the definitions gives.
+    for iod in tables.iods.values():
+        tags = dict.fromkeys(definition.tag for definition in iod.definitions)
+        for tag in tags:
+            assert iod.paths(tag) == tuple(
+                dict.fromkeys(d.path for d in iod.definitions if d.tag == tag)
+            )
+
+
+def test_the_paths_of_a_tag_match_its_definitions_exactly(tables):
+    ct = tables.iods["CT Image"]
+
+    assert ct.paths("(60xx,3000)")
+    # A tag of one group does not match its group's definition, as it does
+    # for lookup, and an attribute the IOD does not define has no place.
+    assert ct.paths("(6002,3000)") == ()
+    assert ct.paths("(300A,00C2)") == ()
+    # Patient ID is at the top level, in the Patient Module, before its place
+    # within Other Patient IDs Sequence (0010,1002).
+    assert ct.paths("(0010,0020)")[:2] == ((), ("(0010,1002)",))
+
+
 def test_an_attribute_the_iod_does_not_define_has_no_definition(tables):
     # Beam Name is not part of the CT Image IOD, anywhere.
     assert tables.iods["CT Image"].lookup("(300A,00C2)") == ()

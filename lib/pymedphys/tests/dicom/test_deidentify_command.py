@@ -568,7 +568,7 @@ def _parsed_call(tmp_path, monkeypatch, *options):
 
 @pytest.fixture(name="enabled")
 def _enabled(monkeypatch):
-    """Enable the first release's presets, which no release enables yet."""
+    """Enable ``basic`` and ``basic-clean-descriptors``, which nothing enables yet."""
     monkeypatch.setattr(
         policy, "ENABLED_PRESETS", frozenset({"basic", "basic-clean-descriptors"})
     )

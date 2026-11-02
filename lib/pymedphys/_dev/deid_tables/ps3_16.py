@@ -17,19 +17,20 @@
 These are Table 8-1, the coding schemes, and Table 8-2, the HL7 version 3
 coding schemes, which register each scheme's designator and UID; the context
 groups CID 7050, De-identification Method, and CID 7005, Contributing
-Equipment Purpose of Reference; and Tables L-1, L-2, and L-3 of Annex L,
-which list the Defined Terms of Body Part Examined (0018,0015) that PS3.3
-refers to.
+Equipment Purpose of Reference; Tables L-1, L-2, and L-3 of Annex L, which
+list the Defined Terms of Body Part Examined (0018,0015) that PS3.3 refers
+to; and Table O-1 of Annex O, which maps the SNOMED ID of each SNOMED code
+that DICOM has used to its SNOMED CT Concept ID.
 """
 
 from __future__ import annotations
 
 import re
-from collections.abc import Mapping
+from collections.abc import Collection, Mapping
 
-from pymedphys._dicom.deidentify.codes import CODE_TABLES
+from pymedphys._dicom.deidentify.codes import CODE_TABLES, SNOMED_ID_TABLE
 
-from .chtml import HtmlTable, TableFormatError, parse_registry_table
+from .chtml import HtmlTable, TableFormatError, check_columns, parse_registry_table
 
 _CONTEXT_GROUP_COLUMNS = {
     "Coding Scheme Designator": "scheme_designator",
@@ -147,3 +148,73 @@ def parse_body_part_terms(tables: Mapping[str, HtmlTable]) -> list[dict[str, str
     if not terms:
         raise TableFormatError(f"PS3.16 gives no {BODY_PART_LABEL}")
     return [{"term": term} for term in sorted(terms)]
+
+
+SNOMED_ID_LABEL = "Table O-1"
+_FULLY_SPECIFIED_NAME = "SNOMED Fully Specified Name"
+# Table O-1's columns, by header text, and the fields they fill. The Fully
+# Specified Names are not generated, since only the codes are looked up.
+SNOMED_ID_COLUMNS = {
+    "Concept ID (SCT)": "concept_id",
+    "SNOMED ID (SRT)": "snomed_id",
+}
+
+
+def parse_table_o_1(table: HtmlTable, repeated: Collection[tuple[str, str]]) -> tuple:
+    """Parse Table O-1 of DICOM PS3.16, the SNOMED Concept ID to SNOMED ID mapping.
+
+    Parameters
+    ----------
+    table : HtmlTable
+        The table, as :func:`~pymedphys._dev.deid_tables.chtml.select_table`
+        returns it for ``"Table O-1"``.
+    repeated : collection of (str, str)
+        The Concept ID and SNOMED ID of each row that the edition publishes
+        twice, with the same Fully Specified Name, of which one is kept.
+
+    Returns
+    -------
+    tuple of SnomedId
+        One per row of the table, in order, without the Fully Specified
+        Names and without the second of each pair of ``repeated`` rows.
+
+    Raises
+    ------
+    TableFormatError
+        If a column is unknown, missing, or repeated; if the table has no
+        rows; if a row of ``repeated`` does not appear exactly twice, the
+        same both times; if a row has a concept ID or a SNOMED ID that
+        :data:`~pymedphys._dicom.deidentify.codes.SNOMED_ID_TABLE`'s checks
+        reject; or if any other concept ID or SNOMED ID repeats.
+    """
+    columns = {**SNOMED_ID_COLUMNS, _FULLY_SPECIFIED_NAME: ""}
+    check_columns(SNOMED_ID_LABEL, table.header, columns)
+    kept = [table.header.index(column) for column in SNOMED_ID_COLUMNS]
+    named = {
+        key: [row for row in table.rows if tuple(row[i] for i in kept) == key]
+        for key in repeated
+    }
+    for (concept_id, snomed_id), rows in named.items():
+        if len(rows) != 2 or rows[0] != rows[1]:
+            raise TableFormatError(
+                f"{SNOMED_ID_LABEL}: the pin names {concept_id} and {snomed_id} "
+                "as a row published twice, the same both times, but it is not"
+            )
+    rows = []
+    seen = set()
+    for row in table.rows:
+        key = tuple(row[i] for i in kept)
+        if key in named and key in seen:
+            continue
+        seen.add(key)
+        rows.append(key)
+    reduced = HtmlTable(
+        table.title,
+        tuple(SNOMED_ID_COLUMNS),
+        tuple(rows),
+        table.has_merged_cells,
+        table.section,
+    )
+    return parse_registry_table(
+        SNOMED_ID_LABEL, reduced, SNOMED_ID_COLUMNS, SNOMED_ID_TABLE
+    )

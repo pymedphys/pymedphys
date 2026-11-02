@@ -29,15 +29,28 @@ from pymedphys._dicom.deidentify import (
     policy,
     run,
 )
+from pymedphys._dicom.deidentify.edits import read_values
+from pymedphys._dicom.deidentify.elements import UndecodableElement, read_element
 from pymedphys._dicom.deidentify.file_layout import ElementPath
 from pymedphys._dicom.deidentify.instance_transform import InstanceTransform
+from pymedphys._dicom.deidentify.iods import load_iod_tables
 from pymedphys._dicom.deidentify.keys import DeidKey
+from pymedphys._dicom.deidentify.qc_retained import retained_paths
 from pymedphys._dicom.deidentify.references import InstanceRecord
+from pymedphys._dicom.deidentify.release_report import (
+    SequestrationReason,
+    sequestration_reason,
+)
 from pymedphys._dicom.deidentify.retained_private import private_actions, private_plan
 from pymedphys._dicom.deidentify.run_qc import RetainedText
 from pymedphys._dicom.deidentify.safe_private import Handling, load_safe_private_rules
 from pymedphys._dicom.deidentify.source import read_source
 from pymedphys._dicom.deidentify.standard import PRIVATE_ATTRIBUTES_TAG
+from pymedphys._dicom.deidentify.walker import (
+    Sequestration,
+    SequesterReason,
+    plan_instance,
+)
 
 from . import _synthetic_references as synthetic
 
@@ -512,6 +525,66 @@ def test_a_private_sequence_without_a_compared_creator_is_removed_whole(creator)
     assert not _in_private(written)
 
 
+def _as_un(dataset, tag):
+    """Write the sequence at ``tag`` as UN, its items in implicit VR (PS3.5 6.2.2)."""
+    items = b""
+    for item in dataset[tag].value:
+        buffer = pydicom.filebase.DicomBytesIO()
+        buffer.is_little_endian, buffer.is_implicit_VR = True, True
+        pydicom.filewriter.write_dataset(buffer, item)
+        body = buffer.getvalue()
+        items += b"\xfe\xff\x00\xe0" + len(body).to_bytes(4, "little") + body
+    dataset[tag] = pydicom.DataElement(tag, "UN", items)
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.10-01", "PS3.15-E.3.10-03")
+@pytest.mark.parametrize(
+    "sequence, tag",
+    [
+        (_philips_sequence, 0x2001105F),
+        (lambda: _unlisted(_pet_item((0x70531000, "DS", "1.25"))), 0x705310F0),
+    ],
+    ids=["listed", "unlisted"],
+)
+@pytest.mark.parametrize(
+    "transfer_syntax, as_un, reported",
+    [
+        (synthetic.EXPLICIT_VR_LITTLE_ENDIAN, False, "SQ"),
+        (synthetic.EXPLICIT_VR_LITTLE_ENDIAN, True, "UN"),
+        (synthetic.IMPLICIT_VR_LITTLE_ENDIAN, False, None),
+    ],
+    ids=["explicit", "explicit-UN", "implicit"],
+)
+def test_a_kept_private_sequence_that_cannot_be_read_reports_its_vr_as_written(
+    monkeypatch, sequence, tag, transfer_syntax, as_un, reported
+):
+    # A sequence holds no value to read by a VR, so neither its rule nor its
+    # parsing gives it one: the release report gives the VR as written, and
+    # none where the file writes none, rather than one the file does not hold.
+    dataset = sequence()
+    if as_un:
+        _as_un(dataset, tag)
+    data = synthetic.written(dataset, transfer_syntax)
+    record = InstanceRecord.from_file(data)
+    path = _top(f"({tag >> 16:04X},{tag & 0xFFFF:04X})")
+
+    def refusing(held, at, *args, **kwargs):
+        if at == path:
+            raise UndecodableElement(at, "has items that cannot be read")
+        return read_element(held, at, *args, **kwargs)
+
+    monkeypatch.setattr("pymedphys._dicom.deidentify.elements.read_element", refusing)
+    result = _transform()(data, record)
+
+    assert isinstance(result, run.Sequestered), result
+    assert result.reasons == (
+        Sequestration(path, "K", reported, SequesterReason.UNDECODABLE),
+    )
+    assert sequestration_reason(result.reasons[0]) == SequestrationReason(
+        "walker", "undecodable", path.tag, "K", reported
+    )
+
+
 @pytest.mark.deid_requirement("PS3.15-E.3.10-01")
 def test_a_sequence_rule_without_items_is_removed():
     dataset = _slice((0x20010010, "LO", PHILIPS), (0x2001105F, "OB", b"\x00\x00"))
@@ -679,6 +752,145 @@ def test_each_value_of_a_kept_private_string_is_reviewed(transfer_syntax, vr):
         RetainedText(PET, _top("(7053,0010)")),
         RetainedText("1.25", _top("(7053,1000)")),
     ]
+
+
+def _creators_as_un():
+    """Kept values in blocks whose creators are written as UN, at depths 0 to 2.
+
+    The PET creator is padded with a NUL, and the creator that no rule names
+    is kept for the standard attribute in its parsed sequence. Each block
+    also holds a value that no rule lists, which is removed.
+    """
+    philips = PHILIPS.encode()
+    inner = pydicom.Dataset()
+    inner.add_new(0x20010010, "UN", philips)
+    inner.add_new(0x20011004, "CS", "RIGHT")
+    inner.add_new(0x200110FE, "UN", b"SENTINEL INNER")
+    item = pydicom.Dataset()
+    item.add_new(0x20010010, "UN", philips)
+    item.add_new(0x20011004, "CS", "LEFT")
+    item.add_new(0x20011065, "SQ", pydicom.Sequence([inner]))
+    item.add_new(0x200110FE, "UN", b"SENTINEL ITEM ")
+    unlisted = pydicom.Dataset()
+    unlisted.SliceThickness = "2.5"
+    return _slice(
+        (0x00190010, "UN", b"ACME 1.0"),
+        (0x00191001, "SQ", pydicom.Sequence([unlisted])),
+        (0x00191002, "UN", b"SENTINEL ACME "),
+        (0x20010010, "UN", philips),
+        (0x2001105F, "SQ", pydicom.Sequence([item])),
+        (0x70530010, "UN", PET.encode() + b"\x00"),
+        (0x70531000, "DS", "1.25"),
+        (0x705310FE, "UN", b"SENTINEL PET"),
+    )
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.10-01", "PS3.15-E.3.10-03", "MIDI-BP-17")
+def test_each_creator_written_as_un_is_kept_and_reviewed_as_lo():
+    data = synthetic.written(_creators_as_un())
+    item = (("(2001,105F)", 0),)
+    inner = (*item, ("(2001,1065)", 0))
+    creators = [
+        _top("(0019,0010)"),
+        _top("(2001,0010)"),
+        ElementPath(item, "(2001,0010)"),
+        ElementPath(inner, "(2001,0010)"),
+        _top("(7053,0010)"),
+    ]
+
+    plan = private_plan(read_source(data), load_safe_private_rules())
+    result = _transform()(data, InstanceRecord.from_file(data))
+
+    assert dict(plan.vrs) == dict.fromkeys(creators, "LO")
+    assert all(plan.actions[creator] == "K" for creator in creators)
+    unlisted = [
+        _top("(0019,1002)"),
+        ElementPath(item, "(2001,10FE)"),
+        ElementPath(inner, "(2001,10FE)"),
+        _top("(7053,10FE)"),
+    ]
+    assert all(plan.actions[path] == "X" for path in unlisted)
+    assert isinstance(result, run.Transformed), result
+    assert b"SENTINEL" not in result.data
+    assert {str(creator) for creator in creators} <= _in_private(result.data)
+    assert _qc_private_strings(result) == [
+        RetainedText("ACME 1.0", _top("(0019,0010)")),
+        RetainedText(PHILIPS, _top("(2001,0010)")),
+        RetainedText(PHILIPS, ElementPath(item, "(2001,0010)")),
+        RetainedText("LEFT", ElementPath(item, "(2001,1004)")),
+        RetainedText(PHILIPS, ElementPath(inner, "(2001,0010)")),
+        RetainedText("RIGHT", ElementPath(inner, "(2001,1004)")),
+        RetainedText(PET, _top("(7053,0010)")),
+        RetainedText("1.25", _top("(7053,1000)")),
+    ]
+
+
+def _read_kept_private(dataset, transfer_syntax):
+    """Read each kept private string of a CT slice as the QC review reads it."""
+    source = read_source(synthetic.written(dataset, transfer_syntax))
+    rules = element_rules.ElementRules(policy.compose_custom_policy((SAFE_PRIVATE,)))
+    plan = plan_instance(source, rules, load_iod_tables().iods["CT Image"])
+    paths = tuple(p for p in retained_paths(plan) if int(p.tag[1:5], 16) % 2)
+    return {
+        path: None if value is None else (value.vr, value.values)
+        for path, value in read_values(source, plan, paths).items()
+    }
+
+
+# Each (tag, VR, value as written), with spaces around number strings' values.
+SPACED = (
+    (0x20010010, "LO", PHILIPS.encode()),
+    (0x20011002, "IS", b" 3"),
+    (0x20011004, "CS", b"LEFT"),
+    (0x20011043, "IS", b"3 \\ 7 "),
+    (0x20011074, "DS", b" 1.5\\2.5 \\+3E0"),
+)
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.10-01", "MIDI-BP-17")
+@pytest.mark.parametrize(
+    "transfer_syntax, vr",
+    [
+        (synthetic.EXPLICIT_VR_LITTLE_ENDIAN, None),
+        (synthetic.EXPLICIT_VR_LITTLE_ENDIAN, "UN"),
+        (synthetic.IMPLICIT_VR_LITTLE_ENDIAN, None),
+    ],
+    ids=["explicit", "explicit-UN", "implicit"],
+)
+def test_a_kept_string_is_read_alike_with_or_without_its_vr(transfer_syntax, vr):
+    # Spaces before or after an IS or DS value are not significant (PS3.5
+    # Table 6.2-1), so none is read, whichever VR reads the value.
+    dataset = _slice(*((tag, vr or own, value) for tag, own, value in SPACED))
+
+    found = _read_kept_private(dataset, transfer_syntax)
+
+    assert found == {
+        _top("(2001,0010)"): ("LO", (PHILIPS,)),
+        _top("(2001,1002)"): ("IS", ("3",)),
+        _top("(2001,1004)"): ("CS", ("LEFT",)),
+        _top("(2001,1043)"): ("IS", ("3", "7")),
+        _top("(2001,1074)"): ("DS", ("1.5", "2.5", "+3E0")),
+    }
+
+
+@pytest.mark.deid_requirement("MIDI-BP-17")
+def test_read_values_gives_each_path_asked_or_none_where_undecodable():
+    # Text outside ISO 646, where no Specific Character Set applies, cannot
+    # be decoded; a kept creator written as UN is read by its plan's VR.
+    dataset = _slice((0x20010010, "UN", PHILIPS.encode()), (0x20011004, "CS", "LEFT"))
+    dataset.add_new(0x0008103E, "LO", b"SENTINEL \xc9")
+    source = read_source(synthetic.written(dataset))
+    rules = element_rules.ElementRules(policy.compose_custom_policy((SAFE_PRIVATE,)))
+    plan = plan_instance(source, rules, load_iod_tables().iods["CT Image"])
+    paths = (_top("(0008,103E)"), _top("(2001,1004)"), _top("(2001,0010)"))
+
+    found = read_values(source, plan, paths)
+
+    assert tuple(found) == paths
+    assert found[_top("(0008,103E)")] is None
+    creator, code = found[_top("(2001,0010)")], found[_top("(2001,1004)")]
+    assert creator is not None and (creator.vr, creator.values) == ("LO", (PHILIPS,))
+    assert code is not None and (code.vr, code.values) == ("CS", ("LEFT",))
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.10-01")
