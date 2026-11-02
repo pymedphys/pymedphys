@@ -273,8 +273,8 @@ def test_a_multi_frame_series_gives_its_frame_the_block_of_its_slices():
         outcomes = find_face_blocks(records, read)
         return find_dose_blocks(records, read, outcomes, (RT_STRUCTURE_SET,))
 
-    found = blocks(files.multi_frame(_slices()), _organ())[files.FRAME]
-    expected = blocks(*_slices(), _organ())[files.FRAME]
+    (found,) = blocks(files.multi_frame(_slices()), _organ())[files.FRAME].blocks
+    (expected,) = blocks(*_slices(), _organ())[files.FRAME].blocks
 
     assert found.block == expected.block
     assert found.instances == frozenset({_ENHANCED})

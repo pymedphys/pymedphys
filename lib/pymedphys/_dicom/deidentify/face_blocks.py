@@ -71,7 +71,8 @@ kind, or both. A series is defaced only where all of these hold:
   :data:`TARGET_TYPES`, of any RT Structure Set of the run searched for the
   series (:func:`_searched`), in the series' Frame of Reference, or naming
   none, can be placed, with finite coordinates of magnitude at most
-  :data:`_FARTHEST` millimetres and no contour slab (:func:`_in_slab`),
+  :data:`_FARTHEST` millimetres, including every reading of a valid contour
+  slab (:func:`_spread`),
   and the part in the block of the convex
   hull of its contours, which holds anything between them, lies within the
   slices (:func:`_kept_targets`), so that every pixel that the run keeps for
@@ -81,7 +82,8 @@ kind, or both. A series is defaced only where all of these hold:
   target whose ROI names no frame, or one that is malformed, counting as
   one in the series' frame and in each frame that its structure set
   declares;
-- every point of each eye, an ROI in the series' Frame of Reference or
+- every point of each eye, and of each point's span where its contour has
+  one (:func:`_eye_far`), an ROI in the series' Frame of Reference or
   naming none, a malformed frame counting as none
   (:func:`_roi_frames`), whose ROI Name names an eye, a globe, or an eyeball
   (:func:`_is_eye`), of those structure sets lies within
@@ -153,30 +155,34 @@ top of the slice. Where air's stored value is itself padding, the pixels
 written are padding, which a viewer shows as outside the image, as the air
 before the face is in most scans.
 
-Beyond CT instances, the run cleans the same region of an RT Dose
-that :mod:`~pymedphys._dicom.deidentify.dose_defacing` sets to zero there,
-of an RT Structure Set whose contours, or a PET image, of :data:`PET_IODS`,
+Beyond CT instances, the run cleans the same region, the block of each
+defaced series in the frame in turn, of an RT Dose that
+:mod:`~pymedphys._dicom.deidentify.dose_defacing` sets to zero there, of
+an RT Structure Set whose contours, or a PET image, of :data:`PET_IODS`,
 whose activity, :mod:`~pymedphys._dicom.deidentify.region_defacing` cuts or
 sets to zero there, frame by frame for a multi-frame PET image, and of a
 Segmentation whose segments
 :mod:`~pymedphys._dicom.deidentify.segmentation_defacing` clears there,
-each with that series' Frame of Reference as its only one, and each
-keeping whatever lies in a target's hull and on the pixels kept for it.
-Any other RT
+each with that frame as its only one but a structure set, whose ROIs in
+each defaced frame are cut by that frame's blocks, keeping whatever lies in
+a target's hull and on the pixels kept for it. Any other RT
 Structure Set, RT Dose with pixel data, PET instance, or Segmentation
 (:data:`UNDEFACED_IODS`) in the Frame of Reference of a defaced series
 keeps its contours or pixel data, which can still outline the face, so it
 is held for review whatever its verdict, since a reviewer may have judged
 it from the defaced CT's previews
-(:attr:`~.reasons.VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME`), until
-the run can clean it too (:class:`Defaced`). So is one that names no Frame
-of Reference, in a run that defaces any series, or that refers to an
-instance of a defaced series, whatever frame it declares. A structure set is searched for targets
-in the block of a series where it is in the series' frame, names no valid
+(:attr:`~.reasons.VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME`), as
+where a series of the frame can no longer be read to find what defacing
+keeps (:class:`Defaced`). So is one that names no Frame of Reference, in
+a run that defaces any series, or that refers to an instance of a defaced
+series whose block does not clean it, whatever frame it declares. A
+structure set is searched for targets in the block of a series where it is in the series' frame, names no valid
 frame, or is drawn on its slices, and otherwise unless it and every slice
 give Patient IDs that differ, and a target in another frame holds a series
 whose slices its structure set ties to that frame, whatever other frames
-the set declares.
+the set declares. Each contour is searched, and cut, wherever its retired
+Contour Slab Thickness and Contour Offset Vector may put it
+(:mod:`~pymedphys._dicom.deidentify.contour_slabs`).
 """
 
 from __future__ import annotations
@@ -194,6 +200,7 @@ from pymedphys._imports import pydicom
 from pymedphys._imports import scipy
 
 from . import defacing
+from .contour_slabs import SlabRefused, slab_of, slab_values, spread
 from .defacing import FaceBlock, FaceBlockProblem, FaceBlockRefused
 from .diagnostics import redacted_diagnostics
 from .functional_groups import frame_group
@@ -1093,9 +1100,9 @@ def _is_eye(name: str) -> bool:
 
 def _eyes_far(dataset: pydicom.Dataset, frame: str, block: FaceBlock) -> bool:
     """Whether a point of the contours of an ROI in this Frame of Reference,
-    or naming none, whose name is an eye's (:func:`_is_eye`) lies farther
-    than :data:`EYE_REACH` from both of the block's globes' centres, or
-    cannot be placed.
+    or naming none, whose name is an eye's (:func:`_is_eye`), or of a
+    point's span, lies farther than :data:`EYE_REACH` from both of the
+    block's globes' centres, or cannot be placed (:func:`_eye_far`).
 
     So an eye drawn where the finder found no globe, as where it took
     something else for one, holds the series. Each eye is checked alone,
@@ -1118,14 +1125,61 @@ def _eyes_far(dataset: pydicom.Dataset, frame: str, block: FaceBlock) -> bool:
         if int(item.ReferencedROINumber) not in eyes:
             continue
         for contour in item.get("ContourSequence") or []:
-            points = np.asarray([float(v) for v in contour.ContourData]).reshape(-1, 3)
-            nearest = np.min(
-                np.linalg.norm(points[:, np.newaxis, :] - globes, axis=2), axis=1
-            )
-            # Written so that a coordinate that is not a number fails it too.
-            if not (nearest <= EYE_REACH).all():
+            if _eye_far(contour, globes):
                 return True
     return False
+
+
+def _eye_far(contour: pydicom.Dataset, globes: np.ndarray) -> bool:
+    """Whether a point of an eye's contour, or of its span where its retired
+    Contour Slab Thickness and Contour Offset Vector give it one, lies
+    farther than :data:`EYE_REACH` from every one of ``globes``' centres, or
+    the contour cannot be placed.
+
+    Each point's span is a segment, so it is checked whole, not at its
+    ends alone: the heights along it within reach of each globe form one
+    interval, found exactly, and those intervals must together cover the
+    span. A span whose ends lie near different globes may leave both
+    between them.
+    """
+    points = np.asarray([float(v) for v in contour.ContourData]).reshape(-1, 3)
+    try:
+        values = slab_values(contour)
+        slab = None if values is None else slab_of(values, points)
+    except SlabRefused:
+        return True
+    if slab is None:
+        nearest = np.min(
+            np.linalg.norm(points[:, np.newaxis, :] - globes, axis=2), axis=1
+        )
+        # Written so that a coordinate that is not a number fails it too.
+        return not (nearest <= EYE_REACH).all()
+    direction = np.asarray(slab.direction, dtype=float)
+    # Along p + t * direction, with direction a unit vector, the heights t
+    # within EYE_REACH of a centre g are those where
+    # t**2 + 2 * t * b + c <= 0, with b = (p - g) . direction and
+    # c = |p - g|**2 - EYE_REACH**2: from -b - root to -b + root, with
+    # root = sqrt(b**2 - c), and none where b**2 - c is negative.
+    offsets = points[:, np.newaxis, :] - globes[np.newaxis, :, :]
+    b = offsets @ direction
+    c = np.sum(offsets**2, axis=2) - EYE_REACH**2
+    discriminant = b**2 - c
+    # Written so that a coordinate that is not a number reaches no globe.
+    reached = discriminant >= 0
+    root = np.sqrt(np.where(reached, discriminant, 0.0))
+    low = np.where(reached, -b - root, np.inf)
+    high = np.where(reached, -b + root, -np.inf)
+    order = np.argsort(low, axis=1)
+    low = np.take_along_axis(low, order, axis=1)
+    high = np.take_along_axis(high, order, axis=1)
+    # Sweep each point's intervals from the span's near end, in order of
+    # their low ends: the span is covered where the sweep passes its far
+    # end without a gap.
+    covered = np.full(len(points), slab.near)
+    for each in range(low.shape[1]):
+        joins = low[:, each] <= covered
+        covered = np.where(joins, np.maximum(covered, high[:, each]), covered)
+    return not (covered >= slab.far).all()
 
 
 def _targets(dataset: pydicom.Dataset) -> set[int]:
@@ -1160,8 +1214,8 @@ def _target_points(
     so that a malformed frame that the set ties to the series' slices still
     holds the series. A target with a coordinate that is not finite, or of
     magnitude above :data:`_FARTHEST`, cannot be placed either, nor can one
-    with a contour of Contour Slab Thickness or Contour Offset Vector, which
-    give it depth or move it from its points (:func:`_in_slab`).
+    with retired slab attributes whose span cannot be placed. A valid slab
+    contributes every reading of its span to the kept hull (:func:`_spread`).
     """
     frames_of_roi = _roi_frames(dataset)
     targets = _targets(dataset)
@@ -1176,15 +1230,9 @@ def _target_points(
             return None
         # A target that names no Frame of Reference may be in this one.
         if frames & {"", frame}:
-            contours = list(item.get("ContourSequence", []))
-            # A slab's thickness or offset, retired in PS3.3 C.8.8.6.2, puts
-            # the target beyond its contour's points, which alone place it.
-            if any(_in_slab(contour) for contour in contours):
+            points = [_spread(contour) for contour in item.get("ContourSequence", [])]
+            if any(each is None for each in points):
                 return None
-            points = [
-                np.asarray([float(v) for v in contour.ContourData]).reshape(-1, 3)
-                for contour in contours
-            ]
             if not points:
                 continue
             joined = np.concatenate(points)
@@ -1194,15 +1242,18 @@ def _target_points(
     return found
 
 
-def _in_slab(contour: pydicom.Dataset) -> bool:
-    """Whether a contour has a Contour Slab Thickness or Contour Offset
-    Vector with a value, which PS3.3 C.8.8.6.2 retired: its slab lies about
-    a plane moved from its points by the offset, as thick as given, so its
-    points alone do not place it."""
-    return any(
-        keyword in contour and contour[keyword].value not in (None, "", [])
-        for keyword in ("ContourSlabThickness", "ContourOffsetVector")
-    )
+def _spread(contour: pydicom.Dataset) -> np.ndarray | None:
+    """Return a contour's points, with those that its retired Contour Slab
+    Thickness and Contour Offset Vector may move them to
+    (:func:`~.contour_slabs.spread`), whose convex hull holds every point
+    that any reading of them puts it at, so that a target is searched
+    wherever one does, or None where its slab cannot be placed."""
+    points = np.asarray([float(v) for v in contour.ContourData]).reshape(-1, 3)
+    try:
+        values = slab_values(contour)
+        return spread(points, None if values is None else slab_of(values, points))
+    except SlabRefused:
+        return None
 
 
 def _tied_frames(

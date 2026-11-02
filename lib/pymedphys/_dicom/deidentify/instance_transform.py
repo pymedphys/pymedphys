@@ -225,7 +225,15 @@ from .pixel_cleaning import (
     overlay_planes,
     redaction_problem,
 )
-from .dose_defacing import RT_DOSE, DoseBlock, RtDoseDefacer, find_dose_blocks
+from .dose_defacing import (
+    RT_DOSE,
+    FrameRegion,
+    RtDoseDefacer,
+    find_dose_blocks,
+    frame_region,
+    joined,
+    structure_set_regions,
+)
 from .face_blocks import (
     CT_IODS,
     PET_IODS,
@@ -237,7 +245,6 @@ from .face_blocks import (
     Defaced,
     find_defaced,
     find_face_blocks,
-    frames_of,
 )
 from .pixel_risk import (
     assess_pixel_risk,
@@ -304,7 +311,7 @@ _RegionDefacing: TypeAlias = (
 )
 
 
-def _region_defacing(iod: IOD, region: DoseBlock | None) -> _RegionDefacing | None:
+def _region_defacing(iod: IOD, region: FrameRegion | None) -> _RegionDefacing | None:
     """Return what makes the defacer of a PET image or Segmentation in the
     block of its frame, ``region``, or None for any other instance, or one
     without a block."""
@@ -1021,27 +1028,30 @@ class InstanceTransform:
     one of a series whose structure set draws an eye away from the globes
     that its block was found from
     (:attr:`~.reasons.VisualFeaturesReason.EYES_DISAGREE_WITH_ROIS`). An RT
-    Dose whose only Frame of Reference is that of one defaced series is
-    written with its dose set to zero in the series' block, less the
-    brain and targets that defacing keeps
-    (:class:`~.dose_defacing.RtDoseDefacer`), or,
-    where the dose there is too great, written as received and held
+    Dose whose only Frame of Reference is defaced is written with its dose
+    set to zero in each defaced series' block, less the brain and targets
+    that series keeps (:class:`~.dose_defacing.RtDoseDefacer`), by magnitude
+    for Dose Type ERROR, or held where that dose is too great
     (:attr:`~.reasons.VisualFeaturesReason.DOSE_IN_FACE_BLOCK`). An RT
-    Structure Set whose only Frame of Reference is that of one defaced
-    series is written with its contours cut by the block
-    (:func:`~.region_defacing.cut_contours`), a PET image's activity in
-    the block, less that brain and those targets, is set to zero, in each
+    Structure Set's ROIs in each defaced frame are cut by its blocks,
+    wherever their retired slab attributes place them, preserving kept
+    brain and targets; ROIs in declared undefaced frames are unchanged
+    (:func:`~.region_defacing.cut_contours`). A PET image's activity in the
+    blocks, less that brain and those targets, is set to zero, in each
     frame of an Enhanced PET Image or Legacy Converted Enhanced PET Image
     (:class:`~.region_defacing.PetDefacer`), and a Segmentation's pixels
-    there that lie in a segment are written as its background
+    there that lie in a segment, of a BINARY or FRACTIONAL Segmentation or
+    a MONOCHROME2 or PALETTE COLOR label map, are written as its background
     (:class:`~.segmentation_defacing.SegmentationDefacer`); one with any
     such pixel is held without a verdict
     (:attr:`~.reasons.VisualFeaturesReason.NO_FACE_VERDICT`), since the QC
     pack does not show segments. Any other RT Structure Set, RT Dose with
     pixel data, PET instance, or Segmentation in a defaced series' Frame of
-    Reference, naming none, or referring to a defaced slice, such as one
-    whose contours or pixel data cannot be cut, is held whatever its
-    verdict (:attr:`~.reasons.VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME`),
+    Reference, naming none, or referring to a defaced slice that its blocks
+    do not clean it by, such as one whose contours or pixel data cannot be
+    cut, or of a frame with a series that can no longer be read, is held
+    whatever its verdict
+    (:attr:`~.reasons.VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME`),
     since the run does not clean it of the face. An instance that can show
     a face (:func:`~.face_review.carries_visual_features`) satisfies the
     option only where the SHA-256 of its source file is in a series that the
@@ -1214,7 +1224,7 @@ class InstanceTransform:
         self._face_review = face_review
         self._face_blocks: dict[str, SeriesDefacing] = {}
         self._defaced = Defaced()
-        self._dose_blocks: dict[str, DoseBlock] = {}
+        self._dose_blocks: dict[str, FrameRegion] = {}
         self._face_block_counts = None if face_review is None else FaceBlockCounts()
         self._iods = load_iod_tables() if iod_tables is None else iod_tables
         self.reporter = ReleaseReporter(
@@ -1456,21 +1466,20 @@ class InstanceTransform:
         iod: IOD,
         record: InstanceRecord,
         dataset: pydicom.Dataset,
-        dose: DoseBlock | None,
+        dose: FrameRegion | None,
     ) -> HeldVisualFeatures | None:
         """Return why an instance that the run does not clean of the face is
         held, where it defaces the instance's frame
         (:meth:`~.face_blocks.Defaced.holds`).
 
         An RT Dose without pixel data is not held for its frame, nor one
-        that the run sets to zero in its frame's block, nor an RT Structure
+        that the run sets to zero in its frame's blocks, nor an RT Structure
         Set, PET instance, or Segmentation that it cleans there, unless it
-        refers to a defaced slice of another series. An instance that holds
-        a deformation grid, which the run does not clean, is held where the
-        run defaces any series and it names a defaced series' Frame of
-        Reference as its own or as a Source Frame of Reference
-        (:func:`~.face_review.registration_frames`), names one that cannot
-        be read, or refers to a defaced slice.
+        refers to a defaced slice of a series in a frame that it is not
+        cleaned in. An instance holding a deformation grid remains held
+        where it names a defaced frame as its own or as a Source Frame of
+        Reference (:func:`~.face_review.registration_frames`), names one
+        that cannot be read, or refers to a defaced slice.
         """
         if holds_deformation_grid(dataset) and self._defaced.frames:
             frames = registration_frames(dataset)
@@ -1496,8 +1505,8 @@ class InstanceTransform:
 
     def _dose_block(
         self, iod: IOD, record: InstanceRecord, dataset: pydicom.Dataset
-    ) -> DoseBlock | None:
-        """Return the block of an RT Dose's only Frame of Reference, if the
+    ) -> FrameRegion | None:
+        """Return the blocks of an RT Dose's only Frame of Reference, if the
         run sets its dose to zero there.
 
         None for an RT Dose without pixel data, such as one of dose-volume
@@ -1506,25 +1515,26 @@ class InstanceTransform:
         """
         if iod.name != RT_DOSE or not any(tag in dataset for tag in PIXEL_DATA_TAGS):
             return None
-        frames = frames_of(record)
-        if len(frames) != 1:
-            return None
-        return self._dose_blocks.get(next(iter(frames)))
+        return frame_region(record, self._dose_blocks)
 
-    def _region(self, iod: IOD, record: InstanceRecord) -> DoseBlock | None:
-        """Return the block of an RT Structure Set's, PET image's, or
-        Segmentation's only Frame of Reference, if the run cleans it there
+    def _region(self, iod: IOD, record: InstanceRecord) -> FrameRegion | None:
+        """Return the blocks of a PET image's or Segmentation's only Frame
+        of Reference, if the run cleans it there
         (:mod:`~pymedphys._dicom.deidentify.region_defacing` and
         :mod:`~pymedphys._dicom.deidentify.segmentation_defacing`)."""
-        if (
-            iod.name not in (RT_STRUCTURE_SET, SEGMENTATION)
-            and iod.name not in PET_IODS
-        ):
+        if iod.name != SEGMENTATION and iod.name not in PET_IODS:
             return None
-        frames = frames_of(record)
-        if len(frames) != 1:
+        return frame_region(record, self._dose_blocks)
+
+    def _contour_regions(
+        self, iod: IOD, record: InstanceRecord
+    ) -> dict[str, FrameRegion] | None:
+        """Return the blocks of each defaced Frame of Reference that an RT
+        Structure Set names, if the run cuts its ROIs there
+        (:func:`~.region_defacing.cut_contours`)."""
+        if iod.name != RT_STRUCTURE_SET:
             return None
-        return self._dose_blocks.get(next(iter(frames)))
+        return structure_set_regions(record, self._dose_blocks, self._defaced)
 
     def _defacing(self, iod: IOD, record: InstanceRecord) -> SeriesDefacing | None:
         """Return the outcome of a CT instance's series, if it has one."""
@@ -1538,7 +1548,7 @@ class InstanceTransform:
         source: SourceEvidence,
         dataset: pydicom.Dataset,
         defacing: SeriesDefacing | None,
-        dose: DoseBlock | None,
+        dose: FrameRegion | None,
         region: _RegionDefacing | None = None,
         *,
         overlays: int = 0,
@@ -1611,7 +1621,7 @@ class InstanceTransform:
         source: SourceEvidence,
         dataset: pydicom.Dataset,
         defacing: SeriesDefacing | None,
-        dose: DoseBlock | None,
+        dose: FrameRegion | None,
         region: _RegionDefacing | None,
         approved: Regions | None,
         decoded: bytes | None,
@@ -1897,6 +1907,7 @@ class InstanceTransform:
         defacing = self._defacing(iod, record)
         dose = self._dose_block(iod, record, dataset)
         region = self._region(iod, record)
+        contours = self._contour_regions(iod, record)
         qc = (*risk, *dropped_of(edits, retained), *omissions_of(evidence), *names)
         chosen = {CLEAN_DESCRIPTORS} if satisfied else set()
         try:
@@ -1924,13 +1935,13 @@ class InstanceTransform:
                 ),
                 source,
             )
-            if region is not None and iod.name == RT_STRUCTURE_SET:
+            if contours is not None:
                 try:
                     writing = _with_cut_contours(
                         writing,
                         source,
                         dataset,
-                        cut_contours(region, dataset, next(iter(frames_of(record)))),
+                        cut_contours(contours, dataset, self._defaced.frames),
                     )
                 except ContoursRefused:
                     undefaced = VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME
@@ -1940,10 +1951,17 @@ class InstanceTransform:
                 face = HeldVisualFeatures(VisualFeaturesReason.NO_FACE_VERDICT)
             else:
                 face = self._face_hold(data, dataset, iod, writing)
+            cleaned_in = (
+                dose
+                if dose is not None
+                else region
+                if region is not None
+                else None
+                if contours is None
+                else joined(contours)
+            )
             frame = (
-                self._frame_hold(
-                    iod, record, dataset, dose if dose is not None else region
-                )
+                self._frame_hold(iod, record, dataset, cleaned_in)
                 if undefaced is None
                 else HeldVisualFeatures(undefaced)
             )
