@@ -373,6 +373,34 @@ def test_a_run_records_its_list_and_releases_the_kept_block(chosen):
 
 @pytest.mark.pydicom
 @pytest.mark.usefixtures("pydicom_behaviour")
+@pytest.mark.deid_requirement("MIDI-BP-01", "PS3.15-E.3.10-01")
+@pytest.mark.parametrize("chosen", list(SafePrivateList), ids=lambda c: c.value)
+def test_a_device_manufacturer_found_in_the_kept_philips_pet_creator_is_released(
+    chosen,
+):
+    # Both lists keep the Philips PET block, which Table E.3.10-1 lists; the
+    # removed Secondary Capture Device Manufacturer is no creator, so only
+    # the kept creator explains it.
+    dataset = synthetic.ct_slice(0)
+    dataset.add_new(0x00181016, "LO", PHILIPS_PET)
+    dataset.add_new(0x70530010, "LO", PHILIPS_PET)
+    dataset.add_new(0x70531000, "DS", "1.5")
+
+    result = _transformed(chosen, dataset)
+
+    written = pydicom.dcmread(io.BytesIO(result.data))
+    assert 0x00181016 not in written
+    assert written[0x70530010].value == PHILIPS_PET
+    condition = release_condition(result.evidence, result.data)
+    assert condition.decision is Decision.RELEASE, condition.reasons
+    assert [
+        (finding.source.tag, finding.location.element.tag, why)
+        for finding, why in condition.exempted
+    ] == [("(0018,1016)", "(7053,0010)", Exemption.RETAINED_CREATOR)]
+
+
+@pytest.mark.pydicom
+@pytest.mark.usefixtures("pydicom_behaviour")
 def test_a_run_without_the_option_records_no_list():
     data = synthetic.written(_instance())
     transform = InstanceTransform(
