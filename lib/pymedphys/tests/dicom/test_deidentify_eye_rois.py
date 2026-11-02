@@ -258,9 +258,18 @@ def test_an_eye_naming_no_frame_in_a_set_of_another_frame_is_checked():
     assert _outcome(buffer.getvalue()).problem is SeriesProblem.EYES_DISAGREE
 
 
-def test_a_target_in_the_block_is_the_reason_before_the_eyes():
+def test_a_target_kept_in_the_block_leaves_eyes_that_disagree_holding_the_series():
     rtss = _rtss(
         ("PTV", "PTV", files.square((-32.0, -76.0, 20.0))),
+        ("Eye_L", "ORGAN", _eye(np.add(_GLOBES[1], (0, 0, -40)))),
+    )
+
+    assert _outcome(rtss).problem is SeriesProblem.EYES_DISAGREE
+
+
+def test_a_target_that_cannot_be_placed_is_the_reason_before_the_eyes():
+    rtss = _rtss(
+        ("PTV", "PTV", files.square((-32.0, -76.0, 2e6))),
         ("Eye_L", "ORGAN", _eye(np.add(_GLOBES[1], (0, 0, -40)))),
     )
 
