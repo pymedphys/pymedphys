@@ -53,9 +53,14 @@ the volume slice by slice, in Hounsfield units, to cubic voxels along the
 patient's axes, by nearest neighbour, through
 :class:`~pymedphys._dicom.deidentify.stack_sampling.StackSampler`: each voxel
 takes the slice nearest it along the slices' normal and, within it, the pixel
-nearest it along the rows and the columns, which, where the stack's axes lie
-along the patient's, is the sampling of
-:class:`~pymedphys._dicom.deidentify.qc_surfaces.Surface`, voxel for voxel. A
+nearest it along the rows and the columns. Where the stack's axes lie along
+the patient's, this is the rule of
+:class:`~pymedphys._dicom.deidentify.qc_surfaces.Surface`, and it gave the
+same voxels on every such layout of the tests, but a voxel within the
+sampler's tie tolerance of midway between two pixels or slices, which
+:class:`~pymedphys._dicom.deidentify.qc_surfaces.Surface` compares exactly,
+can take the other one, as can a voxel of a stack within the old alignment
+tolerances, which the finder once snapped onto the axes. A
 voxel beyond the stack, as a tilted or oblique stack leaves the corners of the
 voxels, takes the pixel at the stack's edge nearest it, as a point beyond the
 voxels takes the value at their edge (step 2). The voxels are of
