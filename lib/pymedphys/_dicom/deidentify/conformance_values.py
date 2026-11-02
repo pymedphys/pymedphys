@@ -492,8 +492,10 @@ def dates_and_times(
             "the policy removes or replaces, other than the kept element's "
             "own, equals a whole kept value, the residual search finds it in "
             "the kept element, and the kept value explains it, so it does not "
-            "withhold the instance; found inside a longer kept value, such as "
-            "the date of a kept datetime, it still does. "
+            "withhold the instance, nor does a removed datetime whose date, "
+            "which the search also looks for, equals a whole kept date; found "
+            "inside a longer kept value, such as the date of a kept datetime, "
+            "it still does. "
             f"{named(TEMPORAL_MODIFIED)} is `{statement.markers.temporal}`, as "
             "Attributes inserted describes.",
         ]
