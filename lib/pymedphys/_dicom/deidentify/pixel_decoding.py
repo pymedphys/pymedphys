@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# pylint: disable = too-many-lines
+# One module decodes compressed Pixel Data for every caller, from the
+# admission check to defacing, so that each decodes it the same way.
+
 """Decode every frame of compressed pixel data once, before it is released.
 
 The engine writes encapsulated Pixel Data (7FE0,0010) back byte for byte,
