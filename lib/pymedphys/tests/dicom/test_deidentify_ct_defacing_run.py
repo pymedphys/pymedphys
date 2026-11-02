@@ -539,9 +539,7 @@ def _reviewed(
                 )
         rtss = pydicom.dcmread(instances / _STRUCTURE_SET)
         (instances / _STRUCTURE_SET).write_bytes(
-            _head_structure_set(
-                rtss, eyes_away=eyes_away, target=target, frames=phases
-            )
+            _head_structure_set(rtss, eyes_away=eyes_away, target=target, frames=phases)
         )
         if phases:
             grid = pydicom.dcmread(instances / _DOSE[0])
