@@ -20,7 +20,7 @@ fictitious patient and study, with one Frame of Reference: three CT Image
 slices, an RT Structure Set that references the CT series and slices, an RT
 Plan that references the structure set and the dose, an RT Dose that
 references the plan, a second RT Dose of the plan for review (below), and
-one instance of each of the other eighteen IODs, each in a series of its own.
+one instance of each of the other twenty-three IODs, each in a series of its own.
 The MR Image and PET Image instances reference the first CT slice, and each
 enhanced, legacy converted enhanced, or MR Spectroscopy instance references
 the single-frame instance of its modality: the first CT slice, the MR
@@ -33,9 +33,11 @@ ROI Sequence (0070,0315) names the structure set. The RT Beams Treatment
 Record references the plan. The RT Ion Plan references what the RT Plan
 does, the structure set, the RT Dose, and the RT Plan, which it names as a
 related plan, and the RT Ion Beams Treatment Record references the RT Ion
-Plan. The RT Image, a digitally reconstructed
-radiograph of 2 by 2 pixels, references the RT Plan. The X-Ray Radiation Dose SR references the first CT slice, and the
-Radiopharmaceutical Radiation Dose SR the PET Image. It is the input for
+Plan. The RT Image, a digitally reconstructed radiograph of 2 by 2 pixels,
+references the RT Plan. The X-Ray Radiation Dose SR references the first CT
+slice, the Radiopharmaceutical Radiation Dose SR the PET Image, and the
+Basic Text SR, Enhanced SR, Comprehensive SR, Comprehensive 3D SR, and
+Extensible SR the MR Image. It is the input for
 validating each preset end
 to end: once the engine has
 written the collection, the residual search
@@ -157,7 +159,7 @@ dummy item at that place and only there. Planted in
 every file, the first two would sequester every
 instance, and no preset could release any of the collection; planted in one,
 that instance checks sequestration, :data:`REVIEW_FILE` checks review, and
-the other twenty-three check each preset's output, the reports where their
+the other twenty-eight check each preset's output, the reports where their
 trees are cleaned. Radiopharmaceutical Start
 DateTime, which CT Image does not define there, is planted in no file, so
 the Enhanced PET instance, which lacks an attribute of Type 1, is released
@@ -193,7 +195,7 @@ Manufacturer's Model Name (0008,1090), which Table E.1-1 does not list and
 the Basic Profile keeps, a copy of the RT Plan's RT Plan Label marker
 (:attr:`PlacementKind.REVIEW_COPY`), so the residual search finds a source
 value of another instance in its output and sends it to review. The third
-CT slice remains sequestered; the other twenty-three files stay releasable, the
+CT slice remains sequestered; the other twenty-eight files stay releasable, the
 reports where their trees are cleaned.
 
 **Manifest.** :class:`CorpusManifest` records, for each file, each
@@ -260,9 +262,16 @@ from .standard import (
     load_table_e1_1,
 )
 from .synthetic_content_trees import (
+    BASIC_TEXT_SR_STORAGE,
+    COMPREHENSIVE_3D_SR_STORAGE,
+    COMPREHENSIVE_SR_STORAGE,
+    ENHANCED_SR_STORAGE,
+    EXTENSIBLE_SR_STORAGE,
     RADIOPHARMACEUTICAL_RADIATION_DOSE_SR_STORAGE,
     ROOT_TEMPLATES,
     X_RAY_RADIATION_DOSE_SR_STORAGE,
+    imaging_report_tree,
+    measurement_report_tree,
     radiopharmaceutical_dose_tree,
     x_ray_dose_tree,
 )
@@ -309,8 +318,17 @@ SEQUESTERED_FILE = "03-ct-3.dcm"
 # The file that keeps a copy of another file's marker, for review.
 REVIEW_FILE = "07-rtdose-review.dcm"
 # The Structured Reports, whose Content Sequence holds a content tree, which
-# the Basic Profile's D sequesters, as a sequence has no dummy value.
-STRUCTURED_REPORT_FILES = ("22-sr-dose-x-ray.dcm", "23-sr-dose-radiopharmaceutical.dcm")
+# the Basic Profile's D sequesters, as a sequence has no dummy value: the
+# radiation dose reports, and the general reports.
+DOSE_REPORT_FILES = ("22-sr-dose-x-ray.dcm", "23-sr-dose-radiopharmaceutical.dcm")
+GENERAL_REPORT_FILES = (
+    "24-sr-basic-text.dcm",
+    "25-sr-enhanced.dcm",
+    "26-sr-comprehensive.dcm",
+    "27-sr-comprehensive-3d.dcm",
+    "28-sr-extensible.dcm",
+)
+STRUCTURED_REPORT_FILES = DOSE_REPORT_FILES + GENERAL_REPORT_FILES
 # The RT Ion Plan and the RT Ion Beams Treatment Record of it, numbered after
 # the files that open pull requests add.
 ION_PLAN_FILE = "47-rt-ion-plan.dcm"
@@ -363,6 +381,16 @@ X_RAY_DOSE_REPORT_SERIES = f"{LINKED_UID_ROOT}01900"
 X_RAY_DOSE_REPORT = f"{LINKED_UID_ROOT}01901"
 RADIOPHARMACEUTICAL_DOSE_REPORT_SERIES = f"{LINKED_UID_ROOT}02000"
 RADIOPHARMACEUTICAL_DOSE_REPORT = f"{LINKED_UID_ROOT}02001"
+BASIC_TEXT_REPORT_SERIES = f"{LINKED_UID_ROOT}02100"
+BASIC_TEXT_REPORT = f"{LINKED_UID_ROOT}02101"
+ENHANCED_REPORT_SERIES = f"{LINKED_UID_ROOT}02200"
+ENHANCED_REPORT = f"{LINKED_UID_ROOT}02201"
+COMPREHENSIVE_REPORT_SERIES = f"{LINKED_UID_ROOT}02300"
+COMPREHENSIVE_REPORT = f"{LINKED_UID_ROOT}02301"
+COMPREHENSIVE_3D_REPORT_SERIES = f"{LINKED_UID_ROOT}02400"
+COMPREHENSIVE_3D_REPORT = f"{LINKED_UID_ROOT}02401"
+EXTENSIBLE_REPORT_SERIES = f"{LINKED_UID_ROOT}02500"
+EXTENSIBLE_REPORT = f"{LINKED_UID_ROOT}02501"
 ION_PLAN_SERIES = f"{LINKED_UID_ROOT}04400"
 ION_PLAN = f"{LINKED_UID_ROOT}04401"
 ION_TREATMENT_RECORD_SERIES = f"{LINKED_UID_ROOT}04500"
@@ -391,6 +419,8 @@ _PATIENTS_NAME_TAG = "(0010,0010)"
 _FRAME_OF_REFERENCE_TAGS = frozenset({"(0020,0052)", "(3006,0024)", "(0064,0003)"})
 _CONTOUR_IMAGE_SEQUENCE = "(3006,0016)"
 _CONTENT_SEQUENCE = "(0040,A730)"
+# The frame of reference of a SCOORD3D content item's coordinates.
+_REFERENCED_FRAME_OF_REFERENCE = "(3006,0024)"
 # The sequences of a Structured Report's root content item, its Concept Name
 # Code Sequence and Content Sequence, which its template builds.
 _CONTENT_TREE_ROOT = frozenset({"(0040,A043)", _CONTENT_SEQUENCE})
@@ -450,6 +480,11 @@ _SOP_CLASSES = types.MappingProxyType(
         RT_IMAGE: RT_IMAGE_STORAGE,
         X_RAY_DOSE_REPORT: X_RAY_RADIATION_DOSE_SR_STORAGE,
         RADIOPHARMACEUTICAL_DOSE_REPORT: RADIOPHARMACEUTICAL_RADIATION_DOSE_SR_STORAGE,
+        BASIC_TEXT_REPORT: BASIC_TEXT_SR_STORAGE,
+        ENHANCED_REPORT: ENHANCED_SR_STORAGE,
+        COMPREHENSIVE_REPORT: COMPREHENSIVE_SR_STORAGE,
+        COMPREHENSIVE_3D_REPORT: COMPREHENSIVE_3D_SR_STORAGE,
+        EXTENSIBLE_REPORT: EXTENSIBLE_SR_STORAGE,
         ION_PLAN: RT_ION_PLAN_STORAGE,
         ION_TREATMENT_RECORD: RT_ION_BEAMS_TREATMENT_RECORD_STORAGE,
         PATIENT_REFERENCE: DETACHED_PATIENT_MANAGEMENT,
@@ -965,6 +1000,45 @@ _SPECS = (
         RADIOPHARMACEUTICAL_DOSE_REPORT_SERIES,
         PET,
     ),
+    # The general Structured Reports, whose header references the MR Image:
+    # imaging reports of TID 2000 in the IODs that allow no spatial
+    # coordinates in three dimensions, and measurement reports of TID 1500
+    # in those that do.
+    *(
+        _Spec(name, sop_class, instance, series, MR)
+        for name, sop_class, instance, series in (
+            (
+                STRUCTURED_REPORT_FILES[2],
+                BASIC_TEXT_SR_STORAGE,
+                BASIC_TEXT_REPORT,
+                BASIC_TEXT_REPORT_SERIES,
+            ),
+            (
+                STRUCTURED_REPORT_FILES[3],
+                ENHANCED_SR_STORAGE,
+                ENHANCED_REPORT,
+                ENHANCED_REPORT_SERIES,
+            ),
+            (
+                STRUCTURED_REPORT_FILES[4],
+                COMPREHENSIVE_SR_STORAGE,
+                COMPREHENSIVE_REPORT,
+                COMPREHENSIVE_REPORT_SERIES,
+            ),
+            (
+                STRUCTURED_REPORT_FILES[5],
+                COMPREHENSIVE_3D_SR_STORAGE,
+                COMPREHENSIVE_3D_REPORT,
+                COMPREHENSIVE_3D_REPORT_SERIES,
+            ),
+            (
+                STRUCTURED_REPORT_FILES[6],
+                EXTENSIBLE_SR_STORAGE,
+                EXTENSIBLE_REPORT,
+                EXTENSIBLE_REPORT_SERIES,
+            ),
+        )
+    ),
     # The RT Ion Plan references what the RT Plan does: the structure set,
     # the RT Dose, and the RT Plan, which it names as a related plan. The RT
     # Ion Beams Treatment Record references the RT Ion Plan, as the RT Beams
@@ -993,7 +1067,7 @@ def build_corpus() -> SyntheticCorpus:
     Returns
     -------
     SyntheticCorpus
-        Twenty-five files: three CT slices; the RT Structure Set, RT Plan, RT
+        Thirty files: three CT slices; the RT Structure Set, RT Plan, RT
         Dose, and the RT Dose for review; the Enhanced CT Image and Legacy
         Converted Enhanced CT Image; the MR Image, Enhanced MR Image,
         Enhanced MR Color Image, Legacy Converted Enhanced MR Image, and MR
@@ -1001,8 +1075,10 @@ def build_corpus() -> SyntheticCorpus:
         Converted Enhanced PET Image; the Spatial Registration and
         Deformable Spatial Registration; the RT Beams Treatment Record; the
         RT Image; the X-Ray Radiation Dose SR and Radiopharmaceutical
-        Radiation Dose SR; and the RT Ion Plan and RT Ion Beams Treatment
-        Record. Two builds give the same bytes and the same manifest.
+        Radiation Dose SR; the Basic Text SR, Enhanced SR, Comprehensive SR,
+        Comprehensive 3D SR, and Extensible SR; and the RT Ion Plan and RT
+        Ion Beams Treatment Record. Two builds give the same bytes and the
+        same manifest.
     """
     markers = _Markers()
     files: list[CorpusFile] = []
@@ -1679,9 +1755,10 @@ class _Instance:
         The content tree's identifying values, of its UIDREF, DATETIME, and
         PNAME items, are markers, and the study that an X-ray report's scope
         of accumulation names is the collection's; each is recorded with its
-        item's concept name. The report is VERIFIED, so its Verifying
-        Observer Sequence, whose markers are planted as any attribute's, is
-        one that its IOD requires.
+        item's concept name. A measurement report's volumetric region is in
+        the collection's Frame of Reference, recorded as linked. The report
+        is VERIFIED, so its Verifying Observer Sequence, whose markers are
+        planted as any attribute's, is one that its IOD requires.
         """
         put = self._set
         put((), "(0008,0060)", ["SR"])
@@ -1695,10 +1772,15 @@ class _Instance:
             _, (text,) = self.markers.values(_CONTENT_ITEM_VRS[value_type], 1)
             return text
 
-        if self.spec.sop_class == X_RAY_RADIATION_DOSE_SR_STORAGE:
+        template_id = ROOT_TEMPLATES[self.spec.sop_class]
+        if template_id == "10001":
             root = x_ray_dose_tree(values, STUDY)
-        else:
+        elif template_id == "10021":
             root = radiopharmaceutical_dose_tree(values)
+        elif template_id == "2000":
+            root = imaging_report_tree(values)
+        else:
+            root = measurement_report_tree(values, FRAME_OF_REFERENCE)
         for element in root:
             self.dataset.add(element)
         self._record_content(root, ())
@@ -1706,10 +1788,22 @@ class _Instance:
     def _record_content(
         self, item: pydicom.Dataset, items: tuple[tuple[str, int], ...]
     ) -> None:
-        """Record the identifying value of each content item below ``item``."""
+        """Record the identifying value of each content item below ``item``.
+
+        The frame of reference of a SCOORD3D item is recorded too, as linked,
+        with no concept name, since it takes its own row of Table E.1-1.
+        """
         for index, child in enumerate(item.get("ContentSequence", ())):
             within = (*items, (_CONTENT_SEQUENCE, index))
             value_type = child.ValueType
+            if value_type == "SCOORD3D":
+                self._record(
+                    ElementPath(within, _REFERENCED_FRAME_OF_REFERENCE),
+                    "UI",
+                    (str(child.ReferencedFrameOfReferenceUID),),
+                    PlacementKind.LINKED_UID,
+                    _REFERENCED_FRAME_OF_REFERENCE,
+                )
             if value_type in _CONTENT_ITEM_VRS:
                 (code,) = child.ConceptNameCodeSequence
                 tag = _CONTENT_ITEM_VALUES[value_type]
