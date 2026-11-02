@@ -262,6 +262,98 @@ def test_a_stack_along_the_patient_axes_is_sampled_as_today(scan, voxel, every_s
 
 
 @pytest.mark.parametrize("every_slice", [False, True], ids=["nearest", "every-slice"])
+def test_reversed_columns_of_decimal_spacing_take_todays_pixels(every_slice):
+    # Columns to the patient's right, 0.8 mm apart, sampled to 2 mm voxels:
+    # the voxels lie nominally midway between columns, where today's
+    # sampling compares the distances as rounded and takes columns 7 and 2.
+    scan = head.Scan(
+        (-1.0, 0.0, 0.0, 0.0, 1.0, 0.0), ((0.0, 0.0, 0.0),), (0.8, 0.8), (4, 11)
+    )
+    frame = np.tile(np.arange(11, dtype=np.float32), (4, 1))
+
+    volume = _sampled(scan, 2.0, [frame], every_slice)
+
+    np.testing.assert_array_equal(volume.values[0, 0], [10, 7, 5, 2, 0])
+    np.testing.assert_array_equal(
+        volume.values, _today(scan, 2.0, [frame], every_slice)
+    )
+
+
+def _aligned_stack(generator: np.random.Generator) -> head.Scan:
+    """A random stack along the patient's axes: any of the six orders of
+    its axes, each either way, decimal spacings, uneven gaps, an origin
+    anywhere, and the slices in any order."""
+    axes = generator.permutation(3)
+    signs = generator.choice([-1.0, 1.0], size=2)
+    along_row = np.zeros(3)
+    along_row[axes[0]] = signs[0]
+    down_column = np.zeros(3)
+    down_column[axes[1]] = signs[1]
+    normal = np.cross(along_row, down_column)
+    spacing = tuple(
+        float(value) for value in generator.choice([0.488, 0.7, 0.8, 0.9765625, 1.3], 2)
+    )
+    gaps = generator.choice(
+        [0.4, 0.5, 1.25, 2.5, 3.0], size=int(generator.integers(1, 12))
+    )
+    steps = np.concatenate([[0.0], np.cumsum(gaps)])
+    origin = np.round(generator.uniform(-250, 250, 3), 3)
+    positions = tuple(
+        tuple(float(value) for value in origin + step * normal)
+        for step in generator.permutation(steps)
+    )
+    shape = (int(generator.integers(1, 23)), int(generator.integers(1, 23)))
+    return head.Scan(
+        tuple(float(value) for value in (*along_row, *down_column)),
+        positions,
+        spacing,
+        shape,
+    )
+
+
+@pytest.mark.parametrize("seed", range(40))
+def test_random_aligned_stacks_take_todays_pixels(seed):
+    generator = np.random.default_rng(seed)
+    scan = _aligned_stack(generator)
+    frames = _coded(scan)
+
+    for voxel in (0.6, 1.0, 1.5, 2.0):
+        for every_slice in (False, True):
+            volume = _sampled(scan, voxel, frames, every_slice)
+
+            assert volume.sampler.stack.aligned
+            np.testing.assert_array_equal(
+                volume.values,
+                _today(scan, voxel, frames, every_slice),
+                err_msg=f"voxel {voxel}, every slice {every_slice}",
+            )
+
+
+def test_a_stack_is_aligned_as_today_within_the_tolerances():
+    scan = _small()
+    off = 0.9 * stack_sampling.ALIGNMENT_TOLERANCE
+    nudged = (1.0, off, 0.0, -off, 1.0, 0.0)
+    shifted = tuple(
+        (x + 0.9 * stack_sampling.STACKING_TOLERANCE * index, y, z)
+        for index, (x, y, z) in enumerate(scan.positions)
+    )
+
+    def aligned(orientation, positions):
+        return stack_sampling.Stack(
+            orientation, positions, scan.spacing, scan.shape
+        ).aligned
+
+    assert aligned(scan.orientation, scan.positions)
+    assert aligned(nudged, scan.positions)
+    assert aligned(scan.orientation, shifted[:2])
+    assert not aligned(_TILT_15, scan.positions)
+    assert not aligned(scan.orientation, SMALL["sheared"].positions)
+    turned = 3 * off
+    cosine = math.sqrt(1 - turned**2)
+    assert not aligned((cosine, turned, 0.0, -turned, cosine, 0.0), scan.positions)
+
+
+@pytest.mark.parametrize("every_slice", [False, True], ids=["nearest", "every-slice"])
 def test_slices_added_in_any_order_give_the_same_volume(every_slice):
     scan = SMALL["uneven-and-unordered"]
     frames = _coded(scan)
