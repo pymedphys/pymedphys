@@ -794,3 +794,47 @@ def test_rt_roi_interpreted_types_are_counted_by_their_defined_terms(kind, count
     assert face_validation_dicom._interpreted_types(  # pylint: disable = protected-access
         dataset
     ) == {1: counted}
+
+
+@pytest.mark.parametrize(
+    ("keyword", "value", "behind", "code"),
+    [
+        ("ContourSlabThickness", 10.0, True, ("not-placed", None)),
+        ("ContourOffsetVector", [0.0, 0.0, 6.0], True, ("not-placed", None)),
+        ("ContourSlabThickness", 10.0, False, ("not-placed", None)),
+        ("ContourOffsetVector", [0.0, 0.0, 6.0], False, ("not-placed", None)),
+        ("ContourSlabThickness", None, True, ("clear", pytest.approx(4.0))),
+        ("ContourOffsetVector", None, True, ("clear", pytest.approx(4.0))),
+        ("ContourSlabThickness", None, False, ("kept-in-block", None)),
+        ("ContourOffsetVector", None, False, ("kept-in-block", None)),
+    ],
+    ids=[
+        "thickness-behind",
+        "offset-behind",
+        "thickness-in-block",
+        "offset-in-block",
+        "empty-thickness-behind",
+        "empty-offset-behind",
+        "empty-thickness-in-block",
+        "empty-offset-in-block",
+    ],
+)
+def test_a_target_in_a_slab_is_reported_as_not_placed(keyword, value, behind, code):
+    # A block of the points with y below 0 and z above 0, and a square 4 mm
+    # behind it, clear of it by its points alone, or in it.
+    target = files.square((0.0, 6.0 if behind else -6.0, 20.0))
+    rtss = pydicom.dcmread(io.BytesIO(files.structure_set([("PTV", target)])))
+    (contour,) = rtss.ROIContourSequence[0].ContourSequence
+    setattr(contour, keyword, value)
+    block = FaceBlock((0.0, 0.0, 0.0), (0.0, -1.0, 0.0), 0.0, ((0, 0, 0), (0, 0, 0)))
+    fates = face_blocks._TargetFates(  # pylint: disable = protected-access
+        block, block, (), 0.0
+    )
+
+    # The run holds the series for a slab, whose region its points do not
+    # give, so the check reports it as the run judges it, with no clearance.
+    codes = face_validation_dicom._target_codes(  # pylint: disable = protected-access
+        rtss, files.FRAME, set(), fates
+    )
+
+    assert list(codes) == [code]

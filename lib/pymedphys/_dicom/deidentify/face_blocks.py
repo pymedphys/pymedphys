@@ -60,7 +60,8 @@ kind, or both. A series is defaced only where all of these hold:
   :data:`TARGET_TYPES`, of any RT Structure Set of the run searched for the
   series (:func:`_searched`), in the series' Frame of Reference, or naming
   none, can be placed, with finite coordinates of magnitude at most
-  :data:`_FARTHEST` millimetres, and the part in the block of the convex
+  :data:`_FARTHEST` millimetres and no contour slab (:func:`_in_slab`),
+  and the part in the block of the convex
   hull of its contours, which holds anything between them, lies within the
   slices (:func:`_kept_targets`), so that every pixel that the run keeps for
   it is one that the reviewer sees; no target in another frame, whose
@@ -1349,7 +1350,9 @@ def _target_points(
     repeated with another frame, which is also taken as each value it names,
     so that a malformed frame that the set ties to the series' slices still
     holds the series. A target with a coordinate that is not finite, or of
-    magnitude above :data:`_FARTHEST`, cannot be placed either.
+    magnitude above :data:`_FARTHEST`, cannot be placed either, nor can one
+    with a contour of Contour Slab Thickness or Contour Offset Vector, which
+    give it depth or move it from its points (:func:`_in_slab`).
     """
     frames_of_roi = _roi_frames(dataset)
     targets = _targets(dataset)
@@ -1364,9 +1367,14 @@ def _target_points(
             return None
         # A target that names no Frame of Reference may be in this one.
         if frames & {"", frame}:
+            contours = list(item.get("ContourSequence", []))
+            # A slab's thickness or offset, retired in PS3.3 C.8.8.6.2, puts
+            # the target beyond its contour's points, which alone place it.
+            if any(_in_slab(contour) for contour in contours):
+                return None
             points = [
                 np.asarray([float(v) for v in contour.ContourData]).reshape(-1, 3)
-                for contour in item.get("ContourSequence", [])
+                for contour in contours
             ]
             if not points:
                 continue
@@ -1375,6 +1383,17 @@ def _target_points(
                 return None
             found.append(joined)
     return found
+
+
+def _in_slab(contour: pydicom.Dataset) -> bool:
+    """Whether a contour has a Contour Slab Thickness or Contour Offset
+    Vector with a value, which PS3.3 C.8.8.6.2 retired: its slab lies about
+    a plane moved from its points by the offset, as thick as given, so its
+    points alone do not place it."""
+    return any(
+        keyword in contour and contour[keyword].value not in (None, "", [])
+        for keyword in ("ContourSlabThickness", "ContourOffsetVector")
+    )
 
 
 def _tied_frames(

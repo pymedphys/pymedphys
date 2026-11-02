@@ -32,8 +32,8 @@ A pack holds, for one run:
   written, or the opaque per-run label by which the release report refers
   to it if sequestered, and why (D-026), and, for each released or held
   instance whose written file the gate handed over, the SHA-256 of that
-  file's pixel data, which binds a face verdict to the pixel data that the
-  reviewer saw (D-046);
+  file's pixel data, contours, and deformation grids, which binds a face
+  verdict to what the reviewer saw (D-046);
 - ``residual_findings``: each residual that the search of a written file
   found, by instance and place, with a contextual excerpt of the bytes
   around it (D-027);
@@ -90,13 +90,14 @@ A pack holds, for one run:
   beside the pack, with what it shows and the file's SHA-256, so that an
   attestation of the pack covers them, among them a contour sheet of each
   instance with contours, such as an RT Structure Set, a segments sheet
-  of each Segmentation, and a sheet of each eye check's globes beside its
-  eye ROIs, drawn from the slices as received; and
+  of each Segmentation, the sheets of each deformation grid of a
+  deformable registration, and a sheet of each eye check's globes
+  beside its eye ROIs, drawn from the slices as received; and
   ``not_previewed``: each instance whose pixel data could not be previewed,
   whose contours could not be shown, for an RT Dose, whose dose levels
-  could not be drawn, or, for a Segmentation, whose segments could not be
-  drawn, with why (D-017). The images are
-  made by :mod:`~pymedphys._dicom.deidentify.qc_previews`.
+  could not be drawn, for a Segmentation, whose segments could not be
+  drawn, or whose deformation grids could not be drawn, with why (D-017).
+  The images are made by :mod:`~pymedphys._dicom.deidentify.qc_previews`.
 - ``source_gaps``: each instance whose source lacks an attribute that its
   IOD unconditionally requires, with each such attribute's place and Type,
   which the run reports and never acts on (MIDI-BP-03); the release report
@@ -158,6 +159,9 @@ NO_CONTOURS_SHA256 = hashlib.sha256(bytes(8)).hexdigest()
 # The SHA-256 that face_review.pixel_data_sha256 gives a file without pixel
 # data: of nothing.
 NO_PIXELS_SHA256 = hashlib.sha256(b"").hexdigest()
+# The SHA-256 that face_review.grid_data_sha256 gives a file without a
+# deformation grid: of a count of no grids.
+NO_GRIDS_SHA256 = hashlib.sha256(bytes(8)).hexdigest()
 
 # The directory, beside the pack's file, that holds its previews.
 PREVIEW_DIRECTORY = "previews"
@@ -282,6 +286,12 @@ class InstanceEntry:
         written, which binds a series' face verdict to the contours that
         the run wrote; also ``None`` for a file with contours that no
         contour sheet shows, so that no verdict releases them.
+    grid_sha256 : str, optional
+        Likewise, the :func:`~.face_review.grid_data_sha256` of the file
+        written, which binds a series' face verdict to the deformation
+        grids that the run wrote; also ``None`` for a file with grids that
+        the pack's grid sheets do not all show, so that no verdict releases
+        them.
     """
 
     position: int
@@ -293,6 +303,7 @@ class InstanceEntry:
     source_sha256: str | None = None
     pixel_sha256: str | None = None
     contour_sha256: str | None = None
+    grid_sha256: str | None = None
 
     def __post_init__(self) -> None:
         _check_position("an instance", self.position)
@@ -329,6 +340,15 @@ class InstanceEntry:
             raise QcPackError(
                 f"instance {self.position} needs its contours' SHA-256 as 64 "
                 "lower-case hexadecimal digits, and only if released or held"
+            )
+        if self.grid_sha256 is not None and not (
+            isinstance(self.grid_sha256, str)
+            and _SHA256.fullmatch(self.grid_sha256)
+            and self.disposition in _REVIEWED
+        ):
+            raise QcPackError(
+                f"instance {self.position} needs its deformation grids' SHA-256 "
+                "as 64 lower-case hexadecimal digits, and only if released or held"
             )
         problem = self._problem()
         if problem:
@@ -892,6 +912,27 @@ class PreviewKind(enum.Enum):
     # a CT series' globes found beside its eye ROIs, drawn from its slices
     # as received, for a reviewer to confirm its face block (qc_eyes)
     SERIES_EYES = "series-eyes"
+    # renders of a deformable registration's grid, as written, at a ladder
+    # of levels of each of its quantities (qc_grids): its displacement's
+    # magnitude, its variation, and each of its components by sign. Each
+    # lists one frame, its instance's run position and the grid's index
+    # among the instance's grids, with how many grids it has.
+    REGISTRATION_GRID_DISPLACEMENT = "registration-grid-displacement"
+    REGISTRATION_GRID_VARIATION = "registration-grid-variation"
+    REGISTRATION_GRID_X = "registration-grid-x"
+    REGISTRATION_GRID_Y = "registration-grid-y"
+    REGISTRATION_GRID_Z = "registration-grid-z"
+
+
+# The kinds of a grid's sheets, in the order that qc_grids.QUANTITIES draws
+# them; a grid is shown only by one of each.
+GRID_KINDS = (
+    PreviewKind.REGISTRATION_GRID_DISPLACEMENT,
+    PreviewKind.REGISTRATION_GRID_VARIATION,
+    PreviewKind.REGISTRATION_GRID_X,
+    PreviewKind.REGISTRATION_GRID_Y,
+    PreviewKind.REGISTRATION_GRID_Z,
+)
 
 
 class NotPreviewedReason(enum.Enum):
@@ -928,13 +969,23 @@ class NotPreviewedReason(enum.Enum):
     # no segment that it describes, or whose sheet would be too tall. Its
     # other previews are kept, as an RT Dose's are.
     SEGMENTS_NOT_SHOWN = "segments-not-shown"
+    # an instance that holds a deformation grid, by
+    # face_review.holds_deformation_grid, of which a grid's sheets are not
+    # all drawn (qc_grids): one that cannot be read or placed, is too large,
+    # or whose sheets would have too many levels or be too tall. Its other
+    # previews, if any, are kept, as an RT Dose's are.
+    GRIDS_NOT_SHOWN = "grids-not-shown"
 
 
 # The reasons that say only that no preview that could show a face shows an
 # instance whole, whose other previews, such as a redaction preview of each
 # frame where it was cleaned, are kept.
 FACE_PREVIEW_REASONS = frozenset(
-    {NotPreviewedReason.DOSE_LEVELS_NOT_SHOWN, NotPreviewedReason.SEGMENTS_NOT_SHOWN}
+    {
+        NotPreviewedReason.DOSE_LEVELS_NOT_SHOWN,
+        NotPreviewedReason.SEGMENTS_NOT_SHOWN,
+        NotPreviewedReason.GRIDS_NOT_SHOWN,
+    }
 )
 
 
@@ -1597,6 +1648,7 @@ class QcPack:
             )
         self._check_redaction_previews()
         self._check_contour_previews()
+        self._check_grid_previews()
         self._check_pixel_previews()
         self._check_eye_previews()
 
@@ -1672,6 +1724,61 @@ class QcPack:
             raise QcPackError(
                 "an instance whose contours are not shown has neither a contour "
                 "sheet nor its contours' SHA-256"
+            )
+
+    def _check_grid_previews(self) -> None:
+        """An instance's deformation grids' SHA-256, other than that of
+        none, is recorded only where a sheet of each kind of
+        :data:`GRID_KINDS` shows each of its grids, so that no verdict
+        releases grids that no one saw; each grid sheet lists one grid, of
+        an instance that it gives one count of grids for, and none lists one
+        of an instance whose grids are not shown."""
+        sheets: dict[int, dict[PreviewKind, set[int]]] = {}
+        counts: dict[int, set[int]] = {}
+        for preview in self.previews:
+            if preview.kind not in GRID_KINDS:
+                continue
+            if len(preview.frames) != 1:
+                raise QcPackError("a grid sheet must show one grid of one instance")
+            position, grid = preview.frames[0]
+            shown = sheets.setdefault(position, {}).setdefault(preview.kind, set())
+            if grid in shown or grid >= preview.total_frames:
+                raise QcPackError(
+                    "a grid sheet must show a grid of its instance once for each kind"
+                )
+            shown.add(grid)
+            counts.setdefault(position, set()).add(preview.total_frames)
+        if any(len(each) != 1 for each in counts.values()):
+            raise QcPackError("an instance's grid sheets must give one count of grids")
+        whole = {
+            position
+            for position, kinds in sheets.items()
+            if all(
+                kinds.get(kind) == set(range(next(iter(counts[position]))))
+                for kind in GRID_KINDS
+            )
+        }
+        if any(
+            entry.grid_sha256 not in (None, NO_GRIDS_SHA256)
+            and entry.position not in whole
+            for entry in self.instances
+        ):
+            raise QcPackError(
+                "an instance's deformation grids' SHA-256 needs a sheet of each "
+                "kind that shows each grid"
+            )
+        unshown = {
+            entry.position
+            for entry in self.not_previewed
+            if entry.reason is NotPreviewedReason.GRIDS_NOT_SHOWN
+        }
+        if unshown & set(sheets) or any(
+            entry.position in unshown and entry.grid_sha256 is not None
+            for entry in self.instances
+        ):
+            raise QcPackError(
+                "an instance whose deformation grids are not shown has neither "
+                "a grid sheet nor its grids' SHA-256"
             )
 
     def _check_redaction_previews(self) -> None:
@@ -1764,9 +1871,9 @@ def pictured_frames(
         The run positions listed as not previewed, which are left out.
     kinds : collection of str, optional
         The kinds of preview to count, as :class:`PreviewKind` values; by
-        default every kind but a contour sheet and a sheet of a series'
-        eyes. Only dose-levels previews show an RT Dose as it could show a
-        face, and only segments sheets a Segmentation.
+        default every kind but a contour sheet, a grid sheet, or a sheet
+        of a series' eyes. Only dose-levels previews show an RT Dose as
+        it could show a face, and only segments sheets a Segmentation.
 
     Returns
     -------
@@ -1776,12 +1883,14 @@ def pictured_frames(
         never count, since it shows the volume that it is drawn with only
         as a surface, and a segments sheet's count only for its
         Segmentation, the position of its first frame, for the same reason.
-        Nor do a sheet of a series' eyes', since it shows the slices as
-        received, not the pixel data written of them.
+        A grid sheet's never count either, since it lists grids, not
+        frames of pixel data, nor do a sheet of a series' eyes', since it
+        shows the slices as received, not the pixel data written of them.
     """
     uncounted = {
         PreviewKind.STRUCTURE_SET_CONTOURS.value,
         PreviewKind.SERIES_EYES.value,
+        *(kind.value for kind in GRID_KINDS),
     }
     segments = PreviewKind.SEGMENTATION_SEGMENTS.value
     framed: dict[int, set[int]] = {}
@@ -2032,6 +2141,7 @@ def _instance(entry: InstanceEntry) -> dict:
         "source_sha256": entry.source_sha256,
         "pixel_sha256": entry.pixel_sha256,
         "contour_sha256": entry.contour_sha256,
+        "grid_sha256": entry.grid_sha256,
     }
 
 

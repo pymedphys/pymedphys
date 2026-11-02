@@ -18,6 +18,7 @@ voxels and contours that they keep. Every value here is invented."""
 from __future__ import annotations
 
 import itertools
+import tracemalloc
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom, pytest, scipy
@@ -25,6 +26,7 @@ from pymedphys._imports import pydicom, pytest, scipy
 from pymedphys._dicom.deidentify.defacing import FaceBlock
 from pymedphys._dicom.deidentify.dose_defacing import DoseBlock
 from pymedphys._dicom.deidentify.face_blocks import KeptSlice
+from pymedphys._dicom.deidentify import target_hulls
 from pymedphys._dicom.deidentify.region_defacing import cut_contours
 from pymedphys._dicom.deidentify.target_hulls import (
     KeptTargets,
@@ -100,6 +102,68 @@ def test_a_flat_hull_holds_its_points_and_no_thickness(points):
     for axis in axes[np.ptp((points - centre) @ axes.T, axis=0) <= 1e-9]:
         assert not hull.contains((centre + 0.05 * axis)[np.newaxis]).any()
         assert hull.contains((centre + 0.005 * axis)[np.newaxis]).all()
+
+
+def test_a_dense_target_s_hull_needs_memory_in_proportion_to_its_points():
+    # Contours of 20,000 distinct points, as a finely drawn target can have:
+    # a square of them, as the full factors of a decomposition would hold,
+    # would take 3.2 GB.
+    rng = np.random.default_rng(1)
+    points = rng.normal(size=(20_000, 3)) * (15.0, 10.0, 8.0)
+
+    tracemalloc.start()
+    try:
+        hull = TargetHull.of(points)
+        _, peak = tracemalloc.get_traced_memory()
+    finally:
+        tracemalloc.stop()
+
+    assert peak < 200e6
+    assert hull.contains(points).all()
+
+
+def test_a_densely_sampled_boundary_s_hull_needs_bounded_memory():
+    # Every point of a circle is a vertex of its hull, so a hull of 20,000
+    # of them has as many facets: a matrix of points by facets would need
+    # 3.2 GB.
+    angles = np.linspace(0.0, 2 * np.pi, 20_000, endpoint=False)
+    points = np.column_stack(
+        [50.0 * np.cos(angles), 50.0 * np.sin(angles), np.full_like(angles, 20.0)]
+    )
+
+    tracemalloc.start()
+    try:
+        hull = TargetHull.of(points)
+        held = hull.contains(points)
+        _, peak = tracemalloc.get_traced_memory()
+    finally:
+        tracemalloc.stop()
+
+    assert len(hull.normals) > 10_000
+    assert peak < 200e6
+    assert held.all()
+    assert not hull.contains(np.array([(0.0, 50.1, 20.0), (0.0, 0.0, 20.1)])).any()
+
+
+def test_a_hull_found_and_tested_in_small_blocks_is_the_same(monkeypatch):
+    rng = np.random.default_rng(3)
+    points = rng.normal(size=(300, 3)) * (15.0, 10.0, 8.0)
+    probes = rng.normal(size=(500, 3)) * (20.0, 14.0, 11.0)
+    whole = TargetHull.of(points)
+    expected = whole.contains(probes)
+
+    # Blocks of seven values split both the points and the facets.
+    monkeypatch.setattr(target_hulls, "_WORKING", 7)
+    blocked = TargetHull.of(points)
+
+    np.testing.assert_array_equal(blocked.normals, whole.normals)
+    # The products are the same, to rounding.
+    np.testing.assert_allclose(
+        blocked.offsets, (points @ whole.normals.T).max(axis=0), rtol=0, atol=1e-9
+    )
+    np.testing.assert_allclose(blocked.offsets, whole.offsets, rtol=0, atol=1e-9)
+    np.testing.assert_array_equal(blocked.contains(probes), expected)
+    assert expected.any() and not expected.all()
 
 
 def test_a_hull_needs_finite_points():
