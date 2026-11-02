@@ -98,7 +98,11 @@ planned and edited too when its source is readable, only so that its values
 are collected for its subject's search; it is never written. The coverage of
 an instance that the transform sequesters gives every value it collected as
 unwritten (:attr:`~.release_gate.Coverage.unwritten`), so that the gate can
-tell a value that only instances which are not written held. Where an
+tell a value that only instances which are not written held. Each coverage
+also gives as removed (:attr:`~.release_gate.Coverage.removed`) every value
+whose element the edits remove, and a sequestered instance's every value,
+so that the gate can tell a private copy that no output holds from one that
+a written instance holds replaced. Where an
 instance of the subject gives no coverage at all, because its source is
 refused, its SOP Class names no IOD of the tables, its Specific Character
 Set cannot be decoded, the transform raises, or it changed during the run,
@@ -491,11 +495,12 @@ def unwritten(evidence: Coverage | HeldEvidence) -> Coverage | HeldEvidence:
     """Return the evidence of an instance that is not written.
 
     Each value that its coverage collected is given as unwritten, as the
-    evidence of an instance that the transform sequesters, and each Code
-    Meaning whose own item gives a designator that PS3.16 Table 8-1 lists as
-    coded, judged within this instance before its values are pooled. The gate
-    of a file of its subject can then tell a value that only such instances
-    held from one that a written instance holds too (D-032, D-042).
+    evidence of an instance that the transform sequesters, and as removed,
+    since the instance's output holds none of them, and each Code Meaning
+    whose own item gives a designator that PS3.16 Table 8-1 lists as coded,
+    judged within this instance before its values are pooled. The gate of a
+    file of its subject can then tell a value that only such instances held
+    from one that a written instance holds too (D-032, D-042).
     """
     if isinstance(evidence, HeldEvidence):
         return dataclasses.replace(evidence, coverage=unwritten(evidence.coverage))
@@ -503,6 +508,7 @@ def unwritten(evidence: Coverage | HeldEvidence) -> Coverage | HeldEvidence:
         evidence,
         unwritten=frozenset(evidence.collected),
         coded=standard_code_meanings(evidence.collected),
+        removed=frozenset(evidence.collected),
     )
 
 
@@ -527,6 +533,9 @@ def coverage_of(
     that its collection is incomplete (D-027). ``options``, the policy's,
     say which findings an option can explain, such as one that a kept value
     explains, or a date that Modified Dates shifted onto another source date.
+    Each collected value whose element the edits remove, by X or with an
+    enclosing sequence, is given as removed, and one that they empty,
+    replace, keep, or leave to come is not (D-042).
     ``safe_private_list``, the list that the run chose under the Retain Safe
     Private Option, says which kept private creators can explain a finding
     in them (D-042).
@@ -557,12 +566,14 @@ def coverage_of(
             Uncollected(path=path, reason=_NOT_REACHED)
             for path in sorted(planned - reached, key=str)
         ]
+    removing = {edit.path for edit in edits.edits if edit.kind is EditKind.REMOVE}
     return Coverage(
         planned=planned,
         collected=collected,
         uncollected=tuple(uncollected),
         decoded_as_bytes=frozenset(edits.read_as_latin_1) - left_out,
         options=options,
+        removed=frozenset(value for value in collected if value.source in removing),
         safe_private_list=safe_private_list,
     )
 
