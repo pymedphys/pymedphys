@@ -484,9 +484,10 @@ def test_a_target_in_a_slab_keeps_its_span_or_holds_if_unplaceable(
     assert _fate(outcome) == (SeriesProblem.TARGET_IN_BLOCK if held else _AROUND)
     if span is not None:
         (hull,) = outcome.targets.hulls
-        assert (np.min(hull.vertices[:, 2]), np.max(hull.vertices[:, 2])) == pytest.approx(
-            span
-        )
+        assert (
+            np.min(hull.vertices[:, 2]),
+            np.max(hull.vertices[:, 2]),
+        ) == pytest.approx(span)
 
 
 def _meets_target(points: np.ndarray, centre=_EYES_FRONT[0]) -> np.ndarray:
