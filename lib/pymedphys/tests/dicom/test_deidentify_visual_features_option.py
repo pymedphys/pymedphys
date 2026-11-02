@@ -701,6 +701,8 @@ def test_the_statement_names_each_supported_iod_that_lacks_the_attribute():
         "RT Beams Treatment Record",
         "RT Ion Plan",
         "RT Ion Beams Treatment Record",
+        "RT Brachy Treatment Record",
+        "RT Treatment Summary Record",
         "MR Spectroscopy",
         "Spatial Registration",
         "Deformable Spatial Registration",
@@ -714,7 +716,8 @@ def test_the_statement_names_each_supported_iod_that_lacks_the_attribute():
     }
     assert (
         "which of the supported IODs are RT Plan, RT Structure Set, RT Beams "
-        "Treatment Record, RT Ion Plan, RT Ion Beams Treatment Record, MR "
+        "Treatment Record, RT Ion Plan, RT Ion Beams Treatment Record, RT "
+        "Brachy Treatment Record, RT Treatment Summary Record, MR "
         "Spectroscopy, Spatial Registration, Deformable Spatial Registration, "
         "X-Ray Radiation Dose SR, Radiopharmaceutical Radiation Dose SR, Basic "
         "Text SR, Enhanced SR, Comprehensive SR, Comprehensive 3D SR, and "
@@ -877,6 +880,8 @@ _FACELESS = (
     "20-rt-beams-record.dcm",
     "47-rt-ion-plan.dcm",
     "48-rt-ion-beams-record.dcm",
+    "49-rt-brachy-record.dcm",
+    "50-rt-treatment-summary-record.dcm",
 )
 
 
