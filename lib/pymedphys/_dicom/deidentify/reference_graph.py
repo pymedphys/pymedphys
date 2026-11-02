@@ -48,8 +48,9 @@ cannot hold a UID, a name, a date, or a path. The graph only reports. Each
 kind of finding has a consequence in the design, which its description in
 :class:`FindingKind` gives and the pipeline is to carry out, from writing an
 input with a dangling reference as usual to stopping the run for a study of
-several patients. How a report presents findings is decided with the rest of
-the pipeline.
+several patients, or, where the run is told to, sequestering such a study
+(:class:`SeveralPatients`). How a report presents findings is decided with
+the rest of the pipeline.
 """
 
 from __future__ import annotations
@@ -131,7 +132,8 @@ class FindingKind(enum.Enum):
         Such an input needs a curated identity before it can have a
         pseudonym, and that identity would give it a different pseudonym
         from the rest of its study. Its groups hold the inputs of each
-        patient. The run stops before anything is written.
+        patient. The run stops before anything is written, unless it is
+        told to sequester such a study (:class:`SeveralPatients`).
     SERIES_IN_SEVERAL_FRAMES
         The inputs with one Series Instance UID have different Frame of
         Reference UIDs (0020,0052), though "each Series shall have a single
@@ -174,6 +176,29 @@ class FindingKind(enum.Enum):
     SERIES_IN_SEVERAL_FRAMES = "series-in-several-frames-of-reference"
     UNLISTED_ROI_FRAME = "unlisted-roi-frame-of-reference"
     CONTOUR_IMAGE_IN_ANOTHER_FRAME = "contour-image-in-another-frame-of-reference"
+
+
+class SeveralPatients(enum.Enum):
+    """What a run does with a study whose instances name several patients.
+
+    A study whose inputs name several patients
+    (:attr:`FindingKind.STUDY_WITH_SEVERAL_PATIENTS`) is a curation error
+    that no action on its instances can repair safely (D-026).
+
+    STOP
+        The run stops before anything is written, the default, as the
+        maintainer decided on 10 October 2026.
+    SEQUESTER
+        Each input of each such study is sequestered, the opt-in that the
+        maintainer recorded on 10 October 2026 and had built on 31 October
+        2026, and the rest of the run goes ahead. Each input of such a study
+        is still transformed, so that its values are searched for in the
+        files of every patient that the study names, and the confidential QC
+        pack lists the study's inputs by patient, for a curator to correct.
+    """
+
+    STOP = "stop"
+    SEQUESTER = "sequester"
 
 
 _RANK = {kind: rank for rank, kind in enumerate(FindingKind)}

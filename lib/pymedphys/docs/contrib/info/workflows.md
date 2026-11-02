@@ -321,8 +321,11 @@ The `narrow-extras` job checks that each narrow feature extra (`gamma`,
 For each, on Ubuntu with Python 3.14, it installs only that extra and the
 `test-runner` dependency group, then runs the feature's non-slow tests with
 `uv run --no-sync`, so nothing else is installed. Tests there that exercise
-another feature skip themselves when its packages are missing. It uploads a
-JUnit report per extra as `junit-extra-<extra>`, and runs alongside both the
+another feature skip themselves when its packages are missing. The `dicom`
+extra's tests run in the same `corpus-runs` and `others` parts as the unit-test
+matrix, on two runners, since together they can reach the 30-minute limit on a
+slow runner. It uploads a JUnit report per extra as `junit-extra-<extra>`, and
+per part for `dicom` as `junit-extra-dicom-<part>`, and runs alongside both the
 quick and full matrices.
 
 ### Extended Workflows (Conditional)

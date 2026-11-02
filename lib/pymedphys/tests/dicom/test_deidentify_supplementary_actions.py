@@ -112,6 +112,11 @@ SUPPORTED_IODS = (
     + GENERAL_SR_IODS
     + ION_IODS
 )
+# RT Brachy Treatment Record and RT Treatment Summary Record, which the
+# maintainer added to the target coverage on 31 October 2026, whose
+# attributes were reviewed ahead of supporting them, against every IOD above.
+RECORD_IODS = ("RT Brachy Treatment Record", "RT Treatment Summary Record")
+RECORD_REVIEWED_AGAINST = ION_REVIEWED_AGAINST + ION_IODS
 CLEAN_DESCRIPTORS = "clean_descriptors"
 DEVICE_IDENTITY = "retain_device_identity"
 FULL_DATES = "retain_longitudinal_full_dates"
@@ -848,6 +853,200 @@ def test_the_ion_iods_other_new_attributes_are_kept_by_the_default():
                     element_rules.RuleSource.DEFAULT,
                     element_rules.KEEP,
                 ), (preset, name, definition)
+
+
+# The attributes that RT Brachy Treatment Record and RT Treatment Summary
+# Record use and the IODs reviewed before them do not, checked by hand against
+# the 2026d PS3.3 Tables A.30.3-1, A.31.3-1, and C.8-58 and PS3.6: only RT
+# Brachy Treatment Record adds any, all in its RT Brachy Session Record Module.
+RECORD_SAFE_POSITION_DATES = {
+    "(3008,0162)",  # Safe Position Exit Date
+    "(3008,0164)",  # Safe Position Exit Time
+    "(3008,0166)",  # Safe Position Return Date
+    "(3008,0168)",  # Safe Position Return Time
+}
+# The others, by VR: the recorded channels, sources, applicators, shields,
+# accessories, and control points delivered, and the pulses of a pulsed
+# delivery.
+RECORD_OTHER_VRS = {"SQ": 9, "IS": 6, "DS": 4, "CS": 1, "US": 1}
+# Where removal by Type gives an attribute of these IODs an action that it
+# takes nowhere in the IODs reviewed before them: Source Serial Number, which
+# Table E.1-1 gives X/Z, is Type 2 in Recorded Source Sequence (3008,0100) and
+# Type 3 in RT Plan's Source Sequence (300A,0210).
+SOURCE_SERIAL_NUMBER = "(3008,0105)"
+RECORD_NEW_RESOLUTIONS = {SOURCE_SERIAL_NUMBER: ({"Z"}, {"X"})}
+BRACHY_SESSION_RECORD = "RT Brachy Session Record"
+
+
+def _record_actions():
+    """Return the Basic Profile action of each attribute with one, by tag.
+
+    That of Table E.1-1 for an attribute it lists, else that of its rule.
+    """
+    actions_by_tag = {tag: row.basic_profile for tag, row in _table_e1_1().items()}
+    for tag, rule in _rules().items():
+        actions_by_tag.setdefault(tag, rule.action)
+    return actions_by_tag
+
+
+def _resolved_in(names, tag, action):
+    """Return what removal by Type gives ``tag`` where ``names`` define it."""
+    tables = iods.load_iod_tables()
+    return {
+        compound_actions.resolve_in_iod(
+            tables.iods[name], definition.tag, definition.path, action
+        )
+        for name in names
+        for definition in tables.iods[name].definitions
+        if definition.tag == tag
+    }
+
+
+def test_the_brachy_and_summary_records_are_generated_and_not_yet_supported():
+    tables = iods.load_iod_tables()
+
+    assert set(RECORD_IODS) <= set(tables.iods)
+    assert not set(RECORD_IODS) & scope.SUPPORTED_IODS
+
+
+def test_the_brachy_and_summary_records_add_only_the_brachy_session_record():
+    tables = iods.load_iod_tables()
+    beams = {
+        (usage.module, usage.table)
+        for usage in tables.iods["RT Beams Treatment Record"].modules
+    }
+    brachy = {
+        (usage.module, usage.table)
+        for usage in tables.iods["RT Brachy Treatment Record"].modules
+    }
+    summary = {
+        (usage.module, usage.table)
+        for usage in tables.iods["RT Treatment Summary Record"].modules
+    }
+
+    assert brachy - beams == {(BRACHY_SESSION_RECORD, "Table C.8-58")}
+    assert summary <= beams
+
+
+@pytest.mark.deid_requirement("MIDI-BP-05", "MIDI-BP-06", "MIDI-BP-11")
+def test_the_brachy_and_summary_records_use_no_text_without_a_reviewed_action():
+    listed = set(_table_e1_1())
+    rules = _rules()
+    text = _used_by(RECORD_IODS, TEXT_VRS)
+
+    assert not text - _used_by(RECORD_REVIEWED_AGAINST, TEXT_VRS)
+    for tag in text - listed:
+        assert rules[tag].note.strip(), tag
+    # The text of the RT Brachy Session Record Module is that of the module
+    # the plan's application setups are in, or of the photon record's session.
+    tables = iods.load_iod_tables()
+    dictionary = _dictionary()
+
+    def text_of(name, module):
+        return {
+            definition.tag
+            for definition in tables.iods[name].definitions
+            if definition.module == module
+            and TEXT_VRS.intersection(dictionary[definition.tag].vrs)
+        }
+
+    session = text_of("RT Brachy Treatment Record", BRACHY_SESSION_RECORD)
+    assert session
+    assert session <= (
+        text_of("RT Plan", "RT Brachy Application Setups")
+        | text_of("RT Beams Treatment Record", "RT Beams Session Record")
+    )
+
+
+def test_removal_by_type_gives_the_records_attributes_the_actions_reviewed():
+    actions_by_tag = _record_actions()
+    dictionary = _dictionary()
+    every_vr = {vr for attribute in dictionary.values() for vr in attribute.vrs}
+    new = {}
+
+    for tag in sorted(_used_by(RECORD_IODS, every_vr)):
+        action = actions_by_tag.get(tag)
+        if action not in compound_actions.COMPOUND_ACTIONS:
+            continue
+        resolved = _resolved_in(RECORD_IODS, tag, action)
+        reviewed = _resolved_in(RECORD_REVIEWED_AGAINST, tag, action)
+        if not resolved <= reviewed:
+            new[tag] = (resolved, reviewed)
+
+    assert new == RECORD_NEW_RESOLUTIONS
+    # Source Serial Number is emptied where it is Type 2, as Table E.1-1 sets,
+    # and kept under Retain Device Identity, as for every device's serial
+    # number.
+    row = _table_e1_1()[SOURCE_SERIAL_NUMBER]
+    assert (row.basic_profile, dict(row.options)) == ("X/Z", {DEVICE_IDENTITY: "K"})
+    assert {
+        definition.module
+        for definition in iods.load_iod_tables()
+        .iods["RT Brachy Treatment Record"]
+        .definitions
+        if definition.tag == SOURCE_SERIAL_NUMBER
+    } == {BRACHY_SESSION_RECORD}
+
+
+def test_every_uid_date_and_name_that_the_brachy_and_summary_records_use_has_a_role():
+    uids = uid_roles.load_uid_roles()
+    temporal = temporal_roles.load_temporal_roles()
+    table = _table_e1_1()
+
+    for tag in _used_by(RECORD_IODS, {"UI"}):
+        assert isinstance(uids.role(tag), uid_roles.UIDRole), tag
+    for tag in _used_by(RECORD_IODS, TEMPORAL_VRS):
+        assert isinstance(temporal.role(tag), temporal_roles.TemporalRole), tag
+    # The IODs reviewed before them use every UID, person name, and URL that
+    # these IODs use, and every date, time, and datetime but the four that
+    # record when a brachytherapy source left and returned to its safe
+    # position, which Table E.1-1 lists as it lists Treatment Date.
+    for vrs in ({"UI"}, {"PN"}, {"UR"}):
+        assert not _used_by(RECORD_IODS, vrs) - _used_by(
+            RECORD_REVIEWED_AGAINST, vrs
+        ), vrs
+    new_dates = _used_by(RECORD_IODS, TEMPORAL_VRS) - _used_by(
+        RECORD_REVIEWED_AGAINST, TEMPORAL_VRS
+    )
+    assert new_dates == RECORD_SAFE_POSITION_DATES
+    for tag in new_dates:
+        assert temporal.role(tag) is temporal_roles.TemporalRole.SUBJECT_EVENT, tag
+        assert (table[tag].basic_profile, dict(table[tag].options)) == (
+            "D",
+            DATE_OPTIONS,
+        ), tag
+
+
+def test_the_brachy_and_summary_records_other_new_attributes_are_kept_by_the_default():
+    dictionary = _dictionary()
+    tables = iods.load_iod_tables()
+    every_vr = {vr for attribute in dictionary.values() for vr in attribute.vrs}
+    new = _used_by(RECORD_IODS, every_vr) - _used_by(RECORD_REVIEWED_AGAINST, every_vr)
+    other = new - RECORD_SAFE_POSITION_DATES
+    listed = set(_table_e1_1())
+    rules = _rules()
+    uids = set(uid_roles.load_uid_roles().rules)
+    by_vr = collections.Counter(vr for tag in other for vr in dictionary[tag].vrs)
+
+    assert not new - _used_by(("RT Brachy Treatment Record",), every_vr)
+    assert by_vr == RECORD_OTHER_VRS
+    assert all(len(dictionary[tag].vrs) == 1 for tag in other)
+    assert not other & (listed | set(rules) | uids)
+    # So each takes the default, which keeps it where RT Brachy Treatment
+    # Record defines it, under every preset, with a sequence's items handled
+    # by their own rules.
+    iod = tables.iods["RT Brachy Treatment Record"]
+    for preset in policy.PRESETS:
+        rules_of = element_rules.ElementRules(policy.compose_policy(preset))
+        for definition in iod.definitions:
+            if definition.tag not in other:
+                continue
+            assert definition.module == BRACHY_SESSION_RECORD, definition
+            rule = rules_of.rule(definition.tag, definition.path, iod=iod)
+            assert (rule.source, rule.action) == (
+                element_rules.RuleSource.DEFAULT,
+                element_rules.KEEP,
+            ), (preset, definition)
 
 
 def test_names_identifiers_and_overlay_text_are_removed_under_every_option():
