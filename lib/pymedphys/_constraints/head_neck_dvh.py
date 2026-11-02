@@ -78,7 +78,7 @@ HEAD_NECK_CONSTRAINTS: dict[str, dict] = {
         "level": "soft",
         "conventional": {"dmean": 26.0, "unit": "Gy"},
         "source": "Institutional H&N IMRT protocol planning target (not a QUANTEC value)",
-        "note": "Outcome targeted: long-term xerostomia. QUANTEC 2010 (Deasy et al.) instead gives a paired-gland rule - at least one parotid mean <20 Gy, or both glands <25 Gy - which check_plan() applies when both parotids are supplied.",
+        "note": "Outcome targeted: long-term xerostomia. QUANTEC 2010 (Deasy et al., PMID 20171519) instead gives a paired-gland rule - at least one parotid mean <20 Gy, or both glands <25 Gy - which check_plan() applies when both parotids are supplied.",
     },
     "parotid_ipsilateral": {
         "level": "soft",
@@ -339,7 +339,7 @@ def check_constraint(
 
 
 def _check_parotid_pair_quantec(metrics: dict[str, dict[str, float]]) -> dict | None:
-    """QUANTEC paired-gland parotid rule (Deasy et al., QUANTEC 2010).
+    """QUANTEC paired-gland parotid rule (Deasy et al., IJROBP 2010;76(3 Suppl):S58-63, PMID 20171519).
 
     At least one parotid gland spared to mean <20 Gy, OR both glands spared
     to mean <25 Gy, usually avoids severe long-term xerostomia. Applied
@@ -362,7 +362,7 @@ def _check_parotid_pair_quantec(metrics: dict[str, dict[str, float]]) -> dict | 
         "contralateral_dmean": contra,
         "ipsilateral_dmean": ipsi,
         "pass": pair_pass,
-        "source": "QUANTEC 2010 (Deasy et al., IJROBP 76:S64-70)",
+        "source": "QUANTEC 2010 (Deasy et al., IJROBP 76(3 Suppl):S58-63, PMID 20171519)",
     }
 
 
