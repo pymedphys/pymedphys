@@ -352,6 +352,18 @@ def test_an_rt_dose_is_shown_by_its_dose_levels():
         dict(enumerate(_dose_planes(1))),
         # An RT Dose labelled CT is one by its SOP Class.
         {0: _relabelled(_dose(12), "CT")},
+        # Signed stored values, as of Dose Type ERROR, are shown at the
+        # levels of their doses below 0 as well as above.
+        {0: _altered(_dose(12), PixelRepresentation=1)},
+        dict(
+            enumerate(
+                [
+                    *_dose_planes()[:3],
+                    _altered(_dose_planes()[3], PixelRepresentation=1),
+                ]
+            )
+        ),
+        {0: _altered(_dose_planes(1)[0], PixelRepresentation=1)},
     ):
         found, _ = _shown(written)
         kinds = [preview.kind for preview in found.previews]
@@ -389,7 +401,6 @@ def _unshown_doses():
         "unscaled": [_altered(_dose(12), DoseGridScaling=None)],
         "zero-scaling": [_altered(_dose(12), DoseGridScaling=0)],
         "negative-scaling": [_altered(_dose(12), DoseGridScaling=-0.001)],
-        "signed": [_altered(_dose(12), PixelRepresentation=1)],
         "rescaled": [_altered(_dose(12), RescaleSlope=2, RescaleIntercept=0)],
         "oblique": [_altered(_dose(12), ImageOrientationPatient=list(oblique))],
         "uneven": [
@@ -421,9 +432,9 @@ def test_an_rt_dose_whose_levels_cannot_be_drawn_is_not_shown(name):
     # planes' projection and Otsu render every plane, but the strip is
     # windowed to the highest doses, which can leave a low dose outlining
     # the skin black, and an Otsu render shows one level. A grid whose
-    # stored values may be below 0, or rescaled, or padded, or not scaled
-    # above 0, or scaled beyond what float32 holds, has doses that its
-    # levels would not show.
+    # stored values are rescaled, or padded, or not scaled above 0, or
+    # scaled beyond what float32 holds, has doses that its levels would not
+    # show.
     written = dict(enumerate(_unshown_doses()[name]))
     found, framed = _shown(written)
     assert all(

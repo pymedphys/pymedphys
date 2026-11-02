@@ -44,10 +44,11 @@ and sequesters one whose reasons it cannot report for
 :attr:`~.reasons.RunReason.INVALID_REASON`, which the report gives alone,
 so that one input's reasons never stop the release.
 
-Under the ``public-release`` preset, the run also gives the reporter its
-:class:`RunFacts`: its own QC pack, as it writes it, and how many distinct
-subjects it releases. From them, and from the earlier run's review that the
-reporter was given, if any
+The run also gives the reporter its :class:`RunFacts`: its own QC pack, as
+it writes it, how many distinct subjects it releases, and what it did with
+the studies whose instances name several patients, which the report records
+under every policy (D-026). Under the ``public-release`` preset, from them,
+and from the earlier run's review that the reporter was given, if any
 (:class:`~pymedphys._dicom.deidentify.readiness.ReadinessReview`), the
 report says whether the run is ready for release by its three gates
 (:func:`~pymedphys._dicom.deidentify.readiness.readiness`, D-017).
@@ -144,10 +145,17 @@ class RunFacts:
         How many distinct subjects the instances that the run releases
         have, from
         :func:`~pymedphys._dicom.deidentify.readiness.released_subjects`.
+    several_patients : ~pymedphys._dicom.deidentify.release_report.SeveralPatientStudies, optional
+        What the run did with the studies whose instances name several
+        patients, and how many it sequestered (D-026); by default, the
+        default choice, to stop, with none sequestered.
     """
 
     pack: QcPack
     subjects: int
+    several_patients: release_report.SeveralPatientStudies = dataclasses.field(
+        default_factory=release_report.SeveralPatientStudies
+    )
 
     def __repr__(self) -> str:
         return "RunFacts()"
@@ -373,8 +381,10 @@ class ReleaseReporter:
     ) -> str:
         """Return the run's release report, as the module describes.
 
-        Under the ``public-release`` preset it needs the run's ``facts``,
-        which no other policy reads.
+        Under the ``public-release`` preset it needs the run's ``facts``.
+        Under any policy, the report gives from them what the run did with
+        the studies whose instances name several patients, or, without
+        them, the default choice, to stop, with none sequestered.
         """
         report = self._report(
             qc_review=AttestationRecord(qc_pack, Outcome.NOT_ATTESTED),
@@ -399,6 +409,9 @@ class ReleaseReporter:
                 for position in sorted(material)
             ),
             checks=structural_checks(outcomes, material),
+            several_patients=(
+                facts.several_patients if isinstance(facts, RunFacts) else None
+            ),
         )
         if self._readiness:
             if not isinstance(facts, RunFacts):

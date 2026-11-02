@@ -375,6 +375,91 @@ def test_person_identification_code_sequence_has_a_reviewed_dummy_value():
     assert item("(0008,0100)").removed_with == codes
 
 
+def _institution_code():
+    code = _explicit(0x00080100, "SH", b"SENTINEL")
+    code += _explicit(0x00080102, "SH", b"99LOCAL ")
+    return code + _explicit(0x00080104, "LO", b"SENTINEL HOSPITAL ")
+
+
+@pytest.mark.parametrize(
+    "iod_name, sop_class, session",
+    [
+        (
+            "RT Beams Treatment Record",
+            b"1.2.840.10008.5.1.4.1.1.481.4\x00",
+            0x30080020,
+        ),
+        (
+            "RT Ion Beams Treatment Record",
+            b"1.2.840.10008.5.1.4.1.1.481.9\x00",
+            0x30080021,
+        ),
+    ],
+)
+def test_an_interlock_users_institution_code_sequence_has_a_reviewed_dummy_value(
+    iod_name, sop_class, session
+):
+    # D-021: D on Institution Code Sequence (0008,0082) in an item of
+    # Interlock Resolution User Sequence (300A,0746) writes one item of
+    # constants, which must differ from each source item's Code Value and
+    # Code Meaning.
+    user = _explicit(0x00080082, "SQ", _item(_institution_code()))
+    data_set = (
+        _explicit(0x00080016, "UI", sop_class)
+        + _explicit(0x00080018, "UI", INSTANCE_UID)
+        + _explicit(
+            session,
+            "SQ",
+            _item(
+                _explicit(
+                    0x300A0740, "SQ", _item(_explicit(0x300A0746, "SQ", _item(user)))
+                )
+            ),
+        )
+    )
+    evidence = source.read_source(_file(EXPLICIT, data_set))
+    plan = walker.plan_instance(evidence, _rules(), load_iod_tables().iods[iod_name])
+    elements = _by_path(plan)
+    tag = f"({session >> 16:04X},{session & 0xFFFF:04X})"
+    codes = _path((tag, 0), ("(300A,0740)", 0), ("(300A,0746)", 0), "(0008,0082)")
+
+    def item(element):
+        return elements[ElementPath((*codes.items, (codes.tag, 0)), element)]
+
+    assert not plan.sequestrations
+    assert walker.has_reviewed_items(codes)
+    assert elements[codes].action == "D"
+    assert item("(0008,0100)").consumers == COLLECTION | {Consumer.DUMMY_COMPARISON}
+    assert item("(0008,0104)").consumers == COLLECTION | {Consumer.DUMMY_COMPARISON}
+    assert item("(0008,0102)").consumers == COLLECTION
+    assert item("(0008,0100)").removed_with == codes
+
+
+def test_institution_code_sequence_elsewhere_has_no_reviewed_dummy_value():
+    # Its reviewed rule holds only in the interlock's resolution user, so a D
+    # on it anywhere else, as a later rule or IOD might give, sequesters
+    # (D-021). An RT Plan defines it in Asserter Identification Sequence, so
+    # a plain D there stays D (D-020).
+    asserter = _explicit(0x00080082, "SQ", _item(_institution_code()))
+    data_set = (
+        _explicit(0x00080016, "UI", RT_PLAN)
+        + _explicit(0x00080018, "UI", INSTANCE_UID)
+        + _explicit(
+            0x00440110, "SQ", _item(_explicit(0x00440103, "SQ", _item(asserter)))
+        )
+    )
+    plan = _plan(data_set, rules=_Overridden({"(0008,0082)": "D"}))
+    codes = _path(("(0044,0110)", 0), ("(0044,0103)", 0), "(0008,0082)")
+
+    assert not walker.has_reviewed_items(codes)
+    assert _by_path(plan)[codes].action == "D"
+    assert [(each.path, each.reason) for each in plan.sequestrations] == [
+        (codes, walker.SequesterReason.NO_DUMMY_VALUE)
+    ]
+    item = ElementPath((*codes.items, (codes.tag, 0)), "(0008,0100)")
+    assert Consumer.DUMMY_COMPARISON not in _by_path(plan)[item].consumers
+
+
 @pytest.mark.deid_requirement("MIDI-BP-03")
 def test_a_plain_z_on_a_type_1_attribute_writes_and_compares_a_dummy_value():
     elements = _by_path(_plan(rules=_Overridden({"(300A,0002)": "Z"})))

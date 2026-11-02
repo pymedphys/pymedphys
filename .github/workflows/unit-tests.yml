@@ -27,9 +27,9 @@ env:
   OMP_NUM_THREADS: '1'
   MKL_NUM_THREADS: '1'
   VECLIB_MAXIMUM_THREADS: '1'
-  # Every cell of the unit-test matrix, and the run at the dependency floors,
-  # runs in two parts on two runners, since on a slow runner the whole suite
-  # at once can reach the time limit. The corpus-runs part runs these
+  # Every cell of the unit-test matrix, the run at the dependency floors, and
+  # the dicom extra's run alone run in two parts on two runners, since on a
+  # slow runner the whole suite at once can reach the time limit. The corpus-runs part runs these
   # modules, which run the synthetic collection through the engine and take
   # about half the suite's time; the others part ignores them, so it runs
   # every other test, including any module added later.
@@ -196,9 +196,11 @@ jobs:
   # Each narrow extra, such as dicom, must list every package its feature uses.
   # Install one extra alone, with only the test runner, and run that feature's
   # tests: a missing package fails them. Tests of other features that sit in
-  # the same folders skip themselves when their packages are missing.
+  # the same folders skip themselves when their packages are missing. The
+  # dicom extra's tests run in two parts on two runners, as CORPUS_RUN_TESTS
+  # describes; the other extras' tests take about a minute and run whole.
   narrow-extras:
-    name: Extra ${{ matrix.extra }} alone
+    name: Extra ${{ matrix.extra }} alone${{ matrix.part && format(' ({0})', matrix.part) || '' }}
     timeout-minutes: 30
     strategy:
       fail-fast: false
@@ -209,6 +211,11 @@ jobs:
             marks: not slow and not pydicom
             paths: tests/gamma tests/interp
           - extra: dicom
+            part: corpus-runs
+            marks: not slow
+            paths: tests/dicom
+          - extra: dicom
+            part: others
             marks: not slow
             paths: tests/dicom
           - extra: mosaiq
@@ -221,6 +228,8 @@ jobs:
             marks: not slow
             paths: tests/trf tests/logfiles
     runs-on: ubuntu-latest
+    env:
+      REPORT: junit-extra-${{ matrix.extra }}${{ matrix.part && format('-{0}', matrix.part) || '' }}
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -229,7 +238,8 @@ jobs:
 
       - uses: ./.github/actions/setup-project
         with:
-          cache-data: 'true'
+          # The corpus-runs part downloads no data, as in the test job.
+          cache-data: ${{ matrix.part != 'corpus-runs' }}
           extras: ${{ matrix.extra }}
           groups: 'test-runner'
 
@@ -238,7 +248,7 @@ jobs:
         shell: bash
         env:
           PYTEST_ADDOPTS: ${{ inputs.extra-pytest-args }}
-          EXTRA: ${{ matrix.extra }}
+          PART: ${{ matrix.part }}
           MARKS: ${{ matrix.marks }}
           TEST_PATHS: ${{ matrix.paths }}
           # DICOM has thousands of cases; the smaller feature suites cost
@@ -247,17 +257,34 @@ jobs:
         run: |
           set -euxo pipefail
           mkdir -p test-results
-          read -ra paths <<< "${TEST_PATHS}"
+          read -ra selection <<< "${TEST_PATHS}"
+          # A part runs its share of the feature's tests: corpus-runs runs the
+          # modules that CORPUS_RUN_TESTS lists and others ignores them, as in
+          # the test job. A listed module that no longer exists fails both.
+          if [[ -n "${PART}" ]]; then
+            read -ra listed <<< "${CORPUS_RUN_TESTS}"
+            for path in "${listed[@]}"; do
+              if [[ ! -f "${path}" ]]; then
+                echo "::error::CORPUS_RUN_TESTS lists ${path}, which does not exist."
+                exit 1
+              fi
+            done
+            case "${PART}" in
+              corpus-runs) selection=("${listed[@]}") ;;
+              others) selection+=("${listed[@]/#/--ignore=${GITHUB_WORKSPACE}/}") ;;
+              *) echo "::error::Unknown part ${PART}."; exit 1 ;;
+            esac
+          fi
           # --no-sync keeps uv from installing anything beyond the extra.
-          uv run --no-sync -- pymedphys dev tests -m "${MARKS}" "${paths[@]}" \
+          uv run --no-sync -- pymedphys dev tests -m "${MARKS}" "${selection[@]}" \
             -n "${TEST_WORKERS}" --dist worksteal --durations=15 \
-            --junitxml="${GITHUB_WORKSPACE}/test-results/junit-extra-${EXTRA}.xml"
+            --junitxml="${GITHUB_WORKSPACE}/test-results/${REPORT}.xml"
 
       - name: Upload test results
         if: ${{ !cancelled() && steps.tests.outcome != 'skipped' }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: junit-extra-${{ matrix.extra }}
+          name: ${{ env.REPORT }}
           path: test-results/*.xml
           if-no-files-found: error
           retention-days: 30
@@ -538,8 +565,11 @@ jobs:
           export PYMEDPHYS_DICOM_VALIDATION_REPORT="${GITHUB_WORKSPACE}/test-results/dicom-validation"
           # One process: each policy's run and validation is a module-scoped
           # fixture, which workers would each repeat.
+          # The text detector evaluation's Legacy Converted Enhanced
+          # instances are checked with dciodvfy too.
           uv run -- pymedphys dev tests --dicom-validators \
             lib/pymedphys/tests/dicom/test_deidentify_dicom_validation_corpus.py \
+            lib/pymedphys/tests/dicom/test_deidentify_text_evaluation_lce.py \
             --durations=15 \
             --junitxml="${GITHUB_WORKSPACE}/test-results/dicom-validation.xml"
 

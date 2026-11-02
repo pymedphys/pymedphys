@@ -900,10 +900,7 @@ def test_instances_keep_their_reviewed_dummy_values(policy_run):
         source, written = _read(file.data), _read(data)
         if kept:
             assert written.get(procedure_step) == source.get(procedure_step)
-        if file.manifest.iod in {
-            "X-Ray Radiation Dose SR",
-            "Radiopharmaceutical Radiation Dose SR",
-        }:
+        if file.name in corpus_module.STRUCTURED_REPORT_FILES:
             # The SR Document Series Module makes this Type 2: retain the
             # attribute with no items when the profile resolves its action to Z.
             assert procedure_step in source
@@ -1023,6 +1020,90 @@ def test_the_rt_image_names_its_plan_as_written(policy_run):
     assert reference.ReferencedSOPInstanceUID == expected
     if corpus_module.PLAN in written:
         assert expected == written[corpus_module.PLAN].SOPInstanceUID
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.1-04", "MIDI-BP-03")
+def test_the_rt_ion_plan_and_its_record_name_what_they_reference_as_written(
+    policy_run,
+):
+    # The RT Ion Plan names the structure set, the RT Dose, and the RT Plan,
+    # and the RT Ion Beams Treatment Record the RT Ion Plan, by the UIDs that
+    # the run's key gives the referenced instances' own, so each written
+    # instance still names the written instances that it references.
+    corpus, released = policy_run.corpus, policy_run.released
+    written = {
+        corpus.files[position].manifest.sop_instance: _read(data)
+        for position, data in released.items()
+    }
+    names = {file.manifest.sop_instance: file.name for file in corpus.files}
+
+    def expected(target):
+        if REFERENCED_SOP_INSTANCE in policy_run.spec.kept_rows():
+            return target
+        return uids.replacement_uid(KEY, target)
+
+    references = {
+        corpus_module.ION_PLAN: (
+            ("ReferencedStructureSetSequence", corpus_module.STRUCTURE_SET),
+            ("ReferencedDoseSequence", corpus_module.DOSE),
+            ("ReferencedRTPlanSequence", corpus_module.PLAN),
+        ),
+        corpus_module.ION_TREATMENT_RECORD: (
+            ("ReferencedRTPlanSequence", corpus_module.ION_PLAN),
+        ),
+    }
+    for source, named in references.items():
+        if source not in written:
+            assert names[source] in policy_run.spec.withheld
+            continue
+        dataset = written[source]
+        assert dataset.Modality == (
+            "RTPLAN" if source == corpus_module.ION_PLAN else "RTRECORD"
+        )
+        for keyword, target in named:
+            (reference,) = dataset[keyword].value
+            assert reference.ReferencedSOPInstanceUID == expected(target), keyword
+            if target in written:
+                assert expected(target) == written[target].SOPInstanceUID, keyword
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.1-01", "MIDI-BP-03")
+def test_each_interlock_users_institution_code_sequence_is_released_as_reviewed(
+    policy_run,
+):
+    # D writes one dummy item in the Institution Code Sequence of the user
+    # who resolved an interlock, so each treatment record is released with it,
+    # unless Retain Institution Identity keeps the source item (D-021).
+    corpus, released = policy_run.corpus, policy_run.released
+    written = {
+        corpus.files[position].manifest.sop_instance: _read(data)
+        for position, data in released.items()
+    }
+    names = {file.manifest.sop_instance: file.name for file in corpus.files}
+    sessions = {
+        corpus_module.TREATMENT_RECORD: 0x30080020,
+        corpus_module.ION_TREATMENT_RECORD: 0x30080021,
+    }
+    kept = "(0008,0082)" in policy_run.spec.kept_rows()
+    for record, session in sessions.items():
+        if record not in written:
+            assert names[record] in policy_run.spec.withheld
+            continue
+        # pylint: disable-next = unsubscriptable-object
+        beam = written[record][session].value[0]
+        (user,) = beam[0x300A0740].value[0][0x300A0746].value
+        (institution,) = user.InstitutionCodeSequence
+        if kept:
+            # The planted item holds Context Group Version, which D's item
+            # does not.
+            assert 0x00080106 in institution
+            continue
+        assert (
+            institution.CodeValue,
+            institution.CodingSchemeDesignator,
+            institution.CodeMeaning,
+        ) == ("DEIDENTIFIED", "99PYMEDPHYS", "DEIDENTIFIED")
+        assert set(institution.keys()) == {0x00080100, 0x00080102, 0x00080104}
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.5-01")
