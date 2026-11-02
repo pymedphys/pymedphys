@@ -50,9 +50,12 @@ frame with such regions, also from the file as received:
   names (:func:`~pymedphys._dicom.deidentify.phases.split`), each forming
   a volume of its own, or form none where nothing parts them. The surface
   renders of a series are sampled in batches of at most
-  :data:`SAMPLED_AT_ONCE` voxels, so that its memory does not grow with
-  the number of its volumes. A series with a colour instance or a
-  Segmentation forms none.
+  :data:`SAMPLED_AT_ONCE` voxels, and each volume's projection is
+  accumulated with its batch, so that the surface samples and projection
+  slices held at once are those of one batch, however many volumes the
+  series forms; each preview is encoded as a PNG as it is drawn, so that
+  only the PNGs, and not their images, are kept. A series with a colour
+  instance or a Segmentation forms none.
   It is projected along the anterior-posterior axis and shown
   with the patient's head at the top and right on the viewer's left, sampled
   to square pixels by nearest neighbour, at most :data:`MIP_PIXELS` a side,
@@ -1276,7 +1279,7 @@ def _series_images(
     # A volume too large for a surface render has no projection either, so
     # that no preview that could show a face draws its slices beyond its
     # cine strip, and their pixel data are held.
-    projections = [
+    projections: list[_Projection | None] = [
         None if render.large else _Projection(volume)
         for volume, render in zip(volumes, renders)
     ]
@@ -1302,12 +1305,15 @@ def _series_images(
     # Each slice's map is drawn as soon as it is decoded, so that only its
     # 8-bit map, or None, and not its pixels, is kept to the series' end.
     maps: list[tuple[_Instance, np.ndarray | None]] = []
-    # Each render's projection, then its surface render, once drawn.
-    images: dict[int, list] = {}
     # The renders are sampled a batch at a time (_batches), the first with
     # the cine strip and the maps, so that a series of many volumes, such
     # as the phases of a respiratory-correlated CT, holds only one batch's
-    # samples at once; each later batch reads its files again.
+    # surface samples at once; each later batch reads its files again. The
+    # cine strip is given once the first batch is read, and each volume's
+    # projection, then its surface render, once its batch is drawn, so
+    # that each is encoded as it is made and none is kept to the series'
+    # end; a projection's slices are let go with its image. The previews
+    # are given in the same order in any batches.
     for number, batch in enumerate(_batches(renders)):
         first = number == 0
         for index in batch:
@@ -1361,6 +1367,20 @@ def _series_images(
                     maps.append((instance, _level_map(instance, pixels)))
                 # Freed before the next frame is decoded, so no two are held.
                 del pixels
+        if first and tiles:
+            image = _sheet(
+                _windowed_tiles([(tile, instance) for _, _, tile, instance in tiles]),
+                TILE_PIXELS,
+                TILE_PIXELS,
+            )
+            yield (
+                PreviewKind.SERIES_CINE,
+                tuple((position, frame) for position, frame, *_ in tiles),
+                len(frames),
+                image,
+            )
+            del image
+            tiles.clear()
         for index in batch:
             render = renders[index]
             if guiding and index < len(volumes):
@@ -1369,31 +1389,19 @@ def _series_images(
                     assert guides is not None
                     guides[reference].append(((guide, render.shown), series[0].series))
                     guiding = False
-            drawn = []
-            if index < len(projections) and projections[index] is not None:
-                projected = projections[index].image()
+            projection = projections[index] if index < len(projections) else None
+            if projection is not None:
+                projections[index] = None
+                projected = projection.image()
+                del projection
                 if projected is not None:
-                    drawn.append(projected)
+                    yield projected
+                del projected
             image = render.sampled.image()
-            if image is not None:
-                drawn.append((render.kind, render.shown, len(render.shown), image))
-            images[index] = drawn
             render.end()
-    if tiles:
-        image = _sheet(
-            _windowed_tiles([(tile, instance) for _, _, tile, instance in tiles]),
-            TILE_PIXELS,
-            TILE_PIXELS,
-        )
-        yield (
-            PreviewKind.SERIES_CINE,
-            tuple((position, frame) for position, frame, *_ in tiles),
-            len(frames),
-            image,
-        )
-    # Each volume's projection, then its surface render.
-    for index in range(len(renders)):
-        yield from images.get(index, [])
+            if image is not None:
+                yield (render.kind, render.shown, len(render.shown), image)
+            del image
     for instance, level_map in maps:
         if level_map is not None:
             yield (
@@ -1408,8 +1416,8 @@ def _series_images(
 # 256 MiB as float32: the renders of a series of many volumes, such as the
 # phases of a respiratory-correlated CT or the time points of a perfusion
 # scan, are sampled in batches within it, in order, and a volume that
-# samples more alone is sampled alone, so that a series' memory does not
-# grow with the number of its volumes.
+# samples more alone is sampled alone, so that the surface samples held at
+# once do not grow with the number of its volumes.
 SAMPLED_AT_ONCE = 1 << 26
 
 

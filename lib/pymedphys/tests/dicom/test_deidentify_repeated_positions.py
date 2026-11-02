@@ -16,6 +16,9 @@
 # The tests check the merging of kept slices, the batching of surface
 # renders, and the DICOM check's measures of one eye, which are private to
 # their modules, directly.
+# The tests share the synthetic phases and their builders, so they stay
+# in one module.
+# pylint: disable = too-many-lines
 
 """Tests of CT series whose slices repeat their positions, such as the time
 points of a respiratory-correlated CT or a perfusion scan, the phases of a
@@ -33,6 +36,7 @@ from __future__ import annotations
 
 import functools
 import io
+import weakref
 import zlib
 
 from pymedphys._imports import numpy as np
@@ -758,6 +762,65 @@ def test_volumes_beyond_the_samples_held_at_once_are_drawn_in_later_batches(
     assert batched.pixels_shown == together.pixels_shown == frozenset(range(3 * SIDE))
     assert len(surfaces) == 3
     assert all(render.surface is None for render in surfaces)
+
+
+@pytest.mark.pydicom
+def test_each_batch_previews_are_encoded_before_the_next_batch_is_sampled(
+    monkeypatch,
+):
+    written = {
+        **_timed(_body(), time=1),
+        **_timed(_body(ear=True), time=2, offset=SIDE),
+        **_timed(_body(nose=False), time=3, offset=2 * SIDE),
+    }
+    events: list[str] = []
+    projections: list[weakref.ref] = []
+    begin, encode, made = (
+        qc_previews._Render.begin,
+        qc_previews.png,
+        qc_previews._Projection.__init__,
+    )
+
+    def begun(self):
+        # No projection of an earlier batch is held once a batch begins.
+        events.append(f"begin {sum(ref() is not None for ref in projections)}")
+        begin(self)
+
+    def encoded(image):
+        events.append("png")
+        return encode(image)
+
+    def projection(self, volume):
+        made(self, volume)
+        projections.append(weakref.ref(self))
+
+    monkeypatch.setattr(qc_previews, "SAMPLED_AT_ONCE", 1)
+    monkeypatch.setattr(qc_previews._Render, "begin", begun)
+    monkeypatch.setattr(qc_previews, "png", encoded)
+    monkeypatch.setattr(qc_previews._Projection, "__init__", projection)
+
+    previews = qc_previews.previews_of(written, ())
+
+    # The cine strip, then each volume's projection and surface render,
+    # each encoded before the next volume is sampled, so that none of their
+    # images, and no projection's slices, are held to the series' end.
+    assert _kinds(previews) == [PreviewKind.SERIES_CINE] + 3 * [
+        PreviewKind.SERIES_MIP,
+        PreviewKind.SERIES_SURFACE,
+    ]
+    assert events == [
+        "begin 3",
+        "png",
+        "png",
+        "png",
+        "begin 2",
+        "png",
+        "png",
+        "begin 1",
+        "png",
+        "png",
+    ]
+    assert all(ref() is None for ref in projections)
 
 
 def test_batches_hold_no_more_than_the_samples_at_once_unless_one_alone():
