@@ -699,6 +699,8 @@ def test_the_statement_names_each_supported_iod_that_lacks_the_attribute():
         "RT Plan",
         "RT Structure Set",
         "RT Beams Treatment Record",
+        "RT Ion Plan",
+        "RT Ion Beams Treatment Record",
         "MR Spectroscopy",
         "Spatial Registration",
         "Deformable Spatial Registration",
@@ -707,9 +709,9 @@ def test_the_statement_names_each_supported_iod_that_lacks_the_attribute():
     }
     assert (
         "which of the supported IODs are RT Plan, RT Structure Set, RT Beams "
-        "Treatment Record, MR Spectroscopy, Spatial Registration, Deformable "
-        "Spatial Registration, X-Ray Radiation Dose SR, and Radiopharmaceutical "
-        "Radiation Dose SR"
+        "Treatment Record, RT Ion Plan, RT Ion Beams Treatment Record, MR "
+        "Spectroscopy, Spatial Registration, Deformable Spatial Registration, "
+        "X-Ray Radiation Dose SR, and Radiopharmaceutical Radiation Dose SR"
     ) in conformance_markdown.render_markdown(
         conformance.conformance_statement(_policy(), vocabulary=None)
     )
@@ -866,6 +868,8 @@ _FACELESS = (
     "14-mr-spectroscopy.dcm",
     "18-registration.dcm",
     "20-rt-beams-record.dcm",
+    "47-rt-ion-plan.dcm",
+    "48-rt-ion-beams-record.dcm",
 )
 
 
@@ -1089,7 +1093,7 @@ def test_the_report_names_the_attested_pack(second_run):
     attestation, _, report, _ = second_run
 
     assert report["face_review"]["reference"] == attestation.reference
-    assert report["format"] == "pymedphys-deid-release-report/35"
+    assert report["format"] == "pymedphys-deid-release-report/44"
 
 
 def test_the_report_counts_the_ct_series_that_were_not_defaced(second_run):
