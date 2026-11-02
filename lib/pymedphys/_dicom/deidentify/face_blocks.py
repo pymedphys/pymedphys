@@ -21,25 +21,41 @@
 Under the Clean Recognizable Visual Features Option, a run finds, before it
 writes any instance, the face block
 (:class:`~pymedphys._dicom.deidentify.defacing.FaceBlock`) of each series of
-CT Image instances (:func:`find_face_blocks`), and writes air into each
-slice of a series that has one (:class:`CtDefacer`), as
+CT instances, of CT Image, Enhanced CT Image, and Legacy Converted Enhanced
+CT Image (:data:`CT_IODS`, :func:`find_face_blocks`), and writes air into
+each slice of a series that has one (:class:`CtDefacer`), as
 :func:`~pymedphys._dicom.deidentify.pixel_cleaning.black_out` writes its
-masks. A series is defaced only where all of these hold:
+masks. A slice is a CT Image instance, or a frame of an Enhanced CT Image or
+Legacy Converted Enhanced CT Image instance, and a series may hold either
+kind, or both. A series is defaced only where all of these hold:
 
-- every slice is read from the file that the run's first pass read, with
-  native Pixel Data of one frame, one sample, and whole bytes
-  (:func:`~pymedphys._dicom.deidentify.pixel_cleaning.layout_of`), and
-  finite Image Position (Patient), Image Orientation (Patient), Pixel
-  Spacing, Rescale Slope, and Rescale Intercept, and a readable Pixel
-  Padding Value and Pixel Padding Range Limit where present;
+- every instance is read from the file that the run's first pass read, with
+  native Pixel Data of one sample and whole bytes
+  (:func:`~pymedphys._dicom.deidentify.pixel_cleaning.layout_of`), of one
+  frame for CT Image, and a readable Pixel Padding Value and Pixel Padding
+  Range Limit where present;
+- each slice has finite Image Position (Patient), Image Orientation
+  (Patient), Pixel Spacing, Rescale Slope, and Rescale Intercept: a CT
+  Image instance's own, its Rescale Slope and Rescale Intercept 1 and 0
+  where absent, or, for each frame of a multi-frame instance, those of its
+  Plane Position (Patient), Plane Orientation (Patient), Pixel Measures,
+  and CT Pixel Value Transformation functional groups, each in either the
+  frame's item of the Per-frame Functional Groups Sequence or the Shared
+  Functional Groups Sequence, never both
+  (:func:`~pymedphys._dicom.deidentify.functional_groups.frame_group`);
+- each slice's stored values are in Hounsfield units: a CT Image's Rescale
+  Type, which PS3.3 C.8.2.1 requires where they are not, is HU where
+  present, and a frame's, which its CT Pixel Value Transformation
+  functional group requires (PS3.3 Table C.8-126), is HU, since a material
+  map of a multi-energy CT, in other units, has no air to write;
 - the slices share their orientation, rows, columns, spacing, and Frame of
   Reference UID, which they have, and the stored values of each can hold
   air, -1000 Hounsfield units, as one stored value, rounded, without
-  clipping;
+  clipping, each slice by its own rescale;
 - :class:`~pymedphys._dicom.deidentify.defacing.FaceFinder` finds the
   block from the slices within :data:`HEAD_REACH` millimetres of the
-  volume's superior end, which bounds the memory that a long volume needs;
-  and
+  volume's superior end, which bounds the memory that a long volume needs,
+  no two slices lying at one position, as two phases of one stack do; and
 - no contour of a target, an ROI whose RT ROI Interpreted Type is
   :data:`TARGET_TYPES`, of any RT Structure Set of the run searched for the
   series (:func:`_searched`), in the series' Frame of Reference, or naming
@@ -62,7 +78,10 @@ masks. A series is defaced only where all of these hold:
 
 Anything else that a series' data raises leaves the series undefaced, as
 unreadable, rather than stopping the run, and no message of it, which could
-quote a value, is kept.
+quote a value, is kept. Each instance's pixel data are decoded once for the
+finder, and once more for the brain that defacing keeps
+(:func:`kept_slices`), a frame at a time, so that a multi-frame instance is
+never held decoded whole.
 
 A series with a target in its block is not defaced, and each of its slices
 is held for review (:attr:`~.reasons.VisualFeaturesReason.TARGET_IN_FACE_BLOCK`),
@@ -101,11 +120,12 @@ top of the slice. Where air's stored value is itself padding, the pixels
 written are padding, which a viewer shows as outside the image, as the air
 before the face is in most scans.
 
-Beyond CT Image instances, the run cleans the same region of an RT Dose
+Beyond CT instances, the run cleans the same region of an RT Dose
 that :mod:`~pymedphys._dicom.deidentify.dose_defacing` sets to zero there,
-of an RT Structure Set whose contours, or a PET image whose activity,
-:mod:`~pymedphys._dicom.deidentify.region_defacing` cuts or sets to zero
-there, and of a Segmentation whose segments
+of an RT Structure Set whose contours, or a PET image, of :data:`PET_IODS`,
+whose activity, :mod:`~pymedphys._dicom.deidentify.region_defacing` cuts or
+sets to zero there, frame by frame for a multi-frame PET image, and of a
+Segmentation whose segments
 :mod:`~pymedphys._dicom.deidentify.segmentation_defacing` clears there,
 each with that series' Frame of Reference as its only one. Any other RT
 Structure Set, RT Dose with pixel data, PET instance, or Segmentation
@@ -115,8 +135,8 @@ is held for review whatever its verdict, since a reviewer may have judged
 it from the defaced CT's previews
 (:attr:`~.reasons.VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME`), until
 the run can clean it too (:class:`Defaced`). So is one that names no Frame
-of Reference, in a run that defaces any series, or that refers to a defaced
-slice, whatever frame it declares. A structure set is searched for targets
+of Reference, in a run that defaces any series, or that refers to an
+instance of a defaced series, whatever frame it declares. A structure set is searched for targets
 in the block of a series where it is in the series' frame, names no valid
 frame, or is drawn on its slices, and otherwise unless it and every slice
 give Patient IDs that differ, and a target in another frame holds a series
@@ -132,7 +152,7 @@ import enum
 import io
 import math
 import re
-from collections.abc import Callable, Iterable, Mapping
+from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom
@@ -141,6 +161,7 @@ from pymedphys._imports import scipy
 from . import defacing
 from .defacing import FaceBlock, FaceBlockProblem, FaceBlockRefused
 from .diagnostics import redacted_diagnostics
+from .functional_groups import frame_group
 from .pixel_cleaning import (
     FrameMask,
     Layout,
@@ -151,13 +172,32 @@ from .pixel_cleaning import (
 from .pseudonyms import SubjectIdentity
 from .reasons import TransformReason
 from .references import InstanceRecord
+from .sop_classes import iod_for_sop_class
 from .source import NATIVE_TRANSFER_SYNTAXES
 from .uid_registry import is_uid
 from .uids import normalise_uid
 
 CT_IMAGE = "CT Image"
+ENHANCED_CT_IMAGE = "Enhanced CT Image"
+LEGACY_CONVERTED_ENHANCED_CT_IMAGE = "Legacy Converted Enhanced CT Image"
+# The CT IODs whose series the run defaces: CT Image, whose slices are
+# instances of one frame, and the two whose instances hold many frames, each
+# placed by its functional groups.
+CT_IODS = frozenset({CT_IMAGE, ENHANCED_CT_IMAGE, LEGACY_CONVERTED_ENHANCED_CT_IMAGE})
+MULTI_FRAME_CT_IODS = CT_IODS - {CT_IMAGE}
 RT_STRUCTURE_SET = "RT Structure Set"
 PET_IMAGE = "Positron Emission Tomography Image"
+ENHANCED_PET_IMAGE = "Enhanced PET Image"
+LEGACY_CONVERTED_ENHANCED_PET_IMAGE = "Legacy Converted Enhanced PET Image"
+# The PET IODs whose images the run sets to zero activity in a defaced
+# frame's block, as for CT.
+PET_IODS = frozenset(
+    {PET_IMAGE, ENHANCED_PET_IMAGE, LEGACY_CONVERTED_ENHANCED_PET_IMAGE}
+)
+MULTI_FRAME_PET_IODS = PET_IODS - {PET_IMAGE}
+# The only Rescale Type of the Hounsfield units in which the run finds the
+# block and writes air (PS3.3 C.8.2.1 and Table C.8-126).
+HOUNSFIELD_UNITS = "HU"
 AIR = -1000.0  # Hounsfield units
 HEAD_REACH = 400.0  # millimetres below the volume's superior end
 # How far above the higher globe's centre, in millimetres, the cranial
@@ -174,16 +214,7 @@ TARGET_TYPES = frozenset({"PTV", "CTV", "GTV"})
 EYE_REACH = defacing.GLOBE_DIAMETER[1] / 2 + 10.0
 # The IODs whose instances in a defaced series' Frame of Reference are held
 # unless the run cleans them of the face.
-UNDEFACED_IODS = frozenset(
-    {
-        RT_STRUCTURE_SET,
-        "RT Dose",
-        PET_IMAGE,
-        "Enhanced PET Image",
-        "Legacy Converted Enhanced PET Image",
-        "Segmentation",
-    }
-)
+UNDEFACED_IODS = frozenset({RT_STRUCTURE_SET, "RT Dose", *PET_IODS, "Segmentation"})
 # How far two slices' direction cosines, or spacings in millimetres, may
 # differ and still be one stack's.
 _SAME = 1e-4
@@ -199,9 +230,12 @@ class SeriesProblem(enum.Enum):
     # Pixel Data in an encapsulated transfer syntax, which would have to be
     # encoded again
     COMPRESSED = "compressed-pixel-data"
-    # slices of more than one frame, sample, orientation, size, spacing, or
-    # Frame of Reference
+    # slices or frames of more than one sample, orientation, size, spacing,
+    # or Frame of Reference, or a CT Image instance of more than one frame
     NOT_ONE_STACK = "not-one-stack"
+    # stored values whose Rescale Type is not Hounsfield units, as a
+    # material map of a multi-energy CT can be
+    NOT_HOUNSFIELD = "not-hounsfield-units"
     # stored values that cannot hold air without clipping
     AIR_NOT_STORED = "air-not-stored"
     # a target that may reach the block
@@ -301,15 +335,15 @@ def find_face_blocks(
     records: Mapping[int, InstanceRecord],
     read: Callable[[int], bytes | None],
 ) -> dict[str, SeriesDefacing]:
-    """Return the outcome of each series of CT Image instances, by its
-    Series Instance UID.
+    """Return the outcome of each series of CT instances, of :data:`CT_IODS`,
+    by its Series Instance UID.
 
     Parameters
     ----------
     records : mapping of int to InstanceRecord
         The run's records, by run position, as its first pass gives them.
-        A CT Image instance without a Series Instance UID is not defaced,
-        and has no outcome.
+        A CT instance without a Series Instance UID is not defaced, and has
+        no outcome.
     read : callable
         Gives the file at a run position as the first pass read it, or None
         if it can no longer be read or has changed.
@@ -318,7 +352,7 @@ def find_face_blocks(
     slices: dict[str, set[str]] = collections.defaultdict(set)
     structure_sets: list[int] = []
     for position, record in sorted(records.items()):
-        if record.iod == CT_IMAGE and record.series is not None:
+        if record.iod in CT_IODS and record.series is not None:
             series[record.series].append(position)
             if record.sop_instance:
                 slices[record.series].add(record.sop_instance)
@@ -417,7 +451,8 @@ class Defaced:
     frames : frozenset of str
         The Frame of Reference UID of each defaced series.
     instances : frozenset of str
-        The SOP Instance UID of each slice of a defaced series.
+        The SOP Instance UID of each instance of a defaced series, whether
+        it holds one slice or many frames.
     """
 
     frames: frozenset[str] = frozenset()
@@ -459,9 +494,7 @@ def find_defaced(
         frozenset(
             record.sop_instance
             for record in records.values()
-            if record.iod == CT_IMAGE
-            and record.series in series
-            and record.sop_instance
+            if record.iod in CT_IODS and record.series in series and record.sop_instance
         ),
     )
 
@@ -473,15 +506,14 @@ def _series_outcome(
     Reference UID."""
     frame = None
     try:
-        slices = [_slice(read(position)) for position in positions]
-        _check_stack(slices)
+        slices, places = _stack(positions, read)
         first = slices[0]
         frame = first.frame
         # Without one, no structure set's targets can be checked against
         # the block.
         if not frame:
             raise _Unusable(SeriesProblem.UNREADABLE)
-        finder = _finder(slices, positions, read)
+        finder = _finder(slices, places, read)
         return SeriesDefacing(finder.block(), None, frame), frame
     except _Unusable as unusable:
         return SeriesDefacing(None, unusable.problem), frame
@@ -504,24 +536,48 @@ def inspect_series(
     Parameters
     ----------
     positions : list of int
-        The run positions of the series' CT Image instances.
+        The run positions of the series' CT instances.
     read : callable
         As for :func:`find_face_blocks`.
     """
     try:
-        slices = [_slice(read(position)) for position in positions]
-        _check_stack(slices)
-        return _finder(slices, positions, read).inspect()
+        slices, places = _stack(positions, read)
+        return _finder(slices, places, read).inspect()
     except (_Unusable, FaceBlockRefused):
         return None
 
 
+def _stack(
+    positions: Sequence[int], read: Callable[[int], bytes | None]
+) -> tuple[list[_Slice], list[tuple[int, int]]]:
+    """Read every slice of a series: each instance's frames in turn, in the
+    order of ``positions``, with the run position and frame index of each.
+
+    Raises
+    ------
+    _Unusable
+        If a slice cannot be read, or the slices are not of one stack.
+    """
+    slices: list[_Slice] = []
+    places: list[tuple[int, int]] = []
+    for position in positions:
+        for index, each in enumerate(_slices(read(position))):
+            slices.append(each)
+            places.append((position, index))
+    _check_stack(slices)
+    return slices, places
+
+
 def _finder(
     slices: list[_Slice],
-    positions: list[int],
+    places: list[tuple[int, int]],
     read: Callable[[int], bytes | None],
 ) -> defacing.FaceFinder:
-    """The finder of one stack's slices, each added.
+    """The finder of one stack's slices, each added, with each slice's run
+    position and frame index in ``places``.
+
+    Each instance is read once, and its frames decoded one at a time, so
+    that a multi-frame instance is never held decoded whole.
 
     Raises
     ------
@@ -540,19 +596,28 @@ def _finder(
         kept = [i for i, top in enumerate(tops) if top >= max(tops) - HEAD_REACH]
     else:
         kept = list(range(len(slices)))
+    # By instance, in run order, then by frame, the order in which they are
+    # added, which the finder needs their positions in.
+    by_instance: dict[int, list[int]] = {}
+    for index in kept:
+        by_instance.setdefault(places[index][0], []).append(index)
+    order = [index for indices in by_instance.values() for index in indices]
     finder = defacing.FaceFinder(
         first.orientation,
-        [slices[i].position for i in kept],
+        [slices[i].position for i in order],
         first.spacing,
         first.shape,
     )
-    for index in kept:
-        finder.add(_hounsfield(read(positions[index]), slices[index]))
+    for position, indices in by_instance.items():
+        stored = _stored(read(position), first.shape, [places[i][1] for i in indices])
+        for index, values in zip(indices, stored, strict=True):
+            finder.add(_hounsfield(values, slices[index]))
     return finder
 
 
-def _slice(data: bytes | None) -> _Slice:
-    """Read what defacing needs of one slice.
+def _slices(data: bytes | None) -> tuple[_Slice, ...]:
+    """Read what defacing needs of each slice of one instance: the instance
+    itself, of CT Image, or each frame of a multi-frame instance.
 
     Raises
     ------
@@ -657,31 +722,43 @@ def _padding(dataset: pydicom.Dataset, layout: Layout) -> tuple[int, int] | None
     return min(values), max(values)
 
 
-def _stored(data: bytes | None, shape: tuple[int, int]) -> np.ndarray:
-    """One slice's stored values, rows by columns.
+def _stored(
+    data: bytes | None, shape: tuple[int, int], frames: Sequence[int]
+) -> Iterator[np.ndarray]:
+    """The stored values of each of an instance's ``frames``, in ascending
+    order, rows by columns, decoded one at a time.
 
     Raises
     ------
     _Unusable
-        If the file can no longer be read, or its pixel data decoded.
+        If the file can no longer be read, or its pixel data decoded as
+        that many frames of that shape.
     """
     if data is None:
         raise _Unusable(SeriesProblem.UNREADABLE)
-    try:
-        with redacted_diagnostics():
-            stored = np.asarray(pydicom.pixels.pixel_array(io.BytesIO(data)))
-    # pydicom raises many types for pixel data it cannot read, and a message
-    # can quote a value.
-    except Exception:  # pylint: disable = broad-exception-caught
-        raise _Unusable(SeriesProblem.UNREADABLE) from None
-    if stored.shape != shape:
+    wanted = sorted(frames)
+    decoded = pydicom.pixels.iter_pixels(io.BytesIO(data), indices=wanted)
+    given = 0
+    while True:
+        try:
+            with redacted_diagnostics():
+                stored = np.asarray(next(decoded))
+        except StopIteration:
+            break
+        # pydicom raises many types for pixel data it cannot read, and a
+        # message can quote a value.
+        except Exception:  # pylint: disable = broad-exception-caught
+            raise _Unusable(SeriesProblem.UNREADABLE) from None
+        if stored.shape != shape or given >= len(wanted):
+            raise _Unusable(SeriesProblem.UNREADABLE)
+        given += 1
+        yield stored
+    if given != len(wanted):
         raise _Unusable(SeriesProblem.UNREADABLE)
-    return stored
 
 
-def _hounsfield(data: bytes | None, each: _Slice) -> np.ndarray:
-    """One slice in Hounsfield units, with padding as NaN."""
-    stored = _stored(data, each.shape)
+def _hounsfield(stored: np.ndarray, each: _Slice) -> np.ndarray:
+    """One slice's stored values in Hounsfield units, with padding as NaN."""
     slope, intercept = each.rescale
     values = stored.astype(np.float32) * np.float32(slope) + np.float32(intercept)
     if each.padding is not None:
@@ -973,21 +1050,23 @@ def _hull_reaches(block: FaceBlock, points: np.ndarray) -> bool:
 
 
 class CtDefacer:
-    """Gives the face block of one CT slice as air, for
-    :func:`~pymedphys._dicom.deidentify.pixel_cleaning.black_out`.
+    """Gives the face block of each slice of one CT instance as air, for
+    :func:`~pymedphys._dicom.deidentify.pixel_cleaning.black_out`: the
+    instance's one slice, for CT Image, or each of its frames, each placed
+    by its own functional groups.
 
     Parameters
     ----------
     block : FaceBlock
-        The block of the slice's series.
+        The block of the instance's series.
     dataset : pydicom.Dataset
-        The slice's data set.
+        The instance's data set.
 
     Raises
     ------
     PixelDataRefused
         With :attr:`~.reasons.TransformReason.UNCLEANABLE_PIXEL_DATA` where
-        the slice is not one that :func:`find_face_blocks` defaces.
+        the instance is not one that :func:`find_face_blocks` defaces.
     """
 
     def __init__(self, block: FaceBlock, dataset: pydicom.Dataset) -> None:
@@ -995,9 +1074,9 @@ class CtDefacer:
             if str(dataset.file_meta.TransferSyntaxUID) not in NATIVE_TRANSFER_SYNTAXES:
                 raise _Unusable(SeriesProblem.COMPRESSED)
             layout = layout_of(dataset)
-            self._slice = _described(dataset, layout)
-        # As for a series, whatever the data set raises refuses the slice,
-        # without its message.
+            self._slices = _described(dataset, layout)
+        # As for a series, whatever the data set raises refuses the
+        # instance, without its message.
         except Exception:  # pylint: disable = broad-exception-caught
             raise PixelDataRefused(TransformReason.UNCLEANABLE_PIXEL_DATA) from None
         self._block = block
@@ -1006,9 +1085,9 @@ class CtDefacer:
         return "CtDefacer()"
 
     def mask(self, frame: int, stored: np.ndarray) -> FrameMask | None:
-        """Return the pixels of the block to write as air, as the module
-        describes, or None where the slice has none."""
-        each = self._slice
+        """Return the pixels of one frame's block to write as air, as the
+        module describes, or None where the frame has none."""
+        each = self._slices[frame]
         inside = self._block.slice_mask(
             each.position, each.orientation, each.spacing, each.shape
         )
@@ -1064,15 +1143,98 @@ def _heights(each: _Slice) -> np.ndarray:
     )
 
 
-def _described(dataset: pydicom.Dataset, layout: Layout) -> _Slice:
-    """What defacing needs of a slice's data set, as :func:`_slice` reads it."""
-    if layout.frames != 1 or layout.samples != 1:
+def iod_of(dataset: pydicom.Dataset) -> str | None:
+    """Return the name of an instance's IOD, by its SOP Class UID, as
+    Table B.5-1 gives it, or None where that cannot be read or names
+    none."""
+    try:
+        with redacted_diagnostics():
+            iod = iod_for_sop_class(str(dataset.SOPClassUID))
+    # A SOP Class UID that cannot be read names no IOD; the message, which
+    # could quote it, is dropped.
+    except Exception:  # pylint: disable = broad-exception-caught
+        return None
+    return None if iod is None else iod.name
+
+
+def _described(dataset: pydicom.Dataset, layout: Layout) -> tuple[_Slice, ...]:
+    """What defacing needs of each slice of an instance's data set, as
+    :func:`_slices` reads it.
+
+    A CT Image instance is one slice, placed and rescaled by its own
+    attributes; each frame of an Enhanced CT Image or Legacy Converted
+    Enhanced CT Image instance is one, placed by its Plane Position
+    (Patient), Plane Orientation (Patient), and Pixel Measures functional
+    groups and rescaled by its CT Pixel Value Transformation functional
+    group, each read by :func:`~.functional_groups.frame_group`. Pixel
+    Padding Value, its range limit, and the Frame of Reference UID are the
+    instance's, for every frame.
+
+    Raises
+    ------
+    _Unusable
+    """
+    if layout.samples != 1:
         raise _Unusable(SeriesProblem.NOT_ONE_STACK)
-    position = _numbers(dataset, "ImagePositionPatient", 3)
-    orientation = _numbers(dataset, "ImageOrientationPatient", 6)
-    spacing = _numbers(dataset, "PixelSpacing", 2)
-    slope = _numbers(dataset, "RescaleSlope", 1, default=(1.0,))
-    intercept = _numbers(dataset, "RescaleIntercept", 1, default=(0.0,))
+    iod = iod_of(dataset)
+    if iod == CT_IMAGE:
+        if layout.frames != 1:
+            raise _Unusable(SeriesProblem.NOT_ONE_STACK)
+        return (_described_slice(dataset, layout, (dataset,) * 4, multi_frame=False),)
+    if iod not in MULTI_FRAME_CT_IODS:
+        raise _Unusable(SeriesProblem.UNREADABLE)
+    groups = []
+    for frame in range(layout.frames):
+        try:
+            groups.append(
+                tuple(
+                    frame_group(dataset, layout.frames, frame, keyword)
+                    for keyword in (
+                        "PlanePositionSequence",
+                        "PlaneOrientationSequence",
+                        "PixelMeasuresSequence",
+                        "PixelValueTransformationSequence",
+                    )
+                )
+            )
+        except ValueError:
+            raise _Unusable(SeriesProblem.UNREADABLE) from None
+    return tuple(
+        _described_slice(dataset, layout, each, multi_frame=True) for each in groups
+    )
+
+
+def _described_slice(
+    dataset: pydicom.Dataset,
+    layout: Layout,
+    groups: tuple[pydicom.Dataset, ...],
+    *,
+    multi_frame: bool,
+) -> _Slice:
+    """What defacing needs of one slice, from the data sets that hold its
+    Image Position (Patient), Image Orientation (Patient), Pixel Spacing,
+    and rescale, in that order: the instance's own for CT Image, or the
+    frame's functional groups' items.
+
+    A CT Image's Rescale Slope and Rescale Intercept default to 1 and 0
+    where absent, and its Rescale Type, which PS3.3 C.8.2.1 requires where
+    the values are not Hounsfield units, must be HU where present; a
+    frame's three are Type 1 in its CT Pixel Value Transformation
+    functional group (PS3.3 Table C.8-126), so each must be present, and
+    its Rescale Type HU.
+
+    Raises
+    ------
+    _Unusable
+    """
+    placed, oriented, measured, rescaled = groups
+    position = _numbers(placed, "ImagePositionPatient", 3)
+    orientation = _numbers(oriented, "ImageOrientationPatient", 6)
+    spacing = _numbers(measured, "PixelSpacing", 2)
+    defaults = (None, None) if multi_frame else ((1.0,), (0.0,))
+    slope = _numbers(rescaled, "RescaleSlope", 1, default=defaults[0])
+    intercept = _numbers(rescaled, "RescaleIntercept", 1, default=defaults[1])
+    _check_hounsfield(rescaled, required=multi_frame)
     if min(spacing) <= 0 or slope[0] <= 0:
         raise _Unusable(SeriesProblem.UNREADABLE)
     exact = (AIR - intercept[0]) / slope[0]
@@ -1092,6 +1254,34 @@ def _described(dataset: pydicom.Dataset, layout: Layout) -> _Slice:
         air=int(air),
         frame=None if frame is None else normalise_uid(str(frame)) or None,
     )
+
+
+def _check_hounsfield(rescaled: pydicom.Dataset, *, required: bool) -> None:
+    """Check that a slice's Rescale Type, if present, is HU, and that it is
+    present where ``required``.
+
+    Raises
+    ------
+    _Unusable
+        With :attr:`SeriesProblem.NOT_HOUNSFIELD` where it names other
+        units, or with :attr:`SeriesProblem.UNREADABLE` where it is absent
+        but required, or is not one text value.
+    """
+    if "RescaleType" not in rescaled:
+        if required:
+            raise _Unusable(SeriesProblem.UNREADABLE)
+        return
+    try:
+        with redacted_diagnostics():
+            value = rescaled["RescaleType"].value
+    # pydicom raises many types for a value it cannot read, and a message
+    # can quote the value.
+    except Exception:  # pylint: disable = broad-exception-caught
+        raise _Unusable(SeriesProblem.UNREADABLE) from None
+    if not isinstance(value, str):
+        raise _Unusable(SeriesProblem.UNREADABLE)
+    if value.strip().upper() != HOUNSFIELD_UNITS:
+        raise _Unusable(SeriesProblem.NOT_HOUNSFIELD)
 
 
 @dataclasses.dataclass(frozen=True, repr=False)
@@ -1127,14 +1317,15 @@ def kept_slices(
     block: FaceBlock, positions: Iterable[int], read: Callable[[int], bytes | None]
 ) -> tuple[KeptSlice, ...]:
     """Return each slice of a defaced series that its block reaches, with
-    the pixels that defacing keeps there, in the order of ``positions``.
+    the pixels that defacing keeps there, in the order of ``positions``,
+    and of the frames of each multi-frame instance.
 
     Parameters
     ----------
     block : FaceBlock
         The series' block.
     positions : iterable of int
-        The run positions of the series' slices.
+        The run positions of the series' instances.
     read : callable
         Gives the file at a run position as the first pass read it, or None.
 
@@ -1147,18 +1338,26 @@ def kept_slices(
     for position in positions:
         data = read(position)
         try:
-            each = _slice(data)
-            inside = block.slice_mask(
-                each.position, each.orientation, each.spacing, each.shape
-            )
-            if not inside.any():
+            reached = []
+            for index, each in enumerate(_slices(data)):
+                inside = block.slice_mask(
+                    each.position, each.orientation, each.spacing, each.shape
+                )
+                if inside.any():
+                    reached.append((index, each, inside))
+            if not reached:
                 continue
-            kept, padded = _kept(block, each, _stored(data, each.shape))
-        except _Unusable:
+            stored = _stored(data, reached[0][1].shape, [i for i, _, _ in reached])
+            for (_, each, inside), values in zip(reached, stored, strict=True):
+                kept, padded = _kept(block, each, values)
+                slices.append(
+                    KeptSlice(
+                        each.position,
+                        each.orientation,
+                        each.spacing,
+                        inside & kept & ~padded,
+                    )
+                )
+        except (_Unusable, ValueError):
             raise ValueError("a slice can no longer be read") from None
-        slices.append(
-            KeptSlice(
-                each.position, each.orientation, each.spacing, inside & kept & ~padded
-            )
-        )
     return tuple(slices)
