@@ -1143,7 +1143,11 @@ class _Decoder:
         if instance.colour:
             return pixels.astype(np.uint8)
         slope, intercept = instance.rescale_of(index)
-        shown = pixels.astype(np.float32) * np.float32(slope) + np.float32(intercept)
+        with np.errstate(over="ignore", under="ignore", invalid="ignore"):
+            shown = pixels.astype(np.float32) * np.float32(slope) + np.float32(
+                intercept
+            )
+        padded = None
         if instance.padding is not None:
             low, high = instance.padding
             padded = (pixels >= low) & (pixels <= high)
@@ -1151,8 +1155,47 @@ class _Decoder:
                 values = pixels[padded]
                 if values.min() != values.max():
                     self.mixed_padding.add(instance.position)
+        if not _contrast_kept(pixels, shown, padded):
+            self._refused[instance.position] = (
+                reason if received else NotPreviewedReason.UNSUPPORTED
+            )
+            return None
+        if padded is not None:
             shown[padded] = np.nan
         return shown
+
+
+# How many steps of float32 a frame's rescaled values must span, at least,
+# where its stored values differ: the 256 grey levels of a preview's PNG.
+_RESCALED_LEVELS = 256
+
+
+def _contrast_kept(
+    pixels: np.ndarray, shown: np.ndarray, padded: np.ndarray | None
+) -> bool:
+    """Whether a frame's rescaled values, as float32, keep what its stored
+    values show, other than padding.
+
+    A Rescale Slope and Rescale Intercept that are finite can still take a
+    frame beyond float32, where its values are infinite or not a number, or
+    collapse it, as a slope too small for float32 rounds to 0, so that a
+    preview drawn of it is blank though it lists every frame. So every
+    value must be finite, and where the stored values differ, the rescaled
+    ones must span at least :data:`_RESCALED_LEVELS` steps of float32 at
+    their magnitude, which a linear rescale spreads evenly over the frame's
+    range.
+    """
+    if padded is not None:
+        pixels, shown = pixels[~padded], shown[~padded]
+    if not pixels.size:
+        return True
+    if not np.isfinite(shown).all():
+        return False
+    if pixels.min() == pixels.max():
+        return True
+    low, high = float(shown.min()), float(shown.max())
+    step = float(np.spacing(np.float32(max(abs(low), abs(high)))))
+    return high - low >= _RESCALED_LEVELS * step
 
 
 def _packed_frames(instance: _Instance, indices: Sequence[int]) -> Iterator[np.ndarray]:
