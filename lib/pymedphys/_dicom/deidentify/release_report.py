@@ -64,8 +64,9 @@ and codes that the engine defines, never by a source value or path:
   names the reviewer, stay confidential.
 - ``face_review``: under the Clean Recognizable Visual Features Option, the
   opaque reference of the earlier run's attested QC pack whose face verdicts
-  the run applied, and how many series of CT Image instances the run
-  defaced, and how many it did not, by why
+  the run applied, and how many series of CT instances the run defaced,
+  how many of those it defaced around a target in the face block, and how
+  many it did not deface, by why
   (:class:`~pymedphys._dicom.deidentify.face_blocks.FaceBlockCounts`);
   None otherwise.
 - ``redaction_review``: under the Clean Pixel Data Option, the opaque
@@ -257,6 +258,7 @@ PIXEL_AND_FACE_REASONS = (
     ReviewReason.NO_FACE_VERDICT,
     ReviewReason.OTHER_PIXEL_DATA,
     ReviewReason.OTHER_CONTOURS,
+    ReviewReason.OTHER_GRIDS,
 )
 ATTESTATION_REASONS = (
     *_REVIEW_REASONS,
@@ -1614,10 +1616,21 @@ def _face_review_section(
         raise _refuse("face_review ct_series defaced", "is not a whole number")
     if defaced < 0:
         raise _refuse("face_review ct_series defaced", "is negative")
+    around = counts.around_targets
+    if type(around) is not int:  # pylint: disable = unidiomatic-typecheck
+        raise _refuse(
+            "face_review ct_series defaced_around_targets", "is not a whole number"
+        )
+    if not 0 <= around <= defaced:
+        raise _refuse(
+            "face_review ct_series defaced_around_targets",
+            "is negative or more than the series defaced",
+        )
     return {
         "reference": reference,
         "ct_series": {
             "defaced": defaced,
+            "defaced_around_targets": around,
             "not_defaced": [
                 {"reason": code, "count": count}
                 for code, count in _code_counts(
@@ -2052,7 +2065,8 @@ def report_document(report: ReleaseReport) -> dict:
     ``key_id``, null for a run-scoped key, ``qc_review`` null where the run
     wrote no QC pack,
     ``face_review`` null or an object with the reference and the CT series'
-    ``ct_series`` counts, ``defaced`` and ``not_defaced`` by code,
+    ``ct_series`` counts, ``defaced``, ``defaced_around_targets``, and
+    ``not_defaced`` by code,
     ``redaction_review`` null or an object with the reference and
     ``frames_not_shown``,
     ``pixel_regions`` null without the Clean Pixel Data Option and

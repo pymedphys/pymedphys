@@ -52,7 +52,7 @@ each instance it may process. It joins the engine's per-instance steps:
    verdict on its source file is given,
    :func:`~pymedphys._dicom.deidentify.pixel_cleaning.black_out_reviewed`
    the regions that the reviewer approved, and under Clean Recognizable
-   Visual Features writes air in the face block of a CT slice
+   Visual Features writes air in the face block of a CT slice or frame
    (:mod:`~pymedphys._dicom.deidentify.face_blocks`);
 5. :func:`writer_plan` turns those edits into what the byte-preserving
    writer takes, and
@@ -152,13 +152,18 @@ from .elements import (
     read_element,
 )
 from .face_review import (
+    DEFORMABLE_REGISTRATION_GRID_SEQUENCE,
+    DEFORMABLE_REGISTRATION_SEQUENCE,
+    GRID_TAGS,
     PIXEL_DATA_TAGS,
     FaceReview,
     carries_visual_features,
     contour_data_sha256,
+    grid_data_sha256,
     holds_deformation_grid,
     is_rt_dose,
     pixel_data_sha256,
+    registration_frames,
 )
 from .file_layout import ElementPath
 from .iod_conformance import lost_requirements, source_gaps
@@ -219,11 +224,10 @@ from .pixel_cleaning import (
     overlay_planes,
     redaction_problem,
 )
-from .defacing import FaceBlock
 from .dose_defacing import RT_DOSE, DoseBlock, RtDoseDefacer, find_dose_blocks
 from .face_blocks import (
-    CT_IMAGE,
-    PET_IMAGE,
+    CT_IODS,
+    PET_IODS,
     RT_STRUCTURE_SET,
     CtDefacer,
     FaceBlockCounts,
@@ -305,7 +309,7 @@ def _region_defacing(iod: IOD, region: DoseBlock | None) -> _RegionDefacing | No
     without a block."""
     if region is None:
         return None
-    if iod.name == PET_IMAGE:
+    if iod.name in PET_IODS:
         return lambda dataset: PetDefacer(region, dataset)
     if iod.name == SEGMENTATION:
         return lambda dataset: SegmentationDefacer(region, dataset)
@@ -349,6 +353,14 @@ class WriterPlan:
         The transfer syntax written where it is not the source's: Explicit
         VR Little Endian, where Clean Pixel Data writes compressed Pixel
         Data uncompressed (D-037); None otherwise.
+    removed_items : frozenset of tuple of (str, int)
+        The items of kept sequences that the plan removes on their own
+        (:attr:`~pymedphys._dicom.deidentify.walker.InstancePlan.removed_items`),
+        each element of which is in ``removed``.
+    emptied : frozenset of ElementPath
+        The Content Sequences that the plan removes because every item of
+        each is removed on its own
+        (:attr:`~pymedphys._dicom.deidentify.walker.InstancePlan.emptied`).
     """
 
     kept: frozenset[ElementPath]
@@ -358,6 +370,8 @@ class WriterPlan:
     )
     introduced: frozenset[ElementPath] = frozenset()
     transfer_syntax: str | None = None
+    removed_items: frozenset[tuple[tuple[str, int], ...]] = frozenset()
+    emptied: frozenset[ElementPath] = frozenset()
 
     @property
     def expectations(self) -> Expectations:
@@ -367,6 +381,7 @@ class WriterPlan:
             changed=frozenset(self.replacements) | self.introduced,
             removed=self.removed - self.introduced,
             transfer_syntax=self.transfer_syntax,
+            removed_items=self.removed_items,
         )
 
 
@@ -606,6 +621,8 @@ def writer_plan(
         frozenset(removed),
         replacements,
         frozenset(introduced),
+        removed_items=plan.removed_items,
+        emptied=plan.emptied,
     )
 
 
@@ -699,6 +716,8 @@ def with_markers(
         replacements,
         frozenset(introduced),
         writing.transfer_syntax,
+        writing.removed_items,
+        writing.emptied,
     )
 
 
@@ -711,7 +730,8 @@ def _as_planned(
 
     Inside a kept sequence, each element that the plan removes is left out,
     each that it replaces is its replacement, and each that it keeps is
-    copied, a kept sequence with the edits within it in turn.
+    copied, a kept sequence with the edits within it in turn; an item that
+    the plan removes on its own is left out.
 
     Raises
     ------
@@ -725,6 +745,8 @@ def _as_planned(
     edited = pydicom.Sequence()
     for index, item in enumerate(element.value):
         held = items + ((tag, index),)
+        if held in writing.removed_items:
+            continue
         written = pydicom.Dataset()
         for inner in item:
             path = ElementPath(held, _tag_text(inner.tag))
@@ -975,26 +997,31 @@ class InstanceTransform:
     adds whether or not its IOD defines the attribute.
 
     Under Clean Recognizable Visual Features, :meth:`prepare` finds the face
-    block of each series of CT Image instances before the run writes any
-    (:func:`~.face_blocks.find_face_blocks`), and each slice of a series
-    with one is written with air in its block, as
+    block of each series of CT Image, Enhanced CT Image, and Legacy
+    Converted Enhanced CT Image instances before the run writes any
+    (:func:`~.face_blocks.find_face_blocks`), and each instance of a series
+    with one is written with air in its block, in each of its frames, as
     :func:`~.pixel_cleaning.black_out` writes a
-    :class:`~.face_blocks.CtDefacer`'s masks, checked as a redaction is; a
-    slice that cannot be is sequestered. A slice of a series with a
-    target's contour in its block is not defaced, and is held for review
+    :class:`~.face_blocks.CtDefacer`'s masks, checked as a redaction is; an
+    instance that cannot be is sequestered, the pixels that a target's hull
+    reaches kept (:class:`~.target_hulls.KeptTargets`). An instance of a
+    series with a target that cannot be kept within its slices is not
+    defaced, and is held for review
     (:attr:`~.reasons.VisualFeaturesReason.TARGET_IN_FACE_BLOCK`), as is
     one of a series whose structure set draws an eye away from the globes
     that its block was found from
     (:attr:`~.reasons.VisualFeaturesReason.EYES_DISAGREE_WITH_ROIS`). An RT
     Dose whose only Frame of Reference is that of one defaced series is
     written with its dose set to zero in the series' block, less the
-    brain that defacing keeps (:class:`~.dose_defacing.RtDoseDefacer`), or,
+    brain and targets that defacing keeps
+    (:class:`~.dose_defacing.RtDoseDefacer`), or,
     where the dose there is too great, written as received and held
     (:attr:`~.reasons.VisualFeaturesReason.DOSE_IN_FACE_BLOCK`). An RT
     Structure Set whose only Frame of Reference is that of one defaced
     series is written with its contours cut by the block
     (:func:`~.region_defacing.cut_contours`), a PET image's activity in
-    the block, less that brain, is set to zero
+    the block, less that brain and those targets, is set to zero, in each
+    frame of an Enhanced PET Image or Legacy Converted Enhanced PET Image
     (:class:`~.region_defacing.PetDefacer`), and a Segmentation's pixels
     there that lie in a segment are written as its background
     (:class:`~.segmentation_defacing.SegmentationDefacer`); one with any
@@ -1014,12 +1041,19 @@ class InstanceTransform:
     :attr:`~.reasons.VisualFeaturesReason.OTHER_CONTOURS` otherwise), and
     an instance that cannot show a face satisfies it. An instance that
     holds a deformable registration's grid
-    (:func:`~.face_review.holds_deformation_grid`), which no preview of the
-    pack draws, never satisfies it
-    (:attr:`~.reasons.VisualFeaturesReason.NO_FACE_VERDICT`). Each is marked with the option's code and Recognizable
-    Visual Features (0028,0302) set to NO, which PS3.15 E.3.2 adds whether
-    or not its IOD defines the attribute. Any other instance that can show a
-    face is written without them, and its evidence is a
+    (:func:`~.face_review.holds_deformation_grid`) satisfies it only where
+    the grids that it is written with are also those that the reviewed run
+    wrote, whose every grid the pack's grid sheets showed
+    (:attr:`~.reasons.VisualFeaturesReason.OTHER_GRIDS` otherwise); one
+    that names a defaced series' Frame of Reference as its own or as a
+    Source Frame of Reference, names one that cannot be read, or refers to
+    a defaced slice, is held whatever its verdict
+    (:attr:`~.reasons.VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME`),
+    since the run does not clean its grids of the face. Each is marked with
+    the option's code and Recognizable Visual Features (0028,0302) set to
+    NO, which PS3.15 E.3.2 adds whether or not its IOD defines the
+    attribute. Any other instance that can show a face is written without
+    them, and its evidence is a
     :class:`HeldEvidence` with its :class:`~.reasons.HeldVisualFeatures`, so
     it is never released.
     """
@@ -1236,7 +1270,7 @@ class InstanceTransform:
             records,
             read,
             self._face_blocks,
-            (RT_DOSE, RT_STRUCTURE_SET, PET_IMAGE, SEGMENTATION),
+            (RT_DOSE, RT_STRUCTURE_SET, *sorted(PET_IODS), SEGMENTATION),
         )
 
     def written_check(
@@ -1321,25 +1355,22 @@ class InstanceTransform:
         """Return why the face review holds an instance, if it does.
 
         Nothing holds an instance without a face review, or one that cannot
-        show a face. The review is of the source file, and of the pixel data
-        and contours that ``writing`` writes. An RT Dose, by its IOD, SOP
-        Class UID, or Modality, is held where it has pixel data of more
-        frames than the pack's dose-levels previews showed, since only they
-        show its doses as they could show a face (D-017). An instance that
-        holds a deformation grid is held whatever its verdict, since no
-        preview of the pack draws one.
+        show a face. The review is of the source file, and of the pixel data,
+        contours, and deformation grids that ``writing`` writes. An RT Dose,
+        by its IOD, SOP Class UID, or Modality, is held where it has pixel
+        data of more frames than the pack's dose-levels previews showed,
+        since only they show its doses as they could show a face (D-017).
         """
         review = self._face_review
         if review is None or not carries_visual_features(dataset, iod.name):
             return None
-        if holds_deformation_grid(dataset):
-            return HeldVisualFeatures(VisualFeaturesReason.NO_FACE_VERDICT)
         reason = review.hold_reason(
             hashlib.sha256(data).digest(),
             _pixel_digest(writing, dataset),
             _contour_digest(writing, dataset),
             _frame_count(writing, dataset),
             dose=iod.name == RT_DOSE or is_rt_dose(dataset),
+            grids=_grid_digest(writing, dataset),
         )
         return None if reason is None else HeldVisualFeatures(reason)
 
@@ -1357,8 +1388,26 @@ class InstanceTransform:
         An RT Dose without pixel data is not held for its frame, nor one
         that the run sets to zero in its frame's block, nor an RT Structure
         Set, PET instance, or Segmentation that it cleans there, unless it
-        refers to a defaced slice of another series.
+        refers to a defaced slice of another series. An instance that holds
+        a deformation grid, which the run does not clean, is held where the
+        run defaces any series and it names a defaced series' Frame of
+        Reference as its own or as a Source Frame of Reference
+        (:func:`~.face_review.registration_frames`), names one that cannot
+        be read, or refers to a defaced slice.
         """
+        if holds_deformation_grid(dataset) and self._defaced.frames:
+            frames = registration_frames(dataset)
+            if (
+                frames is None
+                or not frames.isdisjoint(self._defaced.frames)
+                or any(
+                    reference.target in self._defaced.instances
+                    for reference in record.references
+                )
+            ):
+                return HeldVisualFeatures(
+                    VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME
+                )
         if iod.name == RT_DOSE and not any(tag in dataset for tag in PIXEL_DATA_TAGS):
             return None
         if dose is not None:
@@ -1390,7 +1439,10 @@ class InstanceTransform:
         Segmentation's only Frame of Reference, if the run cleans it there
         (:mod:`~pymedphys._dicom.deidentify.region_defacing` and
         :mod:`~pymedphys._dicom.deidentify.segmentation_defacing`)."""
-        if iod.name not in (RT_STRUCTURE_SET, PET_IMAGE, SEGMENTATION):
+        if (
+            iod.name not in (RT_STRUCTURE_SET, SEGMENTATION)
+            and iod.name not in PET_IODS
+        ):
             return None
         frames = frames_of(record)
         if len(frames) != 1:
@@ -1398,8 +1450,8 @@ class InstanceTransform:
         return self._dose_blocks.get(next(iter(frames)))
 
     def _defacing(self, iod: IOD, record: InstanceRecord) -> SeriesDefacing | None:
-        """Return the outcome of a CT slice's series, if it has one."""
-        if iod.name != CT_IMAGE or record.series is None:
+        """Return the outcome of a CT instance's series, if it has one."""
+        if iod.name not in CT_IODS or record.series is None:
             return None
         return self._face_blocks.get(record.series)
 
@@ -1415,7 +1467,7 @@ class InstanceTransform:
         overlays: int = 0,
     ) -> tuple[Redaction | None, VisualFeaturesReason | None, bool]:
         """Return the instance's Pixel Data blacked out under Clean Pixel Data,
-        and, under Clean Recognizable Visual Features, a CT slice's face
+        and, under Clean Recognizable Visual Features, a CT instance's face
         block written as air, an RT Dose's set to zero, or a PET image's or
         Segmentation's cleaned by the defacer that ``region`` makes of its
         data set, with why an RT Dose's, PET image's, or Segmentation's is
@@ -1468,11 +1520,11 @@ class InstanceTransform:
         try:
             try:
                 return self._cleaned(
-                    source, dataset, block, dose, region, approved, decoded, overlays
+                    source, dataset, defacing, dose, region, approved, decoded, overlays
                 )
             except PixelsNotReviewed:
                 return self._cleaned(
-                    source, dataset, block, dose, region, None, None, overlays
+                    source, dataset, defacing, dose, region, None, None, overlays
                 )
         except PixelDataRefused as refused:
             raise _Refused(refused.reason) from None
@@ -1481,7 +1533,7 @@ class InstanceTransform:
         self,
         source: SourceEvidence,
         dataset: pydicom.Dataset,
-        block: FaceBlock | None,
+        defacing: SeriesDefacing | None,
         dose: DoseBlock | None,
         region: _RegionDefacing | None,
         approved: Regions | None,
@@ -1552,7 +1604,11 @@ class InstanceTransform:
                         source, dataset, self._finder, rules=rules, overlays=overlays
                     )
             return redaction, why, reviewed
-        defacer = None if block is None else CtDefacer(block, dataset)
+        defacer = (
+            None
+            if defacing is None or defacing.block is None
+            else CtDefacer(defacing.block, dataset, defacing.targets)
+        )
         if approved is not None:
             return (
                 black_out_reviewed(
@@ -1938,6 +1994,7 @@ def _written(
             removed=writing.removed,
             replacements=writing.replacements,
             transfer_syntax=writing.transfer_syntax,
+            removed_items=writing.removed_items,
         )
         data = write_file_bytes(
             data_set,
@@ -1955,7 +2012,14 @@ def _written(
         verify_preservation(source, output, writing.expectations)
     except PreservationFailed as failed:
         raise _Refused(failed.reason) from None
-    if lost_requirements(source, output, iod, frozenset(writing.replacements)):
+    if lost_requirements(
+        source,
+        output,
+        iod,
+        frozenset(writing.replacements),
+        writing.removed_items,
+        writing.emptied,
+    ):
         raise _Refused(TransformReason.REQUIRED_ATTRIBUTE_LOST)
     if redaction is not None:
         if redaction_problem(source, output, redaction):
@@ -2031,6 +2095,74 @@ def _contour_digest(writing: WriterPlan, dataset: pydicom.Dataset) -> bytes | No
         return None
 
 
+def _grid_digest(writing: WriterPlan, dataset: pydicom.Dataset) -> bytes | None:
+    """Return the SHA-256 of the deformation grids that the writer's plan
+    writes.
+
+    As :func:`~.face_review.grid_data_sha256` gives it of the file written,
+    each sequence and element of a grid being the plan's replacement, or
+    the source's where the plan keeps it; None where a value cannot be read.
+    """
+    sequence = _tag_text(DEFORMABLE_REGISTRATION_SEQUENCE)
+    grid_sequence = _tag_text(DEFORMABLE_REGISTRATION_GRID_SEQUENCE)
+    planned = pydicom.Dataset()
+    top = ElementPath((), sequence)
+    try:
+        if top in writing.replacements:
+            planned.add(writing.replacements[top])
+        elif top in writing.kept and DEFORMABLE_REGISTRATION_SEQUENCE in dataset:
+            items = []
+            for index, item in enumerate(
+                dataset[DEFORMABLE_REGISTRATION_SEQUENCE].value
+            ):
+                within = ((sequence, index),)
+                written = pydicom.Dataset()
+                path = ElementPath(within, grid_sequence)
+                if path in writing.replacements:
+                    written.add(writing.replacements[path])
+                elif (
+                    path in writing.kept
+                    and DEFORMABLE_REGISTRATION_GRID_SEQUENCE in item
+                ):
+                    written[DEFORMABLE_REGISTRATION_GRID_SEQUENCE] = (
+                        pydicom.DataElement(
+                            DEFORMABLE_REGISTRATION_GRID_SEQUENCE,
+                            "SQ",
+                            _planned_grids(writing, item, path),
+                        )
+                    )
+                items.append(written)
+            planned[DEFORMABLE_REGISTRATION_SEQUENCE] = pydicom.DataElement(
+                DEFORMABLE_REGISTRATION_SEQUENCE, "SQ", items
+            )
+        return grid_data_sha256(planned)
+    # pydicom raises many types for an item it cannot read, and the digest
+    # raises ValueError for a grid that it cannot.
+    except Exception:  # pylint: disable = broad-exception-caught
+        return None
+
+
+def _planned_grids(
+    writing: WriterPlan, item: pydicom.Dataset, path: ElementPath
+) -> list[pydicom.Dataset]:
+    """The items of a kept Deformable Registration Grid Sequence, at
+    ``path``, in an item of the Deformable Registration Sequence, each with
+    the grid's elements that the writer's plan writes."""
+    grids = []
+    for number, grid in enumerate(
+        item[DEFORMABLE_REGISTRATION_GRID_SEQUENCE].value or ()
+    ):
+        placed = pydicom.Dataset()
+        for tag in GRID_TAGS:
+            leaf = ElementPath((*path.items, (path.tag, number)), _tag_text(tag))
+            if leaf in writing.replacements:
+                placed.add(writing.replacements[leaf])
+            elif leaf in writing.kept and tag in grid:
+                placed.add(grid[tag])
+        grids.append(placed)
+    return grids
+
+
 def _with_cut_contours(
     writing: WriterPlan,
     source: SourceEvidence,
@@ -2094,6 +2226,8 @@ def _with_cut_contours(
         replacements,
         frozenset(introduced),
         writing.transfer_syntax,
+        writing.removed_items,
+        writing.emptied,
     )
 
 

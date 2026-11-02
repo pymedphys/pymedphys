@@ -69,6 +69,19 @@ def _outcome(*others: bytes, slices: tuple[bytes, ...] | None = None) -> SeriesD
     return outcome
 
 
+# A series defaced around a target that reaches its block.
+_AROUND = "defaced-around-a-target"
+
+
+def _fate(outcome: SeriesDefacing) -> FaceBlockProblem | SeriesProblem | str | None:
+    """Why a series is not defaced, :data:`_AROUND` where it is defaced
+    around a target in its block, or None where it is defaced keeping no
+    target there."""
+    if outcome.problem is not None:
+        return outcome.problem
+    return _AROUND if outcome.targets.in_block else None
+
+
 def test_a_head_ct_series_has_its_face_block():
     outcome = _outcome()
 
@@ -150,13 +163,15 @@ def test_compressed_slices_are_not_defaced():
 
 
 @pytest.mark.parametrize("kind", ["PTV", "CTV", "GTV", "PTV "])
-def test_a_target_with_a_point_in_the_block_holds_the_series(kind):
+def test_a_target_with_a_point_in_the_block_is_defaced_around(kind):
     rtss = files.structure_set([(kind, files.square(_EYES_FRONT[0]))])
 
     outcome = _outcome(rtss)
 
-    assert outcome.problem is SeriesProblem.TARGET_IN_BLOCK
-    assert outcome.held
+    assert _fate(outcome) == _AROUND
+    assert not outcome.held
+    (hull,) = outcome.targets.hulls
+    assert hull.contains(files.square(_EYES_FRONT[0])).all()
 
 
 @pytest.mark.parametrize(
@@ -170,7 +185,7 @@ def test_a_target_with_a_point_in_the_block_holds_the_series(kind):
     ids=["organ", "external", "target-behind", "no-type"],
 )
 def test_other_rois_and_targets_outside_the_block_leave_the_series_defaced(rois):
-    assert _outcome(files.structure_set(rois)).problem is None
+    assert _fate(_outcome(files.structure_set(rois))) is None
 
 
 def test_a_target_in_another_frame_of_reference_leaves_the_series_defaced():
@@ -178,7 +193,7 @@ def test_a_target_in_another_frame_of_reference_leaves_the_series_defaced():
         [("PTV", files.square(_EYES_FRONT[0]))], frame=files.ROOT + ".8"
     )
 
-    assert _outcome(rtss).problem is None
+    assert _fate(_outcome(rtss)) is None
 
 
 def test_a_structure_set_that_cannot_be_read_holds_the_series():
@@ -207,13 +222,15 @@ def test_counts_are_by_series_and_reason():
     counts.record(
         [
             _outcome(),
+            _outcome(files.structure_set([("PTV", files.square(_EYES_FRONT[0]))])),
             SeriesDefacing(None, FaceBlockProblem.NO_EYES),
             SeriesDefacing(None, FaceBlockProblem.NO_EYES),
             SeriesDefacing(None, SeriesProblem.TARGET_IN_BLOCK),
         ]
     )
 
-    assert counts.defaced == 1
+    assert counts.defaced == 2
+    assert counts.around_targets == 1
     assert counts.not_defaced == {
         FaceBlockProblem.NO_EYES: 2,
         SeriesProblem.TARGET_IN_BLOCK: 1,
@@ -227,7 +244,7 @@ def test_a_series_has_a_block_or_a_problem():
 
 def test_a_defaced_series_has_its_frame_of_reference_and_no_other_does():
     outcome = _outcome()
-    held = _outcome(files.structure_set([("PTV", files.square(_EYES_FRONT[0]))]))
+    held = _outcome(_mixed("target"))
 
     assert outcome.frame == files.FRAME
     assert held.frame is None
@@ -248,6 +265,9 @@ def test_a_defaced_series_has_its_frame_of_reference_and_no_other_does():
         SeriesDefacing(outcome.block, None, "")
     with pytest.raises(ValueError, match="Frame of Reference UID"):
         SeriesDefacing(None, FaceBlockProblem.NO_EYES, files.FRAME)
+    around = _outcome(files.structure_set([("PTV", files.square(_EYES_FRONT[0]))]))
+    with pytest.raises(ValueError, match="keeps targets"):
+        SeriesDefacing(None, FaceBlockProblem.NO_EYES, None, around.targets)
 
 
 def test_a_records_frames_are_its_own_and_its_structure_sets():
@@ -420,6 +440,133 @@ def test_padding_in_the_block_is_kept():
     assert not (mask.mask & padded).any()
 
 
+# Writing air around the targets.
+
+# A PTV at the front of the patient's right globe, 4 mm square, drawn at
+# 20 mm, between the series' slices at 18 and 21 mm.
+_TARGET = files.square(_EYES_FRONT[0])
+
+
+@pytest.mark.parametrize(
+    ("keyword", "value", "held"),
+    [
+        ("ContourSlabThickness", 10.0, True),
+        ("ContourOffsetVector", [0.0, 0.0, 6.0], True),
+        ("ContourSlabThickness", None, False),
+        ("ContourOffsetVector", None, False),
+    ],
+    ids=["thickness", "offset", "empty-thickness", "empty-offset"],
+)
+def test_a_target_in_a_slab_holds_the_series(keyword, value, held):
+    rtss = pydicom.dcmread(io.BytesIO(files.structure_set([("PTV", _TARGET)])))
+    (contour,) = rtss.ROIContourSequence[0].ContourSequence
+    setattr(contour, keyword, value)
+
+    # A slab, retired in PS3.3, lies off the contour's points, which alone
+    # place the target, so the region to keep is unknown: the series is
+    # held, as it was before targets were kept. An empty value is no slab.
+    outcome = _outcome(files.written(rtss))
+
+    assert _fate(outcome) == (SeriesProblem.TARGET_IN_BLOCK if held else _AROUND)
+
+
+def _meets_target(points: np.ndarray, centre=_EYES_FRONT[0]) -> np.ndarray:
+    """Whether each pixel's 2 mm square meets the target's 4 mm square
+    about ``centre``, from the two squares' half widths alone."""
+    return (np.abs(points[..., 0] - centre[0]) <= 2 + 1) & (
+        np.abs(points[..., 1] - centre[1]) <= 2 + 1
+    )
+
+
+def test_the_pixels_that_a_target_reaches_are_kept_and_the_rest_written_as_air():
+    outcome = _outcome(files.structure_set([("PTV", _TARGET)]))
+    # The slices lie 3 mm apart, so each pixel stands for 1.5 mm to either
+    # side: the slice at 21 mm reaches the target at 20 mm, and that at
+    # 18 mm does not.
+    assert outcome.targets.depth == 1.5
+    scan, dataset, stored = _slice_at(21.0)
+    meets = _meets_target(scan.points(0))
+
+    plain = CtDefacer(outcome.block, dataset).mask(0, stored).mask
+    around = CtDefacer(outcome.block, dataset, outcome.targets).mask(0, stored).mask
+
+    # The nine pixels, all in the block and written as air without the
+    # target, are kept, and nothing else changes.
+    assert np.count_nonzero(meets) == 9
+    assert plain[meets].all()
+    assert np.array_equal(around, plain & ~meets)
+    _, below, stored_below = _slice_at(18.0)
+    np.testing.assert_array_equal(
+        CtDefacer(outcome.block, below, outcome.targets).mask(0, stored_below).mask,
+        CtDefacer(outcome.block, below).mask(0, stored_below).mask,
+    )
+
+
+def test_only_the_targets_that_may_reach_the_block_are_kept():
+    behind = _outcome(files.structure_set([("PTV", files.square((0, 0, 40)))]))
+    both = _outcome(
+        files.structure_set(
+            [("PTV", _TARGET), ("CTV", files.square((0, 0, 40))), ("GTV", _TARGET)]
+        )
+    )
+
+    assert behind.problem is None
+    assert behind.targets.hulls == ()
+    assert not behind.targets.in_block
+    # Each target has a hull of its own.
+    assert len(both.targets.hulls) == 2
+    assert both.targets.in_block
+
+
+@pytest.mark.parametrize(
+    ("centre", "held"),
+    [
+        # Within 1.5 mm of the top slice, at 120 mm.
+        ((-32.0, -76.0, 121.0), False),
+        # Beyond it.
+        ((-32.0, -76.0, 122.0), True),
+        # Beyond the pixels' squares at the patient's right, at -101 mm.
+        ((-100.0, -76.0, 21.0), True),
+        ((-98.5, -76.0, 21.0), False),
+    ],
+    ids=["above-within", "above-beyond", "beside-beyond", "beside-within"],
+)
+def test_a_target_reaching_the_block_beyond_the_slices_holds_the_series(centre, held):
+    outcome = _outcome(files.structure_set([("PTV", files.square(centre))]))
+
+    # No preview of the series could show what the run would keep there.
+    assert _fate(outcome) == (SeriesProblem.TARGET_IN_BLOCK if held else _AROUND)
+
+
+def test_the_slices_keep_a_target_s_pixels_for_its_frame_even_as_padding():
+    # A target in the air before the face, which the slices pad.
+    centre = (-32.0, -100.0, 20.0)
+    slices = tuple(files.ct_files(_SCAN, head.Head(noise=0.0), padding=-2000))
+    outcome = _outcome(
+        files.structure_set([("PTV", files.square(centre))]), slices=slices
+    )
+    index = [round(each[2], 6) for each in _SCAN.positions].index(21.0)
+
+    found = face_blocks.kept_slices(
+        outcome.block, range(len(slices)), lambda p: slices[p], outcome.targets
+    )
+    without = face_blocks.kept_slices(
+        outcome.block, range(len(slices)), lambda p: slices[p]
+    )
+
+    (slice_21,) = [each for each in found if each.position[2] == 21.0]
+    (plain_21,) = [each for each in without if each.position[2] == 21.0]
+    meets = _meets_target(_SCAN.points(index), centre)
+    stored = pydicom.dcmread(io.BytesIO(slices[index])).pixel_array
+    assert np.count_nonzero(meets) == 9
+    assert (stored[meets] == -2000).all()
+    # An RT Dose, PET image, or Segmentation keeps what lies on them, which
+    # padding alone would not keep.
+    assert slice_21.kept[meets].all()
+    assert not plain_21.kept[meets].any()
+    np.testing.assert_array_equal(slice_21.kept & ~meets, plain_21.kept)
+
+
 def test_a_slice_below_the_block_has_no_mask():
     block = _outcome().block
     _, dataset, stored = _slice_at(-30.0)
@@ -532,7 +679,7 @@ def test_a_series_without_a_frame_of_reference_is_not_defaced():
     assert _outcome(slices=slices).problem is SeriesProblem.UNREADABLE
 
 
-def test_a_target_that_names_no_frame_of_reference_holds_the_series():
+def test_a_target_that_names_no_frame_of_reference_is_defaced_around():
     def unnamed(dataset):
         dataset.StructureSetROISequence[0].ReferencedFrameOfReferenceUID = ""
 
@@ -541,10 +688,10 @@ def test_a_target_that_names_no_frame_of_reference_holds_the_series():
     )
     unnamed(rtss)
 
-    assert _outcome(files.written(rtss)).problem is SeriesProblem.TARGET_IN_BLOCK
+    assert _fate(_outcome(files.written(rtss))) == _AROUND
 
 
-def test_a_target_in_a_structure_set_that_names_no_frame_holds_the_series():
+def test_a_target_in_a_structure_set_that_names_no_frame_is_defaced_around():
     rtss = pydicom.dcmread(
         io.BytesIO(files.structure_set([("PTV", files.square(_EYES_FRONT[0]))]))
     )
@@ -553,7 +700,7 @@ def test_a_target_in_a_structure_set_that_names_no_frame_holds_the_series():
     data = files.written(rtss)
 
     assert not face_blocks.frames_of(InstanceRecord.from_file(data))
-    assert _outcome(data).problem is SeriesProblem.TARGET_IN_BLOCK
+    assert _fate(_outcome(data)) == _AROUND
 
 
 # A block of the points with y < 0 and z > 0.
@@ -598,7 +745,7 @@ def test_a_target_reaches_the_block_where_the_hull_of_its_contours_does():
     assert reaches(_CORNER, np.array([(0.0, 2e6, -10.0)]))
 
 
-def test_two_target_contours_with_the_block_between_them_hold_the_series():
+def test_two_target_contours_with_the_block_between_them_are_defaced_around():
     block = _outcome().block
     x, y, _ = block.origin
     ax, ay, _ = block.anterior
@@ -618,12 +765,18 @@ def test_two_target_contours_with_the_block_between_them_hold_the_series():
     data.ROIContourSequence[0].ContourSequence.append(contour)
 
     assert not block.contains(np.concatenate([below, behind])).any()
-    assert _outcome(rtss).problem is None
-    assert _outcome(files.structure_set([("PTV", behind)])).problem is None
-    assert _outcome(files.written(data)).problem is SeriesProblem.TARGET_IN_BLOCK
+    assert _fate(_outcome(rtss)) is None
+    assert _fate(_outcome(files.structure_set([("PTV", behind)]))) is None
+    outcome = _outcome(files.written(data))
+    assert _fate(outcome) == _AROUND
+    # The hull holds what lies between the two contours, in the block.
+    (hull,) = outcome.targets.hulls
+    middle = np.mean([below, behind], axis=0)
+    assert block.contains(middle).any()
+    assert hull.contains(middle).all()
 
 
-def test_a_sagittal_target_crossing_the_block_between_its_vertices_holds_the_series():
+def test_a_sagittal_target_crossing_the_block_between_its_vertices_is_defaced_around():
     block = _outcome().block
     x, y, _ = block.origin
     ax, ay, _ = block.anterior
@@ -640,8 +793,8 @@ def test_a_sagittal_target_crossing_the_block_between_its_vertices_holds_the_ser
     assert not block.contains(triangle).any()
     assert block.contains(corner + 4.5 * (ahead + up))
     outcome = _outcome(files.structure_set([("PTV", triangle)]))
-    assert outcome.problem is SeriesProblem.TARGET_IN_BLOCK
-    assert outcome.held
+    assert _fate(outcome) == _AROUND
+    assert outcome.targets.contains(corner + 4.5 * (ahead + up))
 
 
 @pytest.mark.parametrize(
@@ -666,7 +819,7 @@ def test_a_structure_set_in_another_frame_drawn_on_the_series_slices(rois, held)
     assert _outcome(unreferenced).problem is None
     # Its contours cannot be placed without a registration, so any target
     # in it holds the series.
-    assert _outcome(drawn).problem is (SeriesProblem.TARGET_IN_BLOCK if held else None)
+    assert _fate(_outcome(drawn)) is (SeriesProblem.TARGET_IN_BLOCK if held else None)
 
 
 def _slice_image() -> pydicom.Dataset:
@@ -746,13 +899,13 @@ def test_a_target_in_another_frame_holds_the_series_only_if_tied_to_its_slices(
     # A target in another frame cannot be placed without a registration, so
     # one tied to the series' slices holds it even though another ROI of
     # the set is in its frame, and one of another scan does not.
-    assert _outcome(rtss).problem is (SeriesProblem.TARGET_IN_BLOCK if held else None)
+    assert _fate(_outcome(rtss)) is (SeriesProblem.TARGET_IN_BLOCK if held else None)
 
 
 def test_an_untied_target_in_another_frame_does_not_hold_the_series_from_the_block():
     # Its coordinates are of another frame, so its being where the series'
-    # block would be says nothing.
-    assert _outcome(_mixed("none", _EYES_FRONT[0])).problem is None
+    # block would be says nothing, and nothing is kept for it.
+    assert _fate(_outcome(_mixed("none", _EYES_FRONT[0]))) is None
     assert _outcome(_mixed("target", _EYES_FRONT[0])).problem is (
         SeriesProblem.TARGET_IN_BLOCK
     )
@@ -786,7 +939,7 @@ def test_a_target_naming_no_frame_in_a_set_in_another_frame_drawn_on_the_slices(
     ]
 
     # Its hull misses the block, and it may be in the set's frame.
-    assert _outcome(unreferenced).problem is None
+    assert _fate(_outcome(unreferenced)) is None
     assert _outcome(files.written(rtss)).problem is SeriesProblem.TARGET_IN_BLOCK
 
 
@@ -796,7 +949,7 @@ def test_a_target_naming_no_frame_tied_only_by_its_frame_images_holds_the_series
     unreferenced = files.written(rtss)
     _frame_images(rtss.ReferencedFrameOfReferenceSequence[0])
 
-    assert _outcome(unreferenced).problem is None
+    assert _fate(_outcome(unreferenced)) is None
     assert _outcome(files.written(rtss)).problem is SeriesProblem.TARGET_IN_BLOCK
 
 
@@ -815,7 +968,7 @@ def test_a_target_naming_no_frame_holds_the_series_where_another_frame_is_tied()
     untied = files.written(rtss)
     _frame_images(other)
 
-    assert _outcome(untied).problem is None
+    assert _fate(_outcome(untied)) is None
     assert _outcome(files.written(rtss)).problem is SeriesProblem.TARGET_IN_BLOCK
 
 
@@ -831,7 +984,7 @@ def _not_a_uid(roi: pydicom.Dataset) -> None:
     "malformed",
     ["several-frames", "not-a-uid", "repeated-roi-number"],
 )
-def test_a_target_in_the_block_with_a_malformed_frame_holds_the_series(malformed):
+def test_a_target_in_the_block_with_a_malformed_frame_is_defaced_around(malformed):
     rtss = pydicom.dcmread(
         io.BytesIO(files.structure_set([("PTV", files.square(_EYES_FRONT[0]))]))
     )
@@ -850,9 +1003,9 @@ def test_a_target_in_the_block_with_a_malformed_frame_holds_the_series(malformed
         repeated.ROIGenerationAlgorithm = "MANUAL"
         rtss.StructureSetROISequence.append(repeated)
 
-    # It may be in the series' frame, so its hull is judged, and reaches
-    # the block.
-    assert _outcome(files.written(rtss)).problem is SeriesProblem.TARGET_IN_BLOCK
+    # It may be in the series' frame, so its hull is kept, and reaches the
+    # block.
+    assert _fate(_outcome(files.written(rtss))) == _AROUND
 
 
 def test_a_structure_set_naming_frames_that_are_not_uids_is_searched_as_frameless():
@@ -864,7 +1017,7 @@ def test_a_structure_set_naming_frames_that_are_not_uids_is_searched_as_frameles
     data = files.written(rtss)
 
     assert face_blocks.frames_of(InstanceRecord.from_file(data)) == {"FRAME"}
-    assert _outcome(data).problem is SeriesProblem.TARGET_IN_BLOCK
+    assert _fate(_outcome(data)) == _AROUND
 
 
 def test_a_malformed_frame_tied_to_the_slices_holds_the_series_from_behind():
@@ -880,7 +1033,7 @@ def test_a_malformed_frame_tied_to_the_slices_holds_the_series_from_behind():
     untied = files.written(rtss)
     _frame_images(rtss.ReferencedFrameOfReferenceSequence[0])
 
-    assert _outcome(untied).problem is None
+    assert _fate(_outcome(untied)) is None
     assert _outcome(files.written(rtss)).problem is SeriesProblem.TARGET_IN_BLOCK
 
 
@@ -904,12 +1057,13 @@ def _repeated(roi: pydicom.Dataset, frame: str) -> pydicom.Dataset:
         "undeclared",
     ],
 )
-def test_a_target_in_the_block_in_a_set_of_another_frame_holds_where_its_frame_is_unsure(
+def test_a_target_in_the_block_in_a_set_of_another_frame_is_kept_where_its_frame_is_unsure(
     frame,
 ):
     # The set declares only another frame, and is not tied to the series'
     # slices, but the target's own frame does not say that it is in that
-    # frame, so it may be in the series', where its hull reaches the block.
+    # frame, so it may be in the series', where its hull reaches the block
+    # and is kept.
     elsewhere = files.ROOT + ".8"
     rtss = _elsewhere_only([("PTV", files.square(_EYES_FRONT[0]))])
     (roi,) = rtss.StructureSetROISequence
@@ -930,11 +1084,11 @@ def test_a_target_in_the_block_in_a_set_of_another_frame_holds_where_its_frame_i
 
     assert files.FRAME not in face_blocks.frames_of(InstanceRecord.from_file(data))
     assert elsewhere in face_blocks.frames_of(InstanceRecord.from_file(data))
-    assert _outcome(data).problem is SeriesProblem.TARGET_IN_BLOCK
+    assert _fate(_outcome(data)) == _AROUND
 
 
 @pytest.mark.parametrize(
-    ("declarations", "held"),
+    ("declarations", "kept"),
     [
         ([["B"]], False),
         ([["B", "C"]], True),
@@ -944,12 +1098,13 @@ def test_a_target_in_the_block_in_a_set_of_another_frame_holds_where_its_frame_i
     ids=["one", "several", "repeated", "several-and-one"],
 )
 def test_only_a_frame_declared_alone_makes_a_target_in_the_block_certain(
-    declarations, held
+    declarations, kept
 ):
     # The target names frame B, and the set is not tied to the series'
     # slices. A declaration of B among other values may be B, so it does
     # not make the target certainly B's: it may be in the series' frame,
-    # where its hull reaches the block, unless B is also declared alone.
+    # where its hull reaches the block and is kept, unless B is also
+    # declared alone.
     labels = {"B": files.ROOT + ".8", "C": files.ROOT + ".11"}
     rtss = _elsewhere_only([("PTV", files.square(_EYES_FRONT[0]))])
     (declared,) = rtss.ReferencedFrameOfReferenceSequence
@@ -959,8 +1114,7 @@ def test_only_a_frame_declared_alone_makes_a_target_in_the_block_certain(
         values = [labels[frame] for frame in frames]
         item.FrameOfReferenceUID = values[0] if len(values) == 1 else values
 
-    held_as = _outcome(files.written(rtss)).problem
-    assert held_as is (SeriesProblem.TARGET_IN_BLOCK if held else None)
+    assert _fate(_outcome(files.written(rtss))) == (_AROUND if kept else None)
 
 
 @pytest.mark.parametrize(
@@ -1011,9 +1165,9 @@ def test_a_set_of_another_frame_is_searched_for_an_unsure_target_by_patient(
     # Its frames are not the series' and it is not drawn on the series'
     # slices, so it is searched only where it may be the same patient's:
     # only two Patient IDs that differ once trimmed and case-folded tell
-    # them apart, whatever the issuers.
-    held = _outcome(files.written(rtss), slices=slices).problem
-    assert held is (SeriesProblem.TARGET_IN_BLOCK if searched else None)
+    # them apart, whatever the issuers. A target searched for is kept.
+    found = _fate(_outcome(files.written(rtss), slices=slices))
+    assert found == (_AROUND if searched else None)
 
 
 def _unsure_elsewhere(patient: str) -> bytes:
@@ -1035,9 +1189,9 @@ def _patient(patient: str):
 
 
 def test_a_series_slice_naming_no_patient_searches_a_set_of_another_frame():
-    held = _outcome(_unsure_elsewhere("H2"), slices=_changed(_set("PatientID", "")))
+    found = _outcome(_unsure_elsewhere("H2"), slices=_changed(_set("PatientID", "")))
 
-    assert held.problem is SeriesProblem.TARGET_IN_BLOCK
+    assert _fate(found) == _AROUND
 
 
 @pytest.mark.parametrize(
@@ -1083,9 +1237,9 @@ def test_a_patient_id_other_than_plain_ascii_differs_from_none(
     else:
         slices = _changed(_patient(series), every=True)
 
-    held = _outcome(_unsure_elsewhere(structure_set), slices=slices)
+    found = _outcome(_unsure_elsewhere(structure_set), slices=slices)
 
-    assert held.problem is SeriesProblem.TARGET_IN_BLOCK
+    assert _fate(found) == _AROUND
 
 
 @pytest.mark.parametrize(
@@ -1101,9 +1255,9 @@ def test_a_set_of_another_frame_is_searched_for_the_patient_of_any_slice(
         for index, data in enumerate(_head_files())
     )
 
-    held = _outcome(_unsure_elsewhere(patient), slices=slices).problem
+    found = _fate(_outcome(_unsure_elsewhere(patient), slices=slices))
 
-    assert held is (SeriesProblem.TARGET_IN_BLOCK if searched else None)
+    assert found == (_AROUND if searched else None)
 
 
 def _with_patient(data: bytes, patient: str) -> pydicom.Dataset:
