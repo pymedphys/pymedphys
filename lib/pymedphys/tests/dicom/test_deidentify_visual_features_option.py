@@ -48,6 +48,7 @@ from pymedphys._dicom.deidentify import (
 )
 from pymedphys._dicom.deidentify import synthetic_corpus as corpus_module
 from pymedphys._dicom.deidentify.dose_defacing import RT_DOSE
+from pymedphys._dicom.deidentify.face_blocks import FaceBlockCounts, SeriesProblem
 from pymedphys._dicom.deidentify.face_review import (
     DOSE_IN_FACE_BLOCK_TEXT,
     UNDEFACED_TEXT,
@@ -698,17 +699,29 @@ def test_the_statement_names_each_supported_iod_that_lacks_the_attribute():
         "RT Plan",
         "RT Structure Set",
         "RT Beams Treatment Record",
+        "RT Ion Plan",
+        "RT Ion Beams Treatment Record",
+        "RT Brachy Treatment Record",
+        "RT Treatment Summary Record",
         "MR Spectroscopy",
         "Spatial Registration",
         "Deformable Spatial Registration",
         "X-Ray Radiation Dose SR",
         "Radiopharmaceutical Radiation Dose SR",
+        "Basic Text SR",
+        "Enhanced SR",
+        "Comprehensive SR",
+        "Comprehensive 3D SR",
+        "Extensible SR",
     }
     assert (
         "which of the supported IODs are RT Plan, RT Structure Set, RT Beams "
-        "Treatment Record, MR Spectroscopy, Spatial Registration, Deformable "
-        "Spatial Registration, X-Ray Radiation Dose SR, and Radiopharmaceutical "
-        "Radiation Dose SR"
+        "Treatment Record, RT Ion Plan, RT Ion Beams Treatment Record, RT "
+        "Brachy Treatment Record, RT Treatment Summary Record, MR "
+        "Spectroscopy, Spatial Registration, Deformable Spatial Registration, "
+        "X-Ray Radiation Dose SR, Radiopharmaceutical Radiation Dose SR, Basic "
+        "Text SR, Enhanced SR, Comprehensive SR, Comprehensive 3D SR, and "
+        "Extensible SR."
     ) in conformance_markdown.render_markdown(
         conformance.conformance_statement(_policy(), vocabulary=None)
     )
@@ -784,7 +797,11 @@ def test_the_report_names_the_reviewed_pack_by_its_reference():
 
     assert document["face_review"] == {
         "reference": REFERENCE,
-        "ct_series": {"defaced": 0, "not_defaced": []},
+        "ct_series": {
+            "defaced": 0,
+            "defaced_around_targets": 0,
+            "not_defaced": [],
+        },
     }
     assert document["held_for_review"] == [
         {"stage": "visual-features", "code": "no-face-verdict", "count": 1}
@@ -792,6 +809,42 @@ def test_the_report_names_the_reviewed_pack_by_its_reference():
     text = release_report_markdown.to_markdown(release_report.to_json(report))
     assert "## Face review" in text
     assert f"`{REFERENCE}`" in text
+
+
+def test_the_report_counts_the_series_defaced_around_targets():
+    counts = FaceBlockCounts(
+        defaced=3, not_defaced={SeriesProblem.TARGET_IN_BLOCK: 1}, around_targets=2
+    )
+    report = release_report.release_report(
+        _policy(),
+        vocabulary=None,
+        reviewed_roi_names=None,
+        face_review=REFERENCE,
+        face_blocks=counts,
+    )
+
+    assert release_report.report_document(report)["face_review"]["ct_series"] == {
+        "defaced": 3,
+        "defaced_around_targets": 2,
+        "not_defaced": [{"reason": "target-in-block", "count": 1}],
+    }
+    text = release_report_markdown.to_markdown(release_report.to_json(report))
+    assert "the run kept a target's region" in text
+    assert "`2`" in text
+
+
+@pytest.mark.parametrize("around", [-1, 4, 1.0, True])
+def test_the_report_refuses_a_count_around_targets_beyond_the_series_defaced(around):
+    report = release_report.release_report(
+        _policy(),
+        vocabulary=None,
+        reviewed_roi_names=None,
+        face_review=REFERENCE,
+        face_blocks=FaceBlockCounts(defaced=3, around_targets=around),
+    )
+
+    with pytest.raises(ValueError, match="defaced_around_targets"):
+        release_report.report_document(report)
 
 
 def test_a_report_without_a_face_review_has_none():
@@ -825,6 +878,10 @@ _FACELESS = (
     "14-mr-spectroscopy.dcm",
     "18-registration.dcm",
     "20-rt-beams-record.dcm",
+    "47-rt-ion-plan.dcm",
+    "48-rt-ion-beams-record.dcm",
+    "49-rt-brachy-record.dcm",
+    "50-rt-treatment-summary-record.dcm",
 )
 
 
@@ -883,8 +940,8 @@ def _first_run():
                 by_first[_CT[0]]["positions"][0]: Face.ABSENT,
                 by_first[_STRUCTURE_SET]["positions"][0]: Face.ABSENT,
                 by_first[_DOSE[0]]["positions"][0]: Face.PRESENT,
-                # No preview shows its grid, so this verdict releases none
-                # of it.
+                # Its grid sheets show its grid, so this verdict releases
+                # the grid that the first run wrote.
                 by_first[_DEFORMABLE]["positions"][0]: Face.ABSENT,
             },
         )
@@ -945,9 +1002,10 @@ def _codes(dataset):
 def test_a_series_marked_absent_is_released_with_the_option(second_run):
     _, outcomes, _, _ = second_run
 
-    # The RT Structure Set's IOD does not define the attribute, but E.3.2
-    # adds it with the option's code all the same.
-    for name in (*_CT, _STRUCTURE_SET):
+    # The RT Structure Set's and the Deformable Spatial Registration's IODs
+    # do not define the attribute, but E.3.2 adds it with the option's code
+    # all the same.
+    for name in (*_CT, _STRUCTURE_SET, _DEFORMABLE):
         disposition, dataset = outcomes[name]
         assert disposition == "released", name
         assert dataset.RecognizableVisualFeatures == "NO"
@@ -960,13 +1018,13 @@ def test_every_other_instance_that_can_show_a_face_is_held(second_run):
     can_show = {
         name
         for name in outcomes
-        if name not in (*_CT, _STRUCTURE_SET)
+        if name not in (*_CT, _STRUCTURE_SET, _DEFORMABLE)
         and name != corpus_module.SEQUESTERED_FILE
         and name not in _FACELESS
         and name not in corpus_module.STRUCTURED_REPORT_FILES
     }
 
-    assert can_show >= {*_DOSE, _DEFORMABLE}
+    assert can_show >= set(_DOSE)
     # The reports cannot show a face, and their Content Sequence sequesters
     # them, as it does without the option (D-021).
     for name in corpus_module.STRUCTURED_REPORT_FILES:
@@ -1015,12 +1073,10 @@ def test_with_clean_pixel_data_a_verdict_covers_only_the_pixel_data_seen(
     assert blacked_out in reasons[_DOSE[0]]
     assert HeldVisualFeatures(VisualFeaturesReason.FACE_PRESENT) in reasons[_DOSE[0]]
     # What has no pixel data is released, and claims both options, since
-    # it has nothing for Clean Pixel Data to clean, but for the deformable
-    # registration, whose grid no preview shows.
-    assert reasons[_DEFORMABLE] == {
-        HeldVisualFeatures(VisualFeaturesReason.NO_FACE_VERDICT)
-    }
-    released = (_STRUCTURE_SET, *_FACELESS)
+    # it has nothing for Clean Pixel Data to clean; the deformable
+    # registration too, whose grid its verdict covers, as the grid sheets
+    # showed it.
+    released = (_STRUCTURE_SET, _DEFORMABLE, *_FACELESS)
     for name in released:
         disposition, dataset = outcomes[name]
         assert disposition == "released", name
@@ -1049,7 +1105,7 @@ def test_the_report_names_the_attested_pack(second_run):
     attestation, _, report, _ = second_run
 
     assert report["face_review"]["reference"] == attestation.reference
-    assert report["format"] == "pymedphys-deid-release-report/40"
+    assert report["format"] == "pymedphys-deid-release-report/45"
 
 
 def test_the_report_counts_the_ct_series_that_were_not_defaced(second_run):
@@ -1061,6 +1117,7 @@ def test_the_report_counts_the_ct_series_that_were_not_defaced(second_run):
     # read as slices.
     assert report["face_review"]["ct_series"] == {
         "defaced": 0,
+        "defaced_around_targets": 0,
         "not_defaced": [
             {"reason": "no-eyes", "count": 1},
             {"reason": "unreadable", "count": 2},

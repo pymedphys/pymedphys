@@ -30,7 +30,10 @@ kept value does not, wherever the option explains it:
 - :func:`retained_value`: a finding, of text, a date, or a datetime, that
   equals a whole value of a date, time, or datetime attribute that a
   selected option keeps, from any other source, where each other pooled
-  value of the source that the search could find there does too.
+  value of the source that the search could find there does too; in a
+  kept date, a datetime counts as equal where its date does, since the
+  search also looks for a datetime by its date, and the text it then finds
+  is the whole kept date, which holds no time.
 
 An attribute is kept under a set of options where one of them gives it K
 and the Basic Profile does not, and no other gives it an action of its own
@@ -185,7 +188,13 @@ def retained_value(
         pinned dictionary gives only VRs of dates, times, and datetimes,
         ``source`` is another element, one of the source's values is a
         whole value of the element, and each other value of the source that
-        the search could have found in the element is one too. Values are
+        the search could have found in the element is one too. In an
+        element of an attribute that the dictionary gives only VR DA, a
+        value collected as DT whose date, as YYYYMMDD, is a whole value of
+        the element counts as one, such as a vendor's private scan time
+        found by its date in a kept Study Date; its date in another
+        spelling, such as YYYY-MM-DD, does not, nor does it in a kept
+        datetime, such as Acquisition DateTime (0008,002A). Values are
         read as the search reads them, by the VR collected with each: a
         backslash separates the values of a multi-valued VR, but is a
         character of a single-valued one, such as ST. They are found as the
@@ -207,9 +216,10 @@ def retained_value(
         or source == location
     ):
         return False
+    dates = vrs == {"DA"}
     explained = False
     for value in found:
-        for whole in _values_in(value, values, text.encode("ascii").lower()):
+        for whole in _values_in(value, values, text.encode("ascii").lower(), dates):
             if whole is None:
                 return False
             explained = explained or whole
@@ -217,18 +227,21 @@ def retained_value(
 
 
 def _values_in(
-    value: SourceValue, kept: tuple[str, ...], written: bytes
+    value: SourceValue, kept: tuple[str, ...], written: bytes, dates: bool
 ) -> Iterator[bool | None]:
     """Yield, for each value of ``value``, whether ``kept`` explains it.
 
-    True for a value equal to a whole kept value; None for one that is not
-    but that the search could find in ``written``, the kept element's whole
-    value with ASCII letters in lower case; nothing for one that it could
-    not. A value of a kind that a kept date cannot explain is never
-    explained. Each form that the search derives, of at least its shortest
-    length and cut to its longest, is looked for as the search encodes it,
-    in each codec and case, but ignoring the characters around it, which
-    finds at least what the search does.
+    True for a value equal to a whole kept value, or, where ``dates`` says
+    that the kept element is a date, for a datetime whose date, as YYYYMMDD,
+    is; None for one that is not but that the search could find in
+    ``written``, the kept element's whole value with ASCII letters in lower
+    case; nothing for one that it could not. A value of a kind that a kept
+    date cannot explain is never explained. Each form that the search
+    derives, of at least its shortest length and cut to its longest, is
+    looked for as the search encodes it, in each codec and case, but
+    ignoring the characters around it, which finds at least what the search
+    does, so a datetime's date in another spelling, such as YYYY-MM-DD,
+    found in a kept date is not explained.
     """
     kind = _KINDS.get(value.vr)
     if not isinstance(value.value, str) or kind is None:
@@ -239,6 +252,15 @@ def _values_in(
             whole = kind in _EXPLICABLE and bool(text) and text in kept
             if whole:
                 yield True
+        elif (
+            form is Form.DATE_DICOM
+            and dates
+            and kind is ValueKind.DATETIME
+            and text in kept
+        ):
+            # The found text is the whole kept date, which holds no time.
+            yield True
+            continue
         if not whole and _length(text) >= MIN_CHARACTERS:
             # The search looks for a long form by its first characters.
             for _, folded, run in _folded(text[:MAX_CHARACTERS], value.codecs):

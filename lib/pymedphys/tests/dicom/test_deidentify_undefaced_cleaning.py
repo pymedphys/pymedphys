@@ -948,18 +948,26 @@ def _with_slab(structure_set, **attributes):
     return dataset
 
 
+def _targets_reach(dataset, frame, slices, block):
+    # Main now returns target hull points to preserve, rather than a hold flag.
+    points = face_blocks._target_points(dataset, frame, slices)
+    return points is None or any(
+        face_blocks._hull_reaches(block, each) for each in points
+    )
+
+
 def test_a_target_whose_slab_reaches_the_block_reaches_it():
     below = files.structure_set([("PTV", _rectangle(-10, 10, -15, 15, -1.0))])
 
-    assert not face_blocks._targets_reach(_with_slab(below), _FRAME, set(), _BLOCK)
-    assert face_blocks._targets_reach(
+    assert not _targets_reach(_with_slab(below), _FRAME, set(), _BLOCK)
+    assert _targets_reach(
         _with_slab(below, ContourSlabThickness="4"), _FRAME, set(), _BLOCK
     )
-    assert face_blocks._targets_reach(
+    assert _targets_reach(
         _with_slab(below, ContourOffsetVector=["0", "0", "2"]), _FRAME, set(), _BLOCK
     )
     # A slab that cannot be placed may reach it.
-    assert face_blocks._targets_reach(
+    assert _targets_reach(
         _with_slab(below, ContourOffsetVector=["1", "0", "0"]), _FRAME, set(), _BLOCK
     )
 
@@ -974,11 +982,11 @@ def test_a_target_whose_thickness_alone_reaches_the_block_reaches_it(offset):
         below, ContourSlabThickness="4", ContourOffsetVector=["0", "0", offset]
     )
 
-    assert face_blocks._targets_reach(shifted, _FRAME, set(), _BLOCK)
+    assert _targets_reach(shifted, _FRAME, set(), _BLOCK)
     # Below the block by more than half its thickness, no reading reaches it
     # with the offset down.
     deeper = files.structure_set([("PTV", _rectangle(-10, 10, -15, 15, -3.0))])
-    assert face_blocks._targets_reach(
+    assert _targets_reach(
         _with_slab(
             deeper, ContourSlabThickness="4", ContourOffsetVector=["0", "0", offset]
         ),
