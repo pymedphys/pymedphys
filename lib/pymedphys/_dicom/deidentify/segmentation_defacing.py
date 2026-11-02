@@ -21,13 +21,14 @@ the frame of a CT series that a run defaces
 (:mod:`~pymedphys._dicom.deidentify.face_blocks`) can trace the face that
 the CT no longer shows, as a mask of the body or the skin does. A run
 therefore cleans it in the same region as the CT's, the face block less the
-brain that defacing keeps, on the block of the frame's one defaced series
+brain and the targets that defacing keeps, on the block of the frame's one defaced series
 (:class:`~.dose_defacing.DoseBlock`), as
 :class:`~.region_defacing.PetDefacer` sets a PET image to zero activity
 there (:class:`SegmentationDefacer`). A pixel is in the region where its
 centre is in the block, and is kept where the nearest pixel of the nearest
 slice that the block reaches, within half the slices' spacing, is one that
-defacing keeps.
+defacing keeps, or where its centre lies in a kept target's hull
+(:class:`~.target_hulls.KeptTargets`).
 
 Each pixel in the region that lies in a segment is written as the
 segmentation's background, so that it lies in none: 0 for a Segmentation

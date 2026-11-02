@@ -295,24 +295,169 @@ def test_a_ct_image_of_other_units_than_hounsfield_is_rendered_by_otsu():
     assert not _decoded(surface.png).any()
 
 
+def _volume_previews(previews):
+    """Each volume's projection and surface render, in order."""
+    return [
+        preview
+        for preview in previews.previews
+        if preview.kind in (PreviewKind.SERIES_MIP, PreviewKind.SERIES_SURFACE)
+    ]
+
+
+def _each_alone(written, parts, previews):
+    """That each part, by its run positions in ``written``, is a volume of its
+    own, drawn as the part's slices alone are, in order."""
+    found = _volume_previews(previews)
+    assert len(found) == 2 * len(parts)
+    for index, (part, frames) in enumerate(parts):
+        expected = qc_previews.previews_of(part, ())
+        for kind, preview in zip(
+            (PreviewKind.SERIES_MIP, PreviewKind.SERIES_SURFACE),
+            found[2 * index :][:2],
+        ):
+            assert preview.kind is kind
+            assert preview.png == _only(expected, kind).png
+            assert preview.frames == frames
+    assert previews.pixels_shown == frozenset(written)
+
+
 @pytest.mark.pydicom
-def test_single_frame_and_multi_frame_instances_of_a_series_form_one_volume():
-    single = qc_previews.previews_of(_single(), ())
-    slices = _single()
-    lower = {k: slices[k] for k in range(SIDE // 2)}
-    upper = {k: slices[k] for k in range(SIDE // 2, SIDE)}
+def test_single_frame_and_multi_frame_instances_of_a_series_are_volumes_of_their_own():
+    # Interleaved, the multi-frame instance's slices would sit between the
+    # single-frame ones, and one outline could hide the other's.
+    plain = _single()
+    eared = _axial(_body(ear=True))
+    lower = {k: plain[k] for k in range(0, SIDE, 2)}
+    upper = {k: eared[k] for k in range(1, SIDE, 2)}
     written = {**lower, SIDE: _multi_frame(upper)}
 
     previews = qc_previews.previews_of(written, ())
 
+    _each_alone(
+        written,
+        [
+            (lower, tuple((k, 0) for k in range(0, SIDE, 2))),
+            (upper, tuple((SIDE, frame) for frame in range(SIDE // 2))),
+        ],
+        previews,
+    )
+
+
+def _organised(*uids, concatenation=None):
+    """A change that names each Dimension Organization UID, and a
+    Concatenation UID, where given."""
+
+    def changed(dataset):
+        dataset.DimensionOrganizationSequence = []
+        for uid in uids:
+            item = pydicom.Dataset()
+            item.DimensionOrganizationUID = uid
+            dataset.DimensionOrganizationSequence.append(item)
+        if concatenation is not None:
+            dataset.ConcatenationUID = concatenation
+        if not uids:
+            del dataset.DimensionOrganizationSequence
+
+    return changed
+
+
+@pytest.mark.pydicom
+@pytest.mark.parametrize(
+    "organisations", [("2.25.94001", "2.25.94002"), ("2.25.94001",) * 2, (None, None)]
+)
+def test_instances_that_reuse_a_stack_and_time_point_are_volumes_of_their_own(
+    organisations,
+):
+    # PS3.3 C.7.6.16.2.2.4 lets another SOP Instance reuse a Stack ID, so
+    # two acquisitions labelled alike at interleaved positions, 2 mm apart
+    # each and 1 mm apart from each other, are each drawn alone; one
+    # merged volume would show the broader outline and hide the other.
+    plain = _single()
+    eared = _axial(_body(ear=True))
+    even = {k: plain[k] for k in range(0, SIDE, 2)}
+    odd = {k: eared[k] for k in range(1, SIDE, 2)}
+    labels = [("1", "1")] * (SIDE // 2)
+    written = {
+        0: _multi_frame(
+            even,
+            stacks=labels,
+            instance="2.25.93002",
+            changed=_organised(*filter(None, organisations[:1])),
+        ),
+        1: _multi_frame(
+            odd,
+            stacks=labels,
+            instance="2.25.93003",
+            changed=_organised(*filter(None, organisations[1:])),
+        ),
+    }
+
+    previews = qc_previews.previews_of(written, ())
+
+    frames = tuple(range(SIDE // 2))
+    _each_alone(
+        written,
+        [
+            (even, tuple((0, frame) for frame in frames)),
+            (odd, tuple((1, frame) for frame in frames)),
+        ],
+        previews,
+    )
+
+
+@pytest.mark.pydicom
+@pytest.mark.parametrize("interleaved", [False, True])
+def test_the_instances_of_one_concatenation_form_one_volume(interleaved):
+    single = qc_previews.previews_of(_single(), ())
+    slices = _single()
+    if interleaved:
+        parts = [range(0, SIDE, 2), range(1, SIDE, 2)]
+    else:
+        parts = [range(SIDE // 2), range(SIDE // 2, SIDE)]
+    labels = [("1", "1")] * (SIDE // 2)
+    written = {
+        index: _multi_frame(
+            {k: slices[k] for k in part},
+            stacks=labels,
+            instance=f"2.25.9300{4 + index}",
+            changed=_organised("2.25.94001", concatenation="2.25.95001"),
+        )
+        for index, part in enumerate(parts)
+    }
+
+    previews = qc_previews.previews_of(written, ())
+
+    assert _kinds(previews) == [
+        PreviewKind.SERIES_CINE,
+        PreviewKind.SERIES_MIP,
+        PreviewKind.SERIES_SURFACE,
+    ]
     for kind in (PreviewKind.SERIES_MIP, PreviewKind.SERIES_SURFACE):
         found = _only(previews, kind)
         assert found.png == _only(single, kind).png
-        assert found.frames == (
-            *((k, 0) for k in range(SIDE // 2)),
-            *((SIDE, frame) for frame in range(SIDE // 2)),
+        assert found.frames == tuple(
+            next(
+                (index, list(part).index(k))
+                for index, part in enumerate(parts)
+                if k in part
+            )
+            for k in range(SIDE)
         )
-    assert previews.pixels_shown == frozenset({*range(SIDE // 2), SIDE})
+    assert previews.pixels_shown == frozenset({0, 1})
+
+
+@pytest.mark.pydicom
+def test_an_instance_of_two_dimension_organisations_forms_no_volume():
+    # A Stack ID is unique only within its Dimension Organization UID, so
+    # the frames of an instance of two cannot be told apart by it.
+    written = {
+        0: _multi_frame(_single(), changed=_organised("2.25.94001", "2.25.94002"))
+    }
+
+    previews = qc_previews.previews_of(written, ())
+
+    assert _kinds(previews) == [PreviewKind.SERIES_CINE]
+    assert previews.pixels_shown == frozenset()
 
 
 def _two_times(stacks):

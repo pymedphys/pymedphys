@@ -439,12 +439,49 @@ def test_eyes_on_every_phase_s_globes_do_not_hold_the_series():
     assert outcome.problem is None
 
 
-def test_a_target_in_the_enclosing_block_holds_the_series():
+def test_a_target_in_the_enclosing_block_is_kept_as_one_slice_at_each_position():
     target = files.structure_set([("PTV", files.square((-32.0, -76.0, 20.0)))])
+    # The second time point's slices half a micrometre above the first's.
+    second = []
+    for data in _phase(2):
+        dataset = pydicom.dcmread(io.BytesIO(data))
+        x, y, z = (float(v) for v in dataset.ImagePositionPatient)
+        dataset.ImagePositionPatient = [x, y, z + phases.COINCIDENT / 2]
+        second.append(files.written(dataset))
+
+    outcome = _outcome(*_phase(1), *second, target)
+
+    assert outcome.problem is None
+    assert outcome.targets.in_block
+    assert len(outcome.targets.hulls) == 1
+    # Half the spacing between positions, not between two phases' slices
+    # at one position.
+    assert outcome.targets.depth == pytest.approx(3.0 / 2)
+
+
+def test_a_target_in_the_block_beyond_the_slices_holds_a_series_of_phases():
+    front = min(position[1] for position in _SCAN.positions)
+    target = files.structure_set([("PTV", files.circle((0.0, front - 1.0, 30.0), 5.0))])
 
     outcome = _outcome(*_phase(1), *_phase(2), target)
 
     assert outcome.problem is SeriesProblem.TARGET_IN_BLOCK
+
+
+def test_targets_are_judged_against_one_slice_at_each_position():
+    data = [*_phase(1)[:3], *_phase(2)[:3]]
+    moved = pydicom.dcmread(io.BytesIO(data[3]))
+    x, y, z = (float(v) for v in moved.ImagePositionPatient)
+    moved.ImagePositionPatient = [x, y, z + phases.COINCIDENT / 2]
+    data[3] = files.written(moved)
+    slices, _ = face_blocks._stack(list(range(6)), lambda p: data[p])
+
+    distinct = face_blocks._distinct(slices)
+
+    assert [each.position for each in distinct] == [
+        each.position for each in slices[:3]
+    ]
+    assert face_blocks._distinct([]) == []
 
 
 def test_the_finder_is_inspected_on_the_first_phase():

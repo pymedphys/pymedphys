@@ -50,7 +50,7 @@ Each measure is counted in fixed bins, and no case is named, so the summary give
 ## Limits
 
 - Nothing here renders a surface or tests whether a defaced face can be recognised.
-- HaN-Seg's masks include no targets, so the hold for a target in the block is not tested.
+- HaN-Seg's masks include no targets, so defacing around a target in the block, and the hold for one that reaches beyond the slices, are not tested.
 - They include no brain either, so neither the brain that defacing keeps within the cranial cavity nor the 30 mm floor below which it keeps none is tested; the brainstem, chiasm, and pituitary are no reference for them.
 - Each CT volume is written as the CT Image instances of one series in memory, so the check tests the finder and the defacer, not the reading of a scanner's DICOM files, which the engine's own tests cover.
 - The masks are the reference: an error in a mask counts against the finder.
@@ -58,7 +58,7 @@ Each measure is counted in fixed bins, and no case is named, so the summary give
 
 ## Check DICOM exports on your own machine
 
-The same engine code can be checked on DICOM files that you may process, such as your planning system's exports of head and neck cases, on your own machine (D-054). The check renders nothing and writes only counts. Unlike HaN-Seg, planning exports hold targets, eye ROIs as planners draw and name them, RT Doses, and RT Plans, so it also checks the hold for a target in the block, the hold for an eye ROI away from the globes found, RT Dose defacing, and contour cutting.
+The same engine code can be checked on DICOM files that you may process, such as your planning system's exports of head and neck cases, on your own machine (D-054). The check renders nothing and writes only counts. Unlike HaN-Seg, planning exports hold targets, eye ROIs as planners draw and name them, RT Doses, and RT Plans, so it also checks defacing around a target in the block, the hold for a target that a run cannot keep within the slices, the hold for an eye ROI away from the globes found, RT Dose defacing, and contour cutting.
 
 1. Export the CT series, of CT Image, Enhanced CT Image, or Legacy Converted Enhanced CT Image, including 4D and other series whose slices repeat a position, RT Structure Sets, RT Plans, and RT Doses to check into one directory, under the rules that apply to the data. Subdirectories are searched; links and files named `DICOMDIR` are skipped, and files that are not DICOM are counted and left alone.
 2. In a development environment of this repository, run:
@@ -75,10 +75,10 @@ The same engine code can be checked on DICOM files that you may process, such as
 | --- | --- |
 | Files | The files found, read, not read, and refused, by why, and the files read by IOD. |
 | CT series | How each series' first instance is stored, whether at least 1% of its voxels are at -900 HU or below (not measured for compressed slices), and its spacings, two slices at one position, as two phases' are, counting as no spacing. |
-| Outcomes | The series defaced, those not defaced by the reason that a release report gives, such as `target-in-block` or `eyes-disagree-with-rois`, and, by outcome, the series whose searched structure sets hold an eye ROI. |
+| Outcomes | The series defaced, of them those defaced around a target in the block, those not defaced by the reason that a release report gives, such as `target-in-block` or `eyes-disagree-with-rois`, and, by outcome, the series whose searched structure sets hold an eye ROI. |
 | Phases | How many phases each series' slices are parted into, such as the time points of a 4D CT (one for a series without repeated positions), the series not parted, the outcomes of series of several phases, the phases that find no eyes, and the greatest distance between one globe's centres in two phases, which a run compares with 8 mm, whether or not the phases agree. |
 | Eye ROIs against the globes found | For each series with a block, defaced or held: whether its eye ROIs agree with the globes found; for each eye ROI, the side that its name gives, the distance from the globe found to the centroid of its contours, weighted by their areas (for a name that gives no side, from each globe to its own contours), whether it is nearer the other side's globe, the distance from its farthest point to the nearer globe, which a run compares with 25 mm, and the height of its lowest point above the block's inferior limit; for a series of several phases, against the phase whose globes its farthest point lies farthest from, and swapped where it is against any phase. |
-| Targets | For each series with a block, its targets (PTV, CTV, and GTV) by whether they hold the series and why, and the clearance from the block of each that does not. |
+| Targets | For each series with a block, its targets (PTV, CTV, and GTV) by where they lie: `kept-in-block` for one that a run keeps, defacing around it; `beyond-slices`, `not-placed`, or `tied-to-another-frame` for one that holds the series; `clear` for one that does not reach the block, with its clearance from it; and `no-contours` or `in-another-frame`. |
 | RT Doses in a defaced frame | Each RT Dose with pixel data set to zero in the block or held, by why, and the greatest dose that a run would set to zero as a fraction of the grid's greatest, which a run compares with 5%; each grid goes through the run's own cleaner, so one whose Pixel Data a run refuses is counted as held; a compressed RT Dose is not measured. |
 | RT Structure Sets in a defaced frame | Each structure set cut, unchanged, or held, and the ROIs that a run would cut, by RT ROI Interpreted Type. |
 | RT Plans | The RT Plans, and those in a defaced series' frame. |
@@ -88,7 +88,7 @@ Reading the results:
 
 - A run holds a series for `eyes-disagree-with-rois` when a point of an eye ROI lies more than 25 mm from both globes found, or cannot be placed: the finder took something else for a globe, or the eye ROI is not where the image shows the eye. A globe error of more than a few millimetres warrants checking the finder and the eye ROI, but does not itself hold the series.
 - A refused series, such as `no-eyes`, that holds an eye ROI is a series that a planner could find the eyes in and the finder could not: a cost in yield, since a run leaves it undefaced for the face review.
-- Targets that reach the block, and their clearances, show how often a run would hold a head and neck series for its targets.
+- Targets kept in the block show how often a run would deface a head and neck series around its targets, leaving the reviewer to judge what they keep of the face; targets beyond the slices, and the clearances of the rest, show how often a run would still hold a series for its targets.
 - Dose fractions near 5%, and RT Doses held as `dose-in-face-block`, bear on the dose fraction, a placeholder (D-051), as eye ROIs' reach does on the 25 mm (D-050), without validating either; changing a setting is a decision of its own.
 - A run holds a series of several phases as `phases-disagree` when one globe's centre found in two phases lies more than 8 mm apart, a placeholder (D-050). Spreads well below 8 mm across many 4D and multi-phase series support it; spreads near or above it, in series whose phases show the head in one place, show that it would cost yield, and spreads in series whose head moved show what it guards against.
 - Nothing here measures the brain that defacing keeps or the 30 mm floor below which it keeps none. The dose set to zero and the contours cut are those in the block less the brain kept, so they depend on the floor without testing it.

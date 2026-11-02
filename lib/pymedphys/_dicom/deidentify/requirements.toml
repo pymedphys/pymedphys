@@ -304,10 +304,11 @@ text = '''
 When this Option is specified in addition to the Basic Application Level Confidentiality Profile, any information burned in to the Pixel Data (7FE0,0010) corresponding to the Attribute information specified to be removed by the Profile and any other Options specified shall also be removed, as described in Table E.1-1.
 '''
 status = "implemented"
-decisions = ["D-015", "D-033", "D-037", "D-048"]
+decisions = ["D-015", "D-033", "D-037", "D-048", "D-055"]
 implementation = [
   "_dicom/deidentify/api.py",
   "_dicom/deidentify/command.py",
+  "_dicom/deidentify/imagecodecs_plugin.py",
   "_dicom/deidentify/instance_transform.py",
   "_dicom/deidentify/pixel_cleaning.py",
   "_dicom/deidentify/pixel_decoding.py",
@@ -321,6 +322,7 @@ Text that a text finder finds in Pixel Data is blacked out, whatever it says, an
 Reviewed region rules, kept by the custodian and keyed by SOP Class UID, Manufacturer, Manufacturer's Model Name, Rows, and Columns, add rectangles that are blacked out in every frame of a matching image beside the finder's regions; the instance is still held for review, the QC pack records which regions rules gave, and the rules' keyed digest is an input to the method digest (D-024, D-037).
 A private command records a rule from an attested QC pack, holding only regions that the reviewer's verdict approved for the image, keyed by the image's source file, which must have the SHA-256 that the pack records (D-037, D-048).
 Compressed Pixel Data is decoded first, in the isolated decoding child for the native decoders, and its frames are written uncompressed, in Explicit VR Little Endian, as decoded, with or without a region, so that the QC pack previews the samples that a release writes (D-037).
+The frames that pydicom's GDCM plugin refuses, 12-bit JPEG Extended, JPEG-LS at 6 or 7 bits, and signed JPEG-LS Near-Lossless below 8 bits, are decoded with imagecodecs in the same child, never in the engine's process, so they are cleaned rather than sequestered as undecodable-pixel-data (D-055).
 In native Pixel Data, the bit plane of an overlay that an overlay group without Overlay Data places above High Bit is cleared in the same write, and its group removed, so the instance is cleaned rather than sequestered as uncleanable-pixel-data (D-037).
 A later run of the same files, given the attested QC pack, blacks out the regions that the reviewer accepted, with any that the reviewer added, without the finder, and releases the instance with the option's code; for compressed Pixel Data, only where its frames decode to the SHA-256 that the pack records, and otherwise the instance is held again. An instance that the reviewer rejected is sequestered (D-048).
 The private command's run under the option, and the library's, makes the text detector with the pinned model, and takes the attested QC pack whose verdicts apply and the custodian's region rules (D-033).
@@ -366,18 +368,21 @@ implementation = [
   "_dicom/deidentify/pixel_cleaning.py",
   "_dicom/deidentify/qc_attestation.py",
   "_dicom/deidentify/qc_contours.py",
+  "_dicom/deidentify/qc_grids.py",
   "_dicom/deidentify/region_defacing.py",
   "_dicom/deidentify/segmentation_defacing.py",
+  "_dicom/deidentify/target_hulls.py",
 ]
 note = '''
-The engine claims the option only for an instance in which a reviewer found no recognisable face, by the attested face verdicts of an earlier run's QC pack, matched by the SHA-256 of each source file and of the pixel data, and an RT Structure Set's contours, that the run writes of it, or one that cannot show a face (D-046).
+The engine claims the option only for an instance in which a reviewer found no recognisable face, by the attested face verdicts of an earlier run's QC pack, matched by the SHA-256 of each source file and of the pixel data, an RT Structure Set's contours, and a deformable registration's grids, that the run writes of it, or one that cannot show a face (D-046).
 The library's run under the option, and the private command's, take the attested QC pack whose face verdicts apply, and refuse to start without one (D-033, D-046).
 The `public-release` preset selects the option, as do custom option sets that name it (Presets, D-046).
 The QC pack shows each RT Structure Set's contours, as written, on a contour sheet, with every surface that an ROI hides behind its own and every mark that it would hide, to within two voxels, at most 4 mm, of its edge as seen from the front, the back, and the sides, and records their SHA-256 only where it shows them, and the pixel data's only where previews that could show a face draw every frame, a volume's slices by its projection and surface render, and an RT Dose's only by renders of its surfaces at each of a ladder of dose levels, from any dose above 0 up, with every surface that a level hides behind its own, or a map of a lone plane by those levels, so a verdict releases only contours and pixel data that the reviewer saw, and an instance the pack does not show in full is held, as is a set with a voxel of hidden marks that its rows' frontal view, view from behind, and profiles cannot draw, even where an oblique view would; the hidden marks are drawn in layers, each contour's where no other's lie beside them, so that is only where one contour's own marks lie side by side within its ROI's region, as where one line drawn back and forth covers a patch or near the tip of a sharp V (D-017).
-Every other instance that can show a face, with pixel data, as an RT Structure Set, or as a Deformable Spatial Registration with a deformation grid, which no preview of the pack draws, is held for review and never released, so no released instance that claims the option has the visual information that the paragraph requires to be removed or distorted.
-Under the option, the engine also writes air into the face block of each CT series in which it finds one, of CT Image instances, Enhanced CT Image or Legacy Converted Enhanced CT Image instances whose frames their functional groups place, or both, a series whose slices repeat their positions, as the time points of a respiratory-correlated CT do, by a block that holds the block found from each of its phases, parted by the time point or acquisition that each slice names, where their globes agree, keeping the brain in the cranial cavity above the orbits, and holds a series with a target in its block or an eye ROI away from the globes it found, and each RT Structure Set, RT Dose with pixel data, PET instance, or Segmentation in a defaced series' Frame of Reference, naming none, or referring to an instance of a defaced series, which it does not clean (D-050), but for an RT Dose in the frame of only one defaced series, whose dose in that series' block, less the brain kept, it sets to zero, or holds where that dose is too great (D-051), and an RT Structure Set or PET image in such a frame, whose contours that reach the face it cuts by the block, less the brain kept where a contour allows, and whose activity in the block, less the brain kept, it sets to zero, in each frame of an Enhanced PET Image or Legacy Converted Enhanced PET Image that its functional groups place, and a Segmentation in such a frame, once Segmentation is in scope, whose pixels in a segment in the block, less the brain kept, it writes as its background, holding one with any such pixel without a verdict, since the QC pack does not yet show segments (D-052); a defaced instance still claims the option only where a reviewer found no recognisable face in it as defaced.
+The QC pack shows each deformation grid of a Deformable Spatial Registration, as written, on five sheets, of its displacement's magnitude, with where it is defined, of how fast it varies across the grid, and of the sign and magnitude of each of its components, each drawn as an RT Dose's dose levels are, from every grid point, and records the grids' SHA-256 only where a sheet of each kind shows each grid, so a verdict releases only grids that the reviewer saw (D-017).
+Every other instance that can show a face, with pixel data, as an RT Structure Set, or with a deformation grid, is held for review and never released, so no released instance that claims the option has the visual information that the paragraph requires to be removed or distorted.
+Under the option, the engine also writes air into the face block of each CT series in which it finds one, of CT Image instances, Enhanced CT Image or Legacy Converted Enhanced CT Image instances whose frames their functional groups place, or both, a series whose slices repeat their positions, as the time points of a respiratory-correlated CT do, by a block that holds the block found from each of its phases, parted by the time point or acquisition that each slice names, where their globes agree, keeping the brain in the cranial cavity above the orbits and each PTV, CTV, or GTV with whatever lies between its contours, by its convex hull, and holds a series with a target whose part in its block reaches beyond its slices, or that cannot be placed, or an eye ROI away from the globes it found, and each RT Structure Set, RT Dose with pixel data, PET instance, or Segmentation in a defaced series' Frame of Reference, naming none, or referring to an instance of a defaced series, and each instance with a deformation grid that names a defaced series' Frame of Reference as its own or as a Source Frame of Reference, names none, or refers to an instance of a defaced series, which it does not clean (D-050, D-046), but for an RT Dose in the frame of only one defaced series, whose dose in that series' block, less the brain and targets kept, it sets to zero, or holds where that dose is too great (D-051), and an RT Structure Set or PET image in such a frame, whose contours that reach the face it cuts by the block, less the brain and targets kept where a contour allows, never cutting a target's own, and whose activity in the block, less the brain and targets kept, it sets to zero, in each frame of an Enhanced PET Image or Legacy Converted Enhanced PET Image that its functional groups place and whose Real World Value Mapping, not its Pixel Value Transformation of unspecified units, gives one stored value of zero activity, and a Segmentation in such a frame, once Segmentation is in scope, whose pixels in a segment in the block, less the brain and targets kept, it writes as its background, holding one with any such pixel without a verdict, since the QC pack does not yet show segments (D-052); a defaced instance still claims the option only where a reviewer found no recognisable face in it as defaced.
 A workflow run by hand checks the face block and the air written against the eye and organ masks of the HaN-Seg data set's 42 head and neck planning CTs, on a hosted runner that alone downloads it, and publishes only counts, which bear on D-050's placeholder margin and eye reach, though not its cavity floor, since HaN-Seg marks no brain; it claims no result (D-054).
-A development command run on a person's own machine applies the same finder, target and eye ROI holds, RT Dose defacing, and contour cutting to a directory of DICOM files, such as planning exports, renders nothing, and writes only counts, which bear on D-050's placeholder margin and eye reach and D-051's dose fraction, though not the cavity floor, since it measures no brain; it claims no result either (D-054).
+A development command run on a person's own machine applies the same finder, target keeping and holds, eye ROI hold, RT Dose defacing, and contour cutting to a directory of DICOM files, such as planning exports, renders nothing, and writes only counts, which bear on D-050's placeholder margin and eye reach and D-051's dose fraction, though not the cavity floor, since it measures no brain; it claims no result either (D-054).
 '''
 
 [[requirement]]
@@ -431,8 +436,10 @@ status = "implemented"
 decisions = ["D-001", "D-010", "D-047"]
 implementation = [
   "_dicom/deidentify/content_items.py",
+  "_dicom/deidentify/removed_items.py",
   "_dicom/deidentify/structured_content.py",
   "_dicom/deidentify/supplementary_concepts.py",
+  "_dicom/deidentify/loinc_terms.py",
   "_dicom/deidentify/codes.py",
   "_dicom/deidentify/walker.py",
   "_dicom/deidentify/instance_transform.py",
@@ -442,12 +449,12 @@ implementation = [
 note = '''
 The engine applies the Clean Structured Content Option to a custom option set; no preset selects it (D-047).
 Of the Structured Reports, the X-Ray and Radiopharmaceutical Radiation Dose SRs are supported and the others sequestered (D-010); of the supported IODs, only those two define Content Sequence, at their root, and none Waveform Annotation Sequence. Waveform Annotation Sequence takes its Basic Profile action; Content Sequence is cleaned wherever an IOD defines it, at any depth of its nested Content Sequences, with the root content item that holds it, and a report whose tree cannot be kept is sequestered, since the Basic Profile gives Content Sequence D and a sequence has no dummy value (D-021).
-Acquisition Context Sequence and Specimen Preparation Sequence are kept where the IOD defines them, and each content item is cleaned by its Value Type and concept name, as Table E.3.4-1 gives them, generated for the concept names that DICOM and SNOMED CT code (D-001).
-A reviewed list gives the table's actions to the concepts that it omits where PS3.16's templates use them for a patient characteristic that Table E.1-1 removes, each removed, and kept under Retain Patient Characteristics where Table E.1-1 keeps the attribute that holds it, and to Subject ID as a CODE, which TID 1007 gives it and the table lists only as TEXT, removed under every option (D-047).
+Acquisition Context Sequence and Specimen Preparation Sequence are kept where the IOD defines them, and each content item is cleaned by its Value Type and concept name, as Table E.3.4-1 gives them, generated for the concept names that DICOM, SNOMED CT, and LOINC code, with each LOINC code's LOINC name in a reviewed file (D-001).
+A reviewed list gives the table's actions to the concepts that it omits where PS3.16's templates use them for a patient characteristic that Table E.1-1 removes, among them the patient's height, weight, and body surface area, which PS3.16 codes in LOINC, each removed, and kept under Retain Patient Characteristics where Table E.1-1 keeps the attribute that holds it, to a device's UDI as a CODE, removed, and kept under Retain Device Identity as Table E.1-1 keeps UDI Sequence (0018,100A), and to Subject ID as a CODE, which TID 1007 gives it and the table lists only as TEXT, removed under every option (D-047).
 An item whose concept name neither the table nor the list gives keeps its codes and numbers, and its other values take their own rules, as in any kept sequence.
 A concept name coded by a retired SNOMED designator, SRT, SNM3, or 99SDM, is looked up as the SNOMED CT code that PS3.16 Table O-1 maps it to (D-001).
 X/D gives D wherever the concept appears, as though a template required the item there, and so do the X rows of DateTime Ended and X-Ray Attenuator Model Data, which Enhanced X-Ray Radiation Dose reports' templates require; D writes the dummy value of the value's VR, and gives a UIDREF item's UID the replacement that U gives, which keeps a registered UID such as a public frame of reference.
-Where the selected options remove an item, where an item cannot be read as one Value Type and one concept name, where its concept name is coded in a scheme whose rows the table does not hold, or where it is coded by a retired SNOMED designator with a code that Table O-1 does not map, the whole sequence takes its Basic Profile action, since a single item is not removed on its own.
+An item cannot be kept where the selected options remove it, where its concept name is coded in a scheme whose rows the table does not hold, or where it is coded by a retired SNOMED designator with a code that Table O-1 does not map. In Acquisition Context Sequence and Specimen Preparation Sequence, such an item, or one that cannot be read as one Value Type and one concept name, makes the whole sequence take its Basic Profile action. In Content Sequence, such an item is removed on its own, with everything in it, and so is each item that names a removed item by Referenced Content Item Identifier, but for a TABLE, which loses only each such cell and goes only where it loses every cell, each item other than a CONTAINER whose HAS CONCEPT MOD item is removed, and each CONTAINER left with no items; any other item left with no items loses its Content Sequence, which is Type 1C, and each kept Referenced Content Item Identifier is renumbered to name the same item in the output (D-047). A report whose root cannot be kept or is left with no items, whose tree holds an item that cannot be read, or whose tree loses an item while holding a Referenced Content Item Identifier that has no value or names no item of it, is sequestered.
 The synthetic collection's two dose reports carry markers in their content-item values and are released only where Clean Structured Content keeps their trees; each value is kept or replaced by its concept's row of Table E.3.4-1.
 '''
 
@@ -801,6 +808,7 @@ implementation = [
   "_dicom/deidentify/residual_exemptions.py",
   "_dicom/deidentify/residuals.py",
   "_dicom/deidentify/risk_assessment.py",
+  "_dicom/deidentify/risk_assessment_command.py",
   "_dicom/deidentify/run_report.py",
 ]
 note = '''
@@ -913,6 +921,7 @@ implementation = [
   "_dicom/deidentify/policy.py",
   "_dicom/deidentify/readiness.py",
   "_dicom/deidentify/risk_assessment.py",
+  "_dicom/deidentify/risk_assessment_command.py",
   "_dicom/deidentify/technique_descriptors.py",
 ]
 note = '''
@@ -938,6 +947,7 @@ implementation = [
   "_dicom/deidentify/instance_transform.py",
   "_dicom/deidentify/readiness.py",
   "_dicom/deidentify/risk_assessment.py",
+  "_dicom/deidentify/risk_assessment_command.py",
   "_dicom/deidentify/supplementary_actions.py",
 ]
 note = '''
@@ -1005,11 +1015,13 @@ decisions = ["D-017", "D-053"]
 implementation = [
   "_dicom/deidentify/readiness.py",
   "_dicom/deidentify/risk_assessment.py",
+  "_dicom/deidentify/risk_assessment_command.py",
 ]
 note = '''
 `tps-import` retains patient characteristics for non-clinical databases, not for public sharing, and `public-release` does not select Retain Patient Characteristics (D-038).
 `public-release` keeps other indirect identifiers, such as modified dates, coded values, and characteristics that can be derived from the pixel data.
 The record of an external statistical assessment of a collection lists its matching variables and how characteristics derivable from the pixel data were considered, with every other statement that D-017 requires, each required, and the statistical gate checks it against the run, counting distinct subjects rather than images, frames, or visits (D-053).
+An assessor records it with a command that reads their statement from a JSON file of its own format, refuses a statement that lacks any of them or holds anything else, and can make every check without recording, since a record is never overwritten (D-053).
 A `public-release` run is ready for release only where that gate passes for the distinct subjects of the instances that it releases and the reviewed lists and region rules that it applied; a run without a record fails it (D-017).
 '''
 

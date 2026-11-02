@@ -68,16 +68,19 @@ kind, or both. A series is defaced only where all of these hold:
   block, but for one from which the finder finds no globes and whose
   slices the others' block reaches none of; the series is then defaced by
   one block that holds every pixel of its slices that any phase's block
-  holds (:func:`_enclosing`), against which targets are checked, and each
+  holds (:func:`_enclosing`), against which targets are judged, and each
   eye against each phase's globes; and
-- no contour of a target, an ROI whose RT ROI Interpreted Type is
+- every target, an ROI whose RT ROI Interpreted Type is
   :data:`TARGET_TYPES`, of any RT Structure Set of the run searched for the
   series (:func:`_searched`), in the series' Frame of Reference, or naming
-  none, reaches the block, or has anything
-  between its contours that does, as the convex hull of its contours
-  judges it (:func:`_hull_reaches`); no target in another frame, whose
+  none, can be placed, with finite coordinates of magnitude at most
+  :data:`_FARTHEST` millimetres and no contour slab (:func:`_in_slab`),
+  and the part in the block of the convex
+  hull of its contours, which holds anything between them, lies within the
+  slices (:func:`_kept_targets`), so that every pixel that the run keeps for
+  it is one that the reviewer sees; no target in another frame, whose
   contours cannot be placed without a registration, has a structure set
-  that ties that frame to the series' slices (:func:`_targets_reach`), a
+  that ties that frame to the series' slices (:func:`_target_points`), a
   target whose ROI names no frame, or one that is malformed, counting as
   one in the series' frame and in each frame that its structure set
   declares;
@@ -97,9 +100,18 @@ finder, and once more for the brain that defacing keeps
 (:func:`kept_slices`), a frame at a time, so that a multi-frame instance is
 never held decoded whole.
 
-A series with a target in its block is not defaced, and each of its slices
-is held for review (:attr:`~.reasons.VisualFeaturesReason.TARGET_IN_FACE_BLOCK`),
-so that a release never loses a target to defacing unseen, and so is one
+A target that reaches the block is kept: each target, an item of ROI
+Contour Sequence, has its own convex hull
+(:class:`~pymedphys._dicom.deidentify.target_hulls.TargetHull`), and a
+pixel in the block keeps its stored value where its square, given depth
+along the slices' normal of half the smallest spacing between the slices
+that the block reaches, may meet a hull
+(:class:`~pymedphys._dicom.deidentify.target_hulls.KeptTargets`), so that a
+release never loses a target to defacing, and the face review's verdict on
+the slices as written decides what they keep of the face. A series with a
+target that cannot be kept so, as above, is not defaced, and each of its
+slices is held for review
+(:attr:`~.reasons.VisualFeaturesReason.TARGET_IN_FACE_BLOCK`), and so is one
 with an eye that disagrees with its globes
 (:attr:`~.reasons.VisualFeaturesReason.EYES_DISAGREE_WITH_ROIS`). Any other series
 that is not defaced, such as one without a head, is written as it would be
@@ -128,7 +140,8 @@ none. Padding is never taken for bone, so it cannot close a ring around
 the face. The cavity is kept only more than :data:`CAVITY_FLOOR`
 millimetres above the higher globe's centre, above the orbits, so that
 bone enclosing an orbit within a slice, or a thin orbital roof that the
-slice's bone does not seal, keeps no part of an eye.
+slice's bone does not seal, keeps no part of an eye. A pixel kept for a
+target is kept whatever it holds, the eye included.
 Where no bone encloses the cavity within a slice, the block is air to the
 top of the slice. Where air's stored value is itself padding, the pixels
 written are padding, which a viewer shows as outside the image, as the air
@@ -141,7 +154,9 @@ whose activity, :mod:`~pymedphys._dicom.deidentify.region_defacing` cuts or
 sets to zero there, frame by frame for a multi-frame PET image, and of a
 Segmentation whose segments
 :mod:`~pymedphys._dicom.deidentify.segmentation_defacing` clears there,
-each with that series' Frame of Reference as its only one. Any other RT
+each with that series' Frame of Reference as its only one, and each
+keeping whatever lies in a target's hull and on the pixels kept for it.
+Any other RT
 Structure Set, RT Dose with pixel data, PET instance, or Segmentation
 (:data:`UNDEFACED_IODS`) in the Frame of Reference of a defaced series
 keeps its contours or pixel data, which can still outline the face, so it
@@ -189,6 +204,14 @@ from .reasons import TransformReason
 from .references import InstanceRecord
 from .sop_classes import iod_for_sop_class
 from .source import NATIVE_TRANSFER_SYNTAXES
+from .target_hulls import (
+    KeptTargets,
+    SliceRange,
+    TargetHull,
+    beyond_slices,
+    slice_ranges,
+    slice_reach,
+)
 from .uid_registry import is_uid
 from .uids import normalise_uid
 
@@ -270,7 +293,11 @@ class SeriesProblem(enum.Enum):
     NOT_HOUNSFIELD = "not-hounsfield-units"
     # stored values that cannot hold air without clipping
     AIR_NOT_STORED = "air-not-stored"
-    # a target that may reach the block
+    # a target that may reach the block where the run cannot keep it: one
+    # in another frame that its structure set ties to the series' slices,
+    # one with a coordinate that cannot be placed, or one whose hull reaches
+    # beyond the slices in the block, or a structure set searched for
+    # targets that cannot be read
     TARGET_IN_BLOCK = "target-in-block"
     # an eye's contour in the series' frame away from the globes found
     EYES_DISAGREE = "eyes-disagree-with-rois"
@@ -288,17 +315,23 @@ class SeriesDefacing:
         Why the series is not defaced, or None where it is.
     frame : str, optional
         The Frame of Reference UID of a defaced series; None for any other.
+    targets : KeptTargets, optional
+        The hulls of the targets that defacing keeps in a defaced series'
+        block; none for any other series.
     """
 
     block: FaceBlock | None
     problem: FaceBlockProblem | SeriesProblem | None
     frame: str | None = None
+    targets: KeptTargets = KeptTargets()
 
     def __post_init__(self) -> None:
         if (self.block is None) == (self.problem is None):
             raise ValueError("a series has a block or a problem, not both")
         if (self.frame is None) != (self.block is None) or self.frame == "":
             raise ValueError("a defaced series has its Frame of Reference UID")
+        if self.block is None and self.targets.hulls:
+            raise ValueError("only a defaced series keeps targets")
 
     @property
     def held(self) -> bool:
@@ -313,32 +346,37 @@ class SeriesDefacing:
 
 @dataclasses.dataclass
 class FaceBlockCounts:
-    """How many CT series a run defaced, and how many it did not, by why.
+    """How many CT series a run defaced, how many of those around a target,
+    and how many it did not deface, by why.
 
     Filled by :meth:`record`, once a run has found its face blocks, for the
     release report's ``face_review.ct_series``. A series counts as defaced
     where the run found its block and set out to deface it, whatever then
-    became of its slices.
+    became of its slices, and as defaced around targets where it also keeps
+    a target's hull that reaches the block (:class:`KeptTargets`).
     """
 
     defaced: int = 0
     not_defaced: dict[FaceBlockProblem | SeriesProblem, int] = dataclasses.field(
         default_factory=dict
     )
+    around_targets: int = 0
 
     def record(self, outcomes: Iterable[SeriesDefacing]) -> None:
         """Count each series' outcome, in place of any counted before."""
-        defaced = 0
+        defaced = around_targets = 0
         not_defaced: collections.Counter[FaceBlockProblem | SeriesProblem] = (
             collections.Counter()
         )
         for outcome in outcomes:
             if outcome.problem is None:
                 defaced += 1
+                around_targets += outcome.targets.in_block
             else:
                 not_defaced[outcome.problem] += 1
         self.defaced = defaced
         self.not_defaced = dict(not_defaced)
+        self.around_targets = around_targets
 
 
 @dataclasses.dataclass(frozen=True)
@@ -411,7 +449,13 @@ def _outcomes(
                 for position in structure_sets
                 if _searched(records[position], frame, slices[uid], positions, records)
             ]
-            if _target_in(outcome.block, frame, slices[uid], searched, read):
+            targets = _placed_targets(frame, slices[uid], searched, read)
+            kept = (
+                None
+                if targets is None
+                else _kept_targets(outcome.block, _distinct(found.slices), targets)
+            )
+            if kept is None:
                 outcome = SeriesDefacing(None, SeriesProblem.TARGET_IN_BLOCK)
             # An eye is checked against the globes of each phase that they
             # were found in.
@@ -419,6 +463,8 @@ def _outcomes(
                 _eyes_disagree(block, frame, searched, read) for block in found.blocks
             ):
                 outcome = SeriesDefacing(None, SeriesProblem.EYES_DISAGREE)
+            else:
+                outcome = SeriesDefacing(outcome.block, None, frame, kept)
         outcomes[uid] = (outcome, found)
     return outcomes
 
@@ -438,7 +484,7 @@ def _searched(
     names no frame, or a malformed one, may be in the series' frame
     whatever frames the set declares; one in another frame that the set
     does not tie to the series' slices is passed over
-    (:func:`_targets_reach`).
+    (:func:`_target_points`).
     """
     frames = frames_of(structure_set)
     if frame in frames or not any(is_uid(each) for each in frames):
@@ -553,7 +599,8 @@ class _Found:
     from each of its phases that gave one, in the order of the phases, how
     many phases its slices were parted into, or None where they were not,
     and how many of a series of several phases found no eyes, of those
-    searched before the finder stopped.
+    searched before the finder stopped, and its slices, where they can be
+    read.
 
     The blocks are given for a series that is not defaced too, such as one
     whose phases disagree, so that how far apart their globes lie can be
@@ -564,20 +611,22 @@ class _Found:
     blocks: tuple[FaceBlock, ...] = ()
     phases: int | None = None
     eyeless: int = 0
+    slices: tuple[_Slice, ...] = ()
 
 
 def _series_outcome(
     positions: list[int], read: Callable[[int], bytes | None]
-) -> tuple[SeriesDefacing, str | None]:
-    """Find one series' block, or why it has none, and its Frame of
-    Reference UID."""
+) -> tuple[SeriesDefacing, str | None, list[_Slice]]:
+    """Find one series' block, or why it has none, its Frame of Reference
+    UID, and its slices, where they can be read."""
     found = _series_found(positions, read)
-    return found.outcome, found.frame
+    return found.outcome, found.frame, list(found.slices)
 
 
 def _series_found(positions: list[int], read: Callable[[int], bytes | None]) -> _Found:
     """Find one series' block, or why it has none, its Frame of Reference
-    UID, and the block of each of its phases.
+    UID, its slices, where they can be read, and the block of each of its
+    phases.
 
     A series whose slices repeat their positions is found phase by phase
     (:func:`_phases`), each phase's block from its own slices, as the
@@ -585,6 +634,7 @@ def _series_found(positions: list[int], read: Callable[[int], bytes | None]) -> 
     (:func:`_enclosing`).
     """
     frame: str | None = None
+    slices: list[_Slice] = []
     # How many phases the slices are parted into, once known, and of those
     # how many find no eyes, once every phase is searched.
     parted: int | None = None
@@ -596,7 +646,9 @@ def _series_found(positions: list[int], read: Callable[[int], bytes | None]) -> 
         block: FaceBlock | None = None,
     ) -> _Found:
         outcome = SeriesDefacing(block, problem, None if block is None else frame)
-        return _Found(outcome, frame, tuple(blocks), parted, len(eyeless))
+        return _Found(
+            outcome, frame, tuple(blocks), parted, len(eyeless), tuple(slices)
+        )
 
     try:
         slices, places = _stack(positions, read)
@@ -671,6 +723,28 @@ def _phases(slices: list[_Slice]) -> list[list[int]]:
         if np.abs(in_plane).max() > defacing.STACKING_TOLERANCE:
             raise _Unusable(SeriesProblem.NOT_ONE_STACK)
     return groups
+
+
+def _distinct(slices: Sequence[_Slice]) -> list[_Slice]:
+    """One slice at each position along the first slice's normal: of
+    slices within :data:`~.phases.COINCIDENT` of the lowest of them, the
+    lowest, and of two at one height the earlier; in their order.
+
+    A target is judged against these (:func:`_kept_targets`), so that the
+    slices of two phases at one position, which lie on one grid, place it
+    as one slice would, rather than as two slices a micrometre apart.
+    """
+    if not slices:
+        return []
+    first = slices[0]
+    normal = np.cross(first.orientation[:3], first.orientation[3:])
+    heights = [float(np.dot(each.position, normal)) for each in slices]
+    order = sorted(range(len(slices)), key=lambda index: (heights[index], index))
+    kept: list[int] = []
+    for index in order:
+        if not kept or heights[index] - heights[kept[-1]] > COINCIDENT:
+            kept.append(index)
+    return [slices[index] for index in sorted(kept)]
 
 
 def _agree(blocks: Sequence[FaceBlock]) -> bool:
@@ -1009,27 +1083,131 @@ def _hounsfield(stored: np.ndarray, each: _Slice) -> np.ndarray:
     return values
 
 
-def _target_in(
-    block: FaceBlock,
+def _placed_targets(
     frame: str,
     slices: set[str],
     positions: list[int],
     read: Callable[[int], bytes | None],
-) -> bool:
-    """Whether a target of any of these structure sets may reach the block
-    of the series with this Frame of Reference and these slices, as
-    :func:`_targets_reach` judges it, or one cannot be read."""
+) -> list[np.ndarray] | None:
+    """Return the points of each target of these structure sets that may be
+    in the Frame of Reference of the series with these slices, as
+    :func:`_target_points` places them, or None where a target cannot be
+    placed or a structure set cannot be read."""
+    found: list[np.ndarray] = []
     for position in positions:
         try:
             with redacted_diagnostics():
                 dataset = pydicom.dcmread(io.BytesIO(read(position) or b""))
-                if _targets_reach(dataset, frame, slices, block):
-                    return True
+                points = _target_points(dataset, frame, slices)
         # pydicom raises many types for a file it cannot read, and a message
         # can quote a value: a target in it cannot be ruled out.
         except Exception:  # pylint: disable = broad-exception-caught
-            return True
-    return False
+            return None
+        if points is None:
+            return None
+        found.extend(points)
+    return found
+
+
+class TargetFate(enum.Enum):
+    """What defacing does with a target placed in a series' frame, by its
+    convex hull (:func:`_target_fates`)."""
+
+    # Its hull cannot meet the block, or a box of a pixel in it.
+    CLEAR = "clear"
+    # Its hull may meet a box of a pixel in the block, but not the block
+    # itself: defacing keeps the pixels that it reaches.
+    NEAR = "near"
+    # Its hull reaches the block within the slices: defacing keeps the
+    # pixels that it reaches, and writes air in the rest of the block.
+    KEPT = "kept-in-block"
+    # Its hull's part in the block reaches beyond the slices, where no
+    # image shows it: the series is held.
+    BEYOND_SLICES = "beyond-slices"
+
+
+@dataclasses.dataclass(frozen=True)
+class _TargetFates:
+    """How :func:`_target_fates` judges targets against one series' block
+    and slices."""
+
+    block: FaceBlock
+    widened: FaceBlock
+    ranges: tuple[SliceRange, ...]
+    depth: float
+
+    def fate(self, points: np.ndarray) -> tuple[TargetFate, TargetHull | None]:
+        """Judge a target by its points, with its hull where it may reach a
+        pixel in the block."""
+        if not _hull_reaches(self.widened, points):
+            return TargetFate.CLEAR, None
+        hull = TargetHull.of(points)
+        if not _hull_reaches(self.block, points):
+            return TargetFate.NEAR, hull
+        if beyond_slices(hull, self.block, self.ranges):
+            return TargetFate.BEYOND_SLICES, hull
+        return TargetFate.KEPT, hull
+
+
+def _target_fates(block: FaceBlock, stack: Sequence[_Slice]) -> _TargetFates:
+    """Judge targets against a series' block and its slices.
+
+    The pixels' boxes reach along the slices' normal half the smallest
+    spacing between the slices that the block reaches, as
+    :class:`~pymedphys._dicom.deidentify.dose_defacing.DoseBlock` places
+    instances on them. A hull may meet a box of a pixel in the block only
+    if it meets the block moved out by the boxes' half edges, which hold
+    every box's corner.
+    """
+    reached = [
+        each
+        for each in stack
+        if block.slice_mask(
+            each.position, each.orientation, each.spacing, each.shape
+        ).any()
+    ] or list(stack)
+    first = reached[0]
+    normal = np.cross(first.orientation[:3], first.orientation[3:])
+    depth = slice_reach(
+        (float(np.dot(each.position, normal)) for each in reached), first.spacing
+    )
+    # A millimetre more allows for direction cosines that are not quite of
+    # unit length; a hull kept needlessly keeps nothing.
+    margin = sum(first.spacing) / 2 + depth + 1.0
+    anterior = np.asarray(block.anterior, dtype=float)
+    widened = dataclasses.replace(
+        block,
+        origin=tuple(float(v) for v in np.asarray(block.origin) - margin * anterior),
+        inferior_limit=block.inferior_limit - margin,
+    )
+    ranges = slice_ranges(
+        [(each.position, each.orientation) for each in stack],
+        first.spacing,
+        first.shape,
+        depth,
+    )
+    return _TargetFates(block, widened, ranges, depth)
+
+
+def _kept_targets(
+    block: FaceBlock, stack: Sequence[_Slice], targets: Sequence[np.ndarray]
+) -> KeptTargets | None:
+    """Return the hulls of the targets that defacing keeps in a series'
+    block, as :func:`_target_fates` judges them, or None where a target's
+    hull reaches beyond the slices there."""
+    if not targets:
+        return KeptTargets()
+    fates = _target_fates(block, stack)
+    hulls = []
+    in_block = False
+    for points in targets:
+        fate, hull = fates.fate(points)
+        if fate is TargetFate.BEYOND_SLICES:
+            return None
+        if hull is not None:
+            hulls.append(hull)
+            in_block = in_block or fate is TargetFate.KEPT
+    return KeptTargets(tuple(hulls), fates.depth, in_block)
 
 
 def _eyes_disagree(
@@ -1119,46 +1297,72 @@ def _targets(dataset: pydicom.Dataset) -> set[int]:
     }
 
 
-def _targets_reach(
-    dataset: pydicom.Dataset, frame: str, slices: set[str], block: FaceBlock
-) -> bool:
-    """Whether a target of a structure set may reach the block of the series
-    with this Frame of Reference and these slices.
+def _target_points(
+    dataset: pydicom.Dataset, frame: str, slices: set[str]
+) -> list[np.ndarray] | None:
+    """Return the points of each target of a structure set that may be in
+    the Frame of Reference of the series with these slices, an item of ROI
+    Contour Sequence at a time, or None where one cannot be placed there.
 
-    A target in that frame reaches it where the convex hull of its contours
-    does (:func:`_hull_reaches`). One in another frame cannot be placed in
-    the series' without a registration, so it is taken to reach the block
+    A target in that frame is placed by its contours' points, whose convex
+    hull defacing keeps (:func:`_kept_targets`). One in another frame cannot
+    be placed in the series' without a registration, so it cannot be placed
     where its structure set ties that frame to the series' slices: a contour
     of an ROI in that frame is drawn on one of them, or the frame's own list
     of contour images names one. A target in another frame that its
-    structure set does not tie to them, such as one of another scan, does
-    not. A target whose ROI names no frame may be in the series' or in any
-    frame that its structure set declares, so it is taken as each. So is
-    one whose ROI's frame is not one UID that its set declares alone, as
-    one UID in one item, or whose
-    ROI Number is repeated with another frame, which is also taken as each
-    value it names, so that a malformed frame that the set ties to the
-    series' slices still holds it.
+    structure set does not tie to them, such as one of another scan, is
+    not the series'. A target whose ROI names no frame may be in the
+    series' or in any frame that its structure set declares, so it is taken
+    as each: placed in the series' frame, and not placed where the set ties
+    one of the others. So is one whose ROI's frame is not one UID that its
+    set declares alone, as one UID in one item, or whose ROI Number is
+    repeated with another frame, which is also taken as each value it names,
+    so that a malformed frame that the set ties to the series' slices still
+    holds the series. A target with a coordinate that is not finite, or of
+    magnitude above :data:`_FARTHEST`, cannot be placed either, nor can one
+    with a contour of Contour Slab Thickness or Contour Offset Vector, which
+    give it depth or move it from its points (:func:`_in_slab`).
     """
     frames_of_roi = _roi_frames(dataset)
     targets = _targets(dataset)
     tied = _tied_frames(dataset, frames_of_roi, slices)
+    found = []
     for item in dataset.get("ROIContourSequence", []):
         number = int(item.ReferencedROINumber)
         if number not in targets:
             continue
         frames = frames_of_roi(number)
         if (frames - {"", frame}) & tied:
-            return True
+            return None
         # A target that names no Frame of Reference may be in this one.
         if frames & {"", frame}:
+            contours = list(item.get("ContourSequence", []))
+            # A slab's thickness or offset, retired in PS3.3 C.8.8.6.2, puts
+            # the target beyond its contour's points, which alone place it.
+            if any(_in_slab(contour) for contour in contours):
+                return None
             points = [
                 np.asarray([float(v) for v in contour.ContourData]).reshape(-1, 3)
-                for contour in item.get("ContourSequence", [])
+                for contour in contours
             ]
-            if points and _hull_reaches(block, np.concatenate(points)):
-                return True
-    return False
+            if not points:
+                continue
+            joined = np.concatenate(points)
+            if not (np.abs(joined) <= _FARTHEST).all():
+                return None
+            found.append(joined)
+    return found
+
+
+def _in_slab(contour: pydicom.Dataset) -> bool:
+    """Whether a contour has a Contour Slab Thickness or Contour Offset
+    Vector with a value, which PS3.3 C.8.8.6.2 retired: its slab lies about
+    a plane moved from its points by the offset, as thick as given, so its
+    points alone do not place it."""
+    return any(
+        keyword in contour and contour[keyword].value not in (None, "", [])
+        for keyword in ("ContourSlabThickness", "ContourOffsetVector")
+    )
 
 
 def _tied_frames(
@@ -1192,7 +1396,7 @@ def _roi_frames(dataset: pydicom.Dataset) -> Callable[[int], set[str]]:
     Number, may be in: its own, where it is one UID that the set declares
     alone, as one UID in one item; otherwise ``""``, for none, with each
     frame that the set declares and each label that the ROI gives, as for
-    an ROI Number repeated with another frame (:func:`_targets_reach`)."""
+    an ROI Number repeated with another frame (:func:`_target_points`)."""
     named: dict[int, set[str]] = collections.defaultdict(set)
     for item in dataset.get("StructureSetROISequence", []):
         named[int(item.ROINumber)] |= _frames(item, "ReferencedFrameOfReferenceUID")
@@ -1270,10 +1474,11 @@ def _hull_reaches(block: FaceBlock, points: np.ndarray) -> bool:
     There is such a pair exactly where the steepest of the first kind, its
     height above the limit over its distance behind the plane, is at least
     the shallowest of the second, its depth below over its distance ahead,
-    which takes one pass over the points. This holds a target wherever any
+    which takes one pass over the points. This finds a target wherever any
     part of its hull reaches the block, as the hull of one that wraps around
-    the block without entering it can, which errs towards holding. A point
-    that cannot be placed reaches the block.
+    the block without entering it can, which errs towards keeping the
+    target's region and judging it against the slices. A point that cannot
+    be placed reaches the block.
     """
     if not (np.abs(points) <= _FARTHEST).all():
         return True
@@ -1303,6 +1508,9 @@ class CtDefacer:
         The block of the instance's series.
     dataset : pydicom.Dataset
         The instance's data set.
+    targets : KeptTargets, optional
+        The hulls of the targets that defacing keeps in the block, as the
+        series' outcome gives them; none by default.
 
     Raises
     ------
@@ -1311,7 +1519,12 @@ class CtDefacer:
         the instance is not one that :func:`find_face_blocks` defaces.
     """
 
-    def __init__(self, block: FaceBlock, dataset: pydicom.Dataset) -> None:
+    def __init__(
+        self,
+        block: FaceBlock,
+        dataset: pydicom.Dataset,
+        targets: KeptTargets = KeptTargets(),
+    ) -> None:
         try:
             if str(dataset.file_meta.TransferSyntaxUID) not in NATIVE_TRANSFER_SYNTAXES:
                 raise _Unusable(SeriesProblem.COMPRESSED)
@@ -1322,6 +1535,7 @@ class CtDefacer:
         except Exception:  # pylint: disable = broad-exception-caught
             raise PixelDataRefused(TransformReason.UNCLEANABLE_PIXEL_DATA) from None
         self._block = block
+        self._targets = targets
 
     def __repr__(self) -> str:
         return "CtDefacer()"
@@ -1336,10 +1550,16 @@ class CtDefacer:
         if not inside.any():
             return None
         kept, padded = _kept(self._block, each, stored)
-        inside &= ~kept & ~padded
+        inside &= ~kept & ~padded & ~_targets_kept(self._targets, each)
         if not inside.any():
             return None
         return FrameMask(frame, inside, each.air)
+
+
+def _targets_kept(targets: KeptTargets, each: _Slice) -> np.ndarray:
+    """Return a slice's pixels that defacing keeps for the targets, of
+    bool, rows by columns."""
+    return targets.slice_mask(each.position, each.orientation, each.spacing, each.shape)
 
 
 def _kept(
@@ -1561,7 +1781,10 @@ class KeptSlice:
         Pixel Spacing: between rows, then between columns, in millimetres.
     kept : numpy.ndarray
         Of bool, rows by columns: the pixels in the block that defacing
-        keeps, which no pixel of padding is.
+        keeps, those of the brain, which no pixel of padding is, and those
+        that it keeps for the targets, whether or not they are padding, so
+        that no target's dose, activity, segments, or contours are taken
+        where the slice holds padding.
     """
 
     position: tuple[float, float, float]
@@ -1574,7 +1797,10 @@ class KeptSlice:
 
 
 def kept_slices(
-    block: FaceBlock, positions: Iterable[int], read: Callable[[int], bytes | None]
+    block: FaceBlock,
+    positions: Iterable[int],
+    read: Callable[[int], bytes | None],
+    targets: KeptTargets = KeptTargets(),
 ) -> tuple[KeptSlice, ...]:
     """Return each slice of a defaced series that its block reaches, with
     the pixels that defacing keeps there, in the order of ``positions``,
@@ -1590,6 +1816,8 @@ def kept_slices(
         The run positions of the series' instances.
     read : callable
         Gives the file at a run position as the first pass read it, or None.
+    targets : KeptTargets, optional
+        As for :class:`CtDefacer`.
 
     Raises
     ------
@@ -1617,7 +1845,7 @@ def kept_slices(
                         each.position,
                         each.orientation,
                         each.spacing,
-                        inside & kept & ~padded,
+                        inside & ((kept & ~padded) | _targets_kept(targets, each)),
                     )
                 )
         except (_Unusable, ValueError):

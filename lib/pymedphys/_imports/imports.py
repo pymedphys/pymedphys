@@ -16,6 +16,7 @@ import dicom_validator.validator.error_handler as dicom_validator_handlers
 import dicom_validator.validator.validation_result as dicom_validator_results
 import hypothesis
 import hypothesis.strategies
+import imagecodecs
 import imageio.v2 as imageio
 import keyring
 import matplotlib
@@ -58,6 +59,7 @@ import scipy.ndimage
 import scipy.ndimage.measurements
 import scipy.optimize
 import scipy.signal
+import scipy.spatial
 import scipy.special
 import shapely
 import shapely.affinity
