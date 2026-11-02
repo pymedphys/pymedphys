@@ -409,7 +409,7 @@ def _refusals():
         dataset.file_meta.TransferSyntaxUID = "1.2.840.10008.1.2.5"
 
     return {
-        "compressed": compressed,
+        "compressed-binary": compressed,
         "unknown-type": setting(SegmentationType="SURFACE"),
         "binary-of-8-bits": setting(
             BitsAllocated=8, BitsStored=8, HighBit=7, PixelData=bytes(2 * 576)

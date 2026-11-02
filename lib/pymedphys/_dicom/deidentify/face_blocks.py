@@ -30,10 +30,15 @@ Legacy Converted Enhanced CT Image instance, and a series may hold either
 kind, or both. A series is defaced only where all of these hold:
 
 - every instance is read from the file that the run's first pass read, with
-  native Pixel Data of one sample and whole bytes
-  (:func:`~pymedphys._dicom.deidentify.pixel_cleaning.layout_of`), of one
-  frame for CT Image, and a readable Pixel Padding Value and Pixel Padding
-  Range Limit where present;
+  Pixel Data of one sample and whole bytes, of one frame for CT Image, and
+  a readable Pixel Padding Value and Pixel Padding Range Limit where
+  present: native Pixel Data
+  (:func:`~pymedphys._dicom.deidentify.pixel_cleaning.layout_of`), or
+  compressed Pixel Data whose frames decode, by the plugin pinned to its
+  transfer syntax, in the decoding child where that plugin runs native
+  code, as Clean Pixel Data decodes them
+  (:func:`~pymedphys._dicom.deidentify.pixel_cleaning.decoded_stored_values`),
+  after its offset tables and codestream headers are checked;
 - each slice has finite Image Position (Patient), Image Orientation
   (Patient), Pixel Spacing, Rescale Slope, and Rescale Intercept: a CT
   Image instance's own, its Rescale Slope and Rescale Intercept 1 and 0
@@ -52,6 +57,12 @@ kind, or both. A series is defaced only where all of these hold:
   Reference UID, which they have, and the stored values of each can hold
   air, -1000 Hounsfield units, as one stored value, rounded, without
   clipping, each slice by its own rescale;
+- the slices that the finder is given lie along the patient's axes
+  (:func:`~pymedphys._dicom.deidentify.defacing.along_patient_axes`), as a
+  gantry-tilted, sheared, or oblique stack does not: the finder samples
+  such a stack, but the air written is not yet defined for a slice that
+  spans heights, so it is left undefaced as
+  :attr:`~pymedphys._dicom.deidentify.defacing.FaceBlockProblem.NOT_ALONG_PATIENT_AXES`;
 - :class:`~pymedphys._dicom.deidentify.defacing.FaceFinder` finds the
   block from the slices within :data:`HEAD_REACH` millimetres of the
   volume's superior end, which bounds the memory that a long volume needs,
@@ -105,6 +116,15 @@ without a block, and the face review's verdict on it decides, as for every
 other instance that can show a face. The outcome of each series is counted
 for the release report (:class:`FaceBlockCounts`), by series, never naming
 one.
+
+A compressed instance of a defaced series is decoded, its block written as
+air, and written uncompressed, in Explicit VR Little Endian, as Clean Pixel
+Data writes a compressed instance (D-037), since writing into a codestream
+would mean encoding it again; one that its block does not reach, or in
+which defacing changes no pixel, is written as received
+(:attr:`CtDefacer.reaches`). Where its frames decode lossily, the finder,
+the brain kept, and the air written all work from the samples decoded,
+which are those written.
 
 Within the block, :class:`CtDefacer` keeps each pixel of Pixel Padding
 Value or its range, and each pixel of the brain within the cranial cavity,
@@ -181,14 +201,16 @@ from .pixel_cleaning import (
     FrameMask,
     Layout,
     PixelDataRefused,
-    layout_of,
+    decoded_stored_values,
+    frames_layout,
     stored_range,
 )
+from .pixel_decoding import DECODING_PLUGINS
 from .pseudonyms import SubjectIdentity
 from .reasons import TransformReason
 from .references import InstanceRecord
 from .sop_classes import iod_for_sop_class
-from .source import NATIVE_TRANSFER_SYNTAXES
+from .source import NATIVE_TRANSFER_SYNTAXES, read_source
 from .target_hulls import (
     KeptTargets,
     SliceRange,
@@ -250,9 +272,10 @@ class SeriesProblem(enum.Enum):
     # a slice that cannot be read again, or whose geometry, rescale, or
     # pixel data cannot be read
     UNREADABLE = "unreadable"
-    # Pixel Data in an encapsulated transfer syntax, which would have to be
-    # encoded again
-    COMPRESSED = "compressed-pixel-data"
+    # compressed Pixel Data whose frames cannot be decoded for defacing:
+    # without its decoder, or with an offset table, codestream header, or
+    # frame that does not match its attributes or does not decode
+    UNDECODABLE = "undecodable-pixel-data"
     # slices or frames of more than one sample, orientation, size, spacing,
     # or Frame of Reference, or a CT Image instance of more than one frame
     NOT_ONE_STACK = "not-one-stack"
@@ -359,6 +382,7 @@ class _Slice:
     padding: tuple[int, int] | None
     air: int
     frame: str | None
+    compressed: bool = False
 
 
 class _Unusable(Exception):
@@ -560,7 +584,7 @@ def _series_outcome(
         # the block.
         if not frame:
             raise _Unusable(SeriesProblem.UNREADABLE)
-        finder = _finder(slices, places, read)
+        finder = _finder(slices, places, read, along_axes=True)
         return SeriesDefacing(finder.block(), None, frame), frame, slices
     except _Unusable as unusable:
         return SeriesDefacing(None, unusable.problem), frame, slices
@@ -580,6 +604,11 @@ def inspect_series(
     """What the finder finds in one series' slices, as a run gives them to
     it, or None where it is given none, for a check on reference masks.
 
+    Unlike a run, this gives the finder a stack whose slices do not lie
+    along the patient's axes, such as a gantry-tilted or oblique one, so
+    that a check can measure the finder on such a series, which a run does
+    not yet deface (:func:`_finder`).
+
     Parameters
     ----------
     positions : list of int
@@ -589,7 +618,7 @@ def inspect_series(
     """
     try:
         slices, places = _stack(positions, read)
-        return _finder(slices, places, read).inspect()
+        return _finder(slices, places, read, along_axes=False).inspect()
     except (_Unusable, FaceBlockRefused):
         return None
 
@@ -619,6 +648,8 @@ def _finder(
     slices: list[_Slice],
     places: list[tuple[int, int]],
     read: Callable[[int], bytes | None],
+    *,
+    along_axes: bool,
 ) -> defacing.FaceFinder:
     """The finder of one stack's slices, each added, with each slice's run
     position and frame index in ``places``.
@@ -626,12 +657,23 @@ def _finder(
     Each instance is read once, and its frames decoded one at a time, so
     that a multi-frame instance is never held decoded whole.
 
+    Where ``along_axes``, as for a run, the slices given to the finder must
+    lie along the patient's axes
+    (:func:`~pymedphys._dicom.deidentify.defacing.along_patient_axes`),
+    checked before any pixel data are decoded: the finder samples a
+    gantry-tilted, sheared, or oblique stack, but the air that defacing
+    writes is not yet defined for a slice that spans heights, so a run does
+    not deface one.
+
     Raises
     ------
     _Unusable
         If a slice can no longer be read.
     FaceBlockRefused
-        As :class:`~pymedphys._dicom.deidentify.defacing.FaceFinder` does.
+        As :class:`~pymedphys._dicom.deidentify.defacing.FaceFinder` does,
+        and, where ``along_axes``, with
+        :attr:`~pymedphys._dicom.deidentify.defacing.FaceBlockProblem.NOT_ALONG_PATIENT_AXES`
+        for slices that do not lie along the patient's axes.
     """
     first = slices[0]
     normal = np.cross(first.orientation[:3], first.orientation[3:])
@@ -649,6 +691,10 @@ def _finder(
     for index in kept:
         by_instance.setdefault(places[index][0], []).append(index)
     order = [index for indices in by_instance.values() for index in indices]
+    if along_axes and not defacing.along_patient_axes(
+        first.orientation, [slices[i].position for i in order]
+    ):
+        raise FaceBlockRefused(FaceBlockProblem.NOT_ALONG_PATIENT_AXES)
     finder = defacing.FaceFinder(
         first.orientation,
         [slices[i].position for i in order],
@@ -656,7 +702,12 @@ def _finder(
         first.shape,
     )
     for position, indices in by_instance.items():
-        stored = _stored(read(position), first.shape, [places[i][1] for i in indices])
+        stored = _stored(
+            read(position),
+            first.shape,
+            [places[i][1] for i in indices],
+            compressed=slices[indices[0]].compressed,
+        )
         for index, values in zip(indices, stored, strict=True):
             finder.add(_hounsfield(values, slices[index]))
     return finder
@@ -664,7 +715,10 @@ def _finder(
 
 def _slices(data: bytes | None) -> tuple[_Slice, ...]:
     """Read what defacing needs of each slice of one instance: the instance
-    itself, of CT Image, or each frame of a multi-frame instance.
+    itself, of CT Image, or each frame of a multi-frame instance, of native
+    Pixel Data or compressed in a transfer syntax that a run decodes
+    (:data:`~.pixel_decoding.DECODING_PLUGINS`), whose frames are described
+    as they are held once decoded.
 
     Raises
     ------
@@ -680,13 +734,17 @@ def _slices(data: bytes | None) -> tuple[_Slice, ...]:
     # message can quote a value.
     except Exception:  # pylint: disable = broad-exception-caught
         raise _Unusable(SeriesProblem.UNREADABLE) from None
-    if syntax not in NATIVE_TRANSFER_SYNTAXES:
-        raise _Unusable(SeriesProblem.COMPRESSED)
+    compressed = syntax not in NATIVE_TRANSFER_SYNTAXES
+    if compressed and syntax not in DECODING_PLUGINS:
+        raise _Unusable(SeriesProblem.UNDECODABLE)
     try:
-        layout = layout_of(dataset)
+        layout = frames_layout(dataset, syntax)
     except PixelDataRefused:
         raise _Unusable(SeriesProblem.UNREADABLE) from None
-    return _described(dataset, layout)
+    described = _described(dataset, layout)
+    if not compressed:
+        return described
+    return tuple(dataclasses.replace(each, compressed=True) for each in described)
 
 
 def _check_stack(slices: list[_Slice]) -> None:
@@ -770,10 +828,16 @@ def _padding(dataset: pydicom.Dataset, layout: Layout) -> tuple[int, int] | None
 
 
 def _stored(
-    data: bytes | None, shape: tuple[int, int], frames: Sequence[int]
+    data: bytes | None,
+    shape: tuple[int, int],
+    frames: Sequence[int],
+    *,
+    compressed: bool = False,
 ) -> Iterator[np.ndarray]:
     """The stored values of each of an instance's ``frames``, in ascending
-    order, rows by columns, decoded one at a time.
+    order, rows by columns, decoded one at a time, as
+    :func:`~.pixel_cleaning.decoded_stored_values` decodes them where they
+    are ``compressed``.
 
     Raises
     ------
@@ -783,6 +847,9 @@ def _stored(
     """
     if data is None:
         raise _Unusable(SeriesProblem.UNREADABLE)
+    if compressed:
+        yield from _decoded(data, shape, frames)
+        return
     wanted = sorted(frames)
     decoded = pydicom.pixels.iter_pixels(io.BytesIO(data), indices=wanted)
     given = 0
@@ -800,6 +867,48 @@ def _stored(
             raise _Unusable(SeriesProblem.UNREADABLE)
         given += 1
         yield stored
+    if given != len(wanted):
+        raise _Unusable(SeriesProblem.UNREADABLE)
+
+
+def _decoded(
+    data: bytes, shape: tuple[int, int], frames: Sequence[int]
+) -> Iterator[np.ndarray]:
+    """The stored values of each of a compressed instance's ``frames``, in
+    ascending order, rows by columns, decoded one at a time as
+    :func:`~.pixel_cleaning.black_out` decodes them, so that defacing finds
+    its block and keeps its brain in the samples that it writes air into.
+
+    Raises
+    ------
+    _Unusable
+        With :attr:`SeriesProblem.UNDECODABLE` where the frames cannot be
+        decoded, and with :attr:`SeriesProblem.UNREADABLE` where the file
+        cannot be read, or its frames are not of that number or shape, or
+        hold more than their values in the bits above Bits Stored.
+    """
+    try:
+        with redacted_diagnostics():
+            source = read_source(data)
+            dataset = source.dataset()
+    # The reader raises many types for a file that it cannot read, and a
+    # message can quote a value.
+    except Exception:  # pylint: disable = broad-exception-caught
+        raise _Unusable(SeriesProblem.UNREADABLE) from None
+    wanted = sorted(frames)
+    given = 0
+    try:
+        for stored in decoded_stored_values(source, dataset, wanted):
+            if stored.shape != shape or given >= len(wanted):
+                raise _Unusable(SeriesProblem.UNREADABLE)
+            given += 1
+            yield stored
+    except PixelDataRefused as refused:
+        raise _Unusable(
+            SeriesProblem.UNREADABLE
+            if refused.reason is TransformReason.UNCLEANABLE_PIXEL_DATA
+            else SeriesProblem.UNDECODABLE
+        ) from None
     if given != len(wanted):
         raise _Unusable(SeriesProblem.UNREADABLE)
 
@@ -1231,7 +1340,8 @@ class CtDefacer:
     """Gives the face block of each slice of one CT instance as air, for
     :func:`~pymedphys._dicom.deidentify.pixel_cleaning.black_out`: the
     instance's one slice, for CT Image, or each of its frames, each placed
-    by its own functional groups.
+    by its own functional groups. The frames of compressed Pixel Data are
+    those that it decodes to, which it then writes uncompressed.
 
     Parameters
     ----------
@@ -1257,9 +1367,12 @@ class CtDefacer:
         targets: KeptTargets = KeptTargets(),
     ) -> None:
         try:
-            if str(dataset.file_meta.TransferSyntaxUID) not in NATIVE_TRANSFER_SYNTAXES:
-                raise _Unusable(SeriesProblem.COMPRESSED)
-            layout = layout_of(dataset)
+            syntax = str(dataset.file_meta.TransferSyntaxUID)
+            if syntax not in NATIVE_TRANSFER_SYNTAXES and syntax not in (
+                DECODING_PLUGINS
+            ):
+                raise _Unusable(SeriesProblem.UNDECODABLE)
+            layout = frames_layout(dataset, syntax)
             self._slices = _described(dataset, layout)
         # As for a series, whatever the data set raises refuses the
         # instance, without its message.
@@ -1270,6 +1383,19 @@ class CtDefacer:
 
     def __repr__(self) -> str:
         return "CtDefacer()"
+
+    @property
+    def reaches(self) -> bool:
+        """Whether the block holds the centre of a pixel of any slice of the
+        instance, by its geometry alone, so that :meth:`mask` may give one
+        a mask; an instance that it does not reach is written as received,
+        without its pixel data decoded."""
+        return any(
+            self._block.slice_mask(
+                each.position, each.orientation, each.spacing, each.shape
+            ).any()
+            for each in self._slices
+        )
 
     def mask(self, frame: int, stored: np.ndarray) -> FrameMask | None:
         """Return the pixels of one frame's block to write as air, as the
@@ -1548,7 +1674,12 @@ def kept_slices(
                     reached.append((index, each, inside))
             if not reached:
                 continue
-            stored = _stored(data, reached[0][1].shape, [i for i, _, _ in reached])
+            stored = _stored(
+                data,
+                reached[0][1].shape,
+                [i for i, _, _ in reached],
+                compressed=reached[0][1].compressed,
+            )
             for (_, each, inside), values in zip(reached, stored, strict=True):
                 kept, padded = _kept(block, each, values)
                 slices.append(

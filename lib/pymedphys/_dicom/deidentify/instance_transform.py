@@ -134,12 +134,14 @@ from .birth_dates import BIRTH_DATE_PRESET, BirthDates, with_birth_date
 from .clean_graphics import CLEAN_GRAPHICS, overlay_in_pixel_data
 from .content_items import content_item_actions
 from .cleaners import apply_cleaners, cleaners_for
+from .descriptor_agreement import DescriptorAgreement
 from .descriptor_cleaning import (
     CLEAN_DESCRIPTORS,
     DescriptorCleaning,
     DescriptorsRefused,
     HeldRoiName,
     clean_descriptors,
+    entity_descriptors,
     fallback_policy,
     kept_descriptors,
 )
@@ -1019,8 +1021,12 @@ class InstanceTransform:
     :func:`~.pixel_cleaning.black_out` writes a
     :class:`~.face_blocks.CtDefacer`'s masks, checked as a redaction is; an
     instance that cannot be is sequestered, the pixels that a target's hull
-    reaches kept (:class:`~.target_hulls.KeptTargets`). An instance of a
-    series with a target that cannot be kept within its slices is not
+    reaches kept (:class:`~.target_hulls.KeptTargets`). Compressed Pixel Data
+    is decoded to be defaced and written uncompressed, in Explicit VR Little
+    Endian, as Clean Pixel Data writes it, and one that defacing does not
+    change, as where its block does not reach it, is written as received; so
+    are an RT Dose's, a PET image's, and a Segmentation's below. An instance
+    of a series with a target that cannot be kept within its slices is not
     defaced, and is held for review
     (:attr:`~.reasons.VisualFeaturesReason.TARGET_IN_FACE_BLOCK`), as is
     one of a series whose structure set draws an eye away from the globes
@@ -1185,6 +1191,7 @@ class InstanceTransform:
             )
         )
         self._vocabulary = None if cleaning is None else cleaning.vocabulary
+        self._agreement = DescriptorAgreement()
         self.review_queue = ReviewQueue()
         nomenclature = None if cleaning is None else cleaning.nomenclature
         reviewed = None if cleaning is None else cleaning.reviewed.keyed_digest(key)
@@ -1264,6 +1271,12 @@ class InstanceTransform:
         or reads it back from the subject's profile
         (:meth:`~pymedphys._dicom.deidentify.birth_dates.BirthDates.prepare`).
 
+        Under Clean Descriptors, it finds what cleaning would write for each
+        descriptor of a patient, study, series, or frame of reference in
+        each instance, so that cleaning writes one only where every
+        instance of its entity would write the same values
+        (:mod:`~pymedphys._dicom.deidentify.descriptor_agreement`).
+
         Under Clean Recognizable Visual Features, it finds the face block of
         each CT series, as
         :func:`~pymedphys._dicom.deidentify.face_blocks.find_face_blocks`
@@ -1274,6 +1287,12 @@ class InstanceTransform:
         """
         if self._birth_dates is not None:
             self._birth_dates.prepare(records, read)
+        if self._cleaning is not None:
+            self._agreement = DescriptorAgreement()
+            for position, record in records.items():
+                data = read(position)
+                if data is not None:
+                    self._vote(data, record)
         if self._face_block_counts is None:
             return
         self._face_blocks = find_face_blocks(records, read)
@@ -1284,6 +1303,62 @@ class InstanceTransform:
             read,
             self._face_blocks,
             (RT_DOSE, RT_STRUCTURE_SET, *sorted(PET_IODS), SEGMENTATION),
+        )
+
+    def _vote(self, data: bytes, record: InstanceRecord) -> None:
+        """Give the agreement what cleaning would write for one instance's descriptors.
+
+        The instance is read, planned, and edited as :meth:`__call__` does,
+        and left out where that would sequester it before cleaning: its
+        source, character set, or SOP Class refuses it, or its edits
+        sequester it. One whose preparation fails otherwise is recorded as
+        failed, so that its entities' descriptors take their action without
+        Clean Descriptors.
+        """
+        assert self._cleaning is not None
+        try:
+            source = read_source(data)
+            dataset = source.dataset()
+            dataset_codecs(dataset, source=source)
+        except (SourceRefused, UndecodableElement):
+            return
+        try:
+            classification = classify(
+                _text(dataset, _SOP_CLASS, source), source.transfer_syntax
+            )
+            iod = self._iods.iods.get(classification.iod or "")
+            if iod is None or classification.sequestered:
+                return
+            plan = plan_instance(
+                source,
+                self._rules,
+                iod,
+                content_item_actions(source, self._policy, iod),
+            )
+            edits = edit_instance(
+                source, plan, self._key, record.patient, record.series_numberings
+            )
+            if edits.sequestrations:
+                return
+            tags = self._agreement.tags(iod)
+            written = entity_descriptors(
+                plan,
+                edits,
+                self._cleaning,
+                tags,
+                cleaned_elsewhere=self._cleaned_elsewhere,
+                reviewed_elsewhere=self._reviewed_elsewhere,
+            )
+        # Whatever preparing the instance raises, its message could quote a
+        # value, so it is not kept, and its entities are not cleaned.
+        except Exception:  # pylint: disable = broad-exception-caught
+            self._agreement.failed(record)
+            return
+        self._agreement.vote(
+            record,
+            iod,
+            written,
+            left_out=self._cleaned_elsewhere | self._reviewed_elsewhere,
         )
 
     def written_check(
@@ -1616,12 +1691,18 @@ class InstanceTransform:
                     redaction = black_out(
                         source, dataset, self._finder, rules=rules, overlays=overlays
                     )
-            return redaction, why, reviewed
+            return self._as_received_unless_changed(redaction), why, reviewed
         defacer = (
             None
             if defacing is None or defacing.block is None
             else CtDefacer(defacing.block, dataset, defacing.targets)
         )
+        # An instance that its block does not reach is written as it would
+        # be without one, and compressed Pixel Data is not decoded for it.
+        if defacer is not None and not defacer.reaches:
+            defacer = None
+            if self._finder is None and not overlays:
+                return None, None, False
         if approved is not None:
             return (
                 black_out_reviewed(
@@ -1636,17 +1717,43 @@ class InstanceTransform:
                 True,
             )
         return (
-            black_out(
-                source,
-                dataset,
-                self._finder,
-                defacer,
-                rules=rules,
-                overlays=overlays,
+            self._as_received_unless_changed(
+                black_out(
+                    source,
+                    dataset,
+                    self._finder,
+                    defacer,
+                    rules=rules,
+                    overlays=overlays,
+                )
             ),
             None,
             False,
         )
+
+    def _as_received_unless_changed(
+        self, redaction: Redaction | None
+    ) -> Redaction | None:
+        """Return None in place of a redaction of compressed Pixel Data that
+        changes no stored value, without Clean Pixel Data, so that defacing
+        writes it as received rather than uncompressed; otherwise
+        ``redaction``.
+
+        A mask may change none, as where it writes air over air. Under Clean
+        Pixel Data, compressed Pixel Data is written uncompressed whether or
+        not a region is blacked out, since a reviewer may add one to the
+        frames that the QC pack previews (D-037); a defacer's mask is never
+        reviewed so, and native Pixel Data whose words are unchanged is
+        written as it was in any case.
+        """
+        if (
+            redaction is not None
+            and self._finder is None
+            and redaction.decoded is not None
+            and redaction.value[: len(redaction.decoded)] == redaction.decoded
+        ):
+            return None
+        return redaction
 
     def _kept_descriptors(
         self, plan: InstancePlan, edits: InstanceEdits
@@ -1775,6 +1882,7 @@ class InstanceTransform:
                     reviewed_elsewhere=self._reviewed_elsewhere,
                     private_texts=plan.private_texts,
                     private_text_vms=plan.private_text_vms,
+                    agrees=self._agreement.agrees(record, iod),
                 )
             except DescriptorsRefused as refused:
                 withheld = retained | self._kept_descriptors(plan, edits)

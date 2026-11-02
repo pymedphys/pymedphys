@@ -61,7 +61,8 @@ keeps explains it
 (:func:`~pymedphys._dicom.deidentify.residual_exemptions.exemption`), or the
 text is the meaning of a standard code that only instances the run does not
 write held. A date or datetime equal to a whole date, time, or datetime that
-an option keeps does not withhold the file either
+an option keeps, or a datetime whose date equals a whole date that an option
+keeps, does not withhold the file either
 (:func:`~pymedphys._dicom.deidentify.residual_exemptions.retained_date`), nor
 does a UID equal to a whole UID that an option keeps, where only instances
 that the run does not write held it

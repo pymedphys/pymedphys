@@ -96,6 +96,44 @@ def test_a_head_ct_series_has_its_face_block():
     )
 
 
+_TILTED_SCANS = {
+    "gantry-tilt-15": head.tilted(
+        degrees=15.0,
+        spacing=2.0,
+        thickness=3.0,
+        extent=((-100, 100), (-130, 110), (-30, 160)),
+    ),
+    "sheared": head.sheared(
+        head.axial(
+            spacing=2.0, thickness=3.0, extent=((-100, 100), (-130, 160), (-60, 120))
+        ),
+        15.0,
+    ),
+}
+
+
+@pytest.mark.parametrize("scan", _TILTED_SCANS.values(), ids=_TILTED_SCANS.keys())
+def test_a_tilted_series_is_not_yet_defaced_though_the_finder_finds_its_block(scan):
+    slices = tuple(files.ct_files(scan, head.Head(noise=0.0)))
+
+    outcome = _outcome(slices=slices)
+    inspection = face_blocks.inspect_series(
+        list(range(len(slices))), lambda position: slices[position]
+    )
+
+    assert outcome.block is None
+    assert outcome.problem is FaceBlockProblem.NOT_ALONG_PATIENT_AXES
+    assert inspection is not None
+    np.testing.assert_allclose(
+        inspection.block().globes,
+        (
+            (-head.GLOBE_X, head.GLOBE_Y, head.GLOBE_Z),
+            (head.GLOBE_X, head.GLOBE_Y, head.GLOBE_Z),
+        ),
+        atol=2.0,
+    )
+
+
 def test_each_series_is_found_by_its_series_instance_uid():
     other = files.ct_files(
         _SCAN, head.Head(eyes=(True, False)), series=files.ROOT + ".9"
@@ -150,16 +188,19 @@ def test_stored_values_that_cannot_hold_air_leave_the_series_undefaced():
     assert _outcome(slices=tuple(unsigned)).problem is SeriesProblem.AIR_NOT_STORED
 
 
-def test_compressed_slices_are_not_defaced():
+def test_compressed_slices_have_the_face_block_of_native_ones():
     compressed = []
     for each in _head_files():
         dataset = pydicom.dcmread(io.BytesIO(each))
-        dataset.compress(pydicom.uid.RLELossless)
+        dataset.compress(pydicom.uid.RLELossless, generate_instance_uid=False)
         buffer = io.BytesIO()
         dataset.save_as(buffer, enforce_file_format=True)
         compressed.append(buffer.getvalue())
 
-    assert _outcome(slices=tuple(compressed)).problem is SeriesProblem.COMPRESSED
+    outcome = _outcome(slices=tuple(compressed))
+
+    assert outcome.problem is None
+    assert outcome.block == _outcome().block
 
 
 @pytest.mark.parametrize("kind", ["PTV", "CTV", "GTV", "PTV "])

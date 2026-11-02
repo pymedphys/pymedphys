@@ -30,33 +30,56 @@ frame with such regions, also from the file as received:
   evenly spaced through the series from its first frame to its last, each
   scaled to fit a square of :data:`TILE_PIXELS` pixels, in rows of
   :data:`CINE_COLUMNS`;
-- a frontal maximum intensity projection of each series that forms a
-  volume: at least :data:`VOLUME_SLICES` single-frame instances of one size,
-  orientation, and pixel spacing, at distinct positions stacked along the
-  normal of their orientation, whose axes lie along the patient's
-  anterior-posterior, left-right, and superior-inferior directions. A
-  multi-frame volume, such as an Enhanced CT image, is shown by its cine
-  strip only. It is projected along the anterior-posterior axis and shown
+- a frontal maximum intensity projection of each volume that a series
+  forms: at least :data:`VOLUME_SLICES` slices of one size, orientation,
+  and pixel spacing, at distinct positions along the normal of their
+  orientation, either stacked along it with axes along the patient's
+  anterior-posterior, left-right, and superior-inferior directions, or
+  else, as with a gantry tilt, slices offset within their plane, or an
+  oblique orientation, with row and column directions each of unit length,
+  and perpendicular, within
+  :data:`~.stack_sampling.ORTHONORMAL_TOLERANCE`. A slice is a single-frame
+  instance, placed by its Image Position (Patient), Image Orientation
+  (Patient), and Pixel Spacing, or a frame of a multi-frame instance, such
+  as an Enhanced CT, Enhanced PET, or Enhanced MR image, placed by its Plane
+  Position (Patient), Plane Orientation (Patient), and Pixel Measures
+  functional groups, per frame or shared, where every frame of the
+  instance has them; the frames of each stack and time point, by the Stack
+  ID and Temporal Position Index of their Frame Content functional group,
+  form a volume of their own, so that frames at one position at two time
+  points, whose union could hide the surface of either, are in none
+  together. A series with a colour instance or a Segmentation forms none.
+  It is projected along the anterior-posterior axis and shown
   with the patient's head at the top and right on the viewer's left, sampled
   to square pixels by nearest neighbour, at most :data:`MIP_PIXELS` a side,
   each slice also taken into the pixel nearest it by the maximum, so that
-  every slice is drawn where slices are closer than the pixels;
+  every slice is drawn where slices are closer than the pixels. A volume
+  whose axes do not lie along the patient's, or whose slices are offset
+  within their plane, is first sampled to cubic voxels along the patient's
+  axes by :mod:`~pymedphys._dicom.deidentify.stack_sampling`, with every
+  slice drawn, at most :data:`MIP_VOXELS` of them, and then projected, so
+  that the projection superimposes nothing that a frontal view keeps
+  apart;
 - a sheet of renders of the skin surface of each such volume, from the
   front, the two obliques, the two profiles, and behind, as
   :mod:`~pymedphys._dicom.deidentify.qc_surfaces` describes, or, for a
   volume of RT Dose planes, and for each RT Dose instance of two or more
-  frames whose grid lies along the patient's axes with its frames evenly
-  spaced, a dose-levels sheet of such renders at each of its dose levels;
+  frames evenly spaced, a dose-levels sheet of such renders at each of its dose levels;
   one that :mod:`~pymedphys._dicom.deidentify.qc_surfaces` finds too large
   to render has none, and such a volume has no projection either, so that
   its slices beyond its cine strip are held;
   an RT Dose is shown so only where it is one by its SOP Class, and its
-  stored values are unsigned, not padded, not rescaled, and scaled by a
-  finite Dose Grid Scaling above 0 to doses that float32 holds, each above
-  0 still above 0 and none infinite;
+  stored values are not padded, not rescaled, and scaled by a finite Dose
+  Grid Scaling above 0 to doses that float32 holds, each other than 0
+  still other than 0 and none infinite; a grid or series whose stored
+  values are signed, by Pixel Representation, as an RT Dose of Dose Type
+  ERROR's can be, is shown at the levels of its doses below 0 as well as
+  above, as :mod:`~pymedphys._dicom.deidentify.qc_surfaces` describes;
 - a dose-levels map of each RT Dose plane of one frame, so shown, that is
   in no volume, at full resolution, grey by how many of its dose levels
-  each pixel reaches, so that each level's outline is an edge;
+  each pixel reaches, so that each level's outline is an edge; a signed
+  plane's map of its doses above 0 is followed, after white columns, by
+  its map of the magnitudes of its doses below 0;
 - a contour sheet of each instance with contours, such as an RT Structure
   Set, high-risk or not, since a face verdict can release only what a
   reviewer saw: its contours as written, drawn in each Frame of Reference
@@ -112,7 +135,10 @@ preview lists the frames it shows, by run position and frame index from 0,
 and how many frames its series or instance has.
 
 Monochrome pixel data are rescaled by Rescale Slope and Rescale Intercept,
-where both can be read, and windowed from the 0.5th to the 99.5th percentile
+where both can be read, each frame of a multi-frame instance by those of its
+Pixel Value Transformation functional group, where it has one, and a
+volume of such frames is formed only where every frame's can be read; and
+windowed from the 0.5th to the 99.5th percentile
 of what the preview shows, other than a redaction preview's full-range
 image, leaving out the stored values that Pixel Padding Value and Pixel
 Padding Range Limit name, which are shown black; MONOCHROME1 is inverted so
@@ -159,8 +185,9 @@ from .pixel_decoding import (
     isolated_frames,
     pinned_plugin,
 )
-from . import qc_contours, qc_grids, qc_segments, qc_surfaces
+from . import qc_contours, qc_grids, qc_segments, qc_surfaces, stack_sampling
 from .face_review import holds_deformation_grid, is_rt_dose
+from .functional_groups import frame_group
 from .qc_pack import (
     GRID_KINDS,
     NotPreviewedEntry,
@@ -176,6 +203,10 @@ CINE_FRAMES = 16
 CINE_COLUMNS = 4
 TILE_PIXELS = 256
 MIP_PIXELS = 1024
+# The most voxels to which the projection of a stack whose axes do not lie
+# along the patient's is sampled (_StackProjection), so that it takes
+# seconds: about 0.9 mm voxels for a head 230 mm across and 210 mm tall.
+MIP_VOXELS = 1 << 24
 VOLUME_SLICES = 3
 
 _PERCENTILES = (0.5, 99.5)
@@ -184,8 +215,9 @@ _MONOCHROME = frozenset({"MONOCHROME1", "MONOCHROME2"})
 _COLOUR = frozenset({"RGB", "YBR_FULL", "YBR_FULL_422", "YBR_ICT", "YBR_RCT"})
 _FLOAT_PIXEL_DATA = ("FloatPixelData", "DoubleFloatPixelData")
 # An axis lies along a patient axis when its other two direction cosines are
-# each at most this; a projection along an oblique axis would superimpose
-# what a frontal view keeps apart.
+# each at most this; a volume with any other axis is sampled to voxels along
+# the patient's axes before it is projected, since a projection along an
+# oblique axis would superimpose what a frontal view keeps apart.
 _ALIGNMENT_TOLERANCE = 1e-4
 _ORIENTATION_TOLERANCE = 1e-4
 # In millimetres, how far a slice's origin may lie off the normal of the first,
@@ -228,7 +260,8 @@ class _Instance:
     plane: _Plane | None
     number: int | None
     modality: str
-    grid: qc_surfaces.Grid | None  # an RT Dose grid that dose levels show
+    # An RT Dose grid that dose levels show.
+    grid: qc_surfaces.Grid | qc_surfaces.Stacked | None
     frame: str | None  # Frame of Reference UID
     # Whether its native Pixel Data hold no more than its frames, with at most
     # one byte of padding; the bytes beyond them are in no frame a preview
@@ -238,9 +271,12 @@ class _Instance:
     # dose-levels preview shows as it could show a face (D-017).
     dose: bool = False
     # Dose Grid Scaling, where a dose-levels preview can show its doses:
-    # an RT Dose by its SOP Class, unsigned, not rescaled, and scaled by a
-    # finite number above 0.
+    # an RT Dose by its SOP Class, not padded, not rescaled, and scaled by
+    # a finite number above 0.
     dose_scale: float | None = None
+    # Whether such an RT Dose's stored values are signed, so that its
+    # doses below 0 are shown at their own levels.
+    dose_signed: bool = False
     # Whether its native Pixel Data are of 1 bit allocated, packed across
     # frames, which pydicom 3.0 cannot decode one frame at a time where a
     # frame's bits are not a whole number of bytes, as a Segmentation's
@@ -251,6 +287,43 @@ class _Instance:
     # sheet needs of it, or None where none can show it.
     segmentation: bool = False
     segments: qc_segments.Segments | None = None
+    # For an instance whose functional groups describe its frames (_framed):
+    # each frame's plane, where every frame has one; each frame's Rescale
+    # Slope and Rescale Intercept, where its Pixel Value Transformation
+    # group gives them, in place of ``rescale``; and each frame's Stack ID
+    # and Temporal Position Index, from its Frame Content group.
+    planes: tuple[_Plane, ...] | None = None
+    rescales: tuple[tuple[float, float], ...] | None = None
+    stacks: tuple[tuple[str, str], ...] | None = None
+    # What its Stack IDs and Temporal Position Indices are unique within,
+    # and so which other instances' frames its frames may share a volume
+    # with (_scope): for an instance whose functional groups describe its
+    # frames, its Concatenation, or else itself alone; for any other, its
+    # series' other instances without functional groups, as "".
+    scope: str = ""
+    # Whether its rescaled values are Hounsfield units: for an instance
+    # without functional groups, where its Rescale Type is HU or absent,
+    # which PS3.3 C.8.2.1 allows only for Hounsfield units in a CT Image;
+    # for one with them, where every frame's Pixel Value Transformation
+    # group gives Rescale Slope, Rescale Intercept, and a Rescale Type of HU.
+    hounsfield: bool = False
+
+    def plane_of(self, frame: int) -> _Plane | None:
+        """The plane of a frame, from 0, or None where it has none."""
+        if self.planes is not None:
+            return self.planes[frame]
+        return self.plane if self.frames == 1 else None
+
+    def rescale_of(self, frame: int) -> tuple[float, float]:
+        """The Rescale Slope and Rescale Intercept of a frame, from 0."""
+        return self.rescale if self.rescales is None else self.rescales[frame]
+
+    def stack_of(self, frame: int) -> tuple[str, str, str]:
+        """The scope of an instance's stacks, then the Stack ID and Temporal
+        Position Index of a frame, from 0, or empty strings where it gives
+        none."""
+        stack, time = ("", "") if self.stacks is None else self.stacks[frame]
+        return self.scope, stack, time
 
 
 @dataclasses.dataclass(frozen=True)
@@ -260,8 +333,8 @@ class PreviewSet:
     Attributes
     ----------
     previews : tuple of ~pymedphys._dicom.deidentify.qc_pack.Preview
-        Each series' cine strip, then its projection and its surface render
-        if it forms a volume, then the dose-levels render of each RT Dose
+        Each series' cine strip, then the projection and the surface render
+        of each volume that it forms, then the dose-levels render of each RT Dose
         grid in it, then the dose-levels map of each RT Dose plane in it in
         no volume, series in the order of their first run position; then each
         contour sheet, in run position order; then each segments sheet, in
@@ -293,7 +366,9 @@ class PreviewSet:
         a preview that could show a face draws, and that are not listed as
         not previewed, and whose native Pixel Data hold no more than their
         frames. A volume's projection and surface render draw each of its
-        slices, by its maximum where slices are closer than their pixels. A
+        slices, by its maximum where slices are closer than their pixels,
+        so they draw every frame of a multi-frame instance whose frames are
+        all in volumes, however many it has. A
         contour sheet lists frames that it cannot show a face in, so its
         frames do not count. Only dose-levels previews count for an RT Dose,
         by :func:`~.face_review.is_rt_dose`: its cine strip is windowed to
@@ -583,8 +658,21 @@ def _described(
     if frames < 1 or rows < 1 or columns < 1:
         return NotPreviewedReason.UNREADABLE
     spacing = _spacing(dataset)
+    framed = (
+        _Framed()
+        if colour or segmentation
+        else _framed(dataset, frames, (rows, columns))
+    )
+    planes = framed.planes
+    if spacing is None and planes and len({plane.spacing for plane in planes}) == 1:
+        spacing = planes[0].spacing
+    plane = _plane(dataset, spacing, (rows, columns)) if frames == 1 else None
+    if planes is not None and frames == 1:
+        plane = planes[0]
+    hounsfield = framed.hounsfield if framed.described else _hounsfield(dataset)
     uid = dataset.get("SeriesInstanceUID")
     scale = None if colour or rescale != (1.0, 0.0) else _dose_scale(dataset)
+    signed = _number(dataset, "PixelRepresentation", int) == 1
     whole = True
     if not plugin:
         try:
@@ -604,20 +692,44 @@ def _described(
         inverted=photometric == "MONOCHROME1",
         rescale=rescale,
         spacing=spacing,
-        plane=_plane(dataset, spacing, (rows, columns)) if frames == 1 else None,
+        plane=plane,
         number=number,
         modality=modality,
         grid=None
         if scale is None
-        else _dose_grid(dataset, spacing, (rows, columns), frames, scale),
+        else _dose_grid(dataset, spacing, (rows, columns), frames, scale, signed),
         frame=_uid(dataset, "FrameOfReferenceUID"),
         whole=whole,
         dose=is_rt_dose(dataset),
         dose_scale=scale,
+        dose_signed=scale is not None and signed,
         packed=not plugin and allocated == 1,
         segmentation=segmentation,
         segments=qc_segments.segments_of(dataset) if segmentation else None,
+        planes=planes,
+        rescales=framed.rescales,
+        stacks=framed.stacks,
+        scope=_scope(position, dataset) if framed.described else "",
+        hounsfield=hounsfield,
     )
+
+
+def _scope(position: int, dataset: pydicom.Dataset) -> str:
+    """What the Stack IDs and Temporal Position Indices of an instance with
+    functional groups are unique within: its Concatenation, whose SOP
+    Instances hold one Multi-frame Image between them, or else itself.
+
+    PS3.3 C.7.6.16.2.2.4 lets another SOP Instance reuse a Stack ID, which
+    is unique only within a Dimension Organization UID, if present, or else
+    a Concatenation UID; so frames of two instances that a Concatenation
+    does not join never share a volume, though their labels match, since
+    one acquisition's surface could otherwise hide another's while both are
+    counted as shown.
+    """
+    concatenation = _uid(dataset, "ConcatenationUID")
+    if concatenation is not None:
+        return f"concatenation {concatenation}"
+    return f"instance {position}"
 
 
 def _uid(dataset: pydicom.Dataset, keyword: str) -> str | None:
@@ -669,8 +781,23 @@ def _plane(
     spacing: tuple[float, float] | None,
     shape: tuple[int, int],
 ) -> _Plane | None:
-    orientation = _floats(dataset, "ImageOrientationPatient", 6)
-    origin = _floats(dataset, "ImagePositionPatient", 3)
+    return _placed(
+        _floats(dataset, "ImageOrientationPatient", 6),
+        _floats(dataset, "ImagePositionPatient", 3),
+        spacing,
+        shape,
+    )
+
+
+def _placed(
+    orientation: tuple | None,
+    origin: tuple | None,
+    spacing: tuple[float, float] | None,
+    shape: tuple[int, int],
+) -> _Plane | None:
+    """A plane of these direction cosines, origin, and pixel spacing, or
+    None where any is missing or the cosines are not of two orthogonal
+    unit vectors."""
     if orientation is None or origin is None or spacing is None:
         return None
     row = np.array(orientation[:3])
@@ -690,17 +817,185 @@ def _plane(
     )
 
 
+# The functional groups that place a frame, by its position, orientation,
+# and pixel spacing (PS3.3 C.7.6.16.2.1 to C.7.6.16.2.3), that rescale its
+# stored values (C.7.6.16.2.9), and that give its stack and time point
+# (C.7.6.16.2.2), each per frame or shared.
+_PLACING = (
+    "PlanePositionSequence",
+    "PlaneOrientationSequence",
+    "PixelMeasuresSequence",
+)
+_RESCALING = "PixelValueTransformationSequence"
+_CONTENT = "FrameContentSequence"
+_FUNCTIONAL_GROUPS = (
+    "SharedFunctionalGroupsSequence",
+    "PerFrameFunctionalGroupsSequence",
+)
+
+
+@dataclasses.dataclass(frozen=True)
+class _Framed:
+    """What an instance's functional groups give of its frames (:func:`_framed`)."""
+
+    described: bool = False  # whether it has functional groups at all
+    planes: tuple[_Plane, ...] | None = None
+    rescales: tuple[tuple[float, float], ...] | None = None
+    stacks: tuple[tuple[str, str], ...] | None = None
+    hounsfield: bool = False
+
+
+def _framed(dataset: pydicom.Dataset, frames: int, shape: tuple[int, int]) -> _Framed:
+    """Read each frame's plane, rescale, and stack from an instance's
+    functional groups, each group's one item, per frame or shared, as
+    :func:`~.functional_groups.frame_group` gives it.
+
+    An instance with neither Functional Groups Sequence has none of them.
+    Planes are given only where every frame has one, from its Plane
+    Position (Patient), Plane Orientation (Patient), and Pixel Measures
+    groups. Rescales are given only where a Pixel Value Transformation group
+    is present: then every frame must have its own finite Rescale Slope and
+    Rescale Intercept, or no frame has a plane either, so that no volume
+    takes frames whose values cannot be compared, and its values are
+    Hounsfield units only where every frame's Rescale Type, which PS3.3
+    Table C.7.6.16-10 requires, is HU. A frame's stack is its Frame
+    Content group's Stack ID and Temporal Position Index, each empty where
+    it gives none. Whatever cannot be read leaves out what it would give.
+    """
+    try:
+        if not any(keyword in dataset for keyword in _FUNCTIONAL_GROUPS):
+            return _Framed()
+        return _read_framed(dataset, frames, shape)
+    # Whatever pydicom raises, the frames are left unplaced.
+    except Exception:  # pylint: disable = broad-exception-caught
+        return _Framed(described=True)
+
+
+def _read_framed(
+    dataset: pydicom.Dataset, frames: int, shape: tuple[int, int]
+) -> _Framed:
+    # A Stack ID is unique only within a Dimension Organization UID, so
+    # the frames of an instance of more than one have no stacks that can be
+    # told apart, and none is placed.
+    planes: list[_Plane] | None = [] if _organisations(dataset) <= 1 else None
+    rescales: list[tuple[float, float]] | None = []
+    stacks: list[tuple[str, str]] = []
+    rescaled = _in_groups(dataset, _RESCALING)
+    hounsfield = rescaled
+    for frame in range(frames):
+        position, orientation, measures = (
+            _group(dataset, frames, frame, keyword) for keyword in _PLACING
+        )
+        plane = _placed(
+            None
+            if orientation is None
+            else _floats(orientation, "ImageOrientationPatient", 6),
+            None if position is None else _floats(position, "ImagePositionPatient", 3),
+            None if measures is None else _spacing(measures),
+            shape,
+        )
+        if plane is None:
+            planes = None
+        elif planes is not None:
+            planes.append(plane)
+        if rescaled:
+            item = _group(dataset, frames, frame, _RESCALING)
+            slope = None if item is None else _number(item, "RescaleSlope", float)
+            intercept = (
+                None if item is None else _number(item, "RescaleIntercept", float)
+            )
+            if slope is None or intercept is None:
+                rescales = planes = None
+                hounsfield = False
+            elif rescales is not None:
+                rescales.append((float(slope), float(intercept)))
+            hounsfield = (
+                hounsfield
+                and item is not None
+                and "RescaleType" in item
+                and _hounsfield(item)
+            )
+        content = _group(dataset, frames, frame, _CONTENT)
+        stacks.append(
+            (_text(content, "StackID"), _text(content, "TemporalPositionIndex"))
+        )
+    return _Framed(
+        described=True,
+        planes=None if planes is None else tuple(planes),
+        rescales=None if not rescaled or rescales is None else tuple(rescales),
+        stacks=tuple(stacks),
+        hounsfield=hounsfield,
+    )
+
+
+def _organisations(dataset: pydicom.Dataset) -> int:
+    """How many distinct Dimension Organization UIDs an instance names.
+
+    Its Dimension Organization Sequence, where present, must hold an item
+    with a Dimension Organization UID for each; one that cannot be read
+    raises, which :func:`_framed` takes as leaving its frames unplaced.
+    """
+    items = dataset.get("DimensionOrganizationSequence") or []
+    uids = set()
+    for item in items:
+        uid = _uid(item, "DimensionOrganizationUID")
+        if uid is None:
+            raise ValueError("no Dimension Organization UID")
+        uids.add(uid)
+    return len(uids)
+
+
+def _group(
+    dataset: pydicom.Dataset, frames: int, frame: int, keyword: str
+) -> pydicom.Dataset | None:
+    """A frame's one item of a functional group, or None where
+    :func:`~.functional_groups.frame_group` refuses it."""
+    try:
+        return frame_group(dataset, frames, frame, keyword)
+    except ValueError:
+        return None
+
+
+def _in_groups(dataset: pydicom.Dataset, keyword: str) -> bool:
+    """Whether a functional group is in the shared item or any frame's."""
+    return any(
+        keyword in item
+        for sequence in _FUNCTIONAL_GROUPS
+        for item in dataset.get(sequence) or []
+    )
+
+
+def _text(item: pydicom.Dataset | None, keyword: str) -> str:
+    """An attribute's value as stripped text, or empty where it is absent."""
+    if item is None:
+        return ""
+    value = item.get(keyword)
+    return "" if value is None else str(value).strip()
+
+
+def _hounsfield(dataset: pydicom.Dataset) -> bool:
+    """Whether a data set's Rescale Type, if present, is HU."""
+    if "RescaleType" not in dataset:
+        return True
+    try:
+        value = dataset["RescaleType"].value
+    except Exception:  # pylint: disable = broad-exception-caught
+        return False
+    return isinstance(value, str) and value.strip().upper() == "HU"
+
+
 # The attributes by which stored values pad, and so are read as no patient.
 _PADDING = ("PixelPaddingValue", "PixelPaddingRangeLimit")
 
 
 def _dose_scale(dataset: pydicom.Dataset) -> float | None:
     """Dose Grid Scaling, where the data set is an RT Dose by its SOP Class
-    whose stored values are unsigned, not padded, and scaled by a finite
-    number above 0; otherwise None, as a signed grid can hold doses below 0,
-    which no level shows, a padded one has stored values that are read as
-    no dose, which no level shows either, and a grid without a scaling above
-    0 has no dose to show."""
+    whose stored values are unsigned or signed, by Pixel Representation of
+    0 or 1, not padded, and scaled by a finite number above 0; otherwise
+    None, as a padded grid has stored values that are read as no dose,
+    which no level shows, and a grid without a scaling above 0 has no dose
+    to show. A signed grid is shown at the levels of its doses below 0 as
+    well as above (:mod:`~pymedphys._dicom.deidentify.qc_surfaces`)."""
     try:
         sop_class = str(dataset.get("SOPClassUID") or "")
     except Exception:  # pylint: disable = broad-exception-caught
@@ -708,7 +1003,7 @@ def _dose_scale(dataset: pydicom.Dataset) -> float | None:
     scaling = _number(dataset, "DoseGridScaling", float)
     if (
         sop_class != qc_surfaces.RT_DOSE_STORAGE
-        or _number(dataset, "PixelRepresentation", int) != 0
+        or _number(dataset, "PixelRepresentation", int) not in (0, 1)
         or any(keyword in dataset for keyword in _PADDING)
         or scaling is None
         or scaling <= 0
@@ -723,10 +1018,13 @@ def _dose_grid(
     shape: tuple[int, int],
     frames: int,
     scale: float,
-) -> qc_surfaces.Grid | None:
+    signed: bool = False,
+) -> qc_surfaces.Grid | qc_surfaces.Stacked | None:
     """The grid of an RT Dose instance of two or more frames, if it is rendered.
 
-    Its axes must lie along the patient's, and its frames be evenly spaced.
+    Its frames must be evenly spaced. One whose axes do not lie along the
+    patient's is a stack (:mod:`~pymedphys._dicom.deidentify.stack_sampling`)
+    of its frames, each at its offset along the normal from the first.
     """
     if frames < 2:
         return None
@@ -752,12 +1050,26 @@ def _dose_grid(
         offsets = tuple(offset - plane.origin[2] for offset in offsets)
     steps = np.diff(offsets)
     if (
-        _roles(directions) is None
-        or abs(offsets[0]) > _STACKING_TOLERANCE
+        abs(offsets[0]) > _STACKING_TOLERANCE
         or not ((steps > 0).all() or (steps < 0).all())
         or np.ptp(steps) > _STACKING_TOLERANCE
     ):
         return None
+    if _roles(directions) is None:
+        try:
+            stack = stack_sampling.Stack(
+                plane.row + plane.column,
+                [
+                    np.array(plane.origin)
+                    + offset * directions[0] / np.linalg.norm(directions[0])
+                    for offset in offsets
+                ],
+                plane.spacing,
+                shape,
+            )
+        except (stack_sampling.StackRefused, ValueError):
+            return None
+        return qc_surfaces.Stacked(stack, qc_surfaces.Threshold.DOSE, scale, signed)
     return qc_surfaces.grid(
         directions,
         offsets,
@@ -765,6 +1077,7 @@ def _dose_grid(
         shape,
         qc_surfaces.Threshold.DOSE,
         scale,
+        signed,
     )
 
 
@@ -807,7 +1120,7 @@ class _Decoder:
         except Exception:  # pylint: disable = broad-exception-caught
             self._refused[instance.position] = NotPreviewedReason.UNREADABLE
             return None
-        return self._shown(instance, pixels, NotPreviewedReason.UNREADABLE)
+        return self._shown(instance, index, pixels, NotPreviewedReason.UNREADABLE)
 
     def frames(
         self,
@@ -816,8 +1129,8 @@ class _Decoder:
         reason: NotPreviewedReason = NotPreviewedReason.UNREADABLE,
         received: bool = False,
     ) -> Iterator[np.ndarray]:
-        """Yield an instance's frames, or those at ``indices``, in order, as
-        :meth:`frame` gives them, reading its file once.
+        """Yield an instance's frames, or those at ``indices``, in ascending
+        order, each once, as :meth:`frame` gives them, reading its file once.
 
         Stops at a frame that cannot be decoded, recording ``reason``. The
         frames of a file as ``received``, which is not released, are not
@@ -825,31 +1138,43 @@ class _Decoder:
         """
         if instance.position in self._refused:
             return
+        wanted = sorted(set(range(instance.frames) if indices is None else indices))
+        if not wanted:
+            return
         try:
             decoded = (
-                _packed_frames(
-                    instance, range(instance.frames) if indices is None else indices
-                )
+                _packed_frames(instance, wanted)
                 if instance.packed
                 else isolated_frames(instance.data, indices)
                 if instance.plugin in CHILD_ONLY_PLUGINS
                 else pydicom.pixels.iter_pixels(
                     io.BytesIO(instance.data),
-                    indices=indices,
+                    indices=None if indices is None else wanted,
                     decoding_plugin=instance.plugin,
                 )
             )
+            # Each frame is rescaled by its own Rescale Slope and Intercept.
+            # Its index is counted alongside, not zipped, since zip would
+            # hold the frame before while the next is decoded.
+            count = 0
             for pixels in decoded:
-                shown = self._shown(instance, np.asarray(pixels), reason, received)
+                index = wanted[count]
+                count += 1
+                shown = self._shown(
+                    instance, index, np.asarray(pixels), reason, received
+                )
                 if shown is None:
                     return
                 yield shown
+                # Freed before the next frame is decoded, so no two are held.
+                del shown, pixels
         except Exception:  # pylint: disable = broad-exception-caught
             self._refused.setdefault(instance.position, reason)
 
     def _shown(
         self,
         instance: _Instance,
+        index: int,
         pixels: np.ndarray,
         reason: NotPreviewedReason,
         received: bool = False,
@@ -861,8 +1186,12 @@ class _Decoder:
         pixels = pixels.reshape(shape)
         if instance.colour:
             return pixels.astype(np.uint8)
-        slope, intercept = instance.rescale
-        shown = pixels.astype(np.float32) * np.float32(slope) + np.float32(intercept)
+        slope, intercept = instance.rescale_of(index)
+        with np.errstate(over="ignore", under="ignore", invalid="ignore"):
+            shown = pixels.astype(np.float32) * np.float32(slope) + np.float32(
+                intercept
+            )
+        padded = None
         if instance.padding is not None:
             low, high = instance.padding
             padded = (pixels >= low) & (pixels <= high)
@@ -870,8 +1199,47 @@ class _Decoder:
                 values = pixels[padded]
                 if values.min() != values.max():
                     self.mixed_padding.add(instance.position)
+        if not _contrast_kept(pixels, shown, padded):
+            self._refused[instance.position] = (
+                reason if received else NotPreviewedReason.UNSUPPORTED
+            )
+            return None
+        if padded is not None:
             shown[padded] = np.nan
         return shown
+
+
+# How many steps of float32 a frame's rescaled values must span, at least,
+# where its stored values differ: the 256 grey levels of a preview's PNG.
+_RESCALED_LEVELS = 256
+
+
+def _contrast_kept(
+    pixels: np.ndarray, shown: np.ndarray, padded: np.ndarray | None
+) -> bool:
+    """Whether a frame's rescaled values, as float32, keep what its stored
+    values show, other than padding.
+
+    A Rescale Slope and Rescale Intercept that are finite can still take a
+    frame beyond float32, where its values are infinite or not a number, or
+    collapse it, as a slope too small for float32 rounds to 0, so that a
+    preview drawn of it is blank though it lists every frame. So every
+    value must be finite, and where the stored values differ, the rescaled
+    ones must span at least :data:`_RESCALED_LEVELS` steps of float32 at
+    their magnitude, which a linear rescale spreads evenly over the frame's
+    range.
+    """
+    if padded is not None:
+        pixels, shown = pixels[~padded], shown[~padded]
+    if not pixels.size:
+        return True
+    if not np.isfinite(shown).all():
+        return False
+    if pixels.min() == pixels.max():
+        return True
+    low, high = float(shown.min()), float(shown.max())
+    step = float(np.spacing(np.float32(max(abs(low), abs(high)))))
+    return high - low >= _RESCALED_LEVELS * step
 
 
 def _packed_frames(instance: _Instance, indices: Sequence[int]) -> Iterator[np.ndarray]:
@@ -954,53 +1322,66 @@ def _series_images(
         for frame in range(instance.frames)
     ]
     chosen = {frames[i] for i in _evenly(len(frames), CINE_FRAMES)}
-    volume = _volume(series)
-    tiles: list[tuple[int, int, np.ndarray, _Instance]] = []
-    surfaces = _surfaces(series, volume)
+    volumes = _volumes(series)
+    renders = _renders(series, volumes)
     # A volume too large for a surface render has no projection either, so
     # that no preview that could show a face draws its slices beyond its
     # cine strip, and their pixel data are held.
-    projection = (
-        _Projection(volume) if volume is not None and not surfaces[0][2].large else None
-    )
-    rendered = {
-        frame for _, shown, surface in surfaces if not surface.large for frame in shown
+    projections: list[_Projection | _StackProjection | None] = [
+        None
+        if render.surface.large
+        else _Projection(volume)
+        if volume.stack is None
+        else _StackProjection(volume)
+        for volume, render in zip(volumes, renders)
+    ]
+    wanted = {
+        each for render in renders if not render.surface.large for each in render.places
     }
+    in_volume = {each for volume in volumes for each in volume.slices}
     # Each RT Dose plane in no volume, mapped by the levels of its dose.
     planes = {
         instance.position: instance
         for instance in series
-        if volume is None and instance.frames == 1 and instance.dose_scale is not None
+        if instance.frames == 1
+        and instance.dose_scale is not None
+        and (instance.position, 0) not in in_volume
     }
+    tiles: list[tuple[int, int, np.ndarray, _Instance]] = []
     # Each slice's map is drawn as soon as it is decoded, so that only its
     # 8-bit map, or None, and not its pixels, is kept to the series' end.
     maps: list[tuple[_Instance, np.ndarray | None]] = []
     for instance in series:
-        for frame in range(instance.frames):
-            shown = (instance.position, frame) in chosen
-            projected = projection is not None and not frame
-            mapped = instance.position in planes
-            if not (
-                shown or projected or mapped or (instance.position, frame) in rendered
-            ):
-                continue
-            pixels = decoder.frame(instance, frame)
-            if pixels is None:
-                break
-            if shown:
+        needed = [
+            frame
+            for frame in range(instance.frames)
+            if (instance.position, frame) in chosen
+            or (instance.position, frame) in wanted
+            or instance.position in planes
+        ]
+        # Each file is read once for the frames that its previews draw,
+        # which are decoded one at a time, in order.
+        count = 0
+        for pixels in decoder.frames(instance, needed):
+            frame = needed[count]
+            count += 1
+            each = (instance.position, frame)
+            if each in chosen:
                 tiles.append(
                     (instance.position, frame, _fitted(pixels, instance), instance)
                 )
-            if projection is not None:
-                projection.add(instance, pixels)
-            for kind, each, surface in surfaces:
-                if (instance.position, frame) in each:
-                    # A series of RT Dose planes scales each by its own.
-                    planed = (
-                        kind is PreviewKind.SERIES_DOSE_LEVELS and volume is not None
+            for projection, render in zip(projections, renders):
+                if projection is not None and each in render.places:
+                    projection.add(render.places[each], instance, pixels)
+            for render in renders:
+                if each in render.places:
+                    # A volume of RT Dose planes scales each by its own.
+                    render.surface.add(
+                        pixels,
+                        instance.dose_scale if render.planed else None,
+                        render.places[each],
                     )
-                    surface.add(pixels, instance.dose_scale if planed else None)
-            if mapped:
+            if instance.position in planes:
                 maps.append((instance, _level_map(instance, pixels)))
             # Freed before the next frame is decoded, so no two are held.
             del pixels
@@ -1016,24 +1397,28 @@ def _series_images(
             len(frames),
             image,
         )
-    if projection is not None:
-        projected = projection.image()
-        if projected is not None:
-            yield projected
     frame = series[0].frame
     if (
         guides is not None
-        and volume is not None
         and frame in guides
         and all(instance.frame == frame for instance in series)
     ):
-        guide = _guide(series, surfaces[0][2])
-        if guide is not None:
-            guides[frame].append(((guide, surfaces[0][1]), series[0].series))
-    for kind, shown, surface in surfaces:
-        image = surface.image()
+        # The first volume whose surface can be placed is drawn behind the
+        # contours and segments in its Frame of Reference.
+        for volume, render in zip(volumes, renders):
+            guide = _guide(volume, render.surface)
+            if guide is not None:
+                guides[frame].append(((guide, render.shown), series[0].series))
+                break
+    # Each volume's projection, then its surface render.
+    for index, render in enumerate(renders):
+        if index < len(projections) and projections[index] is not None:
+            projected = projections[index].image()
+            if projected is not None:
+                yield projected
+        image = render.surface.image()
         if image is not None:
-            yield kind, shown, len(shown), image
+            yield render.kind, render.shown, len(render.shown), image
     for instance, level_map in maps:
         if level_map is not None:
             yield (
@@ -1047,66 +1432,113 @@ def _series_images(
 def _level_map(instance: _Instance, pixels: np.ndarray) -> np.ndarray | None:
     """An RT Dose plane at full resolution, grey by the levels of its dose,
     or None if its scaling loses a dose (:func:`~.qc_surfaces.dose_values`)
-    or it has more than :data:`~.qc_surfaces.MAXIMUM_DOSE_LEVELS` levels."""
+    or it has more than :data:`~.qc_surfaces.MAXIMUM_DOSE_LEVELS` levels of
+    either sign. A signed plane's map of its doses above 0 is followed, after
+    columns of :data:`~.qc_surfaces.SIGN_RULE`, by the map of the magnitudes
+    of its doses below 0."""
     assert instance.dose_scale is not None
     values = qc_surfaces.dose_values(pixels, instance.dose_scale)
     if values is None:
         return None
     finite = values[np.isfinite(values)]
-    positive = finite[finite > 0]
-    levels = qc_surfaces.dose_levels(
-        float(finite.max()) if finite.size else -math.inf,
-        float(positive.min()) if positive.size else math.inf,
+    maps = []
+    for below in (False, True) if instance.dose_signed else (False,):
+        doses = -finite[finite < 0] if below else finite[finite > 0]
+        levels = qc_surfaces.dose_levels(
+            float(doses.max()) if doses.size else -math.inf,
+            float(doses.min()) if doses.size else math.inf,
+        )
+        if len(levels) > qc_surfaces.MAXIMUM_DOSE_LEVELS:
+            return None
+        maps.append(qc_surfaces.level_bands(values, levels, below))
+    if len(maps) == 1:
+        return maps[0]
+    rule = np.full(
+        (values.shape[0], qc_surfaces.SIGN_RULE_PIXELS), qc_surfaces.SIGN_RULE, np.uint8
     )
-    if len(levels) > qc_surfaces.MAXIMUM_DOSE_LEVELS:
-        return None
-    return qc_surfaces.level_bands(values, levels)
+    return np.concatenate([maps[0], rule, maps[1]], axis=1)
 
 
-def _surfaces(
-    series: list[_Instance], volume: _Volume | None
-) -> list[tuple[PreviewKind, tuple[tuple[int, int], ...], qc_surfaces.Surface]]:
-    """The surface renders of a series, each with its kind and the frames
-    that it shows.
+@dataclasses.dataclass
+class _Render:
+    """A surface render of a series, with its kind and the frames it shows,
+    in order along its slice axis.
 
-    The volume's first, if the series forms one, then each RT Dose grid's.
-    A CT series' surface is at a fixed level; a series of RT Dose planes,
-    each of whose doses a dose-levels preview can show, is shown at each of
-    its dose levels; and any other's surface is by Otsu's threshold.
+    ``planed`` is whether each is scaled by its own Dose Grid Scaling, as
+    the planes of a volume of RT Dose planes are, and ``places`` gives each
+    frame's place along the slice axis.
     """
-    surfaces = []
-    if volume is not None:
+
+    kind: PreviewKind
+    shown: tuple[tuple[int, int], ...]
+    surface: qc_surfaces.Surface
+    planed: bool = False
+    places: dict[tuple[int, int], int] = dataclasses.field(init=False)
+
+    def __post_init__(self) -> None:
+        self.places = {each: index for index, each in enumerate(self.shown)}
+
+
+def _renders(series: list[_Instance], volumes: Sequence[_Volume]) -> list[_Render]:
+    """The surface renders of a series: each volume's, in the order of
+    ``volumes``, then each RT Dose grid's.
+
+    A volume's surface is at a fixed level where every slice is of a CT
+    instance whose values are Hounsfield units; a volume of RT Dose planes,
+    each of whose doses a dose-levels preview can show, is shown at each of
+    its dose levels; and any other's surface, such as an MR or PET
+    volume's, or a CT volume's of other units, is by Otsu's threshold.
+    """
+    members = {instance.position: instance for instance in series}
+    renders = []
+    for volume in volumes:
+        instances = [members[position] for position, _ in volume.slices]
         kind = PreviewKind.SERIES_SURFACE
-        if all(instance.modality == "CT" for instance in series):
+        planed = False
+        if all(
+            instance.modality == "CT" and instance.hounsfield for instance in instances
+        ):
             threshold = qc_surfaces.Threshold.CT
-        elif all(instance.dose_scale is not None for instance in series):
+        elif all(instance.dose_scale is not None for instance in instances):
             threshold = qc_surfaces.Threshold.DOSE
             kind = PreviewKind.SERIES_DOSE_LEVELS
+            planed = True
         else:
             threshold = qc_surfaces.Threshold.OTSU
-        grid = qc_surfaces.grid(
-            volume.directions, volume.positions, volume.spacing, volume.shape, threshold
+        # A signed dose series keeps its ladder below zero on either path.
+        signed = threshold is qc_surfaces.Threshold.DOSE and any(
+            instance.dose_signed for instance in series
         )
-        shown = tuple((instance.position, 0) for instance in series)
-        surfaces.append((kind, shown, qc_surfaces.Surface(grid)))
+        if volume.stack is None:
+            placed: qc_surfaces.Grid | qc_surfaces.Stacked = qc_surfaces.grid(
+                volume.directions,
+                volume.positions,
+                volume.spacing,
+                volume.shape,
+                threshold,
+                signed=signed,
+            )
+        else:
+            placed = qc_surfaces.Stacked(volume.stack, threshold, signed=signed)
+        renders.append(
+            _Render(kind, volume.slices, qc_surfaces.Surface(placed), planed=planed)
+        )
     for instance in series:
         if instance.grid is not None:
             shown = tuple(
                 (instance.position, frame) for frame in range(instance.frames)
             )
-            surfaces.append(
-                (
+            renders.append(
+                _Render(
                     PreviewKind.SERIES_DOSE_LEVELS,
                     shown,
                     qc_surfaces.Surface(instance.grid),
                 )
             )
-    return surfaces
+    return renders
 
 
-def _guide(
-    series: list[_Instance], surface: qc_surfaces.Surface
-) -> qc_contours.Guide | None:
+def _guide(volume: _Volume, surface: qc_surfaces.Surface) -> qc_contours.Guide | None:
     """The surface of a volume, placed in the patient's coordinates.
 
     None if a slice is missing.
@@ -1114,17 +1546,19 @@ def _guide(
     inside = surface.mask()
     if inside is None:
         return None
-    planes = [instance.plane for instance in series]
-    first = planes[0]
-    assert first is not None
-    normal = np.cross(first.row, first.column)
-    axes = [int(np.argmax(np.abs(d))) for d in (normal, first.column, first.row)]
+    lattice = surface.lattice
+    if lattice is not None:
+        zs, ys, xs = lattice.coordinates
+        return qc_contours.Guide(inside, zs, ys, xs)
+    normal, column, row = volume.directions
+    axes = [int(np.argmax(np.abs(d))) for d in (normal, column, row)]
+    origins = np.array(volume.origins)
+    first = origins[0]
     along = (
-        np.array([plane.origin[axes[0]] for plane in planes if plane is not None]),
-        first.origin[axes[1]]
-        + first.column[axes[1]] * first.spacing[0] * np.arange(first.shape[0]),
-        first.origin[axes[2]]
-        + first.row[axes[2]] * first.spacing[1] * np.arange(first.shape[1]),
+        origins[:, axes[0]],
+        first[axes[1]]
+        + column[axes[1]] * volume.spacing[0] * np.arange(volume.shape[0]),
+        first[axes[2]] + row[axes[2]] * volume.spacing[1] * np.arange(volume.shape[1]),
     )
     sampled = {
         axis: values[taken] for axis, values, taken in zip(axes, along, surface.sampled)
@@ -1411,55 +1845,110 @@ def _sheet(tiles: list[np.ndarray], cell_rows: int, cell_columns: int) -> np.nda
 
 @dataclasses.dataclass(frozen=True)
 class _Volume:
-    """A series that forms a volume, and the roles of its three axes.
+    """Slices of a series that form a volume, and the roles of its three axes.
 
     Axis 0 runs through the slices along the normal; axis 1 down the rows,
     along the plane's column direction; axis 2 along the columns, along its
-    row direction.
+    row direction. A volume whose axes lie along the patient's, with its
+    slices stacked along the normal, has the roles of its axes and no stack;
+    any other, such as one with a gantry tilt, sheared, or oblique, has a
+    stack and no roles, and is sampled by
+    :mod:`~pymedphys._dicom.deidentify.stack_sampling`.
     """
 
+    # Each slice's run position and frame, ascending along the normal.
+    slices: tuple[tuple[int, int], ...]
+    origins: tuple[tuple[float, float, float], ...]  # each slice's
     positions: tuple[float, ...]  # along the normal, ascending, one per slice
     directions: tuple[np.ndarray, np.ndarray, np.ndarray]
     spacing: tuple[float, float]  # between rows, then between columns
     shape: tuple[int, int]
-    anterior: int  # the axis along the patient's anterior-posterior direction
-    vertical: int  # along superior-inferior
-    horizontal: int  # along left-right
+    # The axes along the patient's anterior-posterior, superior-inferior,
+    # and left-right directions.
+    roles: tuple[int, int, int] | None
+    # The slices, in the order of ``slices``.
+    stack: stack_sampling.Stack | None
 
 
-def _volume(series: list[_Instance]) -> _Volume | None:
-    if len(series) < VOLUME_SLICES or any(instance.colour for instance in series):
+def _volumes(series: list[_Instance]) -> list[_Volume]:
+    """The volumes of a series, one for each stack and time point that forms one.
+
+    Its frames are grouped by the scope of their instance's stacks
+    (:func:`_scope`), then by their Stack ID and Temporal Position Index, as
+    their Frame Content functional groups give them, so that the frames of
+    a multi-frame instance at each time point, or in each stack, can each
+    form a volume, and frames of instances that no Concatenation joins never
+    share one. The instances without functional groups, such as single-frame
+    CT Images, form one group of their own. A series with a colour
+    instance, or a Segmentation, which only its segments sheet shows
+    (D-017), forms none.
+    """
+    if any(instance.colour or instance.segmentation for instance in series):
+        return []
+    groups: dict[tuple[str, str, str], list[tuple[_Instance, int]]] = {}
+    for instance in series:
+        for frame in range(instance.frames):
+            groups.setdefault(instance.stack_of(frame), []).append((instance, frame))
+    found = (_volume(group) for group in groups.values())
+    return [volume for volume in found if volume is not None]
+
+
+def _volume(group: list[tuple[_Instance, int]]) -> _Volume | None:
+    """The volume of slices, each an instance's frame, or None unless at
+    least :data:`VOLUME_SLICES` of them, each with a plane, of one size,
+    orientation, and pixel spacing, lie at distinct positions along the
+    normal, with row and column directions each of unit length and
+    perpendicular (:class:`~.stack_sampling.Stack`) unless the volume's axes
+    lie along the patient's with its slices stacked along the normal."""
+    if len(group) < VOLUME_SLICES:
         return None
-    normal = _common_normal(series)
-    if normal is None:
-        return None
-    planes = [instance.plane for instance in series]
+    planes = [instance.plane_of(frame) for instance, frame in group]
     first = planes[0]
-    assert first is not None
-    if any(
+    if first is None or any(
         plane is None
         or plane.shape != first.shape
         or not np.allclose(plane.spacing, first.spacing)
+        or not np.allclose(plane.row, first.row, atol=_ORIENTATION_TOLERANCE)
+        or not np.allclose(plane.column, first.column, atol=_ORIENTATION_TOLERANCE)
         for plane in planes
     ):
         return None
-    origins = np.array([plane.origin for plane in planes if plane])
-    positions = _stacked(origins, normal)
-    if positions is None:
-        return None
+    placed = [plane for plane in planes if plane is not None]
+    normal = np.cross(first.row, first.column)
+    # In order along the normal, then of run position and frame, as a
+    # series of single-frame instances is ordered.
+    order = sorted(
+        range(len(group)),
+        key=lambda i: (
+            float(np.dot(normal, placed[i].origin)),
+            group[i][0].position,
+            group[i][1],
+        ),
+    )
+    origins = np.array([placed[i].origin for i in order])
     directions = (normal, np.array(first.column), np.array(first.row))
-    roles = _roles(directions)
-    if roles is None:
-        return None
-    anterior, vertical, horizontal = roles
+    positions = _stacked(origins, normal)
+    roles = None if positions is None else _roles(directions)
+    stack = None
+    if positions is None or roles is None:
+        # A gantry tilt, a shear, or an oblique orientation, sampled to
+        # voxels along the patient's axes.
+        try:
+            stack = stack_sampling.Stack(
+                first.row + first.column, origins, first.spacing, first.shape
+            )
+        except (stack_sampling.StackRefused, ValueError):
+            return None
+        positions = tuple(float(offset) for offset in stack.offsets)
     return _Volume(
+        tuple((group[i][0].position, group[i][1]) for i in order),
+        tuple(placed[i].origin for i in order),
         positions,
         directions,
         first.spacing,
         first.shape,
-        anterior=anterior,
-        vertical=vertical,
-        horizontal=horizontal,
+        roles=roles,
+        stack=stack,
     )
 
 
@@ -1503,40 +1992,45 @@ class _Projection:
 
     def __init__(self, volume: _Volume) -> None:
         self._volume = volume
-        self._slices: list[np.ndarray] = []
+        self._slices: dict[int, np.ndarray] = {}
         self._maximum: np.ndarray | None = None
-        self._order: list[int] = []
+        self._added: set[int] = set()
         self._inverted: list[bool] = []
 
-    def add(self, instance: _Instance, frame: np.ndarray) -> None:
-        """Add the next slice, in series order."""
-        self._order.append(instance.position)
+    def add(self, index: int, instance: _Instance, frame: np.ndarray) -> None:
+        """Add the slice at ``index`` along the normal, in any order."""
+        if index in self._added:
+            return
+        self._added.add(index)
         self._inverted.append(instance.inverted)
-        anterior = self._volume.anterior
+        assert self._volume.roles is not None
+        anterior = self._volume.roles[0]
         if anterior == 0:
             # fmax ignores padding, which is NaN, unless every value is.
             self._maximum = (
                 frame.copy() if self._maximum is None else np.fmax(self._maximum, frame)
             )
         else:
-            self._slices.append(np.fmax.reduce(frame, axis=anterior - 1))
+            self._slices[index] = np.fmax.reduce(frame, axis=anterior - 1)
 
     def image(self):
         volume = self._volume
-        if len(self._order) != len(volume.positions):
+        if len(self._added) != len(volume.positions):
             return None  # a slice could not be decoded
+        assert volume.roles is not None
+        anterior, vertical, _ = volume.roles
         coordinates = {
             0: np.array(volume.positions) - volume.positions[0],
             1: np.arange(volume.shape[0]) * volume.spacing[0],
             2: np.arange(volume.shape[1]) * volume.spacing[1],
         }
-        if volume.anterior == 0:
+        if anterior == 0:
             assert self._maximum is not None
             image, axes = self._maximum, (1, 2)
         else:
-            image = np.stack(self._slices)
-            axes = (0, 3 - volume.anterior)
-        if axes.index(volume.vertical) == 1:
+            image = np.stack([self._slices[i] for i in range(len(volume.positions))])
+            axes = (0, 3 - anterior)
+        if axes.index(vertical) == 1:
             image, axes = image.T, (axes[1], axes[0])
         in_plane = [volume.spacing[axis - 1] for axis in axes if axis != 0]
         step = min(in_plane)
@@ -1564,8 +2058,73 @@ class _Projection:
         if horizontal[0] < 0:  # increasing index runs to the patient's right
             image = image[:, ::-1]
         shown = _grey(image, _window(image.ravel()), all(self._inverted))
-        frames = tuple((position, 0) for position in self._order)
-        return PreviewKind.SERIES_MIP, frames, len(volume.positions), shown
+        return PreviewKind.SERIES_MIP, volume.slices, len(volume.positions), shown
+
+
+class _StackProjection:
+    """Accumulates the maximum intensity projection of a volume that a
+    stack places, such as one with a gantry tilt, sheared, or oblique, slice
+    by slice.
+
+    The stack is sampled (:mod:`~pymedphys._dicom.deidentify.stack_sampling`)
+    to cubic voxels along the patient's axes, of its smaller pixel spacing,
+    or larger where needed to keep each axis within :data:`MIP_PIXELS` and
+    the voxels within :data:`MIP_VOXELS`, each
+    voxel taking its nearest slice's pixel and the pixels of every slice
+    that crosses it, by their maximum, so that every slice is drawn; and the
+    voxels are projected along the anterior-posterior axis as each slice is
+    added, so that only the projection is held, with the patient's head at
+    the top and right on the viewer's left. A voxel that takes no pixel is
+    shown black, as padding is.
+    """
+
+    def __init__(self, volume: _Volume) -> None:
+        assert volume.stack is not None
+        self._volume = volume
+        stack = volume.stack
+        low, high = stack.bounds
+        extents = high - low
+        step = max(
+            min(stack.spacing),
+            float(np.max(extents)) / (MIP_PIXELS - 1),
+            (float(np.prod(extents)) / MIP_VOXELS) ** (1 / 3),
+        )
+        lattice = stack.lattice(step)
+        # The lattice holds a voxel more along each axis than its extent
+        # divided by its side, so it is coarsened until within bounds.
+        while math.prod(lattice.shape) > MIP_VOXELS:
+            step *= 1.01
+            lattice = stack.lattice(step)
+        self._slabs = qc_surfaces.Slabs(stack, lattice)
+        shape = self._slabs.lattice.shape
+        # From superior, then from the patient's right.
+        self._maximum = np.full((shape[0], shape[2]), np.nan, np.float32)
+        self._added: set[int] = set()
+        self._inverted: list[bool] = []
+
+    def add(self, index: int, instance: _Instance, frame: np.ndarray) -> None:
+        """Add the slice at ``index`` along the normal, in any order."""
+        if index in self._added:
+            return
+        self._added.add(index)
+        self._inverted.append(instance.inverted)
+        values = np.asarray(frame, np.float32)
+        for taken in self._slabs.taken(index):
+            superior, _, right = taken.indices
+            # fmax ignores padding, which is NaN, unless every value is.
+            np.fmax.at(
+                self._maximum,
+                (superior, right),
+                values[taken.rows, taken.columns],
+            )
+
+    def image(self):
+        volume = self._volume
+        if len(self._added) != len(volume.positions):
+            return None  # a slice could not be decoded
+        image = self._maximum
+        shown = _grey(image, _window(image.ravel()), all(self._inverted))
+        return PreviewKind.SERIES_MIP, volume.slices, len(volume.positions), shown
 
 
 def _nearest(coordinates: np.ndarray, wanted: np.ndarray) -> np.ndarray:

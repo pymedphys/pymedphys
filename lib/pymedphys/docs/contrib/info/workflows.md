@@ -26,6 +26,7 @@ Schedule / manual run -> deid-edition-check.yml
 Schedule / manual run -> tg263-edition-check.yml
 Schedule / manual run / PR changing it or labelled check-upstream -> tcia-edition-check.yml
 Manual run -> face-validation.yml
+Manual run -> face-validation-visible-human.yml
 Manual run -> pixel-text-validation.yml
 Manual run -> text-detection-model-pins.yml
 Manual run -> text-detector-evaluation-idc.yml
@@ -321,8 +322,11 @@ The `narrow-extras` job checks that each narrow feature extra (`gamma`,
 For each, on Ubuntu with Python 3.14, it installs only that extra and the
 `test-runner` dependency group, then runs the feature's non-slow tests with
 `uv run --no-sync`, so nothing else is installed. Tests there that exercise
-another feature skip themselves when its packages are missing. It uploads a
-JUnit report per extra as `junit-extra-<extra>`, and runs alongside both the
+another feature skip themselves when its packages are missing. The `dicom`
+extra's tests run in the same `corpus-runs` and `others` parts as the unit-test
+matrix, on two runners, since together they can reach the 30-minute limit on a
+slow runner. It uploads a JUnit report per extra as `junit-extra-<extra>`, and
+per part for `dicom` as `junit-extra-dicom-<part>`, and runs alongside both the
 quick and full matrices.
 
 ### Extended Workflows (Conditional)
@@ -603,6 +607,26 @@ Option, against the eye and organ masks of the HaN-Seg data set (see
   digests, versions, and the engine's settings. HaN-Seg's images are of real
   patients, so the data set is never cached or uploaded, and nothing else read
   from it leaves the runner
+
+#### `face-validation-visible-human.yml`
+
+Checks the face block finder and CT defacing of the Clean Recognizable Visual
+Features Option on the NLM Visible Human Project's CT, from NCI Imaging Data
+Commons (see
+[Check the face block against HaN-Seg](deidentification-face-validation.md)).
+Courtesy of the U.S. National Library of Medicine.
+
+- **Triggers**: manually only
+- **Steps**: installs the project with the `user` extra, downloads the
+  collection's 11 CT series from IDC's public bucket with
+  `.github/scripts/fetch_idc_series.py`, and runs
+  `python -m pymedphys._dicom.deidentify.face_validation_command visible-human`,
+  which refuses the set unless each series' file count and digest are those
+  that the check pins. Its job can only read the repository
+- **Results**: the job summary shows `face-validation-vhp.md`, and the
+  `face-validation-vhp-results` artefact, kept for 90 days, holds it with
+  `face-validation-vhp.json`, `commit.txt`, and renders of each head.
+  The series themselves are never cached or uploaded
 
 #### `pixel-text-validation.yml`
 

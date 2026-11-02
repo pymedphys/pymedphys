@@ -320,6 +320,7 @@ def qc_pack_of(
     reference: str | None = None,
     digests: Mapping[int, bytes] | None = None,
     reviewed_lists: qc_pack.ListsDigest | None = None,
+    several_patient_studies: Sequence[Sequence[Sequence[int]]] = (),
 ) -> QcPack:
     """Return the QC pack of a run.
 
@@ -343,6 +344,10 @@ def qc_pack_of(
         run applied, from
         :func:`~pymedphys._dicom.deidentify.risk_assessment.bind_lists`;
         none by default.
+    several_patient_studies : sequence of sequence of sequence of int, optional
+        Each study whose instances name several patients that the run
+        sequestered, as the groups of run positions, by patient, of its
+        first-pass finding (D-026); none by default.
 
     Notes
     -----
@@ -522,6 +527,10 @@ def qc_pack_of(
             for position, found in sorted(gaps.items())
         ),
         reviewed_lists=reviewed_lists,
+        several_patient_studies=tuple(
+            qc_pack.SeveralPatientStudyEntry(tuple(tuple(group) for group in groups))
+            for groups in several_patient_studies
+        ),
     )
 
 

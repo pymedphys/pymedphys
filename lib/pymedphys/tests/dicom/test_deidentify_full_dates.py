@@ -179,6 +179,32 @@ def test_a_removed_date_equal_to_a_kept_one_is_released_as_explained(attributes)
     assert exempted == [(ElementPath((), "(0008,0020)"), Exemption.RETAINED_VALUE)]
 
 
+def test_a_removed_private_datetime_of_the_kept_date_is_released_as_explained():
+    # A vendor's private scan time, which the Basic Profile removes, is
+    # searched for by its date too, and found in the kept Study Date of the
+    # same day, which explains it: the found text is the whole kept date.
+    plan = _plan()
+    plan.private_block(0x0009, "ZARQUON SCANNERS", create=True).add_new(
+        0x10, "DT", f"{STUDY_DATE}101500.000000"
+    )
+
+    written, result = _written(plan)
+
+    assert 0x00091010 not in written
+    condition = release_condition(result.evidence, result.data)
+    assert isinstance(_decision(result), run.Release)
+    exempted = [
+        (each.source, each.location.element, why) for each, why in condition.exempted
+    ]
+    assert exempted == [
+        (
+            ElementPath((), "(0009,1010)"),
+            ElementPath((), "(0008,0020)"),
+            Exemption.RETAINED_VALUE,
+        )
+    ]
+
+
 @pytest.mark.deid_requirement("PS3.15-E.3.6-01")
 def test_the_statement_describes_kept_dates_and_needs_nothing_else():
     statement = conformance.conformance_statement(
@@ -195,6 +221,7 @@ def test_the_statement_describes_kept_dates_and_needs_nothing_else():
     assert "no date or time is shifted or otherwise modified" in section
     assert f"The {kept} that take `K` keep their source values" in section
     assert "the kept value explains it" in section
+    assert "nor does a removed datetime whose date" in section
     assert "it still does." in section
     assert "`UNMODIFIED`" in section
     assert "not yet described" not in section
