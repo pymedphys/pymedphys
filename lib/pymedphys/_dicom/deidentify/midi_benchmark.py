@@ -223,7 +223,7 @@ from .reviewed_roi_names import ReviewedNames
 from .runtime import runtime_environment
 from .safe_private import SafePrivateList
 from .scope import classify
-from .text_detection import TextDetectionError, TextDetector
+from .text_detection import DetectionParameters, TextDetectionError, TextDetector
 from .walker import descends
 
 FORMAT = "pymedphys-deid-midi-benchmark/3"
@@ -626,11 +626,9 @@ _HEADER_TAGS = (
     "Columns",
     "NumberOfFrames",
 )
-# What the text detector's work on a frame costs beyond its pixels, as a
-# number of pixels. An assumption: that a frame costs a fixed amount as well
-# as one that grows with its pixels, so that many small frames are not
-# weighed as nothing.
-_FRAME_PIXELS = 512 * 512
+# The text detector's parameters, whose network input sets most of its work
+# on a frame.
+_DETECTION = DetectionParameters()
 
 
 def _header(path: Path) -> _Header | None:
@@ -656,8 +654,13 @@ def _header(path: Path) -> _Header | None:
 def _pixel_weight(dataset: pydicom.Dataset) -> int:
     """Weigh an instance by the text detector's work: 0 without an image.
 
-    Each frame counts as its pixels and :data:`_FRAME_PIXELS` more. A value
-    that cannot be read counts as one frame, or as no pixels.
+    Each frame counts as the pixels of the network's input
+    (:func:`_network_shape`) and a tenth of its stored pixels, for its renderings: on GitHub's
+    runners, about 4 s for each million of the first, and a tenth of that
+    for each million of the second, from the times of the text detector's
+    run on HaN-Seg in GitHub Actions run 41145832882.
+    A number of frames that is none or cannot be read counts as one, and Rows or
+    Columns that cannot be read as no image.
     """
 
     def whole(keyword: str, default: int) -> int:
@@ -670,7 +673,29 @@ def _pixel_weight(dataset: pydicom.Dataset) -> int:
     rows, columns = whole("Rows", 0), whole("Columns", 0)
     if not rows or not columns:
         return 0
-    return max(whole("NumberOfFrames", 1), 1) * (rows * columns + _FRAME_PIXELS)
+    network_rows, network_columns = _network_shape(rows, columns)
+    frame = network_rows * network_columns + (rows * columns) // 10
+    return max(whole("NumberOfFrames", 1), 1) * frame
+
+
+def _network_shape(rows: int, columns: int) -> tuple[int, int]:
+    """The shape of the text detector's network input for a frame.
+
+    As the detector scales a frame: its shorter side up to at least
+    ``limit_side``, its longer down to at most ``max_side``, each rounded to
+    a multiple of 32, as main's ``text_detection.network_shape`` gives it.
+    It is repeated here, not imported, so that this branch leaves
+    ``text_detection.py`` as it is, and a run that merges main's engine
+    into it merges cleanly; once main is merged in, the harness can call
+    main's function instead.
+    """
+    scale = max(1.0, _DETECTION.limit_side / min(rows, columns))
+    scale = min(scale, _DETECTION.max_side / max(rows, columns))
+    return (_multiple_of_32(rows * scale), _multiple_of_32(columns * scale))
+
+
+def _multiple_of_32(length: float) -> int:
+    return max(32, int(round(length / 32)) * 32)
 
 
 def _text_of(value: object) -> str | None:

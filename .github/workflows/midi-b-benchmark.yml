@@ -90,11 +90,12 @@ concurrency:
 
 env:
   # Clean Pixel Data's run takes longer than a job may: its text detector
-  # would read the Validation subset for an estimated 15 hours, and the Test
-  # subset for 19, from the times it took on a frame. So it runs in this many shards, each of the patients that
+  # would read the Validation subset for an estimated 7 to 8 hours, and the
+  # Test subset for 9 to 10, from its times on HaN-Seg's frames in run
+  # 41145832882 (at most 1.1 s for a 512 by 512 slice). So it runs in this many shards, each of the patients that
   # midi_benchmark_shards.assign gives it, in a job of its own; the
   # "combine" job adds their results up. The clean-pixel-data groups below
-  # number them.
+  # number them; each shard should take about 1 to 1.5 hours.
   CLEAN_PIXEL_DATA_SHARDS: 8
 
 jobs:

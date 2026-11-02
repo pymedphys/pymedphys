@@ -23,7 +23,7 @@ import json
 from pymedphys._imports import pydicom, pytest
 
 from pymedphys._dicom.deidentify import midi_benchmark as benchmark
-from pymedphys._dicom.deidentify import midi_benchmark_command
+from pymedphys._dicom.deidentify import midi_benchmark_command, text_detection
 from pymedphys._dicom.deidentify.midi_benchmark_flips import (
     CHECK_OUTCOMES,
     FlipCheckError,
@@ -73,6 +73,68 @@ def test_inputs_without_a_patient_and_without_weight_load_the_first_shard():
 
 def test_one_shard_takes_every_input():
     assert assign(["A", None, "B"], [3, 2, 1], 1) == (1, 1, 1)
+
+
+@pytest.mark.parametrize(
+    "shape, expected",
+    [
+        # The shorter side scaled up to 736, the longer to match.
+        ((128, 128), (736, 736)),
+        ((128, 256), (736, 1472)),
+        # The longer side capped at 2,560, the shorter to match.
+        ((3000, 4000), (1920, 2560)),
+        # Between, each side rounded to a multiple of 32.
+        ((1000, 1010), (992, 1024)),
+    ],
+)
+def test_the_network_reads_a_frame_at_its_input_shape(shape, expected):
+    assert benchmark._network_shape(*shape) == expected  # pylint: disable = protected-access
+
+
+@pytest.mark.parametrize(
+    "shape", [(64, 64), (128, 256), (512, 512), (1000, 1010), (3000, 4000), (5000, 40)]
+)
+def test_the_weight_reads_a_frame_as_the_detector_does(shape):
+    # Main's text detector names the shape of its input; this branch's
+    # harness repeats it, so the two must agree once main is merged in.
+    network_shape = getattr(text_detection, "network_shape", None)
+    if not callable(network_shape):
+        pytest.skip("this text detector does not name its input's shape")
+    # Pylint infers getattr's default alone.
+    expected = network_shape(shape, text_detection.DetectionParameters())  # pylint: disable = not-callable
+
+    assert benchmark._network_shape(*shape) == expected  # pylint: disable = protected-access
+
+
+def _dataset(**elements):
+    dataset = pydicom.Dataset()
+    for keyword, value in elements.items():
+        setattr(dataset, keyword, value)
+    return dataset
+
+
+@pytest.mark.parametrize(
+    "elements, expected",
+    [
+        # The network's input and a tenth of the stored pixels, per frame.
+        ({"Rows": 128, "Columns": 128}, 736 * 736 + 128 * 128 // 10),
+        (
+            {"Rows": 128, "Columns": 128, "NumberOfFrames": "3"},
+            3 * (736 * 736 + 128 * 128 // 10),
+        ),
+        ({"Rows": 3000, "Columns": 4000}, 1920 * 2560 + 1_200_000),
+        # A number of frames of none counts as one.
+        (
+            {"Rows": 128, "Columns": 128, "NumberOfFrames": "0"},
+            736 * 736 + 128 * 128 // 10,
+        ),
+        # No image.
+        ({}, 0),
+        ({"Rows": 0, "Columns": 128}, 0),
+    ],
+)
+def test_an_instance_weighs_the_text_detectors_work(elements, expected):
+    assert benchmark._pixel_weight(_dataset(**elements)) == expected  # pylint: disable = protected-access
 
 
 def test_the_count_fields_are_the_benchmarks_counts():
