@@ -132,7 +132,10 @@ Slab Thickness and Contour Offset Vector of one and three finite values,
 none greater in magnitude than :data:`FARTHEST`, and no thickness below 0;
 a thickness only where a reading gives it a plane to be normal to, so not
 on a point, a closed contour of fewer than three points, or an open
-contour on one line or not within :data:`COPLANAR` millimetres of a plane;
+contour on one line or not within :data:`COPLANAR` millimetres of a plane,
+nor on a closed contour on one line or whose slab along z strays more than
+:data:`COPLANAR` millimetres from its slab along its plane's normal
+(:func:`_extrudes_along_z`);
 for a closed contour of three or more points, with every point within
 :data:`COPLANAR` millimetres of one axial plane, as
 :mod:`~.region_defacing` groups contours, and the closed contours of each
@@ -582,6 +585,8 @@ def _roi(  # pylint: disable = too-many-return-statements
         low, high = float(found[:, 2].min()), float(found[:, 2].max())
         if not high - low <= 2 * COPLANAR:
             return None
+        if depth and not _extrudes_along_z(found, depth):
+            return None
         closed.append((float(found[:, 2].mean()), found[:, :2]))
         slabs.append((-depth / 2, depth / 2) if depth else None)
     roi = RoiContours(
@@ -620,6 +625,27 @@ def _retired(contour: pydicom.Dataset) -> tuple[float, np.ndarray] | None:
     if thickness[0] < 0:
         return None
     return float(thickness[0]), offset
+
+
+def _extrudes_along_z(points: np.ndarray, thickness: float) -> bool:
+    """Whether a closed contour's slab of ``thickness``, drawn along z, lies
+    within :data:`COPLANAR` millimetres of its slab along its plane's normal.
+
+    Its points must lie within :data:`COPLANAR` millimetres of a plane, not
+    on one line (:func:`_normal`). At a depth t within the slab, the unit
+    normal n and the unit z of the same sign take a point t |n - z| apart,
+    most at either face, so the slab is drawn along z only where that is at
+    most :data:`COPLANAR`, the tolerance within which the sheet already
+    flattens a closed contour onto its axial plane. A narrow contour tilted
+    within the height that the sheet allows a closed contour, and given a
+    thickness far greater, is so refused rather than drawn as a slab of
+    another shape.
+    """
+    normal = _normal(points)
+    if normal is None:
+        return False
+    apart = math.hypot(normal[0], normal[1], 1.0 - abs(normal[2]))
+    return thickness / 2 * apart <= COPLANAR
 
 
 def _normal(points: np.ndarray) -> tuple[float, float, float] | None:

@@ -371,6 +371,10 @@ def test_a_hole_and_its_outline_in_one_plane_with_other_depths_are_not_drawn():
     [
         ("POINT", np.array([[1.0, 2.0, 3.0]])),
         ("CLOSED_PLANAR", np.array([[0.0, 0.0, 0.0], [5.0, 0.0, 0.0]])),
+        (
+            "CLOSED_PLANAR",
+            np.array([[0.0, 0.0, 0.0], [5.0, 0.0, 0.0], [9.0, 0.0, 0.0]]),
+        ),
         ("OPEN_PLANAR", np.array([[0.0, 0.0, 0.0], [5.0, 0.0, 0.0], [9.0, 0.0, 0.0]])),
         (
             "OPEN_NONPLANAR",
@@ -379,7 +383,13 @@ def test_a_hole_and_its_outline_in_one_plane_with_other_depths_are_not_drawn():
             ),
         ),
     ],
-    ids=["point", "two-point-closed", "straight-line", "non-planar"],
+    ids=[
+        "point",
+        "two-point-closed",
+        "collinear-closed",
+        "straight-line",
+        "non-planar",
+    ],
 )
 def test_a_thickness_without_a_plane_to_be_normal_to_is_not_drawn(kind, points):
     data = _structure_set([[(kind, points)]])
@@ -388,6 +398,63 @@ def test_a_thickness_without_a_plane_to_be_normal_to_is_not_drawn(kind, points):
     # An offset alone still moves it.
     moved = qc_contours.contours_of(_read(_retired(data, (None, (0.0, 0.0, 1.0)))))
     assert moved is not None and len(moved.drawn) == 2
+
+
+def _tilted_strip():
+    """A closed rectangle 0.01 mm by 20 mm, exactly planar, whose 0.2 mm of
+    height, within what an axial plane allows, tilts its normal to about
+    (-0.99875, 0, 0.04994): nearly along x."""
+    return (
+        "CLOSED_PLANAR",
+        np.array(
+            [
+                [0.0, -10.0, -0.1],
+                [0.01, -10.0, 0.1],
+                [0.01, 10.0, 0.1],
+                [0.0, 10.0, -0.1],
+            ]
+        ),
+    )
+
+
+def _tilted_square(angle):
+    """A closed square 20 mm across, centred on the origin, tilted by
+    ``angle`` radians about y."""
+    corners = np.array([[-10.0, -10.0], [10.0, -10.0], [10.0, 10.0], [-10.0, 10.0]])
+    return (
+        "CLOSED_PLANAR",
+        np.column_stack(
+            [
+                corners[:, 0] * math.cos(angle),
+                corners[:, 1],
+                corners[:, 0] * math.sin(angle),
+            ]
+        ),
+    )
+
+
+def test_a_closed_slab_is_drawn_along_z_only_within_coplanar_of_its_normal():
+    # A slab 100 mm thick on the tilted strip is about 99.9 mm wide along
+    # x; along z it would be 0.01 mm wide, so it is not drawn.
+    strip = _structure_set([[_tilted_strip()]])
+    assert qc_contours.contours_of(_read(strip)) is not None
+    assert qc_contours.contours_of(_read(_retired(strip, (100.0, None)))) is None
+    # A square tilted 0.01 rad, 0.2 mm high, puts each face of a slab along
+    # z 2 sin(0.005) t from its face along the normal, at a depth t of
+    # half the thickness: within 0.15 mm up to a thickness of 30 mm.
+    tilted = _structure_set([[_tilted_square(0.01)]])
+    bound = qc_contours.COPLANAR / math.sin(0.005)
+    assert 29.0 < bound < 31.0
+    found = qc_contours.contours_of(_read(_retired(tilted, (29.0, None))))
+    assert found is not None and len(found.drawn) == 2
+    assert qc_contours.contours_of(_read(_retired(tilted, (31.0, None)))) is None
+    # A rounded axial contour whose points wander within 0.1 mm in height
+    # is still drawn with a slab.
+    circle = files.circle((0, 0, 0), 20.0)
+    circle[:, 2] = 0.1 * np.sin(np.arange(len(circle)))
+    rounded = _structure_set([[_closed(circle)]])
+    found = qc_contours.contours_of(_read(_retired(rounded, (6.0, None))))
+    assert found is not None and len(found.drawn) == 2
 
 
 def test_an_open_contour_with_depth_is_drawn_through_it():
@@ -1799,10 +1866,26 @@ def test_a_verdict_releases_a_structure_set_whose_slab_contours_were_shown():
     assert pack["instances"][0]["contour_sha256"] is not None
     assert outcome.status.value == "released"
     # One whose slab cannot be placed is still not shown, nor released.
-    unplaced = _retired(_structure_set([rings]), (-3.0, None), (None, None))
-    pack, outcome = _verdict_run(unplaced)
-    assert pack["not_previewed"] == [{"position": 0, "reason": "contours-not-shown"}]
-    assert HeldVisualFeatures(VisualFeaturesReason.NO_FACE_VERDICT) in outcome.reasons
+    for unplaced in (
+        _retired(_structure_set([rings]), (-3.0, None), (None, None)),
+        # A narrow strip tilted within its height, whose slab along z would
+        # be of another shape than its slab along its normal.
+        _retired(
+            _structure_set([rings, [_tilted_strip()]]),
+            *[(None, None)] * 2,
+            (100.0, None),
+        ),
+    ):
+        pack, outcome = _verdict_run(unplaced)
+        assert pack["previews"] == []
+        assert pack["not_previewed"] == [
+            {"position": 0, "reason": "contours-not-shown"}
+        ]
+        assert pack["instances"][0]["contour_sha256"] is None
+        assert outcome.status.value != "released"
+        assert (
+            HeldVisualFeatures(VisualFeaturesReason.NO_FACE_VERDICT) in outcome.reasons
+        )
 
 
 def test_a_verdict_does_not_release_a_structure_set_whose_sheet_is_too_tall(
