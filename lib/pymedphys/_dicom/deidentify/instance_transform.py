@@ -1239,6 +1239,19 @@ class InstanceTransform:
             (RT_DOSE, RT_STRUCTURE_SET, PET_IMAGE, SEGMENTATION),
         )
 
+    @property
+    def face_block_counts(self) -> FaceBlockCounts | None:
+        """The CT series that :meth:`prepare` found a face block of, and
+        those it did not, by why; ``None`` without a face review."""
+        return self._face_block_counts
+
+    @property
+    def dose_block_frames(self) -> int:
+        """How many Frames of Reference :meth:`prepare` found a dose block
+        in, where the run cleans the RT Doses, RT Structure Sets, PET
+        images, and Segmentations of a defaced series' frame."""
+        return len(self._dose_blocks)
+
     def written_check(
         self, graph: ReferenceGraph, written: Mapping[int, InstanceRecord]
     ) -> tuple[WrittenFinding, ...]:

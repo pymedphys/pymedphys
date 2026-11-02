@@ -75,6 +75,19 @@ def render_markdown(document: Mapping[str, object]) -> str:
             _table(("Reason", "Times given"), list(reasons.items())),
             "",
         ]
+    defacing = coverage.get("defacing")
+    if isinstance(defacing, Mapping):
+        not_defaced = defacing["ct_series_not_defaced"]
+        assert isinstance(not_defaced, Mapping)
+        lines += [
+            "What the run found to deface under Clean Recognizable Visual "
+            f"Features: {defacing['ct_series_defaced']} CT series with a face "
+            f"block, and {defacing['dose_block_frames']} Frames of Reference "
+            "with a dose block. CT series without a face block, by why:",
+            "",
+            *_rows_or_none(("Reason", "CT series"), list(not_defaced.items())),
+            "",
+        ]
     places = coverage.get("withheld_places", [])
     if places:
         lines += [

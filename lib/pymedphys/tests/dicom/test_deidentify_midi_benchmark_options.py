@@ -21,6 +21,7 @@ Every DICOM file and answer key is synthetic, as in
 import csv
 import json
 import sqlite3
+import types
 
 from pymedphys._imports import pydicom, pytest
 
@@ -30,6 +31,8 @@ from pymedphys._dicom.deidentify import (
     dicom_validators,
     instance_transform,
 )
+from pymedphys._dicom.deidentify.defacing import FaceBlockProblem
+from pymedphys._dicom.deidentify.face_blocks import FaceBlockCounts, SeriesProblem
 from pymedphys._dicom.deidentify import midi_benchmark as benchmark
 from pymedphys._dicom.deidentify import midi_benchmark_command, midi_script_results
 from pymedphys._dicom.deidentify import midi_benchmark_flips as flips
@@ -237,6 +240,33 @@ def test_under_clean_recognizable_visual_features_each_face_is_held(sources):
     assert released and not released & {*synthetic.CT_SLICES, synthetic.DOSE}
     withheld = document["coverage"]["instances"]["withheld"]
     assert withheld > basic["coverage"]["instances"]["withheld"]
+    # What the run found to deface is counted, though every face is held;
+    # the synthetic CT series is one that defacing cannot read.
+    assert document["coverage"]["defacing"] == {
+        "ct_series_defaced": 0,
+        "ct_series_not_defaced": {"unreadable": 1},
+        "dose_block_frames": 0,
+    }
+    assert basic["coverage"]["defacing"] is None
+    assert "What the run found to deface" in (work / "benchmark.md").read_text()
+
+
+def test_defacing_is_counted_by_series_and_frame():
+    counts = FaceBlockCounts()
+    counts.defaced = 2
+    counts.not_defaced = {
+        SeriesProblem.COMPRESSED: 1,
+        FaceBlockProblem.NO_EYES: 3,
+    }
+    transform = types.SimpleNamespace(face_block_counts=counts, dose_block_frames=1)
+
+    assert benchmark.defacing_counts(transform) == {
+        "ct_series_defaced": 2,
+        "ct_series_not_defaced": {"compressed-pixel-data": 1, "no-eyes": 3},
+        "dose_block_frames": 1,
+    }
+    unreviewed = types.SimpleNamespace(face_block_counts=None, dose_block_frames=0)
+    assert benchmark.defacing_counts(unreviewed) is None
 
 
 def test_the_run_prepares_the_transform_before_any_instance(sources, monkeypatch):

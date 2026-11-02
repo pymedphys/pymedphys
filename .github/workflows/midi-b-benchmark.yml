@@ -539,6 +539,21 @@ jobs:
             cp "${work}/check-outcomes.txt" "${private}/outcomes-${label}.txt" || return 1
             cat "${out}/benchmark.md"
             free -m
+            # A run that released nothing, as one under Clean Recognizable
+            # Visual Features can, leaves nothing to validate or score.
+            local first
+            first="$(find "${work}/release" -type f -name '*.dcm' -print -quit 2> /dev/null)"
+            if [[ "${scoring}" != reference && -z "${first}" ]]; then
+              echo "Not applicable: the run released no instance, so there is nothing to validate." \
+                | tee "${out}/dicom-validation-status.txt"
+              if [[ "${scoring}" == full ]]; then
+                echo "Not applicable: the run released no instance, so NCI's script had nothing to score." \
+                  | tee "${out}/script-results.txt"
+              fi
+              rm -rf "${work}" "${validation}"
+              echo "${label} finished at $(date -u +%FT%TZ)."
+              return 0
+            fi
             if [[ "${scoring}" != reference ]]; then
               local status=0
               timeout 120m uv run --no-sync python .github/scripts/run_redacted.py \

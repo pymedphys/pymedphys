@@ -447,6 +447,7 @@ def run_benchmark(
         internal_errors=errors.records(),
         sources=discovery.paths,
         watched=frozenset(watched),
+        defacing=defacing_counts(transform),
     )
     (work / RESULTS_JSON).write_text(benchmark.json(), encoding="utf-8", newline="\n")
     write_check_outcomes(
@@ -456,6 +457,30 @@ def run_benchmark(
         benchmark.markdown(), encoding="utf-8", newline="\n"
     )
     return benchmark
+
+
+def defacing_counts(transform: InstanceTransform) -> dict[str, object] | None:
+    """Count what a transform found to deface, without a value or UID.
+
+    That is, under Clean Recognizable Visual Features, the CT series whose
+    face block it found, those it did not by why, and the Frames of
+    Reference in which it found a dose block; ``None`` without the option.
+    Holding every instance that can show a face does not depend on them,
+    but they show that the run looked.
+    """
+    counts = transform.face_block_counts
+    if counts is None:
+        return None
+    return {
+        "ct_series_defaced": counts.defaced,
+        "ct_series_not_defaced": {
+            problem.value: number
+            for problem, number in sorted(
+                counts.not_defaced.items(), key=lambda pair: pair[0].value
+            )
+        },
+        "dose_block_frames": transform.dose_block_frames,
+    }
 
 
 def _policy(preset: str | None, options: Collection[str] | None) -> Policy:
@@ -621,6 +646,7 @@ def score(  # pylint: disable = too-many-arguments, too-many-locals
     internal_errors: Sequence[Mapping[str, object]] = (),
     sources: Sequence[Path] = (),
     watched: Collection[str] = (),
+    defacing: Mapping[str, object] | None = None,
 ) -> Benchmark:
     """Score each check of the answer key against the run's outcome.
 
@@ -636,7 +662,9 @@ def score(  # pylint: disable = too-many-arguments, too-many-locals
     (:func:`~pymedphys._dicom.deidentify.midi_benchmark_sources.is_source_gap`)
     and be described at its source; and each check of
     an attribute in ``watched``, such as ``(0020,0011)``, is counted by
-    where it ended up.
+    where it ended up. ``defacing``, under Clean Recognizable Visual
+    Features, counts what the transform found to deface
+    (:func:`defacing_counts`).
     """
     positions: dict[str, int] = {}
     for position, header in enumerate(headers):
@@ -794,6 +822,7 @@ def score(  # pylint: disable = too-many-arguments, too-many-locals
             "would_release": exemption_rows(exempt),
             "no_sop_class": no_sop_class_rows(no_sop_class),
             "internal_errors": [dict(error) for error in internal_errors],
+            "defacing": None if defacing is None else dict(defacing),
             "not_released": [
                 {
                     "context": context,
