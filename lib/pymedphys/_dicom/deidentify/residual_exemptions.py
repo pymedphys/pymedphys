@@ -70,16 +70,24 @@ reason that such a finding is not a reason for review (D-032), or returns
   option keeps, equal to a whole value of it, whose source's values only
   instances that the run does not write collected (:func:`unwritten_uid`).
   It applies to a finding that would otherwise withhold the file.
+- :attr:`Exemption.REMOVED_UID`: a UID found in a UID that a selected
+  option keeps, whose source is a private data element that every instance
+  which collected one of its values removed, or does not write, and each of
+  whose values that the search could find there equals a whole value of it
+  (:func:`removed_uid`). It applies to a finding that would otherwise
+  withhold the file.
 
 The search records one finding of a source in each element, so each
 exemption is decided by the whole element: a CS value is exempt only if
 every one of its values is a term; and a source's values are pooled across
 the subject, so a private creator is exempt only if all of them are a
 vendor's, a date only if each of them that could be in the element equals a
-whole kept value, and a Code Meaning or a UID from unwritten instances only
-if no written instance collected any of them. A finding in an element that holds a byte
-outside ISO 646's printable characters, a finding of any other kind, and a
-finding outside the data set are never exempt. Kept values are read from the
+whole kept value, a Code Meaning or a UID from unwritten instances only
+if no written instance collected any of them, and a removed private UID
+only if no written instance holds any of them replaced and each that could
+be in the element equals a whole kept value. A finding in an element that
+holds a byte outside ISO 646's printable characters, a finding of any other
+kind, and a finding outside the data set are never exempt. Kept values are read from the
 written file's bytes, as text in ISO 646, never decoded by pydicom, and none
 is reported.
 """
@@ -95,7 +103,13 @@ from collections.abc import Mapping
 
 from .codes import load_coding_schemes
 from .file_layout import ElementPath, Region, read_file_layout
-from .option_kept import kept_by, retained_text, retained_value
+from .option_kept import (
+    UID_KINDS,
+    kept_by,
+    retained_text,
+    retained_value,
+    whole_values,
+)
 from .residuals import Finding, SourceValue
 from .standard import dictionary_attribute, load_table_e3_10_1
 from .uid_registry import RegistryTable, RegistryTableSpec, load_registry_table
@@ -136,6 +150,7 @@ class Exemption(enum.Enum):
     # the meaning of a code of a scheme of Table 8-1, from unwritten instances only
     UNWRITTEN_CODE_MEANING = "unwritten-code-meaning"
     UNWRITTEN_UID = "unwritten-uid"  # in a UID an option keeps, from unwritten only
+    REMOVED_UID = "removed-uid"  # equal to a kept UID, from a removed private copy
 
 
 @dataclasses.dataclass(frozen=True)
@@ -494,6 +509,72 @@ def unwritten_uid(
     return None
 
 
+def removed_uid(
+    finding: Finding,
+    kept: KeptValues,
+    sources: Mapping[ElementPath, tuple[SourceValue, ...]],
+    removed: frozenset[SourceValue],
+    options: tuple[str, ...],
+) -> Exemption | None:
+    """Return whether a kept UID explains a UID found from a removed private copy.
+
+    Parameters
+    ----------
+    finding : Finding
+        A finding that would otherwise withhold its file.
+    kept : KeptValues
+        The written file's values.
+    sources : mapping
+        The collected values of each source (:func:`source_values`).
+    removed : frozenset of SourceValue
+        The values in ``sources`` that no instance's output holds at their
+        place, because every instance that collected them removed them or is
+        not written (:attr:`~.release_gate.Coverage.removed`).
+    options : tuple of str
+        The run's options.
+
+    Returns
+    -------
+    Exemption or None
+        :attr:`Exemption.REMOVED_UID` where the finding is in a data set
+        element of an attribute that a selected option keeps
+        (:func:`~pymedphys._dicom.deidentify.option_kept.kept_by`), which the
+        pinned dictionary gives only VR UI; its source is a private data
+        element, (gggg,1000) to (gggg,FFFF) of an odd group, at any depth;
+        every value of the source is in ``removed``; and one of them equals
+        a whole value of the element, and each other that the search could
+        find there does too
+        (:func:`~pymedphys._dicom.deidentify.option_kept.whole_values`). The
+        private copy is gone from the output, so nothing in it refers
+        through the copy, and the option releases the UID where it is found.
+        A copy that a written instance holds replaced, a value of the source
+        found only inside a longer kept UID, one found anywhere else, such
+        as in text or in the File Meta Information, and a standard source,
+        such as a reference that a written instance replaced while keeping
+        the UID it names (D-040), give ``None``.
+    """
+    element = finding.location.element
+    if finding.location.region is not Region.DATA_SET or element is None:
+        return None
+    attribute = dictionary_attribute(element.tag)
+    if (
+        attribute is None
+        or attribute.vrs != ("UI",)
+        or element.tag not in kept_by(options)
+        or not _private_data(finding.source)
+    ):
+        return None
+    values = sources.get(finding.source, ())
+    if not values or not all(each in removed for each in values):
+        return None
+    written, text = kept.values(element), kept.text(element)
+    if written is None or text is None:
+        return None
+    if whole_values(values, written, text, UID_KINDS):
+        return Exemption.REMOVED_UID
+    return None
+
+
 def standard_code_meanings(
     collected: tuple[SourceValue, ...],
 ) -> frozenset[SourceValue]:
@@ -581,6 +662,10 @@ def _vendor_creator(
 
 def _equipment_source(source: ElementPath) -> bool:
     """Return whether a source names equipment or is a private data element."""
+    return _private_data(source) or source.tag in EQUIPMENT_SOURCES
+
+
+def _private_data(source: ElementPath) -> bool:
+    """Return whether a source is a private data element, not a creator."""
     group, element = int(source.tag[1:5], 16), int(source.tag[6:10], 16)
-    private_data = group % 2 == 1 and element >= 0x1000
-    return private_data or source.tag in EQUIPMENT_SOURCES
+    return group % 2 == 1 and element >= 0x1000

@@ -64,7 +64,10 @@ an option keeps does not withhold the file either
 (:func:`~pymedphys._dicom.deidentify.residual_exemptions.retained_date`), nor
 does a UID equal to a whole UID that an option keeps, where only instances
 that the run does not write held it
-(:func:`~pymedphys._dicom.deidentify.residual_exemptions.unwritten_uid`).
+(:func:`~pymedphys._dicom.deidentify.residual_exemptions.unwritten_uid`), or
+where its source is a private data element that every instance which held
+it removed
+(:func:`~pymedphys._dicom.deidentify.residual_exemptions.removed_uid`).
 Otherwise
 it may be released (:attr:`~Decision.RELEASE`). There is no setting that
 changes this.
@@ -102,6 +105,7 @@ from .residual_exemptions import (
     Exemption,
     KeptValues,
     exemption,
+    removed_uid,
     retained_date,
     source_values,
     unwritten_uid,
@@ -185,8 +189,8 @@ _RESIDUAL_KINDS = {
     ValueKind.DATETIME: ReasonCode.RESIDUAL_DATETIME,
 }
 # The findings that kept values can explain: text, dates and datetimes equal
-# to a date or time that an option keeps, and UIDs from unwritten instances
-# equal to a UID that an option keeps.
+# to a date or time that an option keeps, and UIDs from unwritten instances,
+# or from removed private elements, equal to a UID that an option keeps.
 _EXPLICABLE = frozenset(
     {
         ReasonCode.RESIDUAL_TEXT,
@@ -272,13 +276,24 @@ class Coverage:
         Values are pooled across the subject by their place, so a meaning
         is qualified by its own item before it is pooled, never by another
         instance's item at the same place.
+    removed : frozenset of SourceValue, optional
+        The collected values that the instance's output does not hold at
+        their place: each whose element its edits remove, by X or with an
+        enclosing sequence, rather than empty, replace, or keep, and every
+        value of an instance that the run does not write
+        (:func:`~pymedphys._dicom.deidentify.instance_transform.unwritten`).
+        A private UID found from such values alone, equal to a whole UID
+        that an option keeps, can be explained where a replaced one could
+        not
+        (:func:`~pymedphys._dicom.deidentify.residual_exemptions.removed_uid`).
 
     Raises
     ------
     TypeError
         If an attribute is missing, or not of these types.
     ValueError
-        If a value is ``unwritten`` or ``coded`` that is not collected.
+        If a value is ``unwritten``, ``coded``, or ``removed`` that is not
+        collected.
     """
 
     planned: frozenset[ElementPath]
@@ -288,6 +303,7 @@ class Coverage:
     options: tuple[str, ...] = ()
     unwritten: frozenset[SourceValue] = frozenset()
     coded: frozenset[SourceValue] = frozenset()
+    removed: frozenset[SourceValue] = frozenset()
 
     def __post_init__(self) -> None:
         for name, container, kind in (
@@ -298,6 +314,7 @@ class Coverage:
             ("options", tuple, str),
             ("unwritten", frozenset, SourceValue),
             ("coded", frozenset, SourceValue),
+            ("removed", frozenset, SourceValue),
         ):
             given = getattr(self, name)
             if not isinstance(given, container) or not all(
@@ -306,7 +323,7 @@ class Coverage:
                 raise TypeError(
                     f"{name} must be a {container.__name__} of {kind.__name__}"
                 )
-        for name in ("unwritten", "coded"):
+        for name in ("unwritten", "coded", "removed"):
             given = getattr(self, name)
             if given and not given <= frozenset(self.collected):
                 raise ValueError(f"a value that is {name} must be a collected value")
@@ -320,8 +337,10 @@ class Coverage:
         even where another instance collected a value at the same path. A
         value is unwritten only where every coverage that collected it gives
         it as unwritten, so a value that a written instance shares with an
-        unwritten one is written; and a value is coded only where every
-        coverage that collected it gives it as coded.
+        unwritten one is written; a value is coded only where every
+        coverage that collected it gives it as coded; and a value is removed
+        only where every coverage that collected it gives it as removed, so
+        that a value that one written instance replaced is not removed.
 
         Parameters
         ----------
@@ -358,6 +377,7 @@ class Coverage:
             options=tuple(dict.fromkeys(o for c in coverages for o in c.options)),
             unwritten=_given_by_all(coverages, "unwritten"),
             coded=_given_by_all(coverages, "coded"),
+            removed=_given_by_all(coverages, "removed"),
         )
 
     def not_reported(self) -> tuple[ElementPath, ...]:
@@ -636,6 +656,8 @@ def release_condition(
             elif reason.code is ReasonCode.RESIDUAL_UID:
                 why = unwritten_uid(
                     each, kept, sources, coverage.unwritten, coverage.options
+                ) or removed_uid(
+                    each, kept, sources, coverage.removed, coverage.options
                 )
             else:
                 why = retained_date(each, kept, sources, coverage.options)

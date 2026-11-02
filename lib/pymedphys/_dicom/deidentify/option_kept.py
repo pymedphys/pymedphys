@@ -45,7 +45,10 @@ tokens, are therefore never explained, nor are person names and direct
 identifiers, which the release gate never exempts, or a kept value outside
 ISO 646, which :class:`~.residual_exemptions.KeptValues` does not read. A
 UID is explained only where instances that the run does not write alone
-held it (:func:`~.residual_exemptions.unwritten_uid`).
+held it (:func:`~.residual_exemptions.unwritten_uid`), or where its source is
+a private data element that every instance which held it removed, by the
+same whole-value rule (:func:`whole_values`,
+:func:`~.residual_exemptions.removed_uid`).
 """
 
 from __future__ import annotations
@@ -67,6 +70,8 @@ TEXT_VRS = frozenset({"AE", "CS", "LO", "LT", "SH", "ST", "UC", "UT"})
 TEMPORAL_VRS = frozenset({"DA", "DT", "TM"})
 # The kinds of value that a kept date or time can explain.
 _EXPLICABLE = frozenset({ValueKind.DATE, ValueKind.DATETIME, ValueKind.TEXT})
+# The kind of value that a kept UID can explain.
+UID_KINDS = frozenset({ValueKind.UID})
 
 
 @functools.cache
@@ -207,9 +212,41 @@ def retained_value(
         or source == location
     ):
         return False
+    return whole_values(found, values, text, _EXPLICABLE)
+
+
+def whole_values(
+    found: tuple[SourceValue, ...],
+    values: tuple[str, ...],
+    text: str,
+    kinds: frozenset[ValueKind],
+) -> bool:
+    """Return whether a kept element's whole values explain a source's finding.
+
+    Parameters
+    ----------
+    found : tuple of SourceValue
+        The source's collected values, pooled across the subject.
+    values : tuple of str
+        The kept element's values, as written, without padding.
+    text : str
+        The kept element's whole value, as written, values and separators.
+    kinds : frozenset of ValueKind
+        The kinds of source value that a whole kept value can explain, such
+        as dates, datetimes, and text for a kept date (:func:`retained_value`)
+        or :data:`UID_KINDS` for a kept UID.
+
+    Returns
+    -------
+    bool
+        Whether one of the source's values, of one of ``kinds``, is a whole
+        value of the element, and each other value of the source that the
+        search could have found in the element is one too, as
+        :func:`retained_value` reads them.
+    """
     explained = False
     for value in found:
-        for whole in _values_in(value, values, text.encode("ascii").lower()):
+        for whole in _values_in(value, values, text.encode("ascii").lower(), kinds):
             if whole is None:
                 return False
             explained = explained or whole
@@ -217,18 +254,21 @@ def retained_value(
 
 
 def _values_in(
-    value: SourceValue, kept: tuple[str, ...], written: bytes
+    value: SourceValue,
+    kept: tuple[str, ...],
+    written: bytes,
+    kinds: frozenset[ValueKind],
 ) -> Iterator[bool | None]:
     """Yield, for each value of ``value``, whether ``kept`` explains it.
 
     True for a value equal to a whole kept value; None for one that is not
     but that the search could find in ``written``, the kept element's whole
     value with ASCII letters in lower case; nothing for one that it could
-    not. A value of a kind that a kept date cannot explain is never
-    explained. Each form that the search derives, of at least its shortest
-    length and cut to its longest, is looked for as the search encodes it,
-    in each codec and case, but ignoring the characters around it, which
-    finds at least what the search does.
+    not. A value of a kind other than ``kinds`` is never explained. Each
+    form that the search derives, of at least its shortest length and cut to
+    its longest, is looked for as the search encodes it, in each codec and
+    case, but ignoring the characters around it, which finds at least what
+    the search does.
     """
     kind = _KINDS.get(value.vr)
     if not isinstance(value.value, str) or kind is None:
@@ -236,7 +276,7 @@ def _values_in(
     whole = False
     for form, text in _forms(value.value, value.vr, kind):
         if form is Form.VALUE:
-            whole = kind in _EXPLICABLE and bool(text) and text in kept
+            whole = kind in kinds and bool(text) and text in kept
             if whole:
                 yield True
         if not whole and _length(text) >= MIN_CHARACTERS:
