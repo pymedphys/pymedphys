@@ -81,7 +81,8 @@ HEAD_NECK_CONSTRAINTS: dict[str, dict] = {
     "lens": {
         "level": "hard",
         "conventional": {"dmax": 10.0, "unit": "Gy"},
-        "source": "Institutional H&N protocol (lens tolerance literature; the QUANTEC 2010 supplement has no lens review)",
+        "sbrt_1fx": {"d0_03cc": 1.5},
+        "source": "conventional 10 Gy: institutional H&N protocol (lens tolerance literature; the QUANTEC 2010 supplement has no lens review). SBRT 1 fx 1.5 Gy: UK SABR 2022 (PMID:35272913) Table 6, D0.035 cc",
     },
     # --- Soft constraints ---
     "parotid_contralateral": {

@@ -137,11 +137,18 @@ class TestSBRTModalityLimits:
     """SBRT checks must use SBRT limits, never borrowed conventional ones (P2)."""
 
     def test_missing_sbrt_limit_not_evaluated(self):
-        """Lens has no SBRT entry → 'not_evaluated', not a pass against 10 Gy."""
+        """Lens has no 5-fx SBRT entry → 'not_evaluated', not a pass against 10 Gy."""
         lens = HEAD_NECK_CONSTRAINTS["lens"]
         assert "sbrt_5fx" not in lens
         r = check_constraint("lens", Modality.SBRT_5FX, {"dmax": 5.0})
         assert r["overall"] == "not_evaluated"
+
+        # ... but the 1-fx limit exists (UK SABR 2022 Table 6: 1.5 Gy, D0.035cc)
+        assert lens["sbrt_1fx"]["d0_03cc"] == 1.5
+        r_ok = check_constraint("lens", Modality.SBRT_1FX, {"d0_03cc": 1.2})
+        assert r_ok["overall"] == "pass"
+        r_over = check_constraint("lens", Modality.SBRT_1FX, {"d0_03cc": 2.0})
+        assert r_over["overall"] == "hard_fail"
 
     def test_brachial_plexus_sbrt_1fx_checked_against_tg101(self):
         """20 Gy in 1 fx exceeds TG-101's 17.5 Gy max point dose."""
