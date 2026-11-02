@@ -115,6 +115,28 @@ RT_REFERENCES = [
         ("(3008,0021)", "(300C,0040)", "(0008,1155)"),
         Level.INSTANCE,
     ),
+    # RT Brachy Treatment Record: the plan, related treatment records, and
+    # each application setup's verification images; the setup and source
+    # references of its session record are numbers, not UIDs.
+    ("RT Brachy Treatment Record", synthetic.REFERENCED_PLAN, Level.INSTANCE),
+    (
+        "RT Brachy Treatment Record",
+        ("(3008,0030)", "(0008,1155)"),
+        Level.INSTANCE,
+    ),
+    (
+        "RT Brachy Treatment Record",
+        ("(3008,0110)", "(300C,0040)", "(0008,1155)"),
+        Level.INSTANCE,
+    ),
+    # RT Treatment Summary Record: the plan, and the treatment records that it
+    # sums.
+    ("RT Treatment Summary Record", synthetic.REFERENCED_PLAN, Level.INSTANCE),
+    (
+        "RT Treatment Summary Record",
+        ("(3008,0030)", "(0008,1155)"),
+        Level.INSTANCE,
+    ),
     # RT Image: the plan in the RT Image module, and the multi-frame source of
     # an extracted frame.
     ("RT Image", synthetic.REFERENCED_PLAN, Level.INSTANCE),
