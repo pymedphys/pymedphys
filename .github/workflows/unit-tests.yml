@@ -306,7 +306,7 @@ jobs:
           # overlay resolves to their latest releases that accept the NumPy
           # minimum. Invoke Python so it imports them from uv's overlay
           # environment, and fail if the overlay did not take effect.
-          overlay=(uv run --no-sync --with "numpy==${NUMPY_FLOOR}" --with "pandas==${PANDAS_FLOOR}" --with tifffile --)
+          overlay=(uv run --no-sync --with "numpy==${NUMPY_FLOOR}" --with "pandas==${PANDAS_FLOOR}" --with tifffile --with imagecodecs --)
           "${overlay[@]}" python -c 'import os, numpy, pandas; assert (numpy.__version__, pandas.__version__) == (os.environ["NUMPY_FLOOR"], os.environ["PANDAS_FLOOR"]), (numpy.__version__, pandas.__version__)'
           # Fail if an installed package's requirements are not met, such as
           # a newly locked package that requires a newer NumPy; add it to the

@@ -223,7 +223,6 @@ from .pixel_cleaning import (
     overlay_planes,
     redaction_problem,
 )
-from .defacing import FaceBlock
 from .dose_defacing import RT_DOSE, DoseBlock, RtDoseDefacer, find_dose_blocks
 from .face_blocks import (
     CT_IODS,
@@ -353,6 +352,14 @@ class WriterPlan:
         The transfer syntax written where it is not the source's: Explicit
         VR Little Endian, where Clean Pixel Data writes compressed Pixel
         Data uncompressed (D-037); None otherwise.
+    removed_items : frozenset of tuple of (str, int)
+        The items of kept sequences that the plan removes on their own
+        (:attr:`~pymedphys._dicom.deidentify.walker.InstancePlan.removed_items`),
+        each element of which is in ``removed``.
+    emptied : frozenset of ElementPath
+        The Content Sequences that the plan removes because every item of
+        each is removed on its own
+        (:attr:`~pymedphys._dicom.deidentify.walker.InstancePlan.emptied`).
     """
 
     kept: frozenset[ElementPath]
@@ -362,6 +369,8 @@ class WriterPlan:
     )
     introduced: frozenset[ElementPath] = frozenset()
     transfer_syntax: str | None = None
+    removed_items: frozenset[tuple[tuple[str, int], ...]] = frozenset()
+    emptied: frozenset[ElementPath] = frozenset()
 
     @property
     def expectations(self) -> Expectations:
@@ -371,6 +380,7 @@ class WriterPlan:
             changed=frozenset(self.replacements) | self.introduced,
             removed=self.removed - self.introduced,
             transfer_syntax=self.transfer_syntax,
+            removed_items=self.removed_items,
         )
 
 
@@ -610,6 +620,8 @@ def writer_plan(
         frozenset(removed),
         replacements,
         frozenset(introduced),
+        removed_items=plan.removed_items,
+        emptied=plan.emptied,
     )
 
 
@@ -703,6 +715,8 @@ def with_markers(
         replacements,
         frozenset(introduced),
         writing.transfer_syntax,
+        writing.removed_items,
+        writing.emptied,
     )
 
 
@@ -715,7 +729,8 @@ def _as_planned(
 
     Inside a kept sequence, each element that the plan removes is left out,
     each that it replaces is its replacement, and each that it keeps is
-    copied, a kept sequence with the edits within it in turn.
+    copied, a kept sequence with the edits within it in turn; an item that
+    the plan removes on its own is left out.
 
     Raises
     ------
@@ -729,6 +744,8 @@ def _as_planned(
     edited = pydicom.Sequence()
     for index, item in enumerate(element.value):
         held = items + ((tag, index),)
+        if held in writing.removed_items:
+            continue
         written = pydicom.Dataset()
         for inner in item:
             path = ElementPath(held, _tag_text(inner.tag))
@@ -985,22 +1002,25 @@ class InstanceTransform:
     with one is written with air in its block, in each of its frames, as
     :func:`~.pixel_cleaning.black_out` writes a
     :class:`~.face_blocks.CtDefacer`'s masks, checked as a redaction is; an
-    instance that cannot be is sequestered. An instance of a series with a
-    target's contour in its block is not defaced, and is held for review
+    instance that cannot be is sequestered, the pixels that a target's hull
+    reaches kept (:class:`~.target_hulls.KeptTargets`). An instance of a
+    series with a target that cannot be kept within its slices is not
+    defaced, and is held for review
     (:attr:`~.reasons.VisualFeaturesReason.TARGET_IN_FACE_BLOCK`), as is
     one of a series whose structure set draws an eye away from the globes
     that its block was found from
     (:attr:`~.reasons.VisualFeaturesReason.EYES_DISAGREE_WITH_ROIS`). An RT
     Dose whose only Frame of Reference is that of one defaced series is
     written with its dose set to zero in the series' block, less the
-    brain that defacing keeps (:class:`~.dose_defacing.RtDoseDefacer`), or,
+    brain and targets that defacing keeps
+    (:class:`~.dose_defacing.RtDoseDefacer`), or,
     where the dose there is too great, written as received and held
     (:attr:`~.reasons.VisualFeaturesReason.DOSE_IN_FACE_BLOCK`). An RT
     Structure Set whose only Frame of Reference is that of one defaced
     series is written with its contours cut by the block
     (:func:`~.region_defacing.cut_contours`), a PET image's activity in
-    the block, less that brain, is set to zero, in each frame of an
-    Enhanced PET Image or Legacy Converted Enhanced PET Image
+    the block, less that brain and those targets, is set to zero, in each
+    frame of an Enhanced PET Image or Legacy Converted Enhanced PET Image
     (:class:`~.region_defacing.PetDefacer`), and a Segmentation's pixels
     there that lie in a segment are written as its background
     (:class:`~.segmentation_defacing.SegmentationDefacer`); one with any
@@ -1496,11 +1516,11 @@ class InstanceTransform:
         try:
             try:
                 return self._cleaned(
-                    source, dataset, block, dose, region, approved, decoded, overlays
+                    source, dataset, defacing, dose, region, approved, decoded, overlays
                 )
             except PixelsNotReviewed:
                 return self._cleaned(
-                    source, dataset, block, dose, region, None, None, overlays
+                    source, dataset, defacing, dose, region, None, None, overlays
                 )
         except PixelDataRefused as refused:
             raise _Refused(refused.reason) from None
@@ -1509,7 +1529,7 @@ class InstanceTransform:
         self,
         source: SourceEvidence,
         dataset: pydicom.Dataset,
-        block: FaceBlock | None,
+        defacing: SeriesDefacing | None,
         dose: DoseBlock | None,
         region: _RegionDefacing | None,
         approved: Regions | None,
@@ -1580,7 +1600,11 @@ class InstanceTransform:
                         source, dataset, self._finder, rules=rules, overlays=overlays
                     )
             return redaction, why, reviewed
-        defacer = None if block is None else CtDefacer(block, dataset)
+        defacer = (
+            None
+            if defacing is None or defacing.block is None
+            else CtDefacer(defacing.block, dataset, defacing.targets)
+        )
         if approved is not None:
             return (
                 black_out_reviewed(
@@ -1963,6 +1987,7 @@ def _written(
             removed=writing.removed,
             replacements=writing.replacements,
             transfer_syntax=writing.transfer_syntax,
+            removed_items=writing.removed_items,
         )
         data = write_file_bytes(
             data_set,
@@ -1980,7 +2005,14 @@ def _written(
         verify_preservation(source, output, writing.expectations)
     except PreservationFailed as failed:
         raise _Refused(failed.reason) from None
-    if lost_requirements(source, output, iod, frozenset(writing.replacements)):
+    if lost_requirements(
+        source,
+        output,
+        iod,
+        frozenset(writing.replacements),
+        writing.removed_items,
+        writing.emptied,
+    ):
         raise _Refused(TransformReason.REQUIRED_ATTRIBUTE_LOST)
     if redaction is not None:
         if redaction_problem(source, output, redaction):
@@ -2187,6 +2219,8 @@ def _with_cut_contours(
         replacements,
         frozenset(introduced),
         writing.transfer_syntax,
+        writing.removed_items,
+        writing.emptied,
     )
 
 

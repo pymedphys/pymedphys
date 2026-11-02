@@ -53,14 +53,16 @@ the volume slice by slice, in Hounsfield units, to cubic voxels along the
 patient's axes, by nearest neighbour, through
 :class:`~pymedphys._dicom.deidentify.stack_sampling.StackSampler`: each voxel
 takes the slice nearest it along the slices' normal and, within it, the pixel
-nearest it along the rows and the columns. Where the stack's axes lie along
-the patient's, this is the rule of
-:class:`~pymedphys._dicom.deidentify.qc_surfaces.Surface`, and it gave the
-same voxels on every such layout of the tests, but a voxel within the
-sampler's tie tolerance of midway between two pixels or slices, which
-:class:`~pymedphys._dicom.deidentify.qc_surfaces.Surface` compares exactly,
-can take the other one, as can a voxel of a stack within the old alignment
-tolerances, which the finder once snapped onto the axes. A
+nearest it along the rows and the columns. A stack whose axes lie along the
+patient's, within the tolerances that the finder has always allowed
+(:attr:`~pymedphys._dicom.deidentify.stack_sampling.Stack.aligned`), the
+sampler samples by the functions that the finder always sampled it by,
+:func:`~pymedphys._dicom.deidentify.qc_surfaces.grid` and
+:func:`~pymedphys._dicom.deidentify.qc_surfaces.sampled_indices`, as
+:class:`~pymedphys._dicom.deidentify.qc_surfaces.Surface` does, and the
+finder takes its voxels' side and the heights of its samples
+(:class:`SampleSpacing`) from that grid, as it always did, so such a stack
+gives the voxels, values, and block that it always gave. A
 voxel beyond the stack, as a tilted or oblique stack leaves the corners of the
 voxels, takes the pixel at the stack's edge nearest it, as a point beyond the
 voxels takes the value at their edge (step 2). The voxels are of
@@ -136,7 +138,7 @@ from collections.abc import Sequence
 from pymedphys._imports import numpy as np
 from pymedphys._imports import scipy
 
-from . import stack_sampling
+from . import qc_surfaces, stack_sampling
 
 MINIMUM_VOXEL = 1.5  # millimetres
 MAXIMUM_VOXELS = 512
@@ -503,14 +505,18 @@ class SampleSpacing:
     directions :math:`\\hat{c}` and :math:`\\hat{r}`, and Pixel Spacing
     :math:`\\Delta_r` between rows and :math:`\\Delta_c` between columns. Where
     the stack's axes lie along the patient's, it is the spacing of its slices,
-    rows, or columns along the superior axis, whichever lies along it.
+    rows, or columns along the superior axis, whichever lies along it, and
+    :meth:`of` takes those heights themselves, as the finder always has.
 
     Attributes
     ----------
     normal : tuple of float
-        The slices' unit normal.
+        The slices' unit normal, or the superior axis for a stack along the
+        patient's axes.
     offsets : tuple of float
-        Each slice's position along the normal, in millimetres, ascending.
+        Each slice's position along the normal, or each slice's, row's, or
+        column's height for a stack along the patient's axes, in
+        millimetres, ascending.
     within : float
         The height along the superior axis of a pixel's step along a column
         and along a row, :math:`|c_z| \\Delta_r + |r_z| \\Delta_c`, in
@@ -523,7 +529,22 @@ class SampleSpacing:
 
     @classmethod
     def of(cls, stack: stack_sampling.Stack) -> SampleSpacing:
-        """The spacing of a stack's samples."""
+        """The spacing of a stack's samples.
+
+        For a stack along the patient's axes
+        (:attr:`~pymedphys._dicom.deidentify.stack_sampling.Stack.aligned`),
+        the heights along the superior axis of its slices, rows, or columns,
+        whichever lies along it, from its grid's coordinates, as the finder
+        has always taken them, with a normal straight up and nothing within.
+        """
+        if stack.aligned:
+            grid = stack.grid()
+            vertical = grid.axes.index(2)
+            # A grid's slice coordinates run from the patient's origin, and
+            # its row and column coordinates from the first pixel.
+            shift = 0.0 if vertical == 0 else float(stack.origins[0][2])
+            heights = np.sort(np.asarray(grid.coordinates[vertical]) + shift)
+            return cls((0.0, 0.0, 1.0), tuple(float(height) for height in heights), 0.0)
         normal = stack.normal
         within = (
             abs(float(stack.down_column[2])) * stack.spacing[0]
@@ -701,13 +722,24 @@ class FaceFinder:
             stack = stack_sampling.Stack(cosines, origins, spacing, shape)
         except stack_sampling.StackRefused:
             raise FaceBlockRefused(FaceBlockProblem.NOT_ALONG_PATIENT_AXES) from None
-        low, high = stack.bounds
-        extents = [float(high[axis] - low[axis]) for axis in range(3)]
-        # As qc_surfaces.voxel_side gives it: the smallest spacing, or the
-        # minimum where that is larger, enlarged to keep each axis within
-        # MAXIMUM_VOXELS voxels, then to keep within MAXIMUM_SAMPLED in all.
-        voxel = max(MINIMUM_VOXEL, stack.smallest_spacing)
-        voxel = max(voxel, max(extents) / (MAXIMUM_VOXELS - 1))
+        # The smallest spacing, or the minimum where that is larger, enlarged
+        # to keep each axis within MAXIMUM_VOXELS voxels, then to keep within
+        # MAXIMUM_SAMPLED in all; for a stack along the patient's axes, by
+        # qc_surfaces.voxel_side on its grid's coordinates, as before, so
+        # that its voxels are those it always had.
+        if stack.aligned:
+            coordinates = stack.grid().coordinates
+            extents = [max(values) - min(values) for values in coordinates]
+            voxel = qc_surfaces.voxel_side(
+                [sorted(values) for values in coordinates],
+                MINIMUM_VOXEL,
+                MAXIMUM_VOXELS,
+            )
+        else:
+            low, high = stack.bounds
+            extents = [float(high[axis] - low[axis]) for axis in range(3)]
+            voxel = max(MINIMUM_VOXEL, stack.smallest_spacing)
+            voxel = max(voxel, max(extents) / (MAXIMUM_VOXELS - 1))
         self._voxel = _voxel_within(voxel, extents)
         if self._voxel > MAXIMUM_VOXEL:
             raise FaceBlockRefused(FaceBlockProblem.TOO_LARGE)

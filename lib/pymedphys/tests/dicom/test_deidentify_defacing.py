@@ -28,7 +28,7 @@ import math
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pytest
 
-from pymedphys._dicom.deidentify import defacing, stack_sampling
+from pymedphys._dicom.deidentify import defacing, qc_surfaces, stack_sampling
 
 from . import _synthetic_head as head
 
@@ -313,6 +313,44 @@ def _stack(scan: head.Scan) -> stack_sampling.Stack:
     )
 
 
+# An axial scan whose rows rise 3e-5 mm per millimetre: within the alignment
+# tolerance, and its slices within 0.01 mm of its first slice's normal.
+_NEAR_AXIAL = dataclasses.replace(
+    head.axial(), orientation=(1.0, 0.0, 3e-5, *head.axial().orientation[3:])
+)
+
+
+@pytest.mark.parametrize(
+    "scan",
+    [
+        _NEAR_AXIAL,
+        dataclasses.replace(head.axial(), spacing=(0.9999999, 0.9999999)),
+        head.axial(
+            spacing=0.8, thickness=1.2, extent=((-100, 100), (-130, 110), (0, 60))
+        ),
+        head.sagittal(),
+    ],
+    ids=["nearly-axial", "spacing-0.9999999", "spacing-0.8", "sagittal"],
+)
+def test_the_finder_takes_an_aligned_stacks_voxels_from_its_grid_as_before(scan):
+    stack = _stack(scan)
+    assert stack.aligned
+    coordinates = stack.grid().coordinates
+    voxel = qc_surfaces.voxel_side(
+        [sorted(values) for values in coordinates],
+        defacing.MINIMUM_VOXEL,
+        defacing.MAXIMUM_VOXELS,
+    )
+
+    finder = defacing.FaceFinder(
+        scan.orientation, scan.positions, scan.spacing, scan.shape
+    )
+    for values in scan.slices(head.Head(noise=0.0)):
+        finder.add(values)
+
+    assert finder.inspect().voxel == voxel
+
+
 @pytest.mark.parametrize(
     "scan, rise",
     [
@@ -325,6 +363,9 @@ def _stack(scan: head.Scan) -> stack_sampling.Stack:
             2.5 * math.cos(math.radians(15.0)) ** 2 + math.sin(math.radians(15.0)),
         ),
         (head.sheared(head.axial(), 15.0), 2.5),
+        # Within the tolerances of a stack along the patient's axes, the
+        # heights of its slices, as before, not the rows' rise of 3e-5 mm.
+        (_NEAR_AXIAL, 2.5),
         (
             head.oblique(head.axial(), head.rotation(about_y=10.0)),
             # Turned with the rows, the slices stay 2.5 mm apart along the
@@ -339,6 +380,7 @@ def _stack(scan: head.Scan) -> stack_sampling.Stack:
         "one-slice",
         "gantry-tilt-15",
         "sheared",
+        "nearly-axial",
         "oblique-about-y",
     ],
 )
