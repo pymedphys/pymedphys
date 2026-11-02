@@ -199,7 +199,10 @@ jobs:
   # the same folders skip themselves when their packages are missing.
   narrow-extras:
     name: Extra ${{ matrix.extra }} alone
-    timeout-minutes: 30
+    # The dicom extra runs every DICOM test on one runner, including the
+    # corpus runs that the test job gives a runner of their own, so it takes
+    # up to about 30 minutes on a slow runner.
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
