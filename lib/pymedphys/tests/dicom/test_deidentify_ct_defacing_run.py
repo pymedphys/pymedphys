@@ -1634,6 +1634,7 @@ def test_a_head_ct_of_two_time_points_is_defaced_and_released(phased, defaced):
             ), name
     assert report["face_review"]["ct_series"] == {
         "defaced": 1,
+        "defaced_around_targets": 0,
         "not_defaced": [{"reason": "unreadable", "count": _UNPLACED}],
     }
     # Beside them, the RT Structure Set, RT Dose, and PET are cleaned as
