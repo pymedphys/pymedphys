@@ -70,9 +70,11 @@ from pymedphys._dicom.deidentify.release_gate import ReleaseReason
 from pymedphys._dicom.deidentify.target_hulls import TargetHull
 from pymedphys._dicom.deidentify.text_detection import TextBox
 
+from . import _synthetic_compressed as compressed_files
 from . import _synthetic_head as head
 from . import _synthetic_head_dicom as files
 from . import _synthetic_rtdose as rtdose
+from ._corpus_run import decoders_installed
 from .test_deidentify_visual_features_option import (
     CODE,
     KEY,
@@ -120,6 +122,9 @@ _GRID = {
 }
 _HIGHEST = 20000
 _LOW = round(dose_defacing.DOSE_FRACTION * _HIGHEST)
+# The transfer syntaxes of the head's compressed slices, PET slices, and RT
+# Dose, in turn: decoded in the decoding child and in process.
+_COMPRESSED = (compressed_files.JPEG_2000_LOSSLESS, compressed_files.RLE_LOSSLESS)
 # The synthetic collection's Enhanced CT Image and Legacy Converted Enhanced
 # CT Image instances, whose frames no functional groups place, are each a
 # CT series that the run cannot deface.
@@ -371,6 +376,7 @@ def _reviewed(
     dose=None,
     edges=False,
     multi_frame=False,
+    compressed=False,
     registrations=False,
 ):
     """Run the collection, with its CT slices replaced by the head's, as one
@@ -381,9 +387,11 @@ def _reviewed(
     Image by those slices as one instance, and its first RT Dose
     by a grid over the head of ``dose`` where given, with the RT Dose
     instances of :data:`_UNPLACEABLE` and :data:`_DVH_ONLY` in its series if
-    ``edges``, and the deformable registrations of :data:`_REGISTRATIONS`
-    if ``registrations``, under ``basic``, or under the option and
-    ``first`` with a face review that gives no verdicts."""
+    ``edges``, the head's CT and PET slices and that RT Dose compressed in
+    :data:`_COMPRESSED` in turn if ``compressed``, the deformable
+    registrations of :data:`_REGISTRATIONS` if ``registrations``, under
+    ``basic``, or under the option and ``first`` with a face review that
+    gives no verdicts."""
     corpus = corpus_module.build_corpus()
     directory = Path(tempfile.mkdtemp(prefix="d"))
     try:
@@ -464,6 +472,19 @@ def _reviewed(
                     mapped=True,
                 )
             )
+        if compressed:
+            names = [
+                *sorted(path.name for path in instances.glob("01-head*")),
+                *_PET_SLICES,
+                *(_DOSE[:1] if dose is not None else ()),
+            ]
+            for index, name in enumerate(names):
+                path = instances / name
+                path.write_bytes(
+                    compressed_files.compressed_file(
+                        path.read_bytes(), _COMPRESSED[index % len(_COMPRESSED)]
+                    )
+                )
         reviewed = run.run(
             run.discover(instances),
             directory / "r1",
@@ -601,6 +622,12 @@ def fixture_multi_frame():
         yield found
 
 
+@pytest.fixture(name="compressed", scope="module")
+def fixture_compressed():
+    with _runs(first=(), dose=_dose(_LOW), compressed=True) as found:
+        yield found
+
+
 # With the RT Dose instances that cannot be placed or have no grid, which
 # its run holds or releases alike, so that one run tests them all.
 @pytest.fixture(name="hot", scope="module")
@@ -705,6 +732,71 @@ def test_a_head_ct_marked_absent_as_defaced_is_released_defaced_with_the_option(
         kept += int(np.count_nonzero(brain))
         changed += int(np.count_nonzero(written != source))
     assert changed > 0 and kept > 0
+
+
+_NEEDS_DECODERS = pytest.mark.skipif(
+    not decoders_installed(), reason="needs a decoder of each compressed syntax"
+)
+
+
+def _pixels(dataset):
+    return pydicom.pixels.pixel_array(dataset)
+
+
+@_NEEDS_DECODERS
+@pytest.mark.deid_requirement("PS3.15-E.3.2-01", "PS3.15-E.3.2-02")
+def test_a_compressed_head_ct_is_released_defaced_as_the_native_one_is(
+    compressed, defaced
+):
+    slices, outcomes, reasons, report = compressed
+    _, native, _, native_report = defaced
+    uncompressed = kept = 0
+
+    # Each slice is released with the pixels that the native series is
+    # released with: a slice that defacing changes, decoded and written
+    # uncompressed, and any other as received, in its own transfer syntax.
+    for index, data in enumerate(slices):
+        name = _head_name(index)
+        disposition, dataset = outcomes[name]
+        assert disposition == "released", reasons[name]
+        assert dataset.RecognizableVisualFeatures == "NO"
+        assert _codes(dataset)[-2:] == [markers.PROFILE_CODE, CODE]
+        expected = native[name][1]
+        assert np.array_equal(_pixels(dataset), _pixels(expected)), index
+        syntax = str(dataset.file_meta.TransferSyntaxUID)
+        before = pydicom.dcmread(pydicom.filebase.DicomBytesIO(data))
+        if expected.PixelData != before.PixelData:
+            assert syntax == files.EXPLICIT_VR_LITTLE_ENDIAN, index
+            assert "ExtendedOffsetTable" not in dataset
+            uncompressed += 1
+        else:
+            assert syntax == _COMPRESSED[index % len(_COMPRESSED)], index
+            kept += 1
+    assert uncompressed > 0 and kept > 0
+    assert (
+        report["face_review"]["ct_series"] == native_report["face_review"]["ct_series"]
+    )
+
+
+@_NEEDS_DECODERS
+@pytest.mark.deid_requirement("PS3.15-E.3.2-01", "PS3.15-E.3.2-02")
+def test_compressed_pet_and_rt_dose_in_the_frame_are_cleaned_as_native_ones_are(
+    compressed, defaced
+):
+    _, outcomes, reasons, _ = compressed
+    _, native, _, _ = defaced
+
+    # Each is decoded, set to zero in the block less the kept brain, and
+    # written uncompressed, as its native version is set to zero, and the
+    # verdict on the pixel data that the reviewed run wrote releases it.
+    for name in (*_PET_SLICES, _DOSE[0]):
+        disposition, dataset = outcomes[name]
+        assert disposition == "released", reasons[name]
+        assert dataset.RecognizableVisualFeatures == "NO"
+        assert str(dataset.file_meta.TransferSyntaxUID) == (
+            files.EXPLICIT_VR_LITTLE_ENDIAN
+        )
+        assert np.array_equal(_pixels(dataset), _pixels(native[name][1])), name
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.2-01")
