@@ -200,8 +200,9 @@ STAGES: Mapping[str, str] = types.MappingProxyType(
 )
 
 # The codes by which the release gate can hold an instance for review rather
-# than withhold it: a gap in collection for a value of no required kind, and
-# other text found inside the data set.
+# than withhold it: a gap in collection for a value of no required kind,
+# other text found inside the data set, and a person name found in standard
+# text that a selected option keeps.
 REVIEW_CODES = frozenset(
     code.value
     for code in (
@@ -210,6 +211,7 @@ REVIEW_CODES = frozenset(
         ReasonCode.READ_AS_LATIN_1,
         ReasonCode.COLLECTED_AS_OTHER_VR,
         ReasonCode.RESIDUAL_TEXT,
+        ReasonCode.RESIDUAL_PERSON_NAME_IN_KEPT_TEXT,
     )
 )
 
@@ -244,9 +246,11 @@ HOLDING_STAGES: Mapping[str, str] = types.MappingProxyType(
         ),
         "release": (
             "the release gate requires QC review, for other text that the "
-            "residual search found inside the data set, or a value that could "
-            "not be collected for the search and is not a person name, UID, "
-            "date, datetime, direct identifier, or sequence"
+            "residual search found inside the data set, a person name that it "
+            "found in standard text that a selected option keeps, such as "
+            "Institution Name under Retain Institution Identity, or a value "
+            "that could not be collected for the search and is not a person "
+            "name, UID, date, datetime, direct identifier, or sequence"
         ),
     }
 )

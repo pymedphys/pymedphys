@@ -42,7 +42,9 @@ them: under Modified Dates the dates that Full Dates keeps are shifted, and
 a shifted date equal to its own source would mean that the shift failed.
 Values that an option writes by C, such as shifted dates and AE-title
 tokens, are therefore never explained, nor are person names and direct
-identifiers, which the release gate never exempts, or a kept value outside
+identifiers, which the release gate never exempts, although it sends a
+person name found in text that an option keeps (:func:`kept_text`) to QC
+review rather than withholding the file, or a kept value outside
 ISO 646, which :class:`~.residual_exemptions.KeptValues` does not read. A
 UID is explained only where instances that the run does not write alone
 held it (:func:`~.residual_exemptions.unwritten_uid`), or where its source is
@@ -149,13 +151,35 @@ def retained_text(tag: str, source: ElementPath, options: tuple[str, ...]) -> bo
         such as Institution Name (0008,0080) found in a kept Station Name
         under Retain Device Identity, is not explained.
     """
-    keepers = kept_by(options).get(tag)
-    vrs = _vrs(tag)
-    if not keepers or not vrs or not vrs <= TEXT_VRS:
+    if not kept_text(tag, options):
         return False
     return _private_data(source) or any(
-        source.tag in option_actions(option) for option in keepers
+        source.tag in option_actions(option) for option in kept_by(options)[tag]
     )
+
+
+def kept_text(tag: str, options: tuple[str, ...]) -> bool:
+    """Return whether a selected option keeps ``tag`` as text.
+
+    Parameters
+    ----------
+    tag : str
+        A standard attribute, such as ``"(0008,0080)"``.
+    options : tuple of str
+        The run's options.
+
+    Returns
+    -------
+    bool
+        Whether a selected option keeps ``tag`` (:func:`kept_by`), which the
+        pinned dictionary gives only VRs of text (:data:`TEXT_VRS`), such as
+        Institution Name (0008,0080) under Retain Institution Identity or
+        Ethnic Group (0010,2160) under Retain Patient Characteristics. A
+        private tag, to which the dictionary gives no VR, and an attribute
+        that the Basic Profile keeps, such as Beam Name (300A,00C2), are not.
+    """
+    vrs = _vrs(tag)
+    return tag in kept_by(options) and bool(vrs) and vrs <= TEXT_VRS
 
 
 def retained_value(

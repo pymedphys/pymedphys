@@ -511,6 +511,15 @@ def _gate_reasons(code):
         coverage["collected"] = (residuals.SourceValue(name, "PN", "ZEBEDEE^QUILLON"),)
         text = b"ZEBEDEE^QUILLON "
         written += struct.pack("<HH2sH", 0x0008, 0x103E, b"LO", len(text)) + text
+    elif code is release_gate.ReasonCode.RESIDUAL_PERSON_NAME_IN_KEPT_TEXT:
+        # Institutional Department Name, which Retain Institution Identity
+        # keeps.
+        name = ElementPath((), "(0010,0010)")
+        coverage["planned"] = frozenset({name})
+        coverage["collected"] = (residuals.SourceValue(name, "PN", "ZEBEDEE^QUILLON"),)
+        coverage["options"] = ("retain_institution_identity",)
+        text = b"ZEBEDEE WARD"
+        written += struct.pack("<HH2sH", 0x0008, 0x1040, b"LO", len(text)) + text
     elif code is release_gate.ReasonCode.RESIDUAL_OUTSIDE_DATA_SET:
         coverage["collected"] = (residuals.SourceValue(path, "LO", "ZARQUON"),)
         written += b"\xff\xff\xff\xffZARQUON STUDY"
