@@ -1,0 +1,41 @@
+name: Text Detection Model Pins
+
+# On demand, check that a GitHub-hosted runner can download each pinned text
+# detection model, and that each file has its pinned SHA-256 (and, for a model
+# inside a wheel, that the model does too). Vetting a model for the text
+# detector's evaluation (D-056) needs CI to reach the host its weights are
+# pinned at. The check downloads each file into memory, never to disk, runs
+# nothing it downloads, and prints only each pin's URL, host, size, and hash
+# result; it fails unless every pin matches.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: text-detection-model-pins-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  check:
+    name: Check the pinned text detection models
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup-project
+        with:
+          extras: 'user'
+
+      - name: Download and check each pin
+        timeout-minutes: 20
+        run: |
+          set -o pipefail
+          uv run --no-sync python -m pymedphys._dicom.deidentify.text_evaluation_model_pins \
+            | tee -a "${GITHUB_STEP_SUMMARY}"
