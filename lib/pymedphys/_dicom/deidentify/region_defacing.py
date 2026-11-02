@@ -27,10 +27,12 @@ there, on the block of the frame's one defaced series
 A contour is written as received where none of its segments enters the
 block at a point whose nearest pixel, of the nearest slice that the block
 reaches within half the slices' spacing, is one that defacing writes as air
-(:func:`cut_contours`): a pixel in the block, other than one of the brain
-that defacing keeps. So a contour that lies behind the block, below it, or
-within the kept brain alone, as a brain contour above the orbits can, is
-kept whole. Each segment is sampled within the block at intervals of
+(:func:`cut_contours`): a pixel in the block, other than one that
+defacing keeps, of the brain or for a target, at a point in no kept
+target's hull (:class:`~.target_hulls.KeptTargets`). So a contour that lies
+behind the block, below it, or within the kept brain alone, as a brain
+contour above the orbits can, is kept whole, as is a target's own contour,
+which its hull holds. Each segment is sampled within the block at intervals of
 half the smallest pixel spacing of those slices. A point with no such pixel
 counts where it lies in the block.
 
@@ -44,8 +46,8 @@ it lies within the slice's pixels, an axial one with pixels that defacing
 keeps in the block. Each of them is then written as its part behind the
 block's vertical plane joined with its part ahead of that plane within the
 squares of that slice's pixels that defacing does not write as air, those
-of the kept brain and those whose centres lie outside the block, each
-square being the points whose nearest pixel it is. The part within the
+of the kept brain or kept for a target and those whose centres lie outside
+the block, each square being the points whose nearest pixel it is. The part within the
 squares is found exactly, a row of pixels at a time
 (:func:`~pymedphys._geometry.pixel_grids.within_pixels`), and the pieces
 are joined into rings along the edges that they share
@@ -67,7 +69,8 @@ whose region loses no area by this is written as received.
 
 Any other contour that reaches the face is cut by the block's two planes,
 so that what is written of it lies outside the block or on its boundary,
-the kept brain being cut away with the rest: a closed contour, of Contour
+the kept brain and the pixels kept for a target being cut away with the
+rest: a closed contour, of Contour
 Geometric Type CLOSED_PLANAR or CLOSEDPLANAR_XOR, is written as each
 polygon of its part behind the block's vertical plane, and of its part
 ahead of that plane and not above the block's axial plane, each its own
@@ -107,8 +110,9 @@ one whose contours an ROI Contour Sequence item gives for an ROI that it
 does not declare.
 
 A PET image of native Pixel Data and one sample is written with each pixel
-whose centre is in the block, other than one that defacing keeps or one of
-Pixel Padding Value or its range, set to the stored value of zero activity
+whose centre is in the block, other than one that defacing keeps, one whose
+centre lies in a kept target's hull, or one of Pixel Padding Value or its
+range, set to the stored value of zero activity
 (:class:`PetDefacer`): a Positron Emission Tomography Image instance of one
 frame, placed by Image Position (Patient), Image Orientation (Patient), and
 Pixel Spacing, and rescaled by Rescale Slope and Rescale Intercept, or each
@@ -686,7 +690,7 @@ def _reaches(
 def _defaced(region: DoseBlock, points: np.ndarray) -> np.ndarray:
     """Whether defacing writes air at the nearest pixel to each point, of
     the nearest slice that the block reaches, or, where none is near
-    enough, whether the point is in the block."""
+    enough, whether the point is in the block, and in no target's hull."""
     block = region.block
     defaced = block.contains(points)
     slices, rows, columns = region.pixels(points)
@@ -705,7 +709,9 @@ def _defaced(region: DoseBlock, points: np.ndarray) -> np.ndarray:
         defaced[chosen] = (
             block.contains(centres) & ~each.kept[rows[chosen], columns[chosen]]
         )
-    return defaced
+    # A target's hull is kept wherever no slice's pixel is near enough, so a
+    # target's contours are never cut.
+    return defaced & ~region.targets.contains(points)
 
 
 def _outside_polyline(block: FaceBlock, points: np.ndarray) -> list[np.ndarray]:

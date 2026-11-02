@@ -48,6 +48,7 @@ from pymedphys._dicom.deidentify import (
 )
 from pymedphys._dicom.deidentify import synthetic_corpus as corpus_module
 from pymedphys._dicom.deidentify.dose_defacing import RT_DOSE
+from pymedphys._dicom.deidentify.face_blocks import FaceBlockCounts, SeriesProblem
 from pymedphys._dicom.deidentify.face_review import (
     DOSE_IN_FACE_BLOCK_TEXT,
     UNDEFACED_TEXT,
@@ -790,7 +791,11 @@ def test_the_report_names_the_reviewed_pack_by_its_reference():
 
     assert document["face_review"] == {
         "reference": REFERENCE,
-        "ct_series": {"defaced": 0, "not_defaced": []},
+        "ct_series": {
+            "defaced": 0,
+            "defaced_around_targets": 0,
+            "not_defaced": [],
+        },
     }
     assert document["held_for_review"] == [
         {"stage": "visual-features", "code": "no-face-verdict", "count": 1}
@@ -798,6 +803,42 @@ def test_the_report_names_the_reviewed_pack_by_its_reference():
     text = release_report_markdown.to_markdown(release_report.to_json(report))
     assert "## Face review" in text
     assert f"`{REFERENCE}`" in text
+
+
+def test_the_report_counts_the_series_defaced_around_targets():
+    counts = FaceBlockCounts(
+        defaced=3, not_defaced={SeriesProblem.TARGET_IN_BLOCK: 1}, around_targets=2
+    )
+    report = release_report.release_report(
+        _policy(),
+        vocabulary=None,
+        reviewed_roi_names=None,
+        face_review=REFERENCE,
+        face_blocks=counts,
+    )
+
+    assert release_report.report_document(report)["face_review"]["ct_series"] == {
+        "defaced": 3,
+        "defaced_around_targets": 2,
+        "not_defaced": [{"reason": "target-in-block", "count": 1}],
+    }
+    text = release_report_markdown.to_markdown(release_report.to_json(report))
+    assert "the run kept a target's region" in text
+    assert "`2`" in text
+
+
+@pytest.mark.parametrize("around", [-1, 4, 1.0, True])
+def test_the_report_refuses_a_count_around_targets_beyond_the_series_defaced(around):
+    report = release_report.release_report(
+        _policy(),
+        vocabulary=None,
+        reviewed_roi_names=None,
+        face_review=REFERENCE,
+        face_blocks=FaceBlockCounts(defaced=3, around_targets=around),
+    )
+
+    with pytest.raises(ValueError, match="defaced_around_targets"):
+        release_report.report_document(report)
 
 
 def test_a_report_without_a_face_review_has_none():
@@ -1054,7 +1095,7 @@ def test_the_report_names_the_attested_pack(second_run):
     attestation, _, report, _ = second_run
 
     assert report["face_review"]["reference"] == attestation.reference
-    assert report["format"] == "pymedphys-deid-release-report/34"
+    assert report["format"] == "pymedphys-deid-release-report/35"
 
 
 def test_the_report_counts_the_ct_series_that_were_not_defaced(second_run):
@@ -1066,6 +1107,7 @@ def test_the_report_counts_the_ct_series_that_were_not_defaced(second_run):
     # read as slices.
     assert report["face_review"]["ct_series"] == {
         "defaced": 0,
+        "defaced_around_targets": 0,
         "not_defaced": [
             {"reason": "no-eyes", "count": 1},
             {"reason": "unreadable", "count": 2},
