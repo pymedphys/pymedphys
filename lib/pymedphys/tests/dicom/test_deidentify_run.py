@@ -403,9 +403,9 @@ def test_a_later_copy_is_processed_when_the_first_changes(tmp_path, monkeypatch)
     transform = Transform()
     first_pass = run._first_pass  # pylint: disable = protected-access
 
-    def first_pass_then_change(found):
+    def first_pass_then_change(found, *choices):
         # The first pass finds three identical copies; then the first changes.
-        result = first_pass(found)
+        result = first_pass(found, *choices)
         first.write_bytes(first.read_bytes() + b"\x00\x00")
         return result
 

@@ -81,6 +81,14 @@ the rest for one instance:
   removes, not what it retains, and E.1.1 makes Table E.1-1 the minimum
   actions; where it keeps it, the instance does not.
 
+A free-text descriptor of a patient, study, series, or frame of reference,
+such as Series Description (0008,103E), is written with what cleaning gives
+its values only where every instance of that entity that the run prepared
+would write the same values
+(:mod:`~pymedphys._dicom.deidentify.descriptor_agreement`); otherwise it
+takes its action without Clean Descriptors in each of them, as above, and a
+kept value of it is still left out of the residual search.
+
 An instance satisfies Clean Descriptors only where no ROI Name or value of
 another option's attribute was held, no ROI Name was emptied without
 review, and no other attribute given C was kept but by a reviewer's decision
@@ -103,6 +111,7 @@ from collections.abc import Callable, Collection, Mapping, Sequence
 
 from pymedphys._nomenclature import roi_list, tg263
 
+from .descriptor_agreement import Agrees, always_agrees
 from .edits import Edit, EditKind, InstanceEdits
 from .file_layout import ElementPath
 from .policy import (
@@ -316,6 +325,7 @@ def clean_descriptors(  # pylint: disable = too-many-locals, too-many-branches
     reviewed_elsewhere: Collection[str] = frozenset(),
     private_texts: Mapping[ElementPath, str] = _NO_PRIVATE_TEXTS,
     private_text_vms: Mapping[ElementPath, str] = _NO_PRIVATE_TEXTS,
+    agrees: Agrees = always_agrees,
 ) -> CleanedDescriptors:
     """Settle each edit that the policy's C leaves pending in one instance.
 
@@ -353,6 +363,13 @@ def clean_descriptors(  # pylint: disable = too-many-locals, too-many-branches
     private_text_vms : mapping of ElementPath to str, optional
         The VM that the decoded values of each must meet, from
         :attr:`~.walker.InstancePlan.private_text_vms`. Defaults to none.
+    agrees : callable, optional
+        Whether what cleaning would write for a descriptor, given its path
+        and values, agrees with the other instances of its patient, study,
+        series, or frame of reference
+        (:meth:`~.descriptor_agreement.DescriptorAgreement.agrees`); one that
+        does not takes its action without Clean Descriptors. Not asked of an
+        attribute of ``reviewed_elsewhere``. By default every value agrees.
 
     Raises
     ------
@@ -411,6 +428,16 @@ def clean_descriptors(  # pylint: disable = too-many-locals, too-many-branches
         decided = described.get(edit.path, ())
         if edit.path.tag not in reviewed_elsewhere or edit.path not in described:
             values = _written(decided)
+            if values is not None and not agrees(edit.path, values):
+                # A value that cleaning keeps, but which another instance
+                # of its entity would not write, is left out of the
+                # residual search, as it is wherever it is written.
+                if all(
+                    result.outcome in _KEEPS_ITS_SOURCE or not result.value
+                    for result in decided
+                ):
+                    retained.add(edit.path)
+                values = None
         elif any(result.outcome is DescriptorOutcome.HELD for result in decided):
             # Written empty in the staged file, which is not released.
             settled[edit.path] = dataclasses.replace(
@@ -607,7 +634,6 @@ def kept_descriptors(
     reviewed_elsewhere : collection of str, optional
         As for :func:`clean_descriptors`: those among them that the reviewed
         descriptors list decides on. Defaults to none.
-
     Returns
     -------
     frozenset of ElementPath
@@ -666,6 +692,69 @@ def kept_descriptors(
         if element.action == "K" and element.path in holding
     }
     return frozenset(path for path in kept if stays(path)) | frozenset(creators)
+
+
+def entity_descriptors(
+    plan: InstancePlan,
+    edits: InstanceEdits,
+    cleaning: DescriptorCleaning,
+    tags: Collection[str],
+    *,
+    cleaned_elsewhere: Collection[str],
+    reviewed_elsewhere: Collection[str] = frozenset(),
+) -> dict[str, tuple[str, ...] | None]:
+    """Return what cleaning would write for an instance's descriptors of ``tags``.
+
+    For :class:`~.descriptor_agreement.DescriptorAgreement`, which compares
+    them between the instances of a patient, study, series, or frame of
+    reference. Each of ``tags`` that the plan gives C at the top level of
+    the data set, other than an attribute of ``cleaned_elsewhere``, is
+    decided on as :func:`clean_descriptors` decides on it, with the
+    instance's own identifiers, before any agreement.
+
+    Parameters
+    ----------
+    plan : InstancePlan
+        The instance's plan, under a policy with Clean Descriptors.
+    edits : InstanceEdits
+        Its edits, with the values that they collected.
+    cleaning : DescriptorCleaning
+        What descriptors are cleaned with.
+    tags : collection of str
+        The tags of the descriptors, such as those of
+        :func:`~.descriptor_agreement.entity_tags`.
+    cleaned_elsewhere : collection of str
+        As for :func:`clean_descriptors`: descriptors that another option's
+        cleaner cleans, which are left out, as are those of
+        ``reviewed_elsewhere``.
+    reviewed_elsewhere : collection of str, optional
+        As for :func:`clean_descriptors`. Defaults to none.
+
+    Returns
+    -------
+    dict of str to tuple of str or None
+        By tag, the values that cleaning would write, or None where the
+        attribute would take its action without Clean Descriptors.
+    """
+    left_out = frozenset(cleaned_elsewhere) | frozenset(reviewed_elsewhere)
+    paths = [
+        element.path
+        for element in plan.elements
+        if element.action == "C"
+        and not element.path.items
+        and element.path.tag in tags
+        and element.path.tag not in left_out
+    ]
+    described = _described(
+        paths,
+        _descriptor_texts(edits, paths),
+        cleaning,
+        _identifiers(edits),
+        cleaned_elsewhere,
+        reviewed_elsewhere,
+        _NO_PRIVATE_TEXTS,
+    )
+    return {path.tag: _written(described.get(path, ())) for path in paths}
 
 
 def _shares_a_sequence(path: ElementPath, other: ElementPath) -> bool:
