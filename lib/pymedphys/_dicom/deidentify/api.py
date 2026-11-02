@@ -144,6 +144,7 @@ def deidentify(  # pylint: disable = too-many-arguments
     face_review: str | os.PathLike[str] | None = None,
     readiness_review: str | os.PathLike[str] | None = None,
     readiness_report: str | os.PathLike[str] | None = None,
+    sequester_studies_with_several_patients: bool = False,
 ) -> Deidentified:
     """De-identify the DICOM files below a source directory into a new release.
 
@@ -263,6 +264,20 @@ def deidentify(  # pylint: disable = too-many-arguments
         The release report, ``release-report.json``, of the run whose QC
         pack is ``readiness_review``, which records that run's policy. It
         is given with ``readiness_review``.
+    sequester_studies_with_several_patients : bool, optional
+        Whether to sequester every instance of a study whose instances name
+        several patients, each a Patient ID with its issuer, the instances
+        without a Patient ID counting as one more, and release the rest,
+        rather than stop the run before anything is written, the default
+        (D-026). Each such study is a curation error that no change to its
+        instances can repair. Its values are still searched for in the
+        files of every patient that it names, so a value of it that could
+        not be collected withholds those files too; the release report
+        records the choice and how many studies it sequestered, and the QC
+        pack lists each study's instances by patient, for a curator to
+        correct. Under a run-scoped key, the corrected study cannot be added
+        to the release later, only released again with the rest of its
+        cohort by a new run that replaces it.
 
     Returns
     -------
@@ -276,6 +291,9 @@ def deidentify(  # pylint: disable = too-many-arguments
     TypeError
         If ``options`` is a single string rather than a collection of
         names. Nothing is read or created.
+    TypeError
+        If ``sequester_studies_with_several_patients`` is not a bool.
+        Nothing is read or created.
     ValueError
         If both ``preset`` and ``options`` are given, or if
         ``tg263_spreadsheet``, ``reviewed_names``, ``empty_held_roi_names``,
@@ -307,7 +325,9 @@ def deidentify(  # pylint: disable = too-many-arguments
     ~pymedphys._dicom.deidentify.run.RunError
     ~pymedphys._dicom.deidentify.run.RunStopped
     ~pymedphys._dicom.deidentify.qc_pack.QcPackError
-        As :func:`~pymedphys._dicom.deidentify.run.run` raises them; their
+        As :func:`~pymedphys._dicom.deidentify.run.run` raises them,
+        ``RunStopped`` for a study whose instances name several patients
+        unless ``sequester_studies_with_several_patients`` is true; their
         messages name only the caller's directories, counts, or the check of
         the QC destination that failed. Nothing is published.
 
@@ -323,6 +343,8 @@ def deidentify(  # pylint: disable = too-many-arguments
         raise TypeError(
             "options must be a collection of option names, not a single string"
         )
+    if not isinstance(sequester_studies_with_several_patients, bool):
+        raise TypeError("sequester_studies_with_several_patients must be a bool")
     # Read once, so that the check below and the run see the same options.
     chosen = None if options is None else tuple(options)
     roi_name_options = (
@@ -409,6 +431,11 @@ def deidentify(  # pylint: disable = too-many-arguments
             reporter=transform.reporter,
             written_check=transform.written_check,
             before_publish=command.profile_saver(profiles),
+            several_patients=(
+                run.SeveralPatients.SEQUESTER
+                if sequester_studies_with_several_patients
+                else run.SeveralPatients.STOP
+            ),
         )
     return Deidentified(result, counts)
 

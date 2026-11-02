@@ -51,12 +51,17 @@ frame with such regions, also from the file as received:
   to render has none, and such a volume has no projection either, so that
   its slices beyond its cine strip are held;
   an RT Dose is shown so only where it is one by its SOP Class, and its
-  stored values are unsigned, not padded, not rescaled, and scaled by a
-  finite Dose Grid Scaling above 0 to doses that float32 holds, each above
-  0 still above 0 and none infinite;
+  stored values are not padded, not rescaled, and scaled by a finite Dose
+  Grid Scaling above 0 to doses that float32 holds, each other than 0
+  still other than 0 and none infinite; a grid or series whose stored
+  values are signed, by Pixel Representation, as an RT Dose of Dose Type
+  ERROR's can be, is shown at the levels of its doses below 0 as well as
+  above, as :mod:`~pymedphys._dicom.deidentify.qc_surfaces` describes;
 - a dose-levels map of each RT Dose plane of one frame, so shown, that is
   in no volume, at full resolution, grey by how many of its dose levels
-  each pixel reaches, so that each level's outline is an edge;
+  each pixel reaches, so that each level's outline is an edge; a signed
+  plane's map of its doses above 0 is followed, after white columns, by
+  its map of the magnitudes of its doses below 0;
 - a contour sheet of each instance with contours, such as an RT Structure
   Set, high-risk or not, since a face verdict can release only what a
   reviewer saw: its contours as written, drawn in each Frame of Reference
@@ -123,7 +128,10 @@ shown, so that no verdict releases its pixel data. Colour pixel data with
 8 bits allocated are shown as RGB: as they are, or converted from YBR_FULL
 or YBR_FULL_422 by pydicom, while JPEG 2000's YBR_ICT and YBR_RCT are
 decoded to RGB. Compressed pixel data are decoded by the plugin
-that :data:`.pixel_decoding.DECODING_PLUGINS` pins for its transfer syntax.
+that :func:`.pixel_decoding.pinned_plugin` pins for its transfer syntax
+and attributes, in process, but for those of
+:data:`.pixel_decoding.CHILD_ONLY_PLUGINS`, whose frames are decoded in the
+decoding child by :func:`.pixel_decoding.isolated_frames` (D-055).
 An instance whose pixel data cannot be previewed is reported with why,
 rather than left out: pixel data in a compressed transfer syntax that no
 installed plugin is pinned to decode; a photometric interpretation other
@@ -150,7 +158,12 @@ from collections.abc import Collection, Iterator, Mapping, Sequence
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom
 
-from .pixel_decoding import DECODING_PLUGINS, decoder_available
+from .pixel_decoding import (
+    CHILD_ONLY_PLUGINS,
+    decoder_available,
+    isolated_frames,
+    pinned_plugin,
+)
 from . import qc_contours, qc_grids, qc_segments, qc_surfaces
 from .face_review import holds_deformation_grid, is_rt_dose
 from .qc_pack import (
@@ -230,9 +243,12 @@ class _Instance:
     # dose-levels preview shows as it could show a face (D-017).
     dose: bool = False
     # Dose Grid Scaling, where a dose-levels preview can show its doses:
-    # an RT Dose by its SOP Class, unsigned, not rescaled, and scaled by a
-    # finite number above 0.
+    # an RT Dose by its SOP Class, not padded, not rescaled, and scaled by
+    # a finite number above 0.
     dose_scale: float | None = None
+    # Whether such an RT Dose's stored values are signed, so that its
+    # doses below 0 are shown at their own levels.
+    dose_signed: bool = False
     # Whether its native Pixel Data are of 1 bit allocated, packed across
     # frames, which pydicom 3.0 cannot decode one frame at a time where a
     # frame's bits are not a whole number of bytes, as a Segmentation's
@@ -541,8 +557,10 @@ def _described(
         syntax = str(dataset.file_meta.TransferSyntaxUID)
         plugin = ""
         if dataset.file_meta.TransferSyntaxUID.is_compressed:
-            plugin = DECODING_PLUGINS.get(syntax, "")
-            if not plugin or not decoder_available(syntax):
+            plugin = pinned_plugin(
+                syntax, dataset.get("BitsStored"), dataset.get("PixelRepresentation")
+            )
+            if not plugin or not decoder_available(syntax, plugin):
                 return NotPreviewedReason.COMPRESSED
         photometric = str(dataset.PhotometricInterpretation).strip()
         samples = int(dataset.SamplesPerPixel)
@@ -575,6 +593,7 @@ def _described(
     spacing = _spacing(dataset)
     uid = dataset.get("SeriesInstanceUID")
     scale = None if colour or rescale != (1.0, 0.0) else _dose_scale(dataset)
+    signed = _number(dataset, "PixelRepresentation", int) == 1
     whole = True
     if not plugin:
         try:
@@ -599,11 +618,12 @@ def _described(
         modality=modality,
         grid=None
         if scale is None
-        else _dose_grid(dataset, spacing, (rows, columns), frames, scale),
+        else _dose_grid(dataset, spacing, (rows, columns), frames, scale, signed),
         frame=_uid(dataset, "FrameOfReferenceUID"),
         whole=whole,
         dose=is_rt_dose(dataset),
         dose_scale=scale,
+        dose_signed=scale is not None and signed,
         packed=not plugin and allocated == 1,
         segmentation=segmentation,
         segments=qc_segments.segments_of(dataset) if segmentation else None,
@@ -686,11 +706,12 @@ _PADDING = ("PixelPaddingValue", "PixelPaddingRangeLimit")
 
 def _dose_scale(dataset: pydicom.Dataset) -> float | None:
     """Dose Grid Scaling, where the data set is an RT Dose by its SOP Class
-    whose stored values are unsigned, not padded, and scaled by a finite
-    number above 0; otherwise None, as a signed grid can hold doses below 0,
-    which no level shows, a padded one has stored values that are read as
-    no dose, which no level shows either, and a grid without a scaling above
-    0 has no dose to show."""
+    whose stored values are unsigned or signed, by Pixel Representation of
+    0 or 1, not padded, and scaled by a finite number above 0; otherwise
+    None, as a padded grid has stored values that are read as no dose,
+    which no level shows, and a grid without a scaling above 0 has no dose
+    to show. A signed grid is shown at the levels of its doses below 0 as
+    well as above (:mod:`~pymedphys._dicom.deidentify.qc_surfaces`)."""
     try:
         sop_class = str(dataset.get("SOPClassUID") or "")
     except Exception:  # pylint: disable = broad-exception-caught
@@ -698,7 +719,7 @@ def _dose_scale(dataset: pydicom.Dataset) -> float | None:
     scaling = _number(dataset, "DoseGridScaling", float)
     if (
         sop_class != qc_surfaces.RT_DOSE_STORAGE
-        or _number(dataset, "PixelRepresentation", int) != 0
+        or _number(dataset, "PixelRepresentation", int) not in (0, 1)
         or any(keyword in dataset for keyword in _PADDING)
         or scaling is None
         or scaling <= 0
@@ -713,6 +734,7 @@ def _dose_grid(
     shape: tuple[int, int],
     frames: int,
     scale: float,
+    signed: bool = False,
 ) -> qc_surfaces.Grid | None:
     """The grid of an RT Dose instance of two or more frames, if it is rendered.
 
@@ -755,6 +777,7 @@ def _dose_grid(
         shape,
         qc_surfaces.Threshold.DOSE,
         scale,
+        signed,
     )
 
 
@@ -784,6 +807,8 @@ class _Decoder:
         try:
             if instance.packed:
                 (pixels,) = _packed_frames(instance, [index])
+            elif instance.plugin in CHILD_ONLY_PLUGINS:
+                (pixels,) = isolated_frames(instance.data, [index])
             else:
                 pixels = np.asarray(
                     pydicom.pixels.pixel_array(
@@ -819,6 +844,8 @@ class _Decoder:
                     instance, range(instance.frames) if indices is None else indices
                 )
                 if instance.packed
+                else isolated_frames(instance.data, indices)
+                if instance.plugin in CHILD_ONLY_PLUGINS
                 else pydicom.pixels.iter_pixels(
                     io.BytesIO(instance.data),
                     indices=indices,
@@ -1033,20 +1060,31 @@ def _series_images(
 def _level_map(instance: _Instance, pixels: np.ndarray) -> np.ndarray | None:
     """An RT Dose plane at full resolution, grey by the levels of its dose,
     or None if its scaling loses a dose (:func:`~.qc_surfaces.dose_values`)
-    or it has more than :data:`~.qc_surfaces.MAXIMUM_DOSE_LEVELS` levels."""
+    or it has more than :data:`~.qc_surfaces.MAXIMUM_DOSE_LEVELS` levels of
+    either sign. A signed plane's map of its doses above 0 is followed, after
+    columns of :data:`~.qc_surfaces.SIGN_RULE`, by the map of the magnitudes
+    of its doses below 0."""
     assert instance.dose_scale is not None
     values = qc_surfaces.dose_values(pixels, instance.dose_scale)
     if values is None:
         return None
     finite = values[np.isfinite(values)]
-    positive = finite[finite > 0]
-    levels = qc_surfaces.dose_levels(
-        float(finite.max()) if finite.size else -math.inf,
-        float(positive.min()) if positive.size else math.inf,
+    maps = []
+    for below in (False, True) if instance.dose_signed else (False,):
+        doses = -finite[finite < 0] if below else finite[finite > 0]
+        levels = qc_surfaces.dose_levels(
+            float(doses.max()) if doses.size else -math.inf,
+            float(doses.min()) if doses.size else math.inf,
+        )
+        if len(levels) > qc_surfaces.MAXIMUM_DOSE_LEVELS:
+            return None
+        maps.append(qc_surfaces.level_bands(values, levels, below))
+    if len(maps) == 1:
+        return maps[0]
+    rule = np.full(
+        (values.shape[0], qc_surfaces.SIGN_RULE_PIXELS), qc_surfaces.SIGN_RULE, np.uint8
     )
-    if len(levels) > qc_surfaces.MAXIMUM_DOSE_LEVELS:
-        return None
-    return qc_surfaces.level_bands(values, levels)
+    return np.concatenate([maps[0], rule, maps[1]], axis=1)
 
 
 def _surfaces(
@@ -1071,7 +1109,15 @@ def _surfaces(
         else:
             threshold = qc_surfaces.Threshold.OTSU
         grid = qc_surfaces.grid(
-            volume.directions, volume.positions, volume.spacing, volume.shape, threshold
+            volume.directions,
+            volume.positions,
+            volume.spacing,
+            volume.shape,
+            threshold,
+            # A series of RT Dose planes any one of which is signed is
+            # shown at the levels of its doses below 0 too.
+            signed=threshold is qc_surfaces.Threshold.DOSE
+            and any(instance.dose_signed for instance in series),
         )
         shown = tuple((instance.position, 0) for instance in series)
         surfaces.append((kind, shown, qc_surfaces.Surface(grid)))

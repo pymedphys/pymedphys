@@ -157,23 +157,28 @@ def _block() -> FaceBlock:
     return finder.block()
 
 
-# A target behind the block, and one in front of the face inside it.
+# A target behind the block; one in front of the face inside it; and one in
+# it drawn past the front of the scan's field of view, beyond its slices.
 _BEHIND = files.circle((0.0, 0.0, 40.0), 20.0)
 _IN_BLOCK = files.circle((0.0, -85.0, 30.0), 5.0)
+_BEYOND = files.circle((0.0, _SCAN.positions[0][1] - 1.0, 30.0), 5.0)
 _BODY = files.ellipse((0.0, -10.0, 30.0), (95.0, 115.0))
 
 
 @pytest.fixture(scope="module", name="exports")
 def _exports(tmp_path_factory, block):
-    """A directory of four cases' exports, in directories of their own:
+    """A directory of five cases' exports, in directories of their own:
 
     1. a head, defaced, with eyes drawn at its globes, a target behind the
        block, a body outline, two RT Doses, of low and high dose in the
        block, and an RT Plan;
     2. a head without eyes, with an eye drawn, an RT Dose, and an RT Plan;
-    3. a head with eyes drawn at its globes and a target in its block; and
+    3. a head with eyes drawn at its globes, a target in its block, and a
+       target in its block beyond its slices;
     4. a head with its right eye drawn at its left globe and its left eye
-       drawn 40 mm to the patient's left;
+       drawn 40 mm to the patient's left; and
+    5. a head with eyes drawn at its globes and a target in its block,
+       defaced around it;
 
     with a text file and a DICOMDIR, which are not read.
     """
@@ -208,8 +213,9 @@ def _exports(tmp_path_factory, block):
             ("ORGAN", _globe(_RIGHT)),
             ("ORGAN", _globe(_LEFT)),
             ("GTV", _IN_BLOCK),
+            ("CTV", _BEYOND),
         ],
-        ["Eye_R", "Eye_L", "GTV"],
+        ["Eye_R", "Eye_L", "GTV", "CTV"],
     )
     contents |= {f"4/CT{i:03d}.dcm": each for i, each in enumerate(_ct(4))}
     contents["4/RS.dcm"] = _structure_set(
@@ -219,6 +225,16 @@ def _exports(tmp_path_factory, block):
             ("ORGAN", _globe(_LEFT, shift=(40.0, 0.0, 0.0))),
         ],
         ["Eye_R", "Globe_Lt"],
+    )
+    contents |= {f"5/CT{i:03d}.dcm": each for i, each in enumerate(_ct(5))}
+    contents["5/RS.dcm"] = _structure_set(
+        5,
+        [
+            ("ORGAN", _globe(_RIGHT)),
+            ("ORGAN", _globe(_LEFT)),
+            ("GTV", _IN_BLOCK),
+        ],
+        ["Eye_R", "Eye_L", "GTV"],
     )
     contents["notes.txt"] = b"not DICOM"
     contents["DICOMDIR"] = b"refused by name"
@@ -240,12 +256,25 @@ def _summary(measured):
 
 
 def _by_outcome(measured: DicomMeasures) -> dict[str, SeriesMeasures]:
-    return {each.outcome: each for each in measured.series}
+    """Each series by its outcome, a series defaced around a target in its
+    block by ``"defaced-around-targets"``."""
+    return {
+        "defaced-around-targets" if each.around_targets else each.outcome: each
+        for each in measured.series
+    }
 
 
 def test_each_series_has_its_outcome_as_a_run_finds_it(measured):
+    assert sorted(each.outcome for each in measured.series) == [
+        "defaced",
+        "defaced",
+        "eyes-disagree-with-rois",
+        "no-eyes",
+        "target-in-block",
+    ]
     assert sorted(_by_outcome(measured)) == [
         "defaced",
+        "defaced-around-targets",
         "eyes-disagree-with-rois",
         "no-eyes",
         "target-in-block",
@@ -257,16 +286,16 @@ def test_the_files_are_counted_by_how_they_were_read(measured):
     slices = len(_SCAN.positions)
 
     assert measured.files == {
-        "total": 4 * slices + 11,
-        "read": 4 * slices + 9,
+        "total": 5 * slices + 12,
+        "read": 5 * slices + 10,
         "not-read": 1,
     }
     assert measured.refused == {"dicomdir": 1}
     assert measured.iods == {
-        "CT Image": 4 * slices,
+        "CT Image": 5 * slices,
         "RT Dose": 3,
         "RT Plan": 2,
-        "RT Structure Set": 4,
+        "RT Structure Set": 5,
     }
     assert measured.ct_without_series == 0
 
@@ -337,16 +366,26 @@ def test_an_eye_named_for_the_other_side_and_one_far_off_are_measured(measured, 
 def test_targets_are_counted_by_where_they_lie(measured, block):
     by_outcome = _by_outcome(measured)
     defaced, held = by_outcome["defaced"], by_outcome["target-in-block"]
+    around = by_outcome["defaced-around-targets"]
 
     assert defaced.targets == {"clear": 1}
+    assert not defaced.around_targets
     # The target lies above the block's inferior limit, so its clearance
     # is its distance behind the block's plane.
     ahead = (_BEHIND - np.array(block.origin)) @ np.array(block.anterior)
     assert np.min(_BEHIND[:, 2]) > block.inferior_limit
     assert defaced.clearances == (pytest.approx(-np.max(ahead), abs=1e-3),)
-    assert held.targets == {"reaches-block": 1}
+    # The target in front of the face would be kept, but the one beyond the
+    # slices holds the series.
+    assert held.targets == {"beyond-slices": 1, "kept-in-block": 1}
     assert held.clearances == ()
+    assert not held.around_targets
     assert [eye.side for eye in held.eyes] == ["right", "left"]
+    # Without it, the series is defaced around the target in its block.
+    assert around.outcome == "defaced"
+    assert around.targets == {"kept-in-block": 1}
+    assert around.clearances == ()
+    assert [eye.side for eye in around.eyes] == ["right", "left"]
 
 
 def test_a_series_without_a_block_counts_its_eye_rois_alone(measured):
@@ -367,13 +406,17 @@ def test_rt_doses_in_the_defaced_frame_are_set_to_zero_or_held(measured):
     assert _DOSE_HIGH / _DOSE_GREATEST > dose_defacing.DOSE_FRACTION
 
 
-def test_the_structure_set_in_the_defaced_frame_is_cut(measured):
-    (cut,) = measured.structure_sets
+def test_the_structure_sets_in_the_defaced_frames_are_cut(measured):
+    first, around = sorted(
+        measured.structure_sets, key=lambda each: sum(each.cut.values())
+    )[::-1]
 
-    assert cut.outcome == "cut"
+    assert first.outcome == around.outcome == "cut"
     # The body and the three eye ROIs reach the face; the target behind the
     # block and the organ within the head do not.
-    assert cut.cut == {"EXTERNAL": 1, "ORGAN": 3}
+    assert first.cut == {"EXTERNAL": 1, "ORGAN": 3}
+    # The eyes reach the face, and the target kept in the block is not cut.
+    assert around.cut == {"ORGAN": 2}
 
 
 def test_rt_plans_in_a_defaced_frame_are_counted(measured):
@@ -381,30 +424,35 @@ def test_rt_plans_in_a_defaced_frame_are_counted(measured):
 
 
 def test_the_summary_counts_the_measures(summary):
-    assert summary["format"] == "pymedphys-deid-face-validation-dicom/1"
+    assert summary["format"] == "pymedphys-deid-face-validation-dicom/2"
     assert summary["series"] == {
-        "defaced": 1,
+        "defaced": 2,
+        "defaced_around_targets": 1,
         "not_defaced": {
             "eyes-disagree-with-rois": 1,
             "no-eyes": 1,
             "target-in-block": 1,
         },
         "with_eye_rois": {
-            "defaced": 1,
+            "defaced": 2,
             "eyes-disagree-with-rois": 1,
             "no-eyes": 1,
             "target-in-block": 1,
         },
     }
     eyes = summary["eye_rois"]
-    assert eyes["series_with_a_block"] == 3
-    assert eyes["by_series"] == {"agree": 2, "eyes-disagree-with-rois": 1}
-    assert eyes["sides"] == {"left": 3, "not-named": 1, "right": 3}
+    assert eyes["series_with_a_block"] == 4
+    assert eyes["by_series"] == {"agree": 3, "eyes-disagree-with-rois": 1}
+    assert eyes["sides"] == {"left": 4, "not-named": 1, "right": 4}
     assert eyes["sides_swapped"] == 1
     assert eyes["not_placed"] == 0
-    assert sum(each["count"] for each in eyes["globe_centre_error"]["bins"]) == 8
-    assert sum(each["count"] for each in eyes["eye_reach"]["bins"]) == 7
-    assert summary["targets"]["by_where"] == {"clear": 1, "reaches-block": 1}
+    assert sum(each["count"] for each in eyes["globe_centre_error"]["bins"]) == 10
+    assert sum(each["count"] for each in eyes["eye_reach"]["bins"]) == 9
+    assert summary["targets"]["by_where"] == {
+        "beyond-slices": 1,
+        "clear": 1,
+        "kept-in-block": 2,
+    }
     assert summary["rt_doses"]["outcomes"] == {
         "dose-in-face-block": 1,
         "set-to-zero": 1,
@@ -415,12 +463,12 @@ def test_the_summary_counts_the_measures(summary):
     # 3% and 30% of the grid's greatest.
     assert shares == [0, 0, 1, 0, 0, 1, 0]
     assert summary["rt_structure_sets"] == {
-        "outcomes": {"cut": 1},
-        "rois_cut": {"EXTERNAL": 1, "ORGAN": 3},
+        "outcomes": {"cut": 2},
+        "rois_cut": {"EXTERNAL": 1, "ORGAN": 5},
     }
     assert summary["rt_plans"] == {"total": 2, "in_defaced_frames": 1}
     assert summary["ct"]["air_in_hounsfield_units"] == {
-        "yes": 4,
+        "yes": 5,
         "no": 0,
         "not-measured": 0,
     }
@@ -563,13 +611,13 @@ def test_a_series_that_raises_is_counted_by_where_without_its_message(
     page = markdown(summary)
 
     ((where, count),) = measured.crashed.items()
-    assert count == 4
+    assert count == 5
     assert where.startswith(
         "series: ValueError at test_deidentify_face_validation_dicom.py:"
     )
     assert where.endswith(" in raising")
-    assert summary["crashed"] == {where: 4}
-    assert f"| Crashed: `{where}` | 4 |\n" in page
+    assert summary["crashed"] == {where: 5}
+    assert f"| Crashed: `{where}` | 5 |\n" in page
     assert _SECRET not in json.dumps(summary) + page
 
 
@@ -578,7 +626,8 @@ def test_the_page_shows_the_counts_as_commonmark(summary):
 
     assert page.startswith("# Face block check on DICOM files\n\n")
     assert page.endswith("|\n")
-    assert "| Defaced | 1 |\n" in page
+    assert "| Defaced | 2 |\n" in page
+    assert "| Defaced around a target in the block | 1 |\n" in page
     assert "| Not defaced: `target-in-block` | 1 |\n" in page
     assert "| `EXTERNAL` | 1 |\n" in page
     lines = page.split("\n")
@@ -608,7 +657,7 @@ def test_the_command_writes_the_counts_and_prints_the_page(
     assert status == 0
     summary = json.loads((out / "face-validation.json").read_text(encoding="utf-8"))
     page = (out / "face-validation.md").read_text(encoding="utf-8")
-    assert summary["series"]["defaced"] == 1
+    assert summary["series"]["defaced"] == 2
     assert page == markdown(summary)
     assert capsys.readouterr().out == page
 
@@ -738,3 +787,47 @@ def test_rt_roi_interpreted_types_are_counted_by_their_defined_terms(kind, count
     assert face_validation_dicom._interpreted_types(  # pylint: disable = protected-access
         dataset
     ) == {1: counted}
+
+
+@pytest.mark.parametrize(
+    ("keyword", "value", "behind", "code"),
+    [
+        ("ContourSlabThickness", 10.0, True, ("not-placed", None)),
+        ("ContourOffsetVector", [0.0, 0.0, 6.0], True, ("not-placed", None)),
+        ("ContourSlabThickness", 10.0, False, ("not-placed", None)),
+        ("ContourOffsetVector", [0.0, 0.0, 6.0], False, ("not-placed", None)),
+        ("ContourSlabThickness", None, True, ("clear", pytest.approx(4.0))),
+        ("ContourOffsetVector", None, True, ("clear", pytest.approx(4.0))),
+        ("ContourSlabThickness", None, False, ("kept-in-block", None)),
+        ("ContourOffsetVector", None, False, ("kept-in-block", None)),
+    ],
+    ids=[
+        "thickness-behind",
+        "offset-behind",
+        "thickness-in-block",
+        "offset-in-block",
+        "empty-thickness-behind",
+        "empty-offset-behind",
+        "empty-thickness-in-block",
+        "empty-offset-in-block",
+    ],
+)
+def test_a_target_in_a_slab_is_reported_as_not_placed(keyword, value, behind, code):
+    # A block of the points with y below 0 and z above 0, and a square 4 mm
+    # behind it, clear of it by its points alone, or in it.
+    target = files.square((0.0, 6.0 if behind else -6.0, 20.0))
+    rtss = pydicom.dcmread(io.BytesIO(files.structure_set([("PTV", target)])))
+    (contour,) = rtss.ROIContourSequence[0].ContourSequence
+    setattr(contour, keyword, value)
+    block = FaceBlock((0.0, 0.0, 0.0), (0.0, -1.0, 0.0), 0.0, ((0, 0, 0), (0, 0, 0)))
+    fates = face_blocks._TargetFates(  # pylint: disable = protected-access
+        block, block, (), 0.0
+    )
+
+    # The run holds the series for a slab, whose region its points do not
+    # give, so the check reports it as the run judges it, with no clearance.
+    codes = face_validation_dicom._target_codes(  # pylint: disable = protected-access
+        rtss, files.FRAME, set(), fates
+    )
+
+    assert list(codes) == [code]

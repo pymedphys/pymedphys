@@ -27,10 +27,12 @@ there, on the block of the frame's one defaced series
 A contour is written as received where none of its segments enters the
 block at a point whose nearest pixel, of the nearest slice that the block
 reaches within half the slices' spacing, is one that defacing writes as air
-(:func:`cut_contours`): a pixel in the block, other than one of the brain
-that defacing keeps. So a contour that lies behind the block, below it, or
-within the kept brain alone, as a brain contour above the orbits can, is
-kept whole. Each segment is sampled within the block at intervals of
+(:func:`cut_contours`): a pixel in the block, other than one that
+defacing keeps, of the brain or for a target, at a point in no kept
+target's hull (:class:`~.target_hulls.KeptTargets`). So a contour that lies
+behind the block, below it, or within the kept brain alone, as a brain
+contour above the orbits can, is kept whole, as is a target's own contour,
+which its hull holds. Each segment is sampled within the block at intervals of
 half the smallest pixel spacing of those slices. A point with no such pixel
 counts where it lies in the block.
 
@@ -44,8 +46,8 @@ it lies within the slice's pixels, an axial one with pixels that defacing
 keeps in the block. Each of them is then written as its part behind the
 block's vertical plane joined with its part ahead of that plane within the
 squares of that slice's pixels that defacing does not write as air, those
-of the kept brain and those whose centres lie outside the block, each
-square being the points whose nearest pixel it is. The part within the
+of the kept brain or kept for a target and those whose centres lie outside
+the block, each square being the points whose nearest pixel it is. The part within the
 squares is found exactly, a row of pixels at a time
 (:func:`~pymedphys._geometry.pixel_grids.within_pixels`), and the pieces
 are joined into rings along the edges that they share
@@ -67,7 +69,8 @@ whose region loses no area by this is written as received.
 
 Any other contour that reaches the face is cut by the block's two planes,
 so that what is written of it lies outside the block or on its boundary,
-the kept brain being cut away with the rest: a closed contour, of Contour
+the kept brain and the pixels kept for a target being cut away with the
+rest: a closed contour, of Contour
 Geometric Type CLOSED_PLANAR or CLOSEDPLANAR_XOR, is written as each
 polygon of its part behind the block's vertical plane, and of its part
 ahead of that plane and not above the block's axial plane, each its own
@@ -106,14 +109,28 @@ instance in a defaced frame
 one whose contours an ROI Contour Sequence item gives for an ROI that it
 does not declare.
 
-A PET Image instance of native Pixel Data, one frame, and one sample,
-placed by Image Position (Patient), Image Orientation (Patient) of two
-orthogonal unit vectors, and Pixel Spacing, with a Rescale Slope finite and
-positive, and a Rescale Intercept whose zero activity a stored value can
-hold, rounded, is written with each pixel whose centre is in the block,
-other than one that defacing keeps or one of Pixel Padding Value or its
-range, set to that stored value (:class:`PetDefacer`). Any other PET image,
-and every Enhanced PET or Legacy Converted Enhanced PET image, stays held.
+A PET image of native Pixel Data and one sample is written with each pixel
+whose centre is in the block, other than one that defacing keeps, one whose
+centre lies in a kept target's hull, or one of Pixel Padding Value or its
+range, set to the stored value of zero activity
+(:class:`PetDefacer`): a Positron Emission Tomography Image instance of one
+frame, placed by Image Position (Patient), Image Orientation (Patient), and
+Pixel Spacing, and rescaled by Rescale Slope and Rescale Intercept, or each
+frame of an Enhanced PET Image or Legacy Converted Enhanced PET Image
+instance, placed by its Plane Position (Patient), Plane Orientation
+(Patient), and Pixel Measures functional groups, and its activity given by
+its Real World Value Mapping functional group, each in either the frame's
+item of the Per-frame Functional Groups Sequence or the Shared Functional
+Groups Sequence, never both (:mod:`~.functional_groups`), not by its Pixel
+Value Transformation, whose units PS3.3 leaves unspecified for PET. Each
+slice or frame needs an Image Orientation (Patient) of two orthogonal unit
+vectors, a positive Pixel Spacing, every corner within :data:`_FARTHEST`
+millimetres, and a zero activity that a stored value can hold: for a PET
+Image, -intercept / slope by a Rescale Slope finite and positive, rounded,
+and for a frame, the one stored value that each linear mapping item that
+maps it maps to zero, rounded (:func:`_mapped_zero`). Each frame is set to
+its own zero activity, since its calibration is its own. Any other PET
+image stays held.
 """
 
 from __future__ import annotations
@@ -135,8 +152,15 @@ from pymedphys._imports import pydicom
 from .defacing import ALIGNMENT_TOLERANCE, FaceBlock
 from .diagnostics import redacted_diagnostics
 from .dose_defacing import DoseBlock, _check_directions, _check_reach, _numbers
-from .face_blocks import _padding
-from .pixel_cleaning import FrameMask, PixelDataRefused, layout_of, stored_range
+from .face_blocks import MULTI_FRAME_PET_IODS, PET_IMAGE, _padding, iod_of
+from .functional_groups import frame_group, frame_group_items
+from .pixel_cleaning import (
+    FrameMask,
+    Layout,
+    PixelDataRefused,
+    layout_of,
+    stored_range,
+)
 from .reasons import TransformReason, VisualFeaturesReason
 from .source import NATIVE_TRANSFER_SYNTAXES
 from .uids import normalise_uid
@@ -666,7 +690,7 @@ def _reaches(
 def _defaced(region: DoseBlock, points: np.ndarray) -> np.ndarray:
     """Whether defacing writes air at the nearest pixel to each point, of
     the nearest slice that the block reaches, or, where none is near
-    enough, whether the point is in the block."""
+    enough, whether the point is in the block, and in no target's hull."""
     block = region.block
     defaced = block.contains(points)
     slices, rows, columns = region.pixels(points)
@@ -685,7 +709,9 @@ def _defaced(region: DoseBlock, points: np.ndarray) -> np.ndarray:
         defaced[chosen] = (
             block.contains(centres) & ~each.kept[rows[chosen], columns[chosen]]
         )
-    return defaced
+    # A target's hull is kept wherever no slice's pixel is near enough, so a
+    # target's contours are never cut.
+    return defaced & ~region.targets.contains(points)
 
 
 def _outside_polyline(block: FaceBlock, points: np.ndarray) -> list[np.ndarray]:
@@ -747,37 +773,45 @@ class PetDefacer:
             if str(dataset.file_meta.TransferSyntaxUID) not in NATIVE_TRANSFER_SYNTAXES:
                 raise ValueError("compressed")
             layout = layout_of(dataset)
-            if layout.frames != 1 or layout.samples != 1:
-                raise ValueError("not one frame of one sample")
-            with redacted_diagnostics():
-                position = _numbers(dataset, "ImagePositionPatient", 3)
-                orientation = _numbers(dataset, "ImageOrientationPatient", 6)
-                _check_directions(orientation)
-                spacing = _numbers(dataset, "PixelSpacing", 2)
-                (slope,) = _numbers(dataset, "RescaleSlope", 1)
-                (intercept,) = _numbers(dataset, "RescaleIntercept", 1)
-            _check_reach(
-                ((position[0], position[1], position[2]),), orientation, spacing, layout
-            )
+            if layout.samples != 1:
+                raise ValueError("not one sample")
+            iod = iod_of(dataset)
+            if iod == PET_IMAGE:
+                if layout.frames != 1:
+                    raise ValueError("not one frame")
+                planes = (_pet_plane((dataset,) * 4, layout),)
+            elif iod in MULTI_FRAME_PET_IODS:
+                planes = tuple(
+                    _pet_plane(
+                        tuple(
+                            frame_group(dataset, layout.frames, frame, keyword)
+                            for keyword in (
+                                "PlanePositionSequence",
+                                "PlaneOrientationSequence",
+                                "PixelMeasuresSequence",
+                            )
+                        ),
+                        layout,
+                        mappings=frame_group_items(
+                            dataset,
+                            layout.frames,
+                            frame,
+                            "RealWorldValueMappingSequence",
+                        ),
+                    )
+                    for frame in range(layout.frames)
+                )
+            else:
+                raise ValueError("not a PET image")
             padding = _padding(dataset, layout)
-            if min(spacing) <= 0 or slope <= 0:
-                raise ValueError("not a spacing or slope")
-            exact = -intercept / slope
-            low, high = stored_range(layout)
-            # A finite but tiny slope gives an infinite stored value.
-            if not math.isfinite(exact) or not low <= round(exact) <= high:
-                raise ValueError("zero activity not stored")
-        # Whatever the data set raises refuses the slice, without its
+        # Whatever the data set raises refuses the image, without its
         # message, which could quote a value.
         except Exception:  # pylint: disable = broad-exception-caught
             raise PixelDataRefused(TransformReason.UNCLEANABLE_PIXEL_DATA) from None
         self._region = region
-        self._position = position
-        self._orientation = orientation
-        self._spacing = (spacing[0], spacing[1])
+        self._planes = planes
         self._shape = (layout.rows, layout.columns)
         self._padding = padding
-        self._background = int(round(exact))
 
     def __repr__(self) -> str:
         return "PetDefacer()"
@@ -789,21 +823,22 @@ class PetDefacer:
         return None
 
     def mask(self, frame: int, stored: np.ndarray) -> FrameMask | None:
-        """Return the pixels to write as zero activity, as the module
-        describes, or None where the slice has none."""
+        """Return the pixels of one frame to write as its zero activity, as
+        the module describes, or None where the frame has none."""
+        plane = self._planes[frame]
         inside = self._region.block.slice_mask(
-            self._position, self._orientation, self._spacing, self._shape
+            plane.position, plane.orientation, plane.spacing, self._shape
         )
         if inside.any():
             rows, columns = np.nonzero(inside)
             points = (
-                np.asarray(self._position)
+                np.asarray(plane.position)
                 + columns[:, np.newaxis]
-                * self._spacing[1]
-                * np.asarray(self._orientation[:3])
+                * plane.spacing[1]
+                * np.asarray(plane.orientation[:3])
                 + rows[:, np.newaxis]
-                * self._spacing[0]
-                * np.asarray(self._orientation[3:])
+                * plane.spacing[0]
+                * np.asarray(plane.orientation[3:])
             )
             inside[rows, columns] = ~self._region.kept(points)
         if self._padding is not None:
@@ -812,4 +847,134 @@ class PetDefacer:
             inside &= ~((stored >= low) & (stored <= high))
         if not inside.any():
             return None
-        return FrameMask(frame, inside, self._background)
+        return FrameMask(frame, inside, plane.background)
+
+
+@dataclasses.dataclass(frozen=True)
+class _PetPlane:
+    """Where one PET slice or frame lies, and its stored value of zero
+    activity."""
+
+    position: tuple[float, float, float]
+    orientation: tuple[float, ...]
+    spacing: tuple[float, float]
+    background: int
+
+
+def _pet_plane(
+    groups: tuple[pydicom.Dataset, ...],
+    layout: Layout,
+    mappings: tuple[pydicom.Dataset, ...] | None = None,
+) -> _PetPlane:
+    """Return where a PET slice or frame lies and its zero activity.
+
+    ``groups`` are the data sets that hold its Image Position (Patient),
+    Image Orientation (Patient), and Pixel Spacing, in that order, and, for
+    a PET Image, its Rescale Slope and Rescale Intercept: the instance's own
+    for a PET Image, or the frame's functional groups' items. ``mappings``
+    are a multi-frame PET frame's items of the Real World Value Mapping
+    Sequence, from which :func:`_mapped_zero` finds its zero activity.
+
+    Raises
+    ------
+    ValueError
+        Where any is absent or cannot be read, or the module's checks fail,
+        without any value.
+    """
+    placed, oriented, measured = groups[:3]
+    with redacted_diagnostics():
+        x, y, z = _numbers(placed, "ImagePositionPatient", 3)
+        orientation = _numbers(oriented, "ImageOrientationPatient", 6)
+        _check_directions(orientation)
+        rows, columns = _numbers(measured, "PixelSpacing", 2)
+    if not min(rows, columns) > 0:
+        raise ValueError("not a spacing")
+    _check_reach(((x, y, z),), orientation, (rows, columns), layout)
+    background = (
+        _rescaled_zero(groups[3]) if mappings is None else _mapped_zero(mappings)
+    )
+    low, high = stored_range(layout)
+    if not low <= background <= high:
+        raise ValueError("zero activity not stored")
+    return _PetPlane((x, y, z), orientation, (rows, columns), background)
+
+
+def _rescaled_zero(rescaled: pydicom.Dataset) -> int:
+    """A PET Image's stored value of zero activity: -intercept / slope, by
+    its Rescale Slope and Rescale Intercept, which give its values in its
+    Units (0054,1001), rounded.
+
+    Raises
+    ------
+    ValueError
+        Where either is absent or cannot be read, the slope is not
+        positive, or the quotient is not finite, without any value.
+    """
+    with redacted_diagnostics():
+        (slope,) = _numbers(rescaled, "RescaleSlope", 1)
+        (intercept,) = _numbers(rescaled, "RescaleIntercept", 1)
+    if not slope > 0:
+        raise ValueError("not a slope")
+    exact = -intercept / slope
+    # A finite but tiny slope gives an infinite stored value.
+    if not math.isfinite(exact):
+        raise ValueError("zero activity not finite")
+    return round(exact)
+
+
+def _mapped_zero(mappings: tuple[pydicom.Dataset, ...]) -> int:
+    """A multi-frame PET frame's stored value of zero activity, by the items
+    of its Real World Value Mapping functional group.
+
+    A multi-frame PET frame's Pixel Value Transformation is of unspecified
+    units (Rescale Type US, PS3.3 C.7.6.16.2.9); the physical quantity of its
+    values, in a unit of PS3.16 CID 84 (PS3.3 A.56.4), is given by Real
+    World Value Mapping (C.7.6.16.2.11), independently of it. Each item maps
+    the stored values from its first to its last, inclusive, linearly by a
+    slope and an intercept, or by a lookup table. Each unit of CID 84 is of
+    a quantity whose zero is the absence of what it measures, such as
+    activity concentration, counts, or an SUV, so zero activity is the
+    stored value that each item that maps it maps to zero: -intercept /
+    slope, rounded, the same for every item that maps it, and mapped by one
+    at least.
+
+    Raises
+    ------
+    ValueError
+        Where an item maps by a lookup table, which is not supported, any of
+        its values is absent or cannot be read, its slope is zero, or its
+        first value mapped is above its last, or where no one stored value
+        is zero activity by every item that maps it; without any value.
+    """
+    lines = []
+    with redacted_diagnostics():
+        for item in mappings:
+            if "RealWorldValueLUTData" in item:
+                raise ValueError("a lookup table")
+            first, last = (
+                _numbers(item, f"RealWorldValue{end}ValueMapped", 1)[0]
+                if f"RealWorldValue{end}ValueMapped" in item
+                else _numbers(item, f"DoubleFloatRealWorldValue{end}ValueMapped", 1)[0]
+                for end in ("First", "Last")
+            )
+            (slope,) = _numbers(item, "RealWorldValueSlope", 1)
+            (intercept,) = _numbers(item, "RealWorldValueIntercept", 1)
+            if slope == 0 or not first <= last:
+                raise ValueError("not a mapping")
+            exact = -intercept / slope
+            # A finite but tiny slope gives an infinite stored value.
+            if not math.isfinite(exact):
+                raise ValueError("zero activity not finite")
+            lines.append((first, last, round(exact)))
+    zeros = {zero for first, last, zero in lines if first <= zero <= last}
+    if len(zeros) != 1:
+        raise ValueError("not one zero activity")
+    (background,) = zeros
+    # An item that maps that stored value to other than zero, its own zero
+    # lying outside the values that it maps, would make it activity.
+    if any(
+        first <= background <= last and zero != background
+        for first, last, zero in lines
+    ):
+        raise ValueError("not one zero activity")
+    return background

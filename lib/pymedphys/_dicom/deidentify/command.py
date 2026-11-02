@@ -31,12 +31,13 @@ destination, the preset or custom option set (D-033), under Clean
 Descriptors what ROI Names and free-text descriptors are cleaned with, under
 Clean Pixel Data, the attested QC pack whose redaction verdicts apply and
 the custodian's region rules, under Clean Recognizable Visual Features, the
-attested QC pack whose face verdicts apply, and, under the
-``public-release`` preset, the readiness review read from that pack and its
-run's release report (D-017), from the command line's arguments. It builds
-the policy's transform for a new run-scoped key with
-:func:`build_transform`, with the text detector under Clean Pixel Data, and
-runs it with the release gate, the transform's release report, and the
+attested QC pack whose face verdicts apply, under the ``public-release``
+preset, the readiness review read from that pack and its run's release
+report (D-017), and whether a study whose instances name several patients
+is sequestered rather than stopping the run (D-026), from the command
+line's arguments. It builds the policy's transform for a new run-scoped key
+with :func:`build_transform`, with the text detector under Clean Pixel Data,
+and runs it with the release gate, the transform's release report, and the
 reference graph's second pass under its key, for the ``pymedphys`` command
 to call once the engine is public; nothing registers it yet. No preset or
 option is enabled yet, so until one is, the command refuses to run.
@@ -68,8 +69,10 @@ Exit statuses:
   with, its text detector, redaction review, region rules, face review, or
   readiness review, or its project key or profile store, cannot be used, or
   its readiness review is of another QC pack than its face review, among
-  other reasons, the first pass stopped it, or its QC pack or profile store
-  could not be written, and nothing was published;
+  other reasons; the first pass stopped it, including for a study whose
+  instances name several patients, which
+  ``--sequester-studies-with-several-patients`` sequesters instead; or its
+  QC pack or profile store could not be written, and nothing was published;
 - :data:`EXIT_STAGING_LEFT`, 4: the staging area could not be deleted, and
   may hold output that still identifies people, whatever else happened;
 - :data:`EXIT_INTERNAL_ERROR`, 70: anything else failed, and nothing was
@@ -261,6 +264,7 @@ def deidentify_directory(
     summary: Callable[[run.RunResult, RedactionCounts], Sequence[str]] | None = None,
     stdout: TextIO | None = None,
     stderr: TextIO | None = None,
+    several_patients: run.SeveralPatients = run.SeveralPatients.STOP,
 ) -> int:
     """De-identify a source directory into a new release directory.
 
@@ -303,6 +307,10 @@ def deidentify_directory(
         Where to print the summary, and the reason the run failed or left
         its staging area behind. By default, :data:`sys.stdout` and
         :data:`sys.stderr`.
+    several_patients : SeveralPatients, optional
+        What the run does with a study whose instances name several
+        patients, as :func:`~pymedphys._dicom.deidentify.run.run` takes it:
+        by default, stop before anything is written.
 
     Returns
     -------
@@ -325,6 +333,7 @@ def deidentify_directory(
                 reporter=reporter,
                 written_check=written_check,
                 before_publish=before_publish,
+                several_patients=several_patients,
             )
         except (run.RunError, run.RunStopped, QcPackError, ProfileError) as error:
             # Each names only the caller's directories, counts, or the
@@ -746,7 +755,36 @@ def build_parser(
             "release is published; given with --key-file"
         ),
     )
+    add_several_patients_argument(parser)
     return parser
+
+
+def add_several_patients_argument(parser: argparse.ArgumentParser) -> None:
+    """Add the opt-in that sequesters a study whose instances name several patients."""
+    parser.add_argument(
+        "--sequester-studies-with-several-patients",
+        action="store_true",
+        help=(
+            "sequester every instance of a study whose instances name several "
+            "patients, each a Patient ID with its issuer, the instances "
+            "without a Patient ID counting as one more, and release the rest, "
+            "in place of stopping the run before anything is written, the "
+            "default; the study's values are still searched for in the files "
+            "of every patient that it names, the release report records the "
+            "choice and how many studies it sequestered, and the QC pack lists "
+            "each study's instances by patient; under a run-scoped key, a "
+            "corrected study cannot be added to the release later, only "
+            "released again with the rest of its cohort by a new run that "
+            "replaces it"
+        ),
+    )
+
+
+def several_patients_of(arguments: argparse.Namespace) -> run.SeveralPatients:
+    """Return what parsed arguments ask a run to do with a study of several patients."""
+    if arguments.sequester_studies_with_several_patients:
+        return run.SeveralPatients.SEQUESTER
+    return run.SeveralPatients.STOP
 
 
 class TransformNotBuilt(Exception):
@@ -1500,4 +1538,5 @@ def main(
         before_publish=before_publish,
         stdout=stdout,
         stderr=stderr,
+        several_patients=several_patients_of(arguments),
     )

@@ -21,13 +21,14 @@ the frame of a CT series that a run defaces
 (:mod:`~pymedphys._dicom.deidentify.face_blocks`) can trace the face that
 the CT no longer shows, as a mask of the body or the skin does. A run
 therefore cleans it in the same region as the CT's, the face block less the
-brain that defacing keeps, on the block of the frame's one defaced series
+brain and the targets that defacing keeps, on the block of the frame's one defaced series
 (:class:`~.dose_defacing.DoseBlock`), as
 :class:`~.region_defacing.PetDefacer` sets a PET image to zero activity
 there (:class:`SegmentationDefacer`). A pixel is in the region where its
 centre is in the block, and is kept where the nearest pixel of the nearest
 slice that the block reaches, within half the slices' spacing, is one that
-defacing keeps.
+defacing keeps, or where its centre lies in a kept target's hull
+(:class:`~.target_hulls.KeptTargets`).
 
 Each pixel in the region that lies in a segment is written as the
 segmentation's background, so that it lies in none: 0 for a Segmentation
@@ -73,6 +74,7 @@ from pymedphys._imports import pydicom
 from .diagnostics import redacted_diagnostics
 from .dose_defacing import DoseBlock, _check_directions, _check_reach, _numbers
 from .face_blocks import _padding
+from .functional_groups import frame_group
 from .pixel_cleaning import FrameMask, PixelDataRefused, layout_of, stored_range
 from .reasons import TransformReason, VisualFeaturesReason
 from .source import NATIVE_TRANSFER_SYNTAXES
@@ -205,55 +207,21 @@ def _plane(
     """
     with redacted_diagnostics():
         x, y, z = _numbers(
-            _group(dataset, frames, frame, "PlanePositionSequence"),
+            frame_group(dataset, frames, frame, "PlanePositionSequence"),
             "ImagePositionPatient",
             3,
         )
         orientation = _numbers(
-            _group(dataset, frames, frame, "PlaneOrientationSequence"),
+            frame_group(dataset, frames, frame, "PlaneOrientationSequence"),
             "ImageOrientationPatient",
             6,
         )
         rows, columns = _numbers(
-            _group(dataset, frames, frame, "PixelMeasuresSequence"), "PixelSpacing", 2
+            frame_group(dataset, frames, frame, "PixelMeasuresSequence"),
+            "PixelSpacing",
+            2,
         )
     _check_directions(orientation)
     if not min(rows, columns) > 0:
         raise ValueError("not a spacing")
     return (x, y, z), orientation, (rows, columns)
-
-
-def _group(
-    dataset: pydicom.Dataset, frames: int, frame: int, keyword: str
-) -> pydicom.Dataset:
-    """Return the one item of a functional group's sequence for a frame,
-    from either the frame's item of the Per-frame Functional Groups Sequence
-    or the Shared Functional Groups Sequence.
-
-    A group in both is refused rather than one taken over the other, since
-    PS3.3 C.7.6.16.1.1 lets a group be in only one and gives neither
-    precedence. A segmentation without the Per-frame Functional Groups
-    Sequence, which PS3.3 A.51.5 permits where it would be empty, is refused
-    too, which only holds it.
-
-    Raises
-    ------
-    ValueError
-        Where the Per-frame Functional Groups Sequence does not have one item
-        for each of the ``frames`` frames, the Shared Functional Groups
-        Sequence has more than one, or the group is not in exactly one of
-        them, in one item.
-    """
-    each = dataset.get("PerFrameFunctionalGroupsSequence") or []
-    shared = dataset.get("SharedFunctionalGroupsSequence") or []
-    if len(each) != frames or len(shared) > 1:
-        raise ValueError("not one item for each frame")
-    found = [
-        groups[keyword].value for groups in (each[frame], *shared) if keyword in groups
-    ]
-    if len(found) != 1:
-        raise ValueError("not one functional group")
-    (items,) = found
-    if len(items) != 1:
-        raise ValueError("not one item")
-    return items[0]

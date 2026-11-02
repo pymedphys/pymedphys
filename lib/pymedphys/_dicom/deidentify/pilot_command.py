@@ -30,8 +30,11 @@ and the reference graph's second pass, under a new run-scoped key
 (:func:`~pymedphys._dicom.deidentify.command.transform_for` with
 ``unvalidated_policy``). It takes what the run command takes for Clean
 Descriptors, Clean Pixel Data, Clean Recognizable Visual Features, Retain
-Safe Private, and the readiness of a ``public-release`` run, but no project
-key, which a run refuses until project keys are enabled.
+Safe Private, and the readiness of a ``public-release`` run, and its opt-in
+that sequesters a study whose instances name several patients rather than
+stopping the run (D-026), so that a pilot can count such studies and still
+measure the rest of the export, but no project key, which a run refuses
+until project keys are enabled.
 
 The release is written to the new directory given with ``--release``, such
 as one whose files are to be imported into a treatment planning system
@@ -270,6 +273,7 @@ def _add_input_arguments(parser: argparse.ArgumentParser) -> None:
             "Private Tag Dictionary (tcia)"
         ),
     )
+    command.add_several_patients_argument(parser)
 
 
 def pilot_lines(result: run.RunResult, redacted: RedactionCounts) -> list[str]:
@@ -517,6 +521,7 @@ def _pilot(
         summary=pilot_lines,
         stdout=stdout,
         stderr=stderr,
+        several_patients=command.several_patients_of(arguments),
     )
 
 

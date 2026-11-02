@@ -26,9 +26,11 @@ each element of the data set, in file order, an :class:`Edit`:
 - D replaces it with its VR's dummy value, or the second one where the
   source value equals the first, or, for a UI value, its keyed replacement
   (:func:`~pymedphys._dicom.deidentify.dummy_values.values_for_d`); D
-  replaces Person Identification Code Sequence (0040,1101) and Referenced
-  Performed Procedure Step Sequence (0008,1111), whose source items are
-  removed with them, with their reviewed dummy items, built from each source
+  replaces Person Identification Code Sequence (0040,1101), Institution Code
+  Sequence (0008,0082) in an item of Interlock Resolution User Sequence
+  (300A,0746), and Referenced Performed Procedure Step Sequence
+  (0008,1111), whose source items are removed with them, with their
+  reviewed dummy items, built from each source
   item's compared values
   (:func:`~pymedphys._dicom.deidentify.dummy_values.items_for_d`, D-021),
   and ICC Profile (0028,2000) with a fixed profile of its colour space
@@ -145,7 +147,10 @@ class Edit:
     ----------
     path : ElementPath
     action : str
-        The plan's action, such as ``"D"``.
+        The plan's action, such as ``"D"``. A Referenced Content Item
+        Identifier (0040,DB73) that the plan keeps and renumbers
+        (:attr:`~pymedphys._dicom.deidentify.walker.InstancePlan.renumbered`)
+        keeps ``"K"``, with :attr:`EditKind.REPLACE` and its new values.
     kind : EditKind
     values : tuple of str, int, float, or bytes
         The values that replace the element's, for :attr:`EditKind.REPLACE`
@@ -595,7 +600,12 @@ def _with_items(
     """
     source_items = [compared.get(index, {}) for index in range(items)]
     try:
-        written = items_for_d(edit.path.tag, source_items, key)
+        written = items_for_d(
+            edit.path.tag,
+            source_items,
+            key,
+            within=tuple(tag for tag, _ in edit.path.items),
+        )
     except NoDummyValueError:
         raise _Sequester(
             Sequestration(edit.path, "D", "SQ", SequesterReason.NO_DUMMY_VALUE)
@@ -782,6 +792,15 @@ def edit_instance(
                 _check_items(reader, element)
             value = gathered.read(reader, element) if element.consumers else None
             edit = _edit(element, container, value, key, identity, series_numberings)
+            if edit.kind is EditKind.KEEP and element.path in plan.renumbered:
+                # The identifier names the same item, which the items removed
+                # before it move (D-047).
+                edit = Edit(
+                    element.path,
+                    element.action,
+                    EditKind.REPLACE,
+                    plan.renumbered[element.path],
+                )
             if container and edit.kind is EditKind.REPLACE:
                 reviewed[edit.path] = (len(found), items or 0)
             found.append(edit)

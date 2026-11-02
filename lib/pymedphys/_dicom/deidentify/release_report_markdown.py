@@ -116,6 +116,7 @@ _SECTIONS = (
     "exempted_findings",
     "source_gaps",
     "structural_checks",
+    "studies_with_several_patients",
 )
 _NONE = "None."
 # The readiness section's gates, as a reader sees them, in the order of the
@@ -193,6 +194,7 @@ def to_markdown(report: str) -> str:
         *_exempted(document["exempted_findings"]),
         *_gaps(document["source_gaps"]),
         *_structural_checks(document["structural_checks"]),
+        *_several_patients(document["studies_with_several_patients"]),
     ]
     return "\n\n".join("\n".join(block) for block in blocks) + "\n"
 
@@ -360,7 +362,9 @@ def _face_review(section: object) -> list[Block]:
         return []
     section = _fields("face_review", section, ("reference", "ct_series"))
     series = _fields(
-        "face_review ct_series", section["ct_series"], ("defaced", "not_defaced")
+        "face_review ct_series",
+        section["ct_series"],
+        ("defaced", "defaced_around_targets", "not_defaced"),
     )
     rows = []
     for entry in _list("face_review ct_series not_defaced", series["not_defaced"]):
@@ -382,11 +386,20 @@ def _face_review(section: object) -> list[Block]:
             + "."
         ],
         [
-            "Series of CT Image instances whose face block the run wrote as "
-            "air: "
+            "Series of CT instances whose face block the run wrote as air: "
             + _tally("face_review ct_series defaced", series["defaced"])
+            + ". Of those, the series in whose block the run kept a "
+            "target's region, a PTV, CTV, or GTV with whatever lies between "
+            "its contours, which the reviewer's verdict on the written "
+            "images decides: "
+            + _tally(
+                "face_review ct_series defaced_around_targets",
+                series["defaced_around_targets"],
+            )
             + ". Those it did not deface, by reason, which the reviewer's "
-            "verdict decides, or, for a target in the block, holds for review:"
+            "verdict decides, or, for a target that the run cannot keep "
+            "within the images or an eye drawn away from the eyes found, "
+            "holds for review:"
         ],
         _table(("Reason", "Series"), rows) if rows else [_NONE],
     ]
@@ -804,6 +817,48 @@ def _structural_checks(section: object) -> list[Block]:
                     _tally("structural_checks reported", entry["reported"]),
                 )
                 for entry in entries
+            ],
+        ),
+    ]
+
+
+# The run's choices for a study whose instances name several patients.
+_SEVERAL_PATIENTS = ("stop", "sequester")
+
+
+def _several_patients(section: object) -> list[Block]:
+    section = _fields(
+        "studies_with_several_patients", section, ("handling", "sequestered")
+    )
+    handling = section["handling"]
+    if handling not in _SEVERAL_PATIENTS:
+        raise _refuse("studies_with_several_patients handling")
+    sequestered = _tally(
+        "studies_with_several_patients sequestered", section["sequestered"]
+    )
+    if handling == "stop" and section["sequestered"]:
+        raise _refuse("studies_with_several_patients sequestered")
+    return [
+        ["## Studies with several patients"],
+        [
+            "What the run did with a study whose instances name several "
+            "patients, each a Patient ID with its issuer, which is a curation "
+            "error that no change to its instances can repair: stop, the "
+            "default, under which such a study stops the run before anything "
+            "is written, or sequester, the opt-in under which each instance of "
+            "such a study is sequestered for study-with-several-patients and "
+            "the rest of the run goes ahead. A sequestered study's values were "
+            "still searched for in the released files of every patient that it "
+            "names. Where the run sequestered one, this release lacks every "
+            "instance of it, so the record of each patient that it names is "
+            "incomplete. The confidential QC pack lists the instances of each study by "
+            "patient, for a curator to correct."
+        ],
+        _table(
+            ("Field", "Value"),
+            [
+                ("Handling", _code("studies_with_several_patients", handling)),
+                ("Studies sequestered", sequestered),
             ],
         ),
     ]
