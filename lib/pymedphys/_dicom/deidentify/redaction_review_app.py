@@ -90,7 +90,9 @@ from .qc_attestation import (
     Redaction,
     pack_proposals,
     previewed_redactions,
+    ReviewMode,
     required_frames,
+    review_mode,
     unattested_pack,
 )
 from .qc_pack import QcPackError
@@ -148,6 +150,8 @@ class Cleaned:
         The regions that region rules gave, which cannot be dropped.
     required : tuple of int
         The frames that the reviewer must be shown to accept or revise it.
+    mode : ReviewMode
+        Whether its review requires every frame or only the flagged ones.
     review_frames : mapping of int to tuple of (str, str)
         Each frame's review frame, as its file within the pack's directory
         and its SHA-256.
@@ -161,6 +165,7 @@ class Cleaned:
     proposals: Mapping[int, tuple[TextBox, ...]]
     rules: frozenset[TextBox]
     required: tuple[int, ...]
+    mode: ReviewMode
     review_frames: Mapping[int, tuple[str, str]]
 
 
@@ -225,6 +230,7 @@ class ReviewSession:
                     ],
                     "rules": _boxes(sorted(cleaned.rules)),
                     "required": list(cleaned.required),
+                    "mode": cleaned.mode.value,
                     "draft": _draft_document(drafts.get(cleaned.position)),
                 }
                 for cleaned in self.instances.values()
@@ -329,6 +335,7 @@ def _cleaned(document: dict, data: bytes) -> dict[int, Cleaned]:
             listed,
             ruled,
             required_frames(shape, listed),
+            review_mode(shape),
             frames.get(position, {}),
         )
     return cleaned

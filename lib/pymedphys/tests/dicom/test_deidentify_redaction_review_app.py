@@ -130,6 +130,7 @@ def test_the_session_lists_each_cleaned_instance_with_its_proposals(pack):
     # Every frame is required, whatever the IOD, until it meets the
     # maintainer's acceptance criteria (D-059).
     assert multi["required"] == [0, 1, 2]
+    assert multi["mode"] == single["mode"] == "every-frame"
     assert single["rules"] == [] and single["draft"] is None
 
 
@@ -482,6 +483,16 @@ def test_an_unlocked_iod_needs_only_its_flagged_frames_shown(fresh, monkeypatch)
 
     review = redaction_review.read_redaction_review(directory)
     assert review.not_shown == 1
+    # The attestation records the mode in which each was reviewed, and the
+    # review counts the approved files by it.
+    attestation, _ = qc_attestation.attested_pack(directory)
+    assert {verdict.mode for verdict in attestation.redactions} == {
+        qc_attestation.ReviewMode.FLAGGED_FRAMES
+    }
+    assert dict(review.modes) == {
+        qc_attestation.ReviewMode.EVERY_FRAME: 0,
+        qc_attestation.ReviewMode.FLAGGED_FRAMES: 2,
+    }
 
 
 def test_an_unlocked_iod_still_needs_each_flagged_frame_shown(fresh, monkeypatch):

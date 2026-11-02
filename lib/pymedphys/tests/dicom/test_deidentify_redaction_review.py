@@ -72,6 +72,7 @@ from pymedphys._dicom.deidentify.qc_attestation import (
     Outcome,
     Redaction,
     RedactionVerdict,
+    ReviewMode,
 )
 from pymedphys._dicom.deidentify.qc_pack import QcPackError
 from pymedphys._dicom.deidentify.reasons import (
@@ -229,6 +230,26 @@ def _verdicts(positions):
     )
 
 
+# The mode that attesting records for an accepted or revised verdict, since
+# no IOD's review yet requires only its flagged frames.
+EVERY = ReviewMode.EVERY_FRAME
+
+
+def _recorded(verdicts):
+    """The verdicts as attesting records them, each with its review mode."""
+    return tuple(
+        sorted(
+            (
+                verdict
+                if verdict.redaction is Redaction.REJECTED
+                else dataclasses.replace(verdict, mode=EVERY)
+                for verdict in verdicts
+            ),
+            key=lambda verdict: verdict.position,
+        )
+    )
+
+
 def _sha(data):
     return hashlib.sha256(data).digest()
 
@@ -265,6 +286,9 @@ def _sha(data):
             "redaction": Redaction.REVISED,
             "regions": ((0, ((1, 2, 3, 5),)),),
         },
+        # A review mode is a ReviewMode, recorded only to accept or revise.
+        {"position": 0, "redaction": Redaction.ACCEPTED, "mode": "every-frame"},
+        {"position": 0, "redaction": Redaction.REJECTED, "mode": EVERY},
         # Dropped regions are checked as drawn ones are.
         {"position": 0, "redaction": Redaction.ACCEPTED, "dropped": ((0, (BOX,)),)},
         {"position": 0, "redaction": Redaction.REVISED, "dropped": ((0, ()),)},
@@ -297,10 +321,9 @@ def test_an_attestation_with_redaction_verdicts_is_read_back_as_written(first_ru
     pack, positions = first_run
     attestation = _attest(pack, reversed(_verdicts(positions)))
 
-    # In run position order, whatever the order given.
-    assert attestation.redactions == tuple(
-        sorted(_verdicts(positions), key=lambda verdict: verdict.position)
-    )
+    # In run position order, whatever the order given, each accepted or
+    # revised one with the mode of its review.
+    assert attestation.redactions == _recorded(_verdicts(positions))
     assert qc_attestation.attested_pack(pack)[0] == attestation
     written = json.loads((pack / qc_attestation.ATTESTATION_FILE).read_text("ascii"))
     assert written["format"] == "pymedphys-deid-qc-attestation/7"
@@ -310,6 +333,15 @@ def test_an_attestation_with_redaction_verdicts_is_read_back_as_written(first_ru
         "regions": [{"frame": 0, "boxes": [[0, 0, 2, 2]]}],
         "dropped": [],
         "seen": [0],
+        "mode": "every-frame",
+    } in written["redactions"]
+    assert {
+        "position": positions[_REJECTED],
+        "redaction": "rejected",
+        "regions": [],
+        "dropped": [],
+        "seen": [],
+        "mode": None,
     } in written["redactions"]
 
 
@@ -373,7 +405,7 @@ def test_attesting_accepts_a_region_that_reaches_the_edge_of_its_frame(first_run
         positions[_REVISED], Redaction.REVISED, ((0, (edge,)),), seen=(0,)
     )
 
-    assert _attest(pack, [verdict]).redactions == (verdict,)
+    assert _attest(pack, [verdict]).redactions == _recorded([verdict])
 
 
 # Reading the verdicts.
@@ -522,6 +554,29 @@ def test_a_rejected_attestation_gives_no_review(first_run):
         read_redaction_review(pack)
 
 
+def test_attesting_records_the_review_mode_rather_than_taking_one(first_run):
+    pack, positions = first_run
+    given = dataclasses.replace(_verdicts(positions)[0], mode=EVERY)
+
+    with pytest.raises(QcPackError, match="recorded by attesting, not given"):
+        _attest(pack, [given])
+    assert not (pack / qc_attestation.ATTESTATION_FILE).exists()
+
+
+def test_an_attested_approval_without_its_review_mode_is_refused(first_run):
+    pack, positions = first_run
+    _attest(pack, _verdicts(positions))
+    path = pack / qc_attestation.ATTESTATION_FILE
+    document = json.loads(path.read_text("ascii"))
+    for verdict in document["redactions"]:
+        verdict["mode"] = None
+    path.chmod(0o600)
+    path.write_text(json.dumps(document), "ascii")
+
+    with pytest.raises(QcPackError, match="not of its format"):
+        read_redaction_review(pack)
+
+
 def test_attesting_refuses_a_verdict_with_an_outcome_of_rejected(first_run):
     pack, positions = first_run
 
@@ -651,7 +706,7 @@ def test_verdicts_that_disagree_on_one_source_file_are_refused(first_run, monkey
     attestation = dataclasses.replace(
         _attest(pack),
         redactions=(
-            RedactionVerdict(0, Redaction.ACCEPTED),
+            RedactionVerdict(0, Redaction.ACCEPTED, mode=EVERY),
             RedactionVerdict(1, Redaction.REJECTED),
         ),
     )
@@ -661,6 +716,38 @@ def test_verdicts_that_disagree_on_one_source_file_are_refused(first_run, monkey
     )
 
     with pytest.raises(QcPackError, match="disagree"):
+        read_redaction_review(pack)
+
+
+def test_copies_reviewed_in_both_modes_count_as_flagged_only(first_run, monkeypatch):
+    pack, _ = first_run
+    attestation = dataclasses.replace(
+        _attest(pack),
+        redactions=(
+            RedactionVerdict(0, Redaction.ACCEPTED, seen=(0,), mode=EVERY),
+            RedactionVerdict(
+                1, Redaction.ACCEPTED, seen=(0,), mode=ReviewMode.FLAGGED_FRAMES
+            ),
+        ),
+    )
+    _with_pack(
+        monkeypatch, attestation, [_entry(0), _entry(1)], [_cleaned(0), _cleaned(1)]
+    )
+
+    assert dict(read_redaction_review(pack).modes) == {
+        EVERY: 0,
+        ReviewMode.FLAGGED_FRAMES: 1,
+    }
+
+
+def test_an_approval_without_its_review_mode_is_refused(first_run, monkeypatch):
+    pack, _ = first_run
+    attestation = dataclasses.replace(
+        _attest(pack), redactions=(RedactionVerdict(0, Redaction.ACCEPTED),)
+    )
+    _with_pack(monkeypatch, attestation, [_entry(0)], [_cleaned(0)])
+
+    with pytest.raises(QcPackError, match="needs its review mode"):
         read_redaction_review(pack)
 
 
@@ -688,7 +775,7 @@ def test_the_decoded_frames_of_an_approved_compressed_source_are_read(
     attestation = dataclasses.replace(
         _attest(pack),
         redactions=(
-            RedactionVerdict(0, Redaction.ACCEPTED),
+            RedactionVerdict(0, Redaction.ACCEPTED, mode=EVERY),
             RedactionVerdict(1, Redaction.REJECTED),
         ),
     )
@@ -713,7 +800,7 @@ def test_the_decoded_frames_of_an_approved_compressed_source_are_read(
 def test_a_decoded_digest_that_is_not_one_is_refused(first_run, monkeypatch, decoded):
     pack, _ = first_run
     attestation = dataclasses.replace(
-        _attest(pack), redactions=(RedactionVerdict(0, Redaction.ACCEPTED),)
+        _attest(pack), redactions=(RedactionVerdict(0, Redaction.ACCEPTED, mode=EVERY),)
     )
     cleaned = _cleaned(0)
     if decoded == "absent":
@@ -731,8 +818,8 @@ def test_copies_whose_frames_decoded_otherwise_are_refused(first_run, monkeypatc
     attestation = dataclasses.replace(
         _attest(pack),
         redactions=(
-            RedactionVerdict(0, Redaction.ACCEPTED),
-            RedactionVerdict(1, Redaction.ACCEPTED),
+            RedactionVerdict(0, Redaction.ACCEPTED, mode=EVERY),
+            RedactionVerdict(1, Redaction.ACCEPTED, mode=EVERY),
         ),
     )
     _with_pack(
@@ -765,7 +852,7 @@ def test_a_verdict_on_an_instance_without_a_cleaned_previewed_source_is_refused(
 ):
     pack, _ = first_run
     attestation = dataclasses.replace(
-        _attest(pack), redactions=(RedactionVerdict(0, Redaction.ACCEPTED),)
+        _attest(pack), redactions=(RedactionVerdict(0, Redaction.ACCEPTED, mode=EVERY),)
     )
     _with_pack(monkeypatch, attestation, instances, redactions, unshown)
 
@@ -828,7 +915,20 @@ def test_attesting_refuses_a_verdict_on_an_instance_that_was_not_previewed(
         {"approved": {DIGEST: ((0, ()),)}},
         {"approved": {DIGEST: ((1, (BOX,)), (0, (BOX,)))}},
         {"approved": {DIGEST: ((0, ((1, 2, 3, 5),)),)}},
-        {"approved": {DIGEST: ()}, "rejected": frozenset({DIGEST})},
+        {
+            "approved": {DIGEST: ()},
+            "rejected": frozenset({DIGEST}),
+            "modes": {ReviewMode.EVERY_FRAME: 1, ReviewMode.FLAGGED_FRAMES: 0},
+        },
+        # Each approved file is counted once, in one mode, and every mode is given.
+        {"approved": {DIGEST: ()}},
+        {"modes": {ReviewMode.EVERY_FRAME: 0}},
+        {"modes": {ReviewMode.EVERY_FRAME: -1, ReviewMode.FLAGGED_FRAMES: 1}},
+        {"modes": {ReviewMode.EVERY_FRAME: True, ReviewMode.FLAGGED_FRAMES: 0}},
+        {
+            "approved": {DIGEST: ()},
+            "modes": {ReviewMode.EVERY_FRAME: 1, ReviewMode.FLAGGED_FRAMES: 1},
+        },
     ],
 )
 def test_a_redaction_review_is_checked(fields):
@@ -845,7 +945,10 @@ def test_a_redaction_review_is_checked(fields):
 
 def test_a_review_cannot_change_and_its_repr_shows_only_the_reference_and_counts():
     review = RedactionReview(
-        REFERENCE, {DIGEST: ((0, (BOX,)),)}, frozenset({bytes(32)})
+        REFERENCE,
+        {DIGEST: ((0, (BOX,)),)},
+        frozenset({bytes(32)}),
+        modes={ReviewMode.EVERY_FRAME: 1, ReviewMode.FLAGGED_FRAMES: 0},
     )
 
     with pytest.raises(TypeError):
@@ -983,31 +1086,61 @@ def test_the_report_names_the_reviewed_pack_by_its_reference():
         reviewed_roi_names=None,
         redaction_review=REFERENCE,
         redaction_frames_not_shown=3,
+        redaction_review_modes={"flagged-frames": 2, "every-frame": 5},
     )
     document = release_report.report_document(report)
 
     assert document["redaction_review"] == {
         "reference": REFERENCE,
+        "review_modes": {"every-frame": 5, "flagged-frames": 2},
         "frames_not_shown": 3,
     }
+    assert release_report.REVIEW_MODES == tuple(mode.value for mode in ReviewMode)
     text = release_report_markdown.to_markdown(release_report.to_json(report))
     assert "## Redaction review" in text
     assert f"`{REFERENCE}`" in text
-    assert "not shown" in text and "can have: `3`." in " ".join(text.split())
+    words = " ".join(text.split())
+    assert "required every frame: `5`;" in words
+    assert "acceptance criteria allows: `2`." in words
+    assert "reviewer was not shown: `3`." in words
 
 
 @pytest.mark.parametrize(
     "fields",
     [
-        {"redaction_review": REFERENCE},
+        {"redaction_review": REFERENCE, "redaction_frames_not_shown": None},
         {"redaction_review": REFERENCE, "redaction_frames_not_shown": -1},
         {"redaction_review": REFERENCE, "redaction_frames_not_shown": True},
         {"redaction_frames_not_shown": 0},
+        {"redaction_review": REFERENCE, "redaction_review_modes": None},
+        {"redaction_review": REFERENCE, "redaction_review_modes": {"every-frame": 1}},
+        {
+            "redaction_review": REFERENCE,
+            "redaction_review_modes": {"every-frame": 1, "flagged-frames": -1},
+        },
+        {
+            "redaction_review": REFERENCE,
+            "redaction_review_modes": {"every-frame": True, "flagged-frames": 0},
+        },
+        {
+            "redaction_review": REFERENCE,
+            "redaction_review_modes": {"every-frame": 1, "all-frames": 0},
+        },
+        {"redaction_review_modes": {"every-frame": 0, "flagged-frames": 0}},
     ],
 )
 def test_the_report_refuses_a_count_of_frames_not_shown_out_of_place(fields):
+    # Each case is valid but for the field that it gives.
+    given = (
+        {
+            "redaction_frames_not_shown": 0,
+            "redaction_review_modes": {"every-frame": 0, "flagged-frames": 0},
+        }
+        if "redaction_review" in fields
+        else {}
+    )
     report = release_report.release_report(
-        _policy(), vocabulary=None, reviewed_roi_names=None, **fields
+        _policy(), vocabulary=None, reviewed_roi_names=None, **{**given, **fields}
     )
     with pytest.raises(ValueError, match="redaction_review"):
         release_report.report_document(report)
@@ -1087,8 +1220,8 @@ def test_the_command_records_each_redaction_verdict(first_run):
     status, stdout, stderr = _command(str(pack), *_EVERY_REVIEW, "--redaction-verdicts")
 
     assert status == attestation_command.EXIT_RECORDED, stderr
-    assert qc_attestation.attested_pack(pack)[0].redactions == tuple(
-        sorted(_verdicts(positions), key=lambda verdict: verdict.position)
+    assert qc_attestation.attested_pack(pack)[0].redactions == _recorded(
+        _verdicts(positions)
     )
     lines = stdout.splitlines()
     assert "  cleaned instances with their regions accepted: 1" in lines
@@ -1393,9 +1526,12 @@ def test_an_instance_without_pixel_data_claims_the_option(second_run, name):
 def test_the_report_names_the_reviewed_pack(second_run):
     attestation, _, report, _, _ = second_run
 
-    # Every frame of each approved image was shown.
+    # Each of the three approved images, the one whose region goes past its
+    # frame among them, was reviewed with every frame required, and every
+    # frame of each was shown.
     assert report["redaction_review"] == {
         "reference": attestation.reference,
+        "review_modes": {"every-frame": 3, "flagged-frames": 0},
         "frames_not_shown": 0,
     }
     assert report["format"] == "pymedphys-deid-release-report/45"

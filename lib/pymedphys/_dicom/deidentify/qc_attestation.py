@@ -154,6 +154,17 @@ class Redaction(enum.Enum):
     REJECTED = "rejected"
 
 
+class ReviewMode(enum.Enum):
+    """The frames that a reviewer had to be shown before accepting or revising
+    a cleaned instance (D-059)."""
+
+    # every frame of the instance
+    EVERY_FRAME = "every-frame"
+    # only the frames in which the pack lists a region, which only an
+    # instance of a SOP Class in FLAGGED_ONLY_SOP_CLASSES allows
+    FLAGGED_FRAMES = "flagged-frames"
+
+
 @dataclasses.dataclass(frozen=True)
 class RedactionVerdict:
     """A reviewer's redaction verdict on one instance of the pack.
@@ -179,6 +190,11 @@ class RedactionVerdict:
         The indices of the frames that the reviewer was shown, sorted, each
         once. Under an accepted or revised verdict, attesting refuses one
         that leaves out a frame that the instance's review requires (D-059).
+    mode : ReviewMode or None
+        Under an accepted or revised verdict in an attestation, which frames
+        its review required, as attesting found from the instance's SOP
+        Class (:func:`review_mode`) and recorded; None under a rejected
+        verdict, and in a verdict given to :func:`attest`, which records it.
     """
 
     position: int
@@ -186,6 +202,7 @@ class RedactionVerdict:
     regions: tuple[tuple[int, tuple[TextBox, ...]], ...] = ()
     dropped: tuple[tuple[int, tuple[TextBox, ...]], ...] = ()
     seen: tuple[int, ...] = ()
+    mode: ReviewMode | None = None
 
     def __post_init__(self) -> None:
         if (
@@ -235,6 +252,14 @@ class RedactionVerdict:
             raise QcPackError(
                 f"the redaction verdict on instance {self.position} needs the "
                 "frames shown, as sorted, distinct indices from 0"
+            )
+        if self.mode is not None and (
+            not isinstance(self.mode, ReviewMode)
+            or self.redaction is Redaction.REJECTED
+        ):
+            raise QcPackError(
+                f"the redaction verdict on instance {self.position} records a "
+                "review mode only as a ReviewMode, and only to accept or revise"
             )
 
 
@@ -448,6 +473,7 @@ def attestation_document(attestation: Attestation) -> dict:
                 "regions": _regions_document(verdict.regions),
                 "dropped": _regions_document(verdict.dropped),
                 "seen": list(verdict.seen),
+                "mode": None if verdict.mode is None else verdict.mode.value,
             }
             for verdict in attestation.redactions
         ],
@@ -541,6 +567,10 @@ def attest(
         )
     cleaned = previewed_redactions(data)
     proposals = pack_proposals(data)
+    if any(verdict.mode is not None for verdict in by_position):
+        raise QcPackError(
+            "a redaction verdict's review mode is recorded by attesting, not given"
+        )
     for verdict in by_position:
         if verdict.position not in cleaned:
             raise QcPackError(
@@ -587,6 +617,12 @@ def attest(
                     f"was not shown {len(unseen)} frame(s) that its review "
                     "requires"
                 )
+    by_position = tuple(
+        verdict
+        if verdict.redaction is Redaction.REJECTED
+        else dataclasses.replace(verdict, mode=review_mode(cleaned[verdict.position]))
+        for verdict in by_position
+    )
     attestation = Attestation(
         reference=reference,
         pack_digest=hashlib.sha256(data).hexdigest(),
@@ -655,6 +691,16 @@ class CleanedShape:
 FLAGGED_ONLY_SOP_CLASSES: frozenset[str] = frozenset()
 
 
+def review_mode(shape: CleanedShape) -> ReviewMode:
+    """Return which frames of a cleaned instance a reviewer must be shown:
+    only those with regions where its SOP Class is one of
+    :data:`FLAGGED_ONLY_SOP_CLASSES`, and every frame otherwise (D-059).
+    """
+    if shape.sop_class_uid and shape.sop_class_uid in FLAGGED_ONLY_SOP_CLASSES:
+        return ReviewMode.FLAGGED_FRAMES
+    return ReviewMode.EVERY_FRAME
+
+
 def required_frames(
     shape: CleanedShape, flagged: Iterable[int] = ()
 ) -> tuple[int, ...]:
@@ -673,7 +719,7 @@ def required_frames(
         Only the flagged frames where the instance's SOP Class is one of
         :data:`FLAGGED_ONLY_SOP_CLASSES`, and every frame otherwise (D-059).
     """
-    if shape.sop_class_uid and shape.sop_class_uid in FLAGGED_ONLY_SOP_CLASSES:
+    if review_mode(shape) is ReviewMode.FLAGGED_FRAMES:
         return tuple(sorted({index for index in flagged if 0 <= index < shape.frames}))
     return tuple(range(shape.frames))
 
@@ -963,13 +1009,18 @@ def _attestation_from(content: bytes) -> Attestation:
 def _redaction_verdict_from(verdict: dict) -> RedactionVerdict:
     """Rebuild a written redaction verdict; malformed input raises as
     :func:`_attestation_from` expects."""
-    return RedactionVerdict(
+    read = RedactionVerdict(
         verdict["position"],
         Redaction(verdict["redaction"]),
         _regions_from(verdict["regions"]),
         _regions_from(verdict["dropped"]),
         tuple(verdict["seen"]),
+        None if verdict["mode"] is None else ReviewMode(verdict["mode"]),
     )
+    # An attested verdict that accepts or revises records its review's mode.
+    if read.redaction is not Redaction.REJECTED and read.mode is None:
+        raise QcPackError("a redaction verdict needs its review mode")
+    return read
 
 
 def _regions_from(regions: list) -> tuple[tuple[int, tuple[TextBox, ...]], ...]:

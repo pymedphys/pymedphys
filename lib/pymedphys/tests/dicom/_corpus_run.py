@@ -68,6 +68,7 @@ from pymedphys._dicom.deidentify.file_layout import ElementPath
 from pymedphys._dicom.deidentify.instance_transform import InstanceTransform
 from pymedphys._dicom.deidentify.keys import DeidKey
 from pymedphys._dicom.deidentify.pixel_cleaning import TextFinder
+from pymedphys._dicom.deidentify.qc_attestation import ReviewMode
 from pymedphys._dicom.deidentify.redaction_review import RedactionReview
 from pymedphys._dicom.deidentify.policy import (
     PRESETS,
@@ -733,4 +734,9 @@ def every_corner_accepted(corpus: corpus_module.SyntheticCorpus) -> RedactionRev
             approved[hashlib.sha256(file.data).digest()] = tuple(
                 (index, (CORNER,)) for index in range(frames)
             )
-    return RedactionReview(REDACTION_REVIEW_REFERENCE, approved, frozenset())
+    return RedactionReview(
+        REDACTION_REVIEW_REFERENCE,
+        approved,
+        frozenset(),
+        modes={ReviewMode.EVERY_FRAME: len(approved), ReviewMode.FLAGGED_FRAMES: 0},
+    )

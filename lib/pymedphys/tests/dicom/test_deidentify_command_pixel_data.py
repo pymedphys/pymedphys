@@ -364,6 +364,7 @@ def test_a_second_run_given_the_attested_pack_releases_the_reviewed_images(
     reference = json.loads((pack / qc_store.PACK_FILE).read_text("utf-8"))
     assert report["redaction_review"] == {
         "reference": reference["reference"],
+        "review_modes": {"every-frame": 1, "flagged-frames": 0},
         "frames_not_shown": 0,
     }
 

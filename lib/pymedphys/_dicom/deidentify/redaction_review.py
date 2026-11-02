@@ -58,6 +58,7 @@ from .qc_attestation import (
     Attestation,
     Outcome,
     Redaction,
+    ReviewMode,
     attested_pack,
     pack_proposals,
     previewed_redactions,
@@ -99,6 +100,11 @@ class RedactionReview:
         reviewer was not shown, which only an instance whose review needs
         only its flagged frames can have (D-059); the release report records
         it.
+    modes : mapping of ReviewMode to int
+        How many approved source files, each once, were reviewed in each
+        mode, every mode given, which the release report records (D-059). A
+        file whose copies were reviewed in both counts as reviewed in
+        :attr:`ReviewMode.FLAGGED_FRAMES`, the less complete.
     """
 
     reference: str
@@ -108,6 +114,9 @@ class RedactionReview:
         default_factory=lambda: types.MappingProxyType({})
     )
     not_shown: int = 0
+    modes: Mapping[ReviewMode, int] = dataclasses.field(
+        default_factory=lambda: types.MappingProxyType({mode: 0 for mode in ReviewMode})
+    )
 
     def __post_init__(self) -> None:
         if not isinstance(self.reference, str) or not re.fullmatch(
@@ -141,11 +150,24 @@ class RedactionReview:
             raise QcPackError(
                 "a redaction review cannot both approve and reject a source file"
             )
+        if (
+            not isinstance(self.modes, Mapping)
+            or set(self.modes) != set(ReviewMode)
+            or not all(
+                isinstance(count, int) and not isinstance(count, bool) and count >= 0
+                for count in self.modes.values()
+            )
+            or sum(self.modes.values()) != len(self.approved)
+        ):
+            raise QcPackError(
+                "a redaction review counts its approved files by every review mode"
+            )
         # A read-only copy, so that the review cannot change once made.
         object.__setattr__(
             self, "approved", types.MappingProxyType(dict(self.approved))
         )
         object.__setattr__(self, "decoded", types.MappingProxyType(dict(self.decoded)))
+        object.__setattr__(self, "modes", types.MappingProxyType(dict(self.modes)))
 
     def __repr__(self) -> str:
         return (
@@ -243,6 +265,8 @@ def redaction_review_of(attestation: Attestation, data: bytes) -> RedactionRevie
     shapes = previewed_redactions(data)
     # Frames that each approved source file's verdict was not shown.
     unseen: dict[bytes, int] = {}
+    # The mode in which each approved source file was reviewed.
+    modes: dict[bytes, ReviewMode] = {}
     # The regions to black out in each source file, or None to reject it,
     # and the SHA-256 of its decoded frames, if compressed.
     decisions: dict[bytes, tuple[Regions | None, bytes | None]] = {}
@@ -272,6 +296,12 @@ def redaction_review_of(attestation: Attestation, data: bytes) -> RedactionRevie
         else:
             decided = _revised(regions, verdict.regions, verdict.dropped)
         if decided is not None:
+            if verdict.mode is None:
+                raise QcPackError(
+                    "a redaction verdict that accepts or revises needs its review mode"
+                )
+            if modes.get(digest) is not ReviewMode.FLAGGED_FRAMES:
+                modes[digest] = verdict.mode
             unseen[digest] = max(
                 unseen.get(digest, 0),
                 shapes[verdict.position].frames
@@ -299,6 +329,10 @@ def redaction_review_of(attestation: Attestation, data: bytes) -> RedactionRevie
             if decoded is not None
         },
         sum(unseen.values()),
+        {
+            mode: sum(1 for digest in approved if modes[digest] is mode)
+            for mode in ReviewMode
+        },
     )
 
 

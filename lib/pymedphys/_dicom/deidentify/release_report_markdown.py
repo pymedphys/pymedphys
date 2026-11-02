@@ -406,7 +406,16 @@ def _face_review(section: object) -> list[Block]:
 def _redaction_review(section: object) -> list[Block]:
     if section is None:
         return []
-    section = _fields("redaction_review", section, ("reference", "frames_not_shown"))
+    section = _fields(
+        "redaction_review", section, ("reference", "review_modes", "frames_not_shown")
+    )
+    modes = _fields(
+        "redaction_review review_modes",
+        section["review_modes"],
+        ("every-frame", "flagged-frames"),
+    )
+    every = _tally("redaction_review review_modes", modes["every-frame"])
+    flagged = _tally("redaction_review review_modes", modes["flagged-frames"])
     not_shown = _tally("redaction_review frames_not_shown", section["frames_not_shown"])
     return [
         ["## Redaction review"],
@@ -417,9 +426,11 @@ def _redaction_review(section: object) -> list[Block]:
             "adding their own, in the earlier run's confidential QC pack with "
             "this opaque reference: "
             + _code("redaction_review reference", section["reference"])
-            + ". Frames of the instances so approved that the reviewer was "
-            "not shown, which only an instance of an IOD whose text finder "
-            f"met the acceptance criteria can have: {not_shown}."
+            + ". Source files so approved whose review required every frame: "
+            f"{every}; whose review required only the frames with a "
+            "proposed region, which only an IOD whose text finder met the "
+            f"acceptance criteria allows: {flagged}. Frames of those files "
+            f"that the reviewer was not shown: {not_shown}."
         ],
     ]
 

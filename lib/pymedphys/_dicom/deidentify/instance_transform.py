@@ -1220,6 +1220,13 @@ class InstanceTransform:
             redaction_frames_not_shown=(
                 None if redaction_review is None else redaction_review.not_shown
             ),
+            redaction_review_modes=(
+                None
+                if redaction_review is None
+                else {
+                    mode.value: count for mode, count in redaction_review.modes.items()
+                }
+            ),
             safe_private_list=safe_private_list,
             face_blocks=self._face_block_counts,
             project_key=key.key_id if profiles.persistent else None,
