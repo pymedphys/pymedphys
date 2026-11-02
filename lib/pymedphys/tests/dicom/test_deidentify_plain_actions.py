@@ -57,6 +57,8 @@ PATIENT_SETUP_PHOTO_DESCRIPTION = "(300A,0794)"
 PATIENT_TREATMENT_PREPARATION = "(300A,079F)"
 REFERENCED_REQUEST = "(0040,A370)"
 REQUESTED_PROCEDURE_ID = "(0040,1001)"
+RECORDED_SOURCE = "(3008,0100)"
+SOURCE_MANUFACTURER = "(300A,0216)"
 RADIOPHARMACEUTICAL_START_DATETIME = "(0018,1078)"
 RADIOPHARMACEUTICAL_INFORMATION = "(0054,0016)"
 # The first supported release's IODs that include the Overlay Plane Module.
@@ -588,13 +590,15 @@ def test_a_plain_x_on_a_required_attribute_in_the_first_release_iods(tables):
     }
     # At the top level of each image IOD but MR Spectroscopy, and within
     # Patient Setup Sequence of the RT Plan, RT Beams Treatment Record, RT Ion
-    # Plan, and RT Ion Beams Treatment Record IODs.
+    # Plan, RT Ion Beams Treatment Record, and RT Brachy Treatment Record
+    # IODs.
     preparation_places = [
         *((name, ()) for name in FIRST_RELEASE_IODS if name in IMAGE_IODS),
         ("RT Plan", (PATIENT_SETUP,)),
         ("RT Beams Treatment Record", (PATIENT_SETUP,)),
         ("RT Ion Plan", (PATIENT_SETUP,)),
         ("RT Ion Beams Treatment Record", (PATIENT_SETUP,)),
+        ("RT Brachy Treatment Record", (PATIENT_SETUP,)),
     ]
     preparation = {
         (name, (*outer, PATIENT_TREATMENT_PREPARATION, inner), tag): _removal(
@@ -629,7 +633,7 @@ def test_a_plain_x_on_a_required_attribute_in_the_first_release_iods(tables):
             (RADIOPHARMACEUTICAL_INFORMATION,),
             RADIOPHARMACEUTICAL_START_DATETIME,
         ): _removal(*SEQUESTER),
-        # Type 2 in each dose report's Type 1C Referenced Request Sequence,
+        # Type 2 in each report's Type 1C Referenced Request Sequence,
         # required where the report was made for a request, which no Type 3
         # sequence encloses, so it is emptied there instead (D-020).
         **{
@@ -637,27 +641,38 @@ def test_a_plain_x_on_a_required_attribute_in_the_first_release_iods(tables):
             for name in (
                 "X-Ray Radiation Dose SR",
                 "Radiopharmaceutical Radiation Dose SR",
+                "Basic Text SR",
+                "Enhanced SR",
+                "Comprehensive SR",
+                "Comprehensive 3D SR",
+                "Extensible SR",
             )
         },
+        # Type 2 in the RT Brachy Treatment Record's Type 1 Recorded Source
+        # Sequence, which no Type 3 sequence encloses, so every conforming
+        # record holds it; it is emptied there instead (D-020).
+        (
+            "RT Brachy Treatment Record",
+            (RECORDED_SOURCE,),
+            SOURCE_MANUFACTURER,
+        ): _removal(*EMPTIED),
     }
-    # Nine attributes in all.
-    assert len({tag for _, _, tag in found}) == 9
+    # Ten attributes in all.
+    assert len({tag for _, _, tag in found}) == 10
 
 
 # RT Brachy Treatment Record and RT Treatment Summary Record, which the
 # maintainer added to the target coverage on 31 October 2026, reviewed ahead
-# of supporting them, and the IODs reviewed before them.
+# of supporting them and now supported, and the IODs reviewed before them.
 RECORD_IODS = ("RT Brachy Treatment Record", "RT Treatment Summary Record")
 RECORD_REVIEWED_AGAINST = (
-    *FIRST_RELEASE_IODS,
+    *(name for name in FIRST_RELEASE_IODS if name not in RECORD_IODS),
     "RT Ion Plan",
     "RT Ion Beams Treatment Record",
     "Segmentation",
     "Enhanced X-Ray Radiation Dose SR",
     "Patient Radiation Dose SR",
 )
-RECORDED_SOURCE = "(3008,0100)"
-SOURCE_MANUFACTURER = "(300A,0216)"
 
 
 def _record_basic_and_actions():
@@ -755,17 +770,17 @@ def test_the_places_where_a_plain_action_cannot_stand_in_the_brachy_and_summary_
         )
     }
     # Source Manufacturer, which Table E.1-1 gives X, is Type 2 in the Type 1
-    # Recorded Source Sequence, so its removal sequesters every conforming
-    # RT Brachy Treatment Record. It is Type 3 in RT Plan's Source Sequence
-    # (300A,0210), where it is removed alone. The change that supports the
-    # IOD settles it (D-020).
+    # Recorded Source Sequence, so its removal would sequester every
+    # conforming RT Brachy Treatment Record; a plain X empties it there
+    # instead (D-020). It is Type 3 in RT Plan's Source Sequence (300A,0210),
+    # where it is removed alone.
     source = {
         (
             "RT Brachy Treatment Record",
             (RECORDED_SOURCE,),
             SOURCE_MANUFACTURER,
             "X",
-        ): _removal(*SEQUESTER)
+        ): _removal(*EMPTIED)
     }
     assert found == {**patient, **preparation, **source}
     # Only Source Manufacturer is new: each other place matches one that the
@@ -795,9 +810,9 @@ def test_requested_procedure_id_is_emptied_in_each_referenced_request_sequence(
     # generated IOD that defines it there is a Structured Report or a Key
     # Object Selection Document, which give the sequence Type 1C at the top
     # level.
-    assert dict(compound_actions.EMPTIED_PLAIN_X) == {
-        REQUESTED_PROCEDURE_ID: (REFERENCED_REQUEST,)
-    }
+    assert compound_actions.EMPTIED_PLAIN_X[REQUESTED_PROCEDURE_ID] == (
+        REFERENCED_REQUEST,
+    )
     emptied = [
         name
         for name, iod in tables.iods.items()
@@ -826,6 +841,66 @@ def test_requested_procedure_id_is_emptied_in_each_referenced_request_sequence(
     assert resolve_plain_x_in_iod(ct, REQUESTED_PROCEDURE_ID, ()) == _removal(*ALONE)
     report = tables.iods["X-Ray Radiation Dose SR"]
     assert resolve_plain_in_iod(report, REQUESTED_PROCEDURE_ID, (), "X") == "X"
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.1-09")
+def test_source_manufacturer_is_emptied_in_each_recorded_source_sequence(
+    tables, monkeypatch
+):
+    # Source Manufacturer, which Table E.1-1 gives X, or K under Retain
+    # Device Identity, is Type 2 in Recorded Source Sequence, which is Type 1
+    # at the top level of the RT Brachy Treatment Record IOD, so every
+    # conforming record holds it there and no Type 3 sequence encloses it;
+    # a plain X empties it there rather than sequester the record (D-020).
+    # These are the only two places that a plain X empties.
+    assert dict(compound_actions.EMPTIED_PLAIN_X) == {
+        REQUESTED_PROCEDURE_ID: (REFERENCED_REQUEST,),
+        SOURCE_MANUFACTURER: (RECORDED_SOURCE,),
+    }
+    row = next(
+        attribute
+        for attribute in standard.load_table_e1_1().attributes
+        if attribute.tag == SOURCE_MANUFACTURER
+    )
+    assert (row.basic_profile, dict(row.options)) == (
+        "X",
+        {"retain_device_identity": "K"},
+    )
+    emptied = [
+        name
+        for name, iod in tables.iods.items()
+        if resolve_plain_x_in_iod(iod, SOURCE_MANUFACTURER, (RECORDED_SOURCE,))
+        == _removal(*EMPTIED)
+    ]
+    defined = [
+        name
+        for name, iod in tables.iods.items()
+        if strictest_type(iod, SOURCE_MANUFACTURER, (RECORDED_SOURCE,)) == "2"
+    ]
+    assert emptied == defined == ["RT Brachy Treatment Record"]
+    record = tables.iods["RT Brachy Treatment Record"]
+    assert strictest_type(record, RECORDED_SOURCE, ()) == "1"
+    assert (
+        resolve_plain_in_iod(record, SOURCE_MANUFACTURER, (RECORDED_SOURCE,), "X")
+        == "Z"
+    )
+    # Elsewhere, as in RT Plan's Source Sequence (300A,0210), where it is Type
+    # 3, a plain X removes it alone.
+    plan = tables.iods["RT Plan"]
+    assert strictest_type(plan, SOURCE_MANUFACTURER, ("(300A,0210)",)) == "3"
+    assert resolve_plain_x_in_iod(
+        plan, SOURCE_MANUFACTURER, ("(300A,0210)",)
+    ) == _removal(*ALONE)
+    assert resolve_plain_in_iod(plan, SOURCE_MANUFACTURER, ("(300A,0210)",), "X") == "X"
+    # Without the entry, every record would be sequestered.
+    monkeypatch.setattr(
+        compound_actions,
+        "EMPTIED_PLAIN_X",
+        {REQUESTED_PROCEDURE_ID: (REFERENCED_REQUEST,)},
+    )
+    assert resolve_plain_x_in_iod(
+        record, SOURCE_MANUFACTURER, (RECORDED_SOURCE,)
+    ) == _removal(*SEQUESTER)
 
 
 @pytest.mark.parametrize(

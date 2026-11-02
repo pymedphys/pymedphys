@@ -653,14 +653,22 @@ def test_attributes_that_only_adjust_a_preview_are_read_tolerantly():
 
 @pytest.mark.pydicom
 def test_only_the_frames_shown_are_decoded(monkeypatch):
-    decode = pydicom.pixels.pixel_array
+    decode, iterate = pydicom.pixels.pixel_array, pydicom.pixels.iter_pixels
     calls = []
 
     def counted(source, **kwargs):
         calls.append(kwargs.get("index"))
         return decode(source, **kwargs)
 
+    def iterated(source, **kwargs):
+        indices = kwargs.get("indices")
+        assert indices is not None
+        for index, frame in zip(indices, iterate(source, **kwargs)):
+            calls.append(index)
+            yield frame
+
     monkeypatch.setattr(pydicom.pixels, "pixel_array", counted)
+    monkeypatch.setattr(pydicom.pixels, "iter_pixels", iterated)
     frames = np.arange(40 * 4 * 4).reshape(40, 4, 4)
     written = {0: _image(frames, series=None, sop_class=SECONDARY_CAPTURE)}
 

@@ -221,7 +221,7 @@ from .standard import ALL_OPTIONS, VRS
 from .walker import Sequestration, SequesterReason
 
 # The format of the report document. A change to its fields takes a new label.
-FORMAT = "pymedphys-deid-release-report/44"
+FORMAT = "pymedphys-deid-release-report/45"
 
 _DIGEST = re.compile(r"[0-9a-f]{64}")
 # A key's non-secret identifier, as DeidKey.key_id gives it.
@@ -430,7 +430,7 @@ class SequestrationReason:
     iod : str or None
         For scope's ``"unsupported-iod"``, and only for it, the IOD, as
         PS3.4 Table B.5-1 names it without "IOD", such as
-        ``"Comprehensive SR"`` (D-010).
+        ``"Ultrasound Image"`` (D-010).
     """
 
     stage: str

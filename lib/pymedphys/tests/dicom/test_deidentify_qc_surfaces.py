@@ -25,6 +25,7 @@ posterior, and z superior.
 # pylint: disable = too-many-lines
 
 import io
+import itertools
 import math
 import weakref
 
@@ -784,22 +785,30 @@ def test_each_lone_dose_slice_of_a_series_is_mapped_in_order_after_its_cine_stri
 @pytest.mark.pydicom
 def test_a_lone_dose_slice_s_pixels_are_released_once_it_is_mapped(monkeypatch):
     # pylint: disable = protected-access
-    decode = qc_previews._Decoder.frame
+    decode = qc_previews._Decoder.frames
     draw = qc_previews._level_map
     mapped = []
     held_decoding = []
     held_mapping = []
 
-    def decoded(self, instance, index):
-        held_decoding.append(sum(earlier() is not None for earlier in mapped))
-        return decode(self, instance, index)
+    def decoded(self, *args, **kwargs):
+        frames = decode(self, *args, **kwargs)
+        while True:
+            held = sum(earlier() is not None for earlier in mapped)
+            try:
+                pixels = next(frames)
+            except StopIteration:
+                return
+            held_decoding.append(held)
+            yield pixels
+            del pixels
 
     def recorded(instance, pixels):
         held_mapping.append(sum(earlier() is not None for earlier in mapped))
         mapped.append(weakref.ref(pixels))
         return draw(instance, pixels)
 
-    monkeypatch.setattr(qc_previews._Decoder, "frame", decoded)
+    monkeypatch.setattr(qc_previews._Decoder, "frames", decoded)
     monkeypatch.setattr(qc_previews, "_level_map", recorded)
     with_recording = qc_previews.previews_of(_lone_slices(), ())
     monkeypatch.undo()
@@ -915,16 +924,31 @@ def test_a_dose_sheet_taller_than_its_bound_is_not_shown(monkeypatch):
     assert _not_drawn(qc_previews.previews_of(written, ()))
 
 
-@pytest.mark.pydicom
-def test_each_frame_is_decoded_once(monkeypatch):
-    decode = pydicom.pixels.pixel_array
+def _counted_decoding(monkeypatch):
+    """Record the index of each frame that pydicom decodes, one at a time or
+    as it iterates over a file's frames."""
+    decode, iterate = pydicom.pixels.pixel_array, pydicom.pixels.iter_pixels
     calls = []
 
     def counted(source, **kwargs):
         calls.append(kwargs.get("index"))
         return decode(source, **kwargs)
 
+    def iterated(source, **kwargs):
+        indices = kwargs.get("indices")
+        numbered = itertools.count() if indices is None else iter(indices)
+        for index, frame in zip(numbered, iterate(source, **kwargs)):
+            calls.append(index)
+            yield frame
+
     monkeypatch.setattr(pydicom.pixels, "pixel_array", counted)
+    monkeypatch.setattr(pydicom.pixels, "iter_pixels", iterated)
+    return calls
+
+
+@pytest.mark.pydicom
+def test_each_frame_is_decoded_once(monkeypatch):
+    calls = _counted_decoding(monkeypatch)
 
     qc_previews.previews_of(
         {0: _dose(_dose_body(), [2.0 * k for k in range(SIDE)])}, ()

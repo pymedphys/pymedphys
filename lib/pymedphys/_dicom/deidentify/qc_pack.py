@@ -152,7 +152,7 @@ from .reviewed_roi_names import Outcome
 from .text_detection import TextBox
 
 # The format of the pack document. A change to its fields takes a new label.
-FORMAT = "pymedphys-deid-qc-pack/27"
+FORMAT = "pymedphys-deid-qc-pack/28"
 # The bytes of a written file shown on each side of a residual's offset.
 EXCERPT_BYTES = 48
 # The SHA-256 that face_review.contour_data_sha256 gives a file without
@@ -795,8 +795,10 @@ class DescriptorEntry:
     applied : bool
         Whether the element was written with those values. Where it was not,
         because a value was held, no value had text, or a kept value was
-        beside a mapped or emptied one, or because another attribute's action removed
-        its sequence, it took its action without Clean Descriptors, except
+        beside a mapped or emptied one, because another attribute's action
+        removed its sequence, or because another instance of its patient,
+        study, series, or frame of reference would write other values, it
+        took its action without Clean Descriptors, except
         for an attribute that another option's cleaner left to the reviewed
         descriptors list, such as Allergies under Retain Patient
         Characteristics, a held value of which holds its instance for review
