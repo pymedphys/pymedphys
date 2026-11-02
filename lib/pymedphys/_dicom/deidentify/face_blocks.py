@@ -65,7 +65,8 @@ kind, or both. A series is defaced only where all of these hold:
   :data:`TARGET_TYPES`, of any RT Structure Set of the run searched for the
   series (:func:`_searched`), in the series' Frame of Reference, or naming
   none, can be placed, with finite coordinates of magnitude at most
-  :data:`_FARTHEST` millimetres and no contour slab (:func:`_in_slab`),
+  :data:`_FARTHEST` millimetres, including every reading of a valid contour
+  slab (:func:`_spread`),
   and the part in the block of the convex
   hull of its contours, which holds anything between them, lies within the
   slices (:func:`_kept_targets`), so that every pixel that the run keeps for

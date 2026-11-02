@@ -128,11 +128,11 @@ from .face_blocks import (
     SeriesDefacing,
     _FARTHEST,
     _hull_reaches,
-    _in_slab,
     _is_eye,
     _roi_frames,
     _searched,
     _series_outcome,
+    _spread,
     _stack,
     _target_fates,
     _TargetFates,
@@ -864,8 +864,8 @@ def _target_codes(
     of each that does not reach the block: ``"tied-to-another-frame"`` for
     one in another frame that the set ties to the series' slices, which
     holds the series; ``"not-placed"`` for one with a coordinate that is
-    not finite or too far to place, or with a contour in a slab
-    (``_in_slab``), which holds it too; ``"kept-in-block"``
+    not finite or too far to place, or with a slab whose span cannot be
+    placed (``_spread``), which holds it too; ``"kept-in-block"``
     for one whose hull reaches the block within the slices, around which
     the series is defaced; ``"beyond-slices"`` for one whose hull's part in
     the block reaches beyond the slices, which holds the series;
@@ -883,14 +883,12 @@ def _target_codes(
         if (frames - {"", frame}) & tied:
             yield "tied-to-another-frame", None
         elif frames & {"", frame}:
-            items = list(item.get("ContourSequence") or [])
-            if any(_in_slab(contour) for contour in items):
+            contours = [
+                _spread(contour) for contour in item.get("ContourSequence") or []
+            ]
+            if any(each is None for each in contours):
                 yield "not-placed", None
                 continue
-            contours = [
-                np.asarray([float(v) for v in contour.ContourData]).reshape(-1, 3)
-                for contour in items
-            ]
             if not contours:
                 yield "no-contours", None
                 continue

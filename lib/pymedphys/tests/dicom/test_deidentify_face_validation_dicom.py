@@ -910,10 +910,12 @@ def test_a_compressed_rt_dose_that_does_not_decode_is_counted_as_held(tmp_path, 
 @pytest.mark.parametrize(
     ("keyword", "value", "behind", "code"),
     [
-        ("ContourSlabThickness", 10.0, True, ("not-placed", None)),
-        ("ContourOffsetVector", [0.0, 0.0, 6.0], True, ("not-placed", None)),
-        ("ContourSlabThickness", 10.0, False, ("not-placed", None)),
-        ("ContourOffsetVector", [0.0, 0.0, 6.0], False, ("not-placed", None)),
+        ("ContourSlabThickness", 10.0, True, ("clear", pytest.approx(4.0))),
+        ("ContourOffsetVector", [0.0, 0.0, 6.0], True, ("clear", pytest.approx(4.0))),
+        ("ContourSlabThickness", 10.0, False, ("kept-in-block", None)),
+        ("ContourOffsetVector", [0.0, 0.0, 6.0], False, ("kept-in-block", None)),
+        ("ContourSlabThickness", -1.0, True, ("not-placed", None)),
+        ("ContourOffsetVector", [6.0, 0.0, 0.0], False, ("not-placed", None)),
         ("ContourSlabThickness", None, True, ("clear", pytest.approx(4.0))),
         ("ContourOffsetVector", None, True, ("clear", pytest.approx(4.0))),
         ("ContourSlabThickness", None, False, ("kept-in-block", None)),
@@ -924,13 +926,15 @@ def test_a_compressed_rt_dose_that_does_not_decode_is_counted_as_held(tmp_path, 
         "offset-behind",
         "thickness-in-block",
         "offset-in-block",
+        "negative-thickness",
+        "offset-outside-normal",
         "empty-thickness-behind",
         "empty-offset-behind",
         "empty-thickness-in-block",
         "empty-offset-in-block",
     ],
 )
-def test_a_target_in_a_slab_is_reported_as_not_placed(keyword, value, behind, code):
+def test_a_target_in_a_slab_is_reported_by_its_full_span(keyword, value, behind, code):
     # A block of the points with y below 0 and z above 0, and a square 4 mm
     # behind it, clear of it by its points alone, or in it.
     target = files.square((0.0, 6.0 if behind else -6.0, 20.0))
@@ -942,8 +946,8 @@ def test_a_target_in_a_slab_is_reported_as_not_placed(keyword, value, behind, co
         block, block, (), 0.0
     )
 
-    # The run holds the series for a slab, whose region its points do not
-    # give, so the check reports it as the run judges it, with no clearance.
+    # These axial spans change only z, so a valid span keeps the same 4 mm
+    # clearance in y, or stays in the block. An unplaceable span still holds.
     codes = face_validation_dicom._target_codes(  # pylint: disable = protected-access
         rtss, files.FRAME, set(), fates
     )
