@@ -201,8 +201,8 @@ jobs:
     name: Extra ${{ matrix.extra }} alone
     # The dicom extra runs every DICOM test on one runner, including the
     # corpus runs that the test job gives a runner of their own, so it takes
-    # up to about 30 minutes on a slow runner.
-    timeout-minutes: 60
+    # up to about 30 minutes on a slow runner. The other extras take minutes.
+    timeout-minutes: ${{ matrix.extra == 'dicom' && 60 || 30 }}
     strategy:
       fail-fast: false
       matrix:
