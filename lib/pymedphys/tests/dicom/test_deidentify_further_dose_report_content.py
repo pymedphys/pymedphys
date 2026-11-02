@@ -12,6 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# The three reports share their option sets and expected rows, so their
+# checks stay in one module.
+# pylint: disable = too-many-lines
+
 """The Clean Structured Content Option on CT, Enhanced X-Ray, and Patient dose reports.
 
 The X-Ray Radiation Dose SR IOD, whose root may be TID 10011, is supported,
@@ -24,9 +28,9 @@ Patient Radiation Dose report (TID 10030), as
 10021 (D-047): which option sets, chiefly the option alone, with Retain
 UIDs, and with Retain Device Identity, and which presets, with the option
 added, keep a report that holds only the rows that its templates require;
-the action that its required rows take; which optional rows take the tree
-out under each option set; the action that each value of a kept tree takes;
-and what is written and released, in the tests that add the two IODs to
+the action that its required rows take; which optional rows are removed on
+their own under each option set; the action that each value of a kept tree
+takes; and what is written and released, in the tests that add the two IODs to
 the supported ones for that test alone, as supporting them would. The
 reports are synthetic, built from the templates of PS3.16 2026d by
 :mod:`._synthetic_further_dose_reports`.
@@ -165,6 +169,20 @@ def _kept(dataset, iod, composed):
     return actions.get(ElementPath((), CONTENT)) == "K"
 
 
+def _removes(dataset, iod, composed):
+    """Return whether the option keeps the tree but removes items from it.
+
+    An item is removed on its own, or with the others of the Content
+    Sequence that an item other than a CONTAINER holds, which goes with them.
+    """
+    actions, plan = _planned(dataset, iod, composed)
+    return (
+        actions.get(ElementPath((), CONTENT)) == "K"
+        and bool(actions.removed_items or actions.emptied)
+        and plan.removed_items == actions.removed_items
+    )
+
+
 def _composed(with_option, preset, options):
     return (
         with_option(preset)
@@ -296,9 +314,10 @@ def test_every_option_set_keeps_a_report_of_required_rows(options):
     # report's DateTime Started (TID 10042 row 3 and TID 10043 row 2) and
     # RDSR Frame of Reference UID (TID 10043 row 4); X/D gives D, and so does
     # the X of its DateTime Ended (TID 10042 row 4 and TID 10043 row 3), so
-    # none of them takes the tree out (D-047).
+    # none of them is removed (D-047).
     for name in REPORTS:
         assert _kept(*_report(name), composed), name
+        assert not _removes(*_report(name), composed), name
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.4-01")
@@ -313,9 +332,11 @@ def test_every_preset_with_the_option_keeps_a_report_of_required_rows(
         _, plan = _planned(dataset, iod, composed)
         assert _kept(dataset, iod, composed), name
         assert not plan.sequestrations, name
-        # A report with every optional row is never kept.
+        # A report with every optional row is kept, without the items that
+        # the options remove.
         everything, _ = _report(name, OPTIONAL_ROWS[name])
-        assert not _kept(everything, iod, composed), name
+        assert _kept(everything, iod, composed), name
+        assert _removes(everything, iod, composed), name
 
 
 # The required rows that Table E.3.4-1 gives X/D, or, for DateTime Ended, X.
@@ -419,7 +440,7 @@ def test_the_action_that_the_required_x_d_rows_take(
         } == taken[name], name
 
 
-# Under every option set, these optional rows take the tree out: Table
+# Under every option set, these optional rows are removed on their own: Table
 # E.3.4-1 gives each X under every option, or X with C under Clean
 # Descriptors, which falls back to X (D-009).
 CT_REMOVED_UNDER_EVERY_OPTION = {
@@ -545,17 +566,20 @@ PATIENT_UIDS = {"TID 10033 row 3", "TID 10033 row 10"}
     ),
     (PATIENT, None, EVERY_OPTION, PATIENT_REMOVED_UNDER_EVERY_OPTION),
 ])  # fmt: skip
-def test_the_optional_rows_that_take_the_tree_out(
+def test_the_optional_rows_that_are_removed_on_their_own(
     with_option, name, preset, options, removed
 ):
     composed = _composed(with_option, preset, options)
     build, iod = REPORTS[name]
 
     assert _kept(build(()), iod, composed)
+    assert not _removes(build(()), iod, composed)
+    for key in OPTIONAL_ROWS[name]:
+        assert _kept(build(reports.with_holders(key)), iod, composed), key
     assert {
         key
         for key in OPTIONAL_ROWS[name]
-        if not _kept(build(reports.with_holders(key)), iod, composed)
+        if _removes(build(reports.with_holders(key)), iod, composed)
     } == removed
 
 
@@ -765,7 +789,7 @@ def test_the_unlisted_text_of_each_report(name):
 
 
 # The option sets under which each report is written below, with the rows
-# that take its tree out under them, and the irradiating device and the
+# that are removed on their own under them, and the irradiating device and the
 # device observer's Manufacturer and Model Name, tested on their own.
 WRITTEN = {
     "CT, option alone": (
@@ -880,6 +904,22 @@ def test_a_written_report_is_released(case):
         }
         for uid in set(reports.UIDS) - (observers if device else set()):
             assert uid.encode() not in data, uid
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.4-01")
+@pytest.mark.usefixtures("supported")
+@pytest.mark.parametrize("case", WRITTEN)
+def test_a_report_with_every_optional_row_is_written_without_those_removed(case):
+    name, options, rows = _written_rows(case)
+    held = IRRADIATING_DEVICES | set(DEVICE_OBSERVER_MAKE)
+    dataset, _ = _report(name, _keepable(name, held))
+
+    data, decision = _released(policy.compose_custom_policy(options), dataset)
+
+    # The tree written is the report built without the rows removed.
+    assert isinstance(decision, run.Release), decision
+    expected, _ = _report(name, rows)
+    assert _shape(pydicom.dcmread(io.BytesIO(data))) == _shape(expected)
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.4-01")
