@@ -629,6 +629,68 @@ class WorkflowContractTests(unittest.TestCase):
         self.assertIn('if [[ "${found}" != "${expected}" ]]; then\n', job)
         self.assertIn("uv run -- pyright --stats", job)
 
+    def test_the_model_pin_check_reads_only_and_holds_no_secret(self):
+        text = (WORKFLOWS / "text-detection-model-pins.yml").read_text(encoding="utf-8")
+        triggers = text.split("\non:\n", 1)[1].split("\npermissions:\n", 1)[0]
+        # Started by hand, and by no other event.
+        self.assertEqual(
+            re.findall(r"(?m)^  ([a-z_]+):", triggers), ["workflow_dispatch"]
+        )
+        self.assertIn("\npermissions:\n  contents: read\n", text)
+        self.assertEqual(
+            re.findall(r"(?m)^      [a-z-]+: (?:read|write)$", text),
+            ["      contents: read"],
+        )
+        self.assertNotIn("secrets.", text)
+        self.assertIn("persist-credentials: false", text)
+        self.assertIn(
+            "python -m pymedphys._dicom.deidentify.text_evaluation_model_pins", text
+        )
+        self.assertIn("set -o pipefail", text)
+
+    def test_the_idc_evaluation_reads_only_and_keeps_its_tools_pinned(self):
+        text = (WORKFLOWS / "text-detector-evaluation-idc.yml").read_text(
+            encoding="utf-8"
+        )
+        triggers = text.split("\non:\n", 1)[1].split("\npermissions:\n", 1)[0]
+        self.assertEqual(
+            re.findall(r"(?m)^  ([a-z_]+):", triggers), ["workflow_dispatch"]
+        )
+        self.assertIn("\npermissions:\n  contents: read\n", text)
+        self.assertEqual(
+            re.findall(r"(?m)^      [a-z-]+: (?:read|write)$", text),
+            ["      contents: read"],
+        )
+        self.assertNotIn("secrets.", text)
+        self.assertIn("persist-credentials: false", text)
+        # Inputs reach commands only through the environment.
+        run_blocks = re.findall(r"(?ms)^        run: \|\n(.*?)(?=^      - |\Z)", text)
+        self.assertTrue(run_blocks)
+        for block in run_blocks:
+            self.assertNotIn("${{", block)
+        self.assertIn(
+            "uv pip install --require-hashes --no-deps \\\n"
+            "            -r .github/text-evaluation/requirements.txt",
+            text,
+        )
+        self.assertIn("sha256sum --check --strict -", text)
+        # Only the results leave the runner; never the data or the selection's
+        # series.
+        self.assertEqual(
+            re.findall(r"(?m)^          path: (.*)$", text),
+            ["${{ runner.temp }}/idc/results/"],
+        )
+        self.assertNotIn("actions/cache", text)
+        requirements = (
+            WORKFLOWS.parent / "text-evaluation/requirements.txt"
+        ).read_text(encoding="utf-8")
+        pins = re.findall(r"(?m)^([A-Za-z0-9_.-]+)==([^ ]+) \\$", requirements)
+        hashes = re.findall(r"--hash=sha256:([0-9a-f]{64})$", requirements, re.M)
+        self.assertEqual(
+            [name for name, _ in pins], ["pyarrow", "opencv-python-headless", "s5cmd"]
+        )
+        self.assertEqual(len(hashes), len(pins))
+
 
 if __name__ == "__main__":
     unittest.main()
