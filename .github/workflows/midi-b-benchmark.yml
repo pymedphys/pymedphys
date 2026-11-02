@@ -69,17 +69,6 @@ on:
           they merge
         type: string
         default: ''
-  # Temporary, for the first runs before this workflow is on the default
-  # branch; removed before review. Off until TCIA's change to its rate
-  # limits is live.
-  # push:
-  #   branches: [claude/deid-midi-b-ci-ko3ghq]
-  #   paths:
-  #     - .github/workflows/midi-b-benchmark.yml
-  #     - .github/scripts/midi_b_tcia_answer_keys.py
-  #     - lib/pymedphys/_dicom/deidentify/midi_data.toml
-  #     - lib/pymedphys/_dicom/deidentify/midi_download.py
-  #     - lib/pymedphys/_dicom/deidentify/midi_benchmark*.py
 
 permissions:
   contents: read
@@ -121,22 +110,21 @@ jobs:
       # other-presets, in which public-release releases nothing to score;
       # each Retain option in a job of its own with its basic reference; and
       # the Clean options two to a job. Validation's groups fit a slow
-      # runner. A push (temporary, above) has no inputs, and runs
-      # basic-presets on both subsets.
+      # runner.
       - name: Choose the jobs
         id: jobs
         env:
           CHOSEN_SUBSET: ${{ inputs.subset }}
           CHOSEN_CONFIGURATIONS: ${{ inputs.configurations }}
         run: |
-          case "${CHOSEN_SUBSET:-both}" in
+          case "${CHOSEN_SUBSET}" in
             validation) subsets=(validation) ;;
             test) subsets=(test) ;;
             both) subsets=(validation test) ;;
             *) echo "Unknown subset ${CHOSEN_SUBSET}."; exit 1 ;;
           esac
-          case "${CHOSEN_CONFIGURATIONS:-basic-presets}" in
-            basic-presets|other-presets|retain|clean) kinds=("${CHOSEN_CONFIGURATIONS:-basic-presets}") ;;
+          case "${CHOSEN_CONFIGURATIONS}" in
+            basic-presets|other-presets|retain|clean) kinds=("${CHOSEN_CONFIGURATIONS}") ;;
             all) kinds=(basic-presets other-presets retain clean) ;;
             *) echo "Unknown configurations ${CHOSEN_CONFIGURATIONS}."; exit 1 ;;
           esac
@@ -214,9 +202,8 @@ jobs:
       SUBSET: ${{ matrix.subset }}
       GROUP: ${{ matrix.group }}
       CHOSEN: ${{ inputs.subset }}
-      # A push (temporary, above) has no inputs, and checks TCIA's packages.
-      ANSWER_KEYS_FROM: ${{ inputs.answer-keys-from || 'tcia' }}
-      IMAGES_FROM: ${{ inputs.images-from || 'pinned' }}
+      ANSWER_KEYS_FROM: ${{ inputs.answer-keys-from }}
+      IMAGES_FROM: ${{ inputs.images-from }}
       # IBM's Aspera command line client, Apache-2.0; it installs IBM's
       # transfer daemon, which carries IBM's own licence, on the runner only.
       # Not ASCLI_*: ascli reads environment variables so named as options.
