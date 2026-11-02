@@ -35,6 +35,7 @@ from pymedphys._dicom.deidentify.text_evaluation_detector import (
     grid_boxes,
 )
 from pymedphys._dicom.deidentify.text_evaluation_frames import (
+    BurnedText,
     EvaluationFrame,
     EvaluationRefused,
 )
@@ -312,6 +313,37 @@ def test_previews_beyond_the_limit_are_counted_not_drawn(tmp_path):
     assert drawn == 4
     assert found["previews_not_drawn"] == 2
     assert len(list((tmp_path / "case" / "previews").iterdir())) == 4
+
+
+def test_a_text_too_thin_for_a_core_is_scored_on_all_its_ink():
+    # No pixel of this invented text is more than half ink, so, as the
+    # evaluation does, the report scores all of its ink: missed and
+    # previewed with no boxes, fully covered under one.
+    thin = BurnedText(10, 12, np.full((3, 3), 0.4), 3.0, {})
+    frame = EvaluationFrame(
+        stored=np.full(SHAPE, 1024, np.uint16),
+        collection="synthetic",
+        case="invented",
+        iod="CT Image Storage",
+        modality="CT",
+        intercept=-1024.0,
+        pixel_spacing=1.0,
+        texts=(thin,),
+    )
+    previews = report.PreviewSettings()
+    # The report's frames come from phantoms alone, so the frame is given
+    # to the step that scores one.
+    entry_of = report._frame_entry  # pylint: disable = protected-access
+    entry, crops = entry_of(
+        frame, "as-read", BoxDetector(regions=()), _settings(), previews
+    )
+    assert entry["texts"][0]["fully_covered"] == [False]
+    assert [name for name, _ in crops] == ["overview", "missed-000"]
+    entry, crops = entry_of(
+        frame, "as-read", BoxDetector(regions=((8, 8, 16, 40),)), _settings(), previews
+    )
+    assert entry["texts"][0]["fully_covered"] == [True]
+    assert not crops
 
 
 def test_a_point_outside_the_grid_is_refused(tmp_path):

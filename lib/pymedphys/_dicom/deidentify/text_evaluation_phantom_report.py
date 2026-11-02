@@ -455,7 +455,12 @@ def _frame_entry(
     shape = frame.shape
     boxes_of_points = detector.boxes_of_points(frame, settings.points)
     zones = [text.zone(shape) for text in frame.texts]
-    inks = [text.ink(shape, INK_LEVEL) for text in frame.texts]
+    # The ink scored, as the evaluation scores it: the core, or all the ink
+    # of a text too thin to have a core.
+    inks = []
+    for text in frame.texts:
+        core = text.ink(shape, INK_LEVEL)
+        inks.append(core if core.any() else text.ink(shape, 0.0))
     entry: dict[str, Any] = {
         "number": frame.number,
         "pass": name,
