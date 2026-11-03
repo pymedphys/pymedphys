@@ -722,7 +722,7 @@ def test_a_segmentation_in_a_defaced_frame_is_cleaned_in_its_block_and_held():
     region = transform._region(iod, records[len(slices)])
     source = read_source(data)
 
-    redaction, undefaced, _ = transform._black_out(
+    redaction, undefaced, _, _ = transform._black_out(
         data,
         source,
         source.dataset(),

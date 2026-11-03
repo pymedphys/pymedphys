@@ -56,6 +56,20 @@ saw. A series without a sheet, whose slices could not be drawn again,
 cannot be confirmed. A confirmation releases nothing by itself: the slices
 as written still need a face verdict.
 
+The attestation may also give a dose choice for any RT Dose that the pack
+lists in its ``dose_checks``, by its run position: an RT Dose with more
+dose in a defaced CT series' face block than the fraction that a run sets
+to zero (D-051). :attr:`~.reasons.DoseChoice.AS_WRITTEN` has a later run of
+the same files write it as received, which a verdict of absent on its
+series, from its own dose-levels previews, which show it as received, then
+releases; :attr:`~.reasons.DoseChoice.SET_TO_ZERO` has a later run set it
+to zero in the block anyway, beyond the fraction, which only a verdict on
+that later run's previews of the grid as set to zero can release, since no
+reviewer has seen it. The pack records the digest of the RT Dose's source
+file and the block, so the choice is bound, through the pack, to them, and
+records the choice that its run applied, which a later run applies again
+where the attestation gives none. A choice releases nothing by itself.
+
 The attestation may likewise give a redaction verdict for any instance whose
 Pixel Data the Clean Pixel Data Option cleaned and the pack previewed, by
 its run position, as the pack's ``redactions`` lists it, from the previews
@@ -95,10 +109,11 @@ from pathlib import Path
 
 from . import qc_pack, qc_store
 from .qc_pack import FACE_PREVIEW_REASONS, QcPackError
+from .reasons import DoseChoice
 from .text_detection import TextBox
 
 # The format of the attestation document. A change to its fields takes a new label.
-FORMAT = "pymedphys-deid-qc-attestation/4"
+FORMAT = "pymedphys-deid-qc-attestation/5"
 ATTESTATION_FILE = "attestation.json"
 
 _DIGEST = re.compile(r"[0-9a-f]{64}")
@@ -236,6 +251,31 @@ def _is_box(box: object) -> bool:
 
 
 @dataclasses.dataclass(frozen=True)
+class DoseChoiceVerdict:
+    """A reviewer's choice for one RT Dose of the pack's ``dose_checks``.
+
+    Attributes
+    ----------
+    position : int
+        The RT Dose's run position, as the pack's ``dose_checks`` lists it.
+    choice : ~pymedphys._dicom.deidentify.reasons.DoseChoice
+    """
+
+    position: int
+    choice: DoseChoice
+
+    def __post_init__(self) -> None:
+        if (
+            not isinstance(self.position, int)
+            or isinstance(self.position, bool)
+            or self.position < 0
+        ):
+            raise QcPackError("a dose choice needs the RT Dose's run position")
+        if not isinstance(self.choice, DoseChoice):
+            raise QcPackError("a dose choice needs a DoseChoice")
+
+
+@dataclasses.dataclass(frozen=True)
 class Coverage:
     """Whether the reviewer reviewed what D-017 requires.
 
@@ -295,6 +335,9 @@ class Attestation:
         The first run position of each eye check of the pack whose face
         block the reviewer confirmed, in order, each once; empty where the
         reviewer confirmed none.
+    dose_choices : tuple of DoseChoiceVerdict
+        The dose choices, by RT Dose in run position order, each once;
+        empty where the reviewer gave none.
     """
 
     reference: str
@@ -308,6 +351,7 @@ class Attestation:
     faces: tuple[FaceVerdict, ...] = ()
     redactions: tuple[RedactionVerdict, ...] = ()
     confirmed_blocks: tuple[int, ...] = ()
+    dose_choices: tuple[DoseChoiceVerdict, ...] = ()
 
     def __post_init__(self) -> None:
         if not isinstance(self.reference, str) or not _REFERENCE.fullmatch(
@@ -366,6 +410,17 @@ class Attestation:
             raise QcPackError(
                 "an attestation confirms each block at most once, by its eye "
                 "check's first run position, in order"
+            )
+        if not isinstance(self.dose_choices, tuple) or not all(
+            isinstance(verdict, DoseChoiceVerdict) for verdict in self.dose_choices
+        ):
+            raise QcPackError(
+                "an attestation's dose choices must be DoseChoiceVerdicts"
+            )
+        doses = [verdict.position for verdict in self.dose_choices]
+        if doses != sorted(set(doses)):
+            raise QcPackError(
+                "an attestation gives each RT Dose at most one dose choice, in order"
             )
 
     def __repr__(self) -> str:
@@ -450,6 +505,10 @@ def attestation_document(attestation: Attestation) -> dict:
             for verdict in attestation.redactions
         ],
         "confirmed_blocks": list(attestation.confirmed_blocks),
+        "dose_choices": [
+            {"position": verdict.position, "choice": verdict.choice.value}
+            for verdict in attestation.dose_choices
+        ],
     }
 
 
@@ -465,6 +524,7 @@ def attest(
     faces: Mapping[int, Face] | None = None,
     redactions: Iterable[RedactionVerdict] = (),
     confirmed_blocks: Iterable[int] = (),
+    dose_choices: Mapping[int, DoseChoice] | None = None,
 ) -> Attestation:
     """Attest to a QC pack, and write the attestation beside it.
 
@@ -496,6 +556,10 @@ def attest(
         ``eye_checks`` lists it, whose face block the reviewer confirmed
         from its sheet of the globes found beside the eye ROIs; none if not
         given.
+    dose_choices : mapping of int to DoseChoice, optional
+        A dose choice for each RT Dose that the reviewer chose for, by its
+        run position, as the pack's ``dose_checks`` lists it; none if not
+        given.
 
     Returns
     -------
@@ -511,10 +575,11 @@ def attest(
         does not list, or lists as not previewed, or gives a region in a
         frame that its Pixel Data do not hold, or past its Rows or Columns,
         or a confirmed block names a run position that begins none of the
-        pack's eye checks, or one without a sheet of its eyes, or it has
-        already been attested; if an outcome of rejected is given a verdict
-        or a confirmation; or for any reason that :class:`Attestation`
-        gives.
+        pack's eye checks, or one without a sheet of its eyes, or a dose
+        choice names a run position that the pack's ``dose_checks`` does not
+        list, or it has already been attested; if an outcome of rejected is
+        given a verdict, a confirmation, or a dose choice; or for any reason
+        that :class:`Attestation` gives.
     """
     directory = Path(pack_directory)
     data = _pack_bytes(directory)
@@ -524,7 +589,8 @@ def attest(
     verdicts = _face_verdicts({} if faces is None else faces)
     by_position = _redaction_verdicts(redactions)
     blocks = _confirmed_blocks(confirmed_blocks)
-    if outcome is Outcome.REJECTED and (verdicts or by_position or blocks):
+    doses = _dose_choices({} if dose_choices is None else dose_choices)
+    if outcome is Outcome.REJECTED and (verdicts or by_position or blocks or doses):
         # A rejected attestation's verdicts release nothing, and a pack is
         # attested once, so a verdict given with it is refused (D-016).
         raise QcPackError(
@@ -541,6 +607,13 @@ def attest(
             raise QcPackError(
                 f"a confirmed block names run position {first}, whose eye check "
                 "has no sheet of its eyes to confirm it from"
+            )
+    checked = dose_checks(data)
+    for verdict in doses:
+        if verdict.position not in checked:
+            raise QcPackError(
+                f"a dose choice names run position {verdict.position}, which the "
+                "QC pack's dose_checks does not list"
             )
     firsts = _firsts(data)
     unknown = [verdict.series for verdict in verdicts if verdict.series not in firsts]
@@ -590,6 +663,7 @@ def attest(
         faces=verdicts,
         redactions=by_position,
         confirmed_blocks=blocks,
+        dose_choices=doses,
     )
     text = json.dumps(attestation_document(attestation), indent=2, ensure_ascii=True)
     try:
@@ -607,6 +681,18 @@ def _face_verdicts(faces: Mapping[int, Face]) -> tuple[FaceVerdict, ...]:
         raise QcPackError("faces must map a series' first run position to a Face")
     verdicts = [FaceVerdict(series, face) for series, face in faces.items()]
     return tuple(sorted(verdicts, key=lambda verdict: verdict.series))
+
+
+def _dose_choices(choices: Mapping[int, DoseChoice]) -> tuple[DoseChoiceVerdict, ...]:
+    """Return dose choices by RT Dose in run position order, after checking them."""
+    if not isinstance(choices, Mapping):
+        raise QcPackError(
+            "dose_choices must map an RT Dose's run position to a DoseChoice"
+        )
+    verdicts = [
+        DoseChoiceVerdict(position, choice) for position, choice in choices.items()
+    ]
+    return tuple(sorted(verdicts, key=lambda verdict: verdict.position))
 
 
 def _confirmed_blocks(confirmed: Iterable[int]) -> tuple[int, ...]:
@@ -688,6 +774,60 @@ def eye_checks(data: bytes) -> dict[int, EyeCheck]:
             raise malformed
         checks[positions[0]] = EyeCheck(
             digest, tuple(positions), not sheeted.isdisjoint(positions)
+        )
+    return checks
+
+
+@dataclasses.dataclass(frozen=True)
+class DoseCheck:
+    """A dose check that a QC pack lists, by its RT Dose's run position.
+
+    Attributes
+    ----------
+    check_sha256 : str
+        The digest of the RT Dose's source file and the face block, in
+        lower-case hexadecimal.
+    choice : ~pymedphys._dicom.deidentify.reasons.DoseChoice or None
+        The choice that the pack's run applied, if any.
+    """
+
+    check_sha256: str
+    choice: DoseChoice | None
+
+
+def dose_checks(data: bytes) -> dict[int, DoseCheck]:
+    """Return each dose check of the QC pack ``data``, by its RT Dose's run
+    position.
+
+    Raises
+    ------
+    QcPackError
+        If the pack's ``dose_checks`` are not of its format.
+    """
+    malformed = QcPackError("the QC pack is not of its format")
+    entries = json.loads(data.decode("ascii")).get("dose_checks")
+    if not isinstance(entries, list):
+        raise malformed
+    checks = {}
+    for entry in entries:
+        if not isinstance(entry, dict):
+            raise malformed
+        position, digest = entry.get("position"), entry.get("check_sha256")
+        choice = entry.get("choice")
+        positioned = (
+            isinstance(position, int)
+            and not isinstance(position, bool)
+            and position not in checks
+        )
+        digested = isinstance(digest, str) and _DIGEST.fullmatch(digest) is not None
+        if (
+            not positioned
+            or not digested
+            or choice not in (None, *(each.value for each in DoseChoice))
+        ):
+            raise malformed
+        checks[position] = DoseCheck(
+            digest, None if choice is None else DoseChoice(choice)
         )
     return checks
 
@@ -897,12 +1037,15 @@ def _attestation_from(content: bytes) -> Attestation:
             faces = document["faces"]
             redactions = document["redactions"]
             blocks = document["confirmed_blocks"]
+            doses = document["dose_choices"]
             if (
                 isinstance(coverage, dict)
                 and isinstance(releaser, dict)
-                and isinstance(faces, list)
-                and isinstance(redactions, list)
-                and isinstance(blocks, list)
+                and all(
+                    isinstance(each, list)
+                    for each in (faces, redactions, blocks, doses)
+                )
+                and all(isinstance(verdict, dict) for verdict in doses)
             ):
                 if set(releaser) - {"intended_use_checked", "residual_risk_accepted"}:
                     raise QcPackError("the attestation is not of its format")
@@ -923,6 +1066,12 @@ def _attestation_from(content: bytes) -> Attestation:
                     ),
                     redactions=tuple(map(_redaction_verdict_from, redactions)),
                     confirmed_blocks=tuple(blocks),
+                    dose_choices=tuple(
+                        DoseChoiceVerdict(
+                            verdict["position"], DoseChoice(verdict["choice"])
+                        )
+                        for verdict in doses
+                    ),
                 )
     # UnicodeError and QcPackError are ValueErrors; TypeError covers wrong
     # types and Coverage's unknown or missing fields.

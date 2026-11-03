@@ -581,7 +581,7 @@ def test_a_search_gives_entries_with_excerpts_and_omissions():
 @pytest.mark.deid_requirement("MIDI-BP-17")
 def test_the_document_holds_every_section():
     document = json.loads(qc_pack.to_json(_full_pack()))
-    assert document["format"] == qc_pack.FORMAT == "pymedphys-deid-qc-pack/30"
+    assert document["format"] == qc_pack.FORMAT == "pymedphys-deid-qc-pack/31"
     assert document["reference"] == REFERENCE
     assert document["reviewed_lists"] == {"salt": "5a" * 32, "sha256": "d" * 64}
     assert document["instances"] == [
@@ -664,6 +664,7 @@ def test_the_document_holds_every_section():
     ]
     assert document["series"] == [{"positions": [0]}]
     assert document["eye_checks"] == []
+    assert document["dose_checks"] == []
     assert list(document) == [
         "format",
         "reference",
@@ -679,6 +680,7 @@ def test_the_document_holds_every_section():
         "pixel_risks",
         "series",
         "eye_checks",
+        "dose_checks",
         "series_risks",
         "redactions",
         "previews",
@@ -1225,7 +1227,7 @@ def test_an_eye_check_lists_its_held_instances_and_its_block_digest():
     assert qc_pack.pack_document(pack)["eye_checks"] == [
         {"positions": [0, 1, 2], "block_sha256": _BLOCK_SHA256}
     ]
-    assert repr(pack).endswith("eye_checks=1)")
+    assert repr(pack).endswith("eye_checks=1, dose_checks=0)")
 
 
 @pytest.mark.parametrize(

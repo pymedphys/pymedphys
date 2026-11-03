@@ -40,10 +40,23 @@ values themselves, such as digests and codes, are those that
 from __future__ import annotations
 
 import json
-from collections.abc import Mapping, Sequence
 
 from .policy import UIDS
 from .release_report import FORMAT, STRUCTURAL_CHECKS
+from .release_report_markdown_values import (
+    ReleaseReportMarkdownError,
+    _boolean,
+    _code,
+    _count,
+    _digest_table,
+    _fields,
+    _list,
+    _members,
+    _optional,
+    _refuse,
+    _table,
+    _tally,
+)
 
 # The name of each field of a section, as a reader sees it, in the order of
 # the document.
@@ -126,13 +139,6 @@ _GATES = {
     "pixel_and_face": "Pixel and face review gate",
     "attestation": "Attestation gate",
 }
-
-
-class ReleaseReportMarkdownError(ValueError):
-    """The text is not a release report of this module's format.
-
-    The message names the field, never its value.
-    """
 
 
 def to_markdown(report: str) -> str:
@@ -360,7 +366,9 @@ def _qc_review(section: object) -> list[Block]:
 def _face_review(section: object) -> list[Block]:
     if section is None:
         return []
-    section = _fields("face_review", section, ("reference", "ct_series"))
+    section = _fields(
+        "face_review", section, ("reference", "ct_series", "rt_doses_in_face_block")
+    )
     series = _fields(
         "face_review ct_series",
         section["ct_series"],
@@ -421,6 +429,51 @@ def _face_review(section: object) -> list[Block]:
             "within the images, holds for review:"
         ],
         _table(("Reason", "Series"), rows) if rows else [_NONE],
+        *_doses_in_face_block(section["rt_doses_in_face_block"]),
+    ]
+
+
+def _doses_in_face_block(section: object) -> list[Block]:
+    field = "face_review rt_doses_in_face_block"
+    doses = _fields(
+        field,
+        section,
+        (
+            "held",
+            "released_as_written",
+            "held_as_written",
+            "released_set_to_zero",
+            "held_set_to_zero",
+        ),
+    )
+    rows = [
+        (_code(f"{field} {name}", output), what)
+        for name, what in (
+            ("released_as_written", "written as received"),
+            ("released_set_to_zero", "set to zero in the face block"),
+        )
+        for output in _list(f"{field} {name}", doses[name])
+    ]
+    return [
+        [
+            "RT Doses with more dose in a face block than the run sets to zero "
+            "there, which it writes as received and holds for review until a "
+            "reviewer chooses, for a later run, to have each written as "
+            "received, released only where the reviewer saw no recognisable "
+            "face in its own dose levels, or set to zero there anyway, "
+            "released only where a reviewer saw no recognisable face in a "
+            "later QC pack's dose levels of it so: held without a choice: "
+            + _tally(f"{field} held", doses["held"])
+            + "; held, written as received on a reviewer's choice: "
+            + _tally(f"{field} held_as_written", doses["held_as_written"])
+            + "; held, set to zero on a reviewer's choice: "
+            + _tally(f"{field} held_set_to_zero", doses["held_set_to_zero"])
+            + ". Each released on a reviewer's choice, by its output name; one "
+            "set to zero may have lost dose that matters for planning, such as "
+            "a target's that the structure set does not mark, and its "
+            "dose-volume histograms are those of the grid as received:"
+        ],
+        _table(("Output name", "Dose in the face block"), rows) if rows else [_NONE],
     ]
 
 
@@ -882,90 +935,3 @@ def _several_patients(section: object) -> list[Block]:
             ],
         ),
     ]
-
-
-def _table(header: Sequence[str], rows: Sequence[Sequence[str]]) -> Block:
-    def line(cells: Sequence[str]) -> str:
-        return "|" + "".join(f" {cell} |" if cell else " |" for cell in cells)
-
-    return [line(header), "|" + " --- |" * len(header), *(line(row) for row in rows)]
-
-
-def _digest_table(field: str, digests: object) -> Block:
-    if not isinstance(digests, dict):
-        raise _refuse(field)
-    return _table(
-        ("File", "SHA-256"),
-        [
-            (_code(field, name), _code(field, digest))
-            for name, digest in digests.items()
-        ],
-    )
-
-
-def _fields(
-    field: str, section: object, names: Mapping[str, object] | Sequence[str]
-) -> dict:
-    """Return the section, if it has exactly these fields, in this order."""
-    if not isinstance(section, dict) or list(section) != list(names):
-        raise ReleaseReportMarkdownError(
-            f"The fields of the release report's {field} are not those of {FORMAT}."
-        )
-    return section
-
-
-def _list(field: str, value: object) -> list:
-    if not isinstance(value, list):
-        raise _refuse(field)
-    return value
-
-
-def _code(field: str, value: object) -> str:
-    # An empty code span, or one with space at an end, would not show the
-    # value as it is.
-    if (
-        not isinstance(value, str)
-        or not value
-        or value != value.strip()
-        or any(c in value for c in "`|\n\r")
-    ):
-        raise _refuse(field)
-    return f"`{value}`"
-
-
-def _count(field: str, value: object) -> str:
-    if not isinstance(value, int) or isinstance(value, bool) or value < 1:
-        raise _refuse(field)
-    return f"`{value}`"
-
-
-def _tally(field: str, value: object) -> str:
-    if not isinstance(value, int) or isinstance(value, bool) or value < 0:
-        raise _refuse(field)
-    return f"`{value}`"
-
-
-def _boolean(field: str, value: object) -> str:
-    if not isinstance(value, bool):
-        raise _refuse(field)
-    return f"`{json.dumps(value)}`"
-
-
-def _optional(field: str, value: object, absent: str = "none") -> str:
-    return absent if value is None else _code(field, value)
-
-
-def _members(pairs: list[tuple[str, object]]) -> dict:
-    """Return a JSON object's members, refusing a member named twice."""
-    members = dict(pairs)
-    if len(members) != len(pairs):
-        raise ReleaseReportMarkdownError(
-            "The release report names a member twice in one object."
-        )
-    return members
-
-
-def _refuse(field: str) -> ReleaseReportMarkdownError:
-    return ReleaseReportMarkdownError(
-        f"The release report's {field} is not in the form of {FORMAT}."
-    )

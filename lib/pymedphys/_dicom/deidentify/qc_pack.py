@@ -75,6 +75,13 @@ A pack holds, for one run:
   was found from, by the run positions of its held instances, with the
   digest that binds a reviewer's confirmation of the block to the series'
   source files and the block, by which an attestation confirms it (D-050);
+  and ``dose_checks``: each RT Dose that the run released or held whose
+  dose in a defaced series' face block is more than the fraction that the
+  run sets to zero, with the digest that binds a reviewer's choice for it
+  to its source file and the block, the choice that the run applied, if
+  any, and the greatest dose there as a fraction of the grid's greatest,
+  by which an attestation chooses whether a later run writes it as
+  received or sets it to zero anyway (D-051);
 - ``redactions``: each released or held instance whose Pixel Data the
   Clean Pixel Data Option cleaned, with why it is held, its number of
   frames, its Rows and Columns, the regions blacked out in each frame,
@@ -135,6 +142,7 @@ import dataclasses
 import enum
 import hashlib
 import json
+import math
 import re
 import secrets
 from collections.abc import Collection, Iterable
@@ -143,7 +151,7 @@ from pathlib import PurePosixPath
 from . import pixel_risk, residuals, roi_names
 from .file_layout import TAG_PATTERN, ElementPath, Location
 from .iod_conformance import SourceGap
-from .reasons import PixelDataReason
+from .reasons import DoseChoice, PixelDataReason
 from .reference_graph import FindingKind
 from .run_written import REPORTED_ONLY
 from .written_references import WrittenFindingKind
@@ -157,7 +165,7 @@ from .reviewed_roi_names import Outcome
 from .text_detection import TextBox
 
 # The format of the pack document. A change to its fields takes a new label.
-FORMAT = "pymedphys-deid-qc-pack/30"
+FORMAT = "pymedphys-deid-qc-pack/31"
 # The bytes of a written file shown on each side of a residual's offset.
 EXCERPT_BYTES = 48
 # The SHA-256 that face_review.contour_data_sha256 gives a file without
@@ -1386,6 +1394,58 @@ class EyeCheckEntry:
 
 
 @dataclasses.dataclass(frozen=True)
+class DoseCheckEntry:
+    """An RT Dose with more dose in a defaced CT series' face block than the
+    fraction that a run sets to zero, which a reviewer may choose to have a
+    later run write as received or set to zero anyway (D-051).
+
+    An attestation chooses by its run position here, and
+    :attr:`check_sha256`, which
+    :func:`~pymedphys._dicom.deidentify.dose_defacing.dose_check_digest`
+    gives of its source file and the block, binds the choice to them.
+
+    Attributes
+    ----------
+    position : int
+        Its run position.
+    check_sha256 : str
+        The digest, in lower-case hexadecimal.
+    choice : DoseChoice or None
+        What the run did with it, as a reviewed pack's attestation chose,
+        or as that pack recorded: written as received, or set to zero in
+        the block; None where no choice applied, and the run wrote it as
+        received and held it. Written set to zero only for
+        :attr:`~.reasons.DoseChoice.SET_TO_ZERO`.
+    fraction : float
+        The greatest stored value in the region of the block that the run
+        sets to zero, as a fraction of the grid's greatest: more than 0,
+        and at most 1.
+    """
+
+    position: int
+    check_sha256: str
+    choice: DoseChoice | None
+    fraction: float
+
+    def __post_init__(self) -> None:
+        _check_position("a dose check", self.position)
+        if not isinstance(self.check_sha256, str) or not re.fullmatch(
+            "[0-9a-f]{64}", self.check_sha256
+        ):
+            raise QcPackError("a dose check needs its SHA-256")
+        if self.choice is not None and not isinstance(self.choice, DoseChoice):
+            raise QcPackError("a dose check's choice is a DoseChoice or None")
+        if (
+            not isinstance(self.fraction, float)
+            or not math.isfinite(self.fraction)
+            or not 0 < self.fraction <= 1
+        ):
+            raise QcPackError(
+                "a dose check's fraction is a number above 0 and at most 1"
+            )
+
+
+@dataclasses.dataclass(frozen=True)
 class SeveralPatientStudyEntry:
     """A study whose instances name several patients, which the run sequestered.
 
@@ -1533,6 +1593,9 @@ class QcPack:
         globes beside its eye ROIs (:attr:`PreviewKind.SERIES_EYES`), which
         shows only its instances' frames, and no such sheet shows any
         other's.
+    dose_checks : tuple of DoseCheckEntry
+        Each instance once, in run position order, each released or held
+        for review, and held where no choice applied.
     several_patient_studies : tuple of SeveralPatientStudyEntry
         In order of their first instance; each instance sequestered, and in
         at most one.
@@ -1557,7 +1620,9 @@ class QcPack:
         released nor held for review; or if a cleaned instance that is not
         listed as not previewed, or is listed only for its dose levels,
         lacks a redaction preview of each frame, in order, or a redaction
-        preview shows anything else; or if a study with several patients
+        preview shows anything else; or if an instance is listed twice as a
+        dose check, out of order, without its source's SHA-256, neither
+        released nor held for review, or released without a choice; or if a study with several patients
         names an instance that was not sequestered, or one that another
         such study names, or the studies are out of order.
     """
@@ -1580,6 +1645,7 @@ class QcPack:
     series: tuple[SeriesEntry, ...] = ()
     reviewed_lists: ListsDigest | None = None
     eye_checks: tuple[EyeCheckEntry, ...] = ()
+    dose_checks: tuple[DoseCheckEntry, ...] = ()
     several_patient_studies: tuple[SeveralPatientStudyEntry, ...] = ()
 
     def __post_init__(self) -> None:
@@ -1608,6 +1674,7 @@ class QcPack:
             "source_gaps": SourceGapEntry,
             "series": SeriesEntry,
             "eye_checks": EyeCheckEntry,
+            "dose_checks": DoseCheckEntry,
             "several_patient_studies": SeveralPatientStudyEntry,
         }
         for name, kind in sections.items():
@@ -1633,6 +1700,7 @@ class QcPack:
             "redactions",
             "not_previewed",
             "source_gaps",
+            "dose_checks",
         ):
             if any(entry.position >= positions for entry in getattr(self, name)):
                 raise QcPackError(f"{name} names a run position without an instance")
@@ -1647,7 +1715,13 @@ class QcPack:
         values = [retained.value for retained in self.retained_strings]
         if len(set(values)) != len(values):
             raise QcPackError("retained_strings must hold each value once")
-        for name in ("pixel_risks", "redactions", "not_previewed", "source_gaps"):
+        for name in (
+            "pixel_risks",
+            "redactions",
+            "not_previewed",
+            "source_gaps",
+            "dose_checks",
+        ):
             listed = [entry.position for entry in getattr(self, name)]
             if listed != sorted(set(listed)):
                 raise QcPackError(f"{name} must list each instance once, in order")
@@ -1662,6 +1736,29 @@ class QcPack:
                 "redactions names an instance that was neither released nor "
                 "held for review"
             )
+        self._check_dose_checks()
+
+    def _check_dose_checks(self) -> None:
+        """Each dose check is of an instance released or held for review,
+        with its source's SHA-256, and held where no choice applied."""
+        for entry in self.dose_checks:
+            instance = self.instances[entry.position]
+            if instance.disposition not in _REVIEWED:
+                raise QcPackError(
+                    "dose_checks names an instance that was neither released "
+                    "nor held for review"
+                )
+            if instance.source_sha256 is None:
+                raise QcPackError(
+                    "dose_checks names an instance without its source's SHA-256"
+                )
+            if (
+                entry.choice is None
+                and instance.disposition is not Disposition.HELD_FOR_REVIEW
+            ):
+                raise QcPackError(
+                    "dose_checks names an instance released without a choice"
+                )
 
     def _check_series(self) -> None:
         for name in ("series", "series_risks", "eye_checks"):
@@ -1940,7 +2037,8 @@ class QcPack:
             f"redactions={len(self.redactions)}, previews={len(self.previews)}, "
             f"not_previewed={len(self.not_previewed)}, "
             f"source_gaps={len(self.source_gaps)}, series={len(self.series)}, "
-            f"eye_checks={len(self.eye_checks)})"
+            f"eye_checks={len(self.eye_checks)}, "
+            f"dose_checks={len(self.dose_checks)})"
         )
 
 
@@ -2151,6 +2249,15 @@ def pack_document(pack: QcPack) -> dict:
         "eye_checks": [
             {"positions": list(entry.positions), "block_sha256": entry.block_sha256}
             for entry in pack.eye_checks
+        ],
+        "dose_checks": [
+            {
+                "position": entry.position,
+                "check_sha256": entry.check_sha256,
+                "choice": None if entry.choice is None else entry.choice.value,
+                "fraction": entry.fraction,
+            }
+            for entry in pack.dose_checks
         ],
         "series_risks": [
             {

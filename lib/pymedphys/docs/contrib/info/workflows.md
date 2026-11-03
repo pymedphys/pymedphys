@@ -235,8 +235,8 @@ Fast unit tests with smart matrix strategy.
     clients connect, so workers never release a port reservation during startup
   - JUnit XML report generation
 
-The `dependency-floors` job runs the unit tests (`-m "not slow"`, with the
-data cache) at the declared minimum versions of NumPy (2.0.2) and pandas
+The `dependency-floors` job runs the unit tests (`-m "not slow"`) at the
+declared minimum versions of NumPy (2.0.2) and pandas
 (2.2.2), alongside both the quick and full matrices. It runs on Ubuntu with
 Python 3.12, the only supported version with wheels for both: neither has any
 for Python 3.13 or later. It installs the same locked environment as the unit
@@ -252,8 +252,8 @@ report as `junit-dependency-floors-<part>`. A
 failure fails the unit-test workflow and therefore the required CI or release
 summary.
 
-The `dependency-floors` job and every cell of the unit-test matrix each run in
-two parts on two runners, since a slow runner could take the 30-minute limit
+Every cell of the unit-test matrix runs in two parts on two runners, since a
+slow runner could take the 30-minute limit
 (60 minutes on Windows) to run the whole suite at once. The `corpus-runs` part runs
 the modules listed in the workflow's `CORPUS_RUN_TESTS`, which run the
 synthetic collection through the engine and take about half the suite's time,
@@ -266,6 +266,17 @@ ID, so every part and cell of a job on one OS shares it, and a part that saved
 it without the data would leave the others re-downloading. Move a module
 between the parts when the `--durations` reports show one part taking much
 longer than the other.
+
+At the dependency floors, the corpus selection runs in two separate parts:
+`ct-defacing` runs `test_deidentify_ct_defacing_run.py`, and `corpus-runs`
+runs the other modules in `CORPUS_RUN_TESTS`. The `others` part ignores every
+listed module as before, so every test still runs in exactly one of the three
+parts. Each part retains the 30-minute job limit, two pytest workers and the
+900-second per-test limit. Missing listed modules, a CT-defacing module that
+is not in the corpus list, or an empty remaining corpus selection fail the
+job before pytest starts. Only `others` uses the data cache. All three JUnit
+reports must arrive and all three parts must pass; the required summary
+continues to depend on the whole reusable unit-test workflow.
 
 Each cell's parts upload their reports as `junit-py<python>-<part>-<os>`, such
 as `junit-py3.14-corpus-runs-ubuntu-latest`, which the release's

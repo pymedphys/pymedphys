@@ -44,6 +44,15 @@ run writes otherwise, such as a CT slice defaced since the reviewer saw it
 as received, or blacked out in other regions, or a structure set cut by a
 face block that the first run did not find.
 
+An RT Dose that the reviewed run held because it has too much dose in a
+defaced series' face block to set to zero there is likewise not covered by
+a verdict on its series, unless the attestation also chose to have it
+written as received (:class:`~.reasons.DoseChoice`), which makes the
+verdict one on its own dose-levels previews of it as received. The review
+gives each dose choice, the attestation's or else the one that the reviewed
+run applied, by the digest that binds it to the RT Dose's source file and
+the block (:attr:`FaceReview.dose_choices`).
+
 The verdicts are read by digest, never by path or run position, so the
 second run may discover the files in another order, or among others, which
 have no verdict.
@@ -60,7 +69,7 @@ import struct
 
 from pymedphys._imports import pydicom
 
-from .qc_attestation import Face, Outcome, attested_pack, eye_checks
+from .qc_attestation import Face, Outcome, attested_pack, dose_checks, eye_checks
 from .qc_pack import (
     GRID_KINDS,
     NO_CONTOURS_SHA256,
@@ -72,7 +81,7 @@ from .qc_pack import (
     pictured_frames,
 )
 from .qc_surfaces import RT_DOSE_STORAGE
-from .reasons import VisualFeaturesReason
+from .reasons import DoseChoice, VisualFeaturesReason
 from .uids import normalise_uid
 
 # Float Pixel Data (7FE0,0008), Double Float Pixel Data (7FE0,0009), and
@@ -118,7 +127,8 @@ class FaceReview:
         (:attr:`~.reasons.VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME`),
         by its frame, by naming none, or by a reference to a defaced slice,
         or held as an RT Dose with too much dose in that series' block to
-        set to zero (:attr:`~.reasons.VisualFeaturesReason.DOSE_IN_FACE_BLOCK`).
+        set to zero (:attr:`~.reasons.VisualFeaturesReason.DOSE_IN_FACE_BLOCK`)
+        where the attestation did not choose to have it written as received.
     present : frozenset of bytes
         Likewise, of each series marked :attr:`~.qc_attestation.Face.PRESENT`.
     absent_pixels : frozenset of (bytes, bytes)
@@ -152,6 +162,15 @@ class FaceReview:
         it of the series' source files and the block; a run given the
         review defaces such a series without holding it for its eyes where
         it finds a block of this digest. Empty by default.
+    dose_choices : frozenset of (bytes, DoseChoice, bool), optional
+        For each RT Dose that the reviewed pack lists with too much dose in a
+        face block to set to zero there, and for which the attestation gave a
+        choice, or else the reviewed run applied one: the digest that binds
+        the choice to its source file and the block, as
+        :func:`~pymedphys._dicom.deidentify.dose_defacing.dose_check_digest`
+        gives it, the choice, and whether the reviewed run wrote it set to
+        zero, so that its previews showed it so. Each digest once; none by
+        default.
     """
 
     reference: str
@@ -163,6 +182,7 @@ class FaceReview:
     absent_dose_frames: frozenset[tuple[bytes, bytes, int]] | None = None
     absent_grids: frozenset[tuple[bytes, bytes]] = frozenset()
     confirmed_blocks: frozenset[bytes] = frozenset()
+    dose_choices: frozenset[tuple[bytes, DoseChoice, bool]] = frozenset()
 
     def __post_init__(self) -> None:
         if not isinstance(self.reference, str) or not re.fullmatch(
@@ -203,13 +223,40 @@ class FaceReview:
                     "a face review's frames shown are counts of pixel data "
                     "marked absent"
                 )
+        if (
+            not isinstance(self.dose_choices, frozenset)
+            or not all(
+                isinstance(each, tuple)
+                and len(each) == 3
+                and isinstance(each[0], bytes)
+                and len(each[0]) == 32
+                and isinstance(each[1], DoseChoice)
+                and isinstance(each[2], bool)
+                for each in self.dose_choices
+            )
+            or len({each[0] for each in self.dose_choices}) != len(self.dose_choices)
+        ):
+            raise QcPackError(
+                "a face review's dose choices are a choice and whether it was "
+                "seen set to zero, for each dose check's SHA-256 once"
+            )
 
     def __repr__(self) -> str:
         return (
             f"FaceReview(reference={self.reference!r}, absent={len(self.absent)}, "
             f"present={len(self.present)}, "
-            f"confirmed_blocks={len(self.confirmed_blocks)})"
+            f"confirmed_blocks={len(self.confirmed_blocks)}, "
+            f"dose_choices={len(self.dose_choices)})"
         )
+
+    def dose_choice(self, check: bytes) -> tuple[DoseChoice, bool] | None:
+        """Return the choice for the RT Dose and block that a dose check's
+        digest names, with whether the reviewed run wrote it set to zero,
+        or None where the review gives none."""
+        for digest, choice, zeroed in self.dose_choices:
+            if digest == check:
+                return choice, zeroed
+        return None
 
     def hold_reason(  # pylint: disable = too-many-return-statements
         self,
@@ -303,8 +350,12 @@ def read_face_review(pack_directory: os.PathLike | str) -> FaceReview:
         the pack lists as held because the run defaced its frame, or as an
         RT Dose with too much dose in the face block to set to zero, is not
         taken as absent, since its verdict was on the defaced images beside
-        it; nor is one whose contours or deformation grids the pack could
-        not show, since its verdict was on none of them.
+        it, unless the attestation chose to have that RT Dose written as
+        received, when its verdict was on its own dose-levels previews of it
+        so; nor is one whose contours or deformation grids the pack could not show, since its
+        verdict was on none of them. Each RT Dose of the pack's
+        ``dose_checks`` has the attestation's dose choice, or else the one
+        that the pack's run applied, if any.
 
     Raises
     ------
@@ -316,15 +367,29 @@ def read_face_review(pack_directory: os.PathLike | str) -> FaceReview:
         attested; or if a verdict names a series that the pack does not
         list, or an instance's contours' or pixel data's SHA-256 has no
         preview that shows them, or a confirmed block names no eye check
-        of the pack with a sheet of its eyes. The message names no path and
-        no value.
+        of the pack with a sheet of its eyes, or a dose choice names no
+        dose check of the pack, or two dose checks share a digest. The
+        message names no path and no value.
     """
     attestation, data = attested_pack(pack_directory)
     if attestation.outcome is not Outcome.ATTESTED:
         raise QcPackError(
             "the QC pack's attestation rejected it, so its verdicts release nothing"
         )
-    files = _series_files(data)
+    doses = dose_checks(data)
+    chosen = {verdict.position: verdict.choice for verdict in attestation.dose_choices}
+    if not set(chosen) <= set(doses):
+        raise QcPackError("a dose choice names no dose check of the QC pack")
+    choices = {
+        position: chosen.get(position, check.choice)
+        for position, check in doses.items()
+    }
+    files = _series_files(
+        data,
+        frozenset(
+            p for p, choice in choices.items() if choice is DoseChoice.AS_WRITTEN
+        ),
+    )
     checks = eye_checks(data)
     if not all(
         first in checks and checks[first].sheet
@@ -375,6 +440,34 @@ def read_face_review(pack_directory: os.PathLike | str) -> FaceReview:
             bytes.fromhex(checks[first].block_sha256)
             for first in attestation.confirmed_blocks
         ),
+        dose_choices=_dose_choices(doses, choices),
+    )
+
+
+def _dose_choices(
+    doses: dict, choices: dict[int, DoseChoice | None]
+) -> frozenset[tuple[bytes, DoseChoice, bool]]:
+    """Each dose check's choice, by its digest, with whether the pack's run
+    wrote its RT Dose set to zero, which it did only on that choice.
+
+    Raises
+    ------
+    QcPackError
+        If two dose checks share a digest, which the same source file in
+        the same block would give, so that a choice could not tell them
+        apart.
+    """
+    digests = [check.check_sha256 for check in doses.values()]
+    if len(set(digests)) != len(digests):
+        raise QcPackError("two dose checks of the QC pack share a digest")
+    return frozenset(
+        (
+            bytes.fromhex(doses[position].check_sha256),
+            choice,
+            doses[position].choice is DoseChoice.SET_TO_ZERO,
+        )
+        for position, choice in choices.items()
+        if choice is not None
     )
 
 
@@ -400,8 +493,13 @@ DOSE_IN_FACE_BLOCK_TEXT = (
 )
 
 
-def _series_files(data: bytes) -> dict[int, frozenset[_File]]:
-    """Return each series' files, by the series' first run position."""
+def _series_files(
+    data: bytes, as_written: frozenset[int] = frozenset()
+) -> dict[int, frozenset[_File]]:
+    """Return each series' files, by the series' first run position, a verdict
+    of absent leaving out each file held as an RT Dose with too much dose in
+    a face block to set to zero there unless it is at a run position of
+    ``as_written``, chosen to be written as received."""
     malformed = QcPackError("the QC pack is not of its format")
     document = json.loads(data.decode("ascii"))  # attested_pack has parsed it
     instances = document.get("instances")
@@ -448,7 +546,7 @@ def _series_files(data: bytes) -> dict[int, frozenset[_File]]:
                 None if pixels is None else bytes.fromhex(pixels),
                 None if contours is None else bytes.fromhex(contours),
                 UNDEFACED_TEXT in reasons
-                or DOSE_IN_FACE_BLOCK_TEXT in reasons
+                or (DOSE_IN_FACE_BLOCK_TEXT in reasons and position not in as_written)
                 or position in unshown,
                 frames,
                 dose_frames,
