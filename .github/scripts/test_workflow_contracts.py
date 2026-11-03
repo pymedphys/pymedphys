@@ -441,9 +441,7 @@ class WorkflowContractTests(unittest.TestCase):
         floors, test = workflow["dependency-floors"], workflow["test"]
         self.assertIn("        part: [ct-defacing, corpus-runs, others]\n", floors)
         self.assertIn("    timeout-minutes: 30\n", floors)
-        ct_defacing = re.search(
-            r"(?m)^      CT_DEFACING_RUN_TEST: (\S+)$", floors
-        )[1]
+        ct_defacing = re.search(r"(?m)^      CT_DEFACING_RUN_TEST: (\S+)$", floors)[1]
         self.assertEqual(listed.split().count(ct_defacing), 1)
         # Every cell runs in one job for each part, which the combined
         # report joins; no cell runs whole.
@@ -489,7 +487,7 @@ class WorkflowContractTests(unittest.TestCase):
             '              ct-defacing) selection=("${CT_DEFACING_RUN_TEST}") ;;\n',
             '                  if [[ "${path}" != "${CT_DEFACING_RUN_TEST}" ]]; then\n',
             '                    selection+=("${path}")\n',
-            '                if [[ ${#selection[@]} -eq 0 ]]; then\n',
+            "                if [[ ${#selection[@]} -eq 0 ]]; then\n",
             '                  echo "::error::The remaining corpus part must not be empty."\n',
         ):
             with self.subTest(floor_selection=line):
