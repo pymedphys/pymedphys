@@ -1,3 +1,17 @@
+# Copyright (C) 2026 Guopei Zhu
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
 # Tests for pymedphys._constraints.head_neck_dvh
 # Shanghai Ninth People's Hospital Head & Neck RT Series
 #
@@ -79,14 +93,14 @@ class TestConstraints:
 
     def test_brainstem_sbrt_5fx(self):
         c = HEAD_NECK_CONSTRAINTS["brainstem"]
-        assert c["sbrt_5fx"]["d0_03cc"] == 31.0  # UK SABR 2022 Table 6
+        assert c["sbrt_5fx"]["d0_035cc"] == 31.0  # UK SABR 2022 Table 6
 
     def test_spinal_cord_sbrt_uk_sabr_values(self):
         """SBRT cord limits match UK SABR 2022 (PMID:35272913) Table 5."""
         c = HEAD_NECK_CONSTRAINTS["spinal_cord"]
-        assert c["sbrt_1fx"]["d0_03cc"] == 14.0
-        assert c["sbrt_3fx"]["d0_03cc"] == 20.3
-        assert c["sbrt_5fx"]["d0_03cc"] == 25.3
+        assert c["sbrt_1fx"]["d0_035cc"] == 14.0
+        assert c["sbrt_3fx"]["d0_035cc"] == 20.3
+        assert c["sbrt_5fx"]["d0_035cc"] == 25.3
         assert "UK SABR 2022" in c["source"]
 
     def test_parotid_mean(self):
@@ -98,7 +112,7 @@ class TestConstraints:
             assert "source" in c, f"{name} missing source"
 
     def test_brachial_plexus_sbrt_limits_present(self):
-        """TG-101 Table III max point dose (brachial plexus <3 cc)."""
+        """TG-101 Table III maximum point dose (defined as 0.035 cc or less)."""
         bp = HEAD_NECK_CONSTRAINTS["brachial_plexus"]
         assert bp["sbrt_1fx"]["dmax"] == 17.5
         assert bp["sbrt_3fx"]["dmax"] == 24.0
@@ -144,10 +158,10 @@ class TestSBRTModalityLimits:
         assert r["overall"] == "not_evaluated"
 
         # ... but the 1-fx limit exists (UK SABR 2022 Table 6: 1.5 Gy, D0.035cc)
-        assert lens["sbrt_1fx"]["d0_03cc"] == 1.5
-        r_ok = check_constraint("lens", Modality.SBRT_1FX, {"d0_03cc": 1.2})
+        assert lens["sbrt_1fx"]["d0_035cc"] == 1.5
+        r_ok = check_constraint("lens", Modality.SBRT_1FX, {"d0_035cc": 1.2})
         assert r_ok["overall"] == "pass"
-        r_over = check_constraint("lens", Modality.SBRT_1FX, {"d0_03cc": 2.0})
+        r_over = check_constraint("lens", Modality.SBRT_1FX, {"d0_035cc": 2.0})
         assert r_over["overall"] == "hard_fail"
 
     def test_brachial_plexus_sbrt_1fx_checked_against_tg101(self):
@@ -383,3 +397,67 @@ class TestViolationLevels:
             "parotid_contralateral", Modality.CONVENTIONAL, {"dmean": 34.0}
         )
         assert r["overall"] == "hard_fail"
+
+
+class TestSourceApplicability:
+    """Source conditions must travel with the limit (round-2 review P2s)."""
+
+    def test_spinal_cord_required_structure_mapping(self):
+        """Each cord modality declares which structure must be measured."""
+        cord = HEAD_NECK_CONSTRAINTS["spinal_cord"]
+        mapping = cord["required_structure"]
+        for modality in Modality:
+            assert modality.value in mapping
+        assert "anatomical cord" in mapping["conventional"]
+        # UK SABR 2022 Table 5: cord PRV for spinal targets, bony canal
+        # for non-spinal targets
+        for key in ("sbrt_1fx", "sbrt_3fx", "sbrt_5fx"):
+            assert "cord PRV" in mapping[key]
+            assert "bony canal" in mapping[key]
+        # the required structure is reported in the check result
+        r = check_constraint("spinal_cord", Modality.SBRT_5FX, {"d0_035cc": 24.0})
+        assert "cord PRV" in r["structure"]
+        r2 = check_constraint("spinal_cord", Modality.CONVENTIONAL, {"dmax": 43.0})
+        assert "anatomical cord" in r2["structure"]
+
+    def test_uk_metric_key_is_d0_035cc(self):
+        """The UK-cited rows request D0.035 cc, not D0.03 cc (P2)."""
+        for name, constraint in HEAD_NECK_CONSTRAINTS.items():
+            for key, value in constraint.items():
+                if isinstance(value, dict):
+                    assert "d0_03cc" not in value, f"{name}.{key} uses d0_03cc"
+        # a source-compliant D0.035 cc measurement is evaluated
+        r = check_constraint("spinal_cord", Modality.SBRT_5FX, {"d0_035cc": 25.2})
+        assert r["overall"] == "pass"  # 25.2 <= 25.3
+        r2 = check_constraint("spinal_cord", Modality.SBRT_5FX, {"d0_035cc": 25.4})
+        assert r2["overall"] == "hard_fail"  # 25.4 > 25.3
+        assert r2["violations"][0]["limit"] == 25.3
+
+    def test_parotid_pair_none_for_sbrt(self):
+        """QUANTEC physical-dose rule applies to conventional fx only (P2)."""
+        for modality in (Modality.SBRT_1FX, Modality.SBRT_3FX, Modality.SBRT_5FX):
+            r = check_plan(
+                modality,
+                {
+                    "parotid_contralateral": {"dmean": 19.0},
+                    "parotid_ipsilateral": {"dmean": 19.0},
+                },
+            )
+            assert r["parotid_pair_quantec"] is None, modality
+
+    def test_screen_reirradiation_rejects_bad_inputs(self):
+        """Non-finite / negative / non-integral inputs raise ValueError."""
+        with pytest.raises(ValueError):
+            screen_reirradiation(-60, 30, 1)  # negative prior dose
+        with pytest.raises(ValueError):
+            screen_reirradiation(0, 30, 1)  # non-positive prior dose
+        with pytest.raises(ValueError):
+            screen_reirradiation(60, 0, 1)  # non-positive fraction count
+        with pytest.raises(ValueError):
+            screen_reirradiation(60, 30.5, 1)  # non-integral fraction count
+        with pytest.raises(ValueError):
+            screen_reirradiation(60, 30, -1)  # negative time gap
+        with pytest.raises(ValueError):
+            screen_reirradiation(float("nan"), 30, 1)  # non-finite dose
+        # valid input still works
+        assert len(screen_reirradiation(60, 30, 1)) >= 1

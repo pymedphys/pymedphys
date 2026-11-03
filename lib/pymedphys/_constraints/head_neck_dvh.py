@@ -1,3 +1,5 @@
+# Copyright (C) 2026 Guopei Zhu
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -9,13 +11,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-#
-# Head & Neck DVH constraint library.
-# Each limit carries its own source in HEAD_NECK_CONSTRAINTS: published
-# values name the publication and table where available; values without a
-# published source are labelled as departmental planning targets.
-# Clinical source: Shanghai Ninth People's Hospital Head & Neck RT Series
-# GitHub: https://github.com/antica1
+
+"""Head & Neck DVH constraint library.
+
+Each limit carries its own source in HEAD_NECK_CONSTRAINTS: published
+values name the publication and table where available; values without a
+published source are labelled as departmental planning targets.
+Clinical source: Shanghai Ninth People's Hospital Head & Neck RT Series
+GitHub: https://github.com/antica1
+"""
 
 import math
 from enum import Enum
@@ -48,40 +52,46 @@ HEAD_NECK_CONSTRAINTS: dict[str, dict] = {
     "spinal_cord": {
         "level": "hard",
         "conventional": {"dmax": 45.0, "unit": "Gy"},
-        "sbrt_1fx": {"d0_03cc": 14.0},
-        "sbrt_3fx": {"d0_03cc": 20.3},
-        "sbrt_5fx": {"d0_03cc": 25.3},
+        "sbrt_1fx": {"d0_035cc": 14.0},
+        "sbrt_3fx": {"d0_035cc": 20.3},
+        "sbrt_5fx": {"d0_035cc": 25.3},
         "source": "conventional 45 Gy: departmental hard limit (risk data: QUANTEC 2010, Kirkpatrick - Dmax 50 Gy at 2 Gy/fx ~0.2% myelopathy); SBRT 14/20.3/25.3 Gy: UK SABR 2022 (PMID:35272913) Table 5, D0.035 cc",
         "note": "Animal model extrapolation for the conventional limit; the SBRT numbers are consensus tolerance doses for D0.035 cc.",
+        "required_structure": {
+            "conventional": "spinal cord (anatomical cord, full cross-section)",
+            "sbrt_1fx": "cord PRV (spinal targets) or bony canal (non-spinal targets)",
+            "sbrt_3fx": "cord PRV (spinal targets) or bony canal (non-spinal targets)",
+            "sbrt_5fx": "cord PRV (spinal targets) or bony canal (non-spinal targets)",
+        },
     },
     "brainstem": {
         "level": "hard",
         "conventional": {"dmax": 54.0, "unit": "Gy"},
-        "sbrt_1fx": {"d0_03cc": 15.0},
-        "sbrt_3fx": {"d0_03cc": 23.1},
-        "sbrt_5fx": {"d0_03cc": 31.0},
+        "sbrt_1fx": {"d0_035cc": 15.0},
+        "sbrt_3fx": {"d0_035cc": 23.1},
+        "sbrt_5fx": {"d0_035cc": 31.0},
         "source": "conventional 54 Gy: QUANTEC 2010 (Dmax <54 Gy); SBRT 15/23.1/31 Gy: UK SABR 2022 (PMID:35272913) Table 6, D0.035 cc",
     },
     "optic_chiasm": {
         "level": "hard",
         "conventional": {"dmax": 54.0, "unit": "Gy"},
-        "sbrt_1fx": {"d0_03cc": 10.0},
-        "sbrt_3fx": {"d0_03cc": 20.0},
-        "sbrt_5fx": {"d0_03cc": 25.0},
+        "sbrt_1fx": {"d0_035cc": 10.0},
+        "sbrt_3fx": {"d0_035cc": 20.0},
+        "sbrt_5fx": {"d0_035cc": 25.0},
         "source": "conventional 54 Gy: departmental limit (QUANTEC 2010 gives Dmax <55 Gy); SBRT 10/20/25 Gy: UK SABR 2022 (PMID:35272913) Table 6, D0.035 cc",
     },
     "optic_nerve": {
         "level": "hard",
         "conventional": {"dmax": 54.0, "unit": "Gy"},
-        "sbrt_1fx": {"d0_03cc": 10.0},
-        "sbrt_3fx": {"d0_03cc": 20.0},
-        "sbrt_5fx": {"d0_03cc": 25.0},
+        "sbrt_1fx": {"d0_035cc": 10.0},
+        "sbrt_3fx": {"d0_035cc": 20.0},
+        "sbrt_5fx": {"d0_035cc": 25.0},
         "source": "conventional 54 Gy: departmental limit (QUANTEC 2010 gives Dmax <55 Gy); SBRT 10/20/25 Gy: UK SABR 2022 (PMID:35272913) Table 6, D0.035 cc",
     },
     "lens": {
         "level": "hard",
         "conventional": {"dmax": 10.0, "unit": "Gy"},
-        "sbrt_1fx": {"d0_03cc": 1.5},
+        "sbrt_1fx": {"d0_035cc": 1.5},
         "source": "conventional 10 Gy: institutional H&N protocol (lens tolerance literature; the QUANTEC 2010 supplement has no lens review). SBRT 1 fx 1.5 Gy: UK SABR 2022 (PMID:35272913) Table 6, D0.035 cc",
     },
     # --- Soft constraints ---
@@ -123,7 +133,7 @@ HEAD_NECK_CONSTRAINTS: dict[str, dict] = {
         "sbrt_1fx": {"dmax": 17.5},
         "sbrt_3fx": {"dmax": 24.0},
         "sbrt_5fx": {"dmax": 30.5},
-        "source": "conventional 66 Gy: RTOG H&N protocols (60-66 Gy); SBRT 17.5/24/30.5 Gy: AAPM TG-101 2010 Table III, maximum point dose (<3 cc)",
+        "source": "conventional 66 Gy: RTOG H&N protocols (60-66 Gy); SBRT 17.5/24/30.5 Gy: AAPM TG-101 2010 Table III, maximum point dose (defined as 0.035 cc or less; Table III lists a separate 3 cc criterion)",
     },
     "oral_cavity": {
         "level": "soft",
@@ -294,7 +304,9 @@ def check_constraint(
     -------
     dict
         With keys ``oar``, ``level``, ``violations``, ``overall`` and
-        ``source``; ``missing`` is added when a required metric was absent
+        ``source``; ``structure`` is added when the cited source prescribes
+        which anatomical structure must be measured (e.g. cord PRV vs
+        bony canal); ``missing`` is added when a required metric was absent
         or invalid, and ``reason``/``error`` for not-evaluated/unknown OARs.
         ``overall`` is one of:
 
@@ -387,6 +399,9 @@ def check_constraint(
         "overall": overall,
         "source": constraint["source"],
     }
+    structure = constraint.get("required_structure", {}).get(modality.value)
+    if structure is not None:
+        result["structure"] = structure
     if missing:
         result["missing"] = missing
     return result
@@ -394,6 +409,10 @@ def check_constraint(
 
 def _check_parotid_pair_quantec(metrics: dict[str, dict[str, float]]) -> dict | None:
     """QUANTEC paired-gland parotid rule (Deasy et al., IJROBP 2010;76(3 Suppl):S58-63, PMID 20171519).
+
+    Meaningful only for conventional fractionation (QUANTEC derived the
+    physical-dose rule at ~1.8-2 Gy/fx); check_plan calls this for
+    Modality.CONVENTIONAL only and returns None for SBRT modalities.
 
     At least one parotid gland spared to mean <20 Gy, OR both glands spared
     to mean <25 Gy, usually avoids severe long-term xerostomia. Applied
@@ -451,8 +470,10 @@ def check_plan(
         per-OAR results; ``incomplete`` collects missing/invalid metrics,
         unknown OARs and modalities with no defined limit.
         ``parotid_pair_quantec`` reports the QUANTEC paired-gland rule when
-        both parotids are supplied (informational; it does not change
-        ``plan_pass``).
+        both parotids are supplied under CONVENTIONAL fractionation
+        (informational; it does not change ``plan_pass``). It is None for
+        SBRT modalities - the QUANTEC physical-dose rule is derived from
+        conventional ~1.8-2 Gy/fx - and when both glands are not supplied.
 
     Raises
     ------
@@ -507,7 +528,11 @@ def check_plan(
         "near_limits": near_limits,
         "incomplete": incomplete,
         "all_results": results,
-        "parotid_pair_quantec": _check_parotid_pair_quantec(metrics),
+        "parotid_pair_quantec": (
+            _check_parotid_pair_quantec(metrics)
+            if modality == Modality.CONVENTIONAL
+            else None
+        ),
         "modality": modality.value,
     }
 
@@ -589,6 +614,13 @@ def screen_reirradiation(
         ``screening_threshold_eqd2``, ``below_screening_threshold`` and
         ``evidence``.
 
+    Raises
+    ------
+    ValueError
+        If the prior dose or time gap is not finite, the prior dose is not
+        positive, the gap is negative, or the fraction count is not a
+        positive whole number.
+
     Notes
     -----
     Scope and documented assumptions - the output is an estimate, not a
@@ -614,6 +646,25 @@ def screen_reirradiation(
       Callers computing their own totals can override via
       cumulative_bed(alpha_beta=...).
     """
+    if not _is_valid_number(prior_dose) or prior_dose <= 0:
+        raise ValueError(
+            f"prior_dose must be a finite positive number of Gy, got {prior_dose!r}"
+        )
+    if not _is_valid_number(gap_years) or gap_years < 0:
+        raise ValueError(
+            f"gap_years must be a finite non-negative number of years, got {gap_years!r}"
+        )
+    if (
+        isinstance(prior_fractions, bool)
+        or not _is_valid_number(prior_fractions)
+        or prior_fractions <= 0
+        or prior_fractions != int(prior_fractions)
+    ):
+        raise ValueError(
+            f"prior_fractions must be a positive whole number, got {prior_fractions!r}"
+        )
+    prior_fractions = int(prior_fractions)
+
     residual_bed = cumulative_bed(
         [(prior_dose / prior_fractions, prior_fractions, 1.0)],
         gap_years,
