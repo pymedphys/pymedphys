@@ -555,7 +555,9 @@ def test_a_dose_beside_a_series_of_phases_takes_its_block():
     blocks = find_dose_blocks(records, lambda p: data[p], outcomes)
 
     assert len(blocks) == 1
-    dose = next(iter(blocks.values()))
+    region = next(iter(blocks.values()))
+    assert len(region.blocks) == 1
+    (dose,) = region.blocks
     assert dose.block == outcomes[files.SERIES].block
     # One kept slice for each position that the block reaches.
     alone = kept_slices(dose.block, range(len(first)), lambda p: first[p])
