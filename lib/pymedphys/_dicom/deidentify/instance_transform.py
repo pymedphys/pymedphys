@@ -2000,9 +2000,7 @@ class InstanceTransform:
                 if undefaced is None
                 else HeldVisualFeatures(undefaced)
             )
-            if frame is None and self._unconfirmed(
-                record, dose if dose is not None else region
-            ):
+            if frame is None and self._unconfirmed(record, cleaned_in):
                 frame = HeldVisualFeatures(VisualFeaturesReason.EYES_DISAGREE_WITH_ROIS)
             if defacing is not None and defacing.eyes is EyeCheck.DISAGREE:
                 assert defacing.block_sha256 is not None
