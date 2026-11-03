@@ -29,7 +29,7 @@ where that dose is too great
 (:mod:`~pymedphys._dicom.deidentify.dose_defacing`), and cuts an RT
 Structure Set's contours in each defaced frame by that frame's blocks
 (:mod:`~pymedphys._dicom.deidentify.region_defacing`). This module runs the
-same code on a directory of DICOM files, such as the CT Image series, RT
+same code on a directory of DICOM files, such as the CT series, RT
 Structure Sets, RT Plans, and RT Doses that a planning system exports
 (:func:`check_dicom`), and counts what a run would do and how the block
 that it finds compares with the planners' own eye ROIs and targets. It
@@ -46,25 +46,36 @@ and the records and the files are given to
 :func:`~pymedphys._dicom.deidentify.face_blocks.find_face_blocks` and
 :func:`~pymedphys._dicom.deidentify.dose_defacing.find_dose_blocks` as a run
 gives them. A file that changes once read is given as one that can no
-longer be read, as a run gives it. Of each series of CT Image instances
-(:class:`SeriesMeasures`), it measures:
+longer be read, as a run gives it. Of each series of CT instances, of CT
+Image, Enhanced CT Image, or Legacy Converted Enhanced CT Image
+(:data:`~pymedphys._dicom.deidentify.face_blocks.CT_IODS`), as a run
+defaces each (:class:`SeriesMeasures`), it measures:
 
 - the finder's outcome, by the reason that a run counts in its release
   report, and whether a run without a reviewer's confirmation of its block
   holds it for its eyes;
-- how its slices are stored, their spacings, and whether at least 1% of its
-  voxels are at -900 Hounsfield units or below, as a head CT's are;
+- how its slices, or a multi-frame instance's frames, are stored, their
+  spacings, and whether at least 1% of its voxels are at -900 Hounsfield
+  units or below, as a head CT's are;
+- how many phases a run parts its slices into, such as the time points of
+  a 4D CT (:func:`~pymedphys._dicom.deidentify.phases.split`), how many of
+  them find no eyes, and, where two or more find a block, whether or not
+  they agree, how far one globe's centre lies from itself between two
+  phases (:func:`globe_spread`), which a run compares with
+  :data:`~pymedphys._dicom.deidentify.face_blocks.PHASE_REACH`;
 - for a series with a block, whether defaced or held: each eye ROI that a
   run checks against the globes found, in the structure sets that it
   searches for the series (``_is_eye`` and ``_searched`` in
-  :mod:`~pymedphys._dicom.deidentify.face_blocks`): the distance from the
+  :mod:`~pymedphys._dicom.deidentify.face_blocks`), against the globes of
+  the phase that its farthest point lies farthest from, as a run holds a
+  series for an eye far from any phase's globes: the distance from the
   globe on the side that its name gives, or for a name that gives none from
   the nearer globe to each of its contours, to the centroid of its closed
   planar contours, weighted by their areas (:func:`centroid`); whether it is
-  nearer the other side's globe; the distance from its farthest point to
-  the nearer globe, which a run compares with
+  nearer the other side's globe, of any phase; the distance from its
+  farthest point to the nearer globe, which a run compares with
   :data:`~pymedphys._dicom.deidentify.face_blocks.EYE_REACH`; and the height
-  of its lowest point above the block's inferior limit;
+  of its lowest point above the series' block's inferior limit;
 - for a series with a block, whether the run defaces it around a target,
   and each target of those structure sets, an ROI of RT ROI Interpreted
   Type PTV, CTV, or GTV, by whether the run keeps it in the block, holds
@@ -123,28 +134,32 @@ from .dose_defacing import (
     structure_set_regions,
 )
 from .face_blocks import (
-    CT_IMAGE,
+    CT_IODS,
     PET_IMAGE,
+    PHASE_REACH,
     RT_STRUCTURE_SET,
     Defaced,
     EyeCheck,
     SeriesDefacing,
+    _described,
+    _distinct,
     _FARTHEST,
+    _Found,
+    _hounsfield,
     _hull_reaches,
     _is_eye,
+    _outcomes,
     _roi_frames,
     _searched,
-    _series_outcome,
     _spread,
-    _stack,
     _target_fates,
     _TargetFates,
     _targets,
     _tied_frames,
     find_defaced,
-    find_face_blocks,
     frames_of,
 )
+from .face_blocks import _stored as _stored_frames
 from .face_review import PIXEL_DATA_TAGS
 from .face_validation import (
     EYE_REACH,
@@ -163,11 +178,13 @@ from .face_validation import (
     _software,
     crash_site,
 )
+from .phases import COINCIDENT
 from .pixel_cleaning import (
     FrameMask,
     PixelDataRefused,
     black_out,
     decoded_stored_values,
+    frames_layout,
 )
 from .reasons import VisualFeaturesReason
 from .references import InstanceRecord
@@ -176,7 +193,7 @@ from .run_discovery import RunError, discover
 from .source import NATIVE_TRANSFER_SYNTAXES, SourceRefused, read_source
 from .uids import normalise_uid
 
-FORMAT = "pymedphys-deid-face-validation-dicom/5"
+FORMAT = "pymedphys-deid-face-validation-dicom/6"
 RT_PLAN = "RT Plan"
 CLOSED = frozenset({"CLOSED_PLANAR", "CLOSEDPLANAR_XOR"})
 # The defined terms of RT ROI Interpreted Type (PS3.3 C.8.8.8): any other
@@ -213,6 +230,13 @@ INTERPRETED_TYPES = frozenset(
 )
 TARGET_CLEARANCE = Bins("mm", (0.0, 2.0, 5.0, 10.0, 20.0, 30.0, 50.0, 100.0))
 DOSE_SHARE = Bins("fraction", (0.0, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5))
+# The phases that a series' slices are parted into, and how far one globe's
+# centre lies from itself between two phases, with an edge at
+# face_blocks.PHASE_REACH, the most that a run accepts.
+PHASE_COUNT = Bins("phases", (1, 2, 3, 4, 5, 6, 8, 10, 11, 16, 21))
+GLOBE_SPREAD = Bins(
+    "mm", (0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 10.0, 12.0, 15.0, 20.0, 30.0)
+)
 # The sides that an eye ROI's name may give, the patient's right first, as
 # a block's globes are.
 SIDES = ("right", "left")
@@ -275,7 +299,7 @@ class SeriesMeasures:
         ``"defaced"``, or the reason that a run counts for a series that it
         does not deface, such as ``"no-eyes"`` or ``"target-in-block"``.
     storage : str
-        How its first slice is stored, such as ``"native 16/12 signed"``,
+        How its first instance is stored, such as ``"native 16/12 signed"``,
         or ``"unreadable"``.
     pixel_spacing, slice_spacing : float or None
         The larger spacing within its first slice, and the median distance
@@ -302,6 +326,21 @@ class SeriesMeasures:
     clearances : tuple of float
         For a series with a block, the clearance from it of each target in
         its frame, or naming none, that does not reach it, in millimetres.
+    phases : int or None
+        How many phases a run parts its slices into
+        (:func:`~pymedphys._dicom.deidentify.phases.split`), one for a
+        series without repeated positions; None where a run stops before
+        parting them, as for a series that cannot be read.
+    phases_without_eyes : int
+        How many phases of a series of several find no eyes, of those
+        searched before the finder stopped; a series of one phase that finds
+        none is counted by its outcome.
+    globe_spread : float or None
+        For a series of phases of which at least two find a block, whether
+        they agree or not, the greatest distance between one globe's centres
+        in two of those blocks, in millimetres, which a run compares with
+        :data:`~pymedphys._dicom.deidentify.face_blocks.PHASE_REACH`; None
+        otherwise.
     """
 
     outcome: str
@@ -315,6 +354,9 @@ class SeriesMeasures:
     eyes: tuple[EyeMeasures, ...] = ()
     targets: Mapping[str, int] = dataclasses.field(default_factory=dict)
     clearances: tuple[float, ...] = ()
+    phases: int | None = None
+    phases_without_eyes: int = 0
+    globe_spread: float | None = None
 
     def __repr__(self) -> str:
         return "SeriesMeasures()"
@@ -382,8 +424,8 @@ class DicomMeasures:
     iods : mapping of str to int
         The files read, by IOD, ``"unknown"`` for one of no supported IOD.
     ct_without_series : int
-        CT Image instances without a Series Instance UID, which a run does
-        not deface.
+        CT instances, of :data:`~.face_blocks.CT_IODS`, without a Series
+        Instance UID, which a run does not deface.
     series : tuple of SeriesMeasures
     doses, structure_sets : tuple
         Each RT Dose with pixel data, and each RT Structure Set, that a run
@@ -464,7 +506,7 @@ def measure_dicom(directory: os.PathLike[str] | str) -> DicomMeasures:
     Raises
     ------
     FaceValidationRefused
-        Where the directory cannot be listed, or holds no CT Image series.
+        Where the directory cannot be listed, or holds no series of CT instances.
         The message names no path.
     """
     try:
@@ -497,8 +539,9 @@ def measure_dicom(directory: os.PathLike[str] | str) -> DicomMeasures:
                 not_read += 1
         series = _series_positions(records)
         if not series:
-            raise FaceValidationRefused("The directory holds no CT Image series.")
-        outcomes = find_face_blocks(records, read, sheets=False)
+            raise FaceValidationRefused("The directory holds no CT series.")
+        found_series = _outcomes(records, read, sheets=False)
+        outcomes = {uid: outcome for uid, (outcome, _) in found_series.items()}
         defaced = find_defaced(records, outcomes)
         dose_blocks = find_dose_blocks(
             records, read, outcomes, (RT_DOSE, RT_STRUCTURE_SET, PET_IMAGE)
@@ -507,7 +550,7 @@ def measure_dicom(directory: os.PathLike[str] | str) -> DicomMeasures:
         for uid, positions in series.items():
             try:
                 measured.append(
-                    _measure_series(records, read, positions, outcomes[uid])
+                    _measure_series(records, read, positions, *found_series[uid])
                 )
             # Anything else that a series raises is counted, by where; its
             # message, which could quote a value, is dropped.
@@ -542,7 +585,7 @@ def measure_dicom(directory: os.PathLike[str] | str) -> DicomMeasures:
         ),
         iods=_counted(record.iod or "unknown" for record in records.values()),
         ct_without_series=sum(
-            record.iod == CT_IMAGE and record.series is None
+            record.iod in CT_IODS and record.series is None
             for record in records.values()
         ),
         series=tuple(measured),
@@ -557,11 +600,12 @@ def measure_dicom(directory: os.PathLike[str] | str) -> DicomMeasures:
 
 
 def _series_positions(records: Mapping[int, InstanceRecord]) -> dict[str, list[int]]:
-    """The run positions of each series of CT Image instances, by its Series
-    Instance UID, as :func:`~.face_blocks.find_face_blocks` groups them."""
+    """The run positions of each series of CT instances, of
+    :data:`~.face_blocks.CT_IODS`, by its Series Instance UID, as
+    :func:`~.face_blocks.find_face_blocks` groups them."""
     series: dict[str, list[int]] = collections.defaultdict(list)
     for position, record in sorted(records.items()):
-        if record.iod == CT_IMAGE and record.series is not None:
+        if record.iod in CT_IODS and record.series is not None:
             series[record.series].append(position)
     return dict(series)
 
@@ -571,16 +615,13 @@ def _measure_series(
     read: Callable[[int], bytes | None],
     positions: list[int],
     outcome: SeriesDefacing,
+    found: _Found,
 ) -> SeriesMeasures:
-    """Measure one CT series, given its outcome in a run."""
-    block, frame = outcome.block, outcome.frame
-    stack = None
-    if outcome.block is None and outcome.held:
-        # The block of a series held for a target is dropped from its
-        # outcome, so it is found again, as the run found it, for the holds
-        # to be measured against.
-        found, frame, stack = _series_outcome(positions, read)
-        block = found.block
+    """Measure one CT series, given its outcome in a run and what the run
+    found of it before its holds."""
+    # A held series' block is dropped from its outcome, so it is taken from
+    # what the run found, for the holds to be measured against.
+    block, frame = found.outcome.block, found.frame
     if frame is None:
         frame = normalise_uid(str(records[positions[0]].frame_of_reference or ""))
     storage = _stored(positions, read)
@@ -609,12 +650,14 @@ def _measure_series(
         **storage,
         "eye_rois": len(eyes),
         "around_targets": outcome.targets.in_block,
+        "phases": found.phases,
+        "phases_without_eyes": found.eyeless,
+        "globe_spread": globe_spread(found.blocks),
         "eyes_unconfirmed": outcome.eyes is EyeCheck.DISAGREE,
     }
     if block is not None:
-        fates = _target_fates(
-            block, stack if stack is not None else _stack(positions, read)[0]
-        )
+        # As the run judges them, against one slice at each position.
+        fates = _target_fates(block, _distinct(found.slices))
         targets: collections.Counter[str] = collections.Counter()
         clearances: list[float] = []
         for dataset in structure_sets:
@@ -625,7 +668,10 @@ def _measure_series(
                 targets[code] += 1
                 if distance is not None:
                     clearances.append(distance)
-        measures["eyes"] = tuple(_eye_measures(block, *each) for each in eyes)
+        # An eye is measured against each phase's globes, as a run checks it.
+        measures["eyes"] = tuple(
+            _eye_measures(found.blocks, block.inferior_limit, *each) for each in eyes
+        )
         measures["targets"] = dict(sorted(targets.items()))
         measures["clearances"] = tuple(clearances)
     return SeriesMeasures(**measures)
@@ -651,7 +697,13 @@ def _stored(
     positions: list[int], read: Callable[[int], bytes | None]
 ) -> dict[str, Any]:
     """How a series' slices are stored, their spacings, and whether air is
-    stored, as :class:`SeriesMeasures` describes them."""
+    stored, as :class:`SeriesMeasures` describes them.
+
+    A multi-frame instance's frames are placed, and their values read in
+    Hounsfield units, as the finder places and reads them, one frame at a
+    time. Two slices within :data:`~.phases.COINCIDENT` of one height, such
+    as two phases' slices at one position, are not counted as a spacing.
+    """
     heights = []
     air = total = 0
     storage = pixel_spacing = normal = None
@@ -663,36 +715,71 @@ def _stored(
             native = str(dataset.file_meta.TransferSyntaxUID) in (
                 NATIVE_TRANSFER_SYNTAXES
             )
+            if "NumberOfFrames" in dataset:
+                slices = _described(
+                    dataset,
+                    frames_layout(dataset, str(dataset.file_meta.TransferSyntaxUID)),
+                )
+                places = [(each.position, each.orientation) for each in slices]
+                spacing = max(slices[0].spacing)
+            else:
+                slices = ()
+                places = [
+                    (
+                        tuple(float(each) for each in dataset.ImagePositionPatient),
+                        tuple(float(each) for each in dataset.ImageOrientationPatient),
+                    )
+                ]
+                spacing = max(float(each) for each in dataset.PixelSpacing)
             if storage is None:
                 storage = _storage(dataset, native)
-                pixel_spacing = max(float(each) for each in dataset.PixelSpacing)
-                cosines = [float(each) for each in dataset.ImageOrientationPatient]
+                pixel_spacing = spacing
+                cosines = places[0][1]
                 normal = np.cross(cosines[:3], cosines[3:])
             assert normal is not None
-            heights.append(
-                float(
-                    np.dot(
-                        [float(each) for each in dataset.ImagePositionPatient], normal
-                    )
-                )
-            )
+            heights += [float(np.dot(origin, normal)) for origin, _ in places]
             if undecoded:
                 continue
-            stored = _slice_values(data, native)
-            if stored is None:
+            try:
+                if slices:
+                    frames: Iterable[np.ndarray] = (
+                        _hounsfield(values, each)
+                        for values, each in zip(
+                            _stored_frames(
+                                data,
+                                slices[0].shape,
+                                range(len(slices)),
+                                compressed=not native,
+                            ),
+                            slices,
+                            strict=True,
+                        )
+                    )
+                else:
+                    stored = _slice_values(data, native)
+                    if stored is None:
+                        undecoded = True
+                        continue
+                    frames = [
+                        stored.astype(np.float64)
+                        * float(dataset.get("RescaleSlope", 1))
+                        + float(dataset.get("RescaleIntercept", 0))
+                    ]
+                for values in frames:
+                    air += int(np.count_nonzero(values <= _AIR))
+                    total += values.size
+            # A compressed frame that the run cannot decode leaves its air
+            # unmeasured; native read errors retain the outer refusal path.
+            except Exception:  # pylint: disable = broad-exception-caught
+                if native:
+                    raise
                 undecoded = True
-                continue
-            values = stored.astype(np.float64) * float(
-                dataset.get("RescaleSlope", 1)
-            ) + float(dataset.get("RescaleIntercept", 0))
-            air += int(np.count_nonzero(values <= _AIR))
-            total += values.size
     # A slice that cannot be read, or whose attributes cannot be read as
     # numbers, raises many types, and a message can quote a value.
     except Exception:  # pylint: disable = broad-exception-caught
         return {"storage": storage or "unreadable"}
     steps = np.diff(np.sort(heights))
-    steps = steps[steps > 0]
+    steps = steps[steps > COINCIDENT]
     return {
         "storage": storage,
         "pixel_spacing": _spacing(pixel_spacing),
@@ -832,10 +919,57 @@ def _polygon(points: np.ndarray) -> tuple[float, np.ndarray]:
     return size, (areas @ centres) / areas.sum()
 
 
+def globe_spread(blocks: Sequence[FaceBlock]) -> float | None:
+    """The greatest distance between one globe's centres in two of the
+    blocks, the patient's right globe compared with itself and their left
+    with itself, in millimetres, or None for fewer than two blocks.
+
+    >>> right, left = (-30.0, -70.0, 0.0), (30.0, -70.0, 0.0)
+    >>> blocks = [
+    ...     FaceBlock((0, 0, 0), (0, -1, 0), -50.0, (right, left)),
+    ...     FaceBlock((0, 0, 0), (0, -1, 0), -50.0, (right, (30.0, -70.0, 4.0))),
+    ... ]
+    >>> globe_spread(blocks)
+    4.0
+    """
+    if len(blocks) < 2:
+        return None
+    globes = np.asarray([block.globes for block in blocks], dtype=float)
+    apart = np.linalg.norm(globes[:, np.newaxis] - globes[np.newaxis, :], axis=-1)
+    return float(np.max(apart))
+
+
 def _eye_measures(
-    block: FaceBlock, side: int | None, contours: list[tuple[str, np.ndarray]]
+    blocks: Sequence[FaceBlock],
+    limit: float,
+    side: int | None,
+    contours: list[tuple[str, np.ndarray]],
 ) -> EyeMeasures:
-    """One eye ROI against the block's globes."""
+    """One eye ROI against the globes of each phase's block, and the
+    series' block's inferior limit.
+
+    A run holds a series where an eye lies too far from the globes of any
+    of its phases, so the eye is measured against the phase whose globes
+    its farthest point lies farthest from, and is counted as swapped where
+    it is nearer the other side's globe of any phase.
+    """
+    each = [_eye_against(block, limit, side, contours) for block in blocks]
+    placed = [one for one in each if one.reach is not None]
+    if not placed:
+        return each[0]
+    worst = max(placed, key=lambda one: one.reach or 0.0)
+    if side is None:
+        return worst
+    return dataclasses.replace(worst, swapped=any(bool(one.swapped) for one in placed))
+
+
+def _eye_against(
+    block: FaceBlock,
+    limit: float,
+    side: int | None,
+    contours: list[tuple[str, np.ndarray]],
+) -> EyeMeasures:
+    """One eye ROI against one block's globes."""
     points = np.concatenate([each for _, each in contours])
     name = "not-named" if side is None else SIDES[side]
     if not np.isfinite(points).all():
@@ -845,7 +979,7 @@ def _eye_measures(
     measures: dict[str, Any] = {
         "side": name,
         "reach": float(np.max(nearest)),
-        "above_limit": float(np.min(points[:, 2]) - block.inferior_limit),
+        "above_limit": float(np.min(points[:, 2]) - limit),
     }
     if side is not None:
         centre = centroid(contours)
@@ -1104,7 +1238,11 @@ def summarise(measures: DicomMeasures) -> dict[str, Any]:
             "source": "DICOM files, read where they lie",
         },
         "software": _software(),
-        "settings": {**_settings(), "dose_fraction": DOSE_FRACTION},
+        "settings": {
+            **_settings(),
+            "phase_reach_mm": PHASE_REACH,
+            "dose_fraction": DOSE_FRACTION,
+        },
         "files": {
             **measures.files,
             "refused": dict(measures.refused),
@@ -1135,6 +1273,20 @@ def summarise(measures: DicomMeasures) -> dict[str, Any]:
                 each.outcome for each in series if each.outcome != "defaced"
             ),
             "with_eye_rois": _counted(each.outcome for each in series if each.eye_rois),
+        },
+        "phases": {
+            "not_parted": sum(each.phases is None for each in series),
+            "by_series": PHASE_COUNT.counts(_present(each.phases for each in series)),
+            "outcomes_of_several": _counted(
+                each.outcome for each in series if (each.phases or 0) > 1
+            ),
+            "series_with_phases_without_eyes": sum(
+                each.phases_without_eyes > 0 for each in series
+            ),
+            "phases_without_eyes": sum(each.phases_without_eyes for each in series),
+            "globe_spread": GLOBE_SPREAD.counts(
+                _present(each.globe_spread for each in series)
+            ),
         },
         "eye_rois": {
             "series_with_a_block": len(blocks),

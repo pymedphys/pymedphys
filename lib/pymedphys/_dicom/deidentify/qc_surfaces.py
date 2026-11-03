@@ -981,6 +981,48 @@ def side_by_side(tiles: Sequence[np.ndarray]) -> np.ndarray:
     return np.concatenate(parts, axis=1)
 
 
+def too_large(volume: Grid | Stacked) -> bool:
+    """Whether a volume is too large to render, as :class:`Surface` finds
+    before it samples any of it."""
+    if isinstance(volume, Stacked):
+        low, high = volume.stack.bounds
+        spans = [float(span) for span in high - low]
+        return spans[2] > LONGEST or max(spans[:2]) > WIDEST
+    return _sampling(volume)[0]
+
+
+def sampled_voxels(volume: Grid | Stacked) -> int:
+    """How many float32 samples a :class:`Surface` holds until rendered:
+    none for a volume too large to render, and both ladders for signed dose.
+    """
+    if isinstance(volume, Stacked):
+        if too_large(volume):
+            return 0
+        voxel = max(MINIMUM_VOXEL, volume.stack.smallest_spacing)
+        size = math.prod(volume.stack.lattice(voxel).shape)
+    else:
+        large, _, taken = _sampling(volume)
+        size = 0 if large else math.prod(len(each) for each in taken)
+    return size * (2 if volume.threshold is Threshold.DOSE and volume.signed else 1)
+
+
+def _sampling(volume: Grid) -> tuple[bool, float, tuple[np.ndarray, ...]]:
+    """Whether a volume is too large to render, the side of its voxels, and
+    for each of its axes the index sampled at each voxel along its patient
+    axis, none where it is too large."""
+    spans = [0.0, 0.0, 0.0]
+    for coordinates, axis in zip(volume.coordinates, volume.axes):
+        spans[axis] = max(coordinates) - min(coordinates)
+    large = spans[2] > LONGEST or max(spans[:2]) > WIDEST
+    voxel = voxel_side(volume.coordinates)
+    none = np.zeros(0, np.intp)
+    taken = tuple(
+        none if large else sampled_indices(np.asarray(values), axis, voxel)
+        for values, axis in zip(volume.coordinates, volume.axes)
+    )
+    return large, voxel, taken
+
+
 def voxel_side(
     coordinates: Sequence[Sequence[float]],
     minimum: float = MINIMUM_VOXEL,
