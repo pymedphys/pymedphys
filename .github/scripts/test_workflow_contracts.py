@@ -339,7 +339,7 @@ class WorkflowContractTests(unittest.TestCase):
             [
                 "${{ env.REPORT }}",
                 "${{ env.CELL }}",
-                "junit-extra-${{ matrix.extra }}",
+                "${{ env.REPORT }}",
                 "junit-dependency-floors-${{ matrix.part }}",
                 "junit-pydicom-${{ matrix.pydicom }}",
             ],
@@ -353,6 +353,11 @@ class WorkflowContractTests(unittest.TestCase):
             "      CELL: junit-${{ matrix.os }}-${{ matrix.python-version }}\n",
             jobs("unit-tests.yml")["combined-report"],
         )
+        self.assertIn(
+            "      REPORT: junit-extra-${{ matrix.extra }}"
+            "${{ matrix.part && format('-{0}', matrix.part) || '' }}\n",
+            jobs("unit-tests.yml")["narrow-extras"],
+        )
         for os_name in ("ubuntu-latest", "windows-latest", "macos-latest"):
             with self.subTest(os=os_name):
                 self.assertTrue(fnmatch.fnmatchcase(f"junit-{os_name}-3.12", pattern))
@@ -361,7 +366,9 @@ class WorkflowContractTests(unittest.TestCase):
             fnmatch.fnmatchcase(pydicom_coverage.BASELINE_ARTIFACT, pattern)
         )
         for name in (
-            "junit-extra-dicom",
+            "junit-extra-gamma",
+            "junit-extra-dicom-corpus-runs",
+            "junit-extra-dicom-others",
             "junit-dependency-floors-corpus-runs",
             "junit-dependency-floors-others",
             *(
@@ -479,6 +486,29 @@ class WorkflowContractTests(unittest.TestCase):
                 self.assertIn(
                     "          cache-data: ${{ matrix.part != 'corpus-runs' }}\n", job
                 )
+        # The dicom extra's run alone has the same two parts, over the same
+        # paths and marks, and its others part adds the same ignores to them.
+        narrow = workflow["narrow-extras"]
+        part = (
+            "          - extra: dicom\n"
+            "            part: {}\n"
+            "            marks: not slow\n"
+            "            paths: tests/dicom\n"
+        )
+        for name in ("corpus-runs", "others"):
+            with self.subTest(narrow_part=name):
+                self.assertEqual(narrow.count(part.format(name)), 1)
+        self.assertEqual(narrow.count("            part: "), 2)
+        for line in (
+            '            if [[ ! -f "${path}" ]]; then\n',
+            '              corpus-runs) selection=("${listed[@]}") ;;\n',
+            "              others) selection+="
+            '("${listed[@]/#/--ignore=${GITHUB_WORKSPACE}/}") ;;\n',
+            "          cache-data: ${{ matrix.part != 'corpus-runs' }}\n",
+        ):
+            with self.subTest(narrow_line=line):
+                self.assertIn(line, narrow)
+        self.assertNotIn("\n    if:", narrow)
         # The release expects a report from every Python version that
         # python-matrix holds by default, so no caller may narrow it.
         self.assertIn('        default: \'["3.12", "3.13", "3.14"]\'\n', text)
@@ -628,6 +658,68 @@ class WorkflowContractTests(unittest.TestCase):
         # A project that finds fewer files than its tree holds fails the step.
         self.assertIn('if [[ "${found}" != "${expected}" ]]; then\n', job)
         self.assertIn("uv run -- pyright --stats", job)
+
+    def test_the_model_pin_check_reads_only_and_holds_no_secret(self):
+        text = (WORKFLOWS / "text-detection-model-pins.yml").read_text(encoding="utf-8")
+        triggers = text.split("\non:\n", 1)[1].split("\npermissions:\n", 1)[0]
+        # Started by hand, and by no other event.
+        self.assertEqual(
+            re.findall(r"(?m)^  ([a-z_]+):", triggers), ["workflow_dispatch"]
+        )
+        self.assertIn("\npermissions:\n  contents: read\n", text)
+        self.assertEqual(
+            re.findall(r"(?m)^      [a-z-]+: (?:read|write)$", text),
+            ["      contents: read"],
+        )
+        self.assertNotIn("secrets.", text)
+        self.assertIn("persist-credentials: false", text)
+        self.assertIn(
+            "python -m pymedphys._dicom.deidentify.text_evaluation_model_pins", text
+        )
+        self.assertIn("set -o pipefail", text)
+
+    def test_the_idc_evaluation_reads_only_and_keeps_its_tools_pinned(self):
+        text = (WORKFLOWS / "text-detector-evaluation-idc.yml").read_text(
+            encoding="utf-8"
+        )
+        triggers = text.split("\non:\n", 1)[1].split("\npermissions:\n", 1)[0]
+        self.assertEqual(
+            re.findall(r"(?m)^  ([a-z_]+):", triggers), ["workflow_dispatch"]
+        )
+        self.assertIn("\npermissions:\n  contents: read\n", text)
+        self.assertEqual(
+            re.findall(r"(?m)^      [a-z-]+: (?:read|write)$", text),
+            ["      contents: read"],
+        )
+        self.assertNotIn("secrets.", text)
+        self.assertIn("persist-credentials: false", text)
+        # Inputs reach commands only through the environment.
+        run_blocks = re.findall(r"(?ms)^        run: \|\n(.*?)(?=^      - |\Z)", text)
+        self.assertTrue(run_blocks)
+        for block in run_blocks:
+            self.assertNotIn("${{", block)
+        self.assertIn(
+            "uv pip install --require-hashes --no-deps \\\n"
+            "            -r .github/text-evaluation/requirements.txt",
+            text,
+        )
+        self.assertIn("sha256sum --check --strict -", text)
+        # Only the results leave the runner; never the data or the selection's
+        # series.
+        self.assertEqual(
+            re.findall(r"(?m)^          path: (.*)$", text),
+            ["${{ runner.temp }}/idc/results/"],
+        )
+        self.assertNotIn("actions/cache", text)
+        requirements = (
+            WORKFLOWS.parent / "text-evaluation/requirements.txt"
+        ).read_text(encoding="utf-8")
+        pins = re.findall(r"(?m)^([A-Za-z0-9_.-]+)==([^ ]+) \\$", requirements)
+        hashes = re.findall(r"--hash=sha256:([0-9a-f]{64})$", requirements, re.M)
+        self.assertEqual(
+            [name for name, _ in pins], ["pyarrow", "opencv-python-headless", "s5cmd"]
+        )
+        self.assertEqual(len(hashes), len(pins))
 
 
 if __name__ == "__main__":

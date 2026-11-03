@@ -259,25 +259,41 @@ def _reviewed_items(named: Callable[[str], str]) -> list[str]:
         if tag == dummy_values.REFERENCED_PERFORMED_PROCEDURE_STEP_SEQUENCE:
             lines.append(_procedure_step_items(named, tag, compared))
             continue
-        (first,) = dummy_values.items_for_d(tag, [])
+        within = _reviewed_place(tag)
+        (first,) = dummy_values.items_for_d(tag, [], within=within)
         source = {e.tag: e.value for e in first if e.tag in compared}
-        (second,) = dummy_values.items_for_d(tag, [source])
+        (second,) = dummy_values.items_for_d(tag, [source], within=within)
         changed = [
             f"{named(element.tag)} `{element.value}`"
             for element, before in zip(second, first)
             if element.value != before.value
         ]
+        place = "".join(f" in an item of {named(each)}" for each in within)
+        elsewhere = (
+            " Elsewhere, D on it has no reviewed rule, so the instance is sequestered."
+            if within
+            else ""
+        )
         lines.append(
-            f"D on {named(tag)} writes one item, with "
+            f"D on {named(tag)}{place} writes one item, with "
             + join(f"{named(element.tag)} `{element.value}`" for element in first)
             + ". Where a source item's "
             + join((named(t) for t in sorted(compared)), "or")
             + " equals the item's, as D compares values, the item has "
             + join(changed)
             + " instead."
+            + elsewhere
         )
     lines.append(_icc_profile(named))
     return lines
+
+
+def _reviewed_place(tag: str) -> tuple[str, ...]:
+    """Return the sequence whose items alone hold a sequence's reviewed rule.
+
+    It is empty for a sequence whose rule holds everywhere.
+    """
+    return tuple(sorted(dummy_values.REVIEWED_WITHIN.get(tag, frozenset())))
 
 
 def _procedure_step_items(
@@ -326,17 +342,23 @@ def _kept_items(
     ]
 
 
-def _naming_pymedphys(named: Callable[[str], str]) -> list[str]:
-    """Name each value that a reviewed rule writes and that names PyMedPhys."""
-    return [
-        f"{named(element.tag)} `{element.value}`"
+def _naming_pymedphys(named: Callable[[str], str]) -> dict[str, list[str]]:
+    """Name each value that a reviewed rule writes and that names PyMedPhys.
+
+    Each is listed by the sequence whose item holds it.
+    """
+    found = {
+        tag: [
+            f"{named(element.tag)} `{element.value}`"
+            for item in dummy_values.items_for_d(tag, [], within=_reviewed_place(tag))
+            for element in item
+            if "PYMEDPHYS" in element.value.upper()
+        ]
         for tag in REVIEWED_DUMMY_SEQUENCES
         # The procedure step's items hold only UIDs, written for the source.
         if tag != dummy_values.REFERENCED_PERFORMED_PROCEDURE_STEP_SEQUENCE
-        for item in dummy_values.items_for_d(tag, [])
-        for element in item
-        if "PYMEDPHYS" in element.value.upper()
-    ]
+    }
+    return {tag: values for tag, values in found.items() if values}
 
 
 def values_written(
@@ -416,9 +438,15 @@ def values_written(
         "",
         "No value that Z, D, or U writes names PyMedPhys"
         + (
-            f", except the {join(exceptions)} of the item that D writes in "
-            f"{named(dummy_values.PERSON_IDENTIFICATION_CODE_SEQUENCE)}, which "
-            "names who defines its code."
+            ", except "
+            + join(
+                f"the {join(values)} of the item that D writes in {named(tag)}"
+                for tag, values in exceptions.items()
+            )
+            + ", which "
+            + ("names" if len(exceptions) == 1 else "name")
+            + " who defines "
+            + ("its code." if len(exceptions) == 1 else "their codes.")
             if exceptions
             else "."
         ),
@@ -492,8 +520,10 @@ def dates_and_times(
             "the policy removes or replaces, other than the kept element's "
             "own, equals a whole kept value, the residual search finds it in "
             "the kept element, and the kept value explains it, so it does not "
-            "withhold the instance; found inside a longer kept value, such as "
-            "the date of a kept datetime, it still does. "
+            "withhold the instance, nor does a removed datetime whose date, "
+            "which the search also looks for, equals a whole kept date; found "
+            "inside a longer kept value, such as the date of a kept datetime, "
+            "it still does. "
             f"{named(TEMPORAL_MODIFIED)} is `{statement.markers.temporal}`, as "
             "Attributes inserted describes.",
         ]
@@ -768,8 +798,8 @@ def release_report() -> list[str]:
         "is known, and one from the release gate gives the attribute's tags "
         "in the same way where it names an attribute. A reason of scope "
         "`unsupported-iod` also gives the instance's IOD by its name in "
-        "PS3.4 Table B.5-1, such as `Comprehensive SR` for the Comprehensive "
-        "SR IOD.",
+        "PS3.4 Table B.5-1, such as `Ultrasound Image` for the Ultrasound "
+        "Image IOD.",
         "",
         "An instance outside the supported scope whose IOD the pinned tables "
         "define, such as a nuclear medicine image or an ultrasound image, "

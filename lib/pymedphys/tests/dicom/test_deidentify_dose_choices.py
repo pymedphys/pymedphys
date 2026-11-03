@@ -49,6 +49,7 @@ from pymedphys._dicom.deidentify import (
 from pymedphys._dicom.deidentify.dose_defacing import (
     DOSE_FRACTION,
     DoseBlock,
+    FrameRegion,
     RtDoseDefacer,
     dose_check_digest,
 )
@@ -178,6 +179,19 @@ def test_a_dose_block_s_digest_is_a_sha256():
         DoseBlock(_DOSE_BLOCK.block, _DOSE_BLOCK.slices, block_sha256=b"x" * 31)
 
 
+def test_a_choice_for_several_blocks_binds_every_block_digest():
+    first = dataclasses.replace(_DOSE_BLOCK, block_sha256=_sha(1))
+    second = dataclasses.replace(_DOSE_BLOCK, block_sha256=_sha(2))
+    digest = FrameRegion((first, second)).block_sha256
+
+    assert digest is not None and len(digest) == 32
+    assert FrameRegion((first,)).block_sha256 == _sha(1)
+    assert digest == FrameRegion((first, second)).block_sha256
+    assert digest != FrameRegion((first, first)).block_sha256
+    assert digest != FrameRegion((second, second)).block_sha256
+    assert FrameRegion((first, _DOSE_BLOCK)).block_sha256 is None
+
+
 def _records(data):
     return {
         position: InstanceRecord.from_file(each) for position, each in enumerate(data)
@@ -195,7 +209,7 @@ def test_a_frame_that_an_rt_dose_names_has_its_series_and_block_digest():
     )
 
     assert found.block_sha256 == face_blocks.block_digest(
-        [hashlib.sha256(each).digest() for each in slices], found.block
+        [hashlib.sha256(each).digest() for each in slices], found.blocks[0].block
     )
 
 

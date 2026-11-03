@@ -402,7 +402,7 @@ def test_the_reporter_admits_only_reasons_it_can_report():
     assert not reporter.admits(HELD_FOR_REVIEW, (_WITHHOLD,))
     assert not reporter.admits(SEQUESTERED, (RunReason.SYMBOLIC_LINK,))
     # An unsupported IOD is reported with the IOD, never without it.
-    assert reporter.admits(SEQUESTERED, (UnsupportedIod("Comprehensive SR"),))
+    assert reporter.admits(SEQUESTERED, (UnsupportedIod("Ultrasound Image"),))
     assert not reporter.admits(SEQUESTERED, (Disposition.UNSUPPORTED_IOD,))
     assert not reporter.admits(SEQUESTERED, (UnsupportedIod("RT Plan"),))
     assert not reporter.admits(SEQUESTERED, ())

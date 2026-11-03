@@ -12,9 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""CT Image, RT Structure Set, RT Dose, PET Image, and Segmentation files of
-the analytic head, and multi-frame CT and PET instances of its slices, for
-the defacing tests. Every UID and value here is invented."""
+"""CT Image, RT Structure Set, RT Dose, PET Image, Segmentation, and
+Deformable Spatial Registration files of the analytic head, and multi-frame
+CT and PET instances of its slices, for the defacing tests. Every UID and
+value here is invented."""
 
 from __future__ import annotations
 
@@ -37,6 +38,7 @@ RT_DOSE_STORAGE = "1.2.840.10008.5.1.4.1.1.481.2"
 PET_IMAGE_STORAGE = "1.2.840.10008.5.1.4.1.1.128"
 SEGMENTATION_STORAGE = "1.2.840.10008.5.1.4.1.1.66.4"
 LABEL_MAP_SEGMENTATION_STORAGE = "1.2.840.10008.5.1.4.1.1.66.7"
+DEFORMABLE_SPATIAL_REGISTRATION_STORAGE = "1.2.840.10008.5.1.4.1.1.66.3"
 AXIAL = (1.0, 0.0, 0.0, 0.0, 1.0, 0.0)
 EXPLICIT_VR_LITTLE_ENDIAN = "1.2.840.10008.1.2.1"
 ROOT = "2.25.1234567890123456789"
@@ -113,6 +115,8 @@ GROUPS = {
         "RescaleType",
     ),
 }
+# The functional group that gives a multi-frame PET frame's activity.
+REAL_WORLD_VALUE_MAPPING = "RealWorldValueMappingSequence"
 
 
 def multi_frame(
@@ -127,6 +131,8 @@ def multi_frame(
     ),
     rescale_type: str | None = "HU",
     template: pydicom.Dataset | None = None,
+    mapped: bool = False,
+    display: tuple[float, float] | None = None,
 ) -> bytes:
     """One multi-frame instance of ``sop_class`` whose frames are the
     single-frame files' slices, in their order.
@@ -135,7 +141,13 @@ def multi_frame(
     in ``shared`` in the Shared Functional Groups Sequence, from the first
     slice, and every other in the frame's item of the Per-frame Functional
     Groups Sequence, from its slice. Rescale Type is ``rescale_type``, or
-    left out where it is None. Every other attribute is the first slice's,
+    left out where it is None. Where ``display`` is given, every frame's
+    Pixel Value Transformation is that slope and intercept instead of its
+    slice's rescale. Where ``mapped``, each frame also has a Real World Value
+    Mapping functional group, shared or per frame as the others, whose one
+    item maps every stored value linearly by its slice's Rescale Slope and
+    Rescale Intercept to Bq/ml, as PET quantifies activity in a multi-frame
+    PET instance. Every other attribute is the first slice's,
     less those that the groups hold, or, where ``template`` is given, such
     as the synthetic corpus' Enhanced PET Image, the template's, with the
     first slice's Image Pixel attributes and Frame of Reference UID.
@@ -175,6 +187,8 @@ def multi_frame(
     dataset.InstanceNumber = 1
 
     def group(source: pydicom.Dataset, keyword: str) -> pydicom.Dataset:
+        if keyword == REAL_WORLD_VALUE_MAPPING:
+            return _real_world_mapping(source)
         item = pydicom.Dataset()
         for attribute in GROUPS[keyword]:
             if attribute == "RescaleType":
@@ -187,8 +201,12 @@ def multi_frame(
                 item.RescaleIntercept = "0"
             if "RescaleSlope" not in item:
                 item.RescaleSlope = "1"
+            if display is not None:
+                item.RescaleSlope = str(display[0])
+                item.RescaleIntercept = str(display[1])
         return item
 
+    keywords = (*GROUPS, REAL_WORLD_VALUE_MAPPING) if mapped else tuple(GROUPS)
     common = pydicom.Dataset()
     for keyword in shared:
         setattr(common, keyword, [group(first, keyword)])
@@ -196,7 +214,7 @@ def multi_frame(
     dataset.PerFrameFunctionalGroupsSequence = []
     for each in datasets:
         item = pydicom.Dataset()
-        for keyword in GROUPS:
+        for keyword in keywords:
             if keyword not in shared:
                 setattr(item, keyword, [group(each, keyword)])
         dataset.PerFrameFunctionalGroupsSequence.append(item)
@@ -204,6 +222,33 @@ def multi_frame(
     dataset.PixelData = b"".join(each.PixelData for each in datasets)
     dataset["PixelData"].VR = "OW"
     return written(dataset)
+
+
+def _real_world_mapping(source: pydicom.Dataset) -> pydicom.Dataset:
+    """A Real World Value Mapping item that maps every stored value of a
+    slice by its Rescale Slope and Rescale Intercept to Bq/ml."""
+    signed = int(source.get("PixelRepresentation", 0)) == 1
+    bits = int(source.BitsStored)
+    low, high = (
+        (-(2 ** (bits - 1)), 2 ** (bits - 1) - 1) if signed else (0, 2**bits - 1)
+    )
+    item = pydicom.Dataset()
+    for keyword, value in (
+        ("RealWorldValueFirstValueMapped", low),
+        ("RealWorldValueLastValueMapped", high),
+    ):
+        setattr(item, keyword, value)
+        item[keyword].VR = "SS" if signed else "US"
+    item.RealWorldValueSlope = float(source.get("RescaleSlope", 1))
+    item.RealWorldValueIntercept = float(source.get("RescaleIntercept", 0))
+    item.LUTExplanation = "Activity concentration"
+    item.LUTLabel = "BQML"
+    unit = pydicom.Dataset()
+    unit.CodeValue = "Bq/ml"
+    unit.CodingSchemeDesignator = "UCUM"
+    unit.CodeMeaning = "Becquerels/milliliter"
+    item.MeasurementUnitsCodeSequence = [unit]
+    return item
 
 
 def structure_set(
@@ -495,6 +540,45 @@ def square(centre: Sequence[float], half: float = 2.0) -> np.ndarray:
             (x - half, y + half, z),
         ]
     )
+
+
+def registration(
+    grids: Sequence[tuple[np.ndarray, Sequence[float], Sequence[float]]],
+    *,
+    orientation: Sequence[float] = AXIAL,
+    frame: str = FRAME,
+    sources: Sequence[str] | None = None,
+    instance: str = ROOT + ".9.1",
+) -> bytes:
+    """A Deformable Spatial Registration with an item for each grid.
+
+    Each grid is its vectors, of shape (planes, rows, columns, 3), in
+    millimetres, its Image Position (Patient), and its Grid Resolution, all
+    in the orientation ``orientation``. Each item's Source Frame of
+    Reference UID is that of ``sources``, by default ``frame``, and the
+    registration's own Frame of Reference UID is ``frame``.
+    """
+    dataset = _dataset(DEFORMABLE_SPATIAL_REGISTRATION_STORAGE, instance, None)
+    dataset.Modality = "REG"
+    dataset.FrameOfReferenceUID = frame
+    dataset.ContentDate = "20260101"
+    dataset.ContentTime = "120000"
+    items = []
+    for index, (vectors, position, resolution) in enumerate(grids):
+        planes, rows, columns, _ = np.shape(vectors)
+        grid = pydicom.Dataset()
+        grid.ImageOrientationPatient = [_ds(v) for v in orientation]
+        grid.ImagePositionPatient = [_ds(v) for v in position]
+        grid.GridDimensions = [columns, rows, planes]
+        grid.GridResolution = [float(v) for v in resolution]
+        grid.VectorGridData = np.asarray(vectors, "<f4").tobytes()
+        item = pydicom.Dataset()
+        item.SourceFrameOfReferenceUID = frame if sources is None else sources[index]
+        item.RegistrationTypeCodeSequence = []
+        item.DeformableRegistrationGridSequence = [grid]
+        items.append(item)
+    dataset.DeformableRegistrationSequence = items
+    return written(dataset)
 
 
 def _dataset(

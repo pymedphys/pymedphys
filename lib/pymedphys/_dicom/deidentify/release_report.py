@@ -52,7 +52,7 @@ the engine defines, never from DICOM data directly, and the check is a
 backstop: a field of another form, which could be a source value or a path
 outside the package, is refused. A field that fails is named, never quoted.
 
-Sixteen sections describe a run, by replacement identifiers, attribute tags,
+Seventeen sections describe a run, by replacement identifiers, attribute tags,
 and codes that the engine defines, never by a source value or path:
 
 - ``qc_review``: the run's QC pack by its opaque reference, with the outcome
@@ -149,7 +149,8 @@ and codes that the engine defines, never by a source value or path:
 - ``exempted_findings``: how many released instances have a residual
   finding that an exemption kept from review, such as a removed value found
   in a kept standard term or equipment name (D-032), a date that Modified
-  Dates shifted (D-039), or a value that an option keeps (D-042), by the
+  Dates shifted (D-039), a value that an option keeps, or text in a private
+  creator that the run's safe private list keeps (D-042), by the
   exemption, the source attribute, and the
   attribute in which it was found, each instance once for each, from
   :func:`exempted_findings`. The QC pack lists each finding by instance and
@@ -165,6 +166,13 @@ and codes that the engine defines, never by a source value or path:
   it reported without acting on, each once, an identical copy counting as
   the instance it copies, from :class:`StructuralCheck`. Only the QC pack
   names them.
+- ``studies_with_several_patients``: what the run did with a study whose
+  instances name several patients, ``"stop"``, the default, under which a
+  run with one stops before anything is written, so its report never
+  exists, or ``"sequester"``, the opt-in under which every instance of such
+  a study is sequestered and the rest of the run goes ahead, and how many
+  such studies it sequestered, from :class:`SeveralPatientStudies` (D-026).
+  Only the QC pack lists their instances, by patient.
 """
 
 from __future__ import annotations
@@ -205,7 +213,7 @@ from .reasons import (
     TransformReason,
     VisualFeaturesReason,
 )
-from .reference_graph import FindingKind
+from .reference_graph import FindingKind, SeveralPatients
 from .release_gate import Decision, ReasonCode, ReleaseReason
 from .reviewed_descriptors import DescriptorCounts
 from .reviewed_descriptors import Held as DescriptorHeld
@@ -223,7 +231,7 @@ from .standard import ALL_OPTIONS, VRS
 from .walker import Sequestration, SequesterReason
 
 # The format of the report document. A change to its fields takes a new label.
-FORMAT = "pymedphys-deid-release-report/39"
+FORMAT = "pymedphys-deid-release-report/49"
 
 _DIGEST = re.compile(r"[0-9a-f]{64}")
 # A key's non-secret identifier, as DeidKey.key_id gives it.
@@ -264,6 +272,7 @@ PIXEL_AND_FACE_REASONS = (
     ReviewReason.NO_FACE_VERDICT,
     ReviewReason.OTHER_PIXEL_DATA,
     ReviewReason.OTHER_CONTOURS,
+    ReviewReason.OTHER_GRIDS,
 )
 ATTESTATION_REASONS = (
     *_REVIEW_REASONS,
@@ -281,6 +290,8 @@ _SEQUESTERING = {
             FindingKind.MISSING_IDENTIFIER.value,
             FindingKind.CONFLICTING_INSTANCE.value,
             FindingKind.SERIES_IN_SEVERAL_STUDIES.value,
+            # only where the run is told to sequester such a study (D-026)
+            FindingKind.STUDY_WITH_SEVERAL_PATIENTS.value,
         }
     ),
     "walker": frozenset(r.value for r in SequesterReason),
@@ -306,8 +317,9 @@ _SEQUESTERING = {
     "release": frozenset(r.value for r in ReasonCode),
 }
 # The first pass's findings that the run acts on: those that sequester the
-# inputs they name, stop the run, or have an input written once. The run
-# reports every other finding without acting on it.
+# inputs they name, stop the run or, where the run is told to, sequester the
+# inputs they name, or have an input written once. The run reports every
+# other finding without acting on it.
 _ACTED_ON_FINDINGS = frozenset(
     {
         FindingKind.MISSING_IDENTIFIER,
@@ -428,7 +440,7 @@ class SequestrationReason:
     iod : str or None
         For scope's ``"unsupported-iod"``, and only for it, the IOD, as
         PS3.4 Table B.5-1 names it without "IOD", such as
-        ``"Comprehensive SR"`` (D-010).
+        ``"Ultrasound Image"`` (D-010).
     """
 
     stage: str
@@ -668,6 +680,27 @@ def _no_checks() -> tuple[StructuralCheck, ...]:
 
 
 @dataclasses.dataclass(frozen=True)
+class SeveralPatientStudies:
+    """What a run did with the studies whose instances name several patients.
+
+    Attributes
+    ----------
+    handling : ~pymedphys._dicom.deidentify.reference_graph.SeveralPatients
+        The run's choice: :attr:`~.SeveralPatients.STOP`, the default,
+        under which a run with such a study stops before anything is
+        written, or :attr:`~.SeveralPatients.SEQUESTER`, under which every
+        instance of each is sequestered and the rest of the run goes ahead
+        (D-026).
+    sequestered : int
+        How many such studies the run sequestered, from 0; always 0 under
+        :attr:`~.SeveralPatients.STOP`.
+    """
+
+    handling: SeveralPatients = SeveralPatients.STOP
+    sequestered: int = 0
+
+
+@dataclasses.dataclass(frozen=True)
 class Readiness:
     """Whether a ``public-release`` run is ready for release, by its three gates.
 
@@ -766,6 +799,7 @@ class ReleaseReport:
     pixel_risks : tuple of PixelRiskCount
     source_gaps : tuple of SourceGapCount
     structural_checks : tuple of StructuralCheck
+    several_patients : SeveralPatientStudies
     """
 
     policy: PolicyRecord
@@ -795,6 +829,9 @@ class ReleaseReport:
     source_gaps: tuple[SourceGapCount, ...] = ()
     structural_checks: tuple[StructuralCheck, ...] = dataclasses.field(
         default_factory=_no_checks
+    )
+    several_patients: SeveralPatientStudies = dataclasses.field(
+        default_factory=SeveralPatientStudies
     )
 
 
@@ -828,10 +865,12 @@ def sequestration_reason(
     ------
     ValueError
         For a disposition or finding that does not sequester an instance:
-        :attr:`~.scope.Disposition.SUPPORTED`; a dangling reference or an
-        identical duplicate, which are reported only; or a study with
-        several patients, which stops the run instead. An instance missing
-        an identifier is sequestered, as the run pipeline does by default;
+        :attr:`~.scope.Disposition.SUPPORTED`; or a dangling reference, an
+        identical duplicate, or a frame of reference mismatch, which are
+        reported only. An instance missing an identifier is sequestered, as
+        the run pipeline does by default, and so is each instance of a study
+        with several patients, where the run is told to sequester it rather
+        than stop (D-026);
         or a reason of the run that refuses an input rather than
         sequestering it, such as a symbolic link. For
         :attr:`~.scope.Disposition.UNSUPPORTED_IOD` alone, which a report
@@ -1235,6 +1274,7 @@ def release_report(
     pixel: Iterable[PixelRiskCount] = (),
     gaps: Iterable[SourceGapCount] = (),
     checks: Iterable[StructuralCheck] | None = None,
+    several_patients: SeveralPatientStudies | None = None,
 ) -> ReleaseReport:
     """Return the release report of a policy, its method, the runtime, and a run.
 
@@ -1351,6 +1391,10 @@ def release_report(
         How many instances each of :data:`STRUCTURAL_CHECKS` sequestered and
         reported without acting on them, each check once, in that order;
         None, the default, for none of each.
+    several_patients : SeveralPatientStudies, optional
+        What the run did with the studies whose instances name several
+        patients; None, the default, for the default choice, to stop, with
+        none sequestered.
 
     Returns
     -------
@@ -1372,7 +1416,7 @@ def release_report(
     >>> report.policy.preset, report.policy.options
     ('basic', ())
     >>> list(report_document(report))
-    ['format', 'policy', 'method', 'runtime', 'key', 'qc_review', 'face_review', 'redaction_review', 'pixel_regions', 'readiness', 'released', 'sequestered', 'held_for_review', 'roi_names', 'descriptors', 'reference_findings', 'pixel_risks', 'search_coverage', 'exempted_findings', 'source_gaps', 'structural_checks']
+    ['format', 'policy', 'method', 'runtime', 'key', 'qc_review', 'face_review', 'redaction_review', 'pixel_regions', 'readiness', 'released', 'sequestered', 'held_for_review', 'roi_names', 'descriptors', 'reference_findings', 'pixel_risks', 'search_coverage', 'exempted_findings', 'source_gaps', 'structural_checks', 'studies_with_several_patients']
     """
     if not isinstance(policy, Policy):
         raise TypeError("policy must be a Policy")
@@ -1421,6 +1465,9 @@ def release_report(
         pixel_risks=tuple(pixel),
         source_gaps=tuple(gaps),
         structural_checks=_no_checks() if checks is None else tuple(checks),
+        several_patients=(
+            SeveralPatientStudies() if several_patients is None else several_patients
+        ),
     )
 
 
@@ -2135,6 +2182,30 @@ def _checks_section(
     return entries
 
 
+def _several_patients_section(studies: SeveralPatientStudies) -> dict:
+    if not isinstance(studies, SeveralPatientStudies):
+        raise _refuse(
+            "studies_with_several_patients",
+            "is not what the run did with studies with several patients",
+        )
+    if not isinstance(studies.handling, SeveralPatients):
+        raise _refuse(
+            "studies_with_several_patients handling",
+            "is not a code that the engine defines",
+        )
+    count = studies.sequestered
+    if type(count) is not int or count < 0:  # pylint: disable = unidiomatic-typecheck
+        raise _refuse(
+            "studies_with_several_patients sequestered", "is not a count from 0"
+        )
+    if count and studies.handling is SeveralPatients.STOP:
+        raise _refuse(
+            "studies_with_several_patients sequestered",
+            "is given for a run that stops at such a study",
+        )
+    return {"handling": studies.handling.value, "sequestered": count}
+
+
 def report_document(report: ReleaseReport) -> dict:
     """Return a release report as JSON values, after checking every field.
 
@@ -2143,8 +2214,8 @@ def report_document(report: ReleaseReport) -> dict:
     ``redaction_review``, ``pixel_regions``, ``readiness``, ``released``, ``sequestered``, ``held_for_review``, ``roi_names``,
     ``descriptors``,
     ``reference_findings``, ``pixel_risks``, ``search_coverage``,
-    ``exempted_findings``, ``source_gaps``, and ``structural_checks``, in
-    that order, each section's
+    ``exempted_findings``, ``source_gaps``, ``structural_checks``, and
+    ``studies_with_several_patients``, in that order, each section's
     fields in the order of its class, the digests of tables and files sorted
     by name, ``key`` with its ``scope``, ``"run"`` or ``"project"``, and
     ``key_id``, null for a run-scoped key, ``qc_review`` null where the run
@@ -2168,8 +2239,10 @@ def report_document(report: ReleaseReport) -> dict:
     disposition and risk and ``indicators`` counts by disposition, risk, and
     indicator, the coverage by attribute and reason, the exempted findings
     by exemption, attribute, and attribute found in, the source gaps by
-    attribute and Type, and each structural check once, in the order of
-    :data:`STRUCTURAL_CHECKS`. A walker
+    attribute and Type, each structural check once, in the order of
+    :data:`STRUCTURAL_CHECKS`, and the run's ``handling`` of studies with
+    several patients, ``"stop"`` or ``"sequester"``, with how many it
+    ``sequestered``. A walker
     reason has its stage, code, attribute, action, and VR, which is null
     where it is not known; a release gate's reason has its stage and code,
     and its attribute where it names one; and a reason from any other stage
@@ -2202,8 +2275,10 @@ def report_document(report: ReleaseReport) -> dict:
         sequestered instances, a path of tags, a code that the engine
         defines for its stage, a positive count, the descriptors'
         ``fell_back`` count from 0, a structural check's count from 0, no
-        more sequestered than ``sequestered`` lists, or true or false, or is
-        not of its class. The message names the field, never its value.
+        more sequestered than ``sequestered`` lists, a count from 0 of the
+        studies with several patients that the run sequestered, given only
+        where its handling sequesters them, or true or false, or is not of
+        its class. The message names the field, never its value.
     """
     return {
         "format": FORMAT,
@@ -2233,6 +2308,9 @@ def report_document(report: ReleaseReport) -> dict:
         "source_gaps": _gaps_section(report.source_gaps),
         "structural_checks": _checks_section(
             report.structural_checks, report.sequestered
+        ),
+        "studies_with_several_patients": _several_patients_section(
+            report.several_patients
         ),
     }
 
