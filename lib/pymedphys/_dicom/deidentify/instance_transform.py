@@ -250,6 +250,7 @@ from .face_blocks import (
     Defaced,
     find_defaced,
     find_face_blocks,
+    frames_of,
 )
 from .pixel_risk import (
     assess_pixel_risk,

@@ -1298,6 +1298,8 @@ def test_two_defaced_series_in_one_frame_are_each_defaced_by_their_own_block(
     assert report["face_review"]["ct_series"] == {
         "defaced": 2,
         "defaced_around_targets": 0,
+        "defaced_eyes_unconfirmed": 0,
+        "defaced_eyes_confirmed": 0,
         "not_defaced": [{"reason": "unreadable", "count": _UNPLACED}],
     }
 
