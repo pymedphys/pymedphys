@@ -1,0 +1,201 @@
+name: Text Detector Evaluation on IDC
+
+# On demand, measure the text detector of the Clean Pixel Data Option, or a
+# candidate model, on openly licensed series of NCI's Imaging Data Commons
+# (tier T3 of D-056), with synthetic text burned into copies of their frames
+# in memory. The series are selected from IDC's index, as the pinned wheel
+# of idc-index-data holds it, by the vetted collections, the licence each
+# was vetted under, and image modalities, and downloaded from IDC's public
+# buckets with s5cmd.
+#
+# These are real patients' scans, and this repository's logs and artefacts
+# are public. So only counts, codes, digests, versions, the detector's
+# method, and, for each series, its public identifiers, licence, and DOI
+# leave the runner: the command's standard output and error, and s5cmd's,
+# go to files on the runner; a crash is reported by
+# .github/scripts/run_redacted.py as its type and code locations alone; and
+# no image, crop, or pixel value is written. The series are never cached,
+# uploaded, or kept.
+on:
+  workflow_dispatch:
+    inputs:
+      model:
+        description: The model's adapter, by name.
+        type: string
+        default: PP-OCRv6 small
+      settings:
+        description: Today's settings, or the model's publishers'.
+        type: choice
+        options: [today, published]
+        default: today
+      evaluated:
+        description: The part of the split to measure.
+        type: choice
+        options: [tuning, held-out, all]
+        default: tuning
+      per_collection:
+        description: The most series from one collection.
+        type: string
+        default: '3'
+      max_mb:
+        description: The most megabytes of series in all.
+        type: string
+        default: '3000'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: text-detector-evaluation-idc-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  evaluate:
+    name: Text detector evaluation on IDC
+    runs-on: ubuntu-latest
+    timeout-minutes: 355
+    permissions:
+      contents: read
+    env:
+      MODEL: ${{ inputs.model || 'PP-OCRv6 small' }}
+      SETTINGS: ${{ inputs.settings || 'today' }}
+      EVALUATED: ${{ inputs.evaluated || 'tuning' }}
+      PER_COLLECTION: ${{ inputs.per_collection || '2' }}
+      MAX_MB: ${{ inputs.max_mb || '1500' }}
+      # idc-index-data 25.0.5, which holds IDC's index, and its SHA-256 as
+      # text_evaluation_idc pins it.
+      INDEX_URL: https://files.pythonhosted.org/packages/bd/10/c6391b44d1b2f6c744e1cb4018250cb1a5d80947d47ed945172d9165a3b4/idc_index_data-25.0.5-py3-none-any.whl
+      INDEX_SHA256: 1ea4ec812688759b71798249b6488eb2bce7178aabb3dccb00366b7a555de25c
+      # A re-run's artefact is named apart from the first attempt's.
+      ATTEMPT_SUFFIX: >-
+        ${{ github.run_attempt != '1'
+        && format('-attempt-{0}', github.run_attempt) || '' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # The user extra holds pydicom, NumPy, and SciPy; text-detection holds
+      # ONNX Runtime, which runs the detector's model.
+      - uses: ./.github/actions/setup-project
+        with:
+          extras: 'user text-detection'
+
+      - name: Install the evaluation's pinned tools
+        run: |
+          uv pip install --require-hashes --no-deps \
+            -r .github/text-evaluation/requirements.txt
+
+      - name: Prepare private and data directories
+        run: |
+          umask 077
+          mkdir -p "${RUNNER_TEMP}/idc/private" "${RUNNER_TEMP}/idc/data" \
+            "${RUNNER_TEMP}/idc/index"
+
+      - name: Download IDC's index
+        run: |
+          wheel="${RUNNER_TEMP}/idc/index/idc_index_data-25.0.5-py3-none-any.whl"
+          curl -sSfL --retry 3 --retry-all-errors --retry-delay 30 \
+            -o "${wheel}" "${INDEX_URL}"
+          echo "${INDEX_SHA256}  ${wheel}" | sha256sum --check --strict -
+
+      # Writes selection.json, with counts by collection alone; series.json;
+      # and manifest.s5cmd, which places each series in a folder of its own.
+      - name: Select the series
+        run: |
+          uv run --no-sync python .github/scripts/run_redacted.py \
+            --private-stdout "${RUNNER_TEMP}/idc/private/select-stdout.log" \
+            pymedphys._dicom.deidentify.text_evaluation_command idc-select \
+            "${RUNNER_TEMP}/idc/index/idc_index_data-25.0.5-py3-none-any.whl" \
+            --per-collection "${PER_COLLECTION}" \
+            --max-mb "${MAX_MB}" \
+            --downloads "${RUNNER_TEMP}/idc/data" \
+            --out "${RUNNER_TEMP}/idc/selection" \
+            2> "${RUNNER_TEMP}/idc/private/select-stderr.log"
+
+      - name: Download the series
+        timeout-minutes: 90
+        run: |
+          uv run --no-sync s5cmd --no-sign-request \
+            --endpoint-url https://s3.amazonaws.com \
+            run "${RUNNER_TEMP}/idc/selection/manifest.s5cmd" \
+            > "${RUNNER_TEMP}/idc/private/s5cmd.log" 2>&1
+          df -h /
+
+      # The command downloads the model's pinned weights on first use.
+      - name: Measure the series
+        timeout-minutes: 240
+        run: |
+          uv run --no-sync python .github/scripts/run_redacted.py \
+            --private-stdout "${RUNNER_TEMP}/idc/private/measure-stdout.log" \
+            pymedphys._dicom.deidentify.text_evaluation_command idc-measure \
+            "${RUNNER_TEMP}/idc/selection/series.json" \
+            "${RUNNER_TEMP}/idc/data" \
+            --model "${MODEL}" \
+            --settings "${SETTINGS}" \
+            --evaluated "${EVALUATED}" \
+            --workers "$(nproc)" \
+            --out "${RUNNER_TEMP}/idc/results" \
+            2> "${RUNNER_TEMP}/idc/private/measure-stderr.log"
+          cp "${RUNNER_TEMP}/idc/selection/selection.json" "${RUNNER_TEMP}/idc/results/"
+          echo "${GITHUB_SHA}" > "${RUNNER_TEMP}/idc/results/commit.txt"
+
+      # The classic CT, MR, and PET series again, each converted in memory
+      # to Legacy Converted Enhanced instances, whose frames hold the same
+      # stored values, so that the multi-frame path is measured on real
+      # images. Fewer workers, as each holds a series and its instance.
+      - name: Measure the series as converted
+        if: ${{ !cancelled() }}
+        timeout-minutes: 120
+        run: |
+          uv run --no-sync python .github/scripts/run_redacted.py \
+            --private-stdout "${RUNNER_TEMP}/idc/private/converted-stdout.log" \
+            pymedphys._dicom.deidentify.text_evaluation_command idc-measure \
+            "${RUNNER_TEMP}/idc/selection/series.json" \
+            "${RUNNER_TEMP}/idc/data" \
+            --model "${MODEL}" \
+            --settings "${SETTINGS}" \
+            --evaluated "${EVALUATED}" \
+            --workers 2 \
+            --converted \
+            --out "${RUNNER_TEMP}/idc/results/converted" \
+            2> "${RUNNER_TEMP}/idc/private/converted-stderr.log"
+
+      # At a model's publishers' settings, count what OpenCV's resize alone
+      # changes beside the harness's own.
+      - name: Measure the resize's parity
+        if: ${{ env.SETTINGS == 'published' }}
+        timeout-minutes: 120
+        run: |
+          uv run --no-sync python .github/scripts/run_redacted.py \
+            --private-stdout "${RUNNER_TEMP}/idc/private/parity-stdout.log" \
+            pymedphys._dicom.deidentify.text_evaluation_command idc-parity \
+            "${RUNNER_TEMP}/idc/selection/series.json" \
+            "${RUNNER_TEMP}/idc/data" \
+            --model "${MODEL}" \
+            --evaluated "${EVALUATED}" \
+            --out "${RUNNER_TEMP}/idc/parity" \
+            2> "${RUNNER_TEMP}/idc/private/parity-stderr.log"
+          cp "${RUNNER_TEMP}/idc/parity/parity.json" "${RUNNER_TEMP}/idc/results/"
+
+      - name: Show the results
+        if: ${{ !cancelled() }}
+        run: |
+          for page in "${RUNNER_TEMP}/idc/results/summary.md" \
+            "${RUNNER_TEMP}/idc/results/converted/summary.md"; do
+            if [[ -f "${page}" ]]; then
+              tee -a "${GITHUB_STEP_SUMMARY}" < "${page}"
+            else
+              echo "A measurement wrote no results; the log shows why." \
+                | tee -a "${GITHUB_STEP_SUMMARY}"
+            fi
+          done
+
+      - name: Upload the results
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: text-detector-evaluation-idc${{ env.ATTEMPT_SUFFIX }}
+          path: ${{ runner.temp }}/idc/results/
+          if-no-files-found: warn
+          retention-days: 90

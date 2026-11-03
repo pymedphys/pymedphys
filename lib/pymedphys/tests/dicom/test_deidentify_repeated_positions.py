@@ -434,7 +434,9 @@ def test_an_eye_far_from_the_globes_of_any_phase_holds_the_series(drawn):
 
     outcome = _outcome(*first, *second, _eyes(drawn))
 
-    assert outcome.problem is SeriesProblem.EYES_DISAGREE
+    assert outcome.block is not None
+    assert outcome.hold is SeriesProblem.EYES_DISAGREE
+    assert outcome.eyes is face_blocks.EyeCheck.DISAGREE
 
 
 def test_eyes_on_every_phase_s_globes_do_not_hold_the_series():

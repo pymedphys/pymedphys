@@ -30,12 +30,13 @@ from __future__ import annotations
 
 import dataclasses
 import enum
+import math
 from collections.abc import Iterable, Mapping, Sequence
 from pathlib import Path, PurePosixPath
 
 from pymedphys._imports import pydicom
 
-from . import pixel_risk, qc_contours, qc_pack, qc_previews, residuals
+from . import pixel_risk, qc_contours, qc_eyes, qc_pack, qc_previews, residuals
 from .iod_conformance import SourceGap
 from .face_review import (
     PIXEL_DATA_TAGS,
@@ -45,8 +46,9 @@ from .face_review import (
     pixel_data_sha256,
 )
 from .file_layout import ElementPath
+from .icc_cleaning import Refusal
 from .qc_pack import Disposition, DropReason, QcPack, RoiNameOutcome
-from .reasons import PixelDataReason
+from .reasons import DoseChoice, PixelDataReason
 from .reference_graph import Finding, FindingKind
 from .release_report import REPORTED_FINDINGS
 from .residual_exemptions import Exemption
@@ -139,6 +141,26 @@ class DescriptorMaterial:
         return f"DescriptorMaterial(path={str(self.path)!r}, applied={self.applied!r})"
 
 
+@dataclasses.dataclass(frozen=True)
+class IccProfileMaterial:
+    """What D wrote in place of one ICC Profile (0028,2000) (D-021).
+
+    The release report counts it. The QC pack does not list it, since the
+    profile written holds nothing of the source's but its colorimetry, which
+    names no one.
+
+    Attributes
+    ----------
+    path : ElementPath
+    refusal : ~pymedphys._dicom.deidentify.icc_cleaning.Refusal or None
+        None where the source profile was cleaned and written; otherwise why
+        it could not be, so the fixed sRGB profile was written.
+    """
+
+    path: ElementPath
+    refusal: Refusal | None
+
+
 @dataclasses.dataclass(frozen=True, repr=False)
 class RetainedText:
     """A string that the policy retains, at its place in the instance."""
@@ -208,6 +230,86 @@ class RedactionMaterial:
             f"rows={self.rows}, columns={self.columns}, "
             f"regions={len(self.regions)})"
         )
+
+
+@dataclasses.dataclass(frozen=True, repr=False)
+class EyeCheckMaterial:
+    """A CT instance of a series that the run defaced and held because its
+    eye ROIs disagree with the globes that its face block was found from
+    (:attr:`~pymedphys._dicom.deidentify.face_blocks.EyeCheck.DISAGREE`).
+
+    Every held instance of the series carries the same material. The pack
+    lists the series in ``eye_checks`` by its held instances, with the
+    block's digest, which binds a reviewer's confirmation, and previews its
+    sheet, keeping only the frames of held instances, so that a reviewer
+    can confirm the block.
+
+    Attributes
+    ----------
+    block_sha256 : bytes
+        :func:`~pymedphys._dicom.deidentify.face_blocks.block_digest` of the
+        series' source files and its block.
+    sheet : ~pymedphys._dicom.deidentify.qc_eyes.EyeSheet or None
+        The sheet of its globes beside its eye ROIs, or None where its slices
+        could not be drawn again, in which case the pack lists the series
+        without one, and no confirmation can be given.
+    """
+
+    block_sha256: bytes
+    sheet: qc_eyes.EyeSheet | None
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.block_sha256, bytes) or len(self.block_sha256) != 32:
+            raise ValueError("an eye check needs its block's SHA-256")
+
+    def __repr__(self) -> str:
+        return f"EyeCheckMaterial(sheet={self.sheet is not None})"
+
+
+@dataclasses.dataclass(frozen=True, repr=False)
+class DoseCheckMaterial:
+    """An RT Dose with more dose in a defaced CT series' face block than the
+    fraction that the run sets to zero
+    (:data:`~pymedphys._dicom.deidentify.dose_defacing.DOSE_FRACTION`).
+
+    The pack lists it in ``dose_checks``, where it is released or held, so
+    that a reviewer can choose what a later run does with it, and so that
+    the choice that the run applied is recorded; the release report counts
+    it, and names it where released.
+
+    Attributes
+    ----------
+    check_sha256 : bytes
+        :func:`~pymedphys._dicom.deidentify.dose_defacing.dose_check_digest`
+        of its source file and the block.
+    choice : ~pymedphys._dicom.deidentify.reasons.DoseChoice or None
+        The choice that the run applied: written as received, or set to
+        zero in the block; None where none applied, and the run wrote it as
+        received and held it.
+    fraction : float
+        The greatest stored value in the region, as a fraction of the
+        grid's greatest.
+    """
+
+    check_sha256: bytes
+    choice: DoseChoice | None
+    fraction: float
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.check_sha256, bytes) or len(self.check_sha256) != 32:
+            raise ValueError("a dose check needs its SHA-256")
+        if self.choice is not None and not isinstance(self.choice, DoseChoice):
+            raise ValueError("a dose check's choice is a DoseChoice or None")
+        if not (
+            isinstance(self.fraction, float)
+            and math.isfinite(self.fraction)
+            and 0 < self.fraction <= 1
+        ):
+            raise ValueError("a dose check's fraction is above 0 and at most 1")
+
+    def __repr__(self) -> str:
+        choice = None if self.choice is None else self.choice.value
+        return f"DoseCheckMaterial(choice={choice!r})"
 
 
 @dataclasses.dataclass(frozen=True)
@@ -320,6 +422,7 @@ def qc_pack_of(
     reference: str | None = None,
     digests: Mapping[int, bytes] | None = None,
     reviewed_lists: qc_pack.ListsDigest | None = None,
+    several_patient_studies: Sequence[Sequence[Sequence[int]]] = (),
 ) -> QcPack:
     """Return the QC pack of a run.
 
@@ -343,6 +446,10 @@ def qc_pack_of(
         run applied, from
         :func:`~pymedphys._dicom.deidentify.risk_assessment.bind_lists`;
         none by default.
+    several_patient_studies : sequence of sequence of sequence of int, optional
+        Each study whose instances name several patients that the run
+        sequestered, as the groups of run positions, by patient, of its
+        first-pass finding (D-026); none by default.
 
     Notes
     -----
@@ -368,6 +475,9 @@ def qc_pack_of(
     only they reach a recipient, so a series of which one image was
     released is not a volume. Each series of them whose instances all have a
     digest is listed in ``series``, for the reviewer's face verdicts.
+    Each released or held RT Dose that gives a :class:`DoseCheckMaterial`
+    is listed in ``dose_checks``, with its fraction to four decimal places,
+    for the reviewer's choice.
 
     Raises
     ------
@@ -395,9 +505,24 @@ def qc_pack_of(
     gaps: dict[int, list[SourceGap]] = {}
     series: dict[int, SeriesEvidence] = {}
     redactions: dict[int, RedactionMaterial] = {}
+    eyes: dict[bytes, tuple[EyeCheckMaterial, list[int]]] = {}
+    doses: list[qc_pack.DoseCheckEntry] = []
     for position in sorted(material):
         for item in material[position]:
-            if isinstance(item, PixelRiskMaterial):
+            if isinstance(item, DoseCheckMaterial):
+                if instances[position].disposition in _PREVIEWED:
+                    doses.append(
+                        qc_pack.DoseCheckEntry(
+                            position,
+                            item.check_sha256.hex(),
+                            item.choice,
+                            round(item.fraction, 4),
+                        )
+                    )
+            elif isinstance(item, EyeCheckMaterial):
+                if instances[position].disposition is Disposition.HELD_FOR_REVIEW:
+                    eyes.setdefault(item.block_sha256, (item, []))[1].append(position)
+            elif isinstance(item, PixelRiskMaterial):
                 risks.setdefault(position, []).extend(item.assessment.findings)
             elif isinstance(item, SourceGap):
                 gaps.setdefault(position, []).append(item)
@@ -449,6 +574,9 @@ def qc_pack_of(
                 )
             elif isinstance(item, RetainedText):
                 retained.append((item.value, position, item.path))
+            elif isinstance(item, IccProfileMaterial):
+                # Only the release report counts it.
+                continue
             else:
                 raise TypeError("QC material must be of the run's QC material types")
     high_risk = {position: tuple(found) for position, found in risks.items() if found}
@@ -468,7 +596,19 @@ def qc_pack_of(
         )
         for position, item in redactions.items()
     }
-    previews = qc_previews.previews_of(written, high_risk, cleaned)
+    checks = sorted(
+        (
+            (
+                qc_pack.EyeCheckEntry(tuple(sorted(set(positions))), digest.hex()),
+                item.sheet,
+            )
+            for digest, (item, positions) in eyes.items()
+        ),
+        key=lambda check: check[0].positions[0],
+    )
+    previews = qc_previews.previews_of(
+        written, high_risk, cleaned, _eye_sheets(checks, written)
+    )
     instances = tuple(
         dataclasses.replace(
             entry,
@@ -522,7 +662,31 @@ def qc_pack_of(
             for position, found in sorted(gaps.items())
         ),
         reviewed_lists=reviewed_lists,
+        eye_checks=tuple(entry for entry, _ in checks),
+        dose_checks=tuple(doses),
+        several_patient_studies=tuple(
+            qc_pack.SeveralPatientStudyEntry(tuple(tuple(group) for group in groups))
+            for groups in several_patient_studies
+        ),
     )
+
+
+def _eye_sheets(
+    checks: Sequence[tuple[qc_pack.EyeCheckEntry, qc_eyes.EyeSheet | None]],
+    written: Mapping[int, bytes],
+) -> list[qc_eyes.EyeSheet]:
+    """Each eye check's sheet, in order, listing only the frames of its own
+    held instances whose written files the pack has, and none that lists
+    none."""
+    sheets = []
+    for entry, sheet in checks:
+        if sheet is None:
+            continue
+        held = set(entry.positions) & set(written)
+        frames = tuple(frame for frame in sheet.frames if frame[0] in held)
+        if frames:
+            sheets.append(dataclasses.replace(sheet, frames=frames))
+    return sheets
 
 
 def _series_risks(

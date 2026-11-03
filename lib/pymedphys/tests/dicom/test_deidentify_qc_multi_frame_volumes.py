@@ -554,7 +554,6 @@ def _oblique(dataset):
         _unreadable_slope,
         _two_items,
         _too_few_items,
-        _oblique,
     ],
 )
 def test_frames_that_their_groups_cannot_place_or_rescale_form_no_volume(changed):
@@ -565,6 +564,109 @@ def test_frames_that_their_groups_cannot_place_or_rescale_form_no_volume(changed
     # Its 40 frames are more than its cine strip shows, so its pixel data
     # stay held whatever a verdict says.
     assert _kinds(previews) == [PreviewKind.SERIES_CINE]
+    assert previews.pixels_shown == frozenset()
+
+
+@pytest.mark.pydicom
+def test_oblique_frames_offset_within_their_plane_form_a_volume():
+    # Turned obliquely, the frames, still placed one above another, are
+    # offset within their plane; each is sampled where it lies, so every
+    # frame is drawn and a verdict can release the instance.
+    written = {0: _multi_frame(_single(), changed=_oblique)}
+
+    previews = qc_previews.previews_of(written, ())
+
+    assert _kinds(previews) == [
+        PreviewKind.SERIES_CINE,
+        PreviewKind.SERIES_MIP,
+        PreviewKind.SERIES_SURFACE,
+    ]
+    assert previews.pixels_shown == frozenset(written)
+
+
+def _rescaled(slope, intercept):
+    """A change that gives every frame's Pixel Value Transformation group
+    ``slope`` and ``intercept``, as decimal strings, leaving its stored
+    values as they are."""
+
+    def changed(dataset):
+        for item in dataset.PerFrameFunctionalGroupsSequence:
+            (group,) = item.PixelValueTransformationSequence
+            group.RescaleSlope = slope
+            group.RescaleIntercept = intercept
+
+    return changed
+
+
+@pytest.mark.pydicom
+@pytest.mark.parametrize(
+    "sop_class, slope, intercept, rescale_type",
+    [
+        # Finite, but past float32: every rescaled value is infinite.
+        (ENHANCED_CT, "1e39", "-1e42", "HU"),
+        # A slope that float32 rounds to 0, so every frame is one value.
+        (ENHANCED_MR, "1e-50", "0", "US"),
+        # An intercept that float32 rounds the frame's few levels into.
+        (ENHANCED_MR, "1", "1e12", "US"),
+    ],
+)
+def test_frames_that_float32_cannot_rescale_are_not_shown(
+    sop_class, slope, intercept, rescale_type
+):
+    # Its previews would be blank, or of one value, yet list every frame.
+    written = {
+        0: _multi_frame(
+            _axial(_body(), modality="CT" if sop_class == ENHANCED_CT else "MR"),
+            sop_class=sop_class,
+            rescale_type=rescale_type,
+            changed=_rescaled(slope, intercept),
+        )
+    }
+
+    previews = qc_previews.previews_of(written, ())
+
+    assert SIDE > qc_previews.CINE_FRAMES
+    assert not _volume_previews(previews)
+    assert [(entry.position, entry.reason) for entry in previews.not_previewed] == [
+        (0, qc_previews.NotPreviewedReason.UNSUPPORTED)
+    ]
+    assert previews.pixels_shown == frozenset()
+
+
+@pytest.mark.pydicom
+def test_frames_of_a_large_rescale_that_float32_holds_are_shown():
+    # 1e30 times stored values of at most about 2,000 stays within float32.
+    written = {
+        0: _multi_frame(
+            _axial(_body(), modality="MR"),
+            sop_class=ENHANCED_MR,
+            rescale_type="US",
+            changed=_rescaled("1e30", "0"),
+        )
+    }
+    expected = qc_previews.previews_of(_axial(_body(), modality="MR"), ())
+
+    previews = qc_previews.previews_of(written, ())
+
+    for kind in (PreviewKind.SERIES_MIP, PreviewKind.SERIES_SURFACE):
+        assert _only(previews, kind).png == _only(expected, kind).png
+    assert previews.pixels_shown == frozenset({0})
+    assert not previews.not_previewed
+
+
+@pytest.mark.pydicom
+def test_single_frame_slices_that_float32_cannot_rescale_are_not_shown():
+    def rescaled(data):
+        dataset = pydicom.dcmread(io.BytesIO(data))
+        dataset.RescaleSlope, dataset.RescaleIntercept = "1e39", "-1e42"
+        return _file(dataset)
+
+    written = {k: rescaled(v) for k, v in _single().items()}
+
+    previews = qc_previews.previews_of(written, ())
+
+    assert not _volume_previews(previews)
+    assert {entry.position for entry in previews.not_previewed} == set(written)
     assert previews.pixels_shown == frozenset()
 
 

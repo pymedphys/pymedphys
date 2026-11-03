@@ -22,17 +22,22 @@
 Under the Clean Recognizable Visual Features Option, a run finds the face
 block of each CT series (:mod:`~pymedphys._dicom.deidentify.face_blocks`),
 keeps the targets in its block, holds a series with a target that it cannot
-keep within its slices or an eye ROI away from the globes it found, sets an RT Dose in a defaced frame to zero in the block or
-holds it where that dose is too great
+keep within its slices, defaces and holds a series with an eye ROI away
+from the globes it found until a reviewer confirms its block, sets an RT
+Dose in a defaced frame to zero in each defaced series' block or holds it
+where that dose is too great
 (:mod:`~pymedphys._dicom.deidentify.dose_defacing`), and cuts an RT
-Structure Set's contours by the block
+Structure Set's contours in each defaced frame by that frame's blocks
 (:mod:`~pymedphys._dicom.deidentify.region_defacing`). This module runs the
 same code on a directory of DICOM files, such as the CT series, RT
 Structure Sets, RT Plans, and RT Doses that a planning system exports
 (:func:`check_dicom`), and counts what a run would do and how the block
 that it finds compares with the planners' own eye ROIs and targets. It
 renders nothing, writes no instance, and reads each file from where it
-lies.
+lies. Compressed Pixel Data is decoded as a run decodes it, by the plugin
+pinned to its transfer syntax, in the decoding child where that plugin runs
+native code (:func:`~.pixel_cleaning.decoded_stored_values`), never in this
+process.
 
 The files below the directory are found as a run's first pass finds them
 (:func:`~pymedphys._dicom.deidentify.run_discovery.discover`), each is read
@@ -47,7 +52,8 @@ Image, Enhanced CT Image, or Legacy Converted Enhanced CT Image
 defaces each (:class:`SeriesMeasures`), it measures:
 
 - the finder's outcome, by the reason that a run counts in its release
-  report;
+  report, and whether a run without a reviewer's confirmation of its block
+  holds it for its eyes;
 - how its slices, or a multi-frame instance's frames, are stored, their
   spacings, and whether at least 1% of its voxels are at -900 Hounsfield
   units or below, as a head CT's are;
@@ -80,8 +86,9 @@ defaces each (:class:`SeriesMeasures`), it measures:
 
 Of each RT Dose and RT Structure Set that a run holds or cleans for a
 defaced series' frame, it counts the outcome: an RT Dose set to zero in the
-block or held, with the greatest stored value that a run would set to zero
-as a fraction of the grid's greatest, which a run compares with
+blocks or held, with the greatest stored value that a run would set to
+zero as a fraction of the grid's greatest, by magnitude for a grid of Dose
+Type ERROR, which a run compares with
 :data:`~pymedphys._dicom.deidentify.dose_defacing.DOSE_FRACTION`; and an RT
 Structure Set cut, unchanged, or held, with the ROIs that a run would cut
 by RT ROI Interpreted Type. It counts the RT Plans that name a defaced
@@ -119,9 +126,12 @@ from .diagnostics import redacted_diagnostics
 from .dose_defacing import (
     DOSE_FRACTION,
     RT_DOSE,
-    DoseBlock,
+    FrameRegion,
     RtDoseDefacer,
     find_dose_blocks,
+    frame_region,
+    joined,
+    structure_set_regions,
 )
 from .face_blocks import (
     CT_IODS,
@@ -129,6 +139,7 @@ from .face_blocks import (
     PHASE_REACH,
     RT_STRUCTURE_SET,
     Defaced,
+    EyeCheck,
     SeriesDefacing,
     _described,
     _distinct,
@@ -136,11 +147,11 @@ from .face_blocks import (
     _Found,
     _hounsfield,
     _hull_reaches,
-    _in_slab,
     _is_eye,
     _outcomes,
     _roi_frames,
     _searched,
+    _spread,
     _target_fates,
     _TargetFates,
     _targets,
@@ -168,7 +179,13 @@ from .face_validation import (
     crash_site,
 )
 from .phases import COINCIDENT
-from .pixel_cleaning import FrameMask, PixelDataRefused, black_out, layout_of
+from .pixel_cleaning import (
+    FrameMask,
+    PixelDataRefused,
+    black_out,
+    decoded_stored_values,
+    frames_layout,
+)
 from .reasons import VisualFeaturesReason
 from .references import InstanceRecord
 from .region_defacing import ContoursRefused, cut_contours
@@ -176,7 +193,7 @@ from .run_discovery import RunError, discover
 from .source import NATIVE_TRANSFER_SYNTAXES, SourceRefused, read_source
 from .uids import normalise_uid
 
-FORMAT = "pymedphys-deid-face-validation-dicom/5"
+FORMAT = "pymedphys-deid-face-validation-dicom/6"
 RT_PLAN = "RT Plan"
 CLOSED = frozenset({"CLOSED_PLANAR", "CLOSEDPLANAR_XOR"})
 # The defined terms of RT ROI Interpreted Type (PS3.3 C.8.8.8): any other
@@ -290,13 +307,17 @@ class SeriesMeasures:
         not measured.
     air : bool or None
         Whether at least 1% of its voxels are at -900 Hounsfield units or
-        below; None where its pixel data is compressed or cannot be read.
+        below; None where its pixel data cannot be read or decoded.
     eye_rois : int
         How many eye ROIs, by ``_is_eye``, in its frame or naming none, the
         structure sets searched for it hold.
     around_targets : bool
         Whether it is defaced around a target in its block, whose region the
         run keeps.
+    eyes_unconfirmed : bool
+        Whether it is defaced and held until a reviewer confirms its block,
+        since an eye ROI disagrees with its globes, as a run without a
+        confirmation holds it.
     eyes : tuple of EyeMeasures
         For a series with a block, each of those eye ROIs.
     targets : mapping of str to int
@@ -329,6 +350,7 @@ class SeriesMeasures:
     air: bool | None = None
     eye_rois: int = 0
     around_targets: bool = False
+    eyes_unconfirmed: bool = False
     eyes: tuple[EyeMeasures, ...] = ()
     targets: Mapping[str, int] = dataclasses.field(default_factory=dict)
     clearances: tuple[float, ...] = ()
@@ -348,7 +370,7 @@ class DoseMeasures:
     Attributes
     ----------
     outcome : str
-        ``"set-to-zero"``, ``"not-measured/compressed"``, the reason that it
+        ``"set-to-zero"``, the reason that it
         is held, such as ``"dose-in-face-block"``, or, for a file that a run
         sequesters, ``"sequestered/"`` and the
         :class:`~.source.SourceReason`'s value.
@@ -518,7 +540,7 @@ def measure_dicom(directory: os.PathLike[str] | str) -> DicomMeasures:
         series = _series_positions(records)
         if not series:
             raise FaceValidationRefused("The directory holds no CT series.")
-        found_series = _outcomes(records, read)
+        found_series = _outcomes(records, read, sheets=False)
         outcomes = {uid: outcome for uid, (outcome, _) in found_series.items()}
         defaced = find_defaced(records, outcomes)
         dose_blocks = find_dose_blocks(
@@ -631,6 +653,7 @@ def _measure_series(
         "phases": found.phases,
         "phases_without_eyes": found.eyeless,
         "globe_spread": globe_spread(found.blocks),
+        "eyes_unconfirmed": outcome.eyes is EyeCheck.DISAGREE,
     }
     if block is not None:
         # As the run judges them, against one slice at each position.
@@ -684,17 +707,16 @@ def _stored(
     heights = []
     air = total = 0
     storage = pixel_spacing = normal = None
-    compressed = False
+    undecoded = False
     try:
         for position in positions:
             data = read(position) or b""
-            dataset = pydicom.dcmread(io.BytesIO(data))
+            dataset = pydicom.dcmread(io.BytesIO(data), stop_before_pixels=True)
             native = str(dataset.file_meta.TransferSyntaxUID) in (
                 NATIVE_TRANSFER_SYNTAXES
             )
-            compressed |= not native
             if "NumberOfFrames" in dataset:
-                slices = _described(dataset, layout_of(dataset))
+                slices = _described(dataset, frames_layout(dataset, str(dataset.file_meta.TransferSyntaxUID)))
                 places = [(each.position, each.orientation) for each in slices]
                 spacing = max(slices[0].spacing)
             else:
@@ -713,27 +735,39 @@ def _stored(
                 normal = np.cross(cosines[:3], cosines[3:])
             assert normal is not None
             heights += [float(np.dot(origin, normal)) for origin, _ in places]
-            if compressed:
+            if undecoded:
                 continue
-            frames: Iterable[np.ndarray] = (
-                (
-                    _hounsfield(values, each)
-                    for values, each in zip(
-                        _stored_frames(data, slices[0].shape, range(len(slices))),
-                        slices,
-                        strict=True,
+            try:
+                if slices:
+                    frames: Iterable[np.ndarray] = (
+                        _hounsfield(values, each)
+                        for values, each in zip(
+                            _stored_frames(
+                                data, slices[0].shape, range(len(slices)),
+                                compressed=not native,
+                            ),
+                            slices,
+                            strict=True,
+                        )
                     )
-                )
-                if slices
-                else [
-                    dataset.pixel_array.astype(np.float64)
-                    * float(dataset.get("RescaleSlope", 1))
-                    + float(dataset.get("RescaleIntercept", 0))
-                ]
-            )
-            for values in frames:
-                air += int(np.count_nonzero(values <= _AIR))
-                total += values.size
+                else:
+                    stored = _slice_values(data, native)
+                    if stored is None:
+                        undecoded = True
+                        continue
+                    frames = [
+                        stored.astype(np.float64) * float(dataset.get("RescaleSlope", 1))
+                        + float(dataset.get("RescaleIntercept", 0))
+                    ]
+                for values in frames:
+                    air += int(np.count_nonzero(values <= _AIR))
+                    total += values.size
+            # A compressed frame that the run cannot decode leaves its air
+            # unmeasured; native read errors retain the outer refusal path.
+            except Exception:  # pylint: disable = broad-exception-caught
+                if native:
+                    raise
+                undecoded = True
     # A slice that cannot be read, or whose attributes cannot be read as
     # numbers, raises many types, and a message can quote a value.
     except Exception:  # pylint: disable = broad-exception-caught
@@ -744,8 +778,32 @@ def _stored(
         "storage": storage,
         "pixel_spacing": _spacing(pixel_spacing),
         "slice_spacing": _spacing(float(np.median(steps)) if len(steps) else None),
-        "air": None if compressed or not total else air >= _AIR_SHARE * total,
+        "air": None if undecoded or not total else air >= _AIR_SHARE * total,
     }
+
+
+def _slice_values(data: bytes, native: bool) -> np.ndarray | None:
+    """A CT Image slice's stored values, decoded as a run decodes them where
+    they are compressed, or None where compressed Pixel Data cannot be
+    decoded.
+
+    Raises
+    ------
+    Exception
+        Whatever pydicom raises for native Pixel Data that it cannot read.
+    """
+    if native:
+        return pydicom.dcmread(io.BytesIO(data)).pixel_array
+    try:
+        with redacted_diagnostics():
+            source = read_source(data)
+            dataset = source.dataset()
+        (values,) = decoded_stored_values(source, dataset, [0])
+    # A file that the reader refuses, or whose frames do not decode, as a
+    # run would sequester it, is not measured.
+    except (SourceRefused, PixelDataRefused, ValueError):
+        return None
+    return values
 
 
 def _spacing(value: float | None) -> float | None:
@@ -944,8 +1002,8 @@ def _target_codes(
     of each that does not reach the block: ``"tied-to-another-frame"`` for
     one in another frame that the set ties to the series' slices, which
     holds the series; ``"not-placed"`` for one with a coordinate that is
-    not finite or too far to place, or with a contour in a slab
-    (``_in_slab``), which holds it too; ``"kept-in-block"``
+    not finite or too far to place, or with a slab whose span cannot be
+    placed (``_spread``), which holds it too; ``"kept-in-block"``
     for one whose hull reaches the block within the slices, around which
     the series is defaced; ``"beyond-slices"`` for one whose hull's part in
     the block reaches beyond the slices, which holds the series;
@@ -963,14 +1021,12 @@ def _target_codes(
         if (frames - {"", frame}) & tied:
             yield "tied-to-another-frame", None
         elif frames & {"", frame}:
-            items = list(item.get("ContourSequence") or [])
-            if any(_in_slab(contour) for contour in items):
+            contours = [
+                _spread(contour) for contour in item.get("ContourSequence") or []
+            ]
+            if any(each is None for each in contours):
                 yield "not-placed", None
                 continue
-            contours = [
-                np.asarray([float(v) for v in contour.ContourData]).reshape(-1, 3)
-                for contour in items
-            ]
             if not contours:
                 yield "no-contours", None
                 continue
@@ -1061,7 +1117,7 @@ def _measure_dose(
     record: InstanceRecord,
     data: bytes | None,
     defaced: Defaced,
-    dose_blocks: Mapping[str, DoseBlock],
+    dose_blocks: Mapping[str, FrameRegion],
 ) -> DoseMeasures | None:
     """What a run does with an RT Dose, as ``_dose_block``, ``_cleaned``,
     and ``_frame_hold`` of the instance transform decide it, or None for
@@ -1070,15 +1126,10 @@ def _measure_dose(
     dataset = pydicom.dcmread(io.BytesIO(data or b""))
     if not any(tag in dataset for tag in PIXEL_DATA_TAGS):
         return None
-    frames = frames_of(record)
-    dose = dose_blocks.get(next(iter(frames))) if len(frames) == 1 else None
+    dose = frame_region(record, dose_blocks)
     undefaced = VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME.value
     if dose is None:
         return DoseMeasures(undefaced) if defaced.holds(RT_DOSE, record) else None
-    if str(dataset.file_meta.TransferSyntaxUID) not in NATIVE_TRANSFER_SYNTAXES:
-        # A run decodes it in a process of its own; this check decodes no
-        # compressed Pixel Data.
-        return DoseMeasures("not-measured/compressed")
     try:
         source = read_source(data or b"")
     except SourceRefused as refused:
@@ -1111,11 +1162,12 @@ class _Recorder:
 
     def mask(self, frame: int, stored: np.ndarray) -> FrameMask | None:
         stored = np.asarray(stored)
+        compared = self._defacer.compared(stored)
         if stored.size:
-            self._greatest = max(self._greatest, int(stored.max()))
+            self._greatest = max(self._greatest, int(compared.max()))
         mask = self._defacer.mask(frame, stored)
         if mask is not None:
-            self._zeroed = max(self._zeroed, int(stored[np.asarray(mask.mask)].max()))
+            self._zeroed = max(self._zeroed, int(compared[np.asarray(mask.mask)].max()))
         return mask
 
     @property
@@ -1129,21 +1181,21 @@ def _measure_structure_set(
     record: InstanceRecord,
     data: bytes | None,
     defaced: Defaced,
-    dose_blocks: Mapping[str, DoseBlock],
+    dose_blocks: Mapping[str, FrameRegion],
 ) -> StructureSetMeasures | None:
-    """What a run does with an RT Structure Set, as ``_region`` and
+    """What a run does with an RT Structure Set, as ``_contour_regions`` and
     ``_frame_hold`` of the instance transform decide it, or None for one
     that it neither holds nor cleans for a defaced frame."""
-    frames = frames_of(record)
-    region = dose_blocks.get(next(iter(frames))) if len(frames) == 1 else None
+    regions = structure_set_regions(record, dose_blocks, defaced)
     undefaced = VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME.value
-    if region is None:
+    if regions is None:
         if defaced.holds(RT_STRUCTURE_SET, record):
             return StructureSetMeasures(undefaced)
         return None
+    region = joined(regions)
     dataset = pydicom.dcmread(io.BytesIO(data or b""))
     try:
-        cut = cut_contours(region, dataset, next(iter(frames)))
+        cut = cut_contours(regions, dataset, defaced.frames)
     except ContoursRefused:
         return StructureSetMeasures(undefaced)
     kinds = _interpreted_types(dataset)
@@ -1210,6 +1262,7 @@ def summarise(measures: DicomMeasures) -> dict[str, Any]:
         "series": {
             "defaced": sum(each.outcome == "defaced" for each in series),
             "defaced_around_targets": sum(each.around_targets for each in series),
+            "defaced_eyes_unconfirmed": sum(each.eyes_unconfirmed for each in series),
             "not_defaced": _counted(
                 each.outcome for each in series if each.outcome != "defaced"
             ),
@@ -1271,7 +1324,6 @@ def _has_block(series: SeriesMeasures) -> bool:
     return series.outcome in (
         "defaced",
         face_blocks.SeriesProblem.TARGET_IN_BLOCK.value,
-        face_blocks.SeriesProblem.EYES_DISAGREE.value,
     )
 
 

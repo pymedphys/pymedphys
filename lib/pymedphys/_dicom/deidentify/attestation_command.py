@@ -25,7 +25,21 @@ under the institution's governance; either left out is recorded as not
 stated. The reviewer may give a face verdict on any of the pack's series, by
 the run position of its first instance: ``--face-absent POSITION`` where
 they saw no recognisable face in its previews, and ``--face-present
-POSITION`` where they saw one, each repeatable. Likewise, they may give a
+POSITION`` where they saw one, each repeatable. They may confirm the face
+block of any series that the pack lists in its ``eye_checks``, which the
+run defaced and held because its eye ROIs disagree with the globes that its
+block was found from, by the run position of its first instance there:
+``--block-confirmed POSITION`` where the pack's sheet of the globes found
+beside the eye ROIs shows that the globes are the patient's eyes,
+repeatable; a later run given the attestation then defaces the series with
+that block without holding it for its eyes. They may choose what a later
+run does with any RT Dose that the pack lists in its ``dose_checks``, whose
+dose in a defaced series' face block is more than the run sets to zero, by
+its run position: ``--dose-as-written POSITION`` to write it as received,
+to be released on a verdict of absent on its series from its own
+dose-levels previews, and ``--dose-set-to-zero POSITION`` to set it to zero
+in the block anyway, to be released only on a verdict on the later run's
+previews of the grid as set to zero, each repeatable. Likewise, they may give a
 redaction verdict on any instance whose Pixel Data the Clean Pixel Data
 Option cleaned and the pack previewed, by its run position:
 ``--redaction-accepted POSITION`` where the pack's regions cover every
@@ -47,7 +61,11 @@ previews by their SHA-256, and only once: a pack that has been attested, a
 directory that holds no QC pack, a pack of another format, a pack whose
 previews are missing or changed, an outcome of attested without all three
 reviews, a face verdict on a position that begins none of the pack's series,
-a series given both verdicts, a verdict with an outcome of rejected, a
+a series given both verdicts, a confirmed block on a position that begins
+none of the pack's eye checks, or one without a sheet of its eyes, a dose
+choice on a position that the pack's ``dose_checks`` does not list, an RT
+Dose given both choices, a verdict, a confirmation, or a choice with an
+outcome of rejected, a
 redaction verdict on a position that the
 pack does not list as cleaned and previewed, an instance given more than
 one redaction verdict, a revised instance without a region, and a region
@@ -65,7 +83,8 @@ that a release report records (D-016).
 
 The reviewer's name and the pack's path can identify people, so neither the
 summary nor any message quotes them; the summary gives the outcome, the
-reviews done, how many series have each face verdict, how many instances
+reviews done, how many series have each face verdict, how many blocks were
+confirmed, how many RT Doses were given each dose choice, how many instances
 have each redaction verdict, each region that a revised verdict adds, by
 run position and frame, with the preview of that frame, so that the
 reviewer can check the region against the frame it was read from, and the
@@ -103,6 +122,7 @@ from .qc_attestation import (
     redaction_previews,
 )
 from .qc_pack import QcPackError
+from .reasons import DoseChoice
 from .text_detection import TextBox
 
 EXIT_RECORDED = 0
@@ -122,7 +142,9 @@ def summary_lines(
 
     It gives the pack's reference, the outcome, whether each review that
     D-017 requires was done, the releaser's confirmations, how many series
-    have each face verdict, how many instances have each redaction verdict,
+    have each face verdict, how many blocks the reviewer confirmed, how
+    many RT Doses have each dose choice, how many instances have each
+    redaction verdict,
     each region that a revised verdict adds, with the file in the pack that
     previews its frame where ``previews``, by run position and frame, names
     one, and that the published release report is unchanged.
@@ -131,6 +153,7 @@ def summary_lines(
     coverage = attestation.coverage
     faces = [verdict.face for verdict in attestation.faces]
     redactions = [verdict.redaction for verdict in attestation.redactions]
+    doses = [verdict.choice for verdict in attestation.dose_choices]
     return [
         f"QC pack {attestation.reference}: {attestation.outcome.value}",
         *(
@@ -153,6 +176,14 @@ def summary_lines(
         ),
         f"  series without a recognisable face: {faces.count(Face.ABSENT)}",
         f"  series with a recognisable face: {faces.count(Face.PRESENT)}",
+        f"  face blocks confirmed: {len(attestation.confirmed_blocks)}",
+        *(
+            f"  RT Doses with dose in a face block {chosen}: {doses.count(choice)}"
+            for chosen, choice in (
+                ("to write as received", DoseChoice.AS_WRITTEN),
+                ("to set to zero", DoseChoice.SET_TO_ZERO),
+            )
+        ),
         *(
             f"  cleaned instances {verdict}: {redactions.count(redaction)}"
             for verdict, redaction in (
@@ -253,6 +284,41 @@ def build_parser(*, stderr: TextIO | None = None) -> argparse.ArgumentParser:
             help=(
                 f"you saw {seen} in the previews of the series whose first "
                 "instance is at this run position; repeatable"
+            ),
+        )
+    parser.add_argument(
+        "--block-confirmed",
+        action="append",
+        type=int,
+        default=[],
+        metavar="POSITION",
+        help=(
+            "the globes found are the patient's eyes, in the QC pack's sheet of "
+            "the eye check whose first instance is at this run position, so its "
+            "face block is confirmed; repeatable"
+        ),
+    )
+    for flag, chosen in (
+        (
+            "--dose-as-written",
+            "write it as received, to be released on a verdict of absent on its "
+            "own dose-levels previews",
+        ),
+        (
+            "--dose-set-to-zero",
+            "set it to zero in the face block anyway, to be released only on a "
+            "verdict on the later run's previews of it as set to zero",
+        ),
+    ):
+        parser.add_argument(
+            flag,
+            action="append",
+            type=int,
+            default=[],
+            metavar="POSITION",
+            help=(
+                "for the RT Dose at this run position in the QC pack's dose "
+                f"checks, a later run is to {chosen}; repeatable"
             ),
         )
     for flag, verdict in (
@@ -371,6 +437,14 @@ def main(
             stderr,
         )
         return EXIT_NOT_RECORDED
+    as_written = set(arguments.dose_as_written)
+    set_to_zero = set(arguments.dose_set_to_zero)
+    if as_written & set_to_zero:
+        _print(
+            "error: an RT Dose is given both dose choices; nothing was recorded",
+            stderr,
+        )
+        return EXIT_NOT_RECORDED
     try:
         redactions = _redaction_verdicts(arguments)
     except ValueError as error:
@@ -394,6 +468,11 @@ def main(
                 **{series: Face.PRESENT for series in present},
             },
             redactions=redactions,
+            confirmed_blocks=arguments.block_confirmed,
+            dose_choices={
+                **dict.fromkeys(as_written, DoseChoice.AS_WRITTEN),
+                **dict.fromkeys(set_to_zero, DoseChoice.SET_TO_ZERO),
+            },
         )
     except QcPackError as error:
         # QcPackError and the OSErrors it replaces name a check, never a path.

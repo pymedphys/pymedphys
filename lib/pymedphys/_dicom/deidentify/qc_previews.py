@@ -32,9 +32,13 @@ frame with such regions, also from the file as received:
   :data:`CINE_COLUMNS`;
 - a frontal maximum intensity projection of each volume that a series
   forms: at least :data:`VOLUME_SLICES` slices of one size, orientation,
-  and pixel spacing, at distinct positions stacked along the normal of
-  their orientation, whose axes lie along the patient's anterior-posterior,
-  left-right, and superior-inferior directions. A slice is a single-frame
+  and pixel spacing, at distinct positions along the normal of their
+  orientation, either stacked along it with axes along the patient's
+  anterior-posterior, left-right, and superior-inferior directions, or
+  else, as with a gantry tilt, slices offset within their plane, or an
+  oblique orientation, with row and column directions each of unit length,
+  and perpendicular, within
+  :data:`~.stack_sampling.ORTHONORMAL_TOLERANCE`. A slice is a single-frame
   instance, placed by its Image Position (Patient), Image Orientation
   (Patient), and Pixel Spacing, or a frame of a multi-frame instance, such
   as an Enhanced CT, Enhanced PET, or Enhanced MR image, placed by its Plane
@@ -60,23 +64,33 @@ frame with such regions, also from the file as received:
   with the patient's head at the top and right on the viewer's left, sampled
   to square pixels by nearest neighbour, at most :data:`MIP_PIXELS` a side,
   each slice also taken into the pixel nearest it by the maximum, so that
-  every slice is drawn where slices are closer than the pixels;
+  every slice is drawn where slices are closer than the pixels. A volume
+  whose axes do not lie along the patient's, or whose slices are offset
+  within their plane, is first sampled to cubic voxels along the patient's
+  axes by :mod:`~pymedphys._dicom.deidentify.stack_sampling`, with every
+  slice drawn, at most :data:`MIP_VOXELS` of them, and then projected, so
+  that the projection superimposes nothing that a frontal view keeps
+  apart;
 - a sheet of renders of the skin surface of each such volume, from the
   front, the two obliques, the two profiles, and behind, as
   :mod:`~pymedphys._dicom.deidentify.qc_surfaces` describes, or, for a
   volume of RT Dose planes, and for each RT Dose instance of two or more
-  frames whose grid lies along the patient's axes with its frames evenly
-  spaced, a dose-levels sheet of such renders at each of its dose levels;
+  frames evenly spaced, a dose-levels sheet of such renders at each of its dose levels;
   one that :mod:`~pymedphys._dicom.deidentify.qc_surfaces` finds too large
   to render has none, and such a volume has no projection either, so that
   its slices beyond its cine strip are held;
   an RT Dose is shown so only where it is one by its SOP Class, and its
-  stored values are unsigned, not padded, not rescaled, and scaled by a
-  finite Dose Grid Scaling above 0 to doses that float32 holds, each above
-  0 still above 0 and none infinite;
+  stored values are not padded, not rescaled, and scaled by a finite Dose
+  Grid Scaling above 0 to doses that float32 holds, each other than 0
+  still other than 0 and none infinite; a grid or series whose stored
+  values are signed, by Pixel Representation, as an RT Dose of Dose Type
+  ERROR's can be, is shown at the levels of its doses below 0 as well as
+  above, as :mod:`~pymedphys._dicom.deidentify.qc_surfaces` describes;
 - a dose-levels map of each RT Dose plane of one frame, so shown, that is
   in no volume, at full resolution, grey by how many of its dose levels
-  each pixel reaches, so that each level's outline is an edge;
+  each pixel reaches, so that each level's outline is an edge; a signed
+  plane's map of its doses above 0 is followed, after white columns, by
+  its map of the magnitudes of its doses below 0;
 - a contour sheet of each instance with contours, such as an RT Structure
   Set, high-risk or not, since a face verdict can release only what a
   reviewer saw: its contours as written, drawn in each Frame of Reference
@@ -98,6 +112,11 @@ frame with such regions, also from the file as received:
   of its quantities. An instance any of whose grids' sheets are not all
   drawn, whatever the cause, has none of them, and is reported, though its
   other previews, if any, are kept;
+- a sheet of the globes found beside the eye ROIs of each CT series that
+  the run defaced and held until a reviewer confirms its face block, which
+  :mod:`~pymedphys._dicom.deidentify.qc_eyes` draws from the slices as
+  received before the run writes any, and which never counts as showing
+  the pixel data written;
 - each high-risk instance at full resolution: every frame, or
   :data:`CINE_FRAMES` evenly spaced, unscaled, since burned-in text may be
   small;
@@ -182,7 +201,14 @@ from .pixel_decoding import (
     isolated_frames,
     pinned_plugin,
 )
-from . import qc_contours, qc_grids, qc_segments, qc_surfaces
+from . import (
+    qc_contours,
+    qc_eyes,
+    qc_grids,
+    qc_segments,
+    qc_surfaces,
+    stack_sampling,
+)
 from .face_review import holds_deformation_grid, is_rt_dose
 from .functional_groups import frame_group
 from .phases import FRAME, Named, named_by_frame, named_by_instance, split
@@ -201,6 +227,10 @@ CINE_FRAMES = 16
 CINE_COLUMNS = 4
 TILE_PIXELS = 256
 MIP_PIXELS = 1024
+# The most voxels to which the projection of a stack whose axes do not lie
+# along the patient's is sampled (_StackProjection), so that it takes
+# seconds: about 0.9 mm voxels for a head 230 mm across and 210 mm tall.
+MIP_VOXELS = 1 << 24
 VOLUME_SLICES = 3
 
 _PERCENTILES = (0.5, 99.5)
@@ -209,8 +239,9 @@ _MONOCHROME = frozenset({"MONOCHROME1", "MONOCHROME2"})
 _COLOUR = frozenset({"RGB", "YBR_FULL", "YBR_FULL_422", "YBR_ICT", "YBR_RCT"})
 _FLOAT_PIXEL_DATA = ("FloatPixelData", "DoubleFloatPixelData")
 # An axis lies along a patient axis when its other two direction cosines are
-# each at most this; a projection along an oblique axis would superimpose
-# what a frontal view keeps apart.
+# each at most this; a volume with any other axis is sampled to voxels along
+# the patient's axes before it is projected, since a projection along an
+# oblique axis would superimpose what a frontal view keeps apart.
 _ALIGNMENT_TOLERANCE = 1e-4
 _ORIENTATION_TOLERANCE = 1e-4
 # In millimetres, how far a slice's origin may lie off the normal of the first,
@@ -253,7 +284,8 @@ class _Instance:
     plane: _Plane | None
     number: int | None
     modality: str
-    grid: qc_surfaces.Grid | None  # an RT Dose grid that dose levels show
+    # An RT Dose grid that dose levels show.
+    grid: qc_surfaces.Grid | qc_surfaces.Stacked | None
     frame: str | None  # Frame of Reference UID
     # Whether its native Pixel Data hold no more than its frames, with at most
     # one byte of padding; the bytes beyond them are in no frame a preview
@@ -263,9 +295,12 @@ class _Instance:
     # dose-levels preview shows as it could show a face (D-017).
     dose: bool = False
     # Dose Grid Scaling, where a dose-levels preview can show its doses:
-    # an RT Dose by its SOP Class, unsigned, not rescaled, and scaled by a
-    # finite number above 0.
+    # an RT Dose by its SOP Class, not padded, not rescaled, and scaled by
+    # a finite number above 0.
     dose_scale: float | None = None
+    # Whether such an RT Dose's stored values are signed, so that its
+    # doses below 0 are shown at their own levels.
+    dose_signed: bool = False
     # Whether its native Pixel Data are of 1 bit allocated, packed across
     # frames, which pydicom 3.0 cannot decode one frame at a time where a
     # frame's bits are not a whole number of bytes, as a Segmentation's
@@ -337,10 +372,12 @@ class PreviewSet:
         of each volume that it forms, then the dose-levels render of each RT Dose
         grid in it, then the dose-levels map of each RT Dose plane in it in
         no volume, series in the order of their first run position; then each
-        contour sheet, in run position order; then each segments sheet, in
-        run position order; then each grid sheet, in run position order,
-        grid order, and the order of :data:`~.qc_pack.GRID_KINDS`; then each
-        high-risk instance, in run position order; then each frame of each instance that Clean Pixel Data
+        sheet of a series' eyes, as given; then each contour sheet, in run
+        position order; then each segments sheet, in run position order;
+        then each grid sheet, in run position order, grid order, and the
+        order of :data:`~.qc_pack.GRID_KINDS`; then each high-risk
+        instance, in run position order; then each frame of each
+        instance that Clean Pixel Data
         cleaned, in run position and frame order. Named ``P-0001.png``
         onwards in that order. A contour sheet shows its instance's frame
         0, then the frames of each volume that it is drawn with, if any; a
@@ -393,6 +430,7 @@ def previews_of(
     written: Mapping[int, bytes],
     high_risk: Collection[int],
     redactions: Mapping[int, tuple[bytes | None, RedactionEntry]] | None = None,
+    eye_sheets: Sequence[qc_eyes.EyeSheet] = (),
 ) -> PreviewSet:
     """Return the previews of the files that a run wrote, as the module describes.
 
@@ -407,6 +445,11 @@ def previews_of(
         The source file of each instance that Clean Pixel Data cleaned, or
         None where no frame has regions, and what it cleaned, by run
         position. A position without a written file is ignored.
+    eye_sheets : sequence of ~pymedphys._dicom.deidentify.qc_eyes.EyeSheet, optional
+        The sheet of each CT series held until a reviewer confirms its face
+        block, drawn from its slices as received, in order of its first
+        frame's run position, each listing only frames of held instances;
+        none by default.
 
     Returns
     -------
@@ -453,6 +496,15 @@ def previews_of(
     }
     for series in _series(instances):
         images.extend(_encoded(_series_images(series, decoded, guides)))
+    for sheet in eye_sheets:
+        images.append(
+            (
+                PreviewKind.SERIES_EYES,
+                sheet.frames,
+                sheet.total_frames,
+                png(sheet.image),
+            )
+        )
     for position, contours in sorted(contoured.items()):
         sheet = _contour_image(position, contours, guides)
         if sheet is None:
@@ -672,6 +724,7 @@ def _described(
     hounsfield = framed.hounsfield if framed.described else _hounsfield(dataset)
     uid = dataset.get("SeriesInstanceUID")
     scale = None if colour or rescale != (1.0, 0.0) else _dose_scale(dataset)
+    signed = _number(dataset, "PixelRepresentation", int) == 1
     whole = True
     if not plugin:
         try:
@@ -696,11 +749,12 @@ def _described(
         modality=modality,
         grid=None
         if scale is None
-        else _dose_grid(dataset, spacing, (rows, columns), frames, scale),
+        else _dose_grid(dataset, spacing, (rows, columns), frames, scale, signed),
         frame=_uid(dataset, "FrameOfReferenceUID"),
         whole=whole,
         dose=is_rt_dose(dataset),
         dose_scale=scale,
+        dose_signed=scale is not None and signed,
         packed=not plugin and allocated == 1,
         segmentation=segmentation,
         segments=qc_segments.segments_of(dataset) if segmentation else None,
@@ -1004,11 +1058,12 @@ _PADDING = ("PixelPaddingValue", "PixelPaddingRangeLimit")
 
 def _dose_scale(dataset: pydicom.Dataset) -> float | None:
     """Dose Grid Scaling, where the data set is an RT Dose by its SOP Class
-    whose stored values are unsigned, not padded, and scaled by a finite
-    number above 0; otherwise None, as a signed grid can hold doses below 0,
-    which no level shows, a padded one has stored values that are read as
-    no dose, which no level shows either, and a grid without a scaling above
-    0 has no dose to show."""
+    whose stored values are unsigned or signed, by Pixel Representation of
+    0 or 1, not padded, and scaled by a finite number above 0; otherwise
+    None, as a padded grid has stored values that are read as no dose,
+    which no level shows, and a grid without a scaling above 0 has no dose
+    to show. A signed grid is shown at the levels of its doses below 0 as
+    well as above (:mod:`~pymedphys._dicom.deidentify.qc_surfaces`)."""
     try:
         sop_class = str(dataset.get("SOPClassUID") or "")
     except Exception:  # pylint: disable = broad-exception-caught
@@ -1016,7 +1071,7 @@ def _dose_scale(dataset: pydicom.Dataset) -> float | None:
     scaling = _number(dataset, "DoseGridScaling", float)
     if (
         sop_class != qc_surfaces.RT_DOSE_STORAGE
-        or _number(dataset, "PixelRepresentation", int) != 0
+        or _number(dataset, "PixelRepresentation", int) not in (0, 1)
         or any(keyword in dataset for keyword in _PADDING)
         or scaling is None
         or scaling <= 0
@@ -1031,10 +1086,13 @@ def _dose_grid(
     shape: tuple[int, int],
     frames: int,
     scale: float,
-) -> qc_surfaces.Grid | None:
+    signed: bool = False,
+) -> qc_surfaces.Grid | qc_surfaces.Stacked | None:
     """The grid of an RT Dose instance of two or more frames, if it is rendered.
 
-    Its axes must lie along the patient's, and its frames be evenly spaced.
+    Its frames must be evenly spaced. One whose axes do not lie along the
+    patient's is a stack (:mod:`~pymedphys._dicom.deidentify.stack_sampling`)
+    of its frames, each at its offset along the normal from the first.
     """
     if frames < 2:
         return None
@@ -1060,12 +1118,26 @@ def _dose_grid(
         offsets = tuple(offset - plane.origin[2] for offset in offsets)
     steps = np.diff(offsets)
     if (
-        _roles(directions) is None
-        or abs(offsets[0]) > _STACKING_TOLERANCE
+        abs(offsets[0]) > _STACKING_TOLERANCE
         or not ((steps > 0).all() or (steps < 0).all())
         or np.ptp(steps) > _STACKING_TOLERANCE
     ):
         return None
+    if _roles(directions) is None:
+        try:
+            stack = stack_sampling.Stack(
+                plane.row + plane.column,
+                [
+                    np.array(plane.origin)
+                    + offset * directions[0] / np.linalg.norm(directions[0])
+                    for offset in offsets
+                ],
+                plane.spacing,
+                shape,
+            )
+        except (stack_sampling.StackRefused, ValueError):
+            return None
+        return qc_surfaces.Stacked(stack, qc_surfaces.Threshold.DOSE, scale, signed)
     return qc_surfaces.grid(
         directions,
         offsets,
@@ -1073,6 +1145,7 @@ def _dose_grid(
         shape,
         qc_surfaces.Threshold.DOSE,
         scale,
+        signed,
     )
 
 
@@ -1182,7 +1255,11 @@ class _Decoder:
         if instance.colour:
             return pixels.astype(np.uint8)
         slope, intercept = instance.rescale_of(index)
-        shown = pixels.astype(np.float32) * np.float32(slope) + np.float32(intercept)
+        with np.errstate(over="ignore", under="ignore", invalid="ignore"):
+            shown = pixels.astype(np.float32) * np.float32(slope) + np.float32(
+                intercept
+            )
+        padded = None
         if instance.padding is not None:
             low, high = instance.padding
             padded = (pixels >= low) & (pixels <= high)
@@ -1190,8 +1267,47 @@ class _Decoder:
                 values = pixels[padded]
                 if values.min() != values.max():
                     self.mixed_padding.add(instance.position)
+        if not _contrast_kept(pixels, shown, padded):
+            self._refused[instance.position] = (
+                reason if received else NotPreviewedReason.UNSUPPORTED
+            )
+            return None
+        if padded is not None:
             shown[padded] = np.nan
         return shown
+
+
+# How many steps of float32 a frame's rescaled values must span, at least,
+# where its stored values differ: the 256 grey levels of a preview's PNG.
+_RESCALED_LEVELS = 256
+
+
+def _contrast_kept(
+    pixels: np.ndarray, shown: np.ndarray, padded: np.ndarray | None
+) -> bool:
+    """Whether a frame's rescaled values, as float32, keep what its stored
+    values show, other than padding.
+
+    A Rescale Slope and Rescale Intercept that are finite can still take a
+    frame beyond float32, where its values are infinite or not a number, or
+    collapse it, as a slope too small for float32 rounds to 0, so that a
+    preview drawn of it is blank though it lists every frame. So every
+    value must be finite, and where the stored values differ, the rescaled
+    ones must span at least :data:`_RESCALED_LEVELS` steps of float32 at
+    their magnitude, which a linear rescale spreads evenly over the frame's
+    range.
+    """
+    if padded is not None:
+        pixels, shown = pixels[~padded], shown[~padded]
+    if not pixels.size:
+        return True
+    if not np.isfinite(shown).all():
+        return False
+    if pixels.min() == pixels.max():
+        return True
+    low, high = float(shown.min()), float(shown.max())
+    step = float(np.spacing(np.float32(max(abs(low), abs(high)))))
+    return high - low >= _RESCALED_LEVELS * step
 
 
 def _packed_frames(instance: _Instance, indices: Sequence[int]) -> Iterator[np.ndarray]:
@@ -1279,8 +1395,12 @@ def _series_images(
     # A volume too large for a surface render has no projection either, so
     # that no preview that could show a face draws its slices beyond its
     # cine strip, and their pixel data are held.
-    projections: list[_Projection | None] = [
-        None if render.large else _Projection(volume)
+    projections: list[_Projection | _StackProjection | None] = [
+        None
+        if render.large
+        else _Projection(volume)
+        if volume.stack is None
+        else _StackProjection(volume)
         for volume, render in zip(volumes, renders)
     ]
     in_volume = {each for volume in volumes for each in volume.slices}
@@ -1439,20 +1559,31 @@ def _batches(renders: Sequence[_Render]) -> list[list[int]]:
 def _level_map(instance: _Instance, pixels: np.ndarray) -> np.ndarray | None:
     """An RT Dose plane at full resolution, grey by the levels of its dose,
     or None if its scaling loses a dose (:func:`~.qc_surfaces.dose_values`)
-    or it has more than :data:`~.qc_surfaces.MAXIMUM_DOSE_LEVELS` levels."""
+    or it has more than :data:`~.qc_surfaces.MAXIMUM_DOSE_LEVELS` levels of
+    either sign. A signed plane's map of its doses above 0 is followed, after
+    columns of :data:`~.qc_surfaces.SIGN_RULE`, by the map of the magnitudes
+    of its doses below 0."""
     assert instance.dose_scale is not None
     values = qc_surfaces.dose_values(pixels, instance.dose_scale)
     if values is None:
         return None
     finite = values[np.isfinite(values)]
-    positive = finite[finite > 0]
-    levels = qc_surfaces.dose_levels(
-        float(finite.max()) if finite.size else -math.inf,
-        float(positive.min()) if positive.size else math.inf,
+    maps = []
+    for below in (False, True) if instance.dose_signed else (False,):
+        doses = -finite[finite < 0] if below else finite[finite > 0]
+        levels = qc_surfaces.dose_levels(
+            float(doses.max()) if doses.size else -math.inf,
+            float(doses.min()) if doses.size else math.inf,
+        )
+        if len(levels) > qc_surfaces.MAXIMUM_DOSE_LEVELS:
+            return None
+        maps.append(qc_surfaces.level_bands(values, levels, below))
+    if len(maps) == 1:
+        return maps[0]
+    rule = np.full(
+        (values.shape[0], qc_surfaces.SIGN_RULE_PIXELS), qc_surfaces.SIGN_RULE, np.uint8
     )
-    if len(levels) > qc_surfaces.MAXIMUM_DOSE_LEVELS:
-        return None
-    return qc_surfaces.level_bands(values, levels)
+    return np.concatenate([maps[0], rule, maps[1]], axis=1)
 
 
 @dataclasses.dataclass
@@ -1471,7 +1602,7 @@ class _Render:
 
     kind: PreviewKind
     shown: tuple[tuple[int, int], ...]
-    grid: qc_surfaces.Grid
+    grid: qc_surfaces.Grid | qc_surfaces.Stacked
     planed: bool = False
     places: dict[tuple[int, int], int] = dataclasses.field(init=False)
     size: int = dataclasses.field(init=False)
@@ -1524,10 +1655,24 @@ def _renders(series: list[_Instance], volumes: Sequence[_Volume]) -> list[_Rende
             planed = True
         else:
             threshold = qc_surfaces.Threshold.OTSU
-        grid = qc_surfaces.grid(
-            volume.directions, volume.positions, volume.spacing, volume.shape, threshold
+        # A signed dose series keeps its ladder below zero on either path.
+        signed = threshold is qc_surfaces.Threshold.DOSE and any(
+            instance.dose_signed for instance in series
         )
-        renders.append(_Render(kind, volume.slices, grid, planed=planed))
+        if volume.stack is None:
+            placed: qc_surfaces.Grid | qc_surfaces.Stacked = qc_surfaces.grid(
+                volume.directions,
+                volume.positions,
+                volume.spacing,
+                volume.shape,
+                threshold,
+                signed=signed,
+            )
+        else:
+            placed = qc_surfaces.Stacked(volume.stack, threshold, signed=signed)
+        renders.append(
+            _Render(kind, volume.slices, placed, planed=planed)
+        )
     for instance in series:
         if instance.grid is not None:
             shown = tuple(
@@ -1547,6 +1692,10 @@ def _guide(volume: _Volume, surface: qc_surfaces.Surface) -> qc_contours.Guide |
     inside = surface.mask()
     if inside is None:
         return None
+    lattice = surface.lattice
+    if lattice is not None:
+        zs, ys, xs = lattice.coordinates
+        return qc_contours.Guide(inside, zs, ys, xs)
     normal, column, row = volume.directions
     axes = [int(np.argmax(np.abs(d))) for d in (normal, column, row)]
     origins = np.array(volume.origins)
@@ -1846,7 +1995,11 @@ class _Volume:
 
     Axis 0 runs through the slices along the normal; axis 1 down the rows,
     along the plane's column direction; axis 2 along the columns, along its
-    row direction.
+    row direction. A volume whose axes lie along the patient's, with its
+    slices stacked along the normal, has the roles of its axes and no stack;
+    any other, such as one with a gantry tilt, sheared, or oblique, has a
+    stack and no roles, and is sampled by
+    :mod:`~pymedphys._dicom.deidentify.stack_sampling`.
     """
 
     # Each slice's run position and frame, ascending along the normal.
@@ -1856,9 +2009,11 @@ class _Volume:
     directions: tuple[np.ndarray, np.ndarray, np.ndarray]
     spacing: tuple[float, float]  # between rows, then between columns
     shape: tuple[int, int]
-    anterior: int  # the axis along the patient's anterior-posterior direction
-    vertical: int  # along superior-inferior
-    horizontal: int  # along left-right
+    # The axes along the patient's anterior-posterior, superior-inferior,
+    # and left-right directions.
+    roles: tuple[int, int, int] | None
+    # The slices, in the order of ``slices``.
+    stack: stack_sampling.Stack | None
 
 
 def _volumes(series: list[_Instance]) -> list[_Volume]:
@@ -1913,8 +2068,10 @@ def _phases_of(
 def _volume(group: list[tuple[_Instance, int]]) -> _Volume | None:
     """The volume of slices, each an instance's frame, or None unless at
     least :data:`VOLUME_SLICES` of them, each with a plane, of one size,
-    orientation, and pixel spacing, stack at distinct positions along the
-    normal with axes along the patient's."""
+    orientation, and pixel spacing, lie at distinct positions along the
+    normal, with row and column directions each of unit length and
+    perpendicular (:class:`~.stack_sampling.Stack`) unless the volume's axes
+    lie along the patient's with its slices stacked along the normal."""
     if len(group) < VOLUME_SLICES:
         return None
     planes = [instance.plane_of(frame) for instance, frame in group]
@@ -1941,14 +2098,20 @@ def _volume(group: list[tuple[_Instance, int]]) -> _Volume | None:
         ),
     )
     origins = np.array([placed[i].origin for i in order])
-    positions = _stacked(origins, normal)
-    if positions is None:
-        return None
     directions = (normal, np.array(first.column), np.array(first.row))
-    roles = _roles(directions)
-    if roles is None:
-        return None
-    anterior, vertical, horizontal = roles
+    positions = _stacked(origins, normal)
+    roles = None if positions is None else _roles(directions)
+    stack = None
+    if positions is None or roles is None:
+        # A gantry tilt, a shear, or an oblique orientation, sampled to
+        # voxels along the patient's axes.
+        try:
+            stack = stack_sampling.Stack(
+                first.row + first.column, origins, first.spacing, first.shape
+            )
+        except (stack_sampling.StackRefused, ValueError):
+            return None
+        positions = tuple(float(offset) for offset in stack.offsets)
     return _Volume(
         tuple((group[i][0].position, group[i][1]) for i in order),
         tuple(placed[i].origin for i in order),
@@ -1956,9 +2119,8 @@ def _volume(group: list[tuple[_Instance, int]]) -> _Volume | None:
         directions,
         first.spacing,
         first.shape,
-        anterior=anterior,
-        vertical=vertical,
-        horizontal=horizontal,
+        roles=roles,
+        stack=stack,
     )
 
 
@@ -2013,7 +2175,8 @@ class _Projection:
             return
         self._added.add(index)
         self._inverted.append(instance.inverted)
-        anterior = self._volume.anterior
+        assert self._volume.roles is not None
+        anterior = self._volume.roles[0]
         if anterior == 0:
             # fmax ignores padding, which is NaN, unless every value is.
             self._maximum = (
@@ -2026,18 +2189,20 @@ class _Projection:
         volume = self._volume
         if len(self._added) != len(volume.positions):
             return None  # a slice could not be decoded
+        assert volume.roles is not None
+        anterior, vertical, _ = volume.roles
         coordinates = {
             0: np.array(volume.positions) - volume.positions[0],
             1: np.arange(volume.shape[0]) * volume.spacing[0],
             2: np.arange(volume.shape[1]) * volume.spacing[1],
         }
-        if volume.anterior == 0:
+        if anterior == 0:
             assert self._maximum is not None
             image, axes = self._maximum, (1, 2)
         else:
             image = np.stack([self._slices[i] for i in range(len(volume.positions))])
-            axes = (0, 3 - volume.anterior)
-        if axes.index(volume.vertical) == 1:
+            axes = (0, 3 - anterior)
+        if axes.index(vertical) == 1:
             image, axes = image.T, (axes[1], axes[0])
         in_plane = [volume.spacing[axis - 1] for axis in axes if axis != 0]
         step = min(in_plane)
@@ -2064,6 +2229,72 @@ class _Projection:
             image = image[::-1]
         if horizontal[0] < 0:  # increasing index runs to the patient's right
             image = image[:, ::-1]
+        shown = _grey(image, _window(image.ravel()), all(self._inverted))
+        return PreviewKind.SERIES_MIP, volume.slices, len(volume.positions), shown
+
+
+class _StackProjection:
+    """Accumulates the maximum intensity projection of a volume that a
+    stack places, such as one with a gantry tilt, sheared, or oblique, slice
+    by slice.
+
+    The stack is sampled (:mod:`~pymedphys._dicom.deidentify.stack_sampling`)
+    to cubic voxels along the patient's axes, of its smaller pixel spacing,
+    or larger where needed to keep each axis within :data:`MIP_PIXELS` and
+    the voxels within :data:`MIP_VOXELS`, each
+    voxel taking its nearest slice's pixel and the pixels of every slice
+    that crosses it, by their maximum, so that every slice is drawn; and the
+    voxels are projected along the anterior-posterior axis as each slice is
+    added, so that only the projection is held, with the patient's head at
+    the top and right on the viewer's left. A voxel that takes no pixel is
+    shown black, as padding is.
+    """
+
+    def __init__(self, volume: _Volume) -> None:
+        assert volume.stack is not None
+        self._volume = volume
+        stack = volume.stack
+        low, high = stack.bounds
+        extents = high - low
+        step = max(
+            min(stack.spacing),
+            float(np.max(extents)) / (MIP_PIXELS - 1),
+            (float(np.prod(extents)) / MIP_VOXELS) ** (1 / 3),
+        )
+        lattice = stack.lattice(step)
+        # The lattice holds a voxel more along each axis than its extent
+        # divided by its side, so it is coarsened until within bounds.
+        while math.prod(lattice.shape) > MIP_VOXELS:
+            step *= 1.01
+            lattice = stack.lattice(step)
+        self._slabs = qc_surfaces.Slabs(stack, lattice)
+        shape = self._slabs.lattice.shape
+        # From superior, then from the patient's right.
+        self._maximum = np.full((shape[0], shape[2]), np.nan, np.float32)
+        self._added: set[int] = set()
+        self._inverted: list[bool] = []
+
+    def add(self, index: int, instance: _Instance, frame: np.ndarray) -> None:
+        """Add the slice at ``index`` along the normal, in any order."""
+        if index in self._added:
+            return
+        self._added.add(index)
+        self._inverted.append(instance.inverted)
+        values = np.asarray(frame, np.float32)
+        for taken in self._slabs.taken(index):
+            superior, _, right = taken.indices
+            # fmax ignores padding, which is NaN, unless every value is.
+            np.fmax.at(
+                self._maximum,
+                (superior, right),
+                values[taken.rows, taken.columns],
+            )
+
+    def image(self):
+        volume = self._volume
+        if len(self._added) != len(volume.positions):
+            return None  # a slice could not be decoded
+        image = self._maximum
         shown = _grey(image, _window(image.ravel()), all(self._inverted))
         return PreviewKind.SERIES_MIP, volume.slices, len(volume.positions), shown
 

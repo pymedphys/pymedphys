@@ -30,10 +30,15 @@ Legacy Converted Enhanced CT Image instance, and a series may hold either
 kind, or both. A series is defaced only where all of these hold:
 
 - every instance is read from the file that the run's first pass read, with
-  native Pixel Data of one sample and whole bytes
-  (:func:`~pymedphys._dicom.deidentify.pixel_cleaning.layout_of`), of one
-  frame for CT Image, and a readable Pixel Padding Value and Pixel Padding
-  Range Limit where present;
+  Pixel Data of one sample and whole bytes, of one frame for CT Image, and
+  a readable Pixel Padding Value and Pixel Padding Range Limit where
+  present: native Pixel Data
+  (:func:`~pymedphys._dicom.deidentify.pixel_cleaning.layout_of`), or
+  compressed Pixel Data whose frames decode, by the plugin pinned to its
+  transfer syntax, in the decoding child where that plugin runs native
+  code, as Clean Pixel Data decodes them
+  (:func:`~pymedphys._dicom.deidentify.pixel_cleaning.decoded_stored_values`),
+  after its offset tables and codestream headers are checked;
 - each slice has finite Image Position (Patient), Image Orientation
   (Patient), Pixel Spacing, Rescale Slope, and Rescale Intercept: a CT
   Image instance's own, its Rescale Slope and Rescale Intercept 1 and 0
@@ -52,6 +57,12 @@ kind, or both. A series is defaced only where all of these hold:
   Reference UID, which they have, and the stored values of each can hold
   air, -1000 Hounsfield units, as one stored value, rounded, without
   clipping, each slice by its own rescale;
+- the slices that the finder is given lie along the patient's axes
+  (:func:`~pymedphys._dicom.deidentify.defacing.along_patient_axes`), as a
+  gantry-tilted, sheared, or oblique stack does not: the finder samples
+  such a stack, but the air written is not yet defined for a slice that
+  spans heights, so it is left undefaced as
+  :attr:`~pymedphys._dicom.deidentify.defacing.FaceBlockProblem.NOT_ALONG_PATIENT_AXES`;
 - :class:`~pymedphys._dicom.deidentify.defacing.FaceFinder` finds the
   block from the slices within :data:`HEAD_REACH` millimetres of the
   volume's superior end, which bounds the memory that a long volume needs,
@@ -74,7 +85,8 @@ kind, or both. A series is defaced only where all of these hold:
   :data:`TARGET_TYPES`, of any RT Structure Set of the run searched for the
   series (:func:`_searched`), in the series' Frame of Reference, or naming
   none, can be placed, with finite coordinates of magnitude at most
-  :data:`_FARTHEST` millimetres and no contour slab (:func:`_in_slab`),
+  :data:`_FARTHEST` millimetres, including every reading of a valid contour
+  slab (:func:`_spread`),
   and the part in the block of the convex
   hull of its contours, which holds anything between them, lies within the
   slices (:func:`_kept_targets`), so that every pixel that the run keeps for
@@ -83,15 +95,8 @@ kind, or both. A series is defaced only where all of these hold:
   that ties that frame to the series' slices (:func:`_target_points`), a
   target whose ROI names no frame, or one that is malformed, counting as
   one in the series' frame and in each frame that its structure set
-  declares;
-- every point of each eye, an ROI in the series' Frame of Reference or
-  naming none, a malformed frame counting as none
-  (:func:`_roi_frames`), whose ROI Name names an eye, a globe, or an eyeball
-  (:func:`_is_eye`), of those structure sets lies within
-  :data:`EYE_REACH` millimetres of the nearer globe that the finder found
-  (:func:`_eyes_far`), so that a block placed from something else taken
-  for the globes is not written; and
-- every structure set searched for it can be read.
+  declares; and
+- every structure set searched for targets can be read.
 
 Anything else that a series' data raises leaves the series undefaced, as
 unreadable, rather than stopping the run, and no message of it, which could
@@ -111,14 +116,40 @@ release never loses a target to defacing, and the face review's verdict on
 the slices as written decides what they keep of the face. A series with a
 target that cannot be kept so, as above, is not defaced, and each of its
 slices is held for review
-(:attr:`~.reasons.VisualFeaturesReason.TARGET_IN_FACE_BLOCK`), and so is one
-with an eye that disagrees with its globes
-(:attr:`~.reasons.VisualFeaturesReason.EYES_DISAGREE_WITH_ROIS`). Any other series
-that is not defaced, such as one without a head, is written as it would be
-without a block, and the face review's verdict on it decides, as for every
-other instance that can show a face. The outcome of each series is counted
-for the release report (:class:`FaceBlockCounts`), by series, never naming
-one.
+(:attr:`~.reasons.VisualFeaturesReason.TARGET_IN_FACE_BLOCK`). Any other
+series that is not defaced, such as one without a head, is written as it
+would be without a block, and the face review's verdict on it decides, as
+for every other instance that can show a face. The outcome of each series
+is counted for the release report (:class:`FaceBlockCounts`), by series,
+never naming one.
+
+A defaced series' eyes are checked against its globes (:class:`EyeCheck`):
+every point of each eye, an ROI in the series' Frame of Reference or naming
+none, a malformed frame counting as none (:func:`_roi_frames`), whose ROI
+Name names an eye, a globe, or an eyeball (:func:`_is_eye`), of the
+structure sets searched for targets, should lie within :data:`EYE_REACH`
+millimetres of the nearer globe that the finder found (:func:`_eyes_far`).
+Where one does not, or such a set cannot be read again, the block may have
+been placed from something else taken for the globes, so the series is
+defaced, and each of its slices, and each RT Dose, RT Structure Set, PET
+image, and Segmentation cleaned by its block, is held for review
+(:attr:`~.reasons.VisualFeaturesReason.EYES_DISAGREE_WITH_ROIS`), with a
+sheet of its globes beside its eye ROIs, drawn from its slices as received
+(:mod:`~pymedphys._dicom.deidentify.qc_eyes`), for the QC pack. A reviewer
+who finds that the globes are the patient's eyes confirms the block, by the
+digest that binds it to these slices (:func:`block_digest`), and a later run
+given that confirmation defaces the series with the same block, writing the
+same pixel data, and holds nothing for the eyes, so that the face verdicts
+on the slices as written decide.
+
+A compressed instance of a defaced series is decoded, its block written as
+air, and written uncompressed, in Explicit VR Little Endian, as Clean Pixel
+Data writes a compressed instance (D-037), since writing into a codestream
+would mean encoding it again; one that its block does not reach, or in
+which defacing changes no pixel, is written as received
+(:attr:`CtDefacer.reaches`). Where its frames decode lossily, the finder,
+the brain kept, and the air written all work from the samples decoded,
+which are those written.
 
 Within the block, :class:`CtDefacer` keeps each pixel of Pixel Padding
 Value or its range, and each pixel of the brain within the cranial cavity,
@@ -147,30 +178,34 @@ top of the slice. Where air's stored value is itself padding, the pixels
 written are padding, which a viewer shows as outside the image, as the air
 before the face is in most scans.
 
-Beyond CT instances, the run cleans the same region of an RT Dose
-that :mod:`~pymedphys._dicom.deidentify.dose_defacing` sets to zero there,
-of an RT Structure Set whose contours, or a PET image, of :data:`PET_IODS`,
+Beyond CT instances, the run cleans the same region, the block of each
+defaced series in the frame in turn, of an RT Dose that
+:mod:`~pymedphys._dicom.deidentify.dose_defacing` sets to zero there, of
+an RT Structure Set whose contours, or a PET image, of :data:`PET_IODS`,
 whose activity, :mod:`~pymedphys._dicom.deidentify.region_defacing` cuts or
 sets to zero there, frame by frame for a multi-frame PET image, and of a
 Segmentation whose segments
 :mod:`~pymedphys._dicom.deidentify.segmentation_defacing` clears there,
-each with that series' Frame of Reference as its only one, and each
-keeping whatever lies in a target's hull and on the pixels kept for it.
-Any other RT
+each with that frame as its only one but a structure set, whose ROIs in
+each defaced frame are cut by that frame's blocks, keeping whatever lies in
+a target's hull and on the pixels kept for it. Any other RT
 Structure Set, RT Dose with pixel data, PET instance, or Segmentation
 (:data:`UNDEFACED_IODS`) in the Frame of Reference of a defaced series
 keeps its contours or pixel data, which can still outline the face, so it
 is held for review whatever its verdict, since a reviewer may have judged
 it from the defaced CT's previews
-(:attr:`~.reasons.VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME`), until
-the run can clean it too (:class:`Defaced`). So is one that names no Frame
-of Reference, in a run that defaces any series, or that refers to an
-instance of a defaced series, whatever frame it declares. A structure set is searched for targets
-in the block of a series where it is in the series' frame, names no valid
+(:attr:`~.reasons.VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME`), as
+where a series of the frame can no longer be read to find what defacing
+keeps (:class:`Defaced`). So is one that names no Frame of Reference, in
+a run that defaces any series, or that refers to an instance of a defaced
+series whose block does not clean it, whatever frame it declares. A
+structure set is searched for targets in the block of a series where it is in the series' frame, names no valid
 frame, or is drawn on its slices, and otherwise unless it and every slice
 give Patient IDs that differ, and a target in another frame holds a series
 whose slices its structure set ties to that frame, whatever other frames
-the set declares.
+the set declares. Each contour is searched, and cut, wherever its retired
+Contour Slab Thickness and Contour Offset Vector may put it
+(:mod:`~pymedphys._dicom.deidentify.contour_slabs`).
 """
 
 from __future__ import annotations
@@ -178,16 +213,19 @@ from __future__ import annotations
 import collections
 import dataclasses
 import enum
+import hashlib
 import io
 import math
 import re
-from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
+import struct
+from collections.abc import Callable, Collection, Iterable, Iterator, Mapping, Sequence
 
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom
 from pymedphys._imports import scipy
 
-from . import defacing
+from . import defacing, qc_eyes
+from .contour_slabs import SlabRefused, slab_of, slab_values, spread
 from .defacing import FaceBlock, FaceBlockProblem, FaceBlockRefused
 from .diagnostics import redacted_diagnostics
 from .functional_groups import frame_group
@@ -196,14 +234,17 @@ from .pixel_cleaning import (
     FrameMask,
     Layout,
     PixelDataRefused,
-    layout_of,
+    decoded_stored_values,
+    frames_layout,
     stored_range,
 )
+from .pixel_decoding import DECODING_PLUGINS
 from .pseudonyms import SubjectIdentity
+from .qc_eyes import EyeSheet
 from .reasons import TransformReason
 from .references import InstanceRecord
 from .sop_classes import iod_for_sop_class
-from .source import NATIVE_TRANSFER_SYNTAXES
+from .source import NATIVE_TRANSFER_SYNTAXES, read_source
 from .target_hulls import (
     KeptTargets,
     SliceRange,
@@ -275,9 +316,10 @@ class SeriesProblem(enum.Enum):
     # a slice that cannot be read again, or whose geometry, rescale, or
     # pixel data cannot be read
     UNREADABLE = "unreadable"
-    # Pixel Data in an encapsulated transfer syntax, which would have to be
-    # encoded again
-    COMPRESSED = "compressed-pixel-data"
+    # compressed Pixel Data whose frames cannot be decoded for defacing:
+    # without its decoder, or with an offset table, codestream header, or
+    # frame that does not match its attributes or does not decode
+    UNDECODABLE = "undecodable-pixel-data"
     # slices or frames of more than one sample, orientation, size, spacing,
     # or Frame of Reference, a CT Image instance of more than one frame, or
     # phases whose slices are not placed on one grid within their planes
@@ -299,8 +341,26 @@ class SeriesProblem(enum.Enum):
     # beyond the slices in the block, or a structure set searched for
     # targets that cannot be read
     TARGET_IN_BLOCK = "target-in-block"
-    # an eye's contour in the series' frame away from the globes found
+    # an eye's contour in the series' frame away from the globes found: not
+    # a reason to leave a series undefaced, but why a defaced series is held
+    # until a reviewer confirms its block (EyeCheck.DISAGREE)
     EYES_DISAGREE = "eyes-disagree-with-rois"
+
+
+class EyeCheck(enum.Enum):
+    """How a defaced series' eye ROIs compare with the globes that its block
+    was found from (:func:`_eyes_far`)."""
+
+    # every eye ROI searched lies within EYE_REACH of the nearer globe, or
+    # none is drawn
+    AGREE = "agree"
+    # an eye ROI does not, or a structure set searched for it cannot be read,
+    # and no reviewer has confirmed the block: the series is defaced, and
+    # each of its slices, and each instance cleaned by its block, is held
+    DISAGREE = "disagree"
+    # likewise, but the face review confirms this block of these slices
+    # (FaceReview.confirmed_blocks), so nothing is held for the eyes
+    CONFIRMED = "confirmed"
 
 
 @dataclasses.dataclass(frozen=True)
@@ -312,18 +372,35 @@ class SeriesDefacing:
     block : FaceBlock or None
         The block written as air, or None where the series is not defaced.
     problem : FaceBlockProblem or SeriesProblem or None
-        Why the series is not defaced, or None where it is.
+        Why the series is not defaced, or None where it is. Never
+        :attr:`SeriesProblem.EYES_DISAGREE`, which holds a defaced series
+        (:attr:`hold`) rather than leaving it undefaced.
     frame : str, optional
         The Frame of Reference UID of a defaced series; None for any other.
     targets : KeptTargets, optional
         The hulls of the targets that defacing keeps in a defaced series'
         block; none for any other series.
+    eyes : EyeCheck, optional
+        How a defaced series' eye ROIs compare with its globes;
+        :attr:`EyeCheck.AGREE` for any other series.
+    block_sha256 : bytes, optional
+        For a defaced series whose eyes are not :attr:`EyeCheck.AGREE`, the
+        digest that binds a reviewer's confirmation to its block
+        (:func:`block_digest`); None for any other.
+    sheet : EyeSheet, optional
+        For a series held as :attr:`EyeCheck.DISAGREE`, the QC pack's
+        preview of its globes beside its eye ROIs
+        (:func:`~pymedphys._dicom.deidentify.qc_eyes.eye_sheet`), where it
+        could be drawn; None otherwise. Not compared.
     """
 
     block: FaceBlock | None
     problem: FaceBlockProblem | SeriesProblem | None
     frame: str | None = None
     targets: KeptTargets = KeptTargets()
+    eyes: EyeCheck = EyeCheck.AGREE
+    block_sha256: bytes | None = None
+    sheet: EyeSheet | None = dataclasses.field(default=None, compare=False, repr=False)
 
     def __post_init__(self) -> None:
         if (self.block is None) == (self.problem is None):
@@ -332,28 +409,54 @@ class SeriesDefacing:
             raise ValueError("a defaced series has its Frame of Reference UID")
         if self.block is None and self.targets.hulls:
             raise ValueError("only a defaced series keeps targets")
+        if self.problem is SeriesProblem.EYES_DISAGREE:
+            raise ValueError("eyes that disagree hold a defaced series")
+        if not isinstance(self.eyes, EyeCheck) or (
+            self.block is None and self.eyes is not EyeCheck.AGREE
+        ):
+            raise ValueError("only a defaced series has its eyes checked")
+        if (self.eyes is EyeCheck.AGREE) != (self.block_sha256 is None) or not (
+            self.block_sha256 is None
+            or (isinstance(self.block_sha256, bytes) and len(self.block_sha256) == 32)
+        ):
+            raise ValueError(
+                "a series whose eyes disagree has its block's SHA-256, and no other"
+            )
+        if self.sheet is not None and self.eyes is not EyeCheck.DISAGREE:
+            raise ValueError("only a series held for its eyes has their sheet")
+
+    @property
+    def hold(self) -> SeriesProblem | None:
+        """Why the series' slices are held for review, if they are: a
+        target lies in its block where the run cannot keep it, and the
+        series is not defaced; or an eye's contour lies away from the
+        globes that its block was found from, and no reviewer has confirmed
+        the block, so the series is defaced and held."""
+        if self.problem is SeriesProblem.TARGET_IN_BLOCK:
+            return SeriesProblem.TARGET_IN_BLOCK
+        if self.eyes is EyeCheck.DISAGREE:
+            return SeriesProblem.EYES_DISAGREE
+        return None
 
     @property
     def held(self) -> bool:
-        """Whether the series' slices are held for review: a target lies in
-        its block, or an eye's contour away from the globes that its block
-        was found from."""
-        return self.problem in (
-            SeriesProblem.TARGET_IN_BLOCK,
-            SeriesProblem.EYES_DISAGREE,
-        )
+        """Whether the series' slices are held for review (:attr:`hold`)."""
+        return self.hold is not None
 
 
 @dataclasses.dataclass
 class FaceBlockCounts:
     """How many CT series a run defaced, how many of those around a target,
-    and how many it did not deface, by why.
+    how many of those whose eye ROIs disagree with their globes, held for a
+    reviewer to confirm the block or released with a confirmed block, and
+    how many it did not deface, by why.
 
     Filled by :meth:`record`, once a run has found its face blocks, for the
     release report's ``face_review.ct_series``. A series counts as defaced
     where the run found its block and set out to deface it, whatever then
-    became of its slices, and as defaced around targets where it also keeps
-    a target's hull that reaches the block (:class:`KeptTargets`).
+    became of its slices, as defaced around targets where it also keeps
+    a target's hull that reaches the block (:class:`KeptTargets`), and by
+    its eyes where they are not :attr:`EyeCheck.AGREE`.
     """
 
     defaced: int = 0
@@ -361,10 +464,13 @@ class FaceBlockCounts:
         default_factory=dict
     )
     around_targets: int = 0
+    eyes_unconfirmed: int = 0
+    eyes_confirmed: int = 0
 
     def record(self, outcomes: Iterable[SeriesDefacing]) -> None:
         """Count each series' outcome, in place of any counted before."""
         defaced = around_targets = 0
+        eyes: collections.Counter[EyeCheck] = collections.Counter()
         not_defaced: collections.Counter[FaceBlockProblem | SeriesProblem] = (
             collections.Counter()
         )
@@ -372,11 +478,14 @@ class FaceBlockCounts:
             if outcome.problem is None:
                 defaced += 1
                 around_targets += outcome.targets.in_block
+                eyes[outcome.eyes] += 1
             else:
                 not_defaced[outcome.problem] += 1
         self.defaced = defaced
         self.not_defaced = dict(not_defaced)
         self.around_targets = around_targets
+        self.eyes_unconfirmed = eyes[EyeCheck.DISAGREE]
+        self.eyes_confirmed = eyes[EyeCheck.CONFIRMED]
 
 
 @dataclasses.dataclass(frozen=True)
@@ -393,6 +502,7 @@ class _Slice:
     frame: str | None
     # What the slice names of its phase (phases.split).
     named: Named
+    compressed: bool = False
 
 
 class _Unusable(Exception):
@@ -406,6 +516,9 @@ class _Unusable(Exception):
 def find_face_blocks(
     records: Mapping[int, InstanceRecord],
     read: Callable[[int], bytes | None],
+    confirmed: Collection[bytes] = frozenset(),
+    *,
+    sheets: bool = True,
 ) -> dict[str, SeriesDefacing]:
     """Return the outcome of each series of CT instances, of :data:`CT_IODS`,
     by its Series Instance UID.
@@ -419,13 +532,30 @@ def find_face_blocks(
     read : callable
         Gives the file at a run position as the first pass read it, or None
         if it can no longer be read or has changed.
+    confirmed : collection of bytes, optional
+        The :func:`block_digest` of each block that a reviewer confirmed in
+        an earlier run's QC pack, after its series' eye ROIs disagreed with
+        its globes (:attr:`~.face_review.FaceReview.confirmed_blocks`); none
+        by default. A series whose eyes disagree is defaced, and held as
+        :attr:`EyeCheck.DISAGREE` with the sheet that shows its globes beside
+        its eye ROIs, unless its block's digest is among these, when it is
+        :attr:`EyeCheck.CONFIRMED`.
+    sheets : bool, optional
+        Whether to draw that sheet, which only a run's QC pack needs; by
+        default it is drawn.
     """
-    return {uid: outcome for uid, (outcome, _) in _outcomes(records, read).items()}
+    return {
+        uid: outcome
+        for uid, (outcome, _) in _outcomes(records, read, confirmed, sheets=sheets).items()
+    }
 
 
 def _outcomes(
     records: Mapping[int, InstanceRecord],
     read: Callable[[int], bytes | None],
+    confirmed: Collection[bytes] = frozenset(),
+    *,
+    sheets: bool = True,
 ) -> dict[str, tuple[SeriesDefacing, _Found]]:
     """Each series' outcome, as :func:`find_face_blocks` gives it, with what
     was found of it before its holds, for the DICOM check (D-054)."""
@@ -457,16 +587,99 @@ def _outcomes(
             )
             if kept is None:
                 outcome = SeriesDefacing(None, SeriesProblem.TARGET_IN_BLOCK)
-            # An eye is checked against the globes of each phase that they
-            # were found in.
-            elif any(
-                _eyes_disagree(block, frame, searched, read) for block in found.blocks
-            ):
-                outcome = SeriesDefacing(None, SeriesProblem.EYES_DISAGREE)
             else:
-                outcome = SeriesDefacing(outcome.block, None, frame, kept)
+                outcome = _eyes_outcome(
+                    SeriesDefacing(outcome.block, None, frame, kept),
+                    positions,
+                    searched,
+                    read,
+                    confirmed,
+                    sheets,
+                    blocks=found.blocks,
+                )
         outcomes[uid] = (outcome, found)
     return outcomes
+
+
+def _eyes_outcome(
+    outcome: SeriesDefacing,
+    positions: list[int],
+    searched: list[int],
+    read: Callable[[int], bytes | None],
+    confirmed: Collection[bytes],
+    sheets: bool,
+    *,
+    blocks: Sequence[FaceBlock] = (),
+) -> SeriesDefacing:
+    """A defaced series' outcome with its eyes checked against its globes
+    (:func:`_eye_check`): as given where they agree, and otherwise with its
+    block's digest, confirmed where that is among ``confirmed``, or held
+    with the sheet that shows its globes beside its eye ROIs."""
+    block, frame = outcome.block, outcome.frame
+    assert block is not None and frame is not None
+    disagree, contours = _eye_check(block, frame, searched, read, blocks=blocks)
+    if not disagree:
+        return outcome
+    digest = block_digest(_source_digests(positions, read), block)
+    if digest in confirmed:
+        return dataclasses.replace(
+            outcome, eyes=EyeCheck.CONFIRMED, block_sha256=digest
+        )
+    return dataclasses.replace(
+        outcome,
+        eyes=EyeCheck.DISAGREE,
+        block_sha256=digest,
+        sheet=_eye_sheet(block, positions, read, contours) if sheets else None,
+    )
+
+
+# Labels the digest that binds a reviewer's confirmation to a block.
+_BLOCK_DIGEST_LABEL = b"pymedphys-deid-face-block/1"
+
+
+def block_digest(sources: Iterable[bytes], block: FaceBlock) -> bytes:
+    """Return the SHA-256 that binds a reviewer's confirmation of a face
+    block to the block and to the files that it was found from.
+
+    It is of a label, the count and sorted SHA-256 of the series' source
+    files, and the block's origin, anterior normal, inferior limit, and
+    globe centres as 64-bit big-endian floating-point numbers, so that a
+    confirmation covers this block of these files and no other: a slice
+    changed, added, or left out, or a block found otherwise, as by another
+    version of the finder, gives another digest, which no confirmation
+    covers.
+
+    Parameters
+    ----------
+    sources : iterable of bytes
+        The SHA-256 of each source file of the series.
+    block : FaceBlock
+    """
+    files = sorted(sources)
+    if not all(isinstance(each, bytes) and len(each) == 32 for each in files):
+        raise ValueError("a block's sources are SHA-256 digests")
+    values = (
+        *block.origin,
+        *block.anterior,
+        block.inferior_limit,
+        *block.globes[0],
+        *block.globes[1],
+    )
+    digest = hashlib.sha256(_BLOCK_DIGEST_LABEL)
+    digest.update(struct.pack(">Q", len(files)))
+    for each in files:
+        digest.update(each)
+    digest.update(struct.pack(f">{len(values)}d", *(float(v) for v in values)))
+    return digest.digest()
+
+
+def _source_digests(
+    positions: Iterable[int], read: Callable[[int], bytes | None]
+) -> list[bytes]:
+    """The SHA-256 of each file at ``positions``, as the first pass read it;
+    of no bytes for one that can no longer be read, which then gives no
+    block anyway."""
+    return [hashlib.sha256(read(position) or b"").digest() for position in positions]
 
 
 def _searched(
@@ -547,13 +760,25 @@ class Defaced:
     instances : frozenset of str
         The SOP Instance UID of each instance of a defaced series, whether
         it holds one slice or many frames.
+    unconfirmed : frozenset of str, optional
+        Of ``frames``, those of a series held until a reviewer confirms its
+        block (:attr:`EyeCheck.DISAGREE`), in which an instance that the run
+        cleans by that block is held for the same reason; none by default.
     """
 
     frames: frozenset[str] = frozenset()
     instances: frozenset[str] = frozenset()
+    unconfirmed: frozenset[str] = frozenset()
+
+    def __post_init__(self) -> None:
+        if not self.unconfirmed <= self.frames:
+            raise ValueError("an unconfirmed block's frame is a defaced frame")
 
     def __repr__(self) -> str:
-        return f"Defaced(frames={len(self.frames)}, instances={len(self.instances)})"
+        return (
+            f"Defaced(frames={len(self.frames)}, instances={len(self.instances)}, "
+            f"unconfirmed={len(self.unconfirmed)})"
+        )
 
     def holds(self, iod: str | None, record: InstanceRecord) -> bool:
         """Whether an instance is held because the run defaces its frame.
@@ -589,6 +814,11 @@ def find_defaced(
             record.sop_instance
             for record in records.values()
             if record.iod in CT_IODS and record.series in series and record.sop_instance
+        ),
+        frozenset(
+            outcome.frame
+            for outcome in outcomes.values()
+            if outcome.frame is not None and outcome.eyes is EyeCheck.DISAGREE
         ),
     )
 
@@ -662,7 +892,8 @@ def _series_found(positions: list[int], read: Callable[[int], bytes | None]) -> 
         parted = len(groups)
         for group in groups:
             finder = _finder(
-                [slices[i] for i in group], [places[i] for i in group], read
+                [slices[i] for i in group], [places[i] for i in group], read,
+                along_axes=True,
             )
             try:
                 blocks.append(finder.block())
@@ -846,6 +1077,11 @@ def inspect_series(
     slices of its first phase, where they repeat their positions
     (:func:`_phases`).
 
+    Unlike a run, this gives the finder a stack whose slices do not lie
+    along the patient's axes, such as a gantry-tilted or oblique one, so
+    that a check can measure the finder on such a series, which a run does
+    not yet deface (:func:`_finder`).
+
     Parameters
     ----------
     positions : list of int
@@ -857,7 +1093,8 @@ def inspect_series(
         slices, places = _stack(positions, read)
         group = _phases(slices)[0]
         return _finder(
-            [slices[i] for i in group], [places[i] for i in group], read
+            [slices[i] for i in group], [places[i] for i in group], read,
+            along_axes=False,
         ).inspect()
     except (_Unusable, FaceBlockRefused):
         return None
@@ -888,6 +1125,8 @@ def _finder(
     slices: list[_Slice],
     places: list[tuple[int, int]],
     read: Callable[[int], bytes | None],
+    *,
+    along_axes: bool,
 ) -> defacing.FaceFinder:
     """The finder of one stack's slices, each added, with each slice's run
     position and frame index in ``places``.
@@ -895,12 +1134,23 @@ def _finder(
     Each instance is read once, and its frames decoded one at a time, so
     that a multi-frame instance is never held decoded whole.
 
+    Where ``along_axes``, as for a run, the slices given to the finder must
+    lie along the patient's axes
+    (:func:`~pymedphys._dicom.deidentify.defacing.along_patient_axes`),
+    checked before any pixel data are decoded: the finder samples a
+    gantry-tilted, sheared, or oblique stack, but the air that defacing
+    writes is not yet defined for a slice that spans heights, so a run does
+    not deface one.
+
     Raises
     ------
     _Unusable
         If a slice can no longer be read.
     FaceBlockRefused
-        As :class:`~pymedphys._dicom.deidentify.defacing.FaceFinder` does.
+        As :class:`~pymedphys._dicom.deidentify.defacing.FaceFinder` does,
+        and, where ``along_axes``, with
+        :attr:`~pymedphys._dicom.deidentify.defacing.FaceBlockProblem.NOT_ALONG_PATIENT_AXES`
+        for slices that do not lie along the patient's axes.
     """
     first = slices[0]
     normal = np.cross(first.orientation[:3], first.orientation[3:])
@@ -918,6 +1168,10 @@ def _finder(
     for index in kept:
         by_instance.setdefault(places[index][0], []).append(index)
     order = [index for indices in by_instance.values() for index in indices]
+    if along_axes and not defacing.along_patient_axes(
+        first.orientation, [slices[i].position for i in order]
+    ):
+        raise FaceBlockRefused(FaceBlockProblem.NOT_ALONG_PATIENT_AXES)
     finder = defacing.FaceFinder(
         first.orientation,
         [slices[i].position for i in order],
@@ -925,7 +1179,12 @@ def _finder(
         first.shape,
     )
     for position, indices in by_instance.items():
-        stored = _stored(read(position), first.shape, [places[i][1] for i in indices])
+        stored = _stored(
+            read(position),
+            first.shape,
+            [places[i][1] for i in indices],
+            compressed=slices[indices[0]].compressed,
+        )
         for index, values in zip(indices, stored, strict=True):
             finder.add(_hounsfield(values, slices[index]))
     return finder
@@ -933,7 +1192,10 @@ def _finder(
 
 def _slices(data: bytes | None) -> tuple[_Slice, ...]:
     """Read what defacing needs of each slice of one instance: the instance
-    itself, of CT Image, or each frame of a multi-frame instance.
+    itself, of CT Image, or each frame of a multi-frame instance, of native
+    Pixel Data or compressed in a transfer syntax that a run decodes
+    (:data:`~.pixel_decoding.DECODING_PLUGINS`), whose frames are described
+    as they are held once decoded.
 
     Raises
     ------
@@ -949,13 +1211,17 @@ def _slices(data: bytes | None) -> tuple[_Slice, ...]:
     # message can quote a value.
     except Exception:  # pylint: disable = broad-exception-caught
         raise _Unusable(SeriesProblem.UNREADABLE) from None
-    if syntax not in NATIVE_TRANSFER_SYNTAXES:
-        raise _Unusable(SeriesProblem.COMPRESSED)
+    compressed = syntax not in NATIVE_TRANSFER_SYNTAXES
+    if compressed and syntax not in DECODING_PLUGINS:
+        raise _Unusable(SeriesProblem.UNDECODABLE)
     try:
-        layout = layout_of(dataset)
+        layout = frames_layout(dataset, syntax)
     except PixelDataRefused:
         raise _Unusable(SeriesProblem.UNREADABLE) from None
-    return _described(dataset, layout)
+    described = _described(dataset, layout)
+    if not compressed:
+        return described
+    return tuple(dataclasses.replace(each, compressed=True) for each in described)
 
 
 def _check_stack(slices: list[_Slice]) -> None:
@@ -1039,10 +1305,16 @@ def _padding(dataset: pydicom.Dataset, layout: Layout) -> tuple[int, int] | None
 
 
 def _stored(
-    data: bytes | None, shape: tuple[int, int], frames: Sequence[int]
+    data: bytes | None,
+    shape: tuple[int, int],
+    frames: Sequence[int],
+    *,
+    compressed: bool = False,
 ) -> Iterator[np.ndarray]:
     """The stored values of each of an instance's ``frames``, in ascending
-    order, rows by columns, decoded one at a time.
+    order, rows by columns, decoded one at a time, as
+    :func:`~.pixel_cleaning.decoded_stored_values` decodes them where they
+    are ``compressed``.
 
     Raises
     ------
@@ -1052,6 +1324,9 @@ def _stored(
     """
     if data is None:
         raise _Unusable(SeriesProblem.UNREADABLE)
+    if compressed:
+        yield from _decoded(data, shape, frames)
+        return
     wanted = sorted(frames)
     decoded = pydicom.pixels.iter_pixels(io.BytesIO(data), indices=wanted)
     given = 0
@@ -1069,6 +1344,48 @@ def _stored(
             raise _Unusable(SeriesProblem.UNREADABLE)
         given += 1
         yield stored
+    if given != len(wanted):
+        raise _Unusable(SeriesProblem.UNREADABLE)
+
+
+def _decoded(
+    data: bytes, shape: tuple[int, int], frames: Sequence[int]
+) -> Iterator[np.ndarray]:
+    """The stored values of each of a compressed instance's ``frames``, in
+    ascending order, rows by columns, decoded one at a time as
+    :func:`~.pixel_cleaning.black_out` decodes them, so that defacing finds
+    its block and keeps its brain in the samples that it writes air into.
+
+    Raises
+    ------
+    _Unusable
+        With :attr:`SeriesProblem.UNDECODABLE` where the frames cannot be
+        decoded, and with :attr:`SeriesProblem.UNREADABLE` where the file
+        cannot be read, or its frames are not of that number or shape, or
+        hold more than their values in the bits above Bits Stored.
+    """
+    try:
+        with redacted_diagnostics():
+            source = read_source(data)
+            dataset = source.dataset()
+    # The reader raises many types for a file that it cannot read, and a
+    # message can quote a value.
+    except Exception:  # pylint: disable = broad-exception-caught
+        raise _Unusable(SeriesProblem.UNREADABLE) from None
+    wanted = sorted(frames)
+    given = 0
+    try:
+        for stored in decoded_stored_values(source, dataset, wanted):
+            if stored.shape != shape or given >= len(wanted):
+                raise _Unusable(SeriesProblem.UNREADABLE)
+            given += 1
+            yield stored
+    except PixelDataRefused as refused:
+        raise _Unusable(
+            SeriesProblem.UNREADABLE
+            if refused.reason is TransformReason.UNCLEANABLE_PIXEL_DATA
+            else SeriesProblem.UNDECODABLE
+        ) from None
     if given != len(wanted):
         raise _Unusable(SeriesProblem.UNREADABLE)
 
@@ -1210,6 +1527,40 @@ def _kept_targets(
     return KeptTargets(tuple(hulls), fates.depth, in_block)
 
 
+def _eye_check(
+    block: FaceBlock,
+    frame: str,
+    positions: list[int],
+    read: Callable[[int], bytes | None],
+    *,
+    blocks: Sequence[FaceBlock] = (),
+) -> tuple[bool, list[list[tuple[str, np.ndarray]]]]:
+    """Whether an eye of any of these structure sets disagrees with the
+    globes that the block of the series with this Frame of Reference was
+    found from, as :func:`_eyes_far` judges it, or a set cannot be read,
+    with each eye ROI's contours of the sets that can be
+    (:func:`_eye_contours`), for the sheet that shows them."""
+    disagree = False
+    contours: list[list[tuple[str, np.ndarray]]] = []
+    for position in positions:
+        try:
+            with redacted_diagnostics():
+                dataset = pydicom.dcmread(io.BytesIO(read(position) or b""))
+                found = _eye_contours(dataset, frame)
+                # Every phase must agree; confirmation still binds the enclosing
+                # block to every original source file of the series.
+                disagree = disagree or any(
+                    _eyes_far(dataset, frame, each) for each in blocks or (block,)
+                )
+        # As for a target, an eye in a file that cannot be read cannot be
+        # checked.
+        except Exception:  # pylint: disable = broad-exception-caught
+            disagree = True
+            continue
+        contours.extend(found)
+    return disagree, contours
+
+
 def _eyes_disagree(
     block: FaceBlock,
     frame: str,
@@ -1217,19 +1568,9 @@ def _eyes_disagree(
     read: Callable[[int], bytes | None],
 ) -> bool:
     """Whether an eye of any of these structure sets disagrees with the
-    globes that the block of the series with this Frame of Reference was
-    found from, as :func:`_eyes_far` judges it, or a set cannot be read."""
-    for position in positions:
-        try:
-            with redacted_diagnostics():
-                dataset = pydicom.dcmread(io.BytesIO(read(position) or b""))
-                if _eyes_far(dataset, frame, block):
-                    return True
-        # As for a target, an eye in a file that cannot be read cannot be
-        # checked.
-        except Exception:  # pylint: disable = broad-exception-caught
-            return True
-    return False
+    globes that the block was found from, or a set cannot be read
+    (:func:`_eye_check`)."""
+    return _eye_check(block, frame, positions, read)[0]
 
 
 # A word of an ROI Name that names an eye, alone or with its side.
@@ -1253,18 +1594,18 @@ def _is_eye(name: str) -> bool:
 
 def _eyes_far(dataset: pydicom.Dataset, frame: str, block: FaceBlock) -> bool:
     """Whether a point of the contours of an ROI in this Frame of Reference,
-    or naming none, whose name is an eye's (:func:`_is_eye`) lies farther
-    than :data:`EYE_REACH` from both of the block's globes' centres, or
-    cannot be placed.
+    or naming none, whose name is an eye's (:func:`_is_eye`), or of a
+    point's span, lies farther than :data:`EYE_REACH` from both of the
+    block's globes' centres, or cannot be placed (:func:`_eye_far`).
 
     So an eye drawn where the finder found no globe, as where it took
-    something else for one, holds the series. Each eye is checked alone,
-    or both together in one ROI, but an eye that the structure set does
-    not draw, or names otherwise, is not checked, nor is one in another
-    frame, which cannot be placed in the series' without a registration.
-    An ROI's frame is taken as for a target (:func:`_roi_frames`), so one
-    that is malformed, or that its set does not declare, counts as naming
-    none, and the eye is checked.
+    something else for one, holds the series until a reviewer confirms its
+    block. Each eye is checked alone, or both together in one ROI, but an
+    eye that the structure set does not draw, or names otherwise, is not
+    checked, nor is one in another frame, which cannot be placed in the
+    series' without a registration. An ROI's frame is taken as for a target
+    (:func:`_roi_frames`), so one that is malformed, or that its set does
+    not declare, counts as naming none, and the eye is checked.
     """
     frames_of_roi = _roi_frames(dataset)
     eyes = {
@@ -1278,14 +1619,167 @@ def _eyes_far(dataset: pydicom.Dataset, frame: str, block: FaceBlock) -> bool:
         if int(item.ReferencedROINumber) not in eyes:
             continue
         for contour in item.get("ContourSequence") or []:
-            points = np.asarray([float(v) for v in contour.ContourData]).reshape(-1, 3)
-            nearest = np.min(
-                np.linalg.norm(points[:, np.newaxis, :] - globes, axis=2), axis=1
-            )
-            # Written so that a coordinate that is not a number fails it too.
-            if not (nearest <= EYE_REACH).all():
+            if _eye_far(contour, globes):
                 return True
     return False
+
+
+def _eye_contours(
+    dataset: pydicom.Dataset, frame: str
+) -> list[list[tuple[str, np.ndarray]]]:
+    """Each eye ROI's contours, as :func:`_eyes_far` selects the ROIs, by
+    item of the ROI Contour Sequence: each contour's Contour Geometric
+    Type, stripped and upper case, and its points, x, y, and z along the
+    last axis.
+
+    Raises
+    ------
+    Exception
+        Whatever pydicom or NumPy raises for a value that cannot be read,
+        such as Contour Data that are not numbers in threes.
+    """
+    frames_of_roi = _roi_frames(dataset)
+    eyes = {
+        int(item.ROINumber)
+        for item in dataset.get("StructureSetROISequence") or []
+        if frames_of_roi(int(item.ROINumber)) & {"", frame}
+        and _is_eye(str(item.get("ROIName") or ""))
+    }
+    found = []
+    for item in dataset.get("ROIContourSequence") or []:
+        if int(item.ReferencedROINumber) not in eyes:
+            continue
+        found.append(
+            [
+                (
+                    str(contour.get("ContourGeometricType") or "").strip().upper(),
+                    np.asarray([float(v) for v in contour.ContourData]).reshape(-1, 3),
+                )
+                for contour in item.get("ContourSequence") or []
+            ]
+        )
+    return found
+
+
+def _contours_far(
+    rois: Iterable[Iterable[tuple[str, np.ndarray]]], block: FaceBlock
+) -> bool:
+    """Whether a point of these eye ROIs' contours lies farther than
+    :data:`EYE_REACH` from both of the block's globes' centres, or is not a
+    number."""
+    for contours in rois:
+        for _, points in contours:
+            # Written so that a coordinate that is not a number fails it too.
+            if not (eye_distances(points, block) <= EYE_REACH).all():
+                return True
+    return False
+
+
+def eye_distances(points: np.ndarray, block: FaceBlock) -> np.ndarray:
+    """The distance from each point, x, y, and z along the last axis, to the
+    nearer of the block's globes' centres, in millimetres; NaN for a point
+    that is not finite."""
+    globes = np.asarray(block.globes, dtype=float)
+    points = np.asarray(points, dtype=float)
+    return np.min(np.linalg.norm(points[..., np.newaxis, :] - globes, axis=-1), axis=-1)
+
+
+def _eye_sheet(
+    block: FaceBlock,
+    positions: list[int],
+    read: Callable[[int], bytes | None],
+    contours: list[list[tuple[str, np.ndarray]]],
+) -> EyeSheet | None:
+    """The sheet of a series' globes beside its eye ROIs
+    (:func:`~pymedphys._dicom.deidentify.qc_eyes.eye_sheet`), drawn from its
+    slices as received, each decoded once, or None where they can no longer
+    be read, in which case the QC pack lists the series without a sheet."""
+    try:
+        slices, places = _stack(positions, read)
+        planes = qc_eyes.planes_of(block, contours, EYE_REACH)
+        sampled = qc_eyes.Sampler(
+            planes,
+            [
+                qc_eyes.SliceGeometry(
+                    each.position, each.orientation, each.spacing, each.shape
+                )
+                for each in slices
+            ],
+        )
+        by_instance: dict[int, list[int]] = {}
+        for index in sampled.wanted:
+            by_instance.setdefault(places[index][0], []).append(index)
+        for position, indices in by_instance.items():
+            indices.sort(key=lambda index: places[index][1])
+            stored = _stored(
+                read(position), slices[0].shape, [places[i][1] for i in indices]
+            )
+            for index, values in zip(indices, stored, strict=True):
+                sampled.add(index, _hounsfield(values, slices[index]))
+        return qc_eyes.eye_sheet(
+            block,
+            contours,
+            EYE_REACH,
+            sampled,
+            tuple(places[index] for index in sorted(sampled.wanted)),
+            len(places),
+        )
+    # Whatever the slices raise, as when one can no longer be read, leaves the
+    # series held without a sheet, which no confirmation can then be of.
+    except Exception:  # pylint: disable = broad-exception-caught
+        return None
+
+
+def _eye_far(contour: pydicom.Dataset, globes: np.ndarray) -> bool:
+    """Whether a point of an eye's contour, or of its span where its retired
+    Contour Slab Thickness and Contour Offset Vector give it one, lies
+    farther than :data:`EYE_REACH` from every one of ``globes``' centres, or
+    the contour cannot be placed.
+
+    Each point's span is a segment, so it is checked whole, not at its
+    ends alone: the heights along it within reach of each globe form one
+    interval, found exactly, and those intervals must together cover the
+    span. A span whose ends lie near different globes may leave both
+    between them.
+    """
+    points = np.asarray([float(v) for v in contour.ContourData]).reshape(-1, 3)
+    try:
+        values = slab_values(contour)
+        slab = None if values is None else slab_of(values, points)
+    except SlabRefused:
+        return True
+    if slab is None:
+        nearest = np.min(
+            np.linalg.norm(points[:, np.newaxis, :] - globes, axis=2), axis=1
+        )
+        # Written so that a coordinate that is not a number fails it too.
+        return not (nearest <= EYE_REACH).all()
+    direction = np.asarray(slab.direction, dtype=float)
+    # Along p + t * direction, with direction a unit vector, the heights t
+    # within EYE_REACH of a centre g are those where
+    # t**2 + 2 * t * b + c <= 0, with b = (p - g) . direction and
+    # c = |p - g|**2 - EYE_REACH**2: from -b - root to -b + root, with
+    # root = sqrt(b**2 - c), and none where b**2 - c is negative.
+    offsets = points[:, np.newaxis, :] - globes[np.newaxis, :, :]
+    b = offsets @ direction
+    c = np.sum(offsets**2, axis=2) - EYE_REACH**2
+    discriminant = b**2 - c
+    # Written so that a coordinate that is not a number reaches no globe.
+    reached = discriminant >= 0
+    root = np.sqrt(np.where(reached, discriminant, 0.0))
+    low = np.where(reached, -b - root, np.inf)
+    high = np.where(reached, -b + root, -np.inf)
+    order = np.argsort(low, axis=1)
+    low = np.take_along_axis(low, order, axis=1)
+    high = np.take_along_axis(high, order, axis=1)
+    # Sweep each point's intervals from the span's near end, in order of
+    # their low ends: the span is covered where the sweep passes its far
+    # end without a gap.
+    covered = np.full(len(points), slab.near)
+    for each in range(low.shape[1]):
+        joins = low[:, each] <= covered
+        covered = np.where(joins, np.maximum(covered, high[:, each]), covered)
+    return not (covered >= slab.far).all()
 
 
 def _targets(dataset: pydicom.Dataset) -> set[int]:
@@ -1320,8 +1814,8 @@ def _target_points(
     so that a malformed frame that the set ties to the series' slices still
     holds the series. A target with a coordinate that is not finite, or of
     magnitude above :data:`_FARTHEST`, cannot be placed either, nor can one
-    with a contour of Contour Slab Thickness or Contour Offset Vector, which
-    give it depth or move it from its points (:func:`_in_slab`).
+    with retired slab attributes whose span cannot be placed. A valid slab
+    contributes every reading of its span to the kept hull (:func:`_spread`).
     """
     frames_of_roi = _roi_frames(dataset)
     targets = _targets(dataset)
@@ -1336,15 +1830,9 @@ def _target_points(
             return None
         # A target that names no Frame of Reference may be in this one.
         if frames & {"", frame}:
-            contours = list(item.get("ContourSequence", []))
-            # A slab's thickness or offset, retired in PS3.3 C.8.8.6.2, puts
-            # the target beyond its contour's points, which alone place it.
-            if any(_in_slab(contour) for contour in contours):
+            points = [_spread(contour) for contour in item.get("ContourSequence", [])]
+            if any(each is None for each in points):
                 return None
-            points = [
-                np.asarray([float(v) for v in contour.ContourData]).reshape(-1, 3)
-                for contour in contours
-            ]
             if not points:
                 continue
             joined = np.concatenate(points)
@@ -1354,15 +1842,18 @@ def _target_points(
     return found
 
 
-def _in_slab(contour: pydicom.Dataset) -> bool:
-    """Whether a contour has a Contour Slab Thickness or Contour Offset
-    Vector with a value, which PS3.3 C.8.8.6.2 retired: its slab lies about
-    a plane moved from its points by the offset, as thick as given, so its
-    points alone do not place it."""
-    return any(
-        keyword in contour and contour[keyword].value not in (None, "", [])
-        for keyword in ("ContourSlabThickness", "ContourOffsetVector")
-    )
+def _spread(contour: pydicom.Dataset) -> np.ndarray | None:
+    """Return a contour's points, with those that its retired Contour Slab
+    Thickness and Contour Offset Vector may move them to
+    (:func:`~.contour_slabs.spread`), whose convex hull holds every point
+    that any reading of them puts it at, so that a target is searched
+    wherever one does, or None where its slab cannot be placed."""
+    points = np.asarray([float(v) for v in contour.ContourData]).reshape(-1, 3)
+    try:
+        values = slab_values(contour)
+        return spread(points, None if values is None else slab_of(values, points))
+    except SlabRefused:
+        return None
 
 
 def _tied_frames(
@@ -1500,7 +1991,8 @@ class CtDefacer:
     """Gives the face block of each slice of one CT instance as air, for
     :func:`~pymedphys._dicom.deidentify.pixel_cleaning.black_out`: the
     instance's one slice, for CT Image, or each of its frames, each placed
-    by its own functional groups.
+    by its own functional groups. The frames of compressed Pixel Data are
+    those that it decodes to, which it then writes uncompressed.
 
     Parameters
     ----------
@@ -1526,9 +2018,12 @@ class CtDefacer:
         targets: KeptTargets = KeptTargets(),
     ) -> None:
         try:
-            if str(dataset.file_meta.TransferSyntaxUID) not in NATIVE_TRANSFER_SYNTAXES:
-                raise _Unusable(SeriesProblem.COMPRESSED)
-            layout = layout_of(dataset)
+            syntax = str(dataset.file_meta.TransferSyntaxUID)
+            if syntax not in NATIVE_TRANSFER_SYNTAXES and syntax not in (
+                DECODING_PLUGINS
+            ):
+                raise _Unusable(SeriesProblem.UNDECODABLE)
+            layout = frames_layout(dataset, syntax)
             self._slices = _described(dataset, layout)
         # As for a series, whatever the data set raises refuses the
         # instance, without its message.
@@ -1539,6 +2034,19 @@ class CtDefacer:
 
     def __repr__(self) -> str:
         return "CtDefacer()"
+
+    @property
+    def reaches(self) -> bool:
+        """Whether the block holds the centre of a pixel of any slice of the
+        instance, by its geometry alone, so that :meth:`mask` may give one
+        a mask; an instance that it does not reach is written as received,
+        without its pixel data decoded."""
+        return any(
+            self._block.slice_mask(
+                each.position, each.orientation, each.spacing, each.shape
+            ).any()
+            for each in self._slices
+        )
 
     def mask(self, frame: int, stored: np.ndarray) -> FrameMask | None:
         """Return the pixels of one frame's block to write as air, as the
@@ -1837,7 +2345,12 @@ def kept_slices(
                     reached.append((index, each, inside))
             if not reached:
                 continue
-            stored = _stored(data, reached[0][1].shape, [i for i, _, _ in reached])
+            stored = _stored(
+                data,
+                reached[0][1].shape,
+                [i for i, _, _ in reached],
+                compressed=reached[0][1].compressed,
+            )
             for (_, each, inside), values in zip(reached, stored, strict=True):
                 kept, padded = _kept(block, each, values)
                 slices.append(
