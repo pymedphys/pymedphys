@@ -440,7 +440,7 @@ def read_face_review(pack_directory: os.PathLike | str) -> FaceReview:
             bytes.fromhex(checks[first].block_sha256)
             for first in attestation.confirmed_blocks
         ),
-        _dose_choices(doses, choices),
+        dose_choices=_dose_choices(doses, choices),
     )
 
 
