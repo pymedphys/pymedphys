@@ -546,7 +546,9 @@ def find_face_blocks(
     """
     return {
         uid: outcome
-        for uid, (outcome, _) in _outcomes(records, read, confirmed, sheets=sheets).items()
+        for uid, (outcome, _) in _outcomes(
+            records, read, confirmed, sheets=sheets
+        ).items()
     }
 
 
@@ -892,7 +894,9 @@ def _series_found(positions: list[int], read: Callable[[int], bytes | None]) -> 
         parted = len(groups)
         for group in groups:
             finder = _finder(
-                [slices[i] for i in group], [places[i] for i in group], read,
+                [slices[i] for i in group],
+                [places[i] for i in group],
+                read,
                 along_axes=True,
             )
             try:
@@ -1093,7 +1097,9 @@ def inspect_series(
         slices, places = _stack(positions, read)
         group = _phases(slices)[0]
         return _finder(
-            [slices[i] for i in group], [places[i] for i in group], read,
+            [slices[i] for i in group],
+            [places[i] for i in group],
+            read,
             along_axes=False,
         ).inspect()
     except (_Unusable, FaceBlockRefused):

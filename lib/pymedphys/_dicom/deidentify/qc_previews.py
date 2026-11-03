@@ -1670,9 +1670,7 @@ def _renders(series: list[_Instance], volumes: Sequence[_Volume]) -> list[_Rende
             )
         else:
             placed = qc_surfaces.Stacked(volume.stack, threshold, signed=signed)
-        renders.append(
-            _Render(kind, volume.slices, placed, planed=planed)
-        )
+        renders.append(_Render(kind, volume.slices, placed, planed=planed))
     for instance in series:
         if instance.grid is not None:
             shown = tuple(

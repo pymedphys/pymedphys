@@ -716,7 +716,10 @@ def _stored(
                 NATIVE_TRANSFER_SYNTAXES
             )
             if "NumberOfFrames" in dataset:
-                slices = _described(dataset, frames_layout(dataset, str(dataset.file_meta.TransferSyntaxUID)))
+                slices = _described(
+                    dataset,
+                    frames_layout(dataset, str(dataset.file_meta.TransferSyntaxUID)),
+                )
                 places = [(each.position, each.orientation) for each in slices]
                 spacing = max(slices[0].spacing)
             else:
@@ -743,7 +746,9 @@ def _stored(
                         _hounsfield(values, each)
                         for values, each in zip(
                             _stored_frames(
-                                data, slices[0].shape, range(len(slices)),
+                                data,
+                                slices[0].shape,
+                                range(len(slices)),
                                 compressed=not native,
                             ),
                             slices,
@@ -756,7 +761,8 @@ def _stored(
                         undecoded = True
                         continue
                     frames = [
-                        stored.astype(np.float64) * float(dataset.get("RescaleSlope", 1))
+                        stored.astype(np.float64)
+                        * float(dataset.get("RescaleSlope", 1))
                         + float(dataset.get("RescaleIntercept", 0))
                     ]
                 for values in frames:
