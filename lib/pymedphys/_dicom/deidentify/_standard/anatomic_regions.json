@@ -1,0 +1,2097 @@
+{
+ "schema": "pymedphys-deid-table/1",
+ "table": "PS3.16 Annex L Anatomic Region Codes",
+ "edition": "2026d",
+ "acknowledgement": "DICOM PS3.16 2026d, © NEMA",
+ "sources": [
+  {
+   "path": "chtml/part16/chapter_L.html",
+   "sha256": "961864cd5810868701227bfb751eb4085b40c8fe2d6a9057f92e193f6d6c85a4"
+  }
+ ],
+ "content_sha256": "63c71f15203730f2cab9a69d9e08a12ebc3aa4d8fb5b3dfc9e8736e77b2a4312",
+ "rows": [
+  {
+   "term": "3RDVENTRICLE",
+   "scheme_designator": "SCT",
+   "code_value": "49841001",
+   "code_meaning": "Third ventricle"
+  },
+  {
+   "term": "4THVENTRICLE",
+   "scheme_designator": "SCT",
+   "code_value": "35918002",
+   "code_meaning": "Fourth ventricle"
+  },
+  {
+   "term": "ABDOMEN",
+   "scheme_designator": "SCT",
+   "code_value": "818981001",
+   "code_meaning": "Abdomen"
+  },
+  {
+   "term": "ABDOMENPELVIS",
+   "scheme_designator": "SCT",
+   "code_value": "818982008",
+   "code_meaning": "Abdomen and Pelvis"
+  },
+  {
+   "term": "ABDOMINALAORTA",
+   "scheme_designator": "SCT",
+   "code_value": "7832008",
+   "code_meaning": "Abdominal aorta"
+  },
+  {
+   "term": "ACA",
+   "scheme_designator": "SCT",
+   "code_value": "60176003",
+   "code_meaning": "Anterior cerebral artery"
+  },
+  {
+   "term": "ACJOINT",
+   "scheme_designator": "SCT",
+   "code_value": "85856004",
+   "code_meaning": "Acromioclavicular joint"
+  },
+  {
+   "term": "ADRENAL",
+   "scheme_designator": "SCT",
+   "code_value": "23451007",
+   "code_meaning": "Adrenal gland"
+  },
+  {
+   "term": "AMNIOTICFLUID",
+   "scheme_designator": "SCT",
+   "code_value": "77012006",
+   "code_meaning": "Amniotic fluid"
+  },
+  {
+   "term": "ANKLE",
+   "scheme_designator": "SCT",
+   "code_value": "70258002",
+   "code_meaning": "Ankle joint"
+  },
+  {
+   "term": "ANTCARDIACV",
+   "scheme_designator": "SCT",
+   "code_value": "194996006",
+   "code_meaning": "Anterior cardiac vein"
+  },
+  {
+   "term": "ANTCOMMA",
+   "scheme_designator": "SCT",
+   "code_value": "8012006",
+   "code_meaning": "Anterior communicating artery"
+  },
+  {
+   "term": "ANTECUBITALV",
+   "scheme_designator": "SCT",
+   "code_value": "128553008",
+   "code_meaning": "Antecubital vein"
+  },
+  {
+   "term": "ANTSPINALA",
+   "scheme_designator": "SCT",
+   "code_value": "17388009",
+   "code_meaning": "Anterior spinal artery"
+  },
+  {
+   "term": "ANTTIBIALA",
+   "scheme_designator": "SCT",
+   "code_value": "68053000",
+   "code_meaning": "Anterior tibial artery"
+  },
+  {
+   "term": "ANUS",
+   "scheme_designator": "SCT",
+   "code_value": "53505006",
+   "code_meaning": "Anus"
+  },
+  {
+   "term": "ANUSRECTUMSIGMD",
+   "scheme_designator": "SCT",
+   "code_value": "110612005",
+   "code_meaning": "Anus, rectum and sigmoid colon"
+  },
+  {
+   "term": "AORTA",
+   "scheme_designator": "SCT",
+   "code_value": "15825003",
+   "code_meaning": "Aorta"
+  },
+  {
+   "term": "AORTICARCH",
+   "scheme_designator": "SCT",
+   "code_value": "57034009",
+   "code_meaning": "Aortic arch"
+  },
+  {
+   "term": "APPENDIX",
+   "scheme_designator": "SCT",
+   "code_value": "66754008",
+   "code_meaning": "Appendix"
+  },
+  {
+   "term": "ARM",
+   "scheme_designator": "SCT",
+   "code_value": "40983000",
+   "code_meaning": "Upper arm"
+  },
+  {
+   "term": "ARTERY",
+   "scheme_designator": "SCT",
+   "code_value": "51114001",
+   "code_meaning": "Artery"
+  },
+  {
+   "term": "ASCAORTA",
+   "scheme_designator": "SCT",
+   "code_value": "54247002",
+   "code_meaning": "Ascending aorta"
+  },
+  {
+   "term": "ASCENDINGCOLON",
+   "scheme_designator": "SCT",
+   "code_value": "9040008",
+   "code_meaning": "Ascending colon"
+  },
+  {
+   "term": "ATLANTOAXIAL",
+   "scheme_designator": "SCT",
+   "code_value": "62555009",
+   "code_meaning": "Atlantal-axial joint"
+  },
+  {
+   "term": "ATLANTOOCCIPITAL",
+   "scheme_designator": "SCT",
+   "code_value": "20292002",
+   "code_meaning": "Atlanto-occipital joint"
+  },
+  {
+   "term": "AXILLA",
+   "scheme_designator": "SCT",
+   "code_value": "91470000",
+   "code_meaning": "Axilla"
+  },
+  {
+   "term": "AXILLARYA",
+   "scheme_designator": "SCT",
+   "code_value": "67937003",
+   "code_meaning": "Axillary Artery"
+  },
+  {
+   "term": "AXILLARYV",
+   "scheme_designator": "SCT",
+   "code_value": "68705008",
+   "code_meaning": "Axillary vein"
+  },
+  {
+   "term": "AZYGOSVEIN",
+   "scheme_designator": "SCT",
+   "code_value": "72107004",
+   "code_meaning": "Azygos vein"
+  },
+  {
+   "term": "BACK",
+   "scheme_designator": "SCT",
+   "code_value": "77568009",
+   "code_meaning": "Back"
+  },
+  {
+   "term": "BASILARA",
+   "scheme_designator": "SCT",
+   "code_value": "59011009",
+   "code_meaning": "Basilar artery"
+  },
+  {
+   "term": "BILEDUCT",
+   "scheme_designator": "SCT",
+   "code_value": "28273000",
+   "code_meaning": "Bile duct"
+  },
+  {
+   "term": "BILIARYTRACT",
+   "scheme_designator": "SCT",
+   "code_value": "34707002",
+   "code_meaning": "Biliary tract"
+  },
+  {
+   "term": "BLADDER",
+   "scheme_designator": "SCT",
+   "code_value": "89837001",
+   "code_meaning": "Bladder"
+  },
+  {
+   "term": "BLADDERURETHRA",
+   "scheme_designator": "SCT",
+   "code_value": "110837003",
+   "code_meaning": "Bladder and urethra"
+  },
+  {
+   "term": "BRACHIALA",
+   "scheme_designator": "SCT",
+   "code_value": "17137000",
+   "code_meaning": "Brachial artery"
+  },
+  {
+   "term": "BRACHIALV",
+   "scheme_designator": "SCT",
+   "code_value": "20115005",
+   "code_meaning": "Brachial vein"
+  },
+  {
+   "term": "BRAIN",
+   "scheme_designator": "SCT",
+   "code_value": "12738006",
+   "code_meaning": "Brain"
+  },
+  {
+   "term": "BREAST",
+   "scheme_designator": "SCT",
+   "code_value": "76752008",
+   "code_meaning": "Breast"
+  },
+  {
+   "term": "BRONCHUS",
+   "scheme_designator": "SCT",
+   "code_value": "955009",
+   "code_meaning": "Bronchus"
+  },
+  {
+   "term": "BULB",
+   "scheme_designator": "SCT",
+   "code_value": "21479005",
+   "code_meaning": "Carotid bulb"
+  },
+  {
+   "term": "BUTTOCK",
+   "scheme_designator": "SCT",
+   "code_value": "46862004",
+   "code_meaning": "Buttock"
+  },
+  {
+   "term": "CALCANEUS",
+   "scheme_designator": "SCT",
+   "code_value": "80144004",
+   "code_meaning": "Calcaneus"
+  },
+  {
+   "term": "CALF",
+   "scheme_designator": "SCT",
+   "code_value": "53840002",
+   "code_meaning": "Calf of leg"
+  },
+  {
+   "term": "CARDIOVASCSYS",
+   "scheme_designator": "SCT",
+   "code_value": "113257007",
+   "code_meaning": "Cardiovascular system"
+  },
+  {
+   "term": "CAROTID",
+   "scheme_designator": "SCT",
+   "code_value": "69105007",
+   "code_meaning": "Carotid Artery"
+  },
+  {
+   "term": "CARPUS",
+   "scheme_designator": "SCT",
+   "code_value": "8205005",
+   "code_meaning": "Carpus"
+  },
+  {
+   "term": "CCA",
+   "scheme_designator": "SCT",
+   "code_value": "32062004",
+   "code_meaning": "Common carotid artery"
+  },
+  {
+   "term": "CELIACA",
+   "scheme_designator": "SCT",
+   "code_value": "57850000",
+   "code_meaning": "Celiac artery"
+  },
+  {
+   "term": "CEPHALICV",
+   "scheme_designator": "SCT",
+   "code_value": "20699002",
+   "code_meaning": "Cephalic vein"
+  },
+  {
+   "term": "CEREBELLUM",
+   "scheme_designator": "SCT",
+   "code_value": "113305005",
+   "code_meaning": "Cerebellum"
+  },
+  {
+   "term": "CEREBHEMISPHERE",
+   "scheme_designator": "SCT",
+   "code_value": "372073000",
+   "code_meaning": "Cerebral hemisphere"
+  },
+  {
+   "term": "CEREBRALA",
+   "scheme_designator": "SCT",
+   "code_value": "88556005",
+   "code_meaning": "Cerebral artery"
+  },
+  {
+   "term": "CERVIX",
+   "scheme_designator": "SCT",
+   "code_value": "71252005",
+   "code_meaning": "Cervix"
+  },
+  {
+   "term": "CFA",
+   "scheme_designator": "SCT",
+   "code_value": "181347005",
+   "code_meaning": "Common femoral artery"
+  },
+  {
+   "term": "CFV",
+   "scheme_designator": "SCT",
+   "code_value": "397363009",
+   "code_meaning": "Common femoral vein"
+  },
+  {
+   "term": "CHEEK",
+   "scheme_designator": "SCT",
+   "code_value": "60819002",
+   "code_meaning": "Cheek"
+  },
+  {
+   "term": "CHEST",
+   "scheme_designator": "SCT",
+   "code_value": "816094009",
+   "code_meaning": "Chest"
+  },
+  {
+   "term": "CHESTABDOMEN",
+   "scheme_designator": "SCT",
+   "code_value": "416550000",
+   "code_meaning": "Chest and Abdomen"
+  },
+  {
+   "term": "CHESTABDPELVIS",
+   "scheme_designator": "SCT",
+   "code_value": "416775004",
+   "code_meaning": "Chest, Abdomen and Pelvis"
+  },
+  {
+   "term": "CHOROIDPLEXUS",
+   "scheme_designator": "SCT",
+   "code_value": "80621003",
+   "code_meaning": "Choroid plexus"
+  },
+  {
+   "term": "CIRCLEOFWILLIS",
+   "scheme_designator": "SCT",
+   "code_value": "11279006",
+   "code_meaning": "Circle of Willis"
+  },
+  {
+   "term": "CLAVICLE",
+   "scheme_designator": "SCT",
+   "code_value": "51299004",
+   "code_meaning": "Clavicle"
+  },
+  {
+   "term": "COCCYX",
+   "scheme_designator": "SCT",
+   "code_value": "64688005",
+   "code_meaning": "Coccyx"
+  },
+  {
+   "term": "COLON",
+   "scheme_designator": "SCT",
+   "code_value": "71854001",
+   "code_meaning": "Colon"
+  },
+  {
+   "term": "COMILIACA",
+   "scheme_designator": "SCT",
+   "code_value": "73634005",
+   "code_meaning": "Common iliac artery"
+  },
+  {
+   "term": "COMILIACV",
+   "scheme_designator": "SCT",
+   "code_value": "46027005",
+   "code_meaning": "Common iliac vein"
+  },
+  {
+   "term": "COMMONBILEDUCT",
+   "scheme_designator": "SCT",
+   "code_value": "79741001",
+   "code_meaning": "Common bile duct"
+  },
+  {
+   "term": "CORNEA",
+   "scheme_designator": "SCT",
+   "code_value": "28726007",
+   "code_meaning": "Cornea"
+  },
+  {
+   "term": "CORONARYARTERY",
+   "scheme_designator": "SCT",
+   "code_value": "41801008",
+   "code_meaning": "Coronary artery"
+  },
+  {
+   "term": "CORONARYSINUS",
+   "scheme_designator": "SCT",
+   "code_value": "90219004",
+   "code_meaning": "Coronary sinus"
+  },
+  {
+   "term": "CSPINE",
+   "scheme_designator": "SCT",
+   "code_value": "122494005",
+   "code_meaning": "Cervical spine"
+  },
+  {
+   "term": "CTSPINE",
+   "scheme_designator": "SCT",
+   "code_value": "1217257000",
+   "code_meaning": "Cervico-thoracic spine"
+  },
+  {
+   "term": "CULDESAC",
+   "scheme_designator": "SCT",
+   "code_value": "53843000",
+   "code_meaning": "Rectouterine pouch"
+  },
+  {
+   "term": "DESCAORTA",
+   "scheme_designator": "SCT",
+   "code_value": "281130003",
+   "code_meaning": "Descending aorta"
+  },
+  {
+   "term": "DESCENDINGCOLON",
+   "scheme_designator": "SCT",
+   "code_value": "32622004",
+   "code_meaning": "Descending colon"
+  },
+  {
+   "term": "DIGIT",
+   "scheme_designator": "SCT",
+   "code_value": "82680008",
+   "code_meaning": "Digit"
+  },
+  {
+   "term": "DISTALPHALANX",
+   "scheme_designator": "UMLS",
+   "code_value": "C3669027",
+   "code_meaning": "Distal phalanx"
+  },
+  {
+   "term": "DUODENUM",
+   "scheme_designator": "SCT",
+   "code_value": "38848004",
+   "code_meaning": "Duodenum"
+  },
+  {
+   "term": "EAC",
+   "scheme_designator": "SCT",
+   "code_value": "84301002",
+   "code_meaning": "External auditory canal"
+  },
+  {
+   "term": "EAR",
+   "scheme_designator": "SCT",
+   "code_value": "117590005",
+   "code_meaning": "Ear"
+  },
+  {
+   "term": "ECA",
+   "scheme_designator": "SCT",
+   "code_value": "22286001",
+   "code_meaning": "External carotid artery"
+  },
+  {
+   "term": "ELBOW",
+   "scheme_designator": "SCT",
+   "code_value": "16953009",
+   "code_meaning": "Elbow joint"
+  },
+  {
+   "term": "ENDOARTERIAL",
+   "scheme_designator": "SCT",
+   "code_value": "51114001",
+   "code_meaning": "Endo-arterial"
+  },
+  {
+   "term": "ENDOCARDIAC",
+   "scheme_designator": "SCT",
+   "code_value": "80891009",
+   "code_meaning": "Endo-cardiac"
+  },
+  {
+   "term": "ENDOESOPHAGEAL",
+   "scheme_designator": "SCT",
+   "code_value": "32849002",
+   "code_meaning": "Endo-esophageal"
+  },
+  {
+   "term": "ENDOMETRIUM",
+   "scheme_designator": "SCT",
+   "code_value": "2739003",
+   "code_meaning": "Endometrium"
+  },
+  {
+   "term": "ENDONASAL",
+   "scheme_designator": "SCT",
+   "code_value": "53342003",
+   "code_meaning": "Endo-nasal"
+  },
+  {
+   "term": "ENDONASOPHARYNYX",
+   "scheme_designator": "SCT",
+   "code_value": "18962004",
+   "code_meaning": "Endo-nasopharyngeal"
+  },
+  {
+   "term": "ENDORECTAL",
+   "scheme_designator": "SCT",
+   "code_value": "34402009",
+   "code_meaning": "Endo-rectal"
+  },
+  {
+   "term": "ENDORENAL",
+   "scheme_designator": "SCT",
+   "code_value": "64033007",
+   "code_meaning": "Endo-renal"
+  },
+  {
+   "term": "ENDOURETERIC",
+   "scheme_designator": "SCT",
+   "code_value": "87953007",
+   "code_meaning": "Endo-ureteric"
+  },
+  {
+   "term": "ENDOURETHRAL",
+   "scheme_designator": "SCT",
+   "code_value": "13648007",
+   "code_meaning": "Endo-urethral"
+  },
+  {
+   "term": "ENDOVAGINAL",
+   "scheme_designator": "SCT",
+   "code_value": "76784001",
+   "code_meaning": "Endo-vaginal"
+  },
+  {
+   "term": "ENDOVASCULAR",
+   "scheme_designator": "SCT",
+   "code_value": "59820001",
+   "code_meaning": "Endo-vascular"
+  },
+  {
+   "term": "ENDOVENOUS",
+   "scheme_designator": "SCT",
+   "code_value": "29092000",
+   "code_meaning": "Endo-venous"
+  },
+  {
+   "term": "ENDOVESICAL",
+   "scheme_designator": "SCT",
+   "code_value": "48367006",
+   "code_meaning": "Endo-vesical"
+  },
+  {
+   "term": "EPIDIDYMIS",
+   "scheme_designator": "SCT",
+   "code_value": "87644002",
+   "code_meaning": "Epididymis"
+  },
+  {
+   "term": "EPIGASTRIC",
+   "scheme_designator": "SCT",
+   "code_value": "27947004",
+   "code_meaning": "Epigastric region"
+  },
+  {
+   "term": "ESOPHAGUS",
+   "scheme_designator": "SCT",
+   "code_value": "32849002",
+   "code_meaning": "Esophagus"
+  },
+  {
+   "term": "EXTILIACA",
+   "scheme_designator": "SCT",
+   "code_value": "113269004",
+   "code_meaning": "External iliac artery"
+  },
+  {
+   "term": "EXTILIACV",
+   "scheme_designator": "SCT",
+   "code_value": "63507001",
+   "code_meaning": "External iliac vein"
+  },
+  {
+   "term": "EXTJUGV",
+   "scheme_designator": "SCT",
+   "code_value": "71585003",
+   "code_meaning": "External jugular vein"
+  },
+  {
+   "term": "EXTREMITY",
+   "scheme_designator": "SCT",
+   "code_value": "66019005",
+   "code_meaning": "Extremity"
+  },
+  {
+   "term": "EYE",
+   "scheme_designator": "SCT",
+   "code_value": "81745001",
+   "code_meaning": "Eye"
+  },
+  {
+   "term": "EYELID",
+   "scheme_designator": "SCT",
+   "code_value": "80243003",
+   "code_meaning": "Eyelid"
+  },
+  {
+   "term": "FACE",
+   "scheme_designator": "SCT",
+   "code_value": "89545001",
+   "code_meaning": "Face"
+  },
+  {
+   "term": "FACIALA",
+   "scheme_designator": "SCT",
+   "code_value": "23074001",
+   "code_meaning": "Facial artery"
+  },
+  {
+   "term": "FEMORALA",
+   "scheme_designator": "SCT",
+   "code_value": "7657000",
+   "code_meaning": "Femoral artery"
+  },
+  {
+   "term": "FEMORALV",
+   "scheme_designator": "SCT",
+   "code_value": "83419000",
+   "code_meaning": "Femoral vein"
+  },
+  {
+   "term": "FEMUR",
+   "scheme_designator": "SCT",
+   "code_value": "71341001",
+   "code_meaning": "Femur"
+  },
+  {
+   "term": "FETALARM",
+   "scheme_designator": "",
+   "code_value": "",
+   "code_meaning": "Fetal arm"
+  },
+  {
+   "term": "FETALDIGIT",
+   "scheme_designator": "",
+   "code_value": "",
+   "code_meaning": "Fetal digit"
+  },
+  {
+   "term": "FETALHEART",
+   "scheme_designator": "",
+   "code_value": "",
+   "code_meaning": "Fetal heart"
+  },
+  {
+   "term": "FETALLEG",
+   "scheme_designator": "",
+   "code_value": "",
+   "code_meaning": "Fetal leg"
+  },
+  {
+   "term": "FETALPOLE",
+   "scheme_designator": "",
+   "code_value": "",
+   "code_meaning": "Fetal pole"
+  },
+  {
+   "term": "FIBULA",
+   "scheme_designator": "SCT",
+   "code_value": "87342007",
+   "code_meaning": "Fibula"
+  },
+  {
+   "term": "FINGER",
+   "scheme_designator": "SCT",
+   "code_value": "7569003",
+   "code_meaning": "Finger"
+  },
+  {
+   "term": "FLANK",
+   "scheme_designator": "SCT",
+   "code_value": "58602004",
+   "code_meaning": "Flank"
+  },
+  {
+   "term": "FONTANEL",
+   "scheme_designator": "SCT",
+   "code_value": "79361005",
+   "code_meaning": "Fontanel of skull"
+  },
+  {
+   "term": "FOOT",
+   "scheme_designator": "SCT",
+   "code_value": "56459004",
+   "code_meaning": "Foot"
+  },
+  {
+   "term": "FOREARM",
+   "scheme_designator": "SCT",
+   "code_value": "14975008",
+   "code_meaning": "Forearm"
+  },
+  {
+   "term": "FOREFETLOCK",
+   "scheme_designator": "SCT",
+   "code_value": "13190002",
+   "code_meaning": "Fetlock of forelimb"
+  },
+  {
+   "term": "FOREFOOT",
+   "scheme_designator": "SCT",
+   "code_value": "419176008",
+   "code_meaning": "Forefoot"
+  },
+  {
+   "term": "FORENAVICULAR",
+   "scheme_designator": "SCT",
+   "code_value": "30518006",
+   "code_meaning": "Navicular of forefoot"
+  },
+  {
+   "term": "FOREPASTERN",
+   "scheme_designator": "SCT",
+   "code_value": "31329001",
+   "code_meaning": "Pastern of forefoot"
+  },
+  {
+   "term": "FRONTALSINUS",
+   "scheme_designator": "SCT",
+   "code_value": "55060009",
+   "code_meaning": "Frontal sinus"
+  },
+  {
+   "term": "GALLBLADDER",
+   "scheme_designator": "SCT",
+   "code_value": "28231008",
+   "code_meaning": "Gallbladder"
+  },
+  {
+   "term": "GASTRICV",
+   "scheme_designator": "SCT",
+   "code_value": "110568007",
+   "code_meaning": "Gastric vein"
+  },
+  {
+   "term": "GENICULARA",
+   "scheme_designator": "SCT",
+   "code_value": "128559007",
+   "code_meaning": "Genicular artery"
+  },
+  {
+   "term": "GESTSAC",
+   "scheme_designator": "SCT",
+   "code_value": "300571009",
+   "code_meaning": "Gestational sac"
+  },
+  {
+   "term": "GLUTEAL",
+   "scheme_designator": "SCT",
+   "code_value": "46862004",
+   "code_meaning": "Gluteal region"
+  },
+  {
+   "term": "GSV",
+   "scheme_designator": "SCT",
+   "code_value": "60734001",
+   "code_meaning": "Great saphenous vein"
+  },
+  {
+   "term": "HAND",
+   "scheme_designator": "SCT",
+   "code_value": "85562004",
+   "code_meaning": "Hand"
+  },
+  {
+   "term": "HEAD",
+   "scheme_designator": "SCT",
+   "code_value": "69536005",
+   "code_meaning": "Head"
+  },
+  {
+   "term": "HEADNECK",
+   "scheme_designator": "SCT",
+   "code_value": "774007",
+   "code_meaning": "Head and Neck"
+  },
+  {
+   "term": "HEART",
+   "scheme_designator": "SCT",
+   "code_value": "80891009",
+   "code_meaning": "Heart"
+  },
+  {
+   "term": "HEPATICA",
+   "scheme_designator": "SCT",
+   "code_value": "76015000",
+   "code_meaning": "Hepatic artery"
+  },
+  {
+   "term": "HEPATICV",
+   "scheme_designator": "SCT",
+   "code_value": "8993003",
+   "code_meaning": "Hepatic vein"
+  },
+  {
+   "term": "HINDFETLOCK",
+   "scheme_designator": "SCT",
+   "code_value": "113351006",
+   "code_meaning": "Fetlock of hindlimb"
+  },
+  {
+   "term": "HINDFOOT",
+   "scheme_designator": "SCT",
+   "code_value": "416804009",
+   "code_meaning": "Hindfoot"
+  },
+  {
+   "term": "HINDNAVICULAR",
+   "scheme_designator": "SCT",
+   "code_value": "75772009",
+   "code_meaning": "Navicular of hindfoot"
+  },
+  {
+   "term": "HINDPASTERN",
+   "scheme_designator": "SCT",
+   "code_value": "18525008",
+   "code_meaning": "Pastern of hindfoot"
+  },
+  {
+   "term": "HIP",
+   "scheme_designator": "SCT",
+   "code_value": "24136001",
+   "code_meaning": "Hip joint"
+  },
+  {
+   "term": "HUMERUS",
+   "scheme_designator": "SCT",
+   "code_value": "85050009",
+   "code_meaning": "Humerus"
+  },
+  {
+   "term": "HYPOGASTRIC",
+   "scheme_designator": "SCT",
+   "code_value": "11708003",
+   "code_meaning": "Hypogastric region"
+  },
+  {
+   "term": "HYPOPHARYNX",
+   "scheme_designator": "SCT",
+   "code_value": "81502006",
+   "code_meaning": "Hypopharynx"
+  },
+  {
+   "term": "IAC",
+   "scheme_designator": "SCT",
+   "code_value": "361078006",
+   "code_meaning": "Internal Auditory Canal"
+  },
+  {
+   "term": "ICA",
+   "scheme_designator": "SCT",
+   "code_value": "86117002",
+   "code_meaning": "Internal carotid artery"
+  },
+  {
+   "term": "ILEUM",
+   "scheme_designator": "SCT",
+   "code_value": "34516001",
+   "code_meaning": "Ileum"
+  },
+  {
+   "term": "ILIACA",
+   "scheme_designator": "SCT",
+   "code_value": "10293006",
+   "code_meaning": "Iliac artery"
+  },
+  {
+   "term": "ILIACV",
+   "scheme_designator": "SCT",
+   "code_value": "244411005",
+   "code_meaning": "Iliac vein"
+  },
+  {
+   "term": "ILIUM",
+   "scheme_designator": "SCT",
+   "code_value": "22356005",
+   "code_meaning": "Ilium"
+  },
+  {
+   "term": "INFMESA",
+   "scheme_designator": "SCT",
+   "code_value": "33795007",
+   "code_meaning": "Inferior mesenteric artery"
+  },
+  {
+   "term": "INFVENACAVA",
+   "scheme_designator": "SCT",
+   "code_value": "64131007",
+   "code_meaning": "Inferior vena cava"
+  },
+  {
+   "term": "INGUINAL",
+   "scheme_designator": "SCT",
+   "code_value": "26893007",
+   "code_meaning": "Inguinal region"
+  },
+  {
+   "term": "INNOMINATEA",
+   "scheme_designator": "SCT",
+   "code_value": "12691009",
+   "code_meaning": "Innominate artery"
+  },
+  {
+   "term": "INNOMINATEV",
+   "scheme_designator": "SCT",
+   "code_value": "8887007",
+   "code_meaning": "Innominate vein"
+  },
+  {
+   "term": "INTILIACA",
+   "scheme_designator": "SCT",
+   "code_value": "90024005",
+   "code_meaning": "Internal iliac artery"
+  },
+  {
+   "term": "INTJUGULARV",
+   "scheme_designator": "SCT",
+   "code_value": "12123001",
+   "code_meaning": "Internal jugular vein"
+  },
+  {
+   "term": "INTMAMMARYA",
+   "scheme_designator": "SCT",
+   "code_value": "69327007",
+   "code_meaning": "Internal mammary artery"
+  },
+  {
+   "term": "INTRACRANIAL",
+   "scheme_designator": "SCT",
+   "code_value": "1101003",
+   "code_meaning": "Intracranial"
+  },
+  {
+   "term": "JAW",
+   "scheme_designator": "SCT",
+   "code_value": "661005",
+   "code_meaning": "Jaw region"
+  },
+  {
+   "term": "JEJUNUM",
+   "scheme_designator": "SCT",
+   "code_value": "21306003",
+   "code_meaning": "Jejunum"
+  },
+  {
+   "term": "JOINT",
+   "scheme_designator": "SCT",
+   "code_value": "39352004",
+   "code_meaning": "Joint"
+  },
+  {
+   "term": "KIDNEY",
+   "scheme_designator": "SCT",
+   "code_value": "64033007",
+   "code_meaning": "Kidney"
+  },
+  {
+   "term": "KNEE",
+   "scheme_designator": "SCT",
+   "code_value": "72696002",
+   "code_meaning": "Knee"
+  },
+  {
+   "term": "LACRIMALA",
+   "scheme_designator": "SCT",
+   "code_value": "59749000",
+   "code_meaning": "Lacrimal artery"
+  },
+  {
+   "term": "LARGEINTESTINE",
+   "scheme_designator": "SCT",
+   "code_value": "14742008",
+   "code_meaning": "Large intestine"
+  },
+  {
+   "term": "LARYNX",
+   "scheme_designator": "SCT",
+   "code_value": "4596009",
+   "code_meaning": "Larynx"
+  },
+  {
+   "term": "LATRIUM",
+   "scheme_designator": "SCT",
+   "code_value": "82471001",
+   "code_meaning": "Left atrium"
+  },
+  {
+   "term": "LATVENTRICLE",
+   "scheme_designator": "SCT",
+   "code_value": "66720007",
+   "code_meaning": "Lateral Ventricle"
+  },
+  {
+   "term": "LEGS",
+   "scheme_designator": "SCT",
+   "code_value": "42694008",
+   "code_meaning": "All legs"
+  },
+  {
+   "term": "LFEMORALA",
+   "scheme_designator": "SCT",
+   "code_value": "113270003",
+   "code_meaning": "Left femoral artery"
+  },
+  {
+   "term": "LHEPATICV",
+   "scheme_designator": "SCT",
+   "code_value": "273202007",
+   "code_meaning": "Left hepatic vein"
+  },
+  {
+   "term": "LHYPOCHONDRIAC",
+   "scheme_designator": "SCT",
+   "code_value": "133945003",
+   "code_meaning": "Left hypochondriac region"
+  },
+  {
+   "term": "LINGUALA",
+   "scheme_designator": "SCT",
+   "code_value": "113264009",
+   "code_meaning": "Lingual artery"
+  },
+  {
+   "term": "LINGUINAL",
+   "scheme_designator": "SCT",
+   "code_value": "85119005",
+   "code_meaning": "Left inguinal region"
+  },
+  {
+   "term": "LIVER",
+   "scheme_designator": "SCT",
+   "code_value": "10200004",
+   "code_meaning": "Liver"
+  },
+  {
+   "term": "LLQ",
+   "scheme_designator": "SCT",
+   "code_value": "68505006",
+   "code_meaning": "Left lower quadrant of abdomen"
+  },
+  {
+   "term": "LLUMBAR",
+   "scheme_designator": "SCT",
+   "code_value": "1017210004",
+   "code_meaning": "Left lumbar region"
+  },
+  {
+   "term": "LOWERLEG",
+   "scheme_designator": "SCT",
+   "code_value": "30021000",
+   "code_meaning": "Lower leg"
+  },
+  {
+   "term": "LOWERLIMB",
+   "scheme_designator": "SCT",
+   "code_value": "61685007",
+   "code_meaning": "Lower limb"
+  },
+  {
+   "term": "LOWERTRUNK",
+   "scheme_designator": "SCT",
+   "code_value": "63337009",
+   "code_meaning": "Lower trunk"
+  },
+  {
+   "term": "LPORTALV",
+   "scheme_designator": "SCT",
+   "code_value": "70253006",
+   "code_meaning": "Left portal vein"
+  },
+  {
+   "term": "LPULMONARYA",
+   "scheme_designator": "SCT",
+   "code_value": "50408007",
+   "code_meaning": "Left pulmonary artery"
+  },
+  {
+   "term": "LSPINE",
+   "scheme_designator": "SCT",
+   "code_value": "122496007",
+   "code_meaning": "Lumbar spine"
+  },
+  {
+   "term": "LSSPINE",
+   "scheme_designator": "SCT",
+   "code_value": "1217253001",
+   "code_meaning": "Lumbo-sacral spine"
+  },
+  {
+   "term": "LSUPPULMONARYV",
+   "scheme_designator": "SCT",
+   "code_value": "43863001",
+   "code_meaning": "Superior left pulmonary vein"
+  },
+  {
+   "term": "LUMBAR",
+   "scheme_designator": "SCT",
+   "code_value": "52612000",
+   "code_meaning": "Lumbar region"
+  },
+  {
+   "term": "LUMBARA",
+   "scheme_designator": "SCT",
+   "code_value": "34635009",
+   "code_meaning": "Lumbar artery"
+  },
+  {
+   "term": "LUMEN",
+   "scheme_designator": "SCT",
+   "code_value": "91747007",
+   "code_meaning": "Lumen of blood vessel"
+  },
+  {
+   "term": "LUNG",
+   "scheme_designator": "SCT",
+   "code_value": "39607008",
+   "code_meaning": "Lung"
+  },
+  {
+   "term": "LUQ",
+   "scheme_designator": "SCT",
+   "code_value": "86367003",
+   "code_meaning": "Left upper quadrant of abdomen"
+  },
+  {
+   "term": "LVENTRICLE",
+   "scheme_designator": "SCT",
+   "code_value": "87878005",
+   "code_meaning": "Left ventricle"
+  },
+  {
+   "term": "MANDIBLE",
+   "scheme_designator": "SCT",
+   "code_value": "91609006",
+   "code_meaning": "Mandible"
+  },
+  {
+   "term": "MASTOID",
+   "scheme_designator": "SCT",
+   "code_value": "59066005",
+   "code_meaning": "Mastoid bone"
+  },
+  {
+   "term": "MAXILLA",
+   "scheme_designator": "SCT",
+   "code_value": "70925003",
+   "code_meaning": "Maxilla"
+  },
+  {
+   "term": "MCA",
+   "scheme_designator": "SCT",
+   "code_value": "17232002",
+   "code_meaning": "Middle cerebral artery"
+  },
+  {
+   "term": "MEDIASTINUM",
+   "scheme_designator": "SCT",
+   "code_value": "72410000",
+   "code_meaning": "Mediastinum"
+  },
+  {
+   "term": "MESENTRICA",
+   "scheme_designator": "SCT",
+   "code_value": "86570000",
+   "code_meaning": "Mesenteric artery"
+  },
+  {
+   "term": "MESENTRICV",
+   "scheme_designator": "SCT",
+   "code_value": "128583004",
+   "code_meaning": "Mesenteric vein"
+  },
+  {
+   "term": "METACARPUS",
+   "scheme_designator": "SCT",
+   "code_value": "36455000",
+   "code_meaning": "Metacarpus"
+  },
+  {
+   "term": "METATARSUS",
+   "scheme_designator": "SCT",
+   "code_value": "280711000",
+   "code_meaning": "Metatarsus"
+  },
+  {
+   "term": "MIDHEPATICV",
+   "scheme_designator": "SCT",
+   "code_value": "273099000",
+   "code_meaning": "Middle hepatic vein"
+  },
+  {
+   "term": "MORISONSPOUCH",
+   "scheme_designator": "SCT",
+   "code_value": "243977002",
+   "code_meaning": "Morisons pouch"
+  },
+  {
+   "term": "MOUTH",
+   "scheme_designator": "SCT",
+   "code_value": "123851003",
+   "code_meaning": "Mouth"
+  },
+  {
+   "term": "NASOPHARYNX",
+   "scheme_designator": "SCT",
+   "code_value": "360955006",
+   "code_meaning": "Nasopharynx"
+  },
+  {
+   "term": "NECK",
+   "scheme_designator": "SCT",
+   "code_value": "45048000",
+   "code_meaning": "Neck"
+  },
+  {
+   "term": "NECKCHEST",
+   "scheme_designator": "SCT",
+   "code_value": "417437006",
+   "code_meaning": "Neck and Chest"
+  },
+  {
+   "term": "NECKCHESTABDOMEN",
+   "scheme_designator": "SCT",
+   "code_value": "416152001",
+   "code_meaning": "Neck, Chest and Abdomen"
+  },
+  {
+   "term": "NECKCHESTABDPELV",
+   "scheme_designator": "SCT",
+   "code_value": "416319003",
+   "code_meaning": "Neck, Chest, Abdomen and Pelvis"
+  },
+  {
+   "term": "NOSE",
+   "scheme_designator": "SCT",
+   "code_value": "45206002",
+   "code_meaning": "Nose"
+  },
+  {
+   "term": "OCCIPTALV",
+   "scheme_designator": "SCT",
+   "code_value": "32114007",
+   "code_meaning": "Occipital vein"
+  },
+  {
+   "term": "OCCPITALA",
+   "scheme_designator": "SCT",
+   "code_value": "31145008",
+   "code_meaning": "Occipital artery"
+  },
+  {
+   "term": "OPHTHALMICA",
+   "scheme_designator": "SCT",
+   "code_value": "53549008",
+   "code_meaning": "Ophthalmic artery"
+  },
+  {
+   "term": "OPTICCANAL",
+   "scheme_designator": "SCT",
+   "code_value": "55024004",
+   "code_meaning": "Optic canal"
+  },
+  {
+   "term": "ORBIT",
+   "scheme_designator": "SCT",
+   "code_value": "363654007",
+   "code_meaning": "Orbital structure"
+  },
+  {
+   "term": "OVARY",
+   "scheme_designator": "SCT",
+   "code_value": "15497006",
+   "code_meaning": "Ovary"
+  },
+  {
+   "term": "PANCBILEDUCT",
+   "scheme_designator": "SCT",
+   "code_value": "110621006",
+   "code_meaning": "Pancreatic duct and bile duct systems"
+  },
+  {
+   "term": "PANCREAS",
+   "scheme_designator": "SCT",
+   "code_value": "15776009",
+   "code_meaning": "Pancreas"
+  },
+  {
+   "term": "PANCREATICDUCT",
+   "scheme_designator": "SCT",
+   "code_value": "69930009",
+   "code_meaning": "Pancreatic duct"
+  },
+  {
+   "term": "PARASTERNAL",
+   "scheme_designator": "SCT",
+   "code_value": "91691001",
+   "code_meaning": "Parasternal"
+  },
+  {
+   "term": "PARATHYROID",
+   "scheme_designator": "SCT",
+   "code_value": "111002",
+   "code_meaning": "Parathyroid"
+  },
+  {
+   "term": "PAROTID",
+   "scheme_designator": "SCT",
+   "code_value": "45289007",
+   "code_meaning": "Parotid gland"
+  },
+  {
+   "term": "PATELLA",
+   "scheme_designator": "SCT",
+   "code_value": "64234005",
+   "code_meaning": "Patella"
+  },
+  {
+   "term": "PCA",
+   "scheme_designator": "SCT",
+   "code_value": "70382005",
+   "code_meaning": "Posterior cerebral artery"
+  },
+  {
+   "term": "PELVIS",
+   "scheme_designator": "SCT",
+   "code_value": "816092008",
+   "code_meaning": "Pelvis"
+  },
+  {
+   "term": "PELVISLOWEXTREMT",
+   "scheme_designator": "SCT",
+   "code_value": "1231522001",
+   "code_meaning": "Pelvis and lower extremities"
+  },
+  {
+   "term": "PENILEA",
+   "scheme_designator": "SCT",
+   "code_value": "282044005",
+   "code_meaning": "Penile artery"
+  },
+  {
+   "term": "PENIS",
+   "scheme_designator": "SCT",
+   "code_value": "18911002",
+   "code_meaning": "Penis"
+  },
+  {
+   "term": "PERINEUM",
+   "scheme_designator": "SCT",
+   "code_value": "38864007",
+   "code_meaning": "Perineum"
+  },
+  {
+   "term": "PERONEALA",
+   "scheme_designator": "SCT",
+   "code_value": "8821006",
+   "code_meaning": "Peroneal artery"
+  },
+  {
+   "term": "PHANTOM",
+   "scheme_designator": "SCT",
+   "code_value": "706342009",
+   "code_meaning": "Phantom"
+  },
+  {
+   "term": "PHARYNX",
+   "scheme_designator": "SCT",
+   "code_value": "54066008",
+   "code_meaning": "Pharynx"
+  },
+  {
+   "term": "PHARYNXLARYNX",
+   "scheme_designator": "SCT",
+   "code_value": "312535008",
+   "code_meaning": "Pharynx and larynx"
+  },
+  {
+   "term": "PLACENTA",
+   "scheme_designator": "SCT",
+   "code_value": "78067005",
+   "code_meaning": "Placenta"
+  },
+  {
+   "term": "POPLITEALA",
+   "scheme_designator": "SCT",
+   "code_value": "43899006",
+   "code_meaning": "Popliteal artery"
+  },
+  {
+   "term": "POPLITEALFOSSA",
+   "scheme_designator": "SCT",
+   "code_value": "32361000",
+   "code_meaning": "Popliteal fossa"
+  },
+  {
+   "term": "POPLITEALV",
+   "scheme_designator": "SCT",
+   "code_value": "56849005",
+   "code_meaning": "Popliteal vein"
+  },
+  {
+   "term": "PORTALV",
+   "scheme_designator": "SCT",
+   "code_value": "32764006",
+   "code_meaning": "Portal vein"
+  },
+  {
+   "term": "POSCOMMA",
+   "scheme_designator": "SCT",
+   "code_value": "43119007",
+   "code_meaning": "Posterior communicating artery"
+  },
+  {
+   "term": "POSTIBIALA",
+   "scheme_designator": "SCT",
+   "code_value": "13363002",
+   "code_meaning": "Posterior tibial artery"
+  },
+  {
+   "term": "PROFFEMA",
+   "scheme_designator": "SCT",
+   "code_value": "31677005",
+   "code_meaning": "Profunda femoris artery"
+  },
+  {
+   "term": "PROFFEMV",
+   "scheme_designator": "SCT",
+   "code_value": "23438002",
+   "code_meaning": "Profunda femoris vein"
+  },
+  {
+   "term": "PROSTATE",
+   "scheme_designator": "SCT",
+   "code_value": "41216001",
+   "code_meaning": "Prostate"
+  },
+  {
+   "term": "PULMONARYA",
+   "scheme_designator": "SCT",
+   "code_value": "81040000",
+   "code_meaning": "Pulmonary artery"
+  },
+  {
+   "term": "PULMONARYV",
+   "scheme_designator": "SCT",
+   "code_value": "122972007",
+   "code_meaning": "Pulmonary vein"
+  },
+  {
+   "term": "RADIALA",
+   "scheme_designator": "SCT",
+   "code_value": "45631007",
+   "code_meaning": "Radial artery"
+  },
+  {
+   "term": "RADIUS",
+   "scheme_designator": "SCT",
+   "code_value": "62413002",
+   "code_meaning": "Radius"
+  },
+  {
+   "term": "RADIUSULNA",
+   "scheme_designator": "SCT",
+   "code_value": "110535000",
+   "code_meaning": "Radius and ulna"
+  },
+  {
+   "term": "RATRIUM",
+   "scheme_designator": "SCT",
+   "code_value": "73829009",
+   "code_meaning": "Right atrium"
+  },
+  {
+   "term": "RECTUM",
+   "scheme_designator": "SCT",
+   "code_value": "34402009",
+   "code_meaning": "Rectum"
+  },
+  {
+   "term": "RENALA",
+   "scheme_designator": "SCT",
+   "code_value": "2841007",
+   "code_meaning": "Renal artery"
+  },
+  {
+   "term": "RENALV",
+   "scheme_designator": "SCT",
+   "code_value": "56400007",
+   "code_meaning": "Renal vein"
+  },
+  {
+   "term": "RETROPERITONEUM",
+   "scheme_designator": "SCT",
+   "code_value": "82849001",
+   "code_meaning": "Retroperitoneum"
+  },
+  {
+   "term": "RFEMORALA",
+   "scheme_designator": "SCT",
+   "code_value": "69833005",
+   "code_meaning": "Right femoral artery"
+  },
+  {
+   "term": "RHEPATICV",
+   "scheme_designator": "SCT",
+   "code_value": "272998002",
+   "code_meaning": "Right hepatic vein"
+  },
+  {
+   "term": "RHYPOCHONDRIAC",
+   "scheme_designator": "SCT",
+   "code_value": "133946002",
+   "code_meaning": "Right hypochondriac region"
+  },
+  {
+   "term": "RIB",
+   "scheme_designator": "SCT",
+   "code_value": "113197003",
+   "code_meaning": "Rib"
+  },
+  {
+   "term": "RINGUINAL",
+   "scheme_designator": "SCT",
+   "code_value": "37117007",
+   "code_meaning": "Right inguinal region"
+  },
+  {
+   "term": "RLQ",
+   "scheme_designator": "SCT",
+   "code_value": "48544008",
+   "code_meaning": "Right lower quadrant of abdomen"
+  },
+  {
+   "term": "RLUMBAR",
+   "scheme_designator": "SCT",
+   "code_value": "1017211000",
+   "code_meaning": "Right lumbar region"
+  },
+  {
+   "term": "RPORTALV",
+   "scheme_designator": "SCT",
+   "code_value": "73931004",
+   "code_meaning": "Right portal vein"
+  },
+  {
+   "term": "RPULMONARYA",
+   "scheme_designator": "SCT",
+   "code_value": "78480002",
+   "code_meaning": "Right pulmonary artery"
+  },
+  {
+   "term": "RSUPPULMONARYV",
+   "scheme_designator": "SCT",
+   "code_value": "8629005",
+   "code_meaning": "Superior right pulmonary vein"
+  },
+  {
+   "term": "RUQ",
+   "scheme_designator": "SCT",
+   "code_value": "50519007",
+   "code_meaning": "Right upper quadrant of abdomen"
+  },
+  {
+   "term": "RVENTRICLE",
+   "scheme_designator": "SCT",
+   "code_value": "53085002",
+   "code_meaning": "Right ventricle"
+  },
+  {
+   "term": "SAPHENOUSV",
+   "scheme_designator": "SCT",
+   "code_value": "362072009",
+   "code_meaning": "Saphenous vein"
+  },
+  {
+   "term": "SCALP",
+   "scheme_designator": "SCT",
+   "code_value": "41695006",
+   "code_meaning": "Scalp"
+  },
+  {
+   "term": "SCAPULA",
+   "scheme_designator": "SCT",
+   "code_value": "79601000",
+   "code_meaning": "Scapula"
+  },
+  {
+   "term": "SCJOINT",
+   "scheme_designator": "SCT",
+   "code_value": "7844006",
+   "code_meaning": "Sternoclavicular joint"
+  },
+  {
+   "term": "SCLERA",
+   "scheme_designator": "SCT",
+   "code_value": "18619003",
+   "code_meaning": "Sclera"
+  },
+  {
+   "term": "SCROTUM",
+   "scheme_designator": "SCT",
+   "code_value": "20233005",
+   "code_meaning": "Scrotum"
+  },
+  {
+   "term": "SELLA",
+   "scheme_designator": "SCT",
+   "code_value": "42575006",
+   "code_meaning": "Sella turcica"
+  },
+  {
+   "term": "SEMVESICLE",
+   "scheme_designator": "SCT",
+   "code_value": "64739004",
+   "code_meaning": "Seminal vesicle"
+  },
+  {
+   "term": "SESAMOID",
+   "scheme_designator": "SCT",
+   "code_value": "58742003",
+   "code_meaning": "Sesamoid bones of foot"
+  },
+  {
+   "term": "SFA",
+   "scheme_designator": "SCT",
+   "code_value": "181349008",
+   "code_meaning": "Superficial femoral artery"
+  },
+  {
+   "term": "SFJ",
+   "scheme_designator": "SCT",
+   "code_value": "128587003",
+   "code_meaning": "Saphenofemoral junction"
+  },
+  {
+   "term": "SFV",
+   "scheme_designator": "SCT",
+   "code_value": "397364003",
+   "code_meaning": "Superficial femoral vein"
+  },
+  {
+   "term": "SHOULDER",
+   "scheme_designator": "SCT",
+   "code_value": "16982005",
+   "code_meaning": "Shoulder"
+  },
+  {
+   "term": "SIGMOID",
+   "scheme_designator": "SCT",
+   "code_value": "60184004",
+   "code_meaning": "Sigmoid colon"
+  },
+  {
+   "term": "SIJOINT",
+   "scheme_designator": "SCT",
+   "code_value": "39723000",
+   "code_meaning": "Sacroiliac joint"
+  },
+  {
+   "term": "SKULL",
+   "scheme_designator": "SCT",
+   "code_value": "89546000",
+   "code_meaning": "Skull"
+  },
+  {
+   "term": "SMA",
+   "scheme_designator": "SCT",
+   "code_value": "42258001",
+   "code_meaning": "Superior mesenteric artery"
+  },
+  {
+   "term": "SMALLINTESTINE",
+   "scheme_designator": "SCT",
+   "code_value": "30315005",
+   "code_meaning": "Small intestine"
+  },
+  {
+   "term": "SPINALCORD",
+   "scheme_designator": "SCT",
+   "code_value": "2748008",
+   "code_meaning": "Spinal cord"
+  },
+  {
+   "term": "SPINE",
+   "scheme_designator": "SCT",
+   "code_value": "421060004",
+   "code_meaning": "Spine"
+  },
+  {
+   "term": "SPLEEN",
+   "scheme_designator": "SCT",
+   "code_value": "78961009",
+   "code_meaning": "Spleen"
+  },
+  {
+   "term": "SPLENICA",
+   "scheme_designator": "SCT",
+   "code_value": "22083002",
+   "code_meaning": "Splenic artery"
+  },
+  {
+   "term": "SPLENICV",
+   "scheme_designator": "SCT",
+   "code_value": "35819009",
+   "code_meaning": "Splenic vein"
+  },
+  {
+   "term": "SSPINE",
+   "scheme_designator": "SCT",
+   "code_value": "54735007",
+   "code_meaning": "Sacrum"
+  },
+  {
+   "term": "STERNUM",
+   "scheme_designator": "SCT",
+   "code_value": "56873002",
+   "code_meaning": "Sternum"
+  },
+  {
+   "term": "STIFLE",
+   "scheme_designator": "SCT",
+   "code_value": "116010006",
+   "code_meaning": "Stiffle"
+  },
+  {
+   "term": "STOMACH",
+   "scheme_designator": "SCT",
+   "code_value": "69695003",
+   "code_meaning": "Stomach"
+  },
+  {
+   "term": "SUBCLAVIANA",
+   "scheme_designator": "SCT",
+   "code_value": "36765005",
+   "code_meaning": "Subclavian artery"
+  },
+  {
+   "term": "SUBCLAVIANV",
+   "scheme_designator": "SCT",
+   "code_value": "9454009",
+   "code_meaning": "Subclavian vein"
+  },
+  {
+   "term": "SUBCOSTAL",
+   "scheme_designator": "SCT",
+   "code_value": "19695001",
+   "code_meaning": "Subcostal"
+  },
+  {
+   "term": "SUBMANDIBULAR",
+   "scheme_designator": "SCT",
+   "code_value": "54019009",
+   "code_meaning": "Submandibular gland"
+  },
+  {
+   "term": "SUPRACLAVICULAR",
+   "scheme_designator": "SCT",
+   "code_value": "77621008",
+   "code_meaning": "Supraclavicular region of neck"
+  },
+  {
+   "term": "SUPRAPUBIC",
+   "scheme_designator": "SCT",
+   "code_value": "11708003",
+   "code_meaning": "Suprapubic region"
+  },
+  {
+   "term": "SUPTHYROIDA",
+   "scheme_designator": "SCT",
+   "code_value": "72021004",
+   "code_meaning": "Superior thyroid artery"
+  },
+  {
+   "term": "SVC",
+   "scheme_designator": "SCT",
+   "code_value": "48345005",
+   "code_meaning": "Superior vena cava"
+  },
+  {
+   "term": "TAIL",
+   "scheme_designator": "SCT",
+   "code_value": "18149002",
+   "code_meaning": "Coccygeal vertrebrae"
+  },
+  {
+   "term": "TARSUS",
+   "scheme_designator": "SCT",
+   "code_value": "108371006",
+   "code_meaning": "Tarsus"
+  },
+  {
+   "term": "TESTIS",
+   "scheme_designator": "SCT",
+   "code_value": "40689003",
+   "code_meaning": "Testis"
+  },
+  {
+   "term": "THALAMUS",
+   "scheme_designator": "SCT",
+   "code_value": "42695009",
+   "code_meaning": "Thalamus"
+  },
+  {
+   "term": "THIGH",
+   "scheme_designator": "SCT",
+   "code_value": "68367000",
+   "code_meaning": "Thigh"
+  },
+  {
+   "term": "THORACICAORTA",
+   "scheme_designator": "SCT",
+   "code_value": "113262008",
+   "code_meaning": "Thoracic aorta"
+  },
+  {
+   "term": "THORAX",
+   "scheme_designator": "SCT",
+   "code_value": "816094009",
+   "code_meaning": "Chest"
+  },
+  {
+   "term": "THUMB",
+   "scheme_designator": "SCT",
+   "code_value": "76505004",
+   "code_meaning": "Thumb"
+  },
+  {
+   "term": "THYMUS",
+   "scheme_designator": "SCT",
+   "code_value": "9875009",
+   "code_meaning": "Thymus"
+  },
+  {
+   "term": "THYROID",
+   "scheme_designator": "SCT",
+   "code_value": "69748006",
+   "code_meaning": "Thyroid"
+  },
+  {
+   "term": "TIBIA",
+   "scheme_designator": "SCT",
+   "code_value": "12611008",
+   "code_meaning": "Tibia"
+  },
+  {
+   "term": "TIBIAFIBULA",
+   "scheme_designator": "SCT",
+   "code_value": "110536004",
+   "code_meaning": "Tibia and fibula"
+  },
+  {
+   "term": "TLSPINE",
+   "scheme_designator": "SCT",
+   "code_value": "1217256009",
+   "code_meaning": "Thoraco-lumbar spine"
+  },
+  {
+   "term": "TMJ",
+   "scheme_designator": "SCT",
+   "code_value": "53620006",
+   "code_meaning": "Temporomandibular joint"
+  },
+  {
+   "term": "TOE",
+   "scheme_designator": "SCT",
+   "code_value": "29707007",
+   "code_meaning": "Toe"
+  },
+  {
+   "term": "TONGUE",
+   "scheme_designator": "SCT",
+   "code_value": "21974007",
+   "code_meaning": "Tongue"
+  },
+  {
+   "term": "TRACHEA",
+   "scheme_designator": "SCT",
+   "code_value": "44567001",
+   "code_meaning": "Trachea"
+  },
+  {
+   "term": "TRACHEABRONCHUS",
+   "scheme_designator": "SCT",
+   "code_value": "110726009",
+   "code_meaning": "Trachea and bronchus"
+  },
+  {
+   "term": "TRANSVERSECOLON",
+   "scheme_designator": "SCT",
+   "code_value": "485005",
+   "code_meaning": "Transverse colon"
+  },
+  {
+   "term": "TRUNK",
+   "scheme_designator": "SCT",
+   "code_value": "22943007",
+   "code_meaning": "Trunk"
+  },
+  {
+   "term": "TSPINE",
+   "scheme_designator": "SCT",
+   "code_value": "122495006",
+   "code_meaning": "Thoracic spine"
+  },
+  {
+   "term": "UGITRACT",
+   "scheme_designator": "SCT",
+   "code_value": "62834003",
+   "code_meaning": "Upper gastro-intestinal tract"
+  },
+  {
+   "term": "ULNA",
+   "scheme_designator": "SCT",
+   "code_value": "23416004",
+   "code_meaning": "Ulna"
+  },
+  {
+   "term": "ULNARA",
+   "scheme_designator": "SCT",
+   "code_value": "44984001",
+   "code_meaning": "Ulnar artery"
+  },
+  {
+   "term": "UMBILICAL",
+   "scheme_designator": "SCT",
+   "code_value": "90290004",
+   "code_meaning": "Umbilical region"
+  },
+  {
+   "term": "UMBILICALA",
+   "scheme_designator": "SCT",
+   "code_value": "50536004",
+   "code_meaning": "Umbilical artery"
+  },
+  {
+   "term": "UMBILICALV",
+   "scheme_designator": "SCT",
+   "code_value": "284639000",
+   "code_meaning": "Umbilical vein"
+  },
+  {
+   "term": "UPPERARM",
+   "scheme_designator": "SCT",
+   "code_value": "40983000",
+   "code_meaning": "Upper arm"
+  },
+  {
+   "term": "UPPERLIMB",
+   "scheme_designator": "SCT",
+   "code_value": "53120007",
+   "code_meaning": "Upper limb"
+  },
+  {
+   "term": "UPPERTRUNK",
+   "scheme_designator": "SCT",
+   "code_value": "67734004",
+   "code_meaning": "Upper trunk"
+  },
+  {
+   "term": "UPRURINARYTRACT",
+   "scheme_designator": "SCT",
+   "code_value": "431491007",
+   "code_meaning": "Upper urinary tract"
+  },
+  {
+   "term": "URETER",
+   "scheme_designator": "SCT",
+   "code_value": "87953007",
+   "code_meaning": "Ureter"
+  },
+  {
+   "term": "URETHRA",
+   "scheme_designator": "SCT",
+   "code_value": "13648007",
+   "code_meaning": "Urethra"
+  },
+  {
+   "term": "URINARYTRACT",
+   "scheme_designator": "SCT",
+   "code_value": "431938005",
+   "code_meaning": "Urinary tract"
+  },
+  {
+   "term": "UTERUS",
+   "scheme_designator": "SCT",
+   "code_value": "35039007",
+   "code_meaning": "Uterus"
+  },
+  {
+   "term": "VAGINA",
+   "scheme_designator": "SCT",
+   "code_value": "76784001",
+   "code_meaning": "Vagina"
+  },
+  {
+   "term": "VEIN",
+   "scheme_designator": "SCT",
+   "code_value": "29092000",
+   "code_meaning": "Vein"
+  },
+  {
+   "term": "VERTEBRALA",
+   "scheme_designator": "SCT",
+   "code_value": "85234005",
+   "code_meaning": "Vertebral artery"
+  },
+  {
+   "term": "VULVA",
+   "scheme_designator": "SCT",
+   "code_value": "45292006",
+   "code_meaning": "Vulva"
+  },
+  {
+   "term": "WHOLEBODY",
+   "scheme_designator": "SCT",
+   "code_value": "38266002",
+   "code_meaning": "Entire body"
+  },
+  {
+   "term": "WING",
+   "scheme_designator": "SCT",
+   "code_value": "53036007",
+   "code_meaning": "Wing"
+  },
+  {
+   "term": "WRIST",
+   "scheme_designator": "SCT",
+   "code_value": "74670003",
+   "code_meaning": "Wrist joint"
+  },
+  {
+   "term": "ZYGOMA",
+   "scheme_designator": "SCT",
+   "code_value": "13881006",
+   "code_meaning": "Zygoma"
+  }
+ ]
+}

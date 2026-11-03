@@ -96,6 +96,44 @@ def test_a_head_ct_series_has_its_face_block():
     )
 
 
+_TILTED_SCANS = {
+    "gantry-tilt-15": head.tilted(
+        degrees=15.0,
+        spacing=2.0,
+        thickness=3.0,
+        extent=((-100, 100), (-130, 110), (-30, 160)),
+    ),
+    "sheared": head.sheared(
+        head.axial(
+            spacing=2.0, thickness=3.0, extent=((-100, 100), (-130, 160), (-60, 120))
+        ),
+        15.0,
+    ),
+}
+
+
+@pytest.mark.parametrize("scan", _TILTED_SCANS.values(), ids=_TILTED_SCANS.keys())
+def test_a_tilted_series_is_not_yet_defaced_though_the_finder_finds_its_block(scan):
+    slices = tuple(files.ct_files(scan, head.Head(noise=0.0)))
+
+    outcome = _outcome(slices=slices)
+    inspection = face_blocks.inspect_series(
+        list(range(len(slices))), lambda position: slices[position]
+    )
+
+    assert outcome.block is None
+    assert outcome.problem is FaceBlockProblem.NOT_ALONG_PATIENT_AXES
+    assert inspection is not None
+    np.testing.assert_allclose(
+        inspection.block().globes,
+        (
+            (-head.GLOBE_X, head.GLOBE_Y, head.GLOBE_Z),
+            (head.GLOBE_X, head.GLOBE_Y, head.GLOBE_Z),
+        ),
+        atol=2.0,
+    )
+
+
 def test_each_series_is_found_by_its_series_instance_uid():
     other = files.ct_files(
         _SCAN, head.Head(eyes=(True, False)), series=files.ROOT + ".9"
@@ -150,16 +188,19 @@ def test_stored_values_that_cannot_hold_air_leave_the_series_undefaced():
     assert _outcome(slices=tuple(unsigned)).problem is SeriesProblem.AIR_NOT_STORED
 
 
-def test_compressed_slices_are_not_defaced():
+def test_compressed_slices_have_the_face_block_of_native_ones():
     compressed = []
     for each in _head_files():
         dataset = pydicom.dcmread(io.BytesIO(each))
-        dataset.compress(pydicom.uid.RLELossless)
+        dataset.compress(pydicom.uid.RLELossless, generate_instance_uid=False)
         buffer = io.BytesIO()
         dataset.save_as(buffer, enforce_file_format=True)
         compressed.append(buffer.getvalue())
 
-    assert _outcome(slices=tuple(compressed)).problem is SeriesProblem.COMPRESSED
+    outcome = _outcome(slices=tuple(compressed))
+
+    assert outcome.problem is None
+    assert outcome.block == _outcome().block
 
 
 @pytest.mark.parametrize("kind", ["PTV", "CTV", "GTV", "PTV "])
@@ -448,26 +489,43 @@ _TARGET = files.square(_EYES_FRONT[0])
 
 
 @pytest.mark.parametrize(
-    ("keyword", "value", "held"),
+    ("keyword", "value", "held", "span"),
     [
-        ("ContourSlabThickness", 10.0, True),
-        ("ContourOffsetVector", [0.0, 0.0, 6.0], True),
-        ("ContourSlabThickness", None, False),
-        ("ContourOffsetVector", None, False),
+        ("ContourSlabThickness", 10.0, False, (15.0, 25.0)),
+        ("ContourOffsetVector", [0.0, 0.0, 6.0], False, (20.0, 26.0)),
+        ("ContourSlabThickness", None, False, (20.0, 20.0)),
+        ("ContourOffsetVector", None, False, (20.0, 20.0)),
+        ("ContourSlabThickness", -1.0, True, None),
+        ("ContourOffsetVector", [6.0, 0.0, 0.0], True, None),
     ],
-    ids=["thickness", "offset", "empty-thickness", "empty-offset"],
+    ids=[
+        "thickness",
+        "offset",
+        "empty-thickness",
+        "empty-offset",
+        "negative-thickness",
+        "offset-outside-normal",
+    ],
 )
-def test_a_target_in_a_slab_holds_the_series(keyword, value, held):
+def test_a_target_in_a_slab_keeps_its_span_or_holds_if_unplaceable(
+    keyword, value, held, span
+):
     rtss = pydicom.dcmread(io.BytesIO(files.structure_set([("PTV", _TARGET)])))
     (contour,) = rtss.ROIContourSequence[0].ContourSequence
     setattr(contour, keyword, value)
 
-    # A slab, retired in PS3.3, lies off the contour's points, which alone
-    # place the target, so the region to keep is unknown: the series is
-    # held, as it was before targets were kept. An empty value is no slab.
+    # The target lies at z=20 mm: 10 mm thickness reaches 15..25 mm, and
+    # a 6 mm axial offset reaches 20..26 mm. Empty values leave it planar.
+    # Every valid reading must be kept; an unplaceable span still holds.
     outcome = _outcome(files.written(rtss))
 
     assert _fate(outcome) == (SeriesProblem.TARGET_IN_BLOCK if held else _AROUND)
+    if span is not None:
+        (hull,) = outcome.targets.hulls
+        assert (
+            np.min(hull.vertices[:, 2]),
+            np.max(hull.vertices[:, 2]),
+        ) == pytest.approx(span)
 
 
 def _meets_target(points: np.ndarray, centre=_EYES_FRONT[0]) -> np.ndarray:

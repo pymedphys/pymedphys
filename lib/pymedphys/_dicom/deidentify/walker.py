@@ -65,7 +65,9 @@ source value is read to compare (D-021). Only the VRs of
 :data:`~pymedphys._dicom.deidentify.dummy_values.DUMMY_VRS` have a generic
 dummy value. Reviewed ones exist besides for Person Identification Code
 Sequence (0040,1101), whose items' Code Value (0008,0100) and Code Meaning
-(0008,0104) are compared, for Referenced Performed Procedure Step Sequence
+(0008,0104) are compared, for Institution Code Sequence (0008,0082) in an
+item of Interlock Resolution User Sequence (300A,0746), and only there,
+whose items' are compared too, for Referenced Performed Procedure Step Sequence
 (0008,1111), whose items' Referenced SOP Instance UID (0008,1155) is read
 for its keyed replacement, and for ICC Profile (0028,2000) of VR OB
 (D-021). D on Verifying Observer Sequence (0040,A073) keeps the sequence as
@@ -88,7 +90,8 @@ every reason is known.
 
 A plain X removes its attribute (D-020), but for Requested Procedure ID
 (0040,1001) in a Structured Report's Referenced Request Sequence (0040,A370),
-which it empties
+and Source Manufacturer (300A,0216) in an RT Brachy Treatment Record's
+Recorded Source Sequence (3008,0100), which it empties
 (:data:`~pymedphys._dicom.deidentify.compound_actions.EMPTIED_PLAIN_X`).
 Where the IOD requires the attribute at its place,
 :func:`~pymedphys._dicom.deidentify.compound_actions.resolve_plain_x_in_iod`
@@ -182,7 +185,7 @@ from .compound_actions import (
     resolve_plain_in_iod,
     resolve_plain_x_in_iod,
 )
-from .dummy_values import DUMMY_VRS, ICC_PROFILE, KEPT_ITEM_ATTRIBUTES
+from .dummy_values import DUMMY_VRS, ICC_PROFILE, KEPT_ITEM_ATTRIBUTES, reviewed_within
 from .element_rules import ElementRule, ElementRules, RuleSource
 from .file_layout import ElementPath
 from .iods import IOD
@@ -196,11 +199,26 @@ from .standard import dictionary_attribute
 DESCENDED = frozenset({"K", "U"})
 _REMOVED = "X"
 # The sequences whose dummy value a reviewed rule gives, and the attributes
-# of their items that are compared with it (D-021).
+# of their items that are compared with it (D-021). Institution Code
+# Sequence's rule holds only where
+# :func:`~pymedphys._dicom.deidentify.dummy_values.reviewed_within` says.
 REVIEWED_DUMMY_SEQUENCES = {
     "(0040,1101)": frozenset({"(0008,0100)", "(0008,0104)"}),
+    "(0008,0082)": frozenset({"(0008,0100)", "(0008,0104)"}),
     "(0008,1111)": frozenset({"(0008,1155)"}),
 }
+
+
+def has_reviewed_items(path: ElementPath) -> bool:
+    """Return whether a reviewed rule gives D's items for a sequence at its place.
+
+    So it does for each sequence of :data:`REVIEWED_DUMMY_SEQUENCES`, where
+    :func:`~pymedphys._dicom.deidentify.dummy_values.reviewed_within` holds
+    for the sequences that enclose it (D-021).
+    """
+    return path.tag in REVIEWED_DUMMY_SEQUENCES and reviewed_within(
+        path.tag, tuple(tag for tag, _ in path.items)
+    )
 
 
 def descends(tag: str, action: str) -> bool:
@@ -429,13 +447,13 @@ def _vr_contradicts_dictionary(tag: str, written: str | None) -> bool:
     )
 
 
-def _has_dummy(tag: str, vr: str | None, container: bool, action: str) -> bool:
+def _has_dummy(path: ElementPath, vr: str | None, container: bool, action: str) -> bool:
     """Whether a generic or reviewed dummy value exists for the element."""
     if container:
         return action == "D" and (
-            tag in REVIEWED_DUMMY_SEQUENCES or tag in KEPT_ITEM_ATTRIBUTES
+            has_reviewed_items(path) or path.tag in KEPT_ITEM_ATTRIBUTES
         )
-    return vr in DUMMY_VRS or (tag == ICC_PROFILE and vr == "OB")
+    return vr in DUMMY_VRS or (path.tag == ICC_PROFILE and vr == "OB")
 
 
 def _removing_ancestor(
@@ -477,6 +495,7 @@ def _compared_in_reviewed_dummy(
     compared = REVIEWED_DUMMY_SEQUENCES.get(removed_with.tag, frozenset())
     return (
         action == "D"
+        and has_reviewed_items(removed_with)
         and len(path.items) == len(removed_with.items) + 1
         and path.tag in compared
     )
@@ -624,7 +643,7 @@ def _plan(
                     path, action, extent.vr, SequesterReason.VR_NOT_IN_DICTIONARY
                 )
             )
-        elif action == "D" and not _has_dummy(path.tag, vr, container, action):
+        elif action == "D" and not _has_dummy(path, vr, container, action):
             sequestrations.append(
                 Sequestration(path, action, vr, SequesterReason.NO_DUMMY_VALUE)
             )

@@ -102,6 +102,13 @@ A pack holds, for one run:
   IOD unconditionally requires, with each such attribute's place and Type,
   which the run reports and never acts on (MIDI-BP-03); the release report
   gives only their counts by attribute and Type;
+- ``several_patient_studies``: each study whose instances name several
+  patients that the run sequestered, where it was told to rather than stop,
+  with its instances by run position, grouped by patient, a Patient ID with
+  its issuer or, for the instances without a Patient ID, none, as the
+  first pass grouped them, so that a curator can find the instances that
+  belong to another patient and correct them (D-026); the release report
+  gives only how many studies it sequestered;
 - ``reviewed_lists``: the salted digest of the reviewed ROI names and
   descriptors lists that the run's descriptor cleaning applied, and of the
   reviewed region rules that its Clean Pixel Data applied, as
@@ -150,7 +157,7 @@ from .reviewed_roi_names import Outcome
 from .text_detection import TextBox
 
 # The format of the pack document. A change to its fields takes a new label.
-FORMAT = "pymedphys-deid-qc-pack/22"
+FORMAT = "pymedphys-deid-qc-pack/30"
 # The bytes of a written file shown on each side of a residual's offset.
 EXCERPT_BYTES = 48
 # The SHA-256 that face_review.contour_data_sha256 gives a file without
@@ -793,8 +800,10 @@ class DescriptorEntry:
     applied : bool
         Whether the element was written with those values. Where it was not,
         because a value was held, no value had text, or a kept value was
-        beside a mapped or emptied one, or because another attribute's action removed
-        its sequence, it took its action without Clean Descriptors, except
+        beside a mapped or emptied one, because another attribute's action
+        removed its sequence, or because another instance of its patient,
+        study, series, or frame of reference would write other values, it
+        took its action without Clean Descriptors, except
         for an attribute that another option's cleaner left to the reviewed
         descriptors list, such as Allergies under Retain Patient
         Characteristics, a held value of which holds its instance for review
@@ -1377,6 +1386,53 @@ class EyeCheckEntry:
 
 
 @dataclasses.dataclass(frozen=True)
+class SeveralPatientStudyEntry:
+    """A study whose instances name several patients, which the run sequestered.
+
+    The pack names neither the study nor its patients: a curator finds them
+    from the instances' source files (D-026).
+
+    Attributes
+    ----------
+    patients : tuple of tuple of int
+        The run positions of the study's instances, grouped by patient as
+        the first pass grouped them, at least two groups, each in order and
+        each instance once, the groups in order of their first instance.
+    """
+
+    patients: tuple[tuple[int, ...], ...]
+
+    def __post_init__(self) -> None:
+        groups = self.patients
+        if (
+            not isinstance(groups, tuple)
+            or len(groups) < 2
+            or not all(isinstance(group, tuple) and group for group in groups)
+        ):
+            raise QcPackError(
+                "a study with several patients needs its instances' run "
+                "positions, by patient, for at least two patients"
+            )
+        for group in groups:
+            for position in group:
+                _check_position("a study with several patients", position)
+        listed = [position for group in groups for position in group]
+        if len(set(listed)) != len(listed) or any(
+            list(group) != sorted(group) for group in groups
+        ):
+            raise QcPackError(
+                "a study with several patients must list each instance once, "
+                "in order within each patient"
+            )
+        firsts = [group[0] for group in groups]
+        if firsts != sorted(firsts):
+            raise QcPackError(
+                "a study with several patients must list its patients in order "
+                "of their first instance"
+            )
+
+
+@dataclasses.dataclass(frozen=True)
 class SeriesRiskEntry:
     """A series with indicators of risk as a whole, and the instances that show each.
 
@@ -1477,6 +1533,9 @@ class QcPack:
         globes beside its eye ROIs (:attr:`PreviewKind.SERIES_EYES`), which
         shows only its instances' frames, and no such sheet shows any
         other's.
+    several_patient_studies : tuple of SeveralPatientStudyEntry
+        In order of their first instance; each instance sequestered, and in
+        at most one.
 
     Raises
     ------
@@ -1498,7 +1557,9 @@ class QcPack:
         released nor held for review; or if a cleaned instance that is not
         listed as not previewed, or is listed only for its dose levels,
         lacks a redaction preview of each frame, in order, or a redaction
-        preview shows anything else.
+        preview shows anything else; or if a study with several patients
+        names an instance that was not sequestered, or one that another
+        such study names, or the studies are out of order.
     """
 
     reference: str
@@ -1519,6 +1580,7 @@ class QcPack:
     series: tuple[SeriesEntry, ...] = ()
     reviewed_lists: ListsDigest | None = None
     eye_checks: tuple[EyeCheckEntry, ...] = ()
+    several_patient_studies: tuple[SeveralPatientStudyEntry, ...] = ()
 
     def __post_init__(self) -> None:
         if not isinstance(self.reference, str) or not _REFERENCE.fullmatch(
@@ -1546,6 +1608,7 @@ class QcPack:
             "source_gaps": SourceGapEntry,
             "series": SeriesEntry,
             "eye_checks": EyeCheckEntry,
+            "several_patient_studies": SeveralPatientStudyEntry,
         }
         for name, kind in sections.items():
             entries = getattr(self, name)
@@ -1589,6 +1652,7 @@ class QcPack:
             if listed != sorted(set(listed)):
                 raise QcPackError(f"{name} must list each instance once, in order")
         self._check_series()
+        self._check_several_patient_studies()
         self._check_previews()
         if any(
             self.instances[entry.position].disposition not in _REVIEWED
@@ -1629,6 +1693,32 @@ class QcPack:
             for position in entry.positions
         ):
             raise QcPackError("eye_checks names an instance not held for review")
+
+    def _check_several_patient_studies(self) -> None:
+        studies = self.several_patient_studies
+        firsts = [entry.patients[0][0] for entry in studies]
+        if firsts != sorted(firsts):
+            raise QcPackError(
+                "several_patient_studies must be in order of their first instance"
+            )
+        listed = [
+            position
+            for entry in studies
+            for group in entry.patients
+            for position in group
+        ]
+        if len(set(listed)) != len(listed):
+            raise QcPackError(
+                "an instance is in two studies of several_patient_studies"
+            )
+        if any(
+            position >= len(self.instances)
+            or self.instances[position].disposition is not Disposition.SEQUESTERED
+            for position in listed
+        ):
+            raise QcPackError(
+                "several_patient_studies names an instance that was not sequestered"
+            )
 
     def _check_previews(self) -> None:
         width = max(4, len(str(len(self.previews))))
@@ -2126,6 +2216,10 @@ def pack_document(pack: QcPack) -> dict:
                 ],
             }
             for entry in pack.source_gaps
+        ],
+        "several_patient_studies": [
+            {"patients": [list(group) for group in entry.patients]}
+            for entry in pack.several_patient_studies
         ],
     }
 

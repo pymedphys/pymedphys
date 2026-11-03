@@ -251,6 +251,7 @@ def test_the_sections_follow_the_documents_order():
         "## Residual findings exempted from review",
         "## Required attributes missing from the source",
         "## Structural checks",
+        "## Studies with several patients",
     ]
     assert markdown.splitlines()[0] == "# De-identification release report"
 

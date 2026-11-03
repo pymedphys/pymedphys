@@ -797,9 +797,11 @@ def test_the_statement_gives_the_code_only_after_review():
         "also has Burned In Annotation (0028,0301) set to NO, as PS3.15 E.3.1 "
         "requires, including in an IOD that does not define the attribute, which "
         "of the supported IODs are RT Plan, RT Structure Set, RT Beams Treatment "
-        "Record, MR Spectroscopy, Spatial Registration, Deformable Spatial "
-        "Registration, X-Ray Radiation Dose SR, and Radiopharmaceutical Radiation "
-        "Dose SR"
+        "Record, RT Ion Plan, RT Ion Beams Treatment Record, RT Brachy Treatment "
+        "Record, RT Treatment Summary Record, MR Spectroscopy, Spatial "
+        "Registration, Deformable Spatial Registration, X-Ray Radiation Dose SR, "
+        "Radiopharmaceutical Radiation Dose SR, Basic Text SR, Enhanced SR, "
+        "Comprehensive SR, Comprehensive 3D SR, and Extensible SR."
     ) in text
     assert (
         "claims Clean Pixel Data only for an instance without top-level pixel "
@@ -817,11 +819,20 @@ def test_the_statement_names_each_supported_iod_that_lacks_the_attribute():
         "RT Plan",
         "RT Structure Set",
         "RT Beams Treatment Record",
+        "RT Ion Plan",
+        "RT Ion Beams Treatment Record",
+        "RT Brachy Treatment Record",
+        "RT Treatment Summary Record",
         "MR Spectroscopy",
         "Spatial Registration",
         "Deformable Spatial Registration",
         "X-Ray Radiation Dose SR",
         "Radiopharmaceutical Radiation Dose SR",
+        "Basic Text SR",
+        "Enhanced SR",
+        "Comprehensive SR",
+        "Comprehensive 3D SR",
+        "Extensible SR",
     }
 
 
@@ -1137,7 +1148,7 @@ def test_the_report_names_the_reviewed_pack(second_run):
     attestation, _, report, _, _ = second_run
 
     assert report["redaction_review"] == {"reference": attestation.reference}
-    assert report["format"] == "pymedphys-deid-release-report/37"
+    assert report["format"] == "pymedphys-deid-release-report/48"
 
 
 class _Blind(Finder):
