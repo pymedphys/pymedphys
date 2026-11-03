@@ -145,6 +145,7 @@ from .descriptor_cleaning import (
     fallback_policy,
     kept_descriptors,
 )
+from .dummy_values import ICC_PROFILE
 from .edits import Edit, EditKind, InstanceEdits, edit_instance, read_values
 from .element_rules import ElementRules
 from .safe_private import SafePrivateList
@@ -270,6 +271,7 @@ from .run_qc import (
     DoseCheckMaterial,
     Dropped,
     EyeCheckMaterial,
+    IccProfileMaterial,
     PixelRiskMaterial,
     RedactionMaterial,
     SearchMaterial,
@@ -423,6 +425,20 @@ def _left_out(edits: InstanceEdits) -> dict[ElementPath, DropReason]:
         if path not in collected:
             left_out.setdefault(path, DropReason.REGISTERED_UID)
     return left_out
+
+
+def icc_profiles_of(edits: InstanceEdits) -> tuple[IccProfileMaterial, ...]:
+    """Return what D wrote in place of each of an instance's ICC Profiles (D-021).
+
+    Each is the source profile cleaned of everything but its colorimetry, or
+    the fixed sRGB profile, with why the source could not be cleaned, for
+    the release report to count.
+    """
+    return tuple(
+        IccProfileMaterial(edit.path, edit.icc_refusal)
+        for edit in edits.edits
+        if edit.path.tag == ICC_PROFILE and edit.kind is EditKind.REPLACE
+    )
 
 
 def dropped_of(
@@ -1997,7 +2013,13 @@ class InstanceTransform:
         choice = self._dose_choice(data, dose)
         chosen_dose = None if choice is None else choice[1]
         contours = self._contour_regions(iod, record)
-        qc = (*risk, *dropped_of(edits, retained), *omissions_of(evidence), *names)
+        qc = (
+            *risk,
+            *dropped_of(edits, retained),
+            *omissions_of(evidence),
+            *names,
+            *icc_profiles_of(edits),
+        )
         chosen = {CLEAN_DESCRIPTORS} if satisfied else set()
         try:
             qc = (*qc, *_retained(source, plan, edits))

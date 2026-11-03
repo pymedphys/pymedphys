@@ -46,6 +46,7 @@ from .face_review import (
     pixel_data_sha256,
 )
 from .file_layout import ElementPath
+from .icc_cleaning import Refusal
 from .qc_pack import Disposition, DropReason, QcPack, RoiNameOutcome
 from .reasons import DoseChoice, PixelDataReason
 from .reference_graph import Finding, FindingKind
@@ -138,6 +139,26 @@ class DescriptorMaterial:
 
     def __repr__(self) -> str:
         return f"DescriptorMaterial(path={str(self.path)!r}, applied={self.applied!r})"
+
+
+@dataclasses.dataclass(frozen=True)
+class IccProfileMaterial:
+    """What D wrote in place of one ICC Profile (0028,2000) (D-021).
+
+    The release report counts it. The QC pack does not list it, since the
+    profile written holds nothing of the source's but its colorimetry, which
+    names no one.
+
+    Attributes
+    ----------
+    path : ElementPath
+    refusal : ~pymedphys._dicom.deidentify.icc_cleaning.Refusal or None
+        None where the source profile was cleaned and written; otherwise why
+        it could not be, so the fixed sRGB profile was written.
+    """
+
+    path: ElementPath
+    refusal: Refusal | None
 
 
 @dataclasses.dataclass(frozen=True, repr=False)
@@ -553,6 +574,9 @@ def qc_pack_of(
                 )
             elif isinstance(item, RetainedText):
                 retained.append((item.value, position, item.path))
+            elif isinstance(item, IccProfileMaterial):
+                # Only the release report counts it.
+                continue
             else:
                 raise TypeError("QC material must be of the run's QC material types")
     high_risk = {position: tuple(found) for position, found in risks.items() if found}

@@ -123,6 +123,7 @@ _SECTIONS = (
     "held_for_review",
     "roi_names",
     "descriptors",
+    "icc_profiles",
     "reference_findings",
     "pixel_risks",
     "search_coverage",
@@ -194,6 +195,7 @@ def to_markdown(report: str) -> str:
         *_held(document["held_for_review"]),
         *_roi_names(document["roi_names"]),
         *_descriptors(document["descriptors"]),
+        *_icc_profiles(document["icc_profiles"]),
         *_reference_findings(document["reference_findings"]),
         *_pixel_risks(document["pixel_risks"]),
         *_coverage(document["search_coverage"]),
@@ -717,6 +719,35 @@ def _descriptors(section: object) -> list[Block]:
             "Elements that took their action without Clean Descriptors: "
             f"{_tally('descriptors fell_back', section['fell_back'])}."
         ],
+    ]
+
+
+def _icc_profiles(section: object) -> list[Block]:
+    section = _fields("icc_profiles", section, ("cleaned", "replaced"))
+    rows = []
+    for entry in _list("icc_profiles replaced", section["replaced"]):
+        entry = _fields("icc_profiles replaced", entry, ("reason", "count"))
+        rows.append(
+            (
+                _code("icc_profiles reason", entry["reason"]),
+                _count("icc_profiles replaced count", entry["count"]),
+            )
+        )
+    return [
+        ["## ICC profiles"],
+        [
+            "What replaced the ICC Profile of each released and held instance "
+            "that had one: the source profile cleaned of everything but its "
+            "colorimetry, so that colours show as they did in the source, or, "
+            "where the source could not be cleaned, a fixed sRGB profile, "
+            "with which colours can show differently."
+        ],
+        [
+            "Cleaned source profiles: "
+            f"{_tally('icc_profiles cleaned', section['cleaned'])}."
+        ],
+        ["### Fixed sRGB profiles, by why the source could not be cleaned"],
+        _table(("Reason", "Profiles"), rows) if rows else [_NONE],
     ]
 
 

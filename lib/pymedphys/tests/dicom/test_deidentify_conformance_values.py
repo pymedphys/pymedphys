@@ -28,6 +28,7 @@ from pymedphys._dicom.deidentify import (
     conformance_values,
     dummy_values,
     edits,
+    icc_cleaning,
     icc_profiles,
     instance_transform,
     pixel_risk,
@@ -219,8 +220,12 @@ def test_the_reviewed_procedure_step_items_are_described():
 def test_the_reviewed_icc_profile_is_described():
     section = _section("basic", "Values written")
 
-    assert f"D on {_named(dummy_values.ICC_PROFILE)} writes a fixed ICC" in section
-    for description in ("DEIDENTIFIED sRGB", "DE-IDENTIFIED sRGB"):
+    assert (
+        f"D on {_named(dummy_values.ICC_PROFILE)} writes the source profile "
+        "cleaned of everything but its colorimetry"
+    ) in section
+    assert "D writes instead a fixed ICC version 2.4 input profile" in section
+    for description in ("DEIDENTIFIED", "DE-IDENTIFIED", "DEIDENTIFIED sRGB"):
         assert f"`{description}`" in section
     assert "grey" not in section
 
@@ -281,8 +286,11 @@ def test_only_the_reviewed_items_coding_scheme_names_pymedphys():
         institution,
         dummy_values.REFERENCED_PERFORMED_PROCEDURE_STEP_SEQUENCE,
     }
-    for description in ("DEIDENTIFIED sRGB", "DE-IDENTIFIED sRGB"):
-        assert b"PYMEDPHYS" not in icc_profiles.srgb_profile(description).upper()
+    assert b"PYMEDPHYS" not in icc_profiles.srgb_profile("DEIDENTIFIED sRGB").upper()
+    source = icc_profiles.srgb_profile("A scanner's profile")
+    for text in dummy_values.CONSTANTS["LO"]:
+        cleaned = icc_cleaning.clean_profile(source, text)
+        assert b"PYMEDPHYS" not in cleaned.upper()
 
 
 @pytest.mark.deid_requirement("PS3.15-E.1.3-01")

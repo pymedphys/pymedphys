@@ -132,10 +132,11 @@ are not planted. Each placement not planted is recorded with a
 holds only a few synthetic samples: 2 by 2 pixels, in two frames in a
 multi-frame IOD but one in the RT Image, monochrome but for the Enhanced MR
 Color instance, whose RGB pixels come with the ICC Profile (0028,2000) its
-IOD requires: an sRGB
-profile (:mod:`~pymedphys._dicom.deidentify.icc_profiles`) whose description,
-:data:`SOURCE_ICC_DESCRIPTION`, begins with the marker prefix, so that a kept
-profile would be found. The MR Spectroscopy instance holds two values of
+IOD requires: :data:`SOURCE_ICC_PROFILE`, an sRGB profile
+(:mod:`~pymedphys._dicom.deidentify.icc_profiles`) whose description,
+copyright, device manufacturer and model descriptions, and a private tag
+hold :data:`SOURCE_ICC_DESCRIPTION`, which begins with the marker prefix, so
+that any of them would be found if kept. The MR Spectroscopy instance holds two values of
 Spectroscopy Data (5600,0020) and no Pixel Data. A functional group sequence
 has the one item that its markers need, not one for each frame; like every
 instance of the corpus, the multi-frame instances do not hold every
@@ -806,9 +807,26 @@ _IMAGES = types.MappingProxyType(
         LEGACY_CONVERTED_ENHANCED_PET_IMAGE_STORAGE: _Image("PT", 2),
     }
 )
-# The description of the Enhanced MR Color instance's ICC profile, which D
-# replaces, so that the search for the markers' signatures finds it if kept.
+# The text of the Enhanced MR Color instance's ICC profile, which D cleans
+# away, so that the search for the markers' signatures finds it if kept.
 SOURCE_ICC_DESCRIPTION = f"{MARKER_PREFIX} SOURCE ICC PROFILE"
+# The Enhanced MR Color instance's ICC profile: the sRGB colorimetry, with
+# the text above in its text tags and in a private tag, each tag's different
+# so that none shares another's data.
+SOURCE_ICC_PROFILE = icc_profiles.assemble(
+    icc_profiles.SRGB_HEADER,
+    [
+        (signature, data)
+        for signature, data in icc_profiles.srgb_tags(SOURCE_ICC_DESCRIPTION)
+        if signature != b"cprt"
+    ]
+    + [
+        (b"cprt", icc_profiles.text_type(f"{SOURCE_ICC_DESCRIPTION} COPYRIGHT")),
+        (b"dmnd", icc_profiles.text_description(f"{SOURCE_ICC_DESCRIPTION} MAKER")),
+        (b"dmdd", icc_profiles.text_description(f"{SOURCE_ICC_DESCRIPTION} MODEL")),
+        (b"SYNM", icc_profiles.text_type(f"{SOURCE_ICC_DESCRIPTION} PRIVATE")),
+    ],
+)
 
 
 @dataclasses.dataclass(frozen=True)
@@ -1889,7 +1907,7 @@ class _Instance:
             put((), "(0054,1001)", ["BQML"])
         frames = max(1, image.frames)
         if image.colour:
-            put((), "(0028,2000)", [icc_profiles.srgb_profile(SOURCE_ICC_DESCRIPTION)])
+            put((), "(0028,2000)", [SOURCE_ICC_PROFILE])
             self._add_pixels(8, 0, bytes(range(12 * frames)), colour=True)
         else:
             samples = range(0, 400 * frames, 100)

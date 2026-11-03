@@ -79,6 +79,7 @@ from . import (
     release_report_markdown,
 )
 from .face_blocks import FaceBlockCounts
+from .icc_cleaning import Refusal
 from .pixel_region_rules import PixelRegionRules
 from .policy import CLEAN_PIXEL_DATA, Policy
 from .qc_attestation import AttestationRecord, Outcome
@@ -104,6 +105,7 @@ from .run_qc import (
     DescriptorMaterial,
     DoseCheckMaterial,
     Dropped,
+    IccProfileMaterial,
     PixelRiskMaterial,
     RedactionMaterial,
     ReferenceFindingMaterial,
@@ -401,6 +403,7 @@ class ReleaseReporter:
             exempted=exempted_findings(outcomes, material),
             roi_names=roi_name_counts(material),
             descriptors=descriptor_counts(material),
+            icc_profiles=icc_profile_counts(outcomes, material),
             pixel_regions=(
                 pixel_regions(outcomes, material)
                 if CLEAN_PIXEL_DATA in self._policy.options
@@ -874,6 +877,36 @@ def roi_name_counts(material: Mapping[int, Sequence[object]]) -> RoiNameCounts:
             ],
         )
     return queue.report_counts()
+
+
+def icc_profile_counts(
+    outcomes: Sequence[object], material: Mapping[int, Sequence[object]]
+) -> release_report.IccProfileCounts:
+    """Count the ICC Profiles that D replaced in the released and held instances.
+
+    Each input's
+    :class:`~pymedphys._dicom.deidentify.run_qc.IccProfileMaterial` says
+    whether its source profile was cleaned and written or, for a reason, the
+    fixed sRGB profile was written instead (D-021). An identical copy of an
+    input is the same instance, so it is not counted again.
+    """
+    shown = {
+        getattr(outcome, "position")
+        for outcome in outcomes
+        if getattr(outcome, "status").value in release_report.PIXEL_RISK_DISPOSITIONS
+        and getattr(outcome, "duplicate_of") is None
+    }
+    cleaned = 0
+    replaced: dict[Refusal, int] = {}
+    for position in sorted(shown & set(material)):
+        for item in material[position]:
+            if not isinstance(item, IccProfileMaterial):
+                continue
+            if item.refusal is None:
+                cleaned += 1
+            else:
+                replaced[item.refusal] = replaced.get(item.refusal, 0) + 1
+    return release_report.IccProfileCounts(cleaned=cleaned, replaced=replaced)
 
 
 def descriptor_counts(material: Mapping[int, Sequence[object]]) -> DescriptorCounts:

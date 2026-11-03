@@ -26,7 +26,7 @@ implementation = [
 note = '''
 Patient ID and Patient's Name have keyed replacement values that keep subjects separate and do not contain the source identifier.
 Z writes a zero-length value, and D a conspicuous constant for each VR that does not depend on the source value, or a second constant where the source value equals the first, so the replacement always differs from it; a UI value takes its keyed replacement, and D on an attribute of any other VR is refused until a reviewed rule covers it.
-Reviewed rules give Person Identification Code Sequence one item with a dummy code, Referenced Performed Procedure Step Sequence one item for each source item with its UID replaced, and ICC Profile a fixed sRGB profile, and keep each item of Verifying Observer Sequence with only the four attributes that PS3.3 defines there, each under its own rule (D-021).
+Reviewed rules give Person Identification Code Sequence one item with a dummy code, Referenced Performed Procedure Step Sequence one item for each source item with its UID replaced, and ICC Profile the source profile cleaned of everything but its colorimetry, or a fixed sRGB profile where the source cannot be cleaned, and keep each item of Verifying Observer Sequence with only the four attributes that PS3.3 defines there, each under its own rule (D-021).
 The run's instance transform removes or replaces each Attribute to be protected in every instance it writes, and an end-to-end test of `basic` and `basic-clean-descriptors` over the synthetic collection finds none of the collection's markers in the published files (MIDI-BP-01).
 '''
 
@@ -1172,6 +1172,7 @@ implementation = [
   "_dicom/deidentify/codestreams.py",
   "_dicom/deidentify/dummy_values.py",
   "_dicom/deidentify/element_rules.py",
+  "_dicom/deidentify/icc_cleaning.py",
   "_dicom/deidentify/icc_profiles.py",
   "_dicom/deidentify/instance_transform.py",
   "_dicom/deidentify/residuals.py",
@@ -1179,7 +1180,7 @@ implementation = [
   "_dicom/deidentify/supplementary_actions.py",
 ]
 note = '''
-ICC Profile (0028,2000), an embedded file whose contents the engine does not parse, is removed by Type under every option, which removes it wherever the first supported release's IODs make it Type 3 (D-022); at the top level of an Enhanced CT Image, Enhanced MR Image, or Enhanced MR Color Image instance, where it is Type 1, D replaces an RGB profile with a fixed sRGB profile, which nothing of the source profile is written to, and sequesters an instance whose profile is of any other colour space, since PS3.3 Section C.11.15.1.1 requires RGB (D-021).
+ICC Profile (0028,2000), an embedded file, is removed by Type under every option, which removes it wherever the first supported release's IODs make it Type 3 (D-022); at the top level of an Enhanced CT Image, Enhanced MR Image, or Enhanced MR Color Image instance, where it is Type 1, D replaces an RGB profile with the source profile cleaned of everything but its colorimetry: each colorimetric tag that its ICC version defines is parsed and written again, every text tag, private tag, and other tag is removed, and the header's identity fields and date are replaced. Where the source cannot be cleaned, D writes a fixed sRGB profile, which nothing of the source profile is written to; and an instance whose profile is of any other colour space is sequestered, since PS3.3 Section C.11.15.1.1 requires RGB (D-021).
 Where the bitstream is kept, the engine parses each frame's codestream of encapsulated Pixel Data, accounting for every byte, and cuts its comment and application segments without recompression, keeping only JFIF, Adobe, and JPEG-LS colour segments of fixed format; it shows that every frame then decodes to the same pixels, and sequesters an instance whose codestreams do not parse, hold bytes outside them, or hold a segment it cannot cut (design Architecture item 7).
 The residual search searches the marker segments of those codestreams for every form, and their entropy-coded data, which can end with bytes that no decoder reads, for forms of at least 6 bytes, but RLE Lossless frames, which hold only samples and offsets, as values that hold numbers (D-027).
 The first supported release de-identifies instances in each transfer syntax that encapsulates Pixel Data that pydicom's decoding plugins decode, and writes each with its transfer syntax and coded pixel data kept, its metadata segments cut (D-010).

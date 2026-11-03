@@ -876,7 +876,7 @@ def test_instances_keep_their_reviewed_dummy_values(policy_run):
     # Referenced Performed Procedure Step Sequence, which these image
     # IODs conditionally require (Type 1C), refers to the procedure step by its keyed replacement,
     # the same in each instance, and the colour image's ICC Profile is the
-    # fixed sRGB profile (D-021).
+    # source's cleaned of everything but its colorimetry (D-021).
     corpus, released = policy_run.corpus, policy_run.released
     procedure_step = "ReferencedPerformedProcedureStepSequence"
     step_iods = {
@@ -918,10 +918,11 @@ def test_instances_keep_their_reviewed_dummy_values(policy_run):
             )
             steps.add(item.ReferencedSOPInstanceUID)
         if file.manifest.iod == "Enhanced MR Color Image":
-            assert written.ICCProfile == dummy_values.icc_profile_for_d(
-                source.ICCProfile
-            )
+            outcome = dummy_values.icc_profile_outcome(source.ICCProfile)
+            assert outcome.refusal is None
+            assert written.ICCProfile == outcome.profile
             assert written.ICCProfile != source.ICCProfile
+            assert corpus_module.MARKER_PREFIX.encode() not in written.ICCProfile
         else:
             assert "ICCProfile" not in written
 
@@ -933,6 +934,16 @@ def test_instances_keep_their_reviewed_dummy_values(policy_run):
     assert {corpus.files[position].manifest.iod for position in released} >= expected
     assert len(steps) == (1 if expected and not kept else 0)
     assert corpus_module.PROCEDURE_STEP not in steps
+    # The release report counts the colour image's profile as cleaned where
+    # the run released it, or held it for review.
+    colour = [file.manifest.iod == "Enhanced MR Color Image" for file in corpus.files]
+    report = json.loads(policy_run.published[RELEASE_REPORT])
+    assert report["icc_profiles"]["replaced"] == []
+    assert (
+        sum(colour[position] for position in released)
+        <= report["icc_profiles"]["cleaned"]
+        <= sum(colour)
+    )
 
 
 @pytest.mark.deid_requirement("PS3.15-E.1.1-04", "MIDI-BP-03")
