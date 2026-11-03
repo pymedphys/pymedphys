@@ -39,7 +39,15 @@ FIRST_RELEASE_IODS = tuple(sorted(scope.SUPPORTED_IODS))
 # The Structured Reports, whose SR Document General Module references their
 # request and evidence in place of the Common Instance Reference Module and
 # the Request Attributes Sequence.
-DOSE_REPORTS = ("Radiopharmaceutical Radiation Dose SR", "X-Ray Radiation Dose SR")
+STRUCTURED_REPORTS = (
+    "Radiopharmaceutical Radiation Dose SR",
+    "X-Ray Radiation Dose SR",
+    "Basic Text SR",
+    "Enhanced SR",
+    "Comprehensive SR",
+    "Comprehensive 3D SR",
+    "Extensible SR",
+)
 # Referenced Request Sequence.
 REFERENCED_REQUEST = "(0040,A370)"
 # Paths from the module tables of the 2026d PS3.3, checked against its text.
@@ -107,6 +115,28 @@ RT_REFERENCES = [
         ("(3008,0021)", "(300C,0040)", "(0008,1155)"),
         Level.INSTANCE,
     ),
+    # RT Brachy Treatment Record: the plan, related treatment records, and
+    # each application setup's verification images; the setup and source
+    # references of its session record are numbers, not UIDs.
+    ("RT Brachy Treatment Record", synthetic.REFERENCED_PLAN, Level.INSTANCE),
+    (
+        "RT Brachy Treatment Record",
+        ("(3008,0030)", "(0008,1155)"),
+        Level.INSTANCE,
+    ),
+    (
+        "RT Brachy Treatment Record",
+        ("(3008,0110)", "(300C,0040)", "(0008,1155)"),
+        Level.INSTANCE,
+    ),
+    # RT Treatment Summary Record: the plan, and the treatment records that it
+    # sums.
+    ("RT Treatment Summary Record", synthetic.REFERENCED_PLAN, Level.INSTANCE),
+    (
+        "RT Treatment Summary Record",
+        ("(3008,0030)", "(0008,1155)"),
+        Level.INSTANCE,
+    ),
     # RT Image: the plan in the RT Image module, and the multi-frame source of
     # an extracted frame.
     ("RT Image", synthetic.REFERENCED_PLAN, Level.INSTANCE),
@@ -119,7 +149,7 @@ RT_REFERENCES = [
     *(
         (iod, attribute, level)
         for iod in FIRST_RELEASE_IODS
-        if iod not in DOSE_REPORTS
+        if iod not in STRUCTURED_REPORTS
         for attribute, level in [
             (("(0008,1115)", "(0020,000E)"), Level.SERIES),
             (("(0008,1200)", "(0020,000D)"), Level.STUDY),
@@ -134,7 +164,7 @@ RT_REFERENCES = [
     # items.
     *(
         (iod, attribute, level)
-        for iod in DOSE_REPORTS
+        for iod in STRUCTURED_REPORTS
         for attribute, level in [
             (synthetic.REFERENCED_STUDY, Level.STUDY),
             ((REFERENCED_REQUEST, "(0020,000D)"), Level.STUDY),
@@ -287,10 +317,13 @@ def test_reference_sites_include_the_rt_references(iod, attribute, level):
         *(
             (iod, synthetic.REQUESTED_STUDY, "3")
             for iod in FIRST_RELEASE_IODS
-            if iod not in DOSE_REPORTS
+            if iod not in STRUCTURED_REPORTS
         ),
         # Type 1 in each item of the Type 1C Referenced Request Sequence.
-        *((iod, (REFERENCED_REQUEST, "(0020,000D)"), "1") for iod in DOSE_REPORTS),
+        *(
+            (iod, (REFERENCED_REQUEST, "(0020,000D)"), "1")
+            for iod in STRUCTURED_REPORTS
+        ),
         ("RT Plan", synthetic.PERTINENT_DOCUMENTS, "3"),
         ("RT Plan", synthetic.REFERENCED_STRUCTURE_SET, "1"),
         # Referenced Patient Photo Sequence > Study Instance UID, Type 1C.

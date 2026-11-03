@@ -671,7 +671,7 @@ def test_series_number_has_x_z_d_under_every_option():
 def test_series_number_resolves_to_z_in_the_supported_iods_but_where_type_1():
     # Type 2 in the General Series and RT Series Modules; Type 1 in the items
     # of the Structure Set Module's Source Series Information Sequence and
-    # in the SR Document Series Module of the dose reports.
+    # in the SR Document Series Module of the Structured Reports.
     # Either way it then takes its rank, or is emptied or given D's dummy
     # value if it has none.
     tables = iods.load_iod_tables()
@@ -693,6 +693,11 @@ def test_series_number_resolves_to_z_in_the_supported_iods_but_where_type_1():
         ("RT Structure Set", ("(3006,004C)",)),
         ("X-Ray Radiation Dose SR", ()),
         ("Radiopharmaceutical Radiation Dose SR", ()),
+        ("Basic Text SR", ()),
+        ("Enhanced SR", ()),
+        ("Comprehensive SR", ()),
+        ("Comprehensive 3D SR", ()),
+        ("Extensible SR", ()),
     }
     assert {action for _, _, action in resolved} == {"Z", "D"}
 

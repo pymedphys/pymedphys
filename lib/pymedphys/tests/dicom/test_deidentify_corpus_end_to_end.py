@@ -900,10 +900,7 @@ def test_instances_keep_their_reviewed_dummy_values(policy_run):
         source, written = _read(file.data), _read(data)
         if kept:
             assert written.get(procedure_step) == source.get(procedure_step)
-        if file.manifest.iod in {
-            "X-Ray Radiation Dose SR",
-            "Radiopharmaceutical Radiation Dose SR",
-        }:
+        if file.name in corpus_module.STRUCTURED_REPORT_FILES:
             # The SR Document Series Module makes this Type 2: retain the
             # attribute with no items when the profile resolves its action to Z.
             assert procedure_step in source
@@ -1118,6 +1115,86 @@ def test_each_interlock_users_institution_code_sequence_is_released_as_reviewed(
             institution.CodeMeaning,
         ) == ("DEIDENTIFIED", "99PYMEDPHYS", "DEIDENTIFIED")
         assert set(institution.keys()) == {0x00080100, 0x00080102, 0x00080104}
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.1-04", "MIDI-BP-03")
+def test_the_brachy_and_summary_records_name_what_they_reference_as_written(
+    policy_run,
+):
+    # The RT Brachy Treatment Record names the RT Plan and the RT Beams
+    # Treatment Record, and the RT Treatment Summary Record the RT Plan and
+    # the RT Brachy Treatment Record, by the UIDs that the run's key gives the
+    # referenced instances' own, so each written record still names the
+    # written instances that it references.
+    corpus, released = policy_run.corpus, policy_run.released
+    written = {
+        corpus.files[position].manifest.sop_instance: _read(data)
+        for position, data in released.items()
+    }
+    names = {file.manifest.sop_instance: file.name for file in corpus.files}
+
+    def expected(target):
+        if REFERENCED_SOP_INSTANCE in policy_run.spec.kept_rows():
+            return target
+        return uids.replacement_uid(KEY, target)
+
+    references = {
+        corpus_module.BRACHY_TREATMENT_RECORD: (
+            ("ReferencedRTPlanSequence", corpus_module.PLAN),
+            ("ReferencedTreatmentRecordSequence", corpus_module.TREATMENT_RECORD),
+        ),
+        corpus_module.TREATMENT_SUMMARY_RECORD: (
+            ("ReferencedRTPlanSequence", corpus_module.PLAN),
+            (
+                "ReferencedTreatmentRecordSequence",
+                corpus_module.BRACHY_TREATMENT_RECORD,
+            ),
+        ),
+    }
+    for source, named in references.items():
+        if source not in written:
+            assert names[source] in policy_run.spec.withheld
+            continue
+        dataset = written[source]
+        assert dataset.Modality == "RTRECORD"
+        for keyword, target in named:
+            (reference,) = dataset[keyword].value
+            assert reference.ReferencedSOPInstanceUID == expected(target), keyword
+            if target in written:
+                assert expected(target) == written[target].SOPInstanceUID, keyword
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.1-09")
+def test_the_brachy_records_source_manufacturer_is_emptied_or_kept(policy_run):
+    # Source Manufacturer (300A,0216), which Table E.1-1 gives X, or K under
+    # Retain Device Identity, is Type 2 in the Type 1 Recorded Source Sequence
+    # (3008,0100), so a plain X empties it there rather than sequester the
+    # record (D-020), and Source Serial Number (3008,0105), which the table
+    # gives X/Z, is emptied in the same item; a run that keeps the rows keeps
+    # their markers.
+    corpus, released = policy_run.corpus, policy_run.released
+    position = next(
+        index
+        for index, file in enumerate(corpus.files)
+        if file.name == corpus_module.BRACHY_TREATMENT_RECORD_FILE
+    )
+    if position not in released:
+        assert corpus.files[position].name in policy_run.spec.withheld
+        return
+    source = _read(corpus.files[position].data)
+    (source_item,) = source.RecordedSourceSequence
+    (item,) = _read(released[position]).RecordedSourceSequence
+    kept = policy_run.spec.kept_rows()
+    for keyword, row in (
+        ("SourceManufacturer", "(300A,0216)"),
+        ("SourceSerialNumber", "(3008,0105)"),
+    ):
+        assert keyword in item, keyword
+        if row in kept:
+            assert item[keyword].value == source_item[keyword].value, keyword
+        else:
+            assert item[keyword].value in ("", None), keyword
+            assert source_item[keyword].value, keyword
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.5-01")
