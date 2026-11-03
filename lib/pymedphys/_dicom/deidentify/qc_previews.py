@@ -101,6 +101,11 @@ frame with such regions, also from the file as received:
   of its quantities. An instance any of whose grids' sheets are not all
   drawn, whatever the cause, has none of them, and is reported, though its
   other previews, if any, are kept;
+- a sheet of the globes found beside the eye ROIs of each CT series that
+  the run defaced and held until a reviewer confirms its face block, which
+  :mod:`~pymedphys._dicom.deidentify.qc_eyes` draws from the slices as
+  received before the run writes any, and which never counts as showing
+  the pixel data written;
 - each high-risk instance at full resolution: every frame, or
   :data:`CINE_FRAMES` evenly spaced, unscaled, since burned-in text may be
   small;
@@ -185,7 +190,14 @@ from .pixel_decoding import (
     isolated_frames,
     pinned_plugin,
 )
-from . import qc_contours, qc_grids, qc_segments, qc_surfaces, stack_sampling
+from . import (
+    qc_contours,
+    qc_eyes,
+    qc_grids,
+    qc_segments,
+    qc_surfaces,
+    stack_sampling,
+)
 from .face_review import holds_deformation_grid, is_rt_dose
 from .functional_groups import frame_group
 from .qc_pack import (
@@ -337,10 +349,12 @@ class PreviewSet:
         of each volume that it forms, then the dose-levels render of each RT Dose
         grid in it, then the dose-levels map of each RT Dose plane in it in
         no volume, series in the order of their first run position; then each
-        contour sheet, in run position order; then each segments sheet, in
-        run position order; then each grid sheet, in run position order,
-        grid order, and the order of :data:`~.qc_pack.GRID_KINDS`; then each
-        high-risk instance, in run position order; then each frame of each instance that Clean Pixel Data
+        sheet of a series' eyes, as given; then each contour sheet, in run
+        position order; then each segments sheet, in run position order;
+        then each grid sheet, in run position order, grid order, and the
+        order of :data:`~.qc_pack.GRID_KINDS`; then each high-risk
+        instance, in run position order; then each frame of each
+        instance that Clean Pixel Data
         cleaned, in run position and frame order. Named ``P-0001.png``
         onwards in that order. A contour sheet shows its instance's frame
         0, then the frames of each volume that it is drawn with, if any; a
@@ -393,6 +407,7 @@ def previews_of(
     written: Mapping[int, bytes],
     high_risk: Collection[int],
     redactions: Mapping[int, tuple[bytes | None, RedactionEntry]] | None = None,
+    eye_sheets: Sequence[qc_eyes.EyeSheet] = (),
 ) -> PreviewSet:
     """Return the previews of the files that a run wrote, as the module describes.
 
@@ -407,6 +422,11 @@ def previews_of(
         The source file of each instance that Clean Pixel Data cleaned, or
         None where no frame has regions, and what it cleaned, by run
         position. A position without a written file is ignored.
+    eye_sheets : sequence of ~pymedphys._dicom.deidentify.qc_eyes.EyeSheet, optional
+        The sheet of each CT series held until a reviewer confirms its face
+        block, drawn from its slices as received, in order of its first
+        frame's run position, each listing only frames of held instances;
+        none by default.
 
     Returns
     -------
@@ -453,6 +473,15 @@ def previews_of(
     }
     for series in _series(instances):
         images.extend(_encoded(_series_images(series, decoded, guides)))
+    for sheet in eye_sheets:
+        images.append(
+            (
+                PreviewKind.SERIES_EYES,
+                sheet.frames,
+                sheet.total_frames,
+                png(sheet.image),
+            )
+        )
     for position, contours in sorted(contoured.items()):
         sheet = _contour_image(position, contours, guides)
         if sheet is None:

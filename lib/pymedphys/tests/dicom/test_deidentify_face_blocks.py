@@ -299,7 +299,7 @@ def test_a_defaced_series_has_its_frame_of_reference_and_no_other_does():
     )
     assert found.frames == {files.FRAME}
     assert found.instances == {record.sop_instance for record in records.values()}
-    assert repr(found) == f"Defaced(frames=1, instances={len(records)})"
+    assert repr(found) == f"Defaced(frames=1, instances={len(records)}, unconfirmed=0)"
     with pytest.raises(ValueError, match="Frame of Reference UID"):
         SeriesDefacing(outcome.block, None)
     with pytest.raises(ValueError, match="Frame of Reference UID"):

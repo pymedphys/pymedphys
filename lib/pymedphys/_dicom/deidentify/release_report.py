@@ -65,7 +65,10 @@ and codes that the engine defines, never by a source value or path:
 - ``face_review``: under the Clean Recognizable Visual Features Option, the
   opaque reference of the earlier run's attested QC pack whose face verdicts
   the run applied, and how many series of CT instances the run defaced,
-  how many of those it defaced around a target in the face block, and how
+  how many of those it defaced around a target in the face block, how many
+  of those it held because their eye ROIs disagree with the globes that
+  their block was found from, until a reviewer confirms the block, and how
+  many of those it defaced with a block that a reviewer confirmed, and how
   many it did not deface, by why
   (:class:`~pymedphys._dicom.deidentify.face_blocks.FaceBlockCounts`);
   None otherwise.
@@ -222,7 +225,7 @@ from .standard import ALL_OPTIONS, VRS
 from .walker import Sequestration, SequesterReason
 
 # The format of the report document. A change to its fields takes a new label.
-FORMAT = "pymedphys-deid-release-report/47"
+FORMAT = "pymedphys-deid-release-report/48"
 
 _DIGEST = re.compile(r"[0-9a-f]{64}")
 # A key's non-secret identifier, as DeidKey.key_id gives it.
@@ -1659,11 +1662,26 @@ def _face_review_section(
             "face_review ct_series defaced_around_targets",
             "is negative or more than the series defaced",
         )
+    eyes = {
+        "defaced_eyes_unconfirmed": counts.eyes_unconfirmed,
+        "defaced_eyes_confirmed": counts.eyes_confirmed,
+    }
+    for name, count in eyes.items():
+        if type(count) is not int:  # pylint: disable = unidiomatic-typecheck
+            raise _refuse(f"face_review ct_series {name}", "is not a whole number")
+        if count < 0:
+            raise _refuse(f"face_review ct_series {name}", "is negative")
+    if sum(eyes.values()) > defaced:
+        raise _refuse(
+            "face_review ct_series defaced_eyes_unconfirmed",
+            "with defaced_eyes_confirmed is more than the series defaced",
+        )
     return {
         "reference": reference,
         "ct_series": {
             "defaced": defaced,
             "defaced_around_targets": around,
+            **eyes,
             "not_defaced": [
                 {"reason": code, "count": count}
                 for code, count in _code_counts(
@@ -2115,7 +2133,8 @@ def report_document(report: ReleaseReport) -> dict:
     ``key_id``, null for a run-scoped key, ``qc_review`` null where the run
     wrote no QC pack,
     ``face_review`` null or an object with the reference and the CT series'
-    ``ct_series`` counts, ``defaced``, ``defaced_around_targets``, and
+    ``ct_series`` counts, ``defaced``, ``defaced_around_targets``,
+    ``defaced_eyes_unconfirmed``, ``defaced_eyes_confirmed``, and
     ``not_defaced`` by code,
     ``redaction_review`` null or an object with the reference,
     ``pixel_regions`` null without the Clean Pixel Data Option and

@@ -25,7 +25,14 @@ under the institution's governance; either left out is recorded as not
 stated. The reviewer may give a face verdict on any of the pack's series, by
 the run position of its first instance: ``--face-absent POSITION`` where
 they saw no recognisable face in its previews, and ``--face-present
-POSITION`` where they saw one, each repeatable. Likewise, they may give a
+POSITION`` where they saw one, each repeatable. They may confirm the face
+block of any series that the pack lists in its ``eye_checks``, which the
+run defaced and held because its eye ROIs disagree with the globes that its
+block was found from, by the run position of its first instance there:
+``--block-confirmed POSITION`` where the pack's sheet of the globes found
+beside the eye ROIs shows that the globes are the patient's eyes,
+repeatable; a later run given the attestation then defaces the series with
+that block without holding it for its eyes. Likewise, they may give a
 redaction verdict on any instance whose Pixel Data the Clean Pixel Data
 Option cleaned and the pack previewed, by its run position:
 ``--redaction-accepted POSITION`` where the pack's regions cover every
@@ -47,7 +54,9 @@ previews by their SHA-256, and only once: a pack that has been attested, a
 directory that holds no QC pack, a pack of another format, a pack whose
 previews are missing or changed, an outcome of attested without all three
 reviews, a face verdict on a position that begins none of the pack's series,
-a series given both verdicts, a verdict with an outcome of rejected, a
+a series given both verdicts, a confirmed block on a position that begins
+none of the pack's eye checks, or one without a sheet of its eyes, a verdict
+or a confirmation with an outcome of rejected, a
 redaction verdict on a position that the
 pack does not list as cleaned and previewed, an instance given more than
 one redaction verdict, a revised instance without a region, and a region
@@ -65,7 +74,8 @@ that a release report records (D-016).
 
 The reviewer's name and the pack's path can identify people, so neither the
 summary nor any message quotes them; the summary gives the outcome, the
-reviews done, how many series have each face verdict, how many instances
+reviews done, how many series have each face verdict, how many blocks were
+confirmed, how many instances
 have each redaction verdict, each region that a revised verdict adds, by
 run position and frame, with the preview of that frame, so that the
 reviewer can check the region against the frame it was read from, and the
@@ -122,7 +132,8 @@ def summary_lines(
 
     It gives the pack's reference, the outcome, whether each review that
     D-017 requires was done, the releaser's confirmations, how many series
-    have each face verdict, how many instances have each redaction verdict,
+    have each face verdict, how many blocks the reviewer confirmed, how
+    many instances have each redaction verdict,
     each region that a revised verdict adds, with the file in the pack that
     previews its frame where ``previews``, by run position and frame, names
     one, and that the published release report is unchanged.
@@ -153,6 +164,7 @@ def summary_lines(
         ),
         f"  series without a recognisable face: {faces.count(Face.ABSENT)}",
         f"  series with a recognisable face: {faces.count(Face.PRESENT)}",
+        f"  face blocks confirmed: {len(attestation.confirmed_blocks)}",
         *(
             f"  cleaned instances {verdict}: {redactions.count(redaction)}"
             for verdict, redaction in (
@@ -255,6 +267,18 @@ def build_parser(*, stderr: TextIO | None = None) -> argparse.ArgumentParser:
                 "instance is at this run position; repeatable"
             ),
         )
+    parser.add_argument(
+        "--block-confirmed",
+        action="append",
+        type=int,
+        default=[],
+        metavar="POSITION",
+        help=(
+            "the globes found are the patient's eyes, in the QC pack's sheet of "
+            "the eye check whose first instance is at this run position, so its "
+            "face block is confirmed; repeatable"
+        ),
+    )
     for flag, verdict in (
         ("--redaction-accepted", "its regions cover every burned-in text"),
         (
@@ -394,6 +418,7 @@ def main(
                 **{series: Face.PRESENT for series in present},
             },
             redactions=redactions,
+            confirmed_blocks=arguments.block_confirmed,
         )
     except QcPackError as error:
         # QcPackError and the OSErrors it replaces name a check, never a path.

@@ -35,7 +35,7 @@ from pathlib import Path, PurePosixPath
 
 from pymedphys._imports import pydicom
 
-from . import pixel_risk, qc_contours, qc_pack, qc_previews, residuals
+from . import pixel_risk, qc_contours, qc_eyes, qc_pack, qc_previews, residuals
 from .iod_conformance import SourceGap
 from .face_review import (
     PIXEL_DATA_TAGS,
@@ -208,6 +208,40 @@ class RedactionMaterial:
             f"rows={self.rows}, columns={self.columns}, "
             f"regions={len(self.regions)})"
         )
+
+
+@dataclasses.dataclass(frozen=True, repr=False)
+class EyeCheckMaterial:
+    """A CT instance of a series that the run defaced and held because its
+    eye ROIs disagree with the globes that its face block was found from
+    (:attr:`~pymedphys._dicom.deidentify.face_blocks.EyeCheck.DISAGREE`).
+
+    Every held instance of the series carries the same material. The pack
+    lists the series in ``eye_checks`` by its held instances, with the
+    block's digest, which binds a reviewer's confirmation, and previews its
+    sheet, keeping only the frames of held instances, so that a reviewer
+    can confirm the block.
+
+    Attributes
+    ----------
+    block_sha256 : bytes
+        :func:`~pymedphys._dicom.deidentify.face_blocks.block_digest` of the
+        series' source files and its block.
+    sheet : ~pymedphys._dicom.deidentify.qc_eyes.EyeSheet or None
+        The sheet of its globes beside its eye ROIs, or None where its slices
+        could not be drawn again, in which case the pack lists the series
+        without one, and no confirmation can be given.
+    """
+
+    block_sha256: bytes
+    sheet: qc_eyes.EyeSheet | None
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.block_sha256, bytes) or len(self.block_sha256) != 32:
+            raise ValueError("an eye check needs its block's SHA-256")
+
+    def __repr__(self) -> str:
+        return f"EyeCheckMaterial(sheet={self.sheet is not None})"
 
 
 @dataclasses.dataclass(frozen=True)
@@ -400,9 +434,13 @@ def qc_pack_of(
     gaps: dict[int, list[SourceGap]] = {}
     series: dict[int, SeriesEvidence] = {}
     redactions: dict[int, RedactionMaterial] = {}
+    eyes: dict[bytes, tuple[EyeCheckMaterial, list[int]]] = {}
     for position in sorted(material):
         for item in material[position]:
-            if isinstance(item, PixelRiskMaterial):
+            if isinstance(item, EyeCheckMaterial):
+                if instances[position].disposition is Disposition.HELD_FOR_REVIEW:
+                    eyes.setdefault(item.block_sha256, (item, []))[1].append(position)
+            elif isinstance(item, PixelRiskMaterial):
                 risks.setdefault(position, []).extend(item.assessment.findings)
             elif isinstance(item, SourceGap):
                 gaps.setdefault(position, []).append(item)
@@ -473,7 +511,19 @@ def qc_pack_of(
         )
         for position, item in redactions.items()
     }
-    previews = qc_previews.previews_of(written, high_risk, cleaned)
+    checks = sorted(
+        (
+            (
+                qc_pack.EyeCheckEntry(tuple(sorted(set(positions))), digest.hex()),
+                item.sheet,
+            )
+            for digest, (item, positions) in eyes.items()
+        ),
+        key=lambda check: check[0].positions[0],
+    )
+    previews = qc_previews.previews_of(
+        written, high_risk, cleaned, _eye_sheets(checks, written)
+    )
     instances = tuple(
         dataclasses.replace(
             entry,
@@ -527,11 +577,30 @@ def qc_pack_of(
             for position, found in sorted(gaps.items())
         ),
         reviewed_lists=reviewed_lists,
+        eye_checks=tuple(entry for entry, _ in checks),
         several_patient_studies=tuple(
             qc_pack.SeveralPatientStudyEntry(tuple(tuple(group) for group in groups))
             for groups in several_patient_studies
         ),
     )
+
+
+def _eye_sheets(
+    checks: Sequence[tuple[qc_pack.EyeCheckEntry, qc_eyes.EyeSheet | None]],
+    written: Mapping[int, bytes],
+) -> list[qc_eyes.EyeSheet]:
+    """Each eye check's sheet, in order, listing only the frames of its own
+    held instances whose written files the pack has, and none that lists
+    none."""
+    sheets = []
+    for entry, sheet in checks:
+        if sheet is None:
+            continue
+        held = set(entry.positions) & set(written)
+        frames = tuple(frame for frame in sheet.frames if frame[0] in held)
+        if frames:
+            sheets.append(dataclasses.replace(sheet, frames=frames))
+    return sheets
 
 
 def _series_risks(

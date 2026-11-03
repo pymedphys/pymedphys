@@ -364,7 +364,13 @@ def _face_review(section: object) -> list[Block]:
     series = _fields(
         "face_review ct_series",
         section["ct_series"],
-        ("defaced", "defaced_around_targets", "not_defaced"),
+        (
+            "defaced",
+            "defaced_around_targets",
+            "defaced_eyes_unconfirmed",
+            "defaced_eyes_confirmed",
+            "not_defaced",
+        ),
     )
     rows = []
     for entry in _list("face_review ct_series not_defaced", series["not_defaced"]):
@@ -396,10 +402,23 @@ def _face_review(section: object) -> list[Block]:
                 "face_review ct_series defaced_around_targets",
                 series["defaced_around_targets"],
             )
+            + ". Of the series defaced, those whose eye ROIs lie away from "
+            "the eyes that the run found, which it holds for review, with each "
+            "instance cleaned by their block, until a reviewer confirms the "
+            "block from the QC pack's sheet of the eyes: "
+            + _tally(
+                "face_review ct_series defaced_eyes_unconfirmed",
+                series["defaced_eyes_unconfirmed"],
+            )
+            + "; and those whose block a reviewer confirmed, which the "
+            "reviewer's verdict on the written images decides: "
+            + _tally(
+                "face_review ct_series defaced_eyes_confirmed",
+                series["defaced_eyes_confirmed"],
+            )
             + ". Those it did not deface, by reason, which the reviewer's "
             "verdict decides, or, for a target that the run cannot keep "
-            "within the images or an eye drawn away from the eyes found, "
-            "holds for review:"
+            "within the images, holds for review:"
         ],
         _table(("Reason", "Series"), rows) if rows else [_NONE],
     ]

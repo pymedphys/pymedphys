@@ -400,7 +400,14 @@ class _Reviewed:
 
 
 @contextlib.contextmanager
-def _runs(*others, without_ct=False, accepted=False, revised=None, **first_run):
+def _runs(
+    *others,
+    without_ct=False,
+    accepted=False,
+    revised=None,
+    confirmed=False,
+    **first_run,
+):
     """Run the collection as :func:`_reviewed` does, given ``first_run``, and
     again as :func:`_second` does, given the rest."""
     with _reviewed(**first_run) as reviewed:
@@ -411,6 +418,7 @@ def _runs(*others, without_ct=False, accepted=False, revised=None, **first_run):
             without_ct=without_ct,
             accepted=accepted,
             revised=revised,
+            confirmed=confirmed,
         )
 
 
@@ -612,15 +620,24 @@ def _reviewed(
         shutil.rmtree(directory, ignore_errors=True)
 
 
-def _second(reviewed, *others, name, without_ct=False, accepted=False, revised=None):
+def _second(
+    reviewed,
+    *others,
+    name,
+    without_ct=False,
+    accepted=False,
+    revised=None,
+    confirmed=False,
+):
     """Attest a copy of the reviewed run's pack, in ``name`` beside it, with
     the head's series, and those of the RT Structure Set, RT Dose, and PET
     in its frame, and of the deformable registrations, marked absent, and, if ``accepted``, the regions of each
     of the head's CT and PET slices that the pack previews accepted, or, if
     ``revised``, those of each of its CT slices, revised with that region
-    added in their first frame; and run the collection again under the
-    option and ``others``, given those verdicts, without the head's slices
-    if ``without_ct``.
+    added in their first frame, and, if ``confirmed``, each face block that
+    the pack shows beside the eyes drawn confirmed; and run the collection
+    again under the option and ``others``, given those verdicts, without
+    the head's slices if ``without_ct``.
 
     The run that it reviews, and the files that it ran, are left as they
     were, so that one reviewed run serves several second runs."""
@@ -642,7 +659,15 @@ def _second(reviewed, *others, name, without_ct=False, accepted=False, revised=N
         if accepted or revised is not None
         else []
     )
-    _attest(pack, dict.fromkeys(reviewed.marked, Face.ABSENT), redactions=redactions)
+    checks = json.loads(reviewed.pack.read_text("utf-8"))["eye_checks"]
+    _attest(
+        pack,
+        dict.fromkeys(reviewed.marked, Face.ABSENT),
+        redactions=redactions,
+        confirmed_blocks=(
+            [check["positions"][0] for check in checks] if confirmed else ()
+        ),
+    )
     instances = reviewed.instances
     if without_ct:
         instances = directory / "i"
@@ -760,10 +785,22 @@ def fixture_beyond_slices():
         yield found
 
 
-@pytest.fixture(name="eyes_away", scope="module")
-def fixture_eyes_away():
-    with _runs(first=(), eyes_away=True) as found:
+@pytest.fixture(name="reviewed_eyes_away", scope="module")
+def fixture_reviewed_eyes_away():
+    with _reviewed(first=(), eyes_away=True) as found:
         yield found
+
+
+# Marked absent as the run wrote them, with the face block that the eyes
+# drawn disagree with left unconfirmed, and confirmed.
+@pytest.fixture(name="eyes_away", scope="module")
+def fixture_eyes_away(reviewed_eyes_away):
+    return _second(reviewed_eyes_away, name="u")
+
+
+@pytest.fixture(name="eyes_confirmed", scope="module")
+def fixture_eyes_confirmed(reviewed_eyes_away):
+    return _second(reviewed_eyes_away, name="c", confirmed=True)
 
 
 @pytest.fixture(name="without_ct", scope="module")
@@ -930,6 +967,8 @@ def test_a_head_ct_marked_absent_as_received_is_held_where_defaced(
     assert report["face_review"]["ct_series"] == {
         "defaced": 1,
         "defaced_around_targets": 0,
+        "defaced_eyes_unconfirmed": 0,
+        "defaced_eyes_confirmed": 0,
         "not_defaced": [{"reason": "unreadable", "count": _UNPLACED}],
     }
     counts = {
@@ -966,6 +1005,8 @@ def test_pet_instances_in_the_defaced_frame_that_are_not_cleaned_are_held(
     assert report["face_review"]["ct_series"] == {
         "defaced": 1,
         "defaced_around_targets": 0,
+        "defaced_eyes_unconfirmed": 0,
+        "defaced_eyes_confirmed": 0,
         "not_defaced": [{"reason": "unreadable", "count": _UNPLACED}],
     }
     counts = {
@@ -1014,6 +1055,8 @@ def test_a_registration_whose_grid_is_tied_to_the_defaced_frame_is_held(defaced)
     assert report["face_review"]["ct_series"] == {
         "defaced": 1,
         "defaced_around_targets": 0,
+        "defaced_eyes_unconfirmed": 0,
+        "defaced_eyes_confirmed": 0,
         "not_defaced": [{"reason": "unreadable", "count": _UNPLACED}],
     }
 
@@ -1255,6 +1298,8 @@ def test_two_defaced_series_in_one_frame_are_each_defaced_by_their_own_block(
     assert report["face_review"]["ct_series"] == {
         "defaced": 2,
         "defaced_around_targets": 0,
+        "defaced_eyes_unconfirmed": 0,
+        "defaced_eyes_confirmed": 0,
         "not_defaced": [{"reason": "unreadable", "count": _UNPLACED}],
     }
 
@@ -1417,6 +1462,8 @@ def test_rt_instances_judged_beside_a_defaced_ct_are_held_in_a_run_without_it(
     assert report["face_review"]["ct_series"] == {
         "defaced": 0,
         "defaced_around_targets": 0,
+        "defaced_eyes_unconfirmed": 0,
+        "defaced_eyes_confirmed": 0,
         "not_defaced": [{"reason": "unreadable", "count": _UNPLACED}],
     }
 
@@ -1470,6 +1517,8 @@ def test_a_head_ct_with_a_target_in_the_block_is_defaced_around_it(targeted):
     assert report["face_review"]["ct_series"] == {
         "defaced": 1,
         "defaced_around_targets": 1,
+        "defaced_eyes_unconfirmed": 0,
+        "defaced_eyes_confirmed": 0,
         "not_defaced": [{"reason": "unreadable", "count": _UNPLACED}],
     }
 
@@ -1567,6 +1616,8 @@ def test_a_target_in_the_block_beyond_the_slices_holds_the_head_ct(beyond_slices
     assert report["face_review"]["ct_series"] == {
         "defaced": 0,
         "defaced_around_targets": 0,
+        "defaced_eyes_unconfirmed": 0,
+        "defaced_eyes_confirmed": 0,
         "not_defaced": [
             {"reason": "target-in-block", "count": 1},
             {"reason": "unreadable", "count": _UNPLACED},
@@ -1593,33 +1644,104 @@ def test_a_target_in_the_block_beyond_the_slices_holds_the_head_ct(beyond_slices
     )
 
 
-def test_an_eye_drawn_away_from_the_globes_holds_the_head_ct(eyes_away):
+def _eye_checks(directory):
+    """The eye checks of the QC pack in ``directory``, and its sheets."""
+    (path,) = directory.glob("*.json")
+    document = json.loads(path.read_text("utf-8"))
+    sheets = [p for p in document["previews"] if p["kind"] == "series-eyes"]
+    return document["eye_checks"], sheets, document
+
+
+def test_an_eye_drawn_away_from_the_globes_shows_the_block_for_review(
+    reviewed_eyes_away,
+):
+    checks, sheets, document = _eye_checks(reviewed_eyes_away.pack.parent)
+    names = reviewed_eyes_away.names
+    slices = reviewed_eyes_away.slices
+
+    # The run defaces the series and holds it until a reviewer confirms its
+    # block: the pack lists its slices with the block's digest, and draws
+    # them, as received, through the globes found and the eye drawn away
+    # from them.
+    (check,) = checks
+    held = {names[position] for position in check["positions"]}
+    assert held == {_head_name(index) for index in range(len(slices))}
+    assert len(check["block_sha256"]) == 64
+    (sheet,) = sheets
+    assert {each["position"] for each in sheet["frames"]} <= set(check["positions"])
+    assert all(
+        names[each["position"]].startswith("01-head") for each in sheet["frames"]
+    )
+    assert sheet["total_frames"] == len(slices)
+    # Not one of the previews that could show a face.
+    face_previews = [
+        p for p in document["previews"] if p["kind"] not in ("series-eyes",)
+    ]
+    assert sheet not in face_previews
+
+
+def test_an_eye_drawn_away_from_the_globes_holds_the_defaced_head_ct(eyes_away):
     slices, outcomes, reasons, report = eyes_away
     held = HeldVisualFeatures(VisualFeaturesReason.EYES_DISAGREE_WITH_ROIS)
 
-    # The structure set draws the left eye where the finder found no globe,
-    # so the block may be wrong: the series is not defaced, and is held.
+    # Marked absent as the run wrote them, but with the block unconfirmed:
+    # each slice, and each instance cleaned by the block, is still held.
     for index in range(len(slices)):
         assert outcomes[_head_name(index)] == ("held-for-review", None), index
-        assert held in reasons[_head_name(index)]
+        assert reasons[_head_name(index)] == {held}, index
+    for name in (_STRUCTURE_SET, _DOSE[0], *_PET_SLICES):
+        assert outcomes[name] == ("held-for-review", None), name
+        assert reasons[name] == {held}, name
+    # As is the RT Dose that its release gate also holds for review.
+    assert outcomes[_DOSE[1]] == ("held-for-review", None)
+    assert held in reasons[_DOSE[1]]
     assert report["face_review"]["ct_series"] == {
-        "defaced": 0,
+        "defaced": 1,
         "defaced_around_targets": 0,
-        "not_defaced": [
-            {"reason": "eyes-disagree-with-rois", "count": 1},
-            {"reason": "unreadable", "count": _UNPLACED},
-        ],
+        "defaced_eyes_unconfirmed": 1,
+        "defaced_eyes_confirmed": 0,
+        "not_defaced": [{"reason": "unreadable", "count": _UNPLACED}],
     }
     counts = {
         entry["code"]: entry["count"]
         for entry in report["held_for_review"]
         if entry["stage"] == "visual-features"
     }
-    assert counts[held.reason.value] == len(slices)
-    # With no series defaced, the structure set is written as received.
-    disposition, dataset = outcomes[_STRUCTURE_SET]
-    assert disposition == "released", reasons[_STRUCTURE_SET]
-    assert all(contours is not None for contours in _contours(dataset).values())
+    assert counts[held.reason.value] == (
+        len(slices) + 1 + len(_DOSE) + len(_PET_SLICES)
+    )
+
+
+def test_a_confirmed_block_releases_the_head_ct_defaced(eyes_confirmed, defaced):
+    slices, outcomes, reasons, report = eyes_confirmed
+    _, written, _, _ = defaced
+
+    # Confirmed, the block is the one that eyes drawn at the globes give, so
+    # each slice is released as the run defaced it there.
+    for index in range(len(slices)):
+        name = _head_name(index)
+        disposition, dataset = outcomes[name]
+        assert disposition == "released", (index, reasons[name])
+        assert dataset.RecognizableVisualFeatures == "NO"
+        assert dataset.PixelData == written[name][1].PixelData, index
+    for name in (_STRUCTURE_SET, _DOSE[0], *_PET_SLICES):
+        disposition, dataset = outcomes[name]
+        assert disposition == "released", (name, reasons[name])
+        assert dataset.RecognizableVisualFeatures == "NO"
+    # The structure set is cut by the block, its lens gone.
+    _, dataset = outcomes[_STRUCTURE_SET]
+    assert _contours(dataset)["Lens_L"] is None
+    assert report["face_review"]["ct_series"] == {
+        "defaced": 1,
+        "defaced_around_targets": 0,
+        "defaced_eyes_unconfirmed": 0,
+        "defaced_eyes_confirmed": 1,
+        "not_defaced": [{"reason": "unreadable", "count": _UNPLACED}],
+    }
+    assert not any(
+        entry["code"] == "eyes-disagree-with-rois"
+        for entry in report["held_for_review"]
+    )
 
 
 def test_an_unexpected_error_in_the_finder_releases_no_slice_it_would_deface(
@@ -1652,6 +1774,8 @@ def test_an_unexpected_error_in_the_finder_releases_no_slice_it_would_deface(
     assert report["face_review"]["ct_series"] == {
         "defaced": 0,
         "defaced_around_targets": 0,
+        "defaced_eyes_unconfirmed": 0,
+        "defaced_eyes_confirmed": 0,
         "not_defaced": [{"reason": "unreadable", "count": 1 + _UNPLACED}],
     }
 
@@ -1672,6 +1796,8 @@ def test_with_clean_pixel_data_the_head_ct_is_held_for_its_pixel_data(
     assert report["face_review"]["ct_series"] == {
         "defaced": 1,
         "defaced_around_targets": 0,
+        "defaced_eyes_unconfirmed": 0,
+        "defaced_eyes_confirmed": 0,
         "not_defaced": [{"reason": "unreadable", "count": _UNPLACED}],
     }
 
@@ -1704,6 +1830,8 @@ def test_with_both_options_reviewed_the_head_ct_is_released_with_both(accepted):
     assert report["face_review"]["ct_series"] == {
         "defaced": 1,
         "defaced_around_targets": 0,
+        "defaced_eyes_unconfirmed": 0,
+        "defaced_eyes_confirmed": 0,
         "not_defaced": [{"reason": "unreadable", "count": _UNPLACED}],
     }
     assert report["redaction_review"] is not None
@@ -1734,6 +1862,8 @@ def test_a_revised_region_that_changes_a_defaced_slice_holds_it_for_its_face(
     assert report["face_review"]["ct_series"] == {
         "defaced": 1,
         "defaced_around_targets": 0,
+        "defaced_eyes_unconfirmed": 0,
+        "defaced_eyes_confirmed": 0,
         "not_defaced": [{"reason": "unreadable", "count": _UNPLACED}],
     }
 
@@ -1842,6 +1972,8 @@ def test_a_multi_frame_head_ct_gives_its_frame_the_block_of_its_slices(
     assert report["face_review"]["ct_series"] == {
         "defaced": 1,
         "defaced_around_targets": 0,
+        "defaced_eyes_unconfirmed": 0,
+        "defaced_eyes_confirmed": 0,
         "not_defaced": [{"reason": "unreadable", "count": _UNPLACED}],
     }
     # The QC pack draws the defaced instance's frames as a volume, by its

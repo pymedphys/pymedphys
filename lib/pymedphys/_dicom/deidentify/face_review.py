@@ -60,7 +60,7 @@ import struct
 
 from pymedphys._imports import pydicom
 
-from .qc_attestation import Face, Outcome, attested_pack
+from .qc_attestation import Face, Outcome, attested_pack, eye_checks
 from .qc_pack import (
     GRID_KINDS,
     NO_CONTOURS_SHA256,
@@ -144,6 +144,14 @@ class FaceReview:
         deformation grids, where its grid sheets showed every one of them,
         or it has none; empty by default, so that no instance with a grid
         satisfies the option.
+    confirmed_blocks : frozenset of bytes, optional
+        The digest of each face block that the reviewer confirmed, of a CT
+        series that the reviewed run defaced and held because its eye ROIs
+        disagree with its globes, as
+        :func:`~pymedphys._dicom.deidentify.face_blocks.block_digest` gives
+        it of the series' source files and the block; a run given the
+        review defaces such a series without holding it for its eyes where
+        it finds a block of this digest. Empty by default.
     """
 
     reference: str
@@ -154,13 +162,14 @@ class FaceReview:
     absent_frames: frozenset[tuple[bytes, bytes, int]] | None = None
     absent_dose_frames: frozenset[tuple[bytes, bytes, int]] | None = None
     absent_grids: frozenset[tuple[bytes, bytes]] = frozenset()
+    confirmed_blocks: frozenset[bytes] = frozenset()
 
     def __post_init__(self) -> None:
         if not isinstance(self.reference, str) or not re.fullmatch(
             r"A-[0-9a-f]{32}", self.reference
         ):
             raise QcPackError("a face review needs the reviewed pack's reference")
-        for digests in (self.absent, self.present):
+        for digests in (self.absent, self.present, self.confirmed_blocks):
             if not isinstance(digests, frozenset) or not all(
                 isinstance(d, bytes) and len(d) == 32 for d in digests
             ):
@@ -198,7 +207,8 @@ class FaceReview:
     def __repr__(self) -> str:
         return (
             f"FaceReview(reference={self.reference!r}, absent={len(self.absent)}, "
-            f"present={len(self.present)})"
+            f"present={len(self.present)}, "
+            f"confirmed_blocks={len(self.confirmed_blocks)})"
         )
 
     def hold_reason(  # pylint: disable = too-many-return-statements
@@ -288,7 +298,8 @@ def read_face_review(pack_directory: os.PathLike | str) -> FaceReview:
     Returns
     -------
     FaceReview
-        Empty of files where the attestation gives no verdict. A file that
+        Empty of files where the attestation gives no verdict, and of
+        blocks where it confirms none. A file that
         the pack lists as held because the run defaced its frame, or as an
         RT Dose with too much dose in the face block to set to zero, is not
         taken as absent, since its verdict was on the defaced images beside
@@ -304,7 +315,9 @@ def read_face_review(pack_directory: os.PathLike | str) -> FaceReview:
         is for another pack; if the pack or a preview changed after it was
         attested; or if a verdict names a series that the pack does not
         list, or an instance's contours' or pixel data's SHA-256 has no
-        preview that shows them. The message names no path and no value.
+        preview that shows them, or a confirmed block names no eye check
+        of the pack with a sheet of its eyes. The message names no path and
+        no value.
     """
     attestation, data = attested_pack(pack_directory)
     if attestation.outcome is not Outcome.ATTESTED:
@@ -312,6 +325,15 @@ def read_face_review(pack_directory: os.PathLike | str) -> FaceReview:
             "the QC pack's attestation rejected it, so its verdicts release nothing"
         )
     files = _series_files(data)
+    checks = eye_checks(data)
+    if not all(
+        first in checks and checks[first].sheet
+        for first in attestation.confirmed_blocks
+    ):
+        raise QcPackError(
+            "a confirmed block names no eye check of the QC pack with a sheet "
+            "of its eyes"
+        )
     by_face: dict[Face, set[_File]] = {face: set() for face in Face}
     for verdict in attestation.faces:
         if verdict.series not in files:
@@ -349,6 +371,10 @@ def read_face_review(pack_directory: os.PathLike | str) -> FaceReview:
             if pixels is not None and shown is not None
         ),
         frozenset((source, grids) for source, *_, grids in absent if grids is not None),
+        confirmed_blocks=frozenset(
+            bytes.fromhex(checks[first].block_sha256)
+            for first in attestation.confirmed_blocks
+        ),
     )
 
 

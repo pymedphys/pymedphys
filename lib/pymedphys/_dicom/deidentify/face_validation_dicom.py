@@ -22,8 +22,9 @@
 Under the Clean Recognizable Visual Features Option, a run finds the face
 block of each CT series (:mod:`~pymedphys._dicom.deidentify.face_blocks`),
 keeps the targets in its block, holds a series with a target that it cannot
-keep within its slices or an eye ROI away from the globes it found, sets an
-RT Dose in a defaced frame to zero in each defaced series' block or holds it
+keep within its slices, defaces and holds a series with an eye ROI away
+from the globes it found until a reviewer confirms its block, sets an RT
+Dose in a defaced frame to zero in each defaced series' block or holds it
 where that dose is too great
 (:mod:`~pymedphys._dicom.deidentify.dose_defacing`), and cuts an RT
 Structure Set's contours in each defaced frame by that frame's blocks
@@ -49,7 +50,8 @@ longer be read, as a run gives it. Of each series of CT Image instances
 (:class:`SeriesMeasures`), it measures:
 
 - the finder's outcome, by the reason that a run counts in its release
-  report;
+  report, and whether a run without a reviewer's confirmation of its block
+  holds it for its eyes;
 - how its slices are stored, their spacings, and whether at least 1% of its
   voxels are at -900 Hounsfield units or below, as a head CT's are;
 - for a series with a block, whether defaced or held: each eye ROI that a
@@ -125,6 +127,7 @@ from .face_blocks import (
     PET_IMAGE,
     RT_STRUCTURE_SET,
     Defaced,
+    EyeCheck,
     SeriesDefacing,
     _FARTHEST,
     _hull_reaches,
@@ -173,7 +176,7 @@ from .run_discovery import RunError, discover
 from .source import NATIVE_TRANSFER_SYNTAXES, SourceRefused, read_source
 from .uids import normalise_uid
 
-FORMAT = "pymedphys-deid-face-validation-dicom/4"
+FORMAT = "pymedphys-deid-face-validation-dicom/5"
 RT_PLAN = "RT Plan"
 CLOSED = frozenset({"CLOSED_PLANAR", "CLOSEDPLANAR_XOR"})
 # The defined terms of RT ROI Interpreted Type (PS3.3 C.8.8.8): any other
@@ -287,6 +290,10 @@ class SeriesMeasures:
     around_targets : bool
         Whether it is defaced around a target in its block, whose region the
         run keeps.
+    eyes_unconfirmed : bool
+        Whether it is defaced and held until a reviewer confirms its block,
+        since an eye ROI disagrees with its globes, as a run without a
+        confirmation holds it.
     eyes : tuple of EyeMeasures
         For a series with a block, each of those eye ROIs.
     targets : mapping of str to int
@@ -304,6 +311,7 @@ class SeriesMeasures:
     air: bool | None = None
     eye_rois: int = 0
     around_targets: bool = False
+    eyes_unconfirmed: bool = False
     eyes: tuple[EyeMeasures, ...] = ()
     targets: Mapping[str, int] = dataclasses.field(default_factory=dict)
     clearances: tuple[float, ...] = ()
@@ -490,7 +498,7 @@ def measure_dicom(directory: os.PathLike[str] | str) -> DicomMeasures:
         series = _series_positions(records)
         if not series:
             raise FaceValidationRefused("The directory holds no CT Image series.")
-        outcomes = find_face_blocks(records, read)
+        outcomes = find_face_blocks(records, read, sheets=False)
         defaced = find_defaced(records, outcomes)
         dose_blocks = find_dose_blocks(
             records, read, outcomes, (RT_DOSE, RT_STRUCTURE_SET, PET_IMAGE)
@@ -567,9 +575,10 @@ def _measure_series(
     """Measure one CT series, given its outcome in a run."""
     block, frame = outcome.block, outcome.frame
     stack = None
-    if outcome.held:
-        # A held series' block is dropped from its outcome, so it is found
-        # again, as the run found it, for the holds to be measured against.
+    if outcome.block is None and outcome.held:
+        # The block of a series held for a target is dropped from its
+        # outcome, so it is found again, as the run found it, for the holds
+        # to be measured against.
         found, frame, stack = _series_outcome(positions, read)
         block = found.block
     if frame is None:
@@ -600,6 +609,7 @@ def _measure_series(
         **storage,
         "eye_rois": len(eyes),
         "around_targets": outcome.targets.in_block,
+        "eyes_unconfirmed": outcome.eyes is EyeCheck.DISAGREE,
     }
     if block is not None:
         fates = _target_fates(
@@ -1120,6 +1130,7 @@ def summarise(measures: DicomMeasures) -> dict[str, Any]:
         "series": {
             "defaced": sum(each.outcome == "defaced" for each in series),
             "defaced_around_targets": sum(each.around_targets for each in series),
+            "defaced_eyes_unconfirmed": sum(each.eyes_unconfirmed for each in series),
             "not_defaced": _counted(
                 each.outcome for each in series if each.outcome != "defaced"
             ),
@@ -1167,7 +1178,6 @@ def _has_block(series: SeriesMeasures) -> bool:
     return series.outcome in (
         "defaced",
         face_blocks.SeriesProblem.TARGET_IN_BLOCK.value,
-        face_blocks.SeriesProblem.EYES_DISAGREE.value,
     )
 
 

@@ -186,7 +186,9 @@ def _one(digests):
     return digest
 
 
-def _attest(directory, faces, outcome=Outcome.ATTESTED, redactions=()):
+def _attest(
+    directory, faces, outcome=Outcome.ATTESTED, redactions=(), confirmed_blocks=()
+):
     return qc_attestation.attest(
         directory,
         reviewer="Quokka Wombatson",
@@ -195,6 +197,7 @@ def _attest(directory, faces, outcome=Outcome.ATTESTED, redactions=()):
         attested_at=WHEN,
         faces=faces,
         redactions=redactions,
+        confirmed_blocks=confirmed_blocks,
     )
 
 
@@ -539,7 +542,9 @@ def test_a_face_review_is_checked(fields):
 def test_the_repr_shows_only_the_reference_and_counts():
     review = FaceReview(REFERENCE, _sha(0, 2), _sha(1))
 
-    assert repr(review) == f"FaceReview(reference={REFERENCE!r}, absent=2, present=1)"
+    assert repr(review) == (
+        f"FaceReview(reference={REFERENCE!r}, absent=2, present=1, confirmed_blocks=0)"
+    )
 
 
 @pytest.mark.parametrize(
@@ -800,6 +805,8 @@ def test_the_report_names_the_reviewed_pack_by_its_reference():
         "ct_series": {
             "defaced": 0,
             "defaced_around_targets": 0,
+            "defaced_eyes_unconfirmed": 0,
+            "defaced_eyes_confirmed": 0,
             "not_defaced": [],
         },
     }
@@ -826,6 +833,8 @@ def test_the_report_counts_the_series_defaced_around_targets():
     assert release_report.report_document(report)["face_review"]["ct_series"] == {
         "defaced": 3,
         "defaced_around_targets": 2,
+        "defaced_eyes_unconfirmed": 0,
+        "defaced_eyes_confirmed": 0,
         "not_defaced": [{"reason": "target-in-block", "count": 1}],
     }
     text = release_report_markdown.to_markdown(release_report.to_json(report))
@@ -845,6 +854,72 @@ def test_the_report_refuses_a_count_around_targets_beyond_the_series_defaced(aro
 
     with pytest.raises(ValueError, match="defaced_around_targets"):
         release_report.report_document(report)
+
+
+def test_the_report_counts_the_series_defaced_by_their_eyes():
+    counts = FaceBlockCounts(defaced=3, eyes_unconfirmed=1, eyes_confirmed=2)
+    report = release_report.release_report(
+        _policy(),
+        vocabulary=None,
+        reviewed_roi_names=None,
+        face_review=REFERENCE,
+        face_blocks=counts,
+    )
+
+    assert release_report.report_document(report)["face_review"]["ct_series"] == {
+        "defaced": 3,
+        "defaced_around_targets": 0,
+        "defaced_eyes_unconfirmed": 1,
+        "defaced_eyes_confirmed": 2,
+        "not_defaced": [],
+    }
+    text = release_report_markdown.to_markdown(release_report.to_json(report))
+    assert "until a reviewer confirms the block" in text
+    assert "`1`; and those whose block a reviewer confirmed" in text
+    assert "decides: `2`." in text
+
+
+@pytest.mark.parametrize(
+    "unconfirmed, confirmed, match",
+    [
+        (-1, 0, "defaced_eyes_unconfirmed"),
+        (0, -1, "defaced_eyes_confirmed"),
+        (1.0, 0, "defaced_eyes_unconfirmed"),
+        (0, True, "defaced_eyes_confirmed"),
+        (2, 2, "more than the series defaced"),
+        (4, 0, "more than the series defaced"),
+    ],
+)
+def test_the_report_refuses_counts_by_eyes_beyond_the_series_defaced(
+    unconfirmed, confirmed, match
+):
+    report = release_report.release_report(
+        _policy(),
+        vocabulary=None,
+        reviewed_roi_names=None,
+        face_review=REFERENCE,
+        face_blocks=FaceBlockCounts(
+            defaced=3, eyes_unconfirmed=unconfirmed, eyes_confirmed=confirmed
+        ),
+    )
+
+    with pytest.raises(ValueError, match=match):
+        release_report.report_document(report)
+
+
+def test_the_page_refuses_a_face_review_without_its_counts_by_eyes():
+    report = release_report.release_report(
+        _policy(),
+        vocabulary=None,
+        reviewed_roi_names=None,
+        face_review=REFERENCE,
+        face_blocks=FaceBlockCounts(defaced=1, eyes_confirmed=1),
+    )
+    document = json.loads(release_report.to_json(report))
+    del document["face_review"]["ct_series"]["defaced_eyes_confirmed"]
+
+    with pytest.raises(ValueError):
+        release_report_markdown.to_markdown(json.dumps(document))
 
 
 def test_a_report_without_a_face_review_has_none():
@@ -1105,7 +1180,7 @@ def test_the_report_names_the_attested_pack(second_run):
     attestation, _, report, _ = second_run
 
     assert report["face_review"]["reference"] == attestation.reference
-    assert report["format"] == "pymedphys-deid-release-report/47"
+    assert report["format"] == "pymedphys-deid-release-report/48"
 
 
 def test_the_report_counts_the_ct_series_that_were_not_defaced(second_run):
@@ -1118,6 +1193,8 @@ def test_the_report_counts_the_ct_series_that_were_not_defaced(second_run):
     assert report["face_review"]["ct_series"] == {
         "defaced": 0,
         "defaced_around_targets": 0,
+        "defaced_eyes_unconfirmed": 0,
+        "defaced_eyes_confirmed": 0,
         "not_defaced": [
             {"reason": "no-eyes", "count": 1},
             {"reason": "unreadable", "count": 2},

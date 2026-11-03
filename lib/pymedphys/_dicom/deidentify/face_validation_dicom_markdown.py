@@ -92,6 +92,8 @@ def markdown(summary: Mapping[str, Any]) -> str:
         f"| Defaced | {series['defaced']} |",
         f"| Defaced around a target in the block | "
         f"{series['defaced_around_targets']} |",
+        f"| Defaced and held until a reviewer confirms the block, for an eye "
+        f"ROI away from the globes | {series['defaced_eyes_unconfirmed']} |",
         *(
             f"| Not defaced: `{reason}` | {count} |"
             for reason, count in series["not_defaced"].items()
