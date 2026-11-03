@@ -1447,6 +1447,7 @@ def _eye_sheet(
     except Exception:  # pylint: disable = broad-exception-caught
         return None
 
+
 def _eye_far(contour: pydicom.Dataset, globes: np.ndarray) -> bool:
     """Whether a point of an eye's contour, or of its span where its retired
     Contour Slab Thickness and Contour Offset Vector give it one, lies
