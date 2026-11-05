@@ -26,7 +26,10 @@ Schedule / manual run -> deid-edition-check.yml
 Schedule / manual run -> tg263-edition-check.yml
 Schedule / manual run / PR changing it or labelled check-upstream -> tcia-edition-check.yml
 Manual run -> face-validation.yml
+Manual run -> face-validation-visible-human.yml
 Manual run -> pixel-text-validation.yml
+Manual run -> text-detection-model-pins.yml
+Manual run -> text-detector-evaluation-idc.yml
 Published release -> release.yml -> quality checks, publishing, verification, and published-package tests
 Issue comment -> claude.yml
 
@@ -232,8 +235,8 @@ Fast unit tests with smart matrix strategy.
     clients connect, so workers never release a port reservation during startup
   - JUnit XML report generation
 
-The `dependency-floors` job runs the unit tests (`-m "not slow"`, with the
-data cache) at the declared minimum versions of NumPy (2.0.2) and pandas
+The `dependency-floors` job runs the unit tests (`-m "not slow"`) at the
+declared minimum versions of NumPy (2.0.2) and pandas
 (2.2.2), alongside both the quick and full matrices. It runs on Ubuntu with
 Python 3.12, the only supported version with wheels for both: neither has any
 for Python 3.13 or later. It installs the same locked environment as the unit
@@ -249,8 +252,8 @@ report as `junit-dependency-floors-<part>`. A
 failure fails the unit-test workflow and therefore the required CI or release
 summary.
 
-The `dependency-floors` job and every cell of the unit-test matrix each run in
-two parts on two runners, since a slow runner could take the 30-minute limit
+Every cell of the unit-test matrix runs in two parts on two runners, since a
+slow runner could take the 30-minute limit
 (60 minutes on Windows) to run the whole suite at once. The `corpus-runs` part runs
 the modules listed in the workflow's `CORPUS_RUN_TESTS`, which run the
 synthetic collection through the engine and take about half the suite's time,
@@ -263,6 +266,17 @@ ID, so every part and cell of a job on one OS shares it, and a part that saved
 it without the data would leave the others re-downloading. Move a module
 between the parts when the `--durations` reports show one part taking much
 longer than the other.
+
+At the dependency floors, the corpus selection runs in two separate parts:
+`ct-defacing` runs `test_deidentify_ct_defacing_run.py`, and `corpus-runs`
+runs the other modules in `CORPUS_RUN_TESTS`. The `others` part ignores every
+listed module as before, so every test still runs in exactly one of the three
+parts. Each part retains the 30-minute job limit, two pytest workers and the
+900-second per-test limit. Missing listed modules, a CT-defacing module that
+is not in the corpus list, or an empty remaining corpus selection fail the
+job before pytest starts. Only `others` uses the data cache. All three JUnit
+reports must arrive and all three parts must pass; the required summary
+continues to depend on the whole reusable unit-test workflow.
 
 Each cell's parts upload their reports as `junit-py<python>-<part>-<os>`, such
 as `junit-py3.14-corpus-runs-ubuntu-latest`, which the release's
@@ -319,8 +333,11 @@ The `narrow-extras` job checks that each narrow feature extra (`gamma`,
 For each, on Ubuntu with Python 3.14, it installs only that extra and the
 `test-runner` dependency group, then runs the feature's non-slow tests with
 `uv run --no-sync`, so nothing else is installed. Tests there that exercise
-another feature skip themselves when its packages are missing. It uploads a
-JUnit report per extra as `junit-extra-<extra>`, and runs alongside both the
+another feature skip themselves when its packages are missing. The `dicom`
+extra's tests run in the same `corpus-runs` and `others` parts as the unit-test
+matrix, on two runners, since together they can reach the 30-minute limit on a
+slow runner. It uploads a JUnit report per extra as `junit-extra-<extra>`, and
+per part for `dicom` as `junit-extra-dicom-<part>`, and runs alongside both the
 quick and full matrices.
 
 ### Extended Workflows (Conditional)
@@ -602,6 +619,26 @@ Option, against the eye and organ masks of the HaN-Seg data set (see
   patients, so the data set is never cached or uploaded, and nothing else read
   from it leaves the runner
 
+#### `face-validation-visible-human.yml`
+
+Checks the face block finder and CT defacing of the Clean Recognizable Visual
+Features Option on the NLM Visible Human Project's CT, from NCI Imaging Data
+Commons (see
+[Check the face block against HaN-Seg](deidentification-face-validation.md)).
+Courtesy of the U.S. National Library of Medicine.
+
+- **Triggers**: manually only
+- **Steps**: installs the project with the `user` extra, downloads the
+  collection's 11 CT series from IDC's public bucket with
+  `.github/scripts/fetch_idc_series.py`, and runs
+  `python -m pymedphys._dicom.deidentify.face_validation_command visible-human`,
+  which refuses the set unless each series' file count and digest are those
+  that the check pins. Its job can only read the repository
+- **Results**: the job summary shows `face-validation-vhp.md`, and the
+  `face-validation-vhp-results` artefact, kept for 90 days, holds it with
+  `face-validation-vhp.json`, `commit.txt`, and renders of each head.
+  The series themselves are never cached or uploaded
+
 #### `pixel-text-validation.yml`
 
 Counts the regions that the text detector of the Clean Pixel Data Option finds
@@ -626,6 +663,50 @@ burned-in text, so that each region is one that a run would black out in error
   codes, digests, versions, and the detector's method. As for the face block
   check, the data set is never cached or uploaded, and nothing else read from
   it leaves the runner
+
+#### `text-detection-model-pins.yml`
+
+Checks that a GitHub-hosted runner can download each pinned text detection
+model, today's and each candidate for the text detector's evaluation, and that
+each file has its pinned SHA-256.
+
+- **Triggers**: manually only
+- **Steps**: one job, which installs the project with the `user` extra and
+  runs `python -m pymedphys._dicom.deidentify.text_evaluation_model_pins`. It
+  downloads each pin's file into memory, never to disk, checks its SHA-256
+  and, for a model inside a wheel, the model's, and runs nothing it
+  downloads. Its job can only read the repository and holds no secret
+- **Results**: the job's summary shows a table of each pin's URL, host, size
+  in bytes, and hash result, `unreachable` with only the kind of failure where
+  a download fails. The job fails unless every pin matches
+
+#### `text-detector-evaluation-idc.yml`
+
+Measures the text detector of the Clean Pixel Data Option, or a candidate
+model, on openly licensed series of NCI's Imaging Data Commons, with synthetic
+text burned into copies of their frames in memory.
+
+- **Triggers**: manually only, with the model, today's settings or its
+  publishers', the part of the split, and the most series from one collection
+  and in all
+- **Steps**: one job, which installs the project with the `user` and
+  `text-detection` extras, then pyarrow, OpenCV, and s5cmd from
+  `.github/text-evaluation/requirements.txt` with `--require-hashes --no-deps`;
+  none is a dependency of PyMedPhys. It downloads the pinned wheel of
+  idc-index-data and checks its SHA-256, selects series from IDC's index by
+  the vetted collections, licences, and image modalities, downloads them from
+  IDC's public buckets with s5cmd, and runs
+  `python -m pymedphys._dicom.deidentify.text_evaluation_command` through
+  `.github/scripts/run_redacted.py`, with its standard output and error, and
+  s5cmd's, in files on the runner. At a model's publishers' settings it also
+  counts what OpenCV's resize alone changes. Its job can only read the
+  repository and holds no secret
+- **Results**: the job's summary shows the counts-only summary. The
+  `text-detector-evaluation-idc` artefact, kept for 90 days, holds it with
+  the per-case report of each series by its public identifiers, licence, and
+  DOI, the assessment against the chosen criteria, the selection's counts by
+  collection, and `commit.txt`. No image, crop, or pixel value is written, and
+  the series are never cached or uploaded
 
 ### AI Assistance
 

@@ -22,7 +22,8 @@ Extended image of one value. The other syntaxes are encoded by pydicom
 (RLE Lossless), Pillow (JPEG Baseline), or pylibjpeg-openjpeg (JPEG 2000),
 which a test skips without. :func:`compressed_corpus` writes the synthetic
 corpus's images again in these syntaxes, with text planted in their
-codestreams.
+codestreams, and :func:`compressed_file` writes one file's frames again in
+one of them.
 """
 
 import dataclasses
@@ -192,6 +193,63 @@ def jpeg_extended_mid_grey(rows: int, columns: int) -> bytes:
         + bytes(entropy)
         + b"\xff\xd9"
     )
+
+
+def jpeg_extended_blocks(levels, rows: int, columns: int) -> bytes:
+    """Return a 12-bit JPEG Extended (SOF1) codestream of one component
+    whose every 8 by 8 block holds one value, ``levels[i, j]`` for the
+    block in row ``i`` and column ``j`` of blocks.
+
+    With a quantisation table of ones, a block of value ``v`` has the DC
+    coefficient ``8 (v - 2048)`` and every AC coefficient zero (T.81
+    Sections A.3.1 and A.3.3), and decodes to ``v`` exactly, since the
+    inverse DCT of a DC coefficient alone is that coefficient over 8. Each
+    DC difference is coded in a table whose 16 categories each have a
+    5-bit code, then its additional bits, then an end of block, with the
+    one 1-bit code of its table. A decoder's expected output is therefore
+    known without another decoder.
+    """
+    levels = np.asarray(levels, dtype=np.int64)
+    if levels.shape != (-(-rows // 8), -(-columns // 8)):
+        raise ValueError("one level is needed for each block")
+    if levels.min() < 0 or levels.max() > 4095:
+        raise ValueError("a level does not fit 12 bits")
+    bits = []
+    previous = 0
+    for level in levels.ravel():
+        coefficient = 8 * (int(level) - 2048)
+        difference, previous = coefficient - previous, coefficient
+        category = _category(difference)
+        bits.append(format(category, "05b"))
+        if category:
+            extra = difference if difference > 0 else difference - 1
+            bits.append(format(extra & ((1 << category) - 1), f"0{category}b"))
+        bits.append("0")
+    stream = "".join(bits)
+    stream += "1" * (-len(stream) % 8)
+    entropy = bytearray()
+    for start in range(0, len(stream), 8):
+        entropy.append(int(stream[start : start + 8], 2))
+        if entropy[-1] == 0xFF:
+            entropy.append(0x00)
+    dc_table = bytes([0x00]) + bytes(4) + bytes([16]) + bytes(11) + bytes(range(16))
+    only_code = bytes([1]) + bytes(15)
+    return (
+        b"\xff\xd8"
+        + _segment(0xDB, bytes([0]) + bytes([1]) * 64)
+        + _segment(0xC1, struct.pack(">BHHB3B", 12, rows, columns, 1, 1, 0x11, 0))
+        + _segment(0xC4, dc_table)
+        + _segment(0xC4, bytes([0x10]) + only_code + bytes([0x00]))
+        + _segment(0xDA, bytes([1, 1, 0x00, 0, 63, 0]))
+        + bytes(entropy)
+        + b"\xff\xd9"
+    )
+
+
+def block_levels_image(levels, rows: int, columns: int):
+    """Return the rows by columns image whose 8 by 8 blocks hold ``levels``,
+    as :func:`jpeg_extended_blocks` codes it."""
+    return np.kron(np.asarray(levels), np.ones((8, 8), dtype=np.int64))[:rows, :columns]
 
 
 def jpeg_baseline(frame) -> bytes:
@@ -460,3 +518,40 @@ def _with_jpeg_2000_text(codestream: bytes, text: str) -> bytes:
     comment = struct.pack(">H", 1) + text.encode("ascii")
     planted = struct.pack(">HH", 0xFF64, len(comment) + 2) + comment
     return codestream[:position] + planted + codestream[position:]
+
+
+def compressed_file(data: bytes, syntax: str, **options) -> bytes:
+    """The file ``data`` with its native Pixel Data's frames encoded in
+    ``syntax``, one fragment each, after an empty Basic Offset Table; every
+    other attribute, the SOP Instance UID included, is kept.
+
+    RLE Lossless takes samples of any width; JPEG Lossless, First-Order
+    Prediction, unsigned samples alone; and JPEG 2000 is reversible unless
+    ``options`` give its compression ratios.
+    """
+    dataset = pydicom.dcmread(io.BytesIO(data))
+    rows, columns = int(dataset.Rows), int(dataset.Columns)
+    stored = pydicom.pixels.pixel_array(dataset).reshape(-1, rows, columns)
+    precision = int(dataset.BitsStored)
+    if syntax == RLE_LOSSLESS:
+        codestreams = [rle_lossless(frame) for frame in stored]
+    elif syntax == JPEG_LOSSLESS_SV1:
+        codestreams = [jpeg_lossless(frame, precision=precision) for frame in stored]
+    elif syntax in (JPEG_2000_LOSSLESS, JPEG_2000):
+        codestreams = [
+            jpeg_2000(frame, precision=precision, **options) for frame in stored
+        ]
+    else:
+        raise ValueError("a syntax that the tests do not encode")
+    dataset.PixelData = encapsulated(codestreams)
+    dataset["PixelData"].VR = "OB"
+    return _rewritten(dataset, syntax)
+
+
+def _rewritten(dataset, syntax: str) -> bytes:
+    """Return ``dataset`` written as a file in ``syntax``, keeping its File
+    Meta Information's SOP Class and Instance UIDs."""
+    dataset.file_meta.TransferSyntaxUID = syntax
+    buffer = io.BytesIO()
+    dataset.save_as(buffer, enforce_file_format=True)
+    return buffer.getvalue()

@@ -209,18 +209,24 @@ def test_the_document_has_the_sections_and_fields_the_design_lists(basic):
         "held_for_review",
         "roi_names",
         "descriptors",
+        "icc_profiles",
         "reference_findings",
         "pixel_risks",
         "search_coverage",
         "exempted_findings",
         "source_gaps",
         "structural_checks",
+        "studies_with_several_patients",
     ]
-    assert document["format"] == "pymedphys-deid-release-report/31"
+    assert document["format"] == "pymedphys-deid-release-report/51"
     assert list(document["policy"]) == POLICY_FIELDS
     assert list(document["method"]) == METHOD_FIELDS
     assert list(document["runtime"]) == RUNTIME_FIELDS
     assert document["key"] == {"scope": "run", "key_id": None}
+    assert document["studies_with_several_patients"] == {
+        "handling": "stop",
+        "sequestered": 0,
+    }
 
 
 @pytest.mark.deid_requirement("MIDI-BP-18")
