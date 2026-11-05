@@ -270,8 +270,8 @@ so every part and cell of a job on one OS shares it, and a part that saved it
 without the data would leave the others re-downloading. Move a module between
 the corpus parts when the `--durations` reports show one taking much longer
 than the other. The corpus selection was split this way on 5 November 2026,
-when five more Structured Reports took the combined corpus part past 30
-minutes on Ubuntu.
+when more Structured Reports in the synthetic corpus took the combined
+corpus part past 30 minutes on Ubuntu.
 
 The run at the dependency floors runs in the same three parts. Each part
 retains the 30-minute job limit, two pytest workers and the 900-second
