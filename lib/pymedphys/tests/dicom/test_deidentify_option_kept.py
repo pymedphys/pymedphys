@@ -41,6 +41,7 @@ from pymedphys._dicom.deidentify.references import InstanceRecord
 from pymedphys._dicom.deidentify.release_gate import (
     Coverage,
     Decision,
+    ReasonCode,
     release_condition,
 )
 from pymedphys._dicom.deidentify.residual_exemptions import Exemption
@@ -204,14 +205,20 @@ def test_kept_text_holding_a_value_of_another_kind_goes_to_review(source):
 
 
 @pytest.mark.deid_requirement("MIDI-BP-01")
-def test_a_person_name_found_in_kept_text_still_withholds_the_file():
+def test_a_person_name_found_in_kept_text_goes_to_review_unexplained():
     written = _written(_element(STATION_NAME, "SH", "ZARQUON^ARTHUR"))
-    condition = _condition(
-        written, [DEVICE_IDENTITY], ("(0008,1070)", "PN", "ZARQUON^ARTHUR")
-    )
+    removed = ("(0008,1070)", "PN", "ZARQUON^ARTHUR")
 
-    assert condition.decision is Decision.WITHHOLD
+    condition = _condition(written, [DEVICE_IDENTITY], removed)
+
+    # A reviewer, who sees the value, decides; nothing explains it (D-042).
+    assert condition.decision is Decision.QC_REVIEW
+    assert [reason.code for reason in condition.reasons] == [
+        ReasonCode.RESIDUAL_PERSON_NAME_IN_KEPT_TEXT
+    ]
     assert not condition.exempted
+    # With no option to keep the Station Name, the name withholds the file.
+    assert _condition(written, [], removed).decision is Decision.WITHHOLD
 
 
 @pytest.mark.deid_requirement("MIDI-BP-01")

@@ -119,7 +119,8 @@ and codes that the engine defines, never by a source value or path:
   dose in a defaced series' face block to set to zero there, or one set to
   zero there anyway on a reviewer's choice whose grid as set to zero no
   reviewed QC pack has shown (D-051), or a release gate's
-  reason that requires QC review. A held
+  reason that requires QC review, such as a person name found in standard
+  text that a selected option keeps (D-042). A held
   instance has neither an output name nor a label.
 - ``roi_names``: the outcome of each ROI Name of the structure sets that
   descriptor cleaning cleaned, every name counted, and how many distinct
@@ -238,7 +239,7 @@ from .standard import ALL_OPTIONS, VRS
 from .walker import Sequestration, SequesterReason
 
 # The format of the report document. A change to its fields takes a new label.
-FORMAT = "pymedphys-deid-release-report/51"
+FORMAT = "pymedphys-deid-release-report/52"
 
 _DIGEST = re.compile(r"[0-9a-f]{64}")
 # A key's non-secret identifier, as DeidKey.key_id gives it.
