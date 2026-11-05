@@ -298,6 +298,27 @@ def kept_concepts(options: tuple[str, ...]) -> frozenset[tuple[str, str, str]]:
 
 
 @functools.cache
+def modified_concepts(options: tuple[str, ...]) -> frozenset[tuple[str, str, str]]:
+    """Return the keys of the rows of Table E.3.4-1 that Modified Dates cleans.
+
+    That is where Modified Dates is selected and gives the row C, and every
+    other selected option that gives it an action gives K or C, since C
+    then applies (D-047). The Modified Dates cleaner settles each such
+    value by its value attribute's temporal role, as it does an attribute
+    (D-006, D-039), so a time of day that moves by whole weeks is kept as
+    received, as Study Time (0008,0030) is.
+    """
+    if MODIFIED_DATES not in options:
+        return frozenset()
+    return frozenset(
+        concept.key
+        for concept in structured_content.load_table_e3_4_1().concepts
+        if concept.options.get(MODIFIED_DATES) == "C"
+        and {concept.options[o] for o in options if o in concept.options} <= {"K", "C"}
+    )
+
+
+@functools.cache
 def _content_item_sequences() -> frozenset[str]:
     """The sequences to which Clean Structured Content gives C."""
     return frozenset(
@@ -481,7 +502,9 @@ class CorpusRun:
 
         Its row must be kept (:meth:`kept_rows`), or, for the value of a
         content item, the row of Table E.3.4-1 of its concept name
-        (:func:`kept_concepts`), and so must every sequence of Table E.1-1
+        (:func:`kept_concepts`), or that row must be one that Modified Dates
+        cleans (:func:`modified_concepts`) with its value attribute's row
+        kept, and so must every sequence of Table E.1-1
         that holds it, since a sequence's other actions remove, empty,
         replace, or clean what it holds; but a sequence whose content items
         the run cleans and keeps (:attr:`kept_content`) keeps what its
@@ -492,7 +515,12 @@ class CorpusRun:
         kept = self.kept_rows()
         passed = kept | self.kept_content
         if placement.concept is not None:
-            own = placement.concept in kept_concepts(self.selected)
+            # A value that Modified Dates cleans is kept where the run keeps
+            # its value attribute's row, as a time of day is.
+            own = placement.concept in kept_concepts(self.selected) or (
+                placement.concept in modified_concepts(self.selected)
+                and placement.path.tag in kept
+            )
         else:
             own = placement.profile_tag in kept
         tags = [tag for tag, _ in placement.path.items]
