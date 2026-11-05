@@ -23,16 +23,15 @@ Record IODs, of the Spatial Registration and Deformable Spatial
 Registration IODs, of the Segmentation IOD, of both Segmentation Storage
 and Label Map Segmentation Storage, of the X-Ray Radiation Dose SR and
 Radiopharmaceutical Radiation Dose SR IODs, of the Basic Text SR, Enhanced
-SR, Comprehensive SR, Comprehensive 3D SR, and Extensible SR IODs, of the Key
-Object Selection Document, and of the Mammography CAD SR, Chest CAD SR,
+SR, Comprehensive SR, Comprehensive 3D SR, and Extensible SR IODs, of the
+Key Object Selection Document, and of the Mammography CAD SR, Chest CAD SR,
 Colon CAD SR, Procedure Log, Spectacle Prescription Report, Macular Grid
 Thickness and Volume Report, and Waveform Annotation SR IODs, uncompressed
-or in a
-transfer syntax that encapsulates Pixel Data that pydicom's decoding
-plugins decode. Supporting an IOD or a transfer syntax does not release
-every instance in it: a compressed instance is still sequestered where the
-plugin pinned to its transfer syntax is not installed, or where its frames
-or codestreams fail the engine's checks
+or in a transfer syntax that encapsulates Pixel Data that pydicom's
+decoding plugins decode. Supporting an IOD or a transfer syntax does not
+release every instance in it: a compressed instance is still sequestered
+where the plugin pinned to its transfer syntax is not installed, or where
+its frames or codestreams fail the engine's checks
 (:mod:`~pymedphys._dicom.deidentify.instance_transform`), and the element
 rules still sequester some, such as every Enhanced PET Image instance that
 conforms to its IOD, under ``basic`` and ``basic-clean-descriptors``, and

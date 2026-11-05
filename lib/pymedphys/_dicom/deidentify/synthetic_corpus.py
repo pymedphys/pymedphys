@@ -20,8 +20,9 @@ fictitious patient and study, with one Frame of Reference: three CT Image
 slices, an RT Structure Set that references the CT series and slices, an RT
 Plan that references the structure set and the dose, an RT Dose that
 references the plan, a second RT Dose of the plan for review (below), and
-one instance of each of thirty-three other IODs, and two of the Segmentation
-IOD, one of each of its SOP Classes, each in a series of its own.
+one instance of each of thirty-three other IODs, and two of the
+Segmentation IOD, one of each of its SOP Classes, each in a series of its
+own.
 The MR Image and PET Image instances reference the first CT slice, and each
 enhanced, legacy converted enhanced, or MR Spectroscopy instance references
 the single-frame instance of its modality: the first CT slice, the MR
@@ -42,16 +43,16 @@ RT Brachy Treatment Record. The RT Image, a digitally reconstructed radiograph o
 references the RT Plan. The X-Ray Radiation Dose SR references the first CT
 slice, the Radiopharmaceutical Radiation Dose SR the PET Image, and the
 Basic Text SR, Enhanced SR, Comprehensive SR, Comprehensive 3D SR, and
-Extensible SR the MR Image. The Key Object Selection Document selects the
+Extensible SR the MR Image. The Segmentations, a BINARY one of
+Segmentation Storage and a LABELMAP one of Label Map Segmentation Storage,
+reference the CT series and its first slice, and each segments the planes
+of the first two slices. The Key Object Selection Document selects the
 MR Image; the Mammography CAD SR and Chest CAD SR name the RT Image, the
 collection's one projection radiograph, as the image that their CAD read,
 and the Colon CAD SR the CT series; and the Procedure Log, Spectacle
 Prescription Report, Macular Grid Thickness and Volume Report, and Waveform
-Annotation SR reference the MR Image. The Segmentations, a BINARY one of
-Segmentation Storage and a LABELMAP one of Label Map Segmentation Storage,
-reference the CT series and its first slice, and each segments the planes
-of the first two slices. It is the input for validating each preset end
-to end: once the engine has
+Annotation SR reference the MR Image. It is the input for validating each
+preset end to end: once the engine has
 written the collection, the residual search
 (:mod:`~pymedphys._dicom.deidentify.residuals`) should find none of the
 markers that had to be removed or replaced.
@@ -1309,14 +1310,13 @@ def build_corpus() -> SyntheticCorpus:
         Deformable Spatial Registration; the RT Beams Treatment Record; the
         RT Image; the X-Ray Radiation Dose SR and Radiopharmaceutical
         Radiation Dose SR; the Basic Text SR, Enhanced SR, Comprehensive SR,
-        Comprehensive 3D SR, and Extensible SR; the Key Object Selection
-        Document, Mammography CAD SR, Chest CAD SR, Colon CAD SR, Procedure
-        Log, Spectacle Prescription Report, Macular Grid Thickness and
-        Volume Report, and Waveform Annotation SR; the Segmentation and label map
-        Segmentation; the RT Ion Plan and RT Ion
-        Beams Treatment Record; and the RT Brachy Treatment Record and RT
-        Treatment Summary Record. Two builds give the same bytes and the
-        same manifest.
+        Comprehensive 3D SR, and Extensible SR; the Segmentation and label
+        map Segmentation; the Key Object Selection Document, Mammography CAD
+        SR, Chest CAD SR, Colon CAD SR, Procedure Log, Spectacle
+        Prescription Report, Macular Grid Thickness and Volume Report, and
+        Waveform Annotation SR; the RT Ion Plan and RT Ion Beams Treatment
+        Record; and the RT Brachy Treatment Record and RT Treatment Summary
+        Record. Two builds give the same bytes and the same manifest.
     """
     markers = _Markers()
     files: list[CorpusFile] = []
