@@ -38,6 +38,7 @@ from .._corpus_run import (
     with_a_second_roi,
 )
 from .all_composable_options import ACQUISITION_CONTEXT
+from .clean_structured_content import RUN as STRUCTURED_CONTENT_RUN
 from .clean_structured_content import with_acquisition_context_items
 from .retain_longitudinal_full_dates import INCONSISTENT
 from .retain_longitudinal_modified_dates import RUN as MODIFIED_DATES
@@ -57,7 +58,7 @@ RUN = CorpusRun(
     kept=MODIFIED_DATES.kept,
     roi_names=(MAPPED_NAME, VOCABULARY_NAME),
     kept_content=frozenset({ACQUISITION_CONTEXT, CONTENT_SEQUENCE}),
-    # Without Retain UIDs, Referenced Study Sequence is removed, so only
-    # Accession Number of REPORT_ENTITIES differs for the reports.
-    inconsistent=INCONSISTENT | frozenset({"(0008,0050)"}),
+    # Released reports have the same inherent consistency differences as
+    # Clean Structured Content alone, alongside Modified Dates' differences.
+    inconsistent=INCONSISTENT | STRUCTURED_CONTENT_RUN.inconsistent,
 )
