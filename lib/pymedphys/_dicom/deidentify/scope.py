@@ -21,12 +21,13 @@ Dose, RT Image, RT Beams Treatment Record, RT Ion Plan, RT Ion Beams
 Treatment Record, RT Brachy Treatment Record, and RT Treatment Summary
 Record IODs, of the Spatial Registration and Deformable Spatial
 Registration IODs, of the Segmentation IOD, of both Segmentation Storage
-and Label Map Segmentation Storage, of the X-Ray Radiation Dose SR and
-Radiopharmaceutical Radiation Dose SR IODs, of the Basic Text SR, Enhanced
-SR, Comprehensive SR, Comprehensive 3D SR, and Extensible SR IODs, of the
-Key Object Selection Document, and of the Mammography CAD SR, Chest CAD SR,
-Colon CAD SR, Procedure Log, Spectacle Prescription Report, Macular Grid
-Thickness and Volume Report, and Waveform Annotation SR IODs, uncompressed
+and Label Map Segmentation Storage, of the X-Ray Radiation Dose SR, Enhanced
+X-Ray Radiation Dose SR, Radiopharmaceutical Radiation Dose SR, and Patient
+Radiation Dose SR IODs, of the Basic Text SR, Enhanced SR, Comprehensive SR,
+Comprehensive 3D SR, and Extensible SR IODs, of the Key Object Selection
+Document, and of the Mammography CAD SR, Chest CAD SR, Colon CAD SR,
+Procedure Log, Spectacle Prescription Report, Macular Grid Thickness and
+Volume Report, and Waveform Annotation SR IODs, uncompressed
 or in a transfer syntax that encapsulates Pixel Data that pydicom's
 decoding plugins decode. Supporting an IOD or a transfer syntax does not
 release every instance in it: a compressed instance is still sequestered

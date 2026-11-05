@@ -197,7 +197,8 @@ def test_padding_is_ignored():
 @pytest.mark.parametrize(
     "sop_class, iod",
     [
-        # Other Structured Reports and Presentation States remain outside scope.
+        # The other Structured Reports and Presentation States, which the
+        # design always sequesters.
         ("1.2.840.10008.5.1.4.1.1.88.72", "Simplified Adult Echo SR"),
         ("1.2.840.10008.5.1.4.1.1.88.71", "Acquisition Context SR"),
         ("1.2.840.10008.5.1.4.1.1.11.1", "Grayscale Softcopy Presentation State"),

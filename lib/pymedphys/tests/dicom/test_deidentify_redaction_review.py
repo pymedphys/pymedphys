@@ -801,10 +801,11 @@ def test_the_statement_gives_the_code_only_after_review():
         "Record, RT Treatment Summary Record, MR Spectroscopy, Spatial Registration, "
         "Deformable Spatial Registration, X-Ray Radiation Dose SR, Enhanced X-Ray "
         "Radiation Dose SR, Radiopharmaceutical Radiation Dose SR, Patient Radiation "
-        "Dose SR, Basic Text SR, Enhanced SR, Comprehensive SR, Comprehensive 3D SR, "
-        "Extensible SR, Key Object Selection Document, Mammography CAD SR, Chest CAD "
-        "SR, Colon CAD SR, Procedure Log, Spectacle Prescription Report, Macular Grid"
-        " Thickness and Volume Report, and Waveform Annotation SR."
+        "Dose SR, Basic Text SR, Enhanced SR, Comprehensive SR, "
+        "Comprehensive 3D SR, Extensible SR, Key Object Selection Document, "
+        "Mammography CAD SR, Chest CAD SR, Colon CAD SR, Procedure Log, Spectacle "
+        "Prescription Report, Macular Grid Thickness and Volume Report, and Waveform "
+        "Annotation SR."
     ) in text
     assert (
         "claims Clean Pixel Data only for an instance without top-level pixel "
