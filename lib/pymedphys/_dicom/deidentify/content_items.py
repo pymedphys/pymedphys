@@ -162,6 +162,8 @@ import re
 import types
 from collections.abc import Collection, Iterator, Mapping
 
+from pymedphys._imports import pydicom
+
 from .codes import RETIRED_SNOMED_DESIGNATORS, snomed_ct_code
 from .dummy_values import CONSTANTS, comparison_key
 from .elements import UndecodableElement, dataset_codecs, read_element
@@ -481,12 +483,19 @@ class _Reader:
     """Read the structure and codes of content items against the source.
 
     Each data set is reached once, through the sequences that hold it, as the
-    edits read values (:mod:`.edits`).
+    edits read values (:mod:`.edits`), and each sequence is decoded once:
+    reaching every item of a sequence by decoding the whole sequence again
+    for each would take time that grows with the square of a tree's size.
+    The reader reads only data sets that it read from the source itself,
+    which nothing else holds or changes, so a sequence that it decoded
+    stays as the source has it for the reader's lifetime.
     """
 
     def __init__(self, source: SourceEvidence) -> None:
         self._source = source
         self._holders: dict[tuple, tuple] = {}
+        # The items of each sequence decoded so far, by the sequence's path.
+        self._sequences: dict[ElementPath, tuple[pydicom.Dataset, ...]] = {}
 
     def __contains__(self, path: object) -> bool:
         return path in self._source
@@ -514,9 +523,11 @@ class _Reader:
                 dataset, ancestors, inherited = self._holder(items[:-1])
                 tag, index = items[-1]
                 path = ElementPath(items[:-1], tag)
-                item = read_element(
-                    dataset, path, inherited, ancestors, source=self._source
-                ).items[index]
+                if path not in self._sequences:
+                    self._sequences[path] = read_element(
+                        dataset, path, inherited, ancestors, source=self._source
+                    ).items
+                item = self._sequences[path][index]
                 self._holders[items] = (
                     item,
                     (dataset, *ancestors),

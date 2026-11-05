@@ -31,6 +31,7 @@ and ``basic-clean-descriptors``, so that the policy that Clean Descriptors
 falls back to, another preset's, selects it too.
 """
 
+import collections
 import copy
 import io
 import types
@@ -821,6 +822,35 @@ def test_a_step_of_100_phases_is_sequestered(with_option, name, preset):
     # phase without one, in a released report whose phases' order only the
     # ordinals give (TID 11007 is Order Non-Significant).
     assert isinstance(result, run.Sequestered), result
+
+
+def test_reading_a_content_tree_decodes_each_sequence_once(monkeypatch):
+    # Decoding the step's Content Sequence again for each of its phases
+    # would take time that grows with the square of the tree's size; the
+    # 99-phase reports above took minutes to read that way.
+    read_element = content_items.read_element
+    reads = collections.Counter()
+    decoded = collections.Counter()
+    widths = {}
+
+    def counted(dataset, path, *args, **kwargs):
+        element = read_element(dataset, path, *args, **kwargs)
+        reads[path] += 1
+        if element.items:
+            decoded[path] += 1
+            widths[path] = len(element.items)
+        return element
+
+    monkeypatch.setattr(content_items, "read_element", counted)
+    dataset, iod = _with_phases(PLANNED, 20)
+
+    _planned(dataset, iod, policy.compose_custom_policy((CSC,)))
+
+    # The step's Content Sequence, which holds the 20 phases, was read.
+    assert max(widths.values()) >= 20
+    assert set(decoded.values()) == {1}
+    # Each element is read at most twice, so the reads grow with the tree.
+    assert max(reads.values()) <= 2
 
 
 def test_another_text_item_of_digits_takes_its_own_rule(with_option):
