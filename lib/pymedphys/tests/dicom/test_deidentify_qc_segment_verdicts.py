@@ -159,8 +159,11 @@ def test_the_reader_counts_a_segments_sheet_s_frames_for_its_segmentation_alone(
         ],
         "not_previewed": [],
     }
-    files_of = face_review._series_files(json.dumps(document).encode("ascii"))
+    files_of, by_position = face_review._series_files(
+        json.dumps(document).encode("ascii")
+    )
     ((segmentation,), (guide,)) = files_of[0], files_of[1]
+    assert by_position == {0: segmentation, 1: guide}
     # The sheet showed two of the Segmentation's frames, and the volume
     # that it was drawn with only as a surface, so not as its own.
     assert segmentation[4:7] == (3, None, 2)
