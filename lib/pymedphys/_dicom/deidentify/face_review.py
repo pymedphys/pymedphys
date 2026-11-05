@@ -26,8 +26,10 @@ given that pack (:func:`read_face_review`). The pack also records the
 SHA-256 of the pixel data of each file that the first run wrote
 (:func:`pixel_data_sha256`), only where previews that could show a face
 draw every frame of them, which for an RT Dose (:func:`is_rt_dose`) only
-dose-levels previews do, and for a Segmentation only its segments sheet, and
-the second run holds pixel data of more frames than they listed;
+dose-levels previews do, and for a Segmentation (:func:`is_segmentation`)
+only its segments sheet, and the second run holds pixel data of more frames
+than they listed, counting for an RT Dose only its dose-levels previews' and
+for a Segmentation only its segments sheet's;
 of the contours of each RT Structure Set that it wrote
 (:func:`contour_data_sha256`), only where its contour sheet shows them;
 and of the deformation grids of each deformable registration that it wrote
@@ -80,6 +82,7 @@ from .qc_pack import (
     QcPackError,
     pictured_frames,
 )
+from .pixel_risk import SEGMENTATION_SOP_CLASSES
 from .qc_surfaces import RT_DOSE_STORAGE
 from .reasons import DoseChoice, VisualFeaturesReason
 from .uids import normalise_uid
@@ -171,6 +174,14 @@ class FaceReview:
         gives it, the choice, and whether the reviewed run wrote it set to
         zero, so that its previews showed it so. Each digest once; none by
         default.
+    absent_segment_frames : frozenset of (bytes, bytes, int), optional
+        Like ``absent_dose_frames``, how many frames its segments sheet
+        showed, which alone shows a Segmentation (:func:`is_segmentation`)
+        as it could show a face, since its cine strip and projection show a
+        segment as windowed values rather than as the surface that it
+        traces, so bound a Segmentation's. :func:`read_face_review` always
+        gives it; None, the default, releases no Segmentation with pixel
+        data.
     """
 
     reference: str
@@ -183,6 +194,7 @@ class FaceReview:
     absent_grids: frozenset[tuple[bytes, bytes]] = frozenset()
     confirmed_blocks: frozenset[bytes] = frozenset()
     dose_choices: frozenset[tuple[bytes, DoseChoice, bool]] = frozenset()
+    absent_segment_frames: frozenset[tuple[bytes, bytes, int]] | None = None
 
     def __post_init__(self) -> None:
         if not isinstance(self.reference, str) or not re.fullmatch(
@@ -206,7 +218,11 @@ class FaceReview:
                     "a face review's pixel data, contours, and grids are "
                     "SHA-256 digests of files marked absent"
                 )
-        for counts in (self.absent_frames, self.absent_dose_frames):
+        for counts in (
+            self.absent_frames,
+            self.absent_dose_frames,
+            self.absent_segment_frames,
+        ):
             if counts is not None and (
                 not isinstance(counts, frozenset)
                 or not all(
@@ -266,6 +282,7 @@ class FaceReview:
         frames: int | None = None,
         dose: bool = False,
         grids: bytes | None = NO_GRIDS,
+        segmentation: bool = False,
     ) -> VisualFeaturesReason | None:
         """Return why an instance cannot claim the option.
 
@@ -293,6 +310,13 @@ class FaceReview:
             The :func:`grid_data_sha256` of the deformation grids that the
             run writes of it, or None where that cannot be found; by
             default, that of none, which needs no preview.
+        segmentation : bool, optional
+            Whether the instance is a Segmentation (:func:`is_segmentation`),
+            whose pixel data other than none are held unless its segments
+            sheet showed at least ``frames`` of their frames, and so always
+            where ``absent_segment_frames`` is not given. An instance that
+            is both an RT Dose and a Segmentation, by one's SOP Class UID
+            and the other's Modality, is held unless both showed them.
 
         Returns
         -------
@@ -311,17 +335,26 @@ class FaceReview:
         if (digest, pixels) not in self.absent_pixels:
             return VisualFeaturesReason.OTHER_PIXEL_DATA
         # Pixel data with more frames than the pack showed were not all
-        # seen, and only dose levels show an RT Dose.
-        counts = self.absent_dose_frames if dose else self.absent_frames
-        if (
-            (dose or counts is not None)
-            and pixels != _NO_PIXELS
-            and not any(
+        # seen, only dose levels show an RT Dose, and only a segments sheet
+        # a Segmentation; one that is both needs both.
+        bounds = [
+            counts
+            for counts, needed in (
+                (self.absent_dose_frames, dose),
+                (self.absent_segment_frames, segmentation),
+            )
+            if needed
+        ]
+        if not bounds and self.absent_frames is not None:
+            bounds = [self.absent_frames]
+        if pixels != _NO_PIXELS and not all(
+            any(
                 (source, written) == (digest, pixels)
                 and frames is not None
                 and 1 <= frames <= shown
                 for source, written, shown in counts or ()
             )
+            for counts in bounds
         ):
             return VisualFeaturesReason.OTHER_PIXEL_DATA
         if (digest, contours) not in self.absent_contours:
@@ -427,12 +460,12 @@ def read_face_review(pack_directory: os.PathLike | str) -> FaceReview:
         ),
         frozenset(
             (source, pixels, shown)
-            for source, pixels, _, _, shown, _, _ in absent
+            for source, pixels, _, _, shown, _, _, _ in absent
             if pixels is not None and shown is not None
         ),
         frozenset(
             (source, pixels, shown)
-            for source, pixels, _, _, _, shown, _ in absent
+            for source, pixels, _, _, _, shown, _, _ in absent
             if pixels is not None and shown is not None
         ),
         frozenset((source, grids) for source, *_, grids in absent if grids is not None),
@@ -441,6 +474,11 @@ def read_face_review(pack_directory: os.PathLike | str) -> FaceReview:
             for first in attestation.confirmed_blocks
         ),
         dose_choices=_dose_choices(doses, choices),
+        absent_segment_frames=frozenset(
+            (source, pixels, shown)
+            for source, pixels, _, _, _, _, shown, _ in absent
+            if pixels is not None and shown is not None
+        ),
     )
 
 
@@ -476,11 +514,18 @@ def _dose_choices(
 # held it beside a CT series that it defaced, as received, or the pack could
 # not show its contours or its deformation grids; how many frames of pixel
 # data other than none its previews showed, from the first, where it has
-# their digest, and how many its dose-levels previews showed, where they
-# show any so; and the SHA-256 of the deformation grids written of it, if
-# any.
+# their digest, how many its dose-levels previews showed, and how many its
+# segments sheet showed, where each shows any so; and the SHA-256 of the
+# deformation grids written of it, if any.
 _File = tuple[
-    bytes, bytes | None, bytes | None, bool, int | None, int | None, bytes | None
+    bytes,
+    bytes | None,
+    bytes | None,
+    bool,
+    int | None,
+    int | None,
+    int | None,
+    bytes | None,
 ]
 # Those holds' reasons as the QC pack words them, which run_qc.reason_text
 # gives.
@@ -506,7 +551,7 @@ def _series_files(
     series = document.get("series")
     if not isinstance(instances, list) or not isinstance(series, list):
         raise malformed
-    shown, unshown, pictured, dosed = _previews(document)
+    shown, unshown, pictured, dosed, segmented = _previews(document)
     gridded = _gridded(document)
     digests: dict[int, _File] = {}
     for instance in instances:
@@ -535,12 +580,13 @@ def _series_files(
             if grids not in (None, NO_GRIDS_SHA256) and position not in gridded:
                 raise malformed
             # Likewise, pixel data's binds it only to the frames previewed.
-            frames = dose_frames = None
+            frames = dose_frames = segment_frames = None
             if pixels not in (None, NO_PIXELS_SHA256):
                 if position not in pictured:
                     raise malformed
                 frames = pictured[position]
                 dose_frames = dosed.get(position)
+                segment_frames = segmented.get(position)
             digests[position] = (
                 bytes.fromhex(digest),
                 None if pixels is None else bytes.fromhex(pixels),
@@ -550,6 +596,7 @@ def _series_files(
                 or position in unshown,
                 frames,
                 dose_frames,
+                segment_frames,
                 None if grids is None else bytes.fromhex(grids),
             )
     files: dict[int, frozenset[_File]] = {}
@@ -565,11 +612,11 @@ def _series_files(
 
 def _previews(
     document: dict,
-) -> tuple[set[int], set[int], dict[int, int], dict[int, int]]:
+) -> tuple[set[int], set[int], dict[int, int], dict[int, int], dict[int, int]]:
     """The run positions whose contours a pack's contour sheet shows, those
     whose contours or deformation grids it lists as not shown, and how many
-    frames of each other position its other previews, and its dose-levels
-    previews, show in a way that could show a face, as
+    frames of each other position its other previews, its dose-levels
+    previews, and its segments sheets show in a way that could show a face, as
     :func:`~.qc_pack.pictured_frames` counts them."""
     malformed = QcPackError("the QC pack is not of its format")
     previews, missing = document.get("previews"), document.get("not_previewed")
@@ -606,7 +653,10 @@ def _previews(
     refused = {entry.get("position") for entry in missing}
     pictured = pictured_frames(framed, refused)
     dosed = pictured_frames(framed, refused, {PreviewKind.SERIES_DOSE_LEVELS.value})
-    return shown, unshown, pictured, dosed
+    segmented = pictured_frames(
+        framed, refused, {PreviewKind.SEGMENTATION_SEGMENTS.value}
+    )
+    return shown, unshown, pictured, dosed, segmented
 
 
 # The reasons for which a pack lists a file whose contours or deformation
@@ -829,11 +879,27 @@ def is_rt_dose(dataset: pydicom.Dataset) -> bool:
     dose-levels previews show as it could show a face (D-017).
 
     Its SOP Class UID being RT Dose Storage, or its Modality possibly being
-    RTDOSE (:func:`_dose_modality`), makes it one, so that a file of either
+    RTDOSE (:func:`_modality_may_be`), makes it one, so that a file of either
     alone is never counted as shown, nor released under the option. A SOP
     Class UID that cannot be read leaves the Modality to decide.
     """
-    return _sop_class(dataset) == RT_DOSE_STORAGE or _dose_modality(dataset)
+    return _sop_class(dataset) == RT_DOSE_STORAGE or _modality_may_be(dataset, "rtdose")
+
+
+def is_segmentation(dataset: pydicom.Dataset) -> bool:
+    """Whether an instance is a Segmentation, which only a QC pack's
+    segments sheet shows as it could show a face (D-017).
+
+    Its SOP Class UID being Segmentation Storage or Label Map Segmentation
+    Storage, as Table B.5-1 of PS3.4 names them, or its Modality possibly
+    being SEG (:func:`_modality_may_be`), makes it one, so that a file of
+    either alone is never released under the option on a verdict given
+    through other previews. A SOP Class UID that cannot be read leaves the
+    Modality to decide.
+    """
+    return normalise_uid(_sop_class(dataset)) in SEGMENTATION_SOP_CLASSES or (
+        _modality_may_be(dataset, "seg")
+    )
 
 
 def _sop_class(dataset: pydicom.Dataset) -> str:
@@ -845,16 +911,16 @@ def _sop_class(dataset: pydicom.Dataset) -> str:
         return ""
 
 
-def _dose_modality(dataset: pydicom.Dataset) -> bool:
-    """Whether the Modality may be RTDOSE.
+def _modality_may_be(dataset: pydicom.Dataset, modality: str) -> bool:
+    """Whether the Modality may be ``modality``, given in lower case.
 
     It may where it cannot be read, is not text, holds more than one value,
     holds a character outside printable ASCII once its padding is gone, such
     as a control character, a letter outside ASCII, or a fullwidth form, or
-    is RTDOSE in any case, since text that may be RTDOSE in another spelling
-    cannot rule it out, as :mod:`~pymedphys._dicom.deidentify.face_blocks`
-    compares Patient IDs. A missing or empty Modality says nothing about
-    dose, so it is not.
+    is ``modality`` in any case, since text that may be it in another
+    spelling cannot rule it out, as
+    :mod:`~pymedphys._dicom.deidentify.face_blocks` compares Patient IDs. A
+    missing or empty Modality says nothing, so it is not.
     """
     try:
         value = dataset.get("Modality")
@@ -867,12 +933,12 @@ def _dose_modality(dataset: pydicom.Dataset) -> bool:
         if not isinstance(value, str):
             return True
         text = value.rstrip(" \0").lstrip(" ")
-    # Whatever reading the value raises, it may be RTDOSE.
+    # Whatever reading the value raises, it may be the modality.
     except Exception:  # pylint: disable = broad-exception-caught
         return True
     if not (text.isascii() and text.isprintable()) or "\\" in text:
         return True
-    return text.casefold() == "rtdose"
+    return text.casefold() == modality
 
 
 def carries_visual_features(dataset: pydicom.Dataset, iod: str) -> bool:

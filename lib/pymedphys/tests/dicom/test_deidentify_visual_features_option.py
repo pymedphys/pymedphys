@@ -49,6 +49,7 @@ from pymedphys._dicom.deidentify import (
 from pymedphys._dicom.deidentify import synthetic_corpus as corpus_module
 from pymedphys._dicom.deidentify.dose_defacing import RT_DOSE
 from pymedphys._dicom.deidentify.face_blocks import FaceBlockCounts, SeriesProblem
+from pymedphys._dicom.deidentify.segmentation_defacing import SEGMENTATION
 from pymedphys._dicom.deidentify.face_review import (
     DOSE_IN_FACE_BLOCK_TEXT,
     UNDEFACED_TEXT,
@@ -1227,7 +1228,7 @@ def test_a_held_reason_is_a_visual_features_reason():
 def test_a_verdict_releases_compressed_pixel_data_as_the_reviewed_run_wrote_them():
     corpus = compressed.compressed_corpus(corpus_module.build_corpus())
     held = HeldVisualFeatures(VisualFeaturesReason.OTHER_PIXEL_DATA)
-    released = cut = doses = 0
+    released = cut = doses = segmentations = 0
 
     for file in corpus.files:
         if file.manifest.transfer_syntax not in compressed.CORPUS_SYNTAXES:
@@ -1245,7 +1246,8 @@ def test_a_verdict_releases_compressed_pixel_data_as_the_reviewed_run_wrote_them
         # Marked absent, but with no pixel data seen, it is held; given the
         # pixel data that this run wrote, with each codestream's metadata
         # cut, it is released; an RT Dose only where its dose levels showed
-        # every frame, as a review built by hand says only where asked.
+        # every frame, and a Segmentation only where its segments sheet did,
+        # as a review built by hand says only where asked.
         assert isinstance(unseen.evidence, HeldEvidence)
         assert held in getattr(unseen.evidence, "held")
         dataset = read_source(unseen.data).dataset()
@@ -1267,13 +1269,23 @@ def test_a_verdict_releases_compressed_pixel_data_as_the_reviewed_run_wrote_them
             )
             seen = _seen(file.data, record, review)
             doses += 1
+        if record.iod == SEGMENTATION:
+            assert isinstance(seen.evidence, HeldEvidence), file.name
+            assert getattr(seen.evidence, "held") == (held,), file.name
+            frames = int(dataset.NumberOfFrames)
+            review = dataclasses.replace(
+                review, absent_segment_frames=frozenset({(source, written, frames)})
+            )
+            seen = _seen(file.data, record, review)
+            segmentations += 1
         assert not isinstance(seen.evidence, HeldEvidence), file.name
         assert CODE in _codes(pydicom.dcmread(io.BytesIO(seen.data)))
         released += 1
         cut += written != pixel_data_sha256(read_source(file.data).dataset())
     assert released and cut
-    # The collection's RT Dose images, in RLE Lossless, are among them.
-    assert doses == 2
+    # The collection's RT Dose images, in RLE Lossless, are among them, and
+    # its label map Segmentation.
+    assert doses == 2 and segmentations == 1
 
 
 def _seen(data, record, review):
