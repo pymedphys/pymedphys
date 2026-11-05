@@ -21,8 +21,9 @@ Dose, RT Image, RT Beams Treatment Record, RT Ion Plan, RT Ion Beams
 Treatment Record, RT Brachy Treatment Record, and RT Treatment Summary
 Record IODs, of the Spatial Registration and Deformable Spatial
 Registration IODs, of the Segmentation IOD, of both Segmentation Storage
-and Label Map Segmentation Storage, of the X-Ray Radiation Dose SR and
-Radiopharmaceutical Radiation Dose SR IODs, of the Basic Text SR, Enhanced
+and Label Map Segmentation Storage, of the X-Ray Radiation Dose SR,
+Enhanced X-Ray Radiation Dose SR, Radiopharmaceutical Radiation Dose SR,
+and Patient Radiation Dose SR IODs, of the Basic Text SR, Enhanced
 SR, Comprehensive SR, Comprehensive 3D SR, and Extensible SR IODs, of the
 Key Object Selection Document, and of the Mammography CAD SR, Chest CAD SR,
 Colon CAD SR, Procedure Log, Spectacle Prescription Report, Macular Grid
@@ -45,9 +46,9 @@ Retain Longitudinal Temporal Information option, since its Timezone Module
 requires Timezone Offset From UTC (0008,0201), which the Basic Profile
 removes.
 Every other instance is sequestered: neither de-identified nor written, and
-listed in the run report by opaque identifiers only. That includes the
-other Structured Reports, Presentation States, and instances of Private SOP
-Classes, which the design always sequesters.
+listed in the run report by opaque identifiers only. That includes
+Presentation States and instances of Private SOP Classes, which the design
+always sequesters.
 
 :func:`classify` decides from the instance's SOP Class UID (0008,0016), which
 PS3.4 Table B.5-1 maps to its IOD, and from the transfer syntax of its file.
@@ -95,7 +96,9 @@ SUPPORTED_IODS = frozenset(
         "Spatial Registration",
         "Deformable Spatial Registration",
         "X-Ray Radiation Dose SR",
+        "Enhanced X-Ray Radiation Dose SR",
         "Radiopharmaceutical Radiation Dose SR",
+        "Patient Radiation Dose SR",
         "Basic Text SR",
         "Enhanced SR",
         "Comprehensive SR",

@@ -35,7 +35,9 @@ CONDITIONAL = {"Segmentation"}
 # A.35).
 WITHOUT = {
     "X-Ray Radiation Dose SR",
+    "Enhanced X-Ray Radiation Dose SR",
     "Radiopharmaceutical Radiation Dose SR",
+    "Patient Radiation Dose SR",
     "Basic Text SR",
     "Enhanced SR",
     "Comprehensive SR",
