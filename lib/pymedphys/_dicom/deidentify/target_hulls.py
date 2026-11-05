@@ -53,9 +53,18 @@ Every point of a hull that lies in the block must lie within the slices,
 since a part of the face kept beyond them would be released without any
 preview of the series showing it (:func:`beyond_slices`): along the slices'
 normal, within :attr:`KeptTargets.depth` of the first or last slice, and
-within the squares of every slice's pixels, as linear programmes over the
-hull and the block find it. A run holds a series for review where a hull
-reaches beyond them.
+within the squares of the pixels of every slice that may be nearest one of
+its points (:class:`SliceExtent`), as linear programmes over the hull and
+the block find it. Along the patient's axes, those squares are every
+slice's; in a stack turned by a gantry tilt and stepped along the table,
+or sheared, each slice's pixels are offset within the plane from the
+last's, so the squares of the slices far from the target, which may share
+little of the plane with those beside it, do not decide. A run holds a
+series for review where a hull reaches beyond them.
+
+Nothing here needs the slices to lie along the patient's axes: a pixel's
+box, the slices' reach, and their extent are each placed by the slices'
+own direction cosines and positions.
 """
 
 from __future__ import annotations
@@ -430,90 +439,217 @@ class SliceRange:
     high: float
 
 
-def slice_ranges(
-    slices: Sequence[tuple[Sequence[float], Sequence[float]]],
-    spacing: Sequence[float],
-    shape: tuple[int, int],
-    depth: float,
-) -> tuple[SliceRange, ...]:
-    """Return the extent of a stack's slices: along their normal, from the
-    first to the last, ``depth`` beyond each; and along each of their rows
-    and columns, within the squares of every slice's pixels.
+@dataclasses.dataclass(frozen=True, repr=False, eq=False)
+class SliceExtent:
+    """Where a stack's slices show the patient: along their normal, from the
+    first slice to the last, :attr:`depth` beyond each; and within each
+    slice, the squares of its pixels.
 
-    Parameters
+    The slices share one orientation, rows, columns, and spacing, but each
+    is placed by its own position, so a stack turned by a gantry tilt and
+    stepped along the table, or sheared, has each slice's pixels offset
+    within the plane from the last's. So the squares that show a point are
+    those of the slice nearest it (:meth:`within`), not those of every
+    slice.
+
+    Its ``repr`` shows only the number of slices.
+
+    Attributes
     ----------
-    slices : sequence of tuple
-        Each slice's Image Position (Patient) and Image Orientation
-        (Patient); the first's orientation gives the directions.
-    spacing : sequence of float
-        Their Pixel Spacing, between rows then between columns.
-    shape : tuple of int
-        Their rows and columns.
+    normal : tuple of float
+        The slices' unit normal.
+    heights : numpy.ndarray
+        Each slice's position along the normal, in millimetres, ascending.
+    directions : tuple of tuple of float
+        The unit vectors along a row, then down a column.
+    starts : numpy.ndarray
+        Of each slice, in the order of :attr:`heights`, the dot product of
+        its first pixel's centre with each of :attr:`directions`.
+    pixels : tuple of float
+        The side of a pixel's square along each of :attr:`directions`.
+    counts : tuple of int
+        The pixels along each of :attr:`directions`: columns, then rows.
     depth : float
         As :attr:`KeptTargets.depth`.
     """
-    orientation = np.asarray(slices[0][1], dtype=float)
-    along_row, down_column = orientation[:3], orientation[3:]
-    normal = np.cross(along_row, down_column)
-    ranges = []
-    # Along a row, the columns lie a column's spacing apart, and down a
-    # column, the rows a row's.
-    for vector, step, count in (
-        (along_row, float(spacing[1]), shape[1]),
-        (down_column, float(spacing[0]), shape[0]),
-    ):
-        length = float(np.linalg.norm(vector))
-        direction = vector / length
-        starts = [float(np.dot(position, direction)) for position, _ in slices]
-        pixel = step * length
-        ranges.append(
-            SliceRange(
-                (float(direction[0]), float(direction[1]), float(direction[2])),
-                max(starts) - pixel / 2,
-                min(starts) + (count - 1) * pixel + pixel / 2,
+
+    normal: tuple[float, float, float]
+    heights: np.ndarray
+    directions: tuple[tuple[float, float, float], tuple[float, float, float]]
+    starts: np.ndarray
+    pixels: tuple[float, float]
+    counts: tuple[int, int]
+    depth: float
+
+    def __repr__(self) -> str:
+        return f"SliceExtent(slices={len(self.heights)})"
+
+    @classmethod
+    def of(
+        cls,
+        slices: Sequence[tuple[Sequence[float], Sequence[float]]],
+        spacing: Sequence[float],
+        shape: tuple[int, int],
+        depth: float,
+    ) -> SliceExtent:
+        """Return the extent of a stack's slices.
+
+        Parameters
+        ----------
+        slices : sequence of tuple
+            Each slice's Image Position (Patient) and Image Orientation
+            (Patient); the first's orientation gives the directions.
+        spacing : sequence of float
+            Their Pixel Spacing, between rows then between columns.
+        shape : tuple of int
+            Their rows and columns.
+        depth : float
+            As :attr:`KeptTargets.depth`.
+        """
+        orientation = np.asarray(slices[0][1], dtype=float)
+        along_row, down_column = orientation[:3], orientation[3:]
+        normal = np.cross(along_row, down_column)
+        normal = normal / np.linalg.norm(normal)
+        positions = np.asarray([position for position, _ in slices], dtype=float)
+        heights = positions @ normal
+        order = np.argsort(heights, kind="stable")
+        directions = []
+        pixels = []
+        # Along a row, the columns lie a column's spacing apart, and down a
+        # column, the rows a row's.
+        for vector, step in (
+            (along_row, float(spacing[1])),
+            (down_column, float(spacing[0])),
+        ):
+            length = float(np.linalg.norm(vector))
+            directions.append(vector / length)
+            pixels.append(step * length)
+        starts = positions[order] @ np.array(directions).T
+        return cls(
+            _point(normal),
+            heights[order],
+            (_point(directions[0]), _point(directions[1])),
+            starts,
+            (pixels[0], pixels[1]),
+            (int(shape[1]), int(shape[0])),
+            float(depth),
+        )
+
+    def along_normal(self) -> SliceRange:
+        """The slices' extent along their normal: from the first to the
+        last, :attr:`depth` beyond each."""
+        return SliceRange(
+            self.normal,
+            float(self.heights[0]) - self.depth,
+            float(self.heights[-1]) + self.depth,
+        )
+
+    def within(self, low: float, high: float) -> tuple[SliceRange, SliceRange]:
+        """The extent along a row, then down a column, of the squares of the
+        pixels of every slice that may be nearest a point from ``low`` to
+        ``high`` along the normal, half a pixel beyond the centres of the
+        pixels at their edges.
+
+        Those slices are each from ``low`` to ``high``, and the nearest
+        beyond each end, since a slice farther beyond is never the nearer
+        of the two. So a point between ``low`` and ``high`` that lies within
+        the extent lies within the squares of the pixels of its nearest
+        slice, whichever it is. Along the patient's axes, every slice's
+        pixels lie at the same place within the plane, and the extent is
+        that of every slice.
+        """
+        first = int(np.searchsorted(self.heights, low, side="left"))
+        last = int(np.searchsorted(self.heights, high, side="right"))
+        starts = self.starts[max(first - 1, 0) : min(last + 1, len(self.heights))]
+        found = []
+        for axis, (pixel, count) in enumerate(zip(self.pixels, self.counts)):
+            found.append(
+                SliceRange(
+                    self.directions[axis],
+                    float(starts[:, axis].max()) - pixel / 2,
+                    float(starts[:, axis].min()) + (count - 1) * pixel + pixel / 2,
+                )
             )
-        )
-    direction = normal / np.linalg.norm(normal)
-    heights = [float(np.dot(position, direction)) for position, _ in slices]
-    ranges.append(
-        SliceRange(
-            (float(direction[0]), float(direction[1]), float(direction[2])),
-            min(heights) - depth,
-            max(heights) + depth,
-        )
-    )
-    return tuple(ranges)
+        return found[0], found[1]
 
 
-def beyond_slices(
-    hull: TargetHull, block: FaceBlock, ranges: Iterable[SliceRange]
-) -> bool:
+class _Untold(Exception):
+    """A linear programme that ends other than optimal or infeasible."""
+
+
+def beyond_slices(hull: TargetHull, block: FaceBlock, extent: SliceExtent) -> bool:
     """Whether a hull's part in the block may reach beyond the slices, or
     whether that cannot be told.
 
     The part is the hull's half-spaces with the block's, closed, and its
-    greatest and least extent along each range's direction are found as
-    linear programmes. A hull that does not meet the block reaches nowhere
-    in it.
+    least and greatest extent along each direction are found as linear
+    programmes: along the slices' normal, which must lie within
+    :meth:`SliceExtent.along_normal`, then along a row and down a column,
+    which must lie within :meth:`SliceExtent.within` for the part's own
+    extent along the normal, so that every point of it lies within the
+    squares of the pixels of its nearest slice. A hull that does not meet
+    the block reaches nowhere in it.
     """
     anterior = np.asarray(block.anterior, dtype=float)
     origin = np.asarray(block.origin, dtype=float)
-    bounds_matrix = np.vstack([hull.normals, -anterior, (0.0, 0.0, -1.0)])
+    matrix = np.vstack([hull.normals, -anterior, (0.0, 0.0, -1.0)])
     bounds = np.concatenate(
         [hull.offsets, (-float(origin @ anterior), -float(block.inferior_limit))]
     )
-    for each in ranges:
-        direction = np.asarray(each.direction, dtype=float)
-        for sign, limit in ((1.0, each.high), (-1.0, -each.low)):
-            result = scipy.optimize.linprog(
-                -sign * direction,
-                A_ub=bounds_matrix,
-                b_ub=bounds,
-                bounds=(None, None),
-                method="highs",
-            )
-            if result.status == 2:
+    try:
+        normal = extent.along_normal()
+        along = _reach(matrix, bounds, normal.direction)
+        if along is None:
+            return False
+        if _outside(along, normal):
+            return True
+        for each in extent.within(along[0] - _MARGIN, along[1] + _MARGIN):
+            found = _reach(matrix, bounds, each.direction)
+            if found is None:
                 return False
-            if result.status != 0 or not -result.fun <= limit + _MARGIN:
+            if _outside(found, each):
                 return True
+    except _Untold:
+        return True
     return False
+
+
+def _reach(
+    matrix: np.ndarray, bounds: np.ndarray, direction: Sequence[float]
+) -> tuple[float, float] | None:
+    """The least and greatest dot product with ``direction`` of a point
+    where ``matrix`` times it is at most ``bounds``, or None where there is
+    no such point.
+
+    Raises
+    ------
+    _Untold
+        Where a linear programme ends otherwise, as an unbounded one would.
+    """
+    found = []
+    vector = np.asarray(direction, dtype=float)
+    for sign in (1.0, -1.0):
+        result = scipy.optimize.linprog(
+            sign * vector,
+            A_ub=matrix,
+            b_ub=bounds,
+            bounds=(None, None),
+            method="highs",
+        )
+        if result.status == 2:
+            return None
+        if result.status != 0 or not math.isfinite(result.fun):
+            raise _Untold()
+        found.append(sign * float(result.fun))
+    return found[0], found[1]
+
+
+def _outside(found: tuple[float, float], extent: SliceRange) -> bool:
+    """Whether a least and greatest extent reach beyond a range, or are
+    not numbers."""
+    low, high = found
+    return not (low >= extent.low - _MARGIN and high <= extent.high + _MARGIN)
+
+
+def _point(values: Sequence[float]) -> tuple[float, float, float]:
+    return (float(values[0]), float(values[1]), float(values[2]))

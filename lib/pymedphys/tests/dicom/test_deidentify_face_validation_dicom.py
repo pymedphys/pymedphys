@@ -43,6 +43,7 @@ from pymedphys._dicom.deidentify.face_validation_dicom import (
     side_of,
 )
 from pymedphys._dicom.deidentify.face_validation_dicom_markdown import markdown
+from pymedphys._dicom.deidentify.target_hulls import SliceExtent
 
 from . import _synthetic_compressed as compressed_files
 from . import _synthetic_head as head
@@ -961,8 +962,16 @@ def test_a_target_in_a_slab_is_reported_by_its_full_span(keyword, value, behind,
     (contour,) = rtss.ROIContourSequence[0].ContourSequence
     setattr(contour, keyword, value)
     block = FaceBlock((0.0, 0.0, 0.0), (0.0, -1.0, 0.0), 0.0, ((0, 0, 0), (0, 0, 0)))
+    # Axial slices a metre across and a metre apart, so that no span of the
+    # target reaches beyond them.
+    extent = SliceExtent.of(
+        [((-500.0, -500.0, z), (1, 0, 0, 0, 1, 0)) for z in (-500.0, 500.0)],
+        (1.0, 1.0),
+        (1001, 1001),
+        0.0,
+    )
     fates = face_blocks._TargetFates(  # pylint: disable = protected-access
-        block, block, (), 0.0
+        block, block, extent, 0.0
     )
 
     # These axial spans change only z, so a valid span keeps the same 4 mm
