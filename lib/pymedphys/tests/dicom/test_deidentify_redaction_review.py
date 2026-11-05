@@ -803,8 +803,8 @@ def test_the_statement_gives_the_code_only_after_review():
         "Radiation Dose SR, Radiopharmaceutical Radiation Dose SR, Patient Radiation "
         "Dose SR, Basic Text SR, Enhanced SR, Comprehensive SR, Comprehensive 3D SR, "
         "Extensible SR, Key Object Selection Document, Mammography CAD SR, Chest CAD "
-        "SR, Colon CAD SR, Procedure Log, Spectacle Prescription Report, Macular Grid"
-        " Thickness and Volume Report, Waveform Annotation SR, Implantation Plan SR "
+        "SR, Colon CAD SR, Procedure Log, Spectacle Prescription Report, Macular Grid "
+        "Thickness and Volume Report, Waveform Annotation SR, Implantation Plan SR "
         "Document, Simplified Adult Echo SR, Planned Imaging Agent Administration SR, "
         "Performed Imaging Agent Administration SR, and Acquisition Context SR."
     ) in text

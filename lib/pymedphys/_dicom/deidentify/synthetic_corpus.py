@@ -19,11 +19,10 @@ linked collection of the first supported release's IODs, all of one
 fictitious patient and study, with one Frame of Reference: three CT Image
 slices, an RT Structure Set that references the CT series and slices, an RT
 Plan that references the structure set and the dose, an RT Dose that
-references the plan, a second RT Dose of the plan for review (below), and
-one instance of each of thirty-nine other IODs, two of the X-Ray Radiation
-Dose SR IOD, of a projection radiograph and of a CT scan, and two of the
-Segmentation IOD, one of each of its SOP Classes, each in a series of its
-own.
+references the plan, a second RT Dose of the plan for review (below), one
+instance of each of forty other IODs, and two of the Segmentation IOD, one
+of each of its SOP Classes, each in a series of its own, and a second X-Ray
+Radiation Dose SR, of a CT scan.
 The MR Image and PET Image instances reference the first CT slice, and each
 enhanced, legacy converted enhanced, or MR Spectroscopy instance references
 the single-frame instance of its modality: the first CT slice, the MR
@@ -41,25 +40,24 @@ brachytherapy application setups as well as beams, and names the RT Beams
 Treatment Record as a related record, and the RT Treatment Summary Record
 references the RT Plan and, as a treatment record that it summarises, the
 RT Brachy Treatment Record. The RT Image, a digitally reconstructed radiograph of 2 by 2 pixels,
-references the RT Plan. The additional CT and Enhanced X-Ray dose reports
-reference the first CT slice, and the Patient Radiation Dose SR references
-the CT dose report. The X-Ray Radiation Dose SR references the first CT
-slice, the Radiopharmaceutical Radiation Dose SR the PET Image, and the
-Basic Text SR, Enhanced SR, Comprehensive SR, Comprehensive 3D SR, and
-Extensible SR the MR Image. The Segmentations, a BINARY one of
-Segmentation Storage and a LABELMAP one of Label Map Segmentation Storage,
-reference the CT series and its first slice, and each segments the planes
-of the first two slices. The Key Object Selection Document selects the
-MR Image; the Mammography CAD SR and Chest CAD SR name the RT Image, the
-collection's one projection radiograph, as the image that their CAD read,
-and the Colon CAD SR the CT series; and the Procedure Log, Spectacle
-Prescription Report, Macular Grid Thickness and Volume Report, and Waveform
-Annotation SR reference the MR Image. The Implantation Plan SR Document and
-the Planned and Performed Imaging Agent Administration SRs reference the
-first CT slice, and the Performed Imaging Agent Administration SR's tree the
-plan that it followed, while the Simplified Adult Echo SR and Acquisition
-Context SR reference the MR Image. It is the input for validating each
-preset end to end: once the engine has
+references the RT Plan. The X-Ray Radiation Dose SRs and the Enhanced X-Ray
+Radiation Dose SR reference the first CT slice, the Radiopharmaceutical
+Radiation Dose SR the PET Image, the Patient Radiation Dose SR the CT dose
+report, which its estimate used, and the Basic Text SR, Enhanced SR,
+Comprehensive SR, Comprehensive 3D SR, and Extensible SR the MR Image. The
+Segmentations, a BINARY one of Segmentation Storage and a LABELMAP one of
+Label Map Segmentation Storage, reference the CT series and its first
+slice, and each segments the planes of the first two slices. The Key Object
+Selection Document selects the MR Image; the Mammography CAD SR and Chest
+CAD SR name the RT Image, the collection's one projection radiograph, as
+the image that their CAD read, and the Colon CAD SR the CT series; and the
+Procedure Log, Spectacle Prescription Report, Macular Grid Thickness and
+Volume Report, and Waveform Annotation SR reference the MR Image. The
+Implantation Plan SR Document and the Planned and Performed Imaging Agent
+Administration SRs reference the first CT slice, and the Performed Imaging
+Agent Administration SR's tree the plan that it followed, while the
+Simplified Adult Echo SR and Acquisition Context SR reference the MR Image.
+It is the input for validating each preset end to end: once the engine has
 written the collection, the residual search
 (:mod:`~pymedphys._dicom.deidentify.residuals`) should find none of the
 markers that had to be removed or replaced.
@@ -93,12 +91,15 @@ defines below the Concept Name Code Sequence. The places that the IOD
 defines below the Content Sequence are not recorded, since the tree's
 items, which need not be numbered 0, decide what each holds. The value of each content item that can
 identify a person, a device, or a time, of Value Type UIDREF, DATE, TIME,
-DATETIME, PNAME, or TEXT, holds a marker of its VR, but the UIDs that name the
-collection's study, series, or Frame of Reference, such as the X-ray
-report's Study Instance UID of its scope of accumulation and the colon CAD
-report's image set and CT series, which are recorded as linked; an IMAGE or COMPOSITE
-item references the instance that the report's header references. Each
-placement records its item's concept name
+DATETIME, PNAME, or TEXT, holds a marker of its VR, but the UIDs that name
+the collection's study, series, or Frame of Reference, such as the X-ray
+reports' Study Instance UID of their scope of accumulation and the colon
+CAD report's image set and CT series, which are recorded as linked, and the
+fixed text of an algorithm's name or a patient orientation, which is not
+recorded; an IMAGE item references the instance that the report's header
+references, and the patient dose report's COMPOSITE item names the CT dose
+report, each recorded as linked at its Referenced SOP Instance UID
+(0008,1155). Each placement records its item's concept name
 (:attr:`Placement.concept`), whose row of PS3.15 Table E.3.4-1 gives its
 action under Clean Structured Content, and its path through the items of
 the tree. The Basic Profile gives the Content Sequence D, which a sequence
@@ -186,7 +187,8 @@ every file, the first two would sequester every
 instance, and no preset could release any of the collection; planted in one,
 that instance checks sequestration, :data:`REVIEW_FILE` checks review, and
 the other forty-eight check each preset's output, the reports where their
-trees are cleaned. Radiopharmaceutical Start DateTime, which CT Image does not define there, is planted in no file, so
+trees are cleaned. Radiopharmaceutical Start
+DateTime, which CT Image does not define there, is planted in no file, so
 the Enhanced PET instance, which lacks an attribute of Type 1, is released
 and its other markers are checked; an Enhanced PET Image instance that
 conforms to the IOD is sequestered under ``basic`` and
@@ -387,11 +389,12 @@ LINKED_UID_ROOT = "2.25.88888"
 SEQUESTERED_FILE = "03-ct-3.dcm"
 # The file that keeps a copy of another file's marker, for review.
 REVIEW_FILE = "07-rtdose-review.dcm"
-# The Structured Reports and Key Object Selection Document, whose Content Sequence holds a content tree, which
-# the Basic Profile's D sequesters, as a sequence has no dummy value: the
-# radiation dose reports, and the general reports. The X-Ray Radiation Dose
-# SR IOD has two, of a projection radiograph and of a CT scan, which the
-# Patient Radiation Dose SR's estimate used.
+# The Structured Reports and the Key Object Selection Document, whose Content
+# Sequence holds a content tree, which the Basic Profile's D sequesters, as a
+# sequence has no dummy value: the radiation dose reports, the general
+# reports, and the documents of the IODs that each name their root template.
+# The X-Ray Radiation Dose SR IOD has two, of a projection radiograph and of
+# a CT scan, which the Patient Radiation Dose SR's estimate used.
 CT_DOSE_REPORT_FILE = "31-sr-dose-ct.dcm"
 DOSE_REPORT_FILES = (
     "22-sr-dose-x-ray.dcm",
@@ -579,9 +582,8 @@ _CONTOUR_IMAGE_SEQUENCE = "(3006,0016)"
 _CONTENT_SEQUENCE = "(0040,A730)"
 # The frame of reference of a SCOORD3D content item's coordinates.
 _REFERENCED_FRAME_OF_REFERENCE = "(3006,0024)"
-# The instance that an IMAGE content item references.
+# The instance that an IMAGE content item references or a COMPOSITE one names.
 _REFERENCED_SOP = "(0008,1199)"
-_REFERENCED_SOP_INSTANCE = "(0008,1155)"
 # The sequences of a Structured Report's root content item, its Concept Name
 # Code Sequence and Content Sequence, which its template builds.
 _CONTENT_TREE_ROOT = frozenset({"(0040,A043)", _CONTENT_SEQUENCE})
@@ -610,8 +612,6 @@ _CONTENT_ITEM_VALUES = types.MappingProxyType(
 # The collection's own UIDs that a content tree's UIDREF items can name, and
 # that are then recorded as linked.
 _COLLECTION_UIDS = frozenset({STUDY, FRAME_OF_REFERENCE, CT_SERIES})
-# The instance named by a COMPOSITE content item.
-_REFERENCED_SOP_SEQUENCE = "(0008,1199)"
 # The sequences whose D a reviewed rule writes (D-021), Institution Code
 # Sequence's only where reviewed_within says.
 _REVIEWED_DUMMY_SEQUENCES = frozenset(
@@ -1480,15 +1480,16 @@ def build_corpus() -> SyntheticCorpus:
         RT Image; the X-Ray Radiation Dose SR and Radiopharmaceutical
         Radiation Dose SR; the Basic Text SR, Enhanced SR, Comprehensive SR,
         Comprehensive 3D SR, and Extensible SR; the Enhanced X-Ray Radiation
-        Dose SR, Patient Radiation Dose SR, and CT Radiation Dose report; the Segmentation and label
-        map Segmentation; the Key Object Selection Document, Mammography CAD
-        SR, Chest CAD SR, Colon CAD SR, Procedure Log, Spectacle
-        Prescription Report, Macular Grid Thickness and Volume Report, and
-        Waveform Annotation SR; the Implantation Plan SR Document, Simplified
-        Adult Echo SR, Planned and Performed Imaging Agent Administration SRs,
-        and Acquisition Context SR; the RT Ion Plan and RT Ion Beams Treatment
-        Record; and the RT Brachy Treatment Record and RT Treatment Summary
-        Record. Two builds give the same bytes and the same manifest.
+        Dose SR, the Patient Radiation Dose SR, and a second X-Ray Radiation
+        Dose SR, of a CT scan; the Segmentation and label map Segmentation; the
+        Key Object Selection Document, Mammography CAD SR, Chest CAD SR, Colon
+        CAD SR, Procedure Log, Spectacle Prescription Report, Macular Grid
+        Thickness and Volume Report, and Waveform Annotation SR; the
+        Implantation Plan SR Document, Simplified Adult Echo SR, Planned and
+        Performed Imaging Agent Administration SRs, and Acquisition Context SR;
+        the RT Ion Plan and RT Ion Beams Treatment Record; and the RT Brachy
+        Treatment Record and RT Treatment Summary Record. Two builds give the
+        same bytes and the same manifest.
     """
     markers = _Markers()
     files: list[CorpusFile] = []
@@ -2222,20 +2223,22 @@ class _Instance:
         """Add the attributes that make the instance a Structured Report.
 
         The content tree's identifying values, of its UIDREF, DATE, TIME,
-        DATETIME, PNAME, and TEXT items, are markers, but the UIDs that name the
-        collection's study, series, or Frame of Reference, such as the study
-        that an X-ray report's scope of accumulation names, which are the
-        collection's; each is recorded with its item's concept name. A
-        measurement report's volumetric region is in the collection's Frame
-        of Reference, recorded as linked, and an IMAGE item references the
-        instance that the report's header references, as a COMPOSITE item
-        references an implant template or the plan that a performed
-        administration followed. A report is VERIFIED, so its Verifying
-        Observer Sequence, whose markers are planted as any attribute's, is
-        one that its IOD requires; a Key Object Selection Document has no
-        Verification Flag. A Procedure Log and a Performed Imaging Agent
-        Administration SR have the Synchronization Module that their IODs
-        require.
+        DATETIME, PNAME, and TEXT items, are markers, but the UIDs that name
+        the collection's study, series, or Frame of Reference, such as the
+        study that an X-ray report's scope of accumulation names, which are the
+        collection's, and the fixed text of an algorithm's name or a patient
+        orientation, which is not recorded; each marker is recorded with its
+        item's concept name. A measurement report's volumetric region is in the
+        collection's Frame of Reference, an IMAGE item references the instance
+        that the report's header references, and the report that a patient dose
+        estimate used is the collection's CT dose report, each recorded as
+        linked, as a COMPOSITE item references an implant template or the plan
+        that a performed administration followed. A report is VERIFIED, so its
+        Verifying Observer Sequence, whose markers are planted as any
+        attribute's, is one that its IOD requires; a Key Object Selection
+        Document has no Verification Flag. A Procedure Log and a Performed
+        Imaging Agent Administration SR have the Synchronization Module that
+        their IODs require.
         """
         put = self._set
         template = self.spec.template or ROOT_TEMPLATES[self.spec.sop_class]
@@ -2251,9 +2254,13 @@ class _Instance:
         content_template = _items(["(0040,A504)"])  # Content Template Sequence
         put(content_template, "(0008,0105)", ["DCMR"])  # Mapping Resource
         put(content_template, "(0040,DB00)", [template])
+        # The text values that are markers; any other text is fixed.
+        planted_text: set[str] = set()
 
         def values(value_type: str) -> str:
             _, (text,) = self.markers.values(_CONTENT_ITEM_VRS[value_type], 1)
+            if value_type == "TEXT":
+                planted_text.add(text)
             return text
 
         target = self.spec.default_target
@@ -2293,32 +2300,25 @@ class _Instance:
         root = trees[template]()
         for element in root:
             self.dataset.add(element)
-        self._record_content(root, ())
+        self._record_content(root, (), frozenset(planted_text))
 
     def _record_content(
-        self, item: pydicom.Dataset, items: tuple[tuple[str, int], ...]
+        self,
+        item: pydicom.Dataset,
+        items: tuple[tuple[str, int], ...],
+        planted_text: frozenset[str],
     ) -> None:
         """Record the identifying value of each content item below ``item``.
 
         The frame of reference of a SCOORD3D item, and the instance that an
-        IMAGE or COMPOSITE item references, are recorded too, as linked,
-        with no concept name, since each takes its own row of Table E.1-1.
+        IMAGE item references or a COMPOSITE item names, are recorded too, as
+        linked, with no concept name, since each takes its own row of Table
+        E.1-1. A TEXT item is recorded only if its value is one of
+        ``planted_text``, the markers; any other text is fixed.
         """
         for index, child in enumerate(item.get("ContentSequence", ())):
             within = (*items, (_CONTENT_SEQUENCE, index))
             value_type = child.get("ValueType")
-            if value_type == "COMPOSITE":
-                (referenced,) = child.ReferencedSOPSequence
-                self._record(
-                    ElementPath(
-                        (*within, (_REFERENCED_SOP_SEQUENCE, 0)),
-                        REFERENCED_SOP_INSTANCE_TAG,
-                    ),
-                    "UI",
-                    (str(referenced.ReferencedSOPInstanceUID),),
-                    PlacementKind.LINKED_UID,
-                    REFERENCED_SOP_INSTANCE_TAG,
-                )
             if value_type == "SCOORD3D":
                 self._record(
                     ElementPath(within, _REFERENCED_FRAME_OF_REFERENCE),
@@ -2331,17 +2331,17 @@ class _Instance:
                 (reference,) = child.ReferencedSOPSequence
                 self._record(
                     ElementPath(
-                        (*within, (_REFERENCED_SOP, 0)), _REFERENCED_SOP_INSTANCE
+                        (*within, (_REFERENCED_SOP, 0)), REFERENCED_SOP_INSTANCE_TAG
                     ),
                     "UI",
                     (str(reference.ReferencedSOPInstanceUID),),
                     PlacementKind.LINKED_UID,
-                    _REFERENCED_SOP_INSTANCE,
+                    REFERENCED_SOP_INSTANCE_TAG,
                 )
-            if value_type in _CONTENT_ITEM_VRS:
+            tag = _CONTENT_ITEM_VALUES.get(value_type)
+            value = "" if tag is None else str(child[_number(tag)].value)
+            if tag is not None and (value_type != "TEXT" or value in planted_text):
                 (code,) = child.ConceptNameCodeSequence
-                tag = _CONTENT_ITEM_VALUES[value_type]
-                value = str(child[_number(tag)].value)
                 self.placements.append(
                     Placement(
                         ElementPath(within, tag),
@@ -2360,7 +2360,7 @@ class _Instance:
                         ),
                     )
                 )
-            self._record_content(child, within)
+            self._record_content(child, within, planted_text)
 
     def _add_image(self, image: _Image) -> None:
         """Add the attributes that make the instance an MR, PET, or CT image."""

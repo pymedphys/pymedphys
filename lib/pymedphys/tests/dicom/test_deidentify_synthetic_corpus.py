@@ -82,14 +82,6 @@ REFERENCED_SOP_INSTANCE = "(0008,1155)"
 CONTENT_SEQUENCE = "(0040,A730)"
 # The kinds that leave a value that the residual search can find.
 MARKERS = frozenset({Kind.PLANTED, Kind.CONTENT})
-# The general SR IODs, whose reports' trees follow TID 2000 or TID 1500.
-GENERAL_SR_IODS = (
-    "Basic Text SR",
-    "Enhanced SR",
-    "Comprehensive SR",
-    "Comprehensive 3D SR",
-    "Extensible SR",
-)
 # The IODs that each name their root template, in the order of their files.
 TEMPLATE_IODS = (
     "Key Object Selection Document",
@@ -1263,37 +1255,51 @@ _CONTENT_CONCEPTS = {
     ),
     # A key object selection's and a chest CAD report's required rows, and a
     # spectacle prescription's, hold no identifying value.
-    "Key Object Selection Document": {},
-    "Mammography CAD SR": {
-        ("DCM", "111060", "DATE"): "DA",  # Study Date
-        ("DCM", "111061", "TIME"): "TM",  # Study Time
-    },
-    "Chest CAD SR": {},
-    "Colon CAD SR": {
-        ("DCM", "112227", "UIDREF"): "UI",  # Frame of Reference UID
-        ("DCM", "110180", "UIDREF"): "UI",  # Study Instance UID
-        ("DCM", "111060", "DATE"): "DA",  # Study Date
-        ("DCM", "111061", "TIME"): "TM",  # Study Time
-        ("DCM", "112002", "UIDREF"): "UI",  # Series Instance UID
-    },
-    **dict.fromkeys(
-        (
-            "Procedure Log",
-            "Macular Grid Thickness and Volume Report",
-            "Waveform Annotation SR",
-        ),
-        {("DCM", "121008", "PNAME"): "PN"},  # Person Observer Name
+    "34-sr-key-object-selection.dcm": ("2010", {}),
+    "35-sr-mammography-cad.dcm": (
+        "4000",
+        {
+            ("DCM", "111060", "DATE"): "DA",  # Study Date
+            ("DCM", "111061", "TIME"): "TM",  # Study Time
+        },
     ),
-    "Spectacle Prescription Report": {},
+    "36-sr-chest-cad.dcm": ("4100", {}),
+    "37-sr-colon-cad.dcm": (
+        "4120",
+        {
+            ("DCM", "112227", "UIDREF"): "UI",  # Frame of Reference UID
+            ("DCM", "110180", "UIDREF"): "UI",  # Study Instance UID
+            ("DCM", "111060", "DATE"): "DA",  # Study Date
+            ("DCM", "111061", "TIME"): "TM",  # Study Time
+            ("DCM", "112002", "UIDREF"): "UI",  # Series Instance UID
+        },
+    ),
+    **{
+        name: (template, {("DCM", "121008", "PNAME"): "PN"})  # Person Observer Name
+        for name, template in (
+            ("38-sr-procedure-log.dcm", "3001"),
+            ("40-sr-macular-grid.dcm", "2100"),
+            ("41-sr-waveform-annotation.dcm", "3750"),
+        )
+    },
+    "39-sr-spectacle-prescription.dcm": ("2020", {}),
     # The implantation plan's component has its own Frame of Reference UID.
-    "Implantation Plan SR Document": {
-        ("DCM", "121008", "PNAME"): "PN",  # Person Observer Name
-        ("DCM", "112227", "UIDREF"): "UI",  # Frame of Reference UID
-    },
-    **dict.fromkeys(
-        PROCEDURE_IODS[1:],
-        {("DCM", "121008", "PNAME"): "PN"},  # Person Observer Name
+    "42-sr-implantation-plan.dcm": (
+        "7000",
+        {
+            ("DCM", "121008", "PNAME"): "PN",  # Person Observer Name
+            ("DCM", "112227", "UIDREF"): "UI",  # Frame of Reference UID
+        },
     ),
+    **{
+        name: (template, {("DCM", "121008", "PNAME"): "PN"})  # Person Observer Name
+        for name, template in (
+            ("43-sr-echo.dcm", "5300"),
+            ("44-sr-imaging-agent-planned.dcm", "11001"),
+            ("45-sr-imaging-agent-performed.dcm", "11020"),
+            ("46-sr-acquisition-context.dcm", "8101"),
+        )
+    },
 }
 # The content items whose values are the collection's own UIDs, by IOD:
 # the study that the X-ray report's scope of accumulation names, and the
@@ -1363,6 +1369,7 @@ def test_each_report_records_the_identifying_values_of_its_content_tree(corpus):
 
 
 def test_no_marker_is_planted_in_a_reports_root_content_item_sequences(corpus):
+    instances = {file.manifest.sop_instance for file in corpus.files}
     for file in corpus.files:
         if file.name not in corpus_module.STRUCTURED_REPORT_FILES:
             assert all(
@@ -1378,16 +1385,19 @@ def test_no_marker_is_planted_in_a_reports_root_content_item_sequences(corpus):
             elif items and top == "(0040,A730)":
                 # Only the tree's own values are recorded below it, the
                 # frame of reference of a SCOORD3D item, the collection's,
-                # Each spatial, image, or COMPOSITE reference names its corpus target.
+                # and the instance that an IMAGE item references or a
+                # COMPOSITE item names, one of the collection's, such as its
+                # CT dose report, each of which takes its own row of Table
+                # E.1-1.
                 if placement.concept is None:
                     assert placement.kind is Kind.LINKED_UID, placement
-                    assert (placement.path.tag, placement.values) in (
-                        ("(3006,0024)", (corpus_module.FRAME_OF_REFERENCE,)),
-                        (REFERENCED_SOP_INSTANCE, (corpus_module.CT_DOSE_REPORT,)),
-                        (REFERENCED_SOP_INSTANCE, (corpus_module.CT_SLICES[0],)),
-                        (REFERENCED_SOP_INSTANCE, (corpus_module.RT_IMAGE,)),
-                        (REFERENCED_SOP_INSTANCE, (corpus_module.MR,)),
-                    ), placement
+                    if placement.path.tag == REFERENCED_SOP_INSTANCE:
+                        assert set(placement.values) <= instances, placement
+                    else:
+                        assert (placement.path.tag, placement.values) == (
+                            "(3006,0024)",
+                            (corpus_module.FRAME_OF_REFERENCE,),
+                        ), placement
             elif placement.concept is None:
                 assert placement.reason is Reason.CONTENT_TREE, placement
                 assert placement.values == ()
