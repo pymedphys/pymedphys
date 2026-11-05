@@ -147,6 +147,13 @@ item's Value Type (0040,A040) and the code of its Concept Name Code Sequence
   row 2 requires, which is kept where it is one or two digits; where it is
   three or more, the outermost Content Sequence takes its Basic Profile
   action instead, which sequesters the report (:data:`PHASE_IDENTIFIER`).
+  The Text Value of an Imaging Agent Identifier (130254, DCM) and of a
+  Referenced Imaging Agent Identifier (130255, DCM) takes D under every
+  option, writing a dummy value of its agent's rank in place of D's
+  constant, so that each activity still names its own agent; where an
+  identifier is not unique in its tree, or a reference names no kept
+  agent, the outermost Content Sequence takes its Basic Profile action
+  (:data:`AGENT_IDENTIFIER`, :attr:`ContentItemPlan.dummy_texts`).
 
 Waveform Annotation Sequence (0040,B020), which only IODs outside the first
 supported release define, takes its Basic Profile action, as any sequence
@@ -288,6 +295,25 @@ DUMMY_IN_PLACE_OF_REMOVAL = frozenset(
 PHASE_IDENTIFIER = ("DCM", "130203", "TEXT")
 _ORDINAL = re.compile(r"[0-9]{1,2}")
 _LONG_ORDINAL = re.compile(r"[0-9]{3,}")
+# An Imaging Agent Identifier, which TID 11002 row 2 requires to identify
+# its agent "uniquely, within the scope of the root container", and a
+# Referenced Imaging Agent Identifier, which TID 11003 row 2 requires to "be
+# a value of Row 2 in TID 11002", naming the agent that an administration
+# activity uses. Table E.3.4-1 lists neither, and Text Value's own rule
+# would give every one D-021's one constant, so that each activity of a
+# report with more than one agent would name every agent. So each takes D,
+# under every option, and D writes, in place of its constant, the dummy
+# value of its agent's rank among the tree's agents, in the order of the
+# tree, ``DEIDENTIFIED 1`` for the first, and each reference the value of
+# the agent it names (:meth:`_ContentTree.agent_dummies`). Where two agents
+# have the same identifier, or a reference names no agent that is kept, the
+# outermost Content Sequence takes its Basic Profile action, which
+# sequesters the report, since no dummy value would keep what it names.
+AGENT_IDENTIFIER = ("DCM", "130254", "TEXT")
+AGENT_REFERENCE = ("DCM", "130255", "TEXT")
+_AGENT_TEXTS = (AGENT_IDENTIFIER, AGENT_REFERENCE)
+# D-021's constant for Text Value, UT, with the agent's rank.
+AGENT_DUMMY = CONSTANTS["UT"][0] + " {}"
 # A Procedure Log's entries, the targets of "CONTAINS" from its root, each
 # include Observation DateTime (0040,A032) and are "strictly ordered by
 # monotonically increasing" values of it (PS3.3 Section A.35.7.3.1.2). Where
@@ -391,6 +417,14 @@ METHOD = (
     "keeps a value of one or two digits, which gives the phases' order; a "
     "value of three or more digits leaves the Content Sequence to take its "
     "Basic Profile action, and any other value takes its own rule. "
+    "The Text Value of an Imaging Agent Identifier (130254, DCM), which "
+    "TID 11002 requires to identify its agent uniquely in the report, and of "
+    "a Referenced Imaging Agent Identifier (130255, DCM), by which TID 11003 "
+    "names the agent of an administration activity, takes D under every "
+    "option, and D writes the dummy value of the agent's rank, so that each "
+    "activity names the same agent in the output; where two agents share an "
+    "identifier, or a reference names no agent that is kept, the Content "
+    "Sequence takes its Basic Profile action. "
     "A concept name "
     "coded by a retired SNOMED designator with a code that Table O-1 maps is "
     "looked up as that SNOMED CT code."
@@ -574,6 +608,11 @@ class _Sequences:
     reader: _Reader
     actions: Mapping[tuple[str, str, str], str]
     iod: IOD
+    # The concept and Text Value of each agent identifier and reference read,
+    # by its item (:data:`AGENT_IDENTIFIER`).
+    agents: dict[tuple, tuple[tuple[str, str, str], str]] = dataclasses.field(
+        default_factory=dict
+    )
 
     def outermost(self, path: ElementPath) -> _Outcome:
         """Return what is done with a kept sequence that no other one holds.
@@ -700,7 +739,22 @@ class _Sequences:
         key = (designator, value, value_type)
         if key == PHASE_IDENTIFIER:
             return self._phase_action(items)
+        if key in _AGENT_TEXTS:
+            return self._agent_action(items, key)
         return self.actions.get(key)
+
+    def _agent_action(self, items: tuple, key: tuple[str, str, str]) -> str:
+        """Return D for an agent identifier or reference, recording its value.
+
+        Its value, which links an activity to its agent, must be read as one
+        string; otherwise the item raises :class:`_Unkept`, which leaves the
+        outermost Content Sequence to take its Basic Profile action.
+        """
+        text = self.reader.text(ElementPath(items, TEXT_VALUE))
+        if text is None:
+            raise _Unkept
+        self.agents[items] = (key, text)
+        return DUMMY
 
     def _phase_action(self, items: tuple) -> str | None:
         """Return the action of a phase identifier's value, or None if unlisted.
@@ -735,6 +789,7 @@ class _Outcome:
     renumbered: Mapping[ElementPath, tuple[int, ...]] = dataclasses.field(
         default_factory=dict
     )
+    dummy_texts: Mapping[ElementPath, str] = dataclasses.field(default_factory=dict)
 
 
 @dataclasses.dataclass
@@ -836,7 +891,44 @@ class _ContentTree:
             removed,
             frozenset(emptied),
             types.MappingProxyType(self._renumbered(references, removed)),
+            types.MappingProxyType(self.agent_dummies()),
         )
+
+    def agent_dummies(self) -> dict[ElementPath, str]:
+        """Return the dummy value of each kept agent identifier and reference.
+
+        The agents are ranked in the order of the tree, from 1, and each
+        identifier takes ``DEIDENTIFIED`` and its agent's rank, and each
+        reference the value of the identifier it names, by its Text Value.
+        As D's second constant does, the series moves on by its own length
+        where any dummy value would equal any of these source values, as D
+        compares them, until none does, so that no source value is written.
+        Two kept identifiers with the same value, or a kept reference that
+        names none, raise :class:`_Unkept` (:data:`AGENT_IDENTIFIER`).
+        """
+        kept = sorted(
+            (items, entry)
+            for items, entry in self._sequences.agents.items()
+            if items in self._nodes and not self._gone(items)
+        )
+        names = [text for _, (key, text) in kept if key == AGENT_IDENTIFIER]
+        if len(set(names)) != len(names):
+            raise _Unkept
+        if any(key == AGENT_REFERENCE and text not in names for _, (key, text) in kept):
+            raise _Unkept
+        sources = {comparison_key("UT", text) for _, (_, text) in kept}
+        start = 0
+        while True:
+            written = [
+                AGENT_DUMMY.format(start + rank) for rank in range(1, len(names) + 1)
+            ]
+            if sources.isdisjoint(comparison_key("UT", each) for each in written):
+                break
+            start += len(names)
+        ranks = dict(zip(names, written))
+        return {
+            ElementPath(items, TEXT_VALUE): ranks[text] for items, (_, text) in kept
+        }
 
     def _walk(self, sequence: ElementPath) -> tuple[Item, ...]:
         """Read the items of a Content Sequence, at any depth."""
@@ -1203,6 +1295,11 @@ class ContentItemPlan(Mapping[ElementPath, str]):
     renumbered : mapping of ElementPath to tuple of int
         The new values of each kept Referenced Content Item Identifier
         (0040,DB73) whose target an earlier removed item moves.
+    dummy_texts : mapping of ElementPath to str
+        The value that D writes, in place of its constant, in the Text Value
+        of each kept Imaging Agent Identifier and Referenced Imaging Agent
+        Identifier: the dummy value of its agent's rank
+        (:data:`AGENT_IDENTIFIER`).
     """
 
     actions: Mapping[ElementPath, str] = dataclasses.field(
@@ -1211,6 +1308,9 @@ class ContentItemPlan(Mapping[ElementPath, str]):
     removed_items: frozenset[Item] = frozenset()
     emptied: frozenset[ElementPath] = frozenset()
     renumbered: Mapping[ElementPath, tuple[int, ...]] = dataclasses.field(
+        default_factory=lambda: types.MappingProxyType({})
+    )
+    dummy_texts: Mapping[ElementPath, str] = dataclasses.field(
         default_factory=lambda: types.MappingProxyType({})
     )
 
@@ -1271,6 +1371,7 @@ def content_item_actions(
     removed: set[Item] = set()
     emptied: set[ElementPath] = set()
     renumbered: dict[ElementPath, tuple[int, ...]] = {}
+    dummy_texts: dict[ElementPath, str] = {}
     if candidates:
         sequences = _Sequences(_Reader(source), concept_actions(policy.options), iod)
         held = frozenset(candidates)
@@ -1291,9 +1392,11 @@ def content_item_actions(
             removed |= outcome.removed_items
             emptied |= outcome.emptied
             renumbered.update(outcome.renumbered)
+            dummy_texts.update(outcome.dummy_texts)
     return ContentItemPlan(
         types.MappingProxyType(found),
         frozenset(removed),
         frozenset(emptied),
         types.MappingProxyType(renumbered),
+        types.MappingProxyType(dummy_texts),
     )

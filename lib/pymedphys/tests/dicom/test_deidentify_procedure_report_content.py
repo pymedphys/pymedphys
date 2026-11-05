@@ -566,6 +566,9 @@ def _keepable(name, removed):
             "DateTime Started": "C",
             # Not listed, but an ordinal, which is kept.
             "Imaging Agent Administration Phase Identifier": "K",
+            # Not listed, but each takes D and its agent's ranked dummy, so
+            # that each activity names the same agent (D-022).
+            "Imaging Agent Identifier": "D",
         },
     ),
     (
@@ -602,8 +605,8 @@ def test_a_kept_tree_gives_each_listed_value_its_action(
 
     assert not plan.sequestrations
     assert _values_by_concept(dataset, actions) == values
-    # The other values, among them the imaging agent's identifier, its
-    # barcode, unit serial, and lot, the step's UID, and the animal's room,
+    # The other values, among them the imaging agent's barcode, unit
+    # serial, and lot, the step's UID, and the animal's room,
     # are not listed, so they take their own rules. A reference or a number
     # has no value attribute of its own: a reference kept under K or D keeps
     # its UIDs' own rules, and a number is kept.

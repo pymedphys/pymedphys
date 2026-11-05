@@ -1914,7 +1914,10 @@ class InstanceTransform:
             self._key,
             record.patient,
             record.series_numberings,
-            log_dummy_datetimes(source, self._policy, iod, content_items),
+            {
+                **log_dummy_datetimes(source, self._policy, iod, content_items),
+                **content_items.dummy_texts,
+            },
         )
         kept_uids = retained_uid_paths(plan.elements, self._retained_uids)
         evidence: Coverage | HeldEvidence = coverage_of(
@@ -1968,7 +1971,10 @@ class InstanceTransform:
                     self._key,
                     record.patient,
                     record.series_numberings,
-                    log_dummy_datetimes(source, fallback.policy, iod, actions),
+                    {
+                        **log_dummy_datetimes(source, fallback.policy, iod, actions),
+                        **actions.dummy_texts,
+                    },
                 )
 
             try:
