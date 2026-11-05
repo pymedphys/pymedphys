@@ -459,7 +459,8 @@ def along_patient_axes(
     millimetres, with no two at one position.
 
     A gantry-tilted, sheared, or oblique stack does not. :class:`FaceFinder`
-    samples it all the same; a run defaces only a stack that does
+    samples it all the same, and a run defaces it pixel by pixel, by each
+    pixel's centre within its slice's own plane
     (:mod:`~pymedphys._dicom.deidentify.face_blocks`).
 
     Parameters
