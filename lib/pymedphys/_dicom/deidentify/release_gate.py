@@ -46,16 +46,23 @@ of them. It is withheld (:attr:`~Decision.WITHHOLD`) when collection is
 incomplete for a person name (PN), UID (UI), date (DA), datetime (DT), or
 direct identifier (:func:`direct_identifiers`), or for a sequence, whose
 items' content is unknown; when the file's structure was not read to its
-end; and when the search finds a person name, UID, date, datetime, or
-direct identifier anywhere, or anything outside the data set, which
+end; and when the search finds a person name, other than in kept text as
+below, or a UID, date, datetime, or direct identifier anywhere, or anything
+outside the data set, which
 includes Data Set Trailing Padding. Kinds are taken from the VR that the
 pinned dictionary gives the source attribute, whatever VR the value was
 collected under, and from the search only for an attribute to which the
 dictionary gives none. The file goes to QC review (:attr:`~Decision.QC_REVIEW`)
 when collection is incomplete for any other value, including a private
-value or one to which the dictionary gives no VR, or the search finds other
-text inside the data set, unless a kept standard term, code of a standard
-scheme, or equipment name, a vendor's private creator, a private creator
+value or one to which the dictionary gives no VR; when the search finds a
+person name inside the data set in an attribute that a selected option keeps
+and that the dictionary gives only VRs of text
+(:func:`~pymedphys._dicom.deidentify.option_kept.kept_text`), such as a
+physician's name that is also a word of the Institution Name that Retain
+Institution Identity keeps, whose reviewer tells an institution's or group's
+own name from a person's, and which nothing explains; or when the search
+finds other text inside the data set, unless a kept standard term, code of
+a standard scheme, or equipment name, a vendor's private creator, a private creator
 that the run's safe private list keeps, or a value that an option of the run
 keeps explains it
 (:func:`~pymedphys._dicom.deidentify.residual_exemptions.exemption`), or the
@@ -103,6 +110,7 @@ import functools
 import re
 
 from .file_layout import ElementPath, Location, Region
+from .option_kept import kept_text
 from .residual_exemptions import (
     Exemption,
     KeptValues,
@@ -178,6 +186,8 @@ class ReasonCode(enum.Enum):
     COLLECTED_AS_OTHER_VR = "collected-as-other-vr"  # not the dictionary's VR
     UNREADABLE_FILE = "unreadable-file"  # the structure was not read to its end
     RESIDUAL_PERSON_NAME = "residual-person-name"
+    # a person name found in standard text that a selected option keeps
+    RESIDUAL_PERSON_NAME_IN_KEPT_TEXT = "residual-person-name-in-kept-text"
     RESIDUAL_UID = "residual-uid"
     RESIDUAL_DATE = "residual-date"
     RESIDUAL_DATETIME = "residual-datetime"
@@ -672,7 +682,7 @@ def release_condition(
         ):
             exempted.append((each, Exemption.SHIFTED_DATE))
             continue
-        reason = _finding_reason(each, identifiers)
+        reason = _finding_reason(each, identifiers, coverage.options)
         if reason.code in _EXPLICABLE:
             kept = kept or KeptValues(written)
             if reason.code is ReasonCode.RESIDUAL_TEXT:
@@ -722,12 +732,21 @@ def _gap_decision(path: ElementPath, identifiers: frozenset[str]) -> Decision:
     return Decision.WITHHOLD if required else Decision.QC_REVIEW
 
 
-def _finding_reason(finding: Finding, identifiers: frozenset[str]) -> ReleaseReason:
+def _finding_reason(
+    finding: Finding, identifiers: frozenset[str], options: tuple[str, ...] = ()
+) -> ReleaseReason:
     """Give a finding its reason, by its kind, its source, then its place."""
     vrs = _vrs(finding.source.tag)
     kinds = [REQUIRED_KINDS[vr] for vr in vrs if vr in REQUIRED_KINDS]
     kind = (kinds or [ValueKind.TEXT])[0] if vrs else finding.kind
     code = _RESIDUAL_KINDS.get(kind)
+    if code is ReasonCode.RESIDUAL_PERSON_NAME and _in_kept_text(finding, options):
+        return ReleaseReason(
+            Decision.QC_REVIEW,
+            ReasonCode.RESIDUAL_PERSON_NAME_IN_KEPT_TEXT,
+            finding.source,
+            finding.location,
+        )
     if code is None and finding.source.tag in identifiers:
         code = ReasonCode.RESIDUAL_DIRECT_IDENTIFIER
     if code is None and finding.location.region is not Region.DATA_SET:
@@ -740,6 +759,23 @@ def _finding_reason(finding: Finding, identifiers: frozenset[str]) -> ReleaseRea
             finding.location,
         )
     return ReleaseReason(Decision.WITHHOLD, code, finding.source, finding.location)
+
+
+def _in_kept_text(finding: Finding, options: tuple[str, ...]) -> bool:
+    """Return whether a finding is in standard text that a selected option keeps.
+
+    The finding must be in an element of the data set, at any depth, of an
+    attribute that a selected option keeps and that the pinned dictionary
+    gives only VRs of text (:func:`~.option_kept.kept_text`), so never in a
+    value that the Basic Profile keeps, in a private element, in a UID, or
+    outside the data set.
+    """
+    element = finding.location.element
+    return (
+        finding.location.region is Region.DATA_SET
+        and element is not None
+        and kept_text(element.tag, options)
+    )
 
 
 def direct_identifiers(table: ProfileTable | None = None) -> frozenset[str]:

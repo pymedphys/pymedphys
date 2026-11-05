@@ -450,7 +450,7 @@ implementation = [
   "_dicom/deidentify/policy.py",
 ]
 note = '''
-The engine applies the Clean Structured Content Option to a custom option set; no preset selects it (D-047).
+The engine applies the Clean Structured Content Option to the `tps-import` and `public-release` presets and to a custom option set (D-047).
 Of the Structured Reports, the X-Ray, Enhanced X-Ray, Radiopharmaceutical, and Patient Radiation Dose SRs, Basic Text SR, Enhanced SR, Comprehensive SR, Comprehensive 3D SR, and Extensible SR are supported and the others sequestered (D-010); of the supported IODs, only those nine define Content Sequence, at their root, and none Waveform Annotation Sequence. Waveform Annotation Sequence takes its Basic Profile action; Content Sequence is cleaned wherever an IOD defines it, at any depth of its nested Content Sequences, with the root content item that holds it, and a report whose tree cannot be kept is sequestered, since the Basic Profile gives Content Sequence D and a sequence has no dummy value (D-021).
 Acquisition Context Sequence and Specimen Preparation Sequence are kept where the IOD defines them, and each content item is cleaned by its Value Type and concept name, as Table E.3.4-1 gives them, generated for the concept names that DICOM, SNOMED CT, and LOINC code, with each LOINC code's LOINC name in a reviewed file (D-001).
 A reviewed list gives the table's actions to the concepts that it omits where PS3.16's templates use them for a patient characteristic that Table E.1-1 removes, among them the patient's height, weight, and body surface area, which PS3.16 codes in LOINC, each removed, and kept under Retain Patient Characteristics where Table E.1-1 keeps the attribute that holds it, to a device's UDI as a CODE, removed, and kept under Retain Device Identity as Table E.1-1 keeps UDI Sequence (0018,100A), and to Subject ID as a CODE, which TID 1007 gives it and the table lists only as TEXT, removed under every option (D-047).
@@ -611,12 +611,13 @@ text = '''
 When this Option is specified in addition to the Basic Application Level Confidentiality Profile, information about age, sex, height and weight and other characteristics present in the Attributes shall be retained, as described in Table E.1-1.
 '''
 status = "implemented"
-decisions = ["D-009", "D-011", "D-012", "D-022", "D-034", "D-038"]
+decisions = ["D-009", "D-011", "D-012", "D-022", "D-034", "D-038", "D-042"]
 implementation = [
   "_dicom/deidentify/cleaners.py",
   "_dicom/deidentify/descriptor_cleaning.py",
   "_dicom/deidentify/instance_transform.py",
   "_dicom/deidentify/patient_characteristics.py",
+  "_dicom/deidentify/release_gate.py",
   "_dicom/deidentify/reviewed_descriptors.py",
 ]
 note = '''
@@ -624,6 +625,7 @@ The fourteen attributes that the Option gives K are kept as read, wherever they 
 Its five attributes of free text, which it gives C, are written with no value where they have none.
 Where the policy also selects Clean Descriptors, as `tps-import` does, each other value is kept, mapped, or emptied by a reviewer's decision in the custodian's reviewed descriptors list, and an instance with a value that the list does not clean is held for review, as for ROI Names (D-009); without Clean Descriptors, such an instance is sequestered.
 So a released instance retains every characteristic it held, its free text as a reviewer decided (PS3.15-E.3.7-02).
+A removed person name found in a kept characteristic, such as a family name equal to the kept Ethnic Group, holds the instance for review rather than withholding it, and is never explained (D-042).
 The measures of the body that Table E.1-1 omits, such as Patient's Body Mass Index, are removed under every option (D-022).
 Of the presets, only `tps-import` selects the Option, and it is not yet enabled.
 '''
@@ -783,14 +785,16 @@ text = '''
 When this Option is specified in addition to the Basic Application Level Confidentiality Profile, information about the identity of the institution in the Attributes shall be retained, as described in Table E.1-1.
 '''
 status = "implemented"
-decisions = ["D-011", "D-020", "D-022", "D-044"]
+decisions = ["D-011", "D-020", "D-022", "D-042", "D-044"]
 implementation = [
   "_dicom/deidentify/conformance.py",
   "_dicom/deidentify/instance_transform.py",
   "_dicom/deidentify/policy.py",
+  "_dicom/deidentify/release_gate.py",
 ]
 note = '''
 The ten attributes that the Option gives K are kept as read, wherever they are in the data set, including Institution Name in the items of Contributing Equipment Sequence, with the Option's code (D-044).
+A removed person name found in a kept institution value, as in an institution named after a person, holds the instance for review rather than withholding it, and is never explained (D-042).
 Clinical Trial Protocol Ethics Committee Name, which the Option gives K, is still removed, since its Type 1C condition needs the approval number that Table E.1-1 removes under every option, and keeping it would make the instance invalid (D-020); the instance still claims the Option, and the conformance statement says so.
 The attributes that Table E.1-1 omits and that name other organisations, such as Coding Scheme Responsible Organization, are removed under every option (D-022).
 No preset selects the Option.
@@ -831,6 +835,7 @@ Nor is a finding inside a value that a selected option keeps, where its source i
 Nor is a finding whose source is the Code Meaning of a code of a scheme that PS3.16 Table 8-1 lists, judged by the meaning's own item in its own instance, where only instances that the run does not write, such as a sequestered dose report, held it for the subject; free text from such an instance, and a local code's meaning, still go to review (D-032).
 A UID equal to a whole UID that a selected option keeps does not withhold the file where only instances that the run does not write held it for the subject; one that a written instance also held still does, unless its source is a private data element that every instance which held it removed (D-042).
 Under Retain Safe Private, nor is text found in a private creator whose whole value is one that the run's safe private list keeps in its group, where its source is a private creator, a private data element, or an equipment attribute; Institution Name, Station Name, and every other source found there still go to review, and the coverage records the list (D-042).
+A person name found inside the data set in an attribute that a selected option keeps and that the pinned dictionary gives only VRs of text, such as a physician's name that is also a word of the Institution Name that Retain Institution Identity keeps, goes to review rather than withholding the file, and is never explained; the same name in a value that the Basic Profile keeps, in a private element, in a UID, in other text, or outside the data set still withholds the file (D-042).
 The release report counts the released instances with each finding that these exemptions keep from review, by exemption, source attribute, and the attribute it was found in, naming no value (D-032).
 An external statistical assessment of a run's collection is recorded beside its QC pack, bound to the pack, to the source files it records, to the policy, and to the reviewed lists and region rules that the run applied, by the salted digest that the run records in its pack, and the statistical gate passes only for the same files, policy, lists, and rules, the run's number of distinct subjects, and a maximum per-subject re-identification probability within the threshold of 0.09 or 0.05 that the assessment states (D-017, D-053).
 A deterministic synthetic collection, with an instance of each IOD of the first supported release, plants a conspicuous marker wherever its IODs define an attribute of Table E.1-1, down to a nesting depth of 4 items, and records each deeper place as not planted; Responsible Person and Responsible Organization, whose removal sequesters an instance (D-020), are planted in one instance only, so the others can be released, and the Enhanced PET Image's Radiopharmaceutical Start DateTime, whose removal sequesters it, in none; the Institution Code Sequence of the RT Beams Treatment Record's and the RT Ion Beams Treatment Record's interlock resolution users, whose dummy item a reviewed rule writes there (D-021), is planted in both; the Structured Reports are VERIFIED, and their Verifying Observer Sequence, which a reviewed rule keeps with dummy values (D-021), and Requested Procedure ID in their Referenced Request Sequence, which a plain X empties there (D-020), are planted in each report, and Source Manufacturer in the RT Brachy Treatment Record's Recorded Source Sequence, which a plain X empties there too, in the record; each report's content tree is built by its template, with a marker in the value of each content item that can identify a person, a device, or a time.
