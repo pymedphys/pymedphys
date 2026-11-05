@@ -313,6 +313,31 @@ class DoseCheckMaterial:
 
 
 @dataclasses.dataclass(frozen=True)
+class UndefacedMaterial:
+    """An instance in a defaced CT series' Frame of Reference, naming none,
+    or referring to a defaced slice, whose outline, pixel data, or
+    deformation grids the run does not clean of the face (D-050).
+
+    The pack lists it in ``undefaced_instances``, where it is released or
+    held, so that a reviewer can give it a face verdict of its own, from its
+    own previews, which no verdict on its series replaces; the release
+    report counts it, and names it where released.
+
+    Attributes
+    ----------
+    own_verdict : bool
+        Whether the run's face review gave it a verdict of its own, by its
+        source file, whatever that verdict was.
+    """
+
+    own_verdict: bool = False
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.own_verdict, bool):
+            raise ValueError("an undefaced instance's own verdict is true or false")
+
+
+@dataclasses.dataclass(frozen=True)
 class ReferenceFindingMaterial:
     """A reference finding at an input that the run reports without acting on it.
 
@@ -477,7 +502,12 @@ def qc_pack_of(
     digest is listed in ``series``, for the reviewer's face verdicts.
     Each released or held RT Dose that gives a :class:`DoseCheckMaterial`
     is listed in ``dose_checks``, with its fraction to four decimal places,
-    for the reviewer's choice.
+    for the reviewer's choice. Each released or held instance that gives an
+    :class:`UndefacedMaterial` and has its source's digest is listed in
+    ``undefaced_instances``, shown where the pack records the digests of
+    its pixel data, its contours, and its deformation grids, which it does
+    only where its previews show them whole, for the reviewer's verdict on
+    it alone.
 
     Raises
     ------
@@ -507,9 +537,18 @@ def qc_pack_of(
     redactions: dict[int, RedactionMaterial] = {}
     eyes: dict[bytes, tuple[EyeCheckMaterial, list[int]]] = {}
     doses: list[qc_pack.DoseCheckEntry] = []
+    undefaced: set[int] = set()
     for position in sorted(material):
         for item in material[position]:
-            if isinstance(item, DoseCheckMaterial):
+            if isinstance(item, UndefacedMaterial):
+                # One without its source's digest could not be bound to a
+                # verdict, so it is not listed for one.
+                if (
+                    instances[position].disposition in _PREVIEWED
+                    and instances[position].source_sha256 is not None
+                ):
+                    undefaced.add(position)
+            elif isinstance(item, DoseCheckMaterial):
                 if instances[position].disposition in _PREVIEWED:
                     doses.append(
                         qc_pack.DoseCheckEntry(
@@ -664,6 +703,15 @@ def qc_pack_of(
         reviewed_lists=reviewed_lists,
         eye_checks=tuple(entry for entry, _ in checks),
         dose_checks=tuple(doses),
+        undefaced_instances=tuple(
+            qc_pack.UndefacedEntry(
+                position,
+                instances[position].pixel_sha256 is not None
+                and instances[position].contour_sha256 is not None
+                and instances[position].grid_sha256 is not None,
+            )
+            for position in sorted(undefaced)
+        ),
         several_patient_studies=tuple(
             qc_pack.SeveralPatientStudyEntry(tuple(tuple(group) for group in groups))
             for groups in several_patient_studies

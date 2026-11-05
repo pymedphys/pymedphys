@@ -294,7 +294,7 @@ def test_a_dose_check_lists_its_rt_dose_with_its_digest_choice_and_fraction():
             "fraction": 1.0,
         },
     ]
-    assert repr(pack).endswith("dose_checks=2)")
+    assert repr(pack).endswith("dose_checks=2, undefaced_instances=0)")
 
 
 @pytest.mark.parametrize(

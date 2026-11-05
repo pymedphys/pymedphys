@@ -236,7 +236,8 @@ class VisualFeaturesReason(enum.Enum):
     # too or that cannot be cut, or a deformable registration with a grid
     # that names such a frame as its own or as a source, whose grid the run
     # does not clean, and which a reviewer may have judged from the defaced
-    # CT
+    # CT, so that only a verdict of its own, from its own previews, which no
+    # reviewed QC pack gave it, could decide it
     UNDEFACED_IN_DEFACED_FRAME = "undefaced-in-defaced-frame"
     # a CT slice of a series whose face block a target may reach, so that
     # the series is not defaced

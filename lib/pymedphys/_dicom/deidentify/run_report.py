@@ -38,7 +38,10 @@ the instance that holds it among those that the transform gave material for
 that an exemption kept from review, from the gate's material (D-032), and,
 under a face review, the RT Doses that the run released or held with more
 dose in a face block than it sets to zero there, by what it did with them,
-from the transform's material (:func:`doses_in_face_block`, D-051). The
+from the transform's material (:func:`doses_in_face_block`, D-051), and
+the instances in a defaced frame that it did not clean of the face, by
+whether a reviewer gave each a face verdict of its own
+(:func:`undefaced_instances`, D-050). The
 report holds no source value or path (D-016), and
 :func:`~pymedphys._dicom.deidentify.release_report.to_json` refuses any
 field that could hold one. Before the run labels its outcomes, it asks the
@@ -105,6 +108,7 @@ from .run_qc import (
     DescriptorMaterial,
     DoseCheckMaterial,
     Dropped,
+    UndefacedMaterial,
     IccProfileMaterial,
     PixelRiskMaterial,
     RedactionMaterial,
@@ -421,6 +425,11 @@ class ReleaseReporter:
                 if self._face_review is None
                 else doses_in_face_block(outcomes, material)
             ),
+            undefaced_instances=(
+                None
+                if self._face_review is None
+                else undefaced_instances(outcomes, material)
+            ),
             several_patients=(
                 facts.several_patients if isinstance(facts, RunFacts) else None
             ),
@@ -627,6 +636,43 @@ def doses_in_face_block(
         held_as_written=held[DoseChoice.AS_WRITTEN],
         released_set_to_zero=tuple(released[DoseChoice.SET_TO_ZERO]),
         held_set_to_zero=held[DoseChoice.SET_TO_ZERO],
+    )
+
+
+def undefaced_instances(
+    outcomes: Sequence[object], material: Mapping[int, Sequence[object]]
+) -> release_report.UndefacedInstances:
+    """Count the released and held instances in a defaced frame that the run
+    did not clean of the face, by whether the face review gave each a verdict
+    of its own, naming each released one by its output name.
+
+    Each input's verdict comes from its
+    :class:`~pymedphys._dicom.deidentify.run_qc.UndefacedMaterial`. An
+    identical copy of an input is the same instance, so it is not counted
+    again, and a sequestered one reaches no recipient.
+    """
+    own: dict[int, bool] = {}
+    for position in sorted(material):
+        for item in material[position]:
+            if isinstance(item, UndefacedMaterial):
+                own[position] = item.own_verdict
+                break
+    held = held_with_own = 0
+    released: list[PurePosixPath] = []
+    for outcome in outcomes:
+        position = getattr(outcome, "position")
+        if position not in own or getattr(outcome, "duplicate_of") is not None:
+            continue
+        status = getattr(outcome, "status").value
+        if status == RELEASED and own[position]:
+            released.append(getattr(outcome, "output"))
+        elif status == HELD_FOR_REVIEW:
+            if own[position]:
+                held_with_own += 1
+            else:
+                held += 1
+    return release_report.UndefacedInstances(
+        held=held, released=tuple(released), held_with_own_verdict=held_with_own
     )
 
 

@@ -256,7 +256,7 @@ def test_an_attestation_with_redaction_verdicts_is_read_back_as_written(first_ru
     )
     assert qc_attestation.attested_pack(pack)[0] == attestation
     written = json.loads((pack / qc_attestation.ATTESTATION_FILE).read_text("ascii"))
-    assert written["format"] == "pymedphys-deid-qc-attestation/5"
+    assert written["format"] == "pymedphys-deid-qc-attestation/6"
     assert {
         "position": positions[_REVISED],
         "redaction": "revised",
@@ -1162,7 +1162,7 @@ def test_the_report_names_the_reviewed_pack(second_run):
     attestation, _, report, _, _ = second_run
 
     assert report["redaction_review"] == {"reference": attestation.reference}
-    assert report["format"] == "pymedphys-deid-release-report/52"
+    assert report["format"] == "pymedphys-deid-release-report/53"
 
 
 class _Blind(Finder):

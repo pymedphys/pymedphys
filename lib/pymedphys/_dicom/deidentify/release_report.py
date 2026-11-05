@@ -75,8 +75,13 @@ and codes that the engine defines, never by a source value or path:
   series' face block than it sets to zero there, how many it held without
   a reviewer's choice, and, by the choice that it applied, written as
   received or set to zero there anyway, how many it held and the output
-  name of each that it released (:class:`DosesInFaceBlock`); None
-  otherwise.
+  name of each that it released (:class:`DosesInFaceBlock`), and, of the
+  instances that it released or held in a defaced series' Frame of
+  Reference, naming none, or referring to a defaced slice, whose outline or
+  pixel data it did not clean of the face, how many it held without a
+  reviewer's verdict of their own, how many it held with one, and the
+  output name of each that it released on one
+  (:class:`UndefacedInstances`); None otherwise.
 - ``redaction_review``: under the Clean Pixel Data Option, the opaque
   reference of the earlier run's attested QC pack whose redaction verdicts
   the run applied; None otherwise.
@@ -239,7 +244,7 @@ from .standard import ALL_OPTIONS, VRS
 from .walker import Sequestration, SequesterReason
 
 # The format of the report document. A change to its fields takes a new label.
-FORMAT = "pymedphys-deid-release-report/52"
+FORMAT = "pymedphys-deid-release-report/53"
 
 _DIGEST = re.compile(r"[0-9a-f]{64}")
 # A key's non-secret identifier, as DeidKey.key_id gives it.
@@ -807,6 +812,35 @@ class DosesInFaceBlock:
 
 
 @dataclasses.dataclass(frozen=True)
+class UndefacedInstances:
+    """The instances that a run released or held in a defaced CT series'
+    Frame of Reference, naming none, or referring to a defaced slice, whose
+    outline or pixel data it did not clean of the face, by whether a
+    reviewer gave each a face verdict of its own (D-050).
+
+    An identical copy of an input is the same instance, so it is not counted
+    again.
+
+    Attributes
+    ----------
+    held : int
+        How many it held without a verdict of their own.
+    released : tuple of pathlib.PurePosixPath
+        The output name of each that it released on a verdict of absent of
+        its own.
+    held_with_own_verdict : int
+        How many it held though a reviewer gave each a verdict of its own,
+        since that verdict was present, its series was marked present, or
+        the run writes other pixel data or contours of it than the reviewed
+        run did.
+    """
+
+    held: int = 0
+    released: tuple[PurePosixPath, ...] = ()
+    held_with_own_verdict: int = 0
+
+
+@dataclasses.dataclass(frozen=True)
 class ReleaseReport:
     """A release report's record of the method, the runtime, and the run.
 
@@ -822,6 +856,7 @@ class ReleaseReport:
     face_review : str or None
     face_blocks : ~pymedphys._dicom.deidentify.face_blocks.FaceBlockCounts or None
     doses_in_face_block : DosesInFaceBlock or None
+    undefaced_instances : UndefacedInstances or None
     redaction_review : str or None
     pixel_regions : PixelRegionCounts or None
     readiness : Readiness or None
@@ -848,6 +883,7 @@ class ReleaseReport:
     face_review: str | None = None
     face_blocks: FaceBlockCounts | None = None
     doses_in_face_block: DosesInFaceBlock | None = None
+    undefaced_instances: UndefacedInstances | None = None
     redaction_review: str | None = None
     pixel_regions: PixelRegionCounts | None = None
     readiness: Readiness | None = None
@@ -1299,6 +1335,7 @@ def release_report(
     face_review: str | None = None,
     face_blocks: FaceBlockCounts | None = None,
     doses_in_face_block: DosesInFaceBlock | None = None,
+    undefaced_instances: UndefacedInstances | None = None,
     redaction_review: str | None = None,
     pixel_regions: PixelRegionCounts | None = None,
     readiness: Readiness | None = None,
@@ -1489,6 +1526,11 @@ def release_report(
             DosesInFaceBlock()
             if doses_in_face_block is None and face_review is not None
             else doses_in_face_block
+        ),
+        undefaced_instances=(
+            UndefacedInstances()
+            if undefaced_instances is None and face_review is not None
+            else undefaced_instances
         ),
         redaction_review=redaction_review,
         pixel_regions=(
@@ -1725,12 +1767,17 @@ def _face_review_section(
     counts: FaceBlockCounts | None,
     doses: DosesInFaceBlock | None = None,
     released: tuple[PurePosixPath, ...] = (),
+    undefaced: UndefacedInstances | None = None,
 ) -> dict | None:
     if reference is None:
         if counts is not None:
             raise _refuse("face_review", "counts CT series without a face review")
         if doses is not None:
             raise _refuse("face_review", "counts RT Doses without a face review")
+        if undefaced is not None:
+            raise _refuse(
+                "face_review", "counts undefaced instances without a face review"
+            )
         return None
     if _string(reference) is None or not _REFERENCE.fullmatch(reference):
         raise _refuse("face_review", "is not a QC pack's reference")
@@ -1784,6 +1831,9 @@ def _face_review_section(
         "rt_doses_in_face_block": _doses_section(
             DosesInFaceBlock() if doses is None else doses, released
         ),
+        "undefaced_in_defaced_frame": _undefaced_section(
+            UndefacedInstances() if undefaced is None else undefaced, released
+        ),
     }
 
 
@@ -1824,6 +1874,34 @@ def _doses_section(
     if len(set(named)) != len(named):
         raise _refuse(field, "names an instance twice")
     return section
+
+
+def _undefaced_section(
+    undefaced: UndefacedInstances, released: tuple[PurePosixPath, ...]
+) -> dict[str, int | list[str]]:
+    """The instances in a defaced frame that the run did not clean, each
+    name one that the report releases, and none named twice."""
+    field = "face_review undefaced_in_defaced_frame"
+    if not isinstance(undefaced, UndefacedInstances):
+        raise _refuse(field, "is not counts of undefaced instances")
+    names = undefaced.released
+    if not isinstance(names, tuple) or not all(_is_output_name(path) for path in names):
+        raise _refuse(f"{field} released", "is not a tuple of output names")
+    if not set(names) <= set(released):
+        raise _refuse(f"{field} released", "names an instance not released")
+    if len(set(names)) != len(names):
+        raise _refuse(field, "names an instance twice")
+    for name in ("held", "held_with_own_verdict"):
+        value = getattr(undefaced, name)
+        if type(value) is not int:  # pylint: disable = unidiomatic-typecheck
+            raise _refuse(f"{field} {name}", "is not a whole number")
+        if value < 0:
+            raise _refuse(f"{field} {name}", "is negative")
+    return {
+        "held": undefaced.held,
+        "released": sorted(str(path) for path in names),
+        "held_with_own_verdict": undefaced.held_with_own_verdict,
+    }
 
 
 def _redaction_review_section(reference: str | None) -> dict | None:
@@ -2357,6 +2435,7 @@ def report_document(report: ReleaseReport) -> dict:
             report.face_blocks,
             report.doses_in_face_block,
             report.released,
+            report.undefaced_instances,
         ),
         "redaction_review": _redaction_review_section(report.redaction_review),
         "pixel_regions": _pixel_regions_section(report.pixel_regions, report.policy),
