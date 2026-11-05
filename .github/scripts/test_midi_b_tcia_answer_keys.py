@@ -1,4 +1,4 @@
-"""Tests of midi_b_tcia_answer_keys.py's network record."""
+"""Tests of midi_b_tcia_answer_keys.py's fetch and network record."""
 
 import socket
 import subprocess
@@ -17,8 +17,219 @@ TRACE = """traceroute to 192.0.2.7 (192.0.2.7), 30 hops max, 60 byte packets
 """
 
 
+PAGE = '<a href="https://faspex.cancerimagingarchive.net/p?context=a&amp;x=1">'
+UNAVAILABLE = "ERRR Rest: faspex.cancerimagingarchive.net 503 Service Unavailable\n"
+UNAVAILABLE_REASON = (
+    "ascli stopped on a Rest error, HTTP 503 (Service Unavailable), "
+    "naming faspex.cancerimagingarchive.net."
+)
+
+
 def _resolved(address):
     return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", (address, 0))]
+
+
+class AscliFailureTests(unittest.TestCase):
+    def test_names_a_failed_requests_status_and_host(self):
+        logged = "INFO Saving config file\n" + UNAVAILABLE
+        self.assertEqual(keys.ascli_failure(logged), [UNAVAILABLE_REASON])
+
+    def test_gives_a_status_without_a_name_by_its_number(self):
+        logged = "ERRR Rest: faspex.cancerimagingarchive.net:443 599 Odd\n"
+        self.assertEqual(
+            keys.ascli_failure(logged),
+            [
+                "ascli stopped on a Rest error, HTTP 599, naming "
+                "faspex.cancerimagingarchive.net:443."
+            ],
+        )
+
+    def test_reads_the_line_ascli_logged_when_a_host_did_not_resolve(self):
+        # As aspera-cli 4.27.2 logged it, on 5 Nov 2026, when ibm.biz did
+        # not resolve.
+        logged = (
+            "WARN No config file found.\n"
+            "ERRR Network: Failed to open TCP connection to ibm.biz:443 "
+            "(getaddrinfo: Name or service not known)\n"
+        )
+        self.assertEqual(
+            keys.ascli_failure(logged),
+            [
+                "ascli stopped on a Network error; its message mentions TCP "
+                "and name resolution."
+            ],
+        )
+
+    def test_counts_the_failed_tries_and_reads_their_messages(self):
+        lost = (
+            "WARN An error occurred during task: Timeout establishing data "
+            "connection (check UDP port and firewall)\n"
+        )
+        logged = (
+            f"{lost}WARN Resuming in 2 seconds (retry left:6)\n"
+            f"{lost}WARN Resuming in 4 seconds (retry left:5)\n"
+            "ERRR Transfer: Maximum number of retry reached: 7\n"
+        )
+        self.assertEqual(
+            keys.ascli_failure(logged),
+            [
+                "ascli stopped on a Transfer error; its messages mention a "
+                "timeout, UDP, a firewall, and the retry limit.",
+                "ascli logged 2 failed tries of the transfer.",
+            ],
+        )
+
+    def test_names_the_class_of_an_other_error(self):
+        logged = (
+            "ERRR Other(Net::ReadTimeout): Net::ReadTimeout with "
+            "#<TCPSocket:(closed)>\n"
+        )
+        self.assertEqual(
+            keys.ascli_failure(logged),
+            [
+                "ascli stopped on an Other(Net::ReadTimeout) error; its "
+                "message mentions a timeout."
+            ],
+        )
+
+    def test_never_prints_a_message(self):
+        logged = (
+            "WARN An error occurred during task: cannot write "
+            "/tmp/x/MIDI-B-Answer-Key-Test.zip\n"
+            "ERRR Transfer: cannot write /tmp/x/MIDI-B-Answer-Key-Test.zip from "
+            "https://faspex.cancerimagingarchive.net/aspera/faspex/public/"
+            "package?context=c2VjcmV0\n"
+        )
+        lines = keys.ascli_failure(logged)
+        self.assertEqual(
+            lines,
+            [
+                "ascli stopped on a Transfer error, naming "
+                "faspex.cancerimagingarchive.net.",
+                "ascli logged 1 failed try of the transfer.",
+            ],
+        )
+        for value in ("/tmp", "MIDI-B", "https", "context", "c2VjcmV0"):
+            self.assertNotIn(value, "\n".join(lines))
+
+    def test_names_each_category_with_its_article(self):
+        for category, named in (
+            ("SSL", "an SSL"),
+            ("Schema", "a Schema"),
+            ("Identifier", "an Identifier"),
+            ("UnusedArg", "an UnusedArg"),
+        ):
+            with self.subTest(category=category):
+                self.assertEqual(
+                    keys.ascli_failure(f"ERRR {category}: x\n"),
+                    [f"ascli stopped on {named} error."],
+                )
+
+    def test_takes_the_last_error_it_logged(self):
+        logged = UNAVAILABLE + "ERRR Transfer: Connection lost\n"
+        self.assertEqual(
+            keys.ascli_failure(logged),
+            [
+                "ascli stopped on a Transfer error; its message mentions a lost "
+                "connection."
+            ],
+        )
+
+    def test_says_when_the_error_is_of_a_kind_it_does_not_know(self):
+        self.assertEqual(
+            keys.ascli_failure("ERRR ascp failed (pid 7 exit 1)\n"),
+            ["ascli logged an error of a kind this script does not know."],
+        )
+
+    def test_says_when_ascli_logged_no_error(self):
+        self.assertEqual(
+            keys.ascli_failure("INFO Saving config file\n"),
+            ["ascli logged no error."],
+        )
+
+
+class FetchTests(unittest.TestCase):
+    def fetch(self, outcomes):
+        """Fetch with ascli exiting with each (status, what it logs) in turn.
+
+        Returns fetch's status, the printed lines, the pauses, and the names
+        in the package's folder as each try began.
+        """
+        found = []
+
+        def run(command, stdout, stderr, check):
+            status, logged = outcomes[len(found)]
+            folder = Path(command[5].removeprefix("--to-folder="))
+            found.append(sorted(path.name for path in folder.iterdir()))
+            (folder / "partial").write_bytes(b"")
+            stdout.write(logged)
+            return subprocess.CompletedProcess(command, status)
+
+        output = StringIO()
+        with (
+            tempfile.TemporaryDirectory() as directory,
+            mock.patch.object(keys, "_page", return_value=PAGE),
+            mock.patch.object(keys, "utc_now", return_value="2026-11-05T22:06:27Z"),
+            mock.patch.object(keys.subprocess, "run", side_effect=run),
+            mock.patch.object(keys.time, "sleep") as sleep,
+            redirect_stdout(output),
+        ):
+            status = keys.fetch(Path(directory) / "tcia")
+        pauses = [call.args[0] for call in sleep.call_args_list]
+        return status, output.getvalue().splitlines(), pauses, found
+
+    def test_tries_a_failed_package_again_and_says_why_it_failed(self):
+        status, lines, pauses, found = self.fetch([(1, UNAVAILABLE), (0, "")])
+        self.assertEqual(status, 0)
+        self.assertEqual(
+            lines,
+            [
+                "Package 1 of 1: ascli exited with 1 at 2026-11-05T22:06:27Z",
+                UNAVAILABLE_REASON,
+                "Receiving package 1: attempt 1 of 3 failed; trying again in 60 s.",
+                "Package 1 of 1: ascli exited with 0 at 2026-11-05T22:06:27Z",
+            ],
+        )
+        self.assertEqual(pauses, [keys.PACKAGE_PAUSE])
+        # The failed try's files were removed before the next.
+        self.assertEqual(found, [[], []])
+
+    def test_gives_up_on_a_package_after_three_tries(self):
+        status, lines, pauses, found = self.fetch([(1, UNAVAILABLE)] * 3)
+        self.assertEqual(status, 1)
+        self.assertEqual(len(found), keys.PACKAGE_ATTEMPTS)
+        self.assertEqual(pauses, [60.0, 120.0])
+        self.assertEqual(
+            lines[-2:],
+            [
+                "Package 1 of 1: ascli exited with 1 at 2026-11-05T22:06:27Z",
+                UNAVAILABLE_REASON,
+            ],
+        )
+
+    def test_reads_only_what_each_try_logged(self):
+        status, lines, _, _ = self.fetch(
+            [(1, UNAVAILABLE), (2, "INFO Saving config file\n"), (0, "")]
+        )
+        self.assertEqual(status, 0)
+        self.assertEqual(
+            [line for line in lines if line.startswith("ascli ")],
+            [UNAVAILABLE_REASON, "ascli logged no error."],
+        )
+
+    def test_fails_when_the_page_links_no_package(self):
+        output = StringIO()
+        with (
+            tempfile.TemporaryDirectory() as directory,
+            mock.patch.object(keys, "_page", return_value="<p>No links.</p>"),
+            mock.patch.object(keys.subprocess, "run") as run,
+            redirect_stdout(output),
+        ):
+            self.assertEqual(keys.fetch(Path(directory) / "tcia"), 1)
+        run.assert_not_called()
+        self.assertEqual(
+            output.getvalue(), "TCIA's MIDI-B page links no Faspex package.\n"
+        )
 
 
 class TraceTests(unittest.TestCase):

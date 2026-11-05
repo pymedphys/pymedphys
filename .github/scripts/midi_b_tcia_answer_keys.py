@@ -5,7 +5,8 @@ Usage:
 - ``python midi_b_tcia_answer_keys.py fetch DEST [--user-agent-note NOTE]``:
   read the public Faspex links on TCIA's MIDI-B page and receive each
   package into ``DEST/<n>`` with IBM's ``ascli``, which must be on the path
-  with its transfer daemon installed. A note, such as the runner's address
+  with its transfer daemon installed. A package that fails is tried twice
+  more, and why each try failed is printed. A note, such as the runner's address
   and the run, is added to the page request's User-Agent header, so that
   TCIA can find the run's requests in its logs.
 - ``python midi_b_tcia_answer_keys.py list DEST``: print each file's
@@ -29,7 +30,11 @@ CC BY 4.0) only as Faspex packages. The MIDI-B Benchmark workflow uses this
 to check, from the source, that the copy it pins is TCIA's file. The links
 are read from the page at run time, so none is stored here, and neither the
 links nor ``ascli``'s output are printed: ``ascli``'s output goes to
-``DEST/ascli.log``. The listing names no value from the files.
+``DEST/ascli.log``. Of a failed try, only the kind of error that ``ascli``
+logged, a failed request's HTTP status, the TCIA host names in its
+messages, the number of failed tries of the transfer, and which words of a
+fixed list its messages hold are printed. The listing names no value from
+the files.
 """
 
 from __future__ import annotations
@@ -41,6 +46,7 @@ import http.client
 import ipaddress
 import random
 import re
+import shutil
 import socket
 import sqlite3
 import subprocess
@@ -49,6 +55,7 @@ import tempfile
 import time
 import urllib.request
 import zipfile
+from http import HTTPStatus
 from pathlib import Path
 
 PAGE = "https://www.cancerimagingarchive.net/collection/midi-b-test-midi-b-validation/"
@@ -78,12 +85,65 @@ ADDRESS_SERVICES = ("https://checkip.amazonaws.com/", "https://api.ipify.org/")
 # An ICMP traceroute to each of TCIA's addresses, as TCIA asked, and to a
 # host that answers, which shows how much of a trace the runner's network
 # hides: a TCP trace from an Azure runner showed PyPI itself and no hop
-# before it (run 40095939318). Three probes a hop, each given 2 s. At most
-# four traces, each stopped after 45 s, keep the record within its
-# workflow step's 5 minutes.
+# before it (run 40095939318), and GitHub blocks inbound ICMP on its Azure
+# runners, so their ICMP traces show no hop at all (job 127511478966).
+# Three probes a hop, each given 2 s. At most four traces, each stopped
+# after 45 s, keep the record within its workflow step's 5 minutes.
 TRACE_CONTROL = "pypi.org"
 TRACE_COMMAND = ("sudo", "-n", "traceroute", "-I", "-q", "3", "-w", "2", "-m", "30")
 TRACE_TIMEOUT = 45.0
+# Each package is tried three times, 1 and then 2 minutes apart: ascli tries
+# a failed transfer again itself, but not a failed request to Faspex, and a
+# package's receipt has failed within a minute (job 127511478945).
+PACKAGE_ATTEMPTS = 3
+PACKAGE_PAUSE = 60.0
+# ascli (aspera-cli 4.27) logs the error it stops on as "ERRR <category>:
+# <message>", with the category from a fixed set, and a failed request's
+# message starts with its host and HTTP status. It logs each failed try of
+# a transfer, which it tries again itself, as "WARN An error occurred during
+# task: <message>". The messages may hold a package's link or its files'
+# names, so they are never printed.
+_ASCLI_ERROR = re.compile(
+    r"^ERRR (?P<category>SSH|SSL|Argument|Missing|Identifier|Schema|Tool|"
+    r"Transfer|Rest|Network|Interruption|UnusedArg|"
+    r"Other\([A-Za-z][A-Za-z0-9_:]{0,79}\)): (?P<message>.*)$",
+    re.MULTILINE,
+)
+_ASCLI_ANY_ERROR = re.compile(r"^ERRR ", re.MULTILINE)
+_ASCLI_TRY = re.compile(
+    r"^WARN An error occurred during task: (?P<message>.*)$", re.MULTILINE
+)
+_REST_STATUS = re.compile(
+    r"^[A-Za-z0-9.-]{1,253}(?::[0-9]{1,5})? (?P<status>[1-5][0-9]{2})\b"
+)
+_TCIA_HOST = re.compile(
+    r"\b(?:[a-z0-9-]{1,63}\.)*cancerimagingarchive\.net(?::[0-9]{1,5})?\b",
+    re.IGNORECASE,
+)
+# What a failed try's messages are searched for. Only these names are
+# printed.
+_ASCLI_WORDS = (
+    ("a timeout", re.compile(r"time ?out|timed out|execution expired", re.IGNORECASE)),
+    ("a refusal", re.compile(r"refused", re.IGNORECASE)),
+    ("a reset", re.compile(r"\breset\b", re.IGNORECASE)),
+    ("a lost connection", re.compile(r"\blost\b", re.IGNORECASE)),
+    ("TCP", re.compile(r"\bTCP\b")),
+    ("UDP", re.compile(r"\bUDP\b")),
+    ("SSH", re.compile(r"\bSSH\b")),
+    ("a firewall", re.compile(r"firewall", re.IGNORECASE)),
+    (
+        "name resolution",
+        re.compile(
+            r"getaddrinfo|name or service not known|name resolution", re.IGNORECASE
+        ),
+    ),
+    ("a certificate", re.compile(r"certificate", re.IGNORECASE)),
+    (
+        "authentication",
+        re.compile(r"authenticat|unauthori[sz]ed|\btoken\b", re.IGNORECASE),
+    ),
+    ("the retry limit", re.compile(r"maximum number of retry", re.IGNORECASE)),
+)
 
 
 def utc_now() -> str:
@@ -165,8 +225,106 @@ def _page(
     raise AssertionError("unreachable")
 
 
+def _listed(names: list[str]) -> str:
+    """The names as a list in prose, with the Oxford comma.
+
+    >>> _listed(["TCP", "UDP", "SSH"])
+    'TCP, UDP, and SSH'
+    """
+    if len(names) < 3:
+        return " and ".join(names)
+    return f"{', '.join(names[:-1])}, and {names[-1]}"
+
+
+def ascli_failure(logged: str) -> list[str]:
+    """Why ``ascli`` failed, from what it logged, without its messages.
+
+    Only the error's category, which is one of a fixed set, a failed
+    request's HTTP status, TCIA's host names, the number of failed tries of
+    the transfer, and which of :data:`_ASCLI_WORDS` the messages hold are
+    given.
+
+    >>> ascli_failure("ERRR Rest: faspex.cancerimagingarchive.net 429 Too Many Requests\\n")
+    ['ascli stopped on a Rest error, HTTP 429 (Too Many Requests), naming faspex.cancerimagingarchive.net.']
+    """
+    tries = [match["message"] for match in _ASCLI_TRY.finditer(logged)]
+    errors = list(_ASCLI_ERROR.finditer(logged))
+    if errors:
+        category, message = errors[-1]["category"], errors[-1]["message"]
+        article = (
+            "an" if category.startswith(("A", "I", "O", "U", "SSH", "SSL")) else "a"
+        )
+        line = f"ascli stopped on {article} {category} error"
+        status = _REST_STATUS.match(message) if category == "Rest" else None
+        if status:
+            code = int(status["status"])
+            try:
+                line += f", HTTP {code} ({HTTPStatus(code).phrase})"
+            except ValueError:
+                line += f", HTTP {code}"
+        messages = [message, *tries]
+        hosts = sorted(
+            {
+                match.group().lower()
+                for text in messages
+                for match in _TCIA_HOST.finditer(text)
+            }
+        )
+        if hosts:
+            line += f", naming {_listed(hosts)}"
+        words = [
+            name
+            for name, pattern in _ASCLI_WORDS
+            if any(pattern.search(text) for text in messages)
+        ]
+        if words:
+            mention = "messages mention" if len(messages) > 1 else "message mentions"
+            line += f"; its {mention} {_listed(words)}"
+        lines = [f"{line}."]
+    elif _ASCLI_ANY_ERROR.search(logged):
+        lines = ["ascli logged an error of a kind this script does not know."]
+    else:
+        lines = ["ascli logged no error."]
+    if tries:
+        lines.append(
+            f"ascli logged {len(tries)} failed {'try' if len(tries) == 1 else 'tries'} "
+            "of the transfer."
+        )
+    return lines
+
+
+def _receive(link: str, folder: Path, log: Path) -> tuple[int, list[str]]:
+    """Receive one package with ``ascli``: its exit status, and why it failed."""
+    start = log.stat().st_size if log.exists() else 0
+    with log.open("a", encoding="utf-8") as output:
+        completed = subprocess.run(
+            [
+                "ascli",
+                "faspex5",
+                "packages",
+                "receive",
+                f"--url={link}",
+                f"--to-folder={folder}",
+                "--format=json",
+            ],
+            stdout=output,
+            stderr=subprocess.STDOUT,
+            check=False,
+        )
+    if not completed.returncode:
+        return 0, []
+    # Only what this try logged.
+    with log.open("rb") as file:
+        file.seek(start)
+        logged = file.read().decode("utf-8", "replace")
+    return completed.returncode, ascli_failure(logged)
+
+
 def fetch(destination: Path, agent: str = USER_AGENT) -> int:
-    """Receive every package that TCIA's MIDI-B page links into ``destination``."""
+    """Receive every package that TCIA's MIDI-B page links into ``destination``.
+
+    Each package is tried up to :data:`PACKAGE_ATTEMPTS` times.
+    """
     links = public_links(_page(agent=agent))
     if not links:
         print("TCIA's MIDI-B page links no Faspex package.")
@@ -175,29 +333,30 @@ def fetch(destination: Path, agent: str = USER_AGENT) -> int:
     log = destination / "ascli.log"
     for index, link in enumerate(links, start=1):
         folder = destination / f"{index}"
-        folder.mkdir(mode=0o700)
-        with log.open("a", encoding="utf-8") as output:
-            completed = subprocess.run(
-                [
-                    "ascli",
-                    "faspex5",
-                    "packages",
-                    "receive",
-                    f"--url={link}",
-                    f"--to-folder={folder}",
-                    "--format=json",
-                ],
-                stdout=output,
-                stderr=subprocess.STDOUT,
-                check=False,
+        for attempt in range(1, PACKAGE_ATTEMPTS + 1):
+            # A failed try's files are not kept.
+            if folder.exists():
+                shutil.rmtree(folder)
+            folder.mkdir(mode=0o700)
+            returncode, reasons = _receive(link, folder, log)
+            print(
+                f"Package {index} of {len(links)}: ascli exited with "
+                f"{returncode} at {utc_now()}",
+                flush=True,
             )
-        print(
-            f"Package {index} of {len(links)}: ascli exited with "
-            f"{completed.returncode} at {utc_now()}",
-            flush=True,
-        )
-        if completed.returncode:
-            return completed.returncode
+            for line in reasons:
+                print(line, flush=True)
+            if not returncode:
+                break
+            if attempt == PACKAGE_ATTEMPTS:
+                return returncode
+            wait = PACKAGE_PAUSE * attempt
+            print(
+                f"Receiving package {index}: attempt {attempt} of "
+                f"{PACKAGE_ATTEMPTS} failed; trying again in {wait:.0f} s.",
+                flush=True,
+            )
+            time.sleep(wait)
     return 0
 
 
