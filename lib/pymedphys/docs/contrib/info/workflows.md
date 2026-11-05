@@ -252,31 +252,32 @@ report as `junit-dependency-floors-<part>`. A
 failure fails the unit-test workflow and therefore the required CI or release
 summary.
 
-Every cell of the unit-test matrix runs in two parts on two runners, since a
-slow runner could take the 30-minute limit
-(60 minutes on Windows) to run the whole suite at once. The `corpus-runs` part runs
-the modules listed in the workflow's `CORPUS_RUN_TESTS`, which run the
-synthetic collection through the engine and take about half the suite's time,
-and the `others` part runs every other test by passing each listed module to
-`--ignore`, so a new module runs in `others` until it is listed. A listed
-module that no longer exists fails both parts before pytest starts, and a
-contract test checks that each listed module exists. The `corpus-runs` parts
-read no downloaded data, so they skip the data cache. Its key ends in the job's
-ID, so every part and cell of a job on one OS shares it, and a part that saved
-it without the data would leave the others re-downloading. Move a module
-between the parts when the `--durations` reports show one part taking much
-longer than the other.
+Every cell of the unit-test matrix runs in three parts on three runners, since
+a slow runner could take the 30-minute limit (60 minutes on Windows) to run the
+whole suite at once, or the corpus modules together. The workflow's
+`CORPUS_RUN_TESTS` lists the modules that run the synthetic collection through
+the engine, which take about half the suite's time, and `CT_DEFACING_RUN_TEST`
+names the one of them that runs alone. The `ct-defacing` part runs
+`test_deidentify_ct_defacing_run.py`, the `corpus-runs` part runs the other
+listed modules, and the `others` part runs every other test by passing each
+listed module to `--ignore`, so a new module runs in `others` until it is
+listed, and every test runs in exactly one of the three parts. A listed module
+that no longer exists, a CT-defacing module that is not in the list, or an
+empty remaining corpus selection fails every part before pytest starts, and a
+contract test checks that each listed module exists. The two corpus parts read
+no downloaded data, so they skip the data cache. Its key ends in the job's ID,
+so every part and cell of a job on one OS shares it, and a part that saved it
+without the data would leave the others re-downloading. Move a module between
+the corpus parts when the `--durations` reports show one taking much longer
+than the other. The corpus selection was split this way on 5 November 2026,
+when more Structured Reports in the synthetic corpus took the combined
+corpus part past 30 minutes on Ubuntu.
 
-At the dependency floors, the corpus selection runs in two separate parts:
-`ct-defacing` runs `test_deidentify_ct_defacing_run.py`, and `corpus-runs`
-runs the other modules in `CORPUS_RUN_TESTS`. The `others` part ignores every
-listed module as before, so every test still runs in exactly one of the three
-parts. Each part retains the 30-minute job limit, two pytest workers and the
-900-second per-test limit. Missing listed modules, a CT-defacing module that
-is not in the corpus list, or an empty remaining corpus selection fail the
-job before pytest starts. Only `others` uses the data cache. All three JUnit
-reports must arrive and all three parts must pass; the required summary
-continues to depend on the whole reusable unit-test workflow.
+The run at the dependency floors runs in the same three parts. Each part
+retains the 30-minute job limit, two pytest workers and the 900-second
+per-test limit. Only `others` uses the data cache. All three JUnit reports must
+arrive and all three parts must pass; the required summary continues to depend
+on the whole reusable unit-test workflow.
 
 Each cell's parts upload their reports as `junit-py<python>-<part>-<os>`, such
 as `junit-py3.14-corpus-runs-ubuntu-latest`, which the release's
@@ -285,8 +286,8 @@ unit-test matrix has finished, even after failed tests, the `combined-report`
 job combines each cell's parts into `junit-<os>-<python>`, such as
 `junit-ubuntu-latest-3.14`, the report that the release's requirements matrix
 reads for that environment. It writes no report for a cell if one of its
-parts' reports is missing or a test case ran in both parts. Since every cell
-runs two jobs, a full-matrix run starts six macOS unit-test jobs, and GitHub
+parts' reports is missing or a test case ran in two parts. Since every cell
+runs three jobs, a full-matrix run starts nine macOS unit-test jobs, and GitHub
 runs at most five macOS jobs at once on its Free, Pro, and Team plans, so some
 parts may queue for a runner; the queue does not count towards a job's time
 limit.
@@ -310,9 +311,9 @@ if that is not the one requested. Actual executions upload JUnit reports as
 `junit-pydicom-minimum` and `junit-pydicom-latest`; reused evidence has no copied
 or synthetic JUnit. Each role uploads a coverage manifest naming its requested
 version and evidence source. The normal reference cell records its imported
-versions and checkout revision: each of its two parts records the pydicom and
+versions and checkout revision: each of its three parts records the pydicom and
 Python versions it imported, and the `combined-report` job records the
-combined evidence only when both parts passed on the checked-out commit and
+combined evidence only when all three parts passed on the checked-out commit and
 imported the same pydicom, which must match the lock, under Python 3.14. The
 parts may run different 3.14 patch releases, since each runner image carries
 its own while GitHub rolls out a new one, and the evidence records each part's.
@@ -334,9 +335,9 @@ For each, on Ubuntu with Python 3.14, it installs only that extra and the
 `test-runner` dependency group, then runs the feature's non-slow tests with
 `uv run --no-sync`, so nothing else is installed. Tests there that exercise
 another feature skip themselves when its packages are missing. The `dicom`
-extra's tests run in the same `corpus-runs` and `others` parts as the unit-test
-matrix, on two runners, since together they can reach the 30-minute limit on a
-slow runner. It uploads a JUnit report per extra as `junit-extra-<extra>`, and
+extra's tests run in the same `ct-defacing`, `corpus-runs`, and `others` parts
+as the unit-test matrix, on three runners, since together they can reach the
+30-minute limit on a slow runner. It uploads a JUnit report per extra as `junit-extra-<extra>`, and
 per part for `dicom` as `junit-extra-dicom-<part>`, and runs alongside both the
 quick and full matrices.
 
@@ -446,7 +447,7 @@ Publishes to PyPI behind quality gates.
   their result, and renders the de-identification requirements-to-tests matrix
   with `pymedphys dev deid-matrix --check` from the JUnit report of every
   environment in the unit-test matrix; each environment reports through its
-  two parts' combined report. It fails when a traced test failed, was
+  three parts' combined report. It fails when a traced test failed, was
   skipped, or did not run in every environment, or when an environment's
   report is missing, and still writes the matrix. Once the build has passed,
   `upload-deid-matrix`, which runs no repository code, attaches the matrix to

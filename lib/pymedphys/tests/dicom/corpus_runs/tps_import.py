@@ -37,6 +37,7 @@ from pymedphys._dicom.deidentify.policy import PRESETS
 from .._corpus_run import (
     CONTENT_SEQUENCE,
     MAPPED_NAME,
+    PROCEDURE_LOG_ABSENT,
     VOCABULARY_NAME,
     WITHHELD_WITHOUT_REPORTS,
     CorpusRun,
@@ -70,7 +71,10 @@ RUN = CorpusRun(
     withheld=WITHHELD_WITHOUT_REPORTS,
     # Without Retain UIDs, Referenced Study Sequence is removed, so only
     # Accession Number of REPORT_ENTITIES differs for the reports.
+    # The Procedure Log lacks the Patient Study Module attributes, as in
+    # the all-composable-options run (PROCEDURE_LOG_ABSENT).
     inconsistent=KEPT_DIFFERENCES
     | MODIFIED_DATES_RUN.inconsistent
-    | frozenset({"(0008,0050)"}),
+    | frozenset({"(0008,0050)"})
+    | PROCEDURE_LOG_ABSENT,
 )

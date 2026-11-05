@@ -29,6 +29,16 @@ import pydicom_coverage
 from select_checks import OUTPUTS
 
 WORKFLOWS = Path(__file__).resolve().parents[1] / "workflows"
+# The lines that split the listed corpus modules between the ct-defacing and
+# corpus-runs parts, in every job that runs in parts.
+CT_DEFACING_SELECTION = (
+    '            if [[ " ${listed[*]} " != *" ${CT_DEFACING_RUN_TEST} "* ]]; then\n',
+    '              ct-defacing) selection=("${CT_DEFACING_RUN_TEST}") ;;\n',
+    '                  if [[ "${path}" != "${CT_DEFACING_RUN_TEST}" ]]; then\n',
+    '                    selection+=("${path}")\n',
+    "                if [[ ${#selection[@]} -eq 0 ]]; then\n",
+    '                  echo "::error::The remaining corpus part must not be empty."\n',
+)
 
 
 def jobs(filename: str) -> dict[str, str]:
@@ -367,6 +377,7 @@ class WorkflowContractTests(unittest.TestCase):
         )
         for name in (
             "junit-extra-gamma",
+            "junit-extra-dicom-ct-defacing",
             "junit-extra-dicom-corpus-runs",
             "junit-extra-dicom-others",
             "junit-dependency-floors-ct-defacing",
@@ -441,8 +452,11 @@ class WorkflowContractTests(unittest.TestCase):
         floors, test = workflow["dependency-floors"], workflow["test"]
         self.assertIn("        part: [ct-defacing, corpus-runs, others]\n", floors)
         self.assertIn("    timeout-minutes: 30\n", floors)
-        ct_defacing = re.search(r"(?m)^      CT_DEFACING_RUN_TEST: (\S+)$", floors)[1]
+        # Every split job reads the one CT defacing module that the workflow
+        # names, which must be one of the listed modules.
+        ct_defacing = re.search(r"(?m)^  CT_DEFACING_RUN_TEST: (\S+)$", text)[1]
         self.assertEqual(listed.split().count(ct_defacing), 1)
+        self.assertEqual(text.count("CT_DEFACING_RUN_TEST: "), 1)
         # Every cell runs in one job for each part, which the combined
         # report joins; no cell runs whole.
         self.assertIn(
@@ -460,10 +474,9 @@ class WorkflowContractTests(unittest.TestCase):
             with self.subTest(key=key):
                 line = re.search(rf"(?m)^        {key}: .+\n", test)[0]
                 self.assertIn(line, combined)
-        # The normal matrix runs the listed modules together. At the floors,
-        # CT defacing runs alone and the other listed modules run together.
-        # Both others parts ignore every listed module; missing paths fail
-        # every part before pytest starts.
+        # In both jobs, CT defacing runs alone and the other listed modules
+        # run together. Both others parts ignore every listed module; missing
+        # paths fail every part before pytest starts.
         selections = [
             re.search(
                 r"(?ms)^          # Each part runs its share.*?^          fi\n", job
@@ -474,24 +487,11 @@ class WorkflowContractTests(unittest.TestCase):
             '            if [[ ! -f "${path}" ]]; then\n',
             "              others) selection="
             '("${listed[@]/#/--ignore=${GITHUB_WORKSPACE}/}") ;;\n',
+            *CT_DEFACING_SELECTION,
         ):
             with self.subTest(line=line):
                 for selection in selections:
                     self.assertIn(line, selection)
-        self.assertIn(
-            '              corpus-runs) selection=("${listed[@]}") ;;\n',
-            selections[1],
-        )
-        for line in (
-            '            if [[ " ${listed[*]} " != *" ${CT_DEFACING_RUN_TEST} "* ]]; then\n',
-            '              ct-defacing) selection=("${CT_DEFACING_RUN_TEST}") ;;\n',
-            '                  if [[ "${path}" != "${CT_DEFACING_RUN_TEST}" ]]; then\n',
-            '                    selection+=("${path}")\n',
-            "                if [[ ${#selection[@]} -eq 0 ]]; then\n",
-            '                  echo "::error::The remaining corpus part must not be empty."\n',
-        ):
-            with self.subTest(floor_selection=line):
-                self.assertIn(line, selections[0])
         for name, job in (("dependency-floors", floors), ("test", test)):
             with self.subTest(job=name):
                 self.assertIn(
@@ -501,16 +501,12 @@ class WorkflowContractTests(unittest.TestCase):
                 self.assertNotIn("\n    if:", job)
                 # Synthetic corpus parts must not save a partial data cache
                 # under the key that every part shares.
-                cache_condition = (
-                    "matrix.part == 'others'"
-                    if name == "dependency-floors"
-                    else "matrix.part != 'corpus-runs'"
-                )
                 self.assertIn(
-                    "          cache-data: ${{ " + cache_condition + " }}\n", job
+                    "          cache-data: ${{ matrix.part == 'others' }}\n", job
                 )
-        # The dicom extra's run alone has the same two parts, over the same
-        # paths and marks, and its others part adds the same ignores to them.
+        # The dicom extra's run alone has the same three parts, over the same
+        # paths and marks: the corpus parts run their modules in place of the
+        # paths, and its others part adds the same ignores to them.
         narrow = workflow["narrow-extras"]
         part = (
             "          - extra: dicom\n"
@@ -518,16 +514,20 @@ class WorkflowContractTests(unittest.TestCase):
             "            marks: not slow\n"
             "            paths: tests/dicom\n"
         )
-        for name in ("corpus-runs", "others"):
+        for name in pydicom_coverage.PARTS:
             with self.subTest(narrow_part=name):
                 self.assertEqual(narrow.count(part.format(name)), 1)
-        self.assertEqual(narrow.count("            part: "), 2)
+        self.assertEqual(
+            narrow.count("            part: "), len(pydicom_coverage.PARTS)
+        )
         for line in (
             '            if [[ ! -f "${path}" ]]; then\n',
-            '              corpus-runs) selection=("${listed[@]}") ;;\n',
+            *CT_DEFACING_SELECTION,
+            "                selection=()\n",
             "              others) selection+="
             '("${listed[@]/#/--ignore=${GITHUB_WORKSPACE}/}") ;;\n',
-            "          cache-data: ${{ matrix.part != 'corpus-runs' }}\n",
+            "          cache-data: ${{ matrix.part != 'ct-defacing' && "
+            "matrix.part != 'corpus-runs' }}\n",
         ):
             with self.subTest(narrow_line=line):
                 self.assertIn(line, narrow)

@@ -1393,6 +1393,37 @@ def test_a_reports_content_item_value_is_kept_by_its_concept_not_its_row():
     )
 
 
+def test_a_time_that_modified_dates_cleans_in_a_report_is_kept_as_received():
+    """A report's Study Time keeps its time of day under Modified Dates.
+
+    Table E.3.4-1 gives Study Time (DCM 111061) C under Modified Dates, whose
+    cleaner moves a subject event's value by the subject's whole weeks
+    (D-006, D-039), so the time of day is kept, as Study Time (0008,0030) is
+    outside the tree; Study Date (DCM 111060) moves.
+    """
+    public_release = next(run for run in CORPUS_RUNS if run.name == "public-release")
+    file = next(
+        file
+        for file in corpus_module.build_corpus().files
+        if file.manifest.iod == "Mammography CAD SR"
+    )
+    by_concept = {
+        placement.concept: placement
+        for placement in file.manifest.placements
+        if placement.concept is not None
+    }
+    study_time = by_concept[("DCM", "111061", "TIME")]
+    study_date = by_concept[("DCM", "111060", "DATE")]
+
+    assert study_time.concept in runs.modified_concepts((runs.MODIFIED_DATES,))
+    assert not runs.modified_concepts((runs.FULL_DATES,))
+    assert public_release.keeps(study_time)
+    assert not public_release.keeps(study_date)
+    # Without Modified Dates' expectation of the value attribute, nothing is
+    # kept.
+    assert not dataclasses.replace(public_release, kept=frozenset()).keeps(study_time)
+
+
 def test_each_option_of_table_e1_1_has_its_code_and_temporal_value():
     assert set(runs.OPTION_CODES) == set(standard.OPTIONS)
     assert runs.temporal_value(()) == "REMOVED"

@@ -79,14 +79,18 @@ REPORT_VARIABLE = "PYMEDPHYS_DICOM_VALIDATION_REPORT"
 BOTH_VALIDATED = "input validated, output validated"
 BOTH_FAILED = "input failed, output failed"
 BOTH_UNSUPPORTED = "input unsupported, output unsupported"
-# The SOP Classes that dicom3tools' January 2024 snapshot does not know.
+# The corpus's SOP Classes that dicom3tools' January 2024 snapshot does not
+# know, including Label Map Segmentation.
 UNKNOWN_TO_DICOM3TOOLS = tuple(
-    dicom_validation.sop_class_name(sop_class)
-    for sop_class in (
+    dicom_validation.sop_class_name(uid)
+    for uid in (
         corpus_module.EXTENSIBLE_SR_STORAGE,
         corpus_module.ENHANCED_X_RAY_RADIATION_DOSE_SR_STORAGE,
         corpus_module.PATIENT_RADIATION_DOSE_SR_STORAGE,
         corpus_module.LABEL_MAP_SEGMENTATION_STORAGE,
+        corpus_module.COLON_CAD_SR_STORAGE,
+        corpus_module.MACULAR_GRID_THICKNESS_AND_VOLUME_REPORT_STORAGE,
+        corpus_module.WAVEFORM_ANNOTATION_SR_STORAGE,
     )
 )
 
@@ -208,8 +212,7 @@ def test_every_validator_ran_over_every_released_instance(comparison):
         BOTH_VALIDATED: comparison.pairs
     }
     # dciodvfy checks every input and output but the corpus's RT Dose in
-    # Implicit VR, whose 32-bit pixels abort it on both, and its Extensible
-    # SR, Enhanced X-Ray Radiation Dose SR, Patient Radiation Dose SR, and
+    # Implicit VR, whose 32-bit pixels abort it on both, and its reports and
     # label map Segmentation, whose SOP Classes dicom3tools' January 2024
     # snapshot does not know.
     statuses = dict(comparison.tallies[DCIODVFY]["statuses"])
