@@ -163,8 +163,8 @@ def test_the_reader_counts_a_segments_sheet_s_frames_for_its_segmentation_alone(
     ((segmentation,), (guide,)) = files_of[0], files_of[1]
     # The sheet showed two of the Segmentation's frames, and the volume
     # that it was drawn with only as a surface, so not as its own.
-    assert segmentation[4:] == (3, None, 2)
-    assert guide[4:] == (1, None, None)
+    assert segmentation[4:7] == (3, None, 2)
+    assert guide[4:7] == (1, None, None)
     _attested = FaceReview(
         REFERENCE,
         frozenset({segmentation[0]}),

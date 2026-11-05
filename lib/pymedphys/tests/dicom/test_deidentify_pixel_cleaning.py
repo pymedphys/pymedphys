@@ -950,12 +950,31 @@ def test_single_bits_of_another_layout_are_refused(change):
         black_out(source, source.dataset(), None, Defacer(_bits_region(), 0))
 
 
-def test_single_bits_in_frames_that_start_within_a_byte_are_refused():
-    region = np.ones((5, 7), dtype=bool)
-    source = _source(_bits(_random_bits((3, 5, 7))))
+def test_single_bits_in_frames_that_start_within_a_byte_are_written_and_checked():
+    # Frames of 35 bits, so that the second and third start within a byte,
+    # whose bits the first's and second's last bytes share.
+    frames = _random_bits((3, 5, 7))
+    region = np.zeros((5, 7), dtype=bool)
+    region[1:4, 2:6] = True
+    defacer = Defacer(region, 0, frames={1})
+    source, redaction = _defaced(_bits(frames), defacer)
 
-    with pytest.raises(PixelDataRefused):
-        black_out(source, source.dataset(), None, Defacer(region, 0))
+    output = _replaced(source, redaction)
+    expected = frames.copy()
+    expected[1][region] = 0
+    assert np.array_equal(_pixels(output), expected)
+    assert all(map(np.array_equal, defacer.seen, frames))
+    assert len(redaction.value) == len(source.value_field(pixel_cleaning.PIXEL_DATA))
+    assert not redaction_problem(source, output, redaction)
+    # A bit of the frame before, in the byte that the two share, written
+    # otherwise is found.
+    bits = np.asarray(
+        np.unpackbits(np.frombuffer(redaction.value, np.uint8), bitorder="little")
+    )
+    bits[33] ^= 1
+    dataset = source.dataset()
+    dataset.PixelData = np.asarray(np.packbits(bits, bitorder="little")).tobytes()
+    assert redaction_problem(source, read_source(synthetic.written(dataset)), redaction)
 
 
 @pytest.mark.parametrize("value", [2, -1], ids=repr)

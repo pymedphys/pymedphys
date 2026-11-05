@@ -21,13 +21,14 @@ the frame of a CT series that a run defaces
 (:mod:`~pymedphys._dicom.deidentify.face_blocks`) can trace the face that
 the CT no longer shows, as a mask of the body or the skin does. A run
 therefore cleans it in the same region as the CT's, the face block less the
-brain that defacing keeps, on the block of the frame's one defaced series
+brain and the targets that defacing keeps, on the block of the frame's one defaced series
 (:class:`~.dose_defacing.DoseBlock`), as
 :class:`~.region_defacing.PetDefacer` sets a PET image to zero activity
 there (:class:`SegmentationDefacer`). A pixel is in the region where its
 centre is in the block, and is kept where the nearest pixel of the nearest
 slice that the block reaches, within half the slices' spacing, is one that
-defacing keeps.
+defacing keeps, or where its centre lies in a kept target's hull
+(:class:`~.target_hulls.KeptTargets`).
 
 Each pixel in the region that lies in a segment is written as the
 segmentation's background, so that it lies in none: 0 for a Segmentation
@@ -49,20 +50,35 @@ Each frame is placed by its own Plane Position (Patient), Plane Orientation
 Per-frame Functional Groups Sequence item of the frame or the Shared
 Functional Groups Sequence, never both, since PS3.3 C.7.6.16.1.1 lets a
 functional group be in only one of them and gives neither precedence, and
-each sequence of one item:
-Image Position (Patient), Image Orientation (Patient) of two orthogonal unit
-vectors within :data:`~.dose_defacing._UNIT`, and Pixel Spacing, finite and
-positive, every corner of the frame within :data:`~.dose_defacing._FARTHEST`,
-as :class:`~.dose_defacing.RtDoseDefacer` checks a dose grid. A
-segmentation of native Pixel Data, one sample, MONOCHROME2, and unsigned
-pixels, of 1 bit for BINARY, 8 for FRACTIONAL, and 8 or 16 for LABELMAP, as
-PS3.3 C.8.20.2 enumerates them, packed eight to a byte for BINARY with each
-frame filling whole bytes
-(:func:`~pymedphys._dicom.deidentify.pixel_cleaning.black_out`), is cleaned
-so. Any other, such as one that a Derivation Image functional group places
-on its source images instead, one of TILED_FULL frames, compressed, or of
-PALETTE COLOR, is refused, and stays held as an instance in a defaced frame
+each sequence of one item, or, for a Segmentation without the Per-frame
+Functional Groups Sequence, which PS3.3 A.51.5 lets a Segmentation omit
+where no per-frame group would have content, as for a label map of one
+plane, from the Shared Functional Groups Sequence alone, for every frame
+(:func:`~.functional_groups.frame_group`): Image Position (Patient), Image
+Orientation (Patient) of two orthogonal unit vectors within
+:data:`~.dose_defacing._UNIT`, and Pixel Spacing, finite and positive,
+every corner of the frame within :data:`~.dose_defacing._FARTHEST`, as
+:class:`~.dose_defacing.RtDoseDefacer` checks a dose grid. A segmentation
+of one sample, unsigned pixels, of 1 bit for BINARY, 8 for FRACTIONAL, and
+8 or 16 for LABELMAP, as PS3.3 C.8.20.2 enumerates them, and MONOCHROME2,
+or for LABELMAP PALETTE COLOR, which that section also allows, whose
+palette colours each Segment Number and changes nothing that a pixel
+holds, is cleaned so: of native Pixel Data, packed eight to a byte for
+BINARY, across frames, so that a frame can start within a byte
+(:func:`~pymedphys._dicom.deidentify.pixel_cleaning.black_out`), or of
+FRACTIONAL or LABELMAP compressed Pixel Data whose frames decode as Clean
+Pixel Data decodes them, which is written uncompressed, in Explicit VR
+Little Endian, as Clean Pixel Data writes it, unless nothing is cleaned
+(D-037, D-052). Any other, such as one that a Derivation Image functional
+group places on its source images instead, one of TILED_FULL frames, a
+compressed BINARY one, whose single bits are not decoded for cleaning, or
+one whose frames do not decode, is refused, and stays held as an instance
+in a defaced frame
 (:attr:`~.reasons.VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME`).
+
+Where a run defaces more than one series in the frame, a pixel is cleaned
+where the defacing of any of them writes air at it, each series' block
+and kept brain taken in turn (:class:`~.dose_defacing.FrameRegion`).
 """
 
 from __future__ import annotations
@@ -71,9 +87,17 @@ from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom
 
 from .diagnostics import redacted_diagnostics
-from .dose_defacing import DoseBlock, _check_directions, _check_reach, _numbers
+from .dose_defacing import Region, _check_directions, _check_reach, _numbers
 from .face_blocks import _padding
-from .pixel_cleaning import FrameMask, PixelDataRefused, layout_of, stored_range
+from .functional_groups import frame_group
+from .pixel_cleaning import (
+    FrameMask,
+    PixelDataRefused,
+    frames_layout,
+    layout_of,
+    stored_range,
+)
+from .pixel_decoding import DECODING_PLUGINS
 from .reasons import TransformReason, VisualFeaturesReason
 from .source import NATIVE_TRANSFER_SYNTAXES
 
@@ -84,6 +108,10 @@ SEGMENTATION = "Segmentation"
 # Type, with Bits Stored the same.
 _BITS = {"BINARY": (1,), "FRACTIONAL": (8,), "LABELMAP": (8, 16)}
 _LABELMAP = "LABELMAP"
+# The Photometric Interpretations that PS3.3 C.8.20.2 enumerates, by
+# Segmentation Type: PALETTE COLOR only for a label map.
+_MONOCHROME2 = "MONOCHROME2"
+_PALETTE_COLOR = "PALETTE COLOR"
 
 
 class SegmentationDefacer:
@@ -94,8 +122,9 @@ class SegmentationDefacer:
 
     Parameters
     ----------
-    region : DoseBlock
-        The block of the segmentation's Frame of Reference.
+    region : DoseBlock or FrameRegion
+        The block of the segmentation's Frame of Reference, or the blocks of
+        each series defaced in it.
     dataset : pydicom.Dataset
         The segmentation's data set.
 
@@ -106,19 +135,28 @@ class SegmentationDefacer:
         the segmentation is not one that the module cleans.
     """
 
-    def __init__(self, region: DoseBlock, dataset: pydicom.Dataset) -> None:
+    def __init__(self, region: Region, dataset: pydicom.Dataset) -> None:
         try:
-            if str(dataset.file_meta.TransferSyntaxUID) not in NATIVE_TRANSFER_SYNTAXES:
-                raise ValueError("compressed")
-            layout = layout_of(dataset, packed=True)
+            syntax = str(dataset.file_meta.TransferSyntaxUID)
+            if syntax in NATIVE_TRANSFER_SYNTAXES:
+                layout = layout_of(dataset, packed=True, palette=True)
+            elif syntax in DECODING_PLUGINS:
+                # Decoded frames are of whole bytes, so a BINARY one's
+                # single bits are refused here.
+                layout = frames_layout(dataset, syntax, palette=True)
+            else:
+                raise ValueError("not decoded")
             with redacted_diagnostics():
                 kind = str(dataset.SegmentationType).strip().upper()
                 tiled = str(dataset.get("DimensionOrganizationType") or "")
             if tiled.strip().upper() == "TILED_FULL":
                 raise ValueError("tiled")
+            photometric = (
+                (_MONOCHROME2, _PALETTE_COLOR) if kind == _LABELMAP else (_MONOCHROME2,)
+            )
             if (
                 layout.samples != 1
-                or layout.photometric != "MONOCHROME2"
+                or layout.photometric not in photometric
                 or layout.signed
                 or layout.bits_allocated not in _BITS.get(kind, ())
                 or layout.bits_stored != layout.bits_allocated
@@ -164,17 +202,7 @@ class SegmentationDefacer:
         pixels in a segment, so that a segmentation that reaches the face
         is one given a mask."""
         position, orientation, spacing = self._planes[frame]
-        inside = self._region.block.slice_mask(
-            position, orientation, spacing, self._shape
-        )
-        if inside.any():
-            rows, columns = np.nonzero(inside)
-            points = (
-                np.asarray(position)
-                + columns[:, np.newaxis] * spacing[1] * np.asarray(orientation[:3])
-                + rows[:, np.newaxis] * spacing[0] * np.asarray(orientation[3:])
-            )
-            inside[rows, columns] = ~self._region.kept(points)
+        inside = self._region.written(position, orientation, spacing, self._shape)
         inside &= np.asarray(stored) != self._background
         if not inside.any():
             return None
@@ -195,7 +223,8 @@ def _plane(
 ) -> tuple[tuple[float, float, float], tuple[float, ...], tuple[float, float]]:
     """Return one frame's Image Position (Patient), Image Orientation
     (Patient), and Pixel Spacing, from its functional groups, of a
-    segmentation of ``frames`` frames.
+    segmentation of ``frames`` frames, from the Shared Functional Groups
+    Sequence alone where it has no Per-frame Functional Groups Sequence.
 
     Raises
     ------
@@ -205,55 +234,27 @@ def _plane(
     """
     with redacted_diagnostics():
         x, y, z = _numbers(
-            _group(dataset, frames, frame, "PlanePositionSequence"),
+            frame_group(
+                dataset, frames, frame, "PlanePositionSequence", shared_alone=True
+            ),
             "ImagePositionPatient",
             3,
         )
         orientation = _numbers(
-            _group(dataset, frames, frame, "PlaneOrientationSequence"),
+            frame_group(
+                dataset, frames, frame, "PlaneOrientationSequence", shared_alone=True
+            ),
             "ImageOrientationPatient",
             6,
         )
         rows, columns = _numbers(
-            _group(dataset, frames, frame, "PixelMeasuresSequence"), "PixelSpacing", 2
+            frame_group(
+                dataset, frames, frame, "PixelMeasuresSequence", shared_alone=True
+            ),
+            "PixelSpacing",
+            2,
         )
     _check_directions(orientation)
     if not min(rows, columns) > 0:
         raise ValueError("not a spacing")
     return (x, y, z), orientation, (rows, columns)
-
-
-def _group(
-    dataset: pydicom.Dataset, frames: int, frame: int, keyword: str
-) -> pydicom.Dataset:
-    """Return the one item of a functional group's sequence for a frame,
-    from either the frame's item of the Per-frame Functional Groups Sequence
-    or the Shared Functional Groups Sequence.
-
-    A group in both is refused rather than one taken over the other, since
-    PS3.3 C.7.6.16.1.1 lets a group be in only one and gives neither
-    precedence. A segmentation without the Per-frame Functional Groups
-    Sequence, which PS3.3 A.51.5 permits where it would be empty, is refused
-    too, which only holds it.
-
-    Raises
-    ------
-    ValueError
-        Where the Per-frame Functional Groups Sequence does not have one item
-        for each of the ``frames`` frames, the Shared Functional Groups
-        Sequence has more than one, or the group is not in exactly one of
-        them, in one item.
-    """
-    each = dataset.get("PerFrameFunctionalGroupsSequence") or []
-    shared = dataset.get("SharedFunctionalGroupsSequence") or []
-    if len(each) != frames or len(shared) > 1:
-        raise ValueError("not one item for each frame")
-    found = [
-        groups[keyword].value for groups in (each[frame], *shared) if keyword in groups
-    ]
-    if len(found) != 1:
-        raise ValueError("not one functional group")
-    (items,) = found
-    if len(items) != 1:
-        raise ValueError("not one item")
-    return items[0]

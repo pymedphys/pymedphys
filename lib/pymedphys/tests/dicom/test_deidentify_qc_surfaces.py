@@ -25,6 +25,7 @@ posterior, and z superior.
 # pylint: disable = too-many-lines
 
 import io
+import itertools
 import math
 import weakref
 
@@ -132,8 +133,10 @@ def _dose(
     orientation=AXIAL,
     scaling=0.001,
     instance="2.25.9101",
+    signed=False,
 ):
-    """An RT Dose instance; grid is (frames, rows, columns) of stored values."""
+    """An RT Dose instance; grid is (frames, rows, columns) of stored values,
+    signed where ``signed`` is true, as of Dose Type ERROR."""
     grid = np.asarray(grid)
     dataset = pydicom.Dataset()
     dataset.SOPClassUID = RT_DOSE_STORAGE
@@ -147,8 +150,8 @@ def _dose(
     dataset.PhotometricInterpretation = "MONOCHROME2"
     dataset.BitsAllocated = dataset.BitsStored = 32
     dataset.HighBit = 31
-    dataset.PixelRepresentation = 0
-    dataset.PixelData = grid.astype("<u4").tobytes()
+    dataset.PixelRepresentation = int(signed)
+    dataset.PixelData = grid.astype("<i4" if signed else "<u4").tobytes()
     dataset.PixelSpacing = [2.0, 2.0]
     dataset.ImageOrientationPatient = list(orientation)
     dataset.ImagePositionPatient = list(origin)
@@ -180,14 +183,15 @@ def _levels(data, rows):
 
 def _gaps(image, rows):
     """The grey of each gap between a dose-levels render's ``rows`` rows of
-    equal height: 0 within a level's rows, or the rule between levels."""
+    equal height: 0 within a level's rows, the rule between levels, or the
+    rule between a signed grid's ladders."""
     gap = qc_surfaces._GAP_PIXELS  # pylint: disable = protected-access
     height = (image.shape[0] - (rows - 1) * gap) // rows
     greys = []
     for index in range(1, rows):
         between = image[index * (height + gap) - gap :][:gap]
         assert (between == between.flat[0]).all()
-        assert between.flat[0] in (0, qc_surfaces.LEVEL_RULE)
+        assert between.flat[0] in (0, qc_surfaces.LEVEL_RULE, qc_surfaces.SIGN_RULE)
         greys.append(int(between.flat[0]))
     return greys
 
@@ -677,7 +681,6 @@ def test_an_rt_dose_grid_described_otherwise_is_rendered_alike(case):
 @pytest.mark.parametrize(
     "case",
     [
-        "oblique",
         "uneven offsets",
         "no offsets",
         "absolute offsets off the origin",
@@ -685,18 +688,13 @@ def test_an_rt_dose_grid_described_otherwise_is_rendered_alike(case):
         "no scaling",
         "zero scaling",
         "negative scaling",
-        "signed",
     ],
 )
 def test_an_rt_dose_grid_that_cannot_be_placed_or_levelled_is_not_rendered(case):
     grid = _dose_body()[:4]
     offsets = [0.0, 2.0, 4.0, 6.0]
     kwargs = {}
-    if case == "oblique":
-        angle = math.radians(30)
-        cosine, sine = round(math.cos(angle), 6), round(math.sin(angle), 6)
-        kwargs["orientation"] = (cosine, sine, 0.0, -sine, cosine, 0.0)
-    elif case == "uneven offsets":
+    if case == "uneven offsets":
         offsets = [0.0, 2.0, 4.0, 7.0]
     elif case == "no offsets":
         offsets = None
@@ -713,8 +711,6 @@ def test_an_rt_dose_grid_that_cannot_be_placed_or_levelled_is_not_rendered(case)
     elif case == "negative scaling":
         kwargs["scaling"] = -0.001
     data = _dose(grid, offsets, **kwargs)
-    if case == "signed":
-        data = _with(data, PixelRepresentation=1)
 
     # Its cine strip alone shows it, and it is listed as without dose levels.
     assert _not_drawn(qc_previews.previews_of({0: data}, ()))
@@ -784,22 +780,30 @@ def test_each_lone_dose_slice_of_a_series_is_mapped_in_order_after_its_cine_stri
 @pytest.mark.pydicom
 def test_a_lone_dose_slice_s_pixels_are_released_once_it_is_mapped(monkeypatch):
     # pylint: disable = protected-access
-    decode = qc_previews._Decoder.frame
+    decode = qc_previews._Decoder.frames
     draw = qc_previews._level_map
     mapped = []
     held_decoding = []
     held_mapping = []
 
-    def decoded(self, instance, index):
-        held_decoding.append(sum(earlier() is not None for earlier in mapped))
-        return decode(self, instance, index)
+    def decoded(self, *args, **kwargs):
+        frames = decode(self, *args, **kwargs)
+        while True:
+            held = sum(earlier() is not None for earlier in mapped)
+            try:
+                pixels = next(frames)
+            except StopIteration:
+                return
+            held_decoding.append(held)
+            yield pixels
+            del pixels
 
     def recorded(instance, pixels):
         held_mapping.append(sum(earlier() is not None for earlier in mapped))
         mapped.append(weakref.ref(pixels))
         return draw(instance, pixels)
 
-    monkeypatch.setattr(qc_previews._Decoder, "frame", decoded)
+    monkeypatch.setattr(qc_previews._Decoder, "frames", decoded)
     monkeypatch.setattr(qc_previews, "_level_map", recorded)
     with_recording = qc_previews.previews_of(_lone_slices(), ())
     monkeypatch.undo()
@@ -915,16 +919,31 @@ def test_a_dose_sheet_taller_than_its_bound_is_not_shown(monkeypatch):
     assert _not_drawn(qc_previews.previews_of(written, ()))
 
 
-@pytest.mark.pydicom
-def test_each_frame_is_decoded_once(monkeypatch):
-    decode = pydicom.pixels.pixel_array
+def _counted_decoding(monkeypatch):
+    """Record the index of each frame that pydicom decodes, one at a time or
+    as it iterates over a file's frames."""
+    decode, iterate = pydicom.pixels.pixel_array, pydicom.pixels.iter_pixels
     calls = []
 
     def counted(source, **kwargs):
         calls.append(kwargs.get("index"))
         return decode(source, **kwargs)
 
+    def iterated(source, **kwargs):
+        indices = kwargs.get("indices")
+        numbered = itertools.count() if indices is None else iter(indices)
+        for index, frame in zip(numbered, iterate(source, **kwargs)):
+            calls.append(index)
+            yield frame
+
     monkeypatch.setattr(pydicom.pixels, "pixel_array", counted)
+    monkeypatch.setattr(pydicom.pixels, "iter_pixels", iterated)
+    return calls
+
+
+@pytest.mark.pydicom
+def test_each_frame_is_decoded_once(monkeypatch):
+    calls = _counted_decoding(monkeypatch)
 
     qc_previews.previews_of(
         {0: _dose(_dose_body(), [2.0 * k for k in range(SIDE)])}, ()
@@ -1180,3 +1199,261 @@ def test_a_dose_whose_levels_are_not_drawn_keeps_its_other_previews(monkeypatch)
     assert previews.not_previewed == (
         NotPreviewedEntry(0, NotPreviewedReason.DOSE_LEVELS_NOT_SHOWN),
     )
+
+
+def _offsets():
+    return [2.0 * k for k in range(SIDE)]
+
+
+def _signed_head():
+    """An ERROR grid of -1 Gy in the head, 0 outside it, and +19 Gy at one
+    voxel of air in a corner, so that neither sign's support hides any of
+    itself."""
+    k, j, i = np.indices((SIDE,) * 3)
+    return np.where((k == 0) & (j == 0) & (i == 0), 19000, np.negative(_dose_body()))
+
+
+def _signed_levels(grid, rows):
+    """Each row of the dose-levels render of a signed grid, and the grey of
+    each gap between them."""
+    data = _surface(
+        {0: _dose(grid, _offsets(), signed=True)}, PreviewKind.SERIES_DOSE_LEVELS
+    )
+    return _levels(data, rows), _gaps(_decoded(data), rows)
+
+
+@pytest.mark.deid_requirement("MIDI-BP-15")
+@pytest.mark.pydicom
+def test_a_signed_grid_shows_its_doses_below_0_after_those_above():
+    # Each sign has its support alone: the voxel of air above 0, and the
+    # head below.
+    grid = _signed_head()
+    (above, below), greys = _signed_levels(grid, 2)
+    assert greys == [qc_surfaces.SIGN_RULE]
+    assert np.count_nonzero(_views(above)[0]) == 1
+    # The head below 0 is drawn as a CT render draws it.
+    assert np.array_equal(below, _decoded(_surface(_axial(_body()))))
+
+
+@pytest.mark.deid_requirement("MIDI-BP-15")
+@pytest.mark.pydicom
+def test_a_face_outlined_where_a_signed_dose_changes_sign_is_shown():
+    # An error of +12 mGy in the head and -12 mGy in the air around it: its
+    # magnitude is the same everywhere, so no level of magnitudes would
+    # outline the face, but each sign's support does: the head above 0,
+    # and below 0 the box of air, whose cavity is the head.
+    assert (np.abs(_body(nose=True, inside=12, outside=-12)) == 12).all()
+    sheets = {
+        nose: _surface(
+            {
+                0: _dose(
+                    _body(nose=nose, inside=12, outside=-12), _offsets(), signed=True
+                )
+            },
+            PreviewKind.SERIES_DOSE_LEVELS,
+        )
+        for nose in (True, False)
+    }
+    head = _decoded(_surface(_axial(_body())))
+    for nose, sheet in sheets.items():
+        rows = _sheet_rows(sheet)
+        # Above 0, its support; below, the box, then its cavity, then the
+        # crossings of the rays that pass through it.
+        assert _gaps(_decoded(sheet), len(rows))[0] == qc_surfaces.SIGN_RULE
+        assert np.array_equal(rows[2], _decoded(_surface(_axial(_body(nose=nose)))))
+        if nose:
+            assert np.array_equal(rows[0], head)
+    assert not np.array_equal(
+        _decoded(sheets[True])[:SIDE], _decoded(sheets[False])[:SIDE]
+    )
+
+
+@pytest.mark.pydicom
+def test_a_signed_grid_of_no_dose_below_0_ends_with_an_empty_support_below():
+    unsigned = _decoded(
+        _surface({0: _dose(_hot(19000), _offsets())}, PreviewKind.SERIES_DOSE_LEVELS)
+    )
+    signed = _decoded(
+        _surface(
+            {0: _dose(_hot(19000), _offsets(), signed=True)},
+            PreviewKind.SERIES_DOSE_LEVELS,
+        )
+    )
+    gap = qc_surfaces._GAP_PIXELS  # pylint: disable = protected-access
+    # Its ladder above 0 is the unsigned grid's sheet, then a white rule,
+    # then a black row of its empty support below 0.
+    assert np.array_equal(signed[: unsigned.shape[0]], unsigned)
+    rule = signed[unsigned.shape[0] :][:gap]
+    assert (rule == qc_surfaces.SIGN_RULE).all()
+    below = signed[unsigned.shape[0] + gap :]
+    assert below.shape == (SIDE, unsigned.shape[1]) and not below.any()
+
+
+@pytest.mark.pydicom
+def test_each_ladder_of_a_signed_grid_runs_down_its_own_doses():
+    # Below 0: -19 Gy at the hot spot, -1 Gy in the rest of the head; above
+    # 0: +1 mGy in a slab of air in front of it.
+    grid = np.where(_hot(19000) > 0, np.negative(_hot(19000)), 0)
+    _, j, _ = np.indices((SIDE,) * 3)
+    grid = np.where((grid == 0) & (j < 2), 1, grid)
+    levels = qc_surfaces.dose_levels(19.0, 1.0)
+    (*rows,), greys = _signed_levels(grid, 1 + len(levels))
+    assert greys == [qc_surfaces.SIGN_RULE] + [qc_surfaces.LEVEL_RULE] * (
+        len(levels) - 1
+    )
+    # Above 0, one level: the support of the slab of air.
+    assert _views(rows[0])[0].any()
+    # Below 0, the head's support, then the hot spot alone at each level.
+    assert np.array_equal(rows[1], _decoded(_surface(_axial(_body()))))
+    for row in rows[2:]:
+        assert np.count_nonzero(_views(row)[0]) == 1
+
+
+def test_a_dose_below_0_on_a_slice_between_voxels_is_drawn():
+    # Slices 0.5 mm apart, of voxels of 2 mm: nearest neighbour alone would
+    # take neither slice 5's dose above 0 nor its dose below.
+    heights = [0.5 * k for k in range(SIDE)]
+    assert 5 not in qc_surfaces.sampled_indices(np.asarray(heights), 2, 2.0)
+    directions = (np.array([0, 0, 1.0]), np.array([0, 1.0, 0]), np.array([1.0, 0, 0]))
+
+    def masks(value):
+        surface = qc_surfaces.Surface(
+            qc_surfaces.grid(
+                directions,
+                heights,
+                (2.0, 2.0),
+                (SIDE, SIDE),
+                qc_surfaces.Threshold.DOSE,
+                0.001,
+                signed=True,
+            )
+        )
+        for k in range(SIDE):
+            frame = np.zeros((SIDE, SIDE), np.float32)
+            if k == 5:
+                frame[10:20, 10:20] = value
+            surface.add(frame)
+        return surface.mask(), surface.mask(below=True)
+
+    above, below = masks(-1000)
+    assert below.any() and not above.any()
+    above, below = masks(1000)
+    assert above.any() and not below.any()
+
+
+def test_an_unsigned_grid_has_no_doses_below_0():
+    surface = qc_surfaces.Surface(
+        qc_surfaces.grid(
+            (np.array([0, 0, 1.0]), np.array([0, 1.0, 0]), np.array([1.0, 0, 0])),
+            [0.0, 2.0],
+            (2.0, 2.0),
+            (2, 2),
+            qc_surfaces.Threshold.DOSE,
+            0.001,
+        )
+    )
+    for _ in range(2):
+        surface.add(np.ones((2, 2), np.float32))
+    assert surface.levels_below is None
+    assert surface.ladders == ((qc_surfaces.dose_levels(0.001, 0.001), False),)
+    with pytest.raises(ValueError):
+        surface.mask(below=True)
+
+
+@pytest.mark.parametrize("scaling", [1e-46, 1e-42, 1e39])
+def test_a_dose_below_0_that_its_scaling_would_lose_is_refused(scaling):
+    assert qc_surfaces.dose_values(np.array([[-1000.0, 0.0]]), scaling) is None
+    assert qc_surfaces.dose_values(np.array([[0.0, 0.0]]), scaling) is not None
+    assert qc_surfaces.dose_values(
+        np.array([[-1000.0, 1000.0]]), 0.001
+    ) == pytest.approx(np.array([[-1.0, 1.0]]))
+
+
+def test_a_plane_is_grey_by_the_levels_its_dose_below_0_reaches():
+    levels = qc_surfaces.dose_levels(1.0, 0.001)
+    values = np.array([[0.0, -0.001, -0.003, -0.3, -1.0, np.nan, 0.5]], np.float32)
+    # As its magnitudes would be, and a dose above 0 black.
+    expected = np.rint(np.array([[0, 1, 2, 8, 9, 0, 0]]) * 255 / 9)
+    assert np.array_equal(qc_surfaces.level_bands(values, levels, True), expected)
+
+
+@pytest.mark.pydicom
+def test_a_lone_signed_dose_plane_is_mapped_above_0_then_below():
+    plane = np.where(_hot(19000) == 19000, 19000, np.negative(_dose_body()))[20:21]
+    plane = np.where(plane == 0, 3, plane)
+    previews = qc_previews.previews_of({0: _dose(plane, [0.0], signed=True)}, ())
+    assert [preview.kind for preview in previews.previews] == [
+        PreviewKind.SERIES_CINE,
+        PreviewKind.SERIES_DOSE_LEVELS,
+    ]
+    assert previews.pixels_shown == {0}
+    values = plane[0].astype(np.float32) * np.float32(0.001)
+    expected = np.concatenate(
+        [
+            qc_surfaces.level_bands(values, qc_surfaces.dose_levels(19.0, 0.003)),
+            np.full(
+                (SIDE, qc_surfaces.SIGN_RULE_PIXELS), qc_surfaces.SIGN_RULE, np.uint8
+            ),
+            qc_surfaces.level_bands(values, qc_surfaces.dose_levels(1.0, 1.0), True),
+        ],
+        axis=1,
+    )
+    assert np.array_equal(_decoded(previews.previews[1].png), expected)
+
+
+@pytest.mark.pydicom
+def test_a_series_of_dose_planes_any_of_which_is_signed_is_shown_below_0_too():
+    grid = np.where(_hot(19000) == 19000, 19000, np.negative(_dose_body()))
+    # Planes without a dose below 0 may be unsigned.
+    planes = {
+        k: _dose(
+            grid[k : k + 1],
+            None,
+            origin=(0.0, 0.0, 2.0 * k),
+            instance=f"2.25.9101.{k + 1}",
+            signed=bool((grid[k] < 0).any()),
+        )
+        for k in range(SIDE)
+    }
+    assert not all(
+        pydicom.dcmread(io.BytesIO(plane)).PixelRepresentation
+        for plane in planes.values()
+    )
+    previews = qc_previews.previews_of(planes, ())
+    assert previews.pixels_shown == frozenset(planes)
+    assert _surface(planes, PreviewKind.SERIES_DOSE_LEVELS) == _surface(
+        {0: _dose(grid, _offsets(), signed=True)}, PreviewKind.SERIES_DOSE_LEVELS
+    )
+
+
+@pytest.mark.pydicom
+def test_a_signed_dose_sheet_is_bound_by_both_its_ladders(monkeypatch):
+    grid = _signed_head()
+    written = {0: _dose(grid, _offsets(), signed=True)}
+    gap = qc_surfaces._GAP_PIXELS  # pylint: disable = protected-access
+    height = 2 * SIDE + gap
+    monkeypatch.setattr(qc_surfaces, "MAXIMUM_DOSE_SHEET_PIXELS", height)
+    assert _decoded(_surface(written, PreviewKind.SERIES_DOSE_LEVELS)).shape[0] == (
+        height
+    )
+    monkeypatch.setattr(qc_surfaces, "MAXIMUM_DOSE_SHEET_PIXELS", height - 1)
+    assert _not_drawn(qc_previews.previews_of(written, ()))
+
+
+@pytest.mark.pydicom
+@pytest.mark.parametrize("shape", ["grid", "plane"])
+def test_a_signed_dose_of_more_levels_below_0_than_its_bound_is_not_drawn(
+    monkeypatch, shape
+):
+    # One level above 0, its support; four below: its support and 1.9, 3.8,
+    # and 9.5 Gy.
+    grid = np.where(_hot(19000) > 0, np.negative(_hot(19000)), 1)
+    written = {
+        0: _dose(grid, _offsets(), signed=True)
+        if shape == "grid"
+        else _dose(grid[20:21], [0.0], signed=True)
+    }
+    monkeypatch.setattr(qc_surfaces, "MAXIMUM_DOSE_LEVELS", 4)
+    assert 0 in qc_previews.previews_of(written, ()).pixels_shown
+    monkeypatch.setattr(qc_surfaces, "MAXIMUM_DOSE_LEVELS", 3)
+    assert _not_drawn(qc_previews.previews_of(written, ()))

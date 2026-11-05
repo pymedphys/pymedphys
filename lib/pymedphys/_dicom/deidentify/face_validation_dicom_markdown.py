@@ -31,6 +31,7 @@ def markdown(summary: Mapping[str, Any]) -> str:
     files = summary["files"]
     ct = summary["ct"]
     series = summary["series"]
+    phases = summary["phases"]
     eyes = summary["eye_rois"]
     targets = summary["targets"]
     doses = summary["rt_doses"]
@@ -73,7 +74,7 @@ def markdown(summary: Mapping[str, Any]) -> str:
         *_codes("IOD", files["iods"], "Files"),
         "## CT series",
         "",
-        f"CT series: {ct['series']}. CT Image instances without a Series "
+        f"CT series: {ct['series']}. CT instances without a Series "
         f"Instance UID, which a run does not deface: "
         f"{ct['instances_without_series']}.",
         "",
@@ -90,6 +91,10 @@ def markdown(summary: Mapping[str, Any]) -> str:
         "| Outcome | Series |",
         "| --- | ---: |",
         f"| Defaced | {series['defaced']} |",
+        f"| Defaced around a target in the block | "
+        f"{series['defaced_around_targets']} |",
+        f"| Defaced and held until a reviewer confirms the block, for an eye "
+        f"ROI away from the globes | {series['defaced_eyes_unconfirmed']} |",
         *(
             f"| Not defaced: `{reason}` | {count} |"
             for reason, count in series["not_defaced"].items()
@@ -97,6 +102,28 @@ def markdown(summary: Mapping[str, Any]) -> str:
         "",
         *_codes(
             "Series with an eye ROI, by outcome", series["with_eye_rois"], "Series"
+        ),
+        "## Phases",
+        "",
+        "A series whose slices repeat a position is parted into phases, such "
+        "as the time points of a 4D CT, each phase's block is found from its "
+        "own slices, and the series is defaced only where one globe's centre "
+        "lies within the phase reach of itself in every phase. Series not "
+        f"parted, as a run stops before parting them: {phases['not_parted']}. "
+        "Series with a phase that finds no eyes: "
+        f"{phases['series_with_phases_without_eyes']}, with "
+        f"{phases['phases_without_eyes']} such phases.",
+        "",
+        *_bins("Phases of each series", phases["by_series"], "Series"),
+        *_codes(
+            "Series of several phases, by outcome",
+            phases["outcomes_of_several"],
+            "Series",
+        ),
+        *_bins(
+            "Greatest distance between one globe's centres in two phases",
+            phases["globe_spread"],
+            "Series",
         ),
         "## Eye ROIs against the globes found",
         "",

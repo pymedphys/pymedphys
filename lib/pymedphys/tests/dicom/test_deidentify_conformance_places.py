@@ -69,6 +69,8 @@ ORIGINAL_ATTRIBUTES = "(0400,0561)"
 ROI_INTERPRETER_SEQUENCE = "(3006,004E)"  # X in the Basic Profile
 REFERENCED_REQUEST = "(0040,A370)"
 REQUESTED_PROCEDURE_ID = "(0040,1001)"  # X in the Basic Profile
+RECORDED_SOURCE = "(3008,0100)"
+SOURCE_MANUFACTURER = "(300A,0216)"  # X, or K under Retain Device Identity
 SOP_CLASS_UID = "(0008,0016)"  # Type 1 at the top level of CT Image
 
 
@@ -104,7 +106,7 @@ def test_plain_actions_are_resolved_by_type_at_every_place(preset):
                     action = compound_actions.resolve_plain_in_iod(
                         iod, tag, path, entry.action
                     )
-                    if action == "D" and not _has_dummy_value(tag):
+                    if action == "D" and not _has_dummy_value(tag, path):
                         action = conformance.SEQUESTER
                     expected.append(conformance.Place(name, path, action))
                     continue
@@ -127,10 +129,16 @@ def test_plain_actions_are_resolved_by_type_at_every_place(preset):
 
 # The sequences whose D a reviewed rule writes (D-021).
 REVIEWED_DUMMY_SEQUENCES = frozenset({"(0040,1101)", "(0008,1111)", "(0040,A073)"})
+# Institution Code Sequence's reviewed rule holds only directly in an item of
+# Interlock Resolution User Sequence (D-021).
+INSTITUTION_CODE_SEQUENCE = "(0008,0082)"
+INTERLOCK_RESOLUTION_USER = "(300A,0746)"
 
 
-def _has_dummy_value(tag):
-    """Return whether D can write a dummy value for an attribute (D-021)."""
+def _has_dummy_value(tag, path):
+    """Return whether D can write a dummy value for an attribute at a place (D-021)."""
+    if tag == INSTITUTION_CODE_SEQUENCE:
+        return path[-1:] == (INTERLOCK_RESOLUTION_USER,)
     if tag in REVIEWED_DUMMY_SEQUENCES:
         return True
     attribute = standard.dictionary_attribute(tag)
@@ -155,6 +163,34 @@ def test_the_statement_says_a_reports_requested_procedure_id_is_emptied(preset):
     text = conformance_markdown.render_markdown(statement)
     assert "Requested Procedure ID (0040,1001)" in text
     assert "is emptied there" in text
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
+def test_the_statement_says_a_brachy_records_source_manufacturer_is_emptied(
+    preset,
+):
+    statement = _statement(preset)
+    entry = _entry(statement, SOURCE_MANUFACTURER)
+    # A plain X empties it in the RT Brachy Treatment Record's Recorded Source
+    # Sequence, rather than sequester the record (D-020); under Retain Device
+    # Identity it is kept, at every place.
+    if "retain_device_identity" in statement.options:
+        assert entry.action == "K"
+        assert not entry.places
+        return
+    # RT Plan's Source Sequence (300A,0210) is listed too, where it is Type 3
+    # and removed alone, as elsewhere.
+    assert entry.places == (
+        conformance.Place("RT Brachy Treatment Record", (RECORDED_SOURCE,), "Z"),
+        conformance.Place("RT Plan", ("(300A,0210)",), "X"),
+    )
+    text = conformance_markdown.render_markdown(statement)
+    row = _row(text, SOURCE_MANUFACTURER)
+    assert row.endswith(
+        "| Z within Recorded Source Sequence (3008,0100) in RT Brachy Treatment "
+        "Record. X elsewhere. |"
+    )
+    assert "it is emptied there too, rather than sequester the record" in text
 
 
 @pytest.mark.deid_requirement("PS3.15-E.1.3-01")

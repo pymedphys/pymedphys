@@ -23,10 +23,11 @@ import io
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom, pytest
 
-from pymedphys._dicom.deidentify import face_blocks
+from pymedphys._dicom.deidentify import face_blocks, qc_eyes
 from pymedphys._dicom.deidentify.defacing import FaceBlock
 from pymedphys._dicom.deidentify.face_blocks import (
     EYE_REACH,
+    EyeCheck,
     SeriesDefacing,
     SeriesProblem,
     find_face_blocks,
@@ -188,15 +189,30 @@ def _head_files() -> tuple[bytes, ...]:
     return tuple(files.ct_files(_SCAN, head.Head(noise=0.0)))
 
 
-def _outcome(*others: bytes) -> SeriesDefacing:
+def _outcome(*others: bytes, **options) -> SeriesDefacing:
     data = [*_head_files(), *others]
     records = {
         position: InstanceRecord.from_file(each) for position, each in enumerate(data)
     }
     (outcome,) = list(
-        find_face_blocks(records, lambda position: data[position]).values()
+        find_face_blocks(records, lambda position: data[position], **options).values()
     )
     return outcome
+
+
+def _held_for_eyes(outcome: SeriesDefacing) -> bool:
+    """Whether a series is defaced and held until a reviewer confirms its
+    block, with the sheet that shows its eyes."""
+    return (
+        outcome.problem is None
+        and outcome.block is not None
+        and outcome.frame == files.FRAME
+        and outcome.eyes is EyeCheck.DISAGREE
+        and outcome.hold is SeriesProblem.EYES_DISAGREE
+        and outcome.held
+        and outcome.block_sha256 is not None
+        and outcome.sheet is not None
+    )
 
 
 def _rtss(*rois, frame=files.FRAME):
@@ -215,9 +231,11 @@ def test_eyes_drawn_on_the_head_leave_its_series_defaced():
     outcome = _outcome(rtss)
 
     assert outcome.problem is None and not outcome.held
+    assert outcome.eyes is EyeCheck.AGREE
+    assert outcome.block_sha256 is None and outcome.sheet is None
 
 
-def test_an_eye_drawn_away_from_the_globes_holds_the_head_ct():
+def test_an_eye_drawn_away_from_the_globes_defaces_and_holds_the_head_ct():
     # Drawn 40 mm below the eye, where the finder found no globe.
     rtss = _rtss(
         ("Eye_R", "ORGAN", _eye(_GLOBES[0])),
@@ -226,8 +244,12 @@ def test_an_eye_drawn_away_from_the_globes_holds_the_head_ct():
 
     outcome = _outcome(rtss)
 
-    assert outcome.problem is SeriesProblem.EYES_DISAGREE
-    assert outcome.held and outcome.block is None and outcome.frame is None
+    # The block is the one that eyes drawn at the globes give: the series is
+    # defaced with it, and held until a reviewer confirms it.
+    assert _held_for_eyes(outcome)
+    assert outcome.block == _outcome().block
+    # The sheet's rows: the two globes, then the eye drawn away from them.
+    assert outcome.sheet.rows == 3
 
 
 def test_an_eye_in_another_frame_leaves_the_head_ct_defaced():
@@ -255,12 +277,25 @@ def test_an_eye_naming_no_frame_in_a_set_of_another_frame_is_checked():
     buffer = io.BytesIO()
     dataset.save_as(buffer, enforce_file_format=True)
 
-    assert _outcome(buffer.getvalue()).problem is SeriesProblem.EYES_DISAGREE
+    assert _held_for_eyes(_outcome(buffer.getvalue()))
 
 
-def test_a_target_in_the_block_is_the_reason_before_the_eyes():
+def test_a_target_kept_in_the_block_leaves_eyes_that_disagree_holding_the_series():
     rtss = _rtss(
         ("PTV", "PTV", files.square((-32.0, -76.0, 20.0))),
+        ("Eye_L", "ORGAN", _eye(np.add(_GLOBES[1], (0, 0, -40)))),
+    )
+
+    outcome = _outcome(rtss)
+
+    assert _held_for_eyes(outcome)
+    # Defaced around the target, and held for the eyes.
+    assert outcome.targets.in_block
+
+
+def test_a_target_that_cannot_be_placed_is_the_reason_before_the_eyes():
+    rtss = _rtss(
+        ("PTV", "PTV", files.square((-32.0, -76.0, 2e6))),
         ("Eye_L", "ORGAN", _eye(np.add(_GLOBES[1], (0, 0, -40)))),
     )
 
@@ -282,4 +317,183 @@ def test_a_structure_set_that_cannot_be_read_again_for_its_eyes_holds_the_series
 
     (outcome,) = list(find_face_blocks(records, read).values())
 
-    assert outcome.problem is SeriesProblem.EYES_DISAGREE
+    # No eye can be drawn from it, so the sheet shows the globes alone.
+    assert _held_for_eyes(outcome)
+    assert outcome.sheet.rows == 2
+
+
+# A reviewer's confirmation of the block.
+
+
+def _away():
+    return _rtss(
+        ("Eye_R", "ORGAN", _eye(_GLOBES[0])),
+        ("Eye_L", "ORGAN", _eye(np.add(_GLOBES[1], (0, 0, -40)))),
+    )
+
+
+def test_a_confirmed_block_defaces_the_series_without_holding_it():
+    held = _outcome(_away())
+
+    outcome = _outcome(_away(), confirmed={held.block_sha256})
+
+    assert outcome.problem is None and not outcome.held
+    assert outcome.hold is None
+    assert outcome.eyes is EyeCheck.CONFIRMED
+    assert outcome.block == held.block
+    assert outcome.block_sha256 == held.block_sha256
+    assert outcome.sheet is None
+
+
+def test_another_digest_confirms_nothing():
+    held = _outcome(_away())
+    other = bytes(a ^ b for a, b in zip(held.block_sha256, b"\x01" + bytes(31)))
+
+    outcome = _outcome(_away(), confirmed={other, bytes(32)})
+
+    assert _held_for_eyes(outcome)
+    assert outcome.block_sha256 == held.block_sha256
+
+
+def test_a_confirmation_of_eyes_that_agree_changes_nothing():
+    rtss = _rtss(
+        ("Eye_R", "ORGAN", _eye(_GLOBES[0])), ("Eye_L", "ORGAN", _eye(_GLOBES[1]))
+    )
+    held = _outcome(_away())
+
+    outcome = _outcome(rtss, confirmed={held.block_sha256})
+
+    assert outcome.eyes is EyeCheck.AGREE and outcome.block_sha256 is None
+
+
+def test_a_slice_changed_gives_another_digest():
+    data = list(_head_files())
+    changed = pydicom.dcmread(io.BytesIO(data[0]))
+    changed.SeriesDescription = "changed"
+    buffer = io.BytesIO()
+    changed.save_as(buffer, enforce_file_format=True)
+    data[0] = buffer.getvalue()
+    data.append(_away())
+    records = {p: InstanceRecord.from_file(each) for p, each in enumerate(data)}
+
+    (outcome,) = list(
+        find_face_blocks(
+            records,
+            lambda position: data[position],
+            confirmed={_outcome(_away()).block_sha256},
+        ).values()
+    )
+
+    # The same block, of other files, which the confirmation does not cover.
+    assert outcome.block == _outcome().block
+    assert _held_for_eyes(outcome)
+    assert outcome.block_sha256 != _outcome(_away()).block_sha256
+
+
+def test_without_sheets_a_series_is_held_with_its_digest_alone():
+    outcome = _outcome(_away(), sheets=False)
+
+    assert outcome.eyes is EyeCheck.DISAGREE and outcome.held
+    assert outcome.block_sha256 == _outcome(_away()).block_sha256
+    assert outcome.sheet is None
+
+
+def test_the_counts_give_each_defaced_series_by_its_eyes():
+    held = _outcome(_away())
+    counts = face_blocks.FaceBlockCounts()
+
+    counts.record(
+        [
+            held,
+            _outcome(_away(), confirmed={held.block_sha256}),
+            _outcome(),
+            SeriesDefacing(None, SeriesProblem.TARGET_IN_BLOCK),
+        ]
+    )
+
+    assert counts.defaced == 3
+    assert counts.eyes_unconfirmed == 1
+    assert counts.eyes_confirmed == 1
+    assert counts.not_defaced == {SeriesProblem.TARGET_IN_BLOCK: 1}
+
+
+def test_a_frame_whose_eyes_are_unconfirmed_is_defaced_and_unconfirmed():
+    held = _outcome(_away())
+    data = [*_head_files(), _away()]
+    records = {p: InstanceRecord.from_file(each) for p, each in enumerate(data)}
+
+    defaced = face_blocks.find_defaced(records, {"held": held})
+    confirmed = face_blocks.find_defaced(
+        records,
+        {"confirmed": _outcome(_away(), confirmed={held.block_sha256})},
+    )
+
+    assert defaced.frames == confirmed.frames == {files.FRAME}
+    assert defaced.unconfirmed == {files.FRAME}
+    assert confirmed.unconfirmed == frozenset()
+
+
+def test_unconfirmed_frames_are_among_the_defaced():
+    with pytest.raises(ValueError):
+        face_blocks.Defaced(frozenset(), frozenset(), frozenset({files.FRAME}))
+
+
+_DIGEST = bytes(range(32))
+
+
+@pytest.mark.parametrize(
+    "fields, message",
+    [
+        (
+            {"problem": SeriesProblem.EYES_DISAGREE, "block": None, "frame": None},
+            "hold a defaced series",
+        ),
+        ({"eyes": EyeCheck.DISAGREE}, "SHA-256"),
+        ({"eyes": EyeCheck.CONFIRMED}, "SHA-256"),
+        ({"block_sha256": _DIGEST}, "SHA-256"),
+        ({"eyes": EyeCheck.DISAGREE, "block_sha256": b"short"}, "SHA-256"),
+        ({"eyes": "disagree", "block_sha256": _DIGEST}, "eyes checked"),
+        (
+            {
+                "eyes": EyeCheck.DISAGREE,
+                "block_sha256": _DIGEST,
+                "block": None,
+                "frame": None,
+                "problem": SeriesProblem.UNREADABLE,
+            },
+            "eyes checked",
+        ),
+        (
+            {
+                "eyes": EyeCheck.CONFIRMED,
+                "block_sha256": _DIGEST,
+                "sheet": qc_eyes.EyeSheet(np.zeros((1, 1, 3), np.uint8), (), 1, 2),
+            },
+            "sheet",
+        ),
+    ],
+)
+def test_a_series_outcome_is_consistent(fields, message):
+    given = {"block": _BLOCK, "problem": None, "frame": files.FRAME, **fields}
+
+    with pytest.raises(ValueError, match=message):
+        SeriesDefacing(**given)
+
+
+def test_a_block_digest_binds_its_sources_and_block():
+    sources = [bytes([k]) * 32 for k in range(3)]
+    digest = face_blocks.block_digest(sources, _BLOCK)
+    moved = FaceBlock(_BLOCK.origin, _BLOCK.anterior, 1e-9, _BLOCK.globes)
+
+    assert len(digest) == 32
+    # Of the sources as a set, in any order, but not of fewer or others.
+    assert face_blocks.block_digest(sources[::-1], _BLOCK) == digest
+    assert face_blocks.block_digest(sources[:2], _BLOCK) != digest
+    assert face_blocks.block_digest([*sources, sources[0]], _BLOCK) != digest
+    assert face_blocks.block_digest(sources, moved) != digest
+    swapped = FaceBlock(
+        _BLOCK.origin, _BLOCK.anterior, _BLOCK.inferior_limit, _GLOBES[::-1]
+    )
+    assert face_blocks.block_digest(sources, swapped) != digest
+    with pytest.raises(ValueError):
+        face_blocks.block_digest([b"short"], _BLOCK)
