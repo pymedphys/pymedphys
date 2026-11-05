@@ -31,6 +31,7 @@ and ``basic-clean-descriptors``, so that the policy that Clean Descriptors
 falls back to, another preset's, selects it too.
 """
 
+import copy
 import io
 import types
 
@@ -719,7 +720,6 @@ def test_a_written_administration_phase_is_identified_by_an_ordinal(
         ("2", True),
         ("12", True),
         ("07", True),
-        ("123", False),
         ("1A", False),
         ("1.5", False),
         ("-1", False),
@@ -735,13 +735,92 @@ def test_only_a_phase_identifier_of_one_or_two_digits_is_kept(with_option, text,
 
     actions, _ = _planned(dataset, iod, composed)
 
-    # Any other value takes Text Value's own rule (D-022), as the value of
-    # an item whose concept Table E.3.4-1 does not list does, and gives no
-    # action here, while the tree is kept either way.
+    # Any other value that is not three or more digits, which is no ordinal,
+    # takes Text Value's own rule (D-022), as the value of an item whose
+    # concept Table E.3.4-1 does not list does, and gives no action here,
+    # while the tree is kept either way.
     assert actions.get(ElementPath((), CONTENT)) == "K"
     assert _values_by_concept(dataset, actions).get(
         reports.PHASE_IDENTIFIER.meaning
     ) == ("K" if kept else None)
+
+
+@pytest.mark.parametrize("text", ["100", "123", "007", "1000", "99999"])
+def test_a_phase_identifier_of_three_or_more_digits_sequesters_the_report(
+    with_option, text
+):
+    composed = with_option("basic")
+    dataset, iod = _report(PERFORMED, ("TID 11006 row 4",))
+    _by_meaning(dataset, reports.PHASE_IDENTIFIER.meaning).TextValue = text
+
+    _, plan = _planned(dataset, iod, composed)
+
+    # An ordinal that is not kept would leave its phase without one, since
+    # Text Value's own rule writes a dummy value that is not a number, so the
+    # Content Sequence takes its Basic Profile action, as where an item
+    # cannot be read (D-022).
+    assert {s.path for s in plan.sequestrations} == {ElementPath((), CONTENT)}
+
+
+def _with_phases(name, count):
+    """Return a report whose one step has ``count`` phases, each of 1 ml.
+
+    TID 11007 row 13 includes TID 11008 1-n times, and TID 11008 row 2
+    numbers each phase by its ordinal, from 1. A performed administration
+    gives each phase its own UID (TID 11008 row 3).
+    """
+    dataset, iod = _report(name, ("TID 11006 row 4",))
+    step = _by_meaning(dataset, reports.ADMINISTRATION_STEP.meaning)
+    first = _by_meaning(step, reports.ADMINISTRATION_PHASE.meaning)
+    phases = []
+    for ordinal in range(1, count + 1):
+        phase = copy.deepcopy(first)
+        _by_meaning(phase, reports.PHASE_IDENTIFIER.meaning).TextValue = str(ordinal)
+        volume = _by_meaning(phase, reports.TOTAL_PHASE_VOLUME.meaning)
+        volume.MeasuredValueSequence[0].NumericValue = "1"
+        if name == PERFORMED:
+            uid = _by_meaning(phase, reports.PERFORMED_PHASE_UID_CONCEPT.meaning)
+            uid.UID = f"{reports.PERFORMED_PHASE_UID}.{ordinal}"
+        phases.append(phase)
+    (position,) = [
+        index for index, each in enumerate(step.ContentSequence) if each is first
+    ]
+    children = list(step.ContentSequence)
+    children[position : position + 1] = phases
+    step.ContentSequence = pydicom.Sequence(children)
+    return dataset, iod
+
+
+@pytest.mark.parametrize("name", [PLANNED, PERFORMED])
+@pytest.mark.parametrize("preset", ["tps-import", "public-release"])
+def test_a_step_of_99_phases_is_released_with_every_ordinal(with_option, name, preset):
+    dataset, _ = _with_phases(name, 99)
+
+    data, decision = _released(with_option(preset), dataset)
+
+    written = pydicom.dcmread(io.BytesIO(data))
+    step = _by_meaning(written, reports.ADMINISTRATION_STEP.meaning)
+    ordinals = [
+        each.ContentSequence[0].TextValue
+        for each in step.ContentSequence
+        if each.ConceptNameCodeSequence[0].CodeMeaning
+        == reports.ADMINISTRATION_PHASE.meaning
+    ]
+    assert ordinals == [str(ordinal) for ordinal in range(1, 100)]
+    assert isinstance(decision, run.Release), decision
+
+
+@pytest.mark.parametrize("name", [PLANNED, PERFORMED])
+@pytest.mark.parametrize("preset", ["tps-import", "public-release"])
+def test_a_step_of_100_phases_is_sequestered(with_option, name, preset):
+    dataset, _ = _with_phases(name, 100)
+
+    result = _transformed(with_option(preset), dataset)
+
+    # Phase 100's ordinal is not kept, and its dummy value would leave that
+    # phase without one, in a released report whose phases' order only the
+    # ordinals give (TID 11007 is Order Non-Significant).
+    assert isinstance(result, run.Sequestered), result
 
 
 def test_another_text_item_of_digits_takes_its_own_rule(with_option):

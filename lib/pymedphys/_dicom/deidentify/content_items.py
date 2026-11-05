@@ -143,8 +143,9 @@ item's Value Type (0040,A040) and the code of its Concept Name Code Sequence
   Procedure Log's entries, which D gives the dummy datetime of its rank
   (:func:`log_dummy_datetimes`), and the Text Value of an Imaging Agent
   Administration Phase Identifier (130203, DCM), the ordinal that TID 11008
-  row 2 requires, which is kept where it is one or two digits
-  (:data:`PHASE_IDENTIFIER`).
+  row 2 requires, which is kept where it is one or two digits; where it is
+  three or more, the outermost Content Sequence takes its Basic Profile
+  action instead, which sequesters the report (:data:`PHASE_IDENTIFIER`).
 
 Waveform Annotation Sequence (0040,B020), which only IODs outside the first
 supported release define, takes its Basic Profile action, as any sequence
@@ -276,10 +277,14 @@ DUMMY_IN_PLACE_OF_REMOVAL = frozenset(
 # numeric text, and which Table E.3.4-1 does not list. TID 11007 is Order
 # Non-Significant, so the ordinal alone gives the phases' order, which Text
 # Value's own rule would replace with its dummy value. A value of one or two
-# digits is kept, as the maintainer decided on 30 October 2026, and any other
-# takes that rule (D-022).
+# digits is kept, as the maintainer decided on 30 October 2026. A value of
+# three or more digits, an ordinal that is not kept, leaves the outermost
+# Content Sequence to take its Basic Profile action, which sequesters the
+# report, since its dummy value would leave that phase without its ordinal.
+# Any other value, which is no ordinal, takes that rule (D-022).
 PHASE_IDENTIFIER = ("DCM", "130203", "TEXT")
 _ORDINAL = re.compile(r"[0-9]{1,2}")
+_LONG_ORDINAL = re.compile(r"[0-9]{3,}")
 # A Procedure Log's entries, the targets of "CONTAINS" from its root, each
 # include Observation DateTime (0040,A032) and are "strictly ordered by
 # monotonically increasing" values of it (PS3.3 Section A.35.7.3.1.2). Where
@@ -380,8 +385,9 @@ METHOD = (
     "offsets, the Content Sequence takes its Basic Profile action instead. "
     "An Imaging Agent Administration Phase Identifier (130203, DCM), which "
     "PS3.16 TID 11008 requires to be the phase's ordinal within its step, "
-    "keeps a value of one or two digits, which gives the phases' order, and "
-    "any other value takes its own rule. "
+    "keeps a value of one or two digits, which gives the phases' order; a "
+    "value of three or more digits leaves the Content Sequence to take its "
+    "Basic Profile action, and any other value takes its own rule. "
     "A concept name "
     "coded by a retired SNOMED designator with a code that Table O-1 maps is "
     "looked up as that SNOMED CT code."
@@ -681,20 +687,30 @@ class _Sequences:
             designator, value = mapped
         key = (designator, value, value_type)
         if key == PHASE_IDENTIFIER:
-            return KEEP if self._ordinal(items) else None
+            return self._phase_action(items)
         return self.actions.get(key)
 
-    def _ordinal(self, items: tuple) -> bool:
-        """Return whether a TEXT item's value is one or two digits.
+    def _phase_action(self, items: tuple) -> str | None:
+        """Return the action of a phase identifier's value, or None if unlisted.
 
-        A value that cannot be read as one string is not, and takes Text
-        Value's own rule, as any unlisted item's value does.
+        A value of one or two digits is kept. One of three or more digits is
+        an ordinal that is not kept, and that its dummy value would lose, so
+        the item raises :class:`_Unkept`, which leaves the outermost Content
+        Sequence to take its Basic Profile action. Any other value, including
+        one that cannot be read as one string, takes Text Value's own rule,
+        as any unlisted item's value does.
         """
         try:
             text = self.reader.text(ElementPath(items, TEXT_VALUE))
         except (_Unkept, UndecodableElement):
-            return False
-        return text is not None and _ORDINAL.fullmatch(text) is not None
+            return None
+        if text is None:
+            return None
+        if _ORDINAL.fullmatch(text):
+            return KEEP
+        if _LONG_ORDINAL.fullmatch(text):
+            raise _Unkept
+        return None
 
 
 @dataclasses.dataclass(frozen=True)
