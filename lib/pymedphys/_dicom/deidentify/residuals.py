@@ -156,6 +156,8 @@ from .codestreams import entropy_coded
 from .codes import load_context_group
 from .dummy_values import (
     CONSTANTS,
+    INSTITUTION_CODE_SEQUENCE,
+    INTERLOCK_RESOLUTION_USER_SEQUENCE,
     PERSON_IDENTIFICATION_CODE_SEQUENCE,
     comparison_key,
     items_for_d,
@@ -528,8 +530,8 @@ def written_constants() -> tuple[tuple[str, str], ...]:
     These are the values that depend on nothing: not the source, the key,
     the policy, or the runtime. They are D's constants and second constants
     of each VR that is searched (:data:`~.dummy_values.CONSTANTS`), the
-    values of the item that D writes in Person Identification Code Sequence
-    (0040,1101), and the fixed values of the markers: Patient Identity
+    values of the items that D writes in Person Identification Code Sequence
+    (0040,1101) and in Institution Code Sequence (0008,0082), and the fixed values of the markers: Patient Identity
     Removed, Longitudinal Temporal Information Modified, and Manufacturer,
     and the Code Value, Coding Scheme Designator, and Code Meaning of each
     code that they can write. Keyed values, such as replacement UIDs and
@@ -546,9 +548,13 @@ def written_constants() -> tuple[tuple[str, str], ...]:
         if vr in _KINDS
         for constant in pair
     ]
-    for source in ([], [{"(0008,0100)": str(CONSTANTS["LO"][0])}]):
-        for item in items_for_d(PERSON_IDENTIFICATION_CODE_SEQUENCE, source):
-            found += [(element.vr, element.value) for element in item]
+    for tag, within in (
+        (PERSON_IDENTIFICATION_CODE_SEQUENCE, ()),
+        (INSTITUTION_CODE_SEQUENCE, (INTERLOCK_RESOLUTION_USER_SEQUENCE,)),
+    ):
+        for source in ([], [{"(0008,0100)": str(CONSTANTS["LO"][0])}]):
+            for item in items_for_d(tag, source, within=within):
+                found += [(element.vr, element.value) for element in item]
     found += [("CS", "YES"), ("LO", markers.MANUFACTURER)]
     # The markers write MODIFIED or REMOVED, never the least strict value.
     found += [("CS", value) for value in markers.TEMPORAL_VALUES[1:]]

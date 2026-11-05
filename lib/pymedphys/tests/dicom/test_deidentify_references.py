@@ -103,6 +103,54 @@ RT_REFERENCES = [
         ("(3008,0020)", "(300C,0040)", "(0008,1155)"),
         Level.INSTANCE,
     ),
+    # RT Ion Plan: the structure set, the dose in each of its three places,
+    # another plan, and the surface segmentation that defines an ion range
+    # compensator.
+    ("RT Ion Plan", synthetic.REFERENCED_STRUCTURE_SET, Level.INSTANCE),
+    ("RT Ion Plan", synthetic.REFERENCED_DOSE, Level.INSTANCE),
+    ("RT Ion Plan", ("(300A,0070)", "(300C,0080)", "(0008,1155)"), Level.INSTANCE),
+    ("RT Ion Plan", ("(300A,03A2)", "(300C,0080)", "(0008,1155)"), Level.INSTANCE),
+    ("RT Ion Plan", synthetic.REFERENCED_PLAN, Level.INSTANCE),
+    (
+        "RT Ion Plan",
+        ("(300A,03A2)", "(300A,02EA)", "(0008,114D)", "(0008,1155)"),
+        Level.INSTANCE,
+    ),
+    # RT Ion Beams Treatment Record: the plan, earlier treatment records, and
+    # each ion beam's verification images.
+    ("RT Ion Beams Treatment Record", synthetic.REFERENCED_PLAN, Level.INSTANCE),
+    (
+        "RT Ion Beams Treatment Record",
+        ("(3008,0030)", "(0008,1155)"),
+        Level.INSTANCE,
+    ),
+    (
+        "RT Ion Beams Treatment Record",
+        ("(3008,0021)", "(300C,0040)", "(0008,1155)"),
+        Level.INSTANCE,
+    ),
+    # RT Brachy Treatment Record: the plan, related treatment records, and
+    # each application setup's verification images; the setup and source
+    # references of its session record are numbers, not UIDs.
+    ("RT Brachy Treatment Record", synthetic.REFERENCED_PLAN, Level.INSTANCE),
+    (
+        "RT Brachy Treatment Record",
+        ("(3008,0030)", "(0008,1155)"),
+        Level.INSTANCE,
+    ),
+    (
+        "RT Brachy Treatment Record",
+        ("(3008,0110)", "(300C,0040)", "(0008,1155)"),
+        Level.INSTANCE,
+    ),
+    # RT Treatment Summary Record: the plan, and the treatment records that it
+    # sums.
+    ("RT Treatment Summary Record", synthetic.REFERENCED_PLAN, Level.INSTANCE),
+    (
+        "RT Treatment Summary Record",
+        ("(3008,0030)", "(0008,1155)"),
+        Level.INSTANCE,
+    ),
     # RT Image: the plan in the RT Image module, and the multi-frame source of
     # an extracted frame.
     ("RT Image", synthetic.REFERENCED_PLAN, Level.INSTANCE),
@@ -168,6 +216,7 @@ OTHER_SEQUENCES = {
     "(0008,1140)",  # Referenced Image Sequence
     "(0008,114A)",  # Referenced Instance Sequence
     "(0008,114B)",  # Referenced Real World Value Mapping Instance Sequence
+    "(0008,114D)",  # Referenced Surface Segmentation Sequence
     "(0008,1156)",  # Definition Source Sequence
     "(0008,1199)",  # Referenced SOP Sequence
     "(0008,2112)",  # Source Image Sequence

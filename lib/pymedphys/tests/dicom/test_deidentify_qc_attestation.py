@@ -16,15 +16,19 @@
 
 import datetime
 import hashlib
+import io
 import json
 import os
 import stat
 import traceback
 from pathlib import PurePosixPath
 
+from pymedphys._imports import numpy as np
 from pymedphys._imports import pytest
 
-from pymedphys._dicom.deidentify import qc_attestation, qc_store
+from pymedphys._dicom.deidentify import attestation_command as command
+from pymedphys._dicom.deidentify import qc_attestation, qc_pack, qc_previews, qc_store
+from pymedphys._dicom.deidentify.face_review import read_face_review
 from pymedphys._dicom.deidentify.qc_attestation import (
     Attestation,
     AttestationRecord,
@@ -100,7 +104,7 @@ def test_the_attestation_is_written_beside_the_pack(pack):
     written = pack / qc_attestation.ATTESTATION_FILE
     digest = hashlib.sha256((pack / qc_store.PACK_FILE).read_bytes()).hexdigest()
     assert json.loads(written.read_text("ascii")) == {
-        "format": "pymedphys-deid-qc-attestation/3",
+        "format": "pymedphys-deid-qc-attestation/5",
         "reference": REFERENCE,
         "pack_digest": digest,
         "outcome": "attested",
@@ -114,6 +118,8 @@ def test_the_attestation_is_written_beside_the_pack(pack):
         "releaser": {"intended_use_checked": None, "residual_risk_accepted": None},
         "faces": [],
         "redactions": [],
+        "confirmed_blocks": [],
+        "dose_choices": [],
     }
     assert attestation.pack_digest == digest
     if os.name == "posix":
@@ -178,7 +184,7 @@ def test_an_attestation_for_another_pack_is_detected(pack):
         b'{"format": "x"}',
         b'{"format": "pymedphys-deid-qc-attestation/1"}',
         b'{"format": "pymedphys-deid-qc-attestation/2"}',
-        b'{"format": "pymedphys-deid-qc-attestation/3"}',
+        b'{"format": "pymedphys-deid-qc-attestation/5"}',
     ],
 )
 def test_a_malformed_attestation_is_refused(pack, content):
@@ -441,3 +447,220 @@ def test_a_confirmation_is_true_false_or_none(pack, value):
 def test_a_pack_not_attested_has_no_confirmations():
     with pytest.raises(QcPackError, match="no confirmations"):
         AttestationRecord(REFERENCE, Outcome.NOT_ATTESTED, True)
+
+
+# A reviewer's confirmation of a face block, from the pack's eye checks.
+
+_BLOCK_SHA256 = "b1" * 32
+_OTHER_SHA256 = "c2" * 32
+
+
+@pytest.fixture(name="eye_pack")
+def fixture_eye_pack(tmp_path):
+    release = tmp_path / "release"
+    release.mkdir()
+    held = tuple(
+        InstanceEntry(
+            position,
+            f"/imports/{position}.dcm",
+            Disposition.HELD_FOR_REVIEW,
+            reasons=("eyes disagree with rois",),
+            source_sha256="0f" * 32,
+        )
+        for position in range(3)
+    )
+    pack = QcPack(
+        REFERENCE,
+        held,
+        series=(qc_pack.SeriesEntry((0, 1)), qc_pack.SeriesEntry((2,))),
+        eye_checks=(
+            qc_pack.EyeCheckEntry((0, 1), _BLOCK_SHA256),
+            qc_pack.EyeCheckEntry((2,), _OTHER_SHA256),
+        ),
+        previews=(
+            qc_pack.Preview(
+                "P-0001.png",
+                qc_pack.PreviewKind.SERIES_EYES,
+                ((0, 0), (1, 0)),
+                2,
+                qc_previews.png(np.zeros((2, 2, 3), np.uint8)),
+            ),
+        ),
+    )
+    return qc_store.write_qc_pack(
+        pack, tmp_path / "qc", release_directory=release
+    ).parent
+
+
+def _confirm(directory, blocks, outcome=Outcome.ATTESTED):
+    return qc_attestation.attest(
+        directory,
+        reviewer=REVIEWER,
+        outcome=outcome,
+        coverage=COMPLETE,
+        attested_at=WHEN,
+        confirmed_blocks=blocks,
+    )
+
+
+def test_a_reviewer_confirms_a_block_by_its_eye_checks_first_position(eye_pack):
+    attestation = _confirm(eye_pack, [0])
+    written = json.loads((eye_pack / qc_attestation.ATTESTATION_FILE).read_text())
+
+    assert attestation.confirmed_blocks == (0,)
+    assert written["confirmed_blocks"] == [0]
+    assert qc_attestation.attested_pack(eye_pack)[0] == attestation
+    # The face review gives the block's digest, which a later run matches
+    # to the block it finds of the same files.
+    assert read_face_review(eye_pack).confirmed_blocks == {bytes.fromhex(_BLOCK_SHA256)}
+
+
+def test_without_a_confirmation_no_block_is_confirmed(eye_pack):
+    _confirm(eye_pack, [])
+
+    assert read_face_review(eye_pack).confirmed_blocks == frozenset()
+
+
+def test_the_pack_gives_each_eye_check_with_whether_it_has_a_sheet(eye_pack):
+    data = (eye_pack / qc_store.PACK_FILE).read_bytes()
+
+    assert qc_attestation.eye_checks(data) == {
+        0: qc_attestation.EyeCheck(_BLOCK_SHA256, (0, 1), True),
+        2: qc_attestation.EyeCheck(_OTHER_SHA256, (2,), False),
+    }
+
+
+@pytest.mark.parametrize(
+    "blocks, match",
+    [
+        ([1], "begins none of the QC pack's eye checks"),
+        ([2], "no sheet of its eyes"),
+        ([0, 0], "more than once"),
+        (["0"], "run positions"),
+        ([True], "run positions"),
+        ("0", "run positions"),
+        (0, "run positions"),
+    ],
+)
+def test_a_confirmation_needs_an_eye_check_with_a_sheet(eye_pack, blocks, match):
+    with pytest.raises(QcPackError, match=match):
+        _confirm(eye_pack, blocks)
+    assert not (eye_pack / qc_attestation.ATTESTATION_FILE).exists()
+
+
+def test_a_rejected_pack_confirms_no_block(eye_pack):
+    with pytest.raises(QcPackError, match="release nothing"):
+        _confirm(eye_pack, [0], Outcome.REJECTED)
+
+
+@pytest.mark.parametrize("blocks", [(1, 0), (0, 0), (-1,), [0], ("0",)])
+def test_an_attestation_s_confirmations_are_positions_in_order(pack, blocks):
+    attestation = _attest(pack)
+
+    with pytest.raises(QcPackError):
+        qc_attestation.dataclasses.replace(attestation, confirmed_blocks=blocks)
+
+
+def test_a_confirmation_changed_to_an_eye_check_without_a_sheet_is_refused(
+    eye_pack,
+):
+    _confirm(eye_pack, [0])
+    path = eye_pack / qc_attestation.ATTESTATION_FILE
+    document = json.loads(path.read_text())
+    document["confirmed_blocks"] = [2]
+    os.chmod(path, stat.S_IRUSR | stat.S_IWUSR)
+    path.write_text(json.dumps(document), "ascii")
+
+    with pytest.raises(QcPackError, match="confirmed block"):
+        read_face_review(eye_pack)
+
+
+# The command's confirmations.
+
+_EVERY_REVIEW = (
+    "--reviewed-retained-strings",
+    "--reviewed-series",
+    "--reviewed-high-risk-instances",
+)
+
+
+def _command(*argv):
+    stdout, stderr = io.StringIO(), io.StringIO()
+    status = command.main(list(argv), stdout=stdout, stderr=stderr)
+    return status, stdout.getvalue(), stderr.getvalue()
+
+
+def test_the_command_records_a_confirmed_block(eye_pack):
+    status, stdout, stderr = _command(
+        str(eye_pack),
+        "--reviewer",
+        REVIEWER,
+        "--outcome",
+        "attested",
+        *_EVERY_REVIEW,
+        "--block-confirmed",
+        "0",
+    )
+
+    assert status == command.EXIT_RECORDED, stderr
+    written = json.loads((eye_pack / qc_attestation.ATTESTATION_FILE).read_text())
+    assert written["confirmed_blocks"] == [0]
+    assert "  face blocks confirmed: 1" in stdout.splitlines()
+    assert REVIEWER not in stdout + stderr
+
+
+@pytest.mark.parametrize(
+    "confirmations, message",
+    [
+        (("--block-confirmed", "1"), "begins none of the QC pack's eye checks"),
+        (("--block-confirmed", "2"), "no sheet of its eyes"),
+        (("--block-confirmed", "0", "--block-confirmed", "0"), "more than once"),
+    ],
+)
+def test_the_command_refuses_a_confirmation_it_cannot_record(
+    eye_pack, confirmations, message
+):
+    status, stdout, stderr = _command(
+        str(eye_pack),
+        "--reviewer",
+        REVIEWER,
+        "--outcome",
+        "attested",
+        *_EVERY_REVIEW,
+        *confirmations,
+    )
+
+    assert status == command.EXIT_NOT_RECORDED
+    assert message in stderr and "nothing was recorded" in stderr
+    assert not stdout
+    assert not (eye_pack / qc_attestation.ATTESTATION_FILE).exists()
+
+
+def test_the_command_refuses_a_confirmation_with_an_outcome_of_rejected(eye_pack):
+    status, _, stderr = _command(
+        str(eye_pack),
+        "--reviewer",
+        REVIEWER,
+        "--outcome",
+        "rejected",
+        "--block-confirmed",
+        "0",
+    )
+
+    assert status == command.EXIT_NOT_RECORDED
+    assert "would release nothing" in stderr
+
+
+def test_a_confirmation_that_is_not_a_position_is_a_usage_error(eye_pack):
+    with pytest.raises(SystemExit) as raised:
+        _command(
+            str(eye_pack),
+            "--reviewer",
+            REVIEWER,
+            "--outcome",
+            "attested",
+            "--block-confirmed",
+            "Wombatson",
+        )
+
+    assert raised.value.code == command.EXIT_USAGE
