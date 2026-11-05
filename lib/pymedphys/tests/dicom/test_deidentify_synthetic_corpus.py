@@ -1369,7 +1369,12 @@ def test_each_report_records_the_identifying_values_of_its_content_tree(corpus):
 
 
 def test_no_marker_is_planted_in_a_reports_root_content_item_sequences(corpus):
-    instances = {file.manifest.sop_instance for file in corpus.files}
+    # The collection's instances, and the implant templates that the
+    # implantation plan names, which the collection does not hold.
+    instances = {file.manifest.sop_instance for file in corpus.files} | {
+        corpus_module.SELECTED_IMPLANT_TEMPLATE,
+        corpus_module.MANUFACTURER_IMPLANT_TEMPLATE,
+    }
     for file in corpus.files:
         if file.name not in corpus_module.STRUCTURED_REPORT_FILES:
             assert all(
@@ -1387,8 +1392,8 @@ def test_no_marker_is_planted_in_a_reports_root_content_item_sequences(corpus):
                 # frame of reference of a SCOORD3D item, the collection's,
                 # and the instance that an IMAGE item references or a
                 # COMPOSITE item names, one of the collection's, such as its
-                # CT dose report, each of which takes its own row of Table
-                # E.1-1.
+                # CT dose report, or an implant template, each of which takes
+                # its own row of Table E.1-1.
                 if placement.concept is None:
                     assert placement.kind is Kind.LINKED_UID, placement
                     if placement.path.tag == REFERENCED_SOP_INSTANCE:
