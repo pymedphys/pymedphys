@@ -667,9 +667,9 @@ def every_face_absent(corpus: corpus_module.SyntheticCorpus) -> FaceReview:
     It is matched by each file's SHA-256, and the SHA-256 of the pixel data,
     contours, and deformation grids that a run writes of it unchanged, as an
     attested review's verdicts are, and gives each RT Dose's every frame as
-    shown by its dose levels, so each instance that can show a face, and
-    whose pixel data, contours, and grids the run does not change,
-    satisfies the option.
+    shown by its dose levels, and each Segmentation's by its segments sheet,
+    so each instance that can show a face, and whose pixel data, contours,
+    and grids the run does not change, satisfies the option.
     """
     digests = frozenset(hashlib.sha256(file.data).digest() for file in corpus.files)
     pixels = frozenset(
@@ -677,13 +677,16 @@ def every_face_absent(corpus: corpus_module.SyntheticCorpus) -> FaceReview:
         for file in corpus.files
         if (digest := _written_sha256(pixel_data_sha256, file.data)) is not None
     )
-    doses = frozenset(
-        (hashlib.sha256(file.data).digest(), digest, int(frames))
-        for file in corpus.files
-        if (dataset := pydicom.dcmread(io.BytesIO(file.data))).get("Modality")
-        == "RTDOSE"
-        and (frames := dataset.get("NumberOfFrames") or 1)
-        and (digest := _written_sha256(pixel_data_sha256, file.data)) is not None
+    doses, segments = (
+        frozenset(
+            (hashlib.sha256(file.data).digest(), digest, int(frames))
+            for file in corpus.files
+            if (dataset := pydicom.dcmread(io.BytesIO(file.data))).get("Modality")
+            == modality
+            and (frames := dataset.get("NumberOfFrames") or 1)
+            and (digest := _written_sha256(pixel_data_sha256, file.data)) is not None
+        )
+        for modality in ("RTDOSE", "SEG")
     )
     contours = frozenset(
         (hashlib.sha256(file.data).digest(), digest)
@@ -703,6 +706,7 @@ def every_face_absent(corpus: corpus_module.SyntheticCorpus) -> FaceReview:
         contours,
         absent_dose_frames=doses,
         absent_grids=grids,
+        absent_segment_frames=segments,
     )
 
 

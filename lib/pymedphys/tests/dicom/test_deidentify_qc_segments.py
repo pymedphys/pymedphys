@@ -23,6 +23,7 @@ from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom, pytest
 
 from pymedphys._dicom.deidentify import (
+    face_review,
     pixel_risk,
     qc_attestation,
     qc_pack,
@@ -221,15 +222,15 @@ def test_binary_and_label_map_segmentations_are_read(kind):
     assert found.frame == files.FRAME
     assert found.series == {files.SERIES}
     assert repr(found).startswith("Segments(segments=2, frames=")
-    assert qc_segments.is_segmentation(_read(data))
+    assert face_review.is_segmentation(_read(data))
 
 
 def test_a_segmentation_is_one_by_its_class_or_its_modality():
     dataset = _read(files.segmentation(_SCAN, [_mask()]))
     dataset.SOPClassUID = files.CT_IMAGE_STORAGE
-    assert qc_segments.is_segmentation(dataset)
+    assert face_review.is_segmentation(dataset)
     dataset.Modality = "CT"
-    assert not qc_segments.is_segmentation(dataset)
+    assert not face_review.is_segmentation(dataset)
 
 
 def _altered(data, change):

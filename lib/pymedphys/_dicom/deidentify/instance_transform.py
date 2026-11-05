@@ -168,6 +168,7 @@ from .face_review import (
     grid_data_sha256,
     holds_deformation_grid,
     is_rt_dose,
+    is_segmentation,
     pixel_data_sha256,
     registration_frames,
 )
@@ -1495,7 +1496,10 @@ class InstanceTransform:
         contours, and deformation grids that ``writing`` writes. An RT Dose,
         by its IOD, SOP Class UID, or Modality, is held where it has pixel
         data of more frames than the pack's dose-levels previews showed,
-        since only they show its doses as they could show a face (D-017).
+        since only they show its doses as they could show a face, and a
+        Segmentation, by its IOD, SOP Class UID, or Modality, where it has
+        more than its segments sheet showed, since only that shows the
+        surfaces that its segments trace (D-017).
         """
         review = self._face_review
         if review is None or not carries_visual_features(dataset, iod.name):
@@ -1507,6 +1511,7 @@ class InstanceTransform:
             _frame_count(writing, dataset),
             dose=iod.name == RT_DOSE or is_rt_dose(dataset),
             grids=_grid_digest(writing, dataset),
+            segmentation=iod.name == SEGMENTATION or is_segmentation(dataset),
         )
         return None if reason is None else HeldVisualFeatures(reason)
 

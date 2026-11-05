@@ -42,6 +42,8 @@ FIRST_RELEASE_IODS = tuple(sorted(scope.SUPPORTED_IODS))
 STRUCTURED_REPORTS = (
     "Radiopharmaceutical Radiation Dose SR",
     "X-Ray Radiation Dose SR",
+    "Enhanced X-Ray Radiation Dose SR",
+    "Patient Radiation Dose SR",
     "Basic Text SR",
     "Enhanced SR",
     "Comprehensive SR",

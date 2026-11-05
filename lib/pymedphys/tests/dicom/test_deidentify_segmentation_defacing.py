@@ -748,20 +748,24 @@ def test_no_block_for_a_segmentation_in_another_frame_so_it_stays_held():
     assert instance_transform._region_defacing(iod, None) is None
 
 
-def _reviewed_absent(data, written):
+def _reviewed_absent(data, written, sheet=0):
     """A face review that marks a segmentation absent as ``written``, whose
-    every frame the review showed."""
+    every frame the review showed, and its segments sheet all but ``sheet``
+    of them, or none where ``sheet`` is None."""
     digest = hashlib.sha256(data).digest()
     dataset = pydicom.dcmread(io.BytesIO(written))
+    pixels = pixel_data_sha256(dataset)
+    frames = int(dataset.NumberOfFrames)
     return FaceReview(
         new_reference(),
         frozenset({digest}),
         frozenset(),
-        frozenset({(digest, pixel_data_sha256(dataset))}),
+        frozenset({(digest, pixels)}),
         frozenset({(digest, contour_data_sha256(dataset))}),
-        absent_frames=frozenset(
-            {(digest, pixel_data_sha256(dataset), int(dataset.NumberOfFrames))}
-        ),
+        absent_frames=frozenset({(digest, pixels, frames)}),
+        absent_segment_frames=None
+        if sheet is None
+        else frozenset({(digest, pixels, frames - sheet)} if frames > sheet else ()),
     )
 
 
@@ -801,5 +805,24 @@ def test_a_verdict_on_a_segmentation_as_received_holds_it_once_cleared():
     written = transform(data, records[len(slices)])
 
     assert getattr(written.evidence, "held") == (
+        HeldVisualFeatures(VisualFeaturesReason.OTHER_PIXEL_DATA),
+    )
+
+
+@pytest.mark.parametrize("sheet", [None, 1], ids=["no sheet", "a frame short"])
+def test_a_verdict_seen_but_not_on_the_whole_segments_sheet_holds_it(sheet):
+    slices = _head_files()
+    data = _head_segmentation()
+    transform, records = _prepared(*slices, data)
+    record = records[len(slices)]
+    first = transform(data, record)
+    # The review's other previews showed every frame of its segments as
+    # written, but its segments sheet, which alone shows the surfaces that
+    # they trace, showed none or all but one.
+    transform._face_review = _reviewed_absent(data, first.data, sheet)
+
+    second = transform(data, record)
+
+    assert getattr(second.evidence, "held") == (
         HeldVisualFeatures(VisualFeaturesReason.OTHER_PIXEL_DATA),
     )
