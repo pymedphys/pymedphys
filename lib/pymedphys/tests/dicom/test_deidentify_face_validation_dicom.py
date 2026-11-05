@@ -17,6 +17,7 @@ planning system's exports. Every UID and value here is invented."""
 
 from __future__ import annotations
 
+import dataclasses
 import io
 import json
 import math
@@ -43,8 +44,10 @@ from pymedphys._dicom.deidentify.face_validation_dicom import (
 )
 from pymedphys._dicom.deidentify.face_validation_dicom_markdown import markdown
 
+from . import _synthetic_compressed as compressed_files
 from . import _synthetic_head as head
 from . import _synthetic_head_dicom as files
+from ._corpus_run import decoders_installed
 
 # Coarser than the finder's own tests, as the face block tests' scan is.
 _SCAN = head.axial(
@@ -316,6 +319,13 @@ def test_each_series_storage_spacings_and_air_are_measured(measured):
         assert each.air is True
 
 
+def test_a_series_without_repeated_positions_is_one_phase(measured):
+    for each in measured.series:
+        assert each.phases == 1
+        assert each.phases_without_eyes == 0
+        assert each.globe_spread is None
+
+
 def _expected_eye(block: FaceBlock, contours, side: int | None) -> dict:
     """An eye ROI's measures from its circles: their centroid weighted by
     each circle's area, pi r squared, rather than its polygon's."""
@@ -435,7 +445,7 @@ def test_rt_plans_in_a_defaced_frame_are_counted(measured):
 
 
 def test_the_summary_counts_the_measures(summary):
-    assert summary["format"] == "pymedphys-deid-face-validation-dicom/3"
+    assert summary["format"] == "pymedphys-deid-face-validation-dicom/6"
     assert summary["series"] == {
         "defaced": 3,
         "defaced_around_targets": 1,
@@ -470,6 +480,8 @@ def test_the_summary_counts_the_measures(summary):
         "rois_cut": {"EXTERNAL": 1, "ORGAN": 7},
     }
     assert summary["rt_plans"] == {"total": 2, "in_defaced_frames": 1}
+    assert summary["phases"]["not_parted"] == 0
+    assert summary["phases"]["outcomes_of_several"] == {}
     assert summary["ct"]["air_in_hounsfield_units"] == {
         "yes": 5,
         "no": 0,
@@ -518,6 +530,7 @@ def test_the_settings_are_the_engines(summary):
     assert settings["margin_mm"] == defacing.MARGIN
     assert settings["cavity_floor_mm"] == face_blocks.CAVITY_FLOOR
     assert settings["dose_fraction"] == dose_defacing.DOSE_FRACTION
+    assert settings["phase_reach_mm"] == face_blocks.PHASE_REACH
 
 
 def test_measures_show_nothing_of_the_files(measured):
@@ -637,6 +650,8 @@ def test_the_page_shows_the_counts_as_commonmark(summary):
     ) in page
     assert "| Not defaced: `target-in-block` | 1 |\n" in page
     assert "| `EXTERNAL` | 1 |\n" in page
+    assert "## Phases\n" in page
+    assert "| 1 to under 2 | 5 |\n" in page
     lines = page.split("\n")
     # markdownlint's MD009, MD012, and MD022: no trailing spaces, no blank
     # lines in a row, and a blank line around each heading.
@@ -672,7 +687,7 @@ def test_the_command_writes_the_counts_and_prints_the_page(
 @pytest.mark.parametrize(
     "make, message",
     [
-        (lambda path: path, "The directory holds no CT Image series."),
+        (lambda path: path, "The directory holds no CT series."),
         (
             lambda path: path / "missing",
             "The input is not a directory whose files can be listed.",
@@ -794,3 +809,166 @@ def test_rt_roi_interpreted_types_are_counted_by_their_defined_terms(kind, count
     assert face_validation_dicom._interpreted_types(  # pylint: disable = protected-access
         dataset
     ) == {1: counted}
+
+
+_NEEDS_DECODERS = pytest.mark.skipif(
+    not decoders_installed(), reason="needs a decoder of each compressed syntax"
+)
+
+
+def _case_one(block: FaceBlock) -> dict[str, bytes]:
+    """Case 1's CT series, its eye ROIs, and its two RT Doses, of low and
+    high dose in the block."""
+    contents = {f"CT{i:03d}.dcm": each for i, each in enumerate(_ct(1))}
+    contents["RS.dcm"] = _structure_set(
+        1,
+        [("ORGAN", _globe(_RIGHT)), ("ORGAN", _globe(_LEFT))],
+        ["Eye_R", "Eye_L"],
+    )
+    contents["RD1.dcm"] = _dose(1, block, _DOSE_LOW, 1)
+    contents["RD2.dcm"] = _dose(1, block, _DOSE_HIGH, 2)
+    return contents
+
+
+def _measure_files(directory, contents: dict[str, bytes]) -> DicomMeasures:
+    directory.mkdir()
+    for name, data in contents.items():
+        (directory / name).write_bytes(data)
+    return face_validation_dicom.measure_dicom(directory)
+
+
+def _with_rle_segments(data: bytes, count: int) -> bytes:
+    """The RLE Lossless file ``data`` with its first frame's header giving
+    ``count`` segments, which its samples do not fill, so that it does not
+    decode."""
+    dataset = pydicom.dcmread(io.BytesIO(data))
+    frames = list(pydicom.encaps.generate_frames(dataset.PixelData, number_of_frames=1))
+    first = count.to_bytes(4, "little") + frames[0][4:]
+    dataset.PixelData = compressed_files.encapsulated([first, *frames[1:]])
+    return files.written(dataset)
+
+
+@_NEEDS_DECODERS
+@pytest.mark.parametrize(
+    "syntax", [compressed_files.RLE_LOSSLESS, compressed_files.JPEG_2000_LOSSLESS]
+)
+def test_a_compressed_series_and_its_rt_doses_are_measured_as_native_ones_are(
+    tmp_path, block, syntax
+):
+    """Lossless Pixel Data decodes to the native stored values, so every
+    measure but the storage code is that of the native files."""
+    native = _case_one(block)
+    encoded = {
+        name: compressed_files.compressed_file(
+            data,
+            # RLE Lossless takes the RT Doses' 32-bit samples.
+            compressed_files.RLE_LOSSLESS if name.startswith("RD") else syntax,
+        )
+        if name.startswith(("CT", "RD"))
+        else data
+        for name, data in native.items()
+    }
+
+    expected = _measure_files(tmp_path / "native", native)
+    measured = _measure_files(tmp_path / "compressed", encoded)
+
+    (series,) = measured.series
+    (expected_series,) = expected.series
+    assert series.outcome == "defaced"
+    assert series.storage == "compressed 16/16 signed"
+    assert series.air is True
+    assert series == dataclasses.replace(expected_series, storage=series.storage)
+    assert sorted((each.outcome, each.share) for each in measured.doses) == sorted(
+        (each.outcome, each.share) for each in expected.doses
+    )
+    assert sorted(each.outcome for each in measured.doses) == [
+        "dose-in-face-block",
+        "set-to-zero",
+    ]
+    assert measured.crashed == {}
+
+
+@_NEEDS_DECODERS
+def test_a_compressed_series_with_a_slice_that_does_not_decode_is_not_measured_for_air(
+    tmp_path, block
+):
+    """The run leaves the series undefaced, as it finds no block, and air
+    is not measured from the slices that do decode."""
+    contents = {
+        name: compressed_files.compressed_file(data, compressed_files.RLE_LOSSLESS)
+        for name, data in _case_one(block).items()
+        if name.startswith("CT")
+    }
+    contents["CT040.dcm"] = _with_rle_segments(contents["CT040.dcm"], 3)
+
+    (series,) = _measure_files(tmp_path / "exports", contents).series
+
+    assert series.outcome == "undecodable-pixel-data"
+    assert series.storage == "compressed 16/16 signed"
+    assert series.air is None
+    assert series.pixel_spacing == pytest.approx(2.0)
+    assert series.slice_spacing == pytest.approx(3.0)
+
+
+@_NEEDS_DECODERS
+def test_a_compressed_rt_dose_that_does_not_decode_is_counted_as_held(tmp_path, block):
+    contents = _case_one(block)
+    del contents["RS.dcm"], contents["RD2.dcm"]
+    contents["RD1.dcm"] = _with_rle_segments(
+        compressed_files.compressed_file(
+            contents["RD1.dcm"], compressed_files.RLE_LOSSLESS
+        ),
+        3,
+    )
+
+    (dose,) = _measure_files(tmp_path / "exports", contents).doses
+
+    assert (dose.outcome, dose.share) == ("undefaced-in-defaced-frame", None)
+
+
+@pytest.mark.parametrize(
+    ("keyword", "value", "behind", "code"),
+    [
+        ("ContourSlabThickness", 10.0, True, ("clear", pytest.approx(4.0))),
+        ("ContourOffsetVector", [0.0, 0.0, 6.0], True, ("clear", pytest.approx(4.0))),
+        ("ContourSlabThickness", 10.0, False, ("kept-in-block", None)),
+        ("ContourOffsetVector", [0.0, 0.0, 6.0], False, ("kept-in-block", None)),
+        ("ContourSlabThickness", -1.0, True, ("not-placed", None)),
+        ("ContourOffsetVector", [6.0, 0.0, 0.0], False, ("not-placed", None)),
+        ("ContourSlabThickness", None, True, ("clear", pytest.approx(4.0))),
+        ("ContourOffsetVector", None, True, ("clear", pytest.approx(4.0))),
+        ("ContourSlabThickness", None, False, ("kept-in-block", None)),
+        ("ContourOffsetVector", None, False, ("kept-in-block", None)),
+    ],
+    ids=[
+        "thickness-behind",
+        "offset-behind",
+        "thickness-in-block",
+        "offset-in-block",
+        "negative-thickness",
+        "offset-outside-normal",
+        "empty-thickness-behind",
+        "empty-offset-behind",
+        "empty-thickness-in-block",
+        "empty-offset-in-block",
+    ],
+)
+def test_a_target_in_a_slab_is_reported_by_its_full_span(keyword, value, behind, code):
+    # A block of the points with y below 0 and z above 0, and a square 4 mm
+    # behind it, clear of it by its points alone, or in it.
+    target = files.square((0.0, 6.0 if behind else -6.0, 20.0))
+    rtss = pydicom.dcmread(io.BytesIO(files.structure_set([("PTV", target)])))
+    (contour,) = rtss.ROIContourSequence[0].ContourSequence
+    setattr(contour, keyword, value)
+    block = FaceBlock((0.0, 0.0, 0.0), (0.0, -1.0, 0.0), 0.0, ((0, 0, 0), (0, 0, 0)))
+    fates = face_blocks._TargetFates(  # pylint: disable = protected-access
+        block, block, (), 0.0
+    )
+
+    # These axial spans change only z, so a valid span keeps the same 4 mm
+    # clearance in y, or stays in the block. An unplaceable span still holds.
+    codes = face_validation_dicom._target_codes(  # pylint: disable = protected-access
+        rtss, files.FRAME, set(), fates
+    )
+
+    assert list(codes) == [code]

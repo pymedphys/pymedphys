@@ -73,17 +73,18 @@ where the attestation gives none. A choice releases nothing by itself.
 The attestation may also give a face verdict of its own for any instance
 that the pack lists in its ``undefaced_instances`` as shown, by its run
 position: an instance in a defaced CT series' Frame of Reference, naming
-none, or referring to a defaced slice, whose outline or pixel data the run
-does not clean of the face (D-050). A verdict on its series does not cover
-it, since the reviewer may have judged the series beside the defaced CT,
-while the outline or pixel data of the instance itself were left as they
-were; its own verdict is the reviewer's judgement of its own previews, the
-pack's previews that draw its pixel data or contours as written, which the
-pack lists as shown only where they draw every frame and every contour of
-it. The pack records the SHA-256 of its source file, so the verdict is
-bound, through the pack, to that file, as a series' verdict is to its
-files, and a later run releases it on a verdict of absent only where it
-writes the pixel data and contours that the pack showed.
+none, or referring to a defaced slice, whose outline, pixel data, or
+deformation grids the run does not clean of the face (D-050). A verdict on
+its series does not cover it, since the reviewer may have judged the series
+beside the defaced CT, while the outline, pixel data, or grids of the
+instance itself were left as they were; its own verdict is the reviewer's
+judgement of its own previews, the pack's previews that draw its pixel
+data, contours, or grids as written, which the pack lists as shown only
+where they draw every frame, every contour, and every grid of it. The pack
+records the SHA-256 of its source file, so the verdict is bound, through
+the pack, to that file, as a series' verdict is to its files, and a later
+run releases it on a verdict of absent only where it writes the pixel data,
+contours, and grids that the pack showed.
 
 The attestation may likewise give a redaction verdict for any instance whose
 Pixel Data the Clean Pixel Data Option cleaned and the pack previewed, by
@@ -697,7 +698,7 @@ def attest(
         if not listed[verdict.position]:
             raise QcPackError(
                 f"an instance's face verdict names run position {verdict.position}, "
-                "whose previews do not show all of its pixel data and contours"
+                "whose previews do not show all of its pixel data, contours, and grids"
             )
     firsts = _firsts(data)
     unknown = [verdict.series for verdict in verdicts if verdict.series not in firsts]

@@ -44,10 +44,23 @@ values themselves, such as digests and codes, are those that
 from __future__ import annotations
 
 import json
-from collections.abc import Mapping, Sequence
 
 from .policy import UIDS
 from .release_report import FORMAT, STRUCTURAL_CHECKS
+from .release_report_markdown_values import (
+    ReleaseReportMarkdownError,
+    _boolean,
+    _code,
+    _count,
+    _digest_table,
+    _fields,
+    _list,
+    _members,
+    _optional,
+    _refuse,
+    _table,
+    _tally,
+)
 
 # The name of each field of a section, as a reader sees it, in the order of
 # the document.
@@ -114,12 +127,14 @@ _SECTIONS = (
     "held_for_review",
     "roi_names",
     "descriptors",
+    "icc_profiles",
     "reference_findings",
     "pixel_risks",
     "search_coverage",
     "exempted_findings",
     "source_gaps",
     "structural_checks",
+    "studies_with_several_patients",
 )
 _NONE = "None."
 # The readiness section's gates, as a reader sees them, in the order of the
@@ -129,13 +144,6 @@ _GATES = {
     "pixel_and_face": "Pixel and face review gate",
     "attestation": "Attestation gate",
 }
-
-
-class ReleaseReportMarkdownError(ValueError):
-    """The text is not a release report of this module's format.
-
-    The message names the field, never its value.
-    """
 
 
 def to_markdown(report: str) -> str:
@@ -191,12 +199,14 @@ def to_markdown(report: str) -> str:
         *_held(document["held_for_review"]),
         *_roi_names(document["roi_names"]),
         *_descriptors(document["descriptors"]),
+        *_icc_profiles(document["icc_profiles"]),
         *_reference_findings(document["reference_findings"]),
         *_pixel_risks(document["pixel_risks"]),
         *_coverage(document["search_coverage"]),
         *_exempted(document["exempted_findings"]),
         *_gaps(document["source_gaps"]),
         *_structural_checks(document["structural_checks"]),
+        *_several_patients(document["studies_with_several_patients"]),
     ]
     return "\n\n".join("\n".join(block) for block in blocks) + "\n"
 
@@ -755,6 +765,35 @@ def _descriptors(section: object) -> list[Block]:
     ]
 
 
+def _icc_profiles(section: object) -> list[Block]:
+    section = _fields("icc_profiles", section, ("cleaned", "replaced"))
+    rows = []
+    for entry in _list("icc_profiles replaced", section["replaced"]):
+        entry = _fields("icc_profiles replaced", entry, ("reason", "count"))
+        rows.append(
+            (
+                _code("icc_profiles reason", entry["reason"]),
+                _count("icc_profiles replaced count", entry["count"]),
+            )
+        )
+    return [
+        ["## ICC profiles"],
+        [
+            "What replaced the ICC Profile of each released and held instance "
+            "that had one: the source profile cleaned of everything but its "
+            "colorimetry, so that colours show as they did in the source, or, "
+            "where the source could not be cleaned, a fixed sRGB profile, "
+            "with which colours can show differently."
+        ],
+        [
+            "Cleaned source profiles: "
+            f"{_tally('icc_profiles cleaned', section['cleaned'])}."
+        ],
+        ["### Fixed sRGB profiles, by why the source could not be cleaned"],
+        _table(("Reason", "Profiles"), rows) if rows else [_NONE],
+    ]
+
+
 def _reference_findings(section: object) -> list[Block]:
     rows = []
     for entry in _list("reference_findings", section):
@@ -860,6 +899,7 @@ def _exempted(section: object) -> list[Block]:
             "because what it is or where it was found explains it: a standard "
             "term or code, an equipment name, a vendor's private creator, a date "
             "that Modified Dates shifted, a value that a selected option keeps, "
+            "text in a private creator that the run's safe private list keeps, "
             "or a standard code's meaning, or a UID that a selected option "
             "keeps, that only instances the run did not write held. Each is "
             "counted by why it was exempted, the attribute that "
@@ -929,88 +969,43 @@ def _structural_checks(section: object) -> list[Block]:
     ]
 
 
-def _table(header: Sequence[str], rows: Sequence[Sequence[str]]) -> Block:
-    def line(cells: Sequence[str]) -> str:
-        return "|" + "".join(f" {cell} |" if cell else " |" for cell in cells)
-
-    return [line(header), "|" + " --- |" * len(header), *(line(row) for row in rows)]
+# The run's choices for a study whose instances name several patients.
+_SEVERAL_PATIENTS = ("stop", "sequester")
 
 
-def _digest_table(field: str, digests: object) -> Block:
-    if not isinstance(digests, dict):
-        raise _refuse(field)
-    return _table(
-        ("File", "SHA-256"),
+def _several_patients(section: object) -> list[Block]:
+    section = _fields(
+        "studies_with_several_patients", section, ("handling", "sequestered")
+    )
+    handling = section["handling"]
+    if handling not in _SEVERAL_PATIENTS:
+        raise _refuse("studies_with_several_patients handling")
+    sequestered = _tally(
+        "studies_with_several_patients sequestered", section["sequestered"]
+    )
+    if handling == "stop" and section["sequestered"]:
+        raise _refuse("studies_with_several_patients sequestered")
+    return [
+        ["## Studies with several patients"],
         [
-            (_code(field, name), _code(field, digest))
-            for name, digest in digests.items()
+            "What the run did with a study whose instances name several "
+            "patients, each a Patient ID with its issuer, which is a curation "
+            "error that no change to its instances can repair: stop, the "
+            "default, under which such a study stops the run before anything "
+            "is written, or sequester, the opt-in under which each instance of "
+            "such a study is sequestered for study-with-several-patients and "
+            "the rest of the run goes ahead. A sequestered study's values were "
+            "still searched for in the released files of every patient that it "
+            "names. Where the run sequestered one, this release lacks every "
+            "instance of it, so the record of each patient that it names is "
+            "incomplete. The confidential QC pack lists the instances of each study by "
+            "patient, for a curator to correct."
         ],
-    )
-
-
-def _fields(
-    field: str, section: object, names: Mapping[str, object] | Sequence[str]
-) -> dict:
-    """Return the section, if it has exactly these fields, in this order."""
-    if not isinstance(section, dict) or list(section) != list(names):
-        raise ReleaseReportMarkdownError(
-            f"The fields of the release report's {field} are not those of {FORMAT}."
-        )
-    return section
-
-
-def _list(field: str, value: object) -> list:
-    if not isinstance(value, list):
-        raise _refuse(field)
-    return value
-
-
-def _code(field: str, value: object) -> str:
-    # An empty code span, or one with space at an end, would not show the
-    # value as it is.
-    if (
-        not isinstance(value, str)
-        or not value
-        or value != value.strip()
-        or any(c in value for c in "`|\n\r")
-    ):
-        raise _refuse(field)
-    return f"`{value}`"
-
-
-def _count(field: str, value: object) -> str:
-    if not isinstance(value, int) or isinstance(value, bool) or value < 1:
-        raise _refuse(field)
-    return f"`{value}`"
-
-
-def _tally(field: str, value: object) -> str:
-    if not isinstance(value, int) or isinstance(value, bool) or value < 0:
-        raise _refuse(field)
-    return f"`{value}`"
-
-
-def _boolean(field: str, value: object) -> str:
-    if not isinstance(value, bool):
-        raise _refuse(field)
-    return f"`{json.dumps(value)}`"
-
-
-def _optional(field: str, value: object, absent: str = "none") -> str:
-    return absent if value is None else _code(field, value)
-
-
-def _members(pairs: list[tuple[str, object]]) -> dict:
-    """Return a JSON object's members, refusing a member named twice."""
-    members = dict(pairs)
-    if len(members) != len(pairs):
-        raise ReleaseReportMarkdownError(
-            "The release report names a member twice in one object."
-        )
-    return members
-
-
-def _refuse(field: str) -> ReleaseReportMarkdownError:
-    return ReleaseReportMarkdownError(
-        f"The release report's {field} is not in the form of {FORMAT}."
-    )
+        _table(
+            ("Field", "Value"),
+            [
+                ("Handling", _code("studies_with_several_patients", handling)),
+                ("Studies sequestered", sequestered),
+            ],
+        ),
+    ]

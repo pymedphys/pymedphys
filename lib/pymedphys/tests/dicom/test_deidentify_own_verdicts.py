@@ -56,6 +56,7 @@ from pymedphys._dicom.deidentify.qc_attestation import (
 )
 from pymedphys._dicom.deidentify.qc_pack import (
     NO_CONTOURS_SHA256,
+    NO_GRIDS_SHA256,
     Disposition,
     InstanceEntry,
     QcPack,
@@ -85,14 +86,17 @@ def _sha(n):
     return bytes.fromhex(_digest(n))
 
 
-# PET instances and RT Doses have no contours.
+# PET instances and RT Doses have no contours, nor deformation grids.
 _NONE = bytes.fromhex(NO_CONTOURS_SHA256)
 
 
 # The QC pack's undefaced instances.
 
 
-def _held(position, digest=True, shown=True):
+def _held(position, digest=True, shown=True, grids=True):
+    """An undefaced instance held for review, whose pack has the digests
+    of its pixel data where ``shown``, and of its grids, of none, where
+    ``grids``."""
     return InstanceEntry(
         position,
         f"/imports/{position}.dcm",
@@ -101,6 +105,7 @@ def _held(position, digest=True, shown=True):
         source_sha256=_digest(position) if digest else None,
         pixel_sha256=_digest(100 + position) if shown else None,
         contour_sha256=NO_CONTOURS_SHA256,
+        grid_sha256=NO_GRIDS_SHA256 if grids else None,
     )
 
 
@@ -113,6 +118,7 @@ def _released(position, shown=True):
         source_sha256=_digest(position),
         pixel_sha256=_digest(100 + position) if shown else None,
         contour_sha256=NO_CONTOURS_SHA256,
+        grid_sha256=NO_GRIDS_SHA256,
     )
 
 
@@ -151,6 +157,7 @@ def test_the_pack_lists_each_undefaced_instance_with_whether_it_is_shown():
     pack = _pack((_held(0), _held(1, shown=False), _released(2)), entries)
 
     assert pack.undefaced_instances == entries
+    assert _pack((_held(0, grids=False),), (UndefacedEntry(0, False),))
     assert qc_pack.pack_document(pack)["undefaced_instances"] == [
         {"position": 0, "shown": True},
         {"position": 1, "shown": False},
@@ -198,6 +205,10 @@ def _sequestered(position):
         ((_sequestered(0),), (UndefacedEntry(0, False),), "neither released nor"),
         ((_held(0, shown=False),), (UndefacedEntry(0, True),), "shown exactly"),
         ((_held(0),), (UndefacedEntry(0, False),), "shown exactly"),
+        # Its pixel data and contours shown do not show it whole where the
+        # pack has no digest of its deformation grids, whose sheets did not
+        # all show them.
+        ((_held(0, grids=False),), (UndefacedEntry(0, True),), "shown exactly"),
     ],
 )
 def test_a_pack_s_undefaced_instances_are_checked(instances, entries, match):
@@ -256,7 +267,9 @@ def fixture_own_pack(tmp_path):
     release.mkdir()
     instances = (
         _held(0),
-        dataclasses.replace(_released(1), pixel_sha256=None, contour_sha256=None),
+        dataclasses.replace(
+            _released(1), pixel_sha256=None, contour_sha256=None, grid_sha256=None
+        ),
         _held(2, shown=False),
         _released(3),
     )

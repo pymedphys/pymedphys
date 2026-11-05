@@ -27,6 +27,7 @@ from __future__ import annotations
 import contextlib
 import copy
 import dataclasses
+import io
 import json
 import shutil
 import tempfile
@@ -40,6 +41,7 @@ from pymedphys._dicom.deidentify import (
     dose_defacing,
     face_blocks,
     markers,
+    qc_previews,
     run,
 )
 from pymedphys._dicom.deidentify import synthetic_corpus as corpus_module
@@ -69,9 +71,11 @@ from pymedphys._dicom.deidentify.release_gate import ReleaseReason
 from pymedphys._dicom.deidentify.target_hulls import TargetHull
 from pymedphys._dicom.deidentify.text_detection import TextBox
 
+from . import _synthetic_compressed as compressed_files
 from . import _synthetic_head as head
 from . import _synthetic_head_dicom as files
 from . import _synthetic_rtdose as rtdose
+from ._corpus_run import decoders_installed
 from .test_deidentify_visual_features_option import (
     CODE,
     KEY,
@@ -119,10 +123,34 @@ _GRID = {
 }
 _HIGHEST = 20000
 _LOW = round(dose_defacing.DOSE_FRACTION * _HIGHEST)
+# The transfer syntaxes of the head's compressed slices, PET slices, and RT
+# Dose, in turn: decoded in the decoding child and in process.
+_COMPRESSED = (compressed_files.JPEG_2000_LOSSLESS, compressed_files.RLE_LOSSLESS)
 # The synthetic collection's Enhanced CT Image and Legacy Converted Enhanced
 # CT Image instances, whose frames no functional groups place, are each a
 # CT series that the run cannot deface.
 _UNPLACED = 2
+# Deformable registrations, each with a grid that the run does not cut,
+# named by how they are tied to the head's Frame of Reference: as their own
+# frame, the Registered Frame of Reference, in which the grid lies; as the
+# Source Frame of Reference of an item; by a reference to a slice of the
+# head; by an item that names no Source Frame of Reference; or not at all.
+_ELSEWHERE = files.ROOT + ".81"
+_TIED = (
+    "19-registration-own-frame.dcm",
+    "19-registration-source-frame.dcm",
+    "19-registration-slice.dcm",
+    "19-registration-no-source.dcm",
+)
+_UNTIED = "19-registration-elsewhere.dcm"
+_REGISTRATIONS = (*_TIED, _UNTIED)
+# The collection's own deformable registration, of the PET Image to the
+# head's Frame of Reference, which no series of its own marks absent.
+_COLLECTION_REGISTRATION = "19-registration-deformable.dcm"
+# The instances that the run with the deformable registrations does not
+# clean in the head's defaced frame: the PET instances and each
+# registration tied to that frame, each of which its pack shows whole.
+_UNDEFACED_WITH_REGISTRATIONS = (*_PET[1:], *_TIED, _COLLECTION_REGISTRATION)
 
 
 def _dose(low):
@@ -133,8 +161,21 @@ def _dose(low):
     return stored
 
 
-def _head_name(index):
-    return f"01-head-{index:03d}.dcm"
+def _head_name(index, phase=0):
+    return (
+        f"01-head-{index:03d}.dcm" if not phase else f"01-head-t{phase}-{index:03d}.dcm"
+    )
+
+
+def _phased(data, phase):
+    """A head slice as one of a time point's, from 0, which names it by its
+    Temporal Position Identifier, with a SOP Instance UID of its own."""
+    dataset = pydicom.dcmread(io.BytesIO(data))
+    dataset.TemporalPositionIdentifier = phase + 1
+    if phase:
+        dataset.SOPInstanceUID = f"{dataset.SOPInstanceUID}.{phase}"
+        dataset.file_meta.MediaStorageSOPInstanceUID = dataset.SOPInstanceUID
+    return files.written(dataset)
 
 
 def _section(ellipsoid, z, scale=1.0):
@@ -201,23 +242,104 @@ _TARGET_NAME = "PTV_Orbit"
 
 
 def _rois(target=False):
-    """The head's ROIs, by name, with a target in the block, by
-    :data:`_TARGETS`, if ``target``."""
+    """The head's ROIs, with the requested target from main's fixture."""
     return {**_ROIS, _TARGET_NAME: _TARGETS[target]} if target else dict(_ROIS)
 
 
-def _head_structure_set(template, *, eyes_away=False, target=False):
+def _head_structure_set(template, *, eyes_away=False, target=False, frames=False):
     rois = _rois(target)
     if eyes_away:
         # The left eye drawn 40 mm below its globe, where the finder found
         # none.
         rois["Eye_L"] = ("ORGAN", _eye(1, below=40.0))
-    return files.structure_set(
+    data = files.structure_set(
         list(rois.values()),
         frame=corpus_module.FRAME_OF_REFERENCE,
         template=template,
         names=list(rois),
     )
+    if not frames:
+        return data
+    # A frame that the run holds no image of, declared, with an ROI there
+    # that reaches where the block would be in the head's frame.
+    dataset = pydicom.dcmread(pydicom.filebase.DicomBytesIO(data))
+    other = files.structure_set(
+        [("ORGAN", files.square(_IN_THE_BLOCK, 10.0))],
+        frame=_OTHER_FRAME,
+        names=["Other"],
+    )
+    added = pydicom.dcmread(pydicom.filebase.DicomBytesIO(other))
+    number = len(rois) + 1
+    for keyword in (
+        "ReferencedFrameOfReferenceSequence",
+        "StructureSetROISequence",
+        "ROIContourSequence",
+        "RTROIObservationsSequence",
+    ):
+        (item,) = getattr(added, keyword)
+        for attribute in ("ROINumber", "ReferencedROINumber", "ObservationNumber"):
+            if attribute in item:
+                setattr(item, attribute, number)
+        getattr(dataset, keyword).append(item)
+    return files.written(dataset)
+
+
+# A second series of the head's slices in their frame, and the frame that
+# the structure set also declares, of no image of the run.
+_PHASE_SERIES = corpus_module.CT_SERIES + ".900"
+_OTHER_FRAME = corpus_module.FRAME_OF_REFERENCE + ".9"
+_ERROR_DOSE = "06-rtdose-error.dcm"
+_SLAB_STRUCTURE_SET = "04-rtstruct-slab.dcm"
+
+
+def _phase_name(index):
+    return f"01-head-phase-{index:03d}.dcm"
+
+
+def _error(stored):
+    """A grid of differences: of either sign at the low dose in the block,
+    and of the greatest magnitude, negative, behind the head."""
+    signs = np.where(np.indices(stored.shape).sum(axis=0) % 2, 1, -1)
+    differences = (stored.astype(np.int64) * signs).astype(np.int32)
+    differences[:, 36:, :] = -_HIGHEST
+    return differences
+
+
+def _slab_structure_set(template):
+    """A structure set of the head's frame, in the template's series, with
+    one ROI whose contour, 40 mm below the globes and across the block's
+    vertical plane, has a slab 100 mm thick, which reaches the block, so
+    that its part behind the plane is kept."""
+    data = files.structure_set(
+        [
+            (
+                "ORGAN",
+                files.square((-32.0, head.GLOBE_Y + 5.0, head.GLOBE_Z - 40.0), 10.0),
+            )
+        ],
+        frame=corpus_module.FRAME_OF_REFERENCE,
+        template=template,
+        names=["Slab"],
+    )
+    dataset = pydicom.dcmread(pydicom.filebase.DicomBytesIO(data))
+    dataset.SOPInstanceUID = f"{template.SOPInstanceUID}.30"
+    dataset.file_meta.MediaStorageSOPInstanceUID = dataset.SOPInstanceUID
+    (contour,) = dataset.ROIContourSequence[0].ContourSequence
+    contour.ContourSlabThickness = "100"
+    return files.written(dataset)
+
+
+def _error_dose(grid):
+    data = files.dose(
+        _error(_dose(_LOW)),
+        **_GRID,
+        frame=corpus_module.FRAME_OF_REFERENCE,
+        instance=f"{grid.SOPInstanceUID}.20",
+        template=grid,
+    )
+    dataset = pydicom.dcmread(pydicom.filebase.DicomBytesIO(data))
+    dataset.DoseType = "ERROR"
+    return files.written(dataset)
 
 
 def _pet_points(z):
@@ -320,6 +442,41 @@ def _runs(
         )
 
 
+def _registrations(slices):
+    """Each deformable registration of :data:`_REGISTRATIONS`, by name."""
+    vectors = np.zeros((2, 3, 4, 3), np.float32)
+    vectors[1, 1, 1:3] = (1.0, -2.0, 0.5)
+    grid = (vectors, (-20.0, -90.0, 10.0), (5.0, 5.0, 5.0))
+    frame = corpus_module.FRAME_OF_REFERENCE
+    ties = {
+        _TIED[0]: {"frame": frame, "sources": (_ELSEWHERE,)},
+        _TIED[1]: {"frame": _ELSEWHERE, "sources": (frame,)},
+        _TIED[2]: {"frame": _ELSEWHERE},
+        _TIED[3]: {"frame": _ELSEWHERE},
+        _UNTIED: {"frame": _ELSEWHERE},
+    }
+    found = {}
+    for index, (name, tie) in enumerate(ties.items()):
+        dataset = pydicom.dcmread(
+            io.BytesIO(
+                files.registration(
+                    [grid], instance=f"{files.ROOT}.9.{index + 2}", **tie
+                )
+            )
+        )
+        (item,) = dataset.DeformableRegistrationSequence
+        if name == _TIED[2]:
+            slice_ = pydicom.dcmread(io.BytesIO(slices[0]))
+            reference = pydicom.Dataset()
+            reference.ReferencedSOPClassUID = slice_.SOPClassUID
+            reference.ReferencedSOPInstanceUID = slice_.SOPInstanceUID
+            item.ReferencedImageSequence = [reference]
+        if name == _TIED[3]:
+            del item.SourceFrameOfReferenceUID
+        found[name] = files.written(dataset)
+    return found
+
+
 @contextlib.contextmanager
 def _reviewed(
     first=None,
@@ -328,17 +485,28 @@ def _reviewed(
     dose=None,
     edges=False,
     multi_frame=False,
+    compressed=False,
+    phases=False,
+    time_points=1,
+    registrations=False,
 ):
     """Run the collection, with its CT slices replaced by the head's, as one
-    Enhanced CT Image instance if ``multi_frame``, its RT Structure Set by
-    the head's ROIs, with a target in the block, by :data:`_TARGETS`, if
-    ``target``, its PET
+    Enhanced CT Image instance if ``multi_frame``, or as ``time_points`` time
+    points of one series at the same positions, each naming its Temporal
+    Position Identifier where there are more than one (:func:`_phased`), its
+    RT Structure Set by the head's ROIs, with a target in the block, by
+    :data:`_TARGETS`, if ``target``, its PET
     Image by :data:`_PET_SLICES`, and, if ``multi_frame``, its Enhanced PET
     Image by those slices as one instance, and its first RT Dose
     by a grid over the head of ``dose`` where given, with the RT Dose
     instances of :data:`_UNPLACEABLE` and :data:`_DVH_ONLY` in its series if
-    ``edges``, under ``basic``, or under the option and ``first`` with a
-    face review that gives no verdicts."""
+    ``edges``, the head's CT and PET slices and that RT Dose compressed in
+    :data:`_COMPRESSED` in turn if ``compressed``, and the deformable
+    registrations of :data:`_REGISTRATIONS` if ``registrations``, under
+    ``basic``, or under the option and ``first`` with no face verdicts.
+    If ``phases``, a second head series shares its frame, the structure set
+    also declares an undefaced frame, and an ERROR dose and slab structure
+    set are added (:data:`_ERROR_DOSE`, :data:`_SLAB_STRUCTURE_SET`)."""
     corpus = corpus_module.build_corpus()
     directory = Path(tempfile.mkdtemp(prefix="d"))
     try:
@@ -359,8 +527,25 @@ def _reviewed(
                 files.multi_frame(slices, instance=corpus_module.CT_SERIES + ".1000")
             )
         else:
-            for index, data in enumerate(slices):
-                (instances / _head_name(index)).write_bytes(data)
+            for phase in range(time_points):
+                for index, data in enumerate(slices):
+                    (instances / _head_name(index, phase)).write_bytes(
+                        data if time_points == 1 else _phased(data, phase)
+                    )
+        if phases:
+            for index, data in enumerate(
+                files.ct_files(
+                    _SCAN,
+                    head.Head(noise=0.0),
+                    series=_PHASE_SERIES,
+                    frame=corpus_module.FRAME_OF_REFERENCE,
+                    template=template,
+                )
+            ):
+                (instances / _phase_name(index)).write_bytes(data)
+        if registrations:
+            for name, data in _registrations(slices).items():
+                (instances / name).write_bytes(data)
         if dose is not None:
             grid = pydicom.dcmread(instances / _DOSE[0])
             (instances / _DOSE[0]).write_bytes(
@@ -388,8 +573,12 @@ def _reviewed(
                 )
         rtss = pydicom.dcmread(instances / _STRUCTURE_SET)
         (instances / _STRUCTURE_SET).write_bytes(
-            _head_structure_set(rtss, eyes_away=eyes_away, target=target)
+            _head_structure_set(rtss, eyes_away=eyes_away, target=target, frames=phases)
         )
+        if phases:
+            grid = pydicom.dcmread(instances / _DOSE[0])
+            (instances / _ERROR_DOSE).write_bytes(_error_dose(grid))
+            (instances / _SLAB_STRUCTURE_SET).write_bytes(_slab_structure_set(rtss))
         pet = pydicom.dcmread(instances / _PET[0])
         pet_slices = [
             files.pet(
@@ -411,10 +600,24 @@ def _reviewed(
                     pet_slices,
                     sop_class=files.ENHANCED_PET_IMAGE_STORAGE,
                     instance=enhanced.SOPInstanceUID,
-                    rescale_type="BQML",
+                    rescale_type="US",
                     template=enhanced,
+                    mapped=True,
                 )
             )
+        if compressed:
+            names = [
+                *sorted(path.name for path in instances.glob("01-head*")),
+                *_PET_SLICES,
+                *(_DOSE[:1] if dose is not None else ()),
+            ]
+            for index, name in enumerate(names):
+                path = instances / name
+                path.write_bytes(
+                    compressed_files.compressed_file(
+                        path.read_bytes(), _COMPRESSED[index % len(_COMPRESSED)]
+                    )
+                )
         reviewed = run.run(
             run.discover(instances),
             directory / "r1",
@@ -432,7 +635,9 @@ def _reviewed(
             s["positions"][0]
             for s in entries["series"]
             if any(
-                names[p].startswith("01-head") or names[p] in _IN_FRAME
+                names[p].startswith("01-head")
+                or names[p] in _IN_FRAME
+                or names[p] in _REGISTRATIONS
                 for p in s["positions"]
             )
         ]
@@ -455,7 +660,7 @@ def _second(
 ):
     """Attest a copy of the reviewed run's pack, in ``name`` beside it, with
     the head's series, and those of the RT Structure Set, RT Dose, and PET
-    in its frame, marked absent, but for the series of each file named in
+    in its frame, and of the deformable registrations, marked absent, but for the series of each file named in
     ``present``, marked present, and, if ``accepted``, the regions of each
     of the head's CT and PET slices that the pack previews accepted, or, if
     ``revised``, those of each of its CT slices, revised with that region
@@ -569,7 +774,7 @@ def _transform(options, face_review, redaction_review=None):
 # is made once.
 @pytest.fixture(name="reviewed_low", scope="module")
 def fixture_reviewed_low():
-    with _reviewed(first=(), dose=_dose(_LOW)) as found:
+    with _reviewed(first=(), dose=_dose(_LOW), registrations=True) as found:
         yield found
 
 
@@ -591,7 +796,7 @@ def fixture_own_absent(reviewed_low):
     return _second(
         reviewed_low,
         name="o",
-        instance_faces=dict.fromkeys(_UNDEFACED, Face.ABSENT),
+        instance_faces=dict.fromkeys(_UNDEFACED_WITH_REGISTRATIONS, Face.ABSENT),
     )
 
 
@@ -612,7 +817,7 @@ def fixture_own_series_present(reviewed_low):
     return _second(
         reviewed_low,
         name="op",
-        instance_faces=dict.fromkeys(_UNDEFACED, Face.ABSENT),
+        instance_faces=dict.fromkeys(_UNDEFACED_WITH_REGISTRATIONS, Face.ABSENT),
         present=(_UNDEFACED[0],),
     )
 
@@ -624,7 +829,7 @@ def fixture_own_without_ct(reviewed_low):
         reviewed_low,
         name="ow",
         without_ct=True,
-        instance_faces=dict.fromkeys(_UNDEFACED, Face.ABSENT),
+        instance_faces=dict.fromkeys(_UNDEFACED_WITH_REGISTRATIONS, Face.ABSENT),
     )
 
 
@@ -658,6 +863,24 @@ def fixture_eyes_away_own(reviewed_eyes_away):
 @pytest.fixture(name="multi_frame", scope="module")
 def fixture_multi_frame():
     with _runs(first=(), dose=_dose(_LOW), multi_frame=True) as found:
+        yield found
+
+
+@pytest.fixture(name="phased", scope="module")
+def fixture_phased():
+    with _runs(first=(), dose=_dose(_LOW), time_points=2) as found:
+        yield found
+
+
+@pytest.fixture(name="phases", scope="module")
+def fixture_phases():
+    with _runs(first=(), dose=_dose(_LOW), phases=True) as found:
+        yield found
+
+
+@pytest.fixture(name="compressed", scope="module")
+def fixture_compressed():
+    with _runs(first=(), dose=_dose(_LOW), compressed=True) as found:
         yield found
 
 
@@ -858,6 +1081,71 @@ def test_a_head_ct_marked_absent_as_defaced_is_released_defaced_with_the_option(
     assert changed > 0 and kept > 0
 
 
+_NEEDS_DECODERS = pytest.mark.skipif(
+    not decoders_installed(), reason="needs a decoder of each compressed syntax"
+)
+
+
+def _pixels(dataset):
+    return pydicom.pixels.pixel_array(dataset)
+
+
+@_NEEDS_DECODERS
+@pytest.mark.deid_requirement("PS3.15-E.3.2-01", "PS3.15-E.3.2-02")
+def test_a_compressed_head_ct_is_released_defaced_as_the_native_one_is(
+    compressed, defaced
+):
+    slices, outcomes, reasons, report = compressed
+    _, native, _, native_report = defaced
+    uncompressed = kept = 0
+
+    # Each slice is released with the pixels that the native series is
+    # released with: a slice that defacing changes, decoded and written
+    # uncompressed, and any other as received, in its own transfer syntax.
+    for index, data in enumerate(slices):
+        name = _head_name(index)
+        disposition, dataset = outcomes[name]
+        assert disposition == "released", reasons[name]
+        assert dataset.RecognizableVisualFeatures == "NO"
+        assert _codes(dataset)[-2:] == [markers.PROFILE_CODE, CODE]
+        expected = native[name][1]
+        assert np.array_equal(_pixels(dataset), _pixels(expected)), index
+        syntax = str(dataset.file_meta.TransferSyntaxUID)
+        before = pydicom.dcmread(pydicom.filebase.DicomBytesIO(data))
+        if expected.PixelData != before.PixelData:
+            assert syntax == files.EXPLICIT_VR_LITTLE_ENDIAN, index
+            assert "ExtendedOffsetTable" not in dataset
+            uncompressed += 1
+        else:
+            assert syntax == _COMPRESSED[index % len(_COMPRESSED)], index
+            kept += 1
+    assert uncompressed > 0 and kept > 0
+    assert (
+        report["face_review"]["ct_series"] == native_report["face_review"]["ct_series"]
+    )
+
+
+@_NEEDS_DECODERS
+@pytest.mark.deid_requirement("PS3.15-E.3.2-01", "PS3.15-E.3.2-02")
+def test_compressed_pet_and_rt_dose_in_the_frame_are_cleaned_as_native_ones_are(
+    compressed, defaced
+):
+    _, outcomes, reasons, _ = compressed
+    _, native, _, _ = defaced
+
+    # Each is decoded, set to zero in the block less the kept brain, and
+    # written uncompressed, as its native version is set to zero, and the
+    # verdict on the pixel data that the reviewed run wrote releases it.
+    for name in (*_PET_SLICES, _DOSE[0]):
+        disposition, dataset = outcomes[name]
+        assert disposition == "released", reasons[name]
+        assert dataset.RecognizableVisualFeatures == "NO"
+        assert str(dataset.file_meta.TransferSyntaxUID) == (
+            files.EXPLICIT_VR_LITTLE_ENDIAN
+        )
+        assert np.array_equal(_pixels(dataset), _pixels(native[name][1])), name
+
+
 @pytest.mark.deid_requirement("PS3.15-E.3.2-01")
 def test_a_head_ct_marked_absent_as_received_is_held_where_defaced(
     as_received, defaced
@@ -931,7 +1219,51 @@ def test_pet_instances_in_the_defaced_frame_that_are_not_cleaned_are_held(
         for entry in report["held_for_review"]
         if entry["stage"] == "visual-features"
     }
-    assert counts[held.reason.value] == len(_UNDEFACED)
+    # Besides them, the deformable registrations tied to the head's frame,
+    # which the run does not clean either.
+    registrations = [
+        name for name in (*_TIED, _COLLECTION_REGISTRATION) if name in outcomes
+    ]
+    for name in registrations:
+        assert held in reasons[name], name
+    assert counts[held.reason.value] == len(_UNDEFACED) + len(registrations)
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.2-01", "PS3.15-E.3.2-02")
+def test_a_registration_whose_grid_is_tied_to_the_defaced_frame_is_held(defaced):
+    _, outcomes, reasons, report = defaced
+    held = HeldVisualFeatures(VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME)
+
+    # Marked absent, a registration's grid in the head's Frame of Reference,
+    # or registering it, or tied to its slices, can still trace the face
+    # that the defaced CT no longer shows, and the run does not cut it; so
+    # can one that names no Source Frame of Reference, which may be the
+    # head's. Since the reviewed run defaced that frame too, it held them
+    # for it, so the verdict of absent on them does not count either.
+    for name in _TIED:
+        assert outcomes[name] == ("held-for-review", None), name
+        assert reasons[name] == {
+            held,
+            HeldVisualFeatures(VisualFeaturesReason.NO_FACE_VERDICT),
+        }, name
+    # One tied to the head in no way is released on its verdict, with the
+    # grid that the reviewed run wrote and its grid sheets showed.
+    disposition, dataset = outcomes[_UNTIED]
+    assert disposition == "released", reasons[_UNTIED]
+    assert not reasons[_UNTIED]
+    assert dataset.RecognizableVisualFeatures == "NO"
+    assert _codes(dataset)[-2:] == [markers.PROFILE_CODE, CODE]
+    (item,) = dataset.DeformableRegistrationSequence
+    (grid,) = item.DeformableRegistrationGridSequence
+    vectors = np.frombuffer(grid.VectorGridData, "<f4").reshape(2, 3, 4, 3)
+    assert vectors[1, 1, 1:3].tolist() == [[1.0, -2.0, 0.5]] * 2
+    assert report["face_review"]["ct_series"] == {
+        "defaced": 1,
+        "defaced_around_targets": 0,
+        "defaced_eyes_unconfirmed": 0,
+        "defaced_eyes_confirmed": 0,
+        "not_defaced": [{"reason": "unreadable", "count": _UNPLACED}],
+    }
 
 
 def _undefaced_listed(reviewed, name=None):
@@ -943,6 +1275,15 @@ def _undefaced_listed(reviewed, name=None):
         again.names[entry["position"]]: entry
         for entry in document["undefaced_instances"]
     }
+
+
+def _vector_grids(dataset):
+    """The Vector Grid Data of each grid of a deformable registration."""
+    return [
+        grid.VectorGridData
+        for item in dataset.DeformableRegistrationSequence
+        for grid in item.get("DeformableRegistrationGridSequence", [])
+    ]
 
 
 def _undefaced_report(held=0, released=(), held_with_own_verdict=0):
@@ -960,23 +1301,25 @@ def test_the_pack_lists_each_undefaced_instance_for_a_verdict_of_its_own(
     _, _, _, report = defaced
     listed = _undefaced_listed(reviewed_low)
 
-    # Only the PET instances that the run did not clean are listed, each
-    # shown, since its previews drew every frame, and nothing else in the
-    # frame is, since the run cleaned it.
-    assert set(listed) == set(_UNDEFACED)
+    # Only the PET instances and deformable registrations that the run did
+    # not clean are listed, each shown, since its previews drew every frame
+    # and grid, and nothing else in the frame is, since the run cleaned it.
+    assert set(listed) == set(_UNDEFACED_WITH_REGISTRATIONS)
     assert all(entry["shown"] for entry in listed.values())
     entries = {
         reviewed_low.names[e["position"]]: e
         for e in json.loads(reviewed_low.pack.read_text("utf-8"))["instances"]
     }
-    for name in _UNDEFACED:
-        assert entries[name]["pixel_sha256"] is not None
-        assert entries[name]["contour_sha256"] is not None
+    for name in _UNDEFACED_WITH_REGISTRATIONS:
+        for digest in ("pixel_sha256", "contour_sha256", "grid_sha256"):
+            assert entries[name][digest] is not None, (name, digest)
     assert report["face_review"]["undefaced_in_defaced_frame"] == _undefaced_report(
-        held=len(_UNDEFACED)
+        held=len(_UNDEFACED_WITH_REGISTRATIONS)
     )
     # The run without verdicts of their own lists them again, held.
-    assert set(_undefaced_listed(reviewed_low, "d")) == set(_UNDEFACED)
+    assert set(_undefaced_listed(reviewed_low, "d")) == set(
+        _UNDEFACED_WITH_REGISTRATIONS
+    )
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.2-01", "PS3.15-E.3.2-02")
@@ -986,16 +1329,19 @@ def test_an_undefaced_instance_is_released_on_a_verdict_of_absent_of_its_own(
     _, outcomes, reasons, report = own_absent
 
     # The reviewer judged each from its own previews, which drew every frame
-    # as written, so each is released as received, with the option's code,
-    # though the run does not clean it in its defaced frame.
+    # and grid as written, so each is released as received, with the
+    # option's code, though the run does not clean it in its defaced frame.
     names = []
-    for name in _UNDEFACED:
+    for name in _UNDEFACED_WITH_REGISTRATIONS:
         disposition, dataset = outcomes[name]
         assert disposition == "released", reasons[name]
         assert dataset.RecognizableVisualFeatures == "NO"
         assert _codes(dataset)[-2:] == [markers.PROFILE_CODE, CODE]
         source = pydicom.dcmread(reviewed_low.instances / name)
-        assert dataset.PixelData == source.PixelData
+        if name in _PET:
+            assert dataset.PixelData == source.PixelData
+        else:
+            assert _vector_grids(dataset) == _vector_grids(source), name
         names.append(_output_name(dataset))
     assert report["face_review"]["undefaced_in_defaced_frame"] == _undefaced_report(
         released=names
@@ -1006,7 +1352,7 @@ def test_an_undefaced_instance_is_released_on_a_verdict_of_absent_of_its_own(
     assert outcomes[_DOSE[0]][0] == "released", reasons[_DOSE[0]]
     # The run lists them again for the next review, released.
     listed = _undefaced_listed(reviewed_low, "o")
-    assert set(listed) == set(_UNDEFACED)
+    assert set(listed) == set(_UNDEFACED_WITH_REGISTRATIONS)
     assert all(entry["shown"] for entry in listed.values())
 
 
@@ -1023,7 +1369,8 @@ def test_a_verdict_of_present_of_its_own_or_on_its_series_holds_it(
     assert outcomes[_UNDEFACED[1]] == ("held-for-review", None)
     assert reasons[_UNDEFACED[1]] == {present}
     section = report["face_review"]["undefaced_in_defaced_frame"]
-    assert section["held"] == 0
+    # The registrations, given none, are held without one.
+    assert section["held"] == len(_UNDEFACED_WITH_REGISTRATIONS) - 2
     assert section["held_with_own_verdict"] == 1
     assert len(section["released"]) == 1
 
@@ -1046,11 +1393,14 @@ def test_a_verdict_of_its_own_is_on_its_pixel_data_whatever_is_defaced(
     # Without the head's slices nothing is defaced, and each is written as
     # the reviewed run wrote it, which its own verdict judged, so it is
     # released; it is not in a defaced frame, so it is not counted as such.
-    for name in _UNDEFACED:
+    for name in _UNDEFACED_WITH_REGISTRATIONS:
         disposition, dataset = outcomes[name]
         assert disposition == "released", reasons[name]
         source = pydicom.dcmread(reviewed_low.instances / name)
-        assert dataset.PixelData == source.PixelData
+        if name in _PET:
+            assert dataset.PixelData == source.PixelData
+        else:
+            assert _vector_grids(dataset) == _vector_grids(source), name
     assert report["face_review"]["undefaced_in_defaced_frame"] == _undefaced_report()
 
 
@@ -1064,14 +1414,14 @@ def test_a_released_undefaced_instance_needs_a_new_verdict_of_its_own(
     # The earlier run released each on its own verdict, and its pack listed
     # each again, so the verdict of absent on its series in that pack does
     # not cover it either, and with none of its own it is held.
-    for name in _UNDEFACED:
+    for name in _UNDEFACED_WITH_REGISTRATIONS:
         assert outcomes[name] == ("held-for-review", None), name
         assert reasons[name] == {
             held,
             HeldVisualFeatures(VisualFeaturesReason.NO_FACE_VERDICT),
         }, name
     assert report["face_review"]["undefaced_in_defaced_frame"] == _undefaced_report(
-        held=len(_UNDEFACED)
+        held=len(_UNDEFACED_WITH_REGISTRATIONS)
     )
 
 
@@ -1347,6 +1697,103 @@ def test_low_dose_in_the_block_is_set_to_zero_there_and_released(defaced):
     assert np.count_nonzero(written[inside] == 0) > np.count_nonzero(brain)
 
 
+def _released(outcomes, reasons, name):
+    disposition, dataset = outcomes[name]
+    assert disposition == "released", (name, reasons[name])
+    assert dataset.RecognizableVisualFeatures == "NO"
+    assert _codes(dataset)[-2:] == [markers.PROFILE_CODE, CODE]
+    return dataset
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.2-01", "PS3.15-E.3.2-02")
+def test_two_defaced_series_in_one_frame_are_each_defaced_by_their_own_block(
+    phases, defaced
+):
+    slices, outcomes, reasons, report = phases
+    _, alone, _, _ = defaced
+
+    # The phase series is the head's slices again, so its block, and what
+    # each series is written as, is what the head's series alone is.
+    for index in range(len(slices)):
+        expected = alone[_head_name(index)][1].PixelData
+        for name in (_head_name(index), _phase_name(index)):
+            assert _released(outcomes, reasons, name).PixelData == expected, name
+    assert report["face_review"]["ct_series"] == {
+        "defaced": 2,
+        "defaced_around_targets": 0,
+        "defaced_eyes_unconfirmed": 0,
+        "defaced_eyes_confirmed": 0,
+        "not_defaced": [{"reason": "unreadable", "count": _UNPLACED}],
+    }
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.2-01", "PS3.15-E.3.2-02")
+def test_what_lies_in_a_frame_of_two_defaced_series_is_cleaned_by_both_blocks(
+    phases, defaced
+):
+    _, outcomes, reasons, _ = phases
+    _, alone, _, _ = defaced
+
+    # The PET slices and the low dose grid, cleaned by the two blocks, one
+    # the other's, are written as by the head's block alone, and released.
+    for name in (*_PET_SLICES, _DOSE[0]):
+        dataset = _released(outcomes, reasons, name)
+        assert dataset.PixelData == alone[name][1].PixelData, name
+
+
+def _roi_contours(dataset):
+    return {
+        int(item.ReferencedROINumber): [
+            [float(v) for v in contour.ContourData]
+            for contour in item.get("ContourSequence", [])
+        ]
+        for item in dataset.ROIContourSequence
+    }
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.2-01", "PS3.15-E.3.2-02")
+def test_a_structure_set_of_two_frames_is_cut_in_the_defaced_one_and_released(
+    phases, defaced
+):
+    _, outcomes, reasons, _ = phases
+    _, alone, _, _ = defaced
+    dataset = _released(outcomes, reasons, _STRUCTURE_SET)
+    written = _roi_contours(dataset)
+    expected = _roi_contours(alone[_STRUCTURE_SET][1])
+
+    # The head's ROIs, in the defaced frame, are cut as the head's series
+    # alone cuts them; the ROI in the frame that the run holds nothing of
+    # is as it was, though it lies where the block would be in the head's.
+    assert {k: v for k, v in written.items() if k in expected} == expected
+    (other,) = set(written) - set(expected)
+    (contour,) = written[other]
+    assert np.allclose(
+        np.reshape(contour, (-1, 3)), files.square(_IN_THE_BLOCK, 10.0), atol=1e-4
+    )
+    frames = {
+        item.FrameOfReferenceUID for item in dataset.ReferencedFrameOfReferenceSequence
+    }
+    assert len(frames) == 2
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.2-01")
+def test_a_structure_set_cut_by_a_slab_is_released_on_its_drawn_contours(phases):
+    _, outcomes, reasons, _ = phases
+
+    # Main now previews signed doses and every reading of slab contours.
+    _released(outcomes, reasons, _SLAB_STRUCTURE_SET)
+    assert not reasons[_SLAB_STRUCTURE_SET]
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.2-01")
+def test_an_error_dose_is_released_on_its_signed_dose_previews(phases):
+    _, outcomes, reasons, _ = phases
+
+    # Main now previews signed doses and every reading of slab contours.
+    _released(outcomes, reasons, _ERROR_DOSE)
+    assert not reasons[_ERROR_DOSE]
+
+
 @pytest.mark.deid_requirement("PS3.15-E.3.2-01")
 def test_high_dose_in_the_block_holds_the_dose_as_received(hot):
     _, outcomes, reasons, report = hot
@@ -1573,6 +2020,12 @@ def test_rt_instances_judged_beside_a_defaced_ct_are_held_in_a_run_without_it(
     assert reasons[_DOSE[0]] == {
         HeldVisualFeatures(VisualFeaturesReason.OTHER_PIXEL_DATA)
     }
+    # Nor the deformable registrations that the reviewed run held for their
+    # frame, while the one tied to the head in no way is released.
+    for name in _TIED:
+        assert outcomes[name] == ("held-for-review", None), name
+        assert reasons[name] == {held}, name
+    assert outcomes[_UNTIED][0] == "released"
     assert report["face_review"]["ct_series"] == {
         "defaced": 0,
         "defaced_around_targets": 0,
@@ -2090,13 +2543,17 @@ def test_a_multi_frame_head_ct_gives_its_frame_the_block_of_its_slices(
         "defaced_eyes_confirmed": 0,
         "not_defaced": [{"reason": "unreadable", "count": _UNPLACED}],
     }
-    # The QC pack shows a multi-frame instance by its cine strip alone,
-    # fewer frames than the head's, so no verdict yet releases the defaced
-    # instance, which is held.
-    assert outcomes[_HEAD_ENHANCED] == ("held-for-review", None)
-    assert reasons[_HEAD_ENHANCED] == {
-        HeldVisualFeatures(VisualFeaturesReason.OTHER_PIXEL_DATA)
-    }
+    # The QC pack draws the defaced instance's frames as a volume, by its
+    # projection and surface render, more than its cine strip shows, so the
+    # verdict on them releases it, each frame written as its slice is.
+    disposition, dataset = outcomes[_HEAD_ENHANCED]
+    assert disposition == "released", reasons[_HEAD_ENHANCED]
+    assert dataset.RecognizableVisualFeatures == "NO"
+    assert _codes(dataset)[-2:] == [markers.PROFILE_CODE, CODE]
+    frames = dataset.pixel_array
+    assert len(frames) > qc_previews.CINE_FRAMES
+    for index, frame in enumerate(frames):
+        assert np.array_equal(frame, single[_head_name(index)][1].pixel_array), index
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.2-01", "PS3.15-E.3.2-02")
@@ -2120,3 +2577,45 @@ def test_a_multi_frame_pet_is_set_to_zero_activity_and_released(multi_frame):
         HeldVisualFeatures(VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME)
         in (reasons[_PET[2]])
     )
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.2-01", "PS3.15-E.3.2-02")
+def test_a_head_ct_of_two_time_points_is_defaced_and_released(phased, defaced):
+    _, outcomes, reasons, report = phased
+    _, single, _, _ = defaced
+
+    # Each time point's slices are written as the one time point's are,
+    # and the QC pack draws each time point as a volume of its own, so the
+    # verdict on them releases them all.
+    count = sum(name.startswith("01-head-") and "-t" not in name for name in single)
+    assert count > qc_previews.CINE_FRAMES
+    for phase in range(2):
+        for index in range(count):
+            name = _head_name(index, phase)
+            disposition, dataset = outcomes[name]
+            assert disposition == "released", reasons[name]
+            assert dataset.RecognizableVisualFeatures == "NO"
+            assert np.array_equal(
+                dataset.pixel_array, single[_head_name(index)][1].pixel_array
+            ), name
+    assert report["face_review"]["ct_series"] == {
+        "defaced": 1,
+        "defaced_around_targets": 0,
+        "defaced_eyes_unconfirmed": 0,
+        "defaced_eyes_confirmed": 0,
+        "not_defaced": [{"reason": "unreadable", "count": _UNPLACED}],
+    }
+    # Beside them, the RT Structure Set, RT Dose, and PET are cleaned as
+    # beside one time point, since both keep the same brain.
+    for name in (_STRUCTURE_SET, _DOSE[0], *_PET_SLICES):
+        disposition, dataset = outcomes[name]
+        assert disposition == "released", reasons[name]
+        if name == _STRUCTURE_SET:
+            found, expected = _contour_points(dataset), _contour_points(single[name][1])
+            assert len(found) == len(expected)
+            for one, other in zip(found, expected):
+                assert len(one) == len(other)
+                for a, b in zip(one, other):
+                    np.testing.assert_allclose(a, b)
+        else:
+            assert np.array_equal(dataset.pixel_array, single[name][1].pixel_array)

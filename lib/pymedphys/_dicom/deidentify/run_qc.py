@@ -38,8 +38,15 @@ from pymedphys._imports import pydicom
 
 from . import pixel_risk, qc_contours, qc_eyes, qc_pack, qc_previews, residuals
 from .iod_conformance import SourceGap
-from .face_review import PIXEL_DATA_TAGS, contour_data_sha256, pixel_data_sha256
+from .face_review import (
+    PIXEL_DATA_TAGS,
+    contour_data_sha256,
+    grid_data_sha256,
+    holds_deformation_grid,
+    pixel_data_sha256,
+)
 from .file_layout import ElementPath
+from .icc_cleaning import Refusal
 from .qc_pack import Disposition, DropReason, QcPack, RoiNameOutcome
 from .reasons import DoseChoice, PixelDataReason
 from .reference_graph import Finding, FindingKind
@@ -132,6 +139,26 @@ class DescriptorMaterial:
 
     def __repr__(self) -> str:
         return f"DescriptorMaterial(path={str(self.path)!r}, applied={self.applied!r})"
+
+
+@dataclasses.dataclass(frozen=True)
+class IccProfileMaterial:
+    """What D wrote in place of one ICC Profile (0028,2000) (D-021).
+
+    The release report counts it. The QC pack does not list it, since the
+    profile written holds nothing of the source's but its colorimetry, which
+    names no one.
+
+    Attributes
+    ----------
+    path : ElementPath
+    refusal : ~pymedphys._dicom.deidentify.icc_cleaning.Refusal or None
+        None where the source profile was cleaned and written; otherwise why
+        it could not be, so the fixed sRGB profile was written.
+    """
+
+    path: ElementPath
+    refusal: Refusal | None
 
 
 @dataclasses.dataclass(frozen=True, repr=False)
@@ -288,8 +315,8 @@ class DoseCheckMaterial:
 @dataclasses.dataclass(frozen=True)
 class UndefacedMaterial:
     """An instance in a defaced CT series' Frame of Reference, naming none,
-    or referring to a defaced slice, whose outline or pixel data the run
-    does not clean of the face (D-050).
+    or referring to a defaced slice, whose outline, pixel data, or
+    deformation grids the run does not clean of the face (D-050).
 
     The pack lists it in ``undefaced_instances``, where it is released or
     held, so that a reviewer can give it a face verdict of its own, from its
@@ -420,6 +447,7 @@ def qc_pack_of(
     reference: str | None = None,
     digests: Mapping[int, bytes] | None = None,
     reviewed_lists: qc_pack.ListsDigest | None = None,
+    several_patient_studies: Sequence[Sequence[Sequence[int]]] = (),
 ) -> QcPack:
     """Return the QC pack of a run.
 
@@ -443,6 +471,10 @@ def qc_pack_of(
         run applied, from
         :func:`~pymedphys._dicom.deidentify.risk_assessment.bind_lists`;
         none by default.
+    several_patient_studies : sequence of sequence of sequence of int, optional
+        Each study whose instances name several patients that the run
+        sequestered, as the groups of run positions, by patient, of its
+        first-pass finding (D-026); none by default.
 
     Notes
     -----
@@ -453,11 +485,13 @@ def qc_pack_of(
     frames of each instance that a :class:`RedactionMaterial` gives, which
     the pack lists in ``redactions``. A released or held instance without
     one is listed as not previewed. Each such file's pixel
-    data and contours are recorded with its instance as
-    :func:`~.face_review.pixel_data_sha256` and
-    :func:`~.face_review.contour_data_sha256` give them, unless the file
+    data, contours, and deformation grids are recorded with its instance as
+    :func:`~.face_review.pixel_data_sha256`,
+    :func:`~.face_review.contour_data_sha256`, and
+    :func:`~.face_review.grid_data_sha256` give them, unless the file
     cannot be read again, or, for its contours, unless it has contours that
-    no contour sheet shows.
+    no contour sheet shows, or, for its grids, unless it has grids that the
+    grid sheets do not all show.
 
     The released and held instances that give :class:`SeriesEvidence` are
     grouped by series, in run position order, and each series is assessed
@@ -470,10 +504,10 @@ def qc_pack_of(
     is listed in ``dose_checks``, with its fraction to four decimal places,
     for the reviewer's choice. Each released or held instance that gives an
     :class:`UndefacedMaterial` and has its source's digest is listed in
-    ``undefaced_instances``, shown
-    where the pack records both the digest of its pixel data and that of
-    its contours, which it does only where its previews show them whole,
-    for the reviewer's verdict on it alone.
+    ``undefaced_instances``, shown where the pack records the digests of
+    its pixel data, its contours, and its deformation grids, which it does
+    only where its previews show them whole, for the reviewer's verdict on
+    it alone.
 
     Raises
     ------
@@ -579,6 +613,9 @@ def qc_pack_of(
                 )
             elif isinstance(item, RetainedText):
                 retained.append((item.value, position, item.path))
+            elif isinstance(item, IccProfileMaterial):
+                # Only the release report counts it.
+                continue
             else:
                 raise TypeError("QC material must be of the run's QC material types")
     high_risk = {position: tuple(found) for position, found in risks.items() if found}
@@ -618,6 +655,7 @@ def qc_pack_of(
                 written[position],
                 position in previews.contours_shown,
                 position in previews.pixels_shown,
+                position in previews.grids_shown,
             ),
         )
         if position in written
@@ -669,9 +707,14 @@ def qc_pack_of(
             qc_pack.UndefacedEntry(
                 position,
                 instances[position].pixel_sha256 is not None
-                and instances[position].contour_sha256 is not None,
+                and instances[position].contour_sha256 is not None
+                and instances[position].grid_sha256 is not None,
             )
             for position in sorted(undefaced)
+        ),
+        several_patient_studies=tuple(
+            qc_pack.SeveralPatientStudyEntry(tuple(tuple(group) for group in groups))
+            for groups in several_patient_studies
         ),
     )
 
@@ -750,19 +793,28 @@ def assessed_series(
 
 
 def _written_sha256(
-    written: bytes, contours_shown: bool, pixels_shown: bool
+    written: bytes,
+    contours_shown: bool,
+    pixels_shown: bool,
+    grids_shown: bool = False,
 ) -> dict[str, str | None]:
-    """Return the SHA-256 of a written file's pixel data and contours, as an
-    instance entry's fields, each None if unreadable.
+    """Return the SHA-256 of a written file's pixel data, contours, and
+    deformation grids, as an instance entry's fields, each None if
+    unreadable.
 
     The contours' is None too where the file has contours that the pack's
-    contour sheet does not show, and the pixel data's where the file has
+    contour sheet does not show, the pixel data's where the file has
     pixel data of which the pack's previews that could show a face do not
     draw every frame, which for an RT Dose only its dose-levels previews
-    can, and for a Segmentation only its segments sheet, so that no verdict
-    releases either unseen.
+    can, and for a Segmentation only its segments sheet, and the grids'
+    where the file holds a deformation grid that the pack's grid sheets do
+    not all show, so that no verdict releases any unseen.
     """
-    digests: dict[str, str | None] = {"pixel_sha256": None, "contour_sha256": None}
+    digests: dict[str, str | None] = {
+        "pixel_sha256": None,
+        "contour_sha256": None,
+        "grid_sha256": None,
+    }
     try:
         dataset = read_source(written).dataset()
     # Whatever reading the file raises, its instance has no digests, so no
@@ -774,6 +826,8 @@ def _written_sha256(
         taken.append(("pixel_sha256", pixel_data_sha256))
     if contours_shown or not qc_contours.has_contours(dataset):
         taken.append(("contour_sha256", contour_data_sha256))
+    if grids_shown or not holds_deformation_grid(dataset):
+        taken.append(("grid_sha256", grid_data_sha256))
     for field, digest in taken:
         try:
             digests[field] = digest(dataset).hex()
