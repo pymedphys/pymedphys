@@ -80,11 +80,12 @@ BOTH_VALIDATED = "input validated, output validated"
 BOTH_FAILED = "input failed, output failed"
 BOTH_UNSUPPORTED = "input unsupported, output unsupported"
 # The corpus's SOP Classes that dicom3tools' January 2024 snapshot does not
-# know.
+# know, including Label Map Segmentation.
 UNKNOWN_TO_DICOM3TOOLS = tuple(
     dicom_validation.sop_class_name(uid)
     for uid in (
         corpus_module.EXTENSIBLE_SR_STORAGE,
+        corpus_module.LABEL_MAP_SEGMENTATION_STORAGE,
         corpus_module.COLON_CAD_SR_STORAGE,
         corpus_module.MACULAR_GRID_THICKNESS_AND_VOLUME_REPORT_STORAGE,
         corpus_module.WAVEFORM_ANNOTATION_SR_STORAGE,
@@ -213,8 +214,9 @@ def test_every_validator_ran_over_every_released_instance(comparison):
         BOTH_VALIDATED: comparison.pairs
     }
     # dciodvfy checks every input and output but the corpus's RT Dose in
-    # Implicit VR, whose 32-bit pixels abort it on both, and its reports
-    # whose SOP Classes dicom3tools' January 2024 snapshot does not know.
+    # Implicit VR, whose 32-bit pixels abort it on both, and its reports and
+    # label map Segmentation, whose SOP Classes dicom3tools' January 2024
+    # snapshot does not know.
     statuses = dict(comparison.tallies[DCIODVFY]["statuses"])
     failed = statuses.pop(BOTH_FAILED, 0)
     unsupported = statuses.pop(BOTH_UNSUPPORTED, 0)

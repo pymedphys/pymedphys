@@ -690,7 +690,6 @@ RECORD_REVIEWED_AGAINST = (
     *(name for name in FIRST_RELEASE_IODS if name not in RECORD_IODS),
     "RT Ion Plan",
     "RT Ion Beams Treatment Record",
-    "Segmentation",
     "Enhanced X-Ray Radiation Dose SR",
     "Patient Radiation Dose SR",
 )

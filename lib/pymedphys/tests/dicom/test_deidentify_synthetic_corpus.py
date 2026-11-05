@@ -243,6 +243,8 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "26-sr-comprehensive.dcm",
         "27-sr-comprehensive-3d.dcm",
         "28-sr-extensible.dcm",
+        "32-seg.dcm",
+        "33-seg-label-map.dcm",
         "34-sr-key-object-selection.dcm",
         "35-sr-mammography-cad.dcm",
         "36-sr-chest-cad.dcm",
@@ -290,6 +292,8 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "Comprehensive SR",
         "Comprehensive 3D SR",
         "Extensible SR",
+        "Segmentation",
+        "Segmentation",
         *TEMPLATE_IODS,
         *PROCEDURE_IODS,
         "RT Ion Plan",
@@ -298,7 +302,10 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "RT Treatment Summary Record",
     ]
     assert corpus_module.STRUCTURED_REPORT_FILES == tuple(
-        file.name for file in corpus.files[-24:-4]
+        file.name for file in corpus.files[-26:-19] + corpus.files[-17:-4]
+    )
+    assert corpus_module.SEGMENTATION_FILES == tuple(
+        file.name for file in corpus.files[-19:-17]
     )
     assert corpus_module.TIMEZONE_REPORT_FILE in corpus_module.PROCEDURE_REPORT_FILES
     assert (
