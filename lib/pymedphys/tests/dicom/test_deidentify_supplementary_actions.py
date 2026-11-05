@@ -72,7 +72,12 @@ TARGET_IODS = (
     "Segmentation",
 )
 REGISTRATION_IODS = ("Spatial Registration", "Deformable Spatial Registration")
-SUPPORTED_TARGET_IODS = (*REGISTRATION_IODS, "RT Beams Treatment Record", "RT Image")
+SUPPORTED_TARGET_IODS = (
+    *REGISTRATION_IODS,
+    "RT Beams Treatment Record",
+    "RT Image",
+    "Segmentation",
+)
 REVIEWED_AGAINST = CT_AND_RT_IODS + ADDED_IODS
 # The Radiation Dose SR IODs, which the maintainer added to the planned
 # coverage on 25 October 2026, whose text, UID, and date attributes were
@@ -237,6 +242,7 @@ REMOVED_UNDER_EVERY_OPTION = {
     "(0040,0031)",  # Local Namespace Entity ID
     "(0040,0032)",  # Universal Entity ID
     "(0040,E001)",  # HL7 Instance Identifier
+    "(0062,0020)",  # Tracking ID
     "(0088,0130)",  # Storage Media File-set ID
     "(300A,00F9)",  # Accessory Code
     "(300A,0354)",  # Patient Support Accessory Code
@@ -408,9 +414,9 @@ def test_every_text_attribute_a_supported_iod_uses_and_table_e1_1_omits_has_a_ru
     # Checked against the 2026d PS3.3, PS3.6, and PS3.15: the combined
     # scope includes the RT objects, among them the two RT Ion IODs, which
     # add 13, and the brachy and summary treatment records, which add none,
-    # and the two dose-report IODs, whose supplementary rules cover 168 text
-    # attributes.
-    assert len(omitted) == 168
+    # Segmentation, which adds 4, and the two dose-report IODs, whose
+    # supplementary rules cover 172 text attributes.
+    assert len(omitted) == 172
     assert omitted <= set(_rules())
     assert {"(0008,0100)", "(300A,00C2)", "(60xx,1500)"} <= omitted
 
@@ -425,14 +431,14 @@ def test_the_rules_for_omitted_text_fall_in_the_reviewed_groups():
 
     assert groups == {
         # Operator-typed labels and text.
-        ("X/Z/D", ((CLEAN_DESCRIPTORS, "C"),)): 77,
+        ("X/Z/D", ((CLEAN_DESCRIPTORS, "C"),)): 80,
         # Accessory and equipment identifiers.
         ("X/Z/D", ((DEVICE_IDENTITY, "K"),)): 30,
         # Coded and technical values, and De-identification Method.
         ("K", ()): 43,
         # Names and identifiers of people, organisations, records, and
         # networks, identifiers that a device reads, and the text of overlays.
-        ("X/Z/D", ()): 16,
+        ("X/Z/D", ()): 17,
         # Patient's Birth and Death Dates in Alternative Calendar.
         ("X", ()): 2,
     }
@@ -1172,7 +1178,7 @@ def test_the_basic_profile_keeps_only_the_reviewed_coded_and_technical_text():
         for tag in _supported_text()
     }
 
-    assert len(basic) == 293
+    assert len(basic) == 299
     assert {tag for tag, action in basic.items() if action == "K"} == (
         KEPT_TEXT | ADDED_KEPT_TEXT | RT_IMAGE_KEPT_TEXT | ION_KEPT_TEXT
     )

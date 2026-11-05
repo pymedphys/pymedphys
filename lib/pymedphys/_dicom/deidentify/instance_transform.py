@@ -338,14 +338,6 @@ def _region_defacing(iod: IOD, region: FrameRegion | None) -> _RegionDefacing | 
     return None
 
 
-def _unshown_segments(iod: IOD, redaction: Redaction | None) -> bool:
-    """Whether a Segmentation's segments reach the face block, so that it
-    is held without a verdict, since the QC pack does not yet show
-    segments: one that its defacer gave a mask, which it gives only for
-    pixels in a segment where defacing writes air."""
-    return iod.name == SEGMENTATION and redaction is not None and bool(redaction.masks)
-
-
 @dataclasses.dataclass(frozen=True)
 class PendingEdit:
     """An element whose edit is still to come, by path and action.
@@ -1084,10 +1076,8 @@ class InstanceTransform:
     (:class:`~.region_defacing.PetDefacer`), and a Segmentation's pixels
     there that lie in a segment, of a BINARY or FRACTIONAL Segmentation or
     a MONOCHROME2 or PALETTE COLOR label map, are written as its background
-    (:class:`~.segmentation_defacing.SegmentationDefacer`); one with any
-    such pixel is held without a verdict
-    (:attr:`~.reasons.VisualFeaturesReason.NO_FACE_VERDICT`), since the QC
-    pack does not show segments. Any other RT Structure Set, RT Dose with
+    (:class:`~.segmentation_defacing.SegmentationDefacer`). Any other RT
+    Structure Set, RT Dose with
     pixel data, PET instance, or Segmentation in a defaced series' Frame of
     Reference, naming none, or referring to a defaced slice that its blocks
     do not clean it by, such as one whose contours or pixel data cannot be
@@ -1098,7 +1088,9 @@ class InstanceTransform:
     a face (:func:`~.face_review.carries_visual_features`) satisfies the
     option only where the SHA-256 of its source file is in a series that the
     face review marks absent, and the pixel data and contours that it is
-    written with are those that the reviewed run wrote of that file
+    written with are those that the reviewed run wrote of that file, which
+    the QC pack records only where its previews show them, a
+    Segmentation's only on its segments sheet
     (:attr:`~.reasons.VisualFeaturesReason.OTHER_PIXEL_DATA` or
     :attr:`~.reasons.VisualFeaturesReason.OTHER_CONTOURS` otherwise), and
     an instance that cannot show a face satisfies it. An instance that
@@ -2078,8 +2070,6 @@ class InstanceTransform:
                     undefaced = VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME
             if defacing is not None and defacing.hold is not None:
                 face = HeldVisualFeatures(_HELD_SERIES[defacing.hold])
-            elif _unshown_segments(iod, redaction):
-                face = HeldVisualFeatures(VisualFeaturesReason.NO_FACE_VERDICT)
             else:
                 face = self._face_hold(data, dataset, iod, writing)
             if (
