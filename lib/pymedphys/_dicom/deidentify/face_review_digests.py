@@ -145,9 +145,7 @@ def grid_data_sha256(
         if registration_sequence in dataset:
             for item in dataset[registration_sequence].value:
                 if grid_sequence in item:
-                    grids.extend(
-                        item[grid_sequence].value or ()
-                    )
+                    grids.extend(item[grid_sequence].value or ())
         digest = hashlib.sha256(struct.pack(">Q", len(grids)))
         for grid in grids:
             *placing, vectors = grid_tags
