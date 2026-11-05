@@ -295,13 +295,27 @@ jobs:
               > "${RUNNER_TEMP}/midi-b/results/engine.txt"
           fi
 
-      # Where the runner reaches TCIA from, and whether each of TCIA's
-      # addresses answers it, before the job first asks TCIA for anything and
-      # again after a failure: TCIA's site has stopped answering some runners
-      # for most of an hour, and TCIA can match these with its own logs. They
-      # hold no MIDI-B data. Each request to TCIA's site and to NBIA also
-      # names the runner's address and the run in its User-Agent header, so
-      # that TCIA can find the job's requests in its logs.
+      # traceroute, for the ICMP traces in the records below. The package
+      # lists are refreshed only if the install needs them. Without it, the
+      # records say why each trace failed, and still hold the rest.
+      - name: Install traceroute
+        continue-on-error: true
+        timeout-minutes: 3
+        run: |
+          if ! sudo timeout 50 apt-get install --yes --no-install-recommends traceroute > /dev/null 2>&1; then
+            sudo timeout 50 apt-get update > /dev/null 2>&1 || true
+            sudo timeout 50 apt-get install --yes --no-install-recommends traceroute > /dev/null 2>&1 \
+              || echo "traceroute could not be installed, so the records hold no ICMP trace."
+          fi
+
+      # Where the runner reaches TCIA from, whether each of TCIA's addresses
+      # answers it, and ICMP traces to TCIA and to PyPI, before the job first
+      # asks TCIA for anything and again after a failure: TCIA's site has
+      # stopped answering some runners for most of an hour, and TCIA can
+      # match these with its own logs. They hold no MIDI-B data. Each request
+      # to TCIA's site and to NBIA also names the runner's address and the
+      # run in its User-Agent header, so that TCIA can find the job's
+      # requests in its logs.
       - name: Record how the runner reaches TCIA
         continue-on-error: true
         timeout-minutes: 5

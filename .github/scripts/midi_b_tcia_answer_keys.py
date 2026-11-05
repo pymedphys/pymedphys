@@ -16,8 +16,11 @@ Usage:
   the time, in UTC, the runner's public address, as a web service sees it,
   and, for each of TCIA's hosts that the workflow uses, the addresses it
   resolves to and whether a TCP connection to each opens on port 443, and
-  how fast. TCIA's site sometimes stops answering a runner, and TCIA can
-  match these with its own logs. With ``--github-env``, it also appends
+  how fast. Then it prints an ICMP traceroute to each host's first IPv4
+  address, as TCIA asked, and one to PyPI's, which answers, to show how
+  much of a trace the runner's network hides. The traces need
+  ``traceroute`` and ``sudo``. TCIA's site sometimes stops answering a
+  runner, and TCIA can match these with its own logs. With ``--github-env``, it also appends
   ``MIDI_B_RUNNER_ADDRESS=<address>`` to that file, GitHub's
   ``GITHUB_ENV``, when the address is known. It never fails.
 
@@ -72,6 +75,15 @@ PORT = 443
 CONNECT_TIMEOUT = 10.0
 # Services that answer with the address that a request came from.
 ADDRESS_SERVICES = ("https://checkip.amazonaws.com/", "https://api.ipify.org/")
+# An ICMP traceroute to each of TCIA's addresses, as TCIA asked, and to a
+# host that answers, which shows how much of a trace the runner's network
+# hides: a TCP trace from an Azure runner showed PyPI itself and no hop
+# before it (run 40095939318). Three probes a hop, each given 2 s. At most
+# four traces, each stopped after 45 s, keep the record within its
+# workflow step's 5 minutes.
+TRACE_CONTROL = "pypi.org"
+TRACE_COMMAND = ("sudo", "-n", "traceroute", "-I", "-q", "3", "-w", "2", "-m", "30")
+TRACE_TIMEOUT = 45.0
 
 
 def utc_now() -> str:
@@ -237,11 +249,58 @@ def connect(host: str, port: int = PORT) -> list[str]:
     return lines
 
 
-def network(github_env: Path | None = None) -> int:
-    """Print the runner's public address, and how each of TCIA's hosts answers.
+def ipv4_address(host: str) -> str | None:
+    """The first IPv4 address that ``host`` resolves to, if it resolves."""
+    try:
+        found = socket.getaddrinfo(host, None, socket.AF_INET, socket.SOCK_STREAM)
+    except OSError:
+        return None
+    return str(found[0][4][0]) if found else None
 
-    Given ``github_env``, also append ``MIDI_B_RUNNER_ADDRESS=<address>`` to
-    it when the address is known.
+
+def _text(output: str | bytes | None) -> str:
+    if isinstance(output, bytes):
+        return output.decode("utf-8", "replace")
+    return output or ""
+
+
+def trace(host: str, address: str) -> list[str]:
+    """An ICMP traceroute to ``host`` at ``address``, as ``traceroute`` prints it.
+
+    The first line says when it started. Where there is no trace, or it
+    stopped early, the last line says why.
+    """
+    lines = [f"ICMP trace to {host} ({address}) at {utc_now()}:"]
+    try:
+        completed = subprocess.run(
+            [*TRACE_COMMAND, address],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            timeout=TRACE_TIMEOUT,
+            check=False,
+        )
+    except subprocess.TimeoutExpired as error:
+        return [
+            *lines,
+            *_text(error.output).splitlines(),
+            f"The trace was stopped after {TRACE_TIMEOUT:.0f} s.",
+        ]
+    except OSError as error:
+        return [*lines, f"There is no trace: sudo could not run ({failure(error)})."]
+    lines.extend(completed.stdout.splitlines())
+    if completed.returncode:
+        lines.append(f"traceroute exited with {completed.returncode}.")
+    return lines
+
+
+def network(github_env: Path | None = None) -> int:
+    """Print the runner's public address, how TCIA's hosts answer, and traces.
+
+    The traces are ICMP traceroutes to the first IPv4 address of each host
+    and of :data:`TRACE_CONTROL`, one an address. Given ``github_env``, also
+    append ``MIDI_B_RUNNER_ADDRESS=<address>`` to it when the runner's
+    address is known.
     """
     address = public_address()
     print(
@@ -254,6 +313,18 @@ def network(github_env: Path | None = None) -> int:
             file.write(f"MIDI_B_RUNNER_ADDRESS={address}\n")
     for host in HOSTS:
         for line in connect(host):
+            print(line, flush=True)
+    # One trace an address: TCIA's hosts may share one.
+    traced: set[str] = set()
+    for host in (*HOSTS, TRACE_CONTROL):
+        resolved = ipv4_address(host)
+        if resolved is None:
+            print(f"There is no trace to {host}: it has no IPv4 address.", flush=True)
+            continue
+        if resolved in traced:
+            continue
+        traced.add(resolved)
+        for line in trace(host, resolved):
             print(line, flush=True)
     return 0
 
