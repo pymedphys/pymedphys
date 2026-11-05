@@ -800,7 +800,8 @@ def test_the_statement_gives_the_code_only_after_review():
         "Record, RT Ion Plan, RT Ion Beams Treatment Record, RT Brachy Treatment "
         "Record, RT Treatment Summary Record, MR Spectroscopy, Spatial "
         "Registration, Deformable Spatial Registration, X-Ray Radiation Dose SR, "
-        "Radiopharmaceutical Radiation Dose SR, Basic Text SR, Enhanced SR, "
+        "Enhanced X-Ray Radiation Dose SR, Radiopharmaceutical Radiation Dose "
+        "SR, Patient Radiation Dose SR, Basic Text SR, Enhanced SR, "
         "Comprehensive SR, Comprehensive 3D SR, and Extensible SR."
     ) in text
     assert (
@@ -827,7 +828,9 @@ def test_the_statement_names_each_supported_iod_that_lacks_the_attribute():
         "Spatial Registration",
         "Deformable Spatial Registration",
         "X-Ray Radiation Dose SR",
+        "Enhanced X-Ray Radiation Dose SR",
         "Radiopharmaceutical Radiation Dose SR",
+        "Patient Radiation Dose SR",
         "Basic Text SR",
         "Enhanced SR",
         "Comprehensive SR",
