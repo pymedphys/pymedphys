@@ -85,6 +85,8 @@ UNKNOWN_TO_DICOM3TOOLS = tuple(
     dicom_validation.sop_class_name(uid)
     for uid in (
         corpus_module.EXTENSIBLE_SR_STORAGE,
+        corpus_module.ENHANCED_X_RAY_RADIATION_DOSE_SR_STORAGE,
+        corpus_module.PATIENT_RADIATION_DOSE_SR_STORAGE,
         corpus_module.LABEL_MAP_SEGMENTATION_STORAGE,
         corpus_module.COLON_CAD_SR_STORAGE,
         corpus_module.MACULAR_GRID_THICKNESS_AND_VOLUME_REPORT_STORAGE,

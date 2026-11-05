@@ -79,6 +79,8 @@ SUPPORTED = {
     "1.2.840.10008.5.1.4.1.1.66.7": "Segmentation",
     "1.2.840.10008.5.1.4.1.1.88.67": "X-Ray Radiation Dose SR",
     "1.2.840.10008.5.1.4.1.1.88.68": "Radiopharmaceutical Radiation Dose SR",
+    "1.2.840.10008.5.1.4.1.1.88.73": "Patient Radiation Dose SR",
+    "1.2.840.10008.5.1.4.1.1.88.76": "Enhanced X-Ray Radiation Dose SR",
     "1.2.840.10008.5.1.4.1.1.88.11": "Basic Text SR",
     "1.2.840.10008.5.1.4.1.1.88.22": "Enhanced SR",
     "1.2.840.10008.5.1.4.1.1.88.33": "Comprehensive SR",
@@ -121,7 +123,9 @@ def test_the_first_release_supports_ct_mr_pet_rt_registration_seg_and_sr_objects
         "Spatial Registration",
         "Deformable Spatial Registration",
         "X-Ray Radiation Dose SR",
+        "Enhanced X-Ray Radiation Dose SR",
         "Radiopharmaceutical Radiation Dose SR",
+        "Patient Radiation Dose SR",
         "Basic Text SR",
         "Enhanced SR",
         "Comprehensive SR",
@@ -193,11 +197,9 @@ def test_padding_is_ignored():
 @pytest.mark.parametrize(
     "sop_class, iod",
     [
-        # The other Structured Reports, including the other dose reports,
-        # and Presentation States, which the design always sequesters.
+        # Other Structured Reports and Presentation States remain outside scope.
         ("1.2.840.10008.5.1.4.1.1.88.72", "Simplified Adult Echo SR"),
-        ("1.2.840.10008.5.1.4.1.1.88.76", "Enhanced X-Ray Radiation Dose SR"),
-        ("1.2.840.10008.5.1.4.1.1.88.73", "Patient Radiation Dose SR"),
+        ("1.2.840.10008.5.1.4.1.1.88.71", "Acquisition Context SR"),
         ("1.2.840.10008.5.1.4.1.1.11.1", "Grayscale Softcopy Presentation State"),
         # Outside the first release: other images, CT, MR, and PET objects
         # that are not images, the segmentations of other IODs, parametric

@@ -799,12 +799,12 @@ def test_the_statement_gives_the_code_only_after_review():
         "of the supported IODs are RT Plan, RT Structure Set, RT Beams Treatment "
         "Record, RT Ion Plan, RT Ion Beams Treatment Record, RT Brachy Treatment "
         "Record, RT Treatment Summary Record, MR Spectroscopy, Spatial Registration, "
-        "Deformable Spatial Registration, X-Ray Radiation Dose SR, Radiopharmaceutical "
-        "Radiation Dose SR, Basic Text SR, Enhanced SR, Comprehensive SR, "
-        "Comprehensive 3D SR, Extensible SR, Key Object Selection Document, "
-        "Mammography CAD SR, Chest CAD SR, Colon CAD SR, Procedure Log, Spectacle "
-        "Prescription Report, Macular Grid Thickness and Volume Report, and Waveform "
-        "Annotation SR."
+        "Deformable Spatial Registration, X-Ray Radiation Dose SR, Enhanced X-Ray "
+        "Radiation Dose SR, Radiopharmaceutical Radiation Dose SR, Patient Radiation "
+        "Dose SR, Basic Text SR, Enhanced SR, Comprehensive SR, Comprehensive 3D SR, "
+        "Extensible SR, Key Object Selection Document, Mammography CAD SR, Chest CAD "
+        "SR, Colon CAD SR, Procedure Log, Spectacle Prescription Report, Macular Grid"
+        " Thickness and Volume Report, and Waveform Annotation SR."
     ) in text
     assert (
         "claims Clean Pixel Data only for an instance without top-level pixel "
@@ -830,7 +830,9 @@ def test_the_statement_names_each_supported_iod_that_lacks_the_attribute():
         "Spatial Registration",
         "Deformable Spatial Registration",
         "X-Ray Radiation Dose SR",
+        "Enhanced X-Ray Radiation Dose SR",
         "Radiopharmaceutical Radiation Dose SR",
+        "Patient Radiation Dose SR",
         "Basic Text SR",
         "Enhanced SR",
         "Comprehensive SR",
