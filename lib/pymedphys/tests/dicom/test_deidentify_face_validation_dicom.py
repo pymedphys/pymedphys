@@ -17,6 +17,7 @@ planning system's exports. Every UID and value here is invented."""
 
 from __future__ import annotations
 
+import dataclasses
 import io
 import json
 import math
@@ -43,8 +44,10 @@ from pymedphys._dicom.deidentify.face_validation_dicom import (
 )
 from pymedphys._dicom.deidentify.face_validation_dicom_markdown import markdown
 
+from . import _synthetic_compressed as compressed_files
 from . import _synthetic_head as head
 from . import _synthetic_head_dicom as files
+from ._corpus_run import decoders_installed
 
 # Coarser than the finder's own tests, as the face block tests' scan is.
 _SCAN = head.axial(
@@ -157,23 +160,28 @@ def _block() -> FaceBlock:
     return finder.block()
 
 
-# A target behind the block, and one in front of the face inside it.
+# A target behind the block; one in front of the face inside it; and one in
+# it drawn past the front of the scan's field of view, beyond its slices.
 _BEHIND = files.circle((0.0, 0.0, 40.0), 20.0)
 _IN_BLOCK = files.circle((0.0, -85.0, 30.0), 5.0)
+_BEYOND = files.circle((0.0, _SCAN.positions[0][1] - 1.0, 30.0), 5.0)
 _BODY = files.ellipse((0.0, -10.0, 30.0), (95.0, 115.0))
 
 
 @pytest.fixture(scope="module", name="exports")
 def _exports(tmp_path_factory, block):
-    """A directory of four cases' exports, in directories of their own:
+    """A directory of five cases' exports, in directories of their own:
 
     1. a head, defaced, with eyes drawn at its globes, a target behind the
        block, a body outline, two RT Doses, of low and high dose in the
        block, and an RT Plan;
     2. a head without eyes, with an eye drawn, an RT Dose, and an RT Plan;
-    3. a head with eyes drawn at its globes and a target in its block; and
+    3. a head with eyes drawn at its globes, a target in its block, and a
+       target in its block beyond its slices;
     4. a head with its right eye drawn at its left globe and its left eye
-       drawn 40 mm to the patient's left;
+       drawn 40 mm to the patient's left; and
+    5. a head with eyes drawn at its globes and a target in its block,
+       defaced around it;
 
     with a text file and a DICOMDIR, which are not read.
     """
@@ -208,8 +216,9 @@ def _exports(tmp_path_factory, block):
             ("ORGAN", _globe(_RIGHT)),
             ("ORGAN", _globe(_LEFT)),
             ("GTV", _IN_BLOCK),
+            ("CTV", _BEYOND),
         ],
-        ["Eye_R", "Eye_L", "GTV"],
+        ["Eye_R", "Eye_L", "GTV", "CTV"],
     )
     contents |= {f"4/CT{i:03d}.dcm": each for i, each in enumerate(_ct(4))}
     contents["4/RS.dcm"] = _structure_set(
@@ -219,6 +228,16 @@ def _exports(tmp_path_factory, block):
             ("ORGAN", _globe(_LEFT, shift=(40.0, 0.0, 0.0))),
         ],
         ["Eye_R", "Globe_Lt"],
+    )
+    contents |= {f"5/CT{i:03d}.dcm": each for i, each in enumerate(_ct(5))}
+    contents["5/RS.dcm"] = _structure_set(
+        5,
+        [
+            ("ORGAN", _globe(_RIGHT)),
+            ("ORGAN", _globe(_LEFT)),
+            ("GTV", _IN_BLOCK),
+        ],
+        ["Eye_R", "Eye_L", "GTV"],
     )
     contents["notes.txt"] = b"not DICOM"
     contents["DICOMDIR"] = b"refused by name"
@@ -240,16 +259,37 @@ def _summary(measured):
 
 
 def _by_outcome(measured: DicomMeasures) -> dict[str, SeriesMeasures]:
-    return {each.outcome: each for each in measured.series}
+    """Each series by its outcome, a series defaced around a target in its
+    block by ``"defaced-around-targets"``, and one defaced and held for its
+    eyes by ``"defaced-eyes-unconfirmed"``."""
+    return {
+        "defaced-around-targets"
+        if each.around_targets
+        else "defaced-eyes-unconfirmed"
+        if each.eyes_unconfirmed
+        else each.outcome: each
+        for each in measured.series
+    }
 
 
 def test_each_series_has_its_outcome_as_a_run_finds_it(measured):
-    assert sorted(_by_outcome(measured)) == [
+    # The series whose eye ROIs disagree with its globes is defaced, and a
+    # run without a reviewer's confirmation of its block holds it.
+    assert sorted(each.outcome for each in measured.series) == [
         "defaced",
-        "eyes-disagree-with-rois",
+        "defaced",
+        "defaced",
         "no-eyes",
         "target-in-block",
     ]
+    assert sorted(_by_outcome(measured)) == [
+        "defaced",
+        "defaced-around-targets",
+        "defaced-eyes-unconfirmed",
+        "no-eyes",
+        "target-in-block",
+    ]
+    assert [each.eyes_unconfirmed for each in measured.series].count(True) == 1
     assert measured.crashed == {}
 
 
@@ -257,16 +297,16 @@ def test_the_files_are_counted_by_how_they_were_read(measured):
     slices = len(_SCAN.positions)
 
     assert measured.files == {
-        "total": 4 * slices + 11,
-        "read": 4 * slices + 9,
+        "total": 5 * slices + 12,
+        "read": 5 * slices + 10,
         "not-read": 1,
     }
     assert measured.refused == {"dicomdir": 1}
     assert measured.iods == {
-        "CT Image": 4 * slices,
+        "CT Image": 5 * slices,
         "RT Dose": 3,
         "RT Plan": 2,
-        "RT Structure Set": 4,
+        "RT Structure Set": 5,
     }
     assert measured.ct_without_series == 0
 
@@ -277,6 +317,13 @@ def test_each_series_storage_spacings_and_air_are_measured(measured):
         assert each.pixel_spacing == pytest.approx(2.0)
         assert each.slice_spacing == pytest.approx(3.0)
         assert each.air is True
+
+
+def test_a_series_without_repeated_positions_is_one_phase(measured):
+    for each in measured.series:
+        assert each.phases == 1
+        assert each.phases_without_eyes == 0
+        assert each.globe_spread is None
 
 
 def _expected_eye(block: FaceBlock, contours, side: int | None) -> dict:
@@ -322,7 +369,7 @@ def test_eye_rois_are_measured_against_the_globes_found(measured, block):
 
 
 def test_an_eye_named_for_the_other_side_and_one_far_off_are_measured(measured, block):
-    held = _by_outcome(measured)["eyes-disagree-with-rois"]
+    held = _by_outcome(measured)["defaced-eyes-unconfirmed"]
     swapped, far = held.eyes
 
     assert swapped.swapped is True
@@ -337,16 +384,26 @@ def test_an_eye_named_for_the_other_side_and_one_far_off_are_measured(measured, 
 def test_targets_are_counted_by_where_they_lie(measured, block):
     by_outcome = _by_outcome(measured)
     defaced, held = by_outcome["defaced"], by_outcome["target-in-block"]
+    around = by_outcome["defaced-around-targets"]
 
     assert defaced.targets == {"clear": 1}
+    assert not defaced.around_targets
     # The target lies above the block's inferior limit, so its clearance
     # is its distance behind the block's plane.
     ahead = (_BEHIND - np.array(block.origin)) @ np.array(block.anterior)
     assert np.min(_BEHIND[:, 2]) > block.inferior_limit
     assert defaced.clearances == (pytest.approx(-np.max(ahead), abs=1e-3),)
-    assert held.targets == {"reaches-block": 1}
+    # The target in front of the face would be kept, but the one beyond the
+    # slices holds the series.
+    assert held.targets == {"beyond-slices": 1, "kept-in-block": 1}
     assert held.clearances == ()
+    assert not held.around_targets
     assert [eye.side for eye in held.eyes] == ["right", "left"]
+    # Without it, the series is defaced around the target in its block.
+    assert around.outcome == "defaced"
+    assert around.targets == {"kept-in-block": 1}
+    assert around.clearances == ()
+    assert [eye.side for eye in around.eyes] == ["right", "left"]
 
 
 def test_a_series_without_a_block_counts_its_eye_rois_alone(measured):
@@ -367,13 +424,20 @@ def test_rt_doses_in_the_defaced_frame_are_set_to_zero_or_held(measured):
     assert _DOSE_HIGH / _DOSE_GREATEST > dose_defacing.DOSE_FRACTION
 
 
-def test_the_structure_set_in_the_defaced_frame_is_cut(measured):
-    (cut,) = measured.structure_sets
+def test_the_structure_sets_in_the_defaced_frames_are_cut(measured):
+    first, *others = sorted(
+        measured.structure_sets, key=lambda each: sum(each.cut.values())
+    )[::-1]
 
-    assert cut.outcome == "cut"
+    assert [each.outcome for each in (first, *others)] == ["cut"] * 3
     # The body and the three eye ROIs reach the face; the target behind the
     # block and the organ within the head do not.
-    assert cut.cut == {"EXTERNAL": 1, "ORGAN": 3}
+    assert first.cut == {"EXTERNAL": 1, "ORGAN": 3}
+    # Defaced around the target in the block, the eyes reach the face, and
+    # the target is not cut; defaced with eyes that disagree, held until a
+    # reviewer confirms the block, the eye drawn at the other globe and the
+    # one drawn far off both reach the face.
+    assert [each.cut for each in others] == [{"ORGAN": 2}, {"ORGAN": 2}]
 
 
 def test_rt_plans_in_a_defaced_frame_are_counted(measured):
@@ -381,30 +445,27 @@ def test_rt_plans_in_a_defaced_frame_are_counted(measured):
 
 
 def test_the_summary_counts_the_measures(summary):
-    assert summary["format"] == "pymedphys-deid-face-validation-dicom/1"
+    assert summary["format"] == "pymedphys-deid-face-validation-dicom/6"
     assert summary["series"] == {
-        "defaced": 1,
-        "not_defaced": {
-            "eyes-disagree-with-rois": 1,
-            "no-eyes": 1,
-            "target-in-block": 1,
-        },
-        "with_eye_rois": {
-            "defaced": 1,
-            "eyes-disagree-with-rois": 1,
-            "no-eyes": 1,
-            "target-in-block": 1,
-        },
+        "defaced": 3,
+        "defaced_around_targets": 1,
+        "defaced_eyes_unconfirmed": 1,
+        "not_defaced": {"no-eyes": 1, "target-in-block": 1},
+        "with_eye_rois": {"defaced": 3, "no-eyes": 1, "target-in-block": 1},
     }
     eyes = summary["eye_rois"]
-    assert eyes["series_with_a_block"] == 3
-    assert eyes["by_series"] == {"agree": 2, "eyes-disagree-with-rois": 1}
-    assert eyes["sides"] == {"left": 3, "not-named": 1, "right": 3}
+    assert eyes["series_with_a_block"] == 4
+    assert eyes["by_series"] == {"agree": 3, "eyes-disagree-with-rois": 1}
+    assert eyes["sides"] == {"left": 4, "not-named": 1, "right": 4}
     assert eyes["sides_swapped"] == 1
     assert eyes["not_placed"] == 0
-    assert sum(each["count"] for each in eyes["globe_centre_error"]["bins"]) == 8
-    assert sum(each["count"] for each in eyes["eye_reach"]["bins"]) == 7
-    assert summary["targets"]["by_where"] == {"clear": 1, "reaches-block": 1}
+    assert sum(each["count"] for each in eyes["globe_centre_error"]["bins"]) == 10
+    assert sum(each["count"] for each in eyes["eye_reach"]["bins"]) == 9
+    assert summary["targets"]["by_where"] == {
+        "beyond-slices": 1,
+        "clear": 1,
+        "kept-in-block": 2,
+    }
     assert summary["rt_doses"]["outcomes"] == {
         "dose-in-face-block": 1,
         "set-to-zero": 1,
@@ -415,12 +476,14 @@ def test_the_summary_counts_the_measures(summary):
     # 3% and 30% of the grid's greatest.
     assert shares == [0, 0, 1, 0, 0, 1, 0]
     assert summary["rt_structure_sets"] == {
-        "outcomes": {"cut": 1},
-        "rois_cut": {"EXTERNAL": 1, "ORGAN": 3},
+        "outcomes": {"cut": 3},
+        "rois_cut": {"EXTERNAL": 1, "ORGAN": 7},
     }
     assert summary["rt_plans"] == {"total": 2, "in_defaced_frames": 1}
+    assert summary["phases"]["not_parted"] == 0
+    assert summary["phases"]["outcomes_of_several"] == {}
     assert summary["ct"]["air_in_hounsfield_units"] == {
-        "yes": 4,
+        "yes": 5,
         "no": 0,
         "not-measured": 0,
     }
@@ -467,6 +530,7 @@ def test_the_settings_are_the_engines(summary):
     assert settings["margin_mm"] == defacing.MARGIN
     assert settings["cavity_floor_mm"] == face_blocks.CAVITY_FLOOR
     assert settings["dose_fraction"] == dose_defacing.DOSE_FRACTION
+    assert settings["phase_reach_mm"] == face_blocks.PHASE_REACH
 
 
 def test_measures_show_nothing_of_the_files(measured):
@@ -563,13 +627,13 @@ def test_a_series_that_raises_is_counted_by_where_without_its_message(
     page = markdown(summary)
 
     ((where, count),) = measured.crashed.items()
-    assert count == 4
+    assert count == 5
     assert where.startswith(
         "series: ValueError at test_deidentify_face_validation_dicom.py:"
     )
     assert where.endswith(" in raising")
-    assert summary["crashed"] == {where: 4}
-    assert f"| Crashed: `{where}` | 4 |\n" in page
+    assert summary["crashed"] == {where: 5}
+    assert f"| Crashed: `{where}` | 5 |\n" in page
     assert _SECRET not in json.dumps(summary) + page
 
 
@@ -578,9 +642,16 @@ def test_the_page_shows_the_counts_as_commonmark(summary):
 
     assert page.startswith("# Face block check on DICOM files\n\n")
     assert page.endswith("|\n")
-    assert "| Defaced | 1 |\n" in page
+    assert "| Defaced | 3 |\n" in page
+    assert "| Defaced around a target in the block | 1 |\n" in page
+    assert (
+        "| Defaced and held until a reviewer confirms the block, for an eye ROI "
+        "away from the globes | 1 |\n"
+    ) in page
     assert "| Not defaced: `target-in-block` | 1 |\n" in page
     assert "| `EXTERNAL` | 1 |\n" in page
+    assert "## Phases\n" in page
+    assert "| 1 to under 2 | 5 |\n" in page
     lines = page.split("\n")
     # markdownlint's MD009, MD012, and MD022: no trailing spaces, no blank
     # lines in a row, and a blank line around each heading.
@@ -608,7 +679,7 @@ def test_the_command_writes_the_counts_and_prints_the_page(
     assert status == 0
     summary = json.loads((out / "face-validation.json").read_text(encoding="utf-8"))
     page = (out / "face-validation.md").read_text(encoding="utf-8")
-    assert summary["series"]["defaced"] == 1
+    assert summary["series"]["defaced"] == 3
     assert page == markdown(summary)
     assert capsys.readouterr().out == page
 
@@ -616,7 +687,7 @@ def test_the_command_writes_the_counts_and_prints_the_page(
 @pytest.mark.parametrize(
     "make, message",
     [
-        (lambda path: path, "The directory holds no CT Image series."),
+        (lambda path: path, "The directory holds no CT series."),
         (
             lambda path: path / "missing",
             "The input is not a directory whose files can be listed.",
@@ -738,3 +809,166 @@ def test_rt_roi_interpreted_types_are_counted_by_their_defined_terms(kind, count
     assert face_validation_dicom._interpreted_types(  # pylint: disable = protected-access
         dataset
     ) == {1: counted}
+
+
+_NEEDS_DECODERS = pytest.mark.skipif(
+    not decoders_installed(), reason="needs a decoder of each compressed syntax"
+)
+
+
+def _case_one(block: FaceBlock) -> dict[str, bytes]:
+    """Case 1's CT series, its eye ROIs, and its two RT Doses, of low and
+    high dose in the block."""
+    contents = {f"CT{i:03d}.dcm": each for i, each in enumerate(_ct(1))}
+    contents["RS.dcm"] = _structure_set(
+        1,
+        [("ORGAN", _globe(_RIGHT)), ("ORGAN", _globe(_LEFT))],
+        ["Eye_R", "Eye_L"],
+    )
+    contents["RD1.dcm"] = _dose(1, block, _DOSE_LOW, 1)
+    contents["RD2.dcm"] = _dose(1, block, _DOSE_HIGH, 2)
+    return contents
+
+
+def _measure_files(directory, contents: dict[str, bytes]) -> DicomMeasures:
+    directory.mkdir()
+    for name, data in contents.items():
+        (directory / name).write_bytes(data)
+    return face_validation_dicom.measure_dicom(directory)
+
+
+def _with_rle_segments(data: bytes, count: int) -> bytes:
+    """The RLE Lossless file ``data`` with its first frame's header giving
+    ``count`` segments, which its samples do not fill, so that it does not
+    decode."""
+    dataset = pydicom.dcmread(io.BytesIO(data))
+    frames = list(pydicom.encaps.generate_frames(dataset.PixelData, number_of_frames=1))
+    first = count.to_bytes(4, "little") + frames[0][4:]
+    dataset.PixelData = compressed_files.encapsulated([first, *frames[1:]])
+    return files.written(dataset)
+
+
+@_NEEDS_DECODERS
+@pytest.mark.parametrize(
+    "syntax", [compressed_files.RLE_LOSSLESS, compressed_files.JPEG_2000_LOSSLESS]
+)
+def test_a_compressed_series_and_its_rt_doses_are_measured_as_native_ones_are(
+    tmp_path, block, syntax
+):
+    """Lossless Pixel Data decodes to the native stored values, so every
+    measure but the storage code is that of the native files."""
+    native = _case_one(block)
+    encoded = {
+        name: compressed_files.compressed_file(
+            data,
+            # RLE Lossless takes the RT Doses' 32-bit samples.
+            compressed_files.RLE_LOSSLESS if name.startswith("RD") else syntax,
+        )
+        if name.startswith(("CT", "RD"))
+        else data
+        for name, data in native.items()
+    }
+
+    expected = _measure_files(tmp_path / "native", native)
+    measured = _measure_files(tmp_path / "compressed", encoded)
+
+    (series,) = measured.series
+    (expected_series,) = expected.series
+    assert series.outcome == "defaced"
+    assert series.storage == "compressed 16/16 signed"
+    assert series.air is True
+    assert series == dataclasses.replace(expected_series, storage=series.storage)
+    assert sorted((each.outcome, each.share) for each in measured.doses) == sorted(
+        (each.outcome, each.share) for each in expected.doses
+    )
+    assert sorted(each.outcome for each in measured.doses) == [
+        "dose-in-face-block",
+        "set-to-zero",
+    ]
+    assert measured.crashed == {}
+
+
+@_NEEDS_DECODERS
+def test_a_compressed_series_with_a_slice_that_does_not_decode_is_not_measured_for_air(
+    tmp_path, block
+):
+    """The run leaves the series undefaced, as it finds no block, and air
+    is not measured from the slices that do decode."""
+    contents = {
+        name: compressed_files.compressed_file(data, compressed_files.RLE_LOSSLESS)
+        for name, data in _case_one(block).items()
+        if name.startswith("CT")
+    }
+    contents["CT040.dcm"] = _with_rle_segments(contents["CT040.dcm"], 3)
+
+    (series,) = _measure_files(tmp_path / "exports", contents).series
+
+    assert series.outcome == "undecodable-pixel-data"
+    assert series.storage == "compressed 16/16 signed"
+    assert series.air is None
+    assert series.pixel_spacing == pytest.approx(2.0)
+    assert series.slice_spacing == pytest.approx(3.0)
+
+
+@_NEEDS_DECODERS
+def test_a_compressed_rt_dose_that_does_not_decode_is_counted_as_held(tmp_path, block):
+    contents = _case_one(block)
+    del contents["RS.dcm"], contents["RD2.dcm"]
+    contents["RD1.dcm"] = _with_rle_segments(
+        compressed_files.compressed_file(
+            contents["RD1.dcm"], compressed_files.RLE_LOSSLESS
+        ),
+        3,
+    )
+
+    (dose,) = _measure_files(tmp_path / "exports", contents).doses
+
+    assert (dose.outcome, dose.share) == ("undefaced-in-defaced-frame", None)
+
+
+@pytest.mark.parametrize(
+    ("keyword", "value", "behind", "code"),
+    [
+        ("ContourSlabThickness", 10.0, True, ("clear", pytest.approx(4.0))),
+        ("ContourOffsetVector", [0.0, 0.0, 6.0], True, ("clear", pytest.approx(4.0))),
+        ("ContourSlabThickness", 10.0, False, ("kept-in-block", None)),
+        ("ContourOffsetVector", [0.0, 0.0, 6.0], False, ("kept-in-block", None)),
+        ("ContourSlabThickness", -1.0, True, ("not-placed", None)),
+        ("ContourOffsetVector", [6.0, 0.0, 0.0], False, ("not-placed", None)),
+        ("ContourSlabThickness", None, True, ("clear", pytest.approx(4.0))),
+        ("ContourOffsetVector", None, True, ("clear", pytest.approx(4.0))),
+        ("ContourSlabThickness", None, False, ("kept-in-block", None)),
+        ("ContourOffsetVector", None, False, ("kept-in-block", None)),
+    ],
+    ids=[
+        "thickness-behind",
+        "offset-behind",
+        "thickness-in-block",
+        "offset-in-block",
+        "negative-thickness",
+        "offset-outside-normal",
+        "empty-thickness-behind",
+        "empty-offset-behind",
+        "empty-thickness-in-block",
+        "empty-offset-in-block",
+    ],
+)
+def test_a_target_in_a_slab_is_reported_by_its_full_span(keyword, value, behind, code):
+    # A block of the points with y below 0 and z above 0, and a square 4 mm
+    # behind it, clear of it by its points alone, or in it.
+    target = files.square((0.0, 6.0 if behind else -6.0, 20.0))
+    rtss = pydicom.dcmread(io.BytesIO(files.structure_set([("PTV", target)])))
+    (contour,) = rtss.ROIContourSequence[0].ContourSequence
+    setattr(contour, keyword, value)
+    block = FaceBlock((0.0, 0.0, 0.0), (0.0, -1.0, 0.0), 0.0, ((0, 0, 0), (0, 0, 0)))
+    fates = face_blocks._TargetFates(  # pylint: disable = protected-access
+        block, block, (), 0.0
+    )
+
+    # These axial spans change only z, so a valid span keeps the same 4 mm
+    # clearance in y, or stays in the block. An unplaceable span still holds.
+    codes = face_validation_dicom._target_codes(  # pylint: disable = protected-access
+        rtss, files.FRAME, set(), fates
+    )
+
+    assert list(codes) == [code]

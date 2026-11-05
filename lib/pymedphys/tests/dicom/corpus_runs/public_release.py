@@ -21,10 +21,10 @@ attribute is removed; Modified Dates keeps the TM rows that its cleaner
 keeps, as in its own run; the structure set is as the
 ``basic-clean-descriptors`` run has it; the acquisition context items are
 content items, as in Clean Structured Content's own run, so that the preset
-keeps and cleans them, and the two Structured Reports are released with
-their content trees cleaned (D-047); and every file is marked free of a
-face, so every released instance claims Clean Recognizable Visual Features,
-and the deformable registration is held, as in that option's own run.
+keeps and cleans them, and the Structured Reports are released with their
+content trees cleaned (D-047); and every file is marked free of a face, so
+every released instance claims Clean Recognizable Visual Features, the
+deformable registration included, as in that option's own run.
 """
 
 from .._corpus_run import (
@@ -38,8 +38,6 @@ from .._corpus_run import (
     with_a_second_roi,
 )
 from .all_composable_options import ACQUISITION_CONTEXT
-from .clean_recognizable_visual_features import DEFORMABLE_REGISTRATION
-from .clean_recognizable_visual_features import RUN as VISUAL_FEATURES
 from .clean_structured_content import with_acquisition_context_items
 from .retain_longitudinal_full_dates import INCONSISTENT
 from .retain_longitudinal_modified_dates import RUN as MODIFIED_DATES
@@ -55,10 +53,7 @@ RUN = CorpusRun(
     corpus=_corpus,
     reviewed_roi_names=mapped_planted_name,
     face_review=every_face_absent,
-    withheld={
-        **WITHHELD_WITHOUT_REPORTS,
-        DEFORMABLE_REGISTRATION: VISUAL_FEATURES.withheld[DEFORMABLE_REGISTRATION],
-    },
+    withheld=WITHHELD_WITHOUT_REPORTS,
     kept=MODIFIED_DATES.kept,
     roi_names=(MAPPED_NAME, VOCABULARY_NAME),
     kept_content=frozenset({ACQUISITION_CONTEXT, CONTENT_SEQUENCE}),

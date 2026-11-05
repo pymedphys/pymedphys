@@ -52,6 +52,7 @@ from pymedphys._dev.deid_tables import (
 from pymedphys._dicom.deidentify import (
     codes,
     iods,
+    loinc_terms,
     requirements,
     residual_exemptions,
     sop_classes,
@@ -489,17 +490,27 @@ PS3_16 = {
     "Table CID 7005": (CID_HEADER, CID_7005_ROWS, codes.CodedConcept),
 }
 # Annex L's tables of Body Part Examined terms, with some of their columns.
-# A row can give a code but no term.
-ANNEX_L_HEADER = ("Code Value", "Code Meaning", "Body Part Examined")
+# A row can give a code but no term, or a term and meaning but no code, and
+# a later table can give a term's code another meaning.
+ANNEX_L_HEADER = (
+    "Coding Scheme Designator",
+    "Code Value",
+    "Code Meaning",
+    "Body Part Examined",
+)
 ANNEX_L = {
     "Table L-1": (
         ANNEX_L_HEADER,
-        (("900011", "Fixture region", "FIXTUREREGION"), ("900012", "Uncut", "")),
+        (
+            ("SCT", "900011", "Fixture region", "FIXTUREREGION"),
+            ("SCT", "900012", "Uncut", ""),
+            ("", "", "Fixture fetal part", "FIXTUREFETAL"),
+        ),
     ),
-    "Table L-2": (ANNEX_L_HEADER, (("900013", "Fixture leg", "FIXTURE LEG"),)),
+    "Table L-2": (ANNEX_L_HEADER, (("SCT", "900013", "Fixture leg", "FIXTURE LEG"),)),
     "Table L-3": (
-        ("Code Meaning", "Body Part Examined", "Mouse Anatomy ID"),
-        (("Fixture region", "FIXTUREREGION", "0000001"),),
+        (*ANNEX_L_HEADER, "Mouse Anatomy ID"),
+        (("SCT", "900011", "Fixture region of a mouse", "FIXTUREREGION", "0000001"),),
     ),
 }
 PS3_16_PAGES = {
@@ -3486,12 +3497,56 @@ def test_generate_writes_the_body_part_terms_of_annex_l(source_dir, tmp_path):
 
     path = output_dir / residual_exemptions.BODY_PART_TERMS_TABLE.file
     document = json.loads(path.read_text("utf-8"))
-    rows = [{"term": "FIXTURE LEG"}, {"term": "FIXTUREREGION"}]
+    rows = [
+        {"term": "FIXTURE LEG"},
+        {"term": "FIXTUREFETAL"},
+        {"term": "FIXTUREREGION"},
+    ]
     assert document["table"] == residual_exemptions.BODY_PART_TERMS_TABLE.table
     assert document["acknowledgement"] == "DICOM PS3.16 2099a, \u00a9 NEMA"
     assert document["rows"] == rows
     table = residual_exemptions.load_body_part_terms(path)
-    assert [row.term for row in table.rows] == ["FIXTURE LEG", "FIXTUREREGION"]
+    assert [row.term for row in table.rows] == [
+        "FIXTURE LEG",
+        "FIXTUREFETAL",
+        "FIXTUREREGION",
+    ]
+
+
+def test_generate_writes_the_anatomic_region_codes_of_annex_l(source_dir, tmp_path):
+    output_dir = tmp_path / "tables"
+
+    assert generate.generate(FIXTURE_PIN, output_dir, source_dir=source_dir) == 0
+
+    path = output_dir / codes.ANATOMIC_REGIONS_TABLE.file
+    document = json.loads(path.read_text("utf-8"))
+    rows = [
+        {
+            "term": "FIXTURE LEG",
+            "scheme_designator": "SCT",
+            "code_value": "900013",
+            "code_meaning": "Fixture leg",
+        },
+        {
+            "term": "FIXTUREFETAL",
+            "scheme_designator": "",
+            "code_value": "",
+            "code_meaning": "Fixture fetal part",
+        },
+        # Table L-1's meaning is kept over Table L-3's.
+        {
+            "term": "FIXTUREREGION",
+            "scheme_designator": "SCT",
+            "code_value": "900011",
+            "code_meaning": "Fixture region",
+        },
+    ]
+    assert document["table"] == codes.ANATOMIC_REGIONS_TABLE.table
+    assert document["acknowledgement"] == "DICOM PS3.16 2099a, \u00a9 NEMA"
+    assert document["rows"] == rows
+    assert document["content_sha256"] == standard.content_sha256(rows)
+    table = codes.load_anatomic_regions(path)
+    assert [dataclasses.asdict(row) for row in table.rows] == rows
 
 
 def test_generate_writes_table_o_1_without_its_names(source_dir, tmp_path):
@@ -3512,22 +3567,106 @@ def test_generate_writes_table_o_1_without_its_names(source_dir, tmp_path):
     assert codes.load_snomed_ids(path).rows == TABLE_O_1_PARSED
 
 
-def _annex_l(header=ANNEX_L_HEADER, rows=(("900011", "Fixture", "FIXTURE"),)):
-    page = _page(_table("Table L-1. Fixture", header, rows))
-    return {"Table L-1": chtml.select_table(chtml.extract_tables(page), "Table L-1")}
+def _annex_l(
+    header=ANNEX_L_HEADER, rows=(("SCT", "900011", "Fixture", "FIXTURE"),), more=()
+):
+    tables = {}
+    for number, each in enumerate(((header, rows), *more), start=1):
+        page = _page(_table(f"Table L-{number}. Fixture", *each))
+        tables[f"Table L-{number}"] = chtml.select_table(
+            chtml.extract_tables(page), f"Table L-{number}"
+        )
+    return tables
 
 
 @pytest.mark.parametrize(
     "tables, message",
     [
-        (_annex_l(header=("Code Value", "Code Meaning", "Body Part")), "column"),
-        (_annex_l(rows=(("900011", "Fixture", "Fixture"),)), "row 1"),
-        (_annex_l(rows=(("900011", "Fixture", ""),)), "no Annex L"),
+        (
+            _annex_l(header=("Designator", "Code Value", "Code Meaning", "Body Part")),
+            "column",
+        ),
+        (_annex_l(rows=(("SCT", "900011", "Fixture", "Fixture"),)), "row 1"),
+        (_annex_l(rows=(("SCT", "900011", "Fixture", ""),)), "no Annex L"),
     ],
 )
 def test_annex_l_without_valid_body_part_terms_fails(tables, message):
     with pytest.raises(chtml.TableFormatError, match=message):
         ps3_16.parse_body_part_terms(tables)
+
+
+@pytest.mark.parametrize(
+    "tables, message",
+    [
+        (
+            _annex_l(
+                header=(
+                    "Designator",
+                    "Code Value",
+                    "Code Meaning",
+                    "Body Part Examined",
+                )
+            ),
+            "Coding Scheme Designator",
+        ),
+        (_annex_l(rows=(("SCT", "900011", "Fixture", "Fixture"),)), "row 1"),
+        (_annex_l(rows=(("SCT", "900011", "Fixture", ""),)), "no Annex L"),
+        (
+            _annex_l(
+                more=((ANNEX_L_HEADER, (("SCT", "900099", "Other", "FIXTURE"),)),)
+            ),
+            "Table L-2: row 1 gives a term another code",
+        ),
+    ],
+)
+def test_annex_l_without_valid_anatomic_region_codes_fails(tables, message):
+    with pytest.raises(chtml.TableFormatError, match=message):
+        ps3_16.parse_anatomic_regions(tables)
+
+
+@pytest.mark.parametrize(
+    "row, message",
+    [
+        ({"term": "chest"}, "term"),
+        ({"code_value": ""}, "code value"),
+        ({"scheme_designator": "", "code_value": "", "code_meaning": ""}, "designator"),
+    ],
+)
+def test_anatomic_region_codes_with_invalid_rows_fail(tmp_path, row, message):
+    rows = [
+        {
+            "term": "CHEST",
+            "scheme_designator": "SCT",
+            "code_value": "816094009",
+            "code_meaning": "Chest",
+        }
+        | row
+    ]
+    path = tmp_path / codes.ANATOMIC_REGIONS_TABLE.file
+    path.write_text(
+        json.dumps(
+            {
+                "schema": standard.SCHEMA,
+                "table": codes.ANATOMIC_REGIONS_TABLE.table,
+                "edition": "2099a",
+                "acknowledgement": "DICOM PS3.16 2099a, \u00a9 NEMA",
+                "sources": [],
+                "content_sha256": standard.content_sha256(rows),
+                "rows": rows,
+            }
+        ),
+        "utf-8",
+    )
+    with pytest.raises(standard.StandardTableError, match=message):
+        codes.load_anatomic_regions(path)
+
+
+def test_the_shipped_anatomic_region_codes_cover_every_body_part_term():
+    regions = codes.load_anatomic_regions()
+    terms = residual_exemptions.load_body_part_terms()
+    assert [row.term for row in regions.rows] == [row.term for row in terms.rows]
+    chest = next(row for row in regions.rows if row.term == "CHEST")
+    assert (chest.scheme_designator, chest.code_value) == ("SCT", "816094009")
 
 
 def _terms_page(*parts):
@@ -3682,17 +3821,43 @@ def test_the_pin_leaves_out_the_real_time_iods():
     }
 
 
-def test_the_pin_keeps_the_dicom_and_snomed_ct_rows_of_table_e3_4_1():
+def test_the_pin_keeps_the_dicom_snomed_ct_and_loinc_rows_of_table_e3_4_1():
     # The schemes of the 2026d table's 214 rows: DCM 189, SCT 11, LN 7,
     # NCDR 4, NCIt 2, and UMLS 1. Generation fails if an edition adds or
     # drops a scheme, and so does this test until it is updated with the pin.
-    assert generate.PIN.structured_content_schemes == ("DCM", "SCT")
+    assert generate.PIN.structured_content_schemes == ("DCM", "LN", "SCT")
     assert generate.PIN.left_out_structured_content_schemes == (
-        "LN",
         "NCDR",
         "NCIt",
         "UMLS",
     )
+    assert generate.LOINC == "LN"
+
+
+@pytest.mark.parametrize("named, fails", [
+    (set(), True),
+    ({"990001"}, True),
+    ({"990001", "990002", "990003"}, False),
+])  # fmt: skip
+def test_a_generated_loinc_row_must_have_its_loinc_name(
+    monkeypatch, source_dir, tmp_path, named, fails
+):
+    # The fixture's 99FIX rows stand in for LOINC's.
+    terms = loinc_terms.LoincTerms(
+        "2.83",
+        {code: loinc_terms.LoincTerm(code, "Fixture", "ACTIVE") for code in named},
+    )
+    monkeypatch.setattr(generate, "LOINC", "99FIX")
+    monkeypatch.setattr(generate, "load_loinc_terms", lambda: terms)
+
+    output_dir = tmp_path / "tables"
+
+    if fails:
+        with pytest.raises(chtml.TableFormatError, match="loinc_terms.toml"):
+            generate.generate(FIXTURE_PIN, output_dir, source_dir=source_dir)
+        assert not output_dir.exists()
+    else:
+        assert generate.generate(FIXTURE_PIN, output_dir, source_dir=source_dir) == 0
 
 
 def test_the_pin_names_the_row_table_o_1_publishes_twice():

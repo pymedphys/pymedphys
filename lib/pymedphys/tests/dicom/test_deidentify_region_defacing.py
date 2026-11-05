@@ -22,6 +22,7 @@ invented."""
 
 from __future__ import annotations
 
+import copy
 import dataclasses
 import itertools
 import math
@@ -42,6 +43,12 @@ from pymedphys._dicom.deidentify.region_defacing import (
 )
 
 from . import _synthetic_head_dicom as files
+
+
+def _cut_in(region, dataset, frame):
+    """The structure set's contours cut by one frame's block."""
+    return cut_contours({frame: region}, dataset)
+
 
 # The block holds the points with y below 0 and z above 0: anterior is -y.
 _BLOCK = FaceBlock((0.0, 0.0, 0.0), (0.0, -1.0, 0.0), 0.0, ((0, 0, 0), (0, 0, 0)))
@@ -93,7 +100,7 @@ def _structure_set(*rois, frame=_FRAME):
 def _cut(kind, points):
     """The contours written of one contour of one ROI, as points, or None
     where it is written as received."""
-    cut = cut_contours(_REGION, _structure_set([(kind, points)]), _FRAME)
+    cut = _cut_in(_REGION, _structure_set([(kind, points)]), _FRAME)
     if not cut:
         return None
     ((index, written),) = list(cut.items())
@@ -201,7 +208,7 @@ def test_an_edge_that_crosses_the_block_between_its_vertices_is_cut():
 def _roi(contours):
     """The contours written of one ROI's contours, each as its source index
     and points, or None where none is cut."""
-    cut = cut_contours(_REGION, _structure_set(contours), _FRAME)
+    cut = _cut_in(_REGION, _structure_set(contours), _FRAME)
     if not cut:
         return None
     ((_, written),) = list(cut.items())
@@ -294,7 +301,7 @@ def test_a_hole_is_cut_with_its_contour_whatever_their_winding_order_or_place(
     rings = [hole, outer] if hole_first else [outer, hole]
     contours = [("CLOSEDPLANAR_XOR", ring) for ring in rings]
 
-    cut = cut_contours(_shifted(dz), _structure_set(contours), _FRAME)
+    cut = _cut_in(_shifted(dz), _structure_set(contours), _FRAME)
 
     ((_, written),) = list(cut.items())
     got = _region_of(
@@ -440,7 +447,7 @@ def test_a_closed_contour_in_no_one_plane_refuses_an_roi_that_is_cut():
     bent[2, 2] = 21
 
     with pytest.raises(ContoursRefused):
-        cut_contours(
+        _cut_in(
             _REGION,
             _structure_set(
                 [
@@ -451,7 +458,7 @@ def test_a_closed_contour_in_no_one_plane_refuses_an_roi_that_is_cut():
             _FRAME,
         )
     # Where none of its ROI's contours is cut, it is kept as received.
-    assert not cut_contours(
+    assert not _cut_in(
         _REGION,
         _structure_set(
             [("CLOSED_PLANAR", _rectangle(-15, 15, 2, 15, 20)), ("CLOSED_PLANAR", bent)]
@@ -539,7 +546,7 @@ def test_a_contour_cut_in_two_is_written_as_two_numbered_once():
         structure_set.ROIContourSequence[0].ContourSequence[0].ContourData = [
             f"{v:.6g}" for v in each.ravel()
         ]
-        ((_, written),) = list(cut_contours(_REGION, structure_set, _FRAME).items())
+        ((_, written),) = list(_cut_in(_REGION, structure_set, _FRAME).items())
         assert [piece.numbered for piece in written] == [True, False]
         areas = sorted(
             _polygon(np.array([float(v) for v in piece.values]).reshape(-1, 3)).area
@@ -720,7 +727,7 @@ def test_a_contour_on_slices_with_short_direction_cosines_keeps_the_kept_brain()
     )
     points = _rectangle(-10, 10, -15, 10, 20)
 
-    cut = cut_contours(region, _structure_set([("CLOSED_PLANAR", points)]), _FRAME)
+    cut = _cut_in(region, _structure_set([("CLOSED_PLANAR", points)]), _FRAME)
 
     ((_, written),) = list(cut.items())
     got = _region_of(
@@ -754,7 +761,7 @@ def _holed_region(air):
 def _rings_cut(region, kind, points):
     """As :func:`_cut`, in ``region``, but with the points of a contour
     written as received."""
-    cut = cut_contours(region, _structure_set([(kind, points)]), _FRAME)
+    cut = _cut_in(region, _structure_set([(kind, points)]), _FRAME)
     if not cut:
         return [points]
     ((_, written),) = list(cut.items())
@@ -956,7 +963,7 @@ def _turned_grid_l_shape(dx, dy, quadrant):
 
 
 def _written_rings(region, structure_set):
-    ((_, written),) = list(cut_contours(region, structure_set, _FRAME).items())
+    ((_, written),) = list(_cut_in(region, structure_set, _FRAME).items())
     return [
         np.array([float(v) for v in each.values]).reshape(-1, 3) for each in written
     ]
@@ -1081,7 +1088,7 @@ def test_a_contour_nearer_two_tilted_slices_is_cut_by_the_whole_block():
     z = 41.0012800032041
     points = np.array([(-30, -15, z), (30, -15, z), (0, 10, z)], float)
 
-    cut = cut_contours(region, _structure_set([("CLOSED_PLANAR", points)]), _FRAME)
+    cut = _cut_in(region, _structure_set([("CLOSED_PLANAR", points)]), _FRAME)
 
     ((_, written),) = list(cut.items())
     got = shapely.ops.unary_union(
@@ -1155,7 +1162,7 @@ def test_contours_that_are_cut_are_written_in_their_rois_order():
         ],
     )
 
-    cut = cut_contours(_REGION, structure_set, _FRAME)
+    cut = _cut_in(_REGION, structure_set, _FRAME)
 
     # The first ROI is unchanged; the second keeps its first contour as
     # received, loses its point, and has its third cut.
@@ -1183,8 +1190,17 @@ def test_contours_that_are_cut_are_written_in_their_rois_order():
         lambda ds: setattr(_contour(ds), "ContourData", ["1", "2"]),
         lambda ds: setattr(_contour(ds), "ContourData", ["nan", "0", "0"]),
         lambda ds: setattr(_contour(ds), "ContourData", ["1e7", "0", "0"]),
-        lambda ds: setattr(_contour(ds), "ContourOffsetVector", ["0", "0", "1"]),
-        lambda ds: setattr(_contour(ds), "ContourSlabThickness", "2"),
+        lambda ds: setattr(_contour(ds), "ContourSlabThickness", "-2"),
+        lambda ds: setattr(_contour(ds), "ContourSlabThickness", "nan"),
+        lambda ds: setattr(_contour(ds), "ContourSlabThickness", "2e6"),
+        lambda ds: setattr(_contour(ds), "ContourSlabThickness", ["1", "2"]),
+        lambda ds: setattr(_contour(ds), "ContourOffsetVector", ["0", "1"]),
+        lambda ds: setattr(_contour(ds), "ContourOffsetVector", ["0", "0", "inf"]),
+        # An offset is normal to the contour's plane.
+        lambda ds: setattr(_contour(ds), "ContourOffsetVector", ["1", "0", "1"]),
+        lambda ds: ds.StructureSetROISequence.append(
+            copy.deepcopy(ds.StructureSetROISequence[0])
+        ),
     ],
     ids=[
         "another frame",
@@ -1194,8 +1210,14 @@ def test_contours_that_are_cut_are_written_in_their_rois_order():
         "not in threes",
         "not finite",
         "too far",
-        "offset",
-        "slab",
+        "negative slab",
+        "slab not finite",
+        "slab too far",
+        "two slabs",
+        "offset of two values",
+        "offset not finite",
+        "offset not normal",
+        "ROI given twice",
     ],
 )
 def test_a_structure_set_that_cannot_be_cut_is_refused(change):
@@ -1203,7 +1225,7 @@ def test_a_structure_set_that_cannot_be_cut_is_refused(change):
     change(structure_set)
 
     with pytest.raises(ContoursRefused) as raised:
-        cut_contours(_REGION, structure_set, _FRAME)
+        _cut_in(_REGION, structure_set, _FRAME)
     assert str(raised.value) == "the contours cannot be cut by the block"
 
 
@@ -1218,6 +1240,7 @@ def _pet(stored=None, *, slope="1", intercept="0", **changes):
     """A PET slice at z = 20 mm over x and y from -20 to 20 mm at 2 mm, of
     100 everywhere by default."""
     dataset = pydicom.Dataset()
+    dataset.SOPClassUID = files.PET_IMAGE_STORAGE
     dataset.ImagePositionPatient = ["-20", "-20", "20"]
     dataset.ImageOrientationPatient = [str(v) for v in files.AXIAL]
     dataset.PixelSpacing = ["2", "2"]
@@ -1298,12 +1321,29 @@ def test_a_pet_slice_that_cannot_be_placed_or_cleaned_is_refused(changes):
         PetDefacer(_REGION, dataset)
 
 
-def test_compressed_pet_is_refused():
+def test_pet_in_a_transfer_syntax_that_no_run_decodes_is_refused():
     dataset = _pet()
-    dataset.file_meta.TransferSyntaxUID = "1.2.840.10008.1.2.5"
+    # MPEG-2 Main Profile / Main Level, which encapsulates Pixel Data but
+    # which no run decodes.
+    dataset.file_meta.TransferSyntaxUID = "1.2.840.10008.1.2.4.100"
 
     with pytest.raises(PixelDataRefused):
         PetDefacer(_REGION, dataset)
+
+
+def test_compressed_pet_is_placed_as_native_pet_is():
+    dataset = _pet()
+    stored = dataset.pixel_array
+    expected = PetDefacer(_REGION, dataset).mask(0, stored)
+    # RLE Lossless: its frames, once decoded, are given to the mask as
+    # native frames are.
+    dataset.file_meta.TransferSyntaxUID = "1.2.840.10008.1.2.5"
+
+    found = PetDefacer(_REGION, dataset).mask(0, stored)
+
+    assert found is not None and expected is not None
+    np.testing.assert_array_equal(found.mask, expected.mask)
+    assert found.value == expected.value
 
 
 def test_a_pet_defacer_shows_nothing_and_holds_nothing():
@@ -1317,9 +1357,7 @@ def test_contour_values_are_written_as_decimal_strings_of_sixteen_characters():
     points = _rectangle(-10, 10, -15, 10, 20) + 1 / 3
 
     ((_, (written,)),) = list(
-        cut_contours(
-            _REGION, _structure_set([("CLOSED_PLANAR", points)]), _FRAME
-        ).items()
+        _cut_in(_REGION, _structure_set([("CLOSED_PLANAR", points)]), _FRAME).items()
     )
 
     assert all(len(value) <= 16 for value in written.values)

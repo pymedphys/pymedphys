@@ -19,14 +19,14 @@ Clean Descriptors, and Clean Structured Content, run as each runs alone: the
 Option's free text emptied, as for Retain Patient Characteristics alone, the
 structure set's names cleaned, as for ``basic-clean-descriptors``, and the
 acquisition context items made content items, as for Clean Structured
-Content alone, so that the preset keeps and cleans them. The two Structured
+Content alone, so that the preset keeps and cleans them. The Structured
 Reports are released with their content trees cleaned, and each content
 item's value takes its concept's action under the preset's options (D-047),
-so Retain Device Identity keeps a Device Observer UID. The rows kept are those that
-every selected option that gives an action keeps, which leaves out the
-eleven device dates and times that Retain Device Identity keeps and Modified
-Dates modifies, which the preset modifies (D-007), and the times that
-Modified Dates keeps. The preset claims no conformance, so its instances
+so Retain Device Identity keeps a Device Observer UID. The rows kept are
+those that every selected option that gives an action keeps, which leaves
+out the eleven device dates and times that Retain Device Identity keeps and
+Modified Dates modifies, which the preset modifies (D-007), and the times
+that Modified Dates keeps. The preset claims no conformance, so its instances
 gain no code. The corpus gives every Patient's Age in weeks, which gives
 no synthetic birth date (D-008), so Patient's Birth Date is emptied, as Z
 empties it; ``test_deidentify_birth_dates.py`` covers the synthetic dates.
