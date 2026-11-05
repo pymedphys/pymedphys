@@ -1100,8 +1100,10 @@ class InstanceTransform:
     (:class:`~.run_qc.UndefacedMaterial`), unless the face review gives it a
     verdict of its own (:meth:`~.face_review.FaceReview.own_verdict`), from
     its own previews, which then holds it as a series' verdict would, in
-    place of its frame and whatever its frame's eyes, since no block cleans
-    anything of it. An instance that can show
+    place of its frame, and, where the run refused to clean it, whatever its
+    frame's eyes, since no block cleans anything of it; one that a block
+    cleaned, held for a defaced slice that it refers to in another frame,
+    still waits for that block's confirmation. An instance that can show
     a face (:func:`~.face_review.carries_visual_features`) satisfies the
     option only where the SHA-256 of its source file is in a series that the
     face review marks absent, and the pixel data and contours that it is
@@ -2114,9 +2116,10 @@ class InstanceTransform:
                 else HeldVisualFeatures(undefaced)
             )
             # An instance in a defaced frame that the run does not clean of
-            # the face is listed for a verdict of its own, which, where the
-            # review gives one, decides it in place of its frame, as the face
-            # hold already gives it.
+            # the face, wholly or of a defaced slice that it refers to in
+            # another frame, is listed for a verdict of its own, which, where
+            # the review gives one, decides it in place of its frame, as the
+            # face hold already gives it.
             own = False
             if frame is not None and frame.reason is _UNDEFACED:
                 own = self._face_review is not None and self._face_review.own_verdict(
@@ -2127,10 +2130,12 @@ class InstanceTransform:
                     frame = None
             # An RT Dose written as received on a reviewer's choice is cleaned
             # by no block, so a wrong block would leave nothing in it, and
-            # likewise an instance released on its own verdict.
+            # likewise an instance on its own verdict that the run refused to
+            # clean (undefaced); one that a block cleaned but that refers to
+            # a defaced slice in another frame still waits for that block.
             if (
                 frame is None
-                and not own
+                and not (own and undefaced is not None)
                 and not (checked and chosen_dose is DoseChoice.AS_WRITTEN)
                 and self._unconfirmed(record, cleaned_in)
             ):

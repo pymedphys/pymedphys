@@ -296,6 +296,16 @@ def _phase_name(index):
     return f"01-head-phase-{index:03d}.dcm"
 
 
+# A second series of the head's slices, in a frame of its own, a slice of
+# which the first RT Dose refers to.
+_ELSEWHERE_SERIES = corpus_module.CT_SERIES + ".800"
+_ELSEWHERE_FRAME = files.ROOT + ".82"
+
+
+def _elsewhere_name(index):
+    return f"01-head-elsewhere-{index:03d}.dcm"
+
+
 def _error(stored):
     """A grid of differences: of either sign at the low dose in the block,
     and of the greatest magnitude, negative, behind the head."""
@@ -489,6 +499,7 @@ def _reviewed(
     phases=False,
     time_points=1,
     registrations=False,
+    elsewhere=False,
 ):
     """Run the collection, with its CT slices replaced by the head's, as one
     Enhanced CT Image instance if ``multi_frame``, or as ``time_points`` time
@@ -506,7 +517,10 @@ def _reviewed(
     ``basic``, or under the option and ``first`` with no face verdicts.
     If ``phases``, a second head series shares its frame, the structure set
     also declares an undefaced frame, and an ERROR dose and slab structure
-    set are added (:data:`_ERROR_DOSE`, :data:`_SLAB_STRUCTURE_SET`)."""
+    set are added (:data:`_ERROR_DOSE`, :data:`_SLAB_STRUCTURE_SET`).
+    If ``elsewhere``, a second head series is in a frame of its own
+    (:data:`_ELSEWHERE_FRAME`), and the first RT Dose refers to its first
+    slice."""
     corpus = corpus_module.build_corpus()
     directory = Path(tempfile.mkdtemp(prefix="d"))
     try:
@@ -546,6 +560,16 @@ def _reviewed(
         if registrations:
             for name, data in _registrations(slices).items():
                 (instances / name).write_bytes(data)
+        if elsewhere:
+            others = files.ct_files(
+                _SCAN,
+                head.Head(noise=0.0),
+                series=_ELSEWHERE_SERIES,
+                frame=_ELSEWHERE_FRAME,
+                template=template,
+            )
+            for index, data in enumerate(others):
+                (instances / _elsewhere_name(index)).write_bytes(data)
         if dose is not None:
             grid = pydicom.dcmread(instances / _DOSE[0])
             (instances / _DOSE[0]).write_bytes(
@@ -571,6 +595,14 @@ def _reviewed(
                 (instances / _DVH_ONLY).write_bytes(
                     _dvh_only(grid, f"{grid.SOPInstanceUID}.9")
                 )
+        if elsewhere:
+            grid = pydicom.dcmread(instances / _DOSE[0])
+            other = pydicom.dcmread(io.BytesIO(others[0]))
+            image = pydicom.Dataset()
+            image.ReferencedSOPClassUID = other.SOPClassUID
+            image.ReferencedSOPInstanceUID = other.SOPInstanceUID
+            grid.ReferencedInstanceSequence = [image]
+            (instances / _DOSE[0]).write_bytes(files.written(grid))
         rtss = pydicom.dcmread(instances / _STRUCTURE_SET)
         (instances / _STRUCTURE_SET).write_bytes(
             _head_structure_set(rtss, eyes_away=eyes_away, target=target, frames=phases)
@@ -857,6 +889,33 @@ def fixture_eyes_away_own(reviewed_eyes_away):
         reviewed_eyes_away,
         name="eo",
         instance_faces=dict.fromkeys(_UNDEFACED, Face.ABSENT),
+    )
+
+
+# The first RT Dose is set to zero in the block of the head's slices, whose
+# eyes disagree with the ROIs drawn, and refers to a slice of the head's
+# second series, defaced in a frame of its own; the reviewer saw no face in
+# its own previews, and the block is left unconfirmed, or confirmed.
+@pytest.fixture(name="reviewed_elsewhere", scope="module")
+def fixture_reviewed_elsewhere():
+    with _reviewed(first=(), eyes_away=True, dose=_dose(_LOW), elsewhere=True) as found:
+        yield found
+
+
+@pytest.fixture(name="elsewhere_own", scope="module")
+def fixture_elsewhere_own(reviewed_elsewhere):
+    return _second(
+        reviewed_elsewhere, name="eu", instance_faces={_DOSE[0]: Face.ABSENT}
+    )
+
+
+@pytest.fixture(name="elsewhere_confirmed", scope="module")
+def fixture_elsewhere_confirmed(reviewed_elsewhere):
+    return _second(
+        reviewed_elsewhere,
+        name="ec",
+        confirmed=True,
+        instance_faces={_DOSE[0]: Face.ABSENT},
     )
 
 
@@ -1423,6 +1482,38 @@ def test_a_released_undefaced_instance_needs_a_new_verdict_of_its_own(
     assert report["face_review"]["undefaced_in_defaced_frame"] == _undefaced_report(
         held=len(_UNDEFACED_WITH_REGISTRATIONS)
     )
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.2-01", "PS3.15-E.3.2-02")
+def test_a_verdict_of_its_own_keeps_the_block_that_cleaned_it_unconfirmed(
+    reviewed_elsewhere, elsewhere_own, elsewhere_confirmed
+):
+    held = HeldVisualFeatures(VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME)
+    eyes = HeldVisualFeatures(VisualFeaturesReason.EYES_DISAGREE_WITH_ROIS)
+    document = json.loads(reviewed_elsewhere.pack.read_text("utf-8"))
+    (entry,) = (
+        each
+        for each in document["instances"]
+        if reviewed_elsewhere.names[each["position"]] == _DOSE[0]
+    )
+    assert entry["disposition"] == "held-for-review"
+    assert any(held.reason.value in reason for reason in entry["reasons"])
+    assert _undefaced_listed(reviewed_elsewhere)[_DOSE[0]]["shown"]
+    _, outcomes, reasons, _ = elsewhere_own
+
+    # Its own verdict decides the slice that it refers to in the other
+    # frame, but the block of its own frame set it to zero, so it waits for
+    # that block's confirmation, as any instance that block cleans does,
+    # while the other series, whose eyes no ROI contradicts, is released.
+    assert outcomes[_elsewhere_name(0)][0] == "released"
+    assert outcomes[_DOSE[0]] == ("held-for-review", None)
+    assert eyes in reasons[_DOSE[0]] and held not in reasons[_DOSE[0]]
+    _, outcomes, reasons, _ = elsewhere_confirmed
+    disposition, dataset = outcomes[_DOSE[0]]
+    assert disposition == "released", reasons[_DOSE[0]]
+    assert dataset.RecognizableVisualFeatures == "NO"
+    source = pydicom.dcmread(reviewed_elsewhere.instances / _DOSE[0])
+    assert dataset.PixelData != source.PixelData
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.2-01", "PS3.15-E.3.2-02")
