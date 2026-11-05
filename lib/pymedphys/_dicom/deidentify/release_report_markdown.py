@@ -456,23 +456,26 @@ def _undefaced_in_defaced_frame(section: object) -> list[Block]:
     ]
     return [
         [
-            "RT Structure Sets, RT Doses, PET images, and Segmentations in the "
-            "Frame of Reference of a defaced CT series, naming none, or "
-            "referring to a defaced slice, whose outlines or pixel data the "
-            "run does not clean of the face, which a verdict on their series "
-            "does not release, since it may have been given beside the "
+            "RT Structure Sets, RT Doses, PET images, Segmentations, and "
+            "deformable registrations in the Frame of Reference of a defaced "
+            "CT series, naming none, or referring to a defaced slice, that the "
+            "run does not clean of the face, wholly, or of a defaced slice "
+            "that they refer to in another frame, which a verdict on their "
+            "series does not release, since it may have been given beside the "
             "defaced CT, and which are released only where a reviewer saw no "
             "recognisable face in each one's own previews: held without such "
             "a verdict: "
             + _tally(f"{field} held", undefaced["held"])
-            + "; held with one, since it or its series showed a face, or the "
-            "run writes other pixel data or contours of it than the QC pack "
-            "showed: "
+            + "; held with one, since it or its series showed a face, the run "
+            "writes other pixel data, contours, or deformation grids of it "
+            "than the QC pack showed, a block of its own frame that cleaned "
+            "it awaits confirmation, or another hold applies: "
             + _tally(
                 f"{field} held_with_own_verdict", undefaced["held_with_own_verdict"]
             )
             + ". Each released on its own verdict, by its output name, is "
-            "written with its outlines and pixel data not cleaned of the face:"
+            "written as the QC pack showed it: not cleaned of the face, or "
+            "cleaned only by the blocks of its own frame:"
         ],
         _table(("Output name",), rows) if rows else [_NONE],
     ]

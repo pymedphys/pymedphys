@@ -585,8 +585,10 @@ def test_the_report_records_each_undefaced_instance_by_its_own_verdict():
     }
     text = release_report_markdown.to_markdown(release_report.to_json(report))
     assert "held without such a verdict: `2`" in text
-    assert "or the run writes other pixel data or contours" in text
-    assert "QC pack showed: `1`" in text
+    assert "the run writes other pixel data, contours, or deformation grids" in text
+    assert "a block of its own frame that cleaned it awaits confirmation" in text
+    assert "or another hold applies: `1`" in text
+    assert "cleaned only by the blocks of its own frame:" in text
     assert f"| `{_NAMES[0]}` |" in text
     assert f"| `{_NAMES[2]}` |" in text
 
