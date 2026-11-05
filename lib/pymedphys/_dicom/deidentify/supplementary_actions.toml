@@ -11,9 +11,10 @@
 # supported scope: Segmentation and the Enhanced X-Ray and Patient Radiation
 # Dose SR IODs, reviewed ahead of supporting them, as RT Image, RT Beams
 # Treatment Record, the registrations, the X-Ray and Radiopharmaceutical
-# Radiation Dose SR IODs, RT Ion Plan, and RT Ion Beams Treatment Record
-# were. So does every date, time, and datetime (DA, DT, or TM) attribute that
-# Table E.1-1 omits, besides the role that the temporal roles file gives it.
+# Radiation Dose SR IODs, RT Ion Plan, RT Ion Beams Treatment Record, RT
+# Brachy Treatment Record, and RT Treatment Summary Record were. So does every date,
+# time, and datetime (DA, DT, or TM) attribute that Table E.1-1 omits,
+# besides the role that the temporal roles file gives it.
 # Other attributes that the table omits have a rule only where one has been
 # reviewed, such as the two URLs below that name coding concepts and schemes.
 # A rule never covers an attribute that Table E.1-1 lists, or a UI attribute,

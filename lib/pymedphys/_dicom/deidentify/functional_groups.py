@@ -28,11 +28,12 @@ more than one, such as Real World Value Mapping.
 A group in both sequences is refused rather than one taken over the other,
 since PS3.3 C.7.6.16.1.1 lets a group be in only one of them and gives
 neither precedence; so is a group in neither, a sequence of other than one
-item (of no item, for :func:`frame_group_items`), and a Per-frame Functional Groups Sequence of other than one item for
-each frame, as is an instance without it, which PS3.3 A.51.5 permits a
-Segmentation where it would be empty, and a sequence that pydicom cannot
-parse. Whatever is refused raises :class:`ValueError`, without any
-value, so that a caller can leave the instance as it is.
+item (of no item, for :func:`frame_group_items`), and a Per-frame
+Functional Groups Sequence of other than one item for each frame, as is an
+instance without it, but for a Segmentation explicitly read from shared
+groups alone where PS3.3 A.51.5 permits its omission. A sequence that pydicom
+cannot parse is refused too. Whatever is refused raises :class:`ValueError`,
+without any value, so that a caller can leave the instance as it is.
 """
 
 from __future__ import annotations
@@ -43,7 +44,12 @@ from .diagnostics import redacted_diagnostics
 
 
 def frame_group(
-    dataset: pydicom.Dataset, frames: int, frame: int, keyword: str
+    dataset: pydicom.Dataset,
+    frames: int,
+    frame: int,
+    keyword: str,
+    *,
+    shared_alone: bool = False,
 ) -> pydicom.Dataset:
     """Return the one item of a functional group's sequence for a frame.
 
@@ -58,6 +64,11 @@ def frame_group(
     keyword : str
         The functional group's sequence, such as
         ``"PlanePositionSequence"``.
+    shared_alone : bool
+        Whether an instance without the Per-frame Functional Groups Sequence
+        is read from the Shared Functional Groups Sequence alone, as PS3.3
+        A.51.5 lets a Segmentation omit it; one with the sequence, even of
+        no items, still needs an item for each frame.
 
     Raises
     ------
@@ -68,14 +79,21 @@ def frame_group(
         them, in one item, or a sequence cannot be read; without any
         value.
     """
-    items = frame_group_items(dataset, frames, frame, keyword)
+    items = frame_group_items(
+        dataset, frames, frame, keyword, shared_alone=shared_alone
+    )
     if len(items) != 1:
         raise ValueError("not one item")
     return items[0]
 
 
 def frame_group_items(
-    dataset: pydicom.Dataset, frames: int, frame: int, keyword: str
+    dataset: pydicom.Dataset,
+    frames: int,
+    frame: int,
+    keyword: str,
+    *,
+    shared_alone: bool = False,
 ) -> tuple[pydicom.Dataset, ...]:
     """Return the items of a functional group's sequence for a frame, of a
     group whose sequence may hold more than one, such as the Real World
@@ -96,14 +114,14 @@ def frame_group_items(
         raise ValueError("no such frame")
     try:
         with redacted_diagnostics():
+            omitted = shared_alone and "PerFrameFunctionalGroupsSequence" not in dataset
             each = dataset.get("PerFrameFunctionalGroupsSequence") or []
             shared = dataset.get("SharedFunctionalGroupsSequence") or []
-            if len(each) != frames or len(shared) > 1:
+            if (not omitted and len(each) != frames) or len(shared) > 1:
                 raise ValueError("not one item for each frame")
+            own = () if omitted else (each[frame],)
             found = [
-                groups[keyword].value
-                for groups in (each[frame], *shared)
-                if keyword in groups
+                groups[keyword].value for groups in (*own, *shared) if keyword in groups
             ]
             if len(found) != 1:
                 raise ValueError("not one functional group")

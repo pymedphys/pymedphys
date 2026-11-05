@@ -389,11 +389,15 @@ def test_a_target_s_contours_are_written_as_received_wherever_they_lie():
     region = DoseBlock(_BLOCK, slices, targets=kept)
 
     # No contour is cut.
-    assert not cut_contours(region, _structure_set(*contours), files.FRAME)
+    assert not cut_contours(
+        {files.FRAME: region}, _structure_set(*contours), {files.FRAME}
+    )
     # Without the hulls, the slices' pixels alone keep those on them, and
     # the others, wholly in the block, are removed.
     cut = cut_contours(
-        DoseBlock(_BLOCK, slices), _structure_set(*contours), files.FRAME
+        {files.FRAME: DoseBlock(_BLOCK, slices)},
+        _structure_set(*contours),
+        {files.FRAME},
     )
     assert [(each.contour, each.values) for each in cut[0]] == [(0, None), (1, None)]
 
@@ -405,7 +409,9 @@ def test_an_outline_keeps_the_squares_of_the_pixels_kept_for_a_target():
     outline = _rectangle(-15, 15, -15, 15, 10.0)
 
     ((_, written),) = list(
-        cut_contours(region, _structure_set(outline), files.FRAME).items()
+        cut_contours(
+            {files.FRAME: region}, _structure_set(outline), {files.FRAME}
+        ).items()
     )
 
     polygons = [

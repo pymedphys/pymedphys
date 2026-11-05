@@ -227,7 +227,8 @@ class VisualFeaturesReason(enum.Enum):
     OTHER_GRIDS = "face-verdict-on-other-grids"
     # an RT Dose in the Frame of Reference of a CT series that the run
     # defaces, whose dose in the series' face block is too great to set to
-    # zero there, so that it is written as received
+    # zero there, so that it is written as received, and for which no
+    # reviewer has chosen what a later run does (DoseChoice)
     DOSE_IN_FACE_BLOCK = "dose-in-face-block"
     # an RT Structure Set, RT Dose, PET instance, or Segmentation in the
     # Frame of Reference of a CT series that the run defaces, whose outline
@@ -244,6 +245,25 @@ class VisualFeaturesReason(enum.Enum):
     # globes that its face block was found from, so that the series is not
     # defaced
     EYES_DISAGREE_WITH_ROIS = "eyes-disagree-with-rois"
+    # an RT Dose with too much dose in a defaced series' face block to set
+    # to zero there, which a reviewer chose to set to zero anyway, and whose
+    # grid as set to zero no reviewed QC pack has shown, so that only a
+    # verdict on this run's previews of it can release it
+    DOSE_SET_TO_ZERO_ON_REVIEW = "dose-set-to-zero-on-review"
+
+
+class DoseChoice(enum.Enum):
+    """What a reviewer chose for an RT Dose with too much dose in a defaced
+    series' face block to set to zero there
+    (:attr:`VisualFeaturesReason.DOSE_IN_FACE_BLOCK`), in a QC pack's
+    attestation, for a later run of the same files."""
+
+    # written as received, and released on a verdict of absent on its own
+    # dose-levels previews, which show it as received
+    AS_WRITTEN = "as-written"
+    # set to zero in the block, beyond the fraction, and released only on a
+    # verdict of absent on the previews of the grid as set to zero
+    SET_TO_ZERO = "set-to-zero"
 
 
 @dataclasses.dataclass(frozen=True)
