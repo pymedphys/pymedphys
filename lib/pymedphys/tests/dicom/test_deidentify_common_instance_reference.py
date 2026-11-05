@@ -28,6 +28,8 @@ MODULE = "Common Instance Reference"
 # The supported IODs that make the module mandatory, from the 2026d PS3.3
 # Tables A.39.1-1 and A.39.2-1.
 MANDATORY = {"Spatial Registration", "Deformable Spatial Registration"}
+# Required where a Derivation Image functional group is present.
+CONDITIONAL = {"Segmentation"}
 # The supported IODs without the module: the Structured Reports, whose SR
 # Document General Module references their evidence instead (PS3.3 Section
 # A.35).
@@ -60,7 +62,9 @@ def test_every_supported_iod_but_the_reports_includes_the_module_and_its_sequenc
             ), name
             continue
         (usage,) = usages
-        assert usage == ("M" if name in MANDATORY else "U"), name
+        assert usage == (
+            "M" if name in MANDATORY else "C" if name in CONDITIONAL else "U"
+        ), name
         assert {
             (d.tag, d.type)
             for d in iod.definitions

@@ -113,7 +113,7 @@ _TILTED_SCANS = {
 
 
 @pytest.mark.parametrize("scan", _TILTED_SCANS.values(), ids=_TILTED_SCANS.keys())
-def test_a_tilted_series_is_not_yet_defaced_though_the_finder_finds_its_block(scan):
+def test_a_tilted_series_is_defaced_by_the_block_that_the_finder_finds(scan):
     slices = tuple(files.ct_files(scan, head.Head(noise=0.0)))
 
     outcome = _outcome(slices=slices)
@@ -121,11 +121,12 @@ def test_a_tilted_series_is_not_yet_defaced_though_the_finder_finds_its_block(sc
         list(range(len(slices))), lambda position: slices[position]
     )
 
-    assert outcome.block is None
-    assert outcome.problem is FaceBlockProblem.NOT_ALONG_PATIENT_AXES
+    assert outcome.problem is None
+    assert outcome.frame == files.FRAME
     assert inspection is not None
+    assert inspection.block() == outcome.block
     np.testing.assert_allclose(
-        inspection.block().globes,
+        outcome.block.globes,
         (
             (-head.GLOBE_X, head.GLOBE_Y, head.GLOBE_Z),
             (head.GLOBE_X, head.GLOBE_Y, head.GLOBE_Z),

@@ -888,6 +888,8 @@ def test_instances_keep_their_reviewed_dummy_values(policy_run):
         "MR Spectroscopy",
         "Enhanced PET Image",
         "Legacy Converted Enhanced PET Image",
+        # In its Segmentation Series Module.
+        "Segmentation",
     }
     steps = set()
     # Under Retain UIDs, Table E.1-1 gives K to the sequence and to the

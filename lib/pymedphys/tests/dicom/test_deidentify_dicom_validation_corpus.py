@@ -80,6 +80,9 @@ BOTH_VALIDATED = "input validated, output validated"
 BOTH_FAILED = "input failed, output failed"
 BOTH_UNSUPPORTED = "input unsupported, output unsupported"
 EXTENSIBLE_SR = dicom_validation.sop_class_name(corpus_module.EXTENSIBLE_SR_STORAGE)
+LABEL_MAP_SEGMENTATION = dicom_validation.sop_class_name(
+    corpus_module.LABEL_MAP_SEGMENTATION_STORAGE
+)
 
 
 @pytest.fixture(name="toolset", scope="module")
@@ -200,12 +203,16 @@ def test_every_validator_ran_over_every_released_instance(comparison):
     }
     # dciodvfy checks every input and output but the corpus's RT Dose in
     # Implicit VR, whose 32-bit pixels abort it on both, and its Extensible
-    # SR, whose SOP Class dicom3tools' January 2024 snapshot does not know.
+    # SR and label map Segmentation, whose SOP Classes dicom3tools' January
+    # 2024 snapshot does not know.
     statuses = dict(comparison.tallies[DCIODVFY]["statuses"])
     failed = statuses.pop(BOTH_FAILED, 0)
     unsupported = statuses.pop(BOTH_UNSUPPORTED, 0)
     assert failed <= 1
-    assert unsupported == comparison.sop_classes.get(EXTENSIBLE_SR, 0)
+    assert unsupported == sum(
+        comparison.sop_classes.get(name, 0)
+        for name in (EXTENSIBLE_SR, LABEL_MAP_SEGMENTATION)
+    )
     assert statuses == {BOTH_VALIDATED: comparison.pairs - failed - unsupported}
 
 

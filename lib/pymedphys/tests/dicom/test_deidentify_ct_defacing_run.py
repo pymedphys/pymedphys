@@ -14,9 +14,10 @@
 
 """A run under Clean Recognizable Visual Features that defaces a CT series
 of the analytic head, beside the synthetic collection's RT Structure Set, RT
-Dose, and PET in the same Frame of Reference, the RT Structure Set replaced
-by one of the head, one RT Dose by a grid over the head, and the PET Image
-by two slices of the head. Every UID and value here is invented."""
+Dose, PET, and Segmentation in the same Frame of Reference, the RT Structure
+Set replaced by one of the head, one RT Dose by a grid over the head, the
+PET Image by two slices of the head, and the BINARY Segmentation by one of
+the head's body. Every UID and value here is invented."""
 
 # The runs share the head, its ROIs, and the fixtures that review one run of
 # the collection, so they stay in one module.
@@ -90,13 +91,23 @@ from .test_deidentify_visual_features_option import (
 _SCAN = head.axial(
     spacing=2.5, thickness=5.0, extent=((-100, 100), (-130, 110), (-30, 110))
 )
+# The CT's grid less its last row and column, 96 rows by 80 columns, so
+# that each 1-bit frame of a Segmentation on it fills whole bytes.
+_SEGMENTED = head.axial(
+    spacing=2.5, thickness=5.0, extent=((-100, 97.5), (-130, 107.5), (-30, 110))
+)
 _CT_FILES = ("01-ct-1.dcm", "02-ct-2.dcm", corpus_module.SEQUESTERED_FILE)
 _STRUCTURE_SET = "04-rtstruct.dcm"
 _DOSE = ("06-rtdose.dcm", "07-rtdose-review.dcm")
 _PET = ("15-pet.dcm", "16-pet-enhanced.dcm", "17-pet-legacy-enhanced.dcm")
 # A second PET slice of the head, in the first's series.
 _PET_ABOVE = "15-pet-above.dcm"
-_IN_FRAME = (_STRUCTURE_SET, *_DOSE, *_PET, _PET_ABOVE)
+# The BINARY Segmentation, replaced by a segment of the head's body.
+_SEGMENTATION = corpus_module.SEGMENTATION_FILES[0]
+# The head's BINARY Segmentation and the corpus's label map, both in the head
+# CT's frame.
+_SEGMENTATIONS = (_SEGMENTATION, corpus_module.SEGMENTATION_FILES[1])
+_IN_FRAME = (_STRUCTURE_SET, *_DOSE, *_PET, _PET_ABOVE, _SEGMENTATION)
 # The PET instances that the run does not clean.
 _UNDEFACED = _PET[1:]
 # The head's slices as one Enhanced CT Image instance, and its PET slices as
@@ -239,6 +250,26 @@ _BEYOND_TARGET = (
 # The ROIs that the run adds to the head's, by ``target``.
 _TARGETS = {"kept": _KEPT_TARGET, "beyond": _BEYOND_TARGET}
 _TARGET_NAME = "PTV_Orbit"
+
+
+def _body(index):
+    """The head's body on the slice of :data:`_SEGMENTED` at ``index``: each
+    pixel that is not air."""
+    return head.hounsfield(_SEGMENTED.points(index)) > head.AIR
+
+
+def _head_segmentation(template):
+    """A segment of the head's body, a frame on each of the CT's slices, as
+    a mask of the body could be, which traces the face."""
+    return files.segmentation(
+        _SEGMENTED,
+        [np.stack([_body(index) for index in range(len(_SEGMENTED.positions))])],
+        frame=corpus_module.FRAME_OF_REFERENCE,
+        series=corpus_module.CT_SERIES,
+        instance=template.SOPInstanceUID,
+        keep_empty=True,
+        template=template,
+    )
 
 
 def _rois(target=False):
@@ -508,7 +539,8 @@ def _reviewed(
     RT Structure Set by the head's ROIs, with a target in the block, by
     :data:`_TARGETS`, if ``target``, its PET
     Image by :data:`_PET_SLICES`, and, if ``multi_frame``, its Enhanced PET
-    Image by those slices as one instance, and its first RT Dose
+    Image by those slices as one instance, its BINARY Segmentation by
+    :func:`_head_segmentation`, and its first RT Dose
     by a grid over the head of ``dose`` where given, with the RT Dose
     instances of :data:`_UNPLACEABLE` and :data:`_DVH_ONLY` in its series if
     ``edges``, the head's CT and PET slices and that RT Dose compressed in
@@ -637,6 +669,8 @@ def _reviewed(
                     mapped=True,
                 )
             )
+        segmentation = pydicom.dcmread(instances / _SEGMENTATION)
+        (instances / _SEGMENTATION).write_bytes(_head_segmentation(segmentation))
         if compressed:
             names = [
                 *sorted(path.name for path in instances.glob("01-head*")),
@@ -691,9 +725,10 @@ def _second(
     instance_faces=None,
 ):
     """Attest a copy of the reviewed run's pack, in ``name`` beside it, with
-    the head's series, and those of the RT Structure Set, RT Dose, and PET
-    in its frame, and of the deformable registrations, marked absent, but for the series of each file named in
-    ``present``, marked present, and, if ``accepted``, the regions of each
+    the head's series, and those of the RT Structure Set, RT Dose, PET, and
+    Segmentation in its frame, and of the deformable registrations, marked
+    absent, but for the series of each file named in ``present``, marked
+    present, and, if ``accepted``, the regions of each
     of the head's CT and PET slices that the pack previews accepted, or, if
     ``revised``, those of each of its CT slices, revised with that region
     added in their first frame, and, if ``confirmed``, each face block that
@@ -1240,9 +1275,11 @@ def test_a_head_ct_marked_absent_as_received_is_held_where_defaced(
         for entry in report["held_for_review"]
         if entry["stage"] == "visual-features"
     }
-    # So are the PET slices, which the run sets to zero in the block.
-    assert counts[VisualFeaturesReason.OTHER_PIXEL_DATA.value] == changed + len(
-        _PET_SLICES
+    # So are the PET slices, which the run sets to zero in the block, and
+    # the Segmentation, which it clears there.
+    assert (
+        counts[VisualFeaturesReason.OTHER_PIXEL_DATA.value]
+        == changed + len(_PET_SLICES) + 1
     )
 
 
@@ -1721,19 +1758,50 @@ def test_the_head_pet_is_set_to_zero_activity_in_the_block_and_released(defaced)
             assert brain.any() and np.array_equal(written[brain], source[brain])
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.2-01", "PS3.15-E.3.2-02")
+def test_the_head_segmentation_is_cleared_in_the_block_and_released(defaced):
+    slices, outcomes, reasons, _ = defaced
+    block = _block(slices)
+    floor = head.GLOBE_Z + face_blocks.CAVITY_FLOOR
+
+    # The reviewer saw its segment as the run wrote it, on its segments
+    # sheet, so the verdict of absent releases it.
+    disposition, dataset = outcomes[_SEGMENTATION]
+    assert disposition == "released", reasons[_SEGMENTATION]
+    assert dataset.RecognizableVisualFeatures == "NO"
+    assert _codes(dataset)[-2:] == [markers.PROFILE_CODE, CODE]
+    written = pydicom.pixels.pixel_array(dataset)
+    assert written.shape == (len(_SEGMENTED.positions), *_SEGMENTED.shape)
+    changed = kept = 0
+    for index in range(len(_SEGMENTED.positions)):
+        points = _SEGMENTED.points(index)
+        source, inside = _body(index), block.contains(points)
+        # Outside the block, nothing changes; within it, the segment is
+        # cleared but for the brain above the floor.
+        assert np.array_equal(written[index][~inside], source[~inside]), index
+        assert not np.any(written[index][inside] & ~source[inside]), index
+        brain = inside & (head.hounsfield(points) == head.BRAIN)
+        brain &= points[..., 2] > floor
+        assert np.all(written[index][brain]), index
+        kept += int(np.count_nonzero(brain))
+        changed += int(np.count_nonzero(written[index] != source))
+    assert changed > 0 and kept > 0
+
+
 @pytest.mark.deid_requirement("PS3.15-E.3.2-01")
-def test_the_head_structure_set_and_pet_seen_as_received_are_held_once_cut(
+def test_the_head_structure_set_pet_and_segmentation_seen_as_received_are_held(
     as_received,
 ):
     _, outcomes, reasons, _ = as_received
 
     # The reviewer saw them as received, which the run, cutting them by the
-    # block, no longer writes.
+    # block, setting them to zero there, or clearing their segments there,
+    # no longer writes.
     assert outcomes[_STRUCTURE_SET] == ("held-for-review", None)
     assert reasons[_STRUCTURE_SET] == {
         HeldVisualFeatures(VisualFeaturesReason.OTHER_CONTOURS)
     }
-    for name in _PET_SLICES:
+    for name in (*_PET_SLICES, _SEGMENTATION):
         assert outcomes[name] == ("held-for-review", None), name
         assert reasons[name] == {
             HeldVisualFeatures(VisualFeaturesReason.OTHER_PIXEL_DATA)
@@ -2347,12 +2415,14 @@ def test_an_eye_drawn_away_from_the_globes_holds_the_defaced_head_ct(eyes_away):
     for index in range(len(slices)):
         assert outcomes[_head_name(index)] == ("held-for-review", None), index
         assert reasons[_head_name(index)] == {held}, index
-    for name in (_STRUCTURE_SET, _DOSE[0], *_PET_SLICES):
+    for name in (_STRUCTURE_SET, _DOSE[0], *_PET_SLICES, _SEGMENTATION):
         assert outcomes[name] == ("held-for-review", None), name
         assert reasons[name] == {held}, name
-    # As is the RT Dose that its release gate also holds for review.
-    assert outcomes[_DOSE[1]] == ("held-for-review", None)
-    assert held in reasons[_DOSE[1]]
+    # As are the RT Dose that its release gate also holds for review and the
+    # label map, which no face verdict names.
+    for name in (_DOSE[1], _SEGMENTATIONS[1]):
+        assert outcomes[name] == ("held-for-review", None), name
+        assert held in reasons[name], name
     assert report["face_review"]["ct_series"] == {
         "defaced": 1,
         "defaced_around_targets": 0,
@@ -2366,7 +2436,7 @@ def test_an_eye_drawn_away_from_the_globes_holds_the_defaced_head_ct(eyes_away):
         if entry["stage"] == "visual-features"
     }
     assert counts[held.reason.value] == (
-        len(slices) + 1 + len(_DOSE) + len(_PET_SLICES)
+        len(slices) + 1 + len(_DOSE) + len(_PET_SLICES) + len(_SEGMENTATIONS)
     )
 
 
