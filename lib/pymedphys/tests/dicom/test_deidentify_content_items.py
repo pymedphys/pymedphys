@@ -1071,6 +1071,21 @@ def test_each_log_entry_takes_the_dummy_datetime_of_its_rank(times, expected):
     }
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.4-01")
+def test_observation_context_is_not_a_log_entry():
+    # PS3.3 A.35.7.3.1.2 orders only the targets of CONTAINS from the root;
+    # Table C.17-6 lets an item of another relationship, such as observation
+    # context, have its own Observation DateTime, which takes D's constant.
+    log = _log(None, *LOG_TIMES)
+    log.ContentSequence[0].RelationshipType = "HAS OBS CONTEXT"
+    log.ContentSequence[0].ObservationDateTime = "20260102030407"
+    assert _actions((CSC,), log, LOG)[_path(tag=CONTENT)] == "K"
+    assert _log_dummies((CSC,), log) == {
+        _path((CONTENT, 1), tag=OBSERVED): "19000101000000",
+        _path((CONTENT, 2), tag=OBSERVED): "19000101000001",
+    }
+
+
 @pytest.mark.parametrize(
     "options, iod",
     [

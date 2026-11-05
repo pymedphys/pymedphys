@@ -265,13 +265,16 @@ DUMMY_IN_PLACE_OF_REMOVAL = frozenset(
         ("DCM", "128470", "UIDREF"),
     }
 )
-# A Procedure Log's first-level items, the log's entries, each include
-# Observation DateTime (0040,A032) and are "strictly ordered by monotonically
-# increasing" values of it (PS3.3 Section A.35.7.3.1.2). Where X/D gives it
-# D, D-021's one constant would collapse that order, so each entry's takes
-# the dummy datetime of its rank instead (:func:`log_dummy_datetimes`).
+# A Procedure Log's entries, the targets of "CONTAINS" from its root, each
+# include Observation DateTime (0040,A032) and are "strictly ordered by
+# monotonically increasing" values of it (PS3.3 Section A.35.7.3.1.2). Where
+# X/D gives it D, D-021's one constant would collapse that order, so each
+# entry's takes the dummy datetime of its rank instead
+# (:func:`log_dummy_datetimes`). Other first-level items, such as
+# observation context, are not entries.
 PROCEDURE_LOG = "Procedure Log"
 OBSERVATION_DATETIME = "(0040,A032)"
+CONTAINS = "CONTAINS"
 # The first dummy datetime of a log's entries, D's constant for DT (D-021).
 _FIRST_DUMMY = datetime.datetime.strptime(str(CONSTANTS["DT"][0]), "%Y%m%d%H%M%S")
 # A DT value of PS3.5 Table 6.2-1: a date and time of 4 to 14 digits, a
@@ -979,10 +982,19 @@ def _dated_log(policy: Policy, iod: IOD, path: ElementPath) -> bool:
 
 
 def _entry_datetimes(reader: _Reader, path: ElementPath) -> dict[ElementPath, str]:
-    """Return the Observation DateTime of each entry of a log that has one."""
+    """Return the Observation DateTime of each entry of a log that has one.
+
+    The entries are the items of the root's Content Sequence that are
+    targets of "CONTAINS" (PS3.3 Section A.35.7.3.1.2); an item of any
+    other relationship, such as "HAS OBS CONTEXT", may have its own
+    Observation DateTime (PS3.3 Table C.17-6), which is not an entry's.
+    """
     found = {}
     for index in range(reader.count(path)):
-        observed = ElementPath(((CONTENT_SEQUENCE, index),), OBSERVATION_DATETIME)
+        item = ((CONTENT_SEQUENCE, index),)
+        if reader.text(ElementPath(item, RELATIONSHIP_TYPE)) != CONTAINS:
+            continue
+        observed = ElementPath(item, OBSERVATION_DATETIME)
         text = reader.text(observed)
         if text is not None:
             found[observed] = text
@@ -1050,11 +1062,11 @@ def log_dummy_datetimes(
 ) -> Mapping[ElementPath, str]:
     """Return the dummy datetime that D writes in each Procedure Log entry.
 
-    PS3.3 Section A.35.7.3.1.2 has a Procedure Log's first-level content
-    items, its entries, "strictly ordered by monotonically increasing"
-    Observation DateTime (0040,A032). Where the policy neither keeps nor
-    modifies that datetime, X/D gives it D, and D-021's one constant would
-    give every entry the same value. So each entry's Observation DateTime
+    PS3.3 Section A.35.7.3.1.2 has a Procedure Log's entries, the targets
+    of "CONTAINS" from its root, "strictly ordered by monotonically
+    increasing" Observation DateTime (0040,A032). Where the policy neither
+    keeps nor modifies that datetime, X/D gives it D, and D-021's one
+    constant would give every entry the same value. So each entry's Observation DateTime
     takes, instead, the dummy datetime of its rank among the distinct
     source values of the entries: D's constant for DT, ``19000101000000``,
     for the earliest, and one second later for each later value, so that
