@@ -16,11 +16,13 @@
 
 import datetime
 import io
+import struct
 
 from pymedphys._imports import hypothesis, pydicom, pytest
 
 from pymedphys._dicom.deidentify import (
     dummy_values,
+    icc_cleaning,
     icc_profiles,
     keys,
     standard,
@@ -452,6 +454,158 @@ def test_the_person_identification_item_is_written_as_dicom():
     assert read[0].CodeMeaning == "DEIDENTIFIED^DEIDENTIFIED"
 
 
+INSTITUTION_CODE_SEQUENCE = "(0008,0082)"
+# Interlock Resolution User Sequence, in the Interlock Sequence of an RT Beams
+# Treatment Record's and of an RT Ion Beams Treatment Record's beam sessions.
+INTERLOCK_USERS = (
+    ("(3008,0020)", "(300A,0740)", "(300A,0746)"),
+    ("(3008,0021)", "(300A,0740)", "(300A,0746)"),
+)
+# The item that D writes in Institution Code Sequence there, as the design
+# document gives it, and the item it writes where a source item's Code Value
+# or Code Meaning equals the first.
+INSTITUTION_ITEM = (
+    (CODE_VALUE, "SH", "DEIDENTIFIED"),
+    (CODING_SCHEME_DESIGNATOR, "SH", "99PYMEDPHYS"),
+    (CODE_MEANING, "LO", "DEIDENTIFIED"),
+)
+SECOND_INSTITUTION_ITEM = (
+    (CODE_VALUE, "SH", "DE-IDENTIFIED"),
+    (CODING_SCHEME_DESIGNATOR, "SH", "99PYMEDPHYS"),
+    (CODE_MEANING, "LO", "DE-IDENTIFIED"),
+)
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.1-01")
+@pytest.mark.parametrize("within", INTERLOCK_USERS)
+@pytest.mark.parametrize(
+    "source",
+    [
+        [],
+        [{}],
+        [{CODE_VALUE: "Fixture123", CODE_MEANING: "Fixture Hospital"}],
+        [{CODE_VALUE: "DEIDENTIFIED-1", CODE_MEANING: "DEIDENTIFIED^DEIDENTIFIED"}],
+        [{CODE_VALUE: "A1"}, {CODE_MEANING: "B"}],
+    ],
+)
+def test_d_on_an_interlock_users_institution_code_sequence_writes_one_item(
+    source, within
+):
+    assert dummy_values.items_for_d(
+        INSTITUTION_CODE_SEQUENCE, source, within=within
+    ) == (INSTITUTION_ITEM,)
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.1-01")
+@pytest.mark.parametrize("within", INTERLOCK_USERS)
+@pytest.mark.parametrize(
+    "source",
+    [
+        [{CODE_VALUE: "DEIDENTIFIED"}],
+        [{CODE_VALUE: " deidentified "}],
+        [{CODE_MEANING: "DEIDENTIFIED"}],
+        [{CODE_MEANING: "Deidentified\x00"}],
+        [{CODE_VALUE: "Fixture123"}, {CODE_MEANING: "deidentified"}],
+    ],
+)
+def test_d_on_an_interlock_users_institution_code_sequence_takes_the_second_constants(
+    source, within
+):
+    assert dummy_values.items_for_d(
+        INSTITUTION_CODE_SEQUENCE, source, within=within
+    ) == (SECOND_INSTITUTION_ITEM,)
+    # A source item equal to the second constants takes the first.
+    second = {CODE_VALUE: "DE-IDENTIFIED", CODE_MEANING: "DE-IDENTIFIED"}
+    assert dummy_values.items_for_d(
+        INSTITUTION_CODE_SEQUENCE, [second], within=within
+    ) == (INSTITUTION_ITEM,)
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.1-01")
+@pytest.mark.parametrize(
+    "within",
+    [
+        (),
+        # Operator Identification Sequence, in an Override Sequence.
+        ("(3008,0020)", "(3008,0040)", "(3008,0060)", "(0008,1072)"),
+        # Asserter Identification Sequence, in RT Assertions Sequence.
+        ("(0044,0110)", "(0044,0103)"),
+        # Within an item of the interlock user, but not directly.
+        ("(3008,0020)", "(300A,0740)", "(300A,0746)", "(0040,1101)"),
+        # The interlock user's own tag is not an enclosing sequence.
+        ("(300A,0746)", "(0008,1072)"),
+    ],
+)
+def test_d_on_institution_code_sequence_elsewhere_has_no_dummy_value(within):
+    # The maintainer reviewed the rule only for the interlock's resolution
+    # user, so elsewhere the instance is still sequestered (D-021).
+    assert not dummy_values.reviewed_within(INSTITUTION_CODE_SEQUENCE, within)
+    with pytest.raises(dummy_values.NoDummyValueError) as raised:
+        dummy_values.items_for_d(
+            INSTITUTION_CODE_SEQUENCE, [{CODE_VALUE: "SECRET"}], within=within
+        )
+    assert raised.value.vr == "SQ"
+    assert "SECRET" not in str(raised.value)
+
+
+def test_only_institution_code_sequence_has_its_rule_at_some_places():
+    assert dict(dummy_values.REVIEWED_WITHIN) == {
+        INSTITUTION_CODE_SEQUENCE: frozenset({"(300A,0746)"})
+    }
+    # Person Identification Code Sequence's rule holds wherever it is.
+    for within in ((), *INTERLOCK_USERS, ("(0044,0110)", "(0044,0103)")):
+        assert dummy_values.reviewed_within(PERSON_IDENTIFICATION_CODE_SEQUENCE, within)
+        assert dummy_values.items_for_d(
+            PERSON_IDENTIFICATION_CODE_SEQUENCE, [], within=within
+        ) == (PERSON_IDENTIFICATION_ITEM,)
+
+
+@pytest.mark.parametrize("within", ["(300A,0746)", [0x300A0746], ("(300A,0746)", None)])
+def test_enclosing_sequences_of_another_form_are_refused(within):
+    with pytest.raises(TypeError, match="within"):
+        dummy_values.items_for_d(INSTITUTION_CODE_SEQUENCE, [], within=within)
+
+
+@pytest.mark.deid_requirement("MIDI-BP-03")
+@pytest.mark.parametrize("item", [INSTITUTION_ITEM, SECOND_INSTITUTION_ITEM])
+def test_the_institution_item_is_valid_for_each_vr_and_vm(item):
+    dictionary = {row.tag: row for row in standard.load_data_dictionary().attributes}
+
+    for tag, vr, value in item:
+        assert dictionary[tag].vrs == (vr,)
+        assert values.values_problem(vr, dictionary[tag].vm, (value,)) is None
+    # The Person Identification Macro (PS3.3 Table 10-1) gives the rules of PN
+    # only to Person Identification Code Sequence's Code Meaning, so this one
+    # is plain text, with no component delimiter.
+    meaning = item[-1][-1]
+    assert "^" not in meaning
+    assert meaning in dummy_values.CONSTANTS["LO"]
+    assert item[1][-1].startswith("99")
+    assert "pymedphys" not in f"{item[0][-1]}{item[2][-1]}".casefold()
+
+
+@pytest.mark.usefixtures("pydicom_behaviour")
+def test_the_institution_item_is_written_as_dicom():
+    (item,) = dummy_values.items_for_d(
+        INSTITUTION_CODE_SEQUENCE, [], within=INTERLOCK_USERS[0]
+    )
+    dataset = pydicom.Dataset()
+    code = pydicom.Dataset()
+    for tag, vr, value in item:
+        code.add_new(int(tag[1:5] + tag[6:10], 16), vr, value)
+    dataset.InstitutionCodeSequence = [code]
+    buffer = io.BytesIO()
+    pydicom.dcmwrite(buffer, dataset, implicit_vr=False, little_endian=True)
+    buffer.seek(0)
+    read = pydicom.dcmread(buffer, force=True).InstitutionCodeSequence
+
+    # PS3.3 Table 10-1: "Only a single Item shall be included in this Sequence."
+    assert len(read) == 1
+    assert read[0].CodeValue == "DEIDENTIFIED"
+    assert read[0].CodingSchemeDesignator == "99PYMEDPHYS"
+    assert read[0].CodeMeaning == "DEIDENTIFIED"
+
+
 @pytest.mark.deid_requirement("PS3.15-E.1.1-01")
 def test_d_on_any_other_sequence_is_refused():
     sequences = [
@@ -469,6 +623,8 @@ def test_d_on_any_other_sequence_is_refused():
         "ContentSequence",
         "VerifyingObserverSequence",
         "OperatorIdentificationSequence",
+        # Its reviewed rule holds only where it says (D-021).
+        "InstitutionCodeSequence",
     }
     # Verifying Observer Sequence's reviewed rule keeps its source items
     # instead of writing items of its own (D-021).
@@ -594,18 +750,77 @@ def _with_colour_space(profile, colour_space):
     return profile[:16] + colour_space + profile[20:]
 
 
-@pytest.mark.deid_requirement("MIDI-BP-14")
-def test_d_on_icc_profile_writes_the_fixed_srgb_profile():
-    written = dummy_values.icc_profile_for_d(RGB_SOURCE)
+def _display_with_d65_white(profile):
+    """Return ``profile`` as a display profile whose media white point is D65."""
+    written = bytearray(profile[:12] + b"mntr" + profile[16:])
+    (count,) = struct.unpack_from(">I", written, 128)
+    for index in range(count):
+        tag, offset, _ = struct.unpack_from(">4sII", written, 132 + 12 * index)
+        if tag == b"wtpt":
+            struct.pack_into(
+                ">3i",
+                written,
+                offset + 8,
+                *(round(v * 65536) for v in (0.9505, 1.0, 1.0891)),
+            )
+    return bytes(written)
 
-    assert written == icc_profiles.srgb_profile("DEIDENTIFIED sRGB")
-    assert icc_profiles.data_colour_space(written) == icc_profiles.RGB
-    assert b"scanner" not in written
-    # A source equal to the first profile takes the second, so D always
-    # changes the value.
-    assert dummy_values.icc_profile_for_d(written) == icc_profiles.srgb_profile(
-        "DE-IDENTIFIED sRGB"
-    )
+
+@pytest.mark.deid_requirement("MIDI-BP-14")
+def test_d_on_icc_profile_writes_the_source_cleaned_of_all_but_its_colorimetry():
+    outcome = dummy_values.icc_profile_outcome(RGB_SOURCE)
+
+    assert outcome.refusal is None
+    assert outcome.profile == icc_cleaning.clean_profile(RGB_SOURCE, "DEIDENTIFIED")
+    assert dummy_values.icc_profile_for_d(RGB_SOURCE) == outcome.profile
+    assert icc_profiles.data_colour_space(outcome.profile) == icc_profiles.RGB
+    assert b"scanner" not in outcome.profile
+    # A source equal to its cleaned profile takes the second text, so D
+    # always changes the value.
+    assert dummy_values.icc_profile_for_d(
+        outcome.profile
+    ) == icc_cleaning.clean_profile(RGB_SOURCE, "DE-IDENTIFIED")
+
+
+def test_the_fixed_srgb_profile_is_cleaned_like_any_source():
+    fixed = icc_profiles.srgb_profile("DEIDENTIFIED sRGB")
+    outcome = dummy_values.icc_profile_outcome(fixed)
+
+    assert outcome.refusal is None
+    assert outcome.profile == icc_cleaning.clean_profile(fixed, "DEIDENTIFIED")
+    assert outcome.profile != fixed
+
+
+@pytest.mark.deid_requirement("MIDI-BP-14")
+@pytest.mark.parametrize(
+    "source, refusal",
+    [
+        # An output device profile, which has no input transform to keep.
+        (
+            RGB_SOURCE[:12] + b"prtr" + RGB_SOURCE[16:],
+            icc_cleaning.Refusal.DEVICE_CLASS,
+        ),
+        (
+            RGB_SOURCE[:8] + bytes([5, 0]) + RGB_SOURCE[10:],
+            icc_cleaning.Refusal.VERSION,
+        ),
+        (RGB_SOURCE[:-4], icc_cleaning.Refusal.STRUCTURE),
+        # A version 2 display profile whose white point colour management
+        # modules read by its class, which the cleaned profile would change.
+        (
+            _display_with_d65_white(RGB_SOURCE),
+            icc_cleaning.Refusal.DISPLAY_WHITE_POINT,
+        ),
+    ],
+    ids=["output-device", "version-5", "truncated", "display-d65-white"],
+)
+def test_d_writes_the_fixed_srgb_profile_where_the_source_cannot_be_cleaned(
+    source, refusal
+):
+    outcome = dummy_values.icc_profile_outcome(source)
+
+    assert outcome == (icc_profiles.srgb_profile("DEIDENTIFIED sRGB"), refusal)
+    assert dummy_values.icc_profile_for_d(source) == outcome.profile
 
 
 @pytest.mark.deid_requirement("MIDI-BP-14")

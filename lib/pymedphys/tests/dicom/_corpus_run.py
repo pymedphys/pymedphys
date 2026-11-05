@@ -61,6 +61,7 @@ from pymedphys._dicom.deidentify.descriptor_cleaning import DescriptorCleaning
 from pymedphys._dicom.deidentify.face_review import (
     FaceReview,
     contour_data_sha256,
+    grid_data_sha256,
     pixel_data_sha256,
 )
 from pymedphys._dicom.deidentify.file_layout import ElementPath
@@ -583,9 +584,9 @@ def planted_roi_name(corpus: corpus_module.SyntheticCorpus) -> str:
 
 
 def with_a_second_roi(
-    corpus: corpus_module.SyntheticCorpus,
+    corpus: corpus_module.SyntheticCorpus, name: str = UNCLEANED_NAME
 ) -> corpus_module.SyntheticCorpus:
-    """Return the corpus with a second ROI, named for the automatic tier.
+    """Return the corpus with a second ROI, by default named for the automatic tier.
 
     pydicom writes the structure set again, which keeps every planted value.
     The second ROI references the first's frame of reference, whose linked
@@ -598,7 +599,7 @@ def with_a_second_roi(
     item = pydicom.Dataset()
     item.ROINumber = max(each.ROINumber for each in dataset.StructureSetROISequence) + 1
     item.ReferencedFrameOfReferenceUID = first.ReferencedFrameOfReferenceUID
-    item.ROIName = UNCLEANED_NAME
+    item.ROIName = name
     item.ROIGenerationAlgorithm = "MANUAL"
     dataset.StructureSetROISequence.append(item)
     buffer = pydicom.filebase.DicomBytesIO()
@@ -663,11 +664,12 @@ def face_review_for(composed: Policy) -> FaceReview | None:
 def every_face_absent(corpus: corpus_module.SyntheticCorpus) -> FaceReview:
     """Return a face review that marks every file of the corpus free of a face.
 
-    It is matched by each file's SHA-256, and the SHA-256 of the pixel data
-    and contours that a run writes of it unchanged, as an attested review's
-    verdicts are, and gives each RT Dose's every frame as shown by its dose
-    levels, so each instance that can show a face, and whose pixel data and
-    contours the run does not change, satisfies the option.
+    It is matched by each file's SHA-256, and the SHA-256 of the pixel data,
+    contours, and deformation grids that a run writes of it unchanged, as an
+    attested review's verdicts are, and gives each RT Dose's every frame as
+    shown by its dose levels, so each instance that can show a face, and
+    whose pixel data, contours, and grids the run does not change,
+    satisfies the option.
     """
     digests = frozenset(hashlib.sha256(file.data).digest() for file in corpus.files)
     pixels = frozenset(
@@ -688,6 +690,11 @@ def every_face_absent(corpus: corpus_module.SyntheticCorpus) -> FaceReview:
         for file in corpus.files
         if (digest := _written_sha256(contour_data_sha256, file.data)) is not None
     )
+    grids = frozenset(
+        (hashlib.sha256(file.data).digest(), digest)
+        for file in corpus.files
+        if (digest := _written_sha256(grid_data_sha256, file.data)) is not None
+    )
     return FaceReview(
         FACE_REVIEW_REFERENCE,
         digests,
@@ -695,14 +702,15 @@ def every_face_absent(corpus: corpus_module.SyntheticCorpus) -> FaceReview:
         pixels,
         contours,
         absent_dose_frames=doses,
+        absent_grids=grids,
     )
 
 
 def _written_sha256(
     digester: Callable[[pydicom.Dataset], bytes], data: bytes
 ) -> bytes | None:
-    """The digest of a file's pixel data or contours, or None where it
-    cannot be read."""
+    """The digest of a file's pixel data, contours, or deformation grids, or
+    None where it cannot be read."""
     try:
         return digester(read_source(data).dataset())
     except (SourceRefused, ValueError):

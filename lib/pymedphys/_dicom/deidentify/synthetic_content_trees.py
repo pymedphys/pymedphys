@@ -48,7 +48,8 @@ own, and so is the report that a patient dose estimate used, so that it can
 be the collection's CT dose report. Every other value is a code, a number,
 or a coordinate, the same in every tree. The tests build reports with the
 optional rows besides, from the same codes
-(``tests/dicom/_synthetic_dose_reports.py`` and
+(``tests/dicom/_synthetic_dose_reports.py``,
+``tests/dicom/_synthetic_further_dose_reports.py``, and
 ``tests/dicom/_synthetic_structured_reports.py``).
 """
 

@@ -17,17 +17,18 @@
 The first supported release de-identifies instances of the CT, MR, and
 PET image IODs, including their Enhanced, Legacy Converted Enhanced, and
 colour variants, of MR Spectroscopy, of the RT Structure Set, RT Plan, RT
-Dose, RT Image, and RT Beams Treatment Record IODs, of the Spatial
-Registration and Deformable Spatial Registration IODs, of the X-Ray
-Radiation Dose SR, Enhanced X-Ray Radiation Dose SR, Radiopharmaceutical
-Radiation Dose SR, and Patient Radiation Dose SR IODs, and of the Basic
-Text SR, Enhanced SR, Comprehensive SR, Comprehensive 3D SR, and
-Extensible SR IODs, uncompressed or in a transfer syntax that encapsulates
-Pixel Data that pydicom's decoding plugins decode. Supporting an IOD or a
-transfer syntax does not release every instance in it: a compressed
-instance is still sequestered where the plugin pinned to its transfer
-syntax is not installed, or where its frames or codestreams fail the
-engine's checks
+Dose, RT Image, RT Beams Treatment Record, RT Ion Plan, RT Ion Beams
+Treatment Record, RT Brachy Treatment Record, and RT Treatment Summary
+Record IODs, of the Spatial Registration and Deformable Spatial
+Registration IODs, of the X-Ray Radiation Dose SR, Enhanced X-Ray
+Radiation Dose SR, Radiopharmaceutical Radiation Dose SR, and Patient
+Radiation Dose SR IODs, and of the Basic Text SR, Enhanced SR,
+Comprehensive SR, Comprehensive 3D SR, and Extensible SR IODs, uncompressed
+or in a transfer syntax that encapsulates Pixel Data that pydicom's
+decoding plugins decode. Supporting an IOD or a transfer syntax does not
+release every instance in it: a compressed instance is still sequestered
+where the plugin pinned to its transfer syntax is not installed, or where
+its frames or codestreams fail the engine's checks
 (:mod:`~pymedphys._dicom.deidentify.instance_transform`), and the element
 rules still sequester some, such as every Enhanced PET Image instance that
 conforms to its IOD, under ``basic`` and ``basic-clean-descriptors``, and
@@ -73,10 +74,14 @@ SUPPORTED_IODS = frozenset(
         "Enhanced PET Image",
         "Legacy Converted Enhanced PET Image",
         "RT Beams Treatment Record",
+        "RT Brachy Treatment Record",
         "RT Dose",
         "RT Image",
+        "RT Ion Beams Treatment Record",
+        "RT Ion Plan",
         "RT Plan",
         "RT Structure Set",
+        "RT Treatment Summary Record",
         "Spatial Registration",
         "Deformable Spatial Registration",
         "X-Ray Radiation Dose SR",

@@ -29,6 +29,8 @@ from pymedphys._imports import pytest, tomlkit
 
 from pymedphys._dicom.deidentify import (
     actions,
+    compound_actions,
+    element_rules,
     iods,
     policy,
     scope,
@@ -94,8 +96,25 @@ GENERAL_SR_IODS = (
     "Comprehensive 3D SR",
     "Extensible SR",
 )
+# The RT Ion IODs, which the maintainer added to the target coverage on 31
+# October 2026, whose text, UID, and date attributes were reviewed ahead of
+# supporting them, against every IOD above, and which the first supported
+# release now supports.
+ION_IODS = ("RT Ion Plan", "RT Ion Beams Treatment Record")
+ION_REVIEWED_AGAINST = DOSE_SR_REVIEWED_AGAINST + RADIATION_DOSE_SR_IODS
+# RT Brachy Treatment Record and RT Treatment Summary Record, which the
+# maintainer added to the target coverage on 31 October 2026, whose
+# attributes were reviewed ahead of supporting them, against every IOD above,
+# and which the first supported release now supports.
+RECORD_IODS = ("RT Brachy Treatment Record", "RT Treatment Summary Record")
+RECORD_REVIEWED_AGAINST = ION_REVIEWED_AGAINST + ION_IODS
 SUPPORTED_IODS = (
-    REVIEWED_AGAINST + SUPPORTED_TARGET_IODS + SUPPORTED_DOSE_SR_IODS + GENERAL_SR_IODS
+    REVIEWED_AGAINST
+    + SUPPORTED_TARGET_IODS
+    + SUPPORTED_DOSE_SR_IODS
+    + GENERAL_SR_IODS
+    + ION_IODS
+    + RECORD_IODS
 )
 CLEAN_DESCRIPTORS = "clean_descriptors"
 DEVICE_IDENTITY = "retain_device_identity"
@@ -193,6 +212,7 @@ REMOVED_UNDER_EVERY_OPTION = {
     "(0040,E001)",  # HL7 Instance Identifier
     "(0088,0130)",  # Storage Media File-set ID
     "(300A,00F9)",  # Accessory Code
+    "(300A,0354)",  # Patient Support Accessory Code
     "(300A,0355)",  # Tray Accessory Code
     "(60xx,0022)",  # Overlay Description
     "(60xx,1500)",  # Overlay Label
@@ -359,9 +379,11 @@ def test_every_text_attribute_a_supported_iod_uses_and_table_e1_1_omits_has_a_ru
     omitted = _omitted_text()
 
     # Checked against the 2026d PS3.3, PS3.6, and PS3.15: the combined
-    # scope includes both RT objects and the two dose-report IODs, whose
-    # supplementary rules cover 155 text attributes.
-    assert len(omitted) == 155
+    # scope includes the RT objects, among them the two RT Ion IODs, which
+    # add 13, and the brachy and summary treatment records, which add none,
+    # and the two dose-report IODs, whose supplementary rules cover 168 text
+    # attributes.
+    assert len(omitted) == 168
     assert omitted <= set(_rules())
     assert {"(0008,0100)", "(300A,00C2)", "(60xx,1500)"} <= omitted
 
@@ -376,14 +398,14 @@ def test_the_rules_for_omitted_text_fall_in_the_reviewed_groups():
 
     assert groups == {
         # Operator-typed labels and text.
-        ("X/Z/D", ((CLEAN_DESCRIPTORS, "C"),)): 74,
+        ("X/Z/D", ((CLEAN_DESCRIPTORS, "C"),)): 77,
         # Accessory and equipment identifiers.
-        ("X/Z/D", ((DEVICE_IDENTITY, "K"),)): 25,
+        ("X/Z/D", ((DEVICE_IDENTITY, "K"),)): 30,
         # Coded and technical values, and De-identification Method.
-        ("K", ()): 39,
+        ("K", ()): 43,
         # Names and identifiers of people, organisations, records, and
         # networks, identifiers that a device reads, and the text of overlays.
-        ("X/Z/D", ()): 15,
+        ("X/Z/D", ()): 16,
         # Patient's Birth and Death Dates in Alternative Calendar.
         ("X", ()): 2,
     }
@@ -679,6 +701,354 @@ def test_every_uid_and_date_that_the_radiation_dose_sr_iods_use_has_a_role():
         assert temporal.role(tag) is role, tag
 
 
+# The text attributes that the RT Ion IODs use and that neither Table E.1-1 nor
+# the IODs reviewed before them use, by group, checked by hand against the
+# 2026d PS3.3 Tables C.8.8.25-1, C.8.8.26-1, and C.8.8.28-1 and Section
+# C.8.8.25.5.
+ION_OPERATOR_TEXT = {
+    "(300A,0322)",  # Range Shifter Description
+    "(300A,033A)",  # Lateral Spreading Device Description
+    "(300A,034A)",  # Range Modulator Description
+}
+ION_DEVICE_IDENTITY = {
+    "(300A,030F)",  # Snout ID
+    "(300A,0318)",  # Range Shifter ID
+    "(300A,0336)",  # Lateral Spreading Device ID
+    "(300A,0346)",  # Range Modulator ID
+    "(300A,0352)",  # Patient Support ID
+}
+ION_KEPT_TEXT = {
+    "(300A,034C)",  # Beam Current Modulation ID
+    "(300A,0362)",  # Range Shifter Setting
+    "(300A,0372)",  # Lateral Spreading Device Setting
+    "(300A,0390)",  # Scan Spot Tune ID
+}
+ION_REMOVED_UNDER_EVERY_OPTION = {"(300A,0354)"}  # Patient Support Accessory Code
+ION_TEXT_GROUPS: tuple[tuple[set[str], str, dict[str, str]], ...] = (
+    (ION_OPERATOR_TEXT, "X/Z/D", {CLEAN_DESCRIPTORS: "C"}),
+    (ION_DEVICE_IDENTITY, "X/Z/D", {DEVICE_IDENTITY: "K"}),
+    (ION_KEPT_TEXT, "K", {}),
+    (ION_REMOVED_UNDER_EVERY_OPTION, "X/Z/D", {}),
+)
+# What removal by Type gives each removed attribute where the RT Ion IODs
+# define it, as its note says: the accessories' identifiers are Type 1 in the
+# items that describe them, their descriptions and the patient support's
+# identifiers Type 3.
+ION_RESOLVED = {
+    **dict.fromkeys(ION_OPERATOR_TEXT, "X"),
+    **dict.fromkeys(ION_DEVICE_IDENTITY - {"(300A,0352)"}, "D"),
+    "(300A,0352)": "X",
+    "(300A,0354)": "X",
+}
+# The other attributes that the RT Ion IODs use and the IODs reviewed before
+# them do not, by VR, checked by hand against the 2026d PS3.3 and PS3.6:
+# codes, numbers, and sequences of the ion beams, their accessories, and
+# their delivery, none of which Table E.1-1 lists.
+ION_OTHER_VRS = {"FL": 46, "SQ": 26, "IS": 15, "CS": 12, "DS": 8, "US": 1, "SS": 1}
+
+
+def test_the_ion_iods_are_generated_and_supported():
+    tables = iods.load_iod_tables()
+
+    assert set(ION_IODS) <= set(tables.iods)
+    assert set(ION_IODS) <= scope.SUPPORTED_IODS
+
+
+@pytest.mark.deid_requirement("MIDI-BP-05", "MIDI-BP-06", "MIDI-BP-11")
+def test_the_text_that_only_the_ion_iods_use_has_reviewed_rules():
+    listed = set(_table_e1_1())
+    added = _used_by(ION_IODS, TEXT_VRS) - _used_by(ION_REVIEWED_AGAINST, TEXT_VRS)
+    rules = _rules()
+
+    assert not added & listed
+    assert added == (
+        ION_OPERATOR_TEXT
+        | ION_DEVICE_IDENTITY
+        | ION_KEPT_TEXT
+        | ION_REMOVED_UNDER_EVERY_OPTION
+    )
+    assert len(added) == 13
+    for tags, action, options in ION_TEXT_GROUPS:
+        for tag in tags:
+            assert (rules[tag].action, dict(rules[tag].options)) == (
+                action,
+                options,
+            ), tag
+            assert rules[tag].note.strip(), tag
+
+
+def test_each_policy_gives_the_ion_text_the_action_of_its_group():
+    for composed in _every_policy():
+        for tags, action, options in ION_TEXT_GROUPS:
+            selected = [a for o, a in options.items() if o in composed.options]
+            for tag in tags:
+                assert composed.supplementary_actions[tag] == (
+                    selected[0] if selected else action
+                ), (tag, composed.options)
+
+
+def test_the_ion_text_that_is_removed_resolves_by_its_type_as_its_note_says():
+    tables = iods.load_iod_tables()
+    rules = _rules()
+
+    for name in ION_IODS:
+        iod = tables.iods[name]
+        for definition in iod.definitions:
+            if definition.tag not in ION_RESOLVED:
+                continue
+            resolved = compound_actions.resolve_in_iod(
+                iod, definition.tag, definition.path, rules[definition.tag].action
+            )
+            assert resolved == ION_RESOLVED[definition.tag], (name, definition)
+    # Each note says what removal by Type gives it where that differs from X.
+    for tag, resolved in ION_RESOLVED.items():
+        said = "dummy value where it is Type 1" in rules[tag].note
+        assert said == (resolved == "D"), tag
+
+
+def test_every_uid_date_and_name_that_the_ion_iods_use_has_a_role():
+    uids = uid_roles.load_uid_roles()
+    temporal = temporal_roles.load_temporal_roles()
+    ion_uids = _used_by(ION_IODS, {"UI"})
+    ion_dates = _used_by(ION_IODS, TEMPORAL_VRS)
+
+    for tag in ion_uids:
+        assert isinstance(uids.role(tag), uid_roles.UIDRole), tag
+    for tag in ion_dates:
+        assert isinstance(temporal.role(tag), temporal_roles.TemporalRole), tag
+    # The IODs reviewed before them use every UID, date, time, datetime,
+    # person name, and URL that the RT Ion IODs use.
+    for vrs in ({"UI"}, TEMPORAL_VRS, {"PN"}, {"UR"}):
+        assert not _used_by(ION_IODS, vrs) - _used_by(ION_REVIEWED_AGAINST, vrs), vrs
+
+
+def test_the_ion_iods_other_new_attributes_are_kept_by_the_default():
+    dictionary = _dictionary()
+    tables = iods.load_iod_tables()
+    every_vr = {vr for attribute in dictionary.values() for vr in attribute.vrs}
+    other = (
+        _used_by(ION_IODS, every_vr)
+        - _used_by(ION_REVIEWED_AGAINST, every_vr)
+        - _used_by(ION_IODS, TEXT_VRS)
+    )
+    listed = set(_table_e1_1())
+    rules = _rules()
+    uids = set(uid_roles.load_uid_roles().rules)
+    by_vr = collections.Counter(vr for tag in other for vr in dictionary[tag].vrs)
+
+    assert by_vr == ION_OTHER_VRS
+    assert all(len(dictionary[tag].vrs) == 1 for tag in other)
+    assert not other & (listed | set(rules) | uids)
+    # So each takes the default, which keeps it where these IODs define it,
+    # under every preset, with a sequence's items handled by their own rules.
+    for preset in policy.PRESETS:
+        rules_of = element_rules.ElementRules(policy.compose_policy(preset))
+        for name in ION_IODS:
+            iod = tables.iods[name]
+            for definition in iod.definitions:
+                if definition.tag not in other:
+                    continue
+                rule = rules_of.rule(definition.tag, definition.path, iod=iod)
+                assert (rule.source, rule.action) == (
+                    element_rules.RuleSource.DEFAULT,
+                    element_rules.KEEP,
+                ), (preset, name, definition)
+
+
+# The attributes that RT Brachy Treatment Record and RT Treatment Summary
+# Record use and the IODs reviewed before them do not, checked by hand against
+# the 2026d PS3.3 Tables A.30.3-1, A.31.3-1, and C.8-58 and PS3.6: only RT
+# Brachy Treatment Record adds any, all in its RT Brachy Session Record Module.
+RECORD_SAFE_POSITION_DATES = {
+    "(3008,0162)",  # Safe Position Exit Date
+    "(3008,0164)",  # Safe Position Exit Time
+    "(3008,0166)",  # Safe Position Return Date
+    "(3008,0168)",  # Safe Position Return Time
+}
+# The others, by VR: the recorded channels, sources, applicators, shields,
+# accessories, and control points delivered, and the pulses of a pulsed
+# delivery.
+RECORD_OTHER_VRS = {"SQ": 9, "IS": 6, "DS": 4, "CS": 1, "US": 1}
+# Where removal by Type gives an attribute of these IODs an action that it
+# takes nowhere in the IODs reviewed before them: Source Serial Number, which
+# Table E.1-1 gives X/Z, is Type 2 in Recorded Source Sequence (3008,0100) and
+# Type 3 in RT Plan's Source Sequence (300A,0210).
+SOURCE_SERIAL_NUMBER = "(3008,0105)"
+RECORD_NEW_RESOLUTIONS = {SOURCE_SERIAL_NUMBER: ({"Z"}, {"X"})}
+BRACHY_SESSION_RECORD = "RT Brachy Session Record"
+
+
+def _record_actions():
+    """Return the Basic Profile action of each attribute with one, by tag.
+
+    That of Table E.1-1 for an attribute it lists, else that of its rule.
+    """
+    actions_by_tag = {tag: row.basic_profile for tag, row in _table_e1_1().items()}
+    for tag, rule in _rules().items():
+        actions_by_tag.setdefault(tag, rule.action)
+    return actions_by_tag
+
+
+def _resolved_in(names, tag, action):
+    """Return what removal by Type gives ``tag`` where ``names`` define it."""
+    tables = iods.load_iod_tables()
+    return {
+        compound_actions.resolve_in_iod(
+            tables.iods[name], definition.tag, definition.path, action
+        )
+        for name in names
+        for definition in tables.iods[name].definitions
+        if definition.tag == tag
+    }
+
+
+def test_the_brachy_and_summary_records_are_generated_and_supported():
+    tables = iods.load_iod_tables()
+
+    assert set(RECORD_IODS) <= set(tables.iods)
+    assert set(RECORD_IODS) <= scope.SUPPORTED_IODS
+
+
+def test_the_brachy_and_summary_records_add_only_the_brachy_session_record():
+    tables = iods.load_iod_tables()
+    beams = {
+        (usage.module, usage.table)
+        for usage in tables.iods["RT Beams Treatment Record"].modules
+    }
+    brachy = {
+        (usage.module, usage.table)
+        for usage in tables.iods["RT Brachy Treatment Record"].modules
+    }
+    summary = {
+        (usage.module, usage.table)
+        for usage in tables.iods["RT Treatment Summary Record"].modules
+    }
+
+    assert brachy - beams == {(BRACHY_SESSION_RECORD, "Table C.8-58")}
+    assert summary <= beams
+
+
+@pytest.mark.deid_requirement("MIDI-BP-05", "MIDI-BP-06", "MIDI-BP-11")
+def test_the_brachy_and_summary_records_use_no_text_without_a_reviewed_action():
+    listed = set(_table_e1_1())
+    rules = _rules()
+    text = _used_by(RECORD_IODS, TEXT_VRS)
+
+    assert not text - _used_by(RECORD_REVIEWED_AGAINST, TEXT_VRS)
+    for tag in text - listed:
+        assert rules[tag].note.strip(), tag
+    # The text of the RT Brachy Session Record Module is that of the module
+    # the plan's application setups are in, or of the photon record's session.
+    tables = iods.load_iod_tables()
+    dictionary = _dictionary()
+
+    def text_of(name, module):
+        return {
+            definition.tag
+            for definition in tables.iods[name].definitions
+            if definition.module == module
+            and TEXT_VRS.intersection(dictionary[definition.tag].vrs)
+        }
+
+    session = text_of("RT Brachy Treatment Record", BRACHY_SESSION_RECORD)
+    assert session
+    assert session <= (
+        text_of("RT Plan", "RT Brachy Application Setups")
+        | text_of("RT Beams Treatment Record", "RT Beams Session Record")
+    )
+
+
+def test_removal_by_type_gives_the_records_attributes_the_actions_reviewed():
+    actions_by_tag = _record_actions()
+    dictionary = _dictionary()
+    every_vr = {vr for attribute in dictionary.values() for vr in attribute.vrs}
+    new = {}
+
+    for tag in sorted(_used_by(RECORD_IODS, every_vr)):
+        action = actions_by_tag.get(tag)
+        if action not in compound_actions.COMPOUND_ACTIONS:
+            continue
+        resolved = _resolved_in(RECORD_IODS, tag, action)
+        reviewed = _resolved_in(RECORD_REVIEWED_AGAINST, tag, action)
+        if not resolved <= reviewed:
+            new[tag] = (resolved, reviewed)
+
+    assert new == RECORD_NEW_RESOLUTIONS
+    # Source Serial Number is emptied where it is Type 2, as Table E.1-1 sets,
+    # and kept under Retain Device Identity, as for every device's serial
+    # number.
+    row = _table_e1_1()[SOURCE_SERIAL_NUMBER]
+    assert (row.basic_profile, dict(row.options)) == ("X/Z", {DEVICE_IDENTITY: "K"})
+    assert {
+        definition.module
+        for definition in iods.load_iod_tables()
+        .iods["RT Brachy Treatment Record"]
+        .definitions
+        if definition.tag == SOURCE_SERIAL_NUMBER
+    } == {BRACHY_SESSION_RECORD}
+
+
+def test_every_uid_date_and_name_that_the_brachy_and_summary_records_use_has_a_role():
+    uids = uid_roles.load_uid_roles()
+    temporal = temporal_roles.load_temporal_roles()
+    table = _table_e1_1()
+
+    for tag in _used_by(RECORD_IODS, {"UI"}):
+        assert isinstance(uids.role(tag), uid_roles.UIDRole), tag
+    for tag in _used_by(RECORD_IODS, TEMPORAL_VRS):
+        assert isinstance(temporal.role(tag), temporal_roles.TemporalRole), tag
+    # The IODs reviewed before them use every UID, person name, and URL that
+    # these IODs use, and every date, time, and datetime but the four that
+    # record when a brachytherapy source left and returned to its safe
+    # position, which Table E.1-1 lists as it lists Treatment Date.
+    for vrs in ({"UI"}, {"PN"}, {"UR"}):
+        assert not _used_by(RECORD_IODS, vrs) - _used_by(
+            RECORD_REVIEWED_AGAINST, vrs
+        ), vrs
+    new_dates = _used_by(RECORD_IODS, TEMPORAL_VRS) - _used_by(
+        RECORD_REVIEWED_AGAINST, TEMPORAL_VRS
+    )
+    assert new_dates == RECORD_SAFE_POSITION_DATES
+    for tag in new_dates:
+        assert temporal.role(tag) is temporal_roles.TemporalRole.SUBJECT_EVENT, tag
+        assert (table[tag].basic_profile, dict(table[tag].options)) == (
+            "D",
+            DATE_OPTIONS,
+        ), tag
+
+
+def test_the_brachy_and_summary_records_other_new_attributes_are_kept_by_the_default():
+    dictionary = _dictionary()
+    tables = iods.load_iod_tables()
+    every_vr = {vr for attribute in dictionary.values() for vr in attribute.vrs}
+    new = _used_by(RECORD_IODS, every_vr) - _used_by(RECORD_REVIEWED_AGAINST, every_vr)
+    other = new - RECORD_SAFE_POSITION_DATES
+    listed = set(_table_e1_1())
+    rules = _rules()
+    uids = set(uid_roles.load_uid_roles().rules)
+    by_vr = collections.Counter(vr for tag in other for vr in dictionary[tag].vrs)
+
+    assert not new - _used_by(("RT Brachy Treatment Record",), every_vr)
+    assert by_vr == RECORD_OTHER_VRS
+    assert all(len(dictionary[tag].vrs) == 1 for tag in other)
+    assert not other & (listed | set(rules) | uids)
+    # So each takes the default, which keeps it where RT Brachy Treatment
+    # Record defines it, under every preset, with a sequence's items handled
+    # by their own rules.
+    iod = tables.iods["RT Brachy Treatment Record"]
+    for preset in policy.PRESETS:
+        rules_of = element_rules.ElementRules(policy.compose_policy(preset))
+        for definition in iod.definitions:
+            if definition.tag not in other:
+                continue
+            assert definition.module == BRACHY_SESSION_RECORD, definition
+            rule = rules_of.rule(definition.tag, definition.path, iod=iod)
+            assert (rule.source, rule.action) == (
+                element_rules.RuleSource.DEFAULT,
+                element_rules.KEEP,
+            ), (preset, definition)
+
+
 def test_names_identifiers_and_overlay_text_are_removed_under_every_option():
     rules = _rules()
 
@@ -714,7 +1084,7 @@ def test_each_group_takes_the_action_of_its_option(
         assert composed[tag] == operator_text, tag
     for tag in ACCESSORY_IDENTIFIERS:
         assert composed[tag] == accessory_identifier, tag
-    for tag in KEPT_TEXT | ADDED_KEPT_TEXT | RT_IMAGE_KEPT_TEXT:
+    for tag in KEPT_TEXT | ADDED_KEPT_TEXT | RT_IMAGE_KEPT_TEXT | ION_KEPT_TEXT:
         assert composed[tag] == "K", tag
 
 
@@ -745,9 +1115,9 @@ def test_the_basic_profile_keeps_only_the_reviewed_coded_and_technical_text():
         for tag in _supported_text()
     }
 
-    assert len(basic) == 280
+    assert len(basic) == 293
     assert {tag for tag, action in basic.items() if action == "K"} == (
-        KEPT_TEXT | ADDED_KEPT_TEXT | RT_IMAGE_KEPT_TEXT
+        KEPT_TEXT | ADDED_KEPT_TEXT | RT_IMAGE_KEPT_TEXT | ION_KEPT_TEXT
     )
     assert set(basic.values()) - {"K"} <= REMOVING_ACTIONS
 
@@ -766,6 +1136,7 @@ def test_no_option_keeps_more_than_the_coded_text_and_device_identity():
             KEPT_TEXT
             | ADDED_KEPT_TEXT
             | RT_IMAGE_KEPT_TEXT
+            | ION_KEPT_TEXT
             | (device_identity if DEVICE_IDENTITY in composed.options else set())
         )
         assert kept == expected, composed.options

@@ -33,6 +33,7 @@ from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom, pytest
 
 from pymedphys._dicom.deidentify import (
+    icc_cleaning,
     icc_profiles,
     instance_transform,
     output_names,
@@ -45,6 +46,7 @@ from pymedphys._dicom.deidentify import (
 from pymedphys._dicom.deidentify.edits import EditKind, InstanceEdits, edit_instance
 from pymedphys._dicom.deidentify.element_rules import ElementRules
 from pymedphys._dicom.deidentify.file_layout import ElementPath
+from pymedphys._dicom.deidentify.icc_cleaning import Refusal
 from pymedphys._dicom.deidentify.instance_transform import (
     InstanceTransform,
     PendingEdit,
@@ -81,7 +83,12 @@ from pymedphys._dicom.deidentify.residuals import (
     not_searched_of,
     written_constants,
 )
-from pymedphys._dicom.deidentify.run_qc import Dropped, SearchMaterial, SeriesEvidence
+from pymedphys._dicom.deidentify.run_qc import (
+    Dropped,
+    IccProfileMaterial,
+    SearchMaterial,
+    SeriesEvidence,
+)
 from pymedphys._dicom.deidentify.scope import Disposition, UnsupportedIod
 from pymedphys._dicom.deidentify.source import (
     SourceEvidence,
@@ -385,16 +392,23 @@ def _radiopharmaceutical(dataset):
 # Treatment Session Beam Sequence > Interlock Sequence > Interlock
 # Resolution User Sequence, whose item is the Person Identification Macro.
 INTERLOCK_USER = (("(3008,0020)", 0), ("(300A,0740)", 0), ("(300A,0746)", 0))
+RT_ION_BEAMS_TREATMENT_RECORD_STORAGE = "1.2.840.10008.5.1.4.1.1.481.9"
+# Treatment Session Beam Sequence, or Treatment Session Ion Beam Sequence,
+# by the treatment record's SOP Class.
+BEAM_SESSIONS = {
+    synthetic.RT_BEAMS_TREATMENT_RECORD_STORAGE: 0x30080020,
+    RT_ION_BEAMS_TREATMENT_RECORD_STORAGE: 0x30080021,
+}
 
 
-def _interlock_user(dataset, **attributes):
+def _interlock_user(dataset, session=0x30080020, **attributes):
     """Give a treatment record a beam whose interlock a person resolved."""
     user = synthetic.item(**attributes)
     interlock = pydicom.Dataset()
     interlock.add_new(0x300A0746, "SQ", [user])
     beam = pydicom.Dataset()
     beam.add_new(0x300A0740, "SQ", [interlock])
-    dataset.TreatmentSessionBeamSequence = [beam]
+    dataset.add_new(session, "SQ", [beam])
     return user
 
 
@@ -406,11 +420,9 @@ def _person_code():
     )
 
 
-def _interlock_institution_code(dataset):
-    _interlock_user(
-        dataset,
-        PersonIdentificationCodeSequence=[_person_code()],
-        InstitutionCodeSequence=[_person_code()],
+def _institution_code(value="SENTINEL", meaning="SENTINEL HOSPITAL"):
+    return synthetic.item(
+        CodeValue=value, CodingSchemeDesignator="99LOCAL", CodeMeaning=meaning
     )
 
 
@@ -454,15 +466,6 @@ def _interlock_institution_code(dataset):
             "X",
             SequesterReason.REQUIRED_BY_IOD,
         ),
-        # X/Z/D, Type 1C in the Person Identification Macro of the user who
-        # resolved an interlock; a sequence has no dummy value (D-021).
-        (
-            synthetic.RT_BEAMS_TREATMENT_RECORD_STORAGE,
-            _interlock_institution_code,
-            ElementPath(INTERLOCK_USER, "(0008,0082)"),
-            "D",
-            SequesterReason.NO_DUMMY_VALUE,
-        ),
     ],
 )
 def test_a_required_attribute_without_a_value_to_write_sequesters_an_added_iod(
@@ -480,6 +483,91 @@ def test_a_required_attribute_without_a_value_to_write_sequesters_an_added_iod(
         action,
         reason,
     )
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.1-01")
+@pytest.mark.parametrize("sop_class", sorted(BEAM_SESSIONS))
+@pytest.mark.parametrize(
+    "code, written",
+    [
+        (_institution_code(), ("DEIDENTIFIED", "99PYMEDPHYS", "DEIDENTIFIED")),
+        # A source Code Value or Code Meaning equal to the first constant
+        # takes the second (D-021).
+        (
+            _institution_code(value="DEIDENTIFIED"),
+            ("DE-IDENTIFIED", "99PYMEDPHYS", "DE-IDENTIFIED"),
+        ),
+        (
+            _institution_code(meaning="deidentified"),
+            ("DE-IDENTIFIED", "99PYMEDPHYS", "DE-IDENTIFIED"),
+        ),
+    ],
+)
+def test_d_writes_the_institution_item_of_the_user_who_resolved_an_interlock(
+    sop_class, code, written
+):
+    # X/Z/D, Type 1C in the Person Identification Macro of the user who
+    # resolved an interlock; its reviewed rule writes one item there, as the
+    # maintainer chose on 1 November 2026, so the record is released (D-021).
+    dataset = synthetic.instance(sop_class, synthetic.OTHER, synthetic.OTHER_SERIES)
+    _interlock_user(
+        dataset,
+        session=BEAM_SESSIONS[sop_class],
+        PersonIdentificationCodeSequence=[_person_code()],
+        InstitutionCodeSequence=[code, _institution_code(value="SECOND")],
+        InstitutionName="SENTINEL HOSPITAL",
+    )
+
+    result = _transformed(dataset)
+
+    assert isinstance(result, run.Transformed)
+    written_dataset = pydicom.dcmread(io.BytesIO(result.data))
+    # pylint: disable-next = unsubscriptable-object
+    beam = written_dataset[BEAM_SESSIONS[sop_class]].value[0]
+    (user,) = beam[0x300A0740].value[0][0x300A0746].value
+    # PS3.3 Table 10-1 allows a single item, whatever the source held.
+    (institution,) = user.InstitutionCodeSequence
+    assert (
+        institution.CodeValue,
+        institution.CodingSchemeDesignator,
+        institution.CodeMeaning,
+    ) == written
+    assert set(institution.keys()) == {0x00080100, 0x00080102, 0x00080104}
+    (person,) = user.PersonIdentificationCodeSequence
+    assert person.CodeMeaning == "DEIDENTIFIED^DEIDENTIFIED"
+    assert user.InstitutionName == "DEIDENTIFIED"
+    assert b"SENTINEL" not in result.data
+    assert b"SECOND" not in result.data
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.1-01")
+@pytest.mark.parametrize("sop_class", sorted(BEAM_SESSIONS))
+def test_an_override_operators_institution_code_sequence_goes_with_its_sequence(
+    sop_class,
+):
+    # Operator Identification Sequence is Type 3 in Override Sequence, and
+    # X/D, so it is removed with any Institution Code Sequence in it; the
+    # reviewed rule is not needed there (D-021).
+    dataset = synthetic.instance(sop_class, synthetic.OTHER, synthetic.OTHER_SERIES)
+    operator = synthetic.item(InstitutionCodeSequence=[_institution_code()])
+    override = pydicom.Dataset()
+    override.add_new(0x00081072, "SQ", [operator])
+    control_point = pydicom.Dataset()
+    control_point.add_new(0x30080060, "SQ", [override])
+    beam = pydicom.Dataset()
+    # Control Point Delivery Sequence, or Ion Control Point Delivery Sequence.
+    beam.add_new(BEAM_SESSIONS[sop_class] + 0x20, "SQ", [control_point])
+    dataset.add_new(BEAM_SESSIONS[sop_class], "SQ", [beam])
+
+    result = _transformed(dataset)
+
+    assert isinstance(result, run.Transformed)
+    written = pydicom.dcmread(io.BytesIO(result.data))
+    # pylint: disable-next = unsubscriptable-object
+    beam = written[BEAM_SESSIONS[sop_class]].value[0]
+    (override,) = beam[BEAM_SESSIONS[sop_class] + 0x20].value[0][0x30080060].value
+    assert 0x00081072 not in override
+    assert b"SENTINEL" not in result.data
 
 
 @pytest.mark.deid_requirement("MIDI-BP-14")
@@ -501,7 +589,13 @@ def test_d_writes_the_reviewed_procedure_step_and_icc_profile_in_an_added_iod():
     assert step.ReferencedSOPClassUID == "1.2.840.10008.3.1.2.3.3"
     assert step.ReferencedSOPInstanceUID == replacement_uid(KEY, PROCEDURE_STEP)
     assert written[0x00282000].VR == "OB"
-    assert written[0x00282000].value == icc_profiles.srgb_profile("DEIDENTIFIED sRGB")
+    # The source profile, cleaned of everything but its colorimetry (D-021).
+    assert written[0x00282000].value == icc_cleaning.clean_profile(
+        icc_profiles.srgb_profile("A scanner's profile"), "DEIDENTIFIED"
+    )
+    assert [item for item in result.qc if isinstance(item, IccProfileMaterial)] == [
+        IccProfileMaterial(ElementPath((), "(0028,2000)"), None)
+    ]
     # Color Space named the source profile's colour space, which the profile
     # written may contradict, so it is removed (D-022).
     assert "ColorSpace" not in written
@@ -520,7 +614,8 @@ def test_d_writes_an_item_for_each_procedure_step_and_the_second_profile():
     second.ReferencedSOPClassUID = "1.2.840.10008.3.1.2.3.3"
     second.ReferencedSOPInstanceUID = "2.25.1000"
     dataset.ReferencedPerformedProcedureStepSequence.append(second)
-    _icc_profile(dataset, icc_profiles.srgb_profile("DEIDENTIFIED sRGB"))
+    source = icc_profiles.srgb_profile("A scanner's profile")
+    _icc_profile(dataset, icc_cleaning.clean_profile(source, "DEIDENTIFIED"))
 
     result = _transformed(dataset)
 
@@ -531,8 +626,33 @@ def test_d_writes_an_item_for_each_procedure_step_and_the_second_profile():
         replacement_uid(KEY, PROCEDURE_STEP),
         replacement_uid(KEY, "2.25.1000"),
     ]
-    # The source equals the first profile, so the second is written.
-    assert written[0x00282000].value == icc_profiles.srgb_profile("DE-IDENTIFIED sRGB")
+    # The source equals its cleaned profile, so the second text is written.
+    assert written[0x00282000].value == icc_cleaning.clean_profile(
+        source, "DE-IDENTIFIED"
+    )
+
+
+@pytest.mark.deid_requirement("MIDI-BP-14")
+def test_d_writes_the_fixed_srgb_profile_where_the_source_cannot_be_cleaned():
+    dataset = synthetic.instance(
+        "1.2.840.10008.5.1.4.1.1.4.3",  # Enhanced MR Color Image Storage
+        synthetic.OTHER,
+        synthetic.OTHER_SERIES,
+    )
+    profile = icc_profiles.srgb_profile("A scanner's profile")
+    # An output device profile, which has no input transform to keep.
+    _icc_profile(dataset, profile[:12] + b"prtr" + profile[16:])
+
+    result = _transformed(dataset)
+
+    assert isinstance(result, run.Transformed)
+    written = pydicom.dcmread(io.BytesIO(result.data))
+    assert written[0x00282000].value == icc_profiles.srgb_profile("DEIDENTIFIED sRGB")
+    assert b"scanner" not in result.data
+    # The release report counts it by why the source could not be cleaned.
+    assert [item for item in result.qc if isinstance(item, IccProfileMaterial)] == [
+        IccProfileMaterial(ElementPath((), "(0028,2000)"), Refusal.DEVICE_CLASS)
+    ]
 
 
 @pytest.mark.deid_requirement("PS3.15-E.1.1-01")
