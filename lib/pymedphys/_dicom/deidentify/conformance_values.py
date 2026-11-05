@@ -486,7 +486,8 @@ def _log_datetimes(named: Callable[[str], str]) -> str:
     first = dummy_values.CONSTANTS["DT"][0]
     return (
         f"D on {named(OBSERVATION_DATETIME)} of each entry of a Procedure "
-        "Log, a first-level item of its Content Sequence, writes in place of "
+        "Log, an item of its Content Sequence that is a target of CONTAINS, "
+        "writes in place of "
         "the constant the dummy datetime of its rank among the entries' "
         f"distinct source values: `{first}` for the earliest, and one second "
         "more for each later one, so entries with equal source values share "
