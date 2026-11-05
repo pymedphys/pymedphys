@@ -774,16 +774,30 @@ def test_content_sequence_items_are_cleaned_at_any_depth(depth):
     }
 
 
-@pytest.mark.parametrize(
-    "dataset",
-    [
-        _report(_coded(), _text(ACCESSION_NUMBER), depth=3),
-        # The nested Content Sequence could be kept, but not on its own.
-        _report(_text(ACCESSION_NUMBER), _container(SECTION, _coded())),
-    ],
-)
-def test_an_item_to_remove_anywhere_leaves_out_the_whole_tree(dataset):
-    assert not _actions((CSC,), dataset, REPORT)
+@pytest.mark.deid_requirement("PS3.15-E.3.4-01")
+def test_an_item_to_remove_deep_in_a_report_is_removed_on_its_own():
+    dataset = _report(_coded(), _text(ACCESSION_NUMBER), _coded(), depth=3)
+    *_, innermost = _tree(3)
+
+    actions = _actions((CSC,), dataset, REPORT)
+
+    assert dict(actions) == {sequence: "K" for sequence in _tree(3)}
+    assert actions.removed_items == {(*innermost.items, (CONTENT, 1))}
+    assert not actions.emptied
+    assert not actions.renumbered
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.4-01")
+def test_an_item_to_remove_beside_a_section_leaves_the_section_kept():
+    dataset = _report(_text(ACCESSION_NUMBER), _container(SECTION, _coded()))
+
+    actions = _actions((CSC,), dataset, REPORT)
+
+    assert dict(actions) == {
+        _path(tag=CONTENT): "K",
+        _path((CONTENT, 1), tag=CONTENT): "K",
+    }
+    assert actions.removed_items == {((CONTENT, 0),)}
 
 
 def test_the_walker_gives_content_sequence_items_their_actions():
@@ -904,10 +918,18 @@ def test_a_content_sequence_the_iod_does_not_define_there_takes_its_own_rule():
     assert "ContentSequence" not in written.AcquisitionContextSequence[0]
 
 
-def test_only_the_dose_reports_define_content_sequence_and_none_waveform_annotation():
+def test_only_the_reports_define_content_sequence_and_none_waveform_annotation():
     """Content Sequence at their root, and nowhere else in a supported IOD."""
     iods = load_iod_tables().iods
-    reports = {"X-Ray Radiation Dose SR", "Radiopharmaceutical Radiation Dose SR"}
+    reports = {
+        "X-Ray Radiation Dose SR",
+        "Radiopharmaceutical Radiation Dose SR",
+        "Basic Text SR",
+        "Enhanced SR",
+        "Comprehensive SR",
+        "Comprehensive 3D SR",
+        "Extensible SR",
+    }
     for name in scope.SUPPORTED_IODS:
         definitions = iods[name].definitions
         tags = {definition.tag for definition in definitions}
@@ -934,4 +956,4 @@ def test_the_statement_describes_the_cleaning_of_content_items():
     assert not statement.pending
     markdown = conformance_markdown.render_markdown(statement)
     assert "which hold content items, and the engine cleans them" in markdown
-    assert "since a single item is not removed on its own." in markdown
+    assert "an item that cannot be kept is removed on its own" in markdown

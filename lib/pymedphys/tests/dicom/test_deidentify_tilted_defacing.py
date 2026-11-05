@@ -537,7 +537,7 @@ def test_contours_on_a_tilted_ct_are_cut_by_the_whole_block():
     )
     dataset = pydicom.dcmread(io.BytesIO(files.structure_set([("EXTERNAL", outline)])))
 
-    cut = cut_contours(region, dataset, files.FRAME)
+    cut = cut_contours({files.FRAME: region}, dataset)
 
     (written,) = list(cut.values())
     assert written

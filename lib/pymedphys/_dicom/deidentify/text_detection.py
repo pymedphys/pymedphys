@@ -316,6 +316,32 @@ class Detection:
     mean_probability: float
 
 
+@dataclasses.dataclass(frozen=True, repr=False)
+class RenderedProbability:
+    """The network's probability map of one rendering of a frame.
+
+    Its ``repr`` shows nothing of it, since the map follows the frame's
+    content.
+
+    Attributes
+    ----------
+    rendering : str
+        One of :data:`RENDERINGS`.
+    frame_shape : tuple of int
+        The frame's rows and columns, to which boxes are scaled.
+    probability : numpy.ndarray
+        The probability that each pixel of the network's input belongs to
+        text.
+    """
+
+    rendering: str
+    frame_shape: tuple[int, int]
+    probability: np.ndarray
+
+    def __repr__(self) -> str:
+        return f"RenderedProbability({self.rendering!r})"
+
+
 class TextDetector:
     """Propose boxes around burned-in text in frames.
 
@@ -396,33 +422,68 @@ class TextDetector:
         frame : numpy.ndarray
             As :meth:`find` takes it.
         """
-        values = _luminance(frame)
         found = []
-        for rendering, image in zip(
-            RENDERINGS, renderings(values, self.parameters), strict=True
-        ):
-            probability = self._probability(image)
+        for each in self.probabilities(frame):
             found += [
-                Detection(box, rendering, mean)
+                Detection(box, each.rendering, mean)
                 for box, mean in scored_boxes_from_probability(
-                    probability, image.shape, self.parameters
+                    each.probability, each.frame_shape, self.parameters
                 )
             ]
         return tuple(found)
 
-    def _probability(self, image: np.ndarray) -> np.ndarray:
-        parameters = self.parameters
-        rows, columns = image.shape
-        scale = max(1.0, parameters.limit_side / min(rows, columns))
-        scale = min(scale, parameters.max_side / max(rows, columns))
-        shape = (_multiple_of_32(rows * scale), _multiple_of_32(columns * scale))
-        resized = _resized(image.astype(np.float32), shape)
-        normalised = (resized / 255.0 - 0.5) / 0.5
-        tensor = np.ascontiguousarray(
-            np.broadcast_to(normalised, (1, 3) + shape), dtype=np.float32
+    def probabilities(self, frame: np.ndarray) -> tuple[RenderedProbability, ...]:
+        """Return the network's probability map of each rendering of one
+        frame, in the order of :data:`RENDERINGS`, from which
+        :meth:`detections` takes its boxes.
+
+        Parameters
+        ----------
+        frame : numpy.ndarray
+            As :meth:`find` takes it.
+        """
+        values = _luminance(frame)
+        shape = (int(values.shape[0]), int(values.shape[1]))
+        return tuple(
+            RenderedProbability(rendering, shape, self._probability(image))
+            for rendering, image in zip(
+                RENDERINGS, renderings(values, self.parameters), strict=True
+            )
         )
-        (output,) = self._session.run(None, {self._input: tensor})
+
+    def _probability(self, image: np.ndarray) -> np.ndarray:
+        shape = network_shape(image.shape, self.parameters)
+        (output,) = self._session.run(None, {self._input: network_tensor(image, shape)})
         return np.asarray(output[0, 0], dtype=np.float32)
+
+
+def network_shape(
+    shape: tuple[int, ...], parameters: DetectionParameters
+) -> tuple[int, int]:
+    """The rows and columns of the network's input for an image of this
+    shape: its shorter side scaled up to at least
+    :attr:`DetectionParameters.limit_side`, its longer down to at most
+    :attr:`DetectionParameters.max_side`, each a multiple of 32."""
+    rows, columns = shape[:2]
+    scale = max(1.0, parameters.limit_side / min(rows, columns))
+    scale = min(scale, parameters.max_side / max(rows, columns))
+    return (_multiple_of_32(rows * scale), _multiple_of_32(columns * scale))
+
+
+def network_tensor(
+    image: np.ndarray,
+    shape: tuple[int, int],
+    mean: float = 0.5,
+    deviation: float = 0.5,
+) -> np.ndarray:
+    """The network's input for an 8-bit image: the image resized to
+    ``shape``, scaled to 0 to 1, less ``mean``, over ``deviation``, as one
+    batch of three equal channels."""
+    resized = _resized(image.astype(np.float32), shape)
+    normalised = (resized / 255.0 - mean) / deviation
+    return np.ascontiguousarray(
+        np.broadcast_to(normalised, (1, 3) + shape), dtype=np.float32
+    )
 
 
 def _multiple_of_32(length: float) -> int:
