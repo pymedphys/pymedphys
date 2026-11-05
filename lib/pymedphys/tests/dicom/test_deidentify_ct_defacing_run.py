@@ -104,6 +104,9 @@ _PET = ("15-pet.dcm", "16-pet-enhanced.dcm", "17-pet-legacy-enhanced.dcm")
 _PET_ABOVE = "15-pet-above.dcm"
 # The BINARY Segmentation, replaced by a segment of the head's body.
 _SEGMENTATION = corpus_module.SEGMENTATION_FILES[0]
+# The head's BINARY Segmentation and the corpus's label map, both in the head
+# CT's frame.
+_SEGMENTATIONS = (_SEGMENTATION, corpus_module.SEGMENTATION_FILES[1])
 _IN_FRAME = (_STRUCTURE_SET, *_DOSE, *_PET, _PET_ABOVE, _SEGMENTATION)
 # The PET instances that the run does not clean.
 _UNDEFACED = _PET[1:]
@@ -2025,9 +2028,11 @@ def test_an_eye_drawn_away_from_the_globes_holds_the_defaced_head_ct(eyes_away):
     for name in (_STRUCTURE_SET, _DOSE[0], *_PET_SLICES, _SEGMENTATION):
         assert outcomes[name] == ("held-for-review", None), name
         assert reasons[name] == {held}, name
-    # As is the RT Dose that its release gate also holds for review.
-    assert outcomes[_DOSE[1]] == ("held-for-review", None)
-    assert held in reasons[_DOSE[1]]
+    # As are the RT Dose that its release gate also holds for review and the
+    # label map, which no face verdict names.
+    for name in (_DOSE[1], _SEGMENTATIONS[1]):
+        assert outcomes[name] == ("held-for-review", None), name
+        assert held in reasons[name], name
     assert report["face_review"]["ct_series"] == {
         "defaced": 1,
         "defaced_around_targets": 0,
@@ -2041,7 +2046,7 @@ def test_an_eye_drawn_away_from_the_globes_holds_the_defaced_head_ct(eyes_away):
         if entry["stage"] == "visual-features"
     }
     assert counts[held.reason.value] == (
-        len(slices) + 1 + len(_DOSE) + len(_PET_SLICES) + 1
+        len(slices) + 1 + len(_DOSE) + len(_PET_SLICES) + len(_SEGMENTATIONS)
     )
 
 
