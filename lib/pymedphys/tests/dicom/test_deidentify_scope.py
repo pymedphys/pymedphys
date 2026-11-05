@@ -74,6 +74,9 @@ SUPPORTED = {
     "1.2.840.10008.5.1.4.1.1.481.9": "RT Ion Beams Treatment Record",
     "1.2.840.10008.5.1.4.1.1.66.1": "Spatial Registration",
     "1.2.840.10008.5.1.4.1.1.66.3": "Deformable Spatial Registration",
+    "1.2.840.10008.5.1.4.1.1.66.4": "Segmentation",
+    # Label Map Segmentation Storage, which Table B.5-1 maps to the same IOD.
+    "1.2.840.10008.5.1.4.1.1.66.7": "Segmentation",
     "1.2.840.10008.5.1.4.1.1.88.67": "X-Ray Radiation Dose SR",
     "1.2.840.10008.5.1.4.1.1.88.68": "Radiopharmaceutical Radiation Dose SR",
     "1.2.840.10008.5.1.4.1.1.88.73": "Patient Radiation Dose SR",
@@ -86,7 +89,7 @@ SUPPORTED = {
 }
 
 
-def test_the_first_release_supports_ct_mr_pet_rt_registration_and_sr_objects():
+def test_the_first_release_supports_ct_mr_pet_rt_registration_seg_and_sr_objects():
     assert scope.SUPPORTED_IODS == {
         "CT Image",
         "Enhanced CT Image",
@@ -108,6 +111,7 @@ def test_the_first_release_supports_ct_mr_pet_rt_registration_and_sr_objects():
         "RT Plan",
         "RT Structure Set",
         "RT Treatment Summary Record",
+        "Segmentation",
         "Spatial Registration",
         "Deformable Spatial Registration",
         "X-Ray Radiation Dose SR",
@@ -185,12 +189,14 @@ def test_padding_is_ignored():
         ("1.2.840.10008.5.1.4.1.1.88.59", "Key Object Selection Document"),
         ("1.2.840.10008.5.1.4.1.1.11.1", "Grayscale Softcopy Presentation State"),
         # Outside the first release: other images, CT, MR, and PET objects
-        # that are not images, spatial fiducials, and second-generation RT
-        # objects, including the second-generation RT images.
+        # that are not images, the segmentations of other IODs, parametric
+        # maps, spatial fiducials, and second-generation RT objects, including
+        # the second-generation RT images.
         ("1.2.840.10008.5.1.4.1.1.20", "Nuclear Medicine Image"),
         ("1.2.840.10008.5.1.4.1.1.6.1", "Ultrasound Image"),
         ("1.2.840.10008.5.1.4.1.1.200.2", "CT Performed Procedure Protocol"),
-        ("1.2.840.10008.5.1.4.1.1.66.4", "Segmentation"),
+        ("1.2.840.10008.5.1.4.1.1.66.5", "Surface Segmentation"),
+        ("1.2.840.10008.5.1.4.1.1.66.8", "Height Map Segmentation"),
         ("1.2.840.10008.5.1.4.1.1.30", "Parametric Map"),
         ("1.2.840.10008.5.1.4.1.1.66.2", "Spatial Fiducials"),
         ("1.2.840.10008.5.1.4.1.1.481.10", "RT Physician Intent"),

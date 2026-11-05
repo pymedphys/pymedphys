@@ -219,9 +219,7 @@ class FaceBlockProblem(enum.Enum):
     """Why no face block was found."""
 
     # The finder's: row and column directions not of unit length or not
-    # perpendicular, or two slices at one position. A run also counts so a
-    # stack whose slices do not lie along the patient's axes, as with a
-    # gantry tilt, which it does not yet deface (face_blocks).
+    # perpendicular, or two slices at one position.
     NOT_ALONG_PATIENT_AXES = "not-along-patient-axes"
     NO_EYES = "no-eyes"  # no pair of eye globes, as when an eye is out of view
     AMBIGUOUS_EYES = "ambiguous-eyes"  # more than one pair
@@ -461,7 +459,8 @@ def along_patient_axes(
     millimetres, with no two at one position.
 
     A gantry-tilted, sheared, or oblique stack does not. :class:`FaceFinder`
-    samples it all the same; a run defaces only a stack that does
+    samples it all the same, and a run defaces it pixel by pixel, by each
+    pixel's centre within its slice's own plane
     (:mod:`~pymedphys._dicom.deidentify.face_blocks`).
 
     Parameters

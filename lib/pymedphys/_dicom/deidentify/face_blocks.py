@@ -57,16 +57,11 @@ kind, or both. A series is defaced only where all of these hold:
   Reference UID, which they have, and the stored values of each can hold
   air, -1000 Hounsfield units, as one stored value, rounded, without
   clipping, each slice by its own rescale;
-- the slices that the finder is given lie along the patient's axes
-  (:func:`~pymedphys._dicom.deidentify.defacing.along_patient_axes`), as a
-  gantry-tilted, sheared, or oblique stack does not: the finder samples
-  such a stack, but the air written is not yet defined for a slice that
-  spans heights, so it is left undefaced as
-  :attr:`~pymedphys._dicom.deidentify.defacing.FaceBlockProblem.NOT_ALONG_PATIENT_AXES`;
 - :class:`~pymedphys._dicom.deidentify.defacing.FaceFinder` finds the
-  block from the slices within :data:`HEAD_REACH` millimetres of the
-  volume's superior end, which bounds the memory that a long volume needs,
-  no two slices lying at one position; slices that repeat a position, as
+  block from the slices that reach within :data:`HEAD_REACH` millimetres
+  of the volume's superior end, by their highest pixel centres, which
+  bounds the memory that a long volume needs (:func:`_head_slices`), no
+  two slices lying at one position; slices that repeat a position, as
   the time points of a respiratory-correlated CT or a perfusion scan, the
   phases of a contrast study, or two overlapping acquisitions do, are
   parted into phases by the time point or acquisition that each names
@@ -173,10 +168,29 @@ millimetres above the higher globe's centre, above the orbits, so that
 bone enclosing an orbit within a slice, or a thin orbital roof that the
 slice's bone does not seal, keeps no part of an eye. A pixel kept for a
 target is kept whatever it holds, the eye included.
-Where no bone encloses the cavity within a slice, the block is air to the
-top of the slice. Where air's stored value is itself padding, the pixels
-written are padding, which a viewer shows as outside the image, as the air
-before the face is in most scans.
+Where no bone encloses the cavity within a slice, the slice's part in the
+block is air, to the top of the slice. Where air's stored value is itself
+padding, the pixels written are padding, which a viewer shows as outside
+the image, as the air before the face is in most scans.
+
+A slice need not lie along the patient's axes: one turned by a gantry tilt,
+or oblique, spans heights, and each of these rules is applied pixel by
+pixel, by the pixel's own centre, within the slice's own plane. A pixel is
+in the block by its centre, and above the floor by its centre's own
+height, so a tilted slice can keep the brain at its top and write air over
+the orbit at its front. The tissue that bone encloses joins within the
+slice at any height, the floor deciding only what is kept, so a slice
+whose front is raised reaches the brain ahead of the plane above the floor
+through the brain below the floor, which it writes as air, and keeps it, as
+an axial slice through each of its pixels would. A target is judged
+against the slices nearest its part in the block
+(:class:`~pymedphys._dicom.deidentify.target_hulls.SliceExtent`), since a
+tilt that steps the slices along the table offsets each slice's pixels
+within the plane from the last's. The finder samples such a stack to voxels
+along the patient's axes
+(:mod:`~pymedphys._dicom.deidentify.stack_sampling`), and refuses only
+what it still cannot take
+(:attr:`~pymedphys._dicom.deidentify.defacing.FaceBlockProblem.NOT_ALONG_PATIENT_AXES`).
 
 Beyond CT instances, the run cleans the same region, the block of each
 defaced series in the frame in turn, of an RT Dose that
@@ -247,10 +261,9 @@ from .sop_classes import iod_for_sop_class
 from .source import NATIVE_TRANSFER_SYNTAXES, read_source
 from .target_hulls import (
     KeptTargets,
-    SliceRange,
+    SliceExtent,
     TargetHull,
     beyond_slices,
-    slice_ranges,
     slice_reach,
 )
 from .uid_registry import is_uid
@@ -897,7 +910,6 @@ def _series_found(positions: list[int], read: Callable[[int], bytes | None]) -> 
                 [slices[i] for i in group],
                 [places[i] for i in group],
                 read,
-                along_axes=True,
             )
             try:
                 blocks.append(finder.block())
@@ -1081,11 +1093,6 @@ def inspect_series(
     slices of its first phase, where they repeat their positions
     (:func:`_phases`).
 
-    Unlike a run, this gives the finder a stack whose slices do not lie
-    along the patient's axes, such as a gantry-tilted or oblique one, so
-    that a check can measure the finder on such a series, which a run does
-    not yet deface (:func:`_finder`).
-
     Parameters
     ----------
     positions : list of int
@@ -1100,7 +1107,6 @@ def inspect_series(
             [slices[i] for i in group],
             [places[i] for i in group],
             read,
-            along_axes=False,
         ).inspect()
     except (_Unusable, FaceBlockRefused):
         return None
@@ -1131,8 +1137,6 @@ def _finder(
     slices: list[_Slice],
     places: list[tuple[int, int]],
     read: Callable[[int], bytes | None],
-    *,
-    along_axes: bool,
 ) -> defacing.FaceFinder:
     """The finder of one stack's slices, each added, with each slice's run
     position and frame index in ``places``.
@@ -1140,44 +1144,20 @@ def _finder(
     Each instance is read once, and its frames decoded one at a time, so
     that a multi-frame instance is never held decoded whole.
 
-    Where ``along_axes``, as for a run, the slices given to the finder must
-    lie along the patient's axes
-    (:func:`~pymedphys._dicom.deidentify.defacing.along_patient_axes`),
-    checked before any pixel data are decoded: the finder samples a
-    gantry-tilted, sheared, or oblique stack, but the air that defacing
-    writes is not yet defined for a slice that spans heights, so a run does
-    not deface one.
-
     Raises
     ------
     _Unusable
         If a slice can no longer be read.
     FaceBlockRefused
-        As :class:`~pymedphys._dicom.deidentify.defacing.FaceFinder` does,
-        and, where ``along_axes``, with
-        :attr:`~pymedphys._dicom.deidentify.defacing.FaceBlockProblem.NOT_ALONG_PATIENT_AXES`
-        for slices that do not lie along the patient's axes.
+        As :class:`~pymedphys._dicom.deidentify.defacing.FaceFinder` does.
     """
     first = slices[0]
-    normal = np.cross(first.orientation[:3], first.orientation[3:])
-    # Along the patient's superior axis, the slices within HEAD_REACH of
-    # the top; for a stack along another axis, every slice, since each
-    # spans the volume's height.
-    if abs(abs(normal[2]) - 1) <= _SAME:
-        tops = [each.position[2] for each in slices]
-        kept = [i for i, top in enumerate(tops) if top >= max(tops) - HEAD_REACH]
-    else:
-        kept = list(range(len(slices)))
     # By instance, in run order, then by frame, the order in which they are
     # added, which the finder needs their positions in.
     by_instance: dict[int, list[int]] = {}
-    for index in kept:
+    for index in _head_slices(slices):
         by_instance.setdefault(places[index][0], []).append(index)
     order = [index for indices in by_instance.values() for index in indices]
-    if along_axes and not defacing.along_patient_axes(
-        first.orientation, [slices[i].position for i in order]
-    ):
-        raise FaceBlockRefused(FaceBlockProblem.NOT_ALONG_PATIENT_AXES)
     finder = defacing.FaceFinder(
         first.orientation,
         [slices[i].position for i in order],
@@ -1194,6 +1174,38 @@ def _finder(
         for index, values in zip(indices, stored, strict=True):
             finder.add(_hounsfield(values, slices[index]))
     return finder
+
+
+def _head_slices(slices: Sequence[_Slice]) -> list[int]:
+    """Return the index of each slice that reaches within :data:`HEAD_REACH`
+    millimetres of the volume's superior end, in order.
+
+    A slice reaches as high as its highest pixel centre (:func:`_top`), and
+    the volume's superior end is the highest of them all. So of an axial
+    stack, each slice at one height, the slices within reach of the top
+    slice are taken; of a sagittal or coronal stack, whose every slice
+    spans the volume's height, every slice is; and of a stack turned by a
+    gantry tilt, or oblique, whose slices each span heights, each slice of
+    which any pixel lies within reach, whole, so that each slice that the
+    finder is given is the whole of its pixel data.
+    """
+    tops = [_top(each) for each in slices]
+    highest = max(tops)
+    return [index for index, top in enumerate(tops) if top >= highest - HEAD_REACH]
+
+
+def _top(each: _Slice) -> float:
+    """The z coordinate of a slice's highest pixel centre, in millimetres:
+    its first pixel's, raised along its rows and down its columns wherever
+    they rise."""
+    rows, columns = each.shape
+    row_spacing, column_spacing = each.spacing
+    along_row, down_column = each.orientation[2], each.orientation[5]
+    return (
+        each.position[2]
+        + max(0.0, (rows - 1) * row_spacing * down_column)
+        + max(0.0, (columns - 1) * column_spacing * along_row)
+    )
 
 
 def _slices(data: bytes | None) -> tuple[_Slice, ...]:
@@ -1456,7 +1468,7 @@ class _TargetFates:
 
     block: FaceBlock
     widened: FaceBlock
-    ranges: tuple[SliceRange, ...]
+    extent: SliceExtent
     depth: float
 
     def fate(self, points: np.ndarray) -> tuple[TargetFate, TargetHull | None]:
@@ -1467,7 +1479,7 @@ class _TargetFates:
         hull = TargetHull.of(points)
         if not _hull_reaches(self.block, points):
             return TargetFate.NEAR, hull
-        if beyond_slices(hull, self.block, self.ranges):
+        if beyond_slices(hull, self.block, self.extent):
             return TargetFate.BEYOND_SLICES, hull
         return TargetFate.KEPT, hull
 
@@ -1503,13 +1515,13 @@ def _target_fates(block: FaceBlock, stack: Sequence[_Slice]) -> _TargetFates:
         origin=tuple(float(v) for v in np.asarray(block.origin) - margin * anterior),
         inferior_limit=block.inferior_limit - margin,
     )
-    ranges = slice_ranges(
+    extent = SliceExtent.of(
         [(each.position, each.orientation) for each in stack],
         first.spacing,
         first.shape,
         depth,
     )
-    return _TargetFates(block, widened, ranges, depth)
+    return _TargetFates(block, widened, extent, depth)
 
 
 def _kept_targets(
@@ -2091,20 +2103,48 @@ def _kept(
     hounsfield = stored * slope + intercept
     bone = (hounsfield >= defacing.BONE) & ~padded
     floor = max(globe[2] for globe in block.globes) + CAVITY_FLOOR
-    cavity = scipy.ndimage.binary_fill_holes(bone) & ~bone & (_heights(each) > floor)
-    # Of the cavity, only the brain: its tissue that joins, within the slice,
-    # its tissue behind the block's plane, with the cavity that it encloses,
-    # so that nothing is kept that the cavity alone would not keep. Bone
-    # also encloses the air of a frontal sinus in its wall, which, kept,
-    # would differ from air written around it only by noise, and any tissue
-    # lining it, which joins none behind the plane where it lies ahead of
-    # the plane and bone parts it from the brain.
-    tissue = cavity & (hounsfield > defacing.BODY)
+    enclosed = scipy.ndimage.binary_fill_holes(bone) & ~bone
+    behind = _behind_plane(block, each)
+    cavity = enclosed & (_heights(each) > floor)
+    # Of the cavity, only the brain: the tissue that bone encloses that
+    # joins, within the slice, such tissue behind the block's plane, with
+    # what it encloses, so that nothing is kept that the cavity alone would
+    # not keep. Bone also encloses the air of a frontal sinus in its wall,
+    # which, kept, would differ from air written around it only by noise,
+    # and any tissue lining it, which joins none behind the plane where it
+    # lies ahead of the plane and bone parts it from the brain. The tissue
+    # joins at any height, the floor deciding only what is kept: an axial
+    # slice lies at one height, so this is the cavity's tissue alone, but a
+    # slice that spans heights, as a tilted one does, joins the brain ahead
+    # of the plane above the floor to the brain behind the plane through
+    # the brain ahead of it below the floor, which it writes as air, as an
+    # axial slice through each of its pixels would join them.
+    tissue = enclosed & (hounsfield > defacing.BODY)
     labels, _ = scipy.ndimage.label(tissue)
-    inside = block.slice_mask(each.position, each.orientation, each.spacing, each.shape)
-    joined = np.unique(labels[tissue & ~inside])
+    joined = np.unique(labels[tissue & behind])
     brain = np.isin(labels, joined[joined > 0])
     return scipy.ndimage.binary_fill_holes(brain) & cavity & ~padded, padded
+
+
+def _behind_plane(block: FaceBlock, each: _Slice) -> np.ndarray:
+    """Whether each pixel's centre lies behind the block's vertical plane,
+    or on it, whatever its height, of bool, rows by columns.
+
+    Each centre is placed as
+    :meth:`~pymedphys._dicom.deidentify.defacing.FaceBlock.slice_mask`
+    places it, so that a pixel lies behind the plane exactly where the
+    block, above its axial plane, does not hold it.
+    """
+    origin = np.asarray(each.position, dtype=float)
+    along_row = np.asarray(each.orientation[:3], dtype=float)
+    down_column = np.asarray(each.orientation[3:], dtype=float)
+    rows = np.arange(each.shape[0], dtype=float)[:, None, None] * float(each.spacing[0])
+    columns = np.arange(each.shape[1], dtype=float)[None, :, None] * float(
+        each.spacing[1]
+    )
+    points = origin + columns * along_row + rows * down_column
+    ahead = (points - np.array(block.origin)) @ np.array(block.anterior)
+    return ~(ahead > 0)
 
 
 def _heights(each: _Slice) -> np.ndarray:

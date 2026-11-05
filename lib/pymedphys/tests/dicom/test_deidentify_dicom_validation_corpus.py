@@ -86,6 +86,7 @@ UNKNOWN_TO_DICOM3TOOLS = tuple(
         corpus_module.EXTENSIBLE_SR_STORAGE,
         corpus_module.ENHANCED_X_RAY_RADIATION_DOSE_SR_STORAGE,
         corpus_module.PATIENT_RADIATION_DOSE_SR_STORAGE,
+        corpus_module.LABEL_MAP_SEGMENTATION_STORAGE,
     )
 )
 
@@ -208,8 +209,9 @@ def test_every_validator_ran_over_every_released_instance(comparison):
     }
     # dciodvfy checks every input and output but the corpus's RT Dose in
     # Implicit VR, whose 32-bit pixels abort it on both, and its Extensible
-    # SR, Enhanced X-Ray Radiation Dose SR, and Patient Radiation Dose SR,
-    # whose SOP Classes dicom3tools' January 2024 snapshot does not know.
+    # SR, Enhanced X-Ray Radiation Dose SR, Patient Radiation Dose SR, and
+    # label map Segmentation, whose SOP Classes dicom3tools' January 2024
+    # snapshot does not know.
     statuses = dict(comparison.tallies[DCIODVFY]["statuses"])
     failed = statuses.pop(BOTH_FAILED, 0)
     unsupported = statuses.pop(BOTH_UNSUPPORTED, 0)

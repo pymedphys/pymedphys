@@ -217,6 +217,8 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "29-sr-dose-enhanced-x-ray.dcm",
         "30-sr-dose-patient.dcm",
         "31-sr-dose-ct.dcm",
+        "32-seg.dcm",
+        "33-seg-label-map.dcm",
         "47-rt-ion-plan.dcm",
         "48-rt-ion-beams-record.dcm",
         "49-rt-brachy-record.dcm",
@@ -254,13 +256,18 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "Enhanced X-Ray Radiation Dose SR",
         "Patient Radiation Dose SR",
         "X-Ray Radiation Dose SR",
+        "Segmentation",
+        "Segmentation",
         "RT Ion Plan",
         "RT Ion Beams Treatment Record",
         "RT Brachy Treatment Record",
         "RT Treatment Summary Record",
     ]
     assert corpus_module.STRUCTURED_REPORT_FILES == tuple(
-        file.name for file in corpus.files[-14:-4]
+        file.name for file in corpus.files[-16:-6]
+    )
+    assert corpus_module.SEGMENTATION_FILES == tuple(
+        file.name for file in corpus.files[-6:-4]
     )
     assert (
         corpus_module.ION_PLAN_FILE,
