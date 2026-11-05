@@ -255,14 +255,14 @@ def test_defacing_is_counted_by_series_and_frame():
     counts = FaceBlockCounts()
     counts.defaced = 2
     counts.not_defaced = {
-        SeriesProblem.COMPRESSED: 1,
+        SeriesProblem.UNREADABLE: 1,
         FaceBlockProblem.NO_EYES: 3,
     }
     transform = types.SimpleNamespace(face_block_counts=counts, dose_block_frames=1)
 
     assert benchmark.defacing_counts(transform) == {
         "ct_series_defaced": 2,
-        "ct_series_not_defaced": {"compressed-pixel-data": 1, "no-eyes": 3},
+        "ct_series_not_defaced": {"unreadable": 1, "no-eyes": 3},
         "dose_block_frames": 1,
     }
     unreviewed = types.SimpleNamespace(face_block_counts=None, dose_block_frames=0)
