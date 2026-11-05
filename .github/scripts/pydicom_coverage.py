@@ -36,7 +36,7 @@ BASELINE_METADATA = "pydicom-ubuntu-latest-3.14.json"
 # Each cell of the unit-test matrix runs in these parts on separate runners,
 # and each cell's report is their combination; the Ubuntu/Python 3.14 cell's
 # is the baseline.
-PARTS: tuple[str, ...] = ("corpus-runs", "others")
+PARTS: tuple[str, ...] = ("ct-defacing", "corpus-runs", "others")
 RESULTS = Path("test-results")
 PYTHON_3_14 = re.compile(r"3\.14\.\d+")
 
