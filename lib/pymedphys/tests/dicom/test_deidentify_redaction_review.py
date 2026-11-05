@@ -256,7 +256,7 @@ def test_an_attestation_with_redaction_verdicts_is_read_back_as_written(first_ru
     )
     assert qc_attestation.attested_pack(pack)[0] == attestation
     written = json.loads((pack / qc_attestation.ATTESTATION_FILE).read_text("ascii"))
-    assert written["format"] == "pymedphys-deid-qc-attestation/3"
+    assert written["format"] == "pymedphys-deid-qc-attestation/5"
     assert {
         "position": positions[_REVISED],
         "redaction": "revised",
@@ -797,14 +797,15 @@ def test_the_statement_gives_the_code_only_after_review():
         "also has Burned In Annotation (0028,0301) set to NO, as PS3.15 E.3.1 "
         "requires, including in an IOD that does not define the attribute, which "
         "of the supported IODs are RT Plan, RT Structure Set, RT Beams Treatment "
-        "Record, MR Spectroscopy, Spatial Registration, Deformable Spatial "
-        "Registration, X-Ray Radiation Dose SR, Radiopharmaceutical Radiation "
-        "Dose SR, Basic Text SR, Enhanced SR, Comprehensive SR, Comprehensive 3D "
-        "SR, Extensible SR, Key Object Selection Document, Mammography CAD SR, "
-        "Chest CAD SR, Colon CAD SR, Procedure Log, Spectacle Prescription "
-        "Report, Macular Grid Thickness and Volume Report, Waveform Annotation "
-        "SR, Implantation Plan SR Document, Simplified Adult Echo SR, Planned "
-        "Imaging Agent Administration SR, Performed Imaging Agent "
+        "Record, RT Ion Plan, RT Ion Beams Treatment Record, RT Brachy Treatment "
+        "Record, RT Treatment Summary Record, MR Spectroscopy, Spatial Registration, "
+        "Deformable Spatial Registration, X-Ray Radiation Dose SR, Radiopharmaceutical "
+        "Radiation Dose SR, Basic Text SR, Enhanced SR, Comprehensive SR, "
+        "Comprehensive 3D SR, Extensible SR, Key Object Selection Document, "
+        "Mammography CAD SR, Chest CAD SR, Colon CAD SR, Procedure Log, Spectacle "
+        "Prescription Report, Macular Grid Thickness and Volume Report, Waveform "
+        "Annotation SR, Implantation Plan SR Document, Simplified Adult Echo SR, "
+        "Planned Imaging Agent Administration SR, Performed Imaging Agent "
         "Administration SR, and Acquisition Context SR."
     ) in text
     assert (
@@ -823,6 +824,10 @@ def test_the_statement_names_each_supported_iod_that_lacks_the_attribute():
         "RT Plan",
         "RT Structure Set",
         "RT Beams Treatment Record",
+        "RT Ion Plan",
+        "RT Ion Beams Treatment Record",
+        "RT Brachy Treatment Record",
+        "RT Treatment Summary Record",
         "MR Spectroscopy",
         "Spatial Registration",
         "Deformable Spatial Registration",
@@ -1161,7 +1166,7 @@ def test_the_report_names_the_reviewed_pack(second_run):
     attestation, _, report, _, _ = second_run
 
     assert report["redaction_review"] == {"reference": attestation.reference}
-    assert report["format"] == "pymedphys-deid-release-report/32"
+    assert report["format"] == "pymedphys-deid-release-report/51"
 
 
 class _Blind(Finder):

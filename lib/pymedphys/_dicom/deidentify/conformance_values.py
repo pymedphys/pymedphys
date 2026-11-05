@@ -261,25 +261,41 @@ def _reviewed_items(named: Callable[[str], str]) -> list[str]:
         if tag == dummy_values.REFERENCED_PERFORMED_PROCEDURE_STEP_SEQUENCE:
             lines.append(_procedure_step_items(named, tag, compared))
             continue
-        (first,) = dummy_values.items_for_d(tag, [])
+        within = _reviewed_place(tag)
+        (first,) = dummy_values.items_for_d(tag, [], within=within)
         source = {e.tag: e.value for e in first if e.tag in compared}
-        (second,) = dummy_values.items_for_d(tag, [source])
+        (second,) = dummy_values.items_for_d(tag, [source], within=within)
         changed = [
             f"{named(element.tag)} `{element.value}`"
             for element, before in zip(second, first)
             if element.value != before.value
         ]
+        place = "".join(f" in an item of {named(each)}" for each in within)
+        elsewhere = (
+            " Elsewhere, D on it has no reviewed rule, so the instance is sequestered."
+            if within
+            else ""
+        )
         lines.append(
-            f"D on {named(tag)} writes one item, with "
+            f"D on {named(tag)}{place} writes one item, with "
             + join(f"{named(element.tag)} `{element.value}`" for element in first)
             + ". Where a source item's "
             + join((named(t) for t in sorted(compared)), "or")
             + " equals the item's, as D compares values, the item has "
             + join(changed)
             + " instead."
+            + elsewhere
         )
     lines.append(_icc_profile(named))
     return lines
+
+
+def _reviewed_place(tag: str) -> tuple[str, ...]:
+    """Return the sequence whose items alone hold a sequence's reviewed rule.
+
+    It is empty for a sequence whose rule holds everywhere.
+    """
+    return tuple(sorted(dummy_values.REVIEWED_WITHIN.get(tag, frozenset())))
 
 
 def _procedure_step_items(
@@ -302,14 +318,31 @@ def _icc_profile(named: Callable[[str], str]) -> str:
     """Describe the profile that D writes in place of ICC Profile."""
     first, second = dummy_values.CONSTANTS["LO"]
     return (
-        f"D on {named(dummy_values.ICC_PROFILE)} writes a fixed ICC version "
-        "2.4 input profile of the sRGB colour space of IEC 61966-2.1, "
-        f"described `{first} sRGB`, or `{second} sRGB` where the source has "
-        "the same bytes. PS3.3 Section C.11.15.1.1 requires the profile's "
-        "data colour space to be RGB, so where the source is not an RGB "
-        "profile, the instance is sequestered. Pixel values are preserved, "
-        "but the source profile's colorants and tone curves are not, so colour "
-        "rendering can change substantially."
+        f"D on {named(dummy_values.ICC_PROFILE)} writes the source profile "
+        "cleaned of everything but its colorimetry: it keeps the tags that "
+        "map device values to the profile connection space and back, the "
+        "media white and black points, luminance, chromatic adaptation, "
+        "coding-independent code points, chromaticity, measurement and "
+        "viewing conditions, the colorimetric intent image state, and the "
+        "rendering intent gamuts, each parsed and written again, and removes "
+        "every text tag, private tag, and other tag. Its header keeps the "
+        "source's version, profile connection space, illuminant, rendering "
+        "intent, and embedded-profile flags, names no CMM, platform, device, "
+        "or creator, gives 1 January 1900 as its date, and makes it an input "
+        "device profile; a version 4 profile's profile ID is computed again. "
+        f"Its description and copyright are `{first}`, or `{second}` where "
+        "the source has the same bytes. Where the source is not of ICC version "
+        "2 or 4, not an input, display, or colour space profile, has another "
+        "illuminant than D50, holds a colorimetric tag that does not parse "
+        "as its version defines it, or is a version 2 display profile whose "
+        "media white point is not D50, which colour management modules read "
+        "by class, D writes instead a fixed ICC version 2.4 "
+        "input profile of the sRGB colour space of IEC 61966-2.1, described "
+        f"`{first} sRGB`; pixel values are preserved, but the source "
+        "profile's colorants and tone curves are not, so colour rendering can "
+        "then change substantially. PS3.3 Section C.11.15.1.1 requires the "
+        "profile's data colour space to be RGB, so where the source is not "
+        "an RGB profile, the instance is sequestered."
     )
 
 
@@ -328,17 +361,23 @@ def _kept_items(
     ]
 
 
-def _naming_pymedphys(named: Callable[[str], str]) -> list[str]:
-    """Name each value that a reviewed rule writes and that names PyMedPhys."""
-    return [
-        f"{named(element.tag)} `{element.value}`"
+def _naming_pymedphys(named: Callable[[str], str]) -> dict[str, list[str]]:
+    """Name each value that a reviewed rule writes and that names PyMedPhys.
+
+    Each is listed by the sequence whose item holds it.
+    """
+    found = {
+        tag: [
+            f"{named(element.tag)} `{element.value}`"
+            for item in dummy_values.items_for_d(tag, [], within=_reviewed_place(tag))
+            for element in item
+            if "PYMEDPHYS" in element.value.upper()
+        ]
         for tag in REVIEWED_DUMMY_SEQUENCES
         # The procedure step's items hold only UIDs, written for the source.
         if tag != dummy_values.REFERENCED_PERFORMED_PROCEDURE_STEP_SEQUENCE
-        for item in dummy_values.items_for_d(tag, [])
-        for element in item
-        if "PYMEDPHYS" in element.value.upper()
-    ]
+    }
+    return {tag: values for tag, values in found.items() if values}
 
 
 def values_written(
@@ -419,9 +458,15 @@ def values_written(
         "",
         "No value that Z, D, or U writes names PyMedPhys"
         + (
-            f", except the {join(exceptions)} of the item that D writes in "
-            f"{named(dummy_values.PERSON_IDENTIFICATION_CODE_SEQUENCE)}, which "
-            "names who defines its code."
+            ", except "
+            + join(
+                f"the {join(values)} of the item that D writes in {named(tag)}"
+                for tag, values in exceptions.items()
+            )
+            + ", which "
+            + ("names" if len(exceptions) == 1 else "name")
+            + " who defines "
+            + ("its code." if len(exceptions) == 1 else "their codes.")
             if exceptions
             else "."
         ),
@@ -520,8 +565,10 @@ def dates_and_times(
             "the policy removes or replaces, other than the kept element's "
             "own, equals a whole kept value, the residual search finds it in "
             "the kept element, and the kept value explains it, so it does not "
-            "withhold the instance; found inside a longer kept value, such as "
-            "the date of a kept datetime, it still does. "
+            "withhold the instance, nor does a removed datetime whose date, "
+            "which the search also looks for, equals a whole kept date; found "
+            "inside a longer kept value, such as the date of a kept datetime, "
+            "it still does. "
             f"{named(TEMPORAL_MODIFIED)} is `{statement.markers.temporal}`, as "
             "Attributes inserted describes.",
         ]

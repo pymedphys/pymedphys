@@ -76,6 +76,8 @@ _SEQUESTERING = [
     (reference_graph.FindingKind.MISSING_IDENTIFIER, "references"),
     (reference_graph.FindingKind.CONFLICTING_INSTANCE, "references"),
     (reference_graph.FindingKind.SERIES_IN_SEVERAL_STUDIES, "references"),
+    # where the run is told to sequester such a study rather than stop (D-026)
+    (reference_graph.FindingKind.STUDY_WITH_SEVERAL_PATIENTS, "references"),
     *((each, "run") for each in reasons.RunReason if each not in _REFUSING),
     *((each, "transform") for each in reasons.TransformReason),
     *((each, "transform") for each in descriptor_cleaning.DescriptorReason),
@@ -222,7 +224,9 @@ def test_each_walker_reason_is_written(basic, reason):
         scope.Disposition.SUPPORTED,
         reference_graph.FindingKind.DANGLING_REFERENCE,
         reference_graph.FindingKind.DUPLICATE_INSTANCE,
-        reference_graph.FindingKind.STUDY_WITH_SEVERAL_PATIENTS,
+        reference_graph.FindingKind.SERIES_IN_SEVERAL_FRAMES,
+        reference_graph.FindingKind.UNLISTED_ROI_FRAME,
+        reference_graph.FindingKind.CONTOUR_IMAGE_IN_ANOTHER_FRAME,
         *_REFUSING,
         descriptor_cleaning.HeldRoiName(
             ElementPath((), "(3006,0026)"), roi_names.Reason.UNMATCHED
@@ -231,7 +235,6 @@ def test_each_walker_reason_is_written(basic, reason):
     ],
 )
 def test_what_does_not_sequester_an_instance_is_not_a_reason(cause):
-    # A study with several patients stops the run instead.
     with pytest.raises((TypeError, ValueError)) as raised:
         release_report.sequestration_reason(cause)
 
