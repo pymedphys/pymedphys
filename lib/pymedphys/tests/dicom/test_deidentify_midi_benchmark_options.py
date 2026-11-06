@@ -456,9 +456,10 @@ def _code(deid_key):
 
 def test_a_flip_checks_runs_share_a_key_so_no_pseudonym_changes_a_check(tmp_path):
     # A removed-text check fails wherever the release holds one of its
-    # words, inside another word or not, as NCI's script reads it. So a short
-    # word, such as a two-letter name, can be held by chance in the keyed
-    # code of the patient's pseudonymous name under one key and not another.
+    # words, inside another word or not, as compare_text compares them. So a
+    # short word, such as a two-letter name, can be held by chance in the
+    # keyed code of the patient's pseudonymous name under one key and not
+    # another.
     holding, word = next(
         (deid_key, pair)
         for deid_key in iter(DeidKey.generate, None)

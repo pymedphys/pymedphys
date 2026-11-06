@@ -168,7 +168,7 @@ uv run --no-dev --extra user python -m pymedphys._dicom.deidentify.midi_benchmar
   D:\midi-b\keys\flip-1.json
 ```
 
-With a key each, a check could change by chance where the option changed nothing. A check that asks for a text to be removed fails wherever the release holds one of the text's words, inside another word or not, as NCI's script reads it, and a short word, such as a two-letter name, can be held in the keyed code of a pseudonym, such as Patient's Name `DEIDENTIFIED^` and its code, under one key and not under another. Then compare the runs:
+With a key each, a check could change by chance where the option changed nothing. A check that asks for a text to be removed fails wherever the release holds one of the text's words, inside another word or not, as the benchmark compares them, and a short word, such as a two-letter name, can be held in the keyed code of a pseudonym, such as Patient's Name `DEIDENTIFIED^` and its code, under one key and not under another. Then compare the runs:
 
 bash:
 

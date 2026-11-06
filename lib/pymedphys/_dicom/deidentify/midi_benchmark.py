@@ -414,10 +414,11 @@ def run_benchmark(
         that each subject's pseudonyms, replacement UIDs, and date shifts are
         the same in both and only the option can change a check. A check
         that asks for a text to be removed fails wherever the release holds
-        any of its words, inside another word or not, as the script reads
-        it, so a short word, such as a two-letter name, can be held by
-        chance in the keyed code of a pseudonym under one key and not under
-        another.
+        any of its words, inside another word or not, as
+        :func:`~pymedphys._dicom.deidentify.midi_benchmark_values.compare_text`
+        compares them, so a short word, such as a two-letter name, can be
+        held by chance in the keyed code of a pseudonym under one key and
+        not under another.
 
     Raises
     ------
