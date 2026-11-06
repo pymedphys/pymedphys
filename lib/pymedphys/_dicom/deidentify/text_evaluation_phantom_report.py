@@ -127,8 +127,9 @@ class PhantomCollection:
 _CC_BY_3 = "https://creativecommons.org/licenses/by/3.0/"
 
 # Collections of phantoms whose images may be previewed. Only a collection
-# whose every subject is a phantom, neither a patient nor an animal, nor an
-# image derived from either, belongs here.
+# whose every subject is a phantom belongs here, and no phantom of animal
+# tissue: so not MRI-DIR, whose physical phantom is porcine and whose other
+# subjects are synthetic images derived from patients' scans.
 PHANTOM_COLLECTIONS: Mapping[str, PhantomCollection] = types.MappingProxyType(
     {
         each.name: each
