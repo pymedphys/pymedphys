@@ -848,3 +848,35 @@ def test_values_written_describes_a_procedure_logs_ranked_datetimes(options, des
         assert "A log whose entries are not in increasing order is sequestered." in (
             section
         )
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
+@pytest.mark.parametrize(
+    "options, described",
+    [((policy.CLEAN_STRUCTURED_CONTENT,), True), ((), False)],
+    ids=["option", "no-option"],
+)
+def test_values_written_describes_ranked_linked_identifiers(options, described):
+    lines = conformance_markdown.render_markdown(
+        conformance.conformance_statement(
+            policy.compose_custom_policy(options), vocabulary=None
+        )
+    ).splitlines()
+    start = lines.index("## Values written") + 1
+    end = next(i for i in range(start, len(lines)) if lines[i].startswith("## "))
+    section = " ".join(lines[start:end])
+
+    # Only where the option keeps a report's tree does the statement say
+    # which dummy each agent's or implant component's identifier, and each
+    # reference to it, takes.
+    paragraph = "Text Value (0040,A160) of an Imaging Agent Identifier (130254, DCM)"
+    assert (paragraph in section) is described
+    assert ("Component ID (112347, DCM) of each Selected Implant" in section) is (
+        described
+    )
+    if described:
+        assert "`DEIDENTIFIED 1` for the first" in section
+        assert (
+            "or a reference names no agent or component that is kept, is "
+            "sequestered." in section
+        )

@@ -55,7 +55,11 @@ emptied under Z and given D's dummy value under D, and without any
 numberings its edit is pending. The Observation DateTime (0040,A032) of a
 Procedure Log's entries takes, under D, the dummy datetime of its rank, which
 the run gives
-(:func:`~pymedphys._dicom.deidentify.content_items.log_dummy_datetimes`). C
+(:func:`~pymedphys._dicom.deidentify.content_items.log_dummy_datetimes`), and
+the Text Value (0040,A160) of an Imaging Agent Identifier or an implant
+Component ID, or of a reference to one, the dummy value of its agent's or
+component's rank
+(:attr:`~pymedphys._dicom.deidentify.content_items.ContentItemPlan.dummy_texts`). C
 cleans the value (D-009), so its edit is pending, for a later step to give.
 
 It also collects, for the residual search
@@ -512,7 +516,7 @@ def _kind(element: ElementPlan, container: bool) -> EditKind:
 def _dummy(
     path: ElementPath, value: ElementValue, key: DeidKey, given: str | None = None
 ) -> Edit:
-    """Return D's edit, which writes ``given``, the run's ranked datetime, if any."""
+    """Return D's edit, which writes ``given``, the run's ranked value, if any."""
     if given is not None:
         return Edit(path, "D", EditKind.REPLACE, (given,))
     attribute = dictionary_attribute(path.tag)
@@ -576,7 +580,7 @@ def _edit(
     key: DeidKey,
     identity: SubjectIdentity | None,
     numberings: SeriesNumberings | None,
-    dummy_datetimes: Mapping[ElementPath, str],
+    ranked_values: Mapping[ElementPath, str],
 ) -> Edit:
     """Return the edit of an element whose needed value, if any, is read."""
     kind = _kind(element, container)
@@ -596,7 +600,7 @@ def _edit(
         return Edit(path, element.action, kind)
     assert value is not None  # every U and D leaf has a consumer that reads it
     if element.action == "D":
-        return _dummy(element.path, value, key, dummy_datetimes.get(path))
+        return _dummy(element.path, value, key, ranked_values.get(path))
     return _uids(element.path, value, key)
 
 
@@ -760,7 +764,7 @@ def edit_instance(
     key: DeidKey,
     identity: SubjectIdentity | None = None,
     series_numberings: SeriesNumberings | None = None,
-    dummy_datetimes: Mapping[ElementPath, str] | None = None,
+    ranked_values: Mapping[ElementPath, str] | None = None,
 ) -> InstanceEdits:
     """Return what each element of a planned data set becomes.
 
@@ -780,11 +784,13 @@ def edit_instance(
         The numbering of each of the instance's Series Numbers, as the run
         gives it, for the ranks that replace them. Without them, the edits
         of the Series Numbers that Z or D applies to are pending.
-    dummy_datetimes : Mapping of ElementPath to str, optional
-        The value that D writes, in place of its dummy value, at each path,
-        which is the Observation DateTime (0040,A032) of a Procedure Log's
-        entry
-        (:func:`~pymedphys._dicom.deidentify.content_items.log_dummy_datetimes`).
+    ranked_values : Mapping of ElementPath to str, optional
+        The value that D writes, in place of its dummy value, at each path:
+        the Observation DateTime (0040,A032) of a Procedure Log's entry
+        (:func:`~pymedphys._dicom.deidentify.content_items.log_dummy_datetimes`),
+        and the Text Value (0040,A160) of an Imaging Agent Identifier,
+        Referenced Imaging Agent Identifier, or implant Component ID
+        (:attr:`~pymedphys._dicom.deidentify.content_items.ContentItemPlan.dummy_texts`).
         Defaults to none.
 
     Returns
@@ -824,7 +830,7 @@ def edit_instance(
                 key,
                 identity,
                 series_numberings,
-                dummy_datetimes or {},
+                ranked_values or {},
             )
             if edit.kind is EditKind.KEEP and element.path in plan.renumbered:
                 # The identifier names the same item, which the items removed

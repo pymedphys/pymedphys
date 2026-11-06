@@ -60,6 +60,9 @@ REQUESTED_PROCEDURE_ID = "(0040,1001)"
 RECORDED_SOURCE = "(3008,0100)"
 SOURCE_MANUFACTURER = "(300A,0216)"
 RADIOPHARMACEUTICAL_START_DATETIME = "(0018,1078)"
+# X in the Basic Profile; Type 1 in the Timezone Module, which the Simplified
+# Adult Echo SR IOD alone of the supported IODs makes mandatory.
+TIMEZONE_OFFSET_FROM_UTC = "(0008,0201)"
 RADIOPHARMACEUTICAL_INFORMATION = "(0054,0016)"
 # The first supported release's IODs that include the Overlay Plane Module.
 OVERLAY_IODS = ("CT Image", "MR Image", "Positron Emission Tomography Image")
@@ -633,6 +636,11 @@ def test_a_plain_x_on_a_required_attribute_in_the_first_release_iods(tables):
             (RADIOPHARMACEUTICAL_INFORMATION,),
             RADIOPHARMACEUTICAL_START_DATETIME,
         ): _removal(*SEQUESTER),
+        # Type 1 at the top level of the echo report, so every conforming
+        # instance is sequestered unless a temporal option keeps it (D-020).
+        ("Simplified Adult Echo SR", (), TIMEZONE_OFFSET_FROM_UTC): _removal(
+            *SEQUESTER
+        ),
         # Type 2 in each report's Type 1C Referenced Request Sequence,
         # required where the report was made for a request, which no Type 3
         # sequence encloses, so it is emptied there instead (D-020).
@@ -656,6 +664,11 @@ def test_a_plain_x_on_a_required_attribute_in_the_first_release_iods(tables):
                 "Spectacle Prescription Report",
                 "Macular Grid Thickness and Volume Report",
                 "Waveform Annotation SR",
+                "Implantation Plan SR Document",
+                "Simplified Adult Echo SR",
+                "Planned Imaging Agent Administration SR",
+                "Performed Imaging Agent Administration SR",
+                "Acquisition Context SR",
             )
         },
         # Type 2 in the RT Brachy Treatment Record's Type 1 Recorded Source
@@ -667,8 +680,8 @@ def test_a_plain_x_on_a_required_attribute_in_the_first_release_iods(tables):
             SOURCE_MANUFACTURER,
         ): _removal(*EMPTIED),
     }
-    # Ten attributes in all.
-    assert len({tag for _, _, tag in found}) == 10
+    # Eleven attributes in all.
+    assert len({tag for _, _, tag in found}) == 11
 
 
 # RT Brachy Treatment Record and RT Treatment Summary Record, which the

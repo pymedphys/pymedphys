@@ -16,16 +16,14 @@
 
 The Implantation Plan SR Document, Simplified Adult Echo SR, Planned and
 Performed Imaging Agent Administration SR, and Acquisition Context SR IODs
-are not supported yet, so the engine sequesters their instances. These
-tests show, ahead of supporting them, what the option does with their
-content trees (D-047): that every preset and Retain option, with the option
-added, keeps a report that holds only the rows that its templates require;
-which optional rows are removed on their own under each option set, among
-them concept names coded in a scheme that the engine cannot look up; the
-action that each listed value of a kept tree takes; and what is written and
-released, in the tests that add the IODs to the supported ones for that
-test alone, as supporting them would. The reports are synthetic, built from
-the templates of PS3.16 2026d by :mod:`._synthetic_procedure_reports`.
+are supported. These tests show what the option does with their content
+trees (D-047): that every preset and Retain option, with the option added,
+keeps a report that holds only the rows that its templates require; which
+optional rows are removed on their own under each option set, among them
+concept names coded in a scheme that the engine cannot look up; the action
+that each listed value of a kept tree takes; and what is written and
+released. The reports are synthetic, built from the templates of PS3.16
+2026d by :mod:`._synthetic_procedure_reports`.
 
 A preset with the option added is composed by adding it, for the test
 alone, to the options of every preset that does not select it, ``basic``
@@ -33,6 +31,8 @@ and ``basic-clean-descriptors``, so that the policy that Clean Descriptors
 falls back to, another preset's, selects it too.
 """
 
+import collections
+import copy
 import io
 import types
 
@@ -141,16 +141,6 @@ def _with_option(monkeypatch):
         ),
     )
     return policy.compose_policy
-
-
-@pytest.fixture(name="supported")
-def _supported(monkeypatch):
-    """Add the five IODs to the supported ones, as supporting them would."""
-    monkeypatch.setattr(
-        scope,
-        "SUPPORTED_IODS",
-        scope.SUPPORTED_IODS | {iod for _, iod in REPORTS.values()},
-    )
 
 
 def _header_sequestrations(name, composed):
@@ -283,14 +273,16 @@ def _released(composed, dataset):
     return result.data, decision
 
 
-def test_the_reports_are_of_iods_that_are_not_supported_yet():
+def test_every_report_is_of_a_supported_iod():
     for name, (build, iod) in REPORTS.items():
         dataset = build()
         classification = scope.classify(
             dataset.SOPClassUID, synthetic.EXPLICIT_VR_LITTLE_ENDIAN
         )
 
-        assert classification.reason == scope.UnsupportedIod(iod), name
+        assert classification == scope.Classification(
+            scope.Disposition.SUPPORTED, iod
+        ), name
         assert load_iod_tables().iods[iod].lookup(CONTENT, ()), name
         # Each IOD has the SR Document General Module, so each report can be
         # verified.
@@ -572,6 +564,11 @@ def _keepable(name, removed):
             "Person Observer Name": "D",
             # X/D, which Modified Dates modifies.
             "DateTime Started": "C",
+            # Not listed, but an ordinal, which is kept.
+            "Imaging Agent Administration Phase Identifier": "K",
+            # Not listed, but each takes D and its agent's ranked dummy, so
+            # that each activity names the same agent (D-022).
+            "Imaging Agent Identifier": "D",
         },
     ),
     (
@@ -608,8 +605,8 @@ def test_a_kept_tree_gives_each_listed_value_its_action(
 
     assert not plan.sequestrations
     assert _values_by_concept(dataset, actions) == values
-    # The other values, among them the imaging agent's identifier, its
-    # barcode, unit serial, and lot, the step's UID, and the animal's room,
+    # The other values, among them the imaging agent's barcode, unit
+    # serial, and lot, the step's UID, and the animal's room,
     # are not listed, so they take their own rules. A reference or a number
     # has no value attribute of its own: a reference kept under K or D keeps
     # its UIDs' own rules, and a number is kept.
@@ -643,7 +640,6 @@ RELEASED_UNDER_PUBLIC_RELEASE = {
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.4-01")
-@pytest.mark.usefixtures("supported")
 @pytest.mark.parametrize("name", RELEASED_UNDER_PUBLIC_RELEASE)
 def test_a_written_report_holds_no_source_value_and_is_released(with_option, name):
     expected, _ = _report(name, RELEASED_UNDER_PUBLIC_RELEASE[name])
@@ -667,7 +663,6 @@ def test_a_written_report_holds_no_source_value_and_is_released(with_option, nam
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.4-01")
-@pytest.mark.usefixtures("supported")
 def test_a_written_performed_administration_references_its_plan(with_option):
     dataset, _ = _report(PERFORMED, ("TID 11020 row 11",))
 
@@ -704,26 +699,176 @@ def test_an_administration_phase_is_identified_by_its_ordinal(name):
     assert phase.TextValue == reports.PHASE_ORDINAL == "1"
 
 
-@pytest.mark.xfail(
-    strict=True,
-    raises=AssertionError,
-    reason=(
-        "Imaging Agent Administration Phase Identifier is not listed in "
-        "Table E.3.4-1, so its Text Value takes Text Value's own rule, a "
-        "dummy value, which is not the numeric ordinal that TID 11008 row 2 "
-        "requires."
-    ),
-)
-@pytest.mark.usefixtures("supported")
 @pytest.mark.parametrize("name", [PLANNED, PERFORMED])
-def test_a_written_administration_phase_is_identified_by_an_ordinal(with_option, name):
+@pytest.mark.parametrize("preset, options", EVERY_OPTION_SET)
+def test_a_written_administration_phase_is_identified_by_an_ordinal(
+    with_option, name, preset, options
+):
     dataset, _ = _report(name, ("TID 11006 row 4",))
 
-    data, _ = _released(with_option("public-release"), dataset)
+    data, _ = _released(_composed(with_option, preset, options), dataset)
 
+    # Table E.3.4-1 does not list Imaging Agent Administration Phase
+    # Identifier, but its ordinal is kept, as the maintainer decided on 30
+    # October 2026, since TID 11007 is Order Non-Significant and the ordinal
+    # alone gives the phases' order.
     written = pydicom.dcmread(io.BytesIO(data))
     phase = _by_meaning(written, reports.PHASE_IDENTIFIER.meaning)
-    assert phase.TextValue.isdecimal(), phase.TextValue
+    assert phase.TextValue == reports.PHASE_ORDINAL
+
+
+@pytest.mark.parametrize(
+    "text, kept",
+    [
+        ("1", True),
+        ("2", True),
+        ("12", True),
+        ("07", True),
+        ("1A", False),
+        ("1.5", False),
+        ("-1", False),
+        ("PHASE 1", False),
+        ("", False),
+    ],
+)
+def test_only_a_phase_identifier_of_one_or_two_digits_is_kept(with_option, text, kept):
+    composed = with_option("basic")
+    dataset, iod = _report(PERFORMED, ("TID 11006 row 4",))
+    phase = _by_meaning(dataset, reports.PHASE_IDENTIFIER.meaning)
+    phase.TextValue = text
+
+    actions, _ = _planned(dataset, iod, composed)
+
+    # Any other value that is not three or more digits, which is no ordinal,
+    # takes Text Value's own rule (D-022), as the value of an item whose
+    # concept Table E.3.4-1 does not list does, and gives no action here,
+    # while the tree is kept either way.
+    assert actions.get(ElementPath((), CONTENT)) == "K"
+    assert _values_by_concept(dataset, actions).get(
+        reports.PHASE_IDENTIFIER.meaning
+    ) == ("K" if kept else None)
+
+
+@pytest.mark.parametrize("text", ["100", "123", "007", "1000", "99999"])
+def test_a_phase_identifier_of_three_or_more_digits_sequesters_the_report(
+    with_option, text
+):
+    composed = with_option("basic")
+    dataset, iod = _report(PERFORMED, ("TID 11006 row 4",))
+    _by_meaning(dataset, reports.PHASE_IDENTIFIER.meaning).TextValue = text
+
+    _, plan = _planned(dataset, iod, composed)
+
+    # An ordinal that is not kept would leave its phase without one, since
+    # Text Value's own rule writes a dummy value that is not a number, so the
+    # Content Sequence takes its Basic Profile action, as where an item
+    # cannot be read (D-022).
+    assert {s.path for s in plan.sequestrations} == {ElementPath((), CONTENT)}
+
+
+def _with_phases(name, count):
+    """Return a report whose one step has ``count`` phases, each of 1 ml.
+
+    TID 11007 row 13 includes TID 11008 1-n times, and TID 11008 row 2
+    numbers each phase by its ordinal, from 1. A performed administration
+    gives each phase its own UID (TID 11008 row 3).
+    """
+    dataset, iod = _report(name, ("TID 11006 row 4",))
+    step = _by_meaning(dataset, reports.ADMINISTRATION_STEP.meaning)
+    first = _by_meaning(step, reports.ADMINISTRATION_PHASE.meaning)
+    phases = []
+    for ordinal in range(1, count + 1):
+        phase = copy.deepcopy(first)
+        _by_meaning(phase, reports.PHASE_IDENTIFIER.meaning).TextValue = str(ordinal)
+        volume = _by_meaning(phase, reports.TOTAL_PHASE_VOLUME.meaning)
+        volume.MeasuredValueSequence[0].NumericValue = "1"
+        if name == PERFORMED:
+            uid = _by_meaning(phase, reports.PERFORMED_PHASE_UID_CONCEPT.meaning)
+            uid.UID = f"{reports.PERFORMED_PHASE_UID}.{ordinal}"
+        phases.append(phase)
+    (position,) = [
+        index for index, each in enumerate(step.ContentSequence) if each is first
+    ]
+    children = list(step.ContentSequence)
+    children[position : position + 1] = phases
+    step.ContentSequence = pydicom.Sequence(children)
+    return dataset, iod
+
+
+@pytest.mark.parametrize("name", [PLANNED, PERFORMED])
+@pytest.mark.parametrize("preset", ["tps-import", "public-release"])
+def test_a_step_of_99_phases_is_released_with_every_ordinal(with_option, name, preset):
+    dataset, _ = _with_phases(name, 99)
+
+    data, decision = _released(with_option(preset), dataset)
+
+    written = pydicom.dcmread(io.BytesIO(data))
+    step = _by_meaning(written, reports.ADMINISTRATION_STEP.meaning)
+    ordinals = [
+        each.ContentSequence[0].TextValue
+        for each in step.ContentSequence
+        if each.ConceptNameCodeSequence[0].CodeMeaning
+        == reports.ADMINISTRATION_PHASE.meaning
+    ]
+    assert ordinals == [str(ordinal) for ordinal in range(1, 100)]
+    assert isinstance(decision, run.Release), decision
+
+
+@pytest.mark.parametrize("name", [PLANNED, PERFORMED])
+@pytest.mark.parametrize("preset", ["tps-import", "public-release"])
+def test_a_step_of_100_phases_is_sequestered(with_option, name, preset):
+    dataset, _ = _with_phases(name, 100)
+
+    result = _transformed(with_option(preset), dataset)
+
+    # Phase 100's ordinal is not kept, and its dummy value would leave that
+    # phase without one, in a released report whose phases' order only the
+    # ordinals give (TID 11007 is Order Non-Significant).
+    assert isinstance(result, run.Sequestered), result
+
+
+def test_reading_a_content_tree_decodes_each_sequence_once(monkeypatch):
+    # Decoding the step's Content Sequence again for each of its phases
+    # would take time that grows with the square of the tree's size; the
+    # 99-phase reports above took minutes to read that way.
+    read_element = content_items.read_element
+    reads = collections.Counter()
+    decoded = collections.Counter()
+    widths = {}
+
+    def counted(dataset, path, *args, **kwargs):
+        element = read_element(dataset, path, *args, **kwargs)
+        reads[path] += 1
+        if element.items:
+            decoded[path] += 1
+            widths[path] = len(element.items)
+        return element
+
+    monkeypatch.setattr(content_items, "read_element", counted)
+    dataset, iod = _with_phases(PLANNED, 20)
+
+    _planned(dataset, iod, policy.compose_custom_policy((CSC,)))
+
+    # The step's Content Sequence, which holds the 20 phases, was read.
+    assert max(widths.values()) >= 20
+    assert set(decoded.values()) == {1}
+    # Each element is read at most twice, so the reads grow with the tree.
+    assert max(reads.values()) <= 2
+
+
+def test_another_text_item_of_digits_takes_its_own_rule(with_option):
+    composed = with_option("basic")
+    dataset, iod = _report(PERFORMED, ("TID 11006 row 4",))
+    steps = _by_meaning(dataset, reports.STEPS_NAME.meaning)
+    steps.TextValue = reports.PHASE_ORDINAL
+
+    actions, _ = _planned(dataset, iod, composed)
+
+    # The ordinal is kept by its concept, not by its value.
+    assert reports.STEPS_NAME.meaning not in _values_by_concept(dataset, actions)
+    assert content_items.PHASE_IDENTIFIER not in content_items.concept_actions(
+        composed.options
+    )
 
 
 @pytest.mark.parametrize("name", [PLANNED, PERFORMED])
@@ -759,7 +904,6 @@ def test_a_udi_coded_as_tid_11004_gives_it_is_kept_only_with_device_identity(
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.4-01")
-@pytest.mark.usefixtures("supported")
 @pytest.mark.parametrize("name", [PLANNED, PERFORMED])
 def test_a_udi_is_not_released(with_option, name):
     dataset, _ = _report(name, ("TID 11004 row 26",))
@@ -794,7 +938,6 @@ def test_a_verified_report_is_planned_as_an_unverified_one_is(
     ]
 
 
-@pytest.mark.usefixtures("supported")
 @pytest.mark.parametrize("name", REPORTS)
 def test_a_verified_report_is_written_with_a_dummy_verifier(with_option, name):
     dataset, _ = _report(name, verified=True)

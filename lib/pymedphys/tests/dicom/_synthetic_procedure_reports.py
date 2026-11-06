@@ -179,6 +179,16 @@ IMPLANT_ASSEMBLY_TEMPLATE = Code("112366", "DCM", "Implant Assembly Template")
 SELECTED_IMPLANT_COMPONENT = Code("112346", "DCM", "Selected Implant Component")
 COMPONENT_ID = Code("112347", "DCM", "Component ID")
 MANUFACTURER_IMPLANT_TEMPLATE = Code("112371", "DCM", "Manufacturer Implant Template")
+COMPONENT_TYPE = Code("112370", "DCM", "Component Type")
+ASSEMBLY = Code("112355", "DCM", "Assembly")
+COMPONENT_CONNECTION = Code("112350", "DCM", "Component Connection")
+CONNECTED_COMPONENT = Code("112374", "DCM", "Connected Implantation Plan Component")
+MATING_FEATURE_SET_ID = Code("112351", "DCM", "Mating Feature Set ID")
+MATING_FEATURE_ID = Code("112352", "DCM", "Mating Feature ID")
+# Component types of CID 7308, which CID 7307 includes.
+ACETABULAR_CUP_SHELL = Code("112305", "DCM", "Acetabular Cup Shell")
+FEMORAL_HEAD_BALL = Code("112308", "DCM", "Femoral Head Ball Component")
+FEMORAL_STEM = Code("112310", "DCM", "Femoral Stem")
 INFORMATION_USED_FOR_PLANNING = Code("112358", "DCM", "Information used for planning")
 PATIENT_IMAGE = Code("112354", "DCM", "Patient Image")
 PATIENT_DATA_USED_DURING_PLANNING = Code(
@@ -255,6 +265,11 @@ PERFORMED_PHASE_UID_CONCEPT = Code(
 )
 TOTAL_PHASE_VOLUME = Code("130240", "DCM", "Total Phase Volume Administered")
 DATETIME_STARTED = Code("111526", "DCM", "DateTime Started")
+PHASE_TYPE = Code("130204", "DCM", "Imaging Agent Administration Phase Type")
+ADMINISTRATION_ACTIVITY = Code("130237", "DCM", "Imaging Agent Administration Activity")
+REFERENCED_AGENT = Code("130255", "DCM", "Referenced Imaging Agent Identifier")
+VOLUME_ADMINISTERED = Code("122091", "DCM", "Volume Administered")
+STARTING_FLOW_RATE = Code("130208", "DCM", "Starting Flow Rate of Administration")
 ADVERSE_EVENTS = Code("130212", "DCM", "Imaging Agent Administration Adverse Events")
 ADVERSE_EVENT = Code("C41331", "NCIt", "Adverse Event")
 ADVERSE_EVENT_DETECTION = Code("130215", "DCM", "Adverse Event Detection DateTime")
@@ -282,7 +297,12 @@ TRANSTHORACIC_ECHOCARDIOGRAPHY = Code(
 COMPLETE = Code("255594003", "SCT", "Complete")  # CID 67
 NO = Code("373067005", "SCT", "No")  # CID 230
 IOHEXOL = Code("109218004", "SCT", "Iohexol")  # CID 12
+IOPAMIDOL = Code("109219007", "SCT", "Iopamidol")  # CID 12
 MANUAL_ADMINISTRATION = Code("130174", "DCM", "Manual Administration")  # CID 63
+AUTOMATED_ADMINISTRATION = Code("130173", "DCM", "Automated Administration")  # CID 63
+PROGRAMMED_PHASE = Code(
+    "130168", "DCM", "Automatic Programmed Administration Phase"
+)  # CID 62
 NURSE = Code("106292003", "SCT", "Nurse")  # CID 7450, by CID 7452
 DIAGNOSTIC_ADMINISTRATION = Code("130249", "DCM", "Diagnostic Administration")  # CID 72
 INTRAVENOUS_ROUTE = Code("47625008", "SCT", "Intravenous route")  # CID 11
@@ -291,6 +311,7 @@ PERCENT = Code("%", "UCUM", "%")  # CID 12309
 CENTIMETRE = Code("cm", "UCUM", "cm")  # CID 12300
 MM_PER_PIXEL = Code("mm/{pixel}", "UCUM", "mm/pixel")  # TID 7000 rows 31, 32
 MILLILITRE = Code("ml", "UCUM", "ml")  # TID 11008 row 6
+ML_PER_SECOND = Code("ml/s", "UCUM", "ml/s")  # TID 11003 row 4
 NO_UNITS = Code("1", "UCUM", "no units")  # TID 11007 row 20
 KILOGRAM = Code("kg", "UCUM", "kg")  # TID 10024 row 6
 KG_PER_SQUARE_METRE = Code("kg/m2", "UCUM", "kg/m2")  # TID 10024 row 9
@@ -340,18 +361,27 @@ IMPLANTATION_OPTIONAL_ROWS = (
 )
 
 
-def _selected_component():
+def _selected_component(identifier=f"{SENTINEL} STEM", component_type=None):
     """Return TID 7000 row 8, one Selected Implant Component, with its M rows.
 
     Row 10, the Component Type, is required only where row 8 has more than
-    one item. Row 11, unnamed, and row 13 each reference a Generic Implant
-    Template: the one selected and the manufacturer's that it derives from.
+    one item, and is included where ``component_type`` is given; TID 7000
+    gives it CID 7306, but the template's note points to Component Type Code
+    Sequence (0076,0034), whose codes are CID 7307's. Row 11, unnamed, and
+    row 13 each reference a Generic Implant Template: the one selected and
+    the manufacturer's that it derives from.
     """
+    kind = (
+        []
+        if component_type is None
+        else [item("CONTAINS", "CODE", COMPONENT_TYPE, code=component_type)]
+    )
     return item(
         "CONTAINS",
         "CONTAINER",
         SELECTED_IMPLANT_COMPONENT,
-        item("CONTAINS", "TEXT", COMPONENT_ID, text=f"{SENTINEL} STEM"),
+        item("CONTAINS", "TEXT", COMPONENT_ID, text=identifier),
+        *kind,
         _composite("CONTAINS", None, GENERIC_IMPLANT_TEMPLATE, SELECTED_TEMPLATE),
         item(
             "CONTAINS",
@@ -515,6 +545,58 @@ def implantation_tree(optional=()):
     )
 
 
+def _connected_component(identifier, feature_set, feature):
+    """Return TID 7000 row 16, one end of a connection, with its M rows."""
+    return item(
+        "CONTAINS",
+        "CONTAINER",
+        CONNECTED_COMPONENT,
+        item("CONTAINS", "TEXT", COMPONENT_ID, text=identifier),
+        item("CONTAINS", "TEXT", MATING_FEATURE_SET_ID, text=feature_set),
+        item("CONTAINS", "TEXT", MATING_FEATURE_ID, text=feature),
+    )
+
+
+def components_tree(components, connections):
+    """Return the root of an implantation plan of several connected components.
+
+    It is :func:`implantation_tree`'s required rows, with one Selected
+    Implant Component for each of ``components``, a pair of its Component ID
+    (row 9) and Component Type (row 10), and one Assembly (row 14), which
+    holds a Component Connection (row 15) for each of ``connections``, a
+    pair of the Component IDs (row 17) of its two Connected Implantation Plan
+    Components (row 16). Each end connects its component's mating feature
+    set numbered by the connection's position, so that no set has two
+    connections (row 18); the mating features' identifiers are those of an
+    implant template, which the plan does not hold.
+    """
+    connected = [
+        item(
+            "CONTAINS",
+            "CONTAINER",
+            COMPONENT_CONNECTION,
+            *(
+                _connected_component(end, f"SET {position}", f"FEATURE {side}")
+                for side, end in enumerate(pair, start=1)
+            ),
+        )
+        for position, pair in enumerate(connections, start=1)
+    ]
+    return item(
+        None,
+        "CONTAINER",
+        IMPLANTATION_PLAN_TITLE,
+        *_observation_context(()),
+        item(
+            "CONTAINS",
+            "CONTAINER",
+            IMPLANT_COMPONENT_LIST,
+            *(_selected_component(*each) for each in components),
+        ),
+        item("CONTAINS", "CONTAINER", ASSEMBLY, *connected),
+    )
+
+
 ECHO_OPTIONAL_ROWS = (
     "TID 5300 row 2",
     "TID 5300 row 4",
@@ -648,10 +730,10 @@ def udi_item():
     return dataset
 
 
-def _component(optional, barcode):
+def _component(optional, barcode, drug=IOHEXOL):
     """Return TID 11002 row 5, TID 11004 "Imaging Agent Component".
 
-    Row 2, the drug administered, here iohexol from CID 12, is required.
+    Row 2, the drug administered, ``drug`` from CID 12, is required.
     ``barcode`` is the key of the row of the Barcode Value that the root
     selects: TID 11004 row 22 for a plan, and row 23 for a performed
     administration.
@@ -664,7 +746,7 @@ def _component(optional, barcode):
         "CONTAINS",
         "CONTAINER",
         IMAGING_AGENT_COMPONENT,
-        item("CONTAINS", "CODE", DRUG_ADMINISTERED, code=IOHEXOL),
+        item("CONTAINS", "CODE", DRUG_ADMINISTERED, code=drug),
         *_chosen(
             optional,
             [
@@ -692,26 +774,26 @@ def _component(optional, barcode):
     )
 
 
-def _agent_information(optional, barcode):
+def _agent_information(
+    optional, barcode, identifier=f"{SENTINEL} SYRINGE A", drug=IOHEXOL
+):
     """Return TID 11001 and TID 11020 row 7, TID 11002, with its M rows.
 
-    The agent is not warmed (row 3, from CID 230), and its one component
-    usage (row 4) includes TID 11004 (row 5); with one usage, row 6 is
-    absent.
+    The agent, identified by ``identifier`` (row 2), is not warmed (row 3,
+    from CID 230), and its one component usage (row 4) includes TID 11004
+    (row 5), of ``drug``; with one usage, row 6 is absent.
     """
     return item(
         "CONTAINS",
         "CONTAINER",
         IMAGING_AGENT_INFORMATION,
-        item(
-            "CONTAINS", "TEXT", IMAGING_AGENT_IDENTIFIER, text=f"{SENTINEL} SYRINGE A"
-        ),
+        item("CONTAINS", "TEXT", IMAGING_AGENT_IDENTIFIER, text=identifier),
         item("CONTAINS", "CODE", IMAGING_AGENT_WARMED, code=NO),
         item(
             "CONTAINS",
             "CONTAINER",
             COMPONENT_USAGE,
-            _component(optional, barcode),
+            _component(optional, barcode, drug),
         ),
     )
 
@@ -886,6 +968,91 @@ def planned_tree(optional=()):
             ],
         ),
         _steps(optional, performed=False),
+    )
+
+
+def _activity(identifier, volume):
+    """Return TID 11008 row 5, TID 11003, an activity of an automated step.
+
+    It names its agent by ``identifier`` (row 2), a value of TID 11002 row
+    2, and gives the volume administered (row 3) and, as an automated
+    administration requires, its starting flow rate (row 4); with no bolus
+    shaping curve (row 7), row 5 is absent, as rows 6, 9, and 10 are from a
+    plan.
+    """
+    return item(
+        "CONTAINS",
+        "CONTAINER",
+        ADMINISTRATION_ACTIVITY,
+        item("CONTAINS", "TEXT", REFERENCED_AGENT, text=identifier),
+        item("CONTAINS", "NUM", VOLUME_ADMINISTERED, number=volume, units=MILLILITRE),
+        item("CONTAINS", "NUM", STARTING_FLOW_RATE, number="4", units=ML_PER_SECOND),
+    )
+
+
+def _automated_step(activities, total):
+    """Return TID 11006 row 4, TID 11007, a planned automated step, with its M rows.
+
+    The step is a diagnostic administration (row 6, from CID 72) given
+    intravenously (row 10, from CID 11) by an injector (row 4, from CID
+    63), so row 5, for a manual administration, is absent. Its one phase
+    (row 13, TID 11008), the first, is a programmed administration (TID
+    11008 row 4, from CID 62, as an automated step requires) of
+    ``activities`` (row 5, TID 11003), whose volumes sum to ``total`` (row
+    6). A plan numbers the step (TID 11007 row 20).
+    """
+    phase = item(
+        "CONTAINS",
+        "CONTAINER",
+        ADMINISTRATION_PHASE,
+        item("CONTAINS", "TEXT", PHASE_IDENTIFIER, text=PHASE_ORDINAL),
+        item("CONTAINS", "CODE", PHASE_TYPE, code=PROGRAMMED_PHASE),
+        *activities,
+        item("CONTAINS", "NUM", TOTAL_PHASE_VOLUME, number=total, units=MILLILITRE),
+    )
+    return item(
+        "CONTAINS",
+        "CONTAINER",
+        ADMINISTRATION_STEP,
+        item("CONTAINS", "TEXT", STEP_IDENTIFIER, text=f"{SENTINEL} STEP 1"),
+        item("CONTAINS", "CODE", ADMINISTRATION_MODE, code=AUTOMATED_ADMINISTRATION),
+        item("CONTAINS", "CODE", STEP_TYPE, code=DIAGNOSTIC_ADMINISTRATION),
+        item("CONTAINS", "CODE", ROUTE_OF_ADMINISTRATION, code=INTRAVENOUS_ROUTE),
+        phase,
+        item("CONTAINS", "NUM", STEP_SEQUENCE_NUMBER, number="1", units=NO_UNITS),
+    )
+
+
+def planned_agents_tree(agents, activities):
+    """Return a planned administration's tree, TID 11001, of several agents.
+
+    TID 11001 row 7 includes TID 11002 once for each of ``agents``, pairs
+    of an identifier and a drug from CID 12, in order, and its steps (row
+    10, TID 11006) hold one automated step (TID 11006 row 4), whose one
+    phase gives ``activities``, pairs of the identifier that each names and
+    the volume it administers, in their order, which need not be the
+    agents'. Otherwise it holds the rows that :func:`planned_tree` requires.
+    """
+    total = str(sum(int(volume) for _, volume in activities))
+    return item(
+        None,
+        "CONTAINER",
+        PLANNED_ADMINISTRATION_TITLE,
+        *_observation_context(()),
+        *(
+            _agent_information((), "TID 11004 row 22", identifier, drug)
+            for identifier, drug in agents
+        ),
+        item(
+            "CONTAINS",
+            "CONTAINER",
+            ADMINISTRATION_STEPS,
+            item("CONTAINS", "TEXT", STEPS_NAME, text=f"{SENTINEL} CT ANGIOGRAM"),
+            _automated_step(
+                [_activity(identifier, volume) for identifier, volume in activities],
+                total,
+            ),
+        ),
     )
 
 
@@ -1109,6 +1276,15 @@ def implantation_plan(optional=(), *, verified=False):
     )
 
 
+def implantation_plan_of_components(components, connections):
+    """Return an Implantation Plan SR Document of :func:`components_tree`."""
+    return _report(
+        (IMPLANTATION_PLAN_SR, IMPLANTATION_PLAN, "7000"),
+        components_tree(components, connections),
+        False,
+    )
+
+
 def echo_report(
     optional=(), *, measurement=LV_GLOBAL_LONGITUDINAL_STRAIN, verified=False
 ):
@@ -1135,6 +1311,15 @@ def planned_administration(optional=(), *, verified=False):
         (PLANNED_ADMINISTRATION_SR, PLANNED_ADMINISTRATION, "11001"),
         planned_tree(optional),
         verified,
+    )
+
+
+def planned_administration_of_agents(agents, activities):
+    """Return a Planned Imaging Agent Administration SR of :func:`planned_agents_tree`."""
+    return _report(
+        (PLANNED_ADMINISTRATION_SR, PLANNED_ADMINISTRATION, "11001"),
+        planned_agents_tree(agents, activities),
+        False,
     )
 
 
