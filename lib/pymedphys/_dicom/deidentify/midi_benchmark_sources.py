@@ -74,11 +74,17 @@ def source_state(source: pydicom.Dataset, check: Check) -> str | None:
 def is_source_gap(check: Check, source: pydicom.Dataset | None) -> bool:
     """Whether a failed check fails on its source instance too.
 
-    Only a check that asks for an attribute, or a value of it, to be present
-    can; where it does, the source had nothing to keep. A failure that the
-    policy explains is a deliberate difference, not a source gap.
+    Only a check that asks for an attribute, or a value of it, to be present,
+    or for the Pixel Data to be kept, can; where it does, the source had
+    nothing to keep. A failure that the policy explains is a deliberate
+    difference, not a source gap.
     """
-    if source is None or check.action not in (Action.TAG_RETAINED, Action.TEXT_NOTNULL):
+    if source is None:
+        return False
+    if check.action is Action.PIXELS_RETAINED:
+        # Such as an SR instance's: the source holds no Pixel Data to keep.
+        return 0x7FE00010 not in source
+    if check.action not in (Action.TAG_RETAINED, Action.TEXT_NOTNULL):
         return False
     state = source_state(source, check)
     return state == ABSENT or (check.action is Action.TEXT_NOTNULL and state == EMPTY)

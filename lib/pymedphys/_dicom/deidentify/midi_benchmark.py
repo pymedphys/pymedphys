@@ -75,7 +75,8 @@ separately for each answer-key category rather than as one score:
   the standard, so these are counted by category, attribute, and action,
   apart from failures;
 - the **source gaps**: each other failed check that asked for an attribute,
-  or a value of it, to be present, and fails on the source instance too;
+  or a value of it, to be present, or for the Pixel Data to be kept, and
+  fails on the source instance too;
 - the **findings**: every other failed check, such as a value that should
   have been removed and was not, however the policy explains it. Each
   failed check that asked for an attribute, or a value, to be present is

@@ -300,6 +300,19 @@ def test_a_present_check_that_fails_on_the_source_too_is_a_source_gap(
     assert sources.is_source_gap(check, None) is False
 
 
+def test_a_pixel_data_check_is_a_source_gap_only_where_the_source_has_none():
+    check = read_answer_check("pixels_retained", None, text="0" * 32)
+    source = _released_ct()
+
+    # The source has Pixel Data, so its absence is the release's.
+    assert sources.is_source_gap(check, source) is False
+
+    del source.PixelData
+    # As in an SR instance: the source has no Pixel Data to keep.
+    assert sources.is_source_gap(check, source) is True
+    assert sources.is_source_gap(check, None) is False
+
+
 def test_a_kept_text_finding_is_described_by_its_source(tmp_path):
     # The source has Rows 2, so a key that asks for 3 fails on it too.
     key = _answer_key(

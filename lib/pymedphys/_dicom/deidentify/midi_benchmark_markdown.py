@@ -279,7 +279,7 @@ def render_markdown(document: Mapping[str, object]) -> str:
         "## Source gaps",
         "",
         "Checks that asked for an attribute, or a value of it, to be present, "
-        "and fail on the source instance too:",
+        "or for the Pixel Data to be kept, and fail on the source instance too:",
         "",
     ]
     lines += _rows_or_none(

@@ -684,6 +684,41 @@ def test_a_benchmark_run_scores_each_category_and_writes_the_scripts_inputs(
     assert (work / "qc").is_dir()
 
 
+def test_a_pixel_data_check_of_an_instance_without_pixel_data_is_a_source_gap(
+    tmp_path,
+):
+    # As in an SR instance: the source holds no Pixel Data, so no
+    # de-identifier could keep it, and the check is not a finding.
+    key = _answer_key(
+        tmp_path / "key.db",
+        [
+            _row(
+                synthetic.DOSE,
+                [_check("pixels_retained", text="0" * 32)],
+                series=synthetic.DOSE_SERIES,
+                sop_class=synthetic.RT_DOSE_STORAGE,
+                modality="RTDOSE",
+            )
+        ],
+    )
+
+    document = benchmark.run_benchmark(
+        _source(tmp_path), key, tmp_path / "work"
+    ).document
+
+    assert document["coverage"]["instances"]["released"] == 1
+    assert _category(document, "tcia", "TCIA-P15-PIX-K")["source_gap"] == 1
+    assert document["source_gaps"] == [
+        {
+            "category": "tcia TCIA-P15-PIX-K",
+            "action": "pixels_retained",
+            "attribute": None,
+            "checks": 1,
+        }
+    ]
+    assert document["findings"] == []
+
+
 def test_the_mapping_files_name_what_the_run_wrote(tmp_path):
     work = tmp_path / "work"
     benchmark.run_benchmark(_source(tmp_path), _benchmark_key(tmp_path), work)
