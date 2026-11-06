@@ -208,6 +208,7 @@ from .midi_benchmark_sources import (
     reason_code,
     reason_places,
 )
+from .midi_benchmark_text import TextCounter
 from .midi_benchmark_values import (
     compare_text,
     element_text,
@@ -497,10 +498,11 @@ def run_benchmark(
     work.mkdir(mode=0o700)
     release = work / "release"
     errors = ErrorRecorder()
+    text = None if finder is None else TextCounter()
     result = run.run(
         discovery,
         release,
-        errors.transform(transform),
+        errors.transform(transform if text is None else text.transform(transform)),
         errors.gate(ReleaseGate()),
         qc_destination=work / "qc",
         reporter=transform.reporter,
@@ -526,6 +528,7 @@ def run_benchmark(
         sources=discovery.paths,
         watched=frozenset(watched),
         defacing=defacing_counts(transform),
+        text_detection=None if text is None else text.counts(),
         shard=shard,
         outside=outside,
     )
@@ -813,6 +816,7 @@ def score(  # pylint: disable = too-many-arguments, too-many-locals
     sources: Sequence[Path] = (),
     watched: Collection[str] = (),
     defacing: Mapping[str, object] | None = None,
+    text_detection: Mapping[str, object] | None = None,
     shard: Shard | None = None,
     outside: Collection[str] = frozenset(),
 ) -> Benchmark:
@@ -832,7 +836,9 @@ def score(  # pylint: disable = too-many-arguments, too-many-locals
     an attribute in ``watched``, such as ``(0020,0011)``, is counted by
     where it ended up. ``defacing``, under Clean Recognizable Visual
     Features, counts what the transform found to deface
-    (:func:`defacing_counts`).
+    (:func:`defacing_counts`), and ``text_detection``, under Clean Pixel
+    Data, what the text detector found, by SOP Class
+    (:meth:`~pymedphys._dicom.deidentify.midi_benchmark_text.TextCounter.counts`).
 
     In a ``shard`` of a run, the checks of the instances in ``outside``,
     which other shards hold, are not scored, and nor, outside the first
@@ -1011,6 +1017,9 @@ def score(  # pylint: disable = too-many-arguments, too-many-locals
             "no_sop_class": no_sop_class_rows(no_sop_class),
             "internal_errors": [dict(error) for error in internal_errors],
             "defacing": None if defacing is None else dict(defacing),
+            "text_detection": (
+                None if text_detection is None else dict(text_detection)
+            ),
             "not_released": [
                 {
                     "context": context,

@@ -37,6 +37,7 @@ from pymedphys._dicom.deidentify.face_blocks import FaceBlockCounts, SeriesProbl
 from pymedphys._dicom.deidentify import midi_benchmark as benchmark
 from pymedphys._dicom.deidentify import midi_benchmark_command, midi_script_results
 from pymedphys._dicom.deidentify import midi_benchmark_flips as flips
+from pymedphys._dicom.deidentify import midi_benchmark_text
 from pymedphys._dicom.deidentify.keys import DeidKey, read_key_file
 from pymedphys._dicom.deidentify.midi_answer_key import (
     AnswerInstance,
@@ -374,12 +375,56 @@ def test_clean_pixel_data_runs_the_text_detector(sources, monkeypatch):
         return CLEAN_PIXEL_DATA_RUN.finder
 
     monkeypatch.setattr(benchmark, "TextDetector", detector)
-    _, document = _run(sources, "option", options=["clean_pixel_data"])
+    work, document = _run(sources, "option", options=["clean_pixel_data"])
 
     assert made == [True]
     # The finder marks every frame, and no reviewer attests a benchmark's
     # regions, so the CT slice is held for review.
-    assert document["coverage"]["withheld_reasons"] == {"HeldPixelData": 1}
+    assert document["coverage"]["withheld_reasons"] == {
+        "pixel-data: text-blacked-out": 1
+    }
+    (ct,) = document["coverage"]["text_detection"].values()
+    assert {name: ct[name] for name in midi_benchmark_text.COUNTED} == {
+        "instances": 1,
+        "instances_with_a_region": 1,
+        "frames": 1,
+        "frames_with_a_region": 1,
+        "regions": 1,
+    }
+    assert ct["frames_by_regions"]["1 to under 2"] == 1
+    assert list(document["coverage"]["text_detection"]) == ["CT Image Storage"]
+    markdown = (work / "benchmark.md").read_text()
+    assert "| CT Image Storage | 1 | 1 | 1 | 1 | 1 |" in markdown
+    assert "| CT Image Storage | 0 | 1 | 0 | 0 | 0 | 0 | 0 | 0 |" in markdown
+
+
+class _NoTextFinder:
+    """Finds no text in any frame."""
+
+    method = {"finder": "none"}
+
+    def find(self, frame):
+        del frame
+        return ()
+
+
+def test_a_frame_without_text_is_counted_and_still_held(sources, monkeypatch):
+    monkeypatch.setattr(benchmark, "TextDetector", _NoTextFinder)
+    _, document = _run(sources, "option", options=["clean_pixel_data"])
+
+    # Clean Pixel Data holds an instance whose detector found no text, too,
+    # for a reviewer to look for text that it missed.
+    assert document["coverage"]["withheld_reasons"] == {"pixel-data: no-text-found": 1}
+    (ct,) = document["coverage"]["text_detection"].values()
+    assert (ct["instances"], ct["instances_with_a_region"]) == (1, 0)
+    assert (ct["frames"], ct["frames_with_a_region"], ct["regions"]) == (1, 0, 0)
+    assert ct["frames_by_regions"]["0 to under 1"] == 1
+
+
+def test_without_clean_pixel_data_nothing_is_searched(sources):
+    _, document = _run(sources, "basic")
+
+    assert document["coverage"]["text_detection"] is None
 
 
 def test_an_unloadable_text_detector_is_refused(tmp_path, monkeypatch):

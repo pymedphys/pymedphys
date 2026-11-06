@@ -44,7 +44,9 @@ from pymedphys._imports import pydicom
 from .midi_answer_key import Action, Check
 from .midi_benchmark_errors import uid_name
 from .midi_benchmark_values import element_text, find_element, held_words, unbracketed
+from .reasons import HeldDescriptor, HeldPixelData, HeldRoiName, HeldVisualFeatures
 from .technique_descriptors import TechniqueVocabulary, load_technique_vocabulary
+from .walker import Sequestration
 
 ABSENT = "absent"
 EMPTY = "empty"
@@ -415,11 +417,40 @@ def _tags(path: object) -> str:
     return "/".join([*(tag for tag, _ in items), str(getattr(path, "tag", ""))])
 
 
+# The stage that the release report names a reason by, where the reason
+# gives its code as its ``reason``: an option's hold for review, or the
+# walker's sequestration at an element.
+_STAGES: tuple[tuple[type, str], ...] = (
+    (HeldRoiName, "roi-names"),
+    (HeldDescriptor, "descriptors"),
+    (HeldPixelData, "pixel-data"),
+    (HeldVisualFeatures, "visual-features"),
+    (Sequestration, "walker"),
+)
+
+
 def reason_code(reason: object) -> str:
-    """Return a withheld input's reason as a code, without a value."""
+    """Return a withheld input's reason as a code, without a value.
+
+    That is the reason's code, where it has one of the engine's; for an
+    option's hold for review, or the walker's sequestration at an element,
+    the stage and code that the release report gives it, such as
+    ``pixel-data: no-text-found``; and otherwise the reason's type.
+
+    >>> from pymedphys._dicom.deidentify.reasons import (
+    ...     HeldPixelData,
+    ...     PixelDataReason,
+    ... )
+    >>> reason_code(HeldPixelData(PixelDataReason.NO_TEXT_FOUND))
+    'pixel-data: no-text-found'
+    """
     code = getattr(reason, "code", None)
     if isinstance(code, enum.Enum):
         return str(code.value)
     if isinstance(reason, enum.Enum):
         return str(reason.value)
+    held = getattr(reason, "reason", None)
+    for kind, stage in _STAGES:
+        if isinstance(reason, kind) and isinstance(held, enum.Enum):
+            return f"{stage}: {held.value}"
     return type(reason).__name__

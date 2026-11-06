@@ -24,6 +24,7 @@ from __future__ import annotations
 from collections.abc import Iterable, Mapping, Sequence
 
 from .midi_benchmark_sources import EXPLAINED, WATCHED
+from .midi_benchmark_text import COUNTED, FRAMES_BY_REGIONS, REGION_BINS
 
 
 def render_markdown(document: Mapping[str, object]) -> str:
@@ -88,6 +89,9 @@ def render_markdown(document: Mapping[str, object]) -> str:
             *_rows_or_none(("Reason", "CT series"), list(not_defaced.items())),
             "",
         ]
+    text = coverage.get("text_detection")
+    if isinstance(text, Mapping):
+        lines += _text_detection(text)
     places = coverage.get("withheld_places", [])
     if places:
         lines += [
@@ -443,6 +447,41 @@ def _headline(headline: object) -> str:
             ("All checks", total, share(total)),
         ],
     )
+
+
+def _text_detection(counts: Mapping[str, object]) -> list[str]:
+    """What Clean Pixel Data's text detector found, by SOP Class."""
+    found = [(name, each) for name, each in counts.items() if isinstance(each, Mapping)]
+    return [
+        "What Clean Pixel Data's text detector found, by SOP Class: the "
+        "instances and frames that it searched, those in which it found a "
+        "region, and the regions. No reviewer approves a benchmark's regions, "
+        "so the run releases none of the instances that it searched:",
+        "",
+        *_rows_or_none(
+            (
+                "SOP Class",
+                "Instances",
+                "Instances with a region",
+                "Frames",
+                "Frames with a region",
+                "Regions",
+            ),
+            [(name, *(each[field] for field in COUNTED)) for name, each in found],
+        ),
+        "",
+        "Frames by the regions found in each, in the bins in which the Text "
+        "Detector Check counts a slice's regions:",
+        "",
+        *_rows_or_none(
+            ("SOP Class", *(f"{label} regions" for label in REGION_BINS)),
+            [
+                (name, *(each[FRAMES_BY_REGIONS][label] for label in REGION_BINS))
+                for name, each in found
+            ],
+        ),
+        "",
+    ]
 
 
 def _rows_or_none(header: Sequence[str], rows: list[Sequence[object]]) -> list[str]:

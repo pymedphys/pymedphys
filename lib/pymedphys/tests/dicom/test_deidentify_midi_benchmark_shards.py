@@ -40,6 +40,7 @@ from pymedphys._dicom.deidentify.midi_benchmark_shards import (
     combine,
 )
 
+from .corpus_runs.clean_pixel_data import RUN as CLEAN_PIXEL_DATA_RUN
 from .test_deidentify_midi_benchmark import _benchmark_key, _source
 from .test_deidentify_midi_benchmark_presets import (  # noqa: F401  # pylint: disable = unused-import
     _edition,
@@ -290,27 +291,35 @@ def test_results_that_are_not_every_shard_of_one_run_are_refused(documents, mess
         combine(documents)
 
 
-def _run(tmp_path, name, shard=None):
+def _run(tmp_path, name, shard=None, options=None):
     return benchmark.run_benchmark(
         tmp_path / "source",
         tmp_path / "key.db",
         tmp_path / name,
         shard=shard,
+        options=options,
     )
 
 
+@pytest.mark.parametrize("options", [None, ["clean_pixel_data"]])
 @pytest.mark.parametrize("count", [2, 3])
-def test_the_shards_of_a_run_add_up_to_the_whole_run(tmp_path, count):
+def test_the_shards_of_a_run_add_up_to_the_whole_run(
+    tmp_path, count, options, monkeypatch
+):
     # Two patients, and an answer-key instance that the input does not hold;
-    # with three shards, one shard has no input at all.
+    # with three shards, one shard has no input at all. Under Clean Pixel
+    # Data, the text detector's counts add up too.
+    monkeypatch.setattr(benchmark, "TextDetector", lambda: CLEAN_PIXEL_DATA_RUN.finder)
     _source(tmp_path)
     _benchmark_key(tmp_path)
-    whole = _run(tmp_path, "whole").document
+    whole = _run(tmp_path, "whole", options=options).document
 
     shards = [
-        _run(tmp_path, f"shard-{number}", Shard(number, count)).document
+        _run(tmp_path, f"shard-{number}", Shard(number, count), options).document
         for number in range(1, count + 1)
     ]
+    found = whole["coverage"]["text_detection"]
+    assert found is None if options is None else found
 
     assert whole["versions"]["shard"] is None
     assert [shard["versions"]["shard"] for shard in shards] == [
