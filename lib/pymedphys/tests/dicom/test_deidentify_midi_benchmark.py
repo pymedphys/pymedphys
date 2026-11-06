@@ -577,6 +577,7 @@ def test_a_benchmark_run_scores_each_category_and_writes_the_scripts_inputs(
             "failed",
             "deliberate",
             "source_gap",
+            "replacement_match",
             "not_evaluated",
             "withheld",
             "outside_coverage",
@@ -592,6 +593,7 @@ def test_a_benchmark_run_scores_each_category_and_writes_the_scripts_inputs(
         "failed": 0,
         "deliberate": 0,
         "source_gap": 0,
+        "replacement_match": 0,
         "not_evaluated": 0,
         "withheld": 0,
         "outside_coverage": 0,
@@ -644,6 +646,7 @@ def test_a_benchmark_run_scores_each_category_and_writes_the_scripts_inputs(
             "checks": 1,
         },
     ]
+    assert document["replacement_matches"] == []
     # Each check not evaluated, by why.
     assert document["not_evaluated"] == [
         {
@@ -773,6 +776,7 @@ def test_the_markdown_gives_each_section(tmp_path):
         "## Results by answer-key category",
         "## Deliberate differences",
         "## Source gaps",
+        "## Replacement matches",
         "## Findings",
         "## Not evaluated",
         "## Failed checks at their source",
@@ -788,6 +792,7 @@ def test_the_markdown_gives_each_section(tmp_path):
     )
     assert "| dicom TEST-GAP | tag_retained | (0018,0060) | 1 |" in markdown
     assert "| Failed: source gaps | 1 | " in markdown
+    assert "| Failed: replacement matches | 0 | " in markdown
     assert "| Not released: outside coverage | 1 | " in markdown
     assert (
         "| outside-coverage | none | Nuclear Medicine Image Storage | "

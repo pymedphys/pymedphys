@@ -212,9 +212,10 @@ def render_markdown(document: Mapping[str, object]) -> str:
         "## Results by answer-key category",
         "",
         "Checks of released instances passed, failed, failed by a deliberate "
-        "difference, failed where the source lacked what they ask for, or "
-        "were not evaluated; checks of other instances are "
-        "counted where those instances ended up, and not scored.",
+        "difference, failed where the source lacked what they ask for, failed "
+        "only on a value written in the source's place, or were not "
+        "evaluated; checks of other instances are counted where those "
+        "instances ended up, and not scored.",
         "",
         _table(
             (
@@ -223,6 +224,7 @@ def render_markdown(document: Mapping[str, object]) -> str:
                 "Failed",
                 "Deliberate",
                 "Source gap",
+                "Replacement match",
                 "Not evaluated",
                 "Withheld",
                 "Outside coverage",
@@ -237,6 +239,7 @@ def render_markdown(document: Mapping[str, object]) -> str:
                     row["failed"],
                     row["deliberate"],
                     row["source_gap"],
+                    row["replacement_match"],
                     row["not_evaluated"],
                     row["withheld"],
                     row["outside_coverage"],
@@ -287,6 +290,23 @@ def render_markdown(document: Mapping[str, object]) -> str:
         [
             (row["category"], row["action"], row["attribute"], row["checks"])
             for row in document["source_gaps"]
+        ],
+    )
+    lines += [
+        "",
+        "## Replacement matches",
+        "",
+        "Checks that asked for a text to be removed and failed only on a value "
+        "that the engine writes in the source's place, a constant such as "
+        "`DEIDENTIFIED` or a keyed pseudonym or token, which holds nothing of "
+        "the source: a word of the answer key's text is within it by chance:",
+        "",
+    ]
+    lines += _rows_or_none(
+        ("Category", "Action", "Attribute", "Checks"),
+        [
+            (row["category"], row["action"], row["attribute"], row["checks"])
+            for row in document["replacement_matches"]
         ],
     )
     lines += ["", "## Findings", "", "Every other failed check:", ""]
@@ -398,6 +418,7 @@ _OUTCOMES = {
     "failed": "Failed: findings",
     "deliberate": "Failed: deliberate differences",
     "source_gap": "Failed: source gaps",
+    "replacement_match": "Failed: replacement matches",
     "not_evaluated": "Not evaluated",
     "withheld": "Not released: withheld",
     "outside_coverage": "Not released: outside coverage",

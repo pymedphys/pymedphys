@@ -15,16 +15,26 @@
 """Score MIDI checks that the policy, the markers, or the source explain (D-018)."""
 
 import collections
+import re
 
 from pymedphys._imports import pydicom, pytest
 
 from pymedphys._dicom.deidentify import midi_benchmark as benchmark
+from pymedphys._dicom.deidentify import midi_benchmark_flips as flips
 from pymedphys._dicom.deidentify import midi_benchmark_sources as sources
 from pymedphys._dicom.deidentify.element_rules import ElementRules
 from pymedphys._dicom.deidentify.file_layout import ElementPath, Location, Region
 from pymedphys._dicom.deidentify.iods import load_iod_tables
+from pymedphys._dicom.deidentify.keys import DeidKey
 from pymedphys._dicom.deidentify.midi_answer_key import parse_check
+from pymedphys._dicom.deidentify.midi_benchmark_values import is_engine_replacement
 from pymedphys._dicom.deidentify.policy import compose_policy
+from pymedphys._dicom.deidentify.pseudonyms import (
+    FAMILY_NAME,
+    PATIENT_ID_PREFIX,
+    SubjectIdentity,
+    patient_pseudonym,
+)
 from pymedphys._dicom.deidentify.reasons import RunReason
 from pymedphys._dicom.deidentify.release_gate import (
     Decision,
@@ -347,6 +357,151 @@ def test_a_pixel_data_check_of_an_instance_without_pixel_data_is_a_source_gap(
         }
     ]
     assert document["findings"] == []
+
+
+# 16 characters of the base32 alphabet, as a keyed code is written.
+_CODE = "ABCDEFGHIJKLMNOP"
+
+
+@pytest.mark.parametrize(
+    "vr, value, expected",
+    [
+        # A patient's pseudonym, as Patient's Name and as Patient ID, and an
+        # application entity's token under Retain Device Identity.
+        ("PN", f"{FAMILY_NAME}^{_CODE}", True),
+        ("LO", f"{PATIENT_ID_PREFIX}{_CODE}", True),
+        ("AE", f"AE{_CODE[:14]}", True),
+        # Constants that the engine writes whatever the source held; an empty
+        # value among several is left out.
+        ("LO", "DEIDENTIFIED", True),
+        ("PN", "DE-IDENTIFIED", True),
+        ("SH", "99PYMEDPHYS", True),
+        ("LO", ["DEIDENTIFIED", "", "DE-IDENTIFIED"], True),
+        ("PN", [f"{FAMILY_NAME}^{_CODE}", "DE-IDENTIFIED"], True),
+        # Anything else could hold the source's text.
+        ("PN", f"{FAMILY_NAME}^{_CODE}^JO", False),
+        ("PN", f"{FAMILY_NAME}^{_CODE[:15]}", False),
+        ("PN", f"{FAMILY_NAME}^{_CODE.lower()}", False),
+        ("PN", f"{FAMILY_NAME}^{_CODE[:15]}1", False),
+        ("LT", f"{PATIENT_ID_PREFIX}{_CODE}", False),
+        ("AE", f"AE{_CODE[:13]}", False),
+        ("LO", ["DEIDENTIFIED", "SMITH"], False),
+        ("CS", "CT", False),
+        ("LO", "", False),
+        ("PN", None, False),
+    ],
+)
+def test_only_a_value_the_engine_writes_in_the_sources_place_is_a_replacement(
+    vr, value, expected
+):
+    element = pydicom.DataElement(0x00100010, vr, value)
+
+    assert is_engine_replacement(element) is expected
+
+
+def test_a_sequence_or_bytes_is_never_a_replacement():
+    assert not is_engine_replacement(
+        pydicom.DataElement(0x00081140, "SQ", [pydicom.Dataset()])
+    )
+    assert not is_engine_replacement(
+        pydicom.DataElement(0x00191092, "OB", b"DEIDENTIFIED")
+    )
+
+
+@pytest.mark.parametrize(
+    "name, expected",
+    [
+        (
+            f"{FAMILY_NAME}^{_CODE}",
+            benchmark.Scored(
+                benchmark.Result.FAILED,
+                "written in the source's place",
+                replacement_match=True,
+            ),
+        ),
+        # The same word beside the pseudonym could be the source's.
+        (f"{FAMILY_NAME}^{_CODE}^GH", FAILED),
+    ],
+)
+def test_a_removed_text_found_only_within_a_pseudonym_is_a_replacement_match(
+    name, expected
+):
+    # A removed-text check fails wherever the release holds one of its
+    # words, inside another word or not: here GH, within the keyed code.
+    released = _released_ct()
+    released.PatientName = name
+    check = read_answer_check("text_removed", "<(0010,0010)>", text="GH^SMITH")
+
+    assert (
+        benchmark.score_check(
+            check,
+            released,
+            MAPPING,
+            ElementRules(compose_policy("basic")),
+            load_iod_tables().iods[CT_IOD],
+        )
+        == expected
+    )
+
+
+def _name_code(deid_key):
+    """The keyed code of the synthetic patient's pseudonymous name under a key."""
+    identity = SubjectIdentity.from_patient_id(synthetic.PATIENT_ID)
+    return patient_pseudonym(deid_key, identity).patients_name.partition("^")[2]
+
+
+def test_a_run_counts_a_replacement_match_apart_from_the_findings(tmp_path):
+    # A key whose code for the patient holds a two-letter word, as a short
+    # name can be held by chance.
+    deid_key, word = next(
+        (each, pair)
+        for each in iter(DeidKey.generate, None)
+        for pair in re.findall("(?=([A-Z]{2}))", _name_code(each))
+        if pair not in FAMILY_NAME
+    )
+    key = _answer_key(
+        tmp_path / "key.db",
+        [
+            _row(
+                synthetic.CT_SLICES[0],
+                [
+                    _check(
+                        "text_removed", "<(0010,0010)>", text=word, hipaa_m="TEST-NAME"
+                    ),
+                    # The Basic Profile keeps Modality: a finding.
+                    _check(
+                        "text_removed", "<(0008,0060)>", text="CT", hipaa_z="TEST-MOD"
+                    ),
+                ],
+            )
+        ],
+    )
+    work = tmp_path / "work"
+
+    result = benchmark.run_benchmark(_source(tmp_path), key, work, deid_key=deid_key)
+    document = result.document
+
+    name = {"action": "text_removed", "attribute": "(0010,0010)", "checks": 1}
+    assert _category(document, "hipaa", "TEST-NAME")["replacement_match"] == 1
+    assert _category(document, "hipaa", "TEST-NAME")["failed"] == 0
+    assert document["headline"]["replacement_match"] == 1
+    assert document["replacement_matches"] == [{"category": "hipaa TEST-NAME", **name}]
+    assert document["findings"] == [
+        {
+            "category": "hipaa TEST-MOD",
+            "action": "text_removed",
+            "attribute": "(0008,0060)",
+            "checks": 1,
+        }
+    ]
+    # Nothing of the source explains it, so it is not described there.
+    assert [row["attribute"] for row in document["failed_at_source"]["removed"]] == [
+        "(0008,0060)"
+    ]
+    assert flips.read_check_outcomes(work / flips.CHECK_OUTCOMES).codes == b"RF"
+    markdown = result.markdown()
+    assert "| Failed: replacement matches | 1 | " in markdown
+    assert "| hipaa TEST-NAME | text_removed | (0010,0010) | 1 |" in markdown
 
 
 def test_a_kept_text_finding_is_described_by_its_source(tmp_path):

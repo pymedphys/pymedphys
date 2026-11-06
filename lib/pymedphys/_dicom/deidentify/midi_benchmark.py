@@ -77,6 +77,15 @@ separately for each answer-key category rather than as one score:
 - the **source gaps**: each other failed check that asked for an attribute,
   or a value of it, to be present, or for the Pixel Data to be kept, and
   fails on the source instance too;
+- the **replacement matches**: each failed check that asked for a text to be
+  removed, where each value of the attribute is one that the engine writes
+  in the source's place
+  (:func:`~pymedphys._dicom.deidentify.midi_benchmark_values.is_engine_replacement`),
+  a constant such as ``DEIDENTIFIED`` or a keyed pseudonym or token, which
+  holds nothing of the source: a word of the answer key's text is within it
+  by chance, such as a short given name within a keyed code, which under
+  another key may not be. A check that asks for a text to be kept can pass
+  by the same chance on such a value, and is counted as passed;
 - the **findings**: every other failed check, such as a value that should
   have been removed and was not, however the policy explains it. Each
   failed check that asked for an attribute, or a value, to be present is
@@ -204,6 +213,7 @@ from .midi_benchmark_values import (
     element_text,
     find_element,
     is_bulk_data,
+    is_engine_replacement,
     unbracketed,
 )
 from .midi_script_results import write_mapping_files
@@ -230,7 +240,7 @@ from .scope import classify
 from .text_detection import DetectionParameters, TextDetectionError, TextDetector
 from .walker import descends
 
-FORMAT = "pymedphys-deid-midi-benchmark/3"
+FORMAT = "pymedphys-deid-midi-benchmark/4"
 RESULTS_JSON = "benchmark.json"
 RESULTS_MARKDOWN = "benchmark.md"
 SCRIPT_INPUTS = "validation-script"
@@ -292,12 +302,16 @@ class Scored:
         Whether a failed check is a deliberate difference.
     source_gap : bool
         Whether a failed check fails on the source instance too.
+    replacement_match : bool
+        Whether a failed check fails only on a value that the engine writes
+        in the source's place.
     """
 
     result: Result
     note: str | None = None
     deliberate: bool = False
     source_gap: bool = False
+    replacement_match: bool = False
 
 
 @dataclasses.dataclass
@@ -308,6 +322,7 @@ class CategoryCounts:
     failed: int = 0
     deliberate: int = 0
     source_gap: int = 0
+    replacement_match: int = 0
     not_evaluated: int = 0
     withheld: int = 0
     outside_coverage: int = 0
@@ -841,6 +856,7 @@ def score(  # pylint: disable = too-many-arguments, too-many-locals
     differences: collections.Counter = collections.Counter()
     findings: collections.Counter = collections.Counter()
     gaps: collections.Counter = collections.Counter()
+    replacements: collections.Counter = collections.Counter()
     unevaluated: collections.Counter = collections.Counter()
     explained: dict[str, collections.Counter] = collections.defaultdict(
         collections.Counter
@@ -908,6 +924,7 @@ def score(  # pylint: disable = too-many-arguments, too-many-locals
                 if (
                     scored.result is Result.FAILED
                     and not scored.deliberate
+                    and not scored.replacement_match
                     and position is not None
                     and position < len(sources)
                 ):
@@ -925,6 +942,8 @@ def score(  # pylint: disable = too-many-arguments, too-many-locals
                     differences[(*described, scored.note)] += 1
                 elif outcome == "source_gap":
                     gaps[described] += 1
+                elif outcome == "replacement_match":
+                    replacements[described] += 1
                 elif outcome == "not_evaluated":
                     unevaluated[(*described, scored.note)] += 1
                 elif outcome == "failed":
@@ -1029,6 +1048,7 @@ def score(  # pylint: disable = too-many-arguments, too-many-locals
             )
         ],
         "source_gaps": described_rows(gaps),
+        "replacement_matches": described_rows(replacements),
         "findings": described_rows(findings),
         "not_evaluated": [
             {
@@ -1057,6 +1077,8 @@ def _outcome(scored: Scored) -> str:
         if scored.deliberate
         else "source_gap"
         if scored.source_gap
+        else "replacement_match"
+        if scored.replacement_match
         else "failed"
     )
 
@@ -1154,7 +1176,12 @@ def score_check(
     value that the markers write in its place: where the value is present,
     a deliberate difference noted ``marker``, with or without the IOD. A
     text that a check asks to be removed is never a deliberate difference,
-    even where the policy keeps it.
+    even where the policy keeps it. It is a replacement match where it
+    fails on an attribute each of whose values is one that the engine
+    writes in the source's place
+    (:func:`~pymedphys._dicom.deidentify.midi_benchmark_values.is_engine_replacement`),
+    which holds nothing of the source, so that the words it was found to
+    hold are there by chance; otherwise it is a finding.
 
     Under Clean Descriptors, ``fallback`` holds the rules of the policy
     without the option: an attribute given C other than a ROI Name takes
@@ -1163,6 +1190,10 @@ def score_check(
     scored = _score(check, dataset, mapping)
     if scored.result is not Result.FAILED or check.path is None:
         return scored
+    if check.action is Action.TEXT_REMOVED:
+        element = find_element(dataset, check.path)
+        if element is not None and is_engine_replacement(element):
+            return Scored(Result.FAILED, _REPLACED, replacement_match=True)
     note = _explanation(check, check.path, dataset, rules, iod, fallback)
     return scored if note is None else Scored(Result.FAILED, note, deliberate=True)
 
@@ -1195,6 +1226,8 @@ def _explanation(  # pylint: disable = too-many-arguments
 
 # A source gap's note: the source had nothing for the check to find.
 _GAP = "absent from the source"
+# A replacement match's note: the engine wrote the value in the source's place.
+_REPLACED = "written in the source's place"
 
 
 # The markers that replace what the source holds (PS3.15 E.2 and E.3): a

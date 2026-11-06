@@ -104,7 +104,7 @@ def _sources(tmp_path):
 def test_a_custom_option_set_is_run_and_recorded(sources):
     work, document = _run(sources, "option", options=[UIDS])
 
-    assert document["format"] == "pymedphys-deid-midi-benchmark/3"
+    assert document["format"] == "pymedphys-deid-midi-benchmark/4"
     assert document["versions"]["preset"] is None
     assert document["versions"]["options"] == [UIDS]
     assert "| options | retain_uids |" in (work / "benchmark.md").read_text()
@@ -515,7 +515,7 @@ def test_a_flip_checks_runs_share_a_key_so_no_pseudonym_changes_a_check(tmp_path
             "category": "hipaa TEST-NAME",
             "action": "text_removed",
             "attribute": "(0010,0010)",
-            "reference": "failed",
+            "reference": "replacement_match",
             "option": "passed",
             "checks": 1,
         }

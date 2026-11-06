@@ -186,6 +186,7 @@ COUNTS = frozenset(
         "failed",
         "deliberate",
         "source_gap",
+        "replacement_match",
         "not_evaluated",
         "withheld",
         "outside_coverage",

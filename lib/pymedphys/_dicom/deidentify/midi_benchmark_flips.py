@@ -84,7 +84,7 @@ from .standard import load_table_e1_1
 from .supplementary_actions import load_supplementary_actions
 
 FORMAT = "pymedphys-deid-midi-flip-check/1"
-OUTCOMES_FORMAT = "pymedphys-deid-midi-check-outcomes/1"
+OUTCOMES_FORMAT = "pymedphys-deid-midi-check-outcomes/2"
 CHECK_OUTCOMES = "check-outcomes.txt"
 
 # The Retain options of Table E.1-1, in its order: the options that a flip
@@ -109,13 +109,14 @@ MARKERS = frozenset({"(0012,0062)", "(0012,0063)", "(0012,0064)", "(0028,0303)"}
 IN_OTHER_SHARD = "in_other_shard"
 
 # A letter for each outcome of a check, by the name of the benchmark's count
-# that it adds to, or IN_OTHER_SHARD; the first five are of released
+# that it adds to, or IN_OTHER_SHARD; the first six are of released
 # instances.
 _CODES: Mapping[str, str] = {
     "passed": "P",
     "failed": "F",
     "deliberate": "D",
     "source_gap": "G",
+    "replacement_match": "R",
     "not_evaluated": "N",
     "withheld": "W",
     "outside_coverage": "O",
@@ -123,7 +124,7 @@ _CODES: Mapping[str, str] = {
     IN_OTHER_SHARD: "S",
 }
 _NAMES = {code: name for name, code in _CODES.items()}
-_RELEASED = frozenset("PFDGN")
+_RELEASED = frozenset("PFDGRN")
 
 PASSED = "passed"
 FAILED = "failed"

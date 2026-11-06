@@ -18,15 +18,22 @@ The checks of a MIDI answer key name a place as a path of attributes and
 sequence items. :func:`find_element` finds the attribute at that place, and
 :func:`element_text` gives its value as the text that the checks compare,
 and :func:`compare_text` compares it with the answer key's.
+:func:`is_engine_replacement` says whether a value is one that the engine
+writes in place of the source's, which holds nothing of the source.
 """
 
 from __future__ import annotations
 
+import base64
+import functools
 import re
 
 from pymedphys._imports import pydicom
 
+from .ae_titles import TOKEN_CHARACTERS, TOKEN_PREFIX
 from .midi_answer_key import AttributePath, Element
+from .pseudonyms import CODE_BYTES, FAMILY_NAME, PATIENT_ID_PREFIX
+from .residuals import written_constants
 
 
 def unbracketed(text: str) -> str:
@@ -140,3 +147,76 @@ def held_words(text: str, answer: str) -> list[str]:
     text = unbracketed(text).lower()
     words = _WORD.findall(unbracketed(answer).lower())
     return [word.upper() for word in words if word in text]
+
+
+# A character of the engine's keyed codes and tokens: the base32 alphabet of
+# RFC 4648, in which they are written.
+_CODE_CHARACTER = "[A-Z2-7]"
+# The characters of a patient's code: CODE_BYTES bytes in base32, unpadded.
+_CODE_LENGTH = len(base64.b32encode(bytes(CODE_BYTES)).rstrip(b"="))
+
+# The values that the engine derives from a source value under the run's key
+# alone, by the VR they are written in: a patient's pseudonym, as Patient ID
+# and as Patient's Name, and an application entity's token under Retain
+# Device Identity.
+_KEYED_VALUES: dict[str, re.Pattern[str]] = {
+    "LO": re.compile(
+        f"{re.escape(PATIENT_ID_PREFIX)}{_CODE_CHARACTER}{{{_CODE_LENGTH}}}"
+    ),
+    "PN": re.compile(f"{re.escape(FAMILY_NAME)}\\^{_CODE_CHARACTER}{{{_CODE_LENGTH}}}"),
+    "AE": re.compile(
+        f"{re.escape(TOKEN_PREFIX)}{_CODE_CHARACTER}{{{TOKEN_CHARACTERS}}}"
+    ),
+}
+
+# Padding that a value may carry: spaces, and NUL from some writers.
+_PADDING = " \x00"
+
+
+@functools.cache
+def _constants() -> frozenset[tuple[str, str]]:
+    return frozenset(written_constants())
+
+
+def is_engine_replacement(element: pydicom.DataElement) -> bool:
+    """Whether each value of an element is one the engine writes in a source's place.
+
+    That is a constant of the element's VR that the engine writes whatever
+    the source held, as
+    :func:`~pymedphys._dicom.deidentify.residuals.written_constants` lists
+    them, such as ``DEIDENTIFIED``; or a value derived under the run's key
+    alone: a patient's pseudonym, ``DEID-`` as Patient ID (LO) or
+    ``DEIDENTIFIED^`` as Patient's Name (PN) followed by the patient's code
+    of 16 characters, or an application entity's token (AE), ``AE``
+    followed by 14 characters, each character an upper-case letter or a
+    digit from 2 to 7. Such a value holds nothing of the source, so a word
+    of the answer key's text that it holds, as :func:`compare_text` finds
+    words within a text, is there by chance. An element is not such a value
+    where it has no value but padding, or holds a sequence or bytes; an
+    empty value among several is left out.
+
+    Examples
+    --------
+    >>> from pymedphys._imports import pydicom
+    >>> name = "DEIDENTIFIED^ABCDEFGHIJKLMNOP"
+    >>> is_engine_replacement(pydicom.DataElement(0x00100010, "PN", name))
+    True
+    >>> is_engine_replacement(pydicom.DataElement(0x00100010, "PN", name + "^JO"))
+    False
+    """
+    value = element.value
+    if element.VR == "SQ" or value is None or isinstance(value, (bytes, bytearray)):
+        return False
+    values = [
+        str(each).strip(_PADDING)
+        for each in (
+            value if isinstance(value, pydicom.multival.MultiValue) else [value]
+        )
+    ]
+    values = [each for each in values if each]
+    keyed = _KEYED_VALUES.get(element.VR)
+    return bool(values) and all(
+        (element.VR, each) in _constants()
+        or (keyed is not None and keyed.fullmatch(each) is not None)
+        for each in values
+    )
