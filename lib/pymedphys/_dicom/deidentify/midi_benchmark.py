@@ -362,6 +362,7 @@ def run_benchmark(
     tg263_spreadsheet: str | Path | None = None,
     watched: Collection[str] = (),
     shard: Shard | None = None,
+    deid_key: DeidKey | None = None,
 ) -> Benchmark:
     """De-identify a MIDI test data set and score the release.
 
@@ -404,8 +405,19 @@ def run_benchmark(
         their instances alone, and, in the first shard, those of the
         answer-key instances that the input does not hold. By default, the
         whole run. A policy whose method digest depends on the run's key, as
-        one with Clean Descriptors does, runs in one shard alone, since each
-        shard draws its own key and the shards combine only with one digest.
+        one with Clean Descriptors does, runs in one shard alone, with
+        ``deid_key`` too, since each shard given no key draws its own and the
+        shards combine only with one digest.
+    deid_key : DeidKey, optional
+        The run's key; by default, a new one. A flip check's two runs, the
+        reference under ``basic`` and the option's, take the same key, so
+        that each subject's pseudonyms, replacement UIDs, and date shifts are
+        the same in both and only the option can change a check. A check
+        that asks for a text to be removed fails wherever the release holds
+        any of its words, inside another word or not, as the script reads
+        it, so a short word, such as a two-letter name, can be held by
+        chance in the keyed code of a pseudonym under one key and not under
+        another.
 
     Raises
     ------
@@ -428,7 +440,8 @@ def run_benchmark(
     policy = _policy(preset, options)
     key = read_answer_key(answer_key)
     cleaning = _cleaning(policy, tg263_spreadsheet)
-    deid_key = DeidKey.generate()
+    if deid_key is None:
+        deid_key = DeidKey.generate()
     finder = _finder(policy)
 
     def transform_under(run_key: DeidKey) -> InstanceTransform:
@@ -443,10 +456,11 @@ def run_benchmark(
         )
 
     transform = transform_under(deid_key)
-    # Each shard draws its own key, and the shards combine only with one
-    # method digest. Under Clean Descriptors it covers the reviewed lists'
-    # keyed digests, which differ from key to key, so such a run is refused
-    # before it reads anything, rather than when its shards are combined.
+    # Each shard given no key draws its own, and the shards combine only with
+    # one method digest. Under Clean Descriptors it covers the reviewed lists'
+    # keyed digests, which differ from key to key, so such a run is refused,
+    # given a key or not, before it reads anything, rather than when its
+    # shards are combined.
     if (
         shard is not None
         and shard.count > 1

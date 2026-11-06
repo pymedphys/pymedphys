@@ -16,8 +16,14 @@
 
 A Retain option of PS3.15 Table E.1-1 keeps the attributes of its rows and
 changes nothing else. Its flip check runs the benchmark under ``basic`` and
-under the option alone over the same test data set, and compares the
-outcome of each answer-key check between the two runs. A check counts as
+under the option alone over the same test data set, with one key, and
+compares the outcome of each answer-key check between the two runs. The
+shared key gives each subject the same pseudonyms, replacement UIDs, and
+date shifts in both runs: with a key each, a removed-text check could change
+by chance, since a short word of its text can be held in the keyed code of
+one run's pseudonym and not the other's
+(:func:`~pymedphys._dicom.deidentify.midi_benchmark.run_benchmark`'s
+``deid_key``). A check counts as
 **governed** by the option where an element of its place, the attribute or
 a sequence that holds it, takes its rule from a row of Table E.1-1 that
 gives the option an action, or from a supplementary rule that does

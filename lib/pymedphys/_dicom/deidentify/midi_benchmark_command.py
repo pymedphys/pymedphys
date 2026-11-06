@@ -35,6 +35,7 @@ from . import (
     midi_script_results,
     run,
 )
+from .keys import DeidKey, DeidKeyError, read_key_file, write_key_file
 from .midi_answer_key import AnswerKeyError, read_answer_key
 from .policy import PolicyError
 from .safe_private import SafePrivateList
@@ -44,8 +45,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     """Run the benchmark, compare two runs, or prepare or count the validation script's run.
 
     ``run`` takes ``--source``, ``--answer-key``, ``--work``, and optionally
-    ``--preset`` or one or more ``--option``, ``--safe-private-list``, ``--collection``, ``--tg263``, ``--watch``, and ``--shard``, as :func:`~pymedphys._dicom.deidentify.midi_benchmark.run_benchmark` does, and
-    prints the results as CommonMark. ``combine`` takes every shard's
+    ``--preset`` or one or more ``--option``, ``--safe-private-list``, ``--collection``, ``--tg263``, ``--watch``, ``--shard``, and ``--key-file``, as :func:`~pymedphys._dicom.deidentify.midi_benchmark.run_benchmark` does, and
+    prints the results as CommonMark. ``new-key`` writes a new key to a
+    file that only its owner can read, for runs that are to share one, as a
+    flip check's two runs do, and prints nothing. ``combine`` takes every shard's
     ``benchmark.json`` and ``--out``, a directory that must not exist,
     writes :func:`~pymedphys._dicom.deidentify.midi_benchmark_shards.combine`'s
     results there as JSON and CommonMark, and prints the CommonMark. ``flip-check`` takes the answer key,
@@ -157,6 +160,24 @@ def main(argv: Sequence[str] | None = None) -> int:
             "instances. The shards' results are added up with combine."
         ),
     )
+    benchmark.add_argument(
+        "--key-file",
+        help=(
+            "A key file written by new-key, whose key the run takes in place "
+            "of a new one. Give a flip check's two runs the same file, so that "
+            "their pseudonyms and replacement UIDs are the same."
+        ),
+    )
+    new_key = commands.add_parser(
+        "new-key",
+        help=(
+            "Write a new key to a file that only you can read, for runs that "
+            "are to share one, as a flip check's two runs do."
+        ),
+    )
+    new_key.add_argument(
+        "path", help="The new key file, which must not exist, in a private place."
+    )
     combined = commands.add_parser(
         "combine",
         help=(
@@ -239,7 +260,13 @@ def main(argv: Sequence[str] | None = None) -> int:
                 tg263_spreadsheet=arguments.tg263,
                 watched=arguments.watch,
                 shard=arguments.shard,
+                deid_key=None
+                if arguments.key_file is None
+                else read_key_file(arguments.key_file),
             ).markdown()
+        elif arguments.command == "new-key":
+            write_key_file(arguments.path, DeidKey.generate())
+            text = ""
         elif arguments.command == "combine":
             text = _combine(arguments)
         elif arguments.command == "released-answer-key":
@@ -276,6 +303,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         midi_benchmark_shards.ShardError,
         midi_script_results.ScriptResultsError,
         AnswerKeyError,
+        DeidKeyError,
         PolicyError,
         run.RunError,
         run.RunStopped,

@@ -529,6 +529,19 @@ jobs:
           echo "ran=true" >> "${GITHUB_OUTPUT}"
           # The downloaded collection's name, apart from each configuration's.
           collection_name="$(jq -r '.name' "${data}/download.json")"
+          # One key for every run in the job, kept in the private directory,
+          # so that a Retain option's run and its basic reference give each
+          # subject the same pseudonyms, replacement UIDs, and date shifts.
+          # With a key each, a removed-text check could change by chance: it
+          # fails wherever the release holds one of its words, and a short
+          # one, such as a two-letter name, can be held in the keyed code of
+          # one run's pseudonym and not the other's.
+          key_file="${private}/run-key.json"
+          if ! uv run --no-sync python .github/scripts/run_redacted.py \
+            pymedphys._dicom.deidentify.midi_benchmark_command new-key "${key_file}"; then
+            echo "The job's key could not be written, so the benchmark did not run."
+            exit 1
+          fi
 
           # Install NCI's script once per job. The marker is written only
           # after a whole install, so a later configuration retries one that
@@ -657,6 +670,7 @@ jobs:
               --answer-key "${data}/answer-key.db" \
               --work "${work}" \
               --collection "${collection_name}" \
+              --key-file "${key_file}" \
               "${policy[@]}" \
               --watch "(0020,0011)" --watch "(0028,0106)" --watch "(0008,0008)" \
               2> "${logs}/benchmark-stderr.log"; then

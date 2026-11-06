@@ -30,6 +30,7 @@ from pymedphys._dicom.deidentify.midi_benchmark_flips import (
     flip_check,
     read_check_outcomes,
 )
+from pymedphys._dicom.deidentify.keys import DeidKey
 from pymedphys._dicom.deidentify.midi_answer_key import read_answer_key
 from pymedphys._dicom.deidentify.midi_benchmark_shards import (
     COUNTS,
@@ -452,21 +453,24 @@ def test_the_command_refuses_a_shard_it_cannot_read(tmp_path, capsys):
 def test_a_policy_whose_digest_depends_on_the_key_runs_in_one_shard_alone(
     tmp_path, preset
 ):
-    # Each shard draws its own key, and Clean Descriptors' method digest
-    # covers its reviewed lists' keyed digests, so its shards could not be
-    # combined: the run is refused before it reads or writes anything.
+    # Each shard given no key draws its own, and Clean Descriptors' method
+    # digest covers its reviewed lists' keyed digests, so its shards could
+    # not be combined: the run is refused before it reads or writes
+    # anything, given a key or not.
     _source(tmp_path)
     _benchmark_key(tmp_path)
 
-    with pytest.raises(benchmark.BenchmarkError, match="more than one shard"):
-        benchmark.run_benchmark(
-            tmp_path / "source",
-            tmp_path / "key.db",
-            tmp_path / "shard",
-            preset=preset,
-            shard=Shard(1, 2),
-        )
-    assert not (tmp_path / "shard").exists()
+    for deid_key in (None, DeidKey.generate()):
+        with pytest.raises(benchmark.BenchmarkError, match="more than one shard"):
+            benchmark.run_benchmark(
+                tmp_path / "source",
+                tmp_path / "key.db",
+                tmp_path / "shard",
+                preset=preset,
+                shard=Shard(1, 2),
+                deid_key=deid_key,
+            )
+        assert not (tmp_path / "shard").exists()
 
     # One shard of one is the whole run.
     whole = benchmark.run_benchmark(

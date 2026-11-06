@@ -20,6 +20,7 @@ Every DICOM file and answer key is synthetic, as in
 
 import csv
 import json
+import re
 import sqlite3
 import types
 
@@ -36,6 +37,7 @@ from pymedphys._dicom.deidentify.face_blocks import FaceBlockCounts, SeriesProbl
 from pymedphys._dicom.deidentify import midi_benchmark as benchmark
 from pymedphys._dicom.deidentify import midi_benchmark_command, midi_script_results
 from pymedphys._dicom.deidentify import midi_benchmark_flips as flips
+from pymedphys._dicom.deidentify.keys import DeidKey, read_key_file
 from pymedphys._dicom.deidentify.midi_answer_key import (
     AnswerInstance,
     AnswerKey,
@@ -49,12 +51,24 @@ from pymedphys._dicom.deidentify.policy import (
     compose_custom_policy,
     compose_policy,
 )
+from pymedphys._dicom.deidentify.pseudonyms import (
+    FAMILY_NAME,
+    PATIENT_ID_PREFIX,
+    SubjectIdentity,
+    patient_pseudonym,
+)
 from pymedphys._dicom.deidentify.safe_private import SafePrivateList
 from pymedphys._dicom.deidentify.text_detection import TextDetectionError
 
 from . import _synthetic_references as synthetic
 from .corpus_runs.clean_pixel_data import RUN as CLEAN_PIXEL_DATA_RUN
-from .test_deidentify_midi_benchmark import _benchmark_key, _source
+from .test_deidentify_midi_benchmark import (
+    _answer_key,
+    _benchmark_key,
+    _check,
+    _row,
+    _source,
+)
 
 # An invented TG-263 edition, for a preset with Clean Descriptors.
 from .test_deidentify_midi_benchmark_presets import (  # noqa: F401  # pylint: disable = unused-import
@@ -434,6 +448,85 @@ def test_a_flip_check_of_two_runs_finds_only_the_options_rows_changed(sources):
     )
 
 
+def _code(deid_key):
+    """The keyed code of the synthetic patient's pseudonyms under a key."""
+    identity = SubjectIdentity.from_patient_id(synthetic.PATIENT_ID)
+    return patient_pseudonym(deid_key, identity).patient_id[len(PATIENT_ID_PREFIX) :]
+
+
+def test_a_flip_checks_runs_share_a_key_so_no_pseudonym_changes_a_check(tmp_path):
+    # A removed-text check fails wherever the release holds one of its
+    # words, inside another word or not, as NCI's script reads it. So a short
+    # word, such as a two-letter name, can be held by chance in the keyed
+    # code of the patient's pseudonymous name under one key and not another.
+    holding, word = next(
+        (deid_key, pair)
+        for deid_key in iter(DeidKey.generate, None)
+        for pair in re.findall("(?=([A-Z]{2}))", _code(deid_key))
+        if pair not in FAMILY_NAME
+    )
+    other = next(
+        each for each in iter(DeidKey.generate, None) if word not in _code(each)
+    )
+    path = _answer_key(
+        tmp_path / "key.db",
+        [
+            _row(
+                synthetic.CT_SLICES[0],
+                [
+                    _check(
+                        "text_removed", "<(0010,0010)>", text=word, hipaa_m="TEST-NAME"
+                    )
+                ],
+            ),
+            _row(
+                synthetic.DOSE,
+                [_check("uid_changed", "<(0008,0018)>", value=synthetic.DOSE)],
+                series=synthetic.DOSE_SERIES,
+                sop_class=synthetic.RT_DOSE_STORAGE,
+                modality="RTDOSE",
+            ),
+        ],
+    )
+
+    def outcomes(name, deid_key, **policy):
+        (tmp_path / name).mkdir()
+        work = tmp_path / name / "work"
+        benchmark.run_benchmark(
+            _source(tmp_path / name), path, work, deid_key=deid_key, **policy
+        )
+        return work, flips.read_check_outcomes(work / flips.CHECK_OUTCOMES)
+
+    work, reference = outcomes("basic", holding)
+    mapping = work / benchmark.SCRIPT_INPUTS / midi_script_results.PATIENT_ID_MAPPING
+    # The run took the key given, whose pseudonym holds the word.
+    assert f"{synthetic.PATIENT_ID},{PATIENT_ID_PREFIX}{_code(holding)}\n" in (
+        mapping.read_text()
+    )
+    key = read_answer_key(path)
+    _, apart = outcomes("apart", other, options=[UIDS])
+    # Under another key the check changes, although the option does not
+    # govern Patient's Name.
+    changes = flips.flip_check(key, reference, apart, UIDS)["changes"]
+    assert [row for row in changes if not row["governed"]] == [
+        {
+            "governed": False,
+            "category": "hipaa TEST-NAME",
+            "action": "text_removed",
+            "attribute": "(0010,0010)",
+            "reference": "failed",
+            "option": "passed",
+            "checks": 1,
+        }
+    ]
+
+    _, shared = outcomes("shared", holding, options=[UIDS])
+    document = flips.flip_check(key, reference, shared, UIDS)
+
+    assert document["verdict"] == flips.PASSED
+    assert document["checks"]["ungoverned_changed"] == 0
+
+
 # Unit tests of the comparison, over a key built in memory.
 
 
@@ -644,6 +737,49 @@ def test_the_command_runs_with_an_option_and_compares_two_runs(sources, capsys):
     assert json.loads((sources / "flips.json").read_text())["verdict"] == "passed"
     with pytest.raises(SystemExit, match="must not exist"):
         midi_benchmark_command.main(arguments)
+
+
+def test_runs_given_one_key_file_share_its_key(tmp_path, capsys):
+    key_file = tmp_path / "run-key.json"
+    assert midi_benchmark_command.main(["new-key", str(key_file)]) == 0
+    assert capsys.readouterr().out == ""
+    answer_key = _benchmark_key(tmp_path)
+
+    def run_with(name, key_file):
+        (tmp_path / name).mkdir()
+        work = tmp_path / name / "work"
+        status = midi_benchmark_command.main(
+            [
+                "run",
+                "--source",
+                str(_source(tmp_path / name)),
+                "--answer-key",
+                str(answer_key),
+                "--work",
+                str(work),
+                "--key-file",
+                str(key_file),
+            ]
+        )
+        return (
+            status,
+            work / benchmark.SCRIPT_INPUTS / midi_script_results.PATIENT_ID_MAPPING,
+        )
+
+    mappings = [run_with(name, key_file) for name in ("first", "second")]
+
+    assert [status for status, _ in mappings] == [0, 0]
+    first, second = (mapping.read_text() for _, mapping in mappings)
+    # One key gives each patient the same pseudonym in both runs.
+    assert first == second
+    assert f"{PATIENT_ID_PREFIX}{_code(read_key_file(key_file))}" in first
+    with pytest.raises(SystemExit, match="already exists"):
+        midi_benchmark_command.main(["new-key", str(key_file)])
+    other = tmp_path / "other.json"
+    other.write_text("{}")
+    with pytest.raises(SystemExit, match="is not a pymedphys-deid-key/1 file"):
+        run_with("third", other)
+    assert not (tmp_path / "third" / "work").exists()
 
 
 def test_the_command_exits_with_one_where_the_check_fails(
