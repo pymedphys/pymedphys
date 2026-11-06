@@ -905,12 +905,12 @@ def test_the_reader_takes_a_grids_digest_only_where_every_grid_sheet_shows_them(
     with pytest.raises(QcPackError, match="not of its format"):
         face_review._series_files(json.dumps(document).encode("ascii"))
     document["previews"][-1]["total_frames"] = 1
-    (entry,) = face_review._series_files(json.dumps(document).encode("ascii"))[0]
+    (entry,) = face_review._series_files(json.dumps(document).encode("ascii"))[0][0]
     assert entry[7] == bytes.fromhex("3f" * 32) and not entry[3]
     # The digest of none needs no sheet.
     (entry,) = face_review._series_files(
         json.dumps(_document(NO_GRIDS_SHA256)).encode("ascii")
-    )[0]
+    )[0][0]
     assert entry[7] == NO_GRIDS
 
 
@@ -918,7 +918,7 @@ def test_the_reader_judges_no_file_by_grids_it_lists_as_not_shown():
     document = _document(None)
     document["not_previewed"] = [{"position": 0, "reason": "grids-not-shown"}]
 
-    (entry,) = face_review._series_files(json.dumps(document).encode("ascii"))[0]
+    (entry,) = face_review._series_files(json.dumps(document).encode("ascii"))[0][0]
 
     assert entry[7] is None and entry[3]
 
