@@ -34,6 +34,54 @@ class AscliFailureTests(unittest.TestCase):
         logged = "INFO Saving config file\n" + UNAVAILABLE
         self.assertEqual(keys.ascli_failure(logged), [UNAVAILABLE_REASON])
 
+    def test_finds_the_status_after_the_apis_own_messages(self):
+        # ascli runs its Aspera handlers before its generic one, so the API's
+        # own messages come first and the host and status last, each on a
+        # line of its own (aspera-cli 4.27's RestErrorAnalyzer). The lines
+        # after the message are ascli's hints.
+        logged = (
+            "ERRR Rest: The package is not available\n"
+            "code: 7\n"
+            "faspex.cancerimagingarchive.net 404 Not Found\n"
+            "Use --log-level=debug to get more details.\n"
+        )
+        self.assertEqual(
+            keys.ascli_failure(logged),
+            [
+                "ascli stopped on a Rest error, HTTP 404 (Not Found), naming "
+                "faspex.cancerimagingarchive.net."
+            ],
+        )
+
+    def test_takes_no_status_from_a_line_without_a_host(self):
+        self.assertEqual(
+            keys.ascli_failure("ERRR Rest: Package 404 is gone\n"),
+            ["ascli stopped on a Rest error."],
+        )
+
+    def test_ends_a_message_at_the_next_line_ascli_logs(self):
+        logged = (
+            "ERRR Rest: The package is not available\n"
+            "INFO faspex.cancerimagingarchive.net 500 Internal Server Error\n"
+        )
+        self.assertEqual(keys.ascli_failure(logged), ["ascli stopped on a Rest error."])
+
+    def test_reads_every_line_of_a_failed_trys_message(self):
+        logged = (
+            "WARN An error occurred during task: Session stopped\n"
+            "check UDP port and firewall\n"
+            "WARN Resuming in 2 seconds (retry left:6)\n"
+            "ERRR Transfer: Maximum number of retry reached: 7\n"
+        )
+        self.assertEqual(
+            keys.ascli_failure(logged),
+            [
+                "ascli stopped on a Transfer error; its messages mention UDP, "
+                "a firewall, and the retry limit.",
+                "ascli logged 1 failed try of the transfer.",
+            ],
+        )
+
     def test_gives_a_status_without_a_name_by_its_number(self):
         logged = "ERRR Rest: faspex.cancerimagingarchive.net:443 599 Odd\n"
         self.assertEqual(

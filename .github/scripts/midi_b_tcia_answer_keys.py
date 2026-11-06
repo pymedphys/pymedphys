@@ -97,24 +97,27 @@ TRACE_TIMEOUT = 45.0
 # package's receipt has failed within a minute (job 127511478945).
 PACKAGE_ATTEMPTS = 3
 PACKAGE_PAUSE = 60.0
-# ascli (aspera-cli 4.27) logs the error it stops on as "ERRR <category>:
-# <message>", with the category from a fixed set, and a failed request's
-# message starts with its host and HTTP status. It logs each failed try of
-# a transfer, which it tries again itself, as "WARN An error occurred during
-# task: <message>". The messages may hold a package's link or its files'
-# names, so they are never printed.
+# ascli (aspera-cli 4.27) logs each entry on a line that starts with its
+# level, such as "INFO" or "ERRR", with any further lines of its message
+# after it. It logs the error it stops on as "ERRR <category>: <message>",
+# with the category from a fixed set. A failed request's message holds the
+# API's own messages first and then a line with the host and the HTTP
+# status, since its RestErrorAnalyzer runs its generic handler last. It
+# logs each failed try of a transfer, which it tries again itself, as
+# "WARN An error occurred during task: <message>". The messages may hold a
+# package's link or its files' names, so they are never printed.
+_ASCLI_LEVEL = re.compile(r"(?:TRA1|TRA2|DEBG|INFO|WARN|ERRR|FATL|UNKN) ")
 _ASCLI_ERROR = re.compile(
-    r"^ERRR (?P<category>SSH|SSL|Argument|Missing|Identifier|Schema|Tool|"
+    r"ERRR (?P<category>SSH|SSL|Argument|Missing|Identifier|Schema|Tool|"
     r"Transfer|Rest|Network|Interruption|UnusedArg|"
-    r"Other\([A-Za-z][A-Za-z0-9_:]{0,79}\)): (?P<message>.*)$",
-    re.MULTILINE,
+    r"Other\([A-Za-z][A-Za-z0-9_:]{0,79}\)): (?P<message>.*)"
 )
-_ASCLI_ANY_ERROR = re.compile(r"^ERRR ", re.MULTILINE)
-_ASCLI_TRY = re.compile(
-    r"^WARN An error occurred during task: (?P<message>.*)$", re.MULTILINE
-)
+_ASCLI_TRY = re.compile(r"WARN An error occurred during task: (?P<message>.*)")
+# A host name or address with at least one dot, its port if any, and a
+# status.
 _REST_STATUS = re.compile(
-    r"^[A-Za-z0-9.-]{1,253}(?::[0-9]{1,5})? (?P<status>[1-5][0-9]{2})\b"
+    r"(?:[A-Za-z0-9-]{1,63}\.){1,126}[A-Za-z0-9-]{1,63}(?::[0-9]{1,5})? "
+    r"(?P<status>[1-5][0-9]{2})\b"
 )
 _TCIA_HOST = re.compile(
     r"\b(?:[a-z0-9-]{1,63}\.)*cancerimagingarchive\.net(?::[0-9]{1,5})?\b",
@@ -247,26 +250,43 @@ def ascli_failure(logged: str) -> list[str]:
     >>> ascli_failure("ERRR Rest: faspex.cancerimagingarchive.net 429 Too Many Requests\\n")
     ['ascli stopped on a Rest error, HTTP 429 (Too Many Requests), naming faspex.cancerimagingarchive.net.']
     """
-    tries = [match["message"] for match in _ASCLI_TRY.finditer(logged)]
-    errors = list(_ASCLI_ERROR.finditer(logged))
+    # Each entry: its first line, then its message's further lines.
+    entries: list[list[str]] = []
+    for text in logged.splitlines():
+        if entries and not _ASCLI_LEVEL.match(text):
+            entries[-1].append(text)
+        else:
+            entries.append([text])
+    errors: list[tuple[str, list[str]]] = []
+    tries: list[list[str]] = []
+    for first, *more in entries:
+        if error := _ASCLI_ERROR.fullmatch(first):
+            errors.append((error["category"], [error["message"], *more]))
+        elif tried := _ASCLI_TRY.fullmatch(first):
+            tries.append([tried["message"], *more])
     if errors:
-        category, message = errors[-1]["category"], errors[-1]["message"]
+        category, message = errors[-1]
         article = (
             "an" if category.startswith(("A", "I", "O", "U", "SSH", "SSL")) else "a"
         )
         line = f"ascli stopped on {article} {category} error"
-        status = _REST_STATUS.match(message) if category == "Rest" else None
-        if status:
-            code = int(status["status"])
+        statuses = [
+            status
+            for text in message
+            if category == "Rest" and (status := _REST_STATUS.match(text))
+        ]
+        if statuses:
+            code = int(statuses[-1]["status"])
             try:
                 line += f", HTTP {code} ({HTTPStatus(code).phrase})"
             except ValueError:
                 line += f", HTTP {code}"
         messages = [message, *tries]
+        texts = [text for lines in messages for text in lines]
         hosts = sorted(
             {
                 match.group().lower()
-                for text in messages
+                for text in texts
                 for match in _TCIA_HOST.finditer(text)
             }
         )
@@ -275,13 +295,13 @@ def ascli_failure(logged: str) -> list[str]:
         words = [
             name
             for name, pattern in _ASCLI_WORDS
-            if any(pattern.search(text) for text in messages)
+            if any(pattern.search(text) for text in texts)
         ]
         if words:
             mention = "messages mention" if len(messages) > 1 else "message mentions"
             line += f"; its {mention} {_listed(words)}"
         lines = [f"{line}."]
-    elif _ASCLI_ANY_ERROR.search(logged):
+    elif any(first.startswith("ERRR ") for first, *_ in entries):
         lines = ["ascli logged an error of a kind this script does not know."]
     else:
         lines = ["ascli logged no error."]
