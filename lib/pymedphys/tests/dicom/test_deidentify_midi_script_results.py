@@ -21,9 +21,11 @@ the layouts that the script and the harness use.
 import json
 import sqlite3
 
-from pymedphys._imports import pytest
+from pymedphys._imports import pydicom, pytest
 
 from pymedphys._dicom.deidentify import midi_benchmark_command, midi_script_results
+from pymedphys._dicom.deidentify.keys import DeidKey
+from pymedphys._dicom.deidentify.uids import replacement_uid
 
 from . import _synthetic_references as synthetic
 
@@ -251,3 +253,104 @@ def test_the_command_writes_the_released_answer_key(tmp_path, capsys):
         "rows": 1,
     }
     assert [row[1] for row in _rows(out)] == [RELEASED]
+
+
+KEY = DeidKey(bytes(32))
+FRAME = "2.25.801"
+REFERENCED = "2.25.802"
+DUMMY_SOURCE = "2.25.803"
+REMOVED = "2.25.804"
+CREATOR = "2.25.805"
+
+
+def _replaced(uid):
+    return replacement_uid(KEY, uid)
+
+
+def _source_and_written():
+    """A source and a written file that holds, for each of its UIDs, the
+    replacement, the UID itself, a dummy value, or nothing."""
+    source = synthetic.instance(
+        synthetic.CT_IMAGE_STORAGE,
+        synthetic.CT_SLICES[0],
+        synthetic.CT_SERIES,
+        ReferencedImageSequence=[
+            synthetic.reference(synthetic.CT_IMAGE_STORAGE, REFERENCED),
+            synthetic.reference(synthetic.CT_IMAGE_STORAGE, DUMMY_SOURCE),
+        ],
+    )
+    synthetic.uid(source, "FrameOfReferenceUID", f"{FRAME}\x00")
+    synthetic.uid(source, "InstanceCreatorUID", CREATOR)
+    synthetic.uid(source, "StorageMediaFileSetUID", REMOVED)
+    written = synthetic.instance(
+        synthetic.CT_IMAGE_STORAGE,
+        _replaced(synthetic.CT_SLICES[0]),
+        _replaced(synthetic.CT_SERIES),
+        ReferencedImageSequence=[
+            synthetic.reference(synthetic.CT_IMAGE_STORAGE, _replaced(REFERENCED)),
+            synthetic.reference(synthetic.CT_IMAGE_STORAGE, "2.25.999"),
+        ],
+    )
+    written.StudyInstanceUID = _replaced(synthetic.STUDY)
+    written.FrameOfReferenceUID = _replaced(FRAME)
+    written.InstanceCreatorUID = CREATOR
+    return source, written
+
+
+def test_each_uid_maps_to_the_replacement_or_the_uid_that_the_file_holds():
+    source, written = _source_and_written()
+
+    mapped = midi_script_results.uid_replacements(source, written, KEY)
+
+    assert mapped == {
+        synthetic.CT_IMAGE_STORAGE: synthetic.CT_IMAGE_STORAGE,
+        synthetic.CT_SLICES[0]: _replaced(synthetic.CT_SLICES[0]),
+        synthetic.STUDY: _replaced(synthetic.STUDY),
+        synthetic.CT_SERIES: _replaced(synthetic.CT_SERIES),
+        # Within a sequence item, and without its padding.
+        REFERENCED: _replaced(REFERENCED),
+        FRAME: _replaced(FRAME),
+        # Kept unchanged.
+        CREATOR: CREATOR,
+    }
+    # A dummy value is no replacement, and a removed UID is not mapped.
+    assert DUMMY_SOURCE not in mapped and REMOVED not in mapped
+
+
+def test_a_uid_kept_in_one_place_and_replaced_in_another_maps_to_its_replacement():
+    source = pydicom.Dataset()
+    source.FrameOfReferenceUID = FRAME
+    source.SynchronizationFrameOfReferenceUID = FRAME
+    written = pydicom.Dataset()
+    written.FrameOfReferenceUID = _replaced(FRAME)
+    written.SynchronizationFrameOfReferenceUID = FRAME
+
+    assert midi_script_results.uid_replacements(source, written, KEY) == {
+        FRAME: _replaced(FRAME)
+    }
+
+
+def test_each_value_of_a_multi_valued_uid_is_mapped_and_an_empty_one_is_not():
+    source = pydicom.Dataset()
+    source.InstanceCreatorUID = None
+    source.FailedSOPInstanceUIDList = [FRAME, REFERENCED]
+    written = pydicom.Dataset()
+    written.InstanceCreatorUID = None
+    written.FailedSOPInstanceUIDList = [_replaced(FRAME), _replaced(REFERENCED)]
+
+    assert midi_script_results.uid_replacements(source, written, KEY) == {
+        FRAME: _replaced(FRAME),
+        REFERENCED: _replaced(REFERENCED),
+    }
+
+
+def test_the_uids_of_an_implicit_vr_file_are_read_by_the_dictionary():
+    source, written = _source_and_written()
+    implicit = synthetic.read(
+        synthetic.written(source, synthetic.IMPLICIT_VR_LITTLE_ENDIAN)
+    )
+    assert implicit.get_item(0x00200052).VR is None
+
+    assert midi_script_results.uid_replacements(
+        implicit, written, KEY
+    ) == midi_script_results.uid_replacements(source, written, KEY)

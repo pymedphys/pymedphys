@@ -36,10 +36,12 @@ work directory that must not exist:
 - ``validation-script/``, the UID and Patient ID mapping files that the NCI
   validation script needs to score the release itself: CSV files with the
   columns ``id_old`` and ``id_new``, mapping each released instance's test
-  data set Study, Series, and SOP Instance UIDs, and its Patient ID, to
-  those the run wrote. They hold the test data set's identifiers, so they
-  are confidential, as the QC pack is, and the work directory, this one, and
-  the files are made for their owner alone where the platform allows;
+  data set Study, Series, and SOP Instance UIDs, each other UID that a
+  released file holds in place of its source's, and each released
+  instance's Patient ID, to those the run wrote. They hold the test data
+  set's identifiers, so they are confidential, as the QC pack is, and the
+  work directory, this one, and the files are made for their owner alone
+  where the platform allows;
 - ``benchmark.json`` and ``benchmark.md``, the results;
 - ``check-outcomes.txt``, the outcome of each check of the answer key, in
   the key's order, as one letter each, which
@@ -139,10 +141,14 @@ reads them):
 - a check of an attribute that the file holds, where the script cannot
   score it for want of the text or value it compares, is not evaluated
   rather than left blank; so is one of a consistent UID or Patient ID that
-  the mapping files do not cover (they map only the released instances'
-  Study, Series, and SOP Instance UIDs and Patient IDs, as the manual
-  describes them), which the script fails, and one of burned-in text
-  (``pixels_hidden``), which needs OCR and review.
+  the mapping files do not cover, which the script fails, and one of
+  burned-in text (``pixels_hidden``), which needs OCR and review. The
+  mapping files cover each UID that a released file holds in place of its
+  source's, replaced or kept, and each released instance's Patient ID: the
+  script's manual describes the UID mapping file as one of Study, Series,
+  and SOP Instance UIDs, but the script scores every consistent-UID check,
+  of a Frame of Reference UID say, by that file, as its authors assume that
+  every change of a UID is logged (arXiv:2508.01889, section 5.3.2).
 
 :func:`~pymedphys._dicom.deidentify.midi_script_results.summarise_script_results`
 counts the script's results for each check
@@ -217,7 +223,7 @@ from .midi_benchmark_values import (
     is_engine_replacement,
     unbracketed,
 )
-from .midi_script_results import write_mapping_files
+from .midi_script_results import uid_replacements, write_mapping_files
 from .midi_benchmark_flips import (
     CHECK_OUTCOMES,
     IN_OTHER_SHARD,
@@ -279,7 +285,9 @@ class IdentifierMapping:
     Attributes
     ----------
     uids : dict of str to str
-        Each released instance's Study, Series, and SOP Instance UIDs.
+        Each released instance's Study, Series, and SOP Instance UIDs, and
+        each other UID that a released file holds in place of its source's,
+        replaced or kept (:func:`released_mapping`).
     patient_ids : dict of str to str
         Each released instance's Patient ID; the first released instance of
         a Patient ID that two subjects share, by issuer, wins.
@@ -508,7 +516,9 @@ def run_benchmark(
         reporter=transform.reporter,
         written_check=transform.written_check,
     )
-    mapping = released_mapping(headers, result.outcomes, release)
+    mapping = released_mapping(
+        headers, result.outcomes, release, sources=discovery.paths, key=deid_key
+    )
     write_mapping_files(work / SCRIPT_INPUTS, mapping.uids, mapping.patient_ids)
     benchmark = score(
         key,
@@ -769,17 +779,29 @@ def released_mapping(
     headers: Sequence[_Header | None],
     outcomes: Sequence[run.Outcome],
     release: Path,
+    *,
+    sources: Sequence[Path],
+    key: DeidKey,
 ) -> IdentifierMapping:
     """Map each released input's identifiers to those its released file holds.
 
     They are read from the file rather than its name: under Retain UIDs, a
     file holds its source's UIDs but is named by their keyed replacements
-    (D-016).
+    (D-016). Each released instance's Study, Series, and SOP Instance UIDs
+    come first, which pair each released file with its input. Then come the
+    other UIDs that the released files hold in place of their sources'
+    (:func:`~pymedphys._dicom.deidentify.midi_script_results.uid_replacements`),
+    the replacements under ``key`` before the UIDs kept unchanged, so that
+    the validation script, which assumes that every change of a UID is
+    logged, can score each consistent-UID check, such as one of a Frame of
+    Reference UID.
     """
     uids: dict[str, str] = {}
     patient_ids: dict[str, str] = {}
+    replaced: dict[str, str] = {}
+    kept: dict[str, str] = {}
     with redacted_diagnostics():
-        for header, outcome in zip(headers, outcomes):
+        for header, outcome, source in zip(headers, outcomes, sources):
             if header is None or outcome.output is None:
                 continue
             if outcome.status not in (run.Status.RELEASED, run.Status.DUPLICATE):
@@ -796,7 +818,27 @@ def released_mapping(
                     uids.setdefault(old, new)
             if header.patient_id is not None and written.patient_id is not None:
                 patient_ids.setdefault(header.patient_id, written.patient_id)
+            for old, new in _held_uids(source, release / outcome.output, key).items():
+                (kept if new == old else replaced).setdefault(old, new)
+    for old, new in (*replaced.items(), *kept.items()):
+        uids.setdefault(old, new)
     return IdentifierMapping(uids, patient_ids)
+
+
+def _held_uids(source: Path, written: Path, key: DeidKey) -> dict[str, str]:
+    """The UIDs of ``source`` that ``written`` holds, replaced or kept.
+
+    Nothing where either file cannot be read: the run refuses or sequesters
+    what cannot be read, and the instance's own UIDs are mapped already.
+    """
+    try:
+        return uid_replacements(
+            pydicom.dcmread(source, stop_before_pixels=True),
+            pydicom.dcmread(written, stop_before_pixels=True),
+            key,
+        )
+    except Exception:  # pylint: disable = broad-exception-caught
+        return {}
 
 
 def score(  # pylint: disable = too-many-arguments, too-many-locals

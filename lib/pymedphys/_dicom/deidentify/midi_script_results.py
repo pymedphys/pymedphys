@@ -42,12 +42,13 @@ import hashlib
 import io
 import os
 import sqlite3
-from collections.abc import Mapping, Sequence
+from collections.abc import Iterator, Mapping, Sequence
 from pathlib import Path
 
 from pymedphys._imports import pydicom
 
 from .diagnostics import redacted_diagnostics
+from .keys import DeidKey
 from .midi_answer_key import (
     ANSWER_TABLE,
     Action,
@@ -56,6 +57,7 @@ from .midi_answer_key import (
     category_of,
     category_order,
 )
+from .uids import replacement_uid
 
 SCRIPT_RESULTS_TABLE = "validation_results"
 UID_MAPPING = "uid_mapping.csv"
@@ -190,6 +192,90 @@ def write_mapping_files(
         )
         with open(descriptor, "w", encoding="utf-8", newline="") as file:
             file.write(text.getvalue())
+
+
+def uid_replacements(
+    source: pydicom.Dataset, written: pydicom.Dataset, key: DeidKey
+) -> dict[str, str]:
+    """Map each UID of ``source`` to the UID that ``written`` holds for it.
+
+    A UID is a value of an attribute of VR UI, at any depth of sequences. It
+    maps to its keyed replacement under ``key``
+    (:func:`~pymedphys._dicom.deidentify.uids.replacement_uid`) where
+    ``written`` holds that replacement anywhere, or else to itself where
+    ``written`` holds it unchanged, as the engine keeps a UID that the pinned
+    tables register, and Retain UIDs keeps every UID. A UID that ``written``
+    holds neither way, removed or given a dummy value, is not mapped. UIDs
+    are compared without their padding.
+
+    The validation script assumes that every change of a UID is logged: it
+    fails a consistent-UID check of a UID that its mapping file lacks,
+    wherever the released file holds the attribute. A mapping of every UID
+    that a released file holds in place of its source's lets it score each
+    such check. A UID that is kept maps to itself, as each released file's
+    own UIDs do under Retain UIDs, so that a consistent-UID check tests
+    whether a UID is the same wherever it is held, and a check that it
+    changed, whether it changed;
+    :func:`~pymedphys._dicom.deidentify.midi_benchmark.released_mapping`
+    maps a UID to itself only where no released file holds its replacement.
+
+    Examples
+    --------
+    >>> key = DeidKey(bytes(32))
+    >>> source = pydicom.Dataset()
+    >>> source.FrameOfReferenceUID = "1.2.3"
+    >>> source.SOPClassUID = "1.2.840.10008.5.1.4.1.1.2"
+    >>> source.InstanceCreatorUID = "1.2.4"
+    >>> written = pydicom.Dataset()
+    >>> written.FrameOfReferenceUID = replacement_uid(key, "1.2.3")
+    >>> written.SOPClassUID = "1.2.840.10008.5.1.4.1.1.2"
+    >>> uid_replacements(source, written, key) == {
+    ...     "1.2.3": replacement_uid(key, "1.2.3"),
+    ...     "1.2.840.10008.5.1.4.1.1.2": "1.2.840.10008.5.1.4.1.1.2",
+    ... }
+    True
+    """
+    held = {_unpadded(uid) for uid in _uids_in(written)}
+    mapped: dict[str, str] = {}
+    for uid in _uids_in(source):
+        old = _unpadded(uid)
+        if not old or old in mapped:
+            continue
+        # Replaced as the engine replaces it, from the value as stored.
+        new = replacement_uid(key, uid)
+        if new in held:
+            mapped[old] = new
+        elif old in held:
+            mapped[old] = old
+    return mapped
+
+
+def _uids_in(dataset: pydicom.Dataset) -> Iterator[str]:
+    """Each value of VR UI that ``dataset`` holds, at any depth of sequences."""
+    for tag in dataset.keys():
+        stored = dataset.get_item(tag)
+        vr = getattr(stored, "VR", None) or _dictionary_vr(tag)
+        if vr == "SQ":
+            for item in dataset[tag].value or ():
+                yield from _uids_in(item)
+        elif vr == "UI":
+            value = dataset[tag].value
+            values = (
+                value if isinstance(value, pydicom.multival.MultiValue) else [value]
+            )
+            yield from (str(each) for each in values if each is not None)
+
+
+def _dictionary_vr(tag: int) -> str:
+    """The VR that the data dictionary gives an attribute, or "" if none."""
+    try:
+        return pydicom.datadict.dictionary_VR(tag)
+    except KeyError:
+        return ""
+
+
+def _unpadded(uid: str) -> str:
+    return uid.strip(" \t\r\n\x00")
 
 
 def write_released_answer_key(

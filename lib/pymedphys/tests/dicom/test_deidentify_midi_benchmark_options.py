@@ -60,6 +60,7 @@ from pymedphys._dicom.deidentify.pseudonyms import (
 )
 from pymedphys._dicom.deidentify.safe_private import SafePrivateList
 from pymedphys._dicom.deidentify.text_detection import TextDetectionError
+from pymedphys._dicom.deidentify.uids import replacement_uid
 
 from . import _synthetic_references as synthetic
 from .corpus_runs.clean_pixel_data import RUN as CLEAN_PIXEL_DATA_RUN
@@ -82,6 +83,8 @@ from .test_deidentify_run import (  # noqa: F401  # pylint: disable = unused-imp
 )
 
 UIDS = "retain_uids"
+# A synthetic Frame of Reference UID.
+FRAME = "2.25.706"
 
 
 def _run(tmp_path, name, **policy):
@@ -136,6 +139,43 @@ def test_the_mapping_files_name_the_uids_a_kept_uid_file_holds(sources):
         row for row in document["categories"] if row["code"] == "DICOM-P15-BASIC-U"
     ]
     assert consistent["passed"] == 1 and consistent["failed"] == 0
+
+
+@pytest.mark.parametrize("options", [None, [UIDS]])
+def test_a_consistent_uid_check_of_any_uid_that_the_release_holds_is_scored(
+    tmp_path, options
+):
+    # NCI's script fails a consistent-UID check of a UID that its mapping file
+    # lacks, so the mapping covers each UID that a released file holds in
+    # place of its source's, such as a Frame of Reference UID: its keyed
+    # replacement, or the UID itself under Retain UIDs.
+    datasets = synthetic.collection()
+    synthetic.set_frames(datasets, {0: FRAME, 1: FRAME, 2: FRAME, 5: FRAME}, FRAME, [])
+    source = tmp_path / "source"
+    source.mkdir()
+    for position, dataset in enumerate(datasets):
+        (source / f"{position}.dcm").write_bytes(synthetic.written(dataset))
+    checks = [_check("uid_consistent", "<(0020,0052)>", value=FRAME)]
+    answer_key = _answer_key(
+        tmp_path / "key.db", [_row(slice_, checks) for slice_ in synthetic.CT_SLICES]
+    )
+    key = DeidKey(bytes(32))
+    work = tmp_path / "work"
+
+    document = benchmark.run_benchmark(
+        source,
+        answer_key,
+        work,
+        deid_key=key,
+        **({} if options is None else {"options": options}),
+    ).document
+
+    with open(work / "validation-script" / "uid_mapping.csv", newline="") as file:
+        mapped = dict(list(csv.reader(file))[1:])
+    assert mapped[FRAME] == (FRAME if options else replacement_uid(key, FRAME))
+    (consistent,) = document["categories"]
+    assert consistent["code"] == "DICOM-P15-BASIC-U"
+    assert (consistent["passed"], consistent["not_evaluated"]) == (3, 0)
 
 
 @pytest.mark.parametrize("policy", [{}, {"options": [UIDS]}])
