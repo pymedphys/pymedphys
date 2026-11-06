@@ -297,6 +297,26 @@ def render_markdown(document: Mapping[str, object]) -> str:
             for row in document["findings"]
         ],
     )
+    lines += [
+        "",
+        "## Not evaluated",
+        "",
+        "Checks of released instances that the harness could not score, by why:",
+        "",
+    ]
+    lines += _rows_or_none(
+        ("Category", "Action", "Attribute", "Why", "Checks"),
+        [
+            (
+                row["category"],
+                row["action"],
+                row["attribute"],
+                row["reason"],
+                row["checks"],
+            )
+            for row in document["not_evaluated"]
+        ],
+    )
     lines += _at_source(document["failed_at_source"])
     lines += _watched(document.get("watched", ()))
     return "\n".join(lines) + "\n"

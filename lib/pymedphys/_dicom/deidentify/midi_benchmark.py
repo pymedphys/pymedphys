@@ -84,7 +84,10 @@ separately for each answer-key category rather than as one score:
   or with a value; and each failed check that asked for a text to be
   removed by the value's VR, by its shape where it is an Integer String,
   and by whether the answer key's text is the whole value
-  (:mod:`~pymedphys._dicom.deidentify.midi_benchmark_sources`).
+  (:mod:`~pymedphys._dicom.deidentify.midi_benchmark_sources`);
+- the checks **not evaluated**: each check of a released instance that
+  the harness could not score, by category, action, attribute, and why,
+  such as that the answer key gives no text to compare.
 
 Under Clean Pixel Data, the pinned text detector
 (:class:`~pymedphys._dicom.deidentify.text_detection.TextDetector`) finds
@@ -823,6 +826,7 @@ def score(  # pylint: disable = too-many-arguments, too-many-locals
     differences: collections.Counter = collections.Counter()
     findings: collections.Counter = collections.Counter()
     gaps: collections.Counter = collections.Counter()
+    unevaluated: collections.Counter = collections.Counter()
     explained: dict[str, collections.Counter] = collections.defaultdict(
         collections.Counter
     )
@@ -906,6 +910,8 @@ def score(  # pylint: disable = too-many-arguments, too-many-locals
                     differences[(*described, scored.note)] += 1
                 elif outcome == "source_gap":
                     gaps[described] += 1
+                elif outcome == "not_evaluated":
+                    unevaluated[(*described, scored.note)] += 1
                 elif outcome == "failed":
                     findings[described] += 1
                     describe_finding(
@@ -1009,6 +1015,18 @@ def score(  # pylint: disable = too-many-arguments, too-many-locals
         ],
         "source_gaps": described_rows(gaps),
         "findings": described_rows(findings),
+        "not_evaluated": [
+            {
+                "category": category,
+                "action": action,
+                "attribute": attribute,
+                "reason": reason,
+                "checks": number,
+            }
+            for (category, action, attribute, reason), number in sorted(
+                unevaluated.items(), key=counted_order
+            )
+        ],
         "failed_at_source": explained_rows(explained),
         "watched": counted_rows(watching, WATCHED),
     }

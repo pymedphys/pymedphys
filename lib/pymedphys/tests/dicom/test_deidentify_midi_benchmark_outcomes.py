@@ -42,6 +42,7 @@ from .test_deidentify_midi_benchmark import (
     MAPPING,
     STUDY_DESCRIPTION,
     _answer_key,
+    _category,
     _check,
     _released_ct,
     _row,
@@ -311,6 +312,41 @@ def test_a_pixel_data_check_is_a_source_gap_only_where_the_source_has_none():
     # As in an SR instance: the source has no Pixel Data to keep.
     assert sources.is_source_gap(check, source) is True
     assert sources.is_source_gap(check, None) is False
+
+
+def test_a_pixel_data_check_of_an_instance_without_pixel_data_is_a_source_gap(
+    tmp_path,
+):
+    # As in an SR instance: the source holds no Pixel Data, so no
+    # de-identifier could keep it, and the check is not a finding.
+    key = _answer_key(
+        tmp_path / "key.db",
+        [
+            _row(
+                synthetic.DOSE,
+                [_check("pixels_retained", text="0" * 32)],
+                series=synthetic.DOSE_SERIES,
+                sop_class=synthetic.RT_DOSE_STORAGE,
+                modality="RTDOSE",
+            )
+        ],
+    )
+
+    document = benchmark.run_benchmark(
+        _source(tmp_path), key, tmp_path / "work"
+    ).document
+
+    assert document["coverage"]["instances"]["released"] == 1
+    assert _category(document, "tcia", "TCIA-P15-PIX-K")["source_gap"] == 1
+    assert document["source_gaps"] == [
+        {
+            "category": "tcia TCIA-P15-PIX-K",
+            "action": "pixels_retained",
+            "attribute": None,
+            "checks": 1,
+        }
+    ]
+    assert document["findings"] == []
 
 
 def test_a_kept_text_finding_is_described_by_its_source(tmp_path):
