@@ -179,6 +179,16 @@ IMPLANT_ASSEMBLY_TEMPLATE = Code("112366", "DCM", "Implant Assembly Template")
 SELECTED_IMPLANT_COMPONENT = Code("112346", "DCM", "Selected Implant Component")
 COMPONENT_ID = Code("112347", "DCM", "Component ID")
 MANUFACTURER_IMPLANT_TEMPLATE = Code("112371", "DCM", "Manufacturer Implant Template")
+COMPONENT_TYPE = Code("112370", "DCM", "Component Type")
+ASSEMBLY = Code("112355", "DCM", "Assembly")
+COMPONENT_CONNECTION = Code("112350", "DCM", "Component Connection")
+CONNECTED_COMPONENT = Code("112374", "DCM", "Connected Implantation Plan Component")
+MATING_FEATURE_SET_ID = Code("112351", "DCM", "Mating Feature Set ID")
+MATING_FEATURE_ID = Code("112352", "DCM", "Mating Feature ID")
+# Component types of CID 7308, which CID 7307 includes.
+ACETABULAR_CUP_SHELL = Code("112305", "DCM", "Acetabular Cup Shell")
+FEMORAL_HEAD_BALL = Code("112308", "DCM", "Femoral Head Ball Component")
+FEMORAL_STEM = Code("112310", "DCM", "Femoral Stem")
 INFORMATION_USED_FOR_PLANNING = Code("112358", "DCM", "Information used for planning")
 PATIENT_IMAGE = Code("112354", "DCM", "Patient Image")
 PATIENT_DATA_USED_DURING_PLANNING = Code(
@@ -351,18 +361,27 @@ IMPLANTATION_OPTIONAL_ROWS = (
 )
 
 
-def _selected_component():
+def _selected_component(identifier=f"{SENTINEL} STEM", component_type=None):
     """Return TID 7000 row 8, one Selected Implant Component, with its M rows.
 
     Row 10, the Component Type, is required only where row 8 has more than
-    one item. Row 11, unnamed, and row 13 each reference a Generic Implant
-    Template: the one selected and the manufacturer's that it derives from.
+    one item, and is included where ``component_type`` is given; TID 7000
+    gives it CID 7306, but the template's note points to Component Type Code
+    Sequence (0076,0034), whose codes are CID 7307's. Row 11, unnamed, and
+    row 13 each reference a Generic Implant Template: the one selected and
+    the manufacturer's that it derives from.
     """
+    kind = (
+        []
+        if component_type is None
+        else [item("CONTAINS", "CODE", COMPONENT_TYPE, code=component_type)]
+    )
     return item(
         "CONTAINS",
         "CONTAINER",
         SELECTED_IMPLANT_COMPONENT,
-        item("CONTAINS", "TEXT", COMPONENT_ID, text=f"{SENTINEL} STEM"),
+        item("CONTAINS", "TEXT", COMPONENT_ID, text=identifier),
+        *kind,
         _composite("CONTAINS", None, GENERIC_IMPLANT_TEMPLATE, SELECTED_TEMPLATE),
         item(
             "CONTAINS",
@@ -523,6 +542,58 @@ def implantation_tree(optional=()):
         ),
         *_planning_information(optional),
         *_intraoperative_information(optional),
+    )
+
+
+def _connected_component(identifier, feature_set, feature):
+    """Return TID 7000 row 16, one end of a connection, with its M rows."""
+    return item(
+        "CONTAINS",
+        "CONTAINER",
+        CONNECTED_COMPONENT,
+        item("CONTAINS", "TEXT", COMPONENT_ID, text=identifier),
+        item("CONTAINS", "TEXT", MATING_FEATURE_SET_ID, text=feature_set),
+        item("CONTAINS", "TEXT", MATING_FEATURE_ID, text=feature),
+    )
+
+
+def components_tree(components, connections):
+    """Return the root of an implantation plan of several connected components.
+
+    It is :func:`implantation_tree`'s required rows, with one Selected
+    Implant Component for each of ``components``, a pair of its Component ID
+    (row 9) and Component Type (row 10), and one Assembly (row 14), which
+    holds a Component Connection (row 15) for each of ``connections``, a
+    pair of the Component IDs (row 17) of its two Connected Implantation Plan
+    Components (row 16). Each end connects its component's mating feature
+    set numbered by the connection's position, so that no set has two
+    connections (row 18); the mating features' identifiers are those of an
+    implant template, which the plan does not hold.
+    """
+    connected = [
+        item(
+            "CONTAINS",
+            "CONTAINER",
+            COMPONENT_CONNECTION,
+            *(
+                _connected_component(end, f"SET {position}", f"FEATURE {side}")
+                for side, end in enumerate(pair, start=1)
+            ),
+        )
+        for position, pair in enumerate(connections, start=1)
+    ]
+    return item(
+        None,
+        "CONTAINER",
+        IMPLANTATION_PLAN_TITLE,
+        *_observation_context(()),
+        item(
+            "CONTAINS",
+            "CONTAINER",
+            IMPLANT_COMPONENT_LIST,
+            *(_selected_component(*each) for each in components),
+        ),
+        item("CONTAINS", "CONTAINER", ASSEMBLY, *connected),
     )
 
 
@@ -1202,6 +1273,15 @@ def implantation_plan(optional=(), *, verified=False):
         implantation_tree(optional),
         verified,
         evidence,
+    )
+
+
+def implantation_plan_of_components(components, connections):
+    """Return an Implantation Plan SR Document of :func:`components_tree`."""
+    return _report(
+        (IMPLANTATION_PLAN_SR, IMPLANTATION_PLAN, "7000"),
+        components_tree(components, connections),
+        False,
     )
 
 

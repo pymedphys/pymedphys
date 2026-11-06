@@ -56,8 +56,9 @@ numberings its edit is pending. The Observation DateTime (0040,A032) of a
 Procedure Log's entries takes, under D, the dummy datetime of its rank, which
 the run gives
 (:func:`~pymedphys._dicom.deidentify.content_items.log_dummy_datetimes`), and
-the Text Value (0040,A160) of an Imaging Agent Identifier, or of a reference
-to one, the dummy value of its agent's rank
+the Text Value (0040,A160) of an Imaging Agent Identifier or an implant
+Component ID, or of a reference to one, the dummy value of its agent's or
+component's rank
 (:attr:`~pymedphys._dicom.deidentify.content_items.ContentItemPlan.dummy_texts`). C
 cleans the value (D-009), so its edit is pending, for a later step to give.
 
@@ -787,8 +788,8 @@ def edit_instance(
         The value that D writes, in place of its dummy value, at each path:
         the Observation DateTime (0040,A032) of a Procedure Log's entry
         (:func:`~pymedphys._dicom.deidentify.content_items.log_dummy_datetimes`),
-        and the Text Value (0040,A160) of an Imaging Agent Identifier or
-        Referenced Imaging Agent Identifier
+        and the Text Value (0040,A160) of an Imaging Agent Identifier,
+        Referenced Imaging Agent Identifier, or implant Component ID
         (:attr:`~pymedphys._dicom.deidentify.content_items.ContentItemPlan.dummy_texts`).
         Defaults to none.
 

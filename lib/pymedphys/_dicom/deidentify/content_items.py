@@ -148,12 +148,15 @@ item's Value Type (0040,A040) and the code of its Concept Name Code Sequence
   three or more, the outermost Content Sequence takes its Basic Profile
   action instead, which sequesters the report (:data:`PHASE_IDENTIFIER`).
   The Text Value of an Imaging Agent Identifier (130254, DCM) and of a
-  Referenced Imaging Agent Identifier (130255, DCM) takes D under every
-  option, writing a dummy value of its agent's rank in place of D's
-  constant, so that each activity still names its own agent; where an
-  identifier is not unique in its tree, or a reference names no kept
-  agent, the outermost Content Sequence takes its Basic Profile action
-  (:data:`AGENT_IDENTIFIER`, :attr:`ContentItemPlan.dummy_texts`).
+  Referenced Imaging Agent Identifier (130255, DCM), and of the Component
+  ID (112347, DCM) of a Selected Implant Component (112346, DCM) and of a
+  Connected Implantation Plan Component (112374, DCM), takes D under every
+  option, writing a dummy value of the rank of the agent or component that
+  it identifies or names in place of D's constant, so that each activity
+  still names its own agent, and each connection its own components; where
+  an identifier is not unique in its tree, or a reference names no kept
+  agent or component, the outermost Content Sequence takes its Basic
+  Profile action (:data:`AGENT_IDENTIFIER`, :attr:`ContentItemPlan.dummy_texts`).
 
 Waveform Annotation Sequence (0040,B020), which only IODs outside the first
 supported release define, takes its Basic Profile action, as any sequence
@@ -295,25 +298,34 @@ DUMMY_IN_PLACE_OF_REMOVAL = frozenset(
 PHASE_IDENTIFIER = ("DCM", "130203", "TEXT")
 _ORDINAL = re.compile(r"[0-9]{1,2}")
 _LONG_ORDINAL = re.compile(r"[0-9]{3,}")
-# An Imaging Agent Identifier, which TID 11002 row 2 requires to identify
-# its agent "uniquely, within the scope of the root container", and a
-# Referenced Imaging Agent Identifier, which TID 11003 row 2 requires to "be
-# a value of Row 2 in TID 11002", naming the agent that an administration
-# activity uses. Table E.3.4-1 lists neither, and Text Value's own rule
-# would give every one D-021's one constant, so that each activity of a
-# report with more than one agent would name every agent. So each takes D,
-# under every option, and D writes, in place of its constant, the dummy
-# value of its agent's rank among the tree's agents, in the order of the
-# tree, ``DEIDENTIFIED 1`` for the first, and each reference the value of
-# the agent it names (:meth:`_ContentTree.agent_dummies`). Where two agents
-# have the same identifier, or a reference names no agent that is kept, the
-# outermost Content Sequence takes its Basic Profile action, which
-# sequesters the report, since no dummy value would keep what it names.
+# Identifiers by which one item of a tree names another, so that D-021's
+# one constant for Text Value would make every reference name every item
+# that it could. An Imaging Agent Identifier, which TID 11002 row 2 requires
+# to identify its agent "uniquely, within the scope of the root container",
+# is named by a Referenced Imaging Agent Identifier, which TID 11003 row 2
+# requires to "be a value of Row 2 in TID 11002", the agent that an
+# administration activity uses; Table E.3.4-1 lists neither, so each would
+# take Text Value's own rule. A Component ID, which TID 7000 row 9 gives
+# each Selected Implant Component of an implantation plan, is named by the
+# Component ID of each Connected Implantation Plan Component of an
+# assembly's Component Connection, which row 17 requires to be "Defined in
+# the Implant Component List CONTAINER"; the table gives Component ID D.
+# So each takes D, under every option, and D writes, in place of its
+# constant, the dummy value of the rank of the item that it identifies
+# among the tree's items of its kind, in the order of the tree,
+# ``DEIDENTIFIED 1`` for the first, and each reference the value of the item
+# it names (:meth:`_ContentTree.linked_dummies`). Where two items of a kind
+# have the same identifier, or a reference names no item of its kind that
+# is kept, the outermost Content Sequence takes its Basic Profile action,
+# which sequesters the report, since no dummy value would keep what it
+# names. A Component ID anywhere else takes the table's action.
 AGENT_IDENTIFIER = ("DCM", "130254", "TEXT")
 AGENT_REFERENCE = ("DCM", "130255", "TEXT")
-_AGENT_TEXTS = (AGENT_IDENTIFIER, AGENT_REFERENCE)
-# D-021's constant for Text Value, UT, with the agent's rank.
-AGENT_DUMMY = CONSTANTS["UT"][0] + " {}"
+COMPONENT_ID = ("DCM", "112347", "TEXT")
+SELECTED_COMPONENT = ("DCM", "112346")
+CONNECTED_COMPONENT = ("DCM", "112374")
+# D-021's constant for Text Value, UT, with the identified item's rank.
+LINK_DUMMY = CONSTANTS["UT"][0] + " {}"
 # A Procedure Log's entries, the targets of "CONTAINS" from its root, each
 # include Observation DateTime (0040,A032) and are "strictly ordered by
 # monotonically increasing" values of it (PS3.3 Section A.35.7.3.1.2). Where
@@ -424,7 +436,15 @@ METHOD = (
     "option, and D writes the dummy value of the agent's rank, so that each "
     "activity names the same agent in the output; where two agents share an "
     "identifier, or a reference names no agent that is kept, the Content "
-    "Sequence takes its Basic Profile action. "
+    "Sequence takes its Basic Profile action. So does the Component ID "
+    "(112347, DCM) of a Selected Implant Component (112346, DCM), which "
+    "TID 7000 lists in an implantation plan, and of a Connected "
+    "Implantation Plan Component (112374, DCM), by which TID 7000 names a "
+    "component that an assembly connects, and D writes the dummy value of "
+    "the component's rank, so that each connection names the same "
+    "components in the output; where two components share an identifier, "
+    "or a reference names no component that is kept, the Content Sequence "
+    "takes its Basic Profile action. "
     "A concept name "
     "coded by a retired SNOMED designator with a code that Table O-1 maps is "
     "looked up as that SNOMED CT code."
@@ -608,11 +628,10 @@ class _Sequences:
     reader: _Reader
     actions: Mapping[tuple[str, str, str], str]
     iod: IOD
-    # The concept and Text Value of each agent identifier and reference read,
-    # by its item (:data:`AGENT_IDENTIFIER`).
-    agents: dict[tuple, tuple[tuple[str, str, str], str]] = dataclasses.field(
-        default_factory=dict
-    )
+    # The kind of each linking identifier read, whether it identifies its
+    # item rather than naming another, and its Text Value, by its item
+    # (:data:`AGENT_IDENTIFIER`).
+    links: dict[tuple, tuple[str, bool, str]] = dataclasses.field(default_factory=dict)
 
     def outermost(self, path: ElementPath) -> _Outcome:
         """Return what is done with a kept sequence that no other one holds.
@@ -739,21 +758,36 @@ class _Sequences:
         key = (designator, value, value_type)
         if key == PHASE_IDENTIFIER:
             return self._phase_action(items)
-        if key in _AGENT_TEXTS:
-            return self._agent_action(items, key)
+        if key in (AGENT_IDENTIFIER, AGENT_REFERENCE):
+            return self._linked_action(items, "agent", key == AGENT_IDENTIFIER)
+        if key == COMPONENT_ID:
+            holder = self._holder_concept(items)
+            if holder in (SELECTED_COMPONENT, CONNECTED_COMPONENT):
+                return self._linked_action(
+                    items, "component", holder == SELECTED_COMPONENT
+                )
         return self.actions.get(key)
 
-    def _agent_action(self, items: tuple, key: tuple[str, str, str]) -> str:
-        """Return D for an agent identifier or reference, recording its value.
+    def _holder_concept(self, items: tuple) -> tuple[str | None, str | None]:
+        """Return the designator and code value of the concept name of an item's holder."""
+        code = (*items[:-1], (CONCEPT_NAME, 0))
+        return (
+            self.reader.text(ElementPath(code, DESIGNATOR)),
+            self.reader.text(ElementPath(code, CODE_VALUE)),
+        )
 
-        Its value, which links an activity to its agent, must be read as one
-        string; otherwise the item raises :class:`_Unkept`, which leaves the
+    def _linked_action(self, items: tuple, kind: str, identifies: bool) -> str:
+        """Return D for a linking identifier, recording its value.
+
+        ``identifies`` is whether it identifies its own item of ``kind``,
+        rather than naming one. Its value must be read as one string;
+        otherwise the item raises :class:`_Unkept`, which leaves the
         outermost Content Sequence to take its Basic Profile action.
         """
         text = self.reader.text(ElementPath(items, TEXT_VALUE))
         if text is None:
             raise _Unkept
-        self.agents[items] = (key, text)
+        self.links[items] = (kind, identifies, text)
         return DUMMY
 
     def _phase_action(self, items: tuple) -> str | None:
@@ -891,44 +925,58 @@ class _ContentTree:
             removed,
             frozenset(emptied),
             types.MappingProxyType(self._renumbered(references, removed)),
-            types.MappingProxyType(self.agent_dummies()),
+            types.MappingProxyType(self.linked_dummies()),
         )
 
-    def agent_dummies(self) -> dict[ElementPath, str]:
-        """Return the dummy value of each kept agent identifier and reference.
+    def linked_dummies(self) -> dict[ElementPath, str]:
+        """Return the dummy value of each kept linking identifier.
 
-        The agents are ranked in the order of the tree, from 1, and each
-        identifier takes ``DEIDENTIFIED`` and its agent's rank, and each
-        reference the value of the identifier it names, by its Text Value.
-        As D's second constant does, the series moves on by its own length
-        where any dummy value would equal any of these source values, as D
-        compares them, until none does, so that no source value is written.
-        Two kept identifiers with the same value, or a kept reference that
-        names none, raise :class:`_Unkept` (:data:`AGENT_IDENTIFIER`).
+        The items of each kind are ranked in the order of the tree, from 1,
+        and each identifier of one takes ``DEIDENTIFIED`` and its item's
+        rank, and each reference the value of the identifier it names, by
+        its Text Value. As D's second constant does, a kind's series moves
+        on by its own length where any of its dummy values would equal any
+        of its source values, as D compares them, until none does, so that
+        no source value is written. Two kept identifiers of a kind with the
+        same value, or a kept reference that names none of its kind, raise
+        :class:`_Unkept` (:data:`AGENT_IDENTIFIER`).
         """
         kept = sorted(
             (items, entry)
-            for items, entry in self._sequences.agents.items()
+            for items, entry in self._sequences.links.items()
             if items in self._nodes and not self._gone(items)
         )
-        names = [text for _, (key, text) in kept if key == AGENT_IDENTIFIER]
-        if len(set(names)) != len(names):
-            raise _Unkept
-        if any(key == AGENT_REFERENCE and text not in names for _, (key, text) in kept):
-            raise _Unkept
-        sources = {comparison_key("UT", text) for _, (_, text) in kept}
-        start = 0
-        while True:
-            written = [
-                AGENT_DUMMY.format(start + rank) for rank in range(1, len(names) + 1)
+        found = {}
+        for kind in sorted({kind for _, (kind, _, _) in kept}):
+            links = [
+                (items, identifies, text)
+                for items, (each, identifies, text) in kept
+                if each == kind
             ]
-            if sources.isdisjoint(comparison_key("UT", each) for each in written):
-                break
-            start += len(names)
-        ranks = dict(zip(names, written))
-        return {
-            ElementPath(items, TEXT_VALUE): ranks[text] for items, (_, text) in kept
-        }
+            names = [text for _, identifies, text in links if identifies]
+            if len(set(names)) != len(names):
+                raise _Unkept
+            if any(
+                not identifies and text not in names for _, identifies, text in links
+            ):
+                raise _Unkept
+            sources = {comparison_key("UT", text) for _, _, text in links}
+            start = 0
+            while True:
+                written = [
+                    LINK_DUMMY.format(start + rank) for rank in range(1, len(names) + 1)
+                ]
+                if sources.isdisjoint(comparison_key("UT", each) for each in written):
+                    break
+                start += len(names)
+            ranks = dict(zip(names, written))
+            found.update(
+                {
+                    ElementPath(items, TEXT_VALUE): ranks[text]
+                    for items, _, text in links
+                }
+            )
+        return found
 
     def _walk(self, sequence: ElementPath) -> tuple[Item, ...]:
         """Read the items of a Content Sequence, at any depth."""
@@ -1298,7 +1346,9 @@ class ContentItemPlan(Mapping[ElementPath, str]):
     dummy_texts : mapping of ElementPath to str
         The value that D writes, in place of its constant, in the Text Value
         of each kept Imaging Agent Identifier and Referenced Imaging Agent
-        Identifier: the dummy value of its agent's rank
+        Identifier, and Component ID of a Selected Implant Component or
+        Connected Implantation Plan Component: the dummy value of the rank
+        of the agent or component that it identifies or names
         (:data:`AGENT_IDENTIFIER`).
     """
 
