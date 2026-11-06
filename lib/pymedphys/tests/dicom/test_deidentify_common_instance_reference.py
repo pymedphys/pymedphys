@@ -28,20 +28,53 @@ MODULE = "Common Instance Reference"
 # The supported IODs that make the module mandatory, from the 2026d PS3.3
 # Tables A.39.1-1 and A.39.2-1.
 MANDATORY = {"Spatial Registration", "Deformable Spatial Registration"}
+# Required where a Derivation Image functional group is present.
+CONDITIONAL = {"Segmentation"}
+# The supported IODs without the module: the Structured Reports, whose SR
+# Document General Module references their evidence instead (PS3.3 Section
+# A.35).
+WITHOUT = {
+    "X-Ray Radiation Dose SR",
+    "Enhanced X-Ray Radiation Dose SR",
+    "Radiopharmaceutical Radiation Dose SR",
+    "Patient Radiation Dose SR",
+    "Basic Text SR",
+    "Enhanced SR",
+    "Comprehensive SR",
+    "Comprehensive 3D SR",
+    "Extensible SR",
+    "Key Object Selection Document",
+    "Mammography CAD SR",
+    "Chest CAD SR",
+    "Colon CAD SR",
+    "Procedure Log",
+    "Spectacle Prescription Report",
+    "Macular Grid Thickness and Volume Report",
+    "Waveform Annotation SR",
+}
 
 
 def _path(*steps):
     return ElementPath(tuple((tag, 0) for tag in steps[:-1]), steps[-1])
 
 
-def test_every_supported_iod_includes_the_module_and_its_two_conditional_sequences():
+def test_every_supported_iod_but_the_reports_includes_the_module_and_its_sequences():
     # Where an IOD makes the module mandatory, it still holds neither
     # sequence once both conditions fail, since both are Type 1C.
     tables = iods.load_iod_tables()
     for name in scope.SUPPORTED_IODS:
         iod = tables.iods[name]
-        (usage,) = {m.usage for m in iod.modules if m.module == MODULE}
-        assert usage == ("M" if name in MANDATORY else "U"), name
+        usages = {m.usage for m in iod.modules if m.module == MODULE}
+        if name in WITHOUT:
+            assert not usages, name
+            assert not any(
+                d.tag in SEQUENCES and not d.path for d in iod.definitions
+            ), name
+            continue
+        (usage,) = usages
+        assert usage == (
+            "M" if name in MANDATORY else "C" if name in CONDITIONAL else "U"
+        ), name
         assert {
             (d.tag, d.type)
             for d in iod.definitions

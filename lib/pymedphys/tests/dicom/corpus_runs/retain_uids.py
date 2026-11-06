@@ -12,7 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""The Retain UIDs Option alone (PS3.15 E.3.9, D-040)."""
+"""The Retain UIDs Option alone (PS3.15 E.3.9, D-040).
+
+The X-ray report's scope of accumulation names the study by its Study
+Instance UID, which the option keeps everywhere else. Without Clean
+Structured Content, the Basic Profile's D on the report's Content Sequence
+sequesters the report, whose removed UID is still searched for in its
+subject's other instances. The UID's only source is an instance that the
+run does not write, so finding it in a kept Study Instance UID explains it
+(D-042), and the other instances are released.
+"""
 
 from .._corpus_run import CorpusRun
 

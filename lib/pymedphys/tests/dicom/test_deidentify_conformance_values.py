@@ -28,6 +28,7 @@ from pymedphys._dicom.deidentify import (
     conformance_values,
     dummy_values,
     edits,
+    icc_cleaning,
     icc_profiles,
     instance_transform,
     pixel_risk,
@@ -125,6 +126,15 @@ def test_the_releaser_accepts_the_residual_risk_of_these_values(preset):
     assert "The engine does not itself assess the residual risk" in section
     assert "names an institution, not a patient" in section
     assert "`public-release` preset has a person review every distinct" in section
+    # And an assessor states how they were assessed, without which no record
+    # of an assessment can be made, so no public-release run is ready.
+    assert (
+        "is ready for release only where an external risk assessment of the "
+        "collection states how the institutional identity that the policy "
+        "keeps, these values among it, was assessed, and whether the "
+        "assessment supports keeping it"
+    ) in section
+    assert "the other presets keep these values without review or" in section
     assert (
         "the residual risk of the output, these values included, is for "
         "whoever releases the data to accept, which they may confirm, yes or "
@@ -210,26 +220,59 @@ def test_the_reviewed_procedure_step_items_are_described():
 def test_the_reviewed_icc_profile_is_described():
     section = _section("basic", "Values written")
 
-    assert f"D on {_named(dummy_values.ICC_PROFILE)} writes a fixed ICC" in section
-    for description in ("DEIDENTIFIED sRGB", "DE-IDENTIFIED sRGB"):
+    assert (
+        f"D on {_named(dummy_values.ICC_PROFILE)} writes the source profile "
+        "cleaned of everything but its colorimetry"
+    ) in section
+    assert "D writes instead a fixed ICC version 2.4 input profile" in section
+    for description in ("DEIDENTIFIED", "DE-IDENTIFIED", "DEIDENTIFIED sRGB"):
         assert f"`{description}`" in section
     assert "grey" not in section
 
 
 @pytest.mark.deid_requirement("PS3.15-E.1.3-01")
+def test_the_reviewed_institution_item_is_described_with_its_place():
+    section = _section("basic", "Values written")
+    tag = dummy_values.INSTITUTION_CODE_SEQUENCE
+    user = dummy_values.INTERLOCK_RESOLUTION_USER_SEQUENCE
+
+    assert (
+        f"D on {_named(tag)} in an item of {_named(user)} writes one item, with "
+        f"{_named('(0008,0100)')} `DEIDENTIFIED`, {_named('(0008,0102)')} "
+        f"`99PYMEDPHYS`, and {_named('(0008,0104)')} `DEIDENTIFIED`."
+    ) in section
+    assert (
+        f"the item has {_named('(0008,0100)')} `DE-IDENTIFIED` and "
+        f"{_named('(0008,0104)')} `DE-IDENTIFIED` instead. Elsewhere, D on it "
+        "has no reviewed rule, so the instance is sequestered."
+    ) in section
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
 def test_only_the_reviewed_items_coding_scheme_names_pymedphys():
     section = _section("basic", "Values written")
-    tag = dummy_values.PERSON_IDENTIFICATION_CODE_SEQUENCE
-    named = [
-        element
-        for item in dummy_values.items_for_d(tag, [])
-        for element in item
-        if "PYMEDPHYS" in element.value.upper()
-    ]
-    assert [e.tag for e in named] == ["(0008,0102)"]
+    person = dummy_values.PERSON_IDENTIFICATION_CODE_SEQUENCE
+    institution = dummy_values.INSTITUTION_CODE_SEQUENCE
+    within = {institution: (dummy_values.INTERLOCK_RESOLUTION_USER_SEQUENCE,)}
+    named = {
+        tag: [
+            element
+            for item in dummy_values.items_for_d(tag, [], within=within.get(tag, ()))
+            for element in item
+            if "PYMEDPHYS" in element.value.upper()
+        ]
+        for tag in (person, institution)
+    }
+    assert {tag: [e.tag for e in found] for tag, found in named.items()} == {
+        person: ["(0008,0102)"],
+        institution: ["(0008,0102)"],
+    }
     assert (
         "No value that Z, D, or U writes names PyMedPhys, except the "
-        f"{_named('(0008,0102)')} `{named[0].value}`"
+        f"{_named('(0008,0102)')} `{named[person][0].value}` of the item that D "
+        f"writes in {_named(person)} and the {_named('(0008,0102)')} "
+        f"`{named[institution][0].value}` of the item that D writes in "
+        f"{_named(institution)}, which name who defines their codes."
     ) in section
     assert not any(
         "PYMEDPHYS" in str(value).upper()
@@ -239,11 +282,15 @@ def test_only_the_reviewed_items_coding_scheme_names_pymedphys():
     # The procedure step's items hold only UIDs, and the ICC profile's only
     # text is its description and copyright.
     assert set(walker.REVIEWED_DUMMY_SEQUENCES) == {
-        tag,
+        person,
+        institution,
         dummy_values.REFERENCED_PERFORMED_PROCEDURE_STEP_SEQUENCE,
     }
-    for description in ("DEIDENTIFIED sRGB", "DE-IDENTIFIED sRGB"):
-        assert b"PYMEDPHYS" not in icc_profiles.srgb_profile(description).upper()
+    assert b"PYMEDPHYS" not in icc_profiles.srgb_profile("DEIDENTIFIED sRGB").upper()
+    source = icc_profiles.srgb_profile("A scanner's profile")
+    for text in dummy_values.CONSTANTS["LO"]:
+        cleaned = icc_cleaning.clean_profile(source, text)
+        assert b"PYMEDPHYS" not in cleaned.upper()
 
 
 @pytest.mark.deid_requirement("PS3.15-E.1.3-01")
@@ -472,6 +519,15 @@ def _gate_reasons(code):
         coverage["collected"] = (residuals.SourceValue(name, "PN", "ZEBEDEE^QUILLON"),)
         text = b"ZEBEDEE^QUILLON "
         written += struct.pack("<HH2sH", 0x0008, 0x103E, b"LO", len(text)) + text
+    elif code is release_gate.ReasonCode.RESIDUAL_PERSON_NAME_IN_KEPT_TEXT:
+        # Institutional Department Name, which Retain Institution Identity
+        # keeps.
+        name = ElementPath((), "(0010,0010)")
+        coverage["planned"] = frozenset({name})
+        coverage["collected"] = (residuals.SourceValue(name, "PN", "ZEBEDEE^QUILLON"),)
+        coverage["options"] = ("retain_institution_identity",)
+        text = b"ZEBEDEE WARD"
+        written += struct.pack("<HH2sH", 0x0008, 0x1040, b"LO", len(text)) + text
     elif code is release_gate.ReasonCode.RESIDUAL_OUTSIDE_DATA_SET:
         coverage["collected"] = (residuals.SourceValue(path, "LO", "ZARQUON"),)
         written += b"\xff\xff\xff\xffZARQUON STUDY"
@@ -760,3 +816,35 @@ def test_the_statement_cites_no_design_decision_by_number(preset_name, options):
         conformance.conformance_statement(selected, vocabulary=None)
     )
     assert re.search(r"\bD-\d{3}\b", text) is None
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
+@pytest.mark.parametrize(
+    "options, described",
+    [
+        ((policy.CLEAN_STRUCTURED_CONTENT,), True),
+        ((policy.CLEAN_STRUCTURED_CONTENT, policy.FULL_DATES), False),
+        ((policy.CLEAN_STRUCTURED_CONTENT, policy.MODIFIED_DATES), False),
+        ((), False),
+    ],
+    ids=["option", "full-dates", "modified-dates", "no-option"],
+)
+def test_values_written_describes_a_procedure_logs_ranked_datetimes(options, described):
+    lines = conformance_markdown.render_markdown(
+        conformance.conformance_statement(
+            policy.compose_custom_policy(options), vocabulary=None
+        )
+    ).splitlines()
+    start = lines.index("## Values written") + 1
+    end = next(i for i in range(start, len(lines)) if lines[i].startswith("## "))
+    section = " ".join(lines[start:end])
+
+    # Only where D gives a log's entries their Observation DateTime does the
+    # statement say which dummy each takes.
+    paragraph = "Observation DateTime (0040,A032) of each entry of a Procedure Log"
+    assert (paragraph in section) is described
+    if described:
+        assert "`19000101000000` for the earliest, and one second more" in section
+        assert "A log whose entries are not in increasing order is sequestered." in (
+            section
+        )

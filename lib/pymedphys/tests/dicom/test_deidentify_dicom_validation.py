@@ -72,10 +72,12 @@ STRINGS = frozenset(
         "Type 1 Required",
         "Unrecognized enumerated value",
         "String attribute has different value",
+        "Different information entities for attribute",
         "GeneralStudy",
         "NotAKeyword",
         # An entity's name, stored as the end of a longer string.
         "InformationEntityPatient",
+        "Series",
         "Study",
         ORIENTATION,
         EVEN_GROUP,
@@ -333,6 +335,23 @@ def test_an_unknown_attribute_is_unparsed_in_implicit_vr_alone():
     assert explicit.unparsed == {"(300A,07A0)"}
 
 
+def test_a_sop_class_that_dciodvfy_does_not_know_is_unsupported():
+    # dciodvfy names no IOD and checks no module of a SOP Class that it does
+    # not know, as its January 2024 snapshot does not know Extensible SR.
+    unknown = validators.parse_dciodvfy(
+        f"Error - Information Object Not found\nError - {PLANTED}\n", STRINGS
+    )
+    # A line of that form below the IOD's name is any other message.
+    known = validators.parse_dciodvfy(
+        "CTImage\nError - Information Object Not found\n", STRINGS
+    )
+
+    assert (unknown.status, unknown.findings) == (Status.UNSUPPORTED, {})
+    assert PLANTED not in repr(unknown)
+    assert known.status is Status.VALIDATED
+    assert known.iod == "CTImage"
+
+
 def test_reading_a_transfer_syntax_reports_no_invalid_value(tmp_path, caplog):
     dataset = pydicom.Dataset()
     dataset.SOPClassUID = pydicom.uid.CTImageStorage
@@ -383,6 +402,32 @@ def test_dcentvfy_keeps_the_attribute_and_entity_and_not_the_files_or_values():
             "Study",
         ): 1,
         Finding(DCENTVFY, "unrecognised", "", "line not recognised"): 1,
+    }
+
+
+def test_dcentvfy_keeps_both_entities_of_an_attribute_that_two_iods_place_apart():
+    # As dcentvfy compares an image with a Structured Report: the files'
+    # IODs give the attribute different information entities, named in the
+    # order of the files.
+    output = (
+        "Warning - Different information entities for attribute - "
+        "Element=<AccessionNumber> IE <Series> versus <Study> "
+        f"for file <{PLANTED}.dcm> versus <b.dcm>\n"
+        "Warning - Different information entities for attribute - "
+        f"Element=<AccessionNumber> IE <{PLANTED}> versus <Study> "
+        "for file <a> versus <b>\n"
+        "Warning - Different information entities for attribute - "
+        "Element=<AccessionNumber> IE <Study> versus <Series> "
+        "for file <b.dcm> versus <a.dcm>\n"
+    )
+
+    validation = validators.parse_dcentvfy(output, STRINGS)
+
+    assert PLANTED not in repr(validation)
+    message = "Different information entities for attribute"
+    assert validation.findings == {
+        Finding(DCENTVFY, "warning", "(0008,0050)", message, "Series versus Study"): 2,
+        Finding(DCENTVFY, "warning", "(0008,0050)", message): 1,
     }
 
 

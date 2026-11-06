@@ -29,6 +29,16 @@ import pydicom_coverage
 from select_checks import OUTPUTS
 
 WORKFLOWS = Path(__file__).resolve().parents[1] / "workflows"
+# The lines that split the listed corpus modules between the ct-defacing and
+# corpus-runs parts, in every job that runs in parts.
+CT_DEFACING_SELECTION = (
+    '            if [[ " ${listed[*]} " != *" ${CT_DEFACING_RUN_TEST} "* ]]; then\n',
+    '              ct-defacing) selection=("${CT_DEFACING_RUN_TEST}") ;;\n',
+    '                  if [[ "${path}" != "${CT_DEFACING_RUN_TEST}" ]]; then\n',
+    '                    selection+=("${path}")\n',
+    "                if [[ ${#selection[@]} -eq 0 ]]; then\n",
+    '                  echo "::error::The remaining corpus part must not be empty."\n',
+)
 
 
 def jobs(filename: str) -> dict[str, str]:
@@ -339,7 +349,7 @@ class WorkflowContractTests(unittest.TestCase):
             [
                 "${{ env.REPORT }}",
                 "${{ env.CELL }}",
-                "junit-extra-${{ matrix.extra }}",
+                "${{ env.REPORT }}",
                 "junit-dependency-floors-${{ matrix.part }}",
                 "junit-pydicom-${{ matrix.pydicom }}",
             ],
@@ -353,6 +363,11 @@ class WorkflowContractTests(unittest.TestCase):
             "      CELL: junit-${{ matrix.os }}-${{ matrix.python-version }}\n",
             jobs("unit-tests.yml")["combined-report"],
         )
+        self.assertIn(
+            "      REPORT: junit-extra-${{ matrix.extra }}"
+            "${{ matrix.part && format('-{0}', matrix.part) || '' }}\n",
+            jobs("unit-tests.yml")["narrow-extras"],
+        )
         for os_name in ("ubuntu-latest", "windows-latest", "macos-latest"):
             with self.subTest(os=os_name):
                 self.assertTrue(fnmatch.fnmatchcase(f"junit-{os_name}-3.12", pattern))
@@ -361,7 +376,11 @@ class WorkflowContractTests(unittest.TestCase):
             fnmatch.fnmatchcase(pydicom_coverage.BASELINE_ARTIFACT, pattern)
         )
         for name in (
-            "junit-extra-dicom",
+            "junit-extra-gamma",
+            "junit-extra-dicom-ct-defacing",
+            "junit-extra-dicom-corpus-runs",
+            "junit-extra-dicom-others",
+            "junit-dependency-floors-ct-defacing",
             "junit-dependency-floors-corpus-runs",
             "junit-dependency-floors-others",
             *(
@@ -431,7 +450,13 @@ class WorkflowContractTests(unittest.TestCase):
                 self.assertTrue((WORKFLOWS.parents[1] / path).is_file())
         workflow = jobs("unit-tests.yml")
         floors, test = workflow["dependency-floors"], workflow["test"]
-        self.assertIn("        part: [corpus-runs, others]\n", floors)
+        self.assertIn("        part: [ct-defacing, corpus-runs, others]\n", floors)
+        self.assertIn("    timeout-minutes: 30\n", floors)
+        # Every split job reads the one CT defacing module that the workflow
+        # names, which must be one of the listed modules.
+        ct_defacing = re.search(r"(?m)^  CT_DEFACING_RUN_TEST: (\S+)$", text)[1]
+        self.assertEqual(listed.split().count(ct_defacing), 1)
+        self.assertEqual(text.count("CT_DEFACING_RUN_TEST: "), 1)
         # Every cell runs in one job for each part, which the combined
         # report joins; no cell runs whole.
         self.assertIn(
@@ -449,24 +474,24 @@ class WorkflowContractTests(unittest.TestCase):
             with self.subTest(key=key):
                 line = re.search(rf"(?m)^        {key}: .+\n", test)[0]
                 self.assertIn(line, combined)
-        # Both jobs select their parts the same way: the corpus-runs part runs
-        # the listed modules and the others part ignores them, so a module is
-        # in exactly one part, and a listed module that is missing fails both.
+        # In both jobs, CT defacing runs alone and the other listed modules
+        # run together. Both others parts ignore every listed module; missing
+        # paths fail every part before pytest starts.
         selections = [
             re.search(
                 r"(?ms)^          # Each part runs its share.*?^          fi\n", job
             )[0]
             for job in (floors, test)
         ]
-        self.assertEqual(selections[0], selections[1])
         for line in (
             '            if [[ ! -f "${path}" ]]; then\n',
-            '              corpus-runs) selection=("${listed[@]}") ;;\n',
             "              others) selection="
             '("${listed[@]/#/--ignore=${GITHUB_WORKSPACE}/}") ;;\n',
+            *CT_DEFACING_SELECTION,
         ):
             with self.subTest(line=line):
-                self.assertIn(line, selections[0])
+                for selection in selections:
+                    self.assertIn(line, selection)
         for name, job in (("dependency-floors", floors), ("test", test)):
             with self.subTest(job=name):
                 self.assertIn(
@@ -474,11 +499,39 @@ class WorkflowContractTests(unittest.TestCase):
                 )
                 # A skipped part would count as a success of the workflow.
                 self.assertNotIn("\n    if:", job)
-                # The corpus-runs part reads no data, so it must not save a
-                # partial data cache under the key the parts share.
+                # Synthetic corpus parts must not save a partial data cache
+                # under the key that every part shares.
                 self.assertIn(
-                    "          cache-data: ${{ matrix.part != 'corpus-runs' }}\n", job
+                    "          cache-data: ${{ matrix.part == 'others' }}\n", job
                 )
+        # The dicom extra's run alone has the same three parts, over the same
+        # paths and marks: the corpus parts run their modules in place of the
+        # paths, and its others part adds the same ignores to them.
+        narrow = workflow["narrow-extras"]
+        part = (
+            "          - extra: dicom\n"
+            "            part: {}\n"
+            "            marks: not slow\n"
+            "            paths: tests/dicom\n"
+        )
+        for name in pydicom_coverage.PARTS:
+            with self.subTest(narrow_part=name):
+                self.assertEqual(narrow.count(part.format(name)), 1)
+        self.assertEqual(
+            narrow.count("            part: "), len(pydicom_coverage.PARTS)
+        )
+        for line in (
+            '            if [[ ! -f "${path}" ]]; then\n',
+            *CT_DEFACING_SELECTION,
+            "                selection=()\n",
+            "              others) selection+="
+            '("${listed[@]/#/--ignore=${GITHUB_WORKSPACE}/}") ;;\n',
+            "          cache-data: ${{ matrix.part != 'ct-defacing' && "
+            "matrix.part != 'corpus-runs' }}\n",
+        ):
+            with self.subTest(narrow_line=line):
+                self.assertIn(line, narrow)
+        self.assertNotIn("\n    if:", narrow)
         # The release expects a report from every Python version that
         # python-matrix holds by default, so no caller may narrow it.
         self.assertIn('        default: \'["3.12", "3.13", "3.14"]\'\n', text)
@@ -628,6 +681,68 @@ class WorkflowContractTests(unittest.TestCase):
         # A project that finds fewer files than its tree holds fails the step.
         self.assertIn('if [[ "${found}" != "${expected}" ]]; then\n', job)
         self.assertIn("uv run -- pyright --stats", job)
+
+    def test_the_model_pin_check_reads_only_and_holds_no_secret(self):
+        text = (WORKFLOWS / "text-detection-model-pins.yml").read_text(encoding="utf-8")
+        triggers = text.split("\non:\n", 1)[1].split("\npermissions:\n", 1)[0]
+        # Started by hand, and by no other event.
+        self.assertEqual(
+            re.findall(r"(?m)^  ([a-z_]+):", triggers), ["workflow_dispatch"]
+        )
+        self.assertIn("\npermissions:\n  contents: read\n", text)
+        self.assertEqual(
+            re.findall(r"(?m)^      [a-z-]+: (?:read|write)$", text),
+            ["      contents: read"],
+        )
+        self.assertNotIn("secrets.", text)
+        self.assertIn("persist-credentials: false", text)
+        self.assertIn(
+            "python -m pymedphys._dicom.deidentify.text_evaluation_model_pins", text
+        )
+        self.assertIn("set -o pipefail", text)
+
+    def test_the_idc_evaluation_reads_only_and_keeps_its_tools_pinned(self):
+        text = (WORKFLOWS / "text-detector-evaluation-idc.yml").read_text(
+            encoding="utf-8"
+        )
+        triggers = text.split("\non:\n", 1)[1].split("\npermissions:\n", 1)[0]
+        self.assertEqual(
+            re.findall(r"(?m)^  ([a-z_]+):", triggers), ["workflow_dispatch"]
+        )
+        self.assertIn("\npermissions:\n  contents: read\n", text)
+        self.assertEqual(
+            re.findall(r"(?m)^      [a-z-]+: (?:read|write)$", text),
+            ["      contents: read"],
+        )
+        self.assertNotIn("secrets.", text)
+        self.assertIn("persist-credentials: false", text)
+        # Inputs reach commands only through the environment.
+        run_blocks = re.findall(r"(?ms)^        run: \|\n(.*?)(?=^      - |\Z)", text)
+        self.assertTrue(run_blocks)
+        for block in run_blocks:
+            self.assertNotIn("${{", block)
+        self.assertIn(
+            "uv pip install --require-hashes --no-deps \\\n"
+            "            -r .github/text-evaluation/requirements.txt",
+            text,
+        )
+        self.assertIn("sha256sum --check --strict -", text)
+        # Only the results leave the runner; never the data or the selection's
+        # series.
+        self.assertEqual(
+            re.findall(r"(?m)^          path: (.*)$", text),
+            ["${{ runner.temp }}/idc/results/"],
+        )
+        self.assertNotIn("actions/cache", text)
+        requirements = (
+            WORKFLOWS.parent / "text-evaluation/requirements.txt"
+        ).read_text(encoding="utf-8")
+        pins = re.findall(r"(?m)^([A-Za-z0-9_.-]+)==([^ ]+) \\$", requirements)
+        hashes = re.findall(r"--hash=sha256:([0-9a-f]{64})$", requirements, re.M)
+        self.assertEqual(
+            [name for name, _ in pins], ["pyarrow", "opencv-python-headless", "s5cmd"]
+        )
+        self.assertEqual(len(hashes), len(pins))
 
 
 if __name__ == "__main__":

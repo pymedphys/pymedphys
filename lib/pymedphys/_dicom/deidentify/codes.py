@@ -179,6 +179,28 @@ class SnomedId:
     snomed_id: str
 
 
+@dataclasses.dataclass(frozen=True)
+class AnatomicRegion:
+    """The anatomic region code of a Body Part Examined term, from DICOM
+    PS3.16 Annex L.
+
+    Attributes
+    ----------
+    term : str
+        The Defined Term of Body Part Examined (0018,0015), such as
+        ``"CHEST"``.
+    scheme_designator, code_value, code_meaning : str
+        Its code, such as ``"SCT"``, ``"816094009"``, and ``"Chest"``. Annex
+        L gives some terms, such as ``"FETALARM"``, a meaning without a
+        code; their designator and value are empty.
+    """
+
+    term: str
+    scheme_designator: str
+    code_value: str
+    code_meaning: str
+
+
 def is_snomed_ct_concept_id(value: object) -> bool:
     """Return whether ``value`` is a valid SNOMED CT Concept ID.
 
@@ -300,6 +322,32 @@ _SNOMED_ID_CHECKS: tuple[tuple[Callable[[dict], bool], str], ...] = (
 )
 
 
+# Annex L gives some terms a meaning but no designator or value.
+_UNCODED = ("scheme_designator", "code_value")
+_ANATOMIC_REGION_CHECKS: tuple[tuple[Callable[[dict], bool], str], ...] = (
+    (
+        lambda row: (
+            _is_short_text(row["term"], CODE_VALUE_MAX_LENGTH)
+            and bool(re.fullmatch(r"[A-Z0-9 _]+", row["term"]))
+        ),
+        "has a term that VR CS cannot hold",
+    ),
+    *(
+        (
+            lambda row, check=check: (
+                (
+                    all(row[field] == "" for field in _UNCODED)
+                    and _is_short_text(row["code_meaning"], CODE_MEANING_MAX_LENGTH)
+                )
+                or check(row)
+            ),
+            message,
+        )
+        for check, message in _CODED_CONCEPT_CHECKS
+    ),
+)
+
+
 def _context_group(cid: int) -> RegistryTableSpec:
     return RegistryTableSpec(
         f"PS3.16 Table CID {cid}",
@@ -339,6 +387,17 @@ SNOMED_ID_TABLE = RegistryTableSpec(
     SnomedId,
     _SNOMED_ID_CHECKS,
     (("concept_id",), ("snomed_id",)),
+)
+
+# Annex L's code for each Body Part Examined term, which the evaluation's
+# converter to the Legacy Converted Enhanced Image IODs writes in Frame
+# Anatomy.
+ANATOMIC_REGIONS_TABLE = RegistryTableSpec(
+    "PS3.16 Annex L Anatomic Region Codes",
+    "anatomic_regions.json",
+    AnatomicRegion,
+    _ANATOMIC_REGION_CHECKS,
+    (("term",),),
 )
 
 
@@ -430,6 +489,19 @@ def load_snomed_ids(path: pathlib.Path | None = None) -> RegistryTable[SnomedId]
     characters; and neither may repeat, so that each identifies one concept.
     """
     return load_registry_table(SNOMED_ID_TABLE, path)
+
+
+def load_anatomic_regions(
+    path: pathlib.Path | None = None,
+) -> RegistryTable[AnatomicRegion]:
+    """Load the anatomic region code of each Body Part Examined term, from
+    Annex L of DICOM PS3.16.
+
+    As :func:`load_coding_schemes`, except for the row checks: each row must
+    have a term that VR CS can hold, and either no code or a code that a
+    context group's row could hold; and no term may repeat.
+    """
+    return load_registry_table(ANATOMIC_REGIONS_TABLE, path)
 
 
 @functools.lru_cache(maxsize=None)

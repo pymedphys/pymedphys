@@ -14,20 +14,23 @@
 
 """The Clean Structured Content Option on Radiation Dose Structured Reports.
 
-The X-Ray and Radiopharmaceutical Radiation Dose SR IODs are not supported
-yet, so the engine sequesters their instances. These tests show, ahead of
-supporting them, what the option does with their content trees (D-047):
-which presets, with the option added, keep a report that holds only the
-rows that its templates require; which optional rows take the whole tree
-out under each option set; the action that each value of a kept tree takes;
-and what is written, in the tests that add the IODs to the supported ones
-for that test alone, as supporting them would. The reports are synthetic,
+The X-Ray and Radiopharmaceutical Radiation Dose SR IODs are supported, but
+without the option the engine sequesters each of their instances, since the
+Basic Profile gives Content Sequence (0040,A730) D and a sequence has no
+dummy value (D-021). These tests show what the option does with their
+content trees (D-047): which presets, with the option added, keep a report
+that holds only the rows that its templates require; which optional rows
+are removed on their own under each option set; the action that each value
+of a kept tree takes; what is written; and which attributes of a report's
+header sequester it whatever the option does. The reports are synthetic,
 built from the templates of PS3.16 2026d by
 :mod:`._synthetic_dose_reports`.
 
-A preset with the option added is composed by adding it to the preset's
-options for the test alone, since no preset selects it, and ``tps-import``'s
-options cannot be composed as a custom set.
+A preset with the option added is composed by adding it, for the test
+alone, to the options of a preset that does not select it, ``basic`` or
+``basic-clean-descriptors``, rather than as a custom set, since
+``tps-import``'s options cannot be composed as one; ``tps-import`` and
+``public-release`` select it.
 """
 
 import io
@@ -47,6 +50,7 @@ from pymedphys._dicom.deidentify.reviewed_roi_names import ReviewedNames
 from pymedphys._dicom.deidentify.source import read_source
 from pymedphys._dicom.deidentify.walker import plan_instance
 
+from . import _corpus_run
 from . import _synthetic_dose_reports as reports
 from . import _synthetic_references as synthetic
 
@@ -57,6 +61,9 @@ CSC = policy.CLEAN_STRUCTURED_CONTENT
 CSC_CODE = "113104"
 CONTENT = "(0040,A730)"
 VERIFYING_OBSERVER = "(0040,A073)"
+REFERENCED_REQUEST = "(0040,A370)"
+REQUESTED_PROCEDURE_ID = "(0040,1001)"
+REQUESTED_PROCEDURE = "REQUESTED-PROCEDURE"
 X_RAY = "x-ray"
 RADIOPHARMACEUTICAL = "radiopharmaceutical"
 REPORTS = {
@@ -98,28 +105,22 @@ SOURCE_VALUES = (
 
 @pytest.fixture(name="with_option")
 def _with_option(monkeypatch):
-    """Return a function that composes a preset's policy with the option added."""
+    """Return a function that composes a preset's policy with the option added.
+
+    The option is added only to a preset that does not select it.
+    """
     presets = dict(policy.PRESETS)
 
     def compose(preset):
-        monkeypatch.setattr(
-            policy,
-            "PRESETS",
-            types.MappingProxyType({**presets, preset: (*presets[preset], CSC)}),
-        )
+        if CSC not in presets[preset]:
+            monkeypatch.setattr(
+                policy,
+                "PRESETS",
+                types.MappingProxyType({**presets, preset: (*presets[preset], CSC)}),
+            )
         return policy.compose_policy(preset)
 
     return compose
-
-
-@pytest.fixture(name="supported")
-def _supported(monkeypatch):
-    """Add the two IODs to the supported ones, as supporting them would."""
-    monkeypatch.setattr(
-        scope,
-        "SUPPORTED_IODS",
-        scope.SUPPORTED_IODS | {reports.X_RAY_IOD, reports.RADIOPHARMACEUTICAL_IOD},
-    )
 
 
 def _report(name, optional=(), verified=False):
@@ -139,6 +140,20 @@ def _kept(dataset, iod, composed):
     """Return whether the option keeps the report's content tree."""
     actions, _ = _planned(dataset, iod, composed)
     return actions.get(ElementPath((), CONTENT)) == "K"
+
+
+def _removes(dataset, iod, composed):
+    """Return whether the option keeps the tree but removes items from it.
+
+    An item is removed on its own, or with the others of the Content
+    Sequence that an item other than a CONTAINER holds, which goes with them.
+    """
+    actions, plan = _planned(dataset, iod, composed)
+    return (
+        actions.get(ElementPath((), CONTENT)) == "K"
+        and bool(actions.removed_items or actions.emptied)
+        and plan.removed_items == actions.removed_items
+    )
 
 
 def _int(tag):
@@ -183,6 +198,7 @@ def _transform(composed):
         composed,
         KEY,
         cleaning=DescriptorCleaning(None, ReviewedNames.empty()),
+        face_review=_corpus_run.face_review_for(composed),
         unvalidated_policy=True,
     )
 
@@ -198,14 +214,16 @@ def _written(composed, dataset):
     return result.data
 
 
-def test_the_reports_are_of_iods_that_are_not_supported_yet():
+def test_the_reports_are_of_supported_iods():
     for name, (build, iod) in REPORTS.items():
         dataset = build()
         classification = scope.classify(
             dataset.SOPClassUID, synthetic.EXPLICIT_VR_LITTLE_ENDIAN
         )
 
-        assert classification.reason == scope.UnsupportedIod(iod), name
+        assert classification == scope.Classification(
+            scope.Disposition.SUPPORTED, iod
+        ), name
         assert load_iod_tables().iods[iod].lookup(CONTENT, ()), name
 
 
@@ -224,10 +242,10 @@ def test_without_the_option_a_report_is_sequestered(name):
 @pytest.mark.parametrize(
     "preset, x_ray, radiopharmaceutical",
     [
-        ("basic", False, False),
-        ("basic-clean-descriptors", False, False),
+        ("basic", True, True),
+        ("basic-clean-descriptors", True, True),
         ("tps-import", True, True),
-        ("public-release", False, True),
+        ("public-release", True, True),
     ],
 )
 def test_which_presets_with_the_option_keep_a_report_of_required_rows(
@@ -240,24 +258,26 @@ def test_which_presets_with_the_option_keep_a_report_of_required_rows(
         _, plan = _planned(dataset, iod, composed)
         assert _kept(dataset, iod, composed) is kept, name
         assert bool(plan.sequestrations) is not kept, name
-        # A report with every optional row is never kept.
+        # A report with every optional row is kept, with the rows that the
+        # preset does not keep removed on their own.
         everything, _ = _report(name, OPTIONAL_ROWS[name])
-        assert not _kept(everything, iod, composed), name
+        assert _kept(everything, iod, composed), name
+        assert _removes(everything, iod, composed), name
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.4-01")
 @pytest.mark.parametrize(
     "options, x_ray, radiopharmaceutical",
     [
-        ((), False, False),
-        ((policy.SAFE_PRIVATE,), False, False),
-        ((policy.UIDS,), False, False),
-        ((policy.DEVICE_IDENTITY,), False, False),
-        ((policy.INSTITUTION_IDENTITY,), False, False),
-        ((policy.PATIENT_CHARACTERISTICS,), False, False),
-        ((policy.FULL_DATES,), False, True),
-        ((policy.MODIFIED_DATES,), False, True),
-        ((policy.CLEAN_DESCRIPTORS,), False, False),
+        ((), True, True),
+        ((policy.SAFE_PRIVATE,), True, True),
+        ((policy.UIDS,), True, True),
+        ((policy.DEVICE_IDENTITY,), True, True),
+        ((policy.INSTITUTION_IDENTITY,), True, True),
+        ((policy.PATIENT_CHARACTERISTICS,), True, True),
+        ((policy.FULL_DATES,), True, True),
+        ((policy.MODIFIED_DATES,), True, True),
+        ((policy.CLEAN_DESCRIPTORS,), True, True),
         ((policy.FULL_DATES, policy.DEVICE_IDENTITY), True, True),
         ((policy.MODIFIED_DATES, policy.UIDS), True, True),
     ],
@@ -274,7 +294,8 @@ def test_which_retain_options_with_the_option_keep_a_report_of_required_rows(
 
 # A report made by a modality is observed by a device (TID 1004): its Device
 # Observer UID (row 1) is X/D, and its Name (row 2) and Serial Number (row 5)
-# are X unless Retain Device Identity is selected. The X-ray report's required
+# are X unless Retain Device Identity is selected, which removes each on its
+# own. The X-ray report's required
 # rows hold one; a radiopharmaceutical report holds one only through the dose
 # calibrator (TID 10022 rows 13 and 15).
 DEVICE_OBSERVERS = {
@@ -299,13 +320,13 @@ DEVICE_OBSERVERS = {
 @pytest.mark.parametrize(
     "options, kept",
     [
-        # Without a dates option the required start datetimes take the tree
-        # out, whatever is retained.
-        ((), set()),
-        ((policy.UIDS,), set()),
-        ((policy.DEVICE_IDENTITY,), set()),
-        ((policy.FULL_DATES,), set()),
-        ((policy.MODIFIED_DATES,), set()),
+        # Required start datetimes and observer UIDs take dummy values.
+        # Names and serial numbers still need Retain Device Identity.
+        ((), {"x-ray, UID", "radiopharmaceutical, UID"}),
+        ((policy.UIDS,), {"x-ray, UID", "radiopharmaceutical, UID"}),
+        ((policy.DEVICE_IDENTITY,), set(DEVICE_OBSERVERS)),
+        ((policy.FULL_DATES,), {"x-ray, UID", "radiopharmaceutical, UID"}),
+        ((policy.MODIFIED_DATES,), {"x-ray, UID", "radiopharmaceutical, UID"}),
         # Retain UIDs keeps the UID but not the name or serial number.
         (
             (policy.MODIFIED_DATES, policy.UIDS),
@@ -318,42 +339,53 @@ DEVICE_OBSERVERS = {
 def test_which_retain_options_keep_a_report_observed_by_a_device(options, kept):
     composed = policy.compose_custom_policy((CSC, *options))
 
+    assert all(
+        _kept(*_report(name, optional), composed)
+        for name, optional in DEVICE_OBSERVERS.values()
+    )
     assert {
         case
         for case, (name, optional) in DEVICE_OBSERVERS.items()
-        if _kept(*_report(name, optional), composed)
+        if not _removes(*_report(name, optional), composed)
     } == kept
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.4-01")
 @pytest.mark.parametrize(
-    "preset, kept", [("public-release", set()), ("tps-import", set(DEVICE_OBSERVERS))]
+    "preset, kept",
+    [
+        ("public-release", {"x-ray, UID", "radiopharmaceutical, UID"}),
+        ("tps-import", set(DEVICE_OBSERVERS)),
+    ],
 )
 def test_which_presets_keep_a_report_observed_by_a_device(with_option, preset, kept):
     composed = with_option(preset)
 
+    assert all(
+        _kept(*_report(name, optional), composed)
+        for name, optional in DEVICE_OBSERVERS.values()
+    )
     assert {
         case
         for case, (name, optional) in DEVICE_OBSERVERS.items()
-        if _kept(*_report(name, optional), composed)
+        if not _removes(*_report(name, optional), composed)
     } == kept
 
 
 @pytest.mark.parametrize(
     "preset, name, removed",
     [
-        # TID 1004 row 1 and TID 10003 row 6, both M, are X/D, which the
-        # engine resolves to X, since it checks no template.
-        ("basic", X_RAY, {"Device Observer UID", "DateTime Started"}),
-        ("basic-clean-descriptors", X_RAY, {"Device Observer UID", "DateTime Started"}),
+        # Required X/D rows receive dummy values under every preset.
+        ("basic", X_RAY, set()),
+        ("basic-clean-descriptors", X_RAY, set()),
         ("tps-import", X_RAY, set()),
-        ("public-release", X_RAY, {"Device Observer UID"}),
+        ("public-release", X_RAY, set()),
         # TID 10022 row 9, M, is X/D.
-        ("basic", RADIOPHARMACEUTICAL, {"Radiopharmaceutical Start DateTime"}),
+        ("basic", RADIOPHARMACEUTICAL, set()),
         (
             "basic-clean-descriptors",
             RADIOPHARMACEUTICAL,
-            {"Radiopharmaceutical Start DateTime"},
+            set(),
         ),
         ("tps-import", RADIOPHARMACEUTICAL, set()),
         ("public-release", RADIOPHARMACEUTICAL, set()),
@@ -373,10 +405,9 @@ def test_the_required_rows_that_table_e3_4_1_removes(
     } == removed
 
 
-# Under every option set, these optional rows take the tree out: Table
+# Under every option set, these optional rows are removed on their own: Table
 # E.3.4-1 gives each X under every option, or X with C under Clean
-# Descriptors, which falls back to X (D-009), or its concept name is coded in
-# LOINC, whose rows the generated table leaves out (D-001).
+# Descriptors, which falls back to X (D-009).
 X_RAY_REMOVED_UNDER_EVERY_OPTION = {
     "TID 10002 row 9",  # Calibration Protocol
     "TID 10003 row 4",  # Irradiation Event Label
@@ -391,7 +422,6 @@ RADIOPHARMACEUTICAL_REMOVED_UNDER_EVERY_OPTION = {
     "TID 10022 row 28",  # Radiopharmaceutical Lot Identifier
     "TID 10022 row 31",  # Prescription Identifier
     "TID 10022 row 32",  # Comment
-    "TID 10024 row 6",  # Patient Weight, coded in LOINC
     "TID 10024 row 14",  # Recent Physical Activity
     "TID 10021 row 6",  # Comment
 }
@@ -435,15 +465,15 @@ RADIOPHARMACEUTICAL_INSTITUTION = {"TID 10022 row 23 TID 1020 row 5"}
             RADIOPHARMACEUTICAL_REMOVED_UNDER_EVERY_OPTION
             | RADIOPHARMACEUTICAL_INSTITUTION
             | {
-                # Retain UIDs or Retain Device Identity keeps the dose
-                # calibrator's Device Observer UID, and Retain Device
-                # Identity its name and serial number.
-                "TID 10022 row 13",
+                # Retain Device Identity keeps the dose calibrator's
+                # name and serial number; its UID otherwise takes U.
                 "TID 10022 row 15 TID 1004 row 2",
                 "TID 10022 row 15 TID 1004 row 5",
-                # Retain Patient Characteristics keeps these.
+                # Retain Patient Characteristics keeps these, Patient
+                # Weight, coded in LOINC, by its supplementary row.
                 "TID 10024 row 3",  # Subject Age
                 "TID 10024 row 4",  # Subject Sex
+                "TID 10024 row 6",  # Patient Weight
             },
         ),
         (
@@ -461,7 +491,7 @@ RADIOPHARMACEUTICAL_INSTITUTION = {"TID 10022 row 23 TID 1020 row 5"}
         ),
     ],
 )
-def test_the_optional_rows_that_take_the_tree_out(
+def test_the_optional_rows_that_are_removed_on_their_own(
     with_option, name, preset, options, removed
 ):
     composed = (
@@ -472,10 +502,13 @@ def test_the_optional_rows_that_take_the_tree_out(
     build, iod = REPORTS[name]
 
     assert _kept(build(()), iod, composed)
+    assert not _removes(build(()), iod, composed)
+    for key in OPTIONAL_ROWS[name]:
+        assert _kept(build(reports.with_holders(key)), iod, composed), key
     assert {
         key
         for key in OPTIONAL_ROWS[name]
-        if not _kept(build(reports.with_holders(key)), iod, composed)
+        if _removes(build(reports.with_holders(key)), iod, composed)
     } == removed
 
 
@@ -520,8 +553,8 @@ def test_a_kept_x_ray_tree_gives_each_listed_value_its_action():
             "tps-import",
             {
                 "Device Observer UID": "K",
-                "Study Instance UID": "D",
-                "Irradiation Event UID": "D",
+                "Study Instance UID": "U",
+                "Irradiation Event UID": "U",
                 "DateTime Started": "C",
             },
         ),
@@ -529,7 +562,7 @@ def test_a_kept_x_ray_tree_gives_each_listed_value_its_action():
             RADIOPHARMACEUTICAL,
             "tps-import",
             {
-                "Radiopharmaceutical Administration Event UID": "D",
+                "Radiopharmaceutical Administration Event UID": "U",
                 "Radiopharmaceutical Start DateTime": "C",
                 "Person Name": "D",
             },
@@ -538,7 +571,7 @@ def test_a_kept_x_ray_tree_gives_each_listed_value_its_action():
             RADIOPHARMACEUTICAL,
             "public-release",
             {
-                "Radiopharmaceutical Administration Event UID": "D",
+                "Radiopharmaceutical Administration Event UID": "U",
                 "Radiopharmaceutical Start DateTime": "C",
                 "Person Name": "D",
             },
@@ -556,7 +589,6 @@ def test_a_kept_tree_of_required_rows_gives_each_listed_value_its_action(
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.4-01")
-@pytest.mark.usefixtures("supported")
 def test_a_written_radiopharmaceutical_report_holds_no_source_value(with_option):
     dataset, _ = _report(RADIOPHARMACEUTICAL)
 
@@ -586,7 +618,51 @@ def test_a_written_radiopharmaceutical_report_holds_no_source_value(with_option)
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.4-01")
-@pytest.mark.usefixtures("supported")
+@pytest.mark.parametrize("name", REPORTS)
+def test_a_report_with_every_optional_row_is_written_without_those_removed(
+    with_option, name
+):
+    composed = with_option("public-release")
+    dataset, _ = _report(name, OPTIONAL_ROWS[name])
+
+    data = _written(composed, dataset)
+
+    for value in SOURCE_VALUES:
+        assert value.encode() not in data, value
+    written = pydicom.dcmread(io.BytesIO(data))
+    expected = _without_removed(
+        dataset, content_items.concept_actions(composed.options)
+    )
+    assert [meaning for meaning, _ in _concepts(written)] == expected
+    assert len(expected) < len(list(_concepts(dataset)))
+
+
+def _without_removed(item, actions):
+    """Return the concepts' meanings of a tree with its removed items left out.
+
+    An item that the table, or a supplementary row, gives X, or whose concept
+    name is coded in a scheme whose rows it leaves out, is removed with its
+    items, and so is a CONTAINER whose items are all removed. ``None`` where
+    ``item`` is removed.
+    """
+    meaning, key = next(_concepts(item))
+    if (
+        actions.get(key) == content_items.REMOVE
+        or key[0] in content_items.UNMATCHED_SCHEMES
+    ):
+        return None
+    children = item.get("ContentSequence", [])
+    kept = [
+        found
+        for found in (_without_removed(child, actions) for child in children)
+        if found is not None
+    ]
+    if children and not kept and item.ValueType == "CONTAINER":
+        return None
+    return [meaning, *(each for found in kept for each in found)]
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.4-01")
 def test_a_written_x_ray_report_keeps_the_references_between_its_uids(with_option):
     dataset, _ = _report(X_RAY)
 
@@ -640,7 +716,6 @@ def test_a_verified_report_is_planned_as_an_unverified_one_is(
         assert not plan.sequestrations
 
 
-@pytest.mark.usefixtures("supported")
 @pytest.mark.parametrize("name", REPORTS)
 def test_a_verified_report_is_written_with_a_dummy_verifier(with_option, name):
     dataset, _ = _report(name, verified=True)
@@ -663,3 +738,64 @@ def test_a_verified_report_is_written_with_a_dummy_verifier(with_option, name):
         reports.VERIFICATION_DATETIME,
         "19000101000000",
     )
+
+
+def _made_for_a_request(dataset):
+    """Give a report a Referenced Request Sequence that holds its procedure ID."""
+    request = pydicom.Dataset()
+    request.StudyInstanceUID = reports.STUDY
+    request.ReferencedStudySequence = []
+    request.AccessionNumber = ""
+    request.PlacerOrderNumberImagingServiceRequest = ""
+    request.FillerOrderNumberImagingServiceRequest = ""
+    request.RequestedProcedureID = REQUESTED_PROCEDURE
+    request.RequestedProcedureDescription = ""
+    request.RequestedProcedureCodeSequence = []
+    dataset.ReferencedRequestSequence = [request]
+    return dataset
+
+
+@pytest.mark.parametrize(
+    "preset", ["basic", "basic-clean-descriptors", "tps-import", "public-release"]
+)
+@pytest.mark.parametrize("name", REPORTS)
+def test_a_report_made_for_a_request_has_its_procedure_id_emptied(
+    with_option, preset, name
+):
+    dataset, iod = _report(name)
+    _made_for_a_request(dataset)
+    procedure_id = ElementPath(((REFERENCED_REQUEST, 0),), REQUESTED_PROCEDURE_ID)
+
+    for composed in (policy.compose_policy(preset), with_option(preset)):
+        _, plan = _planned(dataset, iod, composed)
+
+        # Table E.1-1 gives Requested Procedure ID a plain X, and the IODs
+        # require it (Type 2) in Referenced Request Sequence, which is Type
+        # 1C, required where the report was made for a request, with no
+        # Type 3 sequence enclosing it. Removing it would sequester the
+        # report, so it is emptied instead, as the maintainer decided
+        # (D-020), with or without the option.
+        (element,) = (e for e in plan.elements if e.path == procedure_id)
+        assert element.action == "Z"
+        assert all(
+            s.path.items[:1] != ((REFERENCED_REQUEST, 0),) for s in plan.sequestrations
+        )
+
+
+# A preset under which the option keeps each report's tree.
+@pytest.mark.deid_requirement("MIDI-BP-03")
+@pytest.mark.parametrize(
+    "name, preset", [(X_RAY, "tps-import"), (RADIOPHARMACEUTICAL, "public-release")]
+)
+def test_a_written_report_made_for_a_request_holds_an_empty_procedure_id(
+    with_option, name, preset
+):
+    dataset, _ = _report(name)
+    _made_for_a_request(dataset)
+
+    data = _written(with_option(preset), dataset)
+
+    assert REQUESTED_PROCEDURE.encode() not in data
+    (request,) = pydicom.dcmread(io.BytesIO(data)).ReferencedRequestSequence
+    assert _int(REQUESTED_PROCEDURE_ID) in request
+    assert request.RequestedProcedureID == ""

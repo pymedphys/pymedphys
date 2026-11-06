@@ -23,7 +23,10 @@ is selected and validated, the evidence is a documented external
 assessment, which this module records and checks (D-053).
 
 An assessor who has assessed a run's collection records the assessment with
-:func:`record_assessment`, which writes :data:`ASSESSMENT_FILE`, labelled
+:func:`record_assessment`, or with the command
+:mod:`~pymedphys._dicom.deidentify.risk_assessment_command`, which reads
+their statement from a file; :func:`bind_assessment` makes every check
+without recording anything. Recording writes :data:`ASSESSMENT_FILE`, labelled
 with its format, :data:`FORMAT`, into the directory of that run's QC pack
 (:mod:`~pymedphys._dicom.deidentify.qc_store`), beside any attestation
 (:mod:`~pymedphys._dicom.deidentify.qc_attestation`). The record holds what
@@ -35,8 +38,10 @@ variables, and how characteristics derivable from the pixel data were
 considered; the generalisation, the handling of missing data, the
 uncertainty, and the exclusions; how linked longitudinal records and earlier
 linked releases were accounted for; whether keeping machine identity would
-raise the risk above the threshold; whether faces reconstructed from the
-images were among the channels assessed; the number of distinct subjects
+raise the risk above the threshold; how the residual risk of the
+institutional identity that the policy keeps was assessed, and whether the
+assessment supports keeping it; whether faces reconstructed from the images
+were among the channels assessed; the number of distinct subjects
 assessed; the threshold, 0.09 or 0.05; the maximum per-subject
 re-identification probability; and who assessed it, and when. Every one is
 required, and no default stands in for any of them.
@@ -105,7 +110,7 @@ from .reviewed_roi_names import ReviewedNames
 from .reasons import StatisticalReason
 
 # The format of the record. A change to its fields takes a new label.
-FORMAT = "pymedphys-deid-risk-assessment/1"
+FORMAT = "pymedphys-deid-risk-assessment/2"
 ASSESSMENT_FILE = "risk-assessment.json"
 # The thresholds of the maximum per-subject re-identification probability
 # that a public release may accept: the default, and the stricter one for
@@ -168,7 +173,16 @@ class Model:
     implementation_version: str
 
     def __post_init__(self) -> None:
-        _check_texts("the model", **dataclasses.asdict(self))
+        # The fields as given, not dataclasses.asdict, which copies each
+        # value recursively and so overflows the stack on a value nested
+        # deeply enough, such as a list read from a statement.
+        _check_texts(
+            "the model",
+            **{
+                field.name: getattr(self, field.name)
+                for field in dataclasses.fields(self)
+            },
+        )
 
 
 @dataclasses.dataclass(frozen=True)
@@ -258,6 +272,14 @@ class Assessment:
         Serial Number, would raise the risk above the threshold, which
         shows whoever reviews the record whether the policy's omission of
         it was needed.
+    institutional_identity : str
+        How the residual risk of the institutional identity that the policy
+        keeps was assessed, and whether the assessment supports keeping it.
+        That identity includes the codes of local coding schemes, which can
+        carry an institution's name or abbreviation, a local scheme's Coding
+        Scheme URL, which can name its host, and the Manufacturer of a
+        device made in-house, which can name the hospital; the QC pack lists
+        each such value among its retained strings.
     facial_reconstruction : bool
         Whether re-identification from faces reconstructed from the images
         was among the channels assessed, so that the assessment may stand
@@ -287,6 +309,7 @@ class Assessment:
     linked_records: str
     earlier_releases: str
     device_identity: str
+    institutional_identity: str
     facial_reconstruction: bool
     subjects: int
     threshold: float
@@ -327,6 +350,7 @@ class Assessment:
             linked_records=self.linked_records,
             earlier_releases=self.earlier_releases,
             device_identity=self.device_identity,
+            institutional_identity=self.institutional_identity,
             assessor=self.assessor,
         )
         if not isinstance(self.facial_reconstruction, bool):
@@ -698,6 +722,7 @@ def assessment_document(record: AssessmentRecord) -> dict:
         "linked_records": assessment.linked_records,
         "earlier_releases": assessment.earlier_releases,
         "device_identity": assessment.device_identity,
+        "institutional_identity": assessment.institutional_identity,
         "facial_reconstruction": assessment.facial_reconstruction,
         "subjects": assessment.subjects,
         "threshold": assessment.threshold,
@@ -707,12 +732,16 @@ def assessment_document(record: AssessmentRecord) -> dict:
     }
 
 
-def record_assessment(
+def bind_assessment(
     pack_directory: os.PathLike | str,
     release_report_file: os.PathLike | str,
     assessment: Assessment,
 ) -> AssessmentRecord:
-    """Record an external risk assessment beside the QC pack of the run assessed.
+    """Bind an external risk assessment to the run assessed, without recording it.
+
+    It makes every check that :func:`record_assessment` makes before it
+    writes, so that whoever records an assessment, which is never
+    overwritten, can check it first.
 
     Parameters
     ----------
@@ -730,7 +759,8 @@ def record_assessment(
     AssessmentRecord
         Bound to the pack, the collection that it records, the policy that
         the report records, and the reviewed lists' digest that the pack
-        records, with a new reference.
+        records, with a new reference, which a record written later does
+        not share.
 
     Raises
     ------
@@ -769,9 +799,50 @@ def record_assessment(
         lists_sha256=lists.sha256,
         assessment=assessment,
     )
+    # Recording checks again as it writes, never overwriting a record that
+    # appears in between.
+    if os.path.lexists(directory / ASSESSMENT_FILE):
+        raise RiskAssessmentError("the QC pack already has a risk assessment")
+    return record
+
+
+def record_assessment(
+    pack_directory: os.PathLike | str,
+    release_report_file: os.PathLike | str,
+    assessment: Assessment,
+) -> AssessmentRecord:
+    """Record an external risk assessment beside the QC pack of the run assessed.
+
+    Parameters
+    ----------
+    pack_directory : path-like
+        The directory that :func:`~.qc_store.write_qc_pack` wrote for the run
+        whose collection was assessed.
+    release_report_file : path-like
+        That run's release report, the ``release-report.json`` that it
+        published, which names the pack by its reference.
+    assessment : Assessment
+        What the assessor states.
+
+    Returns
+    -------
+    AssessmentRecord
+        As :func:`bind_assessment` binds it, once written.
+
+    Raises
+    ------
+    RiskAssessmentError
+        For any reason that :func:`bind_assessment` gives, including a pack
+        that already has a risk assessment, since a record is never
+        overwritten, and a change requires a new assessment.
+    QcPackError
+        If the directory holds no QC pack, the pack is not of its format,
+        the release report cannot be read, or the record cannot be written.
+    """
+    record = bind_assessment(pack_directory, release_report_file, assessment)
     text = json.dumps(assessment_document(record), indent=2, ensure_ascii=True)
     try:
-        qc_store.write_new(directory / ASSESSMENT_FILE, text + "\n")
+        qc_store.write_new(Path(pack_directory) / ASSESSMENT_FILE, text + "\n")
     except FileExistsError:
         raise RiskAssessmentError("the QC pack already has a risk assessment") from None
     except OSError as error:
@@ -1018,6 +1089,7 @@ def _record_from(content: bytes) -> AssessmentRecord:
                     linked_records=document["linked_records"],
                     earlier_releases=document["earlier_releases"],
                     device_identity=document["device_identity"],
+                    institutional_identity=document["institutional_identity"],
                     facial_reconstruction=document["facial_reconstruction"],
                     subjects=document["subjects"],
                     threshold=document["threshold"],
@@ -1057,6 +1129,7 @@ _FIELDS = (
     "linked_records",
     "earlier_releases",
     "device_identity",
+    "institutional_identity",
     "facial_reconstruction",
     "subjects",
     "threshold",

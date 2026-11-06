@@ -35,7 +35,12 @@ MODIFIED_DATES = "retain_longitudinal_modified_dates"
 PATIENT_CHARACTERISTICS = "retain_patient_characteristics"
 SAFE_PRIVATE = "retain_safe_private"
 CLEAN_DESCRIPTORS = "clean_descriptors"
+STRUCTURED_CONTENT = "clean_structured_content"
+VISUAL_FEATURES = "clean_recognizable_visual_features"
 BEAM_HOLD = "(300C,0127)"  # Beam Hold Transition DateTime
+# The four sequences that hold content items, which Table E.1-1 gives C
+# under Clean Structured Content.
+CONTENT_ITEM_SEQUENCES = ("(0040,0555)", "(0040,0610)", "(0040,A730)", "(0040,B020)")
 TAG = re.compile(r"\([0-9A-F]{4},[0-9A-F]{4}\)")
 # The options that the presets select, in Table E.1-1's order.
 PRESET_OPTIONS = tuple(
@@ -76,8 +81,15 @@ def test_the_presets_are_the_designs_option_sets_in_the_tables_order():
             PATIENT_CHARACTERISTICS,
             MODIFIED_DATES,
             CLEAN_DESCRIPTORS,
+            STRUCTURED_CONTENT,
         ),
-        "public-release": (SAFE_PRIVATE, MODIFIED_DATES, CLEAN_DESCRIPTORS),
+        "public-release": (
+            SAFE_PRIVATE,
+            MODIFIED_DATES,
+            CLEAN_DESCRIPTORS,
+            STRUCTURED_CONTENT,
+            VISUAL_FEATURES,
+        ),
     }
     assert list(policy.PRESETS) == [
         "basic",
@@ -112,6 +124,7 @@ def test_the_presets_select_only_options_that_the_engine_applies():
         PATIENT_CHARACTERISTICS,
         MODIFIED_DATES,
         CLEAN_DESCRIPTORS,
+        STRUCTURED_CONTENT,
     )
     for options in policy.PRESETS.values():
         assert options == tuple(o for o in policy.ENGINE_OPTIONS if o in options)
@@ -177,13 +190,20 @@ def test_public_release_cleans_dates_descriptors_and_safe_private_attributes():
 
     assert release.claims_conformance
     assert not release.resolved
-    assert len(changed) == 311
+    assert len(changed) == 315
+    # Clean Recognizable Visual Features has no column in Table E.1-1, so it
+    # gives no attribute an action, and conflicts with none of the others.
+    assert VISUAL_FEATURES in release.options
+    without = policy.compose_preset_without("public-release", VISUAL_FEATURES)
+    assert dict(without.actions) == dict(release.actions)
+    assert dict(without.supplementary_actions) == dict(release.supplementary_actions)
     assert {release.actions[tag] for tag in changed} == {"C"}
     # Checked by hand against Table E.1-1 of the 2026d PS3.15.
     assert release.actions["(0008,0020)"] == "C"  # Study Date
     assert release.actions["(0008,103E)"] == "C"  # Series Description
     assert release.actions["(gggg,eeee) where gggg is odd"] == "C"
     assert release.actions["(0008,0201)"] == "C"  # Timezone Offset From UTC
+    assert release.actions["(0040,A730)"] == "C"  # Content Sequence
     # Device identity and patient characteristics are not retained.
     assert release.actions["(0018,1000)"] == "X/Z/D"  # Device Serial Number
     assert release.actions["(0010,1010)"] == "X"  # Patient's Age
@@ -236,7 +256,11 @@ def test_tps_import_changes_only_what_its_options_change():
 
     # No option gives Patient's Birth Date an action.
     assert tps.actions["(0010,0030)"] == "Z"
-    assert len(changed) == 374
+    assert len(changed) == 378
+    # Clean Structured Content gives C to the four sequences of content items.
+    assert {tag for tag in CONTENT_ITEM_SEQUENCES if tps.actions[tag] == "C"} == set(
+        CONTENT_ITEM_SEQUENCES
+    )
     assert sum(tps.actions[tag] == "K" for tag in changed) == 51
 
 
@@ -535,7 +559,12 @@ def test_tps_import_without_clean_descriptors_resolves_as_the_preset_does():
     without = policy.compose_preset_without("tps-import", CLEAN_DESCRIPTORS)
 
     assert without.preset is None
-    assert without.options == (DEVICE_IDENTITY, PATIENT_CHARACTERISTICS, MODIFIED_DATES)
+    assert without.options == (
+        DEVICE_IDENTITY,
+        PATIENT_CHARACTERISTICS,
+        MODIFIED_DATES,
+        STRUCTURED_CONTENT,
+    )
     assert without.resolved == tps.resolved
     assert not without.claims_conformance
     # Every row that Clean Descriptors gives no action keeps the preset's.
@@ -548,7 +577,7 @@ def test_tps_import_without_clean_descriptors_resolves_as_the_preset_does():
 
 
 def test_a_preset_without_conflicts_without_an_option_is_its_custom_set():
-    others = (SAFE_PRIVATE, MODIFIED_DATES)
+    others = (SAFE_PRIVATE, MODIFIED_DATES, STRUCTURED_CONTENT, VISUAL_FEATURES)
     without = policy.compose_preset_without("public-release", CLEAN_DESCRIPTORS)
     custom = policy.compose_custom_policy(others)
 
@@ -565,7 +594,9 @@ def test_a_preset_without_an_option_is_never_enabled(monkeypatch):
         assert policy.compose_policy(preset).enabled
         assert not policy.compose_preset_without(preset, CLEAN_DESCRIPTORS).enabled
     # A custom option set of the same options would be.
-    assert policy.compose_custom_policy((SAFE_PRIVATE, MODIFIED_DATES)).enabled
+    assert policy.compose_custom_policy(
+        (SAFE_PRIVATE, MODIFIED_DATES, STRUCTURED_CONTENT, VISUAL_FEATURES)
+    ).enabled
 
 
 def test_a_preset_without_an_option_still_rejects_another_conflict():
@@ -669,7 +700,9 @@ def test_the_pixel_options_follow_table_e1_1s():
 @pytest.mark.parametrize("option", standard.PIXEL_OPTIONS)
 @pytest.mark.parametrize("preset", policy.PRESETS)
 def test_a_pixel_option_gives_no_attribute_an_action(option, preset):
-    options = policy.PRESETS[preset]
+    # The preset's options of Table E.1-1, which public-release's Clean
+    # Recognizable Visual Features is not.
+    options = tuple(o for o in policy.PRESETS[preset] if o in standard.OPTIONS)
     if preset == "tps-import":
         # Its conflicts are resolved only by the preset itself.
         options = tuple(o for o in options if o != DEVICE_IDENTITY)
@@ -714,14 +747,17 @@ def test_the_engine_refuses_a_pixel_option_that_it_does_not_apply(option, monkey
         policy.refuse_unapplied_options(composed)
 
 
-def test_the_engine_applies_clean_recognizable_visual_features_but_no_preset_has_it():
+def test_the_engine_applies_clean_recognizable_visual_features_in_public_release():
     option = policy.CLEAN_RECOGNIZABLE_VISUAL_FEATURES
     composed = policy.compose_custom_policy([option])
 
     assert option in policy.ENGINE_OPTIONS
     policy.refuse_unapplied_options(composed)
     assert not composed.enabled
-    assert all(option not in options for options in policy.PRESETS.values())
+    assert [p for p, options in policy.PRESETS.items() if option in options] == [
+        "public-release"
+    ]
+    assert not policy.compose_policy("public-release").enabled
 
 
 @pytest.mark.parametrize(

@@ -283,10 +283,11 @@ Extras (`[project.optional-dependencies]`) are published and are for people who 
   licence or removing the last code under one. Treat bundled data, such as
   vocabularies, datasets, and tables generated from standards, like code:
   bundle it only under terms compatible with Apache-2.0, never under
-  non-commercial or no-derivatives terms, and include any required
-  attribution. Keep the independent licence
-  expectations in `.github/scripts/check_distributions.py` and its test
-  fixtures in sync with these settings. Check declarations as well as file
+  non-commercial or no-derivatives terms (the LOINC codes in the
+  de-identification tables are the one exception), and include any required
+  attribution. Keep the independent licence expectations in
+  `.github/scripts/check_distributions.py` and its test fixtures in sync with
+  these settings. Check declarations as well as file
   presence, so removing a metadata entry cannot bypass the release guard.
 - Keep `version` in `pyproject.toml` in canonical PEP 440 form (`0.42.0.dev0`,
   not `0.42.0-dev0`); the release tag must be `v` followed by it. The build
@@ -525,7 +526,7 @@ detailed explanations of individual features.
 
 ### Dependency Updates
 
-When updating dependencies:
+When changing dependency requirements:
 
 1. Update version constraints in `pyproject.toml`
 2. Run `uv lock --upgrade` and then `uv sync --python 3.14 --locked` to regenerate `uv.lock`
@@ -533,6 +534,11 @@ When updating dependencies:
    `requirements.txt`, `dependency-extra.txt`, and `pyproject.hash`; the integration workflow
    fails when these drift from `pyproject.toml` and `uv.lock`
 4. Test changes to ensure nothing breaks
+
+Weekly dependency refreshes update the resolved versions in `uv.lock` and run
+the propagation command without raising supported minimum versions. Raise a
+minimum in `pyproject.toml` only when the package requires a newer version;
+keep the minimum-version CI overlay aligned as described below.
 
 Do not add tests that restate a declared dependency constraint or the locked
 version. The lockfile checks and CI's locked environment already cover them.

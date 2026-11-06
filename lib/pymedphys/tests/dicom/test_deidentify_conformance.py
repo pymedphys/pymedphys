@@ -27,6 +27,7 @@ from pymedphys._imports import pydicom, pytest, tomlkit
 from pymedphys._dicom.deidentify import (
     codes,
     compound_actions,
+    content_items,
     conformance,
     conformance_markdown,
     descriptor_cleaning,
@@ -57,8 +58,10 @@ REFERRING_PHYSICIAN_IDENTIFICATION = ("(0008,0096)",)
 # Assertions Sequence.
 ASSERTER_IDENTIFICATION = ("(0044,0110)", "(0044,0103)")
 TREATMENT_MACHINE = ("(300A,0206)",)
-# Interlock Resolution User Sequence, in an RT Beams Treatment Record.
+# Interlock Resolution User Sequence, in an RT Beams Treatment Record and in
+# an RT Ion Beams Treatment Record.
 INTERLOCK_USER = ("(3008,0020)", "(300A,0740)", "(300A,0746)")
+ION_INTERLOCK_USER = ("(3008,0021)", "(300A,0740)", "(300A,0746)")
 INSTITUTION_CODE_SEQUENCE = "(0008,0082)"  # X/Z/D in the Basic Profile
 PIXEL_DATA_PROVIDER_URL = "(0028,7FE0)"  # X/Z/D by a supplementary rule
 # The attributes that a reviewed rule gives a dummy value, whatever their VR.
@@ -68,6 +71,9 @@ REVIEWED_DUMMY_ATTRIBUTES = {
     "(0028,2000)",
     "(0040,A073)",
 }
+# Institution Code Sequence has a reviewed rule only directly in an item of
+# Interlock Resolution User Sequence (D-021).
+INTERLOCK_RESOLUTION_USER = "(300A,0746)"
 CT_FOR_PROCESSING = "1.2.840.10008.5.1.4.1.1.2.3"
 UNESCAPED_PIPE = re.compile(r"(?<!\\)\|")
 
@@ -225,13 +231,15 @@ def test_compound_actions_are_resolved_at_every_place_a_supported_iod_defines_th
                 action = compound_actions.resolve_in_iod(
                     iod, entry.tag.replace("60xx", "6000"), path, entry.action
                 )
-                if action == "D" and not _has_dummy_value(entry.tag):
+                if action == "D" and not _has_dummy_value(entry.tag, path):
                     action = conformance.SEQUESTER
                 expected.append(conformance.Place(name, path, action))
         assert entry.places == tuple(expected), entry.tag
 
 
-def _has_dummy_value(tag):
+def _has_dummy_value(tag, path):
+    if tag == INSTITUTION_CODE_SEQUENCE:
+        return path[-1:] == (INTERLOCK_RESOLUTION_USER,)
     attribute = standard.dictionary_attribute(tag.replace("60xx", "6000"))
     return (
         tag in REVIEWED_DUMMY_ATTRIBUTES
@@ -245,8 +253,12 @@ def test_institution_name_is_resolved_by_its_type_at_each_place(statement_for):
     places = _entry(statement_for("basic"), INSTITUTION_NAME).places
     found = {(p.iod, p.path): p.action for p in places}
     assert found[("RT Plan", ASSERTER_IDENTIFICATION)] == "Z"
+    assert found[("RT Ion Plan", ASSERTER_IDENTIFICATION)] == "Z"
     assert found[("RT Beams Treatment Record", TREATMENT_MACHINE)] == "Z"
+    assert found[("RT Ion Beams Treatment Record", TREATMENT_MACHINE)] == "Z"
+    assert found[("RT Brachy Treatment Record", TREATMENT_MACHINE)] == "Z"
     assert found[("RT Beams Treatment Record", INTERLOCK_USER)] == "D"
+    assert found[("RT Ion Beams Treatment Record", ION_INTERLOCK_USER)] == "D"
     assert found[("RT Structure Set", ())] == "X"
     # Places within a sequence that the Basic Profile removes are not listed.
     assert ("RT Structure Set", ROI_CREATOR) not in found
@@ -256,11 +268,15 @@ def test_institution_name_is_resolved_by_its_type_at_each_place(statement_for):
     row = next(line for line in text.splitlines() if f"| {INSTITUTION_NAME} |" in line)
     assert row.endswith(
         "| Z within Treatment Machine Sequence (300A,0206) in RT Beams Treatment "
-        "Record; within RT Assertions Sequence (0044,0110) > Asserter "
-        "Identification Sequence (0044,0103) in RT Plan. D within Treatment "
-        "Session Beam Sequence (3008,0020) > Interlock Sequence (300A,0740) > "
-        "Interlock Resolution User Sequence (300A,0746) in RT Beams Treatment "
-        "Record. X elsewhere. |"
+        "Record, RT Brachy Treatment Record, and RT Ion Beams Treatment Record; "
+        "within RT Assertions Sequence "
+        "(0044,0110) > Asserter Identification Sequence (0044,0103) in RT Ion "
+        "Plan and RT Plan. D within Treatment Session Beam Sequence (3008,0020) "
+        "> Interlock Sequence (300A,0740) > Interlock Resolution User Sequence "
+        "(300A,0746) in RT Beams Treatment Record; within Treatment Session Ion "
+        "Beam Sequence (3008,0021) > Interlock Sequence (300A,0740) > Interlock "
+        "Resolution User Sequence (300A,0746) in RT Ion Beams Treatment Record. "
+        "X elsewhere. |"
     )
 
 
@@ -269,22 +285,51 @@ def test_a_d_without_a_dummy_value_is_listed_as_sequestering(statement_for):
     # D on a VR without a generic dummy value, and without a reviewed rule,
     # sequesters the instance rather than write an invalid value.
     statement = statement_for("basic")
+    # A required UR value has no dummy value.
+    url = {p.action for p in _entry(statement, PIXEL_DATA_PROVIDER_URL).places}
+    assert url == {conformance.SEQUESTER}
+    # Reviewed rules give these their dummy values, whatever their VR.
+    for tag in REVIEWED_DUMMY_ATTRIBUTES | {INSTITUTION_CODE_SEQUENCE}:
+        assert conformance.SEQUESTER not in {
+            p.action for p in _entry(statement, tag).places
+        }, tag
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
+def test_an_interlock_users_institution_code_sequence_is_listed_as_d(statement_for):
+    # The reviewed rule writes a dummy item there, as the maintainer chose on
+    # 1 November 2026, so the record is no longer sequestered (D-021).
+    statement = statement_for("basic")
     places = {
         (p.iod, p.path): p.action
         for p in _entry(statement, INSTITUTION_CODE_SEQUENCE).places
     }
-    assert places[("RT Beams Treatment Record", INTERLOCK_USER)] == (
-        conformance.SEQUESTER
-    )
+    assert places[("RT Beams Treatment Record", INTERLOCK_USER)] == "D"
+    assert places[("RT Ion Beams Treatment Record", ION_INTERLOCK_USER)] == "D"
     assert places[("RT Plan", ASSERTER_IDENTIFICATION)] == "Z"
-    # A required UR value has no dummy value either.
-    url = {p.action for p in _entry(statement, PIXEL_DATA_PROVIDER_URL).places}
-    assert url == {conformance.SEQUESTER}
-    # Reviewed rules give these their dummy values, whatever their VR.
-    for tag in REVIEWED_DUMMY_ATTRIBUTES:
-        assert conformance.SEQUESTER not in {
-            p.action for p in _entry(statement, tag).places
-        }, tag
+    assert places[("RT Ion Plan", ASSERTER_IDENTIFICATION)] == "Z"
+    assert {place for place, action in places.items() if action == "D"} == {
+        ("RT Beams Treatment Record", INTERLOCK_USER),
+        ("RT Ion Beams Treatment Record", ION_INTERLOCK_USER),
+    }
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
+@pytest.mark.parametrize(
+    "path",
+    [
+        (),
+        ("(3008,0020)", "(3008,0040)", "(3008,0060)", "(0008,1072)"),
+        ("(0044,0110)", "(0044,0103)"),
+    ],
+)
+def test_d_on_institution_code_sequence_elsewhere_would_sequester(path):
+    # The rule was reviewed only for the interlock's resolution user, so a D
+    # anywhere else, as a later IOD might give, sequesters (D-021).
+    has_dummy_value = conformance._has_dummy_value  # pylint: disable=protected-access
+    assert not has_dummy_value(INSTITUTION_CODE_SEQUENCE, path)
+    assert has_dummy_value(INSTITUTION_CODE_SEQUENCE, INTERLOCK_USER)
+    assert has_dummy_value(INSTITUTION_CODE_SEQUENCE, ION_INTERLOCK_USER)
 
 
 @pytest.mark.deid_requirement("PS3.15-E.1.3-01")
@@ -307,14 +352,16 @@ def test_a_place_that_sequesters_the_instance_is_listed_as_such(monkeypatch):
     monkeypatch.setattr(compound_actions, "resolve_in_iod", sequestering)
     statement = _statement("basic")
     places = _entry(statement, INSTITUTION_NAME).places
-    assert conformance.Place(
-        "RT Plan", ASSERTER_IDENTIFICATION, conformance.SEQUESTER
-    ) in (places)
+    for iod in ("RT Plan", "RT Ion Plan"):
+        assert conformance.Place(
+            iod, ASSERTER_IDENTIFICATION, conformance.SEQUESTER
+        ) in (places)
     text = conformance_markdown.render_markdown(statement)
     row = next(line for line in text.splitlines() if f"| {INSTITUTION_NAME} |" in line)
     assert (
         "instance sequestered within RT Assertions Sequence (0044,0110) > "
-        "Asserter Identification Sequence (0044,0103) in RT Plan." in row
+        "Asserter Identification Sequence (0044,0103) in RT Ion Plan and RT "
+        "Plan." in row
     )
 
 
@@ -496,7 +543,7 @@ def test_places_name_their_enclosing_sequences(statement_for):
     row = next(line for line in text.splitlines() if f"| {INSTITUTION_NAME} |" in line)
     assert (
         "within RT Assertions Sequence (0044,0110) > Asserter Identification "
-        "Sequence (0044,0103) in RT Plan." in row
+        "Sequence (0044,0103) in RT Ion Plan and RT Plan." in row
     )
     assert row.endswith(". X elsewhere. |")
 
@@ -605,10 +652,18 @@ def _section(text, heading):
     return "\n".join(lines[start:end])
 
 
+# The options whose codes an instance gains only after review.
+REVIEWED_OPTIONS = (
+    "clean_descriptors",
+    "clean_pixel_data",
+    "clean_recognizable_visual_features",
+)
+
+
 def _satisfied(composed):
     unmet = {option for r in composed.resolved for option in r.unmet}
     return tuple(
-        o for o in composed.options if o != "clean_descriptors" and o not in unmet
+        o for o in composed.options if o not in REVIEWED_OPTIONS and o not in unmet
     )
 
 
@@ -627,8 +682,12 @@ def test_the_markers_match_those_the_engine_writes(preset, statement_for):
     assert statement.markers.codes == tuple(c.code_value for c in written.method_codes)
     assert statement.markers.temporal == written.temporal_information_modified
     assert statement.markers.review_codes == (
-        (conformance.OPTION_CODES["clean_descriptors"],)
-        if composed.claims_conformance and "clean_descriptors" in composed.options
+        tuple(
+            conformance.OPTION_CODES[o]
+            for o in composed.options
+            if o in REVIEWED_OPTIONS
+        )
+        if composed.claims_conformance
         else ()
     )
 
@@ -703,7 +762,12 @@ def test_private_attribute_removal_is_described(preset, statement_for):
         ("basic", ("113100",), (), "REMOVED"),
         ("basic-clean-descriptors", ("113100",), ("113105",), "REMOVED"),
         ("tps-import", (), (), "MODIFIED"),
-        ("public-release", ("113100", "113111", "113107"), ("113105",), "MODIFIED"),
+        (
+            "public-release",
+            ("113100", "113111", "113107", "113104"),
+            ("113105", "113102"),
+            "MODIFIED",
+        ),
     ],
 )
 def test_each_presets_inserted_codes_and_temporal_value(
@@ -772,6 +836,20 @@ def test_every_listed_action_is_the_one_the_engine_applies(name):
             )
             assert (rule.action, entry.policy_action) == ("C", "C"), entry.tag
             assert entry.action == fallen_back.action, entry.tag
+            continue
+        if (
+            policy.CLEAN_STRUCTURED_CONTENT in composed.options
+            and entry.tag in content_items.CONTENT_ITEM_SEQUENCES
+        ):
+            # The element rules give the sequence its Basic Profile action;
+            # the engine cleans its content items by their concept names and
+            # keeps it where it can (D-047).
+            assert (entry.action, entry.policy_action, entry.superseded_by) == (
+                "C",
+                "",
+                "",
+            ), entry.tag
+            assert rule.source is element_rules.RuleSource.TABLE, entry.tag
             continue
         assert entry.action == rule.action, entry.tag
         policy_action = given.get(entry.tag, "U")

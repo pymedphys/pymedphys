@@ -14,9 +14,14 @@
 
 """The readiness of a ``public-release`` run, by its three gates."""
 
+# The gates' tests share the reviewed pack and report helpers below, so they
+# stay in one module.
+# pylint: disable = too-many-lines
+
 import dataclasses
 import datetime
 import hashlib
+import io
 import json
 import shutil
 import tempfile
@@ -39,6 +44,7 @@ from pymedphys._dicom.deidentify import (
 )
 from pymedphys._dicom.deidentify import synthetic_corpus as corpus_module
 from pymedphys._dicom.deidentify.descriptor_cleaning import DescriptorCleaning
+from pymedphys._dicom.deidentify.face_review import FaceReview, read_face_review
 from pymedphys._dicom.deidentify.file_layout import ElementPath
 from pymedphys._dicom.deidentify.instance_transform import (
     InstanceTransform,
@@ -56,6 +62,7 @@ from pymedphys._dicom.deidentify.qc_attestation import (
 )
 from pymedphys._dicom.deidentify.qc_pack import (
     NO_CONTOURS_SHA256,
+    NO_GRIDS_SHA256,
     NO_PIXELS_SHA256,
     Disposition,
     InstanceEntry,
@@ -70,6 +77,7 @@ from pymedphys._dicom.deidentify.qc_pack import (
 from pymedphys._dicom.deidentify.readiness import ReadinessReview
 from pymedphys._dicom.deidentify.reasons import ReviewReason, StatisticalReason
 from pymedphys._dicom.deidentify.release_report import Readiness, ReleaseReportError
+from pymedphys._dicom.deidentify.reviewed_roi_names import ReviewedNames
 from pymedphys._dicom.deidentify.risk_assessment import (
     Assessment,
     Attacker,
@@ -123,6 +131,7 @@ def _entry(position, disposition=Disposition.RELEASED, **changes):
         fields.update(
             pixel_sha256=_pixels(position) if position in IMAGES else NO_PIXELS_SHA256,
             contour_sha256=NO_CONTOURS_SHA256,
+            grid_sha256=NO_GRIDS_SHA256,
         )
     if disposition is Disposition.HELD_FOR_REVIEW:
         fields.update(reasons=("held",))
@@ -200,6 +209,7 @@ def _assessment(**changes):
         "linked_records": "Each subject's studies were assessed together",
         "earlier_releases": "No earlier release",
         "device_identity": "Station names identify the department",
+        "institutional_identity": "Local codes were matched on as the site",
         "facial_reconstruction": False,
         "subjects": 2,
         "threshold": risk_assessment.DEFAULT_THRESHOLD,
@@ -424,6 +434,22 @@ def test_no_run_is_ready_without_a_statement_on_keeping_machine_identity(
     assert not result.ready
 
 
+@pytest.mark.deid_requirement("MIDI-BP-05")
+@pytest.mark.parametrize("statement", [None, "", "   "])
+def test_no_run_is_ready_without_an_assessment_of_the_institutional_identity_kept(
+    tmp_path, statement
+):
+    # The statistical gate needs a record, and no record can be made without
+    # the statement of how the institutional identity that the policy keeps
+    # was assessed, and whether the assessment supports keeping it.
+    with pytest.raises(RiskAssessmentError, match="institutional_identity"):
+        _assessment(institutional_identity=statement)
+    result = _readiness(_reviewed(tmp_path, assessment=False))
+
+    assert result.statistical is StatisticalReason.NO_ASSESSMENT
+    assert not result.ready
+
+
 def test_an_assessment_above_its_threshold_fails_only_the_statistical_gate(tmp_path):
     review = _reviewed(tmp_path, assessment=_assessment(maximum_risk=0.1))
 
@@ -587,6 +613,75 @@ def test_a_verdict_covers_only_the_contours_that_the_reviewed_run_showed(tmp_pat
     assert result.pixel_and_face is ReviewReason.OTHER_CONTOURS
 
 
+def _segmented(reference, sheet):
+    """A pack in which instance 2 is a Segmentation of two frames, which an
+    instance preview shows both of, and its segments sheet ``sheet`` of."""
+    pack = _pack(reference)
+    png = qc_previews.png(np.zeros((2, 2), np.uint8))
+    previews = [
+        dataclasses.replace(preview, frames=((2, 0), (2, 1)), total_frames=2)
+        if preview.frames == ((2, 0),)
+        else preview
+        for preview in pack.previews
+    ]
+    shown = tuple((2, frame) for frame in range(sheet)) + ((0, 0),)
+    previews.append(
+        Preview("P-0000.png", PreviewKind.SEGMENTATION_SEGMENTS, shown, len(shown), png)
+    )
+    return dataclasses.replace(
+        pack,
+        previews=tuple(
+            dataclasses.replace(preview, name=f"P-{number:04d}.png")
+            for number, preview in enumerate(previews, 1)
+        ),
+    )
+
+
+@pytest.mark.deid_requirement("MIDI-BP-15")
+@pytest.mark.parametrize("sheet", [1, 2])
+def test_a_verdict_covers_a_segmentation_only_where_its_segments_sheet_showed_it(
+    tmp_path, sheet
+):
+    # Its instance preview showed both frames, but only its segments sheet
+    # shows a Segmentation as it could show a face; the sheet's frames
+    # count for it alone, not for the CT drawn with it.
+    review = _reviewed(tmp_path, _segmented(REVIEWED, sheet))
+
+    result = _readiness(review, _segmented(THIS_RUN, sheet))
+
+    assert result.pixel_and_face is (
+        None if sheet == 2 else ReviewReason.OTHER_PIXEL_DATA
+    )
+
+
+@pytest.mark.deid_requirement("MIDI-BP-15")
+def test_a_verdict_covers_only_the_grids_that_the_reviewed_run_showed(tmp_path):
+    review = _reviewed(tmp_path)
+    # A file, of a series marked absent, whose deformation grids this run's
+    # grid sheets could not all show.
+    instances = tuple(
+        _entry(n, grid_sha256=None) if n == 1 else _entry(n) for n in range(5)
+    )
+
+    result = _readiness(review, _pack(THIS_RUN, instances))
+
+    assert result.pixel_and_face is ReviewReason.OTHER_GRIDS
+
+
+@pytest.mark.deid_requirement("MIDI-BP-15")
+def test_an_instance_with_grids_alone_needs_a_verdict(tmp_path):
+    review = _reviewed(tmp_path)
+    # Instance 4's series has no verdict, and it has neither pixel data nor
+    # contours, but grids.
+    instances = tuple(
+        _entry(n, grid_sha256=None) if n == 4 else _entry(n) for n in range(5)
+    )
+
+    result = _readiness(review, _pack(THIS_RUN, instances))
+
+    assert result.pixel_and_face is ReviewReason.NO_FACE_VERDICT
+
+
 @pytest.mark.deid_requirement("MIDI-BP-15")
 def test_an_assessment_of_facial_reconstruction_stands_in_for_the_verdicts(tmp_path):
     review = _reviewed(
@@ -713,7 +808,7 @@ def test_the_report_records_the_gates_by_reason_and_reference_alone(tmp_path):
         "attestation": None,
     }
     assert SENTINEL not in json.dumps(document)
-    assert document["format"] == "pymedphys-deid-release-report/31"
+    assert document["format"] == "pymedphys-deid-release-report/53"
 
 
 def test_a_public_release_report_given_no_readiness_is_not_ready():
@@ -807,6 +902,38 @@ def test_only_a_public_release_reporter_takes_a_review(tmp_path):
         )
 
 
+def test_a_public_release_transform_takes_its_reviews_from_one_pack(tmp_path):
+    review = _reviewed(tmp_path)
+    cleaning = DescriptorCleaning(None, ReviewedNames.empty())
+    composed = policy.compose_policy("public-release")
+    key = DeidKey(bytes(range(32)))
+    other = FaceReview(THIS_RUN, frozenset(), frozenset(), frozenset(), frozenset())
+
+    with pytest.raises(PolicyError, match="same QC pack"):
+        InstanceTransform(
+            composed,
+            key,
+            cleaning=cleaning,
+            face_review=other,
+            readiness_review=review,
+            unvalidated_policy=True,
+        )
+    # The verdicts that the readiness review read from the same pack.
+    InstanceTransform(
+        composed,
+        key,
+        cleaning=cleaning,
+        face_review=review.faces,
+        readiness_review=review,
+        unvalidated_policy=True,
+    )
+    # Without a readiness review, the run is not ready, and any face review
+    # is taken.
+    InstanceTransform(
+        composed, key, cleaning=cleaning, face_review=other, unvalidated_policy=True
+    )
+
+
 EMPTY = QcPack(THIS_RUN, ())
 
 
@@ -843,17 +970,18 @@ def test_released_subjects_counts_distinct_patients_of_released_instances():
     assert readiness.released_subjects(PATIENTS, set()) == 0
 
 
-# Two runs of the synthetic collection.
+# Runs of the synthetic collection.
 
 
 _RADIOTHERAPY = frozenset({"CT Image", "RT Structure Set", "RT Dose", "RT Plan"})
 
 
-def _public_release(cleaning, review=None):
+def _public_release(cleaning, faces, review=None):
     return InstanceTransform(
         policy.compose_policy("public-release"),
         _corpus_run.KEY,
         cleaning=cleaning,
+        face_review=faces,
         readiness_review=review,
         unvalidated_policy=True,
     )
@@ -878,6 +1006,12 @@ def test_a_second_run_of_a_reviewed_and_assessed_collection_is_ready():
         corpus,
         files=tuple(f for f in corpus.files if f.manifest.iod in _RADIOTHERAPY),
     )
+    subjects = len(
+        {
+            pydicom.dcmread(io.BytesIO(file.data), stop_before_pixels=True).PatientID
+            for file in corpus.files
+        }
+    )
     # A short directory, since a run refuses output paths that could exceed
     # Windows' 259 characters.
     directory = Path(tempfile.mkdtemp(prefix="d"))
@@ -888,7 +1022,9 @@ def test_a_second_run_of_a_reviewed_and_assessed_collection_is_ready():
             cleaning = DescriptorCleaning(
                 _corpus_run.VOCABULARY, _corpus_run.mapped_planted_name(corpus)
             )
-            transform = _public_release(cleaning)
+            # The first run, given no face verdicts, holds every instance
+            # that can show a face, and previews it for review.
+            transform = _public_release(cleaning, _corpus_run.NO_FACE_VERDICTS)
             first = run.run(
                 instances,
                 directory / "r1",
@@ -908,6 +1044,9 @@ def test_a_second_run_of_a_reviewed_and_assessed_collection_is_ready():
             }
             pack = first.qc_pack.parent
             entries = json.loads(first.qc_pack.read_text("utf-8"))
+            assert Disposition.HELD_FOR_REVIEW.value in {
+                e["disposition"] for e in entries["instances"]
+            }
             qc_attestation.attest(
                 pack,
                 reviewer=REVIEWER,
@@ -917,14 +1056,15 @@ def test_a_second_run_of_a_reviewed_and_assessed_collection_is_ready():
                 residual_risk_accepted=True,
                 faces={s["positions"][0]: Face.ABSENT for s in entries["series"]},
             )
-            subjects = len(_released_patients(first.release))
             risk_assessment.record_assessment(
                 pack,
                 first_report,
                 _assessment(subjects=subjects),
             )
+            # The second run takes its face verdicts and its readiness
+            # review from the same pack.
             review = readiness.read_readiness_review(pack, first_report)
-            transform = _public_release(cleaning, review)
+            transform = _public_release(cleaning, read_face_review(pack), review)
             second = run.run(
                 instances,
                 directory / "r2",
@@ -936,10 +1076,12 @@ def test_a_second_run_of_a_reviewed_and_assessed_collection_is_ready():
         document = json.loads(
             (second.release / run_report.RELEASE_REPORT).read_text("utf-8")
         )
+        released = _released_patients(second.release)
     finally:
         shutil.rmtree(directory, ignore_errors=True)
 
     assert subjects >= 1
+    assert len(released) == subjects
     assert document["readiness"] == {
         "ready": True,
         "review": entries["reference"],

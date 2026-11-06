@@ -15,21 +15,20 @@
 """The Clean Structured Content Option on general Structured Reports.
 
 The Comprehensive SR, Comprehensive 3D SR, Key Object Selection Document,
-and Mammography CAD SR IODs are not supported yet, so the engine
-sequesters their instances. These tests show, ahead of supporting them,
-what the option does with their content trees (D-047): which presets and
-Retain options, with the option added, keep a report that holds only the
-rows that its templates require; which features take the whole tree out,
-among them concept names coded in a scheme that the engine cannot look up;
-which optional rows take it out under each option set; the action that each
-value of a kept tree takes; and what is written and released, in the tests
-that add the IODs to the supported ones for that test alone, as supporting
-them would. The reports are synthetic, built from the templates of PS3.16
-2026d by :mod:`._synthetic_structured_reports`.
+and Mammography CAD SR IODs are supported. These tests show what the
+option does with their content trees (D-047): which presets and Retain
+options, with the option added, keep a report that holds only the rows
+that its templates require; which features are removed on their own,
+among them concept names coded in a scheme that the engine cannot look up,
+and which take the whole tree out; which optional rows are removed under
+each option set; the action that each value of a kept tree takes; and what
+is written and released. The reports are synthetic, built from the
+templates of PS3.16 2026d by :mod:`._synthetic_structured_reports`.
 
-A preset with the option added is composed by adding it to every preset's
-options for the test alone, since no preset selects it, so that the policy
-that Clean Descriptors falls back to, another preset's, selects it too.
+A preset with the option added is composed by adding it, for the test
+alone, to the options of every preset that does not select it, ``basic``
+and ``basic-clean-descriptors``, so that the policy that Clean Descriptors
+falls back to, another preset's, selects it too.
 """
 
 import io
@@ -48,11 +47,11 @@ from pymedphys._dicom.deidentify.instance_transform import (
 from pymedphys._dicom.deidentify.iods import load_iod_tables
 from pymedphys._dicom.deidentify.keys import DeidKey
 from pymedphys._dicom.deidentify.references import InstanceRecord
-from pymedphys._dicom.deidentify.release_gate import ReasonCode
 from pymedphys._dicom.deidentify.reviewed_roi_names import ReviewedNames
 from pymedphys._dicom.deidentify.source import read_source
 from pymedphys._dicom.deidentify.walker import plan_instance
 
+from . import _corpus_run
 from . import _synthetic_references as synthetic
 from . import _synthetic_structured_reports as reports
 
@@ -111,25 +110,21 @@ SOURCE_VALUES = (
 
 @pytest.fixture(name="with_option")
 def _with_option(monkeypatch):
-    """Return a function that composes a preset's policy with the option added."""
+    """Return a function that composes a preset's policy with the option added.
+
+    The option is added only to the presets that do not select it.
+    """
     monkeypatch.setattr(
         policy,
         "PRESETS",
         types.MappingProxyType(
-            {preset: (*options, CSC) for preset, options in policy.PRESETS.items()}
+            {
+                preset: options if CSC in options else (*options, CSC)
+                for preset, options in policy.PRESETS.items()
+            }
         ),
     )
     return policy.compose_policy
-
-
-@pytest.fixture(name="supported")
-def _supported(monkeypatch):
-    """Add the four IODs to the supported ones, as supporting them would."""
-    monkeypatch.setattr(
-        scope,
-        "SUPPORTED_IODS",
-        scope.SUPPORTED_IODS | {iod for _, iod in REPORTS.values()},
-    )
 
 
 def _report(name, optional=(), **kwargs):
@@ -149,6 +144,20 @@ def _kept(dataset, iod, composed):
     """Return whether the option keeps the report's content tree."""
     actions, _ = _planned(dataset, iod, composed)
     return actions.get(ElementPath((), CONTENT)) == "K"
+
+
+def _removes(dataset, iod, composed):
+    """Return whether the option keeps the tree but removes items from it.
+
+    An item is removed on its own, or with the others of the Content
+    Sequence that an item other than a CONTAINER holds, which goes with them.
+    """
+    actions, plan = _planned(dataset, iod, composed)
+    return (
+        actions.get(ElementPath((), CONTENT)) == "K"
+        and bool(actions.removed_items or actions.emptied)
+        and plan.removed_items == actions.removed_items
+    )
 
 
 def _composed(with_option, preset, options):
@@ -209,7 +218,11 @@ def _transformed(composed, dataset):
         else None
     )
     transform = InstanceTransform(
-        composed, KEY, cleaning=cleaning, unvalidated_policy=True
+        composed,
+        KEY,
+        cleaning=cleaning,
+        face_review=_corpus_run.face_review_for(composed),
+        unvalidated_policy=True,
     )
     # Under tps-import, the subject's synthetic birth date is chosen first.
     transform.prepare({0: record}, [data].__getitem__)
@@ -224,14 +237,16 @@ def _released(composed, dataset):
     return result.data, decision
 
 
-def test_the_reports_are_of_iods_that_are_not_supported_yet():
+def test_every_report_is_of_a_supported_iod():
     for name, (build, iod) in REPORTS.items():
         dataset = build()
         classification = scope.classify(
             dataset.SOPClassUID, synthetic.EXPLICIT_VR_LITTLE_ENDIAN
         )
 
-        assert classification.reason == scope.UnsupportedIod(iod), name
+        assert classification == scope.Classification(
+            scope.Disposition.SUPPORTED, iod
+        ), name
         assert load_iod_tables().iods[iod].lookup(CONTENT, ()), name
 
 
@@ -259,8 +274,8 @@ def test_without_the_option_a_report_is_sequestered(name):
 
 @pytest.mark.deid_requirement("PS3.15-E.3.4-01")
 @pytest.mark.parametrize("preset, cad", [
-    ("basic", False),
-    ("basic-clean-descriptors", False),
+    ("basic", True),
+    ("basic-clean-descriptors", True),
     ("tps-import", True),
     ("public-release", True),
 ])  # fmt: skip
@@ -275,22 +290,24 @@ def test_which_presets_with_the_option_keep_a_report_of_required_rows(
         _, plan = _planned(dataset, iod, composed)
         assert _kept(dataset, iod, composed) is kept, name
         assert bool(plan.sequestrations) is not kept, name
-        # A report with every optional row is never kept.
+        # The CAD optional rows can all be cleaned; the other reports
+        # include optional identifiers, each removed on its own.
         everything, _ = _report(name, OPTIONAL_ROWS[name])
-        assert not _kept(everything, iod, composed), name
+        assert _kept(everything, iod, composed), name
+        assert _removes(everything, iod, composed) is (name != CAD), name
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.4-01")
 @pytest.mark.parametrize("options, cad", [
-    ((), False),
-    ((policy.SAFE_PRIVATE,), False),
-    ((policy.UIDS,), False),
-    ((policy.DEVICE_IDENTITY,), False),
-    ((policy.INSTITUTION_IDENTITY,), False),
-    ((policy.PATIENT_CHARACTERISTICS,), False),
+    ((), True),
+    ((policy.SAFE_PRIVATE,), True),
+    ((policy.UIDS,), True),
+    ((policy.DEVICE_IDENTITY,), True),
+    ((policy.INSTITUTION_IDENTITY,), True),
+    ((policy.PATIENT_CHARACTERISTICS,), True),
     ((policy.FULL_DATES,), True),
     ((policy.MODIFIED_DATES,), True),
-    ((policy.CLEAN_DESCRIPTORS,), False),
+    ((policy.CLEAN_DESCRIPTORS,), True),
 ])  # fmt: skip
 def test_which_retain_options_with_the_option_keep_a_report_of_required_rows(
     options, cad
@@ -303,11 +320,9 @@ def test_which_retain_options_with_the_option_keep_a_report_of_required_rows(
 
 
 @pytest.mark.parametrize("preset, removed", [
-    # TID 4020 rows 7 and 8, required where the image has a Study Date and
-    # Time, are X/D, which the engine resolves to X, since it checks no
-    # template.
-    ("basic", {"Study Date", "Study Time"}),
-    ("basic-clean-descriptors", {"Study Date", "Study Time"}),
+    # TID 4020 rows 7 and 8 receive dummy dates and times under X/D.
+    ("basic", set()),
+    ("basic-clean-descriptors", set()),
     ("tps-import", set()),
     ("public-release", set()),
 ])  # fmt: skip
@@ -324,22 +339,10 @@ def test_the_required_rows_that_table_e3_4_1_removes(with_option, preset, remove
 
 
 # Each feature whose concept name is coded in a scheme whose rows the
-# generated table cannot hold: LOINC, NCIt, and UMLS, whose rows the pin
-# leaves out (D-001). Each is given with the report and options that hold it,
-# and the scheme of the concept name that takes the tree out.
+# generated table cannot hold: NCIt and UMLS, whose rows the pin leaves out
+# (D-001). Each is given with the report and options that hold it, and the
+# scheme of the concept name that is removed on its own.
 UNMATCHED_FEATURES = {
-    # Most of CID 7000's titles, for the root of TID 2000.
-    "LOINC title": (IMAGING, (), {"title": reports.DIAGNOSTIC_IMAGING_REPORT}, "LN"),
-    # A heading of CID 7001 in its preferred encoding, LOINC, for TID 2000
-    # row 8.
-    "LOINC heading": (IMAGING, ("TID 2000 row 8",), {}, "LN"),
-    # TID 1004 row 11, required in a Unique Device Identifiers container.
-    "LOINC device identifier": (
-        MEASUREMENT,
-        reports.with_holders("TID 1004 row 10"),
-        {},
-        "LN",
-    ),
     "NCIt activity session": (MEASUREMENT, ("TID 1411 row 1b",), {}, "NCIt"),
     # TID 1502 row 3, required where TID 1411 row 4 includes TID 1502.
     "UMLS time point": (MEASUREMENT, ("TID 1411 row 4",), {}, "UMLS"),
@@ -352,7 +355,7 @@ UNMATCHED_FEATURES = {
     *((preset, None) for preset in PRESETS[2:]),
     (None, EVERY_OPTION),
 ])  # fmt: skip
-def test_a_concept_name_that_cannot_be_looked_up_takes_the_tree_out(
+def test_a_concept_name_that_cannot_be_looked_up_is_removed_on_its_own(
     with_option, feature, preset, options
 ):
     name, optional, kwargs, scheme = UNMATCHED_FEATURES[feature]
@@ -361,10 +364,75 @@ def test_a_concept_name_that_cannot_be_looked_up_takes_the_tree_out(
 
     assert scheme in content_items.UNMATCHED_SCHEMES
     assert scheme in {key[0] for _, key in _concepts(dataset)}
-    assert not _kept(dataset, iod, composed)
-    # The same report without the feature, with a DCM title, is kept.
+    assert _removes(dataset, iod, composed)
+    # The same report without the feature removes nothing.
     plain, _ = _report(name)
     assert _kept(plain, iod, composed)
+    assert not _removes(plain, iod, composed)
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.4-01")
+@pytest.mark.parametrize("preset, options", [
+    *((preset, None) for preset in PRESETS[2:]),
+    (None, EVERY_OPTION),
+])  # fmt: skip
+def test_a_root_whose_concept_name_cannot_be_looked_up_takes_the_tree_out(
+    with_option, preset, options
+):
+    composed = _composed(with_option, preset, options)
+    # A title coded in a scheme whose rows the pin leaves out cannot be
+    # looked up, and the root cannot be removed on its own.
+    dataset, iod = _report(IMAGING)
+    title = dataset.ConceptNameCodeSequence[0]
+    title.CodeValue, title.CodingSchemeDesignator = "C0000001", "UMLS"
+
+    assert "UMLS" in content_items.UNMATCHED_SCHEMES
+    assert not _kept(dataset, iod, composed)
+    plain, _ = _report(IMAGING)
+    assert _kept(plain, iod, composed)
+
+
+# Each feature whose concept name is coded in LOINC, whose rows the
+# generated table holds (D-001), with the report and optional rows that hold
+# it, and the option that keeps it, if one is needed: a title and a heading
+# that the table does not list, which are kept as unlisted DICOM concepts
+# are, and a Unique Device Identifier, which the table gives X, with K under
+# Retain Device Identity, and which is otherwise removed on its own.
+LOINC_FEATURES = {
+    # Most of CID 7000's titles, for the root of TID 2000.
+    "LOINC title": (IMAGING, (), {"title": reports.DIAGNOSTIC_IMAGING_REPORT}, None),
+    # A heading of CID 7001 in its preferred encoding, LOINC, for TID 2000
+    # row 8.
+    "LOINC heading": (IMAGING, ("TID 2000 row 8",), {}, None),
+    # TID 1004 row 11, required in a Unique Device Identifiers container.
+    "LOINC device identifier": (
+        MEASUREMENT,
+        reports.with_holders("TID 1004 row 10"),
+        {},
+        policy.DEVICE_IDENTITY,
+    ),
+}
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.4-01")
+@pytest.mark.parametrize("feature", LOINC_FEATURES)
+@pytest.mark.parametrize("preset, options", [
+    *((preset, None) for preset in PRESETS[2:]),
+    (None, EVERY_OPTION),
+])  # fmt: skip
+def test_a_loinc_concept_name_is_looked_up_as_a_dicom_one_is(
+    with_option, feature, preset, options
+):
+    name, optional, kwargs, keeper = LOINC_FEATURES[feature]
+    composed = _composed(with_option, preset, options)
+    dataset, iod = _report(name, optional, **kwargs)
+
+    assert "LN" not in content_items.UNMATCHED_SCHEMES
+    assert "LN" in {key[0] for _, key in _concepts(dataset)}
+    assert _kept(dataset, iod, composed)
+    assert _removes(dataset, iod, composed) is not (
+        keeper is None or keeper in composed.options
+    )
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.4-01")
@@ -388,24 +456,24 @@ def test_a_finding_site_coded_by_its_snomed_ids_is_kept_as_in_snomed_ct(
     assert actions.get(ElementPath((), CONTENT)) == "K"
 
 
-# The optional rows of TID 1001 that take the tree out under every option
-# set: Table E.3.4-1 gives each X under every option, or X with C under Clean
-# Descriptors, which falls back to X (D-009), or X/D, or its concept name is
-# coded in LOINC.
+# The optional rows of TID 1001 that are removed on their own under every
+# option set: Table E.3.4-1, or a supplementary row, gives each X under every
+# option, or X with C under Clean Descriptors, which falls back to X (D-009).
 OBSERVATION_REMOVED_UNDER_EVERY_OPTION = {
     "TID 1003 row 1a",  # Person Observer's Login Name
-    "TID 1004 row 10",  # Unique Device Identifier, coded in LOINC
     "TID 1005 row 7",  # Accession Number
-    "TID 1007 row 3 TEXT",  # Subject ID, X/D
+    "TID 1007 row 3",  # Subject ID as a CODE, a supplementary row
     "TID 1007 row 4",  # Subject Birth Date
 }
 # Retain Institution Identity keeps Person Observer's Organization Name.
 OBSERVATION_INSTITUTION = {"TID 1003 row 2"}
-# Retain UIDs keeps Procedure Study Instance UID and Subject UID.
+# Retain UIDs keeps Procedure Study Instance UID and Subject UID,
+# whose plain X actions otherwise remove their items.
 OBSERVATION_UIDS = {"TID 1005 row 1", "TID 1007 row 1"}
-# Retain Device Identity keeps Device Observer Name, and it or Retain UIDs
-# keeps the device observer's Device Observer UID, X/D.
-OBSERVATION_DEVICE = {"TID 1004 row 2", "TID 1001 row 1 device"}
+# Retain Device Identity keeps Device Observer Name, and the Unique Device
+# Identifier, coded in LOINC; the observer UID otherwise takes U under the
+# dummy action.
+OBSERVATION_DEVICE = {"TID 1004 row 2", "TID 1004 row 10"}
 # Retain Patient Characteristics keeps Subject Sex and Subject Age.
 OBSERVATION_PATIENT = {"TID 1007 row 5", "TID 1007 row 6"}
 OBSERVATION_REMOVED_UNDER_BASIC = (
@@ -426,41 +494,25 @@ MEASUREMENT_REMOVED_UNDER_EVERY_OPTION = {
 }
 # Retain UIDs keeps the Frame of Reference UID, X/D, and the Illustration of
 # ROI, X.
-MEASUREMENT_UIDS = {"TID 1602 row 10", "TID 1411 row 13"}
-# A Retain Longitudinal Temporal Information Option keeps Study Date and
-# Content Date, both X/D.
-MEASUREMENT_DATES = {"TID 1602 row 4", "TID 1602 row 6"}
+MEASUREMENT_UIDS = {"TID 1411 row 13"}
+# Study Date and Content Date take dummy values without a dates option.
+# Frame of Reference UID takes U without Retain UIDs.
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.4-01")
 @pytest.mark.parametrize("name, preset, options, removed", [
-    (IMAGING, "basic", None, OBSERVATION_REMOVED_UNDER_BASIC | {"TID 2000 row 8"}),
-    (
-        IMAGING,
-        "tps-import",
-        None,
-        OBSERVATION_REMOVED_UNDER_TPS_IMPORT | {"TID 2000 row 8"},
-    ),
-    (
-        IMAGING,
-        "public-release",
-        None,
-        OBSERVATION_REMOVED_UNDER_BASIC | {"TID 2000 row 8"},
-    ),
-    (
-        IMAGING,
-        None,
-        EVERY_OPTION,
-        OBSERVATION_REMOVED_UNDER_EVERY_OPTION | {"TID 2000 row 8"},
-    ),
+    # TID 2000 row 8's section, under its LOINC heading, is kept.
+    (IMAGING, "basic", None, OBSERVATION_REMOVED_UNDER_BASIC),
+    (IMAGING, "tps-import", None, OBSERVATION_REMOVED_UNDER_TPS_IMPORT),
+    (IMAGING, "public-release", None, OBSERVATION_REMOVED_UNDER_BASIC),
+    (IMAGING, None, EVERY_OPTION, OBSERVATION_REMOVED_UNDER_EVERY_OPTION),
     (
         MEASUREMENT,
         "basic",
         None,
         OBSERVATION_REMOVED_UNDER_BASIC
         | MEASUREMENT_REMOVED_UNDER_EVERY_OPTION
-        | MEASUREMENT_UIDS
-        | MEASUREMENT_DATES,
+        | MEASUREMENT_UIDS,
     ),
     (
         MEASUREMENT,
@@ -495,24 +547,27 @@ MEASUREMENT_DATES = {"TID 1602 row 4", "TID 1602 row 6"}
         EVERY_OPTION,
         {"TID 2010 row 7", "TID 2010 row 6 TID 1003 row 1a"},
     ),
-    # Retain UIDs keeps the Frame of Reference UID, X/D; Modified Dates
+    # Frame of Reference UID takes U under its dummy action; Modified Dates
     # modifies the Content Date and Time and the Recommended Follow-up Date,
     # X/D, and the Impression Description is D.
-    (CAD, "tps-import", None, {"TID 4020 row 17"}),
-    (CAD, "public-release", None, {"TID 4020 row 17"}),
+    (CAD, "tps-import", None, set()),
+    (CAD, "public-release", None, set()),
     (CAD, None, EVERY_OPTION, set()),
 ])  # fmt: skip
-def test_the_optional_rows_that_take_the_tree_out(
+def test_the_optional_rows_that_are_removed_on_their_own(
     with_option, name, preset, options, removed
 ):
     composed = _composed(with_option, preset, options)
     build, iod = REPORTS[name]
 
     assert _kept(build(()), iod, composed)
+    assert not _removes(build(()), iod, composed)
+    for key in OPTIONAL_ROWS[name]:
+        assert _kept(build(reports.with_holders(key)), iod, composed), key
     assert {
         key
         for key in OPTIONAL_ROWS[name]
-        if not _kept(build(reports.with_holders(key)), iod, composed)
+        if _removes(build(reports.with_holders(key)), iod, composed)
     } == removed
 
 
@@ -533,9 +588,12 @@ def _keepable(name, removed):
             "Person Observer's Organization Name": "K",
             "Device Observer UID": "K",
             "Device Observer Name": "K",
+            # Coded in LOINC, kept under Retain Device Identity.
+            "Unique Device Identifier": "K",
             "Procedure Study Instance UID": "K",
             "Subject UID": "K",
             "Subject Name": "D",
+            "Subject ID": "D",
             "Study Date": "K",
             "Series Instance UID": "K",
             "Content Date": "K",
@@ -554,18 +612,21 @@ def _keepable(name, removed):
         {
             "Person Observer Name": "D",
             "Subject Name": "D",
+            "Subject ID": "D",
             "Study Date": "C",
-            "Series Instance UID": "D",
+            "Series Instance UID": "U",
             "Content Date": "C",
-            "Tracking Unique Identifier": "D",
-            "Source series for segmentation": "D",
+            "Tracking Unique Identifier": "U",
+            "Source series for segmentation": "U",
+            "Device Observer UID": "U",
+            "Frame of Reference UID": "U",
         },
     ),
     (
         CAD,
         "tps-import",
         None,
-        {"TID 4020 row 17"},
+        set(),
         {
             "Study Date": "C",
             "Study Time": "C",
@@ -574,6 +635,7 @@ def _keepable(name, removed):
             # D, with C under Clean Descriptors, which falls back to D.
             "Impression Description": "D",
             "Recommended Follow-up Date": "C",
+            "Frame of Reference UID": "U",
         },
     ),
 ])  # fmt: skip
@@ -603,46 +665,42 @@ def test_the_narrative_of_an_imaging_report_keeps_only_unlisted_text(
     )
 
     found = {
-        code.meaning: (
-            "unmatched"
-            if code.designator in content_items.UNMATCHED_SCHEMES
-            else actions.get((code.designator, code.value, "TEXT"))
-        )
+        code.meaning: actions.get((code.designator, code.value, "TEXT"))
         for code in reports.DIAGNOSTIC_IMAGING_REPORT_ELEMENTS
     }
 
     # Under every option set, each TEXT item of TID 2002 that Table E.3.4-1
     # lists is removed, X or X/D, with C under Clean Descriptors falling back
-    # to X; Previous Finding and Impression are not listed; and the rest are
-    # coded in LOINC. TID 2000 holds the narrative only in a section, whose
-    # heading CID 7001 prefers in LOINC, which takes the tree out; a section
-    # under its equivalent DCM heading is kept, as tested below.
+    # to X, among them History, coded in LOINC; and Previous Finding,
+    # Impression, and the other LOINC concepts are not listed, so their text
+    # takes Text Value's own rule. TID 2000 holds the narrative only in a
+    # section, whose heading CID 7001 prefers in LOINC, and which is kept
+    # under its LOINC heading or the equivalent DCM heading, as tested below.
     assert found == {
-        "History": "unmatched",
-        "Request": "unmatched",
-        "Procedure Description": "X",
+        "History": "X",
+        "Request": None,
+        "Procedure Description": "D",
         "Previous Finding": None,
-        "Finding": "X",
+        "Finding": "D",
         "Impression": None,
         "Recommendation": "X",
         "Conclusion": "X",
         "Complication of Procedure": "X",
-        "Patient Presentation": "unmatched",
-        "Summary": "unmatched",
+        "Patient Presentation": None,
+        "Summary": None,
     }
 
 
+@pytest.mark.parametrize("heading", [reports.IMPRESSIONS, reports.DCM_IMPRESSIONS])
 @pytest.mark.parametrize("preset, options", [
     *((preset, None) for preset in PRESETS),
     (None, EVERY_OPTION),
 ])  # fmt: skip
-def test_a_section_under_an_equivalent_dcm_heading_is_kept(
-    with_option, preset, options
+def test_a_section_under_its_loinc_or_equivalent_dcm_heading_is_kept(
+    with_option, heading, preset, options
 ):
     composed = _composed(with_option, preset, options)
-    dataset, iod = _report(
-        IMAGING, ("TID 2000 row 8",), heading=reports.DCM_IMPRESSIONS
-    )
+    dataset, iod = _report(IMAGING, ("TID 2000 row 8",), heading=heading)
     actions, _ = _planned(dataset, iod, composed)
 
     # The heading and the Impression are not listed, so the tree is kept, and
@@ -655,11 +713,18 @@ def test_a_section_under_an_equivalent_dcm_heading_is_kept(
     assert _values_by_concept(dataset, actions) == {"Person Observer Name": "D"}
 
 
-@pytest.mark.usefixtures("supported")
-def test_a_section_under_an_equivalent_dcm_heading_is_written_and_released(
-    with_option,
+@pytest.mark.parametrize(
+    "title, heading",
+    [
+        (reports.DIAGNOSTIC_IMAGING_REPORT, reports.IMPRESSIONS),
+        (reports.BREAST_IMAGING_REPORT, reports.DCM_IMPRESSIONS),
+    ],
+    ids=["loinc", "dcm"],
+)
+def test_a_section_under_its_loinc_or_equivalent_dcm_heading_is_written_and_released(
+    with_option, title, heading
 ):
-    dataset, _ = _report(IMAGING, ("TID 2000 row 8",), heading=reports.DCM_IMPRESSIONS)
+    dataset, _ = _report(IMAGING, ("TID 2000 row 8",), title=title, heading=heading)
 
     data, decision = _released(with_option("public-release"), dataset)
 
@@ -672,73 +737,46 @@ def test_a_section_under_an_equivalent_dcm_heading_is_written_and_released(
     *((preset, None) for preset in PRESETS),
     (None, EVERY_OPTION),
 ])  # fmt: skip
-def test_a_subject_id_coded_as_tid_1007_gives_it_is_not_looked_up(
+def test_a_subject_id_coded_as_tid_1007_gives_it_is_removed_on_its_own(
     with_option, preset, options
 ):
     composed = _composed(with_option, preset, options)
     dataset, iod = _report(IMAGING, ("TID 1007 row 3",))
-    actions, _ = _planned(dataset, iod, composed)
 
     # TID 1007 row 3 gives Subject ID the Value Type CODE, and Table E.3.4-1
-    # lists it only as TEXT, so the item is not listed: the tree is kept,
-    # and the identifier, its Code Value, keeps its own rule, K.
-    assert ("DCM", "121030", "CODE") not in content_items.concept_actions(
-        composed.options
+    # lists it only as TEXT. The identifier is the Code Value, which an
+    # unlisted item would keep, so a supplementary row removes the item
+    # under every option.
+    assert (
+        content_items.concept_actions(composed.options)[("DCM", "121030", "CODE")]
+        == "X"
     )
-    assert actions.get(ElementPath((), CONTENT)) == "K"
-    assert _values_by_concept(dataset, actions) == {"Person Observer Name": "D"}
+    assert _removes(dataset, iod, composed)
 
 
-@pytest.mark.usefixtures("supported")
-def test_the_residual_search_withholds_a_subject_id_that_is_the_patient_id(
-    with_option,
+@pytest.mark.parametrize("subject_id", [reports.PATIENT_ID, "SYNTHETIC-OTHER9"])
+def test_a_subject_id_coded_as_tid_1007_gives_it_is_not_released(
+    with_option, subject_id
 ):
-    dataset, _ = _report(IMAGING, ("TID 1007 row 3",))
+    dataset, _ = _report(IMAGING)
+    dataset.ContentSequence.append(reports.subject_identifier(subject_id))
 
     data, decision = _released(with_option("public-release"), dataset)
 
-    assert reports.PATIENT_ID.encode() in data
-    assert isinstance(decision, run.Sequestered)
-    assert {reason.code for reason in decision.reasons} == {
-        ReasonCode.RESIDUAL_DIRECT_IDENTIFIER
-    }
-
-
-@pytest.mark.xfail(
-    strict=True,
-    reason=(
-        "A Subject ID content item with the Value Type CODE, as TID 1007 "
-        "gives it, is not listed in Table E.3.4-1, so its Code Value is kept; "
-        "the residual search finds it only where it is the header's Patient ID."
-    ),
-)
-@pytest.mark.usefixtures("supported")
-def test_a_subject_id_other_than_the_patient_id_is_not_released(with_option):
-    dataset, _ = _report(IMAGING)
-    dataset.ContentSequence.append(reports.subject_identifier("SYNTHETIC-OTHER9"))
-
-    result = _transformed(with_option("public-release"), dataset)
-
-    # Removing the item, sequestering the instance for it, or withholding the
-    # written file at the release gate each keep the identifier unreleased.
-    if not isinstance(result, run.Transformed):
-        assert isinstance(result, run.Sequestered), result
-        return
-    decision = ReleaseGate()(result.data, result.evidence, (result.evidence,))
-    assert b"SYNTHETIC-OTHER9" not in result.data or not isinstance(
-        decision, run.Release
-    )
+    # The item is removed on its own, and the rest of the report released.
+    assert subject_id.encode() not in data
+    assert isinstance(decision, run.Release), decision
+    assert _shape(pydicom.dcmread(io.BytesIO(data))) == _shape(_report(IMAGING)[0])
 
 
 # The optional rows of each report that public-release, with the option
-# added, keeps, other than the Subject ID coded as TID 1007 gives it.
+# added, keeps.
 RELEASED_UNDER_PUBLIC_RELEASE = {
     MEASUREMENT: _keepable(
         MEASUREMENT,
         OBSERVATION_REMOVED_UNDER_BASIC
         | MEASUREMENT_REMOVED_UNDER_EVERY_OPTION
-        | MEASUREMENT_UIDS
-        | {"TID 1007 row 3"},
+        | MEASUREMENT_UIDS,
     ),
     KEY_OBJECTS: ("TID 2010 row 5", "TID 2010 row 6"),
     CAD: _keepable(CAD, {"TID 4020 row 17"}),
@@ -746,7 +784,6 @@ RELEASED_UNDER_PUBLIC_RELEASE = {
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.4-01")
-@pytest.mark.usefixtures("supported")
 @pytest.mark.parametrize("name", RELEASED_UNDER_PUBLIC_RELEASE)
 def test_a_written_report_holds_no_source_value_and_is_released(with_option, name):
     dataset, _ = _report(name, RELEASED_UNDER_PUBLIC_RELEASE[name])
@@ -763,8 +800,40 @@ def test_a_written_report_holds_no_source_value_and_is_released(with_option, nam
     ]
 
 
+# The optional rows of each report that public-release, with the option
+# added, removes on its own.
+REMOVED_UNDER_PUBLIC_RELEASE = {
+    IMAGING: OBSERVATION_REMOVED_UNDER_BASIC,
+    MEASUREMENT: OBSERVATION_REMOVED_UNDER_BASIC
+    | MEASUREMENT_REMOVED_UNDER_EVERY_OPTION
+    | MEASUREMENT_UIDS,
+    KEY_OBJECTS: {
+        "TID 2010 row 7",
+        "TID 2010 row 6 TID 1003 row 1a",
+        "TID 2010 row 6 TID 1003 row 2",
+    },
+}
+
+
 @pytest.mark.deid_requirement("PS3.15-E.3.4-01")
-@pytest.mark.usefixtures("supported")
+@pytest.mark.parametrize("name", REMOVED_UNDER_PUBLIC_RELEASE)
+def test_a_report_with_every_optional_row_is_written_without_those_removed(
+    with_option, name
+):
+    dataset, _ = _report(name, OPTIONAL_ROWS[name])
+
+    result = _transformed(with_option("public-release"), dataset)
+
+    assert isinstance(result, run.Transformed), result
+    for value in SOURCE_VALUES:
+        assert value.encode() not in result.data, value
+    # The tree written is the report built without the rows removed.
+    written = pydicom.dcmread(io.BytesIO(result.data))
+    kept, _ = _report(name, _keepable(name, REMOVED_UNDER_PUBLIC_RELEASE[name]))
+    assert _shape(written) == _shape(kept)
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.4-01")
 def test_a_written_cad_report_keeps_its_references(with_option):
     dataset, _ = _report(CAD)
 
@@ -815,7 +884,6 @@ def test_a_verified_report_is_planned_as_an_unverified_one_is(
     ]
 
 
-@pytest.mark.usefixtures("supported")
 @pytest.mark.parametrize("name", VERIFIABLE)
 def test_a_verified_report_is_written_with_a_dummy_verifier(with_option, name):
     dataset, _ = _report(name, verified=True)

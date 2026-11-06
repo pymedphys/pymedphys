@@ -4,7 +4,7 @@ altair==6.3.0
     # via
     #   pymedphys
     #   streamlit
-anyio==4.15.1
+anyio==4.16.0
     # via
     #   starlette
     #   streamlit
@@ -13,7 +13,7 @@ attrs==26.1.0
     #   jsonschema
     #   pymedphys
     #   referencing
-certifi==2026.10.19
+certifi==2026.10.23
     # via requests
 cffi==2.1.1 ; platform_python_implementation != 'PyPy' and sys_platform == 'linux'
     # via cryptography
@@ -35,7 +35,7 @@ cycler==0.12.1
     # via matplotlib
 dbfread==2.0.7
     # via pymedphys
-fonttools==4.67.0
+fonttools==4.68.0
     # via matplotlib
 h11==0.16.0
     # via uvicorn
@@ -43,6 +43,8 @@ idna==3.20
     # via
     #   anyio
     #   requests
+imagecodecs==2026.10.10
+    # via pymedphys
 imageio==2.38.1
     # via pymedphys
 itsdangerous==2.2.0
@@ -81,18 +83,19 @@ more-itertools==11.2.1
     # via
     #   jaraco-classes
     #   jaraco-functools
-narwhals==2.27.1
+narwhals==2.28.0
     # via
     #   altair
     #   plotly
     #   scikit-learn
 natsort==8.4.0
     # via pymedphys
-numba==0.68.0
+numba==0.68.1
     # via pymedphys
 numpy==2.5.4
     # via
     #   contourpy
+    #   imagecodecs
     #   imageio
     #   matplotlib
     #   numba
@@ -112,7 +115,7 @@ packaging==26.3
     #   matplotlib
     #   plotly
     #   streamlit
-pandas==3.0.6
+pandas==3.1.0
     # via
     #   pymedphys
     #   streamlit
@@ -128,7 +131,7 @@ protobuf==7.36.2
     # via streamlit
 pyarrow==26.0.0
     # via streamlit
-pycparser==3.11 ; implementation_name != 'PyPy' and platform_python_implementation != 'PyPy' and sys_platform == 'linux'
+pycparser==3.12 ; implementation_name != 'PyPy' and platform_python_implementation != 'PyPy' and sys_platform == 'linux'
     # via cffi
 pydeck==0.9.3
     # via streamlit
@@ -140,20 +143,20 @@ pylibjpeg==2.1.0
     # via pymedphys
 pylibjpeg-openjpeg==2.6.0
     # via pymedphys
-pymssql==2.4.4
+pymssql==2.4.6
     # via pymedphys
 pynetdicom==3.0.4
     # via pymedphys
 pyparsing==3.3.3
     # via matplotlib
-python-dateutil==2.9.0.post0
+python-dateutil==4.0.0
     # via
     #   matplotlib
     #   pandas
     #   pymedphys
 python-gdcm==3.2.6
     # via pymedphys
-python-multipart==0.0.32
+python-multipart==0.0.33
     # via streamlit
 pywin32==312 ; sys_platform == 'win32'
     # via pymedphys
@@ -183,11 +186,9 @@ secretstorage==3.5.0 ; sys_platform == 'linux'
     # via keyring
 shapely==2.2.0
     # via pymedphys
-six==1.17.0
-    # via python-dateutil
-sqlalchemy==2.1.5
+sqlalchemy==2.1.6
     # via pymedphys
-starlette==1.9.0
+starlette==1.10.0
     # via streamlit
 streamlit==1.66.1
     # via pymedphys
@@ -211,8 +212,10 @@ typing-extensions==4.16.0
     #   sqlalchemy
     #   starlette
     #   streamlit
-tzdata==2026.5 ; sys_platform == 'emscripten' or sys_platform == 'win32'
-    # via pandas
+tzdata==2026.6
+    # via
+    #   pandas
+    #   python-dateutil
 urllib3==2.8.0
     # via requests
 uvicorn==0.54.0
@@ -221,7 +224,7 @@ watchdog==6.0.0
     # via
     #   pymedphys
     #   streamlit
-websockets==17.3
+websockets==17.4
     # via streamlit
 xlrd==2.0.2
     # via pymedphys

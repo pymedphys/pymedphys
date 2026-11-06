@@ -1,4 +1,4 @@
-# Copyright (C) 2021 Derek Lane
+# Copyright (C) 2021, 2026 Derek Lane
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,6 +13,8 @@
 # limitations under the License.
 
 
+from datetime import timedelta
+
 from pymedphys._imports import pytest
 
 from pymedphys._mosaiq.mock import generate, utilities
@@ -20,12 +22,9 @@ from pymedphys._mosaiq.sessions import (
     localization_offset_for_site,
     mean_session_offset_for_site,
     session_offsets_for_site,
+    session_interval_for_site,
     sessions_for_site,
 )
-
-# Session clustering is private and uses scikit-learn, which the mosaiq extra
-# does not include, so the mosaiq extra's database job skips this file.
-pytest.importorskip("sklearn")
 
 
 @pytest.fixture(name="connection")
@@ -124,3 +123,35 @@ def test_session_offsets_for_site(connection):  # pylint: disable = unused-argum
     assert localization_offset[0] == -1.0
     assert localization_offset[1] == 0.0
     assert localization_offset[2] == 1.0
+
+
+@pytest.mark.mosaiqdb
+def test_sessions_follow_department_setting(connection):
+    """one session per fraction, without the QA-mode delivery, and the
+    department's Config.Tx_Interval_Time sets the session interval"""
+
+    mock_patient_ident_df = generate.create_mock_patients()
+    mock_site_df = generate.create_mock_treatment_sites(mock_patient_ident_df)
+    mock_txfield_df = generate.create_mock_treatment_fields(mock_site_df)
+    generate.create_mock_treatment_sessions(mock_site_df, mock_txfield_df)
+
+    sit_set_id = 1
+    fractions = mock_site_df.loc[sit_set_id, "Fractions"]
+    field_count = (mock_txfield_df["SIT_SET_ID"] == sit_set_id).sum()
+
+    assert session_interval_for_site(connection, sit_set_id) == timedelta(hours=3)
+    assert len(list(sessions_for_site(connection, sit_set_id))) == fractions
+
+    try:
+        # fields are delivered a minute apart, so a 30 second interval
+        # gives each field its own session
+        generate.create_mock_department_config(tx_interval_time=3000)
+        assert session_interval_for_site(connection, sit_set_id) == timedelta(
+            seconds=30
+        )
+        assert (
+            len(list(sessions_for_site(connection, sit_set_id)))
+            == fractions * field_count
+        )
+    finally:
+        generate.create_mock_department_config()

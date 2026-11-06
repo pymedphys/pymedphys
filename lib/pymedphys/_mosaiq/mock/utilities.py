@@ -95,6 +95,9 @@ def _load_tables():
         tables[table_name] = pd.read_csv(
             path,
             index_col=0,
+            # The C parser in pandas before 3.1 truncates text at NUL. Keep
+            # the complete fixture on every supported pandas version.
+            engine="python",
         )
 
     return tables

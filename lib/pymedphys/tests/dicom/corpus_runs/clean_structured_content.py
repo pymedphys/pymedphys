@@ -23,6 +23,9 @@ in Table E.3.4-1 with D, so their markers are replaced. A NUMERIC item that
 the table does not list is added after them. The items' other elements take
 their own actions, none of which is K without another option, so no marker
 in the sequence is kept (D-047).
+
+Every Structured Report's tree is one that the option keeps, so the reports
+are released, the macular grid report's LOINC rows among them.
 """
 
 import dataclasses
@@ -31,7 +34,11 @@ from pymedphys._imports import pydicom
 
 from pymedphys._dicom.deidentify import synthetic_corpus as corpus_module
 
-from .._corpus_run import CorpusRun
+from .._corpus_run import (
+    CONTENT_SEQUENCE,
+    WITHHELD_WITHOUT_REPORTS,
+    CorpusRun,
+)
 
 # Two concept names that Table E.3.4-1 lists, with their Value Types, and
 # one that it does not.
@@ -97,4 +104,12 @@ RUN = CorpusRun(
     "clean-structured-content",
     options=("clean_structured_content",),
     corpus=with_acquisition_context_items,
+    kept_content=frozenset({"(0040,0555)", CONTENT_SEQUENCE}),
+    withheld=WITHHELD_WITHOUT_REPORTS,
+    # Without Retain UIDs, Referenced Study Sequence is removed. Only
+    # Accession Number remains in different entities for images and reports,
+    # and Patient's Sex Neutered, which Z empties where the other IODs
+    # require it, is absent from the Procedure Log, whose IOD has no Patient
+    # Study Module (PROCEDURE_LOG_ABSENT).
+    inconsistent=frozenset({"(0008,0050)", "(0010,2203)"}),
 )

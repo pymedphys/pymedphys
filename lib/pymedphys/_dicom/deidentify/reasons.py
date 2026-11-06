@@ -208,8 +208,8 @@ class VisualFeaturesReason(enum.Enum):
     # held it beside a CT series that it defaced, so the verdict was of the
     # defaced images rather than of the file, it is a Segmentation whose
     # segments reach such a series' face block, which the QC pack does not
-    # show, or it holds a deformable registration's grid, which no preview
-    # of the QC pack draws
+    # show, or the QC pack could not show its contours or deformation grids,
+    # so the verdict was given without them
     NO_FACE_VERDICT = "no-face-verdict"
     # its series is marked absent, but the run writes other pixel data of it
     # than the reviewed run did, such as a CT slice defaced since the
@@ -220,15 +220,24 @@ class VisualFeaturesReason(enum.Enum):
     # that the reviewed run did not find, so the verdict is not of what it
     # releases
     OTHER_CONTOURS = "face-verdict-on-other-contours"
+    # its series is marked absent, but the run writes other deformation
+    # grids of it than the reviewed run did, or grids that the QC pack's
+    # grid sheets did not all show, so the verdict is not of what it
+    # releases
+    OTHER_GRIDS = "face-verdict-on-other-grids"
     # an RT Dose in the Frame of Reference of a CT series that the run
     # defaces, whose dose in the series' face block is too great to set to
-    # zero there, so that it is written as received
+    # zero there, so that it is written as received, and for which no
+    # reviewer has chosen what a later run does (DoseChoice)
     DOSE_IN_FACE_BLOCK = "dose-in-face-block"
     # an RT Structure Set, RT Dose, PET instance, or Segmentation in the
     # Frame of Reference of a CT series that the run defaces, whose outline
     # or pixel data the run does not clean of the face, such as one in other frames
-    # too or that cannot be cut, and which a reviewer may have judged from
-    # the defaced CT
+    # too or that cannot be cut, or a deformable registration with a grid
+    # that names such a frame as its own or as a source, whose grid the run
+    # does not clean, and which a reviewer may have judged from the defaced
+    # CT, so that only a verdict of its own, from its own previews, which no
+    # reviewed QC pack gave it, could decide it
     UNDEFACED_IN_DEFACED_FRAME = "undefaced-in-defaced-frame"
     # a CT slice of a series whose face block a target may reach, so that
     # the series is not defaced
@@ -237,6 +246,25 @@ class VisualFeaturesReason(enum.Enum):
     # globes that its face block was found from, so that the series is not
     # defaced
     EYES_DISAGREE_WITH_ROIS = "eyes-disagree-with-rois"
+    # an RT Dose with too much dose in a defaced series' face block to set
+    # to zero there, which a reviewer chose to set to zero anyway, and whose
+    # grid as set to zero no reviewed QC pack has shown, so that only a
+    # verdict on this run's previews of it can release it
+    DOSE_SET_TO_ZERO_ON_REVIEW = "dose-set-to-zero-on-review"
+
+
+class DoseChoice(enum.Enum):
+    """What a reviewer chose for an RT Dose with too much dose in a defaced
+    series' face block to set to zero there
+    (:attr:`VisualFeaturesReason.DOSE_IN_FACE_BLOCK`), in a QC pack's
+    attestation, for a later run of the same files."""
+
+    # written as received, and released on a verdict of absent on its own
+    # dose-levels previews, which show it as received
+    AS_WRITTEN = "as-written"
+    # set to zero in the block, beyond the fraction, and released only on a
+    # verdict of absent on the previews of the grid as set to zero
+    SET_TO_ZERO = "set-to-zero"
 
 
 @dataclasses.dataclass(frozen=True)
@@ -313,3 +341,6 @@ class ReviewReason(enum.Enum):
     # its series is marked absent, but the run writes contours of it that
     # the reviewed run's contour sheet did not show
     OTHER_CONTOURS = VisualFeaturesReason.OTHER_CONTOURS.value
+    # its series is marked absent, but the run writes deformation grids of
+    # it that the reviewed run's grid sheets did not all show
+    OTHER_GRIDS = VisualFeaturesReason.OTHER_GRIDS.value

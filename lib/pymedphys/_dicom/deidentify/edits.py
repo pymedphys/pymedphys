@@ -26,13 +26,16 @@ each element of the data set, in file order, an :class:`Edit`:
 - D replaces it with its VR's dummy value, or the second one where the
   source value equals the first, or, for a UI value, its keyed replacement
   (:func:`~pymedphys._dicom.deidentify.dummy_values.values_for_d`); D
-  replaces Person Identification Code Sequence (0040,1101) and Referenced
-  Performed Procedure Step Sequence (0008,1111), whose source items are
-  removed with them, with their reviewed dummy items, built from each source
+  replaces Person Identification Code Sequence (0040,1101), Institution Code
+  Sequence (0008,0082) in an item of Interlock Resolution User Sequence
+  (300A,0746), and Referenced Performed Procedure Step Sequence
+  (0008,1111), whose source items are removed with them, with their
+  reviewed dummy items, built from each source
   item's compared values
   (:func:`~pymedphys._dicom.deidentify.dummy_values.items_for_d`, D-021),
-  and ICC Profile (0028,2000) with a fixed profile of its colour space
-  (:func:`~pymedphys._dicom.deidentify.dummy_values.icc_profile_for_d`);
+  and ICC Profile (0028,2000) with the source profile cleaned of everything
+  but its colorimetry, or a fixed sRGB profile where it cannot be cleaned
+  (:func:`~pymedphys._dicom.deidentify.dummy_values.icc_profile_outcome`);
   D keeps Verifying Observer Sequence (0040,A073) as a container, as K does,
   whose items keep only the attributes that the plan does not remove
   (:func:`~pymedphys._dicom.deidentify.walker.descends`, D-021);
@@ -49,8 +52,11 @@ the series it numbers, which the run gives
 (:mod:`~pymedphys._dicom.deidentify.series_numbers`); a value that takes no
 rank, being empty, not one number, or without a numbering or not in it, is
 emptied under Z and given D's dummy value under D, and without any
-numberings its edit is pending. C cleans the value (D-009), so its edit is pending, for a later
-step to give.
+numberings its edit is pending. The Observation DateTime (0040,A032) of a
+Procedure Log's entries takes, under D, the dummy datetime of its rank, which
+the run gives
+(:func:`~pymedphys._dicom.deidentify.content_items.log_dummy_datetimes`). C
+cleans the value (D-009), so its edit is pending, for a later step to give.
 
 It also collects, for the residual search
 (:mod:`~pymedphys._dicom.deidentify.residuals`), each value that is removed
@@ -88,18 +94,20 @@ from __future__ import annotations
 
 import dataclasses
 import enum
+from collections.abc import Mapping
 
 from . import elements
 from .dummy_values import (
     ICC_PROFILE,
     DummyElement,
     NoDummyValueError,
-    icc_profile_for_d,
+    icc_profile_outcome,
     items_for_d,
     values_for_d,
 )
 from .elements import ElementValue, OutsideDefaultRepertoire, UndecodableElement
 from .file_layout import ElementPath
+from .icc_cleaning import Refusal
 from .keys import DeidKey
 from .pseudonyms import SubjectIdentity, patient_pseudonym
 from .residuals import SourceValue
@@ -145,7 +153,10 @@ class Edit:
     ----------
     path : ElementPath
     action : str
-        The plan's action, such as ``"D"``.
+        The plan's action, such as ``"D"``. A Referenced Content Item
+        Identifier (0040,DB73) that the plan keeps and renumbers
+        (:attr:`~pymedphys._dicom.deidentify.walker.InstancePlan.renumbered`)
+        keeps ``"K"``, with :attr:`EditKind.REPLACE` and its new values.
     kind : EditKind
     values : tuple of str, int, float, or bytes
         The values that replace the element's, for :attr:`EditKind.REPLACE`
@@ -161,6 +172,11 @@ class Edit:
         of their tags, for :attr:`EditKind.REPLACE` of a sequence, such as
         D's on Person Identification Code Sequence (0040,1101); otherwise
         ``()``. The source items are removed with the sequence.
+    icc_refusal : ~pymedphys._dicom.deidentify.icc_cleaning.Refusal or None
+        For the dummy value of ICC Profile (0028,2000), why the source
+        profile could not be cleaned, so that the fixed sRGB profile
+        replaces it; otherwise, and where the cleaned source replaces it,
+        None.
     """
 
     path: ElementPath
@@ -170,6 +186,7 @@ class Edit:
     uid_outcomes: tuple[UIDOutcome, ...] = ()
     removed_with: ElementPath | None = None
     items: tuple[tuple[DummyElement, ...], ...] = ()
+    icc_refusal: Refusal | None = None
 
     def __repr__(self) -> str:
         return (
@@ -492,23 +509,29 @@ def _kind(element: ElementPlan, container: bool) -> EditKind:
     return kind
 
 
-def _dummy(path: ElementPath, value: ElementValue, key: DeidKey) -> Edit:
+def _dummy(
+    path: ElementPath, value: ElementValue, key: DeidKey, given: str | None = None
+) -> Edit:
+    """Return D's edit, which writes ``given``, the run's ranked datetime, if any."""
+    if given is not None:
+        return Edit(path, "D", EditKind.REPLACE, (given,))
     attribute = dictionary_attribute(path.tag)
     vm = attribute.vm if attribute is not None else "1"
+    refusal = None
     try:
         if path.tag == ICC_PROFILE and value.vr == "OB":
             if len(value.values) != 1 or not isinstance(value.values[0], bytes):
                 raise NoDummyValueError(value.vr, "ICC Profile is not one value")
-            values: tuple[str | int | float | bytes, ...] = (
-                icc_profile_for_d(value.values[0]),
-            )
+            outcome = icc_profile_outcome(value.values[0])
+            values: tuple[str | int | float | bytes, ...] = (outcome.profile,)
+            refusal = outcome.refusal
         else:
             values = values_for_d(value.vr, vm, value.values, key)
     except NoDummyValueError:
         raise _Sequester(
             Sequestration(path, "D", value.vr, SequesterReason.NO_DUMMY_VALUE)
         ) from None
-    return Edit(path, "D", EditKind.REPLACE, values)
+    return Edit(path, "D", EditKind.REPLACE, values, icc_refusal=refusal)
 
 
 def _uids(path: ElementPath, value: ElementValue, key: DeidKey) -> Edit:
@@ -553,6 +576,7 @@ def _edit(
     key: DeidKey,
     identity: SubjectIdentity | None,
     numberings: SeriesNumberings | None,
+    dummy_datetimes: Mapping[ElementPath, str],
 ) -> Edit:
     """Return the edit of an element whose needed value, if any, is read."""
     kind = _kind(element, container)
@@ -572,7 +596,7 @@ def _edit(
         return Edit(path, element.action, kind)
     assert value is not None  # every U and D leaf has a consumer that reads it
     if element.action == "D":
-        return _dummy(element.path, value, key)
+        return _dummy(element.path, value, key, dummy_datetimes.get(path))
     return _uids(element.path, value, key)
 
 
@@ -595,7 +619,12 @@ def _with_items(
     """
     source_items = [compared.get(index, {}) for index in range(items)]
     try:
-        written = items_for_d(edit.path.tag, source_items, key)
+        written = items_for_d(
+            edit.path.tag,
+            source_items,
+            key,
+            within=tuple(tag for tag, _ in edit.path.items),
+        )
     except NoDummyValueError:
         raise _Sequester(
             Sequestration(edit.path, "D", "SQ", SequesterReason.NO_DUMMY_VALUE)
@@ -731,6 +760,7 @@ def edit_instance(
     key: DeidKey,
     identity: SubjectIdentity | None = None,
     series_numberings: SeriesNumberings | None = None,
+    dummy_datetimes: Mapping[ElementPath, str] | None = None,
 ) -> InstanceEdits:
     """Return what each element of a planned data set becomes.
 
@@ -750,6 +780,12 @@ def edit_instance(
         The numbering of each of the instance's Series Numbers, as the run
         gives it, for the ranks that replace them. Without them, the edits
         of the Series Numbers that Z or D applies to are pending.
+    dummy_datetimes : Mapping of ElementPath to str, optional
+        The value that D writes, in place of its dummy value, at each path,
+        which is the Observation DateTime (0040,A032) of a Procedure Log's
+        entry
+        (:func:`~pymedphys._dicom.deidentify.content_items.log_dummy_datetimes`).
+        Defaults to none.
 
     Returns
     -------
@@ -781,7 +817,24 @@ def edit_instance(
             if _kept_container(element, container):
                 _check_items(reader, element)
             value = gathered.read(reader, element) if element.consumers else None
-            edit = _edit(element, container, value, key, identity, series_numberings)
+            edit = _edit(
+                element,
+                container,
+                value,
+                key,
+                identity,
+                series_numberings,
+                dummy_datetimes or {},
+            )
+            if edit.kind is EditKind.KEEP and element.path in plan.renumbered:
+                # The identifier names the same item, which the items removed
+                # before it move (D-047).
+                edit = Edit(
+                    element.path,
+                    element.action,
+                    EditKind.REPLACE,
+                    plan.renumbered[element.path],
+                )
             if container and edit.kind is EditKind.REPLACE:
                 reviewed[edit.path] = (len(found), items or 0)
             found.append(edit)

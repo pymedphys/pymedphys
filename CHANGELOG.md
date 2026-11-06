@@ -12,6 +12,23 @@ This project adheres to
 
 ## Unreleased
 
+### Mosaiq treatment sessions follow Mosaiq's rule
+
+The private Mosaiq session helpers in `pymedphys._mosaiq.sessions` now group
+treatments into sessions the way Mosaiq numbers them. A session lasts at most
+the department's treatment session interval (`Config.Tx_Interval_Time`, 3 hours
+by default) from its first treatment, including a treatment exactly one
+interval later, and ends at midnight. QA-mode deliveries are excluded. Before,
+treatments joined a session whenever they were less than 3 hours after the
+previous treatment, so closely spaced treatments chained into one long session,
+QA-mode deliveries joined or added sessions, and the department setting was
+ignored. **Recalculate session counts and session offsets from
+`sessions_for_site`, `session_offsets_for_site` and
+`mean_session_offset_for_site`** for sites with treatments less than 3 hours
+apart over a span longer than 3 hours, treatments across midnight, QA-mode
+deliveries, or a department interval other than 3 hours. Sites treated once a
+day at the default interval give the same sessions. [PR #2430](https://github.com/pymedphys/pymedphys/pull/2430)
+
 ### Oversized DICOM contours
 
 Contour merging and structure-coordinate extraction now decode oversized Contour
@@ -133,6 +150,10 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
 - An experimental DICOM RT viewer displays a CT series with its RT Structure Set and, optionally, its RT Dose, with controls for slice, window level, and window width, and a toggle for each structure. It reads the files from paths on the local file system and skips, with a warning, CT slices that it cannot read. It is not part of `pymedphys gui`: run `streamlit run` on `pymedphys/_experimental/dicomrtvisualisation/visualise.py` in the installed package. [PR #1885](https://github.com/pymedphys/pymedphys/pull/1885), [PR #1907](https://github.com/pymedphys/pymedphys/pull/1907)
 
 ### Bug fixes
+
+- The mock Mosaiq database preserves CSV text containing NUL characters across supported pandas versions. SQL Server reconstructs each NUL between parameterised text fragments, so pymssql can insert the complete value without truncating its query. This restores the database integration tests and the experimental chat app's CSV database-fill action with pandas 3.1. [PR #2511](https://github.com/pymedphys/pymedphys/pull/2511)
+
+- `pymedphys._mosaiq.sessions.cluster_sessions` no longer drops whole days and fractions of a second from its `interval`, and handles one or no treatments. `sessions_for_site` and the session offset helpers return no sessions, and a mean offset of `None`, for a site with no treatments, where they raised `IndexError`. `sessions_for_site`, `session_offsets_for_site` and `mean_session_offset_for_site` take the session interval as an argument, defaulting to the department setting from the new `session_interval_for_site`, which raises `ValueError` when a site's treatments come from departments with different settings. `session_offsets_for_site` searches for each session's offset from no earlier than the previous session's last treatment, so a session no longer takes the previous session's offset, and compares offset times to the second rather than to the minute. Session clustering no longer uses scikit-learn. [PR #2430](https://github.com/pymedphys/pymedphys/pull/2430)
 
 - `pymedphys trf detect` works again. Since the TRF decoder began reading each file's row layout from its header, in v0.40.0, the command has failed with `TypeError` before decoding anything. It now prints the header, any item parts that have no column name, and which of the known row layouts fit the file's table, and exits with an error when none do. An item part with no name does not hide the layouts that fit, so the command can show when a file from a newer linac software version needs only a new column name. [PR #2155](https://github.com/pymedphys/pymedphys/pull/2155)
 
@@ -291,6 +312,8 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
 - **[Contributor facing only]** The NumPy and pandas minimum-version unit tests run in two parts on two runners, since a slow runner could take the 30-minute limit to run them all; every test still runs. `--ignore` now works with `pymedphys dev tests`: the conftest's collection hook no longer answers for the paths it does not ignore. Give `--ignore` an absolute path or one relative to `lib/pymedphys`, since `pymedphys dev tests` runs pytest from there and resolves only its positional paths against the caller's directory. [PR #2422](https://github.com/pymedphys/pymedphys/pull/2422)
 - **[Contributor facing only]** The Ubuntu/Python 3.14 unit tests also run in two parts on two runners, and a short job combines the parts' reports into the one Ubuntu/Python 3.14 report that the release's de-identification requirements matrix reads and the pydicom version checks rely on, so neither changes; every test still runs. Both split jobs fail before pytest starts when a listed module is missing, and their corpus-runs parts no longer share the data cache with the parts that read data. [PR #2425](https://github.com/pymedphys/pymedphys/pull/2425)
 - **[Contributor facing only]** Every cell of the unit-test matrix now runs in the same two parts on two runners as the Ubuntu/Python 3.14 cell, and a short job for each cell combines its parts' reports into the one report that the release's de-identification requirements matrix reads, so that report does not change; every test still runs. The Ubuntu and macOS cells had reached 20 to 23 minutes of their 30-minute limit, and a slow runner exceeded it. [PR #2438](https://github.com/pymedphys/pymedphys/pull/2438)
+- **[Contributor facing only]** The unit tests with the `dicom` extra installed alone run in the same two parts on two runners as the unit-test matrix, since a slow runner took the whole set past its 30-minute limit; every test still runs. Their reports are `junit-extra-dicom-corpus-runs` and `junit-extra-dicom-others`. [PR #2549](https://github.com/pymedphys/pymedphys/pull/2549)
+- **[Contributor facing only]** The corpus tests now run in two parts of their own in every split job, as they already did at the NumPy and pandas minimum versions: `ct-defacing` runs the CT defacing run alone and `corpus-runs` the other corpus modules, so every cell of the unit-test matrix and the `dicom` extra's run alone use three runners. With more Structured Reports in the synthetic corpus, the combined corpus part took more than its 30-minute limit on Ubuntu; every test still runs, and each cell's combined report does not change. [PR #2518](https://github.com/pymedphys/pymedphys/pull/2518)
 - **[Contributor facing only]** `pymedphys dev lint` runs Pylint in one process over the package's files in a fixed order, sorted by path, so the same code gets the same messages on every run and machine. With one worker per CPU, Pylint had reported messages on lines that passed on the same code earlier, and the order in which one process reads the files can also change a message. Linting takes about three times as long, about 3 minutes locally on 4 cores. [PR #2497](https://github.com/pymedphys/pymedphys/pull/2497)
 - **[Contributor facing only]** Pyright now type-checks the CI scripts in `.github/scripts`, which it had silently skipped: its command line always excludes dot-directories below the project root, so the scripts are a project of their own whose `pyrightconfig.json` extends `pyproject.toml`'s settings. Check them locally with `uv run -- pyright --project .github/scripts`. The type-check job fails if either project checks fewer files than its tree holds. [PR #2428](https://github.com/pymedphys/pymedphys/pull/2428)
 - Corrected the documentation dependency-group terminology, the weekly dependency update branch name and the current status of the historical coordinate expected failures. [PR #2246](https://github.com/pymedphys/pymedphys/pull/2246)
@@ -552,6 +575,7 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
 
 ### (Potentially) breaking changes
 
+- The private `pymedphys._mosaiq.sessions` helpers return different sessions for some sites; see "Mosaiq treatment sessions follow Mosaiq's rule" above. Session numbers count one site's sessions, so they differ from the Treatment Chart's per-patient numbers when several sites are treated in the same visit. [PR #2430](https://github.com/pymedphys/pymedphys/pull/2430)
 - `pymedphys gui` now serves only the computer that runs it. It listens on `127.0.0.1` instead of every network interface, and accepts the WebSocket connections that run the apps only when they are addressed to `localhost` or `127.0.0.1`, which protects those connections against DNS rebinding. To serve other computers, for example from a department server, pass the address to listen on with the new `--address` option, such as `pymedphys gui --address 0.0.0.0`. The apps have no login and handle patient data, so anyone who can reach that address and port can use them, over unencrypted HTTP. The GUI also turns off Streamlit's usage statistics. It passes these settings to Streamlit on the command line, so they override Streamlit's configuration files and environment variables: a `server.address` set there no longer takes effect; use `--address` instead. See [Graphical apps](https://docs.pymedphys.com/en/latest/users/ref/cli/gui.html). [PR #2166](https://github.com/pymedphys/pymedphys/pull/2166), [PR #2167](https://github.com/pymedphys/pymedphys/pull/2167)
 - `pymedphys[mosaiq]` no longer installs attrs, scikit-learn, SQLAlchemy, or toml. Install `pymedphys[trf,mosaiq]` to identify TRF files against Mosaiq, and `pymedphys[user]` for everything else. [PR #2145](https://github.com/pymedphys/pymedphys/pull/2145)
 - The `dev` and `docs` extras are removed, and `pymedphys[all]` no longer installs linters, type checkers, or the documentation toolchain. Contributors get these from dependency groups with `uv sync` in a source checkout. [PR #2145](https://github.com/pymedphys/pymedphys/pull/2145)

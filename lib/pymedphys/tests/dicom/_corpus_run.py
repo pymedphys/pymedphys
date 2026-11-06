@@ -48,12 +48,20 @@ from pymedphys._imports import pydicom, pytest
 
 from pymedphys._nomenclature import tg263
 
-from pymedphys._dicom.deidentify import pixel_decoding, roi_names, run, standard
+from pymedphys._dicom.deidentify import (
+    dummy_values,
+    pixel_decoding,
+    roi_names,
+    run,
+    standard,
+    structured_content,
+)
 from pymedphys._dicom.deidentify import synthetic_corpus as corpus_module
 from pymedphys._dicom.deidentify.descriptor_cleaning import DescriptorCleaning
 from pymedphys._dicom.deidentify.face_review import (
     FaceReview,
     contour_data_sha256,
+    grid_data_sha256,
     pixel_data_sha256,
 )
 from pymedphys._dicom.deidentify.file_layout import ElementPath
@@ -123,6 +131,8 @@ PIXEL_OPTION_CODES: Mapping[str, str] = types.MappingProxyType(
 FULL_DATES = "retain_longitudinal_full_dates"
 MODIFIED_DATES = "retain_longitudinal_modified_dates"
 CLEAN_STRUCTURED_CONTENT = "clean_structured_content"
+CONTENT_SEQUENCE = "(0040,A730)"
+CLEAN_RECOGNIZABLE_VISUAL_FEATURES = "clean_recognizable_visual_features"
 
 # The generic parts of every marker.
 MARKER_SIGNATURES = (
@@ -223,9 +233,10 @@ def held(decision: Decision, code: ReasonCode, *tags: str) -> Withheld:
 
 # What every run of the corpus withholds under the Basic Profile: the
 # instance whose Responsible Person and Responsible Organization its IOD
-# requires (Type 1C), which the profile removes, and the RT Dose that holds
-# the plan's RT Plan Label in its Manufacturer's Model Name, which the
-# residual search finds.
+# requires (Type 1C), which the profile removes, the RT Dose that holds the
+# plan's RT Plan Label in its Manufacturer's Model Name, which the residual
+# search finds, and each Structured Report, whose Content Sequence the
+# profile gives D, which a sequence has no dummy value for (D-021).
 BASIC_WITHHELD: Mapping[str, Withheld] = types.MappingProxyType(
     {
         corpus_module.SEQUESTERED_FILE: sequestered(
@@ -233,6 +244,10 @@ BASIC_WITHHELD: Mapping[str, Withheld] = types.MappingProxyType(
         ),
         corpus_module.REVIEW_FILE: held(
             Decision.QC_REVIEW, ReasonCode.RESIDUAL_TEXT, "(300A,0002)"
+        ),
+        **dict.fromkeys(
+            corpus_module.STRUCTURED_REPORT_FILES,
+            sequestered(SequesterReason.NO_DUMMY_VALUE, CONTENT_SEQUENCE),
         ),
     }
 )
@@ -263,6 +278,44 @@ def kept_rows(options: tuple[str, ...]) -> frozenset[str]:
         if actions == {"K"}:
             kept.add(row.tag)
     return frozenset(kept)
+
+
+@functools.cache
+def kept_concepts(options: tuple[str, ...]) -> frozenset[tuple[str, str, str]]:
+    """Return the keys of the rows of Table E.3.4-1 that the options keep.
+
+    A content item's concept name is kept, as :func:`kept_rows` keeps a row
+    of Table E.1-1, when every selected option that gives it an action
+    gives K. Each key is the row's Coding Scheme Designator, Code Value, and
+    Value Type, as a content item's placement records its concept name.
+    """
+    kept = set()
+    for concept in structured_content.load_table_e3_4_1().concepts:
+        actions = {concept.options[o] for o in options if o in concept.options}
+        if actions == {"K"}:
+            kept.add(concept.key)
+    return frozenset(kept)
+
+
+@functools.cache
+def modified_concepts(options: tuple[str, ...]) -> frozenset[tuple[str, str, str]]:
+    """Return the keys of the rows of Table E.3.4-1 that Modified Dates cleans.
+
+    That is where Modified Dates is selected and gives the row C, and every
+    other selected option that gives it an action gives K or C, since C
+    then applies (D-047). The Modified Dates cleaner settles each such
+    value by its value attribute's temporal role, as it does an attribute
+    (D-006, D-039), so a time of day that moves by whole weeks is kept as
+    received, as Study Time (0008,0030) is.
+    """
+    if MODIFIED_DATES not in options:
+        return frozenset()
+    return frozenset(
+        concept.key
+        for concept in structured_content.load_table_e3_4_1().concepts
+        if concept.options.get(MODIFIED_DATES) == "C"
+        and {concept.options[o] for o in options if o in concept.options} <= {"K", "C"}
+    )
 
 
 @functools.cache
@@ -301,6 +354,30 @@ def _unchanged(
     corpus: corpus_module.SyntheticCorpus,
 ) -> corpus_module.SyntheticCorpus:
     return corpus
+
+
+# BASIC_WITHHELD without the Structured Reports, for a run that releases
+# them.
+WITHHELD_WITHOUT_REPORTS: Mapping[str, Withheld] = types.MappingProxyType(
+    {
+        name: withheld
+        for name, withheld in BASIC_WITHHELD.items()
+        if name not in corpus_module.STRUCTURED_REPORT_FILES
+    }
+)
+
+# Accession Number (0008,0050) and Referenced Study Sequence (0008,1110),
+# which dcentvfy's own tables place in the Study entity for a Structured
+# Report and in the Series entity for an image, whatever the files hold.
+# dcentvfy finds that difference wherever a report is released with an
+# image, in their inputs as often.
+REPORT_ENTITIES = frozenset({"(0008,0050)", "(0008,1110)"})
+# Patient's Sex Neutered (0010,2203), Allergies (0010,2110), and Patient
+# State (0038,0500), of the Patient Study Module, which the Procedure Log IOD
+# does not include (PS3.3 Section A.35.7). Where a run keeps one, or Z
+# empties Patient's Sex Neutered, which the other IODs make Type 2C,
+# dcentvfy finds it present in another instance and absent from the log.
+PROCEDURE_LOG_ABSENT = frozenset({"(0010,2203)", "(0010,2110)", "(0038,0500)"})
 
 
 @dataclasses.dataclass(frozen=True)
@@ -355,7 +432,8 @@ class CorpusRun:
         instances, which the corpus plants, the run keeps or modifies alike,
         so that dcentvfy finds each of them in the released instances as
         often as in their inputs. The Basic Profile removes or replaces
-        every such value alike, so by default there are none.
+        every such value alike, so by default there are none. They include
+        :data:`REPORT_ENTITIES` where the run releases a Structured Report.
     kept_content : frozenset of str
         The sequences of Table E.1-1, by tag, whose content items Clean
         Structured Content cleans, and which the engine keeps, since the
@@ -422,16 +500,36 @@ class CorpusRun:
     def keeps(self, placement: corpus_module.Placement) -> bool:
         """Whether the run keeps a placement's marker at its place.
 
-        Its row must be kept (:meth:`kept_rows`), and so must every sequence
-        of Table E.1-1 that holds it, since a sequence's other actions
-        remove, empty, replace, or clean what it holds; but a sequence whose
-        content items the run cleans and keeps (:attr:`kept_content`) keeps
-        what its items' own actions keep.
+        Its row must be kept (:meth:`kept_rows`), or, for the value of a
+        content item, the row of Table E.3.4-1 of its concept name
+        (:func:`kept_concepts`), or that row must be one that Modified Dates
+        cleans (:func:`modified_concepts`) with its value attribute's row
+        kept, and so must every sequence of Table E.1-1
+        that holds it, since a sequence's other actions remove, empty,
+        replace, or clean what it holds; but a sequence whose content items
+        the run cleans and keeps (:attr:`kept_content`) keeps what its
+        items' own actions keep, and so does Verifying Observer Sequence
+        for the attributes of its items that its reviewed D keeps
+        (:data:`~pymedphys._dicom.deidentify.dummy_values.KEPT_ITEM_ATTRIBUTES`).
         """
         kept = self.kept_rows()
         passed = kept | self.kept_content
-        return placement.profile_tag in kept and all(
-            tag in passed or tag not in _listed() for tag, _ in placement.path.items
+        if placement.concept is not None:
+            # A value that Modified Dates cleans is kept where the run keeps
+            # its value attribute's row, as a time of day is.
+            own = placement.concept in kept_concepts(self.selected) or (
+                placement.concept in modified_concepts(self.selected)
+                and placement.path.tag in kept
+            )
+        else:
+            own = placement.profile_tag in kept
+        tags = [tag for tag, _ in placement.path.items]
+        inner = [*tags[1:], placement.path.tag]
+        return own and all(
+            tag in passed
+            or tag not in _listed()
+            or held in dummy_values.KEPT_ITEM_ATTRIBUTES.get(tag, ())
+            for tag, held in zip(tags, inner)
         )
 
     def method_codes(self) -> frozenset[tuple[str, str]]:
@@ -520,9 +618,9 @@ def planted_roi_name(corpus: corpus_module.SyntheticCorpus) -> str:
 
 
 def with_a_second_roi(
-    corpus: corpus_module.SyntheticCorpus,
+    corpus: corpus_module.SyntheticCorpus, name: str = UNCLEANED_NAME
 ) -> corpus_module.SyntheticCorpus:
-    """Return the corpus with a second ROI, named for the automatic tier.
+    """Return the corpus with a second ROI, by default named for the automatic tier.
 
     pydicom writes the structure set again, which keeps every planted value.
     The second ROI references the first's frame of reference, whose linked
@@ -535,7 +633,7 @@ def with_a_second_roi(
     item = pydicom.Dataset()
     item.ROINumber = max(each.ROINumber for each in dataset.StructureSetROISequence) + 1
     item.ReferencedFrameOfReferenceUID = first.ReferencedFrameOfReferenceUID
-    item.ROIName = UNCLEANED_NAME
+    item.ROIName = name
     item.ROIGenerationAlgorithm = "MANUAL"
     dataset.StructureSetROISequence.append(item)
     buffer = pydicom.filebase.DicomBytesIO()
@@ -578,14 +676,34 @@ def decoders_installed() -> bool:
     )
 
 
+# A face review with no verdicts, as the first run of a collection under
+# Clean Recognizable Visual Features is given, which holds every instance
+# that can show a face.
+NO_FACE_VERDICTS = FaceReview(
+    FACE_REVIEW_REFERENCE, frozenset(), frozenset(), frozenset(), frozenset()
+)
+
+
+def face_review_for(composed: Policy) -> FaceReview | None:
+    """Return :data:`NO_FACE_VERDICTS` where the policy selects Clean
+    Recognizable Visual Features, whose transform needs a face review, as
+    ``public-release`` does, or None for any other policy."""
+    return (
+        NO_FACE_VERDICTS
+        if CLEAN_RECOGNIZABLE_VISUAL_FEATURES in composed.options
+        else None
+    )
+
+
 def every_face_absent(corpus: corpus_module.SyntheticCorpus) -> FaceReview:
     """Return a face review that marks every file of the corpus free of a face.
 
-    It is matched by each file's SHA-256, and the SHA-256 of the pixel data
-    and contours that a run writes of it unchanged, as an attested review's
-    verdicts are, and gives each RT Dose's every frame as shown by its dose
-    levels, so each instance that can show a face, and whose pixel data and
-    contours the run does not change, satisfies the option.
+    It is matched by each file's SHA-256, and the SHA-256 of the pixel data,
+    contours, and deformation grids that a run writes of it unchanged, as an
+    attested review's verdicts are, and gives each RT Dose's every frame as
+    shown by its dose levels, and each Segmentation's by its segments sheet,
+    so each instance that can show a face, and whose pixel data, contours,
+    and grids the run does not change, satisfies the option.
     """
     digests = frozenset(hashlib.sha256(file.data).digest() for file in corpus.files)
     pixels = frozenset(
@@ -593,18 +711,26 @@ def every_face_absent(corpus: corpus_module.SyntheticCorpus) -> FaceReview:
         for file in corpus.files
         if (digest := _written_sha256(pixel_data_sha256, file.data)) is not None
     )
-    doses = frozenset(
-        (hashlib.sha256(file.data).digest(), digest, int(frames))
-        for file in corpus.files
-        if (dataset := pydicom.dcmread(io.BytesIO(file.data))).get("Modality")
-        == "RTDOSE"
-        and (frames := dataset.get("NumberOfFrames") or 1)
-        and (digest := _written_sha256(pixel_data_sha256, file.data)) is not None
+    doses, segments = (
+        frozenset(
+            (hashlib.sha256(file.data).digest(), digest, int(frames))
+            for file in corpus.files
+            if (dataset := pydicom.dcmread(io.BytesIO(file.data))).get("Modality")
+            == modality
+            and (frames := dataset.get("NumberOfFrames") or 1)
+            and (digest := _written_sha256(pixel_data_sha256, file.data)) is not None
+        )
+        for modality in ("RTDOSE", "SEG")
     )
     contours = frozenset(
         (hashlib.sha256(file.data).digest(), digest)
         for file in corpus.files
         if (digest := _written_sha256(contour_data_sha256, file.data)) is not None
+    )
+    grids = frozenset(
+        (hashlib.sha256(file.data).digest(), digest)
+        for file in corpus.files
+        if (digest := _written_sha256(grid_data_sha256, file.data)) is not None
     )
     return FaceReview(
         FACE_REVIEW_REFERENCE,
@@ -613,14 +739,16 @@ def every_face_absent(corpus: corpus_module.SyntheticCorpus) -> FaceReview:
         pixels,
         contours,
         absent_dose_frames=doses,
+        absent_grids=grids,
+        absent_segment_frames=segments,
     )
 
 
 def _written_sha256(
     digester: Callable[[pydicom.Dataset], bytes], data: bytes
 ) -> bytes | None:
-    """The digest of a file's pixel data or contours, or None where it
-    cannot be read."""
+    """The digest of a file's pixel data, contours, or deformation grids, or
+    None where it cannot be read."""
     try:
         return digester(read_source(data).dataset())
     except (SourceRefused, ValueError):

@@ -23,6 +23,7 @@ import hmac
 import json
 import os
 import stat
+import sys
 from pathlib import PurePosixPath
 
 from pymedphys._imports import pytest
@@ -95,6 +96,7 @@ def _assessment(**changes):
         "linked_records": "Each subject's studies were assessed together",
         "earlier_releases": "No earlier release",
         "device_identity": "Station names identify the department, so are omitted",
+        "institutional_identity": "Local codes were matched on as the site",
         "facial_reconstruction": False,
         "subjects": 3,
         "threshold": risk_assessment.DEFAULT_THRESHOLD,
@@ -219,7 +221,7 @@ def test_the_record_is_written_beside_the_pack_and_read_back(pack, report_file):
     document = json.loads(written.read_text("ascii"))
     digest = hashlib.sha256((pack / qc_store.PACK_FILE).read_bytes()).hexdigest()
     assert document == {
-        "format": "pymedphys-deid-risk-assessment/1",
+        "format": "pymedphys-deid-risk-assessment/2",
         "reference": record.reference,
         "pack": PACK,
         "pack_digest": digest,
@@ -253,6 +255,7 @@ def test_the_record_is_written_beside_the_pack_and_read_back(pack, report_file):
         "linked_records": "Each subject's studies were assessed together",
         "earlier_releases": "No earlier release",
         "device_identity": "Station names identify the department, so are omitted",
+        "institutional_identity": "Local codes were matched on as the site",
         "facial_reconstruction": False,
         "subjects": 3,
         "threshold": 0.09,
@@ -309,6 +312,7 @@ def test_the_reprs_show_no_statement(pack, report_file):
         "linked_records",
         "earlier_releases",
         "device_identity",
+        "institutional_identity",
         "assessor",
     ],
 )
@@ -333,6 +337,28 @@ def test_the_model_and_its_implementation_are_versioned(field):
     fields[field] = " "
     with pytest.raises(RiskAssessmentError, match=field):
         Model(**fields)
+
+
+@pytest.mark.parametrize(
+    "field", ["name", "version", "implementation", "implementation_version"]
+)
+def test_a_model_field_nested_beyond_the_recursion_limit_is_refused(field):
+    # A list nested deeper than Python recurses, as a statement's JSON can
+    # give, is refused as not text, as a shallow list is, not by
+    # overflowing the stack while the fields are checked.
+    nested: list = []
+    for _ in range(2 * sys.getrecursionlimit()):
+        nested = [nested]
+    fields = {
+        "name": "Model",
+        "version": "1",
+        "implementation": "Tool",
+        "implementation_version": "1.0",
+        field: nested,
+    }
+    with pytest.raises(RiskAssessmentError) as raised:
+        Model(**fields)
+    assert str(raised.value) == f"the model needs its {field} as text"
 
 
 def test_the_attacker_states_knowledge_and_membership():
@@ -897,6 +923,63 @@ def test_a_pack_is_assessed_once(pack, report_file):
     assert risk_assessment.read_assessment(pack) == first
 
 
+def test_binding_checks_as_recording_does_and_writes_nothing(pack, report_file):
+    bound = risk_assessment.bind_assessment(pack, report_file, _assessment())
+
+    assert not (pack / risk_assessment.ASSESSMENT_FILE).exists()
+    assert risk_assessment.read_assessment(pack) is None
+    recorded = _record(pack, report_file, _assessment())
+    # Each draws its own reference; everything else is bound alike.
+    assert bound.reference != recorded.reference
+    assert dataclasses.replace(bound, reference=recorded.reference) == recorded
+
+
+def test_binding_refuses_a_pack_that_has_an_assessment(pack, report_file):
+    first = _record(pack, report_file, _assessment())
+    before = (pack / risk_assessment.ASSESSMENT_FILE).read_bytes()
+
+    with pytest.raises(RiskAssessmentError, match="already has a risk assessment"):
+        risk_assessment.bind_assessment(pack, report_file, _assessment())
+
+    assert (pack / risk_assessment.ASSESSMENT_FILE).read_bytes() == before
+    assert risk_assessment.read_assessment(pack) == first
+
+
+def test_binding_refuses_what_recording_refuses(tmp_path, pack, report_file):
+    other = tmp_path / "other.json"
+    other.write_text(json.dumps(_report(OTHER_PACK)), "utf-8")
+    with pytest.raises(RiskAssessmentError, match="another QC pack"):
+        risk_assessment.bind_assessment(pack, other, _assessment())
+    with pytest.raises(QcPackError, match="no QC pack"):
+        risk_assessment.bind_assessment(tmp_path, report_file, _assessment())
+    unbound = _write_pack(tmp_path, "unbound", lists=None)
+    with pytest.raises(RiskAssessmentError, match="records no digest"):
+        risk_assessment.bind_assessment(unbound, report_file, _assessment())
+    with pytest.raises(TypeError, match="must be an Assessment"):
+        risk_assessment.bind_assessment(pack, report_file, None)
+
+
+@pytest.mark.deid_requirement("MIDI-BP-01")
+def test_a_record_that_appears_after_binding_is_not_overwritten(
+    pack, report_file, monkeypatch
+):
+    # Recording checks again as it writes, so a record written by another
+    # process between the check and the write is kept.
+    bind = risk_assessment.bind_assessment
+    earlier = (pack / risk_assessment.ASSESSMENT_FILE, b"another process's record")
+
+    def bind_then_another_records(*args):
+        record = bind(*args)
+        earlier[0].write_bytes(earlier[1])
+        return record
+
+    monkeypatch.setattr(risk_assessment, "bind_assessment", bind_then_another_records)
+
+    with pytest.raises(RiskAssessmentError, match="already has a risk assessment"):
+        _record(pack, report_file, _assessment())
+    assert earlier[0].read_bytes() == earlier[1]
+
+
 @pytest.mark.deid_requirement("MIDI-BP-01")
 def test_a_pack_changed_after_it_was_assessed_is_refused(pack, report_file):
     _record(pack, report_file, _assessment())
@@ -979,6 +1062,7 @@ def test_a_record_whose_collection_was_edited_is_refused(pack, report_file):
         lambda document: document.pop("earlier_releases"),
         lambda document: document.pop("linked_records"),
         lambda document: document.pop("device_identity"),
+        lambda document: document.pop("institutional_identity"),
         lambda document: document.pop("model"),
         lambda document: document["model"].pop("version"),
         lambda document: document["attacker"].update(extra=1),
@@ -998,6 +1082,21 @@ def test_a_record_not_of_its_format_is_refused(pack, report_file, change):
     with pytest.raises(RiskAssessmentError, match="not of its format") as raised:
         risk_assessment.read_assessment(pack)
     assert SENTINEL not in str(raised.value)
+
+
+@pytest.mark.deid_requirement("MIDI-BP-05")
+def test_a_record_of_the_earlier_format_is_refused(pack, report_file):
+    # Format 1 held no statement on the institutional identity that the
+    # policy keeps, so no record of it can stand as an assessment of that.
+    _record(pack, report_file, _assessment())
+
+    def earlier(document):
+        document.update(format="pymedphys-deid-risk-assessment/1")
+        del document["institutional_identity"]
+
+    _rewrite(pack, earlier)
+    with pytest.raises(RiskAssessmentError, match="not of its format"):
+        risk_assessment.read_assessment(pack)
 
 
 def test_a_record_naming_a_member_twice_is_refused(pack, report_file):

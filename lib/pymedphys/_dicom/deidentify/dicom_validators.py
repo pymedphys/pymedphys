@@ -95,6 +95,9 @@ UNRECOGNISED_MESSAGE = "line not recognised"
 UNPROVEN_MESSAGE = "message not shown"
 # What a finding that names no attribute gives as its path.
 NO_PATH = ""
+# What dciodvfy prints, in place of an IOD's name, for a SOP Class that it
+# does not know, such as Extensible SR in its January 2024 snapshot.
+_NO_IOD = "Information Object Not found"
 
 # Each validator run on one file is stopped after this many seconds.
 TIMEOUT_SECONDS = 600
@@ -108,9 +111,12 @@ _DCIODVFY_LINE = re.compile(
     r"^(?P<severity>Error|Warning) - "
     r'(?:<(?P<path>/(?:"[^"]*"|[^"])*?)> - )?(?P<message>.*)$'
 )
+# A value's difference names one information entity; an attribute that two
+# files' IODs place in different entities names both.
 _DCENTVFY_LINE = re.compile(
     r"^(?P<severity>Error|Warning) - (?P<message>[^<>]*?)"
-    r" - Element=<(?P<element>[A-Za-z0-9]+)> IE=<(?P<entity>[A-Za-z]+)>"
+    r" - Element=<(?P<element>[A-Za-z0-9]+)>"
+    r" IE(?:=<(?P<entity>[A-Za-z]+)>| <(?P<first>[A-Za-z]+)> versus <(?P<second>[A-Za-z]+)>)"
 )
 _MODULE = re.compile(r" - Module=<(?P<module>[A-Za-z0-9]+)>$")
 _IOD_NAME = re.compile(r"^[A-Za-z0-9]+$")
@@ -187,7 +193,7 @@ class Finding:
         ``<value>`` in its place.
     context : str
         The module that dciodvfy or dicom-validator names, or the
-        information entity that dcentvfy names, or ``""``.
+        information entity, or two, that dcentvfy names, or ``""``.
     """
 
     validator: str
@@ -447,12 +453,15 @@ def parse_dciodvfy(
     file in Implicit VR, ``implicit_vr``, an attribute that dciodvfy's
     dictionary lacks is one whose contents it cannot parse; in Explicit VR
     it reads them from the VR the file gives, unless that is UN. The status is
-    :attr:`Status.VALIDATED`; :func:`run_dciodvfy` gives another where
+    :attr:`Status.VALIDATED`, or :attr:`Status.UNSUPPORTED`, with no
+    findings, where dciodvfy names no IOD and says that it found none, since
+    it then checks no module; :func:`run_dciodvfy` gives another where
     dciodvfy did not run to the end.
     """
     findings: collections.Counter[Finding] = collections.Counter()
     unparsed = set()
     iod = ""
+    no_iod = False
     for line in output.splitlines():
         line = line.rstrip()
         if not line:
@@ -465,6 +474,8 @@ def parse_dciodvfy(
                 findings[_unrecognised(DCIODVFY)] += 1
             continue
         path = _dciodvfy_path(found["path"] or "")
+        if not iod and not path and found["message"] == _NO_IOD:
+            no_iod = True
         message, module = message_type(found["message"], strings)
         findings[
             Finding(DCIODVFY, found["severity"].lower(), path, message, module)
@@ -474,6 +485,8 @@ def parse_dciodvfy(
             or (implicit_vr and message in _UNPARSED_IN_IMPLICIT_VR)
         ):
             unparsed.add(path)
+    if no_iod and not iod:
+        return Validation(DCIODVFY, Status.UNSUPPORTED, {})
     return Validation(
         DCIODVFY, Status.VALIDATED, dict(findings), frozenset(unparsed), iod
     )
@@ -513,10 +526,12 @@ def parse_dcentvfy(output: str, strings: frozenset[str]) -> Validation:
 
     Each finding names the attribute, by its tag where pydicom's dictionary
     has its keyword and otherwise by the keyword, and the information
-    entity; the files and values that dcentvfy compared are dropped. The
-    message is kept only where it is made of ``strings``, those compiled
-    into the executable that wrote it (:func:`composed`), and a keyword or
-    entity only where it is one of them (:func:`own_name`).
+    entity, or the two entities that the files' IODs place it in
+    (:func:`_dcentvfy_entities`); the files and values that dcentvfy
+    compared are dropped. The message is kept only where it is made of
+    ``strings``, those compiled into the executable that wrote it
+    (:func:`composed`), and a keyword or entity only where it is one of
+    them (:func:`own_name`).
     """
     findings: collections.Counter[Finding] = collections.Counter()
     for line in output.splitlines():
@@ -540,10 +555,27 @@ def parse_dcentvfy(output: str, strings: frozenset[str]) -> Validation:
                 found["severity"].lower(),
                 path,
                 composed(found["message"].strip(), strings) or UNPROVEN_MESSAGE,
-                found["entity"] if own_name(found["entity"], strings) else "",
+                _dcentvfy_entities(found, strings),
             )
         ] += 1
     return Validation(DCENTVFY, Status.VALIDATED, dict(findings))
+
+
+def _dcentvfy_entities(found: re.Match[str], strings: frozenset[str]) -> str:
+    """Return the information entity, or the two, that a dcentvfy line names.
+
+    Two entities are sorted, since their order is that of the files, and
+    read ``"Series versus Study"``. None is kept unless each is the
+    executable's own name.
+    """
+    names = (
+        [found["entity"]]
+        if found["entity"]
+        else sorted([found["first"], found["second"]])
+    )
+    if not all(own_name(name, strings) for name in names):
+        return ""
+    return " versus ".join(names)
 
 
 def run_dcentvfy(executable: str, paths: Sequence[Path]) -> Validation:

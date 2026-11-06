@@ -84,9 +84,11 @@ from .descriptor_cleaning import fallback_policy
 from .dummy_values import (
     DUMMY_VRS,
     ICC_PROFILE,
+    INSTITUTION_CODE_SEQUENCE,
     PERSON_IDENTIFICATION_CODE_SEQUENCE,
     REFERENCED_PERFORMED_PROCEDURE_STEP_SEQUENCE,
     VERIFYING_OBSERVER_SEQUENCE,
+    reviewed_within,
 )
 from .element_rules import (
     _ENGINE_GROUPS,
@@ -142,10 +144,11 @@ UID_DEFINITION = "UID role: definition"
 # The action at a place where the instance is sequestered rather than written.
 SEQUESTER = "sequester"
 # The attributes whose dummy value a reviewed rule gives, whatever their VR
-# (D-021).
+# (D-021); Institution Code Sequence's, only where reviewed_within says.
 _REVIEWED_DUMMY_ATTRIBUTES = frozenset(
     {
         PERSON_IDENTIFICATION_CODE_SEQUENCE,
+        INSTITUTION_CODE_SEQUENCE,
         REFERENCED_PERFORMED_PROCEDURE_STEP_SEQUENCE,
         ICC_PROFILE,
         VERIFYING_OBSERVER_SEQUENCE,
@@ -544,19 +547,20 @@ def _place(iod: IOD, name: str, tag: str, path: tuple[str, ...], action: str) ->
         resolved = compound_actions.resolve_plain_in_iod(iod, tag, path, action)
     else:
         return _plain_x_place(iod, name, tag, path)
-    if resolved == "D" and not _has_dummy_value(tag):
+    if resolved == "D" and not _has_dummy_value(tag, path):
         return Place(name, path, SEQUESTER)
     return Place(name, path, resolved)
 
 
-def _has_dummy_value(tag: str) -> bool:
-    """Whether D can write a dummy value for ``tag`` (D-021).
+def _has_dummy_value(tag: str, path: tuple[str, ...]) -> bool:
+    """Whether D can write a dummy value for ``tag`` at a place (D-021).
 
     It can where the attribute's VR has a generic dummy value or a reviewed
-    rule gives the attribute one; otherwise D sequesters the instance.
+    rule gives the attribute one there; otherwise D sequesters the instance.
+    ``path`` holds the tags of the sequences that enclose the place.
     """
     if tag in _REVIEWED_DUMMY_ATTRIBUTES:
-        return True
+        return reviewed_within(tag, path)
     attribute = dictionary_attribute(tag)
     return attribute is None or bool(DUMMY_VRS.intersection(attribute.vrs))
 
@@ -567,6 +571,8 @@ def _plain_x_place(iod: IOD, name: str, tag: str, path: tuple[str, ...]) -> Plac
     extent = removal.extent
     if extent is compound_actions.RemovalExtent.SEQUESTER:
         return Place(name, path, SEQUESTER)
+    if extent is compound_actions.RemovalExtent.EMPTIED:
+        return Place(name, path, "Z")
     if extent is compound_actions.RemovalExtent.OVERLAY_GROUP:
         return Place(name, path, "X", OVERLAY_GROUP)
     if extent is compound_actions.RemovalExtent.SEQUENCE:
