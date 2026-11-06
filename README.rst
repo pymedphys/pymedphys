@@ -239,6 +239,11 @@ Active contributors
 
 .. _`Vishu`: https://github.com/httpsVishu
 
+* `Guopei Zhu`_
+    * Shanghai Ninth People's Hospital, China
+
+.. _`Guopei Zhu`: https://github.com/antica1
+
 |uth| |ccr|
 
 Past contributors

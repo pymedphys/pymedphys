@@ -172,6 +172,7 @@ SLOW_TEST_FILES = frozenset(
 # run, so changing those exclusions cannot leave a module unselected.
 DOCTEST_FILES = frozenset(
     {
+        "lib/pymedphys/_constraints/head_neck_dvh.py",
         "lib/pymedphys/_dev/deid_tables/ps3_3.py",
         "lib/pymedphys/_dicom/deidentify/ae_titles.py",
         "lib/pymedphys/_dicom/deidentify/birth_dates.py",
