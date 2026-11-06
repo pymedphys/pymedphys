@@ -29,12 +29,16 @@ import pydicom_coverage
 from select_checks import OUTPUTS
 
 WORKFLOWS = Path(__file__).resolve().parents[1] / "workflows"
-# The lines that split the listed corpus modules between the ct-defacing and
-# corpus-runs parts, in every job that runs in parts.
+# The lines that split the listed corpus modules between the ct-defacing,
+# ct-defacing-reviews, and corpus-runs parts, in every job that runs in parts.
 CT_DEFACING_SELECTION = (
-    '            if [[ " ${listed[*]} " != *" ${CT_DEFACING_RUN_TEST} "* ]]; then\n',
+    '            for alone in "${CT_DEFACING_RUN_TEST}" "${CT_DEFACING_REVIEW_TEST}"; do\n',
+    '              if [[ " ${listed[*]} " != *" ${alone} "* ]]; then\n',
+    '            if [[ "${CT_DEFACING_RUN_TEST}" == "${CT_DEFACING_REVIEW_TEST}" ]]; then\n',
     '              ct-defacing) selection=("${CT_DEFACING_RUN_TEST}") ;;\n',
-    '                  if [[ "${path}" != "${CT_DEFACING_RUN_TEST}" ]]; then\n',
+    '              ct-defacing-reviews) selection=("${CT_DEFACING_REVIEW_TEST}") ;;\n',
+    '                  if [[ "${path}" != "${CT_DEFACING_RUN_TEST}" &&\n',
+    '                    "${path}" != "${CT_DEFACING_REVIEW_TEST}" ]]; then\n',
     '                    selection+=("${path}")\n',
     "                if [[ ${#selection[@]} -eq 0 ]]; then\n",
     '                  echo "::error::The remaining corpus part must not be empty."\n',
@@ -378,9 +382,11 @@ class WorkflowContractTests(unittest.TestCase):
         for name in (
             "junit-extra-gamma",
             "junit-extra-dicom-ct-defacing",
+            "junit-extra-dicom-ct-defacing-reviews",
             "junit-extra-dicom-corpus-runs",
             "junit-extra-dicom-others",
             "junit-dependency-floors-ct-defacing",
+            "junit-dependency-floors-ct-defacing-reviews",
             "junit-dependency-floors-corpus-runs",
             "junit-dependency-floors-others",
             *(
@@ -445,18 +451,28 @@ class WorkflowContractTests(unittest.TestCase):
         text = (WORKFLOWS / "unit-tests.yml").read_text(encoding="utf-8")
         listed = re.search(r"\n  CORPUS_RUN_TESTS: >-\n((?: {4}\S+\n)+)", text)[1]
         self.assertTrue(listed.split())
+        # Each listed module belongs to exactly one part.
+        self.assertEqual(len(set(listed.split())), len(listed.split()))
         for path in listed.split():
             with self.subTest(path=path):
                 self.assertTrue((WORKFLOWS.parents[1] / path).is_file())
         workflow = jobs("unit-tests.yml")
         floors, test = workflow["dependency-floors"], workflow["test"]
-        self.assertIn("        part: [ct-defacing, corpus-runs, others]\n", floors)
+        self.assertIn(f"        part: [{', '.join(pydicom_coverage.PARTS)}]\n", floors)
         self.assertIn("    timeout-minutes: 30\n", floors)
-        # Every split job reads the one CT defacing module that the workflow
-        # names, which must be one of the listed modules.
-        ct_defacing = re.search(r"(?m)^  CT_DEFACING_RUN_TEST: (\S+)$", text)[1]
-        self.assertEqual(listed.split().count(ct_defacing), 1)
-        self.assertEqual(text.count("CT_DEFACING_RUN_TEST: "), 1)
+        # Every split job reads the two halves of the CT defacing runs that
+        # the workflow names, two different listed modules, each run alone.
+        halves = [
+            re.search(rf"(?m)^  {key}: (\S+)$", text)[1]
+            for key in ("CT_DEFACING_RUN_TEST", "CT_DEFACING_REVIEW_TEST")
+        ]
+        self.assertEqual(len(set(halves)), 2)
+        for key, half in zip(
+            ("CT_DEFACING_RUN_TEST", "CT_DEFACING_REVIEW_TEST"), halves, strict=True
+        ):
+            with self.subTest(half=half):
+                self.assertEqual(listed.split().count(half), 1)
+                self.assertEqual(text.count(f"{key}: "), 1)
         # Every cell runs in one job for each part, which the combined
         # report joins; no cell runs whole.
         self.assertIn(
@@ -504,7 +520,7 @@ class WorkflowContractTests(unittest.TestCase):
                 self.assertIn(
                     "          cache-data: ${{ matrix.part == 'others' }}\n", job
                 )
-        # The dicom extra's run alone has the same three parts, over the same
+        # The dicom extra's run alone has the same four parts, over the same
         # paths and marks: the corpus parts run their modules in place of the
         # paths, and its others part adds the same ignores to them.
         narrow = workflow["narrow-extras"]
@@ -527,6 +543,7 @@ class WorkflowContractTests(unittest.TestCase):
             "              others) selection+="
             '("${listed[@]/#/--ignore=${GITHUB_WORKSPACE}/}") ;;\n',
             "          cache-data: ${{ matrix.part != 'ct-defacing' && "
+            "matrix.part != 'ct-defacing-reviews' && "
             "matrix.part != 'corpus-runs' }}\n",
         ):
             with self.subTest(narrow_line=line):
@@ -571,7 +588,7 @@ class WorkflowContractTests(unittest.TestCase):
         self.assertIn("          PART: ${{ matrix.part }}", parts)
         self.assertIn("          path: test-results/*\n", parts)
         # Each cell's combined report, and the Ubuntu/Python 3.14 cell's
-        # evidence only when both its parts passed.
+        # evidence only when all its parts passed.
         baseline = workflow["combined-report"]
         self.assertEqual(needs(baseline), {"test"})
         self.assertIn("    if: ${{ !cancelled() }}\n", baseline)
