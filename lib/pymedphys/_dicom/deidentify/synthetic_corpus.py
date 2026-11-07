@@ -1432,24 +1432,6 @@ _SPECS = (
         PLAN,
         targets=((_REFERENCED_TREATMENT_RECORD_SEQUENCE, BRACHY_TREATMENT_RECORD),),
     ),
-    # The Enhanced RT Image, two digitally reconstructed radiographs of the
-    # RT Plan's beam, and the Enhanced Continuous RT Image, two frames of a
-    # kV acquisition during it, each referencing the RT Plan, as the RT Image
-    # does.
-    _Spec(
-        ENHANCED_RT_IMAGE_FILE,
-        ENHANCED_RT_IMAGE_STORAGE,
-        ENHANCED_RT_IMAGE,
-        ENHANCED_RT_IMAGE_SERIES,
-        PLAN,
-    ),
-    _Spec(
-        ENHANCED_CONTINUOUS_RT_IMAGE_FILE,
-        ENHANCED_CONTINUOUS_RT_IMAGE_STORAGE,
-        ENHANCED_CONTINUOUS_RT_IMAGE,
-        ENHANCED_CONTINUOUS_RT_IMAGE_SERIES,
-        PLAN,
-    ),
     # The RT Segment Annotation annotates the BINARY Segmentation's segments.
     # The RT Radiation Set gathers the C-Arm Photon-Electron Radiation, which
     # its RT Radiation Sequence and Referenced RT Radiation Sequences name;
@@ -1496,6 +1478,25 @@ _SPECS = (
             ),
         )
     ),
+    # Numbered after the second-generation RT IODs' files.
+    # The Enhanced RT Image, two digitally reconstructed radiographs of the
+    # RT Plan's beam, and the Enhanced Continuous RT Image, two frames of a
+    # kV acquisition during it, each referencing the RT Plan, as the RT Image
+    # does.
+    _Spec(
+        ENHANCED_RT_IMAGE_FILE,
+        ENHANCED_RT_IMAGE_STORAGE,
+        ENHANCED_RT_IMAGE,
+        ENHANCED_RT_IMAGE_SERIES,
+        PLAN,
+    ),
+    _Spec(
+        ENHANCED_CONTINUOUS_RT_IMAGE_FILE,
+        ENHANCED_CONTINUOUS_RT_IMAGE_STORAGE,
+        ENHANCED_CONTINUOUS_RT_IMAGE,
+        ENHANCED_CONTINUOUS_RT_IMAGE_SERIES,
+        PLAN,
+    ),
 )
 
 
@@ -1521,10 +1522,10 @@ def build_corpus() -> SyntheticCorpus:
         Colon CAD SR, Procedure Log, Spectacle Prescription Report, Macular
         Grid Thickness and Volume Report, and Waveform Annotation SR; the RT
         Ion Plan and RT Ion Beams Treatment Record; the RT Brachy Treatment
-        Record and RT Treatment Summary Record; the Enhanced RT Image and
-        Enhanced Continuous RT Image; and the RT Segment Annotation, RT
+        Record and RT Treatment Summary Record; the RT Segment Annotation, RT
         Radiation Set, and C-Arm Photon-Electron, Tomotherapeutic, and
-        Robotic-Arm Radiations. Two builds give the same bytes and the same
+        Robotic-Arm Radiations; and the Enhanced RT Image and Enhanced
+        Continuous RT Image. Two builds give the same bytes and the same
         manifest.
     """
     markers = _Markers()
