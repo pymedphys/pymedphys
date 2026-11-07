@@ -8,8 +8,8 @@
 # and an IOD of the supported scope uses, at any depth, so that no
 # operator-typed text is kept merely because the table does not list it, and
 # so does every one that an IOD of the target coverage uses but not yet the
-# supported scope: the 16 second-generation RT IODs, reviewed ahead of
-# supporting them, as RT Image, RT Beams Treatment Record, the registrations,
+# supported scope: the second-generation RT IODs not yet supported, reviewed
+# with the other five ahead of supporting them, as RT Image, RT Beams Treatment Record, the registrations,
 # the four Radiation Dose SR IODs, RT Ion Plan, RT Ion Beams Treatment Record,
 # RT Brachy Treatment Record, RT Treatment Summary Record, Enhanced RT Image,
 # Enhanced Continuous RT Image, and Segmentation were. So does every date,
@@ -404,7 +404,7 @@ tag = "(3002,0120)"
 keyword = "PositionAcquisitionTemplateID"
 action = "X/Z/D"
 options = { clean_descriptors = "C" }
-note = "The identifier of the template that an image acquisition for patient positioning follows (PS3.3 Section C.36.29), which a site defines and which is required where no code identifies the template. Table E.1-1 gives the template's name and description, Position Acquisition Template Name (3002,0121) and Position Acquisition Template Description (3002,0123), X and C under Clean Descriptors, so its identifier is treated as they are: removed by Type, which gives it a dummy value where it is Type 1C and present, and cleaned as a descriptor under Clean Descriptors. Where the name is present, its plain X removes the Type 3 Position Acquisition Template Identification Sequence (3002,011F) that holds all three, unless Clean Descriptors cleans it."
+note = "The identifier of the template that an image acquisition for patient positioning follows (PS3.3 Section C.36.29), which a site defines and which is required where no code identifies the template. Table E.1-1 gives the template's name and description, Position Acquisition Template Name (3002,0121) and Position Acquisition Template Description (3002,0123), X and C under Clean Descriptors, so its identifier is treated as they are: removed by Type, which gives it a dummy value where it is Type 1C and present, and cleaned as a descriptor under Clean Descriptors. The name is Type 1 and the description Type 2 in the Type 3 Position Acquisition Template Identification Sequence (3002,011F) that holds all three, so the name's plain X removes that sequence, unless Clean Descriptors cleans it."
 
 [[attribute]]
 tag = "(3004,0006)"

@@ -142,6 +142,36 @@ RECORD_REVIEWED_AGAINST = ION_REVIEWED_AGAINST + ION_IODS
 # supported release now supports.
 ENHANCED_RT_IMAGE_IODS = ("Enhanced RT Image", "Enhanced Continuous RT Image")
 ENHANCED_RT_IMAGE_REVIEWED_AGAINST = RECORD_REVIEWED_AGAINST + RECORD_IODS
+# The 16 second-generation RT IODs, which the maintainer added to the target
+# coverage on 31 October 2026, whose text, UID, and date attributes were
+# reviewed ahead of supporting them, against every IOD above, and those of
+# them that the first supported release now supports: RT Segment Annotation,
+# RT Radiation Set, and the three radiation IODs.
+SECOND_GENERATION_RT_IODS = (
+    "RT Physician Intent",
+    "RT Segment Annotation",
+    "RT Radiation Set",
+    "RT Radiation Record Set",
+    "RT Radiation Salvage Record",
+    "RT Treatment Preparation",
+    "RT Patient Position Acquisition Instruction",
+    "RT Beams Delivery Instruction",
+    "RT Brachy Application Setup Delivery Instruction",
+    "RT Radiation Set Delivery Instruction",
+    "C-Arm Photon-Electron Radiation",
+    "C-Arm Photon-Electron Radiation Record",
+    "Tomotherapeutic Radiation",
+    "Tomotherapeutic Radiation Record",
+    "Robotic-Arm Radiation",
+    "Robotic-Arm Radiation Record",
+)
+SUPPORTED_SECOND_GENERATION_RT_IODS = (
+    "RT Segment Annotation",
+    "RT Radiation Set",
+    "C-Arm Photon-Electron Radiation",
+    "Tomotherapeutic Radiation",
+    "Robotic-Arm Radiation",
+)
 SUPPORTED_IODS = (
     REVIEWED_AGAINST
     + SUPPORTED_TARGET_IODS
@@ -151,6 +181,12 @@ SUPPORTED_IODS = (
     + ION_IODS
     + RECORD_IODS
     + ENHANCED_RT_IMAGE_IODS
+    + SUPPORTED_SECOND_GENERATION_RT_IODS
+)
+# The IODs that the second-generation RT IODs were reviewed against: every
+# IOD that the first supported release supported before them.
+SECOND_GENERATION_REVIEWED_AGAINST = tuple(
+    name for name in SUPPORTED_IODS if name not in SECOND_GENERATION_RT_IODS
 )
 CLEAN_DESCRIPTORS = "clean_descriptors"
 DEVICE_IDENTITY = "retain_device_identity"
@@ -418,10 +454,11 @@ def test_every_text_attribute_a_supported_iod_uses_and_table_e1_1_omits_has_a_ru
     # Checked against the 2026d PS3.3, PS3.6, and PS3.15: the combined
     # scope includes the RT objects, among them the two RT Ion IODs, which
     # add 13, the brachy and summary treatment records, which add none, the
-    # Enhanced and Enhanced Continuous RT Images, which add 1, Segmentation,
-    # which adds 4, and the two dose-report IODs, whose supplementary rules
-    # cover 173 text attributes.
-    assert len(omitted) == 173
+    # Enhanced and Enhanced Continuous RT Images, which add 1, RT Segment
+    # Annotation and RT Radiation Set, which add 2, Segmentation, which adds
+    # 4, and the two dose-report IODs, whose supplementary rules cover 175
+    # text attributes.
+    assert len(omitted) == 175
     assert omitted <= set(_rules())
     assert {"(0008,0100)", "(300A,00C2)", "(60xx,1500)"} <= omitted
 
@@ -436,11 +473,11 @@ def test_the_rules_for_omitted_text_fall_in_the_reviewed_groups():
 
     assert groups == {
         # Operator-typed labels and text.
-        ("X/Z/D", ((CLEAN_DESCRIPTORS, "C"),)): 80,
+        ("X/Z/D", ((CLEAN_DESCRIPTORS, "C"),)): 81,
         # Accessory and equipment identifiers.
         ("X/Z/D", ((DEVICE_IDENTITY, "K"),)): 30,
         # Coded and technical values, and De-identification Method.
-        ("K", ()): 44,
+        ("K", ()): 45,
         # Names and identifiers of people, organisations, records, and
         # networks, identifiers that a device reads, and the text of overlays.
         ("X/Z/D", ()): 17,
@@ -1300,30 +1337,6 @@ def test_the_enhanced_rt_images_other_new_attributes_are_kept_by_the_default():
                 ), (preset, name, definition)
 
 
-# The 16 second-generation RT IODs, which the maintainer added to the target
-# coverage on 31 October 2026, whose text, UID, and date attributes were
-# reviewed ahead of supporting them, against every IOD that the first
-# supported release supports, Enhanced RT Image and Enhanced Continuous RT
-# Image among them.
-SECOND_GENERATION_RT_IODS = (
-    "RT Physician Intent",
-    "RT Segment Annotation",
-    "RT Radiation Set",
-    "RT Radiation Record Set",
-    "RT Radiation Salvage Record",
-    "RT Treatment Preparation",
-    "RT Patient Position Acquisition Instruction",
-    "RT Beams Delivery Instruction",
-    "RT Brachy Application Setup Delivery Instruction",
-    "RT Radiation Set Delivery Instruction",
-    "C-Arm Photon-Electron Radiation",
-    "C-Arm Photon-Electron Radiation Record",
-    "Tomotherapeutic Radiation",
-    "Tomotherapeutic Radiation Record",
-    "Robotic-Arm Radiation",
-    "Robotic-Arm Radiation Record",
-)
-SECOND_GENERATION_REVIEWED_AGAINST = SUPPORTED_IODS
 # The text attributes that the second-generation RT IODs use and that neither
 # Table E.1-1 nor the IODs reviewed before them use, by group, checked by hand
 # against the 2026d PS3.3 Sections C.8.8.30, C.36.8, C.36.22, and C.36.29 and
@@ -1342,6 +1355,9 @@ SECOND_GENERATION_KEPT_TEXT = {
     "(0082,0019)",  # Selector Attribute Keyword
     "(3010,0086)",  # Intended Start Day of Week
 }
+# Of the kept text, what the supported second-generation RT IODs use: RT
+# Radiation Set uses Intended Start Day of Week.
+SUPPORTED_SECOND_GENERATION_KEPT_TEXT = {"(3010,0086)"}
 SECOND_GENERATION_TEXT_GROUPS: tuple[tuple[set[str], str, dict[str, str]], ...] = (
     (SECOND_GENERATION_OPERATOR_TEXT, "X/Z/D", {CLEAN_DESCRIPTORS: "C"}),
     (SECOND_GENERATION_KEPT_TEXT, "K", {}),
@@ -1414,12 +1430,14 @@ SECOND_GENERATION_OTHER_VRS = {
 }
 
 
-def test_the_second_generation_rt_iods_are_generated_and_not_yet_supported():
+def test_the_second_generation_rt_iods_are_generated_and_have_the_documented_support():
     tables = iods.load_iod_tables()
 
     assert len(SECOND_GENERATION_RT_IODS) == 16
     assert set(SECOND_GENERATION_RT_IODS) <= set(tables.iods)
-    assert not set(SECOND_GENERATION_RT_IODS) & scope.SUPPORTED_IODS
+    assert set(SECOND_GENERATION_RT_IODS) & scope.SUPPORTED_IODS == set(
+        SUPPORTED_SECOND_GENERATION_RT_IODS
+    )
 
 
 @pytest.mark.deid_requirement("MIDI-BP-05", "MIDI-BP-06", "MIDI-BP-11")
@@ -1589,6 +1607,7 @@ def test_each_group_takes_the_action_of_its_option(
         | RT_IMAGE_KEPT_TEXT
         | ION_KEPT_TEXT
         | ENHANCED_RT_IMAGE_KEPT_TEXT
+        | SUPPORTED_SECOND_GENERATION_KEPT_TEXT
     ):
         assert composed[tag] == "K", tag
 
@@ -1620,13 +1639,14 @@ def test_the_basic_profile_keeps_only_the_reviewed_coded_and_technical_text():
         for tag in _supported_text()
     }
 
-    assert len(basic) == 304
+    assert len(basic) == 313
     assert {tag for tag, action in basic.items() if action == "K"} == (
         KEPT_TEXT
         | ADDED_KEPT_TEXT
         | RT_IMAGE_KEPT_TEXT
         | ION_KEPT_TEXT
         | ENHANCED_RT_IMAGE_KEPT_TEXT
+        | SUPPORTED_SECOND_GENERATION_KEPT_TEXT
     )
     assert set(basic.values()) - {"K"} <= REMOVING_ACTIONS
 
@@ -1647,6 +1667,7 @@ def test_no_option_keeps_more_than_the_coded_text_and_device_identity():
             | RT_IMAGE_KEPT_TEXT
             | ION_KEPT_TEXT
             | ENHANCED_RT_IMAGE_KEPT_TEXT
+            | SUPPORTED_SECOND_GENERATION_KEPT_TEXT
             | (device_identity if DEVICE_IDENTITY in composed.options else set())
         )
         assert kept == expected, composed.options
