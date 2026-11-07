@@ -537,6 +537,7 @@ def coverage_of(
     retained: frozenset[ElementPath] = frozenset(),
     options: tuple[str, ...] = (),
     safe_private_list: SafePrivateList | None = None,
+    digest: str | None = None,
 ) -> Coverage:
     """Return the residual search's coverage of an instance's plan and edits.
 
@@ -557,7 +558,9 @@ def coverage_of(
     replace, keep, or leave to come is not (D-042).
     ``safe_private_list``, the list that the run chose under the Retain Safe
     Private Option, says which kept private creators can explain a finding
-    in them (D-042).
+    in them (D-042). ``digest``, the method digest that the run's markers
+    write into De-identification Method (0012,0063), explains a finding that
+    lies wholly inside it (D-032).
     """
     left_out: set[ElementPath] = set(retained) | set(_left_out(edits))
     planned = frozenset(
@@ -594,6 +597,7 @@ def coverage_of(
         options=options,
         removed=frozenset(value for value in collected if value.source in removing),
         safe_private_list=safe_private_list,
+        method_digest=digest,
     )
 
 
@@ -1253,6 +1257,7 @@ class InstanceTransform:
             pixel_region_rules=region_rules,
             safe_private_list=safe_private_list,
         )
+        self._digest = digest
         satisfied = satisfied_options(policy)
         # The markers of each set of per-instance options that an instance
         # can satisfy.
@@ -1927,7 +1932,7 @@ class InstanceTransform:
         )
         kept_uids = retained_uid_paths(plan.elements, self._retained_uids)
         evidence: Coverage | HeldEvidence = coverage_of(
-            plan, edits, kept_uids, self._options, self._safe_private_list
+            plan, edits, kept_uids, self._options, self._safe_private_list, self._digest
         )
         if classification.sequestered:
             reasons: tuple[object, ...] = (classification.reason,)
@@ -1945,7 +1950,12 @@ class InstanceTransform:
             withheld = kept_uids | self._kept_descriptors(plan, edits)
             if withheld != kept_uids:
                 evidence = coverage_of(
-                    plan, edits, withheld, self._options, self._safe_private_list
+                    plan,
+                    edits,
+                    withheld,
+                    self._options,
+                    self._safe_private_list,
+                    self._digest,
                 )
             return Sequestered(
                 reasons,
@@ -1963,7 +1973,12 @@ class InstanceTransform:
         edits, retained = settled.edits, settled.retained | kept_uids
         if settled.retained:
             evidence = coverage_of(
-                plan, edits, retained, self._options, self._safe_private_list
+                plan,
+                edits,
+                retained,
+                self._options,
+                self._safe_private_list,
+                self._digest,
             )
         names: tuple[object, ...] = ()
         if self._cleaning is not None and self._fallback is not None:
@@ -1997,7 +2012,12 @@ class InstanceTransform:
                 withheld = retained | self._kept_descriptors(plan, edits)
                 if withheld != retained:
                     evidence = coverage_of(
-                        plan, edits, withheld, self._options, self._safe_private_list
+                        plan,
+                        edits,
+                        withheld,
+                        self._options,
+                        self._safe_private_list,
+                        self._digest,
                     )
                 return Sequestered(
                     (refused.reason,),
@@ -2008,7 +2028,12 @@ class InstanceTransform:
             retained |= cleaned.retained
             names = cleaned.qc
             evidence = coverage_of(
-                plan, edits, retained, self._options, self._safe_private_list
+                plan,
+                edits,
+                retained,
+                self._options,
+                self._safe_private_list,
+                self._digest,
             )
             if cleaned.held:
                 evidence = HeldEvidence(evidence, cleaned.held)

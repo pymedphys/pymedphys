@@ -144,6 +144,7 @@ PERFORMED_PROCEDURE_STEP_SEQUENCE = "(0008,1111)"
 FRAME_OF_REFERENCE = "(0020,0052)"
 REFERENCED_SOP_INSTANCE = "(0008,1155)"
 IMAGE_COMMENTS = "(0020,4000)"
+DEIDENTIFICATION_METHOD = "(0012,0063)"
 SOP_INSTANCE_UID = "(0008,0018)"
 MEDIA_STORAGE_UID = "(0002,0003)"
 
@@ -398,12 +399,15 @@ def _instances(result, released):
     }
 
 
-def _markers_in(spec, corpus, instances, published):
+def _markers_in(spec, corpus, instances, published, digest):
     """Return where the published files hold a marker that they may not.
 
     A released instance may hold the markers that the run keeps at their
     place, which are blanked, once for each place that holds one, before the
-    instance is searched like every other published file.
+    instance is searched like every other published file. So is the run's
+    method ``digest`` where the markers write it, the first value of
+    De-identification Method, whose digits can hold a date marker's by
+    chance, as the release gate lets them (D-032).
     """
     searched = [
         (file.name, placement.path, _forms(placement))
@@ -416,6 +420,7 @@ def _markers_in(spec, corpus, instances, published):
     found = []
     for name, data in published.items():
         if name in instances:
+            data = _without_digest(data, digest)
             data = _without_kept(data, corpus.files[instances[name]], spec)
         else:
             data = SHA256_HEX.sub(lambda digest: b"-" * 64, data)
@@ -431,6 +436,19 @@ def _markers_in(spec, corpus, instances, published):
             if any(_holds(data, grams, form) for form in forms)
         )
     return found
+
+
+def _without_digest(data, digest):
+    """Return an instance's bytes with its first De-identification Method blanked.
+
+    That value must be ``digest``, and only it is blanked, so the same digits
+    anywhere else, including in the element's other values, are still found.
+    """
+    value = _raw_value_at(_read(data), ElementPath((), DEIDENTIFICATION_METHOD))
+    first = value.split(b"\\")[0]
+    assert first == digest.encode("ascii")
+    assert data.count(value) == 1
+    return data.replace(value, b"-" * len(first) + value[len(first) :])
 
 
 def _without_kept(data, file, spec):
@@ -563,7 +581,11 @@ def test_no_published_file_holds_a_marker(policy_run):
     # published file, but for those that a released instance keeps at their
     # place.
     assert not _markers_in(
-        policy_run.spec, corpus, _instances(result, released), published
+        policy_run.spec,
+        corpus,
+        _instances(result, released),
+        published,
+        policy_run.method_digest,
     )
 
 
@@ -573,7 +595,8 @@ def test_a_kept_marker_anywhere_but_its_place_is_found(policy_run):
 
     One released instance has a removed marker put back at its place. A run
     that keeps that row too passes the search; a copy of the marker in the
-    release report, or in another attribute of the instance, does not.
+    release report, beside the method digest in De-identification Method, or
+    in another attribute of the instance, does not.
     """
     spec, corpus = policy_run.spec, policy_run.corpus
     instances = _instances(policy_run.result, policy_run.released)
@@ -592,16 +615,27 @@ def test_a_kept_marker_anywhere_but_its_place_is_found(policy_run):
     dataset = _read(policy_run.released[position])
     dataset.add_new(_number(placement.path.tag), placement.vr, value)
     published = {**policy_run.published, name: _written(dataset)}
+    digest = policy_run.method_digest
 
-    assert _markers_in(spec, corpus, instances, published)
-    assert not _markers_in(keeping, corpus, instances, published)
+    assert _markers_in(spec, corpus, instances, published, digest)
+    assert not _markers_in(keeping, corpus, instances, published, digest)
     report = published[RELEASE_REPORT_MARKDOWN] + value.encode("ascii")
     assert _markers_in(
-        keeping, corpus, instances, {**published, RELEASE_REPORT_MARKDOWN: report}
+        keeping,
+        corpus,
+        instances,
+        {**published, RELEASE_REPORT_MARKDOWN: report},
+        digest,
+    )
+    # Beside the run's method digest, in De-identification Method.
+    method = _read(published[name])
+    method.DeidentificationMethod = [*_multi(method.DeidentificationMethod), value]
+    assert _markers_in(
+        keeping, corpus, instances, {**published, name: _written(method)}, digest
     )
     dataset.add_new(_number(IMAGE_COMMENTS), "LT", value)
     assert _markers_in(
-        keeping, corpus, instances, {**published, name: _written(dataset)}
+        keeping, corpus, instances, {**published, name: _written(dataset)}, digest
     )
 
 
