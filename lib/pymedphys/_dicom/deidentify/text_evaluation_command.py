@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""The development command of the text detector's evaluation on series of
-NCI's Imaging Data Commons (D-056).
+"""The development command of the text detector's evaluation (D-056) on
+series of NCI's Imaging Data Commons, folders of pinned archives, and
+phantoms.
 
 Run as ``python -m pymedphys._dicom.deidentify.text_evaluation_command``,
 on CI's runners alone. It is not registered with the ``pymedphys``
@@ -23,7 +24,8 @@ before the first supported release.
 ``idc-select``
     reads IDC's index from the pinned idc-index-data wheel and writes the
     selection's counts (``selection.json``), its series (``series.json``),
-    and an ``s5cmd`` manifest (``manifest.s5cmd``);
+    and an ``s5cmd`` manifest (``manifest.s5cmd``); with ``--phantoms``, it
+    selects series of IDC's phantom collections alone;
 ``idc-measure``
     measures the downloaded series with a model at today's settings or its
     publishers', and writes the counts-only summary
@@ -39,7 +41,15 @@ before the first supported release.
     reads the indexes of the pinned archives on Zenodo and in the
     University of Sydney's data store over HTTP, selects folders of them,
     writes their members under ``--downloads``, and writes the selection's
-    counts (``archives.json``).
+    counts (``archives.json``);
+``phantom-report``
+    measures the synthetic phantoms of tier T1 and the downloaded series of
+    a ``--phantoms`` selection, of tier T2, that are in the part of the split
+    evaluated, and writes, beside the counts-only summary (``summary.json``
+    and ``summary.md``), each case's full report and PNG previews of its
+    regions and texts under ``phantoms/``, with ``phantoms/index.json`` and
+    ``phantoms/ATTRIBUTION.md``
+    (:func:`~.text_evaluation_phantom_report.write_phantom_reports`).
 
 ``idc-measure`` and ``idc-parity`` also read, with ``--archives``, the
 folders that ``archive-fetch`` wrote, as cases counted only.
@@ -57,7 +67,14 @@ from collections.abc import Mapping, Sequence
 from types import MappingProxyType
 
 from .text_detection import TextDetectionError
-from .text_evaluation import EVALUATED, EvaluationSettings, evaluate, summarise
+from .text_evaluation import (
+    EVALUATED,
+    EvaluationSettings,
+    evaluate,
+    split_of,
+    subject_of,
+    summarise,
+)
 from .text_evaluation_cases import cases_report
 from .text_evaluation_converted import ConvertedCase
 from .text_evaluation_criteria import CHOSEN_CRITERIA, HELD_OUT_COLLECTIONS, assess
@@ -70,6 +87,7 @@ from .text_evaluation_detector import (
 )
 from .text_evaluation_frames import EvaluationRefused
 from .text_evaluation_idc import (
+    PHANTOM_NAMES,
     IdcSeries,
     IdcSeriesCase,
     index_rows,
@@ -86,6 +104,12 @@ from .text_evaluation_models import (
     DetectionModel,
 )
 from .text_evaluation_parity import resize_parity
+from .text_evaluation_phantom_report import (
+    PhantomSource,
+    phantom_dicom_cases,
+    write_phantom_reports,
+)
+from .text_evaluation_phantoms import phantom_cases
 from .text_evaluation_sources import DicomCase, SkippedFiles
 from .text_evaluation_archives import (
     ARCHIVES,
@@ -120,7 +144,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         raise SystemExit(str(refused)) from None
     except TextDetectionError as error:
         raise SystemExit(f"The text detector cannot run: {error}.") from None
-    out.mkdir(parents=True)
+    # A command may have written its own files under the directory, which
+    # did not exist before it ran.
+    out.mkdir(parents=True, exist_ok=True)
     for name, content in written.items():
         (out / name).write_text(content, encoding="utf-8")
     if "summary.md" in written:
@@ -133,7 +159,8 @@ def _parser() -> argparse.ArgumentParser:
         prog="python -m pymedphys._dicom.deidentify.text_evaluation_command",
         description=(
             "Select, and measure the text detector on, openly licensed series "
-            "of NCI's Imaging Data Commons. For development only."
+            "of NCI's Imaging Data Commons, folders of pinned archives, and "
+            "phantoms. For development only."
         ),
     )
     commands = parser.add_subparsers(dest="command", required=True)
@@ -146,6 +173,11 @@ def _parser() -> argparse.ArgumentParser:
         "--downloads",
         default="downloads",
         help="Where the manifest places each series' folder.",
+    )
+    select.add_argument(
+        "--phantoms",
+        action="store_true",
+        help="Select series of IDC's phantom collections alone.",
     )
     select.set_defaults(run=_select)
     fetched = commands.add_parser(
@@ -161,21 +193,24 @@ def _parser() -> argparse.ArgumentParser:
     for name, run, help_text in (
         ("idc-measure", _measure, "Measure the downloaded series."),
         ("idc-parity", _parity, "Count what the resize alone changes."),
+        ("phantom-report", _phantoms, "Report the phantoms in full."),
     ):
         command = commands.add_parser(name, help=help_text)
         command.add_argument("series", help="series.json, as idc-select wrote it.")
         command.add_argument("downloads", help="Where the series were downloaded.")
-        command.add_argument(
-            "--archives", help="Where archive-fetch wrote its folders, if it ran."
-        )
+        if name != "phantom-report":
+            command.add_argument(
+                "--archives", help="Where archive-fetch wrote its folders, if it ran."
+            )
         command.add_argument(
             "--model", choices=sorted(MODELS), default="PP-OCRv6 small"
         )
         command.add_argument("--evaluated", choices=EVALUATED, default="tuning")
         command.set_defaults(run=run)
-        if name == "idc-measure":
+        if name in ("idc-measure", "phantom-report"):
             command.add_argument("--settings", choices=SETTINGS, default="today")
             command.add_argument("--workers", type=int, default=1)
+        if name == "idc-measure":
             command.add_argument(
                 "--converted",
                 action="store_true",
@@ -198,6 +233,7 @@ def _select(arguments: argparse.Namespace) -> dict[str, str]:
         per_collection=arguments.per_collection,
         max_mb=arguments.max_mb,
         max_series_mb=arguments.max_series_mb,
+        phantoms=arguments.phantoms,
     )
     return {
         "selection.json": _json(selection.described()),
@@ -259,7 +295,11 @@ def _settings(points: tuple[PostProcessing, ...], evaluated: str) -> EvaluationS
     )
 
 
-def _measure(arguments: argparse.Namespace) -> dict[str, str]:
+def _detector(
+    arguments: argparse.Namespace,
+) -> tuple[functools.partial[EvaluationDetector], EvaluationSettings]:
+    """The detector that a run measures, made in each worker, and its
+    settings, by the model and settings that the arguments name."""
     model = MODELS[arguments.model]
     if arguments.settings == "published":
         variant = published_variant(model)
@@ -267,8 +307,12 @@ def _measure(arguments: argparse.Namespace) -> dict[str, str]:
     else:
         variant = DetectorVariant()
         points = (PostProcessing(),)
-    settings = _settings(points, arguments.evaluated)
     detector = functools.partial(EvaluationDetector, variant, model)
+    return detector, _settings(points, arguments.evaluated)
+
+
+def _measure(arguments: argparse.Namespace) -> dict[str, str]:
+    detector, settings = _detector(arguments)
     run = evaluate(_cases(arguments), detector, settings, workers=arguments.workers)
     summary = summarise(run)
     return {
@@ -292,6 +336,72 @@ def _parity(arguments: argparse.Namespace) -> dict[str, str]:
         second=published_variant(model, "harness"),
     )
     return {"parity.json": _json(found)}
+
+
+def _phantom_sources(
+    arguments: argparse.Namespace,
+) -> list[PhantomSource | SkippedFiles]:
+    """The synthetic phantoms, and the downloaded series of a ``--phantoms``
+    selection, each read only as a phantom collection's files.
+
+    Raises
+    ------
+    EvaluationRefused
+        If any series is not of a phantom collection, before any is read.
+    """
+    series = read_series(arguments.series)
+    if any(each.collection_id not in PHANTOM_NAMES for each in series):
+        raise EvaluationRefused("Only a selection of phantoms is reported in full.")
+    downloads = pathlib.Path(arguments.downloads)
+    sources: list[PhantomSource | SkippedFiles] = list(phantom_cases())
+    for each in series:
+        name = PHANTOM_NAMES[each.collection_id]
+        folder = downloads / each.crdc_series_uuid
+        if not folder.is_dir():
+            sources.append(
+                SkippedFiles(name, each.series_instance_uid, "not-downloaded", 1)
+            )
+            continue
+        sources += phantom_dicom_cases(folder, name)
+    return sources
+
+
+def _in_split(
+    sources: Sequence[PhantomSource | SkippedFiles], settings: EvaluationSettings
+) -> tuple[list[PhantomSource | SkippedFiles], int]:
+    """The sources in the part of the split evaluated, so that no case held
+    out is previewed while the detector is tuned, and how many are not."""
+    if settings.evaluated == "all":
+        return list(sources), 0
+    kept: list[PhantomSource | SkippedFiles] = []
+    for each in sources:
+        if isinstance(each, SkippedFiles) or settings.evaluated == split_of(
+            each.collection, subject_of(each), settings.held_out_collections
+        ):
+            kept.append(each)
+    return kept, len(sources) - len(kept)
+
+
+def _phantoms(arguments: argparse.Namespace) -> dict[str, str]:
+    detector, settings = _detector(arguments)
+    sources, not_evaluated = _in_split(_phantom_sources(arguments), settings)
+    index = write_phantom_reports(
+        sources, detector, settings, pathlib.Path(arguments.out) / "phantoms"
+    )
+    run = evaluate(sources, detector, settings, workers=arguments.workers)
+    summary = summarise(run)
+    return {
+        "summary.json": _json(summary),
+        "summary.md": markdown(summary),
+        "phantoms.json": _json(
+            {
+                "cases": len(index["cases"]),
+                "previews": sum(each["previews"] for each in index["cases"]),
+                "skipped": index["skipped"],
+                "not_in_the_part_evaluated": not_evaluated,
+            }
+        ),
+    }
 
 
 if __name__ == "__main__":

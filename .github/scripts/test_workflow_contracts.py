@@ -718,21 +718,22 @@ class WorkflowContractTests(unittest.TestCase):
         )
         self.assertIn("set -o pipefail", text)
 
-    def test_the_idc_evaluation_reads_only_and_keeps_its_tools_pinned(self):
-        text = (WORKFLOWS / "text-detector-evaluation-idc.yml").read_text(
-            encoding="utf-8"
-        )
+    def test_the_text_detector_evaluation_reads_only_and_keeps_its_tools_pinned(
+        self,
+    ):
+        text = (WORKFLOWS / "text-detector-evaluation.yml").read_text(encoding="utf-8")
         triggers = text.split("\non:\n", 1)[1].split("\npermissions:\n", 1)[0]
         self.assertEqual(
             re.findall(r"(?m)^  ([a-z_]+):", triggers), ["workflow_dispatch"]
         )
         self.assertIn("\npermissions:\n  contents: read\n", text)
+        # Each of its two jobs can only read.
         self.assertEqual(
             re.findall(r"(?m)^      [a-z-]+: (?:read|write)$", text),
-            ["      contents: read"],
+            ["      contents: read"] * 2,
         )
         self.assertNotIn("secrets.", text)
-        self.assertIn("persist-credentials: false", text)
+        self.assertEqual(text.count("persist-credentials: false"), 2)
         # Inputs reach commands only through the environment.
         run_blocks = re.findall(r"(?ms)^        run: \|\n(.*?)(?=^      - |\Z)", text)
         self.assertTrue(run_blocks)
@@ -748,8 +749,21 @@ class WorkflowContractTests(unittest.TestCase):
         # series.
         self.assertEqual(
             re.findall(r"(?m)^          path: (.*)$", text),
-            ["${{ runner.temp }}/idc/results/"],
+            ["${{ runner.temp }}/idc/results/", "${{ runner.temp }}/phantoms/results/"],
         )
+        # Two jobs: the phantoms' full reports and crops come only from a
+        # selection of phantom collections, on a runner of their own, and
+        # the patients' job never runs the phantom report.
+        jobs = text.split("\njobs:\n", 1)[1]
+        patients, phantoms = jobs.split("\n  phantoms:\n", 1)
+        self.assertTrue(patients.startswith("  patients:\n"))
+        self.assertNotIn("phantom-report", patients)
+        self.assertNotIn("--phantoms", patients)
+        self.assertEqual(phantoms.count(" idc-select \\\n"), 1)
+        self.assertIn("            --phantoms \\\n", phantoms)
+        self.assertIn(" phantom-report \\\n", phantoms)
+        self.assertNotIn("idc-measure", phantoms)
+        self.assertNotIn("archive", phantoms)
         self.assertNotIn("actions/cache", text)
         requirements = (
             WORKFLOWS.parent / "text-evaluation/requirements.txt"

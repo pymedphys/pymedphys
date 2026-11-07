@@ -21,11 +21,14 @@ import json
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pytest
 
+from pymedphys._dicom.deidentify import text_evaluation as evaluation
 from pymedphys._dicom.deidentify import text_evaluation_command as command
 from pymedphys._dicom.deidentify import text_evaluation_detector as detector
 from pymedphys._dicom.deidentify import text_evaluation_idc as idc
+from pymedphys._dicom.deidentify import text_evaluation_phantoms as phantoms
 
 from .test_deidentify_text_evaluation_idc import UUID, _row, _series_folder
+from .test_deidentify_text_evaluation_phantom_report import _phantom_file
 
 
 def bright(tensor):
@@ -169,3 +172,123 @@ def _written(tmp_path, records):
 def test_every_adapter_can_be_chosen():
     assert "PP-OCRv6 small" in command.MODELS
     assert len(command.MODELS) == 10
+
+
+# -- Phantoms ---------------------------------------------------------------
+
+
+def _small_phantoms():
+    return (phantoms.PhantomCase(phantoms.Phantom("ct-thorax", 96, 4.0), seed=1),)
+
+
+def _phantom_downloads(tmp_path, number=1):
+    folder = tmp_path / "downloads" / UUID.format(number)
+    folder.mkdir(parents=True)
+    for instance in (1, 2):
+        (folder / f"{instance}.dcm").write_bytes(_phantom_file(number=instance))
+    # A file of a patient collection, in the phantom's folder, is skipped
+    # unread by the project gate.
+    (folder / "other.dcm").write_bytes(
+        _phantom_file(project="NSCLC-Radiomics", series="2.25.50")
+    )
+    return tmp_path / "downloads"
+
+
+def _phantom_report(tmp_path, series, downloads, evaluated="all"):
+    out = tmp_path / f"reported-{evaluated}"
+    code = command.main(
+        [
+            "phantom-report",
+            str(series),
+            str(downloads),
+            "--evaluated",
+            evaluated,
+            "--out",
+            str(out),
+        ]
+    )
+    assert code == 0
+    return out
+
+
+def test_phantoms_are_selected_apart_and_reported_in_full(
+    tmp_path, monkeypatch, stand_in
+):
+    del stand_in
+    monkeypatch.setattr(command, "phantom_cases", _small_phantoms)
+    rows = [_row(1, collection_id="cc_radiomics_phantom_3"), _row(2)]
+    monkeypatch.setattr(command, "index_rows", lambda wheel: rows)
+    selected = tmp_path / "selected"
+    command.main(["idc-select", "unused.whl", "--phantoms", "--out", str(selected)])
+    (series,) = json.loads((selected / "series.json").read_text())
+    assert series["collection_id"] == "cc_radiomics_phantom_3"
+    out = _phantom_report(
+        tmp_path, selected / "series.json", _phantom_downloads(tmp_path)
+    )
+    index = json.loads((out / "phantoms" / "index.json").read_text())
+    # Each frame is reported as read and, where text was burned in, with
+    # it; the patient collection's file forms a case of its own, of none.
+    assert sorted(
+        (each["collection"], each["frames"] > 0) for each in index["cases"]
+    ) == [
+        ("CC-Radiomics-Phantom-3", False),
+        ("CC-Radiomics-Phantom-3", True),
+        ("synthetic", True),
+    ]
+    assert index["skipped"] == {"not-phantom/other-project": 1}
+    for entry in index["cases"]:
+        assert (out / "phantoms" / entry["report"]).is_file()
+    assert (
+        "10.7937/tcia.2019.j71i4fah"
+        in (out / "phantoms" / "ATTRIBUTION.md").read_text()
+    )
+    counted = json.loads((out / "phantoms.json").read_text())
+    assert counted["cases"] == 3
+    assert counted["not_in_the_part_evaluated"] == 0
+    assert counted["skipped"] == {"not-phantom/other-project": 1}
+    summary = json.loads((out / "summary.json").read_text())
+    assert summary["frames"]["CT Image Storage"] == 3
+
+
+def test_a_patient_selection_is_never_reported_in_full(tmp_path, monkeypatch):
+    selected = _select(tmp_path, monkeypatch, [_row(1)])
+    downloads = tmp_path / "downloads"
+    _series_folder(downloads, 1)
+    with pytest.raises(SystemExit, match="Only a selection of phantoms"):
+        command.main(
+            [
+                "phantom-report",
+                str(selected / "series.json"),
+                str(downloads),
+                "--out",
+                str(tmp_path / "out"),
+            ]
+        )
+    assert not (tmp_path / "out").exists()
+
+
+def test_phantoms_held_out_are_not_previewed_while_tuning(
+    tmp_path, monkeypatch, stand_in
+):
+    del stand_in
+    cases = tuple(
+        phantoms.PhantomCase(phantoms.Phantom("ct-thorax", 48, 4.0), seed=seed)
+        for seed in range(12)
+    )
+    monkeypatch.setattr(command, "phantom_cases", lambda: cases)
+    series = tmp_path / "series.json"
+    series.write_text("[]")
+    out = _phantom_report(tmp_path, series, tmp_path, evaluated="tuning")
+    tuning = [
+        each
+        for each in cases
+        if evaluation.split_of(each.collection, evaluation.subject_of(each)) == "tuning"
+    ]
+    # Both parts occur among twelve seeds, so the filter is exercised.
+    assert 0 < len(tuning) < len(cases)
+    index = json.loads((out / "phantoms" / "index.json").read_text())
+    assert sorted(each["case"] for each in index["cases"]) == sorted(
+        each.case for each in tuning
+    )
+    counted = json.loads((out / "phantoms.json").read_text())
+    assert counted["not_in_the_part_evaluated"] == len(cases) - len(tuning)

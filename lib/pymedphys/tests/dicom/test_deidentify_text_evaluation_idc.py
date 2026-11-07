@@ -26,8 +26,10 @@ from pymedphys._imports import pytest
 
 from pymedphys._dicom.deidentify import text_evaluation as evaluation
 from pymedphys._dicom.deidentify import text_evaluation_cases as cases_module
+from pymedphys._dicom.deidentify import text_evaluation_criteria as criteria
 from pymedphys._dicom.deidentify import text_evaluation_idc as idc
 from pymedphys._dicom.deidentify import text_evaluation_markdown as markdown
+from pymedphys._dicom.deidentify import text_evaluation_phantom_report as phantom_report
 from pymedphys._dicom.deidentify.text_evaluation_detector import PostProcessing
 from pymedphys._dicom.deidentify.text_evaluation_frames import EvaluationRefused
 
@@ -103,7 +105,88 @@ def test_licences_are_compared_in_one_spelling():
     assert idc.OPEN_COLLECTIONS["vestibular_schwannoma_mc_rc"] == "CC BY 4.0"
     assert idc.OPEN_COLLECTIONS["tcga_luad"] == "CC BY 3.0"
     assert idc.OPEN_COLLECTIONS["cptac_cm"] == "CC BY 4.0"
-    assert len(idc.OPEN_COLLECTIONS) == 45
+    assert len(idc.OPEN_COLLECTIONS) == 52
+
+
+def test_tcias_seven_collections_are_taken_from_idc_under_their_names():
+    # D-056's seven collections from TCIA, each under the licence it names.
+    assert set(idc.TCIA_NAMES.values()) == cases_module.TCIA_COLLECTIONS
+    assert {
+        name: idc.OPEN_COLLECTIONS[key] for key, name in idc.TCIA_NAMES.items()
+    } == {
+        "4D-Lung": "CC BY 3.0",
+        "ACRIN-NSCLC-FDG-PET": "CC BY 3.0",
+        "Anti-PD-1_Lung": "CC BY 3.0",
+        "Lung-PET-CT-Dx": "CC BY 4.0",
+        "NSCLC-Radiomics": "CC BY NC 3.0",
+        "Pancreatic-CT-CBCT-SEG": "CC BY 4.0",
+        "Pediatric-CT-SEG": "CC BY 4.0",
+    }
+    assert idc.TEXT_UNKNOWN.isdisjoint(idc.TCIA_NAMES)
+    assert set(idc.TARGET_SOP_CLASSES).isdisjoint(idc.TCIA_NAMES)
+
+
+def test_a_tcia_collections_series_is_read_and_reported_by_its_tcia_name(tmp_path):
+    _series_folder(tmp_path, 1)
+    case = _case(
+        tmp_path,
+        1,
+        collection_id="nsclc_radiomics",
+        license_short_name="CC BY-NC 3.0",
+    )
+    assert case.collection == "NSCLC-Radiomics"
+    assert case.public == {
+        "collection": "NSCLC-Radiomics",
+        "series_instance_uid": "2.25.1",
+        "licence": "CC BY NC 3.0",
+        "doi": DOI,
+    }
+    frames = list(case.read())
+    assert {frame.collection for frame in frames} == {"NSCLC-Radiomics"}
+    (reported,) = cases_module.cases_report(_evaluated([case]))["cases"]
+    assert reported["collection"] == "NSCLC-Radiomics"
+    assert "collection_id" not in reported
+
+
+def test_pediatric_ct_seg_from_idc_is_held_out_whole(tmp_path):
+    _series_folder(tmp_path, 1)
+    case = _case(
+        tmp_path,
+        1,
+        collection_id="pediatric_ct_seg",
+        license_short_name="CC BY 4.0",
+    )
+    run = evaluation.evaluate(
+        [case],
+        box_detector,
+        evaluation.EvaluationSettings(
+            points=(PostProcessing(),),
+            held_out_collections=criteria.HELD_OUT_COLLECTIONS,
+        ),
+    )
+    (result,) = run.results
+    assert (result.collection, result.split) == ("Pediatric-CT-SEG", "held-out")
+    assert not result.evaluated
+
+
+def test_phantom_collections_are_selected_only_apart_from_patients():
+    rows = [
+        _row(1),
+        _row(2, collection_id="cc_radiomics_phantom_3"),
+        _row(3, collection_id="victre", Modality="MG"),
+    ]
+    patients = idc.select_series(rows)
+    assert [each.collection_id for each in patients.series] == ["lidc_idri"]
+    assert patients.refused == {"collection-not-vetted": 2}
+    phantoms = idc.select_series(rows, phantoms=True)
+    assert sorted(each.collection_id for each in phantoms.series) == [
+        "cc_radiomics_phantom_3",
+        "victre",
+    ]
+    assert phantoms.refused == {"collection-not-vetted": 1}
+    assert set(idc.PHANTOM_NAMES) == set(idc.PHANTOM_COLLECTIONS)
+    assert set(idc.PHANTOM_NAMES.values()) <= set(phantom_report.PHANTOM_COLLECTIONS)
+    assert set(idc.PHANTOM_COLLECTIONS).isdisjoint(idc.OPEN_COLLECTIONS)
 
 
 def test_collections_taken_for_some_classes_are_vetted_and_read_text_unknown():
