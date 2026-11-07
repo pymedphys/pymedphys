@@ -13,18 +13,6 @@ name: Face Block Check on Keating
 # uploaded.
 on:
   workflow_dispatch:
-  # Temporary, so that the check can run before the workflow is on the
-  # default branch: removed before the pull request that adds it is ready.
-  push:
-    branches:
-      - claude/project-thread-rii3gy
-    paths:
-      - .github/workflows/face-validation-keating.yml
-      - lib/pymedphys/_dicom/deidentify/face_validation_keating.py
-      - lib/pymedphys/_dicom/deidentify/face_validation_keating_markdown.py
-      - lib/pymedphys/_dicom/deidentify/face_validation_vhp.py
-      - lib/pymedphys/_dicom/deidentify/face_blocks.py
-      - lib/pymedphys/_dicom/deidentify/defacing.py
 
 permissions:
   contents: read
