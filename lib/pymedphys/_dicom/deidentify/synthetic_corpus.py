@@ -20,11 +20,7 @@ fictitious patient and study, with one Frame of Reference: three CT Image
 slices, an RT Structure Set that references the CT series and slices, an RT
 Plan that references the structure set and the dose, an RT Dose that
 references the plan, a second RT Dose of the plan for review (below), one
-<<<<<<< HEAD
 instance of each of forty-five other IODs, and two of the Segmentation
-=======
-instance of each of forty-two other IODs, and two of the Segmentation
->>>>>>> 3ce1f95323d9133d77214cacedd5bf3f30eaf408
 IOD, one of each of its SOP Classes, each in a series of its own, and a
 second X-Ray Radiation Dose SR, of a CT scan.
 The MR Image and PET Image instances reference the first CT slice, and each
