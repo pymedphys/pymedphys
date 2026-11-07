@@ -348,7 +348,7 @@ def test_the_pack_shows_the_finding_with_its_values_digest(first_run):
     _, pack = first_run
     document = json.loads((pack / "qc-pack.json").read_text("utf-8"))
 
-    assert document["format"] == PACK_FORMAT == "pymedphys-deid-qc-pack/34"
+    assert document["format"] == PACK_FORMAT == "pymedphys-deid-qc-pack/35"
     (finding,) = document["residual_findings"]
     assert finding["location"]["element"] == "(0008,0080)"
     assert finding["excerpt"] is not None
@@ -369,7 +369,7 @@ def test_a_cleared_slice_is_released_by_a_later_run(first_run, tmp_path):
     result, report = _run(tmp_path / "second", source, review)
 
     assert [outcome.status for outcome in result.outcomes] == [run.Status.RELEASED]
-    assert report["format"] == REPORT_FORMAT == "pymedphys-deid-release-report/54"
+    assert report["format"] == REPORT_FORMAT == "pymedphys-deid-release-report/57"
     assert report["residual_review"] == {"reference": attestation.reference}
     assert report["held_for_review"] == []
     assert [
