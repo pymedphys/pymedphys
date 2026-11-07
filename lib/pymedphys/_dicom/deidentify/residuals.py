@@ -348,6 +348,9 @@ class Finding:
         Where it was found in the written file.
     offset : int
         The byte at which that match starts.
+    length : int
+        How many bytes that match spans; 0 where not recorded. It is not
+        compared, so findings equal in every other field are equal.
     """
 
     source: ElementPath
@@ -356,6 +359,7 @@ class Finding:
     encoding: str
     location: Location
     offset: int
+    length: int = dataclasses.field(default=0, compare=False)
 
     def __str__(self) -> str:
         """Describe the finding by its source, form, encoding, and place."""
@@ -400,11 +404,16 @@ class NotSearched:
 class ReviewedFinding:
     """A finding as a reviewer saw it in a QC pack, without its offset.
 
-    A reviewer who clears a finding (D-042) has judged the value that holds
-    it in the written file, which the pack's excerpt shows. Another run of
-    the same source file writes other UIDs and dummy values, so the finding
-    can lie at another offset; it is the same finding where every field
-    here is the same, including the SHA-256 of the value that holds it.
+    A reviewer who clears a finding (D-042) has judged the match that the
+    pack's excerpt shows, in the value that holds it in the written file.
+    Another run of the same source file writes other UIDs and dummy values,
+    so the finding can lie at another offset in the file; it is the same
+    finding where every field here is the same: the SHA-256 of the value
+    that holds it, and the match's offset in that value and its length,
+    which together give the very bytes matched. A match elsewhere in the
+    same value, such as one that another source value of the same attribute
+    makes earlier in it, which the search then reports in its place, is
+    another finding, which the excerpt may not have shown.
 
     Attributes
     ----------
@@ -425,6 +434,10 @@ class ReviewedFinding:
         The SHA-256, in lower-case hexadecimal, of the bytes of the value
         that holds it, from the end of the element's header to the end of
         its value.
+    value_offset : int
+        The byte of that value at which the match starts, from 0.
+    length : int
+        How many bytes the match spans, at least 1.
     """
 
     source: str
@@ -436,6 +449,8 @@ class ReviewedFinding:
     vr: str | None
     item: int | None
     value_sha256: str
+    value_offset: int
+    length: int
 
 
 def reviewed_findings(
@@ -444,7 +459,9 @@ def reviewed_findings(
     """Return each finding as a reviewer sees it, or ``None`` where it cannot be.
 
     A finding outside an element's value, as in the preamble, a header, or
-    a delimiter, has no value to bind a review to, and gives ``None``.
+    a delimiter, has no value to bind a review to, and gives ``None``, as
+    does one whose match runs past the end of its value, or whose length
+    the search did not record.
 
     Parameters
     ----------
@@ -479,6 +496,8 @@ def _reviewed(
     if (
         span.value_start is None
         or finding.offset < span.value_start
+        or finding.length < 1
+        or finding.offset + finding.length > span.end
         or span.location != location
         or location.element is None
     ):
@@ -493,6 +512,8 @@ def _reviewed(
         vr=location.vr,
         item=location.item,
         value_sha256=hashlib.sha256(octets[span.value_start : span.end]).hexdigest(),
+        value_offset=finding.offset - span.value_start,
+        length=finding.length,
     )
 
 
@@ -1250,7 +1271,7 @@ def _judge(  # pylint: disable = too-many-arguments, too-many-positional-argumen
     key = (source, kind, span.location)
     best = found.get(key)
     if best is None or (_ORDER[form], offset) < (_ORDER[best.form], best.offset):
-        found[key] = Finding(*needle.origin, span.location, offset)
+        found[key] = Finding(*needle.origin, span.location, offset, len(needle.folded))
     return span.end
 
 

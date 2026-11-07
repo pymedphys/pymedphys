@@ -106,8 +106,8 @@ such as an institution's own name, clears the instance's findings. The
 pack records the SHA-256 of each source file and of each value holding a
 finding, so the clearing is bound, through the pack, to those values in
 that file; a later run of the same file releases it only where every
-finding that would hold it for review is one that the pack showed, in a
-value with the same SHA-256. A clearing releases nothing that withholds a
+finding that would hold it for review is one that the pack showed, at the
+same place in a value with the same SHA-256. A clearing releases nothing that withholds a
 file, such as a UID or a person's name outside kept text, and nothing that
 the reviewer could not see, such as a gap in what the search collected.
 
@@ -748,7 +748,7 @@ def attest(
             raise QcPackError(
                 f"a clearing names run position {position}, for which the QC "
                 "pack's residual_findings shows no finding with its excerpt and "
-                "the SHA-256 of its value"
+                "the bytes of its value that it matched"
             )
     firsts = _firsts(data)
     unknown = [verdict.series for verdict in verdicts if verdict.series not in firsts]
@@ -864,9 +864,10 @@ def _cleared_residuals(cleared: Iterable[int]) -> tuple[int, ...]:
 def shown_residuals(data: bytes) -> dict[int, tuple[ReviewedFinding, ...]]:
     """Return each residual finding that the QC pack ``data`` shows a reviewer.
 
-    A finding is shown where the pack gives its excerpt and the SHA-256 of
-    the value that holds it, so a reviewer can judge that value and a
-    clearing can be bound to it.
+    A finding is shown where the pack gives its excerpt, and the SHA-256 of
+    the value that holds it with where its match starts in that value and
+    how long it is, so a reviewer can judge the match and a clearing can be
+    bound to the very bytes matched.
 
     Returns
     -------
@@ -892,6 +893,7 @@ def shown_residuals(data: bytes) -> dict[int, tuple[ReviewedFinding, ...]]:
             region = location["region"]
             element, vr, item = location["element"], location["vr"], location["item"]
             value_sha256, excerpt = entry["value_sha256"], entry["excerpt"]
+            value_offset, length = entry["value_offset"], entry["match_length"]
         except (KeyError, TypeError):
             raise malformed from None
         located = (
@@ -900,8 +902,14 @@ def shown_residuals(data: bytes) -> dict[int, tuple[ReviewedFinding, ...]]:
             and (item is None or _is_position(item))
         )
         shows = (excerpt is None or isinstance(excerpt, dict)) and (
-            value_sha256 is None
-            or (isinstance(value_sha256, str) and _DIGEST.fullmatch(value_sha256))
+            (value_sha256, value_offset, length) == (None, None, None)
+            or (
+                isinstance(value_sha256, str)
+                and _DIGEST.fullmatch(value_sha256) is not None
+                and _is_position(value_offset)
+                and _is_position(length)
+                and length != 0
+            )
         )
         if not (_is_position(position) and located and shows):
             raise malformed
@@ -918,6 +926,8 @@ def shown_residuals(data: bytes) -> dict[int, tuple[ReviewedFinding, ...]]:
                     vr=vr,
                     item=item,
                     value_sha256=value_sha256,
+                    value_offset=value_offset,
+                    length=length,
                 )
             )
     return {position: tuple(findings) for position, findings in shown.items()}

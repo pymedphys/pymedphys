@@ -925,8 +925,8 @@ class InstanceTransform:
         which any policy takes: an instance whose source file, by its
         SHA-256, has findings cleared gives them to the gate with its
         evidence (:attr:`HeldEvidence.reviewed`), so that a finding that
-        would hold its file for review, and that the pack showed in a value
-        with the same SHA-256, does not (D-042).
+        would hold its file for review, and that the pack showed at the same
+        place in a value with the same SHA-256, does not (D-042).
     pixel_region_rules : PixelRegionRules, optional
         The reviewed region rules whose regions Clean Pixel Data blacks out
         beside the finder's, in every frame of each instance whose key a

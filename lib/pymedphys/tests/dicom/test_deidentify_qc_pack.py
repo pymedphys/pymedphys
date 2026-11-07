@@ -631,6 +631,8 @@ def test_the_document_holds_every_section():
             "encoding": "utf-8",
         },
         "value_sha256": None,
+        "value_offset": None,
+        "match_length": None,
     }
     assert document["drops"] == [
         {"position": 0, "source": "(0008,1030)", "reason": "retained"}

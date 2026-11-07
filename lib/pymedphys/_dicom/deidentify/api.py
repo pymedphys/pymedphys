@@ -270,8 +270,8 @@ def deidentify(  # pylint: disable = too-many-arguments
         attested with the residual findings of instances cleared by ``python
         -m pymedphys._dicom.deidentify.attestation_command``. A file that
         only such findings would hold for review, each one that the pack
-        showed for a cleared instance with the same source file, in a value
-        with the same SHA-256, is released, and the release report counts
+        showed for a cleared instance with the same source file, at the same
+        place in a value with the same SHA-256, is released, and the release report counts
         each as reviewed (D-042). By default, none, so every such file is
         held for review.
     sequester_studies_with_several_patients : bool, optional

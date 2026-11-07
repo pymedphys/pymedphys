@@ -154,6 +154,8 @@ def test_a_finding_in_a_value_is_fingerprinted_by_that_value():
         vr="LO",
         item=None,
         value_sha256=hashlib.sha256(value).hexdigest(),
+        value_offset=0,
+        length=len("QUILLONBY"),
     )
 
 
@@ -167,6 +169,13 @@ def test_a_finding_outside_any_value_has_no_fingerprint():
 
     assert None in seen
     assert len(seen) == len(condition.search.findings)
+
+
+def _binary(tag, value):
+    """An explicit VR little endian OB element, with a 32-bit length."""
+    group, element = divmod(tag, 0x10000)
+    value += b"\x00" * (len(value) % 2)
+    return struct.pack("<HH2sHI", group, element, b"OB", 0, len(value)) + value
 
 
 # The release gate.
@@ -183,6 +192,70 @@ def test_a_cleared_name_in_kept_text_is_exempted_as_reviewed():
     assert condition.decision is Decision.RELEASE
     assert not condition.reasons
     assert [exemption for _, exemption in condition.exempted] == [Exemption.REVIEWED]
+
+
+@pytest.mark.deid_requirement("MIDI-BP-01")
+def test_a_cleared_match_that_moves_with_its_value_is_still_cleared():
+    coverage = _coverage(_physician())
+    # Another element before the kept value moves it in the file.
+    moved = _written(
+        _element(0x00080060, "CS", "CT"), _element(0x00080080, "LO", INSTITUTION)
+    )
+
+    condition = release_condition(
+        coverage, moved, reviewed=_seen(coverage, KEPT_INSTITUTION)
+    )
+
+    assert condition.decision is Decision.RELEASE
+    assert [exemption for _, exemption in condition.exempted] == [Exemption.REVIEWED]
+
+
+@pytest.mark.deid_requirement("MIDI-BP-01")
+def test_an_earlier_match_of_another_value_in_the_same_value_is_not_cleared():
+    # The reviewer cleared the physician's name found late in the kept
+    # Institution Name. Another instance of the subject gives the same
+    # attribute another name, found earlier in the same, unchanged value,
+    # which the search then reports in its place, outside what the pack's
+    # excerpt showed.
+    written = _written(
+        _element(0x00080080, "LO", "BEXLEIGH " + "W" * 120 + " ALDERLEY HOSPITAL")
+    )
+    first = _coverage(SourceValue(_top("(0008,1050)"), "PN", "ALDERLEY^ZAPHOD"))
+    pooled = SearchCoverage.merge(
+        first, _coverage(SourceValue(_top("(0008,1050)"), "PN", "BEXLEIGH^ORLA"))
+    )
+
+    condition = release_condition(pooled, written, reviewed=_seen(first, written))
+
+    assert condition.decision is Decision.QC_REVIEW
+    assert [reason.code for reason in condition.reasons] == [KEPT_TEXT_NAME]
+    assert not condition.exempted
+
+
+@pytest.mark.deid_requirement("MIDI-BP-01")
+def test_an_earlier_match_in_unchanged_pixel_data_is_not_cleared():
+    # Under the Basic Profile, a removed Institution Name found in raw Pixel
+    # Data is text for review. An added instance of the subject with another
+    # Institution Name, found earlier in the same Pixel Data, is not the
+    # match that the reviewer cleared.
+    pixels = bytes(160) + b"BEXLEIGH" + bytes(320) + b"ALDERLEY" + bytes(160)
+    written = _written(_binary(0x7FE00010, pixels))
+    institution = "(0008,0080)"
+    first = _coverage(SourceValue(_top(institution), "LO", "ALDERLEY"), options=())
+    pooled = SearchCoverage.merge(
+        first,
+        _coverage(SourceValue(_top(institution), "LO", "BEXLEIGH"), options=()),
+    )
+    reviewed = _seen(first, written)
+    assert release_condition(first, written, reviewed=reviewed).decision is (
+        Decision.RELEASE
+    )
+
+    condition = release_condition(pooled, written, reviewed=reviewed)
+
+    assert condition.decision is Decision.QC_REVIEW
+    assert [reason.code for reason in condition.reasons] == [ReasonCode.RESIDUAL_TEXT]
+    assert not condition.exempted
 
 
 @pytest.mark.deid_requirement("MIDI-BP-01")
@@ -354,6 +427,7 @@ def test_the_pack_shows_the_finding_with_its_values_digest(first_run):
     assert finding["excerpt"] is not None
     value = INSTITUTION.encode("ascii") + b" " * (len(INSTITUTION) % 2)
     assert finding["value_sha256"] == hashlib.sha256(value).hexdigest()
+    assert (finding["value_offset"], finding["match_length"]) == (0, len("QUILLONBY"))
     assert set(
         qc_attestation.shown_residuals(pack.joinpath("qc-pack.json").read_bytes())
     ) == {0}

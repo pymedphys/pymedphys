@@ -742,8 +742,8 @@ def build_parser(
             "residual findings cleared by python -m "
             "pymedphys._dicom.deidentify.attestation_command; "
             "a file held for review only by findings that the pack showed for "
-            "a cleared instance of the same source file, in values with the "
-            "same SHA-256, is released; by default, none"
+            "a cleared instance of the same source file, at the same place in "
+            "values with the same SHA-256, is released; by default, none"
         ),
     )
     parser.add_argument(

@@ -86,7 +86,8 @@ changes this.
 where a reviewer cleared that finding in an attested QC pack of an earlier
 run of the same source file (D-042): the caller gives the findings cleared
 for the file (:class:`~pymedphys._dicom.deidentify.residuals.ReviewedFinding`),
-and one that the search finds again, in a value with the same SHA-256, is
+and one that the search finds again, at the same place in a value with
+the same SHA-256, is
 exempted as :attr:`~.residual_exemptions.Exemption.REVIEWED`. No review
 clears a finding that withholds the file, or a gap in collection, which
 the reviewer could not see.

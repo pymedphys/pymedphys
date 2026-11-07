@@ -19,8 +19,8 @@ search finds source text in it that nothing explains, under
 ``residual-text``, or a source person name in standard text that a
 selected option keeps, under ``residual-person-name-in-kept-text`` (D-027,
 D-042). The run's QC pack lists each finding with an excerpt of the bytes
-around it and the SHA-256 of the value that holds it, and the SHA-256 of
-each source file. A reviewer who finds that the values holding an
+around it, the SHA-256 of the value that holds it with where the match
+starts in that value and its length, and the SHA-256 of each source file. A reviewer who finds that the values holding an
 instance's findings are not identifying, such as an Institution Name that
 is the institution's own name and only shares a word with a removed
 physician's name, clears the instance's findings by its run position in
@@ -30,10 +30,12 @@ A later run of the same files is given that pack
 (:func:`read_residual_review`), and an attestation whose outcome is
 rejected is refused. Each finding that would hold a file for review, and
 that the pack showed for a cleared instance with the same source file, by
-its SHA-256, in a value with the same SHA-256, is then exempted rather than
+its SHA-256, matching the same bytes at the same place in a value with
+the same SHA-256, is then exempted rather than
 a reason for review (:func:`~.release_gate.release_condition`). A finding
 that the pack did not show, as in a source file changed since the review,
-or in a value written otherwise, still holds the file, and a finding that
+in a value written otherwise, or at another place in the same value,
+still holds the file, and a finding that
 withholds a file is never cleared.
 
 The clearings are read by digest, never by path or run position, so the
