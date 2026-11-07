@@ -19,8 +19,9 @@ permissions:
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   # New commits supersede obsolete PR runs; label changes still queue. A
-  # nightly or manual run is never cancelled: a later one on the same branch
-  # waits for it.
+  # running nightly or manual run is never cancelled: a later run on the same
+  # branch waits for it. GitHub keeps only the newest waiting run in a group,
+  # so a third run replaces the one already waiting.
   cancel-in-progress: >-
     ${{ github.event_name == 'pull_request' &&
         github.event.action != 'labeled' &&

@@ -303,8 +303,9 @@ class WorkflowContractTests(unittest.TestCase):
                     )
 
     def test_new_pr_commits_cancel_obsolete_ci_but_other_runs_queue(self):
-        # Label changes, merge groups, and nightly and manual runs are never
-        # cancelled by a later run in their group.
+        # A running label-change, merge-group, nightly or manual run is never
+        # cancelled by a later run in its group. GitHub's replacement of a
+        # waiting run by a newer one is not configurable here.
         text = (WORKFLOWS / "ci.yml").read_text(encoding="utf-8")
         condition = text.split("  cancel-in-progress: >-\n", 1)[1].split("\njobs:", 1)[
             0

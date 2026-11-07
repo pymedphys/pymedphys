@@ -803,12 +803,16 @@ run, with the full matrix, and its jobs took runners ahead of the next merge
 group, which then reached the queue's two-hour limit for its checks. The
 security scan still runs on each push to `main`.
 
-Instead, `ci.yml` runs on `main` every night at 15:37 UTC (02:37 in Sydney
-during daylight saving), whether or not `main` changed, so changes to runner
-images and other outside inputs also show within a day:
+Instead, `ci.yml` runs on the latest commit of `main` every night at 15:37 UTC
+(02:37 in Sydney during daylight saving), whether or not `main` changed, so
+changes to runner images and other outside inputs also show in the next
+nightly run. GitHub can start a scheduled run late when Actions is busy, and
+can drop it under heavy load, so the schedule is a nightly target rather than
+a deadline; start a manual run when a result is needed sooner. Each nightly
+run starts:
 
 ```
-Every job, including:
+Every job of ci.yml, including:
 ├── unit-tests         # Full matrix (all OS + Python versions)
 ├── integration-tests  # All extended tests
 ├── mosaiq-db-tests    # Database tests
@@ -818,10 +822,12 @@ Every job, including:
 A failure opens or comments on the issue titled "CI failed on main". To run the
 same checks at another time, start the CI workflow manually from the
 **Actions** tab, on `main` or on any branch; a run on another branch reports
-no issue. A nightly or manual run is never cancelled by a later one: the later
-run waits. Merge groups test the quick unit matrix, so a platform failure
-can reach `main` and show first in the next nightly run; correct or revert it
-there.
+no issue. A running nightly or manual run is never cancelled by a later one:
+the later run waits. GitHub keeps only the newest waiting run in a
+concurrency group, though, so a third run on the same branch replaces the one
+already waiting. Merge groups test the quick unit matrix, so a platform
+failure can reach `main` and show first in the next nightly run; correct or
+revert it there.
 
 ## Required Secrets
 
