@@ -68,6 +68,7 @@ from pymedphys._dicom.deidentify.file_layout import ElementPath
 from pymedphys._dicom.deidentify.instance_transform import InstanceTransform
 from pymedphys._dicom.deidentify.keys import DeidKey
 from pymedphys._dicom.deidentify.pixel_cleaning import TextFinder
+from pymedphys._dicom.deidentify.profiles import ProfileStore
 from pymedphys._dicom.deidentify.redaction_review import RedactionReview
 from pymedphys._dicom.deidentify.policy import (
     PRESETS,
@@ -565,15 +566,25 @@ class Prepared:
     face_review: FaceReview | None = None
     redaction_review: RedactionReview | None = None
 
-    def transform(self, policy: Policy) -> InstanceTransform:
-        """The run's instance transform, which applies a policy not yet enabled."""
+    def transform(
+        self,
+        policy: Policy,
+        key: DeidKey = KEY,
+        profiles: ProfileStore | None = None,
+    ) -> InstanceTransform:
+        """The run's instance transform, which applies a policy not yet enabled.
+
+        By default under :data:`KEY` with profiles kept for the run only; a
+        run under a project key gives that key and its subject profiles.
+        """
         return InstanceTransform(
             policy,
-            KEY,
+            key,
             cleaning=self.cleaning,
             finder=self.finder,
             face_review=self.face_review,
             redaction_review=self.redaction_review,
+            profiles=profiles,
             unvalidated_policy=True,
         )
 
