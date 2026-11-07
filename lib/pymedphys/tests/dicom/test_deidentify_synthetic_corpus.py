@@ -243,8 +243,8 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "48-rt-ion-beams-record.dcm",
         "49-rt-brachy-record.dcm",
         "50-rt-treatment-summary-record.dcm",
-        "51-rt-image-enhanced.dcm",
-        "52-rt-image-enhanced-continuous.dcm",
+        "89-rt-image-enhanced.dcm",
+        "90-rt-image-enhanced-continuous.dcm",
     ]
     assert [file.manifest.iod for file in corpus.files] == [
         "CT Image",
