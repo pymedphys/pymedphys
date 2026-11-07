@@ -379,6 +379,13 @@ options = { clean_descriptors = "C" }
 note = "The text of a tick of a ruler or axis that a Presentation State draws over an image (PS3.3 C.10.5), which an operator or application can write. It is shown with the image, as Unformatted Text Value (0070,0006) is, so it takes that attribute's actions: removed by Type, which replaces it with a dummy value where it is Type 1, and cleaned as a descriptor under Clean Descriptors."
 
 [[attribute]]
+tag = "(0070,1A09)"
+keyword = "RGBATransferFunctionDescription"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "A free-text description, for people to read, of the colour and opacity transfer function of a Volume Rendering Volumetric Presentation State's classification component (PS3.3 C.11.32), which an operator can type. It is removed by Type, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
 tag = "(0072,006F)"
 keyword = "SelectorUCValue"
 action = "X/Z/D"
@@ -1061,6 +1068,12 @@ action = "K"
 note = "The version that a manufacturer assigns a software algorithm, like Software Versions. It is a technical value that identifies no one, so it is kept."
 
 [[attribute]]
+tag = "(006A,000E)"
+keyword = "ReferencedOpticalPathIdentifier"
+action = "K"
+note = "Names, by its Optical Path Identifier (0048,0106), the optical path of a referenced microscopy image that an Advanced Blending Presentation State blends (PS3.3 C.11.33). The identifier only tells the paths of one image apart, so it is kept, as the reference needs it, accepting the residual risk that a device writes identifying text there."
+
+[[attribute]]
 tag = "(0070,0227)"
 keyword = "FontName"
 action = "K"
@@ -1539,6 +1552,22 @@ tag = "(0040,1012)"
 keyword = "ReasonForPerformedProcedureCodeSequence"
 action = "X/Z/D"
 note = "Codes for why the procedure was performed, which can record a diagnosis or symptom, as do Reason for Visit Code Sequence (0032,1067) and the other reason and diagnosis code sequences, which Table E.1-1 removes (X). It is removed by Type under every option. It is Type 3 in the General Study Module."
+
+# Annotations that a volumetric Presentation State draws over its rendered
+# view, taking the action that Table E.1-1 gives Graphic Annotation Sequence
+# (0070,0001): D under every option.
+
+[[attribute]]
+tag = "(0070,1901)"
+keyword = "VolumetricAnnotationSequence"
+action = "D"
+note = "The annotations, text and graphics, that a volumetric Presentation State draws in the volume (PS3.3 C.11.28). Its text can name the patient, and its graphics can spell a name, as a 2D Presentation State's Graphic Annotation Sequence (0070,0001) can, which Table E.1-1 gives D; it takes the same action. A sequence has no dummy value, so an instance that holds it is sequestered under every option. It is Type 1C in the Volumetric Graphic Annotation Module."
+
+[[attribute]]
+tag = "(0070,1905)"
+keyword = "VolumetricPresentationInputAnnotationSequence"
+action = "D"
+note = "The annotations, text and graphics, that a volumetric Presentation State draws on one of its inputs (PS3.3 C.11.28). Its text can name the patient, and its graphics can spell a name, as a 2D Presentation State's Graphic Annotation Sequence (0070,0001) can, which Table E.1-1 gives D; it takes the same action. A sequence has no dummy value, so an instance that holds it is sequestered under every option. It is Type 1C in the Volumetric Graphic Annotation Module."
 
 # Other attributes whose content the engine cannot check.
 
