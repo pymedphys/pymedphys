@@ -38,6 +38,7 @@ from pymedphys._imports import pydicom
 
 from . import pixel_risk, qc_contours, qc_eyes, qc_pack, qc_previews, residuals
 from .iod_conformance import SourceGap
+from .annotation_drawing import draw_annotation
 from .face_review import (
     PIXEL_DATA_TAGS,
     contour_data_sha256,
@@ -46,6 +47,7 @@ from .face_review import (
     pixel_data_sha256,
 )
 from .file_layout import ElementPath
+from .graphic_annotations import AnnotationMaterial
 from .icc_cleaning import Refusal
 from .qc_pack import Disposition, DropReason, QcPack, RoiNameOutcome
 from .reasons import DoseChoice, PixelDataReason
@@ -528,6 +530,7 @@ def qc_pack_of(
     drops: list[qc_pack.DropEntry] = []
     roi_names: list[qc_pack.RoiNameEntry] = []
     descriptors: list[qc_pack.DescriptorEntry] = []
+    annotations: list[qc_pack.AnnotationEntry] = []
     reference_findings: list[qc_pack.ReferenceFindingEntry] = []
     retained: list[tuple[str, int, ElementPath]] = []
     written: dict[int, bytes] = {}
@@ -603,6 +606,18 @@ def qc_pack_of(
                         item.results,
                         item.applied,
                         item.attribute,
+                    )
+                )
+            elif isinstance(item, AnnotationMaterial):
+                annotations.append(
+                    qc_pack.AnnotationEntry(
+                        position,
+                        item.path,
+                        item.digest,
+                        item.texts,
+                        item.result.outcome,
+                        item.result.held_because,
+                        draw_annotation(item.item),
                     )
                 )
             elif isinstance(item, (ReferenceFindingMaterial, WrittenFindingMaterial)):
@@ -682,6 +697,7 @@ def qc_pack_of(
         retained_strings=qc_pack.retained_strings(retained),
         roi_names=tuple(roi_names),
         descriptors=tuple(descriptors),
+        annotations=tuple(annotations),
         reference_findings=tuple(reference_findings),
         pixel_risks=tuple(
             qc_pack.PixelRiskEntry(position, found)

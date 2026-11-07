@@ -1142,6 +1142,11 @@ class ContentItemPlan(Mapping[ElementPath, str]):
     renumbered : mapping of ElementPath to tuple of int
         The new values of each kept Referenced Content Item Identifier
         (0040,DB73) whose target an earlier removed item moves.
+    annotations : frozenset of ElementPath
+        The elements among ``actions`` whose action Clean Graphics gives a
+        Presentation State's graphic annotations from a reviewer's decisions
+        (:func:`~.graphic_annotations.with_annotations`, D-062), rather than
+        a content item's concept name.
     """
 
     actions: Mapping[ElementPath, str] = dataclasses.field(
@@ -1152,6 +1157,7 @@ class ContentItemPlan(Mapping[ElementPath, str]):
     renumbered: Mapping[ElementPath, tuple[int, ...]] = dataclasses.field(
         default_factory=lambda: types.MappingProxyType({})
     )
+    annotations: frozenset[ElementPath] = frozenset()
 
     def __getitem__(self, path: ElementPath) -> str:
         return self.actions[path]

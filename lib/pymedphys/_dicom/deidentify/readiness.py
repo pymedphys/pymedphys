@@ -85,6 +85,7 @@ from .qc_pack import (
 )
 from .qc_pack import QcPackError, pack_document
 from .reasons import ReviewReason
+from .reviewed_annotations import ReviewedAnnotations
 from .reviewed_descriptors import ReviewedDescriptors
 from .reviewed_roi_names import ReviewedNames
 from .risk_assessment import (
@@ -296,6 +297,7 @@ def readiness(
     reviewed_names: ReviewedNames | None,
     reviewed_descriptors: ReviewedDescriptors | None,
     pixel_region_rules: PixelRegionRules | None,
+    reviewed_annotations: ReviewedAnnotations | None = None,
 ) -> release_report.Readiness:
     """Decide a ``public-release`` run's readiness from an earlier run's review.
 
@@ -319,6 +321,10 @@ def readiness(
         The reviewed region rules that the run's Clean Pixel Data applied,
         or None without any, which the statistical gate checks in the same
         way.
+    reviewed_annotations : ReviewedAnnotations, optional
+        The reviewed annotations list that the run's Clean Graphics
+        applied, or None, the default, without one, which the statistical
+        gate checks in the same way.
 
     Returns
     -------
@@ -352,6 +358,7 @@ def readiness(
         reviewed_names=reviewed_names,
         reviewed_descriptors=reviewed_descriptors,
         pixel_region_rules=pixel_region_rules,
+        reviewed_annotations=reviewed_annotations,
         subjects=subjects,
     )
     if review is None:

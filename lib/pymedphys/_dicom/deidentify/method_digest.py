@@ -64,6 +64,11 @@ apply, whether or not the policy's options use it:
   rules, in the same way as the reviewed-names list, as
   :meth:`~pymedphys._dicom.deidentify.pixel_region_rules.PixelRegionRules.keyed_digest`
   gives it, since the rules hold manufacturers' and model names;
+- the keyed digest of the reviewed annotations list whose decisions the
+  Clean Graphics Option applies to Presentation States' graphic annotations,
+  or the absence of a list, in the same way, as
+  :meth:`~pymedphys._dicom.deidentify.reviewed_annotations.ReviewedAnnotations.keyed_digest`
+  gives it (D-062);
 - under the Retain Safe Private Option, the list whose rules settle private
   attributes: the reviewed rules or TCIA's Private Tag Dictionary (D-035),
   or the absence of a list without the Option. Both lists are also among the
@@ -137,7 +142,8 @@ table's content digest, the SHA-256 of the canonical bytes of the
 ``generated_values`` members, the vocabulary's content digest, the
 reviewed-names list's keyed digest, the SHA-256 of the canonical bytes of
 the ``text_finder`` member (None without a text finder), the region rules'
-keyed digest, the safe private list, and each source and rule file's
+keyed digest, the reviewed annotations list's keyed digest, the safe
+private list, and each source and rule file's
 digest.
 """
 
@@ -174,7 +180,7 @@ from .policy import SAFE_PRIVATE, Policy
 from .safe_private import SafePrivateList
 
 # The format of the canonical form. A change to the form takes a new label.
-FORMAT = "pymedphys-deid-method-digest/7"
+FORMAT = "pymedphys-deid-method-digest/8"
 # The engine's package, whose source and rule files the digest covers.
 PACKAGE_DIR = pathlib.Path(__file__).resolve().parent
 COVERED_SUFFIXES = frozenset({".py", ".toml", ".json", ".csv", ".txt"})
@@ -265,6 +271,9 @@ class MethodDigestInputs:
     pixel_region_rules : str or None
         The keyed digest of the reviewed region rules, or None without
         rules.
+    reviewed_annotations : str or None
+        The keyed digest of the reviewed annotations list, or None without
+        a list.
     safe_private_list : SafePrivateList
         The list whose rules settle private attributes under the Retain Safe
         Private Option, which the canonical form records only for a policy
@@ -290,6 +299,7 @@ class MethodDigestInputs:
     technique_vocabulary: str | None
     text_finder: Mapping[str, object] | None = dataclasses.field(hash=False)
     pixel_region_rules: str | None
+    reviewed_annotations: str | None
     safe_private_list: SafePrivateList
     generated_values: Mapping[str, object] = dataclasses.field(hash=False)
     files: Mapping[str, str] = dataclasses.field(hash=False)
@@ -341,6 +351,9 @@ class MethodDigestComponents:
     pixel_region_rules : str or None
         The keyed digest of the reviewed region rules, or None without
         rules.
+    reviewed_annotations : str or None
+        The keyed digest of the reviewed annotations list, or None without
+        a list.
     safe_private_list : str or None
         The list whose rules settle private attributes under the Retain Safe
         Private Option, ``"reviewed"`` or ``"tcia"``, or None without the
@@ -369,6 +382,7 @@ class MethodDigestComponents:
     technique_vocabulary_digest: str | None
     text_finder_digest: str | None
     pixel_region_rules: str | None
+    reviewed_annotations: str | None
     safe_private_list: str | None
     generated_values_digest: str
     engine_files: Mapping[str, str] = dataclasses.field(hash=False)
@@ -476,6 +490,7 @@ def _document(policy: Policy, inputs: MethodDigestInputs) -> dict:
         # Already JSON values, which _plain keeps as they are.
         "text_finder": finder,
         "pixel_region_rules": inputs.pixel_region_rules,
+        "reviewed_annotations": inputs.reviewed_annotations,
         "safe_private_list": _safe_private_list(policy, inputs),
         "generated_values": generated,
         "files": inputs.files,
@@ -490,14 +505,15 @@ def canonical_bytes(policy: Policy, inputs: MethodDigestInputs) -> bytes:
     (:data:`FORMAT`), ``engine_version``, ``policy``, ``tables``,
     ``l2_rules``, ``l3_rules``, ``vocabulary``, ``reviewed_roi_names``,
     ``reviewed_descriptors``, ``technique_vocabulary``, ``text_finder``,
-    ``pixel_region_rules``, ``safe_private_list``, ``generated_values``, and
-    ``files``. ``l3_rules`` is ``null``, since there are no user rules yet,
-    and so are ``vocabulary``, ``reviewed_roi_names``,
-    ``reviewed_descriptors``, ``technique_vocabulary``, ``text_finder``,
-    ``pixel_region_rules``, and ``safe_private_list`` without a vocabulary,
-    a reviewed-names list, a reviewed descriptors list, a technique
-    vocabulary, a text finder, region rules, or the Retain Safe Private
-    Option, under which ``safe_private_list`` is ``"reviewed"`` or
+    ``pixel_region_rules``, ``reviewed_annotations``, ``safe_private_list``,
+    ``generated_values``, and ``files``. ``l3_rules`` is ``null``, since
+    there are no user rules yet, and so are ``vocabulary``,
+    ``reviewed_roi_names``, ``reviewed_descriptors``,
+    ``technique_vocabulary``, ``text_finder``, ``pixel_region_rules``,
+    ``reviewed_annotations``, and ``safe_private_list`` without a
+    vocabulary, a reviewed-names list, a reviewed descriptors list, a
+    technique vocabulary, a text finder, region rules, a reviewed
+    annotations list, or the Retain Safe Private Option, under which ``safe_private_list`` is ``"reviewed"`` or
     ``"tcia"``. It
     is encoded so that the same inputs give the same bytes on every platform
     and Python version:
@@ -595,6 +611,7 @@ def digest_components(
         technique_vocabulary_digest=inputs.technique_vocabulary,
         text_finder_digest=None if finder is None else _sha256(finder),
         pixel_region_rules=inputs.pixel_region_rules,
+        reviewed_annotations=inputs.reviewed_annotations,
         safe_private_list=document["safe_private_list"],
         generated_values_digest=_sha256(document["generated_values"]),
         engine_files=_read_only(inputs.files),
@@ -698,6 +715,7 @@ def digest_inputs(
     technique_vocabulary: str | None = None,
     text_finder: Mapping[str, object] | None = None,
     pixel_region_rules: str | None = None,
+    reviewed_annotations: str | None = None,
     safe_private_list: SafePrivateList = SafePrivateList.REVIEWED,
 ) -> MethodDigestInputs:
     """Gather everything the method digest covers apart from the policy.
@@ -738,6 +756,11 @@ def digest_inputs(
         Clean Pixel Data Option blacks out beside the text finder's, as
         :meth:`~pymedphys._dicom.deidentify.pixel_region_rules.PixelRegionRules.keyed_digest`
         gives it, or None, the default, without rules.
+    reviewed_annotations : str or None, optional
+        The keyed digest of the reviewed annotations list whose decisions
+        the Clean Graphics Option applies to graphic annotations, as
+        :meth:`~pymedphys._dicom.deidentify.reviewed_annotations.ReviewedAnnotations.keyed_digest`
+        gives it, or None, the default, without a list.
     safe_private_list : SafePrivateList, optional
         Under the Retain Safe Private Option, the list whose rules settle
         private attributes: the reviewed rules, the default, or TCIA's
@@ -753,13 +776,13 @@ def digest_inputs(
     TypeError
         If ``vocabulary`` is not a TG-263 nomenclature or None, or
         ``reviewed_roi_names``, ``reviewed_descriptors``,
-        ``technique_vocabulary``, or ``pixel_region_rules`` is not text or
-        None, or ``text_finder`` is not a mapping or None.
+        ``technique_vocabulary``, ``pixel_region_rules``, or
+        ``reviewed_annotations`` is not text or None, or ``text_finder`` is not a mapping or None.
     ValueError
         If the vocabulary's entries have text that cannot be encoded as
         UTF-8, or ``reviewed_roi_names``, ``reviewed_descriptors``,
-        ``technique_vocabulary``, or ``pixel_region_rules`` is not 64
-        lowercase hexadecimal digits. The
+        ``technique_vocabulary``, ``pixel_region_rules``, or
+        ``reviewed_annotations`` is not 64 lowercase hexadecimal digits. The
         message does not quote any.
     ~pymedphys._dicom.deidentify.standard.StandardTableError
         If a generated table cannot be read, or its rows do not match the
@@ -776,6 +799,7 @@ def digest_inputs(
         ("reviewed_descriptors", reviewed_descriptors),
         ("technique_vocabulary", technique_vocabulary),
         ("pixel_region_rules", pixel_region_rules),
+        ("reviewed_annotations", reviewed_annotations),
     ):
         if digest is None:
             continue
@@ -815,6 +839,7 @@ def digest_inputs(
             None if text_finder is None else types.MappingProxyType(dict(text_finder))
         ),
         pixel_region_rules=pixel_region_rules,
+        reviewed_annotations=reviewed_annotations,
         safe_private_list=safe_private_list,
         generated_values={
             f"{module.__name__.rpartition('.')[2]}.{name}": getattr(module, name)
@@ -839,6 +864,7 @@ def method_digest(
     technique_vocabulary: str | None = None,
     text_finder: Mapping[str, object] | None = None,
     pixel_region_rules: str | None = None,
+    reviewed_annotations: str | None = None,
     safe_private_list: SafePrivateList = SafePrivateList.REVIEWED,
 ) -> str:
     """Return the method digest of a policy, as 64 lowercase hexadecimal digits.
@@ -885,6 +911,11 @@ def method_digest(
         Clean Pixel Data Option blacks out beside the text finder's, as
         :meth:`~pymedphys._dicom.deidentify.pixel_region_rules.PixelRegionRules.keyed_digest`
         gives it, or None, the default, without rules.
+    reviewed_annotations : str or None, optional
+        The keyed digest of the reviewed annotations list whose decisions
+        the Clean Graphics Option applies to graphic annotations, as
+        :meth:`~pymedphys._dicom.deidentify.reviewed_annotations.ReviewedAnnotations.keyed_digest`
+        gives it, or None, the default, without a list.
     safe_private_list : SafePrivateList, optional
         Under the Retain Safe Private Option, the list whose rules settle
         private attributes: the reviewed rules, the default, or TCIA's
@@ -922,6 +953,7 @@ def method_digest(
                 technique_vocabulary=technique_vocabulary,
                 text_finder=text_finder,
                 pixel_region_rules=pixel_region_rules,
+                reviewed_annotations=reviewed_annotations,
                 safe_private_list=safe_private_list,
             ),
         )
@@ -937,6 +969,7 @@ def method_digest_components(
     technique_vocabulary: str | None = None,
     text_finder: Mapping[str, object] | None = None,
     pixel_region_rules: str | None = None,
+    reviewed_annotations: str | None = None,
     safe_private_list: SafePrivateList = SafePrivateList.REVIEWED,
 ) -> MethodDigestComponents:
     """Return the method digest of a policy with the components it is computed from.
@@ -989,6 +1022,11 @@ def method_digest_components(
         Clean Pixel Data Option blacks out beside the text finder's, as
         :meth:`~pymedphys._dicom.deidentify.pixel_region_rules.PixelRegionRules.keyed_digest`
         gives it, or None, the default, without rules.
+    reviewed_annotations : str or None, optional
+        The keyed digest of the reviewed annotations list whose decisions
+        the Clean Graphics Option applies to graphic annotations, as
+        :meth:`~pymedphys._dicom.deidentify.reviewed_annotations.ReviewedAnnotations.keyed_digest`
+        gives it, or None, the default, without a list.
     safe_private_list : SafePrivateList, optional
         Under the Retain Safe Private Option, the list whose rules settle
         private attributes: the reviewed rules, the default, or TCIA's
@@ -1018,7 +1056,7 @@ def method_digest_components(
     ... )
     True
     >>> components.method_digest_format, components.l3_rules
-    ('pymedphys-deid-method-digest/7', None)
+    ('pymedphys-deid-method-digest/8', None)
     """
     _check_policy(policy)
     return digest_components(
@@ -1030,6 +1068,7 @@ def method_digest_components(
             technique_vocabulary=technique_vocabulary,
             text_finder=text_finder,
             pixel_region_rules=pixel_region_rules,
+            reviewed_annotations=reviewed_annotations,
             safe_private_list=safe_private_list,
         ),
     )

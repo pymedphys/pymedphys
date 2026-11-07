@@ -33,6 +33,7 @@ import dataclasses
 import enum
 
 from .file_layout import ElementPath
+from .reviewed_annotations import Held as AnnotationHeld
 from .reviewed_descriptors import Held
 from .roi_names import Reason
 
@@ -181,6 +182,25 @@ class HeldDescriptor:
     def __post_init__(self) -> None:
         if not isinstance(self.reason, Held):
             raise TypeError("a held descriptor value needs its reason")
+
+
+@dataclasses.dataclass(frozen=True)
+class HeldAnnotation:
+    """A graphic annotation held for review, by its item and reason, never its text.
+
+    Under the Clean Graphics Option, the reviewed annotations list holds an
+    annotation that it has no decision on, or keeps but whose text echoes
+    one of its instance's identifiers (D-062). ``path`` is Graphic
+    Annotation Sequence (0070,0001), with the annotation's item last in its
+    ``items``.
+    """
+
+    path: ElementPath
+    reason: AnnotationHeld
+
+    def __post_init__(self) -> None:
+        if not isinstance(self.reason, AnnotationHeld):
+            raise TypeError("a held annotation needs its reason")
 
 
 @dataclasses.dataclass(frozen=True)

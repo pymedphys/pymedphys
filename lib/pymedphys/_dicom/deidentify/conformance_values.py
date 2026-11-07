@@ -246,6 +246,12 @@ HOLDING_STAGES: Mapping[str, str] = types.MappingProxyType(
             "run does not clean, or an RT Dose beside one with too much dose "
             "in the region set to air to set that dose to zero"
         ),
+        "annotations": (
+            "under Clean Graphics, a graphic annotation of a Presentation "
+            "State has no decision in the custodian's reviewed annotations "
+            "list, or the list keeps it but its text echoes one of the "
+            "instance's patient or other person identifiers"
+        ),
         "release": (
             "the release gate requires QC review, for other text that the "
             "residual search found inside the data set, a person name that it "

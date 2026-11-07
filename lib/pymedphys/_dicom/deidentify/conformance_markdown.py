@@ -49,7 +49,13 @@ from .conformance_values import code as _code
 from .conformance_safe_private import safe_private_section
 from .conformance_values import join as _join
 from .markers import PROFILE_CODE
-from .policy import CLEAN_PIXEL_DATA, CLEAN_STRUCTURED_CONTENT, ENGINE_OPTIONS, UIDS
+from .policy import (
+    CLEAN_GRAPHICS,
+    CLEAN_PIXEL_DATA,
+    CLEAN_STRUCTURED_CONTENT,
+    ENGINE_OPTIONS,
+    UIDS,
+)
 from .reviewed_descriptors import CLEAN_DESCRIPTORS
 from .reviewed_roi_names import Outcome, Review
 from .roi_names import Reason
@@ -652,6 +658,10 @@ def _cleaned(
             f"{tags}, which hold content items, and the engine cleans them by "
             "their concept names."
             if cleaned.option == CLEAN_STRUCTURED_CONTENT
+            else f"{tags}, which holds the graphic annotations of a "
+            "Presentation State, and the engine cleans each by a reviewer's "
+            "decision on it."
+            if cleaned.option == CLEAN_GRAPHICS
             else f"{tags}, wherever they are in the data set, and a reviewed "
             "cleaner settles them."
         )

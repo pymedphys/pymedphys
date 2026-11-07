@@ -614,7 +614,12 @@ def _plan(
         rule = rules.rule(path.tag, tuple(tag for tag, _ in path.items), iod=iod)
         if path in content_items:
             rule = ElementRule(
-                path.tag, RuleSource.CONTENT_ITEM, content_items[path], path.tag
+                path.tag,
+                RuleSource.ANNOTATION
+                if path in content_items.annotations
+                else RuleSource.CONTENT_ITEM,
+                content_items[path],
+                path.tag,
             )
         elif path in content_items.emptied:
             rule = ElementRule(path.tag, RuleSource.CONTENT_ITEM, _REMOVED, path.tag)
