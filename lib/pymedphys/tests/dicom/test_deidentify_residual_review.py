@@ -348,7 +348,7 @@ def test_the_pack_shows_the_finding_with_its_values_digest(first_run):
     _, pack = first_run
     document = json.loads((pack / "qc-pack.json").read_text("utf-8"))
 
-    assert document["format"] == PACK_FORMAT == "pymedphys-deid-qc-pack/35"
+    assert document["format"] == PACK_FORMAT == "pymedphys-deid-qc-pack/36"
     (finding,) = document["residual_findings"]
     assert finding["location"]["element"] == "(0008,0080)"
     assert finding["excerpt"] is not None
@@ -447,7 +447,7 @@ def test_the_clearings_are_read_back_as_written(first_run):
     attestation = _attest(pack)
 
     written = json.loads((pack / qc_attestation.ATTESTATION_FILE).read_text("ascii"))
-    assert written["format"] == "pymedphys-deid-qc-attestation/7"
+    assert written["format"] == "pymedphys-deid-qc-attestation/8"
     assert written["cleared_residuals"] == [0]
     read, data = qc_attestation.attested_pack(pack)
     assert read == attestation

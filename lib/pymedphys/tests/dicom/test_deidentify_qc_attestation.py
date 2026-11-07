@@ -104,7 +104,7 @@ def test_the_attestation_is_written_beside_the_pack(pack):
     written = pack / qc_attestation.ATTESTATION_FILE
     digest = hashlib.sha256((pack / qc_store.PACK_FILE).read_bytes()).hexdigest()
     assert json.loads(written.read_text("ascii")) == {
-        "format": "pymedphys-deid-qc-attestation/7",
+        "format": "pymedphys-deid-qc-attestation/8",
         "reference": REFERENCE,
         "pack_digest": digest,
         "outcome": "attested",
@@ -186,7 +186,7 @@ def test_an_attestation_for_another_pack_is_detected(pack):
         b'{"format": "x"}',
         b'{"format": "pymedphys-deid-qc-attestation/1"}',
         b'{"format": "pymedphys-deid-qc-attestation/2"}',
-        b'{"format": "pymedphys-deid-qc-attestation/7"}',
+        b'{"format": "pymedphys-deid-qc-attestation/8"}',
     ],
 )
 def test_a_malformed_attestation_is_refused(pack, content):

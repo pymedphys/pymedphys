@@ -145,7 +145,7 @@ from .residuals import ReviewedFinding
 from .text_detection import TextBox
 
 # The format of the attestation document. A change to its fields takes a new label.
-FORMAT = "pymedphys-deid-qc-attestation/7"
+FORMAT = "pymedphys-deid-qc-attestation/8"
 ATTESTATION_FILE = "attestation.json"
 
 _DIGEST = re.compile(r"[0-9a-f]{64}")
