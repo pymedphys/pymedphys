@@ -266,6 +266,7 @@ from .dummy_values import (
     INSTITUTION_CODE_SEQUENCE,
     PERSON_IDENTIFICATION_CODE_SEQUENCE,
     REFERENCED_PERFORMED_PROCEDURE_STEP_SEQUENCE,
+    OPERATOR_IDENTIFICATION_SEQUENCE,
     VERIFYING_OBSERVER_SEQUENCE,
     reviewed_within,
 )
@@ -562,11 +563,13 @@ _CONTENT_ITEM_VALUES = types.MappingProxyType(
 # The collection's own UIDs that a content tree's UIDREF items can name, and
 # that are then recorded as linked.
 _COLLECTION_UIDS = frozenset({STUDY, FRAME_OF_REFERENCE, CT_SERIES})
-# The sequences whose D a reviewed rule writes (D-021), Institution Code
-# Sequence's only where reviewed_within says.
+# The sequences whose D a reviewed rule writes or keeps (D-021), Institution
+# Code Sequence's and Operator Identification Sequence's only where
+# reviewed_within says.
 _REVIEWED_DUMMY_SEQUENCES = frozenset(
     {
         INSTITUTION_CODE_SEQUENCE,
+        OPERATOR_IDENTIFICATION_SEQUENCE,
         PERSON_IDENTIFICATION_CODE_SEQUENCE,
         REFERENCED_PERFORMED_PROCEDURE_STEP_SEQUENCE,
         VERIFYING_OBSERVER_SEQUENCE,

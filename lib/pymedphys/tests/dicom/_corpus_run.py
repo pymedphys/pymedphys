@@ -508,9 +508,10 @@ class CorpusRun:
         that holds it, since a sequence's other actions remove, empty,
         replace, or clean what it holds; but a sequence whose content items
         the run cleans and keeps (:attr:`kept_content`) keeps what its
-        items' own actions keep, and so does Verifying Observer Sequence
-        for the attributes of its items that its reviewed D keeps
-        (:data:`~pymedphys._dicom.deidentify.dummy_values.KEPT_ITEM_ATTRIBUTES`).
+        items' own actions keep, and so does a sequence whose reviewed D
+        keeps its items, such as Verifying Observer Sequence, for the
+        attributes of its items that the rule keeps at its place
+        (:func:`~pymedphys._dicom.deidentify.dummy_values.kept_item_attributes`).
         """
         kept = self.kept_rows()
         passed = kept | self.kept_content
@@ -528,8 +529,8 @@ class CorpusRun:
         return own and all(
             tag in passed
             or tag not in _listed()
-            or held in dummy_values.KEPT_ITEM_ATTRIBUTES.get(tag, ())
-            for tag, held in zip(tags, inner)
+            or held in (dummy_values.kept_item_attributes(tag, tags[:depth]) or ())
+            for depth, (tag, held) in enumerate(zip(tags, inner))
         )
 
     def method_codes(self) -> frozenset[tuple[str, str]]:

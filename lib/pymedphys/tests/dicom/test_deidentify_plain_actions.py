@@ -20,6 +20,7 @@ from pymedphys._imports import pytest
 
 from pymedphys._dicom.deidentify import (
     compound_actions,
+    dummy_values,
     iods,
     standard,
     supplementary_actions,
@@ -200,13 +201,14 @@ def test_a_plain_z_on_a_type_2_or_3_attribute_stays_z(
 
 
 @pytest.mark.deid_requirement("MIDI-BP-03")
-def test_a_plain_z_gives_d_only_to_rt_accessory_holder_slot_id_in_five_generated_iods(
+def test_a_plain_z_gives_d_only_to_rt_accessory_holder_slot_id_in_five_iods(
     tables,
 ):
     # Table E.1-1 gives RT Accessory Holder Slot ID Z, and it is Type 1 in RT
     # Accessory Holder Slot Sequence within RT Accessory Holder Definition
-    # Sequence of these IODs. No IOD of the first supported release has such
-    # a place. A new edition that changes where this happens fails here.
+    # Sequence of these IODs, of which the first supported release supports
+    # the C-Arm Photon-Electron and Robotic-Arm Radiation Records. A new
+    # edition that changes where this happens fails here.
     z = {
         attribute.tag
         for attribute in standard.load_table_e1_1().attributes
@@ -231,7 +233,11 @@ def test_a_plain_z_gives_d_only_to_rt_accessory_holder_slot_id_in_five_generated
             "RT Patient Position Acquisition Instruction",
         )
     }
-    assert not set(FIRST_RELEASE_IODS) & {name for name, _, _ in dummy}
+    # Of these, the first supported release supports the two records.
+    assert set(FIRST_RELEASE_IODS) & {name for name, _, _ in dummy} == {
+        "C-Arm Photon-Electron Radiation Record",
+        "Robotic-Arm Radiation Record",
+    }
 
 
 @pytest.mark.parametrize("action", ["X", "K", "C", "U"])
@@ -674,9 +680,38 @@ def test_a_plain_x_on_a_required_attribute_in_the_first_release_iods(tables):
 # RT Brachy Treatment Record and RT Treatment Summary Record, which the
 # maintainer added to the target coverage on 31 October 2026, reviewed ahead
 # of supporting them and now supported, and the IODs reviewed before them.
+# The 16 second-generation RT IODs, which the maintainer added to the target
+# coverage on 31 October 2026, reviewed ahead of supporting them against the
+# supported IODs and Enhanced RT Image and Enhanced Continuous RT Image.
+SECOND_GENERATION_RT_IODS = (
+    "RT Physician Intent",
+    "RT Segment Annotation",
+    "RT Radiation Set",
+    "RT Radiation Record Set",
+    "RT Radiation Salvage Record",
+    "RT Treatment Preparation",
+    "RT Patient Position Acquisition Instruction",
+    "RT Beams Delivery Instruction",
+    "RT Brachy Application Setup Delivery Instruction",
+    "RT Radiation Set Delivery Instruction",
+    "C-Arm Photon-Electron Radiation",
+    "C-Arm Photon-Electron Radiation Record",
+    "Tomotherapeutic Radiation",
+    "Tomotherapeutic Radiation Record",
+    "Robotic-Arm Radiation",
+    "Robotic-Arm Radiation Record",
+)
+
+
 RECORD_IODS = ("RT Brachy Treatment Record", "RT Treatment Summary Record")
+# The brachy and summary records were reviewed before the second-generation
+# RT IODs, some of which are now supported.
 RECORD_REVIEWED_AGAINST = (
-    *(name for name in FIRST_RELEASE_IODS if name not in RECORD_IODS),
+    *(
+        name
+        for name in FIRST_RELEASE_IODS
+        if name not in RECORD_IODS and name not in SECOND_GENERATION_RT_IODS
+    ),
     "RT Ion Plan",
     "RT Ion Beams Treatment Record",
 )
@@ -807,27 +842,6 @@ def test_the_places_where_a_plain_action_cannot_stand_in_the_brachy_and_summary_
     ) == _removal(*ALONE)
 
 
-# The 16 second-generation RT IODs, which the maintainer added to the target
-# coverage on 31 October 2026, reviewed ahead of supporting them against the
-# supported IODs and Enhanced RT Image and Enhanced Continuous RT Image.
-SECOND_GENERATION_RT_IODS = (
-    "RT Physician Intent",
-    "RT Segment Annotation",
-    "RT Radiation Set",
-    "RT Radiation Record Set",
-    "RT Radiation Salvage Record",
-    "RT Treatment Preparation",
-    "RT Patient Position Acquisition Instruction",
-    "RT Beams Delivery Instruction",
-    "RT Brachy Application Setup Delivery Instruction",
-    "RT Radiation Set Delivery Instruction",
-    "C-Arm Photon-Electron Radiation",
-    "C-Arm Photon-Electron Radiation Record",
-    "Tomotherapeutic Radiation",
-    "Tomotherapeutic Radiation Record",
-    "Robotic-Arm Radiation",
-    "Robotic-Arm Radiation Record",
-)
 SECOND_GENERATION_REVIEWED_AGAINST = (
     *RECORD_REVIEWED_AGAINST,
     *RECORD_IODS,
@@ -874,11 +888,14 @@ def test_the_places_where_a_plain_action_cannot_stand_in_the_second_generation_r
 
     # Operator Identification Sequence, which Table E.1-1 gives X/D, is Type 1
     # in the Type 2 Override Sequence of the four records, so it resolves to
-    # D, which a sequence has no dummy value for (D-021).
+    # D, which a sequence has no generic dummy value for. Its reviewed rule
+    # keeps each item there, each attribute under its own rule, as the
+    # maintainer chose for Verifying Observer Sequence (D-021).
     operator = {
         (name, OVERRIDE, OPERATOR_IDENTIFICATION, "D"): "D"
         for name in TOLERANCE_RECORD_IODS
     }
+    assert dummy_values.kept_item_attributes(OPERATOR_IDENTIFICATION, OVERRIDE)
     # Referenced Study Sequence, which Table E.1-1 gives X/Z, is Type 1 in
     # three reference items, so it resolves to D, as above.
     study = {

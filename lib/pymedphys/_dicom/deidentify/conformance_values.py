@@ -49,6 +49,7 @@ from . import birth_dates, dates, dummy_values, pixel_risk, pseudonyms, residual
 from . import release_report as report
 from .conformance import ConformanceStatement
 from .content_items import OBSERVATION_DATETIME
+from .element_rules import IOD_DEFINED_VRS, KEPT_VRS
 from .edits import PSEUDONYM_TAGS
 from .pixel_risk import Indicator
 from .policy import (
@@ -64,6 +65,7 @@ from .release_gate import ReasonCode
 from .release_report import _HOLDING, _SEQUESTERING
 from .reviewed_roi_names import Outcome as RoiNameOutcome
 from .series_numbers import SERIES_NUMBER
+from .standard import dictionary_attribute
 from .residuals import _BINARY as _BINARY_VRS
 from .residuals import _KINDS
 from .residuals import _NUMBERS as _NUMBER_VRS
@@ -353,16 +355,42 @@ def _icc_profile(named: Callable[[str], str]) -> str:
 def _kept_items(
     statement: ConformanceStatement, named: Callable[[str], str]
 ) -> list[str]:
-    """Describe the items that D keeps where a reviewed rule keeps them (D-021)."""
+    """Describe the items that D keeps where a reviewed rule keeps them (D-021).
+
+    An attribute that no rule covers, such as Observer Type (0040,A084), of
+    VR CS, takes the action that the statement gives its VR.
+    """
     actions = {entry.tag: entry.action for entry in statement.attributes}
-    return [
-        f"D on {named(tag)} keeps each source item, and in it only these "
-        "attributes, each under the action that the policy gives it: "
-        + "; ".join(f"{named(each)}, {code(actions[each])}" for each in sorted(kept))
-        + ". The item's other attributes are removed, and none of these is "
-        "added to an item that lacks it."
-        for tag, kept in dummy_values.KEPT_ITEM_ATTRIBUTES.items()
-    ]
+    lines = []
+    for tag, kept in dummy_values.KEPT_ITEM_ATTRIBUTES.items():
+        place = _reviewed_place(tag)
+        where = (
+            " directly in an item of " + join((named(t) for t in place), "or")
+            if place
+            else ""
+        )
+        lines.append(
+            f"D on {named(tag)}{where} keeps each source item, and in it only "
+            "these attributes, each under the action that the policy gives it "
+            "there: "
+            + "; ".join(_kept_action(each, actions, named) for each in sorted(kept))
+            + ". The item's other attributes are removed, and none of these is "
+            "added to an item that lacks it."
+        )
+    return lines
+
+
+def _kept_action(
+    tag: str, actions: Mapping[str, str], named: Callable[[str], str]
+) -> str:
+    """Describe the action of one attribute of a kept item."""
+    if tag in actions:
+        return f"{named(tag)}, {code(actions[tag])}"
+    attribute = dictionary_attribute(tag)
+    (vr,) = attribute.vrs if attribute is not None else ("",)
+    if vr not in KEPT_VRS | IOD_DEFINED_VRS:
+        raise ValueError(f"no rule covers the kept item attribute {tag}")
+    return f"{named(tag)}, {code('K')}, as an attribute of VR {vr} that no rule covers"
 
 
 def _naming_pymedphys(named: Callable[[str], str]) -> dict[str, list[str]]:
