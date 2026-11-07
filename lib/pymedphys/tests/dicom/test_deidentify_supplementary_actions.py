@@ -477,11 +477,11 @@ def test_the_rules_for_omitted_text_fall_in_the_reviewed_groups():
 
     assert groups == {
         # Operator-typed labels and text.
-        ("X/Z/D", ((CLEAN_DESCRIPTORS, "C"),)): 81,
+        ("X/Z/D", ((CLEAN_DESCRIPTORS, "C"),)): 84,
         # Accessory and equipment identifiers.
         ("X/Z/D", ((DEVICE_IDENTITY, "K"),)): 30,
         # Coded and technical values, and De-identification Method.
-        ("K", ()): 45,
+        ("K", ()): 47,
         # Names and identifiers of people, organisations, records, and
         # networks, identifiers that a device reads, and the text of overlays.
         ("X/Z/D", ()): 17,
@@ -1360,8 +1360,14 @@ SECOND_GENERATION_KEPT_TEXT = {
     "(3010,0086)",  # Intended Start Day of Week
 }
 # Of the kept text, what the supported second-generation RT IODs use: RT
-# Radiation Set uses Intended Start Day of Week.
-SUPPORTED_SECOND_GENERATION_KEPT_TEXT = {"(3010,0086)"}
+# Radiation Set and RT Physician Intent use Intended Start Day of Week, and RT
+# Patient Position Acquisition Instruction uses Selector Attribute Name and
+# Selector Attribute Keyword.
+SUPPORTED_SECOND_GENERATION_KEPT_TEXT = {
+    "(3010,0086)",  # Intended Start Day of Week
+    "(0082,0018)",  # Selector Attribute Name
+    "(0082,0019)",  # Selector Attribute Keyword
+}
 SECOND_GENERATION_TEXT_GROUPS: tuple[tuple[set[str], str, dict[str, str]], ...] = (
     (SECOND_GENERATION_OPERATOR_TEXT, "X/Z/D", {CLEAN_DESCRIPTORS: "C"}),
     (SECOND_GENERATION_KEPT_TEXT, "K", {}),
@@ -1643,7 +1649,7 @@ def test_the_basic_profile_keeps_only_the_reviewed_coded_and_technical_text():
         for tag in _supported_text()
     }
 
-    assert len(basic) == 313
+    assert len(basic) == 337
     assert {tag for tag, action in basic.items() if action == "K"} == (
         KEPT_TEXT
         | ADDED_KEPT_TEXT

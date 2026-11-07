@@ -898,6 +898,9 @@ def test_instances_keep_their_reviewed_dummy_values(policy_run):
         "C-Arm Photon-Electron Radiation",
         "Tomotherapeutic Radiation",
         "Robotic-Arm Radiation",
+        "RT Physician Intent",
+        "RT Treatment Preparation",
+        "RT Patient Position Acquisition Instruction",
     }
     steps = set()
     # Under Retain UIDs, Table E.1-1 gives K to the sequence and to the

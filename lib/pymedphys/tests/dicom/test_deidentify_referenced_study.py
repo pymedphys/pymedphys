@@ -187,7 +187,7 @@ def test_the_rule_keeps_the_attributes_that_the_macro_defines_in_an_item():
         dummy_values.items_for_d(REFERENCED_STUDY, [], KEY)
 
 
-@pytest.mark.deid_requirement("PS3.15-E.1.1-04")
+@pytest.mark.deid_requirement("PS3.15-E.1.1-04", "MIDI-BP-03")
 def test_d_keeps_each_item_with_only_its_reviewed_attributes():
     plan = _plan(_intent(_study_item(), _study_item(extra=True)))
     planned = {element.path: element for element in plan.elements}

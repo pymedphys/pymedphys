@@ -79,6 +79,9 @@ SUPPORTED = {
     "1.2.840.10008.5.1.4.1.1.481.13": "C-Arm Photon-Electron Radiation",
     "1.2.840.10008.5.1.4.1.1.481.14": "Tomotherapeutic Radiation",
     "1.2.840.10008.5.1.4.1.1.481.15": "Robotic-Arm Radiation",
+    "1.2.840.10008.5.1.4.1.1.481.10": "RT Physician Intent",
+    "1.2.840.10008.5.1.4.1.1.481.22": "RT Treatment Preparation",
+    "1.2.840.10008.5.1.4.1.1.481.25": "RT Patient Position Acquisition Instruction",
     "1.2.840.10008.5.1.4.1.1.66.1": "Spatial Registration",
     "1.2.840.10008.5.1.4.1.1.66.3": "Deformable Spatial Registration",
     "1.2.840.10008.5.1.4.1.1.66.4": "Segmentation",
@@ -128,6 +131,9 @@ def test_the_first_release_supports_ct_mr_pet_rt_registration_seg_and_sr_objects
         "C-Arm Photon-Electron Radiation",
         "Tomotherapeutic Radiation",
         "Robotic-Arm Radiation",
+        "RT Physician Intent",
+        "RT Treatment Preparation",
+        "RT Patient Position Acquisition Instruction",
         "RT Ion Beams Treatment Record",
         "RT Ion Plan",
         "RT Plan",
@@ -219,7 +225,8 @@ def test_padding_is_ignored():
         # Outside the first release: other images, CT, MR, and PET objects
         # that are not images, the segmentations of other IODs, parametric
         # maps, spatial fiducials, and the second-generation RT objects not
-        # yet supported, such as RT Physician Intent and the radiation records.
+        # yet supported, such as the delivery instructions and the radiation
+        # records.
         ("1.2.840.10008.5.1.4.1.1.20", "Nuclear Medicine Image"),
         ("1.2.840.10008.5.1.4.1.1.6.1", "Ultrasound Image"),
         ("1.2.840.10008.5.1.4.1.1.200.2", "CT Performed Procedure Protocol"),
@@ -227,7 +234,7 @@ def test_padding_is_ignored():
         ("1.2.840.10008.5.1.4.1.1.66.8", "Height Map Segmentation"),
         ("1.2.840.10008.5.1.4.1.1.30", "Parametric Map"),
         ("1.2.840.10008.5.1.4.1.1.66.2", "Spatial Fiducials"),
-        ("1.2.840.10008.5.1.4.1.1.481.10", "RT Physician Intent"),
+        ("1.2.840.10008.5.1.4.1.1.481.21", "RT Radiation Set Delivery Instruction"),
         ("1.2.840.10008.5.1.4.1.1.481.18", "Tomotherapeutic Radiation Record"),
     ],
 )
