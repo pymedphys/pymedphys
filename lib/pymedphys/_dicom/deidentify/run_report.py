@@ -232,6 +232,9 @@ class ReleaseReporter:
         The reference of the attested QC pack whose redaction verdicts the
         run applies under the Clean Pixel Data Option, or None, the
         default, without one.
+    residual_review : str, optional
+        The reference of the attested QC pack whose clearings of residual
+        findings the run applies, or None, the default, without one.
     reviewed_descriptors : str or None, optional
         The keyed digest of the reviewed descriptors list that descriptor
         cleaning applies to free-text descriptors, or None, the default,
@@ -309,6 +312,7 @@ class ReleaseReporter:
         technique_vocabulary: str | None = None,
         face_blocks: FaceBlockCounts | None = None,
         redaction_review: str | None = None,
+        residual_review: str | None = None,
         text_finder: Mapping[str, object] | None = None,
         pixel_region_rules: str | None = None,
         safe_private_list: SafePrivateList = SafePrivateList.REVIEWED,
@@ -343,6 +347,7 @@ class ReleaseReporter:
         self._technique_vocabulary = technique_vocabulary
         self._face_blocks = face_blocks
         self._redaction_review = redaction_review
+        self._residual_review = residual_review
         self._text_finder = text_finder
         self._pixel_region_rules = pixel_region_rules
         self._safe_private_list = safe_private_list
@@ -486,6 +491,7 @@ class ReleaseReporter:
             face_review=self._face_review,
             face_blocks=self._face_blocks,
             redaction_review=self._redaction_review,
+            residual_review=self._residual_review,
             reviewed_descriptors=self._reviewed_descriptors,
             technique_vocabulary=self._technique_vocabulary,
             text_finder=self._text_finder,

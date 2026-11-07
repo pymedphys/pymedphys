@@ -168,6 +168,10 @@ class Exemption(enum.Enum):
     UNWRITTEN_CODE_MEANING = "unwritten-code-meaning"
     UNWRITTEN_UID = "unwritten-uid"  # in a UID an option keeps, from unwritten only
     REMOVED_UID = "removed-uid"  # equal to a kept UID, from a removed private copy
+    # a finding that would hold the file for review, which a reviewer cleared
+    # in an attested QC pack of an earlier run of the same source file, in
+    # the same value (residuals.ReviewedFinding)
+    REVIEWED = "reviewed"
 
 
 @dataclasses.dataclass(frozen=True)

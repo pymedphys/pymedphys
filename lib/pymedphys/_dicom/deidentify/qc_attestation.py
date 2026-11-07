@@ -96,6 +96,21 @@ pack's, so that together they cover every burned-in text, and
 :attr:`Redaction.REJECTED` where the instance is not to be released. Each
 is bound to the instance's source file as a face verdict is to its series'.
 
+The attestation may also clear the residual findings of any instance that
+the pack's ``residual_findings`` shows, by its run position: an instance
+that the release gate held for review because the residual search found
+source text in it, such as a removed physician's name that is also a word
+of an Institution Name that an option keeps (D-042). A reviewer who finds,
+from each finding's excerpt, that the value holding it is not identifying,
+such as an institution's own name, clears the instance's findings. The
+pack records the SHA-256 of each source file and of each value holding a
+finding, so the clearing is bound, through the pack, to those values in
+that file; a later run of the same file releases it only where every
+finding that would hold it for review is one that the pack showed, in a
+value with the same SHA-256. A clearing releases nothing that withholds a
+file, such as a UID or a person's name outside kept text, and nothing that
+the reviewer could not see, such as a gap in what the search collected.
+
 The person releasing the data may also confirm, yes or no, that the output
 was checked for its intended use and that its residual risk was accepted
 under the institution's governance. Each confirmation is optional, holds no
@@ -126,10 +141,11 @@ from pathlib import Path
 from . import qc_pack, qc_store
 from .qc_pack import FACE_PREVIEW_REASONS, QcPackError
 from .reasons import DoseChoice
+from .residuals import ReviewedFinding
 from .text_detection import TextBox
 
 # The format of the attestation document. A change to its fields takes a new label.
-FORMAT = "pymedphys-deid-qc-attestation/6"
+FORMAT = "pymedphys-deid-qc-attestation/7"
 ATTESTATION_FILE = "attestation.json"
 
 _DIGEST = re.compile(r"[0-9a-f]{64}")
@@ -386,6 +402,10 @@ class Attestation:
     instance_faces : tuple of InstanceFaceVerdict
         The face verdicts of their own on undefaced instances, by run
         position in order, each once; empty where the reviewer gave none.
+    cleared_residuals : tuple of int
+        The run position of each instance whose residual findings the
+        reviewer cleared, in order, each once; empty where the reviewer
+        cleared none.
     """
 
     reference: str
@@ -401,6 +421,7 @@ class Attestation:
     confirmed_blocks: tuple[int, ...] = ()
     dose_choices: tuple[DoseChoiceVerdict, ...] = ()
     instance_faces: tuple[InstanceFaceVerdict, ...] = ()
+    cleared_residuals: tuple[int, ...] = ()
 
     def __post_init__(self) -> None:
         if not isinstance(self.reference, str) or not _REFERENCE.fullmatch(
@@ -482,6 +503,15 @@ class Attestation:
             raise QcPackError(
                 "an attestation gives each instance at most one face verdict of "
                 "its own, in order"
+            )
+        if (
+            not isinstance(self.cleared_residuals, tuple)
+            or not all(_is_position(position) for position in self.cleared_residuals)
+            or list(self.cleared_residuals) != sorted(set(self.cleared_residuals))
+        ):
+            raise QcPackError(
+                "an attestation clears each instance's residual findings at most "
+                "once, by its run position, in order"
             )
 
     def __repr__(self) -> str:
@@ -574,6 +604,7 @@ def attestation_document(attestation: Attestation) -> dict:
             {"position": verdict.position, "face": verdict.face.value}
             for verdict in attestation.instance_faces
         ],
+        "cleared_residuals": list(attestation.cleared_residuals),
     }
 
 
@@ -591,6 +622,7 @@ def attest(
     confirmed_blocks: Iterable[int] = (),
     dose_choices: Mapping[int, DoseChoice] | None = None,
     instance_faces: Mapping[int, Face] | None = None,
+    cleared_residuals: Iterable[int] = (),
 ) -> Attestation:
     """Attest to a QC pack, and write the attestation beside it.
 
@@ -630,6 +662,11 @@ def attest(
         A face verdict of its own for each instance that the reviewer judged
         from its own previews, by its run position, as the pack's
         ``undefaced_instances`` lists it as shown; none if not given.
+    cleared_residuals : iterable of int
+        The run position of each instance whose residual findings the
+        reviewer cleared, from their excerpts, of those that the pack's
+        ``residual_findings`` shows (:func:`shown_residuals`); none if not
+        given.
 
     Returns
     -------
@@ -648,10 +685,12 @@ def attest(
         pack's eye checks, or one without a sheet of its eyes, or a dose
         choice names a run position that the pack's ``dose_checks`` does not
         list, or an instance's own face verdict names one that the pack's
-        ``undefaced_instances`` does not list, or lists as not shown, or it
-        has already been attested; if an outcome of rejected is given a
-        verdict, a confirmation, or a dose choice; or for any reason that
-        :class:`Attestation` gives.
+        ``undefaced_instances`` does not list, or lists as not shown, or a
+        cleared instance is one with no finding that the pack's
+        ``residual_findings`` shows, or it has already been attested; if an
+        outcome of rejected is given a verdict, a confirmation, a dose
+        choice, or a clearing; or for any reason that :class:`Attestation`
+        gives.
     """
     directory = Path(pack_directory)
     data = _pack_bytes(directory)
@@ -663,7 +702,10 @@ def attest(
     blocks = _confirmed_blocks(confirmed_blocks)
     doses = _dose_choices({} if dose_choices is None else dose_choices)
     own = _instance_faces({} if instance_faces is None else instance_faces)
-    if outcome is Outcome.REJECTED and any((verdicts, by_position, blocks, doses, own)):
+    cleared = _cleared_residuals(cleared_residuals)
+    if outcome is Outcome.REJECTED and any(
+        (verdicts, by_position, blocks, doses, own, cleared)
+    ):
         # A rejected attestation's verdicts release nothing, and a pack is
         # attested once, so a verdict given with it is refused (D-016).
         raise QcPackError(
@@ -699,6 +741,14 @@ def attest(
             raise QcPackError(
                 f"an instance's face verdict names run position {verdict.position}, "
                 "whose previews do not show all of its pixel data, contours, and grids"
+            )
+    shown = shown_residuals(data)
+    for position in cleared:
+        if not shown.get(position):
+            raise QcPackError(
+                f"a clearing names run position {position}, for which the QC "
+                "pack's residual_findings shows no finding with its excerpt and "
+                "the SHA-256 of its value"
             )
     firsts = _firsts(data)
     unknown = [verdict.series for verdict in verdicts if verdict.series not in firsts]
@@ -750,6 +800,7 @@ def attest(
         confirmed_blocks=blocks,
         dose_choices=doses,
         instance_faces=own,
+        cleared_residuals=cleared,
     )
     text = json.dumps(attestation_document(attestation), indent=2, ensure_ascii=True)
     try:
@@ -790,6 +841,86 @@ def _instance_faces(faces: Mapping[int, Face]) -> tuple[InstanceFaceVerdict, ...
         )
     verdicts = [InstanceFaceVerdict(position, face) for position, face in faces.items()]
     return tuple(sorted(verdicts, key=lambda verdict: verdict.position))
+
+
+def _is_position(position: object) -> bool:
+    return (
+        isinstance(position, int) and not isinstance(position, bool) and position >= 0
+    )
+
+
+def _cleared_residuals(cleared: Iterable[int]) -> tuple[int, ...]:
+    """Return the cleared instances' run positions in order, each once."""
+    if isinstance(cleared, (str, bytes, Mapping)) or not isinstance(cleared, Iterable):
+        raise QcPackError("cleared_residuals must be run positions")
+    given = list(cleared)
+    if not all(_is_position(position) for position in given):
+        raise QcPackError("cleared_residuals must be run positions")
+    if len(set(given)) != len(given):
+        raise QcPackError("an instance's residual findings are cleared more than once")
+    return tuple(sorted(given))
+
+
+def shown_residuals(data: bytes) -> dict[int, tuple[ReviewedFinding, ...]]:
+    """Return each residual finding that the QC pack ``data`` shows a reviewer.
+
+    A finding is shown where the pack gives its excerpt and the SHA-256 of
+    the value that holds it, so a reviewer can judge that value and a
+    clearing can be bound to it.
+
+    Returns
+    -------
+    dict of int to tuple of ReviewedFinding
+        By run position, each instance with a shown finding, its findings in
+        the pack's order.
+
+    Raises
+    ------
+    QcPackError
+        If the pack's ``residual_findings`` are not of its format.
+    """
+    malformed = QcPackError("the QC pack is not of its format")
+    entries = json.loads(data.decode("ascii")).get("residual_findings")
+    if not isinstance(entries, list):
+        raise malformed
+    shown: dict[int, list[ReviewedFinding]] = {}
+    for entry in entries:
+        try:
+            position = entry["position"]
+            location = entry["location"]
+            texts = (entry["source"], entry["kind"], entry["form"], entry["encoding"])
+            region = location["region"]
+            element, vr, item = location["element"], location["vr"], location["item"]
+            value_sha256, excerpt = entry["value_sha256"], entry["excerpt"]
+        except (KeyError, TypeError):
+            raise malformed from None
+        located = (
+            all(isinstance(each, str) for each in (*texts, region))
+            and all(each is None or isinstance(each, str) for each in (element, vr))
+            and (item is None or _is_position(item))
+        )
+        shows = (excerpt is None or isinstance(excerpt, dict)) and (
+            value_sha256 is None
+            or (isinstance(value_sha256, str) and _DIGEST.fullmatch(value_sha256))
+        )
+        if not (_is_position(position) and located and shows):
+            raise malformed
+        if excerpt is not None and value_sha256 is not None:
+            source, kind, form, encoding = texts
+            shown.setdefault(position, []).append(
+                ReviewedFinding(
+                    source=source,
+                    kind=kind,
+                    form=form,
+                    encoding=encoding,
+                    region=region,
+                    element=element,
+                    vr=vr,
+                    item=item,
+                    value_sha256=value_sha256,
+                )
+            )
+    return {position: tuple(findings) for position, findings in shown.items()}
 
 
 def _confirmed_blocks(confirmed: Iterable[int]) -> tuple[int, ...]:
@@ -1165,12 +1296,13 @@ def _attestation_from(content: bytes) -> Attestation:
             blocks = document["confirmed_blocks"]
             doses = document["dose_choices"]
             own = document["instance_faces"]
+            cleared = document["cleared_residuals"]
             if (
                 isinstance(coverage, dict)
                 and isinstance(releaser, dict)
                 and all(
                     isinstance(each, list)
-                    for each in (faces, redactions, blocks, doses, own)
+                    for each in (faces, redactions, blocks, doses, own, cleared)
                 )
                 and all(isinstance(verdict, dict) for verdict in (*doses, *own))
             ):
@@ -1203,6 +1335,7 @@ def _attestation_from(content: bytes) -> Attestation:
                         InstanceFaceVerdict(verdict["position"], Face(verdict["face"]))
                         for verdict in own
                     ),
+                    cleared_residuals=tuple(cleared),
                 )
     # UnicodeError and QcPackError are ValueErrors; TypeError covers wrong
     # types and Coverage's unknown or missing fields.

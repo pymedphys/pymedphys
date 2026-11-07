@@ -81,6 +81,16 @@ Otherwise
 it may be released (:attr:`~Decision.RELEASE`). There is no setting that
 changes this.
 
+**Review.** A finding that would hold the file for QC review, under
+``residual-text`` or ``residual-person-name-in-kept-text``, does not hold it
+where a reviewer cleared that finding in an attested QC pack of an earlier
+run of the same source file (D-042): the caller gives the findings cleared
+for the file (:class:`~pymedphys._dicom.deidentify.residuals.ReviewedFinding`),
+and one that the search finds again, in a value with the same SHA-256, is
+exempted as :attr:`~.residual_exemptions.Exemption.REVIEWED`. No review
+clears a finding that withholds the file, or a gap in collection, which
+the reviewer could not see.
+
 Reasons name an attribute path, a code, and for a finding its place, never a
 value, and nothing is logged or warned.
 
@@ -124,9 +134,11 @@ from .residuals import (
     Finding,
     NotSearched,
     ResidualSearch,
+    ReviewedFinding,
     SourceValue,
     ValueKind,
     find_residuals,
+    reviewed_findings,
 )
 from .residual_shifts import KINDS as SHIFTED_KINDS
 from .residual_shifts import shifted_date
@@ -205,6 +217,11 @@ _RESIDUAL_KINDS = {
 # The findings that kept values can explain: text, dates and datetimes equal
 # to a date or time that an option keeps, and UIDs from unwritten instances,
 # or from removed private elements, equal to a UID that an option keeps.
+# The codes of a finding that a reviewer may clear (D-042): those that hold a
+# file for review, not those that withhold it.
+REVIEWABLE = frozenset(
+    {ReasonCode.RESIDUAL_TEXT, ReasonCode.RESIDUAL_PERSON_NAME_IN_KEPT_TEXT}
+)
 _EXPLICABLE = frozenset(
     {
         ReasonCode.RESIDUAL_TEXT,
@@ -636,7 +653,10 @@ class ReleaseCondition:
 
 
 def release_condition(
-    coverage: Coverage, written: bytes | bytearray | memoryview
+    coverage: Coverage,
+    written: bytes | bytearray | memoryview,
+    *,
+    reviewed: frozenset[ReviewedFinding] = frozenset(),
 ) -> ReleaseCondition:
     """Decide whether a written file may be released, as the module describes.
 
@@ -648,6 +668,9 @@ def release_condition(
     written : bytes, bytearray, or memoryview
         The whole written file, which is searched for exactly the values
         that ``coverage`` collected.
+    reviewed : frozenset of ReviewedFinding, optional
+        The findings that a reviewer cleared in an attested QC pack of an
+        earlier run of the file's source; none by default.
 
     Returns
     -------
@@ -665,7 +688,12 @@ def release_condition(
         written, (bytes, bytearray, memoryview)
     ):
         raise TypeError("the release condition needs a Coverage and the written bytes")
+    if not isinstance(reviewed, frozenset) or not all(
+        isinstance(each, ReviewedFinding) for each in reviewed
+    ):
+        raise TypeError("the reviewed findings must be a frozenset of ReviewedFinding")
     search = find_residuals(written, coverage.collected)
+    seen = _Seen(written, search.findings) if reviewed else None
     identifiers = direct_identifiers()
     reasons = [
         ReleaseReason(_gap_decision(path, identifiers), code, path)
@@ -705,6 +733,14 @@ def release_condition(
             if why is not None:
                 exempted.append((each, why))
                 continue
+        if (
+            seen is not None
+            and reason.decision is Decision.QC_REVIEW
+            and reason.code in REVIEWABLE
+            and seen.of(each) in reviewed
+        ):
+            exempted.append((each, Exemption.REVIEWED))
+            continue
         reasons.append(reason)
     decision = max(
         (reason.decision for reason in reasons),
@@ -719,6 +755,28 @@ def release_condition(
         search,
         tuple(exempted),
     )
+
+
+class _Seen:
+    """Each finding of a search as a reviewer sees it, worked out once."""
+
+    def __init__(
+        self, written: bytes | bytearray | memoryview, findings: tuple[Finding, ...]
+    ) -> None:
+        self._written = written
+        self._findings = findings
+        self._seen: dict[int, ReviewedFinding | None] | None = None
+
+    def of(self, finding: Finding) -> ReviewedFinding | None:
+        if self._seen is None:
+            self._seen = dict(
+                zip(
+                    map(id, self._findings),
+                    reviewed_findings(self._written, self._findings),
+                    strict=True,
+                )
+            )
+        return self._seen[id(finding)]
 
 
 def _gap_decision(path: ElementPath, identifiers: frozenset[str]) -> Decision:

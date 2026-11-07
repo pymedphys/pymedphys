@@ -202,6 +202,7 @@ def test_the_document_has_the_sections_and_fields_the_design_lists(basic):
         "qc_review",
         "face_review",
         "redaction_review",
+        "residual_review",
         "pixel_regions",
         "readiness",
         "released",
@@ -218,7 +219,7 @@ def test_the_document_has_the_sections_and_fields_the_design_lists(basic):
         "structural_checks",
         "studies_with_several_patients",
     ]
-    assert document["format"] == "pymedphys-deid-release-report/53"
+    assert document["format"] == "pymedphys-deid-release-report/54"
     assert list(document["policy"]) == POLICY_FIELDS
     assert list(document["method"]) == METHOD_FIELDS
     assert list(document["runtime"]) == RUNTIME_FIELDS

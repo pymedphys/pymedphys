@@ -36,7 +36,8 @@ A pack holds, for one run:
   verdict to what the reviewer saw (D-046);
 - ``residual_findings``: each residual that the search of a written file
   found, by instance and place, with a contextual excerpt of the bytes
-  around it (D-027);
+  around it (D-027), and the SHA-256 of the value that holds it, which
+  binds a reviewer's clearing of it to that value (D-042);
 - ``drops`` and ``not_searched``: each value dropped from the search, because
   the policy retains it or it equals a constant that the engine always
   writes, and each form not searched, by instance and place; the release
@@ -173,7 +174,7 @@ from .reviewed_roi_names import Outcome
 from .text_detection import TextBox
 
 # The format of the pack document. A change to its fields takes a new label.
-FORMAT = "pymedphys-deid-qc-pack/33"
+FORMAT = "pymedphys-deid-qc-pack/34"
 # The bytes of a written file shown on each side of a residual's offset.
 EXCERPT_BYTES = 48
 # The SHA-256 that face_review.contour_data_sha256 gives a file without
@@ -554,11 +555,16 @@ class ResidualEntry:
     finding : ~pymedphys._dicom.deidentify.residuals.Finding
     excerpt : Excerpt, optional
         The bytes around it, from :func:`excerpt`.
+    value_sha256 : str, optional
+        The SHA-256 of the value that holds it in the written file, from
+        :func:`~pymedphys._dicom.deidentify.residuals.reviewed_findings`;
+        ``None`` where it lies outside an element's value.
     """
 
     position: int
     finding: residuals.Finding
     excerpt: Excerpt | None = None
+    value_sha256: str | None = None
 
     def __post_init__(self) -> None:
         _check_position("a residual", self.position)
@@ -569,6 +575,12 @@ class ResidualEntry:
         if self.excerpt is not None and not isinstance(self.excerpt, Excerpt):
             raise QcPackError(
                 f"the residual of instance {self.position} has a bad excerpt"
+            )
+        if self.value_sha256 is not None and not (
+            isinstance(self.value_sha256, str) and _SHA256.fullmatch(self.value_sha256)
+        ):
+            raise QcPackError(
+                f"the residual of instance {self.position} has a bad value SHA-256"
             )
 
 
@@ -2449,6 +2461,7 @@ def _residual(entry: ResidualEntry) -> dict:
         "location": _location(finding.location),
         "offset": finding.offset,
         "excerpt": None,
+        "value_sha256": entry.value_sha256,
     }
     if entry.excerpt is not None:
         document["excerpt"] = dataclasses.asdict(entry.excerpt)
@@ -2501,10 +2514,16 @@ def entries_for_search(
     """
     if not isinstance(search, residuals.ResidualSearch):
         raise TypeError("search must be a ResidualSearch")
+    seen = residuals.reviewed_findings(data, search.findings)
     return (
         tuple(
-            ResidualEntry(position, finding, excerpt(data, finding))
-            for finding in search.findings
+            ResidualEntry(
+                position,
+                finding,
+                excerpt(data, finding),
+                None if each is None else each.value_sha256,
+            )
+            for finding, each in zip(search.findings, seen, strict=True)
         ),
         tuple(NotSearchedEntry(position, omission) for omission in search.not_searched),
     )
