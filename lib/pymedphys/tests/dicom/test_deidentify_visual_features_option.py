@@ -784,7 +784,8 @@ def test_with_clean_pixel_data_both_options_are_claimed_after_review():
         (
             ("clean_pixel_data",),
             "claims Clean Pixel Data only for an instance without top-level "
-            "pixel data or whose regions a reviewer approved, and Clean "
+            "pixel data or an encapsulated document, or whose regions a "
+            "reviewer approved, and Clean "
             "Recognizable Visual Features only for one that cannot show a face "
             "or whose source file a reviewer found free of one.",
         ),

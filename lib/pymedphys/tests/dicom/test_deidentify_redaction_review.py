@@ -809,7 +809,13 @@ def test_the_statement_gives_the_code_only_after_review():
     ) in text
     assert (
         "claims Clean Pixel Data only for an instance without top-level pixel "
-        "data or whose regions a reviewer approved"
+        "data or an encapsulated document, or whose regions a reviewer approved"
+    ) in text
+    assert (
+        "An Encapsulated PDF's document is rendered page by page, at 150 pixels "
+        "per inch, its pages searched and blacked out as RGB frames are, and "
+        "written as an image-only PDF that holds the pages' images and nothing "
+        "else"
     ) in text
 
 
