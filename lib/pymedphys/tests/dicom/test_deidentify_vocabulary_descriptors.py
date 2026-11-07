@@ -180,6 +180,8 @@ def test_a_removed_description_in_a_vocabulary_descriptor_is_released(tag):
         _removed("(0040,0007)", "LO", DESCRIPTION),  # Scheduled Step Description
         _removed("(0040,1400)", "LT", DESCRIPTION),  # Requested Procedure Comments
         _removed("(0020,4000)", "LT", DESCRIPTION),  # Image Comments
+        # An SR TEXT content item's value.
+        _removed("(0040,A160)", "UT", DESCRIPTION, (("(0040,A730)", 0),)),
         # Part of the kept descriptor.
         _removed("(0018,0010)", "LO", "CONTRAST"),
     ],
