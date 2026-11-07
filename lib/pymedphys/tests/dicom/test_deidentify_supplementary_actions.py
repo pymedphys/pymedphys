@@ -136,8 +136,8 @@ ION_REVIEWED_AGAINST = DOSE_SR_REVIEWED_AGAINST + RADIATION_DOSE_SR_IODS
 # and which the first supported release now supports.
 RECORD_IODS = ("RT Brachy Treatment Record", "RT Treatment Summary Record")
 RECORD_REVIEWED_AGAINST = ION_REVIEWED_AGAINST + ION_IODS
-# The six softcopy Presentation State IODs of PS3.3 Sections A.33.1 to A.33.5
-# and A.33.11, which the maintainer's pick of 31 October 2026 brought into
+# The six softcopy Presentation State IODs of PS3.3 Sections A.33.1 to A.33.4,
+# A.33.6, and A.33.8, which the maintainer's pick of 31 October 2026 brought into
 # the target coverage, whose attributes were reviewed against every IOD
 # above, and which the first supported release now supports.
 PRESENTATION_STATE_IODS = (

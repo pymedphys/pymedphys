@@ -460,8 +460,8 @@ ION_TREATMENT_RECORD_FILE = "48-rt-ion-beams-record.dcm"
 BRACHY_TREATMENT_RECORD_FILE = "49-rt-brachy-record.dcm"
 TREATMENT_SUMMARY_RECORD_FILE = "50-rt-treatment-summary-record.dcm"
 # The softcopy Presentation States, one of each of the six IODs of PS3.3
-# Sections A.33.1 to A.33.5 and A.33.11, numbered after the files that open
-# pull requests add.
+# Sections A.33.1 to A.33.4, A.33.6, and A.33.8, numbered after the files
+# that open pull requests add.
 GRAYSCALE_PRESENTATION_STATE_FILE = "56-pr-grayscale.dcm"
 COLOR_PRESENTATION_STATE_FILE = "57-pr-color.dcm"
 PSEUDO_COLOR_PRESENTATION_STATE_FILE = "58-pr-pseudo-color.dcm"
