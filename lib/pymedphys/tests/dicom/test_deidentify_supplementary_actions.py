@@ -428,9 +428,10 @@ def test_every_text_attribute_a_supported_iod_uses_and_table_e1_1_omits_has_a_ru
     # scope includes the RT objects, among them the two RT Ion IODs, which
     # add 13, the brachy and summary treatment records, which add none, the
     # Enhanced and Enhanced Continuous RT Images, which add 1, Segmentation,
-    # which adds 4, and the two dose-report IODs, whose supplementary rules
-    # cover 173 text attributes.
-    assert len(omitted) == 173
+    # which adds 4, the two dose-report IODs, and the three delivery
+    # instructions, which add 1, whose supplementary rules cover 174 text
+    # attributes.
+    assert len(omitted) == 174
     assert omitted <= set(_rules())
     assert {"(0008,0100)", "(300A,00C2)", "(60xx,1500)"} <= omitted
 
@@ -445,7 +446,7 @@ def test_the_rules_for_omitted_text_fall_in_the_reviewed_groups():
 
     assert groups == {
         # Operator-typed labels and text.
-        ("X/Z/D", ((CLEAN_DESCRIPTORS, "C"),)): 80,
+        ("X/Z/D", ((CLEAN_DESCRIPTORS, "C"),)): 81,
         # Accessory and equipment identifiers.
         ("X/Z/D", ((DEVICE_IDENTITY, "K"),)): 30,
         # Coded and technical values, and De-identification Method.
@@ -1332,7 +1333,11 @@ SECOND_GENERATION_RT_IODS = (
     "Robotic-Arm Radiation",
     "Robotic-Arm Radiation Record",
 )
-SECOND_GENERATION_REVIEWED_AGAINST = SUPPORTED_IODS
+# The IODs reviewed before them: the supported ones, less those of the
+# second-generation RT IODs that the first supported release now supports.
+SECOND_GENERATION_REVIEWED_AGAINST = tuple(
+    name for name in SUPPORTED_IODS if name not in SECOND_GENERATION_RT_IODS
+)
 # The text attributes that the second-generation RT IODs use and that neither
 # Table E.1-1 nor the IODs reviewed before them use, by group, checked by hand
 # against the 2026d PS3.3 Sections C.8.8.30, C.36.8, C.36.22, and C.36.29 and
@@ -1631,7 +1636,10 @@ def test_the_basic_profile_keeps_only_the_reviewed_coded_and_technical_text():
         for tag in _supported_text()
     }
 
-    assert len(basic) == 304
+    # The three delivery instructions add 3: Reason for Channel Omission
+    # Description (0074,140B), Displacement Reference Label (300A,079A), and
+    # Reason for Omission Description (300C,0113), none of them kept.
+    assert len(basic) == 307
     assert {tag for tag, action in basic.items() if action == "K"} == (
         KEPT_TEXT
         | ADDED_KEPT_TEXT

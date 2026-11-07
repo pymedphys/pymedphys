@@ -20,7 +20,7 @@ fictitious patient and study, with one Frame of Reference: three CT Image
 slices, an RT Structure Set that references the CT series and slices, an RT
 Plan that references the structure set and the dose, an RT Dose that
 references the plan, a second RT Dose of the plan for review (below), one
-instance of each of thirty-eight other IODs, and two of the Segmentation
+instance of each of forty-five other IODs, and two of the Segmentation
 IOD, one of each of its SOP Classes, each in a series of its own, and a
 second X-Ray Radiation Dose SR, of a CT scan.
 The MR Image and PET Image instances reference the first CT slice, and each
@@ -45,8 +45,8 @@ it continues, and the RT Image as a reference image for verifying a beam;
 the RT Brachy Application Setup Delivery Instruction references the RT Plan,
 by its study, series, and instance; and the RT Radiation Set Delivery
 Instruction references the RT Radiation Set and its C-Arm Photon-Electron
-Radiation. The RT Image, a digitally reconstructed radiograph of 2 by 2 pixels,
-references the RT Plan. The X-Ray Radiation Dose SRs and the Enhanced
+Radiation. The RT Image, a digitally reconstructed radiograph of 2 by 2
+pixels, references the RT Plan. The X-Ray Radiation Dose SRs and the Enhanced
 X-Ray Radiation Dose SR reference the first CT slice, the
 Radiopharmaceutical Radiation Dose SR the PET Image, the Patient Radiation
 Dose SR the CT dose report, which its estimate used, and the Basic Text
@@ -189,7 +189,7 @@ dummy item at that place and only there. Planted in
 every file, the first two would sequester every
 instance, and no preset could release any of the collection; planted in one,
 that instance checks sequestration, :data:`REVIEW_FILE` checks review, and
-the other forty-six check each preset's output, the reports where their
+the other fifty-three check each preset's output, the reports where their
 trees are cleaned. Radiopharmaceutical Start
 DateTime, which CT Image does not define there, is planted in no file, so
 the Enhanced PET instance, which lacks an attribute of Type 1, is released
@@ -225,7 +225,7 @@ Manufacturer's Model Name (0008,1090), which Table E.1-1 does not list and
 the Basic Profile keeps, a copy of the RT Plan's RT Plan Label marker
 (:attr:`PlacementKind.REVIEW_COPY`), so the residual search finds a source
 value of another instance in its output and sends it to review. The third
-CT slice remains sequestered; the other forty-six files stay releasable, the
+CT slice remains sequestered; the other fifty-three files stay releasable, the
 reports where their trees are cleaned.
 
 **Manifest.** :class:`CorpusManifest` records, for each file, each
@@ -1555,7 +1555,7 @@ def build_corpus() -> SyntheticCorpus:
     Returns
     -------
     SyntheticCorpus
-        Forty-eight files: three CT slices; the RT Structure Set, RT Plan, RT
+        Fifty-five files: three CT slices; the RT Structure Set, RT Plan, RT
         Dose, and the RT Dose for review; the Enhanced CT Image and Legacy
         Converted Enhanced CT Image; the MR Image, Enhanced MR Image,
         Enhanced MR Color Image, Legacy Converted Enhanced MR Image, and MR
@@ -1571,10 +1571,13 @@ def build_corpus() -> SyntheticCorpus:
         Colon CAD SR, Procedure Log, Spectacle Prescription Report, Macular
         Grid Thickness and Volume Report, and Waveform Annotation SR; the RT
         Ion Plan and RT Ion Beams Treatment Record; the RT Brachy Treatment
-        Record and RT Treatment Summary Record; and the RT Beams Delivery
-        Instruction, RT Brachy Application Setup Delivery Instruction, and RT
-        Radiation Set Delivery Instruction. Two builds give the same bytes and
-        the same manifest.
+        Record and RT Treatment Summary Record; the Enhanced RT Image and
+        Enhanced Continuous RT Image; the RT Segment Annotation, RT Radiation
+        Set, C-Arm Photon-Electron Radiation, Tomotherapeutic Radiation, and
+        Robotic-Arm Radiation; and the RT Beams Delivery Instruction, RT
+        Brachy Application Setup Delivery Instruction, and RT Radiation Set
+        Delivery Instruction. Two builds give the same bytes and the same
+        manifest.
     """
     markers = _Markers()
     files: list[CorpusFile] = []
