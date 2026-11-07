@@ -799,7 +799,9 @@ def test_the_statement_gives_the_code_only_after_review():
         "of the supported IODs are RT Plan, RT Structure Set, RT Beams Treatment "
         "Record, RT Ion Plan, RT Ion Beams Treatment Record, RT Brachy Treatment "
         "Record, RT Treatment Summary Record, Enhanced RT Image, Enhanced "
-        "Continuous RT Image, RT Beams Delivery Instruction, RT Brachy Application "
+        "Continuous RT Image, RT Segment Annotation, RT Radiation Set, C-Arm "
+        "Photon-Electron Radiation, Tomotherapeutic Radiation, Robotic-Arm "
+        "Radiation, RT Beams Delivery Instruction, RT Brachy Application "
         "Setup Delivery Instruction, RT Radiation Set Delivery Instruction, MR "
         "Spectroscopy, Spatial Registration, "
         "Deformable Spatial Registration, X-Ray Radiation Dose SR, Enhanced X-Ray "
@@ -832,6 +834,11 @@ def test_the_statement_names_each_supported_iod_that_lacks_the_attribute():
         "RT Treatment Summary Record",
         "Enhanced RT Image",
         "Enhanced Continuous RT Image",
+        "RT Segment Annotation",
+        "RT Radiation Set",
+        "C-Arm Photon-Electron Radiation",
+        "Tomotherapeutic Radiation",
+        "Robotic-Arm Radiation",
         "RT Beams Delivery Instruction",
         "RT Brachy Application Setup Delivery Instruction",
         "RT Radiation Set Delivery Instruction",

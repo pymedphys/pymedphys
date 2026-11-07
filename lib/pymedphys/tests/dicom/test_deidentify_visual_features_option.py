@@ -720,6 +720,11 @@ def test_the_statement_names_each_supported_iod_that_lacks_the_attribute():
         "RT Treatment Summary Record",
         "Enhanced RT Image",
         "Enhanced Continuous RT Image",
+        "RT Segment Annotation",
+        "RT Radiation Set",
+        "C-Arm Photon-Electron Radiation",
+        "Tomotherapeutic Radiation",
+        "Robotic-Arm Radiation",
         "RT Beams Delivery Instruction",
         "RT Brachy Application Setup Delivery Instruction",
         "RT Radiation Set Delivery Instruction",
@@ -748,9 +753,11 @@ def test_the_statement_names_each_supported_iod_that_lacks_the_attribute():
         "which of the supported IODs are RT Plan, RT Structure Set, RT Beams "
         "Treatment Record, RT Ion Plan, RT Ion Beams Treatment Record, RT Brachy "
         "Treatment Record, RT Treatment Summary Record, Enhanced RT Image, "
-        "Enhanced Continuous RT Image, RT Beams Delivery Instruction, RT Brachy "
-        "Application Setup Delivery Instruction, RT Radiation Set Delivery "
-        "Instruction, MR Spectroscopy, Spatial "
+        "Enhanced Continuous RT Image, RT Segment Annotation, RT Radiation Set, "
+        "C-Arm Photon-Electron Radiation, Tomotherapeutic Radiation, Robotic-Arm "
+        "Radiation, RT Beams Delivery Instruction, RT Brachy Application Setup "
+        "Delivery Instruction, RT Radiation Set Delivery Instruction, MR "
+        "Spectroscopy, Spatial "
         "Registration, Deformable Spatial Registration, X-Ray Radiation Dose SR, "
         "Enhanced X-Ray Radiation Dose SR, Radiopharmaceutical Radiation Dose SR, "
         "Patient Radiation Dose SR, Basic Text SR, Enhanced SR, Comprehensive SR, "
@@ -1000,6 +1007,11 @@ _FACELESS = (
     "48-rt-ion-beams-record.dcm",
     "49-rt-brachy-record.dcm",
     "50-rt-treatment-summary-record.dcm",
+    "70-rt-segment-annotation.dcm",
+    "71-rt-radiation-set.dcm",
+    "72-c-arm-radiation.dcm",
+    "73-tomotherapeutic-radiation.dcm",
+    "74-robotic-arm-radiation.dcm",
     "75-rt-beams-delivery-instruction.dcm",
     "76-rt-brachy-delivery-instruction.dcm",
     "77-rt-radiation-set-delivery-instruction.dcm",

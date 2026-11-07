@@ -323,7 +323,9 @@ OTHER_SEQUENCES = {
     "(3006,0018)",  # Predecessor Structure Set Sequence
     "(3008,0030)",  # Referenced Treatment Record Sequence
     "(300A,0401)",  # Referenced Setup Image Sequence
+    "(300A,0616)",  # RT Radiation Sequence
     "(300A,0630)",  # Referenced RT Radiation Sequence
+    "(300A,063B)",  # Referenced RT Physician Intent Sequence
     "(300A,0702)",  # Referenced RT Radiation Set Sequence
     "(300A,078B)",  # Referenced RT Treatment Preparation Sequence
     "(300A,078C)",  # Referenced Patient Setup Photo Sequence
@@ -344,7 +346,7 @@ NOT_FOLLOWED = {
     "(0008,3010)": "identifies an irradiation event",
     "(0008,3012)": "identifies a radiopharmaceutical administration event",
     "(0018,1002)": "identifies a device",
-    "(0018,100B)": "identifies a manufacturer's class of device",
+    "(0018,100B)": "identifies a class of device",
     "(0020,9164)": "identifies a dimension organisation",
     "(0040,0554)": "identifies a specimen",
     "(0040,A124)": "is the value of a content item",
@@ -361,11 +363,13 @@ NOT_FOLLOWED = {
     "(300A,0013)": "identifies a dose reference within a plan",
     "(300A,0054)": "identifies a table top alignment event",
     "(300A,0083)": "refers to a dose reference within a plan",
+    "(300A,0609)": "identifies a treatment position group, not an instance",
     "(300A,0785)": "refers to a treatment position group, not an instance",
     "(3010,0006)": "identifies a conceptual volume, not an instance",
     "(3010,000B)": "refers to a conceptual volume, not an instance",
     "(3010,0013)": "refers to a conceptual volume, not an instance",
     "(3010,0015)": "refers to a conceptual volume, not an instance",
+    "(3010,0031)": "refers to a fiducial within an instance",
     # A later change follows frames of reference.
     "(0020,0052)": "identifies a frame of reference",
     "(0064,0003)": "refers to a frame of reference",

@@ -265,6 +265,14 @@ def test_institution_name_is_resolved_by_its_type_at_each_place(statement_for):
     assert found[("RT Ion Beams Treatment Record", ION_INTERLOCK_USER)] == "D"
     assert found[("Enhanced RT Image", AUTHOR_IDENTIFICATION)] == "Z"
     assert found[("Enhanced Continuous RT Image", AUTHOR_IDENTIFICATION)] == "Z"
+    for name in (
+        "RT Segment Annotation",
+        "RT Radiation Set",
+        "C-Arm Photon-Electron Radiation",
+        "Tomotherapeutic Radiation",
+        "Robotic-Arm Radiation",
+    ):
+        assert found[(name, AUTHOR_IDENTIFICATION)] == "Z", name
     assert (
         found[("RT Radiation Set Delivery Instruction", AUTHOR_IDENTIFICATION)] == "Z"
     )
