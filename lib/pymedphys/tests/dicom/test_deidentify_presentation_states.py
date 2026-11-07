@@ -29,7 +29,14 @@ import io
 
 from pymedphys._imports import pydicom, pytest
 
-from pymedphys._dicom.deidentify import iods, policy, run, scope
+from pymedphys._dicom.deidentify import (
+    icc_cleaning,
+    icc_profiles,
+    iods,
+    policy,
+    run,
+    scope,
+)
 from pymedphys._dicom.deidentify.descriptor_cleaning import DescriptorCleaning
 from pymedphys._dicom.deidentify.element_rules import ElementRules
 from pymedphys._dicom.deidentify.face_review import FaceReview
@@ -46,6 +53,8 @@ pytestmark = [pytest.mark.pydicom, pytest.mark.usefixtures("pydicom_behaviour")]
 
 KEY = DeidKey(bytes(range(32)))
 GRAYSCALE_SOFTCOPY_PRESENTATION_STATE_STORAGE = "1.2.840.10008.5.1.4.1.1.11.1"
+COLOR_SOFTCOPY_PRESENTATION_STATE_STORAGE = "1.2.840.10008.5.1.4.1.1.11.2"
+ICC_PROFILE = 0x00282000
 PRESENTATION_STATE_SERIES = "2.25.700"
 PRESENTATION_STATE = "2.25.701"
 PRESENTATION_CREATION_DATE = "(0070,0082)"
@@ -72,10 +81,17 @@ NO_FACE_VERDICTS = FaceReview(
 )
 
 
-def _presentation_state(*, annotated=False):
-    """Return a Grayscale Softcopy Presentation State of the first CT slice."""
+def _presentation_state(*, annotated=False, color=False):
+    """Return a softcopy Presentation State of the first CT slice.
+
+    It is a Grayscale Softcopy Presentation State, or, where ``color`` is
+    true, a Color Softcopy Presentation State, whose ICC Profile Module
+    replaces the grayscale pipeline's Presentation LUT and VOI LUT.
+    """
     dataset = synthetic.instance(
-        GRAYSCALE_SOFTCOPY_PRESENTATION_STATE_STORAGE,
+        COLOR_SOFTCOPY_PRESENTATION_STATE_STORAGE
+        if color
+        else GRAYSCALE_SOFTCOPY_PRESENTATION_STATE_STORAGE,
         PRESENTATION_STATE,
         PRESENTATION_STATE_SERIES,
         ReferencedSeriesSequence=[
@@ -96,7 +112,6 @@ def _presentation_state(*, annotated=False):
     dataset.ContentCreatorName = "SENTINEL^CREATOR"
     dataset.PresentationCreationDate = SOURCE_DATE
     dataset.PresentationCreationTime = SOURCE_TIME
-    dataset.PresentationLUTShape = "IDENTITY"
     dataset.DisplayedAreaSelectionSequence = [
         synthetic.item(
             DisplayedAreaTopLeftHandCorner=[1, 1],
@@ -105,9 +120,15 @@ def _presentation_state(*, annotated=False):
             PresentationPixelSpacing=["1", "1"],
         )
     ]
-    dataset.SoftcopyVOILUTSequence = [
-        synthetic.item(WindowCenter="40", WindowWidth="400")
-    ]
+    if color:
+        dataset.add_new(
+            ICC_PROFILE, "OB", icc_profiles.srgb_profile("A display's profile")
+        )
+    else:
+        dataset.PresentationLUTShape = "IDENTITY"
+        dataset.SoftcopyVOILUTSequence = [
+            synthetic.item(WindowCenter="40", WindowWidth="400")
+        ]
     if annotated:
         dataset.GraphicLayerSequence = [
             synthetic.item(
@@ -219,6 +240,25 @@ def test_a_date_option_releases_a_presentation_state_without_annotations(preset)
     assert area.PresentationSizeMode == "SCALE TO FIT"
     (voi,) = written.SoftcopyVOILUTSequence
     assert (voi.WindowCenter, voi.WindowWidth) == (40, 400)
+
+
+@pytest.mark.parametrize("preset", DATED_PRESETS)
+def test_a_color_presentation_states_icc_profile_is_cleaned_to_its_colorimetry(
+    preset,
+):
+    # ICC Profile is Type 1 in the ICC Profile Module, which the Color
+    # Softcopy Presentation State requires, so X/Z/D resolves to D, which
+    # writes the source profile cleaned of everything but its colorimetry,
+    # as in the enhanced image IODs (D-021, D-022).
+    result = _transformed(preset, _presentation_state(color=True))
+
+    assert isinstance(result, run.Transformed), result
+    written = pydicom.dcmread(io.BytesIO(result.data))
+    assert written[ICC_PROFILE].VR == "OB"
+    assert written[ICC_PROFILE].value == icc_cleaning.clean_profile(
+        icc_profiles.srgb_profile("A display's profile"), "DEIDENTIFIED"
+    )
+    assert b"SENTINEL" not in result.data
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.3-01")
