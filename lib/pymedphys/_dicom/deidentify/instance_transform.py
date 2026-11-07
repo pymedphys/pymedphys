@@ -162,11 +162,13 @@ from .face_review import (
     DEFORMABLE_REGISTRATION_SEQUENCE,
     GRID_TAGS,
     PIXEL_DATA_TAGS,
+    SURFACE_SEGMENTATION,
     FaceReview,
     carries_visual_features,
     contour_data_sha256,
     grid_data_sha256,
     holds_deformation_grid,
+    holds_surface_mesh,
     is_rt_dose,
     is_segmentation,
     pixel_data_sha256,
@@ -1113,7 +1115,12 @@ class InstanceTransform:
     Source Frame of Reference, names one that cannot be read, or refers to
     a defaced slice, is held whatever its verdict
     (:attr:`~.reasons.VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME`),
-    since the run does not clean its grids of the face. Each is marked with
+    since the run does not clean its grids of the face. A Surface
+    Segmentation, or any instance that holds a surface mesh
+    (:func:`~.face_review.holds_surface_mesh`), whose points can trace the
+    skin, never satisfies it, since no preview of the pack draws a mesh
+    (:attr:`~.reasons.VisualFeaturesReason.NO_FACE_VERDICT`), in a defaced
+    series' Frame of Reference or not. Each is marked with
     the option's code and Recognizable Visual Features (0028,0302) set to
     NO, which PS3.15 E.3.2 adds whether or not its IOD defines the
     attribute. Any other instance that can show a face is written without
@@ -1499,11 +1506,15 @@ class InstanceTransform:
         since only they show its doses as they could show a face, and a
         Segmentation, by its IOD, SOP Class UID, or Modality, where it has
         more than its segments sheet showed, since only that shows the
-        surfaces that its segments trace (D-017).
+        surfaces that its segments trace (D-017). A Surface Segmentation, or
+        any instance that holds a surface mesh, is held whatever its
+        verdict, since no preview of the pack draws a mesh.
         """
         review = self._face_review
         if review is None or not carries_visual_features(dataset, iod.name):
             return None
+        if iod.name == SURFACE_SEGMENTATION or holds_surface_mesh(dataset):
+            return HeldVisualFeatures(VisualFeaturesReason.NO_FACE_VERDICT)
         reason = review.hold_reason(
             hashlib.sha256(data).digest(),
             _pixel_digest(writing, dataset),
