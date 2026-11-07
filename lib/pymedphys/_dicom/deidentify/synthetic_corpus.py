@@ -355,6 +355,11 @@ RT_BRACHY_TREATMENT_RECORD_STORAGE = "1.2.840.10008.5.1.4.1.1.481.6"
 RT_TREATMENT_SUMMARY_RECORD_STORAGE = "1.2.840.10008.5.1.4.1.1.481.7"
 ENHANCED_RT_IMAGE_STORAGE = "1.2.840.10008.5.1.4.1.1.481.23"
 ENHANCED_CONTINUOUS_RT_IMAGE_STORAGE = "1.2.840.10008.5.1.4.1.1.481.24"
+RT_SEGMENT_ANNOTATION_STORAGE = "1.2.840.10008.5.1.4.1.1.481.11"
+RT_RADIATION_SET_STORAGE = "1.2.840.10008.5.1.4.1.1.481.12"
+C_ARM_PHOTON_ELECTRON_RADIATION_STORAGE = "1.2.840.10008.5.1.4.1.1.481.13"
+TOMOTHERAPEUTIC_RADIATION_STORAGE = "1.2.840.10008.5.1.4.1.1.481.14"
+ROBOTIC_ARM_RADIATION_STORAGE = "1.2.840.10008.5.1.4.1.1.481.15"
 # The retired class that PS3.3 Sections 10.6.1 and C.8.8.5.4 give a study in
 # a Referenced Study Sequence or RT Referenced Study Sequence item.
 DETACHED_STUDY_MANAGEMENT = "1.2.840.10008.3.1.2.3.1"
@@ -421,6 +426,14 @@ TREATMENT_SUMMARY_RECORD_FILE = "50-rt-treatment-summary-record.dcm"
 # Plan's beam, numbered after the files that open pull requests add.
 ENHANCED_RT_IMAGE_FILE = "51-rt-image-enhanced.dcm"
 ENHANCED_CONTINUOUS_RT_IMAGE_FILE = "52-rt-image-enhanced-continuous.dcm"
+# The RT Segment Annotation of the Segmentation, and the RT Radiation Set and
+# the three radiations, one of each second-generation radiation IOD, that it
+# gathers, numbered after the files that open pull requests add.
+SEGMENT_ANNOTATION_FILE = "70-rt-segment-annotation.dcm"
+RADIATION_SET_FILE = "71-rt-radiation-set.dcm"
+C_ARM_RADIATION_FILE = "72-c-arm-radiation.dcm"
+TOMOTHERAPEUTIC_RADIATION_FILE = "73-tomotherapeutic-radiation.dcm"
+ROBOTIC_ARM_RADIATION_FILE = "74-robotic-arm-radiation.dcm"
 # The directory, within the one that write_corpus is given, of the files.
 INSTANCES_DIRECTORY = "instances"
 
@@ -517,6 +530,16 @@ ENHANCED_RT_IMAGE_SERIES = f"{LINKED_UID_ROOT}04800"
 ENHANCED_RT_IMAGE = f"{LINKED_UID_ROOT}04801"
 ENHANCED_CONTINUOUS_RT_IMAGE_SERIES = f"{LINKED_UID_ROOT}04900"
 ENHANCED_CONTINUOUS_RT_IMAGE = f"{LINKED_UID_ROOT}04901"
+SEGMENT_ANNOTATION_SERIES = f"{LINKED_UID_ROOT}06600"
+SEGMENT_ANNOTATION = f"{LINKED_UID_ROOT}06601"
+RADIATION_SET_SERIES = f"{LINKED_UID_ROOT}06700"
+RADIATION_SET = f"{LINKED_UID_ROOT}06701"
+C_ARM_RADIATION_SERIES = f"{LINKED_UID_ROOT}06800"
+C_ARM_RADIATION = f"{LINKED_UID_ROOT}06801"
+TOMOTHERAPEUTIC_RADIATION_SERIES = f"{LINKED_UID_ROOT}06900"
+TOMOTHERAPEUTIC_RADIATION = f"{LINKED_UID_ROOT}06901"
+ROBOTIC_ARM_RADIATION_SERIES = f"{LINKED_UID_ROOT}07000"
+ROBOTIC_ARM_RADIATION = f"{LINKED_UID_ROOT}07001"
 # A patient and a procedure step that the collection names but does not hold.
 PATIENT_REFERENCE = f"{LINKED_UID_ROOT}00003"
 PROCEDURE_STEP = f"{LINKED_UID_ROOT}00004"
@@ -588,6 +611,8 @@ _REVIEWED_DUMMY_SEQUENCES = frozenset(
 # Where an RT Structure Set references every CT slice, not only the first.
 _RT_REFERENCED_CONTOUR_IMAGES = ("(3006,0010)", "(3006,0012)", "(3006,0014)")
 _REFERENCED_RT_PLAN_SEQUENCE = "(300C,0002)"
+_RT_RADIATION_SEQUENCE = "(300A,0616)"
+_REFERENCED_RT_RADIATION_SEQUENCE = "(300A,0630)"
 _REFERENCED_TREATMENT_RECORD_SEQUENCE = "(3008,0030)"
 # The instance a reference names, by the innermost sequence that holds it.
 _TARGETS = types.MappingProxyType(
@@ -599,6 +624,16 @@ _TARGETS = types.MappingProxyType(
         _CONTOUR_IMAGE_SEQUENCE: CT_SLICES[0],
         "(0008,1120)": PATIENT_REFERENCE,  # Referenced Patient Sequence
         "(0008,1111)": PROCEDURE_STEP,  # Referenced Performed Procedure Step
+    }
+)
+# The RT Radiation Set and the radiations, whose Modality PS3.3 Sections
+# A.86.1.4.4.1 to A.86.1.7.4.1 make RTRAD.
+_RADIATIONS = frozenset(
+    {
+        RT_RADIATION_SET_STORAGE,
+        C_ARM_PHOTON_ELECTRON_RADIATION_STORAGE,
+        TOMOTHERAPEUTIC_RADIATION_STORAGE,
+        ROBOTIC_ARM_RADIATION_STORAGE,
     }
 )
 _SOP_CLASSES = types.MappingProxyType(
@@ -648,6 +683,11 @@ _SOP_CLASSES = types.MappingProxyType(
         TREATMENT_SUMMARY_RECORD: RT_TREATMENT_SUMMARY_RECORD_STORAGE,
         ENHANCED_RT_IMAGE: ENHANCED_RT_IMAGE_STORAGE,
         ENHANCED_CONTINUOUS_RT_IMAGE: ENHANCED_CONTINUOUS_RT_IMAGE_STORAGE,
+        SEGMENT_ANNOTATION: RT_SEGMENT_ANNOTATION_STORAGE,
+        RADIATION_SET: RT_RADIATION_SET_STORAGE,
+        C_ARM_RADIATION: C_ARM_PHOTON_ELECTRON_RADIATION_STORAGE,
+        TOMOTHERAPEUTIC_RADIATION: TOMOTHERAPEUTIC_RADIATION_STORAGE,
+        ROBOTIC_ARM_RADIATION: ROBOTIC_ARM_RADIATION_STORAGE,
         PATIENT_REFERENCE: DETACHED_PATIENT_MANAGEMENT,
         PROCEDURE_STEP: MODALITY_PERFORMED_PROCEDURE_STEP,
     }
@@ -1395,6 +1435,52 @@ _SPECS = (
         ENHANCED_CONTINUOUS_RT_IMAGE_SERIES,
         PLAN,
     ),
+    # The RT Segment Annotation annotates the BINARY Segmentation's segments.
+    # The RT Radiation Set gathers the C-Arm Photon-Electron Radiation, which
+    # its RT Radiation Sequence and Referenced RT Radiation Sequences name;
+    # each radiation names the structure set as the source of its Conceptual
+    # Volumes, as an RT Plan names the structure set that it was planned on.
+    _Spec(
+        SEGMENT_ANNOTATION_FILE,
+        RT_SEGMENT_ANNOTATION_STORAGE,
+        SEGMENT_ANNOTATION,
+        SEGMENT_ANNOTATION_SERIES,
+        SEGMENTATION,
+    ),
+    _Spec(
+        RADIATION_SET_FILE,
+        RT_RADIATION_SET_STORAGE,
+        RADIATION_SET,
+        RADIATION_SET_SERIES,
+        STRUCTURE_SET,
+        targets=(
+            (_RT_RADIATION_SEQUENCE, C_ARM_RADIATION),
+            (_REFERENCED_RT_RADIATION_SEQUENCE, C_ARM_RADIATION),
+        ),
+    ),
+    *(
+        _Spec(name, sop_class, instance, series, STRUCTURE_SET)
+        for name, sop_class, instance, series in (
+            (
+                C_ARM_RADIATION_FILE,
+                C_ARM_PHOTON_ELECTRON_RADIATION_STORAGE,
+                C_ARM_RADIATION,
+                C_ARM_RADIATION_SERIES,
+            ),
+            (
+                TOMOTHERAPEUTIC_RADIATION_FILE,
+                TOMOTHERAPEUTIC_RADIATION_STORAGE,
+                TOMOTHERAPEUTIC_RADIATION,
+                TOMOTHERAPEUTIC_RADIATION_SERIES,
+            ),
+            (
+                ROBOTIC_ARM_RADIATION_FILE,
+                ROBOTIC_ARM_RADIATION_STORAGE,
+                ROBOTIC_ARM_RADIATION,
+                ROBOTIC_ARM_RADIATION_SERIES,
+            ),
+        )
+    ),
 )
 
 
@@ -2071,6 +2157,10 @@ class _Instance:
             ENHANCED_CONTINUOUS_RT_IMAGE_STORAGE,
         ):
             self._add_enhanced_rt_image()
+        elif self.spec.sop_class == RT_SEGMENT_ANNOTATION_STORAGE:
+            put((), "(0008,0060)", ["RTSEGANN"])
+        elif self.spec.sop_class in _RADIATIONS:
+            put((), "(0008,0060)", ["RTRAD"])
         else:
             put((), "(0008,0060)", ["RTDOSE"])
             put((), "(0020,0032)", ["-1", "-1", "0"])
