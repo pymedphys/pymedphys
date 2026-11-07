@@ -67,10 +67,14 @@ that the run's safe private list keeps, or a value that an option of the run
 keeps explains it
 (:func:`~pymedphys._dicom.deidentify.residual_exemptions.exemption`), or the
 text is the meaning of a standard code that only instances the run does not
-write held, or a removed requested procedure code's Code Value, Coding
-Scheme Designator, or Code Meaning equal to the same attribute of a kept
-code item, as where equipment copied the request's code into the
-procedure's. A date or datetime equal to a whole date, time, or datetime that
+write held, or it is found in a kept Code Meaning made only of words of the
+reviewed technique vocabulary, which echoes no identifier of the subject,
+from a source that is not an institution's or a station's name
+(:func:`~pymedphys._dicom.deidentify.residual_vocabulary.vocabulary_meaning`),
+or it is a removed requested procedure code's Code Value, Coding Scheme
+Designator, or Code Meaning equal to the same attribute of a kept code item,
+as where equipment copied the request's code into the procedure's
+(:func:`~pymedphys._dicom.deidentify.residual_exemptions.copied_request_code`). A date or datetime equal to a whole date, time, or datetime that
 an option keeps, or a datetime whose date equals a whole date that an option
 keeps, does not withhold the file either
 (:func:`~pymedphys._dicom.deidentify.residual_exemptions.retained_date`), nor
@@ -117,6 +121,7 @@ from .option_kept import kept_text
 from .residual_exemptions import (
     Exemption,
     KeptValues,
+    copied_request_code,
     exemption,
     removed_uid,
     retained_date,
@@ -133,6 +138,7 @@ from .residuals import (
 )
 from .residual_shifts import KINDS as SHIFTED_KINDS
 from .residual_shifts import shifted_date
+from .residual_vocabulary import vocabulary_meaning
 from .policy import SAFE_PRIVATE
 from .safe_private import SafePrivateList
 from .standard import ProfileTable, dictionary_attribute, load_table_e1_1
@@ -305,7 +311,7 @@ class Coverage:
         (:func:`~pymedphys._dicom.deidentify.residual_exemptions.removed_uid`),
         and a requested procedure code's value found from such values alone,
         equal to the same attribute of a kept code item, can be explained
-        (:attr:`~pymedphys._dicom.deidentify.residual_exemptions.Exemption.COPIED_REQUEST_CODE`).
+        (:func:`~pymedphys._dicom.deidentify.residual_exemptions.copied_request_code`).
     safe_private_list : SafePrivateList or None, optional
         The safe private list that the run chose under the Retain Safe
         Private Option, whose kept private creators can explain a text
@@ -692,14 +698,17 @@ def release_condition(
         if reason.code in _EXPLICABLE:
             kept = kept or KeptValues(written)
             if reason.code is ReasonCode.RESIDUAL_TEXT:
-                why = exemption(
-                    each,
-                    kept,
-                    sources,
-                    coverage.options,
-                    coverage.unwritten & coverage.coded,
-                    coverage.safe_private_list,
-                    coverage.removed,
+                why = (
+                    exemption(
+                        each,
+                        kept,
+                        sources,
+                        coverage.options,
+                        coverage.unwritten & coverage.coded,
+                        coverage.safe_private_list,
+                    )
+                    or vocabulary_meaning(each, kept, sources)
+                    or copied_request_code(each, kept, sources, coverage.removed)
                 )
             elif reason.code is ReasonCode.RESIDUAL_UID:
                 why = unwritten_uid(
