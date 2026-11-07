@@ -23,7 +23,10 @@ Usage:
   ``traceroute`` and ``sudo``. TCIA's site sometimes stops answering a
   runner, and TCIA can match these with its own logs. With ``--github-env``, it also appends
   ``MIDI_B_RUNNER_ADDRESS=<address>`` to that file, GitHub's
-  ``GITHUB_ENV``, when the address is known. It never fails.
+  ``GITHUB_ENV``, when the address is known, and ``MIDI_B_TCIA_TIMED_OUT=1``
+  when every TCP connect test timed out, so that the workflow's later steps
+  stop rather than wait on TCIA: no runner whose tests all timed out has
+  reached TCIA later in its job. It never fails.
 
 TCIA publishes MIDI-B's answer keys (https://doi.org/10.7937/cf2p-aw56,
 CC BY 4.0) only as Faspex packages. The MIDI-B Benchmark workflow uses this
@@ -57,6 +60,7 @@ import urllib.request
 import zipfile
 from http import HTTPStatus
 from pathlib import Path
+from typing import NamedTuple
 
 PAGE = "https://www.cancerimagingarchive.net/collection/midi-b-test-midi-b-validation/"
 USER_AGENT = "pymedphys-midi-b"
@@ -401,19 +405,27 @@ def public_address() -> str | None:
     return None
 
 
-def connect(host: str, port: int = PORT) -> list[str]:
+class Probe(NamedTuple):
+    """A TCP connect test of one of a host's addresses, or why there was none."""
+
+    line: str
+    timed_out: bool = False
+
+
+def connect(host: str, port: int = PORT) -> list[Probe]:
     """Each address that ``host`` resolves to, and how a TCP connection fares."""
     try:
         found = socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)
     except OSError as error:
-        return [f"{host} does not resolve ({failure(error)})"]
-    lines = []
+        return [Probe(f"{host} does not resolve ({failure(error)})")]
+    probes = []
     tried: set[str] = set()
     for family, kind, protocol, _, address in found:
         if address[0] in tried:
             continue
         tried.add(address[0])
         started = time.monotonic()
+        timed_out = False
         try:
             with socket.socket(family, kind, protocol) as connection:
                 connection.settimeout(CONNECT_TIMEOUT)
@@ -424,8 +436,12 @@ def connect(host: str, port: int = PORT) -> list[str]:
                 f"no connection after {time.monotonic() - started:.1f} s "
                 f"({failure(error)})"
             )
-        lines.append(f"{host} at {address[0]} port {port}: {outcome}")
-    return lines
+            # The socket's own timeout, or the kernel's (ETIMEDOUT).
+            timed_out = isinstance(error, TimeoutError)
+        probes.append(
+            Probe(f"{host} at {address[0]} port {port}: {outcome}", timed_out)
+        )
+    return probes
 
 
 def ipv4_address(host: str) -> str | None:
@@ -479,7 +495,8 @@ def network(github_env: Path | None = None) -> int:
     The traces are ICMP traceroutes to the first IPv4 address of each host
     and of :data:`TRACE_CONTROL`, one an address. Given ``github_env``, also
     append ``MIDI_B_RUNNER_ADDRESS=<address>`` to it when the runner's
-    address is known.
+    address is known, and ``MIDI_B_TCIA_TIMED_OUT=1`` when every TCP connect
+    test timed out.
     """
     address = public_address()
     print(
@@ -490,9 +507,19 @@ def network(github_env: Path | None = None) -> int:
         # A checked IP address: a single line, with nothing to escape.
         with github_env.open("a", encoding="utf-8") as file:
             file.write(f"MIDI_B_RUNNER_ADDRESS={address}\n")
+    probes = []
     for host in HOSTS:
-        for line in connect(host):
-            print(line, flush=True)
+        for probe in connect(host):
+            print(probe.line, flush=True)
+            probes.append(probe)
+    # From 1 to 7 November 2026, no runner whose connect tests to TCIA all
+    # timed out reached TCIA later in its job (19 of 147 runners), so the
+    # workflow stops such a job where it would first need TCIA.
+    if probes and all(probe.timed_out for probe in probes):
+        print("Every TCP connect test to TCIA timed out.", flush=True)
+        if github_env is not None:
+            with github_env.open("a", encoding="utf-8") as file:
+                file.write("MIDI_B_TCIA_TIMED_OUT=1\n")
     # One trace an address: TCIA's hosts may share one.
     traced: set[str] = set()
     for host in (*HOSTS, TRACE_CONTROL):
@@ -603,7 +630,10 @@ def main(argv: list[str]) -> int:
     probing.add_argument(
         "--github-env",
         type=Path,
-        help="A file to append MIDI_B_RUNNER_ADDRESS=<address> to.",
+        help=(
+            "A file to append MIDI_B_RUNNER_ADDRESS=<address> to, and "
+            "MIDI_B_TCIA_TIMED_OUT=1 when every TCP connect test timed out."
+        ),
     )
     arguments = parser.parse_args(argv)
     if arguments.command == "network":

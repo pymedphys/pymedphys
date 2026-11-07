@@ -484,6 +484,7 @@ def download(
     answer_key_file: str | Path | None = None,
     images_from: str = "pinned",
     images_file: str | Path | None = None,
+    tcia: bool = True,
     workers: int = 8,
     opener: Opener = open_url,
     progress: Callable[[str], None] | None = None,
@@ -511,6 +512,11 @@ def download(
         A local copy of the images' ZIP file, such as one downloaded from
         Zenodo, to use in place of fetching the images, checked against the
         pinned digest when one is pinned.
+    tcia : bool, default True
+        Whether the images may come from TCIA. ``False`` stops the download
+        where they would, before anything is fetched when nothing else could
+        give them, as for a runner whose TCP connect tests to TCIA's servers
+        all timed out.
     workers : int, default 8
         How many series to fetch from TCIA at once.
     opener : callable, optional
@@ -531,8 +537,9 @@ def download(
         manifest, the images, their ZIP file, or the answer key do not match
         the pinned digests or counts, the images' ZIP file is not as
         :func:`pack` writes one, an answer key is given without its digest,
-        both a URL and a file are given for it, or it is neither an SQLite
-        database nor a ZIP file holding exactly one.
+        both a URL and a file are given for it, it is neither an SQLite
+        database nor a ZIP file holding exactly one, or the images would come
+        from TCIA when ``tcia`` is ``False``.
     """
     destination = Path(destination)
     if destination.exists() or not destination.parent.is_dir():
@@ -548,6 +555,10 @@ def download(
             )
         if not Path(images_file).is_file():
             raise DownloadError("the images' ZIP file is not a file")
+    elif not tcia and (images_from == "tcia" or not subset.images_url):
+        raise DownloadError(
+            "the images would come from TCIA, which this download may not use"
+        )
     if answer_key_file is not None:
         if not Path(answer_key_file).is_file():
             raise DownloadError("the answer key file is not a file")
@@ -577,6 +588,7 @@ def download(
             scratch,
             images_from=images_from,
             images_file=None if images_file is None else Path(images_file),
+            tcia=tcia,
             opener=opener,
             workers=workers,
             say=say,
@@ -635,6 +647,7 @@ def _images(
     *,
     images_from: str,
     images_file: Path | None,
+    tcia: bool,
     opener: Opener,
     workers: int,
     say: Callable[[str], None],
@@ -663,6 +676,10 @@ def _images(
             # Only a failed fetch falls back to TCIA. A copy that does not
             # match its pin stops the download, below, to be looked into.
             archive.unlink(missing_ok=True)
+            if not tcia:
+                raise DownloadError(
+                    f"{error}, and this download may not take the images from TCIA"
+                ) from None
             say(f"Taking the images from TCIA instead: {error}")
             source["fallback"] = {"from": subset.images_url, "failure": str(error)}
         else:
@@ -1028,6 +1045,7 @@ def main(
         for option, value in (
             ("--images-from", arguments.images_from),
             ("--images-file", arguments.images_file),
+            ("--no-tcia", arguments.no_tcia or None),
         ):
             if value is not None:
                 parser.error(f"{option} goes with --dest")
@@ -1061,6 +1079,7 @@ def main(
             answer_key_file=arguments.answer_key_file,
             images_from=arguments.images_from or "pinned",
             images_file=arguments.images_file,
+            tcia=not arguments.no_tcia,
             workers=arguments.workers,
             opener=functools.partial(open_url, agent=agent),
             progress=lambda line: print(line, file=sys.stderr, flush=True),
@@ -1115,6 +1134,14 @@ def _parser(subsets: Mapping[str, Subset]) -> argparse.ArgumentParser:
             "A local copy of the images' ZIP file, such as one downloaded "
             "from Zenodo, used in place of fetching the images and checked "
             "against the pins."
+        ),
+    )
+    parser.add_argument(
+        "--no-tcia",
+        action="store_true",
+        help=(
+            "Stop rather than take the images from TCIA, as for a machine "
+            "whose TCP connect tests to TCIA's servers all timed out."
         ),
     )
     parser.add_argument(

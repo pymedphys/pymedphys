@@ -968,6 +968,72 @@ def test_images_from_tcia_skip_the_pinned_copy(tmp_path):
     assert record["images"] == {"source": "tcia"}
 
 
+def test_without_tcia_the_pinned_copy_is_still_taken(tmp_path):
+    packed = _packed(tmp_path)
+    server = Server(images=packed)
+    record = midi_download.download(
+        _subset(images_url=IMAGES_URL, images_sha256=_sha256(packed)),
+        tmp_path / "midi",
+        opener=server,
+        tcia=False,
+    )
+    assert server.requests == [KEY_URL, IMAGES_URL]
+    assert record["images"]["source"] == "pinned"
+
+
+def test_without_tcia_a_copy_that_cannot_be_fetched_stops_the_download(
+    tmp_path, no_sleep
+):
+    server = Server()  # Answers the images' URL with 404.
+    with pytest.raises(DownloadError) as raised:
+        midi_download.download(
+            _subset(images_url=IMAGES_URL, images_sha256="0" * 64),
+            tmp_path / "midi",
+            opener=server,
+            tcia=False,
+        )
+    assert str(raised.value) == (
+        "the images' ZIP file could not be fetched after 6 attempts (HTTPError 404), "
+        "and this download may not take the images from TCIA"
+    )
+    # Neither TCIA's manifest nor NBIA is asked for anything.
+    assert set(server.requests) == {KEY_URL, IMAGES_URL}
+    assert len(no_sleep) == midi_download.ATTEMPTS - 1
+
+
+@pytest.mark.parametrize(
+    "subset, arguments",
+    [
+        (_subset(), {}),
+        (_subset(), {"images_from": "tcia"}),
+        (
+            _subset(images_url=IMAGES_URL, images_sha256="0" * 64),
+            {"images_from": "tcia"},
+        ),
+    ],
+)
+def test_without_tcia_images_that_only_tcia_could_give_are_refused_at_once(
+    tmp_path, subset, arguments
+):
+    server = Server()
+    with pytest.raises(DownloadError, match="the images would come from TCIA"):
+        midi_download.download(
+            subset, tmp_path / "midi", opener=server, tcia=False, **arguments
+        )
+    assert not server.requests
+    assert not (tmp_path / "midi").exists()
+
+
+def test_without_tcia_a_local_copy_of_the_images_is_still_taken(tmp_path):
+    packed = _packed(tmp_path)
+    copy = tmp_path / "copy.zip"
+    copy.write_bytes(packed)
+    record = midi_download.download(
+        _subset(), tmp_path / "midi", opener=Server(), images_file=copy, tcia=False
+    )
+    assert record["images"]["source"] == "file"
+
+
 @pytest.mark.parametrize("pinned", [True, False])
 def test_a_local_copy_of_the_images_zip_is_unpacked(tmp_path, pinned):
     packed = _packed(tmp_path)
@@ -1166,8 +1232,35 @@ def test_the_command_takes_the_images_from_a_local_copy(tmp_path, capsys):
     assert json.loads(capsys.readouterr().out)["images"]["source"] == "file"
 
 
+def test_the_command_can_refuse_tcia(tmp_path):
+    calls = []
+
+    def download(*_, **kwargs):
+        calls.append(kwargs["tcia"])
+        raise DownloadError(
+            "the images would come from TCIA, which this download may not use"
+        )
+
+    for arguments, tcia in (([], True), (["--no-tcia"], False)):
+        with pytest.MonkeyPatch.context() as patch:
+            patch.setattr(midi_download, "download", download)
+            with pytest.raises(SystemExit, match="may not use"):
+                midi_download.main(
+                    [
+                        "--subset",
+                        "validation",
+                        "--dest",
+                        str(tmp_path / "midi"),
+                        *arguments,
+                    ],
+                    subsets={"validation": _subset()},
+                )
+        assert calls[-1] is tcia
+
+
 @pytest.mark.parametrize(
-    "arguments", [["--images-file", "x.zip"], ["--images-from", "tcia"]]
+    "arguments",
+    [["--images-file", "x.zip"], ["--images-from", "tcia"], ["--no-tcia"]],
 )
 def test_image_sources_go_only_with_a_download(tmp_path, capsys, arguments):
     with pytest.raises(SystemExit):

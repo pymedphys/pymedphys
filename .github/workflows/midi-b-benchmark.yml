@@ -315,7 +315,11 @@ jobs:
       # match these with its own logs. They hold no MIDI-B data. Each request
       # to TCIA's site and to NBIA also names the runner's address and the
       # run in its User-Agent header, so that TCIA can find the job's
-      # requests in its logs.
+      # requests in its logs. When every TCP connect test times out, the
+      # record sets MIDI_B_TCIA_TIMED_OUT=1, and the job stops where it would
+      # first need TCIA: no runner whose tests all timed out has reached TCIA
+      # later in its job (19 of 147 runners from 1 to 7 November 2026), and
+      # a re-run gets another runner.
       - name: Record how the runner reaches TCIA
         continue-on-error: true
         timeout-minutes: 5
@@ -330,6 +334,10 @@ jobs:
         run: |
           if [[ -n "${ANSWER_KEY_URL}" ]]; then
             echo "Give an answer key's URL or take the keys from TCIA, not both."
+            exit 1
+          fi
+          if [[ "${MIDI_B_TCIA_TIMED_OUT:-}" == 1 ]]; then
+            echo "::error::Every TCP connect test from this runner to TCIA timed out, and no runner whose tests all timed out has reached TCIA later in its job. Run this job again: it will get another runner."
             exit 1
           fi
           gem_file="${RUNNER_TEMP}/aspera-cli-${ASPERA_GEM_VERSION}.gem"
@@ -370,6 +378,7 @@ jobs:
       # images-from: pinned, it fetches the images' ZIP file pinned in
       # midi_data.toml, when one is pinned, and takes the images from TCIA
       # only if that file cannot be fetched; download.json records which.
+      # With --no-tcia, it stops where it would take them from TCIA.
       - name: Download the subset
         run: |
           note="runner ${MIDI_B_RUNNER_ADDRESS:-unknown}; run ${GITHUB_RUN_ID}/${GITHUB_RUN_ATTEMPT}; ${SUBSET} ${GROUP}"
@@ -384,6 +393,10 @@ jobs:
           fi
           if [[ -n "${ANSWER_KEY_FILE:-}" ]]; then
             args+=(--answer-key-file "${ANSWER_KEY_FILE}")
+          fi
+          if [[ "${MIDI_B_TCIA_TIMED_OUT:-}" == 1 ]]; then
+            echo "Every TCP connect test to TCIA timed out, so the images may not come from TCIA: if they would, the download stops, and the job should be run again."
+            args+=(--no-tcia)
           fi
           uv run --no-sync python .github/scripts/run_redacted.py \
             pymedphys._dicom.deidentify.midi_download "${args[@]}"

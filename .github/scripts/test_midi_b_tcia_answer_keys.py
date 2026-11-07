@@ -373,7 +373,11 @@ class NetworkTests(unittest.TestCase):
         output = StringIO()
         with (
             mock.patch.object(keys, "public_address", return_value="203.0.113.5"),
-            mock.patch.object(keys, "connect", side_effect=lambda host: [f"{host} ok"]),
+            mock.patch.object(
+                keys,
+                "connect",
+                side_effect=lambda host: [keys.Probe(f"{host} ok")],
+            ),
             mock.patch.object(keys, "ipv4_address", side_effect=addresses.get),
             mock.patch.object(
                 keys,
@@ -441,6 +445,107 @@ class NetworkTests(unittest.TestCase):
                 github_env.read_text(encoding="utf-8"),
                 "EARLIER=1\nMIDI_B_RUNNER_ADDRESS=203.0.113.5\n",
             )
+
+    def _network(self, probes, github_env=None):
+        output = StringIO()
+        with (
+            mock.patch.object(keys, "public_address", return_value="203.0.113.5"),
+            mock.patch.object(keys, "connect", side_effect=lambda host: probes[host]),
+            mock.patch.object(keys, "ipv4_address", return_value=None),
+            redirect_stdout(output),
+        ):
+            self.assertEqual(keys.network(github_env), 0)
+        return output.getvalue().splitlines()
+
+    def test_says_when_every_connect_test_timed_out(self):
+        probes = {
+            host: [keys.Probe(f"{host} timed out", timed_out=True)]
+            for host in keys.HOSTS
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            github_env = Path(directory) / "github_env"
+            lines = self._network(probes, github_env)
+            self.assertEqual(
+                github_env.read_text(encoding="utf-8"),
+                "MIDI_B_RUNNER_ADDRESS=203.0.113.5\nMIDI_B_TCIA_TIMED_OUT=1\n",
+            )
+        self.assertEqual(
+            lines[1:5],
+            [
+                *(f"{host} timed out" for host in keys.HOSTS),
+                "Every TCP connect test to TCIA timed out.",
+            ],
+        )
+        # Without GITHUB_ENV, as after a failure, it still says so.
+        self.assertIn(
+            "Every TCP connect test to TCIA timed out.", self._network(probes)
+        )
+
+    def test_says_nothing_more_unless_every_connect_test_timed_out(self):
+        timed_out = keys.Probe("timed out", timed_out=True)
+        for other in (
+            keys.Probe("connected"),
+            keys.Probe("refused"),
+            keys.Probe("does not resolve"),
+        ):
+            probes = {host: [timed_out] for host in keys.HOSTS}
+            probes[keys.HOSTS[-1]] = [timed_out, other]
+            with self.subTest(other=other.line), tempfile.TemporaryDirectory() as name:
+                github_env = Path(name) / "github_env"
+                lines = self._network(probes, github_env)
+                self.assertEqual(
+                    github_env.read_text(encoding="utf-8"),
+                    "MIDI_B_RUNNER_ADDRESS=203.0.113.5\n",
+                )
+                self.assertNotIn("Every TCP connect test to TCIA timed out.", lines)
+        # No test at all is no timeout either.
+        with tempfile.TemporaryDirectory() as name:
+            github_env = Path(name) / "github_env"
+            self._network({host: [] for host in keys.HOSTS}, github_env)
+            self.assertNotIn("TIMED_OUT", github_env.read_text(encoding="utf-8"))
+
+
+class ConnectTests(unittest.TestCase):
+    def _connect(self, outcome):
+        connection = mock.MagicMock()
+        connection.__enter__.return_value = connection
+        if outcome is not None:
+            connection.connect.side_effect = outcome
+        with (
+            mock.patch.object(
+                keys.socket, "getaddrinfo", return_value=_resolved("192.0.2.7")
+            ),
+            mock.patch.object(keys.socket, "socket", return_value=connection),
+        ):
+            return keys.connect("www.example.org")
+
+    def test_a_connection_that_opens(self):
+        [probe] = self._connect(None)
+        self.assertFalse(probe.timed_out)
+        self.assertRegex(
+            probe.line,
+            r"^www\.example\.org at 192\.0\.2\.7 port 443: connected in \d+ ms$",
+        )
+
+    def test_a_connection_that_times_out(self):
+        for error in (socket.timeout("timed out"), TimeoutError(110, "timed out")):
+            with self.subTest(error=type(error).__name__):
+                [probe] = self._connect(error)
+                self.assertTrue(probe.timed_out)
+                self.assertIn("(TimeoutError)", probe.line)
+
+    def test_a_refused_connection_is_no_timeout(self):
+        [probe] = self._connect(ConnectionRefusedError(111, "refused"))
+        self.assertFalse(probe.timed_out)
+        self.assertIn("(ConnectionRefusedError)", probe.line)
+
+    def test_a_host_that_does_not_resolve(self):
+        with mock.patch.object(
+            keys.socket, "getaddrinfo", side_effect=socket.gaierror("no name")
+        ):
+            [probe] = keys.connect("www.example.org")
+        self.assertFalse(probe.timed_out)
+        self.assertEqual(probe.line, "www.example.org does not resolve (gaierror)")
 
 
 if __name__ == "__main__":
