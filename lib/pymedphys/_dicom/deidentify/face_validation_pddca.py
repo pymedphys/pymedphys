@@ -34,12 +34,14 @@ HaN-Seg's: the finder's outcome, by the reasons that a run counts, how the
 CT is stored, and, where the series is defaced, the share of each organ's
 voxels written as air. PDDCA has no masks of the eyes. Each optic nerve
 runs back from its globe, so the anterior tip of each nerve's mask, its
-voxel farthest towards the patient's anterior, marks where that side's
-globe lies, independently of the image: where the series is defaced and
-both nerves' masks are given, the distance from each globe found to its
-side's tip, how far the tip lies behind the globe along the block's
-anterior, and whether the globes found were taken for the other side's
-are measured and counted in fixed bins (:func:`summarise`).
+voxel farthest towards the patient's anterior, corroborates where that
+side's globe lies, independently of the image, though it measures no
+globe-centre error, and an incomplete or inaccurate mask moves it too:
+where the series is defaced and both nerves' masks are given, the
+distance from each globe found to its side's tip, how far the tip lies
+behind the globe along the block's anterior, and whether the globes found
+were taken for the other side's are measured and counted in fixed bins
+(:func:`summarise`).
 """
 
 from __future__ import annotations

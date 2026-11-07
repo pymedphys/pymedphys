@@ -134,7 +134,7 @@ PDDCA has no masks of the eyes, so its counts are the HaN-Seg check's without th
 | --- | --- |
 | Defaced series against the optic nerves | The defaced series with both optic nerves' masks, and those without; the series whose globes found are nearer the other side's nerve tip; the distance from each globe found to the anterior tip of its side's optic nerve, the nerve's voxel farthest towards the patient's anterior; and how far that tip lies behind the globe, along the block's anterior. |
 
-Each optic nerve runs back from its globe, so its anterior tip lies about a globe's radius behind the globe's centre. A globe found far from its own nerve's tip, or nearer the other side's, was placed wrongly; a tip in front of its globe, a depth below 0, means the globe found lies behind where the nerve meets the eye. The nerves' masks are the reference: where a mask stops short of the globe, the distance counts against the finder.
+Each optic nerve runs back from its globe, so the anterior tip of a complete nerve mask should lie roughly one globe radius behind the globe's centre. A globe found far from its own nerve's tip, nearer the other side's, or behind its tip, a depth below 0, flags a discrepancy for review: the finder may have placed that globe wrongly, or the nerve's mask may stop short of the globe or be drawn inaccurately, which counts against the finder all the same. A distance and depth near a globe's radius corroborate the globe found without measuring its error: a centre several millimetres from the true one can give the same distance and depth. These counts are anatomical corroboration, not a globe-centre error or proof that the eyes were found.
 
 ## Check on Steven Keating's cranial CT
 
