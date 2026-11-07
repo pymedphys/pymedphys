@@ -473,10 +473,50 @@ def _palette():
 
 
 def _float_pixels():
+    """Float Pixel Data under Bits Allocated 16, which no element of
+    floating-point pixel data has."""
     dataset = pydicom.dcmread(io.BytesIO(_image(np.ones((4, 4)), series=None)))
     del dataset.PixelData
     dataset.FloatPixelData = np.ones(16, "<f4").tobytes()
     return _file(dataset)
+
+
+def _floated(data, keyword="FloatPixelData", values=None, padding=None):
+    """A written image with its frames as Float Pixel Data or Double Float
+    Pixel Data, of its stored values or ``values``, and a padding value and
+    range limit, if given, in the Floating Point or Double Floating Point
+    Image Pixel Module."""
+    dataset = pydicom.dcmread(io.BytesIO(data))
+    double = keyword == "DoubleFloatPixelData"
+    dtype = "<f8" if double else "<f4"
+    if values is None:
+        values = dataset.pixel_array
+    for attribute in ("PixelData", "BitsStored", "HighBit", "PixelRepresentation"):
+        delattr(dataset, attribute)
+    dataset.BitsAllocated = 64 if double else 32
+    setattr(dataset, keyword, np.asarray(values, dtype=dtype).tobytes())
+    if padding is not None:
+        prefix = "DoubleFloat" if double else "Float"
+        value, limit = padding
+        setattr(dataset, f"{prefix}PixelPaddingValue", value)
+        if limit is not None:
+            setattr(dataset, f"{prefix}PixelPaddingRangeLimit", limit)
+    return _file(dataset)
+
+
+def _head(position, count, rows=24, columns=20):
+    """An axial slice of a synthetic head, from inferior to superior: an
+    ellipse of soft tissue with a nose at the anterior, its rows, and a
+    brighter skull, in air at -1000."""
+    row, column = np.mgrid[:rows, :columns]
+    height = 1 - abs(2 * position / (count - 1) - 1) * 0.6
+    head = ((row - 12) / (9 * height)) ** 2 + ((column - 10) / (7 * height)) ** 2
+    pixels = np.full((rows, columns), -1000.0)
+    pixels[head <= 1] = 40
+    pixels[(head <= 1) & (head > 0.7)] = 900
+    if 2 <= position <= count - 3:
+        pixels[1:4, 9:11] = 40  # the nose
+    return pixels
 
 
 def _short_pixels():
@@ -525,6 +565,142 @@ def _pngs(written, high_risk=()):
     return [
         (p.name, p.kind, p.frames, p.total_frames, p.png) for p in previews.previews
     ]
+
+
+FLOAT_KEYWORDS = pytest.mark.parametrize(
+    "keyword", ["FloatPixelData", "DoubleFloatPixelData"], ids=["float", "double"]
+)
+
+
+@pytest.mark.pydicom
+@FLOAT_KEYWORDS
+def test_a_floating_point_head_is_previewed_as_its_integer_copy_is(keyword):
+    # Each slice's cine tile, the volume's projection and surface renders,
+    # and the full-resolution previews of a high-risk instance are drawn as
+    # for stored values that are the same numbers, so a face is shown as it
+    # is in an integer image.
+    count = 7
+    native = {
+        position: _image(_head(position, count), number=position + 1, z=2.0 * position)
+        for position in range(count)
+    }
+    floating = {position: _floated(data, keyword) for position, data in native.items()}
+
+    previews = qc_previews.previews_of(floating, {3})
+
+    assert _pngs(floating, {3}) == _pngs(native, {3})
+    kinds = {preview.kind for preview in previews.previews}
+    assert {PreviewKind.SERIES_MIP, PreviewKind.SERIES_SURFACE} <= kinds
+    assert previews.pixels_shown == set(range(count))
+
+
+def _float_frame(rows=4, columns=8):
+    """Not a number in the left half; 0 to 100, with each infinity, in the
+    right."""
+    pixels = np.full((rows, columns), np.nan)
+    pixels[:, 4:] = 0
+    pixels[0, 4] = 100
+    pixels[2, 5] = np.inf
+    pixels[3, 5] = -np.inf
+    return pixels
+
+
+@pytest.mark.pydicom
+@FLOAT_KEYWORDS
+def test_not_a_number_is_shown_black_and_infinities_as_the_finite_extremes(keyword):
+    data = _image(np.zeros((4, 8)), series=None)
+    written = {0: _floated(data, keyword, values=_float_frame())}
+
+    previews = qc_previews.previews_of(written, {0})
+    image = _decoded(previews.previews[1].png)
+
+    assert not image[:, :4].any()
+    # Windowed from the finite values, 0 to 100, with positive infinity
+    # drawn as 100 and negative infinity as 0.
+    assert image[1, 5] == 0 and image[0, 4] == 255
+    assert image[2, 5] == 255 and image[3, 5] == 0
+    assert previews.pixels_shown == {0}
+
+
+@pytest.mark.pydicom
+@FLOAT_KEYWORDS
+@pytest.mark.parametrize("limit", [None, -1e30])
+def test_floating_point_padding_is_left_out_of_the_window_and_shown_black(
+    keyword, limit
+):
+    pixels = np.full((4, 8), -3e38)
+    if limit is not None:
+        pixels[:, 1] = -2e30  # within the range limit
+    pixels[:, 4:] = 0
+    pixels[0, 4] = 100
+    data = _image(np.zeros((4, 8)), series=None)
+    written = {0: _floated(data, keyword, values=pixels, padding=(-3e38, limit))}
+
+    previews = qc_previews.previews_of(written, {0})
+    image = _decoded(previews.previews[1].png)
+
+    assert not image[:, :4].any()
+    assert image[1, 5] == 0 and image[0, 4] == 255
+    # The range holds two padding values, which no preview tells apart.
+    assert previews.pixels_shown == (set() if limit is not None else {0})
+
+
+def _payload(pixels, dtype):
+    """``pixels`` with their values that are not a number of two payloads."""
+    values = np.asarray(pixels, dtype=dtype)
+    words = values.view(dtype.replace("f", "u"))
+    words[0, 0] |= 1
+    return values
+
+
+@pytest.mark.pydicom
+@pytest.mark.parametrize(
+    "change, shown",
+    [
+        (lambda pixels: pixels, True),
+        (lambda pixels: _payload(pixels, "<f4"), True),
+        (lambda pixels: np.where(np.isnan(pixels), -3e38, pixels), True),
+        (lambda pixels: np.where(pixels == 0, -3e38, pixels), False),
+        (lambda pixels: np.where(np.isfinite(pixels), np.nan, pixels), False),
+        (lambda pixels: np.where(np.isnan(pixels), np.inf, np.nan), False),
+    ],
+    ids=[
+        "not-a-number",
+        "two-payloads",
+        "padding",
+        "not-a-number-and-padding",
+        "not-a-number-and-infinities",
+        "infinity-and-not-a-number",
+    ],
+)
+def test_values_not_drawn_of_more_than_one_kind_are_not_shown_whole(change, shown):
+    # Not a number, whatever its bits, each infinity in a frame without a
+    # finite value to draw it as, and each padding value are drawn alike,
+    # so a frame that holds more than one could hold a face in their
+    # pattern that no preview shows.
+    data = _image(np.zeros((4, 8)), series=None)
+    pixels = change(_float_frame())
+    written = {0: _floated(data, values=pixels, padding=(-3e38, None))}
+
+    previews = qc_previews.previews_of(written, {0})
+
+    assert previews.previews
+    assert previews.pixels_shown == ({0} if shown else set())
+
+
+@pytest.mark.pydicom
+def test_a_double_that_float32_cannot_hold_is_listed_as_not_previewed():
+    pixels = np.zeros((4, 8))
+    pixels[0, 0] = 1e300
+    data = _image(np.zeros((4, 8)), series=None)
+    written = {0: _floated(data, "DoubleFloatPixelData", values=pixels)}
+
+    previews = qc_previews.previews_of(written, {0})
+
+    assert previews.not_previewed == (
+        NotPreviewedEntry(0, NotPreviewedReason.UNSUPPORTED),
+    )
+    assert not previews.pixels_shown
 
 
 @pytest.mark.pydicom

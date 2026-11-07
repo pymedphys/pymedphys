@@ -237,7 +237,18 @@ _PERCENTILES = (0.5, 99.5)
 _MONOCHROME = frozenset({"MONOCHROME1", "MONOCHROME2"})
 # Shown as RGB, which pydicom gives for each of them by default.
 _COLOUR = frozenset({"RGB", "YBR_FULL", "YBR_FULL_422", "YBR_ICT", "YBR_RCT"})
-_FLOAT_PIXEL_DATA = ("FloatPixelData", "DoubleFloatPixelData")
+# Float Pixel Data and Double Float Pixel Data, by their Bits Allocated
+# (PS3.3 Sections C.7.6.24 and C.7.6.25), with the padding value and range
+# limit of each.
+_FLOAT_PIXEL_DATA = {32: "FloatPixelData", 64: "DoubleFloatPixelData"}
+_FLOAT_PADDING = {
+    "FloatPixelData": ("FloatPixelPaddingValue", "FloatPixelPaddingRangeLimit"),
+    "DoubleFloatPixelData": (
+        "DoubleFloatPixelPaddingValue",
+        "DoubleFloatPixelPaddingRangeLimit",
+    ),
+}
+_PIXEL_KEYWORDS = ("PixelData", *_FLOAT_PIXEL_DATA.values())
 # An axis lies along a patient axis when its other two direction cosines are
 # each at most this; a volume with any other axis is sampled to voxels along
 # the patient's axes before it is projected, since a projection along an
@@ -275,7 +286,9 @@ class _Instance:
     plugin: str  # the pydicom decoding plugin, or "" for native pixel data
     series: str | None
     shape: tuple[int, int]
-    padding: tuple[int, int] | None  # stored values, inclusive, not shown
+    # Stored values, inclusive, not shown: integers, or floating-point
+    # values for floating-point pixel data.
+    padding: tuple[float, float] | None
     frames: int
     colour: bool
     inverted: bool
@@ -306,6 +319,11 @@ class _Instance:
     # frame's bits are not a whole number of bytes, as a Segmentation's
     # BINARY masks are (_packed_frames).
     packed: bool = False
+    # Whether its pixel data are Float Pixel Data or Double Float Pixel Data,
+    # whose values that are not a number are not shown, as padding is not,
+    # and whose infinities are shown as the frame's finite extremes
+    # (_Decoder._shown).
+    floating: bool = False
     # Whether it is a Segmentation (face_review.is_segmentation), which only
     # a segments sheet shows as it could show a face (D-017), and what the
     # sheet needs of it, or None where none can show it.
@@ -656,9 +674,11 @@ def _instance(
         dataset = _read(data)
     if dataset is None:
         return NotPreviewedReason.UNREADABLE
-    if any(keyword in dataset for keyword in _FLOAT_PIXEL_DATA):
+    held = [keyword for keyword in _PIXEL_KEYWORDS if keyword in dataset]
+    if len(held) > 1:
+        # Which of them a viewer shows is not defined.
         return NotPreviewedReason.UNSUPPORTED
-    if "PixelData" not in dataset:
+    if not held:
         if not qc_contours.has_contours(dataset):
             return None
         contours = qc_contours.contours_of(dataset)
@@ -684,6 +704,7 @@ def _described(
         photometric = str(dataset.PhotometricInterpretation).strip()
         samples = int(dataset.SamplesPerPixel)
         allocated = int(dataset.BitsAllocated)
+        floating = "PixelData" not in dataset
         frames = int(dataset.get("NumberOfFrames") or 1)
         rows, columns = int(dataset.Rows), int(dataset.Columns)
     except Exception:  # pylint: disable = broad-exception-caught
@@ -707,6 +728,12 @@ def _described(
     segmentation = is_segmentation(dataset)
     if not colour and not (photometric in _MONOCHROME and samples == 1):
         return NotPreviewedReason.UNSUPPORTED
+    # Floating-point pixel data are native, of one sample, in the element
+    # that Bits Allocated gives.
+    if floating and (
+        plugin or colour or _FLOAT_PIXEL_DATA.get(allocated, "") not in dataset
+    ):
+        return NotPreviewedReason.UNSUPPORTED
     if frames < 1 or rows < 1 or columns < 1:
         return NotPreviewedReason.UNREADABLE
     spacing = _spacing(dataset)
@@ -729,7 +756,8 @@ def _described(
     if not plugin:
         try:
             expected = pydicom.pixels.utils.get_expected_length(dataset, "bytes")
-            whole = len(dataset.PixelData) <= expected + 1
+            keyword = _FLOAT_PIXEL_DATA[allocated] if floating else "PixelData"
+            whole = len(dataset[keyword].value) <= expected + 1
         except Exception:  # pylint: disable = broad-exception-caught
             whole = False
     return _Instance(
@@ -738,7 +766,11 @@ def _described(
         plugin=plugin,
         series=str(uid) if uid else None,
         shape=(rows, columns),
-        padding=None if colour else _padding(dataset),
+        padding=None
+        if colour
+        else _float_padding(dataset, _FLOAT_PIXEL_DATA[allocated])
+        if floating
+        else _padding(dataset),
         frames=frames,
         colour=colour,
         inverted=photometric == "MONOCHROME1",
@@ -756,6 +788,7 @@ def _described(
         dose_scale=scale,
         dose_signed=scale is not None and signed,
         packed=not plugin and allocated == 1,
+        floating=floating,
         segmentation=segmentation,
         segments=qc_segments.segments_of(dataset) if segmentation else None,
         planes=planes,
@@ -810,6 +843,22 @@ def _padding(dataset: pydicom.Dataset) -> tuple[int, int] | None:
     limit = _number(dataset, "PixelPaddingRangeLimit", int)
     limit = value if limit is None else limit
     return int(min(value, limit)), int(max(value, limit))
+
+
+def _float_padding(
+    dataset: pydicom.Dataset, keyword: str
+) -> tuple[float, float] | None:
+    """The values that Float Pixel Padding Value and its range limit, or
+    their double-float counterparts for Double Float Pixel Data, pad with
+    (PS3.3 Sections C.7.6.24 and C.7.6.25); a value that is not finite
+    pads with nothing."""
+    value_keyword, limit_keyword = _FLOAT_PADDING[keyword]
+    value = _number(dataset, value_keyword, float)
+    if value is None:
+        return None
+    limit = _number(dataset, limit_keyword, float)
+    limit = value if limit is None else limit
+    return float(min(value, limit)), float(max(value, limit))
 
 
 def _floats(dataset: pydicom.Dataset, keyword: str, count: int) -> tuple | None:
@@ -1254,13 +1303,18 @@ class _Decoder:
         pixels = pixels.reshape(shape)
         if instance.colour:
             return pixels.astype(np.uint8)
+        undrawn = None
+        if instance.floating:
+            pixels, undrawn, kinds = _drawn_floats(pixels, instance.padding)
+            if kinds > 1 and not received:
+                self.mixed_padding.add(instance.position)
         slope, intercept = instance.rescale_of(index)
         with np.errstate(over="ignore", under="ignore", invalid="ignore"):
             shown = pixels.astype(np.float32) * np.float32(slope) + np.float32(
                 intercept
             )
-        padded = None
-        if instance.padding is not None:
+        padded = undrawn
+        if instance.padding is not None and not instance.floating:
             low, high = instance.padding
             padded = (pixels >= low) & (pixels <= high)
             if low < high and not received and padded.any():
@@ -1275,6 +1329,47 @@ class _Decoder:
         if padded is not None:
             shown[padded] = np.nan
         return shown
+
+
+def _drawn_floats(
+    pixels: np.ndarray, padding: tuple[float, float] | None
+) -> tuple[np.ndarray, np.ndarray, int]:
+    """Return a frame of floating-point values as previews draw it, the
+    values that they do not draw, and how many kinds of value those are.
+
+    Values that are not a number, and padding, are not drawn: every
+    preview draws them as one black, or as no patient. A viewer that clips
+    to any window shows positive infinity as its brightest and negative
+    infinity as its darkest, so they are drawn as the frame's largest and
+    smallest values that are drawn and finite; in a frame with none, they
+    too are not drawn. The kinds of value not drawn are not a number,
+    whatever its bits, since no viewer tells one apart from another, each
+    infinity, and each padding value; a frame with more than one could hold
+    a face in their pattern that no preview shows, so its instance is
+    counted as not shown whole, as one that pads with more than one stored
+    value is.
+    """
+    nan = np.isnan(pixels)
+    padded = np.zeros(pixels.shape, dtype=bool)
+    if padding is not None:
+        low, high = padding
+        padded = (pixels >= low) & (pixels <= high)
+    infinite = np.isinf(pixels)
+    drawn = ~(nan | padded | infinite)
+    undrawn = nan | padded
+    shown = pixels
+    if infinite.any():
+        if drawn.any():
+            shown = pixels.copy()
+            values = pixels[drawn]
+            shown[np.isposinf(pixels)] = values.max()
+            shown[np.isneginf(pixels)] = values.min()
+        else:
+            undrawn = undrawn | infinite
+    kinds = int(nan.any()) + len(np.unique(pixels[padded]))
+    if not drawn.any():
+        kinds += int(np.isposinf(pixels).any()) + int(np.isneginf(pixels).any())
+    return shown, undrawn, kinds
 
 
 # How many steps of float32 a frame's rescaled values must span, at least,

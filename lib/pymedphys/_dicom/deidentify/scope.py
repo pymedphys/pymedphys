@@ -39,8 +39,6 @@ conforms to its IOD, under ``basic`` and ``basic-clean-descriptors``, and
 every Structured Report or Key Object Selection Document whose content
 tree the policy does not clean and keep, since the Basic Profile gives its
 Content Sequence (0040,A730) D, which a sequence has no dummy value for.
-The Clean Pixel Data Option also sequesters a Parametric Map whose pixel
-data are floating point, which it does not read.
 Every other instance is sequestered: neither de-identified nor written, and
 listed in the run report by opaque identifiers only. That includes the
 other Structured Reports, Presentation States, and instances of Private SOP

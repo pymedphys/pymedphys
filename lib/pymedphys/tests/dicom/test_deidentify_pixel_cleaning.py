@@ -291,7 +291,7 @@ def _short(dataset):
     return dataset
 
 
-def _float_pixel_data(dataset):
+def _float_beside_pixel_data(dataset):
     dataset.FloatPixelData = np.zeros(4, np.float32).tobytes()
     return dataset
 
@@ -309,7 +309,7 @@ def _float_pixel_data(dataset):
         _with(PixelRepresentation=2),
         _overlay_bit,
         _short,
-        _float_pixel_data,
+        _float_beside_pixel_data,
     ],
     ids=[
         "high-bit",
@@ -322,7 +322,7 @@ def _float_pixel_data(dataset):
         "representation",
         "overlay-in-unused-bits",
         "short",
-        "float",
+        "float-beside-pixel-data",
     ],
 )
 def test_pixel_data_that_cannot_be_read_as_frames_is_refused(change):
