@@ -91,15 +91,15 @@ reason that such a finding is not a reason for review (D-032), or returns
 - :attr:`Exemption.VOCABULARY_MEANING`: the finding is in a Code Meaning
   (0008,0104) of a code item, whatever its scheme, every value of which is
   made only of words of the reviewed technique vocabulary and echoes no
-  identifier of the subject, and its source is not an institution's or a
-  station's name
+  identifier of the subject, and its source names, codes, or addresses no
+  place, organisation, or device, such as an institution or a station
   (:func:`~pymedphys._dicom.deidentify.residual_vocabulary.vocabulary_meaning`).
 - :attr:`Exemption.VOCABULARY_DESCRIPTOR`: the finding is in a technique
   descriptor, an attribute whose values the reviewed technique vocabulary's
   automatic tier may keep, such as Series Description (0008,103E), at the
   top level or in an item, every value of which is made only of words of
-  that vocabulary and echoes no identifier of the subject, and its source is
-  not an institution's or a station's name
+  that vocabulary and echoes no identifier of the subject, and its source
+  names, codes, or addresses no place, organisation, or device
   (:func:`~pymedphys._dicom.deidentify.residual_vocabulary.vocabulary_descriptor`).
 
 The release gate tries the last two after the others, for a text finding

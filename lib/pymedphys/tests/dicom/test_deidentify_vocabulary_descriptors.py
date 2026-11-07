@@ -299,11 +299,13 @@ def test_a_person_name_found_in_a_vocabulary_descriptor_still_withholds():
         _removed("(0008,0081)", "ST", "HEAD"),  # Institution Address
         _removed("(0008,1040)", "LO", "HEAD"),  # Institutional Department Name
         _removed("(0008,1010)", "SH", "HEAD"),  # Station Name
+        _removed("(0040,0010)", "SH", "HEAD"),  # Scheduled Station Name
+        _removed("(0018,1000)", "LO", "HEAD"),  # Device Serial Number
         _removed(CODE_MEANING, "LO", "HEAD", (("(0008,0082)", 0),)),
         _removed(CODE_MEANING, "LO", "HEAD", (("(0008,1041)", 0),)),
     ],
 )
-def test_an_institutions_or_stations_name_goes_to_review(source):
+def test_a_place_organisation_or_device_source_goes_to_review(source):
     written = _descriptor(DESCRIPTION)
     condition = _condition(written, source)
 

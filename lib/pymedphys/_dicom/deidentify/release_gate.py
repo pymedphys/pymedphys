@@ -69,8 +69,8 @@ keeps explains it
 text is the meaning of a standard code that only instances the run does not
 write held, or it is found in a kept Code Meaning or technique descriptor
 made only of words of the reviewed technique vocabulary, which echoes no
-identifier of the subject, from a source that is not an institution's or a
-station's name
+identifier of the subject, from a source that names, codes, or addresses no
+place, organisation, or device
 (:func:`~pymedphys._dicom.deidentify.residual_vocabulary.vocabulary_meaning`,
 :func:`~pymedphys._dicom.deidentify.residual_vocabulary.vocabulary_descriptor`). A date or datetime equal to a whole date, time, or datetime that
 an option keeps, or a datetime whose date equals a whole date that an option

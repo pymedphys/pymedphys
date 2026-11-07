@@ -42,11 +42,16 @@ only where all of these hold:
   finds it, among every person name and every Patient ID (0010,0020),
   Issuer of Patient ID (0010,0021), and Other Patient IDs (0010,1000) that
   the run collected for the subject, at any depth; and
-- the finding's source is not an institution's or a station's name:
-  Institution Name (0008,0080), Institution Address (0008,0081),
-  Institutional Department Name (0008,1040), or Station Name (0008,1010), or
-  an element in an item of Institution Code Sequence (0008,0082) or
-  Institutional Department Type Code Sequence (0008,1041), at any depth.
+- the finding's source does not name, code, or address a place, an
+  organisation, or a device (:func:`institutional`): an institution, a
+  department, a station or its AE title, a location, an organisation, a
+  clinical trial site, an address or telephone number, or a device's
+  identifier, of :data:`INSTITUTIONAL_SOURCES`, nor an element in an item of
+  one of their code sequences, :data:`INSTITUTIONAL_SEQUENCES`, at any
+  depth. Each is an attribute of PS3.15 Table E.1-1 whose value can be a
+  site's own name for itself or its equipment, which a meaning of
+  vocabulary words, such as ``CT HEAD`` holding a station named ``HEAD``,
+  must not release.
 
 :func:`vocabulary_descriptor` finds the same of a finding in a technique
 descriptor
@@ -84,14 +89,72 @@ from .standard import dictionary_attribute
 from .technique_descriptors import TechniqueVocabulary, load_technique_vocabulary
 
 _CODE_MEANING = "(0008,0104)"
-# Institution Name, Institution Address, Institutional Department Name, and
-# Station Name.
+# The attributes of PS3.15 Table E.1-1 that name or address a place, an
+# organisation, or a device, whose value a site can write as words of the
+# vocabulary.
 INSTITUTIONAL_SOURCES = frozenset(
-    {"(0008,0080)", "(0008,0081)", "(0008,1040)", "(0008,1010)"}
+    {
+        # Institutions and departments.
+        "(0008,0080)",  # Institution Name
+        "(0008,0081)",  # Institution Address
+        "(0008,1040)",  # Institutional Department Name
+        "(0038,0400)",  # Patient's Institution Residence
+        "(0038,001E)",  # Scheduled Patient Institution Residence
+        # Stations and their AE titles.
+        "(0008,1010)",  # Station Name
+        "(0040,0010)",  # Scheduled Station Name
+        "(0040,0242)",  # Performed Station Name
+        "(0008,0055)",  # Station AE Title
+        "(0040,0001)",  # Scheduled Station AE Title
+        "(0040,0241)",  # Performed Station AE Title
+        "(0008,0054)",  # Retrieve AE Title
+        "(0032,1021)",  # Scheduled Study Location AE Title
+        # Locations.
+        "(0038,0300)",  # Current Patient Location
+        "(0040,2009)",  # Order Enterer's Location
+        "(0040,0243)",  # Performed Location
+        "(0040,1005)",  # Requested Procedure Location
+        "(0040,0011)",  # Scheduled Procedure Step Location
+        "(0032,1020)",  # Scheduled Study Location
+        # Organisations and clinical trial sites.
+        "(0040,4036)",  # Human Performer's Organization
+        "(0010,2299)",  # Responsible Organization
+        "(0040,A027)",  # Verifying Organization
+        "(0012,0060)",  # Clinical Trial Coordinating Center Name
+        "(0012,0030)",  # Clinical Trial Site ID
+        "(0012,0031)",  # Clinical Trial Site Name
+        "(0012,0032)",  # Issuer of Clinical Trial Site ID
+        # Addresses and telephone numbers.
+        "(0010,1040)",  # Patient's Address
+        "(0040,1102)",  # Person's Address
+        "(0008,0092)",  # Referring Physician's Address
+        "(0040,A353)",  # Address (Trial)
+        "(4008,011A)",  # Distribution Address
+        "(0010,2154)",  # Patient's Telephone Numbers
+        "(0040,1103)",  # Person's Telephone Numbers
+        "(0008,0094)",  # Referring Physician's Telephone Numbers
+        "(0040,A354)",  # Telephone Number (Trial)
+        # Devices' identifiers.
+        "(0018,1000)",  # Device Serial Number
+        "(0018,1010)",  # Secondary Capture Device ID
+        "(0018,1011)",  # Hardcopy Creation Device ID
+        "(0020,3401)",  # Modifying Device ID
+        "(3010,001B)",  # Device Alternate Identifier
+        "(3010,002D)",  # Device Label
+    }
 )
-# Institution Code Sequence and Institutional Department Type Code Sequence,
-# whose items' elements code the institution.
-INSTITUTIONAL_SEQUENCES = frozenset({"(0008,0082)", "(0008,1041)"})
+# The sequences of Table E.1-1 whose items code or name one of them.
+INSTITUTIONAL_SEQUENCES = frozenset(
+    {
+        "(0008,0082)",  # Institution Code Sequence
+        "(0008,1041)",  # Institutional Department Type Code Sequence
+        "(0040,4025)",  # Scheduled Station Name Code Sequence
+        "(0040,4028)",  # Performed Station Name Code Sequence
+        "(0040,4027)",  # Scheduled Station Geographic Location Code Sequence
+        "(0040,4030)",  # Performed Station Geographic Location Code Sequence
+        "(0040,A07C)",  # Custodial Organization Sequence
+    }
+)
 # Patient ID, Issuer of Patient ID, and Other Patient IDs, as descriptor
 # cleaning checks for echoes of them with every person name.
 IDENTIFIER_TAGS = frozenset({"(0010,0020)", "(0010,0021)", "(0010,1000)"})
@@ -206,7 +269,11 @@ def _only_vocabulary(
 
 
 def institutional(source: ElementPath) -> bool:
-    """Return whether a source names or codes an institution or a station."""
+    """Return whether a source names a place, an organisation, or a device.
+
+    It does where its tag is one of :data:`INSTITUTIONAL_SOURCES`, or it is
+    in an item of one of :data:`INSTITUTIONAL_SEQUENCES`, at any depth.
+    """
     return source.tag in INSTITUTIONAL_SOURCES or any(
         tag in INSTITUTIONAL_SEQUENCES for tag, _ in source.items
     )
