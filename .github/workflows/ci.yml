@@ -1,11 +1,16 @@
 name: CI
 
+# A merge group tests the exact commit that main then receives, so a push to
+# main runs nothing again. The full OS and Python matrix runs on main nightly
+# instead, and on demand on any branch: a full run on every push took runners
+# ahead of the next merge group, which then reached the merge queue's limit.
 on:
-  push:
-    branches: [main]
   pull_request:
     types: [opened, synchronize, reopened, labeled, unlabeled, ready_for_review, converted_to_draft]
   merge_group:
+  schedule:
+    - cron: '37 15 * * *'  # Daily, overnight in Australia; staggered to avoid top-of-hour congestion
+  workflow_dispatch:
 
 # Default to read-only. Jobs that need more override at the job level.
 permissions:
@@ -13,12 +18,13 @@ permissions:
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
-  # New commits supersede obsolete PR/main runs; label changes still queue.
+  # New commits supersede obsolete PR runs; label changes still queue. A
+  # nightly or manual run is never cancelled: a later one on the same branch
+  # waits for it.
   cancel-in-progress: >-
-    ${{ (github.event_name == 'pull_request' &&
+    ${{ github.event_name == 'pull_request' &&
         github.event.action != 'labeled' &&
-        github.event.action != 'unlabeled') ||
-        (github.event_name == 'push' && github.ref == 'refs/heads/main') }}
+        github.event.action != 'unlabeled' }}
 
 jobs:
   # Draft PRs run no jobs: every job needs this one or carries its condition.
@@ -164,12 +170,12 @@ jobs:
           --conditional mosaiq-db-tests=run-database
           --conditional docs-check=run-docs
 
-  # Merge groups use the quick unit matrix, so a push to main can be the first
-  # run to show a platform failure from the full matrix.
+  # Merge groups use the quick unit matrix, so the nightly run on main can be
+  # the first to show a platform failure from the full matrix.
   # Record it in an issue rather than only in the Actions tab.
   report-main-failure:
     needs: [summary]
-    if: failure() && !cancelled() && github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: failure() && !cancelled() && github.ref == 'refs/heads/main' && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:

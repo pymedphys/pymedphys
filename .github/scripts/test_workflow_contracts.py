@@ -26,7 +26,7 @@ import unittest
 from pathlib import Path
 
 import pydicom_coverage
-from select_checks import OUTPUTS
+from select_checks import OUTPUTS, select_checks
 
 WORKFLOWS = Path(__file__).resolve().parents[1] / "workflows"
 # The lines that split the listed corpus modules between the ct-defacing,
@@ -75,7 +75,7 @@ class WorkflowContractTests(unittest.TestCase):
             with self.subTest(workflow=filename):
                 text = (WORKFLOWS / filename).read_text(encoding="utf-8")
                 triggers = text.split("\npermissions:\n", 1)[0]
-                for event in ("push", "pull_request", "merge_group"):
+                for event in ("pull_request", "merge_group"):
                     self.assertRegex(triggers, rf"(?m)^  {event}:$")
                 self.assertEqual(
                     re.findall(r"(?m)^    name: (.+)$", jobs(filename)[summary_id]),
@@ -110,7 +110,8 @@ class WorkflowContractTests(unittest.TestCase):
                             self.assertEqual(conditions[job], [not_draft])
                 self.assertEqual(conditions[summary_id], [f"always() && {not_draft}"])
                 # A status function would run a job after its needs were
-                # skipped, so only the summary and push-only jobs may use one.
+                # skipped, so only the summary and main-only jobs may use one.
+                # No pull request or merge group runs on refs/heads/main.
                 for job, condition in conditions.items():
                     if re.search(
                         r"\b(always|cancelled|failure)\(\)", "".join(condition)
@@ -118,7 +119,7 @@ class WorkflowContractTests(unittest.TestCase):
                         with self.subTest(job=job):
                             self.assertTrue(
                                 job == summary_id
-                                or "github.event_name == 'push'" in condition[0]
+                                or "github.ref == 'refs/heads/main'" in condition[0]
                             )
 
     def test_merge_group_dependency_audit_is_advisory(self):
@@ -171,10 +172,12 @@ class WorkflowContractTests(unittest.TestCase):
         reporters = {job for job, body in workflow.items() if "summary" in needs(body)}
         self.assertEqual(reporters, {"report-main-failure"})
         report = workflow["report-main-failure"]
-        # It must never run for pull requests, and needs only to write issues.
+        # It reports only the nightly or a manual run on main, never a pull
+        # request or merge group, and needs only to write issues.
         self.assertIn(
-            "    if: failure() && !cancelled() && github.event_name == 'push' && "
-            "github.ref == 'refs/heads/main'",
+            "    if: failure() && !cancelled() && github.ref == 'refs/heads/main' && "
+            "(github.event_name == 'schedule' || "
+            "github.event_name == 'workflow_dispatch')\n",
             report,
         )
         self.assertIn("    permissions:\n      issues: write\n    steps:", report)
@@ -299,17 +302,36 @@ class WorkflowContractTests(unittest.TestCase):
                         jobs("release.yml")["integration-tests"],
                     )
 
-    def test_new_main_commits_cancel_obsolete_ci_but_label_changes_queue(self):
+    def test_new_pr_commits_cancel_obsolete_ci_but_other_runs_queue(self):
+        # Label changes, merge groups, and nightly and manual runs are never
+        # cancelled by a later run in their group.
         text = (WORKFLOWS / "ci.yml").read_text(encoding="utf-8")
         condition = text.split("  cancel-in-progress: >-\n", 1)[1].split("\njobs:", 1)[
             0
         ]
         self.assertEqual(
             " ".join(condition.split()),
-            "${{ (github.event_name == 'pull_request' && github.event.action != 'labeled' && "
-            "github.event.action != 'unlabeled') || (github.event_name == 'push' && "
-            "github.ref == 'refs/heads/main') }}",
+            "${{ github.event_name == 'pull_request' && github.event.action != 'labeled' && "
+            "github.event.action != 'unlabeled' }}",
         )
+
+    def test_main_runs_the_full_matrix_nightly_and_on_demand_not_on_push(self):
+        # The merge group already tests the commit that main receives, so a
+        # push to main would only repeat it; the full matrix runs nightly and
+        # on demand instead. The security scan keeps its own triggers.
+        text = (WORKFLOWS / "ci.yml").read_text(encoding="utf-8")
+        triggers = text.split("\non:\n", 1)[1].split("\npermissions:\n", 1)[0]
+        self.assertEqual(
+            re.findall(r"(?m)^  ([a-z_]+):", triggers),
+            ["pull_request", "merge_group", "schedule", "workflow_dispatch"],
+        )
+        self.assertNotRegex(text.split("\njobs:\n", 1)[0], r"(?m)^  push:")
+        # One run a day, at a fixed minute and hour.
+        self.assertRegex(triggers, r"(?m)^    - cron: '\d{1,2} \d{1,2} \* \* \*'")
+        self.assertEqual(len(re.findall(r"(?m)^    - cron: ", triggers)), 1)
+        for event in ("schedule", "workflow_dispatch"):
+            with self.subTest(event=event):
+                self.assertTrue(all(select_checks([], event_name=event).values()))
 
     def test_release_assets_require_published_verification(self):
         workflow = jobs("release.yml")
