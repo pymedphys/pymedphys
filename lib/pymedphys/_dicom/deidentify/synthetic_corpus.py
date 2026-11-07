@@ -70,8 +70,11 @@ describes. Text is ``SYNMK-00042``, a code string ``SYNMK_00042``, a person name
 ``SYNMK00042^MARKER00042``, a UID ``2.25.9999900042``, a URI
 ``https://synmk.invalid/SYNMK-00042``, a date before 1900 (see
 :func:`_marker_date`), a datetime that date at noon, a time ``HHMMSS.424242`` whose seconds from
-midnight are the marker's number, and a binary value of VR OB, OW, or UN the
-text marker in ASCII, padded to an even length. No text marker occurs inside
+midnight are the time's number, and a binary value of VR OB, OW, or UN the
+text marker in ASCII, padded to an even length. Dates and datetimes, times,
+and values of VR SS and US are each numbered by a count of their own, so
+that the dates, the times, and the 16-bit integers do not run out before
+the five digits of the markers do. No text marker occurs inside
 another value of its file. A number of a binary VR, such as US or SS, and an
 age (AS) cannot be made conspicuous: each is distinct, but it is found by
 its place in the manifest, not by searching bytes. Each sequence that holds
@@ -242,6 +245,7 @@ input.
 
 from __future__ import annotations
 
+import collections
 import dataclasses
 import datetime
 import enum
@@ -362,9 +366,11 @@ DETACHED_STUDY_MANAGEMENT = "1.2.840.10008.3.1.2.3.1"
 # The most items an attribute is planted in, nested one in another.
 MAX_DEPTH = 4
 # Every marker's number is below this, so markers have a fixed width of five
-# digits and none is the start of another, every date is before 1900, every
-# time is distinct, and the negated number fits VR SS.
-MAX_MARKERS = 2**15
+# digits and none is the start of another. Dates, times, and values of VR SS
+# and US are numbered apart (_Markers), each within its own limit: every date
+# before 1900, every time within one day, and the 16-bit integers within
+# their VRs.
+MAX_MARKERS = 10**5
 MARKER_PREFIX = "SYNMK"
 MARKER_UID_ROOT = "2.25.99999"
 LINKED_UID_ROOT = "2.25.88888"
@@ -682,6 +688,17 @@ _FIRST_DATE = datetime.date(900, 1, 1)
 _DATE_RUN_DAYS = 363
 _DATE_RUN_PERIOD = 4004
 _SECONDS_IN_A_DAY = 86_400
+# The kinds of marker numbered apart from the others, by VR, and how many of
+# each the corpus can hold: dates and datetimes, which share their days, up
+# to the last before 1900 (_marker_date); times, up to the last second of a
+# day; and VR SS, whose markers are negated, and US, up to the limits of
+# their 16 bits.
+_NUMBERED_APART = types.MappingProxyType(
+    {"DA": "date", "DT": "date", "TM": "time", "SS": "SS", "US": "US"}
+)
+_KIND_LIMITS = types.MappingProxyType(
+    {"date": 2**15 - 1, "time": _SECONDS_IN_A_DAY - 1, "SS": 2**15, "US": 2**16 - 1}
+)
 
 
 class PlacementKind(enum.Enum):
@@ -1462,11 +1479,18 @@ def write_corpus(
 
 
 class _Markers:
-    """Number the markers in the order they are planted, across the corpus."""
+    """Number the markers in the order they are planted, across the corpus.
+
+    Every marker takes the next number, which its text, UID, and other
+    values hold. A date or datetime, a time, and a value of VR SS or US also
+    takes the next number of its own kind, which its value holds instead,
+    since each of those has fewer values to give than the five digits.
+    """
 
     def __init__(self) -> None:
         self._number = 0
         self._ages = 0
+        self._kinds: collections.Counter[str] = collections.Counter()
 
     def values(
         self, vr: str, count: int, *, latin_1: bool = False
@@ -1483,32 +1507,43 @@ class _Markers:
                 if self._ages > 999:
                     raise ValueError("the corpus has more ages than weeks to give")
                 values.append(f"{self._ages:03d}W")
-            else:
-                values.append(_marker(vr, self._number, latin_1))
+                continue
+            kind = _NUMBERED_APART.get(vr)
+            own = self._number
+            if kind is not None:
+                self._kinds[kind] += 1
+                own = self._kinds[kind]
+                if own > _KIND_LIMITS[kind]:
+                    raise ValueError(f"the corpus has more {kind} markers than values")
+            values.append(_marker(vr, self._number, latin_1, own))
         return values, tuple(_as_text(vr, value) for value in values)
 
 
 def _marker_date(number: int) -> datetime.date:
-    """Return the date of the marker numbered ``number``.
+    """Return the date of the date marker numbered ``number``.
 
     Within a run of ``_DATE_RUN_DAYS`` consecutive days dates are at most
     362 days apart, and between runs at least ``_DATE_RUN_PERIOD`` less 362,
     3,642 days, so no two are 364 to 3,640 days apart. Every date of a
-    number below :data:`MAX_MARKERS` is from 900 to before 1900.
+    number below 2**15 is from 900 to before 1900.
     """
     run, day = divmod(number, _DATE_RUN_DAYS)
     return _FIRST_DATE + datetime.timedelta(days=run * _DATE_RUN_PERIOD + day)
 
 
-def _marker(vr: str, number: int, latin_1: bool) -> object:
-    """Return the marker numbered ``number`` as a value of ``vr``."""
+def _marker(vr: str, number: int, latin_1: bool, own: int) -> object:
+    """Return the marker numbered ``number`` as a value of ``vr``.
+
+    ``own`` is its number among the markers of its kind (``_NUMBERED_APART``),
+    which a date, a time, and a value of VR SS or US hold.
+    """
     text = f"{MARKER_PREFIX}-{number:05d}"
     if vr in _WORD_BYTES:
         return _padded(text, vr)
-    day = _marker_date(number)
+    day = _marker_date(own)
     # strftime does not pad a year before 1000 to four digits on every platform.
     date = f"{day.year:04d}{day.month:02d}{day.day:02d}"
-    seconds = number % _SECONDS_IN_A_DAY
+    seconds = own % _SECONDS_IN_A_DAY
     time = f"{seconds // 3600:02d}{seconds // 60 % 60:02d}{seconds % 60:02d}"
     time += _TIME_SIGNATURE
     given = "MÄRKER" if latin_1 else "MARKER"
@@ -1527,10 +1562,10 @@ def _marker(vr: str, number: int, latin_1: bool) -> object:
         "FD": number + 0.5,
         "FL": number + 0.5,
         "SL": -(900_000_000 + number),
-        "SS": -number,
+        "SS": -own,
         "SV": -(9_000_000_000 + number),
         "UL": 900_000_000 + number,
-        "US": number,
+        "US": own,
         "UV": 9_000_000_000 + number,
     }
     return formats.get(vr, text)
