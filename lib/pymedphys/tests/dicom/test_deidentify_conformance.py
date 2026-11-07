@@ -27,6 +27,7 @@ from pymedphys._imports import pydicom, pytest, tomlkit
 from pymedphys._dicom.deidentify import (
     codes,
     compound_actions,
+    content_items,
     conformance,
     conformance_markdown,
     descriptor_cleaning,
@@ -255,6 +256,7 @@ def test_institution_name_is_resolved_by_its_type_at_each_place(statement_for):
     assert found[("RT Ion Plan", ASSERTER_IDENTIFICATION)] == "Z"
     assert found[("RT Beams Treatment Record", TREATMENT_MACHINE)] == "Z"
     assert found[("RT Ion Beams Treatment Record", TREATMENT_MACHINE)] == "Z"
+    assert found[("RT Brachy Treatment Record", TREATMENT_MACHINE)] == "Z"
     assert found[("RT Beams Treatment Record", INTERLOCK_USER)] == "D"
     assert found[("RT Ion Beams Treatment Record", ION_INTERLOCK_USER)] == "D"
     assert found[("RT Structure Set", ())] == "X"
@@ -266,7 +268,8 @@ def test_institution_name_is_resolved_by_its_type_at_each_place(statement_for):
     row = next(line for line in text.splitlines() if f"| {INSTITUTION_NAME} |" in line)
     assert row.endswith(
         "| Z within Treatment Machine Sequence (300A,0206) in RT Beams Treatment "
-        "Record and RT Ion Beams Treatment Record; within RT Assertions Sequence "
+        "Record, RT Brachy Treatment Record, and RT Ion Beams Treatment Record; "
+        "within RT Assertions Sequence "
         "(0044,0110) > Asserter Identification Sequence (0044,0103) in RT Ion "
         "Plan and RT Plan. D within Treatment Session Beam Sequence (3008,0020) "
         "> Interlock Sequence (300A,0740) > Interlock Resolution User Sequence "
@@ -761,7 +764,7 @@ def test_private_attribute_removal_is_described(preset, statement_for):
         ("tps-import", (), (), "MODIFIED"),
         (
             "public-release",
-            ("113100", "113111", "113107"),
+            ("113100", "113111", "113107", "113104"),
             ("113105", "113102"),
             "MODIFIED",
         ),
@@ -833,6 +836,20 @@ def test_every_listed_action_is_the_one_the_engine_applies(name):
             )
             assert (rule.action, entry.policy_action) == ("C", "C"), entry.tag
             assert entry.action == fallen_back.action, entry.tag
+            continue
+        if (
+            policy.CLEAN_STRUCTURED_CONTENT in composed.options
+            and entry.tag in content_items.CONTENT_ITEM_SEQUENCES
+        ):
+            # The element rules give the sequence its Basic Profile action;
+            # the engine cleans its content items by their concept names and
+            # keeps it where it can (D-047).
+            assert (entry.action, entry.policy_action, entry.superseded_by) == (
+                "C",
+                "",
+                "",
+            ), entry.tag
+            assert rule.source is element_rules.RuleSource.TABLE, entry.tag
             continue
         assert entry.action == rule.action, entry.tag
         policy_action = given.get(entry.tag, "U")

@@ -27,17 +27,23 @@ env:
   OMP_NUM_THREADS: '1'
   MKL_NUM_THREADS: '1'
   VECLIB_MAXIMUM_THREADS: '1'
-  # Every cell of the unit-test matrix, and the run at the dependency floors,
-  # runs in two parts on two runners, since on a slow runner the whole suite
-  # at once can reach the time limit. The corpus-runs part runs these
-  # modules, which run the synthetic collection through the engine and take
-  # about half the suite's time; the others part ignores them, so it runs
-  # every other test, including any module added later.
+  # Every cell of the unit-test matrix, the dicom extra's run alone, and the
+  # run at the dependency floors run in four parts on four runners, since
+  # on a slow runner the whole suite, or these modules together, can reach
+  # the time limit. These modules run the synthetic collection through the
+  # engine and take about half the suite's time: the ct-defacing part runs
+  # CT_DEFACING_RUN_TEST, the ct-defacing-reviews part runs
+  # CT_DEFACING_REVIEW_TEST, the two halves of the CT defacing runs, the
+  # corpus-runs part runs the others, and the others part ignores them all,
+  # so it runs every other test, including any module added later.
   CORPUS_RUN_TESTS: >-
     lib/pymedphys/tests/dicom/test_deidentify_ct_defacing_run.py
+    lib/pymedphys/tests/dicom/test_deidentify_ct_defacing_review_runs.py
     lib/pymedphys/tests/dicom/test_deidentify_corpus_end_to_end.py
     lib/pymedphys/tests/dicom/test_deidentify_conformance.py
     lib/pymedphys/tests/dicom/test_deidentify_redaction_review.py
+  CT_DEFACING_RUN_TEST: lib/pymedphys/tests/dicom/test_deidentify_ct_defacing_run.py
+  CT_DEFACING_REVIEW_TEST: lib/pymedphys/tests/dicom/test_deidentify_ct_defacing_review_runs.py
 
 jobs:
   test:
@@ -49,8 +55,9 @@ jobs:
       matrix:
         os: ${{ inputs.quick && fromJSON('["ubuntu-latest"]') || fromJSON('["ubuntu-latest", "windows-latest", "macos-latest"]') }}
         python-version: ${{ inputs.quick && fromJSON('["3.14"]') || fromJSON(inputs.python-matrix) }}
-        # Each cell runs in two parts, which the combined-report job combines.
-        part: [corpus-runs, others]
+        # Each cell runs in four parts, which the combined-report job
+        # combines.
+        part: [ct-defacing, ct-defacing-reviews, corpus-runs, others]
     runs-on: ${{ matrix.os }}
     env:
       # The parts' reports have names that the release's junit-*-latest-*
@@ -65,9 +72,9 @@ jobs:
 
       - uses: ./.github/actions/setup-project
         with:
-          # The corpus-runs part downloads no data, so it neither restores nor
-          # saves the data cache, which the parts would otherwise share.
-          cache-data: ${{ matrix.part != 'corpus-runs' }}
+          # The three corpus parts download no data, so they neither restore
+          # nor save the data cache, which the parts would otherwise share.
+          cache-data: ${{ matrix.part == 'others' }}
           python-version: ${{ matrix.python-version }}
           # user is a superset of mosaiq and provides the Streamlit GUI tests
           # with the app dependencies.
@@ -82,10 +89,11 @@ jobs:
         run: |
           set -euxo pipefail
           mkdir -p test-results
-          # Each part runs its share of the suite: corpus-runs runs the
-          # modules that CORPUS_RUN_TESTS lists and others ignores them. A
-          # listed module that no longer exists fails both parts. Expand the
-          # selection only when it is set, which bash before 4.4 requires.
+          # Each part runs its share of the suite: each half of CT defacing
+          # runs alone, corpus-runs runs the other CORPUS_RUN_TESTS modules,
+          # and others ignores every listed module. Missing paths fail every
+          # part. Expand the selection only when it is set, which bash before
+          # 4.4 requires.
           selection=()
           if [[ -n "${PART}" ]]; then
             read -ra listed <<< "${CORPUS_RUN_TESTS}"
@@ -95,8 +103,31 @@ jobs:
                 exit 1
               fi
             done
+            for alone in "${CT_DEFACING_RUN_TEST}" "${CT_DEFACING_REVIEW_TEST}"; do
+              if [[ " ${listed[*]} " != *" ${alone} "* ]]; then
+                echo "::error::Each CT defacing part's module must belong to CORPUS_RUN_TESTS."
+                exit 1
+              fi
+            done
+            if [[ "${CT_DEFACING_RUN_TEST}" == "${CT_DEFACING_REVIEW_TEST}" ]]; then
+              echo "::error::The two CT defacing parts must run different modules."
+              exit 1
+            fi
             case "${PART}" in
-              corpus-runs) selection=("${listed[@]}") ;;
+              ct-defacing) selection=("${CT_DEFACING_RUN_TEST}") ;;
+              ct-defacing-reviews) selection=("${CT_DEFACING_REVIEW_TEST}") ;;
+              corpus-runs)
+                for path in "${listed[@]}"; do
+                  if [[ "${path}" != "${CT_DEFACING_RUN_TEST}" &&
+                    "${path}" != "${CT_DEFACING_REVIEW_TEST}" ]]; then
+                    selection+=("${path}")
+                  fi
+                done
+                if [[ ${#selection[@]} -eq 0 ]]; then
+                  echo "::error::The remaining corpus part must not be empty."
+                  exit 1
+                fi
+                ;;
               others) selection=("${listed[@]/#/--ignore=${GITHUB_WORKSPACE}/}") ;;
               *) echo "::error::Unknown part ${PART}."; exit 1 ;;
             esac
@@ -130,12 +161,12 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-  # Combine the two parts of each cell into that cell's one report, such as
+  # Combine the four parts of each cell into that cell's one report, such as
   # junit-ubuntu-latest-3.14: the release's requirements matrix reads each as
   # that environment, and the pydicom-versions job reuses the Ubuntu/Python
   # 3.14 cell's when the locked pydicom is the version it would test. It runs
   # after failed tests too, so the combined reports show them, but records the
-  # pydicom evidence only when both of that cell's parts passed and imported
+  # pydicom evidence only when all of that cell's parts passed and imported
   # the same version.
   combined-report:
     name: ${{ matrix.os }} - py${{ matrix.python-version }} (combined report)
@@ -196,9 +227,12 @@ jobs:
   # Each narrow extra, such as dicom, must list every package its feature uses.
   # Install one extra alone, with only the test runner, and run that feature's
   # tests: a missing package fails them. Tests of other features that sit in
-  # the same folders skip themselves when their packages are missing.
+  # the same folders skip themselves when their packages are missing. The
+  # dicom extra's tests run in four parts on four runners, as
+  # CORPUS_RUN_TESTS describes; the other extras' tests take about a minute
+  # and run whole.
   narrow-extras:
-    name: Extra ${{ matrix.extra }} alone
+    name: Extra ${{ matrix.extra }} alone${{ matrix.part && format(' ({0})', matrix.part) || '' }}
     timeout-minutes: 30
     strategy:
       fail-fast: false
@@ -209,6 +243,19 @@ jobs:
             marks: not slow and not pydicom
             paths: tests/gamma tests/interp
           - extra: dicom
+            part: ct-defacing
+            marks: not slow
+            paths: tests/dicom
+          - extra: dicom
+            part: ct-defacing-reviews
+            marks: not slow
+            paths: tests/dicom
+          - extra: dicom
+            part: corpus-runs
+            marks: not slow
+            paths: tests/dicom
+          - extra: dicom
+            part: others
             marks: not slow
             paths: tests/dicom
           - extra: mosaiq
@@ -221,6 +268,8 @@ jobs:
             marks: not slow
             paths: tests/trf tests/logfiles
     runs-on: ubuntu-latest
+    env:
+      REPORT: junit-extra-${{ matrix.extra }}${{ matrix.part && format('-{0}', matrix.part) || '' }}
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -229,7 +278,8 @@ jobs:
 
       - uses: ./.github/actions/setup-project
         with:
-          cache-data: 'true'
+          # The three corpus parts download no data, as in the test job.
+          cache-data: ${{ matrix.part != 'ct-defacing' && matrix.part != 'ct-defacing-reviews' && matrix.part != 'corpus-runs' }}
           extras: ${{ matrix.extra }}
           groups: 'test-runner'
 
@@ -238,7 +288,7 @@ jobs:
         shell: bash
         env:
           PYTEST_ADDOPTS: ${{ inputs.extra-pytest-args }}
-          EXTRA: ${{ matrix.extra }}
+          PART: ${{ matrix.part }}
           MARKS: ${{ matrix.marks }}
           TEST_PATHS: ${{ matrix.paths }}
           # DICOM has thousands of cases; the smaller feature suites cost
@@ -247,17 +297,59 @@ jobs:
         run: |
           set -euxo pipefail
           mkdir -p test-results
-          read -ra paths <<< "${TEST_PATHS}"
+          read -ra selection <<< "${TEST_PATHS}"
+          # A part runs its share of the feature's tests, as in the test job:
+          # each half of CT defacing runs alone, corpus-runs runs the other
+          # CORPUS_RUN_TESTS modules in place of the feature's paths, and
+          # others ignores every listed module. Missing paths fail every part.
+          if [[ -n "${PART}" ]]; then
+            read -ra listed <<< "${CORPUS_RUN_TESTS}"
+            for path in "${listed[@]}"; do
+              if [[ ! -f "${path}" ]]; then
+                echo "::error::CORPUS_RUN_TESTS lists ${path}, which does not exist."
+                exit 1
+              fi
+            done
+            for alone in "${CT_DEFACING_RUN_TEST}" "${CT_DEFACING_REVIEW_TEST}"; do
+              if [[ " ${listed[*]} " != *" ${alone} "* ]]; then
+                echo "::error::Each CT defacing part's module must belong to CORPUS_RUN_TESTS."
+                exit 1
+              fi
+            done
+            if [[ "${CT_DEFACING_RUN_TEST}" == "${CT_DEFACING_REVIEW_TEST}" ]]; then
+              echo "::error::The two CT defacing parts must run different modules."
+              exit 1
+            fi
+            case "${PART}" in
+              ct-defacing) selection=("${CT_DEFACING_RUN_TEST}") ;;
+              ct-defacing-reviews) selection=("${CT_DEFACING_REVIEW_TEST}") ;;
+              corpus-runs)
+                selection=()
+                for path in "${listed[@]}"; do
+                  if [[ "${path}" != "${CT_DEFACING_RUN_TEST}" &&
+                    "${path}" != "${CT_DEFACING_REVIEW_TEST}" ]]; then
+                    selection+=("${path}")
+                  fi
+                done
+                if [[ ${#selection[@]} -eq 0 ]]; then
+                  echo "::error::The remaining corpus part must not be empty."
+                  exit 1
+                fi
+                ;;
+              others) selection+=("${listed[@]/#/--ignore=${GITHUB_WORKSPACE}/}") ;;
+              *) echo "::error::Unknown part ${PART}."; exit 1 ;;
+            esac
+          fi
           # --no-sync keeps uv from installing anything beyond the extra.
-          uv run --no-sync -- pymedphys dev tests -m "${MARKS}" "${paths[@]}" \
+          uv run --no-sync -- pymedphys dev tests -m "${MARKS}" "${selection[@]}" \
             -n "${TEST_WORKERS}" --dist worksteal --durations=15 \
-            --junitxml="${GITHUB_WORKSPACE}/test-results/junit-extra-${EXTRA}.xml"
+            --junitxml="${GITHUB_WORKSPACE}/test-results/${REPORT}.xml"
 
       - name: Upload test results
         if: ${{ !cancelled() && steps.tests.outcome != 'skipped' }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: junit-extra-${{ matrix.extra }}
+          name: ${{ env.REPORT }}
           path: test-results/*.xml
           if-no-files-found: error
           retention-days: 30
@@ -265,14 +357,16 @@ jobs:
   # The declared minimum versions of NumPy (2.0) and pandas (2.2.2) are
   # checked together, whichever matrix runs. Python 3.12 is the only supported
   # version with wheels for both: neither has any for Python 3.13 or later.
-  # The suite runs in two parts, as CORPUS_RUN_TESTS describes.
+  # The two halves of CT defacing and the remaining corpus modules run
+  # separately, alongside all other tests, as in the test job, to keep each
+  # part within the same 30-minute limit.
   dependency-floors:
     name: NumPy and pandas minimum versions (${{ matrix.part }})
     timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
-        part: [corpus-runs, others]
+        part: [ct-defacing, ct-defacing-reviews, corpus-runs, others]
     runs-on: ubuntu-latest
     env:
       # PyMedPhys's extras to install, whose requirements the check below counts.
@@ -285,9 +379,8 @@ jobs:
 
       - uses: ./.github/actions/setup-project
         with:
-          # The corpus-runs part downloads no data, so it neither restores nor
-          # saves the data cache, which the parts would otherwise share.
-          cache-data: ${{ matrix.part != 'corpus-runs' }}
+          # The corpus parts use synthetic data; only others uses the cache.
+          cache-data: ${{ matrix.part == 'others' }}
           python-version: '3.12'
           extras: ${{ env.PYMEDPHYS_EXTRAS }}
 
@@ -356,10 +449,11 @@ jobs:
           print("\n".join(unmet) or "Every installed package's requirements are met")
           sys.exit(bool(unmet))
           EOF
-          # Each part runs its share of the suite: corpus-runs runs the
-          # modules that CORPUS_RUN_TESTS lists and others ignores them. A
-          # listed module that no longer exists fails both parts. Expand the
-          # selection only when it is set, which bash before 4.4 requires.
+          # Each part runs its share of the suite: each half of CT defacing
+          # runs alone, corpus-runs runs the other CORPUS_RUN_TESTS modules,
+          # and others ignores every listed module. Missing paths fail every
+          # part. Expand the selection only when it is set, which bash before
+          # 4.4 requires.
           selection=()
           if [[ -n "${PART}" ]]; then
             read -ra listed <<< "${CORPUS_RUN_TESTS}"
@@ -369,8 +463,31 @@ jobs:
                 exit 1
               fi
             done
+            for alone in "${CT_DEFACING_RUN_TEST}" "${CT_DEFACING_REVIEW_TEST}"; do
+              if [[ " ${listed[*]} " != *" ${alone} "* ]]; then
+                echo "::error::Each CT defacing part's module must belong to CORPUS_RUN_TESTS."
+                exit 1
+              fi
+            done
+            if [[ "${CT_DEFACING_RUN_TEST}" == "${CT_DEFACING_REVIEW_TEST}" ]]; then
+              echo "::error::The two CT defacing parts must run different modules."
+              exit 1
+            fi
             case "${PART}" in
-              corpus-runs) selection=("${listed[@]}") ;;
+              ct-defacing) selection=("${CT_DEFACING_RUN_TEST}") ;;
+              ct-defacing-reviews) selection=("${CT_DEFACING_REVIEW_TEST}") ;;
+              corpus-runs)
+                for path in "${listed[@]}"; do
+                  if [[ "${path}" != "${CT_DEFACING_RUN_TEST}" &&
+                    "${path}" != "${CT_DEFACING_REVIEW_TEST}" ]]; then
+                    selection+=("${path}")
+                  fi
+                done
+                if [[ ${#selection[@]} -eq 0 ]]; then
+                  echo "::error::The remaining corpus part must not be empty."
+                  exit 1
+                fi
+                ;;
               others) selection=("${listed[@]/#/--ignore=${GITHUB_WORKSPACE}/}") ;;
               *) echo "::error::Unknown part ${PART}."; exit 1 ;;
             esac

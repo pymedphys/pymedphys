@@ -191,8 +191,120 @@ Every volume of each image gave at least one region: 42 CTs and 42 MRs.
 - On CT, the detector found a region in 94.5% of the slices searched and in every volume, 4.38 regions for each slice searched. Of its 33,183 regions, 22,659 (68%) have half or more of their pixels above -900 HU, and 10,078 (30%) have all of them, so most would black out tissue rather than air.
 - On MR, it found a region in 19.9% of the slices and in every volume, 0.26 regions for each slice searched.
 - If, as above, HaN-Seg's images hold no burned-in text, every one of these regions is a false positive. A reviewer can add a region to a cleaned instance but cannot remove one that the finder found (D-048), so a cleaned slice like these is released with every region blacked out, or rejected.
-- 35 of the 42 CTs have slices of 1024 pixels or more on their larger side, and every MR has slices of 512 to under 640. These `/1` summaries do not count regions by slice size, so they do not show whether size explains the difference between CT and MR; the `/2` summary counts them so.
+- 35 of the 42 CTs have slices of 1024 pixels or more on their larger side, and every MR has slices of 512 to under 640. These `/1` summaries do not count regions by slice size, so they do not show whether size explains the difference between CT and MR; the `/2` summary counts them so, and its [rerun](#results-by-slice-size-and-score-margin) is recorded below.
 - The counts are evidence, not a verdict: whether the detector's false positives on CT and MR are acceptable is decided by the evaluation that D-056 designs, which measures them with missed text on the same images against acceptance criteria set before tuning, and the validation table of the design doc waits on its held-out confirmation.
+
+## Results by slice size and score margin
+
+The check ran again at commit `904b15d6fcec766a73f0d7532aee94d54873c3b0`, the change that added the `/2` summary, now on main, in run [41145832882](https://github.com/pymedphys/pymedphys/actions/runs/41145832882) on 31 October 2026, whose two jobs both succeeded. An earlier run at the same commit, [41145744256](https://github.com/pymedphys/pymedphys/actions/runs/41145744256), gave the same summaries, value for value. Their artefacts expire on 28 January 2027, so their counts are recorded here, as the summaries give them. Every count that the `/1` summary also gives is the same as in the [run on main](#results-on-main) above, so only the counts that `/2` adds are shown.
+
+| About | |
+| --- | --- |
+| Summary | `pymedphys-deid-pixel-text-validation/2` |
+| Data set | HaN-Seg 1.0, doi:10.5281/zenodo.7442914, the same file as above |
+| Software | Python 3.14.9, pymedphys 0.42.0.dev1, NumPy 2.5.4, SciPy 1.18.1, ONNX Runtime 1.31.0 |
+| Finder | `pymedphys._dicom.deidentify.text_detection.TextDetector`, with its default parameters, box threshold 0.5 |
+| Model SHA-256 | `090f04abcd9d9a7498bc4ebf677e4cb9bdce1fe4197ddb7e529f1ef44e1ff94f` |
+| Artefact `pixel-text-validation-results-CT` | 5564 bytes as uploaded, SHA-256 `e5b39d9b7489b944e1b63eb5b291b7db817b5966d06ca3a4c598f24d97dc977c` |
+| Artefact `pixel-text-validation-results-MR_T1` | 4911 bytes as uploaded, SHA-256 `04bd1ce00bd56037d7f184690efb76b794330aaf869c6fbafe3e372774e8f204` |
+
+### Regions by score margin and rendering
+
+| Score margin (mean probability above the box threshold) | CT regions | MR_T1 regions |
+| --- | ---: | ---: |
+| 0 to under 0.025 | 1822 | 106 |
+| 0.025 to under 0.05 | 1862 | 73 |
+| 0.05 to under 0.1 | 3906 | 210 |
+| 0.1 to under 0.15 | 4482 | 132 |
+| 0.15 to under 0.2 | 5155 | 128 |
+| 0.2 to under 0.25 | 5932 | 152 |
+| 0.25 to under 0.3 | 4996 | 98 |
+| 0.3 to under 0.35 | 3932 | 41 |
+| 0.35 to under 0.4 | 962 | 13 |
+| 0.4 to under 0.45 | 134 | 0 |
+| 0.45 or more | 0 | 0 |
+
+| Renderings that gave the region | CT regions | MR_T1 regions |
+| --- | ---: | ---: |
+| `black-top-hat` | 18516 | 401 |
+| `full-range` | 4715 | 29 |
+| `full-range+white-top-hat` | 114 | 0 |
+| `white-top-hat` | 9838 | 523 |
+
+### By the larger side of a slice
+
+Every other bin of the larger side of a slice holds no volume of either image.
+
+| Image and larger side of a slice (pixels) | Volumes | Slices searched | Slices with a region | Regions |
+| --- | ---: | ---: | ---: | ---: |
+| CT, 512 to under 640 | 7 | 1132 | 841 | 1646 |
+| CT, 1024 or more | 35 | 6449 | 6321 | 31537 |
+| MR_T1, 512 to under 640 | 42 | 3613 | 719 | 953 |
+
+| Score margin | CT, 512 to under 640 pixels | CT, 1024 or more pixels | MR_T1, 512 to under 640 pixels |
+| --- | ---: | ---: | ---: |
+| 0 to under 0.025 | 101 | 1721 | 106 |
+| 0.025 to under 0.05 | 117 | 1745 | 73 |
+| 0.05 to under 0.1 | 188 | 3718 | 210 |
+| 0.1 to under 0.15 | 220 | 4262 | 132 |
+| 0.15 to under 0.2 | 237 | 4918 | 128 |
+| 0.2 to under 0.25 | 382 | 5550 | 152 |
+| 0.25 to under 0.3 | 253 | 4743 | 98 |
+| 0.3 to under 0.35 | 104 | 3828 | 41 |
+| 0.35 to under 0.4 | 43 | 919 | 13 |
+| 0.4 to under 0.45 | 1 | 133 | 0 |
+| 0.45 or more | 0 | 0 | 0 |
+
+| Renderings | CT, 512 to under 640 pixels | CT, 1024 or more pixels | MR_T1, 512 to under 640 pixels |
+| --- | ---: | ---: | ---: |
+| `black-top-hat` | 678 | 17838 | 401 |
+| `full-range` | 497 | 4218 | 29 |
+| `full-range+white-top-hat` | 6 | 108 | 0 |
+| `white-top-hat` | 465 | 9373 | 523 |
+
+### By the larger spacing within a slice
+
+Every other bin of the larger spacing within a slice holds no volume of either image.
+
+| Image and larger spacing within a slice (mm) | Volumes | Slices searched | Slices with a region | Regions |
+| --- | ---: | ---: | ---: | ---: |
+| CT, 0.5 to under 0.75 | 35 | 6449 | 6321 | 31537 |
+| CT, 0.75 to under 1 | 5 | 869 | 650 | 1274 |
+| CT, 1 to under 1.25 | 1 | 122 | 107 | 211 |
+| CT, 1.5 to under 2 | 1 | 141 | 84 | 161 |
+| MR_T1, 0 to under 0.5 | 27 | 1866 | 388 | 503 |
+| MR_T1, 0.5 to under 0.75 | 14 | 1707 | 323 | 441 |
+| MR_T1, 0.75 to under 1 | 1 | 40 | 8 | 9 |
+
+| Score margin | CT, 0.5 to under 0.75 mm | CT, 0.75 to under 1 mm | CT, 1 to under 1.25 mm | CT, 1.5 to under 2 mm | MR_T1, 0 to under 0.5 mm | MR_T1, 0.5 to under 0.75 mm | MR_T1, 0.75 to under 1 mm |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 0 to under 0.025 | 1721 | 70 | 16 | 15 | 54 | 50 | 2 |
+| 0.025 to under 0.05 | 1745 | 82 | 12 | 23 | 38 | 35 | 0 |
+| 0.05 to under 0.1 | 3718 | 139 | 29 | 20 | 110 | 98 | 2 |
+| 0.1 to under 0.15 | 4262 | 150 | 43 | 27 | 78 | 54 | 0 |
+| 0.15 to under 0.2 | 4918 | 156 | 50 | 31 | 64 | 64 | 0 |
+| 0.2 to under 0.25 | 5550 | 328 | 35 | 19 | 85 | 65 | 2 |
+| 0.25 to under 0.3 | 4743 | 222 | 13 | 18 | 52 | 45 | 1 |
+| 0.3 to under 0.35 | 3828 | 88 | 9 | 7 | 15 | 25 | 1 |
+| 0.35 to under 0.4 | 919 | 39 | 3 | 1 | 7 | 5 | 1 |
+| 0.4 to under 0.45 | 133 | 0 | 1 | 0 | 0 | 0 | 0 |
+| 0.45 or more | 0 | 0 | 0 | 0 | 0 | 0 | 0 |
+
+| Renderings | CT, 0.5 to under 0.75 mm | CT, 0.75 to under 1 mm | CT, 1 to under 1.25 mm | CT, 1.5 to under 2 mm | MR_T1, 0 to under 0.5 mm | MR_T1, 0.5 to under 0.75 mm | MR_T1, 0.75 to under 1 mm |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| `black-top-hat` | 17838 | 544 | 70 | 64 | 230 | 163 | 8 |
+| `full-range` | 4218 | 353 | 79 | 65 | 10 | 19 | 0 |
+| `full-range+white-top-hat` | 108 | 3 | 2 | 1 | 0 | 0 | 0 |
+| `white-top-hat` | 9373 | 374 | 60 | 31 | 263 | 259 | 1 |
+
+### What the new counts show
+
+- The 35 CTs whose slices are 1024 pixels or more on their larger side gave 31,537 of the 33,183 CT regions (95.0%): a region in 98.0% of their 6,449 slices, and 4.89 regions for each slice searched. The other 7 CTs, of 512 to under 640 pixels, gave a region in 74.3% of their 1,132 slices, 1.45 regions for each, and the MRs, all of 512 to under 640 pixels, gave a region in 19.9% of theirs, 0.26 for each.
+- Inference, not measured: at the same slice size, CT still gives a region in far more slices than MR, so slice size alone does not explain the difference between them, though among the CTs the larger slices give 3.4 times as many regions for each slice. The smaller bin holds only 7 CTs, so that comparison rests on few patients.
+- On CT, the bin of 1024 pixels or more and the bin of 0.5 to under 0.75 mm give the same counts in every column, so as far as the counts show they hold the same 35 volumes, and these data cannot separate slice size from spacing. On MR, slices under 0.5 mm and of 0.5 to under 0.75 mm gave a region at nearly the same rate, 20.8% and 18.9%.
+- A box threshold raised from 0.5 to 0.6, 0.7, 0.8, or 0.9, every other parameter unchanged, would keep 77.1%, 48.1%, 15.2%, or 0.4% of the CT regions, and 59.2%, 31.9%, 5.7%, or none of the MR regions. On CT the share kept at 0.7 is nearly the same for both slice sizes, 47.6% and 48.1%. These counts give the regions kept only at the edges of the bins, and cannot show what text a raised threshold would miss, since HaN-Seg holds none.
+- Almost every region was given by one rendering alone. On CT, the black top-hat gave 55.8% of the regions, the white top-hat 29.6%, the full range 14.2%, and the full range and white top-hat together 0.3%; on MR, the white top-hat gave 54.9%, the black top-hat 42.1%, and the full range 3.0%. For each slice searched, the CTs of 1024 pixels or more gave 4.6 times as many black top-hat regions as the CTs of 512 to under 640, 3.5 times as many white top-hat regions, and 1.5 times as many full-range regions, so most of the increase with slice size is in the top-hat renderings.
+- These counts show where the false positives arise, not how to remove them: whether a change to the renderings or to the box threshold would remove them without losing text needs images with known text, which HaN-Seg lacks.
 
 ## Measuring missed text as well
 
@@ -206,7 +318,7 @@ Real patients' scans in openly licensed collections of NCI's Imaging Data Common
 
 To measure Legacy Converted Enhanced CT, MR, and PET images, and the multi-frame path that reads them, on real scans, the evaluation makes its own from the classic CT, MR, and PET series it downloads, in memory on the runner, through the module `text_evaluation_lce`, and measures them again as a stratum of their own (`idc-measure --converted`, through `text_evaluation_converted`). The conversion is built on pydicom and follows PS3.3's rules for these IODs (A.70 to A.72 and C.7.6.16.2.25): attributes that every image shares and that the IOD defines at the top level stay there, as the shipped tables of PS3.3 decide; attributes of a Functional Group Macro move into it, shared where its item is the same for every frame; every other attribute, standard or private, goes into the Unassigned Shared or Per-Frame Converted Attributes Sequence; Frame Anatomy codes Body Part Examined by the code that PS3.16 Annex L gives it, generated with the other standard tables into `anatomic_regions.json`; and each frame's Conversion Source names its image. It never changes a pixel: each frame holds the stored values that a run gives the text detector for its classic image, in the same layout, and an image that the IOD cannot hold unchanged, such as one in MONOCHROME1, with a Modality LUT, or with bits the IOD does not allow, is counted as skipped by a code instead. The tests convert synthetic series of each modality and check that every frame reads back identically, and dciodvfy, in the DICOM validators job, finds no error in the converted instances.
 
-Images of phantoms are not patient data, so for them alone the module `text_evaluation_phantom_report` also gives each case's full results and previews: every frame's boxes for each setting, and PNG crops of each region away from text and of each injected text not fully covered, with an `ATTRIBUTION.md` that credits each collection under its licence. It takes only phantom sources, by their type, and reads only files of an allow-listed phantom collection that name that collection as their archive's project; for a collection that also holds images derived from patients, such as MRI-DIR, it reads only the subjects listed as its phantoms, and lists none until they are checked. The allow-listed collections are CC-Radiomics-Phantom-3, RIDER PHANTOM PET-CT, MRI-DIR, and VICTRE's in-silico breast phantoms. It refuses any frame not of the synthetic tier or the allow-listed phantoms' tier, so that no frame of a patient is drawn, even with synthetic text burned into it.
+Images of phantoms are not patient data, so for them alone the module `text_evaluation_phantom_report` also gives each case's full results and previews: every frame's boxes for each setting, and PNG crops of each region away from text and of each injected text not fully covered, with an `ATTRIBUTION.md` that credits each collection under its licence. It takes only phantom sources, by their type, and reads only files of an allow-listed phantom collection that name that collection as their archive's project. The allow-listed collections are CC-Radiomics-Phantom-3, RIDER PHANTOM PET-CT, and VICTRE's in-silico breast phantoms, each a collection whose every subject is a phantom. MRI-DIR is not listed: its physical phantom is porcine, which the evaluation does not use, and its other subjects are synthetic images derived from patients, which are only counted. It refuses any frame not of the synthetic tier or the allow-listed phantoms' tier, so that no frame of a patient is drawn, even with synthetic text burned into it.
 
 Before any detection, the module `text_evaluation_inventory` counts what each approved collection's files are, so that sampling can be planned from the counts: by SOP Class, Modality, a fixed list of manufacturers, Rows and Columns, pixel spacing, Number of Frames, Image Type values such as `LOCALIZER`, Burned In Annotation, Recognizable Visual Features, Photometric Interpretation, Bits Stored, and Transfer Syntax, singly and in fixed crosses, with the distinct patients, studies, and series. Each label is a defined term or standard value, a fixed bin, or one of the codes `absent`, `malformed`, and `other`, so the inventory, labelled `pymedphys-deid-dicom-inventory/1`, quotes no value, identifier, or path.
 

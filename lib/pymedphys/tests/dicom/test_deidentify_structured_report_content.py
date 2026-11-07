@@ -15,22 +15,20 @@
 """The Clean Structured Content Option on general Structured Reports.
 
 The Comprehensive SR, Comprehensive 3D SR, Key Object Selection Document,
-and Mammography CAD SR IODs are not supported yet, so the engine
-sequesters their instances. These tests show, ahead of supporting them,
-what the option does with their content trees (D-047): which presets and
-Retain options, with the option added, keep a report that holds only the
-rows that its templates require; which features are removed on their own,
+and Mammography CAD SR IODs are supported. These tests show what the
+option does with their content trees (D-047): which presets and Retain
+options, with the option added, keep a report that holds only the rows
+that its templates require; which features are removed on their own,
 among them concept names coded in a scheme that the engine cannot look up,
 and which take the whole tree out; which optional rows are removed under
 each option set; the action that each value of a kept tree takes; and what
-is written and released, in the tests
-that add the IODs to the supported ones for that test alone, as supporting
-them would. The reports are synthetic, built from the templates of PS3.16
-2026d by :mod:`._synthetic_structured_reports`.
+is written and released. The reports are synthetic, built from the
+templates of PS3.16 2026d by :mod:`._synthetic_structured_reports`.
 
-A preset with the option added is composed by adding it to every preset's
-options for the test alone, since no preset selects it, so that the policy
-that Clean Descriptors falls back to, another preset's, selects it too.
+A preset with the option added is composed by adding it, for the test
+alone, to the options of every preset that does not select it, ``basic``
+and ``basic-clean-descriptors``, so that the policy that Clean Descriptors
+falls back to, another preset's, selects it too.
 """
 
 import io
@@ -112,25 +110,21 @@ SOURCE_VALUES = (
 
 @pytest.fixture(name="with_option")
 def _with_option(monkeypatch):
-    """Return a function that composes a preset's policy with the option added."""
+    """Return a function that composes a preset's policy with the option added.
+
+    The option is added only to the presets that do not select it.
+    """
     monkeypatch.setattr(
         policy,
         "PRESETS",
         types.MappingProxyType(
-            {preset: (*options, CSC) for preset, options in policy.PRESETS.items()}
+            {
+                preset: options if CSC in options else (*options, CSC)
+                for preset, options in policy.PRESETS.items()
+            }
         ),
     )
     return policy.compose_policy
-
-
-@pytest.fixture(name="supported")
-def _supported(monkeypatch):
-    """Add the four IODs to the supported ones, as supporting them would."""
-    monkeypatch.setattr(
-        scope,
-        "SUPPORTED_IODS",
-        scope.SUPPORTED_IODS | {iod for _, iod in REPORTS.values()},
-    )
 
 
 def _report(name, optional=(), **kwargs):
@@ -243,14 +237,16 @@ def _released(composed, dataset):
     return result.data, decision
 
 
-def test_the_reports_are_of_iods_that_are_not_supported_yet():
+def test_every_report_is_of_a_supported_iod():
     for name, (build, iod) in REPORTS.items():
         dataset = build()
         classification = scope.classify(
             dataset.SOPClassUID, synthetic.EXPLICIT_VR_LITTLE_ENDIAN
         )
 
-        assert classification.reason == scope.UnsupportedIod(iod), name
+        assert classification == scope.Classification(
+            scope.Disposition.SUPPORTED, iod
+        ), name
         assert load_iod_tables().iods[iod].lookup(CONTENT, ()), name
 
 
@@ -725,7 +721,6 @@ def test_a_section_under_its_loinc_or_equivalent_dcm_heading_is_kept(
     ],
     ids=["loinc", "dcm"],
 )
-@pytest.mark.usefixtures("supported")
 def test_a_section_under_its_loinc_or_equivalent_dcm_heading_is_written_and_released(
     with_option, title, heading
 ):
@@ -760,7 +755,6 @@ def test_a_subject_id_coded_as_tid_1007_gives_it_is_removed_on_its_own(
 
 
 @pytest.mark.parametrize("subject_id", [reports.PATIENT_ID, "SYNTHETIC-OTHER9"])
-@pytest.mark.usefixtures("supported")
 def test_a_subject_id_coded_as_tid_1007_gives_it_is_not_released(
     with_option, subject_id
 ):
@@ -790,7 +784,6 @@ RELEASED_UNDER_PUBLIC_RELEASE = {
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.4-01")
-@pytest.mark.usefixtures("supported")
 @pytest.mark.parametrize("name", RELEASED_UNDER_PUBLIC_RELEASE)
 def test_a_written_report_holds_no_source_value_and_is_released(with_option, name):
     dataset, _ = _report(name, RELEASED_UNDER_PUBLIC_RELEASE[name])
@@ -823,7 +816,6 @@ REMOVED_UNDER_PUBLIC_RELEASE = {
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.4-01")
-@pytest.mark.usefixtures("supported")
 @pytest.mark.parametrize("name", REMOVED_UNDER_PUBLIC_RELEASE)
 def test_a_report_with_every_optional_row_is_written_without_those_removed(
     with_option, name
@@ -842,7 +834,6 @@ def test_a_report_with_every_optional_row_is_written_without_those_removed(
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.4-01")
-@pytest.mark.usefixtures("supported")
 def test_a_written_cad_report_keeps_its_references(with_option):
     dataset, _ = _report(CAD)
 
@@ -893,7 +884,6 @@ def test_a_verified_report_is_planned_as_an_unverified_one_is(
     ]
 
 
-@pytest.mark.usefixtures("supported")
 @pytest.mark.parametrize("name", VERIFIABLE)
 def test_a_verified_report_is_written_with_a_dummy_verifier(with_option, name):
     dataset, _ = _report(name, verified=True)

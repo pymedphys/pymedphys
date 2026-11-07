@@ -703,9 +703,11 @@ def compare(  # pylint: disable = too-many-locals
             for kind, count in _introduced(source, output, tallies, known, premises):
                 introduced[kind].append((count, index, sop_class))
     if toolset.dcentvfy is not None:
-        # dcentvfy stops at a file that dicom3tools cannot read, so the files
-        # on which dciodvfy did not run to the end, input or output, are left
-        # out of the patient's comparison.
+        # dcentvfy stops at a file that dicom3tools cannot read, and places
+        # no attribute of a SOP Class that it does not know in an entity, so
+        # the files on which dciodvfy did not run to the end or that it does
+        # not support, input or output, are left out of the patient's
+        # comparison.
         unreadable = {
             index
             for index in range(len(pairs))

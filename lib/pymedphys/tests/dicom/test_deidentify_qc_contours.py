@@ -196,15 +196,21 @@ def test_a_structure_set_with_a_contour_that_a_sheet_does_not_draw_is_not_shown(
 @pytest.mark.parametrize(
     "keyword, value",
     [
-        ("ContourOffsetVector", [0.0, 0.0, 1.0]),
-        ("ContourSlabThickness", 2.0),
         ("ContourData", [0.0, 1.0]),
         ("ContourData", None),
+        # Retired slab attributes that cannot be placed.
+        ("ContourSlabThickness", -1.0),
+        ("ContourSlabThickness", float("nan")),
+        ("ContourSlabThickness", 2e6),
+        ("ContourSlabThickness", [1.0, 2.0]),
+        ("ContourOffsetVector", [0.0, 1.0]),
+        ("ContourOffsetVector", [0.0, 0.0, float("inf")]),
+        ("ContourOffsetVector", [0.0, 0.0, 2e6]),
+        # An offset that takes a point beyond what a sheet draws.
+        ("ContourOffsetVector", [999_995.0, 0.0, 0.0]),
     ],
 )
-def test_a_contour_placed_elsewhere_given_depth_or_unreadable_is_not_drawn(
-    keyword, value
-):
+def test_a_contour_whose_place_or_depth_cannot_be_read_is_not_drawn(keyword, value):
     dataset = _read(_structure_set([[_closed(files.circle((0, 0, 0), 9.0))]]))
     setattr(dataset.ROIContourSequence[0].ContourSequence[0], keyword, value)
     assert qc_contours.contours_of(dataset) is None
@@ -253,6 +259,213 @@ def test_contours_of_a_frame_wider_than_a_bore_are_not_shown(axis):
 
     assert qc_contours.contours_of(_read(across(qc_contours.WIDEST))) is not None
     assert qc_contours.contours_of(_read(across(qc_contours.WIDEST + 0.5))) is None
+
+
+def _retired(data, *slabs):
+    """A structure set with each contour, in order across its ROIs, given
+    a Contour Slab Thickness and Contour Offset Vector, either None to give
+    none."""
+    dataset = _read(data)
+    contours = [
+        contour
+        for item in dataset.ROIContourSequence
+        for contour in item.ContourSequence
+    ]
+    for contour, (thickness, offset) in zip(contours, slabs):
+        if thickness is not None:
+            contour.ContourSlabThickness = thickness
+        if offset is not None:
+            contour.ContourOffsetVector = list(offset)
+    return files.written(dataset)
+
+
+def _readings(*slabs, rois=None):
+    """The contours of a circle of radius 20 mm at z = 0, and of any other
+    ROIs, with the slabs given, as each reading places them."""
+    rois = rois or [[_closed(files.circle((0, 0, 0), 20.0))]]
+    found = qc_contours.contours_of(_read(_retired(_structure_set(rois), *slabs)))
+    assert found is not None
+    return found.drawn
+
+
+@pytest.mark.parametrize(
+    "slab, readings",
+    [
+        ((None, None), 1),
+        ((0.0, (0.0, 0.0, 0.0)), 1),
+        ((4.0, None), 2),
+        ((None, (0.0, 0.0, 5.0)), 2),
+        ((4.0, (0.0, 0.0, 5.0)), 4),
+    ],
+    ids=["none", "zero", "thickness", "offset", "both"],
+)
+def test_each_reading_of_the_retired_slab_attributes_that_differs_is_drawn(
+    slab, readings
+):
+    drawn = _readings(slab)
+    assert len(drawn) == readings
+    # As written, the circle is a plane at z = 0, whatever its slab.
+    (roi,) = drawn[0]
+    assert roi.closed[0][0] == pytest.approx(0.0) and not roi.slabs
+    if readings == 4:
+        offset, thickness, both = (each[0] for each in drawn[1:])
+        assert offset.closed[0][0] == pytest.approx(5.0) and not offset.slabs
+        assert thickness.closed[0][0] == pytest.approx(0.0)
+        assert thickness.slabs == ((-2.0, 2.0),)
+        assert both.closed[0][0] == pytest.approx(5.0)
+        assert both.slabs == ((-2.0, 2.0),)
+
+
+def test_an_offset_moves_a_contour_by_the_whole_vector():
+    (_, (moved,)) = _readings((None, (3.0, -4.0, 5.0)))
+    ring = files.circle((0, 0, 0), 20.0)
+    assert np.allclose(moved.closed[0][1], ring[:, :2] + (3.0, -4.0))
+    point = [("POINT", np.array([[1.0, 2.0, 3.0]]))]
+    (_, (moved,)) = _readings((None, (3.0, -4.0, 5.0)), rois=[point])
+    assert np.allclose(moved.points, [[4.0, -2.0, 8.0]])
+
+
+def test_a_closed_slab_fills_every_slice_within_it():
+    grid = _grid((-25, -25, -10), (25, 25, 10), 1.0)
+    written, thick = _readings((6.0, None))
+    as_written = _mask(grid, *written)
+    filled = _mask(grid, *thick)
+    zs = grid.zs
+    # As written, its one plane covers half a voxel either side; with its
+    # depth, every slice from 3 mm below to 3 mm above.
+    assert np.array_equal(as_written[:, 25, 25], np.abs(zs) <= 0.5)
+    assert np.array_equal(filled[:, 25, 25], np.abs(zs) <= 3.0)
+    # The ring's marks are drawn through its depth too.
+    assert np.array_equal(filled[:, 25, 45], np.abs(zs) <= 3.0)
+
+
+def test_a_slab_between_slices_fills_the_slice_nearest_it():
+    grid = _grid((-25, -25, -10), (25, 25, 10), 1.0)
+    ring = [_closed(files.circle((0, 0, 0.5), 20.0))]
+    _, thin = _readings((0.2, None), rois=[ring])
+    filled = _mask(grid, *thin)
+    assert filled[:, 25, 25].sum() == 1
+
+
+def test_a_hole_and_its_outline_in_one_plane_with_other_depths_are_not_drawn():
+    rois = [
+        [
+            _closed(files.circle((0, 0, 0), 20.0)),
+            _closed(files.circle((0, 0, 0), 5.0)),
+        ]
+    ]
+    data = _structure_set(rois)
+    assert qc_contours.contours_of(_read(_retired(data, (4.0, None), (4.0, None))))
+    assert (
+        qc_contours.contours_of(_read(_retired(data, (4.0, None), (2.0, None)))) is None
+    )
+    # With one depth, the hole is a hole through the slab.
+    grid = _grid((-25, -25, -10), (25, 25, 10), 1.0)
+    _, thick = _readings((4.0, None), (4.0, None), rois=rois)
+    filled = _mask(grid, *thick)
+    assert not filled[:, 25, 25].any() and filled[:, 25, 35].sum() == 5
+
+
+@pytest.mark.parametrize(
+    "kind, points",
+    [
+        ("POINT", np.array([[1.0, 2.0, 3.0]])),
+        ("CLOSED_PLANAR", np.array([[0.0, 0.0, 0.0], [5.0, 0.0, 0.0]])),
+        (
+            "CLOSED_PLANAR",
+            np.array([[0.0, 0.0, 0.0], [5.0, 0.0, 0.0], [9.0, 0.0, 0.0]]),
+        ),
+        ("OPEN_PLANAR", np.array([[0.0, 0.0, 0.0], [5.0, 0.0, 0.0], [9.0, 0.0, 0.0]])),
+        (
+            "OPEN_NONPLANAR",
+            np.array(
+                [[0.0, 0.0, 0.0], [9.0, 0.0, 0.0], [9.0, 9.0, 0.0], [9.0, 9.0, 9.0]]
+            ),
+        ),
+    ],
+    ids=[
+        "point",
+        "two-point-closed",
+        "collinear-closed",
+        "straight-line",
+        "non-planar",
+    ],
+)
+def test_a_thickness_without_a_plane_to_be_normal_to_is_not_drawn(kind, points):
+    data = _structure_set([[(kind, points)]])
+    assert qc_contours.contours_of(_read(data)) is not None
+    assert qc_contours.contours_of(_read(_retired(data, (2.0, None)))) is None
+    # An offset alone still moves it.
+    moved = qc_contours.contours_of(_read(_retired(data, (None, (0.0, 0.0, 1.0)))))
+    assert moved is not None and len(moved.drawn) == 2
+
+
+def _tilted_strip():
+    """A closed rectangle 0.01 mm by 20 mm, exactly planar, whose 0.2 mm of
+    height, within what an axial plane allows, tilts its normal to about
+    (-0.99875, 0, 0.04994): nearly along x."""
+    return (
+        "CLOSED_PLANAR",
+        np.array(
+            [
+                [0.0, -10.0, -0.1],
+                [0.01, -10.0, 0.1],
+                [0.01, 10.0, 0.1],
+                [0.0, 10.0, -0.1],
+            ]
+        ),
+    )
+
+
+def _tilted_square(angle):
+    """A closed square 20 mm across, centred on the origin, tilted by
+    ``angle`` radians about y."""
+    corners = np.array([[-10.0, -10.0], [10.0, -10.0], [10.0, 10.0], [-10.0, 10.0]])
+    return (
+        "CLOSED_PLANAR",
+        np.column_stack(
+            [
+                corners[:, 0] * math.cos(angle),
+                corners[:, 1],
+                corners[:, 0] * math.sin(angle),
+            ]
+        ),
+    )
+
+
+def test_a_closed_slab_is_drawn_along_z_only_within_coplanar_of_its_normal():
+    # A slab 100 mm thick on the tilted strip is about 99.9 mm wide along
+    # x; along z it would be 0.01 mm wide, so it is not drawn.
+    strip = _structure_set([[_tilted_strip()]])
+    assert qc_contours.contours_of(_read(strip)) is not None
+    assert qc_contours.contours_of(_read(_retired(strip, (100.0, None)))) is None
+    # A square tilted 0.01 rad, 0.2 mm high, puts each face of a slab along
+    # z 2 sin(0.005) t from its face along the normal, at a depth t of
+    # half the thickness: within 0.15 mm up to a thickness of 30 mm.
+    tilted = _structure_set([[_tilted_square(0.01)]])
+    bound = qc_contours.COPLANAR / math.sin(0.005)
+    assert 29.0 < bound < 31.0
+    found = qc_contours.contours_of(_read(_retired(tilted, (29.0, None))))
+    assert found is not None and len(found.drawn) == 2
+    assert qc_contours.contours_of(_read(_retired(tilted, (31.0, None)))) is None
+    # A rounded axial contour whose points wander within 0.1 mm in height
+    # is still drawn with a slab.
+    circle = files.circle((0, 0, 0), 20.0)
+    circle[:, 2] = 0.1 * np.sin(np.arange(len(circle)))
+    rounded = _structure_set([[_closed(circle)]])
+    found = qc_contours.contours_of(_read(_retired(rounded, (6.0, None))))
+    assert found is not None and len(found.drawn) == 2
+
+
+def test_an_open_contour_with_depth_is_drawn_through_it():
+    bent = np.array([[-10.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 10.0, 0.0]])
+    grid = _grid((-15, -15, -10), (15, 15, 10), 1.0)
+    written, thick = _readings((4.0, None), rois=[[("OPEN_PLANAR", bent)]])
+    flat = _mask(grid, *written)
+    deep = _mask(grid, *thick)
+    assert np.array_equal(flat[:, 15, 10], grid.zs == 0)
+    assert np.array_equal(deep[:, 15, 10], np.abs(grid.zs) <= 2.0)
+    assert np.array_equal(deep[:, 20, 15], np.abs(grid.zs) <= 2.0)
 
 
 # What a sheet draws.
@@ -1182,6 +1395,82 @@ def test_each_frame_has_its_own_united_row_and_each_item_its_own_row():
     assert (rows[2] == rows[5]).all() and (rows[2] == rows[4]).all()
 
 
+def _by_reading(sheet):
+    """Each reading's rows of a sheet, from the top: the rows between the
+    white gutters above each further reading, split by the grey ones."""
+    white = np.flatnonzero((sheet == (255, 255, 255)).all(axis=(1, 2)))
+    starts = [
+        start
+        for start in white
+        if start - 1 not in white
+        and (sheet[start : start + qc_contours.GUTTER_PIXELS] == 255).all()
+    ]
+    edges = [0, *starts, len(sheet) + qc_contours.GUTTER_PIXELS]
+    return [
+        _sheet_rows(sheet[start + (qc_contours.GUTTER_PIXELS if index else 0) : end])
+        for index, (start, end) in enumerate(zip(edges[:-1], edges[1:]))
+    ]
+
+
+def test_each_further_reading_has_its_frames_and_the_items_it_changes():
+    ring = [_closed(files.circle((0, 0, z), 20.0)) for z in (0.0, 3.0)]
+    data = _retired(
+        _structure_set([ring, ring, []]),
+        # The second ROI's contours are 4 mm thick.
+        (None, None),
+        (None, None),
+        (4.0, None),
+        (4.0, None),
+    )
+    contours = qc_contours.contours_of(_read(data))
+    assert len(contours.drawn) == 2
+    sheet = qc_contours.contour_sheet(contours)
+    written, thick = _by_reading(sheet)
+    # As written: the united row, then each item's, the empty item's a
+    # black strip; then, after a white gutter, the thickness reading's
+    # united row and the row of the one item that it changes.
+    assert len(written) == 1 + 3 and len(thick) == 1 + 1
+    assert (written[1] == written[2]).all()
+    assert thick[1].shape[0] > written[2].shape[0]
+    assert not np.array_equal(thick[0], written[0])
+    # The sheet's least height counts every reading's rows.
+    assert qc_contours._least_height(contours, {}) <= sheet.shape[0]
+    assert qc_contours.contour_sheet(contours, tallest=sheet.shape[0]) is not None
+    assert qc_contours.contour_sheet(contours, tallest=sheet.shape[0] - 1) is None
+
+
+def test_a_face_that_only_an_offset_places_is_shown_in_that_reading():
+    # Each section of the head written at z = 0, and moved to its height by
+    # its Contour Offset Vector: as written, they are one plane, but read
+    # with the offset they are the head.
+    sections = [_closed(_section(z) * (1, 1, 0)) for z in _HEIGHTS]
+    data = _retired(
+        _structure_set([sections]), *((None, (0.0, 0.0, z)) for z in _HEIGHTS)
+    )
+    contours = qc_contours.contours_of(_read(data))
+    assert len(contours.drawn) == 2
+    _, (united, roi) = _by_reading(qc_contours.contour_sheet(contours))
+    head_united, head_roi = _sheet_rows(qc_contours.contour_sheet(_head()))
+    assert np.array_equal(united, head_united) and np.array_equal(roi, head_roi)
+
+
+def test_a_face_of_slabs_is_shown_in_its_thickness_readings():
+    # The head's sections, each a slab 3 mm thick, as its planes 3 mm apart
+    # cover; the nose shows in each reading, as in the head's own rows.
+    def readings(cut):
+        data = _retired(
+            _structure_set([[_closed(_section(z, cut)) for z in _HEIGHTS]]),
+            *((3.0, None) for _ in _HEIGHTS),
+        )
+        contours = qc_contours.contours_of(_read(data))
+        assert len(contours.drawn) == 2
+        return _by_reading(qc_contours.contour_sheet(contours))
+
+    for whole_rows, cut_rows in zip(readings(False), readings(True), strict=True):
+        for whole_row, cut_row in zip(whole_rows, cut_rows, strict=True):
+            assert whole_row.shape != cut_row.shape or (whole_row != cut_row).any()
+
+
 def test_a_sheet_taller_than_its_tallest_is_not_given():
     ring = [_closed(files.circle((0, 0, z), 20.0)) for z in (0.0, 3.0)]
     far = [("POINT", np.array([[0.0, 850.0, 0.0]]))]
@@ -1503,8 +1792,11 @@ def test_the_reader_takes_a_contours_digest_only_where_a_sheet_shows_them():
     document["previews"] = [
         {"kind": "structure-set-contours", "frames": [{"position": 0, "frame": 0}]}
     ]
-    files_of = face_review._series_files(json.dumps(document).encode("ascii"))
+    files_of, by_position = face_review._series_files(
+        json.dumps(document).encode("ascii")
+    )
     (entry,) = files_of[0]
+    assert by_position == {0: entry}
     assert entry[2] == bytes.fromhex("2f" * 32) and not entry[3]
 
 
@@ -1564,6 +1856,39 @@ def test_a_verdict_releases_a_structure_set_only_where_its_contours_were_shown()
     assert pack["instances"][0]["contour_sha256"] is None
     # Its verdict was on none of its contours, so it gives none.
     assert HeldVisualFeatures(VisualFeaturesReason.NO_FACE_VERDICT) in outcome.reasons
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.2-01")
+def test_a_verdict_releases_a_structure_set_whose_slab_contours_were_shown():
+    rings = [_closed(files.circle((0, 0, z), 30.0)) for z in (0, 3)]
+    slabbed = _retired(
+        _structure_set([rings]), (3.0, (0.0, 0.0, 1.0)), (3.0, (0.0, 0.0, 1.0))
+    )
+    pack, outcome = _verdict_run(slabbed)
+    assert [p["kind"] for p in pack["previews"]] == ["structure-set-contours"]
+    assert pack["instances"][0]["contour_sha256"] is not None
+    assert outcome.status.value == "released"
+    # One whose slab cannot be placed is still not shown, nor released.
+    for unplaced in (
+        _retired(_structure_set([rings]), (-3.0, None), (None, None)),
+        # A narrow strip tilted within its height, whose slab along z would
+        # be of another shape than its slab along its normal.
+        _retired(
+            _structure_set([rings, [_tilted_strip()]]),
+            *[(None, None)] * 2,
+            (100.0, None),
+        ),
+    ):
+        pack, outcome = _verdict_run(unplaced)
+        assert pack["previews"] == []
+        assert pack["not_previewed"] == [
+            {"position": 0, "reason": "contours-not-shown"}
+        ]
+        assert pack["instances"][0]["contour_sha256"] is None
+        assert outcome.status.value != "released"
+        assert (
+            HeldVisualFeatures(VisualFeaturesReason.NO_FACE_VERDICT) in outcome.reasons
+        )
 
 
 def test_a_verdict_does_not_release_a_structure_set_whose_sheet_is_too_tall(

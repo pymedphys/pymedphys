@@ -46,25 +46,37 @@ of them. It is withheld (:attr:`~Decision.WITHHOLD`) when collection is
 incomplete for a person name (PN), UID (UI), date (DA), datetime (DT), or
 direct identifier (:func:`direct_identifiers`), or for a sequence, whose
 items' content is unknown; when the file's structure was not read to its
-end; and when the search finds a person name, UID, date, datetime, or
-direct identifier anywhere, or anything outside the data set, which
+end; and when the search finds a person name, other than in kept text as
+below, or a UID, date, datetime, or direct identifier anywhere, or anything
+outside the data set, which
 includes Data Set Trailing Padding. Kinds are taken from the VR that the
 pinned dictionary gives the source attribute, whatever VR the value was
 collected under, and from the search only for an attribute to which the
 dictionary gives none. The file goes to QC review (:attr:`~Decision.QC_REVIEW`)
 when collection is incomplete for any other value, including a private
-value or one to which the dictionary gives no VR, or the search finds other
-text inside the data set, unless a kept standard term, code of a standard
-scheme, or equipment name, a vendor's private creator, or a value that an
-option of the run keeps explains it
+value or one to which the dictionary gives no VR; when the search finds a
+person name inside the data set in an attribute that a selected option keeps
+and that the dictionary gives only VRs of text
+(:func:`~pymedphys._dicom.deidentify.option_kept.kept_text`), such as a
+physician's name that is also a word of the Institution Name that Retain
+Institution Identity keeps, whose reviewer tells an institution's or group's
+own name from a person's, and which nothing explains; or when the search
+finds other text inside the data set, unless a kept standard term, code of
+a standard scheme, or equipment name, a vendor's private creator, a private creator
+that the run's safe private list keeps, or a value that an option of the run
+keeps explains it
 (:func:`~pymedphys._dicom.deidentify.residual_exemptions.exemption`), or the
 text is the meaning of a standard code that only instances the run does not
 write held. A date or datetime equal to a whole date, time, or datetime that
-an option keeps does not withhold the file either
+an option keeps, or a datetime whose date equals a whole date that an option
+keeps, does not withhold the file either
 (:func:`~pymedphys._dicom.deidentify.residual_exemptions.retained_date`), nor
 does a UID equal to a whole UID that an option keeps, where only instances
 that the run does not write held it
-(:func:`~pymedphys._dicom.deidentify.residual_exemptions.unwritten_uid`).
+(:func:`~pymedphys._dicom.deidentify.residual_exemptions.unwritten_uid`), or
+where its source is a private data element that every instance which held
+it removed
+(:func:`~pymedphys._dicom.deidentify.residual_exemptions.removed_uid`).
 Otherwise
 it may be released (:attr:`~Decision.RELEASE`). There is no setting that
 changes this.
@@ -98,10 +110,12 @@ import functools
 import re
 
 from .file_layout import ElementPath, Location, Region
+from .option_kept import kept_text
 from .residual_exemptions import (
     Exemption,
     KeptValues,
     exemption,
+    removed_uid,
     retained_date,
     source_values,
     unwritten_uid,
@@ -116,6 +130,8 @@ from .residuals import (
 )
 from .residual_shifts import KINDS as SHIFTED_KINDS
 from .residual_shifts import shifted_date
+from .policy import SAFE_PRIVATE
+from .safe_private import SafePrivateList
 from .standard import ProfileTable, dictionary_attribute, load_table_e1_1
 
 # The PS3.6 groups of the patient, a visit, the study, and a procedure or
@@ -170,6 +186,8 @@ class ReasonCode(enum.Enum):
     COLLECTED_AS_OTHER_VR = "collected-as-other-vr"  # not the dictionary's VR
     UNREADABLE_FILE = "unreadable-file"  # the structure was not read to its end
     RESIDUAL_PERSON_NAME = "residual-person-name"
+    # a person name found in standard text that a selected option keeps
+    RESIDUAL_PERSON_NAME_IN_KEPT_TEXT = "residual-person-name-in-kept-text"
     RESIDUAL_UID = "residual-uid"
     RESIDUAL_DATE = "residual-date"
     RESIDUAL_DATETIME = "residual-datetime"
@@ -185,8 +203,8 @@ _RESIDUAL_KINDS = {
     ValueKind.DATETIME: ReasonCode.RESIDUAL_DATETIME,
 }
 # The findings that kept values can explain: text, dates and datetimes equal
-# to a date or time that an option keeps, and UIDs from unwritten instances
-# equal to a UID that an option keeps.
+# to a date or time that an option keeps, and UIDs from unwritten instances,
+# or from removed private elements, equal to a UID that an option keeps.
 _EXPLICABLE = frozenset(
     {
         ReasonCode.RESIDUAL_TEXT,
@@ -272,13 +290,32 @@ class Coverage:
         Values are pooled across the subject by their place, so a meaning
         is qualified by its own item before it is pooled, never by another
         instance's item at the same place.
+    removed : frozenset of SourceValue, optional
+        The collected values that the instance's output does not hold at
+        their place: each whose element its edits remove, by X or with an
+        enclosing sequence, rather than empty, replace, or keep, and every
+        value of an instance that the run does not write
+        (:func:`~pymedphys._dicom.deidentify.instance_transform.unwritten`).
+        A private UID found from such values alone, equal to a whole UID
+        that an option keeps, can be explained where a replaced one could
+        not
+        (:func:`~pymedphys._dicom.deidentify.residual_exemptions.removed_uid`).
+    safe_private_list : SafePrivateList or None, optional
+        The safe private list that the run chose under the Retain Safe
+        Private Option, whose kept private creators can explain a text
+        finding in them
+        (:attr:`~pymedphys._dicom.deidentify.residual_exemptions.Exemption.RETAINED_CREATOR`),
+        or ``None``, the default, where the run does not select the Option.
+        With none, no kept private creator explains a finding.
 
     Raises
     ------
     TypeError
         If an attribute is missing, or not of these types.
     ValueError
-        If a value is ``unwritten`` or ``coded`` that is not collected.
+        If a value is ``unwritten``, ``coded``, or ``removed`` that is not
+        collected, or a safe private list is given without the Retain Safe
+        Private Option among ``options``.
     """
 
     planned: frozenset[ElementPath]
@@ -288,6 +325,8 @@ class Coverage:
     options: tuple[str, ...] = ()
     unwritten: frozenset[SourceValue] = frozenset()
     coded: frozenset[SourceValue] = frozenset()
+    removed: frozenset[SourceValue] = frozenset()
+    safe_private_list: SafePrivateList | None = None
 
     def __post_init__(self) -> None:
         for name, container, kind in (
@@ -298,6 +337,7 @@ class Coverage:
             ("options", tuple, str),
             ("unwritten", frozenset, SourceValue),
             ("coded", frozenset, SourceValue),
+            ("removed", frozenset, SourceValue),
         ):
             given = getattr(self, name)
             if not isinstance(given, container) or not all(
@@ -306,10 +346,18 @@ class Coverage:
                 raise TypeError(
                     f"{name} must be a {container.__name__} of {kind.__name__}"
                 )
-        for name in ("unwritten", "coded"):
+        for name in ("unwritten", "coded", "removed"):
             given = getattr(self, name)
             if given and not given <= frozenset(self.collected):
                 raise ValueError(f"a value that is {name} must be a collected value")
+        if self.safe_private_list is not None:
+            if not isinstance(self.safe_private_list, SafePrivateList):
+                raise TypeError("safe_private_list must be a SafePrivateList or None")
+            if SAFE_PRIVATE not in self.options:
+                raise ValueError(
+                    "a safe private list is recorded only under the Retain Safe "
+                    "Private Option"
+                )
 
     @classmethod
     def merge(cls, *coverages: Coverage) -> Coverage:
@@ -320,8 +368,12 @@ class Coverage:
         even where another instance collected a value at the same path. A
         value is unwritten only where every coverage that collected it gives
         it as unwritten, so a value that a written instance shares with an
-        unwritten one is written; and a value is coded only where every
-        coverage that collected it gives it as coded.
+        unwritten one is written; a value is coded only where every
+        coverage that collected it gives it as coded; a value is removed
+        only where every coverage that collected it gives it as removed, so
+        that a value that one written instance replaced is not removed; and
+        the safe private list is the one that every coverage gives, and
+        ``None`` where any gives another or none.
 
         Parameters
         ----------
@@ -358,6 +410,8 @@ class Coverage:
             options=tuple(dict.fromkeys(o for c in coverages for o in c.options)),
             unwritten=_given_by_all(coverages, "unwritten"),
             coded=_given_by_all(coverages, "coded"),
+            removed=_given_by_all(coverages, "removed"),
+            safe_private_list=_list_of_all(coverages),
         )
 
     def not_reported(self) -> tuple[ElementPath, ...]:
@@ -474,6 +528,12 @@ class SubjectCoverages:
         if len(rest) != len(others) or any(a is not b for a, b in zip(rest, others)):
             return Coverage.merge(*coverages)
         return Coverage.merge(own, merged)
+
+
+def _list_of_all(coverages: tuple[Coverage, ...]) -> SafePrivateList | None:
+    """Return the safe private list that every coverage gives, or None."""
+    lists = {each.safe_private_list for each in coverages}
+    return lists.pop() if len(lists) == 1 else None
 
 
 def _given_by_all(coverages: tuple[Coverage, ...], name: str) -> frozenset[SourceValue]:
@@ -622,7 +682,7 @@ def release_condition(
         ):
             exempted.append((each, Exemption.SHIFTED_DATE))
             continue
-        reason = _finding_reason(each, identifiers)
+        reason = _finding_reason(each, identifiers, coverage.options)
         if reason.code in _EXPLICABLE:
             kept = kept or KeptValues(written)
             if reason.code is ReasonCode.RESIDUAL_TEXT:
@@ -632,10 +692,13 @@ def release_condition(
                     sources,
                     coverage.options,
                     coverage.unwritten & coverage.coded,
+                    coverage.safe_private_list,
                 )
             elif reason.code is ReasonCode.RESIDUAL_UID:
                 why = unwritten_uid(
                     each, kept, sources, coverage.unwritten, coverage.options
+                ) or removed_uid(
+                    each, kept, sources, coverage.removed, coverage.options
                 )
             else:
                 why = retained_date(each, kept, sources, coverage.options)
@@ -669,12 +732,21 @@ def _gap_decision(path: ElementPath, identifiers: frozenset[str]) -> Decision:
     return Decision.WITHHOLD if required else Decision.QC_REVIEW
 
 
-def _finding_reason(finding: Finding, identifiers: frozenset[str]) -> ReleaseReason:
+def _finding_reason(
+    finding: Finding, identifiers: frozenset[str], options: tuple[str, ...] = ()
+) -> ReleaseReason:
     """Give a finding its reason, by its kind, its source, then its place."""
     vrs = _vrs(finding.source.tag)
     kinds = [REQUIRED_KINDS[vr] for vr in vrs if vr in REQUIRED_KINDS]
     kind = (kinds or [ValueKind.TEXT])[0] if vrs else finding.kind
     code = _RESIDUAL_KINDS.get(kind)
+    if code is ReasonCode.RESIDUAL_PERSON_NAME and _in_kept_text(finding, options):
+        return ReleaseReason(
+            Decision.QC_REVIEW,
+            ReasonCode.RESIDUAL_PERSON_NAME_IN_KEPT_TEXT,
+            finding.source,
+            finding.location,
+        )
     if code is None and finding.source.tag in identifiers:
         code = ReasonCode.RESIDUAL_DIRECT_IDENTIFIER
     if code is None and finding.location.region is not Region.DATA_SET:
@@ -687,6 +759,23 @@ def _finding_reason(finding: Finding, identifiers: frozenset[str]) -> ReleaseRea
             finding.location,
         )
     return ReleaseReason(Decision.WITHHOLD, code, finding.source, finding.location)
+
+
+def _in_kept_text(finding: Finding, options: tuple[str, ...]) -> bool:
+    """Return whether a finding is in standard text that a selected option keeps.
+
+    The finding must be in an element of the data set, at any depth, of an
+    attribute that a selected option keeps and that the pinned dictionary
+    gives only VRs of text (:func:`~.option_kept.kept_text`), so never in a
+    value that the Basic Profile keeps, in a private element, in a UID, or
+    outside the data set.
+    """
+    element = finding.location.element
+    return (
+        finding.location.region is Region.DATA_SET
+        and element is not None
+        and kept_text(element.tag, options)
+    )
 
 
 def direct_identifiers(table: ProfileTable | None = None) -> frozenset[str]:

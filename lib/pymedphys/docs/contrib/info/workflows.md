@@ -26,6 +26,7 @@ Schedule / manual run -> deid-edition-check.yml
 Schedule / manual run -> tg263-edition-check.yml
 Schedule / manual run / PR changing it or labelled check-upstream -> tcia-edition-check.yml
 Manual run -> face-validation.yml
+Manual run -> face-validation-visible-human.yml
 Manual run -> pixel-text-validation.yml
 Manual run -> text-detection-model-pins.yml
 Manual run -> text-detector-evaluation-idc.yml
@@ -234,8 +235,8 @@ Fast unit tests with smart matrix strategy.
     clients connect, so workers never release a port reservation during startup
   - JUnit XML report generation
 
-The `dependency-floors` job runs the unit tests (`-m "not slow"`, with the
-data cache) at the declared minimum versions of NumPy (2.0.2) and pandas
+The `dependency-floors` job runs the unit tests (`-m "not slow"`) at the
+declared minimum versions of NumPy (2.0.2) and pandas
 (2.2.2), alongside both the quick and full matrices. It runs on Ubuntu with
 Python 3.12, the only supported version with wheels for both: neither has any
 for Python 3.13 or later. It installs the same locked environment as the unit
@@ -251,20 +252,39 @@ report as `junit-dependency-floors-<part>`. A
 failure fails the unit-test workflow and therefore the required CI or release
 summary.
 
-The `dependency-floors` job and every cell of the unit-test matrix each run in
-two parts on two runners, since a slow runner could take the 30-minute limit
-(60 minutes on Windows) to run the whole suite at once. The `corpus-runs` part runs
-the modules listed in the workflow's `CORPUS_RUN_TESTS`, which run the
-synthetic collection through the engine and take about half the suite's time,
-and the `others` part runs every other test by passing each listed module to
-`--ignore`, so a new module runs in `others` until it is listed. A listed
-module that no longer exists fails both parts before pytest starts, and a
-contract test checks that each listed module exists. The `corpus-runs` parts
-read no downloaded data, so they skip the data cache. Its key ends in the job's
-ID, so every part and cell of a job on one OS shares it, and a part that saved
-it without the data would leave the others re-downloading. Move a module
-between the parts when the `--durations` reports show one part taking much
-longer than the other.
+Every cell of the unit-test matrix runs in four parts on four runners, since
+a slow runner could take the 30-minute limit (60 minutes on Windows) to run the
+whole suite at once, or the corpus modules together. The workflow's
+`CORPUS_RUN_TESTS` lists the modules that run the synthetic collection through
+the engine, which take about half the suite's time, and `CT_DEFACING_RUN_TEST`
+and `CT_DEFACING_REVIEW_TEST` name the two of them that each run alone: the two
+halves of the CT defacing runs, which share their helpers in
+`tests/dicom/_ct_defacing_runs.py`. The `ct-defacing` part runs
+`test_deidentify_ct_defacing_run.py`, the `ct-defacing-reviews` part runs
+`test_deidentify_ct_defacing_review_runs.py`, the `corpus-runs` part runs the
+other listed modules, and the `others` part runs every other test by passing
+each listed module to `--ignore`, so a new module runs in `others` until it is
+listed, and every test runs in exactly one of the four parts. A listed module
+that no longer exists, a CT defacing module that is not in the list, the same
+module named for both CT defacing parts, or an empty remaining corpus selection
+fails every part before pytest starts, and a contract test checks that each
+listed module exists and is listed once. The three corpus parts read no
+downloaded data, so they skip the data cache. Its key ends in the job's ID,
+so every part and cell of a job on one OS shares it, and a part that saved it
+without the data would leave the others re-downloading. Move a module between
+the corpus parts, or a group of runs between the two CT defacing modules, when
+the `--durations` reports show one part taking much longer than another; each
+CT defacing module makes the runs that its own tests review, so that no run is
+made in both. The corpus selection was split this way on 5 November 2026,
+when more Structured Reports in the synthetic corpus took the combined
+corpus part past 30 minutes on Ubuntu, and the CT defacing runs were halved on
+6 November 2026, when they alone reached 30 minutes on Ubuntu.
+
+The run at the dependency floors runs in the same four parts. Each part
+retains the 30-minute job limit, two pytest workers and the 900-second
+per-test limit. Only `others` uses the data cache. All four JUnit reports must
+arrive and all four parts must pass; the required summary continues to depend
+on the whole reusable unit-test workflow.
 
 Each cell's parts upload their reports as `junit-py<python>-<part>-<os>`, such
 as `junit-py3.14-corpus-runs-ubuntu-latest`, which the release's
@@ -273,8 +293,8 @@ unit-test matrix has finished, even after failed tests, the `combined-report`
 job combines each cell's parts into `junit-<os>-<python>`, such as
 `junit-ubuntu-latest-3.14`, the report that the release's requirements matrix
 reads for that environment. It writes no report for a cell if one of its
-parts' reports is missing or a test case ran in both parts. Since every cell
-runs two jobs, a full-matrix run starts six macOS unit-test jobs, and GitHub
+parts' reports is missing or a test case ran in two parts. Since every cell
+runs four jobs, a full-matrix run starts twelve macOS unit-test jobs, and GitHub
 runs at most five macOS jobs at once on its Free, Pro, and Team plans, so some
 parts may queue for a runner; the queue does not count towards a job's time
 limit.
@@ -298,9 +318,9 @@ if that is not the one requested. Actual executions upload JUnit reports as
 `junit-pydicom-minimum` and `junit-pydicom-latest`; reused evidence has no copied
 or synthetic JUnit. Each role uploads a coverage manifest naming its requested
 version and evidence source. The normal reference cell records its imported
-versions and checkout revision: each of its two parts records the pydicom and
+versions and checkout revision: each of its four parts records the pydicom and
 Python versions it imported, and the `combined-report` job records the
-combined evidence only when both parts passed on the checked-out commit and
+combined evidence only when all four parts passed on the checked-out commit and
 imported the same pydicom, which must match the lock, under Python 3.14. The
 parts may run different 3.14 patch releases, since each runner image carries
 its own while GitHub rolls out a new one, and the evidence records each part's.
@@ -321,8 +341,11 @@ The `narrow-extras` job checks that each narrow feature extra (`gamma`,
 For each, on Ubuntu with Python 3.14, it installs only that extra and the
 `test-runner` dependency group, then runs the feature's non-slow tests with
 `uv run --no-sync`, so nothing else is installed. Tests there that exercise
-another feature skip themselves when its packages are missing. It uploads a
-JUnit report per extra as `junit-extra-<extra>`, and runs alongside both the
+another feature skip themselves when its packages are missing. The `dicom`
+extra's tests run in the same `ct-defacing`, `ct-defacing-reviews`,
+`corpus-runs`, and `others` parts as the unit-test matrix, on four runners, since together they can reach the
+30-minute limit on a slow runner. It uploads a JUnit report per extra as `junit-extra-<extra>`, and
+per part for `dicom` as `junit-extra-dicom-<part>`, and runs alongside both the
 quick and full matrices.
 
 ### Extended Workflows (Conditional)
@@ -431,7 +454,7 @@ Publishes to PyPI behind quality gates.
   their result, and renders the de-identification requirements-to-tests matrix
   with `pymedphys dev deid-matrix --check` from the JUnit report of every
   environment in the unit-test matrix; each environment reports through its
-  two parts' combined report. It fails when a traced test failed, was
+  four parts' combined report. It fails when a traced test failed, was
   skipped, or did not run in every environment, or when an environment's
   report is missing, and still writes the matrix. Once the build has passed,
   `upload-deid-matrix`, which runs no repository code, attaches the matrix to
@@ -603,6 +626,26 @@ Option, against the eye and organ masks of the HaN-Seg data set (see
   digests, versions, and the engine's settings. HaN-Seg's images are of real
   patients, so the data set is never cached or uploaded, and nothing else read
   from it leaves the runner
+
+#### `face-validation-visible-human.yml`
+
+Checks the face block finder and CT defacing of the Clean Recognizable Visual
+Features Option on the NLM Visible Human Project's CT, from NCI Imaging Data
+Commons (see
+[Check the face block against HaN-Seg](deidentification-face-validation.md)).
+Courtesy of the U.S. National Library of Medicine.
+
+- **Triggers**: manually only
+- **Steps**: installs the project with the `user` extra, downloads the
+  collection's 11 CT series from IDC's public bucket with
+  `.github/scripts/fetch_idc_series.py`, and runs
+  `python -m pymedphys._dicom.deidentify.face_validation_command visible-human`,
+  which refuses the set unless each series' file count and digest are those
+  that the check pins. Its job can only read the repository
+- **Results**: the job summary shows `face-validation-vhp.md`, and the
+  `face-validation-vhp-results` artefact, kept for 90 days, holds it with
+  `face-validation-vhp.json`, `commit.txt`, and renders of each head.
+  The series themselves are never cached or uploaded
 
 #### `pixel-text-validation.yml`
 

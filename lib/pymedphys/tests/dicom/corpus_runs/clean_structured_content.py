@@ -23,6 +23,9 @@ in Table E.3.4-1 with D, so their markers are replaced. A NUMERIC item that
 the table does not list is added after them. The items' other elements take
 their own actions, none of which is K without another option, so no marker
 in the sequence is kept (D-047).
+
+Every Structured Report's tree is one that the option keeps, so the reports
+are released, the macular grid report's LOINC rows among them.
 """
 
 import dataclasses
@@ -104,6 +107,9 @@ RUN = CorpusRun(
     kept_content=frozenset({"(0040,0555)", CONTENT_SEQUENCE}),
     withheld=WITHHELD_WITHOUT_REPORTS,
     # Without Retain UIDs, Referenced Study Sequence is removed. Only
-    # Accession Number remains in different entities for images and reports.
-    inconsistent=frozenset({"(0008,0050)"}),
+    # Accession Number remains in different entities for images and reports,
+    # and Patient's Sex Neutered, which Z empties where the other IODs
+    # require it, is absent from the Procedure Log, whose IOD has no Patient
+    # Study Module (PROCEDURE_LOG_ABSENT).
+    inconsistent=frozenset({"(0008,0050)", "(0010,2203)"}),
 )
