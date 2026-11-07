@@ -12,17 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Openly licensed human DICOM on Zenodo for the text detector's evaluation
-(D-056): tier T3, beside the collections of NCI's Imaging Data Commons.
+"""Openly licensed human DICOM in ZIP archives, on Zenodo and in the
+University of Sydney's research data store, for the text detector's
+evaluation (D-056): tier T3, beside the collections of NCI's Imaging Data
+Commons.
 
 These records fill what no IDC collection that D-056 takes holds: defaced
 head CT angiography from four makers' scanners, real multi-frame Nuclear
 Medicine from bone scintigraphy, real Enhanced MR from a 0.55 T scanner,
-and dental cone-beam CT with its screen captures. :data:`COLLECTIONS`
-names each, with its licence, DOI, and what is known of its frames' text,
-and :data:`ARCHIVES` pins each of its ZIP archives by size and by the
-SHA-256 of its central directory, the index at the end of a ZIP that
-gives every member's name, size, offset, and CRC-32.
+dental cone-beam CT with its screen captures, and real RT Images, of a
+linear accelerator's kV imager and a planning system's DRRs, from a
+breast radiotherapy trial. :data:`COLLECTIONS` names each, with its
+licence, DOI, and what is known of its frames' text, and :data:`ARCHIVES`
+pins each of its ZIP archives by size and by the SHA-256 of its central
+directory, the index at the end of a ZIP that gives every member's name,
+size, offset, and CRC-32.
 
 Archives are read in place, over HTTP ranges, so that CI need not fetch a
 25 GB archive to read some of its series. :func:`archive_index` reads an
@@ -36,9 +40,11 @@ and a size of each, and the collections take turns until the selection
 reaches its size, as :func:`~.text_evaluation_idc.select_series` does.
 :func:`fetch` writes each member of a selected folder under
 ``<destination>/<collection>/<folder digest>/<member digest>.dcm``, so that
-no member's own name, which may hold a person's identifier, is kept.
+no member's own name, which may hold a person's identifier, is kept. A
+collection limited to some SOP Classes, as the RT Images of an archive
+that also holds CT are, has only members of those classes written.
 
-:func:`zenodo_cases` reads the folders written as cases of tier T3, grouped
+:func:`archive_cases` reads the folders written as cases of tier T3, grouped
 by series, with the patient as the subject where the files name one. They
 are counted only: the per-case report (:mod:`~.text_evaluation_cases`)
 withholds them, as it withholds every case that IDC or the seven TCIA
@@ -67,25 +73,31 @@ from collections.abc import Callable, Iterable, Mapping
 from types import MappingProxyType
 from typing import BinaryIO
 
+from pymedphys._imports import pydicom
+
 from .text_evaluation_converted import ConvertedCase
 from .text_evaluation_frames import KNOWN_TEXT, EvaluationRefused
 from .text_evaluation_sources import DicomCase, SkippedFiles, dicom_folder_cases
-from .text_evaluation_zenodo_pins import PINS
+from .text_evaluation_archive_pins import HOSTED_PINS, PINS
 
 TIER = "T3"
-SOURCE = "Zenodo"
 SALT = "pymedphys-text-detector-evaluation-zenodo/1"
+HOSTS = ("Zenodo", "University of Sydney")
+SYDNEY = "https://ses-data.library.sydney.edu.au/public/"
+RT_IMAGE = "1.2.840.10008.5.1.4.1.1.481.1"
 # The members read as DICOM: those named ``.dcm``, and those with no
 # extension, as some exports name their files.
 _DICOM_NAME = re.compile(r"(?:[^/]*\.dcm|[^/.]+)", re.IGNORECASE)
 _SHA256 = re.compile(r"[0-9a-f]{64}")
 _MD5 = re.compile(r"[0-9a-f]{32}")
 _DOI = re.compile(r"10\.[0-9]{4,9}/\S+")
+# A path of the Sydney store: a dataset's folder and an archive's name.
+_SYDNEY_PATH = re.compile(r"[0-9]+_[A-Za-z0-9_]+/[A-Za-z0-9_.() -]+\.zip")
 
 
 @dataclasses.dataclass(frozen=True)
-class ZenodoCollection:
-    """A Zenodo record, or a set of them, taken as one collection.
+class ArchiveCollection:
+    """A record, or a set of them, taken as one collection.
 
     Attributes
     ----------
@@ -104,6 +116,13 @@ class ZenodoCollection:
     classic : bool
         Whether its images include classic CT, MR, or PET, which the
         converted measurement reads as Legacy Converted Enhanced.
+    host : str
+        Where its archives are served, one of :data:`HOSTS`.
+    sop_classes : frozenset of str
+        The SOP Classes of its members that are taken; empty, every class.
+    per_collection : int or None
+        The most folders taken from it, where not the selection's limit:
+        more for one whose folders hold few files each.
     """
 
     name: str
@@ -113,25 +132,31 @@ class ZenodoCollection:
     known_text: str
     subjects: str
     classic: bool
+    host: str = "Zenodo"
+    sop_classes: frozenset[str] = frozenset()
+    per_collection: int | None = None
 
     def __post_init__(self):
-        if not re.fullmatch(r"zenodo_[a-z0-9_]+", self.name):
-            raise EvaluationRefused("A Zenodo collection needs a plain name.")
+        prefix = {"Zenodo": "zenodo", "University of Sydney": "sydney"}.get(self.host)
+        if prefix is None or not re.fullmatch(rf"{prefix}_[a-z0-9_]+", self.name):
+            raise EvaluationRefused("A collection needs a plain name of its host.")
         if self.licence not in {"CC BY 4.0", "CC BY NC 4.0", "CC0 1.0"}:
-            raise EvaluationRefused("A Zenodo collection must be openly licensed.")
+            raise EvaluationRefused("A collection must be openly licensed.")
         if not _DOI.fullmatch(self.doi):
-            raise EvaluationRefused("A Zenodo collection needs its DOI.")
+            raise EvaluationRefused("A collection needs its DOI.")
         if self.known_text not in KNOWN_TEXT or self.known_text == "annotated":
             raise EvaluationRefused("What is known of its text must be known.")
         if self.subjects not in {"patients", "volunteers"}:
             raise EvaluationRefused("Its subjects must be patients or volunteers.")
+        if self.per_collection is not None and self.per_collection < 1:
+            raise EvaluationRefused("A collection's limit must take something.")
 
 
-COLLECTIONS: Mapping[str, ZenodoCollection] = MappingProxyType(
+COLLECTIONS: Mapping[str, ArchiveCollection] = MappingProxyType(
     {
         each.name: each
         for each in (
-            ZenodoCollection(
+            ArchiveCollection(
                 "zenodo_head_cta",
                 "CC BY 4.0",
                 "10.5281/zenodo.15697196",
@@ -141,7 +166,7 @@ COLLECTIONS: Mapping[str, ZenodoCollection] = MappingProxyType(
                 subjects="patients",
                 classic=True,
             ),
-            ZenodoCollection(
+            ArchiveCollection(
                 "zenodo_bone_scintigraphy",
                 "CC BY 4.0",
                 "10.5281/zenodo.15549552",
@@ -153,7 +178,7 @@ COLLECTIONS: Mapping[str, ZenodoCollection] = MappingProxyType(
             ),
             # Its archives hold CBCT slices and screen captures, which
             # commonly carry text.
-            ZenodoCollection(
+            ArchiveCollection(
                 "zenodo_dental_cbct",
                 "CC BY 4.0",
                 "10.5281/zenodo.16738223",
@@ -162,7 +187,7 @@ COLLECTIONS: Mapping[str, ZenodoCollection] = MappingProxyType(
                 subjects="patients",
                 classic=True,
             ),
-            ZenodoCollection(
+            ArchiveCollection(
                 "zenodo_cardiac_mr_0p55t",
                 "CC BY 4.0",
                 "10.5281/zenodo.23089164",
@@ -171,7 +196,7 @@ COLLECTIONS: Mapping[str, ZenodoCollection] = MappingProxyType(
                 subjects="volunteers",
                 classic=False,
             ),
-            ZenodoCollection(
+            ArchiveCollection(
                 "zenodo_knee_mr_0p55t",
                 "CC BY 4.0",
                 "10.5281/zenodo.23964089",
@@ -179,6 +204,24 @@ COLLECTIONS: Mapping[str, ZenodoCollection] = MappingProxyType(
                 known_text="none",
                 subjects="volunteers",
                 classic=False,
+            ),
+            # The RT Images alone, of an On-Board Imager and of ARIA's
+            # DRRs; the archives' CT is left, as IDC holds much CT. Their
+            # text is unknown: they were not curated for burned-in text,
+            # and some systems burn scales or labels into such images.
+            ArchiveCollection(
+                "sydney_braveheart_rt_image",
+                "CC BY 4.0",
+                "10.25910/7by0-vf89",
+                "Breast Radiotherapy Audio Visual Enhancement for Sparing "
+                "the Heart (BRAVEHeart) prosective",
+                known_text="unknown",
+                subjects="patients",
+                classic=False,
+                host="University of Sydney",
+                sop_classes=frozenset({RT_IMAGE}),
+                # Most of its folders hold one or two DRRs.
+                per_collection=8,
             ),
         )
     }
@@ -228,13 +271,72 @@ class ZenodoArchive:
             raise EvaluationRefused("An archive needs its digests.")
 
     @property
-    def collection(self) -> ZenodoCollection:
+    def collection(self) -> ArchiveCollection:
         return COLLECTIONS[_RECORDS[self.record]]
 
     @property
     def key(self) -> str:
         """The archive's name, as the selection's digests take it."""
         return f"{self.record}/{self.md5}"
+
+    def url(self) -> str:
+        """Where Zenodo serves it, as its record lists it now."""
+        return archive_url(self, _record_files(self.record))
+
+
+@dataclasses.dataclass(frozen=True)
+class HostedArchive:
+    """One ZIP archive of the University of Sydney's research data store,
+    pinned by its path, which names no person.
+
+    Attributes
+    ----------
+    name : str
+        Its collection's name.
+    path : str
+        Its dataset's folder and its file name, under :data:`SYDNEY`.
+    size : int
+    central_directory_sha256 : str
+    folders : frozenset of str
+        The digests of the leaf folders taken, as :class:`Folder` gives
+        them: those that held members of its collection's SOP Classes when
+        it was pinned, so that no other folder is fetched. Empty, every
+        folder.
+    """
+
+    name: str
+    path: str
+    size: int
+    central_directory_sha256: str
+    folders: frozenset[str] = frozenset()
+
+    def __post_init__(self):
+        found = COLLECTIONS.get(self.name)
+        if found is None or found.host != "University of Sydney":
+            raise EvaluationRefused("An archive must be of a vetted record.")
+        if not _SYDNEY_PATH.fullmatch(self.path) or ".." in self.path:
+            raise EvaluationRefused("An archive needs a plain path.")
+        if self.size <= 0:
+            raise EvaluationRefused("An archive's size must be in range.")
+        if not all(
+            _SHA256.fullmatch(each)
+            for each in (self.central_directory_sha256, *self.folders)
+        ):
+            raise EvaluationRefused("An archive needs its digests.")
+
+    @property
+    def collection(self) -> ArchiveCollection:
+        return COLLECTIONS[self.name]
+
+    @property
+    def key(self) -> str:
+        return self.path
+
+    def url(self) -> str:
+        return SYDNEY + urllib.parse.quote(self.path)
+
+
+Archive = ZenodoArchive | HostedArchive
 
 
 class RangeReader(io.RawIOBase):
@@ -311,7 +413,7 @@ class RangeReader(io.RawIOBase):
         )
         status, data = self._get(request)
         if status != 206 or len(data) != end - start + 1:
-            raise EvaluationRefused("Zenodo must serve an archive by ranges.")
+            raise EvaluationRefused("An archive must be served by ranges.")
         self._cache[index] = data
         while len(self._cache) > self._blocks:
             self._cache.popitem(last=False)
@@ -326,7 +428,7 @@ class RangeReader(io.RawIOBase):
             except OSError:
                 if attempt < 3:
                     time.sleep(10 * 2**attempt)
-        raise EvaluationRefused("Zenodo did not serve an archive.")
+        raise EvaluationRefused("An archive was not served.")
 
 
 @functools.lru_cache(maxsize=None)
@@ -359,11 +461,10 @@ def archive_url(archive: ZenodoArchive, files: Mapping[str, tuple[str, int]]) ->
     return f"https://zenodo.org/records/{archive.record}/files/{quoted}?download=1"
 
 
-def http_opener(archive: ZenodoArchive, block: int = 8 << 20) -> BinaryIO:
-    """An archive as Zenodo serves it, read by ranges in blocks of
+def http_opener(archive: Archive, block: int = 8 << 20) -> BinaryIO:
+    """An archive as its host serves it, read by ranges in blocks of
     ``block`` bytes: small to read an index, large to read members."""
-    url = archive_url(archive, _record_files(archive.record))
-    return RangeReader(url, archive.size, block=block)  # type: ignore[return-value]
+    return RangeReader(archive.url(), archive.size, block=block)  # type: ignore[return-value]
 
 
 @dataclasses.dataclass(frozen=True)
@@ -372,7 +473,7 @@ class Folder:
 
     Attributes
     ----------
-    archive : ZenodoArchive
+    archive : ZenodoArchive or HostedArchive
     digest : str
         A salted SHA-256 of the archive and the folder's path; the path
         itself is not kept.
@@ -380,7 +481,7 @@ class Folder:
         Its DICOM members, in the archive's order.
     """
 
-    archive: ZenodoArchive
+    archive: Archive
     digest: str
     members: tuple[zipfile.ZipInfo, ...] = dataclasses.field(repr=False)
 
@@ -393,7 +494,7 @@ class Folder:
         return sum(each.compress_size for each in self.members) / 1e6
 
 
-def archive_index(archive: ZenodoArchive, opened: BinaryIO) -> tuple[Folder, ...]:
+def archive_index(archive: Archive, opened: BinaryIO) -> tuple[Folder, ...]:
     """An archive's leaf folders of DICOM members, from its central
     directory, which must be the pinned one."""
     opened.seek(0, io.SEEK_END)
@@ -417,10 +518,16 @@ def archive_index(archive: ZenodoArchive, opened: BinaryIO) -> tuple[Folder, ...
         path, _, name = member.filename.rpartition("/")
         if _DICOM_NAME.fullmatch(name):
             folders.setdefault(path, []).append(member)
-    return tuple(
+    indexed = tuple(
         Folder(archive, _digest("folder", archive.key, path), tuple(found))
         for path, found in sorted(folders.items())
     )
+    pinned = archive.folders if isinstance(archive, HostedArchive) else frozenset()
+    if not pinned:
+        return indexed
+    if not pinned <= {each.digest for each in indexed}:
+        raise EvaluationRefused("A pinned folder is not in its archive.")
+    return tuple(each for each in indexed if each.digest in pinned)
 
 
 def _digest(*parts: str) -> str:
@@ -450,9 +557,9 @@ class Selection:
                 "title": collection.title,
                 "subjects": collection.subjects,
                 "known_text": collection.known_text,
+                "host": collection.host,
             }
         return {
-            "source": SOURCE,
             "collections": found,
             "refused": dict(sorted(self.refused.items())),
         }
@@ -472,7 +579,8 @@ def select_folders(
     folders : iterable of Folder
         Of archives whose central directories were checked.
     per_collection : int
-        The most folders taken from one collection.
+        The most folders taken from one collection, where the collection
+        gives no limit of its own.
     max_mb : float
         The most megabytes taken in all.
     max_folder_mb : float
@@ -497,7 +605,8 @@ def select_folders(
             if position >= len(queue):
                 continue
             folder = queue[position]
-            if position >= per_collection:
+            limit = COLLECTIONS[name].per_collection or per_collection
+            if position >= limit:
                 reason = "over-collection-limit"
             elif folder.size_mb > max_folder_mb:
                 reason = "over-folder-size-limit"
@@ -514,10 +623,11 @@ def select_folders(
 def fetch(
     selection: Selection,
     destination: pathlib.Path | str,
-    opener: Callable[[ZenodoArchive], BinaryIO] = http_opener,
+    opener: Callable[[Archive], BinaryIO] = http_opener,
 ) -> dict[str, int]:
     """Write each selected folder's members under ``destination``, as the
-    module describes, each checked against its pinned CRC-32; return the
+    module describes, each checked against its pinned CRC-32, and, in a
+    collection limited to some SOP Classes, only those of them; return the
     count of files written by collection."""
     root = pathlib.Path(destination)
     written: dict[str, int] = {}
@@ -540,15 +650,33 @@ def fetch(
                             raise EvaluationRefused(
                                 "A member is not as the pinned index gives it."
                             ) from None
+                        if not _taken(archive.collection, data):
+                            continue
                         name = _digest("member", folder.digest, member.filename)
                         (out / f"{name}.dcm").write_bytes(data)
-                    written[folder.collection] = written.get(
-                        folder.collection, 0
-                    ) + len(folder.members)
+                        written[folder.collection] = (
+                            written.get(folder.collection, 0) + 1
+                        )
     return dict(sorted(written.items()))
 
 
-def zenodo_cases(
+def sop_class(data: bytes) -> str | None:
+    """A DICOM file's SOP Class UID, or None if it is not one."""
+    try:
+        found = pydicom.dcmread(
+            io.BytesIO(data), stop_before_pixels=True, specific_tags=["SOPClassUID"]
+        )
+    except (pydicom.errors.InvalidDicomError, EOFError, ValueError):
+        return None
+    value = found.get("SOPClassUID")
+    return None if value is None else str(value)
+
+
+def _taken(collection: ArchiveCollection, data: bytes) -> bool:
+    return not collection.sop_classes or sop_class(data) in collection.sop_classes
+
+
+def archive_cases(
     root: pathlib.Path | str, *, converted: bool = False
 ) -> list[DicomCase | ConvertedCase | SkippedFiles]:
     """The fetched folders under ``root`` as cases of tier T3, grouped by
@@ -573,16 +701,22 @@ def zenodo_cases(
     return cases
 
 
-ARCHIVES: tuple[ZenodoArchive, ...] = tuple(ZenodoArchive(*each) for each in PINS)
+ARCHIVES: tuple[Archive, ...] = tuple(ZenodoArchive(*each) for each in PINS) + tuple(
+    HostedArchive(*each) for each in HOSTED_PINS
+)
 
 
 def check_pins() -> None:
-    """Refuse pins that name an archive twice or a record not vetted."""
+    """Refuse pins that name an archive twice, or leave a vetted record or
+    collection without one."""
     keys = [each.key for each in ARCHIVES]
     if len(set(keys)) != len(keys):
         raise EvaluationRefused("An archive is pinned twice.")
-    if {each.record for each in ARCHIVES} != set(_RECORDS):
+    records = {each.record for each in ARCHIVES if isinstance(each, ZenodoArchive)}
+    if records != set(_RECORDS):
         raise EvaluationRefused("Every vetted record needs its archives.")
+    if {each.collection.name for each in ARCHIVES} != set(COLLECTIONS):
+        raise EvaluationRefused("Every vetted collection needs its archives.")
 
 
 check_pins()

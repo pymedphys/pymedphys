@@ -35,13 +35,14 @@ before the first supported release.
 ``idc-parity``
     counts what the resize alone changes for a model at its publishers'
     settings (``parity.json``);
-``zenodo-fetch``
-    reads the pinned Zenodo archives' indexes over HTTP, selects folders
-    of them, writes their members under ``--downloads``, and writes the
-    selection's counts (``zenodo.json``).
+``archive-fetch``
+    reads the indexes of the pinned archives on Zenodo and in the
+    University of Sydney's data store over HTTP, selects folders of them,
+    writes their members under ``--downloads``, and writes the selection's
+    counts (``archives.json``).
 
-``idc-measure`` and ``idc-parity`` also read, with ``--zenodo``, the
-folders that ``zenodo-fetch`` wrote, as cases counted only.
+``idc-measure`` and ``idc-parity`` also read, with ``--archives``, the
+folders that ``archive-fetch`` wrote, as cases counted only.
 """
 
 from __future__ import annotations
@@ -86,13 +87,13 @@ from .text_evaluation_models import (
 )
 from .text_evaluation_parity import resize_parity
 from .text_evaluation_sources import DicomCase, SkippedFiles
-from .text_evaluation_zenodo import (
+from .text_evaluation_archives import (
     ARCHIVES,
     archive_index,
     fetch,
     http_opener,
     select_folders,
-    zenodo_cases,
+    archive_cases,
 )
 
 MODELS: Mapping[str, DetectionModel] = MappingProxyType(
@@ -148,7 +149,7 @@ def _parser() -> argparse.ArgumentParser:
     )
     select.set_defaults(run=_select)
     fetched = commands.add_parser(
-        "zenodo-fetch", help="Select and fetch folders of the Zenodo archives."
+        "archive-fetch", help="Select and fetch folders of the pinned archives."
     )
     fetched.add_argument("--per-collection", type=int, default=2)
     fetched.add_argument("--max-mb", type=float, default=2000.0)
@@ -156,7 +157,7 @@ def _parser() -> argparse.ArgumentParser:
     fetched.add_argument(
         "--downloads", required=True, help="Where each folder's files are written."
     )
-    fetched.set_defaults(run=_zenodo_fetch)
+    fetched.set_defaults(run=_archive_fetch)
     for name, run, help_text in (
         ("idc-measure", _measure, "Measure the downloaded series."),
         ("idc-parity", _parity, "Count what the resize alone changes."),
@@ -165,7 +166,7 @@ def _parser() -> argparse.ArgumentParser:
         command.add_argument("series", help="series.json, as idc-select wrote it.")
         command.add_argument("downloads", help="Where the series were downloaded.")
         command.add_argument(
-            "--zenodo", help="Where zenodo-fetch wrote the Zenodo folders, if it ran."
+            "--archives", help="Where archive-fetch wrote its folders, if it ran."
         )
         command.add_argument(
             "--model", choices=sorted(MODELS), default="PP-OCRv6 small"
@@ -205,7 +206,7 @@ def _select(arguments: argparse.Namespace) -> dict[str, str]:
     }
 
 
-def _zenodo_fetch(arguments: argparse.Namespace) -> dict[str, str]:
+def _archive_fetch(arguments: argparse.Namespace) -> dict[str, str]:
     folders = []
     for archive in ARCHIVES:
         # Small blocks, as an index is read from an archive's end alone.
@@ -218,7 +219,7 @@ def _zenodo_fetch(arguments: argparse.Namespace) -> dict[str, str]:
         max_folder_mb=arguments.max_folder_mb,
     )
     written = fetch(selection, arguments.downloads)
-    return {"zenodo.json": _json({**selection.described(), "files_written": written})}
+    return {"archives.json": _json({**selection.described(), "files_written": written})}
 
 
 def read_series(path: pathlib.Path | str) -> tuple[IdcSeries, ...]:
@@ -244,8 +245,8 @@ def _cases(
         for each in read_series(arguments.series)
         if not converted or each.sop_class_uid in TARGETS
     ]
-    if getattr(arguments, "zenodo", None):
-        cases += zenodo_cases(arguments.zenodo, converted=converted)
+    if getattr(arguments, "archives", None):
+        cases += archive_cases(arguments.archives, converted=converted)
     return cases
 
 

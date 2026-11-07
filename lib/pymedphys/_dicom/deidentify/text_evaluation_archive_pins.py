@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""The pins of the Zenodo archives that the text detector's evaluation
-reads (:mod:`~.text_evaluation_zenodo`), as data alone."""
+"""The pins of the archives that the text detector's evaluation reads
+(:mod:`~.text_evaluation_archives`), on Zenodo and in the University of
+Sydney's data store, as data alone."""
 
 # Each archive of the vetted records, as Zenodo served it on 6 November
 # 2026: record, size, Zenodo's MD5, and the SHA-256 of the bytes from
@@ -468,5 +469,126 @@ PINS: tuple[tuple[int, int, str, str], ...] = (
         702827171,
         "7974de2b160e0c85b721007412bc58a2",
         "d46a27f9165446edb01faf351db0f5905337c24a521f29c732feb6087e994bec",
+    ),
+)
+
+# Each archive of BRAVEHeart that holds RT Images, as the University of
+# Sydney's data store served it on 7 November 2026: its collection, its
+# path, its size, the SHA-256 of the bytes from its central directory to
+# its end, and the digests of its leaf folders that then held RT Images.
+# P06-P10 holds no DICOM; the store served no archive named for P11-P15
+# or P31-P35.
+HOSTED_PINS: tuple[tuple[str, str, int, str, frozenset[str]], ...] = (
+    (
+        "sydney_braveheart_rt_image",
+        "32833_Byrne_2/P01-P05 (Anonymised).zip",
+        27344930109,
+        "dda38518375dfe0d320bc5eceb67ae9e68482678f715c0272837ff8eab64a935",
+        frozenset(
+            {
+                "29faf85ddd93b510b86cf19ef2610617ea604054222a9f41e70130de7344893c",
+                "4a1467577eec1adb9d0df1dd0b5ec223b925db67b12b175c46d07cfe048f3e1e",
+                "4bc3cc3dacb5cd41896df986983d5974ed9e1fd6e0feb98d012c96db34144250",
+                "5b89540bf44aa207cf1d50b036c5e70d5379ae3463d048fda0711ef537fd9d26",
+                "825b565e81bcbe3cc5576965fdd0e8650ed2c4e11f36d08d0546437d6ee7ecf3",
+                "910756e70cd133fb31b014bd41dd47f5b9c1a3fe218471651176ee67b80cf793",
+                "983c04ee409176d57fd12e03be6f3cd1fc760371d5b7c0cb62d28c83da1e2767",
+                "9cd583fcfd82e4de1dd0a1b563c3164aa505ed3c64e689c4d91074ab6ec6f31d",
+                "a33df72bdacb89666e56620e639a26f03c5434799637705d1f2fbba7c49d5c39",
+                "b5f89861fd0771311a937c625e379169bb5cb55e4202670bef380654d0a65c41",
+                "bb7a932692b3adb713a5d52099717be9a2873780b7f0327b2dae198b16d3c563",
+                "cc8e05cef917b7eb8a89df52505ba18b836b62bcd86ed36ca2d5bf3c89a000bf",
+                "cfd4f92a652ba42a2987d1c785987dfa377914a4e8dac1ece2f901ae1090b4cb",
+                "f26c68dbb05dd248a0a3f3e4674da721b02847bfc257b96d611c5a137c4b85fd",
+            }
+        ),
+    ),
+    (
+        "sydney_braveheart_rt_image",
+        "32833_Byrne_2/P16-P20 (Anonymised).zip",
+        30936773999,
+        "29d58646d3fef7898fae81e55da91c444a200a20fe59ce1ab6f9050eafc92913",
+        frozenset(
+            {
+                "14b0de83cdde60551714ead82fb41567a2ffb6a5e4d0d1b5c638155d1736efb2",
+                "5254e93193f8b9c34a7947280b0fa89ef093b78e6aa44bb4c199cb2cd916cf10",
+                "8d3dcde3ce78f771bc37391369ba58feddcfda63f9b6683782aa649070a13a11",
+                "fbd5f3476bbccb2bc4a3a54d816a2d079685ed7a836e056a39b463261d801bda",
+            }
+        ),
+    ),
+    (
+        "sydney_braveheart_rt_image",
+        "32833_Byrne_2/P21-P25 (Anonymised).zip",
+        52240027750,
+        "03578b08142c9b2be137b52939398cb3aa710d8ffae9dbfabd36c967a4f4a77d",
+        frozenset(
+            {
+                "4dcc015828bc9fe9879a57e65dd274ac12bee0a5c60e9d3764ecd2550a896647",
+                "7befa05cbdb477aabd0aafbf4b48efa22ba6aeccda77c97b65be13b992e3e6d1",
+                "9029bfa4fa69fe868c0faa81b8e965296a7a6f55a6ed401946db7677958d60d7",
+                "a7ed0b624c32337a92c234852c637d7e6f82b8600b97198568ca86d75117ea7d",
+                "b159d643286baf837fb7beaca741ae477a32ea097a3eda4bccbfe851a30467b2",
+                "c0157c07a4742c9169d033c5f73bec79fb849d463cff6c3bedace1d1846fea77",
+                "dc7efa158e7b5903d5be99e61b92b4d5fb3e27e8f744eaed1aeaffba7315efca",
+                "dd284f0020279e80aa469a028272edf42985b56553be783e7541a2269768a200",
+                "e804cada97a09e752e9f44da4e1ff2755b76710765a8c0b4b7eb4d84845a6ead",
+                "ed226963564b546db0599c9531237bad0840bb7ae4e48f223c2b81e5a33cb2c5",
+            }
+        ),
+    ),
+    (
+        "sydney_braveheart_rt_image",
+        "32833_Byrne_2/P26-P30 (Anonymised).zip",
+        38015860669,
+        "7b1cb2b479332cdd34f33a212da659717398c375c55a5f32e65be23d44216992",
+        frozenset(
+            {
+                "20345df689a4f46395cc0ad34f442b48126c9db2e6518e1fd2929663fb3ddc5f",
+                "73224365fe7f7896ba54f15cb7e5968837d8f98291c3bb0c9d00eaa54705076e",
+                "96d80466d3e5a0013aa53cad856426410f855c280687b7adf9f92fca370f9b0c",
+                "c17fe3fa832060139f56ec934fd5f111d3cae54dc694f5e1296985bcfe214408",
+                "c6d6b345b0d64a8d03fc099693d4f04d19b89b75192368f95bb3acddbc34a35f",
+                "d324350c3219e2f87236befa2698a76990649ca7abbbf6d141c85a0ec06d871f",
+            }
+        ),
+    ),
+    (
+        "sydney_braveheart_rt_image",
+        "32833_Byrne_2/P36-P40 (Anonymised).zip",
+        40820705850,
+        "05e9f1d5a112a18e2f2fb04815c381a8554454e1a581a1c0bf058a134258f7f9",
+        frozenset(
+            {
+                "2134e60bbf797ad57e2e863859abf7b4cc94c333cee51cc7f81b25ae24271ec1",
+                "25e9275ef2f9e4db93ffc92c5fa40f471954d4fe94d5cab8fc91578cb836c221",
+                "4432aeddbb3dee171f821d6558fe962149cb67b230d1be16f8aa4c5644c044ae",
+                "564c01efcd69a12f45a4711402e0ae4677128f83ec60ec7700fafd5ba1fc20e8",
+                "5d6e654cedf5dcdfea2e18e0a3e2273c290b31c3cf15032fcc1035fb7d9b08ca",
+                "6dab781ff81a11594b9ef76432f99474cf19886bfc0e61728f6520d9beb7d2c8",
+                "73aa14a554476c761656dd8e18371c5e9225567019573e682ab14c3b303dd5f5",
+                "ac5a67bb3ab9c7f19441f940368439e47c410be34e0b33a83ddecefc4328a029",
+            }
+        ),
+    ),
+    (
+        "sydney_braveheart_rt_image",
+        "32833_Byrne_2/P41-P45 (Anonymised).zip",
+        50354896528,
+        "bbb866b0f5b84091948d00fb4eba9df363fb952c885ae46ae19b9f3fade31dda",
+        frozenset(
+            {
+                "15001366a4948978ed5ff635c5dde6acbb27faf955446934339f38d8d448131c",
+                "26ca055cc343abd3b5bd567bfb705511e6907002a24aa2c9d8159561999a7d7e",
+                "37d709b4baf974fdef4b548133f2a3c664388ce0c7c5d693ec48949c1ea96b4f",
+                "635b87be65a9ba66e67b2b9e1c37a7436beeee56b2a7d0e007ea95299309f926",
+                "6a917f433f1584e62eb11e433171184015a7d084acb344bcc00575182143ae60",
+                "8238cb365c4e523f66c5f146990558a5180720938ad1951cbc15492122e46978",
+                "a72c569f58a0b77ee1f16412fdb49bfe933c68d323c68e93d2ebb4c3d3171b9e",
+                "b7c224b4dec5762059cd6d62b5a5cc08ee0e2c15fa2469dcf71dddc3f836f7fe",
+                "c58a1014ca7cd2259d53471919477f8e85d79427b7224f413ca91db0cba89d79",
+                "f9c9fa816f60a0ad9eccf145cdb2a23511ec052a2a6aa47dfe8fcee0804ac7a5",
+            }
+        ),
     ),
 )

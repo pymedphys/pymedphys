@@ -6,9 +6,10 @@ name: Text Detector Evaluation on IDC
 # in memory. The series are selected from IDC's index, as the pinned wheel
 # of idc-index-data holds it, by the vetted collections, the licence each
 # was vetted under, and image modalities, and downloaded from IDC's public
-# buckets with s5cmd. Folders of the pinned, openly licensed Zenodo archives
-# of text_evaluation_zenodo are read beside them, over HTTP ranges, each
-# archive's central directory checked against its pin, and counted only.
+# buckets with s5cmd. Folders of the pinned, openly licensed archives of
+# text_evaluation_archives, on Zenodo and in the University of Sydney's data
+# store, are read beside them, over HTTP ranges, each archive's central
+# directory checked against its pin, and counted only.
 #
 # These are real patients' scans, and this repository's logs and artefacts
 # are public. So only counts, codes, digests, versions, the detector's
@@ -43,12 +44,12 @@ on:
         description: The most megabytes of series in all.
         type: string
         default: '3000'
-      zenodo_per_collection:
-        description: The most folders from one Zenodo collection.
+      archive_per_collection:
+        description: The most folders from one archive collection, where it gives no limit of its own.
         type: string
         default: '2'
-      zenodo_max_mb:
-        description: The most megabytes of Zenodo folders in all.
+      archive_max_mb:
+        description: The most megabytes of archive folders in all.
         type: string
         default: '1500'
 
@@ -72,8 +73,8 @@ jobs:
       EVALUATED: ${{ inputs.evaluated || 'tuning' }}
       PER_COLLECTION: ${{ inputs.per_collection || '2' }}
       MAX_MB: ${{ inputs.max_mb || '1500' }}
-      ZENODO_PER_COLLECTION: ${{ inputs.zenodo_per_collection || '2' }}
-      ZENODO_MAX_MB: ${{ inputs.zenodo_max_mb || '1500' }}
+      ARCHIVE_PER_COLLECTION: ${{ inputs.archive_per_collection || '2' }}
+      ARCHIVE_MAX_MB: ${{ inputs.archive_max_mb || '1500' }}
       # idc-index-data 25.0.5, which holds IDC's index, and its SHA-256 as
       # text_evaluation_idc pins it.
       INDEX_URL: https://files.pythonhosted.org/packages/bd/10/c6391b44d1b2f6c744e1cb4018250cb1a5d80947d47ed945172d9165a3b4/idc_index_data-25.0.5-py3-none-any.whl
@@ -102,7 +103,7 @@ jobs:
         run: |
           umask 077
           mkdir -p "${RUNNER_TEMP}/idc/private" "${RUNNER_TEMP}/idc/data" \
-            "${RUNNER_TEMP}/idc/index" "${RUNNER_TEMP}/idc/zenodo"
+            "${RUNNER_TEMP}/idc/index" "${RUNNER_TEMP}/idc/archives"
 
       - name: Download IDC's index
         run: |
@@ -134,19 +135,19 @@ jobs:
             > "${RUNNER_TEMP}/idc/private/s5cmd.log" 2>&1
           df -h /
 
-      # Writes zenodo.json, with counts by collection alone; each folder's
+      # Writes archives.json, with counts by collection alone; each folder's
       # files are named by digests, never by their names in the archive.
-      - name: Fetch the Zenodo folders
+      - name: Fetch the archive folders
         timeout-minutes: 60
         run: |
           uv run --no-sync python .github/scripts/run_redacted.py \
-            --private-stdout "${RUNNER_TEMP}/idc/private/zenodo-stdout.log" \
-            pymedphys._dicom.deidentify.text_evaluation_command zenodo-fetch \
-            --per-collection "${ZENODO_PER_COLLECTION}" \
-            --max-mb "${ZENODO_MAX_MB}" \
-            --downloads "${RUNNER_TEMP}/idc/zenodo" \
-            --out "${RUNNER_TEMP}/idc/zenodo-selection" \
-            2> "${RUNNER_TEMP}/idc/private/zenodo-stderr.log"
+            --private-stdout "${RUNNER_TEMP}/idc/private/archive-stdout.log" \
+            pymedphys._dicom.deidentify.text_evaluation_command archive-fetch \
+            --per-collection "${ARCHIVE_PER_COLLECTION}" \
+            --max-mb "${ARCHIVE_MAX_MB}" \
+            --downloads "${RUNNER_TEMP}/idc/archives" \
+            --out "${RUNNER_TEMP}/idc/archive-selection" \
+            2> "${RUNNER_TEMP}/idc/private/archive-stderr.log"
           df -h /
 
       # The command downloads the model's pinned weights on first use.
@@ -158,7 +159,7 @@ jobs:
             pymedphys._dicom.deidentify.text_evaluation_command idc-measure \
             "${RUNNER_TEMP}/idc/selection/series.json" \
             "${RUNNER_TEMP}/idc/data" \
-            --zenodo "${RUNNER_TEMP}/idc/zenodo" \
+            --archives "${RUNNER_TEMP}/idc/archives" \
             --model "${MODEL}" \
             --settings "${SETTINGS}" \
             --evaluated "${EVALUATED}" \
@@ -166,7 +167,7 @@ jobs:
             --out "${RUNNER_TEMP}/idc/results" \
             2> "${RUNNER_TEMP}/idc/private/measure-stderr.log"
           cp "${RUNNER_TEMP}/idc/selection/selection.json" "${RUNNER_TEMP}/idc/results/"
-          cp "${RUNNER_TEMP}/idc/zenodo-selection/zenodo.json" "${RUNNER_TEMP}/idc/results/"
+          cp "${RUNNER_TEMP}/idc/archive-selection/archives.json" "${RUNNER_TEMP}/idc/results/"
           echo "${GITHUB_SHA}" > "${RUNNER_TEMP}/idc/results/commit.txt"
 
       # The classic CT, MR, and PET series again, each converted in memory
@@ -182,7 +183,7 @@ jobs:
             pymedphys._dicom.deidentify.text_evaluation_command idc-measure \
             "${RUNNER_TEMP}/idc/selection/series.json" \
             "${RUNNER_TEMP}/idc/data" \
-            --zenodo "${RUNNER_TEMP}/idc/zenodo" \
+            --archives "${RUNNER_TEMP}/idc/archives" \
             --model "${MODEL}" \
             --settings "${SETTINGS}" \
             --evaluated "${EVALUATED}" \
@@ -202,7 +203,7 @@ jobs:
             pymedphys._dicom.deidentify.text_evaluation_command idc-parity \
             "${RUNNER_TEMP}/idc/selection/series.json" \
             "${RUNNER_TEMP}/idc/data" \
-            --zenodo "${RUNNER_TEMP}/idc/zenodo" \
+            --archives "${RUNNER_TEMP}/idc/archives" \
             --model "${MODEL}" \
             --evaluated "${EVALUATED}" \
             --out "${RUNNER_TEMP}/idc/parity" \
