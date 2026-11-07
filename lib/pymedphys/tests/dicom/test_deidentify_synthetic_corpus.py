@@ -253,8 +253,8 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "86-pr-planar-mpr.dcm",
         "87-pr-volume-rendering.dcm",
         "88-pr-advanced-blending.dcm",
-        "89-pr-waveform.dcm",
-        "90-pr-waveform-acquisition.dcm",
+        "91-pr-waveform.dcm",
+        "92-pr-waveform-acquisition.dcm",
     ]
     assert [file.manifest.iod for file in corpus.files] == [
         "CT Image",
