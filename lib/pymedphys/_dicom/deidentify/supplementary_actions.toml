@@ -260,6 +260,13 @@ options = { clean_descriptors = "C" }
 note = "An explanation of a structured report's Completion Flag, which PS3.3 does not constrain further, so the person or system that completes the report can type anything in it, including a name or a date. It is removed by Type, and cleaned as a descriptor under Clean Descriptors."
 
 [[attribute]]
+tag = "(0042,0010)"
+keyword = "DocumentTitle"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "The title of an encapsulated document, which PS3.3 does not constrain and which can be copied from the Title entry of a PDF's document information dictionary (PS3.3 Table C.24-2), so whoever or whatever made the document can put a name, an identifier, or a date in it. It is removed by Type, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
 tag = "(0044,0106)"
 keyword = "AssertionComments"
 action = "X/Z/D"
@@ -936,10 +943,40 @@ action = "K"
 note = "The nucleus that is resonant at the imaging frequency, such as 1H or 31P (PS3.3 Table C.8-4), which the scanner writes. It names a nucleus, identifies no one, and is needed to interpret the image, so it is kept."
 
 [[attribute]]
+tag = "(0018,1016)"
+keyword = "SecondaryCaptureDeviceManufacturer"
+action = "K"
+note = "The name of the company that made the equipment that captured or converted the image or document (PS3.3 Table C.8-24). Like Manufacturer, which Table E.1-1 also omits, it names a company shared by every customer rather than one device, whose identifier, Secondary Capture Device ID, the table lists; so it is kept."
+
+[[attribute]]
+tag = "(0018,1018)"
+keyword = "SecondaryCaptureDeviceManufacturerModelName"
+action = "K"
+note = "The manufacturer's model name or number of the equipment that captured or converted the image or document (PS3.3 Table C.8-24). Like Manufacturer's Model Name, it is the same for every unit of a commercial model and identifies a product rather than one device, so it is kept."
+
+[[attribute]]
+tag = "(0018,1019)"
+keyword = "SecondaryCaptureDeviceSoftwareVersions"
+action = "K"
+note = "The manufacturer's designation of the software version of the equipment that captured or converted the image or document (PS3.3 Table C.8-24). Like Software Versions, it identifies a software release shared by every site that runs it, and says how the data were produced, so it is kept."
+
+[[attribute]]
 tag = "(0018,1020)"
 keyword = "SoftwareVersions"
 action = "K"
 note = "The manufacturer's designation of the versions of the equipment's software, which the equipment itself writes. It identifies software releases shared by every site that runs them, and is needed to interpret how the data were produced, so it is kept."
+
+[[attribute]]
+tag = "(0018,1022)"
+keyword = "VideoImageFormatAcquired"
+action = "K"
+note = "The original format of a captured video image, such as NTSC or PAL (PS3.3 Table C.8-24), which the capture equipment writes. It names a signal format, identifies no one, and says how the image was captured, so it is kept."
+
+[[attribute]]
+tag = "(0018,1023)"
+keyword = "DigitalImageFormatAcquired"
+action = "K"
+note = "Information about the digital interface through which an image was acquired (PS3.3 Table C.8-24), which the capture equipment writes. It describes an interface, identifies no one, and says how the image was captured, so it is kept."
 
 [[attribute]]
 tag = "(0018,1064)"
@@ -1018,6 +1055,18 @@ tag = "(0028,3004)"
 keyword = "ModalityLUTType"
 action = "K"
 note = "The units of the output of a Modality LUT, a Defined Term such as OD or HU that it shares with Rescale Type (PS3.3 C.11.1.1.2). It identifies no one, and replacing it would change how the pixel values are read, so it is kept, as Rescale Type is."
+
+[[attribute]]
+tag = "(0042,0012)"
+keyword = "MIMETypeOfEncapsulatedDocument"
+action = "K"
+note = "The MIME media type of an encapsulated document (PS3.3 Table C.24-2), which each encapsulated document IOD fixes, such as application/pdf, the only value of the Encapsulated PDF IOD (PS3.3 Section A.45.1.4.1). It names a format and identifies no one, and a reader needs it to open the document, so it is kept."
+
+[[attribute]]
+tag = "(0042,0014)"
+keyword = "ListOfMIMETypes"
+action = "K"
+note = "The MIME media types of the parts of an encapsulated document whose types differ from the document's own, such as image/jpeg (PS3.3 Table C.24-2). They name formats and identify no one, so they are kept."
 
 [[attribute]]
 tag = "(0066,0031)"
@@ -1412,7 +1461,7 @@ note = "The URI from which a referenced document or instance can be retrieved. I
 tag = "(0068,7005)"
 keyword = "RelativeURIReferenceWithinEncapsulatedDocument"
 action = "X/Z/D"
-note = "A URI reference, relative to an encapsulated document, to an instance that the document refers to. It can carry file paths and identifiers, so it is removed by Type under every option, like the other URI attributes that Table E.1-1 omits. Only the Encapsulated Document Module defines it, and no IOD of the first supported release uses it."
+note = "A URI reference, relative to an encapsulated document, to an instance that the document refers to. It can carry file paths and identifiers, so it is removed by Type under every option, like the other URI attributes that Table E.1-1 omits. Only the Encapsulated Document Module defines it, as Type 1C in the items of Referenced Image Sequence and Referenced Instance Sequence, where removal by Type gives it a dummy value where it is Type 1, which a URI has none of, so an Encapsulated PDF that holds it is sequestered."
 
 [[attribute]]
 tag = "(0074,100A)"

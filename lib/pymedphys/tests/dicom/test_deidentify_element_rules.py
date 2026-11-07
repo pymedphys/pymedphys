@@ -232,9 +232,11 @@ NEW_RULES = {**URIS, **SEQUENCES, **OTHER_REMOVED, **PATIENT_MEASURES}
 # The two UR attributes that name coding concepts and schemes, which the
 # maintainer decided on 1 October 2026 to keep.
 KEPT_URIS = {"(0008,010E)": "CodingSchemeURL", "(0008,0120)": "URNCodeValue"}
-# The UR attribute that the first supported release's IODs require at a
-# place that no removed sequence encloses, so that X/Z/D resolves to D there.
-REQUIRED_URIS = {"(0028,7FE0)"}
+# The UR attributes that the first supported release's IODs require at a
+# place that no removed sequence encloses, so that X/Z/D resolves to D there:
+# Pixel Data Provider URL, and the URI that an encapsulated document uses to
+# name an instance that it refers to.
+REQUIRED_URIS = {"(0028,7FE0)", "(0068,7005)"}
 ICC_PROFILE = "(0028,2000)"
 # A number that can hold anything, such as a date, which Z or D replaces
 # with its rank among its study's Series Numbers.
@@ -618,7 +620,7 @@ def test_the_new_rules_remove_by_type_where_the_supported_iods_allow_it():
     # value, and of Segmentation, whose ICC Profile Module is required where
     # a label map is PALETTE COLOR. Retrieve URL and Retrieve URI are
     # required only in sequences
-    # that the table removes, and three UR attributes are required at places
+    # that the table removes, and four UR attributes are required at places
     # where removal by Type needs a dummy value.
     tables = iods.load_iod_tables()
     basic = _rules()
@@ -686,8 +688,8 @@ def test_series_number_has_x_z_d_under_every_option():
 def test_series_number_resolves_to_z_in_the_supported_iods_but_where_type_1():
     # Type 2 in the General Series and RT Series Modules; Type 1 in the items
     # of the Structure Set Module's Source Series Information Sequence, in
-    # the Segmentation Series Module, and in the SR Document Series Module of
-    # the Structured Reports.
+    # the Segmentation Series Module, in the SR Document Series Module of
+    # the Structured Reports, and in the Encapsulated Document Series Module.
     # Either way it then takes its rank, or is emptied or given D's dummy
     # value if it has none.
     tables = iods.load_iod_tables()
@@ -725,6 +727,7 @@ def test_series_number_resolves_to_z_in_the_supported_iods_but_where_type_1():
         ("Spectacle Prescription Report", ()),
         ("Macular Grid Thickness and Volume Report", ()),
         ("Waveform Annotation SR", ()),
+        ("Encapsulated PDF", ()),
     }
     assert {action for _, _, action in resolved} == {"Z", "D"}
 

@@ -32,7 +32,8 @@ MANDATORY = {"Spatial Registration", "Deformable Spatial Registration"}
 CONDITIONAL = {"Segmentation"}
 # The supported IODs without the module: the Structured Reports, whose SR
 # Document General Module references their evidence instead (PS3.3 Section
-# A.35).
+# A.35), and the Encapsulated PDF, whose Encapsulated Document Module names
+# its sources in Source Instance Sequence (PS3.3 Table C.24-2).
 WITHOUT = {
     "X-Ray Radiation Dose SR",
     "Enhanced X-Ray Radiation Dose SR",
@@ -51,6 +52,7 @@ WITHOUT = {
     "Spectacle Prescription Report",
     "Macular Grid Thickness and Volume Report",
     "Waveform Annotation SR",
+    "Encapsulated PDF",
 }
 
 

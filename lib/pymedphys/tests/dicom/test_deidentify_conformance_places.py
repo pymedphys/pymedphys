@@ -267,20 +267,21 @@ def test_a_plain_d_that_no_supported_iod_defines_is_removed():
 def test_a_plain_d_on_a_reports_content_sequence_sequesters_it():
     # A sequence has no dummy value (D-021), and each Structured Report
     # requires Content Sequence at the top level where the root has content
-    # items.
+    # items. An Encapsulated PDF allows it there, as Type 3, and D replaces
+    # whatever its Type.
     entry = _entry(_statement("basic"), CONTENT_SEQUENCE)
+    sequestered = tuple(sorted((*STRUCTURED_REPORTS, "Encapsulated PDF")))
     assert (entry.action, entry.elsewhere) == ("D", "X")
     assert entry.places == tuple(
-        conformance.Place(name, (), conformance.SEQUESTER)
-        for name in STRUCTURED_REPORTS
+        conformance.Place(name, (), conformance.SEQUESTER) for name in sequestered
     )
     row = _row(
         conformance_markdown.render_markdown(_statement("basic")), CONTENT_SEQUENCE
     )
     assert row.endswith(
         "| instance sequestered at the top level in "
-        + ", ".join(STRUCTURED_REPORTS[:-1])
-        + f", and {STRUCTURED_REPORTS[-1]}. X elsewhere. |"
+        + ", ".join(sequestered[:-1])
+        + f", and {sequestered[-1]}. X elsewhere. |"
     )
 
 

@@ -136,7 +136,12 @@ ION_REVIEWED_AGAINST = DOSE_SR_REVIEWED_AGAINST + RADIATION_DOSE_SR_IODS
 # and which the first supported release now supports.
 RECORD_IODS = ("RT Brachy Treatment Record", "RT Treatment Summary Record")
 RECORD_REVIEWED_AGAINST = ION_REVIEWED_AGAINST + ION_IODS
-SUPPORTED_IODS = (
+# Encapsulated PDF, which the maintainer added to the target coverage on 31
+# October 2026 with the other IODs that RT exports carry, whose attributes
+# were reviewed against every IOD above, and which the first supported release
+# now supports.
+ENCAPSULATED_PDF = "Encapsulated PDF"
+ENCAPSULATED_PDF_REVIEWED_AGAINST = (
     REVIEWED_AGAINST
     + SUPPORTED_TARGET_IODS
     + SUPPORTED_DOSE_SR_IODS
@@ -145,6 +150,7 @@ SUPPORTED_IODS = (
     + ION_IODS
     + RECORD_IODS
 )
+SUPPORTED_IODS = ENCAPSULATED_PDF_REVIEWED_AGAINST + (ENCAPSULATED_PDF,)
 CLEAN_DESCRIPTORS = "clean_descriptors"
 DEVICE_IDENTITY = "retain_device_identity"
 FULL_DATES = "retain_longitudinal_full_dates"
@@ -293,6 +299,7 @@ OTHER_URLS = {
     "(0008,1190)",  # Retrieve URL
     "(0028,7FE0)",  # Pixel Data Provider URL
     "(0040,E010)",  # Retrieve URI
+    "(0068,7005)",  # Relative URI Reference Within Encapsulated Document
 }
 
 
@@ -411,9 +418,9 @@ def test_every_text_attribute_a_supported_iod_uses_and_table_e1_1_omits_has_a_ru
     # Checked against the 2026d PS3.3, PS3.6, and PS3.15: the combined
     # scope includes the RT objects, among them the two RT Ion IODs, which
     # add 13, and the brachy and summary treatment records, which add none,
-    # Segmentation, which adds 4, and the two dose-report IODs, whose
-    # supplementary rules cover 172 text attributes.
-    assert len(omitted) == 172
+    # Segmentation, which adds 4, the two dose-report IODs, and Encapsulated
+    # PDF, which adds 8, whose supplementary rules cover 180 text attributes.
+    assert len(omitted) == 180
     assert omitted <= set(_rules())
     assert {"(0008,0100)", "(300A,00C2)", "(60xx,1500)"} <= omitted
 
@@ -428,11 +435,11 @@ def test_the_rules_for_omitted_text_fall_in_the_reviewed_groups():
 
     assert groups == {
         # Operator-typed labels and text.
-        ("X/Z/D", ((CLEAN_DESCRIPTORS, "C"),)): 80,
+        ("X/Z/D", ((CLEAN_DESCRIPTORS, "C"),)): 81,
         # Accessory and equipment identifiers.
         ("X/Z/D", ((DEVICE_IDENTITY, "K"),)): 30,
         # Coded and technical values, and De-identification Method.
-        ("K", ()): 43,
+        ("K", ()): 50,
         # Names and identifiers of people, organisations, records, and
         # networks, identifiers that a device reads, and the text of overlays.
         ("X/Z/D", ()): 17,
@@ -1109,6 +1116,188 @@ def test_the_brachy_and_summary_records_other_new_attributes_are_kept_by_the_def
             ), (preset, definition)
 
 
+# The attributes that Encapsulated PDF uses and the IODs reviewed before it do
+# not, checked by hand against the 2026d PS3.3 Tables A.45.1-1, C.8-24, and
+# C.24-2, by group. Its Encapsulated Document Series Module uses nothing new.
+# The text of its Encapsulated Document Module: the title, which can be
+# copied from the PDF's own Title entry, and the media types, which the IOD
+# fixes as application/pdf (PS3.3 Section A.45.1.4.1).
+PDF_DOCUMENT_TITLE = {"(0042,0010)"}  # Document Title
+PDF_MEDIA_TYPES = {
+    "(0042,0012)",  # MIME Type of Encapsulated Document
+    "(0042,0014)",  # List of MIME Types
+}
+# The text of its SC Equipment Module, which describes the equipment that
+# captured or converted the document: a product, its software, and the format
+# it captured, as Manufacturer, Manufacturer's Model Name, and Software
+# Versions describe the General Equipment Module's equipment.
+PDF_CAPTURE_EQUIPMENT = {
+    "(0018,1016)",  # Secondary Capture Device Manufacturer
+    "(0018,1018)",  # Secondary Capture Device Manufacturer's Model Name
+    "(0018,1019)",  # Secondary Capture Device Software Versions
+    "(0018,1022)",  # Video Image Format Acquired
+    "(0018,1023)",  # Digital Image Format Acquired
+}
+PDF_TEXT_GROUPS: tuple[tuple[set[str], str, dict[str, str]], ...] = (
+    (PDF_DOCUMENT_TITLE, "X/Z/D", {CLEAN_DESCRIPTORS: "C"}),
+    (PDF_MEDIA_TYPES, "K", {}),
+    (PDF_CAPTURE_EQUIPMENT, "K", {}),
+)
+# The one new text attribute that Table E.1-1 lists: the capture device's own
+# identifier, removed, and kept under Retain Device Identity.
+SECONDARY_CAPTURE_DEVICE_ID = "(0018,1010)"
+# The document itself, which Table E.1-1 gives D.
+ENCAPSULATED_DOCUMENT = "(0042,0011)"
+# A URI into the document, which a rule removes by Type.
+RELATIVE_URI_IN_DOCUMENT = "(0068,7005)"
+# The others: the document's length and its classification codes, which take
+# the default.
+PDF_OTHER_VRS = {"UL": 1, "SQ": 1}
+
+
+def test_the_encapsulated_pdf_is_generated_and_supported():
+    tables = iods.load_iod_tables()
+
+    assert ENCAPSULATED_PDF in tables.iods
+    assert ENCAPSULATED_PDF in scope.SUPPORTED_IODS
+    # The other encapsulated documents are not supported.
+    assert {
+        name
+        for name in tables.iods
+        if name.startswith("Encapsulated ") and name in scope.SUPPORTED_IODS
+    } == {ENCAPSULATED_PDF}
+
+
+@pytest.mark.deid_requirement("MIDI-BP-05", "MIDI-BP-06", "MIDI-BP-11")
+def test_the_text_that_only_the_encapsulated_pdf_uses_has_reviewed_rules():
+    listed = _table_e1_1()
+    added = _used_by((ENCAPSULATED_PDF,), TEXT_VRS) - _used_by(
+        ENCAPSULATED_PDF_REVIEWED_AGAINST, TEXT_VRS
+    )
+    rules = _rules()
+
+    assert added - set(listed) == (
+        PDF_DOCUMENT_TITLE | PDF_MEDIA_TYPES | PDF_CAPTURE_EQUIPMENT
+    )
+    assert added & set(listed) == {SECONDARY_CAPTURE_DEVICE_ID}
+    row = listed[SECONDARY_CAPTURE_DEVICE_ID]
+    assert (row.basic_profile, dict(row.options)) == ("X", {DEVICE_IDENTITY: "K"})
+    for tags, action, options in PDF_TEXT_GROUPS:
+        for tag in tags:
+            assert (rules[tag].action, dict(rules[tag].options)) == (
+                action,
+                options,
+            ), tag
+            assert rules[tag].note.strip(), tag
+    # Each kept attribute of the capture equipment is kept as its General
+    # Equipment counterpart is.
+    for tag, counterpart in (
+        ("(0018,1016)", "(0008,0070)"),  # Manufacturer
+        ("(0018,1018)", "(0008,1090)"),  # Manufacturer's Model Name
+        ("(0018,1019)", "(0018,1020)"),  # Software Versions
+    ):
+        assert rules[counterpart].action == rules[tag].action == "K", tag
+
+
+def test_each_policy_gives_the_encapsulated_pdf_text_the_action_of_its_group():
+    for composed in _every_policy():
+        for tags, action, options in PDF_TEXT_GROUPS:
+            selected = [a for o, a in options.items() if o in composed.options]
+            for tag in tags:
+                assert composed.supplementary_actions[tag] == (
+                    selected[0] if selected else action
+                ), (tag, composed.options)
+
+
+def test_the_encapsulated_pdf_title_is_emptied_where_it_is_type_2():
+    tables = iods.load_iod_tables()
+    iod = tables.iods[ENCAPSULATED_PDF]
+    (title,) = (
+        definition
+        for definition in iod.definitions
+        if definition.tag in PDF_DOCUMENT_TITLE
+    )
+
+    assert (title.path, title.type) == ((), "2")
+    assert (
+        compound_actions.resolve_in_iod(
+            iod, title.tag, title.path, _rules()[title.tag].action
+        )
+        == "Z"
+    )
+
+
+def test_every_uid_date_and_name_that_the_encapsulated_pdf_uses_has_a_role():
+    uids = uid_roles.load_uid_roles()
+    temporal = temporal_roles.load_temporal_roles()
+    names = (ENCAPSULATED_PDF,)
+
+    for tag in _used_by(names, {"UI"}):
+        assert isinstance(uids.role(tag), uid_roles.UIDRole), tag
+    for tag in _used_by(names, TEMPORAL_VRS):
+        assert isinstance(temporal.role(tag), temporal_roles.TemporalRole), tag
+    # The IODs reviewed before it use every UID, date, time, datetime, and
+    # person name that it uses, and every URL but the URI into the document.
+    for vrs in ({"UI"}, TEMPORAL_VRS, {"PN"}):
+        assert not _used_by(names, vrs) - _used_by(
+            ENCAPSULATED_PDF_REVIEWED_AGAINST, vrs
+        ), vrs
+    assert _used_by(names, {"UR"}) - _used_by(
+        ENCAPSULATED_PDF_REVIEWED_AGAINST, {"UR"}
+    ) == {RELATIVE_URI_IN_DOCUMENT}
+    assert _rules()[RELATIVE_URI_IN_DOCUMENT].action == "X/Z/D"
+
+
+def test_the_encapsulated_document_takes_d_under_every_option():
+    # No option of Table E.1-1 keeps or cleans the document, and no rule
+    # gives it a dummy value, so an instance that holds one is sequestered.
+    row = _table_e1_1()[ENCAPSULATED_DOCUMENT]
+
+    assert (row.basic_profile, dict(row.options)) == ("D", {})
+    assert ENCAPSULATED_DOCUMENT not in _rules()
+    (document,) = _definitions_of({ENCAPSULATED_DOCUMENT}, (ENCAPSULATED_PDF,))[
+        ENCAPSULATED_DOCUMENT
+    ]
+    assert document == (ENCAPSULATED_PDF, "Encapsulated Document", (), "1")
+
+
+def test_the_encapsulated_pdf_other_new_attributes_are_kept_by_the_default():
+    dictionary = _dictionary()
+    tables = iods.load_iod_tables()
+    every_vr = {vr for attribute in dictionary.values() for vr in attribute.vrs}
+    names = (ENCAPSULATED_PDF,)
+    new = _used_by(names, every_vr) - _used_by(
+        ENCAPSULATED_PDF_REVIEWED_AGAINST, every_vr
+    )
+    other = (
+        new
+        - _used_by(names, TEXT_VRS)
+        - {ENCAPSULATED_DOCUMENT, RELATIVE_URI_IN_DOCUMENT}
+    )
+    listed = set(_table_e1_1())
+    rules = _rules()
+    uids = set(uid_roles.load_uid_roles().rules)
+    by_vr = collections.Counter(vr for tag in other for vr in dictionary[tag].vrs)
+
+    assert by_vr == PDF_OTHER_VRS
+    assert other == {"(0042,0015)", "(0040,E008)"}
+    assert not other & (listed | set(rules) | uids)
+    # So each takes the default, which keeps it where the IOD defines it,
+    # under every preset, with the code sequence's items handled by their own
+    # rules.
+    iod = tables.iods[ENCAPSULATED_PDF]
+    for preset in policy.PRESETS:
+        rules_of = element_rules.ElementRules(policy.compose_policy(preset))
+        for definition in iod.definitions:
+            if definition.tag not in other:
+                continue
+            rule = rules_of.rule(definition.tag, definition.path, iod=iod)
+            assert (rule.source, rule.action) == (
+                element_rules.RuleSource.DEFAULT,
+                element_rules.KEEP,
+            ), (preset, definition)
+
+
 def test_names_identifiers_and_overlay_text_are_removed_under_every_option():
     rules = _rules()
 
@@ -1175,9 +1364,14 @@ def test_the_basic_profile_keeps_only_the_reviewed_coded_and_technical_text():
         for tag in _supported_text()
     }
 
-    assert len(basic) == 299
+    assert len(basic) == 308
     assert {tag for tag, action in basic.items() if action == "K"} == (
-        KEPT_TEXT | ADDED_KEPT_TEXT | RT_IMAGE_KEPT_TEXT | ION_KEPT_TEXT
+        KEPT_TEXT
+        | ADDED_KEPT_TEXT
+        | RT_IMAGE_KEPT_TEXT
+        | ION_KEPT_TEXT
+        | PDF_MEDIA_TYPES
+        | PDF_CAPTURE_EQUIPMENT
     )
     assert set(basic.values()) - {"K"} <= REMOVING_ACTIONS
 
@@ -1197,6 +1391,8 @@ def test_no_option_keeps_more_than_the_coded_text_and_device_identity():
             | ADDED_KEPT_TEXT
             | RT_IMAGE_KEPT_TEXT
             | ION_KEPT_TEXT
+            | PDF_MEDIA_TYPES
+            | PDF_CAPTURE_EQUIPMENT
             | (device_identity if DEVICE_IDENTITY in composed.options else set())
         )
         assert kept == expected, composed.options

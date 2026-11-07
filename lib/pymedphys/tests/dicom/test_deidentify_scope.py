@@ -94,6 +94,7 @@ SUPPORTED = {
     "1.2.840.10008.5.1.4.1.1.78.6": "Spectacle Prescription Report",
     "1.2.840.10008.5.1.4.1.1.79.1": "Macular Grid Thickness and Volume Report",
     "1.2.840.10008.5.1.4.1.1.88.77": "Waveform Annotation SR",
+    "1.2.840.10008.5.1.4.1.1.104.1": "Encapsulated PDF",
 }
 
 
@@ -139,6 +140,7 @@ def test_the_first_release_supports_ct_mr_pet_rt_registration_seg_and_sr_objects
         "Spectacle Prescription Report",
         "Macular Grid Thickness and Volume Report",
         "Waveform Annotation SR",
+        "Encapsulated PDF",
     }
     assert scope.SUPPORTED_TRANSFER_SYNTAXES == {IMPLICIT_LE, EXPLICIT_LE, *COMPRESSED}
 
@@ -217,6 +219,12 @@ def test_padding_is_ignored():
         ("1.2.840.10008.5.1.4.1.1.481.14", "Tomotherapeutic Radiation"),
         ("1.2.840.10008.5.1.4.1.1.481.23", "Enhanced RT Image"),
         ("1.2.840.10008.5.1.4.1.1.481.24", "Enhanced Continuous RT Image"),
+        # The encapsulated documents other than PDF: a CDA document, whose
+        # XML is text throughout, and the 3D models and their materials.
+        ("1.2.840.10008.5.1.4.1.1.104.2", "Encapsulated CDA"),
+        ("1.2.840.10008.5.1.4.1.1.104.3", "Encapsulated STL"),
+        ("1.2.840.10008.5.1.4.1.1.104.4", "Encapsulated OBJ"),
+        ("1.2.840.10008.5.1.4.1.1.104.5", "Encapsulated MTL"),
     ],
 )
 def test_a_standard_sop_class_of_another_iod_is_sequestered(sop_class, iod):
@@ -400,6 +408,7 @@ def test_pydicom_names_the_same_uids():
         uid.SpectaclePrescriptionReportStorage,
         uid.MacularGridThicknessAndVolumeReportStorage,
         uid.WaveformAnnotationSRStorage,
+        uid.EncapsulatedPDFStorage,
     ):
         assert scope.classify(sop_class, uid.ExplicitVRLittleEndian).disposition is (
             Disposition.SUPPORTED
