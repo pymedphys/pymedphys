@@ -42,8 +42,10 @@ or a vertex, shows; where it holds a sample of an edge, of a line between
 its consecutive points, or of a facet's edges, the last point joined to the
 first; or where it holds a sample of a triangle, of a triangle strip, each
 three consecutive points, of a triangle fan, its first point with each two
-consecutive others, or of a facet, as a fan from its first point, which
-covers a facet that is not convex and more besides. Edges and triangles are
+consecutive others, or of a facet, which is filled exactly, by ear
+clipping in its plane (:func:`_facet`), since a facet need not be convex
+and a fan from its first point would fill its convex hull, hiding its
+outline. Edges and triangles are
 sampled at most a quarter of a voxel apart, so that each ray of the views
 that crosses a primitive meets a voxel drawn of it. The retired 16-bit
 index lists of PS3.3-2014a (Triangle, Edge, and Vertex Point Index List and
@@ -57,7 +59,11 @@ point, each finite and within :data:`~.qc_contours.FARTHEST` millimetres,
 and no Double Point Coordinates Data (0066,0022), which the Points Macro
 does not define; each index of each list from 1 to the count of its mesh's
 points, an edge list of pairs, a triangle list of triples, a strip or fan
-of three points or more, and a line or facet of one or more; and where its
+of three points or more, and a line or facet of one or more, each facet a
+simple polygon, its outline neither crossing nor touching itself, of at
+most :data:`MOST_FACET_POINTS` points, each within
+:data:`FACET_FLATNESS` millimetres of its plane, or one that encloses
+nothing, its points on one line; and where its
 points span at most :data:`~.qc_surfaces.LONGEST` millimetres along the
 patient's z axis and :data:`~.qc_surfaces.WIDEST` across, as a contour
 sheet's frame does, and its primitives at most :data:`MOST_SAMPLES`
@@ -115,6 +121,15 @@ MOST_SAMPLES = 1 << 27
 _SAMPLES_PER_VOXEL = 4
 # How many samples are placed at a time.
 _SAMPLES_AT_A_TIME = 1 << 20
+# The most points of a facet that is triangulated; a mesh with a facet of
+# more is not drawn, so that ear clipping, quadratic in a facet's points,
+# stays bounded.
+MOST_FACET_POINTS = 1 << 10
+# How far, in millimetres, a facet's points may lie from its plane, a
+# quarter of a voxel's side, the spacing at which its triangles are
+# sampled; a facet whose points lie farther is not a planar polygon, as
+# PS3.3 Section C.27.4.1 defines one, and its mesh is not drawn.
+FACET_FLATNESS = qc_surfaces.MINIMUM_VOXEL / 4
 # How many bytes each index takes, by the VR of its list: 32-bit for the
 # Long lists, 16-bit for the retired ones.
 _INDEX_TYPES = {"OL": "<u4", "OW": "<u2"}
@@ -151,7 +166,9 @@ class Mesh:
         )
 
 
-def meshes_of(dataset: pydicom.Dataset) -> tuple[Mesh, ...] | None:
+def meshes_of(  # pylint: disable = too-many-return-statements
+    dataset: pydicom.Dataset,
+) -> tuple[Mesh, ...] | None:
     """Return each mesh that a data set holds, in the order of its Surface
     Sequence's items, or None where any cannot be drawn, or it has none, as
     the module describes.
@@ -187,9 +204,7 @@ def meshes_of(dataset: pydicom.Dataset) -> tuple[Mesh, ...] | None:
     return tuple(found)
 
 
-def _mesh(  # pylint: disable = too-many-return-statements
-    item: pydicom.Dataset,
-) -> Mesh | None:
+def _mesh(item: pydicom.Dataset) -> Mesh | None:
     """One Surface Sequence item's mesh, or None where it cannot be drawn."""
     points = _points(item)
     if points is None:
@@ -219,7 +234,7 @@ def _mesh(  # pylint: disable = too-many-return-statements
                 indices = _primitive(primitive, count)
                 if indices is None:
                     return None
-                joined = _joined(sequence, indices)
+                joined = _joined(sequence, indices, points)
                 if joined is None:
                     return None
                 edges.extend(joined[0])
@@ -289,10 +304,11 @@ def _primitive(primitive: pydicom.Dataset, count: int) -> np.ndarray | None:
 
 
 def _joined(
-    sequence: int, indices: np.ndarray
+    sequence: int, indices: np.ndarray, points: np.ndarray
 ) -> tuple[list[np.ndarray], list[np.ndarray]] | None:
     """The edges and the triangles of one primitive of a sequence, as the
-    module describes; None where it has too few points to be one."""
+    module describes; None where it has too few points to be one, or is a
+    facet that :func:`_facet` cannot triangulate."""
     count = len(indices)
     if sequence in (TRIANGLE_STRIP_SEQUENCE, TRIANGLE_FAN_SEQUENCE):
         if count < 3:
@@ -307,12 +323,202 @@ def _joined(
         return None
     if sequence == LINE_SEQUENCE:
         return [np.stack([indices[:-1], indices[1:]], axis=1)], []
-    # A facet: its outline, closed, and a fan from its first point.
+    # A facet: its outline, closed, and the triangles that fill it.
     outline = np.stack([indices, np.roll(indices, -1)], axis=1)
-    fan = np.stack(
-        [np.full(max(count - 2, 0), indices[0]), indices[1:-1], indices[2:]], axis=1
+    filled = _facet(indices, points)
+    if filled is None:
+        return None
+    return [outline], [filled]
+
+
+def _facet(  # pylint: disable = too-many-return-statements
+    indices: np.ndarray, points: np.ndarray
+) -> np.ndarray | None:
+    """The triangles, by point index, that fill a facet's polygon exactly,
+    whatever point its list starts from; None where it is not a simple
+    planar polygon, or has more than :data:`MOST_FACET_POINTS` points.
+
+    A facet is a closed planar polygon (PS3.3 Section C.27.4.1), which need
+    not be convex, so it is filled by ear clipping in its plane, which
+    covers the polygon and nothing more. Repeated consecutive points are
+    one; a polygon of fewer than three distinct points, or whose points
+    are collinear, encloses nothing, and is drawn by its outline alone.
+    """
+    if len(indices) > MOST_FACET_POINTS:
+        return None
+    none = np.zeros((0, 3), np.intp)
+    corners = points[indices]
+    distinct = np.any(corners != np.roll(corners, -1, axis=0), axis=1)
+    indices, corners = indices[distinct], corners[distinct]
+    if len(indices) < 3:
+        return none
+    centre = corners.mean(axis=0)
+    # Newell's normal, whose length is twice the polygon's area.
+    following = np.roll(corners, -1, axis=0)
+    normal = np.cross(corners - centre, following - centre).sum(axis=0)
+    size = float(np.max(np.ptp(corners, axis=0)))
+    length = float(np.linalg.norm(normal))
+    if length <= 1e-12 * size * size:
+        # Points on one line enclose nothing; others of no net area are an
+        # outline that crosses itself, as a figure of eight's.
+        spread = np.linalg.svd(corners - centre, compute_uv=False)
+        return none if spread[1] <= 1e-9 * spread[0] else None
+    normal = normal / length
+    if np.max(np.abs((corners - centre) @ normal)) > FACET_FLATNESS:
+        return None
+    across = np.cross(normal, [1.0, 0.0, 0.0])
+    if np.linalg.norm(across) < 0.5:
+        across = np.cross(normal, [0.0, 1.0, 0.0])
+    across = across / np.linalg.norm(across)
+    flat = (corners - centre) @ np.stack([across, np.cross(normal, across)], axis=1)
+    if _crossed(flat):
+        return None
+    clipped = _ears(flat)
+    if clipped is None:
+        return None
+    return indices[clipped]
+
+
+def _crossed(flat: np.ndarray) -> bool:
+    """Whether a closed polygon's outline, in its plane, meets itself other
+    than where each side meets the next, or doubles back along it."""
+    count = len(flat)
+    ends = np.roll(flat, -1, axis=0)
+    sides = ends - flat
+    tolerance = 1e-12 * float(np.max(np.ptp(flat, axis=0))) ** 2
+    # A side that doubles back along the one before it.
+    before = np.roll(sides, 1, axis=0)
+    turned = before[:, 0] * sides[:, 1] - before[:, 1] * sides[:, 0]
+    if np.any((np.abs(turned) <= tolerance) & (np.sum(before * sides, axis=1) < 0)):
+        return True
+    for first in range(count - 2):
+        # Each later side that is not adjacent to this one.
+        last = count - 1 if first == 0 else count
+        others = np.arange(first + 2, last)
+        if len(others) == 0:
+            continue
+        if np.any(
+            _meet(flat[first], ends[first], flat[others], ends[others], tolerance)
+        ):
+            return True
+    return False
+
+
+def _meet(
+    start: np.ndarray,
+    end: np.ndarray,
+    starts: np.ndarray,
+    ends: np.ndarray,
+    tolerance: float,
+) -> np.ndarray:
+    """Whether a segment meets, or touches, each of others."""
+
+    def turn(a, b, c):
+        return (b[..., 0] - a[..., 0]) * (c[..., 1] - a[..., 1]) - (
+            b[..., 1] - a[..., 1]
+        ) * (c[..., 0] - a[..., 0])
+
+    def between(a, b, c):
+        # Whether c, collinear with a and b, lies within their box.
+        return np.all(
+            (np.minimum(a, b) - 1e-12 <= c) & (c <= np.maximum(a, b) + 1e-12), axis=-1
+        )
+
+    one = turn(start, end, starts)
+    two = turn(start, end, ends)
+    three = turn(starts, ends, start)
+    four = turn(starts, ends, end)
+    sign = [
+        np.where(np.abs(t) <= tolerance, 0, np.sign(t)) for t in (one, two, three, four)
+    ]
+    crossing = (sign[0] * sign[1] < 0) & (sign[2] * sign[3] < 0)
+    touching = (
+        ((sign[0] == 0) & between(start, end, starts))
+        | ((sign[1] == 0) & between(start, end, ends))
+        | ((sign[2] == 0) & between(starts, ends, start))
+        | ((sign[3] == 0) & between(starts, ends, end))
     )
-    return [outline], [fan]
+    return crossing | touching
+
+
+def _turn(a: np.ndarray, b: np.ndarray, c: np.ndarray) -> float:
+    """Twice the signed area of the triangle a, b, c in a plane, positive
+    where it turns anticlockwise."""
+    return float((b[0] - a[0]) * (c[1] - b[1]) - (b[1] - a[1]) * (c[0] - b[0]))
+
+
+def _ears(flat: np.ndarray) -> np.ndarray | None:
+    """The triangles, by corner, that ear clipping fills a simple polygon
+    with, in its plane; None where no ear can be found, as of a polygon
+    that is not simple."""
+    tolerance = 1e-12 * float(np.max(np.ptp(flat, axis=0))) ** 2
+    following = np.roll(flat, -1, axis=0)
+    area = float(np.sum(flat[:, 0] * following[:, 1] - following[:, 0] * flat[:, 1]))
+    orientation = 1.0 if area > 0 else -1.0
+    left = list(range(len(flat)))
+    triangles = []
+    corner = 0
+    misses = 0
+    while len(left) > 3:
+        count = len(left)
+        before, at, after = (
+            left[(corner - 1) % count],
+            left[corner % count],
+            left[(corner + 1) % count],
+        )
+        if _is_ear(flat, left, before, at, after, orientation, tolerance):
+            triangles.append((before, at, after))
+            del left[corner % count]
+            misses = 0
+            continue
+        corner = (corner + 1) % count
+        misses += 1
+        if misses > count:
+            # Only corners on a line remain, which enclose nothing, or no
+            # ear exists.
+            remaining = flat[left]
+            ahead = np.roll(remaining, -1, axis=0)
+            rest = float(
+                np.sum(remaining[:, 0] * ahead[:, 1] - ahead[:, 0] * remaining[:, 1])
+            )
+            if abs(rest) <= tolerance:
+                return np.array(triangles, np.intp).reshape(-1, 3)
+            return None
+    a, b, c = flat[left]
+    if orientation * _turn(a, b, c) > tolerance:
+        triangles.append(tuple(left))
+    return np.array(triangles, np.intp).reshape(-1, 3)
+
+
+def _is_ear(
+    flat: np.ndarray,
+    left: list[int],
+    before: int,
+    at: int,
+    after: int,
+    orientation: float,
+    tolerance: float,
+) -> bool:
+    """Whether a polygon's corner is an ear: convex, with no other corner
+    in or on the triangle that it makes with its neighbours."""
+    a, b, c = flat[before], flat[at], flat[after]
+    if orientation * _turn(a, b, c) <= tolerance:
+        return False
+    others = flat[[i for i in left if i not in (before, at, after)]]
+    if len(others) == 0:
+        return True
+    sides = [
+        orientation
+        * (
+            (q[0] - p[0]) * (others[:, 1] - p[1])
+            - (q[1] - p[1]) * (others[:, 0] - p[0])
+        )
+        for p, q in ((a, b), (b, c), (c, a))
+    ]
+    inside = (
+        (sides[0] >= -tolerance) & (sides[1] >= -tolerance) & (sides[2] >= -tolerance)
+    )
+    return not np.any(inside)
 
 
 def _extent(meshes: Sequence[Mesh]) -> tuple[np.ndarray, np.ndarray]:

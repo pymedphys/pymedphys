@@ -148,7 +148,7 @@ def test_each_primitive_is_drawn_as_its_edges_and_triangles():
                 TriangleStripSequence=[[0, 1, 2, 3]],
                 TriangleFanSequence=[[3, 0, 1, 2]],
                 LineSequence=[[0, 1, 2]],
-                FacetSequence=[[0, 1, 2, 3]],
+                FacetSequence=[[0, 1, 2]],
             )
         )
     )
@@ -161,11 +161,10 @@ def test_each_primitive_is_drawn_as_its_edges_and_triangles():
         [1, 2],
         [0, 1],
         [1, 2],
-        [2, 3],
-        [3, 0],
+        [2, 0],
     ]
     # The triangle, the strip's two, the fan's two about its first point,
-    # and the facet's fan from its first point.
+    # and the facet's, which it fills.
     assert mesh.triangles.tolist() == [
         [0, 1, 2],
         [0, 1, 2],
@@ -173,7 +172,6 @@ def test_each_primitive_is_drawn_as_its_edges_and_triangles():
         [3, 0, 1],
         [3, 1, 2],
         [0, 1, 2],
-        [0, 2, 3],
     ]
 
 
@@ -339,6 +337,103 @@ def test_a_point_is_drawn_where_it_lies_and_a_triangle_across_its_area():
     # A point alone, too, is drawn.
     (mesh,) = qc_meshes.meshes_of(_meshes(_surface([(5, 5, 5)], [])))
     assert _drawn(mesh).sum() == 1
+
+
+# A concave facet in the coronal plane, of 2,000 square millimetres, whose
+# convex hull, of 5,000, a fan from its first point fills.
+_CONCAVE = ((100, 0, 0), (20, 0, 20), (0, 0, 100), (0, 0, 0))
+
+
+def _area(mesh):
+    corners = mesh.points[mesh.triangles]
+    sides = np.cross(corners[:, 1] - corners[:, 0], corners[:, 2] - corners[:, 0])
+    return np.linalg.norm(sides, axis=1).sum() / 2
+
+
+@pytest.mark.parametrize("start", range(4))
+def test_a_concave_facet_is_filled_exactly_from_whichever_point_it_starts(start):
+    order = np.roll(np.arange(4), -start).tolist()
+    (mesh,) = qc_meshes.meshes_of(
+        _meshes(_surface(_CONCAVE, np.zeros((0, 3), int), FacetSequence=[order]))
+    )
+    lattice = qc_meshes._Lattice.of([mesh])
+    drawn = _drawn(mesh)
+
+    def is_drawn(x, z):
+        voxel = lattice.voxels(np.array([[x, 0.0, z]]))
+        return bool(drawn[tuple(int(each[0]) for each in voxel)])
+
+    # Its outline, closed, and triangles of its own area, not its hull's.
+    assert len(mesh.edges) == 4
+    assert _area(mesh) == pytest.approx(2000)
+    # Well inside its indentation, some 24 mm from its outline, nothing is
+    # drawn; well inside the polygon, it is.
+    assert not is_drawn(40, 40)
+    assert not is_drawn(60, 25)
+    assert is_drawn(10, 10)
+    assert is_drawn(50, 6)
+
+
+def test_a_star_shaped_facet_is_filled_exactly_wherever_it_lies():
+    angles = np.arange(10) * np.pi / 5
+    radii = np.where(np.arange(10) % 2, 20.0, 50.0)
+    flat = np.stack([radii * np.cos(angles), radii * np.sin(angles), np.zeros(10)], 1)
+    rotation = np.linalg.qr(np.random.default_rng(3).normal(size=(3, 3)))[0]
+    points = flat @ rotation.T + 7
+    star = 5 * 50.0 * 20.0 * np.sin(np.pi / 5)
+
+    for start in range(10):
+        order = np.roll(np.arange(10), -start).tolist()
+        (mesh,) = qc_meshes.meshes_of(
+            _meshes(_surface(points, np.zeros((0, 3), int), FacetSequence=[order]))
+        )
+        assert _area(mesh) == pytest.approx(star), start
+
+
+@pytest.mark.parametrize(
+    "points",
+    [
+        # Its points off one plane by more than a quarter of a voxel.
+        ((0, 0, 0), (20, 0, 0), (20, 20, 0), (0, 20, 4)),
+        # An outline that crosses itself.
+        ((0, 0, 0), (20, 20, 0), (20, 0, 0), (0, 20, 0)),
+        # One that doubles back along a side.
+        ((0, 0, 0), (20, 0, 0), (10, 0, 0), (10, 20, 0)),
+        # One that touches itself.
+        ((0, 0, 0), (20, 0, 0), (20, 20, 0), (10, 0, 0), (0, 20, 0)),
+    ],
+)
+def test_a_facet_that_is_not_a_simple_planar_polygon_is_not_drawn(points):
+    order = list(range(len(points)))
+    facet = _meshes(_surface(points, np.zeros((0, 3), int), FacetSequence=[order]))
+
+    assert qc_meshes.meshes_of(facet) is None
+
+
+def test_a_facet_that_encloses_nothing_is_drawn_by_its_outline():
+    points = ((0, 0, 0), (10, 0, 0), (20, 0, 0), (0, 10, 0))
+    # Its points on one line, and one repeated.
+    for order in ([0, 1, 2], [0, 1, 1, 0]):
+        (mesh,) = qc_meshes.meshes_of(
+            _meshes(_surface(points, np.zeros((0, 3), int), FacetSequence=[order]))
+        )
+        assert len(mesh.edges) == len(order)
+        assert len(mesh.triangles) == 0
+    # A facet with a point on a side is filled as without it.
+    square = ((0, 0, 0), (10, 0, 0), (20, 0, 0), (20, 20, 0), (0, 20, 0))
+    (mesh,) = qc_meshes.meshes_of(
+        _meshes(_surface(square, np.zeros((0, 3), int), FacetSequence=[range(5)]))
+    )
+    assert _area(mesh) == pytest.approx(400)
+
+
+def test_a_facet_of_too_many_points_is_not_drawn():
+    count = qc_meshes.MOST_FACET_POINTS + 1
+    angles = np.linspace(0, 2 * np.pi, count, endpoint=False)
+    points = np.stack([np.cos(angles) * 50, np.sin(angles) * 50, np.zeros(count)], 1)
+    facet = _surface(points, np.zeros((0, 3), int), FacetSequence=[range(count)])
+
+    assert qc_meshes.meshes_of(_meshes(facet)) is None
 
 
 def test_a_triangle_seen_face_on_has_no_gap():
