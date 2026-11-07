@@ -440,6 +440,91 @@ def test_a_folder_not_of_its_series_is_not_read(tmp_path):
     assert [each.reason for each in _case(tmp_path, 2).read()] == ["not-the-series"]
 
 
+def test_a_patient_shared_by_two_collections_is_one_subject(tmp_path):
+    # An invented patient of both vestibular schwannoma collections, under
+    # one Patient ID with distinct series, as TCIA describes 58 of them, and
+    # another patient of one collection alone.
+    shared = {"license_short_name": "CC BY 4.0", "Modality": "MR"}
+    shared["SOPClassUID"] = "1.2.840.10008.5.1.4.1.1.4"
+    rows = [
+        _row(
+            1,
+            collection_id="vestibular_schwannoma_mc_rc",
+            PatientID="VS-SEG-INVENTED",
+            **shared,
+        ),
+        _row(
+            2,
+            collection_id="vestibular_schwannoma_seg",
+            PatientID="VS-SEG-INVENTED",
+            **shared,
+        ),
+        _row(3, collection_id="vestibular_schwannoma_mc_rc", **shared),
+    ]
+    series = idc.select_series(rows).series
+    assert len(series) == 3
+    cases = {
+        each.case: each for each in (idc.IdcSeriesCase(s, tmp_path) for s in series)
+    }
+    first, second, other = cases["2.25.1"], cases["2.25.2"], cases["2.25.3"]
+    assert first.collection != second.collection
+    assert first.subject == second.subject != other.subject
+    assert (
+        evaluation.namespace_of(first)
+        == evaluation.namespace_of(second)
+        == "vestibular_schwannoma"
+    )
+    run = _evaluated(list(cases.values()))
+    parts = {
+        result.public["series_instance_uid"]: result.split for result in run.results
+    }
+    assert (
+        parts["2.25.1"]
+        == parts["2.25.2"]
+        == evaluation.split_of(
+            "vestibular_schwannoma_seg",
+            first.subject,
+            namespace="vestibular_schwannoma",
+        )
+    )
+    # The bootstrap's units, keyed as it keys them: one for the shared
+    # patient, one for the other.
+    units = {(each.namespace or each.collection, each.subject) for each in run.results}
+    assert len(units) == 2
+    report = json.dumps(cases_module.cases_report(run))
+    assert "INVENTED" not in report and "subject/" not in report
+
+
+def _split_as_described(namespace, subject):
+    """The split as SPLIT_RULE, which each summary exports, describes it."""
+    joined = "\0".join((evaluation.SPLIT_SALT, namespace, subject))
+    number = int.from_bytes(hashlib.sha256(joined.encode()).digest()[:8], "big")
+    return "held-out" if number % 3 == 0 else "tuning"
+
+
+def test_the_exported_split_rule_describes_the_namespace():
+    assert "namespace" in evaluation.SPLIT_RULE
+    for number in range(200):
+        subject = idc.subject_key("vestibular_schwannoma_mc_rc", f"P-{number}")
+        assert evaluation.split_of(
+            "vestibular_schwannoma_mc_rc",
+            subject,
+            namespace=idc.subject_namespace("vestibular_schwannoma_mc_rc"),
+        ) == _split_as_described("vestibular_schwannoma", subject)
+        ordinary = idc.subject_key("lidc_idri", f"P-{number}")
+        assert evaluation.split_of("lidc_idri", ordinary) == _split_as_described(
+            "lidc_idri", ordinary
+        )
+
+
+def test_subject_namespaces_name_vetted_collections_alone():
+    assert set(idc.SUBJECT_NAMESPACES) <= set(idc.OPEN_COLLECTIONS)
+    assert not set(idc.SUBJECT_NAMESPACES.values()) & set(idc.OPEN_COLLECTIONS)
+    # Any other collection names its patients in itself, as before.
+    assert idc.subject_namespace("lidc_idri") == "lidc_idri"
+    assert evaluation.namespace_of(Withheld()) == "clinic"
+
+
 def _evaluated(cases):
     return evaluation.evaluate(
         cases,

@@ -71,6 +71,7 @@ from .text_evaluation import (
     EVALUATED,
     EvaluationSettings,
     evaluate,
+    namespace_of,
     split_of,
     subject_of,
     summarise,
@@ -378,7 +379,12 @@ def _in_split(
         for each in sources
         if isinstance(each, SkippedFiles)
         or settings.evaluated
-        == split_of(each.collection, subject_of(each), settings.held_out_collections)
+        == split_of(
+            each.collection,
+            subject_of(each),
+            settings.held_out_collections,
+            namespace=namespace_of(each),
+        )
     ]
 
 
