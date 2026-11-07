@@ -20,7 +20,7 @@ fictitious patient and study, with one Frame of Reference: three CT Image
 slices, an RT Structure Set that references the CT series and slices, an RT
 Plan that references the structure set and the dose, an RT Dose that
 references the plan, a second RT Dose of the plan for review (below), one
-instance of each of forty-four other IODs, and two of the Segmentation
+instance of each of forty-six other IODs, and two of the Segmentation
 IOD, one of each of its SOP Classes, each in a series of its own, and a
 second X-Ray Radiation Dose SR, of a CT scan.
 The MR Image and PET Image instances reference the first CT slice, and each
@@ -61,6 +61,8 @@ MR Color Image, the pseudo-colour one the PET Image, and the XA/XRF one the
 RT Image. The volumetric Presentation States name the CT slices in their
 Volumetric Presentation Input Set Sequence (0070,120A), and the advanced
 blending one the PET Image in its Advanced Blending Sequence (0070,1B01).
+The waveform Presentation States name the MR Image where they would name a
+waveform, since the collection holds none.
 It is the input for validating each preset end to end: once the
 engine has
 written the collection, the residual search
@@ -203,7 +205,7 @@ dummy item at that place and only there. Planted in
 every file, the first two would sequester every
 instance, and no preset could release any of the collection; planted in one,
 that instance checks sequestration, :data:`REVIEW_FILE` checks review, and
-the other fifty-two check each preset's output, the reports where their
+the other fifty-four check each preset's output, the reports where their
 trees are cleaned. Radiopharmaceutical Start
 DateTime, which CT Image does not define there, is planted in no file, so
 the Enhanced PET instance, which lacks an attribute of Type 1, is released
@@ -242,7 +244,7 @@ Manufacturer's Model Name (0008,1090), which Table E.1-1 does not list and
 the Basic Profile keeps, a copy of the RT Plan's RT Plan Label marker
 (:attr:`PlacementKind.REVIEW_COPY`), so the residual search finds a source
 value of another instance in its output and sends it to review. The third
-CT slice remains sequestered; the other fifty-two files stay releasable, the
+CT slice remains sequestered; the other fifty-four files stay releasable, the
 reports where their trees are cleaned.
 
 **Manifest.** :class:`CorpusManifest` records, for each file, each
@@ -390,6 +392,8 @@ GRAYSCALE_PLANAR_MPR_VOLUMETRIC_PRESENTATION_STATE_STORAGE = (
 )
 ADVANCED_BLENDING_PRESENTATION_STATE_STORAGE = "1.2.840.10008.5.1.4.1.1.11.8"
 VOLUME_RENDERING_VOLUMETRIC_PRESENTATION_STATE_STORAGE = "1.2.840.10008.5.1.4.1.1.11.9"
+WAVEFORM_PRESENTATION_STATE_STORAGE = "1.2.840.10008.5.1.4.1.1.9.100.1"
+WAVEFORM_ACQUISITION_PRESENTATION_STATE_STORAGE = "1.2.840.10008.5.1.4.1.1.9.100.2"
 PRESENTATION_STATE_STORAGE_CLASSES = frozenset(
     {
         GRAYSCALE_SOFTCOPY_PRESENTATION_STATE_STORAGE,
@@ -401,6 +405,8 @@ PRESENTATION_STATE_STORAGE_CLASSES = frozenset(
         GRAYSCALE_PLANAR_MPR_VOLUMETRIC_PRESENTATION_STATE_STORAGE,
         VOLUME_RENDERING_VOLUMETRIC_PRESENTATION_STATE_STORAGE,
         ADVANCED_BLENDING_PRESENTATION_STATE_STORAGE,
+        WAVEFORM_PRESENTATION_STATE_STORAGE,
+        WAVEFORM_ACQUISITION_PRESENTATION_STATE_STORAGE,
     }
 )
 # The retired class that PS3.3 Sections 10.6.1 and C.8.8.5.4 give a study in
@@ -479,6 +485,8 @@ VARIABLE_MODALITY_LUT_PRESENTATION_STATE_FILE = "61-pr-variable-modality-lut.dcm
 PLANAR_MPR_PRESENTATION_STATE_FILE = "86-pr-planar-mpr.dcm"
 VOLUME_RENDERING_PRESENTATION_STATE_FILE = "87-pr-volume-rendering.dcm"
 ADVANCED_BLENDING_PRESENTATION_STATE_FILE = "88-pr-advanced-blending.dcm"
+WAVEFORM_PRESENTATION_STATE_FILE = "89-pr-waveform.dcm"
+WAVEFORM_ACQUISITION_PRESENTATION_STATE_FILE = "90-pr-waveform-acquisition.dcm"
 PRESENTATION_STATE_FILES = (
     GRAYSCALE_PRESENTATION_STATE_FILE,
     COLOR_PRESENTATION_STATE_FILE,
@@ -489,6 +497,8 @@ PRESENTATION_STATE_FILES = (
     PLANAR_MPR_PRESENTATION_STATE_FILE,
     VOLUME_RENDERING_PRESENTATION_STATE_FILE,
     ADVANCED_BLENDING_PRESENTATION_STATE_FILE,
+    WAVEFORM_PRESENTATION_STATE_FILE,
+    WAVEFORM_ACQUISITION_PRESENTATION_STATE_FILE,
 )
 # The directory, within the one that write_corpus is given, of the files.
 INSTANCES_DIRECTORY = "instances"
@@ -600,6 +610,10 @@ VOLUME_RENDERING_PRESENTATION_STATE_SERIES = f"{LINKED_UID_ROOT}08300"
 VOLUME_RENDERING_PRESENTATION_STATE = f"{LINKED_UID_ROOT}08301"
 ADVANCED_BLENDING_PRESENTATION_STATE_SERIES = f"{LINKED_UID_ROOT}08400"
 ADVANCED_BLENDING_PRESENTATION_STATE = f"{LINKED_UID_ROOT}08401"
+WAVEFORM_PRESENTATION_STATE_SERIES = f"{LINKED_UID_ROOT}08500"
+WAVEFORM_PRESENTATION_STATE = f"{LINKED_UID_ROOT}08501"
+WAVEFORM_ACQUISITION_PRESENTATION_STATE_SERIES = f"{LINKED_UID_ROOT}08600"
+WAVEFORM_ACQUISITION_PRESENTATION_STATE = f"{LINKED_UID_ROOT}08601"
 # A patient and a procedure step that the collection names but does not hold.
 PATIENT_REFERENCE = f"{LINKED_UID_ROOT}00003"
 PROCEDURE_STEP = f"{LINKED_UID_ROOT}00004"
@@ -747,6 +761,10 @@ _SOP_CLASSES = types.MappingProxyType(
         ),
         ADVANCED_BLENDING_PRESENTATION_STATE: (
             ADVANCED_BLENDING_PRESENTATION_STATE_STORAGE
+        ),
+        WAVEFORM_PRESENTATION_STATE: WAVEFORM_PRESENTATION_STATE_STORAGE,
+        WAVEFORM_ACQUISITION_PRESENTATION_STATE: (
+            WAVEFORM_ACQUISITION_PRESENTATION_STATE_STORAGE
         ),
         PATIENT_REFERENCE: DETACHED_PATIENT_MANAGEMENT,
         PROCEDURE_STEP: MODALITY_PERFORMED_PROCEDURE_STEP,
@@ -1562,6 +1580,23 @@ _SPECS = (
         ADVANCED_BLENDING_PRESENTATION_STATE_SERIES,
         PET,
     ),
+    # The waveform Presentation States name the MR Image where they would
+    # name a waveform, as the Waveform Annotation SR does, since the
+    # collection holds no waveform.
+    _Spec(
+        WAVEFORM_PRESENTATION_STATE_FILE,
+        WAVEFORM_PRESENTATION_STATE_STORAGE,
+        WAVEFORM_PRESENTATION_STATE,
+        WAVEFORM_PRESENTATION_STATE_SERIES,
+        MR,
+    ),
+    _Spec(
+        WAVEFORM_ACQUISITION_PRESENTATION_STATE_FILE,
+        WAVEFORM_ACQUISITION_PRESENTATION_STATE_STORAGE,
+        WAVEFORM_ACQUISITION_PRESENTATION_STATE,
+        WAVEFORM_ACQUISITION_PRESENTATION_STATE_SERIES,
+        MR,
+    ),
 )
 
 
@@ -1571,7 +1606,7 @@ def build_corpus() -> SyntheticCorpus:
     Returns
     -------
     SyntheticCorpus
-        Fifty-four files: three CT slices; the RT Structure Set, RT Plan, RT
+        Fifty-six files: three CT slices; the RT Structure Set, RT Plan, RT
         Dose, and the RT Dose for review; the Enhanced CT Image and Legacy
         Converted Enhanced CT Image; the MR Image, Enhanced MR Image,
         Enhanced MR Color Image, Legacy Converted Enhanced MR Image, and MR
@@ -1589,9 +1624,10 @@ def build_corpus() -> SyntheticCorpus:
         Ion Plan and RT Ion Beams Treatment Record; the RT Brachy Treatment
         Record and RT Treatment Summary Record; the Grayscale, Color,
         Pseudo-Color, Blending, XA/XRF Grayscale, and Variable Modality LUT
-        Softcopy Presentation States; and the Grayscale Planar MPR and
-        Volume Rendering Volumetric Presentation States and the Advanced
-        Blending Presentation State. Two builds give the same bytes and the
+        Softcopy Presentation States; the Grayscale Planar MPR and Volume
+        Rendering Volumetric Presentation States and the Advanced Blending
+        Presentation State; and the Waveform and Waveform Acquisition
+        Presentation States. Two builds give the same bytes and the
         same manifest.
     """
     markers = _Markers()

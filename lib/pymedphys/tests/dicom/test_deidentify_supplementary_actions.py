@@ -160,7 +160,6 @@ PRESENTATION_STATE_REVIEWED_AGAINST = (
 # The Planar MPR and Volume Rendering Volumetric Presentation State IODs and
 # the Advanced Blending Presentation State IOD, of PS3.3 Sections A.80.1,
 # A.80.2, and A.33.7, reviewed against every IOD above and now supported.
-# The waveform Presentation States are not yet supported.
 VOLUMETRIC_PRESENTATION_STATE_IODS = (
     "Planar MPR Volumetric Presentation State",
     "Volume Rendering Volumetric Presentation State",
@@ -169,7 +168,17 @@ VOLUMETRIC_PRESENTATION_STATE_IODS = (
 VOLUMETRIC_REVIEWED_AGAINST = (
     PRESENTATION_STATE_REVIEWED_AGAINST + PRESENTATION_STATE_IODS
 )
-SUPPORTED_IODS = VOLUMETRIC_REVIEWED_AGAINST + VOLUMETRIC_PRESENTATION_STATE_IODS
+# The Waveform and Waveform Acquisition Presentation State IODs of PS3.3
+# Sections A.92.1 and A.92.2, reviewed against every IOD above and now
+# supported.
+WAVEFORM_PRESENTATION_STATE_IODS = (
+    "Waveform Presentation State",
+    "Waveform Acquisition Presentation State",
+)
+WAVEFORM_REVIEWED_AGAINST = (
+    VOLUMETRIC_REVIEWED_AGAINST + VOLUMETRIC_PRESENTATION_STATE_IODS
+)
+SUPPORTED_IODS = WAVEFORM_REVIEWED_AGAINST + WAVEFORM_PRESENTATION_STATE_IODS
 CLEAN_DESCRIPTORS = "clean_descriptors"
 DEVICE_IDENTITY = "retain_device_identity"
 FULL_DATES = "retain_longitudinal_full_dates"
@@ -1195,10 +1204,9 @@ def test_the_softcopy_presentation_states_are_generated_and_supported():
     }
     assert others == {
         *VOLUMETRIC_PRESENTATION_STATE_IODS,
-        "Waveform Presentation State",
-        "Waveform Acquisition Presentation State",
+        *WAVEFORM_PRESENTATION_STATE_IODS,
     }
-    assert others & scope.SUPPORTED_IODS == set(VOLUMETRIC_PRESENTATION_STATE_IODS)
+    assert others <= scope.SUPPORTED_IODS
 
 
 @pytest.mark.deid_requirement("MIDI-BP-05", "MIDI-BP-06", "MIDI-BP-11")
@@ -1479,6 +1487,131 @@ def test_the_basic_profile_sequesters_every_conforming_volumetric_presentation_s
             ), (name, tag)
 
 
+# The attributes that the waveform Presentation State IODs use, the IODs
+# reviewed before them do not, and Table E.1-1 lists, with their Basic
+# Profile actions and their actions under an option: the montage's and
+# filters' descriptions, which Clean Descriptors cleans, and when an
+# annotation and a displayed segment were made, which the date options keep
+# or shift.
+WAVEFORM_LISTED = {
+    "(003A,020C)": ("X", {CLEAN_DESCRIPTORS: "C"}),  # Channel Derivation Description
+    "(003A,0329)": ("X", {CLEAN_DESCRIPTORS: "C"}),  # Waveform Filter Description
+    "(003A,032B)": ("X", {CLEAN_DESCRIPTORS: "C"}),  # Filter Lookup Table Description
+    "(0040,B034)": ("X", DATE_OPTIONS),  # Annotation DateTime
+    "(0040,B036)": ("X", DATE_OPTIONS),  # Segment Definition DateTime
+    "(0040,B03B)": ("X", {CLEAN_DESCRIPTORS: "C"}),  # Montage Name
+    "(0040,B03F)": ("X", {CLEAN_DESCRIPTORS: "C"}),  # Montage Channel Label
+}
+# The others, by VR: the montages, channels, filters, displayed segments,
+# and annotations' references, ranges, and display settings.
+WAVEFORM_OTHER_VRS = {
+    "SQ": 23,
+    "DS": 9,
+    "US": 6,
+    "FL": 5,
+    "IS": 3,
+    "CS": 2,
+    "OD": 1,
+}
+WAVEFORM_TEXTUAL_ANNOTATION_SEQUENCE = "(0040,B033)"
+TEXT_OBJECT_SEQUENCE = "(0070,0008)"
+UNFORMATTED_TEXT_VALUE = "(0070,0006)"
+
+
+@pytest.mark.deid_requirement("MIDI-BP-05", "MIDI-BP-06", "MIDI-BP-11")
+def test_every_new_attribute_of_the_waveform_presentation_states_has_its_action():
+    listed = _table_e1_1()
+    rules = _rules()
+    dictionary = _dictionary()
+    every_vr = {vr for attribute in dictionary.values() for vr in attribute.vrs}
+    new = _used_by(WAVEFORM_PRESENTATION_STATE_IODS, every_vr) - _used_by(
+        WAVEFORM_REVIEWED_AGAINST, every_vr
+    )
+
+    # Every text attribute and datetime that only they use is in Table
+    # E.1-1, so none needs a rule.
+    assert {
+        tag: (listed[tag].basic_profile, dict(listed[tag].options))
+        for tag in new
+        if tag in listed
+    } == WAVEFORM_LISTED
+    assert not {tag for tag in new if tag in rules}
+    other = new - set(WAVEFORM_LISTED)
+    assert all(len(dictionary[tag].vrs) == 1 for tag in other)
+    assert (
+        collections.Counter(dictionary[tag].vrs[0] for tag in other)
+        == WAVEFORM_OTHER_VRS
+    )
+    assert not _used_by(WAVEFORM_PRESENTATION_STATE_IODS, TEXT_VRS) - _used_by(
+        WAVEFORM_REVIEWED_AGAINST, TEXT_VRS
+    ) - set(WAVEFORM_LISTED)
+    for vrs in ({"UI"}, {"PN"}, {"UR"}):
+        assert not _used_by(WAVEFORM_PRESENTATION_STATE_IODS, vrs) - _used_by(
+            WAVEFORM_REVIEWED_AGAINST, vrs
+        ), vrs
+    temporal = temporal_roles.load_temporal_roles()
+    for tag in ("(0040,B034)", "(0040,B036)"):
+        assert temporal.role(tag) is temporal_roles.TemporalRole.SUBJECT_EVENT, tag
+    # Each other takes the default, which keeps it where its IOD defines it,
+    # under every preset, with a sequence's items handled by their own rules.
+    tables = iods.load_iod_tables()
+    for preset in policy.PRESETS:
+        rules_of = element_rules.ElementRules(policy.compose_policy(preset))
+        for name in WAVEFORM_PRESENTATION_STATE_IODS:
+            iod = tables.iods[name]
+            for definition in iod.definitions:
+                if definition.tag not in other:
+                    continue
+                rule = rules_of.rule(definition.tag, definition.path, iod=iod)
+                assert (rule.source, rule.action) == (
+                    element_rules.RuleSource.DEFAULT,
+                    element_rules.KEEP,
+                ), (preset, name, definition)
+
+
+def test_a_waveform_text_annotation_is_kept_with_its_text_replaced():
+    # The Waveform Textual Annotation Sequence holds text only, anchored to
+    # times or samples of a waveform, and no graphics that could spell a
+    # name, unlike Graphic Annotation Sequence; Table E.1-1 omits it, so it
+    # is kept, and the Unformatted Text Value of its Text Object Sequence,
+    # Type 1 there, takes the D that the table gives it, a dummy value under
+    # the Basic Profile. Both IODs define the sequence Type 1 in their
+    # user-optional Textual Waveform Annotation Module.
+    listed = _table_e1_1()
+    rules = _rules()
+    tables = iods.load_iod_tables()
+
+    assert WAVEFORM_TEXTUAL_ANNOTATION_SEQUENCE not in listed
+    assert WAVEFORM_TEXTUAL_ANNOTATION_SEQUENCE not in rules
+    assert listed[UNFORMATTED_TEXT_VALUE].basic_profile == "D"
+    path = (WAVEFORM_TEXTUAL_ANNOTATION_SEQUENCE, TEXT_OBJECT_SEQUENCE)
+    for name in WAVEFORM_PRESENTATION_STATE_IODS:
+        iod = tables.iods[name]
+        usage = {module.module: module.usage for module in iod.modules}
+        assert usage["Textual Waveform Annotation"] == "U", name
+        assert {
+            (definition.path, definition.type)
+            for definition in iod.definitions
+            if definition.tag == UNFORMATTED_TEXT_VALUE
+        } == {(path, "1")}, name
+        assert (
+            compound_actions.resolve_plain_in_iod(iod, UNFORMATTED_TEXT_VALUE, path, "D")
+            == "D"
+        ), name
+
+
+def test_the_basic_profile_sequesters_every_conforming_waveform_presentation_state():
+    tables = iods.load_iod_tables()
+    for name in WAVEFORM_PRESENTATION_STATE_IODS:
+        iod = tables.iods[name]
+        for tag in PRESENTATION_CREATION_DATES:
+            assert compound_actions.strictest_type(iod, tag, ()) == "1", (name, tag)
+            assert (
+                compound_actions.resolve_plain_x_in_iod(iod, tag, ()).extent
+                is compound_actions.RemovalExtent.SEQUESTER
+            ), (name, tag)
+
+
 def test_names_identifiers_and_overlay_text_are_removed_under_every_option():
     rules = _rules()
 
@@ -1545,7 +1678,7 @@ def test_the_basic_profile_keeps_only_the_reviewed_coded_and_technical_text():
         for tag in _supported_text()
     }
 
-    assert len(basic) == 309
+    assert len(basic) == 314
     assert {tag for tag, action in basic.items() if action == "K"} == (
         KEPT_TEXT
         | ADDED_KEPT_TEXT

@@ -76,6 +76,8 @@ PRESENTATION_STATE_IODS = (
     "Planar MPR Volumetric Presentation State",
     "Volume Rendering Volumetric Presentation State",
     "Advanced Blending Presentation State",
+    "Waveform Presentation State",
+    "Waveform Acquisition Presentation State",
 )
 PRESENTATION_CREATION_DATES = ("(0070,0082)", "(0070,0083)")
 # The IODs that include the Overlay Plane Module as conditional, of which the

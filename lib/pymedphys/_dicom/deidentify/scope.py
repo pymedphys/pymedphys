@@ -32,8 +32,9 @@ Color, Pseudo-Color, Blending, XA/XRF Grayscale, and Variable Modality LUT
 Softcopy Presentation State IODs, and of the Planar MPR and Volume Rendering
 Volumetric Presentation State IODs, with their Grayscale and Compositing
 Planar MPR, Volume Rendering, Segmented Volume Rendering, and Multiple
-Volume Rendering SOP Classes, and the Advanced Blending Presentation State
-IOD, uncompressed or in a transfer syntax that
+Volume Rendering SOP Classes, the Advanced Blending Presentation State
+IOD, and the Waveform and Waveform Acquisition Presentation State IODs,
+uncompressed or in a transfer syntax that
 encapsulates Pixel Data that pydicom's decoding plugins decode. Supporting an IOD or a transfer syntax does not
 release every instance in it: a compressed instance is still sequestered
 where the plugin pinned to its transfer syntax is not installed, or where
@@ -53,7 +54,7 @@ one's Volumetric Annotation Sequence (0070,1901) and Volumetric
 Presentation Input Annotation Sequence (0070,1905). Every other
 instance is sequestered: neither de-identified nor written, and listed in
 the run report by opaque identifiers only. That includes the other
-Structured Reports, the waveform Presentation States, and instances of Private SOP Classes.
+Structured Reports and instances of Private SOP Classes.
 
 :func:`classify` decides from the instance's SOP Class UID (0008,0016), which
 PS3.4 Table B.5-1 maps to its IOD, and from the transfer syntax of its file.
@@ -126,6 +127,8 @@ SUPPORTED_IODS = frozenset(
         "Planar MPR Volumetric Presentation State",
         "Volume Rendering Volumetric Presentation State",
         "Advanced Blending Presentation State",
+        "Waveform Presentation State",
+        "Waveform Acquisition Presentation State",
     }
 )
 # Every transfer syntax whose files the engine reads: Implicit VR Little
