@@ -1106,9 +1106,30 @@ def test_each_text_marker_occurs_once_in_its_file(corpus):
                 )
 
 
-def test_every_marker_number_fits_a_signed_short():
-    # SS markers are the negated number.
-    assert corpus_module.MAX_MARKERS <= 2**15
+def test_markers_have_five_digits_and_their_16_bit_integers_are_distinct(corpus):
+    # Markers are numbered within five digits, and SS and US markers, the
+    # negated and plain numbers of their own counts, each within its VR.
+    assert corpus_module.MAX_MARKERS <= 10**5
+    for vr, low, high in (("SS", -(2**15), -1), ("US", 1, 2**16 - 1)):
+        values = [
+            int(value)
+            for _, placement in _placements(corpus, Kind.PLANTED)
+            if placement.vr == vr
+            for value in placement.values
+        ]
+        assert len(values) == len(set(values)), vr
+        assert all(low <= value <= high for value in values), vr
+
+
+def test_times_are_distinct(corpus):
+    times = [
+        value
+        for _, placement in _placements(corpus, Kind.PLANTED)
+        if placement.vr == "TM"
+        for value in placement.values
+    ]
+
+    assert times and len(times) == len(set(times))
 
 
 def test_every_planted_placement_covers_a_row_of_table_e1_1_or_e3_4_1(corpus):
