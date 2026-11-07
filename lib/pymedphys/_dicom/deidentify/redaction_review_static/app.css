@@ -91,3 +91,4 @@ dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
 .crop.dropped canvas { border-color: var(--dropped); border-style: dashed; }
 .crop.drawn canvas { border-color: var(--drawn); }
 pre { background: #000; padding: 8px; border-radius: 6px; white-space: pre-wrap; word-break: break-all; }
+#saved.error, #summary-saved.error { color: #f28b82; }
