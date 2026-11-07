@@ -412,6 +412,28 @@ def test_a_patient_shared_by_two_collections_is_one_subject(tmp_path):
     assert "INVENTED" not in report and "subject/" not in report
 
 
+def _split_as_described(namespace, subject):
+    """The split as SPLIT_RULE, which each summary exports, describes it."""
+    joined = "\0".join((evaluation.SPLIT_SALT, namespace, subject))
+    number = int.from_bytes(hashlib.sha256(joined.encode()).digest()[:8], "big")
+    return "held-out" if number % 3 == 0 else "tuning"
+
+
+def test_the_exported_split_rule_describes_the_namespace():
+    assert "namespace" in evaluation.SPLIT_RULE
+    for number in range(200):
+        subject = idc.subject_key("vestibular_schwannoma_mc_rc", f"P-{number}")
+        assert evaluation.split_of(
+            "vestibular_schwannoma_mc_rc",
+            subject,
+            namespace=idc.subject_namespace("vestibular_schwannoma_mc_rc"),
+        ) == _split_as_described("vestibular_schwannoma", subject)
+        ordinary = idc.subject_key("lidc_idri", f"P-{number}")
+        assert evaluation.split_of("lidc_idri", ordinary) == _split_as_described(
+            "lidc_idri", ordinary
+        )
+
+
 def test_subject_namespaces_name_vetted_collections_alone():
     assert set(idc.SUBJECT_NAMESPACES) <= set(idc.OPEN_COLLECTIONS)
     assert not set(idc.SUBJECT_NAMESPACES.values()) & set(idc.OPEN_COLLECTIONS)

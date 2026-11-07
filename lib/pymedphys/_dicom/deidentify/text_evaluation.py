@@ -118,11 +118,11 @@ SPLITS = ("tuning", "held-out")
 EVALUATED = (*SPLITS, "all")
 SPLIT_SALT = "pymedphys-text-detector-evaluation-split/1"
 SPLIT_RULE = (
-    "A case is held out where the first 8 bytes of the SHA-256 of "
-    f"'{SPLIT_SALT}', its collection, and its subject (its patient where "
-    "known, otherwise the case), joined by NUL, read as a big-endian "
-    "integer, are a multiple of 3, or its collection is held out whole; "
-    "otherwise it is for tuning. The bootstrap resamples subjects."
+    "A case is held out where its collection is held out whole, or where the "
+    f"first 8 bytes of the SHA-256 of '{SPLIT_SALT}', its subject's namespace "
+    "(shared by collections sharing patients, else its collection), and its "
+    "subject (its patient, else the case), joined by NUL and read as a big-endian "
+    "integer, are a multiple of 3; else it is for tuning. Bootstrap units are subjects."
 )
 FRAME_DIMENSIONS = (
     "collection",
