@@ -1009,6 +1009,10 @@ _FACELESS = (
     "48-rt-ion-beams-record.dcm",
     "49-rt-brachy-record.dcm",
     "50-rt-treatment-summary-record.dcm",
+    # A Presentation State holds no pixel data, contours, or grids; one with
+    # graphic annotations or an overlay is sequestered under every preset,
+    # and the corpus plants neither.
+    *corpus_module.PRESENTATION_STATE_FILES,
 )
 
 
