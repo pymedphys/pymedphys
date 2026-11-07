@@ -341,9 +341,7 @@ def test_the_basic_profile_sequesters_a_volumetric_presentation_state(preset):
     result = _transformed(preset, _planar_mpr())
 
     assert isinstance(result, run.Sequestered)
-    assert {
-        reason.path for reason in result.reasons
-    } == {
+    assert {reason.path for reason in result.reasons} == {
         ElementPath((), PRESENTATION_CREATION_DATE),
         ElementPath((), PRESENTATION_CREATION_TIME),
     }

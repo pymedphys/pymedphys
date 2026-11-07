@@ -20,7 +20,7 @@ fictitious patient and study, with one Frame of Reference: three CT Image
 slices, an RT Structure Set that references the CT series and slices, an RT
 Plan that references the structure set and the dose, an RT Dose that
 references the plan, a second RT Dose of the plan for review (below), one
-instance of each of forty-one other IODs, and two of the Segmentation
+instance of each of forty-four other IODs, and two of the Segmentation
 IOD, one of each of its SOP Classes, each in a series of its own, and a
 second X-Ray Radiation Dose SR, of a CT scan.
 The MR Image and PET Image instances reference the first CT slice, and each
@@ -58,7 +58,10 @@ Sequence (0008,1115), or the blending one in its Blending Sequence
 (0070,0402), the image that it presents: the grayscale, blending, and
 Variable Modality LUT ones the first CT slice, the colour one the Enhanced
 MR Color Image, the pseudo-colour one the PET Image, and the XA/XRF one the
-RT Image. It is the input for validating each preset end to end: once the
+RT Image. The volumetric Presentation States name the CT slices in their
+Volumetric Presentation Input Set Sequence (0070,120A), and the advanced
+blending one the PET Image in its Advanced Blending Sequence (0070,1B01).
+It is the input for validating each preset end to end: once the
 engine has
 written the collection, the residual search
 (:mod:`~pymedphys._dicom.deidentify.residuals`) should find none of the
@@ -186,7 +189,13 @@ Radiopharmaceutical Information Sequence (0054,0016) of an Enhanced PET
 Image, and, in each softcopy Presentation State, Presentation Creation Date
 (0070,0082) and Time (0070,0083), Type 1 at the top level, the Graphic
 Annotation Sequence (0070,0001), and Overlay Data (60xx,3000), which these
-IODs define in a conditional Overlay Plane Module. Institution Code Sequence
+IODs define in a conditional Overlay Plane Module; so too in the
+volumetric and advanced blending Presentation States, which define the
+same creation date and time and Graphic Annotation Sequence, and in a
+volumetric one what the items of its Volumetric Annotation Sequence
+(0070,1901) and Volumetric Presentation Input Annotation Sequence
+(0070,1905) hold, since Table E.1-1 omits both and their supplementary rule
+gives them its D. Institution Code Sequence
 (0008,0082), which X/Z/D gives D where it is Type 1C, in the Interlock Resolution User Sequence (300A,0746) of an RT
 Beams Treatment Record's or RT Ion Beams Treatment Record's Interlock
 Sequence (300A,0740), is planted there, since a reviewed rule gives it a
@@ -194,7 +203,7 @@ dummy item at that place and only there. Planted in
 every file, the first two would sequester every
 instance, and no preset could release any of the collection; planted in one,
 that instance checks sequestration, :data:`REVIEW_FILE` checks review, and
-the other forty-nine check each preset's output, the reports where their
+the other fifty-two check each preset's output, the reports where their
 trees are cleaned. Radiopharmaceutical Start
 DateTime, which CT Image does not define there, is planted in no file, so
 the Enhanced PET instance, which lacks an attribute of Type 1, is released
@@ -203,7 +212,7 @@ does not define its creation date and time or Graphic Annotation Sequence,
 and defines Overlay Data in a user-optional module, whose group the Basic
 Profile removes, so these are planted in no file either. An Enhanced PET
 Image instance that conforms to the IOD is sequestered under ``basic`` and
-``basic-clean-descriptors``, as is a softcopy Presentation State that does.
+``basic-clean-descriptors``, as is a Presentation State that does.
 
 **Edge cases.** Each file except the first RT Dose, ``06-rtdose.dcm``, and
 the MR Image, ``10-mr.dcm``, is written in Explicit VR Little Endian, and
@@ -233,7 +242,7 @@ Manufacturer's Model Name (0008,1090), which Table E.1-1 does not list and
 the Basic Profile keeps, a copy of the RT Plan's RT Plan Label marker
 (:attr:`PlacementKind.REVIEW_COPY`), so the residual search finds a source
 value of another instance in its output and sends it to review. The third
-CT slice remains sequestered; the other forty-nine files stay releasable, the
+CT slice remains sequestered; the other fifty-two files stay releasable, the
 reports where their trees are cleaned.
 
 **Manifest.** :class:`CorpusManifest` records, for each file, each
@@ -380,9 +389,7 @@ GRAYSCALE_PLANAR_MPR_VOLUMETRIC_PRESENTATION_STATE_STORAGE = (
     "1.2.840.10008.5.1.4.1.1.11.6"
 )
 ADVANCED_BLENDING_PRESENTATION_STATE_STORAGE = "1.2.840.10008.5.1.4.1.1.11.8"
-VOLUME_RENDERING_VOLUMETRIC_PRESENTATION_STATE_STORAGE = (
-    "1.2.840.10008.5.1.4.1.1.11.9"
-)
+VOLUME_RENDERING_VOLUMETRIC_PRESENTATION_STATE_STORAGE = "1.2.840.10008.5.1.4.1.1.11.9"
 PRESENTATION_STATE_STORAGE_CLASSES = frozenset(
     {
         GRAYSCALE_SOFTCOPY_PRESENTATION_STATE_STORAGE,
@@ -1564,7 +1571,7 @@ def build_corpus() -> SyntheticCorpus:
     Returns
     -------
     SyntheticCorpus
-        Fifty-one files: three CT slices; the RT Structure Set, RT Plan, RT
+        Fifty-four files: three CT slices; the RT Structure Set, RT Plan, RT
         Dose, and the RT Dose for review; the Enhanced CT Image and Legacy
         Converted Enhanced CT Image; the MR Image, Enhanced MR Image,
         Enhanced MR Color Image, Legacy Converted Enhanced MR Image, and MR
@@ -1580,9 +1587,11 @@ def build_corpus() -> SyntheticCorpus:
         Colon CAD SR, Procedure Log, Spectacle Prescription Report, Macular
         Grid Thickness and Volume Report, and Waveform Annotation SR; the RT
         Ion Plan and RT Ion Beams Treatment Record; the RT Brachy Treatment
-        Record and RT Treatment Summary Record; and the Grayscale, Color,
+        Record and RT Treatment Summary Record; the Grayscale, Color,
         Pseudo-Color, Blending, XA/XRF Grayscale, and Variable Modality LUT
-        Softcopy Presentation States. Two builds give the same bytes and the
+        Softcopy Presentation States; and the Grayscale Planar MPR and
+        Volume Rendering Volumetric Presentation States and the Advanced
+        Blending Presentation State. Two builds give the same bytes and the
         same manifest.
     """
     markers = _Markers()

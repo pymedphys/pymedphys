@@ -381,7 +381,8 @@ def test_every_attribute_of_table_e1_1_that_the_iod_defines_is_placed(corpus):
 # by file: in the Advanced Blending Presentation State, Referenced Digital
 # Signature Sequence and Referenced SOP Instance MAC Sequence, with its MAC,
 # are defined only in the Referenced SOP Sequence of the Referenced Series
-# Sequence of a Blending Input, four sequences deep, as its Common Instance
+# Sequence of the Referenced Spatial Registration Sequence of an Advanced
+# Blending Sequence item, four sequences deep, as its Common Instance
 # Reference Module's Referenced Instance Sequence does not define them.
 # Other files plant them at a shallower place.
 CAPPED_ONLY = {
@@ -507,8 +508,7 @@ def _sequesters(iod, placement):
         or (
             path[depth] in VOLUMETRIC_ANNOTATION_SEQUENCES
             and rules[path[depth]].action == "D"
-            and compound_actions.strictest_type(iod, path[depth], path[:depth])
-            == "1"
+            and compound_actions.strictest_type(iod, path[depth], path[:depth]) == "1"
         )
         for depth in range(len(path))
     )

@@ -106,12 +106,8 @@ SUPPORTED = {
     "1.2.840.10008.5.1.4.1.1.11.7": "Planar MPR Volumetric Presentation State",
     "1.2.840.10008.5.1.4.1.1.11.8": "Advanced Blending Presentation State",
     "1.2.840.10008.5.1.4.1.1.11.9": "Volume Rendering Volumetric Presentation State",
-    "1.2.840.10008.5.1.4.1.1.11.10": (
-        "Volume Rendering Volumetric Presentation State"
-    ),
-    "1.2.840.10008.5.1.4.1.1.11.11": (
-        "Volume Rendering Volumetric Presentation State"
-    ),
+    "1.2.840.10008.5.1.4.1.1.11.10": ("Volume Rendering Volumetric Presentation State"),
+    "1.2.840.10008.5.1.4.1.1.11.11": ("Volume Rendering Volumetric Presentation State"),
 }
 
 
