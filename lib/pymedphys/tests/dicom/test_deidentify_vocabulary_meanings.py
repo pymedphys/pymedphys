@@ -285,7 +285,7 @@ def test_an_institutions_or_stations_name_goes_to_review(source):
     "written",
     [
         # Other kept text.
-        _written(_element(0x0008103E, "LO", MEANING)),
+        _written(_element(0x00204000, "LT", MEANING)),
         # A Code Meaning outside any item.
         _written(_element(0x00080104, "LO", MEANING)),
         # The Code Value of a local code.

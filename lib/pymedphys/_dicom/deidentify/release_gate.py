@@ -67,10 +67,12 @@ that the run's safe private list keeps, or a value that an option of the run
 keeps explains it
 (:func:`~pymedphys._dicom.deidentify.residual_exemptions.exemption`), or the
 text is the meaning of a standard code that only instances the run does not
-write held, or it is found in a kept Code Meaning made only of words of the
-reviewed technique vocabulary, which echoes no identifier of the subject,
-from a source that is not an institution's or a station's name
-(:func:`~pymedphys._dicom.deidentify.residual_vocabulary.vocabulary_meaning`). A date or datetime equal to a whole date, time, or datetime that
+write held, or it is found in a kept Code Meaning or technique descriptor
+made only of words of the reviewed technique vocabulary, which echoes no
+identifier of the subject, from a source that is not an institution's or a
+station's name
+(:func:`~pymedphys._dicom.deidentify.residual_vocabulary.vocabulary_meaning`,
+:func:`~pymedphys._dicom.deidentify.residual_vocabulary.vocabulary_descriptor`). A date or datetime equal to a whole date, time, or datetime that
 an option keeps, or a datetime whose date equals a whole date that an option
 keeps, does not withhold the file either
 (:func:`~pymedphys._dicom.deidentify.residual_exemptions.retained_date`), nor
@@ -133,7 +135,7 @@ from .residuals import (
 )
 from .residual_shifts import KINDS as SHIFTED_KINDS
 from .residual_shifts import shifted_date
-from .residual_vocabulary import vocabulary_meaning
+from .residual_vocabulary import vocabulary_descriptor, vocabulary_meaning
 from .policy import SAFE_PRIVATE
 from .safe_private import SafePrivateList
 from .standard import ProfileTable, dictionary_attribute, load_table_e1_1
@@ -697,7 +699,12 @@ def release_condition(
                     coverage.options,
                     coverage.unwritten & coverage.coded,
                     coverage.safe_private_list,
-                ) or vocabulary_meaning(each, kept, sources)
+                )
+                why = (
+                    why
+                    or vocabulary_meaning(each, kept, sources)
+                    or vocabulary_descriptor(each, kept, sources)
+                )
             elif reason.code is ReasonCode.RESIDUAL_UID:
                 why = unwritten_uid(
                     each, kept, sources, coverage.unwritten, coverage.options
