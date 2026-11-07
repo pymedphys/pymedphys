@@ -295,6 +295,7 @@ from .references import (
     reference_sites,
 )
 from .sop_classes import iod_for_sop_class
+from .supplementary_actions import load_supplementary_actions
 from .standard import (
     PRIVATE_ATTRIBUTES_TAG,
     VM_PATTERN,
@@ -1785,6 +1786,21 @@ def _basic_profile_actions() -> types.MappingProxyType[str, str]:
 
 
 @functools.lru_cache(maxsize=None)
+def _supplementary_sequence_actions() -> types.MappingProxyType[str, str]:
+    """Return the Basic Profile action of each sequence a supplementary rule covers.
+
+    Table E.1-1 omits these sequences, so the corpus plants nothing of their
+    own, but plants the attributes of the table in their items.
+    """
+    actions = {}
+    for tag, rule in load_supplementary_actions().rules.items():
+        attribute = None if "x" in tag else dictionary_attribute(tag)
+        if attribute is not None and "SQ" in attribute.vrs:
+            actions[tag] = rule.action
+    return types.MappingProxyType(actions)
+
+
+@functools.lru_cache(maxsize=None)
 def _profile_places(iod: IOD) -> tuple[tuple[tuple[str, ...], str, str], ...]:
     """Return each place the IOD defines an attribute of Table E.1-1.
 
@@ -1992,11 +2008,27 @@ class _Instance:
         return None
 
     def _in_sequestering_sequence(self, path: tuple[str, ...]) -> bool:
-        """Return whether a sequence that encloses a place sequesters."""
+        """Return whether a sequence that encloses a place sequesters.
+
+        So does one that Table E.1-1 omits and whose supplementary rule's
+        action resolves to D at its place, as a sequence has no dummy value,
+        such as a volumetric Presentation State's Volumetric Annotation
+        Sequence (0070,1901).
+        """
         actions = _basic_profile_actions()
+        supplementary = _supplementary_sequence_actions()
         return any(
-            path[depth] in actions
-            and self._sequesters(path[:depth], path[depth], path[depth])
+            (
+                path[depth] in actions
+                and self._sequesters(path[:depth], path[depth], path[depth])
+            )
+            or (
+                path[depth] in supplementary
+                and self._resolved(
+                    path[:depth], path[depth], supplementary[path[depth]]
+                )
+                == "D"
+            )
             for depth in range(len(path))
         )
 
