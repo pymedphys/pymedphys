@@ -48,11 +48,13 @@ from collections.abc import Callable, Iterable, Mapping
 from . import birth_dates, dates, dummy_values, pixel_risk, pseudonyms, residuals, uids
 from . import release_report as report
 from .conformance import ConformanceStatement
+from .content_items import OBSERVATION_DATETIME
 from .edits import PSEUDONYM_TAGS
 from .pixel_risk import Indicator
 from .policy import (
     CLEAN_PIXEL_DATA,
     CLEAN_RECOGNIZABLE_VISUAL_FEATURES,
+    CLEAN_STRUCTURED_CONTENT,
     FULL_DATES,
     MODIFIED_DATES,
 )
@@ -200,8 +202,9 @@ STAGES: Mapping[str, str] = types.MappingProxyType(
 )
 
 # The codes by which the release gate can hold an instance for review rather
-# than withhold it: a gap in collection for a value of no required kind, and
-# other text found inside the data set.
+# than withhold it: a gap in collection for a value of no required kind,
+# other text found inside the data set, and a person name found in standard
+# text that a selected option keeps.
 REVIEW_CODES = frozenset(
     code.value
     for code in (
@@ -210,6 +213,7 @@ REVIEW_CODES = frozenset(
         ReasonCode.READ_AS_LATIN_1,
         ReasonCode.COLLECTED_AS_OTHER_VR,
         ReasonCode.RESIDUAL_TEXT,
+        ReasonCode.RESIDUAL_PERSON_NAME_IN_KEPT_TEXT,
     )
 )
 
@@ -244,9 +248,11 @@ HOLDING_STAGES: Mapping[str, str] = types.MappingProxyType(
         ),
         "release": (
             "the release gate requires QC review, for other text that the "
-            "residual search found inside the data set, or a value that could "
-            "not be collected for the search and is not a person name, UID, "
-            "date, datetime, direct identifier, or sequence"
+            "residual search found inside the data set, a person name that it "
+            "found in standard text that a selected option keeps, such as "
+            "Institution Name under Retain Institution Identity, or a value "
+            "that could not be collected for the search and is not a person "
+            "name, UID, date, datetime, direct identifier, or sequence"
         ),
     }
 )
@@ -259,25 +265,41 @@ def _reviewed_items(named: Callable[[str], str]) -> list[str]:
         if tag == dummy_values.REFERENCED_PERFORMED_PROCEDURE_STEP_SEQUENCE:
             lines.append(_procedure_step_items(named, tag, compared))
             continue
-        (first,) = dummy_values.items_for_d(tag, [])
+        within = _reviewed_place(tag)
+        (first,) = dummy_values.items_for_d(tag, [], within=within)
         source = {e.tag: e.value for e in first if e.tag in compared}
-        (second,) = dummy_values.items_for_d(tag, [source])
+        (second,) = dummy_values.items_for_d(tag, [source], within=within)
         changed = [
             f"{named(element.tag)} `{element.value}`"
             for element, before in zip(second, first)
             if element.value != before.value
         ]
+        place = "".join(f" in an item of {named(each)}" for each in within)
+        elsewhere = (
+            " Elsewhere, D on it has no reviewed rule, so the instance is sequestered."
+            if within
+            else ""
+        )
         lines.append(
-            f"D on {named(tag)} writes one item, with "
+            f"D on {named(tag)}{place} writes one item, with "
             + join(f"{named(element.tag)} `{element.value}`" for element in first)
             + ". Where a source item's "
             + join((named(t) for t in sorted(compared)), "or")
             + " equals the item's, as D compares values, the item has "
             + join(changed)
             + " instead."
+            + elsewhere
         )
     lines.append(_icc_profile(named))
     return lines
+
+
+def _reviewed_place(tag: str) -> tuple[str, ...]:
+    """Return the sequence whose items alone hold a sequence's reviewed rule.
+
+    It is empty for a sequence whose rule holds everywhere.
+    """
+    return tuple(sorted(dummy_values.REVIEWED_WITHIN.get(tag, frozenset())))
 
 
 def _procedure_step_items(
@@ -300,14 +322,31 @@ def _icc_profile(named: Callable[[str], str]) -> str:
     """Describe the profile that D writes in place of ICC Profile."""
     first, second = dummy_values.CONSTANTS["LO"]
     return (
-        f"D on {named(dummy_values.ICC_PROFILE)} writes a fixed ICC version "
-        "2.4 input profile of the sRGB colour space of IEC 61966-2.1, "
-        f"described `{first} sRGB`, or `{second} sRGB` where the source has "
-        "the same bytes. PS3.3 Section C.11.15.1.1 requires the profile's "
-        "data colour space to be RGB, so where the source is not an RGB "
-        "profile, the instance is sequestered. Pixel values are preserved, "
-        "but the source profile's colorants and tone curves are not, so colour "
-        "rendering can change substantially."
+        f"D on {named(dummy_values.ICC_PROFILE)} writes the source profile "
+        "cleaned of everything but its colorimetry: it keeps the tags that "
+        "map device values to the profile connection space and back, the "
+        "media white and black points, luminance, chromatic adaptation, "
+        "coding-independent code points, chromaticity, measurement and "
+        "viewing conditions, the colorimetric intent image state, and the "
+        "rendering intent gamuts, each parsed and written again, and removes "
+        "every text tag, private tag, and other tag. Its header keeps the "
+        "source's version, profile connection space, illuminant, rendering "
+        "intent, and embedded-profile flags, names no CMM, platform, device, "
+        "or creator, gives 1 January 1900 as its date, and makes it an input "
+        "device profile; a version 4 profile's profile ID is computed again. "
+        f"Its description and copyright are `{first}`, or `{second}` where "
+        "the source has the same bytes. Where the source is not of ICC version "
+        "2 or 4, not an input, display, or colour space profile, has another "
+        "illuminant than D50, holds a colorimetric tag that does not parse "
+        "as its version defines it, or is a version 2 display profile whose "
+        "media white point is not D50, which colour management modules read "
+        "by class, D writes instead a fixed ICC version 2.4 "
+        "input profile of the sRGB colour space of IEC 61966-2.1, described "
+        f"`{first} sRGB`; pixel values are preserved, but the source "
+        "profile's colorants and tone curves are not, so colour rendering can "
+        "then change substantially. PS3.3 Section C.11.15.1.1 requires the "
+        "profile's data colour space to be RGB, so where the source is not "
+        "an RGB profile, the instance is sequestered."
     )
 
 
@@ -326,17 +365,23 @@ def _kept_items(
     ]
 
 
-def _naming_pymedphys(named: Callable[[str], str]) -> list[str]:
-    """Name each value that a reviewed rule writes and that names PyMedPhys."""
-    return [
-        f"{named(element.tag)} `{element.value}`"
+def _naming_pymedphys(named: Callable[[str], str]) -> dict[str, list[str]]:
+    """Name each value that a reviewed rule writes and that names PyMedPhys.
+
+    Each is listed by the sequence whose item holds it.
+    """
+    found = {
+        tag: [
+            f"{named(element.tag)} `{element.value}`"
+            for item in dummy_values.items_for_d(tag, [], within=_reviewed_place(tag))
+            for element in item
+            if "PYMEDPHYS" in element.value.upper()
+        ]
         for tag in REVIEWED_DUMMY_SEQUENCES
         # The procedure step's items hold only UIDs, written for the source.
         if tag != dummy_values.REFERENCED_PERFORMED_PROCEDURE_STEP_SEQUENCE
-        for item in dummy_values.items_for_d(tag, [])
-        for element in item
-        if "PYMEDPHYS" in element.value.upper()
-    ]
+    }
+    return {tag: values for tag, values in found.items() if values}
 
 
 def values_written(
@@ -403,6 +448,7 @@ def values_written(
         "has no rank, as where the run holds no instance of its series, is "
         "emptied under Z and takes D's constant under D. The numbering spans "
         "one run.",
+        *(("", _log_datetimes(named)) if _writes_log_datetimes(statement) else ()),
         "",
         f"U replaces a UID with `{uids.UID_ROOT}` followed by the decimal form "
         f"of a name-based (version 5) UUID, at most {uid_length} characters "
@@ -416,13 +462,45 @@ def values_written(
         "",
         "No value that Z, D, or U writes names PyMedPhys"
         + (
-            f", except the {join(exceptions)} of the item that D writes in "
-            f"{named(dummy_values.PERSON_IDENTIFICATION_CODE_SEQUENCE)}, which "
-            "names who defines its code."
+            ", except "
+            + join(
+                f"the {join(values)} of the item that D writes in {named(tag)}"
+                for tag, values in exceptions.items()
+            )
+            + ", which "
+            + ("names" if len(exceptions) == 1 else "name")
+            + " who defines "
+            + ("its code." if len(exceptions) == 1 else "their codes.")
             if exceptions
             else "."
         ),
     ]
+
+
+def _writes_log_datetimes(statement: ConformanceStatement) -> bool:
+    """Return whether D writes the ranked datetimes of a Procedure Log's entries."""
+    return CLEAN_STRUCTURED_CONTENT in statement.options and not {
+        FULL_DATES,
+        MODIFIED_DATES,
+    }.intersection(statement.options)
+
+
+def _log_datetimes(named: Callable[[str], str]) -> str:
+    """Return the paragraph on the datetimes that D writes in a Procedure Log."""
+    first = dummy_values.CONSTANTS["DT"][0]
+    return (
+        f"D on {named(OBSERVATION_DATETIME)} of each entry of a Procedure "
+        "Log, an item of its Content Sequence that is a target of CONTAINS, "
+        "writes in place of "
+        "the constant the dummy datetime of its rank among the entries' "
+        f"distinct source values: `{first}` for the earliest, and one second "
+        "more for each later one, so entries with equal source values share "
+        "one and the log keeps the increasing order that PS3.3 Section "
+        "A.35.7.3.1.2 requires. Where any of these would equal an entry's "
+        "source value, as D compares them, the series moves on by its own "
+        "length until none does. A log whose entries are not in increasing "
+        "order is sequestered."
+    )
 
 
 def _birth_dates(named: Callable[[str], str]) -> str:
@@ -492,8 +570,10 @@ def dates_and_times(
             "the policy removes or replaces, other than the kept element's "
             "own, equals a whole kept value, the residual search finds it in "
             "the kept element, and the kept value explains it, so it does not "
-            "withhold the instance; found inside a longer kept value, such as "
-            "the date of a kept datetime, it still does. "
+            "withhold the instance, nor does a removed datetime whose date, "
+            "which the search also looks for, equals a whole kept date; found "
+            "inside a longer kept value, such as the date of a kept datetime, "
+            "it still does. "
             f"{named(TEMPORAL_MODIFIED)} is `{statement.markers.temporal}`, as "
             "Attributes inserted describes.",
         ]
@@ -768,8 +848,8 @@ def release_report() -> list[str]:
         "is known, and one from the release gate gives the attribute's tags "
         "in the same way where it names an attribute. A reason of scope "
         "`unsupported-iod` also gives the instance's IOD by its name in "
-        "PS3.4 Table B.5-1, such as `Comprehensive SR` for the Comprehensive "
-        "SR IOD.",
+        "PS3.4 Table B.5-1, such as `Ultrasound Image` for the Ultrasound "
+        "Image IOD.",
         "",
         "An instance outside the supported scope whose IOD the pinned tables "
         "define, such as a nuclear medicine image or an ultrasound image, "

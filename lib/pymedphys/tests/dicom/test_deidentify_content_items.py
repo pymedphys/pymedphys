@@ -19,6 +19,8 @@ the text ``SENTINEL``. Content items whose concept names Table E.3.4-1 does
 not list are coded in the invented local scheme ``99PMP``.
 """
 
+# pylint: disable = too-many-lines
+
 import functools
 import io
 
@@ -138,6 +140,12 @@ ACQUISITION_DATE = ("126201", "DCM", "Acquisition Date")
 ACQUISITION_PROTOCOL = ("125203", "DCM", "Acquisition Protocol")
 DEVICE_SERIAL_NUMBER = ("113880", "DCM", "Device Serial Number")
 DEVICE_OBSERVER_UID = ("121012", "DCM", "Device Observer UID")
+# LOINC concepts: two that Table E.3.4-1 lists, and a macular grid
+# measurement of TID 2101 that neither the table nor a supplementary row
+# lists.
+EDD = ("11778-8", "LN", "EDD")
+FETUS_ID = ("11951-1", "LN", "Fetus ID")
+CENTER_POINT_THICKNESS = ("57108-3", "LN", "Macular Grid.Center Point Thickness")
 FINDING_SITE = ("363698007", "SCT", "Finding Site")
 EQUIPMENT_IDENTIFICATION = ("121122", "DCM", "Equipment Identification")
 FINDING = ("121071", "DCM", "Finding")
@@ -241,6 +249,11 @@ def test_table_e1_1_gives_c_to_the_four_sequences_of_content_items():
         ),
         (DEVICE_OBSERVER_UID, "UIDREF", ("retain_uids",), "K"),
         (DEVICE_OBSERVER_UID, "UIDREF", (), "D"),
+        # LOINC's rows are generated, and take their actions as others do.
+        (EDD, "DATE", (), "X"),
+        (EDD, "DATE", ("retain_longitudinal_full_dates",), "K"),
+        (EDD, "DATE", ("retain_longitudinal_modified_dates",), "C"),
+        (FETUS_ID, "TEXT", (), "D"),
     ],
 )
 def test_each_concept_takes_the_action_its_options_give(
@@ -403,7 +416,9 @@ def test_the_walker_gives_the_content_item_actions_in_place_of_the_rules():
         _text(ACCESSION_NUMBER),
         _item("DATE", ACQUISITION_DATE, Date="20260101"),
         # A concept name coded by a scheme whose rows the table cannot hold.
-        _item("DATE", ("11778-8", "LN", "EDD"), Date="20260101"),
+        _item("DATETIME", ("15", "NCDR", "Admission DateTime"), DateTime="20260101"),
+        # A LOINC concept that the table removes.
+        _item("DATE", EDD, Date="20260101"),
         # Retired SNOMED codes that PS3.16 Table O-1 does not map, one in
         # another case than the table's.
         _item("CODE", ("R-F0101", "SRT", "Fixture"), ConceptCodeSequence=[]),
@@ -549,7 +564,7 @@ def test_a_long_code_value_is_not_listed():
     }
 
 
-@pytest.mark.parametrize("designator", ["LN", "SRT"])
+@pytest.mark.parametrize("designator", ["NCIt", "SRT"])
 def test_a_long_code_value_of_an_unmatched_or_retired_scheme_is_not_kept(designator):
     # No SNOMED ID is a Long Code Value, so Table O-1 cannot map it.
     assert not _actions((CSC,), _enhanced_ct(_long_code_value(designator)))
@@ -584,6 +599,29 @@ def test_retain_device_identity_keeps_a_device_serial_number():
     )
     written = _written(options, dataset)
     assert written.AcquisitionContextSequence[0].TextValue == value
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.4-01")
+def test_an_unlisted_loinc_concept_is_kept_as_an_unlisted_dicom_one_is():
+    item = _item("NUMERIC", CENTER_POINT_THICKNESS, NumericValue="250")
+    item.MeasurementUnitsCodeSequence = pydicom.Sequence([_code("um", "UCUM", "um")])
+    dataset = _enhanced_ct(item)
+
+    assert dict(_actions((CSC,), dataset)) == {_path(tag=ACQUISITION_CONTEXT): "K"}
+    written = _written((CSC,), dataset)
+    kept = written.AcquisitionContextSequence[0]
+    assert kept.ConceptNameCodeSequence[0].CodeValue == "57108-3"
+    assert kept.NumericValue == 250
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.4-01")
+def test_full_dates_keep_a_loinc_edd():
+    dataset = _enhanced_ct(_item("DATE", EDD, Date="20260101"))
+
+    assert not _actions((CSC,), dataset)
+    written = _written((CSC, "retain_longitudinal_full_dates"), dataset)
+
+    assert written.AcquisitionContextSequence[0].Date == "20260101"
 
 
 def test_full_dates_keep_an_acquisition_date():
@@ -738,16 +776,30 @@ def test_content_sequence_items_are_cleaned_at_any_depth(depth):
     }
 
 
-@pytest.mark.parametrize(
-    "dataset",
-    [
-        _report(_coded(), _text(ACCESSION_NUMBER), depth=3),
-        # The nested Content Sequence could be kept, but not on its own.
-        _report(_text(ACCESSION_NUMBER), _container(SECTION, _coded())),
-    ],
-)
-def test_an_item_to_remove_anywhere_leaves_out_the_whole_tree(dataset):
-    assert not _actions((CSC,), dataset, REPORT)
+@pytest.mark.deid_requirement("PS3.15-E.3.4-01")
+def test_an_item_to_remove_deep_in_a_report_is_removed_on_its_own():
+    dataset = _report(_coded(), _text(ACCESSION_NUMBER), _coded(), depth=3)
+    *_, innermost = _tree(3)
+
+    actions = _actions((CSC,), dataset, REPORT)
+
+    assert dict(actions) == {sequence: "K" for sequence in _tree(3)}
+    assert actions.removed_items == {(*innermost.items, (CONTENT, 1))}
+    assert not actions.emptied
+    assert not actions.renumbered
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.4-01")
+def test_an_item_to_remove_beside_a_section_leaves_the_section_kept():
+    dataset = _report(_text(ACCESSION_NUMBER), _container(SECTION, _coded()))
+
+    actions = _actions((CSC,), dataset, REPORT)
+
+    assert dict(actions) == {
+        _path(tag=CONTENT): "K",
+        _path((CONTENT, 1), tag=CONTENT): "K",
+    }
+    assert actions.removed_items == {((CONTENT, 0),)}
 
 
 def test_the_walker_gives_content_sequence_items_their_actions():
@@ -868,10 +920,28 @@ def test_a_content_sequence_the_iod_does_not_define_there_takes_its_own_rule():
     assert "ContentSequence" not in written.AcquisitionContextSequence[0]
 
 
-def test_only_the_dose_reports_define_content_sequence_and_none_waveform_annotation():
+def test_only_the_reports_define_content_sequence_and_none_waveform_annotation():
     """Content Sequence at their root, and nowhere else in a supported IOD."""
     iods = load_iod_tables().iods
-    reports = {"X-Ray Radiation Dose SR", "Radiopharmaceutical Radiation Dose SR"}
+    reports = {
+        "X-Ray Radiation Dose SR",
+        "Enhanced X-Ray Radiation Dose SR",
+        "Radiopharmaceutical Radiation Dose SR",
+        "Patient Radiation Dose SR",
+        "Basic Text SR",
+        "Enhanced SR",
+        "Comprehensive SR",
+        "Comprehensive 3D SR",
+        "Extensible SR",
+        "Key Object Selection Document",
+        "Mammography CAD SR",
+        "Chest CAD SR",
+        "Colon CAD SR",
+        "Procedure Log",
+        "Spectacle Prescription Report",
+        "Macular Grid Thickness and Volume Report",
+        "Waveform Annotation SR",
+    }
     for name in scope.SUPPORTED_IODS:
         definitions = iods[name].definitions
         tags = {definition.tag for definition in definitions}
@@ -898,4 +968,140 @@ def test_the_statement_describes_the_cleaning_of_content_items():
     assert not statement.pending
     markdown = conformance_markdown.render_markdown(statement)
     assert "which hold content items, and the engine cleans them" in markdown
-    assert "since a single item is not removed on its own." in markdown
+    assert "an item that cannot be kept is removed on its own" in markdown
+
+
+def _log(*datetimes):
+    """Return a Procedure Log whose entries were observed at ``datetimes``.
+
+    An entry whose datetime is ``None`` has no Observation DateTime.
+    """
+    entries = [_text() for _ in datetimes]
+    for entry, observed in zip(entries, datetimes):
+        entry.RelationshipType = "CONTAINS"
+        if observed is not None:
+            entry.ObservationDateTime = observed
+    return _report(*entries)
+
+
+LOG = "Procedure Log"
+LOG_TIMES = ("20260102030405", "20260102030406")
+OBSERVED = "(0040,A032)"
+
+
+def _log_dummies(options, dataset, iod=LOG, actions=None):
+    source = read_source(synthetic.written(dataset))
+    chosen = policy.compose_custom_policy(options)
+    found = load_iod_tables().iods[iod]
+    if actions is None:
+        actions = content_items.content_item_actions(source, chosen, found)
+    return content_items.log_dummy_datetimes(source, chosen, found, actions)
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.4-01")
+@pytest.mark.filterwarnings("ignore:Invalid value for VR DT:UserWarning")
+@pytest.mark.parametrize(
+    "times",
+    [
+        ("20260102030406", "20260102030405"),
+        ("20260102030405", "2026-01-02"),
+        ("20260102030405+1000", "20260102030406+1100"),
+        ("20260102030405+1000", "20260102030406"),
+        ("20260102030405", "202601020304.5"),
+    ],
+    ids=["out-of-order", "not-a-datetime", "offsets", "offset-and-none", "fraction"],
+)
+def test_a_log_whose_entries_cannot_be_shown_in_order_is_not_kept(times):
+    # PS3.3 A.35.7.3.1.2 orders a log's entries by increasing Observation
+    # DateTime, which the dummies of their ranks keep only where the source
+    # values are in that order, as datetimes that can be compared.
+    assert not _actions((CSC,), _log(*times), LOG)
+
+
+@pytest.mark.parametrize(
+    "options, times, iod",
+    [
+        ((CSC,), LOG_TIMES, LOG),
+        ((CSC,), (LOG_TIMES[0], LOG_TIMES[0], None, LOG_TIMES[1]), LOG),
+        ((CSC,), ("20260102030405+1000", "20260102030406+1000"), LOG),
+        ((CSC, policy.FULL_DATES), LOG_TIMES[::-1], LOG),
+        ((CSC, policy.MODIFIED_DATES), LOG_TIMES[::-1], LOG),
+        ((CSC,), LOG_TIMES[::-1], REPORT),
+    ],
+    ids=[
+        "increasing",
+        "equal-and-absent",
+        "same-offset",
+        "full-dates",
+        "modified-dates",
+        "other-report",
+    ],
+)
+def test_a_log_is_kept_where_its_entries_stay_in_order(options, times, iod):
+    assert _actions(options, _log(*times), iod)[_path(tag=CONTENT)] == "K"
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.4-01")
+@pytest.mark.parametrize(
+    "times, expected",
+    [
+        (LOG_TIMES, ("19000101000000", "19000101000001")),
+        (
+            ("2026", "20260101", "20260101000000.5", None, "20260102"),
+            ("19000101000000", "19000101000000", "19000101000001", None)
+            + ("19000101000002",),
+        ),
+        (
+            ("20260102030405+1000", "20260102030405.000000+1000"),
+            ("19000101000000", "19000101000000"),
+        ),
+        # A series that would write a source value moves on by its length.
+        (
+            ("19000101000000", "19000101000001", "19000101000003"),
+            ("19000101000006", "19000101000007", "19000101000008"),
+        ),
+        (("1900", "20260101"), ("19000101000002", "19000101000003")),
+    ],
+    ids=["increasing", "equal", "fraction", "second-run", "constant"],
+)
+def test_each_log_entry_takes_the_dummy_datetime_of_its_rank(times, expected):
+    dummies = _log_dummies((CSC,), _log(*times))
+    assert dummies == {
+        _path((CONTENT, index), tag=OBSERVED): dummy
+        for index, dummy in enumerate(expected)
+        if dummy is not None
+    }
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.4-01")
+def test_observation_context_is_not_a_log_entry():
+    # PS3.3 A.35.7.3.1.2 orders only the targets of CONTAINS from the root;
+    # Table C.17-6 lets an item of another relationship, such as observation
+    # context, have its own Observation DateTime, which takes D's constant.
+    log = _log(None, *LOG_TIMES)
+    log.ContentSequence[0].RelationshipType = "HAS OBS CONTEXT"
+    log.ContentSequence[0].ObservationDateTime = "20260102030407"
+    assert _actions((CSC,), log, LOG)[_path(tag=CONTENT)] == "K"
+    assert _log_dummies((CSC,), log) == {
+        _path((CONTENT, 1), tag=OBSERVED): "19000101000000",
+        _path((CONTENT, 2), tag=OBSERVED): "19000101000001",
+    }
+
+
+@pytest.mark.parametrize(
+    "options, iod",
+    [
+        ((CSC, policy.FULL_DATES), LOG),
+        ((CSC, policy.MODIFIED_DATES), LOG),
+        ((CSC,), REPORT),
+        ((), LOG),
+    ],
+    ids=["full-dates", "modified-dates", "other-report", "no-option"],
+)
+def test_only_a_kept_log_whose_datetimes_take_d_has_dummy_datetimes(options, iod):
+    assert not _log_dummies(options, _log(*LOG_TIMES), iod)
+
+
+def test_log_dummy_datetimes_refuses_actions_that_keep_an_unordered_log():
+    with pytest.raises(ValueError, match="not in order"):
+        _log_dummies((CSC,), _log(*LOG_TIMES[::-1]), actions={_path(tag=CONTENT): "K"})

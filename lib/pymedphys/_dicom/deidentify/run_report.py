@@ -34,8 +34,14 @@ material that the transform gives and the assessment of their series, as
 the QC pack lists them (D-015), and how many source values the
 residual searches did not search, by attribute and reason, each counted at
 the instance that holds it among those that the transform gave material for
-(D-027), and how many released instances have each kind of residual finding
-that an exemption kept from review, from the gate's material (D-032). The
+(D-027), how many released instances have each kind of residual finding
+that an exemption kept from review, from the gate's material (D-032), and,
+under a face review, the RT Doses that the run released or held with more
+dose in a face block than it sets to zero there, by what it did with them,
+from the transform's material (:func:`doses_in_face_block`, D-051), and
+the instances in a defaced frame that it did not clean of the face, by
+whether a reviewer gave each a face verdict of its own
+(:func:`undefaced_instances`, D-050). The
 report holds no source value or path (D-016), and
 :func:`~pymedphys._dicom.deidentify.release_report.to_json` refuses any
 field that could hold one. Before the run labels its outcomes, it asks the
@@ -44,10 +50,11 @@ and sequesters one whose reasons it cannot report for
 :attr:`~.reasons.RunReason.INVALID_REASON`, which the report gives alone,
 so that one input's reasons never stop the release.
 
-Under the ``public-release`` preset, the run also gives the reporter its
-:class:`RunFacts`: its own QC pack, as it writes it, and how many distinct
-subjects it releases. From them, and from the earlier run's review that the
-reporter was given, if any
+The run also gives the reporter its :class:`RunFacts`: its own QC pack, as
+it writes it, how many distinct subjects it releases, and what it did with
+the studies whose instances name several patients, which the report records
+under every policy (D-026). Under the ``public-release`` preset, from them,
+and from the earlier run's review that the reporter was given, if any
 (:class:`~pymedphys._dicom.deidentify.readiness.ReadinessReview`), the
 report says whether the run is ready for release by its three gates
 (:func:`~pymedphys._dicom.deidentify.readiness.readiness`, D-017).
@@ -75,13 +82,14 @@ from . import (
     release_report_markdown,
 )
 from .face_blocks import FaceBlockCounts
+from .icc_cleaning import Refusal
 from .pixel_region_rules import PixelRegionRules
 from .policy import CLEAN_PIXEL_DATA, Policy
 from .qc_attestation import AttestationRecord, Outcome
 from .qc_pack import QcPack
 from .readiness import ReadinessReview
 from .risk_assessment import policy_digest
-from .reasons import RunReason
+from .reasons import DoseChoice, RunReason
 from .residuals import NotSearched, Unsearched, UnsearchedReason
 from .iod_conformance import SourceGap
 from .reviewed_descriptors import (
@@ -98,7 +106,10 @@ from .reviewed_roi_names import (
 from .safe_private import SafePrivateList
 from .run_qc import (
     DescriptorMaterial,
+    DoseCheckMaterial,
     Dropped,
+    UndefacedMaterial,
+    IccProfileMaterial,
     PixelRiskMaterial,
     RedactionMaterial,
     ReferenceFindingMaterial,
@@ -144,10 +155,17 @@ class RunFacts:
         How many distinct subjects the instances that the run releases
         have, from
         :func:`~pymedphys._dicom.deidentify.readiness.released_subjects`.
+    several_patients : ~pymedphys._dicom.deidentify.release_report.SeveralPatientStudies, optional
+        What the run did with the studies whose instances name several
+        patients, and how many it sequestered (D-026); by default, the
+        default choice, to stop, with none sequestered.
     """
 
     pack: QcPack
     subjects: int
+    several_patients: release_report.SeveralPatientStudies = dataclasses.field(
+        default_factory=release_report.SeveralPatientStudies
+    )
 
     def __repr__(self) -> str:
         return "RunFacts()"
@@ -373,8 +391,10 @@ class ReleaseReporter:
     ) -> str:
         """Return the run's release report, as the module describes.
 
-        Under the ``public-release`` preset it needs the run's ``facts``,
-        which no other policy reads.
+        Under the ``public-release`` preset it needs the run's ``facts``.
+        Under any policy, the report gives from them what the run did with
+        the studies whose instances name several patients, or, without
+        them, the default choice, to stop, with none sequestered.
         """
         report = self._report(
             qc_review=AttestationRecord(qc_pack, Outcome.NOT_ATTESTED),
@@ -387,6 +407,7 @@ class ReleaseReporter:
             exempted=exempted_findings(outcomes, material),
             roi_names=roi_name_counts(material),
             descriptors=descriptor_counts(material),
+            icc_profiles=icc_profile_counts(outcomes, material),
             pixel_regions=(
                 pixel_regions(outcomes, material)
                 if CLEAN_PIXEL_DATA in self._policy.options
@@ -399,6 +420,19 @@ class ReleaseReporter:
                 for position in sorted(material)
             ),
             checks=structural_checks(outcomes, material),
+            doses_in_face_block=(
+                None
+                if self._face_review is None
+                else doses_in_face_block(outcomes, material)
+            ),
+            undefaced_instances=(
+                None
+                if self._face_review is None
+                else undefaced_instances(outcomes, material)
+            ),
+            several_patients=(
+                facts.several_patients if isinstance(facts, RunFacts) else None
+            ),
         )
         if self._readiness:
             if not isinstance(facts, RunFacts):
@@ -558,6 +592,87 @@ def released_instances(outcomes: Sequence[object]) -> tuple[PurePosixPath, ...]:
         getattr(outcome, "output")
         for outcome in outcomes
         if getattr(outcome, "status").value == RELEASED
+    )
+
+
+def doses_in_face_block(
+    outcomes: Sequence[object], material: Mapping[int, Sequence[object]]
+) -> release_report.DosesInFaceBlock:
+    """Count the released and held RT Doses with more dose in a face block
+    than the run sets to zero there, by the choice that the run applied,
+    naming each released one by its output name.
+
+    Each input's choice comes from its
+    :class:`~pymedphys._dicom.deidentify.run_qc.DoseCheckMaterial`. An
+    identical copy of an input is the same instance, so it is not counted
+    again, and a sequestered one reaches no recipient.
+    """
+    choices: dict[int, DoseChoice | None] = {}
+    for position in sorted(material):
+        for item in material[position]:
+            if isinstance(item, DoseCheckMaterial):
+                choices[position] = item.choice
+                break
+    held: dict[DoseChoice | None, int] = dict.fromkeys(
+        (None, DoseChoice.AS_WRITTEN, DoseChoice.SET_TO_ZERO), 0
+    )
+    released: dict[DoseChoice, list[PurePosixPath]] = {
+        DoseChoice.AS_WRITTEN: [],
+        DoseChoice.SET_TO_ZERO: [],
+    }
+    for outcome in outcomes:
+        position = getattr(outcome, "position")
+        if position not in choices or getattr(outcome, "duplicate_of") is not None:
+            continue
+        status = getattr(outcome, "status").value
+        choice = choices[position]
+        if status == RELEASED and choice is not None:
+            released[choice].append(getattr(outcome, "output"))
+        elif status == HELD_FOR_REVIEW:
+            held[choice] += 1
+    return release_report.DosesInFaceBlock(
+        held=held[None],
+        released_as_written=tuple(released[DoseChoice.AS_WRITTEN]),
+        held_as_written=held[DoseChoice.AS_WRITTEN],
+        released_set_to_zero=tuple(released[DoseChoice.SET_TO_ZERO]),
+        held_set_to_zero=held[DoseChoice.SET_TO_ZERO],
+    )
+
+
+def undefaced_instances(
+    outcomes: Sequence[object], material: Mapping[int, Sequence[object]]
+) -> release_report.UndefacedInstances:
+    """Count the released and held instances in a defaced frame that the run
+    did not clean of the face, by whether the face review gave each a verdict
+    of its own, naming each released one by its output name.
+
+    Each input's verdict comes from its
+    :class:`~pymedphys._dicom.deidentify.run_qc.UndefacedMaterial`. An
+    identical copy of an input is the same instance, so it is not counted
+    again, and a sequestered one reaches no recipient.
+    """
+    own: dict[int, bool] = {}
+    for position in sorted(material):
+        for item in material[position]:
+            if isinstance(item, UndefacedMaterial):
+                own[position] = item.own_verdict
+                break
+    held = held_with_own = 0
+    released: list[PurePosixPath] = []
+    for outcome in outcomes:
+        position = getattr(outcome, "position")
+        if position not in own or getattr(outcome, "duplicate_of") is not None:
+            continue
+        status = getattr(outcome, "status").value
+        if status == RELEASED and own[position]:
+            released.append(getattr(outcome, "output"))
+        elif status == HELD_FOR_REVIEW:
+            if own[position]:
+                held_with_own += 1
+            else:
+                held += 1
+    return release_report.UndefacedInstances(
+        held=held, released=tuple(released), held_with_own_verdict=held_with_own
     )
 
 
@@ -808,6 +923,36 @@ def roi_name_counts(material: Mapping[int, Sequence[object]]) -> RoiNameCounts:
             ],
         )
     return queue.report_counts()
+
+
+def icc_profile_counts(
+    outcomes: Sequence[object], material: Mapping[int, Sequence[object]]
+) -> release_report.IccProfileCounts:
+    """Count the ICC Profiles that D replaced in the released and held instances.
+
+    Each input's
+    :class:`~pymedphys._dicom.deidentify.run_qc.IccProfileMaterial` says
+    whether its source profile was cleaned and written or, for a reason, the
+    fixed sRGB profile was written instead (D-021). An identical copy of an
+    input is the same instance, so it is not counted again.
+    """
+    shown = {
+        getattr(outcome, "position")
+        for outcome in outcomes
+        if getattr(outcome, "status").value in release_report.PIXEL_RISK_DISPOSITIONS
+        and getattr(outcome, "duplicate_of") is None
+    }
+    cleaned = 0
+    replaced: dict[Refusal, int] = {}
+    for position in sorted(shown & set(material)):
+        for item in material[position]:
+            if not isinstance(item, IccProfileMaterial):
+                continue
+            if item.refusal is None:
+                cleaned += 1
+            else:
+                replaced[item.refusal] = replaced.get(item.refusal, 0) + 1
+    return release_report.IccProfileCounts(cleaned=cleaned, replaced=replaced)
 
 
 def descriptor_counts(material: Mapping[int, Sequence[object]]) -> DescriptorCounts:

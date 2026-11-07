@@ -18,6 +18,8 @@ Every file is synthetic and encoded by hand. Values that must never appear in
 a result's ``repr`` carry the text ``SENTINEL``.
 """
 
+# pylint: disable = too-many-lines
+
 import pickle
 
 from pymedphys._imports import pytest
@@ -206,6 +208,27 @@ def test_an_empty_value_is_edited_and_collected_whatever_the_transfer_syntax(
     assert found[_path("(0008,0090)")].kind is EditKind.EMPTY
     assert found[_path("(0010,1030)")].kind is EditKind.REMOVE
     assert found[_path("(300A,0002)")].values == ("DEIDENTIFIED",)
+
+
+def test_d_writes_the_dummy_datetime_given_at_a_path_and_nothing_else_does():
+    data_set = (
+        _explicit(0x00080016, "UI", RT_PLAN_CLASS.encode() + b"\x00")
+        + _explicit(0x00080018, "UI", INSTANCE_UID.encode())
+        + _explicit(0x00080050, "SH", b"ACCESSION ")  # Accession Number, Z
+        + _explicit(0x300A0002, "SH", b"PLAN LABEL")  # RT Plan Label, D
+    )
+    evidence = source.read_source(_file(EXPLICIT, data_set))
+    plan = walker.plan_instance(evidence, _rules(), _rt_plan())
+    # The run gives a Procedure Log entry's Observation DateTime its rank's
+    # dummy (content_items.log_dummy_datetimes); any path takes it under D.
+    given = {_path("(0008,0050)"): "19000101000001", _path("(300A,0002)"): "1"}
+
+    result = edits.edit_instance(evidence, plan, KEY, dummy_datetimes=given)
+
+    found = {edit.path: edit for edit in result.edits}
+    assert found[_path("(0008,0050)")].kind is EditKind.EMPTY
+    label = found[_path("(300A,0002)")]
+    assert (label.action, label.kind, label.values) == ("D", EditKind.REPLACE, ("1",))
 
 
 SERIES_NUMBER = _path("(0020,0011)")

@@ -16,20 +16,19 @@
 
 The Chest CAD SR, Colon CAD SR, Procedure Log, Spectacle Prescription
 Report, Macular Grid Thickness and Volume Report, and Waveform Annotation SR
-IODs are not supported yet, so the engine sequesters their instances. As
-:mod:`.test_deidentify_structured_report_content` does for four other SR
-IODs, these tests show, ahead of supporting them, what the option does with
-the content trees of their root templates (D-047): which option sets keep a
+IODs are supported. As :mod:`.test_deidentify_structured_report_content`
+does for four other SR IODs, these tests show what the option does with the
+content trees of their root templates (D-047): which option sets keep a
 report that holds only the rows that its templates require; which optional
-rows take the whole tree out under each option set; the action that each
-listed value of a kept tree takes; and what is written and released, in the
-tests that add the IODs to the supported ones for that test alone, as
-supporting them would. The reports are synthetic, built from the templates
-of PS3.16 2026d by :mod:`._synthetic_specialised_reports`.
+rows are removed on their own under each option set; the action that each
+listed value of a kept tree takes; and what is written and released. The
+reports are synthetic, built from the templates of PS3.16 2026d by
+:mod:`._synthetic_specialised_reports`.
 
-A preset with the option added is composed by adding it to every preset's
-options for the test alone, since no preset selects it, so that the policy
-that Clean Descriptors falls back to, another preset's, selects it too.
+A preset with the option added is composed by adding it, for the test
+alone, to the options of every preset that does not select it, ``basic``
+and ``basic-clean-descriptors``, so that the policy that Clean Descriptors
+falls back to, another preset's, selects it too.
 """
 
 import io
@@ -48,6 +47,7 @@ from pymedphys._dicom.deidentify.instance_transform import (
 from pymedphys._dicom.deidentify.iods import load_iod_tables
 from pymedphys._dicom.deidentify.keys import DeidKey
 from pymedphys._dicom.deidentify.references import InstanceRecord
+from pymedphys._dicom.deidentify.release_gate import ReasonCode
 from pymedphys._dicom.deidentify.reviewed_roi_names import ReviewedNames
 from pymedphys._dicom.deidentify.source import read_source
 from pymedphys._dicom.deidentify.walker import plan_instance
@@ -105,8 +105,6 @@ REPORTS = {
         "3750",
     ),
 }
-# The reports that the option keeps under some option set.
-KEPT = (CHEST, COLON, LOG, SPECTACLES, WAVEFORM)
 PRESETS = ("basic", "basic-clean-descriptors", "tps-import", "public-release")
 # Every option of Table E.1-1 that can be selected with the others, with
 # Full Dates, which Retain Device Identity does not conflict with.
@@ -149,25 +147,21 @@ SOURCE_VALUES = (
 
 @pytest.fixture(name="with_option")
 def _with_option(monkeypatch):
-    """Return a function that composes a preset's policy with the option added."""
+    """Return a function that composes a preset's policy with the option added.
+
+    The option is added only to the presets that do not select it.
+    """
     monkeypatch.setattr(
         policy,
         "PRESETS",
         types.MappingProxyType(
-            {preset: (*options, CSC) for preset, options in policy.PRESETS.items()}
+            {
+                preset: options if CSC in options else (*options, CSC)
+                for preset, options in policy.PRESETS.items()
+            }
         ),
     )
     return policy.compose_policy
-
-
-@pytest.fixture(name="supported")
-def _supported(monkeypatch):
-    """Add the six IODs to the supported ones, as supporting them would."""
-    monkeypatch.setattr(
-        scope,
-        "SUPPORTED_IODS",
-        scope.SUPPORTED_IODS | {iod for _, iod, _, _ in REPORTS.values()},
-    )
 
 
 def _report(name, optional=(), **kwargs):
@@ -187,6 +181,20 @@ def _kept(dataset, iod, composed):
     """Return whether the option keeps the report's content tree."""
     actions, _ = _planned(dataset, iod, composed)
     return actions.get(ElementPath((), CONTENT)) == "K"
+
+
+def _removes(dataset, iod, composed):
+    """Return whether the option keeps the tree but removes items from it.
+
+    An item is removed on its own, or with the others of the Content
+    Sequence that an item other than a CONTAINER holds, which goes with them.
+    """
+    actions, plan = _planned(dataset, iod, composed)
+    return (
+        actions.get(ElementPath((), CONTENT)) == "K"
+        and bool(actions.removed_items or actions.emptied)
+        and plan.removed_items == actions.removed_items
+    )
 
 
 def _composed(with_option, preset, options):
@@ -275,14 +283,14 @@ def _evidence_item(written, sequence="CurrentRequestedProcedureEvidenceSequence"
 
 
 @pytest.mark.parametrize("name", REPORTS)
-def test_each_report_is_of_an_iod_that_is_not_supported_yet(name):
+def test_each_report_is_of_a_supported_iod(name):
     build, iod, _, template = REPORTS[name]
     dataset = build()
     classification = scope.classify(
         dataset.SOPClassUID, synthetic.EXPLICIT_VR_LITTLE_ENDIAN
     )
 
-    assert classification.reason == scope.UnsupportedIod(iod)
+    assert classification == scope.Classification(scope.Disposition.SUPPORTED, iod)
     iod_ = load_iod_tables().iods[iod]
     assert iod_.lookup(CONTENT, ())
     # Each IOD's SR Document General Module has a Verification Flag, so each
@@ -309,47 +317,42 @@ def test_without_the_option_a_report_is_sequestered(name):
 def test_which_option_sets_keep_a_report_of_required_rows(with_option, preset, options):
     composed = _composed(with_option, preset, options)
 
-    # Every report but the macular grid's is kept under every option set,
-    # with its required identifiers given dummy values or replaced UIDs, as
-    # tested below.
+    # Every report is kept under every option set, with its required
+    # identifiers given dummy values or replaced UIDs, as tested below.
     for name in REPORTS:
         dataset, iod = _report(name)
         _, plan = _planned(dataset, iod, composed)
-        assert _kept(dataset, iod, composed) is (name != MACULAR), name
-        assert bool(plan.sequestrations) is (name == MACULAR), name
+        assert _kept(dataset, iod, composed), name
+        assert not plan.sequestrations, name
+        assert not _removes(dataset, iod, composed), name
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.4-01")
 @pytest.mark.parametrize("preset, options", OPTION_SETS)
-def test_a_macular_grid_report_is_taken_out_by_its_loinc_coded_rows(
-    with_option, preset, options
-):
+def test_a_macular_grid_report_keeps_its_loinc_coded_rows(with_option, preset, options):
     composed = _composed(with_option, preset, options)
     dataset, iod = _report(MACULAR)
     actions = content_items.concept_actions(composed.options)
     concepts = list(_concepts(dataset))
 
     # TID 2101 codes its findings' container (row 1) and its thicknesses and
-    # volume (rows 4 to 14) in LOINC, all of them required, and the pin
-    # leaves LOINC's rows out (D-001).
+    # volume (rows 4 to 14) in LOINC, all of them required. LOINC's rows are
+    # generated (D-001), and the table lists none of these, so they are
+    # unlisted, as an unlisted DICOM concept is (D-047).
     loinc = {meaning for meaning, key in concepts if key[0] == "LN"}
     assert loinc == {
         reports.FINDINGS.meaning,
         reports.MACULAR_GRID_TOTAL_VOLUME.meaning,
         *(code.meaning for code in reports.MACULAR_GRID_THICKNESSES),
     }
-    assert "LN" in content_items.UNMATCHED_SCHEMES
-    assert not _kept(dataset, iod, composed)
-    # No other concept of the tree is removed, so LOINC is what takes it out.
-    assert not {
-        meaning
-        for meaning, key in concepts
-        if key[0] != "LN" and actions.get(key) == content_items.REMOVE
-    }
+    assert "LN" not in content_items.UNMATCHED_SCHEMES
+    assert not {key for _, key in concepts if key[0] == "LN" and key in actions}
+    assert _kept(dataset, iod, composed)
+    assert not _removes(dataset, iod, composed)
 
 
-# The optional rows of the procedure log that take the tree out under every
-# option set: Table E.3.4-1 gives each X, or X with C under Clean
+# The optional rows of the procedure log that are removed on their own under
+# every option set: Table E.3.4-1 gives each X, or X with C under Clean
 # Descriptors, which falls back to X (D-009).
 LOG_REMOVED_UNDER_EVERY_OPTION = {
     "TID 1003 row 1a",  # Person Observer's Login Name
@@ -404,17 +407,20 @@ WAVEFORM_UIDS = {"TID 3750 row 19"}
     (WAVEFORM, None, (CSC, policy.UIDS), set()),
     (WAVEFORM, None, EVERY_OPTION, set()),
 ])  # fmt: skip
-def test_the_optional_rows_that_take_the_tree_out(
+def test_the_optional_rows_that_are_removed_on_their_own(
     with_option, name, preset, options, removed
 ):
     composed = _composed(with_option, preset, options)
     build, iod, optional, _ = REPORTS[name]
 
     assert _kept(build(()), iod, composed)
+    assert not _removes(build(()), iod, composed)
+    for key in optional:
+        assert _kept(build(reports.with_holders(key)), iod, composed), key
     assert {
         key
         for key in optional
-        if not _kept(build(reports.with_holders(key)), iod, composed)
+        if _removes(build(reports.with_holders(key)), iod, composed)
     } == removed
 
 
@@ -554,15 +560,17 @@ RELEASED_UNDER_BASIC = {
     **RELEASED_UNDER_PUBLIC_RELEASE,
     LOG: _keepable(LOG, LOG_REMOVED_UNDER_BASIC),
 }
+# The reports that the release gate releases; the macular grid report is
+# held for review (below).
+RELEASED = tuple(name for name in REPORTS if name != MACULAR)
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.4-01")
-@pytest.mark.usefixtures("supported")
 @pytest.mark.parametrize("preset, released", [
     ("basic", RELEASED_UNDER_BASIC),
     ("public-release", RELEASED_UNDER_PUBLIC_RELEASE),
 ])  # fmt: skip
-@pytest.mark.parametrize("name", KEPT)
+@pytest.mark.parametrize("name", RELEASED)
 def test_a_written_report_holds_no_source_value_and_is_released(
     with_option, name, preset, released
 ):
@@ -584,7 +592,60 @@ def test_a_written_report_holds_no_source_value_and_is_released(
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.4-01")
-@pytest.mark.usefixtures("supported")
+@pytest.mark.parametrize("name", REPORTS)
+def test_a_report_with_every_optional_row_is_written_without_those_removed(
+    with_option, name
+):
+    build, _, optional, _ = REPORTS[name]
+    dataset = build(optional)
+
+    result = _transformed(with_option("public-release"), dataset)
+
+    assert isinstance(result, run.Transformed), result
+    for value in SOURCE_VALUES:
+        assert value.encode() not in result.data, value
+    written = pydicom.dcmread(io.BytesIO(result.data))
+    # Every report holds a row that public-release removes, but the colon
+    # CAD's and the macular grid's, which has no optional row.
+    kept, held = len(list(_concepts(written))), len(list(_concepts(dataset)))
+    assert kept < held if name not in (COLON, MACULAR) else kept == held
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.4-01")
+@pytest.mark.parametrize("preset", ("basic", "public-release"))
+def test_a_macular_grid_report_whose_algorithm_maker_is_the_device_s_is_held(
+    with_option, preset
+):
+    dataset, _ = _report(MACULAR)
+
+    data, decision = _released(with_option(preset), dataset)
+
+    for value in SOURCE_VALUES:
+        assert value.encode() not in data, value
+    # The quality ratings' Algorithm Manufacturer (TID 2102 row 3) is free
+    # text that the table does not list, so it takes Text Value's dummy, and
+    # the residual search finds its source value in Manufacturer (0008,0070),
+    # which the profile keeps, so the report goes to review (D-027), as one
+    # whose analysis software comes from the device's maker would.
+    assert isinstance(decision, run.HoldForReview), decision
+    assert {
+        (
+            reason.code,
+            reason.location.element.tag,
+            _item(dataset, reason.path.items).ConceptNameCodeSequence[0].CodeMeaning,
+        )
+        for reason in decision.reasons
+    } == {
+        (
+            ReasonCode.RESIDUAL_TEXT,
+            "(0008,0070)",
+            reports.ALGORITHM_MANUFACTURER.meaning,
+        )
+    }
+    assert len(decision.reasons) == 2
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.4-01")
 @pytest.mark.parametrize("preset", ("basic", "public-release"))
 def test_a_written_colon_report_names_the_replaced_study_and_series(
     with_option, preset
@@ -613,7 +674,6 @@ def test_a_written_colon_report_names_the_replaced_study_and_series(
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.4-01")
-@pytest.mark.usefixtures("supported")
 @pytest.mark.parametrize("preset", ("basic", "public-release"))
 def test_a_written_waveform_annotation_keeps_its_references(with_option, preset):
     dataset, _ = _report(WAVEFORM, reports.with_holders("TID 321 row 3 datetime"))
@@ -700,7 +760,6 @@ def test_the_log_events_times_take_their_dates_action(
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.4-01")
-@pytest.mark.usefixtures("supported")
 def test_a_written_log_shifts_its_event_times_under_modified_dates(with_option):
     dataset, _ = _report(LOG, LOG_EVENTS)
 
@@ -721,23 +780,47 @@ def test_a_written_log_shifts_its_event_times_under_modified_dates(with_option):
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.4-01")
-@pytest.mark.usefixtures("supported")
-def test_a_written_log_gives_every_event_the_same_dummy_time_under_basic(
-    with_option,
+@pytest.mark.parametrize("preset", ["basic", "basic-clean-descriptors"])
+def test_a_written_log_gives_its_events_increasing_dummy_times_under_basic(
+    with_option, preset
 ):
     dataset, _ = _report(LOG, LOG_EVENTS)
 
-    data, decision = _released(with_option("basic"), dataset)
+    data, decision = _released(with_option(preset), dataset)
 
-    # D writes D-021's one dummy value for the VR, so the events keep a
-    # time but lose their order: a written log of several events no longer
-    # meets A.35.7.3.1.2's strictly increasing Observation DateTime. This
-    # records the engine as it is; no source time is released.
+    # D writes, in each event's Observation DateTime, the dummy datetime of
+    # its rank among the events' times, one second apart, so the written log
+    # keeps the strictly increasing order that A.35.7.3.1.2 requires.
     written = pydicom.dcmread(io.BytesIO(data))
     for source in reports.EVENT_DATETIMES:
         assert source.encode() not in data, source
-    assert _event_times(written) == ["19000101000000"] * len(LOG_EVENTS)
+    assert _event_times(written) == [
+        "19000101000000",
+        "19000101000001",
+        "19000101000002",
+        "19000101000003",
+    ]
     assert isinstance(decision, run.Release), decision
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.4-01")
+@pytest.mark.parametrize("preset", ["basic", "basic-clean-descriptors"])
+def test_a_log_whose_events_are_out_of_order_is_sequestered(with_option, preset):
+    dataset, iod = _report(LOG, LOG_EVENTS)
+    events = [e for e in dataset.ContentSequence if "ObservationDateTime" in e]
+    first, second = events[:2]
+    first.ObservationDateTime, second.ObservationDateTime = (
+        second.ObservationDateTime,
+        first.ObservationDateTime,
+    )
+
+    actions, plan = _planned(dataset, iod, with_option(preset))
+
+    # The dummies of the events' ranks would write them out of order, as the
+    # source is, so the tree is not kept, and its Content Sequence's D
+    # sequesters the log.
+    assert ElementPath((), CONTENT) not in actions
+    assert [s.path for s in plan.sequestrations] == [ElementPath((), CONTENT)]
 
 
 @pytest.mark.parametrize("preset", PRESETS)
@@ -763,8 +846,7 @@ def test_a_verified_report_is_planned_as_an_unverified_one_is(
     ]
 
 
-@pytest.mark.usefixtures("supported")
-@pytest.mark.parametrize("name", KEPT)
+@pytest.mark.parametrize("name", REPORTS)
 def test_a_verified_report_is_written_with_a_dummy_verifier(with_option, name):
     dataset, _ = _report(name, verified=True)
 

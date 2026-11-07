@@ -18,6 +18,7 @@ is invented."""
 
 from __future__ import annotations
 
+import importlib.util
 import io
 import json
 import zipfile
@@ -135,6 +136,15 @@ def _summary(data, tmp_path_factory):
         return keating.check_keating(archive, renders, series), renders
 
 
+@pytest.fixture(name="rendering")
+def _rendering():
+    # The user extra supplies Matplotlib for this private evidence renderer.
+    if importlib.util.find_spec("matplotlib") is None:
+        pytest.importorskip(
+            "matplotlib", reason="This private validation renderer needs Matplotlib."
+        )
+
+
 def test_the_pinned_series_are_the_records_two_axial_series():
     assert [each.uuid for each in keating.SERIES] == ["series-3", "series-4"]
     assert {each.subject for each in keating.SERIES} == {"Keating"}
@@ -167,7 +177,10 @@ def test_only_the_axial_ct_of_each_series_is_extracted(data):
 
 def test_each_series_block_is_found_and_measured_against_the_reference(summary):
     for series in summary[0]["series"]:
-        assert "crashed" not in series
+        # Only rendering needs Matplotlib, so only the rendered series,
+        # series 4 here, could crash without it.
+        if series["series"] != "series-4":
+            assert "crashed" not in series
         assert series["engine"]["outcome"] == "block"
         assert max(series["engine"]["globe_error_mm"]) < 2.0
         assert series["engine"]["swapped"] is False
@@ -178,9 +191,11 @@ def test_each_series_block_is_found_and_measured_against_the_reference(summary):
             assert globe["anterior_pole_written"]
 
 
+@pytest.mark.usefixtures("rendering")
 def test_the_rendered_series_carries_the_records_credit(summary):
     whole, renders = summary
     plain, rendered = whole["series"]
+    assert "crashed" not in rendered
     assert "renders" not in plain
     assert "Keating-series-4-globes.png" in rendered["renders"]
     assert "Keating-series-4-surface-engine.png" in rendered["renders"]
@@ -227,6 +242,7 @@ def test_a_series_that_is_not_the_one_pinned_is_refused_before_any_render(
     assert not (tmp_path / "renders").exists()
 
 
+@pytest.mark.usefixtures("rendering")
 def test_the_page_shows_the_measures_as_commonmark(summary):
     page = markdown(summary[0])
     assert page.startswith("# Face block check on Steven Keating's cranial CT\n")
@@ -238,6 +254,7 @@ def test_the_page_shows_the_measures_as_commonmark(summary):
     assert page.endswith("\n")
 
 
+@pytest.mark.usefixtures("rendering")
 def test_the_command_writes_the_summary_page_and_renders(pinned, tmp_path, capsys):
     archive, _ = pinned
     out = tmp_path / "out"

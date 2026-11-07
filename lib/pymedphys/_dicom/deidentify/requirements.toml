@@ -26,7 +26,7 @@ implementation = [
 note = '''
 Patient ID and Patient's Name have keyed replacement values that keep subjects separate and do not contain the source identifier.
 Z writes a zero-length value, and D a conspicuous constant for each VR that does not depend on the source value, or a second constant where the source value equals the first, so the replacement always differs from it; a UI value takes its keyed replacement, and D on an attribute of any other VR is refused until a reviewed rule covers it.
-Reviewed rules give Person Identification Code Sequence one item with a dummy code, Referenced Performed Procedure Step Sequence one item for each source item with its UID replaced, and ICC Profile a fixed sRGB profile, and keep each item of Verifying Observer Sequence with only the four attributes that PS3.3 defines there, each under its own rule (D-021).
+Reviewed rules give Person Identification Code Sequence one item with a dummy code, Referenced Performed Procedure Step Sequence one item for each source item with its UID replaced, and ICC Profile the source profile cleaned of everything but its colorimetry, or a fixed sRGB profile where the source cannot be cleaned, and keep each item of Verifying Observer Sequence with only the four attributes that PS3.3 defines there, each under its own rule (D-021).
 The run's instance transform removes or replaces each Attribute to be protected in every instance it writes, and an end-to-end test of `basic` and `basic-clean-descriptors` over the synthetic collection finds none of the collection's markers in the published files (MIDI-BP-01).
 '''
 
@@ -194,7 +194,7 @@ A compound action of Table E.1-1a resolves to one action from the strictest Type
 A plain Z on such an attribute gives D too, and a plain D on an attribute that the IOD does not define at that place gives X, as Note 13 after Table E.1-1a describes.
 A plain X removes the attribute whatever its Type; where the IOD requires the attribute at that place, the innermost enclosing sequence that the IOD makes Type 3 at its own place is removed with it, and where none encloses it, the instance is sequestered.
 Removing Overlay Data removes every attribute of its repeating group, and ROI Interpreter Sequence is removed alone; so is Clinical Trial Protocol Ethics Committee Name, which Table E.1-1 gives D, since its Type 1C condition needs the approval number, which the table removes under every option (D-020).
-One place departs from the table's X, as the maintainer decided: Requested Procedure ID, Type 2 in a Structured Report's Type 1C Referenced Request Sequence, is emptied there rather than sequester the report (D-020).
+Two places depart from the table's X, as the maintainer decided: Requested Procedure ID, Type 2 in a Structured Report's Type 1C Referenced Request Sequence, and Source Manufacturer, Type 2 in an RT Brachy Treatment Record's Type 1 Recorded Source Sequence, are emptied there rather than sequester the instance (D-020).
 Each element, at the top level or in an item, is read with the VR that the pinned data dictionary gives its attribute, so that the attributes inside a sequence that pydicom does not know and reads as UN, such as an RT Plan's RT Assertions Sequence, can be found; an element whose VR conflicts with the dictionary, or whose value or items do not decode exactly, is reported as undecodable rather than read as pydicom guesses it.
 Each element, at the top level or in an item, takes the rule of the first source that covers it: the engine's own removals, Table E.1-1's Private Attributes row, the table's other rows, whose masked tags match only the repeating groups, the supplementary rules and UID roles, removal by Type of other text, and the rule for attributes that no rule covers (D-022); a sequence to which an option gives C takes its Basic Profile action (D-009).
 Every instance of the Private Attributes row is removed from a data set, at the top level and in the items of every standard sequence, including one that pydicom reads as UN (D-028).
@@ -267,7 +267,7 @@ It lists the action that the engine applies to each attribute of Table E.1-1, of
 It describes what each run's QC pack lists for review: each distinct retained string (D-017), each instance whose attributes show an indicator of risk in its pixel data, and each CT, MR, PET, and RT Dose volume, CT, MR, and PET localizer, RT Image, and Segmentation among the released and held instances, with whether it names the head or neck (D-015).
 A statement lists what it cannot yet describe and then claims nothing.
 Plain X, Z, and D are resolved by Type at every place too (D-020), except within a sequence that the engine removes with its contents, and the resolved Z and D are checked against the walker's plan of a synthetic instance.
-Where an IOD requires an attribute given a plain X, the statement names the enclosing sequence or overlay group that D-020 removes with it, or that the instance is sequestered, and each is checked against the walker's plan of a synthetic instance; it gives Requested Procedure ID Z in a dose report's Referenced Request Sequence, and says that this departs from the table's X.
+Where an IOD requires an attribute given a plain X, the statement names the enclosing sequence or overlay group that D-020 removes with it, or that the instance is sequestered, and each is checked against the walker's plan of a synthetic instance; it gives Requested Procedure ID Z in a Structured Report's Referenced Request Sequence, and Source Manufacturer Z in an RT Brachy Treatment Record's Recorded Source Sequence, and says that each departs from the table's X.
 Under Clean Descriptors, it describes how ROI Name is cleaned in two tiers: automatic renaming against a published TG-263 edition, which it names, and reviewers' decisions, with every reason a name is held, what is written for each, and the condition on which an instance gains the Clean Descriptors code, each checked against the engine (D-009).
 Each run with a release reporter writes the statement of its policy, as `conformance-statement.md` beside the release report at the root of the release, since it holds no instance value; it describes the policy and vocabulary that the report records, and the report gives the run's own method digest and reviewed-names digest.
 The statements of `basic` and `basic-clean-descriptors` list nothing as pending.
@@ -304,10 +304,11 @@ text = '''
 When this Option is specified in addition to the Basic Application Level Confidentiality Profile, any information burned in to the Pixel Data (7FE0,0010) corresponding to the Attribute information specified to be removed by the Profile and any other Options specified shall also be removed, as described in Table E.1-1.
 '''
 status = "implemented"
-decisions = ["D-015", "D-033", "D-037", "D-048"]
+decisions = ["D-015", "D-033", "D-037", "D-048", "D-055", "D-056"]
 implementation = [
   "_dicom/deidentify/api.py",
   "_dicom/deidentify/command.py",
+  "_dicom/deidentify/imagecodecs_plugin.py",
   "_dicom/deidentify/instance_transform.py",
   "_dicom/deidentify/pixel_cleaning.py",
   "_dicom/deidentify/pixel_decoding.py",
@@ -321,10 +322,12 @@ Text that a text finder finds in Pixel Data is blacked out, whatever it says, an
 Reviewed region rules, kept by the custodian and keyed by SOP Class UID, Manufacturer, Manufacturer's Model Name, Rows, and Columns, add rectangles that are blacked out in every frame of a matching image beside the finder's regions; the instance is still held for review, the QC pack records which regions rules gave, and the rules' keyed digest is an input to the method digest (D-024, D-037).
 A private command records a rule from an attested QC pack, holding only regions that the reviewer's verdict approved for the image, keyed by the image's source file, which must have the SHA-256 that the pack records (D-037, D-048).
 Compressed Pixel Data is decoded first, in the isolated decoding child for the native decoders, and its frames are written uncompressed, in Explicit VR Little Endian, as decoded, with or without a region, so that the QC pack previews the samples that a release writes (D-037).
+The frames that pydicom's GDCM plugin refuses, 12-bit JPEG Extended, JPEG-LS at 6 or 7 bits, and signed JPEG-LS Near-Lossless below 8 bits, are decoded with imagecodecs in the same child, never in the engine's process, so they are cleaned rather than sequestered as undecodable-pixel-data (D-055).
 In native Pixel Data, the bit plane of an overlay that an overlay group without Overlay Data places above High Bit is cleared in the same write, and its group removed, so the instance is cleaned rather than sequestered as uncleanable-pixel-data (D-037).
 A later run of the same files, given the attested QC pack, blacks out the regions that the reviewer accepted, with any that the reviewer added, without the finder, and releases the instance with the option's code; for compressed Pixel Data, only where its frames decode to the SHA-256 that the pack records, and otherwise the instance is held again. An instance that the reviewer rejected is sequestered (D-048).
 The private command's run under the option, and the library's, makes the text detector with the pinned model, and takes the attested QC pack whose verdicts apply and the custodian's region rules (D-033).
 A workflow run by hand counts the regions that the text detector finds in the slices of the HaN-Seg data set's 42 head and neck planning CTs and 42 T1-weighted MRs, which hold no burned-in text, on a hosted runner that alone downloads it, and publishes only counts, which bear on how many regions a reviewer clears; it claims no result (D-037).
+The detector's evaluation and tuning, on images with and without burned-in text across the IODs in scope, against acceptance criteria set before tuning and confirmed once on held-out data, is designed, and its library, and a workflow run by hand that measures openly licensed collections of NCI's Imaging Data Commons, are built; its inventory job, its other corpora's runs, its tuning runs, and the adoption of a tuned detector are not yet made (D-056).
 '''
 
 [[requirement]]
@@ -341,7 +344,7 @@ implementation = [
 ]
 note = '''
 Applies only with the Clean Pixel Data Option.
-An instance that satisfies the option, because it holds no top-level pixel data or a reviewer approved its regions, has Burned In Annotation set to NO, replacing any value present, whether or not its IOD defines the attribute; in the RT Plan, RT Structure Set, RT Beams Treatment Record, MR Spectroscopy, Spatial Registration, Deformable Spatial Registration, X-Ray Radiation Dose SR, and Radiopharmaceutical Radiation Dose SR IODs, which do not, it is a standard attribute of a Standard Extended SOP Class (PS3.2 Section 7.3), and the validators' findings of it there are known differences (D-048).
+An instance that satisfies the option, because it holds no top-level pixel data or a reviewer approved its regions, has Burned In Annotation set to NO, replacing any value present, whether or not its IOD defines the attribute; in the RT Plan, RT Structure Set, RT Beams Treatment Record, RT Ion Plan, RT Ion Beams Treatment Record, RT Brachy Treatment Record, RT Treatment Summary Record, MR Spectroscopy, Spatial Registration, Deformable Spatial Registration, X-Ray Radiation Dose SR, Enhanced X-Ray Radiation Dose SR, Radiopharmaceutical Radiation Dose SR, Patient Radiation Dose SR, Basic Text SR, Enhanced SR, Comprehensive SR, Comprehensive 3D SR, Extensible SR, Key Object Selection Document, Mammography CAD SR, Chest CAD SR, Colon CAD SR, Procedure Log, Spectacle Prescription Report, Macular Grid Thickness and Volume Report, and Waveform Annotation SR IODs, which do not, it is a standard attribute of a Standard Extended SOP Class (PS3.2 Section 7.3), and the validators' findings of it there are known differences (D-048).
 Any other instance keeps Burned In Annotation as received, and it is never set to NO otherwise (D-015).
 '''
 
@@ -356,26 +359,33 @@ decisions = ["D-015", "D-016", "D-017", "D-033", "D-046", "D-050", "D-051", "D-0
 implementation = [
   "_dicom/deidentify/api.py",
   "_dicom/deidentify/command.py",
+  "_dicom/deidentify/contour_slabs.py",
   "_dicom/deidentify/defacing.py",
   "_dicom/deidentify/dose_defacing.py",
   "_dicom/deidentify/face_blocks.py",
   "_dicom/deidentify/face_review.py",
+  "_dicom/deidentify/functional_groups.py",
   "_dicom/deidentify/instance_transform.py",
+  "_dicom/deidentify/phases.py",
   "_dicom/deidentify/pixel_cleaning.py",
   "_dicom/deidentify/qc_attestation.py",
   "_dicom/deidentify/qc_contours.py",
+  "_dicom/deidentify/qc_eyes.py",
+  "_dicom/deidentify/qc_grids.py",
   "_dicom/deidentify/region_defacing.py",
   "_dicom/deidentify/segmentation_defacing.py",
+  "_dicom/deidentify/target_hulls.py",
 ]
 note = '''
-The engine claims the option only for an instance in which a reviewer found no recognisable face, by the attested face verdicts of an earlier run's QC pack, matched by the SHA-256 of each source file and of the pixel data, and an RT Structure Set's contours, that the run writes of it, or one that cannot show a face (D-046).
+The engine claims the option only for an instance in which a reviewer found no recognisable face, by the attested face verdicts of an earlier run's QC pack, matched by the SHA-256 of each source file and of the pixel data, an RT Structure Set's contours, and a deformable registration's grids, that the run writes of it, or one that cannot show a face (D-046).
 The library's run under the option, and the private command's, take the attested QC pack whose face verdicts apply, and refuse to start without one (D-033, D-046).
 The `public-release` preset selects the option, as do custom option sets that name it (Presets, D-046).
-The QC pack shows each RT Structure Set's contours, as written, on a contour sheet, with every surface that an ROI hides behind its own and every mark that it would hide, to within two voxels, at most 4 mm, of its edge as seen from the front, the back, and the sides, and records their SHA-256 only where it shows them, and the pixel data's only where previews that could show a face draw every frame, a volume's slices by its projection and surface render, and an RT Dose's only by renders of its surfaces at each of a ladder of dose levels, from any dose above 0 up, with every surface that a level hides behind its own, or a map of a lone plane by those levels, so a verdict releases only contours and pixel data that the reviewer saw, and an instance the pack does not show in full is held, as is a set with a voxel of hidden marks that its rows' frontal view, view from behind, and profiles cannot draw, even where an oblique view would; the hidden marks are drawn in layers, each contour's where no other's lie beside them, so that is only where one contour's own marks lie side by side within its ROI's region, as where one line drawn back and forth covers a patch or near the tip of a sharp V (D-017).
-Every other instance that can show a face, with pixel data, as an RT Structure Set, or as a Deformable Spatial Registration with a deformation grid, which no preview of the pack draws, is held for review and never released, so no released instance that claims the option has the visual information that the paragraph requires to be removed or distorted.
-Under the option, the engine also writes air into the face block of each CT series in which it finds one, keeping the brain in the cranial cavity above the orbits, and holds a series with a target in its block or an eye ROI away from the globes it found, and each RT Structure Set, RT Dose with pixel data, PET instance, or Segmentation in a defaced series' Frame of Reference, naming none, or referring to a defaced slice, which it does not clean (D-050), but for an RT Dose in the frame of only one defaced series, whose dose in that series' block, less the brain kept, it sets to zero, or holds where that dose is too great (D-051), and an RT Structure Set or single-frame PET image in such a frame, whose contours that reach the face it cuts by the block, less the brain kept where a contour allows, and whose activity in the block, less the brain kept, it sets to zero, and a Segmentation in such a frame, once Segmentation is in scope, whose pixels in a segment in the block, less the brain kept, it writes as its background, holding one with any such pixel without a verdict, since the QC pack does not yet show segments (D-052); a defaced instance still claims the option only where a reviewer found no recognisable face in it as defaced.
+The QC pack shows each RT Structure Set's contours, as written and as each reading of their retired Contour Slab Thickness and Contour Offset Vector places them, on a contour sheet, with every surface that an ROI hides behind its own and every mark that it would hide, to within two voxels, at most 4 mm, of its edge as seen from the front, the back, and the sides, and records their SHA-256 only where it shows them, and the pixel data's only where previews that could show a face draw every frame, a volume's slices by its projection and surface render, a Segmentation's only by its segments sheet, which renders its segments as written from the same directions, and an RT Dose's only by renders of its surfaces at each of a ladder of dose levels, from any dose above 0 up, and for a signed grid, such as one of Dose Type ERROR, at each of a second ladder of the magnitudes of its doses below 0, with every surface that a level hides behind its own, or a map of a lone plane by those levels, so a verdict releases only contours and pixel data that the reviewer saw, and an instance the pack does not show in full is held, the run counting an RT Dose's frames shown from its dose levels alone and a Segmentation's, by its SOP Class UID or a Modality that may be SEG, from its segments sheet alone, as is a set with a voxel of hidden marks that its rows' frontal view, view from behind, and profiles cannot draw, even where an oblique view would; the hidden marks are drawn in layers, each contour's where no other's lie beside them, so that is only where one contour's own marks lie side by side within its ROI's region, as where one line drawn back and forth covers a patch or near the tip of a sharp V (D-017).
+The QC pack shows each deformation grid of a Deformable Spatial Registration, as written, on five sheets, of its displacement's magnitude, with where it is defined, of how fast it varies across the grid, and of the sign and magnitude of each of its components, each drawn as an RT Dose's dose levels are, from every grid point, and records the grids' SHA-256 only where a sheet of each kind shows each grid, so a verdict releases only grids that the reviewer saw (D-017).
+Every other instance that can show a face, with pixel data, as an RT Structure Set, or with a deformation grid, is held for review and never released, so no released instance that claims the option has the visual information that the paragraph requires to be removed or distorted.
+Under the option, the engine also writes air into the face block of each CT series in which it finds one, of CT Image instances, Enhanced CT Image or Legacy Converted Enhanced CT Image instances whose frames their functional groups place, or both, a series whose slices repeat their positions, as the time points of a respiratory-correlated CT do, by a block that holds the block found from each of its phases, parted by the time point or acquisition that each slice names, where their globes agree, keeping the brain in the cranial cavity above the orbits and each PTV, CTV, or GTV with whatever lies between its contours, by its convex hull, and holds a series with a target whose part in its block reaches beyond its slices, or that cannot be placed; it defaces a series with an eye ROI away from the globes it found and holds it, with each instance that it cleans by that block, until a reviewer confirms the block from the QC pack's sheet of the globes beside the eye ROIs, drawn from the slices as received, a confirmation bound by SHA-256 to the series' source files and the block; and it holds each RT Structure Set, RT Dose with pixel data, PET instance, or Segmentation in a defaced series' Frame of Reference, naming none, or referring to an instance of a defaced series of a frame that it is not cleaned in, and each instance with a deformation grid that names a defaced series' Frame of Reference as its own or as a Source Frame of Reference, names none, or refers to an instance of a defaced series, which it does not clean, whatever its series' verdict, until a reviewer gives it a face verdict of its own from the QC pack's previews of it alone, which the pack accepts only where they draw every frame, contour, and grid of it, bound by SHA-256 to its source file and to the pixel data, contours, and grids that the pack showed (D-050, D-046), but for an RT Dose in a defaced frame, whose dose, by magnitude for Dose Type ERROR, in the block of each defaced series of that frame, less the brain and targets that series keeps, it sets to zero, or holds where that dose is too great until a reviewer chooses, from the QC pack, to write it as received, released on a face verdict on its own dose-levels previews, or to set it to zero anyway, released only on a verdict on a later run's previews of the grid as set to zero, a choice bound by SHA-256 to its source file and the block and recorded in the QC pack and the release report (D-051), and an RT Structure Set, whose contours that reach the face, in each defaced frame, it cuts by that frame's blocks, never cutting a kept target's own contours, less the brain and targets kept where a contour allows, wherever a contour's retired slab attributes may put it, leaving those of a frame that it declares and no defaced series is in, and a PET image in a defaced frame, whose activity in each block, less the brain and targets kept, it sets to zero, in each frame of an Enhanced PET Image or Legacy Converted Enhanced PET Image that its functional groups place and whose Real World Value Mapping, not its Pixel Value Transformation of unspecified units, gives one stored value of zero activity, and a Segmentation in such a frame, of `BINARY` frames packed across bytes or not, `FRACTIONAL` frames, or a `MONOCHROME2` or `PALETTE COLOR` label map, placed by per-frame or shared functional groups, whose pixels in a segment in each block, less the brain and targets kept, it writes as its background (D-052); a defaced instance still claims the option only where a reviewer found no recognisable face in it as defaced. Compressed Pixel Data that a run decodes is defaced from its frames as decoded, and an instance that defacing changes is written uncompressed, in Explicit VR Little Endian, as decoded, while one that it leaves unchanged is written as received (D-037, D-050).
 A workflow run by hand checks the face block and the air written against the eye and organ masks of the HaN-Seg data set's 42 head and neck planning CTs, on a hosted runner that alone downloads it, and publishes only counts, which bear on D-050's placeholder margin and eye reach, though not its cavity floor, since HaN-Seg marks no brain; it claims no result (D-054).
-A development command run on a person's own machine applies the same finder, target and eye ROI holds, RT Dose defacing, and contour cutting to a directory of DICOM files, such as planning exports, renders nothing, and writes only counts, which bear on D-050's placeholder margin and eye reach and D-051's dose fraction, though not the cavity floor, since it measures no brain; it claims no result either (D-054).
+A development command run on a person's own machine applies the same finder, target keeping and holds, eye ROI hold, RT Dose defacing, and contour cutting to a directory of DICOM files, such as planning exports, renders nothing, and writes only counts, which bear on D-050's placeholder margin and eye reach and D-051's dose fraction, though not the cavity floor, since it measures no brain; it claims no result either (D-054).
 '''
 
 [[requirement]]
@@ -392,7 +402,7 @@ implementation = [
 ]
 note = '''
 Applies only with the Clean Recognizable Visual Features Option.
-An instance that satisfies the option has Recognizable Visual Features set to NO, replacing any value present, whether or not its IOD defines the attribute; in the RT Plan, RT Structure Set, RT Beams Treatment Record, MR Spectroscopy, Spatial Registration, Deformable Spatial Registration, X-Ray Radiation Dose SR, and Radiopharmaceutical Radiation Dose SR IODs, which do not, it is a standard attribute of a Standard Extended SOP Class (PS3.2 Section 7.3), and the validators' findings of it there are known differences (D-046).
+An instance that satisfies the option has Recognizable Visual Features set to NO, replacing any value present, whether or not its IOD defines the attribute; in the RT Plan, RT Structure Set, RT Beams Treatment Record, RT Ion Plan, RT Ion Beams Treatment Record, RT Brachy Treatment Record, RT Treatment Summary Record, MR Spectroscopy, Spatial Registration, Deformable Spatial Registration, X-Ray Radiation Dose SR, Enhanced X-Ray Radiation Dose SR, Radiopharmaceutical Radiation Dose SR, Patient Radiation Dose SR, Basic Text SR, Enhanced SR, Comprehensive SR, Comprehensive 3D SR, Extensible SR, Key Object Selection Document, Mammography CAD SR, Chest CAD SR, Colon CAD SR, Procedure Log, Spectacle Prescription Report, Macular Grid Thickness and Volume Report, and Waveform Annotation SR IODs, which do not, it is a standard attribute of a Standard Extended SOP Class (PS3.2 Section 7.3), and the validators' findings of it there are known differences (D-046).
 Under any other policy, Recognizable Visual Features is kept as received and never set to NO (D-015).
 '''
 
@@ -429,8 +439,10 @@ status = "implemented"
 decisions = ["D-001", "D-010", "D-047"]
 implementation = [
   "_dicom/deidentify/content_items.py",
+  "_dicom/deidentify/removed_items.py",
   "_dicom/deidentify/structured_content.py",
   "_dicom/deidentify/supplementary_concepts.py",
+  "_dicom/deidentify/loinc_terms.py",
   "_dicom/deidentify/codes.py",
   "_dicom/deidentify/walker.py",
   "_dicom/deidentify/instance_transform.py",
@@ -438,15 +450,18 @@ implementation = [
   "_dicom/deidentify/policy.py",
 ]
 note = '''
-The engine applies the Clean Structured Content Option to a custom option set; no preset selects it (D-047).
-Of the Structured Reports, the X-Ray and Radiopharmaceutical Radiation Dose SRs are supported and the others sequestered (D-010); of the supported IODs, only those two define Content Sequence, at their root, and none Waveform Annotation Sequence. Waveform Annotation Sequence takes its Basic Profile action; Content Sequence is cleaned wherever an IOD defines it, at any depth of its nested Content Sequences, with the root content item that holds it, and a report whose tree cannot be kept is sequestered, since the Basic Profile gives Content Sequence D and a sequence has no dummy value (D-021).
-Acquisition Context Sequence and Specimen Preparation Sequence are kept where the IOD defines them, and each content item is cleaned by its Value Type and concept name, as Table E.3.4-1 gives them, generated for the concept names that DICOM and SNOMED CT code (D-001).
-A reviewed list gives the table's actions to the concepts that it omits where PS3.16's templates use them for a patient characteristic that Table E.1-1 removes, each removed, and kept under Retain Patient Characteristics where Table E.1-1 keeps the attribute that holds it, and to Subject ID as a CODE, which TID 1007 gives it and the table lists only as TEXT, removed under every option (D-047).
+The engine applies the Clean Structured Content Option to the `tps-import` and `public-release` presets and to a custom option set (D-047).
+Of the Structured Reports, the X-Ray, Enhanced X-Ray, Radiopharmaceutical, and Patient Radiation Dose SRs, Basic Text SR, Enhanced SR, Comprehensive SR, Comprehensive 3D SR, Extensible SR, Mammography CAD SR, Chest CAD SR, Colon CAD SR, Procedure Log, Spectacle Prescription Report, Macular Grid Thickness and Volume Report, and Waveform Annotation SR are supported, as is the Key Object Selection Document, and the others sequestered (D-010); of the supported IODs, only those seventeen define Content Sequence, at their root, and none Waveform Annotation Sequence. Waveform Annotation Sequence takes its Basic Profile action; Content Sequence is cleaned wherever an IOD defines it, at any depth of its nested Content Sequences, with the root content item that holds it, and a report whose tree cannot be kept is sequestered, since the Basic Profile gives Content Sequence D and a sequence has no dummy value (D-021).
+Acquisition Context Sequence and Specimen Preparation Sequence are kept where the IOD defines them, and each content item is cleaned by its Value Type and concept name, as Table E.3.4-1 gives them, generated for the concept names that DICOM, SNOMED CT, and LOINC code, with each LOINC code's LOINC name in a reviewed file (D-001).
+A reviewed list gives the table's actions to the concepts that it omits where PS3.16's templates use them for a patient characteristic that Table E.1-1 removes, among them the patient's height, weight, and body surface area, which PS3.16 codes in LOINC, each removed, and kept under Retain Patient Characteristics where Table E.1-1 keeps the attribute that holds it, to a device's UDI as a CODE, removed, and kept under Retain Device Identity as Table E.1-1 keeps UDI Sequence (0018,100A), and to Subject ID as a CODE, which TID 1007 gives it and the table lists only as TEXT, removed under every option (D-047).
 An item whose concept name neither the table nor the list gives keeps its codes and numbers, and its other values take their own rules, as in any kept sequence.
 A concept name coded by a retired SNOMED designator, SRT, SNM3, or 99SDM, is looked up as the SNOMED CT code that PS3.16 Table O-1 maps it to (D-001).
 X/D gives D wherever the concept appears, as though a template required the item there, and so do the X rows of DateTime Ended and X-Ray Attenuator Model Data, which Enhanced X-Ray Radiation Dose reports' templates require; D writes the dummy value of the value's VR, and gives a UIDREF item's UID the replacement that U gives, which keeps a registered UID such as a public frame of reference.
-Where the selected options remove an item, where an item cannot be read as one Value Type and one concept name, where its concept name is coded in a scheme whose rows the table does not hold, or where it is coded by a retired SNOMED designator with a code that Table O-1 does not map, the whole sequence takes its Basic Profile action, since a single item is not removed on its own.
-The synthetic collection's two dose reports carry markers in their content-item values and are released only where Clean Structured Content keeps their trees; each value is kept or replaced by its concept's row of Table E.3.4-1.
+An item cannot be kept where the selected options remove it, where its concept name is coded in a scheme whose rows the table does not hold, or where it is coded by a retired SNOMED designator with a code that Table O-1 does not map. In Acquisition Context Sequence and Specimen Preparation Sequence, such an item, or one that cannot be read as one Value Type and one concept name, makes the whole sequence take its Basic Profile action. In Content Sequence, such an item is removed on its own, with everything in it, and so is each item that names a removed item by Referenced Content Item Identifier, but for a TABLE, which loses only each such cell and goes only where it loses every cell, each item other than a CONTAINER whose HAS CONCEPT MOD item is removed, and each CONTAINER left with no items; any other item left with no items loses its Content Sequence, which is Type 1C, and each kept Referenced Content Item Identifier is renumbered to name the same item in the output (D-047). A report whose root cannot be kept or is left with no items, whose tree holds an item that cannot be read, or whose tree loses an item while holding a Referenced Content Item Identifier that has no value or names no item of it, is sequestered.
+The synthetic collection's five dose reports, the X-Ray Radiation Dose SR's of a projection radiograph (TID 10001) and of a CT scan with its dose checks (TID 10011 and TID 10015), and the Enhanced X-Ray, Radiopharmaceutical, and Patient Radiation Dose SRs, carry markers in their content-item values and are released only where Clean Structured Content keeps their trees; each value is kept or replaced by its concept's row of Table E.3.4-1, and the patient dose report's estimate names the CT dose report by the UID that the written CT dose report carries.
+Its five general reports, each a TID 2000 or TID 1500 tree with a marker in the value of each PNAME and UIDREF item, are released under the option alone, their Person Observer Names and source series replaced.
+Its Key Object Selection Document and seven other reports, each built from its IOD's root template, are released under the option alone too, the Macular Grid Thickness and Volume Report with its findings coded in LOINC.
+A Procedure Log's entries, which PS3.3 Section A.35.7.3.1.2 orders by increasing Observation DateTime, take the dummy datetimes of their ranks where the options neither keep nor modify that datetime (D-021); a log whose entries are not in that order is not kept.
 '''
 
 [[requirement]]
@@ -526,7 +541,7 @@ implementation = [
 note = '''
 A custom policy can select Full Dates, which keeps every date and time that Table E.1-1 gives K under it and the supplementary rules keep under it (D-023); it cannot be selected with Modified Dates.
 Longitudinal Temporal Information Modified is UNMODIFIED, unless MODIFIED or REMOVED is already present from an earlier run, which is kept because the dates that run modified or removed are not restored (D-012).
-A removed or replaced source value, other than the kept element's own, that equals the whole of a kept date is explained by it and does not withhold the instance; one found inside a longer kept value, such as the date of a kept datetime, still does (D-042, D-043).
+A removed or replaced source value, other than the kept element's own, that equals the whole of a kept date is explained by it and does not withhold the instance, and so is a removed datetime whose date equals the whole of a kept date; one found inside a longer kept value, such as the date of a kept datetime, still does (D-042, D-043).
 '''
 
 [[requirement]]
@@ -598,12 +613,13 @@ text = '''
 When this Option is specified in addition to the Basic Application Level Confidentiality Profile, information about age, sex, height and weight and other characteristics present in the Attributes shall be retained, as described in Table E.1-1.
 '''
 status = "implemented"
-decisions = ["D-009", "D-011", "D-012", "D-022", "D-034", "D-038"]
+decisions = ["D-009", "D-011", "D-012", "D-022", "D-034", "D-038", "D-042"]
 implementation = [
   "_dicom/deidentify/cleaners.py",
   "_dicom/deidentify/descriptor_cleaning.py",
   "_dicom/deidentify/instance_transform.py",
   "_dicom/deidentify/patient_characteristics.py",
+  "_dicom/deidentify/release_gate.py",
   "_dicom/deidentify/reviewed_descriptors.py",
 ]
 note = '''
@@ -611,6 +627,7 @@ The fourteen attributes that the Option gives K are kept as read, wherever they 
 Its five attributes of free text, which it gives C, are written with no value where they have none.
 Where the policy also selects Clean Descriptors, as `tps-import` does, each other value is kept, mapped, or emptied by a reviewer's decision in the custodian's reviewed descriptors list, and an instance with a value that the list does not clean is held for review, as for ROI Names (D-009); without Clean Descriptors, such an instance is sequestered.
 So a released instance retains every characteristic it held, its free text as a reviewer decided (PS3.15-E.3.7-02).
+A removed person name found in a kept characteristic, such as a family name equal to the kept Ethnic Group, holds the instance for review rather than withholding it, and is never explained (D-042).
 The measures of the body that Table E.1-1 omits, such as Patient's Body Mass Index, are removed under every option (D-022).
 Of the presets, only `tps-import` selects the Option, and it is not yet enabled.
 '''
@@ -666,7 +683,9 @@ status = "implemented"
 decisions = ["D-003", "D-040", "D-042"]
 implementation = [
   "_dicom/deidentify/instance_transform.py",
+  "_dicom/deidentify/option_kept.py",
   "_dicom/deidentify/policy.py",
+  "_dicom/deidentify/release_gate.py",
   "_dicom/deidentify/residual_exemptions.py",
   "_dicom/deidentify/retained_uids.py",
   "_dicom/deidentify/written_references.py",
@@ -675,6 +694,7 @@ note = '''
 The 55 UIDs that Table E.1-1 gives K under the Option are kept wherever they occur, and its five reference sequences are kept as containers whose items' elements take their own rules; every other UID is replaced with the run's key, including those the table omits, such as Multi-frame Source SOP Instance UID (D-040).
 Media Storage SOP Instance UID is the kept SOP Instance UID, output files are named by the kept UIDs' keyed replacements, the reference graph's second pass expects the kept UIDs, and the residual search leaves a kept UID out where its enclosing sequence is removed.
 A removed UID that only instances the run does not write held, such as a sequestered dose report's scope of accumulation, does not withhold a sibling that keeps it, while a reference that a written instance replaced still withholds the instances that keep the UID it names (D-042).
+Nor does a private UID that every instance which held it removed, such as a vendor's private copy of a PET image's kept Frame of Reference UID, equal to a whole kept UID, while a private copy that a written instance holds replaced, one of which the kept UID is only a part, and every standard UID source still withhold (D-042).
 No preset selects the Option.
 '''
 
@@ -767,14 +787,16 @@ text = '''
 When this Option is specified in addition to the Basic Application Level Confidentiality Profile, information about the identity of the institution in the Attributes shall be retained, as described in Table E.1-1.
 '''
 status = "implemented"
-decisions = ["D-011", "D-020", "D-022", "D-044"]
+decisions = ["D-011", "D-020", "D-022", "D-042", "D-044"]
 implementation = [
   "_dicom/deidentify/conformance.py",
   "_dicom/deidentify/instance_transform.py",
   "_dicom/deidentify/policy.py",
+  "_dicom/deidentify/release_gate.py",
 ]
 note = '''
 The ten attributes that the Option gives K are kept as read, wherever they are in the data set, including Institution Name in the items of Contributing Equipment Sequence, with the Option's code (D-044).
+A removed person name found in a kept institution value, as in an institution named after a person, holds the instance for review rather than withholding it, and is never explained (D-042).
 Clinical Trial Protocol Ethics Committee Name, which the Option gives K, is still removed, since its Type 1C condition needs the approval number that Table E.1-1 removes under every option, and keeping it would make the instance invalid (D-020); the instance still claims the Option, and the conformance statement says so.
 The attributes that Table E.1-1 omits and that name other organisations, such as Coding Scheme Responsible Organization, are removed under every option (D-022).
 No preset selects the Option.
@@ -790,6 +812,8 @@ For public sharing, remove or replace all known direct identifiers and relevant 
 status = "implemented"
 decisions = ["D-001", "D-015", "D-016", "D-017", "D-022", "D-023", "D-027", "D-032", "D-042", "D-053"]
 implementation = [
+  "_dicom/deidentify/api.py",
+  "_dicom/deidentify/command.py",
   "_dicom/deidentify/file_layout.py",
   "_dicom/deidentify/instance_transform.py",
   "_dicom/deidentify/option_kept.py",
@@ -799,6 +823,7 @@ implementation = [
   "_dicom/deidentify/residual_exemptions.py",
   "_dicom/deidentify/residuals.py",
   "_dicom/deidentify/risk_assessment.py",
+  "_dicom/deidentify/risk_assessment_command.py",
   "_dicom/deidentify/run_report.py",
 ]
 note = '''
@@ -808,18 +833,21 @@ A source value, or a form of one, equal to a constant that the engine writes is 
 The release gate runs that search itself, for exactly the values collected across the file's subject, and checks the collection against the values the walker planned to collect.
 It withholds any output file that still holds a source person name, UID, date, datetime, or direct identifier, or a source value outside its data set, or whose collection of person names, UIDs, dates, datetimes, direct identifiers, or sequences was incomplete, and sends other text findings and other incomplete collection, including of private values, to confidential review; a search that finds nothing does not on its own release a file (D-027).
 A text finding is not sent to review where it is in a kept CS value made only of its attribute's terms in the pinned PS3.3 (for Body Part Examined, PS3.16 Annex L), in a code item of a scheme that PS3.16 Table 8-1 lists, or in Manufacturer, Manufacturer's Model Name, or Software Versions with a private or equipment source, or where its source is a private creator that PS3.15 Table E.3.10-1 lists, and the QC pack still lists it (D-032).
-Nor is a finding inside a value that a selected option keeps, where its source is a private data element or an attribute of that option, or where it equals a whole kept date or time, and in that case a date finding does not withhold the file either (D-042).
+Nor is a finding inside a value that a selected option keeps, where its source is a private data element or an attribute of that option, or where it equals a whole kept date or time, or is a datetime whose date equals a whole kept date, and in that case a date finding does not withhold the file either (D-042).
 Nor is a finding whose source is the Code Meaning of a code of a scheme that PS3.16 Table 8-1 lists, judged by the meaning's own item in its own instance, where only instances that the run does not write, such as a sequestered dose report, held it for the subject; free text from such an instance, and a local code's meaning, still go to review (D-032).
-A UID equal to a whole UID that a selected option keeps does not withhold the file where only instances that the run does not write held it for the subject; one that a written instance also held still does (D-042).
+A UID equal to a whole UID that a selected option keeps does not withhold the file where only instances that the run does not write held it for the subject; one that a written instance also held still does, unless its source is a private data element that every instance which held it removed (D-042).
+Under Retain Safe Private, nor is text found in a private creator whose whole value is one that the run's safe private list keeps in its group, where its source is a private creator, a private data element, or an equipment attribute; Institution Name, Station Name, and every other source found there still go to review, and the coverage records the list (D-042).
+A person name found inside the data set in an attribute that a selected option keeps and that the pinned dictionary gives only VRs of text, such as a physician's name that is also a word of the Institution Name that Retain Institution Identity keeps, goes to review rather than withholding the file, and is never explained; the same name in a value that the Basic Profile keeps, in a private element, in a UID, in other text, or outside the data set still withholds the file (D-042).
 The release report counts the released instances with each finding that these exemptions keep from review, by exemption, source attribute, and the attribute it was found in, naming no value (D-032).
 An external statistical assessment of a run's collection is recorded beside its QC pack, bound to the pack, to the source files it records, to the policy, and to the reviewed lists and region rules that the run applied, by the salted digest that the run records in its pack, and the statistical gate passes only for the same files, policy, lists, and rules, the run's number of distinct subjects, and a maximum per-subject re-identification probability within the threshold of 0.09 or 0.05 that the assessment states (D-017, D-053).
-A deterministic synthetic collection, with an instance of each IOD of the first supported release, plants a conspicuous marker wherever its IODs define an attribute of Table E.1-1, down to a nesting depth of 4 items, and records each deeper place as not planted; Responsible Person and Responsible Organization, whose removal sequesters an instance (D-020), are planted in one instance only, so the others can be released, and the Enhanced PET Image's Radiopharmaceutical Start DateTime, whose removal sequesters it, the RT Beams Treatment Record's Institution Code Sequence in the item of an interlock's resolution user, whose dummy value has no reviewed rule (D-021), in none; the dose reports are VERIFIED, and their Verifying Observer Sequence, which a reviewed rule keeps with dummy values (D-021), and Requested Procedure ID in their Referenced Request Sequence, which a plain X empties there (D-020), are planted in each report; each dose report's content tree is built by its template, with a marker in the value of each content item that can identify a person, a device, or a time.
+A deterministic synthetic collection, with an instance of each IOD of the first supported release, plants a conspicuous marker wherever its IODs define an attribute of Table E.1-1, down to a nesting depth of 4 items, and records each deeper place as not planted; Responsible Person and Responsible Organization, whose removal sequesters an instance (D-020), are planted in one instance only, so the others can be released, and the Enhanced PET Image's Radiopharmaceutical Start DateTime, whose removal sequesters it, in none; the Institution Code Sequence of the RT Beams Treatment Record's and the RT Ion Beams Treatment Record's interlock resolution users, whose dummy item a reviewed rule writes there (D-021), is planted in both; the Structured Reports are VERIFIED, and their Verifying Observer Sequence, which a reviewed rule keeps with dummy values (D-021), and Requested Procedure ID in their Referenced Request Sequence, which a plain X empties there (D-020), are planted in each report, and Source Manufacturer in the RT Brachy Treatment Record's Recorded Source Sequence, which a plain X empties there too, in the record; each report's content tree is built by its template, with a marker in the value of each content item that can identify a person, a device, or a time.
 The run's instance transform removes and replaces identifiers in each data set and gives the gate its coverage, including each value read as ISO 8859-1, and the run acts on the gate's decision.
 An instance out of scope whose IOD the pinned tables define is read only to collect its values for its subject's search, and is never written; an instance whose values could not be collected at all withholds every file of its subject.
 The Basic Profile removes Patient's Weight but keeps PET values scaled to an SUV and mappings of values to one, which, with the Radionuclide Total Dose it also keeps, may disclose the weight, depending on the SUV normalisation, activity calibration, and compatible dose timing; each instance with either is reported as an indicator of a possibly disclosed body weight, in the QC pack and as counts in the release report (D-015).
 An end-to-end test runs `basic` and `basic-clean-descriptors` over that collection and searches every published file for its markers, independently of the gate.
 A `public-release` run's release report says whether it is ready for release, which it is only where the statistical gate, the pixel and face review gate, and the attestation gate all pass, each decided from the run's own QC pack against an earlier run's attested pack of the same files and policy, and each failing on its own with a reason code (D-017).
 The pixel and face review gate needs every released instance at high risk to have been reviewed as one, and every released instance that can show a face to have a verdict that it shows none, on the pixel data and contours that the run writes, or a passing assessment that covers facial reconstruction; the attestation gate needs the releaser's acceptance of the residual risk, and every released instance and every string that it retains to have been in the reviewed pack (D-017).
+The library's run under the preset, and the private command's, take that pack, which must be their face review's, and the earlier run's release report as their readiness review, and say whether the run is ready, with each failed gate's reason code; a run given neither is not ready on any gate (D-017).
 Collection descriptions and supporting data outside the DICOM files are not written by the engine, and whoever releases the data reviews them.
 Pixel data are assessed for risk, not cleaned (D-015).
 '''
@@ -873,7 +901,7 @@ implementation = [
 note = '''
 The Type of each attribute of the first supported release's IODs, and of every other composite IOD but the three real-time ones, in each module and sequence, including within each of an IOD's Functional Group Macros, is generated from PS3.3, so the engine can tell where an IOD requires a value; PS3.4 Table B.5-1 gives the IOD of an instance from its SOP Class UID; and a value can be checked against its VR and VM before it is written.
 Compound actions resolve from the strictest of these Types, so in those IODs they never remove an attribute where it is Type 1, 1C, 2, or 2C, or empty one where it is Type 1 or 1C, and a plain Z on a Type 1 or 1C attribute gives D's dummy value too.
-A plain X on an attribute that the IOD requires at its place removes with it the innermost enclosing sequence that the IOD makes Type 3 at its own place, or sequesters the instance where none encloses it, so it never leaves the output without an attribute that the IOD requires; Overlay Data takes its whole repeating group, whose module is user-optional in the CT Image, MR Image, and Positron Emission Tomography Image IODs, and ROI Interpreter Sequence, whose condition lapses once ROI Creator Sequence is removed, goes alone, as does Clinical Trial Protocol Ethics Committee Name, whose condition lapses once its approval number is removed and which PS3.5 Section 7.4.2 then does not allow (D-020). Requested Procedure ID, Type 2 in a Structured Report's Referenced Request Sequence, is emptied there rather than removed, so the report keeps it (D-020).
+A plain X on an attribute that the IOD requires at its place removes with it the innermost enclosing sequence that the IOD makes Type 3 at its own place, or sequesters the instance where none encloses it, so it never leaves the output without an attribute that the IOD requires; Overlay Data takes its whole repeating group, whose module is user-optional in the CT Image, MR Image, and Positron Emission Tomography Image IODs, and ROI Interpreter Sequence, whose condition lapses once ROI Creator Sequence is removed, goes alone, as does Clinical Trial Protocol Ethics Committee Name, whose condition lapses once its approval number is removed and which PS3.5 Section 7.4.2 then does not allow (D-020). Requested Procedure ID, Type 2 in a Structured Report's Referenced Request Sequence, and Source Manufacturer, Type 2 in an RT Brachy Treatment Record's Recorded Source Sequence, are emptied there rather than removed, so the instance keeps them (D-020).
 Every dummy value is valid for its VR and for the VM of each attribute of Table E.1-1 that can take it, as is each element of the dummy item of Person Identification Code Sequence, and an attribute whose VR has no generic dummy value and no reviewed rule is refused rather than given an invalid value.
 Under `tps-import`, which planning systems import, Patient's Birth Date takes each subject's synthetic birth date rather than an empty value: the earliest study with a consistent Study Date and Patient's Age in years gives it, the subject profile keeps it for every instance and later run, an empty value is written and kept where the ages are missing or inconsistent, and a later run that contradicts the reference study stops the subject for review (D-008).
 Before anything is written, a first pass over a collection follows the reference attributes that PS3.3 defines inside a sequence of each instance's IOD, and reports each reference that names no instance, series, or study in the collection, and each instance without its SOP Instance, Series Instance, or Study Instance UID.
@@ -882,7 +910,7 @@ It reports each frame of reference mismatch too: a series whose instances name s
 An element to be written is built with a VR that the pinned dictionary gives it, of alternatives the one that applies in its data set, only once its values have been checked against that VR and the attribute's VM, against the data set's character set, and, for a person name, against the repertoire of its first component group, and it reads back unchanged from Implicit and Explicit VR Little Endian.
 A data set is written from its source's bytes, so a kept element keeps the VR its source gives it, such as SS for the VOI LUT Descriptor of a CT image in Hounsfield Units, where pydicom's writer can resolve it again as US.
 A sequence kept as UN keeps its items in implicit VR, and a replacement in implicit VR is written only where the pinned dictionary gives its VR alone, since a reader takes the VR from its dictionary.
-A run acts on those findings before it writes anything: a study with several patients stops it, every conflicting copy, every instance of a series in several studies, and every instance without one of those UIDs is sequestered, an identical duplicate is written once, and a dangling reference or a frame of reference mismatch is only reported.
+A run acts on those findings before it writes anything: a study with several patients stops it, unless the run is told to sequester such a study, when every instance of the study is sequestered, its values are searched for in the released files of every patient that it names, the release report gives the choice and how many studies it sequestered, and the QC pack lists each study's instances by patient; every conflicting copy, every instance of a series in several studies, and every instance without one of those UIDs is sequestered, an identical duplicate is written once, and a dangling reference or a frame of reference mismatch is only reported.
 The release report counts the instances with each kind of finding that the run reports only, and the QC pack lists each such finding at each instance it names, with the attribute's tags and its count.
 A second pass checks what was written against the first: that each written instance's SOP Instance, Series Instance, and Study Instance UIDs, and each value at its reference sites, are the keyed replacements of its input's, never a source UID; that each reference that named an input before writing names a written instance, series, or study after it; that no two source UIDs share a replacement; and that no two written instances share a SOP Instance UID.
 A run makes that check of every file that its gate releases, before anything is published: each instance that a finding names is sequestered, and what is left is checked again, a reference to an instance that was withheld being reported only, while a check that fails, or a finding that no sequestration can isolate, publishes nothing.
@@ -911,6 +939,7 @@ implementation = [
   "_dicom/deidentify/policy.py",
   "_dicom/deidentify/readiness.py",
   "_dicom/deidentify/risk_assessment.py",
+  "_dicom/deidentify/risk_assessment_command.py",
   "_dicom/deidentify/technique_descriptors.py",
 ]
 note = '''
@@ -936,6 +965,7 @@ implementation = [
   "_dicom/deidentify/instance_transform.py",
   "_dicom/deidentify/readiness.py",
   "_dicom/deidentify/risk_assessment.py",
+  "_dicom/deidentify/risk_assessment_command.py",
   "_dicom/deidentify/supplementary_actions.py",
 ]
 note = '''
@@ -1003,11 +1033,13 @@ decisions = ["D-017", "D-053"]
 implementation = [
   "_dicom/deidentify/readiness.py",
   "_dicom/deidentify/risk_assessment.py",
+  "_dicom/deidentify/risk_assessment_command.py",
 ]
 note = '''
 `tps-import` retains patient characteristics for non-clinical databases, not for public sharing, and `public-release` does not select Retain Patient Characteristics (D-038).
 `public-release` keeps other indirect identifiers, such as modified dates, coded values, and characteristics that can be derived from the pixel data.
 The record of an external statistical assessment of a collection lists its matching variables and how characteristics derivable from the pixel data were considered, with every other statement that D-017 requires, each required, and the statistical gate checks it against the run, counting distinct subjects rather than images, frames, or visits (D-053).
+An assessor records it with a command that reads their statement from a JSON file of its own format, refuses a statement that lacks any of them or holds anything else, and can make every check without recording, since a record is never overwritten (D-053).
 A `public-release` run is ready for release only where that gate passes for the distinct subjects of the instances that it releases and the reviewed lists and region rules that it applied; a run without a record fails it (D-017).
 '''
 
@@ -1148,6 +1180,7 @@ implementation = [
   "_dicom/deidentify/codestreams.py",
   "_dicom/deidentify/dummy_values.py",
   "_dicom/deidentify/element_rules.py",
+  "_dicom/deidentify/icc_cleaning.py",
   "_dicom/deidentify/icc_profiles.py",
   "_dicom/deidentify/instance_transform.py",
   "_dicom/deidentify/residuals.py",
@@ -1155,7 +1188,7 @@ implementation = [
   "_dicom/deidentify/supplementary_actions.py",
 ]
 note = '''
-ICC Profile (0028,2000), an embedded file whose contents the engine does not parse, is removed by Type under every option, which removes it wherever the first supported release's IODs make it Type 3 (D-022); at the top level of an Enhanced CT Image, Enhanced MR Image, or Enhanced MR Color Image instance, where it is Type 1, D replaces an RGB profile with a fixed sRGB profile, which nothing of the source profile is written to, and sequesters an instance whose profile is of any other colour space, since PS3.3 Section C.11.15.1.1 requires RGB (D-021).
+ICC Profile (0028,2000), an embedded file, is removed by Type under every option, which removes it wherever the first supported release's IODs make it Type 3 (D-022); at the top level of an Enhanced CT Image, Enhanced MR Image, or Enhanced MR Color Image instance, where it is Type 1, D replaces an RGB profile with the source profile cleaned of everything but its colorimetry: each colorimetric tag that its ICC version defines is parsed and written again, every text tag, private tag, and other tag is removed, and the header's identity fields and date are replaced. Where the source cannot be cleaned, D writes a fixed sRGB profile, which nothing of the source profile is written to; and an instance whose profile is of any other colour space is sequestered, since PS3.3 Section C.11.15.1.1 requires RGB (D-021).
 Where the bitstream is kept, the engine parses each frame's codestream of encapsulated Pixel Data, accounting for every byte, and cuts its comment and application segments without recompression, keeping only JFIF, Adobe, and JPEG-LS colour segments of fixed format; it shows that every frame then decodes to the same pixels, and sequesters an instance whose codestreams do not parse, hold bytes outside them, or hold a segment it cannot cut (design Architecture item 7).
 The residual search searches the marker segments of those codestreams for every form, and their entropy-coded data, which can end with bytes that no decoder reads, for forms of at least 6 bytes, but RLE Lossless frames, which hold only samples and offsets, as values that hold numbers (D-027).
 The first supported release de-identifies instances in each transfer syntax that encapsulates Pixel Data that pydicom's decoding plugins decode, and writes each with its transfer syntax and coded pixel data kept, its metadata segments cut (D-010).
@@ -1173,6 +1206,7 @@ implementation = [
   "_dicom/deidentify/pixel_risk.py",
   "_dicom/deidentify/head_and_neck_regions.toml",
   "_dicom/deidentify/instance_transform.py",
+  "_dicom/deidentify/phases.py",
   "_dicom/deidentify/policy.py",
   "_dicom/deidentify/readiness.py",
   "_dicom/deidentify/run_qc.py",
@@ -1181,11 +1215,12 @@ implementation = [
   "_dicom/deidentify/qc_previews.py",
   "_dicom/deidentify/qc_segments.py",
   "_dicom/deidentify/qc_surfaces.py",
+  "_dicom/deidentify/stack_sampling.py",
 ]
 note = '''
 Recognizable Visual Features of YES, an RT Structure Set's contours of an ROI whose interpreted type or name is EXTERNAL, BODY, or SKIN, the patient's outline, or BOLUS or FIXATION, which lie on it, every CT, MR, PET, and RT Dose volume, single-frame or enhanced, whatever its slice spacing, every CT, MR, and PET localizer and every RT Image, whatever its gantry angle, which can show the face in profile, and every Segmentation, whose skin or body segment traces the face, are reported as indicators of a reconstructable face, and a volume, localizer, RT Image, or Segmentation that names a region of the head or neck, the last also by a segment's anatomy or property type, as showing it.
 Each run lists each instance's indicators and each series' indicators, assessed over its released and held instances, in its QC pack for review.
-The QC pack renders the skin surface of each volume that it projects, and the 5% isodose surface of each RT Dose grid of two or more frames, from the front, both obliques, both profiles, and behind, on voxels of 2 mm or its own spacing however long it is, so that the reviewer sees the face that a recognition system would; a volume more than 2,000 mm long or 1,000 mm across is not rendered, and is held beyond its cine strip. Every preview draws padding as one black, or as no patient, so an instance with a frame whose padding holds more than one stored value is held. A dose render that shows no face is inconclusive, since lower doses can keep an outline that the 5% isodose misses.
+The QC pack renders the skin surface of each volume that it projects, whose slices may be the frames of multi-frame CT, MR, and PET instances placed by their functional groups, a volume for each stack and time point, and for each phase of slices that repeat their positions, parted by the time point or acquisition that each names,whose slices may lie off the patient's axes, as with a gantry tilt, a shear, or an oblique orientation, sampled to voxels along the patient's axes with every slice drawn, and the 5% isodose surface of each RT Dose grid of two or more frames, from the front, both obliques, both profiles, and behind, on voxels of 2 mm or its own spacing however long it is, so that the reviewer sees the face that a recognition system would; a volume more than 2,000 mm long or 1,000 mm across is not rendered, and is held beyond its cine strip. Every preview draws padding as one black, or as no patient, so an instance with a frame whose padding holds more than one stored value is held. A dose render that shows no face is inconclusive, since lower doses can keep an outline that the 5% isodose misses.
 It renders each RT Structure Set's contours as written from the same directions, each frame's ROIs united and each ROI alone, drawn with the surface of a volume in their frame, so that the reviewer sees a face that an outline traces, and each BINARY or LABELMAP Segmentation's segments as written likewise, each frame placed by its functional groups; a FRACTIONAL Segmentation, or one that a sheet cannot place or show, is held (D-017).
 A `public-release` run is ready for release only where every instance that it releases that can show a face, one with pixel data or contours, is in a series that the reviewer marked as showing no face, on the pixel data and contours that the run writes, or where its statistical gate passes with an external assessment that covered faces reconstructed from the images, which D-017 accepts as the risk assessment reference that unblocks facial information; otherwise its pixel and face review gate fails (D-017, D-053).
 The `public-release` preset selects the Clean Recognizable Visual Features Option, so its run removes the face block from each CT series in which it finds one, the remedy that the recommendation names, and holds every instance that can show a face unless a reviewer marked its series as showing none, on the pixel data and contours that the run writes; under the preset, an assessment of facial risk releases no face (D-017, D-046, D-050).
@@ -1228,11 +1263,12 @@ implementation = [
   "_dicom/deidentify/run_qc.py",
   "_dicom/deidentify/run_report.py",
   "_dicom/deidentify/run_results.py",
+  "_dicom/deidentify/stack_sampling.py",
 ]
 note = '''
 D-016 provides the confidential QC pack, to which the release gate sends the residual search's text findings inside the data set, and files whose collection for the search was incomplete for other text or for private values or values to which the pinned dictionary gives no VR (D-027), and D-017 sets the review coverage (every distinct retained string, every series, and every instance in high-risk categories) and the attestation.
 For the first release, the design assigns to whoever releases the data the confirmation that utility is preserved and that the residual risk is acceptable (decided 6 October 2026).
-The QC pack is built and written: each instance by run position and source path, with its source file's SHA-256 and its output path or opaque label (D-026); each residual with a contextual excerpt, and each drop and form not searched, by instance and place (D-027); each distinct retained string with its places (D-017); and what descriptor cleaning wrote for each ROI Name, or why it held it for review (D-009).
+The QC pack is built and written: each instance by run position and source path, with its source file's SHA-256 and its output path or opaque label (D-026); each residual with a contextual excerpt, and each drop and form not searched, by instance and place (D-027); each distinct retained string with its places (D-017); what descriptor cleaning wrote for each ROI Name, or why it held it for review (D-009); and each study whose instances name several patients that the run sequestered, by its instances' run positions grouped by patient, for a curator to correct (D-026).
 It is written only to a designated, owner-only location outside the source, release, and staging directories, and is marked so that no release includes it (D-016).
 A reviewer attests to a pack once, stating whether they reviewed every distinct retained string, every series, and every instance in high-risk categories, and an outcome of attested needs all three; the attestation is bound to the pack by its digest, and gives the release report only the pack's opaque reference and the outcome (D-016, D-017).
 The pack lists each series of released or held instances, and the attestation may give any of them, by its first run position, a face verdict, absent or present, from its previews; the pack's source digests, and the digests of the pixel data written of them, bind the verdict to the files the reviewer saw and to what the run wrote of them, and the release report does not record it (D-016, D-017, D-046).
@@ -1268,7 +1304,7 @@ Each instance's markers record the process in the instance itself: De-identifica
 The validated policy records the edition, preset, and options.
 The conformance statement generated from a policy names the PyMedPhys version, the PS3.15 edition, the preset, its Options with their CID 7050 codes, and its method digest with the vocabulary it covers, without the technique vocabulary, and without a reviewed-names or reviewed descriptors list, and the markers that each instance gains, and the same policy and engine always give the same text.
 The release report's record of the policy (its edition, preset, and options), of the method digest with the components it is computed from (D-024), and of the runtime environment that ran, with the values that Software Versions records (D-029), is built and written as JSON, and refuses any field that could hold a source value or a path outside the engine's package (D-016).
-Its sections on a run give the QC pack's opaque reference with its attestation's outcome (D-016), list each released instance by its output name, name each sequestered instance by a random label for the run, with each reason's stage and code, and the attribute, action, and VR where the walker sequestered it, or the attribute where the release gate's reason names one (D-026); count the instances held for review by stage and reason, naming none (D-009); count the ROI Names that descriptor cleaning cleaned by outcome, and the distinct names sent for review by reason, naming none (D-009); count the instances with each kind of reference finding that the run reports without acting on it, naming none (D-026); count the released and held instances that show each risk in their pixel data, and each indicator of it, naming none (D-015); count the source values that the residual search did not search, in full or in part, by attribute and reason (D-027); and summarise the engine's structural checks, each with how many instances it sequestered and how many it reported, naming none; the conformance statement describes them, generated from the report's format, labels, and reason codes.
+Its sections on a run give the QC pack's opaque reference with its attestation's outcome (D-016), list each released instance by its output name, name each sequestered instance by a random label for the run, with each reason's stage and code, and the attribute, action, and VR where the walker sequestered it, or the attribute where the release gate's reason names one (D-026); count the instances held for review by stage and reason, naming none (D-009); count the ROI Names that descriptor cleaning cleaned by outcome, and the distinct names sent for review by reason, naming none (D-009); count the instances with each kind of reference finding that the run reports without acting on it, naming none (D-026); count the released and held instances that show each risk in their pixel data, and each indicator of it, naming none (D-015); count the source values that the residual search did not search, in full or in part, by attribute and reason (D-027); summarise the engine's structural checks, each with how many instances it sequestered and how many it reported, naming none; and give the run's choice for a study whose instances name several patients, to stop or to sequester it, with how many such studies it sequestered (D-026); the conformance statement describes them, generated from the report's format, labels, and reason codes.
 A run given a reporter writes the report as `release-report.json` at the root of the release before it publishes it, with its QC pack by reference, not yet attested, its released instances by output name, its sequestered instances by label, its held instances by reason, an identical copy counting as the instance it copies, and the values that the residual searches did not search, each counted once at the instance that holds it, and a report that cannot be built publishes nothing and leaves no QC pack; an input whose reasons the report cannot give is sequestered for an invalid reason instead, which the report gives alone and the QC pack lists before its own reasons, so that it never stops the release.
 Beside the report, the run writes its human-readable form as `release-report.md`: CommonMark, with GitHub Flavored Markdown tables, generated from the JSON text alone, which shows every value of the document, and each file name that keys a digest, as a code span as often as the document holds it, and draws nothing else from the report; the same text always gives the same form, and a report whose form cannot be generated publishes nothing.
 Every reason that sequesters or holds an instance in a run, from the run's own checks, the transform, the writer, the preservation check, and the release gate, has a stage and code in the report, and the codes within each stage are distinct.

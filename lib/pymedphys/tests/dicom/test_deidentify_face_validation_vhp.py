@@ -19,6 +19,7 @@ field of view and pixel spacing."""
 from __future__ import annotations
 
 import hashlib
+import importlib.util
 import io
 import json
 import pathlib
@@ -79,6 +80,15 @@ def _summary(data, tmp_path_factory):
     root, pinned = data
     renders = tmp_path_factory.mktemp("renders") / "renders"
     return vhp.check_visible_human(root, renders, (pinned,)), renders
+
+
+@pytest.fixture(name="rendering")
+def _rendering():
+    # The user extra supplies Matplotlib for this private evidence renderer.
+    if importlib.util.find_spec("matplotlib") is None:
+        pytest.importorskip(
+            "matplotlib", reason="This private validation renderer needs Matplotlib."
+        )
 
 
 def _series(summary):
@@ -224,6 +234,7 @@ def test_the_tissue_about_the_reference_globes_is_measured(summary):
         assert tissue["shell"]["pixels"] > tissue["core"]["pixels"]
 
 
+@pytest.mark.usefixtures("rendering")
 def test_the_rendered_series_face_is_rendered_with_the_attribution(summary):
     series = _series(summary)
     renders = summary[1]
@@ -285,6 +296,7 @@ def test_a_series_that_is_not_the_one_pinned_is_refused_before_any_render(
     assert not (tmp_path / "renders").exists()
 
 
+@pytest.mark.usefixtures("rendering")
 def test_the_page_shows_the_measures_as_commonmark(summary):
     page = markdown(summary[0])
     assert page.startswith("# Face block check on the NLM Visible Human Project\n")
@@ -296,6 +308,7 @@ def test_the_page_shows_the_measures_as_commonmark(summary):
     assert page.endswith("\n")
 
 
+@pytest.mark.usefixtures("rendering")
 def test_the_command_writes_the_summary_page_and_renders(
     data, tmp_path, monkeypatch, capsys
 ):
@@ -306,9 +319,9 @@ def test_the_command_writes_the_summary_page_and_renders(
         face_validation_command.main(["visible-human", str(root), "--out", str(out)])
         == 0
     )
-    summary = json.loads((out / vhp.JSON_NAME).read_text())
+    summary = json.loads((out / vhp.JSON_NAME).read_text(encoding="utf-8"))
     assert summary["series"][0]["engine"]["outcome"] == "not-one-stack"
-    page = (out / vhp.MARKDOWN_NAME).read_text()
+    page = (out / vhp.MARKDOWN_NAME).read_text(encoding="utf-8")
     assert capsys.readouterr().out == page
     assert (out / vhp.RENDERS / "VHP-F-globes.png").is_file()
     with pytest.raises(SystemExit, match="must not exist"):

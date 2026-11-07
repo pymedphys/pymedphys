@@ -68,14 +68,36 @@ SUPPORTED = {
     "1.2.840.10008.5.1.4.1.1.481.3": "RT Structure Set",
     "1.2.840.10008.5.1.4.1.1.481.4": "RT Beams Treatment Record",
     "1.2.840.10008.5.1.4.1.1.481.5": "RT Plan",
+    "1.2.840.10008.5.1.4.1.1.481.6": "RT Brachy Treatment Record",
+    "1.2.840.10008.5.1.4.1.1.481.7": "RT Treatment Summary Record",
+    "1.2.840.10008.5.1.4.1.1.481.8": "RT Ion Plan",
+    "1.2.840.10008.5.1.4.1.1.481.9": "RT Ion Beams Treatment Record",
     "1.2.840.10008.5.1.4.1.1.66.1": "Spatial Registration",
     "1.2.840.10008.5.1.4.1.1.66.3": "Deformable Spatial Registration",
+    "1.2.840.10008.5.1.4.1.1.66.4": "Segmentation",
+    # Label Map Segmentation Storage, which Table B.5-1 maps to the same IOD.
+    "1.2.840.10008.5.1.4.1.1.66.7": "Segmentation",
     "1.2.840.10008.5.1.4.1.1.88.67": "X-Ray Radiation Dose SR",
     "1.2.840.10008.5.1.4.1.1.88.68": "Radiopharmaceutical Radiation Dose SR",
+    "1.2.840.10008.5.1.4.1.1.88.73": "Patient Radiation Dose SR",
+    "1.2.840.10008.5.1.4.1.1.88.76": "Enhanced X-Ray Radiation Dose SR",
+    "1.2.840.10008.5.1.4.1.1.88.11": "Basic Text SR",
+    "1.2.840.10008.5.1.4.1.1.88.22": "Enhanced SR",
+    "1.2.840.10008.5.1.4.1.1.88.33": "Comprehensive SR",
+    "1.2.840.10008.5.1.4.1.1.88.34": "Comprehensive 3D SR",
+    "1.2.840.10008.5.1.4.1.1.88.35": "Extensible SR",
+    "1.2.840.10008.5.1.4.1.1.88.59": "Key Object Selection Document",
+    "1.2.840.10008.5.1.4.1.1.88.50": "Mammography CAD SR",
+    "1.2.840.10008.5.1.4.1.1.88.65": "Chest CAD SR",
+    "1.2.840.10008.5.1.4.1.1.88.69": "Colon CAD SR",
+    "1.2.840.10008.5.1.4.1.1.88.40": "Procedure Log",
+    "1.2.840.10008.5.1.4.1.1.78.6": "Spectacle Prescription Report",
+    "1.2.840.10008.5.1.4.1.1.79.1": "Macular Grid Thickness and Volume Report",
+    "1.2.840.10008.5.1.4.1.1.88.77": "Waveform Annotation SR",
 }
 
 
-def test_the_first_release_supports_ct_mr_pet_rt_registration_and_dose_reports():
+def test_the_first_release_supports_ct_mr_pet_rt_registration_seg_and_sr_objects():
     assert scope.SUPPORTED_IODS == {
         "CT Image",
         "Enhanced CT Image",
@@ -89,14 +111,34 @@ def test_the_first_release_supports_ct_mr_pet_rt_registration_and_dose_reports()
         "Enhanced PET Image",
         "Legacy Converted Enhanced PET Image",
         "RT Beams Treatment Record",
+        "RT Brachy Treatment Record",
         "RT Dose",
         "RT Image",
+        "RT Ion Beams Treatment Record",
+        "RT Ion Plan",
         "RT Plan",
         "RT Structure Set",
+        "RT Treatment Summary Record",
+        "Segmentation",
         "Spatial Registration",
         "Deformable Spatial Registration",
         "X-Ray Radiation Dose SR",
+        "Enhanced X-Ray Radiation Dose SR",
         "Radiopharmaceutical Radiation Dose SR",
+        "Patient Radiation Dose SR",
+        "Basic Text SR",
+        "Enhanced SR",
+        "Comprehensive SR",
+        "Comprehensive 3D SR",
+        "Extensible SR",
+        "Key Object Selection Document",
+        "Mammography CAD SR",
+        "Chest CAD SR",
+        "Colon CAD SR",
+        "Procedure Log",
+        "Spectacle Prescription Report",
+        "Macular Grid Thickness and Volume Report",
+        "Waveform Annotation SR",
     }
     assert scope.SUPPORTED_TRANSFER_SYNTAXES == {IMPLICIT_LE, EXPLICIT_LE, *COMPRESSED}
 
@@ -155,30 +197,26 @@ def test_padding_is_ignored():
 @pytest.mark.parametrize(
     "sop_class, iod",
     [
-        # The other Structured Reports, including the other dose reports,
-        # Key Object Selection documents, and Presentation States, which the
+        # The other Structured Reports and Presentation States, which the
         # design always sequesters.
-        ("1.2.840.10008.5.1.4.1.1.88.33", "Comprehensive SR"),
-        ("1.2.840.10008.5.1.4.1.1.88.76", "Enhanced X-Ray Radiation Dose SR"),
-        ("1.2.840.10008.5.1.4.1.1.88.73", "Patient Radiation Dose SR"),
-        ("1.2.840.10008.5.1.4.1.1.88.59", "Key Object Selection Document"),
+        ("1.2.840.10008.5.1.4.1.1.88.72", "Simplified Adult Echo SR"),
+        ("1.2.840.10008.5.1.4.1.1.88.71", "Acquisition Context SR"),
         ("1.2.840.10008.5.1.4.1.1.11.1", "Grayscale Softcopy Presentation State"),
         # Outside the first release: other images, CT, MR, and PET objects
-        # that are not images, spatial fiducials, RT Ion and second-generation
-        # Second-generation RT images, and RT Ion and brachytherapy records.
+        # that are not images, the segmentations of other IODs, parametric
+        # maps, spatial fiducials, and second-generation RT objects, including
+        # the second-generation RT images.
         ("1.2.840.10008.5.1.4.1.1.20", "Nuclear Medicine Image"),
         ("1.2.840.10008.5.1.4.1.1.6.1", "Ultrasound Image"),
         ("1.2.840.10008.5.1.4.1.1.200.2", "CT Performed Procedure Protocol"),
-        ("1.2.840.10008.5.1.4.1.1.66.4", "Segmentation"),
+        ("1.2.840.10008.5.1.4.1.1.66.5", "Surface Segmentation"),
+        ("1.2.840.10008.5.1.4.1.1.66.8", "Height Map Segmentation"),
         ("1.2.840.10008.5.1.4.1.1.30", "Parametric Map"),
         ("1.2.840.10008.5.1.4.1.1.66.2", "Spatial Fiducials"),
-        ("1.2.840.10008.5.1.4.1.1.481.8", "RT Ion Plan"),
         ("1.2.840.10008.5.1.4.1.1.481.10", "RT Physician Intent"),
         ("1.2.840.10008.5.1.4.1.1.481.14", "Tomotherapeutic Radiation"),
         ("1.2.840.10008.5.1.4.1.1.481.23", "Enhanced RT Image"),
         ("1.2.840.10008.5.1.4.1.1.481.24", "Enhanced Continuous RT Image"),
-        ("1.2.840.10008.5.1.4.1.1.481.6", "RT Brachy Treatment Record"),
-        ("1.2.840.10008.5.1.4.1.1.481.9", "RT Ion Beams Treatment Record"),
     ],
 )
 def test_a_standard_sop_class_of_another_iod_is_sequestered(sop_class, iod):
@@ -280,7 +318,7 @@ def test_an_unsupported_iods_reason_holds_its_iod_and_code_alone():
 
 
 def test_the_sop_class_decides_before_the_transfer_syntax():
-    found = scope.classify("1.2.840.10008.5.1.4.1.1.88.33", "1.2.840.10008.1.2.4.50")
+    found = scope.classify("1.2.840.10008.5.1.4.1.1.6.1", "1.2.840.10008.1.2.4.50")
 
     assert found.disposition is Disposition.UNSUPPORTED_IOD
 
@@ -342,8 +380,26 @@ def test_pydicom_names_the_same_uids():
         uid.RTImageStorage,
         uid.RTStructureSetStorage,
         uid.RTPlanStorage,
+        uid.RTBeamsTreatmentRecordStorage,
+        uid.RTIonPlanStorage,
+        uid.RTIonBeamsTreatmentRecordStorage,
+        uid.RTBrachyTreatmentRecordStorage,
+        uid.RTTreatmentSummaryRecordStorage,
         uid.SpatialRegistrationStorage,
         uid.DeformableSpatialRegistrationStorage,
+        uid.BasicTextSRStorage,
+        uid.EnhancedSRStorage,
+        uid.ComprehensiveSRStorage,
+        uid.Comprehensive3DSRStorage,
+        uid.ExtensibleSRStorage,
+        uid.KeyObjectSelectionDocumentStorage,
+        uid.MammographyCADSRStorage,
+        uid.ChestCADSRStorage,
+        uid.ColonCADSRStorage,
+        uid.ProcedureLogStorage,
+        uid.SpectaclePrescriptionReportStorage,
+        uid.MacularGridThicknessAndVolumeReportStorage,
+        uid.WaveformAnnotationSRStorage,
     ):
         assert scope.classify(sop_class, uid.ExplicitVRLittleEndian).disposition is (
             Disposition.SUPPORTED

@@ -62,6 +62,7 @@ from pymedphys._dicom.deidentify.qc_attestation import (
 )
 from pymedphys._dicom.deidentify.qc_pack import (
     NO_CONTOURS_SHA256,
+    NO_GRIDS_SHA256,
     NO_PIXELS_SHA256,
     Disposition,
     InstanceEntry,
@@ -130,6 +131,7 @@ def _entry(position, disposition=Disposition.RELEASED, **changes):
         fields.update(
             pixel_sha256=_pixels(position) if position in IMAGES else NO_PIXELS_SHA256,
             contour_sha256=NO_CONTOURS_SHA256,
+            grid_sha256=NO_GRIDS_SHA256,
         )
     if disposition is Disposition.HELD_FOR_REVIEW:
         fields.update(reasons=("held",))
@@ -611,6 +613,75 @@ def test_a_verdict_covers_only_the_contours_that_the_reviewed_run_showed(tmp_pat
     assert result.pixel_and_face is ReviewReason.OTHER_CONTOURS
 
 
+def _segmented(reference, sheet):
+    """A pack in which instance 2 is a Segmentation of two frames, which an
+    instance preview shows both of, and its segments sheet ``sheet`` of."""
+    pack = _pack(reference)
+    png = qc_previews.png(np.zeros((2, 2), np.uint8))
+    previews = [
+        dataclasses.replace(preview, frames=((2, 0), (2, 1)), total_frames=2)
+        if preview.frames == ((2, 0),)
+        else preview
+        for preview in pack.previews
+    ]
+    shown = tuple((2, frame) for frame in range(sheet)) + ((0, 0),)
+    previews.append(
+        Preview("P-0000.png", PreviewKind.SEGMENTATION_SEGMENTS, shown, len(shown), png)
+    )
+    return dataclasses.replace(
+        pack,
+        previews=tuple(
+            dataclasses.replace(preview, name=f"P-{number:04d}.png")
+            for number, preview in enumerate(previews, 1)
+        ),
+    )
+
+
+@pytest.mark.deid_requirement("MIDI-BP-15")
+@pytest.mark.parametrize("sheet", [1, 2])
+def test_a_verdict_covers_a_segmentation_only_where_its_segments_sheet_showed_it(
+    tmp_path, sheet
+):
+    # Its instance preview showed both frames, but only its segments sheet
+    # shows a Segmentation as it could show a face; the sheet's frames
+    # count for it alone, not for the CT drawn with it.
+    review = _reviewed(tmp_path, _segmented(REVIEWED, sheet))
+
+    result = _readiness(review, _segmented(THIS_RUN, sheet))
+
+    assert result.pixel_and_face is (
+        None if sheet == 2 else ReviewReason.OTHER_PIXEL_DATA
+    )
+
+
+@pytest.mark.deid_requirement("MIDI-BP-15")
+def test_a_verdict_covers_only_the_grids_that_the_reviewed_run_showed(tmp_path):
+    review = _reviewed(tmp_path)
+    # A file, of a series marked absent, whose deformation grids this run's
+    # grid sheets could not all show.
+    instances = tuple(
+        _entry(n, grid_sha256=None) if n == 1 else _entry(n) for n in range(5)
+    )
+
+    result = _readiness(review, _pack(THIS_RUN, instances))
+
+    assert result.pixel_and_face is ReviewReason.OTHER_GRIDS
+
+
+@pytest.mark.deid_requirement("MIDI-BP-15")
+def test_an_instance_with_grids_alone_needs_a_verdict(tmp_path):
+    review = _reviewed(tmp_path)
+    # Instance 4's series has no verdict, and it has neither pixel data nor
+    # contours, but grids.
+    instances = tuple(
+        _entry(n, grid_sha256=None) if n == 4 else _entry(n) for n in range(5)
+    )
+
+    result = _readiness(review, _pack(THIS_RUN, instances))
+
+    assert result.pixel_and_face is ReviewReason.NO_FACE_VERDICT
+
+
 @pytest.mark.deid_requirement("MIDI-BP-15")
 def test_an_assessment_of_facial_reconstruction_stands_in_for_the_verdicts(tmp_path):
     review = _reviewed(
@@ -737,7 +808,7 @@ def test_the_report_records_the_gates_by_reason_and_reference_alone(tmp_path):
         "attestation": None,
     }
     assert SENTINEL not in json.dumps(document)
-    assert document["format"] == "pymedphys-deid-release-report/32"
+    assert document["format"] == "pymedphys-deid-release-report/53"
 
 
 def test_a_public_release_report_given_no_readiness_is_not_ready():

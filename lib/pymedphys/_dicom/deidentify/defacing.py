@@ -23,8 +23,11 @@ the patient's coordinates: every point anterior to a vertical plane
 :data:`MARGIN` millimetres posterior to the centres of the two eye globes,
 facing the way the eyes face, and superior to an axial plane at the lower
 of the globes' inferior edges, lowered for the sampling by a voxel or by
-the largest spacing of the volume's slices, rows, or columns along the
-patient's superior axis across the globes' height, whichever is larger. It
+the largest height along the patient's superior axis of the region that a
+pixel stands for about the globes (:class:`SampleSpacing`), whichever is
+larger: where the volume's axes lie along the patient's, the largest
+spacing of its slices, rows, or columns along that axis across the globes'
+height. It
 reaches the edges of the field of view, so that an immobilisation mask or anything else resting on the face
 is inside it. It keeps the nose below the eyes, the mouth, and the jaw,
 which most head and neck targets and organs at risk need. Nothing here
@@ -41,16 +44,39 @@ perpendicular to the line between the globes' centres, so a head turned
 within its mask by up to :data:`MAXIMUM_TURN` degrees is still cut behind
 both eyes.
 
-:class:`FaceFinder` takes a volume whose slices lie along the patient's
-axes, each slice's rows and columns along two of them and the slices
-stacked along the third, within :data:`ALIGNMENT_TOLERANCE` and
-:data:`STACKING_TOLERANCE`; it refuses any other, such as one with a gantry
-tilt, rather than place a block that the tilt would shift. It samples the
-volume slice by slice, in Hounsfield units, to cubic voxels along the
-patient's axes, as
-:class:`~pymedphys._dicom.deidentify.qc_surfaces.Surface` does, of
-:data:`MINIMUM_VOXEL` millimetres or more, and larger where needed to keep
-to :data:`MAXIMUM_SAMPLED` voxels in all; it refuses a volume that would
+:class:`FaceFinder` takes a stack of parallel slices of any orientation,
+whose slices lie along the patient's axes or, as with a gantry tilt, sheared
+within their plane, or oblique, do not, each placed by its own Image Position
+(Patient); it refuses one whose row and column directions are not of unit
+length, or not perpendicular, or with two slices at one position. It samples
+the volume slice by slice, in Hounsfield units, to cubic voxels along the
+patient's axes, by nearest neighbour, through
+:class:`~pymedphys._dicom.deidentify.stack_sampling.StackSampler`: each voxel
+takes the slice nearest it along the slices' normal and, within it, the pixel
+nearest it along the rows and the columns. A stack whose axes lie along the
+patient's, within the tolerances that the finder has always allowed
+(:attr:`~pymedphys._dicom.deidentify.stack_sampling.Stack.aligned`), the
+sampler samples by the functions that the finder always sampled it by,
+:func:`~pymedphys._dicom.deidentify.qc_surfaces.grid` and
+:func:`~pymedphys._dicom.deidentify.qc_surfaces.sampled_indices`, as
+:class:`~pymedphys._dicom.deidentify.qc_surfaces.Surface` does, and the
+finder takes its voxels' side and the heights of its samples
+(:class:`SampleSpacing`) from that grid, as it always did, so such a stack
+gives the voxels, values, and block that it always gave, where the sampler
+takes it. The sampler's checks are stricter than the finder's were: it
+refuses row and column directions that are not perpendicular within
+:data:`~pymedphys._dicom.deidentify.stack_sampling.ORTHONORMAL_TOLERANCE`,
+which the finder did not test, and two slices within
+:data:`~pymedphys._dicom.deidentify.stack_sampling.SAME_POSITION`
+millimetres of each other along the normal, where the finder compared
+offsets rounded to a millionth of a millimetre; such a stack, not
+orthonormal or repeating a plane, is refused as
+:attr:`FaceBlockProblem.NOT_ALONG_PATIENT_AXES`. A
+voxel beyond the stack, as a tilted or oblique stack leaves the corners of the
+voxels, takes the pixel at the stack's edge nearest it, as a point beyond the
+voxels takes the value at their edge (step 2). The voxels are of
+:data:`MINIMUM_VOXEL` millimetres or more, and larger where needed to keep to
+:data:`MAXIMUM_SAMPLED` voxels in all; it refuses a volume that would
 need voxels larger than :data:`MAXIMUM_VOXEL`. It then:
 
 1. averages each voxel with its neighbours, and marks the soft tissue, at
@@ -121,7 +147,7 @@ from collections.abc import Sequence
 from pymedphys._imports import numpy as np
 from pymedphys._imports import scipy
 
-from . import qc_surfaces
+from . import qc_surfaces, stack_sampling
 
 MINIMUM_VOXEL = 1.5  # millimetres
 MAXIMUM_VOXELS = 512
@@ -192,7 +218,9 @@ _SLAB = 32
 class FaceBlockProblem(enum.Enum):
     """Why no face block was found."""
 
-    NOT_ALONG_PATIENT_AXES = "not-along-patient-axes"  # as with a gantry tilt
+    # The finder's: row and column directions not of unit length or not
+    # perpendicular, or two slices at one position.
+    NOT_ALONG_PATIENT_AXES = "not-along-patient-axes"
     NO_EYES = "no-eyes"  # no pair of eye globes, as when an eye is out of view
     AMBIGUOUS_EYES = "ambiguous-eyes"  # more than one pair
     HEAD_NOT_BEHIND_EYES = "head-not-behind-eyes"  # as for a wrong position
@@ -421,6 +449,226 @@ class PairTest:
         )
 
 
+def along_patient_axes(
+    orientation: Sequence[float], positions: Sequence[Sequence[float]]
+) -> bool:
+    """Whether a stack's slices lie along the patient's axes: its rows and
+    columns each along one of them, with unit direction cosines, within
+    :data:`ALIGNMENT_TOLERANCE`, and its slices stacked along the third,
+    offset within their plane by no more than :data:`STACKING_TOLERANCE`
+    millimetres, with no two at one position.
+
+    A gantry-tilted, sheared, or oblique stack does not. :class:`FaceFinder`
+    samples it all the same, and a run defaces it pixel by pixel, by each
+    pixel's centre within its slice's own plane
+    (:mod:`~pymedphys._dicom.deidentify.face_blocks`).
+
+    Parameters
+    ----------
+    orientation : sequence of float
+        Image Orientation (Patient), shared by every slice: six finite
+        numbers.
+    positions : sequence of sequence of float
+        Image Position (Patient) of each slice: three finite numbers each,
+        for one slice or more.
+    """
+    cosines = np.asarray(orientation, dtype=float)
+    origins = np.asarray(positions, dtype=float)
+    along_row, down_column = cosines[:3], cosines[3:]
+    normal = np.cross(along_row, down_column)
+    offsets = origins @ normal
+    in_plane = (origins - origins[0]) - np.outer(offsets - offsets[0], normal)
+    directions = (normal, down_column, along_row)
+    axes = {int(np.argmax(np.abs(direction))) for direction in directions}
+    return not (
+        len(axes) != 3
+        or any(
+            np.delete(np.abs(direction), np.argmax(np.abs(direction))).max()
+            > ALIGNMENT_TOLERANCE
+            for direction in directions
+        )
+        or any(
+            abs(float(np.linalg.norm(direction)) - 1) > ALIGNMENT_TOLERANCE
+            for direction in (along_row, down_column)
+        )
+        or np.abs(in_plane).max() > STACKING_TOLERANCE
+        or len(np.unique(np.round(offsets, 6))) != len(offsets)
+    )
+
+
+@dataclasses.dataclass(frozen=True)
+class SampleSpacing:
+    """How far apart a stack's samples lie along the patient's superior
+    axis, from which the face block's inferior limit is lowered for the
+    sampling.
+
+    A voxel takes the pixel of the slice nearest it along the slices' normal
+    and, within that slice, nearest it along the rows and the columns
+    (:mod:`~pymedphys._dicom.deidentify.stack_sampling`), so a pixel stands
+    for the region from halfway to the slice before it to halfway to the
+    slice after it along the normal, and half a pixel either way along the
+    rows and columns. That region's height along the superior axis, between
+    slices :math:`g` apart, is :math:`|n_z| g + |c_z| \\Delta_r + |r_z|
+    \\Delta_c`, for the unit normal :math:`\\hat{n}`, the column and row
+    directions :math:`\\hat{c}` and :math:`\\hat{r}`, and Pixel Spacing
+    :math:`\\Delta_r` between rows and :math:`\\Delta_c` between columns. Where
+    the stack's axes lie along the patient's, it is the spacing of its slices,
+    rows, or columns along the superior axis, whichever lies along it, and
+    :meth:`of` takes those heights themselves, as the finder always has.
+
+    Attributes
+    ----------
+    normal : tuple of float
+        The slices' unit normal, or the superior axis for a stack along the
+        patient's axes.
+    offsets : tuple of float
+        Each slice's position along the normal, or each slice's, row's, or
+        column's height for a stack along the patient's axes, in
+        millimetres, ascending.
+    within : float
+        The height along the superior axis of a pixel's step along a column
+        and along a row, :math:`|c_z| \\Delta_r + |r_z| \\Delta_c`, in
+        millimetres.
+    """
+
+    normal: tuple[float, float, float]
+    offsets: tuple[float, ...]
+    within: float
+
+    @classmethod
+    def of(cls, stack: stack_sampling.Stack) -> SampleSpacing:
+        """The spacing of a stack's samples.
+
+        For a stack along the patient's axes
+        (:attr:`~pymedphys._dicom.deidentify.stack_sampling.Stack.aligned`),
+        the heights along the superior axis of its slices, rows, or columns,
+        whichever lies along it, from its grid's coordinates, as the finder
+        has always taken them, with a normal straight up and nothing within.
+        """
+        if stack.aligned:
+            grid = stack.grid()
+            vertical = grid.axes.index(2)
+            # A grid's slice coordinates run from the patient's origin, and
+            # its row and column coordinates from the first pixel.
+            shift = 0.0 if vertical == 0 else float(stack.origins[0][2])
+            heights = np.sort(np.asarray(grid.coordinates[vertical]) + shift)
+            return cls((0.0, 0.0, 1.0), tuple(float(height) for height in heights), 0.0)
+        normal = stack.normal
+        within = (
+            abs(float(stack.down_column[2])) * stack.spacing[0]
+            + abs(float(stack.along_row[2])) * stack.spacing[1]
+        )
+        return cls(
+            _point(normal),
+            tuple(float(offset) for offset in np.sort(stack.offsets)),
+            float(within),
+        )
+
+    def across(self, low: np.ndarray, high: np.ndarray) -> float:
+        """The greatest height along the superior axis, in millimetres, of
+        the region that a pixel stands for, over the box from ``low`` to
+        ``high``, the lowest and highest x, y, and z: :attr:`within`, and the
+        normal's z component, in magnitude, times the largest spacing between
+        neighbouring slices that overlaps the box's span along the normal, or
+        none for one slice."""
+        corners = np.array(
+            [
+                [(low, high)[pick][axis] for axis, pick in enumerate(picks)]
+                for picks in itertools.product((0, 1), repeat=3)
+            ],
+            dtype=float,
+        )
+        along = corners @ np.array(self.normal)
+        offsets = np.array(self.offsets)
+        overlapping = (offsets[1:] >= along.min()) & (offsets[:-1] <= along.max())
+        gaps = np.diff(offsets)[overlapping]
+        widest = float(gaps.max()) if gaps.size else 0.0
+        return abs(self.normal[2]) * widest + self.within
+
+
+class _Beyond:
+    """For each voxel of a lattice that no slice's pixel is nearest
+    (:meth:`~pymedphys._dicom.deidentify.stack_sampling.StackSampler.nearest`),
+    beyond the stack, as a tilted or oblique stack leaves the lattice's
+    corners, the pixel at the stack's edge nearest it, which it takes, as
+    the averaging and the finder's tests take the value at the volume's edge
+    beyond it: the slice nearest it along the normal, and within that slice
+    the pixel nearest its projection onto the slice's plane, along the rows
+    and along the columns, each clipped to the slice's.
+
+    Where the stack's axes lie along the patient's, every voxel has a nearest
+    pixel, and there are none.
+    """
+
+    # How many voxels are placed at a time, to bound the memory needed.
+    _CHUNK = 1 << 18
+
+    def __init__(
+        self,
+        voxels: np.ndarray,
+        rows: np.ndarray,
+        columns: np.ndarray,
+        starts: np.ndarray,
+    ) -> None:
+        self._voxels = voxels
+        self._rows = rows
+        self._columns = columns
+        self._starts = starts
+
+    @classmethod
+    def of(cls, sampler: stack_sampling.StackSampler) -> _Beyond:
+        """The voxels beyond a sampler's stack, by slice."""
+        stack, lattice = sampler.stack, sampler.lattice
+        count = len(stack.offsets)
+        reached = np.zeros(math.prod(lattice.shape), dtype=bool)
+        for index in range(count):
+            reached[sampler.nearest(index).voxels] = True
+        # A lattice holds no more than MAXIMUM_SAMPLED voxels, so each index
+        # fits in 32 bits.
+        beyond = np.flatnonzero(~reached).astype(np.int32)
+        del reached
+        offsets = stack.offsets
+        order = np.argsort(offsets, kind="stable")
+        ascending = offsets[order]
+        middles = (ascending[1:] + ascending[:-1]) / 2
+        placing = np.column_stack(
+            [stack.down_column * stack.spacing[0], stack.along_row * stack.spacing[1]]
+        )
+        unplace = np.linalg.pinv(placing)
+        last = np.array(stack.shape) - 1
+        slices = np.empty(beyond.size, dtype=np.int32)
+        pixels = np.empty((beyond.size, 2), dtype=np.int32)
+        for start in range(0, beyond.size, cls._CHUNK):
+            part = slice(start, start + cls._CHUNK)
+            points = lattice.points(np.unravel_index(beyond[part], lattice.shape))
+            nearest = order[np.searchsorted(middles, points @ stack.normal)]
+            fractions = (points - stack.origins[nearest]) @ unplace.T
+            slices[part] = nearest
+            pixels[part] = np.clip(np.rint(fractions), 0, last)
+        by_slice = np.argsort(slices, kind="stable")
+        starts = np.searchsorted(slices[by_slice], np.arange(count + 1))
+        return cls(
+            beyond[by_slice],
+            pixels[by_slice, 0],
+            pixels[by_slice, 1],
+            starts,
+        )
+
+    @property
+    def count(self) -> int:
+        """How many voxels lie beyond the stack."""
+        return int(self._voxels.size)
+
+    def of_slice(self, index: int) -> stack_sampling.Taken:
+        """The voxels beyond the stack whose nearest pixel at its edge is in
+        the slice at ``index``, in the order in which the slices were given,
+        and which pixel each takes."""
+        part = slice(int(self._starts[index]), int(self._starts[index + 1]))
+        return stack_sampling.Taken(
+            self._voxels[part], self._rows[part], self._columns[part]
+        )
+
+
 class FaceFinder:
     """Samples a CT volume slice by slice, and finds its face block."""
 
@@ -454,9 +702,12 @@ class FaceFinder:
             ones, or ``shape`` two positive integers.
         FaceBlockRefused
             With :attr:`FaceBlockProblem.NOT_ALONG_PATIENT_AXES` unless the
-            rows and the columns each lie along a patient axis, with unit
-            direction cosines, and the slices are stacked along the third,
-            with no two at one position; with
+            row and column directions are each of unit length, and
+            perpendicular, within
+            :data:`~pymedphys._dicom.deidentify.stack_sampling.ORTHONORMAL_TOLERANCE`,
+            with no two slices within
+            :data:`~pymedphys._dicom.deidentify.stack_sampling.SAME_POSITION`
+            of each other along the normal; with
             :attr:`FaceBlockProblem.TOO_LARGE` for a volume that would need
             voxels larger than :data:`MAXIMUM_VOXEL`.
         """
@@ -475,74 +726,38 @@ class FaceFinder:
             for size in shape
         ):
             raise ValueError("a slice's rows and columns are two positive integers")
-        along_row, down_column = cosines[:3], cosines[3:]
-        normal = np.cross(along_row, down_column)
-        offsets = origins @ normal
-        in_plane = (origins - origins[0]) - np.outer(offsets - offsets[0], normal)
-        directions = (normal, down_column, along_row)
-        axes = {int(np.argmax(np.abs(direction))) for direction in directions}
-        if (
-            len(axes) != 3
-            or any(
-                np.delete(np.abs(direction), np.argmax(np.abs(direction))).max()
-                > ALIGNMENT_TOLERANCE
-                for direction in directions
-            )
-            or any(
-                abs(float(np.linalg.norm(direction)) - 1) > ALIGNMENT_TOLERANCE
-                for direction in (along_row, down_column)
-            )
-            or np.abs(in_plane).max() > STACKING_TOLERANCE
-            or len(np.unique(np.round(offsets, 6))) != len(offsets)
-        ):
-            raise FaceBlockRefused(FaceBlockProblem.NOT_ALONG_PATIENT_AXES)
-        self._grid = qc_surfaces.grid(
-            directions,
-            [float(offset) for offset in offsets],
-            (float(spacing[0]), float(spacing[1])),
-            shape,
-            qc_surfaces.Threshold.CT,
-        )
-        self._shape = (int(shape[0]), int(shape[1]))
-        # Sorted, since the slices may be added in any order.
-        self._voxel = _voxel_within(
-            qc_surfaces.voxel_side(
-                [sorted(coordinates) for coordinates in self._grid.coordinates],
+        try:
+            stack = stack_sampling.Stack(cosines, origins, spacing, shape)
+        except stack_sampling.StackRefused:
+            raise FaceBlockRefused(FaceBlockProblem.NOT_ALONG_PATIENT_AXES) from None
+        # The smallest spacing, or the minimum where that is larger, enlarged
+        # to keep each axis within MAXIMUM_VOXELS voxels, then to keep within
+        # MAXIMUM_SAMPLED in all; for a stack along the patient's axes, by
+        # qc_surfaces.voxel_side on its grid's coordinates, as before, so
+        # that its voxels are those it always had.
+        if stack.aligned:
+            coordinates = stack.grid().coordinates
+            extents = [max(values) - min(values) for values in coordinates]
+            voxel = qc_surfaces.voxel_side(
+                [sorted(values) for values in coordinates],
                 MINIMUM_VOXEL,
                 MAXIMUM_VOXELS,
-            ),
-            [max(values) - min(values) for values in self._grid.coordinates],
-        )
+            )
+        else:
+            low, high = stack.bounds
+            extents = [float(high[axis] - low[axis]) for axis in range(3)]
+            voxel = max(MINIMUM_VOXEL, stack.smallest_spacing)
+            voxel = max(voxel, max(extents) / (MAXIMUM_VOXELS - 1))
+        self._voxel = _voxel_within(voxel, extents)
         if self._voxel > MAXIMUM_VOXEL:
             raise FaceBlockRefused(FaceBlockProblem.TOO_LARGE)
-        # As in qc_surfaces.Surface: for each of the volume's axes, the index
-        # sampled at each voxel along its patient axis.
-        self._taken = tuple(
-            qc_surfaces.sampled_indices(np.asarray(coordinates), axis, self._voxel)
-            for coordinates, axis in zip(self._grid.coordinates, self._grid.axes)
-        )
-        self._samples = np.full(
-            tuple(len(taken) for taken in self._taken), np.nan, np.float32
-        )
+        self._sampler = stack_sampling.StackSampler(stack, stack.lattice(self._voxel))
+        self._beyond = _Beyond.of(self._sampler)
+        self._samples = np.full(self._sampler.lattice.shape, np.nan, np.float32)
+        self._shape = (int(shape[0]), int(shape[1]))
+        self._count = len(origins)
         self._added = 0
-        # A grid's row and column coordinates run from the first pixel, and
-        # its slice coordinates from the patient's origin.
-        shifts = (0.0, origins[0][self._grid.axes[1]], origins[0][self._grid.axes[2]])
-        vertical = self._grid.axes.index(2)
-        # The z of each slice, row, or column along the patient's superior
-        # axis, from inferior up.
-        self._heights = np.sort(
-            np.asarray(self._grid.coordinates[vertical]) + float(shifts[vertical])
-        )
-        lowest, highest = {}, {}
-        for coordinates, axis, shift in zip(
-            self._grid.coordinates, self._grid.axes, shifts
-        ):
-            lowest[axis] = min(coordinates) + float(shift)
-            highest[axis] = max(coordinates) + float(shift)
-        # The x, y, and z of the sampled voxel at index 0 along each patient
-        # axis: the patient's right, anterior, and superior.
-        self._first = np.array([lowest[0], lowest[1], highest[2]], dtype=float)
+        self._spacing = SampleSpacing.of(stack)
 
     def add(self, frame: np.ndarray) -> None:
         """Add the next slice, in Hounsfield units, with padding as NaN.
@@ -554,15 +769,17 @@ class FaceFinder:
             volume's rows and columns.
         """
         index = self._added
-        if index >= len(self._grid.coordinates[0]):
+        if index >= self._count:
             raise ValueError("every slice of the volume has been added")
         frame = np.asarray(frame, dtype=np.float32)
         if frame.shape != self._shape:
             raise ValueError("a slice must have the volume's rows and columns")
         self._added += 1
-        wanted = np.flatnonzero(self._taken[0] == index)
-        if wanted.size:
-            self._samples[wanted] = frame[np.ix_(self._taken[1], self._taken[2])]
+        flat = self._samples.reshape(-1)
+        taken = self._sampler.nearest(index)
+        flat[taken.voxels] = frame[taken.rows, taken.columns]
+        beyond = self._beyond.of_slice(index)
+        flat[beyond.voxels] = frame[beyond.rows, beyond.columns]
 
     def inspect(self) -> FaceInspection:
         """What each of the finder's steps finds in the volume.
@@ -572,16 +789,16 @@ class FaceFinder:
         ValueError
             If a slice has not been added.
         """
-        if self._added != len(self._grid.coordinates[0]):
+        if self._added != self._count:
             raise ValueError("a face block needs every slice of the volume")
         # Indexed from superior, from anterior, then from the patient's right.
-        values = np.transpose(
-            self._samples, [self._grid.axes.index(axis) for axis in (2, 1, 0)]
-        )
         values = scipy.ndimage.uniform_filter(
-            np.nan_to_num(values, nan=-1000.0), size=3, mode="nearest"
+            np.nan_to_num(self._samples, nan=-1000.0), size=3, mode="nearest"
         )
-        return FaceInspection(values, self._first, self._voxel, self._heights)
+        lattice = self._sampler.lattice
+        return FaceInspection(
+            values, np.array(lattice.first), self._voxel, self._spacing
+        )
 
     def block(self) -> FaceBlock:
         """The volume's face block.
@@ -618,7 +835,7 @@ class FaceInspection:
         values: np.ndarray,
         first: np.ndarray,
         voxel: float,
-        heights: np.ndarray,
+        spacing: SampleSpacing,
     ) -> None:
         """
         Parameters
@@ -630,14 +847,14 @@ class FaceInspection:
             The x, y, and z of the voxel at index 0 along each axis.
         voxel : float
             The side of a voxel, in millimetres.
-        heights : numpy.ndarray
-            The z of each of the volume's slices, rows, or columns along the
-            patient's superior axis, sorted.
+        spacing : SampleSpacing
+            How far apart the stack's samples lie along the patient's
+            superior axis, for the block's inferior limit.
         """
         self._values = values
         self._first = first
         self.voxel = voxel
-        self._heights = heights
+        self._spacing = spacing
         soft = (values >= SOFT_TISSUE[0]) & (values <= SOFT_TISSUE[1])
         self._depth = _depths(soft, GLOBE_DIAMETER[1] / 2 / voxel) * voxel
         self.balls = tuple(self._regions(soft))
@@ -701,21 +918,12 @@ class FaceInspection:
         right, left = self._region(pairs[0].right), self._region(pairs[0].left)
         anterior = _anterior(left.centre - right.centre)
         middle = (right.centre + left.centre) / 2
-        # Lower by a voxel, or by the volume's spacing along the patient's
-        # superior axis about the globes where that is larger, for the
-        # sampling.
-        edges = [
-            (globe.centre[2] - globe.radius, globe.centre[2] + globe.radius)
-            for globe in (right, left)
-        ]
-        inferior = min(low for low, _ in edges) - max(
-            self.voxel,
-            _spacing_over(
-                self._heights,
-                min(low for low, _ in edges),
-                max(high for _, high in edges),
-            ),
-        )
+        # Lower by a voxel, or by the height along the patient's superior
+        # axis of the region that a sample stands for about the globes where
+        # that is larger, for the sampling.
+        low = np.min([globe.centre - globe.radius for globe in (right, left)], axis=0)
+        high = np.max([globe.centre + globe.radius for globe in (right, left)], axis=0)
+        inferior = float(low[2]) - max(self.voxel, self._spacing.across(low, high))
         return FaceBlock(
             _point(middle - MARGIN * anterior),
             _point(anterior),
@@ -1068,14 +1276,6 @@ def _depths(soft: np.ndarray, deepest: float) -> np.ndarray:
         found = scipy.ndimage.distance_transform_edt(slab)[start - low : stop - low]
         depths[start:stop] = np.minimum(found, reach)
     return depths
-
-
-def _spacing_over(heights: np.ndarray, low: float, high: float) -> float:
-    """The largest spacing between consecutive sorted ``heights`` that
-    overlaps the span from ``low`` to ``high``, or 0 for one height."""
-    overlapping = (heights[1:] >= low) & (heights[:-1] <= high)
-    gaps = np.diff(heights)[overlapping]
-    return float(gaps.max()) if gaps.size else 0.0
 
 
 def _paired(right: _Region, left: _Region) -> bool:

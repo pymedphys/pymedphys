@@ -346,15 +346,27 @@ def test_clean_descriptors_cleans_exactly_what_the_table_and_rules_clean():
 @pytest.mark.deid_requirement("PS3.15-E.1.1-09")
 def test_a_sequence_given_c_takes_its_basic_profile_action():
     dictionary = _dictionary()
-    for preset in ("basic-clean-descriptors", "tps-import"):
+    basic = policy.compose_policy("basic").actions
+    # Clean Structured Content, which tps-import selects, gives C to the
+    # sequences of content items, whose items the engine cleans by their
+    # concept names (D-047); their rules still give the Basic Profile action.
+    content_items = {
+        row.tag: basic[row.tag]
+        for row in standard.load_table_e1_1().attributes
+        if row.options.get(policy.CLEAN_STRUCTURED_CONTENT) == "C"
+    }
+    for preset, expected in (
+        ("basic-clean-descriptors", CLEANED_SEQUENCES),
+        ("tps-import", {**CLEANED_SEQUENCES, **content_items}),
+    ):
         composed = policy.compose_policy(preset)
         cleaned = {
             tag
             for tag, action in composed.actions.items()
             if action == "C" and tag in dictionary and "SQ" in dictionary[tag].vrs
         }
-        assert cleaned == set(CLEANED_SEQUENCES), preset
-        for tag, action in CLEANED_SEQUENCES.items():
+        assert cleaned == set(expected), preset
+        for tag, action in expected.items():
             assert ElementRules(composed).rule(tag) == ElementRule(
                 tag, TABLE, action, tag
             )
@@ -603,7 +615,9 @@ def test_the_new_rules_remove_by_type_where_the_supported_iods_allow_it():
     # patient are Type 3 wherever the first supported release's IODs define
     # them, so they are removed, and so is ICC Profile, except at the top
     # level of three enhanced IODs, where it is Type 1 and needs a dummy
-    # value. Retrieve URL and Retrieve URI are required only in sequences
+    # value, and of Segmentation, whose ICC Profile Module is required where
+    # a label map is PALETTE COLOR. Retrieve URL and Retrieve URI are
+    # required only in sequences
     # that the table removes, and three UR attributes are required at places
     # where removal by Type needs a dummy value.
     tables = iods.load_iod_tables()
@@ -639,6 +653,7 @@ def test_the_new_rules_remove_by_type_where_the_supported_iods_allow_it():
             "Enhanced CT Image",
             "Enhanced MR Image",
             "Enhanced MR Color Image",
+            "Segmentation",
         )
     }
 
@@ -670,8 +685,9 @@ def test_series_number_has_x_z_d_under_every_option():
 @pytest.mark.deid_requirement("MIDI-BP-03", "MIDI-BP-06")
 def test_series_number_resolves_to_z_in_the_supported_iods_but_where_type_1():
     # Type 2 in the General Series and RT Series Modules; Type 1 in the items
-    # of the Structure Set Module's Source Series Information Sequence and
-    # in the SR Document Series Module of the dose reports.
+    # of the Structure Set Module's Source Series Information Sequence, in
+    # the Segmentation Series Module, and in the SR Document Series Module of
+    # the Structured Reports.
     # Either way it then takes its rank, or is emptied or given D's dummy
     # value if it has none.
     tables = iods.load_iod_tables()
@@ -691,8 +707,24 @@ def test_series_number_resolves_to_z_in_the_supported_iods_but_where_type_1():
     assert {name for name, _, _ in resolved} == set(SUPPORTED_IODS)
     assert {(name, path) for name, path, action in resolved if action != "Z"} == {
         ("RT Structure Set", ("(3006,004C)",)),
+        ("Segmentation", ()),
         ("X-Ray Radiation Dose SR", ()),
+        ("Enhanced X-Ray Radiation Dose SR", ()),
         ("Radiopharmaceutical Radiation Dose SR", ()),
+        ("Patient Radiation Dose SR", ()),
+        ("Basic Text SR", ()),
+        ("Enhanced SR", ()),
+        ("Comprehensive SR", ()),
+        ("Comprehensive 3D SR", ()),
+        ("Extensible SR", ()),
+        ("Key Object Selection Document", ()),
+        ("Mammography CAD SR", ()),
+        ("Chest CAD SR", ()),
+        ("Colon CAD SR", ()),
+        ("Procedure Log", ()),
+        ("Spectacle Prescription Report", ()),
+        ("Macular Grid Thickness and Volume Report", ()),
+        ("Waveform Annotation SR", ()),
     }
     assert {action for _, _, action in resolved} == {"Z", "D"}
 

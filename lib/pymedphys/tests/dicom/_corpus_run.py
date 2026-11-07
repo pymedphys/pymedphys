@@ -61,6 +61,7 @@ from pymedphys._dicom.deidentify.descriptor_cleaning import DescriptorCleaning
 from pymedphys._dicom.deidentify.face_review import (
     FaceReview,
     contour_data_sha256,
+    grid_data_sha256,
     pixel_data_sha256,
 )
 from pymedphys._dicom.deidentify.file_layout import ElementPath
@@ -297,6 +298,27 @@ def kept_concepts(options: tuple[str, ...]) -> frozenset[tuple[str, str, str]]:
 
 
 @functools.cache
+def modified_concepts(options: tuple[str, ...]) -> frozenset[tuple[str, str, str]]:
+    """Return the keys of the rows of Table E.3.4-1 that Modified Dates cleans.
+
+    That is where Modified Dates is selected and gives the row C, and every
+    other selected option that gives it an action gives K or C, since C
+    then applies (D-047). The Modified Dates cleaner settles each such
+    value by its value attribute's temporal role, as it does an attribute
+    (D-006, D-039), so a time of day that moves by whole weeks is kept as
+    received, as Study Time (0008,0030) is.
+    """
+    if MODIFIED_DATES not in options:
+        return frozenset()
+    return frozenset(
+        concept.key
+        for concept in structured_content.load_table_e3_4_1().concepts
+        if concept.options.get(MODIFIED_DATES) == "C"
+        and {concept.options[o] for o in options if o in concept.options} <= {"K", "C"}
+    )
+
+
+@functools.cache
 def _content_item_sequences() -> frozenset[str]:
     """The sequences to which Clean Structured Content gives C."""
     return frozenset(
@@ -350,6 +372,12 @@ WITHHELD_WITHOUT_REPORTS: Mapping[str, Withheld] = types.MappingProxyType(
 # dcentvfy finds that difference wherever a report is released with an
 # image, in their inputs as often.
 REPORT_ENTITIES = frozenset({"(0008,0050)", "(0008,1110)"})
+# Patient's Sex Neutered (0010,2203), Allergies (0010,2110), and Patient
+# State (0038,0500), of the Patient Study Module, which the Procedure Log IOD
+# does not include (PS3.3 Section A.35.7). Where a run keeps one, or Z
+# empties Patient's Sex Neutered, which the other IODs make Type 2C,
+# dcentvfy finds it present in another instance and absent from the log.
+PROCEDURE_LOG_ABSENT = frozenset({"(0010,2203)", "(0010,2110)", "(0038,0500)"})
 
 
 @dataclasses.dataclass(frozen=True)
@@ -474,7 +502,9 @@ class CorpusRun:
 
         Its row must be kept (:meth:`kept_rows`), or, for the value of a
         content item, the row of Table E.3.4-1 of its concept name
-        (:func:`kept_concepts`), and so must every sequence of Table E.1-1
+        (:func:`kept_concepts`), or that row must be one that Modified Dates
+        cleans (:func:`modified_concepts`) with its value attribute's row
+        kept, and so must every sequence of Table E.1-1
         that holds it, since a sequence's other actions remove, empty,
         replace, or clean what it holds; but a sequence whose content items
         the run cleans and keeps (:attr:`kept_content`) keeps what its
@@ -485,7 +515,12 @@ class CorpusRun:
         kept = self.kept_rows()
         passed = kept | self.kept_content
         if placement.concept is not None:
-            own = placement.concept in kept_concepts(self.selected)
+            # A value that Modified Dates cleans is kept where the run keeps
+            # its value attribute's row, as a time of day is.
+            own = placement.concept in kept_concepts(self.selected) or (
+                placement.concept in modified_concepts(self.selected)
+                and placement.path.tag in kept
+            )
         else:
             own = placement.profile_tag in kept
         tags = [tag for tag, _ in placement.path.items]
@@ -583,9 +618,9 @@ def planted_roi_name(corpus: corpus_module.SyntheticCorpus) -> str:
 
 
 def with_a_second_roi(
-    corpus: corpus_module.SyntheticCorpus,
+    corpus: corpus_module.SyntheticCorpus, name: str = UNCLEANED_NAME
 ) -> corpus_module.SyntheticCorpus:
-    """Return the corpus with a second ROI, named for the automatic tier.
+    """Return the corpus with a second ROI, by default named for the automatic tier.
 
     pydicom writes the structure set again, which keeps every planted value.
     The second ROI references the first's frame of reference, whose linked
@@ -598,7 +633,7 @@ def with_a_second_roi(
     item = pydicom.Dataset()
     item.ROINumber = max(each.ROINumber for each in dataset.StructureSetROISequence) + 1
     item.ReferencedFrameOfReferenceUID = first.ReferencedFrameOfReferenceUID
-    item.ROIName = UNCLEANED_NAME
+    item.ROIName = name
     item.ROIGenerationAlgorithm = "MANUAL"
     dataset.StructureSetROISequence.append(item)
     buffer = pydicom.filebase.DicomBytesIO()
@@ -663,11 +698,12 @@ def face_review_for(composed: Policy) -> FaceReview | None:
 def every_face_absent(corpus: corpus_module.SyntheticCorpus) -> FaceReview:
     """Return a face review that marks every file of the corpus free of a face.
 
-    It is matched by each file's SHA-256, and the SHA-256 of the pixel data
-    and contours that a run writes of it unchanged, as an attested review's
-    verdicts are, and gives each RT Dose's every frame as shown by its dose
-    levels, so each instance that can show a face, and whose pixel data and
-    contours the run does not change, satisfies the option.
+    It is matched by each file's SHA-256, and the SHA-256 of the pixel data,
+    contours, and deformation grids that a run writes of it unchanged, as an
+    attested review's verdicts are, and gives each RT Dose's every frame as
+    shown by its dose levels, and each Segmentation's by its segments sheet,
+    so each instance that can show a face, and whose pixel data, contours,
+    and grids the run does not change, satisfies the option.
     """
     digests = frozenset(hashlib.sha256(file.data).digest() for file in corpus.files)
     pixels = frozenset(
@@ -675,18 +711,26 @@ def every_face_absent(corpus: corpus_module.SyntheticCorpus) -> FaceReview:
         for file in corpus.files
         if (digest := _written_sha256(pixel_data_sha256, file.data)) is not None
     )
-    doses = frozenset(
-        (hashlib.sha256(file.data).digest(), digest, int(frames))
-        for file in corpus.files
-        if (dataset := pydicom.dcmread(io.BytesIO(file.data))).get("Modality")
-        == "RTDOSE"
-        and (frames := dataset.get("NumberOfFrames") or 1)
-        and (digest := _written_sha256(pixel_data_sha256, file.data)) is not None
+    doses, segments = (
+        frozenset(
+            (hashlib.sha256(file.data).digest(), digest, int(frames))
+            for file in corpus.files
+            if (dataset := pydicom.dcmread(io.BytesIO(file.data))).get("Modality")
+            == modality
+            and (frames := dataset.get("NumberOfFrames") or 1)
+            and (digest := _written_sha256(pixel_data_sha256, file.data)) is not None
+        )
+        for modality in ("RTDOSE", "SEG")
     )
     contours = frozenset(
         (hashlib.sha256(file.data).digest(), digest)
         for file in corpus.files
         if (digest := _written_sha256(contour_data_sha256, file.data)) is not None
+    )
+    grids = frozenset(
+        (hashlib.sha256(file.data).digest(), digest)
+        for file in corpus.files
+        if (digest := _written_sha256(grid_data_sha256, file.data)) is not None
     )
     return FaceReview(
         FACE_REVIEW_REFERENCE,
@@ -695,14 +739,16 @@ def every_face_absent(corpus: corpus_module.SyntheticCorpus) -> FaceReview:
         pixels,
         contours,
         absent_dose_frames=doses,
+        absent_grids=grids,
+        absent_segment_frames=segments,
     )
 
 
 def _written_sha256(
     digester: Callable[[pydicom.Dataset], bytes], data: bytes
 ) -> bytes | None:
-    """The digest of a file's pixel data or contours, or None where it
-    cannot be read."""
+    """The digest of a file's pixel data, contours, or deformation grids, or
+    None where it cannot be read."""
     try:
         return digester(read_source(data).dataset())
     except (SourceRefused, ValueError):

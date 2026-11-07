@@ -876,7 +876,7 @@ def test_instances_keep_their_reviewed_dummy_values(policy_run):
     # Referenced Performed Procedure Step Sequence, which these image
     # IODs conditionally require (Type 1C), refers to the procedure step by its keyed replacement,
     # the same in each instance, and the colour image's ICC Profile is the
-    # fixed sRGB profile (D-021).
+    # source's cleaned of everything but its colorimetry (D-021).
     corpus, released = policy_run.corpus, policy_run.released
     procedure_step = "ReferencedPerformedProcedureStepSequence"
     step_iods = {
@@ -888,6 +888,8 @@ def test_instances_keep_their_reviewed_dummy_values(policy_run):
         "MR Spectroscopy",
         "Enhanced PET Image",
         "Legacy Converted Enhanced PET Image",
+        # In its Segmentation Series Module.
+        "Segmentation",
     }
     steps = set()
     # Under Retain UIDs, Table E.1-1 gives K to the sequence and to the
@@ -900,10 +902,7 @@ def test_instances_keep_their_reviewed_dummy_values(policy_run):
         source, written = _read(file.data), _read(data)
         if kept:
             assert written.get(procedure_step) == source.get(procedure_step)
-        if file.manifest.iod in {
-            "X-Ray Radiation Dose SR",
-            "Radiopharmaceutical Radiation Dose SR",
-        }:
+        if file.name in corpus_module.STRUCTURED_REPORT_FILES:
             # The SR Document Series Module makes this Type 2: retain the
             # attribute with no items when the profile resolves its action to Z.
             assert procedure_step in source
@@ -921,10 +920,11 @@ def test_instances_keep_their_reviewed_dummy_values(policy_run):
             )
             steps.add(item.ReferencedSOPInstanceUID)
         if file.manifest.iod == "Enhanced MR Color Image":
-            assert written.ICCProfile == dummy_values.icc_profile_for_d(
-                source.ICCProfile
-            )
+            outcome = dummy_values.icc_profile_outcome(source.ICCProfile)
+            assert outcome.refusal is None
+            assert written.ICCProfile == outcome.profile
             assert written.ICCProfile != source.ICCProfile
+            assert corpus_module.MARKER_PREFIX.encode() not in written.ICCProfile
         else:
             assert "ICCProfile" not in written
 
@@ -936,6 +936,16 @@ def test_instances_keep_their_reviewed_dummy_values(policy_run):
     assert {corpus.files[position].manifest.iod for position in released} >= expected
     assert len(steps) == (1 if expected and not kept else 0)
     assert corpus_module.PROCEDURE_STEP not in steps
+    # The release report counts the colour image's profile as cleaned where
+    # the run released it, or held it for review.
+    colour = [file.manifest.iod == "Enhanced MR Color Image" for file in corpus.files]
+    report = json.loads(policy_run.published[RELEASE_REPORT])
+    assert report["icc_profiles"]["replaced"] == []
+    assert (
+        sum(colour[position] for position in released)
+        <= report["icc_profiles"]["cleaned"]
+        <= sum(colour)
+    )
 
 
 @pytest.mark.deid_requirement("PS3.15-E.1.1-04", "MIDI-BP-03")
@@ -1023,6 +1033,208 @@ def test_the_rt_image_names_its_plan_as_written(policy_run):
     assert reference.ReferencedSOPInstanceUID == expected
     if corpus_module.PLAN in written:
         assert expected == written[corpus_module.PLAN].SOPInstanceUID
+
+
+def _composite_items(item):
+    """Yield each COMPOSITE content item below ``item``, at any depth."""
+    for child in item.get("ContentSequence", ()):
+        if child.ValueType == "COMPOSITE":
+            yield child
+        yield from _composite_items(child)
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.4-01", "MIDI-BP-03")
+def test_the_patient_dose_report_names_the_ct_dose_report_as_written(policy_run):
+    # The patient dose estimate's SR Instance Used names the CT dose report
+    # by the UID that the run's key gives the report's own, so the written
+    # patient dose report still names the written CT dose report.
+    corpus, released = policy_run.corpus, policy_run.released
+    names = {file.manifest.sop_instance: file.name for file in corpus.files}
+    written = {
+        corpus.files[position].manifest.sop_instance: _read(data)
+        for position, data in released.items()
+    }
+    if corpus_module.PATIENT_DOSE_REPORT not in written:
+        name = names.get(corpus_module.PATIENT_DOSE_REPORT)
+        assert name is None or name in policy_run.spec.withheld
+        return
+    report = written[corpus_module.PATIENT_DOSE_REPORT]
+    used = list(_composite_items(report))
+    assert len(used) == 1
+    (reference,) = used[0].ReferencedSOPSequence
+    expected = corpus_module.CT_DOSE_REPORT
+    if REFERENCED_SOP_INSTANCE not in policy_run.spec.kept_rows():
+        expected = uids.replacement_uid(KEY, expected)
+    assert reference.ReferencedSOPInstanceUID == expected
+    assert reference.ReferencedSOPClassUID == (
+        corpus_module.X_RAY_RADIATION_DOSE_SR_STORAGE
+    )
+    if corpus_module.CT_DOSE_REPORT in written:
+        assert expected == written[corpus_module.CT_DOSE_REPORT].SOPInstanceUID
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.1-04", "MIDI-BP-03")
+def test_the_rt_ion_plan_and_its_record_name_what_they_reference_as_written(
+    policy_run,
+):
+    # The RT Ion Plan names the structure set, the RT Dose, and the RT Plan,
+    # and the RT Ion Beams Treatment Record the RT Ion Plan, by the UIDs that
+    # the run's key gives the referenced instances' own, so each written
+    # instance still names the written instances that it references.
+    corpus, released = policy_run.corpus, policy_run.released
+    written = {
+        corpus.files[position].manifest.sop_instance: _read(data)
+        for position, data in released.items()
+    }
+    names = {file.manifest.sop_instance: file.name for file in corpus.files}
+
+    def expected(target):
+        if REFERENCED_SOP_INSTANCE in policy_run.spec.kept_rows():
+            return target
+        return uids.replacement_uid(KEY, target)
+
+    references = {
+        corpus_module.ION_PLAN: (
+            ("ReferencedStructureSetSequence", corpus_module.STRUCTURE_SET),
+            ("ReferencedDoseSequence", corpus_module.DOSE),
+            ("ReferencedRTPlanSequence", corpus_module.PLAN),
+        ),
+        corpus_module.ION_TREATMENT_RECORD: (
+            ("ReferencedRTPlanSequence", corpus_module.ION_PLAN),
+        ),
+    }
+    for source, named in references.items():
+        if source not in written:
+            assert names[source] in policy_run.spec.withheld
+            continue
+        dataset = written[source]
+        assert dataset.Modality == (
+            "RTPLAN" if source == corpus_module.ION_PLAN else "RTRECORD"
+        )
+        for keyword, target in named:
+            (reference,) = dataset[keyword].value
+            assert reference.ReferencedSOPInstanceUID == expected(target), keyword
+            if target in written:
+                assert expected(target) == written[target].SOPInstanceUID, keyword
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.1-01", "MIDI-BP-03")
+def test_each_interlock_users_institution_code_sequence_is_released_as_reviewed(
+    policy_run,
+):
+    # D writes one dummy item in the Institution Code Sequence of the user
+    # who resolved an interlock, so each treatment record is released with it,
+    # unless Retain Institution Identity keeps the source item (D-021).
+    corpus, released = policy_run.corpus, policy_run.released
+    written = {
+        corpus.files[position].manifest.sop_instance: _read(data)
+        for position, data in released.items()
+    }
+    names = {file.manifest.sop_instance: file.name for file in corpus.files}
+    sessions = {
+        corpus_module.TREATMENT_RECORD: 0x30080020,
+        corpus_module.ION_TREATMENT_RECORD: 0x30080021,
+    }
+    kept = "(0008,0082)" in policy_run.spec.kept_rows()
+    for record, session in sessions.items():
+        if record not in written:
+            assert names[record] in policy_run.spec.withheld
+            continue
+        # pylint: disable-next = unsubscriptable-object
+        beam = written[record][session].value[0]
+        (user,) = beam[0x300A0740].value[0][0x300A0746].value
+        (institution,) = user.InstitutionCodeSequence
+        if kept:
+            # The planted item holds Context Group Version, which D's item
+            # does not.
+            assert 0x00080106 in institution
+            continue
+        assert (
+            institution.CodeValue,
+            institution.CodingSchemeDesignator,
+            institution.CodeMeaning,
+        ) == ("DEIDENTIFIED", "99PYMEDPHYS", "DEIDENTIFIED")
+        assert set(institution.keys()) == {0x00080100, 0x00080102, 0x00080104}
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.1-04", "MIDI-BP-03")
+def test_the_brachy_and_summary_records_name_what_they_reference_as_written(
+    policy_run,
+):
+    # The RT Brachy Treatment Record names the RT Plan and the RT Beams
+    # Treatment Record, and the RT Treatment Summary Record the RT Plan and
+    # the RT Brachy Treatment Record, by the UIDs that the run's key gives the
+    # referenced instances' own, so each written record still names the
+    # written instances that it references.
+    corpus, released = policy_run.corpus, policy_run.released
+    written = {
+        corpus.files[position].manifest.sop_instance: _read(data)
+        for position, data in released.items()
+    }
+    names = {file.manifest.sop_instance: file.name for file in corpus.files}
+
+    def expected(target):
+        if REFERENCED_SOP_INSTANCE in policy_run.spec.kept_rows():
+            return target
+        return uids.replacement_uid(KEY, target)
+
+    references = {
+        corpus_module.BRACHY_TREATMENT_RECORD: (
+            ("ReferencedRTPlanSequence", corpus_module.PLAN),
+            ("ReferencedTreatmentRecordSequence", corpus_module.TREATMENT_RECORD),
+        ),
+        corpus_module.TREATMENT_SUMMARY_RECORD: (
+            ("ReferencedRTPlanSequence", corpus_module.PLAN),
+            (
+                "ReferencedTreatmentRecordSequence",
+                corpus_module.BRACHY_TREATMENT_RECORD,
+            ),
+        ),
+    }
+    for source, named in references.items():
+        if source not in written:
+            assert names[source] in policy_run.spec.withheld
+            continue
+        dataset = written[source]
+        assert dataset.Modality == "RTRECORD"
+        for keyword, target in named:
+            (reference,) = dataset[keyword].value
+            assert reference.ReferencedSOPInstanceUID == expected(target), keyword
+            if target in written:
+                assert expected(target) == written[target].SOPInstanceUID, keyword
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.1-09")
+def test_the_brachy_records_source_manufacturer_is_emptied_or_kept(policy_run):
+    # Source Manufacturer (300A,0216), which Table E.1-1 gives X, or K under
+    # Retain Device Identity, is Type 2 in the Type 1 Recorded Source Sequence
+    # (3008,0100), so a plain X empties it there rather than sequester the
+    # record (D-020), and Source Serial Number (3008,0105), which the table
+    # gives X/Z, is emptied in the same item; a run that keeps the rows keeps
+    # their markers.
+    corpus, released = policy_run.corpus, policy_run.released
+    position = next(
+        index
+        for index, file in enumerate(corpus.files)
+        if file.name == corpus_module.BRACHY_TREATMENT_RECORD_FILE
+    )
+    if position not in released:
+        assert corpus.files[position].name in policy_run.spec.withheld
+        return
+    source = _read(corpus.files[position].data)
+    (source_item,) = source.RecordedSourceSequence
+    (item,) = _read(released[position]).RecordedSourceSequence
+    kept = policy_run.spec.kept_rows()
+    for keyword, row in (
+        ("SourceManufacturer", "(300A,0216)"),
+        ("SourceSerialNumber", "(3008,0105)"),
+    ):
+        assert keyword in item, keyword
+        if row in kept:
+            assert item[keyword].value == source_item[keyword].value, keyword
+        else:
+            assert item[keyword].value in ("", None), keyword
+            assert source_item[keyword].value, keyword
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.5-01")
@@ -1179,6 +1391,37 @@ def test_a_reports_content_item_value_is_kept_by_its_concept_not_its_row():
     assert not dataclasses.replace(every, kept_content=frozenset()).keeps(
         device_observer
     )
+
+
+def test_a_time_that_modified_dates_cleans_in_a_report_is_kept_as_received():
+    """A report's Study Time keeps its time of day under Modified Dates.
+
+    Table E.3.4-1 gives Study Time (DCM 111061) C under Modified Dates, whose
+    cleaner moves a subject event's value by the subject's whole weeks
+    (D-006, D-039), so the time of day is kept, as Study Time (0008,0030) is
+    outside the tree; Study Date (DCM 111060) moves.
+    """
+    public_release = next(run for run in CORPUS_RUNS if run.name == "public-release")
+    file = next(
+        file
+        for file in corpus_module.build_corpus().files
+        if file.manifest.iod == "Mammography CAD SR"
+    )
+    by_concept = {
+        placement.concept: placement
+        for placement in file.manifest.placements
+        if placement.concept is not None
+    }
+    study_time = by_concept[("DCM", "111061", "TIME")]
+    study_date = by_concept[("DCM", "111060", "DATE")]
+
+    assert study_time.concept in runs.modified_concepts((runs.MODIFIED_DATES,))
+    assert not runs.modified_concepts((runs.FULL_DATES,))
+    assert public_release.keeps(study_time)
+    assert not public_release.keeps(study_date)
+    # Without Modified Dates' expectation of the value attribute, nothing is
+    # kept.
+    assert not dataclasses.replace(public_release, kept=frozenset()).keeps(study_time)
 
 
 def test_each_option_of_table_e1_1_has_its_code_and_temporal_value():
