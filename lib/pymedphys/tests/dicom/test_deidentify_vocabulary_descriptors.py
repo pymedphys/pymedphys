@@ -180,10 +180,6 @@ def test_a_removed_description_in_a_vocabulary_descriptor_is_released(tag):
         _removed("(0040,0007)", "LO", DESCRIPTION),  # Scheduled Step Description
         _removed("(0040,1400)", "LT", DESCRIPTION),  # Requested Procedure Comments
         _removed("(0020,4000)", "LT", DESCRIPTION),  # Image Comments
-        # The meaning of a request's local code.
-        _removed(CODE_MEANING, "LO", DESCRIPTION, (("(0032,1064)", 0),)),
-        # A vendor's private copy.
-        _removed("(0019,109C)", "LO", DESCRIPTION),
         # Part of the kept descriptor.
         _removed("(0018,0010)", "LO", "CONTRAST"),
     ],
@@ -299,13 +295,17 @@ def test_a_person_name_found_in_a_vocabulary_descriptor_still_withholds():
         _removed("(0008,0081)", "ST", "HEAD"),  # Institution Address
         _removed("(0008,1040)", "LO", "HEAD"),  # Institutional Department Name
         _removed("(0008,1010)", "SH", "HEAD"),  # Station Name
+        # The meaning of a request's local code, and a vendor's private copy
+        # of a description, which are not descriptive sources.
+        _removed(CODE_MEANING, "LO", "HEAD", (("(0032,1064)", 0),)),
+        _removed("(0019,109C)", "LO", "HEAD"),
         _removed("(0040,0010)", "SH", "HEAD"),  # Scheduled Station Name
         _removed("(0018,1000)", "LO", "HEAD"),  # Device Serial Number
         _removed(CODE_MEANING, "LO", "HEAD", (("(0008,0082)", 0),)),
         _removed(CODE_MEANING, "LO", "HEAD", (("(0008,1041)", 0),)),
     ],
 )
-def test_a_place_organisation_or_device_source_goes_to_review(source):
+def test_a_source_that_does_not_describe_the_examination_goes_to_review(source):
     written = _descriptor(DESCRIPTION)
     condition = _condition(written, source)
 

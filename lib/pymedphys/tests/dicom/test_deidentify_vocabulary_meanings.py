@@ -277,6 +277,16 @@ def test_a_person_name_found_in_a_vocabulary_meaning_still_withholds():
         _removed("(0008,0055)", "AE", "HEAD"),  # Station AE Title
         _removed("(0040,0243)", "SH", "HEAD"),  # Performed Location
         _removed("(0018,1000)", "LO", "HEAD"),  # Device Serial Number
+        _removed("(0018,1008)", "LO", "HEAD"),  # Gantry ID
+        _removed("(0018,1007)", "LO", "HEAD"),  # Cassette ID
+        _removed("(0018,1004)", "LO", "HEAD"),  # Plate ID
+        _removed("(0018,1005)", "LO", "HEAD"),  # Generator ID
+        _removed("(3010,0043)", "ST", "HEAD"),  # Manufacturer's Device Identifier
+        _removed("(0012,0010)", "LO", "HEAD"),  # Clinical Trial Sponsor Name
+        # Clinical Trial Protocol Ethics Committee Name
+        _removed("(0012,0081)", "LO", "HEAD"),
+        # A private data element, which can copy any of them.
+        _removed("(0009,1002)", "LO", "HEAD"),
         # The meanings of Scheduled and Performed Station Name Code
         # Sequence items, nested in a step's item.
         _removed(
@@ -308,23 +318,54 @@ _IDENTIFYING_NAMES = re.compile(
     r"|Site ID|Site Name|Address|Telephone|Device (?:Serial|ID|Alternate|Label)"
     r"|Hardcopy Creation Device ID"
 )
+_TEXT_VRS = frozenset({"AE", "CS", "LO", "LT", "SH", "ST", "UC", "UT"})
 
 
-def test_every_attribute_of_table_e1_1_that_names_a_place_is_excluded():
-    # A later edition that adds such an attribute fails here until it is
-    # placed. A UID, such as Dimension Organization UID, withholds wherever
-    # it is found.
+def _text(tag):
+    """Whether the pinned dictionary gives a tag only VRs of text."""
+    # A row for a repeating or private group, such as (50xx,xxxx), has no
+    # single tag.
+    single = re.fullmatch(r"\([0-9A-F]{4},[0-9A-F]{4}\)", tag)
+    attribute = dictionary_attribute(tag) if single else None
+    return attribute is not None and set(attribute.vrs) <= _TEXT_VRS
+
+
+def test_only_descriptive_sources_are_ever_exempt():
+    # Every attribute of Table E.1-1 of a text VR, and every one of the
+    # descriptive sources, as the source of the same finding: only the
+    # descriptive ones are exempt, whatever their names, so no identity
+    # source needs listing for the rule to hold it.
+    finding, kept, _ = _finding()
+    tags = {
+        row.tag for row in load_table_e1_1().attributes if _text(row.tag)
+    } | residual_vocabulary.DESCRIPTIVE_SOURCES
+    exempt = set()
+    for tag in tags:
+        source = _removed(tag, dictionary_attribute(tag).vrs[0], MEANING)
+        moved = dataclasses.replace(finding, source=source.source)
+        if vocabulary_meaning(moved, kept, source_values((source,))):
+            exempt.add(tag)
+
+    assert exempt == residual_vocabulary.DESCRIPTIVE_SOURCES
+    assert not exempt & residual_vocabulary.INSTITUTIONAL_SOURCES
+    assert len(tags) > 100
+
+
+def test_the_attributes_of_table_e1_1_that_name_a_place_are_listed():
+    # The second guard lists at least every such attribute that its name
+    # gives away, and those that it does not, such as Gantry ID, by hand.
     named = {
         row.tag
         for row in load_table_e1_1().attributes
         if _IDENTIFYING_NAMES.search(row.name)
         and dictionary_attribute(row.tag).vrs != ("UI",)
     }
-    excluded = residual_vocabulary.INSTITUTIONAL_SOURCES | (
+    listed = residual_vocabulary.INSTITUTIONAL_SOURCES | (
         residual_vocabulary.INSTITUTIONAL_SEQUENCES
     )
 
-    assert named == excluded
+    assert named <= listed
+    assert {"(0018,1008)", "(0018,1004)", "(0012,0010)"} <= listed - named
 
 
 @pytest.mark.deid_requirement("MIDI-BP-01")
@@ -483,3 +524,10 @@ def test_basic_holds_slices_whose_local_meaning_repeats_a_station_name(
         if entry["exemption"] == Exemption.VOCABULARY_MEANING.value
         and entry["attribute"] != STUDY_DESCRIPTION
     ]
+
+
+@pytest.mark.deid_requirement("MIDI-BP-01")
+def test_basic_holds_slices_whose_local_meaning_repeats_a_gantry_id(tmp_path):
+    statuses, _ = _run(tmp_path, MEANING, GantryID="HEAD")
+
+    assert statuses == [run.Status.HELD_FOR_REVIEW] * 3
