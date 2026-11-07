@@ -45,7 +45,16 @@ import base64
 import types
 from collections.abc import Callable, Iterable, Mapping
 
-from . import birth_dates, dates, dummy_values, pixel_risk, pseudonyms, residuals, uids
+from . import (
+    birth_dates,
+    dates,
+    dummy_values,
+    pixel_risk,
+    pseudonyms,
+    residuals,
+    standard,
+    uids,
+)
 from . import release_report as report
 from .conformance import ConformanceStatement
 from .content_items import OBSERVATION_DATETIME
@@ -353,12 +362,30 @@ def _icc_profile(named: Callable[[str], str]) -> str:
 def _kept_items(
     statement: ConformanceStatement, named: Callable[[str], str]
 ) -> list[str]:
-    """Describe the items that D keeps where a reviewed rule keeps them (D-021)."""
+    """Describe the items that D keeps where a reviewed rule keeps them (D-021).
+
+    An attribute that no rule lists, such as Referenced Series Sequence
+    (0008,1115) in a Referenced Study Sequence (0008,1110) item, is a
+    sequence, which the rule for attributes that no rule covers keeps where
+    the IOD defines it, with its items' attributes under their own rules.
+    """
     actions = {entry.tag: entry.action for entry in statement.attributes}
+
+    def action(tag: str) -> str:
+        if tag in actions:
+            return code(actions[tag])
+        attribute = standard.dictionary_attribute(tag)
+        if attribute is None or attribute.vrs != ("SQ",):
+            raise ValueError(f"{tag} is kept in an item but has no rule")
+        return (
+            f"{code('K')} as a sequence that no rule covers, with its items' "
+            "attributes under their own actions"
+        )
+
     return [
         f"D on {named(tag)} keeps each source item, and in it only these "
         "attributes, each under the action that the policy gives it: "
-        + "; ".join(f"{named(each)}, {code(actions[each])}" for each in sorted(kept))
+        + "; ".join(f"{named(each)}, {action(each)}" for each in sorted(kept))
         + ". The item's other attributes are removed, and none of these is "
         "added to an item that lacks it."
         for tag, kept in dummy_values.KEPT_ITEM_ATTRIBUTES.items()

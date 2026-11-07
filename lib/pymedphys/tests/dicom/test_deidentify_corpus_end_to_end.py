@@ -1237,6 +1237,148 @@ def test_the_brachy_records_source_manufacturer_is_emptied_or_kept(policy_run):
             assert source_item[keyword].value, keyword
 
 
+def _first_item_at(dataset, path):
+    """Return the first item of each sequence of ``path``, by tag, in turn."""
+    item = dataset
+    for tag in path:
+        item = item[tag].value[0]
+    return item
+
+
+# The places of the RT Physician Intent and RT Patient Position Acquisition
+# Instruction where Referenced Study Sequence (0008,1110) is Type 1, by the
+# sequences that enclose it.
+STUDY_REFERENCE_PLACES = {
+    corpus_module.PHYSICIAN_INTENT: (
+        (0x30100057, 0x3010005F),
+        (0x3010006B, 0x30100076),
+    ),
+    corpus_module.POSITION_ACQUISITION_INSTRUCTION: (
+        (0x30020118, 0x3002011A, 0x30020132),
+    ),
+}
+# The attributes that D keeps in such an item (D-021).
+KEPT_STUDY_ITEM_ATTRIBUTES = frozenset({0x00081115, 0x0020000D, 0x30100052})
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.1-04", "MIDI-BP-03")
+def test_the_intent_preparation_and_position_instruction_name_what_they_reference(
+    policy_run,
+):
+    # The RT Physician Intent names the first CT slice as an input instance,
+    # the RT Treatment Preparation names the RT Plan, and the RT Patient
+    # Position Acquisition Instruction names the RT Treatment Preparation,
+    # by the UIDs that the run's key gives the referenced instances' own, so
+    # each written instance still names the written instances that it
+    # references; each has the Modality that PS3.3 gives its IOD.
+    corpus, released = policy_run.corpus, policy_run.released
+    written = {
+        corpus.files[position].manifest.sop_instance: _read(data)
+        for position, data in released.items()
+    }
+    names = {file.manifest.sop_instance: file.name for file in corpus.files}
+
+    def expected(target):
+        if REFERENCED_SOP_INSTANCE in policy_run.spec.kept_rows():
+            return target
+        return uids.replacement_uid(KEY, target)
+
+    references = {
+        corpus_module.PHYSICIAN_INTENT: (
+            "RTINTENT",
+            (0x30100057, 0x30100055),
+            corpus_module.CT_SLICES[0],
+        ),
+        corpus_module.TREATMENT_PREPARATION: (
+            "PLAN",
+            (0x300A0784, 0x300C0002),
+            corpus_module.PLAN,
+        ),
+        corpus_module.POSITION_ACQUISITION_INSTRUCTION: (
+            "PLAN",
+            (0x0008114A,),
+            corpus_module.TREATMENT_PREPARATION,
+        ),
+    }
+    for source, (modality, path, target) in references.items():
+        if source not in written:
+            assert names[source] in policy_run.spec.withheld
+            continue
+        dataset = written[source]
+        assert dataset.Modality == modality
+        reference = _first_item_at(dataset, path)
+        assert reference.ReferencedSOPInstanceUID == expected(target), path
+        if target in written:
+            assert expected(target) == written[target].SOPInstanceUID, path
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.1-04", "MIDI-BP-03")
+def test_a_type_1_referenced_study_sequence_keeps_its_items_keyed(policy_run):
+    # Referenced Study Sequence, which Table E.1-1 gives X/Z, is Type 1 in
+    # these items, so it resolves to D, and a reviewed rule keeps each source
+    # item with only Study Instance UID, replaced by the run's key, Pertinent
+    # SOP Classes in Study, and Referenced Series Sequence, whose Series
+    # Instance UID is replaced too, so the written instance names the written
+    # study and series (D-021). Under Retain UIDs the sequence is kept.
+    corpus, released = policy_run.corpus, policy_run.released
+    written = {
+        corpus.files[position].manifest.sop_instance: _read(data)
+        for position, data in released.items()
+    }
+    names = {file.manifest.sop_instance: file.name for file in corpus.files}
+    retained = REFERENCED_SOP_INSTANCE in policy_run.spec.kept_rows()
+
+    def expected(target):
+        return target if retained else uids.replacement_uid(KEY, target)
+
+    for source, places in STUDY_REFERENCE_PLACES.items():
+        if source not in written:
+            assert names[source] in policy_run.spec.withheld
+            continue
+        dataset = written[source]
+        for path in places:
+            (item,) = _first_item_at(dataset, path)[0x00081110].value
+            assert item.StudyInstanceUID == expected(corpus_module.STUDY), path
+            assert dataset.StudyInstanceUID == item.StudyInstanceUID, path
+            if not retained:
+                assert {element.tag for element in item} <= (
+                    KEPT_STUDY_ITEM_ATTRIBUTES
+                ), path
+            if 0x00081115 in item:
+                (series,) = item.ReferencedSeriesSequence
+                assert series.SeriesInstanceUID == expected(corpus_module.CT_SERIES), (
+                    path
+                )
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.1-09")
+def test_the_required_preparation_and_prescription_descriptions_are_emptied(
+    policy_run,
+):
+    # Patient Treatment Preparation Procedure Parameter Description, Type 2
+    # in the Type 2 Patient Treatment Preparation Procedure Sequence of the
+    # RT Treatment Preparation, and Prior Treatment Dose Description, Type 2
+    # in the Type 1 RT Prescription Sequence of the RT Physician Intent, which
+    # Table E.1-1 gives X, are emptied there rather than sequester the
+    # instance (D-020); Clean Descriptors' C falls back to that X (D-009).
+    corpus, released = policy_run.corpus, policy_run.released
+    for name, path, tag in (
+        (corpus_module.TREATMENT_PREPARATION_FILE, (0x300A0790,), 0x300A078E),
+        (corpus_module.PHYSICIAN_INTENT_FILE, (0x3010006B,), 0x30100061),
+    ):
+        position = next(
+            index for index, file in enumerate(corpus.files) if file.name == name
+        )
+        if position not in released:
+            assert name in policy_run.spec.withheld
+            continue
+        source = _first_item_at(_read(corpus.files[position].data), path)
+        item = _first_item_at(_read(released[position]), path)
+        assert source[tag].value, name
+        assert tag in item, name
+        assert item[tag].value in ("", None), name
+
+
 @pytest.mark.deid_requirement("PS3.15-E.3.5-01")
 def test_roi_names_take_the_vocabulary_spelling_or_the_reviewed_decision(
     policy_run,

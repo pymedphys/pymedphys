@@ -20,7 +20,7 @@ fictitious patient and study, with one Frame of Reference: three CT Image
 slices, an RT Structure Set that references the CT series and slices, an RT
 Plan that references the structure set and the dose, an RT Dose that
 references the plan, a second RT Dose of the plan for review (below), one
-instance of each of thirty-five other IODs, and two of the Segmentation
+instance of each of thirty-eight other IODs, and two of the Segmentation
 IOD, one of each of its SOP Classes, each in a series of its own, and a
 second X-Ray Radiation Dose SR, of a CT scan.
 The MR Image and PET Image instances reference the first CT slice, and each
@@ -39,7 +39,14 @@ Plan. The RT Brachy Treatment Record references the RT Plan, which has
 brachytherapy application setups as well as beams, and names the RT Beams
 Treatment Record as a related record, and the RT Treatment Summary Record
 references the RT Plan and, as a treatment record that it summarises, the
-RT Brachy Treatment Record. The RT Image, a digitally reconstructed radiograph of 2 by 2 pixels,
+RT Brachy Treatment Record. The RT Physician Intent references the first
+CT slice, and the collection's study and CT series in the Referenced Study
+Sequence (0008,1110) of its input instances and planning inputs; the RT
+Treatment Preparation references the RT Physician Intent and, in its
+Referenced RT Plan Sequence, the RT Plan; and the RT Patient Position
+Acquisition Instruction references the RT Treatment Preparation and, in the
+Referenced Study Sequence of its position reference instances, the
+collection's study. The RT Image, a digitally reconstructed radiograph of 2 by 2 pixels,
 references the RT Plan. The X-Ray Radiation Dose SRs and the Enhanced
 X-Ray Radiation Dose SR reference the first CT slice, the
 Radiopharmaceutical Radiation Dose SR the PET Image, the Patient Radiation
@@ -183,7 +190,7 @@ dummy item at that place and only there. Planted in
 every file, the first two would sequester every
 instance, and no preset could release any of the collection; planted in one,
 that instance checks sequestration, :data:`REVIEW_FILE` checks review, and
-the other forty-three check each preset's output, the reports where their
+the other forty-six check each preset's output, the reports where their
 trees are cleaned. Radiopharmaceutical Start
 DateTime, which CT Image does not define there, is planted in no file, so
 the Enhanced PET instance, which lacks an attribute of Type 1, is released
@@ -219,7 +226,7 @@ Manufacturer's Model Name (0008,1090), which Table E.1-1 does not list and
 the Basic Profile keeps, a copy of the RT Plan's RT Plan Label marker
 (:attr:`PlacementKind.REVIEW_COPY`), so the residual search finds a source
 value of another instance in its output and sends it to review. The third
-CT slice remains sequestered; the other forty-three files stay releasable, the
+CT slice remains sequestered; the other forty-six files stay releasable, the
 reports where their trees are cleaned.
 
 **Manifest.** :class:`CorpusManifest` records, for each file, each
@@ -266,6 +273,7 @@ from .dummy_values import (
     INSTITUTION_CODE_SEQUENCE,
     PERSON_IDENTIFICATION_CODE_SEQUENCE,
     REFERENCED_PERFORMED_PROCEDURE_STEP_SEQUENCE,
+    REFERENCED_STUDY_SEQUENCE,
     VERIFYING_OBSERVER_SEQUENCE,
     reviewed_within,
 )
@@ -352,6 +360,9 @@ RT_ION_PLAN_STORAGE = "1.2.840.10008.5.1.4.1.1.481.8"
 RT_ION_BEAMS_TREATMENT_RECORD_STORAGE = "1.2.840.10008.5.1.4.1.1.481.9"
 RT_BRACHY_TREATMENT_RECORD_STORAGE = "1.2.840.10008.5.1.4.1.1.481.6"
 RT_TREATMENT_SUMMARY_RECORD_STORAGE = "1.2.840.10008.5.1.4.1.1.481.7"
+RT_PHYSICIAN_INTENT_STORAGE = "1.2.840.10008.5.1.4.1.1.481.10"
+RT_TREATMENT_PREPARATION_STORAGE = "1.2.840.10008.5.1.4.1.1.481.22"
+RT_PATIENT_POSITION_ACQUISITION_INSTRUCTION_STORAGE = "1.2.840.10008.5.1.4.1.1.481.25"
 # The retired class that PS3.3 Sections 10.6.1 and C.8.8.5.4 give a study in
 # a Referenced Study Sequence or RT Referenced Study Sequence item.
 DETACHED_STUDY_MANAGEMENT = "1.2.840.10008.3.1.2.3.1"
@@ -414,6 +425,12 @@ ION_TREATMENT_RECORD_FILE = "48-rt-ion-beams-record.dcm"
 # Record of its course, numbered after the files that open pull requests add.
 BRACHY_TREATMENT_RECORD_FILE = "49-rt-brachy-record.dcm"
 TREATMENT_SUMMARY_RECORD_FILE = "50-rt-treatment-summary-record.dcm"
+# The RT Physician Intent of the course, the RT Treatment Preparation that
+# carries it out, and the RT Patient Position Acquisition Instruction for
+# the preparation, numbered after the files that open pull requests add.
+PHYSICIAN_INTENT_FILE = "79-rt-physician-intent.dcm"
+TREATMENT_PREPARATION_FILE = "80-rt-treatment-preparation.dcm"
+POSITION_ACQUISITION_INSTRUCTION_FILE = "81-rt-position-acquisition-instruction.dcm"
 # The directory, within the one that write_corpus is given, of the files.
 INSTANCES_DIRECTORY = "instances"
 
@@ -506,6 +523,12 @@ BRACHY_TREATMENT_RECORD_SERIES = f"{LINKED_UID_ROOT}04600"
 BRACHY_TREATMENT_RECORD = f"{LINKED_UID_ROOT}04601"
 TREATMENT_SUMMARY_RECORD_SERIES = f"{LINKED_UID_ROOT}04700"
 TREATMENT_SUMMARY_RECORD = f"{LINKED_UID_ROOT}04701"
+PHYSICIAN_INTENT_SERIES = f"{LINKED_UID_ROOT}07500"
+PHYSICIAN_INTENT = f"{LINKED_UID_ROOT}07501"
+TREATMENT_PREPARATION_SERIES = f"{LINKED_UID_ROOT}07600"
+TREATMENT_PREPARATION = f"{LINKED_UID_ROOT}07601"
+POSITION_ACQUISITION_INSTRUCTION_SERIES = f"{LINKED_UID_ROOT}07700"
+POSITION_ACQUISITION_INSTRUCTION = f"{LINKED_UID_ROOT}07701"
 # A patient and a procedure step that the collection names but does not hold.
 PATIENT_REFERENCE = f"{LINKED_UID_ROOT}00003"
 PROCEDURE_STEP = f"{LINKED_UID_ROOT}00004"
@@ -569,6 +592,7 @@ _REVIEWED_DUMMY_SEQUENCES = frozenset(
         INSTITUTION_CODE_SEQUENCE,
         PERSON_IDENTIFICATION_CODE_SEQUENCE,
         REFERENCED_PERFORMED_PROCEDURE_STEP_SEQUENCE,
+        REFERENCED_STUDY_SEQUENCE,
         VERIFYING_OBSERVER_SEQUENCE,
     }
 )
@@ -633,6 +657,11 @@ _SOP_CLASSES = types.MappingProxyType(
         ION_TREATMENT_RECORD: RT_ION_BEAMS_TREATMENT_RECORD_STORAGE,
         BRACHY_TREATMENT_RECORD: RT_BRACHY_TREATMENT_RECORD_STORAGE,
         TREATMENT_SUMMARY_RECORD: RT_TREATMENT_SUMMARY_RECORD_STORAGE,
+        PHYSICIAN_INTENT: RT_PHYSICIAN_INTENT_STORAGE,
+        TREATMENT_PREPARATION: RT_TREATMENT_PREPARATION_STORAGE,
+        POSITION_ACQUISITION_INSTRUCTION: (
+            RT_PATIENT_POSITION_ACQUISITION_INSTRUCTION_STORAGE
+        ),
         PATIENT_REFERENCE: DETACHED_PATIENT_MANAGEMENT,
         PROCEDURE_STEP: MODALITY_PERFORMED_PROCEDURE_STEP,
     }
@@ -1362,6 +1391,34 @@ _SPECS = (
         PLAN,
         targets=((_REFERENCED_TREATMENT_RECORD_SEQUENCE, BRACHY_TREATMENT_RECORD),),
     ),
+    # The RT Physician Intent names the first CT slice, the image that its
+    # intent was drawn up from, and, in the Referenced Study Sequence of its
+    # input instances and planning inputs, the collection's study. The RT
+    # Treatment Preparation names the RT Physician Intent that it carries
+    # out, and the RT Plan in its Referenced RT Plan Sequence; the RT Patient
+    # Position Acquisition Instruction names the RT Treatment Preparation, and
+    # the collection's study in its position reference instances.
+    _Spec(
+        PHYSICIAN_INTENT_FILE,
+        RT_PHYSICIAN_INTENT_STORAGE,
+        PHYSICIAN_INTENT,
+        PHYSICIAN_INTENT_SERIES,
+        CT_SLICES[0],
+    ),
+    _Spec(
+        TREATMENT_PREPARATION_FILE,
+        RT_TREATMENT_PREPARATION_STORAGE,
+        TREATMENT_PREPARATION,
+        TREATMENT_PREPARATION_SERIES,
+        PHYSICIAN_INTENT,
+    ),
+    _Spec(
+        POSITION_ACQUISITION_INSTRUCTION_FILE,
+        RT_PATIENT_POSITION_ACQUISITION_INSTRUCTION_STORAGE,
+        POSITION_ACQUISITION_INSTRUCTION,
+        POSITION_ACQUISITION_INSTRUCTION_SERIES,
+        TREATMENT_PREPARATION,
+    ),
 )
 
 
@@ -1371,7 +1428,7 @@ def build_corpus() -> SyntheticCorpus:
     Returns
     -------
     SyntheticCorpus
-        Forty-five files: three CT slices; the RT Structure Set, RT Plan, RT
+        Forty-eight files: three CT slices; the RT Structure Set, RT Plan, RT
         Dose, and the RT Dose for review; the Enhanced CT Image and Legacy
         Converted Enhanced CT Image; the MR Image, Enhanced MR Image,
         Enhanced MR Color Image, Legacy Converted Enhanced MR Image, and MR
@@ -1386,9 +1443,10 @@ def build_corpus() -> SyntheticCorpus:
         the Key Object Selection Document, Mammography CAD SR, Chest CAD SR,
         Colon CAD SR, Procedure Log, Spectacle Prescription Report, Macular
         Grid Thickness and Volume Report, and Waveform Annotation SR; the RT
-        Ion Plan and RT Ion Beams Treatment Record; and the RT Brachy
-        Treatment Record and RT Treatment Summary Record. Two builds give the
-        same bytes and the same manifest.
+        Ion Plan and RT Ion Beams Treatment Record; the RT Brachy Treatment
+        Record and RT Treatment Summary Record; and the RT Physician Intent,
+        RT Treatment Preparation, and RT Patient Position Acquisition
+        Instruction. Two builds give the same bytes and the same manifest.
     """
     markers = _Markers()
     files: list[CorpusFile] = []
@@ -2011,6 +2069,15 @@ class _Instance:
             RT_TREATMENT_SUMMARY_RECORD_STORAGE,
         ):
             put((), "(0008,0060)", ["RTRECORD"])
+        elif self.spec.sop_class == RT_PHYSICIAN_INTENT_STORAGE:
+            # PS3.3 Section A.86.1.2.4.1.
+            put((), "(0008,0060)", ["RTINTENT"])
+        elif self.spec.sop_class in (
+            RT_TREATMENT_PREPARATION_STORAGE,
+            RT_PATIENT_POSITION_ACQUISITION_INSTRUCTION_STORAGE,
+        ):
+            # PS3.3 Sections A.86.1.14.4.1 and A.86.1.17.4.1.
+            put((), "(0008,0060)", ["PLAN"])
         elif self.spec.sop_class == MR_SPECTROSCOPY_STORAGE:
             put((), "(0008,0060)", ["MR"])
             put((), "(0008,0008)", ["ORIGINAL", "PRIMARY", "SPECTROSCOPY", "NONE"])

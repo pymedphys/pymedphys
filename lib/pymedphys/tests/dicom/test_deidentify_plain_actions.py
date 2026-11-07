@@ -205,8 +205,9 @@ def test_a_plain_z_gives_d_only_to_rt_accessory_holder_slot_id_in_five_generated
 ):
     # Table E.1-1 gives RT Accessory Holder Slot ID Z, and it is Type 1 in RT
     # Accessory Holder Slot Sequence within RT Accessory Holder Definition
-    # Sequence of these IODs. No IOD of the first supported release has such
-    # a place. A new edition that changes where this happens fails here.
+    # Sequence of these IODs. Of the first supported release's IODs, only RT
+    # Patient Position Acquisition Instruction has such a place. A new edition
+    # that changes where this happens fails here.
     z = {
         attribute.tag
         for attribute in standard.load_table_e1_1().attributes
@@ -231,7 +232,9 @@ def test_a_plain_z_gives_d_only_to_rt_accessory_holder_slot_id_in_five_generated
             "RT Patient Position Acquisition Instruction",
         )
     }
-    assert not set(FIRST_RELEASE_IODS) & {name for name, _, _ in dummy}
+    assert set(FIRST_RELEASE_IODS) & {name for name, _, _ in dummy} == {
+        "RT Patient Position Acquisition Instruction"
+    }
 
 
 @pytest.mark.parametrize("action", ["X", "K", "C", "U"])
@@ -666,9 +669,45 @@ def test_a_plain_x_on_a_required_attribute_in_the_first_release_iods(tables):
             (RECORDED_SOURCE,),
             SOURCE_MANUFACTURER,
         ): _removal(*EMPTIED),
+        # RT Treatment Preparation holds the Patient Treatment Preparation
+        # descriptions at its top level: the photo's in the Type 3
+        # Referenced Patient Setup Photo Sequence, which goes with it, and
+        # the procedure parameter's as Type 2 in the Type 2 Patient Treatment
+        # Preparation Procedure Sequence, where it is emptied instead
+        # (D-020).
+        (
+            "RT Treatment Preparation",
+            (REFERENCED_PATIENT_SETUP_PHOTO,),
+            PATIENT_SETUP_PHOTO_DESCRIPTION,
+        ): _removal("SEQUENCE", 0),
+        (
+            "RT Treatment Preparation",
+            (PATIENT_TREATMENT_PREPARATION_PROCEDURE,),
+            PROCEDURE_PARAMETER_DESCRIPTION,
+        ): _removal(*EMPTIED),
+        # Type 2 in the Type 1 RT Prescription Sequence, which no Type 3
+        # sequence encloses, so it is emptied there instead (D-020).
+        (
+            "RT Physician Intent",
+            (RT_PRESCRIPTION,),
+            PRIOR_TREATMENT_DOSE_DESCRIPTION,
+        ): _removal(*EMPTIED),
+        # Type 1C in the Type 3 Position Acquisition Template Identification
+        # Sequence, which goes with them.
+        **{
+            (
+                "RT Patient Position Acquisition Instruction",
+                (*ACQUISITION_SUBTASK, "(3002,011F)"),
+                tag,
+            ): _removal("SEQUENCE", 2)
+            for tag in (
+                POSITION_ACQUISITION_TEMPLATE_NAME,
+                POSITION_ACQUISITION_TEMPLATE_DESCRIPTION,
+            )
+        },
     }
-    # Ten attributes in all.
-    assert len({tag for _, _, tag in found}) == 10
+    # Thirteen attributes in all.
+    assert len({tag for _, _, tag in found}) == 13
 
 
 # RT Brachy Treatment Record and RT Treatment Summary Record, which the
@@ -828,11 +867,15 @@ SECOND_GENERATION_RT_IODS = (
     "Robotic-Arm Radiation",
     "Robotic-Arm Radiation Record",
 )
-SECOND_GENERATION_REVIEWED_AGAINST = (
-    *RECORD_REVIEWED_AGAINST,
-    *RECORD_IODS,
-    "Enhanced RT Image",
-    "Enhanced Continuous RT Image",
+SECOND_GENERATION_REVIEWED_AGAINST = tuple(
+    name
+    for name in (
+        *RECORD_REVIEWED_AGAINST,
+        *RECORD_IODS,
+        "Enhanced RT Image",
+        "Enhanced Continuous RT Image",
+    )
+    if name not in SECOND_GENERATION_RT_IODS
 )
 # The records whose RT Radiation Record Common Module records treatment
 # tolerance violations and their overrides.
@@ -880,7 +923,8 @@ def test_the_places_where_a_plain_action_cannot_stand_in_the_second_generation_r
         for name in TOLERANCE_RECORD_IODS
     }
     # Referenced Study Sequence, which Table E.1-1 gives X/Z, is Type 1 in
-    # three reference items, so it resolves to D, as above.
+    # three reference items, so it resolves to D, as above; a reviewed rule
+    # keeps their items there (D-021).
     study = {
         (name, path, REFERENCED_STUDY, "D"): "D"
         for name, path in (
@@ -923,8 +967,9 @@ def test_the_places_where_a_plain_action_cannot_stand_in_the_second_generation_r
     # Sequence, which its plain X removes, and the procedure parameter's as
     # Type 2 in the Type 2 Patient Treatment Preparation Procedure Sequence,
     # where no Type 3 sequence encloses it. Prior Treatment Dose Description
-    # is Type 2 in the Type 1 RT Prescription Sequence. The changes that
-    # support these IODs settle where a plain X sequesters (D-020).
+    # is Type 2 in the Type 1 RT Prescription Sequence. A plain X empties
+    # each there rather than sequester the instance, as it does Source
+    # Manufacturer in Recorded Source Sequence (D-020).
     preparation = {
         (
             "RT Treatment Preparation",
@@ -937,13 +982,13 @@ def test_the_places_where_a_plain_action_cannot_stand_in_the_second_generation_r
             (PATIENT_TREATMENT_PREPARATION_PROCEDURE,),
             PROCEDURE_PARAMETER_DESCRIPTION,
             "X",
-        ): _removal(*SEQUESTER),
+        ): _removal(*EMPTIED),
         (
             "RT Physician Intent",
             (RT_PRESCRIPTION,),
             PRIOR_TREATMENT_DOSE_DESCRIPTION,
             "X",
-        ): _removal(*SEQUESTER),
+        ): _removal(*EMPTIED),
     }
     # RT Accessory Holder Slot ID, which Table E.1-1 gives Z, takes the dummy
     # value where it is Type 1 (D-021).
@@ -1031,10 +1076,13 @@ def test_source_manufacturer_is_emptied_in_each_recorded_source_sequence(
     # at the top level of the RT Brachy Treatment Record IOD, so every
     # conforming record holds it there and no Type 3 sequence encloses it;
     # a plain X empties it there rather than sequester the record (D-020).
-    # These are the only two places that a plain X empties.
+    # These, and the two places of the RT Treatment Preparation and RT
+    # Physician Intent IODs below, are the only places that a plain X empties.
     assert dict(compound_actions.EMPTIED_PLAIN_X) == {
         REQUESTED_PROCEDURE_ID: (REFERENCED_REQUEST,),
         SOURCE_MANUFACTURER: (RECORDED_SOURCE,),
+        PROCEDURE_PARAMETER_DESCRIPTION: (PATIENT_TREATMENT_PREPARATION_PROCEDURE,),
+        PRIOR_TREATMENT_DOSE_DESCRIPTION: (RT_PRESCRIPTION,),
     }
     row = next(
         attribute
@@ -1080,6 +1128,85 @@ def test_source_manufacturer_is_emptied_in_each_recorded_source_sequence(
     assert resolve_plain_x_in_iod(
         record, SOURCE_MANUFACTURER, (RECORDED_SOURCE,)
     ) == _removal(*SEQUESTER)
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.1-09")
+@pytest.mark.parametrize(
+    "name, tag, path, sequence_type",
+    [
+        # Type 2 in the Type 2 Patient Treatment Preparation Procedure
+        # Sequence at the top level of the RT Treatment Preparation IOD.
+        (
+            "RT Treatment Preparation",
+            PROCEDURE_PARAMETER_DESCRIPTION,
+            (PATIENT_TREATMENT_PREPARATION_PROCEDURE,),
+            "2",
+        ),
+        # Type 2 in the Type 1 RT Prescription Sequence of the RT Physician
+        # Intent IOD's RT Enhanced Prescription Module.
+        (
+            "RT Physician Intent",
+            PRIOR_TREATMENT_DOSE_DESCRIPTION,
+            (RT_PRESCRIPTION,),
+            "1",
+        ),
+    ],
+)
+def test_a_plain_x_empties_the_required_preparation_and_prescription_descriptions(
+    tables, monkeypatch, name, tag, path, sequence_type
+):
+    # Table E.1-1 gives each a plain X under every option. Each is Type 2
+    # where the IOD defines it, and no Type 3 sequence encloses it, so its
+    # removal would sequester every instance that holds the sequence; a
+    # plain X empties it there instead, as it does Source Manufacturer in
+    # Recorded Source Sequence (D-020).
+    row = next(
+        attribute
+        for attribute in standard.load_table_e1_1().attributes
+        if attribute.tag == tag
+    )
+    assert (row.basic_profile, dict(row.options)) == ("X", {"clean_descriptors": "C"})
+    emptied = [
+        each
+        for each, iod in tables.iods.items()
+        if resolve_plain_x_in_iod(iod, tag, path) == _removal(*EMPTIED)
+    ]
+    assert emptied == [name]
+    iod = tables.iods[name]
+    assert strictest_type(iod, path[0], ()) == sequence_type
+    assert strictest_type(iod, tag, path) == "2"
+    assert resolve_plain_in_iod(iod, tag, path, "X") == "Z"
+    # Without the entry, the instance would be sequestered.
+    monkeypatch.setattr(
+        compound_actions,
+        "EMPTIED_PLAIN_X",
+        {
+            each: place
+            for each, place in compound_actions.EMPTIED_PLAIN_X.items()
+            if each != tag
+        },
+    )
+    assert resolve_plain_x_in_iod(iod, tag, path) == _removal(*SEQUESTER)
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.1-09")
+def test_a_plain_x_on_the_procedure_parameter_description_elsewhere_removes_its_sequence(
+    tables,
+):
+    # Elsewhere Patient Treatment Preparation Procedure Parameter
+    # Description is in the Type 3 Patient Treatment Preparation Sequence,
+    # at the top level of an image IOD or in Patient Setup Sequence, which a
+    # plain X removes with it, so it is not emptied there.
+    path = (PATIENT_TREATMENT_PREPARATION, PATIENT_TREATMENT_PREPARATION_PROCEDURE)
+    ct = tables.iods["CT Image"]
+    assert resolve_plain_x_in_iod(
+        ct, PROCEDURE_PARAMETER_DESCRIPTION, path
+    ) == _removal("SEQUENCE", 0)
+    assert resolve_plain_in_iod(ct, PROCEDURE_PARAMETER_DESCRIPTION, path, "X") == "X"
+    plan = tables.iods["RT Plan"]
+    assert resolve_plain_x_in_iod(
+        plan, PROCEDURE_PARAMETER_DESCRIPTION, (PATIENT_SETUP, *path)
+    ) == _removal("SEQUENCE", 1)
 
 
 @pytest.mark.parametrize(

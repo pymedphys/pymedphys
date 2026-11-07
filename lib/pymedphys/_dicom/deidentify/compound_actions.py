@@ -72,12 +72,17 @@ removing Overlay Data (60xx,3000) removes every attribute of its repeating
 group where the IOD's Overlay Plane Module is user-optional, and an
 attribute of :data:`LAPSED_CONDITIONS`, such as ROI Interpreter Sequence
 (3006,004E), whose condition lapses once ROI Creator Sequence (3006,004D) is
-removed, is removed alone. Two places depart from Table E.1-1's X, as the
-maintainer decided: Requested Procedure ID (0040,1001), Type 2 in Referenced
-Request Sequence (0040,A370) of a Structured Report, and Source Manufacturer
-(300A,0216), Type 2 in Recorded Source Sequence (3008,0100) of an RT Brachy
-Treatment Record, where no Type 3 sequence encloses either, are emptied
-rather than sequester the instance (:data:`EMPTIED_PLAIN_X`).
+removed, is removed alone. Four places depart from Table E.1-1's X:
+Requested Procedure ID (0040,1001), Type 2 in Referenced Request Sequence
+(0040,A370) of a Structured Report, and Source Manufacturer (300A,0216),
+Type 2 in Recorded Source Sequence (3008,0100) of an RT Brachy Treatment
+Record, as the maintainer decided, and, on the same grounds, Patient
+Treatment Preparation Procedure Parameter Description (300A,078E), Type 2 in
+Patient Treatment Preparation Procedure Sequence (300A,0790) of an RT
+Treatment Preparation, and Prior Treatment Dose Description (3010,0061),
+Type 2 in RT Prescription Sequence (3010,006B) of an RT Physician Intent.
+No Type 3 sequence encloses any of them there, so each is emptied rather
+than sequester the instance (:data:`EMPTIED_PLAIN_X`).
 
 For example, the RT Structure Set IOD makes Series Description (0008,103E),
 which Table E.1-1 gives X, Type 1 in Source Series Information Sequence
@@ -148,19 +153,29 @@ LAPSED_CONDITIONS: Mapping[str, str] = types.MappingProxyType(
 
 # Each attribute that Table E.1-1 gives a plain X, mapped to the one place,
 # by the sequences that enclose it, where a plain X empties it rather than
-# sequester the instance, as the maintainer decided: there the IOD makes it
-# Type 2 and no Type 3 sequence encloses it, and its zero-length value
-# discloses nothing that its removal would not. Requested Procedure ID
-# (26 October 2026) is Type 2 in Referenced Request Sequence, which is Type
-# 1C at the top level of a Structured Report made for a request. Source
-# Manufacturer (31 October 2026) is Type 2 in Recorded Source Sequence,
-# which is Type 1 at the top level of an RT Brachy Treatment Record, so every
-# conforming record holds it; Table E.1-1's X/Z empties Source Serial Number
-# (3008,0105) in the same item.
+# sequester the instance: there the IOD makes it Type 2 and no Type 3
+# sequence encloses it, and its zero-length value discloses nothing that its
+# removal would not. The maintainer decided the first two. Requested
+# Procedure ID (26 October 2026) is Type 2 in Referenced Request Sequence,
+# which is Type 1C at the top level of a Structured Report made for a
+# request. Source Manufacturer (31 October 2026) is Type 2 in Recorded Source
+# Sequence, which is Type 1 at the top level of an RT Brachy Treatment
+# Record, so every conforming record holds it; Table E.1-1's X/Z empties
+# Source Serial Number (3008,0105) in the same item. The other two follow
+# them. Patient Treatment Preparation Procedure Parameter Description is Type
+# 2 in Patient Treatment Preparation Procedure Sequence, which is Type 2 at
+# the top level of an RT Treatment Preparation; elsewhere, as in the
+# Patient Treatment Preparation Sequence (300A,079F) of an image or an RT
+# Plan, the Type 3 sequence that encloses it goes with it. Prior Treatment
+# Dose Description is Type 2 in RT Prescription Sequence, which is Type 1 in
+# the RT Enhanced Prescription Module of an RT Physician Intent, so every
+# Physician Intent with that module holds it.
 EMPTIED_PLAIN_X: Mapping[str, tuple[str, ...]] = types.MappingProxyType(
     {
         "(0040,1001)": ("(0040,A370)",),
         "(300A,0216)": ("(3008,0100)",),
+        "(300A,078E)": ("(300A,0790)",),
+        "(3010,0061)": ("(3010,006B)",),
     }
 )
 
@@ -441,6 +456,13 @@ def resolve_plain_in_iod(iod: IOD, tag: str, path: Sequence[str], action: str) -
     >>> record = iods["RT Brachy Treatment Record"]
     >>> resolve_plain_in_iod(record, "(300A,0216)", ("(3008,0100)",), "X")
     'Z'
+
+    And so is Prior Treatment Dose Description (3010,0061) in RT
+    Prescription Sequence (3010,006B) of an RT Physician Intent:
+
+    >>> intent = iods["RT Physician Intent"]
+    >>> resolve_plain_in_iod(intent, "(3010,0061)", ("(3010,006B)",), "X")
+    'Z'
     """
     definitions = iod.lookup(tag, _checked_path(tag, path))
     if not isinstance(action, str) or action not in PLAIN_ACTIONS:
@@ -496,9 +518,12 @@ def resolve_plain_x_in_iod(iod: IOD, tag: str, path: Sequence[str]) -> PlainRemo
     an attribute that Table E.1-1 removes too, here ROI Creator Sequence
     (3006,004D). An attribute of :data:`EMPTIED_PLAIN_X` is emptied instead,
     at its one place there, where it is Type 2 and its removal would
-    sequester the instance, as the maintainer decided: Requested Procedure
-    ID (0040,1001) in Referenced Request Sequence (0040,A370), and Source
-    Manufacturer (300A,0216) in Recorded Source Sequence (3008,0100).
+    sequester the instance: Requested Procedure ID (0040,1001) in Referenced
+    Request Sequence (0040,A370), Source Manufacturer (300A,0216) in
+    Recorded Source Sequence (3008,0100), Patient Treatment Preparation
+    Procedure Parameter Description (300A,078E) in Patient Treatment
+    Preparation Procedure Sequence (300A,0790), and Prior Treatment Dose
+    Description (3010,0061) in RT Prescription Sequence (3010,006B).
 
     This decides from the IOD's Types alone; it changes no data set.
 
