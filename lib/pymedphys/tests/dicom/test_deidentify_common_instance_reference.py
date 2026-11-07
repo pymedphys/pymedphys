@@ -25,8 +25,9 @@ from pymedphys._dicom.deidentify.common_instance_reference import (
 from pymedphys._dicom.deidentify.file_layout import ElementPath
 
 MODULE = "Common Instance Reference"
-# The supported IODs that make the module mandatory, from their 2026d PS3.3
-# IOD module tables, such as Tables A.39.1-1 and A.39.2-1.
+# The supported IODs that make the module mandatory, from the 2026d PS3.3
+# Tables A.39.1-1 and A.39.2-1, the RT IOD Modules tables of Section A.86.1,
+# and the IOD Modules table of Section A.79.
 MANDATORY = {
     "Spatial Registration",
     "Deformable Spatial Registration",
