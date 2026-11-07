@@ -45,8 +45,8 @@ before the first supported release.
 ``phantom-report``
     measures the synthetic phantoms of tier T1 and the downloaded series of
     a ``--phantoms`` selection, of tier T2, that are in the part of the split
-    evaluated, and writes, beside the counts-only summary (``summary.json``
-    and ``summary.md``), each case's full report and PNG previews of its
+    evaluated, and writes, beside the counts-only summary of every case
+    (``summary.json`` and ``summary.md``), each case's full report and PNG previews of its
     regions and texts under ``phantoms/``, with ``phantoms/index.json`` and
     ``phantoms/ATTRIBUTION.md``
     (:func:`~.text_evaluation_phantom_report.write_phantom_reports`).
@@ -368,40 +368,35 @@ def _phantom_sources(
 
 def _in_split(
     sources: Sequence[PhantomSource | SkippedFiles], settings: EvaluationSettings
-) -> tuple[list[PhantomSource | SkippedFiles], int]:
+) -> list[PhantomSource | SkippedFiles]:
     """The sources in the part of the split evaluated, so that no case held
-    out is previewed while the detector is tuned, and how many are not."""
+    out is previewed while the detector is tuned."""
     if settings.evaluated == "all":
-        return list(sources), 0
-    kept: list[PhantomSource | SkippedFiles] = []
-    for each in sources:
-        if isinstance(each, SkippedFiles) or settings.evaluated == split_of(
-            each.collection, subject_of(each), settings.held_out_collections
-        ):
-            kept.append(each)
-    return kept, len(sources) - len(kept)
+        return list(sources)
+    return [
+        each
+        for each in sources
+        if isinstance(each, SkippedFiles)
+        or settings.evaluated
+        == split_of(each.collection, subject_of(each), settings.held_out_collections)
+    ]
 
 
 def _phantoms(arguments: argparse.Namespace) -> dict[str, str]:
     detector, settings = _detector(arguments)
-    sources, not_evaluated = _in_split(_phantom_sources(arguments), settings)
-    index = write_phantom_reports(
-        sources, detector, settings, pathlib.Path(arguments.out) / "phantoms"
+    sources = _phantom_sources(arguments)
+    # The reports and previews take the part evaluated alone; the summary
+    # takes every case, and counts those of each part, as idc-measure does.
+    write_phantom_reports(
+        _in_split(sources, settings),
+        detector,
+        settings,
+        pathlib.Path(arguments.out) / "phantoms",
     )
-    run = evaluate(sources, detector, settings, workers=arguments.workers)
-    summary = summarise(run)
-    return {
-        "summary.json": _json(summary),
-        "summary.md": markdown(summary),
-        "phantoms.json": _json(
-            {
-                "cases": len(index["cases"]),
-                "previews": sum(each["previews"] for each in index["cases"]),
-                "skipped": index["skipped"],
-                "not_in_the_part_evaluated": not_evaluated,
-            }
-        ),
-    }
+    summary = summarise(
+        evaluate(sources, detector, settings, workers=arguments.workers)
+    )
+    return {"summary.json": _json(summary), "summary.md": markdown(summary)}
 
 
 if __name__ == "__main__":

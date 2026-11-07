@@ -242,11 +242,8 @@ def test_phantoms_are_selected_apart_and_reported_in_full(
         "10.7937/tcia.2019.j71i4fah"
         in (out / "phantoms" / "ATTRIBUTION.md").read_text()
     )
-    counted = json.loads((out / "phantoms.json").read_text())
-    assert counted["cases"] == 3
-    assert counted["not_in_the_part_evaluated"] == 0
-    assert counted["skipped"] == {"not-phantom/other-project": 1}
     summary = json.loads((out / "summary.json").read_text())
+    assert sum(summary["split"]["cases"].values()) == 3
     assert summary["frames"]["CT Image Storage"] == 3
 
 
@@ -290,5 +287,14 @@ def test_phantoms_held_out_are_not_previewed_while_tuning(
     assert sorted(each["case"] for each in index["cases"]) == sorted(
         each.case for each in tuning
     )
-    counted = json.loads((out / "phantoms.json").read_text())
-    assert counted["not_in_the_part_evaluated"] == len(cases) - len(tuning)
+    # The summary still counts every case, by its part.
+    summary = json.loads((out / "summary.json").read_text())
+    assert summary["split"]["cases"] == {
+        "tuning": len(tuning),
+        "held-out": len(cases) - len(tuning),
+    }
+    assert sorted(out.iterdir()) == [
+        out / "phantoms",
+        out / "summary.json",
+        out / "summary.md",
+    ]
