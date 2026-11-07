@@ -8,13 +8,12 @@
 # and an IOD of the supported scope uses, at any depth, so that no
 # operator-typed text is kept merely because the table does not list it, and
 # so does every one that an IOD of the target coverage uses but not yet the
-# supported scope: the Enhanced X-Ray and Patient Radiation Dose SR IODs,
-# reviewed ahead of supporting them, as RT Image, RT Beams Treatment Record,
-# the registrations, the X-Ray and Radiopharmaceutical Radiation Dose SR
-# IODs, RT Ion Plan, RT Ion Beams Treatment Record, RT Brachy Treatment
-# Record, RT Treatment Summary Record, and Segmentation were. So does every date,
-# time, and datetime (DA, DT, or TM) attribute that Table E.1-1 omits,
-# besides the role that the temporal roles file gives it.
+# supported scope: the 16 second-generation RT IODs, reviewed ahead of
+# supporting them, as RT Image, RT Beams Treatment Record, the registrations,
+# the four Radiation Dose SR IODs, RT Ion Plan, RT Ion Beams Treatment Record,
+# RT Brachy Treatment Record, RT Treatment Summary Record, and Segmentation
+# were. So does every date, time, and datetime (DA, DT, or TM) attribute that
+# Table E.1-1 omits, besides the role that the temporal roles file gives it.
 # Other attributes that the table omits have a rule only where one has been
 # reviewed, such as the two URLs below that name coding concepts and schemes.
 # A rule never covers an attribute that Table E.1-1 lists, or a UI attribute,
@@ -351,6 +350,27 @@ options = { clean_descriptors = "C" }
 note = "The text of the cells of a TABLE content item, such as one in an Enhanced X-Ray Radiation Dose SR, or, outside one, the value of the UC attribute that Selector Attribute names; either can hold anything a person writes. It is removed by Type, which replaces it with a dummy value where it is required, and cleaned as a descriptor under Clean Descriptors, as Table E.1-1 does for Selector LO, LT, SH, ST, and UT Value, which it gives D, and C under Clean Descriptors."
 
 [[attribute]]
+tag = "(0074,140B)"
+keyword = "ReasonForChannelOmissionDescription"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "A free-text description of why a channel of a brachytherapy application setup is to be left out of a delivery (PS3.3 Section C.8.8.30), as Reason for Omission Description (300C,0113), which Table E.1-1 gives X and C under Clean Descriptors, is of an omitted beam; Reason for Channel Omission (0074,140A) carries the reason as a code. It is removed by Type, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
+tag = "(0082,0033)"
+keyword = "SpecificationSelectionGuidance"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "Brief free-text guidance that an operator may consider when choosing a value for a parameter within the constraints that an RT Patient Position Acquisition Instruction or a defined protocol sets, so whoever writes the instruction can type anything in it, including a name or a date. It is removed by Type, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
+tag = "(0082,0037)"
+keyword = "ConstraintViolationCondition"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "The condition under which violating a parameter's constraint is significant, which PS3.3 lets be a mathematical expression, human-readable text, or another form, so it can hold anything that its author types. It is removed by Type, which gives it a dummy value where it is Type 1C and present, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
 tag = "(0100,0424)"
 keyword = "SOPAuthorizationComment"
 action = "X/Z/D"
@@ -377,6 +397,13 @@ keyword = "RTImageDescription"
 action = "X/Z/D"
 options = { clean_descriptors = "C" }
 note = "A user-defined description of an RT Image, which can carry anything a person types. It is removed by Type, and cleaned as a descriptor under Clean Descriptors, as Table E.1-1 does for RT Plan Description."
+
+[[attribute]]
+tag = "(3002,0120)"
+keyword = "PositionAcquisitionTemplateID"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "The identifier of the template that an image acquisition for patient positioning follows (PS3.3 Section C.36.29), which a site defines and which is required where no code identifies the template. Table E.1-1 gives the template's name and description, Position Acquisition Template Name (3002,0121) and Position Acquisition Template Description (3002,0123), X and C under Clean Descriptors, so its identifier is treated as they are: removed by Type, which gives it a dummy value where it is Type 1C and present, and cleaned as a descriptor under Clean Descriptors. Where the name is present, its plain X removes the Type 3 Position Acquisition Template Identification Sequence (3002,011F) that holds all three, unless Clean Descriptors cleans it."
 
 [[attribute]]
 tag = "(3004,0006)"
@@ -624,11 +651,25 @@ options = { clean_descriptors = "C" }
 note = "A description, for people to read, of why a treatment ended abnormally; RT Treatment Termination Reason Code Sequence and Machine-Specific Treatment Termination Code Sequence carry the reason as codes. It is free text, so it is removed by Type, and cleaned as a descriptor under Clean Descriptors."
 
 [[attribute]]
+tag = "(300A,0735)"
+keyword = "TreatmentToleranceViolationIdentification"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "An identification of the parameters that exceeded a treatment tolerance, which PS3.3 intends for structured processing but defines as free text of VR ST (Section C.36.22), required where Treatment Tolerance Violation Attribute Sequence (300A,0733) names no attribute. Table E.1-1 gives its companion, Treatment Tolerance Violation Description (300A,0734), D and C under Clean Descriptors, and a system can write either from the operator's entries, so it is treated as operator-typed text: removed by Type, which gives it a dummy value where it is Type 1C and present, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
 tag = "(3010,0005)"
 keyword = "EffectiveDoseCalculationMethodDescription"
 action = "X/Z/D"
 options = { clean_descriptors = "C" }
 note = "A free-text description of how an effective dose was calculated; Effective Dose Calculation Method Code Sequence carries the method as a code. It is removed by Type, which empties it where it is required, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
+tag = "(3010,001E)"
+keyword = "SegmentationCreationTemplateLabel"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "A label for the template that defined which segments were to be created from the patient's images, with their names, codes, and presentation (PS3.3 Section C.36.8). A site names its templates, as it names RT Tolerance Set Label (300A,062A) and RT Prescription Label (3010,0054), which Table E.1-1 gives D and C under Clean Descriptors, so it is removed by Type, and cleaned as a descriptor under Clean Descriptors."
 
 # Accessory and equipment identifiers, treated as device identity: removed
 # by Type, and kept under Retain Device Identity.
@@ -1038,6 +1079,18 @@ action = "K"
 note = "The private creator of a modified private attribute, a fixed string written by software, like Private Creator Reference, so it is kept. In the supported IODs it occurs only within Original Attributes Sequence, which Table E.1-1 removes under every option."
 
 [[attribute]]
+tag = "(0082,0018)"
+keyword = "SelectorAttributeName"
+action = "K"
+note = "The name of the attribute that Selector Attribute (0072,0026) identifies, which for a standard attribute PS3.3 requires to be its name in PS3.6 Table 6-1, such as the parameter whose constraint or tolerance an item states. It names an attribute, not its value, like Private Data Element Name, so it is kept."
+
+[[attribute]]
+tag = "(0082,0019)"
+keyword = "SelectorAttributeKeyword"
+action = "K"
+note = "The keyword of the attribute that Selector Attribute (0072,0026) identifies, which for a standard attribute PS3.3 requires to be its keyword in PS3.6 Table 6-1. It names an attribute, not its value, like Private Data Element Keyword, so it is kept."
+
+[[attribute]]
 tag = "(3002,0052)"
 keyword = "FluenceModeID"
 action = "K"
@@ -1090,6 +1143,12 @@ tag = "(3010,001D)"
 keyword = "DeviceAlternateIdentifierFormat"
 action = "K"
 note = "The format of a device's alternate identifier, such as an RFID or bar code format (PS3.3 10.36.1.1). It names a format, not a device, and Table E.1-1 empties the identifier itself, Device Alternate Identifier (3010,001B), so it is kept."
+
+[[attribute]]
+tag = "(3010,0086)"
+keyword = "IntendedStartDayOfWeek"
+action = "K"
+note = "A string of 0s and 1s giving the intended weekly pattern of fractions at the start of a prescription or radiation set, starting on a Monday (PS3.3 Section C.36.2.1.1.1.2). Like Fraction Pattern (300A,007B), it holds no dates or text, only the pattern, and is needed to reproduce the course, so it is kept."
 
 [[attribute]]
 tag = "(60xx,0045)"
