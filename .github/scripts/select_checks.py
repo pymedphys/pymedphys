@@ -185,6 +185,7 @@ DOCTEST_FILES = frozenset(
         "lib/pymedphys/_dicom/deidentify/dicom_validation_markdown.py",
         "lib/pymedphys/_dicom/deidentify/dicom_validators.py",
         "lib/pymedphys/_dicom/deidentify/dummy_values.py",
+        "lib/pymedphys/_dicom/deidentify/edits.py",
         "lib/pymedphys/_dicom/deidentify/element_rules.py",
         "lib/pymedphys/_dicom/deidentify/elements.py",
         "lib/pymedphys/_dicom/deidentify/face_validation_dicom.py",

@@ -265,6 +265,10 @@ class SequesterReason(enum.Enum):
     # a plain X on an attribute that the IOD requires there, with no enclosing
     # sequence that is Type 3 at its own place to remove with it (D-020)
     REQUIRED_BY_IOD = "required-by-iod"
+    # a dummy value with fewer values than its source, on an attribute that
+    # Frame Increment Pointer (0028,0009) indexes the frames by, so that it
+    # would no longer give a value for each frame (PS3.3 Section C.7.6.6.1.1)
+    FRAME_INDEX = "frame-index"
 
 
 _EXPLANATIONS = {
@@ -285,6 +289,10 @@ _EXPLANATIONS = {
         "{action} on {path} removes an attribute that the IOD requires there, "
         "and no enclosing sequence that the IOD makes Type 3 can be removed "
         "with it"
+    ),
+    SequesterReason.FRAME_INDEX: (
+        "{action} on {path} writes fewer values than its source holds, and "
+        "Frame Increment Pointer indexes the frames by it"
     ),
 }
 

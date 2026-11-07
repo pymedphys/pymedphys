@@ -14,19 +14,33 @@
 
 """Secondary Capture images, released only through Clean Pixel Data."""
 
-from pymedphys._imports import pytest
+import functools
+import io
+
+from pymedphys._imports import pydicom, pytest
 
 from pymedphys._dicom.deidentify import (
     conformance,
     conformance_markdown,
     instance_transform,
     policy,
+    run,
     scope,
 )
+from pymedphys._dicom.deidentify import synthetic_corpus as corpus_module
+from pymedphys._dicom.deidentify.file_layout import ElementPath
+from pymedphys._dicom.deidentify.keys import DeidKey
 from pymedphys._dicom.deidentify.policy import CLEAN_DESCRIPTORS, CLEAN_PIXEL_DATA
 from pymedphys._dicom.deidentify.reasons import TransformReason
+from pymedphys._dicom.deidentify.walker import SequesterReason
 
+from .corpus_runs.clean_pixel_data import _CornerFinder
 from .test_deidentify_conformance import _section
+
+KEY = DeidKey(bytes(range(32)))
+PAGE_NUMBER_VECTOR = 0x00182001
+FRAME_LABEL_VECTOR = 0x00182002
+DISPLAY_WINDOW_LABEL_VECTOR = 0x00182006
 
 CUSTOM_OPTION_SETS = (
     (),
@@ -114,3 +128,62 @@ def test_the_conformance_statement_says_how_a_secondary_capture_is_handled(
     else:
         assert "sequestered as `secondary-capture-not-cleaned`" in section
         assert "released only on a reviewer's verdict" not in section
+
+
+@functools.lru_cache(maxsize=1)
+def _two_frame_capture() -> bytes:
+    """The corpus's Multi-frame Grayscale Byte Secondary Capture Image."""
+    (file,) = [
+        each
+        for each in corpus_module.build_corpus().files
+        if each.name == "67-sc-grayscale-byte.dcm"
+    ]
+    return file.data
+
+
+def _indexed_by(pointer: int) -> bytes:
+    """The two-frame capture with a label for each frame in both label
+    vectors, and its frames indexed by the vector that ``pointer`` names."""
+    dataset = pydicom.dcmread(io.BytesIO(_two_frame_capture()))
+    dataset.FrameLabelVector = ["FIRST", "SECOND"]
+    dataset.DisplayWindowLabelVector = ["NARROW", "WIDE"]
+    dataset.FrameIncrementPointer = pointer
+    written = io.BytesIO()
+    dataset.save_as(written, enforce_file_format=True)
+    return written.getvalue()
+
+
+def _cleaned_without_descriptors(data: bytes):
+    transform = instance_transform.InstanceTransform(
+        policy.compose_custom_policy((CLEAN_PIXEL_DATA,)),
+        KEY,
+        finder=_CornerFinder(),
+        unvalidated_policy=True,
+    )
+    return transform(data, run.InstanceRecord.from_file(data))
+
+
+@pytest.mark.deid_requirement("MIDI-BP-03")
+@pytest.mark.parametrize("pointer", [FRAME_LABEL_VECTOR, DISPLAY_WINDOW_LABEL_VECTOR])
+def test_a_label_vector_that_indexes_the_frames_sequesters_without_clean_descriptors(
+    pointer,
+):
+    # D would write one label for two frames (D-021), so the capture is
+    # sequestered, and no reviewer's verdict on its pixels can release it.
+    result = _cleaned_without_descriptors(_indexed_by(pointer))
+
+    assert isinstance(result, run.Sequestered)
+    (sequestration,) = result.reasons
+    assert (sequestration.path, sequestration.action, sequestration.reason) == (
+        ElementPath((), f"({pointer >> 16:04X},{pointer & 0xFFFF:04X})"),
+        "D",
+        SequesterReason.FRAME_INDEX,
+    )
+
+
+def test_label_vectors_that_do_not_index_the_frames_take_one_dummy_label():
+    # Where Page Number Vector indexes the frames, D's one dummy label in
+    # each label vector indexes nothing, so it does not sequester.
+    result = _cleaned_without_descriptors(_indexed_by(PAGE_NUMBER_VECTOR))
+
+    assert not isinstance(result, run.Sequestered)
