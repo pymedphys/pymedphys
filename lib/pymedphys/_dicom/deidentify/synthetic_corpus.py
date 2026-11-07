@@ -353,6 +353,8 @@ RT_ION_PLAN_STORAGE = "1.2.840.10008.5.1.4.1.1.481.8"
 RT_ION_BEAMS_TREATMENT_RECORD_STORAGE = "1.2.840.10008.5.1.4.1.1.481.9"
 RT_BRACHY_TREATMENT_RECORD_STORAGE = "1.2.840.10008.5.1.4.1.1.481.6"
 RT_TREATMENT_SUMMARY_RECORD_STORAGE = "1.2.840.10008.5.1.4.1.1.481.7"
+ENHANCED_RT_IMAGE_STORAGE = "1.2.840.10008.5.1.4.1.1.481.23"
+ENHANCED_CONTINUOUS_RT_IMAGE_STORAGE = "1.2.840.10008.5.1.4.1.1.481.24"
 # The retired class that PS3.3 Sections 10.6.1 and C.8.8.5.4 give a study in
 # a Referenced Study Sequence or RT Referenced Study Sequence item.
 DETACHED_STUDY_MANAGEMENT = "1.2.840.10008.3.1.2.3.1"
@@ -415,6 +417,10 @@ ION_TREATMENT_RECORD_FILE = "48-rt-ion-beams-record.dcm"
 # Record of its course, numbered after the files that open pull requests add.
 BRACHY_TREATMENT_RECORD_FILE = "49-rt-brachy-record.dcm"
 TREATMENT_SUMMARY_RECORD_FILE = "50-rt-treatment-summary-record.dcm"
+# The Enhanced RT Image and the Enhanced Continuous RT Image, each of the RT
+# Plan's beam, numbered after the files that open pull requests add.
+ENHANCED_RT_IMAGE_FILE = "51-rt-image-enhanced.dcm"
+ENHANCED_CONTINUOUS_RT_IMAGE_FILE = "52-rt-image-enhanced-continuous.dcm"
 # The directory, within the one that write_corpus is given, of the files.
 INSTANCES_DIRECTORY = "instances"
 
@@ -507,6 +513,10 @@ BRACHY_TREATMENT_RECORD_SERIES = f"{LINKED_UID_ROOT}04600"
 BRACHY_TREATMENT_RECORD = f"{LINKED_UID_ROOT}04601"
 TREATMENT_SUMMARY_RECORD_SERIES = f"{LINKED_UID_ROOT}04700"
 TREATMENT_SUMMARY_RECORD = f"{LINKED_UID_ROOT}04701"
+ENHANCED_RT_IMAGE_SERIES = f"{LINKED_UID_ROOT}04800"
+ENHANCED_RT_IMAGE = f"{LINKED_UID_ROOT}04801"
+ENHANCED_CONTINUOUS_RT_IMAGE_SERIES = f"{LINKED_UID_ROOT}04900"
+ENHANCED_CONTINUOUS_RT_IMAGE = f"{LINKED_UID_ROOT}04901"
 # A patient and a procedure step that the collection names but does not hold.
 PATIENT_REFERENCE = f"{LINKED_UID_ROOT}00003"
 PROCEDURE_STEP = f"{LINKED_UID_ROOT}00004"
@@ -636,6 +646,8 @@ _SOP_CLASSES = types.MappingProxyType(
         ION_TREATMENT_RECORD: RT_ION_BEAMS_TREATMENT_RECORD_STORAGE,
         BRACHY_TREATMENT_RECORD: RT_BRACHY_TREATMENT_RECORD_STORAGE,
         TREATMENT_SUMMARY_RECORD: RT_TREATMENT_SUMMARY_RECORD_STORAGE,
+        ENHANCED_RT_IMAGE: ENHANCED_RT_IMAGE_STORAGE,
+        ENHANCED_CONTINUOUS_RT_IMAGE: ENHANCED_CONTINUOUS_RT_IMAGE_STORAGE,
         PATIENT_REFERENCE: DETACHED_PATIENT_MANAGEMENT,
         PROCEDURE_STEP: MODALITY_PERFORMED_PROCEDURE_STEP,
     }
@@ -1365,6 +1377,24 @@ _SPECS = (
         PLAN,
         targets=((_REFERENCED_TREATMENT_RECORD_SEQUENCE, BRACHY_TREATMENT_RECORD),),
     ),
+    # The Enhanced RT Image, two digitally reconstructed radiographs of the
+    # RT Plan's beam, and the Enhanced Continuous RT Image, two frames of a
+    # kV acquisition during it, each referencing the RT Plan, as the RT Image
+    # does.
+    _Spec(
+        ENHANCED_RT_IMAGE_FILE,
+        ENHANCED_RT_IMAGE_STORAGE,
+        ENHANCED_RT_IMAGE,
+        ENHANCED_RT_IMAGE_SERIES,
+        PLAN,
+    ),
+    _Spec(
+        ENHANCED_CONTINUOUS_RT_IMAGE_FILE,
+        ENHANCED_CONTINUOUS_RT_IMAGE_STORAGE,
+        ENHANCED_CONTINUOUS_RT_IMAGE,
+        ENHANCED_CONTINUOUS_RT_IMAGE_SERIES,
+        PLAN,
+    ),
 )
 
 
@@ -2036,6 +2066,11 @@ class _Instance:
             put((), "(0008,0008)", ["DERIVED", "SECONDARY", "DRR"])
             put((), "(3002,000C)", ["NORMAL"])  # RT Image Plane
             self._add_pixels(16, 0, struct.pack("<4H", 0, 100, 200, 300))
+        elif self.spec.sop_class in (
+            ENHANCED_RT_IMAGE_STORAGE,
+            ENHANCED_CONTINUOUS_RT_IMAGE_STORAGE,
+        ):
+            self._add_enhanced_rt_image()
         else:
             put((), "(0008,0060)", ["RTDOSE"])
             put((), "(0020,0032)", ["-1", "-1", "0"])
@@ -2048,6 +2083,33 @@ class _Instance:
             put((), "(3004,000C)", ["0", "2"])
             put((), "(3004,000E)", ["0.001"])
             self._add_pixels(32, 0, struct.pack("<8I", *range(0, 8000, 1000)))
+
+    def _add_enhanced_rt_image(self) -> None:
+        """Add the attributes that make the instance an Enhanced or Enhanced
+        Continuous RT Image.
+
+        It holds two frames of 2 by 2 pixels, whose spacing the Shared
+        Functional Groups Sequence (5200,9229) gives. An Enhanced Continuous
+        RT Image's Selected Frame Functional Groups Sequence (3002,0101) has
+        an item for each frame, which names it by its Selected Frame Number
+        (3002,0100), as the Sparse Multi-frame Functional Groups Module of
+        PS3.3 C.7.6.29 describes a selection of the frames; the markers of
+        the macros are planted in the first.
+        """
+        put = self._set
+        continuous = self.spec.sop_class == ENHANCED_CONTINUOUS_RT_IMAGE_STORAGE
+        put((), "(0008,0060)", ["RTIMAGE"])
+        if continuous:
+            put((), "(0008,0008)", ["ORIGINAL", "PRIMARY", "SIMULATOR", "NONE"])
+        else:
+            put((), "(0008,0008)", ["DERIVED", "PRIMARY", "DRR", "NONE"])
+        put((), "(0028,0008)", ["2"])
+        shared = _items(["(5200,9229)"])
+        put((*shared, ("(0028,9110)", 0)), "(0028,0030)", ["1", "1"])
+        if continuous:
+            for frame in range(2):
+                put((("(3002,0101)", frame),), "(3002,0100)", [str(frame + 1)])
+        self._add_pixels(16, 0, struct.pack("<8H", *range(0, 800, 100)))
 
     def _add_registration(self) -> None:
         """Add the attributes that make the instance a rigid or deformable registration."""
@@ -2297,7 +2359,11 @@ class _Instance:
             put((), "(0028,0004)", ["MONOCHROME2"])
         put((), "(0028,0010)", [size])
         put((), "(0028,0011)", [size])
-        if self.spec.sop_class not in _SEGMENTATIONS:
+        if self.spec.sop_class not in (
+            *_SEGMENTATIONS,
+            ENHANCED_RT_IMAGE_STORAGE,
+            ENHANCED_CONTINUOUS_RT_IMAGE_STORAGE,
+        ):
             put((), "(0028,0030)", ["1", "1"])
         put((), "(0028,0100)", [bits])
         put((), "(0028,0101)", [bits])
