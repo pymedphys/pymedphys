@@ -136,6 +136,12 @@ ION_REVIEWED_AGAINST = DOSE_SR_REVIEWED_AGAINST + RADIATION_DOSE_SR_IODS
 # and which the first supported release now supports.
 RECORD_IODS = ("RT Brachy Treatment Record", "RT Treatment Summary Record")
 RECORD_REVIEWED_AGAINST = ION_REVIEWED_AGAINST + ION_IODS
+# Enhanced RT Image and Enhanced Continuous RT Image, which the maintainer
+# added to the target coverage on 31 October 2026, whose attributes were
+# reviewed with their support, against every IOD above, and which the first
+# supported release now supports.
+ENHANCED_RT_IMAGE_IODS = ("Enhanced RT Image", "Enhanced Continuous RT Image")
+ENHANCED_RT_IMAGE_REVIEWED_AGAINST = RECORD_REVIEWED_AGAINST + RECORD_IODS
 SUPPORTED_IODS = (
     REVIEWED_AGAINST
     + SUPPORTED_TARGET_IODS
@@ -144,6 +150,7 @@ SUPPORTED_IODS = (
     + SUPPORTED_OTHER_SR_IODS
     + ION_IODS
     + RECORD_IODS
+    + ENHANCED_RT_IMAGE_IODS
 )
 CLEAN_DESCRIPTORS = "clean_descriptors"
 DEVICE_IDENTITY = "retain_device_identity"
@@ -313,7 +320,7 @@ def _supported_text():
     tables = iods.load_iod_tables()
     return {
         definition.tag
-        for name in SUPPORTED_IODS
+        for name in ALL_SUPPORTED_IODS
         for definition in tables.iods[name].definitions
         if TEXT_VRS.intersection(dictionary[definition.tag].vrs)
     }
@@ -410,10 +417,12 @@ def test_every_text_attribute_a_supported_iod_uses_and_table_e1_1_omits_has_a_ru
 
     # Checked against the 2026d PS3.3, PS3.6, and PS3.15: the combined
     # scope includes the RT objects, among them the two RT Ion IODs, which
-    # add 13, and the brachy and summary treatment records, which add none,
-    # Segmentation, which adds 4, and the two dose-report IODs, whose
-    # supplementary rules cover 172 text attributes.
-    assert len(omitted) == 172
+    # add 13, the brachy and summary treatment records, which add none, the
+    # Enhanced and Enhanced Continuous RT Images, which add 1, Segmentation,
+    # which adds 4, the two dose-report IODs, and RT Physician Intent, RT
+    # Treatment Preparation, and RT Patient Position Acquisition Instruction,
+    # which add 6, whose supplementary rules cover 179 text attributes.
+    assert len(omitted) == 179
     assert omitted <= set(_rules())
     assert {"(0008,0100)", "(300A,00C2)", "(60xx,1500)"} <= omitted
 
@@ -432,7 +441,7 @@ def test_the_rules_for_omitted_text_fall_in_the_reviewed_groups():
         # Accessory and equipment identifiers.
         ("X/Z/D", ((DEVICE_IDENTITY, "K"),)): 30,
         # Coded and technical values, and De-identification Method.
-        ("K", ()): 43,
+        ("K", ()): 44,
         # Names and identifiers of people, organisations, records, and
         # networks, identifiers that a device reads, and the text of overlays.
         ("X/Z/D", ()): 17,
@@ -576,7 +585,7 @@ def test_the_target_iods_have_the_documented_support():
 
     assert set(TARGET_IODS) <= set(tables.iods)
     assert set(TARGET_IODS) & scope.SUPPORTED_IODS == set(SUPPORTED_TARGET_IODS)
-    assert set(SUPPORTED_IODS) == scope.SUPPORTED_IODS
+    assert set(ALL_SUPPORTED_IODS) == scope.SUPPORTED_IODS
 
 
 @pytest.mark.deid_requirement("MIDI-BP-05", "MIDI-BP-06", "MIDI-BP-11")
@@ -1109,11 +1118,194 @@ def test_the_brachy_and_summary_records_other_new_attributes_are_kept_by_the_def
             ), (preset, definition)
 
 
+# The text attributes that Enhanced RT Image and Enhanced Continuous RT Image
+# use and the IODs reviewed before them do not, checked by hand against the
+# 2026d PS3.3 Tables C.36.26-1, C.36.27-1, C.36.2.4.11-1 (RT Image Frame
+# Radiation Acquisition Parameters Macro), 10.32-1 (Entity Long Labeling
+# Macro), and 10.34-1 (Conceptual Volume Segmentation Reference and
+# Combination Macro), and Section 10.34.1.1: four that Table E.1-1 lists, with
+# its actions, and one that it omits, which is kept.
+ENHANCED_RT_IMAGE_LISTED_TEXT = {
+    "(300A,067C)": "D",  # Radiation Generation Mode Label
+    "(300A,067D)": "Z",  # Radiation Generation Mode Description
+    "(3010,000F)": "Z",  # Conceptual Volume Combination Description
+    "(3010,0037)": "X",  # Entity Description
+}
+CONCEPTUAL_VOLUME_COMBINATION_EXPRESSION = "(3010,000C)"
+ENHANCED_RT_IMAGE_KEPT_TEXT = {CONCEPTUAL_VOLUME_COMBINATION_EXPRESSION}
+# The UIDs that they add, which Table E.1-1 lists with U.
+ENHANCED_RT_IMAGE_UIDS = {
+    "(300A,0785)",  # Referenced Treatment Position Group UID
+    "(3010,0013)",  # Constituent Conceptual Volume UID
+}
+# The others, by VR: codes, numbers, and sequences of the frames'
+# acquisition, the imaging and treatment devices, the treatment positions,
+# and the Conceptual Volumes named.
+ENHANCED_RT_IMAGE_OTHER_VRS = {"SQ": 36, "US": 11, "FD": 6, "DS": 6, "CS": 5, "IS": 1}
+# Where removal by Type gives an attribute of these IODs an action that it
+# takes nowhere in the IODs reviewed before them: Instance Creation Date and
+# Time, which are Type 1 in the Radiotherapy Common Instance Module (PS3.3
+# Table C.36.4-1) and Type 3 in the SOP Common Module.
+ENHANCED_RT_IMAGE_NEW_RESOLUTIONS = {
+    "(0008,0012)": ({"D"}, {"X"}),  # Instance Creation Date, X/D
+    "(0008,0013)": ({"D"}, {"X"}),  # Instance Creation Time, X/Z/D
+}
+
+
+def test_the_enhanced_rt_images_are_generated_and_supported():
+    tables = iods.load_iod_tables()
+
+    assert set(ENHANCED_RT_IMAGE_IODS) <= set(tables.iods)
+    assert set(ENHANCED_RT_IMAGE_IODS) <= scope.SUPPORTED_IODS
+
+
+def test_the_enhanced_rt_images_differ_only_in_the_modules_of_their_frames():
+    tables = iods.load_iod_tables()
+    enhanced, continuous = (
+        {(usage.module, usage.table) for usage in tables.iods[name].modules}
+        for name in ENHANCED_RT_IMAGE_IODS
+    )
+
+    assert enhanced - continuous == {
+        ("Multi-frame Functional Groups", "Table C.7.6.16-1"),
+        ("Multi-frame Dimension", "Table C.7.6.17-1"),
+        ("Frame Extraction", "Table C.12-9"),
+    }
+    assert continuous - enhanced == {
+        ("Sparse Multi-frame Functional Groups", "Table C.7.6.29-1")
+    }
+    # Their macros are the same, with the same usages; only the condition of
+    # Derivation Image is worded for frames in one and not the other.
+    enhanced_macros, continuous_macros = (
+        [
+            (macro.macro, macro.section, macro.usage, macro.table)
+            for macro in tables.iods[name].functional_group_macros
+        ]
+        for name in ENHANCED_RT_IMAGE_IODS
+    )
+    assert enhanced_macros == continuous_macros
+
+
+@pytest.mark.deid_requirement("MIDI-BP-05", "MIDI-BP-06", "MIDI-BP-11")
+def test_the_text_that_only_the_enhanced_rt_images_use_has_its_reviewed_action():
+    table = _table_e1_1()
+    rules = _rules()
+    added = _used_by(ENHANCED_RT_IMAGE_IODS, TEXT_VRS) - _used_by(
+        ENHANCED_RT_IMAGE_REVIEWED_AGAINST, TEXT_VRS
+    )
+
+    assert added == {
+        *ENHANCED_RT_IMAGE_LISTED_TEXT,
+        CONCEPTUAL_VOLUME_COMBINATION_EXPRESSION,
+    }
+    for tag, action in ENHANCED_RT_IMAGE_LISTED_TEXT.items():
+        assert tag not in rules, tag
+        assert table[tag].basic_profile == action, tag
+    # The combination expression, which Table E.1-1 omits, is kept as
+    # software-generated structure, as Fraction Pattern is, under every
+    # option.
+    rule = rules[CONCEPTUAL_VOLUME_COMBINATION_EXPRESSION]
+    assert CONCEPTUAL_VOLUME_COMBINATION_EXPRESSION not in table
+    assert (rule.action, dict(rule.options)) == ("K", {})
+    assert "10.34.1.1" in rule.note
+    for composed in _every_policy():
+        assert (
+            composed.supplementary_actions[CONCEPTUAL_VOLUME_COMBINATION_EXPRESSION]
+            == "K"
+        ), composed.options
+
+
+def test_removal_by_type_gives_the_enhanced_rt_images_attributes_the_actions_reviewed():
+    actions_by_tag = _record_actions()
+    dictionary = _dictionary()
+    every_vr = {vr for attribute in dictionary.values() for vr in attribute.vrs}
+    new = {}
+
+    for tag in sorted(_used_by(ENHANCED_RT_IMAGE_IODS, every_vr)):
+        action = actions_by_tag.get(tag)
+        if action not in compound_actions.COMPOUND_ACTIONS:
+            continue
+        resolved = _resolved_in(ENHANCED_RT_IMAGE_IODS, tag, action)
+        reviewed = _resolved_in(ENHANCED_RT_IMAGE_REVIEWED_AGAINST, tag, action)
+        if not resolved <= reviewed:
+            new[tag] = (resolved, reviewed)
+
+    assert new == ENHANCED_RT_IMAGE_NEW_RESOLUTIONS
+    # Each is a date or time that Full Dates keeps and Modified Dates
+    # modifies, where D writes the dummy value.
+    table = _table_e1_1()
+    for tag in new:
+        assert dict(table[tag].options) == DATE_OPTIONS, tag
+        assert {
+            definition.module
+            for name in ENHANCED_RT_IMAGE_IODS
+            for definition in iods.load_iod_tables().iods[name].definitions
+            if definition.tag == tag and definition.type == "1"
+        } == {"Radiotherapy Common Instance"}, tag
+
+
+def test_every_uid_date_and_name_that_the_enhanced_rt_images_use_has_a_role():
+    uids = uid_roles.load_uid_roles()
+    temporal = temporal_roles.load_temporal_roles()
+    table = _table_e1_1()
+
+    for tag in _used_by(ENHANCED_RT_IMAGE_IODS, {"UI"}):
+        assert isinstance(uids.role(tag), uid_roles.UIDRole), tag
+    for tag in _used_by(ENHANCED_RT_IMAGE_IODS, TEMPORAL_VRS):
+        assert isinstance(temporal.role(tag), temporal_roles.TemporalRole), tag
+    # The IODs reviewed before them use every date, time, datetime, person
+    # name, and URL that these IODs use, and every UID but two, which Table
+    # E.1-1 replaces, each the UID of an instance.
+    for vrs in (TEMPORAL_VRS, {"PN"}, {"UR"}):
+        assert not _used_by(ENHANCED_RT_IMAGE_IODS, vrs) - _used_by(
+            ENHANCED_RT_IMAGE_REVIEWED_AGAINST, vrs
+        ), vrs
+    new_uids = _used_by(ENHANCED_RT_IMAGE_IODS, {"UI"}) - _used_by(
+        ENHANCED_RT_IMAGE_REVIEWED_AGAINST, {"UI"}
+    )
+    assert new_uids == ENHANCED_RT_IMAGE_UIDS
+    for tag in new_uids:
+        assert table[tag].basic_profile == "U", tag
+        assert uids.role(tag) is uid_roles.UIDRole.INSTANCE, tag
+
+
+def test_the_enhanced_rt_images_other_new_attributes_are_kept_by_the_default():
+    dictionary = _dictionary()
+    tables = iods.load_iod_tables()
+    every_vr = {vr for attribute in dictionary.values() for vr in attribute.vrs}
+    new = _used_by(ENHANCED_RT_IMAGE_IODS, every_vr) - _used_by(
+        ENHANCED_RT_IMAGE_REVIEWED_AGAINST, every_vr
+    )
+    other = new - _used_by(ENHANCED_RT_IMAGE_IODS, TEXT_VRS) - ENHANCED_RT_IMAGE_UIDS
+    listed = set(_table_e1_1())
+    rules = _rules()
+    uids = set(uid_roles.load_uid_roles().rules)
+    by_vr = collections.Counter(vr for tag in other for vr in dictionary[tag].vrs)
+
+    assert by_vr == ENHANCED_RT_IMAGE_OTHER_VRS
+    assert all(len(dictionary[tag].vrs) == 1 for tag in other)
+    assert not other & (listed | set(rules) | uids)
+    # So each takes the default, which keeps it where these IODs define it,
+    # under every preset, with a sequence's items handled by their own rules.
+    for preset in policy.PRESETS:
+        rules_of = element_rules.ElementRules(policy.compose_policy(preset))
+        for name in ENHANCED_RT_IMAGE_IODS:
+            iod = tables.iods[name]
+            for definition in iod.definitions:
+                if definition.tag not in other:
+                    continue
+                rule = rules_of.rule(definition.tag, definition.path, iod=iod)
+                assert (rule.source, rule.action) == (
+                    element_rules.RuleSource.DEFAULT,
+                    element_rules.KEEP,
+                ), (preset, name, definition)
+
+
 # The 16 second-generation RT IODs, which the maintainer added to the target
 # coverage on 31 October 2026, whose text, UID, and date attributes were
 # reviewed ahead of supporting them, against every IOD that the first
-# supported release supports and against Enhanced RT Image and Enhanced
-# Continuous RT Image, which are brought into scope before them.
+# supported release supports, Enhanced RT Image and Enhanced Continuous RT
+# Image among them.
 SECOND_GENERATION_RT_IODS = (
     "RT Physician Intent",
     "RT Segment Annotation",
@@ -1132,8 +1324,15 @@ SECOND_GENERATION_RT_IODS = (
     "Robotic-Arm Radiation",
     "Robotic-Arm Radiation Record",
 )
-ENHANCED_RT_IMAGE_IODS = ("Enhanced RT Image", "Enhanced Continuous RT Image")
-SECOND_GENERATION_REVIEWED_AGAINST = SUPPORTED_IODS + ENHANCED_RT_IMAGE_IODS
+SECOND_GENERATION_REVIEWED_AGAINST = SUPPORTED_IODS
+# The second-generation RT IODs that the first supported release supports,
+# each brought into scope in a change of its own (D-010, D-022).
+SUPPORTED_SECOND_GENERATION_RT_IODS = (
+    "RT Physician Intent",
+    "RT Treatment Preparation",
+    "RT Patient Position Acquisition Instruction",
+)
+ALL_SUPPORTED_IODS = SUPPORTED_IODS + SUPPORTED_SECOND_GENERATION_RT_IODS
 # The text attributes that the second-generation RT IODs use and that neither
 # Table E.1-1 nor the IODs reviewed before them use, by group, checked by hand
 # against the 2026d PS3.3 Sections C.8.8.30, C.36.8, C.36.22, and C.36.29 and
@@ -1224,12 +1423,14 @@ SECOND_GENERATION_OTHER_VRS = {
 }
 
 
-def test_the_second_generation_rt_iods_are_generated_and_not_yet_supported():
+def test_the_second_generation_rt_iods_are_generated_and_supported_as_listed():
     tables = iods.load_iod_tables()
 
     assert len(SECOND_GENERATION_RT_IODS) == 16
     assert set(SECOND_GENERATION_RT_IODS) <= set(tables.iods)
-    assert not set(SECOND_GENERATION_RT_IODS) & scope.SUPPORTED_IODS
+    assert set(SECOND_GENERATION_RT_IODS) & scope.SUPPORTED_IODS == set(
+        SUPPORTED_SECOND_GENERATION_RT_IODS
+    )
 
 
 @pytest.mark.deid_requirement("MIDI-BP-05", "MIDI-BP-06", "MIDI-BP-11")
@@ -1393,7 +1594,13 @@ def test_each_group_takes_the_action_of_its_option(
         assert composed[tag] == operator_text, tag
     for tag in ACCESSORY_IDENTIFIERS:
         assert composed[tag] == accessory_identifier, tag
-    for tag in KEPT_TEXT | ADDED_KEPT_TEXT | RT_IMAGE_KEPT_TEXT | ION_KEPT_TEXT:
+    for tag in (
+        KEPT_TEXT
+        | ADDED_KEPT_TEXT
+        | RT_IMAGE_KEPT_TEXT
+        | ION_KEPT_TEXT
+        | ENHANCED_RT_IMAGE_KEPT_TEXT
+    ):
         assert composed[tag] == "K", tag
 
 
@@ -1424,9 +1631,13 @@ def test_the_basic_profile_keeps_only_the_reviewed_coded_and_technical_text():
         for tag in _supported_text()
     }
 
-    assert len(basic) == 299
+    assert len(basic) == 304
     assert {tag for tag, action in basic.items() if action == "K"} == (
-        KEPT_TEXT | ADDED_KEPT_TEXT | RT_IMAGE_KEPT_TEXT | ION_KEPT_TEXT
+        KEPT_TEXT
+        | ADDED_KEPT_TEXT
+        | RT_IMAGE_KEPT_TEXT
+        | ION_KEPT_TEXT
+        | ENHANCED_RT_IMAGE_KEPT_TEXT
     )
     assert set(basic.values()) - {"K"} <= REMOVING_ACTIONS
 
@@ -1446,6 +1657,7 @@ def test_no_option_keeps_more_than_the_coded_text_and_device_identity():
             | ADDED_KEPT_TEXT
             | RT_IMAGE_KEPT_TEXT
             | ION_KEPT_TEXT
+            | ENHANCED_RT_IMAGE_KEPT_TEXT
             | (device_identity if DEVICE_IDENTITY in composed.options else set())
         )
         assert kept == expected, composed.options
@@ -1485,7 +1697,7 @@ def test_the_urls_that_name_coding_concepts_and_schemes_are_kept():
     }
 
     assert len(omitted) == 12
-    assert set(_definitions_of(omitted, SUPPORTED_IODS)) == (
+    assert set(_definitions_of(omitted, ALL_SUPPORTED_IODS)) == (
         set(KEPT_URLS) | OTHER_URLS
     )
     for tag, keyword in KEPT_URLS.items():
@@ -1642,7 +1854,7 @@ def test_each_date_rule_says_what_the_date_options_and_its_role_do():
             {"(0014,0104)", "(0014,2006)"}
             | (set(OMITTED_DATES) - set(INVENTORY_DATES)),
         ),
-        (NO_SUPPORTED_IOD_USES_IT, SUPPORTED_IODS, set(INVENTORY_DATES)),
+        (NO_SUPPORTED_IOD_USES_IT, ALL_SUPPORTED_IODS, set(INVENTORY_DATES)),
     ],
     ids=["generated", "supported"],
 )
