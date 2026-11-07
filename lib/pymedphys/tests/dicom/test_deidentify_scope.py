@@ -72,6 +72,8 @@ SUPPORTED = {
     "1.2.840.10008.5.1.4.1.1.481.7": "RT Treatment Summary Record",
     "1.2.840.10008.5.1.4.1.1.481.8": "RT Ion Plan",
     "1.2.840.10008.5.1.4.1.1.481.9": "RT Ion Beams Treatment Record",
+    "1.2.840.10008.5.1.4.1.1.481.23": "Enhanced RT Image",
+    "1.2.840.10008.5.1.4.1.1.481.24": "Enhanced Continuous RT Image",
     "1.2.840.10008.5.1.4.1.1.481.21": "RT Radiation Set Delivery Instruction",
     "1.2.840.10008.5.1.4.34.7": "RT Beams Delivery Instruction",
     "1.2.840.10008.5.1.4.34.10": "RT Brachy Application Setup Delivery Instruction",
@@ -119,6 +121,8 @@ def test_the_first_release_supports_ct_mr_pet_rt_registration_seg_and_sr_objects
         "RT Brachy Treatment Record",
         "RT Dose",
         "RT Image",
+        "Enhanced RT Image",
+        "Enhanced Continuous RT Image",
         "RT Ion Beams Treatment Record",
         "RT Ion Plan",
         "RT Plan",
@@ -210,8 +214,8 @@ def test_padding_is_ignored():
         ("1.2.840.10008.5.1.4.1.1.11.1", "Grayscale Softcopy Presentation State"),
         # Outside the first release: other images, CT, MR, and PET objects
         # that are not images, the segmentations of other IODs, parametric
-        # maps, spatial fiducials, and second-generation RT objects, including
-        # the second-generation RT images.
+        # maps, spatial fiducials, and the second-generation RT objects other
+        # than the Enhanced and Enhanced Continuous RT Images.
         ("1.2.840.10008.5.1.4.1.1.20", "Nuclear Medicine Image"),
         ("1.2.840.10008.5.1.4.1.1.6.1", "Ultrasound Image"),
         ("1.2.840.10008.5.1.4.1.1.200.2", "CT Performed Procedure Protocol"),
@@ -221,8 +225,6 @@ def test_padding_is_ignored():
         ("1.2.840.10008.5.1.4.1.1.66.2", "Spatial Fiducials"),
         ("1.2.840.10008.5.1.4.1.1.481.10", "RT Physician Intent"),
         ("1.2.840.10008.5.1.4.1.1.481.14", "Tomotherapeutic Radiation"),
-        ("1.2.840.10008.5.1.4.1.1.481.23", "Enhanced RT Image"),
-        ("1.2.840.10008.5.1.4.1.1.481.24", "Enhanced Continuous RT Image"),
     ],
 )
 def test_a_standard_sop_class_of_another_iod_is_sequestered(sop_class, iod):
@@ -391,6 +393,8 @@ def test_pydicom_names_the_same_uids():
         uid.RTIonBeamsTreatmentRecordStorage,
         uid.RTBrachyTreatmentRecordStorage,
         uid.RTTreatmentSummaryRecordStorage,
+        uid.EnhancedRTImageStorage,
+        uid.EnhancedContinuousRTImageStorage,
         uid.RTBeamsDeliveryInstructionStorage,
         uid.RTBrachyApplicationSetupDeliveryInstructionStorage,
         uid.RTRadiationSetDeliveryInstructionStorage,

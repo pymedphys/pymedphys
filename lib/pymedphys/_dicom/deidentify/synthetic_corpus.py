@@ -358,6 +358,13 @@ RT_ION_PLAN_STORAGE = "1.2.840.10008.5.1.4.1.1.481.8"
 RT_ION_BEAMS_TREATMENT_RECORD_STORAGE = "1.2.840.10008.5.1.4.1.1.481.9"
 RT_BRACHY_TREATMENT_RECORD_STORAGE = "1.2.840.10008.5.1.4.1.1.481.6"
 RT_TREATMENT_SUMMARY_RECORD_STORAGE = "1.2.840.10008.5.1.4.1.1.481.7"
+ENHANCED_RT_IMAGE_STORAGE = "1.2.840.10008.5.1.4.1.1.481.23"
+ENHANCED_CONTINUOUS_RT_IMAGE_STORAGE = "1.2.840.10008.5.1.4.1.1.481.24"
+RT_SEGMENT_ANNOTATION_STORAGE = "1.2.840.10008.5.1.4.1.1.481.11"
+RT_RADIATION_SET_STORAGE = "1.2.840.10008.5.1.4.1.1.481.12"
+C_ARM_PHOTON_ELECTRON_RADIATION_STORAGE = "1.2.840.10008.5.1.4.1.1.481.13"
+TOMOTHERAPEUTIC_RADIATION_STORAGE = "1.2.840.10008.5.1.4.1.1.481.14"
+ROBOTIC_ARM_RADIATION_STORAGE = "1.2.840.10008.5.1.4.1.1.481.15"
 RT_BEAMS_DELIVERY_INSTRUCTION_STORAGE = "1.2.840.10008.5.1.4.34.7"
 RT_BRACHY_APPLICATION_SETUP_DELIVERY_INSTRUCTION_STORAGE = "1.2.840.10008.5.1.4.34.10"
 RT_RADIATION_SET_DELIVERY_INSTRUCTION_STORAGE = "1.2.840.10008.5.1.4.1.1.481.21"
@@ -423,6 +430,18 @@ ION_TREATMENT_RECORD_FILE = "48-rt-ion-beams-record.dcm"
 # Record of its course, numbered after the files that open pull requests add.
 BRACHY_TREATMENT_RECORD_FILE = "49-rt-brachy-record.dcm"
 TREATMENT_SUMMARY_RECORD_FILE = "50-rt-treatment-summary-record.dcm"
+# The Enhanced RT Image and the Enhanced Continuous RT Image, each of the RT
+# Plan's beam, numbered after the files that open pull requests add.
+ENHANCED_RT_IMAGE_FILE = "51-rt-image-enhanced.dcm"
+ENHANCED_CONTINUOUS_RT_IMAGE_FILE = "52-rt-image-enhanced-continuous.dcm"
+# The RT Segment Annotation of the Segmentation, and the RT Radiation Set and
+# the three radiations, one of each second-generation radiation IOD, that it
+# gathers, numbered after the files that open pull requests add.
+SEGMENT_ANNOTATION_FILE = "70-rt-segment-annotation.dcm"
+RADIATION_SET_FILE = "71-rt-radiation-set.dcm"
+C_ARM_RADIATION_FILE = "72-c-arm-radiation.dcm"
+TOMOTHERAPEUTIC_RADIATION_FILE = "73-tomotherapeutic-radiation.dcm"
+ROBOTIC_ARM_RADIATION_FILE = "74-robotic-arm-radiation.dcm"
 # The delivery instructions of the RT Plan's beams, of its brachytherapy
 # application setups, and of the RT Radiation Set's radiations, numbered
 # after the files that open pull requests add.
@@ -521,6 +540,20 @@ BRACHY_TREATMENT_RECORD_SERIES = f"{LINKED_UID_ROOT}04600"
 BRACHY_TREATMENT_RECORD = f"{LINKED_UID_ROOT}04601"
 TREATMENT_SUMMARY_RECORD_SERIES = f"{LINKED_UID_ROOT}04700"
 TREATMENT_SUMMARY_RECORD = f"{LINKED_UID_ROOT}04701"
+ENHANCED_RT_IMAGE_SERIES = f"{LINKED_UID_ROOT}04800"
+ENHANCED_RT_IMAGE = f"{LINKED_UID_ROOT}04801"
+ENHANCED_CONTINUOUS_RT_IMAGE_SERIES = f"{LINKED_UID_ROOT}04900"
+ENHANCED_CONTINUOUS_RT_IMAGE = f"{LINKED_UID_ROOT}04901"
+SEGMENT_ANNOTATION_SERIES = f"{LINKED_UID_ROOT}06600"
+SEGMENT_ANNOTATION = f"{LINKED_UID_ROOT}06601"
+RADIATION_SET_SERIES = f"{LINKED_UID_ROOT}06700"
+RADIATION_SET = f"{LINKED_UID_ROOT}06701"
+C_ARM_RADIATION_SERIES = f"{LINKED_UID_ROOT}06800"
+C_ARM_RADIATION = f"{LINKED_UID_ROOT}06801"
+TOMOTHERAPEUTIC_RADIATION_SERIES = f"{LINKED_UID_ROOT}06900"
+TOMOTHERAPEUTIC_RADIATION = f"{LINKED_UID_ROOT}06901"
+ROBOTIC_ARM_RADIATION_SERIES = f"{LINKED_UID_ROOT}07000"
+ROBOTIC_ARM_RADIATION = f"{LINKED_UID_ROOT}07001"
 BEAMS_DELIVERY_INSTRUCTION_SERIES = f"{LINKED_UID_ROOT}07100"
 BEAMS_DELIVERY_INSTRUCTION = f"{LINKED_UID_ROOT}07101"
 BRACHY_DELIVERY_INSTRUCTION_SERIES = f"{LINKED_UID_ROOT}07200"
@@ -596,9 +629,10 @@ _REVIEWED_DUMMY_SEQUENCES = frozenset(
 # Where an RT Structure Set references every CT slice, not only the first.
 _RT_REFERENCED_CONTOUR_IMAGES = ("(3006,0010)", "(3006,0012)", "(3006,0014)")
 _REFERENCED_RT_PLAN_SEQUENCE = "(300C,0002)"
+_RT_RADIATION_SEQUENCE = "(300A,0616)"
+_REFERENCED_RT_RADIATION_SEQUENCE = "(300A,0630)"
 _REFERENCED_TREATMENT_RECORD_SEQUENCE = "(3008,0030)"
 _RELATED_REFERENCE_RT_IMAGE_SEQUENCE = "(0074,1040)"
-_REFERENCED_RT_RADIATION_SEQUENCE = "(300A,0630)"
 # The instance a reference names, by the innermost sequence that holds it.
 _TARGETS = types.MappingProxyType(
     {
@@ -609,6 +643,16 @@ _TARGETS = types.MappingProxyType(
         _CONTOUR_IMAGE_SEQUENCE: CT_SLICES[0],
         "(0008,1120)": PATIENT_REFERENCE,  # Referenced Patient Sequence
         "(0008,1111)": PROCEDURE_STEP,  # Referenced Performed Procedure Step
+    }
+)
+# The RT Radiation Set and the radiations, whose Modality PS3.3 Sections
+# A.86.1.4.4.1 to A.86.1.7.4.1 make RTRAD.
+_RADIATIONS = frozenset(
+    {
+        RT_RADIATION_SET_STORAGE,
+        C_ARM_PHOTON_ELECTRON_RADIATION_STORAGE,
+        TOMOTHERAPEUTIC_RADIATION_STORAGE,
+        ROBOTIC_ARM_RADIATION_STORAGE,
     }
 )
 _SOP_CLASSES = types.MappingProxyType(
@@ -656,6 +700,13 @@ _SOP_CLASSES = types.MappingProxyType(
         ION_TREATMENT_RECORD: RT_ION_BEAMS_TREATMENT_RECORD_STORAGE,
         BRACHY_TREATMENT_RECORD: RT_BRACHY_TREATMENT_RECORD_STORAGE,
         TREATMENT_SUMMARY_RECORD: RT_TREATMENT_SUMMARY_RECORD_STORAGE,
+        ENHANCED_RT_IMAGE: ENHANCED_RT_IMAGE_STORAGE,
+        ENHANCED_CONTINUOUS_RT_IMAGE: ENHANCED_CONTINUOUS_RT_IMAGE_STORAGE,
+        SEGMENT_ANNOTATION: RT_SEGMENT_ANNOTATION_STORAGE,
+        RADIATION_SET: RT_RADIATION_SET_STORAGE,
+        C_ARM_RADIATION: C_ARM_PHOTON_ELECTRON_RADIATION_STORAGE,
+        TOMOTHERAPEUTIC_RADIATION: TOMOTHERAPEUTIC_RADIATION_STORAGE,
+        ROBOTIC_ARM_RADIATION: ROBOTIC_ARM_RADIATION_STORAGE,
         BEAMS_DELIVERY_INSTRUCTION: RT_BEAMS_DELIVERY_INSTRUCTION_STORAGE,
         BRACHY_DELIVERY_INSTRUCTION: (
             RT_BRACHY_APPLICATION_SETUP_DELIVERY_INSTRUCTION_STORAGE
@@ -1392,6 +1443,70 @@ _SPECS = (
         PLAN,
         targets=((_REFERENCED_TREATMENT_RECORD_SEQUENCE, BRACHY_TREATMENT_RECORD),),
     ),
+    # The Enhanced RT Image, two digitally reconstructed radiographs of the
+    # RT Plan's beam, and the Enhanced Continuous RT Image, two frames of a
+    # kV acquisition during it, each referencing the RT Plan, as the RT Image
+    # does.
+    _Spec(
+        ENHANCED_RT_IMAGE_FILE,
+        ENHANCED_RT_IMAGE_STORAGE,
+        ENHANCED_RT_IMAGE,
+        ENHANCED_RT_IMAGE_SERIES,
+        PLAN,
+    ),
+    _Spec(
+        ENHANCED_CONTINUOUS_RT_IMAGE_FILE,
+        ENHANCED_CONTINUOUS_RT_IMAGE_STORAGE,
+        ENHANCED_CONTINUOUS_RT_IMAGE,
+        ENHANCED_CONTINUOUS_RT_IMAGE_SERIES,
+        PLAN,
+    ),
+    # The RT Segment Annotation annotates the BINARY Segmentation's segments.
+    # The RT Radiation Set gathers the C-Arm Photon-Electron Radiation, which
+    # its RT Radiation Sequence and Referenced RT Radiation Sequences name;
+    # each radiation names the structure set as the source of its Conceptual
+    # Volumes, as an RT Plan names the structure set that it was planned on.
+    _Spec(
+        SEGMENT_ANNOTATION_FILE,
+        RT_SEGMENT_ANNOTATION_STORAGE,
+        SEGMENT_ANNOTATION,
+        SEGMENT_ANNOTATION_SERIES,
+        SEGMENTATION,
+    ),
+    _Spec(
+        RADIATION_SET_FILE,
+        RT_RADIATION_SET_STORAGE,
+        RADIATION_SET,
+        RADIATION_SET_SERIES,
+        STRUCTURE_SET,
+        targets=(
+            (_RT_RADIATION_SEQUENCE, C_ARM_RADIATION),
+            (_REFERENCED_RT_RADIATION_SEQUENCE, C_ARM_RADIATION),
+        ),
+    ),
+    *(
+        _Spec(name, sop_class, instance, series, STRUCTURE_SET)
+        for name, sop_class, instance, series in (
+            (
+                C_ARM_RADIATION_FILE,
+                C_ARM_PHOTON_ELECTRON_RADIATION_STORAGE,
+                C_ARM_RADIATION,
+                C_ARM_RADIATION_SERIES,
+            ),
+            (
+                TOMOTHERAPEUTIC_RADIATION_FILE,
+                TOMOTHERAPEUTIC_RADIATION_STORAGE,
+                TOMOTHERAPEUTIC_RADIATION,
+                TOMOTHERAPEUTIC_RADIATION_SERIES,
+            ),
+            (
+                ROBOTIC_ARM_RADIATION_FILE,
+                ROBOTIC_ARM_RADIATION_STORAGE,
+                ROBOTIC_ARM_RADIATION,
+                ROBOTIC_ARM_RADIATION_SERIES,
+            ),
+        )
+    ),
     # The RT Beams Delivery Instruction instructs the delivery of the RT
     # Plan's beams: it references the RT Plan, names the RT Beams Treatment
     # Record as the record of the session that it continues, and names the
@@ -2111,6 +2226,15 @@ class _Instance:
             put((), "(0008,0008)", ["DERIVED", "SECONDARY", "DRR"])
             put((), "(3002,000C)", ["NORMAL"])  # RT Image Plane
             self._add_pixels(16, 0, struct.pack("<4H", 0, 100, 200, 300))
+        elif self.spec.sop_class in (
+            ENHANCED_RT_IMAGE_STORAGE,
+            ENHANCED_CONTINUOUS_RT_IMAGE_STORAGE,
+        ):
+            self._add_enhanced_rt_image()
+        elif self.spec.sop_class == RT_SEGMENT_ANNOTATION_STORAGE:
+            put((), "(0008,0060)", ["RTSEGANN"])
+        elif self.spec.sop_class in _RADIATIONS:
+            put((), "(0008,0060)", ["RTRAD"])
         else:
             put((), "(0008,0060)", ["RTDOSE"])
             put((), "(0020,0032)", ["-1", "-1", "0"])
@@ -2123,6 +2247,33 @@ class _Instance:
             put((), "(3004,000C)", ["0", "2"])
             put((), "(3004,000E)", ["0.001"])
             self._add_pixels(32, 0, struct.pack("<8I", *range(0, 8000, 1000)))
+
+    def _add_enhanced_rt_image(self) -> None:
+        """Add the attributes that make the instance an Enhanced or Enhanced
+        Continuous RT Image.
+
+        It holds two frames of 2 by 2 pixels, whose spacing the Shared
+        Functional Groups Sequence (5200,9229) gives. An Enhanced Continuous
+        RT Image's Selected Frame Functional Groups Sequence (3002,0101) has
+        an item for each frame, which names it by its Selected Frame Number
+        (3002,0100), as the Sparse Multi-frame Functional Groups Module of
+        PS3.3 C.7.6.29 describes a selection of the frames; the markers of
+        the macros are planted in the first.
+        """
+        put = self._set
+        continuous = self.spec.sop_class == ENHANCED_CONTINUOUS_RT_IMAGE_STORAGE
+        put((), "(0008,0060)", ["RTIMAGE"])
+        if continuous:
+            put((), "(0008,0008)", ["ORIGINAL", "PRIMARY", "SIMULATOR", "NONE"])
+        else:
+            put((), "(0008,0008)", ["DERIVED", "PRIMARY", "DRR", "NONE"])
+        put((), "(0028,0008)", ["2"])
+        shared = _items(["(5200,9229)"])
+        put((*shared, ("(0028,9110)", 0)), "(0028,0030)", ["1", "1"])
+        if continuous:
+            for frame in range(2):
+                put((("(3002,0101)", frame),), "(3002,0100)", [str(frame + 1)])
+        self._add_pixels(16, 0, struct.pack("<8H", *range(0, 800, 100)))
 
     def _add_registration(self) -> None:
         """Add the attributes that make the instance a rigid or deformable registration."""
@@ -2372,7 +2523,11 @@ class _Instance:
             put((), "(0028,0004)", ["MONOCHROME2"])
         put((), "(0028,0010)", [size])
         put((), "(0028,0011)", [size])
-        if self.spec.sop_class not in _SEGMENTATIONS:
+        if self.spec.sop_class not in (
+            *_SEGMENTATIONS,
+            ENHANCED_RT_IMAGE_STORAGE,
+            ENHANCED_CONTINUOUS_RT_IMAGE_STORAGE,
+        ):
             put((), "(0028,0030)", ["1", "1"])
         put((), "(0028,0100)", [bits])
         put((), "(0028,0101)", [bits])
