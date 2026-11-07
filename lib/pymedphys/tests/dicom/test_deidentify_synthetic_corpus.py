@@ -250,9 +250,9 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "59-pr-blending.dcm",
         "60-pr-xa-xrf-grayscale.dcm",
         "61-pr-variable-modality-lut.dcm",
-        "62-pr-planar-mpr.dcm",
-        "63-pr-volume-rendering.dcm",
-        "64-pr-advanced-blending.dcm",
+        "86-pr-planar-mpr.dcm",
+        "87-pr-volume-rendering.dcm",
+        "88-pr-advanced-blending.dcm",
     ]
     assert [file.manifest.iod for file in corpus.files] == [
         "CT Image",
@@ -386,7 +386,7 @@ def test_every_attribute_of_table_e1_1_that_the_iod_defines_is_placed(corpus):
 # Reference Module's Referenced Instance Sequence does not define them.
 # Other files plant them at a shallower place.
 CAPPED_ONLY = {
-    "64-pr-advanced-blending.dcm": {"(0400,0402)", "(0400,0403)", "(0400,0404)"}
+    "88-pr-advanced-blending.dcm": {"(0400,0402)", "(0400,0403)", "(0400,0404)"}
 }
 
 
