@@ -379,14 +379,25 @@ def test_every_attribute_of_table_e1_1_that_the_iod_defines_is_placed(corpus):
         assert max(found.values()) == 1, file.name
 
 
-# The attributes of Table E.1-1 that the corpus's IODs define only below the
-# depth cap, five items deep in a functional group of the Enhanced RT
-# Images: Radiation Generation Mode Label and Description, in the items of
-# Radiation Generation Mode Sequence (300A,067B), and Referenced Treatment
-# Position Group UID, in those of Treatment Position Group Sequence
+# The attributes of Table E.1-1 that an instance of the corpus's IODs defines
+# only below the depth cap: five items deep in a functional group of the
+# Enhanced RT Images, Radiation Generation Mode Label and Description, in the
+# items of Radiation Generation Mode Sequence (300A,067B), and Referenced
+# Treatment Position Group UID, in those of Treatment Position Group Sequence
 # (300A,060A). Their actions are tested on an Enhanced RT Image apart, in
-# test_deidentify_instance_transform.py.
-ONLY_BEYOND_THE_DEPTH_CAP = {"(300A,067C)", "(300A,067D)", "(300A,0785)"}
+# test_deidentify_instance_transform.py. In the RT Radiation Set Delivery
+# Instruction, Referenced, Constituent, and Source Conceptual Volume UID lie
+# five or six items deep, in the Conceptual Volume Macro of a task's patient
+# position displacement; the RT Radiation Set and the radiations hold them
+# less deep, and their actions in the instruction are tested apart there too.
+ONLY_BEYOND_THE_DEPTH_CAP = {
+    "(300A,067C)",
+    "(300A,067D)",
+    "(300A,0785)",
+    "(3010,000B)",
+    "(3010,0013)",
+    "(3010,0015)",
+}
 
 
 def test_attributes_are_not_planted_only_beyond_the_depth_cap(corpus):
