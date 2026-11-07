@@ -136,6 +136,13 @@ ION_REVIEWED_AGAINST = DOSE_SR_REVIEWED_AGAINST + RADIATION_DOSE_SR_IODS
 # and which the first supported release now supports.
 RECORD_IODS = ("RT Brachy Treatment Record", "RT Treatment Summary Record")
 RECORD_REVIEWED_AGAINST = ION_REVIEWED_AGAINST + ION_IODS
+# The three RT delivery instruction IODs, of the 16 second-generation RT IODs
+# below, which the first supported release now supports.
+SUPPORTED_DELIVERY_IODS = (
+    "RT Beams Delivery Instruction",
+    "RT Brachy Application Setup Delivery Instruction",
+    "RT Radiation Set Delivery Instruction",
+)
 SUPPORTED_IODS = (
     REVIEWED_AGAINST
     + SUPPORTED_TARGET_IODS
@@ -144,6 +151,7 @@ SUPPORTED_IODS = (
     + SUPPORTED_OTHER_SR_IODS
     + ION_IODS
     + RECORD_IODS
+    + SUPPORTED_DELIVERY_IODS
 )
 CLEAN_DESCRIPTORS = "clean_descriptors"
 DEVICE_IDENTITY = "retain_device_identity"
@@ -1224,12 +1232,14 @@ SECOND_GENERATION_OTHER_VRS = {
 }
 
 
-def test_the_second_generation_rt_iods_are_generated_and_not_yet_supported():
+def test_the_second_generation_rt_iods_are_generated_and_the_delivery_ones_supported():
     tables = iods.load_iod_tables()
 
     assert len(SECOND_GENERATION_RT_IODS) == 16
     assert set(SECOND_GENERATION_RT_IODS) <= set(tables.iods)
-    assert not set(SECOND_GENERATION_RT_IODS) & scope.SUPPORTED_IODS
+    assert set(SECOND_GENERATION_RT_IODS) & scope.SUPPORTED_IODS == set(
+        SUPPORTED_DELIVERY_IODS
+    )
 
 
 @pytest.mark.deid_requirement("MIDI-BP-05", "MIDI-BP-06", "MIDI-BP-11")
