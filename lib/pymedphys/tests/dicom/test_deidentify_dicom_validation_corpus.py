@@ -80,17 +80,30 @@ BOTH_VALIDATED = "input validated, output validated"
 BOTH_FAILED = "input failed, output failed"
 BOTH_UNSUPPORTED = "input unsupported, output unsupported"
 # The corpus's SOP Classes that dicom3tools' January 2024 snapshot does not
-# know, including Label Map Segmentation.
+# know, including Label Map Segmentation and the XA/XRF Grayscale and Variable
+# Modality LUT Softcopy, Grayscale Planar MPR Volumetric, and Volume Rendering
+# Volumetric Presentation States, which it names but has no IOD for, and the
+# Waveform and Waveform Acquisition Presentation States, which it does not name.
+# pydicom 3.0.2 names neither Label Map Segmentation nor either Waveform
+# Presentation State, so their instances are counted together as "other", once.
 UNKNOWN_TO_DICOM3TOOLS = tuple(
-    dicom_validation.sop_class_name(uid)
-    for uid in (
-        corpus_module.EXTENSIBLE_SR_STORAGE,
-        corpus_module.ENHANCED_X_RAY_RADIATION_DOSE_SR_STORAGE,
-        corpus_module.PATIENT_RADIATION_DOSE_SR_STORAGE,
-        corpus_module.LABEL_MAP_SEGMENTATION_STORAGE,
-        corpus_module.COLON_CAD_SR_STORAGE,
-        corpus_module.MACULAR_GRID_THICKNESS_AND_VOLUME_REPORT_STORAGE,
-        corpus_module.WAVEFORM_ANNOTATION_SR_STORAGE,
+    dict.fromkeys(
+        dicom_validation.sop_class_name(uid)
+        for uid in (
+            corpus_module.EXTENSIBLE_SR_STORAGE,
+            corpus_module.ENHANCED_X_RAY_RADIATION_DOSE_SR_STORAGE,
+            corpus_module.PATIENT_RADIATION_DOSE_SR_STORAGE,
+            corpus_module.LABEL_MAP_SEGMENTATION_STORAGE,
+            corpus_module.COLON_CAD_SR_STORAGE,
+            corpus_module.MACULAR_GRID_THICKNESS_AND_VOLUME_REPORT_STORAGE,
+            corpus_module.WAVEFORM_ANNOTATION_SR_STORAGE,
+            corpus_module.XA_XRF_GRAYSCALE_SOFTCOPY_PRESENTATION_STATE_STORAGE,
+            corpus_module.VARIABLE_MODALITY_LUT_SOFTCOPY_PRESENTATION_STATE_STORAGE,
+            corpus_module.GRAYSCALE_PLANAR_MPR_VOLUMETRIC_PRESENTATION_STATE_STORAGE,
+            corpus_module.VOLUME_RENDERING_VOLUMETRIC_PRESENTATION_STATE_STORAGE,
+            corpus_module.WAVEFORM_PRESENTATION_STATE_STORAGE,
+            corpus_module.WAVEFORM_ACQUISITION_PRESENTATION_STATE_STORAGE,
+        )
     )
 )
 
@@ -212,8 +225,8 @@ def test_every_validator_ran_over_every_released_instance(comparison):
         BOTH_VALIDATED: comparison.pairs
     }
     # dciodvfy checks every input and output but the corpus's RT Dose in
-    # Implicit VR, whose 32-bit pixels abort it on both, and its reports and
-    # label map Segmentation, whose SOP Classes dicom3tools' January 2024
+    # Implicit VR, whose 32-bit pixels abort it on both, and the instances of
+    # UNKNOWN_TO_DICOM3TOOLS, whose SOP Classes dicom3tools' January 2024
     # snapshot does not know.
     statuses = dict(comparison.tallies[DCIODVFY]["statuses"])
     failed = statuses.pop(BOTH_FAILED, 0)
