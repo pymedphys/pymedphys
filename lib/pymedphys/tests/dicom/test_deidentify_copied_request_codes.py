@@ -339,6 +339,14 @@ def _with_copied_code(dataset):
     return dataset
 
 
+def _collected(result):
+    return result.evidence.collected
+
+
+def _removed(result):
+    return result.evidence.removed
+
+
 def test_the_basic_profile_removes_the_request_and_keeps_the_procedure_code():
     transform = InstanceTransform(
         compose_custom_policy(()), KEY, unvalidated_policy=True
@@ -348,9 +356,9 @@ def test_the_basic_profile_removes_the_request_and_keeps_the_procedure_code():
     result = transform(data, InstanceRecord.from_file(data))
 
     assert isinstance(result, run.Transformed)
-    collected = {value.source: value for value in result.evidence.collected}
+    collected = {value.source: value for value in _collected(result)}
     for tag in REQUESTED:
-        assert collected[_requested(tag)] in result.evidence.removed
+        assert collected[_requested(tag)] in _removed(result)
     procedure = ElementPath((("(0008,1032)", 0),), CODE_MEANING)
     assert procedure not in collected
 

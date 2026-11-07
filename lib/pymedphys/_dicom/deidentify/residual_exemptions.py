@@ -716,9 +716,7 @@ def copied_request_code(
     if (
         finding.location.region is not Region.DATA_SET
         or element is None
-        or source.tag not in COPIED_CODE_ATTRIBUTES
-        or not source.items
-        or source.items[-1][0] != REQUESTED_PROCEDURE_CODE
+        or not _requested_code(source)
         or element.tag != source.tag
         or not element.items
     ):
@@ -732,6 +730,19 @@ def copied_request_code(
     if whole_values(values, written, text, _TEXT_KINDS):
         return Exemption.COPIED_REQUEST_CODE
     return None
+
+
+def _requested_code(source: ElementPath) -> bool:
+    """Return whether a source is a copied attribute of a requested procedure code.
+
+    It must be the Code Value, Coding Scheme Designator, or Code Meaning of
+    an item directly in Requested Procedure Code Sequence (0032,1064).
+    """
+    return (
+        source.tag in COPIED_CODE_ATTRIBUTES
+        and bool(source.items)
+        and source.items[-1][0] == REQUESTED_PROCEDURE_CODE
+    )
 
 
 def standard_code_meanings(
