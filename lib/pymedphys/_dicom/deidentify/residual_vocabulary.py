@@ -38,17 +38,22 @@ only where all of these hold:
   :func:`~pymedphys._dicom.deidentify.reviewed_descriptors.echoes_identifier`
   finds it, among every person name and every Patient ID (0010,0020),
   Issuer of Patient ID (0010,0021), and Other Patient IDs (0010,1000) that
-  the run collected for the subject, at any depth; and
-- the finding's source does not name, code, or address a place, an
-  organisation, or a device (:func:`institutional`): an institution, a
-  department, a station or its AE title, a location, an organisation, a
-  clinical trial site, an address or telephone number, or a device's
-  identifier, of :data:`INSTITUTIONAL_SOURCES`, nor an element in an item of
-  one of their code sequences, :data:`INSTITUTIONAL_SEQUENCES`, at any
-  depth. Each is an attribute of PS3.15 Table E.1-1 whose value can be a
-  site's own name for itself or its equipment, which a meaning of
-  vocabulary words, such as ``CT HEAD`` holding a station named ``HEAD``,
-  must not release.
+  the run collected for the subject, at any depth;
+- the finding's source is one of :data:`DESCRIPTIVE_SOURCES`, at any depth:
+  a description, comment, or technique descriptor of the study, procedure,
+  series, or image, a contrast agent or radiopharmaceutical, or an SR
+  TEXT content item's value, each of which describes the examination
+  rather than naming anyone or anything. Every other source stays under
+  review, so an attribute that names a place, an organisation, a station,
+  or a device, such as Station Name or Gantry ID, or a private element,
+  which can hold any of them, is never exempt, however the kept meaning
+  reads: a station named ``HEAD`` found in a kept ``CT HEAD`` is still seen;
+  and
+- the source is not in an item of one of :data:`INSTITUTIONAL_SEQUENCES`,
+  nor one of :data:`INSTITUTIONAL_SOURCES` (:func:`institutional`), which
+  list the attributes of PS3.15 Table E.1-1 that name, code, or address a
+  place, an organisation, or a device. None of them is descriptive, so this
+  repeats the test above for a descriptive attribute nested in such an item.
 
 Whatever removed text is found inside a meaning made only of technique and
 anatomy words is itself such words, so the finding reveals nothing that the
@@ -73,9 +78,42 @@ from .reviewed_descriptors import echoes_identifier
 from .technique_descriptors import load_technique_vocabulary
 
 _CODE_MEANING = "(0008,0104)"
+# The removed values that describe the examination, whose finding in a kept
+# meaning of vocabulary words can be released.
+DESCRIPTIVE_SOURCES = frozenset(
+    {
+        # Descriptions and comments of the study, procedure, and image.
+        "(0008,1030)",  # Study Description
+        "(0032,1060)",  # Requested Procedure Description
+        "(0040,0007)",  # Scheduled Procedure Step Description
+        "(0040,0254)",  # Performed Procedure Step Description
+        "(0040,1400)",  # Requested Procedure Comments
+        "(0032,4000)",  # Study Comments
+        "(0040,0280)",  # Comments on the Performed Procedure Step
+        "(0040,0400)",  # Comments on the Scheduled Procedure Step
+        "(0020,4000)",  # Image Comments
+        # Technique descriptors (D-036) and the device's processing.
+        "(0008,103E)",  # Series Description
+        "(0018,1030)",  # Protocol Name
+        "(0018,0024)",  # Sequence Name
+        "(0008,2111)",  # Derivation Description
+        "(0028,1055)",  # Window Center & Width Explanation
+        "(0054,1101)",  # Attenuation Correction Method
+        "(0054,1105)",  # Scatter Correction Method
+        "(0054,1103)",  # Reconstruction Method
+        "(0018,1400)",  # Acquisition Device Processing Description
+        # What was given.
+        "(0018,0010)",  # Contrast/Bolus Agent
+        "(0018,1040)",  # Contrast/Bolus Route
+        "(0018,0031)",  # Radiopharmaceutical
+        # An SR TEXT content item's value.
+        "(0040,A160)",  # Text Value
+    }
+)
 # The attributes of PS3.15 Table E.1-1 that name or address a place, an
 # organisation, or a device, whose value a site can write as words of the
-# vocabulary.
+# vocabulary. None is descriptive; listing them also keeps such a source
+# out of any rule that reads this module.
 INSTITUTIONAL_SOURCES = frozenset(
     {
         # Institutions and departments.
@@ -125,6 +163,14 @@ INSTITUTIONAL_SOURCES = frozenset(
         "(0020,3401)",  # Modifying Device ID
         "(3010,001B)",  # Device Alternate Identifier
         "(3010,002D)",  # Device Label
+        "(3010,0043)",  # Manufacturer's Device Identifier
+        "(0018,1008)",  # Gantry ID
+        "(0018,1007)",  # Cassette ID
+        "(0018,1004)",  # Plate ID
+        "(0018,1005)",  # Generator ID
+        # Clinical trial organisations.
+        "(0012,0010)",  # Clinical Trial Sponsor Name
+        "(0012,0081)",  # Clinical Trial Protocol Ethics Committee Name
     }
 )
 # The sequences of Table E.1-1 whose items code or name one of them.
@@ -173,6 +219,7 @@ def vocabulary_meaning(
         or element is None
         or element.tag != _CODE_MEANING
         or not element.items
+        or finding.source.tag not in DESCRIPTIVE_SOURCES
         or institutional(finding.source)
     ):
         return None
