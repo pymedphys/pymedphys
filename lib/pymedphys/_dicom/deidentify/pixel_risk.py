@@ -758,7 +758,7 @@ _RT_IMAGE = "1.2.840.10008.5.1.4.1.1.481.1"
 # Nuclear Medicine Image Storage (PS3.4 Table B.5-1), the one Storage SOP
 # Class of the Nuclear Medicine Image IOD. Each instance is reported,
 # whatever its Image Type and Number of Frames: by the third value of its
-# Image Type (PS3.3 Section C.8.4.6.1.1), it is a volume reconstructed from
+# Image Type (PS3.3 Section C.8.4.9.1.1), it is a volume reconstructed from
 # a tomographic acquisition (RECON TOMO or RECON GATED TOMO), the
 # projections at each angle of the detectors' rotation from which such a
 # volume is reconstructed (TOMO or GATED TOMO), among them lateral views,

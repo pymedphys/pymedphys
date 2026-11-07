@@ -141,13 +141,15 @@ RECORD_REVIEWED_AGAINST = ION_REVIEWED_AGAINST + ION_IODS
 # supports, whose attributes the tests at the end of this module review.
 NM_IODS = ("Nuclear Medicine Image",)
 # The text attributes that it uses and the IODs above do not, by group,
-# checked by hand against the 2026d PS3.3 Tables C.8-6 and C.8-7 and PS3.6:
-# Processing Function, a description of the processing, is cleaned as a
-# descriptor; Energy Window Name, which the camera writes from its window
-# settings, is kept; and Image ID, which the user or equipment generates, is
-# among REMOVED_UNDER_EVERY_OPTION.
-NM_OPERATOR_TEXT = {"(0018,5020)"}  # Processing Function
-NM_KEPT_TEXT = {"(0054,0018)"}  # Energy Window Name
+# checked by hand against the 2026d PS3.3 Tables C.8-9 and C.8-10 and PS3.6:
+# Processing Function, a description of the processing, and Energy Window
+# Name, which PS3.3 calls user defined, are cleaned as descriptors; and Image
+# ID, which the user or equipment generates, is among
+# REMOVED_UNDER_EVERY_OPTION.
+NM_OPERATOR_TEXT = {
+    "(0018,5020)",  # Processing Function
+    "(0054,0018)",  # Energy Window Name
+}
 NM_REMOVED_UNDER_EVERY_OPTION = {"(0054,0400)"}  # Image ID
 SUPPORTED_IODS = (
     REVIEWED_AGAINST
@@ -444,11 +446,11 @@ def test_the_rules_for_omitted_text_fall_in_the_reviewed_groups():
 
     assert groups == {
         # Operator-typed labels and text.
-        ("X/Z/D", ((CLEAN_DESCRIPTORS, "C"),)): 81,
+        ("X/Z/D", ((CLEAN_DESCRIPTORS, "C"),)): 82,
         # Accessory and equipment identifiers.
         ("X/Z/D", ((DEVICE_IDENTITY, "K"),)): 30,
         # Coded and technical values, and De-identification Method.
-        ("K", ()): 44,
+        ("K", ()): 43,
         # Names and identifiers of people, organisations, records, and
         # networks, identifiers that a device reads, and the text of overlays.
         ("X/Z/D", ()): 18,
@@ -1160,9 +1162,7 @@ def test_each_group_takes_the_action_of_its_option(
         assert composed[tag] == operator_text, tag
     for tag in ACCESSORY_IDENTIFIERS:
         assert composed[tag] == accessory_identifier, tag
-    for tag in (
-        KEPT_TEXT | ADDED_KEPT_TEXT | RT_IMAGE_KEPT_TEXT | ION_KEPT_TEXT | NM_KEPT_TEXT
-    ):
+    for tag in KEPT_TEXT | ADDED_KEPT_TEXT | RT_IMAGE_KEPT_TEXT | ION_KEPT_TEXT:
         assert composed[tag] == "K", tag
 
 
@@ -1195,7 +1195,7 @@ def test_the_basic_profile_keeps_only_the_reviewed_coded_and_technical_text():
 
     assert len(basic) == 302
     assert {tag for tag, action in basic.items() if action == "K"} == (
-        KEPT_TEXT | ADDED_KEPT_TEXT | RT_IMAGE_KEPT_TEXT | ION_KEPT_TEXT | NM_KEPT_TEXT
+        KEPT_TEXT | ADDED_KEPT_TEXT | RT_IMAGE_KEPT_TEXT | ION_KEPT_TEXT
     )
     assert set(basic.values()) - {"K"} <= REMOVING_ACTIONS
 
@@ -1215,7 +1215,6 @@ def test_no_option_keeps_more_than_the_coded_text_and_device_identity():
             | ADDED_KEPT_TEXT
             | RT_IMAGE_KEPT_TEXT
             | ION_KEPT_TEXT
-            | NM_KEPT_TEXT
             | (device_identity if DEVICE_IDENTITY in composed.options else set())
         )
         assert kept == expected, composed.options
@@ -1945,7 +1944,6 @@ def test_a_new_attribute_that_table_e1_1_omits_needs_a_rule_by_its_vr(
 # The Nuclear Medicine Image IOD's text, by group, with the action of each.
 NM_TEXT_GROUPS: tuple[tuple[set[str], str, dict[str, str]], ...] = (
     (NM_OPERATOR_TEXT, "X/Z/D", {CLEAN_DESCRIPTORS: "C"}),
-    (NM_KEPT_TEXT, "K", {}),
     (NM_REMOVED_UNDER_EVERY_OPTION, "X/Z/D", {}),
 )
 # The IODs that the Nuclear Medicine Image IOD was reviewed against: every
@@ -1975,7 +1973,7 @@ def test_the_text_that_only_the_nm_iod_uses_has_reviewed_rules():
     rules = _rules()
 
     assert not added & listed
-    assert added == NM_OPERATOR_TEXT | NM_KEPT_TEXT | NM_REMOVED_UNDER_EVERY_OPTION
+    assert added == NM_OPERATOR_TEXT | NM_REMOVED_UNDER_EVERY_OPTION
     for tags, action, options in NM_TEXT_GROUPS:
         for tag in tags:
             assert (rules[tag].action, dict(rules[tag].options)) == (
@@ -2002,9 +2000,16 @@ def test_the_nm_text_that_is_removed_is_type_3_so_removal_by_type_removes_it():
     removed = NM_OPERATOR_TEXT | NM_REMOVED_UNDER_EVERY_OPTION
     definitions = [d for d in iod.definitions if d.tag in removed]
 
-    assert {d.tag for d in definitions} == removed
+    # Processing Function and Image ID are in the NM Image Module, and Energy
+    # Window Name in the items of the NM Isotope Module's Energy Window
+    # Information Sequence (0054,0012).
+    assert {(d.tag, d.path) for d in definitions} == {
+        ("(0018,5020)", ()),
+        ("(0054,0018)", ("(0054,0012)",)),
+        ("(0054,0400)", ()),
+    }
     for definition in definitions:
-        assert (definition.path, definition.type) == ((), "3"), definition
+        assert definition.type == "3", definition
         assert (
             compound_actions.resolve_in_iod(
                 iod, definition.tag, definition.path, rules[definition.tag].action

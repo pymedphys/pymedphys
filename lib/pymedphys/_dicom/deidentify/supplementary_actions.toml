@@ -180,7 +180,7 @@ tag = "(0018,5020)"
 keyword = "ProcessingFunction"
 action = "X/Z/D"
 options = { clean_descriptors = "C" }
-note = "A code or description of the processing applied to a Nuclear Medicine image (PS3.3 Table C.8-6). The camera or workstation usually writes it, but PS3.3 defines it as free text, so it is removed by Type, and cleaned as a descriptor under Clean Descriptors, as Reconstruction Method is."
+note = "A code or description of the processing applied to a Nuclear Medicine image (PS3.3 Table C.8-9). The camera or workstation usually writes it, but PS3.3 defines it as free text, so it is removed by Type, and cleaned as a descriptor under Clean Descriptors, as Reconstruction Method is."
 
 [[attribute]]
 tag = "(0018,9046)"
@@ -279,6 +279,13 @@ keyword = "ContainerComponentDescription"
 action = "X/Z/D"
 options = { clean_descriptors = "C" }
 note = "A free-text description of a specimen container component. It is removed by Type, and cleaned as a descriptor under Clean Descriptors, as Table E.1-1 does for Container Description."
+
+[[attribute]]
+tag = "(0054,0018)"
+keyword = "EnergyWindowName"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "A user-defined name of one of a Nuclear Medicine acquisition's energy windows, such as its photopeak or a scatter window (PS3.3 Table C.8-10). A person names it, so it can hold anything, and the window's limits, in Energy Window Range Sequence, and Energy Window Vector, which gives each frame's window, keep what scatter correction needs without it. It is removed by Type, and cleaned as a descriptor under Clean Descriptors."
 
 [[attribute]]
 tag = "(0054,1101)"
@@ -1027,12 +1034,6 @@ action = "K"
 note = "The units of the output of a Modality LUT, a Defined Term such as OD or HU that it shares with Rescale Type (PS3.3 C.11.1.1.2). It identifies no one, and replacing it would change how the pixel values are read, so it is kept, as Rescale Type is."
 
 [[attribute]]
-tag = "(0054,0018)"
-keyword = "EnergyWindowName"
-action = "K"
-note = "The name of one of a Nuclear Medicine acquisition's energy windows, such as its photopeak or a scatter window, which the camera writes from the acquisition protocol's window settings (PS3.3 Table C.8-7). It is a technical value, like Collimator/grid Name, and tells which window a frame was acquired in, which scatter correction needs, so it is kept, accepting the residual risk that a site names a window after a person."
-
-[[attribute]]
 tag = "(0066,0031)"
 keyword = "AlgorithmVersion"
 action = "K"
@@ -1201,7 +1202,7 @@ note = "The identifier of a referenced HL7 document, a UID with an optional exte
 tag = "(0054,0400)"
 keyword = "ImageID"
 action = "X/Z/D"
-note = "An identifier of a Nuclear Medicine image that PS3.3 says the user or the equipment generates (Table C.8-6), so it can be typed with a patient's name or a record number. It is removed by Type under every option, like other identifiers of records."
+note = "An identifier of a Nuclear Medicine image that PS3.3 says the user or the equipment generates (Table C.8-9), so it can be typed with a patient's name or a record number. It is removed by Type under every option, like other identifiers of records."
 
 [[attribute]]
 tag = "(0062,0020)"

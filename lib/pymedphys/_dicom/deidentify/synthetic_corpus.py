@@ -418,7 +418,7 @@ BRACHY_TREATMENT_RECORD_FILE = "49-rt-brachy-record.dcm"
 TREATMENT_SUMMARY_RECORD_FILE = "50-rt-treatment-summary-record.dcm"
 # The Nuclear Medicine image, a SPECT volume reconstructed in the collection's
 # Frame of Reference, numbered after the files that open pull requests add.
-NM_FILE = "51-nm.dcm"
+NM_FILE = "53-nm.dcm"
 # The directory, within the one that write_corpus is given, of the files.
 INSTANCES_DIRECTORY = "instances"
 
@@ -511,8 +511,8 @@ BRACHY_TREATMENT_RECORD_SERIES = f"{LINKED_UID_ROOT}04600"
 BRACHY_TREATMENT_RECORD = f"{LINKED_UID_ROOT}04601"
 TREATMENT_SUMMARY_RECORD_SERIES = f"{LINKED_UID_ROOT}04700"
 TREATMENT_SUMMARY_RECORD = f"{LINKED_UID_ROOT}04701"
-NM_SERIES = f"{LINKED_UID_ROOT}04800"
-NM = f"{LINKED_UID_ROOT}04801"
+NM_SERIES = f"{LINKED_UID_ROOT}05000"
+NM = f"{LINKED_UID_ROOT}05001"
 # A patient and a procedure step that the collection names but does not hold.
 PATIENT_REFERENCE = f"{LINKED_UID_ROOT}00003"
 PROCEDURE_STEP = f"{LINKED_UID_ROOT}00004"
