@@ -444,7 +444,6 @@ def test_overlay_data_is_type_1_only_at_the_top_level_of_a_user_optional_module(
     assert usage["Overlay Plane"] == "U"
 
 
-
 @pytest.mark.deid_requirement("MIDI-BP-03")
 def test_the_overlay_plane_module_is_conditional_only_in_the_known_iods(tables):
     # Removing an overlay's group keeps the output valid only where the
