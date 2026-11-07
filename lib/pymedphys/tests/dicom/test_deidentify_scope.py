@@ -60,6 +60,7 @@ SUPPORTED = {
     "1.2.840.10008.5.1.4.1.1.4.2": "MR Spectroscopy",
     "1.2.840.10008.5.1.4.1.1.4.3": "Enhanced MR Color Image",
     "1.2.840.10008.5.1.4.1.1.4.4": "Legacy Converted Enhanced MR Image",
+    "1.2.840.10008.5.1.4.1.1.20": "Nuclear Medicine Image",
     "1.2.840.10008.5.1.4.1.1.128": "Positron Emission Tomography Image",
     "1.2.840.10008.5.1.4.1.1.130": "Enhanced PET Image",
     "1.2.840.10008.5.1.4.1.1.128.1": "Legacy Converted Enhanced PET Image",
@@ -107,6 +108,7 @@ def test_the_first_release_supports_ct_mr_pet_rt_registration_seg_and_sr_objects
         "Enhanced MR Color Image",
         "Legacy Converted Enhanced MR Image",
         "MR Spectroscopy",
+        "Nuclear Medicine Image",
         "Positron Emission Tomography Image",
         "Enhanced PET Image",
         "Legacy Converted Enhanced PET Image",
@@ -206,7 +208,6 @@ def test_padding_is_ignored():
         # that are not images, the segmentations of other IODs, parametric
         # maps, spatial fiducials, and second-generation RT objects, including
         # the second-generation RT images.
-        ("1.2.840.10008.5.1.4.1.1.20", "Nuclear Medicine Image"),
         ("1.2.840.10008.5.1.4.1.1.6.1", "Ultrasound Image"),
         ("1.2.840.10008.5.1.4.1.1.200.2", "CT Performed Procedure Protocol"),
         ("1.2.840.10008.5.1.4.1.1.66.5", "Surface Segmentation"),
@@ -327,13 +328,13 @@ def test_the_table_can_be_given():
     table = sop_classes.load_storage_sop_classes()
     plan = next(row for row in table.rows if row.name == "RT Plan Storage")
     altered = dataclasses.replace(
-        table, rows=(dataclasses.replace(plan, iod="Nuclear Medicine Image IOD"),)
+        table, rows=(dataclasses.replace(plan, iod="Ultrasound Image IOD"),)
     )
 
     found = scope.classify(plan.uid, EXPLICIT_LE, sop_classes=altered)
 
     assert found == scope.Classification(
-        Disposition.UNSUPPORTED_IOD, "Nuclear Medicine Image"
+        Disposition.UNSUPPORTED_IOD, "Ultrasound Image"
     )
     # CT Image Storage is not in the altered table.
     ct = scope.classify("1.2.840.10008.5.1.4.1.1.2", EXPLICIT_LE, sop_classes=altered)

@@ -80,10 +80,11 @@ indicator. Findings name attribute paths, never values.
 every CT, MR, and PET volume, and every RT Dose grid of more than one
 frame, may hold a reconstructable face; so may a CT, MR, or PET localizer,
 which can show the face in profile, and so may an RT Image, a projection
-such as a lateral DRR, and a Segmentation, whose segment of the skin or
-body traces the profile; and one whose attributes, or a Segmentation's
-segments, name a region of the head or neck in a reviewed list from PS3.16
-Annex L says that it does.
+such as a lateral DRR, a Nuclear Medicine image, whether a reconstructed
+volume, the projections it is reconstructed from, or a planar projection,
+and a Segmentation, whose segment of the skin or body traces the profile;
+and one whose attributes, or a Segmentation's segments, name a region of
+the head or neck in a reviewed list from PS3.16 Annex L says that it does.
 :func:`series_evidence` gives the part of an instance that it reads.
 
 Reading leaves the data set as it was: pydicom converts an element read from
@@ -139,6 +140,7 @@ class Indicator(enum.Enum):
     RT_DOSE_VOLUME = "rt-dose-volume"
     LOCALIZER = "localizer"
     RT_IMAGE = "rt-image"
+    NM_IMAGE = "nm-image"
     SEGMENTATION = "segmentation"
     HEAD_OR_NECK = "head-or-neck"
     SUV_UNITS = "suv-units"
@@ -165,6 +167,7 @@ _RISKS = {
     Indicator.RT_DOSE_VOLUME: Risk.RECONSTRUCTABLE_FACE,
     Indicator.LOCALIZER: Risk.RECONSTRUCTABLE_FACE,
     Indicator.RT_IMAGE: Risk.RECONSTRUCTABLE_FACE,
+    Indicator.NM_IMAGE: Risk.RECONSTRUCTABLE_FACE,
     Indicator.SEGMENTATION: Risk.RECONSTRUCTABLE_FACE,
     Indicator.HEAD_OR_NECK: Risk.RECONSTRUCTABLE_FACE,
     Indicator.SUV_UNITS: Risk.BODY_WEIGHT,
@@ -752,6 +755,21 @@ _VOLUME_SOP_CLASSES = {
 # include LOCALIZER, though an implementer may extend them (PS3.5 Section
 # 6.3).
 _RT_IMAGE = "1.2.840.10008.5.1.4.1.1.481.1"
+# Nuclear Medicine Image Storage (PS3.4 Table B.5-1), the one Storage SOP
+# Class of the Nuclear Medicine Image IOD. Each instance is reported,
+# whatever its Image Type and Number of Frames: by the third value of its
+# Image Type (PS3.3 Section C.8.4.6.1.1), it is a volume reconstructed from
+# a tomographic acquisition (RECON TOMO or RECON GATED TOMO), the
+# projections at each angle of the detectors' rotation from which such a
+# volume is reconstructed (TOMO or GATED TOMO), among them lateral views,
+# or planar projections (STATIC, DYNAMIC, GATED, or WHOLE BODY), any of
+# which may be lateral, as an RT Image may be. Its frames are placed by the
+# items of its Detector Information Sequence (0054,0022), not by the
+# attributes that place a CT, MR, or PET slice, so it is no frame of a
+# volume, and an Image Type that cannot be read cannot hide it. Its
+# resolution, coarser than CT's, changes how readily a face is recognised,
+# not whether it may be.
+_NM_IMAGE = "1.2.840.10008.5.1.4.1.1.20"
 # Segmentation Storage and Label Map Segmentation Storage (PS3.4 Table
 # B.5-1), whose frames are masks of segments. A segment of the skin or body
 # traces the profile, and its label or code need not say that it is one, so
@@ -906,14 +924,19 @@ def assess_series(instances: Sequence[pydicom.Dataset]) -> tuple[SeriesFinding, 
     Image Type, gantry angle, or Number of Frames, since an RT Image is a
     projection, and a lateral one, such as a DRR or a simulator or portal
     image, can show the face in profile as a localizer can; it is no frame
-    of a volume. So is each Segmentation, of Segmentation Storage or Label
-    Map Segmentation Storage, whatever its segments and Number of Frames,
-    since a segment of the skin or body traces the profile and its label or
-    code need not say that it is one; it is no frame of a volume either.
-    A volume, localizer, RT Image, or Segmentation whose Body Part Examined
-    (0018,0015) or Anatomic Region Sequence (0008,2218), at the top level or
-    in a Frame Anatomy Sequence (0020,9071) of the shared or a per-frame
-    functional group, names a region in :func:`load_head_and_neck_regions`
+    of a volume. So is each Nuclear Medicine Image Storage instance,
+    whatever its Image Type and Number of Frames, since it is a volume
+    reconstructed from a tomographic acquisition, the projections from
+    which one is reconstructed, or a planar projection, which may be
+    lateral; it is no frame of a volume either. So is each Segmentation, of
+    Segmentation Storage or Label Map Segmentation Storage, whatever its
+    segments and Number of Frames, since a segment of the skin or body
+    traces the profile and its label or code need not say that it is one;
+    nor is it a frame of a volume. A volume, localizer, RT Image, Nuclear
+    Medicine image, or Segmentation whose Body Part Examined (0018,0015) or
+    Anatomic Region Sequence (0008,2218), at the top level or in a Frame
+    Anatomy Sequence (0020,9071) of the shared or a per-frame functional
+    group, names a region in :func:`load_head_and_neck_regions`
     is also reported as showing the head or neck, and so is a Segmentation
     an item of whose Segment Sequence (0062,0002) names one by its Anatomic
     Region Sequence or its Segmented Property Type Code Sequence
@@ -931,7 +954,8 @@ def assess_series(instances: Sequence[pydicom.Dataset]) -> tuple[SeriesFinding, 
     -------
     tuple of SeriesFinding
         The CT, MR, PET, and RT Dose volumes first, in that order, then the
-        localizers, then the RT Images, then the Segmentations, then the head
+        localizers, then the RT Images, then the Nuclear Medicine images,
+        then the Segmentations, then the head
         or neck by attribute, then unreadable evidence by instance, which is
         reported whether or not the series is a volume.
     """
@@ -941,6 +965,7 @@ def assess_series(instances: Sequence[pydicom.Dataset]) -> tuple[SeriesFinding, 
     unknown: list[int] = []
     localizers: list[int] = []
     rt_images: list[int] = []
+    nm_images: list[int] = []
     segmentations: list[int] = []
     head: dict[int, list[ElementPath]] = {}
     unreadable: list[SeriesFinding] = []
@@ -951,8 +976,8 @@ def assess_series(instances: Sequence[pydicom.Dataset]) -> tuple[SeriesFinding, 
             unreadable.append(_unreadable_in(index, ElementPath((), _SOP_CLASS_UID)))
             volume_class = None
         else:
-            if sop_class == _RT_IMAGE:
-                rt_images.append(index)
+            if sop_class in (_RT_IMAGE, _NM_IMAGE):
+                (rt_images if sop_class == _RT_IMAGE else nm_images).append(index)
                 head[index] = list(_head_or_neck(dataset, regions, index, unreadable))
                 continue
             if sop_class in SEGMENTATION_SOP_CLASSES:
@@ -991,6 +1016,8 @@ def assess_series(instances: Sequence[pydicom.Dataset]) -> tuple[SeriesFinding, 
         shown_by.append(SeriesFinding(Indicator.LOCALIZER, tuple(localizers)))
     if rt_images:
         shown_by.append(SeriesFinding(Indicator.RT_IMAGE, tuple(rt_images)))
+    if nm_images:
+        shown_by.append(SeriesFinding(Indicator.NM_IMAGE, tuple(nm_images)))
     if segmentations:
         shown_by.append(SeriesFinding(Indicator.SEGMENTATION, tuple(segmentations)))
     shown = {index for finding in shown_by for index in finding.instances}
