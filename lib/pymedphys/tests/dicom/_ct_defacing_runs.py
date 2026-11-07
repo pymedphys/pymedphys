@@ -731,10 +731,13 @@ def _second(
         if revised is None
         else {"redaction": Redaction.REVISED, "regions": ((0, (revised,)),)}
     )
+    # The reviewer was shown every frame of each instance.
     redactions = (
         [
-            RedactionVerdict(position, **verdict)
-            for position in previewed_redactions(reviewed.pack.read_bytes())
+            RedactionVerdict(position, **verdict, seen=tuple(range(shape.frames)))
+            for position, shape in previewed_redactions(
+                reviewed.pack.read_bytes()
+            ).items()
             if reviewed.names[position].startswith("01-head")
             or (revised is None and reviewed.names[position] in _PET_SLICES)
         ]
