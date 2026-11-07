@@ -48,6 +48,7 @@ from __future__ import annotations
 import argparse
 import contextlib
 import functools
+import importlib.util
 import json
 import multiprocessing
 import pathlib
@@ -105,33 +106,39 @@ def main(argv: Sequence[str] | None = None) -> int:
         its message; and no traceback.
     """
     arguments = _parser().parse_args(argv)
-    folder = pathlib.Path(arguments.folder)
-    out = pathlib.Path(arguments.out)
-    if out.exists():
-        raise SystemExit("The output directory must not exist.")
-    if not folder.is_dir():
-        raise SystemExit("The folder to read must be a directory.")
-    if out.resolve().is_relative_to(folder.resolve()):
-        raise SystemExit(
-            "The output directory must lie outside the folder read, which is "
-            "left as it was."
-        )
     with redacted_diagnostics():
         try:
-            written = measure(arguments)
+            _run(arguments)
         except EvaluationRefused as refused:
             raise SystemExit(str(refused)) from None
         except TextDetectionError as error:
             raise SystemExit(f"The text detector cannot run: {error}.") from None
-        # Anything else is reported by where, never by its message, which
-        # could quote a value or a path.
+        # Anything else, a failure to create or write the output among it,
+        # is reported by where, never by its message, which could quote a
+        # value or a path.
         except Exception as error:  # pylint: disable = broad-exception-caught
             raise SystemExit(f"The command stopped: {crash_site(error)}.") from None
+    return 0
+
+
+def _run(arguments: argparse.Namespace) -> None:
+    """Check the paths, measure, and write and print the results."""
+    folder = pathlib.Path(arguments.folder)
+    out = pathlib.Path(arguments.out)
+    if out.exists():
+        raise EvaluationRefused("The output directory must not exist.")
+    if not folder.is_dir():
+        raise EvaluationRefused("The folder to read must be a directory.")
+    if out.resolve().is_relative_to(folder.resolve()):
+        raise EvaluationRefused(
+            "The output directory must lie outside the folder read, which is "
+            "left as it was."
+        )
+    written = measure(arguments)
     out.mkdir(parents=True)
     for name, content in written.items():
         (out / name).write_text(content, encoding="utf-8")
     sys.stdout.write(written["summary.md"])
-    return 0
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -206,7 +213,8 @@ def measure(arguments: argparse.Namespace) -> dict[str, str]:
     Raises
     ------
     EvaluationRefused
-        For a folder that holds no file to measure, annotations that
+        For a folder that holds no file to measure, published settings
+        that need OpenCV where it is not installed, annotations that
         cannot be read or are not of their form, or a pinned font that cannot be fetched or checked,
         quoting no value.
     """
@@ -236,6 +244,16 @@ def measure(arguments: argparse.Namespace) -> dict[str, str]:
     model = MODELS[arguments.model]
     if arguments.settings == "published":
         variant = published_variant(model)
+        if (
+            variant.network_input.resampler == "cv2"
+            and importlib.util.find_spec("cv2") is None
+        ):
+            raise EvaluationRefused(
+                "Published settings resize as the model's publishers do, with "
+                "OpenCV, which is not installed: install the "
+                "opencv-python-headless that .github/text-evaluation/"
+                "requirements.txt pins, or use --settings today."
+            )
         points: tuple[PostProcessing, ...] = (published_point(model),)
     else:
         variant = DetectorVariant()

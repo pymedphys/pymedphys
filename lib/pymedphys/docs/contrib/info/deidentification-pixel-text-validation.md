@@ -340,7 +340,7 @@ The evaluation can also be run on DICOM files that you may use, such as your dep
    ```
 
    `<results>` must not exist and must lie outside `<folder>`. The command reads each file where it lies and writes nothing beside it, creates `<results>` with `summary.json`, labelled `pymedphys-deid-text-detector-evaluation/1`, `summary.md`, and `assessment.json`, and prints the page. On first use it fetches the detector's model and the pinned fonts from the Python Package Index into PyMedPhys's data directory, each used only with its pinned SHA-256.
-3. The run succeeds when the command exits with status 0. It refuses a folder that holds no file of the SOP Classes read, annotations that cannot be read or are not of their form, and a pinned font that cannot be fetched or checked, and reports anything else that stops it by the exception's type and place in the code alone. pydicom's warnings and log records are redacted in every process that reads the files.
+3. The run succeeds when the command exits with status 0. It refuses a folder that holds no file of the SOP Classes read, annotations that cannot be read or are not of their form, a pinned font that cannot be fetched or checked, and published settings without OpenCV, and reports anything else that stops it, a failure to create or write `<results>` among it, by the exception's type and place in the code alone. pydicom's warnings and log records are redacted in every process that reads the files.
 4. Read `summary.md` before you share it. It holds counts, bins, intervals, settings, and the detector's method alone: no UID, name, date, path, or value. Never commit, cache, or attach the files or a value read from them.
 
 | Option | Default | What it does |
@@ -351,7 +351,7 @@ The evaluation can also be run on DICOM files that you may use, such as your dep
 | `--known-text` | `unknown` | What is known of the text of frames that no annotation covers. With `unknown`, their regions are counted as regions where text is unknown, apart from false positives; give `none` only where the folder is known to hold no burned-in text, so that each region is a false positive. |
 | `--annotations <CSV>` | none | Boxes drawn around the text of some instances, with the columns `sop_instance_uid`, `frame` (from 1, or empty for 1), `top`, `left`, `bottom`, and `right` (pixels from 0, the bottom and right excluded); a row with an empty box marks an instance as holding no text. |
 | `--fonts` | `all` | The fonts of the synthetic text: `bitmaps`, the two bitmap fonts that the IDC workflow draws in, or `all`, which adds Pillow's bitmap font, crisp and smooth, and the twelve pinned fonts. |
-| `--model`, `--settings` | PP-OCRv6 small, `today` | The model and its settings, as for `idc-measure`. |
+| `--model`, `--settings` | PP-OCRv6 small, `today` | The model and its settings, as for `idc-measure`. `published`, for a model whose publishers give settings, resizes with OpenCV as their pipeline does, and OpenCV is not in the development environment: install the pinned evaluation tools first, as the IDC workflow does, with `uv pip install --require-hashes --no-deps -r .github/text-evaluation/requirements.txt`. Without OpenCV, the command refuses `published`. |
 | `--evaluated` | `tuning` | The part of the split measured: `tuning`, `held-out`, or `all`. Measure the held-out part only to confirm a chosen detector. |
 | `--workers` | 1 | Processes that measure the cases. |
 | `--collection` | `local RT Images` | What the summary calls these files. |

@@ -19,6 +19,7 @@ import functools
 import json
 import logging
 import multiprocessing
+import pathlib
 
 from pymedphys._imports import pytest
 
@@ -192,6 +193,65 @@ def test_a_crash_is_reported_by_where_alone(tmp_path, monkeypatch, clinic):
         _run(clinic, tmp_path / "o")
     assert PATIENT_A not in str(raised.value)
     assert str(tmp_path) not in str(raised.value)
+    assert not (tmp_path / "o").exists()
+
+
+def _measured(arguments):
+    del arguments
+    return {name: "counts\n" for name in command.WRITTEN}
+
+
+def _no_path_or_traceback(raised, *paths):
+    message = str(raised.value)
+    assert "Traceback" not in message
+    for path in paths:
+        assert str(path) not in message
+    assert raised.value.__cause__ is None and raised.value.__suppress_context__
+
+
+def test_an_output_directory_that_cannot_be_made_is_reported_by_where_alone(
+    tmp_path, monkeypatch, clinic
+):
+    monkeypatch.setattr(command, "measure", _measured)
+    blocking = tmp_path / "a file"
+    blocking.write_text("not a directory")
+    out = blocking / "results"
+    with pytest.raises(SystemExit, match="The command stopped: ") as raised:
+        _run(clinic, out)
+    _no_path_or_traceback(raised, tmp_path, out)
+
+
+def test_a_result_that_cannot_be_written_is_reported_by_where_alone(
+    tmp_path, monkeypatch, clinic
+):
+    monkeypatch.setattr(command, "measure", _measured)
+
+    def refused(path, *args, **kwargs):
+        raise PermissionError(13, "Permission denied", str(path))
+
+    monkeypatch.setattr(pathlib.Path, "write_text", refused)
+    out = tmp_path / "results"
+    with pytest.raises(SystemExit, match="PermissionError at ") as raised:
+        _run(clinic, out)
+    _no_path_or_traceback(raised, tmp_path, out)
+
+
+def test_published_settings_without_opencv_are_refused(tmp_path, monkeypatch, clinic):
+    found = command.importlib.util.find_spec
+    monkeypatch.setattr(
+        command.importlib.util,
+        "find_spec",
+        lambda name, *args: None if name == "cv2" else found(name, *args),
+    )
+    with pytest.raises(SystemExit, match="--settings today"):
+        _run(
+            clinic,
+            tmp_path / "o",
+            "--model",
+            "PP-OCRv6 small (PaddlePaddle)",
+            "--settings",
+            "published",
+        )
     assert not (tmp_path / "o").exists()
 
 
