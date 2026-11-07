@@ -437,9 +437,9 @@ def test_the_rules_for_omitted_text_fall_in_the_reviewed_groups():
         # Operator-typed labels and text.
         ("X/Z/D", ((CLEAN_DESCRIPTORS, "C"),)): 81,
         # Accessory and equipment identifiers.
-        ("X/Z/D", ((DEVICE_IDENTITY, "K"),)): 30,
+        ("X/Z/D", ((DEVICE_IDENTITY, "K"),)): 33,
         # Coded and technical values, and De-identification Method.
-        ("K", ()): 50,
+        ("K", ()): 47,
         # Names and identifiers of people, organisations, records, and
         # networks, identifiers that a device reads, and the text of overlays.
         ("X/Z/D", ()): 17,
@@ -1128,20 +1128,24 @@ PDF_MEDIA_TYPES = {
     "(0042,0014)",  # List of MIME Types
 }
 # The text of its SC Equipment Module, which describes the equipment that
-# captured or converted the document: a product, its software, and the format
-# it captured, as Manufacturer, Manufacturer's Model Name, and Software
-# Versions describe the General Equipment Module's equipment.
-PDF_CAPTURE_EQUIPMENT = {
+# captured or converted the document. Its manufacturer, model, and software
+# can be a site's own system, as an MR coil's manufacturer can, so they are
+# device identity, as Secondary Capture Device ID is; and the formats it
+# captured, which name signal and interface formats, are kept.
+PDF_CAPTURE_DEVICE = {
     "(0018,1016)",  # Secondary Capture Device Manufacturer
     "(0018,1018)",  # Secondary Capture Device Manufacturer's Model Name
     "(0018,1019)",  # Secondary Capture Device Software Versions
+}
+PDF_CAPTURE_FORMATS = {
     "(0018,1022)",  # Video Image Format Acquired
     "(0018,1023)",  # Digital Image Format Acquired
 }
 PDF_TEXT_GROUPS: tuple[tuple[set[str], str, dict[str, str]], ...] = (
     (PDF_DOCUMENT_TITLE, "X/Z/D", {CLEAN_DESCRIPTORS: "C"}),
     (PDF_MEDIA_TYPES, "K", {}),
-    (PDF_CAPTURE_EQUIPMENT, "K", {}),
+    (PDF_CAPTURE_DEVICE, "X/Z/D", {DEVICE_IDENTITY: "K"}),
+    (PDF_CAPTURE_FORMATS, "K", {}),
 )
 # The one new text attribute that Table E.1-1 lists: the capture device's own
 # identifier, removed, and kept under Retain Device Identity.
@@ -1177,7 +1181,7 @@ def test_the_text_that_only_the_encapsulated_pdf_uses_has_reviewed_rules():
     rules = _rules()
 
     assert added - set(listed) == (
-        PDF_DOCUMENT_TITLE | PDF_MEDIA_TYPES | PDF_CAPTURE_EQUIPMENT
+        PDF_DOCUMENT_TITLE | PDF_MEDIA_TYPES | PDF_CAPTURE_DEVICE | PDF_CAPTURE_FORMATS
     )
     assert added & set(listed) == {SECONDARY_CAPTURE_DEVICE_ID}
     row = listed[SECONDARY_CAPTURE_DEVICE_ID]
@@ -1189,14 +1193,14 @@ def test_the_text_that_only_the_encapsulated_pdf_uses_has_reviewed_rules():
                 options,
             ), tag
             assert rules[tag].note.strip(), tag
-    # Each kept attribute of the capture equipment is kept as its General
-    # Equipment counterpart is.
-    for tag, counterpart in (
-        ("(0018,1016)", "(0008,0070)"),  # Manufacturer
-        ("(0018,1018)", "(0008,1090)"),  # Manufacturer's Model Name
-        ("(0018,1019)", "(0018,1020)"),  # Software Versions
-    ):
-        assert rules[counterpart].action == rules[tag].action == "K", tag
+    # The capture device's manufacturer is treated as an MR receive coil's
+    # manufacturer is, which can also be a site that builds its own.
+    coil_manufacturer = rules["(0018,9041)"]
+    for tag in PDF_CAPTURE_DEVICE:
+        assert (rules[tag].action, dict(rules[tag].options)) == (
+            coil_manufacturer.action,
+            dict(coil_manufacturer.options),
+        ), tag
 
 
 def test_each_policy_gives_the_encapsulated_pdf_text_the_action_of_its_group():
@@ -1371,7 +1375,7 @@ def test_the_basic_profile_keeps_only_the_reviewed_coded_and_technical_text():
         | RT_IMAGE_KEPT_TEXT
         | ION_KEPT_TEXT
         | PDF_MEDIA_TYPES
-        | PDF_CAPTURE_EQUIPMENT
+        | PDF_CAPTURE_FORMATS
     )
     assert set(basic.values()) - {"K"} <= REMOVING_ACTIONS
 
@@ -1392,7 +1396,7 @@ def test_no_option_keeps_more_than_the_coded_text_and_device_identity():
             | RT_IMAGE_KEPT_TEXT
             | ION_KEPT_TEXT
             | PDF_MEDIA_TYPES
-            | PDF_CAPTURE_EQUIPMENT
+            | PDF_CAPTURE_FORMATS
             | (device_identity if DEVICE_IDENTITY in composed.options else set())
         )
         assert kept == expected, composed.options

@@ -945,20 +945,23 @@ note = "The nucleus that is resonant at the imaging frequency, such as 1H or 31P
 [[attribute]]
 tag = "(0018,1016)"
 keyword = "SecondaryCaptureDeviceManufacturer"
-action = "K"
-note = "The name of the company that made the equipment that captured or converted the image or document (PS3.3 Table C.8-24). Like Manufacturer, which Table E.1-1 also omits, it names a company shared by every customer rather than one device, whose identifier, Secondary Capture Device ID, the table lists; so it is kept."
+action = "X/Z/D"
+options = { retain_device_identity = "K" }
+note = "The manufacturer of the equipment that captured or converted the image or document (PS3.3 Table C.8-24), which can be a site's own scanning, printing, or reporting system. It is device identity: removed by Type, and kept under Retain Device Identity, as Table E.1-1 does for Secondary Capture Device ID and as Receive Coil Manufacturer Name is."
 
 [[attribute]]
 tag = "(0018,1018)"
 keyword = "SecondaryCaptureDeviceManufacturerModelName"
-action = "K"
-note = "The manufacturer's model name or number of the equipment that captured or converted the image or document (PS3.3 Table C.8-24). Like Manufacturer's Model Name, it is the same for every unit of a commercial model and identifies a product rather than one device, so it is kept."
+action = "X/Z/D"
+options = { retain_device_identity = "K" }
+note = "The manufacturer's model name or number of the equipment that captured or converted the image or document (PS3.3 Table C.8-24), which a site's own system names as the site chooses. It is device identity: removed by Type, and kept under Retain Device Identity, as its manufacturer is."
 
 [[attribute]]
 tag = "(0018,1019)"
 keyword = "SecondaryCaptureDeviceSoftwareVersions"
-action = "K"
-note = "The manufacturer's designation of the software version of the equipment that captured or converted the image or document (PS3.3 Table C.8-24). Like Software Versions, it identifies a software release shared by every site that runs it, and says how the data were produced, so it is kept."
+action = "X/Z/D"
+options = { retain_device_identity = "K" }
+note = "The manufacturer's designation of the software version of the equipment that captured or converted the image or document (PS3.3 Table C.8-24), which a site's own system designates as the site chooses. It is device identity: removed by Type, and kept under Retain Device Identity, as its manufacturer is."
 
 [[attribute]]
 tag = "(0018,1020)"
