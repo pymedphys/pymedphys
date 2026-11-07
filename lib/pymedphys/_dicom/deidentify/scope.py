@@ -27,8 +27,8 @@ Radiation Dose SR IODs, of the Basic Text SR, Enhanced SR, Comprehensive SR,
 Comprehensive 3D SR, and Extensible SR IODs, of the Key Object Selection
 Document, and of the Mammography CAD SR, Chest CAD SR, Colon CAD SR,
 Procedure Log, Spectacle Prescription Report, Macular Grid Thickness and
-Volume Report, and Waveform Annotation SR IODs, uncompressed
-or in a transfer syntax that encapsulates Pixel Data that pydicom's
+Volume Report, and Waveform Annotation SR IODs, and of the five Secondary
+Capture IODs, uncompressed or in a transfer syntax that encapsulates Pixel Data that pydicom's
 decoding plugins decode. Supporting an IOD or a transfer syntax does not
 release every instance in it: a compressed instance is still sequestered
 where the plugin pinned to its transfer syntax is not installed, or where
@@ -39,7 +39,9 @@ conforms to its IOD, under ``basic`` and ``basic-clean-descriptors``, and
 every Structured Report or Key Object Selection Document whose content
 tree the policy does not clean and keep, since the Basic Profile gives its
 Content Sequence (0040,A730) D, which a sequence has no dummy value for.
-Every other instance is sequestered: neither de-identified nor written, and
+The transform also sequesters every instance of a Secondary Capture IOD
+under a policy that does not select the Clean Pixel Data Option
+(:data:`SECONDARY_CAPTURE_IODS`). Every other instance is sequestered: neither de-identified nor written, and
 listed in the run report by opaque identifiers only. That includes the
 other Structured Reports, Presentation States, and instances of Private SOP
 Classes, which the design always sequesters.
@@ -106,6 +108,25 @@ SUPPORTED_IODS = frozenset(
         "Spectacle Prescription Report",
         "Macular Grid Thickness and Volume Report",
         "Waveform Annotation SR",
+        "Secondary Capture Image",
+        "Multi-frame Single Bit Secondary Capture Image",
+        "Multi-frame Grayscale Byte Secondary Capture Image",
+        "Multi-frame Grayscale Word Secondary Capture Image",
+        "Multi-frame True Color Secondary Capture Image",
+    }
+)
+# The Secondary Capture IODs, by the names Table B.5-1 gives them without
+# "IOD". Their pixel data are captured from a screen, a video signal, or a
+# scanned document or film (PS3.3 Section A.8), whose burned-in text the
+# Basic Profile does not touch, so the transform sequesters each of their
+# instances under a policy that does not select Clean Pixel Data (D-060).
+SECONDARY_CAPTURE_IODS = frozenset(
+    {
+        "Secondary Capture Image",
+        "Multi-frame Single Bit Secondary Capture Image",
+        "Multi-frame Grayscale Byte Secondary Capture Image",
+        "Multi-frame Grayscale Word Secondary Capture Image",
+        "Multi-frame True Color Secondary Capture Image",
     }
 )
 # Every transfer syntax whose files the engine reads: Implicit VR Little

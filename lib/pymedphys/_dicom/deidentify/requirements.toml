@@ -304,7 +304,7 @@ text = '''
 When this Option is specified in addition to the Basic Application Level Confidentiality Profile, any information burned in to the Pixel Data (7FE0,0010) corresponding to the Attribute information specified to be removed by the Profile and any other Options specified shall also be removed, as described in Table E.1-1.
 '''
 status = "implemented"
-decisions = ["D-015", "D-033", "D-037", "D-048", "D-055", "D-056"]
+decisions = ["D-015", "D-033", "D-037", "D-048", "D-055", "D-056", "D-060"]
 implementation = [
   "_dicom/deidentify/api.py",
   "_dicom/deidentify/command.py",
@@ -319,6 +319,7 @@ implementation = [
 ]
 note = '''
 Text that a text finder finds in Pixel Data is blacked out, whatever it says, and every instance cleaned is held for review (D-037).
+An instance of a Secondary Capture IOD, a captured screen, scanned document, or video frame whose pixel data usually hold text, is cleaned and held under the option as any other image is, and under a policy without the option, which today is every preset, is sequestered as `secondary-capture-not-cleaned` rather than released (D-060).
 Reviewed region rules, kept by the custodian and keyed by SOP Class UID, Manufacturer, Manufacturer's Model Name, Rows, and Columns, add rectangles that are blacked out in every frame of a matching image beside the finder's regions; the instance is still held for review, the QC pack records which regions rules gave, and the rules' keyed digest is an input to the method digest (D-024, D-037).
 A private command records a rule from an attested QC pack, holding only regions that the reviewer's verdict approved for the image, keyed by the image's source file, which must have the SHA-256 that the pack records (D-037, D-048).
 Compressed Pixel Data is decoded first, in the isolated decoding child for the native decoders, and its frames are written uncompressed, in Explicit VR Little Endian, as decoded, with or without a region, so that the QC pack previews the samples that a release writes (D-037).
@@ -901,7 +902,7 @@ implementation = [
 note = '''
 The Type of each attribute of the first supported release's IODs, and of every other composite IOD but the three real-time ones, in each module and sequence, including within each of an IOD's Functional Group Macros, is generated from PS3.3, so the engine can tell where an IOD requires a value; PS3.4 Table B.5-1 gives the IOD of an instance from its SOP Class UID; and a value can be checked against its VR and VM before it is written.
 Compound actions resolve from the strictest of these Types, so in those IODs they never remove an attribute where it is Type 1, 1C, 2, or 2C, or empty one where it is Type 1 or 1C, and a plain Z on a Type 1 or 1C attribute gives D's dummy value too.
-A plain X on an attribute that the IOD requires at its place removes with it the innermost enclosing sequence that the IOD makes Type 3 at its own place, or sequesters the instance where none encloses it, so it never leaves the output without an attribute that the IOD requires; Overlay Data takes its whole repeating group, whose module is user-optional in the CT Image, MR Image, and Positron Emission Tomography Image IODs, and ROI Interpreter Sequence, whose condition lapses once ROI Creator Sequence is removed, goes alone, as does Clinical Trial Protocol Ethics Committee Name, whose condition lapses once its approval number is removed and which PS3.5 Section 7.4.2 then does not allow (D-020). Requested Procedure ID, Type 2 in a Structured Report's Referenced Request Sequence, and Source Manufacturer, Type 2 in an RT Brachy Treatment Record's Recorded Source Sequence, are emptied there rather than removed, so the instance keeps them (D-020).
+A plain X on an attribute that the IOD requires at its place removes with it the innermost enclosing sequence that the IOD makes Type 3 at its own place, or sequesters the instance where none encloses it, so it never leaves the output without an attribute that the IOD requires; Overlay Data takes its whole repeating group, whose module is user-optional in the CT Image, MR Image, Positron Emission Tomography Image, and Secondary Capture Image IODs, and ROI Interpreter Sequence, whose condition lapses once ROI Creator Sequence is removed, goes alone, as does Clinical Trial Protocol Ethics Committee Name, whose condition lapses once its approval number is removed and which PS3.5 Section 7.4.2 then does not allow (D-020). Requested Procedure ID, Type 2 in a Structured Report's Referenced Request Sequence, and Source Manufacturer, Type 2 in an RT Brachy Treatment Record's Recorded Source Sequence, are emptied there rather than removed, so the instance keeps them (D-020).
 Every dummy value is valid for its VR and for the VM of each attribute of Table E.1-1 that can take it, as is each element of the dummy item of Person Identification Code Sequence, and an attribute whose VR has no generic dummy value and no reviewed rule is refused rather than given an invalid value.
 Under `tps-import`, which planning systems import, Patient's Birth Date takes each subject's synthetic birth date rather than an empty value: the earliest study with a consistent Study Date and Patient's Age in years gives it, the subject profile keeps it for every instance and later run, an empty value is written and kept where the ages are missing or inconsistent, and a later run that contradicts the reference study stops the subject for review (D-008).
 Before anything is written, a first pass over a collection follows the reference attributes that PS3.3 defines inside a sequence of each instance's IOD, and reports each reference that names no instance, series, or study in the collection, and each instance without its SOP Instance, Series Instance, or Study Instance UID.
@@ -1071,7 +1072,7 @@ text = '''
 Assess, for every image type, the risk from burned-in text, objects bearing text, and other identifying features in the pixel data. Where the risk exceeds the threshold, scan and redact, with human review, or discard the image. Do not limit checks to a subset of image types chosen from other data elements.
 '''
 status = "implemented"
-decisions = ["D-015", "D-017"]
+decisions = ["D-015", "D-017", "D-060"]
 implementation = [
   "_dicom/deidentify/instance_transform.py",
   "_dicom/deidentify/pixel_risk.py",
@@ -1087,6 +1088,7 @@ The indicators are read from attributes, never from the pixel data (D-015), whic
 Each run gives the indicators of each source it can decode to the confidential QC pack, which lists the instances at high risk and previews those released or held.
 The release report counts the released and held instances with each risk and each indicator, naming none, as the QC pack lists them (D-015).
 A `public-release` run is ready for release only where each instance at high risk that it releases was listed as high-risk in an attested QC pack of an earlier run of the same files and policy, whose attestation covers every high-risk instance; otherwise its pixel and face review gate fails. A reviewer who finds burned-in text rejects the pack, and the run is then not ready (D-017).
+An instance of a Secondary Capture IOD, whose pixel data usually hold text, is discarded rather than released with its indicators listed: it is sequestered under every policy that does not select the Clean Pixel Data Option, and under one that does, it is released only on a reviewer's verdict on its cleaned frames (D-037, D-048, D-060).
 '''
 
 [[requirement]]
@@ -1188,7 +1190,7 @@ implementation = [
   "_dicom/deidentify/supplementary_actions.py",
 ]
 note = '''
-ICC Profile (0028,2000), an embedded file, is removed by Type under every option, which removes it wherever the first supported release's IODs make it Type 3 (D-022); at the top level of an Enhanced CT Image, Enhanced MR Image, or Enhanced MR Color Image instance, where it is Type 1, D replaces an RGB profile with the source profile cleaned of everything but its colorimetry: each colorimetric tag that its ICC version defines is parsed and written again, every text tag, private tag, and other tag is removed, and the header's identity fields and date are replaced. Where the source cannot be cleaned, D writes a fixed sRGB profile, which nothing of the source profile is written to; and an instance whose profile is of any other colour space is sequestered, since PS3.3 Section C.11.15.1.1 requires RGB (D-021).
+ICC Profile (0028,2000), an embedded file, is removed by Type under every option, which removes it wherever the first supported release's IODs make it Type 3 (D-022); at the top level of an Enhanced CT Image, Enhanced MR Image, Enhanced MR Color Image, Secondary Capture Image, or Multi-frame True Color Secondary Capture Image instance, where it is Type 1, D replaces an RGB profile with the source profile cleaned of everything but its colorimetry: each colorimetric tag that its ICC version defines is parsed and written again, every text tag, private tag, and other tag is removed, and the header's identity fields and date are replaced. Where the source cannot be cleaned, D writes a fixed sRGB profile, which nothing of the source profile is written to; and an instance whose profile is of any other colour space is sequestered, since PS3.3 Section C.11.15.1.1 requires RGB (D-021).
 Where the bitstream is kept, the engine parses each frame's codestream of encapsulated Pixel Data, accounting for every byte, and cuts its comment and application segments without recompression, keeping only JFIF, Adobe, and JPEG-LS colour segments of fixed format; it shows that every frame then decodes to the same pixels, and sequesters an instance whose codestreams do not parse, hold bytes outside them, or hold a segment it cannot cut (design Architecture item 7).
 The residual search searches the marker segments of those codestreams for every form, and their entropy-coded data, which can end with bytes that no decoder reads, for forms of at least 6 bytes, but RLE Lossless frames, which hold only samples and offsets, as values that hold numbers (D-027).
 The first supported release de-identifies instances in each transfer syntax that encapsulates Pixel Data that pydicom's decoding plugins decode, and writes each with its transfer syntax and coded pixel data kept, its metadata segments cut (D-010).

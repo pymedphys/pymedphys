@@ -243,6 +243,11 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "48-rt-ion-beams-record.dcm",
         "49-rt-brachy-record.dcm",
         "50-rt-treatment-summary-record.dcm",
+        "65-sc.dcm",
+        "66-sc-single-bit.dcm",
+        "67-sc-grayscale-byte.dcm",
+        "68-sc-grayscale-word.dcm",
+        "69-sc-true-color.dcm",
     ]
     assert [file.manifest.iod for file in corpus.files] == [
         "CT Image",
@@ -283,21 +288,29 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "RT Ion Beams Treatment Record",
         "RT Brachy Treatment Record",
         "RT Treatment Summary Record",
+        "Secondary Capture Image",
+        "Multi-frame Single Bit Secondary Capture Image",
+        "Multi-frame Grayscale Byte Secondary Capture Image",
+        "Multi-frame Grayscale Word Secondary Capture Image",
+        "Multi-frame True Color Secondary Capture Image",
     ]
     assert corpus_module.STRUCTURED_REPORT_FILES == tuple(
-        file.name for file in corpus.files[-24:-14] + corpus.files[-12:-4]
+        file.name for file in corpus.files[-29:-19] + corpus.files[-17:-9]
     )
     assert corpus_module.SEGMENTATION_FILES == tuple(
-        file.name for file in corpus.files[-14:-12]
+        file.name for file in corpus.files[-19:-17]
     )
     assert (
         corpus_module.ION_PLAN_FILE,
         corpus_module.ION_TREATMENT_RECORD_FILE,
-    ) == tuple(file.name for file in corpus.files[-4:-2])
+    ) == tuple(file.name for file in corpus.files[-9:-7])
     assert (
         corpus_module.BRACHY_TREATMENT_RECORD_FILE,
         corpus_module.TREATMENT_SUMMARY_RECORD_FILE,
-    ) == tuple(file.name for file in corpus.files[-2:])
+    ) == tuple(file.name for file in corpus.files[-7:-5])
+    assert corpus_module.SECONDARY_CAPTURE_FILES == tuple(
+        file.name for file in corpus.files[-5:]
+    )
     # Every IOD of the first supported release.
     assert {file.manifest.iod for file in corpus.files} == scope.SUPPORTED_IODS
 
@@ -1153,6 +1166,10 @@ def test_each_image_has_its_frames_and_the_colour_image_its_icc_profile(corpus):
             # manufacturer and model descriptions, and a private tag.
             marker = corpus_module.MARKER_PREFIX.encode()
             assert dataset.ICCProfile.count(marker) == 5
+        elif file.manifest.iod == "Multi-frame True Color Secondary Capture Image":
+            # The IOD does not require an ICC Profile, which is left out.
+            assert dataset.PhotometricInterpretation == "RGB"
+            assert "ICCProfile" not in dataset
         else:
             assert dataset.PhotometricInterpretation == "MONOCHROME2"
             assert "ICCProfile" not in dataset
@@ -1164,6 +1181,7 @@ def test_each_image_has_its_frames_and_the_colour_image_its_icc_profile(corpus):
         "MR Image",
         "Positron Emission Tomography Image",
         "RT Image",
+        "Secondary Capture Image",
     }
     assert set(frames.values()) == {1, 2}
 

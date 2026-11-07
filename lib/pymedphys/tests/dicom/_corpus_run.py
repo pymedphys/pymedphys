@@ -68,6 +68,7 @@ from pymedphys._dicom.deidentify.file_layout import ElementPath
 from pymedphys._dicom.deidentify.instance_transform import InstanceTransform
 from pymedphys._dicom.deidentify.keys import DeidKey
 from pymedphys._dicom.deidentify.pixel_cleaning import TextFinder
+from pymedphys._dicom.deidentify.reasons import TransformReason
 from pymedphys._dicom.deidentify.redaction_review import RedactionReview
 from pymedphys._dicom.deidentify.policy import (
     PRESETS,
@@ -235,8 +236,18 @@ def held(decision: Decision, code: ReasonCode, *tags: str) -> Withheld:
 # instance whose Responsible Person and Responsible Organization its IOD
 # requires (Type 1C), which the profile removes, the RT Dose that holds the
 # plan's RT Plan Label in its Manufacturer's Model Name, which the residual
-# search finds, and each Structured Report, whose Content Sequence the
-# profile gives D, which a sequence has no dummy value for (D-021).
+# search finds, each Structured Report, whose Content Sequence the
+# profile gives D, which a sequence has no dummy value for (D-021), and each
+# Secondary Capture image, which only Clean Pixel Data can release.
+SECONDARY_CAPTURE_WITHHELD: Mapping[str, Withheld] = types.MappingProxyType(
+    dict.fromkeys(
+        corpus_module.SECONDARY_CAPTURE_FILES,
+        Withheld(
+            run.Status.SEQUESTERED,
+            frozenset({TransformReason.SECONDARY_CAPTURE_NOT_CLEANED}),
+        ),
+    )
+)
 BASIC_WITHHELD: Mapping[str, Withheld] = types.MappingProxyType(
     {
         corpus_module.SEQUESTERED_FILE: sequestered(
@@ -249,6 +260,16 @@ BASIC_WITHHELD: Mapping[str, Withheld] = types.MappingProxyType(
             corpus_module.STRUCTURED_REPORT_FILES,
             sequestered(SequesterReason.NO_DUMMY_VALUE, CONTENT_SEQUENCE),
         ),
+        **SECONDARY_CAPTURE_WITHHELD,
+    }
+)
+# BASIC_WITHHELD without the Secondary Capture images, for a run under Clean
+# Pixel Data, which cleans them as it cleans any other image.
+WITHHELD_UNDER_CLEAN_PIXEL_DATA: Mapping[str, Withheld] = types.MappingProxyType(
+    {
+        name: withheld
+        for name, withheld in BASIC_WITHHELD.items()
+        if name not in corpus_module.SECONDARY_CAPTURE_FILES
     }
 )
 

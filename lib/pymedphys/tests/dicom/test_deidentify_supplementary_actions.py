@@ -136,6 +136,17 @@ ION_REVIEWED_AGAINST = DOSE_SR_REVIEWED_AGAINST + RADIATION_DOSE_SR_IODS
 # and which the first supported release now supports.
 RECORD_IODS = ("RT Brachy Treatment Record", "RT Treatment Summary Record")
 RECORD_REVIEWED_AGAINST = ION_REVIEWED_AGAINST + ION_IODS
+# The Secondary Capture IODs, whose attributes are reviewed against every IOD
+# above, and which the first supported release supports, sequestering each
+# instance under a policy without Clean Pixel Data.
+SECONDARY_CAPTURE_IODS = (
+    "Secondary Capture Image",
+    "Multi-frame Single Bit Secondary Capture Image",
+    "Multi-frame Grayscale Byte Secondary Capture Image",
+    "Multi-frame Grayscale Word Secondary Capture Image",
+    "Multi-frame True Color Secondary Capture Image",
+)
+SECONDARY_CAPTURE_REVIEWED_AGAINST = RECORD_REVIEWED_AGAINST + RECORD_IODS
 SUPPORTED_IODS = (
     REVIEWED_AGAINST
     + SUPPORTED_TARGET_IODS
@@ -144,6 +155,7 @@ SUPPORTED_IODS = (
     + SUPPORTED_OTHER_SR_IODS
     + ION_IODS
     + RECORD_IODS
+    + SECONDARY_CAPTURE_IODS
 )
 CLEAN_DESCRIPTORS = "clean_descriptors"
 DEVICE_IDENTITY = "retain_device_identity"
@@ -411,9 +423,10 @@ def test_every_text_attribute_a_supported_iod_uses_and_table_e1_1_omits_has_a_ru
     # Checked against the 2026d PS3.3, PS3.6, and PS3.15: the combined
     # scope includes the RT objects, among them the two RT Ion IODs, which
     # add 13, and the brachy and summary treatment records, which add none,
-    # Segmentation, which adds 4, and the two dose-report IODs, whose
-    # supplementary rules cover 172 text attributes.
-    assert len(omitted) == 172
+    # Segmentation, which adds 4, the two dose-report IODs, and the Secondary
+    # Capture IODs, which add 9, whose supplementary rules cover 181 text
+    # attributes.
+    assert len(omitted) == 181
     assert omitted <= set(_rules())
     assert {"(0008,0100)", "(300A,00C2)", "(60xx,1500)"} <= omitted
 
@@ -428,9 +441,9 @@ def test_the_rules_for_omitted_text_fall_in_the_reviewed_groups():
 
     assert groups == {
         # Operator-typed labels and text.
-        ("X/Z/D", ((CLEAN_DESCRIPTORS, "C"),)): 80,
+        ("X/Z/D", ((CLEAN_DESCRIPTORS, "C"),)): 84,
         # Accessory and equipment identifiers.
-        ("X/Z/D", ((DEVICE_IDENTITY, "K"),)): 30,
+        ("X/Z/D", ((DEVICE_IDENTITY, "K"),)): 35,
         # Coded and technical values, and De-identification Method.
         ("K", ()): 43,
         # Names and identifiers of people, organisations, records, and
@@ -1109,6 +1122,181 @@ def test_the_brachy_and_summary_records_other_new_attributes_are_kept_by_the_def
             ), (preset, definition)
 
 
+# The text that the Secondary Capture IODs add, checked by hand against the
+# 2026d PS3.3, PS3.6, and PS3.15: the SC Equipment Module's description of
+# the capturing device, which follows Table E.1-1's Secondary Capture Device
+# ID (0018,1010), and labels and descriptions that a program or an operator
+# writes.
+SECONDARY_CAPTURE_DEVICE_TEXT = {
+    "(0018,1016)",  # Secondary Capture Device Manufacturer
+    "(0018,1018)",  # Secondary Capture Device Manufacturer's Model Name
+    "(0018,1019)",  # Secondary Capture Device Software Versions
+    "(0018,1022)",  # Video Image Format Acquired
+    "(0018,1023)",  # Digital Image Format Acquired
+}
+SECONDARY_CAPTURE_OPERATOR_TEXT = {
+    "(0018,2002)",  # Frame Label Vector
+    "(0018,2006)",  # Display Window Label Vector
+    "(0028,0A04)",  # Pixel Spacing Calibration Description
+    "(0028,6022)",  # Frame Of Interest Description
+}
+SECONDARY_CAPTURE_DEVICE_ID = "(0018,1010)"
+# The attributes of other VRs that they add, by VR: Page Number Vector,
+# Frame Primary and Secondary Angle Vectors, Slice Location Vector, Nominal
+# Scanned Pixel Spacing, Rotation of Scanned Film, Frame Numbers of Interest,
+# Frame of Interest Type, Digitizing Device Transport Direction, Pixel
+# Spacing Calibration Type, Illumination, Reflected Ambient Light, and
+# Document Class Code Sequence.
+SECONDARY_CAPTURE_OTHER_VRS = {"DS": 5, "IS": 1, "US": 3, "CS": 3, "SQ": 1}
+# Where removal by Type gives an attribute of these IODs an action that it
+# takes nowhere in the IODs reviewed before them: the two vectors, which are
+# Type 1C where Frame Increment Pointer (0028,0009) points to them, and
+# Pixel Spacing Calibration Description, Type 1C where the pixel spacing is
+# calibrated, take the dummy value; Frame Of Interest Description, Type 3,
+# is removed; and the device's text, Type 3, is removed.
+SECONDARY_CAPTURE_NEW_RESOLUTIONS = {
+    "(0018,1016)": ({"X"}, set()),
+    "(0018,1018)": ({"X"}, set()),
+    "(0018,1019)": ({"X"}, set()),
+    "(0018,1022)": ({"X"}, set()),
+    "(0018,1023)": ({"X"}, set()),
+    "(0018,2002)": ({"D"}, set()),
+    "(0018,2006)": ({"D"}, set()),
+    "(0028,0A04)": ({"D"}, set()),
+    "(0028,6022)": ({"X"}, set()),
+}
+
+
+def test_the_secondary_capture_iods_are_generated_and_supported():
+    tables = iods.load_iod_tables()
+
+    assert set(SECONDARY_CAPTURE_IODS) <= set(tables.iods)
+    assert set(SECONDARY_CAPTURE_IODS) <= scope.SUPPORTED_IODS
+    assert scope.SECONDARY_CAPTURE_IODS == set(SECONDARY_CAPTURE_IODS)
+    assert {
+        sop_class.iod.removesuffix(" IOD")
+        for sop_class in sop_classes.load_storage_sop_classes().rows
+        if "Secondary Capture" in sop_class.name
+    } == set(SECONDARY_CAPTURE_IODS)
+
+
+@pytest.mark.deid_requirement("MIDI-BP-05", "MIDI-BP-06", "MIDI-BP-11")
+def test_the_secondary_capture_text_has_reviewed_rules():
+    listed = set(_table_e1_1())
+    rules = _rules()
+    new = (
+        _used_by(SECONDARY_CAPTURE_IODS, TEXT_VRS)
+        - _used_by(SECONDARY_CAPTURE_REVIEWED_AGAINST, TEXT_VRS)
+        - listed
+    )
+
+    assert new == SECONDARY_CAPTURE_DEVICE_TEXT | SECONDARY_CAPTURE_OPERATOR_TEXT
+    for tags, options in (
+        (SECONDARY_CAPTURE_DEVICE_TEXT, {DEVICE_IDENTITY: "K"}),
+        (SECONDARY_CAPTURE_OPERATOR_TEXT, {CLEAN_DESCRIPTORS: "C"}),
+    ):
+        for tag in tags:
+            assert (rules[tag].action, dict(rules[tag].options)) == (
+                "X/Z/D",
+                options,
+            ), tag
+            assert rules[tag].note.strip(), tag
+    # The device's text takes what Table E.1-1 gives the device's ID in the
+    # same module: removed under the Basic Profile, kept under Retain Device
+    # Identity.
+    row = _table_e1_1()[SECONDARY_CAPTURE_DEVICE_ID]
+    assert (row.basic_profile, dict(row.options)) == ("X", {DEVICE_IDENTITY: "K"})
+    for composed in _every_policy():
+        kept = DEVICE_IDENTITY in composed.options
+        for tag in SECONDARY_CAPTURE_DEVICE_TEXT:
+            assert composed.supplementary_actions[tag] == ("K" if kept else "X/Z/D")
+
+
+def test_removal_by_type_gives_the_secondary_capture_attributes_the_actions_reviewed():
+    actions_by_tag = _record_actions()
+    dictionary = _dictionary()
+    every_vr = {vr for attribute in dictionary.values() for vr in attribute.vrs}
+    new = {}
+
+    for tag in sorted(_used_by(SECONDARY_CAPTURE_IODS, every_vr)):
+        action = actions_by_tag.get(tag)
+        # A repeating group's attributes, of the Overlay Plane Module, are
+        # those of the CT Image IOD, and go with the group (D-020).
+        if action not in compound_actions.COMPOUND_ACTIONS or "xx" in tag:
+            continue
+        resolved = _resolved_in(SECONDARY_CAPTURE_IODS, tag, action)
+        reviewed = _resolved_in(SECONDARY_CAPTURE_REVIEWED_AGAINST, tag, action)
+        if not resolved <= reviewed:
+            new[tag] = (resolved, reviewed)
+
+    assert new == SECONDARY_CAPTURE_NEW_RESOLUTIONS
+
+
+def test_every_uid_date_and_name_that_the_secondary_capture_iods_use_has_a_role():
+    uids = uid_roles.load_uid_roles()
+    temporal = temporal_roles.load_temporal_roles()
+    table = _table_e1_1()
+
+    for tag in _used_by(SECONDARY_CAPTURE_IODS, {"UI"}):
+        assert isinstance(uids.role(tag), uid_roles.UIDRole), tag
+    for tag in _used_by(SECONDARY_CAPTURE_IODS, TEMPORAL_VRS):
+        assert isinstance(temporal.role(tag), temporal_roles.TemporalRole), tag
+    # The IODs reviewed before them use every UID, person name, and URL that
+    # these IODs use, and every date and time but the two of the capture,
+    # which Table E.1-1 lists.
+    for vrs in ({"UI"}, {"PN"}, {"UR"}):
+        assert not _used_by(SECONDARY_CAPTURE_IODS, vrs) - _used_by(
+            SECONDARY_CAPTURE_REVIEWED_AGAINST, vrs
+        ), vrs
+    new_dates = _used_by(SECONDARY_CAPTURE_IODS, TEMPORAL_VRS) - _used_by(
+        SECONDARY_CAPTURE_REVIEWED_AGAINST, TEMPORAL_VRS
+    )
+    assert new_dates == {"(0018,1012)", "(0018,1014)"}
+    for tag in new_dates:
+        assert (table[tag].basic_profile, dict(table[tag].options)) == (
+            "X",
+            DATE_OPTIONS,
+        ), tag
+
+
+def test_the_secondary_capture_iods_other_new_attributes_are_kept_by_the_default():
+    dictionary = _dictionary()
+    tables = iods.load_iod_tables()
+    every_vr = {vr for attribute in dictionary.values() for vr in attribute.vrs}
+    new = _used_by(SECONDARY_CAPTURE_IODS, every_vr) - _used_by(
+        SECONDARY_CAPTURE_REVIEWED_AGAINST, every_vr
+    )
+    listed = set(_table_e1_1())
+    rules = _rules()
+    other = new - listed - set(rules)
+    by_vr = collections.Counter(vr for tag in other for vr in dictionary[tag].vrs)
+
+    assert new - other == (
+        SECONDARY_CAPTURE_DEVICE_TEXT
+        | SECONDARY_CAPTURE_OPERATOR_TEXT
+        | {SECONDARY_CAPTURE_DEVICE_ID, "(0018,1012)", "(0018,1014)"}
+    )
+    assert by_vr == SECONDARY_CAPTURE_OTHER_VRS
+    assert all(len(dictionary[tag].vrs) == 1 for tag in other)
+    assert not other & set(uid_roles.load_uid_roles().rules)
+    # So each takes the default, which keeps it, under every preset: numbers,
+    # angles, and code strings of the capture and its frames, and the codes
+    # that classify a scanned document, whose items' own attributes have
+    # their own rules.
+    for name in SECONDARY_CAPTURE_IODS:
+        iod = tables.iods[name]
+        for preset in policy.PRESETS:
+            rules_of = element_rules.ElementRules(policy.compose_policy(preset))
+            for definition in iod.definitions:
+                if definition.tag not in other:
+                    continue
+                rule = rules_of.rule(definition.tag, definition.path, iod=iod)
+                assert (rule.source, rule.action) == (
+                    element_rules.RuleSource.DEFAULT,
+                    element_rules.KEEP,
+                ), (preset, definition)
+
+
 def test_names_identifiers_and_overlay_text_are_removed_under_every_option():
     rules = _rules()
 
@@ -1175,7 +1363,9 @@ def test_the_basic_profile_keeps_only_the_reviewed_coded_and_technical_text():
         for tag in _supported_text()
     }
 
-    assert len(basic) == 299
+    # The Secondary Capture IODs add their nine reviewed text attributes and
+    # Secondary Capture Device ID, which Table E.1-1 lists.
+    assert len(basic) == 309
     assert {tag for tag, action in basic.items() if action == "K"} == (
         KEPT_TEXT | ADDED_KEPT_TEXT | RT_IMAGE_KEPT_TEXT | ION_KEPT_TEXT
     )

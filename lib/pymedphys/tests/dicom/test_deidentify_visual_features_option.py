@@ -1132,12 +1132,17 @@ def test_every_other_instance_that_can_show_a_face_is_held(second_run):
         and name != corpus_module.SEQUESTERED_FILE
         and name not in _FACELESS
         and name not in corpus_module.STRUCTURED_REPORT_FILES
+        and name not in corpus_module.SECONDARY_CAPTURE_FILES
     }
 
     assert can_show >= set(_DOSE)
     # The reports cannot show a face, and their Content Sequence sequesters
     # them, as it does without the option (D-021).
     for name in corpus_module.STRUCTURED_REPORT_FILES:
+        assert outcomes[name] == ("sequestered", None), name
+    # The Secondary Captures can, but without Clean Pixel Data their
+    # burned-in text sequesters them first.
+    for name in corpus_module.SECONDARY_CAPTURE_FILES:
         assert outcomes[name] == ("sequestered", None), name
     for name in can_show:
         assert outcomes[name] == ("held-for-review", None), name
@@ -1215,7 +1220,7 @@ def test_the_report_names_the_attested_pack(second_run):
     attestation, _, report, _ = second_run
 
     assert report["face_review"]["reference"] == attestation.reference
-    assert report["format"] == "pymedphys-deid-release-report/53"
+    assert report["format"] == "pymedphys-deid-release-report/59"
 
 
 def test_the_report_counts_the_ct_series_that_were_not_defaced(second_run):
