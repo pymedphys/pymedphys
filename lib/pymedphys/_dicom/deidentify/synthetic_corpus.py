@@ -20,7 +20,7 @@ fictitious patient and study, with one Frame of Reference: three CT Image
 slices, an RT Structure Set that references the CT series and slices, an RT
 Plan that references the structure set and the dose, an RT Dose that
 references the plan, a second RT Dose of the plan for review (below), one
-instance of each of thirty-five other IODs, and two of the Segmentation
+instance of each of forty-one other IODs, and two of the Segmentation
 IOD, one of each of its SOP Classes, each in a series of its own, and a
 second X-Ray Radiation Dose SR, of a CT scan.
 The MR Image and PET Image instances reference the first CT slice, and each
@@ -53,7 +53,12 @@ and Chest CAD SR name the RT Image, the collection's one projection
 radiograph, as the image that their CAD read, and the Colon CAD SR the CT
 series; and the Procedure Log, Spectacle Prescription Report, Macular Grid
 Thickness and Volume Report, and Waveform Annotation SR reference the MR
-Image. It is the input for validating each preset end to end: once the
+Image. Each softcopy Presentation State names, in its Referenced Series
+Sequence (0008,1115), or the blending one in its Blending Sequence
+(0070,0402), the image that it presents: the grayscale, blending, and
+Variable Modality LUT ones the first CT slice, the colour one the Enhanced
+MR Color Image, the pseudo-colour one the PET Image, and the XA/XRF one the
+RT Image. It is the input for validating each preset end to end: once the
 engine has
 written the collection, the residual search
 (:mod:`~pymedphys._dicom.deidentify.residuals`) should find none of the
@@ -175,21 +180,27 @@ item of such a sequence. Of the corpus's IODs these
 are Responsible Person (0010,2297) and Responsible Organization (0010,2299)
 at the top level, and Radiopharmaceutical Start DateTime (0018,1078) in the
 Radiopharmaceutical Information Sequence (0054,0016) of an Enhanced PET
-Image. Institution Code Sequence (0008,0082), which X/Z/D gives D where it
-is Type 1C, in the Interlock Resolution User Sequence (300A,0746) of an RT
+Image, and, in each softcopy Presentation State, Presentation Creation Date
+(0070,0082) and Time (0070,0083), Type 1 at the top level, the Graphic
+Annotation Sequence (0070,0001), and Overlay Data (60xx,3000), which these
+IODs define in a conditional Overlay Plane Module. Institution Code Sequence
+(0008,0082), which X/Z/D gives D where it is Type 1C, in the Interlock Resolution User Sequence (300A,0746) of an RT
 Beams Treatment Record's or RT Ion Beams Treatment Record's Interlock
 Sequence (300A,0740), is planted there, since a reviewed rule gives it a
 dummy item at that place and only there. Planted in
 every file, the first two would sequester every
 instance, and no preset could release any of the collection; planted in one,
 that instance checks sequestration, :data:`REVIEW_FILE` checks review, and
-the other forty-three check each preset's output, the reports where their
+the other forty-nine check each preset's output, the reports where their
 trees are cleaned. Radiopharmaceutical Start
 DateTime, which CT Image does not define there, is planted in no file, so
 the Enhanced PET instance, which lacks an attribute of Type 1, is released
-and its other markers are checked; an Enhanced PET Image instance that
-conforms to the IOD is sequestered under ``basic`` and
-``basic-clean-descriptors``.
+and its other markers are checked. So is each Presentation State: CT Image
+does not define its creation date and time or Graphic Annotation Sequence,
+and defines Overlay Data in a user-optional module, whose group the Basic
+Profile removes, so these are planted in no file either. An Enhanced PET
+Image instance that conforms to the IOD is sequestered under ``basic`` and
+``basic-clean-descriptors``, as is a softcopy Presentation State that does.
 
 **Edge cases.** Each file except the first RT Dose, ``06-rtdose.dcm``, and
 the MR Image, ``10-mr.dcm``, is written in Explicit VR Little Endian, and
@@ -219,7 +230,7 @@ Manufacturer's Model Name (0008,1090), which Table E.1-1 does not list and
 the Basic Profile keeps, a copy of the RT Plan's RT Plan Label marker
 (:attr:`PlacementKind.REVIEW_COPY`), so the residual search finds a source
 value of another instance in its output and sends it to review. The third
-CT slice remains sequestered; the other forty-three files stay releasable, the
+CT slice remains sequestered; the other forty-nine files stay releasable, the
 reports where their trees are cleaned.
 
 **Manifest.** :class:`CorpusManifest` records, for each file, each
@@ -352,6 +363,24 @@ RT_ION_PLAN_STORAGE = "1.2.840.10008.5.1.4.1.1.481.8"
 RT_ION_BEAMS_TREATMENT_RECORD_STORAGE = "1.2.840.10008.5.1.4.1.1.481.9"
 RT_BRACHY_TREATMENT_RECORD_STORAGE = "1.2.840.10008.5.1.4.1.1.481.6"
 RT_TREATMENT_SUMMARY_RECORD_STORAGE = "1.2.840.10008.5.1.4.1.1.481.7"
+GRAYSCALE_SOFTCOPY_PRESENTATION_STATE_STORAGE = "1.2.840.10008.5.1.4.1.1.11.1"
+COLOR_SOFTCOPY_PRESENTATION_STATE_STORAGE = "1.2.840.10008.5.1.4.1.1.11.2"
+PSEUDO_COLOR_SOFTCOPY_PRESENTATION_STATE_STORAGE = "1.2.840.10008.5.1.4.1.1.11.3"
+BLENDING_SOFTCOPY_PRESENTATION_STATE_STORAGE = "1.2.840.10008.5.1.4.1.1.11.4"
+XA_XRF_GRAYSCALE_SOFTCOPY_PRESENTATION_STATE_STORAGE = "1.2.840.10008.5.1.4.1.1.11.5"
+VARIABLE_MODALITY_LUT_SOFTCOPY_PRESENTATION_STATE_STORAGE = (
+    "1.2.840.10008.5.1.4.1.1.11.12"
+)
+PRESENTATION_STATE_STORAGE_CLASSES = frozenset(
+    {
+        GRAYSCALE_SOFTCOPY_PRESENTATION_STATE_STORAGE,
+        COLOR_SOFTCOPY_PRESENTATION_STATE_STORAGE,
+        PSEUDO_COLOR_SOFTCOPY_PRESENTATION_STATE_STORAGE,
+        BLENDING_SOFTCOPY_PRESENTATION_STATE_STORAGE,
+        XA_XRF_GRAYSCALE_SOFTCOPY_PRESENTATION_STATE_STORAGE,
+        VARIABLE_MODALITY_LUT_SOFTCOPY_PRESENTATION_STATE_STORAGE,
+    }
+)
 # The retired class that PS3.3 Sections 10.6.1 and C.8.8.5.4 give a study in
 # a Referenced Study Sequence or RT Referenced Study Sequence item.
 DETACHED_STUDY_MANAGEMENT = "1.2.840.10008.3.1.2.3.1"
@@ -360,8 +389,9 @@ DETACHED_STUDY_MANAGEMENT = "1.2.840.10008.3.1.2.3.1"
 MAX_DEPTH = 4
 # Every marker's number is below this, so markers have a fixed width of five
 # digits and none is the start of another, every date is before 1900, every
-# time is distinct, and the negated number fits VR SS.
-MAX_MARKERS = 2**15
+# time is distinct, the number fits VR US, and the number less 2**15 fits VR
+# SS.
+MAX_MARKERS = 55_000
 MARKER_PREFIX = "SYNMK"
 MARKER_UID_ROOT = "2.25.99999"
 LINKED_UID_ROOT = "2.25.88888"
@@ -414,6 +444,23 @@ ION_TREATMENT_RECORD_FILE = "48-rt-ion-beams-record.dcm"
 # Record of its course, numbered after the files that open pull requests add.
 BRACHY_TREATMENT_RECORD_FILE = "49-rt-brachy-record.dcm"
 TREATMENT_SUMMARY_RECORD_FILE = "50-rt-treatment-summary-record.dcm"
+# The softcopy Presentation States, one of each of the six IODs of PS3.3
+# Sections A.33.1 to A.33.5 and A.33.11, numbered after the files that open
+# pull requests add.
+GRAYSCALE_PRESENTATION_STATE_FILE = "51-pr-grayscale.dcm"
+COLOR_PRESENTATION_STATE_FILE = "52-pr-color.dcm"
+PSEUDO_COLOR_PRESENTATION_STATE_FILE = "53-pr-pseudo-color.dcm"
+BLENDING_PRESENTATION_STATE_FILE = "54-pr-blending.dcm"
+XA_XRF_PRESENTATION_STATE_FILE = "55-pr-xa-xrf-grayscale.dcm"
+VARIABLE_MODALITY_LUT_PRESENTATION_STATE_FILE = "56-pr-variable-modality-lut.dcm"
+PRESENTATION_STATE_FILES = (
+    GRAYSCALE_PRESENTATION_STATE_FILE,
+    COLOR_PRESENTATION_STATE_FILE,
+    PSEUDO_COLOR_PRESENTATION_STATE_FILE,
+    BLENDING_PRESENTATION_STATE_FILE,
+    XA_XRF_PRESENTATION_STATE_FILE,
+    VARIABLE_MODALITY_LUT_PRESENTATION_STATE_FILE,
+)
 # The directory, within the one that write_corpus is given, of the files.
 INSTANCES_DIRECTORY = "instances"
 
@@ -506,6 +553,18 @@ BRACHY_TREATMENT_RECORD_SERIES = f"{LINKED_UID_ROOT}04600"
 BRACHY_TREATMENT_RECORD = f"{LINKED_UID_ROOT}04601"
 TREATMENT_SUMMARY_RECORD_SERIES = f"{LINKED_UID_ROOT}04700"
 TREATMENT_SUMMARY_RECORD = f"{LINKED_UID_ROOT}04701"
+GRAYSCALE_PRESENTATION_STATE_SERIES = f"{LINKED_UID_ROOT}04800"
+GRAYSCALE_PRESENTATION_STATE = f"{LINKED_UID_ROOT}04801"
+COLOR_PRESENTATION_STATE_SERIES = f"{LINKED_UID_ROOT}04900"
+COLOR_PRESENTATION_STATE = f"{LINKED_UID_ROOT}04901"
+PSEUDO_COLOR_PRESENTATION_STATE_SERIES = f"{LINKED_UID_ROOT}05000"
+PSEUDO_COLOR_PRESENTATION_STATE = f"{LINKED_UID_ROOT}05001"
+BLENDING_PRESENTATION_STATE_SERIES = f"{LINKED_UID_ROOT}05100"
+BLENDING_PRESENTATION_STATE = f"{LINKED_UID_ROOT}05101"
+XA_XRF_PRESENTATION_STATE_SERIES = f"{LINKED_UID_ROOT}05200"
+XA_XRF_PRESENTATION_STATE = f"{LINKED_UID_ROOT}05201"
+VARIABLE_MODALITY_LUT_PRESENTATION_STATE_SERIES = f"{LINKED_UID_ROOT}05300"
+VARIABLE_MODALITY_LUT_PRESENTATION_STATE = f"{LINKED_UID_ROOT}05301"
 # A patient and a procedure step that the collection names but does not hold.
 PATIENT_REFERENCE = f"{LINKED_UID_ROOT}00003"
 PROCEDURE_STEP = f"{LINKED_UID_ROOT}00004"
@@ -633,6 +692,18 @@ _SOP_CLASSES = types.MappingProxyType(
         ION_TREATMENT_RECORD: RT_ION_BEAMS_TREATMENT_RECORD_STORAGE,
         BRACHY_TREATMENT_RECORD: RT_BRACHY_TREATMENT_RECORD_STORAGE,
         TREATMENT_SUMMARY_RECORD: RT_TREATMENT_SUMMARY_RECORD_STORAGE,
+        GRAYSCALE_PRESENTATION_STATE: GRAYSCALE_SOFTCOPY_PRESENTATION_STATE_STORAGE,
+        COLOR_PRESENTATION_STATE: COLOR_SOFTCOPY_PRESENTATION_STATE_STORAGE,
+        PSEUDO_COLOR_PRESENTATION_STATE: (
+            PSEUDO_COLOR_SOFTCOPY_PRESENTATION_STATE_STORAGE
+        ),
+        BLENDING_PRESENTATION_STATE: BLENDING_SOFTCOPY_PRESENTATION_STATE_STORAGE,
+        XA_XRF_PRESENTATION_STATE: (
+            XA_XRF_GRAYSCALE_SOFTCOPY_PRESENTATION_STATE_STORAGE
+        ),
+        VARIABLE_MODALITY_LUT_PRESENTATION_STATE: (
+            VARIABLE_MODALITY_LUT_SOFTCOPY_PRESENTATION_STATE_STORAGE
+        ),
         PATIENT_REFERENCE: DETACHED_PATIENT_MANAGEMENT,
         PROCEDURE_STEP: MODALITY_PERFORMED_PROCEDURE_STEP,
     }
@@ -663,7 +734,7 @@ _EVEN = 2
 _TIME_SIGNATURE = ".424242"
 # The time of every DT marker, which no TM marker matches.
 _NOON = "120000"
-_FIRST_DATE = datetime.date(900, 1, 1)
+_FIRST_DATE = datetime.date(200, 1, 1)
 # Dates come in runs of consecutive days, each run the same number of days
 # after the one before it, so that no two date markers are 364 to 3,640 days
 # apart: the range of the Retain Longitudinal Temporal Information Modified
@@ -1362,6 +1433,56 @@ _SPECS = (
         PLAN,
         targets=((_REFERENCED_TREATMENT_RECORD_SEQUENCE, BRACHY_TREATMENT_RECORD),),
     ),
+    # Each softcopy Presentation State names, in the Referenced Image
+    # Sequence (0008,1140) of its Referenced Series Sequence (0008,1115), the
+    # image that it presents: the grayscale and Variable Modality LUT ones
+    # the first CT slice, the colour one the Enhanced MR Color Image, the
+    # pseudo-colour one the PET Image, the blending one the first CT slice,
+    # under the PET Image that its Blending Sequence (0070,0402) would
+    # superimpose, and the XA/XRF one the RT Image, the collection's one
+    # projection radiograph.
+    _Spec(
+        GRAYSCALE_PRESENTATION_STATE_FILE,
+        GRAYSCALE_SOFTCOPY_PRESENTATION_STATE_STORAGE,
+        GRAYSCALE_PRESENTATION_STATE,
+        GRAYSCALE_PRESENTATION_STATE_SERIES,
+        CT_SLICES[0],
+    ),
+    _Spec(
+        COLOR_PRESENTATION_STATE_FILE,
+        COLOR_SOFTCOPY_PRESENTATION_STATE_STORAGE,
+        COLOR_PRESENTATION_STATE,
+        COLOR_PRESENTATION_STATE_SERIES,
+        MR_COLOR,
+    ),
+    _Spec(
+        PSEUDO_COLOR_PRESENTATION_STATE_FILE,
+        PSEUDO_COLOR_SOFTCOPY_PRESENTATION_STATE_STORAGE,
+        PSEUDO_COLOR_PRESENTATION_STATE,
+        PSEUDO_COLOR_PRESENTATION_STATE_SERIES,
+        PET,
+    ),
+    _Spec(
+        BLENDING_PRESENTATION_STATE_FILE,
+        BLENDING_SOFTCOPY_PRESENTATION_STATE_STORAGE,
+        BLENDING_PRESENTATION_STATE,
+        BLENDING_PRESENTATION_STATE_SERIES,
+        CT_SLICES[0],
+    ),
+    _Spec(
+        XA_XRF_PRESENTATION_STATE_FILE,
+        XA_XRF_GRAYSCALE_SOFTCOPY_PRESENTATION_STATE_STORAGE,
+        XA_XRF_PRESENTATION_STATE,
+        XA_XRF_PRESENTATION_STATE_SERIES,
+        RT_IMAGE,
+    ),
+    _Spec(
+        VARIABLE_MODALITY_LUT_PRESENTATION_STATE_FILE,
+        VARIABLE_MODALITY_LUT_SOFTCOPY_PRESENTATION_STATE_STORAGE,
+        VARIABLE_MODALITY_LUT_PRESENTATION_STATE,
+        VARIABLE_MODALITY_LUT_PRESENTATION_STATE_SERIES,
+        CT_SLICES[0],
+    ),
 )
 
 
@@ -1371,7 +1492,7 @@ def build_corpus() -> SyntheticCorpus:
     Returns
     -------
     SyntheticCorpus
-        Forty-five files: three CT slices; the RT Structure Set, RT Plan, RT
+        Fifty-one files: three CT slices; the RT Structure Set, RT Plan, RT
         Dose, and the RT Dose for review; the Enhanced CT Image and Legacy
         Converted Enhanced CT Image; the MR Image, Enhanced MR Image,
         Enhanced MR Color Image, Legacy Converted Enhanced MR Image, and MR
@@ -1386,9 +1507,11 @@ def build_corpus() -> SyntheticCorpus:
         the Key Object Selection Document, Mammography CAD SR, Chest CAD SR,
         Colon CAD SR, Procedure Log, Spectacle Prescription Report, Macular
         Grid Thickness and Volume Report, and Waveform Annotation SR; the RT
-        Ion Plan and RT Ion Beams Treatment Record; and the RT Brachy
-        Treatment Record and RT Treatment Summary Record. Two builds give the
-        same bytes and the same manifest.
+        Ion Plan and RT Ion Beams Treatment Record; the RT Brachy Treatment
+        Record and RT Treatment Summary Record; and the Grayscale, Color,
+        Pseudo-Color, Blending, XA/XRF Grayscale, and Variable Modality LUT
+        Softcopy Presentation States. Two builds give the same bytes and the
+        same manifest.
     """
     markers = _Markers()
     files: list[CorpusFile] = []
@@ -1475,7 +1598,7 @@ def _marker_date(number: int) -> datetime.date:
     Within a run of ``_DATE_RUN_DAYS`` consecutive days dates are at most
     362 days apart, and between runs at least ``_DATE_RUN_PERIOD`` less 362,
     3,642 days, so no two are 364 to 3,640 days apart. Every date of a
-    number below :data:`MAX_MARKERS` is from 900 to before 1900.
+    number below :data:`MAX_MARKERS` is from 200 to before 1900.
     """
     run, day = divmod(number, _DATE_RUN_DAYS)
     return _FIRST_DATE + datetime.timedelta(days=run * _DATE_RUN_PERIOD + day)
@@ -1508,7 +1631,7 @@ def _marker(vr: str, number: int, latin_1: bool) -> object:
         "FD": number + 0.5,
         "FL": number + 0.5,
         "SL": -(900_000_000 + number),
-        "SS": -number,
+        "SS": number - 2**15,
         "SV": -(9_000_000_000 + number),
         "UL": 900_000_000 + number,
         "US": number,
@@ -2028,6 +2151,8 @@ class _Instance:
             self._add_registration()
         elif self.spec.sop_class in _SEGMENTATIONS:
             self._add_segmentation()
+        elif self.spec.sop_class in PRESENTATION_STATE_STORAGE_CLASSES:
+            put((), "(0008,0060)", ["PR"])
         elif self.spec.sop_class == RT_IMAGE_STORAGE:
             put((), "(0008,0060)", ["RTIMAGE"])
             put((), "(0008,0008)", ["DERIVED", "SECONDARY", "DRR"])

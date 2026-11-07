@@ -65,9 +65,9 @@ MARKER_PATTERNS = {
     **dict.fromkeys(("AE", "LO", "LT", "SH", "ST", "UC", "UT", "UN", "OB", "OW"), TEXT),
     "AS": r"\d{3}W",
     "CS": r"SYNMK_\d{5}",
-    "DA": r"(09|1[0-8])\d\d(0[1-9]|1[0-2])\d\d",
+    "DA": r"(0[2-9]|1[0-8])\d\d(0[1-9]|1[0-2])\d\d",
     "DS": r"8\d{5}\.5",
-    "DT": r"(09|1[0-8])\d\d(0[1-9]|1[0-2])\d{8}",
+    "DT": r"(0[2-9]|1[0-8])\d\d(0[1-9]|1[0-2])\d{8}",
     "IS": r"7\d{5}",
     "PN": r"SYNMK(\d{5})\^M[AÄ]RKER\1",
     "TM": r"([01]\d|2[0-3])[0-5]\d[0-5]\d\.424242",
@@ -243,6 +243,12 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "48-rt-ion-beams-record.dcm",
         "49-rt-brachy-record.dcm",
         "50-rt-treatment-summary-record.dcm",
+        "51-pr-grayscale.dcm",
+        "52-pr-color.dcm",
+        "53-pr-pseudo-color.dcm",
+        "54-pr-blending.dcm",
+        "55-pr-xa-xrf-grayscale.dcm",
+        "56-pr-variable-modality-lut.dcm",
     ]
     assert [file.manifest.iod for file in corpus.files] == [
         "CT Image",
@@ -283,21 +289,35 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "RT Ion Beams Treatment Record",
         "RT Brachy Treatment Record",
         "RT Treatment Summary Record",
+        "Grayscale Softcopy Presentation State",
+        "Color Softcopy Presentation State",
+        "Pseudo-Color Softcopy Presentation State",
+        "Blending Softcopy Presentation State",
+        "XA/XRF Grayscale Softcopy Presentation State",
+        "Variable Modality LUT Softcopy Presentation State",
     ]
+    # The files before the six Presentation States.
+    before = corpus.files[:-6]
     assert corpus_module.STRUCTURED_REPORT_FILES == tuple(
-        file.name for file in corpus.files[-24:-14] + corpus.files[-12:-4]
+        file.name for file in before[-24:-14] + before[-12:-4]
     )
     assert corpus_module.SEGMENTATION_FILES == tuple(
-        file.name for file in corpus.files[-14:-12]
+        file.name for file in before[-14:-12]
     )
     assert (
         corpus_module.ION_PLAN_FILE,
         corpus_module.ION_TREATMENT_RECORD_FILE,
-    ) == tuple(file.name for file in corpus.files[-4:-2])
+    ) == tuple(file.name for file in before[-4:-2])
     assert (
         corpus_module.BRACHY_TREATMENT_RECORD_FILE,
         corpus_module.TREATMENT_SUMMARY_RECORD_FILE,
-    ) == tuple(file.name for file in corpus.files[-2:])
+    ) == tuple(file.name for file in before[-2:])
+    assert corpus_module.PRESENTATION_STATE_FILES == tuple(
+        file.name for file in corpus.files[-6:]
+    )
+    assert {file.manifest.sop_class for file in corpus.files[-6:]} == (
+        corpus_module.PRESENTATION_STATE_STORAGE_CLASSES
+    )
     # Every IOD of the first supported release.
     assert {file.manifest.iod for file in corpus.files} == scope.SUPPORTED_IODS
 
@@ -475,8 +495,36 @@ def test_an_attribute_whose_removal_sequesters_is_planted_in_one_instance(corpus
     # resolution user, whose dummy item a reviewed rule writes (D-021), and
     # Source Manufacturer in the RT Brachy Treatment Record's Recorded Source
     # Sequence, which a plain X empties there too, are planted.
+    # Each softcopy Presentation State's Graphic Annotation Sequence, whose D
+    # a sequence has no dummy value for (D-021), with what its item holds,
+    # its Presentation Creation Date and Time, which a plain X removes where
+    # they are Type 1 (D-020), and, but in the blending one, whose IOD has no
+    # Overlay Plane Module, its Overlay Data, which a plain X removes where
+    # the module is conditional, are planted in no file.
     both = {"(0010,2297)", "(0010,2299)"}
-    only_in = {"Enhanced PET Image": {"(0018,1078)"}}
+    annotation = {
+        "(0070,0001)",  # Graphic Annotation Sequence
+        "(0008,1140)",  # Referenced Image Sequence, in its item
+        "(0008,1155)",  # Referenced SOP Instance UID, in that item
+        "(0062,0021)",  # Tracking UID, in its item
+        "(0070,0006)",  # Unformatted Text Value, in its Text Object Sequence
+    }
+    creation = {"(0070,0082)", "(0070,0083)"}
+    overlay = {"(6000,3000)"}
+    only_in = {
+        "Enhanced PET Image": {"(0018,1078)"},
+        **dict.fromkeys(
+            (
+                "Grayscale Softcopy Presentation State",
+                "Color Softcopy Presentation State",
+                "Pseudo-Color Softcopy Presentation State",
+                "XA/XRF Grayscale Softcopy Presentation State",
+                "Variable Modality LUT Softcopy Presentation State",
+            ),
+            annotation | creation | overlay,
+        ),
+        "Blending Softcopy Presentation State": annotation | creation,
+    }
     assert planted == {corpus_module.SEQUESTERED_FILE: both}
     assert corpus_module.SEQUESTERED_FILE == corpus.files[2].name
     assert withheld == {
@@ -548,7 +596,7 @@ def test_dates_are_distinct_valid_dates_before_1900(corpus):
 
     assert dates and len(dates) == len(set(dates))
     assert all(value_problem("DA", date) is None for date in dates)
-    assert all("0900" <= date[:4] <= "1899" for date in dates)
+    assert all("0200" <= date[:4] <= "1899" for date in dates)
 
 
 def test_no_date_shifted_under_modified_dates_is_another_markers(corpus):
@@ -956,9 +1004,9 @@ def test_each_text_marker_occurs_once_in_its_file(corpus):
                 )
 
 
-def test_every_marker_number_fits_a_signed_short():
-    # SS markers are the negated number.
-    assert corpus_module.MAX_MARKERS <= 2**15
+def test_every_marker_number_fits_an_unsigned_and_a_signed_short():
+    # US markers are the number, and SS markers the number less 2**15.
+    assert corpus_module.MAX_MARKERS <= 2**16
 
 
 def test_every_planted_placement_covers_a_row_of_table_e1_1_or_e3_4_1(corpus):
