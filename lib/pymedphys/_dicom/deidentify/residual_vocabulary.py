@@ -218,14 +218,8 @@ def vocabulary_meaning(
         :attr:`~pymedphys._dicom.deidentify.residual_exemptions.Exemption.VOCABULARY_MEANING`
         as the module describes, or ``None``.
     """
-    element = finding.location.element
-    if (
-        finding.location.region is not Region.DATA_SET
-        or element is None
-        or element.tag != _CODE_MEANING
-        or not element.items
-        or not descriptive(finding.source, sources)
-    ):
+    element = descriptive_element(finding, sources)
+    if element is None or element.tag != _CODE_MEANING or not element.items:
         return None
     values = kept.values(element)
     if not values:
@@ -237,6 +231,25 @@ def vocabulary_meaning(
     if any(echoes_identifier(value, identifiers) for value in values):
         return None
     return Exemption.VOCABULARY_MEANING
+
+
+def descriptive_element(
+    finding: Finding,
+    sources: Mapping[ElementPath, tuple[SourceValue, ...]],
+) -> ElementPath | None:
+    """Return the data set element a finding of a descriptive source is in.
+
+    ``None`` where the finding is outside the data set, or not in an
+    element, or its source is not :func:`descriptive`.
+    """
+    element = finding.location.element
+    if (
+        finding.location.region is not Region.DATA_SET
+        or element is None
+        or not descriptive(finding.source, sources)
+    ):
+        return None
+    return element
 
 
 def descriptive(
@@ -274,13 +287,14 @@ def descriptive_copy(
     It does where ``source`` is a private data element, (gggg,1000) or later
     of a group open to private use (PS3.5 7.8.1), at any depth, at least
     one value of it was collected for the subject, and every collected
-    value of it is text equal to a collected value of one of :data:`DESCRIPTIVE_SOURCES`, at any depth,
-    that :func:`institutional` does not exclude.
+    value of it is text equal to a collected value of one of
+    :data:`DESCRIPTIVE_SOURCES`, at any depth, that :func:`institutional`
+    does not exclude.
     """
     if not _private_data(source.tag):
         return False
     copies = sources.get(source, ())
-    descriptive = {
+    originals = {
         each.value
         for path, values in sources.items()
         if path.tag in DESCRIPTIVE_SOURCES and not institutional(path)
@@ -288,7 +302,7 @@ def descriptive_copy(
         if isinstance(each.value, str)
     }
     return bool(copies) and all(
-        isinstance(each.value, str) and each.value in descriptive for each in copies
+        isinstance(each.value, str) and each.value in originals for each in copies
     )
 
 
