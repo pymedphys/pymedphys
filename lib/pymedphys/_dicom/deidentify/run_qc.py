@@ -43,7 +43,9 @@ from .face_review import (
     contour_data_sha256,
     grid_data_sha256,
     holds_deformation_grid,
+    holds_surface_mesh,
     pixel_data_sha256,
+    surface_data_sha256,
 )
 from .file_layout import ElementPath
 from .icc_cleaning import Refusal
@@ -315,8 +317,8 @@ class DoseCheckMaterial:
 @dataclasses.dataclass(frozen=True)
 class UndefacedMaterial:
     """An instance in a defaced CT series' Frame of Reference, naming none,
-    or referring to a defaced slice, whose outline, pixel data, or
-    deformation grids the run does not clean of the face (D-050).
+    or referring to a defaced slice, whose outline, pixel data, deformation
+    grids, or surface meshes the run does not clean of the face (D-050).
 
     The pack lists it in ``undefaced_instances``, where it is released or
     held, so that a reviewer can give it a face verdict of its own, from its
@@ -656,6 +658,7 @@ def qc_pack_of(
                 position in previews.contours_shown,
                 position in previews.pixels_shown,
                 position in previews.grids_shown,
+                position in previews.surfaces_shown,
             ),
         )
         if position in written
@@ -708,7 +711,8 @@ def qc_pack_of(
                 position,
                 instances[position].pixel_sha256 is not None
                 and instances[position].contour_sha256 is not None
-                and instances[position].grid_sha256 is not None,
+                and instances[position].grid_sha256 is not None
+                and instances[position].surface_sha256 is not None,
             )
             for position in sorted(undefaced)
         ),
@@ -797,10 +801,11 @@ def _written_sha256(
     contours_shown: bool,
     pixels_shown: bool,
     grids_shown: bool = False,
+    surfaces_shown: bool = False,
 ) -> dict[str, str | None]:
-    """Return the SHA-256 of a written file's pixel data, contours, and
-    deformation grids, as an instance entry's fields, each None if
-    unreadable.
+    """Return the SHA-256 of a written file's pixel data, contours,
+    deformation grids, and surface meshes, as an instance entry's fields,
+    each None if unreadable.
 
     The contours' is None too where the file has contours that the pack's
     contour sheet does not show, the pixel data's where the file has
@@ -808,12 +813,14 @@ def _written_sha256(
     draw every frame, which for an RT Dose only its dose-levels previews
     can, and for a Segmentation only its segments sheet, and the grids'
     where the file holds a deformation grid that the pack's grid sheets do
-    not all show, so that no verdict releases any unseen.
+    not all show, and the meshes' where it holds a surface mesh that no
+    surfaces sheet shows, so that no verdict releases any unseen.
     """
     digests: dict[str, str | None] = {
         "pixel_sha256": None,
         "contour_sha256": None,
         "grid_sha256": None,
+        "surface_sha256": None,
     }
     try:
         dataset = read_source(written).dataset()
@@ -828,6 +835,8 @@ def _written_sha256(
         taken.append(("contour_sha256", contour_data_sha256))
     if grids_shown or not holds_deformation_grid(dataset):
         taken.append(("grid_sha256", grid_data_sha256))
+    if surfaces_shown or not holds_surface_mesh(dataset):
+        taken.append(("surface_sha256", surface_data_sha256))
     for field, digest in taken:
         try:
             digests[field] = digest(dataset).hex()

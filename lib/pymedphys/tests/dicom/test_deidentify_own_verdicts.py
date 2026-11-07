@@ -57,6 +57,7 @@ from pymedphys._dicom.deidentify.qc_attestation import (
 from pymedphys._dicom.deidentify.qc_pack import (
     NO_CONTOURS_SHA256,
     NO_GRIDS_SHA256,
+    NO_SURFACES_SHA256,
     Disposition,
     InstanceEntry,
     QcPack,
@@ -106,6 +107,7 @@ def _held(position, digest=True, shown=True, grids=True):
         pixel_sha256=_digest(100 + position) if shown else None,
         contour_sha256=NO_CONTOURS_SHA256,
         grid_sha256=NO_GRIDS_SHA256 if grids else None,
+        surface_sha256=NO_SURFACES_SHA256,
     )
 
 
@@ -119,6 +121,7 @@ def _released(position, shown=True):
         pixel_sha256=_digest(100 + position) if shown else None,
         contour_sha256=NO_CONTOURS_SHA256,
         grid_sha256=NO_GRIDS_SHA256,
+        surface_sha256=NO_SURFACES_SHA256,
     )
 
 
@@ -268,7 +271,11 @@ def fixture_own_pack(tmp_path):
     instances = (
         _held(0),
         dataclasses.replace(
-            _released(1), pixel_sha256=None, contour_sha256=None, grid_sha256=None
+            _released(1),
+            pixel_sha256=None,
+            contour_sha256=None,
+            grid_sha256=None,
+            surface_sha256=None,
         ),
         _held(2, shown=False),
         _released(3),

@@ -24,16 +24,13 @@ content items, as in Clean Structured Content's own run, so that the preset
 keeps and cleans them, and the Structured Reports are released with their
 content trees cleaned (D-047); and every file is marked free of a face, so
 every released instance claims Clean Recognizable Visual Features, the
-deformable registration included, and the Surface Segmentation is held, as
-in that option's own run.
+deformable registration and the Surface Segmentation included, as in that
+option's own run.
 """
-
-import types
 
 from .._corpus_run import (
     CONTENT_SEQUENCE,
     MAPPED_NAME,
-    MESH_HELD,
     VOCABULARY_NAME,
     WITHHELD_WITHOUT_REPORTS,
     CorpusRun,
@@ -58,7 +55,7 @@ RUN = CorpusRun(
     corpus=_corpus,
     reviewed_roi_names=mapped_planted_name,
     face_review=every_face_absent,
-    withheld=types.MappingProxyType({**WITHHELD_WITHOUT_REPORTS, **MESH_HELD}),
+    withheld=WITHHELD_WITHOUT_REPORTS,
     kept=MODIFIED_DATES.kept,
     roi_names=(MAPPED_NAME, VOCABULARY_NAME),
     kept_content=frozenset({ACQUISITION_CONTEXT, CONTENT_SEQUENCE}),

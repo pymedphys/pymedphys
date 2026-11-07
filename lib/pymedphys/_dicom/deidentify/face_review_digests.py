@@ -12,7 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Byte layouts for reviewed pixel, contour and deformation-grid digests.
+"""Byte layouts for reviewed pixel, contour, deformation-grid, and surface
+mesh digests.
 
 The face-review entry points pass their existing DICOM tags to these
 helpers. Digest bytes, padding, ordering and error handling stay together
@@ -164,6 +165,93 @@ def grid_data_sha256(
     except Exception:  # pylint: disable = broad-exception-caught
         raise ValueError("deformation grids cannot be read") from None
     return digest.digest()
+
+
+def surface_data_sha256(
+    dataset: pydicom.Dataset,
+    surface_sequence: int,
+    points: tuple[int, tuple[int, ...]],
+    primitives: tuple[int, tuple[int, ...], tuple[int, ...], tuple[int, ...]],
+) -> bytes:
+    """Return the SHA-256 of a data set's surface meshes.
+
+    Each mesh is an item of the Surface Sequence (0066,0002), in order.
+    ``points`` gives the Surface Points Sequence and the elements of its
+    items that place points; ``primitives`` gives the Surface Mesh
+    Primitives Sequence, the index lists of its items, the sequences in its
+    items that each list one primitive in an item, and those items' index
+    lists. The digest is of how many meshes there are, then, for each in
+    order, of how many items each of the two sequences has, and, for each
+    item in order, of each of its elements named, by its tag, then its value
+    field after its length, with the trailing null byte that a file writes
+    to make a value of odd length even, and of each of its sequences named,
+    by its tag, then how many items it has and, for each item in order, each
+    of its index lists so. So the same points or indices placed in another
+    mesh, list, or primitive, or changed in any byte, differ; an absent
+    element or sequence is taken as an empty one, since neither draws
+    anything. A data set
+    without a Surface Sequence, as every one but a Surface Segmentation's
+    is, gives the digest of no meshes, which is the same for each, and the
+    same as of an empty Surface Sequence.
+
+    Raises
+    ------
+    ValueError
+        If a mesh cannot be read, without a message that quotes it.
+    """
+    points_sequence, point_tags = points
+    primitives_sequence, list_tags, sequence_tags, primitive_tags = primitives
+    try:
+        meshes = (
+            dataset[surface_sequence].value or () if surface_sequence in dataset else ()
+        )
+        digest = hashlib.sha256(struct.pack(">Q", len(meshes)))
+        for mesh in meshes:
+            for sequence, tags, nested in (
+                (points_sequence, point_tags, ()),
+                (primitives_sequence, list_tags, sequence_tags),
+            ):
+                items = mesh[sequence].value or () if sequence in mesh else ()
+                digest.update(struct.pack(">Q", len(items)))
+                for item in items:
+                    _update_values(digest, item, tags)
+                    _update_nested(digest, item, nested, primitive_tags)
+    # pydicom raises many types for a value it cannot read, and a message
+    # can quote the value.
+    except Exception:  # pylint: disable = broad-exception-caught
+        raise ValueError("surface meshes cannot be read") from None
+    return digest.digest()
+
+
+def _update_nested(
+    digest, item: pydicom.Dataset, nested: tuple[int, ...], tags: tuple[int, ...]
+) -> None:
+    """Add to a digest each of an item's nested sequences, by tag and count of
+    items, then each nested item's values of the given tags."""
+    for tag in nested:
+        listed = item[tag].value or () if tag in item else ()
+        digest.update(struct.pack(">IQ", tag, len(listed)))
+        for each in listed:
+            _update_values(digest, each, tags)
+
+
+def _update_values(digest, item: pydicom.Dataset, tags: tuple[int, ...]) -> None:
+    """Add each element of ``tags``, by its tag, and its value field after
+    its length, none where it is absent, to a digest.
+
+    Raises
+    ------
+    ValueError
+        If a value is not bytes.
+    """
+    for tag in tags:
+        data = item[tag].value if tag in item else b""
+        data = b"" if data is None else data
+        if not isinstance(data, bytes):
+            raise ValueError
+        if len(data) % 2:
+            data += b"\0"
+        digest.update(struct.pack(">IQ", tag, len(data)) + data)
 
 
 def _floats(value: object) -> list[float]:

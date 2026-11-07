@@ -244,7 +244,7 @@ from .standard import ALL_OPTIONS, VRS
 from .walker import Sequestration, SequesterReason
 
 # The format of the report document. A change to its fields takes a new label.
-FORMAT = "pymedphys-deid-release-report/53"
+FORMAT = "pymedphys-deid-release-report/55"
 
 _DIGEST = re.compile(r"[0-9a-f]{64}")
 # A key's non-secret identifier, as DeidKey.key_id gives it.
@@ -286,6 +286,7 @@ PIXEL_AND_FACE_REASONS = (
     ReviewReason.OTHER_PIXEL_DATA,
     ReviewReason.OTHER_CONTOURS,
     ReviewReason.OTHER_GRIDS,
+    ReviewReason.OTHER_SURFACES,
 )
 ATTESTATION_REASONS = (
     *_REVIEW_REASONS,

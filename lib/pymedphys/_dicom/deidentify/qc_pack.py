@@ -32,8 +32,8 @@ A pack holds, for one run:
   written, or the opaque per-run label by which the release report refers
   to it if sequestered, and why (D-026), and, for each released or held
   instance whose written file the gate handed over, the SHA-256 of that
-  file's pixel data, contours, and deformation grids, which binds a face
-  verdict to what the reviewer saw (D-046);
+  file's pixel data, contours, deformation grids, and surface meshes,
+  which binds a face verdict to what the reviewer saw (D-046);
 - ``residual_findings``: each residual that the search of a written file
   found, by instance and place, with a contextual excerpt of the bytes
   around it (D-027);
@@ -84,11 +84,11 @@ A pack holds, for one run:
   received or sets it to zero anyway (D-051); and ``undefaced_instances``:
   each instance that the run released or held in a defaced CT series'
   Frame of Reference, naming none, or referring to a defaced slice, whose
-  outline, pixel data, or deformation grids it does not clean of the face,
-  with whether the pack's previews show its pixel data, contours, and
-  grids as written, which they do only where they draw every frame,
-  contour, and grid in a way that could show a face, by which an
-  attestation gives it a face verdict of its own
+  outline, pixel data, deformation grids, or surface meshes it does not
+  clean of the face, with whether the pack's previews show its pixel data,
+  contours, grids, and meshes as written, which they do only where they
+  draw every frame, contour, grid, and mesh in a way that could show a
+  face, by which an attestation gives it a face verdict of its own
   (D-050);
 - ``redactions``: each released or held instance whose Pixel Data the
   Clean Pixel Data Option cleaned, with why it is held, its number of
@@ -106,12 +106,14 @@ A pack holds, for one run:
   attestation of the pack covers them, among them a contour sheet of each
   instance with contours, such as an RT Structure Set, a segments sheet
   of each Segmentation, the sheets of each deformation grid of a
-  deformable registration, and a sheet of each eye check's globes
+  deformable registration, a surfaces sheet of each Surface
+  Segmentation, and a sheet of each eye check's globes
   beside its eye ROIs, drawn from the slices as received; and
   ``not_previewed``: each instance whose pixel data could not be previewed,
   whose contours could not be shown, for an RT Dose, whose dose levels
   could not be drawn, for a Segmentation, whose segments could not be
-  drawn, or whose deformation grids could not be drawn, with why (D-017).
+  drawn, whose deformation grids could not be drawn, or whose surface
+  meshes could not be drawn, with why (D-017).
   The images are made by :mod:`~pymedphys._dicom.deidentify.qc_previews`.
 - ``source_gaps``: each instance whose source lacks an attribute that its
   IOD unconditionally requires, with each such attribute's place and Type,
@@ -173,7 +175,7 @@ from .reviewed_roi_names import Outcome
 from .text_detection import TextBox
 
 # The format of the pack document. A change to its fields takes a new label.
-FORMAT = "pymedphys-deid-qc-pack/33"
+FORMAT = "pymedphys-deid-qc-pack/35"
 # The bytes of a written file shown on each side of a residual's offset.
 EXCERPT_BYTES = 48
 # The SHA-256 that face_review.contour_data_sha256 gives a file without
@@ -185,6 +187,9 @@ NO_PIXELS_SHA256 = hashlib.sha256(b"").hexdigest()
 # The SHA-256 that face_review.grid_data_sha256 gives a file without a
 # deformation grid: of a count of no grids.
 NO_GRIDS_SHA256 = hashlib.sha256(bytes(8)).hexdigest()
+# The SHA-256 that face_review.surface_data_sha256 gives a file without a
+# surface mesh: of a count of no meshes.
+NO_SURFACES_SHA256 = hashlib.sha256(bytes(8)).hexdigest()
 
 # The directory, beside the pack's file, that holds its previews.
 PREVIEW_DIRECTORY = "previews"
@@ -315,6 +320,12 @@ class InstanceEntry:
         grids that the run wrote; also ``None`` for a file with grids that
         the pack's grid sheets do not all show, so that no verdict releases
         them.
+    surface_sha256 : str, optional
+        Likewise, the :func:`~.face_review.surface_data_sha256` of the file
+        written, which binds a series' face verdict to the surface meshes
+        that the run wrote; also ``None`` for a file with meshes that the
+        pack's surfaces sheet does not show, so that no verdict releases
+        them.
     """
 
     position: int
@@ -327,6 +338,7 @@ class InstanceEntry:
     pixel_sha256: str | None = None
     contour_sha256: str | None = None
     grid_sha256: str | None = None
+    surface_sha256: str | None = None
 
     def __post_init__(self) -> None:
         _check_position("an instance", self.position)
@@ -371,6 +383,15 @@ class InstanceEntry:
         ):
             raise QcPackError(
                 f"instance {self.position} needs its deformation grids' SHA-256 "
+                "as 64 lower-case hexadecimal digits, and only if released or held"
+            )
+        if self.surface_sha256 is not None and not (
+            isinstance(self.surface_sha256, str)
+            and _SHA256.fullmatch(self.surface_sha256)
+            and self.disposition in _REVIEWED
+        ):
+            raise QcPackError(
+                f"instance {self.position} needs its surface meshes' SHA-256 "
                 "as 64 lower-case hexadecimal digits, and only if released or held"
             )
         problem = self._problem()
@@ -947,6 +968,11 @@ class PreviewKind(enum.Enum):
     REGISTRATION_GRID_X = "registration-grid-x"
     REGISTRATION_GRID_Y = "registration-grid-y"
     REGISTRATION_GRID_Z = "registration-grid-z"
+    # renders of an instance's surface meshes, as written, united and each
+    # alone (qc_meshes), such as a Surface Segmentation's. It lists one
+    # frame for each mesh, its instance's run position and the mesh's index
+    # among the instance's meshes, with how many meshes it has.
+    SURFACE_MESHES = "surface-meshes"
 
 
 # The kinds of a grid's sheets, in the order that qc_grids.QUANTITIES draws
@@ -1000,6 +1026,12 @@ class NotPreviewedReason(enum.Enum):
     # or whose sheets would have too many levels or be too tall. Its other
     # previews, if any, are kept, as an RT Dose's are.
     GRIDS_NOT_SHOWN = "grids-not-shown"
+    # an instance that holds a surface mesh, by
+    # face_review.holds_surface_mesh, such as a Surface Segmentation, that
+    # no surfaces sheet shows (qc_meshes): one whose meshes cannot be read
+    # or placed, are too large, or whose sheet would be too tall. Its other
+    # previews, if any, are kept, as an RT Dose's are.
+    SURFACES_NOT_SHOWN = "surfaces-not-shown"
 
 
 # The reasons that say only that no preview that could show a face shows an
@@ -1010,6 +1042,7 @@ FACE_PREVIEW_REASONS = frozenset(
         NotPreviewedReason.DOSE_LEVELS_NOT_SHOWN,
         NotPreviewedReason.SEGMENTS_NOT_SHOWN,
         NotPreviewedReason.GRIDS_NOT_SHOWN,
+        NotPreviewedReason.SURFACES_NOT_SHOWN,
     }
 )
 
@@ -1457,7 +1490,8 @@ class DoseCheckEntry:
 class UndefacedEntry:
     """An instance in a defaced CT series' Frame of Reference, naming none,
     or referring to a defaced slice, whose outline, pixel data, or
-    deformation grids its run does not clean of the face, which a reviewer
+    deformation grids, or surface meshes its run does not clean of the face,
+    which a reviewer
     may give a face verdict of its own, from its own previews (D-050).
 
     A verdict on its series does not cover it, since the reviewer may have
@@ -1470,9 +1504,9 @@ class UndefacedEntry:
         Its run position.
     shown : bool
         Whether the pack's previews that could show a face draw every frame
-        of the pixel data, every contour, and every deformation grid that
-        the run wrote of it, as its instance entry's pixel, contour, and
-        grid digests, all given, record.
+        of the pixel data, every contour, every deformation grid, and every
+        surface mesh that the run wrote of it, as its instance entry's
+        pixel, contour, grid, and surface digests, all given, record.
     """
 
     position: int
@@ -1638,7 +1672,8 @@ class QcPack:
     undefaced_instances : tuple of UndefacedEntry
         Each instance once, in run position order, each released or held
         for review, with its source's SHA-256, and shown exactly where its
-        instance entry has all of its pixel, contour, and grid digests.
+        instance entry has all of its pixel, contour, grid, and surface
+        digests.
     several_patient_studies : tuple of SeveralPatientStudyEntry
         In order of their first instance; each instance sequestered, and in
         at most one.
@@ -1814,7 +1849,7 @@ class QcPack:
     def _check_undefaced(self) -> None:
         """Each undefaced instance is released or held for review, with its
         source's SHA-256, and shown exactly where its entry has all of its
-        pixel, contour, and grid digests."""
+        pixel, contour, grid, and surface digests."""
         for entry in self.undefaced_instances:
             instance = self.instances[entry.position]
             if instance.disposition not in _REVIEWED:
@@ -1830,11 +1865,12 @@ class QcPack:
                 instance.pixel_sha256 is not None
                 and instance.contour_sha256 is not None
                 and instance.grid_sha256 is not None
+                and instance.surface_sha256 is not None
             )
             if entry.shown is not digested:
                 raise QcPackError(
                     "an undefaced instance is shown exactly where its pixel, "
-                    "contour, and grid digests are all given"
+                    "contour, grid, and surface digests are all given"
                 )
 
     def _check_series(self) -> None:
@@ -1913,6 +1949,7 @@ class QcPack:
         self._check_redaction_previews()
         self._check_contour_previews()
         self._check_grid_previews()
+        self._check_surface_previews()
         self._check_pixel_previews()
         self._check_eye_previews()
 
@@ -2045,6 +2082,50 @@ class QcPack:
                 "a grid sheet nor its grids' SHA-256"
             )
 
+    def _check_surface_previews(self) -> None:
+        """An instance's surface meshes' SHA-256, other than that of none,
+        is recorded only where a surfaces sheet shows each of its meshes,
+        so that no verdict releases meshes that no one saw; each surfaces
+        sheet lists each mesh of one instance once, from the first, as many
+        as it gives, at least one, and no instance has two, nor one whose
+        meshes are not shown."""
+        shown: set[int] = set()
+        for preview in self.previews:
+            if preview.kind is not PreviewKind.SURFACE_MESHES:
+                continue
+            positions = {position for position, _ in preview.frames}
+            meshes = sorted(mesh for _, mesh in preview.frames)
+            if len(positions) != 1 or meshes != list(range(preview.total_frames)):
+                raise QcPackError(
+                    "a surfaces sheet must show each mesh of one instance once"
+                )
+            (position,) = positions
+            if position in shown:
+                raise QcPackError("an instance must have at most one surfaces sheet")
+            shown.add(position)
+        if any(
+            entry.surface_sha256 not in (None, NO_SURFACES_SHA256)
+            and entry.position not in shown
+            for entry in self.instances
+        ):
+            raise QcPackError(
+                "an instance's surface meshes' SHA-256 needs a surfaces sheet "
+                "that shows each mesh"
+            )
+        unshown = {
+            entry.position
+            for entry in self.not_previewed
+            if entry.reason is NotPreviewedReason.SURFACES_NOT_SHOWN
+        }
+        if unshown & shown or any(
+            entry.position in unshown and entry.surface_sha256 is not None
+            for entry in self.instances
+        ):
+            raise QcPackError(
+                "an instance whose surface meshes are not shown has neither a "
+                "surfaces sheet nor its meshes' SHA-256"
+            )
+
     def _check_redaction_previews(self) -> None:
         """Each cleaned instance has a redaction preview of each frame, in
         order, unless it is listed as not previewed for a reason other than
@@ -2137,8 +2218,8 @@ def pictured_frames(
         The run positions listed as not previewed, which are left out.
     kinds : collection of str, optional
         The kinds of preview to count, as :class:`PreviewKind` values; by
-        default every kind but a contour sheet, a grid sheet, or a sheet
-        of a series' eyes. Only dose-levels previews show an RT Dose as
+        default every kind but a contour sheet, a grid sheet, a surfaces
+        sheet, or a sheet of a series' eyes. Only dose-levels previews show an RT Dose as
         it could show a face, and only segments sheets a Segmentation.
 
     Returns
@@ -2150,13 +2231,14 @@ def pictured_frames(
         as a surface, and a segments sheet's count only for its
         Segmentation, the position of its first frame, for the same reason.
         A grid sheet's never count either, since it lists grids, not
-        frames of pixel data, nor do a sheet of a series' eyes', since it
+        frames of pixel data, nor a surfaces sheet's, which lists meshes, nor do a sheet of a series' eyes', since it
         shows the slices as received, not the pixel data written of them.
     """
     uncounted = {
         PreviewKind.STRUCTURE_SET_CONTOURS.value,
         PreviewKind.SERIES_EYES.value,
         *(kind.value for kind in GRID_KINDS),
+        PreviewKind.SURFACE_MESHES.value,
     }
     segments = PreviewKind.SEGMENTATION_SEGMENTS.value
     framed: dict[int, set[int]] = {}
@@ -2425,6 +2507,7 @@ def _instance(entry: InstanceEntry) -> dict:
         "pixel_sha256": entry.pixel_sha256,
         "contour_sha256": entry.contour_sha256,
         "grid_sha256": entry.grid_sha256,
+        "surface_sha256": entry.surface_sha256,
     }
 
 

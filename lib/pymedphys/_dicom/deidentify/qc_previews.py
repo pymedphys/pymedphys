@@ -112,6 +112,13 @@ frame with such regions, also from the file as received:
   of its quantities. An instance any of whose grids' sheets are not all
   drawn, whatever the cause, has none of them, and is reported, though its
   other previews, if any, are kept;
+- a surfaces sheet of each instance that holds a surface mesh
+  (:func:`~.face_review.holds_surface_mesh`), such as a Surface
+  Segmentation, high-risk or not, for the same reason: its meshes as
+  written, united and each alone, as
+  :mod:`~pymedphys._dicom.deidentify.qc_meshes` describes. An instance whose
+  meshes no sheet shows, whatever the cause, is reported, though its other
+  previews, if any, are kept;
 - a sheet of the globes found beside the eye ROIs of each CT series that
   the run defaced and held until a reviewer confirms its face block, which
   :mod:`~pymedphys._dicom.deidentify.qc_eyes` draws from the slices as
@@ -205,11 +212,17 @@ from . import (
     qc_contours,
     qc_eyes,
     qc_grids,
+    qc_meshes,
     qc_segments,
     qc_surfaces,
     stack_sampling,
 )
-from .face_review import holds_deformation_grid, is_rt_dose, is_segmentation
+from .face_review import (
+    holds_deformation_grid,
+    holds_surface_mesh,
+    is_rt_dose,
+    is_segmentation,
+)
 from .functional_groups import frame_group
 from .phases import FRAME, Named, named_by_frame, named_by_instance, split
 from .qc_pack import (
@@ -375,7 +388,8 @@ class PreviewSet:
         sheet of a series' eyes, as given; then each contour sheet, in run
         position order; then each segments sheet, in run position order;
         then each grid sheet, in run position order, grid order, and the
-        order of :data:`~.qc_pack.GRID_KINDS`; then each high-risk
+        order of :data:`~.qc_pack.GRID_KINDS`; then each surfaces sheet, in
+        run position order; then each high-risk
         instance, in run position order; then each frame of each
         instance that Clean Pixel Data
         cleaned, in run position and frame order. Named ``P-0001.png``
@@ -390,7 +404,8 @@ class PreviewSet:
         first. Likewise, a Segmentation that no segments sheet shows whole
         is listed as ``SEGMENTS_NOT_SHOWN``, and an instance that holds a
         deformation grid whose sheets are not all drawn as
-        ``GRIDS_NOT_SHOWN``.
+        ``GRIDS_NOT_SHOWN``, and one that holds a surface mesh that no
+        surfaces sheet shows as ``SURFACES_NOT_SHOWN``.
     contours_shown : frozenset of int
         The run positions of the files with contours that a contour sheet
         shows.
@@ -398,6 +413,10 @@ class PreviewSet:
         The run positions of the files that hold a deformation grid each of
         whose grids a sheet of each kind of :data:`~.qc_pack.GRID_KINDS`
         shows, and that are not listed as not previewed.
+    surfaces_shown : frozenset of int
+        The run positions of the files that hold a surface mesh each of
+        whose meshes a surfaces sheet shows, and that are not listed as not
+        previewed.
     pixels_shown : frozenset of int
         The run positions of the files with pixel data every frame of which
         a preview that could show a face draws, and that are not listed as
@@ -424,6 +443,7 @@ class PreviewSet:
     contours_shown: frozenset[int] = frozenset()
     pixels_shown: frozenset[int] = frozenset()
     grids_shown: frozenset[int] = frozenset()
+    surfaces_shown: frozenset[int] = frozenset()
 
 
 def previews_of(
@@ -463,6 +483,9 @@ def previews_of(
     # are not all held at once, and those whose sheets were not all drawn.
     gridded: dict[int, list[_Encoded]] = {}
     ungridded: set[int] = set()
+    # Likewise each instance's surfaces sheet, and those not drawn.
+    surfaced: dict[int, _Encoded] = {}
+    unsurfaced: set[int] = set()
     for position in sorted(written):
         dataset = _read(written[position])
         if dataset is not None and holds_deformation_grid(dataset):
@@ -471,6 +494,12 @@ def previews_of(
                 ungridded.add(position)
             else:
                 gridded[position] = sheets
+        if dataset is not None and holds_surface_mesh(dataset):
+            sheet = _surface_image(position, dataset)
+            if sheet is None:
+                unsurfaced.add(position)
+            else:
+                surfaced[position] = sheet
         found = _instance(position, written[position], dataset)
         if isinstance(found, _Instance):
             instances.append(found)
@@ -482,6 +511,8 @@ def previews_of(
             position in high_risk
             and position not in gridded
             and position not in ungridded
+            and position not in surfaced
+            and position not in unsurfaced
         ):
             refused[position] = NotPreviewedReason.NO_PIXEL_DATA
     # Each image is encoded as it is made, so that only its PNG is kept.
@@ -519,6 +550,9 @@ def previews_of(
     for position, sheets in sorted(gridded.items()):
         if position not in refused:
             images.extend(sheets)
+    for position, sheet in sorted(surfaced.items()):
+        if position not in refused:
+            images.append(sheet)
     for instance in instances:
         if instance.position in high_risk:
             image = _instance_image(instance, decoded)
@@ -556,6 +590,9 @@ def previews_of(
     # all drawn.
     for position in sorted(ungridded):
         refused.setdefault(position, NotPreviewedReason.GRIDS_NOT_SHOWN)
+    # Likewise an instance with a surface mesh that no sheet shows.
+    for position in sorted(unsurfaced):
+        refused.setdefault(position, NotPreviewedReason.SURFACES_NOT_SHOWN)
     pictured = pictured_frames(listed, refused)
     dosed = pictured_frames(listed, refused, levels)
     segmented = pictured_frames(listed, refused, sheets)
@@ -580,6 +617,7 @@ def previews_of(
             == instance.frames
         ),
         frozenset(gridded) - frozenset(refused),
+        frozenset(surfaced) - frozenset(refused),
     )
 
 
@@ -640,6 +678,25 @@ def _grid_images(position: int, dataset: pydicom.Dataset) -> list[_Encoded] | No
             )
         )
     return found
+
+
+def _surface_image(position: int, dataset: pydicom.Dataset) -> _Encoded | None:
+    """The surfaces sheet of a data set's meshes, as its kind, each mesh by
+    run position and index among the data set's meshes, and how many meshes
+    it holds; or None where it cannot be drawn
+    (:mod:`~pymedphys._dicom.deidentify.qc_meshes`)."""
+    meshes = qc_meshes.meshes_of(dataset)
+    if not meshes:
+        return None
+    sheet = qc_meshes.mesh_sheet(meshes)
+    if sheet is None:
+        return None
+    return (
+        PreviewKind.SURFACE_MESHES,
+        tuple((position, index) for index in range(len(meshes))),
+        len(meshes),
+        png(sheet),
+    )
 
 
 def _instance(

@@ -757,8 +757,8 @@ _RT_IMAGE = "1.2.840.10008.5.1.4.1.1.481.1"
 # traces the profile, and its label or code need not say that it is one, so
 # each instance is reported, whatever its segments. A Surface Segmentation
 # holds meshes, not pixel data, so it is none of them: the face review
-# holds each one under Clean Recognizable Visual Features
-# (face_review.holds_surface_mesh).
+# releases one under Clean Recognizable Visual Features only on a verdict on
+# the QC pack's surfaces sheet of its meshes (face_review.holds_surface_mesh).
 SEGMENTATION_SOP_CLASSES = frozenset(
     {"1.2.840.10008.5.1.4.1.1.66.4", "1.2.840.10008.5.1.4.1.1.66.7"}
 )

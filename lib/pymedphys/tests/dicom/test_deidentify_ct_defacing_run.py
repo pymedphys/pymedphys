@@ -477,7 +477,12 @@ def test_the_pack_lists_each_undefaced_instance_for_a_verdict_of_its_own(
         for e in json.loads(reviewed_low.pack.read_text("utf-8"))["instances"]
     }
     for name in _UNDEFACED_WITH_REGISTRATIONS:
-        for digest in ("pixel_sha256", "contour_sha256", "grid_sha256"):
+        for digest in (
+            "pixel_sha256",
+            "contour_sha256",
+            "grid_sha256",
+            "surface_sha256",
+        ):
             assert entries[name][digest] is not None, (name, digest)
     assert report["face_review"]["undefaced_in_defaced_frame"] == _undefaced_report(
         held=len(_UNDEFACED_WITH_REGISTRATIONS)
