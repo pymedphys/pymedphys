@@ -12,18 +12,23 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# pylint: disable = too-many-lines
+# One module runs the benchmark and scores every action of an answer key, so
+# it is long.
+
 """Benchmark the engine against an NCI MIDI test data set (D-018).
 
 A development tool. It is not registered with the ``pymedphys`` command,
 and stays out of the public command line until the first supported release;
 :mod:`~pymedphys._dicom.deidentify.midi_benchmark_command` runs it as
 ``python -m pymedphys._dicom.deidentify.midi_benchmark_command``, with the
-subcommands ``run`` and ``script-results``. :func:`run_benchmark`
-de-identifies a local copy of a
-MIDI-B test data set through the run pipeline, under a preset and a key
-drawn for the run, and scores the released files against the data set's
-answer key (:mod:`~pymedphys._dicom.deidentify.midi_answer_key`). It writes,
-into a work directory that must not exist:
+subcommands ``run``, ``released-answer-key``, ``script-results``, and
+``flip-check``. :func:`run_benchmark` de-identifies a local copy of a
+MIDI-B test data set through the run pipeline, under a preset or a custom
+option set and a key drawn for the run, and scores the released files
+against the data set's answer key
+(:mod:`~pymedphys._dicom.deidentify.midi_answer_key`). It writes, into a
+work directory that must not exist:
 
 - ``release/``, the run's release, with its release report and conformance
   statement;
@@ -31,16 +36,24 @@ into a work directory that must not exist:
 - ``validation-script/``, the UID and Patient ID mapping files that the NCI
   validation script needs to score the release itself: CSV files with the
   columns ``id_old`` and ``id_new``, mapping each released instance's test
-  data set Study, Series, and SOP Instance UIDs, and its Patient ID, to
-  those the run wrote. They hold the test data set's identifiers, so they
-  are confidential, as the QC pack is, and the work directory, this one, and
-  the files are made for their owner alone where the platform allows;
-- ``benchmark.json`` and ``benchmark.md``, the results.
+  data set Study, Series, and SOP Instance UIDs, each other UID that a
+  released file holds in place of its source's, and each released
+  instance's Patient ID, to those the run wrote. They hold the test data
+  set's identifiers, so they are confidential, as the QC pack is, and the
+  work directory, this one, and the files are made for their owner alone
+  where the platform allows;
+- ``benchmark.json`` and ``benchmark.md``, the results;
+- ``check-outcomes.txt``, the outcome of each check of the answer key, in
+  the key's order, as one letter each, which
+  :func:`~pymedphys._dicom.deidentify.midi_benchmark_flips.flip_check`
+  compares between two runs. It names no instance, attribute, or value, but
+  it stays beside the release, as the results' working file.
 
 The results hold no attribute value from the data set's files: only
 versions, digests, counts, attribute tags, and what the answer key names:
 its category codes, its action names, and each instance's modality, given
-only in the form of a Code String and otherwise as ``other``. They give,
+only in the form of a Code String and otherwise as ``other``. They give a
+headline over every check of the answer key, and the same counts
 separately for each answer-key category rather than as one score:
 
 - the checks of released instances that passed, failed, or were not
@@ -48,18 +61,65 @@ separately for each answer-key category rather than as one score:
 - the checks of instances that the run withheld, those outside the
   supported coverage (an IOD or transfer syntax that the release does not
   support, which the run sequesters), and those of answer-key instances that
-  the input did not hold, none of which is scored;
+  the input did not hold, none of which is scored, but each of which counts
+  in the headline as an outcome of its own, so that no check leaves the
+  total; the instances that the run did not release are also counted by
+  where they ended up, the reasons the run gave, their SOP Class, and their
+  transfer syntax, each named as the standard names it;
 - the **deliberate differences**: each failed check that asked for an
   attribute to be kept, where the action that the engine selects from the
   policy, for the attribute's Type in the instance's IOD, explains the
   failure (:func:`score_check`), such as a description
   that the Basic Profile removes but TCIA's curation of the source
-  collection kept. The validation
-  manual says that many answers follow that curation rather than the
-  standard, so these are counted by category, attribute, and action, apart
-  from failures;
+  collection kept; and each such check of Patient Identity Removed or
+  Longitudinal Temporal Information Modified, whose values the PS3.15
+  markers replace. The validation manual says that many answers follow that curation rather than
+  the standard, so these are counted by category, attribute, and action,
+  apart from failures;
+- the **source gaps**: each other failed check that asked for an attribute,
+  or a value of it, to be present, or for the Pixel Data to be kept, and
+  fails on the source instance too;
+- the **replacement matches**: each failed check that asked for a text to be
+  removed, where each value of the attribute is one that the engine writes
+  in the source's place
+  (:func:`~pymedphys._dicom.deidentify.midi_benchmark_values.is_engine_replacement`),
+  a constant such as ``DEIDENTIFIED`` or a keyed pseudonym or token, which
+  holds nothing of the source: a word of the answer key's text is within it
+  by chance, such as a short given name within a keyed code, which under
+  another key may not be. A check that asks for a text to be kept can pass
+  by the same chance on such a value, and is counted as passed;
 - the **findings**: every other failed check, such as a value that should
-  have been removed and was not.
+  have been removed and was not, however the policy explains it. Each
+  failed check that asked for an attribute, or a value, to be present is
+  also counted by whether its source instance holds the attribute, empty
+  or with a value; and each failed check that asked for a text to be
+  removed by the value's VR, by its shape where it is an Integer String,
+  and by whether the answer key's text is the whole value
+  (:mod:`~pymedphys._dicom.deidentify.midi_benchmark_sources`);
+- the checks **not evaluated**: each check of a released instance that
+  the harness could not score, by category, action, attribute, and why,
+  such as that the answer key gives no text to compare.
+
+Under Clean Pixel Data, the pinned text detector
+(:class:`~pymedphys._dicom.deidentify.text_detection.TextDetector`) finds
+the text, and every instance that the option cleans is held for review,
+since no reviewer attests a benchmark's regions. Under Clean Recognizable
+Visual Features, as under ``public-release``, a run is given a face review
+with no verdicts (:data:`NO_FACE_VERDICTS`), as the first run of a
+collection is (D-050): every instance that can show a face is held, since
+no reviewer has seen a benchmark's previews, and the results say so. HaN-Seg's
+face block check is the option's public evidence of what it removes (D-054).
+
+Under Retain Safe Private, a run may choose TCIA's Private Tag Dictionary in
+place of the reviewed list (D-035), and the results record which.
+
+Under Clean Descriptors, ROI Names are cleaned with the
+pinned TG-263 edition and an empty reviewed-names list, since a benchmark
+has no custodian to review them: a name that would be held for review is
+emptied, as ``--empty-held-roi-names`` empties it, so that its instance is
+released and scored. Every other attribute that the option gives C takes
+its action under the policy without the option, as the transform takes it,
+and that action is the one a deliberate difference is explained by.
 
 The scoring follows the validation script's rules, in this module's words,
 with these differences, so the script's own results remain the published
@@ -81,10 +141,14 @@ reads them):
 - a check of an attribute that the file holds, where the script cannot
   score it for want of the text or value it compares, is not evaluated
   rather than left blank; so is one of a consistent UID or Patient ID that
-  the mapping files do not cover (they map only the released instances'
-  Study, Series, and SOP Instance UIDs and Patient IDs, as the manual
-  describes them), which the script fails, and one of burned-in text
-  (``pixels_hidden``), which needs OCR and review.
+  the mapping files do not cover, which the script fails, and one of
+  burned-in text (``pixels_hidden``), which needs OCR and review. The
+  mapping files cover each UID that a released file holds in place of its
+  source's, replaced or kept, and each released instance's Patient ID: the
+  script's manual describes the UID mapping file as one of Study, Series,
+  and SOP Instance UIDs, but the script scores every consistent-UID check,
+  of a Frame of Reference UID say, by that file, as its authors assume that
+  every change of a UID is logged (arXiv:2508.01889, section 5.3.2).
 
 :func:`~pymedphys._dicom.deidentify.midi_script_results.summarise_script_results`
 counts the script's results for each check
@@ -95,25 +159,24 @@ which counts a check once for each series.
 from __future__ import annotations
 
 import collections
-import csv
 import dataclasses
 import enum
 import hashlib
-import io
-import os
 import json
 import re
-from collections.abc import Iterable, Mapping, Sequence
-from pathlib import Path, PurePosixPath
+from collections.abc import Collection, Mapping, Sequence
+from pathlib import Path
 
 from pymedphys._imports import pydicom
+from pymedphys._nomenclature import tg263, tg263_published
 
 from . import run
 from .compound_actions import COMPOUND_ACTIONS, resolve_in_iod, resolve_plain_in_iod
-from .descriptor_cleaning import CLEAN_DESCRIPTORS
+from .descriptor_cleaning import CLEAN_DESCRIPTORS, DescriptorCleaning, fallback_policy
 from .diagnostics import redacted_diagnostics
 from .dummy_values import KEPT_ITEM_ATTRIBUTES
 from .element_rules import KEEP, ElementRules
+from .face_review import FaceReview
 from .instance_transform import InstanceTransform, ReleaseGate
 from .iods import IOD, IODTables, load_iod_tables
 from .keys import DeidKey
@@ -128,17 +191,69 @@ from .midi_answer_key import (
     category_order,
     read_answer_key,
 )
-from .policy import Policy, compose_policy
+from .midi_benchmark_errors import (
+    ErrorRecorder,
+    no_sop_class_cause,
+    no_sop_class_rows,
+    uid_name,
+)
+from .midi_benchmark_exemptions import exemption_rows, would_release
+from .midi_benchmark_markdown import render_markdown
+from .midi_benchmark_shards import Shard, assign
+from .midi_benchmark_sources import (
+    WATCHED,
+    counted_order,
+    counted_rows,
+    describe_finding,
+    describe_source,
+    described_rows,
+    explained_rows,
+    place_rows,
+    is_source_gap,
+    read_source,
+    reason_code,
+    reason_places,
+)
+from .midi_benchmark_text import TextCounter
+from .midi_benchmark_values import (
+    compare_text,
+    element_text,
+    find_element,
+    is_bulk_data,
+    is_engine_replacement,
+    unbracketed,
+)
+from .midi_script_results import uid_replacements, write_mapping_files
+from .midi_benchmark_flips import (
+    CHECK_OUTCOMES,
+    IN_OTHER_SHARD,
+    outcome_code,
+    write_check_outcomes,
+)
+from .pixel_cleaning import TextFinder
+from .policy import (
+    CLEAN_PIXEL_DATA,
+    CLEAN_RECOGNIZABLE_VISUAL_FEATURES,
+    DEFAULT_PRESET,
+    SAFE_PRIVATE,
+    Policy,
+    compose_custom_policy,
+    compose_policy,
+)
+from .reviewed_roi_names import ReviewedNames
 from .runtime import runtime_environment
+from .safe_private import SafePrivateList
 from .scope import classify
+from .text_detection import DetectionParameters, TextDetectionError, TextDetector
 from .walker import descends
 
-FORMAT = "pymedphys-deid-midi-benchmark/1"
+FORMAT = "pymedphys-deid-midi-benchmark/4"
 RESULTS_JSON = "benchmark.json"
 RESULTS_MARKDOWN = "benchmark.md"
 SCRIPT_INPUTS = "validation-script"
-UID_MAPPING = "uid_mapping.csv"
-PATIENT_ID_MAPPING = "patid_mapping.csv"
+# The two levels of ROI Name, which Clean Descriptors cleans; every other
+# attribute given C takes its action under the policy without the option.
+_ROI_PATH = ("(3006,0020)", "(3006,0026)")
 
 
 class BenchmarkError(Exception):
@@ -170,7 +285,9 @@ class IdentifierMapping:
     Attributes
     ----------
     uids : dict of str to str
-        Each released instance's Study, Series, and SOP Instance UIDs.
+        Each released instance's Study, Series, and SOP Instance UIDs, and
+        each other UID that a released file holds in place of its source's,
+        replaced or kept (:func:`released_mapping`).
     patient_ids : dict of str to str
         Each released instance's Patient ID; the first released instance of
         a Patient ID that two subjects share, by issuer, wins.
@@ -189,14 +306,21 @@ class Scored:
     result : Result
     note : str or None
         For a check not evaluated, why; for a deliberate difference, the
-        policy's action for the attribute, such as ``"X"``.
+        policy's action for the attribute, such as ``"X"``, or ``"marker"``.
     deliberate : bool
         Whether a failed check is a deliberate difference.
+    source_gap : bool
+        Whether a failed check fails on the source instance too.
+    replacement_match : bool
+        Whether a failed check fails only on a value that the engine writes
+        in the source's place.
     """
 
     result: Result
     note: str | None = None
     deliberate: bool = False
+    source_gap: bool = False
+    replacement_match: bool = False
 
 
 @dataclasses.dataclass
@@ -206,6 +330,8 @@ class CategoryCounts:
     passed: int = 0
     failed: int = 0
     deliberate: int = 0
+    source_gap: int = 0
+    replacement_match: int = 0
     not_evaluated: int = 0
     withheld: int = 0
     outside_coverage: int = 0
@@ -214,9 +340,20 @@ class CategoryCounts:
 
 @dataclasses.dataclass(frozen=True)
 class Benchmark:
-    """The results of a benchmark run, without a value from the data set."""
+    """The results of a benchmark run, without a value from the data set.
+
+    Attributes
+    ----------
+    document : dict
+        The results, as ``benchmark.json`` holds them.
+    check_outcomes : bytes
+        The outcome of each check of the answer key, in the key's order, as
+        :func:`~pymedphys._dicom.deidentify.midi_benchmark_flips.outcome_code`
+        gives it.
+    """
 
     document: dict[str, object]
+    check_outcomes: bytes = b""
 
     def json(self) -> str:
         return json.dumps(self.document, indent=2, sort_keys=False) + "\n"
@@ -233,6 +370,8 @@ class _Header:
     instance: str | None
     sop_class: object
     transfer_syntax: object
+    # The text detector's work: see _pixel_weight.
+    pixel_weight: int = 0
 
 
 def run_benchmark(
@@ -240,8 +379,14 @@ def run_benchmark(
     answer_key: str | Path,
     work: str | Path,
     *,
-    preset: str = "basic",
+    preset: str | None = None,
+    options: Collection[str] | None = None,
+    safe_private_list: SafePrivateList = SafePrivateList.REVIEWED,
     collection: str | None = None,
+    tg263_spreadsheet: str | Path | None = None,
+    watched: Collection[str] = (),
+    shard: Shard | None = None,
+    deid_key: DeidKey | None = None,
 ) -> Benchmark:
     """De-identify a MIDI test data set and score the release.
 
@@ -254,48 +399,127 @@ def run_benchmark(
     work : str or Path
         A directory that does not exist, whose parent does, for the release,
         the QC pack, the validation script's inputs, and the results.
-    preset : str, default "basic"
-        A preset without Clean Descriptors, which needs a reviewed-names
-        list. The preset need not be enabled: this is a validation run.
+    preset : str, optional
+        The preset, which need not be enabled: this is a validation run.
+        Defaults to ``"basic"``, unless ``options`` is given. Under Clean
+        Descriptors, ROI Names are cleaned with the pinned TG-263 edition,
+        and a name that would be held for review is emptied. Under Clean
+        Recognizable Visual Features, each instance that can show a face is
+        held (:data:`NO_FACE_VERDICTS`).
+    options : collection of str, optional
+        A custom option set in place of a preset, which the Basic Profile
+        is applied with (D-033), and which need not be enabled either.
+    safe_private_list : SafePrivateList, optional
+        Under Retain Safe Private, the list whose rules settle private
+        attributes: by default the reviewed list.
     collection : str, optional
         The name and version of the test data set, recorded as given.
+    tg263_spreadsheet : str or Path, optional
+        A copy of the pinned TG-263 edition's spreadsheet, for a preset with
+        Clean Descriptors; by default, PyMedPhys's cached download.
+    watched : collection of str, optional
+        Attributes, such as ``(0020,0011)``, each of whose checks is counted
+        by where it ended up.
+    shard : Shard, optional
+        One shard of the run, by patient
+        (:mod:`~pymedphys._dicom.deidentify.midi_benchmark_shards`): the
+        run de-identifies the inputs that
+        :func:`~pymedphys._dicom.deidentify.midi_benchmark_shards.assign`
+        gives the shard, balanced by their pixels, and scores the checks of
+        their instances alone, and, in the first shard, those of the
+        answer-key instances that the input does not hold. By default, the
+        whole run. A policy whose method digest depends on the run's key, as
+        one with Clean Descriptors does, runs in one shard alone, with
+        ``deid_key`` too, since each shard given no key draws its own and the
+        shards combine only with one digest.
+    deid_key : DeidKey, optional
+        The run's key; by default, a new one. A flip check's two runs, the
+        reference under ``basic`` and the option's, take the same key, so
+        that each subject's pseudonyms, replacement UIDs, and date shifts are
+        the same in both and only the option can change a check. A check
+        that asks for a text to be removed fails wherever the release holds
+        any of its words, inside another word or not, as
+        :func:`~pymedphys._dicom.deidentify.midi_benchmark_values.compare_text`
+        compares them, so a short word, such as a two-letter name, can be
+        held by chance in the keyed code of a pseudonym under one key and
+        not under another.
 
     Raises
     ------
     BenchmarkError
-        If the work directory exists or its parent does not, or the preset
-        needs descriptor cleaning.
+        If the work directory exists or its parent does not; both a preset
+        and options are given; the pinned TG-263 edition or text detector
+        cannot be loaded; a spreadsheet is given for a policy without Clean
+        Descriptors; or one of more than one shard is asked for under a
+        policy whose method digest depends on the run's key, as one with
+        Clean Descriptors does.
+    ~pymedphys._dicom.deidentify.policy.PolicyError
+        If the preset or option set cannot be composed, or TCIA's dictionary
+        is chosen without Retain Safe Private.
     ~pymedphys._dicom.deidentify.midi_answer_key.AnswerKeyError
         If the answer key cannot be read.
     """
     work = Path(work)
     if work.exists() or not work.parent.is_dir():
         raise BenchmarkError("the work directory must not exist, and its parent must")
+    policy = _policy(preset, options)
     key = read_answer_key(answer_key)
-    policy = compose_policy(preset)
-    if CLEAN_DESCRIPTORS in policy.options:
-        raise BenchmarkError(
-            "a preset with Clean Descriptors needs a reviewed-names list, "
-            "which the benchmark does not take yet"
+    cleaning = _cleaning(policy, tg263_spreadsheet)
+    if deid_key is None:
+        deid_key = DeidKey.generate()
+    finder = _finder(policy)
+
+    def transform_under(run_key: DeidKey) -> InstanceTransform:
+        return InstanceTransform(
+            policy,
+            run_key,
+            cleaning=cleaning,
+            finder=finder,
+            safe_private_list=safe_private_list,
+            face_review=_face_review(policy),
+            unvalidated_policy=True,
         )
-    transform = InstanceTransform(policy, DeidKey.generate(), unvalidated_policy=True)
+
+    transform = transform_under(deid_key)
+    # Each shard given no key draws its own, and the shards combine only with
+    # one method digest. Under Clean Descriptors it covers the reviewed lists'
+    # keyed digests, which differ from key to key, so such a run is refused,
+    # given a key or not, before it reads anything, rather than when its
+    # shards are combined.
+    if (
+        shard is not None
+        and shard.count > 1
+        and transform_under(DeidKey.generate()).method_digest != transform.method_digest
+    ):
+        raise BenchmarkError(
+            "this policy cannot run in more than one shard: its method digest "
+            "depends on the run's key, as Clean Descriptors' does, so its "
+            "shards could not be combined"
+        )
     discovery = run.discover(source)
+    headers = _headers(discovery)
+    outside: frozenset[str] = frozenset()
+    if shard is not None:
+        discovery, headers, outside = _shard_of(discovery, headers, shard)
     # The work directory holds the QC pack and the mapping files, which hold
     # the test data set's identifiers: for its owner alone, as the QC store's.
     work.mkdir(mode=0o700)
     release = work / "release"
+    errors = ErrorRecorder()
+    text = None if finder is None else TextCounter()
     result = run.run(
         discovery,
         release,
-        transform,
-        ReleaseGate(),
+        errors.transform(transform if text is None else text.transform(transform)),
+        errors.gate(ReleaseGate()),
         qc_destination=work / "qc",
         reporter=transform.reporter,
         written_check=transform.written_check,
     )
-    headers = _headers(discovery)
-    mapping = released_mapping(headers, result.outcomes)
-    write_mapping_files(work / SCRIPT_INPUTS, mapping)
+    mapping = released_mapping(
+        headers, result.outcomes, release, sources=discovery.paths, key=deid_key
+    )
+    write_mapping_files(work / SCRIPT_INPUTS, mapping.uids, mapping.patient_ids)
     benchmark = score(
         key,
         headers,
@@ -303,14 +527,154 @@ def run_benchmark(
         release,
         mapping,
         policy,
-        preset=preset,
+        preset=policy.preset,
+        safe_private_list=safe_private_list,
         collection=collection,
+        # The method digest that the transform's markers and release report
+        # record.
+        method=transform.method_digest,
+        roi_names=None if cleaning is None else _roi_names_used(),
+        internal_errors=errors.records(),
+        sources=discovery.paths,
+        watched=frozenset(watched),
+        defacing=defacing_counts(transform),
+        text_detection=None if text is None else text.counts(),
+        shard=shard,
+        outside=outside,
     )
     (work / RESULTS_JSON).write_text(benchmark.json(), encoding="utf-8", newline="\n")
+    write_check_outcomes(
+        work / CHECK_OUTCOMES, key.sha256, policy, benchmark.check_outcomes
+    )
     (work / RESULTS_MARKDOWN).write_text(
         benchmark.markdown(), encoding="utf-8", newline="\n"
     )
     return benchmark
+
+
+def defacing_counts(transform: InstanceTransform) -> dict[str, object] | None:
+    """Count what a transform found to deface, without a value or UID.
+
+    That is, under Clean Recognizable Visual Features, the CT series whose
+    face block it found, those it did not by why, and the Frames of
+    Reference in which it found a dose block; ``None`` without the option.
+    Holding every instance that can show a face does not depend on them,
+    but they show that the run looked.
+    """
+    counts = transform.face_block_counts
+    if counts is None:
+        return None
+    return {
+        "ct_series_defaced": counts.defaced,
+        "ct_series_not_defaced": {
+            problem.value: number
+            for problem, number in sorted(
+                counts.not_defaced.items(), key=lambda pair: pair[0].value
+            )
+        },
+        "dose_block_frames": transform.dose_block_frames,
+    }
+
+
+def _policy(preset: str | None, options: Collection[str] | None) -> Policy:
+    """Compose a benchmark's policy, which need not be enabled."""
+    if options is None:
+        return compose_policy(DEFAULT_PRESET if preset is None else preset)
+    if preset is not None:
+        raise BenchmarkError(
+            "a benchmark runs under a preset or a custom option set, not both"
+        )
+    return compose_custom_policy(options)
+
+
+# The face review of a run under Clean Recognizable Visual Features: no
+# verdicts, so that each instance that can show a face is held, as in the
+# first run of a collection (D-050). Its reference names no QC pack: no
+# reviewer has attested one, and the all-zero digits say so.
+NO_FACE_VERDICTS = FaceReview(
+    "A-" + "0" * 32, frozenset(), frozenset(), frozenset(), frozenset()
+)
+
+
+def _face_review(policy: Policy) -> FaceReview | None:
+    """Return :data:`NO_FACE_VERDICTS` under Clean Recognizable Visual
+    Features, or None."""
+    return (
+        NO_FACE_VERDICTS
+        if CLEAN_RECOGNIZABLE_VISUAL_FEATURES in policy.options
+        else None
+    )
+
+
+def _finder(policy: Policy) -> TextFinder | None:
+    """Return the pinned text detector under Clean Pixel Data, or None."""
+    if CLEAN_PIXEL_DATA not in policy.options:
+        return None
+    try:
+        return TextDetector()
+    except (TextDetectionError, OSError):
+        raise BenchmarkError("the pinned text detector could not be loaded") from None
+
+
+def _cleaning(
+    policy: Policy, tg263_spreadsheet: str | Path | None
+) -> DescriptorCleaning | None:
+    """Return what a benchmark cleans ROI Names with, under Clean Descriptors."""
+    if CLEAN_DESCRIPTORS not in policy.options:
+        if tg263_spreadsheet is not None:
+            raise BenchmarkError(
+                "a TG-263 spreadsheet applies only to a policy with Clean Descriptors"
+            )
+        return None
+    try:
+        nomenclature = (
+            tg263_published.load()
+            if tg263_spreadsheet is None
+            else tg263_published.load(spreadsheet=Path(tg263_spreadsheet))
+        )
+    except (tg263.TG263Error, OSError):
+        raise BenchmarkError("the pinned TG-263 edition could not be loaded") from None
+    # No custodian reviews a benchmark's ROI Names: empty a name that would be
+    # held, so that its instance is released and scored.
+    return DescriptorCleaning(nomenclature, ReviewedNames.empty(), empty_held=True)
+
+
+def _roi_names_used() -> str:
+    return (
+        f"cleaned with {tg263_published.PUBLISHED.sheet}, no reviewed names, "
+        "held names emptied"
+    )
+
+
+def _shard_of(
+    discovery: run.Discovery, headers: Sequence[_Header | None], shard: Shard
+) -> tuple[run.Discovery, tuple[_Header | None, ...], frozenset[str]]:
+    """Return a shard's inputs, their headers, and the instances of the others.
+
+    An instance is scored in the shard of the first input that holds it,
+    as an unsharded run scores it by its first input.
+    """
+    shards = assign(
+        [None if header is None else header.patient_id for header in headers],
+        [0 if header is None else header.pixel_weight for header in headers],
+        shard.count,
+    )
+    owners: dict[str, int] = {}
+    for header, number in zip(headers, shards):
+        if header is not None and header.instance is not None:
+            owners.setdefault(header.instance, number)
+    kept = [
+        position for position, number in enumerate(shards) if number == shard.number
+    ]
+    return (
+        dataclasses.replace(
+            discovery, entries=tuple(discovery.entries[position] for position in kept)
+        ),
+        tuple(headers[position] for position in kept),
+        frozenset(
+            instance for instance, number in owners.items() if number != shard.number
+        ),
+    )
 
 
 def _headers(discovery: run.Discovery) -> tuple[_Header | None, ...]:
@@ -328,7 +692,13 @@ _HEADER_TAGS = (
     "SeriesInstanceUID",
     "SOPInstanceUID",
     "SOPClassUID",
+    "Rows",
+    "Columns",
+    "NumberOfFrames",
 )
+# The text detector's parameters, whose network input sets most of its work
+# on a frame.
+_DETECTION = DetectionParameters()
 
 
 def _header(path: Path) -> _Header | None:
@@ -339,6 +709,7 @@ def _header(path: Path) -> _Header | None:
         values = [_text_of(dataset.get(keyword)) for keyword in _HEADER_TAGS[:4]]
         sop_class = dataset.get("SOPClassUID")
         transfer_syntax = dataset.file_meta.get("TransferSyntaxUID")
+        pixel_weight = _pixel_weight(dataset)
     except Exception:  # pylint: disable = broad-exception-caught
         # The run refuses or sequesters what cannot be read; so does this.
         return None
@@ -346,7 +717,55 @@ def _header(path: Path) -> _Header | None:
         *values,
         sop_class=None if sop_class is None else str(sop_class),
         transfer_syntax=None if transfer_syntax is None else str(transfer_syntax),
+        pixel_weight=pixel_weight,
     )
+
+
+def _pixel_weight(dataset: pydicom.Dataset) -> int:
+    """Weigh an instance by the text detector's work: 0 without an image.
+
+    Each frame counts as the pixels of the network's input
+    (:func:`_network_shape`) and a tenth of its stored pixels, for its renderings: on GitHub's
+    runners, about 4 s for each million of the first, and a tenth of that
+    for each million of the second, from the times of the text detector's
+    run on HaN-Seg in GitHub Actions run 41145832882.
+    A number of frames that is none or cannot be read counts as one, and Rows or
+    Columns that cannot be read as no image.
+    """
+
+    def whole(keyword: str, default: int) -> int:
+        try:
+            value = int(str(dataset.get(keyword, default)).strip(" \x00"))
+        except (TypeError, ValueError):
+            return default
+        return max(value, 0)
+
+    rows, columns = whole("Rows", 0), whole("Columns", 0)
+    if not rows or not columns:
+        return 0
+    network_rows, network_columns = _network_shape(rows, columns)
+    frame = network_rows * network_columns + (rows * columns) // 10
+    return max(whole("NumberOfFrames", 1), 1) * frame
+
+
+def _network_shape(rows: int, columns: int) -> tuple[int, int]:
+    """The shape of the text detector's network input for a frame.
+
+    As the detector scales a frame: its shorter side up to at least
+    ``limit_side``, its longer down to at most ``max_side``, each rounded to
+    a multiple of 32, as main's ``text_detection.network_shape`` gives it.
+    It is repeated here, not imported, so that this branch leaves
+    ``text_detection.py`` as it is, and a run that merges main's engine
+    into it merges cleanly; once main is merged in, the harness can call
+    main's function instead.
+    """
+    scale = max(1.0, _DETECTION.limit_side / min(rows, columns))
+    scale = min(scale, _DETECTION.max_side / max(rows, columns))
+    return (_multiple_of_32(rows * scale), _multiple_of_32(columns * scale))
+
+
+def _multiple_of_32(length: float) -> int:
+    return max(32, int(round(length / 32)) * 32)
 
 
 def _text_of(value: object) -> str | None:
@@ -357,46 +776,69 @@ def _text_of(value: object) -> str | None:
 
 
 def released_mapping(
-    headers: Sequence[_Header | None], outcomes: Sequence[run.Outcome]
+    headers: Sequence[_Header | None],
+    outcomes: Sequence[run.Outcome],
+    release: Path,
+    *,
+    sources: Sequence[Path],
+    key: DeidKey,
 ) -> IdentifierMapping:
-    """Map each released input's identifiers to those named by its output."""
+    """Map each released input's identifiers to those its released file holds.
+
+    They are read from the file rather than its name: under Retain UIDs, a
+    file holds its source's UIDs but is named by their keyed replacements
+    (D-016). Each released instance's Study, Series, and SOP Instance UIDs
+    come first, which pair each released file with its input. Then come the
+    other UIDs that the released files hold in place of their sources'
+    (:func:`~pymedphys._dicom.deidentify.midi_script_results.uid_replacements`),
+    the replacements under ``key`` before the UIDs kept unchanged, so that
+    the validation script, which assumes that every change of a UID is
+    logged, can score each consistent-UID check, such as one of a Frame of
+    Reference UID.
+    """
     uids: dict[str, str] = {}
     patient_ids: dict[str, str] = {}
-    for header, outcome in zip(headers, outcomes):
-        if header is None or outcome.output is None:
-            continue
-        if outcome.status not in (run.Status.RELEASED, run.Status.DUPLICATE):
-            continue
-        patient, study, series, name = outcome.output.parts
-        instance = PurePosixPath(name).stem
-        for old, new in (
-            (header.study, study),
-            (header.series, series),
-            (header.instance, instance),
-        ):
-            if old is not None:
-                uids.setdefault(old, new)
-        if header.patient_id is not None:
-            patient_ids.setdefault(header.patient_id, patient)
+    replaced: dict[str, str] = {}
+    kept: dict[str, str] = {}
+    with redacted_diagnostics():
+        for header, outcome, source in zip(headers, outcomes, sources):
+            if header is None or outcome.output is None:
+                continue
+            if outcome.status not in (run.Status.RELEASED, run.Status.DUPLICATE):
+                continue
+            written = _header(release / outcome.output)
+            if written is None:
+                continue
+            for old, new in (
+                (header.study, written.study),
+                (header.series, written.series),
+                (header.instance, written.instance),
+            ):
+                if old is not None and new is not None:
+                    uids.setdefault(old, new)
+            if header.patient_id is not None and written.patient_id is not None:
+                patient_ids.setdefault(header.patient_id, written.patient_id)
+            for old, new in _held_uids(source, release / outcome.output, key).items():
+                (kept if new == old else replaced).setdefault(old, new)
+    for old, new in (*replaced.items(), *kept.items()):
+        uids.setdefault(old, new)
     return IdentifierMapping(uids, patient_ids)
 
 
-def write_mapping_files(directory: Path, mapping: IdentifierMapping) -> None:
-    """Write the validation script's UID and Patient ID mapping files."""
-    directory.mkdir(mode=0o700)
-    for name, pairs in (
-        (UID_MAPPING, mapping.uids),
-        (PATIENT_ID_MAPPING, mapping.patient_ids),
-    ):
-        text = io.StringIO()
-        writer = csv.writer(text, lineterminator="\n")
-        writer.writerow(("id_old", "id_new"))
-        writer.writerows(pairs.items())
-        descriptor = os.open(
-            directory / name, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600
+def _held_uids(source: Path, written: Path, key: DeidKey) -> dict[str, str]:
+    """The UIDs of ``source`` that ``written`` holds, replaced or kept.
+
+    Nothing where either file cannot be read: the run refuses or sequesters
+    what cannot be read, and the instance's own UIDs are mapped already.
+    """
+    try:
+        return uid_replacements(
+            pydicom.dcmread(source, stop_before_pixels=True),
+            pydicom.dcmread(written, stop_before_pixels=True),
+            key,
         )
-        with open(descriptor, "w", encoding="utf-8", newline="") as file:
-            file.write(text.getvalue())
+    except Exception:  # pylint: disable = broad-exception-caught
+        return {}
 
 
 def score(  # pylint: disable = too-many-arguments, too-many-locals
@@ -407,29 +849,88 @@ def score(  # pylint: disable = too-many-arguments, too-many-locals
     mapping: IdentifierMapping,
     policy: Policy,
     *,
-    preset: str,
+    preset: str | None,
     collection: str | None,
+    safe_private_list: SafePrivateList = SafePrivateList.REVIEWED,
+    method: str | None = None,
+    roi_names: str | None = None,
+    internal_errors: Sequence[Mapping[str, object]] = (),
+    sources: Sequence[Path] = (),
+    watched: Collection[str] = (),
+    defacing: Mapping[str, object] | None = None,
+    text_detection: Mapping[str, object] | None = None,
+    shard: Shard | None = None,
+    outside: Collection[str] = frozenset(),
 ) -> Benchmark:
-    """Score each check of the answer key against the run's outcome."""
+    """Score each check of the answer key against the run's outcome.
+
+    ``safe_private_list`` is the list that the run took under Retain
+    Safe Private. ``method`` is the run's method digest, by default that of
+    ``policy``
+    without a vocabulary or reviewed-names list; ``roi_names``, given under
+    Clean Descriptors, says what ROI Names were cleaned with; and
+    ``internal_errors``, from
+    :meth:`~pymedphys._dicom.deidentify.midi_benchmark_errors.ErrorRecorder.records`,
+    where the run's transform and gate raised. ``sources``, each input's
+    path by position, lets a finding be counted as a source gap
+    (:func:`~pymedphys._dicom.deidentify.midi_benchmark_sources.is_source_gap`)
+    and be described at its source; and each check of
+    an attribute in ``watched``, such as ``(0020,0011)``, is counted by
+    where it ended up. ``defacing``, under Clean Recognizable Visual
+    Features, counts what the transform found to deface
+    (:func:`defacing_counts`), and ``text_detection``, under Clean Pixel
+    Data, what the text detector found, by SOP Class
+    (:meth:`~pymedphys._dicom.deidentify.midi_benchmark_text.TextCounter.counts`).
+
+    In a ``shard`` of a run, the checks of the instances in ``outside``,
+    which other shards hold, are not scored, and nor, outside the first
+    shard, are those of the instances that the input does not hold: each
+    one's outcome is :data:`~pymedphys._dicom.deidentify.midi_benchmark_flips.IN_OTHER_SHARD`.
+    """
     positions: dict[str, int] = {}
     for position, header in enumerate(headers):
         if header is not None and header.instance is not None:
             positions.setdefault(header.instance, position)
-    rules = ElementRules(policy)
+    rules = ElementRules(policy, safe_private_list=safe_private_list)
+    fallback = (
+        ElementRules(fallback_policy(policy), safe_private_list=safe_private_list)
+        if CLEAN_DESCRIPTORS in policy.options
+        else None
+    )
     iod_tables: IODTables = load_iod_tables()
     counts: dict[Category | None, CategoryCounts] = collections.defaultdict(
         CategoryCounts
     )
     differences: collections.Counter = collections.Counter()
     findings: collections.Counter = collections.Counter()
+    gaps: collections.Counter = collections.Counter()
+    replacements: collections.Counter = collections.Counter()
+    unevaluated: collections.Counter = collections.Counter()
+    explained: dict[str, collections.Counter] = collections.defaultdict(
+        collections.Counter
+    )
     instances: collections.Counter = collections.Counter()
     modalities: dict[str, collections.Counter] = collections.defaultdict(
         collections.Counter
     )
     withheld_reasons: collections.Counter = collections.Counter()
+    places: collections.Counter = collections.Counter()
+    exempt: collections.Counter = collections.Counter()
+    no_sop_class: collections.Counter = collections.Counter()
+    watching: collections.Counter = collections.Counter()
+    not_released: dict[tuple[str, str | None, str, str], list[int]] = (
+        collections.defaultdict(lambda: [0, 0])
+    )
+    check_outcomes = bytearray()
     with redacted_diagnostics():
         for answer in key.by_sop_instance().values():  # one per instance
             position = positions.get(answer.sop_instance_uid)
+            if shard is not None and (
+                answer.sop_instance_uid in outside
+                or (position is None and shard.number != 1)
+            ):
+                check_outcomes += outcome_code(IN_OTHER_SHARD) * len(answer.checks)
+                continue
             context, dataset, iod_name = _context(position, headers, outcomes, release)
             iod = None if iod_name is None else iod_tables.iods.get(iod_name)
             instances[context] += 1
@@ -437,44 +938,114 @@ def score(  # pylint: disable = too-many-arguments, too-many-locals
             if context is Context.WITHHELD and position is not None:
                 for reason in outcomes[position].reasons:
                     withheld_reasons[reason_code(reason)] += 1
+                places.update(reason_places(outcomes[position].reasons))
+                path = sources[position] if position < len(sources) else None
+                exempt.update(
+                    (name, _modality(answer.modality))
+                    for name in would_release(outcomes[position].reasons, path)
+                )
+            if dataset is None and position is not None:
+                kind = _not_released(context, headers[position], outcomes[position])
+                not_released[kind][0] += 1
+                not_released[kind][1] += len(answer.checks)
+                if "no-sop-class" in (kind[1] or "") and position < len(sources):
+                    no_sop_class[no_sop_class_cause(sources[position])] += 1
+            source: list[pydicom.Dataset | None] = []
             for check in answer.checks:
                 tally = counts[check.category]
-                if dataset is None:
-                    field = context.value.replace("-", "_")
-                    setattr(tally, field, getattr(tally, field) + 1)
-                    continue
-                scored = score_check(check, dataset, mapping, rules, iod)
                 described = (
                     str(check.category or "unknown"),
                     check.action_name,
                     _attribute(check),
                 )
-                if scored.result is Result.PASSED:
-                    tally.passed += 1
-                elif scored.result is Result.NOT_EVALUATED:
-                    tally.not_evaluated += 1
-                elif scored.deliberate:
-                    tally.deliberate += 1
+                watch = described[2] in watched
+                if dataset is None:
+                    field = context.value.replace("-", "_")
+                    setattr(tally, field, getattr(tally, field) + 1)
+                    check_outcomes += outcome_code(field)
+                    if watch:
+                        watching[(*described, context.value)] += 1
+                    continue
+                scored = score_check(
+                    check, dataset, mapping, rules, iod, fallback=fallback
+                )
+                if (
+                    scored.result is Result.FAILED
+                    and not scored.deliberate
+                    and not scored.replacement_match
+                    and position is not None
+                    and position < len(sources)
+                ):
+                    if not source:
+                        source.append(read_source(sources[position]))
+                    describe_source(check, source[0], described, explained, dataset)
+                    if is_source_gap(check, source[0]):
+                        scored = Scored(Result.FAILED, _GAP, source_gap=True)
+                outcome = _outcome(scored)
+                setattr(tally, outcome, getattr(tally, outcome) + 1)
+                check_outcomes += outcome_code(outcome)
+                if watch:
+                    watching[(*described, outcome.replace("_", " "))] += 1
+                if outcome == "deliberate":
                     differences[(*described, scored.note)] += 1
-                else:
-                    tally.failed += 1
+                elif outcome == "source_gap":
+                    gaps[described] += 1
+                elif outcome == "replacement_match":
+                    replacements[described] += 1
+                elif outcome == "not_evaluated":
+                    unevaluated[(*described, scored.note)] += 1
+                elif outcome == "failed":
                     findings[described] += 1
+                    describe_finding(
+                        check,
+                        None
+                        if not source or source[0] is None
+                        else _score(check, source[0], mapping).result is Result.FAILED,
+                        described,
+                        explained,
+                        source=sources[position] if source else None,
+                        output=release / outcomes[position].output,  # type: ignore[index, operator]
+                    )
     environment = runtime_environment()
+    if method is None:
+        method = method_digest(policy, vocabulary=None, reviewed_roi_names=None)
+    versions: dict[str, object] = {
+        "pymedphys": environment.pymedphys_version,
+        "python": (f"{environment.python_implementation} {environment.python_version}"),
+        "pydicom": environment.pydicom_version,
+        "preset": preset,
+        "options": list(policy.options),
+        # Under Clean Recognizable Visual Features, the face review's
+        # verdicts: none, so each instance that can show a face is held.
+        "face_verdicts": (
+            "none" if CLEAN_RECOGNIZABLE_VISUAL_FEATURES in policy.options else None
+        ),
+        "safe_private_list": (
+            safe_private_list.value if SAFE_PRIVATE in policy.options else None
+        ),
+        "table_edition": policy.edition,
+        "method_digest": method,
+        "answer_key_sha256": key.sha256,
+        "collection": collection,
+        # The shard of the run, as number/count, or None for a whole run.
+        "shard": None if shard is None else str(shard),
+    }
+    if roi_names is not None:
+        versions["roi_names"] = roi_names
+    totals = CategoryCounts()
+    for tally in counts.values():
+        for field in dataclasses.fields(CategoryCounts):
+            setattr(
+                totals,
+                field.name,
+                getattr(totals, field.name) + getattr(tally, field.name),
+            )
     document: dict[str, object] = {
         "format": FORMAT,
-        "versions": {
-            "pymedphys": environment.pymedphys_version,
-            "python": (
-                f"{environment.python_implementation} {environment.python_version}"
-            ),
-            "pydicom": environment.pydicom_version,
-            "preset": preset,
-            "table_edition": policy.edition,
-            "method_digest": method_digest(
-                policy, vocabulary=None, reviewed_roi_names=None
-            ),
-            "answer_key_sha256": key.sha256,
-            "collection": collection,
+        "versions": versions,
+        "headline": {
+            "checks": sum(dataclasses.astuple(totals)),
+            **dataclasses.asdict(totals),
         },
         "coverage": {
             "instances": {context.value: instances[context] for context in Context},
@@ -483,6 +1054,27 @@ def score(  # pylint: disable = too-many-arguments, too-many-locals
                 for modality, by in sorted(modalities.items())
             },
             "withheld_reasons": dict(sorted(withheld_reasons.items())),
+            "withheld_places": place_rows(places),
+            "would_release": exemption_rows(exempt),
+            "no_sop_class": no_sop_class_rows(no_sop_class),
+            "internal_errors": [dict(error) for error in internal_errors],
+            "defacing": None if defacing is None else dict(defacing),
+            "text_detection": (
+                None if text_detection is None else dict(text_detection)
+            ),
+            "not_released": [
+                {
+                    "context": context,
+                    "reasons": reasons,
+                    "sop_class": sop_class,
+                    "transfer_syntax": transfer_syntax,
+                    "instances": number[0],
+                    "checks": number[1],
+                }
+                for (context, reasons, sop_class, transfer_syntax), number in sorted(
+                    not_released.items(), key=counted_order
+                )
+            ],
         },
         "categories": [
             {
@@ -503,41 +1095,70 @@ def score(  # pylint: disable = too-many-arguments, too-many-locals
                 "checks": number,
             }
             for (category, action, attribute, policy_action), number in sorted(
-                differences.items(), key=_counted_order
+                differences.items(), key=counted_order
             )
         ],
-        "findings": [
+        "source_gaps": described_rows(gaps),
+        "replacement_matches": described_rows(replacements),
+        "findings": described_rows(findings),
+        "not_evaluated": [
             {
                 "category": category,
                 "action": action,
                 "attribute": attribute,
+                "reason": reason,
                 "checks": number,
             }
-            for (category, action, attribute), number in sorted(
-                findings.items(), key=_counted_order
+            for (category, action, attribute, reason), number in sorted(
+                unevaluated.items(), key=counted_order
             )
         ],
+        "failed_at_source": explained_rows(explained),
+        "watched": counted_rows(watching, WATCHED),
     }
-    return Benchmark(document)
+    return Benchmark(document, bytes(check_outcomes))
 
 
-def _counted_order(pair: tuple[tuple[str | None, ...], int]) -> tuple[str, ...]:
-    """Order counted descriptions by their text, a missing attribute first."""
-    return tuple("" if part is None else part for part in pair[0])
+def _outcome(scored: Scored) -> str:
+    """Return the CategoryCounts field that a released instance's check adds to."""
+    if scored.result is not Result.FAILED:
+        return "passed" if scored.result is Result.PASSED else "not_evaluated"
+    return (
+        "deliberate"
+        if scored.deliberate
+        else "source_gap"
+        if scored.source_gap
+        else "replacement_match"
+        if scored.replacement_match
+        else "failed"
+    )
 
 
 def _attribute(check: Check) -> str | None:
     return None if check.path is None else str(check.path)
 
 
-def reason_code(reason: object) -> str:
-    """Return a withheld input's reason as a code, without a value."""
-    code = getattr(reason, "code", None)
-    if isinstance(code, enum.Enum):
-        return str(code.value)
-    if isinstance(reason, enum.Enum):
-        return str(reason.value)
-    return type(reason).__name__
+def _not_released(
+    context: Context, header: _Header | None, outcome: run.Outcome
+) -> tuple[str, str | None, str, str]:
+    """Describe an instance that the run did not release, without a value.
+
+    A withheld instance is described as held for review, sequestered, or
+    refused, with the run's reasons.
+    """
+    where = context.value
+    reasons = None
+    if context is Context.WITHHELD:
+        where = f"{where}: {outcome.status.value}"
+        reasons = ", ".join(sorted({reason_code(reason) for reason in outcome.reasons}))
+    if header is None:
+        return where, reasons or None, "none", "none"
+    return (
+        where,
+        reasons or None,
+        uid_name(header.sop_class),
+        uid_name(header.transfer_syntax),
+    )
 
 
 def _context(
@@ -580,6 +1201,8 @@ def score_check(
     mapping: IdentifierMapping,
     rules: ElementRules,
     iod: IOD | None = None,
+    *,
+    fallback: ElementRules | None = None,
 ) -> Scored:
     """Score one check against a released instance.
 
@@ -597,22 +1220,70 @@ def score_check(
     a sequence. Any other failure, such as a missing attribute that the
     selected action replaces (D or U) or keeps, or changed pixel data, is a
     finding. Without the instance's IOD no action can be selected, so every
-    failure is a finding.
+    such failure is a finding.
+
+    A check that asks for Patient Identity Removed or Longitudinal Temporal
+    Information Modified to be kept, as the source holds it, fails on the
+    value that the markers write in its place: where the value is present,
+    a deliberate difference noted ``marker``, with or without the IOD. A
+    text that a check asks to be removed is never a deliberate difference,
+    even where the policy keeps it. It is a replacement match where it
+    fails on an attribute each of whose values is one that the engine
+    writes in the source's place
+    (:func:`~pymedphys._dicom.deidentify.midi_benchmark_values.is_engine_replacement`),
+    which holds nothing of the source, so that the words it was found to
+    hold are there by chance; otherwise it is a finding.
+
+    Under Clean Descriptors, ``fallback`` holds the rules of the policy
+    without the option: an attribute given C other than a ROI Name takes
+    its action from them, as the transform takes it.
     """
     scored = _score(check, dataset, mapping)
     if scored.result is not Result.FAILED or check.path is None:
         return scored
+    if check.action is Action.TEXT_REMOVED:
+        element = find_element(dataset, check.path)
+        if element is not None and is_engine_replacement(element):
+            return Scored(Result.FAILED, _REPLACED, replacement_match=True)
+    note = _explanation(check, check.path, dataset, rules, iod, fallback)
+    return scored if note is None else Scored(Result.FAILED, note, deliberate=True)
+
+
+def _explanation(  # pylint: disable = too-many-arguments
+    check: Check,
+    path: AttributePath,
+    dataset: pydicom.Dataset,
+    rules: ElementRules,
+    iod: IOD | None,
+    fallback: ElementRules | None,
+) -> str | None:
+    """Return what makes a failed check a deliberate difference, if anything."""
     if check.action not in _EXPLAINING:
-        return scored
-    action = _explaining_action(
+        return None
+    if (
+        len(path.elements) == 1
+        and str(path.attribute) in _MARKERS
+        and find_element(dataset, path) is not None
+    ):
+        return "marker"
+    return _explaining_action(
         rules,
-        check.path,
+        path,
         iod,
         _EXPLAINING[check.action],  # type: ignore[index]
+        fallback,
     )
-    if action is None:
-        return scored
-    return Scored(Result.FAILED, action, deliberate=True)
+
+
+# A source gap's note: the source had nothing for the check to find.
+_GAP = "absent from the source"
+# A replacement match's note: the engine wrote the value in the source's place.
+_REPLACED = "written in the source's place"
+
+
+# The markers that replace what the source holds (PS3.15 E.2 and E.3): a
+# check that asks for the source's own value fails on them by design.
+_MARKERS = frozenset({"(0012,0062)", "(0028,0303)"})
 
 
 # For each action that asks for something to be kept, the selected actions
@@ -631,6 +1302,7 @@ def _explaining_action(
     path: AttributePath,
     iod: IOD | None,
     allowed: frozenset[str] | None,
+    fallback: ElementRules | None = None,
 ) -> str | None:
     """Return the selected action on ``path`` that explains a failure, if any.
 
@@ -642,6 +1314,12 @@ def _explaining_action(
     for depth, tag in enumerate(tags):
         try:
             action = _selected_action(rules, iod, tag, tags[:depth])
+            if (
+                action == "C"
+                and fallback is not None
+                and tuple(tags[: depth + 1]) != _ROI_PATH
+            ):
+                action = _selected_action(fallback, iod, tag, tags[:depth])
         except ValueError:
             return None
         if depth < len(tags) - 1:
@@ -693,7 +1371,7 @@ def _score(  # pylint: disable = too-many-return-statements, too-many-branches
         if check.action_text is None:
             return Scored(Result.NOT_EVALUATED, "no digest")
         digest = hashlib.md5(pixels.value, usedforsecurity=False).hexdigest()
-        return _passed(digest == _unbracketed(check.action_text).strip().lower())
+        return _passed(digest == unbracketed(check.action_text).strip().lower())
     if check.path is None:
         return Scored(
             Result.NOT_EVALUATED,
@@ -710,16 +1388,19 @@ def _score(  # pylint: disable = too-many-return-statements, too-many-branches
     text = element_text(element)
     if action in (Action.TEXT_RETAINED, Action.TEXT_REMOVED):
         keep = action is Action.TEXT_RETAINED
-        if not text or (not keep and _is_bulk_data(element)):
+        if not text or (not keep and is_bulk_data(element)):
             # The script reads Pixel Data and Overlay Data as removed.
             return _passed(not keep)
         if check.action_text is None:
             return Scored(Result.NOT_EVALUATED, "no text to compare")
-        return compare_text(text, check.action_text, keep=keep)
+        passed = compare_text(text, check.action_text, keep=keep)
+        if passed is None:
+            return Scored(Result.NOT_EVALUATED, "no words to compare")
+        return _passed(passed)
     if check.value is None:
         return Scored(Result.NOT_EVALUATED, "no value to compare")
     if action in (Action.DATE_SHIFTED, Action.UID_CHANGED):
-        value = _unbracketed(check.value).replace("\\", "")
+        value = unbracketed(check.value).replace("\\", "")
         return _passed(value not in text.replace("\\", ""))
     replacements = (
         mapping.uids if action is Action.UID_CONSISTENT else mapping.patient_ids
@@ -730,226 +1411,5 @@ def _score(  # pylint: disable = too-many-return-statements, too-many-branches
     return _passed(text == expected)
 
 
-def _unbracketed(text: str) -> str:
-    """Return ``text`` without any ``<`` or ``>``, as the script compares it."""
-    return text.replace("<", "").replace(">", "")
-
-
-def _is_bulk_data(element: pydicom.DataElement) -> bool:
-    return element.tag == 0x7FE00010 or (
-        element.tag.group & 0xFF01 == 0x6000 and element.tag.element == 0x3000
-    )
-
-
 def _passed(passed: bool) -> Scored:
     return Scored(Result.PASSED if passed else Result.FAILED)
-
-
-_NUMBER = re.compile(r"[0-9]*\.?[0-9]+|[0-9]+\.")
-_WORD = re.compile(r"\w+")
-
-
-def compare_text(text: str, answer: str, *, keep: bool) -> Scored:
-    """Compare an attribute's text with the answer key's, ignoring case.
-
-    Two numbers compare as numbers. Otherwise the answer is kept if it is
-    within the text, and removed if none of its words is; a text that keeps
-    some of its words, but not all, fails both.
-    """
-    text = _unbracketed(text).lower()
-    answer = _unbracketed(answer).lower()
-    if _NUMBER.fullmatch(text) and _NUMBER.fullmatch(answer):
-        return _passed((float(text) == float(answer)) == keep)
-    if answer in text:
-        return _passed(keep)
-    words = _WORD.findall(answer)
-    if not words:
-        return Scored(Result.NOT_EVALUATED, "no words to compare")
-    found = sum(word in text for word in words)
-    return _passed(found == len(words) if keep else found == 0)
-
-
-def find_element(
-    dataset: pydicom.Dataset, path: AttributePath
-) -> pydicom.DataElement | None:
-    """Return the element at ``path``, or ``None`` if there is none."""
-    current = dataset
-    for depth, wanted in enumerate(path.elements):
-        element = _element(current, wanted)
-        if element is None or depth == len(path.elements) - 1:
-            return element
-        if element.VR != "SQ":
-            return None
-        index = path.items[depth]
-        if index >= len(element.value):
-            return None
-        current = element.value[index]
-    return None  # pragma: no cover - the loop returns at the last element
-
-
-def _element(dataset: pydicom.Dataset, wanted: Element) -> pydicom.DataElement | None:
-    if not wanted.is_private:
-        return dataset.get((wanted.group << 16) | wanted.element)
-    for element in dataset:
-        tag = element.tag
-        if tag.group != wanted.group or tag.element < 0x1000:
-            continue
-        if tag.element & 0xFF != wanted.element:
-            continue
-        creator = dataset.get((tag.group << 16) | (tag.element >> 8))
-        if (
-            creator is not None
-            and str(creator.value).strip().upper()
-            == (wanted.creator or "").strip().upper()
-        ):
-            return element
-    return None
-
-
-def element_text(element: pydicom.DataElement) -> str:
-    """Return an element's value as text, as the checks compare it.
-
-    A multi-valued value is joined by ``\\``, as it is encoded; bytes are
-    read as ISO 8859-1, so that text in them is found; and a sequence is the
-    text of every element of its items, joined by spaces.
-    """
-    value = element.value
-    if element.VR == "SQ":
-        return " ".join(
-            text
-            for item in value
-            for inner in item
-            for text in [element_text(inner)]
-            if text
-        )
-    if value is None:
-        return ""
-    if isinstance(value, (bytes, bytearray)):
-        return bytes(value).decode("latin-1").strip(" \t\r\n\x00")
-    if isinstance(value, pydicom.multival.MultiValue):
-        return "\\".join(str(each) for each in value).strip(" \t\r\n\x00")
-    return str(value).strip(" \t\r\n\x00")
-
-
-def render_markdown(document: Mapping[str, object]) -> str:
-    """Render a benchmark's results as CommonMark."""
-    versions = document["versions"]
-    coverage = document["coverage"]
-    assert isinstance(versions, Mapping) and isinstance(coverage, Mapping)
-    lines = [
-        "# MIDI benchmark results",
-        "",
-        f"Format `{document['format']}`. Development results: the NCI "
-        "validation script's own results, from the mapping files that the "
-        "run wrote, are the published figures.",
-        "",
-        "## Versions",
-        "",
-        "| Item | Version |",
-        "| --- | --- |",
-        *(f"| {name} | {_cell(value)} |" for name, value in versions.items()),
-        "",
-        "## Supported coverage",
-        "",
-        "Answer-key instances by where they ended up:",
-        "",
-        _table(
-            ("Modality", *(context.value for context in Context)),
-            [
-                (modality, *by.values())
-                for modality, by in coverage["by_modality"].items()
-            ]
-            + [("All", *coverage["instances"].values())],
-        ),
-        "",
-    ]
-    reasons = coverage["withheld_reasons"]
-    if reasons:
-        lines += [
-            "Reasons the run gave for withheld instances:",
-            "",
-            _table(("Reason", "Times given"), list(reasons.items())),
-            "",
-        ]
-    lines += [
-        "## Results by answer-key category",
-        "",
-        "Checks of released instances passed, failed, failed by a deliberate "
-        "difference, or were not evaluated; checks of other instances are "
-        "counted where those instances ended up, and not scored.",
-        "",
-        _table(
-            (
-                "Category",
-                "Passed",
-                "Failed",
-                "Deliberate",
-                "Not evaluated",
-                "Withheld",
-                "Outside coverage",
-                "Not in input",
-            ),
-            [
-                (
-                    "unknown"
-                    if row["code"] is None
-                    else f"{row['family']} {row['code']}",
-                    row["passed"],
-                    row["failed"],
-                    row["deliberate"],
-                    row["not_evaluated"],
-                    row["withheld"],
-                    row["outside_coverage"],
-                    row["not_in_input"],
-                )
-                for row in document["categories"]
-            ],
-        ),
-        "",
-        "## Deliberate differences",
-        "",
-        "Checks that asked for an attribute to be kept, where the policy "
-        "removes or replaces it:",
-        "",
-    ]
-    lines += _rows_or_none(
-        ("Category", "Action", "Attribute", "Policy action", "Checks"),
-        [
-            (
-                row["category"],
-                row["action"],
-                row["attribute"],
-                row["policy_action"],
-                row["checks"],
-            )
-            for row in document["deliberate_differences"]
-        ],
-    )
-    lines += ["", "## Findings", "", "Every other failed check:", ""]
-    lines += _rows_or_none(
-        ("Category", "Action", "Attribute", "Checks"),
-        [
-            (row["category"], row["action"], row["attribute"], row["checks"])
-            for row in document["findings"]
-        ],
-    )
-    return "\n".join(lines) + "\n"
-
-
-def _rows_or_none(header: Sequence[str], rows: list[Sequence[object]]) -> list[str]:
-    return [_table(header, rows)] if rows else ["None."]
-
-
-def _table(header: Sequence[str], rows: Iterable[Sequence[object]]) -> str:
-    lines = [
-        "| " + " | ".join(header) + " |",
-        "| " + " | ".join("---" for _ in header) + " |",
-    ]
-    lines += ["| " + " | ".join(_cell(value) for value in row) + " |" for row in rows]
-    return "\n".join(lines)
-
-
-def _cell(value: object) -> str:
-    if value is None:
-        return "none"
-    return " ".join(str(value).split()).replace("|", "\\|")

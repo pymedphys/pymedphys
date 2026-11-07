@@ -211,6 +211,25 @@ class TechniqueVocabulary:
         """Return whether the tier keeps ``value``, before the echo check."""
         return self.rejection(tag, value) is None
 
+    def word_kind(self, word: str) -> str:
+        """Return how the vocabulary reads one word, by a value-free name.
+
+        The name is ``named exception``, ``name``, ``unit``, ``bare
+        number``, ``kernel``, ``vocabulary word`` (one, or a compound of
+        them), or ``other``, in that order of precedence, so that a reviewer
+        can tell what kind of kept word a finding holds without the word.
+        """
+        word = word.upper()
+        kinds = (
+            ("named exception", word in self.named_exceptions),
+            ("name", word in self.names),
+            ("unit", word in self.units),
+            ("bare number", _BARE_NUMBER.fullmatch(word) is not None),
+            ("kernel", self._is_kernel(word)),
+            ("vocabulary word", self._is_vocabulary(word)),
+        )
+        return next((kind for kind, matches in kinds if matches), "other")
+
     def _word_rejection(self, value: str) -> Rejection | None:
         found_word = False
         bare_numbers = 0
