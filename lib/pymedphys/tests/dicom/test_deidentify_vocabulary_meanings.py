@@ -414,6 +414,93 @@ def test_the_release_report_counts_vocabulary_meanings():
     ]
 
 
+# A private data element that only copies a descriptive source.
+
+PRIVATE_COPY = "(0009,1036)"
+RADIOPHARMACEUTICAL = "(0018,0031)"
+# Radiopharmaceutical Information Sequence (0054,0016), first item.
+AGENT_ITEM = (("(0054,0016)", 0),)
+
+
+@pytest.mark.deid_requirement("MIDI-BP-01")
+@pytest.mark.parametrize(
+    "original",
+    [
+        _removed(STUDY_DESCRIPTION, "LO", MEANING),
+        _removed(RADIOPHARMACEUTICAL, "LO", "CT HEAD", AGENT_ITEM),
+    ],
+)
+def test_a_private_copy_of_a_descriptive_value_is_released(original):
+    written = _procedure(MEANING)
+    copy = _removed(PRIVATE_COPY, "LO", original.value)
+    condition = _condition(written, original, copy)
+
+    assert condition.decision is Decision.RELEASE
+    assert sorted((f.source.tag, why) for f, why in condition.exempted) == sorted(
+        [
+            (original.source.tag, Exemption.VOCABULARY_MEANING),
+            (PRIVATE_COPY, Exemption.VOCABULARY_MEANING),
+        ]
+    )
+
+
+@pytest.mark.deid_requirement("MIDI-BP-01")
+def test_a_private_copy_pooled_with_another_value_goes_to_review():
+    # Another instance of the subject holds a value that copies nothing.
+    written = _procedure(MEANING)
+    condition = _condition(
+        written,
+        _removed(STUDY_DESCRIPTION, "LO", MEANING),
+        _removed(PRIVATE_COPY, "LO", MEANING),
+        _removed(PRIVATE_COPY, "LO", "HEAD"),
+    )
+
+    assert condition.decision is Decision.QC_REVIEW
+    assert [f.source.tag for f, _ in condition.exempted] == [STUDY_DESCRIPTION]
+
+
+@pytest.mark.deid_requirement("MIDI-BP-01")
+@pytest.mark.parametrize(
+    "original",
+    [
+        # A place, a device, or a descriptive attribute in a station's code.
+        _removed("(0008,1010)", "SH", "HEAD"),  # Station Name
+        _removed("(0018,1008)", "LO", "HEAD"),  # Gantry ID
+        _removed(STUDY_DESCRIPTION, "LO", "HEAD", (("(0040,4025)", 0),)),
+    ],
+)
+def test_a_private_copy_of_anything_else_goes_to_review(original):
+    written = _procedure(MEANING)
+    condition = _condition(written, original, _removed(PRIVATE_COPY, "LO", "HEAD"))
+
+    assert condition.decision is Decision.QC_REVIEW
+    assert not condition.exempted
+
+
+@pytest.mark.deid_requirement("MIDI-BP-01")
+@pytest.mark.parametrize(
+    "tag, vr",
+    [
+        ("(0009,0010)", "LO"),  # a private creator, not a private data element
+        ("(0008,1010)", "SH"),  # Station Name, which is public
+        ("(0018,1008)", "LO"),  # Gantry ID
+        ("(0008,0050)", "SH"),  # Accession Number, public and not a place
+        ("(0010,4000)", "LT"),  # Patient Comments
+    ],
+)
+def test_only_a_private_data_element_can_be_a_descriptive_copy(tag, vr):
+    written = _procedure(MEANING)
+    condition = _condition(
+        written,
+        _removed(STUDY_DESCRIPTION, "LO", MEANING),
+        _removed(tag, vr, MEANING),
+    )
+
+    # Accession Number is a direct identifier, so its finding withholds.
+    assert condition.decision is not Decision.RELEASE
+    assert [f.source.tag for f, _ in condition.exempted] == [STUDY_DESCRIPTION]
+
+
 # A run under the Basic Profile.
 
 
@@ -428,10 +515,11 @@ def _short_tmp_path(tmp_path):
     shutil.rmtree(directory, ignore_errors=True)
 
 
-def _run(tmp_path, meaning, **attributes):
+def _run(tmp_path, meaning, private=None, **attributes):
     """Run three CT slices of a study whose local procedure code means ``meaning``.
 
-    Each slice also has ``attributes``, by keyword.
+    Each slice also has ``attributes``, by keyword, and ``private``, if given,
+    as the value of a private data element (0009,1036).
     """
     transform = InstanceTransform(compose_policy("basic"), KEY, unvalidated_policy=True)
     source = tmp_path / "source"
@@ -446,6 +534,9 @@ def _run(tmp_path, meaning, **attributes):
         dataset.ProcedureCodeSequence = [code]
         for keyword, value in attributes.items():
             setattr(dataset, keyword, value)
+        if private is not None:
+            block = dataset.private_block(0x0009, "ZQ VENDOR", create=True)
+            block.add_new(0x36, "LO", private)
         (source / f"{number}.dcm").write_bytes(synthetic.written(dataset))
     result = run.run(
         run.discover(source),
@@ -529,5 +620,26 @@ def test_basic_holds_slices_whose_local_meaning_repeats_a_station_name(
 @pytest.mark.deid_requirement("MIDI-BP-01")
 def test_basic_holds_slices_whose_local_meaning_repeats_a_gantry_id(tmp_path):
     statuses, _ = _run(tmp_path, MEANING, GantryID="HEAD")
+
+    assert statuses == [run.Status.HELD_FOR_REVIEW] * 3
+
+
+@pytest.mark.deid_requirement("MIDI-BP-01")
+def test_basic_releases_slices_whose_private_element_copies_the_description(
+    tmp_path,
+):
+    statuses, report = _run(tmp_path, MEANING, private=MEANING)
+
+    assert statuses == [run.Status.RELEASED] * 3
+    assert sorted(
+        (entry["attribute"], entry["count"])
+        for entry in report["exempted_findings"]
+        if entry["exemption"] == Exemption.VOCABULARY_MEANING.value
+    ) == [(STUDY_DESCRIPTION, 3), (PRIVATE_COPY, 3)]
+
+
+@pytest.mark.deid_requirement("MIDI-BP-01")
+def test_basic_holds_slices_whose_private_element_copies_nothing(tmp_path):
+    statuses, _ = _run(tmp_path, MEANING, private="HEAD")
 
     assert statuses == [run.Status.HELD_FOR_REVIEW] * 3
