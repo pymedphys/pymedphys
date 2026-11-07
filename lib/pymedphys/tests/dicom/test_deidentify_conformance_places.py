@@ -56,11 +56,14 @@ FLOW_IDENTIFIER_SEQUENCE = "(0034,0001)"  # D; no supported IOD defines it
 GRAPHIC_ANNOTATION_SEQUENCE = "(0070,0001)"  # D; Type 1 in its module
 # The softcopy Presentation States, in the statement's order.
 PRESENTATION_STATES = (
+    "Advanced Blending Presentation State",
     "Blending Softcopy Presentation State",
     "Color Softcopy Presentation State",
     "Grayscale Softcopy Presentation State",
+    "Planar MPR Volumetric Presentation State",
     "Pseudo-Color Softcopy Presentation State",
     "Variable Modality LUT Softcopy Presentation State",
+    "Volume Rendering Volumetric Presentation State",
     "XA/XRF Grayscale Softcopy Presentation State",
 )
 # The Structured Reports and the Key Object Selection Document, in the

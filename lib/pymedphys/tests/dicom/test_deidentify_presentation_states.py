@@ -300,19 +300,27 @@ def test_the_referenced_series_sequence_is_kept_where_a_presentation_state_requi
 GRAYSCALE_PLANAR_MPR_VOLUMETRIC_PRESENTATION_STATE_STORAGE = (
     "1.2.840.10008.5.1.4.1.1.11.6"
 )
+COMPOSITING_PLANAR_MPR_VOLUMETRIC_PRESENTATION_STATE_STORAGE = (
+    "1.2.840.10008.5.1.4.1.1.11.7"
+)
+COLOR_SPACE = "(0028,2002)"
 INPUT_SET = "2.25.702"
 VOLUMETRIC_ANNOTATION_SEQUENCE = "(0070,1901)"
 VOLUMETRIC_PRESENTATION_INPUT_ANNOTATION_SEQUENCE = "(0070,1905)"
 
 
-def _planar_mpr(*, annotation=None):
-    """Return a Grayscale Planar MPR Volumetric Presentation State of the CT.
+def _planar_mpr(*, annotation=None, color=False):
+    """Return a Planar MPR Volumetric Presentation State of the CT.
 
+    It is a Grayscale one, or, where ``color`` is true, a Compositing one
+    whose true colour display holds ICC Profile and Color Space.
     ``annotation`` names a sequence of the Volumetric Graphic Annotation
     Module to hold one text annotation.
     """
     dataset = synthetic.instance(
-        GRAYSCALE_PLANAR_MPR_VOLUMETRIC_PRESENTATION_STATE_STORAGE,
+        COMPOSITING_PLANAR_MPR_VOLUMETRIC_PRESENTATION_STATE_STORAGE
+        if color
+        else GRAYSCALE_PLANAR_MPR_VOLUMETRIC_PRESENTATION_STATE_STORAGE,
         PRESENTATION_STATE,
         PRESENTATION_STATE_SERIES,
         VolumetricPresentationInputSetSequence=[
@@ -346,6 +354,12 @@ def _planar_mpr(*, annotation=None):
     dataset.MPRViewWidth = 100.0
     dataset.MPRViewHeightDirection = [0.0, 1.0, 0.0]
     dataset.MPRViewHeight = 100.0
+    if color:
+        dataset.PixelPresentation = "TRUE_COLOR"
+        dataset.add_new(
+            ICC_PROFILE, "OB", icc_profiles.srgb_profile("A display's profile")
+        )
+        dataset.ColorSpace = "SRGB"
     if annotation is not None:
         setattr(
             dataset,
@@ -437,3 +451,19 @@ def test_every_preset_sequesters_a_volumetric_presentation_state_with_annotation
         Sequestration(ElementPath((), tag), "D", "SQ", SequesterReason.NO_DUMMY_VALUE)
         in result.reasons
     )
+
+
+@pytest.mark.parametrize("preset", DATED_PRESETS)
+def test_a_volumetric_presentation_states_color_space_sequesters_it(preset):
+    # Color Space is Type 1C beside ICC Profile in the MPR Volumetric
+    # Presentation State Display Module, and X/Z/D resolves to D there, which
+    # a code string has no dummy value for (D-021, D-022). ICC Profile itself
+    # is cleaned, so it is not among the reasons.
+    result = _transformed(preset, _planar_mpr(color=True))
+
+    assert isinstance(result, run.Sequestered)
+    assert set(result.reasons) == {
+        Sequestration(
+            ElementPath((), COLOR_SPACE), "D", "CS", SequesterReason.NO_DUMMY_VALUE
+        )
+    }

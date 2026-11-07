@@ -276,6 +276,8 @@ OTHER_SEQUENCES = {
     "(0070,0314)",  # Used Fiducials Sequence
     "(0070,0315)",  # Used RT Structure Set ROI Sequence
     "(0070,0404)",  # Referenced Spatial Registration Sequence
+    "(0070,1104)",  # Rendered Image Reference Sequence
+    "(0070,1903)",  # Referenced Structured Context Sequence
     "(3006,0016)",  # Contour Image Sequence
     "(3006,0018)",  # Predecessor Structure Set Sequence
     "(3008,0030)",  # Referenced Treatment Record Sequence
@@ -297,6 +299,7 @@ NOT_FOLLOWED = {
     "(0008,3010)": "identifies an irradiation event",
     "(0008,3012)": "identifies a radiopharmaceutical administration event",
     "(0018,1002)": "identifies a device",
+    "(0028,1199)": "identifies a palette colour lookup table",
     "(0020,9164)": "identifies a dimension organisation",
     "(0040,0554)": "identifies a specimen",
     "(0040,A124)": "is the value of a content item",
@@ -308,6 +311,8 @@ NOT_FOLLOWED = {
     "(0062,0021)": "identifies a finding or feature tracked across instances",
     "(0070,031A)": "refers to a fiducial within an instance",
     "(0070,031B)": "refers to a fiducial within an instance",
+    "(0070,1209)": "identifies a set of inputs within a Presentation State",
+    "(0070,1904)": "refers to a content item within a structured context",
     "(0088,0140)": "identifies a file set",
     "(0400,0100)": "identifies a digital signature",
     "(300A,0013)": "identifies a dose reference within a plan",
