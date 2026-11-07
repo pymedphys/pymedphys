@@ -1542,9 +1542,11 @@ def test_every_new_attribute_of_the_waveform_presentation_states_has_its_action(
         collections.Counter(dictionary[tag].vrs[0] for tag in other)
         == WAVEFORM_OTHER_VRS
     )
-    assert not _used_by(WAVEFORM_PRESENTATION_STATE_IODS, TEXT_VRS) - _used_by(
-        WAVEFORM_REVIEWED_AGAINST, TEXT_VRS
-    ) - set(WAVEFORM_LISTED)
+    assert (
+        not _used_by(WAVEFORM_PRESENTATION_STATE_IODS, TEXT_VRS)
+        - _used_by(WAVEFORM_REVIEWED_AGAINST, TEXT_VRS)
+        - set(WAVEFORM_LISTED)
+    )
     for vrs in ({"UI"}, {"PN"}, {"UR"}):
         assert not _used_by(WAVEFORM_PRESENTATION_STATE_IODS, vrs) - _used_by(
             WAVEFORM_REVIEWED_AGAINST, vrs
@@ -1595,7 +1597,9 @@ def test_a_waveform_text_annotation_is_kept_with_its_text_replaced():
             if definition.tag == UNFORMATTED_TEXT_VALUE
         } == {(path, "1")}, name
         assert (
-            compound_actions.resolve_plain_in_iod(iod, UNFORMATTED_TEXT_VALUE, path, "D")
+            compound_actions.resolve_plain_in_iod(
+                iod, UNFORMATTED_TEXT_VALUE, path, "D"
+            )
             == "D"
         ), name
 

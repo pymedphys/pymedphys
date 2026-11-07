@@ -253,6 +253,8 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "86-pr-planar-mpr.dcm",
         "87-pr-volume-rendering.dcm",
         "88-pr-advanced-blending.dcm",
+        "89-pr-waveform.dcm",
+        "90-pr-waveform-acquisition.dcm",
     ]
     assert [file.manifest.iod for file in corpus.files] == [
         "CT Image",
@@ -302,9 +304,11 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "Planar MPR Volumetric Presentation State",
         "Volume Rendering Volumetric Presentation State",
         "Advanced Blending Presentation State",
+        "Waveform Presentation State",
+        "Waveform Acquisition Presentation State",
     ]
-    # The files before the nine Presentation States.
-    before = corpus.files[:-9]
+    # The files before the eleven Presentation States.
+    before = corpus.files[:-11]
     assert corpus_module.STRUCTURED_REPORT_FILES == tuple(
         file.name for file in before[-24:-14] + before[-12:-4]
     )
@@ -320,9 +324,9 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         corpus_module.TREATMENT_SUMMARY_RECORD_FILE,
     ) == tuple(file.name for file in before[-2:])
     assert corpus_module.PRESENTATION_STATE_FILES == tuple(
-        file.name for file in corpus.files[-9:]
+        file.name for file in corpus.files[-11:]
     )
-    assert {file.manifest.sop_class for file in corpus.files[-9:]} == (
+    assert {file.manifest.sop_class for file in corpus.files[-11:]} == (
         corpus_module.PRESENTATION_STATE_STORAGE_CLASSES
     )
     # Every IOD of the first supported release.
@@ -581,6 +585,14 @@ def test_an_attribute_whose_removal_sequesters_is_planted_in_one_instance(corpus
                 "Advanced Blending Presentation State",
             ),
             annotation | creation,
+        ),
+        # The waveform ones define no Graphic Annotation Sequence or overlay.
+        **dict.fromkeys(
+            (
+                "Waveform Presentation State",
+                "Waveform Acquisition Presentation State",
+            ),
+            creation,
         ),
     }
     assert planted == {corpus_module.SEQUESTERED_FILE: both}
