@@ -34,7 +34,14 @@ before the first supported release.
     Enhanced instances that its images convert to;
 ``idc-parity``
     counts what the resize alone changes for a model at its publishers'
-    settings (``parity.json``).
+    settings (``parity.json``);
+``zenodo-fetch``
+    reads the pinned Zenodo archives' indexes over HTTP, selects folders
+    of them, writes their members under ``--downloads``, and writes the
+    selection's counts (``zenodo.json``).
+
+``idc-measure`` and ``idc-parity`` also read, with ``--zenodo``, the
+folders that ``zenodo-fetch`` wrote, as cases counted only.
 """
 
 from __future__ import annotations
@@ -51,6 +58,7 @@ from types import MappingProxyType
 from .text_detection import TextDetectionError
 from .text_evaluation import EVALUATED, EvaluationSettings, evaluate, summarise
 from .text_evaluation_cases import cases_report
+from .text_evaluation_converted import ConvertedCase
 from .text_evaluation_criteria import CHOSEN_CRITERIA, HELD_OUT_COLLECTIONS, assess
 from .text_evaluation_detector import (
     DetectorVariant,
@@ -77,6 +85,15 @@ from .text_evaluation_models import (
     DetectionModel,
 )
 from .text_evaluation_parity import resize_parity
+from .text_evaluation_sources import DicomCase, SkippedFiles
+from .text_evaluation_zenodo import (
+    ARCHIVES,
+    archive_index,
+    fetch,
+    http_opener,
+    select_folders,
+    zenodo_cases,
+)
 
 MODELS: Mapping[str, DetectionModel] = MappingProxyType(
     {model.name: model for model in (PP_OCRV6_SMALL, *RAPIDOCR_MODELS, *PADDLE_MODELS)}
@@ -130,6 +147,16 @@ def _parser() -> argparse.ArgumentParser:
         help="Where the manifest places each series' folder.",
     )
     select.set_defaults(run=_select)
+    fetched = commands.add_parser(
+        "zenodo-fetch", help="Select and fetch folders of the Zenodo archives."
+    )
+    fetched.add_argument("--per-collection", type=int, default=2)
+    fetched.add_argument("--max-mb", type=float, default=2000.0)
+    fetched.add_argument("--max-folder-mb", type=float, default=400.0)
+    fetched.add_argument(
+        "--downloads", required=True, help="Where each folder's files are written."
+    )
+    fetched.set_defaults(run=_zenodo_fetch)
     for name, run, help_text in (
         ("idc-measure", _measure, "Measure the downloaded series."),
         ("idc-parity", _parity, "Count what the resize alone changes."),
@@ -137,6 +164,9 @@ def _parser() -> argparse.ArgumentParser:
         command = commands.add_parser(name, help=help_text)
         command.add_argument("series", help="series.json, as idc-select wrote it.")
         command.add_argument("downloads", help="Where the series were downloaded.")
+        command.add_argument(
+            "--zenodo", help="Where zenodo-fetch wrote the Zenodo folders, if it ran."
+        )
         command.add_argument(
             "--model", choices=sorted(MODELS), default="PP-OCRv6 small"
         )
@@ -175,6 +205,22 @@ def _select(arguments: argparse.Namespace) -> dict[str, str]:
     }
 
 
+def _zenodo_fetch(arguments: argparse.Namespace) -> dict[str, str]:
+    folders = []
+    for archive in ARCHIVES:
+        # Small blocks, as an index is read from an archive's end alone.
+        with http_opener(archive, block=1 << 20) as opened:
+            folders += archive_index(archive, opened)
+    selection = select_folders(
+        folders,
+        per_collection=arguments.per_collection,
+        max_mb=arguments.max_mb,
+        max_folder_mb=arguments.max_folder_mb,
+    )
+    written = fetch(selection, arguments.downloads)
+    return {"zenodo.json": _json({**selection.described(), "files_written": written})}
+
+
 def read_series(path: pathlib.Path | str) -> tuple[IdcSeries, ...]:
     """The series that ``idc-select`` wrote, each checked again."""
     try:
@@ -188,14 +234,19 @@ def read_series(path: pathlib.Path | str) -> tuple[IdcSeries, ...]:
     return series
 
 
-def _cases(arguments: argparse.Namespace) -> list[IdcSeriesCase]:
+def _cases(
+    arguments: argparse.Namespace,
+) -> list[IdcSeriesCase | DicomCase | ConvertedCase | SkippedFiles]:
     downloads = pathlib.Path(arguments.downloads)
     converted = getattr(arguments, "converted", False)
-    return [
+    cases: list[IdcSeriesCase | DicomCase | ConvertedCase | SkippedFiles] = [
         IdcSeriesCase(each, downloads, converted=converted)
         for each in read_series(arguments.series)
         if not converted or each.sop_class_uid in TARGETS
     ]
+    if getattr(arguments, "zenodo", None):
+        cases += zenodo_cases(arguments.zenodo, converted=converted)
+    return cases
 
 
 def _settings(points: tuple[PostProcessing, ...], evaluated: str) -> EvaluationSettings:
