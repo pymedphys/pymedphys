@@ -130,6 +130,15 @@ class TransformReason(enum.Enum):
     # under Clean Pixel Data, an instance whose cleaned Pixel Data a reviewer
     # rejected in an attested QC pack, so that it is never released
     REDACTION_REJECTED = "redaction-rejected"
+    # under Clean Pixel Data, an Encapsulated PDF whose document cannot be
+    # rendered for review: encrypted, of no page or too many, too large,
+    # with a page too large once rendered, or that PDFium cannot open or
+    # render (D-061)
+    UNCLEANABLE_DOCUMENT = "uncleanable-document"
+    # under Clean Pixel Data, an Encapsulated PDF whose document cannot be
+    # rendered because pypdfium2 is not installed or the decoding child
+    # cannot be run (D-061)
+    NO_RENDERER = "no-renderer"
     # under tps-import, an instance of a subject whose instances in the run
     # contradict the reference study from which its profile's synthetic
     # birth date was derived, so that the subject is stopped for review
@@ -251,6 +260,10 @@ class VisualFeaturesReason(enum.Enum):
     # grid as set to zero no reviewed QC pack has shown, so that only a
     # verdict on this run's previews of it can release it
     DOSE_SET_TO_ZERO_ON_REVIEW = "dose-set-to-zero-on-review"
+    # an Encapsulated PDF released as its rendered pages under Clean Pixel
+    # Data, whose pages can show a photograph of a face and which no face
+    # review has yet covered, so that it is held (D-061)
+    DOCUMENT_PAGES = "document-pages"
 
 
 class DoseChoice(enum.Enum):
