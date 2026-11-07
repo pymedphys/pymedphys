@@ -69,7 +69,8 @@ keeps explains it
 text is the meaning of a standard code that only instances the run does not
 write held, or it is found in a kept Code Meaning made only of words of the
 reviewed technique vocabulary, which echoes no identifier of the subject,
-from a source that is not an institution's or a station's name
+from a source that names, codes, or addresses no place, organisation, or
+device
 (:func:`~pymedphys._dicom.deidentify.residual_vocabulary.vocabulary_meaning`),
 or it is a removed requested procedure code's Code Value, Coding Scheme
 Designator, or Code Meaning equal to the same attribute of a kept code item,

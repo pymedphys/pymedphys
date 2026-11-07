@@ -23,6 +23,7 @@ the finding is not a reason for review (D-032).
 
 import dataclasses
 import json
+import re
 import os
 import shutil
 import struct
@@ -31,7 +32,7 @@ from pathlib import Path
 
 from pymedphys._imports import pydicom, pytest
 
-from pymedphys._dicom.deidentify import run
+from pymedphys._dicom.deidentify import residual_vocabulary, run
 from pymedphys._dicom.deidentify.file_layout import ElementPath, Location, Region
 from pymedphys._dicom.deidentify.instance_transform import (
     InstanceTransform,
@@ -54,6 +55,7 @@ from pymedphys._dicom.deidentify.residual_exemptions import (
 from pymedphys._dicom.deidentify.residual_vocabulary import vocabulary_meaning
 from pymedphys._dicom.deidentify.residuals import SourceValue
 from pymedphys._dicom.deidentify.run_report import RELEASE_REPORT
+from pymedphys._dicom.deidentify.standard import dictionary_attribute, load_table_e1_1
 from pymedphys._dicom.deidentify.technique_descriptors import (
     Rejection,
     load_technique_vocabulary,
@@ -270,6 +272,25 @@ def test_a_person_name_found_in_a_vocabulary_meaning_still_withholds():
         # Institutional Department Type Code Sequence item.
         _removed(CODE_MEANING, "LO", "HEAD", (("(0008,0082)", 0),)),
         _removed(CODE_MEANING, "LO", "HEAD", (("(0008,1041)", 0),)),
+        _removed("(0040,0010)", "SH", "HEAD"),  # Scheduled Station Name
+        _removed("(0040,0242)", "SH", "HEAD"),  # Performed Station Name
+        _removed("(0008,0055)", "AE", "HEAD"),  # Station AE Title
+        _removed("(0040,0243)", "SH", "HEAD"),  # Performed Location
+        _removed("(0018,1000)", "LO", "HEAD"),  # Device Serial Number
+        # The meanings of Scheduled and Performed Station Name Code
+        # Sequence items, nested in a step's item.
+        _removed(
+            CODE_MEANING,
+            "LO",
+            "HEAD",
+            (("(0040,0100)", 0), ("(0040,4025)", 0)),
+        ),
+        _removed(
+            CODE_MEANING,
+            "LO",
+            "HEAD",
+            (("(0040,0260)", 1), ("(0040,4028)", 0)),
+        ),
     ],
 )
 def test_an_institutions_or_stations_name_goes_to_review(source):
@@ -278,6 +299,32 @@ def test_an_institutions_or_stations_name_goes_to_review(source):
 
     assert condition.decision is Decision.QC_REVIEW
     assert not condition.exempted
+
+
+# The words of Table E.1-1's names of attributes that name, code, or
+# address a place, an organisation, or a device.
+_IDENTIFYING_NAMES = re.compile(
+    r"Institution|Station|AE Title|Location|Organization|Coordinating Center"
+    r"|Site ID|Site Name|Address|Telephone|Device (?:Serial|ID|Alternate|Label)"
+    r"|Hardcopy Creation Device ID"
+)
+
+
+def test_every_attribute_of_table_e1_1_that_names_a_place_is_excluded():
+    # A later edition that adds such an attribute fails here until it is
+    # placed. A UID, such as Dimension Organization UID, withholds wherever
+    # it is found.
+    named = {
+        row.tag
+        for row in load_table_e1_1().attributes
+        if _IDENTIFYING_NAMES.search(row.name)
+        and dictionary_attribute(row.tag).vrs != ("UI",)
+    }
+    excluded = residual_vocabulary.INSTITUTIONAL_SOURCES | (
+        residual_vocabulary.INSTITUTIONAL_SEQUENCES
+    )
+
+    assert named == excluded
 
 
 @pytest.mark.deid_requirement("MIDI-BP-01")
@@ -340,8 +387,11 @@ def _short_tmp_path(tmp_path):
     shutil.rmtree(directory, ignore_errors=True)
 
 
-def _run(tmp_path, meaning):
-    """Run three CT slices of a study whose local procedure code means ``meaning``."""
+def _run(tmp_path, meaning, **attributes):
+    """Run three CT slices of a study whose local procedure code means ``meaning``.
+
+    Each slice also has ``attributes``, by keyword.
+    """
     transform = InstanceTransform(compose_policy("basic"), KEY, unvalidated_policy=True)
     source = tmp_path / "source"
     source.mkdir()
@@ -353,6 +403,8 @@ def _run(tmp_path, meaning):
         code.CodingSchemeDesignator = "99ZQ"
         code.CodeMeaning = meaning
         dataset.ProcedureCodeSequence = [code]
+        for keyword, value in attributes.items():
+            setattr(dataset, keyword, value)
         (source / f"{number}.dcm").write_bytes(synthetic.written(dataset))
     result = run.run(
         run.discover(source),
@@ -395,4 +447,39 @@ def test_basic_still_holds_slices_whose_local_meaning_has_another_word(tmp_path)
         entry
         for entry in report["exempted_findings"]
         if entry["exemption"] == Exemption.VOCABULARY_MEANING.value
+    ]
+
+
+def _station_code():
+    """A local code naming a station, unlike the procedure's in all but meaning."""
+    code = pydicom.Dataset()
+    code.CodeValue = "ZS0002"
+    code.CodingSchemeDesignator = "99ZS"
+    code.CodeMeaning = "HEAD"
+    return code
+
+
+@pytest.mark.deid_requirement("MIDI-BP-01")
+@pytest.mark.parametrize(
+    "keyword, value",
+    [
+        ("ScheduledStationName", "HEAD"),
+        ("PerformedStationName", "HEAD"),
+        ("ScheduledStationNameCodeSequence", [_station_code()]),
+        ("PerformedStationNameCodeSequence", [_station_code()]),
+    ],
+)
+def test_basic_holds_slices_whose_local_meaning_repeats_a_station_name(
+    tmp_path, keyword, value
+):
+    # Table E.1-1 removes each under the Basic Profile; the removed name is
+    # found in the kept meaning, whose words are all vocabulary.
+    statuses, report = _run(tmp_path, MEANING, **{keyword: value})
+
+    assert statuses == [run.Status.HELD_FOR_REVIEW] * 3
+    assert not [
+        entry
+        for entry in report["exempted_findings"]
+        if entry["exemption"] == Exemption.VOCABULARY_MEANING.value
+        and entry["attribute"] != STUDY_DESCRIPTION
     ]
