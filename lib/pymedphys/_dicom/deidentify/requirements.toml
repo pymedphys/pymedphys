@@ -825,7 +825,8 @@ implementation = [
   "_dicom/deidentify/residuals.py",
   "_dicom/deidentify/risk_assessment.py",
   "_dicom/deidentify/risk_assessment_command.py",
-  "_dicom/deidentify/run_report.py",  "_dicom/deidentify/technique_descriptors.py",
+  "_dicom/deidentify/run_report.py",
+  "_dicom/deidentify/technique_descriptors.py",
 ]
 note = '''
 The Basic Profile's actions remove or replace identifiers, and reviewed rules act on the text attributes, dates, and times that Table E.1-1 omits (D-022, D-023).
