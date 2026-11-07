@@ -309,13 +309,13 @@ def test_only_an_unsupported_iod_has_a_reason_with_its_iod(
 
 
 def test_an_unsupported_iods_reason_holds_its_iod_and_code_alone():
-    reason = scope.UnsupportedIod("Nuclear Medicine Image")
+    reason = scope.UnsupportedIod("Ultrasound Image")
 
-    assert repr(reason) == "UnsupportedIod(iod='Nuclear Medicine Image')"
+    assert repr(reason) == "UnsupportedIod(iod='Ultrasound Image')"
     assert [field.name for field in dataclasses.fields(reason)] == ["iod", "code"]
     with pytest.raises(TypeError):
         # pylint: disable-next = too-many-function-args
-        scope.UnsupportedIod("Nuclear Medicine Image", Disposition.NO_SOP_CLASS)  # type: ignore[call-arg]
+        scope.UnsupportedIod("Ultrasound Image", Disposition.NO_SOP_CLASS)  # type: ignore[call-arg]
 
 
 def test_the_sop_class_decides_before_the_transfer_syntax():

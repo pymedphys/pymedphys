@@ -78,7 +78,16 @@ _SEGMENTATION = corpus_module.SEGMENTATION_FILES[0]
 # The head's BINARY Segmentation and the corpus's label map, both in the head
 # CT's frame.
 _SEGMENTATIONS = (_SEGMENTATION, corpus_module.SEGMENTATION_FILES[1])
-_IN_FRAME = (_STRUCTURE_SET, *_DOSE, *_PET, _PET_ABOVE, _SEGMENTATION)
+# The instances in the head's frame whose series a review marks absent, the
+# collection's Nuclear Medicine image among them.
+_IN_FRAME = (
+    _STRUCTURE_SET,
+    *_DOSE,
+    *_PET,
+    _PET_ABOVE,
+    _SEGMENTATION,
+    corpus_module.NM_FILE,
+)
 # The PET instances that the run does not clean, and the collection's Nuclear
 # Medicine image, which no run cleans, all in the head's Frame of Reference.
 _UNDEFACED = (*_PET[1:], corpus_module.NM_FILE)
