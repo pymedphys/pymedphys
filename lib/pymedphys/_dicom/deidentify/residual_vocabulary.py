@@ -232,15 +232,8 @@ def vocabulary_meaning(
         :attr:`~pymedphys._dicom.deidentify.residual_exemptions.Exemption.VOCABULARY_MEANING`
         as the module describes, or ``None``.
     """
-    element = finding.location.element
-    if (
-        finding.location.region is not Region.DATA_SET
-        or element is None
-        or element.tag != _CODE_MEANING
-        or not element.items
-        or finding.source.tag not in DESCRIPTIVE_SOURCES
-        or institutional(finding.source)
-    ):
+    element = _readable(finding)
+    if element is None or element.tag != _CODE_MEANING or not element.items:
         return None
     vocabulary = load_technique_vocabulary()
     if not _only_vocabulary(kept.values(element), vocabulary, sources):
@@ -271,16 +264,9 @@ def vocabulary_descriptor(
         :attr:`~pymedphys._dicom.deidentify.residual_exemptions.Exemption.VOCABULARY_DESCRIPTOR`
         as the module describes, or ``None``.
     """
-    element = finding.location.element
-    if (
-        finding.location.region is not Region.DATA_SET
-        or element is None
-        or finding.source.tag not in DESCRIPTIVE_SOURCES
-        or institutional(finding.source)
-    ):
-        return None
+    element = _readable(finding)
     vocabulary = load_technique_vocabulary()
-    if element.tag not in vocabulary.attributes:
+    if element is None or element.tag not in vocabulary.attributes:
         return None
     if not _only_vocabulary(descriptor_values(element, kept), vocabulary, sources):
         return None
@@ -300,6 +286,22 @@ def descriptor_values(element: ElementPath, kept: KeptValues) -> tuple[str, ...]
         return kept.values(element)
     text = kept.text(element)
     return None if text is None else (text.strip(" "),)
+
+
+def _readable(finding: Finding) -> ElementPath | None:
+    """Return the element a finding is in, if either rule may read it.
+
+    ``None`` unless the finding is inside the data set, in an element, and
+    its source describes the examination and is in no institutional item.
+    """
+    element = finding.location.element
+    if (
+        finding.location.region is not Region.DATA_SET
+        or finding.source.tag not in DESCRIPTIVE_SOURCES
+        or institutional(finding.source)
+    ):
+        return None
+    return element
 
 
 def _only_vocabulary(
