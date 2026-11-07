@@ -107,7 +107,7 @@ kernels = [
 name = "Modalities, acquisitions, and series"
 basis = "Names of modalities, acquisition kinds, and series roles that scanners and protocols write."
 words = [
-  "ACQ", "ACQUISITION", "ANGIO", "ANGIOGRAPHY", "CBCT", "CONEBEAM", "CT", "CTA",
+  "ACQ", "ACQUISITION", "ANGIO", "ANGIOGRAM", "ANGIOGRAPHY", "CBCT", "CONEBEAM", "CT", "CTA",
   "CTP", "CTV", "DE", "DECT", "DUAL", "ENERGY", "FLUORO", "FUSED", "FUSION", "HYBRID",
   "IMAGE", "IMAGES", "IMG", "MR", "MRA", "MRI", "MRS", "MRV", "MULTIENERGY", "NM", "PET",
   "PETCT", "PETMR", "PERFUSION", "PROTOCOL", "RECON", "RECONSTRUCTION", "RECONS", "SCAN",

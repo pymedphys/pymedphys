@@ -97,6 +97,7 @@ def _read(document):
         "CT CHEST CAD",
         "CT HEAD WWO CONTRAST",
         "MR BREAST CAD WWO",
+        "CT HEAD ANGIOGRAM",
     ],
 )
 def test_technique_values_made_of_vocabulary_words_are_kept(vocabulary, value):
