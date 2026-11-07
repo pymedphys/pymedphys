@@ -39,8 +39,11 @@ conforms to its IOD, under ``basic`` and ``basic-clean-descriptors``, and
 every Structured Report or Key Object Selection Document whose content
 tree the policy does not clean and keep, since the Basic Profile gives its
 Content Sequence (0040,A730) D, which a sequence has no dummy value for,
-and every Encapsulated PDF, since the Basic Profile gives its Encapsulated
-Document (0042,0011) D, and no reviewed rule gives a document a dummy value.
+and every Encapsulated PDF that holds its document under a policy without
+the Clean Pixel Data Option, since the Basic Profile gives its Encapsulated
+Document (0042,0011) D, and no reviewed rule gives a document a dummy value;
+under that option, the document is released only as the reviewed rendering
+of its pages (:mod:`~pymedphys._dicom.deidentify.document_cleaning`).
 Every other instance is sequestered: neither de-identified nor written, and
 listed in the run report by opaque identifiers only. That includes the
 other Structured Reports, Presentation States, and instances of Private SOP

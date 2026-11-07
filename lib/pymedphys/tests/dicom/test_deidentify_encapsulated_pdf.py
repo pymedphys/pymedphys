@@ -17,8 +17,10 @@
 The Basic Profile gives Encapsulated Document (0042,0011) D, no option of
 Table E.1-1 gives it another action, and no reviewed rule gives a document a
 dummy value, so every Encapsulated PDF that holds one is sequestered, under
-every policy, with that attribute and action as its reason, and nothing of
-it is written.
+every policy without the Clean Pixel Data Option, which no preset selects,
+with that attribute and action as its reason, and nothing of it is written.
+Under that option, the document is released as its reviewed rendering
+(D-061), as ``test_deidentify_encapsulated_pdf_release`` tests.
 """
 
 import io

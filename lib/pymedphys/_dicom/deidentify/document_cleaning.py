@@ -180,10 +180,10 @@ def clean_document(
         raise PixelDataRefused(refused.reason) from None
     count, rows, columns = pages.shape[:3]
     decoded = pages.tobytes()
+    by_page = {} if reviewed is None else {i: tuple(b) for i, b in reviewed}
     if reviewed is not None:
         if decoded_sha256 != hashlib.sha256(decoded).digest():
             raise PixelsNotReviewed()
-        by_page = {index: tuple(boxes) for index, boxes in reviewed}
         if any(not 0 <= index < count for index in by_page) or any(
             box.bottom > rows or box.right > columns
             for boxes in by_page.values()

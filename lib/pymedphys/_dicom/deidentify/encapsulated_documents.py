@@ -317,7 +317,8 @@ def _page_sizes(document: bytes) -> list[list[int]]:
         if not 1 <= len(pdf) <= MAX_PAGES:
             raise ValueError("pages")
         sizes = []
-        for index in range(len(pdf)):
+        count = len(pdf)
+        for index in range(count):
             page = pdf[index]
             try:
                 sizes.append(list(_rendered_size(page)))

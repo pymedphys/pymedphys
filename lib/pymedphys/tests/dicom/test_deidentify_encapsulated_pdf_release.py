@@ -36,12 +36,10 @@ from pymedphys._imports import pydicom, pytest
 from pymedphys._dicom.deidentify import (
     document_cleaning,
     encapsulated_documents,
-    image_pdf,
     instance_transform,
     isolated_decoding,
     markers,
     policy,
-    qc_attestation,
     run,
 )
 from pymedphys._dicom.deidentify.document_cleaning import (
@@ -56,6 +54,7 @@ from pymedphys._dicom.deidentify.encapsulated_documents import (
 )
 from pymedphys._dicom.deidentify.image_pdf import ImagePdfError, image_only_pdf
 from pymedphys._dicom.deidentify.instance_transform import (
+    HeldEvidence,
     InstanceTransform,
     ReleaseGate,
 )
@@ -559,7 +558,7 @@ def test_a_document_without_text_found_is_written_as_rendered():
 
     cleaned = clean_document(source, Finder(()))
 
-    assert cleaned.regions == ()
+    assert not cleaned.regions
     assert cleaned.reason is PixelDataReason.NO_TEXT_FOUND
     assert cleaned.written.tobytes() == cleaned.decoded
 
@@ -576,7 +575,7 @@ def test_reviewed_regions_are_blacked_out_alone():
         decoded_sha256=first.decoded_sha256,
     )
 
-    assert finder.seen == []
+    assert not finder.seen
     assert cleaned.regions[0].boxes == (ADDED, BOX)
     assert (
         cleaned.written[0, ADDED.top : ADDED.bottom, ADDED.left : ADDED.right] == 0
@@ -656,7 +655,10 @@ def test_under_clean_pixel_data_a_document_is_written_as_its_cleaned_pages():
     result = _transformed(_transform(finder=finder), _encapsulated_pdf())
 
     assert isinstance(result, run.Transformed)
-    assert result.evidence.held == (HeldPixelData(PixelDataReason.TEXT_BLACKED_OUT),)
+    evidence = result.evidence
+    assert isinstance(evidence, HeldEvidence)
+    held = evidence.held  # pylint: disable=no-member
+    assert held == (HeldPixelData(PixelDataReason.TEXT_BLACKED_OUT),)
     written = pydicom.dcmread(io.BytesIO(result.data))
     document = bytes(written.EncapsulatedDocument)
     assert written.EncapsulatedDocumentLength == len(document)
@@ -707,7 +709,7 @@ def test_a_pdf_without_a_document_claims_the_option():
     result = _transformed(_transform(finder=finder), dataset)
 
     assert isinstance(result, run.Transformed)
-    assert finder.seen == []
+    assert not finder.seen
     written = pydicom.dcmread(io.BytesIO(result.data))
     assert _codes(written)[-1] == CODE
     assert written.BurnedInAnnotation == "NO"
@@ -747,9 +749,10 @@ def test_under_clean_recognizable_visual_features_a_document_is_held_for_its_pag
     )
 
     assert isinstance(result, run.Transformed)
-    assert HeldVisualFeatures(VisualFeaturesReason.DOCUMENT_PAGES) in (
-        result.evidence.held
-    )
+    evidence = result.evidence
+    assert isinstance(evidence, HeldEvidence)
+    held = evidence.held  # pylint: disable=no-member
+    assert HeldVisualFeatures(VisualFeaturesReason.DOCUMENT_PAGES) in held
 
 
 def test_a_document_that_the_transform_leaves_pending_is_sequestered(monkeypatch):
@@ -956,5 +959,8 @@ def test_a_document_that_renders_otherwise_than_reviewed_is_held_again(
     )
 
     assert isinstance(result, run.Transformed)
-    assert result.evidence.held == (HeldPixelData(PixelDataReason.TEXT_BLACKED_OUT),)
+    evidence = result.evidence
+    assert isinstance(evidence, HeldEvidence)
+    held = evidence.held  # pylint: disable=no-member
+    assert held == (HeldPixelData(PixelDataReason.TEXT_BLACKED_OUT),)
     assert len(finder.seen) == 1

@@ -304,10 +304,13 @@ text = '''
 When this Option is specified in addition to the Basic Application Level Confidentiality Profile, any information burned in to the Pixel Data (7FE0,0010) corresponding to the Attribute information specified to be removed by the Profile and any other Options specified shall also be removed, as described in Table E.1-1.
 '''
 status = "implemented"
-decisions = ["D-015", "D-033", "D-037", "D-048", "D-055", "D-056"]
+decisions = ["D-015", "D-033", "D-037", "D-048", "D-055", "D-056", "D-061"]
 implementation = [
   "_dicom/deidentify/api.py",
   "_dicom/deidentify/command.py",
+  "_dicom/deidentify/document_cleaning.py",
+  "_dicom/deidentify/encapsulated_documents.py",
+  "_dicom/deidentify/image_pdf.py",
   "_dicom/deidentify/imagecodecs_plugin.py",
   "_dicom/deidentify/instance_transform.py",
   "_dicom/deidentify/pixel_cleaning.py",
@@ -325,6 +328,7 @@ Compressed Pixel Data is decoded first, in the isolated decoding child for the n
 The frames that pydicom's GDCM plugin refuses, 12-bit JPEG Extended, JPEG-LS at 6 or 7 bits, and signed JPEG-LS Near-Lossless below 8 bits, are decoded with imagecodecs in the same child, never in the engine's process, so they are cleaned rather than sequestered as undecodable-pixel-data (D-055).
 In native Pixel Data, the bit plane of an overlay that an overlay group without Overlay Data places above High Bit is cleared in the same write, and its group removed, so the instance is cleaned rather than sequestered as uncleanable-pixel-data (D-037).
 A later run of the same files, given the attested QC pack, blacks out the regions that the reviewer accepted, with any that the reviewer added, without the finder, and releases the instance with the option's code; for compressed Pixel Data, only where its frames decode to the SHA-256 that the pack records, and otherwise the instance is held again. An instance that the reviewer rejected is sequestered (D-048).
+An Encapsulated PDF's document, which PS3.3 Table C.24-2 treats as burned-in annotation where it shows the patient's identification, is rendered page by page with PDFium, in the same child, searched and blacked out as an image's frames are, written as an image-only PDF of its pages, and held for review; a later run given the attested QC pack releases the reviewed pages, only where they render to the SHA-256 that the pack records, so the instance claims the option. Without the option, the document is still sequestered (D-061).
 The private command's run under the option, and the library's, makes the text detector with the pinned model, and takes the attested QC pack whose verdicts apply and the custodian's region rules (D-033).
 A workflow run by hand counts the regions that the text detector finds in the slices of the HaN-Seg data set's 42 head and neck planning CTs and 42 T1-weighted MRs, which hold no burned-in text, on a hosted runner that alone downloads it, and publishes only counts, which bear on how many regions a reviewer clears; it claims no result (D-037).
 The detector's evaluation and tuning, on images with and without burned-in text across the IODs in scope, against acceptance criteria set before tuning and confirmed once on held-out data, is designed, and its library, and a workflow run by hand that measures openly licensed collections of NCI's Imaging Data Commons, are built; its inventory job, its other corpora's runs, its tuning runs, and the adoption of a tuned detector are not yet made (D-056).
@@ -337,14 +341,14 @@ text = '''
 The Attribute Burned In Annotation (0028,0301) shall be added to the Data Set with a Value of "NO".
 '''
 status = "implemented"
-decisions = ["D-012", "D-015", "D-048"]
+decisions = ["D-012", "D-015", "D-048", "D-061"]
 implementation = [
   "_dicom/deidentify/instance_transform.py",
   "_dicom/deidentify/markers.py",
 ]
 note = '''
 Applies only with the Clean Pixel Data Option.
-An instance that satisfies the option, because it holds no top-level pixel data or a reviewer approved its regions, has Burned In Annotation set to NO, replacing any value present, whether or not its IOD defines the attribute; in the RT Plan, RT Structure Set, RT Beams Treatment Record, RT Ion Plan, RT Ion Beams Treatment Record, RT Brachy Treatment Record, RT Treatment Summary Record, MR Spectroscopy, Spatial Registration, Deformable Spatial Registration, X-Ray Radiation Dose SR, Enhanced X-Ray Radiation Dose SR, Radiopharmaceutical Radiation Dose SR, Patient Radiation Dose SR, Basic Text SR, Enhanced SR, Comprehensive SR, Comprehensive 3D SR, Extensible SR, Key Object Selection Document, Mammography CAD SR, Chest CAD SR, Colon CAD SR, Procedure Log, Spectacle Prescription Report, Macular Grid Thickness and Volume Report, and Waveform Annotation SR IODs, which do not, it is a standard attribute of a Standard Extended SOP Class (PS3.2 Section 7.3), and the validators' findings of it there are known differences (D-048).
+An instance that satisfies the option, because it holds no top-level pixel data and no encapsulated document, or a reviewer approved its regions, which for an Encapsulated PDF are on its rendered pages (D-061), has Burned In Annotation set to NO, replacing any value present, whether or not its IOD defines the attribute; in the RT Plan, RT Structure Set, RT Beams Treatment Record, RT Ion Plan, RT Ion Beams Treatment Record, RT Brachy Treatment Record, RT Treatment Summary Record, MR Spectroscopy, Spatial Registration, Deformable Spatial Registration, X-Ray Radiation Dose SR, Enhanced X-Ray Radiation Dose SR, Radiopharmaceutical Radiation Dose SR, Patient Radiation Dose SR, Basic Text SR, Enhanced SR, Comprehensive SR, Comprehensive 3D SR, Extensible SR, Key Object Selection Document, Mammography CAD SR, Chest CAD SR, Colon CAD SR, Procedure Log, Spectacle Prescription Report, Macular Grid Thickness and Volume Report, and Waveform Annotation SR IODs, which do not, it is a standard attribute of a Standard Extended SOP Class (PS3.2 Section 7.3), and the validators' findings of it there are known differences (D-048).
 Any other instance keeps Burned In Annotation as received, and it is never set to NO otherwise (D-015).
 '''
 

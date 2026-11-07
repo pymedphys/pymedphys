@@ -597,14 +597,15 @@ def _edit(
         return Edit(path, element.action, kind)
     assert value is not None  # every U and D leaf has a consumer that reads it
     if element.action == "D":
-        if element.path == ENCAPSULATED_DOCUMENT:
-            # An Encapsulated PDF's document has no dummy value: under Clean
-            # Pixel Data it takes its reviewed rendering, which the
-            # transform gives it, and otherwise the plan sequesters it, so
-            # that a document is never written unless the rendering
-            # replaces it (D-061).
-            return Edit(element.path, element.action, EditKind.PENDING)
-        return _dummy(element.path, value, key, dummy_datetimes.get(path))
+        # An Encapsulated PDF's document has no dummy value: under Clean Pixel
+        # Data it takes its reviewed rendering, which the transform gives it,
+        # and otherwise the plan sequesters it, so that a document is never
+        # written unless the rendering replaces it (D-061).
+        return (
+            Edit(element.path, element.action, EditKind.PENDING)
+            if element.path == ENCAPSULATED_DOCUMENT
+            else _dummy(element.path, value, key, dummy_datetimes.get(path))
+        )
     return _uids(element.path, value, key)
 
 
