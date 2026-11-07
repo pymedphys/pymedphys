@@ -26,8 +26,23 @@ from pymedphys._dicom.deidentify.file_layout import ElementPath
 
 MODULE = "Common Instance Reference"
 # The supported IODs that make the module mandatory, from the 2026d PS3.3
-# Tables A.39.1-1 and A.39.2-1.
-MANDATORY = {"Spatial Registration", "Deformable Spatial Registration"}
+# Tables A.39.1-1 and A.39.2-1 and the RT IOD Modules tables of Section A.86.1.
+MANDATORY = {
+    "Spatial Registration",
+    "Deformable Spatial Registration",
+    "Enhanced RT Image",
+    "Enhanced Continuous RT Image",
+    "RT Segment Annotation",
+    "RT Radiation Set",
+    "C-Arm Photon-Electron Radiation",
+    "Tomotherapeutic Radiation",
+    "Robotic-Arm Radiation",
+    "C-Arm Photon-Electron Radiation Record",
+    "Tomotherapeutic Radiation Record",
+    "Robotic-Arm Radiation Record",
+    "RT Radiation Salvage Record",
+    "RT Radiation Record Set",
+}
 # Required where a Derivation Image functional group is present.
 CONDITIONAL = {"Segmentation"}
 # The supported IODs without the module: the Structured Reports, whose SR
