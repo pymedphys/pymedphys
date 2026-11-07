@@ -265,8 +265,11 @@ OTHER_SEQUENCES = {
     "(300A,0401)",  # Referenced Setup Image Sequence
     "(300A,0616)",  # RT Radiation Sequence
     "(300A,0630)",  # Referenced RT Radiation Sequence
+    "(300A,0631)",  # Referenced RT Instance Sequence
     "(300A,063B)",  # Referenced RT Physician Intent Sequence
     "(300A,0702)",  # Referenced RT Radiation Set Sequence
+    "(300A,0703)",  # Referenced RT Radiation Record Sequence
+    "(300A,0780)",  # Additional Parameter Recording Instance Sequence
     "(300A,078C)",  # Referenced Patient Setup Photo Sequence
     "(300C,0002)",  # Referenced RT Plan Sequence
     "(300C,0040)",  # Referenced Verification Image Sequence
@@ -282,6 +285,7 @@ OTHER_SEQUENCES = {
 # first release IOD defines inside a sequence, with why it is not followed.
 NOT_FOLLOWED = {
     "(0008,010D)": "identifies the organisation that extended a context group",
+    "(0008,9123)": "identifies the software version that created an instance",
     "(0008,3010)": "identifies an irradiation event",
     "(0008,3012)": "identifies a radiopharmaceutical administration event",
     "(0018,1002)": "identifies a device",

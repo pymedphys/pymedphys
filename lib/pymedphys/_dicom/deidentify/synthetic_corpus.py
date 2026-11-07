@@ -20,7 +20,7 @@ fictitious patient and study, with one Frame of Reference: three CT Image
 slices, an RT Structure Set that references the CT series and slices, an RT
 Plan that references the structure set and the dose, an RT Dose that
 references the plan, a second RT Dose of the plan for review (below), one
-instance of each of thirty-seven other IODs, and two of the Segmentation
+instance of each of forty-seven other IODs, and two of the Segmentation
 IOD, one of each of its SOP Classes, each in a series of its own, and a
 second X-Ray Radiation Dose SR, of a CT scan.
 The MR Image and PET Image instances reference the first CT slice, and each
@@ -42,7 +42,11 @@ references the RT Plan and, as a treatment record that it summarises, the
 RT Brachy Treatment Record. The RT Image, a digitally reconstructed radiograph of 2 by 2 pixels,
 references the RT Plan, as do the Enhanced RT Image, a digitally
 reconstructed radiograph, and the Enhanced Continuous RT Image, a simulator
-image, each of two frames of 2 by 2 pixels. The X-Ray Radiation Dose SRs and the Enhanced
+image, each of two frames of 2 by 2 pixels. Each radiation record names
+the radiation of its kind that it records, the RT Radiation Salvage Record
+the C-Arm Photon-Electron Radiation, and the RT Radiation Record Set the RT
+Radiation Set and the C-Arm Photon-Electron Radiation Record, and their
+other references name the RT Structure Set. The X-Ray Radiation Dose SRs and the Enhanced
 X-Ray Radiation Dose SR reference the first CT slice, the
 Radiopharmaceutical Radiation Dose SR the PET Image, the Patient Radiation
 Dose SR the CT dose report, which its estimate used, and the Basic Text
@@ -187,7 +191,7 @@ dummy item at that place and only there. Planted in
 every file, the first two would sequester every
 instance, and no preset could release any of the collection; planted in one,
 that instance checks sequestration, :data:`REVIEW_FILE` checks review, and
-the other fifty check each preset's output, the reports where their
+the other fifty-five check each preset's output, the reports where their
 trees are cleaned. Radiopharmaceutical Start
 DateTime, which CT Image does not define there, is planted in no file, so
 the Enhanced PET instance, which lacks an attribute of Type 1, is released
@@ -223,7 +227,7 @@ Manufacturer's Model Name (0008,1090), which Table E.1-1 does not list and
 the Basic Profile keeps, a copy of the RT Plan's RT Plan Label marker
 (:attr:`PlacementKind.REVIEW_COPY`), so the residual search finds a source
 value of another instance in its output and sends it to review. The third
-CT slice remains sequestered; the other fifty files stay releasable, the
+CT slice remains sequestered; the other fifty-five files stay releasable, the
 reports where their trees are cleaned.
 
 **Manifest.** :class:`CorpusManifest` records, for each file, each
@@ -1612,7 +1616,7 @@ def build_corpus() -> SyntheticCorpus:
     Returns
     -------
     SyntheticCorpus
-        Fifty-two files: three CT slices; the RT Structure Set, RT Plan, RT
+        Fifty-seven files: three CT slices; the RT Structure Set, RT Plan, RT
         Dose, and the RT Dose for review; the Enhanced CT Image and Legacy
         Converted Enhanced CT Image; the MR Image, Enhanced MR Image,
         Enhanced MR Color Image, Legacy Converted Enhanced MR Image, and MR
@@ -1630,8 +1634,10 @@ def build_corpus() -> SyntheticCorpus:
         Ion Plan and RT Ion Beams Treatment Record; the RT Brachy Treatment
         Record and RT Treatment Summary Record; the RT Segment Annotation, RT
         Radiation Set, and C-Arm Photon-Electron, Tomotherapeutic, and
-        Robotic-Arm Radiations; and the Enhanced RT Image and Enhanced
-        Continuous RT Image. Two builds give the same bytes and the same
+        Robotic-Arm Radiations; the RT Radiation Record Set, the C-Arm
+        Photon-Electron, Tomotherapeutic, and Robotic-Arm Radiation Records,
+        and the RT Radiation Salvage Record; and the Enhanced RT Image and
+        Enhanced Continuous RT Image. Two builds give the same bytes and the same
         manifest.
     """
     markers = _Markers()

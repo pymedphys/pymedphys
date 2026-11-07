@@ -229,7 +229,7 @@ def test_padding_is_ignored():
         # Outside the first release: other images, CT, MR, and PET objects
         # that are not images, the segmentations of other IODs, parametric
         # maps, spatial fiducials, and the second-generation RT objects not
-        # yet supported, such as RT Physician Intent and the radiation records.
+        # yet supported, such as RT Physician Intent.
         ("1.2.840.10008.5.1.4.1.1.20", "Nuclear Medicine Image"),
         ("1.2.840.10008.5.1.4.1.1.6.1", "Ultrasound Image"),
         ("1.2.840.10008.5.1.4.1.1.200.2", "CT Performed Procedure Protocol"),
@@ -238,7 +238,6 @@ def test_padding_is_ignored():
         ("1.2.840.10008.5.1.4.1.1.30", "Parametric Map"),
         ("1.2.840.10008.5.1.4.1.1.66.2", "Spatial Fiducials"),
         ("1.2.840.10008.5.1.4.1.1.481.10", "RT Physician Intent"),
-        ("1.2.840.10008.5.1.4.1.1.481.18", "Tomotherapeutic Radiation Record"),
     ],
 )
 def test_a_standard_sop_class_of_another_iod_is_sequestered(sop_class, iod):

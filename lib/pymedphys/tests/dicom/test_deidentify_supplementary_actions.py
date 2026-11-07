@@ -146,7 +146,8 @@ ENHANCED_RT_IMAGE_REVIEWED_AGAINST = RECORD_REVIEWED_AGAINST + RECORD_IODS
 # coverage on 31 October 2026, whose text, UID, and date attributes were
 # reviewed ahead of supporting them, against every IOD above, and those of
 # them that the first supported release now supports: RT Segment Annotation,
-# RT Radiation Set, and the three radiation IODs.
+# RT Radiation Set, the three radiation IODs, their three records, RT
+# Radiation Salvage Record, and RT Radiation Record Set.
 SECOND_GENERATION_RT_IODS = (
     "RT Physician Intent",
     "RT Segment Annotation",
@@ -171,6 +172,11 @@ SUPPORTED_SECOND_GENERATION_RT_IODS = (
     "C-Arm Photon-Electron Radiation",
     "Tomotherapeutic Radiation",
     "Robotic-Arm Radiation",
+    "RT Radiation Record Set",
+    "RT Radiation Salvage Record",
+    "C-Arm Photon-Electron Radiation Record",
+    "Tomotherapeutic Radiation Record",
+    "Robotic-Arm Radiation Record",
 )
 SUPPORTED_IODS = (
     REVIEWED_AGAINST
@@ -455,10 +461,11 @@ def test_every_text_attribute_a_supported_iod_uses_and_table_e1_1_omits_has_a_ru
     # scope includes the RT objects, among them the two RT Ion IODs, which
     # add 13, the brachy and summary treatment records, which add none, the
     # Enhanced and Enhanced Continuous RT Images, which add 1, RT Segment
-    # Annotation and RT Radiation Set, which add 2, Segmentation, which adds
-    # 4, and the two dose-report IODs, whose supplementary rules cover 175
+    # Annotation and RT Radiation Set, which add 2, the four records of
+    # treatment tolerance violations, which add 3, Segmentation, which adds
+    # 4, and the two dose-report IODs, whose supplementary rules cover 178
     # text attributes.
-    assert len(omitted) == 175
+    assert len(omitted) == 178
     assert omitted <= set(_rules())
     assert {"(0008,0100)", "(300A,00C2)", "(60xx,1500)"} <= omitted
 
@@ -473,11 +480,11 @@ def test_the_rules_for_omitted_text_fall_in_the_reviewed_groups():
 
     assert groups == {
         # Operator-typed labels and text.
-        ("X/Z/D", ((CLEAN_DESCRIPTORS, "C"),)): 81,
+        ("X/Z/D", ((CLEAN_DESCRIPTORS, "C"),)): 82,
         # Accessory and equipment identifiers.
         ("X/Z/D", ((DEVICE_IDENTITY, "K"),)): 30,
         # Coded and technical values, and De-identification Method.
-        ("K", ()): 45,
+        ("K", ()): 47,
         # Names and identifiers of people, organisations, records, and
         # networks, identifiers that a device reads, and the text of overlays.
         ("X/Z/D", ()): 17,
@@ -1356,8 +1363,9 @@ SECOND_GENERATION_KEPT_TEXT = {
     "(3010,0086)",  # Intended Start Day of Week
 }
 # Of the kept text, what the supported second-generation RT IODs use: RT
-# Radiation Set uses Intended Start Day of Week.
-SUPPORTED_SECOND_GENERATION_KEPT_TEXT = {"(3010,0086)"}
+# Radiation Set uses Intended Start Day of Week, and the four records of
+# treatment tolerance violations use Selector Attribute Name and Keyword.
+SUPPORTED_SECOND_GENERATION_KEPT_TEXT = {"(0082,0018)", "(0082,0019)", "(3010,0086)"}
 SECOND_GENERATION_TEXT_GROUPS: tuple[tuple[set[str], str, dict[str, str]], ...] = (
     (SECOND_GENERATION_OPERATOR_TEXT, "X/Z/D", {CLEAN_DESCRIPTORS: "C"}),
     (SECOND_GENERATION_KEPT_TEXT, "K", {}),
@@ -1639,7 +1647,7 @@ def test_the_basic_profile_keeps_only_the_reviewed_coded_and_technical_text():
         for tag in _supported_text()
     }
 
-    assert len(basic) == 313
+    assert len(basic) == 317
     assert {tag for tag, action in basic.items() if action == "K"} == (
         KEPT_TEXT
         | ADDED_KEPT_TEXT

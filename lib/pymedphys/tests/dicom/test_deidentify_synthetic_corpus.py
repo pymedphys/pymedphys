@@ -248,6 +248,11 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "72-c-arm-radiation.dcm",
         "73-tomotherapeutic-radiation.dcm",
         "74-robotic-arm-radiation.dcm",
+        "78-rt-radiation-record-set.dcm",
+        "82-c-arm-radiation-record.dcm",
+        "83-tomotherapeutic-radiation-record.dcm",
+        "84-robotic-arm-radiation-record.dcm",
+        "85-rt-radiation-salvage-record.dcm",
         "89-rt-image-enhanced.dcm",
         "90-rt-image-enhanced-continuous.dcm",
     ]
@@ -295,6 +300,11 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "C-Arm Photon-Electron Radiation",
         "Tomotherapeutic Radiation",
         "Robotic-Arm Radiation",
+        "RT Radiation Record Set",
+        "C-Arm Photon-Electron Radiation Record",
+        "Tomotherapeutic Radiation Record",
+        "Robotic-Arm Radiation Record",
+        "RT Radiation Salvage Record",
         "Enhanced RT Image",
         "Enhanced Continuous RT Image",
     ]
@@ -316,7 +326,7 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
     assert (
         corpus_module.ENHANCED_RT_IMAGE_FILE,
         corpus_module.ENHANCED_CONTINUOUS_RT_IMAGE_FILE,
-    ) == tuple(file.name for file in corpus.files[50:52])
+    ) == tuple(file.name for file in corpus.files[55:57])
     assert (
         corpus_module.SEGMENT_ANNOTATION_FILE,
         corpus_module.RADIATION_SET_FILE,
@@ -324,6 +334,13 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         corpus_module.TOMOTHERAPEUTIC_RADIATION_FILE,
         corpus_module.ROBOTIC_ARM_RADIATION_FILE,
     ) == tuple(file.name for file in corpus.files[45:50])
+    assert (
+        corpus_module.RADIATION_RECORD_SET_FILE,
+        corpus_module.C_ARM_RADIATION_RECORD_FILE,
+        corpus_module.TOMOTHERAPEUTIC_RADIATION_RECORD_FILE,
+        corpus_module.ROBOTIC_ARM_RADIATION_RECORD_FILE,
+        corpus_module.RADIATION_SALVAGE_RECORD_FILE,
+    ) == tuple(file.name for file in corpus.files[50:55])
     # Every IOD of the first supported release.
     assert {file.manifest.iod for file in corpus.files} == scope.SUPPORTED_IODS
 
