@@ -93,7 +93,8 @@ reason that such a finding is not a reason for review (D-032), or returns
   made only of words of the reviewed technique vocabulary and echoes no
   identifier of the subject, and its source is a description, comment, or
   technique descriptor of the examination, a contrast agent or
-  radiopharmaceutical, or an SR TEXT value
+  radiopharmaceutical, or an SR TEXT value, or a private data element that
+  only copies one of them
   (:func:`~pymedphys._dicom.deidentify.residual_vocabulary.vocabulary_meaning`).
 - :attr:`Exemption.VOCABULARY_DESCRIPTOR`: the finding is in a technique
   descriptor, an attribute whose values the reviewed technique vocabulary's
@@ -101,7 +102,8 @@ reason that such a finding is not a reason for review (D-032), or returns
   top level or in an item, every value of which is made only of words of
   that vocabulary and echoes no identifier of the subject, and its source
   is a description, comment, or technique descriptor of the examination, a
-  contrast agent or radiopharmaceutical, or an SR TEXT value
+  contrast agent or radiopharmaceutical, or an SR TEXT value, or a private
+  data element that only copies one of them
   (:func:`~pymedphys._dicom.deidentify.residual_vocabulary.vocabulary_descriptor`).
 
 The release gate tries the last two after the others, for a text finding

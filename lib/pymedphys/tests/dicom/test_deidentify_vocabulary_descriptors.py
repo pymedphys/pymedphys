@@ -195,6 +195,26 @@ def test_other_removed_text_in_a_vocabulary_descriptor_is_released(source):
 
 
 @pytest.mark.deid_requirement("MIDI-BP-01")
+def test_a_private_copy_of_a_description_in_a_vocabulary_descriptor_is_released():
+    # A vendor's private element whose every value copies the removed Study
+    # Description; with other text, it goes to review.
+    written = _descriptor(DESCRIPTION, PERFORMED_DESCRIPTION)
+    description = _removed(STUDY_DESCRIPTION, "LO", DESCRIPTION)
+    copy = _removed("(0019,109C)", "LO", DESCRIPTION)
+    other = _removed("(0019,109C)", "LO", "CT HEAD WO")
+    condition = _condition(written, description, copy)
+    held = _condition(written, other)
+
+    assert condition.decision is Decision.RELEASE
+    assert {(f.source.tag, why) for f, why in condition.exempted} == {
+        (STUDY_DESCRIPTION, Exemption.VOCABULARY_DESCRIPTOR),
+        ("(0019,109C)", Exemption.VOCABULARY_DESCRIPTOR),
+    }
+    assert held.decision is Decision.QC_REVIEW
+    assert not held.exempted
+
+
+@pytest.mark.deid_requirement("MIDI-BP-01")
 def test_a_vocabulary_descriptor_in_an_item_is_released():
     written = _written(
         _sequence(REQUEST_ATTRIBUTES, [_element(0x00400254, "LO", DESCRIPTION)])

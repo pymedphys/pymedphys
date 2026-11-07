@@ -17,14 +17,11 @@
 A procedure or protocol code of a local scheme, one that PS3.16 Table 8-1
 does not list, is kept with its Code Meaning (0008,0104) under the Basic
 Profile, and a scanner often writes the same text as a description that the
-profile removes, such as Study Description (0008,1030). Under Clean
-Descriptors, a kept technique descriptor, such as Series Description
-(0008,103E) or Performed Procedure Step Description (0040,0254), often
-repeats such a description too. The residual search then finds the removed
-description in the kept value (D-027), and no standard exemption applies,
-since a local scheme's meaning, and a descriptor, can be the site's own text
-(D-032). This module reads that text instead. :func:`vocabulary_meaning`
-finds that the finding is not a reason for review
+profile removes, such as Study Description (0008,1030). The residual search
+then finds the removed description in the kept meaning (D-027), and the
+standard code exemption does not apply, since a local scheme's meaning can
+be the site's own text (D-032). :func:`vocabulary_meaning` reads that text
+instead: the finding is not a reason for review
 (:attr:`~pymedphys._dicom.deidentify.residual_exemptions.Exemption.VOCABULARY_MEANING`)
 only where all of these hold:
 
@@ -46,37 +43,45 @@ only where all of these hold:
   a description, comment, or technique descriptor of the study, procedure,
   series, or image, a contrast agent or radiopharmaceutical, or an SR
   TEXT content item's value, each of which describes the examination
-  rather than naming anyone or anything. Every other source stays under
-  review, so an attribute that names a place, an organisation, a station,
-  or a device, such as Station Name or Gantry ID, or a private element,
-  which can hold any of them, is never exempt, however the kept meaning
-  reads: a station named ``HEAD`` found in a kept ``CT HEAD`` is still seen;
-  and
+  rather than naming anyone or anything; or it is a private data element,
+  (gggg,1000) or later of a group open to private use, at any depth, every collected
+  value of which, pooled for the subject, equals a collected value of
+  such a descriptive source (:func:`descriptive_copy`), as a vendor's
+  private copy of the radiopharmaceutical is. Every other source stays
+  under review, so an attribute that names a place, an organisation, a
+  station, or a device, such as Station Name or Gantry ID, or any other
+  private element, which can hold any of them, is never exempt, however
+  the kept meaning reads: a station named ``HEAD`` found in a kept
+  ``CT HEAD`` is still seen; and
 - the source is not in an item of one of :data:`INSTITUTIONAL_SEQUENCES`,
   nor one of :data:`INSTITUTIONAL_SOURCES` (:func:`institutional`), which
   list the attributes of PS3.15 Table E.1-1 that name, code, or address a
   place, an organisation, or a device. None of them is descriptive, so this
   repeats the test above for a descriptive attribute nested in such an item.
 
+Under Clean Descriptors, a kept technique descriptor, such as Series
+Description (0008,103E) or Performed Procedure Step Description
+(0040,0254), often repeats such a removed description too.
 :func:`vocabulary_descriptor` finds the same of a finding in a technique
 descriptor
 (:attr:`~pymedphys._dicom.deidentify.residual_exemptions.Exemption.VOCABULARY_DESCRIPTOR`):
 one of the attributes whose values the shipped vocabulary's automatic tier
 may keep, such as Series Description, Protocol Name (0018,1030), or
 Performed Procedure Step Description, at the top level or in an item, at any
-depth, under the other conditions above. Its values are read as
-descriptor cleaning reads them: split at backslashes where the element's VR
-holds several values (SH, LO, or UC), and whole otherwise, as Derivation
+depth, under the other conditions above. Its values are read as descriptor
+cleaning reads them: split at backslashes where the element's VR holds
+several values (SH, LO, or UC), and whole otherwise, as Derivation
 Description (0008,2111), whose VR is ST, is.
 
 Whatever removed text is found inside a value made only of technique and
 anatomy words is itself such words, so the finding reveals nothing that the
-kept value does not. A value with any other word stays under review, as
-does any other kept element. The vocabulary, and its list of technique
-descriptors, are always the ones that PyMedPhys ships, never ones that a
-run gives Clean Descriptors, so each exemption is the same in every run, and
-the method digest covers them through the engine's files under every policy
-(D-024).
+kept value does not. A private copy reveals nothing that its descriptive
+original, already exempt, does not: its text is the same text. A value with
+any other word stays under review, as does any other kept element. The
+vocabulary, and its list of technique descriptors, are always the ones that
+PyMedPhys ships, never ones that a run gives Clean Descriptors, so each
+exemption is the same in every run, and the method digest covers them
+through the engine's files under every policy (D-024).
 
 Only a text finding is read: a person name, UID, date, datetime, or direct
 identifier found anywhere still withholds the file. No value is reported.
@@ -87,11 +92,11 @@ from __future__ import annotations
 from collections.abc import Mapping
 
 from .file_layout import ElementPath, Region
-from .residual_exemptions import Exemption, KeptValues
+from .residual_exemptions import Exemption, KeptValues, _private_data
 from .residuals import Finding, SourceValue
 from .reviewed_descriptors import echoes_identifier
 from .standard import dictionary_attribute
-from .technique_descriptors import TechniqueVocabulary, load_technique_vocabulary
+from .technique_descriptors import load_technique_vocabulary
 
 _CODE_MEANING = "(0008,0104)"
 # The removed values that describe the examination, whose finding in a kept
@@ -232,11 +237,17 @@ def vocabulary_meaning(
         :attr:`~pymedphys._dicom.deidentify.residual_exemptions.Exemption.VOCABULARY_MEANING`
         as the module describes, or ``None``.
     """
-    element = _readable(finding)
+    element = descriptive_element(finding, sources)
     if element is None or element.tag != _CODE_MEANING or not element.items:
         return None
+    values = kept.values(element)
+    if not values:
+        return None
     vocabulary = load_technique_vocabulary()
-    if not _only_vocabulary(kept.values(element), vocabulary, sources):
+    if any(vocabulary.word_rejection(value) is not None for value in values):
+        return None
+    identifiers = subject_identifiers(sources)
+    if any(echoes_identifier(value, identifiers) for value in values):
         return None
     return Exemption.VOCABULARY_MEANING
 
@@ -264,11 +275,17 @@ def vocabulary_descriptor(
         :attr:`~pymedphys._dicom.deidentify.residual_exemptions.Exemption.VOCABULARY_DESCRIPTOR`
         as the module describes, or ``None``.
     """
-    element = _readable(finding)
+    element = descriptive_element(finding, sources)
     vocabulary = load_technique_vocabulary()
     if element is None or element.tag not in vocabulary.attributes:
         return None
-    if not _only_vocabulary(descriptor_values(element, kept), vocabulary, sources):
+    values = descriptor_values(element, kept)
+    if not values:
+        return None
+    if any(vocabulary.word_rejection(value) is not None for value in values):
+        return None
+    identifiers = subject_identifiers(sources)
+    if any(echoes_identifier(value, identifiers) for value in values):
         return None
     return Exemption.VOCABULARY_DESCRIPTOR
 
@@ -288,34 +305,38 @@ def descriptor_values(element: ElementPath, kept: KeptValues) -> tuple[str, ...]
     return None if text is None else (text.strip(" "),)
 
 
-def _readable(finding: Finding) -> ElementPath | None:
-    """Return the element a finding is in, if either rule may read it.
+def descriptive_element(
+    finding: Finding,
+    sources: Mapping[ElementPath, tuple[SourceValue, ...]],
+) -> ElementPath | None:
+    """Return the data set element a finding of a descriptive source is in.
 
-    ``None`` unless the finding is inside the data set, in an element, and
-    its source describes the examination and is in no institutional item.
+    ``None`` where the finding is outside the data set, or not in an
+    element, or its source is not :func:`descriptive`.
     """
     element = finding.location.element
     if (
         finding.location.region is not Region.DATA_SET
-        or finding.source.tag not in DESCRIPTIVE_SOURCES
-        or institutional(finding.source)
+        or element is None
+        or not descriptive(finding.source, sources)
     ):
         return None
     return element
 
 
-def _only_vocabulary(
-    values: tuple[str, ...] | None,
-    vocabulary: TechniqueVocabulary,
+def descriptive(
+    source: ElementPath,
     sources: Mapping[ElementPath, tuple[SourceValue, ...]],
 ) -> bool:
-    """Return whether every value is reviewed vocabulary that echoes no identifier."""
-    if not values:
-        return False
-    if any(vocabulary.word_rejection(value) is not None for value in values):
-        return False
-    identifiers = subject_identifiers(sources)
-    return not any(echoes_identifier(value, identifiers) for value in values)
+    """Return whether a source describes the examination, as the module reads it.
+
+    It does where :func:`institutional` does not exclude it and it is one of
+    :data:`DESCRIPTIVE_SOURCES` or a private copy of one
+    (:func:`descriptive_copy`).
+    """
+    return not institutional(source) and (
+        source.tag in DESCRIPTIVE_SOURCES or descriptive_copy(source, sources)
+    )
 
 
 def institutional(source: ElementPath) -> bool:
@@ -326,6 +347,34 @@ def institutional(source: ElementPath) -> bool:
     """
     return source.tag in INSTITUTIONAL_SOURCES or any(
         tag in INSTITUTIONAL_SEQUENCES for tag, _ in source.items
+    )
+
+
+def descriptive_copy(
+    source: ElementPath,
+    sources: Mapping[ElementPath, tuple[SourceValue, ...]],
+) -> bool:
+    """Return whether a private data element only copies descriptive values.
+
+    It does where ``source`` is a private data element, (gggg,1000) or later
+    of a group open to private use (PS3.5 7.8.1), at any depth, at least
+    one value of it was collected for the subject, and every collected
+    value of it is text equal to a collected value of one of
+    :data:`DESCRIPTIVE_SOURCES`, at any depth, that :func:`institutional`
+    does not exclude.
+    """
+    if not _private_data(source.tag):
+        return False
+    copies = sources.get(source, ())
+    originals = {
+        each.value
+        for path, values in sources.items()
+        if path.tag in DESCRIPTIVE_SOURCES and not institutional(path)
+        for each in values
+        if isinstance(each.value, str)
+    }
+    return bool(copies) and all(
+        isinstance(each.value, str) and each.value in originals for each in copies
     )
 
 
