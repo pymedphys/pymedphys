@@ -389,9 +389,8 @@ DETACHED_STUDY_MANAGEMENT = "1.2.840.10008.3.1.2.3.1"
 MAX_DEPTH = 4
 # Every marker's number is below this, so markers have a fixed width of five
 # digits and none is the start of another, every date is before 1900, every
-# time is distinct, the number fits VR US, and the number less 2**15 fits VR
-# SS.
-MAX_MARKERS = 55_000
+# time is distinct, and the negated number fits VR SS.
+MAX_MARKERS = 2**15
 MARKER_PREFIX = "SYNMK"
 MARKER_UID_ROOT = "2.25.99999"
 LINKED_UID_ROOT = "2.25.88888"
@@ -447,12 +446,12 @@ TREATMENT_SUMMARY_RECORD_FILE = "50-rt-treatment-summary-record.dcm"
 # The softcopy Presentation States, one of each of the six IODs of PS3.3
 # Sections A.33.1 to A.33.5 and A.33.11, numbered after the files that open
 # pull requests add.
-GRAYSCALE_PRESENTATION_STATE_FILE = "51-pr-grayscale.dcm"
-COLOR_PRESENTATION_STATE_FILE = "52-pr-color.dcm"
-PSEUDO_COLOR_PRESENTATION_STATE_FILE = "53-pr-pseudo-color.dcm"
-BLENDING_PRESENTATION_STATE_FILE = "54-pr-blending.dcm"
-XA_XRF_PRESENTATION_STATE_FILE = "55-pr-xa-xrf-grayscale.dcm"
-VARIABLE_MODALITY_LUT_PRESENTATION_STATE_FILE = "56-pr-variable-modality-lut.dcm"
+GRAYSCALE_PRESENTATION_STATE_FILE = "56-pr-grayscale.dcm"
+COLOR_PRESENTATION_STATE_FILE = "57-pr-color.dcm"
+PSEUDO_COLOR_PRESENTATION_STATE_FILE = "58-pr-pseudo-color.dcm"
+BLENDING_PRESENTATION_STATE_FILE = "59-pr-blending.dcm"
+XA_XRF_PRESENTATION_STATE_FILE = "60-pr-xa-xrf-grayscale.dcm"
+VARIABLE_MODALITY_LUT_PRESENTATION_STATE_FILE = "61-pr-variable-modality-lut.dcm"
 PRESENTATION_STATE_FILES = (
     GRAYSCALE_PRESENTATION_STATE_FILE,
     COLOR_PRESENTATION_STATE_FILE,
@@ -553,18 +552,18 @@ BRACHY_TREATMENT_RECORD_SERIES = f"{LINKED_UID_ROOT}04600"
 BRACHY_TREATMENT_RECORD = f"{LINKED_UID_ROOT}04601"
 TREATMENT_SUMMARY_RECORD_SERIES = f"{LINKED_UID_ROOT}04700"
 TREATMENT_SUMMARY_RECORD = f"{LINKED_UID_ROOT}04701"
-GRAYSCALE_PRESENTATION_STATE_SERIES = f"{LINKED_UID_ROOT}04800"
-GRAYSCALE_PRESENTATION_STATE = f"{LINKED_UID_ROOT}04801"
-COLOR_PRESENTATION_STATE_SERIES = f"{LINKED_UID_ROOT}04900"
-COLOR_PRESENTATION_STATE = f"{LINKED_UID_ROOT}04901"
-PSEUDO_COLOR_PRESENTATION_STATE_SERIES = f"{LINKED_UID_ROOT}05000"
-PSEUDO_COLOR_PRESENTATION_STATE = f"{LINKED_UID_ROOT}05001"
-BLENDING_PRESENTATION_STATE_SERIES = f"{LINKED_UID_ROOT}05100"
-BLENDING_PRESENTATION_STATE = f"{LINKED_UID_ROOT}05101"
-XA_XRF_PRESENTATION_STATE_SERIES = f"{LINKED_UID_ROOT}05200"
-XA_XRF_PRESENTATION_STATE = f"{LINKED_UID_ROOT}05201"
-VARIABLE_MODALITY_LUT_PRESENTATION_STATE_SERIES = f"{LINKED_UID_ROOT}05300"
-VARIABLE_MODALITY_LUT_PRESENTATION_STATE = f"{LINKED_UID_ROOT}05301"
+GRAYSCALE_PRESENTATION_STATE_SERIES = f"{LINKED_UID_ROOT}05300"
+GRAYSCALE_PRESENTATION_STATE = f"{LINKED_UID_ROOT}05301"
+COLOR_PRESENTATION_STATE_SERIES = f"{LINKED_UID_ROOT}05400"
+COLOR_PRESENTATION_STATE = f"{LINKED_UID_ROOT}05401"
+PSEUDO_COLOR_PRESENTATION_STATE_SERIES = f"{LINKED_UID_ROOT}05500"
+PSEUDO_COLOR_PRESENTATION_STATE = f"{LINKED_UID_ROOT}05501"
+BLENDING_PRESENTATION_STATE_SERIES = f"{LINKED_UID_ROOT}05600"
+BLENDING_PRESENTATION_STATE = f"{LINKED_UID_ROOT}05601"
+XA_XRF_PRESENTATION_STATE_SERIES = f"{LINKED_UID_ROOT}05700"
+XA_XRF_PRESENTATION_STATE = f"{LINKED_UID_ROOT}05701"
+VARIABLE_MODALITY_LUT_PRESENTATION_STATE_SERIES = f"{LINKED_UID_ROOT}05800"
+VARIABLE_MODALITY_LUT_PRESENTATION_STATE = f"{LINKED_UID_ROOT}05801"
 # A patient and a procedure step that the collection names but does not hold.
 PATIENT_REFERENCE = f"{LINKED_UID_ROOT}00003"
 PROCEDURE_STEP = f"{LINKED_UID_ROOT}00004"
@@ -734,7 +733,7 @@ _EVEN = 2
 _TIME_SIGNATURE = ".424242"
 # The time of every DT marker, which no TM marker matches.
 _NOON = "120000"
-_FIRST_DATE = datetime.date(200, 1, 1)
+_FIRST_DATE = datetime.date(900, 1, 1)
 # Dates come in runs of consecutive days, each run the same number of days
 # after the one before it, so that no two date markers are 364 to 3,640 days
 # apart: the range of the Retain Longitudinal Temporal Information Modified
@@ -1598,7 +1597,7 @@ def _marker_date(number: int) -> datetime.date:
     Within a run of ``_DATE_RUN_DAYS`` consecutive days dates are at most
     362 days apart, and between runs at least ``_DATE_RUN_PERIOD`` less 362,
     3,642 days, so no two are 364 to 3,640 days apart. Every date of a
-    number below :data:`MAX_MARKERS` is from 200 to before 1900.
+    number below :data:`MAX_MARKERS` is from 900 to before 1900.
     """
     run, day = divmod(number, _DATE_RUN_DAYS)
     return _FIRST_DATE + datetime.timedelta(days=run * _DATE_RUN_PERIOD + day)
@@ -1631,7 +1630,7 @@ def _marker(vr: str, number: int, latin_1: bool) -> object:
         "FD": number + 0.5,
         "FL": number + 0.5,
         "SL": -(900_000_000 + number),
-        "SS": number - 2**15,
+        "SS": -number,
         "SV": -(9_000_000_000 + number),
         "UL": 900_000_000 + number,
         "US": number,

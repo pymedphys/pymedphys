@@ -65,9 +65,9 @@ MARKER_PATTERNS = {
     **dict.fromkeys(("AE", "LO", "LT", "SH", "ST", "UC", "UT", "UN", "OB", "OW"), TEXT),
     "AS": r"\d{3}W",
     "CS": r"SYNMK_\d{5}",
-    "DA": r"(0[2-9]|1[0-8])\d\d(0[1-9]|1[0-2])\d\d",
+    "DA": r"(09|1[0-8])\d\d(0[1-9]|1[0-2])\d\d",
     "DS": r"8\d{5}\.5",
-    "DT": r"(0[2-9]|1[0-8])\d\d(0[1-9]|1[0-2])\d{8}",
+    "DT": r"(09|1[0-8])\d\d(0[1-9]|1[0-2])\d{8}",
     "IS": r"7\d{5}",
     "PN": r"SYNMK(\d{5})\^M[AÄ]RKER\1",
     "TM": r"([01]\d|2[0-3])[0-5]\d[0-5]\d\.424242",
@@ -243,12 +243,12 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "48-rt-ion-beams-record.dcm",
         "49-rt-brachy-record.dcm",
         "50-rt-treatment-summary-record.dcm",
-        "51-pr-grayscale.dcm",
-        "52-pr-color.dcm",
-        "53-pr-pseudo-color.dcm",
-        "54-pr-blending.dcm",
-        "55-pr-xa-xrf-grayscale.dcm",
-        "56-pr-variable-modality-lut.dcm",
+        "56-pr-grayscale.dcm",
+        "57-pr-color.dcm",
+        "58-pr-pseudo-color.dcm",
+        "59-pr-blending.dcm",
+        "60-pr-xa-xrf-grayscale.dcm",
+        "61-pr-variable-modality-lut.dcm",
     ]
     assert [file.manifest.iod for file in corpus.files] == [
         "CT Image",
@@ -596,7 +596,7 @@ def test_dates_are_distinct_valid_dates_before_1900(corpus):
 
     assert dates and len(dates) == len(set(dates))
     assert all(value_problem("DA", date) is None for date in dates)
-    assert all("0200" <= date[:4] <= "1899" for date in dates)
+    assert all("0900" <= date[:4] <= "1899" for date in dates)
 
 
 def test_no_date_shifted_under_modified_dates_is_another_markers(corpus):
@@ -1004,9 +1004,9 @@ def test_each_text_marker_occurs_once_in_its_file(corpus):
                 )
 
 
-def test_every_marker_number_fits_an_unsigned_and_a_signed_short():
-    # US markers are the number, and SS markers the number less 2**15.
-    assert corpus_module.MAX_MARKERS <= 2**16
+def test_every_marker_number_fits_a_signed_short():
+    # SS markers are the negated number.
+    assert corpus_module.MAX_MARKERS <= 2**15
 
 
 def test_every_planted_placement_covers_a_row_of_table_e1_1_or_e3_4_1(corpus):
