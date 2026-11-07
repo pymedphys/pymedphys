@@ -1186,6 +1186,19 @@ def test_each_image_has_its_frames_and_the_colour_image_its_icc_profile(corpus):
     assert set(frames.values()) == {1, 2}
 
 
+def test_each_secondary_capture_names_its_manufacturer(corpus):
+    # The General Equipment Module is user-optional in these IODs, and its
+    # Type 2 Manufacturer, which every policy keeps, shows that it is there
+    # once the Basic Profile has removed or replaced its other attributes.
+    names = set(corpus_module.SECONDARY_CAPTURE_FILES)
+    captures = [file for file in corpus.files if file.name in names]
+    assert len(captures) == len(names)
+    for file in captures:
+        dataset = pydicom.dcmread(pydicom.filebase.DicomBytesIO(file.data))
+        assert dataset.Manufacturer == corpus_module.SECONDARY_CAPTURE_MANUFACTURER
+        assert corpus_module.MARKER_PREFIX not in dataset.Manufacturer
+
+
 def test_the_spectroscopy_instance_holds_spectroscopy_data_only(corpus):
     (file,) = [f for f in corpus.files if f.manifest.iod == "MR Spectroscopy"]
     dataset = pydicom.dcmread(pydicom.filebase.DicomBytesIO(file.data))

@@ -1004,6 +1004,9 @@ _SECONDARY_CAPTURES = types.MappingProxyType(
         MULTI_FRAME_TRUE_COLOR_SC_IMAGE_STORAGE: (8, True),
     }
 )
+# The Manufacturer (0008,0070) of each Secondary Capture, which every
+# policy keeps.
+SECONDARY_CAPTURE_MANUFACTURER = "SYNTHETIC WORKSTATION"
 # The text of the Enhanced MR Color instance's ICC profile, which D cleans
 # away, so that the search for the markers' signatures finds it if kept.
 SOURCE_ICC_DESCRIPTION = f"{MARKER_PREFIX} SOURCE ICC PROFILE"
@@ -2394,8 +2397,17 @@ class _Instance:
         Increment Pointer (0028,0009) points, and a grayscale one an
         identity rescale and Presentation LUT Shape (2050,0020) (PS3.3
         Section C.8.6.3).
+
+        It carries Manufacturer (0008,0070), Type 2 in the General
+        Equipment Module, which Table E.1-1 does not list. The module is
+        user-optional in these IODs, and the Basic Profile removes its
+        other attributes but Device UID (0018,1002) and Manufacturer's
+        Device Class UID (0018,100B), so without it a validator could not
+        tell that the module is there and would find those two outside the
+        IOD.
         """
         put = self._set
+        put((), "(0008,0070)", [SECONDARY_CAPTURE_MANUFACTURER])
         put((), "(0008,0060)", ["OT"])
         put((), "(0008,0008)", ["DERIVED", "SECONDARY"])
         put((), "(0008,0064)", ["WSD"])  # Conversion Type: workstation
