@@ -243,8 +243,8 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "48-rt-ion-beams-record.dcm",
         "49-rt-brachy-record.dcm",
         "50-rt-treatment-summary-record.dcm",
-        "51-rt-image-enhanced.dcm",
-        "52-rt-image-enhanced-continuous.dcm",
+        "89-rt-image-enhanced.dcm",
+        "90-rt-image-enhanced-continuous.dcm",
         "70-rt-segment-annotation.dcm",
         "71-rt-radiation-set.dcm",
         "72-c-arm-radiation.dcm",
@@ -376,8 +376,19 @@ def test_every_attribute_of_table_e1_1_that_the_iod_defines_is_placed(corpus):
         assert max(found.values()) == 1, file.name
 
 
+# The attributes of Table E.1-1 that the corpus's IODs define only below the
+# depth cap, five items deep in a functional group of the Enhanced RT
+# Images: Radiation Generation Mode Label and Description, in the items of
+# Radiation Generation Mode Sequence (300A,067B), and Referenced Treatment
+# Position Group UID, in those of Treatment Position Group Sequence
+# (300A,060A). Their actions are tested on an Enhanced RT Image apart, in
+# test_deidentify_instance_transform.py.
+ONLY_BEYOND_THE_DEPTH_CAP = {"(300A,067C)", "(300A,067D)", "(300A,0785)"}
+
+
 def test_attributes_are_not_planted_only_beyond_the_depth_cap(corpus):
     reasons = collections.Counter()
+    beyond = set()
     for file in corpus.files:
         placed = file.manifest.placements
         planted_tags = {p.path.tag for p in placed if p.kind is not Kind.NOT_PLANTED}
@@ -392,12 +403,15 @@ def test_attributes_are_not_planted_only_beyond_the_depth_cap(corpus):
                 ):
                     continue
                 assert depth + (placement.vr == "SQ") > corpus_module.MAX_DEPTH
-                # Each attribute capped is planted at a shallower place.
-                assert placement.path.tag in planted_tags
+                # Each attribute capped is planted at a shallower place, but
+                # those that the corpus's IODs define only below the cap.
+                if placement.path.tag not in planted_tags:
+                    beyond.add(placement.path.tag)
             elif not _in_content_tree(placement.path):
                 # A report's template, not the cap, decides its tree's depth.
                 assert depth <= corpus_module.MAX_DEPTH
 
+    assert beyond == ONLY_BEYOND_THE_DEPTH_CAP
     assert set(reasons) == {
         Reason.DEPTH_CAP,
         Reason.SEQUESTERS_INSTANCE,

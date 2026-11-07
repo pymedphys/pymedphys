@@ -20,7 +20,7 @@ fictitious patient and study, with one Frame of Reference: three CT Image
 slices, an RT Structure Set that references the CT series and slices, an RT
 Plan that references the structure set and the dose, an RT Dose that
 references the plan, a second RT Dose of the plan for review (below), one
-instance of each of thirty-five other IODs, and two of the Segmentation
+instance of each of thirty-seven other IODs, and two of the Segmentation
 IOD, one of each of its SOP Classes, each in a series of its own, and a
 second X-Ray Radiation Dose SR, of a CT scan.
 The MR Image and PET Image instances reference the first CT slice, and each
@@ -40,7 +40,9 @@ brachytherapy application setups as well as beams, and names the RT Beams
 Treatment Record as a related record, and the RT Treatment Summary Record
 references the RT Plan and, as a treatment record that it summarises, the
 RT Brachy Treatment Record. The RT Image, a digitally reconstructed radiograph of 2 by 2 pixels,
-references the RT Plan. The X-Ray Radiation Dose SRs and the Enhanced
+references the RT Plan, as do the Enhanced RT Image, a digitally
+reconstructed radiograph, and the Enhanced Continuous RT Image, a simulator
+image, each of two frames of 2 by 2 pixels. The X-Ray Radiation Dose SRs and the Enhanced
 X-Ray Radiation Dose SR reference the first CT slice, the
 Radiopharmaceutical Radiation Dose SR the PET Image, the Patient Radiation
 Dose SR the CT dose report, which its estimate used, and the Basic Text
@@ -49,8 +51,7 @@ the MR Image. The Segmentations, a BINARY one of Segmentation Storage and a
 LABELMAP one of Label Map Segmentation Storage, reference the CT series and
 its first slice, and each segments the planes of the first two slices. The
 Key Object Selection Document selects the MR Image; the Mammography CAD SR
-and Chest CAD SR name the RT Image, the collection's one projection
-radiograph, as the image that their CAD read, and the Colon CAD SR the CT
+and Chest CAD SR name the RT Image, a projection radiograph, as the image that their CAD read, and the Colon CAD SR the CT
 series; and the Procedure Log, Spectacle Prescription Report, Macular Grid
 Thickness and Volume Report, and Waveform Annotation SR reference the MR
 Image. It is the input for validating each preset end to end: once the
@@ -429,8 +430,8 @@ BRACHY_TREATMENT_RECORD_FILE = "49-rt-brachy-record.dcm"
 TREATMENT_SUMMARY_RECORD_FILE = "50-rt-treatment-summary-record.dcm"
 # The Enhanced RT Image and the Enhanced Continuous RT Image, each of the RT
 # Plan's beam, numbered after the files that open pull requests add.
-ENHANCED_RT_IMAGE_FILE = "51-rt-image-enhanced.dcm"
-ENHANCED_CONTINUOUS_RT_IMAGE_FILE = "52-rt-image-enhanced-continuous.dcm"
+ENHANCED_RT_IMAGE_FILE = "89-rt-image-enhanced.dcm"
+ENHANCED_CONTINUOUS_RT_IMAGE_FILE = "90-rt-image-enhanced-continuous.dcm"
 # The RT Segment Annotation of the Segmentation, and the RT Radiation Set and
 # the three radiations, one of each second-generation radiation IOD, that it
 # gathers, numbered after the files that open pull requests add.
@@ -531,10 +532,10 @@ BRACHY_TREATMENT_RECORD_SERIES = f"{LINKED_UID_ROOT}04600"
 BRACHY_TREATMENT_RECORD = f"{LINKED_UID_ROOT}04601"
 TREATMENT_SUMMARY_RECORD_SERIES = f"{LINKED_UID_ROOT}04700"
 TREATMENT_SUMMARY_RECORD = f"{LINKED_UID_ROOT}04701"
-ENHANCED_RT_IMAGE_SERIES = f"{LINKED_UID_ROOT}04800"
-ENHANCED_RT_IMAGE = f"{LINKED_UID_ROOT}04801"
-ENHANCED_CONTINUOUS_RT_IMAGE_SERIES = f"{LINKED_UID_ROOT}04900"
-ENHANCED_CONTINUOUS_RT_IMAGE = f"{LINKED_UID_ROOT}04901"
+ENHANCED_RT_IMAGE_SERIES = f"{LINKED_UID_ROOT}08500"
+ENHANCED_RT_IMAGE = f"{LINKED_UID_ROOT}08501"
+ENHANCED_CONTINUOUS_RT_IMAGE_SERIES = f"{LINKED_UID_ROOT}08600"
+ENHANCED_CONTINUOUS_RT_IMAGE = f"{LINKED_UID_ROOT}08601"
 SEGMENT_ANNOTATION_SERIES = f"{LINKED_UID_ROOT}06600"
 SEGMENT_ANNOTATION = f"{LINKED_UID_ROOT}06601"
 RADIATION_SET_SERIES = f"{LINKED_UID_ROOT}06700"

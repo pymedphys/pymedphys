@@ -91,6 +91,8 @@ UNKNOWN_TO_DICOM3TOOLS = tuple(
         corpus_module.COLON_CAD_SR_STORAGE,
         corpus_module.MACULAR_GRID_THICKNESS_AND_VOLUME_REPORT_STORAGE,
         corpus_module.WAVEFORM_ANNOTATION_SR_STORAGE,
+        corpus_module.ENHANCED_RT_IMAGE_STORAGE,
+        corpus_module.ENHANCED_CONTINUOUS_RT_IMAGE_STORAGE,
         corpus_module.RT_SEGMENT_ANNOTATION_STORAGE,
         corpus_module.RT_RADIATION_SET_STORAGE,
         corpus_module.C_ARM_PHOTON_ELECTRON_RADIATION_STORAGE,
