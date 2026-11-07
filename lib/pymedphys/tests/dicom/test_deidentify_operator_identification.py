@@ -114,7 +114,13 @@ def _person(*, extra=False):
 
 
 def _device():
-    """Return an item that identifies a device that approved an override."""
+    """Return a deliberately non-conforming DEV item for robustness checks.
+
+    Table C.17-3b defines a device's attributes, but the RT Radiation Record
+    Common Module requires Observer Type PSN in an override (PS3.3 Table
+    C.36.22-1), so this item checks that an unexpected device item is cleaned
+    too; :func:`_person` gives the conforming item.
+    """
     operator = pydicom.Dataset()
     operator.ObserverType = "DEV"
     operator.StationName = f"{SENTINEL}-STATION"
@@ -251,8 +257,9 @@ def test_d_keeps_each_item_with_each_attribute_under_its_own_rule():
         code_value = _in_item(index, CODE_VALUE, (INSTITUTION_CODE, 0))
         assert planned[code_value].removed_with == institution
     assert planned[_in_item(1, OBSERVER_TYPE)].action == "K"
-    # Station Name is Type 2C, Device UID a UID, and Manufacturer kept by
-    # the Basic Profile; the Type 3 attributes are removed by their rows.
+    # In the non-conforming device item, Station Name is Type 2C, Device UID
+    # a UID, and Manufacturer kept by the Basic Profile; the Type 3
+    # attributes are removed by their rows.
     assert planned[_in_item(1, STATION_NAME)].action == "Z"
     assert planned[_in_item(1, DEVICE_UID)].action == "U"
     assert planned[_in_item(1, MANUFACTURER)].action == "K"
