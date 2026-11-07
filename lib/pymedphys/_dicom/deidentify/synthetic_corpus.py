@@ -20,9 +20,10 @@ fictitious patient and study, with one Frame of Reference: three CT Image
 slices, an RT Structure Set that references the CT series and slices, an RT
 Plan that references the structure set and the dose, an RT Dose that
 references the plan, a second RT Dose of the plan for review (below), one
-instance of each of thirty-five other IODs, and two of the Segmentation
-IOD, one of each of its SOP Classes, each in a series of its own, and a
-second X-Ray Radiation Dose SR, of a CT scan.
+instance of each of thirty-six other IODs, two of the Segmentation IOD,
+one of each of its SOP Classes, each in a series of its own, two of the
+Digital X-Ray Image IOD, one of each of its SOP Classes, in one series, and
+a second X-Ray Radiation Dose SR, of a CT scan.
 The MR Image and PET Image instances reference the first CT slice, and each
 enhanced, legacy converted enhanced, or MR Spectroscopy instance references
 the single-frame instance of its modality: the first CT slice, the MR
@@ -40,7 +41,10 @@ brachytherapy application setups as well as beams, and names the RT Beams
 Treatment Record as a related record, and the RT Treatment Summary Record
 references the RT Plan and, as a treatment record that it summarises, the
 RT Brachy Treatment Record. The RT Image, a digitally reconstructed radiograph of 2 by 2 pixels,
-references the RT Plan. The X-Ray Radiation Dose SRs and the Enhanced
+references the RT Plan. The Computed Radiography image, a lateral skull
+radiograph, references the first CT slice; of the Digital X-Ray images of a
+chest radiograph, the image for processing references the first CT slice,
+and the image for presentation the image for processing. The X-Ray Radiation Dose SRs and the Enhanced
 X-Ray Radiation Dose SR reference the first CT slice, the
 Radiopharmaceutical Radiation Dose SR the PET Image, the Patient Radiation
 Dose SR the CT dose report, which its estimate used, and the Basic Text
@@ -49,8 +53,8 @@ the MR Image. The Segmentations, a BINARY one of Segmentation Storage and a
 LABELMAP one of Label Map Segmentation Storage, reference the CT series and
 its first slice, and each segments the planes of the first two slices. The
 Key Object Selection Document selects the MR Image; the Mammography CAD SR
-and Chest CAD SR name the RT Image, the collection's one projection
-radiograph, as the image that their CAD read, and the Colon CAD SR the CT
+and Chest CAD SR name the RT Image, a projection radiograph, as the image
+that their CAD read, and the Colon CAD SR the CT
 series; and the Procedure Log, Spectacle Prescription Report, Macular Grid
 Thickness and Volume Report, and Waveform Annotation SR reference the MR
 Image. It is the input for validating each preset end to end: once the
@@ -183,7 +187,7 @@ dummy item at that place and only there. Planted in
 every file, the first two would sequester every
 instance, and no preset could release any of the collection; planted in one,
 that instance checks sequestration, :data:`REVIEW_FILE` checks review, and
-the other forty-three check each preset's output, the reports where their
+the other forty-six check each preset's output, the reports where their
 trees are cleaned. Radiopharmaceutical Start
 DateTime, which CT Image does not define there, is planted in no file, so
 the Enhanced PET instance, which lacks an attribute of Type 1, is released
@@ -219,7 +223,7 @@ Manufacturer's Model Name (0008,1090), which Table E.1-1 does not list and
 the Basic Profile keeps, a copy of the RT Plan's RT Plan Label marker
 (:attr:`PlacementKind.REVIEW_COPY`), so the residual search finds a source
 value of another instance in its output and sends it to review. The third
-CT slice remains sequestered; the other forty-three files stay releasable, the
+CT slice remains sequestered; the other forty-six files stay releasable, the
 reports where their trees are cleaned.
 
 **Manifest.** :class:`CorpusManifest` records, for each file, each
@@ -352,6 +356,9 @@ RT_ION_PLAN_STORAGE = "1.2.840.10008.5.1.4.1.1.481.8"
 RT_ION_BEAMS_TREATMENT_RECORD_STORAGE = "1.2.840.10008.5.1.4.1.1.481.9"
 RT_BRACHY_TREATMENT_RECORD_STORAGE = "1.2.840.10008.5.1.4.1.1.481.6"
 RT_TREATMENT_SUMMARY_RECORD_STORAGE = "1.2.840.10008.5.1.4.1.1.481.7"
+COMPUTED_RADIOGRAPHY_IMAGE_STORAGE = "1.2.840.10008.5.1.4.1.1.1"
+DIGITAL_X_RAY_IMAGE_STORAGE_FOR_PRESENTATION = "1.2.840.10008.5.1.4.1.1.1.1"
+DIGITAL_X_RAY_IMAGE_STORAGE_FOR_PROCESSING = "1.2.840.10008.5.1.4.1.1.1.1.1"
 # The retired class that PS3.3 Sections 10.6.1 and C.8.8.5.4 give a study in
 # a Referenced Study Sequence or RT Referenced Study Sequence item.
 DETACHED_STUDY_MANAGEMENT = "1.2.840.10008.3.1.2.3.1"
@@ -414,6 +421,18 @@ ION_TREATMENT_RECORD_FILE = "48-rt-ion-beams-record.dcm"
 # Record of its course, numbered after the files that open pull requests add.
 BRACHY_TREATMENT_RECORD_FILE = "49-rt-brachy-record.dcm"
 TREATMENT_SUMMARY_RECORD_FILE = "50-rt-treatment-summary-record.dcm"
+# The Computed Radiography image, a lateral skull radiograph, and the two
+# Digital X-Ray images of a chest radiograph, the image for processing and
+# the image for presentation derived from it, numbered after the files that
+# open pull requests add.
+COMPUTED_RADIOGRAPH_FILE = "62-cr.dcm"
+DIGITAL_X_RAY_FOR_PROCESSING_FILE = "63-dx-for-processing.dcm"
+DIGITAL_X_RAY_FOR_PRESENTATION_FILE = "64-dx-for-presentation.dcm"
+RADIOGRAPH_FILES = (
+    COMPUTED_RADIOGRAPH_FILE,
+    DIGITAL_X_RAY_FOR_PROCESSING_FILE,
+    DIGITAL_X_RAY_FOR_PRESENTATION_FILE,
+)
 # The directory, within the one that write_corpus is given, of the files.
 INSTANCES_DIRECTORY = "instances"
 
@@ -506,6 +525,11 @@ BRACHY_TREATMENT_RECORD_SERIES = f"{LINKED_UID_ROOT}04600"
 BRACHY_TREATMENT_RECORD = f"{LINKED_UID_ROOT}04601"
 TREATMENT_SUMMARY_RECORD_SERIES = f"{LINKED_UID_ROOT}04700"
 TREATMENT_SUMMARY_RECORD = f"{LINKED_UID_ROOT}04701"
+COMPUTED_RADIOGRAPH_SERIES = f"{LINKED_UID_ROOT}05900"
+COMPUTED_RADIOGRAPH = f"{LINKED_UID_ROOT}05901"
+DIGITAL_X_RAY_SERIES = f"{LINKED_UID_ROOT}06000"
+DIGITAL_X_RAY_FOR_PROCESSING = f"{LINKED_UID_ROOT}06001"
+DIGITAL_X_RAY_FOR_PRESENTATION = f"{LINKED_UID_ROOT}06002"
 # A patient and a procedure step that the collection names but does not hold.
 PATIENT_REFERENCE = f"{LINKED_UID_ROOT}00003"
 PROCEDURE_STEP = f"{LINKED_UID_ROOT}00004"
@@ -633,6 +657,9 @@ _SOP_CLASSES = types.MappingProxyType(
         ION_TREATMENT_RECORD: RT_ION_BEAMS_TREATMENT_RECORD_STORAGE,
         BRACHY_TREATMENT_RECORD: RT_BRACHY_TREATMENT_RECORD_STORAGE,
         TREATMENT_SUMMARY_RECORD: RT_TREATMENT_SUMMARY_RECORD_STORAGE,
+        COMPUTED_RADIOGRAPH: COMPUTED_RADIOGRAPHY_IMAGE_STORAGE,
+        DIGITAL_X_RAY_FOR_PROCESSING: DIGITAL_X_RAY_IMAGE_STORAGE_FOR_PROCESSING,
+        DIGITAL_X_RAY_FOR_PRESENTATION: DIGITAL_X_RAY_IMAGE_STORAGE_FOR_PRESENTATION,
         PATIENT_REFERENCE: DETACHED_PATIENT_MANAGEMENT,
         PROCEDURE_STEP: MODALITY_PERFORMED_PROCEDURE_STEP,
     }
@@ -643,6 +670,14 @@ _REGISTRATIONS = frozenset(
 )
 # The Segmentations, whose structure _add_segmentation adds.
 _SEGMENTATIONS = frozenset({SEGMENTATION_STORAGE, LABEL_MAP_SEGMENTATION_STORAGE})
+# The radiographs, whose structure _add_radiograph adds.
+_RADIOGRAPHS = frozenset(
+    {
+        COMPUTED_RADIOGRAPHY_IMAGE_STORAGE,
+        DIGITAL_X_RAY_IMAGE_STORAGE_FOR_PRESENTATION,
+        DIGITAL_X_RAY_IMAGE_STORAGE_FOR_PROCESSING,
+    }
+)
 # The VR given to an attribute with alternatives, as Implicit VR gives it
 # (PS3.5 Section A.1).
 _DECIDED_VRS = types.MappingProxyType({"(60xx,3000)": "OW"})
@@ -1362,6 +1397,33 @@ _SPECS = (
         PLAN,
         targets=((_REFERENCED_TREATMENT_RECORD_SEQUENCE, BRACHY_TREATMENT_RECORD),),
     ),
+    # The Computed Radiography image, a lateral skull radiograph, references
+    # the first CT slice, as the MR Image does. The Digital X-Ray images are
+    # of one chest exposure, in one series: the image for processing
+    # references the first CT slice, and the image for presentation the image
+    # for processing, from which it is derived, as its Source Image Sequence
+    # (0008,2112) can name it.
+    _Spec(
+        COMPUTED_RADIOGRAPH_FILE,
+        COMPUTED_RADIOGRAPHY_IMAGE_STORAGE,
+        COMPUTED_RADIOGRAPH,
+        COMPUTED_RADIOGRAPH_SERIES,
+        CT_SLICES[0],
+    ),
+    _Spec(
+        DIGITAL_X_RAY_FOR_PROCESSING_FILE,
+        DIGITAL_X_RAY_IMAGE_STORAGE_FOR_PROCESSING,
+        DIGITAL_X_RAY_FOR_PROCESSING,
+        DIGITAL_X_RAY_SERIES,
+        CT_SLICES[0],
+    ),
+    _Spec(
+        DIGITAL_X_RAY_FOR_PRESENTATION_FILE,
+        DIGITAL_X_RAY_IMAGE_STORAGE_FOR_PRESENTATION,
+        DIGITAL_X_RAY_FOR_PRESENTATION,
+        DIGITAL_X_RAY_SERIES,
+        DIGITAL_X_RAY_FOR_PROCESSING,
+    ),
 )
 
 
@@ -1371,7 +1433,7 @@ def build_corpus() -> SyntheticCorpus:
     Returns
     -------
     SyntheticCorpus
-        Forty-five files: three CT slices; the RT Structure Set, RT Plan, RT
+        Forty-eight files: three CT slices; the RT Structure Set, RT Plan, RT
         Dose, and the RT Dose for review; the Enhanced CT Image and Legacy
         Converted Enhanced CT Image; the MR Image, Enhanced MR Image,
         Enhanced MR Color Image, Legacy Converted Enhanced MR Image, and MR
@@ -1386,9 +1448,10 @@ def build_corpus() -> SyntheticCorpus:
         the Key Object Selection Document, Mammography CAD SR, Chest CAD SR,
         Colon CAD SR, Procedure Log, Spectacle Prescription Report, Macular
         Grid Thickness and Volume Report, and Waveform Annotation SR; the RT
-        Ion Plan and RT Ion Beams Treatment Record; and the RT Brachy
-        Treatment Record and RT Treatment Summary Record. Two builds give the
-        same bytes and the same manifest.
+        Ion Plan and RT Ion Beams Treatment Record; the RT Brachy Treatment
+        Record and RT Treatment Summary Record; and the Computed Radiography
+        image and the Digital X-Ray images for processing and for
+        presentation. Two builds give the same bytes and the same manifest.
     """
     markers = _Markers()
     files: list[CorpusFile] = []
@@ -2028,6 +2091,8 @@ class _Instance:
             self._add_registration()
         elif self.spec.sop_class in _SEGMENTATIONS:
             self._add_segmentation()
+        elif self.spec.sop_class in _RADIOGRAPHS:
+            self._add_radiograph()
         elif self.spec.sop_class == RT_IMAGE_STORAGE:
             put((), "(0008,0060)", ["RTIMAGE"])
             put((), "(0008,0008)", ["DERIVED", "SECONDARY", "DRR"])
@@ -2062,6 +2127,48 @@ class _Instance:
             put(grid, "(0064,0008)", [1.0, 1.0, 1.0])
             # A displacement of each of the grid's four points, in mm.
             put(grid, "(0064,0009)", [struct.pack("<12f", *range(12))])
+
+    def _add_radiograph(self) -> None:
+        """Add the attributes that make the instance a CR or DX radiograph.
+
+        The Computed Radiography image is a left lateral of the skull, which
+        shows the face in profile, and the Digital X-Ray images a
+        posterior-anterior chest, the image for processing and the image for
+        presentation. Each is one frame of 2 by 2 pixels. A Digital X-Ray
+        image has the empty third value of Image Type, the Presentation
+        Intent Type, and the Burned In Annotation of NO that its IOD
+        requires (PS3.3 Section C.8.11.3), and Burned In Annotation is kept
+        as received.
+        """
+        put = self._set
+        if self.spec.sop_class == COMPUTED_RADIOGRAPHY_IMAGE_STORAGE:
+            put((), "(0008,0060)", ["CR"])
+            put((), "(0008,0008)", ["ORIGINAL", "PRIMARY"])
+            put((), "(0018,0015)", ["SKULL"])
+            put((), "(0018,5101)", ["LL"])
+            put((), "(0020,0020)", ["P", "F"])
+        else:
+            presentation = (
+                self.spec.sop_class == DIGITAL_X_RAY_IMAGE_STORAGE_FOR_PRESENTATION
+            )
+            put((), "(0008,0060)", ["DX"])
+            put(
+                (),
+                "(0008,0008)",
+                ["DERIVED" if presentation else "ORIGINAL", "PRIMARY", ""],
+            )
+            put(
+                (),
+                "(0008,0068)",
+                ["FOR PRESENTATION" if presentation else "FOR PROCESSING"],
+            )
+            put((), "(0018,0015)", ["CHEST"])
+            put((), "(0018,5101)", ["PA"])
+            put((), "(0020,0020)", ["L", "F"])
+            put((), "(0028,0301)", ["NO"])
+            put((), "(0028,1040)", ["LOG" if presentation else "LIN"])
+            put((), "(0028,1041)", [1])
+        self._add_pixels(16, 0, struct.pack("<4H", 0, 1000, 2000, 3000))
 
     def _add_segmentation(self) -> None:
         """Add the attributes that make the instance a Segmentation.

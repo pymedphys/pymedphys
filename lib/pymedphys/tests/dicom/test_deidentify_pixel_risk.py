@@ -822,6 +822,154 @@ def test_an_unreadable_sop_class_beside_rt_images_is_unreadable_evidence():
     }
 
 
+# Computed Radiography Image Storage, and Digital X-Ray Image Storage - For
+# Presentation and - For Processing (PS3.4 Table B.5-1).
+RADIOGRAPHS = {
+    "computed radiography": "1.2.840.10008.5.1.4.1.1.1",
+    "digital x-ray for presentation": "1.2.840.10008.5.1.4.1.1.1.1",
+    "digital x-ray for processing": "1.2.840.10008.5.1.4.1.1.1.1.1",
+}
+# The Defined Terms of View Position (PS3.3 Table C.8-1) of a lateral and of
+# a frontal projection, and its empty value, since it is Type 2.
+VIEW_POSITIONS = ["LL", "RL", "AP", "PA", ""]
+
+
+def _radiograph(
+    number: int, sop_class: str, view: str = "LL", **attributes
+) -> "pydicom.Dataset":
+    """A lateral radiograph, unless ``attributes`` say otherwise."""
+    attributes = {
+        "ImageType": ["ORIGINAL", "PRIMARY", ""],
+        "ViewPosition": view,
+        **attributes,
+    }
+    return _multi_frame(number, sop_class, **attributes)
+
+
+@pytest.mark.deid_requirement("MIDI-BP-15")
+@TRANSFER_SYNTAXES
+@pytest.mark.parametrize("sop_class", RADIOGRAPHS.values(), ids=RADIOGRAPHS.keys())
+@pytest.mark.parametrize("view", VIEW_POSITIONS)
+def test_every_radiograph_can_show_the_face_in_profile(
+    transfer_syntax, sop_class, view
+):
+    # A lateral skull radiograph shows the profile, as a localizer can, and
+    # the view of a frontal or unlabelled one does not prove it shows none.
+    series = [_radiograph(0, sop_class, view), _radiograph(1, sop_class, "PA")]
+    if transfer_syntax is not None:
+        series = [_read_back(each, transfer_syntax) for each in series]
+    findings = pixel_risk.assess_series(series)
+    assert _series_found(findings) == {(Indicator.RADIOGRAPH, (0, 1), None)}
+    assert {f.risk for f in findings} == {Risk.RECONSTRUCTABLE_FACE}
+    assert _series_found(pixel_risk.assess_series(series[:1])) == {
+        (Indicator.RADIOGRAPH, (0,), None)
+    }
+
+
+@pytest.mark.deid_requirement("MIDI-BP-15")
+def test_a_radiograph_labelled_a_localizer_is_a_radiograph():
+    # Its SOP Class decides, whatever a writer puts in Image Type.
+    for sop_class in RADIOGRAPHS.values():
+        series = [
+            _radiograph(0, sop_class, ImageType=["ORIGINAL", "PRIMARY", "LOCALIZER"])
+        ]
+        assert _series_found(pixel_risk.assess_series(series)) == {
+            (Indicator.RADIOGRAPH, (0,), None)
+        }
+
+
+@pytest.mark.deid_requirement("MIDI-BP-15")
+def test_radiographs_are_no_volume_and_are_reported_after_rt_images():
+    localizer = ["ORIGINAL", "PRIMARY", "LOCALIZER"]
+    series = [
+        _radiograph(0, RADIOGRAPHS["computed radiography"]),
+        _slice(1),
+        _rt_image(2),
+        _slice(3, ImageType=localizer),
+        _radiograph(4, RADIOGRAPHS["digital x-ray for presentation"]),
+        _slice(5),
+    ]
+    assert [(f.indicator, f.instances) for f in pixel_risk.assess_series(series)] == [
+        (Indicator.CT_VOLUME, (1, 5)),
+        (Indicator.LOCALIZER, (3,)),
+        (Indicator.RT_IMAGE, (2,)),
+        (Indicator.RADIOGRAPH, (0, 4)),
+    ]
+    # Two radiographs are not two slices of a volume.
+    pair = [
+        _radiograph(0, RADIOGRAPHS["digital x-ray for processing"]),
+        _radiograph(1, RADIOGRAPHS["digital x-ray for processing"]),
+    ]
+    assert _series_found(pixel_risk.assess_series(pair)) == {
+        (Indicator.RADIOGRAPH, (0, 1), None)
+    }
+
+
+@pytest.mark.deid_requirement("MIDI-BP-15")
+def test_a_radiograph_that_names_the_head_says_so():
+    computed = RADIOGRAPHS["computed radiography"]
+    series = [
+        _radiograph(0, computed, BodyPartExamined="SKULL"),
+        _radiograph(1, RADIOGRAPHS["digital x-ray for presentation"]),
+        _radiograph(2, computed, BodyPartExamined="CHEST"),
+    ]
+    series[1].AnatomicRegionSequence = [_region("69536005", "SCT")]
+    assert _series_found(pixel_risk.assess_series(series)) == {
+        (Indicator.RADIOGRAPH, (0, 1, 2), None),
+        (Indicator.HEAD_OR_NECK, (0,), "(0018,0015)"),
+        (Indicator.HEAD_OR_NECK, (1,), "(0008,2218)[0] > (0008,0100)"),
+    }
+
+
+def test_an_unreadable_sop_class_beside_radiographs_is_unreadable_evidence():
+    computed = RADIOGRAPHS["computed radiography"]
+    series = [_radiograph(0, computed), _radiograph(1, computed)]
+    _with_raw(series[1], 0x00080016, "UI", b"1.2.840.10008.5.1.4.1.1.1\\1.2.3")
+    assert _series_found(pixel_risk.assess_series(series)) == {
+        (Indicator.RADIOGRAPH, (0,), None),
+        (Indicator.UNREADABLE, (1,), "(0008,0016)"),
+    }
+
+
+@pytest.mark.deid_requirement("MIDI-BP-10")
+@TRANSFER_SYNTAXES
+@pytest.mark.parametrize("sop_class", RADIOGRAPHS.values(), ids=RADIOGRAPHS.keys())
+@pytest.mark.parametrize("annotation", [None, "NO", "YES"])
+def test_every_radiograph_may_hold_burned_in_text(
+    transfer_syntax, sop_class, annotation
+):
+    # A CR reader or DX console can burn in the patient's details, and
+    # Burned In Annotation, Type 3 in a CR image, need not say so, so a
+    # radiograph is reported whatever it says.
+    dataset = _radiograph(0, sop_class)
+    if annotation is not None:
+        dataset.BurnedInAnnotation = annotation
+    assessment = _assess(dataset, transfer_syntax)
+    expected = {(Indicator.RADIOGRAPH_ANNOTATION, "(0008,0016)")}
+    if annotation == "YES":
+        expected.add((Indicator.BURNED_IN_ANNOTATION, "(0028,0301)"))
+    assert _found(assessment) == expected
+    assert assessment.risks == {Risk.BURNED_IN_TEXT}
+
+
+@pytest.mark.parametrize("sop_class", [CT_IMAGE, RT_IMAGE, "", None])
+def test_only_a_radiograph_is_reported_by_its_sop_class(sop_class):
+    dataset = _ct()
+    if sop_class is None:
+        del dataset.SOPClassUID
+    else:
+        dataset.SOPClassUID = sop_class
+    assert not pixel_risk.assess_pixel_risk(dataset).findings
+
+
+def test_an_unreadable_sop_class_is_unreadable_evidence_of_burned_in_text():
+    dataset = _with_raw(_ct(), 0x00080016, "UI", b"1.2.840.10008.5.1.4.1.1.1\\1.2.3")
+    assessment = pixel_risk.assess_pixel_risk(dataset)
+    assert [(f.indicator, f.risk, str(f.path)) for f in assessment.findings] == [
+        (Indicator.UNREADABLE, Risk.BURNED_IN_TEXT, "(0008,0016)")
+    ]
+
+
 def test_a_ct_image_without_image_type_counts_towards_a_volume():
     series = [_slice(0), _slice(1)]
     del series[1].ImageType

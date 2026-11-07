@@ -61,8 +61,27 @@ RECORDED_SOURCE = "(3008,0100)"
 SOURCE_MANUFACTURER = "(300A,0216)"
 RADIOPHARMACEUTICAL_START_DATETIME = "(0018,1078)"
 RADIOPHARMACEUTICAL_INFORMATION = "(0054,0016)"
-# The first supported release's IODs that include the Overlay Plane Module.
-OVERLAY_IODS = ("CT Image", "MR Image", "Positron Emission Tomography Image")
+# The first supported release's IODs that include the Overlay Plane Module
+# as user-optional.
+OVERLAY_IODS = (
+    "CT Image",
+    "MR Image",
+    "Positron Emission Tomography Image",
+    "Computed Radiography Image",
+)
+# The IODs that include it as conditional, of which the first supported
+# release's is Digital X-Ray Image, "Required if graphic annotation is
+# present" (PS3.3 Table A.26-1).
+CONDITIONAL_OVERLAY_IODS = {
+    "Color Softcopy Presentation State",
+    "Digital Intra-Oral X-Ray Image",
+    "Digital Mammography X-Ray Image",
+    "Digital X-Ray Image",
+    "Grayscale Softcopy Presentation State",
+    "Pseudo-Color Softcopy Presentation State",
+    "Variable Modality LUT Softcopy Presentation State",
+    "XA/XRF Grayscale Softcopy Presentation State",
+}
 # Its image IODs, all but MR Spectroscopy.
 IMAGE_IODS = frozenset(
     {
@@ -391,13 +410,16 @@ def test_a_plain_x_on_a_required_attribute_outside_a_type_3_sequence_sequesters(
 
 
 @pytest.mark.deid_requirement("PS3.15-E.1.1-09")
-@pytest.mark.parametrize("iod", FIRST_RELEASE_IODS)
+@pytest.mark.parametrize(
+    "iod", [name for name in FIRST_RELEASE_IODS if name not in CONDITIONAL_OVERLAY_IODS]
+)
 @pytest.mark.parametrize("tag", ["(6000,3000)", "(6002,3000)", "(601E,3000)"])
 def test_a_plain_x_on_overlay_data_removes_its_repeating_group(tables, iod, tag):
     # Overlay Data is Type 1 in the Overlay Plane Module, which the CT Image,
-    # MR Image, and Positron Emission Tomography Image IODs include as
-    # user-optional, so removing the whole group leaves a valid instance. The
-    # other IODs do not define it.
+    # MR Image, Positron Emission Tomography Image, and Computed Radiography
+    # Image IODs include as user-optional, so removing the whole group leaves
+    # a valid instance. The other IODs but Digital X-Ray Image do not define
+    # it.
     expected_type = "1" if iod in OVERLAY_IODS else "3"
 
     assert strictest_type(tables.iods[iod], tag) == expected_type
@@ -415,18 +437,6 @@ def test_overlay_data_is_type_1_only_at_the_top_level_of_a_user_optional_module(
         (d.path, d.type, d.module) for d in ct.definitions if d.tag == "(60xx,3000)"
     } == {((), "1", "Overlay Plane")}
     assert usage["Overlay Plane"] == "U"
-
-
-CONDITIONAL_OVERLAY_IODS = {
-    "Color Softcopy Presentation State",
-    "Digital Intra-Oral X-Ray Image",
-    "Digital Mammography X-Ray Image",
-    "Digital X-Ray Image",
-    "Grayscale Softcopy Presentation State",
-    "Pseudo-Color Softcopy Presentation State",
-    "Variable Modality LUT Softcopy Presentation State",
-    "XA/XRF Grayscale Softcopy Presentation State",
-}
 
 
 @pytest.mark.deid_requirement("MIDI-BP-03")
@@ -626,6 +636,9 @@ def test_a_plain_x_on_a_required_attribute_in_the_first_release_iods(tables):
         **{
             (name, (), "(60xx,3000)"): _removal(*OVERLAY_GROUP) for name in OVERLAY_IODS
         },
+        # Type 1 in the Digital X-Ray Image IOD's conditional Overlay Plane
+        # Module, so an instance with an overlay is sequestered.
+        ("Digital X-Ray Image", (), "(60xx,3000)"): _removal(*SEQUESTER),
         # Type 1 in the Type 1 Radiopharmaceutical Information Sequence, so
         # every conforming instance is sequestered.
         (

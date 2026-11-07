@@ -72,6 +72,10 @@ SUPPORTED = {
     "1.2.840.10008.5.1.4.1.1.481.7": "RT Treatment Summary Record",
     "1.2.840.10008.5.1.4.1.1.481.8": "RT Ion Plan",
     "1.2.840.10008.5.1.4.1.1.481.9": "RT Ion Beams Treatment Record",
+    "1.2.840.10008.5.1.4.1.1.1": "Computed Radiography Image",
+    # Digital X-Ray Image Storage - For Presentation and - For Processing.
+    "1.2.840.10008.5.1.4.1.1.1.1": "Digital X-Ray Image",
+    "1.2.840.10008.5.1.4.1.1.1.1.1": "Digital X-Ray Image",
     "1.2.840.10008.5.1.4.1.1.66.1": "Spatial Registration",
     "1.2.840.10008.5.1.4.1.1.66.3": "Deformable Spatial Registration",
     "1.2.840.10008.5.1.4.1.1.66.4": "Segmentation",
@@ -122,6 +126,8 @@ def test_the_first_release_supports_ct_mr_pet_rt_registration_seg_and_sr_objects
         "Segmentation",
         "Spatial Registration",
         "Deformable Spatial Registration",
+        "Computed Radiography Image",
+        "Digital X-Ray Image",
         "X-Ray Radiation Dose SR",
         "Enhanced X-Ray Radiation Dose SR",
         "Radiopharmaceutical Radiation Dose SR",
@@ -207,6 +213,11 @@ def test_padding_is_ignored():
         # maps, spatial fiducials, and second-generation RT objects, including
         # the second-generation RT images.
         ("1.2.840.10008.5.1.4.1.1.20", "Nuclear Medicine Image"),
+        # The projection radiographs of IODs of their own, beside Computed
+        # Radiography Image and Digital X-Ray Image.
+        ("1.2.840.10008.5.1.4.1.1.1.2", "Digital Mammography X-Ray Image"),
+        ("1.2.840.10008.5.1.4.1.1.1.3.1", "Digital Intra-Oral X-Ray Image"),
+        ("1.2.840.10008.5.1.4.1.1.13.1.2", "X-Ray 3D Craniofacial Image"),
         ("1.2.840.10008.5.1.4.1.1.6.1", "Ultrasound Image"),
         ("1.2.840.10008.5.1.4.1.1.200.2", "CT Performed Procedure Protocol"),
         ("1.2.840.10008.5.1.4.1.1.66.5", "Surface Segmentation"),

@@ -136,7 +136,12 @@ ION_REVIEWED_AGAINST = DOSE_SR_REVIEWED_AGAINST + RADIATION_DOSE_SR_IODS
 # and which the first supported release now supports.
 RECORD_IODS = ("RT Brachy Treatment Record", "RT Treatment Summary Record")
 RECORD_REVIEWED_AGAINST = ION_REVIEWED_AGAINST + ION_IODS
-SUPPORTED_IODS = (
+# The Computed Radiography and Digital X-Ray Image IODs, which the maintainer
+# added to the target coverage on 31 October 2026, whose attributes were
+# reviewed against every IOD that the first supported release supported
+# before them, and which it now supports.
+RADIOGRAPH_IODS = ("Computed Radiography Image", "Digital X-Ray Image")
+RADIOGRAPH_REVIEWED_AGAINST = (
     REVIEWED_AGAINST
     + SUPPORTED_TARGET_IODS
     + SUPPORTED_DOSE_SR_IODS
@@ -145,6 +150,7 @@ SUPPORTED_IODS = (
     + ION_IODS
     + RECORD_IODS
 )
+SUPPORTED_IODS = RADIOGRAPH_REVIEWED_AGAINST + RADIOGRAPH_IODS
 CLEAN_DESCRIPTORS = "clean_descriptors"
 DEVICE_IDENTITY = "retain_device_identity"
 FULL_DATES = "retain_longitudinal_full_dates"
@@ -411,9 +417,10 @@ def test_every_text_attribute_a_supported_iod_uses_and_table_e1_1_omits_has_a_ru
     # Checked against the 2026d PS3.3, PS3.6, and PS3.15: the combined
     # scope includes the RT objects, among them the two RT Ion IODs, which
     # add 13, and the brachy and summary treatment records, which add none,
-    # Segmentation, which adds 4, and the two dose-report IODs, whose
-    # supplementary rules cover 172 text attributes.
-    assert len(omitted) == 172
+    # Segmentation, which adds 4, the two dose-report IODs, and the Computed
+    # Radiography and Digital X-Ray Image IODs, which add 14, whose
+    # supplementary rules cover 186 text attributes.
+    assert len(omitted) == 186
     assert omitted <= set(_rules())
     assert {"(0008,0100)", "(300A,00C2)", "(60xx,1500)"} <= omitted
 
@@ -428,11 +435,11 @@ def test_the_rules_for_omitted_text_fall_in_the_reviewed_groups():
 
     assert groups == {
         # Operator-typed labels and text.
-        ("X/Z/D", ((CLEAN_DESCRIPTORS, "C"),)): 80,
+        ("X/Z/D", ((CLEAN_DESCRIPTORS, "C"),)): 85,
         # Accessory and equipment identifiers.
-        ("X/Z/D", ((DEVICE_IDENTITY, "K"),)): 30,
+        ("X/Z/D", ((DEVICE_IDENTITY, "K"),)): 31,
         # Coded and technical values, and De-identification Method.
-        ("K", ()): 43,
+        ("K", ()): 51,
         # Names and identifiers of people, organisations, records, and
         # networks, identifiers that a device reads, and the text of overlays.
         ("X/Z/D", ()): 17,
@@ -1109,6 +1116,213 @@ def test_the_brachy_and_summary_records_other_new_attributes_are_kept_by_the_def
             ), (preset, definition)
 
 
+# The text attributes that the Computed Radiography and Digital X-Ray Image
+# IODs use and that neither Table E.1-1 nor the IODs reviewed before them use,
+# by group, checked by hand against the 2026d PS3.3 Tables C.8-1, C.8-2,
+# C.8-34, C.8-36, C.8-70, C.8-71, C.8-72, C.11.5-1, and 10-10.
+RADIOGRAPH_OPERATOR_TEXT = {
+    "(0018,11A4)",  # Paddle Description
+    "(0018,7006)",  # Detector Description
+    "(0018,7062)",  # Exposure Control Mode Description
+    "(0028,0A04)",  # Pixel Spacing Calibration Description
+    "(0060,3010)",  # Histogram Explanation
+}
+RADIOGRAPH_DEVICE_IDENTITY = {"(0018,1006)"}  # Grid ID
+RADIOGRAPH_KEPT_TEXT = {
+    "(0018,1260)",  # Plate Type
+    "(0018,1261)",  # Phosphor Type
+    "(0018,1401)",  # Acquisition Device Processing Code
+    "(0018,7008)",  # Detector Mode
+    "(0018,702A)",  # Detector Manufacturer Name
+    "(0018,702B)",  # Detector Manufacturer's Model Name
+    "(0018,7040)",  # Grid Absorbing Material
+    "(0018,7041)",  # Grid Spacing Material
+}
+RADIOGRAPH_TEXT_GROUPS: tuple[tuple[set[str], str, dict[str, str]], ...] = (
+    (RADIOGRAPH_OPERATOR_TEXT, "X/Z/D", {CLEAN_DESCRIPTORS: "C"}),
+    (RADIOGRAPH_DEVICE_IDENTITY, "X/Z/D", {DEVICE_IDENTITY: "K"}),
+    (RADIOGRAPH_KEPT_TEXT, "K", {}),
+)
+# What removal by Type gives each removed attribute where these IODs define
+# it, as its note says: each is Type 3, but Pixel Spacing Calibration
+# Description, which is Type 1C in the Basic Pixel Spacing Calibration Macro.
+RADIOGRAPH_RESOLVED = {
+    **dict.fromkeys(RADIOGRAPH_OPERATOR_TEXT | RADIOGRAPH_DEVICE_IDENTITY, "X"),
+    "(0028,0A04)": "D",
+}
+# The text that Table E.1-1 lists and that these IODs, but none reviewed
+# before them, use: the identifiers of the plate, generator, cassette, and
+# detector, which it removes and keeps under Retain Device Identity, and two
+# descriptions, which it removes and cleans under Clean Descriptors.
+RADIOGRAPH_LISTED_TEXT = {
+    "(0018,1004)",  # Plate ID
+    "(0018,1005)",  # Generator ID
+    "(0018,1007)",  # Cassette ID
+    "(0018,1400)",  # Acquisition Device Processing Description
+    "(0018,700A)",  # Detector ID
+    "(0040,0310)",  # Comments on Radiation Dose
+}
+# The date and time that these IODs, but none reviewed before them, use, both
+# of which Table E.1-1 lists: when the detector was last calibrated.
+RADIOGRAPH_DETECTOR_CALIBRATION = {"(0018,700C)", "(0018,700E)"}
+# The other attributes that these IODs use and the IODs reviewed before them
+# do not, by VR, checked by hand against the 2026d PS3.3 and PS3.6: numbers,
+# codes, and sequences of the plate, the detector, its positioning, the
+# generator, grid, filtration, collimator, and shutters, the dose, and the
+# histogram, none of which Table E.1-1 lists. Histogram First Bin Value and
+# Histogram Last Bin Value are US or SS, as Pixel Representation says.
+RADIOGRAPH_OTHER_VRS = {
+    "DS": 44,
+    "CS": 23,
+    "IS": 19,
+    "US": 7,
+    "US or SS": 2,
+    "SQ": 2,
+    "FL": 2,
+    "UL": 1,
+}
+
+
+def test_the_radiograph_iods_are_generated_and_supported():
+    tables = iods.load_iod_tables()
+
+    assert set(RADIOGRAPH_IODS) <= set(tables.iods)
+    assert set(RADIOGRAPH_IODS) <= scope.SUPPORTED_IODS
+
+
+@pytest.mark.deid_requirement("MIDI-BP-05", "MIDI-BP-06", "MIDI-BP-11")
+def test_the_text_that_only_the_radiograph_iods_use_has_reviewed_rules():
+    listed = set(_table_e1_1())
+    added = _used_by(RADIOGRAPH_IODS, TEXT_VRS) - _used_by(
+        RADIOGRAPH_REVIEWED_AGAINST, TEXT_VRS
+    )
+    rules = _rules()
+
+    assert added & listed == RADIOGRAPH_LISTED_TEXT
+    assert not RADIOGRAPH_LISTED_TEXT & set(rules)
+    assert added - listed == (
+        RADIOGRAPH_OPERATOR_TEXT | RADIOGRAPH_DEVICE_IDENTITY | RADIOGRAPH_KEPT_TEXT
+    )
+    assert len(added - listed) == 14
+    for tags, action, options in RADIOGRAPH_TEXT_GROUPS:
+        for tag in tags:
+            assert (rules[tag].action, dict(rules[tag].options)) == (
+                action,
+                options,
+            ), tag
+            assert rules[tag].note.strip(), tag
+
+
+def test_each_policy_gives_the_radiograph_text_the_action_of_its_group():
+    for composed in _every_policy():
+        for tags, action, options in RADIOGRAPH_TEXT_GROUPS:
+            selected = [a for o, a in options.items() if o in composed.options]
+            for tag in tags:
+                assert composed.supplementary_actions[tag] == (
+                    selected[0] if selected else action
+                ), (tag, composed.options)
+
+
+def test_the_radiograph_text_that_is_removed_resolves_by_its_type_as_its_note_says():
+    tables = iods.load_iod_tables()
+    rules = _rules()
+
+    for name in RADIOGRAPH_IODS:
+        iod = tables.iods[name]
+        for definition in iod.definitions:
+            if definition.tag not in RADIOGRAPH_RESOLVED:
+                continue
+            resolved = compound_actions.resolve_in_iod(
+                iod, definition.tag, definition.path, rules[definition.tag].action
+            )
+            assert resolved == RADIOGRAPH_RESOLVED[definition.tag], (name, definition)
+    # Each note says what removal by Type gives it where that differs from X.
+    for tag, resolved in RADIOGRAPH_RESOLVED.items():
+        said = "dummy value where it is Type 1" in rules[tag].note
+        assert said == (resolved == "D"), tag
+
+
+def test_removal_by_type_gives_the_listed_radiograph_text_and_dates_x():
+    tables = iods.load_iod_tables()
+    table = _table_e1_1()
+
+    for name in RADIOGRAPH_IODS:
+        iod = tables.iods[name]
+        for definition in iod.definitions:
+            if definition.tag not in (
+                RADIOGRAPH_LISTED_TEXT | RADIOGRAPH_DETECTOR_CALIBRATION
+            ):
+                continue
+            action = table[definition.tag].basic_profile
+            resolved = (
+                compound_actions.resolve_in_iod(
+                    iod, definition.tag, definition.path, action
+                )
+                if action in compound_actions.COMPOUND_ACTIONS
+                else action
+            )
+            assert resolved == "X", (name, definition)
+
+
+def test_every_uid_date_and_name_that_the_radiograph_iods_use_has_a_role():
+    uids = uid_roles.load_uid_roles()
+    temporal = temporal_roles.load_temporal_roles()
+    table = _table_e1_1()
+
+    for tag in _used_by(RADIOGRAPH_IODS, {"UI"}):
+        assert isinstance(uids.role(tag), uid_roles.UIDRole), tag
+    for tag in _used_by(RADIOGRAPH_IODS, TEMPORAL_VRS):
+        assert isinstance(temporal.role(tag), temporal_roles.TemporalRole), tag
+    # The IODs reviewed before them use every UID, person name, and URL that
+    # these IODs use, and every date and time but when the detector was last
+    # calibrated, which Table E.1-1 lists, removed by Type, kept under Retain
+    # Device Identity and Full Dates, and cleaned under Modified Dates.
+    for vrs in ({"UI"}, {"PN"}, {"UR"}):
+        assert not _used_by(RADIOGRAPH_IODS, vrs) - _used_by(
+            RADIOGRAPH_REVIEWED_AGAINST, vrs
+        ), vrs
+    new_dates = _used_by(RADIOGRAPH_IODS, TEMPORAL_VRS) - _used_by(
+        RADIOGRAPH_REVIEWED_AGAINST, TEMPORAL_VRS
+    )
+    assert new_dates == RADIOGRAPH_DETECTOR_CALIBRATION
+    for tag in new_dates:
+        assert (table[tag].basic_profile, dict(table[tag].options)) == (
+            "X/D",
+            {DEVICE_IDENTITY: "K", **DATE_OPTIONS},
+        ), tag
+
+
+def test_the_radiograph_iods_other_new_attributes_are_kept_by_the_default():
+    dictionary = _dictionary()
+    tables = iods.load_iod_tables()
+    every_vr = {vr for attribute in dictionary.values() for vr in attribute.vrs}
+    new = _used_by(RADIOGRAPH_IODS, every_vr) - _used_by(
+        RADIOGRAPH_REVIEWED_AGAINST, every_vr
+    )
+    other = new - _used_by(RADIOGRAPH_IODS, TEXT_VRS) - RADIOGRAPH_DETECTOR_CALIBRATION
+    listed = set(_table_e1_1())
+    rules = _rules()
+    uids = set(uid_roles.load_uid_roles().rules)
+    by_vr = collections.Counter(" or ".join(dictionary[tag].vrs) for tag in other)
+
+    assert by_vr == RADIOGRAPH_OTHER_VRS
+    assert not other & (listed | set(rules) | uids)
+    # So each takes the default, which keeps it where these IODs define it,
+    # under every preset, with a sequence's items handled by their own rules.
+    for preset in policy.PRESETS:
+        rules_of = element_rules.ElementRules(policy.compose_policy(preset))
+        for name in RADIOGRAPH_IODS:
+            iod = tables.iods[name]
+            for definition in iod.definitions:
+                if definition.tag not in other:
+                    continue
+                rule = rules_of.rule(definition.tag, definition.path, iod=iod)
+                assert (rule.source, rule.action) == (
+                    element_rules.RuleSource.DEFAULT,
+                    element_rules.KEEP,
+                ), (preset, name, definition)
+
+
 def test_names_identifiers_and_overlay_text_are_removed_under_every_option():
     rules = _rules()
 
@@ -1144,7 +1358,13 @@ def test_each_group_takes_the_action_of_its_option(
         assert composed[tag] == operator_text, tag
     for tag in ACCESSORY_IDENTIFIERS:
         assert composed[tag] == accessory_identifier, tag
-    for tag in KEPT_TEXT | ADDED_KEPT_TEXT | RT_IMAGE_KEPT_TEXT | ION_KEPT_TEXT:
+    for tag in (
+        KEPT_TEXT
+        | ADDED_KEPT_TEXT
+        | RT_IMAGE_KEPT_TEXT
+        | ION_KEPT_TEXT
+        | RADIOGRAPH_KEPT_TEXT
+    ):
         assert composed[tag] == "K", tag
 
 
@@ -1175,9 +1395,13 @@ def test_the_basic_profile_keeps_only_the_reviewed_coded_and_technical_text():
         for tag in _supported_text()
     }
 
-    assert len(basic) == 299
+    assert len(basic) == 319
     assert {tag for tag, action in basic.items() if action == "K"} == (
-        KEPT_TEXT | ADDED_KEPT_TEXT | RT_IMAGE_KEPT_TEXT | ION_KEPT_TEXT
+        KEPT_TEXT
+        | ADDED_KEPT_TEXT
+        | RT_IMAGE_KEPT_TEXT
+        | ION_KEPT_TEXT
+        | RADIOGRAPH_KEPT_TEXT
     )
     assert set(basic.values()) - {"K"} <= REMOVING_ACTIONS
 
@@ -1197,6 +1421,7 @@ def test_no_option_keeps_more_than_the_coded_text_and_device_identity():
             | ADDED_KEPT_TEXT
             | RT_IMAGE_KEPT_TEXT
             | ION_KEPT_TEXT
+            | RADIOGRAPH_KEPT_TEXT
             | (device_identity if DEVICE_IDENTITY in composed.options else set())
         )
         assert kept == expected, composed.options

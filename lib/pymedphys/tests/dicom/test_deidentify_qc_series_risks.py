@@ -381,7 +381,7 @@ def test_the_transform_gives_each_source_series_evidence():
 
 
 @pytest.mark.deid_requirement("MIDI-BP-15", "MIDI-BP-17")
-def test_a_run_over_the_synthetic_corpus_lists_its_volumes_and_rt_image(tmp_path):
+def test_a_run_over_the_synthetic_corpus_lists_its_volumes_and_projections(tmp_path):
     corpus = corpus_module.build_corpus()
     # A short directory, since a run refuses output paths that could exceed
     # Windows' 259 characters.
@@ -431,6 +431,9 @@ def test_a_run_over_the_synthetic_corpus_lists_its_volumes_and_rt_image(tmp_path
     # the PET instances is SUV-scaled, so none shows the body weight. The RT
     # Image, a projection, can show the face in profile. Each Segmentation,
     # BINARY and LABELMAP, is in a series of its own and can trace the face.
+    # The Computed Radiography image, a lateral skull radiograph, can show
+    # the face in profile, and names the head; the two Digital X-Ray images,
+    # of the chest, are in one series and can show it too.
     volumes = [
         ("ct-volume", released("CT Image")),
         ("rt-dose-volume", released("RT Dose", held=True)),
@@ -458,19 +461,31 @@ def test_a_run_over_the_synthetic_corpus_lists_its_volumes_and_rt_image(tmp_path
         1,
         1,
     ]
-    assert pack["series_risks"] == [
-        {
+    computed = released("Computed Radiography Image")
+    digital = released("Digital X-Ray Image")
+    assert (len(computed), len(digital)) == (1, 2)
+
+    def finding(indicator, positions, element=None):
+        return {
+            "indicator": indicator,
+            "risk": "reconstructable-face",
+            "element": element,
             "positions": positions,
-            "findings": [
-                {
-                    "indicator": indicator,
-                    "risk": "reconstructable-face",
-                    "element": None,
-                    "positions": positions,
-                }
-            ],
         }
-        for indicator, positions in volumes
+
+    assert pack["series_risks"] == [
+        *(
+            {"positions": positions, "findings": [finding(indicator, positions)]}
+            for indicator, positions in volumes
+        ),
+        {
+            "positions": computed,
+            "findings": [
+                finding("radiograph", computed),
+                finding("head-or-neck", computed, "(0018,0015)"),
+            ],
+        },
+        {"positions": digital, "findings": [finding("radiograph", digital)]},
     ]
     # The pack groups by the source's Series Instance UID but never writes it.
     assert all(uid and uid not in text for uid in series)

@@ -728,6 +728,8 @@ def test_the_qc_pack_lists_each_ct_mr_pet_and_rt_dose_volume(preset):
         *pixel_risk.VOLUME_INDICATORS,
         pixel_risk.Indicator.LOCALIZER,
         pixel_risk.Indicator.RT_IMAGE,
+        pixel_risk.Indicator.RADIOGRAPH,
+        pixel_risk.Indicator.RADIOGRAPH_ANNOTATION,
         pixel_risk.Indicator.SEGMENTATION,
         pixel_risk.Indicator.HEAD_OR_NECK,
         pixel_risk.Indicator.UNREADABLE,
@@ -742,7 +744,17 @@ def test_the_qc_pack_lists_each_ct_mr_pet_and_rt_dose_volume(preset):
     assert "the RT Images among them, projections such as a lateral DRR" in section
     assert "the Segmentations among them, whose segment of the skin" in section
     assert (
-        "localizer, RT Image, or Segmentation, or a Segmentation's segments" in section
+        "the Computed Radiography and Digital X-Ray images among them, "
+        "projections such as a lateral skull radiograph" in section
+    )
+    assert (
+        "Every Computed Radiography and Digital X-Ray image is one, as able "
+        "to hold burned-in text" in section
+    )
+    assert "whatever its Burned In Annotation (0028,0301) says" in section
+    assert (
+        "localizer, RT Image, radiograph, or Segmentation, or a Segmentation's "
+        "segments" in section
     )
     assert "PS3.16 Annex L" in section
     assert "Series Instance UID (0020,000E), which it never writes" in section

@@ -12,7 +12,8 @@
 # reviewed ahead of supporting them, as RT Image, RT Beams Treatment Record,
 # the registrations, the X-Ray and Radiopharmaceutical Radiation Dose SR
 # IODs, RT Ion Plan, RT Ion Beams Treatment Record, RT Brachy Treatment
-# Record, RT Treatment Summary Record, and Segmentation were. So does every date,
+# Record, RT Treatment Summary Record, Segmentation, and the Computed
+# Radiography and Digital X-Ray Image IODs were. So does every date,
 # time, and datetime (DA, DT, or TM) attribute that Table E.1-1 omits,
 # besides the role that the temporal roles file gives it.
 # Other attributes that the table omits have a rule only where one has been
@@ -176,6 +177,27 @@ options = { clean_descriptors = "C" }
 note = "A description of the criteria for rejecting premature ventricular contractions or other arrhythmic beats during cardiac gating, as text. It is removed by Type, and cleaned as a descriptor under Clean Descriptors."
 
 [[attribute]]
+tag = "(0018,11A4)"
+keyword = "PaddleDescription"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "A description of the compression paddle, where the body part was compressed during the exposure (PS3.3 Table C.8-72). PS3.3 gives it no Defined Terms, so a person or a site's configuration can write anything in it. It is removed by Type, and cleaned as a descriptor under Clean Descriptors, as Table E.1-1 does for Compensator Description and Bolus Description."
+
+[[attribute]]
+tag = "(0018,7006)"
+keyword = "DetectorDescription"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "A free text description of the detector (PS3.3 Table C.8-71), which can carry anything a person types. It is removed by Type, and cleaned as a descriptor under Clean Descriptors, as Table E.1-1 does for Acquisition Device Processing Description."
+
+[[attribute]]
+tag = "(0018,7062)"
+keyword = "ExposureControlModeDescription"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "A text description of the mechanism of exposure control, which PS3.3 Table C.8-34 says may describe the number and type of exposure sensors or the position of the detector's sensitive area. PS3.3 does not say that the equipment writes it, and an LT value can carry anything a person types, so it is removed by Type, and cleaned as a descriptor under Clean Descriptors, as Table E.1-1 does for Acquisition Device Processing Description."
+
+[[attribute]]
 tag = "(0018,9046)"
 keyword = "MultiCoilConfiguration"
 action = "X/Z/D"
@@ -223,6 +245,13 @@ keyword = "DimensionDescriptionLabel"
 action = "X/Z/D"
 options = { clean_descriptors = "C" }
 note = "Free text that explains the meaning of a dimension of a multi-frame image. It is removed by Type, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
+tag = "(0028,0A04)"
+keyword = "PixelSpacingCalibrationDescription"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "A free text description of the correction or calibration of the pixel spacing, which PS3.3 Table 10-10 says might describe the assumptions made about the patient's body part and depth, or the fiducial and where it lies, such as a device applied to the skin over a named landmark. It is removed by Type, which replaces it with a dummy value where it is Type 1C, as it is wherever the Computed Radiography and Digital X-Ray Image IODs use it, and cleaned as a descriptor under Clean Descriptors."
 
 [[attribute]]
 tag = "(0028,1055)"
@@ -300,6 +329,13 @@ keyword = "ScatterCorrectionMethod"
 action = "X/Z/D"
 options = { clean_descriptors = "C" }
 note = "A textual description of a PET image's scatter correction. The scanner usually writes it, but PS3.3 defines it as free text, so it is removed by Type, which replaces it with a dummy value where it is required, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
+tag = "(0060,3010)"
+keyword = "HistogramExplanation"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "A free form explanation of the meaning of an image histogram (PS3.3 Table C.11.5-1), which an operator can type, like LUT Explanation and Window Center & Width Explanation. It is removed by Type, and cleaned as a descriptor under Clean Descriptors."
 
 [[attribute]]
 tag = "(0062,0005)"
@@ -641,6 +677,13 @@ options = { retain_device_identity = "K" }
 note = "A user-supplied identifier for a device used in the acquisition. Device identifiers can identify the institution and, with dates, individual examinations, so it is removed by Type, and kept under Retain Device Identity, as Table E.1-1 does for Device Serial Number."
 
 [[attribute]]
+tag = "(0018,1006)"
+keyword = "GridID"
+action = "X/Z/D"
+options = { retain_device_identity = "K" }
+note = "The identifier of the anti-scatter grid (PS3.3 Table C.8-36), one physical device, as Plate ID, Cassette ID, and Generator ID identify the plate, the cassette, and the generator. It is device identity: removed by Type, and kept under Retain Device Identity, as Table E.1-1 does for those three."
+
+[[attribute]]
 tag = "(0018,1061)"
 keyword = "TriggerSourceOrType"
 action = "X/Z/D"
@@ -964,6 +1007,54 @@ tag = "(0018,1210)"
 keyword = "ConvolutionKernel"
 action = "K"
 note = "A label for the kernel or algorithm used to reconstruct the image, which the scanner writes from its configuration. It is a technical value that identifies no one, and is needed to interpret image noise and resolution, so it is kept."
+
+[[attribute]]
+tag = "(0018,1260)"
+keyword = "PlateType"
+action = "K"
+note = "A label of the type of storage phosphor plates used in a Computed Radiography series (PS3.3 Table C.8-1), the same for every plate of a product. It identifies a product rather than one plate, which Plate ID identifies, and is information about the acquisition, so it is kept, as Manufacturer's Model Name is."
+
+[[attribute]]
+tag = "(0018,1261)"
+keyword = "PhosphorType"
+action = "K"
+note = "A label of the type of phosphor on a Computed Radiography series' plates (PS3.3 Table C.8-1), a property of the plate's material that identifies no one. It is kept, as Manufacturer's Model Name is. Keeping it accepts the residual risk that a site writes a name in it, since PS3.3 gives it no Defined Terms."
+
+[[attribute]]
+tag = "(0018,1401)"
+keyword = "AcquisitionDeviceProcessingCode"
+action = "K"
+note = "A manufacturer-specific code for the processing that the acquisition device applied to the image, such as an organ filtering code (PS3.3 Tables C.8-2 and C.8-70). It is a technical value from the device's configuration that identifies no one, and is needed to interpret the image's contrast and sharpness, so it is kept, as Convolution Kernel is. Table E.1-1 removes the free text Acquisition Device Processing Description, not this code."
+
+[[attribute]]
+tag = "(0018,7008)"
+keyword = "DetectorMode"
+action = "K"
+note = "A text description of the detector's operating mode, which PS3.3 Table C.8-71 calls implementation specific, so the equipment writes it from its configuration. It is a technical value that identifies no one, and is needed to interpret the image, so it is kept, as Convolution Kernel is. Keeping it accepts the residual risk that a site writes a name in it, since an LT value can hold any text."
+
+[[attribute]]
+tag = "(0018,702A)"
+keyword = "DetectorManufacturerName"
+action = "K"
+note = "The name of the manufacturer of the detector component of the acquisition system (PS3.3 Table C.8-71). It names the maker of a product that many sites share, so it is kept, as Manufacturer is; the detector's own identifiers, Detector ID and X-Ray Detector ID, are device identity."
+
+[[attribute]]
+tag = "(0018,702B)"
+keyword = "DetectorManufacturerModelName"
+action = "K"
+note = "The manufacturer's model name of the detector component of the acquisition system (PS3.3 Table C.8-71), the same for every unit of a commercial model. It identifies a product rather than one detector, so it is kept, as Manufacturer's Model Name is."
+
+[[attribute]]
+tag = "(0018,7040)"
+keyword = "GridAbsorbingMaterial"
+action = "K"
+note = "The X-ray absorbing material of the anti-scatter grid, such as lead (PS3.3 Table C.8-36), a physical property of the grid like Filter Material. It identifies no one, and is information about the acquisition, so it is kept. Keeping it accepts the residual risk that a site writes a name in it, since an LT value can hold any text."
+
+[[attribute]]
+tag = "(0018,7041)"
+keyword = "GridSpacingMaterial"
+action = "K"
+note = "The spacing material of the anti-scatter grid, such as aluminium or carbon fibre (PS3.3 Table C.8-36), a physical property of the grid like Filter Material. It identifies no one, and is information about the acquisition, so it is kept. Keeping it accepts the residual risk that a site writes a name in it, since an LT value can hold any text."
 
 [[attribute]]
 tag = "(0018,9005)"

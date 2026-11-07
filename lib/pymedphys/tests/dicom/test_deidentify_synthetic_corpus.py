@@ -243,6 +243,9 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "48-rt-ion-beams-record.dcm",
         "49-rt-brachy-record.dcm",
         "50-rt-treatment-summary-record.dcm",
+        "62-cr.dcm",
+        "63-dx-for-processing.dcm",
+        "64-dx-for-presentation.dcm",
     ]
     assert [file.manifest.iod for file in corpus.files] == [
         "CT Image",
@@ -283,21 +286,27 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "RT Ion Beams Treatment Record",
         "RT Brachy Treatment Record",
         "RT Treatment Summary Record",
+        "Computed Radiography Image",
+        "Digital X-Ray Image",
+        "Digital X-Ray Image",
     ]
     assert corpus_module.STRUCTURED_REPORT_FILES == tuple(
-        file.name for file in corpus.files[-24:-14] + corpus.files[-12:-4]
+        file.name for file in corpus.files[-27:-17] + corpus.files[-15:-7]
     )
     assert corpus_module.SEGMENTATION_FILES == tuple(
-        file.name for file in corpus.files[-14:-12]
+        file.name for file in corpus.files[-17:-15]
     )
     assert (
         corpus_module.ION_PLAN_FILE,
         corpus_module.ION_TREATMENT_RECORD_FILE,
-    ) == tuple(file.name for file in corpus.files[-4:-2])
+    ) == tuple(file.name for file in corpus.files[-7:-5])
     assert (
         corpus_module.BRACHY_TREATMENT_RECORD_FILE,
         corpus_module.TREATMENT_SUMMARY_RECORD_FILE,
-    ) == tuple(file.name for file in corpus.files[-2:])
+    ) == tuple(file.name for file in corpus.files[-5:-3])
+    assert corpus_module.RADIOGRAPH_FILES == tuple(
+        file.name for file in corpus.files[-3:]
+    )
     # Every IOD of the first supported release.
     assert {file.manifest.iod for file in corpus.files} == scope.SUPPORTED_IODS
 
@@ -474,9 +483,14 @@ def test_an_attribute_whose_removal_sequesters_is_planted_in_one_instance(corpus
     # Institution Code Sequence of each treatment record's interlock
     # resolution user, whose dummy item a reviewed rule writes (D-021), and
     # Source Manufacturer in the RT Brachy Treatment Record's Recorded Source
-    # Sequence, which a plain X empties there too, are planted.
+    # Sequence, which a plain X empties there too, are planted. Overlay Data
+    # is in no Digital X-Ray Image, whose Overlay Plane Module is conditional,
+    # so that removing it would sequester the instance (D-020).
     both = {"(0010,2297)", "(0010,2299)"}
-    only_in = {"Enhanced PET Image": {"(0018,1078)"}}
+    only_in = {
+        "Enhanced PET Image": {"(0018,1078)"},
+        "Digital X-Ray Image": {"(6000,3000)"},
+    }
     assert planted == {corpus_module.SEQUESTERED_FILE: both}
     assert corpus_module.SEQUESTERED_FILE == corpus.files[2].name
     assert withheld == {
@@ -1143,6 +1157,8 @@ def test_each_image_has_its_frames_and_the_colour_image_its_icc_profile(corpus):
         "MR Image",
         "Positron Emission Tomography Image",
         "RT Image",
+        "Computed Radiography Image",
+        "Digital X-Ray Image",
     }
     assert set(frames.values()) == {1, 2}
 

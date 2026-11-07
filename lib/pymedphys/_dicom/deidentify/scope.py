@@ -21,7 +21,8 @@ Dose, RT Image, RT Beams Treatment Record, RT Ion Plan, RT Ion Beams
 Treatment Record, RT Brachy Treatment Record, and RT Treatment Summary
 Record IODs, of the Spatial Registration and Deformable Spatial
 Registration IODs, of the Segmentation IOD, of both Segmentation Storage
-and Label Map Segmentation Storage, of the X-Ray Radiation Dose SR, Enhanced
+and Label Map Segmentation Storage, of the Computed Radiography Image and
+Digital X-Ray Image IODs, of the X-Ray Radiation Dose SR, Enhanced
 X-Ray Radiation Dose SR, Radiopharmaceutical Radiation Dose SR, and Patient
 Radiation Dose SR IODs, of the Basic Text SR, Enhanced SR, Comprehensive SR,
 Comprehensive 3D SR, and Extensible SR IODs, of the Key Object Selection
@@ -67,6 +68,8 @@ from .uids import normalise_uid
 SUPPORTED_IODS = frozenset(
     {
         "CT Image",
+        "Computed Radiography Image",
+        "Digital X-Ray Image",
         "Enhanced CT Image",
         "Legacy Converted Enhanced CT Image",
         "MR Image",
