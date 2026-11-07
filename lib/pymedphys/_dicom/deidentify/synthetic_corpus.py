@@ -20,7 +20,7 @@ fictitious patient and study, with one Frame of Reference: three CT Image
 slices, an RT Structure Set that references the CT series and slices, an RT
 Plan that references the structure set and the dose, an RT Dose that
 references the plan, a second RT Dose of the plan for review (below), one
-instance of each of thirty-eight other IODs, and two of the Segmentation
+instance of each of forty-five other IODs, and two of the Segmentation
 IOD, one of each of its SOP Classes, each in a series of its own, and a
 second X-Ray Radiation Dose SR, of a CT scan.
 The MR Image and PET Image instances reference the first CT slice, and each
@@ -39,15 +39,17 @@ Plan. The RT Brachy Treatment Record references the RT Plan, which has
 brachytherapy application setups as well as beams, and names the RT Beams
 Treatment Record as a related record, and the RT Treatment Summary Record
 references the RT Plan and, as a treatment record that it summarises, the
-RT Brachy Treatment Record. The RT Physician Intent references the first
+RT Brachy Treatment Record. The RT Image, a digitally reconstructed radiograph of 2 by 2 pixels,
+references the RT Plan, as do the Enhanced RT Image, a digitally
+reconstructed radiograph, and the Enhanced Continuous RT Image, a simulator
+image, each of two frames of 2 by 2 pixels. The RT Physician Intent references the first
 CT slice, and the collection's study and CT series in the Referenced Study
 Sequence (0008,1110) of its input instances and planning inputs; the RT
 Treatment Preparation references the RT Physician Intent and, in its
 Referenced RT Plan Sequence, the RT Plan; and the RT Patient Position
 Acquisition Instruction references the RT Treatment Preparation and, in the
 Referenced Study Sequence of its position reference instances, the
-collection's study. The RT Image, a digitally reconstructed radiograph of 2 by 2 pixels,
-references the RT Plan. The X-Ray Radiation Dose SRs and the Enhanced
+collection's study. The X-Ray Radiation Dose SRs and the Enhanced
 X-Ray Radiation Dose SR reference the first CT slice, the
 Radiopharmaceutical Radiation Dose SR the PET Image, the Patient Radiation
 Dose SR the CT dose report, which its estimate used, and the Basic Text
@@ -56,8 +58,7 @@ the MR Image. The Segmentations, a BINARY one of Segmentation Storage and a
 LABELMAP one of Label Map Segmentation Storage, reference the CT series and
 its first slice, and each segments the planes of the first two slices. The
 Key Object Selection Document selects the MR Image; the Mammography CAD SR
-and Chest CAD SR name the RT Image, the collection's one projection
-radiograph, as the image that their CAD read, and the Colon CAD SR the CT
+and Chest CAD SR name the RT Image, a projection radiograph, as the image that their CAD read, and the Colon CAD SR the CT
 series; and the Procedure Log, Spectacle Prescription Report, Macular Grid
 Thickness and Volume Report, and Waveform Annotation SR reference the MR
 Image. It is the input for validating each preset end to end: once the
@@ -193,7 +194,7 @@ dummy item at that place and only there. Planted in
 every file, the first two would sequester every
 instance, and no preset could release any of the collection; planted in one,
 that instance checks sequestration, :data:`REVIEW_FILE` checks review, and
-the other forty-six check each preset's output, the reports where their
+the other fifty-three check each preset's output, the reports where their
 trees are cleaned. Radiopharmaceutical Start
 DateTime, which CT Image does not define there, is planted in no file, so
 the Enhanced PET instance, which lacks an attribute of Type 1, is released
@@ -229,7 +230,7 @@ Manufacturer's Model Name (0008,1090), which Table E.1-1 does not list and
 the Basic Profile keeps, a copy of the RT Plan's RT Plan Label marker
 (:attr:`PlacementKind.REVIEW_COPY`), so the residual search finds a source
 value of another instance in its output and sends it to review. The third
-CT slice remains sequestered; the other forty-six files stay releasable, the
+CT slice remains sequestered; the other fifty-three files stay releasable, the
 reports where their trees are cleaned.
 
 **Manifest.** :class:`CorpusManifest` records, for each file, each
@@ -440,8 +441,8 @@ BRACHY_TREATMENT_RECORD_FILE = "49-rt-brachy-record.dcm"
 TREATMENT_SUMMARY_RECORD_FILE = "50-rt-treatment-summary-record.dcm"
 # The Enhanced RT Image and the Enhanced Continuous RT Image, each of the RT
 # Plan's beam, numbered after the files that open pull requests add.
-ENHANCED_RT_IMAGE_FILE = "51-rt-image-enhanced.dcm"
-ENHANCED_CONTINUOUS_RT_IMAGE_FILE = "52-rt-image-enhanced-continuous.dcm"
+ENHANCED_RT_IMAGE_FILE = "89-rt-image-enhanced.dcm"
+ENHANCED_CONTINUOUS_RT_IMAGE_FILE = "90-rt-image-enhanced-continuous.dcm"
 # The RT Segment Annotation of the Segmentation, and the RT Radiation Set and
 # the three radiations, one of each second-generation radiation IOD, that it
 # gathers, numbered after the files that open pull requests add.
@@ -548,10 +549,10 @@ BRACHY_TREATMENT_RECORD_SERIES = f"{LINKED_UID_ROOT}04600"
 BRACHY_TREATMENT_RECORD = f"{LINKED_UID_ROOT}04601"
 TREATMENT_SUMMARY_RECORD_SERIES = f"{LINKED_UID_ROOT}04700"
 TREATMENT_SUMMARY_RECORD = f"{LINKED_UID_ROOT}04701"
-ENHANCED_RT_IMAGE_SERIES = f"{LINKED_UID_ROOT}04800"
-ENHANCED_RT_IMAGE = f"{LINKED_UID_ROOT}04801"
-ENHANCED_CONTINUOUS_RT_IMAGE_SERIES = f"{LINKED_UID_ROOT}04900"
-ENHANCED_CONTINUOUS_RT_IMAGE = f"{LINKED_UID_ROOT}04901"
+ENHANCED_RT_IMAGE_SERIES = f"{LINKED_UID_ROOT}08500"
+ENHANCED_RT_IMAGE = f"{LINKED_UID_ROOT}08501"
+ENHANCED_CONTINUOUS_RT_IMAGE_SERIES = f"{LINKED_UID_ROOT}08600"
+ENHANCED_CONTINUOUS_RT_IMAGE = f"{LINKED_UID_ROOT}08601"
 SEGMENT_ANNOTATION_SERIES = f"{LINKED_UID_ROOT}06600"
 SEGMENT_ANNOTATION = f"{LINKED_UID_ROOT}06601"
 RADIATION_SET_SERIES = f"{LINKED_UID_ROOT}06700"
@@ -1460,24 +1461,6 @@ _SPECS = (
         PLAN,
         targets=((_REFERENCED_TREATMENT_RECORD_SEQUENCE, BRACHY_TREATMENT_RECORD),),
     ),
-    # The Enhanced RT Image, two digitally reconstructed radiographs of the
-    # RT Plan's beam, and the Enhanced Continuous RT Image, two frames of a
-    # kV acquisition during it, each referencing the RT Plan, as the RT Image
-    # does.
-    _Spec(
-        ENHANCED_RT_IMAGE_FILE,
-        ENHANCED_RT_IMAGE_STORAGE,
-        ENHANCED_RT_IMAGE,
-        ENHANCED_RT_IMAGE_SERIES,
-        PLAN,
-    ),
-    _Spec(
-        ENHANCED_CONTINUOUS_RT_IMAGE_FILE,
-        ENHANCED_CONTINUOUS_RT_IMAGE_STORAGE,
-        ENHANCED_CONTINUOUS_RT_IMAGE,
-        ENHANCED_CONTINUOUS_RT_IMAGE_SERIES,
-        PLAN,
-    ),
     # The RT Segment Annotation annotates the BINARY Segmentation's segments.
     # The RT Radiation Set gathers the C-Arm Photon-Electron Radiation, which
     # its RT Radiation Sequence and Referenced RT Radiation Sequences name;
@@ -1552,6 +1535,25 @@ _SPECS = (
         POSITION_ACQUISITION_INSTRUCTION_SERIES,
         TREATMENT_PREPARATION,
     ),
+    # Numbered after the second-generation RT IODs' files.
+    # The Enhanced RT Image, two digitally reconstructed radiographs of the
+    # RT Plan's beam, and the Enhanced Continuous RT Image, two frames of a
+    # kV acquisition during it, each referencing the RT Plan, as the RT Image
+    # does.
+    _Spec(
+        ENHANCED_RT_IMAGE_FILE,
+        ENHANCED_RT_IMAGE_STORAGE,
+        ENHANCED_RT_IMAGE,
+        ENHANCED_RT_IMAGE_SERIES,
+        PLAN,
+    ),
+    _Spec(
+        ENHANCED_CONTINUOUS_RT_IMAGE_FILE,
+        ENHANCED_CONTINUOUS_RT_IMAGE_STORAGE,
+        ENHANCED_CONTINUOUS_RT_IMAGE,
+        ENHANCED_CONTINUOUS_RT_IMAGE_SERIES,
+        PLAN,
+    ),
 )
 
 
@@ -1561,7 +1563,7 @@ def build_corpus() -> SyntheticCorpus:
     Returns
     -------
     SyntheticCorpus
-        Forty-eight files: three CT slices; the RT Structure Set, RT Plan, RT
+        Fifty-five files: three CT slices; the RT Structure Set, RT Plan, RT
         Dose, and the RT Dose for review; the Enhanced CT Image and Legacy
         Converted Enhanced CT Image; the MR Image, Enhanced MR Image,
         Enhanced MR Color Image, Legacy Converted Enhanced MR Image, and MR
@@ -1577,9 +1579,13 @@ def build_corpus() -> SyntheticCorpus:
         Colon CAD SR, Procedure Log, Spectacle Prescription Report, Macular
         Grid Thickness and Volume Report, and Waveform Annotation SR; the RT
         Ion Plan and RT Ion Beams Treatment Record; the RT Brachy Treatment
-        Record and RT Treatment Summary Record; and the RT Physician Intent,
-        RT Treatment Preparation, and RT Patient Position Acquisition
-        Instruction. Two builds give the same bytes and the same manifest.
+        Record and RT Treatment Summary Record; the RT Segment Annotation, RT
+        Radiation Set, and C-Arm Photon-Electron, Tomotherapeutic, and
+        Robotic-Arm Radiations; the RT Physician Intent, RT Treatment
+        Preparation, and RT Patient Position Acquisition Instruction; and the
+        Enhanced RT Image and Enhanced
+        Continuous RT Image. Two builds give the same bytes and the same
+        manifest.
     """
     markers = _Markers()
     files: list[CorpusFile] = []

@@ -205,8 +205,10 @@ def test_a_plain_z_gives_d_only_to_rt_accessory_holder_slot_id_in_five_generated
 ):
     # Table E.1-1 gives RT Accessory Holder Slot ID Z, and it is Type 1 in RT
     # Accessory Holder Slot Sequence within RT Accessory Holder Definition
-    # Sequence of these IODs. Of the first supported release's IODs, only RT
-    # Patient Position Acquisition Instruction has such a place. A new edition
+    # Sequence of these IODs. Of the IODs of the first supported release,
+    # only C-Arm Photon-Electron Radiation, Robotic-Arm Radiation, and RT
+    # Patient Position Acquisition Instruction have such a place, where it
+    # takes the dummy value (D-021). A new edition
     # that changes where this happens fails here.
     z = {
         attribute.tag
@@ -233,7 +235,9 @@ def test_a_plain_z_gives_d_only_to_rt_accessory_holder_slot_id_in_five_generated
         )
     }
     assert set(FIRST_RELEASE_IODS) & {name for name, _, _ in dummy} == {
-        "RT Patient Position Acquisition Instruction"
+        "C-Arm Photon-Electron Radiation",
+        "Robotic-Arm Radiation",
+        "RT Patient Position Acquisition Instruction",
     }
 
 
@@ -692,8 +696,9 @@ def test_a_plain_x_on_a_required_attribute_in_the_first_release_iods(tables):
             (RT_PRESCRIPTION,),
             PRIOR_TREATMENT_DOSE_DESCRIPTION,
         ): _removal(*EMPTIED),
-        # Type 1C in the Type 3 Position Acquisition Template Identification
-        # Sequence, which goes with them.
+        # The template's name, Type 1, and description, Type 2, in the Type 3
+        # Position Acquisition Template Identification Sequence, which goes
+        # with them.
         **{
             (
                 "RT Patient Position Acquisition Instruction",
@@ -848,7 +853,9 @@ def test_the_places_where_a_plain_action_cannot_stand_in_the_brachy_and_summary_
 
 # The 16 second-generation RT IODs, which the maintainer added to the target
 # coverage on 31 October 2026, reviewed ahead of supporting them against the
-# supported IODs and Enhanced RT Image and Enhanced Continuous RT Image.
+# IODs supported before them, Enhanced RT Image and Enhanced Continuous RT
+# Image among them. RT Segment Annotation, RT Radiation Set, and the three
+# radiations are supported.
 SECOND_GENERATION_RT_IODS = (
     "RT Physician Intent",
     "RT Segment Annotation",
@@ -869,11 +876,13 @@ SECOND_GENERATION_RT_IODS = (
 )
 SECOND_GENERATION_REVIEWED_AGAINST = tuple(
     name
-    for name in (
-        *RECORD_REVIEWED_AGAINST,
-        *RECORD_IODS,
-        "Enhanced RT Image",
-        "Enhanced Continuous RT Image",
+    for name in dict.fromkeys(
+        (
+            *RECORD_REVIEWED_AGAINST,
+            *RECORD_IODS,
+            "Enhanced RT Image",
+            "Enhanced Continuous RT Image",
+        )
     )
     if name not in SECOND_GENERATION_RT_IODS
 )
@@ -947,8 +956,9 @@ def test_the_places_where_a_plain_action_cannot_stand_in_the_second_generation_r
         ): "D"
         for inner in ("(0082,0034)", "(0082,0035)")
     }
-    # The position acquisition template's name and description are Type 1C
-    # in its Type 3 identification sequence, which their plain X removes.
+    # The position acquisition template's name, Type 1, and description,
+    # Type 2, are in its Type 3 identification sequence, which their plain X
+    # removes.
     template = {
         (
             "RT Patient Position Acquisition Instruction",
