@@ -2217,11 +2217,11 @@ class _Instance:
 
         It holds two frames of 2 by 2 pixels, whose spacing the Shared
         Functional Groups Sequence (5200,9229) gives. An Enhanced Continuous
-        RT Image's Selected Frame Functional Groups Sequence (3002,0101) has
-        an item for each frame, which names it by its Selected Frame Number
-        (3002,0100), as the Sparse Multi-frame Functional Groups Module of
-        PS3.3 C.7.6.29 describes a selection of the frames; the markers of
-        the macros are planted in the first.
+        RT Image's Selected Frame Functional Groups Sequence (3002,0101)
+        selects only the first frame, by its Selected Frame Number
+        (3002,0100), since the Sparse Multi-frame Functional Groups Module of
+        PS3.3 C.7.6.29 selects fewer frames than the image has; the markers
+        of the macros are planted in that item.
         """
         put = self._set
         continuous = self.spec.sop_class == ENHANCED_CONTINUOUS_RT_IMAGE_STORAGE
@@ -2234,8 +2234,7 @@ class _Instance:
         shared = _items(["(5200,9229)"])
         put((*shared, ("(0028,9110)", 0)), "(0028,0030)", ["1", "1"])
         if continuous:
-            for frame in range(2):
-                put((("(3002,0101)", frame),), "(3002,0100)", [str(frame + 1)])
+            put((("(3002,0101)", 0),), "(3002,0100)", ["1"])
         self._add_pixels(16, 0, struct.pack("<8H", *range(0, 800, 100)))
 
     def _add_registration(self) -> None:
