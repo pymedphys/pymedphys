@@ -442,12 +442,18 @@ REVIEWED_DUMMY_SEQUENCES = {"(0040,1101)", "(0008,1111)", "(0040,A073)"}
 # Interlock Resolution User Sequence (D-021).
 INSTITUTION_CODE_SEQUENCE = "(0008,0082)"
 INTERLOCK_RESOLUTION_USER = "(300A,0746)"
+# Operator Identification Sequence's reviewed rule, which keeps its items,
+# holds only directly in an item of Override Sequence (D-021).
+OPERATOR_IDENTIFICATION_SEQUENCE = "(0008,1072)"
+OVERRIDE_SEQUENCE = "(3008,0060)"
 
 
 def _reviewed(tag, path):
     """Return whether a reviewed rule writes D's value for a sequence at a place."""
     if tag == INSTITUTION_CODE_SEQUENCE:
         return path[-1:] == (INTERLOCK_RESOLUTION_USER,)
+    if tag == OPERATOR_IDENTIFICATION_SEQUENCE:
+        return path[-1:] == (OVERRIDE_SEQUENCE,)
     return tag in REVIEWED_DUMMY_SEQUENCES
 
 
@@ -529,8 +535,9 @@ def test_an_attribute_whose_removal_sequesters_is_planted_in_one_instance(corpus
     # with dummy values (D-021), the Requested Procedure ID of its Referenced
     # Request Sequence, which a plain X empties there (D-020), the
     # Institution Code Sequence of each treatment record's interlock
-    # resolution user, whose dummy item a reviewed rule writes (D-021), and
-    # Source Manufacturer in the RT Brachy Treatment Record's Recorded Source
+    # resolution user, whose dummy item a reviewed rule writes (D-021), the
+    # Operator Identification Sequence of each radiation record's override,
+    # whose items a reviewed rule keeps (D-021), and Source Manufacturer in the RT Brachy Treatment Record's Recorded Source
     # Sequence, which a plain X empties there too, are planted.
     both = {"(0010,2297)", "(0010,2299)"}
     only_in = {"Enhanced PET Image": {"(0018,1078)"}}
