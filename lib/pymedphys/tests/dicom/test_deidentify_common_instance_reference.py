@@ -26,10 +26,15 @@ from pymedphys._dicom.deidentify.file_layout import ElementPath
 
 MODULE = "Common Instance Reference"
 # The supported IODs that make the module mandatory, from the 2026d PS3.3
-# Tables A.39.1-1 and A.39.2-1.
-MANDATORY = {"Spatial Registration", "Deformable Spatial Registration"}
-# Required where a Derivation Image functional group is present.
-CONDITIONAL = {"Segmentation"}
+# Tables A.39.1-1, A.39.2-1, and A.46-1.
+MANDATORY = {
+    "Spatial Registration",
+    "Deformable Spatial Registration",
+    "Real World Value Mapping",
+}
+# Required where a Derivation Image functional group is present, or, in a
+# Parametric Map, a Referenced Image functional group.
+CONDITIONAL = {"Segmentation", "Parametric Map"}
 # The supported IODs without the module: the Structured Reports, whose SR
 # Document General Module references their evidence instead (PS3.3 Section
 # A.35).

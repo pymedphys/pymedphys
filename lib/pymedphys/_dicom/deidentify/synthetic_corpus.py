@@ -2107,8 +2107,13 @@ class _Instance:
             self._add_parametric_map()
         elif self.spec.sop_class == REAL_WORLD_VALUE_MAPPING_STORAGE:
             put((), "(0008,0060)", ["RWV"])
+            # Each item maps the images it names by the items of its own Real
+            # World Value Mapping Sequence (PS3.3 Table C.25.2-1).
             self._add_value_mapping(
-                _items(["(0040,9094)"]), _SUV_BODY_WEIGHT, (0, 32767), 0.0005
+                _items(["(0040,9094)", "(0040,9096)"]),
+                _SUV_BODY_WEIGHT,
+                (0, 32767),
+                0.0005,
             )
         elif self.spec.sop_class == RT_IMAGE_STORAGE:
             put((), "(0008,0060)", ["RTIMAGE"])

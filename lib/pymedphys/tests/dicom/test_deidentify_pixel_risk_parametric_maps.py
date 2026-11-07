@@ -15,9 +15,12 @@
 """Parametric Maps, which can show the head's outline, and Real World Value
 Mappings to a standardised uptake value, which may disclose body weight."""
 
+import io
+
 from pymedphys._imports import pydicom, pytest
 
 from pymedphys._dicom.deidentify import pixel_risk, sop_classes
+from pymedphys._dicom.deidentify import synthetic_corpus as corpus_module
 
 from .test_deidentify_pixel_risk import (
     EXPLICIT_LE,
@@ -48,21 +51,26 @@ def _parametric_map(number: int, **attributes) -> "pydicom.Dataset":
     return _multi_frame(number, PARAMETRIC_MAP, ImageType=ADC, **attributes)
 
 
-def _value_mapping(*items: "pydicom.Dataset") -> "pydicom.Dataset":
+def _value_mapping(*images: "list[pydicom.Dataset]") -> "pydicom.Dataset":
     """A Real World Value Mapping instance, without pixel data, whose
-    Referenced Image Real World Value Mapping Sequence holds ``items``,
-    each naming one image."""
+    Referenced Image Real World Value Mapping Sequence has an item for each
+    of ``images``, naming one image and mapping its values by the given
+    Real World Value Mapping Sequence items (PS3.3 Table C.25.2-1)."""
     dataset = pydicom.Dataset()
     dataset.SOPClassUID = REAL_WORLD_VALUE_MAPPING
     dataset.SOPInstanceUID = "1.2.3.5"
     dataset.PatientName = SENTINEL
     dataset.Modality = "RWV"
-    for item in items:
+    items = []
+    for mappings in images:
         image = pydicom.Dataset()
         image.ReferencedSOPClassUID = "1.2.840.10008.5.1.4.1.1.128"
         image.ReferencedSOPInstanceUID = "1.2.3.4"
+        item = pydicom.Dataset()
         item.ReferencedImageSequence = [image]
-    dataset.ReferencedImageRealWorldValueMappingSequence = list(items)
+        item.RealWorldValueMappingSequence = list(mappings)
+        items.append(item)
+    dataset.ReferencedImageRealWorldValueMappingSequence = items
     return dataset
 
 
@@ -158,22 +166,45 @@ def test_a_real_world_value_mapping_to_suv_may_disclose_body_weight(
     transfer_syntax, code, long_code
 ):
     # A Real World Value Mapping instance maps the values of the images that
-    # each item names in the item itself, so its slope to SUV, with the
-    # images' Radionuclide Total Dose, gives the weight as a PET image's
-    # own mapping would.
-    dataset = _value_mapping(_mapping("Bq/ml"), _mapping(code, long_code))
+    # each item names by the item's own Real World Value Mapping Sequence,
+    # so a mapping there to SUV, with the images' Radionuclide Total Dose,
+    # gives the weight as a PET image's own mapping would.
+    dataset = _value_mapping(
+        [_mapping("Bq/ml")], [_mapping("Bq/ml"), _mapping(code, long_code)]
+    )
     tag = "(0008,0119)" if long_code else "(0008,0100)"
     assessment = _assess(dataset, transfer_syntax)
     assert not assessment.pixel_data
     assert _found(assessment) == {
-        (Indicator.SUV_MAPPING, f"(0040,9094)[1] > (0040,08EA)[0] > {tag}")
+        (
+            Indicator.SUV_MAPPING,
+            f"(0040,9094)[1] > (0040,9096)[1] > (0040,08EA)[0] > {tag}",
+        )
     }
     assert assessment.risks == {Risk.BODY_WEIGHT}
     assert SENTINEL not in repr(assessment)
 
 
-def test_a_real_world_value_mapping_to_another_unit_has_no_indicator():
-    dataset = _value_mapping(_mapping("Bq/ml"), _mapping("um2/s"))
+@pytest.mark.deid_requirement("MIDI-BP-01")
+def test_each_suv_mapping_of_a_real_world_value_mapping_is_found():
+    dataset = _value_mapping(
+        [_mapping("g/ml{SUVbw}"), _mapping("um2/s")],
+        [_mapping("Bq/ml"), _mapping("g/ml{SUVbsa}")],
+    )
+    assert _found(pixel_risk.assess_pixel_risk(dataset)) == {
+        (
+            Indicator.SUV_MAPPING,
+            "(0040,9094)[0] > (0040,9096)[0] > (0040,08EA)[0] > (0008,0100)",
+        ),
+        (
+            Indicator.SUV_MAPPING,
+            "(0040,9094)[1] > (0040,9096)[1] > (0040,08EA)[0] > (0008,0100)",
+        ),
+    }
+
+
+def test_a_real_world_value_mapping_to_other_units_has_no_indicator():
+    dataset = _value_mapping([_mapping("Bq/ml")], [_mapping("um2/s"), _mapping("1")])
     assert not pixel_risk.assess_pixel_risk(dataset).findings
 
 
@@ -182,33 +213,56 @@ def test_a_real_world_value_mapping_to_another_unit_has_no_indicator():
     [
         ("instance", 0x00409094, "LO", SENTINEL.encode(), "(0040,9094)"),
         (
-            "item",
+            "image",
+            0x00409096,
+            "LO",
+            SENTINEL.encode(),
+            "(0040,9094)[0] > (0040,9096)",
+        ),
+        (
+            "mapping",
             0x004008EA,
             "LO",
             SENTINEL.encode(),
-            "(0040,9094)[0] > (0040,08EA)",
+            "(0040,9094)[0] > (0040,9096)[0] > (0040,08EA)",
         ),
         (
             "unit",
             0x00080100,
             "SH",
             b"g/ml\\1",
-            "(0040,9094)[0] > (0040,08EA)[0] > (0008,0100)",
+            "(0040,9094)[0] > (0040,9096)[0] > (0040,08EA)[0] > (0008,0100)",
         ),
     ],
 )
 def test_an_unreadable_real_world_value_mapping_is_unreadable_evidence(
     where, tag, vr, value, path
 ):
-    item = _mapping("Bq/ml")
-    dataset = _value_mapping(item)
+    mapping = _mapping("Bq/ml")
+    dataset = _value_mapping([mapping])
     held = {
         "instance": dataset,
-        "item": item,
-        "unit": item.MeasurementUnitsCodeSequence[0],
+        "image": dataset.ReferencedImageRealWorldValueMappingSequence[0],
+        "mapping": mapping,
+        "unit": mapping.MeasurementUnitsCodeSequence[0],
     }[where]
     _with_raw(held, tag, vr, value)
     assessment = pixel_risk.assess_pixel_risk(dataset)
     assert _found(assessment) == {(Indicator.UNREADABLE, path)}
     assert assessment.risks == {Risk.BODY_WEIGHT}
     assert SENTINEL not in repr(assessment)
+
+
+def test_the_corpus_real_world_value_mapping_to_suv_is_found():
+    (data,) = (
+        file.data
+        for file in corpus_module.build_corpus().files
+        if file.name == corpus_module.REAL_WORLD_VALUE_MAPPING_FILE
+    )
+    assessment = pixel_risk.assess_pixel_risk(pydicom.dcmread(io.BytesIO(data)))
+    assert _found(assessment) == {
+        (
+            Indicator.SUV_MAPPING,
+            "(0040,9094)[0] > (0040,9096)[0] > (0040,08EA)[0] > (0008,0100)",
+        )
+    }

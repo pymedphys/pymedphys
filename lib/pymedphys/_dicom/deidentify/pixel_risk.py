@@ -55,9 +55,9 @@ The indicators are:
   such as "Skin 5mm" is not one.
 - Units (0054,1001) of GML or CM2ML, values scaled to a standardised uptake
   value (SUV), or a Real World Value Mapping Sequence (0040,9096) item, at
-  the top level or in a shared or per-frame functional group, or a
-  Referenced Image Real World Value Mapping Sequence (0040,9094) item, the
-  mapping that a Real World Value Mapping instance gives the images it
+  the top level, in a shared or per-frame functional group, or in a
+  Referenced Image Real World Value Mapping Sequence (0040,9094) item,
+  where a Real World Value Mapping instance maps the images that the item
   names (PS3.3 Section C.25.2), whose Measurement Units Code Sequence
   (0040,08EA) gives a Code Value or Long Code Value that contains ``{SUV``, as each SUV unit of PS3.16 CID 85
   does, such as ``g/ml{SUVbw}``. The Basic Profile removes Patient's Weight
@@ -663,13 +663,13 @@ def _body_weight_findings(dataset: pydicom.Dataset) -> Iterator[Finding]:
         for item, within in _sequence_items(dataset, (), group, unreadable):
             mappings.extend(_sequence_items(item, within, mapping, unreadable))
     # A Real World Value Mapping instance maps the values of the images that
-    # each item names in the item itself, which includes the Real World
-    # Value Mapping Item Macro (PS3.3 Table C.25.2-1).
-    mappings.extend(
-        _sequence_items(
-            dataset, (), _REFERENCED_IMAGE_REAL_WORLD_VALUE_MAPPING_SEQUENCE, unreadable
-        )
-    )
+    # each item names in the Real World Value Mapping Sequence of the item,
+    # which includes the Real World Value Mapping Macro (PS3.3 Table
+    # C.25.2-1).
+    for item, within in _sequence_items(
+        dataset, (), _REFERENCED_IMAGE_REAL_WORLD_VALUE_MAPPING_SEQUENCE, unreadable
+    ):
+        mappings.extend(_sequence_items(item, within, mapping, unreadable))
     for item, within in mappings:
         for unit, nested in _sequence_items(
             item, within, _MEASUREMENT_UNITS_CODE_SEQUENCE, unreadable
