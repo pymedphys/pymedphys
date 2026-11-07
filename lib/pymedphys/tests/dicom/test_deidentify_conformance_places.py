@@ -52,7 +52,20 @@ RESPONSIBLE_PERSON = "(0010,2297)"  # X; Type 2C at the top level
 OVERLAY_DATA = "(60xx,3000)"  # X; its Overlay Plane Module is U in CT Image
 VERIFYING_OBSERVER_SEQUENCE = "(0040,A073)"  # D; only Structured Report IODs
 CONTENT_SEQUENCE = "(0040,A730)"  # D; only Structured Report and Key Object IODs
-GRAPHIC_ANNOTATION_SEQUENCE = "(0070,0001)"  # D; no supported IOD defines it
+FLOW_IDENTIFIER_SEQUENCE = "(0034,0001)"  # D; no supported IOD defines it
+GRAPHIC_ANNOTATION_SEQUENCE = "(0070,0001)"  # D; Type 1 in its module
+# The softcopy Presentation States, in the statement's order.
+PRESENTATION_STATES = (
+    "Advanced Blending Presentation State",
+    "Blending Softcopy Presentation State",
+    "Color Softcopy Presentation State",
+    "Grayscale Softcopy Presentation State",
+    "Planar MPR Volumetric Presentation State",
+    "Pseudo-Color Softcopy Presentation State",
+    "Variable Modality LUT Softcopy Presentation State",
+    "Volume Rendering Volumetric Presentation State",
+    "XA/XRF Grayscale Softcopy Presentation State",
+)
 # The Structured Reports and the Key Object Selection Document, in the
 # statement's order.
 STRUCTURED_REPORTS = (
@@ -254,13 +267,26 @@ def test_a_plain_x_on_overlay_data_removes_its_overlay_group():
 
 @pytest.mark.deid_requirement("PS3.15-E.1.3-01")
 def test_a_plain_d_that_no_supported_iod_defines_is_removed():
-    entry = _entry(_statement("basic"), GRAPHIC_ANNOTATION_SEQUENCE)
+    entry = _entry(_statement("basic"), FLOW_IDENTIFIER_SEQUENCE)
     assert (entry.action, entry.places, entry.elsewhere) == ("D", (), "X")
     row = _row(
         conformance_markdown.render_markdown(_statement("basic")),
-        GRAPHIC_ANNOTATION_SEQUENCE,
+        FLOW_IDENTIFIER_SEQUENCE,
     )
     assert row.endswith("| X elsewhere. |")
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
+def test_a_plain_d_on_a_presentation_states_graphic_annotations_sequesters_it():
+    # A sequence has no dummy value (D-021), and the Graphic Annotation
+    # Module requires the sequence at the top level wherever the module is
+    # present.
+    entry = _entry(_statement("basic"), GRAPHIC_ANNOTATION_SEQUENCE)
+    assert (entry.action, entry.elsewhere) == ("D", "X")
+    assert entry.places == tuple(
+        conformance.Place(name, (), conformance.SEQUESTER)
+        for name in PRESENTATION_STATES
+    )
 
 
 @pytest.mark.deid_requirement("PS3.15-E.1.3-01")

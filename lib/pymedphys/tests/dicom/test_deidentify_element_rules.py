@@ -236,6 +236,7 @@ KEPT_URIS = {"(0008,010E)": "CodingSchemeURL", "(0008,0120)": "URNCodeValue"}
 # place that no removed sequence encloses, so that X/Z/D resolves to D there.
 REQUIRED_URIS = {"(0028,7FE0)"}
 ICC_PROFILE = "(0028,2000)"
+COLOR_SPACE = "(0028,2002)"
 # A number that can hold anything, such as a date, which Z or D replaces
 # with its rank among its study's Series Numbers.
 SERIES_NUMBER = "(0020,0011)"
@@ -615,15 +616,21 @@ def test_the_new_rules_remove_by_type_where_the_supported_iods_allow_it():
     # patient are Type 3 wherever the first supported release's IODs define
     # them, so they are removed, and so is ICC Profile, except at the top
     # level of three enhanced IODs, where it is Type 1 and needs a dummy
-    # value, and of Segmentation, whose ICC Profile Module is required where
-    # a label map is PALETTE COLOR. Retrieve URL and Retrieve URI are
-    # required only in sequences
+    # value, of Segmentation, whose ICC Profile Module is required where a
+    # label map is PALETTE COLOR, and of four softcopy Presentation States:
+    # Color, Pseudo-Color, and Blending, which require the module, and
+    # Variable Modality LUT, which requires it with a Palette Color Lookup
+    # Table, and of three other Presentation States: Advanced Blending, which
+    # requires the module, and Planar MPR and Volume Rendering Volumetric,
+    # whose display modules make it, and Color Space, Type 1C. Retrieve URL
+    # and Retrieve URI are required only in sequences
     # that the table removes, and three UR attributes are required at places
     # where removal by Type needs a dummy value.
     tables = iods.load_iod_tables()
     basic = _rules()
     required = set()
     icc_required = set()
+    color_space_required = set()
     for name in SUPPORTED_IODS:
         iod = tables.iods[name]
         for definition in iod.definitions:
@@ -634,6 +641,9 @@ def test_the_new_rules_remove_by_type_where_the_supported_iods_allow_it():
             )
             if definition.tag == ICC_PROFILE and resolved != "X":
                 icc_required.add((name, definition.path))
+                assert resolved == "D", (name, definition)
+            elif definition.tag == COLOR_SPACE and resolved != "X":
+                color_space_required.add((name, definition.path))
                 assert resolved == "D", (name, definition)
             elif definition.tag not in URIS:
                 assert resolved == "X", (name, definition)
@@ -654,7 +664,21 @@ def test_the_new_rules_remove_by_type_where_the_supported_iods_allow_it():
             "Enhanced MR Image",
             "Enhanced MR Color Image",
             "Segmentation",
+            "Color Softcopy Presentation State",
+            "Pseudo-Color Softcopy Presentation State",
+            "Blending Softcopy Presentation State",
+            "Variable Modality LUT Softcopy Presentation State",
+            "Advanced Blending Presentation State",
+            "Planar MPR Volumetric Presentation State",
+            "Volume Rendering Volumetric Presentation State",
         )
+    }
+    # Color Space is Type 1C beside ICC Profile in the display modules of the
+    # two volumetric Presentation States; a code string has no dummy value,
+    # so an instance that holds it there is sequestered (D-021).
+    assert color_space_required == {
+        ("Planar MPR Volumetric Presentation State", ()),
+        ("Volume Rendering Volumetric Presentation State", ()),
     }
 
 

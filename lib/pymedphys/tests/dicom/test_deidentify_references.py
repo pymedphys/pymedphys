@@ -59,6 +59,27 @@ STRUCTURED_REPORTS = (
     "Macular Grid Thickness and Volume Report",
     "Waveform Annotation SR",
 )
+# The softcopy Presentation States, which reference the images they apply to
+# in the Presentation State Relationship Module or, for the Blending
+# Softcopy Presentation State, the Presentation State Blending Module, and
+# include no Common Instance Reference Module.
+PRESENTATION_STATES = (
+    "Grayscale Softcopy Presentation State",
+    "Color Softcopy Presentation State",
+    "Pseudo-Color Softcopy Presentation State",
+    "XA/XRF Grayscale Softcopy Presentation State",
+    "Variable Modality LUT Softcopy Presentation State",
+)
+BLENDING_PRESENTATION_STATE = "Blending Softcopy Presentation State"
+# The waveform Presentation States, which reference the waveforms they apply
+# to in the Presentation State Relationship Module and include no Common
+# Instance Reference Module.
+WAVEFORM_PRESENTATION_STATES = (
+    "Waveform Presentation State",
+    "Waveform Acquisition Presentation State",
+)
+# Blending Sequence (0070,0402).
+BLENDING = "(0070,0402)"
 # Referenced Request Sequence.
 REFERENCED_REQUEST = "(0040,A370)"
 # The evidence sequences of SR Document General: Current Requested Procedure
@@ -160,17 +181,56 @@ RT_REFERENCES = [
     # CT Image: the plan in the CT Image module, and General Reference.
     ("CT Image", synthetic.REFERENCED_PLAN, Level.INSTANCE),
     ("CT Image", synthetic.REFERENCED_IMAGE, Level.INSTANCE),
-    # Every IOD but the reports: Common Instance Reference, and the study in
-    # General Study and in each request.
+    # Every IOD but the reports: the study in General Study and in each
+    # request.
     *(
         (iod, attribute, level)
         for iod in FIRST_RELEASE_IODS
         if iod not in STRUCTURED_REPORTS
         for attribute, level in [
-            (("(0008,1115)", "(0020,000E)"), Level.SERIES),
-            (("(0008,1200)", "(0020,000D)"), Level.STUDY),
             (synthetic.REFERENCED_STUDY, Level.STUDY),
             (synthetic.REQUESTED_REFERENCED_STUDY, Level.STUDY),
+        ]
+    ),
+    # Every IOD but the reports and the Presentation States: Common Instance
+    # Reference.
+    *(
+        (iod, attribute, level)
+        for iod in FIRST_RELEASE_IODS
+        if iod not in STRUCTURED_REPORTS
+        and iod not in PRESENTATION_STATES
+        and iod != BLENDING_PRESENTATION_STATE
+        and iod not in WAVEFORM_PRESENTATION_STATES
+        for attribute, level in [
+            (("(0008,1115)", "(0020,000E)"), Level.SERIES),
+            (("(0008,1200)", "(0020,000D)"), Level.STUDY),
+        ]
+    ),
+    # The Presentation States: the series and images that each applies to,
+    # and, for the Blending Softcopy Presentation State, the study of each
+    # of the two series it blends.
+    *(
+        (iod, attribute, level)
+        for iod in PRESENTATION_STATES
+        for attribute, level in [
+            (("(0008,1115)", "(0020,000E)"), Level.SERIES),
+            (("(0008,1115)", "(0008,1140)", "(0008,1155)"), Level.INSTANCE),
+        ]
+    ),
+    *(
+        (iod, attribute, level)
+        for iod in WAVEFORM_PRESENTATION_STATES
+        for attribute, level in [
+            (("(0008,1115)", "(0020,000E)"), Level.SERIES),
+            (("(0008,1115)", "(0008,113A)", "(0008,1155)"), Level.INSTANCE),
+        ]
+    ),
+    *(
+        (BLENDING_PRESENTATION_STATE, attribute, level)
+        for attribute, level in [
+            ((BLENDING, "(0020,000D)"), Level.STUDY),
+            ((BLENDING, "(0008,1115)", "(0020,000E)"), Level.SERIES),
+            ((BLENDING, "(0008,1115)", "(0008,1140)", "(0008,1155)"), Level.INSTANCE),
         ]
     ),
     # Each report: the study in General Study and in each request; the
@@ -215,6 +275,7 @@ STUDY_SEQUENCES = {"(0008,1110)", "(3006,0012)"}
 OTHER_SEQUENCES = {
     "(0008,1111)",  # Referenced Performed Procedure Step Sequence
     "(0008,1120)",  # Referenced Patient Sequence
+    "(0008,113A)",  # Referenced Waveform Sequence
     "(0008,1140)",  # Referenced Image Sequence
     "(0008,114A)",  # Referenced Instance Sequence
     "(0008,114B)",  # Referenced Real World Value Mapping Instance Sequence
@@ -226,12 +287,16 @@ OTHER_SEQUENCES = {
     "(0018,990D)",  # Referenced Performed Protocol Sequence
     "(0020,9172)",  # Conversion Source Attributes Sequence
     "(0038,0100)",  # Pertinent Documents Sequence
+    "(003A,020A)",  # Source Waveform Sequence
     "(0040,A390)",  # HL7 Structured Document Reference Sequence
+    "(0040,B030)",  # Structured Waveform Annotation Sequence
     "(0042,0013)",  # Source Instance Sequence
     "(0062,0012)",  # Used Segments Sequence
     "(0070,0314)",  # Used Fiducials Sequence
     "(0070,0315)",  # Used RT Structure Set ROI Sequence
     "(0070,0404)",  # Referenced Spatial Registration Sequence
+    "(0070,1104)",  # Rendered Image Reference Sequence
+    "(0070,1903)",  # Referenced Structured Context Sequence
     "(3006,0016)",  # Contour Image Sequence
     "(3006,0018)",  # Predecessor Structure Set Sequence
     "(3008,0030)",  # Referenced Treatment Record Sequence
@@ -253,6 +318,7 @@ NOT_FOLLOWED = {
     "(0008,3010)": "identifies an irradiation event",
     "(0008,3012)": "identifies a radiopharmaceutical administration event",
     "(0018,1002)": "identifies a device",
+    "(0028,1199)": "identifies a palette colour lookup table",
     "(0020,9164)": "identifies a dimension organisation",
     "(0040,0554)": "identifies a specimen",
     "(0040,A124)": "is the value of a content item",
@@ -264,6 +330,8 @@ NOT_FOLLOWED = {
     "(0062,0021)": "identifies a finding or feature tracked across instances",
     "(0070,031A)": "refers to a fiducial within an instance",
     "(0070,031B)": "refers to a fiducial within an instance",
+    "(0070,1209)": "identifies a set of inputs within a Presentation State",
+    "(0070,1904)": "refers to a content item within a structured context",
     "(0088,0140)": "identifies a file set",
     "(0400,0100)": "identifies a digital signature",
     "(300A,0013)": "identifies a dose reference within a plan",
