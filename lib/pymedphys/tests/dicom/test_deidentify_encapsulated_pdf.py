@@ -22,6 +22,7 @@ it is written.
 """
 
 import io
+import itertools
 import os
 import shutil
 import tempfile
@@ -41,7 +42,6 @@ from pymedphys._dicom.deidentify.walker import SequesterReason
 from . import _corpus_run
 from . import _synthetic_references as synthetic
 from .test_deidentify_pilot_command import _pilot, _source
-from .test_deidentify_supplementary_actions import _custom_option_sets
 
 pytestmark = [pytest.mark.pydicom, pytest.mark.usefixtures("pydicom_behaviour")]
 
@@ -107,14 +107,26 @@ def _encapsulated_pdf():
 def _policies():
     """Every preset, every set of the presets' options, and each other option.
 
-    Each option that the engine applies and no preset selects, such as Retain
-    UIDs or Clean Pixel Data, is taken alone.
+    The sets are every subset of the options that the presets select, among
+    them Clean Recognizable Visual Features, that a custom policy accepts, so
+    without both Retain Device Identity and Retain Longitudinal Temporal
+    Information with Modified Dates. Each option that the engine applies and
+    no preset selects, such as Retain UIDs or Clean Pixel Data, is taken alone.
     """
-    in_presets = {option for options in policy.PRESETS.values() for option in options}
+    in_presets = [
+        option
+        for option in policy.ENGINE_OPTIONS
+        if any(option in options for options in policy.PRESETS.values())
+    ]
+    subsets = [
+        subset
+        for size in range(len(in_presets) + 1)
+        for subset in itertools.combinations(in_presets, size)
+        if not {policy.DEVICE_IDENTITY, policy.MODIFIED_DATES} <= set(subset)
+    ]
     others = [(option,) for option in policy.ENGINE_OPTIONS if option not in in_presets]
     return [policy.compose_policy(preset) for preset in policy.PRESETS] + [
-        policy.compose_custom_policy(options)
-        for options in [*_custom_option_sets(), *others]
+        policy.compose_custom_policy(options) for options in [*subsets, *others]
     ]
 
 
