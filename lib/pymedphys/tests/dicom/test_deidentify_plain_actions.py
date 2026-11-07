@@ -20,6 +20,7 @@ from pymedphys._imports import pytest
 
 from pymedphys._dicom.deidentify import (
     compound_actions,
+    dummy_values,
     iods,
     standard,
     supplementary_actions,
@@ -749,7 +750,8 @@ def _places_a_plain_action_cannot_keep_valid(tables, names):
 
     A plain X on an attribute that the IOD requires, with what it removes
     there; a plain Z on a Type 1 attribute; and a D, plain or resolved by
-    Type, on a sequence or a URL, which have no dummy value (D-021). Places
+    Type, on an attribute of a VR without a generic dummy value, such as a
+    sequence or a URL (D-021). Places
     inside a sequence that the Basic Profile removes are left out, since the
     attribute goes with it.
     """
@@ -778,7 +780,7 @@ def _places_a_plain_action_cannot_keep_valid(tables, names):
             if "Z" in actions and strictest == "1":
                 found[name, path, definition.tag, "Z"] = "Z"
             action = basic.get(definition.tag)
-            if {"SQ", "UR"} & set(dictionary[definition.tag].vrs) and action:
+            if set(dictionary[definition.tag].vrs) - dummy_values.DUMMY_VRS and action:
                 resolved = (
                     resolve_in_iod(iod, tag, path, action)
                     if action in compound_actions.COMPOUND_ACTIONS
@@ -896,7 +898,14 @@ TOLERANCE_RECORD_IODS = (
 )
 OPERATOR_IDENTIFICATION = "(0008,1072)"
 REFERENCED_STUDY = "(0008,1110)"
-SELECTOR_UR_VALUE = "(0072,0071)"
+# The selector values whose VRs have no dummy value: AE, AS, OB, UN, and UR.
+SELECTOR_VALUES_WITHOUT_DUMMY = (
+    "(0072,005E)",  # Selector AE Value
+    "(0072,005F)",  # Selector AS Value
+    "(0072,0065)",  # Selector OB Value
+    "(0072,006D)",  # Selector UN Value
+    "(0072,0071)",  # Selector UR Value
+)
 POSITION_ACQUISITION_TEMPLATE_NAME = "(3002,0121)"
 POSITION_ACQUISITION_TEMPLATE_DESCRIPTION = "(3002,0123)"
 PRIOR_TREATMENT_DOSE_DESCRIPTION = "(3010,0061)"
@@ -945,16 +954,18 @@ def test_the_places_where_a_plain_action_cannot_stand_in_the_second_generation_r
             ("RT Physician Intent", (RT_PRESCRIPTION, "(3010,0076)")),
         )
     }
-    # Selector UR Value, which Table E.1-1 gives D, is Type 1C where a
-    # constraint holds a URL, which has no dummy value (D-021).
-    url = {
+    # Selector AE, AS, OB, UN, and UR Value, which Table E.1-1 gives D, are
+    # Type 1C where a constraint holds a value of their VR, which has no
+    # dummy value (D-021).
+    selector = {
         (
             "RT Patient Position Acquisition Instruction",
             (*PARAMETERS_SPECIFICATION, inner),
-            SELECTOR_UR_VALUE,
+            tag,
             "D",
         ): "D"
         for inner in ("(0082,0034)", "(0082,0035)")
+        for tag in SELECTOR_VALUES_WITHOUT_DUMMY
     }
     # The position acquisition template's name, Type 1, and description,
     # Type 2, are in its Type 3 identification sequence, which their plain X
@@ -1012,7 +1023,14 @@ def test_the_places_where_a_plain_action_cannot_stand_in_the_second_generation_r
             "RT Patient Position Acquisition Instruction",
         )
     }
-    assert new == {**operator, **study, **url, **template, **preparation, **slot}
+    assert new == {
+        **operator,
+        **study,
+        **selector,
+        **template,
+        **preparation,
+        **slot,
+    }
     # Each other place matches one that the IODs reviewed before them have,
     # with the same removal: Responsible Person and Responsible Organization
     # in the Patient Module of all 16, and the D on the sequences that
