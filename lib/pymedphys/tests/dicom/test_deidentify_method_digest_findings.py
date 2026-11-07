@@ -353,7 +353,7 @@ def test_a_run_releases_and_counts_a_patient_id_found_in_its_digest(tmp_path):
 
     assert [outcome.status for outcome in result.outcomes] == [run.Status.RELEASED] * 3
     report = json.loads((result.release / RELEASE_REPORT).read_text(encoding="utf-8"))
-    assert report["format"] == FORMAT == "pymedphys-deid-release-report/54"
+    assert report["format"] == FORMAT == "pymedphys-deid-release-report/63"
     assert [
         (entry["attribute"], entry["found_in"], entry["count"])
         for entry in report["exempted_findings"]
