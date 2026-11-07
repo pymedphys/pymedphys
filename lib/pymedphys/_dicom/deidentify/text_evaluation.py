@@ -200,14 +200,32 @@ def subject_of(source: object) -> str:
     return subject
 
 
+def namespace_of(source: object) -> str:
+    """Where a case's subject is named, by which the split and the bootstrap
+    key it: the source's ``subject_namespace``, which collections that hold
+    the same patients share, or else its collection."""
+    namespace = getattr(source, "subject_namespace", None)
+    if namespace is None:
+        return str(getattr(source, "collection"))
+    if not isinstance(namespace, str) or not namespace:
+        raise EvaluationRefused("A case's subject namespace must be a name.")
+    return namespace
+
+
 def split_of(
-    collection: str, case: str, held_out_collections: Iterable[str] = ()
+    collection: str,
+    case: str,
+    held_out_collections: Iterable[str] = (),
+    *,
+    namespace: str | None = None,
 ) -> str:
     """The part of the split that a case belongs to, by :data:`SPLIT_RULE`,
-    for a case's subject (:func:`subject_of`) as ``case``."""
+    for a case's subject (:func:`subject_of`) as ``case``, named in
+    ``namespace`` (:func:`namespace_of`), its collection by default."""
     if collection in set(held_out_collections):
         return "held-out"
-    digest = hashlib.sha256("\0".join((SPLIT_SALT, collection, case)).encode()).digest()
+    named = collection if namespace is None else namespace
+    digest = hashlib.sha256("\0".join((SPLIT_SALT, named, case)).encode()).digest()
     return "held-out" if int.from_bytes(digest[:8], "big") % 3 == 0 else "tuning"
 
 
@@ -325,6 +343,8 @@ class CaseResult:
     subject : str
         Its subject (:func:`subject_of`), whose cases' clusters the
         bootstrap resamples as one; no summary or report names it.
+    namespace : str
+        Where its subject is named (:func:`namespace_of`).
     """
 
     collection: str
@@ -335,6 +355,7 @@ class CaseResult:
     crashed: str | None = None
     public: dict[str, str] | None = None
     subject: str = dataclasses.field(default="", repr=False)
+    namespace: str = dataclasses.field(default="", repr=False)
 
 
 @dataclasses.dataclass
@@ -399,7 +420,13 @@ def _case(
     source: CaseSource, detector: MeasuredDetector, settings: EvaluationSettings
 ) -> CaseResult:
     subject = subject_of(source)
-    split = split_of(source.collection, subject, settings.held_out_collections)
+    namespace = namespace_of(source)
+    split = split_of(
+        source.collection,
+        subject,
+        settings.held_out_collections,
+        namespace=namespace,
+    )
     evaluated = settings.evaluated in ("all", split)
     public = getattr(source, "public", None)
     public = (
@@ -408,7 +435,12 @@ def _case(
         else None
     )
     result = CaseResult(
-        source.collection, split, evaluated, public=public, subject=subject
+        source.collection,
+        split,
+        evaluated,
+        public=public,
+        subject=subject,
+        namespace=namespace,
     )
     if not evaluated:
         return result
@@ -778,7 +810,8 @@ def _by_subject(results: Iterable[CaseResult]) -> list[dict[tuple, list[int]]]:
     in the order that each subject first appears."""
     found: dict[tuple[str, str], dict[tuple, list[int]]] = {}
     for result in results:
-        merged = found.setdefault((result.collection, result.subject), {})
+        namespace = result.namespace or result.collection
+        merged = found.setdefault((namespace, result.subject), {})
         for key, row in result.clusters.items():
             _added(merged, key, row)
     return list(found.values())

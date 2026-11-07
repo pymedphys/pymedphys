@@ -189,6 +189,19 @@ TARGET_SOP_CLASSES: Mapping[str, frozenset[str]] = MappingProxyType(
 # text is unknown: a region found on one as read is counted apart from false
 # positives, and text burned into them measures missed text.
 TEXT_UNKNOWN = frozenset(TARGET_SOP_CLASSES)
+# Collections that hold the same patients under the same Patient IDs, by the
+# namespace their patients share: TCIA's page for Vestibular-Schwannoma-MC-RC
+# gives 58 of its patients as Vestibular-Schwannoma-SEG's, under their
+# VS-SEG Patient IDs, with other studies and series. A patient's series in
+# either collection are then one subject (:func:`subject_key`), which takes
+# one part of the split and is resampled as one by the bootstrap
+# (:func:`~.text_evaluation.namespace_of`).
+SUBJECT_NAMESPACES: Mapping[str, str] = MappingProxyType(
+    {
+        "vestibular_schwannoma_mc_rc": "vestibular_schwannoma",
+        "vestibular_schwannoma_seg": "vestibular_schwannoma",
+    }
+)
 # Its images that MIDI-B's answer key marks as holding burned-in text are
 # MIDI-B's evidence, so this collection is taken only less them.
 ANSWER_KEYED = frozenset({"pseudo_phi_dicom_data"})
@@ -400,11 +413,20 @@ def select_series(
     return Selection(tuple(taken), MappingProxyType(refused))
 
 
+def subject_namespace(collection_id: str) -> str:
+    """Where a collection's patients are named: its namespace in
+    :data:`SUBJECT_NAMESPACES`, or the collection itself."""
+    return SUBJECT_NAMESPACES.get(collection_id, collection_id)
+
+
 def subject_key(collection_id: str, patient_id: str) -> str:
-    """The private key of a patient of a collection: a salted SHA-256, so
-    that no Patient ID is held."""
+    """The private key of a patient of a collection, named in its
+    collection's namespace (:func:`subject_namespace`): a salted SHA-256,
+    so that no Patient ID is held."""
     digest = hashlib.sha256(
-        "\0".join((SALT, "subject", collection_id, patient_id)).encode()
+        "\0".join(
+            (SALT, "subject", subject_namespace(collection_id), patient_id)
+        ).encode()
     ).hexdigest()
     return f"subject/{digest}"
 
@@ -531,6 +553,11 @@ class IdcSeriesCase:
     def subject(self) -> str:
         """The series' patient, by its private key."""
         return self.series.subject
+
+    @property
+    def subject_namespace(self) -> str:
+        """Where the series' patient is named (:func:`subject_namespace`)."""
+        return subject_namespace(self.series.collection_id)
 
     @property
     def public(self) -> dict[str, str]:
