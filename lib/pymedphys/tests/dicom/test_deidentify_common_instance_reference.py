@@ -70,6 +70,13 @@ PRESENTATION_STATES = {
     "XA/XRF Grayscale Softcopy Presentation State",
     "Variable Modality LUT Softcopy Presentation State",
 }
+# The supported IODs without the module whose Waveform Presentation State
+# Relationship Module makes Referenced Series Sequence Type 1 at the top
+# level, from the 2026d PS3.3 Tables A.92.1-1 and A.92.2-1.
+WAVEFORM_PRESENTATION_STATES = {
+    "Waveform Presentation State",
+    "Waveform Acquisition Presentation State",
+}
 # The supported Presentation State IOD without either module: the blending
 # one names its images in its Blending Sequence (0070,0402) instead.
 BLENDING = "Blending Softcopy Presentation State"
@@ -86,13 +93,20 @@ def test_every_supported_iod_but_the_reports_includes_the_module_and_its_sequenc
     for name in scope.SUPPORTED_IODS:
         iod = tables.iods[name]
         usages = {m.usage for m in iod.modules if m.module == MODULE}
-        if name in PRESENTATION_STATES:
+        relationship = (
+            "Presentation State Relationship"
+            if name in PRESENTATION_STATES
+            else "Waveform Presentation State Relationship"
+            if name in WAVEFORM_PRESENTATION_STATES
+            else None
+        )
+        if relationship is not None:
             assert not usages, name
             assert {
                 (d.tag, d.type, d.module)
                 for d in iod.definitions
                 if d.tag in SEQUENCES and not d.path
-            } == {("(0008,1115)", "1", "Presentation State Relationship")}, name
+            } == {("(0008,1115)", "1", relationship)}, name
             continue
         if name in WITHOUT | {BLENDING}:
             assert not usages, name
@@ -124,7 +138,7 @@ def test_a_presentation_states_referenced_series_sequence_is_not_the_modules():
     # module's own sequences, in an IOD that includes it, still are.
     tables = iods.load_iod_tables()
     path = _path("(0008,1115)")
-    for name in PRESENTATION_STATES:
+    for name in PRESENTATION_STATES | WAVEFORM_PRESENTATION_STATES:
         assert not is_common_instance_reference(path, tables.iods[name]), name
     assert is_common_instance_reference(path, tables.iods["CT Image"])
     assert is_common_instance_reference(
