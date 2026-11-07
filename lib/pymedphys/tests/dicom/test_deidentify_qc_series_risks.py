@@ -431,6 +431,9 @@ def test_a_run_over_the_synthetic_corpus_lists_its_volumes_and_rt_image(tmp_path
     # the PET instances is SUV-scaled, so none shows the body weight. The RT
     # Image, a projection, can show the face in profile. Each Segmentation,
     # BINARY and LABELMAP, is in a series of its own and can trace the face.
+    # The Enhanced RT Image and Enhanced Continuous RT Image, each of two
+    # frames of projections in a series of its own, can show the face in
+    # profile as the RT Image can, and are no volume.
     volumes = [
         ("ct-volume", released("CT Image")),
         ("rt-dose-volume", released("RT Dose", held=True)),
@@ -443,10 +446,14 @@ def test_a_run_over_the_synthetic_corpus_lists_its_volumes_and_rt_image(tmp_path
         ("pet-volume", released("Legacy Converted Enhanced PET Image")),
         ("rt-image", released("RT Image")),
         *(("segmentation", [position]) for position in released("Segmentation")),
+        ("rt-image", released("Enhanced RT Image")),
+        ("rt-image", released("Enhanced Continuous RT Image")),
     ]
     assert [len(positions) for _, positions in volumes] == [
         2,
         2,
+        1,
+        1,
         1,
         1,
         1,
