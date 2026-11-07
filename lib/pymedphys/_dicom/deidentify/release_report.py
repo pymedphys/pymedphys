@@ -84,7 +84,11 @@ and codes that the engine defines, never by a source value or path:
   (:class:`UndefacedInstances`); None otherwise.
 - ``redaction_review``: under the Clean Pixel Data Option, the opaque
   reference of the earlier run's attested QC pack whose redaction verdicts
-  the run applied; None otherwise.
+  the run applied, how many of the source files that they approved were
+  reviewed with every frame required and how many with only the flagged
+  frames required, and how many frames of those files the reviewer was not
+  shown, which only an instance of an IOD whose review needs only its
+  flagged frames can have (D-059); None otherwise.
 - ``pixel_regions``: under the Clean Pixel Data Option, how many regions
   the option blacked out in the instances that the run released or held
   without a reviewer's verdict, by what gave them: the text finder or a
@@ -245,6 +249,9 @@ from .walker import Sequestration, SequesterReason
 
 # The format of the report document. A change to its fields takes a new label.
 FORMAT = "pymedphys-deid-release-report/60"
+# The modes of a redaction review, as qc_attestation.ReviewMode's values
+# name them, in the order that the report gives them (D-059).
+REVIEW_MODES = ("every-frame", "flagged-frames")
 
 _DIGEST = re.compile(r"[0-9a-f]{64}")
 # A key's non-secret identifier, as DeidKey.key_id gives it.
@@ -858,6 +865,13 @@ class ReleaseReport:
     doses_in_face_block : DosesInFaceBlock or None
     undefaced_instances : UndefacedInstances or None
     redaction_review : str or None
+    redaction_frames_not_shown : int or None
+        With ``redaction_review``, how many frames of the source files that
+        its verdicts approved the reviewer was not shown; None without it.
+    redaction_review_modes : mapping of str to int or None
+        With ``redaction_review``, how many of the source files that its
+        verdicts approved were reviewed in each mode, by the mode's value,
+        as :data:`REVIEW_MODES` names them; None without it.
     pixel_regions : PixelRegionCounts or None
     readiness : Readiness or None
     released : tuple of pathlib.PurePosixPath
@@ -885,6 +899,8 @@ class ReleaseReport:
     doses_in_face_block: DosesInFaceBlock | None = None
     undefaced_instances: UndefacedInstances | None = None
     redaction_review: str | None = None
+    redaction_frames_not_shown: int | None = None
+    redaction_review_modes: Mapping[str, int] | None = None
     pixel_regions: PixelRegionCounts | None = None
     readiness: Readiness | None = None
     released: tuple[PurePosixPath, ...] = ()
@@ -1337,6 +1353,8 @@ def release_report(
     doses_in_face_block: DosesInFaceBlock | None = None,
     undefaced_instances: UndefacedInstances | None = None,
     redaction_review: str | None = None,
+    redaction_frames_not_shown: int | None = None,
+    redaction_review_modes: Mapping[str, int] | None = None,
     pixel_regions: PixelRegionCounts | None = None,
     readiness: Readiness | None = None,
     released: Iterable[PurePosixPath] = (),
@@ -1419,6 +1437,15 @@ def release_report(
         pack whose redaction verdicts the run applied, from
         :class:`~pymedphys._dicom.deidentify.redaction_review.RedactionReview`;
         None, the default, otherwise.
+    redaction_frames_not_shown : int, optional
+        With ``redaction_review``, and only with it, how many frames of the
+        source files that its verdicts approved the reviewer was not shown
+        (:attr:`~pymedphys._dicom.deidentify.redaction_review.RedactionReview.not_shown`).
+    redaction_review_modes : mapping of str to int, optional
+        With ``redaction_review``, and only with it, how many of the source
+        files that its verdicts approved were reviewed in each mode, every
+        mode that :data:`REVIEW_MODES` names given
+        (:attr:`~pymedphys._dicom.deidentify.redaction_review.RedactionReview.modes`).
     pixel_regions : PixelRegionCounts, optional
         Under the Clean Pixel Data Option, how many regions the option
         blacked out in the run's instances without a reviewer's verdict, by
@@ -1533,6 +1560,8 @@ def release_report(
             else undefaced_instances
         ),
         redaction_review=redaction_review,
+        redaction_frames_not_shown=redaction_frames_not_shown,
+        redaction_review_modes=redaction_review_modes,
         pixel_regions=(
             PixelRegionCounts()
             if pixel_regions is None and CLEAN_PIXEL_DATA in policy.options
@@ -1904,14 +1933,41 @@ def _undefaced_section(
     }
 
 
-def _redaction_review_section(reference: str | None) -> dict | None:
+def _redaction_review_section(
+    reference: str | None,
+    not_shown: int | None,
+    modes: Mapping[str, int] | None,
+) -> dict | None:
     """Return the section that names the earlier run's attested QC pack whose
-    redaction verdicts the run applied."""
+    redaction verdicts the run applied, counts the source files that they
+    approved by the mode of their review, and counts the frames of those
+    files that the reviewer was not shown."""
     if reference is None:
+        if not_shown is not None or modes is not None:
+            raise _refuse(
+                "redaction_review", "counts files or frames without a reference"
+            )
         return None
     if _string(reference) is None or not _REFERENCE.fullmatch(reference):
         raise _refuse("redaction_review", "is not a QC pack's reference")
-    return {"reference": reference}
+    if (
+        not isinstance(modes, Mapping)
+        or set(modes) != set(REVIEW_MODES)
+        or not all(
+            type(count) is int and count >= 0  # pylint: disable = unidiomatic-typecheck
+            for count in modes.values()
+        )
+    ):
+        raise _refuse(
+            "redaction_review", "needs its count of files in each review mode"
+        )
+    if not isinstance(not_shown, int) or isinstance(not_shown, bool) or not_shown < 0:
+        raise _refuse("redaction_review", "needs its count of frames not shown")
+    return {
+        "reference": reference,
+        "review_modes": {mode: modes[mode] for mode in REVIEW_MODES},
+        "frames_not_shown": not_shown,
+    }
 
 
 def _pixel_regions_section(
@@ -2367,6 +2423,7 @@ def report_document(report: ReleaseReport) -> dict:
     ``defaced_eyes_unconfirmed``, ``defaced_eyes_confirmed``, and
     ``not_defaced`` by code,
     ``redaction_review`` null or an object with the reference,
+    ``review_modes``, and ``frames_not_shown``,
     ``pixel_regions`` null without the Clean Pixel Data Option and
     otherwise an object with the ``detected`` and ``rule`` counts,
     ``readiness`` null or an object with ``ready``, the ``review`` and
@@ -2437,7 +2494,11 @@ def report_document(report: ReleaseReport) -> dict:
             report.released,
             report.undefaced_instances,
         ),
-        "redaction_review": _redaction_review_section(report.redaction_review),
+        "redaction_review": _redaction_review_section(
+            report.redaction_review,
+            report.redaction_frames_not_shown,
+            report.redaction_review_modes,
+        ),
         "pixel_regions": _pixel_regions_section(report.pixel_regions, report.policy),
         "readiness": _readiness_section(report.readiness, report.policy),
         "released": _released_section(report.released),
