@@ -344,6 +344,7 @@ NOT_FOLLOWED = {
     "(0008,3010)": "identifies an irradiation event",
     "(0008,3012)": "identifies a radiopharmaceutical administration event",
     "(0018,1002)": "identifies a device",
+    "(0018,100B)": "identifies a manufacturer's class of device",
     "(0020,9164)": "identifies a dimension organisation",
     "(0040,0554)": "identifies a specimen",
     "(0040,A124)": "is the value of a content item",

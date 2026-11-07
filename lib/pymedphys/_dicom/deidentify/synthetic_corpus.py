@@ -46,8 +46,10 @@ the RT Brachy Application Setup Delivery Instruction references the RT Plan,
 by its study, series, and instance; and the RT Radiation Set Delivery
 Instruction references the RT Radiation Set and its C-Arm Photon-Electron
 Radiation. The RT Image, a digitally reconstructed radiograph of 2 by 2
-pixels, references the RT Plan. The X-Ray Radiation Dose SRs and the Enhanced
-X-Ray Radiation Dose SR reference the first CT slice, the
+pixels, references the RT Plan, as do the Enhanced RT Image, a digitally
+reconstructed radiograph, and the Enhanced Continuous RT Image, a simulator
+image, each of two frames of 2 by 2 pixels. The X-Ray Radiation Dose SRs and
+the Enhanced X-Ray Radiation Dose SR reference the first CT slice, the
 Radiopharmaceutical Radiation Dose SR the PET Image, the Patient Radiation
 Dose SR the CT dose report, which its estimate used, and the Basic Text
 SR, Enhanced SR, Comprehensive SR, Comprehensive 3D SR, and Extensible SR
@@ -55,8 +57,7 @@ the MR Image. The Segmentations, a BINARY one of Segmentation Storage and a
 LABELMAP one of Label Map Segmentation Storage, reference the CT series and
 its first slice, and each segments the planes of the first two slices. The
 Key Object Selection Document selects the MR Image; the Mammography CAD SR
-and Chest CAD SR name the RT Image, the collection's one projection
-radiograph, as the image that their CAD read, and the Colon CAD SR the CT
+and Chest CAD SR name the RT Image, a projection radiograph, as the image that their CAD read, and the Colon CAD SR the CT
 series; and the Procedure Log, Spectacle Prescription Report, Macular Grid
 Thickness and Volume Report, and Waveform Annotation SR reference the MR
 Image. It is the input for validating each preset end to end: once the
@@ -1068,6 +1069,9 @@ class _Spec:
     # The instance that a reference names, by the innermost sequence that
     # holds it, where it differs from _TARGETS.
     targets: tuple[tuple[str, str], ...] = ()
+    # The series that a reference names by its Series Instance UID, which
+    # holds the instance that the reference names within it.
+    referenced_series: str = CT_SERIES
 
 
 _SPECS = (
@@ -1531,6 +1535,7 @@ _SPECS = (
         BRACHY_DELIVERY_INSTRUCTION,
         BRACHY_DELIVERY_INSTRUCTION_SERIES,
         PLAN,
+        referenced_series=PLAN_SERIES,
     ),
     # The RT Radiation Set Delivery Instruction instructs the delivery of the
     # RT Radiation Set's C-Arm Photon-Electron Radiation, which it names, as
@@ -1999,7 +2004,7 @@ class _Instance:
             self._set_class(path, DETACHED_STUDY_MANAGEMENT, 0)
             return PlacementKind.LINKED_UID, STUDY
         if level is Level.SERIES:
-            return PlacementKind.LINKED_UID, CT_SERIES
+            return PlacementKind.LINKED_UID, self.spec.referenced_series
         target = dict(self.spec.targets).get(
             path[-1], _TARGETS.get(path[-1], self.spec.default_target)
         )

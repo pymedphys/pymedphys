@@ -890,6 +890,15 @@ def test_instances_keep_their_reviewed_dummy_values(policy_run):
         "Legacy Converted Enhanced PET Image",
         # In its Segmentation Series Module.
         "Segmentation",
+        # In their Enhanced RT Series Module.
+        "Enhanced RT Image",
+        "Enhanced Continuous RT Image",
+        "RT Segment Annotation",
+        "RT Radiation Set",
+        "C-Arm Photon-Electron Radiation",
+        "Tomotherapeutic Radiation",
+        "Robotic-Arm Radiation",
+        "RT Radiation Set Delivery Instruction",
     }
     steps = set()
     # Under Retain UIDs, Table E.1-1 gives K to the sequence and to the
@@ -1033,6 +1042,57 @@ def test_the_rt_image_names_its_plan_as_written(policy_run):
     assert reference.ReferencedSOPInstanceUID == expected
     if corpus_module.PLAN in written:
         assert expected == written[corpus_module.PLAN].SOPInstanceUID
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.1-04", "MIDI-BP-03")
+def test_the_enhanced_rt_images_name_their_plan_as_written(policy_run):
+    # Each Enhanced RT Image names the plan in Referenced RT Plan Sequence
+    # (300C,0002), in RT Image Scope Sequence (3002,0104) of each functional
+    # group's RT Image Frame Context Sequence (3002,0103), by the UID that
+    # the run's key gives the plan's own, so the written image still names
+    # the written plan.
+    corpus, released = policy_run.corpus, policy_run.released
+    written = {
+        corpus.files[position].manifest.sop_instance: _read(data)
+        for position, data in released.items()
+    }
+    names = {file.manifest.sop_instance: file.name for file in corpus.files}
+    expected = corpus_module.PLAN
+    if REFERENCED_SOP_INSTANCE not in policy_run.spec.kept_rows():
+        expected = uids.replacement_uid(KEY, expected)
+
+    for image in (
+        corpus_module.ENHANCED_RT_IMAGE,
+        corpus_module.ENHANCED_CONTINUOUS_RT_IMAGE,
+    ):
+        if image not in written:
+            assert names[image] in policy_run.spec.withheld
+            continue
+        dataset = written[image]
+        assert dataset.Modality == "RTIMAGE"
+        # The Enhanced Continuous RT Image's frames have selected frame
+        # functional groups in place of per-frame ones.
+        groups = [
+            group
+            for keyword in (
+                "SharedFunctionalGroupsSequence",
+                "PerFrameFunctionalGroupsSequence",
+                "SelectedFrameFunctionalGroupsSequence",
+            )
+            for group in dataset.get(keyword, ())
+        ]
+        contexts = [
+            group.RTImageFrameContextSequence
+            for group in groups
+            if "RTImageFrameContextSequence" in group
+        ]
+        assert len(contexts) >= 2, names[image]
+        for (context,) in contexts:
+            (scope,) = context.RTImageScopeSequence
+            (reference,) = scope.ReferencedRTPlanSequence
+            assert reference.ReferencedSOPInstanceUID == expected, names[image]
+        if corpus_module.PLAN in written:
+            assert expected == written[corpus_module.PLAN].SOPInstanceUID
 
 
 def _composite_items(item):
