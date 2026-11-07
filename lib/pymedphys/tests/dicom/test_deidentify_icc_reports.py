@@ -74,9 +74,10 @@ def test_the_report_counts_cleaned_and_replaced_profiles_by_reason():
             {"reason": "version", "count": 1},
         ],
     }
-    assert list(document).index("icc_profiles") == (
-        list(document).index("descriptors") + 1
-    )
+    # The reviewers' sections come first: descriptors, then annotations.
+    sections = list(document)
+    assert sections.index("icc_profiles") == sections.index("annotations") + 1
+    assert sections.index("annotations") == sections.index("descriptors") + 1
 
 
 def test_a_report_without_icc_profiles_counts_none():
