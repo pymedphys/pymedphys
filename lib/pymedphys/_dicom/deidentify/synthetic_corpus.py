@@ -20,7 +20,7 @@ fictitious patient and study, with one Frame of Reference: three CT Image
 slices, an RT Structure Set that references the CT series and slices, an RT
 Plan that references the structure set and the dose, an RT Dose that
 references the plan, a second RT Dose of the plan for review (below), one
-instance of each of thirty-five other IODs, and two of the Segmentation
+instance of each of thirty-seven other IODs, and two of the Segmentation
 IOD, one of each of its SOP Classes, each in a series of its own, and a
 second X-Ray Radiation Dose SR, of a CT scan.
 The MR Image and PET Image instances reference the first CT slice, and each
@@ -40,7 +40,9 @@ brachytherapy application setups as well as beams, and names the RT Beams
 Treatment Record as a related record, and the RT Treatment Summary Record
 references the RT Plan and, as a treatment record that it summarises, the
 RT Brachy Treatment Record. The RT Image, a digitally reconstructed radiograph of 2 by 2 pixels,
-references the RT Plan. The X-Ray Radiation Dose SRs and the Enhanced
+references the RT Plan, as do the Enhanced RT Image, a digitally
+reconstructed radiograph, and the Enhanced Continuous RT Image, a simulator
+image, each of two frames of 2 by 2 pixels. The X-Ray Radiation Dose SRs and the Enhanced
 X-Ray Radiation Dose SR reference the first CT slice, the
 Radiopharmaceutical Radiation Dose SR the PET Image, the Patient Radiation
 Dose SR the CT dose report, which its estimate used, and the Basic Text
@@ -49,8 +51,7 @@ the MR Image. The Segmentations, a BINARY one of Segmentation Storage and a
 LABELMAP one of Label Map Segmentation Storage, reference the CT series and
 its first slice, and each segments the planes of the first two slices. The
 Key Object Selection Document selects the MR Image; the Mammography CAD SR
-and Chest CAD SR name the RT Image, the collection's one projection
-radiograph, as the image that their CAD read, and the Colon CAD SR the CT
+and Chest CAD SR name the RT Image, a projection radiograph, as the image that their CAD read, and the Colon CAD SR the CT
 series; and the Procedure Log, Spectacle Prescription Report, Macular Grid
 Thickness and Volume Report, and Waveform Annotation SR reference the MR
 Image. It is the input for validating each preset end to end: once the
@@ -68,8 +69,11 @@ describes. Text is ``SYNMK-00042``, a code string ``SYNMK_00042``, a person name
 ``SYNMK00042^MARKER00042``, a UID ``2.25.9999900042``, a URI
 ``https://synmk.invalid/SYNMK-00042``, a date before 1900 (see
 :func:`_marker_date`), a datetime that date at noon, a time ``HHMMSS.424242`` whose seconds from
-midnight are the marker's number, and a binary value of VR OB, OW, or UN the
-text marker in ASCII, padded to an even length. No text marker occurs inside
+midnight are the time's number, and a binary value of VR OB, OW, or UN the
+text marker in ASCII, padded to an even length. Dates and datetimes, times,
+and values of VR SS and US are each numbered by a count of their own, so
+that the dates, the times, and the 16-bit integers do not run out before
+the five digits of the markers do. No text marker occurs inside
 another value of its file. A number of a binary VR, such as US or SS, and an
 age (AS) cannot be made conspicuous: each is distinct, but it is found by
 its place in the manifest, not by searching bytes. Each sequence that holds
@@ -183,7 +187,7 @@ dummy item at that place and only there. Planted in
 every file, the first two would sequester every
 instance, and no preset could release any of the collection; planted in one,
 that instance checks sequestration, :data:`REVIEW_FILE` checks review, and
-the other forty-three check each preset's output, the reports where their
+the other fifty check each preset's output, the reports where their
 trees are cleaned. Radiopharmaceutical Start
 DateTime, which CT Image does not define there, is planted in no file, so
 the Enhanced PET instance, which lacks an attribute of Type 1, is released
@@ -219,7 +223,7 @@ Manufacturer's Model Name (0008,1090), which Table E.1-1 does not list and
 the Basic Profile keeps, a copy of the RT Plan's RT Plan Label marker
 (:attr:`PlacementKind.REVIEW_COPY`), so the residual search finds a source
 value of another instance in its output and sends it to review. The third
-CT slice remains sequestered; the other forty-three files stay releasable, the
+CT slice remains sequestered; the other fifty files stay releasable, the
 reports where their trees are cleaned.
 
 **Manifest.** :class:`CorpusManifest` records, for each file, each
@@ -240,6 +244,7 @@ input.
 
 from __future__ import annotations
 
+import collections
 import dataclasses
 import datetime
 import enum
@@ -372,9 +377,11 @@ DETACHED_STUDY_MANAGEMENT = "1.2.840.10008.3.1.2.3.1"
 # The most items an attribute is planted in, nested one in another.
 MAX_DEPTH = 4
 # Every marker's number is below this, so markers have a fixed width of five
-# digits and none is the start of another, every date is before 1900, every
-# time is distinct, and the negated number fits VR SS.
-MAX_MARKERS = 2**15
+# digits and none is the start of another. Dates, times, and values of VR SS
+# and US are numbered apart (_Markers), each within its own limit: every date
+# before 1900, every time within one day, and the 16-bit integers within
+# their VRs.
+MAX_MARKERS = 10**5
 MARKER_PREFIX = "SYNMK"
 MARKER_UID_ROOT = "2.25.99999"
 LINKED_UID_ROOT = "2.25.88888"
@@ -429,8 +436,8 @@ BRACHY_TREATMENT_RECORD_FILE = "49-rt-brachy-record.dcm"
 TREATMENT_SUMMARY_RECORD_FILE = "50-rt-treatment-summary-record.dcm"
 # The Enhanced RT Image and the Enhanced Continuous RT Image, each of the RT
 # Plan's beam, numbered after the files that open pull requests add.
-ENHANCED_RT_IMAGE_FILE = "51-rt-image-enhanced.dcm"
-ENHANCED_CONTINUOUS_RT_IMAGE_FILE = "52-rt-image-enhanced-continuous.dcm"
+ENHANCED_RT_IMAGE_FILE = "89-rt-image-enhanced.dcm"
+ENHANCED_CONTINUOUS_RT_IMAGE_FILE = "90-rt-image-enhanced-continuous.dcm"
 # The RT Segment Annotation of the Segmentation, and the RT Radiation Set and
 # the three radiations, one of each second-generation radiation IOD, that it
 # gathers, numbered after the files that open pull requests add.
@@ -539,10 +546,10 @@ BRACHY_TREATMENT_RECORD_SERIES = f"{LINKED_UID_ROOT}04600"
 BRACHY_TREATMENT_RECORD = f"{LINKED_UID_ROOT}04601"
 TREATMENT_SUMMARY_RECORD_SERIES = f"{LINKED_UID_ROOT}04700"
 TREATMENT_SUMMARY_RECORD = f"{LINKED_UID_ROOT}04701"
-ENHANCED_RT_IMAGE_SERIES = f"{LINKED_UID_ROOT}04800"
-ENHANCED_RT_IMAGE = f"{LINKED_UID_ROOT}04801"
-ENHANCED_CONTINUOUS_RT_IMAGE_SERIES = f"{LINKED_UID_ROOT}04900"
-ENHANCED_CONTINUOUS_RT_IMAGE = f"{LINKED_UID_ROOT}04901"
+ENHANCED_RT_IMAGE_SERIES = f"{LINKED_UID_ROOT}08500"
+ENHANCED_RT_IMAGE = f"{LINKED_UID_ROOT}08501"
+ENHANCED_CONTINUOUS_RT_IMAGE_SERIES = f"{LINKED_UID_ROOT}08600"
+ENHANCED_CONTINUOUS_RT_IMAGE = f"{LINKED_UID_ROOT}08601"
 SEGMENT_ANNOTATION_SERIES = f"{LINKED_UID_ROOT}06600"
 SEGMENT_ANNOTATION = f"{LINKED_UID_ROOT}06601"
 RADIATION_SET_SERIES = f"{LINKED_UID_ROOT}06700"
@@ -773,6 +780,17 @@ _FIRST_DATE = datetime.date(900, 1, 1)
 _DATE_RUN_DAYS = 363
 _DATE_RUN_PERIOD = 4004
 _SECONDS_IN_A_DAY = 86_400
+# The kinds of marker numbered apart from the others, by VR, and how many of
+# each the corpus can hold: dates and datetimes, which share their days, up
+# to the last before 1900 (_marker_date); times, up to the last second of a
+# day; and VR SS, whose markers are negated, and US, up to the limits of
+# their 16 bits.
+_NUMBERED_APART = types.MappingProxyType(
+    {"DA": "date", "DT": "date", "TM": "time", "SS": "SS", "US": "US"}
+)
+_KIND_LIMITS = types.MappingProxyType(
+    {"date": 2**15 - 1, "time": _SECONDS_IN_A_DAY - 1, "SS": 2**15, "US": 2**16 - 1}
+)
 
 
 class PlacementKind(enum.Enum):
@@ -1462,24 +1480,6 @@ _SPECS = (
         PLAN,
         targets=((_REFERENCED_TREATMENT_RECORD_SEQUENCE, BRACHY_TREATMENT_RECORD),),
     ),
-    # The Enhanced RT Image, two digitally reconstructed radiographs of the
-    # RT Plan's beam, and the Enhanced Continuous RT Image, two frames of a
-    # kV acquisition during it, each referencing the RT Plan, as the RT Image
-    # does.
-    _Spec(
-        ENHANCED_RT_IMAGE_FILE,
-        ENHANCED_RT_IMAGE_STORAGE,
-        ENHANCED_RT_IMAGE,
-        ENHANCED_RT_IMAGE_SERIES,
-        PLAN,
-    ),
-    _Spec(
-        ENHANCED_CONTINUOUS_RT_IMAGE_FILE,
-        ENHANCED_CONTINUOUS_RT_IMAGE_STORAGE,
-        ENHANCED_CONTINUOUS_RT_IMAGE,
-        ENHANCED_CONTINUOUS_RT_IMAGE_SERIES,
-        PLAN,
-    ),
     # The RT Segment Annotation annotates the BINARY Segmentation's segments.
     # The RT Radiation Set gathers the C-Arm Photon-Electron Radiation, which
     # its RT Radiation Sequence and Referenced RT Radiation Sequences name;
@@ -1584,6 +1584,25 @@ _SPECS = (
             ),
         )
     ),
+    # Numbered after the second-generation RT IODs' files.
+    # The Enhanced RT Image, two digitally reconstructed radiographs of the
+    # RT Plan's beam, and the Enhanced Continuous RT Image, two frames of a
+    # kV acquisition during it, each referencing the RT Plan, as the RT Image
+    # does.
+    _Spec(
+        ENHANCED_RT_IMAGE_FILE,
+        ENHANCED_RT_IMAGE_STORAGE,
+        ENHANCED_RT_IMAGE,
+        ENHANCED_RT_IMAGE_SERIES,
+        PLAN,
+    ),
+    _Spec(
+        ENHANCED_CONTINUOUS_RT_IMAGE_FILE,
+        ENHANCED_CONTINUOUS_RT_IMAGE_STORAGE,
+        ENHANCED_CONTINUOUS_RT_IMAGE,
+        ENHANCED_CONTINUOUS_RT_IMAGE_SERIES,
+        PLAN,
+    ),
 )
 
 
@@ -1593,7 +1612,7 @@ def build_corpus() -> SyntheticCorpus:
     Returns
     -------
     SyntheticCorpus
-        Forty-five files: three CT slices; the RT Structure Set, RT Plan, RT
+        Fifty-two files: three CT slices; the RT Structure Set, RT Plan, RT
         Dose, and the RT Dose for review; the Enhanced CT Image and Legacy
         Converted Enhanced CT Image; the MR Image, Enhanced MR Image,
         Enhanced MR Color Image, Legacy Converted Enhanced MR Image, and MR
@@ -1608,9 +1627,12 @@ def build_corpus() -> SyntheticCorpus:
         the Key Object Selection Document, Mammography CAD SR, Chest CAD SR,
         Colon CAD SR, Procedure Log, Spectacle Prescription Report, Macular
         Grid Thickness and Volume Report, and Waveform Annotation SR; the RT
-        Ion Plan and RT Ion Beams Treatment Record; and the RT Brachy
-        Treatment Record and RT Treatment Summary Record. Two builds give the
-        same bytes and the same manifest.
+        Ion Plan and RT Ion Beams Treatment Record; the RT Brachy Treatment
+        Record and RT Treatment Summary Record; the RT Segment Annotation, RT
+        Radiation Set, and C-Arm Photon-Electron, Tomotherapeutic, and
+        Robotic-Arm Radiations; and the Enhanced RT Image and Enhanced
+        Continuous RT Image. Two builds give the same bytes and the same
+        manifest.
     """
     markers = _Markers()
     files: list[CorpusFile] = []
@@ -1665,11 +1687,18 @@ def write_corpus(
 
 
 class _Markers:
-    """Number the markers in the order they are planted, across the corpus."""
+    """Number the markers in the order they are planted, across the corpus.
+
+    Every marker takes the next number, which its text, UID, and other
+    values hold. A date or datetime, a time, and a value of VR SS or US also
+    takes the next number of its own kind, which its value holds instead,
+    since each of those has fewer values to give than the five digits.
+    """
 
     def __init__(self) -> None:
         self._number = 0
         self._ages = 0
+        self._kinds: collections.Counter[str] = collections.Counter()
 
     def values(
         self, vr: str, count: int, *, latin_1: bool = False
@@ -1686,32 +1715,43 @@ class _Markers:
                 if self._ages > 999:
                     raise ValueError("the corpus has more ages than weeks to give")
                 values.append(f"{self._ages:03d}W")
-            else:
-                values.append(_marker(vr, self._number, latin_1))
+                continue
+            kind = _NUMBERED_APART.get(vr)
+            own = self._number
+            if kind is not None:
+                self._kinds[kind] += 1
+                own = self._kinds[kind]
+                if own > _KIND_LIMITS[kind]:
+                    raise ValueError(f"the corpus has more {kind} markers than values")
+            values.append(_marker(vr, self._number, latin_1, own))
         return values, tuple(_as_text(vr, value) for value in values)
 
 
 def _marker_date(number: int) -> datetime.date:
-    """Return the date of the marker numbered ``number``.
+    """Return the date of the date marker numbered ``number``.
 
     Within a run of ``_DATE_RUN_DAYS`` consecutive days dates are at most
     362 days apart, and between runs at least ``_DATE_RUN_PERIOD`` less 362,
     3,642 days, so no two are 364 to 3,640 days apart. Every date of a
-    number below :data:`MAX_MARKERS` is from 900 to before 1900.
+    number below 2**15 is from 900 to before 1900.
     """
     run, day = divmod(number, _DATE_RUN_DAYS)
     return _FIRST_DATE + datetime.timedelta(days=run * _DATE_RUN_PERIOD + day)
 
 
-def _marker(vr: str, number: int, latin_1: bool) -> object:
-    """Return the marker numbered ``number`` as a value of ``vr``."""
+def _marker(vr: str, number: int, latin_1: bool, own: int) -> object:
+    """Return the marker numbered ``number`` as a value of ``vr``.
+
+    ``own`` is its number among the markers of its kind (``_NUMBERED_APART``),
+    which a date, a time, and a value of VR SS or US hold.
+    """
     text = f"{MARKER_PREFIX}-{number:05d}"
     if vr in _WORD_BYTES:
         return _padded(text, vr)
-    day = _marker_date(number)
+    day = _marker_date(own)
     # strftime does not pad a year before 1000 to four digits on every platform.
     date = f"{day.year:04d}{day.month:02d}{day.day:02d}"
-    seconds = number % _SECONDS_IN_A_DAY
+    seconds = own % _SECONDS_IN_A_DAY
     time = f"{seconds // 3600:02d}{seconds // 60 % 60:02d}{seconds % 60:02d}"
     time += _TIME_SIGNATURE
     given = "MÄRKER" if latin_1 else "MARKER"
@@ -1730,10 +1770,10 @@ def _marker(vr: str, number: int, latin_1: bool) -> object:
         "FD": number + 0.5,
         "FL": number + 0.5,
         "SL": -(900_000_000 + number),
-        "SS": -number,
+        "SS": -own,
         "SV": -(9_000_000_000 + number),
         "UL": 900_000_000 + number,
-        "US": number,
+        "US": own,
         "UV": 9_000_000_000 + number,
     }
     return formats.get(vr, text)

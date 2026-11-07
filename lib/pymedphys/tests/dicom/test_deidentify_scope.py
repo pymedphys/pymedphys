@@ -79,6 +79,11 @@ SUPPORTED = {
     "1.2.840.10008.5.1.4.1.1.481.20": "Robotic-Arm Radiation Record",
     "1.2.840.10008.5.1.4.1.1.481.23": "Enhanced RT Image",
     "1.2.840.10008.5.1.4.1.1.481.24": "Enhanced Continuous RT Image",
+    "1.2.840.10008.5.1.4.1.1.481.11": "RT Segment Annotation",
+    "1.2.840.10008.5.1.4.1.1.481.12": "RT Radiation Set",
+    "1.2.840.10008.5.1.4.1.1.481.13": "C-Arm Photon-Electron Radiation",
+    "1.2.840.10008.5.1.4.1.1.481.14": "Tomotherapeutic Radiation",
+    "1.2.840.10008.5.1.4.1.1.481.15": "Robotic-Arm Radiation",
     "1.2.840.10008.5.1.4.1.1.66.1": "Spatial Registration",
     "1.2.840.10008.5.1.4.1.1.66.3": "Deformable Spatial Registration",
     "1.2.840.10008.5.1.4.1.1.66.4": "Segmentation",
@@ -123,6 +128,11 @@ def test_the_first_release_supports_ct_mr_pet_rt_registration_seg_and_sr_objects
         "RT Image",
         "Enhanced RT Image",
         "Enhanced Continuous RT Image",
+        "RT Segment Annotation",
+        "RT Radiation Set",
+        "C-Arm Photon-Electron Radiation",
+        "Tomotherapeutic Radiation",
+        "Robotic-Arm Radiation",
         "RT Ion Beams Treatment Record",
         "RT Ion Plan",
         "RT Plan",
@@ -218,8 +228,8 @@ def test_padding_is_ignored():
         ("1.2.840.10008.5.1.4.1.1.11.1", "Grayscale Softcopy Presentation State"),
         # Outside the first release: other images, CT, MR, and PET objects
         # that are not images, the segmentations of other IODs, parametric
-        # maps, spatial fiducials, and the second-generation RT objects other
-        # than the Enhanced and Enhanced Continuous RT Images.
+        # maps, spatial fiducials, and the second-generation RT objects not
+        # yet supported, such as RT Physician Intent and the radiation records.
         ("1.2.840.10008.5.1.4.1.1.20", "Nuclear Medicine Image"),
         ("1.2.840.10008.5.1.4.1.1.6.1", "Ultrasound Image"),
         ("1.2.840.10008.5.1.4.1.1.200.2", "CT Performed Procedure Protocol"),
@@ -228,7 +238,7 @@ def test_padding_is_ignored():
         ("1.2.840.10008.5.1.4.1.1.30", "Parametric Map"),
         ("1.2.840.10008.5.1.4.1.1.66.2", "Spatial Fiducials"),
         ("1.2.840.10008.5.1.4.1.1.481.10", "RT Physician Intent"),
-        ("1.2.840.10008.5.1.4.1.1.481.14", "Tomotherapeutic Radiation"),
+        ("1.2.840.10008.5.1.4.1.1.481.18", "Tomotherapeutic Radiation Record"),
     ],
 )
 def test_a_standard_sop_class_of_another_iod_is_sequestered(sop_class, iod):

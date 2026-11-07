@@ -269,6 +269,14 @@ def test_institution_name_is_resolved_by_its_type_at_each_place(statement_for):
     operator = ("(300A,0731)", "(3008,0060)", "(0008,1072)")
     assert found[("RT Radiation Salvage Record", operator)] == "Z"
     assert found[("Enhanced Continuous RT Image", AUTHOR_IDENTIFICATION)] == "Z"
+    for name in (
+        "RT Segment Annotation",
+        "RT Radiation Set",
+        "C-Arm Photon-Electron Radiation",
+        "Tomotherapeutic Radiation",
+        "Robotic-Arm Radiation",
+    ):
+        assert found[(name, AUTHOR_IDENTIFICATION)] == "Z", name
     assert found[("RT Structure Set", ())] == "X"
     # Places within a sequence that the Basic Profile removes are not listed.
     assert ("RT Structure Set", ROI_CREATOR) not in found
