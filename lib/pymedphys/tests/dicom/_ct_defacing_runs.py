@@ -129,10 +129,19 @@ _REGISTRATIONS = (*_TIED, _UNTIED)
 # The collection's own deformable registration, of the PET Image to the
 # head's Frame of Reference, which no series of its own marks absent.
 _COLLECTION_REGISTRATION = "19-registration-deformable.dcm"
+# The collection's Surface Segmentation, whose mesh is in the head CT's
+# frame, which no run cleans.
+_SURFACE = corpus_module.SURFACE_SEGMENTATION_FILE
 # The instances that the run with the deformable registrations does not
-# clean in the head's defaced frame: the PET instances and each
-# registration tied to that frame, each of which its pack shows whole.
-_UNDEFACED_WITH_REGISTRATIONS = (*_PET[1:], *_TIED, _COLLECTION_REGISTRATION)
+# clean in the head's defaced frame: the PET instances, each registration
+# tied to that frame, and the Surface Segmentation, each of which its pack
+# shows whole.
+_UNDEFACED_WITH_REGISTRATIONS = (
+    *_PET[1:],
+    *_TIED,
+    _COLLECTION_REGISTRATION,
+    _SURFACE,
+)
 
 
 def _dose(low):

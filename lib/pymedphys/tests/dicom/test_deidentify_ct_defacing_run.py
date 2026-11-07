@@ -34,7 +34,7 @@ from pymedphys._imports import pydicom, pytest, shapely
 
 from pymedphys._dicom.deidentify import defacing, face_blocks, markers, qc_previews
 from pymedphys._dicom.deidentify import synthetic_corpus as corpus_module
-from pymedphys._dicom.deidentify.face_review import FaceReview
+from pymedphys._dicom.deidentify.face_review import FaceReview, surface_data_sha256
 from pymedphys._dicom.deidentify.qc_attestation import Face
 from pymedphys._dicom.deidentify.qc_pack import new_reference
 from pymedphys._dicom.deidentify.reasons import HeldVisualFeatures, VisualFeaturesReason
@@ -64,6 +64,7 @@ from ._ct_defacing_runs import (
     _SEGMENTED,
     _SLAB_STRUCTURE_SET,
     _STRUCTURE_SET,
+    _SURFACE,
     _TIED,
     _UNDEFACED,
     _UNDEFACED_WITH_REGISTRATIONS,
@@ -397,9 +398,12 @@ def test_pet_instances_in_the_defaced_frame_that_are_not_cleaned_are_held(
         if entry["stage"] == "visual-features"
     }
     # Besides them, the deformable registrations tied to the head's frame,
-    # which the run does not clean either.
+    # and the Surface Segmentation in it, which the run does not clean
+    # either.
     registrations = [
-        name for name in (*_TIED, _COLLECTION_REGISTRATION) if name in outcomes
+        name
+        for name in (*_TIED, _COLLECTION_REGISTRATION, _SURFACE)
+        if name in outcomes
     ]
     for name in registrations:
         assert held in reasons[name], name
@@ -511,6 +515,8 @@ def test_an_undefaced_instance_is_released_on_a_verdict_of_absent_of_its_own(
         source = pydicom.dcmread(reviewed_low.instances / name)
         if name in _PET:
             assert dataset.PixelData == source.PixelData
+        elif name == _SURFACE:
+            assert surface_data_sha256(dataset) == surface_data_sha256(source)
         else:
             assert _vector_grids(dataset) == _vector_grids(source), name
         names.append(_output_name(dataset))
@@ -570,6 +576,8 @@ def test_a_verdict_of_its_own_is_on_its_pixel_data_whatever_is_defaced(
         source = pydicom.dcmread(reviewed_low.instances / name)
         if name in _PET:
             assert dataset.PixelData == source.PixelData
+        elif name == _SURFACE:
+            assert surface_data_sha256(dataset) == surface_data_sha256(source)
         else:
             assert _vector_grids(dataset) == _vector_grids(source), name
     assert report["face_review"]["undefaced_in_defaced_frame"] == _undefaced_report()
