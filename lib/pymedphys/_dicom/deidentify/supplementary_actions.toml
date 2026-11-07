@@ -1546,7 +1546,7 @@ note = "Codes for why the procedure was performed, which can record a diagnosis 
 tag = "(0028,2000)"
 keyword = "ICCProfile"
 action = "X/Z/D"
-note = "An ICC colour profile, a file in another format embedded in the instance, which can carry text, such as a description or copyright naming the device or institution, that the engine does not parse. It is removed by Type under every option. It is Type 1 in the ICC Profile Module, which Enhanced CT Image, Enhanced MR Image, and Enhanced MR Color Image use, where removal by Type replaces an RGB profile with a fixed sRGB profile, which nothing of the source profile is written to, and sequesters an instance with any other; elsewhere in the IODs of the first supported release it is Type 3."
+note = "An ICC colour profile, a file in another format embedded in the instance, which can carry text, such as a description or copyright naming the device or institution, that the engine does not parse. It is removed by Type under every option. It is Type 1 in the ICC Profile Module, which Enhanced CT Image, Enhanced MR Image, Enhanced MR Color Image, Segmentation, and the Color, Pseudo-Color, Blending, and Variable Modality LUT Softcopy Presentation States use, where removal by Type writes an RGB profile cleaned of everything but its colorimetry, or a fixed sRGB profile where it cannot be cleaned, and sequesters an instance with any other profile; elsewhere in the IODs of the first supported release it is Type 3."
 
 [[attribute]]
 tag = "(0028,2002)"
