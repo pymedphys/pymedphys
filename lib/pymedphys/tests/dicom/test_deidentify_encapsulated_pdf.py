@@ -105,9 +105,27 @@ def _encapsulated_pdf():
 
 
 def _policies():
+    """Every preset, every set of the presets' options, and each other option.
+
+    Each option that the engine applies and no preset selects, such as Retain
+    UIDs or Clean Pixel Data, is taken alone.
+    """
+    in_presets = {option for options in policy.PRESETS.values() for option in options}
+    others = [(option,) for option in policy.ENGINE_OPTIONS if option not in in_presets]
     return [policy.compose_policy(preset) for preset in policy.PRESETS] + [
-        policy.compose_custom_policy(options) for options in _custom_option_sets()
+        policy.compose_custom_policy(options)
+        for options in [*_custom_option_sets(), *others]
     ]
+
+
+class _NoText:
+    """A text finder that finds nothing, for Clean Pixel Data."""
+
+    method = {"finder": "none"}
+
+    def find(self, frame):
+        del frame
+        return ()
 
 
 @pytest.fixture(name="tmp_path")
@@ -161,6 +179,7 @@ def test_every_policy_sequesters_an_encapsulated_pdf_at_its_document(composed):
             if "clean_descriptors" in composed.options
             else None
         ),
+        finder=_NoText() if policy.CLEAN_PIXEL_DATA in composed.options else None,
         face_review=_corpus_run.face_review_for(composed),
         unvalidated_policy=True,
     )
