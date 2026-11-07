@@ -34,7 +34,10 @@ A run has five steps:
    so that the run renumbers each series alike wherever it is named. Its
    findings take their graded consequences: a study whose instances name
    several patients stops the run with :class:`RunStopped` before any
-   directory is created; every copy of a conflicting instance, every
+   directory is created, or, where the run is told to sequester such a
+   study (:attr:`SeveralPatients.SEQUESTER`), has each of its instances
+   sequestered, with its values searched for in the files of every patient
+   that the study names; every copy of a conflicting instance, every
    instance of a series in several studies, and every instance without its
    SOP Instance, Series Instance, or Study Instance UID is sequestered;
    identical copies are processed once, from the first copy that reads
@@ -49,7 +52,9 @@ A run has five steps:
    file is written to the staging area under a temporary name, and renamed
    into place once its bytes are on disk. An instance that a finding
    sequesters is still transformed, so that its evidence reaches the gate
-   of every other file of its subject; its output is never written.
+   of every other file of its subject, and, for an instance of a study
+   with several patients, of every patient that the study names; its
+   output is never written.
 4. Each staged file is read back from disk and given to the run's
    :class:`Gate` with its own evidence and that of every instance of its
    subject that the transform returned evidence for, its own first. The
@@ -128,10 +133,13 @@ from . import (
 )
 from .diagnostics import redacted_diagnostics
 from .file_layout import Region, read_file_layout
+
+# SeveralPatients is part of the run's interface, from here.
 from .reference_graph import (
     Finding,
     FindingKind,
     ReferenceGraph,
+    SeveralPatients,
     build_reference_graph,
 )
 from .references import InstanceRecord, UnreadableSequence, with_series_numberings
@@ -298,6 +306,7 @@ def run(
     reporter: run_report.Reporter | None = None,
     written_check: WrittenCheck | None = None,
     before_publish: Callable[[], object] | None = None,
+    several_patients: SeveralPatients = SeveralPatients.STOP,
 ) -> RunResult:
     """De-identify the discovered inputs into a new release directory.
 
@@ -354,6 +363,22 @@ def run(
         such as to save the subject profiles of a project key (D-004), so
         that a published release always has them. What it raises stops the
         run: nothing is published, and no QC pack is written.
+    several_patients : SeveralPatients, optional
+        What the run does with a study whose instances name several
+        patients, each a Patient ID with its issuer, the instances without
+        a Patient ID counting as one more (D-026). By default,
+        :attr:`~SeveralPatients.STOP`: the run raises :class:`RunStopped`
+        before it creates anything. With :attr:`~SeveralPatients.SEQUESTER`,
+        every instance of each such study is sequestered for
+        :attr:`~pymedphys._dicom.deidentify.reference_graph.FindingKind.STUDY_WITH_SEVERAL_PATIENTS`,
+        and the rest of the run goes ahead. Each is still transformed, and
+        its evidence is given to the gate of every released file of each
+        patient that the study names, with that patient's own, so that the
+        study's values are searched for there, and a value that could not be
+        collected withholds those files as it would its own subject's. The
+        release report records the choice and how many studies it
+        sequestered, and the QC pack lists the instances of each, by
+        patient, for a curator to correct.
 
     Returns
     -------
@@ -369,7 +394,12 @@ def run(
         destination. Otherwise, the error that stopped the publication is
         raised once the pack is removed.
     RunStopped
-        If a study's instances name several patients. Nothing is created.
+        If a study's instances name several patients, unless
+        ``several_patients`` is :attr:`~SeveralPatients.SEQUESTER`. Nothing
+        is created.
+    TypeError
+        If ``several_patients`` is not a :class:`SeveralPatients`. Nothing
+        is created.
     ReleaseWithheld
         If the second reference pass raises, or finds a fault that names no
         released instance. Nothing is published, and no QC pack is written.
@@ -393,6 +423,8 @@ def run(
     the rename then replaces it if it is empty, and fails otherwise; on
     Windows, it fails.
     """
+    if not isinstance(several_patients, SeveralPatients):
+        raise TypeError("several_patients must be a SeveralPatients")
     # pydicom converts values when they are first read, in the first pass
     # and in the transform and gate, and its warnings and log records can
     # quote them.
@@ -407,6 +439,7 @@ def run(
             reporter,
             written_check,
             before_publish,
+            several_patients,
         )
 
 
@@ -419,6 +452,7 @@ def _run(  # pylint: disable = too-many-arguments, too-many-positional-arguments
     reporter: run_report.Reporter | None,
     written_check: WrittenCheck | None,
     before_publish: Callable[[], object] | None,
+    several_patients: SeveralPatients,
 ) -> RunResult:
     staging = staging_path(release_path)
     _check_directories(discovery.source, release_path, staging)
@@ -429,14 +463,15 @@ def _run(  # pylint: disable = too-many-arguments, too-many-positional-arguments
     }
     qc_store.check_confidential_destination(qc_destination, **apart)
 
-    first = _first_pass(discovery)
-    stopping = tuple(
-        finding
-        for finding in first.findings
-        if finding.kind is FindingKind.STUDY_WITH_SEVERAL_PATIENTS
-    )
-    if stopping:
-        raise RunStopped(stopping)
+    first = _first_pass(discovery, several_patients)
+    if several_patients is SeveralPatients.STOP:
+        stopping = tuple(
+            finding
+            for finding in first.findings
+            if finding.kind is FindingKind.STUDY_WITH_SEVERAL_PATIENTS
+        )
+        if stopping:
+            raise RunStopped(stopping)
     # A transform that needs more than one instance at a time, such as one
     # that finds each CT series' face block, is given the run's records and
     # its files, as the first pass read them, before it writes any.
@@ -478,6 +513,7 @@ def _run(  # pylint: disable = too-many-arguments, too-many-positional-arguments
             reviewed_lists=(
                 None if reporter is None else bind_lists(*reporter.reviewed_lists)
             ),
+            several_patient_studies=first.several_patient_studies,
         )
         facts = run_report.RunFacts(
             pack,
@@ -487,6 +523,9 @@ def _run(  # pylint: disable = too-many-arguments, too-many-positional-arguments
                     for position, record in first.records.items()
                 },
                 {o.position for o in outcomes if o.status is Status.RELEASED},
+            ),
+            release_report.SeveralPatientStudies(
+                several_patients, len(first.several_patient_studies)
             ),
         )
         # Built before the pack is written, so a failure leaves no QC material.
@@ -625,9 +664,16 @@ class _FirstPass:
     # The positions that a finding sequesters, which are transformed only
     # for their evidence.
     sequestered: frozenset[int]
+    # The subjects whose files are searched for each position's values: its
+    # own first, then, for an instance of a study with several patients that
+    # the run sequesters, each other patient that the study names.
+    pools: dict[int, tuple[object, ...]]
+    # The groups, by patient, of each study with several patients that the
+    # run sequesters, in run positions, for the QC pack.
+    several_patient_studies: tuple[tuple[tuple[int, ...], ...], ...]
 
 
-def _first_pass(discovery: Discovery) -> _FirstPass:
+def _first_pass(discovery: Discovery, several_patients: SeveralPatients) -> _FirstPass:
     records: dict[int, InstanceRecord] = {}
     digests: dict[int, bytes] = {}
     settled: dict[int, Outcome] = {}
@@ -671,10 +717,31 @@ def _first_pass(discovery: Discovery) -> _FirstPass:
         )
         for finding in graph.findings
     )
+    sequestering: tuple[FindingKind, ...] = _SEQUESTERING_FINDINGS
+    if several_patients is SeveralPatients.SEQUESTER:
+        sequestering += (FindingKind.STUDY_WITH_SEVERAL_PATIENTS,)
     kinds: dict[int, list[FindingKind]] = collections.defaultdict(list)
     copies = {}
+    pools: dict[int, tuple[object, ...]] = {
+        position: (_subject(record),) for position, record in records.items()
+    }
+    studies = []
     for finding in findings:
-        if finding.kind in _SEQUESTERING_FINDINGS:
+        if (
+            finding.kind is FindingKind.STUDY_WITH_SEVERAL_PATIENTS
+            and finding.kind in sequestering
+        ):
+            studies.append(finding.instances)
+            # Each patient's first instance stands for the patient.
+            named = tuple(_subject(records[group[0]]) for group in finding.instances)
+            for group in finding.instances:
+                for position in group:
+                    own = pools[position][0]
+                    pools[position] = (
+                        own,
+                        *(subject for subject in named if subject != own),
+                    )
+        if finding.kind in sequestering:
             for group in finding.instances:
                 for position in group:
                     if finding.kind not in kinds[position]:
@@ -693,7 +760,14 @@ def _first_pass(discovery: Discovery) -> _FirstPass:
         settled,
         copies,
         frozenset(kinds),
+        pools,
+        tuple(studies),
     )
+
+
+def _subject(record: InstanceRecord) -> object:
+    """Return the subject whose files are searched for a record's values."""
+    return _WITHOUT_PATIENT_ID if record.patient is None else record.patient
 
 
 def _read(entry: _Entry) -> bytes | None:
@@ -804,9 +878,11 @@ def _stage_and_gate(  # pylint: disable = too-many-locals, too-many-branches, to
                 outcomes[candidate] = _outcome(
                     candidate, Status.SEQUESTERED, RunReason.CHANGED_DURING_RUN
                 )
-        subject = _WITHOUT_PATIENT_ID if record.patient is None else record.patient
+        # Its own subject first, then any other that its study names.
+        subject, *others = first.pools[start]
         if data is None:
-            evidence[subject].append(NO_EVIDENCE)
+            for pool in (subject, *others):
+                evidence[pool].append(NO_EVIDENCE)
             continue
         following.update((copy, position) for copy in group if copy > position)
 
@@ -815,7 +891,8 @@ def _stage_and_gate(  # pylint: disable = too-many-locals, too-many-branches, to
         given = (
             result.evidence if isinstance(result, (Transformed, Sequestered)) else None
         )
-        evidence[subject].append(NO_EVIDENCE if given is None else given)
+        for pool in (subject, *others):
+            evidence[pool].append(NO_EVIDENCE if given is None else given)
         if position in first.sequestered:
             continue  # transformed only for its evidence
         if not _is_transformed(result):

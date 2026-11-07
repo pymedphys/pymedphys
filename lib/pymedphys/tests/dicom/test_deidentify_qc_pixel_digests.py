@@ -352,6 +352,18 @@ def test_an_rt_dose_is_shown_by_its_dose_levels():
         dict(enumerate(_dose_planes(1))),
         # An RT Dose labelled CT is one by its SOP Class.
         {0: _relabelled(_dose(12), "CT")},
+        # Signed stored values, as of Dose Type ERROR, are shown at the
+        # levels of their doses below 0 as well as above.
+        {0: _altered(_dose(12), PixelRepresentation=1)},
+        dict(
+            enumerate(
+                [
+                    *_dose_planes()[:3],
+                    _altered(_dose_planes()[3], PixelRepresentation=1),
+                ]
+            )
+        ),
+        {0: _altered(_dose_planes(1)[0], PixelRepresentation=1)},
     ):
         found, _ = _shown(written)
         kinds = [preview.kind for preview in found.previews]
@@ -382,16 +394,13 @@ def _padded(data, tag):
 def _unshown_doses():
     """RT Dose instances of 12 frames, or a series of planes, whose dose
     levels cannot be drawn, by name."""
-    oblique = (0.866025, 0.5, 0.0, -0.5, 0.866025, 0.0)
     longer = pydicom.dcmread(io.BytesIO(_dose(12)))
     longer.PixelData += bytes(4 * 20 * 20)
     return {
         "unscaled": [_altered(_dose(12), DoseGridScaling=None)],
         "zero-scaling": [_altered(_dose(12), DoseGridScaling=0)],
         "negative-scaling": [_altered(_dose(12), DoseGridScaling=-0.001)],
-        "signed": [_altered(_dose(12), PixelRepresentation=1)],
         "rescaled": [_altered(_dose(12), RescaleSlope=2, RescaleIntercept=0)],
-        "oblique": [_altered(_dose(12), ImageOrientationPatient=list(oblique))],
         "uneven": [
             _altered(_dose(12), GridFrameOffsetVector=[0.0, 3.0, 7.0, *range(9, 18)])
         ],
@@ -421,9 +430,9 @@ def test_an_rt_dose_whose_levels_cannot_be_drawn_is_not_shown(name):
     # planes' projection and Otsu render every plane, but the strip is
     # windowed to the highest doses, which can leave a low dose outlining
     # the skin black, and an Otsu render shows one level. A grid whose
-    # stored values may be below 0, or rescaled, or padded, or not scaled
-    # above 0, or scaled beyond what float32 holds, has doses that its
-    # levels would not show.
+    # stored values are rescaled, or padded, or not scaled above 0, or
+    # scaled beyond what float32 holds, has doses that its levels would not
+    # show.
     written = dict(enumerate(_unshown_doses()[name]))
     found, framed = _shown(written)
     assert all(
@@ -623,24 +632,27 @@ def test_the_reader_takes_pixel_data_s_digest_only_where_a_preview_shows_them():
     document["previews"] = [
         {"kind": "instance", "frames": [{"position": 0, "frame": 0}]}
     ]
-    files_of = face_review._series_files(json.dumps(document).encode("ascii"))
+    files_of, by_position = face_review._series_files(
+        json.dumps(document).encode("ascii")
+    )
     (entry,) = files_of[0]
+    assert by_position == {0: entry}
     assert entry[1] == bytes.fromhex("1e" * 32)
     # It carries how many frames, from the first, the previews showed, and
     # none that dose levels showed.
-    assert entry[4] == 1 and entry[5] is None
+    assert entry[4] == 1 and entry[5] is None and entry[6] is None
     document["previews"][0]["frames"].append({"position": 0, "frame": 2})
     with pytest.raises(QcPackError, match="not of its format"):
         face_review._series_files(json.dumps(document).encode("ascii"))
     document["previews"][0]["frames"][1]["frame"] = 1
-    (entry,) = face_review._series_files(json.dumps(document).encode("ascii"))[0]
+    (entry,) = face_review._series_files(json.dumps(document).encode("ascii"))[0][0]
     assert entry[4] == 2
     # Dose levels' frames count for both.
     document["previews"].append(
         {"kind": "series-dose-levels", "frames": [{"position": 0, "frame": 0}]}
     )
-    (entry,) = face_review._series_files(json.dumps(document).encode("ascii"))[0]
-    assert entry[4:6] == (2, 1)
+    (entry,) = face_review._series_files(json.dumps(document).encode("ascii"))[0][0]
+    assert entry[4:7] == (2, 1, None)
     document["not_previewed"] = [{"position": 0, "reason": "unreadable-pixel-data"}]
     with pytest.raises(QcPackError, match="not of its format"):
         face_review._series_files(json.dumps(document).encode("ascii"))
@@ -887,6 +899,9 @@ def test_a_run_releases_an_rt_dose_only_where_its_dose_levels_showed_every_frame
                 frozenset({(source, face_review.contour_data_sha256(written))}),
                 frozenset({(source, pixels, 12)}),
                 dose_frames,
+                # Every frame on a segments sheet, since a Modality of two
+                # values may be SEG too.
+                absent_segment_frames=frozenset({(source, pixels, 12)}),
             ),
             unvalidated_policy=True,
         )(data, record)

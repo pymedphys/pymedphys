@@ -15,8 +15,7 @@
 """Segmentations cleaned in a defaced CT series' face block. Every UID and
 value here is invented."""
 
-# Segmentation stays out of scope, so the transform's steps for it are
-# tested one by one.
+# The transform's steps for a Segmentation are tested one by one too.
 # pylint: disable = protected-access
 
 from __future__ import annotations
@@ -29,7 +28,7 @@ import io
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom, pytest
 
-from pymedphys._dicom.deidentify import face_blocks, instance_transform, scope
+from pymedphys._dicom.deidentify import face_blocks, instance_transform
 from pymedphys._dicom.deidentify.defacing import FaceBlock
 from pymedphys._dicom.deidentify.dose_defacing import DoseBlock
 from pymedphys._dicom.deidentify.face_blocks import KeptSlice
@@ -303,6 +302,149 @@ def test_a_segmentation_placed_in_its_shared_groups_alone_is_cleaned():
     assert np.array_equal(mask.mask, _cleaned_region())
 
 
+@pytest.mark.parametrize("heights", [(20.0,), (20.0, 20.0)])
+def test_a_segmentation_without_the_per_frame_sequence_is_placed_by_its_shared_groups(
+    heights,
+):
+    # PS3.3 A.51.5 lets a Segmentation omit the sequence where no per-frame
+    # group would have content, as for a label map of one plane.
+    dataset = _segmentation(kind="LABELMAP", heights=heights)
+    _padded(dataset, 0)
+    shared = dataset.SharedFunctionalGroupsSequence[0]
+    shared.PlanePositionSequence = dataset.PerFrameFunctionalGroupsSequence[
+        0
+    ].PlanePositionSequence
+    del dataset.PerFrameFunctionalGroupsSequence
+
+    masks = _masks(dataset)
+
+    assert len(masks) == len(heights)
+    for mask in masks:
+        assert np.array_equal(mask.mask, _cleaned_region())
+
+
+@pytest.mark.parametrize("bits", [8, 16])
+def test_a_palette_color_label_map_is_cleared_as_a_monochrome_one(bits):
+    stored = np.random.default_rng(3).integers(1, 3, size=(2, _SIZE, _SIZE))
+    monochrome = _segmentation(stored, kind="LABELMAP")
+    if bits == 8:
+        monochrome.BitsAllocated = monochrome.BitsStored = 8
+        monochrome.HighBit = 7
+        monochrome.PixelData = stored.astype(np.uint8).tobytes()
+    _padded(monochrome, 0)
+    palette = copy.deepcopy(monochrome)
+    # The palette colours each Segment Number; it changes no pixel's value.
+    palette.PhotometricInterpretation = "PALETTE COLOR"
+
+    for got, expected in zip(_masks(palette), _masks(monochrome), strict=True):
+        assert got.value == expected.value == 0
+        assert np.array_equal(got.mask, expected.mask)
+        assert np.array_equal(got.mask, _cleaned_region())
+
+    source = _source(palette)
+    redaction = black_out(
+        source, source.dataset(), None, SegmentationDefacer(_REGION, source.dataset())
+    )
+    written = source.dataset()
+    written.PixelData = redaction.value
+    output = read_source(files.written(written))
+    assert output.dataset().PhotometricInterpretation == "PALETTE COLOR"
+    pixels = pydicom.pixels.pixel_array(output.dataset())
+    assert np.array_equal(pixels, np.where(_cleaned_region(), 0, stored))
+    assert not redaction_problem(source, output, redaction)
+
+
+def test_a_palette_color_label_map_is_not_read_for_a_text_finder():
+    # Only a defacer writes into a palette's indices: a text finder would
+    # read them as intensities.
+    dataset = _segmentation(kind="LABELMAP", heights=(20.0,))
+    _padded(dataset, 0)
+    dataset.PhotometricInterpretation = "PALETTE COLOR"
+    source = _source(dataset)
+
+    class Finder:
+        method = {"name": "none"}
+
+        def find(self, frame):
+            del frame
+            return ()
+
+    with pytest.raises(PixelDataRefused):
+        black_out(source, source.dataset(), Finder(), None)
+
+
+def _unaligned(stored, positions):
+    """A BINARY segmentation of frames of 5 rows by 7 columns, 35 pixels,
+    so that every frame after the first starts within a byte, each frame
+    placed at its position, its pixels 2 mm apart."""
+    dataset = _segmentation(heights=tuple(z for _, _, z in positions))
+    dataset.Rows, dataset.Columns = 5, 7
+    for groups, position in zip(
+        dataset.PerFrameFunctionalGroupsSequence, positions, strict=True
+    ):
+        groups.PlanePositionSequence[0].ImagePositionPatient = [
+            str(v) for v in position
+        ]
+    data = bytes(np.packbits(np.asarray(stored, np.uint8).ravel(), bitorder="little"))
+    dataset.PixelData = data + bytes(len(data) % 2)
+    return dataset
+
+
+def test_binary_frames_that_start_within_a_byte_are_cleaned_and_checked():
+    stored = np.random.default_rng(4).integers(0, 2, size=(3, 5, 7))
+    # In the block, all of it; behind it, none; and its two rows in front of
+    # y = 0, at y of -4 and -2 mm.
+    positions = [(-20.0, -20.0, 20.0), (-20.0, 1.0, 20.0), (-20.0, -4.0, 20.0)]
+    dataset = _unaligned(stored, positions)
+    source = _source(dataset)
+
+    redaction = black_out(
+        source, source.dataset(), None, SegmentationDefacer(_REGION, source.dataset())
+    )
+
+    cleared = np.zeros((3, 5, 7), dtype=bool)
+    cleared[0] = True
+    cleared[2, :2] = True
+    expected = np.where(cleared, 0, stored)
+    bits = np.asarray(
+        np.unpackbits(np.frombuffer(redaction.value, np.uint8), bitorder="little")
+    )
+    assert np.array_equal(bits[: 3 * 35].reshape(3, 5, 7), expected)
+    # The bits after the last frame, in its last byte and the padding, are
+    # kept.
+    assert redaction.value[-1:] == bytes(dataset.PixelData)[-1:]
+    assert len(redaction.value) == len(dataset.PixelData)
+    written = source.dataset()
+    written.PixelData = redaction.value
+    output = read_source(files.written(written))
+    assert np.array_equal(
+        pydicom.pixels.pixel_array(output.dataset()).reshape(3, 5, 7), expected
+    )
+    assert not redaction_problem(source, output, redaction)
+    # A frame changed elsewhere, even its neighbour's bit within a shared
+    # byte, is found.
+    tampered = bytearray(redaction.value)
+    tampered[4] ^= 0x10  # the bit of frame 1's second pixel
+    written.PixelData = bytes(tampered)
+    assert redaction_problem(source, read_source(files.written(written)), redaction)
+
+
+def test_binary_frames_that_start_within_a_byte_must_all_be_held():
+    stored = np.ones((3, 5, 7), dtype=np.uint8)
+    dataset = _unaligned(stored, [(-20.0, -20.0, 20.0)] * 3)
+    # 105 bits fill 14 bytes; 12 stop short of the last frame.
+    dataset.PixelData = bytes(dataset.PixelData)[:12]
+    source = _source(dataset)
+
+    with pytest.raises(PixelDataRefused):
+        black_out(
+            source,
+            source.dataset(),
+            None,
+            SegmentationDefacer(_REGION, source.dataset()),
+        )
+
+
 def _source(dataset):
     return read_source(files.written(dataset))
 
@@ -365,6 +507,19 @@ def _refusals():
 
         return change
 
+    def fractional(**attributes):
+        def change(dataset):
+            dataset.SegmentationType = "FRACTIONAL"
+            dataset.SegmentationFractionalType = "PROBABILITY"
+            dataset.MaximumFractionalValue = 255
+            dataset.BitsAllocated = dataset.BitsStored = 8
+            dataset.HighBit = 7
+            dataset.PixelData = bytes(2 * 576)
+            for keyword, value in attributes.items():
+                setattr(dataset, keyword, value)
+
+        return change
+
     def without_position(dataset):
         del dataset.PerFrameFunctionalGroupsSequence[0].PlanePositionSequence
 
@@ -388,10 +543,12 @@ def _refusals():
 
         return change
 
-    def without_per_frame_items(dataset):
+    def with_empty_per_frame_sequence(dataset):
+        # Present, the sequence needs an item for each frame, even where the
+        # shared groups would place every frame.
         position = dataset.PerFrameFunctionalGroupsSequence[0].PlanePositionSequence
         dataset.SharedFunctionalGroupsSequence[0].PlanePositionSequence = position
-        del dataset.PerFrameFunctionalGroupsSequence
+        dataset.PerFrameFunctionalGroupsSequence = []
 
     def two_positions(dataset):
         sequence = dataset.PerFrameFunctionalGroupsSequence[0].PlanePositionSequence
@@ -409,20 +566,16 @@ def _refusals():
         dataset.file_meta.TransferSyntaxUID = "1.2.840.10008.1.2.5"
 
     return {
-        "compressed": compressed,
+        "compressed-binary": compressed,
         "unknown-type": setting(SegmentationType="SURFACE"),
         "binary-of-8-bits": setting(
             BitsAllocated=8, BitsStored=8, HighBit=7, PixelData=bytes(2 * 576)
         ),
         "monochrome1": setting(PhotometricInterpretation="MONOCHROME1"),
         "signed": setting(PixelRepresentation=1),
-        "palette-color": labelmap(
-            BitsAllocated=8,
-            BitsStored=8,
-            HighBit=7,
-            PixelData=bytes(2 * 576),
-            PixelPaddingValue=0,
-            PhotometricInterpretation="PALETTE COLOR",
+        "palette-color-binary": setting(PhotometricInterpretation="PALETTE COLOR"),
+        "palette-color-fractional": fractional(
+            PhotometricInterpretation="PALETTE COLOR"
         ),
         "label-map-of-1-bit": labelmap(PixelPaddingValue=0),
         "label-map-without-padding": labelmap(
@@ -451,9 +604,6 @@ def _refusals():
             PixelPaddingValue=300,
         ),
         "tiled-full": setting(DimensionOrganizationType="TILED_FULL"),
-        "frames-starting-within-a-byte": setting(
-            Rows=5, Columns=7, PixelData=bytes(10)
-        ),
         "without-a-position": without_position,
         "without-a-spacing": without_spacing,
         "position-in-both": in_both("PlanePositionSequence"),
@@ -462,7 +612,7 @@ def _refusals():
         "orientation-in-both-for-one-frame": in_both("PlaneOrientationSequence", (1,)),
         "spacing-in-both": in_both("PixelMeasuresSequence"),
         "spacing-in-both-for-one-frame": in_both("PixelMeasuresSequence", (1,)),
-        "without-per-frame-items": without_per_frame_items,
+        "with-an-empty-per-frame-sequence": with_empty_per_frame_sequence,
         "two-positions": two_positions,
         "too-few-per-frame-items": too_few_frames,
         "two-shared-items": two_shared,
@@ -563,7 +713,7 @@ def _iod(transform, name=SEGMENTATION):
     return transform._iods.iods[name]
 
 
-def test_a_segmentation_in_a_defaced_frame_is_cleaned_in_its_block_and_held():
+def test_a_segmentation_in_a_defaced_frame_is_cleaned_in_its_block():
     slices = _head_files()
     data = _head_segmentation()
     transform, records = _prepared(*slices, data)
@@ -571,7 +721,7 @@ def test_a_segmentation_in_a_defaced_frame_is_cleaned_in_its_block_and_held():
     region = transform._region(iod, records[len(slices)])
     source = read_source(data)
 
-    redaction, undefaced, _ = transform._black_out(
+    redaction, undefaced, _, _ = transform._black_out(
         data,
         source,
         source.dataset(),
@@ -587,7 +737,6 @@ def test_a_segmentation_in_a_defaced_frame_is_cleaned_in_its_block_and_held():
     columns = np.rint((np.array([head.GLOBE_X, 0.0]) + 124) / 8).astype(int)
     rows = np.rint((np.array([head.GLOBE_Y - 5.0, 100.0]) + 124) / 8).astype(int)
     assert mask.mask[rows[0], columns[0]] and not mask.mask[rows[1], columns[1]]
-    assert instance_transform._unshown_segments(iod, redaction)
 
 
 def test_no_block_for_a_segmentation_in_another_frame_so_it_stays_held():
@@ -599,49 +748,29 @@ def test_no_block_for_a_segmentation_in_another_frame_so_it_stays_held():
     assert instance_transform._region_defacing(iod, None) is None
 
 
-class _NoMask:  # pylint: disable = too-few-public-methods
-    def mask(self, frame, stored):  # pylint: disable = unused-argument
-        return None
-
-
-def test_only_a_segmentation_given_a_mask_is_held_for_its_segments():
-    transform, _ = _prepared()
-    unshown = instance_transform._unshown_segments
-    source = _source(_segmentation())
-    unmasked = black_out(source, source.dataset(), None, _NoMask())
-    masked = black_out(
-        source,
-        source.dataset(),
-        None,
-        SegmentationDefacer(_REGION, source.dataset()),
-    )
-
-    assert unshown(_iod(transform), masked)
-    assert not unshown(_iod(transform), unmasked)
-    assert not unshown(_iod(transform), None)
-    assert not unshown(_iod(transform, "Positron Emission Tomography Image"), masked)
-
-
-def _reviewed_absent(data, written):
-    """A face review that marks a segmentation absent as ``written``."""
+def _reviewed_absent(data, written, sheet=0):
+    """A face review that marks a segmentation absent as ``written``, whose
+    every frame the review showed, and its segments sheet all but ``sheet``
+    of them, or none where ``sheet`` is None."""
     digest = hashlib.sha256(data).digest()
     dataset = pydicom.dcmread(io.BytesIO(written))
+    pixels = pixel_data_sha256(dataset)
+    frames = int(dataset.NumberOfFrames)
     return FaceReview(
         new_reference(),
         frozenset({digest}),
         frozenset(),
-        frozenset({(digest, pixel_data_sha256(dataset))}),
+        frozenset({(digest, pixels)}),
         frozenset({(digest, contour_data_sha256(dataset))}),
+        absent_frames=frozenset({(digest, pixels, frames)}),
+        absent_segment_frames=None
+        if sheet is None
+        else frozenset({(digest, pixels, frames - sheet)} if frames > sheet else ()),
     )
 
 
 @pytest.mark.parametrize("reaches", [True, False], ids=["reaches", "behind"])
-def test_a_segmentation_that_reaches_the_face_is_held_whatever_its_verdict(
-    monkeypatch, reaches
-):
-    # Segmentation is out of scope until it is supported, so the run would
-    # sequester it before cleaning it.
-    monkeypatch.setattr(scope, "SUPPORTED_IODS", scope.SUPPORTED_IODS | {SEGMENTATION})
+def test_a_segmentation_is_released_on_a_verdict_on_its_segments_as_written(reaches):
     slices = _head_files()
     # Rows from 16, at y of 4 mm and more, lie well behind the globes, and
     # so behind the block's plane.
@@ -654,15 +783,46 @@ def test_a_segmentation_that_reaches_the_face_is_held_whatever_its_verdict(
     second = transform(data, record)
 
     written = pydicom.pixels.pixel_array(pydicom.dcmread(io.BytesIO(second.data)))
-    held = getattr(second.evidence, "held", ())
+    assert not getattr(second.evidence, "held", ())
     if reaches:
-        # Its eyes' pixels are cleared, and it is held, since the pack does
-        # not show segments.
+        # Its eyes' pixels are cleared, as the review saw them.
         eyes = round((head.GLOBE_Y - 5.0 + 124) / 8)
         assert written[eyes].sum() < 32 and written[16:].all()
-        assert held == (HeldVisualFeatures(VisualFeaturesReason.NO_FACE_VERDICT),)
     else:
         assert (
             np.array_equal(written[16:], np.ones((16, 32))) and not written[:16].any()
         )
-        assert not held
+
+
+def test_a_verdict_on_a_segmentation_as_received_holds_it_once_cleared():
+    slices = _head_files()
+    data = _head_segmentation()
+    transform, records = _prepared(*slices, data)
+    # The review showed its segments as received, which the run, clearing
+    # them in the block, no longer writes.
+    transform._face_review = _reviewed_absent(data, data)
+
+    written = transform(data, records[len(slices)])
+
+    assert getattr(written.evidence, "held") == (
+        HeldVisualFeatures(VisualFeaturesReason.OTHER_PIXEL_DATA),
+    )
+
+
+@pytest.mark.parametrize("sheet", [None, 1], ids=["no sheet", "a frame short"])
+def test_a_verdict_seen_but_not_on_the_whole_segments_sheet_holds_it(sheet):
+    slices = _head_files()
+    data = _head_segmentation()
+    transform, records = _prepared(*slices, data)
+    record = records[len(slices)]
+    first = transform(data, record)
+    # The review's other previews showed every frame of its segments as
+    # written, but its segments sheet, which alone shows the surfaces that
+    # they trace, showed none or all but one.
+    transform._face_review = _reviewed_absent(data, first.data, sheet)
+
+    second = transform(data, record)
+
+    assert getattr(second.evidence, "held") == (
+        HeldVisualFeatures(VisualFeaturesReason.OTHER_PIXEL_DATA),
+    )

@@ -30,11 +30,11 @@ type
     of a patient collection;
 allow-list
     a :class:`PhantomDicomCase` is only of a collection in
-    :data:`PHANTOM_COLLECTIONS`, each a collection of physical phantoms, and
-    reads only files that name that collection as the archive's project in
-    the private block that The Cancer Imaging Archive's de-identification
-    adds, and, where the entry lists them, only the Patient IDs of its
-    phantoms. A file that fails is skipped by a code, never read;
+    :data:`PHANTOM_COLLECTIONS`, each a collection whose every subject is a
+    physical or computational phantom, and reads only files that name that
+    collection as the archive's project in the private block that The Cancer
+    Imaging Archive's de-identification adds. A file that fails is skipped by
+    a code, never read;
 tier
     each frame must be of tier T1 or T2 (:data:`PREVIEWED_TIERS`), so that
     no frame of a patient is drawn, even with synthetic text burned in.
@@ -103,10 +103,6 @@ class PhantomCollection:
     project_names : tuple of str
         The Project Names that its files may carry in the archive's private
         block; a file with another, or none, is not read.
-    patients : frozenset of str or None
-        The Patient IDs of its phantoms, where it holds anything else, such
-        as images derived from patients; None where every subject is a
-        phantom.
     """
 
     name: str
@@ -115,7 +111,6 @@ class PhantomCollection:
     licence: str
     licence_url: str
     project_names: tuple[str, ...]
-    patients: frozenset[str] | None = None
 
     def attribution(self) -> dict[str, str]:
         """How the collection is credited, as reports give it."""
@@ -130,13 +125,11 @@ class PhantomCollection:
 
 
 _CC_BY_3 = "https://creativecommons.org/licenses/by/3.0/"
-_CC_BY_4 = "https://creativecommons.org/licenses/by/4.0/"
 
 # Collections of phantoms whose images may be previewed. Only a collection
-# whose every subject reaching it is a phantom belongs here: MRI-DIR also
-# holds synthetic images derived from patients' scans, so it admits only
-# the Patient IDs of its porcine phantom, which are listed once verified;
-# until then it admits none.
+# whose every subject is a phantom belongs here, and no phantom of animal
+# tissue: so not MRI-DIR, whose physical phantom is porcine and whose other
+# subjects are synthetic images derived from patients' scans.
 PHANTOM_COLLECTIONS: Mapping[str, PhantomCollection] = types.MappingProxyType(
     {
         each.name: each
@@ -165,21 +158,6 @@ PHANTOM_COLLECTIONS: Mapping[str, PhantomCollection] = types.MappingProxyType(
                 licence="CC BY 3.0",
                 licence_url=_CC_BY_3,
                 project_names=("RIDER PHANTOM PET-CT",),
-            ),
-            PhantomCollection(
-                name="MRI-DIR",
-                citation=(
-                    "Ger RB, Yang J, Ding Y, Jacobsen MC, Cardenas CE, Fuller CD, "
-                    "Howell RM, Li H, Stafford RJ, Zhou S, Court L. (2018). Data "
-                    "from Synthetic and Phantom MR Images for Determining "
-                    "Deformable Image Registration Accuracy (MRI-DIR) (Version 1). "
-                    "The Cancer Imaging Archive."
-                ),
-                doi="10.7937/K9/TCIA.2018.3f08iejt",
-                licence="CC BY 4.0",
-                licence_url=_CC_BY_4,
-                project_names=("MRI-DIR",),
-                patients=frozenset(),
             ),
             # In-silico breast phantoms, computational subjects all, as TCIA
             # cites them; NCI's Imaging Data Commons carries the collection
@@ -239,10 +217,6 @@ def _not_phantom(data: bytes, phantom: PhantomCollection) -> str | None:
         return "not-phantom/no-project"
     if project not in phantom.project_names:
         return "not-phantom/other-project"
-    if phantom.patients is not None:
-        patient = dataset.get("PatientID")
-        if patient is None or str(patient).strip() not in phantom.patients:
-            return "not-phantom/patient-not-listed"
     return None
 
 

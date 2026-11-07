@@ -496,9 +496,14 @@ def test_the_command_records_each_verdict(pack):
         {"series": 0, "face": "absent"},
         {"series": 1, "face": "present"},
     ]
-    assert stdout.splitlines()[-6:] == [
+    assert stdout.splitlines()[-11:] == [
         "  series without a recognisable face: 1",
         "  series with a recognisable face: 1",
+        "  face blocks confirmed: 0",
+        "  RT Doses with dose in a face block to write as received: 0",
+        "  RT Doses with dose in a face block to set to zero: 0",
+        "  undefaced instances without a recognisable face in their own previews: 0",
+        "  undefaced instances with a recognisable face in their own previews: 0",
         "  cleaned instances with their regions accepted: 0",
         "  cleaned instances with the reviewer's regions added: 0",
         "  cleaned instances rejected: 0",

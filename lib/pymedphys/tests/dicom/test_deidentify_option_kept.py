@@ -41,6 +41,7 @@ from pymedphys._dicom.deidentify.references import InstanceRecord
 from pymedphys._dicom.deidentify.release_gate import (
     Coverage,
     Decision,
+    ReasonCode,
     release_condition,
 )
 from pymedphys._dicom.deidentify.residual_exemptions import Exemption
@@ -204,14 +205,20 @@ def test_kept_text_holding_a_value_of_another_kind_goes_to_review(source):
 
 
 @pytest.mark.deid_requirement("MIDI-BP-01")
-def test_a_person_name_found_in_kept_text_still_withholds_the_file():
+def test_a_person_name_found_in_kept_text_goes_to_review_unexplained():
     written = _written(_element(STATION_NAME, "SH", "ZARQUON^ARTHUR"))
-    condition = _condition(
-        written, [DEVICE_IDENTITY], ("(0008,1070)", "PN", "ZARQUON^ARTHUR")
-    )
+    removed = ("(0008,1070)", "PN", "ZARQUON^ARTHUR")
 
-    assert condition.decision is Decision.WITHHOLD
+    condition = _condition(written, [DEVICE_IDENTITY], removed)
+
+    # A reviewer, who sees the value, decides; nothing explains it (D-042).
+    assert condition.decision is Decision.QC_REVIEW
+    assert [reason.code for reason in condition.reasons] == [
+        ReasonCode.RESIDUAL_PERSON_NAME_IN_KEPT_TEXT
+    ]
     assert not condition.exempted
+    # With no option to keep the Station Name, the name withholds the file.
+    assert _condition(written, [], removed).decision is Decision.WITHHOLD
 
 
 @pytest.mark.deid_requirement("MIDI-BP-01")
@@ -295,6 +302,91 @@ def test_a_pooled_value_found_only_by_its_date_still_withholds(pooled):
     written = _written(_element(CALIBRATION_DATETIME, "DT", WHOLE))
     removed = [(ACQUISITION_DATETIME, "DT", value) for value in pooled]
     condition = _condition(written, [DEVICE_IDENTITY], *removed)
+
+    assert condition.decision is Decision.WITHHOLD
+    assert not condition.exempted
+
+
+# A removed datetime, such as a vendor's private scan time, is also searched
+# for by its date, which the search finds in a kept date of the same day. The
+# found text is then the whole kept date, which the option releases anyway.
+PRIVATE_DATETIME = "(0009,1010)"
+DATE_OF_LAST_CALIBRATION = 0x00181200
+SCANNED = f"{DAY}101500"
+SCANNED_LATER = f"{DAY}113000.250000+1100"
+
+
+@pytest.mark.deid_requirement("MIDI-BP-01")
+@pytest.mark.parametrize(
+    "options, kept, written_date",
+    [
+        ([FULL_DATES], STUDY_DATE, DAY),
+        ([DEVICE_IDENTITY], DATE_OF_LAST_CALIBRATION, DAY),
+        # One whole value of a multi-valued kept date.
+        ([DEVICE_IDENTITY], DATE_OF_LAST_CALIBRATION, f"20190101\\{DAY}"),
+    ],
+)
+@pytest.mark.parametrize(
+    "pooled",
+    [
+        (SCANNED,),
+        (SCANNED, SCANNED_LATER),
+        # Another day's value, which is not in the kept date.
+        (SCANNED, UNRELATED),
+        (UNRELATED, SCANNED),
+    ],
+)
+def test_a_removed_datetime_whose_date_is_a_whole_kept_date_is_released(
+    options, kept, written_date, pooled
+):
+    written = _written(_element(kept, "DA", written_date))
+    removed = [(PRIVATE_DATETIME, "DT", value) for value in pooled]
+    condition = _condition(written, options, *removed)
+
+    assert condition.decision is Decision.RELEASE
+    assert _why(condition) == [Exemption.RETAINED_VALUE]
+
+
+@pytest.mark.deid_requirement("MIDI-BP-01")
+@pytest.mark.parametrize("options", [[], [MODIFIED_DATES]])
+def test_a_removed_datetime_by_its_date_in_a_date_no_option_keeps_withholds(options):
+    written = _written(_element(STUDY_DATE, "DA", DAY))
+    condition = _condition(written, options, (PRIVATE_DATETIME, "DT", SCANNED))
+
+    assert condition.decision is Decision.WITHHOLD
+    assert not condition.exempted
+
+
+@pytest.mark.deid_requirement("MIDI-BP-01")
+@pytest.mark.parametrize(
+    "kept, vr, value",
+    [
+        # Acquisition DateTime, which Full Dates keeps, holds the date inside
+        # a longer value.
+        (0x0008002A, "DT", f"{DAY}120000"),
+        # A kept date written in another spelling, which the search finds by
+        # the datetime's date in that spelling.
+        (STUDY_DATE, "DA", f"{DAY[:4]}-{DAY[4:6]}-{DAY[6:]}"),
+    ],
+)
+def test_a_removed_datetime_by_its_date_inside_other_kept_text_withholds(
+    kept, vr, value
+):
+    written = _written(_element(kept, vr, value))
+    condition = _condition(written, [FULL_DATES], (PRIVATE_DATETIME, "DT", SCANNED))
+
+    assert condition.decision is Decision.WITHHOLD
+    assert not condition.exempted
+
+
+@pytest.mark.deid_requirement("MIDI-BP-01")
+def test_a_removed_date_found_by_another_spelling_of_itself_still_withholds():
+    # The change is for a datetime's date: a removed date written as
+    # ACR-NEMA did, YYYY.MM.DD, found by its date in a kept date, still is not
+    # a whole kept value.
+    written = _written(_element(STUDY_DATE, "DA", DAY))
+    acr_nema = f"{DAY[:4]}.{DAY[4:6]}.{DAY[6:]}"
+    condition = _condition(written, [FULL_DATES], (BIRTH_DATE, "DA", acr_nema))
 
     assert condition.decision is Decision.WITHHOLD
     assert not condition.exempted
