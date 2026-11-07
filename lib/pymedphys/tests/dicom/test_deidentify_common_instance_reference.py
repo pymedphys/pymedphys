@@ -38,6 +38,9 @@ MANDATORY = {
     "C-Arm Photon-Electron Radiation",
     "Tomotherapeutic Radiation",
     "Robotic-Arm Radiation",
+    "RT Physician Intent",
+    "RT Treatment Preparation",
+    "RT Patient Position Acquisition Instruction",
 }
 # Required where a Derivation Image functional group is present.
 CONDITIONAL = {"Segmentation"}
