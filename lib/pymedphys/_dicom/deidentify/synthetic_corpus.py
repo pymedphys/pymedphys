@@ -360,6 +360,11 @@ RT_RADIATION_SET_STORAGE = "1.2.840.10008.5.1.4.1.1.481.12"
 C_ARM_PHOTON_ELECTRON_RADIATION_STORAGE = "1.2.840.10008.5.1.4.1.1.481.13"
 TOMOTHERAPEUTIC_RADIATION_STORAGE = "1.2.840.10008.5.1.4.1.1.481.14"
 ROBOTIC_ARM_RADIATION_STORAGE = "1.2.840.10008.5.1.4.1.1.481.15"
+RT_RADIATION_RECORD_SET_STORAGE = "1.2.840.10008.5.1.4.1.1.481.16"
+RT_RADIATION_SALVAGE_RECORD_STORAGE = "1.2.840.10008.5.1.4.1.1.481.17"
+TOMOTHERAPEUTIC_RADIATION_RECORD_STORAGE = "1.2.840.10008.5.1.4.1.1.481.18"
+C_ARM_PHOTON_ELECTRON_RADIATION_RECORD_STORAGE = "1.2.840.10008.5.1.4.1.1.481.19"
+ROBOTIC_ARM_RADIATION_RECORD_STORAGE = "1.2.840.10008.5.1.4.1.1.481.20"
 # The retired class that PS3.3 Sections 10.6.1 and C.8.8.5.4 give a study in
 # a Referenced Study Sequence or RT Referenced Study Sequence item.
 DETACHED_STUDY_MANAGEMENT = "1.2.840.10008.3.1.2.3.1"
@@ -434,6 +439,14 @@ RADIATION_SET_FILE = "71-rt-radiation-set.dcm"
 C_ARM_RADIATION_FILE = "72-c-arm-radiation.dcm"
 TOMOTHERAPEUTIC_RADIATION_FILE = "73-tomotherapeutic-radiation.dcm"
 ROBOTIC_ARM_RADIATION_FILE = "74-robotic-arm-radiation.dcm"
+# The RT Radiation Record Set of the radiation records, a record of each
+# second-generation radiation IOD, and an RT Radiation Salvage Record,
+# numbered after the files that open pull requests add.
+RADIATION_RECORD_SET_FILE = "78-rt-radiation-record-set.dcm"
+C_ARM_RADIATION_RECORD_FILE = "82-c-arm-radiation-record.dcm"
+TOMOTHERAPEUTIC_RADIATION_RECORD_FILE = "83-tomotherapeutic-radiation-record.dcm"
+ROBOTIC_ARM_RADIATION_RECORD_FILE = "84-robotic-arm-radiation-record.dcm"
+RADIATION_SALVAGE_RECORD_FILE = "85-rt-radiation-salvage-record.dcm"
 # The directory, within the one that write_corpus is given, of the files.
 INSTANCES_DIRECTORY = "instances"
 
@@ -540,6 +553,16 @@ TOMOTHERAPEUTIC_RADIATION_SERIES = f"{LINKED_UID_ROOT}06900"
 TOMOTHERAPEUTIC_RADIATION = f"{LINKED_UID_ROOT}06901"
 ROBOTIC_ARM_RADIATION_SERIES = f"{LINKED_UID_ROOT}07000"
 ROBOTIC_ARM_RADIATION = f"{LINKED_UID_ROOT}07001"
+RADIATION_RECORD_SET_SERIES = f"{LINKED_UID_ROOT}07400"
+RADIATION_RECORD_SET = f"{LINKED_UID_ROOT}07401"
+C_ARM_RADIATION_RECORD_SERIES = f"{LINKED_UID_ROOT}07800"
+C_ARM_RADIATION_RECORD = f"{LINKED_UID_ROOT}07801"
+TOMOTHERAPEUTIC_RADIATION_RECORD_SERIES = f"{LINKED_UID_ROOT}07900"
+TOMOTHERAPEUTIC_RADIATION_RECORD = f"{LINKED_UID_ROOT}07901"
+ROBOTIC_ARM_RADIATION_RECORD_SERIES = f"{LINKED_UID_ROOT}08000"
+ROBOTIC_ARM_RADIATION_RECORD = f"{LINKED_UID_ROOT}08001"
+RADIATION_SALVAGE_RECORD_SERIES = f"{LINKED_UID_ROOT}08100"
+RADIATION_SALVAGE_RECORD = f"{LINKED_UID_ROOT}08101"
 # A patient and a procedure step that the collection names but does not hold.
 PATIENT_REFERENCE = f"{LINKED_UID_ROOT}00003"
 PROCEDURE_STEP = f"{LINKED_UID_ROOT}00004"
@@ -613,6 +636,9 @@ _RT_REFERENCED_CONTOUR_IMAGES = ("(3006,0010)", "(3006,0012)", "(3006,0014)")
 _REFERENCED_RT_PLAN_SEQUENCE = "(300C,0002)"
 _RT_RADIATION_SEQUENCE = "(300A,0616)"
 _REFERENCED_RT_RADIATION_SEQUENCE = "(300A,0630)"
+_REFERENCED_RT_INSTANCE_SEQUENCE = "(300A,0631)"
+_REFERENCED_RT_RADIATION_SET_SEQUENCE = "(300A,0702)"
+_REFERENCED_RT_RADIATION_RECORD_SEQUENCE = "(300A,0703)"
 _REFERENCED_TREATMENT_RECORD_SEQUENCE = "(3008,0030)"
 # The instance a reference names, by the innermost sequence that holds it.
 _TARGETS = types.MappingProxyType(
@@ -634,6 +660,20 @@ _RADIATIONS = frozenset(
         C_ARM_PHOTON_ELECTRON_RADIATION_STORAGE,
         TOMOTHERAPEUTIC_RADIATION_STORAGE,
         ROBOTIC_ARM_RADIATION_STORAGE,
+    }
+)
+# The radiation records, whose Modality PS3.3 Sections A.86.1.9.4.1 to
+# A.86.1.12.4.1 make RTRAD, and the RT Radiation Record Set, for which PS3.3
+# names no Modality: of the Enumerated Values of its Enhanced RT Series
+# Module (Section C.36.3.1.1), RTRAD is the one for a set of radiation
+# records.
+_RADIATION_RECORDS = frozenset(
+    {
+        RT_RADIATION_RECORD_SET_STORAGE,
+        RT_RADIATION_SALVAGE_RECORD_STORAGE,
+        TOMOTHERAPEUTIC_RADIATION_RECORD_STORAGE,
+        C_ARM_PHOTON_ELECTRON_RADIATION_RECORD_STORAGE,
+        ROBOTIC_ARM_RADIATION_RECORD_STORAGE,
     }
 )
 _SOP_CLASSES = types.MappingProxyType(
@@ -688,6 +728,11 @@ _SOP_CLASSES = types.MappingProxyType(
         C_ARM_RADIATION: C_ARM_PHOTON_ELECTRON_RADIATION_STORAGE,
         TOMOTHERAPEUTIC_RADIATION: TOMOTHERAPEUTIC_RADIATION_STORAGE,
         ROBOTIC_ARM_RADIATION: ROBOTIC_ARM_RADIATION_STORAGE,
+        RADIATION_RECORD_SET: RT_RADIATION_RECORD_SET_STORAGE,
+        C_ARM_RADIATION_RECORD: C_ARM_PHOTON_ELECTRON_RADIATION_RECORD_STORAGE,
+        TOMOTHERAPEUTIC_RADIATION_RECORD: TOMOTHERAPEUTIC_RADIATION_RECORD_STORAGE,
+        ROBOTIC_ARM_RADIATION_RECORD: ROBOTIC_ARM_RADIATION_RECORD_STORAGE,
+        RADIATION_SALVAGE_RECORD: RT_RADIATION_SALVAGE_RECORD_STORAGE,
         PATIENT_REFERENCE: DETACHED_PATIENT_MANAGEMENT,
         PROCEDURE_STEP: MODALITY_PERFORMED_PROCEDURE_STEP,
     }
@@ -1481,6 +1526,64 @@ _SPECS = (
             ),
         )
     ),
+    # Each radiation record names its radiation in Referenced RT Instance
+    # Sequence, as the radiation that it delivered, and the RT Radiation
+    # Salvage Record names the C-Arm Photon-Electron Radiation, as the record
+    # of a delivery of it that the treatment device could not record in full.
+    # The RT Radiation Record Set names the RT Radiation Set, whose radiations
+    # it records, and the C-Arm Photon-Electron Radiation Record. Each names
+    # the structure set elsewhere, as the radiations do.
+    _Spec(
+        RADIATION_RECORD_SET_FILE,
+        RT_RADIATION_RECORD_SET_STORAGE,
+        RADIATION_RECORD_SET,
+        RADIATION_RECORD_SET_SERIES,
+        STRUCTURE_SET,
+        targets=(
+            (_REFERENCED_RT_RADIATION_SET_SEQUENCE, RADIATION_SET),
+            (_REFERENCED_RT_RADIATION_RECORD_SEQUENCE, C_ARM_RADIATION_RECORD),
+        ),
+    ),
+    *(
+        _Spec(
+            name,
+            sop_class,
+            instance,
+            series,
+            STRUCTURE_SET,
+            targets=((_REFERENCED_RT_INSTANCE_SEQUENCE, radiation),),
+        )
+        for name, sop_class, instance, series, radiation in (
+            (
+                C_ARM_RADIATION_RECORD_FILE,
+                C_ARM_PHOTON_ELECTRON_RADIATION_RECORD_STORAGE,
+                C_ARM_RADIATION_RECORD,
+                C_ARM_RADIATION_RECORD_SERIES,
+                C_ARM_RADIATION,
+            ),
+            (
+                TOMOTHERAPEUTIC_RADIATION_RECORD_FILE,
+                TOMOTHERAPEUTIC_RADIATION_RECORD_STORAGE,
+                TOMOTHERAPEUTIC_RADIATION_RECORD,
+                TOMOTHERAPEUTIC_RADIATION_RECORD_SERIES,
+                TOMOTHERAPEUTIC_RADIATION,
+            ),
+            (
+                ROBOTIC_ARM_RADIATION_RECORD_FILE,
+                ROBOTIC_ARM_RADIATION_RECORD_STORAGE,
+                ROBOTIC_ARM_RADIATION_RECORD,
+                ROBOTIC_ARM_RADIATION_RECORD_SERIES,
+                ROBOTIC_ARM_RADIATION,
+            ),
+            (
+                RADIATION_SALVAGE_RECORD_FILE,
+                RT_RADIATION_SALVAGE_RECORD_STORAGE,
+                RADIATION_SALVAGE_RECORD,
+                RADIATION_SALVAGE_RECORD_SERIES,
+                C_ARM_RADIATION,
+            ),
+        )
+    ),
 )
 
 
@@ -2159,7 +2262,7 @@ class _Instance:
             self._add_enhanced_rt_image()
         elif self.spec.sop_class == RT_SEGMENT_ANNOTATION_STORAGE:
             put((), "(0008,0060)", ["RTSEGANN"])
-        elif self.spec.sop_class in _RADIATIONS:
+        elif self.spec.sop_class in _RADIATIONS | _RADIATION_RECORDS:
             put((), "(0008,0060)", ["RTRAD"])
         else:
             put((), "(0008,0060)", ["RTDOSE"])
