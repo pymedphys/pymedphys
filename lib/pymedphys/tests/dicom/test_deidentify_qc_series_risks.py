@@ -433,7 +433,7 @@ def test_a_run_over_the_synthetic_corpus_lists_its_volumes_and_projections(tmp_p
     # BINARY and LABELMAP, is in a series of its own and can trace the face.
     # The Computed Radiography image, a lateral skull radiograph, can show
     # the face in profile, and names the head; the two Digital X-Ray images,
-    # of the chest, are in one series and can show it too.
+    # of the chest, each in a series of its own, can show it too.
     volumes = [
         ("ct-volume", released("CT Image")),
         ("rt-dose-volume", released("RT Dose", held=True)),
@@ -485,7 +485,10 @@ def test_a_run_over_the_synthetic_corpus_lists_its_volumes_and_projections(tmp_p
                 finding("head-or-neck", computed, "(0018,0015)"),
             ],
         },
-        {"positions": digital, "findings": [finding("radiograph", digital)]},
+        *(
+            {"positions": [position], "findings": [finding("radiograph", [position])]}
+            for position in digital
+        ),
     ]
     # The pack groups by the source's Series Instance UID but never writes it.
     assert all(uid and uid not in text for uid in series)

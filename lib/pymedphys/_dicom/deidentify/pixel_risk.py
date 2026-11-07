@@ -782,7 +782,8 @@ _RT_IMAGE = "1.2.840.10008.5.1.4.1.1.481.1"
 # radiograph is a projection, and a lateral one of the head, such as a
 # lateral skull radiograph or a cephalogram, shows the face in profile, as a
 # localizer can. It is recognised by its SOP Class, whatever its View
-# Position (0018,5101), which is Type 2 in both IODs and so may be empty,
+# Position (0018,5101), which is Type 2 in a CR image, so may be empty, and
+# Type 3 in a DX image, so may be absent,
 # and whatever its Image Type, whose third value the Digital X-Ray Image IOD
 # requires to be empty (PS3.3 Section C.8.11.3.1.1) and the Computed
 # Radiography Image IOD does not define. Each is also reported as able to

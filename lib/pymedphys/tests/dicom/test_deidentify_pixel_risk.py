@@ -830,7 +830,7 @@ RADIOGRAPHS = {
     "digital x-ray for processing": "1.2.840.10008.5.1.4.1.1.1.1.1",
 }
 # The Defined Terms of View Position (PS3.3 Table C.8-1) of a lateral and of
-# a frontal projection, and its empty value, since it is Type 2.
+# a frontal projection, and its empty value, since it is Type 2 in a CR image.
 VIEW_POSITIONS = ["LL", "RL", "AP", "PA", ""]
 
 
@@ -867,6 +867,16 @@ def test_every_radiograph_can_show_the_face_in_profile(
 
 
 @pytest.mark.deid_requirement("MIDI-BP-15")
+def test_a_radiograph_without_a_view_position_is_a_radiograph():
+    # View Position is Type 3 in a DX image, so it may be absent.
+    for sop_class in RADIOGRAPHS.values():
+        dataset = _radiograph(0, sop_class)
+        del dataset.ViewPosition
+        assert _series_found(pixel_risk.assess_series([dataset])) == {
+            (Indicator.RADIOGRAPH, (0,), None)
+        }
+
+
 def test_a_radiograph_labelled_a_localizer_is_a_radiograph():
     # Its SOP Class decides, whatever a writer puts in Image Type.
     for sop_class in RADIOGRAPHS.values():

@@ -22,7 +22,8 @@ Plan that references the structure set and the dose, an RT Dose that
 references the plan, a second RT Dose of the plan for review (below), one
 instance of each of thirty-six other IODs, two of the Segmentation IOD,
 one of each of its SOP Classes, each in a series of its own, two of the
-Digital X-Ray Image IOD, one of each of its SOP Classes, in one series, and
+Digital X-Ray Image IOD, one of each of its SOP Classes, each in a series
+of its own, and
 a second X-Ray Radiation Dose SR, of a CT scan.
 The MR Image and PET Image instances reference the first CT slice, and each
 enhanced, legacy converted enhanced, or MR Spectroscopy instance references
@@ -533,9 +534,13 @@ TREATMENT_SUMMARY_RECORD_SERIES = f"{LINKED_UID_ROOT}04700"
 TREATMENT_SUMMARY_RECORD = f"{LINKED_UID_ROOT}04701"
 COMPUTED_RADIOGRAPH_SERIES = f"{LINKED_UID_ROOT}05900"
 COMPUTED_RADIOGRAPH = f"{LINKED_UID_ROOT}05901"
+# The two Digital X-Ray images are in series of their own, since Presentation
+# Intent Type (0008,0068) is the same for every image of a DX series (PS3.3
+# Section C.8.11.1.1.1).
 DIGITAL_X_RAY_SERIES = f"{LINKED_UID_ROOT}06000"
 DIGITAL_X_RAY_FOR_PROCESSING = f"{LINKED_UID_ROOT}06001"
 DIGITAL_X_RAY_FOR_PRESENTATION = f"{LINKED_UID_ROOT}06002"
+DIGITAL_X_RAY_FOR_PRESENTATION_SERIES = f"{LINKED_UID_ROOT}06003"
 # A patient and a procedure step that the collection names but does not hold.
 PATIENT_REFERENCE = f"{LINKED_UID_ROOT}00003"
 PROCEDURE_STEP = f"{LINKED_UID_ROOT}00004"
@@ -1416,10 +1421,11 @@ _SPECS = (
     ),
     # The Computed Radiography image, a lateral skull radiograph, references
     # the first CT slice, as the MR Image does. The Digital X-Ray images are
-    # of one chest exposure, in one series: the image for processing
-    # references the first CT slice, and the image for presentation the image
-    # for processing, from which it is derived, as its Source Image Sequence
-    # (0008,2112) can name it.
+    # of one chest exposure, each in a series of its own, since a DX series
+    # holds images of one Presentation Intent Type (PS3.3 Section
+    # C.8.11.1.1.1): the image for processing references the first CT slice,
+    # and the image for presentation the image for processing, from which it
+    # is derived, as its Source Image Sequence (0008,2112) can name it.
     _Spec(
         COMPUTED_RADIOGRAPH_FILE,
         COMPUTED_RADIOGRAPHY_IMAGE_STORAGE,
@@ -1438,7 +1444,7 @@ _SPECS = (
         DIGITAL_X_RAY_FOR_PRESENTATION_FILE,
         DIGITAL_X_RAY_IMAGE_STORAGE_FOR_PRESENTATION,
         DIGITAL_X_RAY_FOR_PRESENTATION,
-        DIGITAL_X_RAY_SERIES,
+        DIGITAL_X_RAY_FOR_PRESENTATION_SERIES,
         DIGITAL_X_RAY_FOR_PROCESSING,
     ),
 )
