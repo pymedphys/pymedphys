@@ -93,7 +93,8 @@ reason that such a finding is not a reason for review (D-032), or returns
   made only of words of the reviewed technique vocabulary and echoes no
   identifier of the subject, and its source is a description, comment, or
   technique descriptor of the examination, a contrast agent or
-  radiopharmaceutical, or an SR TEXT value
+  radiopharmaceutical, or an SR TEXT value, or a private data element that
+  only copies one of them
   (:func:`~pymedphys._dicom.deidentify.residual_vocabulary.vocabulary_meaning`).
   The release gate tries it for a text finding that nothing above
   explains.

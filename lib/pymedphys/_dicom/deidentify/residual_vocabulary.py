@@ -43,12 +43,16 @@ only where all of these hold:
   a description, comment, or technique descriptor of the study, procedure,
   series, or image, a contrast agent or radiopharmaceutical, or an SR
   TEXT content item's value, each of which describes the examination
-  rather than naming anyone or anything. Every other source stays under
-  review, so an attribute that names a place, an organisation, a station,
-  or a device, such as Station Name or Gantry ID, or a private element,
-  which can hold any of them, is never exempt, however the kept meaning
-  reads: a station named ``HEAD`` found in a kept ``CT HEAD`` is still seen;
-  and
+  rather than naming anyone or anything; or it is a private data element,
+  (gggg,1000) or later of a group open to private use, at any depth, every collected
+  value of which, pooled for the subject, equals a collected value of
+  such a descriptive source (:func:`descriptive_copy`), as a vendor's
+  private copy of the radiopharmaceutical is. Every other source stays
+  under review, so an attribute that names a place, an organisation, a
+  station, or a device, such as Station Name or Gantry ID, or any other
+  private element, which can hold any of them, is never exempt, however
+  the kept meaning reads: a station named ``HEAD`` found in a kept
+  ``CT HEAD`` is still seen; and
 - the source is not in an item of one of :data:`INSTITUTIONAL_SEQUENCES`,
   nor one of :data:`INSTITUTIONAL_SOURCES` (:func:`institutional`), which
   list the attributes of PS3.15 Table E.1-1 that name, code, or address a
@@ -57,8 +61,9 @@ only where all of these hold:
 
 Whatever removed text is found inside a meaning made only of technique and
 anatomy words is itself such words, so the finding reveals nothing that the
-kept meaning does not. A meaning with any other word stays under review, as
-does any other kept element. The vocabulary is always the one that PyMedPhys
+kept meaning does not. A private copy reveals nothing that its descriptive
+original, already exempt, does not: its text is the same text. A meaning
+with any other word stays under review, as does any other kept element. The vocabulary is always the one that PyMedPhys
 ships, never one that a run gives Clean Descriptors, so the exemption is the
 same in every run, and the method digest covers it through the engine's
 files under every policy (D-024).
@@ -72,7 +77,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 
 from .file_layout import ElementPath, Region
-from .residual_exemptions import Exemption, KeptValues
+from .residual_exemptions import Exemption, KeptValues, _private_data
 from .residuals import Finding, SourceValue
 from .reviewed_descriptors import echoes_identifier
 from .technique_descriptors import load_technique_vocabulary
@@ -219,8 +224,7 @@ def vocabulary_meaning(
         or element is None
         or element.tag != _CODE_MEANING
         or not element.items
-        or finding.source.tag not in DESCRIPTIVE_SOURCES
-        or institutional(finding.source)
+        or not descriptive(finding.source, sources)
     ):
         return None
     values = kept.values(element)
@@ -235,6 +239,21 @@ def vocabulary_meaning(
     return Exemption.VOCABULARY_MEANING
 
 
+def descriptive(
+    source: ElementPath,
+    sources: Mapping[ElementPath, tuple[SourceValue, ...]],
+) -> bool:
+    """Return whether a source describes the examination, as the module reads it.
+
+    It does where :func:`institutional` does not exclude it and it is one of
+    :data:`DESCRIPTIVE_SOURCES` or a private copy of one
+    (:func:`descriptive_copy`).
+    """
+    return not institutional(source) and (
+        source.tag in DESCRIPTIVE_SOURCES or descriptive_copy(source, sources)
+    )
+
+
 def institutional(source: ElementPath) -> bool:
     """Return whether a source names a place, an organisation, or a device.
 
@@ -243,6 +262,33 @@ def institutional(source: ElementPath) -> bool:
     """
     return source.tag in INSTITUTIONAL_SOURCES or any(
         tag in INSTITUTIONAL_SEQUENCES for tag, _ in source.items
+    )
+
+
+def descriptive_copy(
+    source: ElementPath,
+    sources: Mapping[ElementPath, tuple[SourceValue, ...]],
+) -> bool:
+    """Return whether a private data element only copies descriptive values.
+
+    It does where ``source`` is a private data element, (gggg,1000) or later
+    of a group open to private use (PS3.5 7.8.1), at any depth, at least
+    one value of it was collected for the subject, and every collected
+    value of it is text equal to a collected value of one of :data:`DESCRIPTIVE_SOURCES`, at any depth,
+    that :func:`institutional` does not exclude.
+    """
+    if not _private_data(source.tag):
+        return False
+    copies = sources.get(source, ())
+    descriptive = {
+        each.value
+        for path, values in sources.items()
+        if path.tag in DESCRIPTIVE_SOURCES and not institutional(path)
+        for each in values
+        if isinstance(each.value, str)
+    }
+    return bool(copies) and all(
+        isinstance(each.value, str) and each.value in descriptive for each in copies
     )
 
 
