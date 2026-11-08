@@ -532,16 +532,31 @@ def _doses_in_face_block(section: object) -> list[Block]:
 def _redaction_review(section: object) -> list[Block]:
     if section is None:
         return []
-    section = _fields("redaction_review", section, ("reference",))
+    section = _fields(
+        "redaction_review", section, ("reference", "review_modes", "frames_not_shown")
+    )
+    modes = _fields(
+        "redaction_review review_modes",
+        section["review_modes"],
+        ("every-frame", "flagged-frames"),
+    )
+    every = _tally("redaction_review review_modes", modes["every-frame"])
+    flagged = _tally("redaction_review review_modes", modes["flagged-frames"])
+    not_shown = _tally("redaction_review frames_not_shown", section["frames_not_shown"])
     return [
         ["## Redaction review"],
         [
             "Under the Clean Pixel Data Option, an instance with Pixel Data is "
-            "released only where a reviewer accepted its blacked-out regions, "
-            "or gave their own, in the earlier run's confidential QC pack with "
+            "released only where a reviewer confirmed the regions to black "
+            "out, keeping or dropping those that the text finder proposed and "
+            "adding their own, in the earlier run's confidential QC pack with "
             "this opaque reference: "
             + _code("redaction_review reference", section["reference"])
-            + "."
+            + ". Source files so approved whose review required every frame: "
+            f"{every}; whose review required only the frames with a "
+            "proposed region, which only an IOD whose text finder met the "
+            f"acceptance criteria allows: {flagged}. Frames of those files "
+            f"that the reviewer was not shown: {not_shown}."
         ],
     ]
 

@@ -196,6 +196,9 @@ NO_PIXELS_SHA256 = hashlib.sha256(b"").hexdigest()
 # deformation grid: of a count of no grids.
 NO_GRIDS_SHA256 = hashlib.sha256(bytes(8)).hexdigest()
 
+# A UID as PS3.5 Section 9.1 has it: up to 64 characters of digits and
+# dots, each component without a leading zero.
+_UID = re.compile(r"(?=.{1,64}$)(0|[1-9][0-9]*)(\.(0|[1-9][0-9]*))*")
 # The directory, beside the pack's file, that holds its previews.
 PREVIEW_DIRECTORY = "previews"
 # The most bytes copied at a time while finding an excerpt's decoding state.
@@ -1020,6 +1023,10 @@ class PreviewKind(enum.Enum):
     # a frame that Clean Pixel Data cleaned, at full resolution, with its
     # regions outlined: as received beside as written where it has any
     REDACTION = "redaction"
+    # a frame that Clean Pixel Data cleaned, as received and without outlines,
+    # its values mapped linearly to 16-bit grey, or as 8-bit RGB, for the
+    # redaction review app to window and draw over (D-059)
+    REVIEW_FRAME = "review-frame"
     # renders of an RT Structure Set's contours, as written, united in each
     # frame with the image series that they lie on, and of each ROI alone
     STRUCTURE_SET_CONTOURS = "structure-set-contours"
@@ -1272,6 +1279,10 @@ class RedactionEntry:
         each of which is among the regions of every frame; none, the
         default, where no rule matched. Every other region is the text
         finder's.
+    sop_class_uid : str, optional
+        Its SOP Class UID, which decides which of its frames its review
+        must show (D-059); empty, the default, where it has none, which
+        needs every frame shown.
     """
 
     position: int
@@ -1282,9 +1293,17 @@ class RedactionEntry:
     regions: tuple[tuple[int, tuple[TextBox, ...]], ...]
     decoded_sha256: str | None = None
     rule_boxes: tuple[TextBox, ...] = ()
+    sop_class_uid: str = ""
 
     def __post_init__(self) -> None:
         _check_position("a cleaned instance", self.position)
+        if not isinstance(self.sop_class_uid, str) or not (
+            self.sop_class_uid == "" or _UID.fullmatch(self.sop_class_uid)
+        ):
+            raise QcPackError(
+                f"cleaned instance {self.position} needs its SOP Class UID as a "
+                "UID, or none"
+            )
         if not isinstance(self.reason, PixelDataReason):
             raise QcPackError(
                 f"cleaned instance {self.position} needs a PixelDataReason"
@@ -2143,37 +2162,42 @@ class QcPack:
             )
 
     def _check_redaction_previews(self) -> None:
-        """Each cleaned instance has a redaction preview of each frame, in
-        order, unless it is listed as not previewed for a reason other than
-        its dose levels or its segments, and no other has one."""
+        """Each cleaned instance has a redaction preview and a review frame of
+        each frame, in order, unless it is listed as not previewed for a
+        reason other than its dose levels or its segments, and no other has
+        either."""
         cleaned = {entry.position: entry.frames for entry in self.redactions}
         unshown = {
             entry.position
             for entry in self.not_previewed
             if entry.reason not in FACE_PREVIEW_REASONS
         }
-        shown: dict[int, list[int]] = {}
-        for preview in self.previews:
-            if preview.kind is not PreviewKind.REDACTION:
-                continue
-            if (
-                len(preview.frames) != 1
-                or cleaned.get(preview.frames[0][0]) != preview.total_frames
-            ):
-                raise QcPackError(
-                    "a redaction preview must show one frame of a cleaned "
-                    "instance, with its number of frames"
-                )
-            position, frame = preview.frames[0]
-            shown.setdefault(position, []).append(frame)
-        for position, frames in cleaned.items():
-            expected = [] if position in unshown else list(range(frames))
-            if shown.get(position, []) != expected:
-                raise QcPackError(
-                    "a cleaned instance needs a redaction preview of each "
-                    "frame, in order, unless it is listed as not previewed "
-                    "for a reason other than its dose levels or its segments"
-                )
+        for kind, name in (
+            (PreviewKind.REDACTION, "redaction preview"),
+            (PreviewKind.REVIEW_FRAME, "review frame"),
+        ):
+            shown: dict[int, list[int]] = {}
+            for preview in self.previews:
+                if preview.kind is not kind:
+                    continue
+                if (
+                    len(preview.frames) != 1
+                    or cleaned.get(preview.frames[0][0]) != preview.total_frames
+                ):
+                    raise QcPackError(
+                        f"a {name} must show one frame of a cleaned instance, "
+                        "with its number of frames"
+                    )
+                position, frame = preview.frames[0]
+                shown.setdefault(position, []).append(frame)
+            for position, frames in cleaned.items():
+                expected = [] if position in unshown else list(range(frames))
+                if shown.get(position, []) != expected:
+                    raise QcPackError(
+                        f"a cleaned instance needs a {name} of each frame, in "
+                        "order, unless it is listed as not previewed for a "
+                        "reason other than its dose levels or its segments"
+                    )
 
     def _check_names(self) -> None:
         labels = [entry.label for entry in self.instances if entry.label is not None]
@@ -2489,6 +2513,7 @@ def pack_document(pack: QcPack) -> dict:
                     [box.top, box.left, box.bottom, box.right]
                     for box in entry.rule_boxes
                 ],
+                "sop_class_uid": entry.sop_class_uid,
             }
             for entry in pack.redactions
         ],
