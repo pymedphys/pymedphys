@@ -53,7 +53,10 @@ from pymedphys._dicom.deidentify.release_gate import (
 )
 from pymedphys._dicom.deidentify.residual_exemptions import Exemption
 from pymedphys._dicom.deidentify.residuals import SourceValue
-from pymedphys._dicom.deidentify.run_report import RELEASE_REPORT
+from pymedphys._dicom.deidentify.run_report import (
+    RELEASE_REPORT,
+    RELEASE_REPORT_MARKDOWN,
+)
 
 from . import _synthetic_references as synthetic
 
@@ -409,6 +412,10 @@ def test_under_basic_ct_slices_with_a_copied_request_code_are_released(tmp_path)
         )
         for tag in sorted(REQUESTED)
     ]
+    markdown = (result.release / RELEASE_REPORT_MARKDOWN).read_text(encoding="utf-8")
+    assert "a removed requested procedure's code equal to" in markdown
+    assert Exemption.COPIED_REQUEST_CODE.value in markdown
+    assert MEANING not in markdown
     for path in sorted((tmp_path / "release").rglob("*.dcm")):
         dataset = pydicom.dcmread(path)
         assert "RequestAttributesSequence" not in dataset
