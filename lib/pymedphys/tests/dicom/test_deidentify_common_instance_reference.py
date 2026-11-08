@@ -33,8 +33,10 @@ MANDATORY = {
     "Enhanced RT Image",
     "Enhanced Continuous RT Image",
 }
-# Required where a Derivation Image functional group is present.
-CONDITIONAL = {"Segmentation"}
+# Required in a Segmentation where a Derivation Image functional group is
+# present, and in a Surface Segmentation where the surface was derived from
+# another instance (PS3.3 Table A.57-1).
+CONDITIONAL = {"Segmentation", "Surface Segmentation"}
 # The supported IODs without the module: the Structured Reports, whose SR
 # Document General Module references their evidence instead (PS3.3 Section
 # A.35).
