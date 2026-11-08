@@ -43,7 +43,9 @@ from pymedphys._dicom.deidentify import (
     markers,
     qc_attestation,
     qc_pack,
+    qc_store,
     redaction_review,
+    redaction_verdicts,
     release_report,
     release_report_markdown,
     run,
@@ -70,6 +72,7 @@ from pymedphys._dicom.deidentify.qc_attestation import (
     Outcome,
     Redaction,
     RedactionVerdict,
+    ReviewMode,
 )
 from pymedphys._dicom.deidentify.qc_pack import QcPackError
 from pymedphys._dicom.deidentify.reasons import (
@@ -81,6 +84,7 @@ from pymedphys._dicom.deidentify.redaction_review import (
     RedactionReview,
     read_redaction_review,
 )
+from pymedphys._dicom.deidentify.redaction_verdicts import Draft
 from pymedphys._dicom.deidentify.scope import SUPPORTED_IODS
 from pymedphys._dicom.deidentify.text_detection import TextBox
 
@@ -113,14 +117,35 @@ def _policy():
 
 
 def _attest(directory, redactions=()):
+    """Attest the pack with the verdicts given, each that accepts or revises
+    an instance and records no frame shown having been shown every frame of
+    it, as the app records them."""
     return qc_attestation.attest(
         directory,
         reviewer="Quokka Wombatson",
         outcome=Outcome.ATTESTED,
         coverage=COMPLETE,
         attested_at=WHEN,
-        redactions=redactions,
+        redactions=_every_frame_shown(directory, redactions),
     )
+
+
+def _every_frame_shown(directory, redactions):
+    redactions = list(redactions)
+    try:
+        shapes = qc_attestation.previewed_redactions(
+            (Path(directory) / qc_store.PACK_FILE).read_bytes()
+        )
+    except (OSError, QcPackError):
+        return redactions
+    return [
+        dataclasses.replace(verdict, seen=tuple(range(shapes[verdict.position].frames)))
+        if verdict.redaction is not Redaction.REJECTED
+        and not verdict.seen
+        and verdict.position in shapes
+        else verdict
+        for verdict in redactions
+    ]
 
 
 def _codes(dataset):
@@ -197,9 +222,31 @@ def fixture_first_run(tmp_path):
 
 def _verdicts(positions):
     return (
-        RedactionVerdict(positions[_ACCEPTED], Redaction.ACCEPTED),
-        RedactionVerdict(positions[_REVISED], Redaction.REVISED, ((0, (REVISED,)),)),
+        RedactionVerdict(positions[_ACCEPTED], Redaction.ACCEPTED, seen=(0,)),
+        RedactionVerdict(
+            positions[_REVISED], Redaction.REVISED, ((0, (REVISED,)),), seen=(0,)
+        ),
         RedactionVerdict(positions[_REJECTED], Redaction.REJECTED),
+    )
+
+
+# The mode that attesting records for an accepted or revised verdict, since
+# no IOD's review yet requires only its flagged frames.
+EVERY = ReviewMode.EVERY_FRAME
+
+
+def _recorded(verdicts):
+    """The verdicts as attesting records them, each with its review mode."""
+    return tuple(
+        sorted(
+            (
+                verdict
+                if verdict.redaction is Redaction.REJECTED
+                else dataclasses.replace(verdict, mode=EVERY)
+                for verdict in verdicts
+            ),
+            key=lambda verdict: verdict.position,
+        )
     )
 
 
@@ -239,6 +286,30 @@ def _sha(data):
             "redaction": Redaction.REVISED,
             "regions": ((0, ((1, 2, 3, 5),)),),
         },
+        # A review mode is a ReviewMode, recorded only to accept or revise.
+        {"position": 0, "redaction": Redaction.ACCEPTED, "mode": "every-frame"},
+        {"position": 0, "redaction": Redaction.REJECTED, "mode": EVERY},
+        # Dropped regions are checked as drawn ones are.
+        {"position": 0, "redaction": Redaction.ACCEPTED, "dropped": ((0, (BOX,)),)},
+        {"position": 0, "redaction": Redaction.REVISED, "dropped": ((0, ()),)},
+        {
+            "position": 0,
+            "redaction": Redaction.REVISED,
+            "dropped": ((1, (BOX,)), (0, (BOX,))),
+        },
+        # One region both drawn and dropped in one frame.
+        {
+            "position": 0,
+            "redaction": Redaction.REVISED,
+            "regions": ((0, (BOX,)),),
+            "dropped": ((0, (BOX,)),),
+        },
+        # The frames shown are sorted, distinct indices from 0.
+        {"position": 0, "redaction": Redaction.ACCEPTED, "seen": (1, 0)},
+        {"position": 0, "redaction": Redaction.ACCEPTED, "seen": (0, 0)},
+        {"position": 0, "redaction": Redaction.ACCEPTED, "seen": (-1,)},
+        {"position": 0, "redaction": Redaction.ACCEPTED, "seen": (True,)},
+        {"position": 0, "redaction": Redaction.ACCEPTED, "seen": [0]},
     ],
 )
 def test_a_redaction_verdict_is_checked(fields):
@@ -250,17 +321,27 @@ def test_an_attestation_with_redaction_verdicts_is_read_back_as_written(first_ru
     pack, positions = first_run
     attestation = _attest(pack, reversed(_verdicts(positions)))
 
-    # In run position order, whatever the order given.
-    assert attestation.redactions == tuple(
-        sorted(_verdicts(positions), key=lambda verdict: verdict.position)
-    )
+    # In run position order, whatever the order given, each accepted or
+    # revised one with the mode of its review.
+    assert attestation.redactions == _recorded(_verdicts(positions))
     assert qc_attestation.attested_pack(pack)[0] == attestation
     written = json.loads((pack / qc_attestation.ATTESTATION_FILE).read_text("ascii"))
-    assert written["format"] == "pymedphys-deid-qc-attestation/6"
+    assert written["format"] == "pymedphys-deid-qc-attestation/7"
     assert {
         "position": positions[_REVISED],
         "redaction": "revised",
         "regions": [{"frame": 0, "boxes": [[0, 0, 2, 2]]}],
+        "dropped": [],
+        "seen": [0],
+        "mode": "every-frame",
+    } in written["redactions"]
+    assert {
+        "position": positions[_REJECTED],
+        "redaction": "rejected",
+        "regions": [],
+        "dropped": [],
+        "seen": [],
+        "mode": None,
     } in written["redactions"]
 
 
@@ -320,9 +401,11 @@ def test_attesting_refuses_a_region_past_the_rows_or_columns_of_its_frame(
 def test_attesting_accepts_a_region_that_reaches_the_edge_of_its_frame(first_run):
     pack, positions = first_run
     edge = TextBox(4, 6, 6, 8)
-    verdict = RedactionVerdict(positions[_REVISED], Redaction.REVISED, ((0, (edge,)),))
+    verdict = RedactionVerdict(
+        positions[_REVISED], Redaction.REVISED, ((0, (edge,)),), seen=(0,)
+    )
 
-    assert _attest(pack, [verdict]).redactions == (verdict,)
+    assert _attest(pack, [verdict]).redactions == _recorded([verdict])
 
 
 # Reading the verdicts.
@@ -345,13 +428,109 @@ def test_a_review_gives_each_verdicts_regions_by_source_digest(first_run):
     assert review.rejected == frozenset({_sha(files[_REJECTED])})
 
 
+def test_a_review_leaves_out_the_regions_that_a_verdict_drops(first_run):
+    pack, positions = first_run
+    _attest(
+        pack,
+        [
+            RedactionVerdict(
+                positions[_ACCEPTED],
+                Redaction.REVISED,
+                dropped=((0, (BOX,)),),
+                seen=(0,),
+            ),
+            RedactionVerdict(
+                positions[_REVISED],
+                Redaction.REVISED,
+                ((0, (REVISED,)),),
+                ((0, (BOX,)),),
+                seen=(0,),
+            ),
+        ],
+    )
+    files = _files()
+
+    review = read_redaction_review(pack)
+
+    assert dict(review.approved) == {
+        # The finder's only region dropped: nothing is blacked out.
+        _sha(files[_ACCEPTED]): (),
+        # The finder's dropped, and the reviewer's drawn in its place.
+        _sha(files[_REVISED]): ((0, (REVISED,)),),
+    }
+
+
+def test_a_review_refuses_a_verdict_that_drops_a_region_the_pack_does_not_list(
+    first_run,
+):
+    pack, positions = first_run
+    attestation = dataclasses.replace(
+        _attest(pack),
+        redactions=(
+            RedactionVerdict(
+                positions[_ACCEPTED],
+                Redaction.REVISED,
+                dropped=((0, (REVISED,)),),
+                seen=(0,),
+            ),
+        ),
+    )
+    data = qc_attestation.attested_pack(pack)[1]
+
+    with pytest.raises(QcPackError, match="drops a region that the QC pack"):
+        redaction_review.redaction_review_of(attestation, data)
+
+
+def test_attesting_refuses_a_verdict_that_drops_a_region_rules_gave(
+    first_run, monkeypatch
+):
+    pack, positions = first_run
+    proposals = qc_attestation.pack_proposals
+    monkeypatch.setattr(
+        qc_attestation,
+        "pack_proposals",
+        lambda data: {
+            position: (listed, frozenset({BOX}))
+            for position, (listed, _) in proposals(data).items()
+        },
+    )
+    verdict = RedactionVerdict(
+        positions[_ACCEPTED], Redaction.REVISED, dropped=((0, (BOX,)),), seen=(0,)
+    )
+
+    with pytest.raises(QcPackError, match="or that a region rule gave"):
+        _attest(pack, [verdict])
+    assert not (pack / qc_attestation.ATTESTATION_FILE).exists()
+
+
+def test_attesting_needs_every_frame_shown_only_to_accept_or_revise(first_run):
+    pack, positions = first_run
+
+    attestation = _attest(
+        pack, [RedactionVerdict(positions[_REJECTED], Redaction.REJECTED)]
+    )
+
+    assert attestation.redactions[0].seen == ()
+
+
 def test_a_revised_verdict_adds_to_the_packs_regions_in_any_frame():
     regions = ((0, (BOX,)), (2, (REVISED,)))
 
     # pylint: disable-next = protected-access
-    added = redaction_review._added(regions, ((0, (REVISED, BOX)), (1, (BOX,))))
+    revised = redaction_review._revised(regions, ((0, (REVISED, BOX)), (1, (BOX,))), ())
 
-    assert added == ((0, (REVISED, BOX)), (1, (BOX,)), (2, (REVISED,)))
+    assert revised == ((0, (REVISED, BOX)), (1, (BOX,)), (2, (REVISED,)))
+
+
+def test_a_revised_verdict_drops_the_packs_regions_and_leaves_no_empty_frame():
+    regions = ((0, (REVISED, BOX)), (2, (BOX,)))
+
+    # pylint: disable-next = protected-access
+    revised = redaction_review._revised(
+        regions, ((1, (REVISED,)),), ((0, (BOX,)), (2, (BOX,)))
+    )
+
+    assert revised == ((0, (REVISED,)), (1, (REVISED,)))
 
 
 def test_a_pack_that_is_not_attested_gives_no_review(first_run):
@@ -372,6 +551,29 @@ def test_a_rejected_attestation_gives_no_review(first_run):
     path.write_text(json.dumps({**document, "outcome": "rejected"}), encoding="ascii")
 
     with pytest.raises(QcPackError, match="verdicts release nothing"):
+        read_redaction_review(pack)
+
+
+def test_attesting_records_the_review_mode_rather_than_taking_one(first_run):
+    pack, positions = first_run
+    given = dataclasses.replace(_verdicts(positions)[0], mode=EVERY)
+
+    with pytest.raises(QcPackError, match="recorded by attesting, not given"):
+        _attest(pack, [given])
+    assert not (pack / qc_attestation.ATTESTATION_FILE).exists()
+
+
+def test_an_attested_approval_without_its_review_mode_is_refused(first_run):
+    pack, positions = first_run
+    _attest(pack, _verdicts(positions))
+    path = pack / qc_attestation.ATTESTATION_FILE
+    document = json.loads(path.read_text("ascii"))
+    for verdict in document["redactions"]:
+        verdict["mode"] = None
+    path.chmod(0o600)
+    path.write_text(json.dumps(document), "ascii")
+
+    with pytest.raises(QcPackError, match="not of its format"):
         read_redaction_review(pack)
 
 
@@ -494,6 +696,8 @@ def _cleaned(position):
         "columns": 8,
         "regions": [],
         "decoded_sha256": None,
+        "rule_boxes": [],
+        "sop_class_uid": "",
     }
 
 
@@ -502,7 +706,7 @@ def test_verdicts_that_disagree_on_one_source_file_are_refused(first_run, monkey
     attestation = dataclasses.replace(
         _attest(pack),
         redactions=(
-            RedactionVerdict(0, Redaction.ACCEPTED),
+            RedactionVerdict(0, Redaction.ACCEPTED, mode=EVERY),
             RedactionVerdict(1, Redaction.REJECTED),
         ),
     )
@@ -512,6 +716,38 @@ def test_verdicts_that_disagree_on_one_source_file_are_refused(first_run, monkey
     )
 
     with pytest.raises(QcPackError, match="disagree"):
+        read_redaction_review(pack)
+
+
+def test_copies_reviewed_in_both_modes_count_as_flagged_only(first_run, monkeypatch):
+    pack, _ = first_run
+    attestation = dataclasses.replace(
+        _attest(pack),
+        redactions=(
+            RedactionVerdict(0, Redaction.ACCEPTED, seen=(0,), mode=EVERY),
+            RedactionVerdict(
+                1, Redaction.ACCEPTED, seen=(0,), mode=ReviewMode.FLAGGED_FRAMES
+            ),
+        ),
+    )
+    _with_pack(
+        monkeypatch, attestation, [_entry(0), _entry(1)], [_cleaned(0), _cleaned(1)]
+    )
+
+    assert dict(read_redaction_review(pack).modes) == {
+        EVERY: 0,
+        ReviewMode.FLAGGED_FRAMES: 1,
+    }
+
+
+def test_an_approval_without_its_review_mode_is_refused(first_run, monkeypatch):
+    pack, _ = first_run
+    attestation = dataclasses.replace(
+        _attest(pack), redactions=(RedactionVerdict(0, Redaction.ACCEPTED),)
+    )
+    _with_pack(monkeypatch, attestation, [_entry(0)], [_cleaned(0)])
+
+    with pytest.raises(QcPackError, match="needs its review mode"):
         read_redaction_review(pack)
 
 
@@ -539,7 +775,7 @@ def test_the_decoded_frames_of_an_approved_compressed_source_are_read(
     attestation = dataclasses.replace(
         _attest(pack),
         redactions=(
-            RedactionVerdict(0, Redaction.ACCEPTED),
+            RedactionVerdict(0, Redaction.ACCEPTED, mode=EVERY),
             RedactionVerdict(1, Redaction.REJECTED),
         ),
     )
@@ -564,7 +800,7 @@ def test_the_decoded_frames_of_an_approved_compressed_source_are_read(
 def test_a_decoded_digest_that_is_not_one_is_refused(first_run, monkeypatch, decoded):
     pack, _ = first_run
     attestation = dataclasses.replace(
-        _attest(pack), redactions=(RedactionVerdict(0, Redaction.ACCEPTED),)
+        _attest(pack), redactions=(RedactionVerdict(0, Redaction.ACCEPTED, mode=EVERY),)
     )
     cleaned = _cleaned(0)
     if decoded == "absent":
@@ -582,8 +818,8 @@ def test_copies_whose_frames_decoded_otherwise_are_refused(first_run, monkeypatc
     attestation = dataclasses.replace(
         _attest(pack),
         redactions=(
-            RedactionVerdict(0, Redaction.ACCEPTED),
-            RedactionVerdict(1, Redaction.ACCEPTED),
+            RedactionVerdict(0, Redaction.ACCEPTED, mode=EVERY),
+            RedactionVerdict(1, Redaction.ACCEPTED, mode=EVERY),
         ),
     )
     _with_pack(
@@ -616,7 +852,7 @@ def test_a_verdict_on_an_instance_without_a_cleaned_previewed_source_is_refused(
 ):
     pack, _ = first_run
     attestation = dataclasses.replace(
-        _attest(pack), redactions=(RedactionVerdict(0, Redaction.ACCEPTED),)
+        _attest(pack), redactions=(RedactionVerdict(0, Redaction.ACCEPTED, mode=EVERY),)
     )
     _with_pack(monkeypatch, attestation, instances, redactions, unshown)
 
@@ -679,7 +915,20 @@ def test_attesting_refuses_a_verdict_on_an_instance_that_was_not_previewed(
         {"approved": {DIGEST: ((0, ()),)}},
         {"approved": {DIGEST: ((1, (BOX,)), (0, (BOX,)))}},
         {"approved": {DIGEST: ((0, ((1, 2, 3, 5),)),)}},
-        {"approved": {DIGEST: ()}, "rejected": frozenset({DIGEST})},
+        {
+            "approved": {DIGEST: ()},
+            "rejected": frozenset({DIGEST}),
+            "modes": {ReviewMode.EVERY_FRAME: 1, ReviewMode.FLAGGED_FRAMES: 0},
+        },
+        # Each approved file is counted once, in one mode, and every mode is given.
+        {"approved": {DIGEST: ()}},
+        {"modes": {ReviewMode.EVERY_FRAME: 0}},
+        {"modes": {ReviewMode.EVERY_FRAME: -1, ReviewMode.FLAGGED_FRAMES: 1}},
+        {"modes": {ReviewMode.EVERY_FRAME: True, ReviewMode.FLAGGED_FRAMES: 0}},
+        {
+            "approved": {DIGEST: ()},
+            "modes": {ReviewMode.EVERY_FRAME: 1, ReviewMode.FLAGGED_FRAMES: 1},
+        },
     ],
 )
 def test_a_redaction_review_is_checked(fields):
@@ -696,7 +945,10 @@ def test_a_redaction_review_is_checked(fields):
 
 def test_a_review_cannot_change_and_its_repr_shows_only_the_reference_and_counts():
     review = RedactionReview(
-        REFERENCE, {DIGEST: ((0, (BOX,)),)}, frozenset({bytes(32)})
+        REFERENCE,
+        {DIGEST: ((0, (BOX,)),)},
+        frozenset({bytes(32)}),
+        modes={ReviewMode.EVERY_FRAME: 1, ReviewMode.FLAGGED_FRAMES: 0},
     )
 
     with pytest.raises(TypeError):
@@ -872,14 +1124,69 @@ def test_the_statement_names_each_supported_iod_that_lacks_the_attribute():
 
 def test_the_report_names_the_reviewed_pack_by_its_reference():
     report = release_report.release_report(
-        _policy(), vocabulary=None, reviewed_roi_names=None, redaction_review=REFERENCE
+        _policy(),
+        vocabulary=None,
+        reviewed_roi_names=None,
+        redaction_review=REFERENCE,
+        redaction_frames_not_shown=3,
+        redaction_review_modes={"flagged-frames": 2, "every-frame": 5},
     )
     document = release_report.report_document(report)
 
-    assert document["redaction_review"] == {"reference": REFERENCE}
+    assert document["redaction_review"] == {
+        "reference": REFERENCE,
+        "review_modes": {"every-frame": 5, "flagged-frames": 2},
+        "frames_not_shown": 3,
+    }
+    assert release_report.REVIEW_MODES == tuple(mode.value for mode in ReviewMode)
     text = release_report_markdown.to_markdown(release_report.to_json(report))
     assert "## Redaction review" in text
     assert f"`{REFERENCE}`" in text
+    words = " ".join(text.split())
+    assert "required every frame: `5`;" in words
+    assert "acceptance criteria allows: `2`." in words
+    assert "reviewer was not shown: `3`." in words
+
+
+@pytest.mark.parametrize(
+    "fields",
+    [
+        {"redaction_review": REFERENCE, "redaction_frames_not_shown": None},
+        {"redaction_review": REFERENCE, "redaction_frames_not_shown": -1},
+        {"redaction_review": REFERENCE, "redaction_frames_not_shown": True},
+        {"redaction_frames_not_shown": 0},
+        {"redaction_review": REFERENCE, "redaction_review_modes": None},
+        {"redaction_review": REFERENCE, "redaction_review_modes": {"every-frame": 1}},
+        {
+            "redaction_review": REFERENCE,
+            "redaction_review_modes": {"every-frame": 1, "flagged-frames": -1},
+        },
+        {
+            "redaction_review": REFERENCE,
+            "redaction_review_modes": {"every-frame": True, "flagged-frames": 0},
+        },
+        {
+            "redaction_review": REFERENCE,
+            "redaction_review_modes": {"every-frame": 1, "all-frames": 0},
+        },
+        {"redaction_review_modes": {"every-frame": 0, "flagged-frames": 0}},
+    ],
+)
+def test_the_report_refuses_a_count_of_frames_not_shown_out_of_place(fields):
+    # Each case is valid but for the field that it gives.
+    given = (
+        {
+            "redaction_frames_not_shown": 0,
+            "redaction_review_modes": {"every-frame": 0, "flagged-frames": 0},
+        }
+        if "redaction_review" in fields
+        else {}
+    )
+    report = release_report.release_report(
+        _policy(), vocabulary=None, reviewed_roi_names=None, **{**given, **fields}
+    )
+    with pytest.raises(ValueError, match="redaction_review"):
+        release_report.report_document(report)
 
 
 def test_a_report_without_a_redaction_review_has_none():
@@ -921,84 +1228,163 @@ _EVERY_REVIEW = (
 )
 
 
-def test_the_command_records_each_redaction_verdict(first_run):
-    pack, positions = first_run
-    revised = str(positions[_REVISED])
-
-    status, stdout, stderr = _command(
-        str(pack),
-        *_EVERY_REVIEW,
-        "--redaction-accepted",
-        str(positions[_ACCEPTED]),
-        "--redaction-revised",
-        revised,
-        "--redaction-region",
-        revised,
-        "0",
-        "0",
-        "0",
-        "2",
-        "2",
-        "--redaction-rejected",
-        str(positions[_REJECTED]),
+def _save(pack, *drafts, verdicts=None):
+    """Save drafts to the pack's verdicts file, as the app does."""
+    reference, digest = qc_attestation.pack_reference(pack)
+    redaction_verdicts.save_redaction_verdicts(
+        pack,
+        verdicts
+        if verdicts is not None
+        else redaction_verdicts.Verdicts(reference, digest, tuple(drafts)),
     )
 
+
+def test_the_command_records_each_redaction_verdict(first_run):
+    pack, positions = first_run
+    _save(
+        pack,
+        *sorted(
+            (
+                Draft(positions[_ACCEPTED], Redaction.ACCEPTED, seen=(0,)),
+                Draft(
+                    positions[_REVISED],
+                    Redaction.REVISED,
+                    drawn=((0, (REVISED,)),),
+                    seen=(0,),
+                ),
+                Draft(positions[_REJECTED], Redaction.REJECTED),
+                # Still being worked on, so it gives no verdict.
+                Draft(positions[_UNJUDGED], None, drawn=((0, (REVISED,)),)),
+            ),
+            key=lambda draft: draft.position,
+        ),
+    )
+
+    status, stdout, stderr = _command(str(pack), *_EVERY_REVIEW, "--redaction-verdicts")
+
     assert status == attestation_command.EXIT_RECORDED, stderr
-    assert qc_attestation.attested_pack(pack)[0].redactions == tuple(
-        sorted(_verdicts(positions), key=lambda verdict: verdict.position)
+    assert qc_attestation.attested_pack(pack)[0].redactions == _recorded(
+        _verdicts(positions)
     )
     lines = stdout.splitlines()
     assert "  cleaned instances with their regions accepted: 1" in lines
-    assert "  cleaned instances with the reviewer's regions added: 1" in lines
+    assert "  cleaned instances with their regions revised: 1" in lines
     assert "  cleaned instances rejected: 1" in lines
-    # Each added region, with the preview of its frame, for the reviewer to
+    # Each drawn region, with the preview of its frame, for the reviewer to
     # check.
     shown = qc_attestation.redaction_previews(pack)[positions[_REVISED], 0]
     assert shown.endswith(".png")
-    assert f"    instance {revised}, frame 0, shown in {shown}: adds [0, 0, 2, 2]" in (
-        lines
+    assert (
+        f"    instance {positions[_REVISED]}, frame 0, shown in {shown}: draws "
+        "[0, 0, 2, 2]" in lines
     )
     assert "Quokka" not in stdout + stderr
 
 
+def test_the_command_reads_a_verdicts_file_named_elsewhere(first_run, tmp_path):
+    pack, positions = first_run
+    _save(pack, Draft(positions[_ACCEPTED], Redaction.ACCEPTED, seen=(0,)))
+    elsewhere = tmp_path / "verdicts.json"
+    (pack / redaction_verdicts.VERDICTS_FILE).replace(elsewhere)
+
+    status, _, stderr = _command(
+        str(pack), *_EVERY_REVIEW, "--redaction-verdicts", str(elsewhere)
+    )
+
+    assert status == attestation_command.EXIT_RECORDED, stderr
+    assert [
+        verdict.position for verdict in qc_attestation.attested_pack(pack)[0].redactions
+    ] == [positions[_ACCEPTED]]
+
+
+def test_the_command_without_the_verdicts_flag_records_no_redaction_verdict(
+    first_run,
+):
+    pack, positions = first_run
+    _save(pack, Draft(positions[_ACCEPTED], Redaction.ACCEPTED, seen=(0,)))
+
+    status, _, stderr = _command(str(pack), *_EVERY_REVIEW)
+
+    assert status == attestation_command.EXIT_RECORDED, stderr
+    assert not qc_attestation.attested_pack(pack)[0].redactions
+
+
 @pytest.mark.parametrize(
-    "verdicts, message",
+    "drafts, message",
     [
+        # Shown no frame, where its review requires every frame.
         (
-            ("--redaction-accepted", "{0}", "--redaction-rejected", "{0}"),
-            "more than one redaction verdict",
+            lambda p: [Draft(p[_ACCEPTED], Redaction.ACCEPTED)],
+            "was not shown 1 frame(s) that its review requires",
         ),
         (
-            ("--redaction-accepted", "{0}", "--redaction-region", "{0}", *"00022"),
-            "not revised",
+            lambda p: [Draft(p[_PLAN], Redaction.ACCEPTED, seen=(0,))],
+            "does not list as cleaned and previewed",
+        ),
+        # The finder found nothing at this place, so it cannot be dropped.
+        (
+            lambda p: [
+                Draft(
+                    p[_ACCEPTED],
+                    Redaction.REVISED,
+                    dropped=((0, (REVISED,)),),
+                    seen=(0,),
+                )
+            ],
+            "drops a region that the QC pack does not list for its frame",
         ),
         (
-            ("--redaction-revised", "{0}", "--redaction-region", "{0}", *"00000"),
-            "no rows or no columns",
+            lambda p: [
+                Draft(
+                    p[_ACCEPTED],
+                    Redaction.REVISED,
+                    drawn=((0, (TextBox(0, 0, 2, 9),)),),
+                    seen=(0,),
+                )
+            ],
+            "a region past its 6 Rows or 8 Columns",
         ),
         (
-            ("--redaction-revised", "{0}", "--redaction-region", "{0}", "-1", *"0022"),
-            "before the first",
+            lambda p: [Draft(p[_ACCEPTED], Redaction.ACCEPTED, seen=(1,))],
+            "shown a frame that its Pixel Data do not hold",
         ),
-        (("--redaction-revised", "{0}"), "no region to add"),
-        (("--redaction-accepted", "{1}"), "does not list as cleaned and previewed"),
     ],
 )
 def test_the_command_refuses_verdicts_that_cannot_be_recorded(
-    first_run, verdicts, message
+    first_run, drafts, message
 ):
     pack, positions = first_run
-    argv = [each.format(positions[_ACCEPTED], positions[_PLAN]) for each in verdicts]
+    _save(pack, *drafts(positions))
 
-    status, _, stderr = _command(str(pack), *_EVERY_REVIEW, *argv)
+    status, _, stderr = _command(str(pack), *_EVERY_REVIEW, "--redaction-verdicts")
 
     assert status == attestation_command.EXIT_NOT_RECORDED
     assert message in stderr
     assert not (pack / qc_attestation.ATTESTATION_FILE).exists()
 
 
+def test_the_command_refuses_verdicts_for_another_pack(first_run):
+    pack, positions = first_run
+    reference, _ = qc_attestation.pack_reference(pack)
+    _save(
+        pack,
+        verdicts=redaction_verdicts.Verdicts(
+            reference,
+            "0" * 64,
+            (Draft(positions[_ACCEPTED], Redaction.ACCEPTED, seen=(0,)),),
+        ),
+    )
+
+    status, _, stderr = _command(str(pack), *_EVERY_REVIEW, "--redaction-verdicts")
+
+    assert status == attestation_command.EXIT_NOT_RECORDED
+    assert "for another QC pack" in stderr
+    assert not (pack / qc_attestation.ATTESTATION_FILE).exists()
+
+
 def test_the_command_refuses_a_verdict_with_an_outcome_of_rejected(first_run):
     pack, positions = first_run
+    _save(pack, Draft(positions[_REJECTED], Redaction.REJECTED))
 
     status, _, stderr = _command(
         str(pack),
@@ -1006,8 +1392,7 @@ def test_the_command_refuses_a_verdict_with_an_outcome_of_rejected(first_run):
         "Quokka Wombatson",
         "--outcome",
         "rejected",
-        "--redaction-rejected",
-        str(positions[_REJECTED]),
+        "--redaction-verdicts",
     )
 
     assert status == attestation_command.EXIT_NOT_RECORDED
@@ -1047,7 +1432,10 @@ def _second_run():
             for entry in document["instances"]
         }
         past = RedactionVerdict(
-            positions[_PAST], Redaction.REVISED, ((0, (TextBox(0, 0, 2, 9),)),)
+            positions[_PAST],
+            Redaction.REVISED,
+            ((0, (TextBox(0, 0, 2, 9),)),),
+            seen=(0,),
         )
         # Attesting refuses that region, given the pack's Rows and Columns;
         # this pack is made to list more Columns for the image, so that the
@@ -1181,8 +1569,15 @@ def test_an_instance_without_pixel_data_claims_the_option(second_run, name):
 def test_the_report_names_the_reviewed_pack(second_run):
     attestation, _, report, _, _ = second_run
 
-    assert report["redaction_review"] == {"reference": attestation.reference}
-    assert report["format"] == "pymedphys-deid-release-report/53"
+    # Each of the three approved images, the one whose region goes past its
+    # frame among them, was reviewed with every frame required, and every
+    # frame of each was shown.
+    assert report["redaction_review"] == {
+        "reference": attestation.reference,
+        "review_modes": {"every-frame": 3, "flagged-frames": 0},
+        "frames_not_shown": 0,
+    }
+    assert report["format"] == "pymedphys-deid-release-report/54"
 
 
 class _Blind(Finder):
