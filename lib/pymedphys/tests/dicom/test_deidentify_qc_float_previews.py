@@ -283,3 +283,69 @@ def test_a_double_that_float32_cannot_hold_is_listed_as_not_previewed():
         NotPreviewedEntry(0, NotPreviewedReason.UNSUPPORTED),
     )
     assert not previews.pixels_shown
+
+
+@pytest.mark.pydicom
+@FLOAT_KEYWORDS
+@pytest.mark.parametrize(
+    "background, pattern",
+    [(-3e38, 3e38), (3e38, -3e38)],
+    ids=["high-on-low", "low-on-high"],
+)
+def test_values_further_apart_than_float32_holds_are_drawn_apart(
+    keyword, background, pattern
+):
+    # Each value fits float32, but their difference does not; drawn in
+    # float32 without care, the window's width would overflow and the image
+    # be black.
+    pixels = np.full((64, 64), background)
+    pixels[20:22, 20:25] = pattern
+    data = _image(np.zeros((64, 64)), series=None)
+    written = {0: _floated(data, keyword, values=pixels)}
+
+    previews = qc_previews.previews_of(written, {0})
+
+    assert previews.pixels_shown == {0}
+    full = [
+        image
+        for image in (_decoded(preview.png) for preview in previews.previews)
+        if image.shape == pixels.shape
+    ]
+    assert full
+    for image in full:
+        assert set(np.unique(image[20:22, 20:25]).tolist()) == {
+            255 if pattern > 0 else 0
+        }
+        assert set(np.unique(image[pixels != pattern]).tolist()) == {
+            0 if pattern > 0 else 255
+        }
+    for preview in previews.previews:
+        assert len(np.unique(_decoded(preview.png))) > 1, preview.kind
+
+
+@pytest.mark.pydicom
+@FLOAT_KEYWORDS
+def test_an_infinity_beyond_a_wide_finite_range_is_drawn_apart(keyword):
+    pixels = np.full((4, 8), -2e38)
+    pixels[:, 4:] = -1e37
+    pixels[1:3, 5:7] = np.inf
+    data = _image(np.zeros((4, 8)), series=None)
+    written = {0: _floated(data, keyword, values=pixels)}
+
+    previews = qc_previews.previews_of(written, {0})
+
+    assert previews.pixels_shown == {0}
+    image = _decoded(previews.previews[1].png)
+    levels = [int(np.unique(image[pixels == value])[0]) for value in (-2e38, -1e37)]
+    (infinity,) = np.unique(image[np.isinf(pixels)])
+    assert len(np.unique(image[pixels == -2e38])) == 1
+    assert levels[0] < levels[1] < infinity
+
+
+def test_the_grey_of_a_window_wider_than_float32_holds_is_not_black():
+    image = np.array([[-3e38, 0.0, 3e38]], dtype=np.float32)
+
+    # pylint: disable-next=protected-access
+    grey = qc_previews._grey(image, (-3e38, 3e38), False)
+
+    assert grey.tolist() == [[0, 128, 255]]
