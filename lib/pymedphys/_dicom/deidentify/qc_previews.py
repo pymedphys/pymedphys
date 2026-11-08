@@ -140,7 +140,13 @@ frame with such regions, also from the file as received:
   one frame of an instance is held decoded at a time. An instance whose
   source cannot be shown beside it, because the source cannot be read or
   decoded, or differs from the file written in its frames' shape, number,
-  or colour, is reported rather than shown in part.
+  or colour, is reported rather than shown in part;
+- after each such frame's preview, its review frame, which the redaction
+  review app shows and draws over (D-059): the frame as received where it
+  has regions, and as written where it has none, which is then the same
+  frame, at full resolution and without outlines, as 16-bit grey linear
+  over the frame's full range, brightest last, padding 0
+  (:func:`review_frame`), or as 8-bit RGB.
 
 A series is the instances that share a Series Instance UID, or an instance
 alone without one. Its instances are ordered by their positions along the
@@ -376,9 +382,9 @@ class PreviewSet:
         position order; then each segments sheet, in run position order;
         then each grid sheet, in run position order, grid order, and the
         order of :data:`~.qc_pack.GRID_KINDS`; then each high-risk
-        instance, in run position order; then each frame of each
-        instance that Clean Pixel Data
-        cleaned, in run position and frame order. Named ``P-0001.png``
+        instance, in run position order; then each frame of each instance
+        that Clean Pixel Data cleaned, in run position and frame order, each
+        followed by its review frame. Named ``P-0001.png``
         onwards in that order. A contour sheet shows its instance's frame
         0, then the frames of each volume that it is drawn with, if any; a
         segments sheet shows each of its Segmentation's frames, then the
@@ -1836,7 +1842,51 @@ def _redaction_images(
                 png(_redaction_image(instance, after, before, boxes)),
             )
         )
+        images.append(
+            (
+                PreviewKind.REVIEW_FRAME,
+                ((instance.position, index),),
+                instance.frames,
+                png(
+                    review_frame(after if before is None else before, instance.inverted)
+                ),
+            )
+        )
     return images
+
+
+def review_frame(frame: np.ndarray, inverted: bool = False) -> np.ndarray:
+    """Return a frame as the redaction review app shows it (D-059).
+
+    An RGB frame is returned as it is. A monochrome frame's finite values
+    are mapped linearly, from its smallest to its largest, to the 16-bit
+    samples 1 to 65,535, brightest last, so inverted for MONOCHROME1, and
+    padding, which is NaN, to 0, so that the app can window it as it
+    likes. Distinct values stay distinct wherever the frame spans at most
+    65,535 equally spaced values, as stored values of up to 16 bits under
+    one linear rescale do; a frame that spans more is quantised to that
+    many levels, which no display can tell apart.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> review_frame(np.array([[-1000.0, 0.0], [np.nan, 1000.0]], np.float32))
+    array([[    1, 32768],
+           [    0, 65535]], dtype=uint16)
+    """
+    if frame.ndim == 3:
+        return frame
+    finite = np.isfinite(frame)
+    if not finite.any():
+        return np.zeros(frame.shape, np.uint16)
+    values = frame.astype(np.float64)
+    low, high = float(values[finite].min()), float(values[finite].max())
+    scaled = (values - low) / (high - low) if high > low else np.zeros(frame.shape)
+    if inverted:
+        scaled = 1.0 - scaled
+    samples = np.zeros(frame.shape, np.uint16)
+    samples[finite] = np.round(scaled[finite] * 65534).astype(np.uint16) + 1
+    return samples
 
 
 def _redaction_image(
@@ -2308,12 +2358,14 @@ def _nearest(coordinates: np.ndarray, wanted: np.ndarray) -> np.ndarray:
 
 
 def png(image: np.ndarray) -> bytes:
-    """Return an 8-bit greyscale or RGB image as a PNG file.
+    """Return an 8-bit greyscale or RGB image, or a 16-bit greyscale one, as
+    a PNG file.
 
     Parameters
     ----------
     image : numpy.ndarray
-        uint8, of shape (rows, columns) or (rows, columns, 3).
+        uint8, of shape (rows, columns) or (rows, columns, 3), or uint16 of
+        shape (rows, columns).
 
     Returns
     -------
@@ -2327,16 +2379,27 @@ def png(image: np.ndarray) -> bytes:
     >>> png(np.zeros((2, 3), np.uint8))[:8]
     b'\\x89PNG\\r\\n\\x1a\\n'
     """
-    if image.dtype != np.uint8 or not (
-        image.ndim == 2 or (image.ndim == 3 and image.shape[2] == 3)
+    wide = image.dtype == np.uint16 and image.ndim == 2
+    if not wide and (
+        image.dtype != np.uint8
+        or not (image.ndim == 2 or (image.ndim == 3 and image.shape[2] == 3))
     ):
-        raise ValueError("a PNG needs a uint8 image of grey or RGB samples")
+        raise ValueError(
+            "a PNG needs a uint8 image of grey or RGB samples, or a uint16 "
+            "image of grey samples"
+        )
     rows, columns = image.shape[:2]
     if rows < 1 or columns < 1:
         raise ValueError("a PNG needs at least one pixel")
     colour_type = 0 if image.ndim == 2 else 2
-    header = struct.pack(">IIBBBBB", columns, rows, 8, colour_type, 0, 0, 0)
-    raw = np.ascontiguousarray(image).reshape(rows, -1)
+    depth = 16 if wide else 8
+    header = struct.pack(">IIBBBBB", columns, rows, depth, colour_type, 0, 0, 0)
+    # PNG holds 16-bit samples most significant byte first.
+    raw = (
+        np.ascontiguousarray(image.astype(">u2") if wide else image)
+        .view(np.uint8)
+        .reshape(rows, -1)
+    )
     filtered = np.concatenate([np.zeros((rows, 1), np.uint8), raw], axis=1)
     return (
         _PNG_SIGNATURE
@@ -2344,6 +2407,76 @@ def png(image: np.ndarray) -> bytes:
         + _chunk(b"IDAT", zlib.compress(filtered.tobytes(), 6))
         + _chunk(b"IEND", b"")
     )
+
+
+def decoded_png(data: bytes) -> np.ndarray:
+    """Return the image of a PNG file that :func:`png` wrote.
+
+    Only what :func:`png` writes is read: 8-bit grey or RGB, or 16-bit grey,
+    not interlaced, each row filtered with filter type 0.
+
+    Returns
+    -------
+    numpy.ndarray
+        uint8 of shape (rows, columns) or (rows, columns, 3), or uint16 of
+        shape (rows, columns).
+
+    Raises
+    ------
+    ValueError
+        If the file is not one that :func:`png` writes, or is damaged.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> image = np.array([[0, 1], [256, 65535]], np.uint16)
+    >>> np.array_equal(decoded_png(png(image)), image)
+    True
+    """
+    if not data.startswith(_PNG_SIGNATURE):
+        raise ValueError("not a PNG file")
+    offset, header, compressed = len(_PNG_SIGNATURE), None, []
+    while True:
+        if offset + 8 > len(data):
+            raise ValueError("a PNG file ends before its IEND chunk")
+        (length,) = struct.unpack(">I", data[offset : offset + 4])
+        kind = data[offset + 4 : offset + 8]
+        body = data[offset + 8 : offset + 8 + length]
+        stored = data[offset + 8 + length : offset + 12 + length]
+        if len(body) != length or len(stored) != 4:
+            raise ValueError("a PNG chunk is cut short")
+        if struct.unpack(">I", stored)[0] != zlib.crc32(kind + body) & 0xFFFFFFFF:
+            raise ValueError("a PNG chunk is damaged")
+        offset += 12 + length
+        if kind == b"IHDR":
+            header = struct.unpack(">IIBBBBB", body)
+        elif kind == b"IDAT":
+            compressed.append(body)
+        elif kind == b"IEND":
+            break
+    if header is None:
+        raise ValueError("a PNG file has no header")
+    columns, rows, depth, colour_type, compression, filtering, interlace = header
+    if (depth, colour_type) not in ((8, 0), (8, 2), (16, 0)) or (
+        compression,
+        filtering,
+        interlace,
+    ) != (0, 0, 0):
+        raise ValueError("a PNG file of a kind that is not read")
+    samples = 3 if colour_type == 2 else 1
+    width = columns * samples * depth // 8
+    raw = np.frombuffer(zlib.decompress(b"".join(compressed)), np.uint8)
+    if raw.size != rows * (width + 1):
+        raise ValueError("a PNG file's image is not of its size")
+    raw = raw.reshape(rows, width + 1)
+    if raw[:, 0].any():
+        raise ValueError("a PNG file's rows are filtered")
+    pixels = raw[:, 1:]
+    if depth == 16:
+        return pixels.copy().view(">u2").astype(np.uint16).reshape(rows, columns)
+    return pixels.reshape(
+        (rows, columns, 3) if samples == 3 else (rows, columns)
+    ).copy()
 
 
 def _chunk(kind: bytes, data: bytes) -> bytes:
