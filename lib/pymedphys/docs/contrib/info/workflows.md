@@ -7,7 +7,7 @@ PyMedPhys uses GitHub Actions for continuous integration and deployment. The wor
 ## Workflow Architecture
 
 ```text
-ci.yml <- ready pull request (selective; drafts run nothing), merge_group (all checks, quick units), main push
+ci.yml <- ready pull request (selective; drafts run nothing), merge_group (all checks, quick units), nightly schedule and manual run (all checks, full units)
   |-- pre-commit.yml
   |-- lint.yml
   |-- type-check.yml
@@ -44,9 +44,11 @@ Main push / PR labelled rtd-preview -> Read the Docs (see "Read the Docs" below)
 #### `ci.yml` - Main Orchestrator
 Coordinates all CI checks based on file changes, labels, and event types.
 
-- **Triggers**: Push to main, pull requests that are not drafts (including
-  label changes, which queue behind an in-flight run rather than cancelling
-  it), and merge groups. See "Draft pull requests" below
+- **Triggers**: Pull requests that are not drafts (including label changes,
+  which queue behind an in-flight run rather than cancelling it), merge groups,
+  a nightly schedule on `main` (15:37 UTC), and manual runs on any branch. A
+  push to `main` starts no run, as "Main Branch Workflow" below explains. See
+  "Draft pull requests" below
 - **Jobs**:
   - `changes`: Tests the selection/gating policy and reads the tested merge diff
   - `pre-commit`: Auto-formatting and basic checks
@@ -96,14 +98,14 @@ so git reports only the link itself, which selects every check that a changed
 path can select. A symlink or submodule is never exempt, whatever its name,
 because it can stand in for any content. Package modules still select
 documentation because autodoc and notebooks import them. The full OS/Python
-matrix runs on main pushes, releases and full-test PRs. Merge groups use the
-quick unit matrix and retain every integration check. Read the Docs
-publishes main documentation independently, as "Read the Docs" below
-describes.
+matrix runs nightly on `main`, on manual runs, on releases and on full-test
+PRs. Merge groups use the quick unit matrix and retain every integration
+check. Read the Docs publishes main documentation independently, as "Read the
+Docs" below describes.
 
 Integration tests, database tests and the full unit-test matrix are too costly
-for every PR. Apart from merge groups, main pushes and the labels, integration
-and database tests run only when a PR changes an input that no standard check
+for every PR. Apart from merge groups, nightly and manual runs and the labels,
+integration and database tests run only when a PR changes an input that no standard check
 validates, as the table lists: an input of the generated-file drift check, the wheel build, the
 Windows and macOS tooling tests, the example scripts, the slow tests, the
 doctests and their shared inputs, or the database code and its locked drivers.
@@ -114,8 +116,8 @@ The selector chooses the integration components independently and enables the
 `integration-tests` wrapper when any is selected. Shared package and test
 inputs, dependency metadata, shared CI configuration, and unknown tooling keep
 every component. Only an explicit `false` output skips a component; missing
-outputs retain coverage. Merge groups, main pushes, `full-test`, links and
-unverifiable diffs enable every component.
+outputs retain coverage. Merge groups, nightly and manual runs, `full-test`,
+links and unverifiable diffs enable every component.
 
 Unit runs skip the slow tests and never run doctests. `SLOW_TEST_FILES` and
 `DOCTEST_FILES` in `select_checks.py` list the package modules that apply the
@@ -131,13 +133,13 @@ TRF decoding, Pinnacle export or gamma implementation code, leave those tests
 unselected on a pull request. Add `full-test` to request both suites and the
 full unit-test matrix; `database` requests only the database suite. Modules
 with doctests, including `_metersetmap/metersetmap.py`, already select
-integration tests through the existing path rules. Every push to `main` runs
-both suites, and the release workflow runs the slow tests before publishing.
-Add `full-test` to a pull request that substantially changes code exercised by
-slow tests. Merge groups run both suites before merging. When CI fails on a
-push to `main`, the `report-main-failure` job
-opens or comments on the issue titled "CI failed on main", linking to the run.
-Close the issue once `main` is green again.
+integration tests through the existing path rules. Every merge group and the
+nightly run on `main` run both suites, and the release workflow runs the slow
+tests before publishing. Add `full-test` to a pull request that substantially
+changes code exercised by slow tests. When the nightly run, or a manual run,
+on `main` fails, the `report-main-failure` job opens or comments on the issue
+titled "CI failed on main", linking to the run. Close the issue once `main` is
+green again.
 
 Selected jobs need only `changes`, so they start alongside pre-commit and run
 whatever its result, and one run reports every result. The summary waits for
@@ -217,8 +219,8 @@ Static type checking for type safety.
 Fast unit tests with smart matrix strategy.
 
 - **Features**:
-  - Full OS and Python matrix on main pushes and releases (Ubuntu, Windows,
-    macOS; Python 3.12, 3.13, 3.14)
+  - Full OS and Python matrix nightly on `main`, on manual runs and on
+    releases (Ubuntu, Windows, macOS; Python 3.12, 3.13, 3.14)
   - Quick mode for merge groups and other PRs (Ubuntu + Python 3.14). The selector's
     `run-full-matrix` output decides, and only an explicit `false` keeps the
     quick matrix
@@ -375,8 +377,8 @@ Comprehensive testing beyond unit tests.
     generated files unchanged (exported requirements, `dependency-extra.txt`,
     `pyproject.hash`, `_version.py`); this check reports even when the wheel
     checks fail
-- **Triggers**: Merge groups, main pushes, `full-test`, or a PR that changes
-  dependency or build metadata, `ci.yml`, `.github/actions/`, `.github/scripts/`,
+- **Triggers**: Merge groups, nightly and manual runs, `full-test`, or a PR
+  that changes dependency or build metadata, `ci.yml`, `.github/actions/`, `.github/scripts/`,
   `integration-tests.yml` or `examples/`, or a symlink or submodule
   select integration checks. On PRs, doctests/examples, slow tests, tooling and
   packaging follow their own inputs as listed in the selection table above;
@@ -386,7 +388,7 @@ Comprehensive testing beyond unit tests.
 SQL Server integration tests for Mosaiq database functionality.
 
 - **Service**: SQL Server 2022 container
-- **Triggers**: Merge groups, main pushes, database or shared code changes,
+- **Triggers**: Merge groups, nightly and manual runs, database or shared code changes,
   dependency metadata or shared CI configuration, or `database` / `full-test`
   labels
 - **Features**: Waits for SQL Server to accept connections, then runs the tests once;
@@ -783,29 +785,49 @@ GitHub builds a prospective integrated state against the current `main` and
 earlier queued PRs, then starts `ci.yml` and `security.yml` on `merge_group`.
 The selector uses the quick Ubuntu/Python 3.14 unit matrix and enables every
 other check, including integration and database tests, the documentation build,
-and all security scans. Main pushes and releases run the full 12-environment
-unit matrix. Platform failures first discovered on main can be reverted or
-corrected there; the maintainers accept that cost to avoid duplicating the full
-matrix immediately before and after each merge.
+and all security scans. The nightly run on `main` and releases run the full
+12-environment unit matrix. Platform failures first discovered on main can be
+reverted or corrected there; the maintainers accept that cost to avoid
+running the full matrix before each merge and to keep it from delaying the
+merges after it.
 `CI Summary` and `Security Summary` must pass on that state before it merges.
 The queue may test up to three prospective states concurrently and merges PRs
 individually with merge commits.
 
 ## Main Branch Workflow
 
-On merge to main:
+A push to `main` starts no CI run. The merge queue updates `main` to the very
+commit its merge group tested, so a run on push would repeat every check of
+that run except the full unit-test matrix. Each merge used to start such a
+run, with the full matrix, and its jobs took runners ahead of the next merge
+group, which then reached the queue's two-hour limit for its checks. The
+security scan still runs on each push to `main`.
 
-A newer main push cancels an obsolete in-flight CI run, so the newest state
-starts its full checks without waiting for earlier commits. Pull request label
-changes queue behind their current run.
+Instead, `ci.yml` runs on the latest commit of `main` every night at 15:37 UTC
+(02:37 in Sydney during daylight saving), whether or not `main` changed, so
+changes to runner images and other outside inputs also show in the next
+nightly run. GitHub can start a scheduled run late when Actions is busy, and
+can drop it under heavy load, so the schedule is a nightly target rather than
+a deadline; start a manual run when a result is needed sooner. Each nightly
+run starts:
 
 ```
-Every job except docs-check (Read the Docs publishes main), including:
+Every job of ci.yml, including:
 ├── unit-tests         # Full matrix (all OS + Python versions)
 ├── integration-tests  # All extended tests
 ├── mosaiq-db-tests    # Database tests
-└── security           # Full security scan
+└── docs-check         # Documentation build
 ```
+
+A failure opens or comments on the issue titled "CI failed on main". To run the
+same checks at another time, start the CI workflow manually from the
+**Actions** tab, on `main` or on any branch; a run on another branch reports
+no issue. A running nightly or manual run is never cancelled by a later one:
+the later run waits. GitHub keeps only the newest waiting run in a
+concurrency group, though, so a third run on the same branch replaces the one
+already waiting. Merge groups test the quick unit matrix, so a platform
+failure can reach `main` and show first in the next nightly run; correct or
+revert it there.
 
 ## Required Secrets
 
@@ -955,11 +977,12 @@ request broader coverage and trigger another CI run.
 ### What a successful summary means
 
 - Ordinary PRs use Ubuntu and Python 3.14 when unit tests are selected. The
-  full OS/Python matrix runs on main pushes, releases and `full-test` PRs.
-  Merge groups use the quick unit matrix and run every integration and database
-  check. Integration tests also run on PRs that change their inputs. A green
-  merge-group summary therefore establishes the selected unit suite on
-  Ubuntu/Python 3.14; main supplies the comprehensive platform validation.
+  full OS/Python matrix runs nightly on `main`, on manual runs, on releases
+  and on `full-test` PRs. Merge groups use the quick unit matrix and run every
+  integration and database check. Integration tests also run on PRs that
+  change their inputs. A green merge-group summary therefore establishes the
+  selected unit suite on Ubuntu/Python 3.14; the nightly run on `main`
+  supplies the comprehensive platform validation.
 - Pyright is blocking. MyPy remains optional through `continue-on-error`.
 - Dependency vulnerabilities are advisory on PRs, pushes and merge groups.
   Requiring either `Dependency Audit` or `Security Summary` does not turn
