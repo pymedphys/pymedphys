@@ -893,9 +893,10 @@ def test_instances_keep_their_reviewed_dummy_values(policy_run):
         "MR Spectroscopy",
         "Enhanced PET Image",
         "Legacy Converted Enhanced PET Image",
-        # In their Segmentation Series Module.
+        # In their Segmentation and Parametric Map Series Modules.
         "Segmentation",
         "Surface Segmentation",
+        "Parametric Map",
         # In their Enhanced RT Series Module.
         "Enhanced RT Image",
         "Enhanced Continuous RT Image",
