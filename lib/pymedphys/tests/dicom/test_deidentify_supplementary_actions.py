@@ -136,6 +136,12 @@ ION_REVIEWED_AGAINST = DOSE_SR_REVIEWED_AGAINST + RADIATION_DOSE_SR_IODS
 # and which the first supported release now supports.
 RECORD_IODS = ("RT Brachy Treatment Record", "RT Treatment Summary Record")
 RECORD_REVIEWED_AGAINST = ION_REVIEWED_AGAINST + ION_IODS
+# Parametric Map and Real World Value Mapping, which the maintainer added to
+# the target coverage on 31 October 2026 with the other IODs that RT exports
+# carry, whose attributes were reviewed against every IOD above when the
+# first supported release came to support them.
+MAP_IODS = ("Parametric Map", "Real World Value Mapping")
+MAP_REVIEWED_AGAINST = RECORD_REVIEWED_AGAINST + RECORD_IODS
 # The Computed Radiography and Digital X-Ray Image IODs, which the maintainer
 # added to the target coverage on 31 October 2026, whose attributes were
 # reviewed against every IOD that the first supported release supported
@@ -156,8 +162,8 @@ RADIOGRAPH_REVIEWED_AGAINST = (
 # IOD that the first supported release then supported, and which it now
 # supports.
 SURFACE_IODS = ("Surface Segmentation",)
-SURFACE_REVIEWED_AGAINST = RADIOGRAPH_REVIEWED_AGAINST
-SUPPORTED_IODS = RADIOGRAPH_REVIEWED_AGAINST + SURFACE_IODS + RADIOGRAPH_IODS
+SURFACE_REVIEWED_AGAINST = RADIOGRAPH_REVIEWED_AGAINST + MAP_IODS
+SUPPORTED_IODS = SURFACE_REVIEWED_AGAINST + SURFACE_IODS + RADIOGRAPH_IODS
 CLEAN_DESCRIPTORS = "clean_descriptors"
 DEVICE_IDENTITY = "retain_device_identity"
 FULL_DATES = "retain_longitudinal_full_dates"
