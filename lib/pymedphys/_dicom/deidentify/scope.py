@@ -27,9 +27,10 @@ Radiation Dose SR IODs, of the Basic Text SR, Enhanced SR, Comprehensive SR,
 Comprehensive 3D SR, and Extensible SR IODs, of the Key Object Selection
 Document, and of the Mammography CAD SR, Chest CAD SR, Colon CAD SR,
 Procedure Log, Spectacle Prescription Report, Macular Grid Thickness and
-Volume Report, and Waveform Annotation SR IODs, of the Grayscale,
-Color, Pseudo-Color, Blending, XA/XRF Grayscale, and Variable Modality LUT
-Softcopy Presentation State IODs, and of the Planar MPR and Volume Rendering
+Volume Report, and Waveform Annotation SR IODs, of the Parametric Map and
+Real World Value Mapping IODs, of the Grayscale, Color, Pseudo-Color,
+Blending, XA/XRF Grayscale, and Variable Modality LUT Softcopy
+Presentation State IODs, and of the Planar MPR and Volume Rendering
 Volumetric Presentation State IODs, with their Grayscale and Compositing
 Planar MPR, Volume Rendering, Segmented Volume Rendering, and Multiple
 Volume Rendering SOP Classes, the Advanced Blending Presentation State
@@ -54,10 +55,12 @@ one's Volumetric Annotation Sequence (0070,1901) and Volumetric
 Presentation Input Annotation Sequence (0070,1905), unless, for a
 Graphic Annotation Sequence, a run under the Clean Graphics Option is given
 a reviewed annotations list, which keeps or removes each annotation as a
-reviewer decides (D-062). Every other
-instance is sequestered: neither de-identified nor written, and listed in
-the run report by opaque identifiers only. That includes the other
-Structured Reports and instances of Private SOP Classes.
+reviewer decides (D-062). The Clean Pixel Data Option also sequesters a
+Parametric Map whose pixel data are floating point, which it does not
+read. Every other instance is sequestered: neither de-identified nor
+written, and listed in the run report by opaque identifiers only. That
+includes the other Structured Reports and instances of Private SOP
+Classes.
 
 :func:`classify` decides from the instance's SOP Class UID (0008,0016), which
 PS3.4 Table B.5-1 maps to its IOD, and from the transfer syntax of its file.
@@ -122,6 +125,8 @@ SUPPORTED_IODS = frozenset(
         "Spectacle Prescription Report",
         "Macular Grid Thickness and Volume Report",
         "Waveform Annotation SR",
+        "Parametric Map",
+        "Real World Value Mapping",
         "Grayscale Softcopy Presentation State",
         "Color Softcopy Presentation State",
         "Pseudo-Color Softcopy Presentation State",
