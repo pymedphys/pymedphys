@@ -101,6 +101,8 @@ SUPPORTED = {
     "1.2.840.10008.5.1.4.1.1.7.2": "Multi-frame Grayscale Byte Secondary Capture Image",
     "1.2.840.10008.5.1.4.1.1.7.3": "Multi-frame Grayscale Word Secondary Capture Image",
     "1.2.840.10008.5.1.4.1.1.7.4": "Multi-frame True Color Secondary Capture Image",
+    "1.2.840.10008.5.1.4.1.1.30": "Parametric Map",
+    "1.2.840.10008.5.1.4.1.1.67": "Real World Value Mapping",
 }
 
 
@@ -152,6 +154,8 @@ def test_the_first_release_supports_ct_mr_pet_rt_registration_seg_and_sr_objects
         "Multi-frame Grayscale Byte Secondary Capture Image",
         "Multi-frame Grayscale Word Secondary Capture Image",
         "Multi-frame True Color Secondary Capture Image",
+        "Parametric Map",
+        "Real World Value Mapping",
     }
     assert scope.SECONDARY_CAPTURE_IODS < scope.SUPPORTED_IODS
     assert scope.SUPPORTED_TRANSFER_SYNTAXES == {IMPLICIT_LE, EXPLICIT_LE, *COMPRESSED}
@@ -217,14 +221,13 @@ def test_padding_is_ignored():
         ("1.2.840.10008.5.1.4.1.1.88.71", "Acquisition Context SR"),
         ("1.2.840.10008.5.1.4.1.1.11.1", "Grayscale Softcopy Presentation State"),
         # Outside the first release: other images, CT, MR, and PET objects
-        # that are not images, height map segmentations, parametric maps,
-        # spatial fiducials, and second-generation RT objects, including the
-        # second-generation RT images.
+        # that are not images, height map segmentations, spatial fiducials,
+        # and second-generation RT objects, including the second-generation
+        # RT images.
         ("1.2.840.10008.5.1.4.1.1.20", "Nuclear Medicine Image"),
         ("1.2.840.10008.5.1.4.1.1.6.1", "Ultrasound Image"),
         ("1.2.840.10008.5.1.4.1.1.200.2", "CT Performed Procedure Protocol"),
         ("1.2.840.10008.5.1.4.1.1.66.8", "Height Map Segmentation"),
-        ("1.2.840.10008.5.1.4.1.1.30", "Parametric Map"),
         ("1.2.840.10008.5.1.4.1.1.66.2", "Spatial Fiducials"),
         ("1.2.840.10008.5.1.4.1.1.481.10", "RT Physician Intent"),
         ("1.2.840.10008.5.1.4.1.1.481.14", "Tomotherapeutic Radiation"),
