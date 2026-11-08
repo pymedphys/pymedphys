@@ -607,7 +607,9 @@ def _float_frame(rows=4, columns=8):
 
 @pytest.mark.pydicom
 @FLOAT_KEYWORDS
-def test_not_a_number_is_shown_black_and_infinities_as_the_finite_extremes(keyword):
+def test_not_a_number_is_shown_black_and_infinities_beyond_the_finite_extremes(
+    keyword,
+):
     data = _image(np.zeros((4, 8)), series=None)
     written = {0: _floated(data, keyword, values=_float_frame())}
 
@@ -615,11 +617,96 @@ def test_not_a_number_is_shown_black_and_infinities_as_the_finite_extremes(keywo
     image = _decoded(previews.previews[1].png)
 
     assert not image[:, :4].any()
-    # Windowed from the finite values, 0 to 100, with positive infinity
-    # drawn as 100 and negative infinity as 0.
-    assert image[1, 5] == 0 and image[0, 4] == 255
+    # Positive infinity is drawn as 200 and negative infinity as -100, a
+    # range beyond the finite values, 0 to 100, so that each stands apart
+    # from the finite value at its end.
     assert image[2, 5] == 255 and image[3, 5] == 0
+    assert 0 < image[1, 5] < image[0, 4] < 255
     assert previews.pixels_shown == {0}
+
+
+_INFINITIES = pytest.mark.parametrize(
+    "infinities",
+    [(np.inf,), (-np.inf,), (np.inf, -np.inf)],
+    ids=["positive", "negative", "both"],
+)
+
+
+def _infinite_pattern(infinities, value=0.0):
+    """A frame of ``value`` with a block of each of ``infinities``, row by
+    row, and the block's mask."""
+    pixels = np.full((4, 8), value)
+    for row, infinity in enumerate(infinities, start=1):
+        pixels[row, 2:6] = infinity
+    return pixels, np.isinf(pixels)
+
+
+@pytest.mark.pydicom
+@FLOAT_KEYWORDS
+@_INFINITIES
+@pytest.mark.parametrize("value", [0.0, -7.5, 3e4])
+def test_infinities_among_finite_values_all_alike_are_drawn_apart(
+    keyword, infinities, value
+):
+    # Drawn as the finite extremes, a pattern of infinity among finite values
+    # that are all one value would be one grey in every preview, while the
+    # instance counted as shown whole; so each infinity is drawn beyond
+    # that value, and the pattern shows.
+    pixels, pattern = _infinite_pattern(infinities, value)
+    data = _image(np.zeros((4, 8)), series=None)
+    written = {0: _floated(data, keyword, values=pixels)}
+
+    previews = qc_previews.previews_of(written, {0})
+
+    assert previews.pixels_shown == {0}
+    full = [_decoded(preview.png) for preview in previews.previews]
+    full = [image for image in full if image.shape == pixels.shape]
+    assert full
+    for image in full:
+        background = set(np.unique(image[~pattern]).tolist())
+        assert len(background) == 1
+        levels = {
+            infinity: np.unique(image[pixels == infinity]) for infinity in infinities
+        }
+        for infinity, level in levels.items():
+            assert len(level) == 1 and level[0] not in background
+            assert (level[0] > min(background)) == (infinity > 0)
+        assert len({int(level[0]) for level in levels.values()}) == len(infinities)
+
+
+@_INFINITIES
+@pytest.mark.parametrize("dtype", ["<f4", "<f8"])
+def test_a_review_frame_draws_infinities_among_finite_values_all_alike_apart(
+    infinities, dtype
+):
+    pixels, pattern = _infinite_pattern(infinities)
+    # pylint: disable-next=protected-access
+    shown, undrawn, kinds = qc_previews._drawn_floats(pixels.astype(dtype), None)
+
+    frame = qc_previews.review_frame(shown.astype(np.float32))
+
+    assert not undrawn.any() and kinds == 0
+    assert len(np.unique(frame[~pattern])) == 1
+    assert len(np.unique(frame)) == 1 + len(infinities)
+
+
+@pytest.mark.pydicom
+def test_a_float_frame_whose_infinities_float32_cannot_hold_is_not_previewed():
+    # Positive infinity beside the largest double that float32 holds as
+    # finite would be drawn beyond float32, so the frame is not previewed.
+    pixels = np.zeros((4, 8))
+    pixels[0, 0] = -3e38
+    pixels[0, 1] = 3e38
+    pixels[1, 2] = np.inf
+    data = _image(np.zeros((4, 8)), series=None)
+    written = {0: _floated(data, "DoubleFloatPixelData", values=pixels)}
+
+    previews = qc_previews.previews_of(written, {0})
+
+    assert previews.pixels_shown == set()
+    assert [entry.reason for entry in previews.not_previewed] == [
+        NotPreviewedReason.UNSUPPORTED
+    ]
 
 
 @pytest.mark.pydicom

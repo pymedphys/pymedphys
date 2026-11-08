@@ -218,6 +218,7 @@ from . import (
 from .face_review import holds_deformation_grid, is_rt_dose, is_segmentation
 from .functional_groups import frame_group
 from .phases import FRAME, Named, named_by_frame, named_by_instance, split
+from .pixel_cleaning import beyond
 from .qc_pack import (
     GRID_KINDS,
     NotPreviewedEntry,
@@ -327,8 +328,8 @@ class _Instance:
     packed: bool = False
     # Whether its pixel data are Float Pixel Data or Double Float Pixel Data,
     # whose values that are not a number are not shown, as padding is not,
-    # and whose infinities are shown as the frame's finite extremes
-    # (_Decoder._shown).
+    # and whose infinities are shown beyond the frame's finite extremes
+    # (_drawn_floats).
     floating: bool = False
     # Whether it is a Segmentation (face_review.is_segmentation), which only
     # a segments sheet shows as it could show a face (D-017), and what the
@@ -1344,16 +1345,22 @@ def _drawn_floats(
     values that they do not draw, and how many kinds of value those are.
 
     Values that are not a number, and padding, are not drawn: every
-    preview draws them as one black, or as no patient. A viewer that clips
-    to any window shows positive infinity as its brightest and negative
-    infinity as its darkest, so they are drawn as the frame's largest and
-    smallest values that are drawn and finite; in a frame with none, they
-    too are not drawn. The kinds of value not drawn are not a number,
-    whatever its bits, since no viewer tells one apart from another, each
-    infinity, and each padding value; a frame with more than one could hold
-    a face in their pattern that no preview shows, so its instance is
-    counted as not shown whole, as one that pads with more than one stored
-    value is.
+    preview draws them as one black, or as no patient. Positive infinity is
+    drawn above the frame's largest value that is drawn and finite, and
+    negative infinity below its smallest, each by those values' range, or,
+    where they are all one value, by its magnitude or 1, whichever is
+    larger. A viewer that clips to a window would show an infinity as the
+    finite values at that end of it, so a pattern drawn in an infinity
+    beside those values, or among finite values that are all one value,
+    would show in no preview; drawn apart from them, it shows, at the cost
+    of some of the finite values' contrast. In a frame with no drawn finite
+    value, infinities are not drawn either. The kinds of value not drawn
+    are not a number, whatever its bits, since no viewer tells one apart
+    from another, each infinity, and each padding value; a frame with more
+    than one could hold a face in their pattern that no preview shows, so
+    its instance is counted as not shown whole, as one that pads with more
+    than one stored value is. A drawn value beyond float32 leaves the frame
+    not previewed (:func:`_contrast_kept`).
     """
     nan = np.isnan(pixels)
     padded = np.zeros(pixels.shape, dtype=bool)
@@ -1366,10 +1373,11 @@ def _drawn_floats(
     shown = pixels
     if infinite.any():
         if drawn.any():
-            shown = pixels.copy()
-            values = pixels[drawn]
-            shown[np.isposinf(pixels)] = values.max()
-            shown[np.isneginf(pixels)] = values.min()
+            shown = pixels.astype(np.float64)
+            low, high = float(shown[drawn].min()), float(shown[drawn].max())
+            gap = high - low or max(abs(high), 1.0)
+            shown[np.isposinf(pixels)] = beyond(high, gap)
+            shown[np.isneginf(pixels)] = beyond(low, -gap)
         else:
             undrawn = undrawn | infinite
     kinds = int(nan.any()) + len(np.unique(pixels[padded]))

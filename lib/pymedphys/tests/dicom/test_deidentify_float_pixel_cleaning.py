@@ -159,11 +159,14 @@ def test_each_floating_point_frame_is_searched_as_scaled_finite_values(keyword, 
         ratios = seen[nonzero] / frame[nonzero].astype(np.float64)
         assert len(np.unique(ratios)) == 1
         assert np.log2(ratios[0]).is_integer()
-        assert np.abs(seen).max() <= 1
-        # Positive infinity is the largest finite value; negative infinity
-        # and not a number are the smallest.
-        assert seen[4, 0] == seen[drawn].max()
-        assert seen[4, 1] == seen[5, 7] == seen[drawn].min()
+        assert np.abs(seen[drawn]).max() <= 1
+        # Each infinity lies beyond the finite values by their range, and
+        # not a number below negative infinity by as much again.
+        low, high = seen[drawn].min(), seen[drawn].max()
+        gap = high - low
+        assert seen[4, 0] == high + gap
+        assert seen[4, 1] == low - gap
+        assert seen[5, 7] == low - gap - gap
     (regions,) = redaction.regions
     assert regions.frame == 1
     assert regions.value == (float(frames[1][np.isfinite(frames[1])].min()),)
@@ -181,8 +184,50 @@ def test_values_near_the_largest_double_are_searched_without_overflow():
     assert seen[0, 1] - seen[0, 0] > 1
 
 
+@pytest.mark.parametrize("dtype", ["<f4", "<f8"])
+@pytest.mark.parametrize(
+    "infinities",
+    [(np.inf,), (-np.inf,), (np.inf, -np.inf)],
+    ids=["positive", "negative", "both"],
+)
+@pytest.mark.parametrize("value", [0.0, -7.5, 3e4, np.nan])
+def test_text_in_an_infinity_is_searched_apart_from_values_all_alike(
+    dtype, infinities, value
+):
+    # Searched as the finite extremes, a pattern of infinity on finite values
+    # that are all one value, or on values that are not a number, would be
+    # one value to the finder; each kind of value is searched apart.
+    frame = np.full((4, 8), value, dtype=dtype)
+    for row, infinity in enumerate(infinities, start=1):
+        frame[row, 2:6] = infinity
+
+    seen = pixel_cleaning.searched_values(frame)
+
+    assert np.isfinite(seen).all()
+    background = np.unique(seen[~np.isinf(frame)])
+    assert len(background) == 1
+    for infinity in infinities:
+        (level,) = np.unique(seen[frame == infinity])
+        # Above or below finite values; not a number is below them all.
+        assert (level > background[0]) == (infinity > 0 or np.isnan(value))
+    assert len(np.unique(seen)) == 1 + len(infinities)
+
+
+def test_infinities_are_searched_apart_from_finite_extremes_closer_than_a_gap():
+    # The finite range is one step of float64 at 1, too small to move 1 by;
+    # each infinity is still searched as a value of its own.
+    high = 1.0
+    low = float(np.nextafter(high, 0.0))
+    frame = np.array([[low, high, np.inf, -np.inf, np.nan]])
+
+    seen = pixel_cleaning.searched_values(frame)
+
+    assert len(np.unique(seen)) == 5
+    assert seen[0, 2] > seen[0, 1] > seen[0, 0] > seen[0, 3] > seen[0, 4]
+
+
 @FLOATS
-def test_a_frame_with_no_finite_value_is_searched_as_zeros_and_filled_with_zero(
+def test_a_frame_with_no_finite_value_is_searched_apart_and_filled_with_zero(
     keyword, dtype
 ):
     frame = np.full((6, 8), np.nan, dtype=dtype)
@@ -191,7 +236,9 @@ def test_a_frame_with_no_finite_value_is_searched_as_zeros_and_filled_with_zero(
     source, redaction = _blacked_out(_floating(frame, keyword, dtype), finder)
 
     (seen,) = finder.seen
-    assert not seen.any()
+    # Positive infinity as 1, as though the finite values were all 0, and
+    # not a number below the -1 of negative infinity.
+    assert seen[0, 0] == 1 and np.all(seen.ravel()[1:] == -2)
     (regions,) = redaction.regions
     assert regions.value == (0.0,)
     output = _float_replaced(source, redaction, keyword)

@@ -65,8 +65,8 @@ one sample of MONOCHROME2 in 32-bit or 64-bit little-endian IEEE 754 values
 frames, are cleaned in the same way, in the element that held them
 (:func:`float_layout_of`). Each frame is searched as
 :func:`searched_values` gives it, scaled so that no finder's arithmetic
-overflows, with infinities and values that are not a number as its finite
-extremes, and its regions are filled with its smallest finite value
+overflows, with infinities beyond its finite extremes and values that are
+not a number below those, and its regions are filled with its smallest finite value
 (:meth:`Layout.fill`), so that the fill is a value the frame holds rather
 than one that viewers read as missing. No overlay and no defacer's mask is
 written into floating-point pixel data, and its values are checked bit for
@@ -116,6 +116,7 @@ from __future__ import annotations
 import dataclasses
 import hashlib
 import io
+import math
 import types
 from collections.abc import (
     Callable,
@@ -976,12 +977,18 @@ def searched_values(frame: np.ndarray) -> np.ndarray:
     arithmetic would overflow. So each value is divided by the power of two
     at or above the frame's largest finite magnitude, exactly where it is
     32-bit, so that the values lie within -1 and 1, keeping the order and
-    proportions between them that a finder's windows and filters read; then
-    positive infinity is the frame's largest finite value, and negative
-    infinity and not a number, which every preview draws as padding, its
-    smallest, as a viewer that clips to any window shows them. Padding is
-    searched as it is, as an integer frame's is. A frame with no finite
-    value is searched as zeros.
+    proportions between them that a finder's windows and filters read. Then
+    positive infinity is searched as above the frame's largest finite value
+    and negative infinity as below its smallest, each by the finite values'
+    range, or by 1 where they have none, as previews draw them
+    in the QC pack, so that text drawn in an infinity
+    stands apart even where the finite values beside it are its extreme or
+    all one value. A value that is not a number, which every preview draws
+    black as padding, is searched as below negative infinity by as much
+    again, so that text drawn in it, or drawn in another value on it,
+    stands apart too. Padding is searched as it is, as an integer frame's
+    is. A frame with no finite value is searched as though its finite
+    values were all 0.
 
     Parameters
     ----------
@@ -995,15 +1002,33 @@ def searched_values(frame: np.ndarray) -> np.ndarray:
     """
     values = np.asarray(frame, dtype=np.float64)
     finite = np.isfinite(values)
-    if not finite.any():
-        return np.zeros(values.shape)
-    magnitude = float(np.abs(values[finite]).max())
-    exponent = int(np.frexp(magnitude)[1]) if magnitude > 0 else 0
-    scaled = np.ldexp(values, -exponent)
-    low, high = float(scaled[finite].min()), float(scaled[finite].max())
-    scaled[np.isposinf(scaled)] = high
-    scaled[~np.isfinite(scaled)] = low
+    scaled = np.zeros(values.shape)
+    low = high = 0.0
+    if finite.any():
+        magnitude = float(np.abs(values[finite]).max())
+        exponent = int(np.frexp(magnitude)[1]) if magnitude > 0 else 0
+        scaled = np.ldexp(values, -exponent)
+        low, high = float(scaled[finite].min()), float(scaled[finite].max())
+    gap = high - low or 1.0
+    below = beyond(low, -gap)
+    scaled[np.isposinf(values)] = beyond(high, gap)
+    scaled[np.isneginf(values)] = below
+    scaled[np.isnan(values)] = beyond(below, -gap)
     return scaled
+
+
+def beyond(value: float, gap: float) -> float:
+    """Return ``value`` moved by ``gap``, or, where float64 cannot hold
+    that apart from ``value``, the next float64 in its direction.
+
+    Infinities are drawn and searched beyond a frame's finite extremes by
+    this, so that they stay apart from those extremes, however close they
+    lie (:func:`searched_values`).
+    """
+    moved = value + gap
+    if moved == value:
+        moved = float(np.nextafter(value, math.copysign(math.inf, gap)))
+    return moved
 
 
 def _decoded_layout(
