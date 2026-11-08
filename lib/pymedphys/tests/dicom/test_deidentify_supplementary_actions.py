@@ -136,6 +136,12 @@ ION_REVIEWED_AGAINST = DOSE_SR_REVIEWED_AGAINST + RADIATION_DOSE_SR_IODS
 # and which the first supported release now supports.
 RECORD_IODS = ("RT Brachy Treatment Record", "RT Treatment Summary Record")
 RECORD_REVIEWED_AGAINST = ION_REVIEWED_AGAINST + ION_IODS
+# Parametric Map and Real World Value Mapping, which the maintainer added to
+# the target coverage on 31 October 2026 with the other IODs that RT exports
+# carry, whose attributes were reviewed against every IOD above when the
+# first supported release came to support them.
+MAP_IODS = ("Parametric Map", "Real World Value Mapping")
+MAP_REVIEWED_AGAINST = RECORD_REVIEWED_AGAINST + RECORD_IODS
 # Surface Segmentation, which the maintainer brought into the target
 # coverage on 31 October 2026 with the other IODs that radiotherapy exports
 # carry, whose attributes were reviewed ahead of supporting it, against every
@@ -150,6 +156,7 @@ SURFACE_REVIEWED_AGAINST = (
     + SUPPORTED_OTHER_SR_IODS
     + ION_IODS
     + RECORD_IODS
+    + MAP_IODS
 )
 # Encapsulated PDF, which the maintainer added to the target coverage on 31
 # October 2026 with the other IODs that RT exports carry, whose attributes
