@@ -28,8 +28,10 @@ MODULE = "Common Instance Reference"
 # The supported IODs that make the module mandatory, from the 2026d PS3.3
 # Tables A.39.1-1 and A.39.2-1.
 MANDATORY = {"Spatial Registration", "Deformable Spatial Registration"}
-# Required where a Derivation Image functional group is present.
-CONDITIONAL = {"Segmentation"}
+# Required in a Segmentation where a Derivation Image functional group is
+# present, and in a Surface Segmentation where the surface was derived from
+# another instance (PS3.3 Table A.57-1).
+CONDITIONAL = {"Segmentation", "Surface Segmentation"}
 # The supported IODs without the module: the Structured Reports, whose SR
 # Document General Module references their evidence instead (PS3.3 Section
 # A.35).

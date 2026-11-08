@@ -244,7 +244,10 @@ def test_padding_of_more_than_one_value_counts_only_as_written(mixed):
         ((0, (TextBox(0, 0, 1, 4),)),),
     )
     found = qc_previews.previews_of({0: written}, set(), {0: (received, entry)})
-    assert [preview.kind for preview in found.previews][-1] is PreviewKind.REDACTION
+    assert [preview.kind for preview in found.previews][-2:] == [
+        PreviewKind.REDACTION,
+        PreviewKind.REVIEW_FRAME,
+    ]
     assert not found.not_previewed
     assert found.pixels_shown == (frozenset() if mixed else {0})
 

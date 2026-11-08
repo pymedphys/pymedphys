@@ -234,6 +234,7 @@ OTHER_SEQUENCES = {
     "(0040,A390)",  # HL7 Structured Document Reference Sequence
     "(0042,0013)",  # Source Instance Sequence
     "(0062,0012)",  # Used Segments Sequence
+    "(0066,002E)",  # Segment Surface Source Instance Sequence
     "(0070,0314)",  # Used Fiducials Sequence
     "(0070,0315)",  # Used RT Structure Set ROI Sequence
     "(0070,0404)",  # Referenced Spatial Registration Sequence
