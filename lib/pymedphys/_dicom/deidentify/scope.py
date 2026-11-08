@@ -24,7 +24,7 @@ Photon-Electron Radiation Record, Tomotherapeutic Radiation Record,
 Robotic-Arm Radiation Record, RT Radiation Salvage Record, and RT Radiation
 Record Set IODs, of the Spatial Registration and Deformable Spatial
 Registration IODs, of the Segmentation IOD, of both Segmentation Storage
-and Label Map Segmentation Storage, of the X-Ray Radiation Dose SR, Enhanced
+and Label Map Segmentation Storage, of the Surface Segmentation IOD, of the X-Ray Radiation Dose SR, Enhanced
 X-Ray Radiation Dose SR, Radiopharmaceutical Radiation Dose SR, and Patient
 Radiation Dose SR IODs, of the Basic Text SR, Enhanced SR, Comprehensive SR,
 Comprehensive 3D SR, and Extensible SR IODs, of the Key Object Selection
@@ -102,6 +102,7 @@ SUPPORTED_IODS = frozenset(
         "RT Radiation Salvage Record",
         "RT Radiation Record Set",
         "Segmentation",
+        "Surface Segmentation",
         "Spatial Registration",
         "Deformable Spatial Registration",
         "X-Ray Radiation Dose SR",
