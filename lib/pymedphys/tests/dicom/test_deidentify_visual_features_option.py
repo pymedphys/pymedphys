@@ -57,6 +57,7 @@ from pymedphys._dicom.deidentify.face_review import (
     carries_visual_features,
     contour_data_sha256,
     holds_deformation_grid,
+    holds_surface_mesh,
     pixel_data_sha256,
     read_face_review,
 )
@@ -568,6 +569,9 @@ def test_the_repr_shows_only_the_reference_and_counts():
         (None, "MR Spectroscopy", False),
         (None, "Spatial Registration", False),
         (None, "Deformable Spatial Registration", False),
+        # A Surface Segmentation's meshes can trace the skin, whatever it
+        # holds.
+        (None, "Surface Segmentation", True),
     ],
 )
 def test_an_instance_needs_a_verdict_where_it_can_show_a_face(keyword, iod, carries):
@@ -616,6 +620,35 @@ def test_a_deformable_registration_sequence_that_cannot_be_read_may_hold_a_grid(
     dataset[0x00640002] = pydicom.DataElement(0x00640002, "OB", b"\x01\x02")
 
     assert holds_deformation_grid(dataset)
+
+
+@pytest.mark.parametrize(
+    "items, holds",
+    [
+        (None, False),
+        # A Surface Sequence holds meshes, whatever its items, even none.
+        ([], True),
+        ([pydicom.Dataset()], True),
+    ],
+)
+@pytest.mark.parametrize("iod", ["Surface Segmentation", "CT Image"])
+def test_a_surface_mesh_can_show_a_face(items, holds, iod):
+    dataset = pydicom.Dataset()
+    if items is not None:
+        dataset.SurfaceSequence = items
+
+    assert holds_surface_mesh(dataset) is holds
+    assert carries_visual_features(dataset, iod) is (
+        holds or iod == "Surface Segmentation"
+    )
+
+
+def test_a_surface_sequence_that_cannot_be_read_holds_a_mesh():
+    dataset = pydicom.Dataset()
+    # Bytes that are not items.
+    dataset[0x00660002] = pydicom.DataElement(0x00660002, "OB", b"\x01\x02")
+
+    assert holds_surface_mesh(dataset)
 
 
 # The markers and the transform.
@@ -721,6 +754,7 @@ def test_the_statement_names_each_supported_iod_that_lacks_the_attribute():
         "MR Spectroscopy",
         "Spatial Registration",
         "Deformable Spatial Registration",
+        "Surface Segmentation",
         "X-Ray Radiation Dose SR",
         "Enhanced X-Ray Radiation Dose SR",
         "Radiopharmaceutical Radiation Dose SR",
@@ -743,7 +777,8 @@ def test_the_statement_names_each_supported_iod_that_lacks_the_attribute():
         "which of the supported IODs are RT Plan, RT Structure Set, RT Beams "
         "Treatment Record, RT Ion Plan, RT Ion Beams Treatment Record, RT Brachy "
         "Treatment Record, RT Treatment Summary Record, MR Spectroscopy, Spatial "
-        "Registration, Deformable Spatial Registration, X-Ray Radiation Dose SR, "
+        "Registration, Deformable Spatial Registration, Surface Segmentation, "
+        "X-Ray Radiation Dose SR, "
         "Enhanced X-Ray Radiation Dose SR, Radiopharmaceutical Radiation Dose SR, "
         "Patient Radiation Dose SR, Basic Text SR, Enhanced SR, Comprehensive SR, "
         "Comprehensive 3D SR, Extensible SR, Key Object Selection Document, "
@@ -982,6 +1017,7 @@ _CT = ("01-ct-1.dcm", "02-ct-2.dcm")
 _DOSE = ("06-rtdose.dcm", "07-rtdose-review.dcm")
 _STRUCTURE_SET = "04-rtstruct.dcm"
 _DEFORMABLE = "19-registration-deformable.dcm"
+_SURFACE = corpus_module.SURFACE_SEGMENTATION_FILE
 # The instances that cannot show a face.
 _FACELESS = (
     "05-rtplan.dcm",
@@ -1053,6 +1089,9 @@ def _first_run():
                 # Its grid sheets show its grid, so this verdict releases
                 # the grid that the first run wrote.
                 by_first[_DEFORMABLE]["positions"][0]: Face.ABSENT,
+                # No preview draws its meshes, so this verdict releases
+                # nothing of it.
+                by_first[_SURFACE]["positions"][0]: Face.ABSENT,
             },
         )
         # The same files, renamed so that they are found in the reverse
@@ -1159,6 +1198,21 @@ def test_every_other_instance_that_can_show_a_face_is_held(second_run):
     }
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.2-01")
+def test_a_surface_segmentation_is_held_whatever_its_verdict(second_run):
+    _, outcomes, _, result = second_run
+    entries = json.loads(result.qc_pack.read_text("utf-8"))["instances"]
+    names = {entry["position"]: Path(entry["source"]).name[2:] for entry in entries}
+    reasons = {names[o.position]: set(o.reasons) for o in result.outcomes}
+
+    # Its series is marked absent, but no preview of the pack drew its
+    # meshes, so the verdict is of none of them.
+    assert outcomes[_SURFACE] == ("held-for-review", None)
+    assert reasons[_SURFACE] == {
+        HeldVisualFeatures(VisualFeaturesReason.NO_FACE_VERDICT)
+    }
+
+
 @pytest.mark.deid_requirement("PS3.15-E.3.2-01", "PS3.15-E.3.2-02")
 def test_with_clean_pixel_data_a_verdict_covers_only_the_pixel_data_seen(
     second_run_with_pixel_data,
@@ -1215,7 +1269,7 @@ def test_the_report_names_the_attested_pack(second_run):
     attestation, _, report, _ = second_run
 
     assert report["face_review"]["reference"] == attestation.reference
-    assert report["format"] == "pymedphys-deid-release-report/53"
+    assert report["format"] == "pymedphys-deid-release-report/54"
 
 
 def test_the_report_counts_the_ct_series_that_were_not_defaced(second_run):
