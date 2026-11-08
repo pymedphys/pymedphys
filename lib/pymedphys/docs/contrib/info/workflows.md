@@ -27,9 +27,11 @@ Schedule / manual run -> tg263-edition-check.yml
 Schedule / manual run / PR changing it or labelled check-upstream -> tcia-edition-check.yml
 Manual run -> face-validation.yml
 Manual run -> face-validation-visible-human.yml
+Manual run -> face-validation-keating.yml
+Manual run -> face-validation-pddca.yml
 Manual run -> pixel-text-validation.yml
 Manual run -> text-detection-model-pins.yml
-Manual run -> text-detector-evaluation-idc.yml
+Manual run -> text-detector-evaluation.yml
 Published release -> release.yml -> quality checks, publishing, verification, and published-package tests
 Issue comment -> claude.yml
 
@@ -254,9 +256,9 @@ report as `junit-dependency-floors-<part>`. A
 failure fails the unit-test workflow and therefore the required CI or release
 summary.
 
-Every cell of the unit-test matrix runs in four parts on four runners, since
+Every cell of the unit-test matrix runs in five parts on five runners, since
 a slow runner could take the 30-minute limit (60 minutes on Windows) to run the
-whole suite at once, or the corpus modules together. The workflow's
+whole suite at once, the corpus modules together, or the rest of the suite. The workflow's
 `CORPUS_RUN_TESTS` lists the modules that run the synthetic collection through
 the engine, which take about half the suite's time, and `CT_DEFACING_RUN_TEST`
 and `CT_DEFACING_REVIEW_TEST` name the two of them that each run alone: the two
@@ -264,14 +266,24 @@ halves of the CT defacing runs, which share their helpers in
 `tests/dicom/_ct_defacing_runs.py`. The `ct-defacing` part runs
 `test_deidentify_ct_defacing_run.py`, the `ct-defacing-reviews` part runs
 `test_deidentify_ct_defacing_review_runs.py`, the `corpus-runs` part runs the
-other listed modules, and the `others` part runs every other test by passing
-each listed module to `--ignore`, so a new module runs in `others` until it is
-listed, and every test runs in exactly one of the four parts. A listed module
-that no longer exists, a CT defacing module that is not in the list, the same
-module named for both CT defacing parts, or an empty remaining corpus selection
-fails every part before pytest starts, and a contract test checks that each
-listed module exists and is listed once. The three corpus parts read no
-downloaded data, so they skip the data cache. Its key ends in the job's ID,
+other listed modules, the `deidentify-a-o` part runs every other
+`tests/dicom/test_deidentify_*.py` module whose name goes on with a letter from
+`a` to `o`, and the `others` part runs every other test by passing each module
+of the other parts to `--ignore`. One glob, `test_deidentify_[abcdefghijklmno]*.py`,
+gives `deidentify-a-o` its modules and `others` its ignores, so a new
+de-identification module runs in the part its name gives it, any other new
+module runs in `others` until it is listed, and every test runs in exactly one
+of the five parts. The letters are listed rather than written as a range, which
+can match capitals under some locales. The cut at `p` halved the remaining
+time: on 7 November 2026, locally, the remaining modules' summed test time was
+1,133 seconds in `deidentify-a-o` and 1,167 seconds in `others`. A listed
+module that no longer exists, a CT defacing module that is not in the list,
+the same module named for both CT defacing parts, or an empty remaining corpus
+or `deidentify-a-o` selection fails every part before pytest starts, and a
+contract test checks that each listed module exists and is listed once. The
+three corpus parts and `deidentify-a-o` read no downloaded data, as the
+`pydicom-versions` job's de-identification tests do not, so they skip the data
+cache. Its key ends in the job's ID,
 so every part and cell of a job on one OS shares it, and a part that saved it
 without the data would leave the others re-downloading. Move a module between
 the corpus parts, or a group of runs between the two CT defacing modules, when
@@ -279,13 +291,17 @@ the `--durations` reports show one part taking much longer than another; each
 CT defacing module makes the runs that its own tests review, so that no run is
 made in both. The corpus selection was split this way on 5 November 2026,
 when more Structured Reports in the synthetic corpus took the combined
-corpus part past 30 minutes on Ubuntu, and the CT defacing runs were halved on
-6 November 2026, when they alone reached 30 minutes on Ubuntu.
+corpus part past 30 minutes on Ubuntu, the CT defacing runs were halved on
+6 November 2026, when they alone reached 30 minutes on Ubuntu, and the
+`others` part was halved on 7 November 2026, when it took 23 to 25 minutes on
+Ubuntu, and 29:38 at the dependency floors on a pull request. Move the cut to
+another letter when the `--durations` reports show one of these two parts
+taking much longer than the other.
 
-The run at the dependency floors runs in the same four parts. Each part
+The run at the dependency floors runs in the same five parts. Each part
 retains the 30-minute job limit, two pytest workers and the 900-second
-per-test limit. Only `others` uses the data cache. All four JUnit reports must
-arrive and all four parts must pass; the required summary continues to depend
+per-test limit. Only `others` uses the data cache. All five JUnit reports must
+arrive and all five parts must pass; the required summary continues to depend
 on the whole reusable unit-test workflow.
 
 Each cell's parts upload their reports as `junit-py<python>-<part>-<os>`, such
@@ -296,7 +312,7 @@ job combines each cell's parts into `junit-<os>-<python>`, such as
 `junit-ubuntu-latest-3.14`, the report that the release's requirements matrix
 reads for that environment. It writes no report for a cell if one of its
 parts' reports is missing or a test case ran in two parts. Since every cell
-runs four jobs, a full-matrix run starts twelve macOS unit-test jobs, and GitHub
+runs five jobs, a full-matrix run starts fifteen macOS unit-test jobs, and GitHub
 runs at most five macOS jobs at once on its Free, Pro, and Team plans, so some
 parts may queue for a runner; the queue does not count towards a job's time
 limit.
@@ -320,15 +336,15 @@ if that is not the one requested. Actual executions upload JUnit reports as
 `junit-pydicom-minimum` and `junit-pydicom-latest`; reused evidence has no copied
 or synthetic JUnit. Each role uploads a coverage manifest naming its requested
 version and evidence source. The normal reference cell records its imported
-versions and checkout revision: each of its four parts records the pydicom and
+versions and checkout revision: each of its five parts records the pydicom and
 Python versions it imported, and the `combined-report` job records the
-combined evidence only when all four parts passed on the checked-out commit and
+combined evidence only when all five parts passed on the checked-out commit and
 imported the same pydicom, which must match the lock, under Python 3.14. The
 parts may run different 3.14 patch releases, since each runner image carries
 its own while GitHub rolls out a new one, and the evidence records each part's.
 It explicitly requires both metadata and JUnit before upload. Reuse is
-established only when the whole unit-test workflow succeeds, including both
-parts, the `combined-report` jobs, and both compatibility jobs.
+established only when the whole unit-test workflow succeeds, including every
+part, the `combined-report` jobs, and both compatibility jobs.
 Lookup, planning, metadata and upload failures fail the workflow. Reuse adds
 no test run: `combined-report`, the only job after the test jobs, combines
 reports and runs no tests.
@@ -346,7 +362,9 @@ For each, on Ubuntu with Python 3.14, it installs only that extra and the
 another feature skip themselves when its packages are missing. The `dicom`
 extra's tests run in the same `ct-defacing`, `ct-defacing-reviews`,
 `corpus-runs`, and `others` parts as the unit-test matrix, on four runners, since together they can reach the
-30-minute limit on a slow runner. It uploads a JUnit report per extra as `junit-extra-<extra>`, and
+30-minute limit on a slow runner. It has no `deidentify-a-o` part: its
+`others` part holds only `tests/dicom` and took 15 minutes on 6 November 2026,
+so a fifth runner would buy nothing it needs. It uploads a JUnit report per extra as `junit-extra-<extra>`, and
 per part for `dicom` as `junit-extra-dicom-<part>`, and runs alongside both the
 quick and full matrices.
 
@@ -456,7 +474,7 @@ Publishes to PyPI behind quality gates.
   their result, and renders the de-identification requirements-to-tests matrix
   with `pymedphys dev deid-matrix --check` from the JUnit report of every
   environment in the unit-test matrix; each environment reports through its
-  four parts' combined report. It fails when a traced test failed, was
+  five parts' combined report. It fails when a traced test failed, was
   skipped, or did not run in every environment, or when an environment's
   report is missing, and still writes the matrix. Once the build has passed,
   `upload-deid-matrix`, which runs no repository code, attaches the matrix to
@@ -649,6 +667,48 @@ Courtesy of the U.S. National Library of Medicine.
   `face-validation-vhp.json`, `commit.txt`, and renders of each head.
   The series themselves are never cached or uploaded
 
+#### `face-validation-keating.yml`
+
+Checks the face block finder and CT defacing of the Clean Recognizable Visual
+Features Option on Steven Keating's cranial CT, which he released on Zenodo
+under CC0 1.0 with his approval (see
+[Check the face block against HaN-Seg](deidentification-face-validation.md)).
+
+- **Triggers**: manually only
+- **Steps**: installs the project with the `user` extra, downloads the
+  record's ZIP file from Zenodo, checks its size and MD5 against the
+  record's, and runs
+  `python -m pymedphys._dicom.deidentify.face_validation_command keating`,
+  which refuses the file unless its SHA-256 and each axial series' file count
+  and digest are those that the check pins. Its job can only read the
+  repository
+- **Results**: the job summary shows `face-validation-keating.md`, and the
+  `face-validation-keating-results` artefact, kept for 90 days, holds it with
+  `face-validation-keating.json`, `commit.txt`, and renders of each series.
+  The ZIP file itself is never cached or uploaded
+
+#### `face-validation-pddca.yml`
+
+Checks the face block and the air written there against the optic nerve and
+organ masks of the PDDCA 1.4.1 data set, re-hosted on Zenodo in three parts
+(see
+[Check the face block against HaN-Seg](deidentification-face-validation.md)).
+
+- **Triggers**: manually only
+- **Steps**: installs the project with the `user` extra, downloads the three
+  ZIP files from Zenodo, checks each one's size and MD5 against its record's,
+  and runs
+  `python -m pymedphys._dicom.deidentify.face_validation_command pddca`
+  through `.github/scripts/run_redacted.py`, as `face-validation.yml` runs
+  the HaN-Seg check; the command also checks each file's SHA-256. Its job can
+  only read the repository
+- **Results**: the job summary shows `face-validation.md`, and the
+  `face-validation-pddca-results` artefact, kept for 90 days, holds it with
+  `face-validation.json` and `commit.txt`. They hold only counts, codes,
+  digests, versions, and the engine's settings. PDDCA's images are of real
+  patients, so the data set is never cached or uploaded, and nothing else read
+  from it leaves the runner
+
 #### `pixel-text-validation.yml`
 
 Counts the regions that the text detector of the Clean Pixel Data Option finds
@@ -690,33 +750,45 @@ each file has its pinned SHA-256.
   in bytes, and hash result, `unreachable` with only the kind of failure where
   a download fails. The job fails unless every pin matches
 
-#### `text-detector-evaluation-idc.yml`
+#### `text-detector-evaluation.yml`
 
 Measures the text detector of the Clean Pixel Data Option, or a candidate
-model, on openly licensed series of NCI's Imaging Data Commons, with synthetic
-text burned into copies of their frames in memory.
+model, on openly licensed series of real patients in NCI's Imaging Data
+Commons, among them the seven collections that D-056 takes from TCIA, and on
+folders of pinned archives on Zenodo and in the University of Sydney's data
+store, with synthetic text burned into copies of their frames in memory; and
+reports the synthetic phantoms and IDC's allow-listed phantom collections in
+full, with crops.
 
-- **Triggers**: manually only, with the model, today's settings or its
-  publishers', the part of the split, and the most series from one collection
-  and in all
-- **Steps**: one job, which installs the project with the `user` and
-  `text-detection` extras, then pyarrow, OpenCV, and s5cmd from
-  `.github/text-evaluation/requirements.txt` with `--require-hashes --no-deps`;
-  none is a dependency of PyMedPhys. It downloads the pinned wheel of
-  idc-index-data and checks its SHA-256, selects series from IDC's index by
-  the vetted collections, licences, and image modalities, downloads them from
-  IDC's public buckets with s5cmd, and runs
+- **Triggers**: manually only, with the jobs to run (`all`, `patients`, or
+  `phantoms`), the model, today's settings or its publishers', the part of
+  the split, and the most series or folders from one collection and in all
+  for each source
+- **Steps**: two jobs, each of which installs the project with the `user`
+  and `text-detection` extras, then pyarrow, OpenCV, and s5cmd from
+  `.github/text-evaluation/requirements.txt` with `--require-hashes
+  --no-deps`; none is a dependency of PyMedPhys. Each downloads the pinned
+  wheel of idc-index-data, checks its SHA-256, selects series from IDC's
+  index, downloads them from IDC's public buckets with s5cmd, and runs
   `python -m pymedphys._dicom.deidentify.text_evaluation_command` through
   `.github/scripts/run_redacted.py`, with its standard output and error, and
-  s5cmd's, in files on the runner. At a model's publishers' settings it also
-  counts what OpenCV's resize alone changes. Its job can only read the
-  repository and holds no secret
-- **Results**: the job's summary shows the counts-only summary. The
-  `text-detector-evaluation-idc` artefact, kept for 90 days, holds it with
-  the per-case report of each series by its public identifiers, licence, and
-  DOI, the assessment against the chosen criteria, the selection's counts by
-  collection, and `commit.txt`. No image, crop, or pixel value is written, and
-  the series are never cached or uploaded
+  s5cmd's, in files on the runner. The patients' job selects by the vetted
+  collections, licences, and image modalities, fetches the archive folders,
+  measures them all as received and as converted to Legacy Converted
+  Enhanced images, and, at a model's publishers' settings, counts what
+  OpenCV's resize alone changes. The phantoms' job selects IDC's phantom
+  collections alone and runs `phantom-report`, which refuses any other
+  collection. Each job can only read the repository and holds no secret
+- **Results**: each job's summary shows its counts-only summary. The
+  `text-detector-evaluation-patients` artefact, kept for 90 days, holds it
+  with the per-case report of each IDC series by its public identifiers,
+  licence, and DOI, the assessment against the chosen criteria, the
+  selection's and the archives' counts by collection, and `commit.txt`; no
+  image, crop, or pixel value of a patient is written, and the series are
+  never cached or uploaded. The `text-detector-evaluation-phantoms`
+  artefact, kept for 90 days, holds the phantoms' summary, each case's full
+  report with PNG previews under `phantoms/`, its index and
+  `ATTRIBUTION.md`, the selection's counts, and `commit.txt`
 
 ### AI Assistance
 

@@ -43,6 +43,27 @@ CT_DEFACING_SELECTION = (
     "                if [[ ${#selection[@]} -eq 0 ]]; then\n",
     '                  echo "::error::The remaining corpus part must not be empty."\n',
 )
+# The lines that give the de-identification modules from a to o, less the
+# listed corpus modules, to the deidentify-a-o part and ignore them in others,
+# in the test and dependency-floors jobs; one glob serves both parts.
+DEIDENTIFY_SELECTION = (
+    "            first_half=()\n",
+    "            for path in "
+    "lib/pymedphys/tests/dicom/test_deidentify_[abcdefghijklmno]*.py; do\n",
+    '              if [[ -f "${path}" && " ${listed[*]} " != *" ${path} "* ]]; then\n',
+    '                first_half+=("${path}")\n',
+    "            if [[ ${#first_half[@]} -eq 0 ]]; then\n",
+    '              echo "::error::The deidentify-a-o part must not be empty."\n',
+    '              deidentify-a-o) selection=("${first_half[@]}") ;;\n',
+    "              others)\n",
+    '                selection=("${listed[@]/#/--ignore=${GITHUB_WORKSPACE}/}")\n',
+    '                selection+=("${first_half[@]/#/--ignore=${GITHUB_WORKSPACE}/}")\n',
+)
+# The dicom extra's run alone has no deidentify-a-o part: its others part,
+# which holds only tests/dicom, runs those modules too.
+NARROW_PARTS = tuple(
+    part for part in pydicom_coverage.PARTS if part != "deidentify-a-o"
+)
 
 
 def jobs(filename: str) -> dict[str, str]:
@@ -411,6 +432,7 @@ class WorkflowContractTests(unittest.TestCase):
             "junit-dependency-floors-ct-defacing",
             "junit-dependency-floors-ct-defacing-reviews",
             "junit-dependency-floors-corpus-runs",
+            "junit-dependency-floors-deidentify-a-o",
             "junit-dependency-floors-others",
             *(
                 pydicom_coverage.part_artifact(part, os_name, python)
@@ -513,9 +535,10 @@ class WorkflowContractTests(unittest.TestCase):
             with self.subTest(key=key):
                 line = re.search(rf"(?m)^        {key}: .+\n", test)[0]
                 self.assertIn(line, combined)
-        # In both jobs, CT defacing runs alone and the other listed modules
-        # run together. Both others parts ignore every listed module; missing
-        # paths fail every part before pytest starts.
+        # In both jobs, CT defacing runs alone, the other listed modules run
+        # together, and deidentify-a-o runs the de-identification modules from
+        # a to o that are not listed. Both others parts ignore every module of
+        # the other parts; missing paths fail every part before pytest starts.
         selections = [
             re.search(
                 r"(?ms)^          # Each part runs its share.*?^          fi\n", job
@@ -524,9 +547,8 @@ class WorkflowContractTests(unittest.TestCase):
         ]
         for line in (
             '            if [[ ! -f "${path}" ]]; then\n',
-            "              others) selection="
-            '("${listed[@]/#/--ignore=${GITHUB_WORKSPACE}/}") ;;\n',
             *CT_DEFACING_SELECTION,
+            *DEIDENTIFY_SELECTION,
         ):
             with self.subTest(line=line):
                 for selection in selections:
@@ -538,14 +560,15 @@ class WorkflowContractTests(unittest.TestCase):
                 )
                 # A skipped part would count as a success of the workflow.
                 self.assertNotIn("\n    if:", job)
-                # Synthetic corpus parts must not save a partial data cache
-                # under the key that every part shares.
+                # Parts that read no downloaded data must not save a partial
+                # data cache under the key that every part shares.
                 self.assertIn(
                     "          cache-data: ${{ matrix.part == 'others' }}\n", job
                 )
-        # The dicom extra's run alone has the same four parts, over the same
-        # paths and marks: the corpus parts run their modules in place of the
-        # paths, and its others part adds the same ignores to them.
+        # The dicom extra's run alone has the same parts but deidentify-a-o,
+        # over the same paths and marks: the corpus parts run their modules in
+        # place of the paths, and its others part adds the listed modules'
+        # ignores to them.
         narrow = workflow["narrow-extras"]
         part = (
             "          - extra: dicom\n"
@@ -553,12 +576,11 @@ class WorkflowContractTests(unittest.TestCase):
             "            marks: not slow\n"
             "            paths: tests/dicom\n"
         )
-        for name in pydicom_coverage.PARTS:
+        for name in NARROW_PARTS:
             with self.subTest(narrow_part=name):
                 self.assertEqual(narrow.count(part.format(name)), 1)
-        self.assertEqual(
-            narrow.count("            part: "), len(pydicom_coverage.PARTS)
-        )
+        self.assertEqual(narrow.count("            part: "), len(NARROW_PARTS))
+        self.assertNotIn("deidentify-a-o", narrow)
         for line in (
             '            if [[ ! -f "${path}" ]]; then\n',
             *CT_DEFACING_SELECTION,
@@ -741,21 +763,22 @@ class WorkflowContractTests(unittest.TestCase):
         )
         self.assertIn("set -o pipefail", text)
 
-    def test_the_idc_evaluation_reads_only_and_keeps_its_tools_pinned(self):
-        text = (WORKFLOWS / "text-detector-evaluation-idc.yml").read_text(
-            encoding="utf-8"
-        )
+    def test_the_text_detector_evaluation_reads_only_and_keeps_its_tools_pinned(
+        self,
+    ):
+        text = (WORKFLOWS / "text-detector-evaluation.yml").read_text(encoding="utf-8")
         triggers = text.split("\non:\n", 1)[1].split("\npermissions:\n", 1)[0]
         self.assertEqual(
             re.findall(r"(?m)^  ([a-z_]+):", triggers), ["workflow_dispatch"]
         )
         self.assertIn("\npermissions:\n  contents: read\n", text)
+        # Each of its two jobs can only read.
         self.assertEqual(
             re.findall(r"(?m)^      [a-z-]+: (?:read|write)$", text),
-            ["      contents: read"],
+            ["      contents: read"] * 2,
         )
         self.assertNotIn("secrets.", text)
-        self.assertIn("persist-credentials: false", text)
+        self.assertEqual(text.count("persist-credentials: false"), 2)
         # Inputs reach commands only through the environment.
         run_blocks = re.findall(r"(?ms)^        run: \|\n(.*?)(?=^      - |\Z)", text)
         self.assertTrue(run_blocks)
@@ -771,8 +794,21 @@ class WorkflowContractTests(unittest.TestCase):
         # series.
         self.assertEqual(
             re.findall(r"(?m)^          path: (.*)$", text),
-            ["${{ runner.temp }}/idc/results/"],
+            ["${{ runner.temp }}/idc/results/", "${{ runner.temp }}/phantoms/results/"],
         )
+        # Two jobs: the phantoms' full reports and crops come only from a
+        # selection of phantom collections, on a runner of their own, and
+        # the patients' job never runs the phantom report.
+        jobs = text.split("\njobs:\n", 1)[1]
+        patients, phantoms = jobs.split("\n  phantoms:\n", 1)
+        self.assertTrue(patients.startswith("  patients:\n"))
+        self.assertNotIn("phantom-report", patients)
+        self.assertNotIn("--phantoms", patients)
+        self.assertEqual(phantoms.count(" idc-select \\\n"), 1)
+        self.assertIn("            --phantoms \\\n", phantoms)
+        self.assertIn(" phantom-report \\\n", phantoms)
+        self.assertNotIn("idc-measure", phantoms)
+        self.assertNotIn("archive", phantoms)
         self.assertNotIn("actions/cache", text)
         requirements = (
             WORKFLOWS.parent / "text-evaluation/requirements.txt"
