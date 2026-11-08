@@ -1054,7 +1054,8 @@ def test_the_statement_gives_the_code_only_after_review():
         "Continuous RT Image, RT Segment Annotation, RT Radiation Set, C-Arm "
         "Photon-Electron Radiation, Tomotherapeutic Radiation, Robotic-Arm "
         "Radiation, MR Spectroscopy, Spatial Registration, "
-        "Deformable Spatial Registration, X-Ray Radiation Dose SR, Enhanced X-Ray "
+        "Deformable Spatial Registration, Surface Segmentation, X-Ray Radiation "
+        "Dose SR, Enhanced X-Ray "
         "Radiation Dose SR, Radiopharmaceutical Radiation Dose SR, Patient Radiation "
         "Dose SR, Basic Text SR, Enhanced SR, Comprehensive SR, "
         "Comprehensive 3D SR, Extensible SR, Key Object Selection Document, "
@@ -1092,6 +1093,7 @@ def test_the_statement_names_each_supported_iod_that_lacks_the_attribute():
         "MR Spectroscopy",
         "Spatial Registration",
         "Deformable Spatial Registration",
+        "Surface Segmentation",
         "X-Ray Radiation Dose SR",
         "Enhanced X-Ray Radiation Dose SR",
         "Radiopharmaceutical Radiation Dose SR",
