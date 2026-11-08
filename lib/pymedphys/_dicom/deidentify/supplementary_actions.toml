@@ -12,7 +12,7 @@
 # reviewed ahead of supporting them, as RT Image, RT Beams Treatment Record,
 # the registrations, the X-Ray and Radiopharmaceutical Radiation Dose SR
 # IODs, RT Ion Plan, RT Ion Beams Treatment Record, RT Brachy Treatment
-# Record, RT Treatment Summary Record, and Segmentation were. So does every date,
+# Record, RT Treatment Summary Record, Segmentation, and Surface Segmentation were. So does every date,
 # time, and datetime (DA, DT, or TM) attribute that Table E.1-1 omits,
 # besides the role that the temporal roles file gives it.
 # Other attributes that the table omits have a rule only where one has been
@@ -335,6 +335,20 @@ keyword = "SegmentAlgorithmName"
 action = "X/Z/D"
 options = { clean_descriptors = "C" }
 note = "The name of the algorithm that generated a segment, which PS3.3 says may be identical to Algorithm Name. An in-house algorithm's name is typed and can name a person or the institution, so it is treated as Algorithm Name is: removed by Type, which replaces it with a dummy value where it is required, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
+tag = "(0066,0004)"
+keyword = "SurfaceComments"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "User-defined comments on a surface of a Surface Segmentation, which can carry anything a person types, such as who drew it, where, or why. It is removed by Type, which removes it, since it is Type 3, and cleaned as a descriptor under Clean Descriptors, as Table E.1-1 does for Image Comments."
+
+[[attribute]]
+tag = "(0066,000B)"
+keyword = "SurfaceProcessingDescription"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "A textual description of how a surface of a Surface Segmentation was processed, such as smoothed or decimated, which an operator or a vendor's software can type and which can name a person, a file, or the institution. It is removed by Type, which removes it, since it is Type 3, and cleaned as a descriptor under Clean Descriptors, as Table E.1-1 does for Derivation Description."
 
 [[attribute]]
 tag = "(0066,0032)"

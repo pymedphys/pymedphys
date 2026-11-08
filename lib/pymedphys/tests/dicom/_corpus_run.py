@@ -76,6 +76,10 @@ from pymedphys._dicom.deidentify.policy import (
     compose_custom_policy,
     compose_policy,
 )
+from pymedphys._dicom.deidentify.reasons import (
+    HeldVisualFeatures,
+    VisualFeaturesReason,
+)
 from pymedphys._dicom.deidentify.release_gate import (
     Decision,
     ReasonCode,
@@ -364,6 +368,17 @@ WITHHELD_WITHOUT_REPORTS: Mapping[str, Withheld] = types.MappingProxyType(
         name: withheld
         for name, withheld in BASIC_WITHHELD.items()
         if name not in corpus_module.STRUCTURED_REPORT_FILES
+    }
+)
+# What a run under Clean Recognizable Visual Features also holds, whatever
+# its verdicts: the Surface Segmentation, whose meshes no preview of the QC
+# pack draws, so that no verdict is of them (D-017).
+MESH_HELD: Mapping[str, Withheld] = types.MappingProxyType(
+    {
+        corpus_module.SURFACE_SEGMENTATION_FILE: Withheld(
+            run.Status.HELD_FOR_REVIEW,
+            frozenset({HeldVisualFeatures(VisualFeaturesReason.NO_FACE_VERDICT)}),
+        )
     }
 )
 
