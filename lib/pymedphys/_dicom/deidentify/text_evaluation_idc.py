@@ -17,7 +17,12 @@ evaluation (D-056): tier T3, real patients' scans in openly licensed
 collections.
 
 :data:`OPEN_COLLECTIONS` names each collection that may be taken, by its
-IDC ``collection_id``, with the licence it was vetted under.
+IDC ``collection_id``, with the licence it was vetted under; among them are
+the seven collections that D-056 takes from TCIA (:data:`TCIA_NAMES`), read
+from IDC's identical copy of them and named by their TCIA collection names.
+:data:`PHANTOM_COLLECTIONS` names IDC's collections of phantoms alone,
+which a selection takes only apart from the patients' collections, for the
+full reports of :mod:`~.text_evaluation_phantom_report`.
 :func:`select_series` reads rows of IDC's index, as ``idc-index`` gives
 them, and takes a series only where its collection is named, IDC gives the
 series the same licence, that licence is one of :data:`OPEN_LICENCES`, the
@@ -147,6 +152,54 @@ OPEN_COLLECTIONS: Mapping[str, str] = MappingProxyType(
         **dict.fromkeys(
             ("breast_cancer_screening_dbt", "midrc_ricord_1c"), "CC BY NC 4.0"
         ),
+        # The seven collections that D-056 takes from TCIA, read from IDC's
+        # copy of them (:data:`TCIA_NAMES`).
+        **dict.fromkeys(
+            ("4d_lung", "acrin_nsclc_fdg_pet", "anti_pd_1_lung"), "CC BY 3.0"
+        ),
+        **dict.fromkeys(
+            ("lung_pet_ct_dx", "pancreatic_ct_cbct_seg", "pediatric_ct_seg"),
+            "CC BY 4.0",
+        ),
+        "nsclc_radiomics": "CC BY NC 3.0",
+    }
+)
+# The seven collections that D-056 takes from TCIA, by IDC collection_id,
+# with each one's TCIA collection name. On 7 November 2026, IDC's index of
+# idc-index-data 25.0.5 held, for each, the same image series as TCIA's
+# public listing (getSeries of its NBIA API), 13,220 in all and none on one
+# side alone, under the same licence. Their files are taken from IDC's
+# public buckets, which CI's runners reach, since some runners' addresses
+# cannot reach TCIA. A case of one is named by its TCIA collection name, as
+# D-056 names them, so that the split holds out Pediatric-CT-SEG whole and
+# the per-case report gives each by that name
+# (:data:`~.text_evaluation_cases.TCIA_COLLECTIONS`).
+TCIA_NAMES: Mapping[str, str] = MappingProxyType(
+    {
+        "4d_lung": "4D-Lung",
+        "acrin_nsclc_fdg_pet": "ACRIN-NSCLC-FDG-PET",
+        "anti_pd_1_lung": "Anti-PD-1_Lung",
+        "lung_pet_ct_dx": "Lung-PET-CT-Dx",
+        "nsclc_radiomics": "NSCLC-Radiomics",
+        "pancreatic_ct_cbct_seg": "Pancreatic-CT-CBCT-SEG",
+        "pediatric_ct_seg": "Pediatric-CT-SEG",
+    }
+)
+# Collections of phantoms alone, by IDC collection_id, with the licence of
+# each and its name in
+# :data:`~.text_evaluation_phantom_report.PHANTOM_COLLECTIONS`, whose gates
+# decide what of them is previewed. A selection takes either these
+# (``phantoms=True``) or :data:`OPEN_COLLECTIONS`, never both.
+PHANTOM_COLLECTIONS: Mapping[str, str] = MappingProxyType(
+    dict.fromkeys(
+        ("cc_radiomics_phantom_3", "rider_phantom_pet_ct", "victre"), "CC BY 3.0"
+    )
+)
+PHANTOM_NAMES: Mapping[str, str] = MappingProxyType(
+    {
+        "cc_radiomics_phantom_3": "CC-Radiomics-Phantom-3",
+        "rider_phantom_pet_ct": "RIDER PHANTOM PET-CT",
+        "victre": "VICTRE",
     }
 )
 _STORAGE = "1.2.840.10008.5.1.4.1.1."
@@ -276,7 +329,7 @@ class IdcSeries:
     subject: str = dataclasses.field(repr=False)
 
     def __post_init__(self):
-        if self.collection_id not in OPEN_COLLECTIONS:
+        if self.collection_id not in (*OPEN_COLLECTIONS, *PHANTOM_COLLECTIONS):
             raise EvaluationRefused("A series must be of a vetted collection.")
         if self.licence not in OPEN_LICENCES:
             raise EvaluationRefused("A series must be openly licensed.")
@@ -301,8 +354,24 @@ class IdcSeries:
             raise EvaluationRefused("A series needs its subject's key.")
 
     @property
+    def collection(self) -> str:
+        """The collection's name in the evaluation: its TCIA collection name
+        for a collection of :data:`TCIA_NAMES`, and otherwise its IDC
+        collection_id."""
+        return TCIA_NAMES.get(self.collection_id, self.collection_id)
+
+    @property
     def public(self) -> dict[str, str]:
-        """What the per-case report names the series by."""
+        """What the per-case report names the series by: a collection of
+        :data:`TCIA_NAMES` by its TCIA collection name, as ``collection``,
+        and any other by its IDC collection_id."""
+        if self.collection_id in TCIA_NAMES:
+            return {
+                "collection": TCIA_NAMES[self.collection_id],
+                "series_instance_uid": self.series_instance_uid,
+                "licence": self.licence,
+                "doi": self.doi,
+            }
         return {
             "collection_id": self.collection_id,
             "series_instance_uid": self.series_instance_uid,
@@ -354,6 +423,7 @@ def select_series(
     max_mb: float = 20_000.0,
     max_series_mb: float = 1_000.0,
     answer_keyed_series: Mapping[str, frozenset[str]] | None = None,
+    phantoms: bool = False,
 ) -> Selection:
     """Select series from rows of IDC's index, as the module describes.
 
@@ -371,17 +441,21 @@ def select_series(
         For each collection of :data:`ANSWER_KEYED`, the Series Instance
         UIDs that MIDI-B's answer key marks; without one, that collection
         is refused whole.
+    phantoms : bool
+        Whether to take the collections of :data:`PHANTOM_COLLECTIONS`
+        alone, rather than those of :data:`OPEN_COLLECTIONS`.
     """
     if per_collection < 1 or not all(
         math.isfinite(each) and each > 0 for each in (max_mb, max_series_mb)
     ):
         raise EvaluationRefused("A selection must take something.")
     keyed = dict(answer_keyed_series or {})
+    vetted = PHANTOM_COLLECTIONS if phantoms else OPEN_COLLECTIONS
     refused: dict[str, int] = {}
     found: dict[str, list[IdcSeries]] = {}
     seen: set[str] = set()
     for row in rows:
-        reason, series = _series(row, keyed)
+        reason, series = _series(row, keyed, vetted)
         if series is not None and series.series_instance_uid in seen:
             reason, series = "repeated", None
         if series is None:
@@ -438,7 +512,9 @@ def _order(series: IdcSeries) -> bytes:
 
 
 def _series(
-    row: Mapping[str, object], keyed: Mapping[str, frozenset[str]]
+    row: Mapping[str, object],
+    keyed: Mapping[str, frozenset[str]],
+    vetted: Mapping[str, str] = OPEN_COLLECTIONS,
 ) -> tuple[str, IdcSeries | None]:
     """A row's series, or why it is refused."""
     if not all(column in row for column in COLUMNS):
@@ -448,9 +524,9 @@ def _series(
     uid = str(row["SeriesInstanceUID"])
     # The first reason that holds, in order.
     reasons = (
-        ("collection-not-vetted", collection not in OPEN_COLLECTIONS),
+        ("collection-not-vetted", collection not in vetted),
         ("licence-not-open", licence not in OPEN_LICENCES),
-        ("licence-differs", licence != OPEN_COLLECTIONS.get(collection)),
+        ("licence-differs", licence != vetted.get(collection)),
         ("not-an-image-modality", str(row["Modality"]) not in IMAGE_MODALITIES),
         (
             "not-a-target-class",
@@ -543,7 +619,7 @@ class IdcSeriesCase:
 
     @property
     def collection(self) -> str:
-        return self.series.collection_id
+        return self.series.collection
 
     @property
     def case(self) -> str:
@@ -588,7 +664,7 @@ class IdcSeriesCase:
         expected = case_name("series", self.series.series_instance_uid)
         cases = dicom_folder_cases(
             found,
-            collection=self.series.collection_id,
+            collection=self.series.collection,
             group_by="series",
             known_text=self.known_text,
             tier=TIER,

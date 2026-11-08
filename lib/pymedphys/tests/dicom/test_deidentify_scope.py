@@ -106,6 +106,8 @@ SUPPORTED = {
     "1.2.840.10008.5.1.4.1.1.78.6": "Spectacle Prescription Report",
     "1.2.840.10008.5.1.4.1.1.79.1": "Macular Grid Thickness and Volume Report",
     "1.2.840.10008.5.1.4.1.1.88.77": "Waveform Annotation SR",
+    "1.2.840.10008.5.1.4.1.1.30": "Parametric Map",
+    "1.2.840.10008.5.1.4.1.1.67": "Real World Value Mapping",
 }
 
 
@@ -162,6 +164,8 @@ def test_the_first_release_supports_ct_mr_pet_rt_registration_seg_and_sr_objects
         "Spectacle Prescription Report",
         "Macular Grid Thickness and Volume Report",
         "Waveform Annotation SR",
+        "Parametric Map",
+        "Real World Value Mapping",
     }
     assert scope.SUPPORTED_TRANSFER_SYNTAXES == {IMPLICIT_LE, EXPLICIT_LE, *COMPRESSED}
 
@@ -226,14 +230,13 @@ def test_padding_is_ignored():
         ("1.2.840.10008.5.1.4.1.1.88.71", "Acquisition Context SR"),
         ("1.2.840.10008.5.1.4.1.1.11.1", "Grayscale Softcopy Presentation State"),
         # Outside the first release: other images, CT, MR, and PET objects
-        # that are not images, height map segmentations, parametric maps,
-        # spatial fiducials, and the second-generation RT objects not yet
-        # supported, such as RT Physician Intent and the radiation records.
+        # that are not images, height map segmentations, spatial fiducials,
+        # and the second-generation RT objects not yet supported, such as RT
+        # Physician Intent and the radiation records.
         ("1.2.840.10008.5.1.4.1.1.20", "Nuclear Medicine Image"),
         ("1.2.840.10008.5.1.4.1.1.6.1", "Ultrasound Image"),
         ("1.2.840.10008.5.1.4.1.1.200.2", "CT Performed Procedure Protocol"),
         ("1.2.840.10008.5.1.4.1.1.66.8", "Height Map Segmentation"),
-        ("1.2.840.10008.5.1.4.1.1.30", "Parametric Map"),
         ("1.2.840.10008.5.1.4.1.1.66.2", "Spatial Fiducials"),
         ("1.2.840.10008.5.1.4.1.1.481.10", "RT Physician Intent"),
         ("1.2.840.10008.5.1.4.1.1.481.18", "Tomotherapeutic Radiation Record"),
