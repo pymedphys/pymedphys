@@ -437,6 +437,9 @@ def _export(
         for outcome in result.outcomes
         if outcome.status is run.Status.RELEASED
     }
+    # Each run withholds what the policy's corpus run withholds, and
+    # releases every other file it is given, so no split loses coverage.
+    assert set(released) == names - set(spec.withheld)
     return Export(
         sources={file.name: file.data for file in files},
         released=released,
