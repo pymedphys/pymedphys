@@ -42,10 +42,16 @@ MANDATORY = {
     "RT Brachy Application Setup Delivery Instruction",
     "RT Radiation Set Delivery Instruction",
 }
-# Segmentation requires it where a Derivation Image functional group is
-# present, and RT Beams Delivery Instruction where the instruction is not
-# conveyed by a Unified Procedure Step.
-CONDITIONAL = {"Segmentation", "RT Beams Delivery Instruction"}
+# Required in a Segmentation where a Derivation Image functional group is
+# present, in a Surface Segmentation where the surface was derived from
+# another instance (PS3.3 Table A.57-1), and in an RT Beams Delivery
+# Instruction where the instruction is not conveyed by a Unified Procedure
+# Step.
+CONDITIONAL = {
+    "Segmentation",
+    "Surface Segmentation",
+    "RT Beams Delivery Instruction",
+}
 # The supported IODs without the module: the Structured Reports, whose SR
 # Document General Module references their evidence instead (PS3.3 Section
 # A.35).
