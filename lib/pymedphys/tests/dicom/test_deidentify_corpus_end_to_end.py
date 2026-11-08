@@ -134,6 +134,10 @@ DIGITS_ONLY = re.compile(r"[0-9.]+")
 # whose digits could hold a date's by chance, as 12071010edb6 holds
 # 12071010.
 SHA256_HEX = re.compile(rb"(?<![0-9a-f])[0-9a-f]{64}(?![0-9a-f])")
+# A QC pack's reference, as the release report gives it, 32 hexadecimal
+# digits that the run draws at random, which could hold a date's by chance
+# as a SHA-256 can.
+QC_REFERENCE = re.compile(rb"A-[0-9a-f]{32}(?![0-9a-f])")
 DATE_DIGITS = 8
 # A file holds an encoded form only if it holds the form's first GRAM bytes,
 # so a set of each run of GRAM bytes in a file rules out most forms without
@@ -424,6 +428,7 @@ def _markers_in(spec, corpus, instances, published, digest):
             data = _without_kept(data, corpus.files[instances[name]], spec)
         else:
             data = SHA256_HEX.sub(lambda digest: b"-" * 64, data)
+            data = QC_REFERENCE.sub(lambda reference: b"A-" + b"-" * 32, data)
         grams = _grams(data)
         found.extend(
             (name, signature)
@@ -922,8 +927,10 @@ def test_instances_keep_their_reviewed_dummy_values(policy_run):
         "MR Spectroscopy",
         "Enhanced PET Image",
         "Legacy Converted Enhanced PET Image",
-        # In its Segmentation Series Module.
+        # In their Segmentation and Parametric Map Series Modules.
         "Segmentation",
+        "Surface Segmentation",
+        "Parametric Map",
     }
     steps = set()
     # Under Retain UIDs, Table E.1-1 gives K to the sequence and to the
