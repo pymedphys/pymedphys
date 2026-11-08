@@ -88,8 +88,9 @@ DEFAULT_COLLECTION = "local RT Images"
 # the folder is known to hold none, so that each region is a false positive.
 KNOWN_TEXT_CHOICES = ("unknown", "none")
 # The fonts that the synthetic text is drawn in: the bitmap fonts that the
-# runs on CI draw in, or those and Pillow's bitmap font and the pinned fonts
-# under the SIL Open Font License, fetched from PyPI on first use.
+# evaluation's patients' job on CI draws in, or those and Pillow's bitmap
+# font and the pinned fonts under the SIL Open Font License, fetched from
+# PyPI on first use.
 FONT_CHOICES = ("all", "bitmaps")
 WRITTEN = ("assessment.json", "summary.json", "summary.md")
 
@@ -286,9 +287,9 @@ def measure(arguments: argparse.Namespace) -> dict[str, str]:
 
 
 def injection_plan(fonts: str) -> InjectionPlan:
-    """The plan of the synthetic text: the plan that the runs on CI burn in,
-    with, for ``"all"``, Pillow's bitmap font, crisp and smooth, and every
-    pinned font beside its bitmap fonts.
+    """The plan of the synthetic text: the plan that the patients' job on CI
+    burns in, with, for ``"all"``, Pillow's bitmap font, crisp and smooth,
+    and every pinned font beside its bitmap fonts.
 
     Raises
     ------

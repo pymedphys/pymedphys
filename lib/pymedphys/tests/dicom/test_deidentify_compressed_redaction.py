@@ -65,7 +65,11 @@ from pymedphys._dicom.deidentify.preserving_writer import (
     WriteRefused,
     write_data_set,
 )
-from pymedphys._dicom.deidentify.qc_attestation import Redaction, RedactionVerdict
+from pymedphys._dicom.deidentify.qc_attestation import (
+    Redaction,
+    RedactionVerdict,
+    ReviewMode,
+)
 from pymedphys._dicom.deidentify.qc_pack import QcPackError, RedactionEntry
 from pymedphys._dicom.deidentify.reasons import (
     HeldPixelData,
@@ -571,6 +575,7 @@ def _review(data, regions, decoded):
         {digest: regions},
         frozenset(),
         {} if decoded is None else {digest: decoded},
+        modes={ReviewMode.EVERY_FRAME: 1, ReviewMode.FLAGGED_FRAMES: 0},
     )
 
 
@@ -655,7 +660,13 @@ def test_a_review_records_decoded_frames_only_of_approved_files():
     with pytest.raises(QcPackError, match="decoded frames"):
         RedactionReview(REFERENCE, {}, frozenset({bytes(32)}), {bytes(32): bytes(32)})
     with pytest.raises(QcPackError, match="SHA-256"):
-        RedactionReview(REFERENCE, {bytes(32): ()}, frozenset(), {bytes(32): b"1"})
+        RedactionReview(
+            REFERENCE,
+            {bytes(32): ()},
+            frozenset(),
+            {bytes(32): b"1"},
+            modes={ReviewMode.EVERY_FRAME: 1, ReviewMode.FLAGGED_FRAMES: 0},
+        )
 
 
 @pytest.mark.parametrize("digest", ["0" * 63, "A" * 64, 7])
@@ -739,7 +750,7 @@ def test_a_reviewed_compressed_image_is_released_as_its_previews_showed_it(
         },
     )
 
-    assert document["format"] == qc_pack.FORMAT == "pymedphys-deid-qc-pack/33"
+    assert document["format"] == qc_pack.FORMAT == "pymedphys-deid-qc-pack/34"
     assert {entry["decoded_sha256"] for entry in document["redactions"]} == {
         hashlib.sha256(frame.tobytes()).hexdigest()
         for frame in (*frames.values(), _monochrome(3))

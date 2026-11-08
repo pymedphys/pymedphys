@@ -332,37 +332,46 @@ def is_simple(points: np.ndarray) -> bool:
     ends = np.roll(starts, -1, axis=0)
     if not np.all(np.isfinite(starts)) or (starts == ends).all(axis=1).any():
         return False
-    # Each edge against those after it, in blocks to bound memory; two edges
-    # that are neighbours share a vertex and are compared only for overlap.
-    block = max(1, (1 << 22) // count)
-    for first in range(0, count, block):
-        rows = np.arange(first, min(first + block, count))
-        a, b, c, d = (
-            starts[rows, None],
-            ends[rows, None],
-            starts[None, :],
-            ends[None, :],
+    # Two edges that are neighbours share a vertex and are compared only for
+    # overlap: each edge with the next, and the first with the last.
+    first, second = np.arange(count), np.arange(1, count + 1) % count
+    wrap = second == 0
+    first[wrap], second[wrap] = 0, count - 1
+    if _overlap(starts[first], ends[first], starts[second], ends[second]).any():
+        return False
+    # Two edges can meet only where their closed bounding boxes do, so only
+    # those pairs are tested. They are found by sweeping the edges in order
+    # of their least x, each against the later ones whose least x is not
+    # beyond its greatest, which gives every pair whose x ranges meet once.
+    # That spares the tests of the many pairs of edges far apart, as along
+    # one line, and keeps the work of a contour near its number of edges
+    # rather than the square of it.
+    low = np.minimum(starts, ends)
+    high = np.maximum(starts, ends)
+    order = np.argsort(low[:, 0], kind="stable")
+    reach = np.searchsorted(low[order, 0], high[order, 0], side="right")
+    later = reach - np.arange(1, count + 1)
+    begin = 0
+    while begin < count:
+        # As many edges as keep one block's pairs within bounds, at least one.
+        totals = np.cumsum(later[begin:])
+        end = begin + max(1, int(np.searchsorted(totals, 1 << 22, side="right")))
+        counts = later[begin:end]
+        rows = np.repeat(np.arange(begin, end), counts)
+        columns = (
+            rows
+            + 1
+            + np.arange(int(counts.sum()))
+            - np.repeat(np.cumsum(counts) - counts, counts)
         )
-        later = np.arange(count)[None, :] > rows[:, None]
-        neighbours = (np.arange(count)[None, :] == rows[:, None] + 1) | (
-            (rows[:, None] == 0) & (np.arange(count)[None, :] == count - 1)
-        )
-        # Two edges can meet only where their closed bounding boxes do, so
-        # only those pairs are tested exactly and can count as meeting, which
-        # spares the exact tests of the many pairs of edges far apart along
-        # one line; every pair is still tested with rounding.
-        boxes = np.ones(later.shape, dtype=bool)
-        for axis in (0, 1):
-            boxes &= np.minimum(a[..., axis], b[..., axis]) <= np.maximum(
-                c[..., axis], d[..., axis]
-            )
-            boxes &= np.minimum(c[..., axis], d[..., axis]) <= np.maximum(
-                a[..., axis], b[..., axis]
-            )
-        if _meet(a, b, c, d, boxes & later & ~neighbours).any():
+        one, other = order[rows], order[columns]
+        boxes = (low[one, 1] <= high[other, 1]) & (low[other, 1] <= high[one, 1])
+        apart = np.abs(one - other)
+        chosen = boxes & (np.minimum(apart, count - apart) > 1)
+        one, other = one[chosen], other[chosen]
+        if _meet(starts[one], ends[one], starts[other], ends[other]).any():
             return False
-        if _overlap(a, b, c, d, later & neighbours).any():
-            return False
+        begin = end
     return True
 
 
