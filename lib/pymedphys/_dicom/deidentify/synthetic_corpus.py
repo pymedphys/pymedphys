@@ -64,7 +64,8 @@ softcopy Presentation State names, in its Referenced Series Sequence
 image that it presents: the grayscale, blending, and Variable Modality LUT
 ones the first CT slice, the colour one the Enhanced MR Color Image, the
 pseudo-colour one the PET Image, and the XA/XRF one the RT Image. It is the
-input for validating each preset end to end: once the engine has written the collection, the residual search
+input for validating each preset end to end: once the engine has written
+the collection, the residual search
 (:mod:`~pymedphys._dicom.deidentify.residuals`) should find none of the
 markers that had to be removed or replaced.
 
