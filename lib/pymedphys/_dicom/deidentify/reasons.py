@@ -209,7 +209,8 @@ class VisualFeaturesReason(enum.Enum):
     # defaced images rather than of the file, it is a Segmentation whose
     # segments reach such a series' face block, which the QC pack does not
     # show, or the QC pack could not show its contours or deformation grids,
-    # so the verdict was given without them
+    # so the verdict was given without them, or it holds a surface mesh,
+    # such as a Surface Segmentation's, which no preview of the QC pack draws
     NO_FACE_VERDICT = "no-face-verdict"
     # its series is marked absent, but the run writes other pixel data of it
     # than the reviewed run did, such as a CT slice defaced since the

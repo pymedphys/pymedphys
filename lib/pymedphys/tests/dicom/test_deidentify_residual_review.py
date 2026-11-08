@@ -443,7 +443,7 @@ def test_a_cleared_slice_is_released_by_a_later_run(first_run, tmp_path):
     result, report = _run(tmp_path / "second", source, review)
 
     assert [outcome.status for outcome in result.outcomes] == [run.Status.RELEASED]
-    assert report["format"] == REPORT_FORMAT == "pymedphys-deid-release-report/57"
+    assert report["format"] == REPORT_FORMAT == "pymedphys-deid-release-report/70"
     assert report["residual_review"] == {"reference": attestation.reference}
     assert report["held_for_review"] == []
     assert [

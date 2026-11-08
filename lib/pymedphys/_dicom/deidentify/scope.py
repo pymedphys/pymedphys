@@ -21,15 +21,15 @@ Dose, RT Image, RT Beams Treatment Record, RT Ion Plan, RT Ion Beams
 Treatment Record, RT Brachy Treatment Record, and RT Treatment Summary
 Record IODs, of the Spatial Registration and Deformable Spatial
 Registration IODs, of the Segmentation IOD, of both Segmentation Storage
-and Label Map Segmentation Storage, of the X-Ray Radiation Dose SR, Enhanced
+and Label Map Segmentation Storage, of the Surface Segmentation IOD, of the X-Ray Radiation Dose SR, Enhanced
 X-Ray Radiation Dose SR, Radiopharmaceutical Radiation Dose SR, and Patient
 Radiation Dose SR IODs, of the Basic Text SR, Enhanced SR, Comprehensive SR,
 Comprehensive 3D SR, and Extensible SR IODs, of the Key Object Selection
 Document, and of the Mammography CAD SR, Chest CAD SR, Colon CAD SR,
 Procedure Log, Spectacle Prescription Report, Macular Grid Thickness and
-Volume Report, and Waveform Annotation SR IODs, uncompressed
-or in a transfer syntax that encapsulates Pixel Data that pydicom's
-decoding plugins decode. Supporting an IOD or a transfer syntax does not
+Volume Report, and Waveform Annotation SR IODs, and of the Parametric Map and
+Real World Value Mapping IODs, uncompressed or in a transfer syntax that
+encapsulates Pixel Data that pydicom's decoding plugins decode. Supporting an IOD or a transfer syntax does not
 release every instance in it: a compressed instance is still sequestered
 where the plugin pinned to its transfer syntax is not installed, or where
 its frames or codestreams fail the engine's checks
@@ -39,6 +39,8 @@ conforms to its IOD, under ``basic`` and ``basic-clean-descriptors``, and
 every Structured Report or Key Object Selection Document whose content
 tree the policy does not clean and keep, since the Basic Profile gives its
 Content Sequence (0040,A730) D, which a sequence has no dummy value for.
+The Clean Pixel Data Option also sequesters a Parametric Map whose pixel
+data are floating point, which it does not read.
 Every other instance is sequestered: neither de-identified nor written, and
 listed in the run report by opaque identifiers only. That includes the
 other Structured Reports, Presentation States, and instances of Private SOP
@@ -87,6 +89,7 @@ SUPPORTED_IODS = frozenset(
         "RT Structure Set",
         "RT Treatment Summary Record",
         "Segmentation",
+        "Surface Segmentation",
         "Spatial Registration",
         "Deformable Spatial Registration",
         "X-Ray Radiation Dose SR",
@@ -106,6 +109,8 @@ SUPPORTED_IODS = frozenset(
         "Spectacle Prescription Report",
         "Macular Grid Thickness and Volume Report",
         "Waveform Annotation SR",
+        "Parametric Map",
+        "Real World Value Mapping",
     }
 )
 # Every transfer syntax whose files the engine reads: Implicit VR Little
