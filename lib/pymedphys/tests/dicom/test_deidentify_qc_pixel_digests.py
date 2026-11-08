@@ -246,7 +246,10 @@ def test_padding_of_more_than_one_value_counts_only_as_written(mixed):
         ((0, (TextBox(0, 0, 1, 4),)),),
     )
     found = qc_previews.previews_of({0: written}, set(), {0: (received, entry)})
-    assert [preview.kind for preview in found.previews][-1] is PreviewKind.REDACTION
+    assert [preview.kind for preview in found.previews][-2:] == [
+        PreviewKind.REDACTION,
+        PreviewKind.REVIEW_FRAME,
+    ]
     assert not found.not_previewed
     assert found.pixels_shown == (frozenset() if mixed else {0})
 
@@ -280,10 +283,13 @@ def test_floating_point_pixel_data_cleaned_are_shown_beside_them_as_received():
         ((0, (box,)),),
     )
     found = qc_previews.previews_of({0: written}, set(), {0: (received, entry)})
-    assert [preview.kind for preview in found.previews][-1] is PreviewKind.REDACTION
+    assert [preview.kind for preview in found.previews][-2:] == [
+        PreviewKind.REDACTION,
+        PreviewKind.REVIEW_FRAME,
+    ]
     assert not found.not_previewed
     assert found.pixels_shown == {0}
-    redaction = _decoded(found.previews[-1].png)
+    redaction = _decoded(found.previews[-2].png)
     # As received, as written, and as written over its full range, each in
     # colour, with grey gutters between.
     assert redaction.shape == (rows, 3 * columns + 2 * 8, 3)

@@ -52,6 +52,7 @@ from pymedphys._dicom.deidentify.instance_transform import (
     InstanceTransform,
 )
 from pymedphys._dicom.deidentify.keys import DeidKey
+from pymedphys._dicom.deidentify.qc_attestation import ReviewMode
 from pymedphys._dicom.deidentify.reasons import PixelDataReason
 from pymedphys._dicom.deidentify.redaction_review import RedactionReview
 from pymedphys._dicom.deidentify.references import InstanceRecord
@@ -300,6 +301,7 @@ def test_a_reviewed_floating_point_parametric_map_satisfies_clean_pixel_data(
         "A-" + "0123456789abcdef" * 2,
         {digest: ((0, (TextBox(1, 0, 2, 2),)),)},
         frozenset(),
+        modes={ReviewMode.EVERY_FRAME: 1, ReviewMode.FLAGGED_FRAMES: 0},
     )
     transform = InstanceTransform(
         policy.compose_custom_policy([policy.CLEAN_PIXEL_DATA]),
