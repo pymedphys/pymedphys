@@ -21,10 +21,11 @@ IDC ``collection_id``, with the licence it was vetted under.
 :func:`select_series` reads rows of IDC's index, as ``idc-index`` gives
 them, and takes a series only where its collection is named, IDC gives the
 series the same licence, that licence is one of :data:`OPEN_LICENCES`, the
-series carries a DOI, and its modality is one of :data:`IMAGE_MODALITIES`;
-where IDC's licence and the vetted one differ, the series is refused, so
-that the stricter terms are never missed. Every refusal is counted by its
-reason. Each collection's series are taken in an order fixed by a SHA-256
+series carries a DOI, its modality is one of :data:`IMAGE_MODALITIES`, and,
+in a collection of :data:`TARGET_SOP_CLASSES`, its SOP Class is one of those
+named for that collection; where IDC's licence and the vetted one differ,
+the series is refused, so that the stricter terms are never missed. Every
+refusal is counted by its reason. Each collection's series are taken in an order fixed by a SHA-256
 of the series, up to a number and a size of each series, and the
 collections take turns until the selection reaches its size, so that a
 selection is the same on every run of the same index and spreads over the
@@ -34,7 +35,11 @@ collections.
 :class:`IdcSeriesCase` reads a downloaded series as a case of tier T3,
 named by its public identifiers, collection and Series Instance UID, with
 its licence and DOI, for the per-case report
-(:mod:`~.text_evaluation_cases`). Each series also carries a private key of
+(:mod:`~.text_evaluation_cases`). Its frames are taken to hold no text,
+as T3 takes them, but for the collections of :data:`TEXT_UNKNOWN`, whose
+screen captures, Nuclear Medicine, and ultrasound images may hold text as
+received: their frames' text is unknown, so a region found on one as read
+is counted apart from false positives. Each series also carries a private key of
 its patient (:func:`subject_key`), a salted SHA-256 of its collection and
 IDC's Patient ID, so that a patient's series fall in one part of the split
 and are resampled together by the bootstrap; the key is never published,
@@ -82,7 +87,8 @@ OPEN_LICENCES = frozenset(
     }
 )
 # The collections vetted for T3, by IDC collection_id, with the licence of
-# each as vetted on 1 November 2026.
+# each as vetted on 1 November 2026, or, for those added on 6 November 2026,
+# as TCIA's licence API and its public listing of each series gave it then.
 OPEN_COLLECTIONS: Mapping[str, str] = MappingProxyType(
     {
         **dict.fromkeys(
@@ -101,23 +107,99 @@ OPEN_COLLECTIONS: Mapping[str, str] = MappingProxyType(
                 "cmmd",
                 "covid_19_ar",
                 "covid_19_ny_sbu",
+                "cptac_aml",
+                "cptac_cm",
+                "cptac_luad",
+                "cptac_pda",
+                "cptac_stad",
+                "cptac_ucec",
                 "ea1141",
                 "eay131",
                 "prostate_mri_us_biopsy",
                 "pseudo_phi_dicom_data",
                 "psma_pet_ct_lesions",
                 "remind",
+                "upenn_gbm",
                 "varepop_apollo",
+                "vestibular_schwannoma_mc_rc",
+                "vestibular_schwannoma_seg",
             ),
             "CC BY 4.0",
         ),
         **dict.fromkeys(
-            ("cbis_ddsm", "lidc_idri", "soft_tissue_sarcoma", "tcga_blca", "tcga_ov"),
+            (
+                "acrin_flt_breast",
+                "cbis_ddsm",
+                "lidc_idri",
+                "soft_tissue_sarcoma",
+                "tcga_blca",
+                "tcga_brca",
+                "tcga_coad",
+                "tcga_kirc",
+                "tcga_luad",
+                "tcga_lusc",
+                "tcga_ov",
+                "tcga_prad",
+                "tcga_ucec",
+            ),
             "CC BY 3.0",
         ),
         **dict.fromkeys(
             ("breast_cancer_screening_dbt", "midrc_ricord_1c"), "CC BY NC 4.0"
         ),
+    }
+)
+_STORAGE = "1.2.840.10008.5.1.4.1.1."
+# Secondary Capture Image Storage, and its four multi-frame forms.
+SECONDARY_CAPTURE = frozenset(
+    _STORAGE + suffix for suffix in ("7", "7.1", "7.2", "7.3", "7.4")
+)
+# Nuclear Medicine Image Storage.
+NUCLEAR_MEDICINE = frozenset({_STORAGE + "20"})
+# Ultrasound Image Storage and Ultrasound Multi-frame Image Storage, with
+# the retired form of each, which older collections still hold.
+ULTRASOUND = frozenset(_STORAGE + suffix for suffix in ("6.1", "3.1", "6", "3"))
+# Collections taken for some of their images alone, by SOP Class: these
+# were added on 6 November 2026 for their screen captures, Nuclear Medicine,
+# and ultrasound images, which the other collections hold few of; their CT,
+# MR, and PET add little beside the other collections'.
+TARGET_SOP_CLASSES: Mapping[str, frozenset[str]] = MappingProxyType(
+    dict.fromkeys(
+        (
+            "acrin_flt_breast",
+            "cptac_aml",
+            "cptac_cm",
+            "cptac_luad",
+            "cptac_pda",
+            "cptac_stad",
+            "cptac_ucec",
+            "tcga_brca",
+            "tcga_coad",
+            "tcga_kirc",
+            "tcga_luad",
+            "tcga_lusc",
+            "tcga_prad",
+            "tcga_ucec",
+        ),
+        SECONDARY_CAPTURE | NUCLEAR_MEDICINE | ULTRASOUND,
+    )
+)
+# Collections whose images may hold burned-in text as received, such as a
+# screen capture's labels or an ultrasound's scale, so that their frames'
+# text is unknown: a region found on one as read is counted apart from false
+# positives, and text burned into them measures missed text.
+TEXT_UNKNOWN = frozenset(TARGET_SOP_CLASSES)
+# Collections that hold the same patients under the same Patient IDs, by the
+# namespace their patients share: TCIA's page for Vestibular-Schwannoma-MC-RC
+# gives 58 of its patients as Vestibular-Schwannoma-SEG's, under their
+# VS-SEG Patient IDs, with other studies and series. A patient's series in
+# either collection are then one subject (:func:`subject_key`), which takes
+# one part of the split and is resampled as one by the bootstrap
+# (:func:`~.text_evaluation.namespace_of`).
+SUBJECT_NAMESPACES: Mapping[str, str] = MappingProxyType(
+    {
+        "vestibular_schwannoma_mc_rc": "vestibular_schwannoma",
+        "vestibular_schwannoma_seg": "vestibular_schwannoma",
     }
 )
 # Its images that MIDI-B's answer key marks as holding burned-in text are
@@ -331,11 +413,20 @@ def select_series(
     return Selection(tuple(taken), MappingProxyType(refused))
 
 
+def subject_namespace(collection_id: str) -> str:
+    """Where a collection's patients are named: its namespace in
+    :data:`SUBJECT_NAMESPACES`, or the collection itself."""
+    return SUBJECT_NAMESPACES.get(collection_id, collection_id)
+
+
 def subject_key(collection_id: str, patient_id: str) -> str:
-    """The private key of a patient of a collection: a salted SHA-256, so
-    that no Patient ID is held."""
+    """The private key of a patient of a collection, named in its
+    collection's namespace (:func:`subject_namespace`): a salted SHA-256,
+    so that no Patient ID is held."""
     digest = hashlib.sha256(
-        "\0".join((SALT, "subject", collection_id, patient_id)).encode()
+        "\0".join(
+            (SALT, "subject", subject_namespace(collection_id), patient_id)
+        ).encode()
     ).hexdigest()
     return f"subject/{digest}"
 
@@ -361,6 +452,11 @@ def _series(
         ("licence-not-open", licence not in OPEN_LICENCES),
         ("licence-differs", licence != OPEN_COLLECTIONS.get(collection)),
         ("not-an-image-modality", str(row["Modality"]) not in IMAGE_MODALITIES),
+        (
+            "not-a-target-class",
+            collection in TARGET_SOP_CLASSES
+            and str(row["SOPClassUID"]) not in TARGET_SOP_CLASSES[collection],
+        ),
         ("needs-answer-key", collection in ANSWER_KEYED and collection not in keyed),
         ("answer-keyed", uid in keyed.get(collection, frozenset())),
     )
@@ -459,9 +555,23 @@ class IdcSeriesCase:
         return self.series.subject
 
     @property
+    def subject_namespace(self) -> str:
+        """Where the series' patient is named (:func:`subject_namespace`)."""
+        return subject_namespace(self.series.collection_id)
+
+    @property
     def public(self) -> dict[str, str]:
         """The series' public identifiers, licence, and DOI."""
         return self.series.public
+
+    @property
+    def known_text(self) -> str:
+        """What is known of the text that the series' frames hold as
+        received: ``"unknown"`` for a collection of :data:`TEXT_UNKNOWN`,
+        and ``"none"`` for any other."""
+        if self.series.collection_id in TEXT_UNKNOWN:
+            return "unknown"
+        return "none"
 
     def read(self) -> Iterator[EvaluationFrame | Skipped]:
         found = pathlib.Path(self.folder) / self.series.crdc_series_uuid
@@ -473,12 +583,14 @@ class IdcSeriesCase:
         # images are taken to hold no text, as D-056's T3 takes them, so a
         # region on one as read counts as a false positive; the zones that
         # regions are counted by show whether curation left text in them.
+        # A collection of TEXT_UNKNOWN is the exception: its regions as read
+        # may be text, so they are counted apart.
         expected = case_name("series", self.series.series_instance_uid)
         cases = dicom_folder_cases(
             found,
             collection=self.series.collection_id,
             group_by="series",
-            known_text="none",
+            known_text=self.known_text,
             tier=TIER,
         )
         series = [each for each in cases if isinstance(each, DicomCase)]

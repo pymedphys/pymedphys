@@ -100,7 +100,47 @@ def test_licences_are_compared_in_one_spelling():
     assert idc.OPEN_COLLECTIONS["midrc_ricord_1c"] == "CC BY NC 4.0"
     assert idc.OPEN_COLLECTIONS["lidc_idri"] == "CC BY 3.0"
     assert idc.OPEN_COLLECTIONS["cmb_aml"] == "CC BY 4.0"
-    assert len(idc.OPEN_COLLECTIONS) == 28
+    assert idc.OPEN_COLLECTIONS["vestibular_schwannoma_mc_rc"] == "CC BY 4.0"
+    assert idc.OPEN_COLLECTIONS["tcga_luad"] == "CC BY 3.0"
+    assert idc.OPEN_COLLECTIONS["cptac_cm"] == "CC BY 4.0"
+    assert len(idc.OPEN_COLLECTIONS) == 45
+
+
+def test_collections_taken_for_some_classes_are_vetted_and_read_text_unknown():
+    assert set(idc.TARGET_SOP_CLASSES) <= set(idc.OPEN_COLLECTIONS)
+    assert idc.TEXT_UNKNOWN <= set(idc.OPEN_COLLECTIONS)
+    assert len(idc.TARGET_SOP_CLASSES) == 14
+    for classes in idc.TARGET_SOP_CLASSES.values():
+        assert "1.2.840.10008.5.1.4.1.1.7" in classes
+        assert "1.2.840.10008.5.1.4.1.1.20" in classes
+        assert "1.2.840.10008.5.1.4.1.1.6.1" in classes
+        # A CT, MR, or PET image of theirs is not one of those taken.
+        assert classes.isdisjoint(
+            {
+                "1.2.840.10008.5.1.4.1.1.2",
+                "1.2.840.10008.5.1.4.1.1.4",
+                "1.2.840.10008.5.1.4.1.1.128",
+            }
+        )
+    # Collections taken whole, as before, are not limited by class.
+    assert "vestibular_schwannoma_mc_rc" not in idc.TARGET_SOP_CLASSES
+    assert "cmb_lca" not in idc.TARGET_SOP_CLASSES
+
+
+def test_a_series_of_a_class_not_targeted_is_refused():
+    fields = {"collection_id": "tcga_luad", "license_short_name": "CC BY 3.0"}
+    ct = _row(1, **fields)
+    capture = _row(2, **fields, Modality="PT", SOPClassUID="1.2.840.10008.5.1.4.1.1.7")
+    nm = _row(3, **fields, Modality="NM", SOPClassUID="1.2.840.10008.5.1.4.1.1.20")
+    selection = idc.select_series([ct, capture, nm])
+    assert dict(selection.refused) == {"not-a-target-class": 1}
+    assert sorted(each.series_instance_uid for each in selection.series) == [
+        "2.25.2",
+        "2.25.3",
+    ]
+    # A collection taken whole takes its MR.
+    whole = {"collection_id": "upenn_gbm", "license_short_name": "CC BY 4.0"}
+    assert len(idc.select_series([_row(4, **whole, Modality="MR")]).series) == 1
 
 
 @pytest.mark.parametrize(
@@ -270,6 +310,21 @@ def test_a_downloaded_series_is_read_as_a_t3_case(tmp_path):
     assert isinstance(case, evaluation.CaseSource)
 
 
+def test_a_targeted_collections_series_is_read_with_its_text_unknown(tmp_path):
+    _series_folder(tmp_path)
+    case = _case(
+        tmp_path,
+        collection_id="cptac_pda",
+        license_short_name="CC BY 4.0",
+        SOPClassUID="1.2.840.10008.5.1.4.1.1.7",
+    )
+    assert case.known_text == "unknown"
+    frames = list(case.read())
+    assert len(frames) == 2
+    assert {frame.known_text for frame in frames} == {"unknown"}
+    assert {frame.tier for frame in frames} == {"T3"}
+
+
 def test_one_patients_series_are_one_subject(tmp_path):
     # Two series of one invented patient, and one of another: the first
     # two take one part of the split, whichever their own UIDs would take.
@@ -300,6 +355,91 @@ def test_a_folder_not_of_its_series_is_not_read(tmp_path):
     assert [each.reason for each in _case(tmp_path).read()] == ["not-downloaded"]
     _series_folder(tmp_path, 2, series="2.25.99")
     assert [each.reason for each in _case(tmp_path, 2).read()] == ["not-the-series"]
+
+
+def test_a_patient_shared_by_two_collections_is_one_subject(tmp_path):
+    # An invented patient of both vestibular schwannoma collections, under
+    # one Patient ID with distinct series, as TCIA describes 58 of them, and
+    # another patient of one collection alone.
+    shared = {"license_short_name": "CC BY 4.0", "Modality": "MR"}
+    shared["SOPClassUID"] = "1.2.840.10008.5.1.4.1.1.4"
+    rows = [
+        _row(
+            1,
+            collection_id="vestibular_schwannoma_mc_rc",
+            PatientID="VS-SEG-INVENTED",
+            **shared,
+        ),
+        _row(
+            2,
+            collection_id="vestibular_schwannoma_seg",
+            PatientID="VS-SEG-INVENTED",
+            **shared,
+        ),
+        _row(3, collection_id="vestibular_schwannoma_mc_rc", **shared),
+    ]
+    series = idc.select_series(rows).series
+    assert len(series) == 3
+    cases = {
+        each.case: each for each in (idc.IdcSeriesCase(s, tmp_path) for s in series)
+    }
+    first, second, other = cases["2.25.1"], cases["2.25.2"], cases["2.25.3"]
+    assert first.collection != second.collection
+    assert first.subject == second.subject != other.subject
+    assert (
+        evaluation.namespace_of(first)
+        == evaluation.namespace_of(second)
+        == "vestibular_schwannoma"
+    )
+    run = _evaluated(list(cases.values()))
+    parts = {
+        result.public["series_instance_uid"]: result.split for result in run.results
+    }
+    assert (
+        parts["2.25.1"]
+        == parts["2.25.2"]
+        == evaluation.split_of(
+            "vestibular_schwannoma_seg",
+            first.subject,
+            namespace="vestibular_schwannoma",
+        )
+    )
+    # The bootstrap's units, keyed as it keys them: one for the shared
+    # patient, one for the other.
+    units = {(each.namespace or each.collection, each.subject) for each in run.results}
+    assert len(units) == 2
+    report = json.dumps(cases_module.cases_report(run))
+    assert "INVENTED" not in report and "subject/" not in report
+
+
+def _split_as_described(namespace, subject):
+    """The split as SPLIT_RULE, which each summary exports, describes it."""
+    joined = "\0".join((evaluation.SPLIT_SALT, namespace, subject))
+    number = int.from_bytes(hashlib.sha256(joined.encode()).digest()[:8], "big")
+    return "held-out" if number % 3 == 0 else "tuning"
+
+
+def test_the_exported_split_rule_describes_the_namespace():
+    assert "namespace" in evaluation.SPLIT_RULE
+    for number in range(200):
+        subject = idc.subject_key("vestibular_schwannoma_mc_rc", f"P-{number}")
+        assert evaluation.split_of(
+            "vestibular_schwannoma_mc_rc",
+            subject,
+            namespace=idc.subject_namespace("vestibular_schwannoma_mc_rc"),
+        ) == _split_as_described("vestibular_schwannoma", subject)
+        ordinary = idc.subject_key("lidc_idri", f"P-{number}")
+        assert evaluation.split_of("lidc_idri", ordinary) == _split_as_described(
+            "lidc_idri", ordinary
+        )
+
+
+def test_subject_namespaces_name_vetted_collections_alone():
+    assert set(idc.SUBJECT_NAMESPACES) <= set(idc.OPEN_COLLECTIONS)
+    assert not set(idc.SUBJECT_NAMESPACES.values()) & set(idc.OPEN_COLLECTIONS)
+    # Any other collection names its patients in itself, as before.
+    assert idc.subject_namespace("lidc_idri") == "lidc_idri"
+    assert evaluation.namespace_of(Withheld()) == "clinic"
 
 
 def _evaluated(cases):
