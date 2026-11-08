@@ -1058,12 +1058,13 @@ def test_the_statement_gives_the_code_only_after_review():
         "Comprehensive 3D SR, Extensible SR, Key Object Selection Document, "
         "Mammography CAD SR, Chest CAD SR, Colon CAD SR, Procedure Log, Spectacle "
         "Prescription Report, Macular Grid Thickness and Volume Report, Waveform "
-        "Annotation SR, Grayscale Softcopy Presentation State, Color Softcopy "
-        "Presentation State, Pseudo-Color Softcopy Presentation State, Blending "
-        "Softcopy Presentation State, XA/XRF Grayscale Softcopy Presentation State, "
-        "Variable Modality LUT Softcopy Presentation State, Planar MPR Volumetric "
-        "Presentation State, Volume Rendering Volumetric Presentation State, and "
-        "Advanced Blending Presentation State."
+        "Annotation SR, Real World Value Mapping, Grayscale Softcopy Presentation "
+        "State, Color Softcopy Presentation State, Pseudo-Color Softcopy "
+        "Presentation State, Blending Softcopy Presentation State, XA/XRF "
+        "Grayscale Softcopy Presentation State, Variable Modality LUT Softcopy "
+        "Presentation State, Planar MPR Volumetric Presentation State, Volume "
+        "Rendering Volumetric Presentation State, and Advanced Blending "
+        "Presentation State."
     ) in text
     assert (
         "claims Clean Pixel Data only for an instance without top-level pixel "
@@ -1106,6 +1107,7 @@ def test_the_statement_names_each_supported_iod_that_lacks_the_attribute():
         "Spectacle Prescription Report",
         "Macular Grid Thickness and Volume Report",
         "Waveform Annotation SR",
+        "Real World Value Mapping",
         "Grayscale Softcopy Presentation State",
         "Color Softcopy Presentation State",
         "Pseudo-Color Softcopy Presentation State",
@@ -1573,7 +1575,7 @@ def test_the_report_names_the_reviewed_pack(second_run):
         "review_modes": {"every-frame": 3, "flagged-frames": 0},
         "frames_not_shown": 0,
     }
-    assert report["format"] == "pymedphys-deid-release-report/54"
+    assert report["format"] == "pymedphys-deid-release-report/60"
 
 
 class _Blind(Finder):

@@ -617,13 +617,14 @@ def test_the_new_rules_remove_by_type_where_the_supported_iods_allow_it():
     # them, so they are removed, and so is ICC Profile, except at the top
     # level of three enhanced IODs, where it is Type 1 and needs a dummy
     # value, of Segmentation, whose ICC Profile Module is required where a
-    # label map is PALETTE COLOR, and of four softcopy Presentation States:
-    # Color, Pseudo-Color, and Blending, which require the module, and
-    # Variable Modality LUT, which requires it with a Palette Color Lookup
-    # Table, and of three other Presentation States: Advanced Blending, which
-    # requires the module, and Planar MPR and Volume Rendering Volumetric,
-    # whose display modules make it, and Color Space, Type 1C. Retrieve URL
-    # and Retrieve URI are required only in sequences
+    # label map is PALETTE COLOR, of Parametric Map, whose Parametric Map
+    # Image Module requires it under a condition (Type 1C), of four softcopy
+    # Presentation States: Color, Pseudo-Color, and Blending, which require
+    # the module, and Variable Modality LUT, which requires it with a Palette
+    # Color Lookup Table, and of three other Presentation States: Advanced
+    # Blending, which requires the module, and Planar MPR and Volume
+    # Rendering Volumetric, whose display modules make it, and Color Space,
+    # Type 1C. Retrieve URL and Retrieve URI are required only in sequences
     # that the table removes, and three UR attributes are required at places
     # where removal by Type needs a dummy value.
     tables = iods.load_iod_tables()
@@ -664,6 +665,7 @@ def test_the_new_rules_remove_by_type_where_the_supported_iods_allow_it():
             "Enhanced MR Image",
             "Enhanced MR Color Image",
             "Segmentation",
+            "Parametric Map",
             "Color Softcopy Presentation State",
             "Pseudo-Color Softcopy Presentation State",
             "Blending Softcopy Presentation State",
@@ -711,7 +713,8 @@ def test_series_number_resolves_to_z_in_the_supported_iods_but_where_type_1():
     # Type 2 in the General Series and RT Series Modules; Type 1 in the items
     # of the Structure Set Module's Source Series Information Sequence, in
     # the Segmentation Series Module of Segmentation and Surface Segmentation,
-    # and in the SR Document Series Module of the Structured Reports.
+    # the Parametric Map Series Module, and in the SR Document Series Module
+    # of the Structured Reports.
     # Either way it then takes its rank, or is emptied or given D's dummy
     # value if it has none.
     tables = iods.load_iod_tables()
@@ -732,6 +735,7 @@ def test_series_number_resolves_to_z_in_the_supported_iods_but_where_type_1():
     assert {(name, path) for name, path, action in resolved if action != "Z"} == {
         ("RT Structure Set", ("(3006,004C)",)),
         ("Segmentation", ()),
+        ("Parametric Map", ()),
         ("Surface Segmentation", ()),
         ("X-Ray Radiation Dose SR", ()),
         ("Enhanced X-Ray Radiation Dose SR", ()),

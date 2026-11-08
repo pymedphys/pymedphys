@@ -450,8 +450,10 @@ class SelectionTests(unittest.TestCase):
             select_checks(["README.rst"], labels=["DATABASE"])["run-database"]
         )
 
-    def test_main_and_full_test_prs_widen_the_unit_test_matrix(self):
-        self.assertTrue(select_checks([], event_name="push")["run-full-matrix"])
+    def test_nightly_manual_and_full_test_runs_widen_the_unit_test_matrix(self):
+        for event in ("schedule", "workflow_dispatch"):
+            with self.subTest(event=event):
+                self.assertTrue(select_checks([], event_name=event)["run-full-matrix"])
         self.assertTrue(select_checks([], labels=["full-test"])["run-full-matrix"])
         for paths in (None, [], ["uv.lock"], ["lib/pymedphys/_gamma/core.py"]):
             with self.subTest(paths=paths):

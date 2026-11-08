@@ -96,6 +96,8 @@ SUPPORTED = {
     "1.2.840.10008.5.1.4.1.1.78.6": "Spectacle Prescription Report",
     "1.2.840.10008.5.1.4.1.1.79.1": "Macular Grid Thickness and Volume Report",
     "1.2.840.10008.5.1.4.1.1.88.77": "Waveform Annotation SR",
+    "1.2.840.10008.5.1.4.1.1.30": "Parametric Map",
+    "1.2.840.10008.5.1.4.1.1.67": "Real World Value Mapping",
     "1.2.840.10008.5.1.4.1.1.11.1": "Grayscale Softcopy Presentation State",
     "1.2.840.10008.5.1.4.1.1.11.2": "Color Softcopy Presentation State",
     "1.2.840.10008.5.1.4.1.1.11.3": "Pseudo-Color Softcopy Presentation State",
@@ -156,6 +158,8 @@ def test_the_first_release_supports_ct_mr_pet_rt_registration_seg_sr_and_pr_obje
         "Spectacle Prescription Report",
         "Macular Grid Thickness and Volume Report",
         "Waveform Annotation SR",
+        "Parametric Map",
+        "Real World Value Mapping",
         "Grayscale Softcopy Presentation State",
         "Color Softcopy Presentation State",
         "Pseudo-Color Softcopy Presentation State",
@@ -231,14 +235,13 @@ def test_padding_is_ignored():
         ("1.2.840.10008.5.1.4.1.1.9.100.1", "Waveform Presentation State"),
         ("1.2.840.10008.5.1.4.1.1.9.100.2", "Waveform Acquisition Presentation State"),
         # Outside the first release: other images, CT, MR, and PET objects
-        # that are not images, height map segmentations, parametric maps,
-        # spatial fiducials, and second-generation RT objects, including the
-        # second-generation RT images.
+        # that are not images, height map segmentations, spatial fiducials,
+        # and second-generation RT objects, including the second-generation
+        # RT images.
         ("1.2.840.10008.5.1.4.1.1.20", "Nuclear Medicine Image"),
         ("1.2.840.10008.5.1.4.1.1.6.1", "Ultrasound Image"),
         ("1.2.840.10008.5.1.4.1.1.200.2", "CT Performed Procedure Protocol"),
         ("1.2.840.10008.5.1.4.1.1.66.8", "Height Map Segmentation"),
-        ("1.2.840.10008.5.1.4.1.1.30", "Parametric Map"),
         ("1.2.840.10008.5.1.4.1.1.66.2", "Spatial Fiducials"),
         ("1.2.840.10008.5.1.4.1.1.481.10", "RT Physician Intent"),
         ("1.2.840.10008.5.1.4.1.1.481.14", "Tomotherapeutic Radiation"),
