@@ -282,11 +282,16 @@ def _second_run(directory):
 
 @pytest.mark.deid_requirement("PS3.15-E.3.2-01", "PS3.15-E.3.2-02")
 def test_the_library_releases_a_series_marked_absent_with_the_option(second_run):
-    _, outcomes, _, _ = second_run
+    _, outcomes, _, done = second_run
+    # The QC pack records value-free reasons; include them if release fails.
+    reasons = {
+        Path(entry["source"]).name: tuple(entry.get("reasons", ()))
+        for entry in json.loads(done.result.qc_pack.read_text("utf-8"))["instances"]
+    }
 
     for name in (*_CT, _STRUCTURE_SET, _PLAN):
         disposition, dataset = outcomes[name]
-        assert disposition == "released", name
+        assert disposition == "released", (name, reasons[name])
         assert dataset.RecognizableVisualFeatures == "NO"
         assert _codes(dataset)[-2:] == [markers.PROFILE_CODE, CODE]
 
