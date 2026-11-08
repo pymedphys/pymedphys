@@ -23,7 +23,7 @@ Treatment Record, RT Treatment Summary Record, RT Physician Intent, RT
 Treatment Preparation, and RT Patient Position Acquisition Instruction
 IODs, of the Spatial Registration and Deformable Spatial
 Registration IODs, of the Segmentation IOD, of both Segmentation Storage
-and Label Map Segmentation Storage, of the X-Ray Radiation Dose SR, Enhanced
+and Label Map Segmentation Storage, of the Surface Segmentation IOD, of the X-Ray Radiation Dose SR, Enhanced
 X-Ray Radiation Dose SR, Radiopharmaceutical Radiation Dose SR, and Patient
 Radiation Dose SR IODs, of the Basic Text SR, Enhanced SR, Comprehensive SR,
 Comprehensive 3D SR, and Extensible SR IODs, of the Key Object Selection
@@ -99,6 +99,7 @@ SUPPORTED_IODS = frozenset(
         "RT Treatment Preparation",
         "RT Treatment Summary Record",
         "Segmentation",
+        "Surface Segmentation",
         "Spatial Registration",
         "Deformable Spatial Registration",
         "X-Ray Radiation Dose SR",
