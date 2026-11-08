@@ -123,6 +123,7 @@ from __future__ import annotations
 import copy
 import dataclasses
 import hashlib
+import re
 from collections.abc import Callable, Iterable, Mapping
 from pathlib import PurePosixPath
 from typing import TypeAlias
@@ -1306,6 +1307,16 @@ class InstanceTransform:
             redaction_review=(
                 None if redaction_review is None else redaction_review.reference
             ),
+            redaction_frames_not_shown=(
+                None if redaction_review is None else redaction_review.not_shown
+            ),
+            redaction_review_modes=(
+                None
+                if redaction_review is None
+                else {
+                    mode.value: count for mode, count in redaction_review.modes.items()
+                }
+            ),
             residual_review=(
                 None if residual_review is None else residual_review.reference
             ),
@@ -2175,7 +2186,10 @@ class InstanceTransform:
             # that is only defaced is not.
             if redaction is not None and self._finder is not None and not reviewed:
                 evidence = _held(evidence, HeldPixelData(redaction.reason))
-                qc = (*qc, _redaction_material(redaction, source, data))
+                qc = (
+                    *qc,
+                    _redaction_material(redaction, source, data, _sop_class(dataset)),
+                )
             elif self._finder is not None:
                 # A reviewer approved the regions, or there are no pixel data
                 # to clean.
@@ -2674,8 +2688,20 @@ def _with_redaction(
     )
 
 
+# A UID as PS3.5 Section 9.1 has it.
+_UID = re.compile(r"(?=.{1,64}$)(0|[1-9][0-9]*)(\.(0|[1-9][0-9]*))*")
+
+
+def _sop_class(dataset: pydicom.Dataset) -> str:
+    """The data set's SOP Class UID, if it holds one value that is a UID,
+    or empty, whose review then needs every frame shown (D-059)."""
+    value = dataset.get("SOPClassUID")
+    text = str(value).strip(" \x00") if isinstance(value, str) else ""
+    return text if _UID.fullmatch(text) else ""
+
+
 def _redaction_material(
-    redaction: Redaction, source: SourceEvidence, data: bytes
+    redaction: Redaction, source: SourceEvidence, data: bytes, sop_class: str = ""
 ) -> RedactionMaterial:
     """The QC material of what Clean Pixel Data did, for the reviewer.
 
@@ -2697,6 +2723,7 @@ def _redaction_material(
         shown,
         redaction.decoded_sha256,
         redaction.rule_boxes,
+        sop_class,
     )
 
 

@@ -109,7 +109,7 @@ def test_an_attestation_is_recorded_beside_the_pack(pack):
         "  undefaced instances with a recognisable face in their own previews: 0",
         "  instances with their residual findings cleared: 0",
         "  cleaned instances with their regions accepted: 0",
-        "  cleaned instances with the reviewer's regions added: 0",
+        "  cleaned instances with their regions revised: 0",
         "  cleaned instances rejected: 0",
         "the release report published with the run is unchanged",
     ]
