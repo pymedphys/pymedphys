@@ -77,6 +77,8 @@ SUPPORTED = {
     "1.2.840.10008.5.1.4.1.1.66.4": "Segmentation",
     # Label Map Segmentation Storage, which Table B.5-1 maps to the same IOD.
     "1.2.840.10008.5.1.4.1.1.66.7": "Segmentation",
+    # Surface Segmentation Storage, which Table B.5-1 maps to an IOD of its own.
+    "1.2.840.10008.5.1.4.1.1.66.5": "Surface Segmentation",
     "1.2.840.10008.5.1.4.1.1.88.67": "X-Ray Radiation Dose SR",
     "1.2.840.10008.5.1.4.1.1.88.68": "Radiopharmaceutical Radiation Dose SR",
     "1.2.840.10008.5.1.4.1.1.88.73": "Patient Radiation Dose SR",
@@ -136,6 +138,7 @@ def test_the_first_release_supports_ct_mr_pet_rt_registration_seg_sr_and_pr_obje
         "RT Structure Set",
         "RT Treatment Summary Record",
         "Segmentation",
+        "Surface Segmentation",
         "Spatial Registration",
         "Deformable Spatial Registration",
         "X-Ray Radiation Dose SR",
@@ -228,13 +231,12 @@ def test_padding_is_ignored():
         ("1.2.840.10008.5.1.4.1.1.88.72", "Simplified Adult Echo SR"),
         ("1.2.840.10008.5.1.4.1.1.88.71", "Acquisition Context SR"),
         # Outside the first release: other images, CT, MR, and PET objects
-        # that are not images, the segmentations of other IODs, parametric
-        # maps, spatial fiducials, and second-generation RT objects, including
-        # the second-generation RT images.
+        # that are not images, height map segmentations, parametric maps,
+        # spatial fiducials, and second-generation RT objects, including the
+        # second-generation RT images.
         ("1.2.840.10008.5.1.4.1.1.20", "Nuclear Medicine Image"),
         ("1.2.840.10008.5.1.4.1.1.6.1", "Ultrasound Image"),
         ("1.2.840.10008.5.1.4.1.1.200.2", "CT Performed Procedure Protocol"),
-        ("1.2.840.10008.5.1.4.1.1.66.5", "Surface Segmentation"),
         ("1.2.840.10008.5.1.4.1.1.66.8", "Height Map Segmentation"),
         ("1.2.840.10008.5.1.4.1.1.30", "Parametric Map"),
         ("1.2.840.10008.5.1.4.1.1.66.2", "Spatial Fiducials"),

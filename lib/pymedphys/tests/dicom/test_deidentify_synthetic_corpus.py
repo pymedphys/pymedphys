@@ -26,7 +26,7 @@ import json
 import re
 import warnings
 
-from pymedphys._imports import pydicom, pytest
+from pymedphys._imports import numpy, pydicom, pytest
 
 from pymedphys._dicom.deidentify import (
     compound_actions,
@@ -244,6 +244,7 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "48-rt-ion-beams-record.dcm",
         "49-rt-brachy-record.dcm",
         "50-rt-treatment-summary-record.dcm",
+        "55-seg-surface.dcm",
         "56-pr-grayscale.dcm",
         "57-pr-color.dcm",
         "58-pr-pseudo-color.dcm",
@@ -295,6 +296,7 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "RT Ion Beams Treatment Record",
         "RT Brachy Treatment Record",
         "RT Treatment Summary Record",
+        "Surface Segmentation",
         "Grayscale Softcopy Presentation State",
         "Color Softcopy Presentation State",
         "Pseudo-Color Softcopy Presentation State",
@@ -310,19 +312,20 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
     # The files before the eleven Presentation States.
     before = corpus.files[:-11]
     assert corpus_module.STRUCTURED_REPORT_FILES == tuple(
-        file.name for file in before[-24:-14] + before[-12:-4]
+        file.name for file in before[-25:-15] + before[-13:-5]
     )
     assert corpus_module.SEGMENTATION_FILES == tuple(
-        file.name for file in before[-14:-12]
+        file.name for file in before[-15:-13]
     )
     assert (
         corpus_module.ION_PLAN_FILE,
         corpus_module.ION_TREATMENT_RECORD_FILE,
-    ) == tuple(file.name for file in before[-4:-2])
+    ) == tuple(file.name for file in before[-5:-3])
     assert (
         corpus_module.BRACHY_TREATMENT_RECORD_FILE,
         corpus_module.TREATMENT_SUMMARY_RECORD_FILE,
-    ) == tuple(file.name for file in before[-2:])
+    ) == tuple(file.name for file in before[-3:-1])
+    assert corpus_module.SURFACE_SEGMENTATION_FILE == before[-1].name
     assert corpus_module.PRESENTATION_STATE_FILES == tuple(
         file.name for file in corpus.files[-11:]
     )
@@ -777,6 +780,10 @@ def test_the_reference_graph_has_no_findings(corpus):
     brachy = position("49-rt-brachy-record.dcm")
     beams = position("20-rt-beams-record.dcm")
     assert {(brachy, beams), (summary, 4), (summary, brachy)} <= targets
+    # The Surface Segmentation names the first slice, from which its surface
+    # was generated.
+    surface = position(corpus_module.SURFACE_SEGMENTATION_FILE)
+    assert (surface, 0) in targets
 
 
 def test_each_treatment_record_names_its_own_plan_with_its_class(corpus):
@@ -856,6 +863,45 @@ def test_the_brachy_and_summary_records_name_the_records_they_relate_to(corpus):
     ):
         manifest = files[name].manifest
         assert (manifest.sop_class, manifest.iod) == (sop_class, iod)
+
+
+def test_the_surface_segmentation_holds_a_closed_mesh_of_its_one_segment(corpus):
+    files = {file.name: file for file in corpus.files}
+    dataset = pydicom.dcmread(
+        pydicom.filebase.DicomBytesIO(
+            files[corpus_module.SURFACE_SEGMENTATION_FILE].data
+        )
+    )
+
+    assert dataset.SOPClassUID == corpus_module.SURFACE_SEGMENTATION_STORAGE
+    assert dataset.Modality == "SEG"
+    assert "PixelData" not in dataset
+    (segment,) = dataset.SegmentSequence
+    (referenced,) = segment.ReferencedSurfaceSequence
+    assert (segment.SurfaceCount, referenced.ReferencedSurfaceNumber) == (1, 1)
+    (source,) = referenced.SegmentSurfaceSourceInstanceSequence
+    assert source.ReferencedSOPInstanceUID == corpus_module.CT_SLICES[0]
+    assert dataset.NumberOfSurfaces == 1
+    (surface,) = dataset.SurfaceSequence
+    assert (surface.FiniteVolume, surface.Manifold) == ("YES", "YES")
+    (points,) = surface.SurfacePointsSequence
+    coordinates = numpy.frombuffer(points.PointCoordinatesData, "<f4")
+    assert points.NumberOfSurfacePoints * 3 == coordinates.size == 12
+    (primitives,) = surface.SurfaceMeshPrimitivesSequence
+    triangles = numpy.frombuffer(primitives.LongTrianglePointIndexList, "<u4")
+    # Four triangles, of points indexed from 1, each edge shared by two.
+    assert triangles.size == 12
+    assert set(triangles.tolist()) == {1, 2, 3, 4}
+    edges = collections.Counter(
+        frozenset(pair)
+        for triangle in triangles.reshape(4, 3).tolist()
+        for pair in (
+            (triangle[0], triangle[1]),
+            (triangle[1], triangle[2]),
+            (triangle[2], triangle[0]),
+        )
+    )
+    assert len(edges) == 6 and set(edges.values()) == {2}
 
 
 def test_two_instances_are_in_implicit_vr_and_the_rest_explicit(corpus):

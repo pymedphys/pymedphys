@@ -136,10 +136,17 @@ ION_REVIEWED_AGAINST = DOSE_SR_REVIEWED_AGAINST + RADIATION_DOSE_SR_IODS
 # and which the first supported release now supports.
 RECORD_IODS = ("RT Brachy Treatment Record", "RT Treatment Summary Record")
 RECORD_REVIEWED_AGAINST = ION_REVIEWED_AGAINST + ION_IODS
+# Surface Segmentation, which the maintainer brought into the target
+# coverage on 31 October 2026 with the other IODs that radiotherapy exports
+# carry, whose attributes were reviewed ahead of supporting it, against every
+# IOD that the first supported release then supported, and which it now
+# supports.
+SURFACE_IODS = ("Surface Segmentation",)
 # The six softcopy Presentation State IODs of PS3.3 Sections A.33.1 to A.33.4,
 # A.33.6, and A.33.8, which the maintainer's pick of 31 October 2026 brought into
 # the target coverage, whose attributes were reviewed against every IOD
-# above, and which the first supported release now supports.
+# above but Surface Segmentation, reviewed alongside them, and which the
+# first supported release now supports.
 PRESENTATION_STATE_IODS = (
     "Grayscale Softcopy Presentation State",
     "Color Softcopy Presentation State",
@@ -159,7 +166,8 @@ PRESENTATION_STATE_REVIEWED_AGAINST = (
 )
 # The Planar MPR and Volume Rendering Volumetric Presentation State IODs and
 # the Advanced Blending Presentation State IOD, of PS3.3 Sections A.80.1,
-# A.80.2, and A.33.7, reviewed against every IOD above and now supported.
+# A.80.2, and A.33.7, reviewed against every IOD above but Surface
+# Segmentation, and now supported.
 VOLUMETRIC_PRESENTATION_STATE_IODS = (
     "Planar MPR Volumetric Presentation State",
     "Volume Rendering Volumetric Presentation State",
@@ -169,8 +177,8 @@ VOLUMETRIC_REVIEWED_AGAINST = (
     PRESENTATION_STATE_REVIEWED_AGAINST + PRESENTATION_STATE_IODS
 )
 # The Waveform and Waveform Acquisition Presentation State IODs of PS3.3
-# Sections A.92.1 and A.92.2, reviewed against every IOD above and now
-# supported.
+# Sections A.92.1 and A.92.2, reviewed against every IOD above but Surface
+# Segmentation, and now supported.
 WAVEFORM_PRESENTATION_STATE_IODS = (
     "Waveform Presentation State",
     "Waveform Acquisition Presentation State",
@@ -178,7 +186,10 @@ WAVEFORM_PRESENTATION_STATE_IODS = (
 WAVEFORM_REVIEWED_AGAINST = (
     VOLUMETRIC_REVIEWED_AGAINST + VOLUMETRIC_PRESENTATION_STATE_IODS
 )
-SUPPORTED_IODS = WAVEFORM_REVIEWED_AGAINST + WAVEFORM_PRESENTATION_STATE_IODS
+SURFACE_REVIEWED_AGAINST = PRESENTATION_STATE_REVIEWED_AGAINST
+SUPPORTED_IODS = (
+    WAVEFORM_REVIEWED_AGAINST + SURFACE_IODS + WAVEFORM_PRESENTATION_STATE_IODS
+)
 CLEAN_DESCRIPTORS = "clean_descriptors"
 DEVICE_IDENTITY = "retain_device_identity"
 FULL_DATES = "retain_longitudinal_full_dates"
@@ -445,11 +456,11 @@ def test_every_text_attribute_a_supported_iod_uses_and_table_e1_1_omits_has_a_ru
     # Checked against the 2026d PS3.3, PS3.6, and PS3.15: the combined
     # scope includes the RT objects, among them the two RT Ion IODs, which
     # add 13, and the brachy and summary treatment records, which add none,
-    # Segmentation, which adds 4, the two dose-report IODs, and the six
-    # softcopy Presentation State IODs, which add 7, and the volumetric and
-    # advanced blending Presentation State IODs, which add 2, whose
-    # supplementary rules cover 181 text attributes.
-    assert len(omitted) == 181
+    # Segmentation, which adds 4, Surface Segmentation, which adds 2, the
+    # two dose-report IODs, the six softcopy Presentation State IODs, which
+    # add 7, and the volumetric and advanced blending Presentation State
+    # IODs, which add 2, whose supplementary rules cover 183 text attributes.
+    assert len(omitted) == 183
     assert omitted <= set(_rules())
     assert {"(0008,0100)", "(300A,00C2)", "(60xx,1500)"} <= omitted
 
@@ -464,7 +475,7 @@ def test_the_rules_for_omitted_text_fall_in_the_reviewed_groups():
 
     assert groups == {
         # Operator-typed labels and text.
-        ("X/Z/D", ((CLEAN_DESCRIPTORS, "C"),)): 86,
+        ("X/Z/D", ((CLEAN_DESCRIPTORS, "C"),)): 88,
         # Accessory and equipment identifiers.
         ("X/Z/D", ((DEVICE_IDENTITY, "K"),)): 30,
         # Coded and technical values, and De-identification Method.
@@ -1682,7 +1693,7 @@ def test_the_basic_profile_keeps_only_the_reviewed_coded_and_technical_text():
         for tag in _supported_text()
     }
 
-    assert len(basic) == 314
+    assert len(basic) == 316
     assert {tag for tag, action in basic.items() if action == "K"} == (
         KEPT_TEXT
         | ADDED_KEPT_TEXT
@@ -2435,3 +2446,118 @@ def test_a_new_attribute_that_table_e1_1_omits_needs_a_rule_by_its_vr(
         _write(tmp_path / "reviewed.toml", document)
     )
     assert loaded.rules[NEW_TAG].action == "X/Z/D"
+
+
+# Surface Segmentation.
+
+# The text of the Surface Mesh Module that no IOD reviewed before it uses:
+# Surface Comments and Surface Processing Description, each typed text.
+SURFACE_TEXT = {"(0066,0004)", "(0066,000B)"}
+# The other attributes that it adds, of its Surface Segmentation and Surface
+# Mesh Modules: counts, numbers, coded flags, opacities, distances, and the
+# meshes themselves, its points' coordinates and normals and the indices of
+# its primitives, each a VR that cannot hold a name or a date.
+SURFACE_OTHER_VRS = {"SQ": 12, "FL": 11, "UL": 6, "OL": 4, "CS": 4, "OF": 2, "US": 1}
+SURFACE_MESH_MODULES = {"Surface Segmentation", "Surface Mesh"}
+
+
+def test_surface_segmentation_is_generated_and_supported():
+    tables = iods.load_iod_tables()
+
+    assert set(SURFACE_IODS) <= set(tables.iods)
+    assert set(SURFACE_IODS) <= scope.SUPPORTED_IODS
+
+
+@pytest.mark.deid_requirement("MIDI-BP-05", "MIDI-BP-06", "MIDI-BP-11")
+def test_the_text_that_only_surface_segmentation_uses_has_reviewed_rules():
+    listed = set(_table_e1_1())
+    rules = _rules()
+    added = _used_by(SURFACE_IODS, TEXT_VRS) - _used_by(
+        SURFACE_REVIEWED_AGAINST, TEXT_VRS
+    )
+
+    assert added == SURFACE_TEXT
+    assert not added & listed
+    for tag in added:
+        # Typed text, removed by Type, which removes it, since it is Type 3,
+        # and cleaned as a descriptor under Clean Descriptors.
+        assert (rules[tag].action, dict(rules[tag].options)) == (
+            "X/Z/D",
+            {CLEAN_DESCRIPTORS: "C"},
+        ), tag
+        assert rules[tag].note.strip(), tag
+        assert _resolved_in(SURFACE_IODS, tag, "X/Z/D") == {"X"}, tag
+    # Every other text that it uses, such as its segments' labels, has the
+    # action that it has where the IODs reviewed before it use it.
+    for tag in _used_by(SURFACE_IODS, TEXT_VRS) - added - listed:
+        assert rules[tag].note.strip(), tag
+
+
+def test_every_uid_date_and_name_that_surface_segmentation_uses_has_a_role():
+    uids = uid_roles.load_uid_roles()
+    temporal = temporal_roles.load_temporal_roles()
+
+    for tag in _used_by(SURFACE_IODS, {"UI"}):
+        assert isinstance(uids.role(tag), uid_roles.UIDRole), tag
+    for tag in _used_by(SURFACE_IODS, TEMPORAL_VRS):
+        assert isinstance(temporal.role(tag), temporal_roles.TemporalRole), tag
+    # The IODs reviewed before it use every UID, person name, URL, date,
+    # time, and datetime that it uses.
+    for vrs in ({"UI"}, {"PN"}, {"UR"}, TEMPORAL_VRS):
+        assert not _used_by(SURFACE_IODS, vrs) - _used_by(
+            SURFACE_REVIEWED_AGAINST, vrs
+        ), vrs
+
+
+def test_removal_by_type_gives_surface_segmentation_only_the_reviewed_actions():
+    actions_by_tag = _record_actions()
+    dictionary = _dictionary()
+    every_vr = {vr for attribute in dictionary.values() for vr in attribute.vrs}
+    new = {}
+
+    for tag in sorted(_used_by(SURFACE_IODS, every_vr)):
+        action = actions_by_tag.get(tag)
+        if action not in compound_actions.COMPOUND_ACTIONS:
+            continue
+        resolved = _resolved_in(SURFACE_IODS, tag, action)
+        reviewed = _resolved_in(SURFACE_REVIEWED_AGAINST, tag, action)
+        if not resolved <= reviewed:
+            new[tag] = resolved
+
+    # Only its own text, which no IOD reviewed before it uses, so nowhere
+    # does removal by Type replace a value with a dummy that it did not.
+    assert new == {tag: {"X"} for tag in SURFACE_TEXT}
+
+
+def test_surface_segmentations_other_new_attributes_are_kept_by_the_default():
+    dictionary = _dictionary()
+    tables = iods.load_iod_tables()
+    every_vr = {vr for attribute in dictionary.values() for vr in attribute.vrs}
+    new = _used_by(SURFACE_IODS, every_vr) - _used_by(
+        SURFACE_REVIEWED_AGAINST, every_vr
+    )
+    other = new - SURFACE_TEXT
+    listed = set(_table_e1_1())
+    rules = _rules()
+    uids = set(uid_roles.load_uid_roles().rules)
+    by_vr = collections.Counter(vr for tag in other for vr in dictionary[tag].vrs)
+
+    assert by_vr == SURFACE_OTHER_VRS
+    assert all(len(dictionary[tag].vrs) == 1 for tag in other)
+    assert not other & (listed | set(rules) | uids)
+    # So each takes the default, which keeps it where Surface Segmentation
+    # defines it, under every preset, its meshes included, with a sequence's
+    # items handled by their own rules: no profile action removes a mesh,
+    # which only Clean Recognizable Visual Features answers for (D-046).
+    iod = tables.iods["Surface Segmentation"]
+    for preset in policy.PRESETS:
+        rules_of = element_rules.ElementRules(policy.compose_policy(preset))
+        for definition in iod.definitions:
+            if definition.tag not in other:
+                continue
+            assert definition.module in SURFACE_MESH_MODULES, definition
+            rule = rules_of.rule(definition.tag, definition.path, iod=iod)
+            assert (rule.source, rule.action) == (
+                element_rules.RuleSource.DEFAULT,
+                element_rules.KEEP,
+            ), (preset, definition)
