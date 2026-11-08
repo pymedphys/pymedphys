@@ -321,7 +321,11 @@ def _moved(value: str, days: int) -> str:
         date = _parse(value[:8])
     except ValueError:
         return value
-    return (date + datetime.timedelta(days=days)).strftime(_DATE) + value[8:]
+    moved = date + datetime.timedelta(days=days)
+    # Not strftime, which writes a year before 1000, such as the synthetic
+    # corpus's, without its leading zero on some platforms and Python
+    # versions (Python 3.12 on Linux among them).
+    return f"{moved.year:04d}{moved.month:02d}{moved.day:02d}" + value[8:]
 
 
 def _re_rooted(uid: str, study: OtherStudy) -> str:
