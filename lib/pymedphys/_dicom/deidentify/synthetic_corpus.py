@@ -20,7 +20,7 @@ fictitious patient and study, with one Frame of Reference: three CT Image
 slices, an RT Structure Set that references the CT series and slices, an RT
 Plan that references the structure set and the dose, an RT Dose that
 references the plan, a second RT Dose of the plan for review (below), one
-instance of each of thirty-six other IODs, and two of the Segmentation
+instance of each of thirty-eight other IODs, and two of the Segmentation
 IOD, one of each of its SOP Classes, each in a series of its own, and a
 second X-Ray Radiation Dose SR, of a CT scan.
 The MR Image and PET Image instances reference the first CT slice, and each
@@ -55,7 +55,11 @@ and Chest CAD SR name the RT Image, the collection's one projection
 radiograph, as the image that their CAD read, and the Colon CAD SR the CT
 series; and the Procedure Log, Spectacle Prescription Report, Macular Grid
 Thickness and Volume Report, and Waveform Annotation SR reference the MR
-Image. It is the input for validating each preset end to end: once the
+Image. The Parametric Map, an apparent diffusion coefficient map of 16-bit
+integers whose two frames lie in the planes of the first two CT slices,
+references the MR Image, and the Real World Value Mapping maps the PET
+Image's stored values to a standardised uptake value and names it. It is
+the input for validating each preset end to end: once the
 engine has
 written the collection, the residual search
 (:mod:`~pymedphys._dicom.deidentify.residuals`) should find none of the
@@ -359,6 +363,8 @@ RT_ION_PLAN_STORAGE = "1.2.840.10008.5.1.4.1.1.481.8"
 RT_ION_BEAMS_TREATMENT_RECORD_STORAGE = "1.2.840.10008.5.1.4.1.1.481.9"
 RT_BRACHY_TREATMENT_RECORD_STORAGE = "1.2.840.10008.5.1.4.1.1.481.6"
 RT_TREATMENT_SUMMARY_RECORD_STORAGE = "1.2.840.10008.5.1.4.1.1.481.7"
+PARAMETRIC_MAP_STORAGE = "1.2.840.10008.5.1.4.1.1.30"
+REAL_WORLD_VALUE_MAPPING_STORAGE = "1.2.840.10008.5.1.4.1.1.67"
 # The retired class that PS3.3 Sections 10.6.1 and C.8.8.5.4 give a study in
 # a Referenced Study Sequence or RT Referenced Study Sequence item.
 DETACHED_STUDY_MANAGEMENT = "1.2.840.10008.3.1.2.3.1"
@@ -423,6 +429,10 @@ ION_TREATMENT_RECORD_FILE = "48-rt-ion-beams-record.dcm"
 # Record of its course, numbered after the files that open pull requests add.
 BRACHY_TREATMENT_RECORD_FILE = "49-rt-brachy-record.dcm"
 TREATMENT_SUMMARY_RECORD_FILE = "50-rt-treatment-summary-record.dcm"
+# The Parametric Map of the MR Image, and the Real World Value Mapping of the
+# PET Image, numbered after the files that open pull requests add.
+PARAMETRIC_MAP_FILE = "51-parametric-map.dcm"
+REAL_WORLD_VALUE_MAPPING_FILE = "52-real-world-value-mapping.dcm"
 # The Surface Segmentation of the CT series, numbered after the files that
 # open pull requests add.
 SURFACE_SEGMENTATION_FILE = "55-seg-surface.dcm"
@@ -518,6 +528,10 @@ BRACHY_TREATMENT_RECORD_SERIES = f"{LINKED_UID_ROOT}04600"
 BRACHY_TREATMENT_RECORD = f"{LINKED_UID_ROOT}04601"
 TREATMENT_SUMMARY_RECORD_SERIES = f"{LINKED_UID_ROOT}04700"
 TREATMENT_SUMMARY_RECORD = f"{LINKED_UID_ROOT}04701"
+PARAMETRIC_MAP_SERIES = f"{LINKED_UID_ROOT}04800"
+PARAMETRIC_MAP = f"{LINKED_UID_ROOT}04801"
+REAL_WORLD_VALUE_MAPPING_SERIES = f"{LINKED_UID_ROOT}04900"
+REAL_WORLD_VALUE_MAPPING = f"{LINKED_UID_ROOT}04901"
 SURFACE_SEGMENTATION_SERIES = f"{LINKED_UID_ROOT}05200"
 SURFACE_SEGMENTATION = f"{LINKED_UID_ROOT}05201"
 # A patient and a procedure step that the collection names but does not hold.
@@ -647,11 +661,19 @@ _SOP_CLASSES = types.MappingProxyType(
         ION_TREATMENT_RECORD: RT_ION_BEAMS_TREATMENT_RECORD_STORAGE,
         BRACHY_TREATMENT_RECORD: RT_BRACHY_TREATMENT_RECORD_STORAGE,
         TREATMENT_SUMMARY_RECORD: RT_TREATMENT_SUMMARY_RECORD_STORAGE,
+        PARAMETRIC_MAP: PARAMETRIC_MAP_STORAGE,
+        REAL_WORLD_VALUE_MAPPING: REAL_WORLD_VALUE_MAPPING_STORAGE,
         SURFACE_SEGMENTATION: SURFACE_SEGMENTATION_STORAGE,
         PATIENT_REFERENCE: DETACHED_PATIENT_MANAGEMENT,
         PROCEDURE_STEP: MODALITY_PERFORMED_PROCEDURE_STEP,
     }
 )
+# The units of the Parametric Map's apparent diffusion coefficients and of
+# the Real World Value Mapping's standardised uptake values, as UCUM codes
+# from PS3.16 CID 7181 and CID 85, with each code's meaning and the LUT
+# Explanation (0028,3003) of the mapping.
+_APPARENT_DIFFUSION = ("um2/s", "um2/s", "ADC")
+_SUV_BODY_WEIGHT = ("{SUVbw}g/ml", "Standardized Uptake Value body weight", "SUVbw")
 # The registrations, whose structure _add_registration adds.
 _REGISTRATIONS = frozenset(
     {SPATIAL_REGISTRATION_STORAGE, DEFORMABLE_SPATIAL_REGISTRATION_STORAGE}
@@ -1388,6 +1410,24 @@ _SPECS = (
         PLAN,
         targets=((_REFERENCED_TREATMENT_RECORD_SEQUENCE, BRACHY_TREATMENT_RECORD),),
     ),
+    # The Parametric Map, an apparent diffusion coefficient map derived from
+    # the MR Image, references it, and the Real World Value Mapping maps the
+    # PET Image's stored values to a standardised uptake value, naming it in
+    # its Referenced Image Sequence (0008,1140).
+    _Spec(
+        PARAMETRIC_MAP_FILE,
+        PARAMETRIC_MAP_STORAGE,
+        PARAMETRIC_MAP,
+        PARAMETRIC_MAP_SERIES,
+        MR,
+    ),
+    _Spec(
+        REAL_WORLD_VALUE_MAPPING_FILE,
+        REAL_WORLD_VALUE_MAPPING_STORAGE,
+        REAL_WORLD_VALUE_MAPPING,
+        REAL_WORLD_VALUE_MAPPING_SERIES,
+        PET,
+    ),
     # The Surface Segmentation, of a mesh in the CT slices' space, which
     # references the CT series and its first slice, from which its surface
     # was generated.
@@ -2082,6 +2122,18 @@ class _Instance:
             self._add_registration()
         elif self.spec.sop_class in _SEGMENTATIONS:
             self._add_segmentation()
+        elif self.spec.sop_class == PARAMETRIC_MAP_STORAGE:
+            self._add_parametric_map()
+        elif self.spec.sop_class == REAL_WORLD_VALUE_MAPPING_STORAGE:
+            put((), "(0008,0060)", ["RWV"])
+            # Each item maps the images it names by the items of its own Real
+            # World Value Mapping Sequence (PS3.3 Table C.25.2-1).
+            self._add_value_mapping(
+                _items(["(0040,9094)", "(0040,9096)"]),
+                _SUV_BODY_WEIGHT,
+                (0, 32767),
+                0.0005,
+            )
         elif self.spec.sop_class == SURFACE_SEGMENTATION_STORAGE:
             self._add_surface_segmentation()
         elif self.spec.sop_class == RT_IMAGE_STORAGE:
@@ -2173,6 +2225,71 @@ class _Instance:
             self._add_pixels(8, 0, bytes([1, 1, 0, 0] * 2))
         else:
             self._add_pixels(1, 0, bytes([0xFF, 0x00] * 2), size=4)
+
+    def _add_parametric_map(self) -> None:
+        """Add the attributes that make the instance a Parametric Map.
+
+        Its two frames, of 2 by 2 unsigned 16-bit apparent diffusion
+        coefficients, lie in the planes of the first two CT slices, placed
+        by their functional groups, as a Segmentation's are, and its shared
+        Real World Value Mapping functional group maps each stored value to
+        a coefficient in square micrometres per second, as an ADC map
+        written as integers does (PS3.3 Section A.75).
+        """
+        put = self._set
+        put((), "(0008,0060)", ["MR"])
+        # Image Flavor VOLUME and Derived Pixel Contrast ADC (PS3.3 Sections
+        # C.8.16.1.3 and C.8.13.1.1.1.4), for the image and its frames alike.
+        flavour = ["DERIVED", "PRIMARY", "VOLUME", "ADC"]
+        put((), "(0008,0008)", flavour)
+        put((), "(0070,0080)", ["ADC"])  # Content Label
+        put((), "(2050,0020)", ["IDENTITY"])  # Presentation LUT Shape
+        put((), "(0028,2110)", ["00"])  # Lossy Image Compression
+        put((), "(0018,9004)", ["RESEARCH"])  # Content Qualification
+        shared = _items(["(5200,9229)"])
+        put(
+            (*shared, ("(0020,9116)", 0)), "(0020,0037)", ["1", "0", "0", "0", "1", "0"]
+        )
+        measures = (*shared, ("(0028,9110)", 0))
+        put(measures, "(0028,0030)", ["1", "1"])
+        put(measures, "(0018,0050)", ["2"])
+        put(measures, "(0018,0088)", ["2"])
+        put((*shared, ("(0040,9092)", 0)), "(0008,9007)", flavour)
+        self._add_value_mapping(
+            (*shared, ("(0040,9096)", 0)), _APPARENT_DIFFUSION, (0, 4000), 1.0
+        )
+        for frame in range(2):
+            put(
+                (("(5200,9230)", frame), ("(0020,9113)", 0)),
+                "(0020,0032)",
+                ["-1", "-1", str(2 * frame)],
+            )
+        put((), "(0028,0008)", ["2"])
+        self._add_pixels(
+            16, 0, struct.pack("<8H", 0, 800, 1600, 2400, 0, 900, 1800, 2700)
+        )
+
+    def _add_value_mapping(
+        self,
+        item: tuple[tuple[str, int], ...],
+        units: tuple[str, str, str],
+        mapped: tuple[int, int],
+        slope: float,
+    ) -> None:
+        """Map unsigned stored values from ``mapped``'s first to its last to
+        ``units``, a UCUM code, by ``slope``, in the item of a Real World
+        Value Mapping Item Macro (PS3.3 Table C.7.6.16-12)."""
+        put = self._set
+        put(item, "(0040,9216)", [mapped[0]])  # Real World Value First Value Mapped
+        put(item, "(0040,9211)", [mapped[1]])  # Real World Value Last Value Mapped
+        put(item, "(0040,9224)", [0.0])  # Real World Value Intercept
+        put(item, "(0040,9225)", [slope])  # Real World Value Slope
+        put(item, "(0028,3003)", [units[2]])  # LUT Explanation
+        put(item, "(0040,9210)", [units[2][:16]])  # LUT Label
+        code = (*item, ("(0040,08EA)", 0))
+        put(code, "(0008,0100)", [units[0]])
+        put(code, "(0008,0102)", ["UCUM"])
+        put(code, "(0008,0104)", [units[1]])
 
     def _add_surface_segmentation(self) -> None:
         """Add the attributes that make the instance a Surface Segmentation.
