@@ -2142,8 +2142,17 @@ def _apart(low: float, high: float) -> bool:
 
 
 def _grey(image: np.ndarray, window: tuple[float, float], inverted: bool) -> np.ndarray:
+    """Draw an image as 8-bit grey under a window from ``low`` to ``high``.
+
+    Each value and each limit is halved before they are subtracted, which
+    is exact in binary floating point: values that float32 holds can lie
+    further apart than float32 holds, as -3e38 and 3e38 do, and their
+    difference, and the window's width, would then overflow float32, in
+    which a float32 image is drawn, and draw the image black. Halved, both
+    stay within float32.
+    """
     low, high = window
-    scaled = np.clip((image - low) / (high - low), 0.0, 1.0)
+    scaled = np.clip((image * 0.5 - low * 0.5) / ((high - low) * 0.5), 0.0, 1.0)
     if inverted:
         scaled = 1.0 - scaled
     # Padding, which is NaN, is black whatever the photometric interpretation.
