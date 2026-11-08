@@ -161,8 +161,9 @@ where both can be read, each frame of a multi-frame instance by those of its
 Pixel Value Transformation functional group, where it has one, and a
 volume of such frames is formed only where every frame's can be read; and
 windowed from the 0.5th to the 99.5th percentile
-of what the preview shows, other than a redaction preview's full-range
-image, leaving out the stored values that Pixel Padding Value and Pixel
+of what the preview shows, or, where those are drawn alike, as where all
+but a few values are one value, from its smallest value to its largest,
+other than a redaction preview's full-range image, leaving out the stored values that Pixel Padding Value and Pixel
 Padding Range Limit name, which are shown black; MONOCHROME1 is inverted so
 that higher values are darker. Since that black shows one value, an instance
 of which a frame as written pads with more than one stored value, which
@@ -2098,23 +2099,46 @@ def _windowed_tiles(tiles: list[tuple[np.ndarray, _Instance]]) -> list[np.ndarra
 
 
 def _window(values: np.ndarray) -> tuple[float, float]:
+    """The window from the 0.5th to the 99.5th percentile of the finite
+    values, or, where those are drawn alike, the full range.
+
+    Where all but a few values are one value, as in a frame of one value
+    with a small pattern of another, both percentiles are that value; a
+    window of a fixed width about it would draw a pattern of a value
+    within that width, or of one that the width is lost against at the
+    value's magnitude, as the value itself, so the full range is used
+    instead (:func:`_full_range`).
+    """
     finite = values[np.isfinite(values)]
     if finite.size == 0:
         return -0.5, 0.5
     low, high = (float(value) for value in np.percentile(finite, _PERCENTILES))
-    # A uniform image is shown mid-grey, so that it stands out from the
-    # black around the tiles.
-    return (low, high) if high > low else (low - 0.5, low + 0.5)
+    return (low, high) if _apart(low, high) else _full_range(finite)
 
 
 def _full_range(values: np.ndarray) -> tuple[float, float]:
     """The window from the smallest value to the largest, under which no
-    value is clipped."""
+    value is clipped.
+
+    A uniform image is shown mid-grey, so that it stands out from the black
+    around the tiles, by a window about its value wide enough to be kept
+    apart from it at its magnitude.
+    """
     finite = values[np.isfinite(values)]
     if finite.size == 0:
         return -0.5, 0.5
     low, high = float(finite.min()), float(finite.max())
-    return (low, high) if high > low else (low - 0.5, low + 0.5)
+    if _apart(low, high):
+        return low, high
+    half = max(0.5, abs(low) * 2.0**-10)
+    return low - half, low + half
+
+
+def _apart(low: float, high: float) -> bool:
+    """Whether a window from ``low`` to ``high`` draws values apart: its
+    limits differ as float32, which previews are drawn in, and its width is
+    finite."""
+    return bool(np.float32(high) > np.float32(low)) and math.isfinite(high - low)
 
 
 def _grey(image: np.ndarray, window: tuple[float, float], inverted: bool) -> np.ndarray:
