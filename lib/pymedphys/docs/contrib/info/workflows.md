@@ -7,7 +7,7 @@ PyMedPhys uses GitHub Actions for continuous integration and deployment. The wor
 ## Workflow Architecture
 
 ```text
-ci.yml <- ready pull request (selective; drafts run nothing), merge_group (all checks, quick units), main push
+ci.yml <- ready pull request (selective; drafts run nothing), merge_group (all checks, quick units), nightly schedule and manual run (all checks, full units)
   |-- pre-commit.yml
   |-- lint.yml
   |-- type-check.yml
@@ -27,9 +27,11 @@ Schedule / manual run -> tg263-edition-check.yml
 Schedule / manual run / PR changing it or labelled check-upstream -> tcia-edition-check.yml
 Manual run -> face-validation.yml
 Manual run -> face-validation-visible-human.yml
+Manual run -> face-validation-keating.yml
+Manual run -> face-validation-pddca.yml
 Manual run -> pixel-text-validation.yml
 Manual run -> text-detection-model-pins.yml
-Manual run -> text-detector-evaluation-idc.yml
+Manual run -> text-detector-evaluation.yml
 Published release -> release.yml -> quality checks, publishing, verification, and published-package tests
 Issue comment -> claude.yml
 
@@ -44,9 +46,11 @@ Main push / PR labelled rtd-preview -> Read the Docs (see "Read the Docs" below)
 #### `ci.yml` - Main Orchestrator
 Coordinates all CI checks based on file changes, labels, and event types.
 
-- **Triggers**: Push to main, pull requests that are not drafts (including
-  label changes, which queue behind an in-flight run rather than cancelling
-  it), and merge groups. See "Draft pull requests" below
+- **Triggers**: Pull requests that are not drafts (including label changes,
+  which queue behind an in-flight run rather than cancelling it), merge groups,
+  a nightly schedule on `main` (15:37 UTC), and manual runs on any branch. A
+  push to `main` starts no run, as "Main Branch Workflow" below explains. See
+  "Draft pull requests" below
 - **Jobs**:
   - `changes`: Tests the selection/gating policy and reads the tested merge diff
   - `pre-commit`: Auto-formatting and basic checks
@@ -96,14 +100,14 @@ so git reports only the link itself, which selects every check that a changed
 path can select. A symlink or submodule is never exempt, whatever its name,
 because it can stand in for any content. Package modules still select
 documentation because autodoc and notebooks import them. The full OS/Python
-matrix runs on main pushes, releases and full-test PRs. Merge groups use the
-quick unit matrix and retain every integration check. Read the Docs
-publishes main documentation independently, as "Read the Docs" below
-describes.
+matrix runs nightly on `main`, on manual runs, on releases and on full-test
+PRs. Merge groups use the quick unit matrix and retain every integration
+check. Read the Docs publishes main documentation independently, as "Read the
+Docs" below describes.
 
 Integration tests, database tests and the full unit-test matrix are too costly
-for every PR. Apart from merge groups, main pushes and the labels, integration
-and database tests run only when a PR changes an input that no standard check
+for every PR. Apart from merge groups, nightly and manual runs and the labels,
+integration and database tests run only when a PR changes an input that no standard check
 validates, as the table lists: an input of the generated-file drift check, the wheel build, the
 Windows and macOS tooling tests, the example scripts, the slow tests, the
 doctests and their shared inputs, or the database code and its locked drivers.
@@ -114,8 +118,8 @@ The selector chooses the integration components independently and enables the
 `integration-tests` wrapper when any is selected. Shared package and test
 inputs, dependency metadata, shared CI configuration, and unknown tooling keep
 every component. Only an explicit `false` output skips a component; missing
-outputs retain coverage. Merge groups, main pushes, `full-test`, links and
-unverifiable diffs enable every component.
+outputs retain coverage. Merge groups, nightly and manual runs, `full-test`,
+links and unverifiable diffs enable every component.
 
 Unit runs skip the slow tests and never run doctests. `SLOW_TEST_FILES` and
 `DOCTEST_FILES` in `select_checks.py` list the package modules that apply the
@@ -131,13 +135,13 @@ TRF decoding, Pinnacle export or gamma implementation code, leave those tests
 unselected on a pull request. Add `full-test` to request both suites and the
 full unit-test matrix; `database` requests only the database suite. Modules
 with doctests, including `_metersetmap/metersetmap.py`, already select
-integration tests through the existing path rules. Every push to `main` runs
-both suites, and the release workflow runs the slow tests before publishing.
-Add `full-test` to a pull request that substantially changes code exercised by
-slow tests. Merge groups run both suites before merging. When CI fails on a
-push to `main`, the `report-main-failure` job
-opens or comments on the issue titled "CI failed on main", linking to the run.
-Close the issue once `main` is green again.
+integration tests through the existing path rules. Every merge group and the
+nightly run on `main` run both suites, and the release workflow runs the slow
+tests before publishing. Add `full-test` to a pull request that substantially
+changes code exercised by slow tests. When the nightly run, or a manual run,
+on `main` fails, the `report-main-failure` job opens or comments on the issue
+titled "CI failed on main", linking to the run. Close the issue once `main` is
+green again.
 
 Selected jobs need only `changes`, so they start alongside pre-commit and run
 whatever its result, and one run reports every result. The summary waits for
@@ -217,8 +221,8 @@ Static type checking for type safety.
 Fast unit tests with smart matrix strategy.
 
 - **Features**:
-  - Full OS and Python matrix on main pushes and releases (Ubuntu, Windows,
-    macOS; Python 3.12, 3.13, 3.14)
+  - Full OS and Python matrix nightly on `main`, on manual runs and on
+    releases (Ubuntu, Windows, macOS; Python 3.12, 3.13, 3.14)
   - Quick mode for merge groups and other PRs (Ubuntu + Python 3.14). The selector's
     `run-full-matrix` output decides, and only an explicit `false` keeps the
     quick matrix
@@ -252,9 +256,9 @@ report as `junit-dependency-floors-<part>`. A
 failure fails the unit-test workflow and therefore the required CI or release
 summary.
 
-Every cell of the unit-test matrix runs in four parts on four runners, since
+Every cell of the unit-test matrix runs in five parts on five runners, since
 a slow runner could take the 30-minute limit (60 minutes on Windows) to run the
-whole suite at once, or the corpus modules together. The workflow's
+whole suite at once, the corpus modules together, or the rest of the suite. The workflow's
 `CORPUS_RUN_TESTS` lists the modules that run the synthetic collection through
 the engine, which take about half the suite's time, and `CT_DEFACING_RUN_TEST`
 and `CT_DEFACING_REVIEW_TEST` name the two of them that each run alone: the two
@@ -262,14 +266,24 @@ halves of the CT defacing runs, which share their helpers in
 `tests/dicom/_ct_defacing_runs.py`. The `ct-defacing` part runs
 `test_deidentify_ct_defacing_run.py`, the `ct-defacing-reviews` part runs
 `test_deidentify_ct_defacing_review_runs.py`, the `corpus-runs` part runs the
-other listed modules, and the `others` part runs every other test by passing
-each listed module to `--ignore`, so a new module runs in `others` until it is
-listed, and every test runs in exactly one of the four parts. A listed module
-that no longer exists, a CT defacing module that is not in the list, the same
-module named for both CT defacing parts, or an empty remaining corpus selection
-fails every part before pytest starts, and a contract test checks that each
-listed module exists and is listed once. The three corpus parts read no
-downloaded data, so they skip the data cache. Its key ends in the job's ID,
+other listed modules, the `deidentify-a-o` part runs every other
+`tests/dicom/test_deidentify_*.py` module whose name goes on with a letter from
+`a` to `o`, and the `others` part runs every other test by passing each module
+of the other parts to `--ignore`. One glob, `test_deidentify_[abcdefghijklmno]*.py`,
+gives `deidentify-a-o` its modules and `others` its ignores, so a new
+de-identification module runs in the part its name gives it, any other new
+module runs in `others` until it is listed, and every test runs in exactly one
+of the five parts. The letters are listed rather than written as a range, which
+can match capitals under some locales. The cut at `p` halved the remaining
+time: on 7 November 2026, locally, the remaining modules' summed test time was
+1,133 seconds in `deidentify-a-o` and 1,167 seconds in `others`. A listed
+module that no longer exists, a CT defacing module that is not in the list,
+the same module named for both CT defacing parts, or an empty remaining corpus
+or `deidentify-a-o` selection fails every part before pytest starts, and a
+contract test checks that each listed module exists and is listed once. The
+three corpus parts and `deidentify-a-o` read no downloaded data, as the
+`pydicom-versions` job's de-identification tests do not, so they skip the data
+cache. Its key ends in the job's ID,
 so every part and cell of a job on one OS shares it, and a part that saved it
 without the data would leave the others re-downloading. Move a module between
 the corpus parts, or a group of runs between the two CT defacing modules, when
@@ -277,13 +291,17 @@ the `--durations` reports show one part taking much longer than another; each
 CT defacing module makes the runs that its own tests review, so that no run is
 made in both. The corpus selection was split this way on 5 November 2026,
 when more Structured Reports in the synthetic corpus took the combined
-corpus part past 30 minutes on Ubuntu, and the CT defacing runs were halved on
-6 November 2026, when they alone reached 30 minutes on Ubuntu.
+corpus part past 30 minutes on Ubuntu, the CT defacing runs were halved on
+6 November 2026, when they alone reached 30 minutes on Ubuntu, and the
+`others` part was halved on 7 November 2026, when it took 23 to 25 minutes on
+Ubuntu, and 29:38 at the dependency floors on a pull request. Move the cut to
+another letter when the `--durations` reports show one of these two parts
+taking much longer than the other.
 
-The run at the dependency floors runs in the same four parts. Each part
+The run at the dependency floors runs in the same five parts. Each part
 retains the 30-minute job limit, two pytest workers and the 900-second
-per-test limit. Only `others` uses the data cache. All four JUnit reports must
-arrive and all four parts must pass; the required summary continues to depend
+per-test limit. Only `others` uses the data cache. All five JUnit reports must
+arrive and all five parts must pass; the required summary continues to depend
 on the whole reusable unit-test workflow.
 
 Each cell's parts upload their reports as `junit-py<python>-<part>-<os>`, such
@@ -294,7 +312,7 @@ job combines each cell's parts into `junit-<os>-<python>`, such as
 `junit-ubuntu-latest-3.14`, the report that the release's requirements matrix
 reads for that environment. It writes no report for a cell if one of its
 parts' reports is missing or a test case ran in two parts. Since every cell
-runs four jobs, a full-matrix run starts twelve macOS unit-test jobs, and GitHub
+runs five jobs, a full-matrix run starts fifteen macOS unit-test jobs, and GitHub
 runs at most five macOS jobs at once on its Free, Pro, and Team plans, so some
 parts may queue for a runner; the queue does not count towards a job's time
 limit.
@@ -318,15 +336,15 @@ if that is not the one requested. Actual executions upload JUnit reports as
 `junit-pydicom-minimum` and `junit-pydicom-latest`; reused evidence has no copied
 or synthetic JUnit. Each role uploads a coverage manifest naming its requested
 version and evidence source. The normal reference cell records its imported
-versions and checkout revision: each of its four parts records the pydicom and
+versions and checkout revision: each of its five parts records the pydicom and
 Python versions it imported, and the `combined-report` job records the
-combined evidence only when all four parts passed on the checked-out commit and
+combined evidence only when all five parts passed on the checked-out commit and
 imported the same pydicom, which must match the lock, under Python 3.14. The
 parts may run different 3.14 patch releases, since each runner image carries
 its own while GitHub rolls out a new one, and the evidence records each part's.
 It explicitly requires both metadata and JUnit before upload. Reuse is
-established only when the whole unit-test workflow succeeds, including both
-parts, the `combined-report` jobs, and both compatibility jobs.
+established only when the whole unit-test workflow succeeds, including every
+part, the `combined-report` jobs, and both compatibility jobs.
 Lookup, planning, metadata and upload failures fail the workflow. Reuse adds
 no test run: `combined-report`, the only job after the test jobs, combines
 reports and runs no tests.
@@ -344,7 +362,9 @@ For each, on Ubuntu with Python 3.14, it installs only that extra and the
 another feature skip themselves when its packages are missing. The `dicom`
 extra's tests run in the same `ct-defacing`, `ct-defacing-reviews`,
 `corpus-runs`, and `others` parts as the unit-test matrix, on four runners, since together they can reach the
-30-minute limit on a slow runner. It uploads a JUnit report per extra as `junit-extra-<extra>`, and
+30-minute limit on a slow runner. It has no `deidentify-a-o` part: its
+`others` part holds only `tests/dicom` and took 15 minutes on 6 November 2026,
+so a fifth runner would buy nothing it needs. It uploads a JUnit report per extra as `junit-extra-<extra>`, and
 per part for `dicom` as `junit-extra-dicom-<part>`, and runs alongside both the
 quick and full matrices.
 
@@ -375,8 +395,8 @@ Comprehensive testing beyond unit tests.
     generated files unchanged (exported requirements, `dependency-extra.txt`,
     `pyproject.hash`, `_version.py`); this check reports even when the wheel
     checks fail
-- **Triggers**: Merge groups, main pushes, `full-test`, or a PR that changes
-  dependency or build metadata, `ci.yml`, `.github/actions/`, `.github/scripts/`,
+- **Triggers**: Merge groups, nightly and manual runs, `full-test`, or a PR
+  that changes dependency or build metadata, `ci.yml`, `.github/actions/`, `.github/scripts/`,
   `integration-tests.yml` or `examples/`, or a symlink or submodule
   select integration checks. On PRs, doctests/examples, slow tests, tooling and
   packaging follow their own inputs as listed in the selection table above;
@@ -386,7 +406,7 @@ Comprehensive testing beyond unit tests.
 SQL Server integration tests for Mosaiq database functionality.
 
 - **Service**: SQL Server 2022 container
-- **Triggers**: Merge groups, main pushes, database or shared code changes,
+- **Triggers**: Merge groups, nightly and manual runs, database or shared code changes,
   dependency metadata or shared CI configuration, or `database` / `full-test`
   labels
 - **Features**: Waits for SQL Server to accept connections, then runs the tests once;
@@ -454,7 +474,7 @@ Publishes to PyPI behind quality gates.
   their result, and renders the de-identification requirements-to-tests matrix
   with `pymedphys dev deid-matrix --check` from the JUnit report of every
   environment in the unit-test matrix; each environment reports through its
-  four parts' combined report. It fails when a traced test failed, was
+  five parts' combined report. It fails when a traced test failed, was
   skipped, or did not run in every environment, or when an environment's
   report is missing, and still writes the matrix. Once the build has passed,
   `upload-deid-matrix`, which runs no repository code, attaches the matrix to
@@ -647,6 +667,48 @@ Courtesy of the U.S. National Library of Medicine.
   `face-validation-vhp.json`, `commit.txt`, and renders of each head.
   The series themselves are never cached or uploaded
 
+#### `face-validation-keating.yml`
+
+Checks the face block finder and CT defacing of the Clean Recognizable Visual
+Features Option on Steven Keating's cranial CT, which he released on Zenodo
+under CC0 1.0 with his approval (see
+[Check the face block against HaN-Seg](deidentification-face-validation.md)).
+
+- **Triggers**: manually only
+- **Steps**: installs the project with the `user` extra, downloads the
+  record's ZIP file from Zenodo, checks its size and MD5 against the
+  record's, and runs
+  `python -m pymedphys._dicom.deidentify.face_validation_command keating`,
+  which refuses the file unless its SHA-256 and each axial series' file count
+  and digest are those that the check pins. Its job can only read the
+  repository
+- **Results**: the job summary shows `face-validation-keating.md`, and the
+  `face-validation-keating-results` artefact, kept for 90 days, holds it with
+  `face-validation-keating.json`, `commit.txt`, and renders of each series.
+  The ZIP file itself is never cached or uploaded
+
+#### `face-validation-pddca.yml`
+
+Checks the face block and the air written there against the optic nerve and
+organ masks of the PDDCA 1.4.1 data set, re-hosted on Zenodo in three parts
+(see
+[Check the face block against HaN-Seg](deidentification-face-validation.md)).
+
+- **Triggers**: manually only
+- **Steps**: installs the project with the `user` extra, downloads the three
+  ZIP files from Zenodo, checks each one's size and MD5 against its record's,
+  and runs
+  `python -m pymedphys._dicom.deidentify.face_validation_command pddca`
+  through `.github/scripts/run_redacted.py`, as `face-validation.yml` runs
+  the HaN-Seg check; the command also checks each file's SHA-256. Its job can
+  only read the repository
+- **Results**: the job summary shows `face-validation.md`, and the
+  `face-validation-pddca-results` artefact, kept for 90 days, holds it with
+  `face-validation.json` and `commit.txt`. They hold only counts, codes,
+  digests, versions, and the engine's settings. PDDCA's images are of real
+  patients, so the data set is never cached or uploaded, and nothing else read
+  from it leaves the runner
+
 #### `pixel-text-validation.yml`
 
 Counts the regions that the text detector of the Clean Pixel Data Option finds
@@ -688,33 +750,45 @@ each file has its pinned SHA-256.
   in bytes, and hash result, `unreachable` with only the kind of failure where
   a download fails. The job fails unless every pin matches
 
-#### `text-detector-evaluation-idc.yml`
+#### `text-detector-evaluation.yml`
 
 Measures the text detector of the Clean Pixel Data Option, or a candidate
-model, on openly licensed series of NCI's Imaging Data Commons, with synthetic
-text burned into copies of their frames in memory.
+model, on openly licensed series of real patients in NCI's Imaging Data
+Commons, among them the seven collections that D-056 takes from TCIA, and on
+folders of pinned archives on Zenodo and in the University of Sydney's data
+store, with synthetic text burned into copies of their frames in memory; and
+reports the synthetic phantoms and IDC's allow-listed phantom collections in
+full, with crops.
 
-- **Triggers**: manually only, with the model, today's settings or its
-  publishers', the part of the split, and the most series from one collection
-  and in all
-- **Steps**: one job, which installs the project with the `user` and
-  `text-detection` extras, then pyarrow, OpenCV, and s5cmd from
-  `.github/text-evaluation/requirements.txt` with `--require-hashes --no-deps`;
-  none is a dependency of PyMedPhys. It downloads the pinned wheel of
-  idc-index-data and checks its SHA-256, selects series from IDC's index by
-  the vetted collections, licences, and image modalities, downloads them from
-  IDC's public buckets with s5cmd, and runs
+- **Triggers**: manually only, with the jobs to run (`all`, `patients`, or
+  `phantoms`), the model, today's settings or its publishers', the part of
+  the split, and the most series or folders from one collection and in all
+  for each source
+- **Steps**: two jobs, each of which installs the project with the `user`
+  and `text-detection` extras, then pyarrow, OpenCV, and s5cmd from
+  `.github/text-evaluation/requirements.txt` with `--require-hashes
+  --no-deps`; none is a dependency of PyMedPhys. Each downloads the pinned
+  wheel of idc-index-data, checks its SHA-256, selects series from IDC's
+  index, downloads them from IDC's public buckets with s5cmd, and runs
   `python -m pymedphys._dicom.deidentify.text_evaluation_command` through
   `.github/scripts/run_redacted.py`, with its standard output and error, and
-  s5cmd's, in files on the runner. At a model's publishers' settings it also
-  counts what OpenCV's resize alone changes. Its job can only read the
-  repository and holds no secret
-- **Results**: the job's summary shows the counts-only summary. The
-  `text-detector-evaluation-idc` artefact, kept for 90 days, holds it with
-  the per-case report of each series by its public identifiers, licence, and
-  DOI, the assessment against the chosen criteria, the selection's counts by
-  collection, and `commit.txt`. No image, crop, or pixel value is written, and
-  the series are never cached or uploaded
+  s5cmd's, in files on the runner. The patients' job selects by the vetted
+  collections, licences, and image modalities, fetches the archive folders,
+  measures them all as received and as converted to Legacy Converted
+  Enhanced images, and, at a model's publishers' settings, counts what
+  OpenCV's resize alone changes. The phantoms' job selects IDC's phantom
+  collections alone and runs `phantom-report`, which refuses any other
+  collection. Each job can only read the repository and holds no secret
+- **Results**: each job's summary shows its counts-only summary. The
+  `text-detector-evaluation-patients` artefact, kept for 90 days, holds it
+  with the per-case report of each IDC series by its public identifiers,
+  licence, and DOI, the assessment against the chosen criteria, the
+  selection's and the archives' counts by collection, and `commit.txt`; no
+  image, crop, or pixel value of a patient is written, and the series are
+  never cached or uploaded. The `text-detector-evaluation-phantoms`
+  artefact, kept for 90 days, holds the phantoms' summary, each case's full
+  report with PNG previews under `phantoms/`, its index and
+  `ATTRIBUTION.md`, the selection's counts, and `commit.txt`
 
 ### AI Assistance
 
@@ -783,29 +857,49 @@ GitHub builds a prospective integrated state against the current `main` and
 earlier queued PRs, then starts `ci.yml` and `security.yml` on `merge_group`.
 The selector uses the quick Ubuntu/Python 3.14 unit matrix and enables every
 other check, including integration and database tests, the documentation build,
-and all security scans. Main pushes and releases run the full 12-environment
-unit matrix. Platform failures first discovered on main can be reverted or
-corrected there; the maintainers accept that cost to avoid duplicating the full
-matrix immediately before and after each merge.
+and all security scans. The nightly run on `main` and releases run the full
+12-environment unit matrix. Platform failures first discovered on main can be
+reverted or corrected there; the maintainers accept that cost to avoid
+running the full matrix before each merge and to keep it from delaying the
+merges after it.
 `CI Summary` and `Security Summary` must pass on that state before it merges.
 The queue may test up to three prospective states concurrently and merges PRs
 individually with merge commits.
 
 ## Main Branch Workflow
 
-On merge to main:
+A push to `main` starts no CI run. The merge queue updates `main` to the very
+commit its merge group tested, so a run on push would repeat every check of
+that run except the full unit-test matrix. Each merge used to start such a
+run, with the full matrix, and its jobs took runners ahead of the next merge
+group, which then reached the queue's two-hour limit for its checks. The
+security scan still runs on each push to `main`.
 
-A newer main push cancels an obsolete in-flight CI run, so the newest state
-starts its full checks without waiting for earlier commits. Pull request label
-changes queue behind their current run.
+Instead, `ci.yml` runs on the latest commit of `main` every night at 15:37 UTC
+(02:37 in Sydney during daylight saving), whether or not `main` changed, so
+changes to runner images and other outside inputs also show in the next
+nightly run. GitHub can start a scheduled run late when Actions is busy, and
+can drop it under heavy load, so the schedule is a nightly target rather than
+a deadline; start a manual run when a result is needed sooner. Each nightly
+run starts:
 
 ```
-Every job except docs-check (Read the Docs publishes main), including:
+Every job of ci.yml, including:
 ├── unit-tests         # Full matrix (all OS + Python versions)
 ├── integration-tests  # All extended tests
 ├── mosaiq-db-tests    # Database tests
-└── security           # Full security scan
+└── docs-check         # Documentation build
 ```
+
+A failure opens or comments on the issue titled "CI failed on main". To run the
+same checks at another time, start the CI workflow manually from the
+**Actions** tab, on `main` or on any branch; a run on another branch reports
+no issue. A running nightly or manual run is never cancelled by a later one:
+the later run waits. GitHub keeps only the newest waiting run in a
+concurrency group, though, so a third run on the same branch replaces the one
+already waiting. Merge groups test the quick unit matrix, so a platform
+failure can reach `main` and show first in the next nightly run; correct or
+revert it there.
 
 ## Required Secrets
 
@@ -955,11 +1049,12 @@ request broader coverage and trigger another CI run.
 ### What a successful summary means
 
 - Ordinary PRs use Ubuntu and Python 3.14 when unit tests are selected. The
-  full OS/Python matrix runs on main pushes, releases and `full-test` PRs.
-  Merge groups use the quick unit matrix and run every integration and database
-  check. Integration tests also run on PRs that change their inputs. A green
-  merge-group summary therefore establishes the selected unit suite on
-  Ubuntu/Python 3.14; main supplies the comprehensive platform validation.
+  full OS/Python matrix runs nightly on `main`, on manual runs, on releases
+  and on `full-test` PRs. Merge groups use the quick unit matrix and run every
+  integration and database check. Integration tests also run on PRs that
+  change their inputs. A green merge-group summary therefore establishes the
+  selected unit suite on Ubuntu/Python 3.14; the nightly run on `main`
+  supplies the comprehensive platform validation.
 - Pyright is blocking. MyPy remains optional through `continue-on-error`.
 - Dependency vulnerabilities are advisory on PRs, pushes and merge groups.
   Requiring either `Dependency Audit` or `Security Summary` does not turn
