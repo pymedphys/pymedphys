@@ -243,8 +243,8 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "48-rt-ion-beams-record.dcm",
         "49-rt-brachy-record.dcm",
         "50-rt-treatment-summary-record.dcm",
-        "55-seg-surface.dcm",
         "53-nm.dcm",
+        "55-seg-surface.dcm",
     ]
     assert [file.manifest.iod for file in corpus.files] == [
         "CT Image",
@@ -285,8 +285,8 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "RT Ion Beams Treatment Record",
         "RT Brachy Treatment Record",
         "RT Treatment Summary Record",
-        "Surface Segmentation",
         "Nuclear Medicine Image",
+        "Surface Segmentation",
     ]
     assert corpus_module.STRUCTURED_REPORT_FILES == tuple(
         file.name for file in corpus.files[-26:-16] + corpus.files[-14:-6]
@@ -302,8 +302,8 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         corpus_module.BRACHY_TREATMENT_RECORD_FILE,
         corpus_module.TREATMENT_SUMMARY_RECORD_FILE,
     ) == tuple(file.name for file in corpus.files[-4:-2])
-    assert corpus_module.SURFACE_SEGMENTATION_FILE == corpus.files[-2].name
-    assert corpus_module.NM_FILE == corpus.files[-1].name
+    assert corpus_module.NM_FILE == corpus.files[-2].name
+    assert corpus_module.SURFACE_SEGMENTATION_FILE == corpus.files[-1].name
     # Every IOD of the first supported release.
     assert {file.manifest.iod for file in corpus.files} == scope.SUPPORTED_IODS
 

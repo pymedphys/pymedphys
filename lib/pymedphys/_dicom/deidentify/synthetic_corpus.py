@@ -20,7 +20,7 @@ fictitious patient and study, with one Frame of Reference: three CT Image
 slices, an RT Structure Set that references the CT series and slices, an RT
 Plan that references the structure set and the dose, an RT Dose that
 references the plan, a second RT Dose of the plan for review (below), one
-instance of each of thirty-six other IODs, and two of the Segmentation
+instance of each of thirty-seven other IODs, and two of the Segmentation
 IOD, one of each of its SOP Classes, each in a series of its own, and a
 second X-Ray Radiation Dose SR, of a CT scan.
 The MR Image, PET Image, and Nuclear Medicine Image instances reference the
@@ -1396,6 +1396,9 @@ _SPECS = (
         PLAN,
         targets=((_REFERENCED_TREATMENT_RECORD_SEQUENCE, BRACHY_TREATMENT_RECORD),),
     ),
+    # The Nuclear Medicine image references the first CT slice, as the PET
+    # Image does, as a SPECT volume reconstructed with a SPECT/CT's CT would.
+    _Spec(NM_FILE, NM_IMAGE_STORAGE, NM, NM_SERIES, CT_SLICES[0]),
     # The Surface Segmentation, of a mesh in the CT slices' space, which
     # references the CT series and its first slice, from which its surface
     # was generated.
@@ -1406,9 +1409,6 @@ _SPECS = (
         SURFACE_SEGMENTATION_SERIES,
         CT_SLICES[0],
     ),
-    # The Nuclear Medicine image references the first CT slice, as the PET
-    # Image does, as a SPECT volume reconstructed with a SPECT/CT's CT would.
-    _Spec(NM_FILE, NM_IMAGE_STORAGE, NM, NM_SERIES, CT_SLICES[0]),
 )
 
 
@@ -1433,10 +1433,10 @@ def build_corpus() -> SyntheticCorpus:
         the Key Object Selection Document, Mammography CAD SR, Chest CAD SR,
         Colon CAD SR, Procedure Log, Spectacle Prescription Report, Macular
         Grid Thickness and Volume Report, and Waveform Annotation SR; the RT
-        Ion Plan and RT Ion Beams Treatment Record; the RT Brachy Treatment
-        Record and RT Treatment Summary Record; the Surface Segmentation;
-        and the Nuclear Medicine Image. Two builds give the same bytes
-        and the same manifest.
+        Ion Plan and RT Ion Beams Treatment Record; the RT Brachy
+        Treatment Record and RT Treatment Summary Record; the Nuclear
+        Medicine Image; and the Surface Segmentation. Two builds give the
+        same bytes and the same manifest.
     """
     markers = _Markers()
     files: list[CorpusFile] = []
