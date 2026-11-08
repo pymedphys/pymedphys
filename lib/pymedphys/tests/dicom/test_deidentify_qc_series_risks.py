@@ -433,6 +433,7 @@ def test_a_run_over_the_synthetic_corpus_lists_its_volumes_and_rt_image(tmp_path
     # BINARY and LABELMAP, is in a series of its own and can trace the face.
     # The Nuclear Medicine image, a SPECT volume of two frames, can show it
     # too, and is in a series of its own.
+    # and so can the Parametric Map, whose map of the head shows its outline.
     volumes = [
         ("ct-volume", released("CT Image")),
         ("rt-dose-volume", released("RT Dose", held=True)),
@@ -445,11 +446,13 @@ def test_a_run_over_the_synthetic_corpus_lists_its_volumes_and_rt_image(tmp_path
         ("pet-volume", released("Legacy Converted Enhanced PET Image")),
         ("rt-image", released("RT Image")),
         *(("segmentation", [position]) for position in released("Segmentation")),
+        ("parametric-map", released("Parametric Map")),
         ("nm-image", released("Nuclear Medicine Image")),
     ]
     assert [len(positions) for _, positions in volumes] == [
         2,
         2,
+        1,
         1,
         1,
         1,
