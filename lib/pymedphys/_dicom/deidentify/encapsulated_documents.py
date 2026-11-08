@@ -25,20 +25,34 @@ frames are (D-037, D-048).
 
 :func:`rendered_pages` renders each page with PDFium, through pypdfium2, at
 :data:`RENDER_DPI`, to 8-bit RGB on white, with the annotations that a
-viewer draws, such as filled-in form fields' appearances. PDFium parses
-the document, a format of many parts that a crafted file can exploit, so
-it runs in the decoding child (:func:`.isolated_decoding.run`), as GDCM
-and OpenJPEG do, and what the child sends back is checked against the
-sizes it gave before any page is rendered. The pypdfium2 wheels are built
-without V8 or XFA, so no script in the document runs, and no form-filling
-environment is started. Pages of different sizes are padded with white, at
-their right and bottom, to the largest width and height, so that every
-page is a frame of one Rows and Columns, as a QC pack records them.
+viewer draws, and with the saved appearances of its AcroForm fields, such
+as a filled-in text field's value and a ticked check box. Those fields are
+widget annotations, which PDFium draws only through a form-filling
+environment (``FPDF_FFLDraw``, fpdf_formfill.h), so one is started for a
+document with an AcroForm; its document and page actions are never run,
+and the pypdfium2 wheels are built without V8 or XFA, so no script in the
+document can run. PDFium parses the document, a format of many parts that
+a crafted file can exploit, so it runs in the decoding child
+(:func:`.isolated_decoding.run`), as GDCM and OpenJPEG do, and what the
+child sends back is checked against the sizes it gave before any page is
+rendered.
+
+A page is rendered at its physical size: :data:`RENDER_DPI` pixels to the
+inch of the page as printed, which is its size in default user space units,
+1/72 inch each, multiplied by its UserUnit (ISO 32000-1 Table 30). PDFium
+ignores UserUnit, which it does not expose, so the child reads it from the
+page as PDFium writes it alone into a new document, where every name is
+written without escapes and no object is in an object stream. Pages of
+different sizes are padded with white, at their right and bottom, to the
+largest width and height, so that every page is a frame of one Rows and
+Columns, as a QC pack records them.
 
 A document is refused, with
 :attr:`~.reasons.TransformReason.UNCLEANABLE_DOCUMENT`, where it is
 encrypted, which includes one that opens without a password but restricts
-what may be done with it, has no page or more than :data:`MAX_PAGES`,
+what may be done with it, holds an XFA form, whose content PDFium cannot
+draw without XFA, gives a page a UserUnit that is not one positive number,
+has no page or more than :data:`MAX_PAGES`,
 holds more than :data:`MAX_DOCUMENT_BYTES`, or a page larger than
 :data:`MAX_PAGE_PIXELS` once rendered, would need more than
 :data:`MAX_RENDERED_BYTES` once its pages are padded, or cannot be opened or
@@ -50,7 +64,7 @@ pypdfium2 is not installed or the child cannot be run.
 writer, and returns its pages' samples only where it has the pages
 expected and each holds one 8-bit DeviceRGB image, compressed with
 FlateDecode alone, of the page's size in pixels, and nothing else: no text
-object or character, annotation, or attached file. A written document is
+object or character, annotation, form, or attached file. A written document is
 released only where those samples are the pages that the reviewer approved
 (:func:`.document_cleaning.document_problem`).
 """
@@ -60,7 +74,9 @@ from __future__ import annotations
 import base64
 import binascii
 import importlib.util
+import io
 import math
+import re
 from collections.abc import Collection
 
 from pymedphys._imports import numpy as np
@@ -98,6 +114,15 @@ _POINTS_PER_INCH = 72
 # page's size up to whole pixels. The page is drawn smaller by a part in a
 # trillion, which no pixel shows.
 _SCALE = RENDER_DPI / _POINTS_PER_INCH * (1 - 2**-40)
+# A UserUnit key, and one with its value a number (ISO 32000-1 Sections
+# 7.3.3 and 7.3.5), as PDFium writes them: names without escapes, and a
+# number's digits followed by white space or a delimiter. A UserUnit that
+# is anything else, such as an indirect reference, refuses the document.
+_USER_UNIT = re.compile(rb"/UserUnit(?![^\x00\t\n\x0c\r ()<>\[\]{}/%])")
+_USER_UNIT_NUMBER = re.compile(
+    rb"/UserUnit[\x00\t\n\x0c\r ]*([+-]?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+))"
+    rb"(?=[\x00\t\n\x0c\r ]*[/>])"
+)
 
 
 class DocumentRefused(Exception):
@@ -278,31 +303,87 @@ def _samples(sent: object, size: int) -> bytes:
 
 
 def _opened(document: bytes):
-    """Return the document opened by PDFium, refusing an encrypted one.
+    """Return the document opened by PDFium, with a form-filling environment
+    where it has an AcroForm, refusing an encrypted one or an XFA form.
+
+    The environment is started before any page is loaded, as pypdfium2
+    requires for its fields to be drawn. No document action is run: pypdfium2
+    runs none unless asked, and the build has no JavaScript engine.
 
     Raises
     ------
     ValueError
-        If the document is encrypted, which the child returns only as a
-        failure.
+        If the document is encrypted or holds an XFA form, which the child
+        returns only as a failure.
     """
     from pymedphys._imports import pypdfium2  # pylint: disable = import-outside-toplevel
 
+    raw = pypdfium2.raw
     pdf = pypdfium2.PdfDocument(document)
-    # -1 where the document has no security handler, that is, is not
-    # encrypted (fpdf_doc.h).
-    if pypdfium2.raw.FPDF_GetSecurityHandlerRevision(pdf) != -1:
+    try:
+        # -1 where the document has no security handler, that is, is not
+        # encrypted (fpdf_doc.h).
+        if raw.FPDF_GetSecurityHandlerRevision(pdf) != -1:
+            raise ValueError("encrypted")
+        if pdf.get_formtype() not in (raw.FORMTYPE_NONE, raw.FORMTYPE_ACRO_FORM):
+            raise ValueError("xfa")
+        pdf.init_forms()
+    except BaseException:
         pdf.close()
-        raise ValueError("encrypted")
+        raise
     return pdf
 
 
-def _rendered_size(page) -> tuple[int, int]:
-    """The rows and columns of a page once rendered at :data:`RENDER_DPI`,
-    as :meth:`pypdfium2.PdfPage.render` sizes its bitmap."""
+def _saved(pdf) -> bytes:
+    """The document as PDFium writes it whole, not as an update."""
+    from pymedphys._imports import pypdfium2  # pylint: disable = import-outside-toplevel
+
+    buffer = io.BytesIO()
+    pdf.save(buffer, flags=pypdfium2.raw.FPDF_NO_INCREMENTAL)
+    return buffer.getvalue()
+
+
+def _user_unit(pdf, index: int) -> float:
+    """The page's UserUnit, 1 where it has none.
+
+    The page is written alone into a new document, so that only its own
+    dictionary, and the resources and annotations it uses, can hold the key.
+    Each UserUnit found must be the same positive, finite number.
+
+    Raises
+    ------
+    ValueError
+        If a UserUnit is anything else.
+    """
+    from pymedphys._imports import pypdfium2  # pylint: disable = import-outside-toplevel
+
+    alone = pypdfium2.PdfDocument.new()
+    try:
+        # Raises where PDFium cannot import the page.
+        alone.import_pages(pdf, [index])
+        saved = _saved(alone)
+    finally:
+        alone.close()
+    keys = _USER_UNIT.findall(saved)
+    if not keys:
+        return 1.0
+    numbers = _USER_UNIT_NUMBER.findall(saved)
+    units = {float(number) for number in numbers}
+    if len(numbers) != len(keys) or len(units) != 1:
+        raise ValueError("user unit")
+    (unit,) = units
+    if not (math.isfinite(unit) and unit > 0):
+        raise ValueError("user unit")
+    return unit
+
+
+def _rendered_size(page, unit: float) -> tuple[int, int]:
+    """The rows and columns of a page of UserUnit ``unit`` once rendered at
+    :data:`RENDER_DPI`, as :meth:`pypdfium2.PdfPage.render` sizes its bitmap
+    at scale ``_SCALE * unit``."""
     return (
-        math.ceil(page.get_height() * _SCALE),
-        math.ceil(page.get_width() * _SCALE),
+        math.ceil(page.get_height() * (_SCALE * unit)),
+        math.ceil(page.get_width() * (_SCALE * unit)),
     )
 
 
@@ -319,9 +400,10 @@ def _page_sizes(document: bytes) -> list[list[int]]:
         sizes = []
         count = len(pdf)
         for index in range(count):
+            unit = _user_unit(pdf, index)
             page = pdf[index]
             try:
-                sizes.append(list(_rendered_size(page)))
+                sizes.append(list(_rendered_size(page, unit)))
             finally:
                 page.close()
         return sizes
@@ -339,13 +421,16 @@ def _page_rendered(document: bytes, index: int, rows: int, columns: int) -> str:
     """
     pdf = _opened(document)
     try:
+        unit = _user_unit(pdf, index)
         page = pdf[index]
         try:
-            if _rendered_size(page) != (rows, columns):
+            if _rendered_size(page, unit) != (rows, columns):
                 raise ValueError("size")
+            # Annotations are drawn as a viewer draws them, and the fields
+            # of an AcroForm, which are not, through its environment.
             bitmap = page.render(
-                scale=_SCALE,
-                may_draw_forms=False,
+                scale=_SCALE * unit,
+                may_draw_forms=True,
                 draw_annots=True,
                 rev_byteorder=True,
                 fill_color=(_WHITE, _WHITE, _WHITE, _WHITE),
@@ -365,11 +450,13 @@ def _page_rendered(document: bytes, index: int, rows: int, columns: int) -> str:
 
 def _image_only_pages(document: bytes) -> int:
     """Return how many pages an image-only PDF has, once checked to attach
-    no file."""
+    no file and hold no form."""
     pdf = _opened(document)
     try:
         if pdf.count_attachments():
             raise ValueError("attachments")
+        if pdf.formenv is not None:
+            raise ValueError("form")
         return len(pdf)
     finally:
         pdf.close()

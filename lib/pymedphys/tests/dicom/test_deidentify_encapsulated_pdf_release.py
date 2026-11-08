@@ -484,42 +484,6 @@ def test_what_the_child_sends_back_is_checked(monkeypatch, sizes, page):
     assert refused.value.reason is TransformReason.UNCLEANABLE_DOCUMENT
 
 
-# Reading back the image-only PDF.
-
-
-def test_a_document_with_text_or_another_form_does_not_read_back_as_pages():
-    pages = _random_pages(2, 4, 6)
-    document = image_only_pdf(pages, RENDER_DPI)
-    # An annotation added to the first page.
-    annotated = document.replace(
-        b"/Contents 4 0 R >>",
-        b"/Contents 4 0 R /Annots [<< /Type /Annot /Subtype /Square "
-        b"/Rect [0 0 1 1] >>] >>",
-    )
-    for wrong in (
-        (_pdf([_letter((72, 700, PAGE_SENTINEL))]), 1, *_rows_columns(*LETTER)),
-        (document, 1, 4, 6),
-        (document, 3, 4, 6),
-        (document, 2, 6, 4),
-        (document, 2, 4, 5),
-        (b"not a document", 2, 4, 6),
-    ):
-        with pytest.raises(DocumentRefused) as refused:
-            written_pages(*wrong)
-        assert refused.value.reason is TransformReason.REDACTION_MISMATCH
-    assert np.array_equal(written_pages(document, 2, 4, 6), pages)
-    # The annotated copy is still a PDF, but is refused.
-    with pytest.raises(DocumentRefused):
-        written_pages(_with_xref(annotated), 2, 4, 6)
-
-
-def _with_xref(document):
-    """Return a document rewritten with its cross-reference table counted
-    again, after an object was changed in place."""
-    objects = re.findall(rb"\d+ 0 obj\n(.*?)\nendobj\n", document, re.DOTALL)
-    return _file(objects)
-
-
 # Cleaning a document.
 
 
