@@ -41,8 +41,9 @@ A page is rendered at its physical size: :data:`RENDER_DPI` pixels to the
 inch of the page as printed, which is its size in default user space units,
 1/72 inch each, multiplied by its UserUnit (ISO 32000-1 Table 30). PDFium
 ignores UserUnit, which it does not expose, so the child reads it from the
-page as PDFium writes it alone into a new document, where every name is
-written without escapes and no object is in an object stream. Pages of
+page's own dictionary as PDFium writes the page alone into a new document,
+by that file's structure (:func:`.pdf_syntax.page_user_unit`), never from
+an annotation's text or any other string or stream. Pages of
 different sizes are padded with white, at their right and bottom, to the
 largest width and height, so that every page is a frame of one Rows and
 Columns, as a QC pack records them.
@@ -76,13 +77,13 @@ import binascii
 import importlib.util
 import io
 import math
-import re
 from collections.abc import Collection
 
 from pymedphys._imports import numpy as np
 
 from . import isolated_decoding
 from .file_layout import ElementPath
+from .pdf_syntax import page_user_unit
 from .policy import CLEAN_PIXEL_DATA
 from .reasons import TransformReason
 
@@ -114,15 +115,6 @@ _POINTS_PER_INCH = 72
 # page's size up to whole pixels. The page is drawn smaller by a part in a
 # trillion, which no pixel shows.
 _SCALE = RENDER_DPI / _POINTS_PER_INCH * (1 - 2**-40)
-# A UserUnit key, and one with its value a number (ISO 32000-1 Sections
-# 7.3.3 and 7.3.5), as PDFium writes them: names without escapes, and a
-# number's digits followed by white space or a delimiter. A UserUnit that
-# is anything else, such as an indirect reference, refuses the document.
-_USER_UNIT = re.compile(rb"/UserUnit(?![^\x00\t\n\x0c\r ()<>\[\]{}/%])")
-_USER_UNIT_NUMBER = re.compile(
-    rb"/UserUnit[\x00\t\n\x0c\r ]*([+-]?(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+))"
-    rb"(?=[\x00\t\n\x0c\r ]*[/>])"
-)
 
 
 class DocumentRefused(Exception):
@@ -346,14 +338,15 @@ def _saved(pdf) -> bytes:
 def _user_unit(pdf, index: int) -> float:
     """The page's UserUnit, 1 where it has none.
 
-    The page is written alone into a new document, so that only its own
-    dictionary, and the resources and annotations it uses, can hold the key.
-    Each UserUnit found must be the same positive, finite number.
+    PDFium writes the page alone into a new document, whole, from which
+    :func:`.pdf_syntax.page_user_unit` reads the UserUnit of that page's own
+    dictionary, by the file's structure.
 
     Raises
     ------
     ValueError
-        If a UserUnit is anything else.
+        If the UserUnit is not a positive, finite number, or the file
+        cannot be read so.
     """
     from pymedphys._imports import pypdfium2  # pylint: disable = import-outside-toplevel
 
@@ -364,17 +357,7 @@ def _user_unit(pdf, index: int) -> float:
         saved = _saved(alone)
     finally:
         alone.close()
-    keys = _USER_UNIT.findall(saved)
-    if not keys:
-        return 1.0
-    numbers = _USER_UNIT_NUMBER.findall(saved)
-    units = {float(number) for number in numbers}
-    if len(numbers) != len(keys) or len(units) != 1:
-        raise ValueError("user unit")
-    (unit,) = units
-    if not (math.isfinite(unit) and unit > 0):
-        raise ValueError("user unit")
-    return unit
+    return page_user_unit(saved)
 
 
 def _rendered_size(page, unit: float) -> tuple[int, int]:

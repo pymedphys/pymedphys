@@ -313,6 +313,7 @@ implementation = [
   "_dicom/deidentify/image_pdf.py",
   "_dicom/deidentify/imagecodecs_plugin.py",
   "_dicom/deidentify/instance_transform.py",
+  "_dicom/deidentify/pdf_syntax.py",
   "_dicom/deidentify/pixel_cleaning.py",
   "_dicom/deidentify/pixel_decoding.py",
   "_dicom/deidentify/pixel_region_rules.py",

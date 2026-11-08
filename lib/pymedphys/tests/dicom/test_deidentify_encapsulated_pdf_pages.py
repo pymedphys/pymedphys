@@ -215,6 +215,34 @@ def _unit_page(unit=b"", extra=()):
     )
 
 
+def _assert_printed_size(pages, written, unit, rows, columns, *, bar):
+    """The page written at the resolution is its size as printed, to within
+    the part of a pixel by which its last row and column were rounded up,
+    and, with ``bar``, :func:`_unit_page`'s bar, one inch long in default
+    units, is UserUnit inches long as printed, in the page rendered and in
+    the PDF written, to within the pixel at each end that its edges can blur
+    into."""
+    (media_box,) = re.findall(rb"/MediaBox \[([^\]]*)\]", written)
+    _, _, width, height = (float(value) for value in media_box.split())
+    pixel = 72 / RENDER_DPI
+    assert 612 * unit <= width < 612 * unit + pixel
+    assert 792 * unit <= height < 792 * unit + pixel
+    assert pages.shape == (1, rows, columns, 3)
+    if bar:
+        row = math.floor((792 - 710) * unit * RENDER_DPI / 72)
+        dark = np.flatnonzero(_dark(pages[0, row]))
+        drawn = dark[-1] - dark[0] + 1
+        assert abs(drawn - unit * RENDER_DPI) <= 2
+        assert abs(drawn * width / columns - 72 * unit) <= 2 * pixel
+
+
+# An annotation whose text quotes a UserUnit, away from the bar.
+_QUOTED_UNIT = (
+    b" /Annots [<< /Type /Annot /Subtype /Square /Rect [400 100 450 150] "
+    b"/Contents (/UserUnit 3/) >>]"
+)
+
+
 # Rendering.
 
 
@@ -237,6 +265,12 @@ def test_a_forms_saved_values_and_ticked_boxes_are_rendered_where_they_lie():
         # A reference to no object is null, as if the entry were absent
         # (ISO 32000-1 Section 7.3.10), and PDFium writes no entry for it.
         (1, _unit_page(b" /UserUnit 5 0 R")),
+        # A reference to a number.
+        (2, _unit_page(b" /UserUnit 5 0 R", [b"2"])),
+        # Beside an annotation whose text quotes another UserUnit.
+        (1, _unit_page(_QUOTED_UNIT)),
+        (1, _unit_page(_QUOTED_UNIT + b" /UserUnit 1")),
+        (2, _unit_page(_QUOTED_UNIT + b" /UserUnit 2")),
         # A page dictionary compressed in an object stream.
         (
             2,
@@ -245,7 +279,19 @@ def test_a_forms_saved_values_and_ticked_boxes_are_rendered_where_they_lie():
             ),
         ),
     ],
-    ids=["2", "2.5", "escaped", "1", "none", "dangling", "object-stream"],
+    ids=[
+        "2",
+        "2.5",
+        "escaped",
+        "1",
+        "none",
+        "dangling",
+        "reference",
+        "quoted-absent",
+        "quoted-default",
+        "quoted-2",
+        "object-stream",
+    ],
 )
 def test_a_page_is_rendered_and_written_at_its_physical_size(unit, document):
     pages = rendered_pages(document)
@@ -256,23 +302,14 @@ def test_a_page_is_rendered_and_written_at_its_physical_size(unit, document):
         math.ceil(8.5 * unit * RENDER_DPI),
     )
     assert pages.shape == (1, rows, columns, 3)
-    # Written at the resolution, the page is its size as printed, to within
-    # the part of a pixel by which its last row and column were rounded up.
-    written = image_only_pdf(pages, RENDER_DPI)
-    (media_box,) = re.findall(rb"/MediaBox \[([^\]]*)\]", written)
-    _, _, width, height = (float(value) for value in media_box.split())
-    pixel = 72 / RENDER_DPI
-    assert 612 * unit <= width < 612 * unit + pixel
-    assert 792 * unit <= height < 792 * unit + pixel
-    # The bar, one inch long in default units, is UserUnit inches long as
-    # printed, in the page rendered and in the PDF written, to within the
-    # pixel at each end that its edges can blur into.
-    if b"/Contents" in document:
-        row = math.floor((792 - 710) * unit * RENDER_DPI / 72)
-        dark = np.flatnonzero(_dark(pages[0, row]))
-        drawn = dark[-1] - dark[0] + 1
-        assert abs(drawn - unit * RENDER_DPI) <= 2
-        assert abs(drawn * width / columns - 72 * unit) <= 2 * pixel
+    _assert_printed_size(
+        pages,
+        image_only_pdf(pages, RENDER_DPI),
+        unit,
+        rows,
+        columns,
+        bar=b"/Contents" in document,
+    )
 
 
 @pytest.mark.parametrize(
@@ -280,7 +317,7 @@ def test_a_page_is_rendered_and_written_at_its_physical_size(unit, document):
     [
         _unit_page(b" /UserUnit 0"),
         _unit_page(b" /UserUnit -2"),
-        _unit_page(b" /UserUnit 5 0 R", [b"2"]),
+        _unit_page(b" /UserUnit 5 0 R", [b"(2)"]),
         _unit_page(b" /UserUnit (2)"),
         _file(
             [
@@ -302,7 +339,7 @@ def test_a_page_is_rendered_and_written_at_its_physical_size(unit, document):
     ids=[
         "unit-0",
         "unit-negative",
-        "unit-reference",
+        "unit-reference-to-string",
         "unit-string",
         "xfa",
         "xfa-static",
@@ -385,40 +422,74 @@ def _with_xref(document):
 # Previewed, reviewed, and released.
 
 
-def test_a_forms_saved_fields_are_previewed_reviewed_and_released(tmp_path):
+def _reviewed_and_released(directory, document):
+    """Run an Encapsulated PDF holding ``document`` twice, with no text
+    found: the first run holds it, a reviewer accepts it, and the second
+    releases it. Return the page as previewed, its review frame, and the
+    document released."""
     dataset = _encapsulated_pdf()
-    dataset.EncapsulatedDocument = _form_pdf()
-    dataset.EncapsulatedDocumentLength = len(dataset.EncapsulatedDocument)
-    _write(tmp_path / "source", {"form.dcm": synthetic.written(dataset)})
+    dataset.EncapsulatedDocument = document
+    dataset.EncapsulatedDocumentLength = len(document)
+    _write(directory / "source", {"document.dcm": synthetic.written(dataset)})
 
-    first = _run(tmp_path / "first", tmp_path / "source", _transform(finder=Finder(())))
+    first = _run(
+        directory / "first", directory / "source", _transform(finder=Finder(()))
+    )
     pack = first.qc_pack.parent
-    document = json.loads(first.qc_pack.read_text("utf-8"))
-    (entry,) = document["instances"]
+    held = json.loads(first.qc_pack.read_text("utf-8"))
+    (entry,) = held["instances"]
     assert entry["disposition"] == "held-for-review"
-    (redaction,) = document["redactions"]
+    (redaction,) = held["redactions"]
     assert redaction["reason"] == "no-text-found"
     images = {
         preview["kind"]: decoded_png((pack / preview["file"]).read_bytes())
-        for preview in document["previews"]
+        for preview in held["previews"]
     }
-    # The page as previewed and as the review app shows it.
-    _assert_form_drawn(images["redaction"])
-    _assert_form_drawn(images["review-frame"])
 
     _attest(pack, (RedactionVerdict(entry["position"], Redaction.ACCEPTED),))
     second = _run(
-        tmp_path / "second",
-        tmp_path / "source",
+        directory / "second",
+        directory / "source",
         _transform(finder=Finder(()), redaction_review=read_redaction_review(pack)),
     )
-
     (released,) = json.loads(second.qc_pack.read_text("utf-8"))["instances"]
     assert released["disposition"] == "released"
     written = pydicom.dcmread(
-        tmp_path / "second" / "release" / released["output"], force=True
+        directory / "second" / "release" / released["output"], force=True
     )
-    (page,) = written_pages(
-        bytes(written.EncapsulatedDocument), 1, *_rows_columns(*LETTER)
+    return (
+        images["redaction"],
+        images["review-frame"],
+        bytes(written.EncapsulatedDocument),
     )
+
+
+def test_a_forms_saved_fields_are_previewed_reviewed_and_released(tmp_path):
+    preview, review_frame, released = _reviewed_and_released(tmp_path, _form_pdf())
+
+    # The page as previewed, as the review app shows it, and as released.
+    _assert_form_drawn(preview)
+    _assert_form_drawn(review_frame)
+    (page,) = written_pages(released, 1, *_rows_columns(*LETTER))
     _assert_form_drawn(page)
+
+
+@pytest.mark.parametrize(
+    "unit, entry",
+    [(1, b""), (1, b" /UserUnit 1"), (2, b" /UserUnit 2")],
+    ids=["absent", "default", "two"],
+)
+def test_a_page_beside_annotation_text_is_released_at_its_printed_size(
+    tmp_path, unit, entry
+):
+    # The annotation quotes another UserUnit, which is not the page's.
+    document = _unit_page(_QUOTED_UNIT + entry)
+    preview, review_frame, released = _reviewed_and_released(tmp_path, document)
+
+    rows, columns = (
+        math.ceil(11 * unit * RENDER_DPI),
+        math.ceil(8.5 * unit * RENDER_DPI),
+    )
+    assert review_frame.shape == preview.shape == (rows, columns, 3)
+    (page,) = written_pages(released, 1, rows, columns)
+    _assert_printed_size(page[None], released, unit, rows, columns, bar=True)
