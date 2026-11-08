@@ -42,6 +42,7 @@ from pymedphys._dicom.deidentify import (
     policy,
     run,
 )
+from pymedphys._dicom.deidentify.descriptor_cleaning import DescriptorCleaning
 from pymedphys._dicom.deidentify.document_cleaning import (
     clean_document,
     document_problem,
@@ -63,6 +64,7 @@ from pymedphys._dicom.deidentify.pixel_cleaning import (
     PixelsNotReviewed,
 )
 from pymedphys._dicom.deidentify.qc_attestation import Redaction, RedactionVerdict
+from pymedphys._dicom.deidentify.qc_previews import decoded_png
 from pymedphys._dicom.deidentify.reasons import (
     HeldPixelData,
     HeldVisualFeatures,
@@ -72,6 +74,7 @@ from pymedphys._dicom.deidentify.reasons import (
 )
 from pymedphys._dicom.deidentify.redaction_review import read_redaction_review
 from pymedphys._dicom.deidentify.references import InstanceRecord
+from pymedphys._dicom.deidentify.reviewed_roi_names import ReviewedNames
 from pymedphys._dicom.deidentify.source import read_source
 from pymedphys._dicom.deidentify.text_detection import TextBox
 from pymedphys._dicom.deidentify.walker import SequesterReason
@@ -84,6 +87,8 @@ from .test_deidentify_encapsulated_pdf import (
     KEY,
     PAGE_SENTINEL,
     _encapsulated_pdf,
+    _NoText,
+    _policies,
 )
 from .test_deidentify_redaction_review import _attest
 
@@ -649,6 +654,43 @@ def test_a_written_document_that_reads_back_otherwise_is_found(monkeypatch):
 # The transform.
 
 
+@pytest.mark.parametrize(
+    "composed",
+    [composed for composed in _policies() if CLEAN_PIXEL_DATA in composed.options],
+    ids=lambda composed: ",".join(composed.options),
+)
+def test_every_policy_with_clean_pixel_data_holds_a_document_as_its_rendering(
+    composed,
+):
+    """The counterpart, over the same policies, of the test that every other
+    policy sequesters the document (D-010, D-061)."""
+    data = synthetic.written(_encapsulated_pdf())
+    transform = InstanceTransform(
+        composed,
+        KEY,
+        cleaning=(
+            DescriptorCleaning(None, ReviewedNames.empty())
+            if "clean_descriptors" in composed.options
+            else None
+        ),
+        finder=_NoText(),
+        face_review=_corpus_run.face_review_for(composed),
+        unvalidated_policy=True,
+    )
+
+    result = transform(data, InstanceRecord.from_file(data))
+
+    assert isinstance(result, run.Transformed)
+    evidence = result.evidence
+    assert isinstance(evidence, HeldEvidence)
+    held = evidence.held  # pylint: disable=no-member
+    assert HeldPixelData(PixelDataReason.NO_TEXT_FOUND) in held
+    # With no text found, the document is written as its pages rendered.
+    pages = rendered_pages(_encapsulated_pdf().EncapsulatedDocument)
+    document = bytes(pydicom.dcmread(io.BytesIO(result.data)).EncapsulatedDocument)
+    np.testing.assert_array_equal(written_pages(document, *pages.shape[:3]), pages)
+
+
 def test_under_clean_pixel_data_a_document_is_written_as_its_cleaned_pages():
     finder = Finder()
 
@@ -885,16 +927,30 @@ def test_the_first_run_holds_each_document_and_previews_each_page(two_runs):
             [[BOX.top, BOX.left, BOX.bottom, BOX.right]]
         ]
         assert re.fullmatch("[0-9a-f]{64}", entry["decoded_sha256"])
+        # Its SOP Class decides which pages the reviewer must be shown.
+        assert entry["sop_class_uid"] == synthetic.ENCAPSULATED_PDF_STORAGE
     assert document["not_previewed"] == []
-    previewed = sorted(
-        frame["position"]
-        for preview in document["previews"]
-        if preview["kind"] == "redaction"
-        for frame in preview["frames"]
-    )
-    assert previewed == sorted(entry["position"] for entry in redactions)
+    for kind in ("redaction", "review-frame"):
+        previewed = sorted(
+            frame["position"]
+            for preview in document["previews"]
+            if preview["kind"] == kind
+            for frame in preview["frames"]
+        )
+        assert previewed == sorted(entry["position"] for entry in redactions)
     for preview in document["previews"]:
         assert (pack / preview["file"]).read_bytes().startswith(b"\x89PNG")
+    # Each page's review frame, which the review app draws over, is the page
+    # as rendered from the source, since it has a region.
+    rendered = rendered_pages(_encapsulated_pdf().EncapsulatedDocument)
+    review_frames = [
+        decoded_png((pack / preview["file"]).read_bytes())
+        for preview in document["previews"]
+        if preview["kind"] == "review-frame"
+    ]
+    assert len(review_frames) == len(_DOCUMENTS)
+    for image in review_frames:
+        np.testing.assert_array_equal(image, rendered[0])
 
 
 @pytest.mark.parametrize("name, added", [(_ACCEPTED, ()), (_REVISED, (ADDED,))])

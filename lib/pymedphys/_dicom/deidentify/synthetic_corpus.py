@@ -20,7 +20,7 @@ fictitious patient and study, with one Frame of Reference: three CT Image
 slices, an RT Structure Set that references the CT series and slices, an RT
 Plan that references the structure set and the dose, an RT Dose that
 references the plan, a second RT Dose of the plan for review (below), one
-instance of each of thirty-six other IODs, and two of the Segmentation
+instance of each of thirty-seven other IODs, and two of the Segmentation
 IOD, one of each of its SOP Classes, each in a series of its own, and a
 second X-Ray Radiation Dose SR, of a CT scan.
 The MR Image and PET Image instances reference the first CT slice, and each
@@ -51,6 +51,8 @@ SR, Enhanced SR, Comprehensive SR, Comprehensive 3D SR, and Extensible SR
 the MR Image. The Segmentations, a BINARY one of Segmentation Storage and a
 LABELMAP one of Label Map Segmentation Storage, reference the CT series and
 its first slice, and each segments the planes of the first two slices. The
+Surface Segmentation, one closed tetrahedral mesh of a Tissue segment,
+references the CT series and its first slice too. The
 Key Object Selection Document selects the MR Image; the Mammography CAD SR
 and Chest CAD SR name the RT Image, the collection's one projection
 radiograph, as the image that their CAD read, and the Colon CAD SR the CT
@@ -361,6 +363,7 @@ RT_BEAMS_TREATMENT_RECORD_STORAGE = "1.2.840.10008.5.1.4.1.1.481.4"
 RT_PLAN_STORAGE = "1.2.840.10008.5.1.4.1.1.481.5"
 SEGMENTATION_STORAGE = "1.2.840.10008.5.1.4.1.1.66.4"
 LABEL_MAP_SEGMENTATION_STORAGE = "1.2.840.10008.5.1.4.1.1.66.7"
+SURFACE_SEGMENTATION_STORAGE = "1.2.840.10008.5.1.4.1.1.66.5"
 RT_ION_PLAN_STORAGE = "1.2.840.10008.5.1.4.1.1.481.8"
 RT_ION_BEAMS_TREATMENT_RECORD_STORAGE = "1.2.840.10008.5.1.4.1.1.481.9"
 RT_BRACHY_TREATMENT_RECORD_STORAGE = "1.2.840.10008.5.1.4.1.1.481.6"
@@ -433,6 +436,9 @@ TREATMENT_SUMMARY_RECORD_FILE = "50-rt-treatment-summary-record.dcm"
 # An Encapsulated PDF derived from the RT Plan, such as a plan report,
 # numbered after the files that open pull requests add.
 ENCAPSULATED_PDF_FILE = "54-encapsulated-pdf.dcm"
+# The Surface Segmentation of the CT series, numbered after the files that
+# open pull requests add.
+SURFACE_SEGMENTATION_FILE = "55-seg-surface.dcm"
 # The directory, within the one that write_corpus is given, of the files.
 INSTANCES_DIRECTORY = "instances"
 
@@ -527,6 +533,8 @@ TREATMENT_SUMMARY_RECORD_SERIES = f"{LINKED_UID_ROOT}04700"
 TREATMENT_SUMMARY_RECORD = f"{LINKED_UID_ROOT}04701"
 ENCAPSULATED_PDF_SERIES = f"{LINKED_UID_ROOT}05100"
 ENCAPSULATED_PDF = f"{LINKED_UID_ROOT}05101"
+SURFACE_SEGMENTATION_SERIES = f"{LINKED_UID_ROOT}05200"
+SURFACE_SEGMENTATION = f"{LINKED_UID_ROOT}05201"
 # A patient and a procedure step that the collection names but does not hold.
 PATIENT_REFERENCE = f"{LINKED_UID_ROOT}00003"
 PROCEDURE_STEP = f"{LINKED_UID_ROOT}00004"
@@ -655,6 +663,7 @@ _SOP_CLASSES = types.MappingProxyType(
         BRACHY_TREATMENT_RECORD: RT_BRACHY_TREATMENT_RECORD_STORAGE,
         TREATMENT_SUMMARY_RECORD: RT_TREATMENT_SUMMARY_RECORD_STORAGE,
         ENCAPSULATED_PDF: ENCAPSULATED_PDF_STORAGE,
+        SURFACE_SEGMENTATION: SURFACE_SEGMENTATION_STORAGE,
         PATIENT_REFERENCE: DETACHED_PATIENT_MANAGEMENT,
         PROCEDURE_STEP: MODALITY_PERFORMED_PROCEDURE_STEP,
     }
@@ -1407,6 +1416,16 @@ _SPECS = (
         ENCAPSULATED_PDF_SERIES,
         PLAN,
     ),
+    # The Surface Segmentation, of a mesh in the CT slices' space, which
+    # references the CT series and its first slice, from which its surface
+    # was generated.
+    _Spec(
+        SURFACE_SEGMENTATION_FILE,
+        SURFACE_SEGMENTATION_STORAGE,
+        SURFACE_SEGMENTATION,
+        SURFACE_SEGMENTATION_SERIES,
+        CT_SLICES[0],
+    ),
 )
 
 
@@ -1416,7 +1435,7 @@ def build_corpus() -> SyntheticCorpus:
     Returns
     -------
     SyntheticCorpus
-        Forty-six files: three CT slices; the RT Structure Set, RT Plan, RT
+        Forty-seven files: three CT slices; the RT Structure Set, RT Plan, RT
         Dose, and the RT Dose for review; the Enhanced CT Image and Legacy
         Converted Enhanced CT Image; the MR Image, Enhanced MR Image,
         Enhanced MR Color Image, Legacy Converted Enhanced MR Image, and MR
@@ -1431,9 +1450,9 @@ def build_corpus() -> SyntheticCorpus:
         the Key Object Selection Document, Mammography CAD SR, Chest CAD SR,
         Colon CAD SR, Procedure Log, Spectacle Prescription Report, Macular
         Grid Thickness and Volume Report, and Waveform Annotation SR; the RT
-        Ion Plan and RT Ion Beams Treatment Record; and the RT Brachy
-        Treatment Record and RT Treatment Summary Record; and the
-        Encapsulated PDF. Two builds give the same bytes and the same
+        Ion Plan and RT Ion Beams Treatment Record; the RT Brachy Treatment
+        Record and RT Treatment Summary Record; the Encapsulated PDF; and the
+        Surface Segmentation. Two builds give the same bytes and the same
         manifest.
     """
     markers = _Markers()
@@ -2095,6 +2114,8 @@ class _Instance:
         elif self.spec.sop_class == ENCAPSULATED_PDF_STORAGE:
             put((), "(0008,0060)", ["DOC"])
             put((), "(0042,0012)", ["application/pdf"])
+        elif self.spec.sop_class == SURFACE_SEGMENTATION_STORAGE:
+            self._add_surface_segmentation()
         elif self.spec.sop_class == RT_IMAGE_STORAGE:
             put((), "(0008,0060)", ["RTIMAGE"])
             put((), "(0008,0008)", ["DERIVED", "SECONDARY", "DRR"])
@@ -2184,6 +2205,70 @@ class _Instance:
             self._add_pixels(8, 0, bytes([1, 1, 0, 0] * 2))
         else:
             self._add_pixels(1, 0, bytes([0xFF, 0x00] * 2), size=4)
+
+    def _add_surface_segmentation(self) -> None:
+        """Add the attributes that make the instance a Surface Segmentation.
+
+        Its one segment, of Tissue, has one surface: a closed, manifold
+        tetrahedron of four points and four triangles, within the extent of
+        the first two CT slices, without normals, whose triangles index its
+        points from 1.
+        """
+        put = self._set
+        put((), "(0008,0060)", ["SEG"])
+        put((), "(0070,0080)", ["SURFACES"])  # Content Label
+        segment = _items(["(0062,0002)"])
+        put(segment, "(0062,0004)", [1])  # Segment Number
+        put(segment, "(0062,0005)", ["TISSUE"])  # Segment Label
+        put(segment, "(0062,0008)", ["MANUAL"])  # Segment Algorithm Type
+        for sequence in ("(0062,0003)", "(0062,000F)"):
+            code = (*segment, (sequence, 0))
+            put(code, "(0008,0100)", ["85756007"])
+            put(code, "(0008,0102)", ["SCT"])
+            put(code, "(0008,0104)", ["Tissue"])
+        put(segment, "(0066,002A)", [1])  # Surface Count
+        referenced = (*segment, ("(0066,002B)", 0))
+        put(referenced, "(0066,002C)", [1])  # Referenced Surface Number
+        algorithm = (*referenced, ("(0066,002D)", 0))
+        family = (*algorithm, ("(0066,002F)", 0))
+        put(family, "(0008,0100)", ["123109"])
+        put(family, "(0008,0102)", ["DCM"])
+        put(family, "(0008,0104)", ["Manual Processing"])
+        put(algorithm, "(0066,0036)", ["MANUAL"])  # Algorithm Name
+        put(algorithm, "(0066,0031)", ["1"])  # Algorithm Version
+        put((), "(0066,0001)", [1])  # Number of Surfaces
+        surface = _items(["(0066,0002)"])
+        put(surface, "(0066,0003)", [1])  # Surface Number
+        put(surface, "(0066,0009)", ["NO"])  # Surface Processing
+        put(surface, "(0062,000C)", [0xFFFF])  # Recommended Display Grayscale
+        put(surface, "(0062,000D)", [0xFFFF, 0x8080, 0x8080])  # CIELab
+        put(surface, "(0066,000C)", [1.0])  # Recommended Presentation Opacity
+        put(surface, "(0066,000D)", ["SURFACE"])  # Recommended Presentation Type
+        put(surface, "(0066,000E)", ["YES"])  # Finite Volume
+        put(surface, "(0066,0010)", ["YES"])  # Manifold
+        points = (*surface, ("(0066,0011)", 0))
+        put(points, "(0066,0015)", [4])  # Number of Surface Points
+        put(
+            points,
+            "(0066,0016)",
+            [struct.pack("<12f", -1, -1, 0, 1, -1, 0, -1, 1, 0, -1, -1, 2)],
+        )
+        put(surface, "(0066,0012)", [])  # Surface Points Normals Sequence
+        primitives = (*surface, ("(0066,0013)", 0))
+        put(
+            primitives,
+            "(0066,0041)",  # Long Triangle Point Index List
+            [struct.pack("<12I", 1, 3, 2, 1, 2, 4, 2, 3, 4, 3, 1, 4)],
+        )
+        for empty in (
+            "(0066,0043)",  # Long Vertex Point Index List
+            "(0066,0042)",  # Long Edge Point Index List
+            "(0066,0026)",  # Triangle Strip Sequence
+            "(0066,0027)",  # Triangle Fan Sequence
+            "(0066,0028)",  # Line Sequence
+            "(0066,0034)",  # Facet Sequence
+        ):
+            put(primitives, empty, [])
 
     def _add_content_tree(self) -> None:
         """Add the attributes that make the instance a Structured Report.

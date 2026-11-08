@@ -24,6 +24,7 @@ Under that option, the document is released as its reviewed rendering
 """
 
 import io
+import itertools
 import os
 import shutil
 import tempfile
@@ -43,7 +44,6 @@ from pymedphys._dicom.deidentify.walker import SequesterReason
 from . import _corpus_run
 from . import _synthetic_references as synthetic
 from .test_deidentify_pilot_command import _pilot, _source
-from .test_deidentify_supplementary_actions import _custom_option_sets
 
 pytestmark = [pytest.mark.pydicom, pytest.mark.usefixtures("pydicom_behaviour")]
 
@@ -107,9 +107,39 @@ def _encapsulated_pdf():
 
 
 def _policies():
-    return [policy.compose_policy(preset) for preset in policy.PRESETS] + [
-        policy.compose_custom_policy(options) for options in _custom_option_sets()
+    """Every preset, every set of the presets' options, and each other option.
+
+    The sets are every subset of the options that the presets select, among
+    them Clean Recognizable Visual Features, that a custom policy accepts, so
+    without both Retain Device Identity and Retain Longitudinal Temporal
+    Information with Modified Dates. Each option that the engine applies and
+    no preset selects, such as Retain UIDs or Clean Pixel Data, is taken alone.
+    """
+    in_presets = [
+        option
+        for option in policy.ENGINE_OPTIONS
+        if any(option in options for options in policy.PRESETS.values())
     ]
+    subsets = [
+        subset
+        for size in range(len(in_presets) + 1)
+        for subset in itertools.combinations(in_presets, size)
+        if not {policy.DEVICE_IDENTITY, policy.MODIFIED_DATES} <= set(subset)
+    ]
+    others = [(option,) for option in policy.ENGINE_OPTIONS if option not in in_presets]
+    return [policy.compose_policy(preset) for preset in policy.PRESETS] + [
+        policy.compose_custom_policy(options) for options in [*subsets, *others]
+    ]
+
+
+class _NoText:
+    """A text finder that finds nothing, for Clean Pixel Data."""
+
+    method = {"finder": "none"}
+
+    def find(self, frame):
+        del frame
+        return ()
 
 
 @pytest.fixture(name="tmp_path")
@@ -151,9 +181,20 @@ def test_an_encapsulated_pdf_is_supported():
 
 @pytest.mark.deid_requirement("MIDI-BP-03", "MIDI-BP-06")
 @pytest.mark.parametrize(
-    "composed", _policies(), ids=lambda composed: ",".join(composed.options)
+    "composed",
+    [
+        composed
+        for composed in _policies()
+        if policy.CLEAN_PIXEL_DATA not in composed.options
+    ],
+    ids=lambda composed: ",".join(composed.options),
 )
-def test_every_policy_sequesters_an_encapsulated_pdf_at_its_document(composed):
+def test_every_policy_without_clean_pixel_data_sequesters_an_encapsulated_pdf_at_its_document(
+    composed,
+):
+    """Under Clean Pixel Data, the document is held as its rendering (D-061),
+    which ``test_deidentify_encapsulated_pdf_release`` tests for each policy
+    of ``_policies`` that selects it."""
     data = synthetic.written(_encapsulated_pdf())
     transform = InstanceTransform(
         composed,
