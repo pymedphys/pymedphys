@@ -74,9 +74,10 @@ apply, whether or not the policy's options use it:
   tokens that replace AE titles, the range of date offsets and the nominal UTC
   offset, and the constants of dummy values;
 - the engine's source and rule files: every ``.py``, ``.toml``, ``.json``,
-  ``.csv``, and ``.txt`` file of this package, at any depth. These are its
-  modules; its rule files, and the requirements register beside them; its
-  generated tables; and TCIA's Private Tag Dictionary and its notice. Each
+  ``.csv``, ``.txt``, ``.html``, ``.css``, and ``.js`` file of this package,
+  at any depth. These are its modules; its rule files, and the requirements
+  register beside them; its generated tables; TCIA's Private Tag Dictionary
+  and its notice; and the redaction review app's page (D-059). Each
   is read as bytes, with CRLF line endings normalised to LF, so a Windows
   checkout gives each file the same digest. ``__pycache__`` and names that
   start with ``.`` within the package, such as the caches that tools write,
@@ -177,7 +178,9 @@ from .safe_private import SafePrivateList
 FORMAT = "pymedphys-deid-method-digest/7"
 # The engine's package, whose source and rule files the digest covers.
 PACKAGE_DIR = pathlib.Path(__file__).resolve().parent
-COVERED_SUFFIXES = frozenset({".py", ".toml", ".json", ".csv", ".txt"})
+COVERED_SUFFIXES = frozenset(
+    {".py", ".toml", ".json", ".csv", ".txt", ".html", ".css", ".js"}
+)
 # PyMedPhys's own package, within which the engine's outside modules lie.
 PYMEDPHYS_DIR = PACKAGE_DIR.parents[1]
 # PyMedPhys's modules outside the engine's package that its modules import,

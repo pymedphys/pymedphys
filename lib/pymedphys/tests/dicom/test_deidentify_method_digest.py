@@ -757,7 +757,8 @@ def test_every_module_rule_file_and_table_of_the_engine_is_covered():
         files
     )
     assert all(
-        name.endswith((".py", ".toml", ".json", ".csv", ".txt")) for name in files
+        name.endswith((".py", ".toml", ".json", ".csv", ".txt", ".html", ".css", ".js"))
+        for name in files
     )
     assert not [name for name in files if "__pycache__" in name]
 
