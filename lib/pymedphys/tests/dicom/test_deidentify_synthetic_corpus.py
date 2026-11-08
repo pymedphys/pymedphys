@@ -243,6 +243,8 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "48-rt-ion-beams-record.dcm",
         "49-rt-brachy-record.dcm",
         "50-rt-treatment-summary-record.dcm",
+        "51-parametric-map.dcm",
+        "52-real-world-value-mapping.dcm",
         "55-seg-surface.dcm",
         "70-rt-segment-annotation.dcm",
         "71-rt-radiation-set.dcm",
@@ -294,6 +296,8 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "RT Ion Beams Treatment Record",
         "RT Brachy Treatment Record",
         "RT Treatment Summary Record",
+        "Parametric Map",
+        "Real World Value Mapping",
         "Surface Segmentation",
         "RT Segment Annotation",
         "RT Radiation Set",
@@ -321,23 +325,27 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         corpus_module.BRACHY_TREATMENT_RECORD_FILE,
         corpus_module.TREATMENT_SUMMARY_RECORD_FILE,
     ) == tuple(file.name for file in corpus.files[43:45])
-    assert corpus_module.SURFACE_SEGMENTATION_FILE == corpus.files[45].name
+    assert (
+        corpus_module.PARAMETRIC_MAP_FILE,
+        corpus_module.REAL_WORLD_VALUE_MAPPING_FILE,
+    ) == tuple(file.name for file in corpus.files[45:47])
+    assert corpus_module.SURFACE_SEGMENTATION_FILE == corpus.files[47].name
     assert (
         corpus_module.ENHANCED_RT_IMAGE_FILE,
         corpus_module.ENHANCED_CONTINUOUS_RT_IMAGE_FILE,
-    ) == tuple(file.name for file in corpus.files[54:56])
+    ) == tuple(file.name for file in corpus.files[56:58])
     assert (
         corpus_module.SEGMENT_ANNOTATION_FILE,
         corpus_module.RADIATION_SET_FILE,
         corpus_module.C_ARM_RADIATION_FILE,
         corpus_module.TOMOTHERAPEUTIC_RADIATION_FILE,
         corpus_module.ROBOTIC_ARM_RADIATION_FILE,
-    ) == tuple(file.name for file in corpus.files[46:51])
+    ) == tuple(file.name for file in corpus.files[48:53])
     assert (
         corpus_module.PHYSICIAN_INTENT_FILE,
         corpus_module.TREATMENT_PREPARATION_FILE,
         corpus_module.POSITION_ACQUISITION_INSTRUCTION_FILE,
-    ) == tuple(file.name for file in corpus.files[51:54])
+    ) == tuple(file.name for file in corpus.files[53:56])
     # Every IOD of the first supported release.
     assert {file.manifest.iod for file in corpus.files} == scope.SUPPORTED_IODS
 
@@ -708,8 +716,9 @@ def test_the_reference_graph_has_no_findings(corpus):
     # single-frame one of its modality, the treatment record the plan, the RT
     # Ion Plan the structure set, the dose, and the plan, the RT Ion Beams
     # Treatment Record the RT Ion Plan, the RT Brachy Treatment Record the
-    # plan and the RT Beams Treatment Record, and the RT Treatment Summary
-    # Record the plan and the RT Brachy Treatment Record.
+    # plan and the RT Beams Treatment Record, the RT Treatment Summary Record
+    # the plan and the RT Brachy Treatment Record, the Parametric Map the MR
+    # Image, and the Real World Value Mapping the PET Image.
     names = [file.name for file in corpus.files]
     position = names.index
     sources = {
@@ -726,6 +735,8 @@ def test_the_reference_graph_has_no_findings(corpus):
         "20-rt-beams-record.dcm": "05-rtplan.dcm",
         "48-rt-ion-beams-record.dcm": "47-rt-ion-plan.dcm",
         "49-rt-brachy-record.dcm": "05-rtplan.dcm",
+        "51-parametric-map.dcm": "10-mr.dcm",
+        "52-real-world-value-mapping.dcm": "15-pet.dcm",
     }
     assert {
         (position(source), position(target)) for source, target in sources.items()

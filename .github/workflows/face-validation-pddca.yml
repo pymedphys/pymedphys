@@ -1,0 +1,119 @@
+name: Face Block Check on PDDCA
+
+# On demand, download the PDDCA 1.4.1 data set of head and neck planning CTs
+# and their organ-at-risk masks from Zenodo, where it is re-hosted in three
+# parts (https://doi.org/10.5281/zenodo.19657912,
+# https://doi.org/10.5281/zenodo.19658040, and
+# https://doi.org/10.5281/zenodo.19658102, CC BY 3.0), check each part
+# against the size and MD5 that its record gives, and check the face block
+# finder and CT defacing of the Clean Recognizable Visual Features Option
+# against its optic nerve masks (D-054). The scans are held-out evidence:
+# the finder's settings are not to be tuned to them.
+#
+# PDDCA's images are real patients' scans from the RTOG 0522 trial, which
+# TCIA now distributes under controlled access, and this repository's logs
+# and artefacts are public. So, as for HaN-Seg, only counts, codes, digests,
+# and versions leave the runner: the check writes nothing else, its standard
+# error and standard output, where libraries log, go to files on the runner,
+# the job shows the result files instead, and a crash is reported by
+# .github/scripts/run_redacted.py as its type and code locations alone. The
+# parts are read without extracting them, and are never cached, uploaded,
+# or kept.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: face-validation-pddca-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  check:
+    name: Face block check on PDDCA
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    permissions:
+      contents: read
+    env:
+      # A re-run's artefact is named apart from the first attempt's.
+      ATTEMPT_SUFFIX: >-
+        ${{ github.run_attempt != '1'
+        && format('-attempt-{0}', github.run_attempt) || '' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # The user extra holds pydicom, NumPy, and SciPy.
+      - uses: ./.github/actions/setup-project
+        with:
+          extras: 'user'
+
+      - name: Prepare private and data directories
+        run: |
+          umask 077
+          mkdir -p "${RUNNER_TEMP}/face/private" "${RUNNER_TEMP}/face/data"
+
+      # Each part's Zenodo record, file, and the size and MD5 that the record
+      # gives; the check also pins each part's SHA-256.
+      - name: Download PDDCA from Zenodo
+        timeout-minutes: 60
+        run: |
+          parts=(
+            "19657912 PDDCA-1.4.1_part1.zip 509880384 141d64efeb23218cd94c3492cabdba9f"
+            "19658040 PDDCA-1.4.1_part2.zip 592862395 5ab957cb1ec66b51c1d812a3bb8a75ba"
+            "19658102 PDDCA-1.4.1_part3.zip 522438423 f4653461de6e7fa92c4a7ce02c457a8e"
+          )
+          for part in "${parts[@]}"; do
+            read -r record name expected md5 <<< "${part}"
+            archive="${RUNNER_TEMP}/face/data/${name}"
+            curl -sSfL --retry 3 --retry-all-errors --retry-delay 60 \
+              -o "${archive}" \
+              "https://zenodo.org/api/records/${record}/files/${name}/content"
+            size="$(stat -c %s "${archive}")"
+            if [[ "${size}" != "${expected}" ]]; then
+              echo "${name} is ${size} bytes, not the ${expected} that its Zenodo record gives."
+              exit 1
+            fi
+            echo "${md5}  ${archive}" | md5sum --check --strict -
+          done
+          df -h /
+
+      # The command writes face-validation.json and face-validation.md, which
+      # hold only counts, codes, digests, versions, and the engine's settings.
+      - name: Run the check
+        timeout-minutes: 80
+        run: |
+          results="${RUNNER_TEMP}/face/results"
+          data="${RUNNER_TEMP}/face/data"
+          uv run --no-sync python .github/scripts/run_redacted.py \
+            --private-stdout "${RUNNER_TEMP}/face/private/stdout.log" \
+            pymedphys._dicom.deidentify.face_validation_command pddca \
+            "${data}/PDDCA-1.4.1_part1.zip" \
+            "${data}/PDDCA-1.4.1_part2.zip" \
+            "${data}/PDDCA-1.4.1_part3.zip" \
+            --out "${results}" \
+            2> "${RUNNER_TEMP}/face/private/stderr.log"
+          echo "${GITHUB_SHA}" > "${results}/commit.txt"
+
+      - name: Show the results
+        if: ${{ !cancelled() }}
+        run: |
+          page="${RUNNER_TEMP}/face/results/face-validation.md"
+          if [[ -f "${page}" ]]; then
+            tee -a "${GITHUB_STEP_SUMMARY}" < "${page}"
+          else
+            echo "The check wrote no results; the log shows why." \
+              | tee -a "${GITHUB_STEP_SUMMARY}"
+          fi
+
+      - name: Upload the results
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: face-validation-pddca-results${{ env.ATTEMPT_SUFFIX }}
+          path: ${{ runner.temp }}/face/results/
+          if-no-files-found: warn
+          retention-days: 90
