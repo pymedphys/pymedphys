@@ -27,9 +27,10 @@ Radiation Dose SR IODs, of the Basic Text SR, Enhanced SR, Comprehensive SR,
 Comprehensive 3D SR, and Extensible SR IODs, of the Key Object Selection
 Document, and of the Mammography CAD SR, Chest CAD SR, Colon CAD SR,
 Procedure Log, Spectacle Prescription Report, Macular Grid Thickness and
-Volume Report, and Waveform Annotation SR IODs, and of the Grayscale,
-Color, Pseudo-Color, Blending, XA/XRF Grayscale, and Variable Modality LUT
-Softcopy Presentation State IODs, uncompressed or in a transfer syntax that
+Volume Report, and Waveform Annotation SR IODs, of the Parametric Map and
+Real World Value Mapping IODs, and of the Grayscale, Color, Pseudo-Color,
+Blending, XA/XRF Grayscale, and Variable Modality LUT Softcopy
+Presentation State IODs, uncompressed or in a transfer syntax that
 encapsulates Pixel Data that pydicom's decoding plugins decode. Supporting an IOD or a transfer syntax does not
 release every instance in it: a compressed instance is still sequestered
 where the plugin pinned to its transfer syntax is not installed, or where
@@ -44,10 +45,11 @@ So too every softcopy Presentation State that conforms to its IOD under
 ``basic`` and ``basic-clean-descriptors``, since Table E.1-1's plain X
 removes its Type 1 Presentation Creation Date and Time, and one that holds
 a Graphic Annotation Sequence (0070,0001) under every preset, since the
-table gives that sequence D. Every other
-instance is sequestered: neither de-identified nor written, and listed in
-the run report by opaque identifiers only. That includes the other
-Structured Reports, the volumetric, advanced blending, and waveform
+table gives that sequence D. The Clean Pixel Data Option also sequesters a
+Parametric Map whose pixel data are floating point, which it does not read.
+Every other instance is sequestered: neither de-identified nor written, and
+listed in the run report by opaque identifiers only. That includes the
+other Structured Reports, the volumetric, advanced blending, and waveform
 Presentation States, and instances of Private SOP Classes.
 
 :func:`classify` decides from the instance's SOP Class UID (0008,0016), which
@@ -113,6 +115,8 @@ SUPPORTED_IODS = frozenset(
         "Spectacle Prescription Report",
         "Macular Grid Thickness and Volume Report",
         "Waveform Annotation SR",
+        "Parametric Map",
+        "Real World Value Mapping",
         "Grayscale Softcopy Presentation State",
         "Color Softcopy Presentation State",
         "Pseudo-Color Softcopy Presentation State",

@@ -243,6 +243,8 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "48-rt-ion-beams-record.dcm",
         "49-rt-brachy-record.dcm",
         "50-rt-treatment-summary-record.dcm",
+        "51-parametric-map.dcm",
+        "52-real-world-value-mapping.dcm",
         "55-seg-surface.dcm",
         "56-pr-grayscale.dcm",
         "57-pr-color.dcm",
@@ -290,6 +292,8 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "RT Ion Beams Treatment Record",
         "RT Brachy Treatment Record",
         "RT Treatment Summary Record",
+        "Parametric Map",
+        "Real World Value Mapping",
         "Surface Segmentation",
         "Grayscale Softcopy Presentation State",
         "Color Softcopy Presentation State",
@@ -301,18 +305,22 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
     # The files before the six Presentation States.
     before = corpus.files[:-6]
     assert corpus_module.STRUCTURED_REPORT_FILES == tuple(
-        file.name for file in before[-25:-15] + before[-13:-5]
+        file.name for file in before[-27:-17] + before[-15:-7]
     )
     assert corpus_module.SEGMENTATION_FILES == tuple(
-        file.name for file in before[-15:-13]
+        file.name for file in before[-17:-15]
     )
     assert (
         corpus_module.ION_PLAN_FILE,
         corpus_module.ION_TREATMENT_RECORD_FILE,
-    ) == tuple(file.name for file in before[-5:-3])
+    ) == tuple(file.name for file in before[-7:-5])
     assert (
         corpus_module.BRACHY_TREATMENT_RECORD_FILE,
         corpus_module.TREATMENT_SUMMARY_RECORD_FILE,
+    ) == tuple(file.name for file in before[-5:-3])
+    assert (
+        corpus_module.PARAMETRIC_MAP_FILE,
+        corpus_module.REAL_WORLD_VALUE_MAPPING_FILE,
     ) == tuple(file.name for file in before[-3:-1])
     assert corpus_module.SURFACE_SEGMENTATION_FILE == before[-1].name
     assert corpus_module.PRESENTATION_STATE_FILES == tuple(
@@ -682,8 +690,9 @@ def test_the_reference_graph_has_no_findings(corpus):
     # single-frame one of its modality, the treatment record the plan, the RT
     # Ion Plan the structure set, the dose, and the plan, the RT Ion Beams
     # Treatment Record the RT Ion Plan, the RT Brachy Treatment Record the
-    # plan and the RT Beams Treatment Record, and the RT Treatment Summary
-    # Record the plan and the RT Brachy Treatment Record.
+    # plan and the RT Beams Treatment Record, the RT Treatment Summary Record
+    # the plan and the RT Brachy Treatment Record, the Parametric Map the MR
+    # Image, and the Real World Value Mapping the PET Image.
     names = [file.name for file in corpus.files]
     position = names.index
     sources = {
@@ -700,6 +709,8 @@ def test_the_reference_graph_has_no_findings(corpus):
         "20-rt-beams-record.dcm": "05-rtplan.dcm",
         "48-rt-ion-beams-record.dcm": "47-rt-ion-plan.dcm",
         "49-rt-brachy-record.dcm": "05-rtplan.dcm",
+        "51-parametric-map.dcm": "10-mr.dcm",
+        "52-real-world-value-mapping.dcm": "15-pet.dcm",
     }
     assert {
         (position(source), position(target)) for source, target in sources.items()
