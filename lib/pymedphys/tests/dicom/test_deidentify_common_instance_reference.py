@@ -32,9 +32,11 @@ MANDATORY = {
     "Deformable Spatial Registration",
     "Real World Value Mapping",
 }
-# Required where a Derivation Image functional group is present, or, in a
-# Parametric Map, a Referenced Image functional group.
-CONDITIONAL = {"Segmentation", "Parametric Map"}
+# Required in a Segmentation where a Derivation Image functional group is
+# present, in a Parametric Map where a Derivation Image or Referenced Image
+# functional group is, and in a Surface Segmentation where the surface was
+# derived from another instance (PS3.3 Table A.57-1).
+CONDITIONAL = {"Segmentation", "Parametric Map", "Surface Segmentation"}
 # The supported IODs without the module: the Structured Reports, whose SR
 # Document General Module references their evidence instead (PS3.3 Section
 # A.35).
