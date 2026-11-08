@@ -798,8 +798,10 @@ _RADIOGRAPH_SOP_CLASSES = frozenset(
 # Segmentation Storage and Label Map Segmentation Storage (PS3.4 Table
 # B.5-1), whose frames are masks of segments. A segment of the skin or body
 # traces the profile, and its label or code need not say that it is one, so
-# each instance is reported, whatever its segments. Surface Segmentation
-# holds meshes, not pixel data, and is out of scope (D-010).
+# each instance is reported, whatever its segments. A Surface Segmentation
+# holds meshes, not pixel data, so it is none of them: the face review
+# holds each one under Clean Recognizable Visual Features
+# (face_review.holds_surface_mesh).
 SEGMENTATION_SOP_CLASSES = frozenset(
     {"1.2.840.10008.5.1.4.1.1.66.4", "1.2.840.10008.5.1.4.1.1.66.7"}
 )
