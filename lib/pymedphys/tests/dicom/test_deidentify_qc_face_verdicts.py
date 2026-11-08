@@ -509,7 +509,7 @@ def test_the_command_records_each_verdict(pack):
         "  undefaced instances without a recognisable face in their own previews: 0",
         "  undefaced instances with a recognisable face in their own previews: 0",
         "  cleaned instances with their regions accepted: 0",
-        "  cleaned instances with the reviewer's regions added: 0",
+        "  cleaned instances with their regions revised: 0",
         "  cleaned instances rejected: 0",
         "the release report published with the run is unchanged",
     ]

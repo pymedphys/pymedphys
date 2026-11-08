@@ -215,6 +215,8 @@ class RedactionMaterial:
         regions of every frame, as
         :class:`~pymedphys._dicom.deidentify.qc_pack.RedactionEntry` gives
         them.
+    sop_class_uid : str
+        The instance's SOP Class UID, or empty where it has none.
     """
 
     reason: PixelDataReason
@@ -225,6 +227,7 @@ class RedactionMaterial:
     source: bytes | None
     decoded_sha256: bytes | None = None
     rule_boxes: tuple[TextBox, ...] = ()
+    sop_class_uid: str = ""
 
     def __repr__(self) -> str:
         return (
@@ -633,6 +636,7 @@ def qc_pack_of(
                 item.regions,
                 None if item.decoded_sha256 is None else item.decoded_sha256.hex(),
                 item.rule_boxes,
+                item.sop_class_uid,
             ),
         )
         for position, item in redactions.items()
