@@ -96,8 +96,20 @@ reason that such a finding is not a reason for review (D-032), or returns
   radiopharmaceutical, or an SR TEXT value, or a private data element that
   only copies one of them
   (:func:`~pymedphys._dicom.deidentify.residual_vocabulary.vocabulary_meaning`).
-  The release gate tries it last, for a text finding that nothing above
+  The release gate tries it for a text finding that nothing above
   explains.
+- :attr:`Exemption.COPIED_REQUEST_CODE`: the finding's source is the Code
+  Value, Coding Scheme Designator, or Code Meaning of a code item directly
+  in Requested Procedure Code Sequence (0032,1064), at any depth, every
+  value of which collected for the subject is one that the instance's output
+  does not hold, and it is found in the same attribute of a kept code item,
+  each of whose source values that the search could find there equals a
+  whole value of it (:func:`copied_request_code`). Equipment copies the
+  request's code, which the Basic Profile removes with Request Attributes
+  Sequence (0040,0275), into Procedure Code Sequence (0008,1032), which it
+  keeps, so the removed copy reveals nothing the kept code does not, and
+  every other finding in the kept code is decided as before. The release
+  gate tries it last, for a text finding that nothing above explains.
 
 The search records one finding of a source in each element, so each
 exemption is decided by the whole element: a CS value is exempt only if
@@ -107,7 +119,8 @@ vendor's, a date only if each of them that could be in the element equals a
 whole kept value, a Code Meaning or a UID from unwritten instances only
 if no written instance collected any of them, and a removed private UID
 only if no written instance holds any of them replaced and each that could
-be in the element equals a whole kept value. A finding in an element that
+be in the element equals a whole kept value, and likewise a removed request
+code. A finding in an element that
 holds a byte outside ISO 646's printable characters, a finding of any other
 kind, and a finding outside the data set are never exempt. Kept values are read from the
 written file's bytes, as text in ISO 646, never decoded by pydicom, and none
@@ -132,7 +145,7 @@ from .option_kept import (
     retained_value,
     whole_values,
 )
-from .residuals import Finding, SourceValue
+from .residuals import Finding, SourceValue, ValueKind
 from .safe_private import SafePrivateList, load_safe_private_rules
 from .standard import _RESERVED_ODD_GROUPS, dictionary_attribute, load_table_e3_10_1
 from .tcia_private_tags import tcia_safe_private_rules
@@ -140,6 +153,14 @@ from .uid_registry import RegistryTable, RegistryTableSpec, load_registry_table
 
 _DESIGNATOR = "(0008,0102)"
 _CODE_MEANING = "(0008,0104)"
+# Requested Procedure Code Sequence, which the Basic Profile removes with an
+# enclosing Request Attributes Sequence (0040,0275).
+REQUESTED_PROCEDURE_CODE = "(0032,1064)"
+# Code Value, Coding Scheme Designator, and Code Meaning, which equipment
+# copies from a requested procedure's code into the procedure's own.
+COPIED_CODE_ATTRIBUTES = frozenset({"(0008,0100)", _DESIGNATOR, _CODE_MEANING})
+# The kind of value that a kept code's value can explain.
+_TEXT_KINDS = frozenset({ValueKind.TEXT})
 # Private Creator Reference, in an item of Private Data Element
 # Characteristics Sequence.
 _CREATOR_REFERENCE = "(0008,0302)"
@@ -180,6 +201,8 @@ class Exemption(enum.Enum):
     REMOVED_UID = "removed-uid"  # equal to a kept UID, from a removed private copy
     # in a Code Meaning made only of the reviewed technique vocabulary
     VOCABULARY_MEANING = "vocabulary-meaning"
+    # equal to the same attribute of a kept code, from a removed request code
+    COPIED_REQUEST_CODE = "copied-request-code"
 
 
 @dataclasses.dataclass(frozen=True)
@@ -647,6 +670,79 @@ def removed_uid(
     if whole_values(values, written, text, UID_KINDS):
         return Exemption.REMOVED_UID
     return None
+
+
+def copied_request_code(
+    finding: Finding,
+    kept: KeptValues,
+    sources: Mapping[ElementPath, tuple[SourceValue, ...]],
+    removed: frozenset[SourceValue],
+) -> Exemption | None:
+    """Return whether a kept code explains a removed request code's copy of it.
+
+    Parameters
+    ----------
+    finding : Finding
+        A text finding that would otherwise send its file to QC review.
+    kept : KeptValues
+        The written file's values.
+    sources : mapping
+        The collected values of each source (:func:`source_values`).
+    removed : frozenset of SourceValue
+        The values in ``sources`` that no instance's output holds at their
+        place (:attr:`~.release_gate.Coverage.removed`).
+
+    Returns
+    -------
+    Exemption or None
+        :attr:`Exemption.COPIED_REQUEST_CODE` where the source is the Code
+        Value (0008,0100), Coding Scheme Designator (0008,0102), or Code
+        Meaning (0008,0104) of an item of Requested Procedure Code Sequence
+        (0032,1064), at any depth; every value of it collected for the
+        subject is in ``removed``, so that no written instance holds it
+        there; the finding is in a data set element of the same attribute in
+        an item, a kept code item such as one of Procedure Code Sequence
+        (0008,1032); and one of the source's values equals a whole value of
+        it, as does each other value of the source that the search could
+        find there (:func:`~.option_kept.whole_values`). A request code found
+        inside a longer kept value, in another case, or in another attribute
+        of a code, such as a Code Meaning in a Code Value, one in an
+        equivalent code inside the request's item, and one that a written
+        instance holds give ``None``. Any other finding in the same kept
+        code, such as a removed Study Description in its meaning, is decided
+        on its own.
+    """
+    source, element = finding.source, finding.location.element
+    if (
+        finding.location.region is not Region.DATA_SET
+        or element is None
+        or not _requested_code(source)
+        or element.tag != source.tag
+        or not element.items
+    ):
+        return None
+    values = sources.get(source, ())
+    if not values or not all(each in removed for each in values):
+        return None
+    written, text = kept.values(element), kept.text(element)
+    if written is None or text is None:
+        return None
+    if whole_values(values, written, text, _TEXT_KINDS):
+        return Exemption.COPIED_REQUEST_CODE
+    return None
+
+
+def _requested_code(source: ElementPath) -> bool:
+    """Return whether a source is a copied attribute of a requested procedure code.
+
+    It must be the Code Value, Coding Scheme Designator, or Code Meaning of
+    an item directly in Requested Procedure Code Sequence (0032,1064).
+    """
+    return (
+        source.tag in COPIED_CODE_ATTRIBUTES
+        and bool(source.items)
+        and source.items[-1][0] == REQUESTED_PROCEDURE_CODE
+    )
 
 
 def standard_code_meanings(

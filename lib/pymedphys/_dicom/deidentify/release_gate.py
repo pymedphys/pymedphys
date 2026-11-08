@@ -71,7 +71,11 @@ write held, or it is found in a kept Code Meaning made only of words of the
 reviewed technique vocabulary, which echoes no identifier of the subject,
 from a source that describes the examination, such as Study Description,
 or a private copy of one
-(:func:`~pymedphys._dicom.deidentify.residual_vocabulary.vocabulary_meaning`). A date or datetime equal to a whole date, time, or datetime that
+(:func:`~pymedphys._dicom.deidentify.residual_vocabulary.vocabulary_meaning`),
+or it is a removed requested procedure code's Code Value, Coding Scheme
+Designator, or Code Meaning equal to the same attribute of a kept code item,
+as where equipment copied the request's code into the procedure's
+(:func:`~pymedphys._dicom.deidentify.residual_exemptions.copied_request_code`). A date or datetime equal to a whole date, time, or datetime that
 an option keeps, or a datetime whose date equals a whole date that an option
 keeps, does not withhold the file either
 (:func:`~pymedphys._dicom.deidentify.residual_exemptions.retained_date`), nor
@@ -118,6 +122,7 @@ from .option_kept import kept_text
 from .residual_exemptions import (
     Exemption,
     KeptValues,
+    copied_request_code,
     exemption,
     removed_uid,
     retained_date,
@@ -304,7 +309,10 @@ class Coverage:
         A private UID found from such values alone, equal to a whole UID
         that an option keeps, can be explained where a replaced one could
         not
-        (:func:`~pymedphys._dicom.deidentify.residual_exemptions.removed_uid`).
+        (:func:`~pymedphys._dicom.deidentify.residual_exemptions.removed_uid`),
+        and a requested procedure code's value found from such values alone,
+        equal to the same attribute of a kept code item, can be explained
+        (:func:`~pymedphys._dicom.deidentify.residual_exemptions.copied_request_code`).
     safe_private_list : SafePrivateList or None, optional
         The safe private list that the run chose under the Retain Safe
         Private Option, whose kept private creators can explain a text
@@ -691,14 +699,18 @@ def release_condition(
         if reason.code in _EXPLICABLE:
             kept = kept or KeptValues(written)
             if reason.code is ReasonCode.RESIDUAL_TEXT:
-                why = exemption(
-                    each,
-                    kept,
-                    sources,
-                    coverage.options,
-                    coverage.unwritten & coverage.coded,
-                    coverage.safe_private_list,
-                ) or vocabulary_meaning(each, kept, sources)
+                why = (
+                    exemption(
+                        each,
+                        kept,
+                        sources,
+                        coverage.options,
+                        coverage.unwritten & coverage.coded,
+                        coverage.safe_private_list,
+                    )
+                    or vocabulary_meaning(each, kept, sources)
+                    or copied_request_code(each, kept, sources, coverage.removed)
+                )
             elif reason.code is ReasonCode.RESIDUAL_UID:
                 why = unwritten_uid(
                     each, kept, sources, coverage.unwritten, coverage.options
