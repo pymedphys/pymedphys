@@ -50,9 +50,10 @@ derives, and under ``tps-import`` a birth date of its own, which only the
 store prevents.
 
 The checks are independent of the engine's composition of the policy: each
-pairs a released element with the source element at the same place in the
-same instance, and reads which dates move by the subject's offset from the
-reviewed temporal roles alone.
+pairs a source element with what the released instance holds at the same
+place, so that a value dropped or written with another VR is compared too,
+and reads which dates move by the subject's offset from the reviewed
+temporal roles alone.
 """
 
 import dataclasses
@@ -224,18 +225,29 @@ class Export:
     report: dict
     store: bytes
 
+    def outcomes(self) -> Iterator[tuple[str, Place, str, str, tuple[str, str] | None]]:
+        """Yield each source text value of a released instance with what was written.
+
+        Each as (file name, place, VR, source value, written), where written
+        is the released element at the same place as (VR, value), or None
+        where the released instance holds none there, so that a value that
+        a run drops, or writes with another VR, is compared too.
+        """
+        for name, data in self.released.items():
+            released = _text_values(data)
+            for place, (vr, received) in _text_values(self.sources[name]).items():
+                yield name, place, vr, received, released.get(place)
+
     def pairs(self) -> Iterator[tuple[str, Place, str, str, str]]:
         """Yield each released text value with the source value at its place.
 
         Each as (file name, place, VR, source value, released value), where
-        the source holds an element of the same VR at the same place.
+        the released instance holds an element of the same VR at the same
+        place as the source.
         """
-        for name, data in self.released.items():
-            source = _text_values(self.sources[name])
-            for place, (vr, value) in _text_values(data).items():
-                received = source.get(place)
-                if received is not None and received[0] == vr:
-                    yield name, place, vr, received[1], value
+        for name, place, vr, received, written in self.outcomes():
+            if written is not None and written[0] == vr:
+                yield name, place, vr, received, written[1]
 
     def top_level(self, tag) -> set[str]:
         """The values of a top-level attribute across the released instances."""
@@ -248,11 +260,9 @@ class Export:
     def uids(self) -> dict[str, set[str]]:
         """Each source UID's replacements in the released instances."""
         found: dict[str, set[str]] = {}
-        for _, _, vr, received, written in self.pairs():
+        for _, place, vr, received, written in self.pairs():
             if vr == "UI":
-                for each, replacement in zip(
-                    received.split("\\"), written.split("\\"), strict=False
-                ):
+                for each, replacement in _components(place, received, written):
                     found.setdefault(each, set()).add(replacement)
         return found
 
@@ -262,7 +272,9 @@ class Export:
         Each DA value of an attribute whose reviewed temporal role moves it
         by the subject's offset, paired with the source date at its place,
         but Patient's Birth Date, which Modified Dates leaves to its Basic
-        Profile action and ``tps-import`` synthesises.
+        Profile action and ``tps-import`` synthesises. A source date that
+        is written empty fails, since such a date moves and is never
+        emptied.
         """
         rules = _temporal_rules()
         found = set()
@@ -276,12 +288,22 @@ class Export:
                 or rule.role.action is not TemporalAction.SHIFT
             ):
                 continue
-            for before, after in zip(
-                received.split("\\"), written.split("\\"), strict=False
-            ):
-                if before and after:
+            for before, after in _components(place, received, written):
+                if before:
+                    assert after, place
                     found.add((_parse(before) - _parse(after)).days)
         return found
+
+
+def _components(place: Place, received: str, written: str) -> zip:
+    """Pair the values of a source element with those written in its place.
+
+    The value multiplicity must be kept, so that no value of either goes
+    unpaired.
+    """
+    before, after = received.split("\\"), written.split("\\")
+    assert len(before) == len(after), place
+    return zip(before, after, strict=True)
 
 
 @functools.cache
@@ -653,32 +675,52 @@ def test_the_second_runs_references_resolve_to_the_first_runs_instances(exports)
             written[str(received)] = str(
                 pydicom.dcmread(io.BytesIO(data)).SOPInstanceUID
             )
+    # The places, by shape, at which some released instance of either run
+    # keeps a UID.
+    kept = {
+        _shape(place)
+        for export in exports.both
+        for _, place, vr, _, _ in export.pairs()
+        if vr == "UI"
+    }
     resolved = 0
-    for _, place, vr, received, value in second.pairs():
-        if vr == "UI" and received in written:
-            assert value == written[received], place
+    for _, place, vr, received, outcome in second.outcomes():
+        if vr != "UI" or received not in written:
+            continue
+        if outcome is None:
+            # Dropped only where the policy removes every UID at its place,
+            # whichever run holds the instance it names.
+            assert _shape(place) not in kept, place
+        else:
+            assert outcome == ("UI", written[received]), place
             resolved += 1
     assert resolved >= 1
 
 
 @pytest.mark.deid_requirement("MIDI-BP-12")
 def test_each_value_both_runs_receive_is_written_alike(exports):
-    """A value at a place of the same shape in both runs is written alike.
+    """Each source value is written alike wherever either run receives it.
 
-    This covers every pseudonym, replacement UID, and modified date, and
-    every other value, whichever instance holds it.
+    A value is compared by its instance's SOP Class, since an action
+    resolved by Type can differ between IODs, and by the shape of its place,
+    so that one instance's value is compared with another's, and its outcome
+    includes its VR and whether it was written at all. This covers every
+    pseudonym, replacement UID, and modified date, and every other value.
     """
-    written: list[dict] = []
-    for export in exports.both:
-        found: dict[tuple, set[str]] = {}
-        for _, place, vr, received, value in export.pairs():
-            found.setdefault((_shape(place), vr, received), set()).add(value)
-        written.append(found)
-    first, second = written
-    common = first.keys() & second.keys()
-    assert len(common) >= 50
-    for each in common:
-        assert first[each] == second[each], each[:2]
+    found: dict[tuple, set] = {}
+    received_in: dict[tuple, set[int]] = {}
+    for index, export in enumerate(exports.both):
+        classes = {
+            name: str(pydicom.dcmread(io.BytesIO(data)).SOPClassUID)
+            for name, data in export.sources.items()
+        }
+        for name, place, vr, received, outcome in export.outcomes():
+            key = (classes[name], _shape(place), vr, received)
+            found.setdefault(key, set()).add(outcome)
+            received_in.setdefault(key, set()).add(index)
+    assert sum(len(each) == 2 for each in received_in.values()) >= 1000
+    for key, outcomes in found.items():
+        assert len(outcomes) == 1, key[1:3]
 
 
 @pytest.mark.deid_requirement("MIDI-BP-12", "PS3.15-E.3.6-02")
