@@ -31,7 +31,7 @@ Manual run -> face-validation-keating.yml
 Manual run -> face-validation-pddca.yml
 Manual run -> pixel-text-validation.yml
 Manual run -> text-detection-model-pins.yml
-Manual run -> text-detector-evaluation-idc.yml
+Manual run -> text-detector-evaluation.yml
 Published release -> release.yml -> quality checks, publishing, verification, and published-package tests
 Issue comment -> claude.yml
 
@@ -750,33 +750,45 @@ each file has its pinned SHA-256.
   in bytes, and hash result, `unreachable` with only the kind of failure where
   a download fails. The job fails unless every pin matches
 
-#### `text-detector-evaluation-idc.yml`
+#### `text-detector-evaluation.yml`
 
 Measures the text detector of the Clean Pixel Data Option, or a candidate
-model, on openly licensed series of NCI's Imaging Data Commons, with synthetic
-text burned into copies of their frames in memory.
+model, on openly licensed series of real patients in NCI's Imaging Data
+Commons, among them the seven collections that D-056 takes from TCIA, and on
+folders of pinned archives on Zenodo and in the University of Sydney's data
+store, with synthetic text burned into copies of their frames in memory; and
+reports the synthetic phantoms and IDC's allow-listed phantom collections in
+full, with crops.
 
-- **Triggers**: manually only, with the model, today's settings or its
-  publishers', the part of the split, and the most series from one collection
-  and in all
-- **Steps**: one job, which installs the project with the `user` and
-  `text-detection` extras, then pyarrow, OpenCV, and s5cmd from
-  `.github/text-evaluation/requirements.txt` with `--require-hashes --no-deps`;
-  none is a dependency of PyMedPhys. It downloads the pinned wheel of
-  idc-index-data and checks its SHA-256, selects series from IDC's index by
-  the vetted collections, licences, and image modalities, downloads them from
-  IDC's public buckets with s5cmd, and runs
+- **Triggers**: manually only, with the jobs to run (`all`, `patients`, or
+  `phantoms`), the model, today's settings or its publishers', the part of
+  the split, and the most series or folders from one collection and in all
+  for each source
+- **Steps**: two jobs, each of which installs the project with the `user`
+  and `text-detection` extras, then pyarrow, OpenCV, and s5cmd from
+  `.github/text-evaluation/requirements.txt` with `--require-hashes
+  --no-deps`; none is a dependency of PyMedPhys. Each downloads the pinned
+  wheel of idc-index-data, checks its SHA-256, selects series from IDC's
+  index, downloads them from IDC's public buckets with s5cmd, and runs
   `python -m pymedphys._dicom.deidentify.text_evaluation_command` through
   `.github/scripts/run_redacted.py`, with its standard output and error, and
-  s5cmd's, in files on the runner. At a model's publishers' settings it also
-  counts what OpenCV's resize alone changes. Its job can only read the
-  repository and holds no secret
-- **Results**: the job's summary shows the counts-only summary. The
-  `text-detector-evaluation-idc` artefact, kept for 90 days, holds it with
-  the per-case report of each series by its public identifiers, licence, and
-  DOI, the assessment against the chosen criteria, the selection's counts by
-  collection, and `commit.txt`. No image, crop, or pixel value is written, and
-  the series are never cached or uploaded
+  s5cmd's, in files on the runner. The patients' job selects by the vetted
+  collections, licences, and image modalities, fetches the archive folders,
+  measures them all as received and as converted to Legacy Converted
+  Enhanced images, and, at a model's publishers' settings, counts what
+  OpenCV's resize alone changes. The phantoms' job selects IDC's phantom
+  collections alone and runs `phantom-report`, which refuses any other
+  collection. Each job can only read the repository and holds no secret
+- **Results**: each job's summary shows its counts-only summary. The
+  `text-detector-evaluation-patients` artefact, kept for 90 days, holds it
+  with the per-case report of each IDC series by its public identifiers,
+  licence, and DOI, the assessment against the chosen criteria, the
+  selection's and the archives' counts by collection, and `commit.txt`; no
+  image, crop, or pixel value of a patient is written, and the series are
+  never cached or uploaded. The `text-detector-evaluation-phantoms`
+  artefact, kept for 90 days, holds the phantoms' summary, each case's full
+  report with PNG previews under `phantoms/`, its index and
+  `ATTRIBUTION.md`, the selection's counts, and `commit.txt`
 
 ### AI Assistance
 
