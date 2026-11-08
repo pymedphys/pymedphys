@@ -410,7 +410,7 @@ def test_under_retain_institution_identity_the_slice_is_held_for_review(tmp_path
     statuses, report = _run(tmp_path, (INSTITUTION_IDENTITY,))
 
     assert statuses == [run.Status.HELD_FOR_REVIEW]
-    assert report["format"] == FORMAT == "pymedphys-deid-release-report/58"
+    assert report["format"] == FORMAT == "pymedphys-deid-release-report/61"
     assert [
         (entry["stage"], entry["code"], entry["count"])
         for entry in report["held_for_review"]

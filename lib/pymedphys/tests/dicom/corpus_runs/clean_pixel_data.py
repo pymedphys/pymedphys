@@ -66,6 +66,7 @@ _IMAGES = (
     "21-rt-image.dcm",
     corpus_module.SEGMENTATION_FILES[1],
     corpus_module.NM_FILE,
+    corpus_module.PARAMETRIC_MAP_FILE,
 )
 _BLACKED_OUT = Withheld(
     run.Status.HELD_FOR_REVIEW,
