@@ -682,12 +682,13 @@ def qc_pack(statement: ConformanceStatement, named: Callable[[str], str]) -> lis
     exempt = join(named(tag) for tag in sorted(_NOT_REVIEWED_TAGS))
     unreviewable = code(TransformReason.UNREVIEWABLE_RETAINED_TEXT.value)
     volume = join((code(each.value) for each in pixel_risk.VOLUME_INDICATORS), "or")
-    localizer, rt_image, segmentation, head, unreadable = (
+    localizer, rt_image, segmentation, parametric_map, head, unreadable = (
         code(indicator.value)
         for indicator in (
             Indicator.LOCALIZER,
             Indicator.RT_IMAGE,
             Indicator.SEGMENTATION,
+            Indicator.PARAMETRIC_MAP,
             Indicator.HEAD_OR_NECK,
             Indicator.UNREADABLE,
         )
@@ -725,9 +726,11 @@ def qc_pack(statement: ConformanceStatement, named: Callable[[str], str]) -> lis
         "such as a lateral DRR that can show the face in profile too, "
         f"whatever their gantry angle, by {rt_image}; the Segmentations among "
         "them, whose segment of the skin or body traces the profile whatever "
-        f"its label, by {segmentation}; "
-        "where the attributes of a volume, localizer, RT Image, or "
-        "Segmentation, or a Segmentation's segments, name a region of the "
+        f"its label, by {segmentation}; the Parametric Maps among them, "
+        "whose map of the head shows its outline whatever its quantity, by "
+        f"{parametric_map}; "
+        "where the attributes of a volume, localizer, RT Image, Segmentation, "
+        "or Parametric Map, or a Segmentation's segments, name a region of the "
         f"head or neck in a reviewed list from PS3.16 Annex L, by {head}; and "
         f"where such evidence cannot be read, by {unreadable}; each with the "
         "instances that show it. A volume is a series whose instances of one "

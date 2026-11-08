@@ -460,9 +460,11 @@ detailed explanations of individual features.
   symlinks, submodules and an unverifiable diff select every check a path can
   select. Integration and database tests and the full unit-test matrix are
   cost-gated on PRs, as the maintainers decided. Merge groups retain every
-  check with the quick Ubuntu/Python 3.14 unit matrix; main pushes and releases
-  run the full unit matrix. The maintainers accept platform failures first
-  discovered on main to avoid repeating the full matrix before each merge.
+  check with the quick Ubuntu/Python 3.14 unit matrix; a push to main runs no
+  CI, since the merge group tested that commit, and main's nightly run,
+  manual runs and releases run the full unit matrix. The maintainers accept
+  platform failures first discovered on main to avoid repeating the full
+  matrix before each merge or delaying the merges after it.
   Beyond the `full-test` and `database` labels, integration
   and database tests run on PRs only for inputs that no standard check validates,
   listed in `select_checks.py`.

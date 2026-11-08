@@ -27,9 +27,10 @@ Radiation Dose SR IODs, of the Basic Text SR, Enhanced SR, Comprehensive SR,
 Comprehensive 3D SR, and Extensible SR IODs, of the Key Object Selection
 Document, and of the Mammography CAD SR, Chest CAD SR, Colon CAD SR,
 Procedure Log, Spectacle Prescription Report, Macular Grid Thickness and
-Volume Report, and Waveform Annotation SR IODs, and of the Encapsulated
-PDF IOD, uncompressed or in a transfer syntax that encapsulates Pixel Data
-that pydicom's decoding plugins decode. Supporting an IOD or a transfer
+Volume Report, and Waveform Annotation SR IODs, and of the Parametric Map,
+Real World Value Mapping, and Encapsulated PDF IODs, uncompressed or in a
+transfer syntax that encapsulates Pixel Data that pydicom's decoding plugins
+decode. Supporting an IOD or a transfer
 syntax does not release every instance in it: a compressed instance is
 still sequestered where the plugin pinned to its transfer syntax is not
 installed, or where its frames or codestreams fail the engine's checks
@@ -44,6 +45,8 @@ the Clean Pixel Data Option, since the Basic Profile gives its Encapsulated
 Document (0042,0011) D, and no reviewed rule gives a document a dummy value;
 under that option, the document is released only as the reviewed rendering
 of its pages (:mod:`~pymedphys._dicom.deidentify.document_cleaning`).
+The Clean Pixel Data Option also sequesters a Parametric Map whose pixel
+data are floating point, which it does not read.
 Every other instance is sequestered: neither de-identified nor written, and
 listed in the run report by opaque identifiers only. That includes the
 other Structured Reports, Presentation States, and instances of Private SOP
@@ -112,6 +115,8 @@ SUPPORTED_IODS = frozenset(
         "Spectacle Prescription Report",
         "Macular Grid Thickness and Volume Report",
         "Waveform Annotation SR",
+        "Parametric Map",
+        "Real World Value Mapping",
         "Encapsulated PDF",
     }
 )
