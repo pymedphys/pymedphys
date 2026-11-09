@@ -325,42 +325,40 @@ def shapely_insert(x, y):
 
 
 def search_for_centre_of_largest_bounded_circle(x, y, callback=None):
-    """Find the centre of the largest bounded circle within the insert."""
+    """Find the centre of the largest circle that fits within the insert.
+
+    The search is deterministic. It uses ``shapely.ops.polylabel``, which
+    returns the point furthest from the insert boundary. The tolerance is
+    a millionth of the insert's bounding-box diagonal, so it scales with
+    whatever units the outline uses.
+
+    Parameters
+    ----------
+    x : np.ndarray
+        The x coordinates of the insert outline.
+    y : np.ndarray
+        The y coordinates of the insert outline.
+    callback : callable, optional
+        Called once, with the final result, as
+        ``callback(centre, objective, accepted)``. The objective is minus
+        the circle radius and ``accepted`` is always ``True``. This keeps
+        the signature that ``scipy.optimize.basinhopping`` used to call.
+
+    Returns
+    -------
+    circle_centre : np.ndarray
+        The x and y coordinates of the circle centre.
+
+    """
     insert = shapely_insert(x, y)
-    boundary = insert.boundary
-    centroid = insert.centroid
-
-    # A scalar: basinhopping's temperature and step size must not be arrays.
     min_x, min_y, max_x, max_y = insert.bounds
-    furthest_distance = np.hypot(max_x - min_x, max_y - min_y)
+    extent = np.hypot(max_x - min_x, max_y - min_y)
 
-    def minimising_function(optimiser_input):
-        x, y = optimiser_input
-        point = shapely.geometry.Point(x, y)
+    centre = shapely.ops.polylabel(insert, tolerance=extent * 1e-6)
+    circle_centre = np.array(centre.coords[0])
 
-        if insert.contains(point):
-            edge_distance = point.distance(boundary)
-        else:
-            edge_distance = -point.distance(boundary)
-
-        return -edge_distance
-
-    x0 = np.squeeze(centroid.coords)
-    niter = 200
-    T = furthest_distance / 3
-    stepsize = furthest_distance / 2
-    niter_success = 50
-    output = scipy.optimize.basinhopping(
-        minimising_function,
-        x0,
-        niter=niter,
-        T=T,
-        stepsize=stepsize,
-        niter_success=niter_success,
-        callback=callback,
-    )
-
-    circle_centre = output.x
+    if callback is not None:
+        callback(circle_centre, -insert.boundary.distance(centre), True)
 
     return circle_centre
 
