@@ -1050,7 +1050,8 @@ def test_the_statement_gives_the_code_only_after_review():
         "requires, including in an IOD that does not define the attribute, which "
         "of the supported IODs are RT Plan, RT Structure Set, RT Beams Treatment "
         "Record, RT Ion Plan, RT Ion Beams Treatment Record, RT Brachy Treatment "
-        "Record, RT Treatment Summary Record, MR Spectroscopy, Spatial Registration, "
+        "Record, RT Treatment Summary Record, Enhanced RT Image, Enhanced "
+        "Continuous RT Image, MR Spectroscopy, Spatial Registration, "
         "Deformable Spatial Registration, Surface Segmentation, X-Ray Radiation "
         "Dose SR, Enhanced X-Ray "
         "Radiation Dose SR, Radiopharmaceutical Radiation Dose SR, Patient Radiation "
@@ -1082,6 +1083,8 @@ def test_the_statement_names_each_supported_iod_that_lacks_the_attribute():
         "RT Ion Beams Treatment Record",
         "RT Brachy Treatment Record",
         "RT Treatment Summary Record",
+        "Enhanced RT Image",
+        "Enhanced Continuous RT Image",
         "MR Spectroscopy",
         "Spatial Registration",
         "Deformable Spatial Registration",
