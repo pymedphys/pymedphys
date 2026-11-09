@@ -900,6 +900,11 @@ def test_instances_keep_their_reviewed_dummy_values(policy_run):
         # In their Enhanced RT Series Module.
         "Enhanced RT Image",
         "Enhanced Continuous RT Image",
+        "RT Segment Annotation",
+        "RT Radiation Set",
+        "C-Arm Photon-Electron Radiation",
+        "Tomotherapeutic Radiation",
+        "Robotic-Arm Radiation",
     }
     steps = set()
     # Under Retain UIDs, Table E.1-1 gives K to the sequence and to the
