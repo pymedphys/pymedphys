@@ -94,6 +94,10 @@ def _read(document):
         "PET Delay 2hr",
         "PET WB 60min 3D",
         "CT 120kV 3mm",
+        "CT CHEST CAD",
+        "CT HEAD WWO CONTRAST",
+        "MR BREAST CAD WWO",
+        "CT HEAD ANGIOGRAM",
     ],
 )
 def test_technique_values_made_of_vocabulary_words_are_kept(vocabulary, value):
@@ -115,6 +119,8 @@ def test_technique_values_made_of_vocabulary_words_are_kept(vocabulary, value):
         ("AX T1 HU^MA", Rejection.NAME),
         ("Dr Quokka chest", Rejection.UNKNOWN_WORD),
         ("CHEST Wombat", Rejection.UNKNOWN_WORD),
+        ("CT AB PELVIS", Rejection.UNKNOWN_WORD),
+        ("CT FOREIGN BODY ORBITS", Rejection.UNKNOWN_WORD),
         ("45Y F", Rejection.UNKNOWN_WORD),
         ("CHEST MALE", Rejection.UNKNOWN_WORD),
         ("HEAD MRN", Rejection.UNKNOWN_WORD),
