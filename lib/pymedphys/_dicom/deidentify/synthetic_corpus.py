@@ -20,7 +20,7 @@ fictitious patient and study, with one Frame of Reference: three CT Image
 slices, an RT Structure Set that references the CT series and slices, an RT
 Plan that references the structure set and the dose, an RT Dose that
 references the plan, a second RT Dose of the plan for review (below), one
-instance of each of forty-seven other IODs, and two of the Segmentation
+instance of each of forty-nine other IODs, and two of the Segmentation
 IOD, one of each of its SOP Classes, each in a series of its own, and a
 second X-Ray Radiation Dose SR, of a CT scan.
 The MR Image and PET Image instances reference the first CT slice, and each
@@ -40,7 +40,9 @@ brachytherapy application setups as well as beams, and names the RT Beams
 Treatment Record as a related record, and the RT Treatment Summary Record
 references the RT Plan and, as a treatment record that it summarises, the
 RT Brachy Treatment Record. The RT Image, a digitally reconstructed radiograph of 2 by 2 pixels,
-references the RT Plan. The X-Ray Radiation Dose SRs and the Enhanced
+references the RT Plan, as do the Enhanced RT Image, a digitally
+reconstructed radiograph, and the Enhanced Continuous RT Image, a simulator
+image, each of two frames of 2 by 2 pixels. The X-Ray Radiation Dose SRs and the Enhanced
 X-Ray Radiation Dose SR reference the first CT slice, the
 Radiopharmaceutical Radiation Dose SR the PET Image, the Patient Radiation
 Dose SR the CT dose report, which its estimate used, and the Basic Text
@@ -51,8 +53,7 @@ its first slice, and each segments the planes of the first two slices. The
 Surface Segmentation, one closed tetrahedral mesh of a Tissue segment,
 references the CT series and its first slice too. The
 Key Object Selection Document selects the MR Image; the Mammography CAD SR
-and Chest CAD SR name the RT Image, the collection's one projection
-radiograph, as the image that their CAD read, and the Colon CAD SR the CT
+and Chest CAD SR name the RT Image, a projection radiograph, as the image that their CAD read, and the Colon CAD SR the CT
 series; and the Procedure Log, Spectacle Prescription Report, Macular Grid
 Thickness and Volume Report, and Waveform Annotation SR reference the MR
 Image. The Parametric Map, an apparent diffusion coefficient map of 16-bit
@@ -208,7 +209,7 @@ dummy item at that place and only there. Planted in
 every file, the first two would sequester every
 instance, and no preset could release any of the collection; planted in one,
 that instance checks sequestration, :data:`REVIEW_FILE` checks review, and
-the other fifty-four check each preset's output, the reports where their
+the other fifty-seven check each preset's output, the reports where their
 trees are cleaned. Radiopharmaceutical Start
 DateTime, which CT Image does not define there, is planted in no file, so
 the Enhanced PET instance, which lacks an attribute of Type 1, is released
@@ -247,7 +248,7 @@ Manufacturer's Model Name (0008,1090), which Table E.1-1 does not list and
 the Basic Profile keeps, a copy of the RT Plan's RT Plan Label marker
 (:attr:`PlacementKind.REVIEW_COPY`), so the residual search finds a source
 value of another instance in its output and sends it to review. The third
-CT slice remains sequestered; the other fifty-four files stay releasable, the
+CT slice remains sequestered; the other fifty-seven files stay releasable, the
 reports where their trees are cleaned.
 
 **Manifest.** :class:`CorpusManifest` records, for each file, each
@@ -385,6 +386,8 @@ RT_BRACHY_TREATMENT_RECORD_STORAGE = "1.2.840.10008.5.1.4.1.1.481.6"
 RT_TREATMENT_SUMMARY_RECORD_STORAGE = "1.2.840.10008.5.1.4.1.1.481.7"
 PARAMETRIC_MAP_STORAGE = "1.2.840.10008.5.1.4.1.1.30"
 REAL_WORLD_VALUE_MAPPING_STORAGE = "1.2.840.10008.5.1.4.1.1.67"
+ENHANCED_RT_IMAGE_STORAGE = "1.2.840.10008.5.1.4.1.1.481.23"
+ENHANCED_CONTINUOUS_RT_IMAGE_STORAGE = "1.2.840.10008.5.1.4.1.1.481.24"
 GRAYSCALE_SOFTCOPY_PRESENTATION_STATE_STORAGE = "1.2.840.10008.5.1.4.1.1.11.1"
 COLOR_SOFTCOPY_PRESENTATION_STATE_STORAGE = "1.2.840.10008.5.1.4.1.1.11.2"
 PSEUDO_COLOR_SOFTCOPY_PRESENTATION_STATE_STORAGE = "1.2.840.10008.5.1.4.1.1.11.3"
@@ -482,6 +485,10 @@ REAL_WORLD_VALUE_MAPPING_FILE = "52-real-world-value-mapping.dcm"
 # The Surface Segmentation of the CT series, numbered after the files that
 # open pull requests add.
 SURFACE_SEGMENTATION_FILE = "55-seg-surface.dcm"
+# The Enhanced RT Image and the Enhanced Continuous RT Image, each of the RT
+# Plan's beam, numbered after the files that open pull requests add.
+ENHANCED_RT_IMAGE_FILE = "89-rt-image-enhanced.dcm"
+ENHANCED_CONTINUOUS_RT_IMAGE_FILE = "90-rt-image-enhanced-continuous.dcm"
 # The softcopy Presentation States, one of each of the six IODs of PS3.3
 # Sections A.33.1 to A.33.4, A.33.6, and A.33.8, numbered after the files
 # that open pull requests add.
@@ -603,6 +610,10 @@ REAL_WORLD_VALUE_MAPPING_SERIES = f"{LINKED_UID_ROOT}04900"
 REAL_WORLD_VALUE_MAPPING = f"{LINKED_UID_ROOT}04901"
 SURFACE_SEGMENTATION_SERIES = f"{LINKED_UID_ROOT}05200"
 SURFACE_SEGMENTATION = f"{LINKED_UID_ROOT}05201"
+ENHANCED_RT_IMAGE_SERIES = f"{LINKED_UID_ROOT}08500"
+ENHANCED_RT_IMAGE = f"{LINKED_UID_ROOT}08501"
+ENHANCED_CONTINUOUS_RT_IMAGE_SERIES = f"{LINKED_UID_ROOT}08600"
+ENHANCED_CONTINUOUS_RT_IMAGE = f"{LINKED_UID_ROOT}08601"
 GRAYSCALE_PRESENTATION_STATE_SERIES = f"{LINKED_UID_ROOT}05300"
 GRAYSCALE_PRESENTATION_STATE = f"{LINKED_UID_ROOT}05301"
 COLOR_PRESENTATION_STATE_SERIES = f"{LINKED_UID_ROOT}05400"
@@ -751,6 +762,8 @@ _SOP_CLASSES = types.MappingProxyType(
         PARAMETRIC_MAP: PARAMETRIC_MAP_STORAGE,
         REAL_WORLD_VALUE_MAPPING: REAL_WORLD_VALUE_MAPPING_STORAGE,
         SURFACE_SEGMENTATION: SURFACE_SEGMENTATION_STORAGE,
+        ENHANCED_RT_IMAGE: ENHANCED_RT_IMAGE_STORAGE,
+        ENHANCED_CONTINUOUS_RT_IMAGE: ENHANCED_CONTINUOUS_RT_IMAGE_STORAGE,
         GRAYSCALE_PRESENTATION_STATE: GRAYSCALE_SOFTCOPY_PRESENTATION_STATE_STORAGE,
         COLOR_PRESENTATION_STATE: COLOR_SOFTCOPY_PRESENTATION_STATE_STORAGE,
         PSEUDO_COLOR_PRESENTATION_STATE: (
@@ -1552,8 +1565,7 @@ _SPECS = (
     # the first CT slice, the colour one the Enhanced MR Color Image, the
     # pseudo-colour one the PET Image, the blending one the first CT slice,
     # under the PET Image that its Blending Sequence (0070,0402) would
-    # superimpose, and the XA/XRF one the RT Image, the collection's one
-    # projection radiograph.
+    # superimpose, and the XA/XRF one the RT Image, a projection radiograph.
     _Spec(
         GRAYSCALE_PRESENTATION_STATE_FILE,
         GRAYSCALE_SOFTCOPY_PRESENTATION_STATE_STORAGE,
@@ -1620,6 +1632,24 @@ _SPECS = (
         ADVANCED_BLENDING_PRESENTATION_STATE_SERIES,
         PET,
     ),
+    # The Enhanced RT Image, two digitally reconstructed radiographs of the
+    # RT Plan's beam, and the Enhanced Continuous RT Image, two frames of a
+    # kV acquisition during it, each referencing the RT Plan, as the RT Image
+    # does.
+    _Spec(
+        ENHANCED_RT_IMAGE_FILE,
+        ENHANCED_RT_IMAGE_STORAGE,
+        ENHANCED_RT_IMAGE,
+        ENHANCED_RT_IMAGE_SERIES,
+        PLAN,
+    ),
+    _Spec(
+        ENHANCED_CONTINUOUS_RT_IMAGE_FILE,
+        ENHANCED_CONTINUOUS_RT_IMAGE_STORAGE,
+        ENHANCED_CONTINUOUS_RT_IMAGE,
+        ENHANCED_CONTINUOUS_RT_IMAGE_SERIES,
+        PLAN,
+    ),
 )
 
 
@@ -1629,7 +1659,7 @@ def build_corpus() -> SyntheticCorpus:
     Returns
     -------
     SyntheticCorpus
-        Fifty-seven files: three CT slices; the RT Structure Set, RT Plan, RT
+        Fifty-nine files: three CT slices; the RT Structure Set, RT Plan, RT
         Dose, and the RT Dose for review; the Enhanced CT Image and Legacy
         Converted Enhanced CT Image; the MR Image, Enhanced MR Image,
         Enhanced MR Color Image, Legacy Converted Enhanced MR Image, and MR
@@ -1648,9 +1678,10 @@ def build_corpus() -> SyntheticCorpus:
         Record and RT Treatment Summary Record; the Parametric Map and Real
         World Value Mapping; the Surface Segmentation; the Grayscale, Color,
         Pseudo-Color, Blending, XA/XRF Grayscale, and Variable Modality LUT
-        Softcopy Presentation States; and the Grayscale Planar MPR and Volume
+        Softcopy Presentation States; the Grayscale Planar MPR and Volume
         Rendering Volumetric Presentation States and the Advanced Blending
-        Presentation State. Two builds give the same bytes and the same
+        Presentation State; and the Enhanced RT Image and Enhanced Continuous
+        RT Image. Two builds give the same bytes and the same
         manifest.
     """
     markers = _Markers()
@@ -2361,6 +2392,11 @@ class _Instance:
             put((), "(0008,0008)", ["DERIVED", "SECONDARY", "DRR"])
             put((), "(3002,000C)", ["NORMAL"])  # RT Image Plane
             self._add_pixels(16, 0, struct.pack("<4H", 0, 100, 200, 300))
+        elif self.spec.sop_class in (
+            ENHANCED_RT_IMAGE_STORAGE,
+            ENHANCED_CONTINUOUS_RT_IMAGE_STORAGE,
+        ):
+            self._add_enhanced_rt_image()
         else:
             put((), "(0008,0060)", ["RTDOSE"])
             put((), "(0020,0032)", ["-1", "-1", "0"])
@@ -2373,6 +2409,32 @@ class _Instance:
             put((), "(3004,000C)", ["0", "2"])
             put((), "(3004,000E)", ["0.001"])
             self._add_pixels(32, 0, struct.pack("<8I", *range(0, 8000, 1000)))
+
+    def _add_enhanced_rt_image(self) -> None:
+        """Add the attributes that make the instance an Enhanced or Enhanced
+        Continuous RT Image.
+
+        It holds two frames of 2 by 2 pixels, whose spacing the Shared
+        Functional Groups Sequence (5200,9229) gives. An Enhanced Continuous
+        RT Image's Selected Frame Functional Groups Sequence (3002,0101)
+        selects only the first frame, by its Selected Frame Number
+        (3002,0100), since the Sparse Multi-frame Functional Groups Module of
+        PS3.3 C.7.6.29 selects fewer frames than the image has; the markers
+        of the macros are planted in that item.
+        """
+        put = self._set
+        continuous = self.spec.sop_class == ENHANCED_CONTINUOUS_RT_IMAGE_STORAGE
+        put((), "(0008,0060)", ["RTIMAGE"])
+        if continuous:
+            put((), "(0008,0008)", ["ORIGINAL", "PRIMARY", "SIMULATOR", "NONE"])
+        else:
+            put((), "(0008,0008)", ["DERIVED", "PRIMARY", "DRR", "NONE"])
+        put((), "(0028,0008)", ["2"])
+        shared = _items(["(5200,9229)"])
+        put((*shared, ("(0028,9110)", 0)), "(0028,0030)", ["1", "1"])
+        if continuous:
+            put((("(3002,0101)", 0),), "(3002,0100)", ["1"])
+        self._add_pixels(16, 0, struct.pack("<8H", *range(0, 800, 100)))
 
     def _add_registration(self) -> None:
         """Add the attributes that make the instance a rigid or deformable registration."""
@@ -2751,7 +2813,11 @@ class _Instance:
             put((), "(0028,0004)", ["MONOCHROME2"])
         put((), "(0028,0010)", [size])
         put((), "(0028,0011)", [size])
-        if self.spec.sop_class not in _SEGMENTATIONS:
+        if self.spec.sop_class not in (
+            *_SEGMENTATIONS,
+            ENHANCED_RT_IMAGE_STORAGE,
+            ENHANCED_CONTINUOUS_RT_IMAGE_STORAGE,
+        ):
             put((), "(0028,0030)", ["1", "1"])
         put((), "(0028,0100)", [bits])
         put((), "(0028,0101)", [bits])

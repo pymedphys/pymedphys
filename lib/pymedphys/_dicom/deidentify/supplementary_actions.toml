@@ -12,7 +12,8 @@
 # reviewed ahead of supporting them, as RT Image, RT Beams Treatment Record,
 # the registrations, the X-Ray and Radiopharmaceutical Radiation Dose SR
 # IODs, RT Ion Plan, RT Ion Beams Treatment Record, RT Brachy Treatment
-# Record, RT Treatment Summary Record, Segmentation, and Surface Segmentation were. So does every date,
+# Record, RT Treatment Summary Record, Enhanced RT Image, Enhanced Continuous
+# RT Image, Segmentation, and Surface Segmentation were. So does every date,
 # time, and datetime (DA, DT, or TM) attribute that Table E.1-1 omits,
 # besides the role that the temporal roles file gives it.
 # Other attributes that the table omits have a rule only where one has been
@@ -1152,6 +1153,12 @@ tag = "(300A,0390)"
 keyword = "ScanSpotTuneID"
 action = "K"
 note = "The identifier of the treatment machine's configuration that produces a scanned beam's spots, which PS3.3 says may be the nominal spot size or another machine-specific value, required for a modulated scanned beam. It is a technical value that identifies no one, and it is needed to reproduce the spots, so it is kept, as Fluence Mode ID is. Keeping it accepts the residual risk that a site writes a name in it, since PS3.3 lets a user supply it."
+
+[[attribute]]
+tag = "(3010,000C)"
+keyword = "ConceptualVolumeCombinationExpression"
+action = "K"
+note = "How a combined Conceptual Volume is made from its constituents, in the nested list notation of PS3.3 Section 10.34.1.1, such as (UNION 1 2): only the operators UNION, INTERSECTION, NEGATION, SUBTRACTION, and XOR, parentheses, spaces, and the constituents' indices. It is software-generated structure that identifies no one, Table E.1-1 removes the human-readable Conceptual Volume Combination Description (3010,000F) beside it, and replacing it would lose which volumes are combined and how, so it is kept, as Fraction Pattern is. Keeping it accepts the residual risk that a writer that does not follow the notation puts other text in it."
 
 [[attribute]]
 tag = "(3010,001A)"
