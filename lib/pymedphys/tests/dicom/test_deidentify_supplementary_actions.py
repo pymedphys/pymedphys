@@ -142,6 +142,42 @@ RECORD_REVIEWED_AGAINST = ION_REVIEWED_AGAINST + ION_IODS
 # first supported release came to support them.
 MAP_IODS = ("Parametric Map", "Real World Value Mapping")
 MAP_REVIEWED_AGAINST = RECORD_REVIEWED_AGAINST + RECORD_IODS
+# Enhanced RT Image and Enhanced Continuous RT Image, which the maintainer
+# added to the target coverage on 31 October 2026, whose attributes were
+# reviewed with their support, against every IOD above, and which the first
+# supported release now supports.
+ENHANCED_RT_IMAGE_IODS = ("Enhanced RT Image", "Enhanced Continuous RT Image")
+ENHANCED_RT_IMAGE_REVIEWED_AGAINST = RECORD_REVIEWED_AGAINST + RECORD_IODS
+# The 16 second-generation RT IODs, which the maintainer added to the target
+# coverage on 31 October 2026, whose text, UID, and date attributes were
+# reviewed ahead of supporting them, against every IOD above, and those of
+# them that the first supported release now supports: RT Segment Annotation,
+# RT Radiation Set, and the three radiation IODs.
+SECOND_GENERATION_RT_IODS = (
+    "RT Physician Intent",
+    "RT Segment Annotation",
+    "RT Radiation Set",
+    "RT Radiation Record Set",
+    "RT Radiation Salvage Record",
+    "RT Treatment Preparation",
+    "RT Patient Position Acquisition Instruction",
+    "RT Beams Delivery Instruction",
+    "RT Brachy Application Setup Delivery Instruction",
+    "RT Radiation Set Delivery Instruction",
+    "C-Arm Photon-Electron Radiation",
+    "C-Arm Photon-Electron Radiation Record",
+    "Tomotherapeutic Radiation",
+    "Tomotherapeutic Radiation Record",
+    "Robotic-Arm Radiation",
+    "Robotic-Arm Radiation Record",
+)
+SUPPORTED_SECOND_GENERATION_RT_IODS = (
+    "RT Segment Annotation",
+    "RT Radiation Set",
+    "C-Arm Photon-Electron Radiation",
+    "Tomotherapeutic Radiation",
+    "Robotic-Arm Radiation",
+)
 # Surface Segmentation, which the maintainer brought into the target
 # coverage on 31 October 2026 with the other IODs that radiotherapy exports
 # carry, whose attributes were reviewed ahead of supporting it, against every
@@ -162,6 +198,17 @@ PRESENTATION_STATE_IODS = (
     "Variable Modality LUT Softcopy Presentation State",
 )
 PRESENTATION_STATE_REVIEWED_AGAINST = (
+    REVIEWED_AGAINST
+    + SUPPORTED_TARGET_IODS
+    + SUPPORTED_DOSE_SR_IODS
+    + GENERAL_SR_IODS
+    + SUPPORTED_OTHER_SR_IODS
+    + ION_IODS
+    + RECORD_IODS
+    + MAP_IODS
+    + ENHANCED_RT_IMAGE_IODS
+)
+SURFACE_REVIEWED_AGAINST = (
     REVIEWED_AGAINST
     + SUPPORTED_TARGET_IODS
     + SUPPORTED_DOSE_SR_IODS
@@ -193,9 +240,24 @@ WAVEFORM_PRESENTATION_STATE_IODS = (
 WAVEFORM_REVIEWED_AGAINST = (
     VOLUMETRIC_REVIEWED_AGAINST + VOLUMETRIC_PRESENTATION_STATE_IODS
 )
-SURFACE_REVIEWED_AGAINST = PRESENTATION_STATE_REVIEWED_AGAINST
 SUPPORTED_IODS = (
-    WAVEFORM_REVIEWED_AGAINST + SURFACE_IODS + WAVEFORM_PRESENTATION_STATE_IODS
+    WAVEFORM_REVIEWED_AGAINST
+    + SURFACE_IODS
+    + SUPPORTED_SECOND_GENERATION_RT_IODS
+    + WAVEFORM_PRESENTATION_STATE_IODS
+)
+# The IODs that the second-generation RT IODs were reviewed against: every
+# IOD that the first supported release supported when they were reviewed,
+# which Surface Segmentation and the Presentation States were not yet.
+SECOND_GENERATION_REVIEWED_AGAINST = tuple(
+    name
+    for name in SUPPORTED_IODS
+    if name
+    not in SECOND_GENERATION_RT_IODS
+    + SURFACE_IODS
+    + PRESENTATION_STATE_IODS
+    + VOLUMETRIC_PRESENTATION_STATE_IODS
+    + WAVEFORM_PRESENTATION_STATE_IODS
 )
 CLEAN_DESCRIPTORS = "clean_descriptors"
 DEVICE_IDENTITY = "retain_device_identity"
@@ -462,12 +524,14 @@ def test_every_text_attribute_a_supported_iod_uses_and_table_e1_1_omits_has_a_ru
 
     # Checked against the 2026d PS3.3, PS3.6, and PS3.15: the combined
     # scope includes the RT objects, among them the two RT Ion IODs, which
-    # add 13, and the brachy and summary treatment records, which add none,
-    # Segmentation, which adds 4, Surface Segmentation, which adds 2, the
-    # two dose-report IODs, the six softcopy Presentation State IODs, which
-    # add 7, and the volumetric and advanced blending Presentation State
-    # IODs, which add 2, whose supplementary rules cover 183 text attributes.
-    assert len(omitted) == 183
+    # add 13, the brachy and summary treatment records, which add none, the
+    # Enhanced and Enhanced Continuous RT Images, which add 1, RT Segment
+    # Annotation and RT Radiation Set, which add 2, Segmentation, which adds
+    # 4, Surface Segmentation, which adds 2, the two dose-report IODs, the six
+    # softcopy Presentation State IODs, which add 7, and the volumetric and
+    # advanced blending Presentation State IODs, which add 2, whose
+    # supplementary rules cover 186 text attributes.
+    assert len(omitted) == 186
     assert omitted <= set(_rules())
     assert {"(0008,0100)", "(300A,00C2)", "(60xx,1500)"} <= omitted
 
@@ -482,11 +546,11 @@ def test_the_rules_for_omitted_text_fall_in_the_reviewed_groups():
 
     assert groups == {
         # Operator-typed labels and text.
-        ("X/Z/D", ((CLEAN_DESCRIPTORS, "C"),)): 88,
+        ("X/Z/D", ((CLEAN_DESCRIPTORS, "C"),)): 89,
         # Accessory and equipment identifiers.
         ("X/Z/D", ((DEVICE_IDENTITY, "K"),)): 30,
         # Coded and technical values, and De-identification Method.
-        ("K", ()): 46,
+        ("K", ()): 48,
         # Names and identifiers of people, organisations, records, and
         # networks, identifiers that a device reads, and the text of overlays.
         ("X/Z/D", ()): 17,
@@ -1300,6 +1364,189 @@ def test_every_new_attribute_of_the_softcopy_presentation_states_has_its_action(
                 ), (preset, name, definition)
 
 
+# The text attributes that Enhanced RT Image and Enhanced Continuous RT Image
+# use and the IODs reviewed before them do not, checked by hand against the
+# 2026d PS3.3 Tables C.36.26-1, C.36.27-1, C.36.2.4.11-1 (RT Image Frame
+# Radiation Acquisition Parameters Macro), 10.32-1 (Entity Long Labeling
+# Macro), and 10.34-1 (Conceptual Volume Segmentation Reference and
+# Combination Macro), and Section 10.34.1.1: four that Table E.1-1 lists, with
+# its actions, and one that it omits, which is kept.
+ENHANCED_RT_IMAGE_LISTED_TEXT = {
+    "(300A,067C)": "D",  # Radiation Generation Mode Label
+    "(300A,067D)": "Z",  # Radiation Generation Mode Description
+    "(3010,000F)": "Z",  # Conceptual Volume Combination Description
+    "(3010,0037)": "X",  # Entity Description
+}
+CONCEPTUAL_VOLUME_COMBINATION_EXPRESSION = "(3010,000C)"
+ENHANCED_RT_IMAGE_KEPT_TEXT = {CONCEPTUAL_VOLUME_COMBINATION_EXPRESSION}
+# The UIDs that they add, which Table E.1-1 lists with U.
+ENHANCED_RT_IMAGE_UIDS = {
+    "(300A,0785)",  # Referenced Treatment Position Group UID
+    "(3010,0013)",  # Constituent Conceptual Volume UID
+}
+# The others, by VR: codes, numbers, and sequences of the frames'
+# acquisition, the imaging and treatment devices, the treatment positions,
+# and the Conceptual Volumes named.
+ENHANCED_RT_IMAGE_OTHER_VRS = {"SQ": 36, "US": 11, "FD": 6, "DS": 6, "CS": 5, "IS": 1}
+# Where removal by Type gives an attribute of these IODs an action that it
+# takes nowhere in the IODs reviewed before them: Instance Creation Date and
+# Time, which are Type 1 in the Radiotherapy Common Instance Module (PS3.3
+# Table C.36.4-1) and Type 3 in the SOP Common Module.
+ENHANCED_RT_IMAGE_NEW_RESOLUTIONS = {
+    "(0008,0012)": ({"D"}, {"X"}),  # Instance Creation Date, X/D
+    "(0008,0013)": ({"D"}, {"X"}),  # Instance Creation Time, X/Z/D
+}
+
+
+def test_the_enhanced_rt_images_are_generated_and_supported():
+    tables = iods.load_iod_tables()
+
+    assert set(ENHANCED_RT_IMAGE_IODS) <= set(tables.iods)
+    assert set(ENHANCED_RT_IMAGE_IODS) <= scope.SUPPORTED_IODS
+
+
+def test_the_enhanced_rt_images_differ_only_in_the_modules_of_their_frames():
+    tables = iods.load_iod_tables()
+    enhanced, continuous = (
+        {(usage.module, usage.table) for usage in tables.iods[name].modules}
+        for name in ENHANCED_RT_IMAGE_IODS
+    )
+
+    assert enhanced - continuous == {
+        ("Multi-frame Functional Groups", "Table C.7.6.16-1"),
+        ("Multi-frame Dimension", "Table C.7.6.17-1"),
+        ("Frame Extraction", "Table C.12-9"),
+    }
+    assert continuous - enhanced == {
+        ("Sparse Multi-frame Functional Groups", "Table C.7.6.29-1")
+    }
+    # Their macros are the same, with the same usages; only the condition of
+    # Derivation Image is worded for frames in one and not the other.
+    enhanced_macros, continuous_macros = (
+        [
+            (macro.macro, macro.section, macro.usage, macro.table)
+            for macro in tables.iods[name].functional_group_macros
+        ]
+        for name in ENHANCED_RT_IMAGE_IODS
+    )
+    assert enhanced_macros == continuous_macros
+
+
+@pytest.mark.deid_requirement("MIDI-BP-05", "MIDI-BP-06", "MIDI-BP-11")
+def test_the_text_that_only_the_enhanced_rt_images_use_has_its_reviewed_action():
+    table = _table_e1_1()
+    rules = _rules()
+    added = _used_by(ENHANCED_RT_IMAGE_IODS, TEXT_VRS) - _used_by(
+        ENHANCED_RT_IMAGE_REVIEWED_AGAINST, TEXT_VRS
+    )
+
+    assert added == {
+        *ENHANCED_RT_IMAGE_LISTED_TEXT,
+        CONCEPTUAL_VOLUME_COMBINATION_EXPRESSION,
+    }
+    for tag, action in ENHANCED_RT_IMAGE_LISTED_TEXT.items():
+        assert tag not in rules, tag
+        assert table[tag].basic_profile == action, tag
+    # The combination expression, which Table E.1-1 omits, is kept as
+    # software-generated structure, as Fraction Pattern is, under every
+    # option.
+    rule = rules[CONCEPTUAL_VOLUME_COMBINATION_EXPRESSION]
+    assert CONCEPTUAL_VOLUME_COMBINATION_EXPRESSION not in table
+    assert (rule.action, dict(rule.options)) == ("K", {})
+    assert "10.34.1.1" in rule.note
+    for composed in _every_policy():
+        assert (
+            composed.supplementary_actions[CONCEPTUAL_VOLUME_COMBINATION_EXPRESSION]
+            == "K"
+        ), composed.options
+
+
+def test_removal_by_type_gives_the_enhanced_rt_images_attributes_the_actions_reviewed():
+    actions_by_tag = _record_actions()
+    dictionary = _dictionary()
+    every_vr = {vr for attribute in dictionary.values() for vr in attribute.vrs}
+    new = {}
+
+    for tag in sorted(_used_by(ENHANCED_RT_IMAGE_IODS, every_vr)):
+        action = actions_by_tag.get(tag)
+        if action not in compound_actions.COMPOUND_ACTIONS:
+            continue
+        resolved = _resolved_in(ENHANCED_RT_IMAGE_IODS, tag, action)
+        reviewed = _resolved_in(ENHANCED_RT_IMAGE_REVIEWED_AGAINST, tag, action)
+        if not resolved <= reviewed:
+            new[tag] = (resolved, reviewed)
+
+    assert new == ENHANCED_RT_IMAGE_NEW_RESOLUTIONS
+    # Each is a date or time that Full Dates keeps and Modified Dates
+    # modifies, where D writes the dummy value.
+    table = _table_e1_1()
+    for tag in new:
+        assert dict(table[tag].options) == DATE_OPTIONS, tag
+        assert {
+            definition.module
+            for name in ENHANCED_RT_IMAGE_IODS
+            for definition in iods.load_iod_tables().iods[name].definitions
+            if definition.tag == tag and definition.type == "1"
+        } == {"Radiotherapy Common Instance"}, tag
+
+
+def test_every_uid_date_and_name_that_the_enhanced_rt_images_use_has_a_role():
+    uids = uid_roles.load_uid_roles()
+    temporal = temporal_roles.load_temporal_roles()
+    table = _table_e1_1()
+
+    for tag in _used_by(ENHANCED_RT_IMAGE_IODS, {"UI"}):
+        assert isinstance(uids.role(tag), uid_roles.UIDRole), tag
+    for tag in _used_by(ENHANCED_RT_IMAGE_IODS, TEMPORAL_VRS):
+        assert isinstance(temporal.role(tag), temporal_roles.TemporalRole), tag
+    # The IODs reviewed before them use every date, time, datetime, person
+    # name, and URL that these IODs use, and every UID but two, which Table
+    # E.1-1 replaces, each the UID of an instance.
+    for vrs in (TEMPORAL_VRS, {"PN"}, {"UR"}):
+        assert not _used_by(ENHANCED_RT_IMAGE_IODS, vrs) - _used_by(
+            ENHANCED_RT_IMAGE_REVIEWED_AGAINST, vrs
+        ), vrs
+    new_uids = _used_by(ENHANCED_RT_IMAGE_IODS, {"UI"}) - _used_by(
+        ENHANCED_RT_IMAGE_REVIEWED_AGAINST, {"UI"}
+    )
+    assert new_uids == ENHANCED_RT_IMAGE_UIDS
+    for tag in new_uids:
+        assert table[tag].basic_profile == "U", tag
+        assert uids.role(tag) is uid_roles.UIDRole.INSTANCE, tag
+
+
+def test_the_enhanced_rt_images_other_new_attributes_are_kept_by_the_default():
+    dictionary = _dictionary()
+    tables = iods.load_iod_tables()
+    every_vr = {vr for attribute in dictionary.values() for vr in attribute.vrs}
+    new = _used_by(ENHANCED_RT_IMAGE_IODS, every_vr) - _used_by(
+        ENHANCED_RT_IMAGE_REVIEWED_AGAINST, every_vr
+    )
+    other = new - _used_by(ENHANCED_RT_IMAGE_IODS, TEXT_VRS) - ENHANCED_RT_IMAGE_UIDS
+    listed = set(_table_e1_1())
+    rules = _rules()
+    uids = set(uid_roles.load_uid_roles().rules)
+    by_vr = collections.Counter(vr for tag in other for vr in dictionary[tag].vrs)
+
+    assert by_vr == ENHANCED_RT_IMAGE_OTHER_VRS
+    assert all(len(dictionary[tag].vrs) == 1 for tag in other)
+    assert not other & (listed | set(rules) | uids)
+    # So each takes the default, which keeps it where these IODs define it,
+    # under every preset, with a sequence's items handled by their own rules.
+    for preset in policy.PRESETS:
+        rules_of = element_rules.ElementRules(policy.compose_policy(preset))
+        for name in ENHANCED_RT_IMAGE_IODS:
+            iod = tables.iods[name]
+            for definition in iod.definitions:
+                if definition.tag not in other:
+                    continue
+                rule = rules_of.rule(definition.tag, definition.path, iod=iod)
+                assert (rule.source, rule.action) == (
+                    element_rules.RuleSource.DEFAULT,
+                    element_rules.KEEP,
+                ), (preset, name, definition)
+
+
 def test_every_uid_date_and_name_that_the_softcopy_presentation_states_use_has_a_role():
     uids = uid_roles.load_uid_roles()
     temporal = temporal_roles.load_temporal_roles()
@@ -1634,6 +1881,235 @@ def test_the_basic_profile_sequesters_every_conforming_waveform_presentation_sta
             ), (name, tag)
 
 
+# The text attributes that the second-generation RT IODs use and that neither
+# Table E.1-1 nor the IODs reviewed before them use, by group, checked by hand
+# against the 2026d PS3.3 Sections C.8.8.30, C.36.8, C.36.22, and C.36.29 and
+# the parameter specification items that RT Patient Position Acquisition
+# Instruction and the radiation records share with the defined protocols.
+SECOND_GENERATION_OPERATOR_TEXT = {
+    "(0074,140B)",  # Reason for Channel Omission Description
+    "(0082,0033)",  # Specification Selection Guidance
+    "(0082,0037)",  # Constraint Violation Condition
+    "(3002,0120)",  # Position Acquisition Template ID
+    "(300A,0735)",  # Treatment Tolerance Violation Identification
+    "(3010,001E)",  # Segmentation Creation Template Label
+}
+SECOND_GENERATION_KEPT_TEXT = {
+    "(0082,0018)",  # Selector Attribute Name
+    "(0082,0019)",  # Selector Attribute Keyword
+    "(3010,0086)",  # Intended Start Day of Week
+}
+# Of the kept text, what the supported second-generation RT IODs use: RT
+# Radiation Set uses Intended Start Day of Week.
+SUPPORTED_SECOND_GENERATION_KEPT_TEXT = {"(3010,0086)"}
+SECOND_GENERATION_TEXT_GROUPS: tuple[tuple[set[str], str, dict[str, str]], ...] = (
+    (SECOND_GENERATION_OPERATOR_TEXT, "X/Z/D", {CLEAN_DESCRIPTORS: "C"}),
+    (SECOND_GENERATION_KEPT_TEXT, "K", {}),
+)
+# What removal by Type gives each removed attribute where the
+# second-generation RT IODs define it, as its note says: the condition, the
+# template's identifier, and the violation's identification are Type 1C, the
+# others Type 3.
+SECOND_GENERATION_RESOLVED = {
+    "(0074,140B)": "X",
+    "(0082,0033)": "X",
+    "(0082,0037)": "D",
+    "(3002,0120)": "D",
+    "(300A,0735)": "D",
+    "(3010,001E)": "X",
+}
+# The UIDs that the second-generation RT IODs use and the IODs reviewed before
+# them do not, with their roles: the UIDs of instances and items that Table
+# E.1-1 lists, which it replaces; Creator Version UID, which identifies the
+# equipment and software version that created a radiation set, and Selector
+# UI Value, which can hold any UID that a constraint names, both replaced as
+# instances' UIDs are; and the SOP Classes pertinent to a referenced study or
+# series, which are kept.
+SECOND_GENERATION_UIDS = {
+    "(0008,9123)": uid_roles.UIDRole.INSTANCE,  # Creator Version UID
+    "(0072,007F)": uid_roles.UIDRole.INSTANCE,  # Selector UI Value
+    "(300A,0609)": uid_roles.UIDRole.INSTANCE,  # Treatment Position Group UID
+    "(3010,0031)": uid_roles.UIDRole.INSTANCE,  # Referenced Fiducials UID
+    "(3010,003B)": uid_roles.UIDRole.INSTANCE,  # RT Treatment Phase UID
+    "(3010,0052)": uid_roles.UIDRole.DEFINITION,  # Pertinent SOP Classes in Study
+    "(3010,0053)": uid_roles.UIDRole.DEFINITION,  # Pertinent SOP Classes in Series
+    "(3010,006E)": uid_roles.UIDRole.INSTANCE,  # Dosimetric Objective UID
+    "(3010,006F)": uid_roles.UIDRole.INSTANCE,  # Referenced Dosimetric Objective UID
+}
+# The dates, times, and datetimes that the second-generation RT IODs use and
+# the IODs reviewed before them do not, all listed in Table E.1-1, with their
+# roles: those of treatment, which move with the subject's other dates, and
+# the date and time that a constraint can hold, as in a TABLE content item.
+SECOND_GENERATION_DATES = {
+    "(0072,0061)": temporal_roles.TemporalRole.OTHER,  # Selector DA Value
+    "(0072,006B)": temporal_roles.TemporalRole.OTHER,  # Selector TM Value
+    "(300A,0736)": temporal_roles.TemporalRole.SUBJECT_EVENT,
+    "(300A,073A)": temporal_roles.TemporalRole.SUBJECT_EVENT,
+    "(300A,0760)": temporal_roles.TemporalRole.SUBJECT_EVENT,
+    "(3010,004C)": temporal_roles.TemporalRole.SUBJECT_EVENT,
+    "(3010,004D)": temporal_roles.TemporalRole.SUBJECT_EVENT,
+    "(3010,0085)": temporal_roles.TemporalRole.SUBJECT_EVENT,
+}
+# The other attributes that the second-generation RT IODs use, the IODs
+# reviewed before them do not, and Table E.1-1 does not list, by VR, checked
+# by hand against the 2026d PS3.3 and PS3.6: codes, numbers, indices, and
+# sequences of the radiations, their devices, prescriptions, and delivery;
+# the thickness maps of a compensator and the edge of a block; and the binary
+# values that a constraint can hold, which Table E.1-1 does not list.
+SECOND_GENERATION_OTHER_VRS = {
+    "SQ": 122,
+    "FD": 45,
+    "CS": 44,
+    "US": 32,
+    "OF": 4,
+    "DS": 4,
+    "IS": 3,
+    "UL": 3,
+    "FL": 1,
+    "AT": 1,
+    "OD": 1,
+    "OL": 1,
+    "OV": 1,
+    "OW": 1,
+}
+
+
+def test_the_second_generation_rt_iods_are_generated_and_have_the_documented_support():
+    tables = iods.load_iod_tables()
+
+    assert len(SECOND_GENERATION_RT_IODS) == 16
+    assert set(SECOND_GENERATION_RT_IODS) <= set(tables.iods)
+    assert set(SECOND_GENERATION_RT_IODS) & scope.SUPPORTED_IODS == set(
+        SUPPORTED_SECOND_GENERATION_RT_IODS
+    )
+
+
+@pytest.mark.deid_requirement("MIDI-BP-05", "MIDI-BP-06", "MIDI-BP-11")
+def test_the_text_that_only_the_second_generation_rt_iods_use_has_reviewed_rules():
+    listed = set(_table_e1_1())
+    added = _used_by(SECOND_GENERATION_RT_IODS, TEXT_VRS) - _used_by(
+        SECOND_GENERATION_REVIEWED_AGAINST, TEXT_VRS
+    )
+    rules = _rules()
+
+    assert (added - listed) == (
+        SECOND_GENERATION_OPERATOR_TEXT | SECOND_GENERATION_KEPT_TEXT
+    )
+    assert len(added - listed) == 9
+    for tags, action, options in SECOND_GENERATION_TEXT_GROUPS:
+        for tag in tags:
+            assert (rules[tag].action, dict(rules[tag].options)) == (
+                action,
+                options,
+            ), tag
+            assert rules[tag].note.strip(), tag
+    # Table E.1-1 lists the others, each with an action that removes or
+    # replaces its value.
+    for tag in added & listed:
+        assert _table_e1_1()[tag].basic_profile in REMOVING_ACTIONS, tag
+
+
+def test_each_policy_gives_the_second_generation_rt_text_the_action_of_its_group():
+    for composed in _every_policy():
+        for tags, action, options in SECOND_GENERATION_TEXT_GROUPS:
+            selected = [a for o, a in options.items() if o in composed.options]
+            for tag in tags:
+                assert composed.supplementary_actions[tag] == (
+                    selected[0] if selected else action
+                ), (tag, composed.options)
+
+
+def test_the_second_generation_rt_text_that_is_removed_resolves_as_its_note_says():
+    tables = iods.load_iod_tables()
+    rules = _rules()
+    resolved_where = collections.defaultdict(set)
+
+    for name in SECOND_GENERATION_RT_IODS:
+        iod = tables.iods[name]
+        for definition in iod.definitions:
+            if definition.tag not in SECOND_GENERATION_RESOLVED:
+                continue
+            resolved_where[definition.tag].add(
+                compound_actions.resolve_in_iod(
+                    iod, definition.tag, definition.path, rules[definition.tag].action
+                )
+            )
+    assert resolved_where == {
+        tag: {resolved} for tag, resolved in SECOND_GENERATION_RESOLVED.items()
+    }
+    # Each note says what removal by Type gives it where that differs from X.
+    for tag, resolved in SECOND_GENERATION_RESOLVED.items():
+        said = "dummy value where it is Type 1C" in rules[tag].note
+        assert said == (resolved == "D"), tag
+
+
+def test_every_uid_date_and_name_that_the_second_generation_rt_iods_use_has_a_role():
+    listed = _table_e1_1()
+    uids = uid_roles.load_uid_roles()
+    temporal = temporal_roles.load_temporal_roles()
+    new_uids = _used_by(SECOND_GENERATION_RT_IODS, {"UI"}) - _used_by(
+        SECOND_GENERATION_REVIEWED_AGAINST, {"UI"}
+    )
+    new_dates = _used_by(SECOND_GENERATION_RT_IODS, TEMPORAL_VRS) - _used_by(
+        SECOND_GENERATION_REVIEWED_AGAINST, TEMPORAL_VRS
+    )
+
+    for tag in _used_by(SECOND_GENERATION_RT_IODS, {"UI"}):
+        assert isinstance(uids.role(tag), uid_roles.UIDRole), tag
+    for tag in _used_by(SECOND_GENERATION_RT_IODS, TEMPORAL_VRS):
+        assert isinstance(temporal.role(tag), temporal_roles.TemporalRole), tag
+    assert {tag: uids.role(tag) for tag in new_uids} == SECOND_GENERATION_UIDS
+    assert {tag: temporal.role(tag) for tag in new_dates} == SECOND_GENERATION_DATES
+    for tag in new_dates:
+        assert listed[tag].basic_profile in REMOVING_ACTIONS, tag
+    for tag, role in SECOND_GENERATION_UIDS.items():
+        if role is uid_roles.UIDRole.INSTANCE and tag in listed:
+            assert listed[tag].basic_profile == "U", tag
+    # The one new person name and the one new URL are Selector PN Value and
+    # Selector UR Value, which Table E.1-1 gives D, as it gives the other
+    # values that a constraint or a TABLE content item can hold.
+    for vr, tag in (("PN", "(0072,006A)"), ("UR", "(0072,0071)")):
+        assert _used_by(SECOND_GENERATION_RT_IODS, {vr}) - _used_by(
+            SECOND_GENERATION_REVIEWED_AGAINST, {vr}
+        ) == {tag}, vr
+        assert listed[tag].basic_profile == "D", tag
+
+
+def test_the_second_generation_rt_iods_other_new_attributes_are_kept_by_the_default():
+    dictionary = _dictionary()
+    tables = iods.load_iod_tables()
+    every_vr = {vr for attribute in dictionary.values() for vr in attribute.vrs}
+    listed = set(_table_e1_1())
+    rules = _rules()
+    uids = set(uid_roles.load_uid_roles().rules)
+    other = (
+        _used_by(SECOND_GENERATION_RT_IODS, every_vr)
+        - _used_by(SECOND_GENERATION_REVIEWED_AGAINST, every_vr)
+        - _used_by(SECOND_GENERATION_RT_IODS, TEXT_VRS)
+        - listed
+        - uids
+    )
+    by_vr = collections.Counter(vr for tag in other for vr in dictionary[tag].vrs)
+
+    assert by_vr == SECOND_GENERATION_OTHER_VRS
+    assert all(len(dictionary[tag].vrs) == 1 for tag in other)
+    assert not other & set(rules)
+    # So each takes the default, which keeps it where these IODs define it,
+    # under every preset, with a sequence's items handled by their own rules.
+    for preset in policy.PRESETS:
+        rules_of = element_rules.ElementRules(policy.compose_policy(preset))
+        for name in SECOND_GENERATION_RT_IODS:
+            iod = tables.iods[name]
+            for definition in iod.definitions:
+                if definition.tag not in other:
+                    continue
+                rule = rules_of.rule(definition.tag, definition.path, iod=iod)
+                assert (rule.source, rule.action) == (
+                    element_rules.RuleSource.DEFAULT,
+                    element_rules.KEEP,
+                ), (preset, name, definition)
+
+
 def test_names_identifiers_and_overlay_text_are_removed_under_every_option():
     rules = _rules()
 
@@ -1669,7 +2145,14 @@ def test_each_group_takes_the_action_of_its_option(
         assert composed[tag] == operator_text, tag
     for tag in ACCESSORY_IDENTIFIERS:
         assert composed[tag] == accessory_identifier, tag
-    for tag in KEPT_TEXT | ADDED_KEPT_TEXT | RT_IMAGE_KEPT_TEXT | ION_KEPT_TEXT:
+    for tag in (
+        KEPT_TEXT
+        | ADDED_KEPT_TEXT
+        | RT_IMAGE_KEPT_TEXT
+        | ION_KEPT_TEXT
+        | ENHANCED_RT_IMAGE_KEPT_TEXT
+        | SUPPORTED_SECOND_GENERATION_KEPT_TEXT
+    ):
         assert composed[tag] == "K", tag
 
 
@@ -1700,7 +2183,7 @@ def test_the_basic_profile_keeps_only_the_reviewed_coded_and_technical_text():
         for tag in _supported_text()
     }
 
-    assert len(basic) == 316
+    assert len(basic) == 330
     assert {tag for tag, action in basic.items() if action == "K"} == (
         KEPT_TEXT
         | ADDED_KEPT_TEXT
@@ -1708,6 +2191,8 @@ def test_the_basic_profile_keeps_only_the_reviewed_coded_and_technical_text():
         | ION_KEPT_TEXT
         | PRESENTATION_STATE_KEPT_TEXT
         | VOLUMETRIC_KEPT_TEXT
+        | ENHANCED_RT_IMAGE_KEPT_TEXT
+        | SUPPORTED_SECOND_GENERATION_KEPT_TEXT
     )
     assert set(basic.values()) - {"K"} <= REMOVING_ACTIONS
 
@@ -1729,6 +2214,8 @@ def test_no_option_keeps_more_than_the_coded_text_and_device_identity():
             | ION_KEPT_TEXT
             | PRESENTATION_STATE_KEPT_TEXT
             | VOLUMETRIC_KEPT_TEXT
+            | ENHANCED_RT_IMAGE_KEPT_TEXT
+            | SUPPORTED_SECOND_GENERATION_KEPT_TEXT
             | (device_identity if DEVICE_IDENTITY in composed.options else set())
         )
         assert kept == expected, composed.options

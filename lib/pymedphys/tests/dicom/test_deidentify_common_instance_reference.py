@@ -26,13 +26,22 @@ from pymedphys._dicom.deidentify.file_layout import ElementPath
 
 MODULE = "Common Instance Reference"
 # The supported IODs that make the module mandatory, from the 2026d PS3.3
-# Tables A.39.1-1, A.39.2-1, and A.46-1, and the Planar MPR and Volume
-# Rendering Volumetric Presentation State and Advanced Blending Presentation
-# State IODs' Tables A.80.1-1, A.80.2.3-1, and A.33.7-1.
+# Tables A.39.1-1, A.39.2-1, A.46-1, A.86.1.15-1, and A.86.1.16-1, the
+# second-generation RT IOD Modules tables of Section A.86.1, and the Planar
+# MPR and Volume Rendering Volumetric Presentation State and Advanced
+# Blending Presentation State IODs' Tables A.80.1-1, A.80.2.3-1, and
+# A.33.7-1.
 MANDATORY = {
     "Spatial Registration",
     "Deformable Spatial Registration",
     "Real World Value Mapping",
+    "Enhanced RT Image",
+    "Enhanced Continuous RT Image",
+    "RT Segment Annotation",
+    "RT Radiation Set",
+    "C-Arm Photon-Electron Radiation",
+    "Tomotherapeutic Radiation",
+    "Robotic-Arm Radiation",
     "Planar MPR Volumetric Presentation State",
     "Volume Rendering Volumetric Presentation State",
     "Advanced Blending Presentation State",
