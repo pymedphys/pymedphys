@@ -130,6 +130,11 @@ class TransformReason(enum.Enum):
     # under Clean Pixel Data, an instance whose cleaned Pixel Data a reviewer
     # rejected in an attested QC pack, so that it is never released
     REDACTION_REJECTED = "redaction-rejected"
+    # an instance of a Secondary Capture IOD under a policy without Clean
+    # Pixel Data, which alone blacks out the text that a screen capture or a
+    # scanned document carries in its pixel data and releases it only on a
+    # reviewer's verdict (D-037, D-048)
+    SECONDARY_CAPTURE_NOT_CLEANED = "secondary-capture-not-cleaned"
     # under tps-import, an instance of a subject whose instances in the run
     # contradict the reference study from which its profile's synthetic
     # birth date was derived, so that the subject is stopped for review

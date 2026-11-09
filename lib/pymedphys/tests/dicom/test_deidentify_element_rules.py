@@ -656,6 +656,8 @@ def test_the_new_rules_remove_by_type_where_the_supported_iods_allow_it():
             "Enhanced MR Color Image",
             "Segmentation",
             "Parametric Map",
+            "Secondary Capture Image",
+            "Multi-frame True Color Secondary Capture Image",
         )
     }
 

@@ -18,11 +18,17 @@ Every instance with Pixel Data has the corner blacked out, as the review
 approved, without the finder, and every released instance claims the option,
 and so has Burned In Annotation (0028,0301) set to NO, whether or not its IOD
 defines it. The run withholds what the Basic Profile's run withholds, and
-the BINARY Segmentation, whose single bits the option does not clean
-(D-037).
+the BINARY Segmentation and the Multi-frame Single Bit Secondary Capture
+Image, whose single bits the option does not clean (D-037); it releases the
+other Secondary Capture images, which every policy without the option
+sequesters.
 """
 
-from .._corpus_run import BASIC_WITHHELD, CorpusRun, every_corner_accepted
+from .._corpus_run import (
+    WITHHELD_UNDER_CLEAN_PIXEL_DATA,
+    CorpusRun,
+    every_corner_accepted,
+)
 from .clean_pixel_data import RUN as UNREVIEWED
 from .clean_pixel_data import SINGLE_BITS
 
@@ -32,5 +38,5 @@ RUN = CorpusRun(
     # The option needs a finder, which the review leaves unasked.
     finder=UNREVIEWED.finder,
     redaction_review=every_corner_accepted,
-    withheld={**BASIC_WITHHELD, **SINGLE_BITS},
+    withheld={**WITHHELD_UNDER_CLEAN_PIXEL_DATA, **SINGLE_BITS},
 )

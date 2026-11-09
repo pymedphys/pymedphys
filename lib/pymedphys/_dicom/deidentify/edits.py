@@ -129,6 +129,7 @@ from .walker import (
 # The attributes that take the subject's pseudonyms under Z and D (D-005).
 PSEUDONYM_TAGS = frozenset({"(0010,0010)", "(0010,0020)"})
 _CHARACTER_SET = "(0008,0005)"
+_FRAME_INCREMENT_POINTER = ElementPath((), "(0028,0009)")
 # The consumers that need the value itself, rather than only collecting it.
 _NEEDS_VALUE = frozenset(
     {Consumer.UID_REPLACEMENT, Consumer.DUMMY_COMPARISON, Consumer.CLEANING}
@@ -600,6 +601,55 @@ def _edit(
     return _uids(element.path, value, key)
 
 
+def _frame_pointers(reader: _Reader, source: SourceEvidence) -> frozenset[str]:
+    """Return the tags that Frame Increment Pointer (0028,0009) points to.
+
+    Where it cannot be read, every tag is taken as pointed to, by a set
+    holding the empty string, which :func:`_check_frame_index` reads so.
+    """
+    if _FRAME_INCREMENT_POINTER not in source:
+        return frozenset()
+    try:
+        value = reader.read(_FRAME_INCREMENT_POINTER)
+    except (UndecodableElement, _Sequester):
+        return frozenset({""})
+    if not all(isinstance(each, int) for each in value.values):
+        return frozenset({""})
+    return frozenset(f"({each >> 16:04X},{each & 0xFFFF:04X})" for each in value.values)
+
+
+def _check_frame_index(
+    edit: Edit, value: ElementValue | None, pointers: frozenset[str]
+) -> None:
+    """Sequester the instance where D's dummy value would no longer index
+    the frames.
+
+    An attribute that Frame Increment Pointer points to gives a value for
+    each frame (PS3.3 Section C.7.6.6.1.1), as Frame Label Vector
+    (0018,2002) does in a multi-frame Secondary Capture (Section C.8.6.4).
+    D writes the fewest values the VM allows (D-021), which there would be
+    fewer than the frames, so the instance is sequestered instead.
+
+    >>> path = ElementPath((), "(0018,2002)")
+    >>> source = ElementValue(path, "SH", ("FIRST", "SECOND"))
+    >>> edit = Edit(path, "D", EditKind.REPLACE, ("DEIDENTIFIED",))
+    >>> _check_frame_index(edit, source, frozenset({"(0018,2001)"}))
+    >>> try:
+    ...     _check_frame_index(edit, source, frozenset({"(0018,2002)"}))
+    ... except _Sequester as raised:
+    ...     print(raised.sequestration.reason.value)
+    frame-index
+    """
+    if edit.action != "D" or edit.kind is not EditKind.REPLACE or edit.path.items:
+        return
+    if value is None or len(edit.values) >= len(value.values):
+        return
+    if edit.path.tag in pointers or "" in pointers:
+        raise _Sequester(
+            Sequestration(edit.path, "D", value.vr, SequesterReason.FRAME_INDEX)
+        )
+
+
 def _compared_text(element: ElementPlan, value: ElementValue) -> str:
     """Return a value that a reviewed dummy item is compared with, as text."""
     if not all(isinstance(each, str) for each in value.values):
@@ -800,6 +850,9 @@ def edit_instance(
     # its number of source items.
     reviewed: dict[ElementPath, tuple[int, int]] = {}
     reader = _Reader(source, plan)
+    # The tags that Frame Increment Pointer points to, read where first
+    # needed.
+    pointers: frozenset[str] | None = None
     try:
         reader.check_character_set()
     except _Sequester as raised:
@@ -835,6 +888,10 @@ def edit_instance(
                     EditKind.REPLACE,
                     plan.renumbered[element.path],
                 )
+            if not container and edit.kind is EditKind.REPLACE:
+                if pointers is None:
+                    pointers = _frame_pointers(reader, source)
+                _check_frame_index(edit, value, pointers)
             if container and edit.kind is EditKind.REPLACE:
                 reviewed[edit.path] = (len(found), items or 0)
             found.append(edit)

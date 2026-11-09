@@ -284,7 +284,7 @@ from .run_qc import (
 )
 from .release_report import PUBLIC_RELEASE
 from .run_report import ReleaseReporter
-from .scope import Classification, classify
+from .scope import SECONDARY_CAPTURE_IODS, Classification, classify
 from .source import SourceEvidence, SourceRefused, read_source
 from .uids import UIDOutcome, normalise_uid
 from .values import value_problem
@@ -1040,7 +1040,10 @@ class InstanceTransform:
     without top-level pixel data has nothing for the option to clean, so it
     satisfies it. Each instance that satisfies the option is marked with its
     code and Burned In Annotation (0028,0301) set to NO, which PS3.15 E.3.1
-    adds whether or not its IOD defines the attribute.
+    adds whether or not its IOD defines the attribute. Under a policy
+    without the option, an instance of a Secondary Capture IOD, whose pixel
+    data commonly carry text, is sequestered
+    (:attr:`~.reasons.TransformReason.SECONDARY_CAPTURE_NOT_CLEANED`).
 
     Under Clean Recognizable Visual Features, :meth:`prepare` finds the face
     block of each series of CT Image, Enhanced CT Image, and Legacy
@@ -1959,6 +1962,7 @@ class InstanceTransform:
                 edits.sequestrations
                 or (() if undecoded is None else (undecoded,))
                 or overlay_in_pixel_data(self._rules.policy, overlays)
+                or _uncleaned_secondary_capture(iod.name, self._policy)
                 or self._birth_date_conflict(record)
             )
         if reasons:
@@ -2209,6 +2213,35 @@ def _pixel_risk(
         *((PixelRiskMaterial(assessment),) if assessment.findings else ()),
         SeriesEvidence(record.series, series_evidence(dataset)),
     )
+
+
+def _uncleaned_secondary_capture(
+    iod: str, policy: Policy
+) -> tuple[TransformReason, ...]:
+    """Why a Secondary Capture instance is sequestered under ``policy``, if it is.
+
+    A Secondary Capture image is captured from a screen, a video signal, or
+    a scanned document or film, such as a planning system's dose screen or a
+    scanned request form, so its pixel data commonly carry burned-in text,
+    such as the patient's name, which the Basic Profile and every option but
+    Clean Pixel Data leave in place. Under a policy that does not select
+    Clean Pixel Data, each instance of a Secondary Capture IOD is
+    sequestered, whatever its Burned In Annotation (0028,0301) says, since a
+    received NO is not evidence of safety (D-015). Under Clean Pixel Data it
+    is cleaned and held for review as any other image is, and released only
+    on a reviewer's verdict (D-037, D-048).
+
+    Examples
+    --------
+    >>> from pymedphys._dicom.deidentify.policy import compose_policy
+    >>> _uncleaned_secondary_capture("Secondary Capture Image", compose_policy("basic"))
+    (<TransformReason.SECONDARY_CAPTURE_NOT_CLEANED: 'secondary-capture-not-cleaned'>,)
+    >>> _uncleaned_secondary_capture("CT Image", compose_policy("basic"))
+    ()
+    """
+    if iod in SECONDARY_CAPTURE_IODS and CLEAN_PIXEL_DATA not in policy.options:
+        return (TransformReason.SECONDARY_CAPTURE_NOT_CLEANED,)
+    return ()
 
 
 def transform_for(

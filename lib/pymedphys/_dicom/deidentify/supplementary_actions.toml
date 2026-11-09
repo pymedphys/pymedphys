@@ -13,7 +13,8 @@
 # Treatment Record, the registrations, the four Radiation Dose SR IODs, RT Ion
 # Plan, RT Ion Beams Treatment Record, RT Brachy Treatment Record, RT
 # Treatment Summary Record, Enhanced RT Image, Enhanced Continuous RT Image,
-# Segmentation, and Surface Segmentation were. So does every date,
+# Segmentation, Surface Segmentation, and the Secondary Capture IODs were. So
+# does every date,
 # time, and datetime (DA, DT, or TM) attribute that Table E.1-1 omits,
 # besides the role that the temporal roles file gives it.
 # Other attributes that the table omits have a rule only where one has been
@@ -177,6 +178,20 @@ options = { clean_descriptors = "C" }
 note = "A description of the criteria for rejecting premature ventricular contractions or other arrhythmic beats during cardiac gating, as text. It is removed by Type, and cleaned as a descriptor under Clean Descriptors."
 
 [[attribute]]
+tag = "(0018,2002)"
+keyword = "FrameLabelVector"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "A descriptive label for each frame of a multi-frame Secondary Capture image (PS3.3 C.8.6.4), which the capturing program or its operator writes, such as a page's or a screen's title, and which can hold a name. It is removed by Type, which replaces it with a dummy value where the frames are indexed by it (Type 1C), and cleaned as a descriptor under Clean Descriptors. The dummy value has the fewest values that its VM allows, so it no longer gives a label for each frame, as Window Center & Width Explanation does not give one for each window."
+
+[[attribute]]
+tag = "(0018,2006)"
+keyword = "DisplayWindowLabelVector"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "For each frame of a multi-frame Secondary Capture image, a label or number of the display window of a graphical user interface from which the frame was captured (PS3.3 C.8.6.4). A window's title can name the patient or the user, so it is removed by Type, which replaces it with a dummy value where the frames are indexed by it (Type 1C), and cleaned as a descriptor under Clean Descriptors. The dummy value has the fewest values that its VM allows, as Frame Label Vector's does."
+
+[[attribute]]
 tag = "(0018,9046)"
 keyword = "MultiCoilConfiguration"
 action = "X/Z/D"
@@ -226,6 +241,13 @@ options = { clean_descriptors = "C" }
 note = "Free text that explains the meaning of a dimension of a multi-frame image. It is removed by Type, and cleaned as a descriptor under Clean Descriptors."
 
 [[attribute]]
+tag = "(0028,0A04)"
+keyword = "PixelSpacingCalibrationDescription"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "A free-text description of the correction or calibration of the pixel spacing, which PS3.3 says might describe the body part, its depth within the patient, or a fiducial and where it lies on the patient (Table 10-10). It is removed by Type, which replaces it with a dummy value where it is required (Type 1C), and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
 tag = "(0028,1055)"
 keyword = "WindowCenterWidthExplanation"
 action = "X/Z/D"
@@ -238,6 +260,13 @@ keyword = "LUTExplanation"
 action = "X/Z/D"
 options = { clean_descriptors = "C" }
 note = "A free-form explanation of a LUT or of a real world value mapping, which an operator can type. It is removed by Type, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
+tag = "(0028,6022)"
+keyword = "FrameOfInterestDescription"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "A free-text description of each frame of interest of a multi-frame image (PS3.3 C.7.6.9), which an operator can type. It is removed by Type, and cleaned as a descriptor under Clean Descriptors."
 
 [[attribute]]
 tag = "(0040,9210)"
@@ -696,6 +725,41 @@ keyword = "DeviceID"
 action = "X/Z/D"
 options = { retain_device_identity = "K" }
 note = "A user-supplied identifier for a device used in the acquisition. Device identifiers can identify the institution and, with dates, individual examinations, so it is removed by Type, and kept under Retain Device Identity, as Table E.1-1 does for Device Serial Number."
+
+[[attribute]]
+tag = "(0018,1016)"
+keyword = "SecondaryCaptureDeviceManufacturer"
+action = "X/Z/D"
+options = { retain_device_identity = "K" }
+note = "The manufacturer of the Secondary Capture device. The SC Equipment Module describes the equipment that captured the image, as against the General Equipment Module's, which made the image captured (PS3.3 C.8.6.1, Note). That equipment is often a workstation, a frame grabber, a scanner, or a program written at the site, so its text can name the institution; Table E.1-1 gives the module's Secondary Capture Device ID X, and K under Retain Device Identity, so the module's other text that the table omits is device identity too: removed by Type, which only the Type 3 places of these IODs give it, and kept under Retain Device Identity."
+
+[[attribute]]
+tag = "(0018,1018)"
+keyword = "SecondaryCaptureDeviceManufacturerModelName"
+action = "X/Z/D"
+options = { retain_device_identity = "K" }
+note = "The manufacturer's model name of the Secondary Capture device. The SC Equipment Module describes the equipment that captured the image, as against the General Equipment Module's, which made the image captured (PS3.3 C.8.6.1, Note). That equipment is often a workstation, a frame grabber, a scanner, or a program written at the site, so its text can name the institution; Table E.1-1 gives the module's Secondary Capture Device ID X, and K under Retain Device Identity, so the module's other text that the table omits is device identity too: removed by Type, which only the Type 3 places of these IODs give it, and kept under Retain Device Identity."
+
+[[attribute]]
+tag = "(0018,1019)"
+keyword = "SecondaryCaptureDeviceSoftwareVersions"
+action = "X/Z/D"
+options = { retain_device_identity = "K" }
+note = "The manufacturer's designation of the Secondary Capture device's software version. The SC Equipment Module describes the equipment that captured the image, as against the General Equipment Module's, which made the image captured (PS3.3 C.8.6.1, Note). That equipment is often a workstation, a frame grabber, a scanner, or a program written at the site, so its text can name the institution; Table E.1-1 gives the module's Secondary Capture Device ID X, and K under Retain Device Identity, so the module's other text that the table omits is device identity too: removed by Type, which only the Type 3 places of these IODs give it, and kept under Retain Device Identity."
+
+[[attribute]]
+tag = "(0018,1022)"
+keyword = "VideoImageFormatAcquired"
+action = "X/Z/D"
+options = { retain_device_identity = "K" }
+note = "The original format of a captured video image, such as NTSC or PAL. The SC Equipment Module describes the equipment that captured the image, as against the General Equipment Module's, which made the image captured (PS3.3 C.8.6.1, Note). That equipment is often a workstation, a frame grabber, a scanner, or a program written at the site, so its text can name the institution; Table E.1-1 gives the module's Secondary Capture Device ID X, and K under Retain Device Identity, so the module's other text that the table omits is device identity too: removed by Type, which only the Type 3 places of these IODs give it, and kept under Retain Device Identity."
+
+[[attribute]]
+tag = "(0018,1023)"
+keyword = "DigitalImageFormatAcquired"
+action = "X/Z/D"
+options = { retain_device_identity = "K" }
+note = "Free text about the digital interface through which the image was acquired. The SC Equipment Module describes the equipment that captured the image, as against the General Equipment Module's, which made the image captured (PS3.3 C.8.6.1, Note). That equipment is often a workstation, a frame grabber, a scanner, or a program written at the site, so its text can name the institution; Table E.1-1 gives the module's Secondary Capture Device ID X, and K under Retain Device Identity, so the module's other text that the table omits is device identity too: removed by Type, which only the Type 3 places of these IODs give it, and kept under Retain Device Identity."
 
 [[attribute]]
 tag = "(0018,1061)"

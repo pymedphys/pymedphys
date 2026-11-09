@@ -246,6 +246,11 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "51-parametric-map.dcm",
         "52-real-world-value-mapping.dcm",
         "55-seg-surface.dcm",
+        "65-sc.dcm",
+        "66-sc-single-bit.dcm",
+        "67-sc-grayscale-byte.dcm",
+        "68-sc-grayscale-word.dcm",
+        "69-sc-true-color.dcm",
         "70-rt-segment-annotation.dcm",
         "71-rt-radiation-set.dcm",
         "72-c-arm-radiation.dcm",
@@ -299,6 +304,11 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "Parametric Map",
         "Real World Value Mapping",
         "Surface Segmentation",
+        "Secondary Capture Image",
+        "Multi-frame Single Bit Secondary Capture Image",
+        "Multi-frame Grayscale Byte Secondary Capture Image",
+        "Multi-frame Grayscale Word Secondary Capture Image",
+        "Multi-frame True Color Secondary Capture Image",
         "RT Segment Annotation",
         "RT Radiation Set",
         "C-Arm Photon-Electron Radiation",
@@ -330,22 +340,25 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         corpus_module.REAL_WORLD_VALUE_MAPPING_FILE,
     ) == tuple(file.name for file in corpus.files[45:47])
     assert corpus_module.SURFACE_SEGMENTATION_FILE == corpus.files[47].name
+    assert corpus_module.SECONDARY_CAPTURE_FILES == tuple(
+        file.name for file in corpus.files[48:53]
+    )
     assert (
         corpus_module.ENHANCED_RT_IMAGE_FILE,
         corpus_module.ENHANCED_CONTINUOUS_RT_IMAGE_FILE,
-    ) == tuple(file.name for file in corpus.files[56:58])
+    ) == tuple(file.name for file in corpus.files[61:63])
     assert (
         corpus_module.SEGMENT_ANNOTATION_FILE,
         corpus_module.RADIATION_SET_FILE,
         corpus_module.C_ARM_RADIATION_FILE,
         corpus_module.TOMOTHERAPEUTIC_RADIATION_FILE,
         corpus_module.ROBOTIC_ARM_RADIATION_FILE,
-    ) == tuple(file.name for file in corpus.files[48:53])
+    ) == tuple(file.name for file in corpus.files[53:58])
     assert (
         corpus_module.BEAMS_DELIVERY_INSTRUCTION_FILE,
         corpus_module.BRACHY_DELIVERY_INSTRUCTION_FILE,
         corpus_module.RADIATION_SET_DELIVERY_INSTRUCTION_FILE,
-    ) == tuple(file.name for file in corpus.files[53:56])
+    ) == tuple(file.name for file in corpus.files[58:61])
     # Every IOD of the first supported release.
     assert {file.manifest.iod for file in corpus.files} == scope.SUPPORTED_IODS
 
@@ -1379,6 +1392,10 @@ def test_each_image_has_its_frames_and_the_colour_image_its_icc_profile(corpus):
             # manufacturer and model descriptions, and a private tag.
             marker = corpus_module.MARKER_PREFIX.encode()
             assert dataset.ICCProfile.count(marker) == 5
+        elif file.manifest.iod == "Multi-frame True Color Secondary Capture Image":
+            # The IOD does not require an ICC Profile, which is left out.
+            assert dataset.PhotometricInterpretation == "RGB"
+            assert "ICCProfile" not in dataset
         else:
             assert dataset.PhotometricInterpretation == "MONOCHROME2"
             assert "ICCProfile" not in dataset
@@ -1390,8 +1407,22 @@ def test_each_image_has_its_frames_and_the_colour_image_its_icc_profile(corpus):
         "MR Image",
         "Positron Emission Tomography Image",
         "RT Image",
+        "Secondary Capture Image",
     }
     assert set(frames.values()) == {1, 2}
+
+
+def test_each_secondary_capture_names_its_manufacturer(corpus):
+    # The General Equipment Module is user-optional in these IODs, and its
+    # Type 2 Manufacturer, which every policy keeps, shows that it is there
+    # once the Basic Profile has removed or replaced its other attributes.
+    names = set(corpus_module.SECONDARY_CAPTURE_FILES)
+    captures = [file for file in corpus.files if file.name in names]
+    assert len(captures) == len(names)
+    for file in captures:
+        dataset = pydicom.dcmread(pydicom.filebase.DicomBytesIO(file.data))
+        assert dataset.Manufacturer == corpus_module.SECONDARY_CAPTURE_MANUFACTURER
+        assert corpus_module.MARKER_PREFIX not in dataset.Manufacturer
 
 
 def test_the_spectroscopy_instance_holds_spectroscopy_data_only(corpus):

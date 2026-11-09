@@ -1063,7 +1063,21 @@ def render_markdown(statement: ConformanceStatement) -> str:
         f"Instances of the {_join(statement.iods)} IODs, of these Storage SOP "
         "Classes and in these transfer syntaxes, are de-identified. Every "
         "other instance is sequestered: it is not written, and is excluded "
-        "from any claim.",
+        "from any claim. "
+        + (
+            "An instance of a Secondary Capture IOD, captured from a screen, "
+            "a video signal, or a scanned document or film, is cleaned and "
+            "held for review as any other image is, and released only on a "
+            "reviewer's verdict; a Multi-frame Single Bit Secondary Capture "
+            "Image, whose pixels are single bits, cannot be cleaned and is "
+            "sequestered as `uncleanable-pixel-data`."
+            if CLEAN_PIXEL_DATA in statement.options
+            else "An instance of a Secondary Capture IOD, captured from a "
+            "screen, a video signal, or a scanned document or film, is "
+            "sequestered as `secondary-capture-not-cleaned`, since only the "
+            "Clean Pixel Data Option, which this policy does not select, "
+            "cleans the text burned into its pixel data."
+        ),
         "",
         *_table(
             ("SOP Class UID", "SOP Class", "IOD"),

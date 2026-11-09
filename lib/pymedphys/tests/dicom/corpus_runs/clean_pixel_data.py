@@ -20,7 +20,10 @@ text is held for both, and the CT slice that it sequesters is sequestered
 first. Without a redaction review, only an instance without Pixel Data is
 released, and it claims the option, since it has nothing to clean. The
 BINARY Segmentation, whose Pixel Data are single bits, is sequestered as
-uncleanable, since the option cleans only Pixel Data in whole bytes (D-037).
+uncleanable, since the option cleans only Pixel Data in whole bytes (D-037),
+and so is the Multi-frame Single Bit Secondary Capture Image. The other
+Secondary Capture images, which every policy without the option sequesters,
+are cleaned and held as the other images are.
 """
 
 from pymedphys._dicom.deidentify import run
@@ -32,7 +35,12 @@ from pymedphys._dicom.deidentify.reasons import (
 )
 from pymedphys._dicom.deidentify.text_detection import TextBox
 
-from .._corpus_run import BASIC_WITHHELD, CorpusRun, Withheld
+from .._corpus_run import (
+    BASIC_WITHHELD,
+    WITHHELD_UNDER_CLEAN_PIXEL_DATA,
+    CorpusRun,
+    Withheld,
+)
 
 
 class _CornerFinder:
@@ -66,6 +74,8 @@ _IMAGES = (
     "21-rt-image.dcm",
     corpus_module.SEGMENTATION_FILES[1],
     corpus_module.PARAMETRIC_MAP_FILE,
+    corpus_module.SECONDARY_CAPTURE_FILES[0],
+    *corpus_module.SECONDARY_CAPTURE_FILES[2:],
     corpus_module.ENHANCED_RT_IMAGE_FILE,
     corpus_module.ENHANCED_CONTINUOUS_RT_IMAGE_FILE,
 )
@@ -74,19 +84,21 @@ _BLACKED_OUT = Withheld(
     frozenset({HeldPixelData(PixelDataReason.TEXT_BLACKED_OUT)}),
 )
 _REVIEW = BASIC_WITHHELD[corpus_module.REVIEW_FILE]
-# The BINARY Segmentation, whatever the review.
-SINGLE_BITS = {
-    corpus_module.SEGMENTATION_FILES[0]: Withheld(
+# The BINARY Segmentation and the Multi-frame Single Bit Secondary Capture
+# Image, whatever the review.
+SINGLE_BITS = dict.fromkeys(
+    (corpus_module.SEGMENTATION_FILES[0], corpus_module.SECONDARY_CAPTURE_FILES[1]),
+    Withheld(
         run.Status.SEQUESTERED, frozenset({TransformReason.UNCLEANABLE_PIXEL_DATA})
-    )
-}
+    ),
+)
 
 RUN = CorpusRun(
     "clean-pixel-data",
     options=("clean_pixel_data",),
     finder=_CornerFinder(),
     withheld={
-        **BASIC_WITHHELD,
+        **WITHHELD_UNDER_CLEAN_PIXEL_DATA,
         **{name: _BLACKED_OUT for name in _IMAGES},
         **SINGLE_BITS,
         corpus_module.REVIEW_FILE: Withheld(

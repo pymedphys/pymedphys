@@ -59,7 +59,12 @@ SOURCE_MANUFACTURER = "(300A,0216)"
 RADIOPHARMACEUTICAL_START_DATETIME = "(0018,1078)"
 RADIOPHARMACEUTICAL_INFORMATION = "(0054,0016)"
 # The first supported release's IODs that include the Overlay Plane Module.
-OVERLAY_IODS = ("CT Image", "MR Image", "Positron Emission Tomography Image")
+OVERLAY_IODS = (
+    "CT Image",
+    "MR Image",
+    "Positron Emission Tomography Image",
+    "Secondary Capture Image",
+)
 # Its image IODs, all but MR Spectroscopy.
 IMAGE_IODS = frozenset(
     {
@@ -397,8 +402,8 @@ def test_a_plain_x_on_a_required_attribute_outside_a_type_3_sequence_sequesters(
 @pytest.mark.parametrize("tag", ["(6000,3000)", "(6002,3000)", "(601E,3000)"])
 def test_a_plain_x_on_overlay_data_removes_its_repeating_group(tables, iod, tag):
     # Overlay Data is Type 1 in the Overlay Plane Module, which the CT Image,
-    # MR Image, and Positron Emission Tomography Image IODs include as
-    # user-optional, so removing the whole group leaves a valid instance. The
+    # MR Image, Positron Emission Tomography Image, and Secondary Capture
+    # Image IODs include as user-optional, so removing the whole group leaves a valid instance. The
     # other IODs do not define it.
     expected_type = "1" if iod in OVERLAY_IODS else "3"
 
