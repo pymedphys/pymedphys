@@ -67,6 +67,8 @@ _IMAGES = (
     corpus_module.SEGMENTATION_FILES[1],
     corpus_module.NM_FILE,
     corpus_module.PARAMETRIC_MAP_FILE,
+    corpus_module.ENHANCED_RT_IMAGE_FILE,
+    corpus_module.ENHANCED_CONTINUOUS_RT_IMAGE_FILE,
 )
 _BLACKED_OUT = Withheld(
     run.Status.HELD_FOR_REVIEW,
