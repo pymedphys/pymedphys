@@ -758,6 +758,9 @@ def test_the_statement_names_each_supported_iod_that_lacks_the_attribute():
         "C-Arm Photon-Electron Radiation",
         "Tomotherapeutic Radiation",
         "Robotic-Arm Radiation",
+        "RT Beams Delivery Instruction",
+        "RT Brachy Application Setup Delivery Instruction",
+        "RT Radiation Set Delivery Instruction",
         "MR Spectroscopy",
         "Spatial Registration",
         "Deformable Spatial Registration",
@@ -798,7 +801,9 @@ def test_the_statement_names_each_supported_iod_that_lacks_the_attribute():
         "Treatment Record, RT Treatment Summary Record, Enhanced RT Image, "
         "Enhanced Continuous RT Image, RT Segment Annotation, RT Radiation Set, "
         "C-Arm Photon-Electron Radiation, Tomotherapeutic Radiation, Robotic-Arm "
-        "Radiation, MR Spectroscopy, Spatial "
+        "Radiation, RT Beams Delivery Instruction, RT Brachy Application Setup "
+        "Delivery Instruction, RT Radiation Set Delivery Instruction, MR "
+        "Spectroscopy, Spatial "
         "Registration, Deformable Spatial Registration, Surface Segmentation, "
         "X-Ray Radiation Dose SR, "
         "Enhanced X-Ray Radiation Dose SR, Radiopharmaceutical Radiation Dose SR, "
@@ -1067,6 +1072,9 @@ _FACELESS = (
     "72-c-arm-radiation.dcm",
     "73-tomotherapeutic-radiation.dcm",
     "74-robotic-arm-radiation.dcm",
+    "75-rt-beams-delivery-instruction.dcm",
+    "76-rt-brachy-delivery-instruction.dcm",
+    "77-rt-radiation-set-delivery-instruction.dcm",
 )
 
 
