@@ -26,8 +26,9 @@ from pymedphys._dicom.deidentify.file_layout import ElementPath
 
 MODULE = "Common Instance Reference"
 # The supported IODs that make the module mandatory, from the 2026d PS3.3
-# Tables A.39.1-1, A.39.2-1, A.46-1, A.86.1.15-1, and A.86.1.16-1, and the
-# second-generation RT IOD Modules tables of Section A.86.1.
+# Tables A.39.1-1, A.39.2-1, A.46-1, A.86.1.15-1, and A.86.1.16-1, the
+# second-generation RT IOD Modules tables of Section A.86.1, and the IOD
+# Modules table of Section A.79.
 MANDATORY = {
     "Spatial Registration",
     "Deformable Spatial Registration",
@@ -39,12 +40,21 @@ MANDATORY = {
     "C-Arm Photon-Electron Radiation",
     "Tomotherapeutic Radiation",
     "Robotic-Arm Radiation",
+    "RT Brachy Application Setup Delivery Instruction",
+    "RT Radiation Set Delivery Instruction",
 }
 # Required in a Segmentation where a Derivation Image functional group is
 # present, in a Parametric Map where a Derivation Image or Referenced Image
-# functional group is, and in a Surface Segmentation where the surface was
-# derived from another instance (PS3.3 Table A.57-1).
-CONDITIONAL = {"Segmentation", "Parametric Map", "Surface Segmentation"}
+# functional group is, in a Surface Segmentation where the surface was
+# derived from another instance (PS3.3 Table A.57-1), and in an RT Beams
+# Delivery Instruction where the instruction is not conveyed by a Unified
+# Procedure Step.
+CONDITIONAL = {
+    "Segmentation",
+    "Parametric Map",
+    "Surface Segmentation",
+    "RT Beams Delivery Instruction",
+}
 # The supported IODs without the module: the Structured Reports, whose SR
 # Document General Module references their evidence instead (PS3.3 Section
 # A.35), and the Encapsulated PDF, whose Encapsulated Document Module names

@@ -152,7 +152,8 @@ ENHANCED_RT_IMAGE_REVIEWED_AGAINST = RECORD_REVIEWED_AGAINST + RECORD_IODS
 # coverage on 31 October 2026, whose text, UID, and date attributes were
 # reviewed ahead of supporting them, against every IOD above, and those of
 # them that the first supported release now supports: RT Segment Annotation,
-# RT Radiation Set, and the three radiation IODs.
+# RT Radiation Set, the three radiation IODs, and the three delivery
+# instruction IODs.
 SECOND_GENERATION_RT_IODS = (
     "RT Physician Intent",
     "RT Segment Annotation",
@@ -177,6 +178,9 @@ SUPPORTED_SECOND_GENERATION_RT_IODS = (
     "C-Arm Photon-Electron Radiation",
     "Tomotherapeutic Radiation",
     "Robotic-Arm Radiation",
+    "RT Beams Delivery Instruction",
+    "RT Brachy Application Setup Delivery Instruction",
+    "RT Radiation Set Delivery Instruction",
 )
 # Surface Segmentation, which the maintainer brought into the target
 # coverage on 31 October 2026 with the other IODs that radiotherapy exports
@@ -485,9 +489,9 @@ def test_every_text_attribute_a_supported_iod_uses_and_table_e1_1_omits_has_a_ru
     # Enhanced and Enhanced Continuous RT Images, which add 1, RT Segment
     # Annotation and RT Radiation Set, which add 2, Segmentation, which adds
     # 4, Surface Segmentation, which adds 2, the two dose-report IODs, and
-    # Encapsulated PDF, which adds 8, whose supplementary rules cover 185
-    # text attributes.
-    assert len(omitted) == 185
+    # the three delivery instructions, which add 1, and Encapsulated PDF,
+    # which adds 8, whose supplementary rules cover 186 text attributes.
+    assert len(omitted) == 186
     assert omitted <= set(_rules())
     assert {"(0008,0100)", "(300A,00C2)", "(60xx,1500)"} <= omitted
 
@@ -502,7 +506,7 @@ def test_the_rules_for_omitted_text_fall_in_the_reviewed_groups():
 
     assert groups == {
         # Operator-typed labels and text.
-        ("X/Z/D", ((CLEAN_DESCRIPTORS, "C"),)): 84,
+        ("X/Z/D", ((CLEAN_DESCRIPTORS, "C"),)): 85,
         # Accessory and equipment identifiers.
         ("X/Z/D", ((DEVICE_IDENTITY, "K"),)): 33,
         # Coded and technical values, and De-identification Method.
@@ -1854,7 +1858,10 @@ def test_the_basic_profile_keeps_only_the_reviewed_coded_and_technical_text():
         for tag in _supported_text()
     }
 
-    assert len(basic) == 324
+    # The three delivery instructions add 3: Reason for Channel Omission
+    # Description (0074,140B), Displacement Reference Label (300A,079A), and
+    # Reason for Omission Description (300C,0113), none of them kept.
+    assert len(basic) == 327
     assert {tag for tag, action in basic.items() if action == "K"} == (
         KEPT_TEXT
         | ADDED_KEPT_TEXT

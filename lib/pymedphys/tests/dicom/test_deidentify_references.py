@@ -157,6 +157,65 @@ RT_REFERENCES = [
         ("(3008,0030)", "(0008,1155)"),
         Level.INSTANCE,
     ),
+    # RT Beams Delivery Instruction: the plan, the treatment record of the
+    # session that it continues, and each beam task's reference images for
+    # verification.
+    ("RT Beams Delivery Instruction", synthetic.REFERENCED_PLAN, Level.INSTANCE),
+    (
+        "RT Beams Delivery Instruction",
+        ("(3008,0030)", "(0008,1155)"),
+        Level.INSTANCE,
+    ),
+    (
+        "RT Beams Delivery Instruction",
+        ("(0074,1020)", "(0074,1030)", "(0074,1040)", "(0008,1155)"),
+        Level.INSTANCE,
+    ),
+    # RT Brachy Application Setup Delivery Instruction: the plan, by its
+    # study, series, and instance.
+    (
+        "RT Brachy Application Setup Delivery Instruction",
+        ("(300C,0002)", "(0020,000D)"),
+        Level.STUDY,
+    ),
+    (
+        "RT Brachy Application Setup Delivery Instruction",
+        ("(300C,0002)", "(0008,1115)", "(0020,000E)"),
+        Level.SERIES,
+    ),
+    (
+        "RT Brachy Application Setup Delivery Instruction",
+        ("(300C,0002)", "(0008,1115)", "(0008,1199)", "(0008,1155)"),
+        Level.INSTANCE,
+    ),
+    # RT Radiation Set Delivery Instruction: the radiation set, the procedure
+    # step that made the instance, the radiations to deliver and those it
+    # omits, and each task's treatment preparation.
+    (
+        "RT Radiation Set Delivery Instruction",
+        ("(300A,0702)", "(0008,1155)"),
+        Level.INSTANCE,
+    ),
+    (
+        "RT Radiation Set Delivery Instruction",
+        ("(3010,0044)", "(0008,1155)"),
+        Level.INSTANCE,
+    ),
+    (
+        "RT Radiation Set Delivery Instruction",
+        ("(300A,0797)", "(300A,0630)", "(0008,1155)"),
+        Level.INSTANCE,
+    ),
+    (
+        "RT Radiation Set Delivery Instruction",
+        ("(300A,0787)", "(300A,0630)", "(0008,1155)"),
+        Level.INSTANCE,
+    ),
+    (
+        "RT Radiation Set Delivery Instruction",
+        ("(300A,0797)", "(300A,078B)", "(0008,1155)"),
+        Level.INSTANCE,
+    ),
     # RT Image: the plan in the RT Image module, and the multi-frame source of
     # an extracted frame.
     ("RT Image", synthetic.REFERENCED_PLAN, Level.INSTANCE),
@@ -292,6 +351,7 @@ OTHER_SEQUENCES = {
     "(0070,0314)",  # Used Fiducials Sequence
     "(0070,0315)",  # Used RT Structure Set ROI Sequence
     "(0070,0404)",  # Referenced Spatial Registration Sequence
+    "(0074,1040)",  # Related Reference RT Image Sequence
     "(3006,0016)",  # Contour Image Sequence
     "(3006,0018)",  # Predecessor Structure Set Sequence
     "(3008,0030)",  # Referenced Treatment Record Sequence
@@ -300,6 +360,7 @@ OTHER_SEQUENCES = {
     "(300A,0630)",  # Referenced RT Radiation Sequence
     "(300A,063B)",  # Referenced RT Physician Intent Sequence
     "(300A,0702)",  # Referenced RT Radiation Set Sequence
+    "(300A,078B)",  # Referenced RT Treatment Preparation Sequence
     "(300A,078C)",  # Referenced Patient Setup Photo Sequence
     "(300C,0002)",  # Referenced RT Plan Sequence
     "(300C,0040)",  # Referenced Verification Image Sequence
