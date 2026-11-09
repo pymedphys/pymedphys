@@ -724,6 +724,7 @@ def test_series_number_resolves_to_z_in_the_supported_iods_but_where_type_1():
         ("C-Arm Photon-Electron Radiation", ()),
         ("Tomotherapeutic Radiation", ()),
         ("Robotic-Arm Radiation", ()),
+        ("RT Radiation Set Delivery Instruction", ()),
         ("X-Ray Radiation Dose SR", ()),
         ("Enhanced X-Ray Radiation Dose SR", ()),
         ("Radiopharmaceutical Radiation Dose SR", ()),
