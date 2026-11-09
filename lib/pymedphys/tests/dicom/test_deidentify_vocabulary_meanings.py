@@ -373,7 +373,7 @@ def test_the_attributes_of_table_e1_1_that_name_a_place_are_listed():
     "written",
     [
         # Other kept text.
-        _written(_element(0x0008103E, "LO", MEANING)),
+        _written(_element(0x00204000, "LT", MEANING)),
         # A Code Meaning outside any item.
         _written(_element(0x00080104, "LO", MEANING)),
         # The Code Value of a local code.

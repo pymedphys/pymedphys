@@ -96,8 +96,18 @@ reason that such a finding is not a reason for review (D-032), or returns
   radiopharmaceutical, or an SR TEXT value, or a private data element that
   only copies one of them
   (:func:`~pymedphys._dicom.deidentify.residual_vocabulary.vocabulary_meaning`).
-  The release gate tries it last, for a text finding that nothing above
-  explains.
+- :attr:`Exemption.VOCABULARY_DESCRIPTOR`: the finding is in a technique
+  descriptor, an attribute whose values the reviewed technique vocabulary's
+  automatic tier may keep, such as Series Description (0008,103E), at the
+  top level or in an item, every value of which is made only of words of
+  that vocabulary and echoes no identifier of the subject, and its source
+  is a description, comment, or technique descriptor of the examination, a
+  contrast agent or radiopharmaceutical, or an SR TEXT value, or a private
+  data element that only copies one of them
+  (:func:`~pymedphys._dicom.deidentify.residual_vocabulary.vocabulary_descriptor`).
+
+The release gate tries the last two after the others, for a text finding
+that nothing above explains.
 
 The search records one finding of a source in each element, so each
 exemption is decided by the whole element: a CS value is exempt only if
@@ -180,6 +190,8 @@ class Exemption(enum.Enum):
     REMOVED_UID = "removed-uid"  # equal to a kept UID, from a removed private copy
     # in a Code Meaning made only of the reviewed technique vocabulary
     VOCABULARY_MEANING = "vocabulary-meaning"
+    # in a technique descriptor made only of the reviewed technique vocabulary
+    VOCABULARY_DESCRIPTOR = "vocabulary-descriptor"
 
 
 @dataclasses.dataclass(frozen=True)

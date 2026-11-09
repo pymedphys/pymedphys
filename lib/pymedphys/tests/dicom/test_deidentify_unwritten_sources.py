@@ -300,9 +300,12 @@ def test_a_standard_codes_meaning_from_unwritten_instances_alone_is_exempt():
 def test_other_text_from_unwritten_instances_still_goes_to_review(
     values, written_values
 ):
-    condition = release_condition(
-        _coverage(*values, written=written_values), _written(SERIES_DESCRIPTION)
-    )
+    # A word outside the reviewed vocabulary, so that the vocabulary
+    # descriptor exemption, which releases a descriptive source such as a
+    # TEXT content item's value in a descriptor of vocabulary words, does
+    # not apply either.
+    written = _written(_element(0x0008103E, "LO", "AXIAL CHEST ZARQUON"))
+    condition = release_condition(_coverage(*values, written=written_values), written)
 
     assert condition.decision is Decision.QC_REVIEW
     assert not condition.exempted

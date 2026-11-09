@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Recognise residual text in a kept Code Meaning made only of reviewed vocabulary.
+"""Recognise residual text in kept text made only of reviewed vocabulary.
 
 A procedure or protocol code of a local scheme, one that PS3.16 Table 8-1
 does not list, is kept with its Code Meaning (0008,0104) under the Basic
@@ -59,14 +59,29 @@ only where all of these hold:
   place, an organisation, or a device. None of them is descriptive, so this
   repeats the test above for a descriptive attribute nested in such an item.
 
-Whatever removed text is found inside a meaning made only of technique and
+Under Clean Descriptors, a kept technique descriptor, such as Series
+Description (0008,103E) or Performed Procedure Step Description
+(0040,0254), often repeats such a removed description too.
+:func:`vocabulary_descriptor` finds the same of a finding in a technique
+descriptor
+(:attr:`~pymedphys._dicom.deidentify.residual_exemptions.Exemption.VOCABULARY_DESCRIPTOR`):
+one of the attributes whose values the shipped vocabulary's automatic tier
+may keep, such as Series Description, Protocol Name (0018,1030), or
+Performed Procedure Step Description, at the top level or in an item, at any
+depth, under the other conditions above. Its values are read as descriptor
+cleaning reads them: split at backslashes where the element's VR holds
+several values (SH, LO, or UC), and whole otherwise, as Derivation
+Description (0008,2111), whose VR is ST, is.
+
+Whatever removed text is found inside a value made only of technique and
 anatomy words is itself such words, so the finding reveals nothing that the
-kept meaning does not. A private copy reveals nothing that its descriptive
-original, already exempt, does not: its text is the same text. A meaning
-with any other word stays under review, as does any other kept element. The vocabulary is always the one that PyMedPhys
-ships, never one that a run gives Clean Descriptors, so the exemption is the
-same in every run, and the method digest covers it through the engine's
-files under every policy (D-024).
+kept value does not. A private copy reveals nothing that its descriptive
+original, already exempt, does not: its text is the same text. A value with
+any other word stays under review, as does any other kept element. The
+vocabulary, and its list of technique descriptors, are always the ones that
+PyMedPhys ships, never ones that a run gives Clean Descriptors, so each
+exemption is the same in every run, and the method digest covers them
+through the engine's files under every policy (D-024).
 
 Only a text finding is read: a person name, UID, date, datetime, or direct
 identifier found anywhere still withholds the file. No value is reported.
@@ -80,6 +95,7 @@ from .file_layout import ElementPath, Region
 from .residual_exemptions import Exemption, KeptValues, _private_data
 from .residuals import Finding, SourceValue
 from .reviewed_descriptors import echoes_identifier
+from .standard import dictionary_attribute
 from .technique_descriptors import load_technique_vocabulary
 
 _CODE_MEANING = "(0008,0104)"
@@ -193,6 +209,9 @@ INSTITUTIONAL_SEQUENCES = frozenset(
 # Patient ID, Issuer of Patient ID, and Other Patient IDs, as descriptor
 # cleaning checks for echoes of them with every person name.
 IDENTIFIER_TAGS = frozenset({"(0010,0020)", "(0010,0021)", "(0010,1000)"})
+# The VRs that hold several values, split at backslashes, as descriptor
+# cleaning reads a technique descriptor's.
+MULTI_VALUED_VRS = frozenset({"SH", "LO", "UC"})
 
 
 def vocabulary_meaning(
@@ -231,6 +250,59 @@ def vocabulary_meaning(
     if any(echoes_identifier(value, identifiers) for value in values):
         return None
     return Exemption.VOCABULARY_MEANING
+
+
+def vocabulary_descriptor(
+    finding: Finding,
+    kept: KeptValues,
+    sources: Mapping[ElementPath, tuple[SourceValue, ...]],
+) -> Exemption | None:
+    """Return whether a kept technique descriptor of reviewed vocabulary explains a finding.
+
+    Parameters
+    ----------
+    finding : Finding
+        A text finding that would otherwise send its file to QC review.
+    kept : KeptValues
+        The written file's values.
+    sources : mapping
+        The collected values of each source, pooled across the subject
+        (:func:`~pymedphys._dicom.deidentify.residual_exemptions.source_values`).
+
+    Returns
+    -------
+    Exemption or None
+        :attr:`~pymedphys._dicom.deidentify.residual_exemptions.Exemption.VOCABULARY_DESCRIPTOR`
+        as the module describes, or ``None``.
+    """
+    element = descriptive_element(finding, sources)
+    vocabulary = load_technique_vocabulary()
+    if element is None or element.tag not in vocabulary.attributes:
+        return None
+    values = descriptor_values(element, kept)
+    if not values:
+        return None
+    if any(vocabulary.word_rejection(value) is not None for value in values):
+        return None
+    identifiers = subject_identifiers(sources)
+    if any(echoes_identifier(value, identifiers) for value in values):
+        return None
+    return Exemption.VOCABULARY_DESCRIPTOR
+
+
+def descriptor_values(element: ElementPath, kept: KeptValues) -> tuple[str, ...] | None:
+    """Return a kept descriptor's values as descriptor cleaning reads them.
+
+    Split at backslashes where every VR that the pinned dictionary gives the
+    attribute holds several values, and whole otherwise; ``None`` as
+    :meth:`~pymedphys._dicom.deidentify.residual_exemptions.KeptValues.values`
+    gives it.
+    """
+    attribute = dictionary_attribute(element.tag)
+    if attribute is not None and set(attribute.vrs) <= MULTI_VALUED_VRS:
+        return kept.values(element)
+    text = kept.text(element)
+    return None if text is None else (text.strip(" "),)
 
 
 def descriptive_element(
