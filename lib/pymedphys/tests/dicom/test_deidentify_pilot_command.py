@@ -56,8 +56,9 @@ _NOMENCLATURE = tg263.Nomenclature(
         ),
     ),
 )
-# An instance of an IOD outside the engine's scope, which a run sequesters.
-_PDF = "2.25.991"
+# An instance of an IOD outside the engine's scope, a Nuclear Medicine Image,
+# which a run sequesters.
+_OUTSIDE_SCOPE = "2.25.991"
 
 
 @pytest.fixture(name="tmp_path")
@@ -214,10 +215,10 @@ def test_a_custom_option_set_runs_though_it_is_not_enabled(tmp_path):
 
 @pytest.mark.usefixtures("temporary")
 def test_sequestered_instances_are_counted_by_the_release_reports_reasons(tmp_path):
-    pdf = synthetic.instance(
-        synthetic.ENCAPSULATED_PDF_STORAGE, _PDF, synthetic.OTHER_SERIES
+    outside = synthetic.instance(
+        synthetic.NM_IMAGE_STORAGE, _OUTSIDE_SCOPE, synthetic.OTHER_SERIES
     )
-    source = _source(tmp_path, pdf)
+    source = _source(tmp_path, outside)
 
     status, out, _ = _pilot(source, "--preset", "basic")
 

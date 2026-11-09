@@ -1034,7 +1034,8 @@ _DOSE = ("06-rtdose.dcm", "07-rtdose-review.dcm")
 _STRUCTURE_SET = "04-rtstruct.dcm"
 _DEFORMABLE = "19-registration-deformable.dcm"
 _SURFACE = corpus_module.SURFACE_SEGMENTATION_FILE
-# The instances that cannot show a face.
+# The instances that cannot show a face. The synthetic Encapsulated PDF
+# holds no document, which would sequester it.
 _FACELESS = (
     "05-rtplan.dcm",
     "14-mr-spectroscopy.dcm",
@@ -1045,6 +1046,7 @@ _FACELESS = (
     "49-rt-brachy-record.dcm",
     "50-rt-treatment-summary-record.dcm",
     "52-real-world-value-mapping.dcm",
+    "54-encapsulated-pdf.dcm",
     "70-rt-segment-annotation.dcm",
     "71-rt-radiation-set.dcm",
     "72-c-arm-radiation.dcm",
@@ -1285,8 +1287,9 @@ def test_an_instance_that_cannot_show_a_face_satisfies_the_option(second_run):
         disposition, dataset = outcomes[name]
         assert disposition == "released", name
         assert CODE in _codes(dataset)
-        # None of their IODs defines Recognizable Visual Features, but E.3.2
-        # adds it with the option's code all the same.
+        # None of their IODs but the Encapsulated PDF defines Recognizable
+        # Visual Features, but E.3.2 adds it with the option's code all the
+        # same.
         assert dataset.RecognizableVisualFeatures == "NO"
 
 
