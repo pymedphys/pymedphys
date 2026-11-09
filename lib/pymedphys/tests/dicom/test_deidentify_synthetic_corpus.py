@@ -26,7 +26,7 @@ import json
 import re
 import warnings
 
-from pymedphys._imports import pydicom, pytest
+from pymedphys._imports import numpy, pydicom, pytest
 
 from pymedphys._dicom.deidentify import (
     compound_actions,
@@ -243,6 +243,11 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "48-rt-ion-beams-record.dcm",
         "49-rt-brachy-record.dcm",
         "50-rt-treatment-summary-record.dcm",
+        "51-parametric-map.dcm",
+        "52-real-world-value-mapping.dcm",
+        "55-seg-surface.dcm",
+        "89-rt-image-enhanced.dcm",
+        "90-rt-image-enhanced-continuous.dcm",
     ]
     assert [file.manifest.iod for file in corpus.files] == [
         "CT Image",
@@ -283,20 +288,34 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "RT Ion Beams Treatment Record",
         "RT Brachy Treatment Record",
         "RT Treatment Summary Record",
+        "Parametric Map",
+        "Real World Value Mapping",
+        "Surface Segmentation",
+        "Enhanced RT Image",
+        "Enhanced Continuous RT Image",
     ]
     assert corpus_module.STRUCTURED_REPORT_FILES == tuple(
-        file.name for file in corpus.files[-24:-14] + corpus.files[-12:-4]
+        file.name for file in corpus.files[-29:-19] + corpus.files[-17:-9]
     )
     assert corpus_module.SEGMENTATION_FILES == tuple(
-        file.name for file in corpus.files[-14:-12]
+        file.name for file in corpus.files[-19:-17]
     )
     assert (
         corpus_module.ION_PLAN_FILE,
         corpus_module.ION_TREATMENT_RECORD_FILE,
-    ) == tuple(file.name for file in corpus.files[-4:-2])
+    ) == tuple(file.name for file in corpus.files[-9:-7])
     assert (
         corpus_module.BRACHY_TREATMENT_RECORD_FILE,
         corpus_module.TREATMENT_SUMMARY_RECORD_FILE,
+    ) == tuple(file.name for file in corpus.files[-7:-5])
+    assert (
+        corpus_module.PARAMETRIC_MAP_FILE,
+        corpus_module.REAL_WORLD_VALUE_MAPPING_FILE,
+    ) == tuple(file.name for file in corpus.files[-5:-3])
+    assert corpus_module.SURFACE_SEGMENTATION_FILE == corpus.files[-3].name
+    assert (
+        corpus_module.ENHANCED_RT_IMAGE_FILE,
+        corpus_module.ENHANCED_CONTINUOUS_RT_IMAGE_FILE,
     ) == tuple(file.name for file in corpus.files[-2:])
     # Every IOD of the first supported release.
     assert {file.manifest.iod for file in corpus.files} == scope.SUPPORTED_IODS
@@ -350,8 +369,19 @@ def test_every_attribute_of_table_e1_1_that_the_iod_defines_is_placed(corpus):
         assert max(found.values()) == 1, file.name
 
 
+# The attributes of Table E.1-1 that the corpus's IODs define only below the
+# depth cap, five items deep in a functional group of the Enhanced RT
+# Images: Radiation Generation Mode Label and Description, in the items of
+# Radiation Generation Mode Sequence (300A,067B), and Referenced Treatment
+# Position Group UID, in those of Treatment Position Group Sequence
+# (300A,060A). Their actions are tested on an Enhanced RT Image apart, in
+# test_deidentify_instance_transform.py.
+ONLY_BEYOND_THE_DEPTH_CAP = {"(300A,067C)", "(300A,067D)", "(300A,0785)"}
+
+
 def test_attributes_are_not_planted_only_beyond_the_depth_cap(corpus):
     reasons = collections.Counter()
+    beyond = set()
     for file in corpus.files:
         placed = file.manifest.placements
         planted_tags = {p.path.tag for p in placed if p.kind is not Kind.NOT_PLANTED}
@@ -366,12 +396,15 @@ def test_attributes_are_not_planted_only_beyond_the_depth_cap(corpus):
                 ):
                     continue
                 assert depth + (placement.vr == "SQ") > corpus_module.MAX_DEPTH
-                # Each attribute capped is planted at a shallower place.
-                assert placement.path.tag in planted_tags
+                # Each attribute capped is planted at a shallower place, but
+                # those that the corpus's IODs define only below the cap.
+                if placement.path.tag not in planted_tags:
+                    beyond.add(placement.path.tag)
             elif not _in_content_tree(placement.path):
                 # A report's template, not the cap, decides its tree's depth.
                 assert depth <= corpus_module.MAX_DEPTH
 
+    assert beyond == ONLY_BEYOND_THE_DEPTH_CAP
     assert set(reasons) == {
         Reason.DEPTH_CAP,
         Reason.SEQUESTERS_INSTANCE,
@@ -631,8 +664,9 @@ def test_the_reference_graph_has_no_findings(corpus):
     # single-frame one of its modality, the treatment record the plan, the RT
     # Ion Plan the structure set, the dose, and the plan, the RT Ion Beams
     # Treatment Record the RT Ion Plan, the RT Brachy Treatment Record the
-    # plan and the RT Beams Treatment Record, and the RT Treatment Summary
-    # Record the plan and the RT Brachy Treatment Record.
+    # plan and the RT Beams Treatment Record, the RT Treatment Summary Record
+    # the plan and the RT Brachy Treatment Record, the Parametric Map the MR
+    # Image, and the Real World Value Mapping the PET Image.
     names = [file.name for file in corpus.files]
     position = names.index
     sources = {
@@ -649,6 +683,8 @@ def test_the_reference_graph_has_no_findings(corpus):
         "20-rt-beams-record.dcm": "05-rtplan.dcm",
         "48-rt-ion-beams-record.dcm": "47-rt-ion-plan.dcm",
         "49-rt-brachy-record.dcm": "05-rtplan.dcm",
+        "51-parametric-map.dcm": "10-mr.dcm",
+        "52-real-world-value-mapping.dcm": "15-pet.dcm",
     }
     assert {
         (position(source), position(target)) for source, target in sources.items()
@@ -659,6 +695,10 @@ def test_the_reference_graph_has_no_findings(corpus):
     brachy = position("49-rt-brachy-record.dcm")
     beams = position("20-rt-beams-record.dcm")
     assert {(brachy, beams), (summary, 4), (summary, brachy)} <= targets
+    # The Surface Segmentation names the first slice, from which its surface
+    # was generated.
+    surface = position(corpus_module.SURFACE_SEGMENTATION_FILE)
+    assert (surface, 0) in targets
 
 
 def test_each_treatment_record_names_its_own_plan_with_its_class(corpus):
@@ -738,6 +778,45 @@ def test_the_brachy_and_summary_records_name_the_records_they_relate_to(corpus):
     ):
         manifest = files[name].manifest
         assert (manifest.sop_class, manifest.iod) == (sop_class, iod)
+
+
+def test_the_surface_segmentation_holds_a_closed_mesh_of_its_one_segment(corpus):
+    files = {file.name: file for file in corpus.files}
+    dataset = pydicom.dcmread(
+        pydicom.filebase.DicomBytesIO(
+            files[corpus_module.SURFACE_SEGMENTATION_FILE].data
+        )
+    )
+
+    assert dataset.SOPClassUID == corpus_module.SURFACE_SEGMENTATION_STORAGE
+    assert dataset.Modality == "SEG"
+    assert "PixelData" not in dataset
+    (segment,) = dataset.SegmentSequence
+    (referenced,) = segment.ReferencedSurfaceSequence
+    assert (segment.SurfaceCount, referenced.ReferencedSurfaceNumber) == (1, 1)
+    (source,) = referenced.SegmentSurfaceSourceInstanceSequence
+    assert source.ReferencedSOPInstanceUID == corpus_module.CT_SLICES[0]
+    assert dataset.NumberOfSurfaces == 1
+    (surface,) = dataset.SurfaceSequence
+    assert (surface.FiniteVolume, surface.Manifold) == ("YES", "YES")
+    (points,) = surface.SurfacePointsSequence
+    coordinates = numpy.frombuffer(points.PointCoordinatesData, "<f4")
+    assert points.NumberOfSurfacePoints * 3 == coordinates.size == 12
+    (primitives,) = surface.SurfaceMeshPrimitivesSequence
+    triangles = numpy.frombuffer(primitives.LongTrianglePointIndexList, "<u4")
+    # Four triangles, of points indexed from 1, each edge shared by two.
+    assert triangles.size == 12
+    assert set(triangles.tolist()) == {1, 2, 3, 4}
+    edges = collections.Counter(
+        frozenset(pair)
+        for triangle in triangles.reshape(4, 3).tolist()
+        for pair in (
+            (triangle[0], triangle[1]),
+            (triangle[1], triangle[2]),
+            (triangle[2], triangle[0]),
+        )
+    )
+    assert len(edges) == 6 and set(edges.values()) == {2}
 
 
 def test_two_instances_are_in_implicit_vr_and_the_rest_explicit(corpus):
@@ -956,9 +1035,30 @@ def test_each_text_marker_occurs_once_in_its_file(corpus):
                 )
 
 
-def test_every_marker_number_fits_a_signed_short():
-    # SS markers are the negated number.
-    assert corpus_module.MAX_MARKERS <= 2**15
+def test_markers_have_five_digits_and_their_16_bit_integers_are_distinct(corpus):
+    # Markers are numbered within five digits, and SS and US markers, the
+    # negated and plain numbers of their own counts, each within its VR.
+    assert corpus_module.MAX_MARKERS <= 10**5
+    for vr, low, high in (("SS", -(2**15), -1), ("US", 1, 2**16 - 1)):
+        values = [
+            int(value)
+            for _, placement in _placements(corpus, Kind.PLANTED)
+            if placement.vr == vr
+            for value in placement.values
+        ]
+        assert len(values) == len(set(values)), vr
+        assert all(low <= value <= high for value in values), vr
+
+
+def test_times_are_distinct(corpus):
+    times = [
+        value
+        for _, placement in _placements(corpus, Kind.PLANTED)
+        if placement.vr == "TM"
+        for value in placement.values
+    ]
+
+    assert times and len(times) == len(set(times))
 
 
 def test_every_planted_placement_covers_a_row_of_table_e1_1_or_e3_4_1(corpus):

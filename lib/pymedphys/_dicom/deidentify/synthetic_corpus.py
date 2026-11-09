@@ -20,7 +20,7 @@ fictitious patient and study, with one Frame of Reference: three CT Image
 slices, an RT Structure Set that references the CT series and slices, an RT
 Plan that references the structure set and the dose, an RT Dose that
 references the plan, a second RT Dose of the plan for review (below), one
-instance of each of thirty-five other IODs, and two of the Segmentation
+instance of each of forty other IODs, and two of the Segmentation
 IOD, one of each of its SOP Classes, each in a series of its own, and a
 second X-Ray Radiation Dose SR, of a CT scan.
 The MR Image and PET Image instances reference the first CT slice, and each
@@ -40,7 +40,9 @@ brachytherapy application setups as well as beams, and names the RT Beams
 Treatment Record as a related record, and the RT Treatment Summary Record
 references the RT Plan and, as a treatment record that it summarises, the
 RT Brachy Treatment Record. The RT Image, a digitally reconstructed radiograph of 2 by 2 pixels,
-references the RT Plan. The X-Ray Radiation Dose SRs and the Enhanced
+references the RT Plan, as do the Enhanced RT Image, a digitally
+reconstructed radiograph, and the Enhanced Continuous RT Image, a simulator
+image, each of two frames of 2 by 2 pixels. The X-Ray Radiation Dose SRs and the Enhanced
 X-Ray Radiation Dose SR reference the first CT slice, the
 Radiopharmaceutical Radiation Dose SR the PET Image, the Patient Radiation
 Dose SR the CT dose report, which its estimate used, and the Basic Text
@@ -48,12 +50,17 @@ SR, Enhanced SR, Comprehensive SR, Comprehensive 3D SR, and Extensible SR
 the MR Image. The Segmentations, a BINARY one of Segmentation Storage and a
 LABELMAP one of Label Map Segmentation Storage, reference the CT series and
 its first slice, and each segments the planes of the first two slices. The
+Surface Segmentation, one closed tetrahedral mesh of a Tissue segment,
+references the CT series and its first slice too. The
 Key Object Selection Document selects the MR Image; the Mammography CAD SR
-and Chest CAD SR name the RT Image, the collection's one projection
-radiograph, as the image that their CAD read, and the Colon CAD SR the CT
+and Chest CAD SR name the RT Image, a projection radiograph, as the image that their CAD read, and the Colon CAD SR the CT
 series; and the Procedure Log, Spectacle Prescription Report, Macular Grid
 Thickness and Volume Report, and Waveform Annotation SR reference the MR
-Image. It is the input for validating each preset end to end: once the
+Image. The Parametric Map, an apparent diffusion coefficient map of 16-bit
+integers whose two frames lie in the planes of the first two CT slices,
+references the MR Image, and the Real World Value Mapping maps the PET
+Image's stored values to a standardised uptake value and names it. It is
+the input for validating each preset end to end: once the
 engine has
 written the collection, the residual search
 (:mod:`~pymedphys._dicom.deidentify.residuals`) should find none of the
@@ -68,8 +75,11 @@ describes. Text is ``SYNMK-00042``, a code string ``SYNMK_00042``, a person name
 ``SYNMK00042^MARKER00042``, a UID ``2.25.9999900042``, a URI
 ``https://synmk.invalid/SYNMK-00042``, a date before 1900 (see
 :func:`_marker_date`), a datetime that date at noon, a time ``HHMMSS.424242`` whose seconds from
-midnight are the marker's number, and a binary value of VR OB, OW, or UN the
-text marker in ASCII, padded to an even length. No text marker occurs inside
+midnight are the time's number, and a binary value of VR OB, OW, or UN the
+text marker in ASCII, padded to an even length. Dates and datetimes, times,
+and values of VR SS and US are each numbered by a count of their own, so
+that the dates, the times, and the 16-bit integers do not run out before
+the five digits of the markers do. No text marker occurs inside
 another value of its file. A number of a binary VR, such as US or SS, and an
 age (AS) cannot be made conspicuous: each is distinct, but it is found by
 its place in the manifest, not by searching bytes. Each sequence that holds
@@ -183,7 +193,7 @@ dummy item at that place and only there. Planted in
 every file, the first two would sequester every
 instance, and no preset could release any of the collection; planted in one,
 that instance checks sequestration, :data:`REVIEW_FILE` checks review, and
-the other forty-three check each preset's output, the reports where their
+the other forty-eight check each preset's output, the reports where their
 trees are cleaned. Radiopharmaceutical Start
 DateTime, which CT Image does not define there, is planted in no file, so
 the Enhanced PET instance, which lacks an attribute of Type 1, is released
@@ -219,7 +229,7 @@ Manufacturer's Model Name (0008,1090), which Table E.1-1 does not list and
 the Basic Profile keeps, a copy of the RT Plan's RT Plan Label marker
 (:attr:`PlacementKind.REVIEW_COPY`), so the residual search finds a source
 value of another instance in its output and sends it to review. The third
-CT slice remains sequestered; the other forty-three files stay releasable, the
+CT slice remains sequestered; the other forty-eight files stay releasable, the
 reports where their trees are cleaned.
 
 **Manifest.** :class:`CorpusManifest` records, for each file, each
@@ -240,6 +250,7 @@ input.
 
 from __future__ import annotations
 
+import collections
 import dataclasses
 import datetime
 import enum
@@ -348,10 +359,15 @@ RT_BEAMS_TREATMENT_RECORD_STORAGE = "1.2.840.10008.5.1.4.1.1.481.4"
 RT_PLAN_STORAGE = "1.2.840.10008.5.1.4.1.1.481.5"
 SEGMENTATION_STORAGE = "1.2.840.10008.5.1.4.1.1.66.4"
 LABEL_MAP_SEGMENTATION_STORAGE = "1.2.840.10008.5.1.4.1.1.66.7"
+SURFACE_SEGMENTATION_STORAGE = "1.2.840.10008.5.1.4.1.1.66.5"
 RT_ION_PLAN_STORAGE = "1.2.840.10008.5.1.4.1.1.481.8"
 RT_ION_BEAMS_TREATMENT_RECORD_STORAGE = "1.2.840.10008.5.1.4.1.1.481.9"
 RT_BRACHY_TREATMENT_RECORD_STORAGE = "1.2.840.10008.5.1.4.1.1.481.6"
 RT_TREATMENT_SUMMARY_RECORD_STORAGE = "1.2.840.10008.5.1.4.1.1.481.7"
+PARAMETRIC_MAP_STORAGE = "1.2.840.10008.5.1.4.1.1.30"
+REAL_WORLD_VALUE_MAPPING_STORAGE = "1.2.840.10008.5.1.4.1.1.67"
+ENHANCED_RT_IMAGE_STORAGE = "1.2.840.10008.5.1.4.1.1.481.23"
+ENHANCED_CONTINUOUS_RT_IMAGE_STORAGE = "1.2.840.10008.5.1.4.1.1.481.24"
 # The retired class that PS3.3 Sections 10.6.1 and C.8.8.5.4 give a study in
 # a Referenced Study Sequence or RT Referenced Study Sequence item.
 DETACHED_STUDY_MANAGEMENT = "1.2.840.10008.3.1.2.3.1"
@@ -359,9 +375,11 @@ DETACHED_STUDY_MANAGEMENT = "1.2.840.10008.3.1.2.3.1"
 # The most items an attribute is planted in, nested one in another.
 MAX_DEPTH = 4
 # Every marker's number is below this, so markers have a fixed width of five
-# digits and none is the start of another, every date is before 1900, every
-# time is distinct, and the negated number fits VR SS.
-MAX_MARKERS = 2**15
+# digits and none is the start of another. Dates, times, and values of VR SS
+# and US are numbered apart (_Markers), each within its own limit: every date
+# before 1900, every time within one day, and the 16-bit integers within
+# their VRs.
+MAX_MARKERS = 10**5
 MARKER_PREFIX = "SYNMK"
 MARKER_UID_ROOT = "2.25.99999"
 LINKED_UID_ROOT = "2.25.88888"
@@ -414,6 +432,17 @@ ION_TREATMENT_RECORD_FILE = "48-rt-ion-beams-record.dcm"
 # Record of its course, numbered after the files that open pull requests add.
 BRACHY_TREATMENT_RECORD_FILE = "49-rt-brachy-record.dcm"
 TREATMENT_SUMMARY_RECORD_FILE = "50-rt-treatment-summary-record.dcm"
+# The Parametric Map of the MR Image, and the Real World Value Mapping of the
+# PET Image, numbered after the files that open pull requests add.
+PARAMETRIC_MAP_FILE = "51-parametric-map.dcm"
+REAL_WORLD_VALUE_MAPPING_FILE = "52-real-world-value-mapping.dcm"
+# The Surface Segmentation of the CT series, numbered after the files that
+# open pull requests add.
+SURFACE_SEGMENTATION_FILE = "55-seg-surface.dcm"
+# The Enhanced RT Image and the Enhanced Continuous RT Image, each of the RT
+# Plan's beam, numbered after the files that open pull requests add.
+ENHANCED_RT_IMAGE_FILE = "89-rt-image-enhanced.dcm"
+ENHANCED_CONTINUOUS_RT_IMAGE_FILE = "90-rt-image-enhanced-continuous.dcm"
 # The directory, within the one that write_corpus is given, of the files.
 INSTANCES_DIRECTORY = "instances"
 
@@ -506,6 +535,16 @@ BRACHY_TREATMENT_RECORD_SERIES = f"{LINKED_UID_ROOT}04600"
 BRACHY_TREATMENT_RECORD = f"{LINKED_UID_ROOT}04601"
 TREATMENT_SUMMARY_RECORD_SERIES = f"{LINKED_UID_ROOT}04700"
 TREATMENT_SUMMARY_RECORD = f"{LINKED_UID_ROOT}04701"
+PARAMETRIC_MAP_SERIES = f"{LINKED_UID_ROOT}04800"
+PARAMETRIC_MAP = f"{LINKED_UID_ROOT}04801"
+REAL_WORLD_VALUE_MAPPING_SERIES = f"{LINKED_UID_ROOT}04900"
+REAL_WORLD_VALUE_MAPPING = f"{LINKED_UID_ROOT}04901"
+SURFACE_SEGMENTATION_SERIES = f"{LINKED_UID_ROOT}05200"
+SURFACE_SEGMENTATION = f"{LINKED_UID_ROOT}05201"
+ENHANCED_RT_IMAGE_SERIES = f"{LINKED_UID_ROOT}08500"
+ENHANCED_RT_IMAGE = f"{LINKED_UID_ROOT}08501"
+ENHANCED_CONTINUOUS_RT_IMAGE_SERIES = f"{LINKED_UID_ROOT}08600"
+ENHANCED_CONTINUOUS_RT_IMAGE = f"{LINKED_UID_ROOT}08601"
 # A patient and a procedure step that the collection names but does not hold.
 PATIENT_REFERENCE = f"{LINKED_UID_ROOT}00003"
 PROCEDURE_STEP = f"{LINKED_UID_ROOT}00004"
@@ -633,10 +672,21 @@ _SOP_CLASSES = types.MappingProxyType(
         ION_TREATMENT_RECORD: RT_ION_BEAMS_TREATMENT_RECORD_STORAGE,
         BRACHY_TREATMENT_RECORD: RT_BRACHY_TREATMENT_RECORD_STORAGE,
         TREATMENT_SUMMARY_RECORD: RT_TREATMENT_SUMMARY_RECORD_STORAGE,
+        PARAMETRIC_MAP: PARAMETRIC_MAP_STORAGE,
+        REAL_WORLD_VALUE_MAPPING: REAL_WORLD_VALUE_MAPPING_STORAGE,
+        SURFACE_SEGMENTATION: SURFACE_SEGMENTATION_STORAGE,
+        ENHANCED_RT_IMAGE: ENHANCED_RT_IMAGE_STORAGE,
+        ENHANCED_CONTINUOUS_RT_IMAGE: ENHANCED_CONTINUOUS_RT_IMAGE_STORAGE,
         PATIENT_REFERENCE: DETACHED_PATIENT_MANAGEMENT,
         PROCEDURE_STEP: MODALITY_PERFORMED_PROCEDURE_STEP,
     }
 )
+# The units of the Parametric Map's apparent diffusion coefficients and of
+# the Real World Value Mapping's standardised uptake values, as UCUM codes
+# from PS3.16 CID 7181 and CID 85, with each code's meaning and the LUT
+# Explanation (0028,3003) of the mapping.
+_APPARENT_DIFFUSION = ("um2/s", "um2/s", "ADC")
+_SUV_BODY_WEIGHT = ("{SUVbw}g/ml", "Standardized Uptake Value body weight", "SUVbw")
 # The registrations, whose structure _add_registration adds.
 _REGISTRATIONS = frozenset(
     {SPATIAL_REGISTRATION_STORAGE, DEFORMABLE_SPATIAL_REGISTRATION_STORAGE}
@@ -673,6 +723,17 @@ _FIRST_DATE = datetime.date(900, 1, 1)
 _DATE_RUN_DAYS = 363
 _DATE_RUN_PERIOD = 4004
 _SECONDS_IN_A_DAY = 86_400
+# The kinds of marker numbered apart from the others, by VR, and how many of
+# each the corpus can hold: dates and datetimes, which share their days, up
+# to the last before 1900 (_marker_date); times, up to the last second of a
+# day; and VR SS, whose markers are negated, and US, up to the limits of
+# their 16 bits.
+_NUMBERED_APART = types.MappingProxyType(
+    {"DA": "date", "DT": "date", "TM": "time", "SS": "SS", "US": "US"}
+)
+_KIND_LIMITS = types.MappingProxyType(
+    {"date": 2**15 - 1, "time": _SECONDS_IN_A_DAY - 1, "SS": 2**15, "US": 2**16 - 1}
+)
 
 
 class PlacementKind(enum.Enum):
@@ -1362,6 +1423,52 @@ _SPECS = (
         PLAN,
         targets=((_REFERENCED_TREATMENT_RECORD_SEQUENCE, BRACHY_TREATMENT_RECORD),),
     ),
+    # The Parametric Map, an apparent diffusion coefficient map derived from
+    # the MR Image, references it, and the Real World Value Mapping maps the
+    # PET Image's stored values to a standardised uptake value, naming it in
+    # its Referenced Image Sequence (0008,1140).
+    _Spec(
+        PARAMETRIC_MAP_FILE,
+        PARAMETRIC_MAP_STORAGE,
+        PARAMETRIC_MAP,
+        PARAMETRIC_MAP_SERIES,
+        MR,
+    ),
+    _Spec(
+        REAL_WORLD_VALUE_MAPPING_FILE,
+        REAL_WORLD_VALUE_MAPPING_STORAGE,
+        REAL_WORLD_VALUE_MAPPING,
+        REAL_WORLD_VALUE_MAPPING_SERIES,
+        PET,
+    ),
+    # The Surface Segmentation, of a mesh in the CT slices' space, which
+    # references the CT series and its first slice, from which its surface
+    # was generated.
+    _Spec(
+        SURFACE_SEGMENTATION_FILE,
+        SURFACE_SEGMENTATION_STORAGE,
+        SURFACE_SEGMENTATION,
+        SURFACE_SEGMENTATION_SERIES,
+        CT_SLICES[0],
+    ),
+    # The Enhanced RT Image, two digitally reconstructed radiographs of the
+    # RT Plan's beam, and the Enhanced Continuous RT Image, two frames of a
+    # kV acquisition during it, each referencing the RT Plan, as the RT Image
+    # does.
+    _Spec(
+        ENHANCED_RT_IMAGE_FILE,
+        ENHANCED_RT_IMAGE_STORAGE,
+        ENHANCED_RT_IMAGE,
+        ENHANCED_RT_IMAGE_SERIES,
+        PLAN,
+    ),
+    _Spec(
+        ENHANCED_CONTINUOUS_RT_IMAGE_FILE,
+        ENHANCED_CONTINUOUS_RT_IMAGE_STORAGE,
+        ENHANCED_CONTINUOUS_RT_IMAGE,
+        ENHANCED_CONTINUOUS_RT_IMAGE_SERIES,
+        PLAN,
+    ),
 )
 
 
@@ -1371,7 +1478,7 @@ def build_corpus() -> SyntheticCorpus:
     Returns
     -------
     SyntheticCorpus
-        Forty-five files: three CT slices; the RT Structure Set, RT Plan, RT
+        Fifty files: three CT slices; the RT Structure Set, RT Plan, RT
         Dose, and the RT Dose for review; the Enhanced CT Image and Legacy
         Converted Enhanced CT Image; the MR Image, Enhanced MR Image,
         Enhanced MR Color Image, Legacy Converted Enhanced MR Image, and MR
@@ -1386,9 +1493,11 @@ def build_corpus() -> SyntheticCorpus:
         the Key Object Selection Document, Mammography CAD SR, Chest CAD SR,
         Colon CAD SR, Procedure Log, Spectacle Prescription Report, Macular
         Grid Thickness and Volume Report, and Waveform Annotation SR; the RT
-        Ion Plan and RT Ion Beams Treatment Record; and the RT Brachy
-        Treatment Record and RT Treatment Summary Record. Two builds give the
-        same bytes and the same manifest.
+        Ion Plan and RT Ion Beams Treatment Record; the RT Brachy Treatment
+        Record and RT Treatment Summary Record; the Parametric Map and Real
+        World Value Mapping; the Surface Segmentation; and the Enhanced RT
+        Image and Enhanced Continuous RT Image. Two builds give the same bytes
+        and the same manifest.
     """
     markers = _Markers()
     files: list[CorpusFile] = []
@@ -1443,11 +1552,18 @@ def write_corpus(
 
 
 class _Markers:
-    """Number the markers in the order they are planted, across the corpus."""
+    """Number the markers in the order they are planted, across the corpus.
+
+    Every marker takes the next number, which its text, UID, and other
+    values hold. A date or datetime, a time, and a value of VR SS or US also
+    takes the next number of its own kind, which its value holds instead,
+    since each of those has fewer values to give than the five digits.
+    """
 
     def __init__(self) -> None:
         self._number = 0
         self._ages = 0
+        self._kinds: collections.Counter[str] = collections.Counter()
 
     def values(
         self, vr: str, count: int, *, latin_1: bool = False
@@ -1464,32 +1580,43 @@ class _Markers:
                 if self._ages > 999:
                     raise ValueError("the corpus has more ages than weeks to give")
                 values.append(f"{self._ages:03d}W")
-            else:
-                values.append(_marker(vr, self._number, latin_1))
+                continue
+            kind = _NUMBERED_APART.get(vr)
+            own = self._number
+            if kind is not None:
+                self._kinds[kind] += 1
+                own = self._kinds[kind]
+                if own > _KIND_LIMITS[kind]:
+                    raise ValueError(f"the corpus has more {kind} markers than values")
+            values.append(_marker(vr, self._number, latin_1, own))
         return values, tuple(_as_text(vr, value) for value in values)
 
 
 def _marker_date(number: int) -> datetime.date:
-    """Return the date of the marker numbered ``number``.
+    """Return the date of the date marker numbered ``number``.
 
     Within a run of ``_DATE_RUN_DAYS`` consecutive days dates are at most
     362 days apart, and between runs at least ``_DATE_RUN_PERIOD`` less 362,
     3,642 days, so no two are 364 to 3,640 days apart. Every date of a
-    number below :data:`MAX_MARKERS` is from 900 to before 1900.
+    number below 2**15 is from 900 to before 1900.
     """
     run, day = divmod(number, _DATE_RUN_DAYS)
     return _FIRST_DATE + datetime.timedelta(days=run * _DATE_RUN_PERIOD + day)
 
 
-def _marker(vr: str, number: int, latin_1: bool) -> object:
-    """Return the marker numbered ``number`` as a value of ``vr``."""
+def _marker(vr: str, number: int, latin_1: bool, own: int) -> object:
+    """Return the marker numbered ``number`` as a value of ``vr``.
+
+    ``own`` is its number among the markers of its kind (``_NUMBERED_APART``),
+    which a date, a time, and a value of VR SS or US hold.
+    """
     text = f"{MARKER_PREFIX}-{number:05d}"
     if vr in _WORD_BYTES:
         return _padded(text, vr)
-    day = _marker_date(number)
+    day = _marker_date(own)
     # strftime does not pad a year before 1000 to four digits on every platform.
     date = f"{day.year:04d}{day.month:02d}{day.day:02d}"
-    seconds = number % _SECONDS_IN_A_DAY
+    seconds = own % _SECONDS_IN_A_DAY
     time = f"{seconds // 3600:02d}{seconds // 60 % 60:02d}{seconds % 60:02d}"
     time += _TIME_SIGNATURE
     given = "MÄRKER" if latin_1 else "MARKER"
@@ -1508,10 +1635,10 @@ def _marker(vr: str, number: int, latin_1: bool) -> object:
         "FD": number + 0.5,
         "FL": number + 0.5,
         "SL": -(900_000_000 + number),
-        "SS": -number,
+        "SS": -own,
         "SV": -(9_000_000_000 + number),
         "UL": 900_000_000 + number,
-        "US": number,
+        "US": own,
         "UV": 9_000_000_000 + number,
     }
     return formats.get(vr, text)
@@ -2028,11 +2155,30 @@ class _Instance:
             self._add_registration()
         elif self.spec.sop_class in _SEGMENTATIONS:
             self._add_segmentation()
+        elif self.spec.sop_class == PARAMETRIC_MAP_STORAGE:
+            self._add_parametric_map()
+        elif self.spec.sop_class == REAL_WORLD_VALUE_MAPPING_STORAGE:
+            put((), "(0008,0060)", ["RWV"])
+            # Each item maps the images it names by the items of its own Real
+            # World Value Mapping Sequence (PS3.3 Table C.25.2-1).
+            self._add_value_mapping(
+                _items(["(0040,9094)", "(0040,9096)"]),
+                _SUV_BODY_WEIGHT,
+                (0, 32767),
+                0.0005,
+            )
+        elif self.spec.sop_class == SURFACE_SEGMENTATION_STORAGE:
+            self._add_surface_segmentation()
         elif self.spec.sop_class == RT_IMAGE_STORAGE:
             put((), "(0008,0060)", ["RTIMAGE"])
             put((), "(0008,0008)", ["DERIVED", "SECONDARY", "DRR"])
             put((), "(3002,000C)", ["NORMAL"])  # RT Image Plane
             self._add_pixels(16, 0, struct.pack("<4H", 0, 100, 200, 300))
+        elif self.spec.sop_class in (
+            ENHANCED_RT_IMAGE_STORAGE,
+            ENHANCED_CONTINUOUS_RT_IMAGE_STORAGE,
+        ):
+            self._add_enhanced_rt_image()
         else:
             put((), "(0008,0060)", ["RTDOSE"])
             put((), "(0020,0032)", ["-1", "-1", "0"])
@@ -2045,6 +2191,32 @@ class _Instance:
             put((), "(3004,000C)", ["0", "2"])
             put((), "(3004,000E)", ["0.001"])
             self._add_pixels(32, 0, struct.pack("<8I", *range(0, 8000, 1000)))
+
+    def _add_enhanced_rt_image(self) -> None:
+        """Add the attributes that make the instance an Enhanced or Enhanced
+        Continuous RT Image.
+
+        It holds two frames of 2 by 2 pixels, whose spacing the Shared
+        Functional Groups Sequence (5200,9229) gives. An Enhanced Continuous
+        RT Image's Selected Frame Functional Groups Sequence (3002,0101)
+        selects only the first frame, by its Selected Frame Number
+        (3002,0100), since the Sparse Multi-frame Functional Groups Module of
+        PS3.3 C.7.6.29 selects fewer frames than the image has; the markers
+        of the macros are planted in that item.
+        """
+        put = self._set
+        continuous = self.spec.sop_class == ENHANCED_CONTINUOUS_RT_IMAGE_STORAGE
+        put((), "(0008,0060)", ["RTIMAGE"])
+        if continuous:
+            put((), "(0008,0008)", ["ORIGINAL", "PRIMARY", "SIMULATOR", "NONE"])
+        else:
+            put((), "(0008,0008)", ["DERIVED", "PRIMARY", "DRR", "NONE"])
+        put((), "(0028,0008)", ["2"])
+        shared = _items(["(5200,9229)"])
+        put((*shared, ("(0028,9110)", 0)), "(0028,0030)", ["1", "1"])
+        if continuous:
+            put((("(3002,0101)", 0),), "(3002,0100)", ["1"])
+        self._add_pixels(16, 0, struct.pack("<8H", *range(0, 800, 100)))
 
     def _add_registration(self) -> None:
         """Add the attributes that make the instance a rigid or deformable registration."""
@@ -2117,6 +2289,135 @@ class _Instance:
             self._add_pixels(8, 0, bytes([1, 1, 0, 0] * 2))
         else:
             self._add_pixels(1, 0, bytes([0xFF, 0x00] * 2), size=4)
+
+    def _add_parametric_map(self) -> None:
+        """Add the attributes that make the instance a Parametric Map.
+
+        Its two frames, of 2 by 2 unsigned 16-bit apparent diffusion
+        coefficients, lie in the planes of the first two CT slices, placed
+        by their functional groups, as a Segmentation's are, and its shared
+        Real World Value Mapping functional group maps each stored value to
+        a coefficient in square micrometres per second, as an ADC map
+        written as integers does (PS3.3 Section A.75).
+        """
+        put = self._set
+        put((), "(0008,0060)", ["MR"])
+        # Image Flavor VOLUME and Derived Pixel Contrast ADC (PS3.3 Sections
+        # C.8.16.1.3 and C.8.13.1.1.1.4), for the image and its frames alike.
+        flavour = ["DERIVED", "PRIMARY", "VOLUME", "ADC"]
+        put((), "(0008,0008)", flavour)
+        put((), "(0070,0080)", ["ADC"])  # Content Label
+        put((), "(2050,0020)", ["IDENTITY"])  # Presentation LUT Shape
+        put((), "(0028,2110)", ["00"])  # Lossy Image Compression
+        put((), "(0018,9004)", ["RESEARCH"])  # Content Qualification
+        shared = _items(["(5200,9229)"])
+        put(
+            (*shared, ("(0020,9116)", 0)), "(0020,0037)", ["1", "0", "0", "0", "1", "0"]
+        )
+        measures = (*shared, ("(0028,9110)", 0))
+        put(measures, "(0028,0030)", ["1", "1"])
+        put(measures, "(0018,0050)", ["2"])
+        put(measures, "(0018,0088)", ["2"])
+        put((*shared, ("(0040,9092)", 0)), "(0008,9007)", flavour)
+        self._add_value_mapping(
+            (*shared, ("(0040,9096)", 0)), _APPARENT_DIFFUSION, (0, 4000), 1.0
+        )
+        for frame in range(2):
+            put(
+                (("(5200,9230)", frame), ("(0020,9113)", 0)),
+                "(0020,0032)",
+                ["-1", "-1", str(2 * frame)],
+            )
+        put((), "(0028,0008)", ["2"])
+        self._add_pixels(
+            16, 0, struct.pack("<8H", 0, 800, 1600, 2400, 0, 900, 1800, 2700)
+        )
+
+    def _add_value_mapping(
+        self,
+        item: tuple[tuple[str, int], ...],
+        units: tuple[str, str, str],
+        mapped: tuple[int, int],
+        slope: float,
+    ) -> None:
+        """Map unsigned stored values from ``mapped``'s first to its last to
+        ``units``, a UCUM code, by ``slope``, in the item of a Real World
+        Value Mapping Item Macro (PS3.3 Table C.7.6.16-12)."""
+        put = self._set
+        put(item, "(0040,9216)", [mapped[0]])  # Real World Value First Value Mapped
+        put(item, "(0040,9211)", [mapped[1]])  # Real World Value Last Value Mapped
+        put(item, "(0040,9224)", [0.0])  # Real World Value Intercept
+        put(item, "(0040,9225)", [slope])  # Real World Value Slope
+        put(item, "(0028,3003)", [units[2]])  # LUT Explanation
+        put(item, "(0040,9210)", [units[2][:16]])  # LUT Label
+        code = (*item, ("(0040,08EA)", 0))
+        put(code, "(0008,0100)", [units[0]])
+        put(code, "(0008,0102)", ["UCUM"])
+        put(code, "(0008,0104)", [units[1]])
+
+    def _add_surface_segmentation(self) -> None:
+        """Add the attributes that make the instance a Surface Segmentation.
+
+        Its one segment, of Tissue, has one surface: a closed, manifold
+        tetrahedron of four points and four triangles, within the extent of
+        the first two CT slices, without normals, whose triangles index its
+        points from 1.
+        """
+        put = self._set
+        put((), "(0008,0060)", ["SEG"])
+        put((), "(0070,0080)", ["SURFACES"])  # Content Label
+        segment = _items(["(0062,0002)"])
+        put(segment, "(0062,0004)", [1])  # Segment Number
+        put(segment, "(0062,0005)", ["TISSUE"])  # Segment Label
+        put(segment, "(0062,0008)", ["MANUAL"])  # Segment Algorithm Type
+        for sequence in ("(0062,0003)", "(0062,000F)"):
+            code = (*segment, (sequence, 0))
+            put(code, "(0008,0100)", ["85756007"])
+            put(code, "(0008,0102)", ["SCT"])
+            put(code, "(0008,0104)", ["Tissue"])
+        put(segment, "(0066,002A)", [1])  # Surface Count
+        referenced = (*segment, ("(0066,002B)", 0))
+        put(referenced, "(0066,002C)", [1])  # Referenced Surface Number
+        algorithm = (*referenced, ("(0066,002D)", 0))
+        family = (*algorithm, ("(0066,002F)", 0))
+        put(family, "(0008,0100)", ["123109"])
+        put(family, "(0008,0102)", ["DCM"])
+        put(family, "(0008,0104)", ["Manual Processing"])
+        put(algorithm, "(0066,0036)", ["MANUAL"])  # Algorithm Name
+        put(algorithm, "(0066,0031)", ["1"])  # Algorithm Version
+        put((), "(0066,0001)", [1])  # Number of Surfaces
+        surface = _items(["(0066,0002)"])
+        put(surface, "(0066,0003)", [1])  # Surface Number
+        put(surface, "(0066,0009)", ["NO"])  # Surface Processing
+        put(surface, "(0062,000C)", [0xFFFF])  # Recommended Display Grayscale
+        put(surface, "(0062,000D)", [0xFFFF, 0x8080, 0x8080])  # CIELab
+        put(surface, "(0066,000C)", [1.0])  # Recommended Presentation Opacity
+        put(surface, "(0066,000D)", ["SURFACE"])  # Recommended Presentation Type
+        put(surface, "(0066,000E)", ["YES"])  # Finite Volume
+        put(surface, "(0066,0010)", ["YES"])  # Manifold
+        points = (*surface, ("(0066,0011)", 0))
+        put(points, "(0066,0015)", [4])  # Number of Surface Points
+        put(
+            points,
+            "(0066,0016)",
+            [struct.pack("<12f", -1, -1, 0, 1, -1, 0, -1, 1, 0, -1, -1, 2)],
+        )
+        put(surface, "(0066,0012)", [])  # Surface Points Normals Sequence
+        primitives = (*surface, ("(0066,0013)", 0))
+        put(
+            primitives,
+            "(0066,0041)",  # Long Triangle Point Index List
+            [struct.pack("<12I", 1, 3, 2, 1, 2, 4, 2, 3, 4, 3, 1, 4)],
+        )
+        for empty in (
+            "(0066,0043)",  # Long Vertex Point Index List
+            "(0066,0042)",  # Long Edge Point Index List
+            "(0066,0026)",  # Triangle Strip Sequence
+            "(0066,0027)",  # Triangle Fan Sequence
+            "(0066,0028)",  # Line Sequence
+            "(0066,0034)",  # Facet Sequence
+        ):
+            put(primitives, empty, [])
 
     def _add_content_tree(self) -> None:
         """Add the attributes that make the instance a Structured Report.
@@ -2294,7 +2595,11 @@ class _Instance:
             put((), "(0028,0004)", ["MONOCHROME2"])
         put((), "(0028,0010)", [size])
         put((), "(0028,0011)", [size])
-        if self.spec.sop_class not in _SEGMENTATIONS:
+        if self.spec.sop_class not in (
+            *_SEGMENTATIONS,
+            ENHANCED_RT_IMAGE_STORAGE,
+            ENHANCED_CONTINUOUS_RT_IMAGE_STORAGE,
+        ):
             put((), "(0028,0030)", ["1", "1"])
         put((), "(0028,0100)", [bits])
         put((), "(0028,0101)", [bits])

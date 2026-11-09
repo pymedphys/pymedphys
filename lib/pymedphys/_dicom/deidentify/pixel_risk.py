@@ -55,9 +55,11 @@ The indicators are:
   such as "Skin 5mm" is not one.
 - Units (0054,1001) of GML or CM2ML, values scaled to a standardised uptake
   value (SUV), or a Real World Value Mapping Sequence (0040,9096) item, at
-  the top level or in a shared or per-frame functional group, whose
-  Measurement Units Code Sequence (0040,08EA) gives a Code Value or Long
-  Code Value that contains ``{SUV``, as each SUV unit of PS3.16 CID 85
+  the top level, in a shared or per-frame functional group, or in a
+  Referenced Image Real World Value Mapping Sequence (0040,9094) item,
+  where a Real World Value Mapping instance maps the images that the item
+  names (PS3.3 Section C.25.2), whose Measurement Units Code Sequence
+  (0040,08EA) gives a Code Value or Long Code Value that contains ``{SUV``, as each SUV unit of PS3.16 CID 85
   does, such as ``g/ml{SUVbw}``. The Basic Profile removes Patient's Weight
   (0010,1030) but keeps these and Radionuclide Total Dose (0018,1074), so
   a mapping's slope and the dose give the weight, and so do images scaled
@@ -79,9 +81,11 @@ indicator. Findings name attribute paths, never values.
 :func:`assess_series` reads the indicators that need a whole series:
 every CT, MR, and PET volume, and every RT Dose grid of more than one
 frame, may hold a reconstructable face; so may a CT, MR, or PET localizer,
-which can show the face in profile, and so may an RT Image, a projection
-such as a lateral DRR, and a Segmentation, whose segment of the skin or
-body traces the profile; and one whose attributes, or a Segmentation's
+which can show the face in profile, and so may an RT Image, Enhanced RT
+Image, or Enhanced Continuous RT Image, each a projection such as a lateral
+DRR, a Segmentation, whose segment of the skin or body traces the profile,
+and a Parametric Map, whose map of the head shows its outline; and one
+whose attributes, or a Segmentation's
 segments, name a region of the head or neck in a reviewed list from PS3.16
 Annex L says that it does.
 :func:`series_evidence` gives the part of an instance that it reads.
@@ -140,6 +144,7 @@ class Indicator(enum.Enum):
     LOCALIZER = "localizer"
     RT_IMAGE = "rt-image"
     SEGMENTATION = "segmentation"
+    PARAMETRIC_MAP = "parametric-map"
     HEAD_OR_NECK = "head-or-neck"
     SUV_UNITS = "suv-units"
     SUV_MAPPING = "suv-mapping"
@@ -166,6 +171,7 @@ _RISKS = {
     Indicator.LOCALIZER: Risk.RECONSTRUCTABLE_FACE,
     Indicator.RT_IMAGE: Risk.RECONSTRUCTABLE_FACE,
     Indicator.SEGMENTATION: Risk.RECONSTRUCTABLE_FACE,
+    Indicator.PARAMETRIC_MAP: Risk.RECONSTRUCTABLE_FACE,
     Indicator.HEAD_OR_NECK: Risk.RECONSTRUCTABLE_FACE,
     Indicator.SUV_UNITS: Risk.BODY_WEIGHT,
     Indicator.SUV_MAPPING: Risk.BODY_WEIGHT,
@@ -266,6 +272,7 @@ _ROI_NUMBER = "(3006,0022)"
 _ROI_NAME = "(3006,0026)"
 _UNITS = "(0054,1001)"
 _REAL_WORLD_VALUE_MAPPING_SEQUENCE = "(0040,9096)"
+_REFERENCED_IMAGE_REAL_WORLD_VALUE_MAPPING_SEQUENCE = "(0040,9094)"
 _MEASUREMENT_UNITS_CODE_SEQUENCE = "(0040,08EA)"
 _LONG_CODE_VALUE = "(0008,0119)"
 _SEGMENT_SEQUENCE = "(0062,0002)"
@@ -300,6 +307,7 @@ READ_VRS = {
     _ROI_NAME: "LO",
     _UNITS: "CS",
     _REAL_WORLD_VALUE_MAPPING_SEQUENCE: "SQ",
+    _REFERENCED_IMAGE_REAL_WORLD_VALUE_MAPPING_SEQUENCE: "SQ",
     _MEASUREMENT_UNITS_CODE_SEQUENCE: "SQ",
     _LONG_CODE_VALUE: "UC",
     _SEGMENT_SEQUENCE: "SQ",
@@ -620,7 +628,8 @@ def _body_weight_findings(dataset: pydicom.Dataset) -> Iterator[Finding]:
     body surface area, or, for SUVibw, an ideal body weight from height and
     sex (PS3.16 CID 85). The Basic Profile removes Patient's Weight
     (0010,1030) but keeps Units (0054,1001), Real World Value Mapping
-    Sequence (0040,9096), and Radionuclide Total Dose (0018,1074).
+    Sequence (0040,9096), Referenced Image Real World Value Mapping Sequence
+    (0040,9094), and Radionuclide Total Dose (0018,1074).
 
     These are conservative disclosure indicators, not demonstrated recovery:
     weight recovery depends on the SUV normalisation, activity calibration,
@@ -654,6 +663,14 @@ def _body_weight_findings(dataset: pydicom.Dataset) -> Iterator[Finding]:
     ):
         for item, within in _sequence_items(dataset, (), group, unreadable):
             mappings.extend(_sequence_items(item, within, mapping, unreadable))
+    # A Real World Value Mapping instance maps the values of the images that
+    # each item names in the Real World Value Mapping Sequence of the item,
+    # which includes the Real World Value Mapping Macro (PS3.3 Table
+    # C.25.2-1).
+    for item, within in _sequence_items(
+        dataset, (), _REFERENCED_IMAGE_REAL_WORLD_VALUE_MAPPING_SEQUENCE, unreadable
+    ):
+        mappings.extend(_sequence_items(item, within, mapping, unreadable))
     for item, within in mappings:
         for unit, nested in _sequence_items(
             item, within, _MEASUREMENT_UNITS_CODE_SEQUENCE, unreadable
@@ -744,22 +761,41 @@ _VOLUME_SOP_CLASSES = {
     # frames, so it is not a volume.
     "1.2.840.10008.5.1.4.1.1.481.2": (Indicator.RT_DOSE_VOLUME, True),
 }
-# RT Image Storage (PS3.4 Table B.5-1). An RT Image is a projection, such
-# as a digitally reconstructed radiograph (DRR) or a simulator or portal
-# image (PS3.3 Section C.8.8.2), so, like a localizer, it can show the face
-# in profile. It is recognised by its SOP Class, whatever its Image Type:
-# the standard Defined Terms of Image Type's third value for it do not
-# include LOCALIZER, though an implementer may extend them (PS3.5 Section
-# 6.3).
-_RT_IMAGE = "1.2.840.10008.5.1.4.1.1.481.1"
+# RT Image Storage, Enhanced RT Image Storage, and Enhanced Continuous RT
+# Image Storage (PS3.4 Table B.5-1). An RT Image is a projection, such as a
+# digitally reconstructed radiograph (DRR) or a simulator or portal image
+# (PS3.3 Section C.8.8.2), and an Enhanced or Enhanced Continuous RT Image
+# holds projections too, acquired directly or derived from a volume such as
+# a CT (PS3.3 Sections A.86.1.15.1 and A.86.1.16.1), so, like a localizer,
+# each can show the face in profile. Each is recognised by its SOP Class,
+# whatever its Image Type: the standard Defined Terms of Image Type's third
+# value for them do not include LOCALIZER, though an implementer may extend
+# them (PS3.5 Section 6.3).
+RT_IMAGE_SOP_CLASSES = frozenset(
+    {
+        "1.2.840.10008.5.1.4.1.1.481.1",
+        "1.2.840.10008.5.1.4.1.1.481.23",
+        "1.2.840.10008.5.1.4.1.1.481.24",
+    }
+)
 # Segmentation Storage and Label Map Segmentation Storage (PS3.4 Table
 # B.5-1), whose frames are masks of segments. A segment of the skin or body
 # traces the profile, and its label or code need not say that it is one, so
-# each instance is reported, whatever its segments. Surface Segmentation
-# holds meshes, not pixel data, and is out of scope (D-010).
+# each instance is reported, whatever its segments. A Surface Segmentation
+# holds meshes, not pixel data, so it is none of them: the face review
+# holds each one under Clean Recognizable Visual Features
+# (face_review.holds_surface_mesh).
 SEGMENTATION_SOP_CLASSES = frozenset(
     {"1.2.840.10008.5.1.4.1.1.66.4", "1.2.840.10008.5.1.4.1.1.66.7"}
 )
+# Parametric Map Storage (PS3.4 Table B.5-1), whose frames map a quantity,
+# such as an apparent diffusion coefficient or a standardised uptake value,
+# derived from images of the patient (PS3.3 Section A.75.1). A map of the
+# head shows the head's outline wherever the quantity differs from the air
+# around it, whatever its quantity (an inference, not a published result),
+# and one frame of it can be a sagittal plane, so each instance is reported, whatever its Number of Frames, and it
+# is no frame of a volume.
+PARAMETRIC_MAP_STORAGE = "1.2.840.10008.5.1.4.1.1.30"
 VOLUME_INDICATORS = (
     Indicator.CT_VOLUME,
     Indicator.MR_VOLUME,
@@ -902,15 +938,20 @@ def assess_series(instances: Sequence[pydicom.Dataset]) -> tuple[SeriesFinding, 
     counts as a frame of each volume that the series' other instances make.
     The localizers of those image classes are reported apart, since a
     localizer can show the face in profile, although no study has measured
-    recognition from one. So is each RT Image Storage instance, whatever its
-    Image Type, gantry angle, or Number of Frames, since an RT Image is a
-    projection, and a lateral one, such as a DRR or a simulator or portal
-    image, can show the face in profile as a localizer can; it is no frame
-    of a volume. So is each Segmentation, of Segmentation Storage or Label
+    recognition from one. So is each RT Image, of RT Image Storage,
+    Enhanced RT Image Storage, or Enhanced Continuous RT Image Storage,
+    whatever its Image Type, gantry angle, or Number of Frames, since each
+    holds projections, and a lateral one, such as a DRR or a simulator,
+    portal, or kV image, can show the face in profile as a localizer can; it
+    is no frame of a volume. So is each Segmentation, of Segmentation Storage or Label
     Map Segmentation Storage, whatever its segments and Number of Frames,
     since a segment of the skin or body traces the profile and its label or
     code need not say that it is one; it is no frame of a volume either.
-    A volume, localizer, RT Image, or Segmentation whose Body Part Examined
+    So is each Parametric Map, whatever its quantity and Number of Frames,
+    since a map of the head shows its outline wherever the quantity differs
+    from the air around it; it is no frame of a volume either. A volume,
+    localizer, RT Image, Segmentation, or Parametric Map whose Body Part
+    Examined
     (0018,0015) or Anatomic Region Sequence (0008,2218), at the top level or
     in a Frame Anatomy Sequence (0020,9071) of the shared or a per-frame
     functional group, names a region in :func:`load_head_and_neck_regions`
@@ -931,8 +972,8 @@ def assess_series(instances: Sequence[pydicom.Dataset]) -> tuple[SeriesFinding, 
     -------
     tuple of SeriesFinding
         The CT, MR, PET, and RT Dose volumes first, in that order, then the
-        localizers, then the RT Images, then the Segmentations, then the head
-        or neck by attribute, then unreadable evidence by instance, which is
+        localizers, then the RT Images, then the Segmentations, then the
+        Parametric Maps, then the head or neck by attribute, then unreadable evidence by instance, which is
         reported whether or not the series is a volume.
     """
     regions = load_head_and_neck_regions()
@@ -942,6 +983,7 @@ def assess_series(instances: Sequence[pydicom.Dataset]) -> tuple[SeriesFinding, 
     localizers: list[int] = []
     rt_images: list[int] = []
     segmentations: list[int] = []
+    parametric_maps: list[int] = []
     head: dict[int, list[ElementPath]] = {}
     unreadable: list[SeriesFinding] = []
     for index, dataset in enumerate(instances):
@@ -951,7 +993,7 @@ def assess_series(instances: Sequence[pydicom.Dataset]) -> tuple[SeriesFinding, 
             unreadable.append(_unreadable_in(index, ElementPath((), _SOP_CLASS_UID)))
             volume_class = None
         else:
-            if sop_class == _RT_IMAGE:
+            if sop_class in RT_IMAGE_SOP_CLASSES:
                 rt_images.append(index)
                 head[index] = list(_head_or_neck(dataset, regions, index, unreadable))
                 continue
@@ -961,6 +1003,10 @@ def assess_series(instances: Sequence[pydicom.Dataset]) -> tuple[SeriesFinding, 
                     *_head_or_neck(dataset, regions, index, unreadable),
                     *_segments_head_or_neck(dataset, regions, index, unreadable),
                 ]
+                continue
+            if sop_class == PARAMETRIC_MAP_STORAGE:
+                parametric_maps.append(index)
+                head[index] = list(_head_or_neck(dataset, regions, index, unreadable))
                 continue
             volume_class = _VOLUME_SOP_CLASSES.get(sop_class or "")
             if volume_class is None:
@@ -993,6 +1039,8 @@ def assess_series(instances: Sequence[pydicom.Dataset]) -> tuple[SeriesFinding, 
         shown_by.append(SeriesFinding(Indicator.RT_IMAGE, tuple(rt_images)))
     if segmentations:
         shown_by.append(SeriesFinding(Indicator.SEGMENTATION, tuple(segmentations)))
+    if parametric_maps:
+        shown_by.append(SeriesFinding(Indicator.PARAMETRIC_MAP, tuple(parametric_maps)))
     shown = {index for finding in shown_by for index in finding.instances}
     named: dict[ElementPath, list[int]] = {}
     for index, paths in head.items():

@@ -136,7 +136,25 @@ ION_REVIEWED_AGAINST = DOSE_SR_REVIEWED_AGAINST + RADIATION_DOSE_SR_IODS
 # and which the first supported release now supports.
 RECORD_IODS = ("RT Brachy Treatment Record", "RT Treatment Summary Record")
 RECORD_REVIEWED_AGAINST = ION_REVIEWED_AGAINST + ION_IODS
-SUPPORTED_IODS = (
+# Parametric Map and Real World Value Mapping, which the maintainer added to
+# the target coverage on 31 October 2026 with the other IODs that RT exports
+# carry, whose attributes were reviewed against every IOD above when the
+# first supported release came to support them.
+MAP_IODS = ("Parametric Map", "Real World Value Mapping")
+MAP_REVIEWED_AGAINST = RECORD_REVIEWED_AGAINST + RECORD_IODS
+# Enhanced RT Image and Enhanced Continuous RT Image, which the maintainer
+# added to the target coverage on 31 October 2026, whose attributes were
+# reviewed with their support, against every IOD above, and which the first
+# supported release now supports.
+ENHANCED_RT_IMAGE_IODS = ("Enhanced RT Image", "Enhanced Continuous RT Image")
+ENHANCED_RT_IMAGE_REVIEWED_AGAINST = RECORD_REVIEWED_AGAINST + RECORD_IODS
+# Surface Segmentation, which the maintainer brought into the target
+# coverage on 31 October 2026 with the other IODs that radiotherapy exports
+# carry, whose attributes were reviewed ahead of supporting it, against every
+# IOD that the first supported release then supported, and which it now
+# supports.
+SURFACE_IODS = ("Surface Segmentation",)
+SURFACE_REVIEWED_AGAINST = (
     REVIEWED_AGAINST
     + SUPPORTED_TARGET_IODS
     + SUPPORTED_DOSE_SR_IODS
@@ -144,7 +162,9 @@ SUPPORTED_IODS = (
     + SUPPORTED_OTHER_SR_IODS
     + ION_IODS
     + RECORD_IODS
+    + MAP_IODS
 )
+SUPPORTED_IODS = SURFACE_REVIEWED_AGAINST + SURFACE_IODS + ENHANCED_RT_IMAGE_IODS
 CLEAN_DESCRIPTORS = "clean_descriptors"
 DEVICE_IDENTITY = "retain_device_identity"
 FULL_DATES = "retain_longitudinal_full_dates"
@@ -410,10 +430,11 @@ def test_every_text_attribute_a_supported_iod_uses_and_table_e1_1_omits_has_a_ru
 
     # Checked against the 2026d PS3.3, PS3.6, and PS3.15: the combined
     # scope includes the RT objects, among them the two RT Ion IODs, which
-    # add 13, and the brachy and summary treatment records, which add none,
-    # Segmentation, which adds 4, and the two dose-report IODs, whose
-    # supplementary rules cover 172 text attributes.
-    assert len(omitted) == 172
+    # add 13, the brachy and summary treatment records, which add none, the
+    # Enhanced and Enhanced Continuous RT Images, which add 1, Segmentation,
+    # which adds 4, Surface Segmentation, which adds 2, and the two
+    # dose-report IODs, whose supplementary rules cover 175 text attributes.
+    assert len(omitted) == 175
     assert omitted <= set(_rules())
     assert {"(0008,0100)", "(300A,00C2)", "(60xx,1500)"} <= omitted
 
@@ -428,11 +449,11 @@ def test_the_rules_for_omitted_text_fall_in_the_reviewed_groups():
 
     assert groups == {
         # Operator-typed labels and text.
-        ("X/Z/D", ((CLEAN_DESCRIPTORS, "C"),)): 80,
+        ("X/Z/D", ((CLEAN_DESCRIPTORS, "C"),)): 82,
         # Accessory and equipment identifiers.
         ("X/Z/D", ((DEVICE_IDENTITY, "K"),)): 30,
         # Coded and technical values, and De-identification Method.
-        ("K", ()): 43,
+        ("K", ()): 44,
         # Names and identifiers of people, organisations, records, and
         # networks, identifiers that a device reads, and the text of overlays.
         ("X/Z/D", ()): 17,
@@ -1109,6 +1130,189 @@ def test_the_brachy_and_summary_records_other_new_attributes_are_kept_by_the_def
             ), (preset, definition)
 
 
+# The text attributes that Enhanced RT Image and Enhanced Continuous RT Image
+# use and the IODs reviewed before them do not, checked by hand against the
+# 2026d PS3.3 Tables C.36.26-1, C.36.27-1, C.36.2.4.11-1 (RT Image Frame
+# Radiation Acquisition Parameters Macro), 10.32-1 (Entity Long Labeling
+# Macro), and 10.34-1 (Conceptual Volume Segmentation Reference and
+# Combination Macro), and Section 10.34.1.1: four that Table E.1-1 lists, with
+# its actions, and one that it omits, which is kept.
+ENHANCED_RT_IMAGE_LISTED_TEXT = {
+    "(300A,067C)": "D",  # Radiation Generation Mode Label
+    "(300A,067D)": "Z",  # Radiation Generation Mode Description
+    "(3010,000F)": "Z",  # Conceptual Volume Combination Description
+    "(3010,0037)": "X",  # Entity Description
+}
+CONCEPTUAL_VOLUME_COMBINATION_EXPRESSION = "(3010,000C)"
+ENHANCED_RT_IMAGE_KEPT_TEXT = {CONCEPTUAL_VOLUME_COMBINATION_EXPRESSION}
+# The UIDs that they add, which Table E.1-1 lists with U.
+ENHANCED_RT_IMAGE_UIDS = {
+    "(300A,0785)",  # Referenced Treatment Position Group UID
+    "(3010,0013)",  # Constituent Conceptual Volume UID
+}
+# The others, by VR: codes, numbers, and sequences of the frames'
+# acquisition, the imaging and treatment devices, the treatment positions,
+# and the Conceptual Volumes named.
+ENHANCED_RT_IMAGE_OTHER_VRS = {"SQ": 36, "US": 11, "FD": 6, "DS": 6, "CS": 5, "IS": 1}
+# Where removal by Type gives an attribute of these IODs an action that it
+# takes nowhere in the IODs reviewed before them: Instance Creation Date and
+# Time, which are Type 1 in the Radiotherapy Common Instance Module (PS3.3
+# Table C.36.4-1) and Type 3 in the SOP Common Module.
+ENHANCED_RT_IMAGE_NEW_RESOLUTIONS = {
+    "(0008,0012)": ({"D"}, {"X"}),  # Instance Creation Date, X/D
+    "(0008,0013)": ({"D"}, {"X"}),  # Instance Creation Time, X/Z/D
+}
+
+
+def test_the_enhanced_rt_images_are_generated_and_supported():
+    tables = iods.load_iod_tables()
+
+    assert set(ENHANCED_RT_IMAGE_IODS) <= set(tables.iods)
+    assert set(ENHANCED_RT_IMAGE_IODS) <= scope.SUPPORTED_IODS
+
+
+def test_the_enhanced_rt_images_differ_only_in_the_modules_of_their_frames():
+    tables = iods.load_iod_tables()
+    enhanced, continuous = (
+        {(usage.module, usage.table) for usage in tables.iods[name].modules}
+        for name in ENHANCED_RT_IMAGE_IODS
+    )
+
+    assert enhanced - continuous == {
+        ("Multi-frame Functional Groups", "Table C.7.6.16-1"),
+        ("Multi-frame Dimension", "Table C.7.6.17-1"),
+        ("Frame Extraction", "Table C.12-9"),
+    }
+    assert continuous - enhanced == {
+        ("Sparse Multi-frame Functional Groups", "Table C.7.6.29-1")
+    }
+    # Their macros are the same, with the same usages; only the condition of
+    # Derivation Image is worded for frames in one and not the other.
+    enhanced_macros, continuous_macros = (
+        [
+            (macro.macro, macro.section, macro.usage, macro.table)
+            for macro in tables.iods[name].functional_group_macros
+        ]
+        for name in ENHANCED_RT_IMAGE_IODS
+    )
+    assert enhanced_macros == continuous_macros
+
+
+@pytest.mark.deid_requirement("MIDI-BP-05", "MIDI-BP-06", "MIDI-BP-11")
+def test_the_text_that_only_the_enhanced_rt_images_use_has_its_reviewed_action():
+    table = _table_e1_1()
+    rules = _rules()
+    added = _used_by(ENHANCED_RT_IMAGE_IODS, TEXT_VRS) - _used_by(
+        ENHANCED_RT_IMAGE_REVIEWED_AGAINST, TEXT_VRS
+    )
+
+    assert added == {
+        *ENHANCED_RT_IMAGE_LISTED_TEXT,
+        CONCEPTUAL_VOLUME_COMBINATION_EXPRESSION,
+    }
+    for tag, action in ENHANCED_RT_IMAGE_LISTED_TEXT.items():
+        assert tag not in rules, tag
+        assert table[tag].basic_profile == action, tag
+    # The combination expression, which Table E.1-1 omits, is kept as
+    # software-generated structure, as Fraction Pattern is, under every
+    # option.
+    rule = rules[CONCEPTUAL_VOLUME_COMBINATION_EXPRESSION]
+    assert CONCEPTUAL_VOLUME_COMBINATION_EXPRESSION not in table
+    assert (rule.action, dict(rule.options)) == ("K", {})
+    assert "10.34.1.1" in rule.note
+    for composed in _every_policy():
+        assert (
+            composed.supplementary_actions[CONCEPTUAL_VOLUME_COMBINATION_EXPRESSION]
+            == "K"
+        ), composed.options
+
+
+def test_removal_by_type_gives_the_enhanced_rt_images_attributes_the_actions_reviewed():
+    actions_by_tag = _record_actions()
+    dictionary = _dictionary()
+    every_vr = {vr for attribute in dictionary.values() for vr in attribute.vrs}
+    new = {}
+
+    for tag in sorted(_used_by(ENHANCED_RT_IMAGE_IODS, every_vr)):
+        action = actions_by_tag.get(tag)
+        if action not in compound_actions.COMPOUND_ACTIONS:
+            continue
+        resolved = _resolved_in(ENHANCED_RT_IMAGE_IODS, tag, action)
+        reviewed = _resolved_in(ENHANCED_RT_IMAGE_REVIEWED_AGAINST, tag, action)
+        if not resolved <= reviewed:
+            new[tag] = (resolved, reviewed)
+
+    assert new == ENHANCED_RT_IMAGE_NEW_RESOLUTIONS
+    # Each is a date or time that Full Dates keeps and Modified Dates
+    # modifies, where D writes the dummy value.
+    table = _table_e1_1()
+    for tag in new:
+        assert dict(table[tag].options) == DATE_OPTIONS, tag
+        assert {
+            definition.module
+            for name in ENHANCED_RT_IMAGE_IODS
+            for definition in iods.load_iod_tables().iods[name].definitions
+            if definition.tag == tag and definition.type == "1"
+        } == {"Radiotherapy Common Instance"}, tag
+
+
+def test_every_uid_date_and_name_that_the_enhanced_rt_images_use_has_a_role():
+    uids = uid_roles.load_uid_roles()
+    temporal = temporal_roles.load_temporal_roles()
+    table = _table_e1_1()
+
+    for tag in _used_by(ENHANCED_RT_IMAGE_IODS, {"UI"}):
+        assert isinstance(uids.role(tag), uid_roles.UIDRole), tag
+    for tag in _used_by(ENHANCED_RT_IMAGE_IODS, TEMPORAL_VRS):
+        assert isinstance(temporal.role(tag), temporal_roles.TemporalRole), tag
+    # The IODs reviewed before them use every date, time, datetime, person
+    # name, and URL that these IODs use, and every UID but two, which Table
+    # E.1-1 replaces, each the UID of an instance.
+    for vrs in (TEMPORAL_VRS, {"PN"}, {"UR"}):
+        assert not _used_by(ENHANCED_RT_IMAGE_IODS, vrs) - _used_by(
+            ENHANCED_RT_IMAGE_REVIEWED_AGAINST, vrs
+        ), vrs
+    new_uids = _used_by(ENHANCED_RT_IMAGE_IODS, {"UI"}) - _used_by(
+        ENHANCED_RT_IMAGE_REVIEWED_AGAINST, {"UI"}
+    )
+    assert new_uids == ENHANCED_RT_IMAGE_UIDS
+    for tag in new_uids:
+        assert table[tag].basic_profile == "U", tag
+        assert uids.role(tag) is uid_roles.UIDRole.INSTANCE, tag
+
+
+def test_the_enhanced_rt_images_other_new_attributes_are_kept_by_the_default():
+    dictionary = _dictionary()
+    tables = iods.load_iod_tables()
+    every_vr = {vr for attribute in dictionary.values() for vr in attribute.vrs}
+    new = _used_by(ENHANCED_RT_IMAGE_IODS, every_vr) - _used_by(
+        ENHANCED_RT_IMAGE_REVIEWED_AGAINST, every_vr
+    )
+    other = new - _used_by(ENHANCED_RT_IMAGE_IODS, TEXT_VRS) - ENHANCED_RT_IMAGE_UIDS
+    listed = set(_table_e1_1())
+    rules = _rules()
+    uids = set(uid_roles.load_uid_roles().rules)
+    by_vr = collections.Counter(vr for tag in other for vr in dictionary[tag].vrs)
+
+    assert by_vr == ENHANCED_RT_IMAGE_OTHER_VRS
+    assert all(len(dictionary[tag].vrs) == 1 for tag in other)
+    assert not other & (listed | set(rules) | uids)
+    # So each takes the default, which keeps it where these IODs define it,
+    # under every preset, with a sequence's items handled by their own rules.
+    for preset in policy.PRESETS:
+        rules_of = element_rules.ElementRules(policy.compose_policy(preset))
+        for name in ENHANCED_RT_IMAGE_IODS:
+            iod = tables.iods[name]
+            for definition in iod.definitions:
+                if definition.tag not in other:
+                    continue
+                rule = rules_of.rule(definition.tag, definition.path, iod=iod)
+                assert (rule.source, rule.action) == (
+                    element_rules.RuleSource.DEFAULT,
+                    element_rules.KEEP,
+                ), (preset, name, definition)
+
+
 def test_names_identifiers_and_overlay_text_are_removed_under_every_option():
     rules = _rules()
 
@@ -1144,7 +1348,13 @@ def test_each_group_takes_the_action_of_its_option(
         assert composed[tag] == operator_text, tag
     for tag in ACCESSORY_IDENTIFIERS:
         assert composed[tag] == accessory_identifier, tag
-    for tag in KEPT_TEXT | ADDED_KEPT_TEXT | RT_IMAGE_KEPT_TEXT | ION_KEPT_TEXT:
+    for tag in (
+        KEPT_TEXT
+        | ADDED_KEPT_TEXT
+        | RT_IMAGE_KEPT_TEXT
+        | ION_KEPT_TEXT
+        | ENHANCED_RT_IMAGE_KEPT_TEXT
+    ):
         assert composed[tag] == "K", tag
 
 
@@ -1175,9 +1385,13 @@ def test_the_basic_profile_keeps_only_the_reviewed_coded_and_technical_text():
         for tag in _supported_text()
     }
 
-    assert len(basic) == 299
+    assert len(basic) == 306
     assert {tag for tag, action in basic.items() if action == "K"} == (
-        KEPT_TEXT | ADDED_KEPT_TEXT | RT_IMAGE_KEPT_TEXT | ION_KEPT_TEXT
+        KEPT_TEXT
+        | ADDED_KEPT_TEXT
+        | RT_IMAGE_KEPT_TEXT
+        | ION_KEPT_TEXT
+        | ENHANCED_RT_IMAGE_KEPT_TEXT
     )
     assert set(basic.values()) - {"K"} <= REMOVING_ACTIONS
 
@@ -1197,6 +1411,7 @@ def test_no_option_keeps_more_than_the_coded_text_and_device_identity():
             | ADDED_KEPT_TEXT
             | RT_IMAGE_KEPT_TEXT
             | ION_KEPT_TEXT
+            | ENHANCED_RT_IMAGE_KEPT_TEXT
             | (device_identity if DEVICE_IDENTITY in composed.options else set())
         )
         assert kept == expected, composed.options
@@ -1921,3 +2136,118 @@ def test_a_new_attribute_that_table_e1_1_omits_needs_a_rule_by_its_vr(
         _write(tmp_path / "reviewed.toml", document)
     )
     assert loaded.rules[NEW_TAG].action == "X/Z/D"
+
+
+# Surface Segmentation.
+
+# The text of the Surface Mesh Module that no IOD reviewed before it uses:
+# Surface Comments and Surface Processing Description, each typed text.
+SURFACE_TEXT = {"(0066,0004)", "(0066,000B)"}
+# The other attributes that it adds, of its Surface Segmentation and Surface
+# Mesh Modules: counts, numbers, coded flags, opacities, distances, and the
+# meshes themselves, its points' coordinates and normals and the indices of
+# its primitives, each a VR that cannot hold a name or a date.
+SURFACE_OTHER_VRS = {"SQ": 12, "FL": 11, "UL": 6, "OL": 4, "CS": 4, "OF": 2, "US": 1}
+SURFACE_MESH_MODULES = {"Surface Segmentation", "Surface Mesh"}
+
+
+def test_surface_segmentation_is_generated_and_supported():
+    tables = iods.load_iod_tables()
+
+    assert set(SURFACE_IODS) <= set(tables.iods)
+    assert set(SURFACE_IODS) <= scope.SUPPORTED_IODS
+
+
+@pytest.mark.deid_requirement("MIDI-BP-05", "MIDI-BP-06", "MIDI-BP-11")
+def test_the_text_that_only_surface_segmentation_uses_has_reviewed_rules():
+    listed = set(_table_e1_1())
+    rules = _rules()
+    added = _used_by(SURFACE_IODS, TEXT_VRS) - _used_by(
+        SURFACE_REVIEWED_AGAINST, TEXT_VRS
+    )
+
+    assert added == SURFACE_TEXT
+    assert not added & listed
+    for tag in added:
+        # Typed text, removed by Type, which removes it, since it is Type 3,
+        # and cleaned as a descriptor under Clean Descriptors.
+        assert (rules[tag].action, dict(rules[tag].options)) == (
+            "X/Z/D",
+            {CLEAN_DESCRIPTORS: "C"},
+        ), tag
+        assert rules[tag].note.strip(), tag
+        assert _resolved_in(SURFACE_IODS, tag, "X/Z/D") == {"X"}, tag
+    # Every other text that it uses, such as its segments' labels, has the
+    # action that it has where the IODs reviewed before it use it.
+    for tag in _used_by(SURFACE_IODS, TEXT_VRS) - added - listed:
+        assert rules[tag].note.strip(), tag
+
+
+def test_every_uid_date_and_name_that_surface_segmentation_uses_has_a_role():
+    uids = uid_roles.load_uid_roles()
+    temporal = temporal_roles.load_temporal_roles()
+
+    for tag in _used_by(SURFACE_IODS, {"UI"}):
+        assert isinstance(uids.role(tag), uid_roles.UIDRole), tag
+    for tag in _used_by(SURFACE_IODS, TEMPORAL_VRS):
+        assert isinstance(temporal.role(tag), temporal_roles.TemporalRole), tag
+    # The IODs reviewed before it use every UID, person name, URL, date,
+    # time, and datetime that it uses.
+    for vrs in ({"UI"}, {"PN"}, {"UR"}, TEMPORAL_VRS):
+        assert not _used_by(SURFACE_IODS, vrs) - _used_by(
+            SURFACE_REVIEWED_AGAINST, vrs
+        ), vrs
+
+
+def test_removal_by_type_gives_surface_segmentation_only_the_reviewed_actions():
+    actions_by_tag = _record_actions()
+    dictionary = _dictionary()
+    every_vr = {vr for attribute in dictionary.values() for vr in attribute.vrs}
+    new = {}
+
+    for tag in sorted(_used_by(SURFACE_IODS, every_vr)):
+        action = actions_by_tag.get(tag)
+        if action not in compound_actions.COMPOUND_ACTIONS:
+            continue
+        resolved = _resolved_in(SURFACE_IODS, tag, action)
+        reviewed = _resolved_in(SURFACE_REVIEWED_AGAINST, tag, action)
+        if not resolved <= reviewed:
+            new[tag] = resolved
+
+    # Only its own text, which no IOD reviewed before it uses, so nowhere
+    # does removal by Type replace a value with a dummy that it did not.
+    assert new == {tag: {"X"} for tag in SURFACE_TEXT}
+
+
+def test_surface_segmentations_other_new_attributes_are_kept_by_the_default():
+    dictionary = _dictionary()
+    tables = iods.load_iod_tables()
+    every_vr = {vr for attribute in dictionary.values() for vr in attribute.vrs}
+    new = _used_by(SURFACE_IODS, every_vr) - _used_by(
+        SURFACE_REVIEWED_AGAINST, every_vr
+    )
+    other = new - SURFACE_TEXT
+    listed = set(_table_e1_1())
+    rules = _rules()
+    uids = set(uid_roles.load_uid_roles().rules)
+    by_vr = collections.Counter(vr for tag in other for vr in dictionary[tag].vrs)
+
+    assert by_vr == SURFACE_OTHER_VRS
+    assert all(len(dictionary[tag].vrs) == 1 for tag in other)
+    assert not other & (listed | set(rules) | uids)
+    # So each takes the default, which keeps it where Surface Segmentation
+    # defines it, under every preset, its meshes included, with a sequence's
+    # items handled by their own rules: no profile action removes a mesh,
+    # which only Clean Recognizable Visual Features answers for (D-046).
+    iod = tables.iods["Surface Segmentation"]
+    for preset in policy.PRESETS:
+        rules_of = element_rules.ElementRules(policy.compose_policy(preset))
+        for definition in iod.definitions:
+            if definition.tag not in other:
+                continue
+            assert definition.module in SURFACE_MESH_MODULES, definition
+            rule = rules_of.rule(definition.tag, definition.path, iod=iod)
+            assert (rule.source, rule.action) == (
+                element_rules.RuleSource.DEFAULT,
+                element_rules.KEEP,
+            ), (preset, definition)

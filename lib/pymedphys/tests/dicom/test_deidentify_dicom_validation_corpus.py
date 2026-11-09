@@ -91,6 +91,8 @@ UNKNOWN_TO_DICOM3TOOLS = tuple(
         corpus_module.COLON_CAD_SR_STORAGE,
         corpus_module.MACULAR_GRID_THICKNESS_AND_VOLUME_REPORT_STORAGE,
         corpus_module.WAVEFORM_ANNOTATION_SR_STORAGE,
+        corpus_module.ENHANCED_RT_IMAGE_STORAGE,
+        corpus_module.ENHANCED_CONTINUOUS_RT_IMAGE_STORAGE,
     )
 )
 
@@ -212,9 +214,9 @@ def test_every_validator_ran_over_every_released_instance(comparison):
         BOTH_VALIDATED: comparison.pairs
     }
     # dciodvfy checks every input and output but the corpus's RT Dose in
-    # Implicit VR, whose 32-bit pixels abort it on both, and its reports and
-    # label map Segmentation, whose SOP Classes dicom3tools' January 2024
-    # snapshot does not know.
+    # Implicit VR, whose 32-bit pixels abort it on both, and its reports,
+    # label map Segmentation, and Enhanced RT Images, whose SOP Classes
+    # dicom3tools' January 2024 snapshot does not know.
     statuses = dict(comparison.tallies[DCIODVFY]["statuses"])
     failed = statuses.pop(BOTH_FAILED, 0)
     unsupported = statuses.pop(BOTH_UNSUPPORTED, 0)

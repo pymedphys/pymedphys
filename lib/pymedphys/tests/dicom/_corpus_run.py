@@ -68,12 +68,18 @@ from pymedphys._dicom.deidentify.file_layout import ElementPath
 from pymedphys._dicom.deidentify.instance_transform import InstanceTransform
 from pymedphys._dicom.deidentify.keys import DeidKey
 from pymedphys._dicom.deidentify.pixel_cleaning import TextFinder
+from pymedphys._dicom.deidentify.profiles import ProfileStore
+from pymedphys._dicom.deidentify.qc_attestation import ReviewMode
 from pymedphys._dicom.deidentify.redaction_review import RedactionReview
 from pymedphys._dicom.deidentify.policy import (
     PRESETS,
     Policy,
     compose_custom_policy,
     compose_policy,
+)
+from pymedphys._dicom.deidentify.reasons import (
+    HeldVisualFeatures,
+    VisualFeaturesReason,
 )
 from pymedphys._dicom.deidentify.release_gate import (
     Decision,
@@ -365,6 +371,17 @@ WITHHELD_WITHOUT_REPORTS: Mapping[str, Withheld] = types.MappingProxyType(
         if name not in corpus_module.STRUCTURED_REPORT_FILES
     }
 )
+# What a run under Clean Recognizable Visual Features also holds, whatever
+# its verdicts: the Surface Segmentation, whose meshes no preview of the QC
+# pack draws, so that no verdict is of them (D-017).
+MESH_HELD: Mapping[str, Withheld] = types.MappingProxyType(
+    {
+        corpus_module.SURFACE_SEGMENTATION_FILE: Withheld(
+            run.Status.HELD_FOR_REVIEW,
+            frozenset({HeldVisualFeatures(VisualFeaturesReason.NO_FACE_VERDICT)}),
+        )
+    }
+)
 
 # Accession Number (0008,0050) and Referenced Study Sequence (0008,1110),
 # which dcentvfy's own tables place in the Study entity for a Structured
@@ -565,15 +582,25 @@ class Prepared:
     face_review: FaceReview | None = None
     redaction_review: RedactionReview | None = None
 
-    def transform(self, policy: Policy) -> InstanceTransform:
-        """The run's instance transform, which applies a policy not yet enabled."""
+    def transform(
+        self,
+        policy: Policy,
+        key: DeidKey = KEY,
+        profiles: ProfileStore | None = None,
+    ) -> InstanceTransform:
+        """The run's instance transform, which applies a policy not yet enabled.
+
+        By default under :data:`KEY` with profiles kept for the run only; a
+        run under a project key gives that key and its subject profiles.
+        """
         return InstanceTransform(
             policy,
-            KEY,
+            key,
             cleaning=self.cleaning,
             finder=self.finder,
             face_review=self.face_review,
             redaction_review=self.redaction_review,
+            profiles=profiles,
             unvalidated_policy=True,
         )
 
@@ -771,4 +798,9 @@ def every_corner_accepted(corpus: corpus_module.SyntheticCorpus) -> RedactionRev
             approved[hashlib.sha256(file.data).digest()] = tuple(
                 (index, (CORNER,)) for index in range(frames)
             )
-    return RedactionReview(REDACTION_REVIEW_REFERENCE, approved, frozenset())
+    return RedactionReview(
+        REDACTION_REVIEW_REFERENCE,
+        approved,
+        frozenset(),
+        modes={ReviewMode.EVERY_FRAME: len(approved), ReviewMode.FLAGGED_FRAMES: 0},
+    )
