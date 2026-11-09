@@ -488,9 +488,10 @@ def resolve_plain_x_in_iod(iod: IOD, tag: str, path: Sequence[str]) -> PlainRemo
     removes every attribute of the group, whatever their Types, where every
     module of the IOD that defines Overlay Data is user-optional, so the
     instance stays valid without it; of the first supported release's IODs,
-    only CT Image, MR Image, and Positron Emission Tomography Image include
-    the Overlay Plane Module, each as user-optional.
-    Where the module is conditional, the general rule applies.
+    CT Image, MR Image, Positron Emission Tomography Image, and Computed
+    Radiography Image include the Overlay Plane Module as user-optional.
+    Where the module is conditional, as in Digital X-Ray Image, the general
+    rule applies.
     An attribute of :data:`LAPSED_CONDITIONS`, such as ROI Interpreter
     Sequence (3006,004E), is removed alone, since its Type 1C condition needs
     an attribute that Table E.1-1 removes too, here ROI Creator Sequence

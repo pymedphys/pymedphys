@@ -41,6 +41,12 @@ The indicators are:
 - Conversion Type (0008,0064), of any value, which describes how an image
   was converted or captured, such as from a workstation's screen or a
   scanned document (PS3.3 Section C.8.6.1).
+- A Computed Radiography or Digital X-Ray image, by its SOP Class UID
+  (0008,0016). A CR reader or a DX console can burn the patient's name,
+  identifiers, dates, the site, and the operator's markers into the image,
+  and Burned In Annotation (0028,0301), Type 3 in the Computed Radiography
+  Image IOD, need not say so, so every radiograph is reported, whatever
+  that attribute says.
 - An overlay group, (6000,eeee) to (601E,eeee), without Overlay Data
   (60xx,3000). PS3.3 before 2004 let an overlay lie in unused bits of Pixel
   Data (Section C.9.2), so its graphics and text stay in the pixel data when
@@ -83,9 +89,10 @@ every CT, MR, and PET volume, and every RT Dose grid of more than one
 frame, may hold a reconstructable face; so may a CT, MR, or PET localizer,
 which can show the face in profile, and so may an RT Image, Enhanced RT
 Image, or Enhanced Continuous RT Image, each a projection such as a lateral
-DRR, a Segmentation, whose segment of the skin or body traces the profile,
-and a Parametric Map, whose map of the head shows its outline; and one
-whose attributes, or a Segmentation's
+DRR, a Computed Radiography or Digital X-Ray image, a projection such as a
+lateral skull radiograph, a Segmentation, whose segment of the skin or body
+traces the profile, and a Parametric Map, whose map of the head shows its
+outline; and one whose attributes, or a Segmentation's
 segments, name a region of the head or neck in a reviewed list from PS3.16
 Annex L says that it does.
 :func:`series_evidence` gives the part of an instance that it reads.
@@ -135,6 +142,7 @@ class Indicator(enum.Enum):
     RECOGNIZABLE_VISUAL_FEATURES = "recognizable-visual-features"
     SECONDARY_IMAGE = "secondary-image"
     CONVERTED_IMAGE = "converted-image"
+    RADIOGRAPH_ANNOTATION = "radiograph-annotation"
     EMBEDDED_OVERLAY = "embedded-overlay"
     PATIENT_SURFACE_CONTOUR = "patient-surface-contour"
     CT_VOLUME = "ct-volume"
@@ -143,6 +151,7 @@ class Indicator(enum.Enum):
     RT_DOSE_VOLUME = "rt-dose-volume"
     LOCALIZER = "localizer"
     RT_IMAGE = "rt-image"
+    RADIOGRAPH = "radiograph"
     SEGMENTATION = "segmentation"
     PARAMETRIC_MAP = "parametric-map"
     HEAD_OR_NECK = "head-or-neck"
@@ -162,6 +171,7 @@ _RISKS = {
     Indicator.RECOGNIZABLE_VISUAL_FEATURES: Risk.RECONSTRUCTABLE_FACE,
     Indicator.SECONDARY_IMAGE: Risk.BURNED_IN_TEXT,
     Indicator.CONVERTED_IMAGE: Risk.BURNED_IN_TEXT,
+    Indicator.RADIOGRAPH_ANNOTATION: Risk.BURNED_IN_TEXT,
     Indicator.EMBEDDED_OVERLAY: Risk.BURNED_IN_TEXT,
     Indicator.PATIENT_SURFACE_CONTOUR: Risk.RECONSTRUCTABLE_FACE,
     Indicator.CT_VOLUME: Risk.RECONSTRUCTABLE_FACE,
@@ -170,6 +180,7 @@ _RISKS = {
     Indicator.RT_DOSE_VOLUME: Risk.RECONSTRUCTABLE_FACE,
     Indicator.LOCALIZER: Risk.RECONSTRUCTABLE_FACE,
     Indicator.RT_IMAGE: Risk.RECONSTRUCTABLE_FACE,
+    Indicator.RADIOGRAPH: Risk.RECONSTRUCTABLE_FACE,
     Indicator.SEGMENTATION: Risk.RECONSTRUCTABLE_FACE,
     Indicator.PARAMETRIC_MAP: Risk.RECONSTRUCTABLE_FACE,
     Indicator.HEAD_OR_NECK: Risk.RECONSTRUCTABLE_FACE,
@@ -469,6 +480,7 @@ def assess_pixel_risk(dataset: pydicom.Dataset) -> PixelRiskAssessment:
     ['burned-in-text: burned-in-annotation at (0028,0301)']
     """
     findings = [*_image_findings(dataset), *_overlay_findings(dataset)]
+    findings.extend(_radiograph_findings(dataset))
     findings.extend(_surface_findings(dataset))
     findings.extend(_body_weight_findings(dataset))
     return PixelRiskAssessment(
@@ -509,6 +521,18 @@ def _image_findings(dataset: pydicom.Dataset) -> Iterator[Finding]:
             or (tag not in (_IMAGE_TYPE, _CONVERSION_TYPE) and values == ["YES"])
         ):
             yield Finding(indicator, path)
+
+
+def _radiograph_findings(dataset: pydicom.Dataset) -> Iterator[Finding]:
+    """Find a Computed Radiography or Digital X-Ray image, by its SOP Class."""
+    path = ElementPath((), _SOP_CLASS_UID)
+    try:
+        sop_class = _sop_class(dataset)
+    except _Unreadable:
+        yield Finding(Indicator.UNREADABLE, path, Risk.BURNED_IN_TEXT)
+        return
+    if sop_class in _RADIOGRAPH_SOP_CLASSES:
+        yield Finding(Indicator.RADIOGRAPH_ANNOTATION, path)
 
 
 def overlay_groups_without_data(dataset: pydicom.Dataset) -> dict[int, int]:
@@ -778,6 +802,25 @@ RT_IMAGE_SOP_CLASSES = frozenset(
         "1.2.840.10008.5.1.4.1.1.481.24",
     }
 )
+# Computed Radiography Image Storage, and Digital X-Ray Image Storage - For
+# Presentation and - For Processing (PS3.4 Table B.5-1), the Storage SOP
+# Classes of the Computed Radiography Image and Digital X-Ray Image IODs. A
+# radiograph is a projection, and a lateral one of the head, such as a
+# lateral skull radiograph or a cephalogram, shows the face in profile, as a
+# localizer can. It is recognised by its SOP Class, whatever its View
+# Position (0018,5101), which is Type 2 in a CR image, so may be empty, and
+# Type 3 in a DX image, so may be absent,
+# and whatever its Image Type, whose third value the Digital X-Ray Image IOD
+# requires to be empty (PS3.3 Section C.8.11.3.1.1) and the Computed
+# Radiography Image IOD does not define. Each is also reported as able to
+# hold burned-in text, by :func:`_radiograph_findings`.
+_RADIOGRAPH_SOP_CLASSES = frozenset(
+    {
+        "1.2.840.10008.5.1.4.1.1.1",
+        "1.2.840.10008.5.1.4.1.1.1.1",
+        "1.2.840.10008.5.1.4.1.1.1.1.1",
+    }
+)
 # Segmentation Storage and Label Map Segmentation Storage (PS3.4 Table
 # B.5-1), whose frames are masks of segments. A segment of the skin or body
 # traces the profile, and its label or code need not say that it is one, so
@@ -943,18 +986,24 @@ def assess_series(instances: Sequence[pydicom.Dataset]) -> tuple[SeriesFinding, 
     whatever its Image Type, gantry angle, or Number of Frames, since each
     holds projections, and a lateral one, such as a DRR or a simulator,
     portal, or kV image, can show the face in profile as a localizer can; it
-    is no frame of a volume. So is each Segmentation, of Segmentation Storage or Label
+    is no frame of a volume. So is each instance of Computed Radiography
+    Image Storage, Digital X-Ray Image Storage - For Presentation, or
+    Digital X-Ray Image Storage - For Processing, whatever its View Position
+    (0018,5101), Image Type, or Number of Frames, since a radiograph is a
+    projection, and a lateral one of the head, such as a lateral skull
+    radiograph or a cephalogram, shows the face in profile; it is no frame
+    of a volume either. So is each Segmentation, of Segmentation Storage or Label
     Map Segmentation Storage, whatever its segments and Number of Frames,
     since a segment of the skin or body traces the profile and its label or
     code need not say that it is one; it is no frame of a volume either.
     So is each Parametric Map, whatever its quantity and Number of Frames,
     since a map of the head shows its outline wherever the quantity differs
     from the air around it; it is no frame of a volume either. A volume,
-    localizer, RT Image, Segmentation, or Parametric Map whose Body Part
-    Examined
-    (0018,0015) or Anatomic Region Sequence (0008,2218), at the top level or
-    in a Frame Anatomy Sequence (0020,9071) of the shared or a per-frame
-    functional group, names a region in :func:`load_head_and_neck_regions`
+    localizer, RT Image, radiograph, Segmentation, or Parametric Map whose
+    Body Part Examined (0018,0015) or Anatomic Region Sequence (0008,2218),
+    at the top level or in a Frame Anatomy Sequence (0020,9071) of the
+    shared or a per-frame functional group, names a region in
+    :func:`load_head_and_neck_regions`
     is also reported as showing the head or neck, and so is a Segmentation
     an item of whose Segment Sequence (0062,0002) names one by its Anatomic
     Region Sequence or its Segmented Property Type Code Sequence
@@ -972,8 +1021,9 @@ def assess_series(instances: Sequence[pydicom.Dataset]) -> tuple[SeriesFinding, 
     -------
     tuple of SeriesFinding
         The CT, MR, PET, and RT Dose volumes first, in that order, then the
-        localizers, then the RT Images, then the Segmentations, then the
-        Parametric Maps, then the head or neck by attribute, then unreadable evidence by instance, which is
+        localizers, then the RT Images, then the radiographs, then the
+        Segmentations, then the Parametric Maps, then the head or neck by
+        attribute, then unreadable evidence by instance, which is
         reported whether or not the series is a volume.
     """
     regions = load_head_and_neck_regions()
@@ -982,6 +1032,7 @@ def assess_series(instances: Sequence[pydicom.Dataset]) -> tuple[SeriesFinding, 
     unknown: list[int] = []
     localizers: list[int] = []
     rt_images: list[int] = []
+    radiographs: list[int] = []
     segmentations: list[int] = []
     parametric_maps: list[int] = []
     head: dict[int, list[ElementPath]] = {}
@@ -995,6 +1046,10 @@ def assess_series(instances: Sequence[pydicom.Dataset]) -> tuple[SeriesFinding, 
         else:
             if sop_class in RT_IMAGE_SOP_CLASSES:
                 rt_images.append(index)
+                head[index] = list(_head_or_neck(dataset, regions, index, unreadable))
+                continue
+            if sop_class in _RADIOGRAPH_SOP_CLASSES:
+                radiographs.append(index)
                 head[index] = list(_head_or_neck(dataset, regions, index, unreadable))
                 continue
             if sop_class in SEGMENTATION_SOP_CLASSES:
@@ -1037,6 +1092,8 @@ def assess_series(instances: Sequence[pydicom.Dataset]) -> tuple[SeriesFinding, 
         shown_by.append(SeriesFinding(Indicator.LOCALIZER, tuple(localizers)))
     if rt_images:
         shown_by.append(SeriesFinding(Indicator.RT_IMAGE, tuple(rt_images)))
+    if radiographs:
+        shown_by.append(SeriesFinding(Indicator.RADIOGRAPH, tuple(radiographs)))
     if segmentations:
         shown_by.append(SeriesFinding(Indicator.SEGMENTATION, tuple(segmentations)))
     if parametric_maps:

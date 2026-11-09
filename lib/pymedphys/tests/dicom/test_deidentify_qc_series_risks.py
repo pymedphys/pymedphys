@@ -381,7 +381,7 @@ def test_the_transform_gives_each_source_series_evidence():
 
 
 @pytest.mark.deid_requirement("MIDI-BP-15", "MIDI-BP-17")
-def test_a_run_over_the_synthetic_corpus_lists_its_volumes_and_rt_image(tmp_path):
+def test_a_run_over_the_synthetic_corpus_lists_its_volumes_and_projections(tmp_path):
     corpus = corpus_module.build_corpus()
     # A short directory, since a run refuses output paths that could exceed
     # Windows' 259 characters.
@@ -435,6 +435,9 @@ def test_a_run_over_the_synthetic_corpus_lists_its_volumes_and_rt_image(tmp_path
     # The Enhanced RT Image and Enhanced Continuous RT Image, each of two
     # frames of projections in a series of its own, can show the face in
     # profile as the RT Image can, and are no volume.
+    # The Computed Radiography image, a lateral skull radiograph, can show
+    # the face in profile, and names the head; the two Digital X-Ray images,
+    # of the chest, each in a series of its own, can show it too.
     volumes = [
         ("ct-volume", released("CT Image")),
         ("rt-dose-volume", released("RT Dose", held=True)),
@@ -448,8 +451,6 @@ def test_a_run_over_the_synthetic_corpus_lists_its_volumes_and_rt_image(tmp_path
         ("rt-image", released("RT Image")),
         *(("segmentation", [position]) for position in released("Segmentation")),
         ("parametric-map", released("Parametric Map")),
-        ("rt-image", released("Enhanced RT Image")),
-        ("rt-image", released("Enhanced Continuous RT Image")),
     ]
     assert [len(positions) for _, positions in volumes] == [
         2,
@@ -465,22 +466,44 @@ def test_a_run_over_the_synthetic_corpus_lists_its_volumes_and_rt_image(tmp_path
         1,
         1,
         1,
-        1,
-        1,
     ]
-    assert pack["series_risks"] == [
-        {
+    computed = released("Computed Radiography Image")
+    digital = released("Digital X-Ray Image")
+    assert (len(computed), len(digital)) == (1, 2)
+    enhanced_rt_images = [
+        released("Enhanced RT Image"),
+        released("Enhanced Continuous RT Image"),
+    ]
+    assert [len(positions) for positions in enhanced_rt_images] == [1, 1]
+
+    def finding(indicator, positions, element=None):
+        return {
+            "indicator": indicator,
+            "risk": "reconstructable-face",
+            "element": element,
             "positions": positions,
-            "findings": [
-                {
-                    "indicator": indicator,
-                    "risk": "reconstructable-face",
-                    "element": None,
-                    "positions": positions,
-                }
-            ],
         }
-        for indicator, positions in volumes
+
+    assert pack["series_risks"] == [
+        *(
+            {"positions": positions, "findings": [finding(indicator, positions)]}
+            for indicator, positions in volumes
+        ),
+        {
+            "positions": computed,
+            "findings": [
+                finding("radiograph", computed),
+                finding("head-or-neck", computed, "(0018,0015)"),
+            ],
+        },
+        *(
+            {"positions": [position], "findings": [finding("radiograph", [position])]}
+            for position in digital
+        ),
+        *(
+            {"positions": positions, "findings": [finding("rt-image", positions)]}
+            for positions in enhanced_rt_images
+        ),
     ]
     # The pack groups by the source's Series Instance UID but never writes it.
     assert all(uid and uid not in text for uid in series)

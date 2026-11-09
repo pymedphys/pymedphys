@@ -68,6 +68,7 @@ _IMAGES = (
     corpus_module.PARAMETRIC_MAP_FILE,
     corpus_module.ENHANCED_RT_IMAGE_FILE,
     corpus_module.ENHANCED_CONTINUOUS_RT_IMAGE_FILE,
+    *corpus_module.RADIOGRAPH_FILES,
 )
 _BLACKED_OUT = Withheld(
     run.Status.HELD_FOR_REVIEW,

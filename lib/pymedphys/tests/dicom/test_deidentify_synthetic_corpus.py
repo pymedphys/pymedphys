@@ -246,6 +246,9 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "51-parametric-map.dcm",
         "52-real-world-value-mapping.dcm",
         "55-seg-surface.dcm",
+        "62-cr.dcm",
+        "63-dx-for-processing.dcm",
+        "64-dx-for-presentation.dcm",
         "70-rt-segment-annotation.dcm",
         "71-rt-radiation-set.dcm",
         "72-c-arm-radiation.dcm",
@@ -299,6 +302,9 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "Parametric Map",
         "Real World Value Mapping",
         "Surface Segmentation",
+        "Computed Radiography Image",
+        "Digital X-Ray Image",
+        "Digital X-Ray Image",
         "RT Segment Annotation",
         "RT Radiation Set",
         "C-Arm Photon-Electron Radiation",
@@ -330,22 +336,25 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         corpus_module.REAL_WORLD_VALUE_MAPPING_FILE,
     ) == tuple(file.name for file in corpus.files[45:47])
     assert corpus_module.SURFACE_SEGMENTATION_FILE == corpus.files[47].name
+    assert corpus_module.RADIOGRAPH_FILES == tuple(
+        file.name for file in corpus.files[48:51]
+    )
     assert (
         corpus_module.ENHANCED_RT_IMAGE_FILE,
         corpus_module.ENHANCED_CONTINUOUS_RT_IMAGE_FILE,
-    ) == tuple(file.name for file in corpus.files[56:58])
+    ) == tuple(file.name for file in corpus.files[59:61])
     assert (
         corpus_module.SEGMENT_ANNOTATION_FILE,
         corpus_module.RADIATION_SET_FILE,
         corpus_module.C_ARM_RADIATION_FILE,
         corpus_module.TOMOTHERAPEUTIC_RADIATION_FILE,
         corpus_module.ROBOTIC_ARM_RADIATION_FILE,
-    ) == tuple(file.name for file in corpus.files[48:53])
+    ) == tuple(file.name for file in corpus.files[51:56])
     assert (
         corpus_module.BEAMS_DELIVERY_INSTRUCTION_FILE,
         corpus_module.BRACHY_DELIVERY_INSTRUCTION_FILE,
         corpus_module.RADIATION_SET_DELIVERY_INSTRUCTION_FILE,
-    ) == tuple(file.name for file in corpus.files[53:56])
+    ) == tuple(file.name for file in corpus.files[56:59])
     # Every IOD of the first supported release.
     assert {file.manifest.iod for file in corpus.files} == scope.SUPPORTED_IODS
 
@@ -547,9 +556,14 @@ def test_an_attribute_whose_removal_sequesters_is_planted_in_one_instance(corpus
     # Institution Code Sequence of each treatment record's interlock
     # resolution user, whose dummy item a reviewed rule writes (D-021), and
     # Source Manufacturer in the RT Brachy Treatment Record's Recorded Source
-    # Sequence, which a plain X empties there too, are planted.
+    # Sequence, which a plain X empties there too, are planted. Overlay Data
+    # is in no Digital X-Ray Image, whose Overlay Plane Module is conditional,
+    # so that removing it would sequester the instance (D-020).
     both = {"(0010,2297)", "(0010,2299)"}
-    only_in = {"Enhanced PET Image": {"(0018,1078)"}}
+    only_in = {
+        "Enhanced PET Image": {"(0018,1078)"},
+        "Digital X-Ray Image": {"(6000,3000)"},
+    }
     assert planted == {corpus_module.SEQUESTERED_FILE: both}
     assert corpus_module.SEQUESTERED_FILE == corpus.files[2].name
     assert withheld == {
@@ -1390,6 +1404,8 @@ def test_each_image_has_its_frames_and_the_colour_image_its_icc_profile(corpus):
         "MR Image",
         "Positron Emission Tomography Image",
         "RT Image",
+        "Computed Radiography Image",
+        "Digital X-Ray Image",
     }
     assert set(frames.values()) == {1, 2}
 

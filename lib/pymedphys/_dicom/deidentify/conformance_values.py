@@ -85,6 +85,7 @@ _ROLE_WORDS = types.MappingProxyType(
     }
 )
 _SERIES_INSTANCE_UID = "(0020,000E)"
+_BURNED_IN_ANNOTATION = "(0028,0301)"
 
 # The name of each codec in which the residual search encodes every form.
 CODEC_NAMES: Mapping[str, str] = types.MappingProxyType(
@@ -682,11 +683,22 @@ def qc_pack(statement: ConformanceStatement, named: Callable[[str], str]) -> lis
     exempt = join(named(tag) for tag in sorted(_NOT_REVIEWED_TAGS))
     unreviewable = code(TransformReason.UNREVIEWABLE_RETAINED_TEXT.value)
     volume = join((code(each.value) for each in pixel_risk.VOLUME_INDICATORS), "or")
-    localizer, rt_image, segmentation, parametric_map, head, unreadable = (
+    (
+        annotation,
+        localizer,
+        rt_image,
+        radiograph,
+        segmentation,
+        parametric_map,
+        head,
+        unreadable,
+    ) = (
         code(indicator.value)
         for indicator in (
+            Indicator.RADIOGRAPH_ANNOTATION,
             Indicator.LOCALIZER,
             Indicator.RT_IMAGE,
+            Indicator.RADIOGRAPH,
             Indicator.SEGMENTATION,
             Indicator.PARAMETRIC_MAP,
             Indicator.HEAD_OR_NECK,
@@ -711,7 +723,11 @@ def qc_pack(statement: ConformanceStatement, named: Callable[[str], str]) -> lis
         "be reconstructed, or of values that may disclose the patient's body "
         "weight, with those indicators, and, where the "
         "instance is released or held for review, previews its written file "
-        "at full resolution or records why it could not. The engine reads "
+        "at full resolution or records why it could not. Every Computed "
+        "Radiography and Digital X-Ray image is one, as able to hold burned-in "
+        f"text, by {annotation}, since a CR reader or a DX console can burn "
+        "the patient's details into the image whatever its "
+        f"{named(_BURNED_IN_ANNOTATION)} says. The engine reads "
         "these indicators from the "
         "instance's attributes, never from its pixel data, so the absence "
         "of an indicator is not evidence that the risk is absent.",
@@ -724,13 +740,17 @@ def qc_pack(statement: ConformanceStatement, named: Callable[[str], str]) -> lis
         "the CT, MR, and PET localizers among them, which can show the face "
         f"in profile, by {localizer}; the RT Images among them, projections "
         "such as a lateral DRR that can show the face in profile too, "
-        f"whatever their gantry angle, by {rt_image}; the Segmentations among "
+        f"whatever their gantry angle, by {rt_image}; the Computed Radiography "
+        "and Digital X-Ray images among them, projections such as a lateral "
+        "skull radiograph that can show the face in profile too, whatever "
+        f"their view position, by {radiograph}; the Segmentations among "
         "them, whose segment of the skin or body traces the profile whatever "
         f"its label, by {segmentation}; the Parametric Maps among them, "
         "whose map of the head shows its outline whatever its quantity, by "
         f"{parametric_map}; "
-        "where the attributes of a volume, localizer, RT Image, Segmentation, "
-        "or Parametric Map, or a Segmentation's segments, name a region of the "
+        "where the attributes of a volume, localizer, RT Image, radiograph, "
+        "Segmentation, or Parametric Map, or a Segmentation's segments, name "
+        "a region of the "
         f"head or neck in a reviewed list from PS3.16 Annex L, by {head}; and "
         f"where such evidence cannot be read, by {unreadable}; each with the "
         "instances that show it. A volume is a series whose instances of one "
