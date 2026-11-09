@@ -29,12 +29,13 @@ Radiation Dose SR IODs, of the Basic Text SR, Enhanced SR, Comprehensive SR,
 Comprehensive 3D SR, and Extensible SR IODs, of the Key Object Selection
 Document, and of the Mammography CAD SR, Chest CAD SR, Colon CAD SR,
 Procedure Log, Spectacle Prescription Report, Macular Grid Thickness and
-Volume Report, and Waveform Annotation SR IODs, of the Parametric Map and
-Real World Value Mapping IODs, and of the Grayscale, Color, Pseudo-Color,
-Blending, XA/XRF Grayscale, and Variable Modality LUT Softcopy
+Volume Report, and Waveform Annotation SR IODs, of the Parametric Map,
+Real World Value Mapping, and Encapsulated PDF IODs, and of the Grayscale,
+Color, Pseudo-Color, Blending, XA/XRF Grayscale, and Variable Modality LUT Softcopy
 Presentation State IODs, uncompressed or in a transfer syntax that
-encapsulates Pixel Data that pydicom's decoding plugins decode. Supporting an IOD or a transfer syntax does not
-release every instance in it: a compressed instance is still sequestered
+encapsulates Pixel Data that pydicom's decoding plugins decode. Supporting an
+IOD or a transfer syntax does not release every instance in it: a compressed
+instance is still sequestered
 where the plugin pinned to its transfer syntax is not installed, or where
 its frames or codestreams fail the engine's checks
 (:mod:`~pymedphys._dicom.deidentify.instance_transform`), and the element
@@ -47,8 +48,11 @@ So too every softcopy Presentation State that conforms to its IOD under
 ``basic`` and ``basic-clean-descriptors``, since Table E.1-1's plain X
 removes its Type 1 Presentation Creation Date and Time, and one that holds
 a Graphic Annotation Sequence (0070,0001) under every preset, since the
-table gives that sequence D. The Clean Pixel Data Option also sequesters a
-Parametric Map whose pixel data are floating point, which it does not read.
+table gives that sequence D. Every Encapsulated PDF that holds its
+Encapsulated Document (0042,0011) is also sequestered under every policy:
+Table E.1-1 gives it D, and no reviewed rule gives a document a dummy value.
+The Clean Pixel Data Option also sequesters a Parametric Map whose pixel
+data are floating point, which it does not read.
 Every other instance is sequestered: neither de-identified nor written, and
 listed in the run report by opaque identifiers only. That includes the
 other Structured Reports, the volumetric, advanced blending, and waveform
@@ -135,6 +139,7 @@ SUPPORTED_IODS = frozenset(
         "Blending Softcopy Presentation State",
         "XA/XRF Grayscale Softcopy Presentation State",
         "Variable Modality LUT Softcopy Presentation State",
+        "Encapsulated PDF",
     }
 )
 # Every transfer syntax whose files the engine reads: Implicit VR Little
