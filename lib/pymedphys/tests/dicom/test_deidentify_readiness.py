@@ -64,6 +64,7 @@ from pymedphys._dicom.deidentify.qc_pack import (
     NO_CONTOURS_SHA256,
     NO_GRIDS_SHA256,
     NO_PIXELS_SHA256,
+    NO_SURFACES_SHA256,
     Disposition,
     InstanceEntry,
     PixelRiskEntry,
@@ -132,6 +133,7 @@ def _entry(position, disposition=Disposition.RELEASED, **changes):
             pixel_sha256=_pixels(position) if position in IMAGES else NO_PIXELS_SHA256,
             contour_sha256=NO_CONTOURS_SHA256,
             grid_sha256=NO_GRIDS_SHA256,
+            surface_sha256=NO_SURFACES_SHA256,
         )
     if disposition is Disposition.HELD_FOR_REVIEW:
         fields.update(reasons=("held",))
@@ -808,7 +810,7 @@ def test_the_report_records_the_gates_by_reason_and_reference_alone(tmp_path):
         "attestation": None,
     }
     assert SENTINEL not in json.dumps(document)
-    assert document["format"] == "pymedphys-deid-release-report/60"
+    assert document["format"] == "pymedphys-deid-release-report/67"
 
 
 def test_a_public_release_report_given_no_readiness_is_not_ready():

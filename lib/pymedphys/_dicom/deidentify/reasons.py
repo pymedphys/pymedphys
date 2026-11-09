@@ -208,9 +208,8 @@ class VisualFeaturesReason(enum.Enum):
     # held it beside a CT series that it defaced, so the verdict was of the
     # defaced images rather than of the file, it is a Segmentation whose
     # segments reach such a series' face block, which the QC pack does not
-    # show, or the QC pack could not show its contours or deformation grids,
-    # so the verdict was given without them, or it holds a surface mesh,
-    # such as a Surface Segmentation's, which no preview of the QC pack draws
+    # show, or the QC pack could not show its contours, deformation grids,
+    # or surface meshes, so the verdict was given without them
     NO_FACE_VERDICT = "no-face-verdict"
     # its series is marked absent, but the run writes other pixel data of it
     # than the reviewed run did, such as a CT slice defaced since the
@@ -226,6 +225,11 @@ class VisualFeaturesReason(enum.Enum):
     # grid sheets did not all show, so the verdict is not of what it
     # releases
     OTHER_GRIDS = "face-verdict-on-other-grids"
+    # its series is marked absent, but the run writes other surface meshes
+    # of it than the reviewed run did, or meshes that the QC pack's
+    # surfaces sheet did not show, so the verdict is not of what it
+    # releases
+    OTHER_SURFACES = "face-verdict-on-other-surfaces"
     # an RT Dose in the Frame of Reference of a CT series that the run
     # defaces, whose dose in the series' face block is too great to set to
     # zero there, so that it is written as received, and for which no
@@ -236,7 +240,10 @@ class VisualFeaturesReason(enum.Enum):
     # or pixel data the run does not clean of the face, such as one in other frames
     # too or that cannot be cut, or a deformable registration with a grid
     # that names such a frame as its own or as a source, whose grid the run
-    # does not clean, and which a reviewer may have judged from the defaced
+    # does not clean, or a Surface Segmentation, or other instance that
+    # holds a surface mesh, that names such a frame or none, or refers to a
+    # defaced slice, whose meshes the run does not clean, and which a
+    # reviewer may have judged from the defaced
     # CT, so that only a verdict of its own, from its own previews, which no
     # reviewed QC pack gave it, could decide it
     UNDEFACED_IN_DEFACED_FRAME = "undefaced-in-defaced-frame"
@@ -345,3 +352,6 @@ class ReviewReason(enum.Enum):
     # its series is marked absent, but the run writes deformation grids of
     # it that the reviewed run's grid sheets did not all show
     OTHER_GRIDS = VisualFeaturesReason.OTHER_GRIDS.value
+    # its series is marked absent, but the run writes surface meshes of it
+    # that the reviewed run's surfaces sheet did not show
+    OTHER_SURFACES = VisualFeaturesReason.OTHER_SURFACES.value

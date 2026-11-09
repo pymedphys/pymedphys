@@ -14,14 +14,19 @@
 
 """The options that the conformance statement names, and how it names them."""
 
+import re
+
 from pymedphys._imports import pytest
 
 from pymedphys._dicom.deidentify import (
     codes,
     conformance,
     conformance_markdown,
+    iods,
     markers,
     policy,
+    requirements,
+    scope,
     standard,
 )
 
@@ -195,3 +200,47 @@ def test_an_enabled_custom_option_set_claims_its_options(monkeypatch):
         "Confidentiality Profile with Clean Descriptors Option (DCM 113105), for "
         "each instance whose validated result satisfies them"
     ) in " ".join(text.split())
+
+
+def _named(listed):
+    """The IOD names of a list written "A, B, and C", whitespace as one."""
+    *others, last = re.split(r",\s+and\s+", " ".join(listed.split()))
+    return [*(name for each in others for name in each.split(", ")), last]
+
+
+# Each option's code, its attribute, and the requirement whose note lists the
+# supported IODs that do not define that attribute.
+_UNDEFINED = [
+    ("clean_pixel_data", "(0028,0301)", "PS3.15-E.3.1-02"),
+    ("clean_recognizable_visual_features", "(0028,0302)", "PS3.15-E.3.2-02"),
+]
+
+
+@pytest.mark.parametrize("option, tag, requirement", _UNDEFINED)
+def test_the_supported_iods_without_the_option_s_attribute_are_named_alike(
+    option, tag, requirement
+):
+    tables = iods.load_iod_tables()
+    expected = {
+        name for name in scope.SUPPORTED_IODS if not tables.iods[name].lookup(tag)
+    }
+    condition = conformance_markdown._REVIEW_CONDITIONS[  # pylint: disable = protected-access
+        markers.OPTION_CODES[option]
+    ]
+    (stated,) = re.findall(
+        r"which of the supported IODs are (.*?)\. There it is",
+        " ".join(condition.split()),
+    )
+    (note,) = (
+        each.note
+        for each in requirements.load_requirements().requirements
+        if each.id == requirement
+    )
+    (noted,) = re.findall(r"; in the (.*?) IODs, which do not,", " ".join(note.split()))
+
+    # The conformance statement and the requirements register name, in the
+    # same order, every supported IOD whose PS3.3 modules do not define the
+    # attribute at the top level of its data set, and no other.
+    assert _named(stated) == _named(noted)
+    assert set(_named(stated)) == expected
+    assert len(_named(stated)) == len(expected)

@@ -163,7 +163,10 @@ from .face_review import (
     DEFORMABLE_REGISTRATION_SEQUENCE,
     GRID_TAGS,
     PIXEL_DATA_TAGS,
+    SURFACE_POINTS,
+    SURFACE_PRIMITIVES,
     SURFACE_SEGMENTATION,
+    SURFACE_SEQUENCE,
     FaceReview,
     carries_visual_features,
     contour_data_sha256,
@@ -173,6 +176,7 @@ from .face_review import (
     is_rt_dose,
     is_segmentation,
     pixel_data_sha256,
+    surface_data_sha256,
     registration_frames,
 )
 from .file_layout import ElementPath
@@ -1116,12 +1120,17 @@ class InstanceTransform:
     Source Frame of Reference, names one that cannot be read, or refers to
     a defaced slice, is held whatever its verdict
     (:attr:`~.reasons.VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME`),
-    since the run does not clean its grids of the face. A Surface
-    Segmentation, or any instance that holds a surface mesh
-    (:func:`~.face_review.holds_surface_mesh`), whose points can trace the
-    skin, never satisfies it, since no preview of the pack draws a mesh
-    (:attr:`~.reasons.VisualFeaturesReason.NO_FACE_VERDICT`), in a defaced
-    series' Frame of Reference or not. Each is marked with
+    since the run does not clean its grids of the face. An instance that
+    holds a surface mesh (:func:`~.face_review.holds_surface_mesh`), such as
+    a Surface Segmentation, whose points can trace the skin, satisfies it
+    only where the meshes that it is written with are also those that the
+    reviewed run wrote, every one of which the pack's surfaces sheet showed
+    (:attr:`~.reasons.VisualFeaturesReason.OTHER_SURFACES` otherwise); one
+    in a defaced series' Frame of Reference, naming none, or referring to a
+    defaced slice, is held whatever its series' verdict
+    (:attr:`~.reasons.VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME`),
+    since the run does not cut its meshes, unless the face review gives it
+    a verdict of its own. Each is marked with
     the option's code and Recognizable Visual Features (0028,0302) set to
     NO, which PS3.15 E.3.2 adds whether or not its IOD defines the
     attribute. Any other instance that can show a face is written without
@@ -1517,15 +1526,13 @@ class InstanceTransform:
         since only they show its doses as they could show a face, and a
         Segmentation, by its IOD, SOP Class UID, or Modality, where it has
         more than its segments sheet showed, since only that shows the
-        surfaces that its segments trace (D-017). A Surface Segmentation, or
-        any instance that holds a surface mesh, is held whatever its
-        verdict, since no preview of the pack draws a mesh.
+        surfaces that its segments trace (D-017). An instance that holds a
+        surface mesh is held where it has other meshes than the pack's
+        surfaces sheet showed.
         """
         review = self._face_review
         if review is None or not carries_visual_features(dataset, iod.name):
             return None
-        if iod.name == SURFACE_SEGMENTATION or holds_surface_mesh(dataset):
-            return HeldVisualFeatures(VisualFeaturesReason.NO_FACE_VERDICT)
         reason = review.hold_reason(
             hashlib.sha256(data).digest(),
             _pixel_digest(writing, dataset),
@@ -1534,6 +1541,7 @@ class InstanceTransform:
             dose=iod.name == RT_DOSE or is_rt_dose(dataset),
             grids=_grid_digest(writing, dataset),
             segmentation=iod.name == SEGMENTATION or is_segmentation(dataset),
+            surfaces=_surface_digest(writing, dataset),
         )
         return None if reason is None else HeldVisualFeatures(reason)
 
@@ -1555,7 +1563,10 @@ class InstanceTransform:
         cleaned in. An instance holding a deformation grid remains held
         where it names a defaced frame as its own or as a Source Frame of
         Reference (:func:`~.face_review.registration_frames`), names one
-        that cannot be read, or refers to a defaced slice.
+        that cannot be read, or refers to a defaced slice, and so does an
+        instance holding a surface mesh, whatever its IOD, as a Surface
+        Segmentation is (:meth:`~.face_blocks.Defaced.holds`), since the run
+        does not cut its meshes.
         """
         if holds_deformation_grid(dataset) and self._defaced.frames:
             frames = registration_frames(dataset)
@@ -1575,7 +1586,9 @@ class InstanceTransform:
         if dose is not None:
             if not dose.holds(self._defaced, record):
                 return None
-        elif not self._defaced.holds(iod.name, record):
+        elif not self._defaced.holds(
+            SURFACE_SEGMENTATION if holds_surface_mesh(dataset) else iod.name, record
+        ):
             return None
         return HeldVisualFeatures(VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME)
 
@@ -2472,6 +2485,65 @@ def _grid_digest(writing: WriterPlan, dataset: pydicom.Dataset) -> bytes | None:
     # raises ValueError for a grid that it cannot.
     except Exception:  # pylint: disable = broad-exception-caught
         return None
+
+
+def _surface_digest(writing: WriterPlan, dataset: pydicom.Dataset) -> bytes | None:
+    """Return the SHA-256 of the surface meshes that the writer's plan
+    writes.
+
+    As :func:`~.face_review.surface_data_sha256` gives it of the file
+    written, each sequence and element of a mesh being the plan's
+    replacement, or the source's where the plan keeps it; None where a value
+    cannot be read.
+    """
+    try:
+        planned = _planned(writing, dataset, (), _SURFACE_TREE)
+        return surface_data_sha256(planned)
+    # pydicom raises many types for an item it cannot read, and the digest
+    # raises ValueError for a mesh that it cannot.
+    except Exception:  # pylint: disable = broad-exception-caught
+        return None
+
+
+# The sequences and elements of a surface mesh that its digest takes, each
+# sequence with those of its items.
+_PRIMITIVE_TREE: dict[int, object] = {tag: None for tag in SURFACE_PRIMITIVES[3]}
+_SURFACE_TREE: dict[int, object] = {
+    SURFACE_SEQUENCE: {
+        SURFACE_POINTS[0]: {tag: None for tag in SURFACE_POINTS[1]},
+        SURFACE_PRIMITIVES[0]: {
+            **{tag: None for tag in SURFACE_PRIMITIVES[1]},
+            **{tag: _PRIMITIVE_TREE for tag in SURFACE_PRIMITIVES[2]},
+        },
+    }
+}
+
+
+def _planned(
+    writing: WriterPlan,
+    dataset: pydicom.Dataset,
+    within: tuple[tuple[str, int], ...],
+    tree: dict[int, object],
+) -> pydicom.Dataset:
+    """The elements of ``tree`` that the writer's plan writes of a data set
+    or an item at ``within``, each sequence's items with theirs: the plan's
+    replacement, or the source's where the plan keeps it."""
+    planned = pydicom.Dataset()
+    for tag, nested in tree.items():
+        path = ElementPath(within, _tag_text(tag))
+        if path in writing.replacements:
+            planned.add(writing.replacements[path])
+        elif path in writing.kept and tag in dataset:
+            if nested is None:
+                planned.add(dataset[tag])
+                continue
+            assert isinstance(nested, dict)
+            items = [
+                _planned(writing, item, (*within, (path.tag, index)), nested)
+                for index, item in enumerate(dataset[tag].value or ())
+            ]
+            planned[tag] = pydicom.DataElement(tag, "SQ", items)
+    return planned
 
 
 def _planned_grids(

@@ -63,6 +63,7 @@ from pymedphys._dicom.deidentify.face_review import (
     contour_data_sha256,
     grid_data_sha256,
     pixel_data_sha256,
+    surface_data_sha256,
 )
 from pymedphys._dicom.deidentify.file_layout import ElementPath
 from pymedphys._dicom.deidentify.instance_transform import InstanceTransform
@@ -76,10 +77,6 @@ from pymedphys._dicom.deidentify.policy import (
     Policy,
     compose_custom_policy,
     compose_policy,
-)
-from pymedphys._dicom.deidentify.reasons import (
-    HeldVisualFeatures,
-    VisualFeaturesReason,
 )
 from pymedphys._dicom.deidentify.release_gate import (
     Decision,
@@ -371,18 +368,6 @@ WITHHELD_WITHOUT_REPORTS: Mapping[str, Withheld] = types.MappingProxyType(
         if name not in corpus_module.STRUCTURED_REPORT_FILES
     }
 )
-# What a run under Clean Recognizable Visual Features also holds, whatever
-# its verdicts: the Surface Segmentation, whose meshes no preview of the QC
-# pack draws, so that no verdict is of them (D-017).
-MESH_HELD: Mapping[str, Withheld] = types.MappingProxyType(
-    {
-        corpus_module.SURFACE_SEGMENTATION_FILE: Withheld(
-            run.Status.HELD_FOR_REVIEW,
-            frozenset({HeldVisualFeatures(VisualFeaturesReason.NO_FACE_VERDICT)}),
-        )
-    }
-)
-
 # Accession Number (0008,0050) and Referenced Study Sequence (0008,1110),
 # which dcentvfy's own tables place in the Study entity for a Structured
 # Report and in the Series entity for an image, whatever the files hold.
@@ -726,11 +711,12 @@ def every_face_absent(corpus: corpus_module.SyntheticCorpus) -> FaceReview:
     """Return a face review that marks every file of the corpus free of a face.
 
     It is matched by each file's SHA-256, and the SHA-256 of the pixel data,
-    contours, and deformation grids that a run writes of it unchanged, as an
-    attested review's verdicts are, and gives each RT Dose's every frame as
-    shown by its dose levels, and each Segmentation's by its segments sheet,
-    so each instance that can show a face, and whose pixel data, contours,
-    and grids the run does not change, satisfies the option.
+    contours, deformation grids, and surface meshes that a run writes of it
+    unchanged, as an attested review's verdicts are, and gives each RT
+    Dose's every frame as shown by its dose levels, and each Segmentation's
+    by its segments sheet, so each instance that can show a face, and whose
+    pixel data, contours, grids, and meshes the run does not change,
+    satisfies the option.
     """
     digests = frozenset(hashlib.sha256(file.data).digest() for file in corpus.files)
     pixels = frozenset(
@@ -759,6 +745,11 @@ def every_face_absent(corpus: corpus_module.SyntheticCorpus) -> FaceReview:
         for file in corpus.files
         if (digest := _written_sha256(grid_data_sha256, file.data)) is not None
     )
+    surfaces = frozenset(
+        (hashlib.sha256(file.data).digest(), digest)
+        for file in corpus.files
+        if (digest := _written_sha256(surface_data_sha256, file.data)) is not None
+    )
     return FaceReview(
         FACE_REVIEW_REFERENCE,
         digests,
@@ -768,14 +759,15 @@ def every_face_absent(corpus: corpus_module.SyntheticCorpus) -> FaceReview:
         absent_dose_frames=doses,
         absent_grids=grids,
         absent_segment_frames=segments,
+        absent_surfaces=surfaces,
     )
 
 
 def _written_sha256(
     digester: Callable[[pydicom.Dataset], bytes], data: bytes
 ) -> bytes | None:
-    """The digest of a file's pixel data, contours, or deformation grids, or
-    None where it cannot be read."""
+    """The digest of a file's pixel data, contours, deformation grids, or
+    surface meshes, or None where it cannot be read."""
     try:
         return digester(read_source(data).dataset())
     except (SourceRefused, ValueError):
