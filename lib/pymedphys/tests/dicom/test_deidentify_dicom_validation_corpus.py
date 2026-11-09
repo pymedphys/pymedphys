@@ -101,6 +101,9 @@ UNKNOWN_TO_DICOM3TOOLS = tuple(
         corpus_module.C_ARM_PHOTON_ELECTRON_RADIATION_STORAGE,
         corpus_module.TOMOTHERAPEUTIC_RADIATION_STORAGE,
         corpus_module.ROBOTIC_ARM_RADIATION_STORAGE,
+        corpus_module.RT_BEAMS_DELIVERY_INSTRUCTION_STORAGE,
+        corpus_module.RT_BRACHY_APPLICATION_SETUP_DELIVERY_INSTRUCTION_STORAGE,
+        corpus_module.RT_RADIATION_SET_DELIVERY_INSTRUCTION_STORAGE,
     )
 )
 # The corpus's SOP Classes whose input dicom-validator 0.9.0 cannot check to
