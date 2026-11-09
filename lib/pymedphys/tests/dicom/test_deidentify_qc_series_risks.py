@@ -432,6 +432,9 @@ def test_a_run_over_the_synthetic_corpus_lists_its_volumes_and_projections(tmp_p
     # Image, a projection, can show the face in profile. Each Segmentation,
     # BINARY and LABELMAP, is in a series of its own and can trace the face,
     # and so can the Parametric Map, whose map of the head shows its outline.
+    # The Enhanced RT Image and Enhanced Continuous RT Image, each of two
+    # frames of projections in a series of its own, can show the face in
+    # profile as the RT Image can, and are no volume.
     # The Computed Radiography image, a lateral skull radiograph, can show
     # the face in profile, and names the head; the two Digital X-Ray images,
     # of the chest, each in a series of its own, can show it too.
@@ -467,6 +470,11 @@ def test_a_run_over_the_synthetic_corpus_lists_its_volumes_and_projections(tmp_p
     computed = released("Computed Radiography Image")
     digital = released("Digital X-Ray Image")
     assert (len(computed), len(digital)) == (1, 2)
+    enhanced_rt_images = [
+        released("Enhanced RT Image"),
+        released("Enhanced Continuous RT Image"),
+    ]
+    assert [len(positions) for positions in enhanced_rt_images] == [1, 1]
 
     def finding(indicator, positions, element=None):
         return {
@@ -491,6 +499,10 @@ def test_a_run_over_the_synthetic_corpus_lists_its_volumes_and_projections(tmp_p
         *(
             {"positions": [position], "findings": [finding("radiograph", [position])]}
             for position in digital
+        ),
+        *(
+            {"positions": positions, "findings": [finding("rt-image", positions)]}
+            for positions in enhanced_rt_images
         ),
     ]
     # The pack groups by the source's Series Instance UID but never writes it.

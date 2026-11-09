@@ -66,6 +66,8 @@ _IMAGES = (
     "21-rt-image.dcm",
     corpus_module.SEGMENTATION_FILES[1],
     corpus_module.PARAMETRIC_MAP_FILE,
+    corpus_module.ENHANCED_RT_IMAGE_FILE,
+    corpus_module.ENHANCED_CONTINUOUS_RT_IMAGE_FILE,
     *corpus_module.RADIOGRAPH_FILES,
 )
 _BLACKED_OUT = Withheld(

@@ -87,11 +87,12 @@ indicator. Findings name attribute paths, never values.
 :func:`assess_series` reads the indicators that need a whole series:
 every CT, MR, and PET volume, and every RT Dose grid of more than one
 frame, may hold a reconstructable face; so may a CT, MR, or PET localizer,
-which can show the face in profile, and so may an RT Image, a projection
-such as a lateral DRR, a Computed Radiography or Digital X-Ray image, a
-projection such as a lateral skull radiograph, a Segmentation, whose
-segment of the skin or body traces the profile, and a Parametric Map, whose
-map of the head shows its outline; and one whose attributes, or a Segmentation's
+which can show the face in profile, and so may an RT Image, Enhanced RT
+Image, or Enhanced Continuous RT Image, each a projection such as a lateral
+DRR, a Computed Radiography or Digital X-Ray image, a projection such as a
+lateral skull radiograph, a Segmentation, whose segment of the skin or body
+traces the profile, and a Parametric Map, whose map of the head shows its
+outline; and one whose attributes, or a Segmentation's
 segments, name a region of the head or neck in a reviewed list from PS3.16
 Annex L says that it does.
 :func:`series_evidence` gives the part of an instance that it reads.
@@ -784,14 +785,23 @@ _VOLUME_SOP_CLASSES = {
     # frames, so it is not a volume.
     "1.2.840.10008.5.1.4.1.1.481.2": (Indicator.RT_DOSE_VOLUME, True),
 }
-# RT Image Storage (PS3.4 Table B.5-1). An RT Image is a projection, such
-# as a digitally reconstructed radiograph (DRR) or a simulator or portal
-# image (PS3.3 Section C.8.8.2), so, like a localizer, it can show the face
-# in profile. It is recognised by its SOP Class, whatever its Image Type:
-# the standard Defined Terms of Image Type's third value for it do not
-# include LOCALIZER, though an implementer may extend them (PS3.5 Section
-# 6.3).
-_RT_IMAGE = "1.2.840.10008.5.1.4.1.1.481.1"
+# RT Image Storage, Enhanced RT Image Storage, and Enhanced Continuous RT
+# Image Storage (PS3.4 Table B.5-1). An RT Image is a projection, such as a
+# digitally reconstructed radiograph (DRR) or a simulator or portal image
+# (PS3.3 Section C.8.8.2), and an Enhanced or Enhanced Continuous RT Image
+# holds projections too, acquired directly or derived from a volume such as
+# a CT (PS3.3 Sections A.86.1.15.1 and A.86.1.16.1), so, like a localizer,
+# each can show the face in profile. Each is recognised by its SOP Class,
+# whatever its Image Type: the standard Defined Terms of Image Type's third
+# value for them do not include LOCALIZER, though an implementer may extend
+# them (PS3.5 Section 6.3).
+RT_IMAGE_SOP_CLASSES = frozenset(
+    {
+        "1.2.840.10008.5.1.4.1.1.481.1",
+        "1.2.840.10008.5.1.4.1.1.481.23",
+        "1.2.840.10008.5.1.4.1.1.481.24",
+    }
+)
 # Computed Radiography Image Storage, and Digital X-Ray Image Storage - For
 # Presentation and - For Processing (PS3.4 Table B.5-1), the Storage SOP
 # Classes of the Computed Radiography Image and Digital X-Ray Image IODs. A
@@ -971,17 +981,18 @@ def assess_series(instances: Sequence[pydicom.Dataset]) -> tuple[SeriesFinding, 
     counts as a frame of each volume that the series' other instances make.
     The localizers of those image classes are reported apart, since a
     localizer can show the face in profile, although no study has measured
-    recognition from one. So is each RT Image Storage instance, whatever its
-    Image Type, gantry angle, or Number of Frames, since an RT Image is a
-    projection, and a lateral one, such as a DRR or a simulator or portal
-    image, can show the face in profile as a localizer can; it is no frame
-    of a volume. So is each instance of Computed Radiography Image Storage,
-    Digital X-Ray Image Storage - For Presentation, or Digital X-Ray Image
-    Storage - For Processing, whatever its View Position (0018,5101), Image
-    Type, or Number of Frames, since a radiograph is a projection, and a
-    lateral one of the head, such as a lateral skull radiograph or a
-    cephalogram, shows the face in profile; it is no frame of a volume
-    either. So is each Segmentation, of Segmentation Storage or Label
+    recognition from one. So is each RT Image, of RT Image Storage,
+    Enhanced RT Image Storage, or Enhanced Continuous RT Image Storage,
+    whatever its Image Type, gantry angle, or Number of Frames, since each
+    holds projections, and a lateral one, such as a DRR or a simulator,
+    portal, or kV image, can show the face in profile as a localizer can; it
+    is no frame of a volume. So is each instance of Computed Radiography
+    Image Storage, Digital X-Ray Image Storage - For Presentation, or
+    Digital X-Ray Image Storage - For Processing, whatever its View Position
+    (0018,5101), Image Type, or Number of Frames, since a radiograph is a
+    projection, and a lateral one of the head, such as a lateral skull
+    radiograph or a cephalogram, shows the face in profile; it is no frame
+    of a volume either. So is each Segmentation, of Segmentation Storage or Label
     Map Segmentation Storage, whatever its segments and Number of Frames,
     since a segment of the skin or body traces the profile and its label or
     code need not say that it is one; it is no frame of a volume either.
@@ -1033,7 +1044,7 @@ def assess_series(instances: Sequence[pydicom.Dataset]) -> tuple[SeriesFinding, 
             unreadable.append(_unreadable_in(index, ElementPath((), _SOP_CLASS_UID)))
             volume_class = None
         else:
-            if sop_class == _RT_IMAGE:
+            if sop_class in RT_IMAGE_SOP_CLASSES:
                 rt_images.append(index)
                 head[index] = list(_head_or_neck(dataset, regions, index, unreadable))
                 continue

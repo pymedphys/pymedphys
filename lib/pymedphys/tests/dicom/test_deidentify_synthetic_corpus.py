@@ -249,6 +249,8 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "62-cr.dcm",
         "63-dx-for-processing.dcm",
         "64-dx-for-presentation.dcm",
+        "89-rt-image-enhanced.dcm",
+        "90-rt-image-enhanced-continuous.dcm",
     ]
     assert [file.manifest.iod for file in corpus.files] == [
         "CT Image",
@@ -295,29 +297,35 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "Computed Radiography Image",
         "Digital X-Ray Image",
         "Digital X-Ray Image",
+        "Enhanced RT Image",
+        "Enhanced Continuous RT Image",
     ]
     assert corpus_module.STRUCTURED_REPORT_FILES == tuple(
-        file.name for file in corpus.files[-30:-20] + corpus.files[-18:-10]
+        file.name for file in corpus.files[-32:-22] + corpus.files[-20:-12]
     )
     assert corpus_module.SEGMENTATION_FILES == tuple(
-        file.name for file in corpus.files[-20:-18]
+        file.name for file in corpus.files[-22:-20]
     )
     assert (
         corpus_module.ION_PLAN_FILE,
         corpus_module.ION_TREATMENT_RECORD_FILE,
-    ) == tuple(file.name for file in corpus.files[-10:-8])
+    ) == tuple(file.name for file in corpus.files[-12:-10])
     assert (
         corpus_module.BRACHY_TREATMENT_RECORD_FILE,
         corpus_module.TREATMENT_SUMMARY_RECORD_FILE,
-    ) == tuple(file.name for file in corpus.files[-8:-6])
+    ) == tuple(file.name for file in corpus.files[-10:-8])
     assert (
         corpus_module.PARAMETRIC_MAP_FILE,
         corpus_module.REAL_WORLD_VALUE_MAPPING_FILE,
-    ) == tuple(file.name for file in corpus.files[-6:-4])
-    assert corpus_module.SURFACE_SEGMENTATION_FILE == corpus.files[-4].name
+    ) == tuple(file.name for file in corpus.files[-8:-6])
+    assert corpus_module.SURFACE_SEGMENTATION_FILE == corpus.files[-6].name
     assert corpus_module.RADIOGRAPH_FILES == tuple(
-        file.name for file in corpus.files[-3:]
+        file.name for file in corpus.files[-5:-2]
     )
+    assert (
+        corpus_module.ENHANCED_RT_IMAGE_FILE,
+        corpus_module.ENHANCED_CONTINUOUS_RT_IMAGE_FILE,
+    ) == tuple(file.name for file in corpus.files[-2:])
     # Every IOD of the first supported release.
     assert {file.manifest.iod for file in corpus.files} == scope.SUPPORTED_IODS
 
@@ -370,8 +378,19 @@ def test_every_attribute_of_table_e1_1_that_the_iod_defines_is_placed(corpus):
         assert max(found.values()) == 1, file.name
 
 
+# The attributes of Table E.1-1 that the corpus's IODs define only below the
+# depth cap, five items deep in a functional group of the Enhanced RT
+# Images: Radiation Generation Mode Label and Description, in the items of
+# Radiation Generation Mode Sequence (300A,067B), and Referenced Treatment
+# Position Group UID, in those of Treatment Position Group Sequence
+# (300A,060A). Their actions are tested on an Enhanced RT Image apart, in
+# test_deidentify_instance_transform.py.
+ONLY_BEYOND_THE_DEPTH_CAP = {"(300A,067C)", "(300A,067D)", "(300A,0785)"}
+
+
 def test_attributes_are_not_planted_only_beyond_the_depth_cap(corpus):
     reasons = collections.Counter()
+    beyond = set()
     for file in corpus.files:
         placed = file.manifest.placements
         planted_tags = {p.path.tag for p in placed if p.kind is not Kind.NOT_PLANTED}
@@ -386,12 +405,15 @@ def test_attributes_are_not_planted_only_beyond_the_depth_cap(corpus):
                 ):
                     continue
                 assert depth + (placement.vr == "SQ") > corpus_module.MAX_DEPTH
-                # Each attribute capped is planted at a shallower place.
-                assert placement.path.tag in planted_tags
+                # Each attribute capped is planted at a shallower place, but
+                # those that the corpus's IODs define only below the cap.
+                if placement.path.tag not in planted_tags:
+                    beyond.add(placement.path.tag)
             elif not _in_content_tree(placement.path):
                 # A report's template, not the cap, decides its tree's depth.
                 assert depth <= corpus_module.MAX_DEPTH
 
+    assert beyond == ONLY_BEYOND_THE_DEPTH_CAP
     assert set(reasons) == {
         Reason.DEPTH_CAP,
         Reason.SEQUESTERS_INSTANCE,
