@@ -51,8 +51,6 @@ a Graphic Annotation Sequence (0070,0001) under every preset, since the
 table gives that sequence D. Every Encapsulated PDF that holds its
 Encapsulated Document (0042,0011) is also sequestered under every policy:
 Table E.1-1 gives it D, and no reviewed rule gives a document a dummy value.
-The Clean Pixel Data Option also sequesters a Parametric Map whose pixel
-data are floating point, which it does not read.
 Every other instance is sequestered: neither de-identified nor written, and
 listed in the run report by opaque identifiers only. That includes the
 other Structured Reports, the volumetric, advanced blending, and waveform
