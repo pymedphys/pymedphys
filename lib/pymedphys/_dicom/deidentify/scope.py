@@ -20,8 +20,9 @@ colour variants, of MR Spectroscopy, of the RT Structure Set, RT Plan, RT
 Dose, RT Image, Enhanced RT Image, Enhanced Continuous RT Image, RT Beams
 Treatment Record, RT Ion Plan, RT Ion Beams Treatment Record, RT Brachy
 Treatment Record, RT Treatment Summary Record, RT Beams Delivery
-Instruction, RT Brachy Application Setup Delivery Instruction, and RT
-Radiation Set Delivery Instruction IODs, of the Spatial Registration and Deformable Spatial
+Instruction, RT Brachy Application Setup Delivery Instruction, RT Radiation
+Set Delivery Instruction, RT Physician Intent, RT Treatment Preparation, and
+RT Patient Position Acquisition Instruction IODs, of the Spatial Registration and Deformable Spatial
 Registration IODs, of the Segmentation IOD, of both Segmentation Storage
 and Label Map Segmentation Storage, of the Surface Segmentation IOD, of the X-Ray Radiation Dose SR, Enhanced
 X-Ray Radiation Dose SR, Radiopharmaceutical Radiation Dose SR, and Patient
@@ -96,9 +97,12 @@ SUPPORTED_IODS = frozenset(
         "Robotic-Arm Radiation",
         "RT Ion Beams Treatment Record",
         "RT Ion Plan",
+        "RT Patient Position Acquisition Instruction",
+        "RT Physician Intent",
         "RT Plan",
         "RT Radiation Set Delivery Instruction",
         "RT Structure Set",
+        "RT Treatment Preparation",
         "RT Treatment Summary Record",
         "Segmentation",
         "Surface Segmentation",

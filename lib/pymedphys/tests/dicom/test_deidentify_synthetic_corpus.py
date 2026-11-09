@@ -254,6 +254,9 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "75-rt-beams-delivery-instruction.dcm",
         "76-rt-brachy-delivery-instruction.dcm",
         "77-rt-radiation-set-delivery-instruction.dcm",
+        "79-rt-physician-intent.dcm",
+        "80-rt-treatment-preparation.dcm",
+        "81-rt-position-acquisition-instruction.dcm",
         "89-rt-image-enhanced.dcm",
         "90-rt-image-enhanced-continuous.dcm",
     ]
@@ -307,6 +310,9 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "RT Beams Delivery Instruction",
         "RT Brachy Application Setup Delivery Instruction",
         "RT Radiation Set Delivery Instruction",
+        "RT Physician Intent",
+        "RT Treatment Preparation",
+        "RT Patient Position Acquisition Instruction",
         "Enhanced RT Image",
         "Enhanced Continuous RT Image",
     ]
@@ -333,7 +339,7 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
     assert (
         corpus_module.ENHANCED_RT_IMAGE_FILE,
         corpus_module.ENHANCED_CONTINUOUS_RT_IMAGE_FILE,
-    ) == tuple(file.name for file in corpus.files[56:58])
+    ) == tuple(file.name for file in corpus.files[59:61])
     assert (
         corpus_module.SEGMENT_ANNOTATION_FILE,
         corpus_module.RADIATION_SET_FILE,
@@ -346,6 +352,11 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         corpus_module.BRACHY_DELIVERY_INSTRUCTION_FILE,
         corpus_module.RADIATION_SET_DELIVERY_INSTRUCTION_FILE,
     ) == tuple(file.name for file in corpus.files[53:56])
+    assert (
+        corpus_module.PHYSICIAN_INTENT_FILE,
+        corpus_module.TREATMENT_PREPARATION_FILE,
+        corpus_module.POSITION_ACQUISITION_INSTRUCTION_FILE,
+    ) == tuple(file.name for file in corpus.files[56:59])
     # Every IOD of the first supported release.
     assert {file.manifest.iod for file in corpus.files} == scope.SUPPORTED_IODS
 
@@ -409,13 +420,31 @@ def test_every_attribute_of_table_e1_1_that_the_iod_defines_is_placed(corpus):
 # five or six items deep, in the Conceptual Volume Macro of a task's patient
 # position displacement; the RT Radiation Set and the radiations hold them
 # less deep, and their actions in the instruction are tested apart there too.
+# Five items deep too are the Selector values that RT Patient Position
+# Acquisition Instruction gives a constraint and Source Conceptual Volume
+# UID, in the Conceptual Volumes of RT Physician Intent and RT Treatment
+# Preparation, which test_deidentify_beyond_the_corpus_depth.py tests apart.
 ONLY_BEYOND_THE_DEPTH_CAP = {
     "(300A,067C)",
     "(300A,067D)",
     "(300A,0785)",
+    "(0072,005E)",  # Selector AE Value
+    "(0072,005F)",  # Selector AS Value
+    "(0072,0061)",  # Selector DA Value
+    "(0072,0063)",  # Selector DT Value
+    "(0072,0065)",  # Selector OB Value
+    "(0072,0066)",  # Selector LO Value
+    "(0072,0068)",  # Selector LT Value
+    "(0072,006A)",  # Selector PN Value
+    "(0072,006B)",  # Selector TM Value
+    "(0072,006C)",  # Selector SH Value
+    "(0072,006D)",  # Selector UN Value
+    "(0072,006E)",  # Selector ST Value
+    "(0072,0070)",  # Selector UT Value
+    "(0072,0071)",  # Selector UR Value
     "(3010,000B)",
     "(3010,0013)",
-    "(3010,0015)",
+    "(3010,0015)",  # Source Conceptual Volume UID
 }
 
 

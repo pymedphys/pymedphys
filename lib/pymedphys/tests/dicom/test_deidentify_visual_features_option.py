@@ -761,6 +761,9 @@ def test_the_statement_names_each_supported_iod_that_lacks_the_attribute():
         "RT Beams Delivery Instruction",
         "RT Brachy Application Setup Delivery Instruction",
         "RT Radiation Set Delivery Instruction",
+        "RT Physician Intent",
+        "RT Treatment Preparation",
+        "RT Patient Position Acquisition Instruction",
         "MR Spectroscopy",
         "Spatial Registration",
         "Deformable Spatial Registration",
@@ -791,8 +794,9 @@ def test_the_statement_names_each_supported_iod_that_lacks_the_attribute():
         "Enhanced Continuous RT Image, RT Segment Annotation, RT Radiation Set, "
         "C-Arm Photon-Electron Radiation, Tomotherapeutic Radiation, Robotic-Arm "
         "Radiation, RT Beams Delivery Instruction, RT Brachy Application Setup "
-        "Delivery Instruction, RT Radiation Set Delivery Instruction, MR "
-        "Spectroscopy, Spatial "
+        "Delivery Instruction, RT Radiation Set Delivery Instruction, RT "
+        "Physician Intent, RT Treatment Preparation, RT Patient Position "
+        "Acquisition Instruction, MR Spectroscopy, Spatial "
         "Registration, Deformable Spatial Registration, Surface Segmentation, "
         "X-Ray Radiation Dose SR, "
         "Enhanced X-Ray Radiation Dose SR, Radiopharmaceutical Radiation Dose SR, "
@@ -1053,6 +1057,9 @@ _FACELESS = (
     "75-rt-beams-delivery-instruction.dcm",
     "76-rt-brachy-delivery-instruction.dcm",
     "77-rt-radiation-set-delivery-instruction.dcm",
+    "79-rt-physician-intent.dcm",
+    "80-rt-treatment-preparation.dcm",
+    "81-rt-position-acquisition-instruction.dcm",
 )
 
 

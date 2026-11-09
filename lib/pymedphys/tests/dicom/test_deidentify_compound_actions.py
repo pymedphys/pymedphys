@@ -60,6 +60,30 @@ SECRET = "Doe^Jane"
 INSTITUTION_NAME = "(0008,0080)"
 PATIENT_ID = "(0010,0020)"
 REFERENCED_STUDY_SEQUENCE = "(0008,1110)"
+# The places where Table E.1-1 gives Referenced Study Sequence X/Z and the
+# Related Information Entities Macro (PS3.3 Table 10.37-1) makes it Type 1.
+TYPE_1_REFERENCED_STUDY_PLACES = {
+    (
+        "RT Patient Position Acquisition Instruction",
+        # Acquisition Task Sequence > Acquisition Subtask Sequence >
+        # Referenced Position Reference Instance Sequence
+        ("(3002,0118)", "(3002,011A)", "(3002,0132)"),
+        REFERENCED_STUDY_SEQUENCE,
+    ),
+    (
+        "RT Physician Intent",
+        # RT Physician Intent Sequence > RT Physician Intent Input
+        # Instance Sequence
+        ("(3010,0057)", "(3010,005F)"),
+        REFERENCED_STUDY_SEQUENCE,
+    ),
+    (
+        "RT Physician Intent",
+        # RT Prescription Sequence > Planning Input Information Sequence
+        ("(3010,006B)", "(3010,0076)"),
+        REFERENCED_STUDY_SEQUENCE,
+    ),
+}
 
 
 @pytest.fixture(name="tables", scope="module")
@@ -378,37 +402,19 @@ def test_x_z_gives_d_only_to_referenced_study_sequence_in_two_generated_iods(
         if action == "X/Z" and found == "D"
     }
 
-    assert dummy == {
-        (
-            "RT Patient Position Acquisition Instruction",
-            # Acquisition Task Sequence > Acquisition Subtask Sequence >
-            # Referenced Position Reference Instance Sequence
-            ("(3002,0118)", "(3002,011A)", "(3002,0132)"),
-            REFERENCED_STUDY_SEQUENCE,
-        ),
-        (
-            "RT Physician Intent",
-            # RT Physician Intent Sequence > RT Physician Intent Input
-            # Instance Sequence
-            ("(3010,0057)", "(3010,005F)"),
-            REFERENCED_STUDY_SEQUENCE,
-        ),
-        (
-            "RT Physician Intent",
-            # RT Prescription Sequence > Planning Input Information Sequence
-            ("(3010,006B)", "(3010,0076)"),
-            REFERENCED_STUDY_SEQUENCE,
-        ),
-    }
-    # It is a sequence, which has no generic dummy value, so D refuses it
-    # until a reviewed rule covers it, and its instance is sequestered.
+    assert dummy == TYPE_1_REFERENCED_STUDY_PLACES
+    # It is a sequence, which has no generic dummy value, so D keeps its
+    # items with only the reviewed attributes (D-021).
     dictionary = {a.tag: a for a in standard.load_data_dictionary().attributes}
     assert dictionary[REFERENCED_STUDY_SEQUENCE].vrs == ("SQ",)
     assert "SQ" not in dummy_values.CONSTANTS
+    assert REFERENCED_STUDY_SEQUENCE in dummy_values.KEPT_ITEM_ATTRIBUTES
 
 
 @pytest.mark.deid_requirement("MIDI-BP-03")
-def test_no_attribute_with_x_z_is_type_1_in_the_first_release_iods(tables):
+def test_only_referenced_study_sequence_with_x_z_is_type_1_in_the_first_release_iods(
+    tables,
+):
     x_z = {tag for tag, action in _compound_attributes() if action == "X/Z"}
     defined = [
         (name, definition)
@@ -421,10 +427,14 @@ def test_no_attribute_with_x_z_is_type_1_in_the_first_release_iods(tables):
         "(300A,00B2)",  # Treatment Machine Name
         "(0010,2203)",  # Patient's Sex Neutered
     }
+    # Except Referenced Study Sequence where the macro makes it Type 1, whose
+    # items D keeps (the test above).
     assert not [
         (name, definition.path, definition.tag)
         for name, definition in defined
         if definition.type in {"1", "1C"}
+        and (name, definition.path, definition.tag)
+        not in TYPE_1_REFERENCED_STUDY_PLACES
     ]
 
 

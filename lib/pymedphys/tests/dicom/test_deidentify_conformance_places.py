@@ -209,6 +209,79 @@ def test_the_statement_says_a_brachy_records_source_manufacturer_is_emptied(
     assert "it is emptied there too, rather than sequester the record" in text
 
 
+PROCEDURE_PARAMETER_DESCRIPTION = "(300A,078E)"  # X, or C under Clean Descriptors
+PRIOR_TREATMENT_DOSE_DESCRIPTION = "(3010,0061)"  # X, or C under Clean Descriptors
+REFERENCED_STUDY_SEQUENCE = "(0008,1110)"  # X/Z, or K under Retain UIDs
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.1-09", "PS3.15-E.1.3-01")
+def test_the_statement_says_the_required_preparation_and_prescription_descriptions_are_emptied(
+    preset,
+):
+    # A plain X empties each where its IOD makes it Type 2 and no Type 3
+    # sequence encloses it, rather than sequester the instance (D-020); Clean
+    # Descriptors' C falls back to that X (D-009).
+    statement = _statement(preset)
+    intent = _entry(statement, PRIOR_TREATMENT_DOSE_DESCRIPTION)
+    assert intent.action == "X"
+    assert intent.places == (
+        conformance.Place("RT Physician Intent", ("(3010,006B)",), "Z"),
+    )
+    preparation = _entry(statement, PROCEDURE_PARAMETER_DESCRIPTION)
+    assert preparation.action == "X"
+    assert (
+        conformance.Place("RT Treatment Preparation", ("(300A,0790)",), "Z")
+        in preparation.places
+    )
+    # Elsewhere it is within the Type 3 Patient Treatment Preparation
+    # Sequence (300A,079F), which goes with it.
+    assert {place.removes for place in preparation.places if place.action == "X"} == {
+        "(300A,079F)"
+    }
+    text = conformance_markdown.render_markdown(statement)
+    assert _row(text, PRIOR_TREATMENT_DOSE_DESCRIPTION).endswith(
+        "| Z within RT Prescription Sequence (3010,006B) in RT Physician Intent. "
+        "X elsewhere. |"
+    )
+    assert (
+        "Patient Treatment Preparation Procedure Parameter Description (300A,078E)"
+        in (text)
+    )
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
+def test_the_statement_says_a_type_1_referenced_study_sequence_keeps_its_items(
+    preset,
+):
+    # X/Z resolves to D where Referenced Study Sequence is Type 1, and its
+    # reviewed rule keeps the items there, so the statement gives D, not a
+    # sequestration, at the three places (D-021); under Retain UIDs it is
+    # kept everywhere.
+    statement = _statement(preset)
+    entry = _entry(statement, REFERENCED_STUDY_SEQUENCE)
+    if "retain_uids" in statement.options:
+        assert entry.action == "K"
+        return
+    assert {place for place in entry.places if place.action not in ("X", "Z")} == {
+        conformance.Place(
+            "RT Patient Position Acquisition Instruction",
+            ("(3002,0118)", "(3002,011A)", "(3002,0132)"),
+            "D",
+        ),
+        conformance.Place("RT Physician Intent", ("(3010,0057)", "(3010,005F)"), "D"),
+        conformance.Place("RT Physician Intent", ("(3010,006B)", "(3010,0076)"), "D"),
+    }
+    text = conformance_markdown.render_markdown(statement)
+    assert (
+        "D on Referenced Study Sequence (0008,1110) keeps each source item, and in "
+        "it only these attributes, each under the action that the policy gives "
+        "it: Referenced Series Sequence (0008,1115), `K` as a sequence that no "
+        "rule covers, with its items' attributes under their own actions; Study "
+        "Instance UID (0020,000D), `U`; Pertinent SOP Classes in Study "
+        "(3010,0052), `U`."
+    ) in " ".join(text.split())
+
+
 @pytest.mark.deid_requirement("PS3.15-E.1.3-01")
 def test_a_plain_x_on_a_required_attribute_removes_its_sequence():
     statement = _statement("basic")

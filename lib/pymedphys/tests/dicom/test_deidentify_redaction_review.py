@@ -1054,8 +1054,9 @@ def test_the_statement_gives_the_code_only_after_review():
         "Continuous RT Image, RT Segment Annotation, RT Radiation Set, C-Arm "
         "Photon-Electron Radiation, Tomotherapeutic Radiation, Robotic-Arm "
         "Radiation, RT Beams Delivery Instruction, RT Brachy Application "
-        "Setup Delivery Instruction, RT Radiation Set Delivery Instruction, MR "
-        "Spectroscopy, Spatial Registration, "
+        "Setup Delivery Instruction, RT Radiation Set Delivery Instruction, RT "
+        "Physician Intent, RT Treatment Preparation, RT Patient Position "
+        "Acquisition Instruction, MR Spectroscopy, Spatial Registration, "
         "Deformable Spatial Registration, Surface Segmentation, X-Ray Radiation "
         "Dose SR, Enhanced X-Ray "
         "Radiation Dose SR, Radiopharmaceutical Radiation Dose SR, Patient Radiation "
@@ -1095,6 +1096,9 @@ def test_the_statement_names_each_supported_iod_that_lacks_the_attribute():
         "RT Beams Delivery Instruction",
         "RT Brachy Application Setup Delivery Instruction",
         "RT Radiation Set Delivery Instruction",
+        "RT Physician Intent",
+        "RT Treatment Preparation",
+        "RT Patient Position Acquisition Instruction",
         "MR Spectroscopy",
         "Spatial Registration",
         "Deformable Spatial Registration",

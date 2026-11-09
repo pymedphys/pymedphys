@@ -33,6 +33,7 @@ from pymedphys._dicom.deidentify import (
 
 from .test_deidentify_compound_actions import FIRST_RELEASE_IODS
 from .test_deidentify_plain_actions import (
+    ACQUISITION_SUBTASK,
     ALONE,
     EMPTIED,
     PATIENT_SETUP,
@@ -40,12 +41,16 @@ from .test_deidentify_plain_actions import (
     PATIENT_TREATMENT_PREPARATION,
     PATIENT_TREATMENT_PREPARATION_PROCEDURE,
     PERSON_IDENTIFICATION_CODE_SEQUENCE,
+    POSITION_ACQUISITION_TEMPLATE_DESCRIPTION,
+    POSITION_ACQUISITION_TEMPLATE_NAME,
+    PRIOR_TREATMENT_DOSE_DESCRIPTION,
     PROCEDURE_PARAMETER_DESCRIPTION,
     RECORDED_SOURCE,
     REFERENCED_PATIENT_SETUP_PHOTO,
     RESPONSIBLE_ORGANIZATION,
     RESPONSIBLE_PERSON,
     RT_ACCESSORY_HOLDER_SLOT_ID,
+    RT_PRESCRIPTION,
     SEQUESTER,
     SOURCE_MANUFACTURER,
     _basic_profile_removes,
@@ -253,12 +258,7 @@ SELECTOR_VALUES_WITHOUT_DUMMY = (
     "(0072,006D)",  # Selector UN Value
     "(0072,0071)",  # Selector UR Value
 )
-POSITION_ACQUISITION_TEMPLATE_NAME = "(3002,0121)"
-POSITION_ACQUISITION_TEMPLATE_DESCRIPTION = "(3002,0123)"
-PRIOR_TREATMENT_DOSE_DESCRIPTION = "(3010,0061)"
-ACQUISITION_SUBTASK = ("(3002,0118)", "(3002,011A)")
 PARAMETERS_SPECIFICATION = (*ACQUISITION_SUBTASK, "(3002,0126)", "(0018,9913)")
-RT_PRESCRIPTION = "(3010,006B)"
 OVERRIDE = ("(300A,0731)", "(3008,0060)")
 RT_ACCESSORY_HOLDER_SLOT = ("(300A,0614)", "(300A,0610)")
 
@@ -288,7 +288,8 @@ def test_the_places_where_a_plain_action_cannot_stand_in_the_second_generation_r
         for name in TOLERANCE_RECORD_IODS
     }
     # Referenced Study Sequence, which Table E.1-1 gives X/Z, is Type 1 in
-    # three reference items, so it resolves to D, as above.
+    # three reference items, so it resolves to D, as above; a reviewed rule
+    # keeps their items there (D-021).
     study = {
         (name, path, REFERENCED_STUDY, "D"): "D"
         for name, path in (
@@ -334,8 +335,9 @@ def test_the_places_where_a_plain_action_cannot_stand_in_the_second_generation_r
     # Sequence, which its plain X removes, and the procedure parameter's as
     # Type 2 in the Type 2 Patient Treatment Preparation Procedure Sequence,
     # where no Type 3 sequence encloses it. Prior Treatment Dose Description
-    # is Type 2 in the Type 1 RT Prescription Sequence. The changes that
-    # support these IODs settle where a plain X sequesters (D-020).
+    # is Type 2 in the Type 1 RT Prescription Sequence. A plain X empties
+    # each there rather than sequester the instance, as it does Source
+    # Manufacturer in Recorded Source Sequence (D-020).
     preparation = {
         (
             "RT Treatment Preparation",
@@ -348,13 +350,13 @@ def test_the_places_where_a_plain_action_cannot_stand_in_the_second_generation_r
             (PATIENT_TREATMENT_PREPARATION_PROCEDURE,),
             PROCEDURE_PARAMETER_DESCRIPTION,
             "X",
-        ): _removal(*SEQUESTER),
+        ): _removal(*EMPTIED),
         (
             "RT Physician Intent",
             (RT_PRESCRIPTION,),
             PRIOR_TREATMENT_DOSE_DESCRIPTION,
             "X",
-        ): _removal(*SEQUESTER),
+        ): _removal(*EMPTIED),
     }
     # RT Accessory Holder Slot ID, which Table E.1-1 gives Z, takes the dummy
     # value where it is Type 1 (D-021).

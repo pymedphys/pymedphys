@@ -20,7 +20,7 @@ fictitious patient and study, with one Frame of Reference: three CT Image
 slices, an RT Structure Set that references the CT series and slices, an RT
 Plan that references the structure set and the dose, an RT Dose that
 references the plan, a second RT Dose of the plan for review (below), one
-instance of each of forty-eight other IODs, and two of the Segmentation
+instance of each of fifty-one other IODs, and two of the Segmentation
 IOD, one of each of its SOP Classes, each in a series of its own, and a
 second X-Ray Radiation Dose SR, of a CT scan.
 The MR Image and PET Image instances reference the first CT slice, and each
@@ -48,8 +48,15 @@ Instruction references the RT Radiation Set and its C-Arm Photon-Electron
 Radiation. The RT Image, a digitally reconstructed radiograph of 2 by 2
 pixels, references the RT Plan, as do the Enhanced RT Image, a digitally
 reconstructed radiograph, and the Enhanced Continuous RT Image, a simulator
-image, each of two frames of 2 by 2 pixels. The X-Ray Radiation Dose SRs and
-the Enhanced X-Ray Radiation Dose SR reference the first CT slice, the
+image, each of two frames of 2 by 2 pixels. The RT Physician Intent references the first
+CT slice, and the collection's study and CT series in the Referenced Study
+Sequence (0008,1110) of its input instances and planning inputs; the RT
+Treatment Preparation references the RT Physician Intent and, in its
+Referenced RT Plan Sequence, the RT Plan; and the RT Patient Position
+Acquisition Instruction references the RT Treatment Preparation and, in the
+Referenced Study Sequence of its position reference instances, the
+collection's study. The X-Ray Radiation Dose SRs and the Enhanced
+X-Ray Radiation Dose SR reference the first CT slice, the
 Radiopharmaceutical Radiation Dose SR the PET Image, the Patient Radiation
 Dose SR the CT dose report, which its estimate used, and the Basic Text
 SR, Enhanced SR, Comprehensive SR, Comprehensive 3D SR, and Extensible SR
@@ -199,7 +206,7 @@ dummy item at that place and only there. Planted in
 every file, the first two would sequester every
 instance, and no preset could release any of the collection; planted in one,
 that instance checks sequestration, :data:`REVIEW_FILE` checks review, and
-the other fifty-six check each preset's output, the reports where their
+the other fifty-nine check each preset's output, the reports where their
 trees are cleaned. Radiopharmaceutical Start
 DateTime, which CT Image does not define there, is planted in no file, so
 the Enhanced PET instance, which lacks an attribute of Type 1, is released
@@ -235,7 +242,7 @@ Manufacturer's Model Name (0008,1090), which Table E.1-1 does not list and
 the Basic Profile keeps, a copy of the RT Plan's RT Plan Label marker
 (:attr:`PlacementKind.REVIEW_COPY`), so the residual search finds a source
 value of another instance in its output and sends it to review. The third
-CT slice remains sequestered; the other fifty-six files stay releasable, the
+CT slice remains sequestered; the other fifty-nine files stay releasable, the
 reports where their trees are cleaned.
 
 **Manifest.** :class:`CorpusManifest` records, for each file, each
@@ -283,6 +290,7 @@ from .dummy_values import (
     INSTITUTION_CODE_SEQUENCE,
     PERSON_IDENTIFICATION_CODE_SEQUENCE,
     REFERENCED_PERFORMED_PROCEDURE_STEP_SEQUENCE,
+    REFERENCED_STUDY_SEQUENCE,
     VERIFYING_OBSERVER_SEQUENCE,
     reviewed_within,
 )
@@ -382,6 +390,9 @@ ROBOTIC_ARM_RADIATION_STORAGE = "1.2.840.10008.5.1.4.1.1.481.15"
 RT_BEAMS_DELIVERY_INSTRUCTION_STORAGE = "1.2.840.10008.5.1.4.34.7"
 RT_BRACHY_APPLICATION_SETUP_DELIVERY_INSTRUCTION_STORAGE = "1.2.840.10008.5.1.4.34.10"
 RT_RADIATION_SET_DELIVERY_INSTRUCTION_STORAGE = "1.2.840.10008.5.1.4.1.1.481.21"
+RT_PHYSICIAN_INTENT_STORAGE = "1.2.840.10008.5.1.4.1.1.481.10"
+RT_TREATMENT_PREPARATION_STORAGE = "1.2.840.10008.5.1.4.1.1.481.22"
+RT_PATIENT_POSITION_ACQUISITION_INSTRUCTION_STORAGE = "1.2.840.10008.5.1.4.1.1.481.25"
 # The retired class that PS3.3 Sections 10.6.1 and C.8.8.5.4 give a study in
 # a Referenced Study Sequence or RT Referenced Study Sequence item.
 DETACHED_STUDY_MANAGEMENT = "1.2.840.10008.3.1.2.3.1"
@@ -471,6 +482,12 @@ ROBOTIC_ARM_RADIATION_FILE = "74-robotic-arm-radiation.dcm"
 BEAMS_DELIVERY_INSTRUCTION_FILE = "75-rt-beams-delivery-instruction.dcm"
 BRACHY_DELIVERY_INSTRUCTION_FILE = "76-rt-brachy-delivery-instruction.dcm"
 RADIATION_SET_DELIVERY_INSTRUCTION_FILE = "77-rt-radiation-set-delivery-instruction.dcm"
+# The RT Physician Intent of the course, the RT Treatment Preparation that
+# carries it out, and the RT Patient Position Acquisition Instruction for
+# the preparation, numbered after the files that open pull requests add.
+PHYSICIAN_INTENT_FILE = "79-rt-physician-intent.dcm"
+TREATMENT_PREPARATION_FILE = "80-rt-treatment-preparation.dcm"
+POSITION_ACQUISITION_INSTRUCTION_FILE = "81-rt-position-acquisition-instruction.dcm"
 # The directory, within the one that write_corpus is given, of the files.
 INSTANCES_DIRECTORY = "instances"
 
@@ -589,6 +606,12 @@ BRACHY_DELIVERY_INSTRUCTION_SERIES = f"{LINKED_UID_ROOT}07200"
 BRACHY_DELIVERY_INSTRUCTION = f"{LINKED_UID_ROOT}07201"
 RADIATION_SET_DELIVERY_INSTRUCTION_SERIES = f"{LINKED_UID_ROOT}07300"
 RADIATION_SET_DELIVERY_INSTRUCTION = f"{LINKED_UID_ROOT}07301"
+PHYSICIAN_INTENT_SERIES = f"{LINKED_UID_ROOT}07500"
+PHYSICIAN_INTENT = f"{LINKED_UID_ROOT}07501"
+TREATMENT_PREPARATION_SERIES = f"{LINKED_UID_ROOT}07600"
+TREATMENT_PREPARATION = f"{LINKED_UID_ROOT}07601"
+POSITION_ACQUISITION_INSTRUCTION_SERIES = f"{LINKED_UID_ROOT}07700"
+POSITION_ACQUISITION_INSTRUCTION = f"{LINKED_UID_ROOT}07701"
 # A patient and a procedure step that the collection names but does not hold.
 PATIENT_REFERENCE = f"{LINKED_UID_ROOT}00003"
 PROCEDURE_STEP = f"{LINKED_UID_ROOT}00004"
@@ -652,6 +675,7 @@ _REVIEWED_DUMMY_SEQUENCES = frozenset(
         INSTITUTION_CODE_SEQUENCE,
         PERSON_IDENTIFICATION_CODE_SEQUENCE,
         REFERENCED_PERFORMED_PROCEDURE_STEP_SEQUENCE,
+        REFERENCED_STUDY_SEQUENCE,
         VERIFYING_OBSERVER_SEQUENCE,
     }
 )
@@ -745,6 +769,11 @@ _SOP_CLASSES = types.MappingProxyType(
         ),
         RADIATION_SET_DELIVERY_INSTRUCTION: (
             RT_RADIATION_SET_DELIVERY_INSTRUCTION_STORAGE
+        ),
+        PHYSICIAN_INTENT: RT_PHYSICIAN_INTENT_STORAGE,
+        TREATMENT_PREPARATION: RT_TREATMENT_PREPARATION_STORAGE,
+        POSITION_ACQUISITION_INSTRUCTION: (
+            RT_PATIENT_POSITION_ACQUISITION_INSTRUCTION_STORAGE
         ),
         PATIENT_REFERENCE: DETACHED_PATIENT_MANAGEMENT,
         PROCEDURE_STEP: MODALITY_PERFORMED_PROCEDURE_STEP,
@@ -1609,6 +1638,34 @@ _SPECS = (
         RADIATION_SET,
         targets=((_REFERENCED_RT_RADIATION_SEQUENCE, C_ARM_RADIATION),),
     ),
+    # The RT Physician Intent names the first CT slice, the image that its
+    # intent was drawn up from, and, in the Referenced Study Sequence of its
+    # input instances and planning inputs, the collection's study. The RT
+    # Treatment Preparation names the RT Physician Intent that it carries
+    # out, and the RT Plan in its Referenced RT Plan Sequence; the RT Patient
+    # Position Acquisition Instruction names the RT Treatment Preparation, and
+    # the collection's study in its position reference instances.
+    _Spec(
+        PHYSICIAN_INTENT_FILE,
+        RT_PHYSICIAN_INTENT_STORAGE,
+        PHYSICIAN_INTENT,
+        PHYSICIAN_INTENT_SERIES,
+        CT_SLICES[0],
+    ),
+    _Spec(
+        TREATMENT_PREPARATION_FILE,
+        RT_TREATMENT_PREPARATION_STORAGE,
+        TREATMENT_PREPARATION,
+        TREATMENT_PREPARATION_SERIES,
+        PHYSICIAN_INTENT,
+    ),
+    _Spec(
+        POSITION_ACQUISITION_INSTRUCTION_FILE,
+        RT_PATIENT_POSITION_ACQUISITION_INSTRUCTION_STORAGE,
+        POSITION_ACQUISITION_INSTRUCTION,
+        POSITION_ACQUISITION_INSTRUCTION_SERIES,
+        TREATMENT_PREPARATION,
+    ),
     # Numbered after the second-generation RT IODs' files.
     # The Enhanced RT Image, two digitally reconstructed radiographs of the
     # RT Plan's beam, and the Enhanced Continuous RT Image, two frames of a
@@ -1637,7 +1694,7 @@ def build_corpus() -> SyntheticCorpus:
     Returns
     -------
     SyntheticCorpus
-        Fifty-eight files: three CT slices; the RT Structure Set, RT Plan, RT
+        Sixty-one files: three CT slices; the RT Structure Set, RT Plan, RT
         Dose, and the RT Dose for review; the Enhanced CT Image and Legacy
         Converted Enhanced CT Image; the MR Image, Enhanced MR Image,
         Enhanced MR Color Image, Legacy Converted Enhanced MR Image, and MR
@@ -1658,9 +1715,10 @@ def build_corpus() -> SyntheticCorpus:
         Annotation, RT Radiation Set, and C-Arm Photon-Electron,
         Tomotherapeutic, and Robotic-Arm Radiations; the RT Beams Delivery
         Instruction, RT Brachy Application Setup Delivery Instruction, and RT
-        Radiation Set Delivery Instruction; and the Enhanced RT Image and
-        Enhanced Continuous RT Image. Two builds give the same bytes and the
-        same manifest.
+        Radiation Set Delivery Instruction; the RT Physician Intent, RT
+        Treatment Preparation, and RT Patient Position Acquisition Instruction;
+        and the Enhanced RT Image and Enhanced Continuous RT Image. Two builds
+        give the same bytes and the same manifest.
     """
     markers = _Markers()
     files: list[CorpusFile] = []
@@ -2307,6 +2365,15 @@ class _Instance:
             RT_RADIATION_SET_DELIVERY_INSTRUCTION_STORAGE,
         ):
             # PS3.3 Sections A.64.4.1, A.79.4.1, and A.86.1.13.4.1.
+            put((), "(0008,0060)", ["PLAN"])
+        elif self.spec.sop_class == RT_PHYSICIAN_INTENT_STORAGE:
+            # PS3.3 Section A.86.1.2.4.1.
+            put((), "(0008,0060)", ["RTINTENT"])
+        elif self.spec.sop_class in (
+            RT_TREATMENT_PREPARATION_STORAGE,
+            RT_PATIENT_POSITION_ACQUISITION_INSTRUCTION_STORAGE,
+        ):
+            # PS3.3 Sections A.86.1.14.4.1 and A.86.1.17.4.1.
             put((), "(0008,0060)", ["PLAN"])
         elif self.spec.sop_class == MR_SPECTROSCOPY_STORAGE:
             put((), "(0008,0060)", ["MR"])
