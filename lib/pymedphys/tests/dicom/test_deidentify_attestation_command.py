@@ -107,6 +107,7 @@ def test_an_attestation_is_recorded_beside_the_pack(pack):
         "  RT Doses with dose in a face block to set to zero: 0",
         "  undefaced instances without a recognisable face in their own previews: 0",
         "  undefaced instances with a recognisable face in their own previews: 0",
+        "  instances with their residual findings cleared: 0",
         "  cleaned instances with their regions accepted: 0",
         "  cleaned instances with their regions revised: 0",
         "  cleaned instances rejected: 0",

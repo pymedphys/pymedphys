@@ -203,6 +203,7 @@ from .reasons import (
 )
 from .pixel_region_rules import PixelRegionRules
 from .redaction_review import RedactionReview, Regions
+from .residual_review import ResidualReview
 from .readiness import ReadinessReview
 from .reference_graph import ReferenceGraph
 from .references import InstanceRecord
@@ -218,7 +219,12 @@ from .release_gate import (
     release_condition,
 )
 from .residual_exemptions import standard_code_meanings
-from .residuals import NotSearched, has_written_constant, not_searched_of
+from .residuals import (
+    NotSearched,
+    ReviewedFinding,
+    has_written_constant,
+    not_searched_of,
+)
 from .retained_uids import output_name_uid, retained_uid_paths, retained_uid_tags
 from .run import NO_EVIDENCE, HoldForReview, Release, Sequestered, Transformed
 from .codestreams import CodestreamRefused, without_metadata
@@ -476,7 +482,8 @@ class HeldEvidence:
     another option's attribute, such as Allergies under Retain Patient
     Characteristics (D-038), held for review, a pixel option one whose pixel
     data await review, and the face review one that can show a face without
-    a verdict of absent for its source file.
+    a verdict of absent for its source file. It also carries, held or not,
+    the residual findings that a reviewer cleared in its source file.
 
     Attributes
     ----------
@@ -486,11 +493,16 @@ class HeldEvidence:
         Each ROI Name held, by path and reason, then each value of another
         option's attribute held, by element and reason, then why its visual
         features hold it, if they do, and why a pixel option holds it, if
-        one does.
+        one does; empty where nothing holds it.
+    reviewed : frozenset of ReviewedFinding
+        The residual findings that a reviewer cleared in its source file
+        (:class:`~.residual_review.ResidualReview`), which the gate exempts
+        where its search finds them again; empty by default.
     """
 
     coverage: Coverage
     held: tuple[HeldRoiName | HeldDescriptor | HeldPixelData | HeldVisualFeatures, ...]
+    reviewed: frozenset[ReviewedFinding] = frozenset()
 
 
 def omissions_of(
@@ -909,6 +921,15 @@ class InstanceTransform:
         :func:`~pymedphys._dicom.deidentify.redaction_review.read_redaction_review`,
         which only a policy selecting Clean Pixel Data takes; without one,
         no instance with Pixel Data satisfies that option.
+    residual_review : ResidualReview, optional
+        The clearings of residual findings in an earlier run's attested QC
+        pack, from
+        :func:`~pymedphys._dicom.deidentify.residual_review.read_residual_review`,
+        which any policy takes: an instance whose source file, by its
+        SHA-256, has findings cleared gives them to the gate with its
+        evidence (:attr:`HeldEvidence.reviewed`), so that a finding that
+        would hold its file for review, and that the pack showed at the same
+        place in a value with the same SHA-256, does not (D-042).
     pixel_region_rules : PixelRegionRules, optional
         The reviewed region rules whose regions Clean Pixel Data blacks out
         beside the finder's, in every frame of each instance whose key a
@@ -1140,6 +1161,7 @@ class InstanceTransform:
         finder: TextFinder | None = None,
         face_review: FaceReview | None = None,
         redaction_review: RedactionReview | None = None,
+        residual_review: ResidualReview | None = None,
         pixel_region_rules: PixelRegionRules | None = None,
         safe_private_list: SafePrivateList = SafePrivateList.REVIEWED,
         profiles: ProfileStore | None = None,
@@ -1176,6 +1198,7 @@ class InstanceTransform:
                 "Pixel Data"
             )
         self._redaction_review = redaction_review
+        self._residual_review = residual_review
         if pixel_region_rules is not None and CLEAN_PIXEL_DATA not in policy.options:
             raise PolicyError(
                 "pixel region rules are given only when the policy selects Clean "
@@ -1300,6 +1323,9 @@ class InstanceTransform:
                 else {
                     mode.value: count for mode, count in redaction_review.modes.items()
                 }
+            ),
+            residual_review=(
+                None if residual_review is None else residual_review.reference
             ),
             safe_private_list=safe_private_list,
             face_blocks=self._face_block_counts,
@@ -2183,6 +2209,10 @@ class InstanceTransform:
                 writing, source, dataset, self._markers[frozenset(chosen)]
             )
             identifiers = self._identifiers(writing, dataset, source)
+            if self._residual_review is not None:
+                evidence = _reviewed(
+                    evidence, self._residual_review.of(hashlib.sha256(data).digest())
+                )
             return Transformed(
                 *_written(source, writing, iod, identifiers, redaction), evidence, qc
             )
@@ -2708,6 +2738,18 @@ def _redaction_material(
     )
 
 
+def _reviewed(
+    evidence: Coverage | HeldEvidence, reviewed: frozenset[ReviewedFinding]
+) -> Coverage | HeldEvidence:
+    """Return the evidence of an instance with the findings cleared in its
+    source file, if there are any."""
+    if not reviewed:
+        return evidence
+    if isinstance(evidence, HeldEvidence):
+        return dataclasses.replace(evidence, reviewed=reviewed)
+    return HeldEvidence(evidence, (), reviewed)
+
+
 def _held(
     evidence: Coverage | HeldEvidence, held: HeldPixelData | HeldVisualFeatures
 ) -> HeldEvidence:
@@ -2829,7 +2871,9 @@ def _text(
     return values[0] if len(values) == 1 else None
 
 
-_Condition = Callable[[Coverage, bytes], ReleaseCondition]
+# (coverage, written) -> ReleaseCondition, which also takes reviewed= where a
+# reviewer cleared findings in the file's source.
+_Condition = Callable[..., ReleaseCondition]
 
 
 class ReleaseGate:
@@ -2880,7 +2924,16 @@ class ReleaseGate:
     ) -> Release | HoldForReview | Sequestered:
         given = tuple(each for each in subject if each is not NO_EVIDENCE)
         coverages = tuple(_coverage(each) for each in (evidence, *given))
-        condition = self._condition(self._subjects.merge(coverages[1:]), written)
+        merged = self._subjects.merge(coverages[1:])
+        reviewed = (
+            evidence.reviewed if isinstance(evidence, HeldEvidence) else frozenset()
+        )
+        # A condition given for tests takes no review unless there is one.
+        condition = (
+            self._condition(merged, written, reviewed=reviewed)
+            if reviewed
+            else self._condition(merged, written)
+        )
         held = evidence.held if isinstance(evidence, HeldEvidence) else ()
         # Each value's omissions are its own instance's material, from the
         # transform, so the pooled search's are left out here.

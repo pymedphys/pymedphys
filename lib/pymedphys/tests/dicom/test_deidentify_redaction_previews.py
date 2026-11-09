@@ -673,7 +673,7 @@ def test_a_runs_pack_lists_each_cleaned_instance_and_previews_its_frames(tmp_pat
         run.Status.RELEASED,
     ]
     pack = json.loads((tmp_path / "qc" / "qc-pack.json").read_text(encoding="ascii"))
-    assert pack["format"] == "pymedphys-deid-qc-pack/34"
+    assert pack["format"] == "pymedphys-deid-qc-pack/36"
     assert pack["redactions"] == [
         {
             "position": 0,

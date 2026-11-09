@@ -29,6 +29,13 @@ POSITION`` where they saw one, each repeatable. They may confirm the face
 block of any series that the pack lists in its ``eye_checks``, which the
 run defaced and held because its eye ROIs disagree with the globes that its
 block was found from, by the run position of its first instance there:
+``--residuals-cleared POSITION``, repeatable, clears the residual findings
+of the instance at that run position, of those that the pack's
+``residual_findings`` shows with their excerpts, where the reviewer found
+that the values holding them are not identifying, such as an Institution
+Name that only shares a word with a removed physician's name; a later run
+given the pack with ``--residual-review`` then releases the instance if
+those findings are all that hold it for review (D-042).
 ``--block-confirmed POSITION`` where the pack's sheet of the globes found
 beside the eye ROIs shows that the globes are the patient's eyes,
 repeatable; a later run given the attestation then defaces the series with
@@ -152,11 +159,11 @@ def summary_lines(
     D-017 requires was done, the releaser's confirmations, how many series
     have each face verdict, how many blocks the reviewer confirmed, how
     many RT Doses have each dose choice, how many undefaced instances have
-    each face verdict of their own, how many instances have each redaction
-    verdict, each region that a revised verdict drops or draws, with the
-    file in the pack that previews its frame where ``previews``, by run
-    position and frame, names one, and that the published release report is
-    unchanged.
+    each face verdict of their own, how many instances have their residual
+    findings cleared, how many instances have each redaction verdict, each
+    region that a revised verdict drops or draws, with the file in the pack
+    that previews its frame where ``previews``, by run position and frame,
+    names one, and that the published release report is unchanged.
     """
     previews = {} if previews is None else previews
     coverage = attestation.coverage
@@ -198,6 +205,8 @@ def summary_lines(
         f"previews: {own.count(Face.ABSENT)}",
         "  undefaced instances with a recognisable face in their own "
         f"previews: {own.count(Face.PRESENT)}",
+        "  instances with their residual findings cleared: "
+        f"{len(attestation.cleared_residuals)}",
         *(
             f"  cleaned instances {verdict}: {redactions.count(redaction)}"
             for verdict, redaction in (
@@ -304,6 +313,19 @@ def build_parser(*, stderr: TextIO | None = None) -> argparse.ArgumentParser:
                 "instance is at this run position; repeatable"
             ),
         )
+    parser.add_argument(
+        "--residuals-cleared",
+        action="append",
+        type=int,
+        default=[],
+        metavar="POSITION",
+        help=(
+            "the values that hold the residual findings of the instance at "
+            "this run position, as the QC pack's excerpts show them, are not "
+            "identifying, so a later run given this pack as --residual-review "
+            "does not hold the instance for them; repeatable"
+        ),
+    )
     parser.add_argument(
         "--block-confirmed",
         action="append",
@@ -468,6 +490,7 @@ def main(
                 **dict.fromkeys(own_absent, Face.ABSENT),
                 **dict.fromkeys(own_present, Face.PRESENT),
             },
+            cleared_residuals=arguments.residuals_cleared,
         )
     except QcPackError as error:
         # QcPackError and the OSErrors it replaces name a check, never a path.

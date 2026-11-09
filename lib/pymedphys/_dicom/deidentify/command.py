@@ -33,7 +33,9 @@ Clean Pixel Data, the attested QC pack whose redaction verdicts apply and
 the custodian's region rules, under Clean Recognizable Visual Features, the
 attested QC pack whose face verdicts apply, under the ``public-release``
 preset, the readiness review read from that pack and its run's release
-report (D-017), and whether a study whose instances name several patients
+report (D-017), under any policy, the attested QC pack whose clearings of
+residual findings apply (D-042), and whether a study whose instances name
+several patients
 is sequestered rather than stopping the run (D-026), from the command
 line's arguments. It builds the policy's transform for a new run-scoped key
 with :func:`build_transform`, with the text detector under Clean Pixel Data,
@@ -66,8 +68,9 @@ Exit statuses:
 - :data:`EXIT_NOT_RUN`, 3: the run could not start, because its preset or
   option set is not enabled, it has no face review under Clean
   Recognizable Visual Features, or what it cleans ROI Names or descriptors
-  with, its text detector, redaction review, region rules, face review, or
-  readiness review, or its project key or profile store, cannot be used, or
+  with, its text detector, redaction review, region rules, face review,
+  readiness review, or residual review, or its project key or profile
+  store, cannot be used, or
   its readiness review is of another QC pack than its face review, among
   other reasons; the first pass stopped it, including for a study whose
   instances name several patients, which
@@ -107,6 +110,7 @@ from .qc_pack import QcPackError
 from .readiness import ReadinessReview, read_readiness_review
 from .reasons import ReviewReason, StatisticalReason
 from .redaction_review import RedactionReview, read_redaction_review
+from .residual_review import ResidualReview, read_residual_review
 from .reviewed_descriptors import ReviewedDescriptors, ReviewedDescriptorsError
 from .reviewed_roi_names import ReviewedNames, ReviewedNamesError
 from .safe_private import SafePrivateList
@@ -179,6 +183,11 @@ _MODEL_UNREAD = (
 _REVIEW_UNREAD = "the redaction review could not be read: {error}"
 _REVIEW_UNOPENED = (
     "the redaction review could not be read; its details are not shown "
+    "because they can contain file paths"
+)
+_RESIDUAL_UNREAD = "the residual review could not be read: {error}"
+_RESIDUAL_UNOPENED = (
+    "the residual review could not be read; its details are not shown "
     "because they can contain file paths"
 )
 _RULES_MISSING = (
@@ -726,6 +735,18 @@ def build_parser(
         ),
     )
     parser.add_argument(
+        "--residual-review",
+        metavar="DIRECTORY",
+        help=(
+            "the QC pack of an earlier run of the same files, attested with "
+            "residual findings cleared by python -m "
+            "pymedphys._dicom.deidentify.attestation_command; "
+            "a file held for review only by findings that the pack showed for "
+            "a cleared instance of the same source file, at the same place in "
+            "values with the same SHA-256, is released; by default, none"
+        ),
+    )
+    parser.add_argument(
         "--safe-private-list",
         choices=[each.value for each in SafePrivateList],
         default=SafePrivateList.REVIEWED.value,
@@ -804,6 +825,7 @@ def build_transform(
     profiles: ProfileStore | None = None,
     face_review: FaceReview | None = None,
     readiness_review: ReadinessReview | None = None,
+    residual_review: ResidualReview | None = None,
     unvalidated_policy: bool = False,
 ) -> instance_transform.InstanceTransform:
     """Return the run's transform under ``preset``, or ``options``, and ``key``.
@@ -846,6 +868,9 @@ def build_transform(
         the same files, of the same QC pack as ``face_review``, from which
         the release report says whether the run is ready for release
         (D-017), which no other policy takes.
+    residual_review : ResidualReview, optional
+        The clearings of residual findings in an earlier run's attested QC
+        pack, which any policy takes (D-042).
     unvalidated_policy : bool, optional
         Whether a preset or option set that is not enabled is used, for a
         validation run such as the pilot command's, as
@@ -876,6 +901,7 @@ def build_transform(
         profiles=profiles,
         face_review=face_review,
         readiness_review=readiness_review,
+        residual_review=residual_review,
         unvalidated_policy=unvalidated_policy,
     )
 
@@ -1138,6 +1164,25 @@ def _redaction_review(pack: str | os.PathLike[str]) -> RedactionReview:
         raise TransformNotBuilt(_REVIEW_UNOPENED) from None
 
 
+def _residual_review(pack: str | os.PathLike[str]) -> ResidualReview:
+    """Return the clearings of residual findings in an attested QC pack (D-042).
+
+    Raises
+    ------
+    TransformNotBuilt
+        If the pack cannot be read, has not been attested, or its clearings
+        cannot be used, with :func:`read_residual_review`'s message, which
+        names no path and no value, or with none for an operating system's
+        error.
+    """
+    try:
+        return read_residual_review(pack)
+    except QcPackError as error:
+        raise TransformNotBuilt(_RESIDUAL_UNREAD.format(error=error)) from None
+    except OSError:
+        raise TransformNotBuilt(_RESIDUAL_UNOPENED) from None
+
+
 def _region_rules(
     path: str | os.PathLike[str], protected: Collection[Path]
 ) -> PixelRegionRules:
@@ -1198,6 +1243,7 @@ def transform_for(  # pylint: disable = too-many-arguments
     face_review: str | os.PathLike[str] | None = None,
     readiness_review: str | os.PathLike[str] | None = None,
     readiness_report: str | os.PathLike[str] | None = None,
+    residual_review: str | os.PathLike[str] | None = None,
     unvalidated_policy: bool = False,
 ) -> instance_transform.InstanceTransform:
     """Return :func:`build_transform`'s transform for a run's options.
@@ -1238,7 +1284,10 @@ def transform_for(  # pylint: disable = too-many-arguments
     assessment recorded beside the pack, after the face verdicts (D-017,
     D-053); the two are given together, and with no other policy, which is
     refused before anything is read. Without them, the release report of a
-    ``public-release`` run says that it is not ready for release.
+    ``public-release`` run says that it is not ready for release. Under any
+    policy, the clearings of residual findings in the attested QC pack in
+    ``residual_review``, of an earlier run of the same files, are read after
+    the readiness review (D-042).
 
     Raises
     ------
@@ -1249,8 +1298,9 @@ def transform_for(  # pylint: disable = too-many-arguments
         ``readiness_review`` and ``readiness_report`` is given, or they are
         given with a policy other than the ``public-release`` preset, or
         what ROI Names or descriptors are cleaned with, the redaction
-        review, the region rules, the face review, the readiness review, or
-        the text detector cannot be used, or the readiness review is of
+        review, the region rules, the face review, the readiness review, the
+        residual review, or the text detector cannot be used, or the
+        readiness review is of
         another QC pack than the face review, with a message that quotes
         nothing but the names of presets and options, or a reason that
         names no path or value.
@@ -1282,6 +1332,7 @@ def transform_for(  # pylint: disable = too-many-arguments
         if readiness_review is not None and readiness_report is not None
         else None
     )
+    residuals = None if residual_review is None else _residual_review(residual_review)
     cleaning = (
         _descriptor_cleaning(
             source=source,
@@ -1321,6 +1372,7 @@ def transform_for(  # pylint: disable = too-many-arguments
             profiles=profiles,
             face_review=review,
             readiness_review=readiness,
+            residual_review=residuals,
             unvalidated_policy=unvalidated_policy,
         )
     except policy.PolicyError as error:
@@ -1414,6 +1466,7 @@ def _built(
         face_review=arguments.face_review,
         readiness_review=arguments.readiness_review,
         readiness_report=arguments.readiness_report,
+        residual_review=arguments.residual_review,
     )
 
 

@@ -240,12 +240,14 @@ class VisualFeaturesReason(enum.Enum):
     # CT, so that only a verdict of its own, from its own previews, which no
     # reviewed QC pack gave it, could decide it
     UNDEFACED_IN_DEFACED_FRAME = "undefaced-in-defaced-frame"
-    # a CT slice of a series whose face block a target may reach, so that
-    # the series is not defaced
+    # a CT slice of a series whose face block a target may reach where the
+    # run cannot keep it within the series' slices, so that the series is
+    # not defaced (SeriesProblem.TARGET_IN_BLOCK)
     TARGET_IN_FACE_BLOCK = "target-in-face-block"
     # a CT slice of a series whose structure set draws an eye away from the
-    # globes that its face block was found from, so that the series is not
-    # defaced
+    # globes that its face block was found from, or an instance cleaned by
+    # that block: the series is defaced, and each is held until a face review
+    # confirms the block (SeriesProblem.EYES_DISAGREE, EyeCheck.DISAGREE)
     EYES_DISAGREE_WITH_ROIS = "eyes-disagree-with-rois"
     # an RT Dose with too much dose in a defaced series' face block to set
     # to zero there, which a reviewer chose to set to zero anyway, and whose

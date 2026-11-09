@@ -36,7 +36,9 @@ A pack holds, for one run:
   verdict to what the reviewer saw (D-046);
 - ``residual_findings``: each residual that the search of a written file
   found, by instance and place, with a contextual excerpt of the bytes
-  around it (D-027);
+  around it (D-027), and the SHA-256 of the value that holds it with the
+  match's offset in that value and its length, which bind a reviewer's
+  clearing of it to the bytes matched (D-042);
 - ``drops`` and ``not_searched``: each value dropped from the search, because
   the policy retains it or it equals a constant that the engine always
   writes, and each form not searched, by instance and place; the release
@@ -173,7 +175,7 @@ from .reviewed_roi_names import Outcome
 from .text_detection import TextBox
 
 # The format of the pack document. A change to its fields takes a new label.
-FORMAT = "pymedphys-deid-qc-pack/34"
+FORMAT = "pymedphys-deid-qc-pack/36"
 # The bytes of a written file shown on each side of a residual's offset.
 EXCERPT_BYTES = 48
 # The SHA-256 that face_review.contour_data_sha256 gives a file without
@@ -557,11 +559,23 @@ class ResidualEntry:
     finding : ~pymedphys._dicom.deidentify.residuals.Finding
     excerpt : Excerpt, optional
         The bytes around it, from :func:`excerpt`.
+    value_sha256 : str, optional
+        The SHA-256 of the value that holds it in the written file, from
+        :func:`~pymedphys._dicom.deidentify.residuals.reviewed_findings`;
+        ``None`` where it lies outside an element's value, or where its
+        match is longer than the excerpt shows.
+    value_offset, match_length : int, optional
+        Where its match starts in that value, from 0, and how many bytes it
+        spans; given exactly with ``value_sha256``. With it they give the
+        bytes matched, to which a reviewer's clearing is bound (D-042).
     """
 
     position: int
     finding: residuals.Finding
     excerpt: Excerpt | None = None
+    value_sha256: str | None = None
+    value_offset: int | None = None
+    match_length: int | None = None
 
     def __post_init__(self) -> None:
         _check_position("a residual", self.position)
@@ -572,6 +586,22 @@ class ResidualEntry:
         if self.excerpt is not None and not isinstance(self.excerpt, Excerpt):
             raise QcPackError(
                 f"the residual of instance {self.position} has a bad excerpt"
+            )
+        if self.value_sha256 is not None and not (
+            isinstance(self.value_sha256, str) and _SHA256.fullmatch(self.value_sha256)
+        ):
+            raise QcPackError(
+                f"the residual of instance {self.position} has a bad value SHA-256"
+            )
+        bound = (self.value_sha256, self.value_offset, self.match_length)
+        if bound != (None, None, None) and not (
+            self.value_sha256 is not None
+            and _is_index(self.value_offset)
+            and _is_count(self.match_length)
+        ):
+            raise QcPackError(
+                f"the residual of instance {self.position} needs its value's "
+                "SHA-256, its offset in the value, and its length together"
             )
 
 
@@ -1283,6 +1313,10 @@ class RedactionEntry:
 
 def _is_count(value: object) -> bool:
     return isinstance(value, int) and not isinstance(value, bool) and value >= 1
+
+
+def _is_index(value: object) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool) and value >= 0
 
 
 def _is_frame_regions(entry: object, frames: int) -> bool:
@@ -2474,6 +2508,9 @@ def _residual(entry: ResidualEntry) -> dict:
         "location": _location(finding.location),
         "offset": finding.offset,
         "excerpt": None,
+        "value_sha256": entry.value_sha256,
+        "value_offset": entry.value_offset,
+        "match_length": entry.match_length,
     }
     if entry.excerpt is not None:
         document["excerpt"] = dataclasses.asdict(entry.excerpt)
@@ -2526,10 +2563,24 @@ def entries_for_search(
     """
     if not isinstance(search, residuals.ResidualSearch):
         raise TypeError("search must be a ResidualSearch")
+    # A clearing is bound only to a match that the excerpt shows whole.
+    seen = [
+        None if each is None or each.length > 2 * EXCERPT_BYTES else each
+        for each in residuals.reviewed_findings(data, search.findings)
+    ]
     return (
         tuple(
-            ResidualEntry(position, finding, excerpt(data, finding))
-            for finding in search.findings
+            ResidualEntry(
+                position,
+                finding,
+                excerpt(data, finding),
+                *(
+                    (None, None, None)
+                    if each is None
+                    else (each.value_sha256, each.value_offset, each.length)
+                ),
+            )
+            for finding, each in zip(search.findings, seen, strict=True)
         ),
         tuple(NotSearchedEntry(position, omission) for omission in search.not_searched),
     )

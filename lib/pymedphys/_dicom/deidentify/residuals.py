@@ -143,6 +143,7 @@ import dataclasses
 import datetime
 import enum
 import functools
+import hashlib
 import mmap
 import re
 import string
@@ -347,6 +348,9 @@ class Finding:
         Where it was found in the written file.
     offset : int
         The byte at which that match starts.
+    length : int
+        How many bytes that match spans; 0 where not recorded. It is not
+        compared, so findings equal in every other field are equal.
     """
 
     source: ElementPath
@@ -355,6 +359,7 @@ class Finding:
     encoding: str
     location: Location
     offset: int
+    length: int = dataclasses.field(default=0, compare=False)
 
     def __str__(self) -> str:
         """Describe the finding by its source, form, encoding, and place."""
@@ -393,6 +398,123 @@ class NotSearched:
         return (
             f"{self.vr} from {self.source}: {form} not searched: {_words(self.reason)}"
         )
+
+
+@dataclasses.dataclass(frozen=True)
+class ReviewedFinding:
+    """A finding as a reviewer saw it in a QC pack, without its offset.
+
+    A reviewer who clears a finding (D-042) has judged the match that the
+    pack's excerpt shows, in the value that holds it in the written file.
+    Another run of the same source file writes other UIDs and dummy values,
+    so the finding can lie at another offset in the file; it is the same
+    finding where every field here is the same: the SHA-256 of the value
+    that holds it, and the match's offset in that value and its length,
+    which together give the very bytes matched. A match elsewhere in the
+    same value, such as one that another source value of the same attribute
+    makes earlier in it, which the search then reports in its place, is
+    another finding, which the excerpt may not have shown.
+
+    Attributes
+    ----------
+    source : str
+        The source attribute's path, as :class:`~.file_layout.ElementPath`
+        writes it.
+    kind, form : str
+        The :class:`ValueKind` and :class:`Form` values.
+    encoding : str
+    region : str
+        The :class:`~.file_layout.Region` value of where it was found.
+    element : str, optional
+        The path of the element that holds it, as written.
+    vr : str, optional
+    item : int, optional
+        As :class:`~.file_layout.Location` gives them.
+    value_sha256 : str
+        The SHA-256, in lower-case hexadecimal, of the bytes of the value
+        that holds it, from the end of the element's header to the end of
+        its value.
+    value_offset : int
+        The byte of that value at which the match starts, from 0.
+    length : int
+        How many bytes the match spans, at least 1.
+    """
+
+    source: str
+    kind: str
+    form: str
+    encoding: str
+    region: str
+    element: str | None
+    vr: str | None
+    item: int | None
+    value_sha256: str
+    value_offset: int
+    length: int
+
+
+def reviewed_findings(
+    data: bytes | bytearray | memoryview, findings: Iterable[Finding]
+) -> tuple[ReviewedFinding | None, ...]:
+    """Return each finding as a reviewer sees it, or ``None`` where it cannot be.
+
+    A finding outside an element's value, as in the preamble, a header, or
+    a delimiter, has no value to bind a review to, and gives ``None``, as
+    does one whose match runs past the end of its value, or whose length
+    the search did not record.
+
+    Parameters
+    ----------
+    data : bytes, bytearray, or memoryview
+        The written file that was searched.
+    findings : iterable of Finding
+        Its findings, as :func:`find_residuals` gave them.
+
+    Returns
+    -------
+    tuple of ReviewedFinding or None
+        In the order of ``findings``.
+    """
+    findings = tuple(findings)
+    if not findings:
+        return ()
+    layout = read_file_layout(data)
+    with memoryview(data) as view, view.cast("B") as octets:
+        return tuple(_reviewed(octets, layout, finding) for finding in findings)
+
+
+def _reviewed(
+    octets: memoryview, layout: FileLayout, finding: Finding
+) -> ReviewedFinding | None:
+    if not 0 <= finding.offset < layout.size:
+        return None
+    index = bisect.bisect_right(
+        layout.spans, finding.offset, key=lambda span: span.start
+    )
+    span = layout.spans[index - 1]
+    location = finding.location
+    if (
+        span.value_start is None
+        or finding.offset < span.value_start
+        or finding.length < 1
+        or finding.offset + finding.length > span.end
+        or span.location != location
+        or location.element is None
+    ):
+        return None
+    return ReviewedFinding(
+        source=str(finding.source),
+        kind=finding.kind.value,
+        form=finding.form.value,
+        encoding=finding.encoding,
+        region=location.region.value,
+        element=str(location.element),
+        vr=location.vr,
+        item=location.item,
+        value_sha256=hashlib.sha256(octets[span.value_start : span.end]).hexdigest(),
+        value_offset=finding.offset - span.value_start,
+        length=finding.length,
+    )
 
 
 class UnsearchedReason(enum.Enum):
@@ -1149,7 +1271,7 @@ def _judge(  # pylint: disable = too-many-arguments, too-many-positional-argumen
     key = (source, kind, span.location)
     best = found.get(key)
     if best is None or (_ORDER[form], offset) < (_ORDER[best.form], best.offset):
-        found[key] = Finding(*needle.origin, span.location, offset)
+        found[key] = Finding(*needle.origin, span.location, offset, len(needle.folded))
     return span.end
 
 

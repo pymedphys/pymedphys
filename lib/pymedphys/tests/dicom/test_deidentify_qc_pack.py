@@ -581,7 +581,7 @@ def test_a_search_gives_entries_with_excerpts_and_omissions():
 @pytest.mark.deid_requirement("MIDI-BP-17")
 def test_the_document_holds_every_section():
     document = json.loads(qc_pack.to_json(_full_pack()))
-    assert document["format"] == qc_pack.FORMAT == "pymedphys-deid-qc-pack/34"
+    assert document["format"] == qc_pack.FORMAT == "pymedphys-deid-qc-pack/36"
     assert document["reference"] == REFERENCE
     assert document["reviewed_lists"] == {"salt": "5a" * 32, "sha256": "d" * 64}
     assert document["instances"] == [
@@ -630,6 +630,9 @@ def test_the_document_holds_every_section():
             "after": "Zebedee today",
             "encoding": "utf-8",
         },
+        "value_sha256": None,
+        "value_offset": None,
+        "match_length": None,
     }
     assert document["drops"] == [
         {"position": 0, "source": "(0008,1030)", "reason": "retained"}
