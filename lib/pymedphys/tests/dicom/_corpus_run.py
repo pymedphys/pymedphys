@@ -14,11 +14,13 @@
 
 """A policy run over the synthetic corpus, and what the run must do.
 
-The end-to-end tests (``test_deidentify_corpus_end_to_end.py``) and the
-independent validators' tests (``test_deidentify_dicom_validation_corpus.py``)
-each run the engine over the synthetic corpus once for each
-:class:`CorpusRun` in :data:`~pymedphys.tests.dicom.corpus_runs.CORPUS_RUNS`,
-in a module-scoped fixture. A run is a policy, either a preset or a custom
+The end-to-end tests (``test_deidentify_corpus_end_to_end.py``, and
+``test_deidentify_corpus_end_to_end_p_z.py``, which runs the policies whose
+names begin with a letter from p to z) and the independent validators' tests
+(``test_deidentify_dicom_validation_corpus.py``) each run the engine over the
+synthetic corpus once for each :class:`CorpusRun` in
+:data:`~pymedphys.tests.dicom.corpus_runs.CORPUS_RUNS`, in a module-scoped
+fixture. A run is a policy, either a preset or a custom
 option set, with its inputs and what it must do: which instances it
 withholds and why, which planted markers it keeps, which CID 7050 codes its
 released instances claim, and the names its released structure set gives

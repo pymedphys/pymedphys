@@ -43,6 +43,8 @@ PART_REPORTS = {
     "corpus-runs": '<testsuites><testsuite name="pytest">'
     '<testcase classname="a" name="one" /><testcase classname="a" name="two" />'
     "</testsuite></testsuites>",
+    "corpus-end-to-end-p-z": '<testsuite name="pytest">'
+    '<testcase classname="f" name="one" /></testsuite>',
     "deidentify-a-o": '<testsuite name="pytest">'
     '<testcase classname="e" name="one" /></testsuite>',
     "others": '<testsuite name="pytest"><testcase classname="b" name="one">'
@@ -268,7 +270,7 @@ class CoverageEvidenceTests(CoveragePlanMixin, unittest.TestCase):
         self.assertEqual(path, self.results / f"{coverage.BASELINE_ARTIFACT}.xml")
         root = coverage.ET.parse(path).getroot()
         self.assertEqual(root.tag, "testsuites")
-        self.assertEqual(len(root.findall("testsuite")), 5)
+        self.assertEqual(len(root.findall("testsuite")), 6)
         self.assertEqual(
             [
                 (case.get("classname"), case.get("name"))
@@ -279,6 +281,7 @@ class CoverageEvidenceTests(CoveragePlanMixin, unittest.TestCase):
                 ("d", "one"),
                 ("a", "one"),
                 ("a", "two"),
+                ("f", "one"),
                 ("e", "one"),
                 ("b", "one"),
                 ("a", "three"),
@@ -298,7 +301,7 @@ class CoverageEvidenceTests(CoveragePlanMixin, unittest.TestCase):
         path = coverage.combine_reports(self.results, "macos-latest", "3.12")
         self.assertEqual(path, self.results / "junit-macos-latest-3.12.xml")
         self.assertEqual(
-            len(list(coverage.ET.parse(path).getroot().iter("testcase"))), 7
+            len(list(coverage.ET.parse(path).getroot().iter("testcase"))), 8
         )
         self.assertFalse((self.results / f"{coverage.BASELINE_ARTIFACT}.xml").exists())
 
@@ -340,6 +343,13 @@ class CoverageEvidenceTests(CoveragePlanMixin, unittest.TestCase):
         self.report(
             name="junit-py3.14-ct-defacing-reviews-ubuntu-latest",
             text=PART_REPORTS["ct-defacing-reviews"],
+        )
+        with self.assertRaises(FileNotFoundError):
+            coverage.combine_reports(self.results)
+        self.assertFalse(output.exists())
+        self.report(
+            name="junit-py3.14-corpus-end-to-end-p-z-ubuntu-latest",
+            text=PART_REPORTS["corpus-end-to-end-p-z"],
         )
         with self.assertRaises(FileNotFoundError):
             coverage.combine_reports(self.results)
@@ -394,21 +404,21 @@ class CoverageEvidenceTests(CoveragePlanMixin, unittest.TestCase):
             coverage.part_versions(LOCK, COMMIT, self.results)
 
     def test_parts_must_have_run_python_3_14(self):
-        self.parts("3.13.5", "3.13.5", "3.13.5", "3.13.5", "3.13.5")
+        self.parts("3.13.5", "3.13.5", "3.13.5", "3.13.5", "3.13.5", "3.13.5")
         with self.assertRaises(ValueError):
             coverage.part_versions(LOCK, COMMIT, self.results)
 
     def test_parts_may_run_different_python_3_14_releases(self):
         # Runner images can carry different 3.14 patch releases during a
         # rollout, and each part runs on its own runner.
-        self.parts("3.14.1", "3.14.0", "3.14.1", "3.14.0", "3.14.1")
+        self.parts("3.14.1", "3.14.0", "3.14.1", "3.14.0", "3.14.1", "3.14.0")
         actual, pythons = coverage.part_versions(LOCK, COMMIT, self.results)
         self.assertEqual(
             pythons,
             dict(
                 zip(
                     coverage.PARTS,
-                    ("3.14.1", "3.14.0", "3.14.1", "3.14.0", "3.14.1"),
+                    ("3.14.1", "3.14.0", "3.14.1", "3.14.0", "3.14.1", "3.14.0"),
                     strict=True,
                 )
             ),
@@ -419,7 +429,7 @@ class CoverageEvidenceTests(CoveragePlanMixin, unittest.TestCase):
         self.assertEqual(metadata["part_python_versions"], pythons)
 
     def test_the_parts_pythons_are_listed_in_release_order(self):
-        self.parts("3.14.10", "3.14.9", "3.14.10", "3.14.9", "3.14.10")
+        self.parts("3.14.10", "3.14.9", "3.14.10", "3.14.9", "3.14.10", "3.14.9")
         actual, pythons = coverage.part_versions(LOCK, COMMIT, self.results)
         self.report(text=PASSED)
         metadata = coverage.record_baseline(LOCK, actual, COMMIT, self.results, pythons)

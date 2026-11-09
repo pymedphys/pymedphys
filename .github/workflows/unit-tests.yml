@@ -28,13 +28,15 @@ env:
   MKL_NUM_THREADS: '1'
   VECLIB_MAXIMUM_THREADS: '1'
   # Every cell of the unit-test matrix and the run at the dependency floors
-  # run in five parts on five runners, and the dicom extra's run alone in the
-  # first four and others, since on a slow runner the whole suite, or these
+  # run in six parts on six runners, and the dicom extra's run alone in all
+  # but deidentify-a-o, since on a slow runner the whole suite, or these
   # modules together, can reach the time limit. These modules run the
   # synthetic collection through the engine and take about half the suite's
-  # time: the ct-defacing part runs CT_DEFACING_RUN_TEST, the
+  # time: the ct-defacing part runs CT_DEFACING_RUN_TEST and the
   # ct-defacing-reviews part runs CT_DEFACING_REVIEW_TEST, the two halves of
-  # the CT defacing runs, and the corpus-runs part runs the others. The
+  # the CT defacing runs; the corpus-end-to-end-p-z part runs
+  # CORPUS_END_TO_END_P_Z_TEST, the policies' end-to-end runs from p to z;
+  # and the corpus-runs part runs the others, with the runs from a to o. The
   # deidentify-a-o part runs the other test_deidentify_ modules whose names go
   # on with a letter from a to o, about half of the remaining time, and the
   # others part ignores all of these, so it runs every other test, including
@@ -43,11 +45,13 @@ env:
     lib/pymedphys/tests/dicom/test_deidentify_ct_defacing_run.py
     lib/pymedphys/tests/dicom/test_deidentify_ct_defacing_review_runs.py
     lib/pymedphys/tests/dicom/test_deidentify_corpus_end_to_end.py
+    lib/pymedphys/tests/dicom/test_deidentify_corpus_end_to_end_p_z.py
     lib/pymedphys/tests/dicom/test_deidentify_conformance.py
     lib/pymedphys/tests/dicom/test_deidentify_project_key_runs.py
     lib/pymedphys/tests/dicom/test_deidentify_redaction_review.py
   CT_DEFACING_RUN_TEST: lib/pymedphys/tests/dicom/test_deidentify_ct_defacing_run.py
   CT_DEFACING_REVIEW_TEST: lib/pymedphys/tests/dicom/test_deidentify_ct_defacing_review_runs.py
+  CORPUS_END_TO_END_P_Z_TEST: lib/pymedphys/tests/dicom/test_deidentify_corpus_end_to_end_p_z.py
 
 jobs:
   test:
@@ -59,9 +63,9 @@ jobs:
       matrix:
         os: ${{ inputs.quick && fromJSON('["ubuntu-latest"]') || fromJSON('["ubuntu-latest", "windows-latest", "macos-latest"]') }}
         python-version: ${{ inputs.quick && fromJSON('["3.14"]') || fromJSON(inputs.python-matrix) }}
-        # Each cell runs in five parts, which the combined-report job
+        # Each cell runs in six parts, which the combined-report job
         # combines.
-        part: [ct-defacing, ct-defacing-reviews, corpus-runs, deidentify-a-o, others]
+        part: [ct-defacing, ct-defacing-reviews, corpus-runs, corpus-end-to-end-p-z, deidentify-a-o, others]
     runs-on: ${{ matrix.os }}
     env:
       # The parts' reports have names that the release's junit-*-latest-*
@@ -76,7 +80,7 @@ jobs:
 
       - uses: ./.github/actions/setup-project
         with:
-          # The three corpus parts and deidentify-a-o download no data, so
+          # The four corpus parts and deidentify-a-o download no data, so
           # they neither restore nor save the data cache, which the parts
           # would otherwise share.
           cache-data: ${{ matrix.part == 'others' }}
@@ -95,7 +99,8 @@ jobs:
           set -euxo pipefail
           mkdir -p test-results
           # Each part runs its share of the suite: each half of CT defacing
-          # runs alone, corpus-runs runs the other CORPUS_RUN_TESTS modules,
+          # and the second half of the policies' end-to-end runs run alone,
+          # corpus-runs runs the other CORPUS_RUN_TESTS modules,
           # deidentify-a-o runs the other de-identification modules whose
           # names go on with a letter from a to o, and others ignores the
           # modules of every other part. Missing paths fail every part. Expand
@@ -109,14 +114,16 @@ jobs:
                 exit 1
               fi
             done
-            for alone in "${CT_DEFACING_RUN_TEST}" "${CT_DEFACING_REVIEW_TEST}"; do
-              if [[ " ${listed[*]} " != *" ${alone} "* ]]; then
-                echo "::error::Each CT defacing part's module must belong to CORPUS_RUN_TESTS."
+            # The listed modules that each run alone, in a part of their own.
+            alone=("${CT_DEFACING_RUN_TEST}" "${CT_DEFACING_REVIEW_TEST}" "${CORPUS_END_TO_END_P_Z_TEST}")
+            for module in "${alone[@]}"; do
+              if [[ " ${listed[*]} " != *" ${module} "* ]]; then
+                echo "::error::Each module that runs alone must belong to CORPUS_RUN_TESTS."
                 exit 1
               fi
             done
-            if [[ "${CT_DEFACING_RUN_TEST}" == "${CT_DEFACING_REVIEW_TEST}" ]]; then
-              echo "::error::The two CT defacing parts must run different modules."
+            if [[ "$(printf '%s\n' "${alone[@]}" | sort -u | wc -l)" -ne ${#alone[@]} ]]; then
+              echo "::error::The parts that run a module alone must run different modules."
               exit 1
             fi
             # One glob, read by both parts that use it, so deidentify-a-o
@@ -137,8 +144,7 @@ jobs:
               ct-defacing-reviews) selection=("${CT_DEFACING_REVIEW_TEST}") ;;
               corpus-runs)
                 for path in "${listed[@]}"; do
-                  if [[ "${path}" != "${CT_DEFACING_RUN_TEST}" &&
-                    "${path}" != "${CT_DEFACING_REVIEW_TEST}" ]]; then
+                  if [[ " ${alone[*]} " != *" ${path} "* ]]; then
                     selection+=("${path}")
                   fi
                 done
@@ -147,6 +153,7 @@ jobs:
                   exit 1
                 fi
                 ;;
+              corpus-end-to-end-p-z) selection=("${CORPUS_END_TO_END_P_Z_TEST}") ;;
               deidentify-a-o) selection=("${first_half[@]}") ;;
               others)
                 selection=("${listed[@]/#/--ignore=${GITHUB_WORKSPACE}/}")
@@ -184,7 +191,7 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-  # Combine the five parts of each cell into that cell's one report, such as
+  # Combine the six parts of each cell into that cell's one report, such as
   # junit-ubuntu-latest-3.14: the release's requirements matrix reads each as
   # that environment, and the pydicom-versions job reuses the Ubuntu/Python
   # 3.14 cell's when the locked pydicom is the version it would test. It runs
@@ -251,10 +258,10 @@ jobs:
   # Install one extra alone, with only the test runner, and run that feature's
   # tests: a missing package fails them. Tests of other features that sit in
   # the same folders skip themselves when their packages are missing. The
-  # dicom extra's tests run in four parts on four runners, as
+  # dicom extra's tests run in five parts on five runners, as
   # CORPUS_RUN_TESTS describes, without deidentify-a-o, since its others part
-  # holds only tests/dicom and stays well within the limit; the other extras'
-  # tests take about a minute and run whole.
+  # holds only tests/dicom; the other extras' tests take about a minute and
+  # run whole.
   narrow-extras:
     name: Extra ${{ matrix.extra }} alone${{ matrix.part && format(' ({0})', matrix.part) || '' }}
     timeout-minutes: 30
@@ -276,6 +283,10 @@ jobs:
             paths: tests/dicom
           - extra: dicom
             part: corpus-runs
+            marks: not slow
+            paths: tests/dicom
+          - extra: dicom
+            part: corpus-end-to-end-p-z
             marks: not slow
             paths: tests/dicom
           - extra: dicom
@@ -302,8 +313,8 @@ jobs:
 
       - uses: ./.github/actions/setup-project
         with:
-          # The three corpus parts download no data, as in the test job.
-          cache-data: ${{ matrix.part != 'ct-defacing' && matrix.part != 'ct-defacing-reviews' && matrix.part != 'corpus-runs' }}
+          # The four corpus parts download no data, as in the test job.
+          cache-data: ${{ matrix.part != 'ct-defacing' && matrix.part != 'ct-defacing-reviews' && matrix.part != 'corpus-runs' && matrix.part != 'corpus-end-to-end-p-z' }}
           extras: ${{ matrix.extra }}
           groups: 'test-runner'
 
@@ -323,7 +334,8 @@ jobs:
           mkdir -p test-results
           read -ra selection <<< "${TEST_PATHS}"
           # A part runs its share of the feature's tests, as in the test job:
-          # each half of CT defacing runs alone, corpus-runs runs the other
+          # each half of CT defacing and the second half of the policies'
+          # end-to-end runs run alone, corpus-runs runs the other
           # CORPUS_RUN_TESTS modules in place of the feature's paths, and
           # others ignores every listed module. Missing paths fail every part.
           if [[ -n "${PART}" ]]; then
@@ -334,14 +346,16 @@ jobs:
                 exit 1
               fi
             done
-            for alone in "${CT_DEFACING_RUN_TEST}" "${CT_DEFACING_REVIEW_TEST}"; do
-              if [[ " ${listed[*]} " != *" ${alone} "* ]]; then
-                echo "::error::Each CT defacing part's module must belong to CORPUS_RUN_TESTS."
+            # The listed modules that each run alone, in a part of their own.
+            alone=("${CT_DEFACING_RUN_TEST}" "${CT_DEFACING_REVIEW_TEST}" "${CORPUS_END_TO_END_P_Z_TEST}")
+            for module in "${alone[@]}"; do
+              if [[ " ${listed[*]} " != *" ${module} "* ]]; then
+                echo "::error::Each module that runs alone must belong to CORPUS_RUN_TESTS."
                 exit 1
               fi
             done
-            if [[ "${CT_DEFACING_RUN_TEST}" == "${CT_DEFACING_REVIEW_TEST}" ]]; then
-              echo "::error::The two CT defacing parts must run different modules."
+            if [[ "$(printf '%s\n' "${alone[@]}" | sort -u | wc -l)" -ne ${#alone[@]} ]]; then
+              echo "::error::The parts that run a module alone must run different modules."
               exit 1
             fi
             case "${PART}" in
@@ -350,8 +364,7 @@ jobs:
               corpus-runs)
                 selection=()
                 for path in "${listed[@]}"; do
-                  if [[ "${path}" != "${CT_DEFACING_RUN_TEST}" &&
-                    "${path}" != "${CT_DEFACING_REVIEW_TEST}" ]]; then
+                  if [[ " ${alone[*]} " != *" ${path} "* ]]; then
                     selection+=("${path}")
                   fi
                 done
@@ -360,6 +373,7 @@ jobs:
                   exit 1
                 fi
                 ;;
+              corpus-end-to-end-p-z) selection=("${CORPUS_END_TO_END_P_Z_TEST}") ;;
               others) selection+=("${listed[@]/#/--ignore=${GITHUB_WORKSPACE}/}") ;;
               *) echo "::error::Unknown part ${PART}."; exit 1 ;;
             esac
@@ -381,7 +395,8 @@ jobs:
   # The declared minimum versions of NumPy (2.0) and pandas (2.2.2) are
   # checked together, whichever matrix runs. Python 3.12 is the only supported
   # version with wheels for both: neither has any for Python 3.13 or later.
-  # The two halves of CT defacing, the remaining corpus modules, and the
+  # The two halves of CT defacing, the second half of the policies'
+  # end-to-end runs, the remaining corpus modules, and the
   # de-identification modules from a to o run separately, alongside all other
   # tests, as in the test job, to keep each part within the same 30-minute
   # limit.
@@ -391,7 +406,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        part: [ct-defacing, ct-defacing-reviews, corpus-runs, deidentify-a-o, others]
+        part: [ct-defacing, ct-defacing-reviews, corpus-runs, corpus-end-to-end-p-z, deidentify-a-o, others]
     runs-on: ubuntu-latest
     env:
       # PyMedPhys's extras to install, whose requirements the check below counts.
@@ -476,7 +491,8 @@ jobs:
           sys.exit(bool(unmet))
           EOF
           # Each part runs its share of the suite: each half of CT defacing
-          # runs alone, corpus-runs runs the other CORPUS_RUN_TESTS modules,
+          # and the second half of the policies' end-to-end runs run alone,
+          # corpus-runs runs the other CORPUS_RUN_TESTS modules,
           # deidentify-a-o runs the other de-identification modules whose
           # names go on with a letter from a to o, and others ignores the
           # modules of every other part. Missing paths fail every part. Expand
@@ -490,14 +506,16 @@ jobs:
                 exit 1
               fi
             done
-            for alone in "${CT_DEFACING_RUN_TEST}" "${CT_DEFACING_REVIEW_TEST}"; do
-              if [[ " ${listed[*]} " != *" ${alone} "* ]]; then
-                echo "::error::Each CT defacing part's module must belong to CORPUS_RUN_TESTS."
+            # The listed modules that each run alone, in a part of their own.
+            alone=("${CT_DEFACING_RUN_TEST}" "${CT_DEFACING_REVIEW_TEST}" "${CORPUS_END_TO_END_P_Z_TEST}")
+            for module in "${alone[@]}"; do
+              if [[ " ${listed[*]} " != *" ${module} "* ]]; then
+                echo "::error::Each module that runs alone must belong to CORPUS_RUN_TESTS."
                 exit 1
               fi
             done
-            if [[ "${CT_DEFACING_RUN_TEST}" == "${CT_DEFACING_REVIEW_TEST}" ]]; then
-              echo "::error::The two CT defacing parts must run different modules."
+            if [[ "$(printf '%s\n' "${alone[@]}" | sort -u | wc -l)" -ne ${#alone[@]} ]]; then
+              echo "::error::The parts that run a module alone must run different modules."
               exit 1
             fi
             # One glob, read by both parts that use it, so deidentify-a-o
@@ -518,8 +536,7 @@ jobs:
               ct-defacing-reviews) selection=("${CT_DEFACING_REVIEW_TEST}") ;;
               corpus-runs)
                 for path in "${listed[@]}"; do
-                  if [[ "${path}" != "${CT_DEFACING_RUN_TEST}" &&
-                    "${path}" != "${CT_DEFACING_REVIEW_TEST}" ]]; then
+                  if [[ " ${alone[*]} " != *" ${path} "* ]]; then
                     selection+=("${path}")
                   fi
                 done
@@ -528,6 +545,7 @@ jobs:
                   exit 1
                 fi
                 ;;
+              corpus-end-to-end-p-z) selection=("${CORPUS_END_TO_END_P_Z_TEST}") ;;
               deidentify-a-o) selection=("${first_half[@]}") ;;
               others)
                 selection=("${listed[@]/#/--ignore=${GITHUB_WORKSPACE}/}")

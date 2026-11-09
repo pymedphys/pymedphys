@@ -48,7 +48,10 @@ neither GDCM nor pylibjpeg-openjpeg; the engine then sequesters the images as
 """
 
 # Each policy's run and its checks share the corpus and its helpers, so they
-# stay in one module.
+# stay in one module. This module runs the policies whose names begin with a
+# letter from a to o; test_deidentify_corpus_end_to_end_p_z.py runs the
+# others with the same checks, and CI runs it in a part of its own, so that
+# neither part reaches the time limit.
 # pylint: disable = too-many-lines
 
 import dataclasses
@@ -169,6 +172,18 @@ UNREVIEWED = CorpusRun(
 )
 
 
+# The policies' runs take most of this module's time, so CI shares them
+# between two parts by the first letter of each policy's name. The letters
+# are listed, as in the workflow's glob of de-identification modules.
+FIRST_LETTERS = frozenset("abcdefghijklmno")
+FIRST_HALF = tuple(
+    corpus_run for corpus_run in CORPUS_RUNS if corpus_run.name[0] in FIRST_LETTERS
+)
+SECOND_HALF = tuple(
+    corpus_run for corpus_run in CORPUS_RUNS if corpus_run.name[0] not in FIRST_LETTERS
+)
+
+
 @pytest.fixture(name="published", scope="module")
 def fixture_published():
     with runs.published_vocabulary():
@@ -178,7 +193,7 @@ def fixture_published():
 @pytest.fixture(
     name="policy_run",
     scope="module",
-    params=[corpus_run.param() for corpus_run in CORPUS_RUNS],
+    params=[corpus_run.param() for corpus_run in FIRST_HALF],
 )
 def fixture_policy_run(request, published):  # pylint: disable = unused-argument
     yield _run(request.param)
@@ -1563,6 +1578,18 @@ def test_each_option_of_table_e1_1_has_its_code_and_temporal_value():
     assert runs.temporal_value(()) == "REMOVED"
     assert runs.temporal_value((runs.MODIFIED_DATES,)) == "MODIFIED"
     assert runs.temporal_value((runs.FULL_DATES,)) == "UNMODIFIED"
+
+
+def test_each_run_is_in_one_half():
+    """Every policy's run is checked in this module or in the second half's."""
+    first = [corpus_run.name for corpus_run in FIRST_HALF]
+    second = [corpus_run.name for corpus_run in SECOND_HALF]
+
+    assert first
+    assert second
+    assert sorted(first + second) == sorted(each.name for each in CORPUS_RUNS)
+    assert all(name[0] in FIRST_LETTERS for name in first)
+    assert not any(name[0] in FIRST_LETTERS for name in second)
 
 
 def test_each_run_names_a_policy_once():

@@ -29,19 +29,28 @@ import pydicom_coverage
 from select_checks import OUTPUTS, select_checks
 
 WORKFLOWS = Path(__file__).resolve().parents[1] / "workflows"
-# The lines that split the listed corpus modules between the ct-defacing,
-# ct-defacing-reviews, and corpus-runs parts, in every job that runs in parts.
-CT_DEFACING_SELECTION = (
-    '            for alone in "${CT_DEFACING_RUN_TEST}" "${CT_DEFACING_REVIEW_TEST}"; do\n',
-    '              if [[ " ${listed[*]} " != *" ${alone} "* ]]; then\n',
-    '            if [[ "${CT_DEFACING_RUN_TEST}" == "${CT_DEFACING_REVIEW_TEST}" ]]; then\n',
+# The lines that give each listed corpus module that runs alone a part of its
+# own, the two halves of the CT defacing runs and the second half of the
+# policies' end-to-end runs, and the other listed modules to the corpus-runs
+# part, in every job that runs in parts.
+ALONE_SELECTION = (
+    "            alone=("
+    '"${CT_DEFACING_RUN_TEST}" "${CT_DEFACING_REVIEW_TEST}" '
+    '"${CORPUS_END_TO_END_P_Z_TEST}")\n',
+    '            for module in "${alone[@]}"; do\n',
+    '              if [[ " ${listed[*]} " != *" ${module} "* ]]; then\n',
+    '                echo "::error::Each module that runs alone must belong to '
+    'CORPUS_RUN_TESTS."\n',
+    '            if [[ "$(printf \'%s\\n\' "${alone[@]}" | sort -u | wc -l)" '
+    "-ne ${#alone[@]} ]]; then\n",
     '              ct-defacing) selection=("${CT_DEFACING_RUN_TEST}") ;;\n',
     '              ct-defacing-reviews) selection=("${CT_DEFACING_REVIEW_TEST}") ;;\n',
-    '                  if [[ "${path}" != "${CT_DEFACING_RUN_TEST}" &&\n',
-    '                    "${path}" != "${CT_DEFACING_REVIEW_TEST}" ]]; then\n',
+    '                  if [[ " ${alone[*]} " != *" ${path} "* ]]; then\n',
     '                    selection+=("${path}")\n',
     "                if [[ ${#selection[@]} -eq 0 ]]; then\n",
     '                  echo "::error::The remaining corpus part must not be empty."\n',
+    "              corpus-end-to-end-p-z) "
+    'selection=("${CORPUS_END_TO_END_P_Z_TEST}") ;;\n',
 )
 # The lines that give the de-identification modules from a to o, less the
 # listed corpus modules, to the deidentify-a-o part and ignore them in others,
@@ -428,10 +437,12 @@ class WorkflowContractTests(unittest.TestCase):
             "junit-extra-dicom-ct-defacing",
             "junit-extra-dicom-ct-defacing-reviews",
             "junit-extra-dicom-corpus-runs",
+            "junit-extra-dicom-corpus-end-to-end-p-z",
             "junit-extra-dicom-others",
             "junit-dependency-floors-ct-defacing",
             "junit-dependency-floors-ct-defacing-reviews",
             "junit-dependency-floors-corpus-runs",
+            "junit-dependency-floors-corpus-end-to-end-p-z",
             "junit-dependency-floors-deidentify-a-o",
             "junit-dependency-floors-others",
             *(
@@ -505,18 +516,19 @@ class WorkflowContractTests(unittest.TestCase):
         floors, test = workflow["dependency-floors"], workflow["test"]
         self.assertIn(f"        part: [{', '.join(pydicom_coverage.PARTS)}]\n", floors)
         self.assertIn("    timeout-minutes: 30\n", floors)
-        # Every split job reads the two halves of the CT defacing runs that
-        # the workflow names, two different listed modules, each run alone.
-        halves = [
-            re.search(rf"(?m)^  {key}: (\S+)$", text)[1]
-            for key in ("CT_DEFACING_RUN_TEST", "CT_DEFACING_REVIEW_TEST")
-        ]
-        self.assertEqual(len(set(halves)), 2)
-        for key, half in zip(
-            ("CT_DEFACING_RUN_TEST", "CT_DEFACING_REVIEW_TEST"), halves, strict=True
-        ):
-            with self.subTest(half=half):
-                self.assertEqual(listed.split().count(half), 1)
+        # Every split job reads the modules that the workflow names to run
+        # alone, the two halves of the CT defacing runs and the second half of
+        # the policies' end-to-end runs: three different listed modules.
+        keys = (
+            "CT_DEFACING_RUN_TEST",
+            "CT_DEFACING_REVIEW_TEST",
+            "CORPUS_END_TO_END_P_Z_TEST",
+        )
+        alone = [re.search(rf"(?m)^  {key}: (\S+)$", text)[1] for key in keys]
+        self.assertEqual(len(set(alone)), len(keys))
+        for key, module in zip(keys, alone, strict=True):
+            with self.subTest(module=module):
+                self.assertEqual(listed.split().count(module), 1)
                 self.assertEqual(text.count(f"{key}: "), 1)
         # Every cell runs in one job for each part, which the combined
         # report joins; no cell runs whole.
@@ -535,7 +547,8 @@ class WorkflowContractTests(unittest.TestCase):
             with self.subTest(key=key):
                 line = re.search(rf"(?m)^        {key}: .+\n", test)[0]
                 self.assertIn(line, combined)
-        # In both jobs, CT defacing runs alone, the other listed modules run
+        # In both jobs, each half of CT defacing and the second half of the
+        # policies' end-to-end runs run alone, the other listed modules run
         # together, and deidentify-a-o runs the de-identification modules from
         # a to o that are not listed. Both others parts ignore every module of
         # the other parts; missing paths fail every part before pytest starts.
@@ -547,7 +560,7 @@ class WorkflowContractTests(unittest.TestCase):
         ]
         for line in (
             '            if [[ ! -f "${path}" ]]; then\n',
-            *CT_DEFACING_SELECTION,
+            *ALONE_SELECTION,
             *DEIDENTIFY_SELECTION,
         ):
             with self.subTest(line=line):
@@ -583,13 +596,14 @@ class WorkflowContractTests(unittest.TestCase):
         self.assertNotIn("deidentify-a-o", narrow)
         for line in (
             '            if [[ ! -f "${path}" ]]; then\n',
-            *CT_DEFACING_SELECTION,
+            *ALONE_SELECTION,
             "                selection=()\n",
             "              others) selection+="
             '("${listed[@]/#/--ignore=${GITHUB_WORKSPACE}/}") ;;\n',
             "          cache-data: ${{ matrix.part != 'ct-defacing' && "
             "matrix.part != 'ct-defacing-reviews' && "
-            "matrix.part != 'corpus-runs' }}\n",
+            "matrix.part != 'corpus-runs' && "
+            "matrix.part != 'corpus-end-to-end-p-z' }}\n",
         ):
             with self.subTest(narrow_line=line):
                 self.assertIn(line, narrow)
