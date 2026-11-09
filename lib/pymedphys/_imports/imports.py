@@ -49,6 +49,8 @@ import pydicom.tag
 import pydicom.uid
 import pymssql
 import pynetdicom
+import pypdfium2
+import pypdfium2.raw
 import pynetdicom.sop_class
 import pynetdicom.status
 import pytest

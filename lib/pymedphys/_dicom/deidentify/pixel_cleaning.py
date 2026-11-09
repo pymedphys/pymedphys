@@ -500,7 +500,7 @@ def black_out(
         rows, columns = frame.shape[:2]
         if any(box.bottom > rows or box.right > columns for box in ruled):
             raise PixelDataRefused(TransformReason.REDACTION_MISMATCH)
-        return (*_checked(find(frame), rows, columns), *ruled)
+        return (*clipped_boxes(find(frame), rows, columns), *ruled)
 
     redaction = _blacked_out(source, dataset, found, defacer, overlays=overlays)
     if redaction is None or not ruled:
@@ -1290,7 +1290,7 @@ def _given(boxes: Sequence[TextBox]) -> Sequence[TextBox]:
     return boxes
 
 
-def _checked(boxes: Sequence[TextBox], rows: int, columns: int) -> list[TextBox]:
+def clipped_boxes(boxes: Sequence[TextBox], rows: int, columns: int) -> list[TextBox]:
     """Return the finder's boxes, each clipped to the frame.
 
     Raises

@@ -192,6 +192,7 @@ the same pixels always give the same file with the same zlib.
 from __future__ import annotations
 
 import dataclasses
+import hashlib
 import io
 import math
 import struct
@@ -215,6 +216,7 @@ from . import (
     qc_surfaces,
     stack_sampling,
 )
+from .encapsulated_documents import rendered_pages, written_pages
 from .face_review import holds_deformation_grid, is_rt_dose, is_segmentation
 from .functional_groups import frame_group
 from .phases import FRAME, Named, named_by_frame, named_by_instance, split
@@ -469,8 +471,19 @@ def previews_of(
     # are not all held at once, and those whose sheets were not all drawn.
     gridded: dict[int, list[_Encoded]] = {}
     ungridded: set[int] = set()
+    # An Encapsulated PDF whose document Clean Pixel Data cleaned shows its
+    # pages alone, as the redaction previews draw them.
+    documents: dict[int, bytes] = {}
     for position in sorted(written):
         dataset = _read(written[position])
+        if (
+            dataset is not None
+            and position in redactions
+            and "EncapsulatedDocument" in dataset
+            and "PixelData" not in dataset
+        ):
+            documents[position] = written[position]
+            continue
         if dataset is not None and holds_deformation_grid(dataset):
             sheets = _grid_images(position, dataset)
             if sheets is None:
@@ -534,6 +547,9 @@ def previews_of(
         if instance.position in redactions:
             source, entry = redactions[instance.position]
             images.extend(_redaction_images(instance, source, entry, decoded))
+    for position, data in documents.items():
+        source, entry = redactions[position]
+        images.extend(_document_images(position, data, source, entry, refused))
     # Only previews that could show a face count, and every frame of an
     # instance must be among theirs; for an RT Dose, only dose levels do,
     # and for a Segmentation, only its segments sheet.
@@ -1850,6 +1866,83 @@ def _redaction_images(
                 png(
                     review_frame(after if before is None else before, instance.inverted)
                 ),
+            )
+        )
+    return images
+
+
+def _document_images(
+    position: int,
+    data: bytes,
+    source: bytes | None,
+    entry: RedactionEntry,
+    refused: dict[int, NotPreviewedReason],
+) -> list[_Encoded]:
+    """Each page of a cleaned Encapsulated PDF, as written, beside the page
+    as rendered from the source where it has regions, each followed by its
+    review frame (D-059); none if a page cannot be shown.
+
+    The pages as written are read back from the image-only PDF of the file
+    written, and those as received rendered again from the source file,
+    which must render to the SHA-256 that ``entry`` records, so that the
+    previews show the pages that a reviewer's verdict is bound to (D-061).
+    Both are read in the decoding child.
+    """
+    try:
+        dataset = pydicom.dcmread(io.BytesIO(data))
+        written = written_pages(
+            bytes(dataset.EncapsulatedDocument),
+            entry.frames,
+            entry.rows,
+            entry.columns,
+        )
+    # pydicom raises many types for a file it cannot read.
+    except Exception:  # pylint: disable = broad-exception-caught
+        refused.setdefault(position, NotPreviewedReason.UNREADABLE)
+        return []
+    received = None
+    if source is not None:
+        try:
+            received = rendered_pages(
+                bytes(pydicom.dcmread(io.BytesIO(source)).EncapsulatedDocument)
+            )
+        # DocumentRefused, or whatever pydicom raises for a file it cannot read.
+        except Exception:  # pylint: disable = broad-exception-caught
+            received = None
+    if (
+        received is None
+        or received.shape != written.shape
+        or entry.decoded_sha256 is None
+        or hashlib.sha256(received.tobytes()).hexdigest() != entry.decoded_sha256
+    ):
+        refused.setdefault(position, NotPreviewedReason.SOURCE_NOT_SHOWN)
+        return []
+    regions = dict(entry.regions)
+    images = []
+    for index in range(entry.frames):
+        boxes = regions.get(index, ())
+        after = written[index]
+        image = (
+            _beside([_outlined(image, boxes) for image in (received[index], after)])
+            if boxes
+            else after
+        )
+        images.append(
+            (
+                PreviewKind.REDACTION,
+                ((position, index),),
+                entry.frames,
+                png(image),
+            )
+        )
+        # As a frame's review frame: the page as rendered where it has
+        # regions, and as written where it has none, the same page (D-059).
+        images.append(
+            (
+                PreviewKind.REVIEW_FRAME,
+                ((position, index),),
+                entry.frames,
+                png(review_frame(received[index] if boxes else after)),
             )
         )
     return images

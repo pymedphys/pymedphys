@@ -769,12 +769,14 @@ def _pixel_data(statement: ConformanceStatement) -> str:
         )
         return f"The engine writes Pixel Data (7FE0,0010) unchanged{face} and " + claims
     claims = "claims Clean Pixel Data only for an instance " + (
-        "without top-level pixel data or whose regions a reviewer approved, "
+        "without top-level pixel data or an encapsulated document, or whose "
+        "regions a reviewer approved, "
         "and Clean Recognizable Visual Features only for one that cannot show "
         "a face or whose source file a reviewer found free of one. "
         if visual
-        else "without top-level pixel data or whose regions a reviewer "
-        "approved, and never Clean Recognizable Visual Features. "
+        else "without top-level pixel data or an encapsulated document, or "
+        "whose regions a reviewer approved, and never Clean Recognizable "
+        "Visual Features. "
     )
     return (
         "Under the Clean Pixel Data Option, the engine replaces each region "
@@ -808,7 +810,14 @@ def _pixel_data(statement: ConformanceStatement) -> str:
         "other than in those regions. It writes other Pixel Data "
         f"unchanged{face or ','} and "
         + claims
-        + "A run's method digest also covers its text finder's class and "
+        + "An Encapsulated PDF's document is rendered page by page, at 150 "
+        "pixels per inch, its pages searched and blacked out as RGB frames "
+        "are, and written as an image-only PDF that holds the pages' images "
+        "and nothing else, so no text, metadata, or attached file of the "
+        "source document is written; it is held for review, and released, as "
+        "above, only once a reviewer approves its pages. A document that "
+        "cannot be rendered, such as an encrypted one, is sequestered. "
+        "A run's method digest also covers its text finder's class and "
         "description of its method, such as the text detector's model, ONNX "
         "Runtime, NumPy, and SciPy versions, and parameters, and the keyed "
         "digest of its region rules, so it is not the digest that this "

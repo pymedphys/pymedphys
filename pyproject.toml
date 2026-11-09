@@ -65,6 +65,9 @@ user = [
   "pandas>=2.2.2",
   "plotly",
   "pydicom>=3.0.2",
+  # Renders an Encapsulated PDF's pages, and reads back the image-only PDF
+  # written in its place, for DICOM de-identification's Clean Pixel Data.
+  "pypdfium2>=5.15.0",
   "pylibjpeg>=2.0",  # pydicom decodes JPEG 2000 and HTJ2K through it
   "pylibjpeg-openjpeg>=2.0",
   "pymssql",
