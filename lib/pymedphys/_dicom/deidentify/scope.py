@@ -19,10 +19,12 @@ PET image IODs, including their Enhanced, Legacy Converted Enhanced, and
 colour variants, of MR Spectroscopy, of the RT Structure Set, RT Plan, RT
 Dose, RT Image, Enhanced RT Image, Enhanced Continuous RT Image, RT Beams
 Treatment Record, RT Ion Plan, RT Ion Beams Treatment Record, RT Brachy
-Treatment Record, and RT Treatment Summary Record IODs, of the C-Arm
-Photon-Electron Radiation Record, Tomotherapeutic Radiation Record,
-Robotic-Arm Radiation Record, RT Radiation Salvage Record, and RT Radiation
-Record Set IODs, of the Spatial Registration and Deformable Spatial
+Treatment Record, RT Treatment Summary Record, RT Beams Delivery
+Instruction, RT Brachy Application Setup Delivery Instruction, and RT
+Radiation Set Delivery Instruction IODs, of the C-Arm Photon-Electron
+Radiation Record, Tomotherapeutic Radiation Record, Robotic-Arm Radiation
+Record, RT Radiation Salvage Record, and RT Radiation Record Set IODs, of the
+Spatial Registration and Deformable Spatial
 Registration IODs, of the Segmentation IOD, of both Segmentation Storage
 and Label Map Segmentation Storage, of the Surface Segmentation IOD, of the X-Ray Radiation Dose SR, Enhanced
 X-Ray Radiation Dose SR, Radiopharmaceutical Radiation Dose SR, and Patient
@@ -82,7 +84,9 @@ SUPPORTED_IODS = frozenset(
         "Positron Emission Tomography Image",
         "Enhanced PET Image",
         "Legacy Converted Enhanced PET Image",
+        "RT Beams Delivery Instruction",
         "RT Beams Treatment Record",
+        "RT Brachy Application Setup Delivery Instruction",
         "RT Brachy Treatment Record",
         "RT Dose",
         "RT Image",
@@ -96,6 +100,7 @@ SUPPORTED_IODS = frozenset(
         "RT Ion Beams Treatment Record",
         "RT Ion Plan",
         "RT Plan",
+        "RT Radiation Set Delivery Instruction",
         "RT Structure Set",
         "RT Treatment Summary Record",
         "C-Arm Photon-Electron Radiation Record",

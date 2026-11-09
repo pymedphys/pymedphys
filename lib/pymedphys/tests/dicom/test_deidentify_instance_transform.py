@@ -1830,3 +1830,73 @@ def test_a_radiation_generation_mode_nested_once_is_not_kept():
     result = _transformed(image)
 
     assert b"SENTINEL" not in result.data
+
+
+def _radiation_set_delivery_instruction():
+    (file,) = (
+        file
+        for file in corpus_module.build_corpus().files
+        if file.name == corpus_module.RADIATION_SET_DELIVERY_INSTRUCTION_FILE
+    )
+    return pydicom.dcmread(io.BytesIO(file.data))
+
+
+def _displacement_volume(instruction):
+    return _item_of(
+        _item_of(
+            _item_of(
+                _item_of(instruction, "RTRadiationTaskSequence"),
+                "RTDeliveryStartPatientPositionSequence",
+            ),
+            "RTPatientPositionDisplacementSequence",
+        ),
+        "ConceptualVolumeSequence",
+    )
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.1-01")
+def test_conceptual_volume_uids_five_items_deep_in_a_delivery_instruction_are_replaced():
+    # The synthetic corpus plants attributes at most four items deep. An RT
+    # Radiation Set Delivery Instruction defines Referenced, Constituent, and
+    # Source Conceptual Volume UID only five or six items deep, in the
+    # Conceptual Volume Macro of a task's patient position displacement.
+    # Table E.1-1 gives each U, so each takes the keyed replacement that the
+    # same UID takes in the RT Radiation Set and the radiations, where the
+    # corpus plants them less deep.
+    instruction = _radiation_set_delivery_instruction()
+    volume = _displacement_volume(instruction)
+    uids = {
+        "ReferencedConceptualVolumeUID": "1.2.826.0.1.3680043.10.188.99.11",
+        "ConstituentConceptualVolumeUID": "1.2.826.0.1.3680043.10.188.99.12",
+        "SourceConceptualVolumeUID": "1.2.826.0.1.3680043.10.188.99.13",
+    }
+    _item_of(
+        volume, "EquivalentConceptualVolumesSequence"
+    ).ReferencedConceptualVolumeUID = uids["ReferencedConceptualVolumeUID"]
+    _item_of(
+        volume, "ConceptualVolumeConstituentSequence"
+    ).ConstituentConceptualVolumeUID = uids["ConstituentConceptualVolumeUID"]
+    _item_of(
+        _item_of(volume, "DerivationConceptualVolumeSequence"),
+        "SourceConceptualVolumeSequence",
+    ).SourceConceptualVolumeUID = uids["SourceConceptualVolumeUID"]
+
+    result = _transformed(instruction)
+
+    written = _displacement_volume(pydicom.dcmread(io.BytesIO(result.data)))
+    found = {
+        "ReferencedConceptualVolumeUID": written.EquivalentConceptualVolumesSequence[
+            0
+        ].ReferencedConceptualVolumeUID,
+        "ConstituentConceptualVolumeUID": written.ConceptualVolumeConstituentSequence[
+            0
+        ].ConstituentConceptualVolumeUID,
+        "SourceConceptualVolumeUID": written.DerivationConceptualVolumeSequence[0]
+        .SourceConceptualVolumeSequence[0]
+        .SourceConceptualVolumeUID,
+    }
+    assert found == {
+        keyword: replacement_uid(KEY, uid) for keyword, uid in uids.items()
+    }
+    for uid in uids.values():
+        assert uid.encode() not in result.data
