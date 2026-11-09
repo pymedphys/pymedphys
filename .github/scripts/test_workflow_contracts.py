@@ -504,7 +504,17 @@ class WorkflowContractTests(unittest.TestCase):
         workflow = jobs("unit-tests.yml")
         floors, test = workflow["dependency-floors"], workflow["test"]
         self.assertIn(f"        part: [{', '.join(pydicom_coverage.PARTS)}]\n", floors)
-        self.assertIn("    timeout-minutes: 30\n", floors)
+        # The growing corpus gets an hour in both matrices; other floor
+        # parts keep thirty minutes, while Windows already gets an hour.
+        self.assertIn(
+            "    timeout-minutes: ${{ matrix.part == 'corpus-runs' && 60 || 30 }}\n",
+            floors,
+        )
+        self.assertIn(
+            "    timeout-minutes: ${{ (matrix.os == 'windows-latest' || "
+            "matrix.part == 'corpus-runs') && 60 || 30 }}\n",
+            test,
+        )
         # Every split job reads the two halves of the CT defacing runs that
         # the workflow names, two different listed modules, each run alone.
         halves = [
