@@ -108,11 +108,19 @@ SUPPORTED = {
     "1.2.840.10008.5.1.4.1.1.88.77": "Waveform Annotation SR",
     "1.2.840.10008.5.1.4.1.1.30": "Parametric Map",
     "1.2.840.10008.5.1.4.1.1.67": "Real World Value Mapping",
+    "1.2.840.10008.5.1.4.1.1.11.1": "Grayscale Softcopy Presentation State",
+    "1.2.840.10008.5.1.4.1.1.11.2": "Color Softcopy Presentation State",
+    "1.2.840.10008.5.1.4.1.1.11.3": "Pseudo-Color Softcopy Presentation State",
+    "1.2.840.10008.5.1.4.1.1.11.4": "Blending Softcopy Presentation State",
+    "1.2.840.10008.5.1.4.1.1.11.5": "XA/XRF Grayscale Softcopy Presentation State",
+    "1.2.840.10008.5.1.4.1.1.11.12": (
+        "Variable Modality LUT Softcopy Presentation State"
+    ),
     "1.2.840.10008.5.1.4.1.1.104.1": "Encapsulated PDF",
 }
 
 
-def test_the_first_release_supports_ct_mr_pet_rt_registration_seg_and_sr_objects():
+def test_the_first_release_supports_ct_mr_pet_rt_registration_seg_sr_and_pr_objects():
     assert scope.SUPPORTED_IODS == {
         "CT Image",
         "Enhanced CT Image",
@@ -167,6 +175,12 @@ def test_the_first_release_supports_ct_mr_pet_rt_registration_seg_and_sr_objects
         "Waveform Annotation SR",
         "Parametric Map",
         "Real World Value Mapping",
+        "Grayscale Softcopy Presentation State",
+        "Color Softcopy Presentation State",
+        "Pseudo-Color Softcopy Presentation State",
+        "Blending Softcopy Presentation State",
+        "XA/XRF Grayscale Softcopy Presentation State",
+        "Variable Modality LUT Softcopy Presentation State",
         "Encapsulated PDF",
     }
     assert scope.SUPPORTED_TRANSFER_SYNTAXES == {IMPLICIT_LE, EXPLICIT_LE, *COMPRESSED}
@@ -226,11 +240,21 @@ def test_padding_is_ignored():
 @pytest.mark.parametrize(
     "sop_class, iod",
     [
-        # The other Structured Reports and Presentation States, which the
-        # design always sequesters.
+        # The other Structured Reports, which the design always sequesters,
+        # and the volumetric, advanced blending, and waveform Presentation
+        # States, which later changes are to bring into scope.
         ("1.2.840.10008.5.1.4.1.1.88.72", "Simplified Adult Echo SR"),
         ("1.2.840.10008.5.1.4.1.1.88.71", "Acquisition Context SR"),
-        ("1.2.840.10008.5.1.4.1.1.11.1", "Grayscale Softcopy Presentation State"),
+        (
+            "1.2.840.10008.5.1.4.1.1.11.6",
+            "Planar MPR Volumetric Presentation State",
+        ),
+        (
+            "1.2.840.10008.5.1.4.1.1.11.9",
+            "Volume Rendering Volumetric Presentation State",
+        ),
+        ("1.2.840.10008.5.1.4.1.1.11.8", "Advanced Blending Presentation State"),
+        ("1.2.840.10008.5.1.4.1.1.9.100.1", "Waveform Presentation State"),
         # Outside the first release: other images, CT, MR, and PET objects
         # that are not images, height map segmentations, spatial fiducials,
         # and the second-generation RT objects not yet supported, such as RT
@@ -436,6 +460,12 @@ def test_pydicom_names_the_same_uids():
         uid.SpectaclePrescriptionReportStorage,
         uid.MacularGridThicknessAndVolumeReportStorage,
         uid.WaveformAnnotationSRStorage,
+        uid.GrayscaleSoftcopyPresentationStateStorage,
+        uid.ColorSoftcopyPresentationStateStorage,
+        uid.PseudoColorSoftcopyPresentationStateStorage,
+        uid.BlendingSoftcopyPresentationStateStorage,
+        uid.XAXRFGrayscaleSoftcopyPresentationStateStorage,
+        uid.VariableModalityLUTSoftcopyPresentationStateStorage,
         uid.EncapsulatedPDFStorage,
     ):
         assert scope.classify(sop_class, uid.ExplicitVRLittleEndian).disposition is (

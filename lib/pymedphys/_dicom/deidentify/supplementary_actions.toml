@@ -240,6 +240,13 @@ options = { clean_descriptors = "C" }
 note = "A free-form explanation of a LUT or of a real world value mapping, which an operator can type. It is removed by Type, and cleaned as a descriptor under Clean Descriptors."
 
 [[attribute]]
+tag = "(0028,6190)"
+keyword = "MaskOperationExplanation"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "A free-form explanation, for people to read, of a mask subtraction operation in a Presentation State's Mask Subtraction Sequence (PS3.3 C.7.6.10). It is free text, so it is removed by Type, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
 tag = "(0040,9210)"
 keyword = "LUTLabel"
 action = "X/Z/D"
@@ -359,11 +366,39 @@ options = { clean_descriptors = "C" }
 note = "The name of a software algorithm, such as a dose calculation or contouring algorithm. An in-house algorithm's name is typed and can name a person or the institution, and Table E.1-1 removes Dose Calculation Model Name and cleans it under Clean Descriptors, so this name is treated the same way; Algorithm Family Code Sequence keeps the algorithm's family as a code. It is replaced with a dummy value where it is Type 1."
 
 [[attribute]]
+tag = "(0070,0068)"
+keyword = "GraphicLayerDescription"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "A free-text description of the contents of a graphic layer of a Presentation State (PS3.3 C.10.7), which an operator can type. It is removed by Type, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
 tag = "(0070,0081)"
 keyword = "ContentDescription"
 action = "X/Z/D"
 options = { clean_descriptors = "C" }
 note = "A user-defined description of the content of an instance, which PS3.3 says carries descriptive identifying text for human readers. It is removed by Type, which empties it where it is Type 2 and replaces it with a dummy value where it is Type 1, and cleaned as a descriptor under Clean Descriptors, as Table E.1-1 does for User Content Label."
+
+[[attribute]]
+tag = "(0070,0207)"
+keyword = "GraphicGroupLabel"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "A label for a group of a Presentation State's annotations (PS3.3 C.10.11), which an operator can type. It is removed by Type, which replaces it with a dummy value where it is Type 1, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
+tag = "(0070,0208)"
+keyword = "GraphicGroupDescription"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "A description of a group of a Presentation State's annotations (PS3.3 C.10.11), which can carry anything a person types. It is removed by Type, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
+tag = "(0070,0289)"
+keyword = "TickLabel"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "The text of a tick of a ruler or axis that a Presentation State draws over an image (PS3.3 C.10.5), which an operator or application can write. It is shown with the image, as Unformatted Text Value (0070,0006) is, so it takes that attribute's actions: removed by Type, which replaces it with a dummy value where it is Type 1, and cleaned as a descriptor under Clean Descriptors."
 
 [[attribute]]
 tag = "(0072,006F)"
@@ -1135,6 +1170,18 @@ action = "K"
 note = "The version that a manufacturer assigns a software algorithm, like Software Versions. It is a technical value that identifies no one, so it is kept."
 
 [[attribute]]
+tag = "(0070,0227)"
+keyword = "FontName"
+action = "K"
+note = "The name of a font for a Presentation State's text (PS3.3 Table C.10-5a), of the kind that Font Name Type (0070,0228) names. It names a typeface, not a person, and is kept, accepting the residual risk that a site names an in-house font after a person."
+
+[[attribute]]
+tag = "(0070,0229)"
+keyword = "CSSFontName"
+action = "K"
+note = "The CSS generic font family of a Presentation State's text (PS3.3 Table C.10-5a), such as serif or monospace. It is a technical value that identifies no one, so it is kept."
+
+[[attribute]]
 tag = "(0072,0054)"
 keyword = "SelectorSequencePointerPrivateCreator"
 action = "K"
@@ -1632,7 +1679,7 @@ note = "Codes for why the procedure was performed, which can record a diagnosis 
 tag = "(0028,2000)"
 keyword = "ICCProfile"
 action = "X/Z/D"
-note = "An ICC colour profile, a file in another format embedded in the instance, which can carry text, such as a description or copyright naming the device or institution, that the engine does not parse. It is removed by Type under every option. It is Type 1 in the ICC Profile Module, which Enhanced CT Image, Enhanced MR Image, and Enhanced MR Color Image use, where removal by Type replaces an RGB profile with a fixed sRGB profile, which nothing of the source profile is written to, and sequesters an instance with any other; elsewhere in the IODs of the first supported release it is Type 3."
+note = "An ICC colour profile, a file in another format embedded in the instance, which can carry text, such as a description or copyright naming the device or institution, that the engine does not parse. It is removed by Type under every option. It is Type 1 in the ICC Profile Module, which Enhanced CT Image, Enhanced MR Image, Enhanced MR Color Image, Segmentation, and the Color, Pseudo-Color, Blending, and Variable Modality LUT Softcopy Presentation States use, where removal by Type writes an RGB profile cleaned of everything but its colorimetry, or a fixed sRGB profile where it cannot be cleaned, and sequesters an instance with any other profile; elsewhere in the IODs of the first supported release it is Type 3."
 
 [[attribute]]
 tag = "(0028,2002)"

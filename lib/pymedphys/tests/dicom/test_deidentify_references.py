@@ -59,6 +59,20 @@ STRUCTURED_REPORTS = (
     "Macular Grid Thickness and Volume Report",
     "Waveform Annotation SR",
 )
+# The softcopy Presentation States, which reference the images they apply to
+# in the Presentation State Relationship Module or, for the Blending
+# Softcopy Presentation State, the Presentation State Blending Module, and
+# include no Common Instance Reference Module.
+PRESENTATION_STATES = (
+    "Grayscale Softcopy Presentation State",
+    "Color Softcopy Presentation State",
+    "Pseudo-Color Softcopy Presentation State",
+    "XA/XRF Grayscale Softcopy Presentation State",
+    "Variable Modality LUT Softcopy Presentation State",
+)
+BLENDING_PRESENTATION_STATE = "Blending Softcopy Presentation State"
+# Blending Sequence (0070,0402).
+BLENDING = "(0070,0402)"
 # An encapsulated document, which names its sources, predecessors, and
 # identical documents in its Encapsulated Document Module, and has no Common
 # Instance Reference Module (PS3.3 Table A.45.1-1).
@@ -250,17 +264,6 @@ RT_REFERENCES = [
     # CT Image: the plan in the CT Image module, and General Reference.
     ("CT Image", synthetic.REFERENCED_PLAN, Level.INSTANCE),
     ("CT Image", synthetic.REFERENCED_IMAGE, Level.INSTANCE),
-    # Every IOD but the reports and the Encapsulated PDF: Common Instance
-    # Reference.
-    *(
-        (iod, attribute, level)
-        for iod in FIRST_RELEASE_IODS
-        if iod not in (*STRUCTURED_REPORTS, ENCAPSULATED_PDF)
-        for attribute, level in [
-            (("(0008,1115)", "(0020,000E)"), Level.SERIES),
-            (("(0008,1200)", "(0020,000D)"), Level.STUDY),
-        ]
-    ),
     # Every IOD but the reports: the study in General Study and in each
     # request.
     *(
@@ -270,6 +273,39 @@ RT_REFERENCES = [
         for attribute, level in [
             (synthetic.REFERENCED_STUDY, Level.STUDY),
             (synthetic.REQUESTED_REFERENCED_STUDY, Level.STUDY),
+        ]
+    ),
+    # Every IOD but the reports, Presentation States and PDF: Common Instance
+    # Reference.
+    *(
+        (iod, attribute, level)
+        for iod in FIRST_RELEASE_IODS
+        if iod not in STRUCTURED_REPORTS
+        and iod not in PRESENTATION_STATES
+        and iod != BLENDING_PRESENTATION_STATE
+        and iod != ENCAPSULATED_PDF
+        for attribute, level in [
+            (("(0008,1115)", "(0020,000E)"), Level.SERIES),
+            (("(0008,1200)", "(0020,000D)"), Level.STUDY),
+        ]
+    ),
+    # The Presentation States: the series and images that each applies to,
+    # and, for the Blending Softcopy Presentation State, the study of each
+    # of the two series it blends.
+    *(
+        (iod, attribute, level)
+        for iod in PRESENTATION_STATES
+        for attribute, level in [
+            (("(0008,1115)", "(0020,000E)"), Level.SERIES),
+            (("(0008,1115)", "(0008,1140)", "(0008,1155)"), Level.INSTANCE),
+        ]
+    ),
+    *(
+        (BLENDING_PRESENTATION_STATE, attribute, level)
+        for attribute, level in [
+            ((BLENDING, "(0020,000D)"), Level.STUDY),
+            ((BLENDING, "(0008,1115)", "(0020,000E)"), Level.SERIES),
+            ((BLENDING, "(0008,1115)", "(0008,1140)", "(0008,1155)"), Level.INSTANCE),
         ]
     ),
     # Encapsulated PDF: the instances that the document was derived from, the

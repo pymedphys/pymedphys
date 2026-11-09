@@ -281,7 +281,7 @@ def _allowed_removal(iod: IOD, path: ElementPath, output: SourceEvidence) -> boo
     Table, may go with it, as where Clean Pixel Data writes compressed Pixel
     Data uncompressed (D-037).
     """
-    if is_common_instance_reference(path):
+    if is_common_instance_reference(path, iod):
         return not any(
             is_instance_reference(kept) and not _empty(output, kept)
             for kept in output.paths()

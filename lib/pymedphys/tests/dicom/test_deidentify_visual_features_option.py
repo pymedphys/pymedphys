@@ -783,6 +783,12 @@ def test_the_statement_names_each_supported_iod_that_lacks_the_attribute():
         "Macular Grid Thickness and Volume Report",
         "Waveform Annotation SR",
         "Real World Value Mapping",
+        "Grayscale Softcopy Presentation State",
+        "Color Softcopy Presentation State",
+        "Pseudo-Color Softcopy Presentation State",
+        "Blending Softcopy Presentation State",
+        "XA/XRF Grayscale Softcopy Presentation State",
+        "Variable Modality LUT Softcopy Presentation State",
     }
     assert (
         "which of the supported IODs are RT Plan, RT Structure Set, RT Beams "
@@ -800,7 +806,11 @@ def test_the_statement_names_each_supported_iod_that_lacks_the_attribute():
         "Comprehensive 3D SR, Extensible SR, Key Object Selection Document, "
         "Mammography CAD SR, Chest CAD SR, Colon CAD SR, Procedure Log, "
         "Spectacle Prescription Report, Macular Grid Thickness and Volume Report, "
-        "Waveform Annotation SR, and Real World Value Mapping."
+        "Waveform Annotation SR, Real World Value Mapping, Grayscale Softcopy "
+        "Presentation State, Color Softcopy Presentation State, Pseudo-Color "
+        "Softcopy Presentation State, Blending Softcopy Presentation State, "
+        "XA/XRF Grayscale Softcopy Presentation State, and Variable Modality "
+        "LUT Softcopy Presentation State."
     ) in conformance_markdown.render_markdown(
         conformance.conformance_statement(_policy(), vocabulary=None)
     )
@@ -1046,6 +1056,10 @@ _FACELESS = (
     "49-rt-brachy-record.dcm",
     "50-rt-treatment-summary-record.dcm",
     "52-real-world-value-mapping.dcm",
+    # A Presentation State holds no pixel data, contours, or grids; one with
+    # graphic annotations or an overlay is sequestered under every preset,
+    # and the corpus plants neither.
+    *corpus_module.PRESENTATION_STATE_FILES,
     "54-encapsulated-pdf.dcm",
     "70-rt-segment-annotation.dcm",
     "71-rt-radiation-set.dcm",
