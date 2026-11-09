@@ -257,7 +257,8 @@ jobs:
   # tests take about a minute and run whole.
   narrow-extras:
     name: Extra ${{ matrix.extra }} alone${{ matrix.part && format(' ({0})', matrix.part) || '' }}
-    timeout-minutes: 30
+    # The standalone DICOM corpus needs the main corpus job's budget.
+    timeout-minutes: ${{ matrix.part == 'corpus-runs' && 60 || 30 }}
     strategy:
       fail-fast: false
       matrix:
