@@ -20,7 +20,7 @@ fictitious patient and study, with one Frame of Reference: three CT Image
 slices, an RT Structure Set that references the CT series and slices, an RT
 Plan that references the structure set and the dose, an RT Dose that
 references the plan, a second RT Dose of the plan for review (below), one
-instance of each of forty-eight other IODs, and two of the Segmentation
+instance of each of fifty-one other IODs, and two of the Segmentation
 IOD, one of each of its SOP Classes, each in a series of its own, and a
 second X-Ray Radiation Dose SR, of a CT scan.
 The MR Image and PET Image instances reference the first CT slice, and each
@@ -39,8 +39,14 @@ Plan. The RT Brachy Treatment Record references the RT Plan, which has
 brachytherapy application setups as well as beams, and names the RT Beams
 Treatment Record as a related record, and the RT Treatment Summary Record
 references the RT Plan and, as a treatment record that it summarises, the
-RT Brachy Treatment Record. The RT Image, a digitally reconstructed radiograph of 2 by 2 pixels,
-references the RT Plan, as do the Enhanced RT Image, a digitally
+RT Brachy Treatment Record. The RT Beams Delivery Instruction references
+the RT Plan, the RT Beams Treatment Record as the record of the session that
+it continues, and the RT Image as a reference image for verifying a beam;
+the RT Brachy Application Setup Delivery Instruction references the RT Plan,
+by its study, series, and instance; and the RT Radiation Set Delivery
+Instruction references the RT Radiation Set and its C-Arm Photon-Electron
+Radiation. The RT Image, a digitally reconstructed radiograph of 2 by 2
+pixels, references the RT Plan, as do the Enhanced RT Image, a digitally
 reconstructed radiograph, and the Enhanced Continuous RT Image, a simulator
 image, each of two frames of 2 by 2 pixels. The RT Physician Intent references the first
 CT slice, and the collection's study and CT series in the Referenced Study
@@ -200,7 +206,7 @@ dummy item at that place and only there. Planted in
 every file, the first two would sequester every
 instance, and no preset could release any of the collection; planted in one,
 that instance checks sequestration, :data:`REVIEW_FILE` checks review, and
-the other fifty-six check each preset's output, the reports where their
+the other fifty-nine check each preset's output, the reports where their
 trees are cleaned. Radiopharmaceutical Start
 DateTime, which CT Image does not define there, is planted in no file, so
 the Enhanced PET instance, which lacks an attribute of Type 1, is released
@@ -236,7 +242,7 @@ Manufacturer's Model Name (0008,1090), which Table E.1-1 does not list and
 the Basic Profile keeps, a copy of the RT Plan's RT Plan Label marker
 (:attr:`PlacementKind.REVIEW_COPY`), so the residual search finds a source
 value of another instance in its output and sends it to review. The third
-CT slice remains sequestered; the other fifty-six files stay releasable, the
+CT slice remains sequestered; the other fifty-nine files stay releasable, the
 reports where their trees are cleaned.
 
 **Manifest.** :class:`CorpusManifest` records, for each file, each
@@ -381,6 +387,9 @@ RT_RADIATION_SET_STORAGE = "1.2.840.10008.5.1.4.1.1.481.12"
 C_ARM_PHOTON_ELECTRON_RADIATION_STORAGE = "1.2.840.10008.5.1.4.1.1.481.13"
 TOMOTHERAPEUTIC_RADIATION_STORAGE = "1.2.840.10008.5.1.4.1.1.481.14"
 ROBOTIC_ARM_RADIATION_STORAGE = "1.2.840.10008.5.1.4.1.1.481.15"
+RT_BEAMS_DELIVERY_INSTRUCTION_STORAGE = "1.2.840.10008.5.1.4.34.7"
+RT_BRACHY_APPLICATION_SETUP_DELIVERY_INSTRUCTION_STORAGE = "1.2.840.10008.5.1.4.34.10"
+RT_RADIATION_SET_DELIVERY_INSTRUCTION_STORAGE = "1.2.840.10008.5.1.4.1.1.481.21"
 RT_PHYSICIAN_INTENT_STORAGE = "1.2.840.10008.5.1.4.1.1.481.10"
 RT_TREATMENT_PREPARATION_STORAGE = "1.2.840.10008.5.1.4.1.1.481.22"
 RT_PATIENT_POSITION_ACQUISITION_INSTRUCTION_STORAGE = "1.2.840.10008.5.1.4.1.1.481.25"
@@ -467,6 +476,12 @@ RADIATION_SET_FILE = "71-rt-radiation-set.dcm"
 C_ARM_RADIATION_FILE = "72-c-arm-radiation.dcm"
 TOMOTHERAPEUTIC_RADIATION_FILE = "73-tomotherapeutic-radiation.dcm"
 ROBOTIC_ARM_RADIATION_FILE = "74-robotic-arm-radiation.dcm"
+# The delivery instructions of the RT Plan's beams, of its brachytherapy
+# application setups, and of the RT Radiation Set's radiations, numbered
+# after the files that open pull requests add.
+BEAMS_DELIVERY_INSTRUCTION_FILE = "75-rt-beams-delivery-instruction.dcm"
+BRACHY_DELIVERY_INSTRUCTION_FILE = "76-rt-brachy-delivery-instruction.dcm"
+RADIATION_SET_DELIVERY_INSTRUCTION_FILE = "77-rt-radiation-set-delivery-instruction.dcm"
 # The RT Physician Intent of the course, the RT Treatment Preparation that
 # carries it out, and the RT Patient Position Acquisition Instruction for
 # the preparation, numbered after the files that open pull requests add.
@@ -585,6 +600,12 @@ TOMOTHERAPEUTIC_RADIATION_SERIES = f"{LINKED_UID_ROOT}06900"
 TOMOTHERAPEUTIC_RADIATION = f"{LINKED_UID_ROOT}06901"
 ROBOTIC_ARM_RADIATION_SERIES = f"{LINKED_UID_ROOT}07000"
 ROBOTIC_ARM_RADIATION = f"{LINKED_UID_ROOT}07001"
+BEAMS_DELIVERY_INSTRUCTION_SERIES = f"{LINKED_UID_ROOT}07100"
+BEAMS_DELIVERY_INSTRUCTION = f"{LINKED_UID_ROOT}07101"
+BRACHY_DELIVERY_INSTRUCTION_SERIES = f"{LINKED_UID_ROOT}07200"
+BRACHY_DELIVERY_INSTRUCTION = f"{LINKED_UID_ROOT}07201"
+RADIATION_SET_DELIVERY_INSTRUCTION_SERIES = f"{LINKED_UID_ROOT}07300"
+RADIATION_SET_DELIVERY_INSTRUCTION = f"{LINKED_UID_ROOT}07301"
 PHYSICIAN_INTENT_SERIES = f"{LINKED_UID_ROOT}07500"
 PHYSICIAN_INTENT = f"{LINKED_UID_ROOT}07501"
 TREATMENT_PREPARATION_SERIES = f"{LINKED_UID_ROOT}07600"
@@ -664,6 +685,7 @@ _REFERENCED_RT_PLAN_SEQUENCE = "(300C,0002)"
 _RT_RADIATION_SEQUENCE = "(300A,0616)"
 _REFERENCED_RT_RADIATION_SEQUENCE = "(300A,0630)"
 _REFERENCED_TREATMENT_RECORD_SEQUENCE = "(3008,0030)"
+_RELATED_REFERENCE_RT_IMAGE_SEQUENCE = "(0074,1040)"
 # The instance a reference names, by the innermost sequence that holds it.
 _TARGETS = types.MappingProxyType(
     {
@@ -741,6 +763,13 @@ _SOP_CLASSES = types.MappingProxyType(
         C_ARM_RADIATION: C_ARM_PHOTON_ELECTRON_RADIATION_STORAGE,
         TOMOTHERAPEUTIC_RADIATION: TOMOTHERAPEUTIC_RADIATION_STORAGE,
         ROBOTIC_ARM_RADIATION: ROBOTIC_ARM_RADIATION_STORAGE,
+        BEAMS_DELIVERY_INSTRUCTION: RT_BEAMS_DELIVERY_INSTRUCTION_STORAGE,
+        BRACHY_DELIVERY_INSTRUCTION: (
+            RT_BRACHY_APPLICATION_SETUP_DELIVERY_INSTRUCTION_STORAGE
+        ),
+        RADIATION_SET_DELIVERY_INSTRUCTION: (
+            RT_RADIATION_SET_DELIVERY_INSTRUCTION_STORAGE
+        ),
         PHYSICIAN_INTENT: RT_PHYSICIAN_INTENT_STORAGE,
         TREATMENT_PREPARATION: RT_TREATMENT_PREPARATION_STORAGE,
         POSITION_ACQUISITION_INSTRUCTION: (
@@ -1117,6 +1146,9 @@ class _Spec:
     # The instance that a reference names, by the innermost sequence that
     # holds it, where it differs from _TARGETS.
     targets: tuple[tuple[str, str], ...] = ()
+    # The series that a reference names by its Series Instance UID, which
+    # holds the instance that the reference names within it.
+    referenced_series: str = CT_SERIES
 
 
 _SPECS = (
@@ -1566,6 +1598,46 @@ _SPECS = (
             ),
         )
     ),
+    # The RT Beams Delivery Instruction instructs the delivery of the RT
+    # Plan's beams: it references the RT Plan, names the RT Beams Treatment
+    # Record as the record of the session that it continues, and names the
+    # RT Image as a reference image for the verification of its beams. The RT
+    # Brachy Application Setup Delivery Instruction instructs the delivery of
+    # the RT Plan's application setups, which it references in Referenced
+    # SOP Sequence within the RT Plan's series.
+    _Spec(
+        BEAMS_DELIVERY_INSTRUCTION_FILE,
+        RT_BEAMS_DELIVERY_INSTRUCTION_STORAGE,
+        BEAMS_DELIVERY_INSTRUCTION,
+        BEAMS_DELIVERY_INSTRUCTION_SERIES,
+        PLAN,
+        targets=(
+            (_REFERENCED_TREATMENT_RECORD_SEQUENCE, TREATMENT_RECORD),
+            (_RELATED_REFERENCE_RT_IMAGE_SEQUENCE, RT_IMAGE),
+        ),
+    ),
+    _Spec(
+        BRACHY_DELIVERY_INSTRUCTION_FILE,
+        RT_BRACHY_APPLICATION_SETUP_DELIVERY_INSTRUCTION_STORAGE,
+        BRACHY_DELIVERY_INSTRUCTION,
+        BRACHY_DELIVERY_INSTRUCTION_SERIES,
+        PLAN,
+        referenced_series=PLAN_SERIES,
+    ),
+    # The RT Radiation Set Delivery Instruction instructs the delivery of the
+    # RT Radiation Set's C-Arm Photon-Electron Radiation, which it names, as
+    # the set does, in each task's and in its omitted radiations' Referenced
+    # RT Radiation Sequence, and names the set itself elsewhere, including in
+    # a task's Referenced RT Treatment Preparation Sequence, as the RT Beams
+    # Treatment Record names the plan in its verification image references.
+    _Spec(
+        RADIATION_SET_DELIVERY_INSTRUCTION_FILE,
+        RT_RADIATION_SET_DELIVERY_INSTRUCTION_STORAGE,
+        RADIATION_SET_DELIVERY_INSTRUCTION,
+        RADIATION_SET_DELIVERY_INSTRUCTION_SERIES,
+        RADIATION_SET,
+        targets=((_REFERENCED_RT_RADIATION_SEQUENCE, C_ARM_RADIATION),),
+    ),
     # The RT Physician Intent names the first CT slice, the image that its
     # intent was drawn up from, and, in the Referenced Study Sequence of its
     # input instances and planning inputs, the collection's study. The RT
@@ -1622,7 +1694,7 @@ def build_corpus() -> SyntheticCorpus:
     Returns
     -------
     SyntheticCorpus
-        Fifty-eight files: three CT slices; the RT Structure Set, RT Plan, RT
+        Sixty-one files: three CT slices; the RT Structure Set, RT Plan, RT
         Dose, and the RT Dose for review; the Enhanced CT Image and Legacy
         Converted Enhanced CT Image; the MR Image, Enhanced MR Image,
         Enhanced MR Color Image, Legacy Converted Enhanced MR Image, and MR
@@ -1641,7 +1713,9 @@ def build_corpus() -> SyntheticCorpus:
         Record and RT Treatment Summary Record; the Parametric Map and Real
         World Value Mapping; the Surface Segmentation; the RT Segment
         Annotation, RT Radiation Set, and C-Arm Photon-Electron,
-        Tomotherapeutic, and Robotic-Arm Radiations; the RT Physician Intent, RT
+        Tomotherapeutic, and Robotic-Arm Radiations; the RT Beams Delivery
+        Instruction, RT Brachy Application Setup Delivery Instruction, and RT
+        Radiation Set Delivery Instruction; the RT Physician Intent, RT
         Treatment Preparation, and RT Patient Position Acquisition Instruction;
         and the Enhanced RT Image and Enhanced Continuous RT Image. Two builds
         give the same bytes and the same manifest.
@@ -2084,7 +2158,7 @@ class _Instance:
             self._set_class(path, DETACHED_STUDY_MANAGEMENT, 0)
             return PlacementKind.LINKED_UID, STUDY
         if level is Level.SERIES:
-            return PlacementKind.LINKED_UID, CT_SERIES
+            return PlacementKind.LINKED_UID, self.spec.referenced_series
         target = dict(self.spec.targets).get(
             path[-1], _TARGETS.get(path[-1], self.spec.default_target)
         )
@@ -2285,6 +2359,13 @@ class _Instance:
             RT_TREATMENT_SUMMARY_RECORD_STORAGE,
         ):
             put((), "(0008,0060)", ["RTRECORD"])
+        elif self.spec.sop_class in (
+            RT_BEAMS_DELIVERY_INSTRUCTION_STORAGE,
+            RT_BRACHY_APPLICATION_SETUP_DELIVERY_INSTRUCTION_STORAGE,
+            RT_RADIATION_SET_DELIVERY_INSTRUCTION_STORAGE,
+        ):
+            # PS3.3 Sections A.64.4.1, A.79.4.1, and A.86.1.13.4.1.
+            put((), "(0008,0060)", ["PLAN"])
         elif self.spec.sop_class == RT_PHYSICIAN_INTENT_STORAGE:
             # PS3.3 Section A.86.1.2.4.1.
             put((), "(0008,0060)", ["RTINTENT"])

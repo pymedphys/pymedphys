@@ -905,6 +905,7 @@ def test_instances_keep_their_reviewed_dummy_values(policy_run):
         "C-Arm Photon-Electron Radiation",
         "Tomotherapeutic Radiation",
         "Robotic-Arm Radiation",
+        "RT Radiation Set Delivery Instruction",
         "RT Physician Intent",
         "RT Treatment Preparation",
         "RT Patient Position Acquisition Instruction",
@@ -1271,6 +1272,73 @@ def test_the_brachy_and_summary_records_name_what_they_reference_as_written(
             assert reference.ReferencedSOPInstanceUID == expected(target), keyword
             if target in written:
                 assert expected(target) == written[target].SOPInstanceUID, keyword
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.1-04", "MIDI-BP-03")
+def test_the_delivery_instructions_name_what_they_reference_as_written(policy_run):
+    # The RT Beams Delivery Instruction names the RT Plan, the RT Beams
+    # Treatment Record of the session that it continues, and the RT Image as
+    # a reference image; the RT Brachy Application Setup Delivery Instruction
+    # names the RT Plan by its study, series, and instance; and the RT
+    # Radiation Set Delivery Instruction names the RT Radiation Set and its
+    # C-Arm Photon-Electron Radiation, by the UIDs that the run's key gives the
+    # referenced instances' own, so each written instruction still names the
+    # written instances that it references.
+    corpus, released = policy_run.corpus, policy_run.released
+    written = {
+        corpus.files[position].manifest.sop_instance: _read(data)
+        for position, data in released.items()
+    }
+    names = {file.manifest.sop_instance: file.name for file in corpus.files}
+
+    def expected(target):
+        if REFERENCED_SOP_INSTANCE in policy_run.spec.kept_rows():
+            return target
+        return uids.replacement_uid(KEY, target)
+
+    def item(dataset, tags):
+        for tag in tags:
+            (dataset,) = dataset[tag].value
+        return dataset
+
+    # The path to each reference, by the tags of its sequences.
+    references = {
+        corpus_module.BEAMS_DELIVERY_INSTRUCTION: (
+            ((0x300C0002,), corpus_module.PLAN),
+            ((0x30080030,), corpus_module.TREATMENT_RECORD),
+            ((0x00741020, 0x00741030, 0x00741040), corpus_module.RT_IMAGE),
+        ),
+        corpus_module.BRACHY_DELIVERY_INSTRUCTION: (
+            ((0x300C0002, 0x00081115, 0x00081199), corpus_module.PLAN),
+        ),
+        corpus_module.RADIATION_SET_DELIVERY_INSTRUCTION: (
+            ((0x300A0702,), corpus_module.RADIATION_SET),
+            ((0x300A0797, 0x300A0630), corpus_module.C_ARM_RADIATION),
+        ),
+    }
+    for source, named in references.items():
+        if source not in written:
+            assert names[source] in policy_run.spec.withheld
+            continue
+        dataset = written[source]
+        assert dataset.Modality == "PLAN"
+        for tags, target in named:
+            reference = item(dataset, tags)
+            assert reference.ReferencedSOPInstanceUID == expected(target), tags
+            if target in written:
+                assert expected(target) == written[target].SOPInstanceUID, tags
+    # The brachy instruction's plan reference names the plan's study and
+    # series too, as written.
+    source = corpus_module.BRACHY_DELIVERY_INSTRUCTION
+    if source in written:
+        plan = item(written[source], (0x300C0002,))
+        (series,) = plan.ReferencedSeriesSequence
+        if corpus_module.PLAN in written:
+            assert plan.StudyInstanceUID == written[corpus_module.PLAN].StudyInstanceUID
+            assert (
+                series.SeriesInstanceUID
+                == written[corpus_module.PLAN].SeriesInstanceUID
+            )
 
 
 @pytest.mark.deid_requirement("PS3.15-E.1.1-09")
