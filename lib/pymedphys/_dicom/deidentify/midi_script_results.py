@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Count the NCI validation script's own results by answer-key category (D-018).
+"""Give the NCI validation script its answer key, and count its results (D-018).
 
 The script writes its results to ``validation_results.db``, a table
 ``validation_results`` with a row for each check of each instance, its
@@ -20,46 +20,111 @@ action, whether it passed (1, 0, or blank), and a column for each
 answer-key category that some check has. These are the published figures;
 :mod:`~pymedphys._dicom.deidentify.midi_benchmark` counts its own results
 by the same categories.
+
+The script scores every answer-key instance that has no file in the release
+as missing, and holds the result of every check in memory until it writes
+them all. Where a run withholds most instances, as on MIDI-B's Test subset,
+that ran a 16 GB runner out of memory. :func:`write_released_answer_key`
+gives it only the released instances' rows instead: it looks up each file's
+rows by the file's SOP Instance UID, so it scores the released files as it
+would have, and the harness reports the withheld instances itself. Where
+most instances are released, the results alone fill the memory, so the
+workflow scores the release in parts, each with its own answer key, and
+:func:`summarise_script_results` adds up the parts' results.
 """
 
 from __future__ import annotations
 
 import collections
+import csv
 import dataclasses
 import hashlib
+import io
+import os
 import sqlite3
+from collections.abc import Iterator, Mapping, Sequence
 from pathlib import Path
 
-from .midi_answer_key import Action, Categories, Category, category_of, category_order
+from pymedphys._imports import pydicom
+
+from .diagnostics import redacted_diagnostics
+from .keys import DeidKey
+from .midi_answer_key import (
+    ANSWER_TABLE,
+    Action,
+    Categories,
+    Category,
+    category_of,
+    category_order,
+)
+from .uids import replacement_uid
 
 SCRIPT_RESULTS_TABLE = "validation_results"
+UID_MAPPING = "uid_mapping.csv"
+PATIENT_ID_MAPPING = "patid_mapping.csv"
 
 
 class ScriptResultsError(Exception):
-    """Results that cannot be read. The message quotes no value."""
+    """Results that cannot be read, or an answer key that cannot be written
+    for the script. The message quotes no value."""
 
 
-def summarise_script_results(path: str | Path) -> dict[str, object]:
+def summarise_script_results(
+    paths: str | Path | Sequence[str | Path],
+) -> dict[str, object]:
     """Count the validation script's results by answer-key category.
 
     Parameters
     ----------
-    path : str or Path
-        The script's ``validation_results.db``.
+    paths : str, Path, or sequence of them
+        The script's ``validation_results.db``, or one for each part of a
+        release that it scored in parts.
 
     Returns
     -------
     dict
         ``categories``: for each category, the checks that the script
-        passed, failed, and left blank, ordered as :func:`run_benchmark`
-        orders them; and ``results_sha256``, naming the file.
+        passed, failed, and left blank, over every file, ordered as
+        :func:`run_benchmark` orders them; and ``results_sha256``, naming
+        the file, or a list naming each file in the order given.
 
     Raises
     ------
     ScriptResultsError
-        If the file is not an SQLite database with the script's table.
+        If no file is given, or a file is not an SQLite database with the
+        script's table.
     """
-    path = Path(path)
+    if isinstance(paths, (str, Path)):
+        several, files = False, [Path(paths)]
+    else:
+        several, files = True, [Path(path) for path in paths]
+    if not files:
+        raise ScriptResultsError("no validation results were given")
+    counts: dict[Category | None, collections.Counter] = collections.defaultdict(
+        collections.Counter
+    )
+    digests = [_count_script_results(path, counts) for path in files]
+    return {
+        "results_sha256": digests if several else digests[0],
+        "categories": [
+            {
+                "family": None if category is None else category.family,
+                "code": None if category is None else category.code,
+                "passed": tally["passed"],
+                "failed": tally["failed"],
+                "blank": tally["blank"],
+            }
+            for category, tally in sorted(
+                counts.items(), key=lambda pair: category_order(pair[0])
+            )
+        ],
+    }
+
+
+def _count_script_results(
+    path: Path, counts: dict[Category | None, collections.Counter]
+) -> str:
+    """Add one results file's checks to ``counts``, and return its digest."""
     try:
         digest = hashlib.sha256(path.read_bytes()).hexdigest()
         connection = sqlite3.connect(f"{path.absolute().as_uri()}?mode=ro", uri=True)
@@ -89,9 +154,6 @@ def summarise_script_results(path: str | Path) -> dict[str, object]:
         ) from None
     finally:
         connection.close()
-    counts: dict[Category | None, collections.Counter] = collections.defaultdict(
-        collections.Counter
-    )
     for action_text, passed, *codes in rows:
         name = action_text.strip("<>") if isinstance(action_text, str) else ""
         try:
@@ -108,18 +170,255 @@ def summarise_script_results(path: str | Path) -> dict[str, object]:
             int(passed) if isinstance(passed, (int, float)) else -1, "blank"
         )
         counts[category_of(action, categories)][outcome] += 1
-    return {
-        "results_sha256": digest,
-        "categories": [
-            {
-                "family": None if category is None else category.family,
-                "code": None if category is None else category.code,
-                "passed": tally["passed"],
-                "failed": tally["failed"],
-                "blank": tally["blank"],
-            }
-            for category, tally in sorted(
-                counts.items(), key=lambda pair: category_order(pair[0])
+    return digest
+
+
+def write_mapping_files(
+    directory: Path, uids: Mapping[str, str], patient_ids: Mapping[str, str]
+) -> None:
+    """Write the script's UID and Patient ID mapping files into a new directory.
+
+    Each maps the test data's identifiers to their replacements, with the
+    columns ``id_old`` and ``id_new``, and only its owner may read it.
+    """
+    directory.mkdir(mode=0o700)
+    for name, pairs in ((UID_MAPPING, uids), (PATIENT_ID_MAPPING, patient_ids)):
+        text = io.StringIO()
+        writer = csv.writer(text, lineterminator="\n")
+        writer.writerow(("id_old", "id_new"))
+        writer.writerows(pairs.items())
+        descriptor = os.open(
+            directory / name, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600
+        )
+        with open(descriptor, "w", encoding="utf-8", newline="") as file:
+            file.write(text.getvalue())
+
+
+def uid_replacements(
+    source: pydicom.Dataset, written: pydicom.Dataset, key: DeidKey
+) -> dict[str, str]:
+    """Map each UID of ``source`` to the UID that ``written`` holds for it.
+
+    A UID is a value of an attribute of VR UI, at any depth of sequences. It
+    maps to its keyed replacement under ``key``
+    (:func:`~pymedphys._dicom.deidentify.uids.replacement_uid`) where
+    ``written`` holds that replacement anywhere, or else to itself where
+    ``written`` holds it unchanged, as the engine keeps a UID that the pinned
+    tables register, and Retain UIDs keeps every UID. A UID that ``written``
+    holds neither way, removed or given a dummy value, is not mapped. UIDs
+    are compared without their padding.
+
+    The validation script assumes that every change of a UID is logged: it
+    fails a consistent-UID check of a UID that its mapping file lacks,
+    wherever the released file holds the attribute. A mapping of every UID
+    that a released file holds in place of its source's lets it score each
+    such check. A UID that is kept maps to itself, as each released file's
+    own UIDs do under Retain UIDs, so that a consistent-UID check tests
+    whether a UID is the same wherever it is held, and a check that it
+    changed, whether it changed;
+    :func:`~pymedphys._dicom.deidentify.midi_benchmark.released_mapping`
+    maps a UID to itself only where no released file holds its replacement.
+
+    Examples
+    --------
+    >>> key = DeidKey(bytes(32))
+    >>> source = pydicom.Dataset()
+    >>> source.FrameOfReferenceUID = "1.2.3"
+    >>> source.SOPClassUID = "1.2.840.10008.5.1.4.1.1.2"
+    >>> source.InstanceCreatorUID = "1.2.4"
+    >>> written = pydicom.Dataset()
+    >>> written.FrameOfReferenceUID = replacement_uid(key, "1.2.3")
+    >>> written.SOPClassUID = "1.2.840.10008.5.1.4.1.1.2"
+    >>> uid_replacements(source, written, key) == {
+    ...     "1.2.3": replacement_uid(key, "1.2.3"),
+    ...     "1.2.840.10008.5.1.4.1.1.2": "1.2.840.10008.5.1.4.1.1.2",
+    ... }
+    True
+    """
+    held = {_unpadded(uid) for uid in _uids_in(written)}
+    mapped: dict[str, str] = {}
+    for uid in _uids_in(source):
+        old = _unpadded(uid)
+        if not old or old in mapped:
+            continue
+        # Replaced as the engine replaces it, from the value as stored.
+        new = replacement_uid(key, uid)
+        if new in held:
+            mapped[old] = new
+        elif old in held:
+            mapped[old] = old
+    return mapped
+
+
+def _uids_in(dataset: pydicom.Dataset) -> Iterator[str]:
+    """Each value of VR UI that ``dataset`` holds, at any depth of sequences."""
+    for tag in dataset.keys():
+        stored = dataset.get_item(tag)
+        vr = getattr(stored, "VR", None) or _dictionary_vr(tag)
+        if vr == "SQ":
+            for item in dataset[tag].value or ():
+                yield from _uids_in(item)
+        elif vr == "UI":
+            value = dataset[tag].value
+            values = (
+                value if isinstance(value, pydicom.multival.MultiValue) else [value]
             )
-        ],
+            yield from (str(each) for each in values if each is not None)
+
+
+def _dictionary_vr(tag: int) -> str:
+    """The VR that the data dictionary gives an attribute, or "" if none."""
+    try:
+        return pydicom.datadict.dictionary_VR(tag)
+    except KeyError:
+        return ""
+
+
+def _unpadded(uid: str) -> str:
+    return uid.strip(" \t\r\n\x00")
+
+
+def write_released_answer_key(
+    answer_key: str | Path,
+    release: str | Path,
+    uid_mapping: str | Path,
+    destination: str | Path,
+) -> dict[str, int]:
+    """Copy the answer key's rows for the released instances, for the script.
+
+    Parameters
+    ----------
+    answer_key : str or Path
+        The answer key, an SQLite database with the table ``answer_data``.
+    release : str or Path
+        The release, or links to its files, each with the suffix ``.dcm``.
+        Each file's SOP Instance UID is read from the file, not its name:
+        under Retain UIDs, a file holds its source's UID but is named by
+        that UID's keyed replacement.
+    uid_mapping : str or Path
+        The harness's UID mapping file, with the columns ``id_old`` and
+        ``id_new``.
+    destination : str or Path
+        The new answer key, which must not exist. It holds the table
+        ``answer_data`` alone, with its rows for the released instances.
+
+    Returns
+    -------
+    dict
+        ``released_instances``, the files in the release;
+        ``answer_key_instances``, the released instances that the answer key
+        has rows for; and ``rows``, the rows copied. They hold no value.
+
+    Raises
+    ------
+    ScriptResultsError
+        If the destination exists, a released file's SOP Instance UID
+        cannot be read, the mapping lacks a column or a released file, or
+        the answer key has no table ``answer_data``. Nothing is written
+        then.
+    """
+    destination = Path(destination)
+    if destination.exists():
+        raise ScriptResultsError("the new answer key must not exist")
+    released = _released_inputs(Path(release), Path(uid_mapping))
+    try:
+        connection = sqlite3.connect(
+            f"{destination.absolute().as_uri()}?mode=rwc", uri=True
+        )
+    except sqlite3.Error:
+        raise ScriptResultsError("the new answer key could not be written") from None
+    try:
+        counts = _copy_released_rows(connection, Path(answer_key), released)
+    except BaseException:
+        connection.close()
+        destination.unlink(missing_ok=True)
+        raise
+    connection.close()
+    return counts
+
+
+def _released_inputs(release: Path, uid_mapping: Path) -> set[str]:
+    """Return the input SOP Instance UIDs of the release's files."""
+    try:
+        with open(uid_mapping, encoding="utf-8", newline="") as file:
+            reader = csv.DictReader(file)
+            if not {"id_old", "id_new"} <= set(reader.fieldnames or ()):
+                raise ScriptResultsError(
+                    "the UID mapping needs the columns id_old and id_new"
+                )
+            inputs = {row["id_new"]: row["id_old"] for row in reader}
+        paths = [path for path in release.rglob("*.dcm") if path.is_file()]
+    except OSError:
+        raise ScriptResultsError(
+            "the release or the UID mapping could not be read"
+        ) from None
+    with redacted_diagnostics():
+        outputs = [_stored_uid(path) for path in paths]
+    if None in outputs:
+        raise ScriptResultsError("a released file's SOP Instance UID could not be read")
+    if any(output not in inputs for output in outputs):
+        raise ScriptResultsError(
+            "the release has a file that the UID mapping maps from no input"
+        )
+    return {inputs[output] for output in outputs}
+
+
+def _stored_uid(path: Path) -> str | None:
+    """Return the SOP Instance UID that a released file holds, or None."""
+    try:
+        dataset = pydicom.dcmread(
+            path, stop_before_pixels=True, specific_tags=["SOPInstanceUID"]
+        )
+        value = dataset.get("SOPInstanceUID")
+    except Exception:  # pylint: disable = broad-exception-caught
+        # Any file that cannot be read is refused; the message names none.
+        return None
+    text = None if value is None else str(value).strip(" \x00")
+    return text or None
+
+
+def _copy_released_rows(
+    connection: sqlite3.Connection, answer_key: Path, released: set[str]
+) -> dict[str, int]:
+    try:
+        connection.execute(
+            "ATTACH DATABASE ? AS answer_key",
+            (f"{answer_key.absolute().as_uri()}?mode=ro",),
+        )
+        schema = connection.execute(
+            "SELECT sql FROM answer_key.sqlite_master "
+            "WHERE type = 'table' AND name = ?",
+            (ANSWER_TABLE,),
+        ).fetchone()
+    except sqlite3.Error:
+        raise ScriptResultsError("the answer key is not an SQLite database") from None
+    if schema is None:
+        raise ScriptResultsError(f"the answer key has no table {ANSWER_TABLE!r}")
+    try:
+        with connection:
+            connection.execute(schema[0])
+            connection.execute("CREATE TEMP TABLE released (uid TEXT PRIMARY KEY)")
+            # The script reads identifiers as they are stored, which may be
+            # wrapped in angle brackets, as its other values are.
+            connection.executemany(
+                "INSERT OR IGNORE INTO released VALUES (?)",
+                [(form,) for uid in released for form in (uid, f"<{uid}>")],
+            )
+            connection.execute(
+                f"INSERT INTO main.{ANSWER_TABLE} "  # nosec B608
+                f"SELECT * FROM answer_key.{ANSWER_TABLE} "
+                "WHERE SOPInstanceUID IN (SELECT uid FROM released)"
+            )
+        rows, instances = connection.execute(
+            f"SELECT COUNT(*), COUNT(DISTINCT SOPInstanceUID) "  # nosec B608
+            f"FROM main.{ANSWER_TABLE}"
+        ).fetchone()
+    except sqlite3.Error:
+        raise ScriptResultsError(
+            f"the answer key's table {ANSWER_TABLE!r} could not be copied"
+        ) from None
+    return {
+        "released_instances": len(released),
+        "answer_key_instances": instances,
+        "rows": rows,
     }
