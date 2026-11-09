@@ -205,6 +205,19 @@ class TechniqueVocabulary:
         """
         if tag not in self.attributes:
             return Rejection.NOT_AUTOMATIC
+        return self.word_rejection(value)
+
+    def word_rejection(self, value: str) -> Rejection | None:
+        """Return why the rules reject ``value`` as words, whatever its attribute.
+
+        The rules of :meth:`rejection` without its test of the attribute,
+        which the release gate applies to a kept Code Meaning (D-032).
+
+        Parameters
+        ----------
+        value : str
+            One value, without padding. The echo check is the caller's.
+        """
         return _text_rejection(value) or self._word_rejection(value)
 
     def keeps(self, tag: str, value: str) -> bool:
