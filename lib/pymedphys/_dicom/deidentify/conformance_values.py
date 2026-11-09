@@ -48,7 +48,7 @@ from collections.abc import Callable, Iterable, Mapping
 from . import birth_dates, dates, dummy_values, pixel_risk, pseudonyms, residuals, uids
 from . import release_report as report
 from .conformance import ConformanceStatement
-from .content_items import OBSERVATION_DATETIME
+from .content_items import LINK_DUMMY, OBSERVATION_DATETIME, TEXT_VALUE
 from .edits import PSEUDONYM_TAGS
 from .pixel_risk import Indicator
 from .policy import (
@@ -449,6 +449,11 @@ def values_written(
         "emptied under Z and takes D's constant under D. The numbering spans "
         "one run.",
         *(("", _log_datetimes(named)) if _writes_log_datetimes(statement) else ()),
+        *(
+            ("", _linked_identifiers(named))
+            if CLEAN_STRUCTURED_CONTENT in statement.options
+            else ()
+        ),
         "",
         f"U replaces a UID with `{uids.UID_ROOT}` followed by the decimal form "
         f"of a name-based (version 5) UUID, at most {uid_length} characters "
@@ -500,6 +505,33 @@ def _log_datetimes(named: Callable[[str], str]) -> str:
         "source value, as D compares them, the series moves on by its own "
         "length until none does. A log whose entries are not in increasing "
         "order is sequestered."
+    )
+
+
+def _linked_identifiers(named: Callable[[str], str]) -> str:
+    """Return the paragraph on the dummy values of linked identifiers."""
+    return (
+        f"D on {named(TEXT_VALUE)} of an Imaging Agent Identifier "
+        "(130254, DCM), which PS3.16 TID 11002 requires to identify its agent "
+        "uniquely in the report, writes in place of the constant the dummy "
+        "value of the agent's rank among the report's agents, in the order of "
+        f"its content tree: `{LINK_DUMMY.format(1)}` for the first, "
+        f"`{LINK_DUMMY.format(2)}` for the second, and so on. D on that of a "
+        "Referenced Imaging Agent Identifier (130255, DCM), by which "
+        "TID 11003 names the agent of an administration activity, writes its "
+        "agent's, so that each activity names the same agent in the output. "
+        "The Component ID (112347, DCM) of each Selected Implant Component "
+        "(112346, DCM), which PS3.16 TID 7000 lists in an implantation plan, "
+        "takes in the same way the dummy value of its component's rank among "
+        "the plan's components, and that of a Connected Implantation Plan "
+        "Component (112374, DCM), by which TID 7000 names a component that an "
+        "assembly connects, its component's, so that each connection names "
+        "the same components in the output. Where any agent's or component's "
+        "value would equal a source identifier of its kind, as D compares "
+        "them, that series moves on by its own length until none does. A "
+        "report in which two agents or two components share an identifier, "
+        "or a reference names no agent or component that is kept, is "
+        "sequestered."
     )
 
 

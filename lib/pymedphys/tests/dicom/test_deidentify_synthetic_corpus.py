@@ -93,6 +93,15 @@ TEMPLATE_IODS = (
     "Macular Grid Thickness and Volume Report",
     "Waveform Annotation SR",
 )
+# The planning, procedure, and acquisition context reports' IODs, in the
+# order of their files.
+PROCEDURE_IODS = (
+    "Implantation Plan SR Document",
+    "Simplified Adult Echo SR",
+    "Planned Imaging Agent Administration SR",
+    "Performed Imaging Agent Administration SR",
+    "Acquisition Context SR",
+)
 LINKED_PATTERNS = {
     Kind.LINKED_UID: r"2\.25\.88888\d{5}",
     Kind.LINKED_PATIENT: r"SYNMK-LINKED-(PATIENT|ISSUER)",
@@ -239,6 +248,11 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "39-sr-spectacle-prescription.dcm",
         "40-sr-macular-grid.dcm",
         "41-sr-waveform-annotation.dcm",
+        "42-sr-implantation-plan.dcm",
+        "43-sr-echo.dcm",
+        "44-sr-imaging-agent-planned.dcm",
+        "45-sr-imaging-agent-performed.dcm",
+        "46-sr-acquisition-context.dcm",
         "47-rt-ion-plan.dcm",
         "48-rt-ion-beams-record.dcm",
         "49-rt-brachy-record.dcm",
@@ -292,6 +306,7 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "Segmentation",
         "Segmentation",
         *TEMPLATE_IODS,
+        *PROCEDURE_IODS,
         "RT Ion Plan",
         "RT Ion Beams Treatment Record",
         "RT Brachy Treatment Record",
@@ -312,40 +327,41 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
     ]
     # Counted from the start, so that a file added at the end moves none.
     assert corpus_module.STRUCTURED_REPORT_FILES == tuple(
-        file.name for file in corpus.files[21:31] + corpus.files[33:41]
+        file.name for file in corpus.files[21:31] + corpus.files[33:46]
     )
     assert corpus_module.SEGMENTATION_FILES == tuple(
         file.name for file in corpus.files[31:33]
     )
+    assert corpus_module.TIMEZONE_REPORT_FILE in corpus_module.PROCEDURE_REPORT_FILES
     assert (
         corpus_module.ION_PLAN_FILE,
         corpus_module.ION_TREATMENT_RECORD_FILE,
-    ) == tuple(file.name for file in corpus.files[41:43])
+    ) == tuple(file.name for file in corpus.files[46:48])
     assert (
         corpus_module.BRACHY_TREATMENT_RECORD_FILE,
         corpus_module.TREATMENT_SUMMARY_RECORD_FILE,
-    ) == tuple(file.name for file in corpus.files[43:45])
+    ) == tuple(file.name for file in corpus.files[48:50])
     assert (
         corpus_module.PARAMETRIC_MAP_FILE,
         corpus_module.REAL_WORLD_VALUE_MAPPING_FILE,
-    ) == tuple(file.name for file in corpus.files[45:47])
-    assert corpus_module.SURFACE_SEGMENTATION_FILE == corpus.files[47].name
+    ) == tuple(file.name for file in corpus.files[50:52])
+    assert corpus_module.SURFACE_SEGMENTATION_FILE == corpus.files[52].name
     assert (
         corpus_module.ENHANCED_RT_IMAGE_FILE,
         corpus_module.ENHANCED_CONTINUOUS_RT_IMAGE_FILE,
-    ) == tuple(file.name for file in corpus.files[56:58])
+    ) == tuple(file.name for file in corpus.files[61:63])
     assert (
         corpus_module.SEGMENT_ANNOTATION_FILE,
         corpus_module.RADIATION_SET_FILE,
         corpus_module.C_ARM_RADIATION_FILE,
         corpus_module.TOMOTHERAPEUTIC_RADIATION_FILE,
         corpus_module.ROBOTIC_ARM_RADIATION_FILE,
-    ) == tuple(file.name for file in corpus.files[48:53])
+    ) == tuple(file.name for file in corpus.files[53:58])
     assert (
         corpus_module.BEAMS_DELIVERY_INSTRUCTION_FILE,
         corpus_module.BRACHY_DELIVERY_INSTRUCTION_FILE,
         corpus_module.RADIATION_SET_DELIVERY_INSTRUCTION_FILE,
-    ) == tuple(file.name for file in corpus.files[53:56])
+    ) == tuple(file.name for file in corpus.files[58:61])
     # Every IOD of the first supported release.
     assert {file.manifest.iod for file in corpus.files} == scope.SUPPORTED_IODS
 
@@ -540,7 +556,9 @@ def test_an_attribute_whose_removal_sequesters_is_planted_in_one_instance(corpus
 
     # Responsible Person and Responsible Organization (D-020), only in the
     # third slice, so that the other instances can be released; and the
-    # Enhanced PET Image's Radiopharmaceutical Start DateTime in no file.
+    # Enhanced PET Image's Radiopharmaceutical Start DateTime in no file; and
+    # the Simplified Adult Echo SR's Timezone Offset From UTC, Type 1 in its
+    # Timezone Module, which only that IOD requires (D-020), in no file.
     # Each report's Verifying Observer Sequence, which a reviewed rule keeps
     # with dummy values (D-021), the Requested Procedure ID of its Referenced
     # Request Sequence, which a plain X empties there (D-020), the
@@ -549,7 +567,10 @@ def test_an_attribute_whose_removal_sequesters_is_planted_in_one_instance(corpus
     # Source Manufacturer in the RT Brachy Treatment Record's Recorded Source
     # Sequence, which a plain X empties there too, are planted.
     both = {"(0010,2297)", "(0010,2299)"}
-    only_in = {"Enhanced PET Image": {"(0018,1078)"}}
+    only_in = {
+        "Enhanced PET Image": {"(0018,1078)"},
+        "Simplified Adult Echo SR": {"(0008,0201)"},
+    }
     assert planted == {corpus_module.SEQUESTERED_FILE: both}
     assert corpus_module.SEQUESTERED_FILE == corpus.files[2].name
     assert withheld == {
@@ -1509,6 +1530,23 @@ _CONTENT_CONCEPTS = {
         )
     },
     "39-sr-spectacle-prescription.dcm": ("2020", {}),
+    # The implantation plan's component has its own Frame of Reference UID.
+    "42-sr-implantation-plan.dcm": (
+        "7000",
+        {
+            ("DCM", "121008", "PNAME"): "PN",  # Person Observer Name
+            ("DCM", "112227", "UIDREF"): "UI",  # Frame of Reference UID
+        },
+    ),
+    **{
+        name: (template, {("DCM", "121008", "PNAME"): "PN"})  # Person Observer Name
+        for name, template in (
+            ("43-sr-echo.dcm", "5300"),
+            ("44-sr-imaging-agent-planned.dcm", "11001"),
+            ("45-sr-imaging-agent-performed.dcm", "11020"),
+            ("46-sr-acquisition-context.dcm", "8101"),
+        )
+    },
 }
 # The content items whose values are the collection's own UIDs, by IOD:
 # the study that the X-ray report's scope of accumulation names, and the
@@ -1578,7 +1616,12 @@ def test_each_report_records_the_identifying_values_of_its_content_tree(corpus):
 
 
 def test_no_marker_is_planted_in_a_reports_root_content_item_sequences(corpus):
-    instances = {file.manifest.sop_instance for file in corpus.files}
+    # The collection's instances, and the implant templates that the
+    # implantation plan names, which the collection does not hold.
+    instances = {file.manifest.sop_instance for file in corpus.files} | {
+        corpus_module.SELECTED_IMPLANT_TEMPLATE,
+        corpus_module.MANUFACTURER_IMPLANT_TEMPLATE,
+    }
     for file in corpus.files:
         if file.name not in corpus_module.STRUCTURED_REPORT_FILES:
             assert all(
@@ -1596,8 +1639,8 @@ def test_no_marker_is_planted_in_a_reports_root_content_item_sequences(corpus):
                 # frame of reference of a SCOORD3D item, the collection's,
                 # and the instance that an IMAGE item references or a
                 # COMPOSITE item names, one of the collection's, such as its
-                # CT dose report, each of which takes its own row of Table
-                # E.1-1.
+                # CT dose report, or an implant template, each of which takes
+                # its own row of Table E.1-1.
                 if placement.concept is None:
                     assert placement.kind is Kind.LINKED_UID, placement
                     if placement.path.tag == REFERENCED_SOP_INSTANCE:

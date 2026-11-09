@@ -123,7 +123,7 @@ OTHER_SR_IODS = (
     "Acquisition Context SR",
     "Rendition Selection Document",
 )
-SUPPORTED_OTHER_SR_IODS = OTHER_SR_IODS[:8]
+SUPPORTED_OTHER_SR_IODS = OTHER_SR_IODS[:13]
 # The RT Ion IODs, which the maintainer added to the target coverage on 31
 # October 2026, whose text, UID, and date attributes were reviewed ahead of
 # supporting them, against every IOD above, and which the first supported

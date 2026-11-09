@@ -46,6 +46,10 @@ Structured Report or Key Object Selection Document IOD of DICOM PS3.16
 - :func:`waveform_annotation_tree`, of a Waveform Annotation SR, TID 3750
   "Waveform Annotations".
 
+:mod:`~pymedphys._dicom.deidentify.synthetic_procedure_trees` gives those of
+the planning, procedure, and acquisition context reports, from the content
+item builders here.
+
 Each holds only the rows that its templates require where they are
 included, for the procedure that its docstring names, apart from the
 templates that it names as left out: the report that Clean Structured
@@ -74,8 +78,9 @@ tests build reports with the optional rows besides, from the same codes
 ``tests/dicom/_synthetic_specialised_reports.py``).
 """
 
-# One module holds the trees of every report of the corpus, which share
-# their codes and content item builders.
+# One module holds the trees of the reports of the corpus but the planning,
+# procedure, and acquisition context reports, which share their codes and
+# content item builders.
 # pylint: disable = too-many-lines
 
 from __future__ import annotations
@@ -102,6 +107,11 @@ PROCEDURE_LOG_STORAGE = "1.2.840.10008.5.1.4.1.1.88.40"
 SPECTACLE_PRESCRIPTION_REPORT_STORAGE = "1.2.840.10008.5.1.4.1.1.78.6"
 MACULAR_GRID_THICKNESS_AND_VOLUME_REPORT_STORAGE = "1.2.840.10008.5.1.4.1.1.79.1"
 WAVEFORM_ANNOTATION_SR_STORAGE = "1.2.840.10008.5.1.4.1.1.88.77"
+IMPLANTATION_PLAN_SR_STORAGE = "1.2.840.10008.5.1.4.1.1.88.70"
+SIMPLIFIED_ADULT_ECHO_SR_STORAGE = "1.2.840.10008.5.1.4.1.1.88.72"
+PLANNED_IMAGING_AGENT_ADMINISTRATION_SR_STORAGE = "1.2.840.10008.5.1.4.1.1.88.74"
+PERFORMED_IMAGING_AGENT_ADMINISTRATION_SR_STORAGE = "1.2.840.10008.5.1.4.1.1.88.75"
+ACQUISITION_CONTEXT_SR_STORAGE = "1.2.840.10008.5.1.4.1.1.88.71"
 # The root template of each, as Content Template Sequence (0040,A504) names it.
 ROOT_TEMPLATES = {
     X_RAY_RADIATION_DOSE_SR_STORAGE: "10001",
@@ -121,6 +131,11 @@ ROOT_TEMPLATES = {
     SPECTACLE_PRESCRIPTION_REPORT_STORAGE: "2020",
     MACULAR_GRID_THICKNESS_AND_VOLUME_REPORT_STORAGE: "2100",
     WAVEFORM_ANNOTATION_SR_STORAGE: "3750",
+    IMPLANTATION_PLAN_SR_STORAGE: "7000",
+    SIMPLIFIED_ADULT_ECHO_SR_STORAGE: "5300",
+    PLANNED_IMAGING_AGENT_ADMINISTRATION_SR_STORAGE: "11001",
+    PERFORMED_IMAGING_AGENT_ADMINISTRATION_SR_STORAGE: "11020",
+    ACQUISITION_CONTEXT_SR_STORAGE: "8101",
 }
 # The other root template that PS3.3 Section A.35.8 allows in an X-Ray
 # Radiation Dose SR, of a CT Radiation Dose report.
