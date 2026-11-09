@@ -282,11 +282,14 @@ def test_the_places_where_a_plain_action_cannot_stand_in_the_second_generation_r
 
     # Operator Identification Sequence, which Table E.1-1 gives X/D, is Type 1
     # in the Type 2 Override Sequence of the four records, so it resolves to
-    # D, which a sequence has no dummy value for (D-021).
+    # D, which a sequence has no generic dummy value for. Its reviewed rule
+    # keeps each item there, each attribute under its own rule, as the
+    # maintainer chose for Verifying Observer Sequence (D-021).
     operator = {
         (name, OVERRIDE, OPERATOR_IDENTIFICATION, "D"): "D"
         for name in TOLERANCE_RECORD_IODS
     }
+    assert dummy_values.kept_item_attributes(OPERATOR_IDENTIFICATION, OVERRIDE)
     # Referenced Study Sequence, which Table E.1-1 gives X/Z, is Type 1 in
     # three reference items, so it resolves to D, as above.
     study = {

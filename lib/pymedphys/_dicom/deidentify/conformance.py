@@ -87,6 +87,7 @@ from .dummy_values import (
     INSTITUTION_CODE_SEQUENCE,
     PERSON_IDENTIFICATION_CODE_SEQUENCE,
     REFERENCED_PERFORMED_PROCEDURE_STEP_SEQUENCE,
+    OPERATOR_IDENTIFICATION_SEQUENCE,
     VERIFYING_OBSERVER_SEQUENCE,
     reviewed_within,
 )
@@ -144,7 +145,8 @@ UID_DEFINITION = "UID role: definition"
 # The action at a place where the instance is sequestered rather than written.
 SEQUESTER = "sequester"
 # The attributes whose dummy value a reviewed rule gives, whatever their VR
-# (D-021); Institution Code Sequence's, only where reviewed_within says.
+# (D-021); Institution Code Sequence's and Operator Identification
+# Sequence's, only where reviewed_within says.
 _REVIEWED_DUMMY_ATTRIBUTES = frozenset(
     {
         PERSON_IDENTIFICATION_CODE_SEQUENCE,
@@ -152,6 +154,7 @@ _REVIEWED_DUMMY_ATTRIBUTES = frozenset(
         REFERENCED_PERFORMED_PROCEDURE_STEP_SEQUENCE,
         ICC_PROFILE,
         VERIFYING_OBSERVER_SEQUENCE,
+        OPERATOR_IDENTIFICATION_SEQUENCE,
     }
 )
 # What a plain X on Overlay Data removes with it: every attribute of its
@@ -603,7 +606,7 @@ def _removed_with_a_sequence(
             action = compound_actions.resolve_plain_in_iod(
                 iod, sequence, within, action
             )
-        if not descends(sequence, action):
+        if not descends(sequence, action, within):
             return True
     return False
 

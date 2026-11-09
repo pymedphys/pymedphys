@@ -21,7 +21,10 @@ Dose, RT Image, Enhanced RT Image, Enhanced Continuous RT Image, RT Beams
 Treatment Record, RT Ion Plan, RT Ion Beams Treatment Record, RT Brachy
 Treatment Record, RT Treatment Summary Record, RT Beams Delivery
 Instruction, RT Brachy Application Setup Delivery Instruction, and RT
-Radiation Set Delivery Instruction IODs, of the Spatial Registration and Deformable Spatial
+Radiation Set Delivery Instruction IODs, of the C-Arm Photon-Electron
+Radiation Record, Tomotherapeutic Radiation Record, Robotic-Arm Radiation
+Record, RT Radiation Salvage Record, and RT Radiation Record Set IODs, of the
+Spatial Registration and Deformable Spatial
 Registration IODs, of the Segmentation IOD, of both Segmentation Storage
 and Label Map Segmentation Storage, of the Surface Segmentation IOD, of the X-Ray Radiation Dose SR, Enhanced
 X-Ray Radiation Dose SR, Radiopharmaceutical Radiation Dose SR, and Patient
@@ -100,6 +103,11 @@ SUPPORTED_IODS = frozenset(
         "RT Radiation Set Delivery Instruction",
         "RT Structure Set",
         "RT Treatment Summary Record",
+        "C-Arm Photon-Electron Radiation Record",
+        "Tomotherapeutic Radiation Record",
+        "Robotic-Arm Radiation Record",
+        "RT Radiation Salvage Record",
+        "RT Radiation Record Set",
         "Segmentation",
         "Surface Segmentation",
         "Spatial Registration",

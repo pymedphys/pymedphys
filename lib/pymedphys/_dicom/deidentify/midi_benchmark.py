@@ -112,7 +112,7 @@ from . import run
 from .compound_actions import COMPOUND_ACTIONS, resolve_in_iod, resolve_plain_in_iod
 from .descriptor_cleaning import CLEAN_DESCRIPTORS
 from .diagnostics import redacted_diagnostics
-from .dummy_values import KEPT_ITEM_ATTRIBUTES
+from .dummy_values import kept_item_attributes
 from .element_rules import KEEP, ElementRules
 from .instance_transform import InstanceTransform, ReleaseGate
 from .iods import IOD, IODTables, load_iod_tables
@@ -645,9 +645,10 @@ def _explaining_action(
         except ValueError:
             return None
         if depth < len(tags) - 1:
-            if not descends(tag, action):
+            if not descends(tag, action, tags[:depth]):
                 return action
-            if action == "D" and tags[depth + 1] not in KEPT_ITEM_ATTRIBUTES[tag]:
+            kept = kept_item_attributes(tag, tags[:depth])
+            if action == "D" and kept is not None and tags[depth + 1] not in kept:
                 # The sequence's reviewed rule keeps only some of its items'
                 # attributes, and removes the others (D-021).
                 return "X"

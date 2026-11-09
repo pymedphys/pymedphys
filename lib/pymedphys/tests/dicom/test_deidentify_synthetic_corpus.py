@@ -254,6 +254,11 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "75-rt-beams-delivery-instruction.dcm",
         "76-rt-brachy-delivery-instruction.dcm",
         "77-rt-radiation-set-delivery-instruction.dcm",
+        "78-rt-radiation-record-set.dcm",
+        "82-c-arm-radiation-record.dcm",
+        "83-tomotherapeutic-radiation-record.dcm",
+        "84-robotic-arm-radiation-record.dcm",
+        "85-rt-radiation-salvage-record.dcm",
         "89-rt-image-enhanced.dcm",
         "90-rt-image-enhanced-continuous.dcm",
     ]
@@ -307,6 +312,11 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "RT Beams Delivery Instruction",
         "RT Brachy Application Setup Delivery Instruction",
         "RT Radiation Set Delivery Instruction",
+        "RT Radiation Record Set",
+        "C-Arm Photon-Electron Radiation Record",
+        "Tomotherapeutic Radiation Record",
+        "Robotic-Arm Radiation Record",
+        "RT Radiation Salvage Record",
         "Enhanced RT Image",
         "Enhanced Continuous RT Image",
     ]
@@ -333,7 +343,7 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
     assert (
         corpus_module.ENHANCED_RT_IMAGE_FILE,
         corpus_module.ENHANCED_CONTINUOUS_RT_IMAGE_FILE,
-    ) == tuple(file.name for file in corpus.files[56:58])
+    ) == tuple(file.name for file in corpus.files[61:63])
     assert (
         corpus_module.SEGMENT_ANNOTATION_FILE,
         corpus_module.RADIATION_SET_FILE,
@@ -346,6 +356,13 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         corpus_module.BRACHY_DELIVERY_INSTRUCTION_FILE,
         corpus_module.RADIATION_SET_DELIVERY_INSTRUCTION_FILE,
     ) == tuple(file.name for file in corpus.files[53:56])
+    assert (
+        corpus_module.RADIATION_RECORD_SET_FILE,
+        corpus_module.C_ARM_RADIATION_RECORD_FILE,
+        corpus_module.TOMOTHERAPEUTIC_RADIATION_RECORD_FILE,
+        corpus_module.ROBOTIC_ARM_RADIATION_RECORD_FILE,
+        corpus_module.RADIATION_SALVAGE_RECORD_FILE,
+    ) == tuple(file.name for file in corpus.files[56:61])
     # Every IOD of the first supported release.
     assert {file.manifest.iod for file in corpus.files} == scope.SUPPORTED_IODS
 
@@ -458,12 +475,18 @@ REVIEWED_DUMMY_SEQUENCES = {"(0040,1101)", "(0008,1111)", "(0040,A073)"}
 # Interlock Resolution User Sequence (D-021).
 INSTITUTION_CODE_SEQUENCE = "(0008,0082)"
 INTERLOCK_RESOLUTION_USER = "(300A,0746)"
+# Operator Identification Sequence's reviewed rule, which keeps its items,
+# holds only directly in an item of Override Sequence (D-021).
+OPERATOR_IDENTIFICATION_SEQUENCE = "(0008,1072)"
+OVERRIDE_SEQUENCE = "(3008,0060)"
 
 
 def _reviewed(tag, path):
     """Return whether a reviewed rule writes D's value for a sequence at a place."""
     if tag == INSTITUTION_CODE_SEQUENCE:
         return path[-1:] == (INTERLOCK_RESOLUTION_USER,)
+    if tag == OPERATOR_IDENTIFICATION_SEQUENCE:
+        return path[-1:] == (OVERRIDE_SEQUENCE,)
     return tag in REVIEWED_DUMMY_SEQUENCES
 
 
@@ -545,8 +568,9 @@ def test_an_attribute_whose_removal_sequesters_is_planted_in_one_instance(corpus
     # with dummy values (D-021), the Requested Procedure ID of its Referenced
     # Request Sequence, which a plain X empties there (D-020), the
     # Institution Code Sequence of each treatment record's interlock
-    # resolution user, whose dummy item a reviewed rule writes (D-021), and
-    # Source Manufacturer in the RT Brachy Treatment Record's Recorded Source
+    # resolution user, whose dummy item a reviewed rule writes (D-021), the
+    # Operator Identification Sequence of each radiation record's override,
+    # whose items a reviewed rule keeps (D-021), and Source Manufacturer in the RT Brachy Treatment Record's Recorded Source
     # Sequence, which a plain X empties there too, are planted.
     both = {"(0010,2297)", "(0010,2299)"}
     only_in = {"Enhanced PET Image": {"(0018,1078)"}}

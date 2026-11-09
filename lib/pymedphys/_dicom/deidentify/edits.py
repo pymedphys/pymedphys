@@ -427,11 +427,16 @@ def _text(value: ElementValue) -> str | bytes:
     return "\\".join(str(each) for each in value.values)
 
 
+def _within(path: ElementPath) -> tuple[str, ...]:
+    """Return the tags of the sequences that enclose an element, outermost first."""
+    return tuple(tag for tag, _ in path.items)
+
+
 def _kept_container(element: ElementPlan, container: bool) -> bool:
     return (
         container
         and element.removed_with is None
-        and descends(element.path.tag, element.action)
+        and descends(element.path.tag, element.action, _within(element.path))
     )
 
 
@@ -498,7 +503,9 @@ def _kind(element: ElementPlan, container: bool) -> EditKind:
     action = element.action
     if element.removed_with is not None or action == "X":
         kind = EditKind.REMOVE
-    elif action == "K" or (container and descends(element.path.tag, action)):
+    elif action == "K" or (
+        container and descends(element.path.tag, action, _within(element.path))
+    ):
         kind = EditKind.KEEP
     elif action == "C" or _takes_pseudonym(element):
         kind = EditKind.PENDING

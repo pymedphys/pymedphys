@@ -42,6 +42,11 @@ MANDATORY = {
     "Robotic-Arm Radiation",
     "RT Brachy Application Setup Delivery Instruction",
     "RT Radiation Set Delivery Instruction",
+    "C-Arm Photon-Electron Radiation Record",
+    "Tomotherapeutic Radiation Record",
+    "Robotic-Arm Radiation Record",
+    "RT Radiation Salvage Record",
+    "RT Radiation Record Set",
 }
 # Required in a Segmentation where a Derivation Image functional group is
 # present, in a Parametric Map where a Derivation Image or Referenced Image

@@ -66,6 +66,7 @@ AUTHOR_IDENTIFICATION = ("(3010,0019)",)
 # an RT Ion Beams Treatment Record.
 INTERLOCK_USER = ("(3008,0020)", "(300A,0740)", "(300A,0746)")
 ION_INTERLOCK_USER = ("(3008,0021)", "(300A,0740)", "(300A,0746)")
+RECORD_INTERLOCK_USER = ("(300A,0740)", "(300A,0746)")
 INSTITUTION_CODE_SEQUENCE = "(0008,0082)"  # X/Z/D in the Basic Profile
 PIXEL_DATA_PROVIDER_URL = "(0028,7FE0)"  # X/Z/D by a supplementary rule
 # The attributes that a reviewed rule gives a dummy value, whatever their VR.
@@ -142,7 +143,7 @@ def _removed_with_a_sequence(sequence_action, iod, path):
             action = compound_actions.resolve_plain_in_iod(
                 iod, tag, path[:depth], action
             )
-        if not walker.descends(tag, action):
+        if not walker.descends(tag, action, path[:depth]):
             return True
     return False
 
@@ -244,6 +245,8 @@ def test_compound_actions_are_resolved_at_every_place_a_supported_iod_defines_th
 def _has_dummy_value(tag, path):
     if tag == INSTITUTION_CODE_SEQUENCE:
         return path[-1:] == (INTERLOCK_RESOLUTION_USER,)
+    if tag == dummy_values.OPERATOR_IDENTIFICATION_SEQUENCE:
+        return path[-1:] == (dummy_values.OVERRIDE_SEQUENCE,)
     attribute = standard.dictionary_attribute(tag.replace("60xx", "6000"))
     return (
         tag in REVIEWED_DUMMY_ATTRIBUTES
@@ -264,6 +267,10 @@ def test_institution_name_is_resolved_by_its_type_at_each_place(statement_for):
     assert found[("RT Beams Treatment Record", INTERLOCK_USER)] == "D"
     assert found[("RT Ion Beams Treatment Record", ION_INTERLOCK_USER)] == "D"
     assert found[("Enhanced RT Image", AUTHOR_IDENTIFICATION)] == "Z"
+    # Type 2 in the items of Operator Identification Sequence that D keeps
+    # in a radiation record's tolerance override (D-021).
+    operator = ("(300A,0731)", "(3008,0060)", "(0008,1072)")
+    assert found[("RT Radiation Salvage Record", operator)] == "Z"
     assert found[("Enhanced Continuous RT Image", AUTHOR_IDENTIFICATION)] == "Z"
     for name in (
         "RT Segment Annotation",
@@ -287,18 +294,30 @@ def test_institution_name_is_resolved_by_its_type_at_each_place(statement_for):
 
     text = conformance_markdown.render_markdown(statement_for("basic"))
     row = next(line for line in text.splitlines() if f"| {INSTITUTION_NAME} |" in line)
+    records = (
+        "C-Arm Photon-Electron Radiation Record, RT Radiation Salvage Record, "
+        "Robotic-Arm Radiation Record, and Tomotherapeutic Radiation Record"
+    )
     assert row.endswith(
         "| Z within Author Identification Sequence (3010,0019) in C-Arm "
-        "Photon-Electron Radiation, Enhanced Continuous RT Image, Enhanced RT "
-        "Image, RT Radiation Set, RT Radiation Set Delivery Instruction, RT "
-        "Segment Annotation, Robotic-Arm Radiation, and Tomotherapeutic "
-        "Radiation; within Treatment Machine Sequence (300A,0206) in RT Beams "
-        "Treatment Record, RT Brachy Treatment Record, and RT Ion Beams "
-        "Treatment Record; within RT Assertions Sequence (0044,0110) > "
-        "Asserter Identification Sequence (0044,0103) in RT Ion Plan and RT "
-        "Plan; within Omitted Radiation Sequence (300A,0787) > Asserter "
-        "Identification Sequence (0044,0103) in RT Radiation Set Delivery "
-        "Instruction. D within Treatment Session Beam Sequence (3008,0020) "
+        "Photon-Electron Radiation, C-Arm Photon-Electron Radiation Record, "
+        "Enhanced Continuous RT Image, Enhanced RT Image, RT Radiation Record "
+        "Set, RT Radiation Salvage Record, RT Radiation Set, RT Radiation Set "
+        "Delivery Instruction, RT Segment Annotation, Robotic-Arm Radiation, "
+        "Robotic-Arm Radiation Record, Tomotherapeutic Radiation, and "
+        "Tomotherapeutic Radiation Record; within Treatment Tolerance "
+        "Violation Sequence (300A,0731) > Override Sequence (3008,0060) > "
+        f"Operator Identification Sequence (0008,1072) in {records}; within "
+        "Confirmation Sequence (300A,073F) > Asserter Identification Sequence "
+        f"(0044,0103) in {records}; within Treatment Machine Sequence "
+        "(300A,0206) in RT Beams Treatment Record, RT Brachy Treatment Record, "
+        "and RT Ion Beams Treatment Record; within RT Assertions Sequence "
+        "(0044,0110) > Asserter Identification Sequence (0044,0103) in RT Ion "
+        "Plan and RT Plan; within Omitted Radiation Sequence (300A,0787) > "
+        "Asserter Identification Sequence (0044,0103) in RT Radiation Set "
+        "Delivery Instruction. D within Interlock Sequence (300A,0740) > "
+        f"Interlock Resolution User Sequence (300A,0746) in {records}; within "
+        "Treatment Session Beam Sequence (3008,0020) "
         "> Interlock Sequence (300A,0740) > Interlock Resolution User Sequence "
         "(300A,0746) in RT Beams Treatment Record; within Treatment Session Ion "
         "Beam Sequence (3008,0021) > Interlock Sequence (300A,0740) > Interlock "
@@ -335,9 +354,20 @@ def test_an_interlock_users_institution_code_sequence_is_listed_as_d(statement_f
     assert places[("RT Ion Beams Treatment Record", ION_INTERLOCK_USER)] == "D"
     assert places[("RT Plan", ASSERTER_IDENTIFICATION)] == "Z"
     assert places[("RT Ion Plan", ASSERTER_IDENTIFICATION)] == "Z"
+    # The radiation records' RT Radiation Record Common Module holds the
+    # interlock at its top level.
     assert {place for place, action in places.items() if action == "D"} == {
         ("RT Beams Treatment Record", INTERLOCK_USER),
         ("RT Ion Beams Treatment Record", ION_INTERLOCK_USER),
+        *(
+            (name, RECORD_INTERLOCK_USER)
+            for name in (
+                "C-Arm Photon-Electron Radiation Record",
+                "Tomotherapeutic Radiation Record",
+                "Robotic-Arm Radiation Record",
+                "RT Radiation Salvage Record",
+            )
+        ),
     }
 
 
