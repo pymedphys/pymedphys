@@ -101,12 +101,13 @@ from .face_review import FaceReview, read_face_review
 from .keys import DeidKey, DeidKeyError, custodian_location_problem, read_key_file
 from .pixel_cleaning import TextFinder
 from .pixel_region_rules import PixelRegionRules, PixelRegionRulesError
-from .policy import CLEAN_PIXEL_DATA
+from .policy import CLEAN_GRAPHICS, CLEAN_PIXEL_DATA
 from .profiles import ProfileError, ProfileStore
 from .qc_pack import QcPackError
 from .readiness import ReadinessReview, read_readiness_review
 from .reasons import ReviewReason, StatisticalReason
 from .redaction_review import RedactionReview, read_redaction_review
+from .reviewed_annotations import ReviewedAnnotations, ReviewedAnnotationsError
 from .reviewed_descriptors import ReviewedDescriptors, ReviewedDescriptorsError
 from .reviewed_roi_names import ReviewedNames, ReviewedNamesError
 from .safe_private import SafePrivateList
@@ -188,6 +189,18 @@ _RULES_MISSING = (
 _RULES_UNUSABLE = (
     "the region rules could not be used; their details are not shown "
     "because they can contain file paths or equipment names"
+)
+_ANNOTATIONS_OPTION = (
+    "error: --reviewed-annotations applies only under Clean Graphics: with "
+    "--option clean_graphics"
+)
+_ANNOTATIONS_MISSING = (
+    "the reviewed annotations list does not exist; its path is not shown "
+    "because it can name a person"
+)
+_ANNOTATIONS_UNUSABLE = (
+    "the reviewed annotations list could not be used; its details are not "
+    "shown because they can contain file paths"
 )
 _PROJECT_KEY_HALF = (
     "a project key's key file and profile store are given together, or neither"
@@ -693,6 +706,19 @@ def build_parser(
         ),
     )
     parser.add_argument(
+        "--reviewed-annotations",
+        metavar="FILE",
+        help=(
+            "under Clean Graphics, the custodian's reviewed annotations list, "
+            "outside SOURCE, RELEASE, and the QC pack, whose decisions keep or "
+            "remove each graphic annotation of a Presentation State; one that "
+            "it has no decision on is held for review; by default, none, so a "
+            "Presentation State with graphic annotations is sequestered; "
+            "python -m pymedphys._dicom.deidentify.reviewed_annotations_command "
+            "records a reviewer's decisions in it"
+        ),
+    )
+    parser.add_argument(
         "--face-review",
         metavar="DIRECTORY",
         help=(
@@ -800,6 +826,7 @@ def build_transform(
     finder: TextFinder | None = None,
     redaction_review: RedactionReview | None = None,
     pixel_region_rules: PixelRegionRules | None = None,
+    reviewed_annotations: ReviewedAnnotations | None = None,
     safe_private_list: SafePrivateList = SafePrivateList.REVIEWED,
     profiles: ProfileStore | None = None,
     face_review: FaceReview | None = None,
@@ -830,6 +857,9 @@ def build_transform(
     pixel_region_rules : PixelRegionRules, optional
         Under Clean Pixel Data, the custodian's reviewed region rules, which
         no other policy takes.
+    reviewed_annotations : ReviewedAnnotations, optional
+        Under Clean Graphics, the custodian's reviewed annotations list,
+        which no other policy takes (D-062).
     safe_private_list : SafePrivateList, optional
         Under Retain Safe Private, the list whose rules settle private
         attributes: the reviewed rules, the default, or TCIA's Private Tag
@@ -857,8 +887,8 @@ def build_transform(
     PolicyError
         If the preset or option set is not enabled, unless
         ``unvalidated_policy`` is true, or ``cleaning``,
-        ``finder``, ``redaction_review``, ``pixel_region_rules``, or
-        ``safe_private_list`` does not fit it, with a message that quotes
+        ``finder``, ``redaction_review``, ``pixel_region_rules``,
+        ``reviewed_annotations``, or ``safe_private_list`` does not fit it, with a message that quotes
         nothing but the names of presets and options. So too if
         ``face_review`` is given without Clean Recognizable Visual Features,
         or left out with it, and if ``readiness_review`` is given with a
@@ -872,6 +902,7 @@ def build_transform(
         finder=finder,
         redaction_review=redaction_review,
         pixel_region_rules=pixel_region_rules,
+        reviewed_annotations=reviewed_annotations,
         safe_private_list=safe_private_list,
         profiles=profiles,
         face_review=face_review,
@@ -1160,6 +1191,28 @@ def _region_rules(
         raise TransformNotBuilt(_RULES_UNUSABLE) from None
 
 
+def _reviewed_annotations(
+    path: str | os.PathLike[str], protected: Collection[Path]
+) -> ReviewedAnnotations:
+    """Return the custodian's reviewed annotations list (D-062).
+
+    The list must exist, since a run records no decision, and lie outside
+    the ``protected`` directories.
+
+    Raises
+    ------
+    TransformNotBuilt
+        If the list does not exist or cannot be used, with a message that
+        names no path and no digest.
+    """
+    try:
+        if not Path(path).is_file():
+            raise TransformNotBuilt(_ANNOTATIONS_MISSING)
+        return ReviewedAnnotations.open(path, protected_dirs=protected)
+    except (ReviewedAnnotationsError, OSError):
+        raise TransformNotBuilt(_ANNOTATIONS_UNUSABLE) from None
+
+
 def _text_detector() -> TextFinder:
     """Return the text detector, with the pinned model (D-037).
 
@@ -1193,6 +1246,7 @@ def transform_for(  # pylint: disable = too-many-arguments
     reviewed_descriptors: str | os.PathLike[str] | None = None,
     redaction_review: str | os.PathLike[str] | None = None,
     region_rules: str | os.PathLike[str] | None = None,
+    reviewed_annotations: str | os.PathLike[str] | None = None,
     safe_private_list: SafePrivateList = SafePrivateList.REVIEWED,
     profiles: ProfileStore | None = None,
     face_review: str | os.PathLike[str] | None = None,
@@ -1221,7 +1275,10 @@ def transform_for(  # pylint: disable = too-many-arguments
     ``region_rules``, which must exist and lie outside the same directories
     (D-037), and the text detector is made, with the pinned model, last,
     since it can download the model. Under any other policy, these options
-    are not read. Under Retain Safe Private, ``safe_private_list``
+    are not read. Under Clean Graphics, the custodian's reviewed annotations
+    list is read from ``reviewed_annotations``, which must exist and lie
+    outside the same directories (D-062); it is refused under any other
+    policy, before anything is loaded. Under Retain Safe Private, ``safe_private_list``
     chooses the list whose rules settle private attributes, and no other
     policy takes TCIA's, which is refused before anything is loaded. A
     project key's subject profiles, from :func:`run_key`, are given as
@@ -1244,13 +1301,14 @@ def transform_for(  # pylint: disable = too-many-arguments
     ------
     TransformNotBuilt
         If the preset or option set is not enabled, ``safe_private_list``
-        does not fit it, the policy selects Clean Recognizable Visual
+        does not fit it, ``reviewed_annotations`` is given without Clean
+        Graphics, the policy selects Clean Recognizable Visual
         Features and ``face_review`` is not given, only one of
         ``readiness_review`` and ``readiness_report`` is given, or they are
         given with a policy other than the ``public-release`` preset, or
         what ROI Names or descriptors are cleaned with, the redaction
-        review, the region rules, the face review, the readiness review, or
-        the text detector cannot be used, or the readiness review is of
+        review, the region rules, the reviewed annotations list, the face
+        review, the readiness review, or the text detector cannot be used, or the readiness review is of
         another QC pack than the face review, with a message that quotes
         nothing but the names of presets and options, or a reason that
         names no path or value.
@@ -1266,6 +1324,10 @@ def transform_for(  # pylint: disable = too-many-arguments
         raise TransformNotBuilt(
             "a safe private list can be chosen only under the Retain Safe "
             "Private Option"
+        )
+    if reviewed_annotations is not None and CLEAN_GRAPHICS not in selected.options:
+        raise TransformNotBuilt(
+            "a reviewed annotations list is taken only under the Clean Graphics Option"
         )
     readiness_given = readiness_review is not None or readiness_report is not None
     if readiness_given and (readiness_review is None or readiness_report is None):
@@ -1307,6 +1369,13 @@ def transform_for(  # pylint: disable = too-many-arguments
         if pixel_data and region_rules is not None
         else None
     )
+    annotations = (
+        None
+        if reviewed_annotations is None
+        else _reviewed_annotations(
+            reviewed_annotations, _protected(source, release, qc_pack)
+        )
+    )
     finder = _text_detector() if pixel_data else None
     try:
         return build_transform(
@@ -1317,6 +1386,7 @@ def transform_for(  # pylint: disable = too-many-arguments
             finder=finder,
             redaction_review=redaction,
             pixel_region_rules=rules,
+            reviewed_annotations=annotations,
             safe_private_list=safe_private_list,
             profiles=profiles,
             face_review=review,
@@ -1391,6 +1461,22 @@ def pixel_data_options_apply(
     )
 
 
+def annotations_option_applies(
+    preset: str | None, options: Collection[str] | None = None
+) -> bool:
+    """Return whether the run's policy takes a reviewed annotations list.
+
+    It applies under Clean Graphics: with a preset, or a custom option set
+    in ``options``, that selects it (D-033, D-062). Without either, the
+    run's preset is ``basic``.
+    """
+    if options is not None:
+        return CLEAN_GRAPHICS in options
+    return CLEAN_GRAPHICS in policy.PRESETS.get(
+        policy.DEFAULT_PRESET if preset is None else preset, ()
+    )
+
+
 def _built(
     arguments: argparse.Namespace, key: DeidKey, profiles: ProfileStore | None
 ) -> instance_transform.InstanceTransform:
@@ -1409,12 +1495,46 @@ def _built(
         reviewed_descriptors=arguments.reviewed_descriptors,
         redaction_review=arguments.redaction_review,
         region_rules=arguments.region_rules,
+        reviewed_annotations=arguments.reviewed_annotations,
         safe_private_list=SafePrivateList(arguments.safe_private_list),
         profiles=profiles,
         face_review=arguments.face_review,
         readiness_review=arguments.readiness_review,
         readiness_report=arguments.readiness_report,
     )
+
+
+def _option_usage(arguments: argparse.Namespace) -> str | None:
+    """Return why an option is given with a policy that does not take it, or None.
+
+    The options of Clean Descriptors, Clean Pixel Data, Clean Graphics, and
+    Clean Recognizable Visual Features are each refused without their
+    option, in that order.
+    """
+    preset, options = arguments.preset, arguments.options
+    roi_name_options = (
+        arguments.tg263 is not None
+        or arguments.reviewed_names is not None
+        or arguments.empty_held_roi_names
+        or arguments.roi_list is not None
+        or arguments.reviewed_descriptors is not None
+    )
+    pixel_data_options = (
+        arguments.redaction_review is not None or arguments.region_rules is not None
+    )
+    for given, applies, problem in (
+        (roi_name_options, roi_name_options_apply, _ROI_NAME_OPTIONS),
+        (pixel_data_options, pixel_data_options_apply, _PIXEL_DATA_OPTIONS),
+        (
+            arguments.reviewed_annotations is not None,
+            annotations_option_applies,
+            _ANNOTATIONS_OPTION,
+        ),
+        (arguments.face_review is not None, face_review_applies, _FACE_REVIEW_OPTION),
+    ):
+        if given and not applies(preset, options):
+            return problem
+    return None
 
 
 def _readiness_usage(arguments: argparse.Namespace) -> str | None:
@@ -1480,34 +1600,9 @@ def main(
     """
     arguments = build_parser(stderr=stderr).parse_args(argv)
     error_stream = sys.stderr if stderr is None else stderr
-    roi_name_options = (
-        arguments.tg263 is not None
-        or arguments.reviewed_names is not None
-        or arguments.empty_held_roi_names
-        or arguments.roi_list is not None
-        or arguments.reviewed_descriptors is not None
-    )
-    if roi_name_options and not roi_name_options_apply(
-        arguments.preset, arguments.options
-    ):
-        _print(_ROI_NAME_OPTIONS, error_stream)
-        return EXIT_USAGE
-    pixel_data_options = (
-        arguments.redaction_review is not None or arguments.region_rules is not None
-    )
-    if pixel_data_options and not pixel_data_options_apply(
-        arguments.preset, arguments.options
-    ):
-        _print(_PIXEL_DATA_OPTIONS, error_stream)
-        return EXIT_USAGE
-    if arguments.face_review is not None and not face_review_applies(
-        arguments.preset, arguments.options
-    ):
-        _print(_FACE_REVIEW_OPTION, error_stream)
-        return EXIT_USAGE
-    readiness_problem = _readiness_usage(arguments)
-    if readiness_problem is not None:
-        _print(readiness_problem, error_stream)
+    usage_problem = _option_usage(arguments) or _readiness_usage(arguments)
+    if usage_problem is not None:
+        _print(usage_problem, error_stream)
         return EXIT_USAGE
     reporter = written_check = before_publish = None
     if transform is None:

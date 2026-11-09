@@ -57,6 +57,14 @@ A pack holds, for one run:
   each by the attribute that a decision on it names: its tag, or, for
   private text under the Retain Safe Private Option, its private creator,
   group, element within the block, and VR (D-035);
+- ``annotations``: what the run decided for each item of Graphic
+  Annotation Sequence (0070,0001) of a Presentation State under the Clean
+  Graphics Option with a reviewed annotations list, kept, removed, or held
+  for review, with why a held one was held, its digest, by which the list
+  decides on it, its text values, and an SVG drawing of its graphics and
+  text as received (:mod:`~pymedphys._dicom.deidentify.annotation_drawing`),
+  for the reviewer's decision on each annotation that later runs apply,
+  and the audit of each kept or removed (D-062);
 - ``reference_findings``: each reference finding that the run reports
   without acting on it, such as a dangling reference, or a written reference
   to an instance that was not written, at each instance it names, with the
@@ -165,6 +173,8 @@ from .run_written import REPORTED_ONLY
 from .written_references import WrittenFindingKind
 from .labels import LABEL_PATTERN
 from .residuals import UnsearchedReason
+from .reviewed_annotations import Held as AnnotationHeld
+from .reviewed_annotations import Outcome as AnnotationOutcome
 from .reviewed_descriptors import CleanedDescriptor
 from .reviewed_descriptors import Held as DescriptorHeld
 from .reviewed_descriptors import Outcome as DescriptorOutcome
@@ -173,7 +183,7 @@ from .reviewed_roi_names import Outcome
 from .text_detection import TextBox
 
 # The format of the pack document. A change to its fields takes a new label.
-FORMAT = "pymedphys-deid-qc-pack/34"
+FORMAT = "pymedphys-deid-qc-pack/37"
 # The bytes of a written file shown on each side of a residual's offset.
 EXCERPT_BYTES = 48
 # The SHA-256 that face_review.contour_data_sha256 gives a file without
@@ -888,6 +898,89 @@ class DescriptorEntry:
         return (
             f"DescriptorEntry(position={self.position}, path={str(self.path)!r}, "
             f"applied={self.applied!r})"
+        )
+
+
+_DIGEST = re.compile(r"[0-9a-f]{64}")
+
+
+@dataclasses.dataclass(frozen=True, repr=False)
+class AnnotationEntry:
+    """What the run decided for one graphic annotation, and a drawing of it.
+
+    The held annotations are the reviewer's list, whose decisions a reviewed
+    annotations list carries to later runs by their digests; the kept and
+    removed ones are the audit of what the list decided (D-062). Its
+    ``repr`` leaves out the text and the drawing.
+
+    Attributes
+    ----------
+    position : int
+        The instance's run position.
+    path : ElementPath
+        Graphic Annotation Sequence (0070,0001), with the annotation's item
+        last in its ``items``.
+    digest : str
+        The annotation's digest
+        (:func:`~pymedphys._dicom.deidentify.reviewed_annotations.annotation_digest`),
+        64 lowercase hexadecimal digits.
+    texts : tuple of str
+        Its text values, at any depth, in file order.
+    outcome : ~pymedphys._dicom.deidentify.reviewed_annotations.Outcome
+    held_because : ~pymedphys._dicom.deidentify.reviewed_annotations.Held, optional
+        Why a held annotation was held; None for every other outcome.
+    drawing : str
+        An SVG document that draws it as received
+        (:func:`~pymedphys._dicom.deidentify.annotation_drawing.draw_annotation`).
+    """
+
+    position: int
+    path: ElementPath
+    digest: str
+    texts: tuple[str, ...]
+    outcome: AnnotationOutcome
+    held_because: AnnotationHeld | None
+    drawing: str
+
+    def __post_init__(self) -> None:
+        _check_position("an annotation", self.position)
+        problems = (
+            (
+                not isinstance(self.path, ElementPath) or not self.path.items,
+                "needs its item's ElementPath",
+            ),
+            (
+                not isinstance(self.digest, str) or not _DIGEST.fullmatch(self.digest),
+                "needs its digest as 64 lowercase hexadecimal digits",
+            ),
+            (
+                not isinstance(self.texts, tuple)
+                or not all(isinstance(text, str) for text in self.texts),
+                "needs its text values as a tuple of text",
+            ),
+            (
+                not isinstance(self.outcome, AnnotationOutcome),
+                "needs an annotation Outcome",
+            ),
+            (
+                (self.outcome is AnnotationOutcome.HELD)
+                != isinstance(self.held_because, AnnotationHeld),
+                "has a reason for review exactly when it was held",
+            ),
+            (
+                not isinstance(self.drawing, str)
+                or not self.drawing.startswith("<svg "),
+                "needs its drawing as an SVG document",
+            ),
+        )
+        problem = next((problem for failed, problem in problems if failed), None)
+        if problem:
+            raise QcPackError(f"an annotation of instance {self.position} {problem}")
+
+    def __repr__(self) -> str:
+        return (
+            f"AnnotationEntry(position={self.position}, path={str(self.path)!r}, "
+            f"outcome={self.outcome.value!r})"
         )
 
 
@@ -1623,6 +1716,7 @@ class QcPack:
         Each value once.
     roi_names : tuple of RoiNameEntry
     descriptors : tuple of DescriptorEntry
+    annotations : tuple of AnnotationEntry
     reference_findings : tuple of ReferenceFindingEntry
     pixel_risks : tuple of PixelRiskEntry
         Each high-risk instance once, in run position order.
@@ -1713,6 +1807,7 @@ class QcPack:
     dose_checks: tuple[DoseCheckEntry, ...] = ()
     undefaced_instances: tuple[UndefacedEntry, ...] = ()
     several_patient_studies: tuple[SeveralPatientStudyEntry, ...] = ()
+    annotations: tuple[AnnotationEntry, ...] = ()
 
     def __post_init__(self) -> None:
         if not isinstance(self.reference, str) or not _REFERENCE.fullmatch(
@@ -1731,6 +1826,7 @@ class QcPack:
             "retained_strings": RetainedString,
             "roi_names": RoiNameEntry,
             "descriptors": DescriptorEntry,
+            "annotations": AnnotationEntry,
             "reference_findings": ReferenceFindingEntry,
             "pixel_risks": PixelRiskEntry,
             "series_risks": SeriesRiskEntry,
@@ -1762,6 +1858,7 @@ class QcPack:
             "not_searched",
             "roi_names",
             "descriptors",
+            "annotations",
             "reference_findings",
             "pixel_risks",
             "redactions",
@@ -2132,6 +2229,7 @@ class QcPack:
             f"retained_strings={len(self.retained_strings)}, "
             f"roi_names={len(self.roi_names)}, "
             f"descriptors={len(self.descriptors)}, "
+            f"annotations={len(self.annotations)}, "
             f"reference_findings={len(self.reference_findings)}, "
             f"pixel_risks={len(self.pixel_risks)}, "
             f"series_risks={len(self.series_risks)}, "
@@ -2323,6 +2421,20 @@ def pack_document(pack: QcPack) -> dict:
                 ],
             }
             for entry in pack.descriptors
+        ],
+        "annotations": [
+            {
+                "position": entry.position,
+                "element": str(entry.path),
+                "digest": entry.digest,
+                "texts": list(entry.texts),
+                "outcome": entry.outcome.value,
+                "held_because": (
+                    None if entry.held_because is None else entry.held_because.value
+                ),
+                "drawing": entry.drawing,
+            }
+            for entry in pack.annotations
         ],
         "reference_findings": [
             {

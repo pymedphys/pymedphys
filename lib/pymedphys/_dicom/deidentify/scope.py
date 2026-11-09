@@ -54,12 +54,15 @@ removes its Type 1 Presentation Creation Date and Time, and one that holds
 a Graphic Annotation Sequence (0070,0001) under every preset, since the
 table gives that sequence D, as the supplementary rules give a volumetric
 one's Volumetric Annotation Sequence (0070,1901) and Volumetric
-Presentation Input Annotation Sequence (0070,1905). The Clean Pixel Data
-Option also sequesters a Parametric Map whose pixel data are floating
-point, which it does not read. Every other instance is sequestered:
-neither de-identified nor written, and listed in the run report by opaque
-identifiers only. That includes the other Structured Reports and
-instances of Private SOP Classes.
+Presentation Input Annotation Sequence (0070,1905), unless, for a
+Graphic Annotation Sequence, a run under the Clean Graphics Option is given
+a reviewed annotations list, which keeps or removes each annotation as a
+reviewer decides (D-062). The Clean Pixel Data Option also sequesters a
+Parametric Map whose pixel data are floating point, which it does not
+read. Every other instance is sequestered: neither de-identified nor
+written, and listed in the run report by opaque identifiers only. That
+includes the other Structured Reports and instances of Private SOP
+Classes.
 
 :func:`classify` decides from the instance's SOP Class UID (0008,0016), which
 PS3.4 Table B.5-1 maps to its IOD, and from the transfer syntax of its file.

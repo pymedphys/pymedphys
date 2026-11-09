@@ -120,6 +120,10 @@ class RuleSource(enum.Enum):
     # concept name gives its sequence or its value, which the walker is given
     # in place of the rule's (D-047).
     CONTENT_ITEM = "content-item"
+    # Under Clean Graphics, the action that a reviewer's decision on a
+    # Presentation State's graphic annotation gives its sequence or its
+    # elements, which the walker is given in place of the rule's (D-062).
+    ANNOTATION = "annotation"
 
 
 @dataclasses.dataclass(frozen=True)

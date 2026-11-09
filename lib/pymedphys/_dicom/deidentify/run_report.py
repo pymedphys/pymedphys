@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# pylint: disable = too-many-lines
+# One module for the reporter and the counts that it reads from the material.
+
 """The release report that a run publishes with its release.
 
 A run gives its :class:`Reporter` the outcome of each input, the QC
@@ -92,6 +95,12 @@ from .risk_assessment import policy_digest
 from .reasons import DoseChoice, RunReason
 from .residuals import NotSearched, Unsearched, UnsearchedReason
 from .iod_conformance import SourceGap
+from .graphic_annotations import AnnotationMaterial
+from .reviewed_annotations import (
+    AnnotationCounts,
+    AnnotationReviewQueue,
+    ReviewedAnnotations,
+)
 from .reviewed_descriptors import (
     DescriptorCounts,
     DescriptorReviewQueue,
@@ -133,10 +142,14 @@ HELD_FOR_REVIEW = "held-for-review"
 RELEASED = "released"
 SEQUESTERED = "sequestered"
 # The reviewed ROI names and descriptors lists that a run's descriptor
-# cleaning applies, and the reviewed region rules that its Clean Pixel Data
+# cleaning applies, the reviewed region rules that its Clean Pixel Data
+# applies, and the reviewed annotations list that its Clean Graphics
 # applies, as the run read them, or None for each that it was not given.
 ReviewedLists = tuple[
-    ReviewedNames | None, ReviewedDescriptors | None, PixelRegionRules | None
+    ReviewedNames | None,
+    ReviewedDescriptors | None,
+    PixelRegionRules | None,
+    ReviewedAnnotations | None,
 ]
 
 
@@ -179,8 +192,9 @@ class Reporter(Protocol):
     which the run generates the report's human-readable form. ``qc_pack`` is
     the opaque reference of the run's QC pack, and ``facts`` the run's
     :class:`RunFacts`. ``reviewed_lists`` are the reviewed ROI names and
-    descriptors lists that the run's descriptor cleaning applies, and the
-    reviewed region rules that its Clean Pixel Data applies, as it read
+    descriptors lists that the run's descriptor cleaning applies, the
+    reviewed region rules that its Clean Pixel Data applies, and the
+    reviewed annotations list that its Clean Graphics applies, as it read
     them, or None for each that it was not given (:data:`ReviewedLists`),
     whose salted digest the run records in its QC pack.
     """
@@ -265,6 +279,11 @@ class ReleaseReporter:
         Data Option applies, or None, the default, without rules, as
         :func:`~pymedphys._dicom.deidentify.release_report.release_report`
         takes it.
+    reviewed_annotations : str or None, optional
+        The keyed digest of the reviewed annotations list that the Clean
+        Graphics Option applies, or None, the default, without a list, as
+        :func:`~pymedphys._dicom.deidentify.release_report.release_report`
+        takes it.
     safe_private_list : SafePrivateList, optional
         Under the Retain Safe Private Option, the list whose rules settle
         private attributes, the reviewed rules by default, as
@@ -290,15 +309,17 @@ class ReleaseReporter:
         cleaning applies, as it read them, whose keyed digests are
         ``reviewed_roi_names`` and ``reviewed_descriptors``, and the
         version of the reviewed region rules that Clean Pixel Data applies,
-        whose keyed digest is ``pixel_region_rules``, for the readiness
-        section's statistical gate; none, the default, without descriptor
-        cleaning or rules.
+        whose keyed digest is ``pixel_region_rules``, and the reviewed
+        annotations list that Clean Graphics applies, whose keyed digest is
+        ``reviewed_annotations``, for the readiness section's statistical
+        gate; none, the default, without descriptor cleaning, rules, or
+        annotations list.
 
     Raises
     ------
     TypeError
         If ``policy`` is not a Policy, ``readiness_review`` is not a
-        ReadinessReview, or ``reviewed_lists`` is not a tuple of three.
+        ReadinessReview, or ``reviewed_lists`` is not a tuple of four.
     ValueError
         If ``readiness_review`` is given with a policy other than the
         ``public-release`` preset.
@@ -319,17 +340,19 @@ class ReleaseReporter:
         redaction_review_modes: Mapping[str, int] | None = None,
         text_finder: Mapping[str, object] | None = None,
         pixel_region_rules: str | None = None,
+        reviewed_annotations: str | None = None,
         safe_private_list: SafePrivateList = SafePrivateList.REVIEWED,
         project_key: str | None = None,
         readiness_review: ReadinessReview | None = None,
-        reviewed_lists: ReviewedLists = (None, None, None),
+        reviewed_lists: ReviewedLists = (None, None, None, None),
     ):
         if not isinstance(policy, Policy):
             raise TypeError("policy must be a Policy")
         # Each member's type is checked where the run binds them.
-        if not isinstance(reviewed_lists, tuple) or len(reviewed_lists) != 3:
+        if not isinstance(reviewed_lists, tuple) or len(reviewed_lists) != 4:
             raise TypeError(
-                "reviewed_lists must be the two reviewed lists and the region rules"
+                "reviewed_lists must be the two reviewed lists, the region "
+                "rules, and the annotations list"
             )
         if readiness_review is not None and not isinstance(
             readiness_review, ReadinessReview
@@ -355,6 +378,7 @@ class ReleaseReporter:
         self._redaction_review_modes = redaction_review_modes
         self._text_finder = text_finder
         self._pixel_region_rules = pixel_region_rules
+        self._reviewed_annotations = reviewed_annotations
         self._safe_private_list = safe_private_list
 
     def __repr__(self) -> str:
@@ -417,6 +441,7 @@ class ReleaseReporter:
             exempted=exempted_findings(outcomes, material),
             roi_names=roi_name_counts(material),
             descriptors=descriptor_counts(material),
+            annotations=annotation_counts(material),
             icc_profiles=icc_profile_counts(outcomes, material),
             pixel_regions=(
                 pixel_regions(outcomes, material)
@@ -459,6 +484,7 @@ class ReleaseReporter:
                     reviewed_names=self._reviewed_lists[0],
                     reviewed_descriptors=self._reviewed_lists[1],
                     pixel_region_rules=self._reviewed_lists[2],
+                    reviewed_annotations=self._reviewed_lists[3],
                 ),
             )
         return release_report.to_json(report)
@@ -502,6 +528,7 @@ class ReleaseReporter:
             technique_vocabulary=self._technique_vocabulary,
             text_finder=self._text_finder,
             pixel_region_rules=self._pixel_region_rules,
+            reviewed_annotations=self._reviewed_annotations,
             safe_private_list=self._safe_private_list,
             project_key=self._project_key,
             **run,  # type: ignore[arg-type]
@@ -965,6 +992,31 @@ def icc_profile_counts(
             else:
                 replaced[item.refusal] = replaced.get(item.refusal, 0) + 1
     return release_report.IccProfileCounts(cleaned=cleaned, replaced=replaced)
+
+
+def annotation_counts(material: Mapping[int, Sequence[object]]) -> AnnotationCounts:
+    """Return what Clean Graphics wrote for a run's graphic annotations, by count.
+
+    ``material`` is each input's QC material, by its position. Each
+    :class:`~.graphic_annotations.AnnotationMaterial` is one annotation of a
+    Presentation State whose annotations the reviewed annotations list
+    decided on, so every annotation counts by its outcome, and each distinct
+    annotation held for review once for each of its reasons, as
+    :meth:`~pymedphys._dicom.deidentify.reviewed_annotations.AnnotationReviewQueue.report_counts`
+    gives, without text or digest (D-062).
+    """
+    queue = AnnotationReviewQueue()
+    for position in sorted(material):
+        found = [
+            item for item in material[position] if isinstance(item, AnnotationMaterial)
+        ]
+        if found:
+            queue.add(
+                [item.digest for item in found],
+                [item.texts for item in found],
+                [item.result for item in found],
+            )
+    return queue.report_counts()
 
 
 def descriptor_counts(material: Mapping[int, Sequence[object]]) -> DescriptorCounts:

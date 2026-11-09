@@ -416,16 +416,21 @@ text = '''
 When this Option is specified in addition to the Basic Application Level Confidentiality Profile, any information encoded in graphics, text annotations or overlays corresponding to the Attribute information specified to be removed by the Profile and any other Options specified shall also be removed, as described in Table E.1-1.
 '''
 status = "implemented"
-decisions = ["D-041"]
+decisions = ["D-041", "D-062"]
 implementation = [
   "_dicom/deidentify/clean_graphics.py",
   "_dicom/deidentify/element_rules.py",
   "_dicom/deidentify/conformance.py",
   "_dicom/deidentify/pixel_cleaning.py",
+  "_dicom/deidentify/graphic_annotations.py",
+  "_dicom/deidentify/reviewed_annotations.py",
+  "_dicom/deidentify/annotation_drawing.py",
 ]
 note = '''
 The engine applies the Clean Graphics Option to a custom option set; no preset selects it (D-041).
-No cleaner of graphics exists yet, so each of the four rows that Table E.1-1 gives C under the option takes its Basic Profile action: Curve Data, Overlay Data, and Overlay Comments are removed, Overlay Data with its overlay group where the IOD's Overlay Plane Module is user-optional, and Graphic Annotation Sequence takes D, which removes it from every supported IOD but the Presentation States, where it is Type 1, so one that holds it is sequestered, as under the Basic Profile, as is a volumetric one that holds a Volumetric Annotation Sequence or Volumetric Presentation Input Annotation Sequence, whose supplementary rule takes the same D (D-010, D-021, D-022).
+No cleaner of overlays or curves exists yet, so each of the three rows of overlays and curves that Table E.1-1 gives C under the option takes its Basic Profile action: Curve Data, Overlay Data, and Overlay Comments are removed, Overlay Data with its overlay group where the IOD's Overlay Plane Module is user-optional.
+Graphic Annotation Sequence takes D, which removes it from every supported IOD but the Presentation States, where it is Type 1, so one that holds it is sequestered, as under the Basic Profile, unless the run is given the custodian's reviewed annotations list (D-062); a volumetric one that holds a Volumetric Annotation Sequence or Volumetric Presentation Input Annotation Sequence, whose supplementary rule takes the same D, is sequestered under every option (D-010, D-021, D-022).
+With the list, each annotation of a Presentation State is kept as received but for its UIDs and private data elements, removed, or held for review as a reviewer decides by its digest, one whose text holds a person name or patient identifier of its instance is held, and one whose annotations are all removed is sequestered; the QC pack shows each with its text and an SVG drawing of its graphics (D-062).
 Every instance written under the option claims it, since E.3.3 specifies what the option removes and Table E.1-1 gives the minimum actions, as for Clean Descriptors (D-009).
 An overlay group that has no Overlay Data may place its overlay in unused bits of Pixel Data; under the option, that bit plane is cleared above High Bit in native Pixel Data, in the same write as Clean Pixel Data's redaction, the written Pixel Data is checked to differ from the source in nothing else, and the overlay's group is removed, so the instance is released with the option's code (D-041).
 An instance whose overlay cannot be so cleared, such as one in compressed Pixel Data or within Bits Stored, is sequestered under the option as overlay-in-pixel-data.

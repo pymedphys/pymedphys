@@ -322,10 +322,14 @@ def test_the_statement_gives_each_graphics_row_its_basic_profile_action():
         entry = by_tag[tag]
         assert (entry.action, entry.policy_action) == (GRAPHICS_ROWS[tag], "C")
         assert entry.superseded_by == conformance.GRAPHICS_NOT_CLEANED
+    # Graphic Annotation Sequence is cleaned by a reviewer's decisions on
+    # its annotations, and takes its Basic Profile action without them
+    # (D-062).
     annotation = by_tag[GRAPHIC_ANNOTATION_SEQUENCE]
-    assert (annotation.action, annotation.policy_action) == ("D", "C")
-    assert annotation.superseded_by == conformance.SEQUENCE_NOT_CLEANED
-    assert not any(entry.action == "C" for entry in statement.attributes)
+    assert (annotation.action, annotation.superseded_by) == ("C", "")
+    assert [entry.tag for entry in statement.attributes if entry.action == "C"] == [
+        GRAPHIC_ANNOTATION_SEQUENCE
+    ]
     # Nothing is left to describe, and every written instance claims the
     # option without review.
     assert not statement.pending

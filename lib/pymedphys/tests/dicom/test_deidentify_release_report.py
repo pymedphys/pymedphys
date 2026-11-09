@@ -66,6 +66,7 @@ METHOD_FIELDS = [
     "technique_vocabulary_digest",
     "text_finder_digest",
     "pixel_region_rules",
+    "reviewed_annotations",
     "safe_private_list",
     "generated_values_digest",
     "engine_files",
@@ -209,6 +210,7 @@ def test_the_document_has_the_sections_and_fields_the_design_lists(basic):
         "held_for_review",
         "roi_names",
         "descriptors",
+        "annotations",
         "icc_profiles",
         "reference_findings",
         "pixel_risks",
@@ -218,7 +220,7 @@ def test_the_document_has_the_sections_and_fields_the_design_lists(basic):
         "structural_checks",
         "studies_with_several_patients",
     ]
-    assert document["format"] == "pymedphys-deid-release-report/60"
+    assert document["format"] == "pymedphys-deid-release-report/66"
     assert list(document["policy"]) == POLICY_FIELDS
     assert list(document["method"]) == METHOD_FIELDS
     assert list(document["runtime"]) == RUNTIME_FIELDS

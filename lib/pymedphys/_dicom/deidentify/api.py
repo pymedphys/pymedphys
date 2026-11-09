@@ -138,6 +138,7 @@ def deidentify(  # pylint: disable = too-many-arguments
     reviewed_descriptors: str | os.PathLike[str] | None = None,
     redaction_review: str | os.PathLike[str] | None = None,
     region_rules: str | os.PathLike[str] | None = None,
+    reviewed_annotations: str | os.PathLike[str] | None = None,
     safe_private_list: str = "reviewed",
     key_file: str | os.PathLike[str] | None = None,
     profile_store: str | os.PathLike[str] | None = None,
@@ -214,6 +215,17 @@ def deidentify(  # pylint: disable = too-many-arguments
         regions are blacked out in every frame of a matching image beside
         the text detector's, and the image is still held for review. By
         default, none.
+    reviewed_annotations : str or os.PathLike, optional
+        Under Clean Graphics, the custodian's reviewed annotations list,
+        which must exist, outside ``source``, ``release``, and ``qc_pack``,
+        since a run records no decision. Each graphic annotation of a
+        Presentation State that it keeps is written as received but for its
+        UIDs, each that it removes is removed, and one that it has no
+        decision on holds its instance for review, with its text and a
+        drawing of it in the QC pack;
+        ``python -m pymedphys._dicom.deidentify.reviewed_annotations_command``
+        records a reviewer's decisions in it (D-062). By default, none, so a
+        Presentation State with graphic annotations is sequestered.
     safe_private_list : str, optional
         Under Retain Safe Private, the list whose rules settle private
         attributes: ``"reviewed"``, the default, for the reviewed rules of
@@ -299,7 +311,9 @@ def deidentify(  # pylint: disable = too-many-arguments
         ``tg263_spreadsheet``, ``reviewed_names``, ``empty_held_roi_names``,
         ``roi_list``, or ``reviewed_descriptors`` is given with a policy
         without Clean Descriptors, or ``redaction_review`` or
-        ``region_rules`` with a policy without Clean Pixel Data, or if ``safe_private_list`` is not
+        ``region_rules`` with a policy without Clean Pixel Data, or
+        ``reviewed_annotations`` with a policy without Clean Graphics, or
+        if ``safe_private_list`` is not
         ``"reviewed"`` or ``"tcia"``, or is ``"tcia"`` with a policy without
         Retain Safe Private, or if ``face_review`` is given with a policy
         without Clean Recognizable Visual Features, or if
@@ -367,6 +381,13 @@ def deidentify(  # pylint: disable = too-many-arguments
             "redaction_review and region_rules apply only under Clean Pixel Data: "
             "with options that include clean_pixel_data"
         )
+    if reviewed_annotations is not None and not command.annotations_option_applies(
+        preset, chosen
+    ):
+        raise ValueError(
+            "reviewed_annotations applies only under Clean Graphics: with "
+            "options that include clean_graphics"
+        )
     try:
         chosen_list = SafePrivateList(safe_private_list)
     except ValueError:
@@ -414,6 +435,7 @@ def deidentify(  # pylint: disable = too-many-arguments
                 reviewed_descriptors=reviewed_descriptors,
                 redaction_review=redaction_review,
                 region_rules=region_rules,
+                reviewed_annotations=reviewed_annotations,
                 safe_private_list=chosen_list,
                 profiles=profiles,
                 face_review=face_review,

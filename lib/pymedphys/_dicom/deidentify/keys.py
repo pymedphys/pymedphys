@@ -61,6 +61,7 @@ DOMAINS = frozenset(
         "key-id",
         "patient",
         "pixel-region-rules",
+        "reviewed-annotations",
         "reviewed-descriptors",
         "reviewed-roi-names",
         "subject",

@@ -144,6 +144,7 @@ from .descriptor_cleaning import (
     clean_descriptors,
     entity_descriptors,
     fallback_policy,
+    identifiers_of,
     kept_descriptors,
 )
 from .dummy_values import ICC_PROFILE
@@ -176,6 +177,7 @@ from .face_review import (
     registration_frames,
 )
 from .file_layout import ElementPath
+from .graphic_annotations import AnnotationMaterial, annotation_plan, with_annotations
 from .iod_conformance import lost_requirements, source_gaps
 from .iods import IOD, IODTables, load_iod_tables
 from .keys import DeidKey
@@ -195,6 +197,7 @@ from .qc_pack import DropReason
 from .qc_retained import retained_paths, retained_text
 from .reasons import (
     DoseChoice,
+    HeldAnnotation,
     HeldDescriptor,
     HeldPixelData,
     HeldVisualFeatures,
@@ -206,6 +209,13 @@ from .redaction_review import RedactionReview, Regions
 from .readiness import ReadinessReview
 from .reference_graph import ReferenceGraph
 from .references import InstanceRecord
+from .reviewed_annotations import (
+    AnnotationReviewQueue,
+    ReviewedAnnotation,
+    ReviewedAnnotations,
+    review_annotation,
+)
+from .reviewed_annotations import Outcome as AnnotationOutcome
 from .reviewed_roi_names import ReviewQueue
 from .release_gate import (
     Coverage,
@@ -482,7 +492,7 @@ class HeldEvidence:
     ----------
     coverage : Coverage
         Its residual search's coverage, pooled with its subject's as any.
-    held : tuple of HeldRoiName, HeldDescriptor, HeldPixelData, or HeldVisualFeatures
+    held : tuple of HeldRoiName, HeldDescriptor, HeldPixelData, HeldVisualFeatures, or HeldAnnotation
         Each ROI Name held, by path and reason, then each value of another
         option's attribute held, by element and reason, then why its visual
         features hold it, if they do, and why a pixel option holds it, if
@@ -490,7 +500,14 @@ class HeldEvidence:
     """
 
     coverage: Coverage
-    held: tuple[HeldRoiName | HeldDescriptor | HeldPixelData | HeldVisualFeatures, ...]
+    held: tuple[
+        HeldRoiName
+        | HeldDescriptor
+        | HeldPixelData
+        | HeldVisualFeatures
+        | HeldAnnotation,
+        ...,
+    ]
 
 
 def omissions_of(
@@ -909,6 +926,14 @@ class InstanceTransform:
         :func:`~pymedphys._dicom.deidentify.redaction_review.read_redaction_review`,
         which only a policy selecting Clean Pixel Data takes; without one,
         no instance with Pixel Data satisfies that option.
+    reviewed_annotations : ReviewedAnnotations, optional
+        The reviewed annotations list, whose decisions Clean Graphics
+        applies to the graphic annotations of softcopy Presentation States
+        (:mod:`~pymedphys._dicom.deidentify.graphic_annotations`, D-062),
+        which only a policy selecting Clean Graphics takes. The transform
+        applies the list as it stands when it is made. Without one, Graphic
+        Annotation Sequence takes its Basic Profile action, D, which
+        sequesters a Presentation State that holds it (D-041).
     pixel_region_rules : PixelRegionRules, optional
         The reviewed region rules whose regions Clean Pixel Data blacks out
         beside the finder's, in every frame of each instance whose key a
@@ -973,6 +998,9 @@ class InstanceTransform:
     review_queue : ReviewQueue
         The distinct ROI Names that the run's instances held for review,
         for the confidential QC material; empty without ``cleaning``.
+    annotation_queue : AnnotationReviewQueue
+        The graphic annotations of the run's instances, and the distinct
+        ones held for review; empty without ``reviewed_annotations``.
     reporter : ~pymedphys._dicom.deidentify.run_report.ReleaseReporter
         The release report of a run with this transform, under its policy
         and vocabulary, for :func:`~pymedphys._dicom.deidentify.run.run`.
@@ -1141,6 +1169,7 @@ class InstanceTransform:
         face_review: FaceReview | None = None,
         redaction_review: RedactionReview | None = None,
         pixel_region_rules: PixelRegionRules | None = None,
+        reviewed_annotations: ReviewedAnnotations | None = None,
         safe_private_list: SafePrivateList = SafePrivateList.REVIEWED,
         profiles: ProfileStore | None = None,
         readiness_review: ReadinessReview | None = None,
@@ -1188,6 +1217,19 @@ class InstanceTransform:
         region_rules = (
             None if self._region_rules is None else self._region_rules.keyed_digest(key)
         )
+        if reviewed_annotations is not None and CLEAN_GRAPHICS not in policy.options:
+            raise PolicyError(
+                "a reviewed annotations list is given only when the policy "
+                "selects Clean Graphics"
+            )
+        # One version of the list, for both its decisions and its digest.
+        self._annotations = (
+            None if reviewed_annotations is None else reviewed_annotations.snapshot()
+        )
+        annotations_digest = (
+            None if self._annotations is None else self._annotations.keyed_digest(key)
+        )
+        self.annotation_queue = AnnotationReviewQueue()
         if readiness_review is not None and policy.preset != PUBLIC_RELEASE:
             raise PolicyError(
                 "a readiness review is given only under the public-release preset"
@@ -1259,6 +1301,7 @@ class InstanceTransform:
             technique_vocabulary=technique,
             text_finder=finder_method,
             pixel_region_rules=region_rules,
+            reviewed_annotations=annotations_digest,
             safe_private_list=safe_private_list,
         )
         satisfied = satisfied_options(policy)
@@ -1287,6 +1330,7 @@ class InstanceTransform:
             technique_vocabulary=technique,
             text_finder=finder_method,
             pixel_region_rules=region_rules,
+            reviewed_annotations=annotations_digest,
             face_review=None if face_review is None else face_review.reference,
             redaction_review=(
                 None if redaction_review is None else redaction_review.reference
@@ -1311,6 +1355,7 @@ class InstanceTransform:
                 None if cleaning is None else cleaning.reviewed,
                 None if cleaning is None else cleaning.reviewed_descriptors,
                 self._region_rules,
+                self._annotations,
             ),
         )
 
@@ -1400,7 +1445,12 @@ class InstanceTransform:
                 source,
                 self._rules,
                 iod,
-                content_item_actions(source, self._policy, iod),
+                with_annotations(
+                    content_item_actions(source, self._policy, iod),
+                    annotation_plan(
+                        source, dataset, self._policy, iod, self._annotations
+                    ),
+                ),
             )
             edits = edit_instance(
                 source, plan, self._key, record.patient, record.series_numberings
@@ -1885,6 +1935,24 @@ class InstanceTransform:
             return None
         return redaction
 
+    def _reviewed_annotations(
+        self, material: tuple[AnnotationMaterial, ...], edits: InstanceEdits
+    ) -> list[ReviewedAnnotation]:
+        """Return what is written for each annotation, once checked for echoes.
+
+        The plan kept each annotation that the list keeps; one whose text
+        echoes one of the identifiers that the edits collected is held, so
+        that its instance is not released (D-062).
+        """
+        assert self._annotations is not None
+        identifiers = identifiers_of(edits)
+        return [
+            review_annotation(each.digest, each.texts, self._annotations, identifiers)
+            if each.result.outcome is AnnotationOutcome.KEPT
+            else each.result
+            for each in material
+        ]
+
     def _kept_descriptors(
         self, plan: InstancePlan, edits: InstanceEdits
     ) -> frozenset[ElementPath]:
@@ -1938,7 +2006,12 @@ class InstanceTransform:
             else 0
         )
         content_items = content_item_actions(source, self._policy, iod)
-        plan = plan_instance(source, self._rules, iod, content_items)
+        annotations = annotation_plan(
+            source, dataset, self._policy, iod, self._annotations
+        )
+        plan = plan_instance(
+            source, self._rules, iod, with_annotations(content_items, annotations)
+        )
         edits = edit_instance(
             source,
             plan,
@@ -1995,7 +2068,9 @@ class InstanceTransform:
                 actions = content_item_actions(source, fallback.policy, iod)
                 return edit_instance(
                     source,
-                    plan_instance(source, fallback, iod, actions),
+                    plan_instance(
+                        source, fallback, iod, with_annotations(actions, annotations)
+                    ),
                     self._key,
                     record.patient,
                     record.series_numberings,
@@ -2034,6 +2109,27 @@ class InstanceTransform:
             )
             if cleaned.held:
                 evidence = HeldEvidence(evidence, cleaned.held)
+        if annotations.material:
+            reviewed = self._reviewed_annotations(annotations.material, edits)
+            held = tuple(
+                HeldAnnotation(material.path, result.held_because)
+                for material, result in zip(annotations.material, reviewed)
+                if result.held_because is not None
+            )
+            if held:
+                evidence = _held_all(evidence, held)
+            self.annotation_queue.add(
+                [material.digest for material in annotations.material],
+                [material.texts for material in annotations.material],
+                reviewed,
+            )
+            names = (
+                *names,
+                *(
+                    dataclasses.replace(material, result=result)
+                    for material, result in zip(annotations.material, reviewed)
+                ),
+            )
         if self._birth_dates is not None:
             edits = with_birth_date(edits, self._birth_dates.value(record.patient))
         defacing = self._defacing(iod, record)
@@ -2706,6 +2802,15 @@ def _redaction_material(
         redaction.rule_boxes,
         sop_class,
     )
+
+
+def _held_all(
+    evidence: Coverage | HeldEvidence, held: tuple[HeldAnnotation, ...]
+) -> HeldEvidence:
+    """Return the evidence of an instance that review holds, with each of ``held``."""
+    if isinstance(evidence, HeldEvidence):
+        return dataclasses.replace(evidence, held=(*evidence.held, *held))
+    return HeldEvidence(evidence, held)
 
 
 def _held(

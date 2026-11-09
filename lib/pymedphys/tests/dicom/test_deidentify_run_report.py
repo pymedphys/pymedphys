@@ -216,12 +216,12 @@ def test_the_qc_pack_binds_the_lists_that_the_reporter_checks(tmp_path):
         compose_policy("basic"),
         vocabulary=None,
         reviewed_roi_names=None,
-        reviewed_lists=(names, None, rules),
+        reviewed_lists=(names, None, rules, None),
     )
 
     result = _run(tmp_path, Transform(), Gate(), reporter)
 
-    assert reporter.reviewed_lists == (names, None, rules)
+    assert reporter.reviewed_lists == (names, None, rules, None)
     # A risk assessment of the run binds the lists and region rules that the
     # run applied, under the salt that the run drew.
     lists = json.loads(result.qc_pack.read_text("ascii"))["reviewed_lists"]
@@ -232,7 +232,9 @@ def test_the_qc_pack_binds_the_lists_that_the_reporter_checks(tmp_path):
     assert lists["sha256"] != risk_assessment.lists_digest(salt, None, None, rules)
 
 
-@pytest.mark.parametrize("lists", [(None, None), [None, None, None], None])
+@pytest.mark.parametrize(
+    "lists", [(None, None), (None, None, None), [None, None, None, None], None]
+)
 def test_the_reporter_takes_the_two_lists_and_the_region_rules(lists):
     # A reporter given the lists alone would leave the rules unbound.
     with pytest.raises(TypeError, match="region rules"):

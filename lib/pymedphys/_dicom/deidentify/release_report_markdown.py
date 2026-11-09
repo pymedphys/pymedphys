@@ -83,6 +83,7 @@ _METHOD = {
     "technique_vocabulary_digest": "Technique vocabulary digest",
     "text_finder_digest": "Text finder digest",
     "pixel_region_rules": "Pixel region rules digest",
+    "reviewed_annotations": "Reviewed annotations digest",
     "safe_private_list": "Safe private list",
     "generated_values_digest": "Generated values digest",
     "engine_files": None,
@@ -97,6 +98,7 @@ _OPTIONAL_METHOD = frozenset(
         "technique_vocabulary_digest",
         "text_finder_digest",
         "pixel_region_rules",
+        "reviewed_annotations",
         "safe_private_list",
     }
 )
@@ -127,6 +129,7 @@ _SECTIONS = (
     "held_for_review",
     "roi_names",
     "descriptors",
+    "annotations",
     "icc_profiles",
     "reference_findings",
     "pixel_risks",
@@ -199,6 +202,7 @@ def to_markdown(report: str) -> str:
         *_held(document["held_for_review"]),
         *_roi_names(document["roi_names"]),
         *_descriptors(document["descriptors"]),
+        *_annotations(document["annotations"]),
         *_icc_profiles(document["icc_profiles"]),
         *_reference_findings(document["reference_findings"]),
         *_pixel_risks(document["pixel_risks"]),
@@ -780,6 +784,25 @@ def _descriptors(section: object) -> list[Block]:
             "Elements that took their action without Clean Descriptors: "
             f"{_tally('descriptors fell_back', section['fell_back'])}."
         ],
+    ]
+
+
+def _annotations(section: object) -> list[Block]:
+    section = _fields("annotations", section, ("outcomes", "held"))
+    tables = _code_tables("annotations", section, "annotations")
+    return [
+        ["## Graphic annotations"],
+        [
+            "The outcome of each graphic annotation of the Presentation States "
+            "whose annotations the reviewed annotations list decided on under "
+            "Clean Graphics, every annotation counted, and how many distinct "
+            "annotations it held for review for each reason. Only the "
+            "confidential QC pack shows the annotations."
+        ],
+        ["### Outcome of each annotation"],
+        tables[0],
+        ["### Distinct annotations held for review"],
+        tables[1],
     ]
 
 
