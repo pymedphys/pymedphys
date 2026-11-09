@@ -76,6 +76,8 @@ _IMAGES = (
     corpus_module.PARAMETRIC_MAP_FILE,
     corpus_module.SECONDARY_CAPTURE_FILES[0],
     *corpus_module.SECONDARY_CAPTURE_FILES[2:],
+    corpus_module.ENHANCED_RT_IMAGE_FILE,
+    corpus_module.ENHANCED_CONTINUOUS_RT_IMAGE_FILE,
 )
 _BLACKED_OUT = Withheld(
     run.Status.HELD_FOR_REVIEW,
