@@ -178,6 +178,33 @@ RT_REFERENCES = [
     # an extracted frame.
     ("RT Image", synthetic.REFERENCED_PLAN, Level.INSTANCE),
     ("RT Image", ("(0008,1164)", "(0008,1167)"), Level.INSTANCE),
+    # Enhanced RT Image and Enhanced Continuous RT Image: in the RT Image
+    # Frame Context functional group, shared or of a frame, of the Multi-frame
+    # or the Sparse Multi-frame Functional Groups Module, the plan, the RT
+    # Radiation Set, and its RT Radiations that the frames image; and the
+    # performed procedure steps of the Radiotherapy Common Instance Module.
+    *(
+        (
+            iod,
+            (groups, "(3002,0103)", "(3002,0104)", *sequences, "(0008,1155)"),
+            Level.INSTANCE,
+        )
+        for iod, frame_groups in (
+            ("Enhanced RT Image", ("(5200,9229)", "(5200,9230)")),
+            ("Enhanced Continuous RT Image", ("(5200,9229)", "(3002,0101)")),
+        )
+        for groups in frame_groups
+        for sequences in (
+            ("(300C,0002)",),
+            ("(300A,0702)",),
+            ("(300A,0702)", "(300A,0630)"),
+            ("(300A,0630)",),
+        )
+    ),
+    *(
+        (iod, ("(3010,0044)", "(0008,1155)"), Level.INSTANCE)
+        for iod in ("Enhanced RT Image", "Enhanced Continuous RT Image")
+    ),
     # CT Image: the plan in the CT Image module, and General Reference.
     ("CT Image", synthetic.REFERENCED_PLAN, Level.INSTANCE),
     ("CT Image", synthetic.REFERENCED_IMAGE, Level.INSTANCE),
@@ -302,6 +329,8 @@ OTHER_SEQUENCES = {
     "(3006,0018)",  # Predecessor Structure Set Sequence
     "(3008,0030)",  # Referenced Treatment Record Sequence
     "(300A,0401)",  # Referenced Setup Image Sequence
+    "(300A,0630)",  # Referenced RT Radiation Sequence
+    "(300A,0702)",  # Referenced RT Radiation Set Sequence
     "(300A,078C)",  # Referenced Patient Setup Photo Sequence
     "(300C,0002)",  # Referenced RT Plan Sequence
     "(300C,0040)",  # Referenced Verification Image Sequence
@@ -310,6 +339,7 @@ OTHER_SEQUENCES = {
     "(300C,0080)",  # Referenced Dose Sequence
     "(3010,0007)",  # Originating SOP Instance Reference Sequence
     "(3010,0009)",  # Equivalent Conceptual Volume Instance Reference Sequence
+    "(3010,0044)",  # Instance-Level Referenced Performed Procedure Step Sequence
     "(3010,004A)",  # Referenced Direct Segment Instance Sequence
 }
 # Every other UI attribute that uid_roles.toml marks "instance" and that a
@@ -338,8 +368,10 @@ NOT_FOLLOWED = {
     "(300A,0013)": "identifies a dose reference within a plan",
     "(300A,0054)": "identifies a table top alignment event",
     "(300A,0083)": "refers to a dose reference within a plan",
+    "(300A,0785)": "refers to a treatment position group, not an instance",
     "(3010,0006)": "identifies a conceptual volume, not an instance",
     "(3010,000B)": "refers to a conceptual volume, not an instance",
+    "(3010,0013)": "refers to a conceptual volume, not an instance",
     "(3010,0015)": "refers to a conceptual volume, not an instance",
     # A later change follows frames of reference.
     "(0020,0052)": "identifies a frame of reference",

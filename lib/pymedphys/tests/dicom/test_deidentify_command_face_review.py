@@ -43,8 +43,10 @@ from pymedphys._dicom.deidentify.qc_attestation import Face, Outcome
 from .test_deidentify_api_face_review import (
     _CT,
     _DOSE,
+    _FACE_REVIEW_FILES,
     _PLAN,
     _STRUCTURE_SET,
+    _face_review_corpus,
     _pack,
 )
 from .test_deidentify_command import _parsed_call
@@ -244,7 +246,7 @@ def test_the_help_names_the_face_review_argument(capsys):
     assert "under Clean Recognizable Visual Features" in text
 
 
-# Two runs of the synthetic collection through the command: the first under
+# Two runs of the linked CT/RT collection through the command: the first under
 # the Basic Profile, whose pack a reviewer attests, and the second under the
 # option, given that pack.
 
@@ -264,7 +266,7 @@ def _instances(pack):
 
 
 def _second_run(directory):
-    corpus_module.write_corpus(corpus_module.build_corpus(), directory)
+    corpus_module.write_corpus(_face_review_corpus(), directory)
     source = directory / corpus_module.INSTANCES_DIRECTORY
     first, _, err = _main(source, directory / "first", "--preset", "basic")
     assert first == command.EXIT_WITHHELD, err
@@ -293,6 +295,7 @@ def _second_run(directory):
         )
         for entry in _instances(directory / "second" / "qc")["instances"]
     }
+    assert tuple(outcomes) == _FACE_REVIEW_FILES
     report = json.loads((release / "release-report.json").read_text("utf-8"))
     return attestation, outcomes, report, (status, out, err, str(pack))
 
