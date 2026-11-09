@@ -266,6 +266,8 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "88-pr-advanced-blending.dcm",
         "89-rt-image-enhanced.dcm",
         "90-rt-image-enhanced-continuous.dcm",
+        "91-pr-waveform.dcm",
+        "92-pr-waveform-acquisition.dcm",
     ]
     assert [file.manifest.iod for file in corpus.files] == [
         "CT Image",
@@ -328,9 +330,13 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "Advanced Blending Presentation State",
         "Enhanced RT Image",
         "Enhanced Continuous RT Image",
+        "Waveform Presentation State",
+        "Waveform Acquisition Presentation State",
     ]
     # Counted from the start, so that a file added at the end moves none.
-    presentation_states = corpus.files[48:54] + corpus.files[62:65]
+    presentation_states = (
+        corpus.files[48:54] + corpus.files[62:65] + corpus.files[67:69]
+    )
     assert corpus_module.STRUCTURED_REPORT_FILES == tuple(
         file.name for file in corpus.files[21:31] + corpus.files[33:41]
     )
@@ -639,6 +645,14 @@ def test_an_attribute_whose_removal_sequesters_is_planted_in_one_instance(corpus
                 "Advanced Blending Presentation State",
             ),
             annotation | creation,
+        ),
+        # The waveform ones define no Graphic Annotation Sequence or overlay.
+        **dict.fromkeys(
+            (
+                "Waveform Presentation State",
+                "Waveform Acquisition Presentation State",
+            ),
+            creation,
         ),
     }
     assert planted == {corpus_module.SEQUESTERED_FILE: both}

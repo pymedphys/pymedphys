@@ -389,6 +389,18 @@ def test_the_volumetric_and_advanced_blending_presentation_states_are_supported(
         ).sequestered, sop_class
 
 
+def test_the_waveform_presentation_states_are_supported():
+    assert {
+        "Waveform Presentation State",
+        "Waveform Acquisition Presentation State",
+    } <= scope.SUPPORTED_IODS
+    for sop_class in ("1", "2"):
+        assert not scope.classify(
+            f"1.2.840.10008.5.1.4.1.1.9.100.{sop_class}",
+            synthetic.EXPLICIT_VR_LITTLE_ENDIAN,
+        ).sequestered, sop_class
+
+
 @pytest.mark.deid_requirement("MIDI-BP-06")
 @pytest.mark.parametrize("preset", UNDATED_PRESETS)
 def test_the_basic_profile_sequesters_a_volumetric_presentation_state(preset):
@@ -467,3 +479,87 @@ def test_a_volumetric_presentation_states_color_space_sequesters_it(preset):
             ElementPath((), COLOR_SPACE), "D", "CS", SequesterReason.NO_DUMMY_VALUE
         )
     }
+
+
+WAVEFORM_PRESENTATION_STATE_STORAGE = "1.2.840.10008.5.1.4.1.1.9.100.1"
+TWELVE_LEAD_ECG_WAVEFORM_STORAGE = "1.2.840.10008.5.1.4.1.1.9.1.1"
+WAVEFORM = "2.25.703"
+WAVEFORM_SERIES = "2.25.704"
+WAVEFORM_TEXTUAL_ANNOTATION_SEQUENCE = 0x0040B033
+
+
+def _waveform_presentation_state():
+    """Return a Waveform Presentation State of an ECG, with a text annotation."""
+    dataset = synthetic.instance(
+        WAVEFORM_PRESENTATION_STATE_STORAGE,
+        PRESENTATION_STATE,
+        PRESENTATION_STATE_SERIES,
+        ReferencedSeriesSequence=[
+            synthetic.item(
+                SeriesInstanceUID=WAVEFORM_SERIES,
+                ReferencedWaveformSequence=[
+                    synthetic.reference(TWELVE_LEAD_ECG_WAVEFORM_STORAGE, WAVEFORM)
+                ],
+            )
+        ],
+    )
+    # pydicom 3.0.2 does not know Waveform Textual Annotation Sequence.
+    dataset.add_new(
+        WAVEFORM_TEXTUAL_ANNOTATION_SEQUENCE,
+        "SQ",
+        [
+            synthetic.item(
+                ReferencedWaveformSequence=[
+                    synthetic.item(
+                        ReferencedSOPClassUID=TWELVE_LEAD_ECG_WAVEFORM_STORAGE,
+                        ReferencedSOPInstanceUID=WAVEFORM,
+                        ReferencedWaveformChannels=[1, 1],
+                    )
+                ],
+                TemporalRangeType="POINT",
+                ReferencedSamplePositions=[1],
+                TextObjectSequence=[
+                    synthetic.item(UnformattedTextValue="SENTINEL NAME")
+                ],
+            )
+        ],
+    )
+    dataset.Modality = "PR"
+    dataset.InstanceNumber = 1
+    dataset.ContentLabel = "ECG"
+    dataset.PresentationCreationDate = SOURCE_DATE
+    dataset.PresentationCreationTime = SOURCE_TIME
+    return dataset
+
+
+@pytest.mark.deid_requirement("MIDI-BP-06")
+@pytest.mark.parametrize("preset", UNDATED_PRESETS)
+def test_the_basic_profile_sequesters_a_waveform_presentation_state(preset):
+    result = _transformed(preset, _waveform_presentation_state())
+
+    assert isinstance(result, run.Sequestered)
+    assert {reason.path for reason in result.reasons} == {
+        ElementPath((), PRESENTATION_CREATION_DATE),
+        ElementPath((), PRESENTATION_CREATION_TIME),
+    }
+
+
+@pytest.mark.deid_requirement("MIDI-BP-06")
+@pytest.mark.parametrize("preset", DATED_PRESETS)
+def test_a_waveform_presentation_state_keeps_its_annotation_with_dummy_text(preset):
+    result = _transformed(preset, _waveform_presentation_state())
+
+    assert isinstance(result, run.Transformed), result
+    written = pydicom.dcmread(io.BytesIO(result.data))
+    assert b"SENTINEL" not in result.data
+    # The annotation is kept, with where it points on the waveform, and its
+    # text, Type 1 there, takes D's dummy value.
+    (annotation,) = written[WAVEFORM_TEXTUAL_ANNOTATION_SEQUENCE].value
+    assert annotation.TemporalRangeType == "POINT"
+    (text,) = annotation.TextObjectSequence
+    assert text.UnformattedTextValue
+    (waveform,) = annotation.ReferencedWaveformSequence
+    assert waveform.ReferencedSOPInstanceUID != WAVEFORM
+    (series,) = written.ReferencedSeriesSequence
+    (referenced,) = series.ReferencedWaveformSequence
+    assert referenced.ReferencedSOPInstanceUID == waveform.ReferencedSOPInstanceUID

@@ -71,6 +71,13 @@ PRESENTATION_STATES = (
     "Variable Modality LUT Softcopy Presentation State",
 )
 BLENDING_PRESENTATION_STATE = "Blending Softcopy Presentation State"
+# The waveform Presentation States, which reference the waveforms they apply
+# to in the Presentation State Relationship Module and include no Common
+# Instance Reference Module.
+WAVEFORM_PRESENTATION_STATES = (
+    "Waveform Presentation State",
+    "Waveform Acquisition Presentation State",
+)
 # Blending Sequence (0070,0402).
 BLENDING = "(0070,0402)"
 # Referenced Request Sequence.
@@ -279,6 +286,7 @@ RT_REFERENCES = [
         if iod not in STRUCTURED_REPORTS
         and iod not in PRESENTATION_STATES
         and iod != BLENDING_PRESENTATION_STATE
+        and iod not in WAVEFORM_PRESENTATION_STATES
         for attribute, level in [
             (("(0008,1115)", "(0020,000E)"), Level.SERIES),
             (("(0008,1200)", "(0020,000D)"), Level.STUDY),
@@ -293,6 +301,14 @@ RT_REFERENCES = [
         for attribute, level in [
             (("(0008,1115)", "(0020,000E)"), Level.SERIES),
             (("(0008,1115)", "(0008,1140)", "(0008,1155)"), Level.INSTANCE),
+        ]
+    ),
+    *(
+        (iod, attribute, level)
+        for iod in WAVEFORM_PRESENTATION_STATES
+        for attribute, level in [
+            (("(0008,1115)", "(0020,000E)"), Level.SERIES),
+            (("(0008,1115)", "(0008,113A)", "(0008,1155)"), Level.INSTANCE),
         ]
     ),
     *(
@@ -345,6 +361,7 @@ STUDY_SEQUENCES = {"(0008,1110)", "(3006,0012)"}
 OTHER_SEQUENCES = {
     "(0008,1111)",  # Referenced Performed Procedure Step Sequence
     "(0008,1120)",  # Referenced Patient Sequence
+    "(0008,113A)",  # Referenced Waveform Sequence
     "(0008,1140)",  # Referenced Image Sequence
     "(0008,114A)",  # Referenced Instance Sequence
     "(0008,114B)",  # Referenced Real World Value Mapping Instance Sequence
@@ -356,7 +373,9 @@ OTHER_SEQUENCES = {
     "(0018,990D)",  # Referenced Performed Protocol Sequence
     "(0020,9172)",  # Conversion Source Attributes Sequence
     "(0038,0100)",  # Pertinent Documents Sequence
+    "(003A,020A)",  # Source Waveform Sequence
     "(0040,A390)",  # HL7 Structured Document Reference Sequence
+    "(0040,B030)",  # Structured Waveform Annotation Sequence
     "(0042,0013)",  # Source Instance Sequence
     "(0062,0012)",  # Used Segments Sequence
     "(0066,002E)",  # Segment Surface Source Instance Sequence
