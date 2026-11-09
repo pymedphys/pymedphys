@@ -96,6 +96,25 @@ UNKNOWN_TO_DICOM3TOOLS = tuple(
         corpus_module.ENHANCED_CONTINUOUS_RT_IMAGE_STORAGE,
         corpus_module.XA_XRF_GRAYSCALE_SOFTCOPY_PRESENTATION_STATE_STORAGE,
         corpus_module.VARIABLE_MODALITY_LUT_SOFTCOPY_PRESENTATION_STATE_STORAGE,
+        corpus_module.RT_SEGMENT_ANNOTATION_STORAGE,
+        corpus_module.RT_RADIATION_SET_STORAGE,
+        corpus_module.C_ARM_PHOTON_ELECTRON_RADIATION_STORAGE,
+        corpus_module.TOMOTHERAPEUTIC_RADIATION_STORAGE,
+        corpus_module.ROBOTIC_ARM_RADIATION_STORAGE,
+    )
+)
+# The corpus's SOP Classes whose input dicom-validator 0.9.0 cannot check to
+# the end. Recorded RT Control Point DateTime (300A,073A) is Type 1C in their
+# control points, and the parser gives its condition the type "mandatory, or
+# allowed if another condition holds" without the other condition, so the
+# validator raises KeyError where the first condition does not hold. A
+# version that checks them fails here until they are taken out.
+UNCHECKED_BY_DICOM_VALIDATOR = tuple(
+    dicom_validation.sop_class_name(uid)
+    for uid in (
+        corpus_module.C_ARM_PHOTON_ELECTRON_RADIATION_STORAGE,
+        corpus_module.TOMOTHERAPEUTIC_RADIATION_STORAGE,
+        corpus_module.ROBOTIC_ARM_RADIATION_STORAGE,
     )
 )
 
@@ -212,10 +231,16 @@ def test_every_validator_ran_over_every_released_instance(comparison):
     assert comparison.validators == VALIDATORS
     assert comparison.pairs > 0
     # dicom-validator, which reads files with pydicom, checks every input
-    # and output.
-    assert comparison.tallies[DICOM_VALIDATOR]["statuses"] == {
-        BOTH_VALIDATED: comparison.pairs
-    }
+    # and output but those of the SOP Classes whose input it cannot check,
+    # whose outputs nothing is compared with.
+    statuses = dict(comparison.tallies[DICOM_VALIDATOR]["statuses"])
+    validated = statuses.pop(BOTH_VALIDATED, 0)
+    assert set(statuses) <= {BOTH_FAILED, "input failed, output validated"}
+    unchecked = sum(
+        comparison.sop_classes.get(name, 0) for name in UNCHECKED_BY_DICOM_VALIDATOR
+    )
+    assert sum(statuses.values()) == unchecked
+    assert validated == comparison.pairs - unchecked
     # dciodvfy checks every input and output but the corpus's RT Dose in
     # Implicit VR, whose 32-bit pixels abort it on both, and the instances of
     # UNKNOWN_TO_DICOM3TOOLS, whose SOP Classes dicom3tools' January 2024
