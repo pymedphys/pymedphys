@@ -165,7 +165,8 @@ and codes that the engine defines, never by a source value or path:
   finding that an exemption kept from review, such as a removed value found
   in a kept standard term or equipment name (D-032), a date that Modified
   Dates shifted (D-039), a value that an option keeps, or text in a private
-  creator that the run's safe private list keeps (D-042), by the
+  creator that the run's safe private list keeps (D-042), or a value found
+  wholly inside the method digest that the run writes (D-032), by the
   exemption, the source attribute, and the
   attribute in which it was found, each instance once for each, from
   :func:`exempted_findings`. The QC pack lists each finding by instance and
@@ -248,7 +249,7 @@ from .standard import ALL_OPTIONS, VRS
 from .walker import Sequestration, SequesterReason
 
 # The format of the report document. A change to its fields takes a new label.
-FORMAT = "pymedphys-deid-release-report/60"
+FORMAT = "pymedphys-deid-release-report/63"
 # The modes of a redaction review, as qc_attestation.ReviewMode's values
 # name them, in the order that the report gives them (D-059).
 REVIEW_MODES = ("every-frame", "flagged-frames")
