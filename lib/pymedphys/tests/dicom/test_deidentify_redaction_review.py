@@ -1066,8 +1066,10 @@ def test_the_statement_gives_the_code_only_after_review():
         "Annotation SR, Real World Value Mapping, Grayscale Softcopy Presentation "
         "State, Color Softcopy Presentation State, Pseudo-Color Softcopy "
         "Presentation State, Blending Softcopy Presentation State, XA/XRF "
-        "Grayscale Softcopy Presentation State, and Variable Modality LUT "
-        "Softcopy Presentation State."
+        "Grayscale Softcopy Presentation State, Variable Modality LUT Softcopy "
+        "Presentation State, Planar MPR Volumetric Presentation State, Volume "
+        "Rendering Volumetric Presentation State, and Advanced Blending "
+        "Presentation State."
     ) in text
     assert (
         "claims Clean Pixel Data only for an instance without top-level pixel "
@@ -1127,6 +1129,9 @@ def test_the_statement_names_each_supported_iod_that_lacks_the_attribute():
         "Blending Softcopy Presentation State",
         "XA/XRF Grayscale Softcopy Presentation State",
         "Variable Modality LUT Softcopy Presentation State",
+        "Planar MPR Volumetric Presentation State",
+        "Volume Rendering Volumetric Presentation State",
+        "Advanced Blending Presentation State",
     }
 
 

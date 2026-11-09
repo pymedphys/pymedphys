@@ -61,8 +61,8 @@ RADIOPHARMACEUTICAL_INFORMATION = "(0054,0016)"
 # The first supported release's IODs that include the Overlay Plane Module as
 # user-optional.
 OVERLAY_IODS = ("CT Image", "MR Image", "Positron Emission Tomography Image")
-# The softcopy Presentation State IODs that the first supported release
-# supports, and the Type 1 dates and times of their creation.
+# The Presentation State IODs that the first supported release supports,
+# and the Type 1 dates and times of their creation.
 PRESENTATION_STATE_IODS = (
     "Grayscale Softcopy Presentation State",
     "Color Softcopy Presentation State",
@@ -70,6 +70,9 @@ PRESENTATION_STATE_IODS = (
     "Blending Softcopy Presentation State",
     "XA/XRF Grayscale Softcopy Presentation State",
     "Variable Modality LUT Softcopy Presentation State",
+    "Planar MPR Volumetric Presentation State",
+    "Volume Rendering Volumetric Presentation State",
+    "Advanced Blending Presentation State",
 )
 PRESENTATION_CREATION_DATES = ("(0070,0082)", "(0070,0083)")
 # The IODs that include the Overlay Plane Module as conditional, of which the
@@ -683,17 +686,19 @@ def test_a_plain_x_on_a_required_attribute_in_the_first_release_iods(tables):
             (RECORDED_SOURCE,),
             SOURCE_MANUFACTURER,
         ): _removal(*EMPTIED),
-        # Type 1 at the top level of each softcopy Presentation State's
-        # mandatory Presentation State Identification Module, so every
-        # conforming instance is sequestered under the Basic Profile (D-020).
+        # Type 1 at the top level of each Presentation State's mandatory
+        # Presentation State Identification or Volumetric Presentation State
+        # Identification Module, so every conforming instance is sequestered
+        # under the Basic Profile (D-020).
         **{
             (name, (), tag): _removal(*SEQUESTER)
             for name in PRESENTATION_STATE_IODS
             for tag in PRESENTATION_CREATION_DATES
         },
         # Type 1 in the conditional Overlay Plane Module of each softcopy
-        # Presentation State but the blending one, which has none, so an
-        # instance that holds an overlay is sequestered.
+        # Presentation State but the blending one; it and the volumetric and
+        # advanced blending ones have none. An instance that holds an overlay
+        # is sequestered.
         **{
             (name, (), "(60xx,3000)"): _removal(*SEQUESTER)
             for name in PRESENTATION_STATE_IODS

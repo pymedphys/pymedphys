@@ -81,7 +81,8 @@ BOTH_FAILED = "input failed, output failed"
 BOTH_UNSUPPORTED = "input unsupported, output unsupported"
 # The corpus's SOP Classes that dicom3tools' January 2024 snapshot does not
 # know, including Label Map Segmentation and the XA/XRF Grayscale and Variable
-# Modality LUT Softcopy Presentation States, which it names but has no IOD for.
+# Modality LUT Softcopy, Grayscale Planar MPR Volumetric, and Volume Rendering
+# Volumetric Presentation States, which it names but has no IOD for.
 UNKNOWN_TO_DICOM3TOOLS = tuple(
     dicom_validation.sop_class_name(uid)
     for uid in (
@@ -96,6 +97,8 @@ UNKNOWN_TO_DICOM3TOOLS = tuple(
         corpus_module.ENHANCED_CONTINUOUS_RT_IMAGE_STORAGE,
         corpus_module.XA_XRF_GRAYSCALE_SOFTCOPY_PRESENTATION_STATE_STORAGE,
         corpus_module.VARIABLE_MODALITY_LUT_SOFTCOPY_PRESENTATION_STATE_STORAGE,
+        corpus_module.GRAYSCALE_PLANAR_MPR_VOLUMETRIC_PRESENTATION_STATE_STORAGE,
+        corpus_module.VOLUME_RENDERING_VOLUMETRIC_PRESENTATION_STATE_STORAGE,
         corpus_module.RT_SEGMENT_ANNOTATION_STORAGE,
         corpus_module.RT_RADIATION_SET_STORAGE,
         corpus_module.C_ARM_PHOTON_ELECTRON_RADIATION_STORAGE,

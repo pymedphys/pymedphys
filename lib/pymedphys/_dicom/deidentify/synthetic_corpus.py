@@ -20,7 +20,7 @@ fictitious patient and study, with one Frame of Reference: three CT Image
 slices, an RT Structure Set that references the CT series and slices, an RT
 Plan that references the structure set and the dose, an RT Dose that
 references the plan, a second RT Dose of the plan for review (below), one
-instance of each of fifty-four other IODs, and two of the Segmentation
+instance of each of fifty-seven other IODs, and two of the Segmentation
 IOD, one of each of its SOP Classes, each in a series of its own, and a
 second X-Ray Radiation Dose SR, of a CT scan.
 The MR Image and PET Image instances reference the first CT slice, and each
@@ -70,7 +70,10 @@ softcopy Presentation State names, in its Referenced Series Sequence
 (0008,1115), or the blending one in its Blending Sequence (0070,0402), the
 image that it presents: the grayscale, blending, and Variable Modality LUT
 ones the first CT slice, the colour one the Enhanced MR Color Image, the
-pseudo-colour one the PET Image, and the XA/XRF one the RT Image. It is the
+pseudo-colour one the PET Image, and the XA/XRF one the RT Image. The
+volumetric Presentation States name the CT slices in their Volumetric
+Presentation Input Set Sequence (0070,120A), and the advanced blending one
+the PET Image in its Advanced Blending Sequence (0070,1B01). It is the
 input for validating each preset end to end: once the engine has written
 the collection, the residual search
 (:mod:`~pymedphys._dicom.deidentify.residuals`) should find none of the
@@ -198,7 +201,13 @@ Radiopharmaceutical Information Sequence (0054,0016) of an Enhanced PET
 Image, and, in each softcopy Presentation State, Presentation Creation Date
 (0070,0082) and Time (0070,0083), Type 1 at the top level, the Graphic
 Annotation Sequence (0070,0001), and Overlay Data (60xx,3000), which these
-IODs define in a conditional Overlay Plane Module. Institution Code Sequence
+IODs define in a conditional Overlay Plane Module; so too in the
+volumetric and advanced blending Presentation States, which define the
+same creation date and time and Graphic Annotation Sequence, and in a
+volumetric one what the items of its Volumetric Annotation Sequence
+(0070,1901) and Volumetric Presentation Input Annotation Sequence
+(0070,1905) hold, since Table E.1-1 omits both and their supplementary rule
+gives them its D. Institution Code Sequence
 (0008,0082), which X/Z/D gives D where it is Type 1C, in the Interlock Resolution User Sequence (300A,0746) of an RT
 Beams Treatment Record's or RT Ion Beams Treatment Record's Interlock
 Sequence (300A,0740), is planted there, since a reviewed rule gives it a
@@ -206,7 +215,7 @@ dummy item at that place and only there. Planted in
 every file, the first two would sequester every
 instance, and no preset could release any of the collection; planted in one,
 that instance checks sequestration, :data:`REVIEW_FILE` checks review, and
-the other sixty-two check each preset's output, the reports where their
+the other sixty-five check each preset's output, the reports where their
 trees are cleaned. Radiopharmaceutical Start
 DateTime, which CT Image does not define there, is planted in no file, so
 the Enhanced PET instance, which lacks an attribute of Type 1, is released
@@ -215,7 +224,7 @@ does not define its creation date and time or Graphic Annotation Sequence,
 and defines Overlay Data in a user-optional module, whose group the Basic
 Profile removes, so these are planted in no file either. An Enhanced PET
 Image instance that conforms to the IOD is sequestered under ``basic`` and
-``basic-clean-descriptors``, as is a softcopy Presentation State that does.
+``basic-clean-descriptors``, as is a Presentation State that does.
 
 **Edge cases.** Each file except the first RT Dose, ``06-rtdose.dcm``, and
 the MR Image, ``10-mr.dcm``, is written in Explicit VR Little Endian, and
@@ -245,7 +254,7 @@ Manufacturer's Model Name (0008,1090), which Table E.1-1 does not list and
 the Basic Profile keeps, a copy of the RT Plan's RT Plan Label marker
 (:attr:`PlacementKind.REVIEW_COPY`), so the residual search finds a source
 value of another instance in its output and sends it to review. The third
-CT slice remains sequestered; the other sixty-two files stay releasable, the
+CT slice remains sequestered; the other sixty-five files stay releasable, the
 reports where their trees are cleaned.
 
 **Manifest.** :class:`CorpusManifest` records, for each file, each
@@ -307,6 +316,7 @@ from .references import (
     reference_sites,
 )
 from .sop_classes import iod_for_sop_class
+from .supplementary_actions import load_supplementary_actions
 from .standard import (
     PRIVATE_ATTRIBUTES_TAG,
     VM_PATTERN,
@@ -392,6 +402,11 @@ XA_XRF_GRAYSCALE_SOFTCOPY_PRESENTATION_STATE_STORAGE = "1.2.840.10008.5.1.4.1.1.
 VARIABLE_MODALITY_LUT_SOFTCOPY_PRESENTATION_STATE_STORAGE = (
     "1.2.840.10008.5.1.4.1.1.11.12"
 )
+GRAYSCALE_PLANAR_MPR_VOLUMETRIC_PRESENTATION_STATE_STORAGE = (
+    "1.2.840.10008.5.1.4.1.1.11.6"
+)
+ADVANCED_BLENDING_PRESENTATION_STATE_STORAGE = "1.2.840.10008.5.1.4.1.1.11.8"
+VOLUME_RENDERING_VOLUMETRIC_PRESENTATION_STATE_STORAGE = "1.2.840.10008.5.1.4.1.1.11.9"
 PRESENTATION_STATE_STORAGE_CLASSES = frozenset(
     {
         GRAYSCALE_SOFTCOPY_PRESENTATION_STATE_STORAGE,
@@ -400,6 +415,9 @@ PRESENTATION_STATE_STORAGE_CLASSES = frozenset(
         BLENDING_SOFTCOPY_PRESENTATION_STATE_STORAGE,
         XA_XRF_GRAYSCALE_SOFTCOPY_PRESENTATION_STATE_STORAGE,
         VARIABLE_MODALITY_LUT_SOFTCOPY_PRESENTATION_STATE_STORAGE,
+        GRAYSCALE_PLANAR_MPR_VOLUMETRIC_PRESENTATION_STATE_STORAGE,
+        VOLUME_RENDERING_VOLUMETRIC_PRESENTATION_STATE_STORAGE,
+        ADVANCED_BLENDING_PRESENTATION_STATE_STORAGE,
     }
 )
 RT_SEGMENT_ANNOTATION_STORAGE = "1.2.840.10008.5.1.4.1.1.481.11"
@@ -494,6 +512,9 @@ PSEUDO_COLOR_PRESENTATION_STATE_FILE = "58-pr-pseudo-color.dcm"
 BLENDING_PRESENTATION_STATE_FILE = "59-pr-blending.dcm"
 XA_XRF_PRESENTATION_STATE_FILE = "60-pr-xa-xrf-grayscale.dcm"
 VARIABLE_MODALITY_LUT_PRESENTATION_STATE_FILE = "61-pr-variable-modality-lut.dcm"
+PLANAR_MPR_PRESENTATION_STATE_FILE = "86-pr-planar-mpr.dcm"
+VOLUME_RENDERING_PRESENTATION_STATE_FILE = "87-pr-volume-rendering.dcm"
+ADVANCED_BLENDING_PRESENTATION_STATE_FILE = "88-pr-advanced-blending.dcm"
 PRESENTATION_STATE_FILES = (
     GRAYSCALE_PRESENTATION_STATE_FILE,
     COLOR_PRESENTATION_STATE_FILE,
@@ -501,6 +522,9 @@ PRESENTATION_STATE_FILES = (
     BLENDING_PRESENTATION_STATE_FILE,
     XA_XRF_PRESENTATION_STATE_FILE,
     VARIABLE_MODALITY_LUT_PRESENTATION_STATE_FILE,
+    PLANAR_MPR_PRESENTATION_STATE_FILE,
+    VOLUME_RENDERING_PRESENTATION_STATE_FILE,
+    ADVANCED_BLENDING_PRESENTATION_STATE_FILE,
 )
 # The RT Segment Annotation of the Segmentation, and the RT Radiation Set and
 # the three radiations, one of each second-generation radiation IOD, that it
@@ -646,6 +670,12 @@ BRACHY_DELIVERY_INSTRUCTION_SERIES = f"{LINKED_UID_ROOT}07200"
 BRACHY_DELIVERY_INSTRUCTION = f"{LINKED_UID_ROOT}07201"
 RADIATION_SET_DELIVERY_INSTRUCTION_SERIES = f"{LINKED_UID_ROOT}07300"
 RADIATION_SET_DELIVERY_INSTRUCTION = f"{LINKED_UID_ROOT}07301"
+PLANAR_MPR_PRESENTATION_STATE_SERIES = f"{LINKED_UID_ROOT}08200"
+PLANAR_MPR_PRESENTATION_STATE = f"{LINKED_UID_ROOT}08201"
+VOLUME_RENDERING_PRESENTATION_STATE_SERIES = f"{LINKED_UID_ROOT}08300"
+VOLUME_RENDERING_PRESENTATION_STATE = f"{LINKED_UID_ROOT}08301"
+ADVANCED_BLENDING_PRESENTATION_STATE_SERIES = f"{LINKED_UID_ROOT}08400"
+ADVANCED_BLENDING_PRESENTATION_STATE = f"{LINKED_UID_ROOT}08401"
 # A patient and a procedure step that the collection names but does not hold.
 PATIENT_REFERENCE = f"{LINKED_UID_ROOT}00003"
 PROCEDURE_STEP = f"{LINKED_UID_ROOT}00004"
@@ -814,6 +844,15 @@ _SOP_CLASSES = types.MappingProxyType(
         ),
         RADIATION_SET_DELIVERY_INSTRUCTION: (
             RT_RADIATION_SET_DELIVERY_INSTRUCTION_STORAGE
+        ),
+        PLANAR_MPR_PRESENTATION_STATE: (
+            GRAYSCALE_PLANAR_MPR_VOLUMETRIC_PRESENTATION_STATE_STORAGE
+        ),
+        VOLUME_RENDERING_PRESENTATION_STATE: (
+            VOLUME_RENDERING_VOLUMETRIC_PRESENTATION_STATE_STORAGE
+        ),
+        ADVANCED_BLENDING_PRESENTATION_STATE: (
+            ADVANCED_BLENDING_PRESENTATION_STATE_STORAGE
         ),
         PATIENT_REFERENCE: DETACHED_PATIENT_MANAGEMENT,
         PROCEDURE_STEP: MODALITY_PERFORMED_PROCEDURE_STEP,
@@ -1727,6 +1766,30 @@ _SPECS = (
         RADIATION_SET,
         targets=((_REFERENCED_RT_RADIATION_SEQUENCE, C_ARM_RADIATION),),
     ),
+    # The volumetric Presentation States name the CT slices, as the inputs
+    # of the volume that they present, and the advanced blending one the PET
+    # Image, as an input that it blends.
+    _Spec(
+        PLANAR_MPR_PRESENTATION_STATE_FILE,
+        GRAYSCALE_PLANAR_MPR_VOLUMETRIC_PRESENTATION_STATE_STORAGE,
+        PLANAR_MPR_PRESENTATION_STATE,
+        PLANAR_MPR_PRESENTATION_STATE_SERIES,
+        CT_SLICES[0],
+    ),
+    _Spec(
+        VOLUME_RENDERING_PRESENTATION_STATE_FILE,
+        VOLUME_RENDERING_VOLUMETRIC_PRESENTATION_STATE_STORAGE,
+        VOLUME_RENDERING_PRESENTATION_STATE,
+        VOLUME_RENDERING_PRESENTATION_STATE_SERIES,
+        CT_SLICES[0],
+    ),
+    _Spec(
+        ADVANCED_BLENDING_PRESENTATION_STATE_FILE,
+        ADVANCED_BLENDING_PRESENTATION_STATE_STORAGE,
+        ADVANCED_BLENDING_PRESENTATION_STATE,
+        ADVANCED_BLENDING_PRESENTATION_STATE_SERIES,
+        PET,
+    ),
     # Numbered after the second-generation RT IODs' files.
     # The Enhanced RT Image, two digitally reconstructed radiographs of the
     # RT Plan's beam, and the Enhanced Continuous RT Image, two frames of a
@@ -1755,7 +1818,7 @@ def build_corpus() -> SyntheticCorpus:
     Returns
     -------
     SyntheticCorpus
-        Sixty-four files: three CT slices; the RT Structure Set, RT Plan, RT
+        Sixty-seven files: three CT slices; the RT Structure Set, RT Plan, RT
         Dose, and the RT Dose for review; the Enhanced CT Image and Legacy
         Converted Enhanced CT Image; the MR Image, Enhanced MR Image,
         Enhanced MR Color Image, Legacy Converted Enhanced MR Image, and MR
@@ -1778,8 +1841,10 @@ def build_corpus() -> SyntheticCorpus:
         Radiation Set, and C-Arm Photon-Electron, Tomotherapeutic, and
         Robotic-Arm Radiations; the RT Beams Delivery Instruction, RT Brachy
         Application Setup Delivery Instruction, and RT Radiation Set
-        Delivery Instruction; and the Enhanced RT Image and Enhanced
-        Continuous RT Image. Two builds give the same bytes and the same
+        Delivery Instruction; the Grayscale Planar MPR and Volume Rendering
+        Volumetric Presentation States and the Advanced Blending
+        Presentation State; and the Enhanced RT Image and Enhanced Continuous
+        RT Image. Two builds give the same bytes and the same
         manifest.
     """
     markers = _Markers()
@@ -1980,6 +2045,21 @@ def _basic_profile_actions() -> types.MappingProxyType[str, str]:
     return types.MappingProxyType(
         {row.tag: row.basic_profile for row in load_table_e1_1().attributes}
     )
+
+
+@functools.lru_cache(maxsize=None)
+def _supplementary_sequence_actions() -> types.MappingProxyType[str, str]:
+    """Return the Basic Profile action of each sequence a supplementary rule covers.
+
+    Table E.1-1 omits these sequences, so the corpus plants nothing of their
+    own, but plants the attributes of the table in their items.
+    """
+    actions = {}
+    for tag, rule in load_supplementary_actions().rules.items():
+        attribute = None if "x" in tag else dictionary_attribute(tag)
+        if attribute is not None and "SQ" in attribute.vrs:
+            actions[tag] = rule.action
+    return types.MappingProxyType(actions)
 
 
 @functools.lru_cache(maxsize=None)
@@ -2190,11 +2270,27 @@ class _Instance:
         return None
 
     def _in_sequestering_sequence(self, path: tuple[str, ...]) -> bool:
-        """Return whether a sequence that encloses a place sequesters."""
+        """Return whether a sequence that encloses a place sequesters.
+
+        So does one that Table E.1-1 omits and whose supplementary rule's
+        action resolves to D at its place, as a sequence has no dummy value,
+        such as a volumetric Presentation State's Volumetric Annotation
+        Sequence (0070,1901).
+        """
         actions = _basic_profile_actions()
+        supplementary = _supplementary_sequence_actions()
         return any(
-            path[depth] in actions
-            and self._sequesters(path[:depth], path[depth], path[depth])
+            (
+                path[depth] in actions
+                and self._sequesters(path[:depth], path[depth], path[depth])
+            )
+            or (
+                path[depth] in supplementary
+                and self._resolved(
+                    path[:depth], path[depth], supplementary[path[depth]]
+                )
+                == "D"
+            )
             for depth in range(len(path))
         )
 

@@ -295,3 +295,175 @@ def test_the_referenced_series_sequence_is_kept_where_a_presentation_state_requi
         for definition in iod.definitions
         if definition.tag == REFERENCED_SERIES_SEQUENCE and not definition.path
     } == {("Presentation State Relationship", "1")}
+
+
+GRAYSCALE_PLANAR_MPR_VOLUMETRIC_PRESENTATION_STATE_STORAGE = (
+    "1.2.840.10008.5.1.4.1.1.11.6"
+)
+COMPOSITING_PLANAR_MPR_VOLUMETRIC_PRESENTATION_STATE_STORAGE = (
+    "1.2.840.10008.5.1.4.1.1.11.7"
+)
+COLOR_SPACE = "(0028,2002)"
+INPUT_SET = "2.25.702"
+VOLUMETRIC_ANNOTATION_SEQUENCE = "(0070,1901)"
+VOLUMETRIC_PRESENTATION_INPUT_ANNOTATION_SEQUENCE = "(0070,1905)"
+
+
+def _planar_mpr(*, annotation=None, color=False):
+    """Return a Planar MPR Volumetric Presentation State of the CT.
+
+    It is a Grayscale one, or, where ``color`` is true, a Compositing one
+    whose true colour display holds ICC Profile and Color Space.
+    ``annotation`` names a sequence of the Volumetric Graphic Annotation
+    Module to hold one text annotation.
+    """
+    dataset = synthetic.instance(
+        COMPOSITING_PLANAR_MPR_VOLUMETRIC_PRESENTATION_STATE_STORAGE
+        if color
+        else GRAYSCALE_PLANAR_MPR_VOLUMETRIC_PRESENTATION_STATE_STORAGE,
+        PRESENTATION_STATE,
+        PRESENTATION_STATE_SERIES,
+        VolumetricPresentationInputSetSequence=[
+            synthetic.item(
+                VolumetricPresentationInputSetUID=INPUT_SET,
+                PresentationInputType="VOLUME",
+                ReferencedImageSequence=[
+                    synthetic.reference(synthetic.CT_IMAGE_STORAGE, slice_uid)
+                    for slice_uid in synthetic.CT_SLICES
+                ],
+            )
+        ],
+        VolumetricPresentationStateInputSequence=[
+            synthetic.item(
+                VolumetricPresentationInputNumber=1,
+                VolumetricPresentationInputSetUID=INPUT_SET,
+                Crop="NO",
+            )
+        ],
+    )
+    dataset.Modality = "PR"
+    dataset.InstanceNumber = 1
+    dataset.ContentLabel = "MPR"
+    dataset.ContentDescription = "SENTINEL DESCRIPTION"
+    dataset.PresentationCreationDate = SOURCE_DATE
+    dataset.PresentationCreationTime = SOURCE_TIME
+    dataset.MultiPlanarReconstructionStyle = "PLANAR"
+    dataset.MPRThicknessType = "THIN"
+    dataset.MPRTopLeftHandCorner = [0.0, 0.0, 0.0]
+    dataset.MPRViewWidthDirection = [1.0, 0.0, 0.0]
+    dataset.MPRViewWidth = 100.0
+    dataset.MPRViewHeightDirection = [0.0, 1.0, 0.0]
+    dataset.MPRViewHeight = 100.0
+    if color:
+        dataset.PixelPresentation = "TRUE_COLOR"
+        dataset.add_new(
+            ICC_PROFILE, "OB", icc_profiles.srgb_profile("A display's profile")
+        )
+        dataset.ColorSpace = "SRGB"
+    if annotation is not None:
+        setattr(
+            dataset,
+            annotation,
+            [
+                synthetic.item(
+                    VolumetricPresentationInputNumber=1,
+                    TextObjectSequence=[
+                        synthetic.item(UnformattedTextValue="SENTINEL NAME")
+                    ],
+                )
+            ],
+        )
+    return dataset
+
+
+def test_the_volumetric_and_advanced_blending_presentation_states_are_supported():
+    assert {
+        "Planar MPR Volumetric Presentation State",
+        "Volume Rendering Volumetric Presentation State",
+        "Advanced Blending Presentation State",
+    } <= scope.SUPPORTED_IODS
+    for sop_class in range(6, 12):
+        assert not scope.classify(
+            f"1.2.840.10008.5.1.4.1.1.11.{sop_class}",
+            synthetic.EXPLICIT_VR_LITTLE_ENDIAN,
+        ).sequestered, sop_class
+
+
+@pytest.mark.deid_requirement("MIDI-BP-06")
+@pytest.mark.parametrize("preset", UNDATED_PRESETS)
+def test_the_basic_profile_sequesters_a_volumetric_presentation_state(preset):
+    result = _transformed(preset, _planar_mpr())
+
+    assert isinstance(result, run.Sequestered)
+    assert {reason.path for reason in result.reasons} == {
+        ElementPath((), PRESENTATION_CREATION_DATE),
+        ElementPath((), PRESENTATION_CREATION_TIME),
+    }
+
+
+@pytest.mark.deid_requirement("MIDI-BP-06")
+@pytest.mark.parametrize("preset", DATED_PRESETS)
+def test_a_date_option_releases_a_volumetric_presentation_state(preset):
+    result = _transformed(preset, _planar_mpr())
+
+    assert isinstance(result, run.Transformed), result
+    written = pydicom.dcmread(io.BytesIO(result.data))
+    assert b"SENTINEL" not in result.data
+    assert written.PresentationCreationDate != SOURCE_DATE
+    assert written.MultiPlanarReconstructionStyle == "PLANAR"
+    assert written.MPRViewWidth == 100.0
+    (input_set,) = written.VolumetricPresentationInputSetSequence
+    (presentation_input,) = written.VolumetricPresentationStateInputSequence
+    # The input set's UID is replaced by the run's key, the same way in both
+    # sequences, so the input still names its set, and so are the CT slices'
+    # UIDs, as the slices' own are, so the written state names the written
+    # slices.
+    assert input_set.VolumetricPresentationInputSetUID != INPUT_SET
+    assert presentation_input.VolumetricPresentationInputSetUID == (
+        input_set.VolumetricPresentationInputSetUID
+    )
+    images = [
+        image.ReferencedSOPInstanceUID for image in input_set.ReferencedImageSequence
+    ]
+    assert len(images) == len(synthetic.CT_SLICES)
+    assert not set(images) & set(synthetic.CT_SLICES)
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.3-01")
+@pytest.mark.parametrize("preset", policy.PRESETS)
+@pytest.mark.parametrize(
+    "annotation",
+    ["VolumetricAnnotationSequence", "VolumetricPresentationInputAnnotationSequence"],
+)
+def test_every_preset_sequesters_a_volumetric_presentation_state_with_annotations(
+    preset, annotation
+):
+    result = _transformed(preset, _planar_mpr(annotation=annotation))
+
+    assert isinstance(result, run.Sequestered)
+    tag = {
+        "VolumetricAnnotationSequence": VOLUMETRIC_ANNOTATION_SEQUENCE,
+        "VolumetricPresentationInputAnnotationSequence": (
+            VOLUMETRIC_PRESENTATION_INPUT_ANNOTATION_SEQUENCE
+        ),
+    }[annotation]
+    assert (
+        Sequestration(ElementPath((), tag), "D", "SQ", SequesterReason.NO_DUMMY_VALUE)
+        in result.reasons
+    )
+
+
+@pytest.mark.parametrize("preset", DATED_PRESETS)
+def test_a_volumetric_presentation_states_color_space_sequesters_it(preset):
+    # Color Space is Type 1C beside ICC Profile in the MPR Volumetric
+    # Presentation State Display Module, and X/Z/D resolves to D there, which
+    # a code string has no dummy value for (D-021, D-022). ICC Profile itself
+    # is cleaned, so it is not among the reasons.
+    result = _transformed(preset, _planar_mpr(color=True))
+
+    assert isinstance(result, run.Sequestered)
+    assert set(result.reasons) == {
+        Sequestration(
+            ElementPath((), COLOR_SPACE), "D", "CS", SequesterReason.NO_DUMMY_VALUE
+        )
+    }

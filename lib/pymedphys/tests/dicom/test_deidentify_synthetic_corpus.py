@@ -37,6 +37,7 @@ from pymedphys._dicom.deidentify import (
     standard,
     structured_content,
     synthetic_content_trees,
+    supplementary_actions,
 )
 from pymedphys._dicom.deidentify import synthetic_corpus as corpus_module
 from pymedphys._dicom.deidentify.dates import MAX_OFFSET_WEEKS, MIN_OFFSET_WEEKS
@@ -260,6 +261,9 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "75-rt-beams-delivery-instruction.dcm",
         "76-rt-brachy-delivery-instruction.dcm",
         "77-rt-radiation-set-delivery-instruction.dcm",
+        "86-pr-planar-mpr.dcm",
+        "87-pr-volume-rendering.dcm",
+        "88-pr-advanced-blending.dcm",
         "89-rt-image-enhanced.dcm",
         "90-rt-image-enhanced-continuous.dcm",
     ]
@@ -319,10 +323,14 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "RT Beams Delivery Instruction",
         "RT Brachy Application Setup Delivery Instruction",
         "RT Radiation Set Delivery Instruction",
+        "Planar MPR Volumetric Presentation State",
+        "Volume Rendering Volumetric Presentation State",
+        "Advanced Blending Presentation State",
         "Enhanced RT Image",
         "Enhanced Continuous RT Image",
     ]
     # Counted from the start, so that a file added at the end moves none.
+    presentation_states = corpus.files[48:54] + corpus.files[62:65]
     assert corpus_module.STRUCTURED_REPORT_FILES == tuple(
         file.name for file in corpus.files[21:31] + corpus.files[33:41]
     )
@@ -343,15 +351,15 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
     ) == tuple(file.name for file in corpus.files[45:47])
     assert corpus_module.SURFACE_SEGMENTATION_FILE == corpus.files[47].name
     assert corpus_module.PRESENTATION_STATE_FILES == tuple(
-        file.name for file in corpus.files[48:54]
+        file.name for file in presentation_states
     )
-    assert {file.manifest.sop_class for file in corpus.files[48:54]} == (
+    assert {file.manifest.sop_class for file in presentation_states} == (
         corpus_module.PRESENTATION_STATE_STORAGE_CLASSES
     )
     assert (
         corpus_module.ENHANCED_RT_IMAGE_FILE,
         corpus_module.ENHANCED_CONTINUOUS_RT_IMAGE_FILE,
-    ) == tuple(file.name for file in corpus.files[62:64])
+    ) == tuple(file.name for file in corpus.files[65:67])
     assert (
         corpus_module.SEGMENT_ANNOTATION_FILE,
         corpus_module.RADIATION_SET_FILE,
@@ -422,12 +430,22 @@ def test_every_attribute_of_table_e1_1_that_the_iod_defines_is_placed(corpus):
 # items of Radiation Generation Mode Sequence (300A,067B), and Referenced
 # Treatment Position Group UID, in those of Treatment Position Group Sequence
 # (300A,060A). Their actions are tested on an Enhanced RT Image apart, in
-# test_deidentify_instance_transform.py. In the RT Radiation Set Delivery
-# Instruction, Referenced, Constituent, and Source Conceptual Volume UID lie
-# five or six items deep, in the Conceptual Volume Macro of a task's patient
-# position displacement; the RT Radiation Set and the radiations hold them
-# less deep, and their actions in the instruction are tested apart there too.
+# test_deidentify_instance_transform.py. In the Advanced Blending
+# Presentation State, Referenced Digital Signature Sequence and Referenced
+# SOP Instance MAC Sequence, with its MAC, are defined only in the Referenced
+# SOP Sequence of the Referenced Series Sequence of the Referenced Spatial
+# Registration Sequence of an Advanced Blending Sequence item, four sequences
+# deep, as its Common Instance Reference Module's Referenced Instance
+# Sequence does not define them; other files plant them at a shallower place.
+# In the RT Radiation Set Delivery Instruction, Referenced, Constituent, and
+# Source Conceptual Volume UID lie five or six items deep, in the Conceptual
+# Volume Macro of a task's patient position displacement; the RT Radiation
+# Set and the radiations hold them less deep, and their actions in the
+# instruction are tested apart there too.
 ONLY_BEYOND_THE_DEPTH_CAP = {
+    "(0400,0402)",
+    "(0400,0403)",
+    "(0400,0404)",
     "(300A,067C)",
     "(300A,067D)",
     "(300A,0785)",
@@ -496,6 +514,11 @@ def _resolved(iod, tag, path):
     return compound_actions.resolve_plain_in_iod(iod, tag, path, action)
 
 
+# The sequences that a volumetric Presentation State's annotations are in,
+# which Table E.1-1 omits and a supplementary rule gives D.
+VOLUMETRIC_ANNOTATION_SEQUENCES = {"(0070,1901)", "(0070,1905)"}
+
+
 def _sequesters_at(iod, tag, path, row):
     """Return whether the Basic Profile's action on a place sequesters.
 
@@ -523,18 +546,28 @@ def _sequesters_at(iod, tag, path, row):
 def _sequesters(iod, placement):
     """Return whether the Basic Profile's action on a placement sequesters.
 
-    So it does within a sequence whose own action sequesters. A content
-    item's value takes its concept's row of Table E.3.4-1, not a row of
-    Table E.1-1, so only its enclosing sequences are judged here.
+    So it does within a sequence whose own action sequesters, whether Table
+    E.1-1 gives it or, for the two annotation sequences of a volumetric
+    Presentation State, a supplementary rule gives it D. A content item's
+    value takes its concept's row of Table E.3.4-1, not a row of Table
+    E.1-1, so only its enclosing sequences are judged here.
     """
     rows = {row.tag: row for row in standard.load_table_e1_1().attributes}
+    rules = supplementary_actions.load_supplementary_actions().rules
     path = tuple(tag for tag, _ in placement.path.items)
     own = placement.concept is None and _sequesters_at(
         iod, placement.path.tag, path, placement.profile_tag
     )
     return own or any(
-        path[depth] in rows
-        and _sequesters_at(iod, path[depth], path[:depth], path[depth])
+        (
+            path[depth] in rows
+            and _sequesters_at(iod, path[depth], path[:depth], path[depth])
+        )
+        or (
+            path[depth] in VOLUMETRIC_ANNOTATION_SEQUENCES
+            and rules[path[depth]].action == "D"
+            and compound_actions.strictest_type(iod, path[depth], path[:depth]) == "1"
+        )
         for depth in range(len(path))
     )
 
@@ -571,7 +604,11 @@ def test_an_attribute_whose_removal_sequesters_is_planted_in_one_instance(corpus
     # its Presentation Creation Date and Time, which a plain X removes where
     # they are Type 1 (D-020), and, but in the blending one, whose IOD has no
     # Overlay Plane Module, its Overlay Data, which a plain X removes where
-    # the module is conditional, are planted in no file.
+    # the module is conditional, are planted in no file. So too in the
+    # volumetric and advanced blending ones, which have no Overlay Plane
+    # Module, and in the volumetric ones what the items of their Volumetric
+    # Annotation Sequence and Volumetric Presentation Input Annotation
+    # Sequence hold, whose supplementary rule's D sequesters them.
     both = {"(0010,2297)", "(0010,2299)"}
     annotation = {
         "(0070,0001)",  # Graphic Annotation Sequence
@@ -595,6 +632,14 @@ def test_an_attribute_whose_removal_sequesters_is_planted_in_one_instance(corpus
             annotation | creation | overlay,
         ),
         "Blending Softcopy Presentation State": annotation | creation,
+        **dict.fromkeys(
+            (
+                "Planar MPR Volumetric Presentation State",
+                "Volume Rendering Volumetric Presentation State",
+                "Advanced Blending Presentation State",
+            ),
+            annotation | creation,
+        ),
     }
     assert planted == {corpus_module.SEQUESTERED_FILE: both}
     assert corpus_module.SEQUESTERED_FILE == corpus.files[2].name
