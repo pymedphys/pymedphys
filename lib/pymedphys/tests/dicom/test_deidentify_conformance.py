@@ -262,6 +262,14 @@ def test_institution_name_is_resolved_by_its_type_at_each_place(statement_for):
     assert found[("RT Ion Beams Treatment Record", ION_INTERLOCK_USER)] == "D"
     assert found[("Enhanced RT Image", AUTHOR_IDENTIFICATION)] == "Z"
     assert found[("Enhanced Continuous RT Image", AUTHOR_IDENTIFICATION)] == "Z"
+    for name in (
+        "RT Segment Annotation",
+        "RT Radiation Set",
+        "C-Arm Photon-Electron Radiation",
+        "Tomotherapeutic Radiation",
+        "Robotic-Arm Radiation",
+    ):
+        assert found[(name, AUTHOR_IDENTIFICATION)] == "Z", name
     assert found[("RT Structure Set", ())] == "X"
     # Places within a sequence that the Basic Profile removes are not listed.
     assert ("RT Structure Set", ROI_CREATOR) not in found
@@ -270,8 +278,10 @@ def test_institution_name_is_resolved_by_its_type_at_each_place(statement_for):
     text = conformance_markdown.render_markdown(statement_for("basic"))
     row = next(line for line in text.splitlines() if f"| {INSTITUTION_NAME} |" in line)
     assert row.endswith(
-        "| Z within Author Identification Sequence (3010,0019) in Enhanced "
-        "Continuous RT Image and Enhanced RT Image; within Treatment Machine "
+        "| Z within Author Identification Sequence (3010,0019) in C-Arm "
+        "Photon-Electron Radiation, Enhanced Continuous RT Image, Enhanced RT "
+        "Image, RT Radiation Set, RT Segment Annotation, Robotic-Arm Radiation, "
+        "and Tomotherapeutic Radiation; within Treatment Machine "
         "Sequence (300A,0206) in RT Beams Treatment "
         "Record, RT Brachy Treatment Record, and RT Ion Beams Treatment Record; "
         "within RT Assertions Sequence "
