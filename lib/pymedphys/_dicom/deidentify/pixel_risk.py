@@ -81,10 +81,11 @@ indicator. Findings name attribute paths, never values.
 :func:`assess_series` reads the indicators that need a whole series:
 every CT, MR, and PET volume, and every RT Dose grid of more than one
 frame, may hold a reconstructable face; so may a CT, MR, or PET localizer,
-which can show the face in profile, and so may an RT Image, a projection
-such as a lateral DRR, a Nuclear Medicine image, whether a reconstructed
-volume, the projections it is reconstructed from, or a planar projection,
-a Segmentation, whose segment of the skin or body traces the profile, and
+which can show the face in profile, and so may an RT Image, Enhanced RT
+Image, or Enhanced Continuous RT Image, each a projection such as a
+lateral DRR, a Nuclear Medicine image, whether a reconstructed volume,
+the projections it is reconstructed from, or a planar projection, a
+Segmentation, whose segment of the skin or body traces the profile, and
 a Parametric Map, whose map of the head shows its outline; and one whose
 attributes, or a Segmentation's segments, name a region of the head or
 neck in a reviewed list from PS3.16 Annex L says that it does.
@@ -763,14 +764,23 @@ _VOLUME_SOP_CLASSES = {
     # frames, so it is not a volume.
     "1.2.840.10008.5.1.4.1.1.481.2": (Indicator.RT_DOSE_VOLUME, True),
 }
-# RT Image Storage (PS3.4 Table B.5-1). An RT Image is a projection, such
-# as a digitally reconstructed radiograph (DRR) or a simulator or portal
-# image (PS3.3 Section C.8.8.2), so, like a localizer, it can show the face
-# in profile. It is recognised by its SOP Class, whatever its Image Type:
-# the standard Defined Terms of Image Type's third value for it do not
-# include LOCALIZER, though an implementer may extend them (PS3.5 Section
-# 6.3).
-_RT_IMAGE = "1.2.840.10008.5.1.4.1.1.481.1"
+# RT Image Storage, Enhanced RT Image Storage, and Enhanced Continuous RT
+# Image Storage (PS3.4 Table B.5-1). An RT Image is a projection, such as a
+# digitally reconstructed radiograph (DRR) or a simulator or portal image
+# (PS3.3 Section C.8.8.2), and an Enhanced or Enhanced Continuous RT Image
+# holds projections too, acquired directly or derived from a volume such as
+# a CT (PS3.3 Sections A.86.1.15.1 and A.86.1.16.1), so, like a localizer,
+# each can show the face in profile. Each is recognised by its SOP Class,
+# whatever its Image Type: the standard Defined Terms of Image Type's third
+# value for them do not include LOCALIZER, though an implementer may extend
+# them (PS3.5 Section 6.3).
+RT_IMAGE_SOP_CLASSES = frozenset(
+    {
+        "1.2.840.10008.5.1.4.1.1.481.1",
+        "1.2.840.10008.5.1.4.1.1.481.23",
+        "1.2.840.10008.5.1.4.1.1.481.24",
+    }
+)
 # Nuclear Medicine Image Storage (PS3.4 Table B.5-1), the one Storage SOP
 # Class of the Nuclear Medicine Image IOD. Each instance is reported,
 # whatever its Image Type and Number of Frames: by the third value of its
@@ -946,11 +956,12 @@ def assess_series(instances: Sequence[pydicom.Dataset]) -> tuple[SeriesFinding, 
     counts as a frame of each volume that the series' other instances make.
     The localizers of those image classes are reported apart, since a
     localizer can show the face in profile, although no study has measured
-    recognition from one. So is each RT Image Storage instance, whatever its
-    Image Type, gantry angle, or Number of Frames, since an RT Image is a
-    projection, and a lateral one, such as a DRR or a simulator or portal
-    image, can show the face in profile as a localizer can; it is no frame
-    of a volume. So is each Nuclear Medicine Image Storage instance,
+    recognition from one. So is each RT Image, of RT Image Storage,
+    Enhanced RT Image Storage, or Enhanced Continuous RT Image Storage,
+    whatever its Image Type, gantry angle, or Number of Frames, since each
+    holds projections, and a lateral one, such as a DRR or a simulator,
+    portal, or kV image, can show the face in profile as a localizer can; it
+    is no frame of a volume. So is each Nuclear Medicine Image Storage instance,
     whatever its Image Type and Number of Frames, since it is a volume
     reconstructed from a tomographic acquisition, the projections from
     which one is reconstructed, or a planar projection, which may be
@@ -1007,8 +1018,9 @@ def assess_series(instances: Sequence[pydicom.Dataset]) -> tuple[SeriesFinding, 
             unreadable.append(_unreadable_in(index, ElementPath((), _SOP_CLASS_UID)))
             volume_class = None
         else:
-            if sop_class in (_RT_IMAGE, _NM_IMAGE):
-                (rt_images if sop_class == _RT_IMAGE else nm_images).append(index)
+            if sop_class in RT_IMAGE_SOP_CLASSES or sop_class == _NM_IMAGE:
+                target = rt_images if sop_class in RT_IMAGE_SOP_CLASSES else nm_images
+                target.append(index)
                 head[index] = list(_head_or_neck(dataset, regions, index, unreadable))
                 continue
             if sop_class in SEGMENTATION_SOP_CLASSES:

@@ -43,6 +43,7 @@ from pymedphys._dicom.deidentify import (
     release_report,
     run,
 )
+from pymedphys._dicom.deidentify import synthetic_corpus as corpus_module
 from pymedphys._dicom.deidentify.edits import EditKind, InstanceEdits, edit_instance
 from pymedphys._dicom.deidentify.element_rules import ElementRules
 from pymedphys._dicom.deidentify.file_layout import ElementPath
@@ -1755,3 +1756,77 @@ def test_transform_for_selects_an_enabled_policy_only(monkeypatch):
     assert given == (policy, KEY, None, {"cleaning": cleaning})
     assert generated[3] == {"cleaning": None}
     assert generated[0] is policy and generated[1] != KEY
+
+
+def _item_of(holder, keyword):
+    """The first item of a sequence of ``holder``, added empty if absent."""
+    if keyword not in holder:
+        setattr(holder, keyword, [pydicom.Dataset()])
+    return getattr(holder, keyword)[0]
+
+
+def _enhanced_rt_image():
+    (file,) = (
+        file
+        for file in corpus_module.build_corpus().files
+        if file.name == corpus_module.ENHANCED_RT_IMAGE_FILE
+    )
+    return pydicom.dcmread(io.BytesIO(file.data))
+
+
+def _mv_acquisition(shared):
+    return _item_of(
+        _item_of(shared, "RTImageFrameRadiationAcquisitionSequence"),
+        "RTImageFrameMVRadiationAcquisitionSequence",
+    )
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.1-01")
+def test_attributes_five_items_deep_in_an_enhanced_rt_image_take_their_actions():
+    # The synthetic corpus plants attributes at most four items deep, and
+    # these three are defined only five deep, in the functional groups of the
+    # Enhanced RT Images. PS3.3 Table C.36.2.4.7-1 includes the Radiation
+    # Generation Mode Macro, which holds Radiation Generation Mode Sequence,
+    # in the items of that same sequence, so its label is nested twice.
+    image = _enhanced_rt_image()
+    shared = image.SharedFunctionalGroupsSequence[0]
+    outer = _item_of(_mv_acquisition(shared), "RadiationGenerationModeSequence")
+    mode = _item_of(outer, "RadiationGenerationModeSequence")
+    mode.RadiationGenerationModeLabel = SENTINEL_LABEL
+    mode.RadiationGenerationModeDescription = "SENTINEL DESCRIPTION"
+    scope = _item_of(
+        _item_of(shared, "RTImageFrameContextSequence"), "RTImageScopeSequence"
+    )
+    group_uid = "1.2.826.0.1.3680043.10.188.99.5"
+    _item_of(
+        _item_of(scope, "ReferencedRTRadiationSetSequence"),
+        "TreatmentPositionGroupSequence",
+    ).ReferencedTreatmentPositionGroupUID = group_uid
+
+    result = _transformed(image)
+
+    assert b"SENTINEL" not in result.data
+    shared = pydicom.dcmread(io.BytesIO(result.data)).SharedFunctionalGroupsSequence[0]
+    outer = _mv_acquisition(shared).RadiationGenerationModeSequence[0]
+    mode = outer.RadiationGenerationModeSequence[0]
+    assert mode.RadiationGenerationModeLabel == "DEIDENTIFIED"
+    assert mode.RadiationGenerationModeDescription == ""
+    scope = shared.RTImageFrameContextSequence[0].RTImageScopeSequence[0]
+    group = scope.ReferencedRTRadiationSetSequence[0].TreatmentPositionGroupSequence[0]
+    assert group.ReferencedTreatmentPositionGroupUID == replacement_uid(KEY, group_uid)
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.1-01")
+def test_a_radiation_generation_mode_nested_once_is_not_kept():
+    # A writer that reads Table C.36.2.4.7-1 as meaning one level of
+    # Radiation Generation Mode Sequence puts the label four items deep,
+    # where no supported IOD defines it.
+    image = _enhanced_rt_image()
+    shared = image.SharedFunctionalGroupsSequence[0]
+    mode = _item_of(_mv_acquisition(shared), "RadiationGenerationModeSequence")
+    mode.RadiationGenerationModeLabel = SENTINEL_LABEL
+    mode.RadiationGenerationModeDescription = "SENTINEL DESCRIPTION"
+
+    result = _transformed(image)
+
+    assert b"SENTINEL" not in result.data
