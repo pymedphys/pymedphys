@@ -902,6 +902,11 @@ def test_instances_keep_their_reviewed_dummy_values(policy_run):
         "Enhanced Continuous RT Image",
         # In its DX Series Module.
         "Digital X-Ray Image",
+        "RT Segment Annotation",
+        "RT Radiation Set",
+        "C-Arm Photon-Electron Radiation",
+        "Tomotherapeutic Radiation",
+        "Robotic-Arm Radiation",
     }
     steps = set()
     # Under Retain UIDs, Table E.1-1 gives K to the sequence and to the

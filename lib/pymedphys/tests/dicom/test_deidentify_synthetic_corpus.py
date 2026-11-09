@@ -249,6 +249,11 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "62-cr.dcm",
         "63-dx-for-processing.dcm",
         "64-dx-for-presentation.dcm",
+        "70-rt-segment-annotation.dcm",
+        "71-rt-radiation-set.dcm",
+        "72-c-arm-radiation.dcm",
+        "73-tomotherapeutic-radiation.dcm",
+        "74-robotic-arm-radiation.dcm",
         "89-rt-image-enhanced.dcm",
         "90-rt-image-enhanced-continuous.dcm",
     ]
@@ -297,35 +302,48 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "Computed Radiography Image",
         "Digital X-Ray Image",
         "Digital X-Ray Image",
+        "RT Segment Annotation",
+        "RT Radiation Set",
+        "C-Arm Photon-Electron Radiation",
+        "Tomotherapeutic Radiation",
+        "Robotic-Arm Radiation",
         "Enhanced RT Image",
         "Enhanced Continuous RT Image",
     ]
+    # Counted from the start, so that a file added at the end moves none.
     assert corpus_module.STRUCTURED_REPORT_FILES == tuple(
-        file.name for file in corpus.files[-32:-22] + corpus.files[-20:-12]
+        file.name for file in corpus.files[21:31] + corpus.files[33:41]
     )
     assert corpus_module.SEGMENTATION_FILES == tuple(
-        file.name for file in corpus.files[-22:-20]
+        file.name for file in corpus.files[31:33]
     )
     assert (
         corpus_module.ION_PLAN_FILE,
         corpus_module.ION_TREATMENT_RECORD_FILE,
-    ) == tuple(file.name for file in corpus.files[-12:-10])
+    ) == tuple(file.name for file in corpus.files[41:43])
     assert (
         corpus_module.BRACHY_TREATMENT_RECORD_FILE,
         corpus_module.TREATMENT_SUMMARY_RECORD_FILE,
-    ) == tuple(file.name for file in corpus.files[-10:-8])
+    ) == tuple(file.name for file in corpus.files[43:45])
     assert (
         corpus_module.PARAMETRIC_MAP_FILE,
         corpus_module.REAL_WORLD_VALUE_MAPPING_FILE,
-    ) == tuple(file.name for file in corpus.files[-8:-6])
-    assert corpus_module.SURFACE_SEGMENTATION_FILE == corpus.files[-6].name
+    ) == tuple(file.name for file in corpus.files[45:47])
+    assert corpus_module.SURFACE_SEGMENTATION_FILE == corpus.files[47].name
     assert corpus_module.RADIOGRAPH_FILES == tuple(
-        file.name for file in corpus.files[-5:-2]
+        file.name for file in corpus.files[48:51]
     )
     assert (
         corpus_module.ENHANCED_RT_IMAGE_FILE,
         corpus_module.ENHANCED_CONTINUOUS_RT_IMAGE_FILE,
-    ) == tuple(file.name for file in corpus.files[-2:])
+    ) == tuple(file.name for file in corpus.files[56:58])
+    assert (
+        corpus_module.SEGMENT_ANNOTATION_FILE,
+        corpus_module.RADIATION_SET_FILE,
+        corpus_module.C_ARM_RADIATION_FILE,
+        corpus_module.TOMOTHERAPEUTIC_RADIATION_FILE,
+        corpus_module.ROBOTIC_ARM_RADIATION_FILE,
+    ) == tuple(file.name for file in corpus.files[51:56])
     # Every IOD of the first supported release.
     assert {file.manifest.iod for file in corpus.files} == scope.SUPPORTED_IODS
 
