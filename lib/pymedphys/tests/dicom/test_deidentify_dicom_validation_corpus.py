@@ -102,6 +102,9 @@ UNKNOWN_TO_DICOM3TOOLS = tuple(
         corpus_module.C_ARM_PHOTON_ELECTRON_RADIATION_STORAGE,
         corpus_module.TOMOTHERAPEUTIC_RADIATION_STORAGE,
         corpus_module.ROBOTIC_ARM_RADIATION_STORAGE,
+        corpus_module.RT_BEAMS_DELIVERY_INSTRUCTION_STORAGE,
+        corpus_module.RT_BRACHY_APPLICATION_SETUP_DELIVERY_INSTRUCTION_STORAGE,
+        corpus_module.RT_RADIATION_SET_DELIVERY_INSTRUCTION_STORAGE,
     )
 )
 # The corpus's SOP Classes whose input dicom-validator 0.9.0 cannot check to
@@ -244,8 +247,9 @@ def test_every_validator_ran_over_every_released_instance(comparison):
     assert validated == comparison.pairs - unchecked
     # dciodvfy checks every input and output but the corpus's RT Dose in
     # Implicit VR, whose 32-bit pixels abort it on both, and its reports,
-    # label map Segmentation, and second-generation RT objects, whose SOP
-    # Classes dicom3tools' January 2024 snapshot does not know.
+    # label map Segmentation, second-generation RT objects, and RT delivery
+    # instructions, whose SOP Classes dicom3tools' January 2024 snapshot does
+    # not know.
     statuses = dict(comparison.tallies[DCIODVFY]["statuses"])
     failed = statuses.pop(BOTH_FAILED, 0)
     unsupported = statuses.pop(BOTH_UNSUPPORTED, 0)

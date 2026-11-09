@@ -265,6 +265,9 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "72-c-arm-radiation.dcm",
         "73-tomotherapeutic-radiation.dcm",
         "74-robotic-arm-radiation.dcm",
+        "75-rt-beams-delivery-instruction.dcm",
+        "76-rt-brachy-delivery-instruction.dcm",
+        "77-rt-radiation-set-delivery-instruction.dcm",
         "89-rt-image-enhanced.dcm",
         "90-rt-image-enhanced-continuous.dcm",
     ]
@@ -316,6 +319,9 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "C-Arm Photon-Electron Radiation",
         "Tomotherapeutic Radiation",
         "Robotic-Arm Radiation",
+        "RT Beams Delivery Instruction",
+        "RT Brachy Application Setup Delivery Instruction",
+        "RT Radiation Set Delivery Instruction",
         "Enhanced RT Image",
         "Enhanced Continuous RT Image",
     ]
@@ -343,7 +349,7 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
     assert (
         corpus_module.ENHANCED_RT_IMAGE_FILE,
         corpus_module.ENHANCED_CONTINUOUS_RT_IMAGE_FILE,
-    ) == tuple(file.name for file in corpus.files[58:60])
+    ) == tuple(file.name for file in corpus.files[61:63])
     assert (
         corpus_module.SEGMENT_ANNOTATION_FILE,
         corpus_module.RADIATION_SET_FILE,
@@ -351,6 +357,11 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         corpus_module.TOMOTHERAPEUTIC_RADIATION_FILE,
         corpus_module.ROBOTIC_ARM_RADIATION_FILE,
     ) == tuple(file.name for file in corpus.files[53:58])
+    assert (
+        corpus_module.BEAMS_DELIVERY_INSTRUCTION_FILE,
+        corpus_module.BRACHY_DELIVERY_INSTRUCTION_FILE,
+        corpus_module.RADIATION_SET_DELIVERY_INSTRUCTION_FILE,
+    ) == tuple(file.name for file in corpus.files[58:61])
     # Every IOD of the first supported release.
     assert {file.manifest.iod for file in corpus.files} == scope.SUPPORTED_IODS
 
@@ -403,14 +414,25 @@ def test_every_attribute_of_table_e1_1_that_the_iod_defines_is_placed(corpus):
         assert max(found.values()) == 1, file.name
 
 
-# The attributes of Table E.1-1 that the corpus's IODs define only below the
-# depth cap, five items deep in a functional group of the Enhanced RT
-# Images: Radiation Generation Mode Label and Description, in the items of
-# Radiation Generation Mode Sequence (300A,067B), and Referenced Treatment
-# Position Group UID, in those of Treatment Position Group Sequence
+# The attributes of Table E.1-1 that an instance of the corpus's IODs defines
+# only below the depth cap: five items deep in a functional group of the
+# Enhanced RT Images, Radiation Generation Mode Label and Description, in the
+# items of Radiation Generation Mode Sequence (300A,067B), and Referenced
+# Treatment Position Group UID, in those of Treatment Position Group Sequence
 # (300A,060A). Their actions are tested on an Enhanced RT Image apart, in
-# test_deidentify_instance_transform.py.
-ONLY_BEYOND_THE_DEPTH_CAP = {"(300A,067C)", "(300A,067D)", "(300A,0785)"}
+# test_deidentify_instance_transform.py. In the RT Radiation Set Delivery
+# Instruction, Referenced, Constituent, and Source Conceptual Volume UID lie
+# five or six items deep, in the Conceptual Volume Macro of a task's patient
+# position displacement; the RT Radiation Set and the radiations hold them
+# less deep, and their actions in the instruction are tested apart there too.
+ONLY_BEYOND_THE_DEPTH_CAP = {
+    "(300A,067C)",
+    "(300A,067D)",
+    "(300A,0785)",
+    "(3010,000B)",
+    "(3010,0013)",
+    "(3010,0015)",
+}
 
 
 def test_attributes_are_not_planted_only_beyond_the_depth_cap(corpus):
@@ -705,7 +727,9 @@ def test_the_reference_graph_has_no_findings(corpus):
     # Treatment Record the RT Ion Plan, the RT Brachy Treatment Record the
     # plan and the RT Beams Treatment Record, the RT Treatment Summary Record
     # the plan and the RT Brachy Treatment Record, the Parametric Map the MR
-    # Image, and the Real World Value Mapping the PET Image.
+    # Image, the Real World Value Mapping the PET Image, the RT Beams and RT
+    # Brachy Application Setup Delivery Instructions the plan, and the RT
+    # Radiation Set Delivery Instruction the RT Radiation Set.
     names = [file.name for file in corpus.files]
     position = names.index
     sources = {
@@ -724,6 +748,9 @@ def test_the_reference_graph_has_no_findings(corpus):
         "49-rt-brachy-record.dcm": "05-rtplan.dcm",
         "51-parametric-map.dcm": "10-mr.dcm",
         "52-real-world-value-mapping.dcm": "15-pet.dcm",
+        "75-rt-beams-delivery-instruction.dcm": "05-rtplan.dcm",
+        "76-rt-brachy-delivery-instruction.dcm": "05-rtplan.dcm",
+        "77-rt-radiation-set-delivery-instruction.dcm": "71-rt-radiation-set.dcm",
     }
     assert {
         (position(source), position(target)) for source, target in sources.items()
@@ -856,6 +883,108 @@ def test_the_surface_segmentation_holds_a_closed_mesh_of_its_one_segment(corpus)
         )
     )
     assert len(edges) == 6 and set(edges.values()) == {2}
+
+
+def test_the_delivery_instructions_name_what_they_instruct_with_its_class(corpus):
+    # The RT Beams Delivery Instruction names the RT Plan, the RT Beams
+    # Treatment Record of the session that it continues, and the RT Image as
+    # a reference image; the RT Brachy Application Setup Delivery Instruction
+    # names the RT Plan, within the plan's series of its study; and the RT
+    # Radiation Set Delivery Instruction names the RT Radiation Set, and its
+    # C-Arm Photon-Electron Radiation in each task and as omitted. Each is a
+    # PLAN, as PS3.3 Sections A.64.4.1, A.79.4.1, and A.86.1.13.4.1 require.
+    files = {file.name: file for file in corpus.files}
+
+    def item(dataset, keywords):
+        for keyword in keywords:
+            (dataset,) = dataset[keyword].value
+        return dataset
+
+    for name, sop_class, iod, named in (
+        (
+            corpus_module.BEAMS_DELIVERY_INSTRUCTION_FILE,
+            corpus_module.RT_BEAMS_DELIVERY_INSTRUCTION_STORAGE,
+            "RT Beams Delivery Instruction",
+            (
+                (
+                    ("ReferencedRTPlanSequence",),
+                    corpus_module.PLAN,
+                    corpus_module.RT_PLAN_STORAGE,
+                ),
+                (
+                    ("ReferencedTreatmentRecordSequence",),
+                    corpus_module.TREATMENT_RECORD,
+                    corpus_module.RT_BEAMS_TREATMENT_RECORD_STORAGE,
+                ),
+                (
+                    (
+                        "BeamTaskSequence",
+                        "DeliveryVerificationImageSequence",
+                        "RelatedReferenceRTImageSequence",
+                    ),
+                    corpus_module.RT_IMAGE,
+                    corpus_module.RT_IMAGE_STORAGE,
+                ),
+            ),
+        ),
+        (
+            corpus_module.BRACHY_DELIVERY_INSTRUCTION_FILE,
+            corpus_module.RT_BRACHY_APPLICATION_SETUP_DELIVERY_INSTRUCTION_STORAGE,
+            "RT Brachy Application Setup Delivery Instruction",
+            (
+                (
+                    (
+                        "ReferencedRTPlanSequence",
+                        "ReferencedSeriesSequence",
+                        "ReferencedSOPSequence",
+                    ),
+                    corpus_module.PLAN,
+                    corpus_module.RT_PLAN_STORAGE,
+                ),
+            ),
+        ),
+        (
+            corpus_module.RADIATION_SET_DELIVERY_INSTRUCTION_FILE,
+            corpus_module.RT_RADIATION_SET_DELIVERY_INSTRUCTION_STORAGE,
+            "RT Radiation Set Delivery Instruction",
+            (
+                (
+                    ("ReferencedRTRadiationSetSequence",),
+                    corpus_module.RADIATION_SET,
+                    corpus_module.RT_RADIATION_SET_STORAGE,
+                ),
+                (
+                    ("RTRadiationTaskSequence", "ReferencedRTRadiationSequence"),
+                    corpus_module.C_ARM_RADIATION,
+                    corpus_module.C_ARM_PHOTON_ELECTRON_RADIATION_STORAGE,
+                ),
+                (
+                    ("OmittedRadiationSequence", "ReferencedRTRadiationSequence"),
+                    corpus_module.C_ARM_RADIATION,
+                    corpus_module.C_ARM_PHOTON_ELECTRON_RADIATION_STORAGE,
+                ),
+            ),
+        ),
+    ):
+        manifest = files[name].manifest
+        assert (manifest.sop_class, manifest.iod) == (sop_class, iod)
+        dataset = pydicom.dcmread(pydicom.filebase.DicomBytesIO(files[name].data))
+        assert dataset.Modality == "PLAN", name
+        for keywords, target, target_class in named:
+            reference = item(dataset, keywords)
+            assert reference.ReferencedSOPInstanceUID == target, keywords
+            assert reference.ReferencedSOPClassUID == target_class, keywords
+    plan = item(
+        pydicom.dcmread(
+            pydicom.filebase.DicomBytesIO(
+                files[corpus_module.BRACHY_DELIVERY_INSTRUCTION_FILE].data
+            )
+        ),
+        ("ReferencedRTPlanSequence",),
+    )
+    assert plan.StudyInstanceUID == corpus_module.STUDY
+    (series,) = plan.ReferencedSeriesSequence
+    assert series.SeriesInstanceUID == corpus_module.PLAN_SERIES
 
 
 def test_two_instances_are_in_implicit_vr_and_the_rest_explicit(corpus):
