@@ -253,6 +253,11 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "59-pr-blending.dcm",
         "60-pr-xa-xrf-grayscale.dcm",
         "61-pr-variable-modality-lut.dcm",
+        "70-rt-segment-annotation.dcm",
+        "71-rt-radiation-set.dcm",
+        "72-c-arm-radiation.dcm",
+        "73-tomotherapeutic-radiation.dcm",
+        "74-robotic-arm-radiation.dcm",
         "86-pr-planar-mpr.dcm",
         "87-pr-volume-rendering.dcm",
         "88-pr-advanced-blending.dcm",
@@ -307,44 +312,55 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "Blending Softcopy Presentation State",
         "XA/XRF Grayscale Softcopy Presentation State",
         "Variable Modality LUT Softcopy Presentation State",
+        "RT Segment Annotation",
+        "RT Radiation Set",
+        "C-Arm Photon-Electron Radiation",
+        "Tomotherapeutic Radiation",
+        "Robotic-Arm Radiation",
         "Planar MPR Volumetric Presentation State",
         "Volume Rendering Volumetric Presentation State",
         "Advanced Blending Presentation State",
         "Enhanced RT Image",
         "Enhanced Continuous RT Image",
     ]
-    # The files before the nine Presentation States, which come before the
-    # Enhanced RT Images.
-    before = corpus.files[:-11]
+    # Counted from the start, so that a file added at the end moves none.
+    presentation_states = corpus.files[48:54] + corpus.files[59:62]
     assert corpus_module.STRUCTURED_REPORT_FILES == tuple(
-        file.name for file in before[-27:-17] + before[-15:-7]
+        file.name for file in corpus.files[21:31] + corpus.files[33:41]
     )
     assert corpus_module.SEGMENTATION_FILES == tuple(
-        file.name for file in before[-17:-15]
+        file.name for file in corpus.files[31:33]
     )
     assert (
         corpus_module.ION_PLAN_FILE,
         corpus_module.ION_TREATMENT_RECORD_FILE,
-    ) == tuple(file.name for file in before[-7:-5])
+    ) == tuple(file.name for file in corpus.files[41:43])
     assert (
         corpus_module.BRACHY_TREATMENT_RECORD_FILE,
         corpus_module.TREATMENT_SUMMARY_RECORD_FILE,
-    ) == tuple(file.name for file in before[-5:-3])
+    ) == tuple(file.name for file in corpus.files[43:45])
     assert (
         corpus_module.PARAMETRIC_MAP_FILE,
         corpus_module.REAL_WORLD_VALUE_MAPPING_FILE,
-    ) == tuple(file.name for file in before[-3:-1])
-    assert corpus_module.SURFACE_SEGMENTATION_FILE == before[-1].name
+    ) == tuple(file.name for file in corpus.files[45:47])
+    assert corpus_module.SURFACE_SEGMENTATION_FILE == corpus.files[47].name
     assert corpus_module.PRESENTATION_STATE_FILES == tuple(
-        file.name for file in corpus.files[-11:-2]
+        file.name for file in presentation_states
     )
-    assert {file.manifest.sop_class for file in corpus.files[-11:-2]} == (
+    assert {file.manifest.sop_class for file in presentation_states} == (
         corpus_module.PRESENTATION_STATE_STORAGE_CLASSES
     )
     assert (
         corpus_module.ENHANCED_RT_IMAGE_FILE,
         corpus_module.ENHANCED_CONTINUOUS_RT_IMAGE_FILE,
-    ) == tuple(file.name for file in corpus.files[-2:])
+    ) == tuple(file.name for file in corpus.files[62:64])
+    assert (
+        corpus_module.SEGMENT_ANNOTATION_FILE,
+        corpus_module.RADIATION_SET_FILE,
+        corpus_module.C_ARM_RADIATION_FILE,
+        corpus_module.TOMOTHERAPEUTIC_RADIATION_FILE,
+        corpus_module.ROBOTIC_ARM_RADIATION_FILE,
+    ) == tuple(file.name for file in corpus.files[54:59])
     # Every IOD of the first supported release.
     assert {file.manifest.iod for file in corpus.files} == scope.SUPPORTED_IODS
 
@@ -403,20 +419,25 @@ def test_every_attribute_of_table_e1_1_that_the_iod_defines_is_placed(corpus):
 # are defined only in the Referenced SOP Sequence of the Referenced Series
 # Sequence of the Referenced Spatial Registration Sequence of an Advanced
 # Blending Sequence item, four sequences deep, as its Common Instance
-# Reference Module's Referenced Instance Sequence does not define them.
-# Other files plant them at a shallower place.
+# Reference Module's Referenced Instance Sequence does not define them; in
+# the Enhanced RT Images, Radiation Generation Mode Label and Description
+# are defined only in the items of Radiation Generation Mode Sequence
+# (300A,067B), five items deep in a functional group. Other files plant them
+# at a shallower place: the radiations plant the last two in the items of
+# their top-level Radiation Generation Mode Sequence.
+_RADIATION_GENERATION_MODE_TEXT = {"(300A,067C)", "(300A,067D)"}
 CAPPED_ONLY = {
-    "88-pr-advanced-blending.dcm": {"(0400,0402)", "(0400,0403)", "(0400,0404)"}
+    "88-pr-advanced-blending.dcm": {"(0400,0402)", "(0400,0403)", "(0400,0404)"},
+    "89-rt-image-enhanced.dcm": _RADIATION_GENERATION_MODE_TEXT,
+    "90-rt-image-enhanced-continuous.dcm": _RADIATION_GENERATION_MODE_TEXT,
 }
 
-# The attributes of Table E.1-1 that the corpus's IODs define only below the
+# The attribute of Table E.1-1 that the corpus's IODs define only below the
 # depth cap, five items deep in a functional group of the Enhanced RT
-# Images: Radiation Generation Mode Label and Description, in the items of
-# Radiation Generation Mode Sequence (300A,067B), and Referenced Treatment
-# Position Group UID, in those of Treatment Position Group Sequence
-# (300A,060A). Their actions are tested on an Enhanced RT Image apart, in
-# test_deidentify_instance_transform.py.
-ONLY_BEYOND_THE_DEPTH_CAP = {"(300A,067C)", "(300A,067D)", "(300A,0785)"}
+# Images: Referenced Treatment Position Group UID, in the items of Treatment
+# Position Group Sequence (300A,060A). Its actions are tested on an Enhanced
+# RT Image apart, in test_deidentify_instance_transform.py.
+ONLY_BEYOND_THE_DEPTH_CAP = {"(300A,0785)"}
 
 
 def test_attributes_are_not_planted_only_beyond_the_depth_cap(corpus):

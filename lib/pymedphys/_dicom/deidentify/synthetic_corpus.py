@@ -20,7 +20,7 @@ fictitious patient and study, with one Frame of Reference: three CT Image
 slices, an RT Structure Set that references the CT series and slices, an RT
 Plan that references the structure set and the dose, an RT Dose that
 references the plan, a second RT Dose of the plan for review (below), one
-instance of each of forty-nine other IODs, and two of the Segmentation
+instance of each of fifty-four other IODs, and two of the Segmentation
 IOD, one of each of its SOP Classes, each in a series of its own, and a
 second X-Ray Radiation Dose SR, of a CT scan.
 The MR Image and PET Image instances reference the first CT slice, and each
@@ -209,7 +209,7 @@ dummy item at that place and only there. Planted in
 every file, the first two would sequester every
 instance, and no preset could release any of the collection; planted in one,
 that instance checks sequestration, :data:`REVIEW_FILE` checks review, and
-the other fifty-seven check each preset's output, the reports where their
+the other sixty-two check each preset's output, the reports where their
 trees are cleaned. Radiopharmaceutical Start
 DateTime, which CT Image does not define there, is planted in no file, so
 the Enhanced PET instance, which lacks an attribute of Type 1, is released
@@ -248,7 +248,7 @@ Manufacturer's Model Name (0008,1090), which Table E.1-1 does not list and
 the Basic Profile keeps, a copy of the RT Plan's RT Plan Label marker
 (:attr:`PlacementKind.REVIEW_COPY`), so the residual search finds a source
 value of another instance in its output and sends it to review. The third
-CT slice remains sequestered; the other fifty-seven files stay releasable, the
+CT slice remains sequestered; the other sixty-two files stay releasable, the
 reports where their trees are cleaned.
 
 **Manifest.** :class:`CorpusManifest` records, for each file, each
@@ -414,6 +414,11 @@ PRESENTATION_STATE_STORAGE_CLASSES = frozenset(
         ADVANCED_BLENDING_PRESENTATION_STATE_STORAGE,
     }
 )
+RT_SEGMENT_ANNOTATION_STORAGE = "1.2.840.10008.5.1.4.1.1.481.11"
+RT_RADIATION_SET_STORAGE = "1.2.840.10008.5.1.4.1.1.481.12"
+C_ARM_PHOTON_ELECTRON_RADIATION_STORAGE = "1.2.840.10008.5.1.4.1.1.481.13"
+TOMOTHERAPEUTIC_RADIATION_STORAGE = "1.2.840.10008.5.1.4.1.1.481.14"
+ROBOTIC_ARM_RADIATION_STORAGE = "1.2.840.10008.5.1.4.1.1.481.15"
 # The retired class that PS3.3 Sections 10.6.1 and C.8.8.5.4 give a study in
 # a Referenced Study Sequence or RT Referenced Study Sequence item.
 DETACHED_STUDY_MANAGEMENT = "1.2.840.10008.3.1.2.3.1"
@@ -512,6 +517,14 @@ PRESENTATION_STATE_FILES = (
     VOLUME_RENDERING_PRESENTATION_STATE_FILE,
     ADVANCED_BLENDING_PRESENTATION_STATE_FILE,
 )
+# The RT Segment Annotation of the Segmentation, and the RT Radiation Set and
+# the three radiations, one of each second-generation radiation IOD, that it
+# gathers, numbered after the files that open pull requests add.
+SEGMENT_ANNOTATION_FILE = "70-rt-segment-annotation.dcm"
+RADIATION_SET_FILE = "71-rt-radiation-set.dcm"
+C_ARM_RADIATION_FILE = "72-c-arm-radiation.dcm"
+TOMOTHERAPEUTIC_RADIATION_FILE = "73-tomotherapeutic-radiation.dcm"
+ROBOTIC_ARM_RADIATION_FILE = "74-robotic-arm-radiation.dcm"
 # The directory, within the one that write_corpus is given, of the files.
 INSTANCES_DIRECTORY = "instances"
 
@@ -626,6 +639,16 @@ XA_XRF_PRESENTATION_STATE_SERIES = f"{LINKED_UID_ROOT}05700"
 XA_XRF_PRESENTATION_STATE = f"{LINKED_UID_ROOT}05701"
 VARIABLE_MODALITY_LUT_PRESENTATION_STATE_SERIES = f"{LINKED_UID_ROOT}05800"
 VARIABLE_MODALITY_LUT_PRESENTATION_STATE = f"{LINKED_UID_ROOT}05801"
+SEGMENT_ANNOTATION_SERIES = f"{LINKED_UID_ROOT}06600"
+SEGMENT_ANNOTATION = f"{LINKED_UID_ROOT}06601"
+RADIATION_SET_SERIES = f"{LINKED_UID_ROOT}06700"
+RADIATION_SET = f"{LINKED_UID_ROOT}06701"
+C_ARM_RADIATION_SERIES = f"{LINKED_UID_ROOT}06800"
+C_ARM_RADIATION = f"{LINKED_UID_ROOT}06801"
+TOMOTHERAPEUTIC_RADIATION_SERIES = f"{LINKED_UID_ROOT}06900"
+TOMOTHERAPEUTIC_RADIATION = f"{LINKED_UID_ROOT}06901"
+ROBOTIC_ARM_RADIATION_SERIES = f"{LINKED_UID_ROOT}07000"
+ROBOTIC_ARM_RADIATION = f"{LINKED_UID_ROOT}07001"
 PLANAR_MPR_PRESENTATION_STATE_SERIES = f"{LINKED_UID_ROOT}08200"
 PLANAR_MPR_PRESENTATION_STATE = f"{LINKED_UID_ROOT}08201"
 VOLUME_RENDERING_PRESENTATION_STATE_SERIES = f"{LINKED_UID_ROOT}08300"
@@ -701,6 +724,8 @@ _REVIEWED_DUMMY_SEQUENCES = frozenset(
 # Where an RT Structure Set references every CT slice, not only the first.
 _RT_REFERENCED_CONTOUR_IMAGES = ("(3006,0010)", "(3006,0012)", "(3006,0014)")
 _REFERENCED_RT_PLAN_SEQUENCE = "(300C,0002)"
+_RT_RADIATION_SEQUENCE = "(300A,0616)"
+_REFERENCED_RT_RADIATION_SEQUENCE = "(300A,0630)"
 _REFERENCED_TREATMENT_RECORD_SEQUENCE = "(3008,0030)"
 # The instance a reference names, by the innermost sequence that holds it.
 _TARGETS = types.MappingProxyType(
@@ -712,6 +737,16 @@ _TARGETS = types.MappingProxyType(
         _CONTOUR_IMAGE_SEQUENCE: CT_SLICES[0],
         "(0008,1120)": PATIENT_REFERENCE,  # Referenced Patient Sequence
         "(0008,1111)": PROCEDURE_STEP,  # Referenced Performed Procedure Step
+    }
+)
+# The RT Radiation Set and the radiations, whose Modality PS3.3 Sections
+# A.86.1.4.4.1 to A.86.1.7.4.1 make RTRAD.
+_RADIATIONS = frozenset(
+    {
+        RT_RADIATION_SET_STORAGE,
+        C_ARM_PHOTON_ELECTRON_RADIATION_STORAGE,
+        TOMOTHERAPEUTIC_RADIATION_STORAGE,
+        ROBOTIC_ARM_RADIATION_STORAGE,
     }
 )
 _SOP_CLASSES = types.MappingProxyType(
@@ -776,6 +811,11 @@ _SOP_CLASSES = types.MappingProxyType(
         VARIABLE_MODALITY_LUT_PRESENTATION_STATE: (
             VARIABLE_MODALITY_LUT_SOFTCOPY_PRESENTATION_STATE_STORAGE
         ),
+        SEGMENT_ANNOTATION: RT_SEGMENT_ANNOTATION_STORAGE,
+        RADIATION_SET: RT_RADIATION_SET_STORAGE,
+        C_ARM_RADIATION: C_ARM_PHOTON_ELECTRON_RADIATION_STORAGE,
+        TOMOTHERAPEUTIC_RADIATION: TOMOTHERAPEUTIC_RADIATION_STORAGE,
+        ROBOTIC_ARM_RADIATION: ROBOTIC_ARM_RADIATION_STORAGE,
         PLANAR_MPR_PRESENTATION_STATE: (
             GRAYSCALE_PLANAR_MPR_VOLUMETRIC_PRESENTATION_STATE_STORAGE
         ),
@@ -1608,6 +1648,52 @@ _SPECS = (
         VARIABLE_MODALITY_LUT_PRESENTATION_STATE_SERIES,
         CT_SLICES[0],
     ),
+    # The RT Segment Annotation annotates the BINARY Segmentation's segments.
+    # The RT Radiation Set gathers the C-Arm Photon-Electron Radiation, which
+    # its RT Radiation Sequence and Referenced RT Radiation Sequences name;
+    # each radiation names the structure set as the source of its Conceptual
+    # Volumes, as an RT Plan names the structure set that it was planned on.
+    _Spec(
+        SEGMENT_ANNOTATION_FILE,
+        RT_SEGMENT_ANNOTATION_STORAGE,
+        SEGMENT_ANNOTATION,
+        SEGMENT_ANNOTATION_SERIES,
+        SEGMENTATION,
+    ),
+    _Spec(
+        RADIATION_SET_FILE,
+        RT_RADIATION_SET_STORAGE,
+        RADIATION_SET,
+        RADIATION_SET_SERIES,
+        STRUCTURE_SET,
+        targets=(
+            (_RT_RADIATION_SEQUENCE, C_ARM_RADIATION),
+            (_REFERENCED_RT_RADIATION_SEQUENCE, C_ARM_RADIATION),
+        ),
+    ),
+    *(
+        _Spec(name, sop_class, instance, series, STRUCTURE_SET)
+        for name, sop_class, instance, series in (
+            (
+                C_ARM_RADIATION_FILE,
+                C_ARM_PHOTON_ELECTRON_RADIATION_STORAGE,
+                C_ARM_RADIATION,
+                C_ARM_RADIATION_SERIES,
+            ),
+            (
+                TOMOTHERAPEUTIC_RADIATION_FILE,
+                TOMOTHERAPEUTIC_RADIATION_STORAGE,
+                TOMOTHERAPEUTIC_RADIATION,
+                TOMOTHERAPEUTIC_RADIATION_SERIES,
+            ),
+            (
+                ROBOTIC_ARM_RADIATION_FILE,
+                ROBOTIC_ARM_RADIATION_STORAGE,
+                ROBOTIC_ARM_RADIATION,
+                ROBOTIC_ARM_RADIATION_SERIES,
+            ),
+        )
+    ),
     # The volumetric Presentation States name the CT slices, as the inputs
     # of the volume that they present, and the advanced blending one the PET
     # Image, as an input that it blends.
@@ -1632,6 +1718,7 @@ _SPECS = (
         ADVANCED_BLENDING_PRESENTATION_STATE_SERIES,
         PET,
     ),
+    # Numbered after the second-generation RT IODs' files.
     # The Enhanced RT Image, two digitally reconstructed radiographs of the
     # RT Plan's beam, and the Enhanced Continuous RT Image, two frames of a
     # kV acquisition during it, each referencing the RT Plan, as the RT Image
@@ -1659,7 +1746,7 @@ def build_corpus() -> SyntheticCorpus:
     Returns
     -------
     SyntheticCorpus
-        Fifty-nine files: three CT slices; the RT Structure Set, RT Plan, RT
+        Sixty-four files: three CT slices; the RT Structure Set, RT Plan, RT
         Dose, and the RT Dose for review; the Enhanced CT Image and Legacy
         Converted Enhanced CT Image; the MR Image, Enhanced MR Image,
         Enhanced MR Color Image, Legacy Converted Enhanced MR Image, and MR
@@ -1678,7 +1765,9 @@ def build_corpus() -> SyntheticCorpus:
         Record and RT Treatment Summary Record; the Parametric Map and Real
         World Value Mapping; the Surface Segmentation; the Grayscale, Color,
         Pseudo-Color, Blending, XA/XRF Grayscale, and Variable Modality LUT
-        Softcopy Presentation States; the Grayscale Planar MPR and Volume
+        Softcopy Presentation States; the RT Segment Annotation, RT
+        Radiation Set, and C-Arm Photon-Electron, Tomotherapeutic, and
+        Robotic-Arm Radiations; the Grayscale Planar MPR and Volume
         Rendering Volumetric Presentation States and the Advanced Blending
         Presentation State; and the Enhanced RT Image and Enhanced Continuous
         RT Image. Two builds give the same bytes and the same
@@ -2397,6 +2486,10 @@ class _Instance:
             ENHANCED_CONTINUOUS_RT_IMAGE_STORAGE,
         ):
             self._add_enhanced_rt_image()
+        elif self.spec.sop_class == RT_SEGMENT_ANNOTATION_STORAGE:
+            put((), "(0008,0060)", ["RTSEGANN"])
+        elif self.spec.sop_class in _RADIATIONS:
+            put((), "(0008,0060)", ["RTRAD"])
         else:
             put((), "(0008,0060)", ["RTDOSE"])
             put((), "(0020,0032)", ["-1", "-1", "0"])
