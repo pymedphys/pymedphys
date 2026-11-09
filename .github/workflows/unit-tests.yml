@@ -52,8 +52,8 @@ env:
 jobs:
   test:
     name: ${{ matrix.os }} - py${{ matrix.python-version }} (${{ matrix.part }})
-    # Allow for setup and slower Windows runners.
-    timeout-minutes: ${{ matrix.os == 'windows-latest' && 60 || 30 }}
+    # Allow for slower Windows runners and the growing corpus on Ubuntu.
+    timeout-minutes: ${{ (matrix.os == 'windows-latest' || matrix.part == 'corpus-runs') && 60 || 30 }}
     strategy:
       fail-fast: false
       matrix:
@@ -387,7 +387,8 @@ jobs:
   # limit.
   dependency-floors:
     name: NumPy and pandas minimum versions (${{ matrix.part }})
-    timeout-minutes: 30
+    # Keep the complete corpus under the same budget as the main matrix.
+    timeout-minutes: ${{ matrix.part == 'corpus-runs' && 60 || 30 }}
     strategy:
       fail-fast: false
       matrix:

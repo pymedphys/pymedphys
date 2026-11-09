@@ -240,6 +240,13 @@ options = { clean_descriptors = "C" }
 note = "A free-form explanation of a LUT or of a real world value mapping, which an operator can type. It is removed by Type, and cleaned as a descriptor under Clean Descriptors."
 
 [[attribute]]
+tag = "(0028,6190)"
+keyword = "MaskOperationExplanation"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "A free-form explanation, for people to read, of a mask subtraction operation in a Presentation State's Mask Subtraction Sequence (PS3.3 C.7.6.10). It is free text, so it is removed by Type, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
 tag = "(0040,9210)"
 keyword = "LUTLabel"
 action = "X/Z/D"
@@ -259,6 +266,13 @@ keyword = "CompletionFlagDescription"
 action = "X/Z/D"
 options = { clean_descriptors = "C" }
 note = "An explanation of a structured report's Completion Flag, which PS3.3 does not constrain further, so the person or system that completes the report can type anything in it, including a name or a date. It is removed by Type, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
+tag = "(0042,0010)"
+keyword = "DocumentTitle"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "The title of an encapsulated document, which PS3.3 does not constrain and which can be copied from the Title entry of a PDF's document information dictionary (PS3.3 Table C.24-2), so whoever or whatever made the document can put a name, an identifier, or a date in it. It is removed by Type, and cleaned as a descriptor under Clean Descriptors."
 
 [[attribute]]
 tag = "(0044,0106)"
@@ -352,11 +366,39 @@ options = { clean_descriptors = "C" }
 note = "The name of a software algorithm, such as a dose calculation or contouring algorithm. An in-house algorithm's name is typed and can name a person or the institution, and Table E.1-1 removes Dose Calculation Model Name and cleans it under Clean Descriptors, so this name is treated the same way; Algorithm Family Code Sequence keeps the algorithm's family as a code. It is replaced with a dummy value where it is Type 1."
 
 [[attribute]]
+tag = "(0070,0068)"
+keyword = "GraphicLayerDescription"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "A free-text description of the contents of a graphic layer of a Presentation State (PS3.3 C.10.7), which an operator can type. It is removed by Type, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
 tag = "(0070,0081)"
 keyword = "ContentDescription"
 action = "X/Z/D"
 options = { clean_descriptors = "C" }
 note = "A user-defined description of the content of an instance, which PS3.3 says carries descriptive identifying text for human readers. It is removed by Type, which empties it where it is Type 2 and replaces it with a dummy value where it is Type 1, and cleaned as a descriptor under Clean Descriptors, as Table E.1-1 does for User Content Label."
+
+[[attribute]]
+tag = "(0070,0207)"
+keyword = "GraphicGroupLabel"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "A label for a group of a Presentation State's annotations (PS3.3 C.10.11), which an operator can type. It is removed by Type, which replaces it with a dummy value where it is Type 1, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
+tag = "(0070,0208)"
+keyword = "GraphicGroupDescription"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "A description of a group of a Presentation State's annotations (PS3.3 C.10.11), which can carry anything a person types. It is removed by Type, and cleaned as a descriptor under Clean Descriptors."
+
+[[attribute]]
+tag = "(0070,0289)"
+keyword = "TickLabel"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "The text of a tick of a ruler or axis that a Presentation State draws over an image (PS3.3 C.10.5), which an operator or application can write. It is shown with the image, as Unformatted Text Value (0070,0006) is, so it takes that attribute's actions: removed by Type, which replaces it with a dummy value where it is Type 1, and cleaned as a descriptor under Clean Descriptors."
 
 [[attribute]]
 tag = "(0072,006F)"
@@ -993,10 +1035,43 @@ action = "K"
 note = "The nucleus that is resonant at the imaging frequency, such as 1H or 31P (PS3.3 Table C.8-4), which the scanner writes. It names a nucleus, identifies no one, and is needed to interpret the image, so it is kept."
 
 [[attribute]]
+tag = "(0018,1016)"
+keyword = "SecondaryCaptureDeviceManufacturer"
+action = "X/Z/D"
+options = { retain_device_identity = "K" }
+note = "The manufacturer of the equipment that captured or converted the image or document (PS3.3 Table C.8-24), which can be a site's own scanning, printing, or reporting system. It is device identity: removed by Type, and kept under Retain Device Identity, as Table E.1-1 does for Secondary Capture Device ID and as Receive Coil Manufacturer Name is."
+
+[[attribute]]
+tag = "(0018,1018)"
+keyword = "SecondaryCaptureDeviceManufacturerModelName"
+action = "X/Z/D"
+options = { retain_device_identity = "K" }
+note = "The manufacturer's model name or number of the equipment that captured or converted the image or document (PS3.3 Table C.8-24), which a site's own system names as the site chooses. It is device identity: removed by Type, and kept under Retain Device Identity, as its manufacturer is."
+
+[[attribute]]
+tag = "(0018,1019)"
+keyword = "SecondaryCaptureDeviceSoftwareVersions"
+action = "X/Z/D"
+options = { retain_device_identity = "K" }
+note = "The manufacturer's designation of the software version of the equipment that captured or converted the image or document (PS3.3 Table C.8-24), which a site's own system designates as the site chooses. It is device identity: removed by Type, and kept under Retain Device Identity, as its manufacturer is."
+
+[[attribute]]
 tag = "(0018,1020)"
 keyword = "SoftwareVersions"
 action = "K"
 note = "The manufacturer's designation of the versions of the equipment's software, which the equipment itself writes. It identifies software releases shared by every site that runs them, and is needed to interpret how the data were produced, so it is kept."
+
+[[attribute]]
+tag = "(0018,1022)"
+keyword = "VideoImageFormatAcquired"
+action = "K"
+note = "The original format of a captured video image, such as NTSC or PAL (PS3.3 Table C.8-24), which the capture equipment writes. It names a signal format, identifies no one, and says how the image was captured, so it is kept."
+
+[[attribute]]
+tag = "(0018,1023)"
+keyword = "DigitalImageFormatAcquired"
+action = "K"
+note = "Information about the digital interface through which an image was acquired (PS3.3 Table C.8-24), which the capture equipment writes. It describes an interface, identifies no one, and says how the image was captured, so it is kept."
 
 [[attribute]]
 tag = "(0018,1064)"
@@ -1077,10 +1152,34 @@ action = "K"
 note = "The units of the output of a Modality LUT, a Defined Term such as OD or HU that it shares with Rescale Type (PS3.3 C.11.1.1.2). It identifies no one, and replacing it would change how the pixel values are read, so it is kept, as Rescale Type is."
 
 [[attribute]]
+tag = "(0042,0012)"
+keyword = "MIMETypeOfEncapsulatedDocument"
+action = "K"
+note = "The MIME media type of an encapsulated document (PS3.3 Table C.24-2), which each encapsulated document IOD fixes, such as application/pdf, the only value of the Encapsulated PDF IOD (PS3.3 Section A.45.1.4.1). It names a format and identifies no one, and a reader needs it to open the document, so it is kept."
+
+[[attribute]]
+tag = "(0042,0014)"
+keyword = "ListOfMIMETypes"
+action = "K"
+note = "The MIME media types of the parts of an encapsulated document whose types differ from the document's own, such as image/jpeg (PS3.3 Table C.24-2). They name formats and identify no one, so they are kept."
+
+[[attribute]]
 tag = "(0066,0031)"
 keyword = "AlgorithmVersion"
 action = "K"
 note = "The version that a manufacturer assigns a software algorithm, like Software Versions. It is a technical value that identifies no one, so it is kept."
+
+[[attribute]]
+tag = "(0070,0227)"
+keyword = "FontName"
+action = "K"
+note = "The name of a font for a Presentation State's text (PS3.3 Table C.10-5a), of the kind that Font Name Type (0070,0228) names. It names a typeface, not a person, and is kept, accepting the residual risk that a site names an in-house font after a person."
+
+[[attribute]]
+tag = "(0070,0229)"
+keyword = "CSSFontName"
+action = "K"
+note = "The CSS generic font family of a Presentation State's text (PS3.3 Table C.10-5a), such as serif or monospace. It is a technical value that identifies no one, so it is kept."
 
 [[attribute]]
 tag = "(0072,0054)"
@@ -1493,7 +1592,7 @@ note = "The URI from which a referenced document or instance can be retrieved. I
 tag = "(0068,7005)"
 keyword = "RelativeURIReferenceWithinEncapsulatedDocument"
 action = "X/Z/D"
-note = "A URI reference, relative to an encapsulated document, to an instance that the document refers to. It can carry file paths and identifiers, so it is removed by Type under every option, like the other URI attributes that Table E.1-1 omits. Only the Encapsulated Document Module defines it, and no IOD of the first supported release uses it."
+note = "A URI reference, relative to an encapsulated document, to an instance that the document refers to. It can carry file paths and identifiers, so it is removed by Type under every option, like the other URI attributes that Table E.1-1 omits. Only the Encapsulated Document Module defines it, as Type 1C in the items of Referenced Image Sequence and Referenced Instance Sequence, where removal by Type gives it a dummy value where it is Type 1, which a URI has none of, so an Encapsulated PDF that holds it is sequestered."
 
 [[attribute]]
 tag = "(0074,100A)"
@@ -1580,7 +1679,7 @@ note = "Codes for why the procedure was performed, which can record a diagnosis 
 tag = "(0028,2000)"
 keyword = "ICCProfile"
 action = "X/Z/D"
-note = "An ICC colour profile, a file in another format embedded in the instance, which can carry text, such as a description or copyright naming the device or institution, that the engine does not parse. It is removed by Type under every option. It is Type 1 in the ICC Profile Module, which Enhanced CT Image, Enhanced MR Image, and Enhanced MR Color Image use, where removal by Type replaces an RGB profile with a fixed sRGB profile, which nothing of the source profile is written to, and sequesters an instance with any other; elsewhere in the IODs of the first supported release it is Type 3."
+note = "An ICC colour profile, a file in another format embedded in the instance, which can carry text, such as a description or copyright naming the device or institution, that the engine does not parse. It is removed by Type under every option. It is Type 1 in the ICC Profile Module, which Enhanced CT Image, Enhanced MR Image, Enhanced MR Color Image, Segmentation, and the Color, Pseudo-Color, Blending, and Variable Modality LUT Softcopy Presentation States use, where removal by Type writes an RGB profile cleaned of everything but its colorimetry, or a fixed sRGB profile where it cannot be cleaned, and sequesters an instance with any other profile; elsewhere in the IODs of the first supported release it is Type 3."
 
 [[attribute]]
 tag = "(0028,2002)"

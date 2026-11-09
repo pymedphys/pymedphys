@@ -59,6 +59,24 @@ STRUCTURED_REPORTS = (
     "Macular Grid Thickness and Volume Report",
     "Waveform Annotation SR",
 )
+# The softcopy Presentation States, which reference the images they apply to
+# in the Presentation State Relationship Module or, for the Blending
+# Softcopy Presentation State, the Presentation State Blending Module, and
+# include no Common Instance Reference Module.
+PRESENTATION_STATES = (
+    "Grayscale Softcopy Presentation State",
+    "Color Softcopy Presentation State",
+    "Pseudo-Color Softcopy Presentation State",
+    "XA/XRF Grayscale Softcopy Presentation State",
+    "Variable Modality LUT Softcopy Presentation State",
+)
+BLENDING_PRESENTATION_STATE = "Blending Softcopy Presentation State"
+# Blending Sequence (0070,0402).
+BLENDING = "(0070,0402)"
+# An encapsulated document, which names its sources, predecessors, and
+# identical documents in its Encapsulated Document Module, and has no Common
+# Instance Reference Module (PS3.3 Table A.45.1-1).
+ENCAPSULATED_PDF = "Encapsulated PDF"
 # Referenced Request Sequence.
 REFERENCED_REQUEST = "(0040,A370)"
 # The evidence sequences of SR Document General: Current Requested Procedure
@@ -246,17 +264,67 @@ RT_REFERENCES = [
     # CT Image: the plan in the CT Image module, and General Reference.
     ("CT Image", synthetic.REFERENCED_PLAN, Level.INSTANCE),
     ("CT Image", synthetic.REFERENCED_IMAGE, Level.INSTANCE),
-    # Every IOD but the reports: Common Instance Reference, and the study in
-    # General Study and in each request.
+    # Every IOD but the reports: the study in General Study and in each
+    # request.
     *(
         (iod, attribute, level)
         for iod in FIRST_RELEASE_IODS
         if iod not in STRUCTURED_REPORTS
         for attribute, level in [
-            (("(0008,1115)", "(0020,000E)"), Level.SERIES),
-            (("(0008,1200)", "(0020,000D)"), Level.STUDY),
             (synthetic.REFERENCED_STUDY, Level.STUDY),
             (synthetic.REQUESTED_REFERENCED_STUDY, Level.STUDY),
+        ]
+    ),
+    # Every IOD but the reports, Presentation States and PDF: Common Instance
+    # Reference.
+    *(
+        (iod, attribute, level)
+        for iod in FIRST_RELEASE_IODS
+        if iod not in STRUCTURED_REPORTS
+        and iod not in PRESENTATION_STATES
+        and iod != BLENDING_PRESENTATION_STATE
+        and iod != ENCAPSULATED_PDF
+        for attribute, level in [
+            (("(0008,1115)", "(0020,000E)"), Level.SERIES),
+            (("(0008,1200)", "(0020,000D)"), Level.STUDY),
+        ]
+    ),
+    # The Presentation States: the series and images that each applies to,
+    # and, for the Blending Softcopy Presentation State, the study of each
+    # of the two series it blends.
+    *(
+        (iod, attribute, level)
+        for iod in PRESENTATION_STATES
+        for attribute, level in [
+            (("(0008,1115)", "(0020,000E)"), Level.SERIES),
+            (("(0008,1115)", "(0008,1140)", "(0008,1155)"), Level.INSTANCE),
+        ]
+    ),
+    *(
+        (BLENDING_PRESENTATION_STATE, attribute, level)
+        for attribute, level in [
+            ((BLENDING, "(0020,000D)"), Level.STUDY),
+            ((BLENDING, "(0008,1115)", "(0020,000E)"), Level.SERIES),
+            ((BLENDING, "(0008,1115)", "(0008,1140)", "(0008,1155)"), Level.INSTANCE),
+        ]
+    ),
+    # Encapsulated PDF: the instances that the document was derived from, the
+    # images and instances that it refers to, and the study, series, and
+    # instances of its predecessors and identical documents (PS3.3 Table
+    # C.24-2).
+    (ENCAPSULATED_PDF, ("(0042,0013)", "(0008,1155)"), Level.INSTANCE),
+    (ENCAPSULATED_PDF, synthetic.REFERENCED_IMAGE, Level.INSTANCE),
+    (ENCAPSULATED_PDF, ("(0008,114A)", "(0008,1155)"), Level.INSTANCE),
+    *(
+        (ENCAPSULATED_PDF, attribute, level)
+        for documents in ("(0040,A360)", "(0040,A525)")
+        for attribute, level in [
+            ((documents, "(0020,000D)"), Level.STUDY),
+            ((documents, "(0008,1115)", "(0020,000E)"), Level.SERIES),
+            (
+                (documents, "(0008,1115)", "(0008,1199)", "(0008,1155)"),
+                Level.INSTANCE,
+            ),
         ]
     ),
     # Each report: the study in General Study and in each request; the
@@ -370,6 +438,7 @@ NOT_FOLLOWED = {
     "(3010,000B)": "refers to a conceptual volume, not an instance",
     "(3010,0013)": "refers to a conceptual volume, not an instance",
     "(3010,0015)": "refers to a conceptual volume, not an instance",
+    "(0040,A171)": "identifies an observation, not an instance",
     "(3010,0031)": "refers to a fiducial within an instance",
     # A later change follows frames of reference.
     "(0020,0052)": "identifies a frame of reference",
