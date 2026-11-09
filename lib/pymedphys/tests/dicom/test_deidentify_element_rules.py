@@ -690,8 +690,9 @@ def test_series_number_resolves_to_z_in_the_supported_iods_but_where_type_1():
     # of the Structure Set Module's Source Series Information Sequence, in
     # the Segmentation Series Module of Segmentation and Surface Segmentation,
     # the Parametric Map Series Module, in the Enhanced RT Series Module of
-    # the Enhanced and Enhanced Continuous RT Images, and in the SR Document
-    # Series Module of the Structured Reports.
+    # the Enhanced and Enhanced Continuous RT Images and the supported
+    # second-generation RT IODs, and in the SR Document Series Module of the
+    # Structured Reports.
     # Either way it then takes its rank, or is emptied or given D's dummy
     # value if it has none.
     tables = iods.load_iod_tables()
@@ -716,6 +717,11 @@ def test_series_number_resolves_to_z_in_the_supported_iods_but_where_type_1():
         ("Surface Segmentation", ()),
         ("Enhanced RT Image", ()),
         ("Enhanced Continuous RT Image", ()),
+        ("RT Segment Annotation", ()),
+        ("RT Radiation Set", ()),
+        ("C-Arm Photon-Electron Radiation", ()),
+        ("Tomotherapeutic Radiation", ()),
+        ("Robotic-Arm Radiation", ()),
         ("X-Ray Radiation Dose SR", ()),
         ("Enhanced X-Ray Radiation Dose SR", ()),
         ("Radiopharmaceutical Radiation Dose SR", ()),
