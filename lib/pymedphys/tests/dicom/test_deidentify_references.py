@@ -795,7 +795,7 @@ def test_an_instance_without_generated_iod_tables_has_no_references(sop_class):
 @pytest.mark.pydicom
 def test_a_record_finds_references_of_a_generated_iod_beyond_the_first_release():
     dataset = synthetic.instance(
-        synthetic.NM_IMAGE_STORAGE,
+        synthetic.US_IMAGE_STORAGE,
         "2.25.9001",
         "2.25.9002",
         ReferencedImageSequence=[
@@ -805,7 +805,7 @@ def test_a_record_finds_references_of_a_generated_iod_beyond_the_first_release()
 
     record = synthetic.record(dataset)
 
-    assert record.iod == "Nuclear Medicine Image"
+    assert record.iod == "Ultrasound Image"
     (reference,) = record.references
     assert reference.site == ReferenceSite(
         ("(0008,1140)",), "(0008,1155)", Level.INSTANCE, "1"

@@ -68,9 +68,9 @@ A pack holds, for one run:
   positions of its instances, by which an attestation gives each series'
   face verdict (D-016, D-017); and ``series_risks``: each series of released or held instances with
   findings of its series assessment, a CT, MR, PET, or RT Dose volume, a
-  localizer, an RT Image, a Segmentation, a Parametric Map, the head or
-  neck, or unreadable evidence of any of them, with the instances that show
-  each (D-015, D-017); and ``eye_checks``: each CT series that the run defaced and
+  localizer, an RT Image, a Nuclear Medicine image, a Segmentation, a
+  Parametric Map, the head or neck, or unreadable evidence of any of them,
+  with the instances that show each (D-015, D-017); and ``eye_checks``: each CT series that the run defaced and
   held because its eye ROIs disagree with the globes that its face block
   was found from, by the run positions of its held instances, with the
   digest that binds a reviewer's confirmation of the block to the series'

@@ -60,6 +60,7 @@ SUPPORTED = {
     "1.2.840.10008.5.1.4.1.1.4.2": "MR Spectroscopy",
     "1.2.840.10008.5.1.4.1.1.4.3": "Enhanced MR Color Image",
     "1.2.840.10008.5.1.4.1.1.4.4": "Legacy Converted Enhanced MR Image",
+    "1.2.840.10008.5.1.4.1.1.20": "Nuclear Medicine Image",
     "1.2.840.10008.5.1.4.1.1.128": "Positron Emission Tomography Image",
     "1.2.840.10008.5.1.4.1.1.130": "Enhanced PET Image",
     "1.2.840.10008.5.1.4.1.1.128.1": "Legacy Converted Enhanced PET Image",
@@ -130,6 +131,7 @@ def test_the_first_release_supports_ct_mr_pet_rt_registration_seg_sr_and_pr_obje
         "Enhanced MR Color Image",
         "Legacy Converted Enhanced MR Image",
         "MR Spectroscopy",
+        "Nuclear Medicine Image",
         "Positron Emission Tomography Image",
         "Enhanced PET Image",
         "Legacy Converted Enhanced PET Image",
@@ -259,7 +261,6 @@ def test_padding_is_ignored():
         # that are not images, height map segmentations, spatial fiducials,
         # and the second-generation RT objects not yet supported, such as RT
         # Physician Intent and the radiation records.
-        ("1.2.840.10008.5.1.4.1.1.20", "Nuclear Medicine Image"),
         ("1.2.840.10008.5.1.4.1.1.6.1", "Ultrasound Image"),
         ("1.2.840.10008.5.1.4.1.1.200.2", "CT Performed Procedure Protocol"),
         ("1.2.840.10008.5.1.4.1.1.66.8", "Height Map Segmentation"),
@@ -363,13 +364,13 @@ def test_only_an_unsupported_iod_has_a_reason_with_its_iod(
 
 
 def test_an_unsupported_iods_reason_holds_its_iod_and_code_alone():
-    reason = scope.UnsupportedIod("Nuclear Medicine Image")
+    reason = scope.UnsupportedIod("Ultrasound Image")
 
-    assert repr(reason) == "UnsupportedIod(iod='Nuclear Medicine Image')"
+    assert repr(reason) == "UnsupportedIod(iod='Ultrasound Image')"
     assert [field.name for field in dataclasses.fields(reason)] == ["iod", "code"]
     with pytest.raises(TypeError):
         # pylint: disable-next = too-many-function-args
-        scope.UnsupportedIod("Nuclear Medicine Image", Disposition.NO_SOP_CLASS)  # type: ignore[call-arg]
+        scope.UnsupportedIod("Ultrasound Image", Disposition.NO_SOP_CLASS)  # type: ignore[call-arg]
 
 
 def test_the_sop_class_decides_before_the_transfer_syntax():
@@ -382,13 +383,13 @@ def test_the_table_can_be_given():
     table = sop_classes.load_storage_sop_classes()
     plan = next(row for row in table.rows if row.name == "RT Plan Storage")
     altered = dataclasses.replace(
-        table, rows=(dataclasses.replace(plan, iod="Nuclear Medicine Image IOD"),)
+        table, rows=(dataclasses.replace(plan, iod="Ultrasound Image IOD"),)
     )
 
     found = scope.classify(plan.uid, EXPLICIT_LE, sop_classes=altered)
 
     assert found == scope.Classification(
-        Disposition.UNSUPPORTED_IOD, "Nuclear Medicine Image"
+        Disposition.UNSUPPORTED_IOD, "Ultrasound Image"
     )
     # CT Image Storage is not in the altered table.
     ct = scope.classify("1.2.840.10008.5.1.4.1.1.2", EXPLICIT_LE, sop_classes=altered)

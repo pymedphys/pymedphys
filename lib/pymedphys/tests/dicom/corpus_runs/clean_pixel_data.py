@@ -65,6 +65,7 @@ _IMAGES = (
     "17-pet-legacy-enhanced.dcm",
     "21-rt-image.dcm",
     corpus_module.SEGMENTATION_FILES[1],
+    corpus_module.NM_FILE,
     corpus_module.PARAMETRIC_MAP_FILE,
     corpus_module.ENHANCED_RT_IMAGE_FILE,
     corpus_module.ENHANCED_CONTINUOUS_RT_IMAGE_FILE,

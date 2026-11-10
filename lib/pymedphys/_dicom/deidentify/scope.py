@@ -16,7 +16,8 @@
 
 The first supported release de-identifies instances of the CT, MR, and
 PET image IODs, including their Enhanced, Legacy Converted Enhanced, and
-colour variants, of MR Spectroscopy, of the RT Structure Set, RT Plan, RT
+colour variants, of MR Spectroscopy, of the Nuclear Medicine Image IOD, of
+the RT Structure Set, RT Plan, RT
 Dose, RT Image, Enhanced RT Image, Enhanced Continuous RT Image, RT Beams
 Treatment Record, RT Ion Plan, RT Ion Beams Treatment Record, RT Brachy
 Treatment Record, RT Treatment Summary Record, RT Beams Delivery
@@ -86,6 +87,7 @@ SUPPORTED_IODS = frozenset(
         "Enhanced MR Color Image",
         "Legacy Converted Enhanced MR Image",
         "MR Spectroscopy",
+        "Nuclear Medicine Image",
         "Positron Emission Tomography Image",
         "Enhanced PET Image",
         "Legacy Converted Enhanced PET Image",

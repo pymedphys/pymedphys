@@ -182,6 +182,21 @@ SUPPORTED_SECOND_GENERATION_RT_IODS = (
     "RT Brachy Application Setup Delivery Instruction",
     "RT Radiation Set Delivery Instruction",
 )
+# The Nuclear Medicine Image IOD, which the maintainer added to the target
+# coverage on 31 October 2026, and which the first supported release now
+# supports, whose attributes the tests at the end of this module review.
+NM_IODS = ("Nuclear Medicine Image",)
+# The text attributes that it uses and the IODs above do not, by group,
+# checked by hand against the 2026d PS3.3 Tables C.8-9 and C.8-10 and PS3.6:
+# Processing Function, a description of the processing, and Energy Window
+# Name, which PS3.3 calls user defined, are cleaned as descriptors; and Image
+# ID, which the user or equipment generates, is among
+# REMOVED_UNDER_EVERY_OPTION.
+NM_OPERATOR_TEXT = {
+    "(0018,5020)",  # Processing Function
+    "(0054,0018)",  # Energy Window Name
+}
+NM_REMOVED_UNDER_EVERY_OPTION = {"(0054,0400)"}  # Image ID
 # Surface Segmentation, which the maintainer brought into the target
 # coverage on 31 October 2026 with the other IODs that radiotherapy exports
 # carry, whose attributes were reviewed ahead of supporting it, against every
@@ -233,12 +248,14 @@ SUPPORTED_IODS = (
     PRESENTATION_STATE_REVIEWED_AGAINST
     + SURFACE_IODS
     + SUPPORTED_SECOND_GENERATION_RT_IODS
+    + NM_IODS
     + PRESENTATION_STATE_IODS
     + (ENCAPSULATED_PDF,)
 )
 # The IODs that the second-generation RT IODs were reviewed against:
-# Surface Segmentation, the softcopy Presentation States and Encapsulated
-# PDF were not supported yet. Enhanced RT Image IODs were already supported.
+# Nuclear Medicine Image, Surface Segmentation, the softcopy Presentation
+# States and Encapsulated PDF were not supported yet. Enhanced RT Image
+# IODs were already supported.
 SECOND_GENERATION_REVIEWED_AGAINST = SURFACE_REVIEWED_AGAINST + ENHANCED_RT_IMAGE_IODS
 CLEAN_DESCRIPTORS = "clean_descriptors"
 DEVICE_IDENTITY = "retain_device_identity"
@@ -334,6 +351,7 @@ REMOVED_UNDER_EVERY_OPTION = {
     "(0040,0031)",  # Local Namespace Entity ID
     "(0040,0032)",  # Universal Entity ID
     "(0040,E001)",  # HL7 Instance Identifier
+    "(0054,0400)",  # Image ID
     "(0062,0020)",  # Tracking ID
     "(0088,0130)",  # Storage Media File-set ID
     "(300A,00F9)",  # Accessory Code
@@ -509,11 +527,11 @@ def test_every_text_attribute_a_supported_iod_uses_and_table_e1_1_omits_has_a_ru
     # add 13, the brachy and summary treatment records, which add none, the
     # Enhanced and Enhanced Continuous RT Images, which add 1, RT Segment
     # Annotation and RT Radiation Set, which add 2, Segmentation, which adds
-    # 4, Surface Segmentation, which adds 2, the two dose-report IODs, the
-    # three delivery instructions, which add 1, the six softcopy Presentation
+    # 4, Surface Segmentation, which adds 2, Nuclear Medicine Image, which
+    # adds 3, the two dose-report IODs, the three delivery instructions, which add 1, the six softcopy Presentation
     # State IODs, which add 7, and Encapsulated PDF, which adds 8, whose
-    # supplementary rules cover 193 text attributes.
-    assert len(omitted) == 193
+    # supplementary rules cover 196 text attributes.
+    assert len(omitted) == 196
     assert omitted <= set(_rules())
     assert {"(0008,0100)", "(300A,00C2)", "(60xx,1500)"} <= omitted
 
@@ -528,14 +546,14 @@ def test_the_rules_for_omitted_text_fall_in_the_reviewed_groups():
 
     assert groups == {
         # Operator-typed labels and text.
-        ("X/Z/D", ((CLEAN_DESCRIPTORS, "C"),)): 90,
+        ("X/Z/D", ((CLEAN_DESCRIPTORS, "C"),)): 92,
         # Accessory and equipment identifiers.
         ("X/Z/D", ((DEVICE_IDENTITY, "K"),)): 33,
         # Coded and technical values, and De-identification Method.
         ("K", ()): 51,
         # Names and identifiers of people, organisations, records, and
         # networks, identifiers that a device reads, and the text of overlays.
-        ("X/Z/D", ()): 17,
+        ("X/Z/D", ()): 18,
         # Patient's Birth and Death Dates in Alternative Calendar.
         ("X", ()): 2,
     }
@@ -2076,8 +2094,10 @@ def test_the_basic_profile_keeps_only_the_reviewed_coded_and_technical_text():
 
     # The three delivery instructions add 3: Reason for Channel Omission
     # Description (0074,140B), Displacement Reference Label (300A,079A), and
-    # Reason for Omission Description (300C,0113), none of them kept.
-    assert len(basic) == 335
+    # Reason for Omission Description (300C,0113), none of them kept; and
+    # Nuclear Medicine Image adds 3: Processing Function (0018,5020), Energy
+    # Window Name (0054,0018), and Image ID (0054,0400), none of them kept.
+    assert len(basic) == 338
     assert {tag for tag, action in basic.items() if action == "K"} == (
         KEPT_TEXT
         | ADDED_KEPT_TEXT
@@ -2739,7 +2759,7 @@ def _with_definition(tmp_path, iod_name, tag):
         ("RT Plan", True),
         # An IOD that is not supported does not, even once its Types are
         # generated.
-        ("Nuclear Medicine Image", False),
+        ("Ultrasound Image", False),
     ],
 )
 def test_only_the_text_of_the_supported_iods_needs_rules(
@@ -2836,6 +2856,122 @@ def test_a_new_attribute_that_table_e1_1_omits_needs_a_rule_by_its_vr(
         _write(tmp_path / "reviewed.toml", document)
     )
     assert loaded.rules[NEW_TAG].action == "X/Z/D"
+
+
+# The Nuclear Medicine Image IOD's text, by group, with the action of each.
+NM_TEXT_GROUPS: tuple[tuple[set[str], str, dict[str, str]], ...] = (
+    (NM_OPERATOR_TEXT, "X/Z/D", {CLEAN_DESCRIPTORS: "C"}),
+    (NM_REMOVED_UNDER_EVERY_OPTION, "X/Z/D", {}),
+)
+# The IODs supported when Nuclear Medicine was reviewed, before it and
+# Surface Segmentation were added independently.
+NM_REVIEWED_AGAINST = SURFACE_REVIEWED_AGAINST
+# The other attributes that the Nuclear Medicine Image IOD uses and those IODs
+# do not, by VR, checked by hand against the 2026d PS3.3 and PS3.6: the
+# vectors, counts, and sequences of the NM Multi-frame, NM Image, NM
+# Isotope, NM Detector, NM TOMO Acquisition, NM Multi-gated Acquisition, NM
+# Phase, and NM Reconstruction Modules, such as Energy Window Vector, Angular
+# Step, and Whole Body Technique, and two attributes of the Multi-frame
+# Overlay Module, none of which Table E.1-1 lists.
+NM_OTHER_VRS = {"US": 18, "DS": 12, "IS": 10, "SQ": 8, "CS": 2}
+
+
+def test_the_nm_iod_is_generated_and_supported():
+    tables = iods.load_iod_tables()
+
+    assert set(NM_IODS) <= set(tables.iods)
+    assert set(NM_IODS) <= scope.SUPPORTED_IODS
+
+
+@pytest.mark.deid_requirement("MIDI-BP-05", "MIDI-BP-06", "MIDI-BP-11")
+def test_the_text_that_only_the_nm_iod_uses_has_reviewed_rules():
+    listed = set(_table_e1_1())
+    added = _used_by(NM_IODS, TEXT_VRS) - _used_by(NM_REVIEWED_AGAINST, TEXT_VRS)
+    rules = _rules()
+
+    assert not added & listed
+    assert added == NM_OPERATOR_TEXT | NM_REMOVED_UNDER_EVERY_OPTION
+    for tags, action, options in NM_TEXT_GROUPS:
+        for tag in tags:
+            assert (rules[tag].action, dict(rules[tag].options)) == (
+                action,
+                options,
+            ), tag
+            assert rules[tag].note.strip(), tag
+
+
+def test_each_policy_gives_the_nm_text_the_action_of_its_group():
+    for composed in _every_policy():
+        for tags, action, options in NM_TEXT_GROUPS:
+            selected = [a for o, a in options.items() if o in composed.options]
+            for tag in tags:
+                assert composed.supplementary_actions[tag] == (
+                    selected[0] if selected else action
+                ), (tag, composed.options)
+
+
+def test_the_nm_text_that_is_removed_is_type_3_so_removal_by_type_removes_it():
+    tables = iods.load_iod_tables()
+    iod = tables.iods[NM_IODS[0]]
+    rules = _rules()
+    removed = NM_OPERATOR_TEXT | NM_REMOVED_UNDER_EVERY_OPTION
+    definitions = [d for d in iod.definitions if d.tag in removed]
+
+    # Processing Function and Image ID are in the NM Image Module, and Energy
+    # Window Name in the items of the NM Isotope Module's Energy Window
+    # Information Sequence (0054,0012).
+    assert {(d.tag, d.path) for d in definitions} == {
+        ("(0018,5020)", ()),
+        ("(0054,0018)", ("(0054,0012)",)),
+        ("(0054,0400)", ()),
+    }
+    for definition in definitions:
+        assert definition.type == "3", definition
+        assert (
+            compound_actions.resolve_in_iod(
+                iod, definition.tag, definition.path, rules[definition.tag].action
+            )
+            == "X"
+        ), definition
+
+
+def test_the_nm_iod_uses_no_uid_date_name_or_url_that_the_others_do_not():
+    for vrs in ({"UI"}, TEMPORAL_VRS, {"PN"}, {"UR"}):
+        assert not _used_by(NM_IODS, vrs) - _used_by(NM_REVIEWED_AGAINST, vrs), vrs
+
+
+def test_the_nm_iods_other_new_attributes_are_kept_by_the_default():
+    dictionary = _dictionary()
+    tables = iods.load_iod_tables()
+    every_vr = {vr for attribute in dictionary.values() for vr in attribute.vrs}
+    other = (
+        _used_by(NM_IODS, every_vr)
+        - _used_by(NM_REVIEWED_AGAINST, every_vr)
+        - _used_by(NM_IODS, TEXT_VRS)
+    )
+    listed = set(_table_e1_1())
+    rules = _rules()
+    uids = set(uid_roles.load_uid_roles().rules)
+    by_vr = collections.Counter(vr for tag in other for vr in dictionary[tag].vrs)
+
+    assert by_vr == NM_OTHER_VRS
+    assert all(len(dictionary[tag].vrs) == 1 for tag in other)
+    assert not other & (listed | set(rules) | uids)
+    # So each takes the default, which keeps it where the IOD defines it,
+    # under every preset, with a sequence's items handled by their own rules;
+    # an overlay's attributes are checked in its first repeating group.
+    iod = tables.iods[NM_IODS[0]]
+    for preset in policy.PRESETS:
+        rules_of = element_rules.ElementRules(policy.compose_policy(preset))
+        for definition in iod.definitions:
+            if definition.tag not in other:
+                continue
+            tag = definition.tag.replace("(60xx,", "(6000,")
+            rule = rules_of.rule(tag, definition.path, iod=iod)
+            assert (rule.source, rule.action) == (
+                element_rules.RuleSource.DEFAULT,
+                element_rules.KEEP,
+            ), (preset, definition)
 
 
 # Surface Segmentation.

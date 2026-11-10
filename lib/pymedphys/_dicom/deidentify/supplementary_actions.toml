@@ -177,6 +177,13 @@ options = { clean_descriptors = "C" }
 note = "A description of the criteria for rejecting premature ventricular contractions or other arrhythmic beats during cardiac gating, as text. It is removed by Type, and cleaned as a descriptor under Clean Descriptors."
 
 [[attribute]]
+tag = "(0018,5020)"
+keyword = "ProcessingFunction"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "A code or description of the processing applied to a Nuclear Medicine image (PS3.3 Table C.8-9). The camera or workstation usually writes it, but PS3.3 defines it as free text, so it is removed by Type, and cleaned as a descriptor under Clean Descriptors, as Reconstruction Method is."
+
+[[attribute]]
 tag = "(0018,9046)"
 keyword = "MultiCoilConfiguration"
 action = "X/Z/D"
@@ -287,6 +294,13 @@ keyword = "ContainerComponentDescription"
 action = "X/Z/D"
 options = { clean_descriptors = "C" }
 note = "A free-text description of a specimen container component. It is removed by Type, and cleaned as a descriptor under Clean Descriptors, as Table E.1-1 does for Container Description."
+
+[[attribute]]
+tag = "(0054,0018)"
+keyword = "EnergyWindowName"
+action = "X/Z/D"
+options = { clean_descriptors = "C" }
+note = "A user-defined name of one of a Nuclear Medicine acquisition's energy windows, such as its photopeak or a scatter window (PS3.3 Table C.8-10). A person names it, so it can hold anything, and the window's limits, in Energy Window Range Sequence, and Energy Window Vector, which gives each frame's window, keep what scatter correction needs without it. It is removed by Type, and cleaned as a descriptor under Clean Descriptors."
 
 [[attribute]]
 tag = "(0054,1101)"
@@ -1363,6 +1377,12 @@ tag = "(0040,E001)"
 keyword = "HL7InstanceIdentifier"
 action = "X/Z/D"
 note = "The identifier of a referenced HL7 document, a UID with an optional extension, which identifies one document about the patient. Table E.1-1 replaces the UIDs of instances, but this is text, which takes no keyed UID replacement, so it is removed by Type under every option."
+
+[[attribute]]
+tag = "(0054,0400)"
+keyword = "ImageID"
+action = "X/Z/D"
+note = "An identifier of a Nuclear Medicine image that PS3.3 says the user or the equipment generates (Table C.8-9), so it can be typed with a patient's name or a record number. It is removed by Type under every option, like other identifiers of records."
 
 [[attribute]]
 tag = "(0062,0020)"

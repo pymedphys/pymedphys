@@ -60,7 +60,12 @@ RADIOPHARMACEUTICAL_START_DATETIME = "(0018,1078)"
 RADIOPHARMACEUTICAL_INFORMATION = "(0054,0016)"
 # The first supported release's IODs that include the Overlay Plane Module as
 # user-optional.
-OVERLAY_IODS = ("CT Image", "MR Image", "Positron Emission Tomography Image")
+OVERLAY_IODS = (
+    "CT Image",
+    "MR Image",
+    "Nuclear Medicine Image",
+    "Positron Emission Tomography Image",
+)
 # The softcopy Presentation State IODs that the first supported release
 # supports, and the Type 1 dates and times of their creation.
 PRESENTATION_STATE_IODS = (
@@ -423,8 +428,8 @@ def test_a_plain_x_on_a_required_attribute_outside_a_type_3_sequence_sequesters(
 @pytest.mark.parametrize("tag", ["(6000,3000)", "(6002,3000)", "(601E,3000)"])
 def test_a_plain_x_on_overlay_data_removes_its_repeating_group(tables, iod, tag):
     # Overlay Data is Type 1 in the Overlay Plane Module, which the CT Image,
-    # MR Image, and Positron Emission Tomography Image IODs include as
-    # user-optional, so removing the whole group leaves a valid instance. The
+    # MR Image, Nuclear Medicine Image, and Positron Emission Tomography
+    # Image IODs include as user-optional, so removing the whole group leaves a valid instance. The
     # other IODs do not define it, but for the softcopy Presentation States,
     # whose conditional module's Overlay Data sequesters the instance (below).
     expected_type = "1" if iod in OVERLAY_IODS else "3"

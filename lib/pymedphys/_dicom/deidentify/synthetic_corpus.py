@@ -20,10 +20,11 @@ fictitious patient and study, with one Frame of Reference: three CT Image
 slices, an RT Structure Set that references the CT series and slices, an RT
 Plan that references the structure set and the dose, an RT Dose that
 references the plan, a second RT Dose of the plan for review (below), one
-instance of each of fifty-five other IODs, and two of the Segmentation
+instance of each of fifty-six other IODs, and two of the Segmentation
 IOD, one of each of its SOP Classes, each in a series of its own, and a
 second X-Ray Radiation Dose SR, of a CT scan.
-The MR Image and PET Image instances reference the first CT slice, and each
+The MR Image, PET Image, and Nuclear Medicine Image instances reference the
+first CT slice, and each
 enhanced, legacy converted enhanced, or MR Spectroscopy instance references
 the single-frame instance of its modality: the first CT slice, the MR
 Image, or the PET Image. The Spatial Registration registers the MR Image to
@@ -393,6 +394,7 @@ RT_BRACHY_TREATMENT_RECORD_STORAGE = "1.2.840.10008.5.1.4.1.1.481.6"
 RT_TREATMENT_SUMMARY_RECORD_STORAGE = "1.2.840.10008.5.1.4.1.1.481.7"
 PARAMETRIC_MAP_STORAGE = "1.2.840.10008.5.1.4.1.1.30"
 REAL_WORLD_VALUE_MAPPING_STORAGE = "1.2.840.10008.5.1.4.1.1.67"
+NM_IMAGE_STORAGE = "1.2.840.10008.5.1.4.1.1.20"
 ENCAPSULATED_PDF_STORAGE = "1.2.840.10008.5.1.4.1.1.104.1"
 ENHANCED_RT_IMAGE_STORAGE = "1.2.840.10008.5.1.4.1.1.481.23"
 ENHANCED_CONTINUOUS_RT_IMAGE_STORAGE = "1.2.840.10008.5.1.4.1.1.481.24"
@@ -490,6 +492,9 @@ TREATMENT_SUMMARY_RECORD_FILE = "50-rt-treatment-summary-record.dcm"
 # PET Image, numbered after the files that open pull requests add.
 PARAMETRIC_MAP_FILE = "51-parametric-map.dcm"
 REAL_WORLD_VALUE_MAPPING_FILE = "52-real-world-value-mapping.dcm"
+# The Nuclear Medicine image, a SPECT volume reconstructed in the collection's
+# Frame of Reference, numbered after the files that open pull requests add.
+NM_FILE = "53-nm.dcm"
 # An Encapsulated PDF derived from the RT Plan, such as a plan report,
 # numbered after the files that open pull requests add.
 ENCAPSULATED_PDF_FILE = "54-encapsulated-pdf.dcm"
@@ -627,6 +632,8 @@ PARAMETRIC_MAP_SERIES = f"{LINKED_UID_ROOT}04800"
 PARAMETRIC_MAP = f"{LINKED_UID_ROOT}04801"
 REAL_WORLD_VALUE_MAPPING_SERIES = f"{LINKED_UID_ROOT}04900"
 REAL_WORLD_VALUE_MAPPING = f"{LINKED_UID_ROOT}04901"
+NM_SERIES = f"{LINKED_UID_ROOT}05000"
+NM = f"{LINKED_UID_ROOT}05001"
 ENCAPSULATED_PDF_SERIES = f"{LINKED_UID_ROOT}05100"
 ENCAPSULATED_PDF = f"{LINKED_UID_ROOT}05101"
 SURFACE_SEGMENTATION_SERIES = f"{LINKED_UID_ROOT}05200"
@@ -805,6 +812,7 @@ _SOP_CLASSES = types.MappingProxyType(
         TREATMENT_SUMMARY_RECORD: RT_TREATMENT_SUMMARY_RECORD_STORAGE,
         PARAMETRIC_MAP: PARAMETRIC_MAP_STORAGE,
         REAL_WORLD_VALUE_MAPPING: REAL_WORLD_VALUE_MAPPING_STORAGE,
+        NM: NM_IMAGE_STORAGE,
         ENCAPSULATED_PDF: ENCAPSULATED_PDF_STORAGE,
         SURFACE_SEGMENTATION: SURFACE_SEGMENTATION_STORAGE,
         ENHANCED_RT_IMAGE: ENHANCED_RT_IMAGE_STORAGE,
@@ -1600,6 +1608,9 @@ _SPECS = (
         REAL_WORLD_VALUE_MAPPING_SERIES,
         PET,
     ),
+    # The Nuclear Medicine image references the first CT slice, as the PET
+    # Image does, as a SPECT volume reconstructed with a SPECT/CT's CT would.
+    _Spec(NM_FILE, NM_IMAGE_STORAGE, NM, NM_SERIES, CT_SLICES[0]),
     # The Encapsulated PDF, a report of the RT Plan, names the plan as the
     # instance that it was derived from, in its Source Instance Sequence. It
     # holds no document: Encapsulated Document (0042,0011), which the Basic
@@ -1785,7 +1796,7 @@ def build_corpus() -> SyntheticCorpus:
     Returns
     -------
     SyntheticCorpus
-        Sixty-five files: three CT slices; the RT Structure Set, RT Plan, RT
+        Sixty-six files: three CT slices; the RT Structure Set, RT Plan, RT
         Dose, and the RT Dose for review; the Enhanced CT Image and Legacy
         Converted Enhanced CT Image; the MR Image, Enhanced MR Image,
         Enhanced MR Color Image, Legacy Converted Enhanced MR Image, and MR
@@ -1802,7 +1813,7 @@ def build_corpus() -> SyntheticCorpus:
         Grid Thickness and Volume Report, and Waveform Annotation SR; the RT
         Ion Plan and RT Ion Beams Treatment Record; the RT Brachy Treatment
         Record and RT Treatment Summary Record; the Parametric Map and Real
-        World Value Mapping; the Encapsulated PDF; the Surface Segmentation;
+        World Value Mapping; the Nuclear Medicine Image; the Encapsulated PDF; the Surface Segmentation;
         the Grayscale, Color, Pseudo-Color, Blending, XA/XRF Grayscale, and Variable Modality LUT
         Softcopy Presentation States; the RT Segment Annotation, RT
         Radiation Set, and C-Arm Photon-Electron, Tomotherapeutic, and
@@ -2471,6 +2482,8 @@ class _Instance:
             put((), "(5600,0020)", [struct.pack("<2f", 1.0, 2.0)])
         elif self.spec.sop_class in _IMAGES:
             self._add_image(_IMAGES[self.spec.sop_class])
+        elif self.spec.sop_class == NM_IMAGE_STORAGE:
+            self._add_nm_image()
         elif self.spec.sop_class in _REGISTRATIONS:
             self._add_registration()
         elif self.spec.sop_class in _SEGMENTATIONS:
@@ -2902,6 +2915,49 @@ class _Instance:
                 int(image.modality == "CT"),
                 struct.pack(f"<{4 * frames}H", *samples),
             )
+
+    def _add_nm_image(self) -> None:
+        """Add the attributes that make the instance a Nuclear Medicine image:
+        a SPECT volume of two 2 by 2 slices, reconstructed from one rotation
+        of one detector in one energy window, each slice placed, as PS3.3
+        Section C.8.4.10.1 places a RECON TOMO image's, by the Image Position
+        (Patient) and Image Orientation (Patient) of its Detector Information
+        Sequence item and its Spacing Between Slices, and its frames indexed
+        by Slice Vector (PS3.3 Section C.8.4.8.1.4)."""
+        put = self._set
+        put((), "(0008,0060)", ["NM"])
+        put((), "(0008,0008)", ["ORIGINAL", "PRIMARY", "RECON TOMO", "EMISSION"])
+        put((), "(0028,0008)", ["2"])
+        put((), "(0028,0009)", [0x00540080])  # Frame Increment Pointer
+        put((), "(0054,0080)", [1, 2])  # Slice Vector
+        put((), "(0054,0081)", [2])  # Number of Slices
+        put((), "(0054,0010)", [1, 1])  # Energy Window Vector
+        put((), "(0054,0011)", [1])  # Number of Energy Windows
+        put((), "(0054,0020)", [1, 1])  # Detector Vector
+        put((), "(0054,0021)", [1])  # Number of Detectors
+        put((), "(0054,0050)", [1, 1])  # Rotation Vector
+        put((), "(0054,0051)", [1])  # Number of Rotations
+        put((), "(0018,0050)", ["2"])  # Slice Thickness
+        put((), "(0018,0088)", ["2"])  # Spacing Between Slices
+        put((), "(0028,0051)", ["ATTN", "SCAT"])  # Corrected Image
+        detector = _items(["(0054,0022)"])
+        put(detector, "(0020,0032)", ["-1", "-1", "0"])
+        put(detector, "(0020,0037)", ["1", "0", "0", "0", "1", "0"])
+        put(detector, "(0018,1180)", ["LEHR"])  # Collimator/grid Name
+        put(detector, "(0018,1181)", ["PARA"])  # Collimator Type
+        window = _items(["(0054,0012)"])
+        put(window, "(0054,0018)", ["EM"])  # Energy Window Name
+        put(_items(["(0054,0012)", "(0054,0013)"]), "(0054,0014)", ["126"])
+        put(_items(["(0054,0012)", "(0054,0013)"]), "(0054,0015)", ["154"])
+        rotation = _items(["(0054,0052)"])
+        put(rotation, "(0054,0200)", ["0"])  # Start Angle
+        put(rotation, "(0018,1144)", ["6"])  # Angular Step
+        put(rotation, "(0018,1140)", ["CW"])  # Rotation Direction
+        put(rotation, "(0018,1143)", ["360"])  # Scan Arc
+        put(rotation, "(0018,1242)", ["20000"])  # Actual Frame Duration
+        put(rotation, "(0054,0053)", [60])  # Number of Frames in Rotation
+        put((), "(0054,0202)", ["STEP AND SHOOT"])  # Type of Detector Motion
+        self._add_pixels(16, 0, struct.pack("<8H", *range(0, 800, 100)))
 
     def _add_pixels(
         self,

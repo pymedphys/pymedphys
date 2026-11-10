@@ -1585,7 +1585,7 @@ def test_the_report_names_the_reviewed_pack(second_run):
         "review_modes": {"every-frame": 3, "flagged-frames": 0},
         "frames_not_shown": 0,
     }
-    assert report["format"] == "pymedphys-deid-release-report/60"
+    assert report["format"] == "pymedphys-deid-release-report/68"
 
 
 class _Blind(Finder):

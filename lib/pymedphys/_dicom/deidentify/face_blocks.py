@@ -203,8 +203,9 @@ Segmentation whose segments
 each with that frame as its only one but a structure set, whose ROIs in
 each defaced frame are cut by that frame's blocks, keeping whatever lies in
 a target's hull and on the pixels kept for it. Any other RT
-Structure Set, RT Dose with pixel data, PET instance, or Segmentation
-(:data:`UNDEFACED_IODS`) in the Frame of Reference of a defaced series
+Structure Set, RT Dose with pixel data, PET instance, or Segmentation, and
+every Nuclear Medicine image, which the run does not clean
+(:data:`UNDEFACED_IODS`), in the Frame of Reference of a defaced series
 keeps its contours or pixel data, which can still outline the face, so it
 is held for review whatever its verdict, since a reviewer may have judged
 it from the defaced CT's previews
@@ -314,9 +315,14 @@ PHASE_REACH = defacing.GLOBE_DIAMETER[0] / 2
 # a series' phases lies behind the nearest point of theirs, so that a point
 # on their boundary is strictly inside it.
 _ENCLOSING = 1e-6
+NM_IMAGE = "Nuclear Medicine Image"
 # The IODs whose instances in a defaced series' Frame of Reference are held
-# unless the run cleans them of the face.
-UNDEFACED_IODS = frozenset({RT_STRUCTURE_SET, "RT Dose", *PET_IODS, "Segmentation"})
+# unless the run cleans them of the face. The run cleans no Nuclear Medicine
+# image, so one in such a frame, such as a SPECT volume reconstructed in a
+# SPECT/CT's frame, is always held.
+UNDEFACED_IODS = frozenset(
+    {RT_STRUCTURE_SET, "RT Dose", *PET_IODS, NM_IMAGE, "Segmentation"}
+)
 # How far two slices' direction cosines, or spacings in millimetres, may
 # differ and still be one stack's.
 _SAME = 1e-4

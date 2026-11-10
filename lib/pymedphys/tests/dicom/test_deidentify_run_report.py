@@ -268,17 +268,17 @@ def test_the_report_names_each_sequestered_input_by_its_label(tmp_path):
 @pytest.mark.deid_requirement("MIDI-BP-06", "MIDI-BP-18")
 @pytest.mark.pydicom
 def test_the_report_names_the_iod_of_an_input_the_release_does_not_support(tmp_path):
-    nm = synthetic.instance(
-        synthetic.NM_IMAGE_STORAGE, synthetic.OTHER, synthetic.OTHER_SERIES
+    us = synthetic.instance(
+        synthetic.US_IMAGE_STORAGE, synthetic.OTHER, synthetic.OTHER_SERIES
     )
-    _write(tmp_path / "source", [*synthetic.collection(), nm])
+    _write(tmp_path / "source", [*synthetic.collection(), us])
     transform = InstanceTransform(compose_policy("basic"), KEY, unvalidated_policy=True)
 
     result = _run(tmp_path, transform, ReleaseGate(), transform.reporter)
 
     withheld = [o for o in result.outcomes if o.status is not run.Status.RELEASED]
     assert [(o.status, o.reasons) for o in withheld] == [
-        (run.Status.SEQUESTERED, (UnsupportedIod("Nuclear Medicine Image"),))
+        (run.Status.SEQUESTERED, (UnsupportedIod("Ultrasound Image"),))
     ]
     document = json.loads((tmp_path / "release" / RELEASE_REPORT).read_text())
     assert document["sequestered"] == [
@@ -288,14 +288,14 @@ def test_the_report_names_the_iod_of_an_input_the_release_does_not_support(tmp_p
                 {
                     "stage": "scope",
                     "code": "unsupported-iod",
-                    "iod": "Nuclear Medicine Image",
+                    "iod": "Ultrasound Image",
                 }
             ],
         }
     ]
     markdown = (tmp_path / "release" / RELEASE_REPORT_MARKDOWN).read_text()
     assert (
-        "| `S-0001` | `scope` | `unsupported-iod` | | | | `Nuclear Medicine Image` |"
+        "| `S-0001` | `scope` | `unsupported-iod` | | | | `Ultrasound Image` |"
         in markdown
     )
 

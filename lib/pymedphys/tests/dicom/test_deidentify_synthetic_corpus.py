@@ -245,6 +245,7 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "50-rt-treatment-summary-record.dcm",
         "51-parametric-map.dcm",
         "52-real-world-value-mapping.dcm",
+        "53-nm.dcm",
         "54-encapsulated-pdf.dcm",
         "55-seg-surface.dcm",
         "56-pr-grayscale.dcm",
@@ -305,6 +306,7 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "RT Treatment Summary Record",
         "Parametric Map",
         "Real World Value Mapping",
+        "Nuclear Medicine Image",
         "Encapsulated PDF",
         "Surface Segmentation",
         "Grayscale Softcopy Presentation State",
@@ -343,30 +345,31 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         corpus_module.PARAMETRIC_MAP_FILE,
         corpus_module.REAL_WORLD_VALUE_MAPPING_FILE,
     ) == tuple(file.name for file in corpus.files[45:47])
-    assert corpus_module.ENCAPSULATED_PDF_FILE == corpus.files[47].name
-    assert corpus_module.SURFACE_SEGMENTATION_FILE == corpus.files[48].name
+    assert corpus_module.NM_FILE == corpus.files[47].name
+    assert corpus_module.ENCAPSULATED_PDF_FILE == corpus.files[48].name
+    assert corpus_module.SURFACE_SEGMENTATION_FILE == corpus.files[49].name
     assert corpus_module.PRESENTATION_STATE_FILES == tuple(
-        file.name for file in corpus.files[49:55]
+        file.name for file in corpus.files[50:56]
     )
-    assert {file.manifest.sop_class for file in corpus.files[49:55]} == (
+    assert {file.manifest.sop_class for file in corpus.files[50:56]} == (
         corpus_module.PRESENTATION_STATE_STORAGE_CLASSES
     )
     assert (
         corpus_module.ENHANCED_RT_IMAGE_FILE,
         corpus_module.ENHANCED_CONTINUOUS_RT_IMAGE_FILE,
-    ) == tuple(file.name for file in corpus.files[63:65])
+    ) == tuple(file.name for file in corpus.files[64:66])
     assert (
         corpus_module.SEGMENT_ANNOTATION_FILE,
         corpus_module.RADIATION_SET_FILE,
         corpus_module.C_ARM_RADIATION_FILE,
         corpus_module.TOMOTHERAPEUTIC_RADIATION_FILE,
         corpus_module.ROBOTIC_ARM_RADIATION_FILE,
-    ) == tuple(file.name for file in corpus.files[55:60])
+    ) == tuple(file.name for file in corpus.files[56:61])
     assert (
         corpus_module.BEAMS_DELIVERY_INSTRUCTION_FILE,
         corpus_module.BRACHY_DELIVERY_INSTRUCTION_FILE,
         corpus_module.RADIATION_SET_DELIVERY_INSTRUCTION_FILE,
-    ) == tuple(file.name for file in corpus.files[60:63])
+    ) == tuple(file.name for file in corpus.files[61:64])
     # Every IOD of the first supported release.
     assert {file.manifest.iod for file in corpus.files} == scope.SUPPORTED_IODS
 

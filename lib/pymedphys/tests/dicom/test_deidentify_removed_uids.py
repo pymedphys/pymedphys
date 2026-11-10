@@ -330,7 +330,7 @@ def test_under_retain_uids_a_removed_private_copy_of_the_frame_withholds_nothing
     statuses, report = _run(tmp_path, transform)
 
     assert statuses == [run.Status.RELEASED] * 3
-    assert report["format"] == FORMAT == "pymedphys-deid-release-report/60"
+    assert report["format"] == FORMAT == "pymedphys-deid-release-report/68"
     assert [
         (entry["attribute"], entry["found_in"], entry["count"])
         for entry in report["exempted_findings"]
