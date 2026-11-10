@@ -246,7 +246,14 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "51-parametric-map.dcm",
         "52-real-world-value-mapping.dcm",
         "53-nm.dcm",
+        "54-encapsulated-pdf.dcm",
         "55-seg-surface.dcm",
+        "56-pr-grayscale.dcm",
+        "57-pr-color.dcm",
+        "58-pr-pseudo-color.dcm",
+        "59-pr-blending.dcm",
+        "60-pr-xa-xrf-grayscale.dcm",
+        "61-pr-variable-modality-lut.dcm",
         "70-rt-segment-annotation.dcm",
         "71-rt-radiation-set.dcm",
         "72-c-arm-radiation.dcm",
@@ -300,7 +307,14 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         "Parametric Map",
         "Real World Value Mapping",
         "Nuclear Medicine Image",
+        "Encapsulated PDF",
         "Surface Segmentation",
+        "Grayscale Softcopy Presentation State",
+        "Color Softcopy Presentation State",
+        "Pseudo-Color Softcopy Presentation State",
+        "Blending Softcopy Presentation State",
+        "XA/XRF Grayscale Softcopy Presentation State",
+        "Variable Modality LUT Softcopy Presentation State",
         "RT Segment Annotation",
         "RT Radiation Set",
         "C-Arm Photon-Electron Radiation",
@@ -332,23 +346,30 @@ def test_files_have_deterministic_names_and_the_linked_collection(corpus):
         corpus_module.REAL_WORLD_VALUE_MAPPING_FILE,
     ) == tuple(file.name for file in corpus.files[45:47])
     assert corpus_module.NM_FILE == corpus.files[47].name
-    assert corpus_module.SURFACE_SEGMENTATION_FILE == corpus.files[48].name
+    assert corpus_module.ENCAPSULATED_PDF_FILE == corpus.files[48].name
+    assert corpus_module.SURFACE_SEGMENTATION_FILE == corpus.files[49].name
+    assert corpus_module.PRESENTATION_STATE_FILES == tuple(
+        file.name for file in corpus.files[50:56]
+    )
+    assert {file.manifest.sop_class for file in corpus.files[50:56]} == (
+        corpus_module.PRESENTATION_STATE_STORAGE_CLASSES
+    )
     assert (
         corpus_module.ENHANCED_RT_IMAGE_FILE,
         corpus_module.ENHANCED_CONTINUOUS_RT_IMAGE_FILE,
-    ) == tuple(file.name for file in corpus.files[57:59])
+    ) == tuple(file.name for file in corpus.files[64:66])
     assert (
         corpus_module.SEGMENT_ANNOTATION_FILE,
         corpus_module.RADIATION_SET_FILE,
         corpus_module.C_ARM_RADIATION_FILE,
         corpus_module.TOMOTHERAPEUTIC_RADIATION_FILE,
         corpus_module.ROBOTIC_ARM_RADIATION_FILE,
-    ) == tuple(file.name for file in corpus.files[49:54])
+    ) == tuple(file.name for file in corpus.files[56:61])
     assert (
         corpus_module.BEAMS_DELIVERY_INSTRUCTION_FILE,
         corpus_module.BRACHY_DELIVERY_INSTRUCTION_FILE,
         corpus_module.RADIATION_SET_DELIVERY_INSTRUCTION_FILE,
-    ) == tuple(file.name for file in corpus.files[54:57])
+    ) == tuple(file.name for file in corpus.files[61:64])
     # Every IOD of the first supported release.
     assert {file.manifest.iod for file in corpus.files} == scope.SUPPORTED_IODS
 
@@ -367,9 +388,14 @@ def test_every_attribute_of_table_e1_1_that_the_iod_defines_is_placed(corpus):
             path = placement.path
             if placement.kind in (Kind.PRIVATE, Kind.CONTENT, Kind.REVIEW_COPY):
                 continue
-            if placement.concept is not None or _in_content_tree(path):
+            if placement.concept is not None or (
+                file.name in corpus_module.STRUCTURED_REPORT_FILES
+                and _in_content_tree(path)
+            ):
                 # A content item's value, or a reference, in its report's
-                # content tree, whose template decides where it is.
+                # content tree, whose template decides where it is. The
+                # Encapsulated PDF has no template, and its Content Sequence's
+                # places are recorded like any other.
                 continue
             if any(index for _, index in path.items):
                 # The structure set's references to the other slices.
@@ -551,8 +577,44 @@ def test_an_attribute_whose_removal_sequesters_is_planted_in_one_instance(corpus
     # resolution user, whose dummy item a reviewed rule writes (D-021), and
     # Source Manufacturer in the RT Brachy Treatment Record's Recorded Source
     # Sequence, which a plain X empties there too, are planted.
+    # Each softcopy Presentation State's Graphic Annotation Sequence, whose D
+    # a sequence has no dummy value for (D-021), with what its item holds,
+    # its Presentation Creation Date and Time, which a plain X removes where
+    # they are Type 1 (D-020), and, but in the blending one, whose IOD has no
+    # Overlay Plane Module, its Overlay Data, which a plain X removes where
+    # the module is conditional, are planted in no file.
     both = {"(0010,2297)", "(0010,2299)"}
-    only_in = {"Enhanced PET Image": {"(0018,1078)"}}
+    annotation = {
+        "(0070,0001)",  # Graphic Annotation Sequence
+        "(0008,1140)",  # Referenced Image Sequence, in its item
+        "(0008,1155)",  # Referenced SOP Instance UID, in that item
+        "(0062,0021)",  # Tracking UID, in its item
+        "(0070,0006)",  # Unformatted Text Value, in its Text Object Sequence
+    }
+    creation = {"(0070,0082)", "(0070,0083)"}
+    overlay = {"(6000,3000)"}
+    pdf = iod_for_sop_class(corpus_module.ENCAPSULATED_PDF_STORAGE)
+    only_in = {
+        "Enhanced PET Image": {"(0018,1078)"},
+        # The document, Content Sequence and every nested item are omitted.
+        "Encapsulated PDF": {"(0042,0011)", CONTENT_SEQUENCE}
+        | {
+            tag
+            for path, tag in _expected_places(pdf)
+            if path[:1] == (CONTENT_SEQUENCE,)
+        },
+        **dict.fromkeys(
+            (
+                "Grayscale Softcopy Presentation State",
+                "Color Softcopy Presentation State",
+                "Pseudo-Color Softcopy Presentation State",
+                "XA/XRF Grayscale Softcopy Presentation State",
+                "Variable Modality LUT Softcopy Presentation State",
+            ),
+            annotation | creation | overlay,
+        ),
+        "Blending Softcopy Presentation State": annotation | creation,
+    }
     assert planted == {corpus_module.SEQUESTERED_FILE: both}
     assert corpus_module.SEQUESTERED_FILE == corpus.files[2].name
     assert withheld == {

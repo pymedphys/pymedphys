@@ -215,6 +215,10 @@ def decoded_frames(
         return Skipped(f"pixel-data-refused/{refused.reason.value}")
     if redaction is None:
         return Skipped("no-pixel-data")
+    # The evaluation reads frames of integer stored values, whose range Bits
+    # Stored bounds; floating-point pixel data are not evaluated.
+    if redaction.layout.floating:
+        return Skipped("float-pixel-data")
     return dataset, redaction.layout, finder.frames
 
 

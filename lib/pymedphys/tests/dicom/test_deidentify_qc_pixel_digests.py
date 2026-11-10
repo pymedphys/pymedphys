@@ -147,6 +147,8 @@ def test_a_series_that_is_not_a_volume_is_shown_only_in_the_frames_of_its_cine()
 
 
 def test_pixel_data_that_no_preview_shows_are_not_shown():
+    # Float Pixel Data under Bits Allocated 16, which no element of
+    # floating-point pixel data has.
     dataset = _slices()[0]
     dataset.FloatPixelData = dataset.pixel_array.astype(np.float32).tobytes()
     del dataset.PixelData
@@ -250,6 +252,47 @@ def test_padding_of_more_than_one_value_counts_only_as_written(mixed):
     ]
     assert not found.not_previewed
     assert found.pixels_shown == (frozenset() if mixed else {0})
+
+
+def _floated(data, values):
+    """A file whose frames are Float Pixel Data of ``values``."""
+    dataset = pydicom.dcmread(io.BytesIO(data))
+    for keyword in ("PixelData", "BitsStored", "HighBit", "PixelRepresentation"):
+        delattr(dataset, keyword)
+    dataset.BitsAllocated = 32
+    dataset.FloatPixelData = np.asarray(values, "<f4").tobytes()
+    return files.written(dataset)
+
+
+def test_floating_point_pixel_data_cleaned_are_shown_beside_them_as_received():
+    dataset = _slices()[0]
+    rows, columns = dataset.Rows, dataset.Columns
+    stored = dataset.pixel_array.astype(np.float32)
+    stored[0, 0] = np.nan
+    received = _floated(files.written(dataset), stored)
+    box = TextBox(1, 0, 2, 4)
+    cleaned = stored.copy()
+    cleaned[1, :4] = np.nanmin(stored)
+    written = _floated(files.written(dataset), cleaned)
+    entry = RedactionEntry(
+        0,
+        PixelDataReason.TEXT_BLACKED_OUT,
+        1,
+        rows,
+        columns,
+        ((0, (box,)),),
+    )
+    found = qc_previews.previews_of({0: written}, set(), {0: (received, entry)})
+    assert [preview.kind for preview in found.previews][-2:] == [
+        PreviewKind.REDACTION,
+        PreviewKind.REVIEW_FRAME,
+    ]
+    assert not found.not_previewed
+    assert found.pixels_shown == {0}
+    redaction = _decoded(found.previews[-2].png)
+    # As received, as written, and as written over its full range, each in
+    # colour, with grey gutters between.
+    assert redaction.shape == (rows, 3 * columns + 2 * 8, 3)
 
 
 def _dose(frames):

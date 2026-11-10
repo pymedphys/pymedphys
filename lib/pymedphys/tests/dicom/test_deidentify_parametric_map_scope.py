@@ -23,6 +23,7 @@ Type gives each attribute that has a compound action (D-020, D-022).
 
 import collections
 import functools
+import hashlib
 import io
 
 from pymedphys._imports import numpy as np
@@ -32,21 +33,30 @@ from pymedphys._dicom.deidentify import (
     compound_actions,
     element_rules,
     iods,
+    pixel_cleaning,
     policy,
+    qc_previews,
     run,
     scope,
     temporal_roles,
     uid_roles,
 )
 from pymedphys._dicom.deidentify import synthetic_corpus as corpus_module
-from pymedphys._dicom.deidentify.face_review import FaceReview
+from pymedphys._dicom.deidentify.face_review import (
+    FaceReview,
+    contour_data_sha256,
+    pixel_data_sha256,
+)
 from pymedphys._dicom.deidentify.instance_transform import (
     HeldEvidence,
     InstanceTransform,
 )
 from pymedphys._dicom.deidentify.keys import DeidKey
-from pymedphys._dicom.deidentify.reasons import TransformReason
+from pymedphys._dicom.deidentify.qc_attestation import ReviewMode
+from pymedphys._dicom.deidentify.reasons import PixelDataReason
+from pymedphys._dicom.deidentify.redaction_review import RedactionReview
 from pymedphys._dicom.deidentify.references import InstanceRecord
+from pymedphys._dicom.deidentify.text_detection import TextBox
 
 from .test_deidentify_pixel_cleaning import Finder
 from .test_deidentify_supplementary_actions import (
@@ -250,39 +260,109 @@ def test_a_floating_point_parametric_map_is_written_as_received_without_pixel_op
 
 @pytest.mark.pydicom
 @FLOAT_KEYWORDS
-def test_clean_pixel_data_sequesters_a_floating_point_parametric_map(double, keyword):
+def test_clean_pixel_data_blacks_out_text_in_a_floating_point_parametric_map(
+    double, keyword
+):
     data = _float_parametric_map(double)
-    assert keyword in pydicom.dcmread(io.BytesIO(data))
-
-    finder = Finder()
+    source = pydicom.dcmread(io.BytesIO(data))
+    frames = source.pixel_array
+    finder = Finder(boxes=(TextBox(0, 1, 1, 2),), frames={1})
 
     result = _transformed(data, [policy.CLEAN_PIXEL_DATA], finder=finder)
 
-    assert isinstance(result, run.Sequestered)
-    assert result.reasons == (TransformReason.UNCLEANABLE_PIXEL_DATA,)
-    # It is refused before any frame is searched.
-    assert not finder.seen
+    assert isinstance(result, run.Transformed), result
+    evidence = result.evidence
+    assert isinstance(evidence, HeldEvidence), evidence
+    held = evidence.held  # pylint: disable=no-member
+    assert [each.reason for each in held] == [PixelDataReason.TEXT_BLACKED_OUT]
+    # Each frame is searched as the finder takes floating-point values.
+    assert len(finder.seen) == 2
+    for seen, frame in zip(finder.seen, frames, strict=True):
+        assert np.array_equal(seen, pixel_cleaning.searched_values(frame))
+    written = pydicom.dcmread(io.BytesIO(result.data))
+    assert "PixelData" not in written
+    assert written[keyword].VR == ("OD" if double else "OF")
+    pixels = written.pixel_array
+    assert pixels.dtype == frames.dtype
+    expected = frames.copy()
+    expected[1, 0, 1] = frames[1].min()
+    assert np.array_equal(pixels, expected)
+    assert len(written[keyword].value) == len(source[keyword].value)
 
 
 @pytest.mark.pydicom
 @FLOAT_KEYWORDS
-def test_a_floating_point_parametric_map_needs_a_face_verdict(double, keyword):
-    # It can show a face, so Clean Recognizable Visual Features holds it
-    # without a verdict, as it holds every image; the QC pack cannot preview
-    # it, so no verdict can be given on what it writes.
+def test_a_reviewed_floating_point_parametric_map_satisfies_clean_pixel_data(
+    double, keyword
+):
     data = _float_parametric_map(double)
-    assert keyword in pydicom.dcmread(io.BytesIO(data))
-    no_verdicts = FaceReview(
+    digest = hashlib.sha256(data).digest()
+    review = RedactionReview(
         "A-" + "0123456789abcdef" * 2,
+        {digest: ((0, (TextBox(1, 0, 2, 2),)),)},
         frozenset(),
-        frozenset(),
-        frozenset(),
-        frozenset(),
+        modes={ReviewMode.EVERY_FRAME: 1, ReviewMode.FLAGGED_FRAMES: 0},
+    )
+    transform = InstanceTransform(
+        policy.compose_custom_policy([policy.CLEAN_PIXEL_DATA]),
+        KEY,
+        finder=Finder(),
+        redaction_review=review,
+        unvalidated_policy=True,
     )
 
-    result = _transformed(
-        data, [policy.CLEAN_RECOGNIZABLE_VISUAL_FEATURES], face_review=no_verdicts
-    )
+    result = transform(data, InstanceRecord.from_file(data))
 
     assert isinstance(result, run.Transformed), result
-    assert isinstance(result.evidence, HeldEvidence), result.evidence
+    assert not isinstance(result.evidence, HeldEvidence), result.evidence
+    written = pydicom.dcmread(io.BytesIO(result.data))
+    assert written.BurnedInAnnotation == "NO"
+    frames = pydicom.dcmread(io.BytesIO(data)).pixel_array
+    expected = frames.copy()
+    expected[0, 1, :] = frames[0].min()
+    assert np.array_equal(written.pixel_array, expected)
+    assert keyword in written
+
+
+@pytest.mark.pydicom
+@FLOAT_KEYWORDS
+def test_a_floating_point_parametric_map_is_released_on_a_verdict_on_its_previews(
+    double, keyword
+):
+    # Clean Recognizable Visual Features holds it, as it holds every image,
+    # until a face verdict on the pixel data that the QC pack previewed.
+    data = _float_parametric_map(double)
+    assert keyword in pydicom.dcmread(io.BytesIO(data))
+    options = [policy.CLEAN_RECOGNIZABLE_VISUAL_FEATURES]
+    reference = "A-" + "0123456789abcdef" * 2
+    no_verdicts = FaceReview(
+        reference, frozenset(), frozenset(), frozenset(), frozenset()
+    )
+
+    held = _transformed(data, options, face_review=no_verdicts)
+
+    assert isinstance(held, run.Transformed), held
+    assert isinstance(held.evidence, HeldEvidence), held.evidence
+    previews = qc_previews.previews_of({0: held.data}, {0})
+    assert previews.previews and not previews.not_previewed
+    assert previews.pixels_shown == {0}
+
+    source = hashlib.sha256(data).digest()
+    pixels = pixel_data_sha256(pydicom.dcmread(io.BytesIO(held.data)))
+    contours = contour_data_sha256(pydicom.dcmread(io.BytesIO(held.data)))
+    absent = FaceReview(
+        reference,
+        frozenset({source}),
+        frozenset(),
+        frozenset({(source, pixels)}),
+        frozenset({(source, contours)}),
+        absent_frames=frozenset({(source, pixels, 2)}),
+    )
+
+    released = _transformed(data, options, face_review=absent)
+
+    assert isinstance(released, run.Transformed), released
+    assert not isinstance(released.evidence, HeldEvidence), released.evidence
+    written = pydicom.dcmread(io.BytesIO(released.data))
+    assert written.RecognizableVisualFeatures == "NO"
+    assert written[keyword].value == pydicom.dcmread(io.BytesIO(data))[keyword].value

@@ -57,7 +57,8 @@ CONDITIONAL = {
 }
 # The supported IODs without the module: the Structured Reports, whose SR
 # Document General Module references their evidence instead (PS3.3 Section
-# A.35).
+# A.35), and the Encapsulated PDF, whose Encapsulated Document Module names
+# its sources in Source Instance Sequence (PS3.3 Table C.24-2).
 WITHOUT = {
     "X-Ray Radiation Dose SR",
     "Enhanced X-Ray Radiation Dose SR",
@@ -76,7 +77,21 @@ WITHOUT = {
     "Spectacle Prescription Report",
     "Macular Grid Thickness and Volume Report",
     "Waveform Annotation SR",
+    "Encapsulated PDF",
 }
+# The supported IODs without the module whose Presentation State
+# Relationship Module makes Referenced Series Sequence (0008,1115) Type 1 at
+# the top level, from the 2026d PS3.3 Section A.33 and Table C.11.11-1.
+PRESENTATION_STATES = {
+    "Grayscale Softcopy Presentation State",
+    "Color Softcopy Presentation State",
+    "Pseudo-Color Softcopy Presentation State",
+    "XA/XRF Grayscale Softcopy Presentation State",
+    "Variable Modality LUT Softcopy Presentation State",
+}
+# The supported Presentation State IOD without either module: the blending
+# one names its images in its Blending Sequence (0070,0402) instead.
+BLENDING = "Blending Softcopy Presentation State"
 
 
 def _path(*steps):
@@ -90,7 +105,15 @@ def test_every_supported_iod_but_the_reports_includes_the_module_and_its_sequenc
     for name in scope.SUPPORTED_IODS:
         iod = tables.iods[name]
         usages = {m.usage for m in iod.modules if m.module == MODULE}
-        if name in WITHOUT:
+        if name in PRESENTATION_STATES:
+            assert not usages, name
+            assert {
+                (d.tag, d.type, d.module)
+                for d in iod.definitions
+                if d.tag in SEQUENCES and not d.path
+            } == {("(0008,1115)", "1", "Presentation State Relationship")}, name
+            continue
+        if name in WITHOUT | {BLENDING}:
             assert not usages, name
             assert not any(
                 d.tag in SEQUENCES and not d.path for d in iod.definitions
@@ -112,6 +135,23 @@ def test_the_modules_sequences_are_at_the_top_level_only(tag):
     assert is_common_instance_reference(_path(tag))
     # As in the Hierarchical SOP Instance Reference Macro.
     assert not is_common_instance_reference(_path("(0008,9092)", tag))
+
+
+def test_a_presentation_states_referenced_series_sequence_is_not_the_modules():
+    # Given its IOD, the Type 1 sequence of the Presentation State
+    # Relationship Module is not the module's, so it never lapses; the
+    # module's own sequences, in an IOD that includes it, still are.
+    tables = iods.load_iod_tables()
+    path = _path("(0008,1115)")
+    for name in PRESENTATION_STATES:
+        assert not is_common_instance_reference(path, tables.iods[name]), name
+    assert is_common_instance_reference(path, tables.iods["CT Image"])
+    assert is_common_instance_reference(
+        _path("(0008,1200)"), tables.iods["Spatial Registration"]
+    )
+    # A report, which defines neither, is as without an IOD: the sequence is
+    # removed anyway, as no module of the IOD defines it.
+    assert is_common_instance_reference(path, tables.iods["Comprehensive SR"])
 
 
 @pytest.mark.parametrize("tag", ["(0008,1140)", "(0008,114A)", "(0008,1155)"])

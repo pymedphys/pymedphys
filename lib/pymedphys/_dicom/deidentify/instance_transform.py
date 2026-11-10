@@ -1034,9 +1034,10 @@ class InstanceTransform:
     frames no longer decode to the pixels whose SHA-256 the review records,
     when it is cleaned by the finder and held again; one that the reviewer
     rejected is sequestered
-    (:attr:`~.reasons.TransformReason.REDACTION_REJECTED`). One whose pixel
-    data the option cannot clean, such as float pixel data, is sequestered
-    (:class:`~.pixel_cleaning.PixelDataRefused`), and one
+    (:attr:`~.reasons.TransformReason.REDACTION_REJECTED`). Float Pixel Data
+    and Double Float Pixel Data are cleaned in the same way, in the element
+    that held them. One whose pixel data the option cannot clean is
+    sequestered (:class:`~.pixel_cleaning.PixelDataRefused`), and one
     without top-level pixel data has nothing for the option to clean, so it
     satisfies it. Each instance that satisfies the option is marked with its
     code and Burned In Annotation (0028,0301) set to NO, which PS3.15 E.3.1
@@ -2623,6 +2624,10 @@ def _with_redaction(
     region to black out is kept, and Pixel Data that the plan does not keep
     is left as planned, which :func:`_written` refuses.
 
+    Float Pixel Data and Double Float Pixel Data with a region are written
+    to the element that held them, of VR OF and OD, which PS3.5 Section 6.2
+    gives them in every transfer syntax.
+
     Compressed Pixel Data, decoded, is written uncompressed, with or without
     a region, of VR OW
     where Bits Allocated is over 8 and OB otherwise, as
@@ -2632,12 +2637,22 @@ def _with_redaction(
     or Encapsulated Pixel Data Value Total Length, which describe only
     encapsulated Pixel Data (PS3.3 Section C.7.6.3.1.8).
     """
+    path = redaction.layout.element if redaction is not None else _PIXEL_DATA
     if (
         redaction is None
         or (redaction.decoded is None and not redaction.changed)
-        or _PIXEL_DATA not in writing.kept
+        or path not in writing.kept
     ):
         return writing
+    if redaction.layout.floating:
+        tag = _int_tag(path.tag)
+        vr = "OF" if redaction.layout.bits_allocated == 32 else "OD"
+        element = pydicom.DataElement(tag, vr, redaction.value)
+        return dataclasses.replace(
+            writing,
+            kept=writing.kept - {path},
+            replacements={**writing.replacements, path: element},
+        )
     if redaction.transfer_syntax is None:
         vr = dataset[0x7FE00010].VR
         if vr not in ("OB", "OW"):
