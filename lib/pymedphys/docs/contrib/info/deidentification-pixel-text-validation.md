@@ -329,3 +329,37 @@ Today's model and each further text detection model that passes vetting are meas
 Beside the models, the module `text_evaluation_rules` holds a rule that needs no model, measured through the same harness at each of its own settings: it finds connected components of a glyph's size at a frame's least or greatest value, where devices often draw their overlays, joins glyphs that lie close together along a line into one box, and grows each box by a margin. It serves as a comparator, and, joined with a model's boxes so that a region is boxed where either boxes it, as a candidate to combine with a model. Like the adapters, only the evaluation can select it.
 
 Models are measured in two tiers. The adoptable tier is the adapters above, any of which could become the detector. The benchmark-only tier, in the module `text_evaluation_benchmarks`, measures other detectors through the same harness for comparison, such as those with runners of their own in PyTorch, OpenCV, or Tesseract: each may be under any licence that permits its use on CI, read first-hand and recorded with its evidence and its training data, and is still pinned, its runner's packages by version and the SHA-256 of each file and its weights by URL and SHA-256. Their packages are installed on CI alone, into an environment of their own, never among PyMedPhys's dependencies or in its lock file, and their runners run on the runner itself, never as a service, since some frames are real patients'. Their summaries, pages, and assessments are marked benchmark-only, and none can be adopted.
+
+## Run the evaluation on your own images
+
+The evaluation can also be run on DICOM files that you may use, such as your department's RT Images, on your own machine (T6 of D-056). It measures them as the `Text Detector Evaluation` workflow measures its patients' series, and burns synthetic text into copies of their frames held in memory. It renders nothing and writes only counts.
+
+1. Put the files to measure in one folder, under the rules that apply to the data. Subfolders are searched, and files that are not DICOM, or not of a SOP Class read, are counted and left alone.
+2. In a development environment of this repository, run:
+
+   ```bash
+   uv run -- python -m pymedphys._dicom.deidentify.text_evaluation_local_command <folder> --out <results>
+   ```
+
+   `<results>` must not exist and must lie outside `<folder>`. The command reads each file where it lies and writes nothing beside it, creates `<results>` with `summary.json`, labelled `pymedphys-deid-text-detector-evaluation/1`, `summary.md`, and `assessment.json`, and prints the page. On first use it fetches the detector's model and the pinned fonts from the Python Package Index into PyMedPhys's data directory, each used only with its pinned SHA-256.
+3. The run succeeds when the command exits with status 0. It refuses a folder that holds no file of the SOP Classes read, annotations that cannot be read or are not of their form, a pinned font that cannot be fetched or checked, and published settings without OpenCV, and reports anything else that stops it, a failure to create or write `<results>` among it, by the exception's type and place in the code alone. pydicom's warnings and log records are redacted in every process that reads the files.
+4. Read `summary.md` before you share it. It holds counts, bins, intervals, settings, and the detector's method alone: no UID, name, date, path, or value. Never commit, cache, or attach the files or a value read from them.
+
+| Option | Default | What it does |
+| --- | --- | --- |
+| `--sop-class <UID>` | RT Image Storage | Reads the files of this SOP Class; repeat it for several. |
+| `--all-sop-classes` | off | Reads the files of every SOP Class, such as CT localisers, cone-beam CTs, and screen captures of dose. |
+| `--group-by` | `patient` | Groups the files into cases by `patient`, `study`, `series`, or `file`; a case grouped more finely than by patient still keeps its patient whole in the split and the bootstrap. |
+| `--known-text` | `unknown` | What is known of the text of frames that no annotation covers. With `unknown`, their regions are counted as regions where text is unknown, apart from false positives; give `none` only where the folder is known to hold no burned-in text, so that each region is a false positive. |
+| `--annotations <CSV>` | none | Boxes drawn around the text of some instances, with the columns `sop_instance_uid`, `frame` (from 1, or empty for 1), `top`, `left`, `bottom`, and `right` (pixels from 0, the bottom and right excluded); a row with an empty box marks an instance as holding no text. |
+| `--fonts` | `all` | The fonts of the synthetic text: `bitmaps`, the two bitmap fonts that the `Text Detector Evaluation` workflow's patients' job draws in, or `all`, which adds Pillow's bitmap font, crisp and smooth, and the twelve pinned fonts. |
+| `--model`, `--settings` | PP-OCRv6 small, `today` | The model and its settings, as for `idc-measure`. `published`, for a model whose publishers give settings, resizes with OpenCV as their pipeline does, and OpenCV is not in the development environment: on Linux x86-64 with Python 3.14, the platform whose wheels that file pins, install the pinned evaluation tools first, as the `Text Detector Evaluation` workflow does, with `uv pip install --require-hashes --no-deps -r .github/text-evaluation/requirements.txt`; on any other platform, those hashes match no wheel, so install the same version, unchecked by hash, with `uv pip install --no-deps opencv-python-headless==5.0.0.93`. Without OpenCV, the command refuses `published`. |
+| `--evaluated` | `tuning` | The part of the split measured: `tuning`, `held-out`, or `all`. Measure the held-out part only to confirm a chosen detector. |
+| `--workers` | 1 | Processes that measure the cases. |
+| `--collection` | `local RT Images` | What the summary calls these files. |
+
+Reading the results:
+
+- The sensitivity counts are of the synthetic text alone, unless you annotated the files: each piece is fully covered, partly covered, or missed, and counted in bins of the share of its core ink covered, by font, height, contrast, style, orientation, position, and content.
+- With `--known-text unknown`, a region on a frame as read may be real text, so the counts give where regions lie, by the zones at the frame's corners, edges, and centre, without counting them as false positives.
+- A projection's tissue is found from its luminance, so on an RT Image whose open field is brighter than the body, `air`, `tissue`, and `edge` positions and the tissue blacked out may refer to the open field rather than the body.
