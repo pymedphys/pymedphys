@@ -830,6 +830,37 @@ class WorkflowContractTests(unittest.TestCase):
         )
         self.assertEqual(len(hashes), len(pins))
 
+    def test_the_parametric_map_check_reads_only_and_keeps_its_tools_pinned(self):
+        text = (WORKFLOWS / "parametric-map-check-idc.yml").read_text(encoding="utf-8")
+        triggers = text.split("\non:\n", 1)[1].split("\npermissions:\n", 1)[0]
+        self.assertEqual(
+            re.findall(r"(?m)^  ([a-z_]+):", triggers), ["workflow_dispatch"]
+        )
+        self.assertIn("\npermissions:\n  contents: read\n", text)
+        self.assertEqual(
+            re.findall(r"(?m)^      [a-z-]+: (?:read|write)$", text),
+            ["      contents: read"],
+        )
+        self.assertNotIn("secrets.", text)
+        self.assertEqual(text.count("persist-credentials: false"), 1)
+        run_blocks = re.findall(r"(?ms)^        run: \|\n(.*?)(?=^      - |\Z)", text)
+        self.assertTrue(run_blocks)
+        for block in run_blocks:
+            self.assertNotIn("${{", block)
+        self.assertIn(
+            "uv pip install --require-hashes --no-deps \\\n"
+            "            -r .github/text-evaluation/requirements.txt",
+            text,
+        )
+        self.assertIn("sha256sum --check --strict -", text)
+        # Both commands run redacted, and only the results leave the runner.
+        self.assertEqual(text.count("python .github/scripts/run_redacted.py"), 2)
+        self.assertEqual(
+            re.findall(r"(?m)^          path: (.*)$", text),
+            ["${{ runner.temp }}/maps/results/"],
+        )
+        self.assertNotIn("actions/cache", text)
+
 
 if __name__ == "__main__":
     unittest.main()
