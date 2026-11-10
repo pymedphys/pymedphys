@@ -33,7 +33,11 @@ kept value does not, wherever the option explains it:
   value of the source that the search could find there does too; in a
   kept date, a datetime counts as equal where its date does, since the
   search also looks for a datetime by its date, and the text it then finds
-  is the whole kept date, which holds no time.
+  is the whole kept date, which holds no time; and in a kept datetime, a
+  date, or a datetime's date, counts as equal where it is the first eight
+  characters of a whole kept value, which are that value's date, since the
+  text found there is then the kept date, and the source's time is not in
+  it.
 
 An attribute is kept under a set of options where one of them gives it K
 and the Basic Profile does not, and no other gives it an action of its own
@@ -61,12 +65,13 @@ from __future__ import annotations
 import functools
 import types
 from collections.abc import Iterator, Mapping
+from typing import Literal
 
 from .file_layout import ElementPath
 from .policy import compose_custom_policy
-from .residuals import _KINDS, MAX_CHARACTERS, MIN_CHARACTERS, Form, SourceValue
-from .residuals import ValueKind
-from .residuals import _folded, _forms, _length
+from .residuals import _DATES, _KINDS, MAX_CHARACTERS, MIN_CHARACTERS, Form
+from .residuals import SourceValue, ValueKind
+from .residuals import _folded, _forms, _is_date, _length
 from .standard import dictionary_attribute
 
 # The VRs of text, coded text, and AE titles, in which kept text is read.
@@ -77,6 +82,10 @@ TEMPORAL_VRS = frozenset({"DA", "DT", "TM"})
 _EXPLICABLE = frozenset({ValueKind.DATE, ValueKind.DATETIME, ValueKind.TEXT})
 # The kind of value that a kept UID can explain.
 UID_KINDS = frozenset({ValueKind.UID})
+# The characters of a DT value that are its date, as YYYYMMDD (PS3.5 6.2).
+_DATE_CHARACTERS = 8
+
+KeptVR = Literal["DA", "DT"]
 
 
 @functools.cache
@@ -221,9 +230,17 @@ def retained_value(
         element of an attribute that the dictionary gives only VR DA, a
         value collected as DT whose date, as YYYYMMDD, is a whole value of
         the element counts as one, such as a vendor's private scan time
-        found by its date in a kept Study Date; its date in another
-        spelling, such as YYYY-MM-DD, does not, nor does it in a kept
-        datetime, such as Acquisition DateTime (0008,002A). Values are
+        found by its date in a kept Study Date. In an element of an
+        attribute that the dictionary gives only VR DT, a value collected
+        as DA or DT that is a date as YYYYMMDD, or a value collected as DT
+        whose date, as YYYYMMDD, is, counts as one where that date is the
+        first eight characters of a whole value of the element, which are
+        its date, such as a vendor's private scan time found by its date in
+        a kept Radiopharmaceutical Start DateTime (0018,1078) of the same
+        day. A date or datetime found by its date in another spelling, such
+        as YYYY-MM-DD or ACR-NEMA's YYYY.MM.DD, is not explained, nor is a
+        datetime with a time found whole at the start of a longer kept
+        datetime, or a date found after a kept value's start. Values are
         read as the search reads them, by the VR collected with each: a
         backslash separates the values of a multi-valued VR, but is a
         character of a single-valued one, such as ST. They are found as the
@@ -245,7 +262,8 @@ def retained_value(
         or source == location
     ):
         return False
-    return whole_values(found, values, text, _EXPLICABLE, dates=vrs == {"DA"})
+    kept_vr: KeptVR | None = "DA" if vrs == {"DA"} else "DT" if vrs == {"DT"} else None
+    return whole_values(found, values, text, _EXPLICABLE, kept_vr=kept_vr)
 
 
 def whole_values(
@@ -254,7 +272,7 @@ def whole_values(
     text: str,
     kinds: frozenset[ValueKind],
     *,
-    dates: bool = False,
+    kept_vr: KeptVR | None = None,
 ) -> bool:
     """Return whether a kept element's whole values explain a source's finding.
 
@@ -270,10 +288,12 @@ def whole_values(
         The kinds of source value that a whole kept value can explain, such
         as dates, datetimes, and text for a kept date (:func:`retained_value`)
         or :data:`UID_KINDS` for a kept UID.
-    dates : bool
-        Whether the kept element has only VR DA, so a datetime whose
-        YYYYMMDD date is a whole kept value can explain a date finding.
-        UID matching leaves this disabled.
+    kept_vr : {"DA", "DT"}, optional
+        The kept element's only VR, where it is DA or DT. In a kept DA, a
+        datetime whose YYYYMMDD date is a whole kept value can explain a
+        date finding; in a kept DT, a date, or a datetime's YYYYMMDD date,
+        that is the first eight characters of a whole kept value can, as
+        :func:`retained_value` describes. UID matching leaves it ``None``.
 
     Returns
     -------
@@ -286,7 +306,7 @@ def whole_values(
     explained = False
     for value in found:
         for whole in _values_in(
-            value, values, text.encode("ascii").lower(), kinds, dates=dates
+            value, values, text.encode("ascii").lower(), kinds, kept_vr=kept_vr
         ):
             if whole is None:
                 return False
@@ -300,12 +320,14 @@ def _values_in(
     written: bytes,
     kinds: frozenset[ValueKind],
     *,
-    dates: bool,
+    kept_vr: KeptVR | None,
 ) -> Iterator[bool | None]:
     """Yield, for each value of ``value``, whether ``kept`` explains it.
 
-    True for a value equal to a whole kept value, or, where ``dates``
-    identifies a kept date, for a datetime whose YYYYMMDD date is one;
+    True for a value equal to a whole kept value; where ``kept_vr`` is DA,
+    for a datetime whose YYYYMMDD date is one; where it is DT, for a date
+    or datetime that is a date as YYYYMMDD, or a datetime whose YYYYMMDD
+    date is, the first eight characters of a whole kept value;
     None for one that is not
     but that the search could find in ``written``, the kept element's whole
     value with ASCII letters in lower case; nothing for one that it could
@@ -318,19 +340,28 @@ def _values_in(
     kind = _KINDS.get(value.vr)
     if not isinstance(value.value, str) or kind is None:
         return
+    # The date that begins each kept datetime, which holds no time.
+    dates = {whole[:_DATE_CHARACTERS] for whole in kept} if kept_vr == "DT" else set()
     whole = False
     for form, text in _forms(value.value, value.vr, kind):
         if form is Form.VALUE:
-            whole = kind in kinds and bool(text) and text in kept
+            whole = (
+                kind in kinds
+                and bool(text)
+                and (
+                    text in kept
+                    or (kind in _DATES and _is_date(text) and text in dates)
+                )
+            )
             if whole:
                 yield True
         elif (
             form is Form.DATE_DICOM
-            and dates
             and kind is ValueKind.DATETIME
-            and text in kept
+            and text in (kept if kept_vr == "DA" else dates)
         ):
-            # The found text is the whole kept date, which holds no time.
+            # The found text is the whole kept date, or the date that begins
+            # a kept datetime, neither of which holds the source's time.
             yield True
             continue
         if not whole and _length(text) >= MIN_CHARACTERS:
