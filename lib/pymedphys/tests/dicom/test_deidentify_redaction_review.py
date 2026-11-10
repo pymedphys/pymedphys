@@ -1063,7 +1063,11 @@ def test_the_statement_gives_the_code_only_after_review():
         "Comprehensive 3D SR, Extensible SR, Key Object Selection Document, "
         "Mammography CAD SR, Chest CAD SR, Colon CAD SR, Procedure Log, Spectacle "
         "Prescription Report, Macular Grid Thickness and Volume Report, Waveform "
-        "Annotation SR, and Real World Value Mapping."
+        "Annotation SR, Real World Value Mapping, Grayscale Softcopy Presentation "
+        "State, Color Softcopy Presentation State, Pseudo-Color Softcopy "
+        "Presentation State, Blending Softcopy Presentation State, XA/XRF "
+        "Grayscale Softcopy Presentation State, and Variable Modality LUT "
+        "Softcopy Presentation State."
     ) in text
     assert (
         "claims Clean Pixel Data only for an instance without top-level pixel "
@@ -1117,6 +1121,12 @@ def test_the_statement_names_each_supported_iod_that_lacks_the_attribute():
         "Macular Grid Thickness and Volume Report",
         "Waveform Annotation SR",
         "Real World Value Mapping",
+        "Grayscale Softcopy Presentation State",
+        "Color Softcopy Presentation State",
+        "Pseudo-Color Softcopy Presentation State",
+        "Blending Softcopy Presentation State",
+        "XA/XRF Grayscale Softcopy Presentation State",
+        "Variable Modality LUT Softcopy Presentation State",
     }
 
 

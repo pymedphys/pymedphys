@@ -52,7 +52,17 @@ RESPONSIBLE_PERSON = "(0010,2297)"  # X; Type 2C at the top level
 OVERLAY_DATA = "(60xx,3000)"  # X; its Overlay Plane Module is U in CT Image
 VERIFYING_OBSERVER_SEQUENCE = "(0040,A073)"  # D; only Structured Report IODs
 CONTENT_SEQUENCE = "(0040,A730)"  # D; only Structured Report and Key Object IODs
-GRAPHIC_ANNOTATION_SEQUENCE = "(0070,0001)"  # D; no supported IOD defines it
+FLOW_IDENTIFIER_SEQUENCE = "(0034,0001)"  # D; no supported IOD defines it
+GRAPHIC_ANNOTATION_SEQUENCE = "(0070,0001)"  # D; Type 1 in its module
+# The softcopy Presentation States, in the statement's order.
+PRESENTATION_STATES = (
+    "Blending Softcopy Presentation State",
+    "Color Softcopy Presentation State",
+    "Grayscale Softcopy Presentation State",
+    "Pseudo-Color Softcopy Presentation State",
+    "Variable Modality LUT Softcopy Presentation State",
+    "XA/XRF Grayscale Softcopy Presentation State",
+)
 # The Structured Reports and the Key Object Selection Document, in the
 # statement's order.
 STRUCTURED_REPORTS = (
@@ -254,33 +264,47 @@ def test_a_plain_x_on_overlay_data_removes_its_overlay_group():
 
 @pytest.mark.deid_requirement("PS3.15-E.1.3-01")
 def test_a_plain_d_that_no_supported_iod_defines_is_removed():
-    entry = _entry(_statement("basic"), GRAPHIC_ANNOTATION_SEQUENCE)
+    entry = _entry(_statement("basic"), FLOW_IDENTIFIER_SEQUENCE)
     assert (entry.action, entry.places, entry.elsewhere) == ("D", (), "X")
     row = _row(
         conformance_markdown.render_markdown(_statement("basic")),
-        GRAPHIC_ANNOTATION_SEQUENCE,
+        FLOW_IDENTIFIER_SEQUENCE,
     )
     assert row.endswith("| X elsewhere. |")
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.3-01")
+def test_a_plain_d_on_a_presentation_states_graphic_annotations_sequesters_it():
+    # A sequence has no dummy value (D-021), and the Graphic Annotation
+    # Module requires the sequence at the top level wherever the module is
+    # present.
+    entry = _entry(_statement("basic"), GRAPHIC_ANNOTATION_SEQUENCE)
+    assert (entry.action, entry.elsewhere) == ("D", "X")
+    assert entry.places == tuple(
+        conformance.Place(name, (), conformance.SEQUESTER)
+        for name in PRESENTATION_STATES
+    )
 
 
 @pytest.mark.deid_requirement("PS3.15-E.1.3-01")
 def test_a_plain_d_on_a_reports_content_sequence_sequesters_it():
     # A sequence has no dummy value (D-021), and each Structured Report
     # requires Content Sequence at the top level where the root has content
-    # items.
+    # items. An Encapsulated PDF allows it there, as Type 3, and D replaces
+    # whatever its Type.
     entry = _entry(_statement("basic"), CONTENT_SEQUENCE)
+    sequestered = tuple(sorted((*STRUCTURED_REPORTS, "Encapsulated PDF")))
     assert (entry.action, entry.elsewhere) == ("D", "X")
     assert entry.places == tuple(
-        conformance.Place(name, (), conformance.SEQUESTER)
-        for name in STRUCTURED_REPORTS
+        conformance.Place(name, (), conformance.SEQUESTER) for name in sequestered
     )
     row = _row(
         conformance_markdown.render_markdown(_statement("basic")), CONTENT_SEQUENCE
     )
     assert row.endswith(
         "| instance sequestered at the top level in "
-        + ", ".join(STRUCTURED_REPORTS[:-1])
-        + f", and {STRUCTURED_REPORTS[-1]}. X elsewhere. |"
+        + ", ".join(sequestered[:-1])
+        + f", and {sequestered[-1]}. X elsewhere. |"
     )
 
 
