@@ -571,8 +571,10 @@ def dates_and_times(
             "own, equals a whole kept value, the residual search finds it in "
             "the kept element, and the kept value explains it, so it does not "
             "withhold the instance, nor does a removed datetime whose date, "
-            "which the search also looks for, equals a whole kept date; found "
-            "inside a longer kept value, such as the date of a kept datetime, "
+            "which the search also looks for, equals a whole kept date, or a "
+            "removed date, or datetime's date, that is the date that begins a "
+            "kept datetime; found inside a longer kept value, such as a "
+            "removed datetime to the minute at the start of a kept datetime, "
             "it still does. "
             f"{named(TEMPORAL_MODIFIED)} is `{statement.markers.temporal}`, as "
             "Attributes inserted describes.",
