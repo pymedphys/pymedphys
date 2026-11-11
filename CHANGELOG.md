@@ -12,6 +12,16 @@ This project adheres to
 
 ## Unreleased
 
+### Accented letters in Pinnacle exports
+
+Pinnacle export (`pymedphys pinnacle export` and `pymedphys.pinnacle.PinnacleExport`) now reads the image header (`ImageSet_N.header`) and the ROI file (`plan.roi`) as ISO 8859-1 (Latin-1), like Pinnacle's other files, whatever the computer's default text encoding, and `pymedphys.pinnacle.PinnacleImage.image_header` reads the image header in the same way. ISO 8859-1 is the character set that the exported DICOM files declare (`ISO_IR 100`).
+
+- Where the default encoding is UTF-8, as on Linux and macOS and in Python's UTF-8 mode on Windows, an accented letter in either file stopped the export with `UnicodeDecodeError`: one in the image header could stop every export, and one in `plan.roi`, for example in the ROI name `Moelle épinière`, stopped RTSTRUCT export.
+- On Windows with code page 1252, the setting for English and Western European languages, accented letters were already read correctly. Only the bytes 0x80 to 0x9F, which ISO 8859-1 reads as control codes, change: ROI names showed most of them as `?`, and the others stopped the export. ROI names now keep them as control codes, which DICOM does not allow in an ROI name.
+- On Windows with other code pages, an accented letter in either file could stop the export, and one in an ROI name could be exported as `?`, with a pydicom warning; with double-byte code pages, such as Japanese, that `?` also replaced the next character. `image_header` returned such letters as other characters.
+
+**Re-export RTSTRUCTs whose ROI names show `?` in place of accented letters**, and run again any export that stopped with `UnicodeDecodeError`. [PR #TBD](https://github.com/pymedphys/pymedphys/pull/TBD)
+
 ### iCOM listeners stop reading closed connections
 
 A remote closure of an iCOM connection raises `ConnectionError` and closes
@@ -726,6 +736,7 @@ Given lists of dose and distance criteria, `pymedphys.gamma` returns gamma for e
 
 ### (Potentially) breaking changes
 
+- On Windows, Pinnacle RTSTRUCT exports and `pymedphys.pinnacle.PinnacleImage.image_header` can give different text where `plan.roi` or the image header contains accented letters or the bytes 0x80 to 0x9F, and ROI skip patterns (`--roiskip`, or the `skip_pattern` of `PinnacleExport.export_struct`) are matched against the changed ROI names; see "Accented letters in Pinnacle exports" above. [PR #TBD](https://github.com/pymedphys/pymedphys/pull/TBD)
 - `pymedphys.Delivery.to_dicom` writes different Cumulative Meterset Weights and jaw and leaf positions for some templates, leaves the Cumulative Dose Reference Coefficients of control points after the first empty, and raises `ValueError` for a template beam that does not define one ASYMY and one MLCX device, or whose Final Cumulative Meterset Weight is not a positive, finite number of at least `sys.float_info.min` (about 2.2e-308); see "RT Plans written by `Delivery.to_dicom`" above. [PR #2616](https://github.com/pymedphys/pymedphys/pull/2616)
 - The private `pymedphys._mosaiq.sessions` helpers return different sessions for some sites; see "Mosaiq treatment sessions follow Mosaiq's rule" above. Session numbers count one site's sessions, so they differ from the Treatment Chart's per-patient numbers when several sites are treated in the same visit. [PR #2430](https://github.com/pymedphys/pymedphys/pull/2430)
 - `pymedphys gui` now serves only the computer that runs it. It listens on `127.0.0.1` instead of every network interface, and accepts the WebSocket connections that run the apps only when they are addressed to `localhost` or `127.0.0.1`, which protects those connections against DNS rebinding. To serve other computers, for example from a department server, pass the address to listen on with the new `--address` option, such as `pymedphys gui --address 0.0.0.0`. The apps have no login and handle patient data, so anyone who can reach that address and port can use them, over unencrypted HTTP. The GUI also turns off Streamlit's usage statistics. It passes these settings to Streamlit on the command line, so they override Streamlit's configuration files and environment variables: a `server.address` set there no longer takes effect; use `--address` instead. See [Graphical apps](https://docs.pymedphys.com/en/latest/users/ref/cli/gui.html). [PR #2166](https://github.com/pymedphys/pymedphys/pull/2166), [PR #2167](https://github.com/pymedphys/pymedphys/pull/2167)

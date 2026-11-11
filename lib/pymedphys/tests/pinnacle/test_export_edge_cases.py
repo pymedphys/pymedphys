@@ -1,3 +1,4 @@
+# Copyright (C) 2026 Marchant Van der Walt
 # Copyright (C) 2026 Matthew Jennings
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,6 +15,7 @@
 
 """Exercise Pinnacle export edge cases without downloading patient datasets."""
 
+import functools
 import logging
 import struct
 from types import SimpleNamespace
@@ -21,12 +23,13 @@ from types import SimpleNamespace
 from pymedphys._imports import numpy as np
 from pymedphys._imports import pydicom, pytest
 
+from pymedphys._pinnacle import pinnacle_image, rtstruct
 from pymedphys._pinnacle.pinnacle_exceptions import (
     MissingBeamDoseError,
     MissingCTImageError,
     MissingTrialBeamsError,
 )
-from pymedphys.pinnacle import PinnacleExport
+from pymedphys.pinnacle import PinnacleExport, PinnacleImage
 
 pytestmark = pytest.mark.pydicom
 
@@ -185,3 +188,82 @@ def test_exports_reject_missing_trial_beams(tmp_path, exporter, beam_list):
         exporter(plan, export_path=tmp_path)
 
     assert not list(tmp_path.glob("*.dcm"))
+
+
+@pytest.fixture
+def utf8_default_open(monkeypatch):
+    """Make UTF-8 the default encoding of the Pinnacle readers' ``open``.
+
+    ``open`` without an encoding uses the locale's, which is UTF-8 on Linux
+    and macOS but usually code page 1252 on Windows, where every Latin-1
+    letter decodes as in ISO 8859-1. A UTF-8 default makes the tests below
+    fail without an explicit encoding on every platform. An encoding given
+    in the call takes precedence over this default.
+    """
+    utf8_open = functools.partial(open, encoding="utf-8")
+    for module in (pinnacle_image, rtstruct):
+        monkeypatch.setattr(module, "open", utf8_open, raising=False)
+
+
+@pytest.mark.usefixtures("utf8_default_open")
+def test_image_header_is_read_as_latin_1(tmp_path):
+    """Read the image header as ISO 8859-1 (Latin-1), whatever the default encoding.
+
+    The exporter reads Pinnacle's other text files as ISO 8859-1, the
+    character set that its DICOM files declare (ISO_IR 100). Decoded with
+    the locale's encoding instead, these letters cannot be read where that
+    encoding is UTF-8, as on Linux and macOS, and the image, RTSTRUCT,
+    RTPLAN and RTDOSE exports read this header. Byte 0x81, which code page
+    1252 cannot decode, is the control character U+0081 in ISO 8859-1.
+    """
+    header = "patient_position : HFS\ndb_name : Synthétique^Zoë\x81\n"
+    (tmp_path / "ImageSet_0.header").write_bytes(header.encode("iso-8859-1"))
+    pinnacle = SimpleNamespace(logger=logging.getLogger(__name__))
+
+    image = PinnacleImage(pinnacle, str(tmp_path), {"ImageSetID": 0})
+
+    assert image.image_header == {
+        "patient_position": "HFS",
+        "db_name": "Synthétique^Zoë\x81",
+    }
+
+
+@pytest.mark.usefixtures("utf8_default_open")
+def test_struct_export_reads_latin_1_roi_names(tmp_path):
+    """Export an ROI name from an ISO 8859-1 plan.roi to the RTSTRUCT unchanged.
+
+    Decoded with the locale's encoding instead, the name cannot be read
+    where that encoding is UTF-8, as on Linux and macOS.
+    """
+    roi_name = "Moelle épinière"
+    roi_file = (
+        f"//  Beginning of ROI: {roi_name}\n"
+        "roi={\n"
+        "  roiinterpretedtype: ORGAN\n"
+        "  color: red\n"
+        "//  Curve 1 of 1\n"
+        "  curve={\n"
+        "    num_points =  3;\n"
+        "    points={\n"
+        "0 0 0\n"
+        "1 0 0\n"
+        "1 1 0\n"
+        "    };  // End of points for curve 1\n"
+        "  }; // End of curve 1\n"
+        "}; // End of ROI\n"
+    )
+    (tmp_path / "plan.roi").write_bytes(roi_file.encode("iso-8859-1"))
+    plan = _make_plan(tmp_path, [])
+    plan.points = []
+    plan.pinnacle.patient_info["ReferringPhysician"] = ""
+    plan.primary_image.image_header = {"patient_position": "HFS"}
+    plan.primary_image.image_info[0].update(
+        TablePosition=0, SeriesUID="1.2.3.9", InstanceUID="1.2.3.10"
+    )
+
+    PinnacleExport.export_struct(plan, export_path=tmp_path)
+
+    (struct_file,) = tmp_path.glob("RS.*.dcm")
+    structure_set = pydicom.dcmread(struct_file)
+    assert structure_set.SpecificCharacterSet == "ISO_IR 100"
+    assert structure_set.StructureSetROISequence[0].ROIName == roi_name

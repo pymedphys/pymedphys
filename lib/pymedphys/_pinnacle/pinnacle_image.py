@@ -160,7 +160,7 @@ class PinnacleImage:
 
             self.logger.debug("Reading image data from: %s", path_image_header)
             self._image_header = {}
-            with open(path_image_header) as f:
+            with open(path_image_header, encoding="ISO-8859-1") as f:
                 for line in f:
                     parts = line.split(" = ")
 
