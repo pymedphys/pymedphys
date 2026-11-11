@@ -1,3 +1,4 @@
+# Copyright (C) 2026 Marchant Van der Walt
 # Copyright (C) 2019 Simon Biggs and Cancer Care Associates
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,6 +19,7 @@ from pymedphys._imports import plt, pydicom, pytest
 
 import pymedphys
 from pymedphys import Delivery
+from pymedphys._dicom.create import dicom_dataset_from_dict
 from pymedphys._dicom.rtplan import (
     convert_to_one_fraction_group,
     get_gantry_angles_from_dicom,
@@ -161,6 +163,30 @@ def test_round_trip_dcm2dd2dcm(loaded_dicom_dataset):
     assert str(single_fraction_group) == str(processed)
 
 
+@pytest.mark.pydicom
+def test_to_dicom_with_single_beam_template():
+    # The delivery differs from the template in meterset, and by half a
+    # degree in gantry angle, so the beam written must be the delivery's.
+    template = single_beam_plan(meterset=100.0, gantry_angle=90.0)
+    delivered = Delivery.from_dicom(single_beam_plan(meterset=60.0, gantry_angle=90.5))
+
+    dicom = delivered.to_dicom(template)
+
+    (beam,) = dicom.BeamSequence
+    (fraction_group,) = dicom.FractionGroupSequence
+    (referenced_beam,) = fraction_group.ReferencedBeamSequence
+    assert referenced_beam.ReferencedBeamNumber == beam.BeamNumber
+    assert float(referenced_beam.BeamMeterset) == 60.0
+    assert float(beam.ControlPointSequence[0].GantryAngle) == 90.5
+
+    processed = Delivery.from_dicom(dicom)
+    np.testing.assert_allclose(processed.monitor_units, [0.0, 30.0, 30.0, 60.0])
+    for field in ("gantry", "collimator", "mlc", "jaw"):
+        np.testing.assert_array_equal(
+            getattr(processed, field), getattr(delivered, field)
+        )
+
+
 @pytest.mark.slow
 @pytest.mark.pydicom
 def test_metersetmap_agreement(loaded_dicom_dataset, logfile_delivery_data):
@@ -223,3 +249,66 @@ def first_mlc_positions(dicom_dataset):
     ]
 
     return result
+
+
+def single_beam_plan(meterset, gantry_angle):
+    """An RT Plan with one static-gantry beam of two step-and-shoot
+    segments, each delivering half of ``meterset``."""
+    jaw = [-50.0, 60.0]
+    first_segment_mlc = [-5.0, -6.0, -7.0, -8.0, 15.0, 16.0, 17.0, 18.0]
+    second_segment_mlc = [-25.0, -26.0, -27.0, -28.0, 5.0, 6.0, 7.0, 8.0]
+
+    control_points = []
+    for index, (weight, mlc) in enumerate(
+        [
+            (0.0, first_segment_mlc),
+            (0.5, first_segment_mlc),
+            (0.5, second_segment_mlc),
+            (1.0, second_segment_mlc),
+        ]
+    ):
+        control_point = {
+            "ControlPointIndex": index,
+            "CumulativeMetersetWeight": weight,
+            "BeamLimitingDevicePositionSequence": [
+                {"RTBeamLimitingDeviceType": "ASYMY", "LeafJawPositions": jaw},
+                {"RTBeamLimitingDeviceType": "MLCX", "LeafJawPositions": mlc},
+            ],
+        }
+        if index == 0:
+            control_point["GantryAngle"] = gantry_angle
+            control_point["BeamLimitingDeviceAngle"] = 0.0
+        control_points.append(control_point)
+
+    return dicom_dataset_from_dict(
+        {
+            "BeamSequence": [
+                {
+                    "BeamNumber": 1,
+                    "FinalCumulativeMetersetWeight": 1.0,
+                    "NumberOfControlPoints": len(control_points),
+                    "BeamLimitingDeviceSequence": [
+                        {
+                            "RTBeamLimitingDeviceType": "ASYMY",
+                            "NumberOfLeafJawPairs": 1,
+                        },
+                        {
+                            "RTBeamLimitingDeviceType": "MLCX",
+                            "NumberOfLeafJawPairs": 4,
+                            "LeafPositionBoundaries": [-20.0, -10.0, 0.0, 10.0, 20.0],
+                        },
+                    ],
+                    "ControlPointSequence": control_points,
+                }
+            ],
+            "FractionGroupSequence": [
+                {
+                    "FractionGroupNumber": 1,
+                    "NumberOfBeams": 1,
+                    "ReferencedBeamSequence": [
+                        {"ReferencedBeamNumber": 1, "BeamMeterset": meterset}
+                    ],
+                }
+            ],
+        }
+    )

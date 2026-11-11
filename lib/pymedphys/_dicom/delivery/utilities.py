@@ -58,7 +58,10 @@ def angle_dd2dcm(angle):
 
 
 def gantry_tol_from_gantry_angles(gantry_angles):
-    min_diff = np.min(np.diff(sorted(gantry_angles)))
+    # The tolerance stays below half the spacing of neighbouring beams, so
+    # that each control point matches only one beam. A single beam has no
+    # neighbour, so it gets the 3 degree maximum.
+    min_diff = np.min(np.diff(sorted(gantry_angles)), initial=np.inf)
     gantry_tol = np.min([min_diff / 2 - 0.1, 3])
 
     return gantry_tol

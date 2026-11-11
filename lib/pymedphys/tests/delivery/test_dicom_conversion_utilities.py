@@ -1,3 +1,4 @@
+# Copyright (C) 2026 Marchant Van der Walt
 # Copyright (C) 2026 Matthew Jennings
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,6 +16,7 @@
 """Conversion of delivery angles and MLC positions to DICOM strings."""
 
 from pymedphys._imports import numpy as np
+from pymedphys._imports import pytest
 
 from pymedphys._dicom.delivery import utilities
 
@@ -42,3 +44,20 @@ def test_mlc_positions_from_nested_lists_are_converted():
     mlc = [[[1.0, 2.0], [3.0, 4.0]]]
 
     assert utilities.mlc_dd2dcm(mlc) == [["-4.0", "-2.0", "3.0", "1.0"]]
+
+
+@pytest.mark.parametrize(
+    "gantry_angles, expected",
+    [
+        # A single beam has no neighbour, so it gets the 3 degree maximum.
+        ((90.0,), 3.0),
+        # Otherwise half the spacing of the closest beams, less 0.1 degree,
+        # up to that maximum.
+        ((0.0, 90.0), 3.0),
+        ((0.0, 4.0, 90.0), 1.9),
+    ],
+)
+def test_gantry_tolerance_from_template_beam_angles(gantry_angles, expected):
+    tolerance = utilities.gantry_tol_from_gantry_angles(gantry_angles)
+
+    assert tolerance == pytest.approx(expected)
