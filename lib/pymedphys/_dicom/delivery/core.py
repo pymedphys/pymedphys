@@ -1,3 +1,4 @@
+# Copyright (C) 2026 Marchant Van der Walt
 # Copyright (C) 2019 Cancer Care Associates and Simon Biggs
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -168,6 +169,51 @@ class DeliveryDicom(DeliveryBase):
         return cls.combine(*delivery_data_by_beam_sequence)
 
     def to_dicom(self, dicom_template, fraction_group_number=None):
+        """Write this delivery into a copy of an RT Plan template.
+
+        Parameters
+        ----------
+        dicom_template : pydicom.Dataset
+            An RT Plan whose beams each have a single gantry angle. The
+            delivery's control points go to the beam at their gantry
+            angle. Each beam must define one ASYMY jaw pair and one MLCX
+            beam limiting device.
+        fraction_group_number : int, optional
+            The fraction group to write. By default, the template's only
+            fraction group, or the one whose Beam Metersets and gantry
+            angles match the delivery's.
+
+        Returns
+        -------
+        pydicom.Dataset
+            A copy of the template with only that fraction group and its
+            beams, holding this delivery's control points and Beam
+            Metersets.
+
+        Raises
+        ------
+        ValueError
+            If a template beam does not define exactly one ASYMY and one
+            MLCX beam limiting device, or no single fraction group
+            matches the delivery.
+
+        Notes
+        -----
+        Every control point is written with ASYMY and MLCX positions,
+        in whatever order the template lists the devices, including
+        where a template control point leaves a device out. Cumulative
+        Meterset Weights are written on the scale of the template beam's
+        Final Cumulative Meterset Weight, so the final weight equals it
+        (PS3.3 C.8.8.14); a beam without one is given a Final Cumulative
+        Meterset Weight of 1. After the first control point, whose
+        Cumulative Dose Reference Coefficients PS3.3 C.8.8.14.7 defines
+        as zero, the coefficients in each Referenced Dose Reference
+        Sequence are left empty, because they come from the dose
+        calculated for the template, which a delivery does not record.
+        Other control point attributes are copied from the template's
+        first control point for the first, and from its last control
+        point for the rest.
+        """
         filtered = self._filter_cps()
         if fraction_group_number is None:
             fraction_group_number = self._fraction_group_number(dicom_template)
@@ -328,12 +374,31 @@ class DeliveryDicom(DeliveryBase):
         data_converted = self._coordinate_convert()
 
         beam = created_dicom.BeamSequence[beam_index]
+
+        device_types = [
+            device.RTBeamLimitingDeviceType
+            for device in beam.BeamLimitingDeviceSequence
+        ]
+        if device_types.count("ASYMY") != 1 or device_types.count("MLCX") != 1:
+            raise ValueError(
+                "Delivery.to_dicom needs each template beam to define one "
+                "ASYMY and one MLCX beam limiting device, the jaws and MLC "
+                "whose positions it writes."
+            )
+
+        # Required (Type 1C) once the control points have weights.
+        if beam.get("FinalCumulativeMetersetWeight") in (None, ""):
+            beam.FinalCumulativeMetersetWeight = 1
+
         cp_sequence = beam.ControlPointSequence
         initial_cp = cp_sequence[0]
         subsequent_cp = cp_sequence[-1]
 
         all_control_points = _pmp_rtplan.build_control_points(
-            initial_cp, subsequent_cp, data_converted
+            initial_cp,
+            subsequent_cp,
+            data_converted,
+            float(beam.FinalCumulativeMetersetWeight),
         )
 
         beam_meterset = "{:.6f}".format(data_converted["monitor_units"][-1])
