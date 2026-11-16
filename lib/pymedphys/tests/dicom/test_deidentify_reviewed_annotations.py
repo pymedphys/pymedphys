@@ -39,7 +39,10 @@ from pymedphys._dicom.deidentify import (
     risk_assessment,
     run,
 )
-from pymedphys._dicom.deidentify.annotation_drawing import draw_annotation
+from pymedphys._dicom.deidentify.annotation_drawing import (
+    draw_annotation,
+    undrawn_objects,
+)
 from pymedphys._dicom.deidentify.file_layout import ElementPath
 from pymedphys._dicom.deidentify.graphic_annotations import AnnotationMaterial
 from pymedphys._dicom.deidentify.instance_transform import (
@@ -123,6 +126,68 @@ def _ruler(text=RULER_TEXT):
             )
         ],
     )
+
+
+# Lettering that a Fill Pattern's bits spell, top rows first, each row's
+# leftmost character its most significant bit (PS3.3 C.10.5.1.3.14).
+LETTERING = (
+    "#...#.###",
+    "#...#..#.",
+    "#####..#.",
+    "#...#..#.",
+    "#...#.###",
+)
+
+
+def _pattern(rows=LETTERING):
+    """Return a 128-byte Fill Pattern whose set bits are the ``#`` of ``rows``."""
+    rows = [row.ljust(32, ".") for row in rows]
+    rows += ["." * 32] * (32 - len(rows))
+    return b"".join(
+        int(row.replace("#", "1").replace(".", "0"), 2).to_bytes(4, "big")
+        for row in rows
+    )
+
+
+def _filled(mode="STIPPELED", pattern=None):
+    """An annotation of a filled square, whose fill can carry lettering."""
+    style = synthetic.item(FillMode=mode)
+    if pattern is not None:
+        style.FillPattern = pattern
+    return synthetic.item(
+        GraphicLayer="LAYER",
+        ReferencedImageSequence=[
+            synthetic.reference(synthetic.CT_IMAGE_STORAGE, synthetic.CT_SLICES[0])
+        ],
+        GraphicObjectSequence=[
+            synthetic.item(
+                GraphicAnnotationUnits="PIXEL",
+                GraphicDimensions=2,
+                NumberOfGraphicPoints=5,
+                GraphicData=[1.0, 1.0, 40.0, 1.0, 40.0, 40.0, 1.0, 40.0, 1.0, 1.0],
+                GraphicType="POLYLINE",
+                GraphicFilled="Y",
+                FillStyleSequence=[style],
+            )
+        ],
+    )
+
+
+def _bitmap(drawing):
+    """Return the rows of the drawing's first fill pattern panel as ``#`` and ``.``."""
+    document = xml.dom.minidom.parseString(drawing)
+    (panel,) = [
+        each
+        for each in document.getElementsByTagName("svg")
+        if each.getAttribute("viewBox") == "0 0 32 32"
+    ]
+    rows = [["."] * 32 for _ in range(32)]
+    for group in panel.getElementsByTagName("g"):
+        for rect in group.getElementsByTagName("rect"):
+            x, y = int(rect.getAttribute("x")), int(rect.getAttribute("y"))
+            for column in range(x, x + int(rect.getAttribute("width"))):
+                rows[y][column] = "#"
+    return ["".join(row) for row in rows]
 
 
 def _presentation_state(*annotations):
@@ -363,6 +428,49 @@ def test_a_kept_annotation_that_names_the_patient_is_held():
     assert synthetic.PATIENTS_NAME.encode() not in result.data
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.3-01")
+def test_a_kept_annotation_whose_fill_the_drawing_shows_is_written():
+    filled = _filled(pattern=_pattern())
+    reviewed = _reviewed(filled=(annotation_digest(filled), Review.KEEP))
+
+    _, result = _transformed(_presentation_state(filled), reviewed)
+
+    assert isinstance(result, run.Transformed), result
+    assert not isinstance(result.evidence, HeldEvidence)
+    written = pydicom.dcmread(io.BytesIO(result.data))
+    (graphic,) = written.GraphicAnnotationSequence[0].GraphicObjectSequence
+    assert graphic.FillStyleSequence[0].FillPattern == _pattern()
+    (material,) = _material(result)
+    assert material.result.outcome is Outcome.KEPT
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.3-01")
+@pytest.mark.parametrize(
+    "annotation",
+    [
+        # A pattern that is not 32 x 32 bits cannot be drawn as a display
+        # would tile it.
+        _filled(pattern=_pattern()[:64]),
+        # Nor can a fill mode that PS3.3 does not define.
+        _filled(mode="HATCHED"),
+    ],
+)
+def test_a_kept_annotation_that_its_drawing_leaves_out_is_held(annotation):
+    # The reviewer decided without seeing it whole, so the decision cannot
+    # release it.
+    reviewed = _reviewed(annotation=(annotation_digest(annotation), Review.KEEP))
+
+    _, result = _transformed(_presentation_state(annotation), reviewed)
+
+    assert undrawn_objects(annotation) == 1
+    assert isinstance(result, run.Transformed), result
+    assert isinstance(result.evidence, HeldEvidence)
+    (held,) = getattr(result.evidence, "held")
+    assert held.reason is Held.NOT_DRAWN
+    (material,) = _material(result)
+    assert material.result.held_because is Held.NOT_DRAWN
+
+
 def test_a_list_is_taken_only_under_clean_graphics():
     with pytest.raises(PolicyError, match="Clean Graphics|clean graphics"):
         _transformed(
@@ -513,6 +621,53 @@ def test_a_graphic_that_cannot_be_drawn_is_counted_not_guessed():
     drawing = draw_annotation(item)
 
     assert "nothing drawn; 2 object(s) not drawn" in drawing
+
+
+def test_a_stippled_fill_is_drawn_bit_for_bit():
+    lettered = draw_annotation(_filled(pattern=_pattern()))
+    blank = draw_annotation(_filled(pattern=bytes(128)))
+
+    # The lettering is shown, each row's most significant bit leftmost, so
+    # a reviewer can tell it from a blank pattern.
+    assert _bitmap(lettered)[: len(LETTERING)] == [
+        row.ljust(32, ".") for row in LETTERING
+    ]
+    assert _bitmap(lettered)[len(LETTERING) :] == ["." * 32] * (32 - len(LETTERING))
+    assert _bitmap(blank) == ["." * 32] * 32
+    assert lettered != blank
+    assert "fill pattern 1" in lettered and "not drawn" not in lettered
+    assert undrawn_objects(_filled(pattern=_pattern())) == 0
+    # The square itself is shaded as filled.
+    assert '<polygon points="1,1 40,1 40,40 1,40" fill-opacity="0.15"/>' in lettered
+
+
+def test_a_solid_fill_is_shaded_with_no_pattern_panel():
+    drawing = draw_annotation(_filled(mode="SOLID"))
+
+    assert 'fill-opacity="0.15"' in drawing
+    assert "fill pattern" not in drawing and "not drawn" not in drawing
+
+
+def test_a_compound_graphic_is_drawn_in_its_own_units():
+    item = synthetic.item(
+        GraphicLayer="LAYER",
+        CompoundGraphicSequence=[
+            synthetic.item(
+                CompoundGraphicUnits="DISPLAY",
+                GraphicDimensions=2,
+                NumberOfGraphicPoints=2,
+                GraphicData=[0.2, 0.3, 0.4, 0.5],
+                CompoundGraphicType="ARROW",
+                CompoundGraphicInstanceID=1,
+            )
+        ],
+    )
+
+    drawing = draw_annotation(item)
+
+    assert '<polyline points="200,300 400,500" fill="none" stroke-dasharray' in drawing
+    assert "display units" in drawing
+    assert undrawn_objects(item) == 0
 
 
 def _entry(**fields):

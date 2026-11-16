@@ -131,6 +131,7 @@ from typing import TypeAlias
 from pymedphys._imports import pydicom
 
 from . import output_names
+from .annotation_drawing import undrawn_objects
 from .birth_dates import BIRTH_DATE_PRESET, BirthDates, with_birth_date
 from .clean_graphics import CLEAN_GRAPHICS, overlay_in_pixel_data
 from .content_items import content_item_actions, log_dummy_datetimes
@@ -1948,7 +1949,13 @@ class InstanceTransform:
         assert self._annotations is not None
         identifiers = identifiers_of(edits)
         return [
-            review_annotation(each.digest, each.texts, self._annotations, identifiers)
+            review_annotation(
+                each.digest,
+                each.texts,
+                self._annotations,
+                identifiers,
+                drawn=undrawn_objects(each.item) == 0,
+            )
             if each.result.outcome is AnnotationOutcome.KEPT
             else each.result
             for each in material

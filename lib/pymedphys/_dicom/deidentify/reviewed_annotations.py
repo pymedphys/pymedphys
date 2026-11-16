@@ -98,6 +98,9 @@ class Held(enum.Enum):
     # the list keeps it, but its text echoes one of its instance's patient
     # or other person identifiers
     ECHOES_IDENTIFIER = "echoes-identifier"
+    # the list keeps it, but the QC pack's drawing of it leaves out an
+    # object or a fill, so the reviewer did not see it whole
+    NOT_DRAWN = "not-drawn"
 
 
 class Outcome(enum.Enum):
@@ -224,11 +227,17 @@ def review_annotation(
     texts: Sequence[str],
     reviewed: ReviewedAnnotations,
     identifiers: Iterable[str],
+    *,
+    drawn: bool,
 ) -> ReviewedAnnotation:
     """Return what is written for one annotation, from the list's decision.
 
     An annotation that the list removes is removed. One that it keeps is
-    kept, unless one of ``texts`` echoes one of ``identifiers``
+    kept, unless the QC pack's drawing of it leaves an object or a fill out
+    (``drawn`` is false,
+    :func:`~pymedphys._dicom.deidentify.annotation_drawing.undrawn_objects`),
+    since then the reviewer did not see it whole, or one of ``texts`` echoes
+    one of ``identifiers``
     (:func:`~.reviewed_descriptors.echoes_identifier`), so it is held. One
     that the list has no decision on is held.
     """
@@ -237,6 +246,8 @@ def review_annotation(
         return ReviewedAnnotation(Outcome.HELD, Held.NOT_REVIEWED)
     if decision is Review.REMOVE:
         return ReviewedAnnotation(Outcome.REMOVED)
+    if not drawn:
+        return ReviewedAnnotation(Outcome.HELD, Held.NOT_DRAWN)
     identifiers = tuple(identifiers)
     if any(echoes_identifier(text, identifiers) for text in texts):
         return ReviewedAnnotation(Outcome.HELD, Held.ECHOES_IDENTIFIER)

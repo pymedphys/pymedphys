@@ -31,7 +31,14 @@ document with no script, style sheet, or external reference:
   with its tick labels, which its text values also list;
 - each text object of Text Object Sequence (0070,0008) as its text, at the
   top left corner of its bounding box or, without one, at its anchor
-  point, with a line from the box to its anchor point where it has both.
+  point, with a line from the box to its anchor point where it has both;
+- each closed graphic object or compound graphic that Graphic Filled
+  (0070,0024) fills, shaded, and, where the Fill Mode (0070,0257) of its
+  Fill Style Sequence (0070,0233) is STIPPELED, its Fill Pattern
+  (0070,0256) in a panel of its own, each of its 32 x 32 bits magnified,
+  the most significant bit of each row's four bytes leftmost (PS3.3
+  C.10.5.1.3.14), since a pattern that a display tiles inside the object
+  can spell a name as surely as a line can.
 
 Annotation units are PIXEL, in the image's pixels, or DISPLAY, in
 fractions of the displayed area (C.10.5.1.1). Without the image, the two
@@ -39,15 +46,21 @@ cannot be put in one frame, so the drawing has a panel for each units
 that the item uses: pixel units in a frame around what they draw, and
 display units in the displayed area, 1000 units a side. Graphic Data that
 is not two-dimensional, cannot be read, or holds a value that is not
-finite is left out and counted in the drawing's caption, never guessed.
+finite, and a fill whose mode or pattern cannot be read, is left out and
+counted in the drawing's caption, never guessed; :func:`undrawn_objects`
+counts them, so that an annotation with any is not released on a
+reviewer's decision to keep it (D-062).
+
+Text is escaped with :func:`html.escape`, which writes the same five
+entities that SVG's XML needs; nothing here parses XML.
 """
 
 from __future__ import annotations
 
 import dataclasses
+import html
 import math
 from collections.abc import Iterable, Sequence
-from xml.sax.saxutils import escape, quoteattr
 
 from pymedphys._imports import pydicom
 
@@ -58,6 +71,10 @@ _PANEL = 400.0
 _GAP = 24.0
 _CAPTION = 20.0
 _MARGIN = 0.05
+# A Fill Pattern's bitmap: 32 rows of 32 bits, four bytes a row.
+FILL_PATTERN_SIDE = 32
+_FILL_PATTERN_BYTES = FILL_PATTERN_SIDE * FILL_PATTERN_SIDE // 8
+_FILLED_SHADE = 'fill-opacity="0.15"'
 
 Point = tuple[float, float]
 
@@ -76,12 +93,19 @@ class _Drawing:
         default_factory=lambda: {PIXEL: _Panel(), DISPLAY: _Panel()}
     )
     skipped: int = 0
+    # Each distinct Fill Pattern, in the order first drawn.
+    patterns: list[bytes] = dataclasses.field(default_factory=list)
 
     def panel(self, units: object) -> _Panel | None:
         if units not in (PIXEL, DISPLAY):
             self.skipped += 1
             return None
         return self.panels[str(units)]
+
+
+def _escape(value: str) -> str:
+    """Return text escaped for SVG's character data or a quoted attribute."""
+    return html.escape(value, quote=True)
 
 
 def _number(value: float) -> str:
@@ -126,12 +150,45 @@ def _scaled(units: str, points: Iterable[Point]) -> list[Point]:
 
 
 def _polyline(
-    points: Sequence[Point], *, closed: bool = False, dashed: bool = False
+    points: Sequence[Point],
+    *,
+    closed: bool = False,
+    dashed: bool = False,
+    fill: str = 'fill="none"',
 ) -> str:
     joined = " ".join(f"{_number(x)},{_number(y)}" for x, y in points)
     tag = "polygon" if closed else "polyline"
     dash = ' stroke-dasharray="4 3"' if dashed else ""
-    return f'<{tag} points="{joined}" fill="none"{dash}/>'
+    return f'<{tag} points="{joined}" {fill}{dash}/>'
+
+
+def _fill(drawing: _Drawing, graphic: pydicom.Dataset) -> str:
+    """Return the fill attribute of a closed graphic, noting its pattern.
+
+    An object that Graphic Filled does not fill is drawn as an outline. One
+    that it fills is shaded; where its Fill Mode is STIPPELED, its Fill
+    Pattern is kept for a panel of its own. A filled object whose Fill Mode
+    is neither SOLID nor STIPPELED, or whose pattern is not 128 bytes, is
+    counted as not drawn, though its outline is.
+    """
+    if graphic.get("GraphicFilled") != "Y":
+        return 'fill="none"'
+    styles = graphic.get("FillStyleSequence") or ()
+    for style in styles:
+        mode = style.get("FillMode")
+        if mode == "STIPPELED":
+            pattern = style.get("FillPattern")
+            if (
+                not isinstance(pattern, (bytes, bytearray))
+                or len(pattern) != _FILL_PATTERN_BYTES
+            ):
+                drawing.skipped += 1
+                continue
+            if bytes(pattern) not in drawing.patterns:
+                drawing.patterns.append(bytes(pattern))
+        elif mode != "SOLID":
+            drawing.skipped += 1
+    return _FILLED_SHADE
 
 
 def _graphic(drawing: _Drawing, graphic: pydicom.Dataset) -> None:
@@ -151,23 +208,28 @@ def _graphic(drawing: _Drawing, graphic: pydicom.Dataset) -> None:
         panel.shapes.append(f'<circle cx="{_number(x)}" cy="{_number(y)}" r="2"/>')
     elif kind in ("POLYLINE", "INTERPOLATED") and len(points) >= 2:
         closed = points[0] == points[-1] and len(points) > 2
-        panel.shapes.append(_polyline(points[:-1] if closed else points, closed=closed))
+        panel.shapes.append(
+            _polyline(points[:-1], closed=True, fill=_fill(drawing, graphic))
+            if closed
+            else _polyline(points)
+        )
     elif kind == "CIRCLE" and len(points) == 2:
         (x, y), (edge_x, edge_y) = points
         radius = math.hypot(edge_x - x, edge_y - y)
         panel.shapes.append(
-            f'<circle cx="{_number(x)}" cy="{_number(y)}" r="{_number(radius)}" fill="none"/>'
+            f'<circle cx="{_number(x)}" cy="{_number(y)}" r="{_number(radius)}" '
+            f"{_fill(drawing, graphic)}/>"
         )
         points = [(x - radius, y - radius), (x + radius, y + radius)]
     elif kind == "ELLIPSE" and len(points) == 4:
-        panel.shapes.append(_ellipse(points))
+        panel.shapes.append(_ellipse(points, _fill(drawing, graphic)))
     else:
         drawing.skipped += 1
         return
     panel.points.extend(points)
 
 
-def _ellipse(points: Sequence[Point]) -> str:
+def _ellipse(points: Sequence[Point], fill: str = 'fill="none"') -> str:
     """Return an ellipse from the ends of its major then its minor axis."""
     (ax, ay), (bx, by), (cx, cy), (dx, dy) = points
     centre_x, centre_y = (ax + bx) / 2, (ay + by) / 2
@@ -176,22 +238,24 @@ def _ellipse(points: Sequence[Point]) -> str:
     angle = math.degrees(math.atan2(by - ay, bx - ax))
     return (
         f'<ellipse cx="{_number(centre_x)}" cy="{_number(centre_y)}" '
-        f'rx="{_number(major)}" ry="{_number(minor)}" fill="none" '
+        f'rx="{_number(major)}" ry="{_number(minor)}" {fill} '
         f'transform="rotate({_number(angle)} {_number(centre_x)} {_number(centre_y)})"/>'
     )
 
 
 def _compound(drawing: _Drawing, compound: pydicom.Dataset) -> None:
-    panel = drawing.panel(compound.get("GraphicAnnotationUnits"))
+    """Draw a compound graphic in the units of Compound Graphic Units."""
+    panel = drawing.panel(compound.get("CompoundGraphicUnits"))
     if panel is None:
         return
     points = _points(compound, "GraphicData")
     if compound.get("GraphicDimensions", 2) != 2 or points is None:
         drawing.skipped += 1
         return
-    points = _scaled(str(compound.GraphicAnnotationUnits), points)
+    points = _scaled(str(compound.CompoundGraphicUnits), points)
+    fill = _fill(drawing, compound)
     panel.shapes.append(
-        _polyline(points, dashed=True)
+        _polyline(points, dashed=True, closed=fill != 'fill="none"', fill=fill)
         if len(points) > 1
         else (
             f'<circle cx="{_number(points[0][0])}" cy="{_number(points[0][1])}" r="2"/>'
@@ -218,7 +282,7 @@ def _compound(drawing: _Drawing, compound: pydicom.Dataset) -> None:
 def _text(value: str, at: Point) -> str:
     x, y = at
     return (
-        f'<text x="{_number(x)}" y="{_number(y)}" stroke="none">{escape(value)}</text>'
+        f'<text x="{_number(x)}" y="{_number(y)}" stroke="none">{_escape(value)}</text>'
     )
 
 
@@ -263,6 +327,63 @@ def _frame(units: str, panel: _Panel) -> tuple[float, float, float, float]:
     return (left - pad, top - pad, side + 2 * pad, side + 2 * pad)
 
 
+def _draw(item: pydicom.Dataset) -> _Drawing:
+    drawing = _Drawing()
+    for graphic in item.get("GraphicObjectSequence") or ():
+        _graphic(drawing, graphic)
+    for compound in item.get("CompoundGraphicSequence") or ():
+        _compound(drawing, compound)
+    for text in item.get("TextObjectSequence") or ():
+        _text_object(drawing, text)
+    return drawing
+
+
+def undrawn_objects(item: pydicom.Dataset) -> int:
+    """Return how many of an annotation's objects its drawing leaves out.
+
+    Parameters
+    ----------
+    item : pydicom.Dataset
+        An item of Graphic Annotation Sequence as received.
+
+    Returns
+    -------
+    int
+        The count that :func:`draw_annotation`'s caption gives: each object
+        whose units, type, or Graphic Data cannot be drawn, and each fill
+        whose mode or pattern cannot be read. A reviewer has not seen an
+        annotation whole where this is not 0.
+    """
+    return _draw(item).skipped
+
+
+def _pattern_rows(pattern: bytes) -> list[str]:
+    """Return a Fill Pattern's set bits as one SVG rect for each run in a row.
+
+    Row ``r`` is bytes ``4r`` to ``4r + 3``, the most significant bit of each
+    leftmost (PS3.3 C.10.5.1.3.14).
+    """
+    rects = []
+    row_bytes = FILL_PATTERN_SIDE // 8
+    for row in range(FILL_PATTERN_SIDE):
+        bits = int.from_bytes(pattern[row * row_bytes : (row + 1) * row_bytes], "big")
+        column = 0
+        while column < FILL_PATTERN_SIDE:
+            if bits >> (FILL_PATTERN_SIDE - 1 - column) & 1:
+                start = column
+                while (
+                    column < FILL_PATTERN_SIDE
+                    and bits >> (FILL_PATTERN_SIDE - 1 - column) & 1
+                ):
+                    column += 1
+                rects.append(
+                    f'<rect x="{start}" y="{row}" width="{column - start}" height="1"/>'
+                )
+            else:
+                column += 1
+    return rects
+
+
 def draw_annotation(item: pydicom.Dataset) -> str:
     """Return an SVG drawing of one item of Graphic Annotation Sequence.
 
@@ -277,19 +398,14 @@ def draw_annotation(item: pydicom.Dataset) -> str:
         A standalone SVG document, as the module describes; the same for
         the same item.
     """
-    drawing = _Drawing()
-    for graphic in item.get("GraphicObjectSequence") or ():
-        _graphic(drawing, graphic)
-    for compound in item.get("CompoundGraphicSequence") or ():
-        _compound(drawing, compound)
-    for text in item.get("TextObjectSequence") or ():
-        _text_object(drawing, text)
+    drawing = _draw(item)
     drawn = [
         (units, panel)
         for units, panel in drawing.panels.items()
         if panel.shapes and panel.points
     ]
-    width = max(len(drawn), 1) * (_PANEL + _GAP) + _GAP
+    panels = len(drawn) + len(drawing.patterns)
+    width = max(panels, 1) * (_PANEL + _GAP) + _GAP
     height = _PANEL + _CAPTION * 2 + _GAP
     parts = [
         '<svg xmlns="http://www.w3.org/2000/svg" '
@@ -307,7 +423,7 @@ def draw_annotation(item: pydicom.Dataset) -> str:
         parts.append(
             f'<svg x="{_number(left)}" y="{_number(_CAPTION + 4)}" '
             f'width="{_number(_PANEL)}" height="{_number(_PANEL)}" '
-            f"viewBox={quoteattr(' '.join(_number(v) for v in (x, y, frame_width, frame_height)))} "
+            f'viewBox="{_escape(" ".join(_number(v) for v in (x, y, frame_width, frame_height)))}" '
             'preserveAspectRatio="xMidYMid meet" overflow="hidden">'
         )
         parts.append(
@@ -322,14 +438,35 @@ def draw_annotation(item: pydicom.Dataset) -> str:
         )
         parts.extend(panel.shapes)
         parts.append("</g></svg>")
-    caption = "nothing drawn" if not drawn else ""
+    for number, pattern in enumerate(drawing.patterns, start=1):
+        left = _GAP + (len(drawn) + number - 1) * (_PANEL + _GAP)
+        side = FILL_PATTERN_SIDE
+        parts.append(
+            f'<text x="{_number(left)}" y="{_number(_CAPTION)}" '
+            f'font-family="sans-serif" font-size="12">fill pattern {number}, '
+            "tiled inside its object</text>"
+        )
+        parts.append(
+            f'<svg x="{_number(left)}" y="{_number(_CAPTION + 4)}" '
+            f'width="{_number(_PANEL)}" height="{_number(_PANEL)}" '
+            f'viewBox="0 0 {side} {side}" preserveAspectRatio="xMidYMid meet" '
+            'shape-rendering="crispEdges">'
+        )
+        parts.append(
+            f'<rect width="{side}" height="{side}" fill="#f4f4f4" stroke="#999" '
+            'stroke-width="0.05"/>'
+        )
+        parts.append('<g fill="#c00">')
+        parts.extend(_pattern_rows(pattern))
+        parts.append("</g></svg>")
+    caption = "nothing drawn" if not panels else ""
     if drawing.skipped:
         caption = f"{caption}; " if caption else ""
         caption += f"{drawing.skipped} object(s) not drawn"
     if caption:
         parts.append(
             f'<text x="{_number(_GAP)}" y="{_number(height - _CAPTION / 2)}" '
-            f'font-family="sans-serif" font-size="12">{escape(caption)}</text>'
+            f'font-family="sans-serif" font-size="12">{_escape(caption)}</text>'
         )
     parts.append("</svg>")
     return "".join(parts)

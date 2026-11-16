@@ -32,7 +32,9 @@ what to do with each of its items in place, as the maintainer chose on
   everything in it, as an item of Content Sequence is under Clean
   Structured Content (:mod:`.removed_items`);
 - an annotation that the list has no decision on, or keeps but whose text
-  echoes one of its instance's identifiers, is held for review: its
+  echoes one of its instance's identifiers or whose QC drawing leaves out
+  an object or a fill (:func:`.annotation_drawing.undrawn_objects`), so
+  that the reviewer did not see it whole, is held for review: its
   elements take their own rules, which write a dummy value in place of its
   text in the staged file, and its instance is held, so it is not released;
 - the sequence itself takes K wherever an item is not removed. Where the
@@ -52,6 +54,7 @@ from collections.abc import Mapping, Sequence
 
 from pymedphys._imports import pydicom
 
+from .annotation_drawing import undrawn_objects
 from .content_items import ContentItemPlan
 from .file_layout import ElementPath
 from .iods import IOD
@@ -88,7 +91,8 @@ METHOD = (
     "are, and its private data elements, which take their own actions; one "
     "that the list removes is removed, with everything in it; and "
     "one that the list has no decision on, or keeps but whose text holds one "
-    "of the instance's patient or other person identifiers, holds its "
+    "of the instance's patient or other person identifiers or whose drawing "
+    "in the QC pack leaves out an object or the pattern of a fill, holds its "
     "instance for review, with its text and a drawing of its graphics in "
     "the QC pack, from which the reviewer decides on it. Where the list "
     "removes every item, the sequence takes its Basic Profile action, so "
@@ -219,6 +223,7 @@ def annotation_plan(
         items = list(dataset[0x00700001].value)
         digests = [annotation_digest(item) for item in items]
         texts = [annotation_texts(item) for item in items]
+        drawn = [undrawn_objects(item) == 0 for item in items]
     except (KeyError, TypeError, ValueError, UnicodeError, AttributeError):
         return NO_ANNOTATIONS
     try:
@@ -226,8 +231,8 @@ def annotation_plan(
     except (TypeError, ValueError, UnicodeError, AttributeError):
         return NO_ANNOTATIONS
     results = [
-        review_annotation(digest, text, reviewed, echoed)
-        for digest, text in zip(digests, texts)
+        review_annotation(digest, text, reviewed, echoed, drawn=whole)
+        for digest, text, whole in zip(digests, texts, drawn)
     ]
     if all(result.outcome is Outcome.REMOVED for result in results):
         return NO_ANNOTATIONS
