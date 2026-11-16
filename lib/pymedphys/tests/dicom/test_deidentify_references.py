@@ -59,6 +59,24 @@ STRUCTURED_REPORTS = (
     "Macular Grid Thickness and Volume Report",
     "Waveform Annotation SR",
 )
+# The softcopy Presentation States, which reference the images they apply to
+# in the Presentation State Relationship Module or, for the Blending
+# Softcopy Presentation State, the Presentation State Blending Module, and
+# include no Common Instance Reference Module.
+PRESENTATION_STATES = (
+    "Grayscale Softcopy Presentation State",
+    "Color Softcopy Presentation State",
+    "Pseudo-Color Softcopy Presentation State",
+    "XA/XRF Grayscale Softcopy Presentation State",
+    "Variable Modality LUT Softcopy Presentation State",
+)
+BLENDING_PRESENTATION_STATE = "Blending Softcopy Presentation State"
+# Blending Sequence (0070,0402).
+BLENDING = "(0070,0402)"
+# An encapsulated document, which names its sources, predecessors, and
+# identical documents in its Encapsulated Document Module, and has no Common
+# Instance Reference Module (PS3.3 Table A.45.1-1).
+ENCAPSULATED_PDF = "Encapsulated PDF"
 # Referenced Request Sequence.
 REFERENCED_REQUEST = "(0040,A370)"
 # The evidence sequences of SR Document General: Current Requested Procedure
@@ -153,24 +171,160 @@ RT_REFERENCES = [
         ("(3008,0030)", "(0008,1155)"),
         Level.INSTANCE,
     ),
+    # RT Beams Delivery Instruction: the plan, the treatment record of the
+    # session that it continues, and each beam task's reference images for
+    # verification.
+    ("RT Beams Delivery Instruction", synthetic.REFERENCED_PLAN, Level.INSTANCE),
+    (
+        "RT Beams Delivery Instruction",
+        ("(3008,0030)", "(0008,1155)"),
+        Level.INSTANCE,
+    ),
+    (
+        "RT Beams Delivery Instruction",
+        ("(0074,1020)", "(0074,1030)", "(0074,1040)", "(0008,1155)"),
+        Level.INSTANCE,
+    ),
+    # RT Brachy Application Setup Delivery Instruction: the plan, by its
+    # study, series, and instance.
+    (
+        "RT Brachy Application Setup Delivery Instruction",
+        ("(300C,0002)", "(0020,000D)"),
+        Level.STUDY,
+    ),
+    (
+        "RT Brachy Application Setup Delivery Instruction",
+        ("(300C,0002)", "(0008,1115)", "(0020,000E)"),
+        Level.SERIES,
+    ),
+    (
+        "RT Brachy Application Setup Delivery Instruction",
+        ("(300C,0002)", "(0008,1115)", "(0008,1199)", "(0008,1155)"),
+        Level.INSTANCE,
+    ),
+    # RT Radiation Set Delivery Instruction: the radiation set, the procedure
+    # step that made the instance, the radiations to deliver and those it
+    # omits, and each task's treatment preparation.
+    (
+        "RT Radiation Set Delivery Instruction",
+        ("(300A,0702)", "(0008,1155)"),
+        Level.INSTANCE,
+    ),
+    (
+        "RT Radiation Set Delivery Instruction",
+        ("(3010,0044)", "(0008,1155)"),
+        Level.INSTANCE,
+    ),
+    (
+        "RT Radiation Set Delivery Instruction",
+        ("(300A,0797)", "(300A,0630)", "(0008,1155)"),
+        Level.INSTANCE,
+    ),
+    (
+        "RT Radiation Set Delivery Instruction",
+        ("(300A,0787)", "(300A,0630)", "(0008,1155)"),
+        Level.INSTANCE,
+    ),
+    (
+        "RT Radiation Set Delivery Instruction",
+        ("(300A,0797)", "(300A,078B)", "(0008,1155)"),
+        Level.INSTANCE,
+    ),
     # RT Image: the plan in the RT Image module, and the multi-frame source of
     # an extracted frame.
     ("RT Image", synthetic.REFERENCED_PLAN, Level.INSTANCE),
     ("RT Image", ("(0008,1164)", "(0008,1167)"), Level.INSTANCE),
+    # Enhanced RT Image and Enhanced Continuous RT Image: in the RT Image
+    # Frame Context functional group, shared or of a frame, of the Multi-frame
+    # or the Sparse Multi-frame Functional Groups Module, the plan, the RT
+    # Radiation Set, and its RT Radiations that the frames image; and the
+    # performed procedure steps of the Radiotherapy Common Instance Module.
+    *(
+        (
+            iod,
+            (groups, "(3002,0103)", "(3002,0104)", *sequences, "(0008,1155)"),
+            Level.INSTANCE,
+        )
+        for iod, frame_groups in (
+            ("Enhanced RT Image", ("(5200,9229)", "(5200,9230)")),
+            ("Enhanced Continuous RT Image", ("(5200,9229)", "(3002,0101)")),
+        )
+        for groups in frame_groups
+        for sequences in (
+            ("(300C,0002)",),
+            ("(300A,0702)",),
+            ("(300A,0702)", "(300A,0630)"),
+            ("(300A,0630)",),
+        )
+    ),
+    *(
+        (iod, ("(3010,0044)", "(0008,1155)"), Level.INSTANCE)
+        for iod in ("Enhanced RT Image", "Enhanced Continuous RT Image")
+    ),
     # CT Image: the plan in the CT Image module, and General Reference.
     ("CT Image", synthetic.REFERENCED_PLAN, Level.INSTANCE),
     ("CT Image", synthetic.REFERENCED_IMAGE, Level.INSTANCE),
-    # Every IOD but the reports: Common Instance Reference, and the study in
-    # General Study and in each request.
+    # Every IOD but the reports: the study in General Study and in each
+    # request.
     *(
         (iod, attribute, level)
         for iod in FIRST_RELEASE_IODS
         if iod not in STRUCTURED_REPORTS
         for attribute, level in [
-            (("(0008,1115)", "(0020,000E)"), Level.SERIES),
-            (("(0008,1200)", "(0020,000D)"), Level.STUDY),
             (synthetic.REFERENCED_STUDY, Level.STUDY),
             (synthetic.REQUESTED_REFERENCED_STUDY, Level.STUDY),
+        ]
+    ),
+    # Every IOD but the reports, Presentation States and PDF: Common Instance
+    # Reference.
+    *(
+        (iod, attribute, level)
+        for iod in FIRST_RELEASE_IODS
+        if iod not in STRUCTURED_REPORTS
+        and iod not in PRESENTATION_STATES
+        and iod != BLENDING_PRESENTATION_STATE
+        and iod != ENCAPSULATED_PDF
+        for attribute, level in [
+            (("(0008,1115)", "(0020,000E)"), Level.SERIES),
+            (("(0008,1200)", "(0020,000D)"), Level.STUDY),
+        ]
+    ),
+    # The Presentation States: the series and images that each applies to,
+    # and, for the Blending Softcopy Presentation State, the study of each
+    # of the two series it blends.
+    *(
+        (iod, attribute, level)
+        for iod in PRESENTATION_STATES
+        for attribute, level in [
+            (("(0008,1115)", "(0020,000E)"), Level.SERIES),
+            (("(0008,1115)", "(0008,1140)", "(0008,1155)"), Level.INSTANCE),
+        ]
+    ),
+    *(
+        (BLENDING_PRESENTATION_STATE, attribute, level)
+        for attribute, level in [
+            ((BLENDING, "(0020,000D)"), Level.STUDY),
+            ((BLENDING, "(0008,1115)", "(0020,000E)"), Level.SERIES),
+            ((BLENDING, "(0008,1115)", "(0008,1140)", "(0008,1155)"), Level.INSTANCE),
+        ]
+    ),
+    # Encapsulated PDF: the instances that the document was derived from, the
+    # images and instances that it refers to, and the study, series, and
+    # instances of its predecessors and identical documents (PS3.3 Table
+    # C.24-2).
+    (ENCAPSULATED_PDF, ("(0042,0013)", "(0008,1155)"), Level.INSTANCE),
+    (ENCAPSULATED_PDF, synthetic.REFERENCED_IMAGE, Level.INSTANCE),
+    (ENCAPSULATED_PDF, ("(0008,114A)", "(0008,1155)"), Level.INSTANCE),
+    *(
+        (ENCAPSULATED_PDF, attribute, level)
+        for documents in ("(0040,A360)", "(0040,A525)")
+        for attribute, level in [
+            ((documents, "(0020,000D)"), Level.STUDY),
+            ((documents, "(0008,1115)", "(0020,000E)"), Level.SERIES),
+            (
+                (documents, "(0008,1115)", "(0008,1199)", "(0008,1155)"),
+                Level.INSTANCE,
+            ),
         ]
     ),
     # Each report: the study in General Study and in each request; the
@@ -233,10 +387,16 @@ OTHER_SEQUENCES = {
     "(0070,0314)",  # Used Fiducials Sequence
     "(0070,0315)",  # Used RT Structure Set ROI Sequence
     "(0070,0404)",  # Referenced Spatial Registration Sequence
+    "(0074,1040)",  # Related Reference RT Image Sequence
     "(3006,0016)",  # Contour Image Sequence
     "(3006,0018)",  # Predecessor Structure Set Sequence
     "(3008,0030)",  # Referenced Treatment Record Sequence
     "(300A,0401)",  # Referenced Setup Image Sequence
+    "(300A,0616)",  # RT Radiation Sequence
+    "(300A,0630)",  # Referenced RT Radiation Sequence
+    "(300A,063B)",  # Referenced RT Physician Intent Sequence
+    "(300A,0702)",  # Referenced RT Radiation Set Sequence
+    "(300A,078B)",  # Referenced RT Treatment Preparation Sequence
     "(300A,078C)",  # Referenced Patient Setup Photo Sequence
     "(300C,0002)",  # Referenced RT Plan Sequence
     "(300C,0040)",  # Referenced Verification Image Sequence
@@ -245,6 +405,7 @@ OTHER_SEQUENCES = {
     "(300C,0080)",  # Referenced Dose Sequence
     "(3010,0007)",  # Originating SOP Instance Reference Sequence
     "(3010,0009)",  # Equivalent Conceptual Volume Instance Reference Sequence
+    "(3010,0044)",  # Instance-Level Referenced Performed Procedure Step Sequence
     "(3010,004A)",  # Referenced Direct Segment Instance Sequence
 }
 # Every other UI attribute that uid_roles.toml marks "instance" and that a
@@ -254,6 +415,7 @@ NOT_FOLLOWED = {
     "(0008,3010)": "identifies an irradiation event",
     "(0008,3012)": "identifies a radiopharmaceutical administration event",
     "(0018,1002)": "identifies a device",
+    "(0018,100B)": "identifies a class of device",
     "(0020,9164)": "identifies a dimension organisation",
     "(0040,0554)": "identifies a specimen",
     "(0040,A124)": "is the value of a content item",
@@ -270,9 +432,14 @@ NOT_FOLLOWED = {
     "(300A,0013)": "identifies a dose reference within a plan",
     "(300A,0054)": "identifies a table top alignment event",
     "(300A,0083)": "refers to a dose reference within a plan",
+    "(300A,0609)": "identifies a treatment position group, not an instance",
+    "(300A,0785)": "refers to a treatment position group, not an instance",
     "(3010,0006)": "identifies a conceptual volume, not an instance",
     "(3010,000B)": "refers to a conceptual volume, not an instance",
+    "(3010,0013)": "refers to a conceptual volume, not an instance",
     "(3010,0015)": "refers to a conceptual volume, not an instance",
+    "(0040,A171)": "identifies an observation, not an instance",
+    "(3010,0031)": "refers to a fiducial within an instance",
     # A later change follows frames of reference.
     "(0020,0052)": "identifies a frame of reference",
     "(0064,0003)": "refers to a frame of reference",
@@ -628,7 +795,7 @@ def test_an_instance_without_generated_iod_tables_has_no_references(sop_class):
 @pytest.mark.pydicom
 def test_a_record_finds_references_of_a_generated_iod_beyond_the_first_release():
     dataset = synthetic.instance(
-        synthetic.NM_IMAGE_STORAGE,
+        synthetic.US_IMAGE_STORAGE,
         "2.25.9001",
         "2.25.9002",
         ReferencedImageSequence=[
@@ -638,7 +805,7 @@ def test_a_record_finds_references_of_a_generated_iod_beyond_the_first_release()
 
     record = synthetic.record(dataset)
 
-    assert record.iod == "Nuclear Medicine Image"
+    assert record.iod == "Ultrasound Image"
     (reference,) = record.references
     assert reference.site == ReferenceSite(
         ("(0008,1140)",), "(0008,1155)", Level.INSTANCE, "1"

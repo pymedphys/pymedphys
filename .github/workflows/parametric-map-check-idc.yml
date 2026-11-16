@@ -1,0 +1,132 @@
+name: Pixel Options on IDC Parametric Maps
+
+# On demand, run the Clean Pixel Data and Clean Recognizable Visual
+# Features Options on the 691 floating-point Parametric Maps of the
+# tcga_gbm360 analysis results in NCI's Imaging Data Commons (collection
+# TCGA-GBM, https://doi.org/10.5281/zenodo.17470190, CC BY 4.0), which the
+# pinned wheel of idc-index-data lists, and count what each does. The maps
+# are selected from IDC's index and refused unless every one is of that
+# analysis, licence, and DOI, and there are 691; they are downloaded from
+# IDC's public bucket with s5cmd, and refused unless the SHA-256 of their
+# files' SHA-256s is the one that
+# pymedphys._dicom.deidentify.parametric_map_check pins.
+#
+# These are real patients' data, and this repository's logs and artefacts
+# are public. So only counts, codes, digests, versions, the text finder's
+# method, and the data set's public identifiers leave the runner: the
+# command's standard output and error, and s5cmd's, go to files on the
+# runner, the job shows the result files instead, and a crash is reported
+# by .github/scripts/run_redacted.py as its type and code locations alone.
+# The maps are never cached, uploaded, or kept.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: parametric-map-check-idc-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  check:
+    name: Pixel options on IDC Parametric Maps
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    permissions:
+      contents: read
+    env:
+      # idc-index-data 25.0.5, which holds IDC's index, and its SHA-256 as
+      # text_evaluation_idc pins it.
+      INDEX_URL: https://files.pythonhosted.org/packages/bd/10/c6391b44d1b2f6c744e1cb4018250cb1a5d80947d47ed945172d9165a3b4/idc_index_data-25.0.5-py3-none-any.whl
+      INDEX_SHA256: 1ea4ec812688759b71798249b6488eb2bce7178aabb3dccb00366b7a555de25c
+      # A re-run's artefact is named apart from the first attempt's.
+      ATTEMPT_SUFFIX: >-
+        ${{ github.run_attempt != '1'
+        && format('-attempt-{0}', github.run_attempt) || '' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # The user extra holds pydicom, NumPy, and SciPy; text-detection holds
+      # ONNX Runtime, which runs the text finder's model.
+      - uses: ./.github/actions/setup-project
+        with:
+          extras: 'user text-detection'
+
+      # pyarrow reads IDC's index and s5cmd downloads the maps, each pinned
+      # by version and hash, as the text detector evaluation installs them.
+      - name: Install the check's pinned tools
+        run: |
+          uv pip install --require-hashes --no-deps \
+            -r .github/text-evaluation/requirements.txt
+
+      - name: Prepare private and data directories
+        run: |
+          umask 077
+          mkdir -p "${RUNNER_TEMP}/maps/private" "${RUNNER_TEMP}/maps/data" \
+            "${RUNNER_TEMP}/maps/index"
+
+      - name: Download IDC's index
+        run: |
+          wheel="${RUNNER_TEMP}/maps/index/idc_index_data-25.0.5-py3-none-any.whl"
+          curl -sSfL --retry 3 --retry-all-errors --retry-delay 30 \
+            -o "${wheel}" "${INDEX_URL}"
+          echo "${INDEX_SHA256}  ${wheel}" | sha256sum --check --strict -
+
+      # Writes selection.json, with counts alone, and manifest.s5cmd, which
+      # places each series in a folder of its own.
+      - name: Select the maps
+        run: |
+          uv run --no-sync python .github/scripts/run_redacted.py \
+            --private-stdout "${RUNNER_TEMP}/maps/private/select-stdout.log" \
+            pymedphys._dicom.deidentify.parametric_map_check select \
+            "${RUNNER_TEMP}/maps/index/idc_index_data-25.0.5-py3-none-any.whl" \
+            --downloads "${RUNNER_TEMP}/maps/data" \
+            --out "${RUNNER_TEMP}/maps/selection" \
+            2> "${RUNNER_TEMP}/maps/private/select-stderr.log"
+
+      - name: Download the maps
+        timeout-minutes: 30
+        run: |
+          uv run --no-sync s5cmd --no-sign-request \
+            --endpoint-url https://s3.amazonaws.com \
+            run "${RUNNER_TEMP}/maps/selection/manifest.s5cmd" \
+            > "${RUNNER_TEMP}/maps/private/s5cmd.log" 2>&1
+          df -h /
+
+      # The command writes parametric-map-check.json and
+      # parametric-map-check.md, which hold only counts, codes, digests,
+      # versions, the finder's method, and the data set's public identifiers.
+      - name: Run the check
+        timeout-minutes: 60
+        run: |
+          results="${RUNNER_TEMP}/maps/results"
+          uv run --no-sync python .github/scripts/run_redacted.py \
+            --private-stdout "${RUNNER_TEMP}/maps/private/check-stdout.log" \
+            pymedphys._dicom.deidentify.parametric_map_check check \
+            "${RUNNER_TEMP}/maps/data" \
+            --out "${results}" \
+            2> "${RUNNER_TEMP}/maps/private/check-stderr.log"
+          echo "${GITHUB_SHA}" > "${results}/commit.txt"
+
+      - name: Show the results
+        if: ${{ !cancelled() }}
+        run: |
+          page="${RUNNER_TEMP}/maps/results/parametric-map-check.md"
+          if [[ -f "${page}" ]]; then
+            tee -a "${GITHUB_STEP_SUMMARY}" < "${page}"
+          else
+            echo "The check wrote no results; the log shows why." \
+              | tee -a "${GITHUB_STEP_SUMMARY}"
+          fi
+
+      - name: Upload the results
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: parametric-map-check-idc-results${{ env.ATTEMPT_SUFFIX }}
+          path: ${{ runner.temp }}/maps/results/
+          if-no-files-found: warn
+          retention-days: 90
