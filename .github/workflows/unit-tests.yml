@@ -56,8 +56,8 @@ env:
 jobs:
   test:
     name: ${{ matrix.os }} - py${{ matrix.python-version }} (${{ matrix.part }})
-    # Allow for setup and slower Windows runners.
-    timeout-minutes: ${{ matrix.os == 'windows-latest' && 60 || 30 }}
+    # Allow for slower Windows runners and the growing corpus on Ubuntu.
+    timeout-minutes: ${{ (matrix.os == 'windows-latest' || matrix.part == 'corpus-runs') && 60 || 30 }}
     strategy:
       fail-fast: false
       matrix:
@@ -264,7 +264,8 @@ jobs:
   # run whole.
   narrow-extras:
     name: Extra ${{ matrix.extra }} alone${{ matrix.part && format(' ({0})', matrix.part) || '' }}
-    timeout-minutes: 30
+    # The standalone DICOM corpus needs the main corpus job's budget.
+    timeout-minutes: ${{ matrix.part == 'corpus-runs' && 60 || 30 }}
     strategy:
       fail-fast: false
       matrix:
@@ -398,11 +399,11 @@ jobs:
   # The two halves of CT defacing, the second half of the policies'
   # end-to-end runs, the remaining corpus modules, and the
   # de-identification modules from a to o run separately, alongside all other
-  # tests, as in the test job, to keep each part within the same 30-minute
-  # limit.
+  # tests, as in the test job, to keep each part within its time limit.
   dependency-floors:
     name: NumPy and pandas minimum versions (${{ matrix.part }})
-    timeout-minutes: 30
+    # Keep the complete corpus under the same budget as the main matrix.
+    timeout-minutes: ${{ matrix.part == 'corpus-runs' && 60 || 30 }}
     strategy:
       fail-fast: false
       matrix:

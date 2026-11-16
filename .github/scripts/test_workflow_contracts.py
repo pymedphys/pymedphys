@@ -515,7 +515,17 @@ class WorkflowContractTests(unittest.TestCase):
         workflow = jobs("unit-tests.yml")
         floors, test = workflow["dependency-floors"], workflow["test"]
         self.assertIn(f"        part: [{', '.join(pydicom_coverage.PARTS)}]\n", floors)
-        self.assertIn("    timeout-minutes: 30\n", floors)
+        # The growing corpus gets an hour in both matrices; other floor
+        # parts keep thirty minutes, while Windows already gets an hour.
+        self.assertIn(
+            "    timeout-minutes: ${{ matrix.part == 'corpus-runs' && 60 || 30 }}\n",
+            floors,
+        )
+        self.assertIn(
+            "    timeout-minutes: ${{ (matrix.os == 'windows-latest' || "
+            "matrix.part == 'corpus-runs') && 60 || 30 }}\n",
+            test,
+        )
         # Every split job reads the modules that the workflow names to run
         # alone, the two halves of the CT defacing runs and the second half of
         # the policies' end-to-end runs: three different listed modules.
@@ -833,6 +843,37 @@ class WorkflowContractTests(unittest.TestCase):
             [name for name, _ in pins], ["pyarrow", "opencv-python-headless", "s5cmd"]
         )
         self.assertEqual(len(hashes), len(pins))
+
+    def test_the_parametric_map_check_reads_only_and_keeps_its_tools_pinned(self):
+        text = (WORKFLOWS / "parametric-map-check-idc.yml").read_text(encoding="utf-8")
+        triggers = text.split("\non:\n", 1)[1].split("\npermissions:\n", 1)[0]
+        self.assertEqual(
+            re.findall(r"(?m)^  ([a-z_]+):", triggers), ["workflow_dispatch"]
+        )
+        self.assertIn("\npermissions:\n  contents: read\n", text)
+        self.assertEqual(
+            re.findall(r"(?m)^      [a-z-]+: (?:read|write)$", text),
+            ["      contents: read"],
+        )
+        self.assertNotIn("secrets.", text)
+        self.assertEqual(text.count("persist-credentials: false"), 1)
+        run_blocks = re.findall(r"(?ms)^        run: \|\n(.*?)(?=^      - |\Z)", text)
+        self.assertTrue(run_blocks)
+        for block in run_blocks:
+            self.assertNotIn("${{", block)
+        self.assertIn(
+            "uv pip install --require-hashes --no-deps \\\n"
+            "            -r .github/text-evaluation/requirements.txt",
+            text,
+        )
+        self.assertIn("sha256sum --check --strict -", text)
+        # Both commands run redacted, and only the results leave the runner.
+        self.assertEqual(text.count("python .github/scripts/run_redacted.py"), 2)
+        self.assertEqual(
+            re.findall(r"(?m)^          path: (.*)$", text),
+            ["${{ runner.temp }}/maps/results/"],
+        )
+        self.assertNotIn("actions/cache", text)
 
 
 if __name__ == "__main__":

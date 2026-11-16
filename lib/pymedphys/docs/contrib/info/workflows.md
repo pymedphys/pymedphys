@@ -29,6 +29,7 @@ Manual run -> face-validation.yml
 Manual run -> face-validation-visible-human.yml
 Manual run -> face-validation-keating.yml
 Manual run -> face-validation-pddca.yml
+Manual run -> parametric-map-check-idc.yml
 Manual run -> pixel-text-validation.yml
 Manual run -> text-detection-model-pins.yml
 Manual run -> text-detector-evaluation.yml
@@ -257,7 +258,8 @@ failure fails the unit-test workflow and therefore the required CI or release
 summary.
 
 Every cell of the unit-test matrix runs in six parts on six runners, since
-a slow runner could take the 30-minute limit (60 minutes on Windows) to run the
+a slow runner could take the 30-minute limit (60 minutes on Windows and for
+`corpus-runs`) to run the
 whole suite at once, the corpus modules together, or the rest of the suite. The workflow's
 `CORPUS_RUN_TESTS` lists the modules that run the synthetic collection through
 the engine, which take about half the suite's time, and `CT_DEFACING_RUN_TEST`,
@@ -318,7 +320,8 @@ policies' names begin only with `a`, `b`, `c`, `p`, `r`, and `t`, so the cut at
 `test_deidentify_corpus_end_to_end.py` to move it.
 
 The run at the dependency floors runs in the same six parts. Each part
-retains the 30-minute job limit, two pytest workers and the 900-second
+retains its job limit (60 minutes for `corpus-runs`, 30 for the others), two
+pytest workers and the 900-second
 per-test limit. Only `others` uses the data cache. All six JUnit reports must
 arrive and all six parts must pass; the required summary continues to depend
 on the whole reusable unit-test workflow.
@@ -381,7 +384,7 @@ For each, on Ubuntu with Python 3.14, it installs only that extra and the
 another feature skip themselves when its packages are missing. The `dicom`
 extra's tests run in the same `ct-defacing`, `ct-defacing-reviews`,
 `corpus-runs`, `corpus-end-to-end-p-z`, and `others` parts as the unit-test matrix, on five runners, since together they can reach the
-30-minute limit on a slow runner. It has no `deidentify-a-o` part: its
+time limit on a slow runner; `corpus-runs` has 60 minutes and the other parts 30. It has no `deidentify-a-o` part: its
 `others` part holds only `tests/dicom` and took 15 minutes on 6 November 2026,
 so a sixth runner would buy nothing it needs. It uploads a JUnit report per extra as `junit-extra-<extra>`, and
 per part for `dicom` as `junit-extra-dicom-<part>`, and runs alongside both the
@@ -727,6 +730,32 @@ organ masks of the PDDCA 1.4.1 data set, re-hosted on Zenodo in three parts
   digests, versions, and the engine's settings. PDDCA's images are of real
   patients, so the data set is never cached or uploaded, and nothing else read
   from it leaves the runner
+
+#### `parametric-map-check-idc.yml`
+
+Runs the Clean Pixel Data and Clean Recognizable Visual Features Options on
+the 691 floating-point Parametric Maps of the `tcga_gbm360` analysis results
+in NCI's Imaging Data Commons (collection TCGA-GBM, CC BY 4.0), and counts
+what each does.
+
+- **Triggers**: manually only
+- **Steps**: installs the project with the `user` and `text-detection`
+  extras and the pinned pyarrow and s5cmd of
+  `.github/text-evaluation/requirements.txt`, downloads the pinned wheel of
+  idc-index-data and checks its SHA-256, runs
+  `python -m pymedphys._dicom.deidentify.parametric_map_check select`, which
+  refuses the index unless its Parametric Maps are those 691 under that
+  licence and DOI, downloads them from IDC's public bucket with s5cmd, and
+  runs `python -m pymedphys._dicom.deidentify.parametric_map_check check`,
+  which refuses them unless the SHA-256 of their files' SHA-256s is the one
+  it pins, both through `.github/scripts/run_redacted.py`. Its job can only
+  read the repository
+- **Results**: the job summary shows `parametric-map-check.md`, and the
+  `parametric-map-check-idc-results` artefact, kept for 90 days, holds it
+  with `parametric-map-check.json` and `commit.txt`. They hold only counts,
+  codes, digests, versions, the text finder's method, and the data set's
+  public identifiers. The maps are of real patients, so they are never
+  cached or uploaded, and nothing else read from them leaves the runner
 
 #### `pixel-text-validation.yml`
 
