@@ -630,6 +630,14 @@ def test_files_without_frames_are_skipped_by_why():
     assert sources.dicom_frames(
         synthetic.written(no_pixels), collection="c", case="a"
     ) == sources.Skipped("no-pixel-data")
+    floating = _ct_dataset(np.zeros((1, 4, 4)))
+    for keyword in ("PixelData", "BitsStored", "HighBit", "PixelRepresentation"):
+        delattr(floating, keyword)
+    floating.BitsAllocated = 32
+    floating.FloatPixelData = np.zeros(16, "<f4").tobytes()
+    assert sources.dicom_frames(
+        synthetic.written(floating), collection="c", case="a"
+    ) == sources.Skipped("float-pixel-data")
 
 
 def test_a_dicom_case_reads_its_files_in_turn(tmp_path):
