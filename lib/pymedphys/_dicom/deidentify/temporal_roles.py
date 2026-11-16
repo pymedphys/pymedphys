@@ -116,8 +116,9 @@ def load_temporal_roles(
     ------
     ~pymedphys._dicom.deidentify.attribute_roles.RoleError
         If the file cannot be read; has another schema; covers another
-        edition than the data dictionary or lacks its acknowledgement; does
-        not give its rules as an array of tables; has a rule without exactly
+        edition than the data dictionary or lacks its acknowledgement, the
+        link to the DICOM Standard, or NEMA's trademark notice; does not give
+        its rules as an array of tables; has a rule without exactly
         the fields tag, keyword, role, and an optional non-empty note; has a
         rule for an attribute that is neither a DA, DT, or TM attribute of
         the data dictionary nor one that Table E.1-1 cleans under Modified

@@ -63,6 +63,7 @@ from collections.abc import Mapping
 
 from pymedphys._imports import tomlkit
 
+from . import attribution
 from .codes import CODE_MEANING_MAX_LENGTH, CODE_VALUE_MAX_LENGTH
 from .structured_content import (
     VALUE_TYPES,
@@ -238,7 +239,8 @@ def load_supplementary_concepts(
     ------
     SupplementaryConceptError
         If the file cannot be read; has another schema; covers another
-        edition than Table E.3.4-1, or lacks its acknowledgement; does not
+        edition than Table E.3.4-1, or lacks its acknowledgement, the link to
+        the DICOM Standard, or NEMA's trademark notice; does not
         give its rows as an array of tables; has a row without exactly the
         fields scheme_designator, code_value, value_type, code_meaning,
         basic_profile, and note, and optionally options; has a row whose
@@ -265,11 +267,14 @@ def _load(path: pathlib.Path) -> SupplementaryConcepts:
         raise SupplementaryConceptError(
             f"{path.name} does not cover the edition of Table E.3.4-1, {table.edition}"
         )
-    acknowledgement = f"DICOM PS3.16 {table.edition}, © NEMA"
+    acknowledgement = attribution.acknowledgement("PS3.16", table.edition)
     if document.get("acknowledgement") != acknowledgement:
         raise SupplementaryConceptError(
             f"{path.name} lacks the acknowledgement {acknowledgement}"
         )
+    lacking = attribution.missing(document)
+    if lacking is not None:
+        raise SupplementaryConceptError(f"{path.name} lacks {lacking}")
     entries = document.get("concept", [])
     if not isinstance(entries, list):
         raise SupplementaryConceptError(f"{path.name} rows are not an array of tables")

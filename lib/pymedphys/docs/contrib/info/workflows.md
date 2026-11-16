@@ -552,25 +552,32 @@ Automated dependency updates for Python packages.
 
 #### `deid-edition-check.yml`
 
-Checks whether NEMA's current edition of the DICOM standard would change the
-de-identification tables generated from the pinned edition, including the
-paragraphs of PS3.15 Annex E that the requirements register records, as the
-[de-identification design](deidentification-design.md) requires.
+Checks whether NEMA has published a new edition of the DICOM standard, or
+whether its current edition would change the de-identification tables
+generated from the pinned edition, including the paragraphs of PS3.15 Annex E
+that the requirements register records, as the
+[de-identification design](deidentification-design.md) requires. Each table
+names its edition in its attribution, so a new edition needs the tables
+regenerated even when no row changes.
 
 - **Schedule**: Monthly (the 3rd), or manually
 - **Steps**: installs the project with the `user` extra and runs
   `pymedphys dev deid-tables --check-current`, which downloads the pinned
   pages from NEMA's `current/` directory and compares the tables generated from
-  them with the committed ones, without writing them. Its check job can only
-  read the repository
-- **Failures**: when a table would change, a page cannot be fetched, a table
-  cannot be generated from the pages (as also happens when the pin's named
+  them with the committed ones, without writing them. It reports a change
+  when the pages name an edition other than the pinned one, or a table would
+  change. Its check job can only read the repository
+- **Failures**: when the pages name a new edition, a table would change, a
+  page cannot be fetched, a table cannot be generated from the pages (as also happens when the pin's named
   corrections or its list of IODs with Functional Group Macros no longer match
   a new edition), or the check stops without a result, a separate job, the only one that can
   write issues and which runs no repository code, opens or comments on the
   issue titled "DICOM edition check: the de-identification tables need
-  attention" with the check's report and a link to the run. Close the issue
-  once the pin has moved; a later finding opens a new one
+  attention" with the check's report and a link to the run. Regenerate the
+  tables as
+  [Regenerate the DICOM tables for a new edition](deidentification-dicom-tables.md)
+  describes, and close the issue once the pin has moved; a later finding opens
+  a new one
 
 #### `tg263-edition-check.yml`
 

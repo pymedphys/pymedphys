@@ -16,6 +16,8 @@
 schema = "pymedphys-deid-uid-roles/1"
 edition = "2026d"
 acknowledgement = "DICOM PS3.6 2026d, © NEMA"
+link = "https://www.dicomstandard.org/"
+notice = "DICOM® is the registered trademark of the National Electrical Manufacturers Association (NEMA) for its standards publications relating to digital communications of medical information. NEMA does not endorse, sponsor, or certify PyMedPhys."
 
 [[attribute]]
 tag = "(0008,0014)"

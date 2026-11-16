@@ -50,6 +50,7 @@ from pymedphys._dev.deid_tables import (
     sources,
 )
 from pymedphys._dicom.deidentify import (
+    attribution,
     codes,
     iods,
     loinc_terms,
@@ -3649,7 +3650,7 @@ def test_anatomic_region_codes_with_invalid_rows_fail(tmp_path, row, message):
                 "schema": standard.SCHEMA,
                 "table": codes.ANATOMIC_REGIONS_TABLE.table,
                 "edition": "2099a",
-                "acknowledgement": "DICOM PS3.16 2099a, \u00a9 NEMA",
+                **attribution.fields("PS3.16", "2099a"),
                 "sources": [],
                 "content_sha256": standard.content_sha256(rows),
                 "rows": rows,
@@ -3924,6 +3925,93 @@ def test_check_passes_only_when_the_tables_are_current(source_dir, tmp_path, cap
     assert table.read_bytes() == before
 
 
+def _words(text):
+    return " ".join(text.split())
+
+
+def test_every_generated_table_carries_its_attribution(source_dir, tmp_path):
+    output_dir = tmp_path / "tables"
+    generate.generate(FIXTURE_PIN, output_dir, source_dir=source_dir)
+
+    for name in generate._OUTPUTS:  # pylint: disable = protected-access
+        document = json.loads((output_dir / name).read_text(encoding="utf-8"))
+        part = document["table"].split(" ", 1)[0]
+        assert list(document)[2:6] == ["edition", "acknowledgement", "link", "notice"]
+        assert document["acknowledgement"] == f"DICOM {part} 2099a, \u00a9 NEMA"
+        assert document["link"] == "https://www.dicomstandard.org/"
+        assert document["notice"] == attribution.NOTICE
+        assert "DICOM\u00ae is the registered trademark" in document["notice"]
+        assert (
+            "NEMA does not endorse, sponsor, or certify PyMedPhys."
+            in (document["notice"])
+        )
+
+
+def test_generate_writes_the_notice_with_each_table_s_attribution(source_dir, tmp_path):
+    output_dir = tmp_path / "tables"
+    generate.generate(FIXTURE_PIN, output_dir, source_dir=source_dir)
+
+    text = (output_dir / attribution.NOTICE_FILE).read_text(encoding="utf-8")
+    words = _words(text)
+    assert text.startswith("DICOM Standard\n\n")
+    assert all(len(line) <= 79 for line in text.splitlines())
+    assert "edition 2099a" in words
+    assert attribution.LINK in words
+    assert _words(attribution.NOTICE) in words
+    assert _words(attribution.DISCLAIMER) in words
+    parts = set()
+    for name in generate._OUTPUTS:  # pylint: disable = protected-access
+        document = json.loads((output_dir / name).read_text(encoding="utf-8"))
+        parts.add(document["table"].split(" ", 1)[0])
+        assert (
+            f"\n\n{name}\n  {document['table']}\n"
+            f"  {document['acknowledgement']}, {attribution.LINK}\n"
+        ) in text
+    assert {"PS3.3", "PS3.4", "PS3.6", "PS3.15", "PS3.16"} <= parts
+    for part in parts:
+        assert f"DICOM {part} 2099a, \u00a9 NEMA" in words
+
+
+def test_check_finds_a_missing_or_altered_notice(source_dir, tmp_path, capsys):
+    output_dir = tmp_path / "tables"
+    generate.generate(FIXTURE_PIN, output_dir, source_dir=source_dir)
+    notice = output_dir / attribution.NOTICE_FILE
+
+    notice.write_text(
+        notice.read_text(encoding="utf-8").replace("\u00a9 NEMA", "NEMA"),
+        encoding="utf-8",
+    )
+    assert (
+        generate.generate(FIXTURE_PIN, output_dir, source_dir=source_dir, check=True)
+        == 1
+    )
+    assert f"{attribution.NOTICE_FILE} differs" in capsys.readouterr().err
+
+    notice.unlink()
+    assert (
+        generate.generate(FIXTURE_PIN, output_dir, source_dir=source_dir, check=True)
+        == 1
+    )
+    assert f"{attribution.NOTICE_FILE} is missing" in capsys.readouterr().err
+
+
+def test_the_committed_notice_is_generated_from_the_committed_tables():
+    documents = {
+        name: json.loads((standard.STANDARD_DIR / name).read_text(encoding="utf-8"))
+        for name in generate._OUTPUTS  # pylint: disable = protected-access
+    }
+
+    assert attribution.NOTICE_PATH.parent == standard.STANDARD_DIR
+    assert attribution.NOTICE_PATH.read_text(encoding="utf-8") == (
+        generate._notice(  # pylint: disable = protected-access
+            generate.PIN.edition, documents
+        )
+    )
+    assert {document["edition"] for document in documents.values()} == {
+        generate.PIN.edition
+    }
+
+
 @pytest.mark.deid_requirement("MIDI-BP-06")
 def test_a_source_with_another_digest_is_not_parsed(source_dir, tmp_path):
     (source_dir / "chtml" / "part15" / "chapter_E.html").write_bytes(
@@ -4139,22 +4227,68 @@ def test_the_pinned_pages_change_no_table(tables_dir):
     assert edition_check.report_lines(result)[-1] == "Result: unchanged"
 
 
-def test_a_page_that_changes_no_table_changes_nothing(tables_dir):
+def _release(edition):
+    """The fixture's chapter E page, naming ``edition`` in its release information."""
     release = (
         '<span class="documentreleaseinformation">'
-        "DICOM PS3.15 2099b - Fixture Profiles</span>"
+        f"DICOM PS3.15 {edition} - Fixture Profiles</span>"
     )
-    page = _replace(FIXTURE_PAGE, b"<body>", b"<body>" + release.encode("utf-8"))
+    return _replace(FIXTURE_PAGE, b"<body>", b"<body>" + release.encode("utf-8"))
 
-    result = _check_current(tables_dir, {CHAPTER_E: page})
+
+def test_a_page_of_the_pinned_edition_that_changes_no_table_changes_nothing(
+    tables_dir,
+):
+    result = _check_current(tables_dir, {CHAPTER_E: _release("2099a")})
 
     assert result.status == "unchanged"
     assert result.changed_pages == (CHAPTER_E,)
-    assert result.editions[CHAPTER_E] == "2099b"
+    assert not result.new_editions
+    assert result.editions[CHAPTER_E] == "2099a"
     assert result.editions["html/part03.html"] is None
-    assert "Edition the current pages name: 2099b, none" in (
+    assert "Edition the current pages name: 2099a, none" in (
         edition_check.report_lines(result)
     )
+
+
+def test_a_new_edition_needs_the_tables_regenerated_though_no_row_changes(
+    tables_dir,
+):
+    # Each table names its edition in its attribution, so the tables are
+    # regenerated for each new edition, as NEMA's attribution requires.
+    result = _check_current(tables_dir, {CHAPTER_E: _release("2099b")})
+
+    assert result.status == "changed"
+    assert result.new_editions == ("2099b",)
+    assert not result.changed_tables
+    assert not result.failed_tables
+    assert result.editions[CHAPTER_E] == "2099b"
+    lines = edition_check.report_lines(result)
+    assert "Edition the current pages name: 2099b, none" in lines
+    assert lines[-5:] == [
+        "New editions, for which every table must be regenerated:",
+        "  2099b",
+        "Pages that differ from the pin:",
+        f"  {CHAPTER_E}",
+        "Result: changed",
+    ]
+
+
+def test_a_new_edition_exits_as_a_changed_table_does(tables_dir, tmp_path, capsys):
+    result_path = tmp_path / "edition-check.json"
+    pages = {**FIXTURE_PAGES, CHAPTER_E: _release("2099b")}
+    source = tmp_path / "current"
+    for path, page in pages.items():
+        (source / path).parent.mkdir(parents=True, exist_ok=True)
+        (source / path).write_bytes(page)
+
+    status = edition_check.run(FIXTURE_PIN, tables_dir, source, result_path)
+
+    assert status == edition_check.EXIT_STATUS["changed"] == 1
+    document = json.loads(result_path.read_text(encoding="utf-8"))
+    assert document["status"] == "changed"
+    assert document["new_editions"] == ["2099b"]
+    assert capsys.readouterr().out.splitlines()[-1] == "Result: changed"
 
 
 @pytest.mark.deid_requirement("MIDI-BP-06")

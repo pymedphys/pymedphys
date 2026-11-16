@@ -113,6 +113,7 @@ from collections.abc import Iterator, MutableSequence, Sequence
 
 from pymedphys._imports import pydicom
 
+from . import attribution
 from .file_layout import ElementPath
 from .sequences import UnreadableItems, decode_items
 from .standard import load_data_dictionary
@@ -855,8 +856,10 @@ def _load_regions(path: pathlib.Path) -> HeadAndNeckRegions:
     if (
         data.get("schema") != _REGIONS_SCHEMA
         or not isinstance(edition, str)
-        or data.get("acknowledgement") != f"DICOM PS3.16 {edition}, © NEMA"
-        or set(data) != {"schema", "edition", "acknowledgement", "region"}
+        or data.get("acknowledgement") != attribution.acknowledgement("PS3.16", edition)
+        or attribution.missing(data) is not None
+        or set(data)
+        != {"schema", "edition", "acknowledgement", "link", "notice", "region"}
         or not isinstance(data["region"], list)
     ):
         raise ValueError(f"{path.name} is not a list of head and neck regions")
@@ -900,7 +903,8 @@ def load_head_and_neck_regions(
     ValueError
         If the file cannot be read; has another schema, an edition other
         than the pinned data dictionary's, an acknowledgement other than that
-        of its edition, or other fields; or
+        of its edition, no link to the DICOM Standard or NEMA's trademark
+        notice, or other fields; or
         has a region without exactly a meaning, a numeric SNOMED CT code, an
         optional SNOMED RT identifier, and an optional Body Part Examined
         term of at most 16 upper-case letters, digits, underscores, and

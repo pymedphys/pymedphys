@@ -23,10 +23,12 @@ import struct
 
 from pymedphys._imports import pydicom, pytest
 
-from pymedphys._dicom.deidentify import pixel_risk, standard
+from pymedphys._dicom.deidentify import attribution, pixel_risk, standard
 from pymedphys._dicom.deidentify.file_layout import ElementPath
 
 Indicator = pixel_risk.Indicator
+# The link and notice that a regions file carries after its acknowledgement.
+_LINK_AND_NOTICE = f'link = "{attribution.LINK}"\nnotice = "{attribution.NOTICE}"\n'
 Risk = pixel_risk.Risk
 RawDataElement = pydicom.dataelem.RawDataElement
 
@@ -1185,13 +1187,24 @@ def test_the_head_and_neck_regions_are_a_reviewed_list_of_the_pinned_edition():
         'schema = "other/1"\nedition = "2026d"\nacknowledgement = "DICOM PS3.16 2026d, © NEMA"\n',
         'schema = "pymedphys-deid-head-and-neck-regions/1"\nedition = "2026d"\n'
         'acknowledgement = "DICOM PS3.16 2026d, © NEMA"\n'
-        '[[region]]\nmeaning = "Head"\nsrt = "T-D1100"\n',
+        + _LINK_AND_NOTICE
+        + '[[region]]\nmeaning = "Head"\nsrt = "T-D1100"\n',
         'schema = "pymedphys-deid-head-and-neck-regions/1"\nedition = "2026d"\n'
         'acknowledgement = "DICOM PS3.16 2026d, © NEMA"\n'
-        '[[region]]\nmeaning = "Head"\nsct = "69536005"\nsrt = "T-D1100"\nbody_part = "head"\n',
+        + _LINK_AND_NOTICE
+        + '[[region]]\nmeaning = "Head"\nsct = "69536005"\nsrt = "T-D1100"\nbody_part = "head"\n',
+        'schema = "pymedphys-deid-head-and-neck-regions/1"\nedition = "2026d"\n'
+        'acknowledgement = "DICOM PS3.16 2026d, © NEMA"\n'
+        '[[region]]\nmeaning = "Head"\nsct = "69536005"\n',
         "not toml [",
     ],
-    ids=["schema", "missing-field", "lower-case-term", "unreadable"],
+    ids=[
+        "schema",
+        "missing-field",
+        "lower-case-term",
+        "no-link-or-notice",
+        "unreadable",
+    ],
 )
 def test_a_malformed_regions_file_is_refused(tmp_path, text):
     path = tmp_path / "regions.toml"
@@ -1204,7 +1217,9 @@ def test_a_regions_file_of_another_edition_is_refused(tmp_path):
     path = tmp_path / "regions.toml"
     path.write_text(
         'schema = "pymedphys-deid-head-and-neck-regions/1"\nedition = "2025a"\n'
-        'acknowledgement = "DICOM PS3.16 2025a, © NEMA"\nregion = []\n',
+        'acknowledgement = "DICOM PS3.16 2025a, © NEMA"\n'
+        + _LINK_AND_NOTICE
+        + "region = []\n",
         encoding="utf-8",
     )
     with pytest.raises(ValueError):

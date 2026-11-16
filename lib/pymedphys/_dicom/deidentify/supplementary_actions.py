@@ -86,6 +86,7 @@ from collections.abc import Mapping
 
 from pymedphys._imports import tomlkit
 
+from . import attribution
 from .iods import load_iod_tables
 from .scope import SUPPORTED_IODS
 from .standard import (
@@ -342,7 +343,8 @@ def load_supplementary_actions(
     SupplementaryActionError
         If the file cannot be read; has another schema; covers another
         edition than the data dictionary, Table E.1-1, and the IOD tables, or
-        lacks its acknowledgement; does not give its rules as an array of
+        lacks its acknowledgement, the link to the DICOM Standard, or NEMA's
+        trademark notice; does not give its rules as an array of
         tables; has a rule without exactly the fields tag, keyword, action,
         and note, and optionally options; has a rule for an attribute that is
         not in the data dictionary, with another keyword, that Table E.1-1
@@ -379,11 +381,14 @@ def _load(path: pathlib.Path) -> SupplementaryActions:
             f"{path.name} does not cover the edition of the data dictionary, "
             f"Table E.1-1, and the IOD tables, {dictionary.edition}"
         )
-    acknowledgement = f"DICOM PS3.6 {dictionary.edition}, © NEMA"
+    acknowledgement = attribution.acknowledgement("PS3.6", dictionary.edition)
     if document.get("acknowledgement") != acknowledgement:
         raise SupplementaryActionError(
             f"{path.name} lacks the acknowledgement {acknowledgement}"
         )
+    lacking = attribution.missing(document)
+    if lacking is not None:
+        raise SupplementaryActionError(f"{path.name} lacks {lacking}")
 
     attributes = {attribute.tag: attribute for attribute in dictionary.attributes}
     listed = _listed(table, attributes)

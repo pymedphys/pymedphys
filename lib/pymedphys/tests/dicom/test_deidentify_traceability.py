@@ -18,7 +18,7 @@ import re
 
 from pymedphys._imports import pytest, tomlkit
 
-from pymedphys._dicom.deidentify import requirements, traceability
+from pymedphys._dicom.deidentify import attribution, requirements, traceability
 from pymedphys.cli import define_parser
 
 URL = (
@@ -34,7 +34,7 @@ UNRUN = "tests/dicom/test_b.py::test_unrun"
 REGISTER = {
     "schema": "pymedphys-deid-requirements/2",
     "edition": "2026d",
-    "acknowledgement": "DICOM PS3.15 2026d, © NEMA",
+    **attribution.fields("PS3.15", "2026d"),
     "midi_report": "Clunie DA et al., MIDI Task Group report",
     "requirement": [
         {
@@ -372,7 +372,11 @@ def test_the_markdown_lists_each_requirement_with_its_tests(register):
     assert markdown.startswith(
         "# DICOM de-identification requirements-to-tests matrix\n"
     )
-    assert "DICOM PS3.15 2026d, © NEMA" in markdown
+    assert (
+        "reproduced verbatim from DICOM PS3.15 2026d, © NEMA, "
+        "<https://www.dicomstandard.org/>. DICOM® is the registered trademark "
+    ) in markdown
+    assert "NEMA does not endorse, sponsor, or certify PyMedPhys." in markdown
     assert "Clunie DA et al., MIDI Task Group report" in markdown
     assert "No test results were given" in markdown
     for entry in register.requirements:

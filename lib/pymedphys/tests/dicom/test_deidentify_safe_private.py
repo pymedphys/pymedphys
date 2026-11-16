@@ -267,6 +267,8 @@ def _repeat_addition(document):
         (_set(additions=[]), "has an unknown field additions"),
         (_set(edition="2099a"), "does not cover the edition of Table E.3.10-1"),
         (_drop("acknowledgement"), "lacks the acknowledgement DICOM PS3.15"),
+        (_drop("link"), "lacks the link to the DICOM Standard"),
+        (_set(notice="DICOM"), "lacks NEMA's trademark notice"),
         (_set(table={}), "table is not an array of tables"),
         (_set(addition={}), "addition is not an array of tables"),
         (

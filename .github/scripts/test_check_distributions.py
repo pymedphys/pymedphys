@@ -139,6 +139,7 @@ LICENCE_FILES = (
     "lib/pymedphys/_pinnacle/LICENSE-MIT",
     "lib/pymedphys/_dicom/deidentify/_tcia/LICENSE-CC-BY-3.0.txt",
     "lib/pymedphys/_dicom/deidentify/_loinc/LICENSE-LOINC.txt",
+    "lib/pymedphys/_dicom/deidentify/_standard/NOTICE-DICOM.txt",
 )
 
 
@@ -181,6 +182,7 @@ def _write_sdist(
         "lib/pymedphys/_pinnacle/LICENSE-MIT": "",
         "lib/pymedphys/_dicom/deidentify/_tcia/LICENSE-CC-BY-3.0.txt": "",
         "lib/pymedphys/_dicom/deidentify/_loinc/LICENSE-LOINC.txt": "",
+        "lib/pymedphys/_dicom/deidentify/_standard/NOTICE-DICOM.txt": "",
         "pyproject.toml": BUILDABLE_PYPROJECT if buildable else "",
         "README.rst": "",
         "CHANGELOG.md": "",

@@ -29,7 +29,7 @@ from __future__ import annotations
 import types
 from collections.abc import Callable, Iterable, Mapping
 
-from . import compound_actions, conformance_values, keys, markers
+from . import attribution, compound_actions, conformance_values, keys, markers
 from .dose_defacing import DOSE_FRACTION
 from .face_blocks import EYE_REACH
 from .codes import load_context_group
@@ -1203,5 +1203,8 @@ def render_markdown(statement: ConformanceStatement) -> str:
         "This statement quotes these parts of the DICOM standard:",
         "",
         *(f"- {a}" for a in statement.acknowledgements),
+        "",
+        f"The DICOM Standard is published at <{attribution.LINK}>. "
+        + attribution.NOTICE,
     ]
     return "\n".join(lines) + "\n"

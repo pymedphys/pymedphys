@@ -30,6 +30,7 @@ import types
 from pymedphys._imports import pydicom, pytest, tomlkit
 
 from pymedphys._dicom.deidentify import (
+    attribution,
     content_items,
     policy,
     run,
@@ -586,7 +587,7 @@ def _document(**changes):
     document = {
         "schema": supplementary_concepts.SCHEMA,
         "edition": "2026d",
-        "acknowledgement": "DICOM PS3.16 2026d, © NEMA",
+        **attribution.fields("PS3.16", "2026d"),
         "concept": [
             {
                 "scheme_designator": "99PMP",
@@ -633,6 +634,8 @@ def test_a_valid_file_loads(tmp_path):
     (_document(schema="other/1"), "schema"),
     (_document(edition="2026c"), "edition of Table E.3.4-1"),
     (_document(acknowledgement="DICOM"), "acknowledgement"),
+    (_document(link="https://dicom.nema.org/"), "the link to the DICOM Standard"),
+    (_document(notice="DICOM"), "NEMA's trademark notice"),
     (_document(concept={"a": 1}), "array of tables"),
     (_without("note"), "exactly the fields"),
     (_row_with(extra="1"), "exactly the fields"),
