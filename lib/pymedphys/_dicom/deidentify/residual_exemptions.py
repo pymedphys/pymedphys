@@ -68,7 +68,9 @@ reason that such a finding is not a reason for review (D-032), or returns
   (:func:`~pymedphys._dicom.deidentify.option_kept.retained_text`).
 - :attr:`Exemption.RETAINED_VALUE`: a value of the element, a date, time,
   or datetime that a selected option keeps, equals a whole value of the
-  finding's source, or, in a kept date, the date of a datetime source
+  finding's source, or, in a kept date, the date of a datetime source, or,
+  in a kept datetime, begins with a date source, or the date of a datetime
+  source
   (:func:`~pymedphys._dicom.deidentify.option_kept.retained_value`). It also
   applies to a finding of a date or datetime, which would otherwise
   withhold the file (:func:`retained_date`).

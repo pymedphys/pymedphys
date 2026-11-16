@@ -75,8 +75,10 @@ or a private copy of one
 or it is a removed requested procedure code's Code Value, Coding Scheme
 Designator, or Code Meaning equal to the same attribute of a kept code item,
 as where equipment copied the request's code into the procedure's
-(:func:`~pymedphys._dicom.deidentify.residual_exemptions.copied_request_code`). A date or datetime equal to a whole date, time, or datetime that
-an option keeps, or a datetime whose date equals a whole date that an option
+(:func:`~pymedphys._dicom.deidentify.residual_exemptions.copied_request_code`).
+A date or datetime equal to a whole date, time, or datetime that an option
+keeps, a datetime whose date equals a whole date that an option keeps, or a
+date, or a datetime's date, that begins a whole datetime that an option
 keeps, does not withhold the file either
 (:func:`~pymedphys._dicom.deidentify.residual_exemptions.retained_date`), nor
 does a UID equal to a whole UID that an option keeps, where only instances
