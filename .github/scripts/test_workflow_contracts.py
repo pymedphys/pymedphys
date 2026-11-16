@@ -54,7 +54,7 @@ ALONE_SELECTION = (
 )
 # The lines that give the de-identification modules from a to o, less the
 # listed corpus modules, to the deidentify-a-o part and ignore them in others,
-# in the test and dependency-floors jobs; one glob serves both parts.
+# in every job that runs in parts; one glob serves both parts.
 DEIDENTIFY_SELECTION = (
     "            first_half=()\n",
     "            for path in "
@@ -65,13 +65,16 @@ DEIDENTIFY_SELECTION = (
     '              echo "::error::The deidentify-a-o part must not be empty."\n',
     '              deidentify-a-o) selection=("${first_half[@]}") ;;\n',
     "              others)\n",
-    '                selection=("${listed[@]/#/--ignore=${GITHUB_WORKSPACE}/}")\n',
     '                selection+=("${first_half[@]/#/--ignore=${GITHUB_WORKSPACE}/}")\n',
 )
-# The dicom extra's run alone has no deidentify-a-o part: its others part,
-# which holds only tests/dicom, runs those modules too.
-NARROW_PARTS = tuple(
-    part for part in pydicom_coverage.PARTS if part != "deidentify-a-o"
+# How others starts from the listed modules' ignores: the test and
+# dependency-floors jobs run the whole suite, and the narrow extras add them
+# to the feature's paths.
+OTHERS_SELECTION = (
+    '                selection=("${listed[@]/#/--ignore=${GITHUB_WORKSPACE}/}")\n'
+)
+NARROW_OTHERS_SELECTION = (
+    '                selection+=("${listed[@]/#/--ignore=${GITHUB_WORKSPACE}/}")\n'
 )
 
 
@@ -438,6 +441,7 @@ class WorkflowContractTests(unittest.TestCase):
             "junit-extra-dicom-ct-defacing-reviews",
             "junit-extra-dicom-corpus-runs",
             "junit-extra-dicom-corpus-end-to-end-p-z",
+            "junit-extra-dicom-deidentify-a-o",
             "junit-extra-dicom-others",
             "junit-dependency-floors-ct-defacing",
             "junit-dependency-floors-ct-defacing-reviews",
@@ -572,6 +576,7 @@ class WorkflowContractTests(unittest.TestCase):
             '            if [[ ! -f "${path}" ]]; then\n',
             *ALONE_SELECTION,
             *DEIDENTIFY_SELECTION,
+            OTHERS_SELECTION,
         ):
             with self.subTest(line=line):
                 for selection in selections:
@@ -588,9 +593,9 @@ class WorkflowContractTests(unittest.TestCase):
                 self.assertIn(
                     "          cache-data: ${{ matrix.part == 'others' }}\n", job
                 )
-        # The dicom extra's run alone has the same parts but deidentify-a-o,
-        # over the same paths and marks: the corpus parts run their modules in
-        # place of the paths, and its others part adds the listed modules'
+        # The dicom extra's run alone has the same parts, over the same paths
+        # and marks: the corpus parts and deidentify-a-o run their modules in
+        # place of the paths, and its others part adds the other parts'
         # ignores to them.
         narrow = workflow["narrow-extras"]
         part = (
@@ -599,21 +604,20 @@ class WorkflowContractTests(unittest.TestCase):
             "            marks: not slow\n"
             "            paths: tests/dicom\n"
         )
-        for name in NARROW_PARTS:
+        for name in pydicom_coverage.PARTS:
             with self.subTest(narrow_part=name):
                 self.assertEqual(narrow.count(part.format(name)), 1)
-        self.assertEqual(narrow.count("            part: "), len(NARROW_PARTS))
-        self.assertNotIn("deidentify-a-o", narrow)
+        self.assertEqual(
+            narrow.count("            part: "), len(pydicom_coverage.PARTS)
+        )
         for line in (
             '            if [[ ! -f "${path}" ]]; then\n',
             *ALONE_SELECTION,
+            *DEIDENTIFY_SELECTION,
+            NARROW_OTHERS_SELECTION,
             "                selection=()\n",
-            "              others) selection+="
-            '("${listed[@]/#/--ignore=${GITHUB_WORKSPACE}/}") ;;\n',
-            "          cache-data: ${{ matrix.part != 'ct-defacing' && "
-            "matrix.part != 'ct-defacing-reviews' && "
-            "matrix.part != 'corpus-runs' && "
-            "matrix.part != 'corpus-end-to-end-p-z' }}\n",
+            # Only others and the extras that run whole read downloaded data.
+            "          cache-data: ${{ !matrix.part || matrix.part == 'others' }}\n",
         ):
             with self.subTest(narrow_line=line):
                 self.assertIn(line, narrow)

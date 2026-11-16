@@ -382,11 +382,13 @@ For each, on Ubuntu with Python 3.14, it installs only that extra and the
 `test-runner` dependency group, then runs the feature's non-slow tests with
 `uv run --no-sync`, so nothing else is installed. Tests there that exercise
 another feature skip themselves when its packages are missing. The `dicom`
-extra's tests run in the same `ct-defacing`, `ct-defacing-reviews`,
-`corpus-runs`, `corpus-end-to-end-p-z`, and `others` parts as the unit-test matrix, on five runners, since together they can reach the
-time limit on a slow runner; `corpus-runs` has 60 minutes and the other parts 30. It has no `deidentify-a-o` part: its
-`others` part holds only `tests/dicom` and took 15 minutes on 6 November 2026,
-so a sixth runner would buy nothing it needs. It uploads a JUnit report per extra as `junit-extra-<extra>`, and
+extra's tests run in the same six parts as the unit-test matrix, on six
+runners, since together they can reach the time limit on a slow runner;
+`corpus-runs` has 60 minutes and the other parts 30. Its `others` part holds
+only `tests/dicom`, so it had no `deidentify-a-o` part while it took 15 minutes
+on 6 November 2026; it gained one on 16 November 2026, when that part had
+reached 26 minutes on main's nightly full matrix and 26.2 on a pull request.
+It uploads a JUnit report per extra as `junit-extra-<extra>`, and
 per part for `dicom` as `junit-extra-dicom-<part>`, and runs alongside both the
 quick and full matrices.
 
