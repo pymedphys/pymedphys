@@ -433,4 +433,4 @@ def test_the_report_counts_findings_that_a_kept_creator_explains():
             "retained-creator", "(0011,0010)", "(0009,0010)", 1
         ),
     )
-    assert release_report.FORMAT == "pymedphys-deid-release-report/60"
+    assert release_report.FORMAT == "pymedphys-deid-release-report/68"

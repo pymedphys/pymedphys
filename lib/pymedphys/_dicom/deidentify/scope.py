@@ -16,7 +16,8 @@
 
 The first supported release de-identifies instances of the CT, MR, and
 PET image IODs, including their Enhanced, Legacy Converted Enhanced, and
-colour variants, of MR Spectroscopy, of the RT Structure Set, RT Plan, RT
+colour variants, of MR Spectroscopy, of the Nuclear Medicine Image IOD, of
+the RT Structure Set, RT Plan, RT
 Dose, RT Image, Enhanced RT Image, Enhanced Continuous RT Image, RT Beams
 Treatment Record, RT Ion Plan, RT Ion Beams Treatment Record, RT Brachy
 Treatment Record, RT Treatment Summary Record, RT Beams Delivery
@@ -29,17 +30,18 @@ Radiation Dose SR IODs, of the Basic Text SR, Enhanced SR, Comprehensive SR,
 Comprehensive 3D SR, and Extensible SR IODs, of the Key Object Selection
 Document, and of the Mammography CAD SR, Chest CAD SR, Colon CAD SR,
 Procedure Log, Spectacle Prescription Report, Macular Grid Thickness and
-Volume Report, and Waveform Annotation SR IODs, of the Parametric Map and
-Real World Value Mapping IODs, of the Grayscale, Color, Pseudo-Color,
-Blending, XA/XRF Grayscale, and Variable Modality LUT Softcopy
-Presentation State IODs, and of the Planar MPR and Volume Rendering
+Volume Report, and Waveform Annotation SR IODs, of the Parametric Map,
+Real World Value Mapping, and Encapsulated PDF IODs, of the Grayscale,
+Color, Pseudo-Color, Blending, XA/XRF Grayscale, and Variable Modality LUT
+Softcopy Presentation State IODs, and of the Planar MPR and Volume Rendering
 Volumetric Presentation State IODs, with their Grayscale and Compositing
 Planar MPR, Volume Rendering, Segmented Volume Rendering, and Multiple
 Volume Rendering SOP Classes, the Advanced Blending Presentation State
 IOD, and the Waveform and Waveform Acquisition Presentation State IODs,
-uncompressed or in a transfer syntax that
-encapsulates Pixel Data that pydicom's decoding plugins decode. Supporting an IOD or a transfer syntax does not
-release every instance in it: a compressed instance is still sequestered
+uncompressed or in a transfer syntax that encapsulates Pixel Data that
+pydicom's decoding plugins decode. Supporting an IOD or a transfer syntax
+does not release every instance in it: a compressed instance is still
+sequestered
 where the plugin pinned to its transfer syntax is not installed, or where
 its frames or codestreams fail the engine's checks
 (:mod:`~pymedphys._dicom.deidentify.instance_transform`), and the element
@@ -54,12 +56,13 @@ removes its Type 1 Presentation Creation Date and Time, and one that holds
 a Graphic Annotation Sequence (0070,0001) under every preset, since the
 table gives that sequence D, as the supplementary rules give a volumetric
 one's Volumetric Annotation Sequence (0070,1901) and Volumetric
-Presentation Input Annotation Sequence (0070,1905). The Clean Pixel Data
-Option also sequesters a Parametric Map whose pixel data are floating
-point, which it does not read. Every other instance is sequestered:
-neither de-identified nor written, and listed in the run report by opaque
-identifiers only. That includes the other Structured Reports and
-instances of Private SOP Classes.
+Presentation Input Annotation Sequence (0070,1905). Every Encapsulated PDF
+that holds its Encapsulated Document (0042,0011) is also sequestered under
+every policy: Table E.1-1 gives it D, and no reviewed rule gives a document
+a dummy value. Every other instance is sequestered: neither de-identified
+nor written, and listed in the run report by opaque identifiers only. That
+includes the other Structured Reports and instances of Private SOP
+Classes.
 
 :func:`classify` decides from the instance's SOP Class UID (0008,0016), which
 PS3.4 Table B.5-1 maps to its IOD, and from the transfer syntax of its file.
@@ -91,6 +94,7 @@ SUPPORTED_IODS = frozenset(
         "Enhanced MR Color Image",
         "Legacy Converted Enhanced MR Image",
         "MR Spectroscopy",
+        "Nuclear Medicine Image",
         "Positron Emission Tomography Image",
         "Enhanced PET Image",
         "Legacy Converted Enhanced PET Image",
@@ -147,6 +151,7 @@ SUPPORTED_IODS = frozenset(
         "Advanced Blending Presentation State",
         "Waveform Presentation State",
         "Waveform Acquisition Presentation State",
+        "Encapsulated PDF",
     }
 )
 # Every transfer syntax whose files the engine reads: Implicit VR Little

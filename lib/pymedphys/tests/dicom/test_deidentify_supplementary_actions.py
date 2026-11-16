@@ -182,6 +182,21 @@ SUPPORTED_SECOND_GENERATION_RT_IODS = (
     "RT Brachy Application Setup Delivery Instruction",
     "RT Radiation Set Delivery Instruction",
 )
+# The Nuclear Medicine Image IOD, which the maintainer added to the target
+# coverage on 31 October 2026, and which the first supported release now
+# supports, whose attributes the tests at the end of this module review.
+NM_IODS = ("Nuclear Medicine Image",)
+# The text attributes that it uses and the IODs above do not, by group,
+# checked by hand against the 2026d PS3.3 Tables C.8-9 and C.8-10 and PS3.6:
+# Processing Function, a description of the processing, and Energy Window
+# Name, which PS3.3 calls user defined, are cleaned as descriptors; and Image
+# ID, which the user or equipment generates, is among
+# REMOVED_UNDER_EVERY_OPTION.
+NM_OPERATOR_TEXT = {
+    "(0018,5020)",  # Processing Function
+    "(0054,0018)",  # Energy Window Name
+}
+NM_REMOVED_UNDER_EVERY_OPTION = {"(0054,0400)"}  # Image ID
 # Surface Segmentation, which the maintainer brought into the target
 # coverage on 31 October 2026 with the other IODs that radiotherapy exports
 # carry, whose attributes were reviewed ahead of supporting it, against every
@@ -222,10 +237,16 @@ SURFACE_REVIEWED_AGAINST = (
     + RECORD_IODS
     + MAP_IODS
 )
+# Encapsulated PDF, which the maintainer added to the target coverage on 31
+# October 2026 with the other IODs that RT exports carry, whose attributes
+# were reviewed against the same IODs as Surface Segmentation's, beside it,
+# and which the first supported release now supports.
+ENCAPSULATED_PDF = "Encapsulated PDF"
+ENCAPSULATED_PDF_REVIEWED_AGAINST = SURFACE_REVIEWED_AGAINST
 # The Planar MPR and Volume Rendering Volumetric Presentation State IODs and
 # the Advanced Blending Presentation State IOD, of PS3.3 Sections A.80.1,
-# A.80.2, and A.33.7, reviewed against every IOD above but Surface
-# Segmentation, and now supported.
+# A.80.2, and A.33.7, reviewed against the IODs that the softcopy ones were
+# reviewed against and the six softcopy ones, and now supported.
 VOLUMETRIC_PRESENTATION_STATE_IODS = (
     "Planar MPR Volumetric Presentation State",
     "Volume Rendering Volumetric Presentation State",
@@ -235,8 +256,8 @@ VOLUMETRIC_REVIEWED_AGAINST = (
     PRESENTATION_STATE_REVIEWED_AGAINST + PRESENTATION_STATE_IODS
 )
 # The Waveform and Waveform Acquisition Presentation State IODs of PS3.3
-# Sections A.92.1 and A.92.2, reviewed against every IOD above but Surface
-# Segmentation, and now supported.
+# Sections A.92.1 and A.92.2, reviewed against the IODs that the volumetric
+# ones were reviewed against and the volumetric ones, and now supported.
 WAVEFORM_PRESENTATION_STATE_IODS = (
     "Waveform Presentation State",
     "Waveform Acquisition Presentation State",
@@ -245,24 +266,20 @@ WAVEFORM_REVIEWED_AGAINST = (
     VOLUMETRIC_REVIEWED_AGAINST + VOLUMETRIC_PRESENTATION_STATE_IODS
 )
 SUPPORTED_IODS = (
-    WAVEFORM_REVIEWED_AGAINST
+    PRESENTATION_STATE_REVIEWED_AGAINST
     + SURFACE_IODS
     + SUPPORTED_SECOND_GENERATION_RT_IODS
-    + WAVEFORM_PRESENTATION_STATE_IODS
-)
-# The IODs that the second-generation RT IODs were reviewed against: every
-# IOD that the first supported release supported when they were reviewed,
-# which Surface Segmentation and the Presentation States were not yet.
-SECOND_GENERATION_REVIEWED_AGAINST = tuple(
-    name
-    for name in SUPPORTED_IODS
-    if name
-    not in SECOND_GENERATION_RT_IODS
-    + SURFACE_IODS
+    + NM_IODS
     + PRESENTATION_STATE_IODS
+    + (ENCAPSULATED_PDF,)
     + VOLUMETRIC_PRESENTATION_STATE_IODS
     + WAVEFORM_PRESENTATION_STATE_IODS
 )
+# The IODs that the second-generation RT IODs were reviewed against:
+# Nuclear Medicine Image, Surface Segmentation, the Presentation States,
+# and Encapsulated PDF were not supported yet. Enhanced RT Image
+# IODs were already supported.
+SECOND_GENERATION_REVIEWED_AGAINST = SURFACE_REVIEWED_AGAINST + ENHANCED_RT_IMAGE_IODS
 CLEAN_DESCRIPTORS = "clean_descriptors"
 DEVICE_IDENTITY = "retain_device_identity"
 FULL_DATES = "retain_longitudinal_full_dates"
@@ -357,6 +374,7 @@ REMOVED_UNDER_EVERY_OPTION = {
     "(0040,0031)",  # Local Namespace Entity ID
     "(0040,0032)",  # Universal Entity ID
     "(0040,E001)",  # HL7 Instance Identifier
+    "(0054,0400)",  # Image ID
     "(0062,0020)",  # Tracking ID
     "(0088,0130)",  # Storage Media File-set ID
     "(300A,00F9)",  # Accessory Code
@@ -411,6 +429,7 @@ OTHER_URLS = {
     "(0008,1190)",  # Retrieve URL
     "(0028,7FE0)",  # Pixel Data Provider URL
     "(0040,E010)",  # Retrieve URI
+    "(0068,7005)",  # Relative URI Reference Within Encapsulated Document
 }
 
 
@@ -531,12 +550,13 @@ def test_every_text_attribute_a_supported_iod_uses_and_table_e1_1_omits_has_a_ru
     # add 13, the brachy and summary treatment records, which add none, the
     # Enhanced and Enhanced Continuous RT Images, which add 1, RT Segment
     # Annotation and RT Radiation Set, which add 2, Segmentation, which adds
-    # 4, Surface Segmentation, which adds 2, the two dose-report IODs, the
-    # three delivery instructions, which add 1, the six softcopy
-    # Presentation State IODs, which add 7, and the volumetric and advanced
-    # blending Presentation State IODs, which add 2, whose supplementary
-    # rules cover 187 text attributes.
-    assert len(omitted) == 187
+    # 4, Surface Segmentation, which adds 2, Nuclear Medicine Image, which
+    # adds 3, the two dose-report IODs, the three delivery instructions, which
+    # add 1, the six softcopy Presentation State IODs, which add 7,
+    # Encapsulated PDF, which adds 8, and the volumetric and advanced blending
+    # Presentation State IODs, which add 2, whose supplementary rules cover
+    # 198 text attributes.
+    assert len(omitted) == 198
     assert omitted <= set(_rules())
     assert {"(0008,0100)", "(300A,00C2)", "(60xx,1500)"} <= omitted
 
@@ -551,14 +571,14 @@ def test_the_rules_for_omitted_text_fall_in_the_reviewed_groups():
 
     assert groups == {
         # Operator-typed labels and text.
-        ("X/Z/D", ((CLEAN_DESCRIPTORS, "C"),)): 90,
+        ("X/Z/D", ((CLEAN_DESCRIPTORS, "C"),)): 93,
         # Accessory and equipment identifiers.
-        ("X/Z/D", ((DEVICE_IDENTITY, "K"),)): 30,
+        ("X/Z/D", ((DEVICE_IDENTITY, "K"),)): 33,
         # Coded and technical values, and De-identification Method.
-        ("K", ()): 48,
+        ("K", ()): 52,
         # Names and identifiers of people, organisations, records, and
         # networks, identifiers that a device reads, and the text of overlays.
-        ("X/Z/D", ()): 17,
+        ("X/Z/D", ()): 18,
         # Patient's Birth and Death Dates in Alternative Calendar.
         ("X", ()): 2,
     }
@@ -1367,6 +1387,192 @@ def test_every_new_attribute_of_the_softcopy_presentation_states_has_its_action(
                     element_rules.RuleSource.DEFAULT,
                     element_rules.KEEP,
                 ), (preset, name, definition)
+
+
+# The attributes that Encapsulated PDF uses and the IODs reviewed before it do
+# not, checked by hand against the 2026d PS3.3 Tables A.45.1-1, C.8-24, and
+# C.24-2, by group. Its Encapsulated Document Series Module uses nothing new.
+# The text of its Encapsulated Document Module: the title, which can be
+# copied from the PDF's own Title entry, and the media types, which the IOD
+# fixes as application/pdf (PS3.3 Section A.45.1.4.1).
+PDF_DOCUMENT_TITLE = {"(0042,0010)"}  # Document Title
+PDF_MEDIA_TYPES = {
+    "(0042,0012)",  # MIME Type of Encapsulated Document
+    "(0042,0014)",  # List of MIME Types
+}
+# The text of its SC Equipment Module, which describes the equipment that
+# captured or converted the document. Its manufacturer, model, and software
+# can be a site's own system, as an MR coil's manufacturer can, so they are
+# device identity, as Secondary Capture Device ID is; and the formats it
+# captured, which name signal and interface formats, are kept.
+PDF_CAPTURE_DEVICE = {
+    "(0018,1016)",  # Secondary Capture Device Manufacturer
+    "(0018,1018)",  # Secondary Capture Device Manufacturer's Model Name
+    "(0018,1019)",  # Secondary Capture Device Software Versions
+}
+PDF_CAPTURE_FORMATS = {
+    "(0018,1022)",  # Video Image Format Acquired
+    "(0018,1023)",  # Digital Image Format Acquired
+}
+PDF_TEXT_GROUPS: tuple[tuple[set[str], str, dict[str, str]], ...] = (
+    (PDF_DOCUMENT_TITLE, "X/Z/D", {CLEAN_DESCRIPTORS: "C"}),
+    (PDF_MEDIA_TYPES, "K", {}),
+    (PDF_CAPTURE_DEVICE, "X/Z/D", {DEVICE_IDENTITY: "K"}),
+    (PDF_CAPTURE_FORMATS, "K", {}),
+)
+# The one new text attribute that Table E.1-1 lists: the capture device's own
+# identifier, removed, and kept under Retain Device Identity.
+SECONDARY_CAPTURE_DEVICE_ID = "(0018,1010)"
+# The document itself, which Table E.1-1 gives D.
+ENCAPSULATED_DOCUMENT = "(0042,0011)"
+# A URI into the document, which a rule removes by Type.
+RELATIVE_URI_IN_DOCUMENT = "(0068,7005)"
+# The others: the document's length and its classification codes, which take
+# the default.
+PDF_OTHER_VRS = {"UL": 1, "SQ": 1}
+
+
+def test_the_encapsulated_pdf_is_generated_and_supported():
+    tables = iods.load_iod_tables()
+
+    assert ENCAPSULATED_PDF in tables.iods
+    assert ENCAPSULATED_PDF in scope.SUPPORTED_IODS
+    # The other encapsulated documents are not supported.
+    assert {
+        name
+        for name in tables.iods
+        if name.startswith("Encapsulated ") and name in scope.SUPPORTED_IODS
+    } == {ENCAPSULATED_PDF}
+
+
+@pytest.mark.deid_requirement("MIDI-BP-05", "MIDI-BP-06", "MIDI-BP-11")
+def test_the_text_that_only_the_encapsulated_pdf_uses_has_reviewed_rules():
+    listed = _table_e1_1()
+    added = _used_by((ENCAPSULATED_PDF,), TEXT_VRS) - _used_by(
+        ENCAPSULATED_PDF_REVIEWED_AGAINST, TEXT_VRS
+    )
+    rules = _rules()
+
+    assert added - set(listed) == (
+        PDF_DOCUMENT_TITLE | PDF_MEDIA_TYPES | PDF_CAPTURE_DEVICE | PDF_CAPTURE_FORMATS
+    )
+    assert added & set(listed) == {SECONDARY_CAPTURE_DEVICE_ID}
+    row = listed[SECONDARY_CAPTURE_DEVICE_ID]
+    assert (row.basic_profile, dict(row.options)) == ("X", {DEVICE_IDENTITY: "K"})
+    for tags, action, options in PDF_TEXT_GROUPS:
+        for tag in tags:
+            assert (rules[tag].action, dict(rules[tag].options)) == (
+                action,
+                options,
+            ), tag
+            assert rules[tag].note.strip(), tag
+    # The capture device's manufacturer is treated as an MR receive coil's
+    # manufacturer is, which can also be a site that builds its own.
+    coil_manufacturer = rules["(0018,9041)"]
+    for tag in PDF_CAPTURE_DEVICE:
+        assert (rules[tag].action, dict(rules[tag].options)) == (
+            coil_manufacturer.action,
+            dict(coil_manufacturer.options),
+        ), tag
+
+
+def test_each_policy_gives_the_encapsulated_pdf_text_the_action_of_its_group():
+    for composed in _every_policy():
+        for tags, action, options in PDF_TEXT_GROUPS:
+            selected = [a for o, a in options.items() if o in composed.options]
+            for tag in tags:
+                assert composed.supplementary_actions[tag] == (
+                    selected[0] if selected else action
+                ), (tag, composed.options)
+
+
+def test_the_encapsulated_pdf_title_is_emptied_where_it_is_type_2():
+    tables = iods.load_iod_tables()
+    iod = tables.iods[ENCAPSULATED_PDF]
+    (title,) = (
+        definition
+        for definition in iod.definitions
+        if definition.tag in PDF_DOCUMENT_TITLE
+    )
+
+    assert (title.path, title.type) == ((), "2")
+    assert (
+        compound_actions.resolve_in_iod(
+            iod, title.tag, title.path, _rules()[title.tag].action
+        )
+        == "Z"
+    )
+
+
+def test_every_uid_date_and_name_that_the_encapsulated_pdf_uses_has_a_role():
+    uids = uid_roles.load_uid_roles()
+    temporal = temporal_roles.load_temporal_roles()
+    names = (ENCAPSULATED_PDF,)
+
+    for tag in _used_by(names, {"UI"}):
+        assert isinstance(uids.role(tag), uid_roles.UIDRole), tag
+    for tag in _used_by(names, TEMPORAL_VRS):
+        assert isinstance(temporal.role(tag), temporal_roles.TemporalRole), tag
+    # The IODs reviewed before it use every UID, date, time, datetime, and
+    # person name that it uses, and every URL but the URI into the document.
+    for vrs in ({"UI"}, TEMPORAL_VRS, {"PN"}):
+        assert not _used_by(names, vrs) - _used_by(
+            ENCAPSULATED_PDF_REVIEWED_AGAINST, vrs
+        ), vrs
+    assert _used_by(names, {"UR"}) - _used_by(
+        ENCAPSULATED_PDF_REVIEWED_AGAINST, {"UR"}
+    ) == {RELATIVE_URI_IN_DOCUMENT}
+    assert _rules()[RELATIVE_URI_IN_DOCUMENT].action == "X/Z/D"
+
+
+def test_the_encapsulated_document_takes_d_under_every_option():
+    # No option of Table E.1-1 keeps or cleans the document, and no rule
+    # gives it a dummy value, so an instance that holds one is sequestered.
+    row = _table_e1_1()[ENCAPSULATED_DOCUMENT]
+
+    assert (row.basic_profile, dict(row.options)) == ("D", {})
+    assert ENCAPSULATED_DOCUMENT not in _rules()
+    (document,) = _definitions_of({ENCAPSULATED_DOCUMENT}, (ENCAPSULATED_PDF,))[
+        ENCAPSULATED_DOCUMENT
+    ]
+    assert document == (ENCAPSULATED_PDF, "Encapsulated Document", (), "1")
+
+
+def test_the_encapsulated_pdf_other_new_attributes_are_kept_by_the_default():
+    dictionary = _dictionary()
+    tables = iods.load_iod_tables()
+    every_vr = {vr for attribute in dictionary.values() for vr in attribute.vrs}
+    names = (ENCAPSULATED_PDF,)
+    new = _used_by(names, every_vr) - _used_by(
+        ENCAPSULATED_PDF_REVIEWED_AGAINST, every_vr
+    )
+    other = (
+        new
+        - _used_by(names, TEXT_VRS)
+        - {ENCAPSULATED_DOCUMENT, RELATIVE_URI_IN_DOCUMENT}
+    )
+    listed = set(_table_e1_1())
+    rules = _rules()
+    uids = set(uid_roles.load_uid_roles().rules)
+    by_vr = collections.Counter(vr for tag in other for vr in dictionary[tag].vrs)
+
+    assert by_vr == PDF_OTHER_VRS
+    assert other == {"(0042,0015)", "(0040,E008)"}
+    assert not other & (listed | set(rules) | uids)
+    # So each takes the default, which keeps it where the IOD defines it,
+    # under every preset, with the code sequence's items handled by their own
+    # rules.
+    iod = tables.iods[ENCAPSULATED_PDF]
+    for preset in policy.PRESETS:
+        rules_of = element_rules.ElementRules(policy.compose_policy(preset))
+        for definition in iod.definitions:
+            if definition.tag not in other:
+                continue
+            rule = rules_of.rule(definition.tag, definition.path, iod=iod)
+            assert (rule.source, rule.action) == (
+                element_rules.RuleSource.DEFAULT,
+                element_rules.KEEP,
+            ), (preset, definition)
 
 
 # The text attributes that Enhanced RT Image and Enhanced Continuous RT Image
@@ -2190,8 +2396,10 @@ def test_the_basic_profile_keeps_only_the_reviewed_coded_and_technical_text():
 
     # The three delivery instructions add 3: Reason for Channel Omission
     # Description (0074,140B), Displacement Reference Label (300A,079A), and
-    # Reason for Omission Description (300C,0113), none of them kept.
-    assert len(basic) == 333
+    # Reason for Omission Description (300C,0113), none of them kept; and
+    # Nuclear Medicine Image adds 3: Processing Function (0018,5020), Energy
+    # Window Name (0054,0018), and Image ID (0054,0400), none of them kept.
+    assert len(basic) == 345
     assert {tag for tag, action in basic.items() if action == "K"} == (
         KEPT_TEXT
         | ADDED_KEPT_TEXT
@@ -2199,6 +2407,8 @@ def test_the_basic_profile_keeps_only_the_reviewed_coded_and_technical_text():
         | ION_KEPT_TEXT
         | PRESENTATION_STATE_KEPT_TEXT
         | VOLUMETRIC_KEPT_TEXT
+        | PDF_MEDIA_TYPES
+        | PDF_CAPTURE_FORMATS
         | ENHANCED_RT_IMAGE_KEPT_TEXT
         | SUPPORTED_SECOND_GENERATION_KEPT_TEXT
     )
@@ -2222,6 +2432,8 @@ def test_no_option_keeps_more_than_the_coded_text_and_device_identity():
             | ION_KEPT_TEXT
             | PRESENTATION_STATE_KEPT_TEXT
             | VOLUMETRIC_KEPT_TEXT
+            | PDF_MEDIA_TYPES
+            | PDF_CAPTURE_FORMATS
             | ENHANCED_RT_IMAGE_KEPT_TEXT
             | SUPPORTED_SECOND_GENERATION_KEPT_TEXT
             | (device_identity if DEVICE_IDENTITY in composed.options else set())
@@ -2851,7 +3063,7 @@ def _with_definition(tmp_path, iod_name, tag):
         ("RT Plan", True),
         # An IOD that is not supported does not, even once its Types are
         # generated.
-        ("Nuclear Medicine Image", False),
+        ("Ultrasound Image", False),
     ],
 )
 def test_only_the_text_of_the_supported_iods_needs_rules(
@@ -2948,6 +3160,122 @@ def test_a_new_attribute_that_table_e1_1_omits_needs_a_rule_by_its_vr(
         _write(tmp_path / "reviewed.toml", document)
     )
     assert loaded.rules[NEW_TAG].action == "X/Z/D"
+
+
+# The Nuclear Medicine Image IOD's text, by group, with the action of each.
+NM_TEXT_GROUPS: tuple[tuple[set[str], str, dict[str, str]], ...] = (
+    (NM_OPERATOR_TEXT, "X/Z/D", {CLEAN_DESCRIPTORS: "C"}),
+    (NM_REMOVED_UNDER_EVERY_OPTION, "X/Z/D", {}),
+)
+# The IODs supported when Nuclear Medicine was reviewed, before it and
+# Surface Segmentation were added independently.
+NM_REVIEWED_AGAINST = SURFACE_REVIEWED_AGAINST
+# The other attributes that the Nuclear Medicine Image IOD uses and those IODs
+# do not, by VR, checked by hand against the 2026d PS3.3 and PS3.6: the
+# vectors, counts, and sequences of the NM Multi-frame, NM Image, NM
+# Isotope, NM Detector, NM TOMO Acquisition, NM Multi-gated Acquisition, NM
+# Phase, and NM Reconstruction Modules, such as Energy Window Vector, Angular
+# Step, and Whole Body Technique, and two attributes of the Multi-frame
+# Overlay Module, none of which Table E.1-1 lists.
+NM_OTHER_VRS = {"US": 18, "DS": 12, "IS": 10, "SQ": 8, "CS": 2}
+
+
+def test_the_nm_iod_is_generated_and_supported():
+    tables = iods.load_iod_tables()
+
+    assert set(NM_IODS) <= set(tables.iods)
+    assert set(NM_IODS) <= scope.SUPPORTED_IODS
+
+
+@pytest.mark.deid_requirement("MIDI-BP-05", "MIDI-BP-06", "MIDI-BP-11")
+def test_the_text_that_only_the_nm_iod_uses_has_reviewed_rules():
+    listed = set(_table_e1_1())
+    added = _used_by(NM_IODS, TEXT_VRS) - _used_by(NM_REVIEWED_AGAINST, TEXT_VRS)
+    rules = _rules()
+
+    assert not added & listed
+    assert added == NM_OPERATOR_TEXT | NM_REMOVED_UNDER_EVERY_OPTION
+    for tags, action, options in NM_TEXT_GROUPS:
+        for tag in tags:
+            assert (rules[tag].action, dict(rules[tag].options)) == (
+                action,
+                options,
+            ), tag
+            assert rules[tag].note.strip(), tag
+
+
+def test_each_policy_gives_the_nm_text_the_action_of_its_group():
+    for composed in _every_policy():
+        for tags, action, options in NM_TEXT_GROUPS:
+            selected = [a for o, a in options.items() if o in composed.options]
+            for tag in tags:
+                assert composed.supplementary_actions[tag] == (
+                    selected[0] if selected else action
+                ), (tag, composed.options)
+
+
+def test_the_nm_text_that_is_removed_is_type_3_so_removal_by_type_removes_it():
+    tables = iods.load_iod_tables()
+    iod = tables.iods[NM_IODS[0]]
+    rules = _rules()
+    removed = NM_OPERATOR_TEXT | NM_REMOVED_UNDER_EVERY_OPTION
+    definitions = [d for d in iod.definitions if d.tag in removed]
+
+    # Processing Function and Image ID are in the NM Image Module, and Energy
+    # Window Name in the items of the NM Isotope Module's Energy Window
+    # Information Sequence (0054,0012).
+    assert {(d.tag, d.path) for d in definitions} == {
+        ("(0018,5020)", ()),
+        ("(0054,0018)", ("(0054,0012)",)),
+        ("(0054,0400)", ()),
+    }
+    for definition in definitions:
+        assert definition.type == "3", definition
+        assert (
+            compound_actions.resolve_in_iod(
+                iod, definition.tag, definition.path, rules[definition.tag].action
+            )
+            == "X"
+        ), definition
+
+
+def test_the_nm_iod_uses_no_uid_date_name_or_url_that_the_others_do_not():
+    for vrs in ({"UI"}, TEMPORAL_VRS, {"PN"}, {"UR"}):
+        assert not _used_by(NM_IODS, vrs) - _used_by(NM_REVIEWED_AGAINST, vrs), vrs
+
+
+def test_the_nm_iods_other_new_attributes_are_kept_by_the_default():
+    dictionary = _dictionary()
+    tables = iods.load_iod_tables()
+    every_vr = {vr for attribute in dictionary.values() for vr in attribute.vrs}
+    other = (
+        _used_by(NM_IODS, every_vr)
+        - _used_by(NM_REVIEWED_AGAINST, every_vr)
+        - _used_by(NM_IODS, TEXT_VRS)
+    )
+    listed = set(_table_e1_1())
+    rules = _rules()
+    uids = set(uid_roles.load_uid_roles().rules)
+    by_vr = collections.Counter(vr for tag in other for vr in dictionary[tag].vrs)
+
+    assert by_vr == NM_OTHER_VRS
+    assert all(len(dictionary[tag].vrs) == 1 for tag in other)
+    assert not other & (listed | set(rules) | uids)
+    # So each takes the default, which keeps it where the IOD defines it,
+    # under every preset, with a sequence's items handled by their own rules;
+    # an overlay's attributes are checked in its first repeating group.
+    iod = tables.iods[NM_IODS[0]]
+    for preset in policy.PRESETS:
+        rules_of = element_rules.ElementRules(policy.compose_policy(preset))
+        for definition in iod.definitions:
+            if definition.tag not in other:
+                continue
+            tag = definition.tag.replace("(60xx,", "(6000,")
+            rule = rules_of.rule(tag, definition.path, iod=iod)
+            assert (rule.source, rule.action) == (
+                element_rules.RuleSource.DEFAULT,
+                element_rules.KEEP,
+            ), (preset, definition)
 
 
 # Surface Segmentation.
