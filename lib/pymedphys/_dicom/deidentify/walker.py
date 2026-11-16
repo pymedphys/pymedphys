@@ -731,12 +731,15 @@ def _source_empty(source: SourceEvidence, path: ElementPath) -> bool:
     return not extent.undefined_length and extent.end == extent.value_start
 
 
-def _lapsed(plan: InstancePlan, source: SourceEvidence) -> frozenset[ElementPath]:
+def _lapsed(
+    plan: InstancePlan, source: SourceEvidence, iod: IOD
+) -> frozenset[ElementPath]:
     """Return the module's kept sequences, where no other reference is kept."""
     kept = frozenset(
         element.path
         for element in plan.elements
-        if is_common_instance_reference(element.path) and element.action != _REMOVED
+        if is_common_instance_reference(element.path, iod)
+        and element.action != _REMOVED
     )
     if not kept or _keeps_a_reference(plan, source):
         return frozenset()
@@ -847,7 +850,7 @@ def plan_instance(
             source, rules.safe_private, unkept, clean_text=clean_text
         )
         plan, _ = _plan(source, rules, iod, removals, content_items, private=private)
-    lapsed = _lapsed(plan, source)
+    lapsed = _lapsed(plan, source, iod)
     if lapsed:
         plan, _ = _plan(
             source, rules, iod, removals, content_items, lapsed, private=private

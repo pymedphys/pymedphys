@@ -1,4 +1,6 @@
 # Tools that only the text detector evaluation's CI runs install (D-056),
+# as does the pixel options' check on IDC's Parametric Maps
+# (parametric-map-check-idc.yml), which uses pyarrow and s5cmd alone,
 # each pinned by version and by the SHA-256 of the one wheel that a
 # GitHub-hosted Ubuntu x86-64 runner with Python 3.14 takes, and installed
 # with --require-hashes --no-deps into the project's environment after it is

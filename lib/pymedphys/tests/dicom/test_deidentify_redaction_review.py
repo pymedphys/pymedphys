@@ -1050,7 +1050,12 @@ def test_the_statement_gives_the_code_only_after_review():
         "requires, including in an IOD that does not define the attribute, which "
         "of the supported IODs are RT Plan, RT Structure Set, RT Beams Treatment "
         "Record, RT Ion Plan, RT Ion Beams Treatment Record, RT Brachy Treatment "
-        "Record, RT Treatment Summary Record, MR Spectroscopy, Spatial Registration, "
+        "Record, RT Treatment Summary Record, Enhanced RT Image, Enhanced "
+        "Continuous RT Image, RT Segment Annotation, RT Radiation Set, C-Arm "
+        "Photon-Electron Radiation, Tomotherapeutic Radiation, Robotic-Arm "
+        "Radiation, RT Beams Delivery Instruction, RT Brachy Application "
+        "Setup Delivery Instruction, RT Radiation Set Delivery Instruction, MR "
+        "Spectroscopy, Spatial Registration, "
         "Deformable Spatial Registration, Surface Segmentation, X-Ray Radiation "
         "Dose SR, Enhanced X-Ray "
         "Radiation Dose SR, Radiopharmaceutical Radiation Dose SR, Patient Radiation "
@@ -1058,7 +1063,11 @@ def test_the_statement_gives_the_code_only_after_review():
         "Comprehensive 3D SR, Extensible SR, Key Object Selection Document, "
         "Mammography CAD SR, Chest CAD SR, Colon CAD SR, Procedure Log, Spectacle "
         "Prescription Report, Macular Grid Thickness and Volume Report, Waveform "
-        "Annotation SR, and Real World Value Mapping."
+        "Annotation SR, Real World Value Mapping, Grayscale Softcopy Presentation "
+        "State, Color Softcopy Presentation State, Pseudo-Color Softcopy "
+        "Presentation State, Blending Softcopy Presentation State, XA/XRF "
+        "Grayscale Softcopy Presentation State, and Variable Modality LUT "
+        "Softcopy Presentation State."
     ) in text
     assert (
         "claims Clean Pixel Data only for an instance without top-level pixel "
@@ -1080,6 +1089,16 @@ def test_the_statement_names_each_supported_iod_that_lacks_the_attribute():
         "RT Ion Beams Treatment Record",
         "RT Brachy Treatment Record",
         "RT Treatment Summary Record",
+        "Enhanced RT Image",
+        "Enhanced Continuous RT Image",
+        "RT Segment Annotation",
+        "RT Radiation Set",
+        "C-Arm Photon-Electron Radiation",
+        "Tomotherapeutic Radiation",
+        "Robotic-Arm Radiation",
+        "RT Beams Delivery Instruction",
+        "RT Brachy Application Setup Delivery Instruction",
+        "RT Radiation Set Delivery Instruction",
         "MR Spectroscopy",
         "Spatial Registration",
         "Deformable Spatial Registration",
@@ -1102,6 +1121,12 @@ def test_the_statement_names_each_supported_iod_that_lacks_the_attribute():
         "Macular Grid Thickness and Volume Report",
         "Waveform Annotation SR",
         "Real World Value Mapping",
+        "Grayscale Softcopy Presentation State",
+        "Color Softcopy Presentation State",
+        "Pseudo-Color Softcopy Presentation State",
+        "Blending Softcopy Presentation State",
+        "XA/XRF Grayscale Softcopy Presentation State",
+        "Variable Modality LUT Softcopy Presentation State",
     }
 
 
@@ -1560,7 +1585,7 @@ def test_the_report_names_the_reviewed_pack(second_run):
         "review_modes": {"every-frame": 3, "flagged-frames": 0},
         "frames_not_shown": 0,
     }
-    assert report["format"] == "pymedphys-deid-release-report/63"
+    assert report["format"] == "pymedphys-deid-release-report/78"
 
 
 class _Blind(Finder):

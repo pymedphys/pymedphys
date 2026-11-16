@@ -44,6 +44,7 @@ env:
     lib/pymedphys/tests/dicom/test_deidentify_ct_defacing_review_runs.py
     lib/pymedphys/tests/dicom/test_deidentify_corpus_end_to_end.py
     lib/pymedphys/tests/dicom/test_deidentify_conformance.py
+    lib/pymedphys/tests/dicom/test_deidentify_project_key_runs.py
     lib/pymedphys/tests/dicom/test_deidentify_redaction_review.py
   CT_DEFACING_RUN_TEST: lib/pymedphys/tests/dicom/test_deidentify_ct_defacing_run.py
   CT_DEFACING_REVIEW_TEST: lib/pymedphys/tests/dicom/test_deidentify_ct_defacing_review_runs.py
@@ -51,8 +52,8 @@ env:
 jobs:
   test:
     name: ${{ matrix.os }} - py${{ matrix.python-version }} (${{ matrix.part }})
-    # Allow for setup and slower Windows runners.
-    timeout-minutes: ${{ matrix.os == 'windows-latest' && 60 || 30 }}
+    # Allow for slower Windows runners and the growing corpus on Ubuntu.
+    timeout-minutes: ${{ (matrix.os == 'windows-latest' || matrix.part == 'corpus-runs') && 60 || 30 }}
     strategy:
       fail-fast: false
       matrix:
@@ -256,7 +257,8 @@ jobs:
   # tests take about a minute and run whole.
   narrow-extras:
     name: Extra ${{ matrix.extra }} alone${{ matrix.part && format(' ({0})', matrix.part) || '' }}
-    timeout-minutes: 30
+    # The standalone DICOM corpus needs the main corpus job's budget.
+    timeout-minutes: ${{ matrix.part == 'corpus-runs' && 60 || 30 }}
     strategy:
       fail-fast: false
       matrix:
@@ -386,7 +388,8 @@ jobs:
   # limit.
   dependency-floors:
     name: NumPy and pandas minimum versions (${{ matrix.part }})
-    timeout-minutes: 30
+    # Keep the complete corpus under the same budget as the main matrix.
+    timeout-minutes: ${{ matrix.part == 'corpus-runs' && 60 || 30 }}
     strategy:
       fail-fast: false
       matrix:
