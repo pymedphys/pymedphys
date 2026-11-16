@@ -80,7 +80,8 @@ BOTH_VALIDATED = "input validated, output validated"
 BOTH_FAILED = "input failed, output failed"
 BOTH_UNSUPPORTED = "input unsupported, output unsupported"
 # The corpus's SOP Classes that dicom3tools' January 2024 snapshot does not
-# know, including Label Map Segmentation.
+# know, including Label Map Segmentation and the XA/XRF Grayscale and Variable
+# Modality LUT Softcopy Presentation States, which it names but has no IOD for.
 UNKNOWN_TO_DICOM3TOOLS = tuple(
     dicom_validation.sop_class_name(uid)
     for uid in (
@@ -93,6 +94,8 @@ UNKNOWN_TO_DICOM3TOOLS = tuple(
         corpus_module.WAVEFORM_ANNOTATION_SR_STORAGE,
         corpus_module.ENHANCED_RT_IMAGE_STORAGE,
         corpus_module.ENHANCED_CONTINUOUS_RT_IMAGE_STORAGE,
+        corpus_module.XA_XRF_GRAYSCALE_SOFTCOPY_PRESENTATION_STATE_STORAGE,
+        corpus_module.VARIABLE_MODALITY_LUT_SOFTCOPY_PRESENTATION_STATE_STORAGE,
         corpus_module.RT_SEGMENT_ANNOTATION_STORAGE,
         corpus_module.RT_RADIATION_SET_STORAGE,
         corpus_module.C_ARM_PHOTON_ELECTRON_RADIATION_STORAGE,
@@ -242,10 +245,9 @@ def test_every_validator_ran_over_every_released_instance(comparison):
     assert sum(statuses.values()) == unchecked
     assert validated == comparison.pairs - unchecked
     # dciodvfy checks every input and output but the corpus's RT Dose in
-    # Implicit VR, whose 32-bit pixels abort it on both, and its reports,
-    # label map Segmentation, second-generation RT objects, and RT delivery
-    # instructions, whose SOP Classes dicom3tools' January 2024 snapshot does
-    # not know.
+    # Implicit VR, whose 32-bit pixels abort it on both, and the instances of
+    # UNKNOWN_TO_DICOM3TOOLS, whose SOP Classes dicom3tools' January 2024
+    # snapshot does not know.
     statuses = dict(comparison.tallies[DCIODVFY]["statuses"])
     failed = statuses.pop(BOTH_FAILED, 0)
     unsupported = statuses.pop(BOTH_UNSUPPORTED, 0)

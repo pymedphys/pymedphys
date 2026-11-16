@@ -473,10 +473,50 @@ def _palette():
 
 
 def _float_pixels():
+    """Float Pixel Data under Bits Allocated 16, which no element of
+    floating-point pixel data has."""
     dataset = pydicom.dcmread(io.BytesIO(_image(np.ones((4, 4)), series=None)))
     del dataset.PixelData
     dataset.FloatPixelData = np.ones(16, "<f4").tobytes()
     return _file(dataset)
+
+
+def _floated(data, keyword="FloatPixelData", values=None, padding=None):
+    """A written image with its frames as Float Pixel Data or Double Float
+    Pixel Data, of its stored values or ``values``, and a padding value and
+    range limit, if given, in the Floating Point or Double Floating Point
+    Image Pixel Module."""
+    dataset = pydicom.dcmread(io.BytesIO(data))
+    double = keyword == "DoubleFloatPixelData"
+    dtype = "<f8" if double else "<f4"
+    if values is None:
+        values = dataset.pixel_array
+    for attribute in ("PixelData", "BitsStored", "HighBit", "PixelRepresentation"):
+        delattr(dataset, attribute)
+    dataset.BitsAllocated = 64 if double else 32
+    setattr(dataset, keyword, np.asarray(values, dtype=dtype).tobytes())
+    if padding is not None:
+        prefix = "DoubleFloat" if double else "Float"
+        value, limit = padding
+        setattr(dataset, f"{prefix}PixelPaddingValue", value)
+        if limit is not None:
+            setattr(dataset, f"{prefix}PixelPaddingRangeLimit", limit)
+    return _file(dataset)
+
+
+def _head(position, count, rows=24, columns=20):
+    """An axial slice of a synthetic head, from inferior to superior: an
+    ellipse of soft tissue with a nose at the anterior, its rows, and a
+    brighter skull, in air at -1000."""
+    row, column = np.mgrid[:rows, :columns]
+    height = 1 - abs(2 * position / (count - 1) - 1) * 0.6
+    head = ((row - 12) / (9 * height)) ** 2 + ((column - 10) / (7 * height)) ** 2
+    pixels = np.full((rows, columns), -1000.0)
+    pixels[head <= 1] = 40
+    pixels[(head <= 1) & (head > 0.7)] = 900
+    if 2 <= position <= count - 3:
+        pixels[1:4, 9:11] = 40  # the nose
+    return pixels
 
 
 def _short_pixels():
@@ -525,6 +565,33 @@ def _pngs(written, high_risk=()):
     return [
         (p.name, p.kind, p.frames, p.total_frames, p.png) for p in previews.previews
     ]
+
+
+FLOAT_KEYWORDS = pytest.mark.parametrize(
+    "keyword", ["FloatPixelData", "DoubleFloatPixelData"], ids=["float", "double"]
+)
+
+
+@pytest.mark.pydicom
+@FLOAT_KEYWORDS
+def test_a_floating_point_head_is_previewed_as_its_integer_copy_is(keyword):
+    # Each slice's cine tile, the volume's projection and surface renders,
+    # and the full-resolution previews of a high-risk instance are drawn as
+    # for stored values that are the same numbers, so a face is shown as it
+    # is in an integer image.
+    count = 7
+    native = {
+        position: _image(_head(position, count), number=position + 1, z=2.0 * position)
+        for position in range(count)
+    }
+    floating = {position: _floated(data, keyword) for position, data in native.items()}
+
+    previews = qc_previews.previews_of(floating, {3})
+
+    assert _pngs(floating, {3}) == _pngs(native, {3})
+    kinds = {preview.kind for preview in previews.previews}
+    assert {PreviewKind.SERIES_MIP, PreviewKind.SERIES_SURFACE} <= kinds
+    assert previews.pixels_shown == set(range(count))
 
 
 @pytest.mark.pydicom

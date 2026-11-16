@@ -63,7 +63,7 @@ import math
 import pathlib
 import re
 import zipfile
-from collections.abc import Iterable, Iterator, Mapping
+from collections.abc import Iterable, Iterator, Mapping, Sequence
 from types import MappingProxyType
 
 from .text_evaluation_converted import ConvertedCase
@@ -569,12 +569,14 @@ INDEX_MEMBER = "idc_index_data/idc_index.parquet"
 
 
 def index_rows(
-    wheel: pathlib.Path | str, sha256: str = INDEX_WHEEL_SHA256
+    wheel: pathlib.Path | str,
+    sha256: str = INDEX_WHEEL_SHA256,
+    columns: Sequence[str] = COLUMNS,
 ) -> list[dict[str, object]]:
-    """The rows of IDC's index, with :data:`COLUMNS` alone, from the pinned
-    wheel of idc-index-data, which must have the SHA-256 ``sha256``; read
-    in memory, never unpacked. Reading Parquet needs pyarrow, which only
-    the evaluation's CI runs install."""
+    """The rows of IDC's index, with ``columns`` alone, :data:`COLUMNS` by
+    default, from the pinned wheel of idc-index-data, which must have the
+    SHA-256 ``sha256``; read in memory, never unpacked. Reading Parquet
+    needs pyarrow, which only the evaluation's CI runs install."""
     data = pathlib.Path(wheel).read_bytes()
     if hashlib.sha256(data).hexdigest() != sha256:
         raise EvaluationRefused("IDC's index is not the pinned one.")
@@ -584,7 +586,7 @@ def index_rows(
     import pyarrow.parquet  # pylint: disable = import-outside-toplevel, import-error
 
     table = pyarrow.parquet.read_table(
-        pyarrow.BufferReader(parquet), columns=list(COLUMNS)
+        pyarrow.BufferReader(parquet), columns=list(columns)
     )
     return table.to_pylist()
 

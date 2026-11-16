@@ -513,7 +513,7 @@ def test_an_undefaced_instance_is_released_on_a_verdict_of_absent_of_its_own(
         assert dataset.RecognizableVisualFeatures == "NO"
         assert _codes(dataset)[-2:] == [markers.PROFILE_CODE, CODE]
         source = pydicom.dcmread(reviewed_low.instances / name)
-        if name in _PET:
+        if name in _UNDEFACED:
             assert dataset.PixelData == source.PixelData
         elif name == _SURFACE:
             assert surface_data_sha256(dataset) == surface_data_sha256(source)
@@ -574,7 +574,7 @@ def test_a_verdict_of_its_own_is_on_its_pixel_data_whatever_is_defaced(
         disposition, dataset = outcomes[name]
         assert disposition == "released", reasons[name]
         source = pydicom.dcmread(reviewed_low.instances / name)
-        if name in _PET:
+        if name in _UNDEFACED:
             assert dataset.PixelData == source.PixelData
         elif name == _SURFACE:
             assert surface_data_sha256(dataset) == surface_data_sha256(source)

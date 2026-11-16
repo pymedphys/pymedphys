@@ -57,6 +57,24 @@ _CT = ("01-ct-1.dcm", "02-ct-2.dcm")
 _DOSE = ("06-rtdose.dcm", "07-rtdose-review.dcm")
 _STRUCTURE_SET = "04-rtstruct.dcm"
 _PLAN = "05-rtplan.dcm"
+_FACE_REVIEW_FILES = (*_CT, "03-ct-3.dcm", _STRUCTURE_SET, _PLAN, *_DOSE)
+
+
+def _face_review_corpus():
+    """The linked three-slice CT, structure set, plan, and two RT doses.
+
+    These scenarios test face verdicts for this collection. Full-corpus
+    runs exercise the other IODs and their pooled residual-text checks;
+    unrelated reports' source text should not decide these face outcomes.
+    Every selected file keeps its original corpus bytes and references.
+    """
+    files = tuple(
+        file
+        for file in corpus_module.build_corpus().files
+        if file.name in _FACE_REVIEW_FILES
+    )
+    assert tuple(file.name for file in files) == _FACE_REVIEW_FILES
+    return corpus_module.SyntheticCorpus(files)
 
 
 @pytest.fixture(name="tmp_path")
@@ -227,7 +245,7 @@ def test_the_transform_is_given_the_attested_packs_verdicts(
     assert kwargs["reporter"] is transform.reporter
 
 
-# Two runs of the synthetic collection through the library: the first under
+# Two runs of the linked CT/RT collection through the library: the first under
 # the Basic Profile, whose pack a reviewer attests, and the second under the
 # option, given that pack.
 
@@ -243,7 +261,7 @@ def fixture_second_run():
 
 
 def _second_run(directory):
-    corpus_module.write_corpus(corpus_module.build_corpus(), directory)
+    corpus_module.write_corpus(_face_review_corpus(), directory)
     source = directory / corpus_module.INSTANCES_DIRECTORY
     first = api.deidentify(
         source, directory / "r1", qc_pack=directory / "qc1", preset="basic"
@@ -276,17 +294,23 @@ def _second_run(directory):
         )
         for entry in json.loads(second.result.qc_pack.read_text("utf-8"))["instances"]
     }
+    assert tuple(outcomes) == _FACE_REVIEW_FILES
     report = json.loads((directory / "r2" / "release-report.json").read_text())
     return attestation, outcomes, report, second
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.2-01", "PS3.15-E.3.2-02")
 def test_the_library_releases_a_series_marked_absent_with_the_option(second_run):
-    _, outcomes, _, _ = second_run
+    _, outcomes, _, done = second_run
+    # The QC pack records value-free reasons; include them if release fails.
+    reasons = {
+        Path(entry["source"]).name: tuple(entry.get("reasons", ()))
+        for entry in json.loads(done.result.qc_pack.read_text("utf-8"))["instances"]
+    }
 
     for name in (*_CT, _STRUCTURE_SET, _PLAN):
         disposition, dataset = outcomes[name]
-        assert disposition == "released", name
+        assert disposition == "released", (name, reasons[name])
         assert dataset.RecognizableVisualFeatures == "NO"
         assert _codes(dataset)[-2:] == [markers.PROFILE_CODE, CODE]
 

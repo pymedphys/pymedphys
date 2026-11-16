@@ -728,6 +728,7 @@ def test_the_qc_pack_lists_each_ct_mr_pet_and_rt_dose_volume(preset):
         *pixel_risk.VOLUME_INDICATORS,
         pixel_risk.Indicator.LOCALIZER,
         pixel_risk.Indicator.RT_IMAGE,
+        pixel_risk.Indicator.NM_IMAGE,
         pixel_risk.Indicator.SEGMENTATION,
         pixel_risk.Indicator.PARAMETRIC_MAP,
         pixel_risk.Indicator.HEAD_OR_NECK,
@@ -741,11 +742,15 @@ def test_the_qc_pack_lists_each_ct_mr_pet_and_rt_dose_volume(preset):
     )
     assert "localizers among them, which can show the face in profile" in section
     assert "the RT Images among them, projections such as a lateral DRR" in section
+    assert (
+        "the Nuclear Medicine images among them, planar views, the projections "
+        "of a tomographic acquisition, or volumes reconstructed from them"
+    ) in section
     assert "the Segmentations among them, whose segment of the skin" in section
     assert "the Parametric Maps among them, whose map of the head" in section
     assert (
-        "localizer, RT Image, Segmentation, or Parametric Map, or a "
-        "Segmentation's segments" in section
+        "localizer, RT Image, Nuclear Medicine image, Segmentation, or "
+        "Parametric Map, or a Segmentation's segments" in section
     )
     assert "PS3.16 Annex L" in section
     assert "Series Instance UID (0020,000E), which it never writes" in section
