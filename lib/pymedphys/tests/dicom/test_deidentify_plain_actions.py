@@ -58,17 +58,30 @@ RECORDED_SOURCE = "(3008,0100)"
 SOURCE_MANUFACTURER = "(300A,0216)"
 RADIOPHARMACEUTICAL_START_DATETIME = "(0018,1078)"
 RADIOPHARMACEUTICAL_INFORMATION = "(0054,0016)"
-# The first supported release's IODs that include the Overlay Plane Module
-# as user-optional.
+# The first supported release's IODs that include the Overlay Plane Module as
+# user-optional.
 OVERLAY_IODS = (
     "CT Image",
     "MR Image",
+    "Nuclear Medicine Image",
     "Positron Emission Tomography Image",
     "Computed Radiography Image",
 )
-# The IODs that include it as conditional, of which the first supported
-# release's is Digital X-Ray Image, "Required if graphic annotation is
-# present" (PS3.3 Table A.26-1).
+# The softcopy Presentation State IODs that the first supported release
+# supports, and the Type 1 dates and times of their creation.
+PRESENTATION_STATE_IODS = (
+    "Grayscale Softcopy Presentation State",
+    "Color Softcopy Presentation State",
+    "Pseudo-Color Softcopy Presentation State",
+    "Blending Softcopy Presentation State",
+    "XA/XRF Grayscale Softcopy Presentation State",
+    "Variable Modality LUT Softcopy Presentation State",
+)
+PRESENTATION_CREATION_DATES = ("(0070,0082)", "(0070,0083)")
+# The IODs that include the Overlay Plane Module as conditional, of which the
+# first supported release supports the softcopy Presentation States and
+# Digital X-Ray Image, "Required if graphic annotation is present" (PS3.3
+# Table A.26-1).
 CONDITIONAL_OVERLAY_IODS = {
     "Color Softcopy Presentation State",
     "Digital Intra-Oral X-Ray Image",
@@ -79,7 +92,7 @@ CONDITIONAL_OVERLAY_IODS = {
     "Variable Modality LUT Softcopy Presentation State",
     "XA/XRF Grayscale Softcopy Presentation State",
 }
-# Its image IODs, all but MR Spectroscopy.
+# The first supported release's image IODs, all but MR Spectroscopy.
 IMAGE_IODS = frozenset(
     {
         "CT Image",
@@ -413,15 +426,17 @@ def test_a_plain_x_on_a_required_attribute_outside_a_type_3_sequence_sequesters(
 
 @pytest.mark.deid_requirement("PS3.15-E.1.1-09")
 @pytest.mark.parametrize(
-    "iod", [name for name in FIRST_RELEASE_IODS if name not in CONDITIONAL_OVERLAY_IODS]
+    "iod", sorted(set(FIRST_RELEASE_IODS) - CONDITIONAL_OVERLAY_IODS)
 )
 @pytest.mark.parametrize("tag", ["(6000,3000)", "(6002,3000)", "(601E,3000)"])
 def test_a_plain_x_on_overlay_data_removes_its_repeating_group(tables, iod, tag):
     # Overlay Data is Type 1 in the Overlay Plane Module, which the CT Image,
-    # MR Image, Positron Emission Tomography Image, and Computed Radiography
-    # Image IODs include as user-optional, so removing the whole group leaves
-    # a valid instance. The other IODs but Digital X-Ray Image do not define
-    # it.
+    # MR Image, Nuclear Medicine Image, Positron Emission Tomography Image,
+    # and Computed Radiography Image IODs include as user-optional, so
+    # removing the whole group leaves a valid instance. The other IODs do not
+    # define it, but for Digital X-Ray Image and the softcopy Presentation
+    # States, whose conditional module's Overlay Data sequesters the instance
+    # (below).
     expected_type = "1" if iod in OVERLAY_IODS else "3"
 
     assert strictest_type(tables.iods[iod], tag) == expected_type
@@ -681,9 +696,25 @@ def test_a_plain_x_on_a_required_attribute_in_the_first_release_iods(tables):
             (RECORDED_SOURCE,),
             SOURCE_MANUFACTURER,
         ): _removal(*EMPTIED),
+        # Type 1 at the top level of each softcopy Presentation State's
+        # mandatory Presentation State Identification Module, so every
+        # conforming instance is sequestered under the Basic Profile (D-020).
+        **{
+            (name, (), tag): _removal(*SEQUESTER)
+            for name in PRESENTATION_STATE_IODS
+            for tag in PRESENTATION_CREATION_DATES
+        },
+        # Type 1 in the conditional Overlay Plane Module of each softcopy
+        # Presentation State but the blending one, which has none, so an
+        # instance that holds an overlay is sequestered.
+        **{
+            (name, (), "(60xx,3000)"): _removal(*SEQUESTER)
+            for name in PRESENTATION_STATE_IODS
+            if name in CONDITIONAL_OVERLAY_IODS
+        },
     }
-    # Ten attributes in all.
-    assert len({tag for _, _, tag in found}) == 10
+    # Twelve attributes in all.
+    assert len({tag for _, _, tag in found}) == 12
 
 
 @pytest.mark.deid_requirement("PS3.15-E.1.1-09")

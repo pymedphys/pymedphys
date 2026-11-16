@@ -434,7 +434,9 @@ def test_a_run_over_the_synthetic_corpus_lists_its_volumes_and_projections(tmp_p
     # and so can the Parametric Map, whose map of the head shows its outline.
     # The Enhanced RT Image and Enhanced Continuous RT Image, each of two
     # frames of projections in a series of its own, can show the face in
-    # profile as the RT Image can, and are no volume.
+    # profile as the RT Image can, and are no volume. The Nuclear Medicine
+    # image, a SPECT volume of two frames, can show it too, and is in a
+    # series of its own.
     # The Computed Radiography image, a lateral skull radiograph, can show
     # the face in profile, and names the head; the two Digital X-Ray images,
     # of the chest, each in a series of its own, can show it too.
@@ -451,10 +453,12 @@ def test_a_run_over_the_synthetic_corpus_lists_its_volumes_and_projections(tmp_p
         ("rt-image", released("RT Image")),
         *(("segmentation", [position]) for position in released("Segmentation")),
         ("parametric-map", released("Parametric Map")),
+        ("nm-image", released("Nuclear Medicine Image")),
     ]
     assert [len(positions) for _, positions in volumes] == [
         2,
         2,
+        1,
         1,
         1,
         1,
