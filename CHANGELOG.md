@@ -441,9 +441,13 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
   en dash, a module table whose title differs from the module's name, and a
   module listed with the wrong section, are corrected by named corrections in
   the pin, each of which fails generation once it no longer applies. Each generated file records the edition, its
-  source page's digest, a digest of its rows, and the copyright attribution
-  of its part, such as "DICOM PS3.15 2026d, © NEMA", and the same input always
-  produces the same bytes. The generated tables ship in the package, in
+  source page's digest, a digest of its rows, and the attribution of its part
+  and edition, such as "DICOM PS3.15 2026d, © NEMA", with a link to the DICOM
+  Standard and NEMA's trademark notice, which the hand-written rule files that
+  name the Standard's attributes and codes also carry, and the same input always
+  produces the same bytes. The generator also writes
+  `_standard/NOTICE-DICOM.txt`, which the package lists among its licence
+  files, and the README and the user guide give the same attribution. The generated tables ship in the package, in
   `pymedphys/_dicom/deidentify/_standard/`, with loaders in
   `pymedphys._dicom.deidentify.standard` (`load_table_e1_1`,
   `load_table_e1_1a`, `load_table_e3_10_1`, and `load_data_dictionary`),
@@ -469,10 +473,12 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
   table's recorded digest without writing anything: it names the edition the
   pages give, the tables that would change, and the pages that could not be
   fetched or parsed, without quoting them, and exits with status 1 when a
-  table would change and 3 when a page failed; `--json` also writes the
-  result as JSON. The `deid-edition-check.yml` workflow runs it monthly and
-  opens or updates one issue when a table would change, a page fails, or the
-  check stops without a result.
+  table would change or the pages name a new edition, since every table names
+  its edition and is regenerated for each one, and 3 when a page failed;
+  `--json` also writes the result as JSON. The `deid-edition-check.yml`
+  workflow runs it monthly and opens or updates one issue when a table would
+  change, the pages name a new edition, a page fails, or the check stops
+  without a result.
   `pymedphys._dicom.deidentify.scope` uses Table B.5-1 to classify an
   instance as de-identified or sequestered: the first supported release
   de-identifies CT Image, RT Structure Set, RT Plan, and RT Dose instances in
