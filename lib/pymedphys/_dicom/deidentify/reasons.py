@@ -114,7 +114,9 @@ class TransformReason(enum.Enum):
     # pixel_cleaning.overlay_planes allows (D-041)
     OVERLAY_IN_PIXEL_DATA = "overlay-in-pixel-data"
     # under Clean Pixel Data, top-level Float Pixel Data or Double Float Pixel
-    # Data, or Pixel Data that cannot be read as frames of stored values: a
+    # Data that are not one MONOCHROME2 sample of the Bits Allocated of their
+    # element in a native transfer syntax, or held beside each other or
+    # Pixel Data, or Pixel Data that cannot be read as frames of stored values: a
     # layout other than whole bytes of 8, 16, or 32 bits with its High Bit one
     # less than Bits Stored, a photometric interpretation other than
     # MONOCHROME1, MONOCHROME2, or 8-bit RGB, or, compressed, 8-bit YBR_FULL,

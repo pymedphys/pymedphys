@@ -60,6 +60,7 @@ SUPPORTED = {
     "1.2.840.10008.5.1.4.1.1.4.2": "MR Spectroscopy",
     "1.2.840.10008.5.1.4.1.1.4.3": "Enhanced MR Color Image",
     "1.2.840.10008.5.1.4.1.1.4.4": "Legacy Converted Enhanced MR Image",
+    "1.2.840.10008.5.1.4.1.1.20": "Nuclear Medicine Image",
     "1.2.840.10008.5.1.4.1.1.128": "Positron Emission Tomography Image",
     "1.2.840.10008.5.1.4.1.1.130": "Enhanced PET Image",
     "1.2.840.10008.5.1.4.1.1.128.1": "Legacy Converted Enhanced PET Image",
@@ -72,6 +73,16 @@ SUPPORTED = {
     "1.2.840.10008.5.1.4.1.1.481.7": "RT Treatment Summary Record",
     "1.2.840.10008.5.1.4.1.1.481.8": "RT Ion Plan",
     "1.2.840.10008.5.1.4.1.1.481.9": "RT Ion Beams Treatment Record",
+    "1.2.840.10008.5.1.4.1.1.481.23": "Enhanced RT Image",
+    "1.2.840.10008.5.1.4.1.1.481.24": "Enhanced Continuous RT Image",
+    "1.2.840.10008.5.1.4.1.1.481.11": "RT Segment Annotation",
+    "1.2.840.10008.5.1.4.1.1.481.12": "RT Radiation Set",
+    "1.2.840.10008.5.1.4.1.1.481.13": "C-Arm Photon-Electron Radiation",
+    "1.2.840.10008.5.1.4.1.1.481.14": "Tomotherapeutic Radiation",
+    "1.2.840.10008.5.1.4.1.1.481.15": "Robotic-Arm Radiation",
+    "1.2.840.10008.5.1.4.1.1.481.21": "RT Radiation Set Delivery Instruction",
+    "1.2.840.10008.5.1.4.34.7": "RT Beams Delivery Instruction",
+    "1.2.840.10008.5.1.4.34.10": "RT Brachy Application Setup Delivery Instruction",
     "1.2.840.10008.5.1.4.1.1.66.1": "Spatial Registration",
     "1.2.840.10008.5.1.4.1.1.66.3": "Deformable Spatial Registration",
     "1.2.840.10008.5.1.4.1.1.66.4": "Segmentation",
@@ -96,10 +107,21 @@ SUPPORTED = {
     "1.2.840.10008.5.1.4.1.1.78.6": "Spectacle Prescription Report",
     "1.2.840.10008.5.1.4.1.1.79.1": "Macular Grid Thickness and Volume Report",
     "1.2.840.10008.5.1.4.1.1.88.77": "Waveform Annotation SR",
+    "1.2.840.10008.5.1.4.1.1.30": "Parametric Map",
+    "1.2.840.10008.5.1.4.1.1.67": "Real World Value Mapping",
+    "1.2.840.10008.5.1.4.1.1.11.1": "Grayscale Softcopy Presentation State",
+    "1.2.840.10008.5.1.4.1.1.11.2": "Color Softcopy Presentation State",
+    "1.2.840.10008.5.1.4.1.1.11.3": "Pseudo-Color Softcopy Presentation State",
+    "1.2.840.10008.5.1.4.1.1.11.4": "Blending Softcopy Presentation State",
+    "1.2.840.10008.5.1.4.1.1.11.5": "XA/XRF Grayscale Softcopy Presentation State",
+    "1.2.840.10008.5.1.4.1.1.11.12": (
+        "Variable Modality LUT Softcopy Presentation State"
+    ),
+    "1.2.840.10008.5.1.4.1.1.104.1": "Encapsulated PDF",
 }
 
 
-def test_the_first_release_supports_ct_mr_pet_rt_registration_seg_and_sr_objects():
+def test_the_first_release_supports_ct_mr_pet_rt_registration_seg_sr_and_pr_objects():
     assert scope.SUPPORTED_IODS == {
         "CT Image",
         "Enhanced CT Image",
@@ -109,16 +131,27 @@ def test_the_first_release_supports_ct_mr_pet_rt_registration_seg_and_sr_objects
         "Enhanced MR Color Image",
         "Legacy Converted Enhanced MR Image",
         "MR Spectroscopy",
+        "Nuclear Medicine Image",
         "Positron Emission Tomography Image",
         "Enhanced PET Image",
         "Legacy Converted Enhanced PET Image",
+        "RT Beams Delivery Instruction",
         "RT Beams Treatment Record",
+        "RT Brachy Application Setup Delivery Instruction",
         "RT Brachy Treatment Record",
         "RT Dose",
         "RT Image",
+        "Enhanced RT Image",
+        "Enhanced Continuous RT Image",
+        "RT Segment Annotation",
+        "RT Radiation Set",
+        "C-Arm Photon-Electron Radiation",
+        "Tomotherapeutic Radiation",
+        "Robotic-Arm Radiation",
         "RT Ion Beams Treatment Record",
         "RT Ion Plan",
         "RT Plan",
+        "RT Radiation Set Delivery Instruction",
         "RT Structure Set",
         "RT Treatment Summary Record",
         "Segmentation",
@@ -142,6 +175,15 @@ def test_the_first_release_supports_ct_mr_pet_rt_registration_seg_and_sr_objects
         "Spectacle Prescription Report",
         "Macular Grid Thickness and Volume Report",
         "Waveform Annotation SR",
+        "Parametric Map",
+        "Real World Value Mapping",
+        "Grayscale Softcopy Presentation State",
+        "Color Softcopy Presentation State",
+        "Pseudo-Color Softcopy Presentation State",
+        "Blending Softcopy Presentation State",
+        "XA/XRF Grayscale Softcopy Presentation State",
+        "Variable Modality LUT Softcopy Presentation State",
+        "Encapsulated PDF",
     }
     assert scope.SUPPORTED_TRANSFER_SYNTAXES == {IMPLICIT_LE, EXPLICIT_LE, *COMPRESSED}
 
@@ -200,25 +242,37 @@ def test_padding_is_ignored():
 @pytest.mark.parametrize(
     "sop_class, iod",
     [
-        # The other Structured Reports and Presentation States, which the
-        # design always sequesters.
+        # The other Structured Reports, which the design always sequesters,
+        # and the volumetric, advanced blending, and waveform Presentation
+        # States, which later changes are to bring into scope.
         ("1.2.840.10008.5.1.4.1.1.88.72", "Simplified Adult Echo SR"),
         ("1.2.840.10008.5.1.4.1.1.88.71", "Acquisition Context SR"),
-        ("1.2.840.10008.5.1.4.1.1.11.1", "Grayscale Softcopy Presentation State"),
+        (
+            "1.2.840.10008.5.1.4.1.1.11.6",
+            "Planar MPR Volumetric Presentation State",
+        ),
+        (
+            "1.2.840.10008.5.1.4.1.1.11.9",
+            "Volume Rendering Volumetric Presentation State",
+        ),
+        ("1.2.840.10008.5.1.4.1.1.11.8", "Advanced Blending Presentation State"),
+        ("1.2.840.10008.5.1.4.1.1.9.100.1", "Waveform Presentation State"),
         # Outside the first release: other images, CT, MR, and PET objects
-        # that are not images, height map segmentations, parametric maps,
-        # spatial fiducials, and second-generation RT objects, including the
-        # second-generation RT images.
-        ("1.2.840.10008.5.1.4.1.1.20", "Nuclear Medicine Image"),
+        # that are not images, height map segmentations, spatial fiducials,
+        # and the second-generation RT objects not yet supported, such as RT
+        # Physician Intent and the radiation records.
         ("1.2.840.10008.5.1.4.1.1.6.1", "Ultrasound Image"),
         ("1.2.840.10008.5.1.4.1.1.200.2", "CT Performed Procedure Protocol"),
         ("1.2.840.10008.5.1.4.1.1.66.8", "Height Map Segmentation"),
-        ("1.2.840.10008.5.1.4.1.1.30", "Parametric Map"),
         ("1.2.840.10008.5.1.4.1.1.66.2", "Spatial Fiducials"),
         ("1.2.840.10008.5.1.4.1.1.481.10", "RT Physician Intent"),
-        ("1.2.840.10008.5.1.4.1.1.481.14", "Tomotherapeutic Radiation"),
-        ("1.2.840.10008.5.1.4.1.1.481.23", "Enhanced RT Image"),
-        ("1.2.840.10008.5.1.4.1.1.481.24", "Enhanced Continuous RT Image"),
+        ("1.2.840.10008.5.1.4.1.1.481.18", "Tomotherapeutic Radiation Record"),
+        # The encapsulated documents other than PDF: a CDA document, whose
+        # XML is text throughout, and the 3D models and their materials.
+        ("1.2.840.10008.5.1.4.1.1.104.2", "Encapsulated CDA"),
+        ("1.2.840.10008.5.1.4.1.1.104.3", "Encapsulated STL"),
+        ("1.2.840.10008.5.1.4.1.1.104.4", "Encapsulated OBJ"),
+        ("1.2.840.10008.5.1.4.1.1.104.5", "Encapsulated MTL"),
     ],
 )
 def test_a_standard_sop_class_of_another_iod_is_sequestered(sop_class, iod):
@@ -310,13 +364,13 @@ def test_only_an_unsupported_iod_has_a_reason_with_its_iod(
 
 
 def test_an_unsupported_iods_reason_holds_its_iod_and_code_alone():
-    reason = scope.UnsupportedIod("Nuclear Medicine Image")
+    reason = scope.UnsupportedIod("Ultrasound Image")
 
-    assert repr(reason) == "UnsupportedIod(iod='Nuclear Medicine Image')"
+    assert repr(reason) == "UnsupportedIod(iod='Ultrasound Image')"
     assert [field.name for field in dataclasses.fields(reason)] == ["iod", "code"]
     with pytest.raises(TypeError):
         # pylint: disable-next = too-many-function-args
-        scope.UnsupportedIod("Nuclear Medicine Image", Disposition.NO_SOP_CLASS)  # type: ignore[call-arg]
+        scope.UnsupportedIod("Ultrasound Image", Disposition.NO_SOP_CLASS)  # type: ignore[call-arg]
 
 
 def test_the_sop_class_decides_before_the_transfer_syntax():
@@ -329,13 +383,13 @@ def test_the_table_can_be_given():
     table = sop_classes.load_storage_sop_classes()
     plan = next(row for row in table.rows if row.name == "RT Plan Storage")
     altered = dataclasses.replace(
-        table, rows=(dataclasses.replace(plan, iod="Nuclear Medicine Image IOD"),)
+        table, rows=(dataclasses.replace(plan, iod="Ultrasound Image IOD"),)
     )
 
     found = scope.classify(plan.uid, EXPLICIT_LE, sop_classes=altered)
 
     assert found == scope.Classification(
-        Disposition.UNSUPPORTED_IOD, "Nuclear Medicine Image"
+        Disposition.UNSUPPORTED_IOD, "Ultrasound Image"
     )
     # CT Image Storage is not in the altered table.
     ct = scope.classify("1.2.840.10008.5.1.4.1.1.2", EXPLICIT_LE, sop_classes=altered)
@@ -387,6 +441,11 @@ def test_pydicom_names_the_same_uids():
         uid.RTIonBeamsTreatmentRecordStorage,
         uid.RTBrachyTreatmentRecordStorage,
         uid.RTTreatmentSummaryRecordStorage,
+        uid.EnhancedRTImageStorage,
+        uid.EnhancedContinuousRTImageStorage,
+        uid.RTBeamsDeliveryInstructionStorage,
+        uid.RTBrachyApplicationSetupDeliveryInstructionStorage,
+        uid.RTRadiationSetDeliveryInstructionStorage,
         uid.SpatialRegistrationStorage,
         uid.DeformableSpatialRegistrationStorage,
         uid.BasicTextSRStorage,
@@ -402,6 +461,13 @@ def test_pydicom_names_the_same_uids():
         uid.SpectaclePrescriptionReportStorage,
         uid.MacularGridThicknessAndVolumeReportStorage,
         uid.WaveformAnnotationSRStorage,
+        uid.GrayscaleSoftcopyPresentationStateStorage,
+        uid.ColorSoftcopyPresentationStateStorage,
+        uid.PseudoColorSoftcopyPresentationStateStorage,
+        uid.BlendingSoftcopyPresentationStateStorage,
+        uid.XAXRFGrayscaleSoftcopyPresentationStateStorage,
+        uid.VariableModalityLUTSoftcopyPresentationStateStorage,
+        uid.EncapsulatedPDFStorage,
     ):
         assert scope.classify(sop_class, uid.ExplicitVRLittleEndian).disposition is (
             Disposition.SUPPORTED

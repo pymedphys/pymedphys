@@ -1,27 +1,42 @@
-name: Text Detector Evaluation on IDC
+name: Text Detector Evaluation
 
 # On demand, measure the text detector of the Clean Pixel Data Option, or a
-# candidate model, on openly licensed series of NCI's Imaging Data Commons
-# (tier T3 of D-056), with synthetic text burned into copies of their frames
-# in memory. The series are selected from IDC's index, as the pinned wheel
-# of idc-index-data holds it, by the vetted collections, the licence each
-# was vetted under, and image modalities, and downloaded from IDC's public
-# buckets with s5cmd. Folders of the pinned, openly licensed archives of
-# text_evaluation_archives, on Zenodo and in the University of Sydney's data
-# store, are read beside them, over HTTP ranges, each archive's central
-# directory checked against its pin, and counted only.
+# candidate model, on every corpus of D-056 that CI's runners may read, in
+# two jobs that share nothing but the model and its settings.
 #
-# These are real patients' scans, and this repository's logs and artefacts
-# are public. So only counts, codes, digests, versions, the detector's
-# method, and, for each series, its public identifiers, licence, and DOI
-# leave the runner: the command's standard output and error, and s5cmd's,
-# go to files on the runner; a crash is reported by
-# .github/scripts/run_redacted.py as its type and code locations alone; and
-# no image, crop, or pixel value is written. The series are never cached,
-# uploaded, or kept.
+# patients: openly licensed series of real patients in NCI's Imaging Data
+# Commons (tier T3), among them the seven collections that D-056 takes from
+# TCIA, read from IDC's identical copy of them, with synthetic text burned
+# into copies of their frames in memory (T4). The series are selected from
+# IDC's index, as the pinned wheel of idc-index-data holds it, by the vetted
+# collections, the licence each was vetted under, and image modalities, and
+# downloaded from IDC's public buckets with s5cmd. Folders of the pinned,
+# openly licensed archives of text_evaluation_archives, on Zenodo and in the
+# University of Sydney's data store (BRAVEHeart's RT Images among them),
+# are read beside them, over HTTP ranges, each archive's central directory
+# checked against its pin, and counted only. These are real patients'
+# scans, and this repository's logs and artefacts are public. So only
+# counts, codes, digests, versions, the detector's method, and, for each
+# series of IDC, its public identifiers, licence, and DOI leave the runner:
+# the command's standard output and error, and s5cmd's, go to files on the
+# runner; a crash is reported by .github/scripts/run_redacted.py as its type
+# and code locations alone; and no image, crop, or pixel value is written.
+# The series are never cached, uploaded, or kept.
+#
+# phantoms: the synthetic phantoms (T1) and series of IDC's allow-listed
+# phantom collections (T2), which show no patient, reported in full, with
+# PNG crops of the detector's regions and of the texts it did not cover,
+# and their collections' attribution. The job selects phantom collections
+# alone, and the report reads only files whose TCIA project block names an
+# allow-listed phantom collection, so no patient's frame is drawn.
 on:
   workflow_dispatch:
     inputs:
+      corpora:
+        description: The jobs to run.
+        type: choice
+        options: [all, patients, phantoms]
+        default: all
       model:
         description: The model's adapter, by name.
         type: string
@@ -52,17 +67,26 @@ on:
         description: The most megabytes of archive folders in all.
         type: string
         default: '1500'
+      phantom_per_collection:
+        description: The most series from one phantom collection.
+        type: string
+        default: '4'
+      phantom_max_mb:
+        description: The most megabytes of phantom series in all.
+        type: string
+        default: '2000'
 
 permissions:
   contents: read
 
 concurrency:
-  group: text-detector-evaluation-idc-${{ github.ref }}
+  group: text-detector-evaluation-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
-  evaluate:
-    name: Text detector evaluation on IDC
+  patients:
+    name: Text detector evaluation on patients' series
+    if: ${{ inputs.corpora != 'phantoms' }}
     runs-on: ubuntu-latest
     timeout-minutes: 355
     permissions:
@@ -227,7 +251,119 @@ jobs:
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: text-detector-evaluation-idc${{ env.ATTEMPT_SUFFIX }}
+          name: text-detector-evaluation-patients${{ env.ATTEMPT_SUFFIX }}
           path: ${{ runner.temp }}/idc/results/
+          if-no-files-found: warn
+          retention-days: 90
+
+  phantoms:
+    name: Text detector evaluation on phantoms
+    if: ${{ inputs.corpora != 'patients' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    permissions:
+      contents: read
+    env:
+      MODEL: ${{ inputs.model || 'PP-OCRv6 small' }}
+      SETTINGS: ${{ inputs.settings || 'today' }}
+      EVALUATED: ${{ inputs.evaluated || 'tuning' }}
+      PER_COLLECTION: ${{ inputs.phantom_per_collection || '4' }}
+      MAX_MB: ${{ inputs.phantom_max_mb || '2000' }}
+      # idc-index-data 25.0.5, which holds IDC's index, and its SHA-256 as
+      # text_evaluation_idc pins it.
+      INDEX_URL: https://files.pythonhosted.org/packages/bd/10/c6391b44d1b2f6c744e1cb4018250cb1a5d80947d47ed945172d9165a3b4/idc_index_data-25.0.5-py3-none-any.whl
+      INDEX_SHA256: 1ea4ec812688759b71798249b6488eb2bce7178aabb3dccb00366b7a555de25c
+      ATTEMPT_SUFFIX: >-
+        ${{ github.run_attempt != '1'
+        && format('-attempt-{0}', github.run_attempt) || '' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup-project
+        with:
+          extras: 'user text-detection'
+
+      - name: Install the evaluation's pinned tools
+        run: |
+          uv pip install --require-hashes --no-deps \
+            -r .github/text-evaluation/requirements.txt
+
+      - name: Prepare private and data directories
+        run: |
+          umask 077
+          mkdir -p "${RUNNER_TEMP}/phantoms/private" \
+            "${RUNNER_TEMP}/phantoms/data" "${RUNNER_TEMP}/phantoms/index"
+
+      - name: Download IDC's index
+        run: |
+          wheel="${RUNNER_TEMP}/phantoms/index/idc_index_data-25.0.5-py3-none-any.whl"
+          curl -sSfL --retry 3 --retry-all-errors --retry-delay 30 \
+            -o "${wheel}" "${INDEX_URL}"
+          echo "${INDEX_SHA256}  ${wheel}" | sha256sum --check --strict -
+
+      # With --phantoms, the selection takes IDC's phantom collections alone.
+      - name: Select the phantom series
+        run: |
+          uv run --no-sync python .github/scripts/run_redacted.py \
+            --private-stdout "${RUNNER_TEMP}/phantoms/private/select-stdout.log" \
+            pymedphys._dicom.deidentify.text_evaluation_command idc-select \
+            "${RUNNER_TEMP}/phantoms/index/idc_index_data-25.0.5-py3-none-any.whl" \
+            --phantoms \
+            --per-collection "${PER_COLLECTION}" \
+            --max-mb "${MAX_MB}" \
+            --downloads "${RUNNER_TEMP}/phantoms/data" \
+            --out "${RUNNER_TEMP}/phantoms/selection" \
+            2> "${RUNNER_TEMP}/phantoms/private/select-stderr.log"
+
+      - name: Download the phantom series
+        timeout-minutes: 60
+        run: |
+          uv run --no-sync s5cmd --no-sign-request \
+            --endpoint-url https://s3.amazonaws.com \
+            run "${RUNNER_TEMP}/phantoms/selection/manifest.s5cmd" \
+            > "${RUNNER_TEMP}/phantoms/private/s5cmd.log" 2>&1
+          df -h /
+
+      # Writes the counts-only summary, and under phantoms/ each case's full
+      # report and previews, index.json, and ATTRIBUTION.md. The command
+      # refuses a selection that holds any series not of a phantom
+      # collection. The model's pinned weights download on first use.
+      - name: Report the phantoms
+        timeout-minutes: 150
+        run: |
+          uv run --no-sync python .github/scripts/run_redacted.py \
+            --private-stdout "${RUNNER_TEMP}/phantoms/private/report-stdout.log" \
+            pymedphys._dicom.deidentify.text_evaluation_command phantom-report \
+            "${RUNNER_TEMP}/phantoms/selection/series.json" \
+            "${RUNNER_TEMP}/phantoms/data" \
+            --model "${MODEL}" \
+            --settings "${SETTINGS}" \
+            --evaluated "${EVALUATED}" \
+            --workers "$(nproc)" \
+            --out "${RUNNER_TEMP}/phantoms/results" \
+            2> "${RUNNER_TEMP}/phantoms/private/report-stderr.log"
+          cp "${RUNNER_TEMP}/phantoms/selection/selection.json" \
+            "${RUNNER_TEMP}/phantoms/results/"
+          echo "${GITHUB_SHA}" > "${RUNNER_TEMP}/phantoms/results/commit.txt"
+
+      - name: Show the results
+        if: ${{ !cancelled() }}
+        run: |
+          page="${RUNNER_TEMP}/phantoms/results/summary.md"
+          if [[ -f "${page}" ]]; then
+            tee -a "${GITHUB_STEP_SUMMARY}" < "${page}"
+          else
+            echo "The phantoms' report wrote no results; the log shows why." \
+              | tee -a "${GITHUB_STEP_SUMMARY}"
+          fi
+
+      - name: Upload the results
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: text-detector-evaluation-phantoms${{ env.ATTEMPT_SUFFIX }}
+          path: ${{ runner.temp }}/phantoms/results/
           if-no-files-found: warn
           retention-days: 90

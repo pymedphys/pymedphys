@@ -232,9 +232,11 @@ NEW_RULES = {**URIS, **SEQUENCES, **OTHER_REMOVED, **PATIENT_MEASURES}
 # The two UR attributes that name coding concepts and schemes, which the
 # maintainer decided on 1 October 2026 to keep.
 KEPT_URIS = {"(0008,010E)": "CodingSchemeURL", "(0008,0120)": "URNCodeValue"}
-# The UR attribute that the first supported release's IODs require at a
-# place that no removed sequence encloses, so that X/Z/D resolves to D there.
-REQUIRED_URIS = {"(0028,7FE0)"}
+# The UR attributes that the first supported release's IODs require at a
+# place that no removed sequence encloses, so that X/Z/D resolves to D there:
+# Pixel Data Provider URL, and the URI that an encapsulated document uses to
+# name an instance that it refers to.
+REQUIRED_URIS = {"(0028,7FE0)", "(0068,7005)"}
 ICC_PROFILE = "(0028,2000)"
 # A number that can hold anything, such as a date, which Z or D replaces
 # with its rank among its study's Series Numbers.
@@ -615,10 +617,15 @@ def test_the_new_rules_remove_by_type_where_the_supported_iods_allow_it():
     # patient are Type 3 wherever the first supported release's IODs define
     # them, so they are removed, and so is ICC Profile, except at the top
     # level of three enhanced IODs, where it is Type 1 and needs a dummy
-    # value, and of Segmentation, whose ICC Profile Module is required where
-    # a label map is PALETTE COLOR. Retrieve URL and Retrieve URI are
+    # value, of Segmentation, whose ICC Profile Module is required where a
+    # label map is PALETTE COLOR, of Nuclear Medicine Image, which includes
+    # the module as user-optional, of Parametric Map, whose Parametric Map
+    # Image Module requires it under a condition (Type 1C), and of four
+    # softcopy Presentation States: Color, Pseudo-Color, and Blending, which
+    # require the module, and Variable Modality LUT, which requires it with
+    # a Palette Color Lookup Table. Retrieve URL and Retrieve URI are
     # required only in sequences
-    # that the table removes, and three UR attributes are required at places
+    # that the table removes, and four UR attributes are required at places
     # where removal by Type needs a dummy value.
     tables = iods.load_iod_tables()
     basic = _rules()
@@ -653,7 +660,13 @@ def test_the_new_rules_remove_by_type_where_the_supported_iods_allow_it():
             "Enhanced CT Image",
             "Enhanced MR Image",
             "Enhanced MR Color Image",
+            "Nuclear Medicine Image",
             "Segmentation",
+            "Parametric Map",
+            "Color Softcopy Presentation State",
+            "Pseudo-Color Softcopy Presentation State",
+            "Blending Softcopy Presentation State",
+            "Variable Modality LUT Softcopy Presentation State",
         )
     }
 
@@ -687,7 +700,10 @@ def test_series_number_resolves_to_z_in_the_supported_iods_but_where_type_1():
     # Type 2 in the General Series and RT Series Modules; Type 1 in the items
     # of the Structure Set Module's Source Series Information Sequence, in
     # the Segmentation Series Module of Segmentation and Surface Segmentation,
-    # and in the SR Document Series Module of the Structured Reports.
+    # the Parametric Map Series Module, in the Enhanced RT Series Module of
+    # the Enhanced and Enhanced Continuous RT Images and the supported
+    # second-generation RT IODs, in the SR Document Series Module of the
+    # Structured Reports, and in the Encapsulated Document Series Module.
     # Either way it then takes its rank, or is emptied or given D's dummy
     # value if it has none.
     tables = iods.load_iod_tables()
@@ -708,7 +724,16 @@ def test_series_number_resolves_to_z_in_the_supported_iods_but_where_type_1():
     assert {(name, path) for name, path, action in resolved if action != "Z"} == {
         ("RT Structure Set", ("(3006,004C)",)),
         ("Segmentation", ()),
+        ("Parametric Map", ()),
         ("Surface Segmentation", ()),
+        ("Enhanced RT Image", ()),
+        ("Enhanced Continuous RT Image", ()),
+        ("RT Segment Annotation", ()),
+        ("RT Radiation Set", ()),
+        ("C-Arm Photon-Electron Radiation", ()),
+        ("Tomotherapeutic Radiation", ()),
+        ("Robotic-Arm Radiation", ()),
+        ("RT Radiation Set Delivery Instruction", ()),
         ("X-Ray Radiation Dose SR", ()),
         ("Enhanced X-Ray Radiation Dose SR", ()),
         ("Radiopharmaceutical Radiation Dose SR", ()),
@@ -726,6 +751,7 @@ def test_series_number_resolves_to_z_in_the_supported_iods_but_where_type_1():
         ("Spectacle Prescription Report", ()),
         ("Macular Grid Thickness and Volume Report", ()),
         ("Waveform Annotation SR", ()),
+        ("Encapsulated PDF", ()),
     }
     assert {action for _, _, action in resolved} == {"Z", "D"}
 

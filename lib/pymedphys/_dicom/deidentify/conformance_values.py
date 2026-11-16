@@ -571,8 +571,10 @@ def dates_and_times(
             "own, equals a whole kept value, the residual search finds it in "
             "the kept element, and the kept value explains it, so it does not "
             "withhold the instance, nor does a removed datetime whose date, "
-            "which the search also looks for, equals a whole kept date; found "
-            "inside a longer kept value, such as the date of a kept datetime, "
+            "which the search also looks for, equals a whole kept date, or a "
+            "removed date, or datetime's date, that is the date that begins a "
+            "kept datetime; found inside a longer kept value, such as a "
+            "removed datetime to the minute at the start of a kept datetime, "
             "it still does. "
             f"{named(TEMPORAL_MODIFIED)} is `{statement.markers.temporal}`, as "
             "Attributes inserted describes.",
@@ -682,12 +684,14 @@ def qc_pack(statement: ConformanceStatement, named: Callable[[str], str]) -> lis
     exempt = join(named(tag) for tag in sorted(_NOT_REVIEWED_TAGS))
     unreviewable = code(TransformReason.UNREVIEWABLE_RETAINED_TEXT.value)
     volume = join((code(each.value) for each in pixel_risk.VOLUME_INDICATORS), "or")
-    localizer, rt_image, segmentation, head, unreadable = (
+    localizer, rt_image, nm_image, segmentation, parametric_map, head, unreadable = (
         code(indicator.value)
         for indicator in (
             Indicator.LOCALIZER,
             Indicator.RT_IMAGE,
+            Indicator.NM_IMAGE,
             Indicator.SEGMENTATION,
+            Indicator.PARAMETRIC_MAP,
             Indicator.HEAD_OR_NECK,
             Indicator.UNREADABLE,
         )
@@ -723,11 +727,18 @@ def qc_pack(statement: ConformanceStatement, named: Callable[[str], str]) -> lis
         "the CT, MR, and PET localizers among them, which can show the face "
         f"in profile, by {localizer}; the RT Images among them, projections "
         "such as a lateral DRR that can show the face in profile too, "
-        f"whatever their gantry angle, by {rt_image}; the Segmentations among "
+        f"whatever their gantry angle, by {rt_image}; the Nuclear Medicine "
+        "images among them, planar views, the projections of a tomographic "
+        "acquisition, or volumes reconstructed from them, any of which can "
+        f"show the face whatever their Image Type, by {nm_image}; the "
+        "Segmentations among "
         "them, whose segment of the skin or body traces the profile whatever "
-        f"its label, by {segmentation}; "
-        "where the attributes of a volume, localizer, RT Image, or "
-        "Segmentation, or a Segmentation's segments, name a region of the "
+        f"its label, by {segmentation}; the Parametric Maps among them, "
+        "whose map of the head shows its outline whatever its quantity, by "
+        f"{parametric_map}; "
+        "where the attributes of a volume, localizer, RT Image, Nuclear "
+        "Medicine image, Segmentation, or Parametric Map, or a "
+        "Segmentation's segments, name a region of the "
         f"head or neck in a reviewed list from PS3.16 Annex L, by {head}; and "
         f"where such evidence cannot be read, by {unreadable}; each with the "
         "instances that show it. A volume is a series whose instances of one "
@@ -776,12 +787,15 @@ def _pixel_data(statement: ConformanceStatement) -> str:
     return (
         "Under the Clean Pixel Data Option, the engine replaces each region "
         "of text that its text finder finds in each frame of Pixel Data "
-        "(7FE0,0010), and each region that a reviewed region rule gives "
+        "(7FE0,0010), Float Pixel Data (7FE0,0008), or Double Float Pixel "
+        "Data (7FE0,0009), and each region that a reviewed region rule gives "
         "every frame of an image with the rule's SOP Class UID, Manufacturer, "
         "Manufacturer's Model Name, Rows, and Columns, with one stored value: "
         "the frame's "
         "smallest for MONOCHROME2, its largest for MONOCHROME1, or zero for "
-        "RGB. Native Pixel Data is changed in place; compressed Pixel Data is "
+        "RGB, and for floating-point pixel data, the frame's smallest finite "
+        "value. Native Pixel Data, and floating-point pixel data, are changed "
+        "in place, in the element that held them; compressed Pixel Data is "
         "decoded first, YBR colour as RGB, and written uncompressed, in "
         "Explicit VR Little Endian, whether or not a region is blacked out. "
         "This erases the text's pattern, but how bright the region is "
@@ -794,8 +808,10 @@ def _pixel_data(statement: ConformanceStatement) -> str:
         "finder's and the rules' regions that the reviewer accepted, with any "
         "that the reviewer added, without the finder or the rules, and "
         "releases the instance, and it "
-        "sequesters an instance that the reviewer rejected. It sequesters an instance with "
-        "top-level Float or Double Float Pixel Data, or whose Pixel Data "
+        "sequesters an instance that the reviewer rejected. It sequesters an instance "
+        "whose Float or Double Float Pixel Data are not one sample of "
+        "MONOCHROME2 in a native transfer syntax, of 32 or 64 bits as their "
+        "element has them, or whose Pixel Data "
         "have a photometric interpretation other than MONOCHROME1, "
         "MONOCHROME2, or 8-bit RGB, or, compressed, 8-bit YBR_FULL, "
         "YBR_FULL_422, YBR_ICT, or YBR_RCT, or another layout that cannot be "

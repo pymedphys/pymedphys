@@ -337,7 +337,8 @@ def explain_checks(
     if event_name != "pull_request":
         select(OUTPUTS, Reason(f"{event_name} event"))
         if event_name == "merge_group":
-            # Every check still runs; main validates the full platform matrix.
+            # Every check still runs; main's nightly run validates the full
+            # platform matrix.
             reasons["run-full-matrix"] = None
         # ReadTheDocs publishes main independently; retain the existing policy.
         if event_name == "push":

@@ -30,8 +30,6 @@ def markdown(summary: Mapping[str, Any]) -> str:
     """Render the counts as a CommonMark page."""
     data = summary["data"]
     software = summary["software"]
-    cases = summary["cases"]
-    series = summary["series"]
     lines = [
         f"# Face block check on {data['name']}",
         "",
@@ -53,6 +51,16 @@ def markdown(summary: Mapping[str, Any]) -> str:
         "",
         f"The data set: {data['citation']}.",
         "",
+    ]
+    return "\n".join(lines + body(summary)) + "\n"
+
+
+def body(summary: Mapping[str, Any]) -> list[str]:
+    """The page's lines from its counts of cases on, which every data set's
+    page shares."""
+    cases = summary["cases"]
+    series = summary["series"]
+    lines = [
         "## Cases",
         "",
         "| Cases | Count |",
@@ -160,7 +168,7 @@ def markdown(summary: Mapping[str, Any]) -> str:
             for name, value in summary["settings"].items()
         ),
     ]
-    return "\n".join(lines) + "\n"
+    return lines
 
 
 def _finder(finder: Mapping[str, Any]) -> list[str]:
