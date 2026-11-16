@@ -80,6 +80,10 @@ WAVEFORM_PRESENTATION_STATES = (
 )
 # Blending Sequence (0070,0402).
 BLENDING = "(0070,0402)"
+# An encapsulated document, which names its sources, predecessors, and
+# identical documents in its Encapsulated Document Module, and has no Common
+# Instance Reference Module (PS3.3 Table A.45.1-1).
+ENCAPSULATED_PDF = "Encapsulated PDF"
 # Referenced Request Sequence.
 REFERENCED_REQUEST = "(0040,A370)"
 # The evidence sequences of SR Document General: Current Requested Procedure
@@ -278,7 +282,7 @@ RT_REFERENCES = [
             (synthetic.REQUESTED_REFERENCED_STUDY, Level.STUDY),
         ]
     ),
-    # Every IOD but the reports and the Presentation States: Common Instance
+    # Every IOD but the reports, Presentation States and PDF: Common Instance
     # Reference.
     *(
         (iod, attribute, level)
@@ -287,6 +291,7 @@ RT_REFERENCES = [
         and iod not in PRESENTATION_STATES
         and iod != BLENDING_PRESENTATION_STATE
         and iod not in WAVEFORM_PRESENTATION_STATES
+        and iod != ENCAPSULATED_PDF
         for attribute, level in [
             (("(0008,1115)", "(0020,000E)"), Level.SERIES),
             (("(0008,1200)", "(0020,000D)"), Level.STUDY),
@@ -317,6 +322,25 @@ RT_REFERENCES = [
             ((BLENDING, "(0020,000D)"), Level.STUDY),
             ((BLENDING, "(0008,1115)", "(0020,000E)"), Level.SERIES),
             ((BLENDING, "(0008,1115)", "(0008,1140)", "(0008,1155)"), Level.INSTANCE),
+        ]
+    ),
+    # Encapsulated PDF: the instances that the document was derived from, the
+    # images and instances that it refers to, and the study, series, and
+    # instances of its predecessors and identical documents (PS3.3 Table
+    # C.24-2).
+    (ENCAPSULATED_PDF, ("(0042,0013)", "(0008,1155)"), Level.INSTANCE),
+    (ENCAPSULATED_PDF, synthetic.REFERENCED_IMAGE, Level.INSTANCE),
+    (ENCAPSULATED_PDF, ("(0008,114A)", "(0008,1155)"), Level.INSTANCE),
+    *(
+        (ENCAPSULATED_PDF, attribute, level)
+        for documents in ("(0040,A360)", "(0040,A525)")
+        for attribute, level in [
+            ((documents, "(0020,000D)"), Level.STUDY),
+            ((documents, "(0008,1115)", "(0020,000E)"), Level.SERIES),
+            (
+                (documents, "(0008,1115)", "(0008,1199)", "(0008,1155)"),
+                Level.INSTANCE,
+            ),
         ]
     ),
     # Each report: the study in General Study and in each request; the
@@ -438,6 +462,7 @@ NOT_FOLLOWED = {
     "(3010,000B)": "refers to a conceptual volume, not an instance",
     "(3010,0013)": "refers to a conceptual volume, not an instance",
     "(3010,0015)": "refers to a conceptual volume, not an instance",
+    "(0040,A171)": "identifies an observation, not an instance",
     "(3010,0031)": "refers to a fiducial within an instance",
     # A later change follows frames of reference.
     "(0020,0052)": "identifies a frame of reference",
@@ -794,7 +819,7 @@ def test_an_instance_without_generated_iod_tables_has_no_references(sop_class):
 @pytest.mark.pydicom
 def test_a_record_finds_references_of_a_generated_iod_beyond_the_first_release():
     dataset = synthetic.instance(
-        synthetic.NM_IMAGE_STORAGE,
+        synthetic.US_IMAGE_STORAGE,
         "2.25.9001",
         "2.25.9002",
         ReferencedImageSequence=[
@@ -804,7 +829,7 @@ def test_a_record_finds_references_of_a_generated_iod_beyond_the_first_release()
 
     record = synthetic.record(dataset)
 
-    assert record.iod == "Nuclear Medicine Image"
+    assert record.iod == "Ultrasound Image"
     (reference,) = record.references
     assert reference.site == ReferenceSite(
         ("(0008,1140)",), "(0008,1155)", Level.INSTANCE, "1"
