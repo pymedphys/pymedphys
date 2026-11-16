@@ -618,8 +618,12 @@ def test_the_new_rules_remove_by_type_where_the_supported_iods_allow_it():
     # them, so they are removed, and so is ICC Profile, except at the top
     # level of three enhanced IODs, where it is Type 1 and needs a dummy
     # value, of Segmentation, whose ICC Profile Module is required where a
-    # label map is PALETTE COLOR, and of Parametric Map, whose Parametric Map
-    # Image Module requires it under a condition (Type 1C). Retrieve URL and Retrieve URI are
+    # label map is PALETTE COLOR, of Nuclear Medicine Image, which includes
+    # the module as user-optional, of Parametric Map, whose Parametric Map
+    # Image Module requires it under a condition (Type 1C), and of four
+    # softcopy Presentation States: Color, Pseudo-Color, and Blending, which
+    # require the module, and Variable Modality LUT, which requires it with
+    # a Palette Color Lookup Table. Retrieve URL and Retrieve URI are
     # required only in sequences
     # that the table removes, and four UR attributes are required at places
     # where removal by Type needs a dummy value.
@@ -656,8 +660,13 @@ def test_the_new_rules_remove_by_type_where_the_supported_iods_allow_it():
             "Enhanced CT Image",
             "Enhanced MR Image",
             "Enhanced MR Color Image",
+            "Nuclear Medicine Image",
             "Segmentation",
             "Parametric Map",
+            "Color Softcopy Presentation State",
+            "Pseudo-Color Softcopy Presentation State",
+            "Blending Softcopy Presentation State",
+            "Variable Modality LUT Softcopy Presentation State",
         )
     }
 

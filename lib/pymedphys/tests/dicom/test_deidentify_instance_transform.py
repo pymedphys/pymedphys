@@ -716,14 +716,14 @@ def test_d_writes_the_person_identification_item_of_an_interlocks_user():
 
 @pytest.mark.deid_requirement("MIDI-BP-06")
 def test_an_instance_the_release_does_not_support_is_sequestered_with_its_iod():
-    nm = synthetic.instance(
-        synthetic.NM_IMAGE_STORAGE, synthetic.OTHER, synthetic.OTHER_SERIES
+    us = synthetic.instance(
+        synthetic.US_IMAGE_STORAGE, synthetic.OTHER, synthetic.OTHER_SERIES
     )
-    result = _transformed(nm)
+    result = _transformed(us)
 
     assert isinstance(result, run.Sequestered)
     # The IOD comes from PS3.4 Table B.5-1, for the release report (D-010).
-    assert result.reasons == (UnsupportedIod("Nuclear Medicine Image"),)
+    assert result.reasons == (UnsupportedIod("Ultrasound Image"),)
     # Its values are collected for its subject's search, never written (D-027).
     assert isinstance(result.evidence, Coverage)
 
@@ -1003,13 +1003,13 @@ def test_text_outside_iso_646_under_an_unsupported_character_set_is_not_guessed(
 
 
 def test_an_unsupported_character_set_keeps_the_scope_reason_first():
-    nm = synthetic.instance(
-        synthetic.NM_IMAGE_STORAGE, synthetic.OTHER, synthetic.OTHER_SERIES
+    us = synthetic.instance(
+        synthetic.US_IMAGE_STORAGE, synthetic.OTHER, synthetic.OTHER_SERIES
     )
-    result = _transformed(_with_character_set(nm, "ISO_IR 100", "LO"))
+    result = _transformed(_with_character_set(us, "ISO_IR 100", "LO"))
 
     assert result == run.Sequestered(
-        (UnsupportedIod("Nuclear Medicine Image"), _UNSUPPORTED_CHARACTER_SET)
+        (UnsupportedIod("Ultrasound Image"), _UNSUPPORTED_CHARACTER_SET)
     )
 
     plan = _with_character_set(_plan_with_sentinels(), "ISO_IR 100", "LO")
