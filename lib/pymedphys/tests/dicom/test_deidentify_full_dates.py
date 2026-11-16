@@ -44,9 +44,10 @@ from pymedphys._dicom.deidentify.policy import (
     refuse_unapplied_options,
 )
 from pymedphys._dicom.deidentify.references import InstanceRecord
-from pymedphys._dicom.deidentify.release_gate import release_condition
+from pymedphys._dicom.deidentify.release_gate import Decision, release_condition
 from pymedphys._dicom.deidentify.residual_exemptions import Exemption
 
+from . import _classic_images as classic
 from . import _synthetic_references as synthetic
 
 pytestmark = [pytest.mark.pydicom, pytest.mark.usefixtures("pydicom_behaviour")]
@@ -205,6 +206,78 @@ def test_a_removed_private_datetime_of_the_kept_date_is_released_as_explained():
     ]
 
 
+# A PET image keeps its injection time in Radiopharmaceutical Start DateTime
+# (0018,1078), inside Radiopharmaceutical Information Sequence (0054,0016).
+# GE's writes times of the same day, such as its scan and injection times,
+# into private elements of its GEMS_PETD_01 block, which the Basic Profile
+# removes, and the search finds each by its date at the start of the kept
+# datetime: that is the kept value's date, which holds none of their times.
+PET_DAY = "20200102"
+RADIOPHARMACEUTICAL_START = ElementPath((("(0054,0016)", 0),), "(0018,1078)")
+GE_PET_TIMES = (0x0D, 0x0E, 0x3B, 0x3D, 0x68)
+
+
+def _pet(times):
+    """A PET image injected on ``PET_DAY``, with GE's private ``times``."""
+    (dataset,) = classic.classic_series("PT", 1)
+    # A name none of whose words the kept Manufacturer holds.
+    dataset.PatientName = "Zarquon^Agrajag"
+    for tag in (0x00090010, 0x00091001, 0x00091002):
+        del dataset[tag]
+    item = dataset.RadiopharmaceuticalInformationSequence[0]
+    del item.RadiopharmaceuticalStartTime
+    item.RadiopharmaceuticalStartDateTime = f"{PET_DAY}093000.000000"
+    block = dataset.private_block(0x0009, "GEMS_PETD_01", create=True)
+    for element, time in times:
+        block.add_new(element, "DT", time)
+    data = classic.encoded(dataset)
+    return _transform()(data, InstanceRecord.from_file(data))
+
+
+def test_removed_private_datetimes_of_a_kept_datetimes_day_are_released_as_explained():
+    times = [
+        (element, f"{PET_DAY}{101500 + index}.00")
+        for index, element in enumerate(GE_PET_TIMES)
+    ]
+
+    result = _pet(times)
+
+    assert isinstance(result, run.Transformed), result
+    written = pydicom.dcmread(io.BytesIO(result.data))
+    kept = written.RadiopharmaceuticalInformationSequence[0]
+    assert kept.RadiopharmaceuticalStartDateTime == f"{PET_DAY}093000.000000"
+    assert 0x00090010 not in written
+    assert isinstance(_decision(result), run.Release)
+    condition = release_condition(result.evidence, result.data)
+    assert {
+        (each.source.tag, why)
+        for each, why in condition.exempted
+        if each.location.element == RADIOPHARMACEUTICAL_START
+    } == {
+        (f"(0009,10{element:02X})", Exemption.RETAINED_VALUE)
+        for element in GE_PET_TIMES
+    }
+
+
+@pytest.mark.parametrize(
+    "time",
+    [
+        # Written to the minute, and found whole at the start of the kept
+        # datetime, which is longer, so its time is not explained.
+        f"{PET_DAY}0930",
+        # Found whole inside the kept datetime.
+        f"{PET_DAY}093000",
+    ],
+)
+def test_a_removed_datetime_found_whole_in_a_longer_kept_datetime_withholds(time):
+    result = _pet([(0x0D, time)])
+
+    assert isinstance(result, run.Transformed), result
+    condition = release_condition(result.evidence, result.data)
+    assert condition.decision is Decision.WITHHOLD
+    assert not isinstance(_decision(result), run.Release)
+
+
 @pytest.mark.deid_requirement("PS3.15-E.3.6-01")
 def test_the_statement_describes_kept_dates_and_needs_nothing_else():
     statement = conformance.conformance_statement(
@@ -222,6 +295,7 @@ def test_the_statement_describes_kept_dates_and_needs_nothing_else():
     assert f"The {kept} that take `K` keep their source values" in section
     assert "the kept value explains it" in section
     assert "nor does a removed datetime whose date" in section
+    assert "the date that begins a kept datetime" in section
     assert "it still does." in section
     assert "`UNMODIFIED`" in section
     assert "not yet described" not in section
