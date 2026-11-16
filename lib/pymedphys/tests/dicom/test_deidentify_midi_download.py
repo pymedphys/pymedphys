@@ -165,8 +165,13 @@ def test_the_packaged_pins_name_both_subsets():
     )
     assert subsets["test"].collection == "MIDI-B-Synthetic-Test"
     assert (subsets["test"].series, subsets["test"].instances) == (428, 29660)
-    for subset in subsets.values():
+    for key, subset in subsets.items():
         assert subset.manifest_url.startswith("https://www.cancerimagingarchive.net/")
+        # Each subset's answer key is the Zenodo copy of its own package's file.
+        assert subset.answer_key_url.startswith("https://zenodo.org/")
+        assert subset.answer_key_url.endswith(
+            f"/MIDI-B-Answer-Key-{key.capitalize()}.zip/content"
+        )
 
 
 def _pins(**changes) -> str:

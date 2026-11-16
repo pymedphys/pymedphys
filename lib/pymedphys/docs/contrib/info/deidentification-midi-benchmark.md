@@ -77,7 +77,7 @@ It writes:
 
 To take the images from TCIA even when a copy is pinned, add `--images-from tcia`. To use a copy of the images' ZIP file that you downloaded yourself, such as from Zenodo in a browser, give it with `--images-file`. The downloader checks it against `images_sha256` when that is pinned, unpacks it, and checks the files against the pinned counts and fingerprint, as for any download.
 
-TCIA publishes each subset's answer key only through IBM Aspera, as a package (`MIDI-B-Answer-Key-Validation` or `MIDI-B-Answer-Key-Test`) holding a ZIP file of the same name, which holds the SQLite database. `midi_data.toml` pins that ZIP file's SHA-256 (`answer_key_sha256`) and, once one is published, the HTTPS address of a byte-identical copy (`answer_key_url`), which the downloader then fetches for you. Otherwise, download the package with its link on TCIA's page, in a browser or with IBM's `ascli` command, and give the downloader the ZIP file:
+TCIA publishes each subset's answer key only through IBM Aspera, as a package (`MIDI-B-Answer-Key-Validation` or `MIDI-B-Answer-Key-Test`) holding a ZIP file of the same name, which holds the SQLite database. `midi_data.toml` pins that ZIP file's SHA-256 (`answer_key_sha256`) and the HTTPS address of a byte-identical copy on Zenodo (`answer_key_url`), in the record <https://doi.org/10.5281/zenodo.23322450>, which the downloader fetches for you. To use TCIA's own file instead, download the package with its link on TCIA's page, in a browser or with IBM's `ascli` command, and give the downloader the ZIP file:
 
 ```bash
 uv run --no-dev --extra user python -m pymedphys._dicom.deidentify.midi_download \
@@ -296,7 +296,7 @@ The repository's **MIDI-B Benchmark** workflow (`.github/workflows/midi-b-benchm
    - `all`: every group, fourteen jobs for Validation and twenty-one for Test, and the `combine` job.
 
    The Test subset takes 2.1 to 2.6 times as long as Validation, and GitHub's runners differ about twofold in speed, so on a slow runner a Test job of more than one run scored by NCI's script, or of more than two runs, would pass the 320 minutes that the step may take. A first job, `Plan the run`, chooses each subset's jobs so that each fits a slow runner, and finds each engine ref's commit (below).
-   - `pinned`, the default: the copy at the address pinned in `midi_data.toml`. While no address is pinned, the run downloads and checks the images but cannot score them.
+   - `pinned`, the default: the copy on Zenodo at the address pinned in `midi_data.toml`.
    - `tcia`: TCIA's own Aspera packages, fetched on the runner with IBM's `ascli` and checked against the pinned digest. This is the check from the source described in section 10.
    - Otherwise, give an HTTPS address for an answer key and its SHA-256, for one subset at a time.
    - Where the images come from: `pinned`, the default, takes the ZIP file pinned in `midi_data.toml`, falling back to TCIA if it cannot be fetched, or TCIA while none is pinned; `tcia` takes TCIA's manifest and series, checked against the same pins. `download.json` records the source, and the failure when a run fell back.
@@ -354,7 +354,7 @@ The downloader falls back to TCIA only when the pinned ZIP file cannot be fetche
 TCIA offers the answer keys only through IBM Aspera, which a GitHub runner or a script can use only with IBM's client. So the pins name TCIA's own file:
 
 - `answer_key_sha256` is the SHA-256 of the ZIP file in TCIA's package for the subset, as the **MIDI-B Benchmark** workflow received it from TCIA on 10 October 2026.
-- Routine runs fetch a copy of that same ZIP file from Zenodo (`answer_key_url`), deposited with a citation of TCIA's DOI under the same CC BY 4.0 licence. The downloader refuses any copy whose digest differs from the pin, so a run can only ever score against a file byte-identical to TCIA's.
+- Routine runs fetch a copy of that same ZIP file from Zenodo (`answer_key_url`), in the record <https://doi.org/10.5281/zenodo.23322450>, deposited with a citation of TCIA's DOI under the same CC BY 4.0 licence. The downloader refuses any copy whose digest differs from the pin, so a run can only ever score against a file byte-identical to TCIA's.
 - Running the workflow with `answer-keys-from: tcia` fetches the packages from TCIA again, records their files' digests in `tcia-answer-keys.txt`, and scores against TCIA's file directly. If TCIA's file still matches the pin, so does the Zenodo copy. Anyone can run it on a fork.
 - On your own machine, `--verify` with `--answer-key-file` checks a ZIP file you downloaded from TCIA against the same pin.
 
