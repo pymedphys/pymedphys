@@ -114,7 +114,9 @@ class TransformReason(enum.Enum):
     # pixel_cleaning.overlay_planes allows (D-041)
     OVERLAY_IN_PIXEL_DATA = "overlay-in-pixel-data"
     # under Clean Pixel Data, top-level Float Pixel Data or Double Float Pixel
-    # Data, or Pixel Data that cannot be read as frames of stored values: a
+    # Data that are not one MONOCHROME2 sample of the Bits Allocated of their
+    # element in a native transfer syntax, or held beside each other or
+    # Pixel Data, or Pixel Data that cannot be read as frames of stored values: a
     # layout other than whole bytes of 8, 16, or 32 bits with its High Bit one
     # less than Bits Stored, a photometric interpretation other than
     # MONOCHROME1, MONOCHROME2, or 8-bit RGB, or, compressed, 8-bit YBR_FULL,
@@ -209,7 +211,8 @@ class VisualFeaturesReason(enum.Enum):
     # defaced images rather than of the file, it is a Segmentation whose
     # segments reach such a series' face block, which the QC pack does not
     # show, or the QC pack could not show its contours or deformation grids,
-    # so the verdict was given without them
+    # so the verdict was given without them, or it holds a surface mesh,
+    # such as a Surface Segmentation's, which no preview of the QC pack draws
     NO_FACE_VERDICT = "no-face-verdict"
     # its series is marked absent, but the run writes other pixel data of it
     # than the reviewed run did, such as a CT slice defaced since the

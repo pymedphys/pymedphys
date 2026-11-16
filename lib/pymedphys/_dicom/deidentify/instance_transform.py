@@ -123,6 +123,7 @@ from __future__ import annotations
 import copy
 import dataclasses
 import hashlib
+import re
 from collections.abc import Callable, Iterable, Mapping
 from pathlib import PurePosixPath
 from typing import TypeAlias
@@ -162,11 +163,13 @@ from .face_review import (
     DEFORMABLE_REGISTRATION_SEQUENCE,
     GRID_TAGS,
     PIXEL_DATA_TAGS,
+    SURFACE_SEGMENTATION,
     FaceReview,
     carries_visual_features,
     contour_data_sha256,
     grid_data_sha256,
     holds_deformation_grid,
+    holds_surface_mesh,
     is_rt_dose,
     is_segmentation,
     pixel_data_sha256,
@@ -1034,9 +1037,10 @@ class InstanceTransform:
     frames no longer decode to the pixels whose SHA-256 the review records,
     when it is cleaned by the finder and held again; one that the reviewer
     rejected is sequestered
-    (:attr:`~.reasons.TransformReason.REDACTION_REJECTED`). One whose pixel
-    data the option cannot clean, such as float pixel data, is sequestered
-    (:class:`~.pixel_cleaning.PixelDataRefused`), and one
+    (:attr:`~.reasons.TransformReason.REDACTION_REJECTED`). Float Pixel Data
+    and Double Float Pixel Data are cleaned in the same way, in the element
+    that held them. One whose pixel data the option cannot clean is
+    sequestered (:class:`~.pixel_cleaning.PixelDataRefused`), and one
     without top-level pixel data has nothing for the option to clean, so it
     satisfies it. Each instance that satisfies the option is marked with its
     code and Burned In Annotation (0028,0301) set to NO, which PS3.15 E.3.1
@@ -1116,7 +1120,12 @@ class InstanceTransform:
     Source Frame of Reference, names one that cannot be read, or refers to
     a defaced slice, is held whatever its verdict
     (:attr:`~.reasons.VisualFeaturesReason.UNDEFACED_IN_DEFACED_FRAME`),
-    since the run does not clean its grids of the face. Each is marked with
+    since the run does not clean its grids of the face. A Surface
+    Segmentation, or any instance that holds a surface mesh
+    (:func:`~.face_review.holds_surface_mesh`), whose points can trace the
+    skin, never satisfies it, since no preview of the pack draws a mesh
+    (:attr:`~.reasons.VisualFeaturesReason.NO_FACE_VERDICT`), in a defaced
+    series' Frame of Reference or not. Each is marked with
     the option's code and Recognizable Visual Features (0028,0302) set to
     NO, which PS3.15 E.3.2 adds whether or not its IOD defines the
     attribute. Any other instance that can show a face is written without
@@ -1286,6 +1295,16 @@ class InstanceTransform:
             face_review=None if face_review is None else face_review.reference,
             redaction_review=(
                 None if redaction_review is None else redaction_review.reference
+            ),
+            redaction_frames_not_shown=(
+                None if redaction_review is None else redaction_review.not_shown
+            ),
+            redaction_review_modes=(
+                None
+                if redaction_review is None
+                else {
+                    mode.value: count for mode, count in redaction_review.modes.items()
+                }
             ),
             safe_private_list=safe_private_list,
             face_blocks=self._face_block_counts,
@@ -1516,11 +1535,15 @@ class InstanceTransform:
         since only they show its doses as they could show a face, and a
         Segmentation, by its IOD, SOP Class UID, or Modality, where it has
         more than its segments sheet showed, since only that shows the
-        surfaces that its segments trace (D-017).
+        surfaces that its segments trace (D-017). A Surface Segmentation, or
+        any instance that holds a surface mesh, is held whatever its
+        verdict, since no preview of the pack draws a mesh.
         """
         review = self._face_review
         if review is None or not carries_visual_features(dataset, iod.name):
             return None
+        if iod.name == SURFACE_SEGMENTATION or holds_surface_mesh(dataset):
+            return HeldVisualFeatures(VisualFeaturesReason.NO_FACE_VERDICT)
         reason = review.hold_reason(
             hashlib.sha256(data).digest(),
             _pixel_digest(writing, dataset),
@@ -2166,7 +2189,10 @@ class InstanceTransform:
             # that is only defaced is not.
             if redaction is not None and self._finder is not None and not reviewed:
                 evidence = _held(evidence, HeldPixelData(redaction.reason))
-                qc = (*qc, _redaction_material(redaction, source, data))
+                qc = (
+                    *qc,
+                    _redaction_material(redaction, source, data, _sop_class(dataset)),
+                )
             elif self._finder is not None:
                 # A reviewer approved the regions, or there are no pixel data
                 # to clean.
@@ -2615,6 +2641,10 @@ def _with_redaction(
     region to black out is kept, and Pixel Data that the plan does not keep
     is left as planned, which :func:`_written` refuses.
 
+    Float Pixel Data and Double Float Pixel Data with a region are written
+    to the element that held them, of VR OF and OD, which PS3.5 Section 6.2
+    gives them in every transfer syntax.
+
     Compressed Pixel Data, decoded, is written uncompressed, with or without
     a region, of VR OW
     where Bits Allocated is over 8 and OB otherwise, as
@@ -2624,12 +2654,22 @@ def _with_redaction(
     or Encapsulated Pixel Data Value Total Length, which describe only
     encapsulated Pixel Data (PS3.3 Section C.7.6.3.1.8).
     """
+    path = redaction.layout.element if redaction is not None else _PIXEL_DATA
     if (
         redaction is None
         or (redaction.decoded is None and not redaction.changed)
-        or _PIXEL_DATA not in writing.kept
+        or path not in writing.kept
     ):
         return writing
+    if redaction.layout.floating:
+        tag = _int_tag(path.tag)
+        vr = "OF" if redaction.layout.bits_allocated == 32 else "OD"
+        element = pydicom.DataElement(tag, vr, redaction.value)
+        return dataclasses.replace(
+            writing,
+            kept=writing.kept - {path},
+            replacements={**writing.replacements, path: element},
+        )
     if redaction.transfer_syntax is None:
         vr = dataset[0x7FE00010].VR
         if vr not in ("OB", "OW"):
@@ -2661,8 +2701,20 @@ def _with_redaction(
     )
 
 
+# A UID as PS3.5 Section 9.1 has it.
+_UID = re.compile(r"(?=.{1,64}$)(0|[1-9][0-9]*)(\.(0|[1-9][0-9]*))*")
+
+
+def _sop_class(dataset: pydicom.Dataset) -> str:
+    """The data set's SOP Class UID, if it holds one value that is a UID,
+    or empty, whose review then needs every frame shown (D-059)."""
+    value = dataset.get("SOPClassUID")
+    text = str(value).strip(" \x00") if isinstance(value, str) else ""
+    return text if _UID.fullmatch(text) else ""
+
+
 def _redaction_material(
-    redaction: Redaction, source: SourceEvidence, data: bytes
+    redaction: Redaction, source: SourceEvidence, data: bytes, sop_class: str = ""
 ) -> RedactionMaterial:
     """The QC material of what Clean Pixel Data did, for the reviewer.
 
@@ -2684,6 +2736,7 @@ def _redaction_material(
         shown,
         redaction.decoded_sha256,
         redaction.rule_boxes,
+        sop_class,
     )
 
 

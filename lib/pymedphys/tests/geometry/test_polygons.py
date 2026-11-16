@@ -361,6 +361,42 @@ def test_rings_with_points_in_a_turned_line_are_simple_as_exactly_found():
     assert 100 < simple < 1900, simple
 
 
+def test_rings_on_a_grid_are_simple_as_exactly_found():
+    # Rings of a few points on a small integer grid, whose edges often
+    # cross, touch at a point, lie along one line, or share x or y ranges
+    # exactly, as the sweep over the edges' least x must take.
+    rng = np.random.default_rng(20261107)
+    simple = 0
+    for _ in range(3000):
+        ring = rng.integers(-3, 4, (int(rng.integers(3, 10)), 2)).astype(float)
+
+        assert polygons.is_simple(ring) == _exactly_simple(ring)
+        simple += _exactly_simple(ring)
+    assert 100 < simple < 2900, simple
+
+
+def test_a_dense_contour_tests_pairs_of_edges_near_its_number_of_edges(
+    monkeypatch,
+):
+    # A circle of 20,000 points, as a body contour drawn on thin slices can
+    # have: comparing every pair of edges took about 200 million tests.
+    angles = np.linspace(0, 2 * np.pi, 20_000, endpoint=False)
+    ring = 150 * np.column_stack([np.cos(angles), np.sin(angles)])
+    meet = polygons._meet  # pylint: disable = protected-access
+    tested = []
+
+    def counted(a, b, c, d, where=True):
+        tested.append(np.broadcast(a[..., 0], c[..., 0], where).size)
+        return meet(a, b, c, d, where)
+
+    monkeypatch.setattr(polygons, "_meet", counted)
+
+    assert polygons.is_simple(ring)
+    assert sum(tested) < 4 * len(ring)
+    # A point beyond the far side, whose two edges cross the circle.
+    assert not polygons.is_simple(np.concatenate([ring, [[-200.0, 0.0]]]))
+
+
 def _dissolved(pieces, kept=np.empty((0, 2))):
     return polygons.dissolve([np.asarray(piece)[:, :2] for piece in pieces], kept, 1e-9)
 

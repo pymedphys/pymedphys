@@ -140,7 +140,13 @@ frame with such regions, also from the file as received:
   one frame of an instance is held decoded at a time. An instance whose
   source cannot be shown beside it, because the source cannot be read or
   decoded, or differs from the file written in its frames' shape, number,
-  or colour, is reported rather than shown in part.
+  or colour, is reported rather than shown in part;
+- after each such frame's preview, its review frame, which the redaction
+  review app shows and draws over (D-059): the frame as received where it
+  has regions, and as written where it has none, which is then the same
+  frame, at full resolution and without outlines, as 16-bit grey linear
+  over the frame's full range, brightest last, padding 0
+  (:func:`review_frame`), or as 8-bit RGB.
 
 A series is the instances that share a Series Instance UID, or an instance
 alone without one. Its instances are ordered by their positions along the
@@ -155,8 +161,9 @@ where both can be read, each frame of a multi-frame instance by those of its
 Pixel Value Transformation functional group, where it has one, and a
 volume of such frames is formed only where every frame's can be read; and
 windowed from the 0.5th to the 99.5th percentile
-of what the preview shows, other than a redaction preview's full-range
-image, leaving out the stored values that Pixel Padding Value and Pixel
+of what the preview shows, or, where those are drawn alike, as where all
+but a few values are one value, from its smallest value to its largest,
+other than a redaction preview's full-range image, leaving out the stored values that Pixel Padding Value and Pixel
 Padding Range Limit name, which are shown black; MONOCHROME1 is inverted so
 that higher values are darker. Since that black shows one value, an instance
 of which a frame as written pads with more than one stored value, which
@@ -212,6 +219,7 @@ from . import (
 from .face_review import holds_deformation_grid, is_rt_dose, is_segmentation
 from .functional_groups import frame_group
 from .phases import FRAME, Named, named_by_frame, named_by_instance, split
+from .pixel_cleaning import beyond
 from .qc_pack import (
     GRID_KINDS,
     NotPreviewedEntry,
@@ -237,7 +245,18 @@ _PERCENTILES = (0.5, 99.5)
 _MONOCHROME = frozenset({"MONOCHROME1", "MONOCHROME2"})
 # Shown as RGB, which pydicom gives for each of them by default.
 _COLOUR = frozenset({"RGB", "YBR_FULL", "YBR_FULL_422", "YBR_ICT", "YBR_RCT"})
-_FLOAT_PIXEL_DATA = ("FloatPixelData", "DoubleFloatPixelData")
+# Float Pixel Data and Double Float Pixel Data, by their Bits Allocated
+# (PS3.3 Sections C.7.6.24 and C.7.6.25), with the padding value and range
+# limit of each.
+_FLOAT_PIXEL_DATA = {32: "FloatPixelData", 64: "DoubleFloatPixelData"}
+_FLOAT_PADDING = {
+    "FloatPixelData": ("FloatPixelPaddingValue", "FloatPixelPaddingRangeLimit"),
+    "DoubleFloatPixelData": (
+        "DoubleFloatPixelPaddingValue",
+        "DoubleFloatPixelPaddingRangeLimit",
+    ),
+}
+_PIXEL_KEYWORDS = ("PixelData", *_FLOAT_PIXEL_DATA.values())
 # An axis lies along a patient axis when its other two direction cosines are
 # each at most this; a volume with any other axis is sampled to voxels along
 # the patient's axes before it is projected, since a projection along an
@@ -275,7 +294,9 @@ class _Instance:
     plugin: str  # the pydicom decoding plugin, or "" for native pixel data
     series: str | None
     shape: tuple[int, int]
-    padding: tuple[int, int] | None  # stored values, inclusive, not shown
+    # Stored values, inclusive, not shown: integers, or floating-point
+    # values for floating-point pixel data.
+    padding: tuple[float, float] | None
     frames: int
     colour: bool
     inverted: bool
@@ -306,6 +327,11 @@ class _Instance:
     # frame's bits are not a whole number of bytes, as a Segmentation's
     # BINARY masks are (_packed_frames).
     packed: bool = False
+    # Whether its pixel data are Float Pixel Data or Double Float Pixel Data,
+    # whose values that are not a number are not shown, as padding is not,
+    # and whose infinities are shown beyond the frame's finite extremes
+    # (_drawn_floats).
+    floating: bool = False
     # Whether it is a Segmentation (face_review.is_segmentation), which only
     # a segments sheet shows as it could show a face (D-017), and what the
     # sheet needs of it, or None where none can show it.
@@ -376,9 +402,9 @@ class PreviewSet:
         position order; then each segments sheet, in run position order;
         then each grid sheet, in run position order, grid order, and the
         order of :data:`~.qc_pack.GRID_KINDS`; then each high-risk
-        instance, in run position order; then each frame of each
-        instance that Clean Pixel Data
-        cleaned, in run position and frame order. Named ``P-0001.png``
+        instance, in run position order; then each frame of each instance
+        that Clean Pixel Data cleaned, in run position and frame order, each
+        followed by its review frame. Named ``P-0001.png``
         onwards in that order. A contour sheet shows its instance's frame
         0, then the frames of each volume that it is drawn with, if any; a
         segments sheet shows each of its Segmentation's frames, then the
@@ -656,9 +682,11 @@ def _instance(
         dataset = _read(data)
     if dataset is None:
         return NotPreviewedReason.UNREADABLE
-    if any(keyword in dataset for keyword in _FLOAT_PIXEL_DATA):
+    held = [keyword for keyword in _PIXEL_KEYWORDS if keyword in dataset]
+    if len(held) > 1:
+        # Which of them a viewer shows is not defined.
         return NotPreviewedReason.UNSUPPORTED
-    if "PixelData" not in dataset:
+    if not held:
         if not qc_contours.has_contours(dataset):
             return None
         contours = qc_contours.contours_of(dataset)
@@ -684,6 +712,7 @@ def _described(
         photometric = str(dataset.PhotometricInterpretation).strip()
         samples = int(dataset.SamplesPerPixel)
         allocated = int(dataset.BitsAllocated)
+        floating = "PixelData" not in dataset
         frames = int(dataset.get("NumberOfFrames") or 1)
         rows, columns = int(dataset.Rows), int(dataset.Columns)
     except Exception:  # pylint: disable = broad-exception-caught
@@ -707,6 +736,12 @@ def _described(
     segmentation = is_segmentation(dataset)
     if not colour and not (photometric in _MONOCHROME and samples == 1):
         return NotPreviewedReason.UNSUPPORTED
+    # Floating-point pixel data are native, of one sample, in the element
+    # that Bits Allocated gives.
+    if floating and (
+        plugin or colour or _FLOAT_PIXEL_DATA.get(allocated, "") not in dataset
+    ):
+        return NotPreviewedReason.UNSUPPORTED
     if frames < 1 or rows < 1 or columns < 1:
         return NotPreviewedReason.UNREADABLE
     spacing = _spacing(dataset)
@@ -729,7 +764,8 @@ def _described(
     if not plugin:
         try:
             expected = pydicom.pixels.utils.get_expected_length(dataset, "bytes")
-            whole = len(dataset.PixelData) <= expected + 1
+            keyword = _FLOAT_PIXEL_DATA[allocated] if floating else "PixelData"
+            whole = len(dataset[keyword].value) <= expected + 1
         except Exception:  # pylint: disable = broad-exception-caught
             whole = False
     return _Instance(
@@ -738,7 +774,11 @@ def _described(
         plugin=plugin,
         series=str(uid) if uid else None,
         shape=(rows, columns),
-        padding=None if colour else _padding(dataset),
+        padding=None
+        if colour
+        else _float_padding(dataset, _FLOAT_PIXEL_DATA[allocated])
+        if floating
+        else _padding(dataset),
         frames=frames,
         colour=colour,
         inverted=photometric == "MONOCHROME1",
@@ -756,6 +796,7 @@ def _described(
         dose_scale=scale,
         dose_signed=scale is not None and signed,
         packed=not plugin and allocated == 1,
+        floating=floating,
         segmentation=segmentation,
         segments=qc_segments.segments_of(dataset) if segmentation else None,
         planes=planes,
@@ -810,6 +851,22 @@ def _padding(dataset: pydicom.Dataset) -> tuple[int, int] | None:
     limit = _number(dataset, "PixelPaddingRangeLimit", int)
     limit = value if limit is None else limit
     return int(min(value, limit)), int(max(value, limit))
+
+
+def _float_padding(
+    dataset: pydicom.Dataset, keyword: str
+) -> tuple[float, float] | None:
+    """The values that Float Pixel Padding Value and its range limit, or
+    their double-float counterparts for Double Float Pixel Data, pad with
+    (PS3.3 Sections C.7.6.24 and C.7.6.25); a value that is not finite
+    pads with nothing."""
+    value_keyword, limit_keyword = _FLOAT_PADDING[keyword]
+    value = _number(dataset, value_keyword, float)
+    if value is None:
+        return None
+    limit = _number(dataset, limit_keyword, float)
+    limit = value if limit is None else limit
+    return float(min(value, limit)), float(max(value, limit))
 
 
 def _floats(dataset: pydicom.Dataset, keyword: str, count: int) -> tuple | None:
@@ -1254,13 +1311,18 @@ class _Decoder:
         pixels = pixels.reshape(shape)
         if instance.colour:
             return pixels.astype(np.uint8)
+        undrawn = None
+        if instance.floating:
+            pixels, undrawn, kinds = _drawn_floats(pixels, instance.padding)
+            if kinds > 1 and not received:
+                self.mixed_padding.add(instance.position)
         slope, intercept = instance.rescale_of(index)
         with np.errstate(over="ignore", under="ignore", invalid="ignore"):
             shown = pixels.astype(np.float32) * np.float32(slope) + np.float32(
                 intercept
             )
-        padded = None
-        if instance.padding is not None:
+        padded = undrawn
+        if instance.padding is not None and not instance.floating:
             low, high = instance.padding
             padded = (pixels >= low) & (pixels <= high)
             if low < high and not received and padded.any():
@@ -1275,6 +1337,54 @@ class _Decoder:
         if padded is not None:
             shown[padded] = np.nan
         return shown
+
+
+def _drawn_floats(
+    pixels: np.ndarray, padding: tuple[float, float] | None
+) -> tuple[np.ndarray, np.ndarray, int]:
+    """Return a frame of floating-point values as previews draw it, the
+    values that they do not draw, and how many kinds of value those are.
+
+    Values that are not a number, and padding, are not drawn: every
+    preview draws them as one black, or as no patient. Positive infinity is
+    drawn above the frame's largest value that is drawn and finite, and
+    negative infinity below its smallest, each by those values' range, or,
+    where they are all one value, by its magnitude or 1, whichever is
+    larger. A viewer that clips to a window would show an infinity as the
+    finite values at that end of it, so a pattern drawn in an infinity
+    beside those values, or among finite values that are all one value,
+    would show in no preview; drawn apart from them, it shows, at the cost
+    of some of the finite values' contrast. In a frame with no drawn finite
+    value, infinities are not drawn either. The kinds of value not drawn
+    are not a number, whatever its bits, since no viewer tells one apart
+    from another, each infinity, and each padding value; a frame with more
+    than one could hold a face in their pattern that no preview shows, so
+    its instance is counted as not shown whole, as one that pads with more
+    than one stored value is. A drawn value beyond float32 leaves the frame
+    not previewed (:func:`_contrast_kept`).
+    """
+    nan = np.isnan(pixels)
+    padded = np.zeros(pixels.shape, dtype=bool)
+    if padding is not None:
+        low, high = padding
+        padded = (pixels >= low) & (pixels <= high)
+    infinite = np.isinf(pixels)
+    drawn = ~(nan | padded | infinite)
+    undrawn = nan | padded
+    shown = pixels
+    if infinite.any():
+        if drawn.any():
+            shown = pixels.astype(np.float64)
+            low, high = float(shown[drawn].min()), float(shown[drawn].max())
+            gap = high - low or max(abs(high), 1.0)
+            shown[np.isposinf(pixels)] = beyond(high, gap)
+            shown[np.isneginf(pixels)] = beyond(low, -gap)
+        else:
+            undrawn = undrawn | infinite
+    kinds = int(nan.any()) + len(np.unique(pixels[padded]))
+    if not drawn.any():
+        kinds += int(np.isposinf(pixels).any()) + int(np.isneginf(pixels).any())
+    return shown, undrawn, kinds
 
 
 # How many steps of float32 a frame's rescaled values must span, at least,
@@ -1836,7 +1946,51 @@ def _redaction_images(
                 png(_redaction_image(instance, after, before, boxes)),
             )
         )
+        images.append(
+            (
+                PreviewKind.REVIEW_FRAME,
+                ((instance.position, index),),
+                instance.frames,
+                png(
+                    review_frame(after if before is None else before, instance.inverted)
+                ),
+            )
+        )
     return images
+
+
+def review_frame(frame: np.ndarray, inverted: bool = False) -> np.ndarray:
+    """Return a frame as the redaction review app shows it (D-059).
+
+    An RGB frame is returned as it is. A monochrome frame's finite values
+    are mapped linearly, from its smallest to its largest, to the 16-bit
+    samples 1 to 65,535, brightest last, so inverted for MONOCHROME1, and
+    padding, which is NaN, to 0, so that the app can window it as it
+    likes. Distinct values stay distinct wherever the frame spans at most
+    65,535 equally spaced values, as stored values of up to 16 bits under
+    one linear rescale do; a frame that spans more is quantised to that
+    many levels, which no display can tell apart.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> review_frame(np.array([[-1000.0, 0.0], [np.nan, 1000.0]], np.float32))
+    array([[    1, 32768],
+           [    0, 65535]], dtype=uint16)
+    """
+    if frame.ndim == 3:
+        return frame
+    finite = np.isfinite(frame)
+    if not finite.any():
+        return np.zeros(frame.shape, np.uint16)
+    values = frame.astype(np.float64)
+    low, high = float(values[finite].min()), float(values[finite].max())
+    scaled = (values - low) / (high - low) if high > low else np.zeros(frame.shape)
+    if inverted:
+        scaled = 1.0 - scaled
+    samples = np.zeros(frame.shape, np.uint16)
+    samples[finite] = np.round(scaled[finite] * 65534).astype(np.uint16) + 1
+    return samples
 
 
 def _redaction_image(
@@ -1945,28 +2099,60 @@ def _windowed_tiles(tiles: list[tuple[np.ndarray, _Instance]]) -> list[np.ndarra
 
 
 def _window(values: np.ndarray) -> tuple[float, float]:
+    """The window from the 0.5th to the 99.5th percentile of the finite
+    values, or, where those are drawn alike, the full range.
+
+    Where all but a few values are one value, as in a frame of one value
+    with a small pattern of another, both percentiles are that value; a
+    window of a fixed width about it would draw a pattern of a value
+    within that width, or of one that the width is lost against at the
+    value's magnitude, as the value itself, so the full range is used
+    instead (:func:`_full_range`).
+    """
     finite = values[np.isfinite(values)]
     if finite.size == 0:
         return -0.5, 0.5
     low, high = (float(value) for value in np.percentile(finite, _PERCENTILES))
-    # A uniform image is shown mid-grey, so that it stands out from the
-    # black around the tiles.
-    return (low, high) if high > low else (low - 0.5, low + 0.5)
+    return (low, high) if _apart(low, high) else _full_range(finite)
 
 
 def _full_range(values: np.ndarray) -> tuple[float, float]:
     """The window from the smallest value to the largest, under which no
-    value is clipped."""
+    value is clipped.
+
+    A uniform image is shown mid-grey, so that it stands out from the black
+    around the tiles, by a window about its value wide enough to be kept
+    apart from it at its magnitude.
+    """
     finite = values[np.isfinite(values)]
     if finite.size == 0:
         return -0.5, 0.5
     low, high = float(finite.min()), float(finite.max())
-    return (low, high) if high > low else (low - 0.5, low + 0.5)
+    if _apart(low, high):
+        return low, high
+    half = max(0.5, abs(low) * 2.0**-10)
+    return low - half, low + half
+
+
+def _apart(low: float, high: float) -> bool:
+    """Whether a window from ``low`` to ``high`` draws values apart: its
+    limits differ as float32, which previews are drawn in, and its width is
+    finite."""
+    return bool(np.float32(high) > np.float32(low)) and math.isfinite(high - low)
 
 
 def _grey(image: np.ndarray, window: tuple[float, float], inverted: bool) -> np.ndarray:
+    """Draw an image as 8-bit grey under a window from ``low`` to ``high``.
+
+    Each value and each limit is halved before they are subtracted, which
+    is exact in binary floating point: values that float32 holds can lie
+    further apart than float32 holds, as -3e38 and 3e38 do, and their
+    difference, and the window's width, would then overflow float32, in
+    which a float32 image is drawn, and draw the image black. Halved, both
+    stay within float32.
+    """
     low, high = window
-    scaled = np.clip((image - low) / (high - low), 0.0, 1.0)
+    scaled = np.clip((image * 0.5 - low * 0.5) / ((high - low) * 0.5), 0.0, 1.0)
     if inverted:
         scaled = 1.0 - scaled
     # Padding, which is NaN, is black whatever the photometric interpretation.
@@ -2308,12 +2494,14 @@ def _nearest(coordinates: np.ndarray, wanted: np.ndarray) -> np.ndarray:
 
 
 def png(image: np.ndarray) -> bytes:
-    """Return an 8-bit greyscale or RGB image as a PNG file.
+    """Return an 8-bit greyscale or RGB image, or a 16-bit greyscale one, as
+    a PNG file.
 
     Parameters
     ----------
     image : numpy.ndarray
-        uint8, of shape (rows, columns) or (rows, columns, 3).
+        uint8, of shape (rows, columns) or (rows, columns, 3), or uint16 of
+        shape (rows, columns).
 
     Returns
     -------
@@ -2327,16 +2515,27 @@ def png(image: np.ndarray) -> bytes:
     >>> png(np.zeros((2, 3), np.uint8))[:8]
     b'\\x89PNG\\r\\n\\x1a\\n'
     """
-    if image.dtype != np.uint8 or not (
-        image.ndim == 2 or (image.ndim == 3 and image.shape[2] == 3)
+    wide = image.dtype == np.uint16 and image.ndim == 2
+    if not wide and (
+        image.dtype != np.uint8
+        or not (image.ndim == 2 or (image.ndim == 3 and image.shape[2] == 3))
     ):
-        raise ValueError("a PNG needs a uint8 image of grey or RGB samples")
+        raise ValueError(
+            "a PNG needs a uint8 image of grey or RGB samples, or a uint16 "
+            "image of grey samples"
+        )
     rows, columns = image.shape[:2]
     if rows < 1 or columns < 1:
         raise ValueError("a PNG needs at least one pixel")
     colour_type = 0 if image.ndim == 2 else 2
-    header = struct.pack(">IIBBBBB", columns, rows, 8, colour_type, 0, 0, 0)
-    raw = np.ascontiguousarray(image).reshape(rows, -1)
+    depth = 16 if wide else 8
+    header = struct.pack(">IIBBBBB", columns, rows, depth, colour_type, 0, 0, 0)
+    # PNG holds 16-bit samples most significant byte first.
+    raw = (
+        np.ascontiguousarray(image.astype(">u2") if wide else image)
+        .view(np.uint8)
+        .reshape(rows, -1)
+    )
     filtered = np.concatenate([np.zeros((rows, 1), np.uint8), raw], axis=1)
     return (
         _PNG_SIGNATURE
@@ -2344,6 +2543,76 @@ def png(image: np.ndarray) -> bytes:
         + _chunk(b"IDAT", zlib.compress(filtered.tobytes(), 6))
         + _chunk(b"IEND", b"")
     )
+
+
+def decoded_png(data: bytes) -> np.ndarray:
+    """Return the image of a PNG file that :func:`png` wrote.
+
+    Only what :func:`png` writes is read: 8-bit grey or RGB, or 16-bit grey,
+    not interlaced, each row filtered with filter type 0.
+
+    Returns
+    -------
+    numpy.ndarray
+        uint8 of shape (rows, columns) or (rows, columns, 3), or uint16 of
+        shape (rows, columns).
+
+    Raises
+    ------
+    ValueError
+        If the file is not one that :func:`png` writes, or is damaged.
+
+    Examples
+    --------
+    >>> import numpy as np
+    >>> image = np.array([[0, 1], [256, 65535]], np.uint16)
+    >>> np.array_equal(decoded_png(png(image)), image)
+    True
+    """
+    if not data.startswith(_PNG_SIGNATURE):
+        raise ValueError("not a PNG file")
+    offset, header, compressed = len(_PNG_SIGNATURE), None, []
+    while True:
+        if offset + 8 > len(data):
+            raise ValueError("a PNG file ends before its IEND chunk")
+        (length,) = struct.unpack(">I", data[offset : offset + 4])
+        kind = data[offset + 4 : offset + 8]
+        body = data[offset + 8 : offset + 8 + length]
+        stored = data[offset + 8 + length : offset + 12 + length]
+        if len(body) != length or len(stored) != 4:
+            raise ValueError("a PNG chunk is cut short")
+        if struct.unpack(">I", stored)[0] != zlib.crc32(kind + body) & 0xFFFFFFFF:
+            raise ValueError("a PNG chunk is damaged")
+        offset += 12 + length
+        if kind == b"IHDR":
+            header = struct.unpack(">IIBBBBB", body)
+        elif kind == b"IDAT":
+            compressed.append(body)
+        elif kind == b"IEND":
+            break
+    if header is None:
+        raise ValueError("a PNG file has no header")
+    columns, rows, depth, colour_type, compression, filtering, interlace = header
+    if (depth, colour_type) not in ((8, 0), (8, 2), (16, 0)) or (
+        compression,
+        filtering,
+        interlace,
+    ) != (0, 0, 0):
+        raise ValueError("a PNG file of a kind that is not read")
+    samples = 3 if colour_type == 2 else 1
+    width = columns * samples * depth // 8
+    raw = np.frombuffer(zlib.decompress(b"".join(compressed)), np.uint8)
+    if raw.size != rows * (width + 1):
+        raise ValueError("a PNG file's image is not of its size")
+    raw = raw.reshape(rows, width + 1)
+    if raw[:, 0].any():
+        raise ValueError("a PNG file's rows are filtered")
+    pixels = raw[:, 1:]
+    if depth == 16:
+        return pixels.copy().view(">u2").astype(np.uint16).reshape(rows, columns)
+    return pixels.reshape(
+        (rows, columns, 3) if samples == 3 else (rows, columns)
+    ).copy()
 
 
 def _chunk(kind: bytes, data: bytes) -> bytes:

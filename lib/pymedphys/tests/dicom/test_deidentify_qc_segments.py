@@ -128,7 +128,8 @@ def test_a_segmentation_is_no_frame_of_a_volume():
     assert _series_found(pixel_risk.assess_series(series)) == {
         (Indicator.SEGMENTATION, (1,), None)
     }
-    # A Surface Segmentation holds meshes, and is out of scope.
+    # A Surface Segmentation holds meshes, not frames, so no segments sheet
+    # or volume indicator reads it; the face review holds it instead.
     surface = _segmentation(_segment(), sop_class="1.2.840.10008.5.1.4.1.1.66.5")
     assert not pixel_risk.assess_series([surface])
 

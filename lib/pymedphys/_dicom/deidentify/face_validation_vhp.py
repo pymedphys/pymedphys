@@ -145,6 +145,18 @@ HELD_OUT = (
     "Held-out evidence: the face block finder's settings were not set from "
     "these scans and are not to be tuned to them."
 )
+
+
+@dataclasses.dataclass(frozen=True)
+class Credit:
+    """What a source's renders carry: the line under each image, and the
+    text of the ``NOTICE.txt`` written beside them."""
+
+    caption: str
+    notice: str
+
+
+CREDIT = Credit(f"{ATTRIBUTION} {HELD_OUT}", f"{ATTRIBUTION}\n\n{NOTICE}\n")
 # A typical adult globe's radius, about half its axial length: the sphere
 # about each reference centre whose removal is measured, and the radius of
 # the globes from which reference_block places its block.
@@ -179,7 +191,8 @@ class VhpSeries:
     Attributes
     ----------
     uuid : str
-        IDC's ``crdc_series_uuid``: the series' folder in the bucket.
+        The name of the series' folder: for the Visible Human, IDC's
+        ``crdc_series_uuid``, its folder in the bucket.
     subject : str
         IDC's Patient ID: ``VHP-F`` for the female cadaver, ``VHP-M`` for
         the male.
@@ -421,9 +434,11 @@ def check_series(
     each: VhpSeries,
     folder: pathlib.Path,
     renders: os.PathLike[str] | str | None = None,
+    credit: Credit = CREDIT,
 ) -> dict[str, Any]:
     """One series' measures: what each way of giving its slices to the
-    finder finds, and what each block would deface."""
+    finder finds, and what each block would deface, its renders carrying
+    ``credit``, NLM's where not given."""
     result: dict[str, Any] = {
         "series": each.uuid,
         "subject": each.subject,
@@ -483,7 +498,7 @@ def check_series(
         }
         if each.rendered and renders is not None and each.globes is not None:
             result["renders"] = render_series(
-                each, headers, stacks, blocks, pathlib.Path(renders)
+                each, headers, stacks, blocks, pathlib.Path(renders), credit
             )
     # Anything else that a series raises is reported by where, so that the
     # other series are still checked.
@@ -1052,9 +1067,11 @@ def render_series(
     stacks: Sequence[list[int]],
     blocks: Mapping[str, FaceBlock],
     out: pathlib.Path,
+    credit: Credit = CREDIT,
 ) -> list[str]:
     """Render the head of a :attr:`VhpSeries.rendered` series, as the
-    module describes, and return the names of the files written."""
+    module describes, each image carrying ``credit``'s caption and
+    ``NOTICE.txt`` its notice, and return the names of the files written."""
     # Imported here, since only a rendering check needs it.
     from pymedphys._imports import plt  # pylint: disable = import-outside-toplevel
 
@@ -1112,14 +1129,14 @@ def render_series(
             if label == "as received"
             else f"Skin surface defaced by the {label} block"
         )
-        _caption(figure, f"{each.name or each.subject}: {title}")
+        _caption(figure, f"{each.name or each.subject}: {title}", credit)
         figure.savefig(out / name, dpi=100, metadata={"Software": None})
         plt.close(figure)
         names.append(name)
     name = f"{each.name or each.subject}-globes.png"
-    _globe_panels(plt, each, slices, near, blocks, out / name)
+    _globe_panels(plt, each, slices, near, blocks, out / name, credit)
     names.append(name)
-    (out / "NOTICE.txt").write_text(f"{ATTRIBUTION}\n\n{NOTICE}\n", encoding="utf-8")
+    (out / "NOTICE.txt").write_text(credit.notice, encoding="utf-8")
     names.append("NOTICE.txt")
     return names
 
@@ -1161,12 +1178,12 @@ def _head_slices(
     return [chosen[height] for height in sorted(chosen)]
 
 
-def _caption(figure: Any, title: str) -> None:
+def _caption(figure: Any, title: str, credit: Credit) -> None:
     figure.text(0.01, 0.995, title, ha="left", va="top", fontsize=10, color="black")
     figure.text(
         0.01,
         0.005,
-        f"{ATTRIBUTION} {HELD_OUT}",
+        credit.caption,
         ha="left",
         va="bottom",
         fontsize=7,
@@ -1185,6 +1202,7 @@ def _globe_panels(
     near: Mapping[int, np.ndarray],
     blocks: Mapping[str, FaceBlock],
     path: pathlib.Path,
+    credit: Credit,
 ) -> None:
     """Axial, coronal, and sagittal slices through each reference globe,
     with the reference globes (+), each block's globes (x), and each
@@ -1261,6 +1279,7 @@ def _globe_panels(
         figure,
         f"{each.name or each.subject}: reference globes (+, red) and each block's globes (x) "
         "and edges",
+        credit,
     )
     figure.savefig(path, dpi=80, metadata={"Software": None})
     plt.close(figure)

@@ -21,8 +21,9 @@ frame and previews every frame, and records the SHA-256 of each source
 file. The reviewer gives a verdict on each instance that they judged, by its
 run position, in the pack's attestation
 (:mod:`~pymedphys._dicom.deidentify.qc_attestation`): the pack's regions
-accepted, the pack's regions with the reviewer's own added to them, or the
-instance rejected. A cleaned instance that the pack lists as not previewed
+accepted; revised, where the reviewer dropped regions of the finder's that
+cover no text, or drew regions of their own, so that the pack's regions that
+they kept and those they drew are blacked out; or the instance rejected. A cleaned instance that the pack lists as not previewed
 can have no verdict, since the reviewer has not seen its frames, unless it is
 an RT Dose listed only because its dose levels are not shown. A second
 run of the same files under a policy that selects the option is given that
@@ -57,7 +58,9 @@ from .qc_attestation import (
     Attestation,
     Outcome,
     Redaction,
+    ReviewMode,
     attested_pack,
+    pack_proposals,
     previewed_redactions,
 )
 from .qc_pack import QcPackError
@@ -92,6 +95,16 @@ class RedactionReview:
         For each approved source file whose Pixel Data is compressed, by
         its SHA-256, the SHA-256 of its frames as the reviewed run decoded
         them.
+    not_shown : int
+        How many frames of the approved source files, each file once, the
+        reviewer was not shown, which only an instance whose review needs
+        only its flagged frames can have (D-059); the release report records
+        it.
+    modes : mapping of ReviewMode to int
+        How many approved source files, each once, were reviewed in each
+        mode, every mode given, which the release report records (D-059). A
+        file whose copies were reviewed in both counts as reviewed in
+        :attr:`ReviewMode.FLAGGED_FRAMES`, the less complete.
     """
 
     reference: str
@@ -99,6 +112,10 @@ class RedactionReview:
     rejected: frozenset[bytes]
     decoded: Mapping[bytes, bytes] = dataclasses.field(
         default_factory=lambda: types.MappingProxyType({})
+    )
+    not_shown: int = 0
+    modes: Mapping[ReviewMode, int] = dataclasses.field(
+        default_factory=lambda: types.MappingProxyType({mode: 0 for mode in ReviewMode})
     )
 
     def __post_init__(self) -> None:
@@ -123,15 +140,34 @@ class RedactionReview:
             raise QcPackError(
                 "a redaction review's regions are frames, in order, with boxes"
             )
+        if (
+            not isinstance(self.not_shown, int)
+            or isinstance(self.not_shown, bool)
+            or self.not_shown < 0
+        ):
+            raise QcPackError("a redaction review counts the frames not shown")
         if self.rejected & set(self.approved):
             raise QcPackError(
                 "a redaction review cannot both approve and reject a source file"
+            )
+        if (
+            not isinstance(self.modes, Mapping)
+            or set(self.modes) != set(ReviewMode)
+            or not all(
+                isinstance(count, int) and not isinstance(count, bool) and count >= 0
+                for count in self.modes.values()
+            )
+            or sum(self.modes.values()) != len(self.approved)
+        ):
+            raise QcPackError(
+                "a redaction review counts its approved files by every review mode"
             )
         # A read-only copy, so that the review cannot change once made.
         object.__setattr__(
             self, "approved", types.MappingProxyType(dict(self.approved))
         )
         object.__setattr__(self, "decoded", types.MappingProxyType(dict(self.decoded)))
+        object.__setattr__(self, "modes", types.MappingProxyType(dict(self.modes)))
 
     def __repr__(self) -> str:
         return (
@@ -178,8 +214,8 @@ def read_redaction_review(pack_directory: os.PathLike | str) -> RedactionReview:
     RedactionReview
         Empty of files where the attestation gives no verdict. An accepted
         instance's regions are those that the pack lists for it, and a
-        revised one's those and the ones that the verdict adds, in each
-        frame, with the SHA-256 of its decoded frames where the pack
+        revised one's those that the verdict keeps and the ones that it
+        draws, in each frame, with the SHA-256 of its decoded frames where the pack
         records one.
 
     Raises
@@ -225,6 +261,12 @@ def redaction_review_of(attestation: Attestation, data: bytes) -> RedactionRevie
             "the QC pack's attestation rejected it, so its verdicts release nothing"
         )
     digests, cleaned = _cleaned(data)
+    proposals = pack_proposals(data)
+    shapes = previewed_redactions(data)
+    # Frames that each approved source file's verdict was not shown.
+    unseen: dict[bytes, int] = {}
+    # The mode in which each approved source file was reviewed.
+    modes: dict[bytes, ReviewMode] = {}
     # The regions to black out in each source file, or None to reject it,
     # and the SHA-256 of its decoded frames, if compressed.
     decisions: dict[bytes, tuple[Regions | None, bytes | None]] = {}
@@ -236,12 +278,35 @@ def redaction_review_of(attestation: Attestation, data: bytes) -> RedactionRevie
             )
         digest = digests[verdict.position]
         regions, decoded = cleaned[verdict.position]
+        listed, ruled = proposals[verdict.position]
+        # Checked when attested, and again here, since the run releases what
+        # a dropped region would have covered.
+        if any(
+            not set(boxes) <= set(listed.get(index, ())) - ruled
+            for index, boxes in verdict.dropped
+        ):
+            raise QcPackError(
+                "a redaction verdict drops a region that the QC pack does not "
+                "list for its frame, or that a region rule gave"
+            )
         if verdict.redaction is Redaction.REJECTED:
             decided: Regions | None = None
         elif verdict.redaction is Redaction.ACCEPTED:
             decided = regions
         else:
-            decided = _added(regions, verdict.regions)
+            decided = _revised(regions, verdict.regions, verdict.dropped)
+        if decided is not None:
+            if verdict.mode is None:
+                raise QcPackError(
+                    "a redaction verdict that accepts or revises needs its review mode"
+                )
+            if modes.get(digest) is not ReviewMode.FLAGGED_FRAMES:
+                modes[digest] = verdict.mode
+            unseen[digest] = max(
+                unseen.get(digest, 0),
+                shapes[verdict.position].frames
+                - len(set(verdict.seen) & set(range(shapes[verdict.position].frames))),
+            )
         if decisions.setdefault(digest, (decided, decoded)) != (decided, decoded):
             raise QcPackError(
                 "the redaction verdicts disagree on a source file that the QC "
@@ -263,16 +328,27 @@ def redaction_review_of(attestation: Attestation, data: bytes) -> RedactionRevie
             for digest, (_, decoded) in approved.items()
             if decoded is not None
         },
+        sum(unseen.values()),
+        {
+            mode: sum(1 for digest in approved if modes[digest] is mode)
+            for mode in ReviewMode
+        },
     )
 
 
-def _added(regions: Regions, more: Regions) -> Regions:
-    """Return ``regions`` with ``more`` added, each frame's boxes sorted and
-    distinct."""
+def _revised(regions: Regions, drawn: Regions, dropped: Regions) -> Regions:
+    """Return ``regions`` without ``dropped`` and with ``drawn``, each frame's
+    boxes sorted and distinct, and no frame left without a box."""
     by_frame: dict[int, set[TextBox]] = {}
-    for index, boxes in (*regions, *more):
+    for index, boxes in (*regions, *drawn):
         by_frame.setdefault(index, set()).update(boxes)
-    return tuple((index, tuple(sorted(by_frame[index]))) for index in sorted(by_frame))
+    for index, boxes in dropped:
+        by_frame.get(index, set()).difference_update(boxes)
+    return tuple(
+        (index, tuple(sorted(by_frame[index])))
+        for index in sorted(by_frame)
+        if by_frame[index]
+    )
 
 
 def _cleaned(

@@ -122,6 +122,12 @@ DEFORMABLE_REGISTRATION_GRID_SEQUENCE = 0x00640005
 # digest takes them; the first four place the grid, and the last gives its
 # displacements.
 GRID_TAGS = (0x00200037, 0x00200032, 0x00640007, 0x00640008, 0x00640009)
+# Surface Sequence (0066,0002) of the Surface Mesh Module (PS3.3 Section
+# C.27.1), whose items' Point Coordinates Data (0066,0016) place each point
+# of a mesh in the patient, so that a mesh of the skin traces the face.
+SURFACE_SEQUENCE = 0x00660002
+# The IOD whose instances hold surface meshes (PS3.3 Section A.57).
+SURFACE_SEGMENTATION = "Surface Segmentation"
 # Source Frame of Reference UID (0064,0003), in each item of the Deformable
 # Registration Sequence, and the top-level Frame of Reference UID, the
 # Registered Frame of Reference, in which a grid lies.
@@ -916,15 +922,31 @@ def carries_visual_features(dataset: pydicom.Dataset, iod: str) -> bool:
     Float Pixel Data, is an RT Structure Set, whose contours can trace the
     skin surface, or holds a deformation grid
     (:func:`holds_deformation_grid`), whose displacements can trace it too.
+    It does too where it is a Surface Segmentation, or holds a surface mesh
+    (:func:`holds_surface_mesh`), whose points can trace the skin surface.
     Any other, such as an RT Plan, an MR Spectroscopy instance, or a spatial
     registration, has nothing that can show a face, so it satisfies the
     option without a verdict.
     """
     return (
-        iod == _RT_STRUCTURE_SET
+        iod in (_RT_STRUCTURE_SET, SURFACE_SEGMENTATION)
         or any(tag in dataset for tag in PIXEL_DATA_TAGS)
         or holds_deformation_grid(dataset)
+        or holds_surface_mesh(dataset)
     )
+
+
+def holds_surface_mesh(dataset: pydicom.Dataset) -> bool:
+    """Whether an instance holds a surface mesh.
+
+    It does where it holds a Surface Sequence (0066,0002), as every Surface
+    Segmentation does (PS3.3 Section C.27.1), whatever its items: their
+    Point Coordinates Data (0066,0016) place each point of a mesh in the
+    patient, so a mesh of the skin or of the body traces the face, whatever
+    its segment's label or code says. No preview of the QC pack draws a
+    mesh, so no verdict is of one.
+    """
+    return SURFACE_SEQUENCE in dataset
 
 
 def holds_deformation_grid(dataset: pydicom.Dataset) -> bool:

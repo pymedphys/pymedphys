@@ -40,6 +40,7 @@ from .text_evaluation import (
     INK_LEVEL,
     EvaluationSettings,
     _covered,
+    namespace_of,
     split_of,
     subject_of,
 )
@@ -99,7 +100,10 @@ def resize_parity(
     tally = {"cases": 0, "skipped": 0, "crashed": {}}
     for case in cases:
         split = split_of(
-            case.collection, subject_of(case), settings.held_out_collections
+            case.collection,
+            subject_of(case),
+            settings.held_out_collections,
+            namespace=namespace_of(case),
         )
         if settings.evaluated not in ("all", split):
             continue

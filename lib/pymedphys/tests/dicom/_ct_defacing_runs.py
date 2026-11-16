@@ -78,9 +78,19 @@ _SEGMENTATION = corpus_module.SEGMENTATION_FILES[0]
 # The head's BINARY Segmentation and the corpus's label map, both in the head
 # CT's frame.
 _SEGMENTATIONS = (_SEGMENTATION, corpus_module.SEGMENTATION_FILES[1])
-_IN_FRAME = (_STRUCTURE_SET, *_DOSE, *_PET, _PET_ABOVE, _SEGMENTATION)
-# The PET instances that the run does not clean.
-_UNDEFACED = _PET[1:]
+# The instances in the head's frame whose series a review marks absent, the
+# collection's Nuclear Medicine image among them.
+_IN_FRAME = (
+    _STRUCTURE_SET,
+    *_DOSE,
+    *_PET,
+    _PET_ABOVE,
+    _SEGMENTATION,
+    corpus_module.NM_FILE,
+)
+# The PET instances that the run does not clean, and the collection's Nuclear
+# Medicine image, which no run cleans, all in the head's Frame of Reference.
+_UNDEFACED = (*_PET[1:], corpus_module.NM_FILE)
 # The head's slices as one Enhanced CT Image instance, and its PET slices as
 # one Enhanced PET Image instance in place of the collection's.
 _HEAD_ENHANCED = "01-head-enhanced.dcm"
@@ -130,9 +140,10 @@ _REGISTRATIONS = (*_TIED, _UNTIED)
 # head's Frame of Reference, which no series of its own marks absent.
 _COLLECTION_REGISTRATION = "19-registration-deformable.dcm"
 # The instances that the run with the deformable registrations does not
-# clean in the head's defaced frame: the PET instances and each
-# registration tied to that frame, each of which its pack shows whole.
-_UNDEFACED_WITH_REGISTRATIONS = (*_PET[1:], *_TIED, _COLLECTION_REGISTRATION)
+# clean in the head's defaced frame: the PET instances, the Nuclear Medicine
+# image, and each registration tied to that frame, each of which its pack
+# shows whole.
+_UNDEFACED_WITH_REGISTRATIONS = (*_UNDEFACED, *_TIED, _COLLECTION_REGISTRATION)
 
 
 def _dose(low):
@@ -720,10 +731,13 @@ def _second(
         if revised is None
         else {"redaction": Redaction.REVISED, "regions": ((0, (revised,)),)}
     )
+    # The reviewer was shown every frame of each instance.
     redactions = (
         [
-            RedactionVerdict(position, **verdict)
-            for position in previewed_redactions(reviewed.pack.read_bytes())
+            RedactionVerdict(position, **verdict, seen=tuple(range(shape.frames)))
+            for position, shape in previewed_redactions(
+                reviewed.pack.read_bytes()
+            ).items()
             if reviewed.names[position].startswith("01-head")
             or (revised is None and reviewed.names[position] in _PET_SLICES)
         ]
