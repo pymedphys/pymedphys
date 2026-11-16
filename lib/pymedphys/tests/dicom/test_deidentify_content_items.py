@@ -921,7 +921,12 @@ def test_a_content_sequence_the_iod_does_not_define_there_takes_its_own_rule():
 
 
 def test_only_the_reports_define_content_sequence_and_none_waveform_annotation():
-    """Content Sequence at their root, and nowhere else in a supported IOD."""
+    """Content Sequence at their root, and nowhere else in a supported IOD.
+
+    But for the Encapsulated PDF, whose Encapsulated Document Module defines
+    it at its root and, by including the Document Content Macro, in its own
+    items, and which its document sequesters whatever its tree.
+    """
     iods = load_iod_tables().iods
     reports = {
         "X-Ray Radiation Dose SR",
@@ -947,7 +952,11 @@ def test_only_the_reports_define_content_sequence_and_none_waveform_annotation()
         tags = {definition.tag for definition in definitions}
         assert WAVEFORM_ANNOTATION not in tags, name
         assert {d.path for d in definitions if d.tag == CONTENT} == (
-            {()} if name in reports else set()
+            {()}
+            if name in reports
+            else {(), (CONTENT,)}
+            if name == "Encapsulated PDF"
+            else set()
         ), name
 
 

@@ -71,8 +71,10 @@ write held, or it is found in a kept Code Meaning made only of words of the
 reviewed technique vocabulary, which echoes no identifier of the subject,
 from a source that describes the examination, such as Study Description,
 or a private copy of one
-(:func:`~pymedphys._dicom.deidentify.residual_vocabulary.vocabulary_meaning`). A date or datetime equal to a whole date, time, or datetime that
-an option keeps, or a datetime whose date equals a whole date that an option
+(:func:`~pymedphys._dicom.deidentify.residual_vocabulary.vocabulary_meaning`).
+A date or datetime equal to a whole date, time, or datetime that an option
+keeps, a datetime whose date equals a whole date that an option keeps, or a
+date, or a datetime's date, that begins a whole datetime that an option
 keeps, does not withhold the file either
 (:func:`~pymedphys._dicom.deidentify.residual_exemptions.retained_date`), nor
 does a UID equal to a whole UID that an option keeps, where only instances
