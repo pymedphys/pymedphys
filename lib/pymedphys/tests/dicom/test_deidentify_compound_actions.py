@@ -393,8 +393,9 @@ def test_x_z_gives_d_only_to_referenced_study_sequence_in_two_generated_iods(
 ):
     # Table E.1-1 gives Referenced Study Sequence X/Z under the Basic Profile,
     # and the Related Information Entities Macro (PS3.3 Table 10.37-1) makes
-    # it Type 1 within these sequences, so X/Z gives D there. A new edition
-    # that changes where this happens fails here.
+    # it Type 1 within these sequences, so X/Z gives D there, whose items D
+    # keeps, as the maintainer decided on 16 November 2026 (23:47 UTC). A
+    # new edition that changes where this happens fails here.
     dummy = {
         (name, path, tag)
         for name, in_iod in resolutions.items()

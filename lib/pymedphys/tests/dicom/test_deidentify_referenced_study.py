@@ -19,7 +19,8 @@ only in the Related Information Entities Macro (PS3.3 Table 10.37-1), which
 two reference items of RT Physician Intent and one of RT Patient Position
 Acquisition Instruction include, so X/Z resolves to D there. D keeps each
 source item, with only the three attributes that the macro defines in it,
-each under its own rule.
+each under its own rule, as the maintainer decided on 16 November 2026
+(23:47 UTC).
 
 Every instance is synthetic. Values that must never reach a written file
 carry the text ``SENTINEL``.

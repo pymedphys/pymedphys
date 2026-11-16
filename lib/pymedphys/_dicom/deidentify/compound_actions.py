@@ -76,7 +76,8 @@ removed, is removed alone. Four places depart from Table E.1-1's X:
 Requested Procedure ID (0040,1001), Type 2 in Referenced Request Sequence
 (0040,A370) of a Structured Report, and Source Manufacturer (300A,0216),
 Type 2 in Recorded Source Sequence (3008,0100) of an RT Brachy Treatment
-Record, as the maintainer decided, and, on the same grounds, Patient
+Record, as the maintainer decided on 31 October 2026, and, on the same
+grounds, as the maintainer decided on 16 November 2026, Patient
 Treatment Preparation Procedure Parameter Description (300A,078E), Type 2 in
 Patient Treatment Preparation Procedure Sequence (300A,0790) of an RT
 Treatment Preparation, and Prior Treatment Dose Description (3010,0061),

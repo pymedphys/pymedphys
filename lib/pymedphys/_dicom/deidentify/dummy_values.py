@@ -58,22 +58,23 @@ which Full Dates gives K and Modified Dates C, so it takes the DT constant
 or is kept or modified with the other dates. A source item without one of
 them stays without it: no value is made up.
 
-Referenced Study Sequence (0008,1110) has a rule of the same kind. Table
-E.1-1 gives it X/Z, which resolves to D only where the sequence is Type 1:
-in the items of an RT Physician Intent's RT Physician Intent Input Instance
-Sequence (3010,005F) and Planning Input Information Sequence (3010,0076),
-and of an RT Patient Position Acquisition Instruction's Referenced Position
-Reference Instance Sequence (3002,0132). There its item names a study by
-Study Instance UID (0020,000D), as the Related Information Entities Macro
-defines it (PS3.3 Table 10.37-1), rather than by a SOP Instance reference.
-D keeps each source item, with only the three attributes that the macro
-defines in it, each under its own rule: Study Instance UID takes its keyed
-replacement, as U gives it, so that the written instance names the written
-study; Pertinent SOP Classes in Study (3010,0052) names SOP Classes and is
-kept; and Referenced Series Sequence (0008,1115) is kept, with its items'
-attributes under their own rules, so that Series Instance UID (0020,000E)
-takes its keyed replacement and Referenced Image Sequence (0008,1140), which
-X/Z/U* removes where it is Type 3, is removed.
+Referenced Study Sequence (0008,1110) has a rule of the same kind, which the
+maintainer decided on 16 November 2026. Table E.1-1 gives it X/Z, which
+resolves to D only where the sequence is Type 1: in the items of an RT
+Physician Intent's RT Physician Intent Input Instance Sequence (3010,005F)
+and Planning Input Information Sequence (3010,0076), and of an RT Patient
+Position Acquisition Instruction's Referenced Position Reference Instance
+Sequence (3002,0132). There its item names a study by Study Instance UID
+(0020,000D), as the Related Information Entities Macro defines it (PS3.3
+Table 10.37-1), rather than by a SOP Instance reference. D keeps each source
+item, with only the three attributes that the macro defines in it, each
+under its own rule: Study Instance UID takes its keyed replacement, as U
+gives it, so that the written instance names the written study; Pertinent
+SOP Classes in Study (3010,0052) names SOP Classes and is kept; and
+Referenced Series Sequence (0008,1115) is kept, with its items' attributes
+under their own rules, so that Series Instance UID (0020,000E) takes its
+keyed replacement and Referenced Image Sequence (0008,1140), which X/Z/U*
+removes where it is Type 3, is removed.
 
 Where an attribute is Type 1 or 1C at its place in the data set, Z writes
 D's dummy value, from :func:`values_for_d`, since a zero-length value would

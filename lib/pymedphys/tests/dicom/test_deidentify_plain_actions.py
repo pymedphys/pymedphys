@@ -888,7 +888,8 @@ def test_a_plain_x_empties_the_required_preparation_and_prescription_description
     # where the IOD defines it, and no Type 3 sequence encloses it, so its
     # removal would sequester every instance that holds the sequence; a
     # plain X empties it there instead, as it does Source Manufacturer in
-    # Recorded Source Sequence (D-020).
+    # Recorded Source Sequence (D-020), as the maintainer decided on
+    # 16 November 2026 (23:46 UTC).
     row = next(
         attribute
         for attribute in standard.load_table_e1_1().attributes
