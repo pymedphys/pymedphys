@@ -231,7 +231,7 @@ def _citations(function):
     ]
 
 
-def test_each_check_of_a_policys_run_runs_in_both_halves():
+def test_each_check_of_a_policys_run_runs_in_both_halves(monkeypatch):
     """A check added to the first half fails here until this half runs it too."""
     first, here = _checks(vars(first_half)), _checks(globals())
 
@@ -239,4 +239,9 @@ def test_each_check_of_a_policys_run_runs_in_both_halves():
     assert sorted(here) == sorted(first)
     for name, function in here.items():
         assert _citations(function) == _citations(first[name]), name
-        assert f"first_half.{name}(" in inspect.getsource(function), name
+        # Each test here runs the first half's check on its own policy's run.
+        calls = []
+        monkeypatch.setattr(first_half, name, calls.append)
+        sentinel = object()
+        function(sentinel)
+        assert calls == [sentinel], name

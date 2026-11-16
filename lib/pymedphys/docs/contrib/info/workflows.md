@@ -309,15 +309,12 @@ corpus part past 30 minutes on Ubuntu, the CT defacing runs were halved on
 `others` part was halved on 7 November 2026, when it took 23 to 25 minutes on
 Ubuntu, and 29:38 at the dependency floors on a pull request. Move the cut to
 another letter when the `--durations` reports show one of these two parts
-taking much longer than the other. The policies' end-to-end runs were halved on
-9 November 2026, when `corpus-runs` took 27 minutes on Ubuntu with Python 3.14
-and was cancelled at 30 minutes at the dependency floors on a pull request; the
-end-to-end module then held 85% of the part's summed test time, so no grouping
-of whole modules could balance it. Locally, the summed test time was then 2,495
-seconds in `corpus-runs` and 1,716 seconds in `corpus-end-to-end-p-z`. The
-policies' names begin only with `a`, `b`, `c`, `p`, `r`, and `t`, so the cut at
-`p` is the most even one by letter; change `FIRST_LETTERS` in
-`test_deidentify_corpus_end_to_end.py` to move it.
+taking much longer than the other. The policies' end-to-end runs take most of
+the corpus modules' time, more than any grouping of whole modules can balance,
+so they are halved by the first letter of each policy's name; change
+`FIRST_LETTERS` in `test_deidentify_corpus_end_to_end.py` to move the cut when
+the `--durations` reports show `corpus-runs` and `corpus-end-to-end-p-z`
+drifting apart.
 
 The run at the dependency floors runs in the same six parts. Each part
 retains its job limit (60 minutes for `corpus-runs`, 30 for the others), two
@@ -385,10 +382,8 @@ another feature skip themselves when its packages are missing. The `dicom`
 extra's tests run in the same six parts as the unit-test matrix, on six
 runners, since together they can reach the time limit on a slow runner;
 `corpus-runs` has 60 minutes and the other parts 30. Its `others` part holds
-only `tests/dicom`, so it had no `deidentify-a-o` part while it took 15 minutes
-on 6 November 2026; it gained one on 16 November 2026, when that part had
-reached 26 minutes on main's nightly full matrix and 26.2 on a pull request.
-It uploads a JUnit report per extra as `junit-extra-<extra>`, and
+only `tests/dicom`, but the de-identification modules alone bring it near the
+limit, so it is halved as in the unit-test matrix. It uploads a JUnit report per extra as `junit-extra-<extra>`, and
 per part for `dicom` as `junit-extra-dicom-<part>`, and runs alongside both the
 quick and full matrices.
 
