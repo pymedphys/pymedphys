@@ -59,8 +59,9 @@ def load_uid_roles(path: pathlib.Path | None = None) -> AttributeRoles[UIDRole]:
     ------
     ~pymedphys._dicom.deidentify.attribute_roles.RoleError
         If the file cannot be read; has another schema; covers another
-        edition than the data dictionary or lacks its acknowledgement; does
-        not give its rules as an array of tables; has a rule without exactly
+        edition than the data dictionary or lacks its acknowledgement, the
+        link to the DICOM Standard, or NEMA's trademark notice; does not give
+        its rules as an array of tables; has a rule without exactly
         the fields tag, keyword, role, and an optional non-empty note; has a
         rule for an attribute that is not a UI attribute of the data
         dictionary, or with another keyword; has a role other than

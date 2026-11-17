@@ -113,6 +113,7 @@ from collections.abc import Iterator, MutableSequence, Sequence
 
 from pymedphys._imports import pydicom
 
+from . import attribution
 from .file_layout import ElementPath
 from .sequences import UnreadableItems, decode_items
 from .standard import load_data_dictionary
@@ -731,6 +732,9 @@ HEAD_AND_NECK_REGIONS_PATH = (
     pathlib.Path(__file__).resolve().parent / "head_and_neck_regions.toml"
 )
 _REGIONS_SCHEMA = "pymedphys-deid-head-and-neck-regions/1"
+_REGIONS_TOP_LEVEL_FIELDS = frozenset(
+    {"schema", "edition", "acknowledgement", "link", "notice", "region"}
+)
 _REGION_FIELDS = {"meaning", "sct"}
 # The image Storage SOP Classes of CT, MR, and PET, and RT Dose Storage
 # (PS3.4 Table B.5-1), each with the indicator of its volume and whether its
@@ -845,21 +849,30 @@ class HeadAndNeckRegions:
     codes: frozenset[tuple[str, str]]
 
 
+def _is_regions_document(data: dict[str, object]) -> bool:
+    """Whether a regions file has the schema, an edition, that edition's
+    PS3.16 attribution, and no other top-level fields."""
+    edition = data.get("edition")
+    if data.get("schema") != _REGIONS_SCHEMA or not isinstance(edition, str):
+        return False
+    if data.get("acknowledgement") != attribution.acknowledgement("PS3.16", edition):
+        return False
+    return (
+        attribution.missing(data) is None
+        and set(data) == _REGIONS_TOP_LEVEL_FIELDS
+        and isinstance(data["region"], list)
+    )
+
+
 @functools.lru_cache(maxsize=None)
 def _load_regions(path: pathlib.Path) -> HeadAndNeckRegions:
     try:
         data = tomllib.loads(path.read_text(encoding="utf-8"))
     except (OSError, UnicodeDecodeError, tomllib.TOMLDecodeError):
         raise ValueError(f"{path.name} cannot be read") from None
-    edition = data.get("edition")
-    if (
-        data.get("schema") != _REGIONS_SCHEMA
-        or not isinstance(edition, str)
-        or data.get("acknowledgement") != f"DICOM PS3.16 {edition}, © NEMA"
-        or set(data) != {"schema", "edition", "acknowledgement", "region"}
-        or not isinstance(data["region"], list)
-    ):
+    if not _is_regions_document(data):
         raise ValueError(f"{path.name} is not a list of head and neck regions")
+    edition = data["edition"]
     if edition != load_data_dictionary().edition:
         raise ValueError(f"{path.name} is not of the pinned edition")
     body_parts: set[str] = set()
@@ -900,7 +913,8 @@ def load_head_and_neck_regions(
     ValueError
         If the file cannot be read; has another schema, an edition other
         than the pinned data dictionary's, an acknowledgement other than that
-        of its edition, or other fields; or
+        of its edition, no link to the DICOM Standard or NEMA's trademark
+        notice, or other fields; or
         has a region without exactly a meaning, a numeric SNOMED CT code, an
         optional SNOMED RT identifier, and an optional Body Part Examined
         term of at most 16 upper-case letters, digits, underscores, and

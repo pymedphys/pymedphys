@@ -51,6 +51,7 @@ from typing import Protocol
 
 from pymedphys._imports import tomlkit
 
+from . import attribution
 from .standard import (
     PRIVATE_TAG_PATTERN,
     VRS,
@@ -76,7 +77,7 @@ _CREATOR_LENGTH = 64
 _CREATOR_CHARACTERS = frozenset(map(chr, range(0x20, 0x7F)))
 
 _TOP_LEVEL_FIELDS = frozenset(
-    {"schema", "edition", "acknowledgement", "table", "addition"}
+    {"schema", "edition", "acknowledgement", "link", "notice", "table", "addition"}
 )
 _TABLE_FIELDS = frozenset({"private_creator", "elements"})
 _ELEMENT_FIELDS = frozenset({"tag", "vr", "vm", "handling"})
@@ -424,8 +425,9 @@ def load_safe_private_rules(path: pathlib.Path | None = None) -> SafePrivateRule
     ------
     SafePrivateRuleError
         If the file cannot be read; has another schema, a field other than
-        schema, edition, acknowledgement, table, and addition, another
-        edition than Table E.3.10-1, or lacks its acknowledgement; does not
+        schema, edition, acknowledgement, link, notice, table, and addition,
+        another edition than Table E.3.10-1, or lacks its acknowledgement, the
+        link to the DICOM Standard, or NEMA's trademark notice; does not
         give its table rules and additions as arrays of tables; has table
         rules without exactly the fields private_creator and elements, for a
         private creator that the table does not list or that another table
@@ -464,11 +466,14 @@ def _load(path: pathlib.Path) -> SafePrivateRules:
         raise SafePrivateRuleError(
             f"{path.name} does not cover the edition of Table E.3.10-1, {table.edition}"
         )
-    acknowledgement = f"DICOM PS3.15 {table.edition}, © NEMA"
+    acknowledgement = attribution.acknowledgement("PS3.15", table.edition)
     if document.get("acknowledgement") != acknowledgement:
         raise SafePrivateRuleError(
             f"{path.name} lacks the acknowledgement {acknowledgement}"
         )
+    lacking = attribution.missing(document)
+    if lacking is not None:
+        raise SafePrivateRuleError(f"{path.name} lacks {lacking}")
     rows = {
         (row.private_creator, *_table_tag(row.tag)): row for row in table.attributes
     }

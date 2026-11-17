@@ -30,6 +30,8 @@
 schema = "pymedphys-deid-supplementary-concepts/1"
 edition = "2026d"
 acknowledgement = "DICOM PS3.16 2026d, © NEMA"
+link = "https://www.dicomstandard.org/"
+notice = "DICOM® is the registered trademark of the National Electrical Manufacturers Association (NEMA) for its standards publications relating to digital communications of medical information. NEMA does not endorse, sponsor, or certify PyMedPhys."
 
 [[concept]]
 scheme_designator = "DCM"

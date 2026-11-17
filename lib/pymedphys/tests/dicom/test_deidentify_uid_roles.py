@@ -126,6 +126,8 @@ def _write(path, document):
         (lambda d: d.update(schema="pymedphys-deid-uid-roles/0"), "schema"),
         (lambda d: d.update(edition="2099a"), "edition"),
         (lambda d: d.update(acknowledgement="NEMA"), "acknowledgement"),
+        (lambda d: d.pop("link"), "the link to the DICOM Standard"),
+        (lambda d: d.update(notice="DICOM"), "NEMA's trademark notice"),
         (lambda d: d["attribute"][0].update(role="retain"), "rule 1 has a role"),
         (lambda d: d["attribute"][0].update(extra=1), "rule 1 does not have"),
         (lambda d: d["attribute"][0].pop("keyword"), "rule 1 does not have"),
