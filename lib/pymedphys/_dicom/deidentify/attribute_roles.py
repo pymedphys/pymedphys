@@ -36,6 +36,7 @@ from typing import Generic, TypeVar
 
 from pymedphys._imports import tomlkit
 
+from . import attribution
 from .standard import load_data_dictionary, load_table_e1_1
 
 RoleT = TypeVar("RoleT", bound=enum.Enum)
@@ -183,7 +184,8 @@ def load_attribute_roles(
     ------
     RoleError
         If the file cannot be read; has another schema; covers another
-        edition than the data dictionary or lacks its acknowledgement; does
+        edition than the data dictionary or lacks its acknowledgement, the
+        link to the DICOM Standard, or NEMA's trademark notice; does
         not give its rules as an array of tables; has a rule without exactly
         the fields tag, keyword, role, and an optional non-empty note; has a
         rule for an attribute that the format does not cover, or with
@@ -210,9 +212,12 @@ def _load_attribute_roles(
             f"{path.name} does not cover the data dictionary's edition, "
             f"{dictionary.edition}"
         )
-    acknowledgement = f"DICOM PS3.6 {dictionary.edition}, © NEMA"
+    acknowledgement = attribution.acknowledgement("PS3.6", dictionary.edition)
     if document.get("acknowledgement") != acknowledgement:
         raise RoleError(f"{path.name} lacks the acknowledgement {acknowledgement}")
+    lacking = attribution.missing(document)
+    if lacking is not None:
+        raise RoleError(f"{path.name} lacks {lacking}")
 
     covered = _covered(role_format, dictionary.attributes)
     entries = document.get("attribute", [])
