@@ -31,7 +31,9 @@ the checks of answer-key instances that the input does not hold.
 
 Assigning by Patient ID is an assumption: a run that related instances of
 different Patient IDs to one another would give different results when
-sharded.
+sharded. A shard given no key draws its own, as a whole run does, so the
+shards add up to exactly a whole run's results only under its key
+(:func:`combine`).
 """
 
 from __future__ import annotations
@@ -125,9 +127,16 @@ def combine(documents: Sequence[Mapping[str, object]]) -> dict[str, object]:
     table's rows are merged by their fields that are not counts, and
     ordered as a whole run orders them; so are the names of a mapping that
     the shards do not all hold alike, such as the modalities. Since each
-    check is scored in one shard, the combined results are those of a whole
-    run, apart from ``shard``, where no instance of one Patient ID depends
-    on another's (:mod:`~pymedphys._dicom.deidentify.midi_benchmark_shards`).
+    check is scored in exactly one shard, the combined results count each
+    check once. They are those of a whole run, apart from ``shard``, where
+    the whole run and every shard take one key and no instance of one
+    Patient ID depends on another's
+    (:mod:`~pymedphys._dicom.deidentify.midi_benchmark_shards`). Under keys
+    of their own, an outcome that depends on the values a key writes can
+    differ from a whole run's, as it can between two whole runs: a short
+    word of a text that a check asks to be removed can be held by chance in
+    the keyed code of a pseudonym under one key, a replacement match, and
+    not under another, a pass.
 
     Raises
     ------

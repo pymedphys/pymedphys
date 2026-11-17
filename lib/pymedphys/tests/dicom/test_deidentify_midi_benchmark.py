@@ -472,7 +472,12 @@ def _source(tmp_path):
     return source
 
 
-def _benchmark_key(tmp_path):
+def _benchmark_key(tmp_path, *, removed_name=None):
+    """Write the answer key of :func:`_source`'s instances.
+
+    With ``removed_name``, the RT Dose instance also has a check that
+    Patient's Name no longer holds that text.
+    """
     ct = [
         _check(
             "text_retained",
@@ -499,11 +504,18 @@ def _benchmark_key(tmp_path):
         ),
         _check("pixels_hidden", text="{}"),
     ]
+    dose = [_check("uid_changed", "<(0008,0018)>", value=synthetic.DOSE)]
+    if removed_name is not None:
+        dose.append(
+            _check(
+                "text_removed", "<(0010,0010)>", text=removed_name, hipaa_m="TEST-NAME"
+            )
+        )
     rows = [
         _row(synthetic.CT_SLICES[0], ct),
         _row(
             synthetic.DOSE,
-            [_check("uid_changed", "<(0008,0018)>", value=synthetic.DOSE)],
+            dose,
             series=synthetic.DOSE_SERIES,
             sop_class=synthetic.RT_DOSE_STORAGE,
             modality="RTDOSE",

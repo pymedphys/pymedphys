@@ -18,7 +18,9 @@ Every answer key here is made by hand, and every DICOM file is synthetic.
 """
 
 import dataclasses
+import itertools
 import json
+import re
 
 from pymedphys._imports import pydicom, pytest
 
@@ -39,7 +41,14 @@ from pymedphys._dicom.deidentify.midi_benchmark_shards import (
     assign,
     combine,
 )
+from pymedphys._dicom.deidentify.pseudonyms import (
+    FAMILY_NAME,
+    PATIENT_ID_PREFIX,
+    SubjectIdentity,
+    patient_pseudonym,
+)
 
+from . import _synthetic_references as synthetic
 from .corpus_runs.clean_pixel_data import RUN as CLEAN_PIXEL_DATA_RUN
 from .test_deidentify_midi_benchmark import _benchmark_key, _source
 from .test_deidentify_midi_benchmark_presets import (  # noqa: F401  # pylint: disable = unused-import
@@ -291,14 +300,26 @@ def test_results_that_are_not_every_shard_of_one_run_are_refused(documents, mess
         combine(documents)
 
 
-def _run(tmp_path, name, shard=None, options=None):
+def _run(tmp_path, name, shard=None, options=None, deid_key=None):
     return benchmark.run_benchmark(
         tmp_path / "source",
         tmp_path / "key.db",
         tmp_path / name,
         shard=shard,
         options=options,
+        deid_key=deid_key,
     )
+
+
+def _keys():
+    """Keys made from 0, 1, 2, and so on: the same keys on every run."""
+    return (DeidKey(number.to_bytes(32, "big")) for number in itertools.count())
+
+
+def _code(deid_key):
+    """The keyed code of the synthetic patient's pseudonyms under a key."""
+    identity = SubjectIdentity.from_patient_id(synthetic.PATIENT_ID)
+    return patient_pseudonym(deid_key, identity).patient_id[len(PATIENT_ID_PREFIX) :]
 
 
 @pytest.mark.parametrize("options", [None, ["clean_pixel_data"]])
@@ -308,18 +329,38 @@ def test_the_shards_of_a_run_add_up_to_the_whole_run(
 ):
     # Two patients, and an answer-key instance that the input does not hold;
     # with three shards, one shard has no input at all. Under Clean Pixel
-    # Data, the text detector's counts add up too.
+    # Data, the text detector's counts add up too. A removed-text check fails
+    # wherever the release holds one of its words, inside another word or
+    # not, so a two-letter word held by chance in the keyed code of the
+    # patient's pseudonymous name is a replacement match under one key and a
+    # pass under another: the shards take the whole run's key.
     monkeypatch.setattr(benchmark, "TextDetector", lambda: CLEAN_PIXEL_DATA_RUN.finder)
+    deid_key, word = next(
+        (deid_key, pair)
+        for deid_key in _keys()
+        for pair in re.findall("(?=([A-Z]{2}))", _code(deid_key))
+        if pair not in FAMILY_NAME
+    )
+    other = next(each for each in _keys() if word not in _code(each))
     _source(tmp_path)
-    _benchmark_key(tmp_path)
-    whole = _run(tmp_path, "whole", options=options).document
+    _benchmark_key(tmp_path, removed_name=word)
+    whole = _run(tmp_path, "whole", options=options, deid_key=deid_key).document
+    apart = _run(tmp_path, "apart", options=options, deid_key=other).document
 
     shards = [
-        _run(tmp_path, f"shard-{number}", Shard(number, count), options).document
+        _run(
+            tmp_path, f"shard-{number}", Shard(number, count), options, deid_key
+        ).document
         for number in range(1, count + 1)
     ]
     found = whole["coverage"]["text_detection"]
     assert found is None if options is None else found
+    assert whole["headline"]["replacement_match"] == 1
+    assert apart["headline"] == {
+        **whole["headline"],
+        "passed": whole["headline"]["passed"] + 1,
+        "replacement_match": 0,
+    }
 
     assert whole["versions"]["shard"] is None
     assert [shard["versions"]["shard"] for shard in shards] == [
