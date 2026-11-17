@@ -225,7 +225,6 @@ from .reference_graph import ReferenceGraph
 from .references import InstanceRecord
 from .reviewed_annotations import (
     AnnotationReviewQueue,
-    ReviewedAnnotation,
     ReviewedAnnotations,
     review_annotation,
 )

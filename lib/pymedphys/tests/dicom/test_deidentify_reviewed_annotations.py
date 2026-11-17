@@ -22,6 +22,10 @@ synthetic. Values that must never reach a written file carry the text
 ``SENTINEL``.
 """
 
+# The tests share the annotation and list builders below, so they stay in
+# one module.
+# pylint: disable = too-many-lines
+
 import copy
 import io
 import json
@@ -865,13 +869,13 @@ def test_annotations_kept_alone_are_held_until_decided_on_together():
     assert {each.reason for each in getattr(result.evidence, "held")} == {
         Held.NOT_REVIEWED_TOGETHER
     }
-    (together,) = [each for each in _material(result) if each.together]
-    assert together.digest == together_digest(
+    (as_one,) = [each for each in _material(result) if each.together]
+    assert as_one.digest == together_digest(
         [annotation_digest(first), annotation_digest(second)]
     )
-    assert together.result.held_because is Held.NOT_REVIEWED_TOGETHER
+    assert as_one.result.held_because is Held.NOT_REVIEWED_TOGETHER
     # The QC pack's drawing of them together draws all forty strokes.
-    assert draw_annotation(together.item).count("<polyline") == 40
+    assert draw_annotation(as_one.item).count("<polyline") == 40
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.3-01")
