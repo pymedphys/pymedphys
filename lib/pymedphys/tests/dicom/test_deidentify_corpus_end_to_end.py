@@ -900,6 +900,8 @@ def test_instances_keep_their_reviewed_dummy_values(policy_run):
         # In their Enhanced RT Series Module.
         "Enhanced RT Image",
         "Enhanced Continuous RT Image",
+        # In its DX Series Module.
+        "Digital X-Ray Image",
         "RT Segment Annotation",
         "RT Radiation Set",
         "C-Arm Photon-Electron Radiation",
