@@ -65,6 +65,7 @@ OVERLAY_IODS = (
     "MR Image",
     "Nuclear Medicine Image",
     "Positron Emission Tomography Image",
+    "Computed Radiography Image",
 )
 # The Presentation State IODs that the first supported release supports,
 # and the Type 1 dates and times of their creation.
@@ -83,7 +84,9 @@ PRESENTATION_STATE_IODS = (
 )
 PRESENTATION_CREATION_DATES = ("(0070,0082)", "(0070,0083)")
 # The IODs that include the Overlay Plane Module as conditional, of which the
-# first supported release supports the softcopy Presentation States.
+# first supported release supports the softcopy Presentation States and
+# Digital X-Ray Image, "Required if graphic annotation is present" (PS3.3
+# Table A.26-1).
 CONDITIONAL_OVERLAY_IODS = {
     "Color Softcopy Presentation State",
     "Digital Intra-Oral X-Ray Image",
@@ -433,10 +436,12 @@ def test_a_plain_x_on_a_required_attribute_outside_a_type_3_sequence_sequesters(
 @pytest.mark.parametrize("tag", ["(6000,3000)", "(6002,3000)", "(601E,3000)"])
 def test_a_plain_x_on_overlay_data_removes_its_repeating_group(tables, iod, tag):
     # Overlay Data is Type 1 in the Overlay Plane Module, which the CT Image,
-    # MR Image, Nuclear Medicine Image, and Positron Emission Tomography
-    # Image IODs include as user-optional, so removing the whole group leaves a valid instance. The
-    # other IODs do not define it, but for the softcopy Presentation States,
-    # whose conditional module's Overlay Data sequesters the instance (below).
+    # MR Image, Nuclear Medicine Image, Positron Emission Tomography Image,
+    # and Computed Radiography Image IODs include as user-optional, so
+    # removing the whole group leaves a valid instance. The other IODs do not
+    # define it, but for Digital X-Ray Image and the softcopy Presentation
+    # States, whose conditional module's Overlay Data sequesters the instance
+    # (below).
     expected_type = "1" if iod in OVERLAY_IODS else "3"
 
     assert strictest_type(tables.iods[iod], tag) == expected_type
@@ -653,6 +658,9 @@ def test_a_plain_x_on_a_required_attribute_in_the_first_release_iods(tables):
         **{
             (name, (), "(60xx,3000)"): _removal(*OVERLAY_GROUP) for name in OVERLAY_IODS
         },
+        # Type 1 in the Digital X-Ray Image IOD's conditional Overlay Plane
+        # Module, so an instance with an overlay is sequestered.
+        ("Digital X-Ray Image", (), "(60xx,3000)"): _removal(*SEQUESTER),
         # Type 1 in the Type 1 Radiopharmaceutical Information Sequence, so
         # every conforming instance is sequestered.
         (
