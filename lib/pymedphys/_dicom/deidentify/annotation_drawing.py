@@ -40,16 +40,27 @@ document with no script, style sheet, or external reference:
   C.10.5.1.3.14), since a pattern that a display tiles inside the object
   can spell a name as surely as a line can.
 
+A line whose Line Style Sequence (0070,0232) makes it DASHED is drawn as a
+solid line, and counted as not drawn whole. A display draws each set bit
+of its 32-bit Line Pattern (0070,0255) in the foreground colour and each
+clear bit in the background colour along the line (PS3.3 C.10.5.1.3.13),
+but the standard says neither which bit comes first nor how long a bit is
+along the line, so no drawing can show the dashes that a display draws,
+and lines whose patterns are the rows of a bitmap can spell a name. A
+pattern whose 32 bits are all the same draws the whole line in one
+colour, so it hides nothing, and its line is drawn whole.
+
 Annotation units are PIXEL, in the image's pixels, or DISPLAY, in
 fractions of the displayed area (C.10.5.1.1). Without the image, the two
 cannot be put in one frame, so the drawing has a panel for each units
 that the item uses: pixel units in a frame around what they draw, and
 display units in the displayed area, 1000 units a side. Graphic Data that
 is not two-dimensional, cannot be read, or holds a value that is not
-finite, and a fill whose mode or pattern cannot be read, is left out and
-counted in the drawing's caption, never guessed; :func:`undrawn_objects`
-counts them, so that an annotation with any is not released on a
-reviewer's decision to keep it (D-062).
+finite, a fill whose mode or pattern cannot be read, and a line style
+other than SOLID or a uniform DASHED one, are left out and counted in the
+drawing's caption, never guessed; :func:`undrawn_objects` counts them, so
+that an annotation with any is not released on a reviewer's decision to
+keep it (D-062).
 
 Text is escaped with :func:`html.escape`, which writes the same five
 entities that SVG's XML needs; nothing here parses XML.
@@ -75,6 +86,9 @@ _MARGIN = 0.05
 FILL_PATTERN_SIDE = 32
 _FILL_PATTERN_BYTES = FILL_PATTERN_SIDE * FILL_PATTERN_SIDE // 8
 _FILLED_SHADE = 'fill-opacity="0.15"'
+# The Line Patterns that draw a dashed line in one colour, all bits clear or
+# all set, whose line a solid one shows whole.
+_UNIFORM_LINE_PATTERNS = (0, 0xFFFFFFFF)
 
 Point = tuple[float, float]
 
@@ -191,6 +205,28 @@ def _fill(drawing: _Drawing, graphic: pydicom.Dataset) -> str:
     return _FILLED_SHADE
 
 
+def _line_style(drawing: _Drawing, graphic: pydicom.Dataset) -> None:
+    """Count a line style whose line the drawing cannot show whole.
+
+    The line itself is always drawn solid. A style is shown whole where its
+    Line Dashing Style is SOLID, or DASHED with a Line Pattern whose bits
+    are all the same; any other, including one that cannot be read, is
+    counted as not drawn, as the module describes.
+    """
+    for style in graphic.get("LineStyleSequence") or ():
+        dashing = style.get("LineDashingStyle")
+        if dashing == "SOLID":
+            continue
+        pattern = style.get("LinePattern")
+        if (
+            dashing == "DASHED"
+            and isinstance(pattern, int)
+            and pattern in _UNIFORM_LINE_PATTERNS
+        ):
+            continue
+        drawing.skipped += 1
+
+
 def _graphic(drawing: _Drawing, graphic: pydicom.Dataset) -> None:
     panel = drawing.panel(graphic.get("GraphicAnnotationUnits"))
     if panel is None:
@@ -226,6 +262,7 @@ def _graphic(drawing: _Drawing, graphic: pydicom.Dataset) -> None:
     else:
         drawing.skipped += 1
         return
+    _line_style(drawing, graphic)
     panel.points.extend(points)
 
 
@@ -261,6 +298,7 @@ def _compound(drawing: _Drawing, compound: pydicom.Dataset) -> None:
             f'<circle cx="{_number(points[0][0])}" cy="{_number(points[0][1])}" r="2"/>'
         )
     )
+    _line_style(drawing, compound)
     panel.points.extend(points)
     if len(points) < 2:
         return
@@ -350,8 +388,9 @@ def undrawn_objects(item: pydicom.Dataset) -> int:
     -------
     int
         The count that :func:`draw_annotation`'s caption gives: each object
-        whose units, type, or Graphic Data cannot be drawn, and each fill
-        whose mode or pattern cannot be read. A reviewer has not seen an
+        whose units, type, or Graphic Data cannot be drawn, each fill
+        whose mode or pattern cannot be read, and each line style other
+        than SOLID or a uniform DASHED one. A reviewer has not seen an
         annotation whole where this is not 0.
     """
     return _draw(item).skipped
@@ -462,7 +501,7 @@ def draw_annotation(item: pydicom.Dataset) -> str:
     caption = "nothing drawn" if not panels else ""
     if drawing.skipped:
         caption = f"{caption}; " if caption else ""
-        caption += f"{drawing.skipped} object(s) not drawn"
+        caption += f"{drawing.skipped} object(s) not drawn whole"
     if caption:
         parts.append(
             f'<text x="{_number(_GAP)}" y="{_number(height - _CAPTION / 2)}" '

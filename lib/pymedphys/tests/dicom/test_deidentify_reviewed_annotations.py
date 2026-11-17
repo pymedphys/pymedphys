@@ -190,6 +190,53 @@ def _bitmap(drawing):
     return ["".join(row) for row in rows]
 
 
+def _line_patterns(rows=LETTERING):
+    """Return a 32-bit Line Pattern for each row, its ``#`` the set bits."""
+    return [
+        int(row.ljust(32, ".").replace("#", "1").replace(".", "0"), 2) for row in rows
+    ]
+
+
+def _lined(patterns, dashing="DASHED"):
+    """An annotation of one horizontal line a row for each pattern.
+
+    Where each line's Line Pattern is a row of lettering, a display that
+    dashes the lines can spell it down the stack of lines.
+    """
+    objects = []
+    for row, pattern in enumerate(patterns, start=1):
+        style = synthetic.item(
+            PatternOnColorCIELabValue=[65535, 32896, 32896],
+            PatternOnOpacity=1.0,
+            LineThickness=1.0,
+            LineDashingStyle=dashing,
+            ShadowStyle="OFF",
+            ShadowOffsetX=0.0,
+            ShadowOffsetY=0.0,
+            ShadowColorCIELabValue=[0, 32896, 32896],
+            ShadowOpacity=0.0,
+        )
+        if pattern is not None:
+            style.LinePattern = pattern
+        objects.append(
+            synthetic.item(
+                GraphicAnnotationUnits="PIXEL",
+                GraphicDimensions=2,
+                NumberOfGraphicPoints=2,
+                GraphicData=[1.0, float(row), 64.0, float(row)],
+                GraphicType="POLYLINE",
+                LineStyleSequence=[style],
+            )
+        )
+    return synthetic.item(
+        GraphicLayer="LAYER",
+        ReferencedImageSequence=[
+            synthetic.reference(synthetic.CT_IMAGE_STORAGE, synthetic.CT_SLICES[0])
+        ],
+        GraphicObjectSequence=objects,
+    )
+
+
 def _presentation_state(*annotations):
     dataset = synthetic.instance(
         GRAYSCALE_SOFTCOPY_PRESENTATION_STATE_STORAGE,
@@ -471,6 +518,78 @@ def test_a_kept_annotation_that_its_drawing_leaves_out_is_held(annotation):
     assert material.result.held_because is Held.NOT_DRAWN
 
 
+@pytest.mark.deid_requirement("PS3.15-E.3.3-01")
+@pytest.mark.parametrize(
+    "annotation",
+    [
+        # Each line dashed by a row of lettering: the standard says neither
+        # which bit comes first nor how long a bit is along the line, so no
+        # drawing can show what a display dashes.
+        _lined(_line_patterns()),
+        # A dashed line without its Line Pattern, Type 1C here.
+        _lined([None]),
+        # A dashing style that PS3.3 does not define.
+        _lined([0xFFFFFFFF], dashing="DOTTED"),
+    ],
+)
+def test_a_kept_annotation_with_a_dashed_line_is_held(annotation):
+    reviewed = _reviewed(annotation=(annotation_digest(annotation), Review.KEEP))
+
+    _, result = _transformed(_presentation_state(annotation), reviewed)
+
+    lines = len(annotation.GraphicObjectSequence)
+    assert undrawn_objects(annotation) == lines
+    assert f"{lines} object(s) not drawn whole" in draw_annotation(annotation)
+    assert isinstance(result, run.Transformed), result
+    assert isinstance(result.evidence, HeldEvidence)
+    (held,) = getattr(result.evidence, "held")
+    assert held.reason is Held.NOT_DRAWN
+    (material,) = _material(result)
+    assert material.result.held_because is Held.NOT_DRAWN
+
+
+def test_dashed_lines_of_different_patterns_have_different_digests():
+    # A decision on one pattern is never taken for another, though both
+    # are held.
+    lettered = _lined(_line_patterns())
+    blank = _lined([0] * len(LETTERING))
+
+    assert annotation_digest(lettered) != annotation_digest(blank)
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.3-01")
+@pytest.mark.parametrize(
+    "patterns, dashing",
+    [
+        ([None] * len(LETTERING), "SOLID"),
+        # A pattern whose bits are all the same dashes the whole line in one
+        # colour, so the line drawn solid shows all of it.
+        ([0xFFFFFFFF] * len(LETTERING), "DASHED"),
+        ([0] * len(LETTERING), "DASHED"),
+    ],
+)
+def test_a_kept_annotation_whose_lines_the_drawing_shows_is_written(patterns, dashing):
+    annotation = _lined(patterns, dashing=dashing)
+    reviewed = _reviewed(annotation=(annotation_digest(annotation), Review.KEEP))
+
+    _, result = _transformed(_presentation_state(annotation), reviewed)
+
+    assert undrawn_objects(annotation) == 0
+    assert "not drawn" not in draw_annotation(annotation)
+    assert isinstance(result, run.Transformed), result
+    assert not isinstance(result.evidence, HeldEvidence)
+    written = pydicom.dcmread(io.BytesIO(result.data))
+    graphics = written.GraphicAnnotationSequence[0].GraphicObjectSequence
+    assert [graphic.LineStyleSequence[0].LineDashingStyle for graphic in graphics] == [
+        dashing
+    ] * len(LETTERING)
+    assert [
+        graphic.LineStyleSequence[0].get("LinePattern") for graphic in graphics
+    ] == (patterns)
+    (material,) = _material(result)
+    assert material.result.outcome is Outcome.KEPT
+
+
 def test_a_list_is_taken_only_under_clean_graphics():
     with pytest.raises(PolicyError, match="Clean Graphics|clean graphics"):
         _transformed(
@@ -646,6 +765,27 @@ def test_a_solid_fill_is_shaded_with_no_pattern_panel():
 
     assert 'fill-opacity="0.15"' in drawing
     assert "fill pattern" not in drawing and "not drawn" not in drawing
+
+
+def test_a_dashed_compound_graphic_is_counted_not_drawn_whole():
+    style = synthetic.item(LineDashingStyle="DASHED", LinePattern=0x0F0F0F0F)
+    item = synthetic.item(
+        GraphicLayer="LAYER",
+        CompoundGraphicSequence=[
+            synthetic.item(
+                CompoundGraphicUnits="PIXEL",
+                GraphicDimensions=2,
+                NumberOfGraphicPoints=2,
+                GraphicData=[1.0, 1.0, 40.0, 1.0],
+                CompoundGraphicType="RULER",
+                CompoundGraphicInstanceID=1,
+                LineStyleSequence=[style],
+            )
+        ],
+    )
+
+    assert undrawn_objects(item) == 1
+    assert "1 object(s) not drawn whole" in draw_annotation(item)
 
 
 def test_a_compound_graphic_is_drawn_in_its_own_units():
