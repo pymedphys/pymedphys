@@ -30,6 +30,7 @@ import io
 from pymedphys._imports import pydicom, pytest
 
 from pymedphys._dicom.deidentify import (
+    dummy_values,
     icc_cleaning,
     icc_profiles,
     iods,
@@ -41,12 +42,14 @@ from pymedphys._dicom.deidentify.descriptor_cleaning import DescriptorCleaning
 from pymedphys._dicom.deidentify.element_rules import ElementRules
 from pymedphys._dicom.deidentify.face_review import FaceReview
 from pymedphys._dicom.deidentify.file_layout import ElementPath
+from pymedphys._dicom.deidentify.icc_cleaning import Refusal
 from pymedphys._dicom.deidentify.instance_transform import InstanceTransform
 from pymedphys._dicom.deidentify.keys import DeidKey
 from pymedphys._dicom.deidentify.references import InstanceRecord
 from pymedphys._dicom.deidentify.reviewed_roi_names import ReviewedNames
 from pymedphys._dicom.deidentify.walker import SequesterReason, Sequestration
 
+from . import _synthetic_icc as icc
 from . import _synthetic_references as synthetic
 
 pytestmark = [pytest.mark.pydicom, pytest.mark.usefixtures("pydicom_behaviour")]
@@ -309,17 +312,19 @@ VOLUMETRIC_ANNOTATION_SEQUENCE = "(0070,1901)"
 VOLUMETRIC_PRESENTATION_INPUT_ANNOTATION_SEQUENCE = "(0070,1905)"
 
 
-def _planar_mpr(*, annotation=None, color=False):
+def _planar_mpr(*, annotation=None, color=False, profile=None):
     """Return a Planar MPR Volumetric Presentation State of the CT.
 
     It is a Grayscale one, or, where ``color`` is true, a Compositing one
-    whose true colour display holds ICC Profile and Color Space.
+    whose true colour display holds ICC Profile and Color Space, or, where
+    ``profile`` is given, a Compositing one whose true colour display holds
+    that ICC Profile, of a custom colour space, and no Color Space.
     ``annotation`` names a sequence of the Volumetric Graphic Annotation
     Module to hold one text annotation.
     """
     dataset = synthetic.instance(
         COMPOSITING_PLANAR_MPR_VOLUMETRIC_PRESENTATION_STATE_STORAGE
-        if color
+        if color or profile is not None
         else GRAYSCALE_PLANAR_MPR_VOLUMETRIC_PRESENTATION_STATE_STORAGE,
         PRESENTATION_STATE,
         PRESENTATION_STATE_SERIES,
@@ -360,6 +365,9 @@ def _planar_mpr(*, annotation=None, color=False):
             ICC_PROFILE, "OB", icc_profiles.srgb_profile("A display's profile")
         )
         dataset.ColorSpace = "SRGB"
+    if profile is not None:
+        dataset.PixelPresentation = "TRUE_COLOR"
+        dataset.add_new(ICC_PROFILE, "OB", profile)
     if annotation is not None:
         setattr(
             dataset,
@@ -563,3 +571,46 @@ def test_a_waveform_presentation_state_keeps_its_annotation_with_dummy_text(pres
     (series,) = written.ReferencedSeriesSequence
     (referenced,) = series.ReferencedWaveformSequence
     assert referenced.ReferencedSOPInstanceUID == waveform.ReferencedSOPInstanceUID
+
+
+# A matrix RGB profile of a custom colour space, which needs no Color Space,
+# and the same profile as an ICC version 3 one, which the cleaner refuses.
+CUSTOM_PROFILE = icc.profile(icc.Header(), icc.matrix_tags(4))
+REFUSED_CUSTOM_PROFILE = icc.profile(
+    icc.Header(version=bytes([3, 0, 0, 0])), icc.matrix_tags(4)
+)
+
+
+@pytest.mark.parametrize("preset", DATED_PRESETS)
+def test_a_volumetric_presentation_states_custom_profile_is_cleaned(preset):
+    result = _transformed(preset, _planar_mpr(profile=CUSTOM_PROFILE))
+
+    assert isinstance(result, run.Transformed), result
+    written = pydicom.dcmread(io.BytesIO(result.data))
+    assert written.PixelPresentation == "TRUE_COLOR"
+    assert written.ICCProfile == icc_cleaning.clean_profile(
+        CUSTOM_PROFILE, "DEIDENTIFIED"
+    )
+    assert "ColorSpace" not in written
+
+
+@pytest.mark.parametrize("preset", DATED_PRESETS)
+def test_a_volumetric_presentation_state_whose_profile_falls_back_is_sequestered(
+    preset,
+):
+    # The fixed sRGB profile that D writes in place of a profile that it
+    # cannot clean is a standard colour space, so Color Space would be
+    # required beside it (PS3.3 Tables C.11.27-1 and C.11.32-1), and a code
+    # string has no dummy value, as where the source holds Color Space.
+    assert dummy_values.icc_profile_outcome(REFUSED_CUSTOM_PROFILE).refusal is (
+        Refusal.VERSION
+    )
+
+    result = _transformed(preset, _planar_mpr(profile=REFUSED_CUSTOM_PROFILE))
+
+    assert isinstance(result, run.Sequestered), result
+    assert set(result.reasons) == {
+        Sequestration(
+            ElementPath((), COLOR_SPACE), "D", "CS", SequesterReason.NO_DUMMY_VALUE
+        )
+    }
