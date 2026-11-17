@@ -315,7 +315,8 @@ def test_the_report_holds_no_path_of_the_installed_engine(basic, tmp_path, monke
     )
     assert set(json.loads(text)["method"]["engine_files"]) == {
         *ENGINE_FILES,
-        *(f"_standard/{path.name}" for path in (engine / "_standard").glob("*.json")),
+        # The generated tables and their notice file.
+        *(f"_standard/{path.name}" for path in (engine / "_standard").iterdir()),
         *outside,
     }
 
