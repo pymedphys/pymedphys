@@ -160,16 +160,16 @@ def _intent():
     )
 
 
-def _plan(dataset, name):
+def _plan(dataset, name, options=()):
     source = read_source(synthetic.written(dataset))
-    rules = ElementRules(policy.compose_custom_policy(()))
+    rules = ElementRules(policy.compose_custom_policy(options))
     return plan_instance(source, rules, load_iod_tables().iods[name])
 
 
-def _transformed(dataset):
+def _transformed(dataset, options=()):
     data = synthetic.written(dataset)
     transform = InstanceTransform(
-        policy.compose_custom_policy(()), KEY, unvalidated_policy=True
+        policy.compose_custom_policy(options), KEY, unvalidated_policy=True
     )
     return transform(data, InstanceRecord.from_file(data))
 
@@ -241,7 +241,9 @@ def test_d_gives_each_selector_value_its_dummy_value():
 @pytest.mark.parametrize("tag", sorted(SELECTOR_VALUES_WITHOUT_DUMMY))
 def test_a_selector_value_without_a_dummy_value_sequesters_the_instance(tag):
     # Selector AE, AS, OB, UN, and UR Values: no IOD supported before RT
-    # Patient Position Acquisition Instruction defines them.
+    # Patient Position Acquisition Instruction defines them. Under the Basic
+    # Profile each resolves to D; the test below covers the options that give
+    # Selector AE and AS Values another action.
     values = {tag: SELECTOR_VALUES_WITHOUT_DUMMY[tag]}
     plan = _plan(_instruction(values), INSTRUCTION)
 
@@ -251,6 +253,54 @@ def test_a_selector_value_without_a_dummy_value_sequesters_the_instance(tag):
     } == {(tag, "D", SequesterReason.NO_DUMMY_VALUE)}
     assert len(plan.sequestrations) == 2
     assert not isinstance(_transformed(_instruction(values)), run.Transformed)
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.1-01")
+@pytest.mark.parametrize(
+    "tag, option, action",
+    [
+        # Selector AE Value: C under Retain Device Identity, which cleans an
+        # AE title to a keyed token.
+        ("(0072,005E)", "retain_device_identity", "C"),
+        # Selector AS Value: K under Retain Patient Characteristics.
+        ("(0072,005F)", "retain_patient_characteristics", "K"),
+    ],
+)
+def test_an_option_that_keeps_or_cleans_a_selector_value_releases_the_instance(
+    tag, option, action
+):
+    # Table E.1-1 gives these two of the five another action under an
+    # option, so the instance is sequestered only where D applies.
+    row = next(
+        attribute
+        for attribute in standard.load_table_e1_1().attributes
+        if attribute.tag == tag
+    )
+    assert dict(row.options) == {option: action}
+    vr, value = SELECTOR_VALUES_WITHOUT_DUMMY[tag]
+    values = {tag: (vr, value)}
+    plan = _plan(_instruction(values), INSTRUCTION, (option,))
+
+    assert not plan.sequestrations
+    assert {element.action for element in plan.elements if element.path.tag == tag} == {
+        action
+    }
+
+    result = _transformed(_instruction(values), (option,))
+    assert isinstance(result, run.Transformed), result
+    written = pydicom.dcmread(io.BytesIO(result.data))
+    (task,) = written[_number(TASK)].value
+    (subtask,) = task[_number(SUBTASK)].value
+    (parameters,) = subtask[_number(CT_PARAMETERS)].value
+    (specification,) = parameters[_number(SPECIFICATION)].value
+    for sequence in (CONSTRAINT_VALUE, RECOMMENDED_DEFAULT):
+        (item,) = specification[_number(sequence)].value
+        written_value = str(item[_number(tag)].value)
+        if action == "K":
+            assert written_value == value
+        else:
+            assert written_value not in ("", value)
+            assert SENTINEL not in written_value
 
 
 @pytest.mark.deid_requirement("PS3.15-E.1.1-04")
