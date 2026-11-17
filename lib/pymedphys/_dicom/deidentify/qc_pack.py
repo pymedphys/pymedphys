@@ -911,9 +911,10 @@ _GRAPHIC_ANNOTATION_SEQUENCE = "(0070,0001)"
 class AnnotationEntry:
     """What the run decided for one graphic annotation, and a drawing of it.
 
-    Or for the annotations of an instance that the list does not remove,
-    together, so that strokes split across them are drawn as one: its path
-    then has no items. The held annotations are the reviewer's list, whose
+    Or for a set of an instance's annotations that the list does not remove
+    and that a display shows together, on one frame of one image, so that
+    strokes split across them are drawn as one: its path then has no items,
+    and an instance has one for each such set. The held annotations are the reviewer's list, whose
     decisions a reviewed annotations list carries to later runs by their
     digests; the kept and removed ones are the audit of what the list
     decided (D-062). Its ``repr`` leaves out the text and the drawing.

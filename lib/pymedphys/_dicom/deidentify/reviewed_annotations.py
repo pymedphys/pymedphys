@@ -38,11 +38,12 @@ kept it for another patient (:func:`review_annotation`).
 
 A name can also be split into strokes across several annotations, each of
 which shows nothing alone, so the annotations of one instance that the
-list does not remove are released only where the list also has a decision
-on them together, by their :func:`together_digest`, which the reviewer
-gives from the QC pack's drawing of them as one (:func:`review_together`).
-A decision to keep them together applies only to that set: beside another
-annotation, or without one of them, they are a new set, held for review.
+list does not remove and that a display shows together, on one image or
+frame, are released only where the list also has a decision on them
+together, by their :func:`together_digest`, which the reviewer gives from
+the QC pack's drawing of them as one (:func:`review_together`). A decision
+to keep them together applies only to that set: beside another annotation,
+or without one of them, they are a new set, held for review.
 
 The list holds digests only, but an annotation's text is short and could be
 guessed and checked against its digest, so the list is kept as confidential
@@ -286,69 +287,43 @@ def together_digest(digests: Sequence[str]) -> str:
 
 def review_together(
     digests: Sequence[str],
-    results: Sequence[ReviewedAnnotation],
     reviewed: ReviewedAnnotations,
     *,
     drawn: bool,
-) -> tuple[list[ReviewedAnnotation], str | None, ReviewedAnnotation | None]:
-    """Return what is written for an instance's annotations as one.
+) -> tuple[str, ReviewedAnnotation]:
+    """Return the digest of annotations shown together, and what is decided.
 
     A name can be split into strokes across several annotations, each of
-    which shows nothing alone, so the annotations that an instance does not
-    remove are decided on together too, by their :func:`together_digest`,
-    from the QC pack's drawing of them as one, and those that the list
-    keeps are released only as that decision allows. Without a decision on
-    them together, each kept one is held with ``NOT_REVIEWED_TOGETHER``;
-    where the list removes them together, each kept one is removed; and
-    where the drawing of them together leaves out a difference between them
-    (``drawn`` is false), each kept one is held with ``NOT_DRAWN``, whatever
-    the list decides, since the reviewer did not see them whole. Those held
-    on their own are included, so that a reviewer can decide on the
-    instance's annotations together in the same review as on each.
+    which shows nothing alone, so the annotations that a display shows
+    together are decided on together too, by their :func:`together_digest`,
+    from the QC pack's drawing of them as one. Where the drawing leaves out
+    a difference between them (``drawn`` is false), they are held with
+    ``NOT_DRAWN``, whatever the list decides, since the reviewer did not see
+    them whole; otherwise, without a decision on them, with
+    ``NOT_REVIEWED_TOGETHER``. Where the list removes them, the outcome is
+    ``REMOVED``, and where it keeps them, ``KEPT``. What the outcome does to
+    each annotation is the caller's
+    (:func:`~pymedphys._dicom.deidentify.graphic_annotations.kept_as_one`).
 
     Parameters
     ----------
     digests : sequence of str
-        Each annotation's digest.
-    results : sequence of ReviewedAnnotation
-        What is written for each, decided on alone.
+        The digest of each annotation shown together.
     reviewed : ReviewedAnnotations
         The list.
     drawn : bool
-        Whether the QC pack's drawing of the annotations that are not
-        removed, as one, shows them whole
+        Whether the QC pack's drawing of them as one shows them whole
         (:func:`~pymedphys._dicom.deidentify.annotation_drawing.undrawn_together`).
-
-    Returns
-    -------
-    tuple of (list of ReviewedAnnotation, str or None, ReviewedAnnotation or None)
-        What is written for each annotation; the digest of those not
-        removed, together; and what the list decided for them together.
-        The last two are None where fewer than two are not removed, and the
-        annotations are then as given.
     """
-    results = list(results)
-    shown = [
-        index
-        for index, result in enumerate(results)
-        if result.outcome is not Outcome.REMOVED
-    ]
-    if len(shown) < 2:
-        return results, None, None
-    digest = together_digest([digests[index] for index in shown])
+    digest = together_digest(digests)
     decision = reviewed.get(digest)
     if not drawn:
-        outcome = ReviewedAnnotation(Outcome.HELD, Held.NOT_DRAWN)
-    elif decision is None:
-        outcome = ReviewedAnnotation(Outcome.HELD, Held.NOT_REVIEWED_TOGETHER)
-    elif decision is Review.REMOVE:
-        outcome = ReviewedAnnotation(Outcome.REMOVED)
-    else:
-        return results, digest, ReviewedAnnotation(Outcome.KEPT)
-    for index in shown:
-        if results[index].outcome is Outcome.KEPT:
-            results[index] = outcome
-    return results, digest, outcome
+        return digest, ReviewedAnnotation(Outcome.HELD, Held.NOT_DRAWN)
+    if decision is None:
+        return digest, ReviewedAnnotation(Outcome.HELD, Held.NOT_REVIEWED_TOGETHER)
+    if decision is Review.REMOVE:
+        return digest, ReviewedAnnotation(Outcome.REMOVED)
+    return digest, ReviewedAnnotation(Outcome.KEPT)
 
 
 class ReviewedAnnotations:

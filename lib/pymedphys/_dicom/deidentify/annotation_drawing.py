@@ -68,8 +68,9 @@ elements, such as its justification, only place its text, which the text
 values list, and a graphic's other elements, such as a compound
 graphic's rotation, shape it, not how it shows.
 
-Several annotations of one instance can be drawn as one
-(:func:`together`), since a name can be split into strokes across them.
+Several annotations of one instance, those shown together on one frame of
+one image, can be drawn as one (:func:`together`), since a name can be
+split into strokes across them.
 The drawing of them together is whole only where each is, where their
 objects look alike across them, as within one, and where their graphic
 layers show alike, by every element of Graphic Layer Sequence (0070,0060)
@@ -568,7 +569,7 @@ def undrawn_together(
     Parameters
     ----------
     items : sequence of pydicom.Dataset
-        The annotations kept together, as received.
+        The annotations shown together, as received.
     layers : mapping of str to tuple
         How each of the instance's layers shows (:func:`layer_appearances`).
     """

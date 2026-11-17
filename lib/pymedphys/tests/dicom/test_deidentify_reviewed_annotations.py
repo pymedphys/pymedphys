@@ -246,7 +246,7 @@ def _lined(patterns, dashing="DASHED", opacities=None):
     )
 
 
-def _presentation_state(*annotations):
+def _presentation_state(*annotations, slices=1):
     dataset = synthetic.instance(
         GRAYSCALE_SOFTCOPY_PRESENTATION_STATE_STORAGE,
         "2.25.701",
@@ -255,9 +255,8 @@ def _presentation_state(*annotations):
             synthetic.item(
                 SeriesInstanceUID=synthetic.CT_SERIES,
                 ReferencedImageSequence=[
-                    synthetic.reference(
-                        synthetic.CT_IMAGE_STORAGE, synthetic.CT_SLICES[0]
-                    )
+                    synthetic.reference(synthetic.CT_IMAGE_STORAGE, uid)
+                    for uid in synthetic.CT_SLICES[:slices]
                 ],
             )
         ],
@@ -1003,6 +1002,121 @@ CROSSBARS = (
     (0.6875, 0.25, 0.8125, 0.25),
     (0.6875, 0.75, 0.8125, 0.75),
 )
+
+
+# Annotations shown together on each image
+
+
+def _on(annotation, *slices, frames=None):
+    """The annotation, shown on the given CT slices, by index, and frames."""
+    annotation.ReferencedImageSequence = [
+        synthetic.reference(synthetic.CT_IMAGE_STORAGE, synthetic.CT_SLICES[index])
+        for index in slices
+    ]
+    if frames is not None:
+        for reference in annotation.ReferencedImageSequence:
+            reference.ReferencedFrameNumber = list(frames)
+    return annotation
+
+
+def _sets(result):
+    return sorted(each.digest for each in _material(result) if each.together)
+
+
+def _set_of(*annotations):
+    return together_digest([annotation_digest(each) for each in annotations])
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.3-01")
+def test_each_set_shown_on_an_image_is_decided_on():
+    # Complementary checkerboards on two slices, kept as they are shown.
+    a, b, c, d = _parts(1.0, 1.0, 1.0, 1.0)
+    shown = [_on(a, 0), _on(b, 1), _on(c, 0), _on(d, 1)]
+    reviewed = _kept_alone(a, b, c, d)
+    for pair in ((a, c), (b, d)):
+        reviewed.record(_set_of(*pair), Review.KEEP)
+
+    _, result = _transformed(_presentation_state(*shown, slices=2), reviewed)
+
+    assert isinstance(result, run.Transformed), result
+    assert not isinstance(result.evidence, HeldEvidence)
+    assert _sets(result) == sorted([_set_of(a, c), _set_of(b, d)])
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.3-01")
+def test_a_decision_on_a_set_is_not_taken_once_its_images_change():
+    # The same four strokes, the same full grid as one, but two references
+    # changed, so that one slice shows the lettering of the first two.
+    a, b, c, d = _parts(1.0, 1.0, 1.0, 1.0)
+    reviewed = _kept_alone(a, b, c, d)
+    for pair in ((a, c), (b, d)):
+        reviewed.record(_set_of(*pair), Review.KEEP)
+    reviewed.record(_set_of(a, b, c, d), Review.KEEP)
+    shown = [_on(a, 0), _on(b, 0), _on(c, 1), _on(d, 1)]
+
+    _, result = _transformed(_presentation_state(*shown, slices=2), reviewed)
+
+    assert isinstance(result.evidence, HeldEvidence)
+    assert {each.reason for each in getattr(result.evidence, "held")} == {
+        Held.NOT_REVIEWED_TOGETHER
+    }
+    assert _sets(result) == sorted([_set_of(a, b), _set_of(c, d)])
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.3-01")
+def test_an_annotation_without_images_of_its_own_is_shown_on_every_image():
+    a, b, c = _parts(1.0, 1.0, 1.0)
+    del a.ReferencedImageSequence
+
+    _, result = _transformed(
+        _presentation_state(a, _on(b, 0), _on(c, 1), slices=2), _kept_alone(a, b, c)
+    )
+
+    assert _sets(result) == sorted([_set_of(a, b), _set_of(a, c)])
+
+
+def test_annotations_on_different_frames_are_shown_with_those_on_every_frame():
+    a, b, c = _parts(1.0, 1.0, 1.0)
+    shown = [_on(a, 0, frames=[1]), _on(b, 0, frames=[2]), _on(c, 0)]
+
+    _, result = _transformed(_presentation_state(*shown), _kept_alone(a, b, c))
+
+    # Frame 1 shows a and c, frame 2 b and c, and any other frame c alone.
+    assert _sets(result) == sorted([_set_of(a, c), _set_of(b, c)])
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.3-01")
+def test_annotations_whose_images_are_not_known_are_held_as_not_drawn():
+    a, b = _parts(1.0, 1.0)
+    _on(b, 0)
+    del b.ReferencedImageSequence[0].ReferencedSOPInstanceUID
+    reviewed = _kept_alone(a, b)
+    reviewed.record(_set_of(a, b), Review.KEEP)
+
+    _, result = _transformed(_presentation_state(a, b), reviewed)
+
+    assert isinstance(result.evidence, HeldEvidence)
+    assert {each.reason for each in getattr(result.evidence, "held")} >= {
+        Held.NOT_DRAWN
+    }
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.3-01")
+def test_a_set_removed_on_one_image_leaves_the_others_to_be_decided_again():
+    a, b, c = _parts(1.0, 1.0, 1.0)
+    shown = [_on(a, 0), _on(b, 0, 1), _on(c, 1)]
+    reviewed = _kept_alone(a, b, c)
+    reviewed.record(_set_of(a, b), Review.REMOVE)
+    reviewed.record(_set_of(b, c), Review.KEEP)
+
+    _, result = _transformed(_presentation_state(*shown, slices=2), reviewed)
+
+    # Removing a and b leaves c alone on the second slice, so it is written.
+    assert isinstance(result, run.Transformed), result
+    assert not isinstance(result.evidence, HeldEvidence)
+    written = pydicom.dcmread(io.BytesIO(result.data))
+    assert len(written.GraphicAnnotationSequence) == 1
+    assert _sets(result) == []
 
 
 @pytest.mark.deid_requirement("PS3.15-E.3.3-01")

@@ -1963,7 +1963,7 @@ class InstanceTransform:
         the others; one whose text echoes one of the identifiers that the
         edits collected is held, so that its instance is not released, and
         the annotations are decided on together again (D-062). The material
-        of the annotations together, if any, is last.
+        of each set of annotations shown together, if any, is last.
         """
         assert self._annotations is not None
         identifiers = identifiers_of(edits)
@@ -1987,12 +1987,13 @@ class InstanceTransform:
             results,
             self._annotations,
             plan.layers,
+            plan.images,
         )
         found = tuple(
             dataclasses.replace(material, result=result)
             for material, result in zip(each, results)
         )
-        return found if as_one is None else (*found, as_one)
+        return (*found, *as_one)
 
     def _kept_descriptors(
         self, plan: InstancePlan, edits: InstanceEdits

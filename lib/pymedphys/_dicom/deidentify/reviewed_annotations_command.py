@@ -27,8 +27,9 @@ reviewed-names command reads its own (:mod:`.reviewed_names_command`), with
 these columns:
 
 - ``digest``: the annotation's digest, 64 lowercase hexadecimal digits, as
-  the QC pack gives it, or the digest of an instance's annotations
-  together, as the QC pack gives it beside their drawing as one;
+  the QC pack gives it, or the digest of a set of an instance's annotations
+  shown together on one frame of one image, as the QC pack gives it beside
+  their drawing as one;
 - ``decision``: ``keep``, to write the annotation as it was received but
   for its UIDs, or ``remove``, to remove it with everything in it; for
   annotations together, ``keep`` lets those that the list keeps be written
