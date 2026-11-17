@@ -259,7 +259,9 @@ status = "implemented"
 decisions = ["D-003", "D-004", "D-005", "D-006", "D-007", "D-008", "D-012", "D-013", "D-016", "D-020", "D-021", "D-022", "D-023", "D-025", "D-026", "D-027"]
 implementation = [
   "_dicom/deidentify/conformance.py",
+  "_dicom/deidentify/conformance_items.py",
   "_dicom/deidentify/conformance_markdown.py",
+  "_dicom/deidentify/conformance_prose.py",
   "_dicom/deidentify/conformance_values.py",
   "_dicom/deidentify/run_report.py",
 ]
@@ -1298,6 +1300,8 @@ status = "implemented"
 decisions = ["D-009", "D-011", "D-012", "D-016", "D-024", "D-026", "D-027", "D-029"]
 implementation = [
   "_dicom/deidentify/conformance.py",
+  "_dicom/deidentify/conformance_items.py",
+  "_dicom/deidentify/conformance_prose.py",
   "_dicom/deidentify/conformance_values.py",
   "_dicom/deidentify/markers.py",
   "_dicom/deidentify/method_digest.py",

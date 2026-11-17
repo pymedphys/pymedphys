@@ -45,9 +45,9 @@ from .conformance import (
     AttributeAction,
     ConformanceStatement,
 )
-from .conformance_values import code as _code
+from .conformance_prose import code as _code
 from .conformance_safe_private import safe_private_section
-from .conformance_values import join as _join
+from .conformance_prose import join as _join
 from .markers import PROFILE_CODE
 from .policy import CLEAN_PIXEL_DATA, CLEAN_STRUCTURED_CONTENT, ENGINE_OPTIONS, UIDS
 from .reviewed_descriptors import CLEAN_DESCRIPTORS
