@@ -45,6 +45,7 @@ from typing import TypeGuard
 
 from pymedphys._imports import tomlkit
 
+from . import attribution
 from .standard import _checked_rows, _default, _read
 
 SCHEMA = "pymedphys-deid-requirements/2"
@@ -492,9 +493,12 @@ def load_requirements(
     edition = document.get("edition")
     if not _is_text(edition):
         raise RequirementsError(f"{path.name} does not name its edition as text")
-    acknowledgement = f"DICOM PS3.15 {edition}, © NEMA"
+    acknowledgement = attribution.acknowledgement("PS3.15", edition)
     if document.get("acknowledgement") != acknowledgement:
         raise RequirementsError(f"{path.name} lacks the copyright acknowledgement")
+    lacking = attribution.missing(document)
+    if lacking is not None:
+        raise RequirementsError(f"{path.name} lacks {lacking}")
     midi_report = document.get("midi_report")
     if not _is_text(midi_report):
         raise RequirementsError(f"{path.name} does not cite the MIDI report")

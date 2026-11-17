@@ -2,8 +2,10 @@ name: DICOM Edition Check
 
 # Each month, generate the de-identification tables from NEMA's current edition
 # of the DICOM standard and compare them with the committed tables, which are
-# generated from the pinned edition. When a table would change, or a page cannot
-# be fetched or parsed, open or update one issue.
+# generated from the pinned edition. When the current edition is a new one, a
+# table would change, or a page cannot be fetched or parsed, open or update one
+# issue. Each table names its edition in its attribution, so a new edition needs
+# the tables regenerated even when no row changes.
 on:
   schedule:
     - cron: '23 4 3 * *'  # The 3rd of each month; staggered to avoid top-of-hour congestion
@@ -37,8 +39,9 @@ jobs:
         with:
           extras: 'user'
 
-      # The command exits with 0 when no table would change, 1 when one would,
-      # and 3 when a page could not be fetched or a table generated. Its JSON
+      # The command exits with 0 when no table would change, 1 when one would
+      # or the pages name a new edition, and 3 when a page could not be fetched
+      # or a table generated. Its JSON
       # report says which; a run that stops before writing it has failed.
       - name: Compare the tables generated from the current edition
         id: check
@@ -83,7 +86,7 @@ jobs:
         run: |
           title="DICOM edition check: the de-identification tables need attention"
           if [[ "${STATUS}" == "changed" ]]; then
-            summary="Generating the de-identification tables from NEMA's current edition of the DICOM standard would change the tables on \`${REF_NAME}\`."
+            summary="NEMA's current edition of the DICOM standard is a new edition, or generating the de-identification tables from it would change the tables on \`${REF_NAME}\`. Each table names its edition in its attribution, so a new edition needs the tables regenerated even when no row changes."
           else
             summary="The edition check on \`${REF_NAME}\` could not fetch a page of NEMA's current edition of the DICOM standard, could not generate a table from it (as also happens when the pin's named corrections or its list of IODs with Functional Group Macros no longer match the new edition), or did not finish."
           fi
@@ -97,7 +100,7 @@ jobs:
             echo
             echo "Run: ${RUN_URL}"
             echo
-            echo "To move to the new edition, update the pin in \`lib/pymedphys/_dev/deid_tables/generate.py\`, listing every page of Annex E, regenerate the tables with \`pymedphys dev deid-tables\`, and bring the requirements register's PS3.15 entries into line with the regenerated Annex E paragraphs, which its tests compare, as the de-identification design describes."
+            echo "To move to the new edition, follow \`lib/pymedphys/docs/contrib/info/deidentification-dicom-tables.md\`: update the pin in \`lib/pymedphys/_dev/deid_tables/generate.py\`, listing every page of Annex E, regenerate the tables and their notice file with \`pymedphys dev deid-tables\`, move the hand-written rule files, the README, and the user guide to the new edition, and bring the requirements register's PS3.15 entries into line with the regenerated Annex E paragraphs, which its tests compare."
           } > "${body}"
           number=$(gh issue list --state open --search "\"${title}\" in:title" \
             --json number,title --jq "map(select(.title == \"${title}\")) | first | .number // empty")
