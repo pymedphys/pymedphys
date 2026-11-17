@@ -326,7 +326,7 @@ def test_the_transform_gives_the_runs_digest_in_its_evidence():
 
     assert isinstance(result, run.Transformed)
     assert isinstance(result.evidence, Coverage)
-    assert result.evidence.method_digest == digest
+    assert getattr(result.evidence, "method_digest") == digest
     written = pydicom.dcmread(pydicom.filebase.DicomBytesIO(result.data))
     assert list(written.DeidentificationMethod)[0] == digest
 
