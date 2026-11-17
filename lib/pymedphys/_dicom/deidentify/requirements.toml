@@ -6,6 +6,8 @@
 schema = "pymedphys-deid-requirements/2"
 edition = "2026d"
 acknowledgement = "DICOM PS3.15 2026d, © NEMA"
+link = "https://www.dicomstandard.org/"
+notice = "DICOM® is the registered trademark of the National Electrical Manufacturers Association (NEMA) for its standards publications relating to digital communications of medical information. NEMA does not endorse, sponsor, or certify PyMedPhys."
 midi_report = "Clunie DA et al., Report of the Medical Image De-Identification (MIDI) Task Group: Best Practices and Recommendations, 7 February 2025, arXiv:2303.10473"
 
 [[requirement]]
