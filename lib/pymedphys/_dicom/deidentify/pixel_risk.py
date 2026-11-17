@@ -732,6 +732,9 @@ HEAD_AND_NECK_REGIONS_PATH = (
     pathlib.Path(__file__).resolve().parent / "head_and_neck_regions.toml"
 )
 _REGIONS_SCHEMA = "pymedphys-deid-head-and-neck-regions/1"
+_REGIONS_TOP_LEVEL_FIELDS = frozenset(
+    {"schema", "edition", "acknowledgement", "link", "notice", "region"}
+)
 _REGION_FIELDS = {"meaning", "sct"}
 # The image Storage SOP Classes of CT, MR, and PET, and RT Dose Storage
 # (PS3.4 Table B.5-1), each with the indicator of its volume and whether its
@@ -846,23 +849,30 @@ class HeadAndNeckRegions:
     codes: frozenset[tuple[str, str]]
 
 
+def _is_regions_document(data: dict[str, object]) -> bool:
+    """Whether a regions file has the schema, an edition, that edition's
+    PS3.16 attribution, and no other top-level fields."""
+    edition = data.get("edition")
+    if data.get("schema") != _REGIONS_SCHEMA or not isinstance(edition, str):
+        return False
+    if data.get("acknowledgement") != attribution.acknowledgement("PS3.16", edition):
+        return False
+    return (
+        attribution.missing(data) is None
+        and set(data) == _REGIONS_TOP_LEVEL_FIELDS
+        and isinstance(data["region"], list)
+    )
+
+
 @functools.lru_cache(maxsize=None)
 def _load_regions(path: pathlib.Path) -> HeadAndNeckRegions:
     try:
         data = tomllib.loads(path.read_text(encoding="utf-8"))
     except (OSError, UnicodeDecodeError, tomllib.TOMLDecodeError):
         raise ValueError(f"{path.name} cannot be read") from None
-    edition = data.get("edition")
-    if (
-        data.get("schema") != _REGIONS_SCHEMA
-        or not isinstance(edition, str)
-        or data.get("acknowledgement") != attribution.acknowledgement("PS3.16", edition)
-        or attribution.missing(data) is not None
-        or set(data)
-        != {"schema", "edition", "acknowledgement", "link", "notice", "region"}
-        or not isinstance(data["region"], list)
-    ):
+    if not _is_regions_document(data):
         raise ValueError(f"{path.name} is not a list of head and neck regions")
+    edition = data["edition"]
     if edition != load_data_dictionary().edition:
         raise ValueError(f"{path.name} is not of the pinned edition")
     body_parts: set[str] = set()
