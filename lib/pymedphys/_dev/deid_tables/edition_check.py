@@ -18,8 +18,10 @@
 pinned pages from NEMA's unpinned ``current/`` directory, generates each
 table from them with the same parsers and the pin's corrections, and compares
 the digest of the table's rows with the one recorded in the committed table.
-It never writes the tables, and its report names tables, pages, editions, and
-types of error, never the pages' text.
+A page that names an edition other than the pinned one also needs the tables
+regenerated, even if no row changes, since each table names the edition it is
+generated from in its attribution. It never writes the tables, and its report
+names tables, pages, editions, and types of error, never the pages' text.
 """
 
 from __future__ import annotations
@@ -41,8 +43,8 @@ from pymedphys._data.download import download_with_progress
 from . import generate
 from .generate import _OUTPUTS, _SOURCE_URLS, Pin
 
-# The exit status for each result. A table that would change gives 1, as a
-# table that differs does for --check.
+# The exit status for each result. A table that would change, or a new
+# edition, gives 1, as a table that differs does for --check.
 EXIT_STATUS = {"unchanged": 0, "changed": 1, "failed": 3}
 
 # Each chtml page names its edition in its release information, and each
@@ -124,11 +126,31 @@ class EditionCheck:
     failed_tables: dict[str, TableFailure]
 
     @property
+    def new_editions(self) -> tuple[str, ...]:
+        """The editions other than the pinned one that the fetched pages name."""
+        return tuple(
+            sorted(
+                {
+                    edition
+                    for edition in self.editions.values()
+                    if edition is not None and edition != self.pinned_edition
+                }
+            )
+        )
+
+    @property
     def status(self) -> str:
-        """``"failed"``, ``"changed"``, or ``"unchanged"``, in that precedence."""
+        """``"failed"``, ``"changed"``, or ``"unchanged"``, in that precedence.
+
+        The tables are ``"changed"`` when a table's rows would change, or when
+        a page names a new edition, since every table names its edition in
+        its attribution, so must be regenerated for each new edition.
+        """
         if self.unfetched_pages or self.failed_tables:
             return "failed"
-        return "changed" if self.changed_tables else "unchanged"
+        if self.changed_tables or self.new_editions:
+            return "changed"
+        return "unchanged"
 
 
 def _error(error: BaseException) -> str:
@@ -243,6 +265,10 @@ def report_lines(result: EditionCheck) -> list[str]:
         f"Edition the current pages name: {', '.join(editions) or 'none'}",
     ]
     sections = (
+        (
+            "New editions, for which every table must be regenerated",
+            result.new_editions,
+        ),
         ("Pages that differ from the pin", result.changed_pages),
         (
             "Pages that could not be fetched",
@@ -283,20 +309,26 @@ def run(
         Read the pages from this directory, laid out as ``output/``, instead
         of downloading them from NEMA's ``current/``.
     json_path : pathlib.Path, optional
-        Also write the result here as JSON, with its ``status``.
+        Also write the result here as JSON, with its ``status`` and
+        ``new_editions``.
 
     Returns
     -------
     int
-        0 when no table would change; 1 when a table would change; 3 when a
-        page could not be fetched or a table could not be generated, whether
-        or not another table would change.
+        0 when no table would change; 1 when a table would change, or a page
+        names an edition other than the pinned one; 3 when a page could not
+        be fetched or a table could not be generated, whether or not another
+        table would change.
     """
     fetch = download_current if source_dir is None else _reader(source_dir)
     result = check_current(pin, tables_dir, fetch)
     print("\n".join(report_lines(result)))
     if json_path is not None:
-        document = {"status": result.status, **dataclasses.asdict(result)}
+        document = {
+            "status": result.status,
+            "new_editions": list(result.new_editions),
+            **dataclasses.asdict(result),
+        }
         json_path.write_text(json.dumps(document, indent=1) + "\n", encoding="utf-8")
     return EXIT_STATUS[result.status]
 

@@ -17,8 +17,9 @@
 ``pymedphys dev deid-tables`` generates the tables in ``_standard/`` from the
 pinned edition of DICOM PS3.15 and PS3.6. They are
 never edited by hand, so a table whose rows do not match its recorded digest
-is rejected. Each table carries the copyright attribution of its part, such as
-"DICOM PS3.15 <edition>, © NEMA".
+is rejected. Each table carries the attribution of its part and edition,
+such as "DICOM PS3.15 <edition>, © NEMA", with a link to the DICOM Standard
+and NEMA's trademark notice (:mod:`.attribution`).
 """
 
 from __future__ import annotations
@@ -31,6 +32,8 @@ import pathlib
 import re
 import types
 from collections.abc import Callable, Hashable, Mapping, Sequence
+
+from . import attribution
 
 SCHEMA = "pymedphys-deid-table/1"
 
@@ -433,8 +436,11 @@ def _read(path: pathlib.Path, table: str) -> dict:
     if not isinstance(edition, str) or not edition:
         raise StandardTableError(f"{path.name} does not name its edition as text")
     part = table.split(" ", 1)[0]
-    if document.get("acknowledgement") != f"DICOM {part} {edition}, © NEMA":
+    if document.get("acknowledgement") != attribution.acknowledgement(part, edition):
         raise StandardTableError(f"{path.name} lacks the copyright acknowledgement")
+    lacking = attribution.missing(document)
+    if lacking is not None:
+        raise StandardTableError(f"{path.name} lacks {lacking}")
     rows = document.get("rows")
     if not isinstance(rows, list) or not rows:
         raise StandardTableError(f"{path.name} has no rows")
