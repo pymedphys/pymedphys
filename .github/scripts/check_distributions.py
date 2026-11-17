@@ -88,6 +88,7 @@ EXPECTED_LICENCE_FILES = frozenset(
         "lib/pymedphys/_pinnacle/LICENSE-MIT",
         "lib/pymedphys/_dicom/deidentify/_tcia/LICENSE-CC-BY-3.0.txt",
         "lib/pymedphys/_dicom/deidentify/_loinc/LICENSE-LOINC.txt",
+        "lib/pymedphys/_dicom/deidentify/_standard/NOTICE-DICOM.txt",
     )
 )
 # pymedphys.cli imports every command module, as the console script does.

@@ -107,7 +107,7 @@ kernels = [
 name = "Modalities, acquisitions, and series"
 basis = "Names of modalities, acquisition kinds, and series roles that scanners and protocols write."
 words = [
-  "ACQ", "ACQUISITION", "ANGIO", "ANGIOGRAPHY", "CBCT", "CONEBEAM", "CT", "CTA",
+  "ACQ", "ACQUISITION", "ANGIO", "ANGIOGRAM", "ANGIOGRAPHY", "CBCT", "CONEBEAM", "CT", "CTA",
   "CTP", "CTV", "DE", "DECT", "DUAL", "ENERGY", "FLUORO", "FUSED", "FUSION", "HYBRID",
   "IMAGE", "IMAGES", "IMG", "MR", "MRA", "MRI", "MRS", "MRV", "MULTIENERGY", "NM", "PET",
   "PETCT", "PETMR", "PERFUSION", "PROTOCOL", "RECON", "RECONSTRUCTION", "RECONS", "SCAN",
@@ -159,6 +159,7 @@ words = [
   "DOTAREM", "CLARISCAN", "PROHANCE", "MULTIHANCE", "PRIMOVIST", "EOVIST", "MAGNEVIST",
   "OMNISCAN", "ELUCIREM", "VUEWAY", "SONOVUE", "LUMASON", "DEFINITY", "OPTISON", "MG", "ML",
   "MGI", "MGIML", "CC",
+  "WWO", # With and without contrast, as procedure names write a two-phase examination.
 ]
 
 [[group]]
@@ -319,6 +320,7 @@ words = [
   "BY", "OF", "THE", "FOR", "FROM", "TO", "AT", "ON", "IN", "AS", "PER", "VS", "X",
   "NONE", "OTHER", "UNKNOWN", "ALL", "ONLY", "ONE", "TWO", "THREE", "SINGLE", "MULTI",
   "MULTIPLE", "SERIES", "IMAGE", "IMAGES",
+  "CAD", # Computer-aided detection, as in DICOM's Mammography CAD SR and Chest CAD SR.
 ]
 
 # Common personal names kept in the vocabulary, each with the reason it is
