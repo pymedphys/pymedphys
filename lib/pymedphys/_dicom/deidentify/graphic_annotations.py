@@ -342,7 +342,9 @@ def kept_as_one(
         reviewed,
         drawn=undrawn_together(chosen, layers) == 0,
     )
-    assert digest is not None and decided is not None
+    if digest is None or decided is None:
+        # Not reached: review_together decides on two or more shown.
+        return results, None
     material = AnnotationMaterial(
         ElementPath((), GRAPHIC_ANNOTATION_SEQUENCE),
         digest,
