@@ -27,7 +27,7 @@ from pymedphys._imports import pytest, tomlkit
 
 from pymedphys import conftest
 from pymedphys._dev.deid_tables import generate
-from pymedphys._dicom.deidentify import requirements, standard
+from pymedphys._dicom.deidentify import attribution, requirements, standard
 from pymedphys._root import LIBRARY_ROOT
 
 PARAGRAPHS = standard.STANDARD_DIR / requirements.PARAGRAPHS_FILE
@@ -49,7 +49,7 @@ URL = (
 VALID = {
     "schema": "pymedphys-deid-requirements/2",
     "edition": "2026d",
-    "acknowledgement": "DICOM PS3.15 2026d, © NEMA",
+    **attribution.fields("PS3.15", "2026d"),
     "midi_report": "Clunie DA et al., MIDI Task Group report",
     "requirement": [
         {
@@ -616,6 +616,8 @@ def test_text_keeps_its_lines_without_surrounding_whitespace(tmp_path):
         ({"edition": ""}, "does not name its edition as text"),
         ({"edition": 2026}, "does not name its edition as text"),
         ({"acknowledgement": "© NEMA"}, "lacks the copyright acknowledgement"),
+        ({"link": "https://dicom.nema.org/"}, "lacks the link to the DICOM Standard"),
+        ({"notice": "DICOM"}, "lacks NEMA's trademark notice"),
         ({"midi_report": ""}, "does not cite the MIDI report"),
         ({"requirement": []}, "has no requirements"),
         ({"requirement": "none"}, "has no requirements"),
