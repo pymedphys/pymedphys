@@ -76,6 +76,12 @@ These apply to `pymedphys.experimental.pseudonymisation`, the `pymedphys experim
 
 Neither current tool will be deprecated until its replacement and migration guidance are released. Until then, their limitations are stated without deprecating them, and they are changed only to stop them disclosing identifying information or to prevent harm to data; other defects are listed above rather than fixed. Experimental pseudonymisation's library functions emit a `PseudonymisationLimitationWarning`, its command prints a notice on standard error, and its app shows a banner. `pymedphys.dicom.anonymise` emits an `AnonymisationLimitationWarning`, and `pymedphys dicom anonymise` prints the same notice on standard error. Once a replacement is released, each current tool will remain for at least one full minor release with deprecation warnings before removal. If the replacement is not delivered, both remain available with their documented limitations.
 
+## DICOM Standard attribution
+
+The planned replacement applies DICOM PS3.15 Annex E using tables generated from the DICOM Standard, edition 2026d: DICOM PS3.3 2026d, © NEMA; DICOM PS3.4 2026d, © NEMA; DICOM PS3.6 2026d, © NEMA; DICOM PS3.15 2026d, © NEMA; and DICOM PS3.16 2026d, © NEMA. Its rule files that name attributes and codes from the Standard carry the same attribution. The National Electrical Manufacturers Association (NEMA) publishes the DICOM Standard at <https://www.dicomstandard.org/>. The tables were extracted automatically from the published DICOM Standard and may contain errors. The published Standard is authoritative. PyMedPhys regenerates the tables for each new edition of the DICOM Standard.
+
+PyMedPhys is an independent open-source project. DICOM® is the registered trademark of the National Electrical Manufacturers Association (NEMA) for its standards publications relating to digital communications of medical information. NEMA does not endorse, sponsor, or certify PyMedPhys.
+
 ## Further reading
 
 - DICOM PS3.15 Annex E, [Attribute Confidentiality Profiles](https://dicom.nema.org/medical/dicom/current/output/chtml/part15/chapter_E.html).
