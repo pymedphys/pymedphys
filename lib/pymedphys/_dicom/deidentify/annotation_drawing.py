@@ -31,7 +31,11 @@ document with no script, style sheet, or external reference:
   with its tick labels, which its text values also list;
 - each text object of Text Object Sequence (0070,0008) as its text, at the
   top left corner of its bounding box or, without one, at its anchor
-  point, with a line from the box to its anchor point where it has both;
+  point, with a line from the box to its anchor point where it has both
+  and its Anchor Point Visibility (0070,0015) is not N, since a display
+  then shows no link to the anchor point (PS3.3 C.10.5.1.1); one whose
+  visibility is neither Y nor N is drawn with the line and counted as not
+  drawn whole;
 - each closed graphic object or compound graphic that Graphic Filled
   (0070,0024) fills, shaded, and, where the Fill Mode (0070,0257) of its
   Fill Style Sequence (0070,0233) is STIPPELED, its Fill Pattern
@@ -75,7 +79,12 @@ Annotation units are PIXEL, in the image's pixels, or DISPLAY, in
 fractions of the displayed area (C.10.5.1.1). Without the image, the two
 cannot be put in one frame, so the drawing has a panel for each units
 that the item uses: pixel units in a frame around what they draw, and
-display units in the displayed area, 1000 units a side. Graphic Data that
+display units in the displayed area, 1000 units a side. A display draws
+both on the one image, so objects in both, such as pixel-unit strokes and
+display-unit strokes that spell a name together, are not shown as a
+display shows them: each object placed in units other than the item's
+first object's, and each text object whose bounding box and anchor point
+are in different units, is counted as not drawn whole. Graphic Data that
 is not two-dimensional, cannot be read, or holds a value that is not
 finite, a fill whose mode or pattern cannot be read, and a line style
 other than SOLID or a uniform DASHED one, are left out and counted in the
@@ -375,9 +384,14 @@ def _text_object(drawing: _Drawing, text: pydicom.Dataset) -> None:
         if corner:
             box_panel.points.append(_scaled(units, corner)[0])
         if anchor and anchor_panel is box_panel:
+            visibility = str(text.get("AnchorPointVisibility", "") or "").strip()
             point = _scaled(units, anchor)[0]
-            box_panel.shapes.append(_polyline([top_left, point], dashed=True))
             box_panel.points.append(point)
+            if visibility != "N":
+                box_panel.shapes.append(_polyline([top_left, point], dashed=True))
+            if visibility not in ("Y", "N"):
+                # Whether a display shows the anchor is not known.
+                drawing.skipped += 1
     elif anchor and anchor_panel is not None:
         point = _scaled(str(text.AnchorPointAnnotationUnits), anchor)[0]
         anchor_panel.shapes.append(_text(value, point))
@@ -435,8 +449,54 @@ def _unlike(appearances: Sequence[tuple]) -> int:
     return sum(each != appearances[0] for each in appearances[1:])
 
 
+def _placed(dataset: pydicom.Dataset, keywords: Sequence[tuple[str, str]]) -> tuple:
+    """Return the units, PIXEL or DISPLAY, that an object is placed in.
+
+    ``keywords`` pairs each element that places the object with the element
+    that gives its units; an element that is absent places nothing, and
+    units that the drawing cannot draw are counted where it draws.
+    """
+    return tuple(
+        units
+        for where, keyword in keywords
+        if dataset.get(where) is not None
+        and (units := dataset.get(keyword)) in (PIXEL, DISPLAY)
+    )
+
+
+_PLACING = {
+    "GraphicObjectSequence": (("GraphicData", "GraphicAnnotationUnits"),),
+    "CompoundGraphicSequence": (("GraphicData", "CompoundGraphicUnits"),),
+    "TextObjectSequence": (
+        ("BoundingBoxTopLeftHandCorner", "BoundingBoxAnnotationUnits"),
+        ("AnchorPoint", "AnchorPointAnnotationUnits"),
+    ),
+}
+
+
+def _unregistered(item: pydicom.Dataset) -> int:
+    """Return how many objects are placed in units other than the first's.
+
+    Pixel and display units cannot be put in one frame without the image
+    and its displayed area, so they are drawn in panels of their own, and
+    strokes split between them, each a fragment, can spell a name that a
+    display shows on the one image. Each object placed in units other than
+    those that the item's first object is first placed in, including a text
+    object whose bounding box and anchor point are in different units, is
+    counted.
+    """
+    placed = [
+        _placed(each, keywords)
+        for keyword, keywords in _PLACING.items()
+        for each in item.get(keyword) or ()
+    ]
+    first = next((units[0] for units in placed if units), None)
+    return sum(any(units != first for units in each) for each in placed)
+
+
 def _draw(item: pydicom.Dataset) -> _Drawing:
     drawing = _Drawing()
+    drawing.skipped += _unregistered(item)
     drawing.skipped += _unlike(
         [
             _style(graphic)
@@ -499,7 +559,8 @@ def undrawn_together(
     The drawing draws every object in one colour and opacity, whatever its
     annotation or layer, so as well as what it leaves out of each
     annotation (:func:`undrawn_objects`), each object that looks different
-    from the first of its kind among all of them, and each annotation on a
+    from the first of its kind among all of them, or is placed in units
+    other than the first object's, and each annotation on a
     layer that shows differently from the first annotation's, is counted:
     strokes split across annotations, in different styles or layers, can
     spell a name that the drawing hides.

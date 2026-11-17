@@ -42,6 +42,7 @@ from pymedphys._dicom.deidentify import (
 )
 from pymedphys._dicom.deidentify.annotation_drawing import (
     draw_annotation,
+    together,
     undrawn_objects,
 )
 from pymedphys._dicom.deidentify.file_layout import ElementPath
@@ -115,13 +116,13 @@ def _arrow():
     )
 
 
-def _ruler(text=RULER_TEXT):
+def _ruler(text=RULER_TEXT, units="DISPLAY"):
     """An annotation of a measurement, whose label stands in for a name."""
     return synthetic.item(
         GraphicLayer="LAYER",
         TextObjectSequence=[
             synthetic.item(
-                AnchorPointAnnotationUnits="DISPLAY",
+                AnchorPointAnnotationUnits=units,
                 AnchorPoint=[0.5, 0.5],
                 AnchorPointVisibility="N",
                 UnformattedTextValue=text,
@@ -449,7 +450,10 @@ def test_a_presentation_state_whose_annotations_are_all_removed_is_sequestered()
 def test_an_annotation_without_a_decision_holds_its_instance_for_review():
     reviewed = _reviewed(arrow=(annotation_digest(_arrow()), Review.KEEP))
 
-    transform, result = _transformed(_presentation_state(_arrow(), _ruler()), reviewed)
+    # The ruler in the arrow's units, so that the two are drawn as one.
+    transform, result = _transformed(
+        _presentation_state(_arrow(), _ruler(units="PIXEL")), reviewed
+    )
 
     assert isinstance(result, run.Transformed), result
     assert isinstance(result.evidence, HeldEvidence)
@@ -473,12 +477,12 @@ def test_an_annotation_without_a_decision_holds_its_instance_for_review():
     ]
     assert [each.texts for each in held] == [
         annotation_texts(_arrow()),
-        annotation_texts(_ruler()),
+        annotation_texts(_ruler(units="PIXEL")),
     ]
     assert "SENTINEL" not in repr(held)
     assert {pending.digest for pending in transform.annotation_queue.entries()} == {
         annotation_digest(_arrow()),
-        annotation_digest(_ruler()),
+        annotation_digest(_ruler(units="PIXEL")),
     }
 
 
@@ -965,6 +969,153 @@ def test_annotations_unlike_one_another_are_held_whatever_the_list_decides(
     }
 
 
+def _strokes(units, segments):
+    """An annotation of polylines, each a segment, all in ``units``."""
+    return synthetic.item(
+        GraphicLayer="LAYER",
+        GraphicObjectSequence=[
+            synthetic.item(
+                GraphicAnnotationUnits=units,
+                GraphicDimensions=2,
+                NumberOfGraphicPoints=2,
+                GraphicData=list(segment),
+                GraphicType="POLYLINE",
+                GraphicFilled="N",
+            )
+            for segment in segments
+        ],
+    )
+
+
+# Strokes of "HI" on a 128 by 128 displayed area: the verticals in pixels,
+# the crossbar and serifs as fractions of the displayed area.
+VERTICALS = (
+    (16.0, 32.0, 16.0, 96.0),
+    (48.0, 32.0, 48.0, 96.0),
+    (96.0, 32.0, 96.0, 96.0),
+)
+CROSSBARS = (
+    (0.125, 0.5, 0.375, 0.5),
+    (0.6875, 0.25, 0.8125, 0.25),
+    (0.6875, 0.75, 0.8125, 0.75),
+)
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.3-01")
+@pytest.mark.parametrize("split", [False, True])
+def test_strokes_in_pixel_and_display_units_are_held(split):
+    # Each panel shows fragments; only a display, on the one image, shows
+    # what the strokes spell together.
+    if split:
+        annotations = [
+            _strokes("PIXEL", VERTICALS),
+            _strokes("DISPLAY", CROSSBARS),
+        ]
+    else:
+        whole = _strokes("PIXEL", VERTICALS)
+        whole.GraphicObjectSequence.extend(
+            _strokes("DISPLAY", CROSSBARS).GraphicObjectSequence
+        )
+        annotations = [whole]
+    reviewed = _kept_alone(*annotations)
+    if split:
+        reviewed.record(
+            together_digest([annotation_digest(each) for each in annotations]),
+            Review.KEEP,
+        )
+
+    _, result = _transformed(_presentation_state(*annotations), reviewed)
+
+    assert isinstance(result.evidence, HeldEvidence)
+    assert {each.reason for each in getattr(result.evidence, "held")} == {
+        Held.NOT_DRAWN
+    }
+    assert undrawn_objects(together(annotations)) == 3
+    assert undrawn_objects(_strokes("PIXEL", VERTICALS)) == 0
+    assert undrawn_objects(_strokes("DISPLAY", CROSSBARS)) == 0
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.3-01")
+def test_strokes_in_one_units_kept_together_are_written():
+    annotations = [_strokes("PIXEL", VERTICALS), _strokes("PIXEL", VERTICALS[:1])]
+    reviewed = _kept_alone(*annotations)
+    reviewed.record(
+        together_digest([annotation_digest(each) for each in annotations]),
+        Review.KEEP,
+    )
+
+    _, result = _transformed(_presentation_state(*annotations), reviewed)
+
+    assert isinstance(result, run.Transformed), result
+    assert not isinstance(result.evidence, HeldEvidence)
+
+
+def test_a_text_whose_box_and_anchor_are_in_different_units_is_not_drawn_whole():
+    text = _arrow()
+    text.GraphicObjectSequence = []
+    text.TextObjectSequence[0].AnchorPointAnnotationUnits = "DISPLAY"
+    text.TextObjectSequence[0].AnchorPoint = [0.5, 0.5]
+
+    assert undrawn_objects(text) == 1
+
+
+def _dots(visibilities):
+    """An annotation of identical labels, one per visibility, each anchored."""
+    return synthetic.item(
+        GraphicLayer="LAYER",
+        TextObjectSequence=[
+            synthetic.item(
+                BoundingBoxAnnotationUnits="PIXEL",
+                BoundingBoxTopLeftHandCorner=[10.0, 10.0],
+                BoundingBoxBottomRightHandCorner=[20.0, 20.0],
+                BoundingBoxTextHorizontalJustification="LEFT",
+                AnchorPointAnnotationUnits="PIXEL",
+                AnchorPoint=[float(30 + 4 * index), 50.0],
+                AnchorPointVisibility=visibility,
+                UnformattedTextValue=".",
+            )
+            for index, visibility in enumerate(visibilities)
+        ],
+    )
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.3-01")
+def test_the_drawing_shows_which_anchors_a_display_shows():
+    # Leaders to visible anchors only, so their pattern is what is drawn.
+    pattern = "YN" * 20
+    drawn = draw_annotation(_dots(pattern))
+
+    assert drawn != draw_annotation(_dots("Y" * 40))
+    assert drawn.count("<polyline") == pattern.count("Y")
+    assert draw_annotation(_dots("N" * 40)).count("<polyline") == 0
+    assert undrawn_objects(_dots(pattern)) == 0
+
+
+def test_an_anchor_of_unknown_visibility_is_not_drawn_whole():
+    dots = _dots("Y" * 3)
+    del dots.TextObjectSequence[1].AnchorPointVisibility
+
+    assert undrawn_objects(dots) == 1
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.3-01")
+def test_labels_with_visible_and_hidden_anchors_are_written_as_drawn():
+    pattern = "YN" * 20
+    annotation = _dots(pattern)
+    reviewed = _kept_alone(annotation)
+
+    _, result = _transformed(_presentation_state(annotation), reviewed)
+
+    # The reviewer saw exactly the leaders that a display shows.
+    assert isinstance(result, run.Transformed), result
+    assert not isinstance(result.evidence, HeldEvidence)
+    written = pydicom.dcmread(io.BytesIO(result.data))
+    assert [
+        each.AnchorPointVisibility
+        for each in written.GraphicAnnotationSequence[0].TextObjectSequence
+    ] == list(pattern)
+
+
 def test_a_list_is_taken_only_under_clean_graphics():
     with pytest.raises(PolicyError, match="Clean Graphics|clean graphics"):
         _transformed(
@@ -1011,7 +1162,9 @@ def test_the_lists_digest_binds_the_annotations_list_only_where_given():
 def test_the_release_report_counts_the_annotations_without_their_text():
     reviewed = _reviewed(arrow=(annotation_digest(_arrow()), Review.KEEP))
     _, kept = _transformed(_presentation_state(_arrow()), reviewed)
-    _, held = _transformed(_presentation_state(_arrow(), _ruler()), reviewed)
+    _, held = _transformed(
+        _presentation_state(_arrow(), _ruler(units="PIXEL")), reviewed
+    )
 
     counts = annotation_counts({0: kept.qc, 1: held.qc})
 
