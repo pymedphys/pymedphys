@@ -12,6 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# pylint: disable = too-many-lines
+# It describes every value that the engine writes, each from its own rule.
+
 """Write the sections of the conformance statement on what the engine writes.
 
 :func:`~pymedphys._dicom.deidentify.conformance_markdown.render_markdown`
