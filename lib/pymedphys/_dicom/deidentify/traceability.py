@@ -33,6 +33,7 @@ import re
 import xml.etree.ElementTree as ElementTree  # nosec B405
 from collections.abc import Iterable, Mapping
 
+from . import attribution
 from .requirements import STATUSES, Requirement, RequirementsRegister
 
 SHIPPED_SOURCE = "pymedphys/_dicom/deidentify/requirements.toml"
@@ -446,7 +447,8 @@ def render_markdown(matrix: TraceabilityMatrix) -> str:
         "which records each "
         f"paragraph of DICOM PS3.15 Annex E ({register.edition}) that contains "
         '"shall" and each best practice of the MIDI Task Group report. '
-        f"PS3.15 text is reproduced verbatim from {register.acknowledgement}. "
+        f"PS3.15 text is reproduced verbatim from {register.acknowledgement}, "
+        f"<{attribution.LINK}>. {attribution.NOTICE} "
         f"MIDI report: {register.midi_report}.",
         "",
         results,

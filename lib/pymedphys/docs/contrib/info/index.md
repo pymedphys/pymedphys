@@ -12,6 +12,7 @@ dependency-update-prs
 lazy-imports
 deidentification-design
 deidentification-requirements
+deidentification-dicom-tables
 deidentification-midi-benchmark
 deidentification-dicom-validation
 deidentification-face-validation

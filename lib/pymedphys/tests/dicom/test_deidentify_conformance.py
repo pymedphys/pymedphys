@@ -668,6 +668,13 @@ def test_the_markdown_acknowledges_every_part_of_the_standard_it_quotes(statemen
     text = conformance_markdown.render_markdown(statement_for("basic"))
     for part in ("PS3.3", "PS3.4", "PS3.6", "PS3.15", "PS3.16"):
         assert f"DICOM {part} 2026d, © NEMA" in text
+    assert text.endswith(
+        "\n\nThe DICOM Standard is published at <https://www.dicomstandard.org/>. "
+        "DICOM® is the registered trademark of the National Electrical "
+        "Manufacturers Association (NEMA) for its standards publications relating "
+        "to digital communications of medical information. NEMA does not endorse, "
+        "sponsor, or certify PyMedPhys.\n"
+    )
 
 
 def _section(text, heading):
