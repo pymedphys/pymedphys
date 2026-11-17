@@ -751,6 +751,16 @@ def test_the_statement_names_each_supported_iod_that_lacks_the_attribute():
         "RT Ion Beams Treatment Record",
         "RT Brachy Treatment Record",
         "RT Treatment Summary Record",
+        "Enhanced RT Image",
+        "Enhanced Continuous RT Image",
+        "RT Segment Annotation",
+        "RT Radiation Set",
+        "C-Arm Photon-Electron Radiation",
+        "Tomotherapeutic Radiation",
+        "Robotic-Arm Radiation",
+        "RT Beams Delivery Instruction",
+        "RT Brachy Application Setup Delivery Instruction",
+        "RT Radiation Set Delivery Instruction",
         "MR Spectroscopy",
         "Spatial Registration",
         "Deformable Spatial Registration",
@@ -772,19 +782,35 @@ def test_the_statement_names_each_supported_iod_that_lacks_the_attribute():
         "Spectacle Prescription Report",
         "Macular Grid Thickness and Volume Report",
         "Waveform Annotation SR",
+        "Real World Value Mapping",
+        "Grayscale Softcopy Presentation State",
+        "Color Softcopy Presentation State",
+        "Pseudo-Color Softcopy Presentation State",
+        "Blending Softcopy Presentation State",
+        "XA/XRF Grayscale Softcopy Presentation State",
+        "Variable Modality LUT Softcopy Presentation State",
     }
     assert (
         "which of the supported IODs are RT Plan, RT Structure Set, RT Beams "
         "Treatment Record, RT Ion Plan, RT Ion Beams Treatment Record, RT Brachy "
-        "Treatment Record, RT Treatment Summary Record, MR Spectroscopy, Spatial "
+        "Treatment Record, RT Treatment Summary Record, Enhanced RT Image, "
+        "Enhanced Continuous RT Image, RT Segment Annotation, RT Radiation Set, "
+        "C-Arm Photon-Electron Radiation, Tomotherapeutic Radiation, Robotic-Arm "
+        "Radiation, RT Beams Delivery Instruction, RT Brachy Application Setup "
+        "Delivery Instruction, RT Radiation Set Delivery Instruction, MR "
+        "Spectroscopy, Spatial "
         "Registration, Deformable Spatial Registration, Surface Segmentation, "
         "X-Ray Radiation Dose SR, "
         "Enhanced X-Ray Radiation Dose SR, Radiopharmaceutical Radiation Dose SR, "
         "Patient Radiation Dose SR, Basic Text SR, Enhanced SR, Comprehensive SR, "
         "Comprehensive 3D SR, Extensible SR, Key Object Selection Document, "
         "Mammography CAD SR, Chest CAD SR, Colon CAD SR, Procedure Log, "
-        "Spectacle Prescription Report, Macular Grid Thickness and Volume Report, and "
-        "Waveform Annotation SR."
+        "Spectacle Prescription Report, Macular Grid Thickness and Volume Report, "
+        "Waveform Annotation SR, Real World Value Mapping, Grayscale Softcopy "
+        "Presentation State, Color Softcopy Presentation State, Pseudo-Color "
+        "Softcopy Presentation State, Blending Softcopy Presentation State, "
+        "XA/XRF Grayscale Softcopy Presentation State, and Variable Modality "
+        "LUT Softcopy Presentation State."
     ) in conformance_markdown.render_markdown(
         conformance.conformance_statement(_policy(), vocabulary=None)
     )
@@ -1018,7 +1044,8 @@ _DOSE = ("06-rtdose.dcm", "07-rtdose-review.dcm")
 _STRUCTURE_SET = "04-rtstruct.dcm"
 _DEFORMABLE = "19-registration-deformable.dcm"
 _SURFACE = corpus_module.SURFACE_SEGMENTATION_FILE
-# The instances that cannot show a face.
+# The instances that cannot show a face. The synthetic Encapsulated PDF
+# holds no document, which would sequester it.
 _FACELESS = (
     "05-rtplan.dcm",
     "14-mr-spectroscopy.dcm",
@@ -1028,6 +1055,20 @@ _FACELESS = (
     "48-rt-ion-beams-record.dcm",
     "49-rt-brachy-record.dcm",
     "50-rt-treatment-summary-record.dcm",
+    "52-real-world-value-mapping.dcm",
+    # A Presentation State holds no pixel data, contours, or grids; one with
+    # graphic annotations or an overlay is sequestered under every preset,
+    # and the corpus plants neither.
+    *corpus_module.PRESENTATION_STATE_FILES,
+    "54-encapsulated-pdf.dcm",
+    "70-rt-segment-annotation.dcm",
+    "71-rt-radiation-set.dcm",
+    "72-c-arm-radiation.dcm",
+    "73-tomotherapeutic-radiation.dcm",
+    "74-robotic-arm-radiation.dcm",
+    "75-rt-beams-delivery-instruction.dcm",
+    "76-rt-brachy-delivery-instruction.dcm",
+    "77-rt-radiation-set-delivery-instruction.dcm",
 )
 
 
@@ -1260,8 +1301,9 @@ def test_an_instance_that_cannot_show_a_face_satisfies_the_option(second_run):
         disposition, dataset = outcomes[name]
         assert disposition == "released", name
         assert CODE in _codes(dataset)
-        # None of their IODs defines Recognizable Visual Features, but E.3.2
-        # adds it with the option's code all the same.
+        # None of their IODs but the Encapsulated PDF defines Recognizable
+        # Visual Features, but E.3.2 adds it with the option's code all the
+        # same.
         assert dataset.RecognizableVisualFeatures == "NO"
 
 
@@ -1269,7 +1311,7 @@ def test_the_report_names_the_attested_pack(second_run):
     attestation, _, report, _ = second_run
 
     assert report["face_review"]["reference"] == attestation.reference
-    assert report["format"] == "pymedphys-deid-release-report/54"
+    assert report["format"] == "pymedphys-deid-release-report/68"
 
 
 def test_the_report_counts_the_ct_series_that_were_not_defaced(second_run):

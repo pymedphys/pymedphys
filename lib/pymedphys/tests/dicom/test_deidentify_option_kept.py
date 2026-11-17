@@ -259,15 +259,6 @@ def test_a_removed_date_in_a_date_that_no_option_keeps_still_withholds(options):
 
 
 @pytest.mark.deid_requirement("MIDI-BP-01")
-def test_a_removed_date_inside_a_longer_kept_value_still_withholds():
-    # Acquisition DateTime, which Full Dates keeps, holds the date and a time.
-    written = _written(_element(0x0008002A, "DT", f"{DAY}101500"))
-    condition = _condition(written, [FULL_DATES], (BIRTH_DATE, "DA", DAY))
-
-    assert condition.decision is Decision.WITHHOLD
-
-
-@pytest.mark.deid_requirement("MIDI-BP-01")
 def test_a_kept_date_equal_to_its_own_source_still_withholds():
     written = _written(_element(STUDY_DATE, "DA", DAY))
     condition = _condition(written, [FULL_DATES], ("(0008,0020)", "DA", DAY))
@@ -280,14 +271,28 @@ def test_a_kept_date_equal_to_its_own_source_still_withholds():
 # them in the element, in the widest form it found.
 CALIBRATION_DATETIME = 0x00181203
 ACQUISITION_DATETIME = "(0008,002A)"
+ACQUISITION_DATETIME_TAG = 0x0008002A
 WHOLE = f"{DAY}120000"
 SAME_DAY = f"{DAY}130000"
+TO_THE_HOUR = f"{DAY}12"
 UNRELATED = "20210304120000"
 
 
 @pytest.mark.deid_requirement("MIDI-BP-01")
-@pytest.mark.parametrize("pooled", [(WHOLE,), (WHOLE, UNRELATED), (UNRELATED, WHOLE)])
-def test_a_kept_datetime_equal_to_each_pooled_value_found_is_released(pooled):
+@pytest.mark.parametrize(
+    "pooled",
+    [
+        (WHOLE,),
+        (WHOLE, UNRELATED),
+        (UNRELATED, WHOLE),
+        # Found by its date, which begins the kept datetime.
+        (SAME_DAY,),
+        (WHOLE, SAME_DAY),
+        (SAME_DAY, WHOLE),
+        (SAME_DAY, UNRELATED),
+    ],
+)
+def test_a_kept_datetime_explaining_each_pooled_value_found_is_released(pooled):
     written = _written(_element(CALIBRATION_DATETIME, "DT", WHOLE))
     removed = [(ACQUISITION_DATETIME, "DT", value) for value in pooled]
     condition = _condition(written, [DEVICE_IDENTITY], *removed)
@@ -297,8 +302,13 @@ def test_a_kept_datetime_equal_to_each_pooled_value_found_is_released(pooled):
 
 
 @pytest.mark.deid_requirement("MIDI-BP-01")
-@pytest.mark.parametrize("pooled", [(SAME_DAY,), (WHOLE, SAME_DAY), (SAME_DAY, WHOLE)])
-def test_a_pooled_value_found_only_by_its_date_still_withholds(pooled):
+@pytest.mark.parametrize(
+    "pooled", [(TO_THE_HOUR,), (WHOLE, TO_THE_HOUR), (SAME_DAY, TO_THE_HOUR)]
+)
+def test_a_pooled_value_found_as_a_kept_datetimes_prefix_still_withholds(pooled):
+    # A datetime written to the hour is found whole as the start of the kept
+    # one, which is longer, so its hour is not explained, although its date
+    # is.
     written = _written(_element(CALIBRATION_DATETIME, "DT", WHOLE))
     removed = [(ACQUISITION_DATETIME, "DT", value) for value in pooled]
     condition = _condition(written, [DEVICE_IDENTITY], *removed)
@@ -361,12 +371,14 @@ def test_a_removed_datetime_by_its_date_in_a_date_no_option_keeps_withholds(opti
 @pytest.mark.parametrize(
     "kept, vr, value",
     [
-        # Acquisition DateTime, which Full Dates keeps, holds the date inside
-        # a longer value.
-        (0x0008002A, "DT", f"{DAY}120000"),
         # A kept date written in another spelling, which the search finds by
         # the datetime's date in that spelling.
         (STUDY_DATE, "DA", f"{DAY[:4]}-{DAY[4:6]}-{DAY[6:]}"),
+        # A kept value that holds the date after its first eight characters,
+        # where no digit precedes it.
+        (ACQUISITION_DATETIME_TAG, "DT", f"19991231-{DAY}"),
+        # A kept datetime written in another spelling.
+        (ACQUISITION_DATETIME_TAG, "DT", f"{DAY[:4]}-{DAY[4:6]}-{DAY[6:]}T12:00"),
     ],
 )
 def test_a_removed_datetime_by_its_date_inside_other_kept_text_withholds(
@@ -389,6 +401,109 @@ def test_a_removed_date_found_by_another_spelling_of_itself_still_withholds():
     condition = _condition(written, [FULL_DATES], (BIRTH_DATE, "DA", acr_nema))
 
     assert condition.decision is Decision.WITHHOLD
+    assert not condition.exempted
+
+
+# A kept datetime begins with its date, as YYYYMMDD. A removed date, or a
+# removed datetime's date, that the search finds there is that date, which
+# the option releases anyway, as it is in a kept date; the source's time is
+# not in it.
+RADIOPHARMACEUTICAL_START_DATETIME = 0x00181078
+KEPT_DATETIMES = [
+    ([FULL_DATES], ACQUISITION_DATETIME_TAG, f"{DAY}080000"),
+    # A datetime to the day, with its offset from UTC.
+    ([FULL_DATES], ACQUISITION_DATETIME_TAG, f"{DAY}+1100"),
+    ([FULL_DATES], RADIOPHARMACEUTICAL_START_DATETIME, f"{DAY}093000.000000"),
+    ([FULL_DATES], RADIOPHARMACEUTICAL_START_DATETIME, f"{DAY}0930+1100"),
+    ([DEVICE_IDENTITY], CALIBRATION_DATETIME, f"{DAY}070000"),
+]
+
+
+@pytest.mark.deid_requirement("MIDI-BP-01")
+@pytest.mark.parametrize("options, kept, written_datetime", KEPT_DATETIMES)
+@pytest.mark.parametrize(
+    "removed",
+    [
+        [(BIRTH_DATE, "DA", DAY)],
+        [(PRIVATE_DATETIME, "DT", SCANNED)],
+        [(PRIVATE_DATETIME, "DT", SCANNED_LATER)],
+        # A datetime written to the day is that date.
+        [(PRIVATE_DATETIME, "DT", DAY)],
+        [(PRIVATE_DATETIME, "DT", SCANNED), (PRIVATE_DATETIME, "DT", SCANNED_LATER)],
+        # Another day's value, which is not in the kept datetime.
+        [(PRIVATE_DATETIME, "DT", SCANNED), (PRIVATE_DATETIME, "DT", UNRELATED)],
+        [(PRIVATE_DATETIME, "DT", UNRELATED), (PRIVATE_DATETIME, "DT", SCANNED)],
+    ],
+)
+def test_a_removed_date_that_begins_a_kept_datetime_is_released(
+    options, kept, written_datetime, removed
+):
+    written = _written(_element(kept, "DT", written_datetime))
+    condition = _condition(written, options, *removed)
+
+    assert condition.decision is Decision.RELEASE
+    assert _why(condition) == [Exemption.RETAINED_VALUE]
+
+
+@pytest.mark.deid_requirement("MIDI-BP-01")
+@pytest.mark.parametrize("options", [[], [MODIFIED_DATES]])
+@pytest.mark.parametrize(
+    "removed", [(BIRTH_DATE, "DA", DAY), (PRIVATE_DATETIME, "DT", SCANNED)]
+)
+def test_a_removed_date_that_begins_a_datetime_no_option_keeps_withholds(
+    options, removed
+):
+    # Under Modified Dates, Acquisition DateTime is shifted, not kept.
+    written = _written(_element(ACQUISITION_DATETIME_TAG, "DT", f"{DAY}101500"))
+    condition = _condition(written, options, removed)
+
+    assert condition.decision is Decision.WITHHOLD
+    assert not condition.exempted
+
+
+@pytest.mark.deid_requirement("MIDI-BP-01")
+@pytest.mark.parametrize(
+    "removed",
+    [
+        # A datetime whose whole value, to the minute, begins the kept one.
+        (PRIVATE_DATETIME, "DT", f"{DAY}1015"),
+        # The whole of a removed datetime inside the kept one.
+        (PRIVATE_DATETIME, "DT", f"{DAY}101500"),
+        # A removed date as ACR-NEMA wrote it, YYYY.MM.DD, found by its date.
+        (BIRTH_DATE, "DA", f"{DAY[:4]}.{DAY[4:6]}.{DAY[6:]}"),
+        # The kept datetime's own date.
+        ("(0008,002A)", "DA", DAY),
+    ],
+)
+def test_a_removed_date_or_time_that_a_kept_datetime_does_not_explain_withholds(
+    removed,
+):
+    written = _written(_element(ACQUISITION_DATETIME_TAG, "DT", f"{DAY}101500.5"))
+    condition = _condition(written, [FULL_DATES], removed)
+
+    assert condition.decision is Decision.WITHHOLD
+    assert not condition.exempted
+
+
+@pytest.mark.deid_requirement("MIDI-BP-01")
+def test_a_removed_date_inside_a_kept_value_after_its_date_withholds():
+    # Where no digit precedes it, as in a value that is not a conformant DT.
+    written = _written(_element(ACQUISITION_DATETIME_TAG, "DT", f"19991231-{DAY}"))
+    condition = _condition(written, [FULL_DATES], (BIRTH_DATE, "DA", DAY))
+
+    assert condition.decision is Decision.WITHHOLD
+    assert not condition.exempted
+
+
+@pytest.mark.deid_requirement("MIDI-BP-01")
+@pytest.mark.parametrize("vr", ["LO", "ST"])
+def test_removed_text_that_begins_a_kept_datetime_goes_to_review(vr):
+    # Only a value collected as a date or datetime is read as a date. Text is
+    # found only where no digit follows it, as the offset from UTC here.
+    written = _written(_element(ACQUISITION_DATETIME_TAG, "DT", f"{DAY}+1100"))
+    condition = _condition(written, [FULL_DATES], (PRIVATE_VALUE, vr, DAY))
+
+    assert condition.decision is Decision.QC_REVIEW
     assert not condition.exempted
 
 
