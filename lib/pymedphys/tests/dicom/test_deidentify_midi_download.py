@@ -172,6 +172,11 @@ def test_the_packaged_pins_name_both_subsets():
         assert subset.answer_key_url.endswith(
             f"/MIDI-B-Answer-Key-{key.capitalize()}.zip/content"
         )
+        # Each subset's images are the Zenodo copy of the ZIP file that
+        # --pack writes, named after the collection, with its digest.
+        assert subset.images_url.startswith("https://zenodo.org/")
+        assert subset.images_url.endswith(f"/{subset.collection}.zip/content")
+        assert subset.images_sha256
 
 
 def _pins(**changes) -> str:
