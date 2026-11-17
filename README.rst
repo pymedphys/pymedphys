@@ -255,8 +255,29 @@ Third-party content
 *******************
 
 PyMedPhys includes third-party code and data under their own licences, whose
-files the package lists in its metadata. Some of its data tables include
-LOINC codes, which carry this notice:
+files the package lists in its metadata.
+
+PyMedPhys's DICOM de-identification includes tables generated from the DICOM
+Standard, edition 2026d, and rule files that name its attributes and codes:
+
+* DICOM PS3.3 2026d, © NEMA
+* DICOM PS3.4 2026d, © NEMA
+* DICOM PS3.6 2026d, © NEMA
+* DICOM PS3.15 2026d, © NEMA
+* DICOM PS3.16 2026d, © NEMA
+
+The National Electrical Manufacturers Association (NEMA) publishes the DICOM
+Standard at https://www.dicomstandard.org/. The tables were extracted
+automatically from the published DICOM Standard and may contain errors. The
+published Standard is authoritative. PyMedPhys regenerates the tables for each
+new edition of the DICOM Standard.
+
+DICOM® is the registered trademark of the National Electrical Manufacturers
+Association (NEMA) for its standards publications relating to digital
+communications of medical information. NEMA does not endorse, sponsor, or
+certify PyMedPhys.
+
+Some of PyMedPhys's data tables include LOINC codes, which carry this notice:
 
 This material contains content from LOINC (http://loinc.org). LOINC is
 copyright © Regenstrief Institute, Inc. and the Logical Observation
