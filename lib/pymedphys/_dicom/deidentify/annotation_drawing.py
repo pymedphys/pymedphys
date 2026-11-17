@@ -66,7 +66,12 @@ object whose Text Style Sequence (0070,0231), its colour, opacity, and
 shadow, differs from that of the first text object. A text object's other
 elements, such as its justification, only place its text, which the text
 values list, and a graphic's other elements, such as a compound
-graphic's rotation, shape it, not how it shows.
+graphic's rotation, shape it, not how it shows. Text and graphics are
+drawn in the one colour too, where a display may draw them differently,
+such as dotted text under a hatching that is transparent, which the
+drawing would hide among its strokes. So where a unit system holds both,
+its graphics and its text are each also drawn alone, in the same frame,
+beside the panel that draws them together.
 
 Several annotations of one instance, those shown together on one frame of
 one image, can be drawn as one (:func:`together`), since a name can be
@@ -136,9 +141,15 @@ Point = tuple[float, float]
 
 @dataclasses.dataclass
 class _Panel:
-    """What one unit system draws, in its own coordinates."""
+    """What one unit system draws, in its own coordinates.
+
+    ``shapes`` are the graphic objects and compound graphics, with a
+    compound graphic's tick labels, and ``texts`` the text objects, with
+    their lines to their anchor points.
+    """
 
     shapes: list[str] = dataclasses.field(default_factory=list)
+    texts: list[str] = dataclasses.field(default_factory=list)
     points: list[Point] = dataclasses.field(default_factory=list)
 
 
@@ -404,7 +415,7 @@ def _text_object(drawing: _Drawing, text: pydicom.Dataset) -> None:
     if box and box_panel is not None:
         units = str(text.BoundingBoxAnnotationUnits)
         top_left = _scaled(units, box)[0]
-        box_panel.shapes.append(_text(value, (top_left[0], top_left[1] + 12)))
+        box_panel.texts.append(_text(value, (top_left[0], top_left[1] + 12)))
         box_panel.points.append(top_left)
         if corner:
             box_panel.points.append(_scaled(units, corner)[0])
@@ -413,13 +424,13 @@ def _text_object(drawing: _Drawing, text: pydicom.Dataset) -> None:
             point = _scaled(units, anchor)[0]
             box_panel.points.append(point)
             if visibility != "N":
-                box_panel.shapes.append(_polyline([top_left, point], dashed=True))
+                box_panel.texts.append(_polyline([top_left, point], dashed=True))
             if visibility not in ("Y", "N"):
                 # Whether a display shows the anchor is not known.
                 drawing.skipped += 1
     elif anchor and anchor_panel is not None:
         point = _scaled(str(text.AnchorPointAnnotationUnits), anchor)[0]
-        anchor_panel.shapes.append(_text(value, point))
+        anchor_panel.texts.append(_text(value, point))
         anchor_panel.points.append(point)
 
 
@@ -655,6 +666,23 @@ def _pattern_rows(pattern: bytes) -> list[str]:
     return rects
 
 
+def _views(units: str, panel: _Panel) -> list[tuple[str, _Panel, str, list[str]]]:
+    """Return the panels that draw what one unit system holds.
+
+    One panel draws its graphics and text together. Where it holds both,
+    each is also drawn alone in the same frame: the drawing draws them in
+    one colour, so text drawn among graphics, or graphics among text, can
+    hide in them, as a display that draws the two in different colours or
+    opacities, such as text under a transparent line, does not.
+    """
+    title = f"{units.lower()} units"
+    views = [(units, panel, title, [*panel.shapes, *panel.texts])]
+    if panel.shapes and panel.texts:
+        views.append((units, panel, f"{title}, graphics alone", panel.shapes))
+        views.append((units, panel, f"{title}, text alone", panel.texts))
+    return views
+
+
 def draw_annotation(item: pydicom.Dataset) -> str:
     """Return an SVG drawing of one item of Graphic Annotation Sequence.
 
@@ -671,9 +699,10 @@ def draw_annotation(item: pydicom.Dataset) -> str:
     """
     drawing = _draw(item)
     drawn = [
-        (units, panel)
+        view
         for units, panel in drawing.panels.items()
-        if panel.shapes and panel.points
+        if (panel.shapes or panel.texts) and panel.points
+        for view in _views(units, panel)
     ]
     panels = len(drawn) + len(drawing.patterns)
     width = max(panels, 1) * (_PANEL + _GAP) + _GAP
@@ -684,12 +713,12 @@ def draw_annotation(item: pydicom.Dataset) -> str:
         f'viewBox="0 0 {_number(width)} {_number(height)}">',
         f'<rect width="{_number(width)}" height="{_number(height)}" fill="white"/>',
     ]
-    for index, (units, panel) in enumerate(drawn):
+    for index, (units, panel, title, shapes) in enumerate(drawn):
         x, y, frame_width, frame_height = _frame(units, panel)
         left = _GAP + index * (_PANEL + _GAP)
         parts.append(
             f'<text x="{_number(left)}" y="{_number(_CAPTION)}" '
-            f'font-family="sans-serif" font-size="12">{units.lower()} units</text>'
+            f'font-family="sans-serif" font-size="12">{title}</text>'
         )
         parts.append(
             f'<svg x="{_number(left)}" y="{_number(_CAPTION + 4)}" '
@@ -707,7 +736,7 @@ def draw_annotation(item: pydicom.Dataset) -> str:
             'vector-effect="non-scaling-stroke" font-family="sans-serif" '
             f'font-size="{_number(frame_height / 30)}">'
         )
-        parts.extend(panel.shapes)
+        parts.extend(shapes)
         parts.append("</g></svg>")
     for number, pattern in enumerate(drawing.patterns, start=1):
         left = _GAP + (len(drawn) + number - 1) * (_PANEL + _GAP)

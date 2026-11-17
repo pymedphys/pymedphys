@@ -1211,6 +1211,119 @@ def test_the_drawing_shows_which_anchors_a_display_shows():
     assert undrawn_objects(_dots(pattern)) == 0
 
 
+# Dots that spell "HI", one text object a dot, which a hatching covers.
+DOTTED = ("10101", "10101", "11101", "10101", "10101")
+
+
+def _hatched(opacity):
+    """An annotation of one solid hatching over DOTTED's area, at ``opacity``."""
+    (stroke,) = _grid(("1",)).GraphicObjectSequence
+    zigzag = [
+        (float(column), float(row))
+        for column in range(0, 22)
+        for row in ((-2, 22) if column % 2 else (22, -2))
+    ]
+    stroke.GraphicData = [value for point in zigzag for value in point]
+    stroke.NumberOfGraphicPoints = len(zigzag)
+    stroke.LineStyleSequence[0].PatternOnOpacity = opacity
+    return synthetic.item(
+        GraphicLayer="LAYER",
+        ReferencedImageSequence=[
+            synthetic.reference(synthetic.CT_IMAGE_STORAGE, synthetic.CT_SLICES[0])
+        ],
+        GraphicObjectSequence=[stroke],
+    )
+
+
+def _dotted():
+    """An annotation of one "." anchored at each set cell of DOTTED."""
+    return synthetic.item(
+        GraphicLayer="LAYER",
+        ReferencedImageSequence=[
+            synthetic.reference(synthetic.CT_IMAGE_STORAGE, synthetic.CT_SLICES[0])
+        ],
+        TextObjectSequence=[
+            synthetic.item(
+                AnchorPointAnnotationUnits="PIXEL",
+                AnchorPoint=[float(column * 4 + 2), float(row * 4 + 2)],
+                AnchorPointVisibility="N",
+                UnformattedTextValue=".",
+            )
+            for row, cells in enumerate(DOTTED)
+            for column, cell in enumerate(cells)
+            if cell == "1"
+        ],
+    )
+
+
+def _panel(drawing, title):
+    """Return what the drawing's panel of ``title`` draws."""
+    (panel,) = re.findall(
+        rf">{re.escape(title)}</text><svg [^>]*>(.*?)</g></svg>", drawing
+    )
+    return panel
+
+
+def _dots_drawn(panel):
+    return {
+        (float(x), float(y))
+        for x, y in re.findall(
+            r'<text x="([^"]+)" y="([^"]+)" stroke="none">\.<', panel
+        )
+    }
+
+
+DOTS = {
+    (float(column * 4 + 2), float(row * 4 + 2))
+    for row, cells in enumerate(DOTTED)
+    for column, cell in enumerate(cells)
+    if cell == "1"
+}
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.3-01")
+def test_text_under_a_transparent_hatching_is_drawn_alone():
+    # A display shows only the dots, since the hatching is transparent; the
+    # drawing draws the hatching opaque, as it draws every object, so the
+    # dots among its strokes are drawn alone too, in the same frame.
+    item = together([_hatched(0.0), _dotted()])
+
+    drawing = draw_annotation(item)
+
+    assert undrawn_objects(item) == 0
+    assert _dots_drawn(_panel(drawing, "pixel units")) == DOTS
+    alone = _panel(drawing, "pixel units, text alone")
+    assert _dots_drawn(alone) == DOTS and "<polyline" not in alone
+    graphics = _panel(drawing, "pixel units, graphics alone")
+    assert "<polyline" in graphics and "<text" not in graphics
+    frames = re.findall(r'viewBox="([^"]+)"[^>]*overflow="hidden"', drawing)
+    assert len(frames) == 3 and len(set(frames)) == 1
+
+
+def test_graphics_or_text_alone_are_drawn_in_one_panel():
+    for item in (_hatched(1.0), _dotted()):
+        drawing = draw_annotation(item)
+
+        assert drawing.count('overflow="hidden"') == 1
+        assert "alone" not in drawing
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.3-01")
+def test_text_split_from_a_transparent_hatching_is_drawn_alone_in_their_set():
+    hatching, dots = _hatched(0.0), _dotted()
+    reviewed = _kept_alone(hatching, dots)
+
+    _, result = _transformed(_presentation_state(hatching, dots), reviewed)
+
+    assert isinstance(result, run.Transformed), result
+    assert {each.reason for each in getattr(result.evidence, "held")} == {
+        Held.NOT_REVIEWED_TOGETHER
+    }
+    (as_one,) = [each for each in _material(result) if each.together]
+    drawing = draw_annotation(as_one.item)
+    assert _dots_drawn(_panel(drawing, "pixel units, text alone")) == DOTS
+
+
 def test_an_anchor_of_unknown_visibility_is_not_drawn_whole():
     dots = _dots("Y" * 3)
     del dots.TextObjectSequence[1].AnchorPointVisibility
