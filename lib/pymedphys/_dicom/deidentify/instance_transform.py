@@ -147,7 +147,14 @@ from .descriptor_cleaning import (
     kept_descriptors,
 )
 from .dummy_values import ICC_PROFILE
-from .edits import Edit, EditKind, InstanceEdits, edit_instance, read_values
+from .edits import (
+    COLOUR_SPACE_IODS,
+    Edit,
+    EditKind,
+    InstanceEdits,
+    edit_instance,
+    read_values,
+)
 from .element_rules import ElementRules
 from .safe_private import SafePrivateList
 from .elements import (
@@ -1404,7 +1411,12 @@ class InstanceTransform:
                 content_item_actions(source, self._policy, iod),
             )
             edits = edit_instance(
-                source, plan, self._key, record.patient, record.series_numberings
+                source,
+                plan,
+                self._key,
+                record.patient,
+                record.series_numberings,
+                colour_space_required=iod.name in COLOUR_SPACE_IODS,
             )
             if edits.sequestrations:
                 return
@@ -1947,6 +1959,7 @@ class InstanceTransform:
             record.patient,
             record.series_numberings,
             log_dummy_datetimes(source, self._policy, iod, content_items),
+            colour_space_required=iod.name in COLOUR_SPACE_IODS,
         )
         kept_uids = retained_uid_paths(plan.elements, self._retained_uids)
         evidence: Coverage | HeldEvidence = coverage_of(
@@ -2001,6 +2014,7 @@ class InstanceTransform:
                     record.patient,
                     record.series_numberings,
                     log_dummy_datetimes(source, fallback.policy, iod, actions),
+                    colour_space_required=iod.name in COLOUR_SPACE_IODS,
                 )
 
             try:
