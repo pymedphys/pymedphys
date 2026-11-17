@@ -29,6 +29,8 @@ synthetic. Values that must never reach a written file carry the text
 import copy
 import io
 import json
+import math
+import re
 import xml.dom.minidom
 
 from pymedphys._imports import pydicom, pytest
@@ -1232,6 +1234,93 @@ def test_labels_with_visible_and_hidden_anchors_are_written_as_drawn():
         each.AnchorPointVisibility
         for each in written.GraphicAnnotationSequence[0].TextObjectSequence
     ] == list(pattern)
+
+
+# What a kept annotation keeps
+
+
+@pytest.mark.deid_requirement("PS3.15-E.1.1-09")
+@pytest.mark.parametrize(
+    "keyword, value",
+    [
+        ("PatientBirthDate", "19700101"),
+        ("RetrieveURL", "https://example.invalid/SENTINEL"),
+    ],
+)
+def test_a_kept_annotation_keeps_only_what_its_module_defines(keyword, value):
+    # An attribute that the Graphic Annotation Module does not define there,
+    # which neither the drawing nor the text values show, takes its own rule.
+    arrow = _arrow()
+    setattr(arrow.GraphicObjectSequence[0], keyword, value)
+    reviewed = _reviewed(arrow=(annotation_digest(arrow), Review.KEEP))
+
+    _, result = _transformed(_presentation_state(arrow), reviewed)
+
+    assert isinstance(result, run.Transformed), result
+    assert value.encode() not in result.data
+    written = pydicom.dcmread(io.BytesIO(result.data))
+    stroke = written.GraphicAnnotationSequence[0].GraphicObjectSequence[0]
+    assert stroke.get(keyword) in (None, "")
+    assert stroke.GraphicData == arrow.GraphicObjectSequence[0].GraphicData
+    assert (
+        written.GraphicAnnotationSequence[0].TextObjectSequence[0].UnformattedTextValue
+        == ARROW_TEXT
+    )
+
+
+# How each drawing is framed
+
+
+def _rotated_ellipse():
+    """An annotation of an ellipse at 45 degrees, centred at (2000, 2000).
+
+    Its semi-axes are (700, 700) and (-630, 630) pixels, so it reaches
+    hypot(700, 630) = 941.753683 pixels from its centre across and down,
+    beyond the ends of its axes.
+    """
+    return synthetic.item(
+        GraphicLayer="LAYER",
+        GraphicObjectSequence=[
+            synthetic.item(
+                GraphicAnnotationUnits="PIXEL",
+                GraphicDimensions=2,
+                NumberOfGraphicPoints=4,
+                GraphicData=[
+                    1300.0,
+                    1300.0,
+                    2700.0,
+                    2700.0,
+                    2630.0,
+                    1370.0,
+                    1370.0,
+                    2630.0,
+                ],
+                GraphicType="ELLIPSE",
+                GraphicFilled="N",
+            )
+        ],
+    )
+
+
+def _pixel_frame(drawing):
+    """Return the (x, y, width, height) of the pixel units panel's frame."""
+    (frame,) = re.findall(r'viewBox="([^"]+)"[^>]*overflow="hidden"', drawing)[:1]
+    return tuple(float(value) for value in frame.split())
+
+
+@pytest.mark.parametrize("as_one", [False, True])
+def test_a_rotated_ellipse_is_framed_whole(as_one):
+    item = _rotated_ellipse()
+    if as_one:
+        item = together([item, _strokes("PIXEL", VERTICALS)])
+    reach = math.hypot(700.0, 630.0)
+
+    x, y, width, height = _pixel_frame(draw_annotation(item))
+
+    for start, extent in ((x, width), (y, height)):
+        assert start <= 2000.0 - reach
+        assert start + extent >= 2000.0 + reach
+    assert undrawn_objects(item) == 0
 
 
 def test_a_list_is_taken_only_under_clean_graphics():

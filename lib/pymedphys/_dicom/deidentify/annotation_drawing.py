@@ -300,6 +300,7 @@ def _graphic(drawing: _Drawing, graphic: pydicom.Dataset) -> None:
         points = [(x - radius, y - radius), (x + radius, y + radius)]
     elif kind == "ELLIPSE" and len(points) == 4:
         panel.shapes.append(_ellipse(points, _fill(drawing, graphic)))
+        points = [*points, *_ellipse_corners(points)]
     else:
         drawing.skipped += 1
         return
@@ -318,6 +319,29 @@ def _ellipse(points: Sequence[Point], fill: str = 'fill="none"') -> str:
         f'<ellipse cx="{_number(centre_x)}" cy="{_number(centre_y)}" '
         f'rx="{_number(major)}" ry="{_number(minor)}" {fill} '
         f'transform="rotate({_number(angle)} {_number(centre_x)} {_number(centre_y)})"/>'
+    )
+
+
+def _ellipse_corners(points: Sequence[Point]) -> tuple[Point, Point]:
+    """Return the corners of the box that bounds the ellipse that is drawn.
+
+    The ellipse of :func:`_ellipse`, whose semi-axes, as vectors, are half
+    its major axis, ``u``, and its minor semi-axis turned square to it,
+    ``v``, reaches ``hypot(u_x, v_x)`` either side of its centre across and
+    ``hypot(u_y, v_y)`` down, beyond its axes' ends where it is rotated, so
+    the panel is framed to hold all of it.
+    """
+    (ax, ay), (bx, by), (cx, cy), (dx, dy) = points
+    centre_x, centre_y = (ax + bx) / 2, (ay + by) / 2
+    major = math.hypot(bx - ax, by - ay) / 2
+    minor = math.hypot(dx - cx, dy - cy) / 2
+    angle = math.atan2(by - ay, bx - ax)
+    u_x, u_y = major * math.cos(angle), major * math.sin(angle)
+    v_x, v_y = -minor * math.sin(angle), minor * math.cos(angle)
+    half_width, half_height = math.hypot(u_x, v_x), math.hypot(u_y, v_y)
+    return (
+        (centre_x - half_width, centre_y - half_height),
+        (centre_x + half_width, centre_y + half_height),
     )
 
 

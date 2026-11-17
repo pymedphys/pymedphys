@@ -32,7 +32,8 @@ SHA-256 of a canonical form of every element of the item but its UIDs,
 which name the images that it is drawn on and are replaced as every UID is.
 It applies wherever an annotation has that digest: in any instance, at any
 position in its sequence. A kept annotation is written as it was received,
-but for its UIDs, and one whose text echoes one of its instance's patient or
+but for its UIDs and the elements that take their own rules
+(:mod:`.graphic_annotations`), and one whose text echoes one of its instance's patient or
 other person identifiers is held all the same, since a reviewer may have
 kept it for another patient (:func:`review_annotation`).
 

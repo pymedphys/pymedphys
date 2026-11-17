@@ -24,10 +24,14 @@ what to do with each of its items in place, as the maintainer chose on
 7 November 2026 (D-062):
 
 - an annotation that the list keeps is written as it was received, but for
-  its UIDs and private data elements: each of its standard elements other
-  than a UI takes K, and each UI, such as the Referenced SOP Instance UID of
-  the image that it is drawn on, takes its own rule, which replaces it as
-  the image's own is replaced, as each private element takes its own;
+  its UIDs, private data elements, and any element that the IOD does not
+  define there: each of its standard elements that the IOD defines at its
+  place in the item, other than a UI, takes K; each UI, such as the
+  Referenced SOP Instance UID of the image that it is drawn on, takes its
+  own rule, which replaces it as the image's own is replaced, as each
+  private element takes its own; and any other standard element, such as a
+  Patient's Birth Date (0010,0030) that a Standard Extended item holds,
+  which neither the drawing nor the text values show, takes its own rule;
 - an annotation that the list removes is removed on its own, with
   everything in it, as an item of Content Sequence is under Clean
   Structured Content (:mod:`.removed_items`);
@@ -97,7 +101,8 @@ METHOD = (
     "reviewer's decision on it, found by a digest of its content other than "
     "its UIDs: an annotation that the list keeps is written as it was "
     "received, but for its UIDs, which are replaced as the instance's own "
-    "are, and its private data elements, which take their own actions; one "
+    "are, its private data elements, and any standard element that the IOD "
+    "does not define there, which take their own actions; one "
     "that the list removes is removed, with everything in it; and "
     "one that the list has no decision on, or keeps but whose text holds one "
     "of the instance's patient or other person identifiers or whose drawing "
@@ -300,6 +305,7 @@ def annotation_plan(
                     path.items[:1] == item
                     and source.element(path).vr != "UI"
                     and not _private(path.tag)
+                    and iod.lookup(path.tag, tuple(tag for tag, _ in path.items))
                 ):
                     actions[path] = _KEPT
     material = tuple(

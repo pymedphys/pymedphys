@@ -31,7 +31,7 @@ these columns:
   shown together on one frame of one image, as the QC pack gives it beside
   their drawing as one;
 - ``decision``: ``keep``, to write the annotation as it was received but
-  for its UIDs, or ``remove``, to remove it with everything in it; for
+  for its UIDs and the elements that take their own rules, or ``remove``, to remove it with everything in it; for
   annotations together, ``keep`` lets those that the list keeps be written
   together, and ``remove`` removes them.
 
