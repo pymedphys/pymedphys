@@ -33,8 +33,9 @@ what to do with each of its items in place, as the maintainer chose on
   Structured Content (:mod:`.removed_items`);
 - an annotation that the list has no decision on, or keeps but whose text
   echoes one of its instance's identifiers or whose QC drawing leaves out
-  an object, a fill, or a dashed line's pattern
-  (:func:`.annotation_drawing.undrawn_objects`), so that the reviewer did
+  an object, a fill, a dashed line's pattern, or a difference in style
+  between its objects (:func:`.annotation_drawing.undrawn_objects`), so
+  that the reviewer did
   not see it whole, is held for review: its
   elements take their own rules, which write a dummy value in place of its
   text in the staged file, and its instance is held, so it is not released;
@@ -93,8 +94,9 @@ METHOD = (
     "that the list removes is removed, with everything in it; and "
     "one that the list has no decision on, or keeps but whose text holds one "
     "of the instance's patient or other person identifiers or whose drawing "
-    "in the QC pack leaves out an object, the pattern of a fill, or the "
-    "pattern of a dashed line, holds its "
+    "in the QC pack leaves out an object, the pattern of a fill, the "
+    "pattern of a dashed line, or a difference in style between its "
+    "objects, holds its "
     "instance for review, with its text and a drawing of its graphics in "
     "the QC pack, from which the reviewer decides on it. Where the list "
     "removes every item, the sequence takes its Basic Profile action, so "

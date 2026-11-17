@@ -197,17 +197,19 @@ def _line_patterns(rows=LETTERING):
     ]
 
 
-def _lined(patterns, dashing="DASHED"):
+def _lined(patterns, dashing="DASHED", opacities=None):
     """An annotation of one horizontal line a row for each pattern.
 
     Where each line's Line Pattern is a row of lettering, a display that
-    dashes the lines can spell it down the stack of lines.
+    dashes the lines can spell it down the stack of lines. ``opacities``
+    gives each line's Pattern On Opacity, 1 by default.
     """
     objects = []
-    for row, pattern in enumerate(patterns, start=1):
+    opacities = opacities or [1.0] * len(patterns)
+    for row, (pattern, opacity) in enumerate(zip(patterns, opacities), start=1):
         style = synthetic.item(
             PatternOnColorCIELabValue=[65535, 32896, 32896],
-            PatternOnOpacity=1.0,
+            PatternOnOpacity=opacity,
             LineThickness=1.0,
             LineDashingStyle=dashing,
             ShadowStyle="OFF",
@@ -520,26 +522,27 @@ def test_a_kept_annotation_that_its_drawing_leaves_out_is_held(annotation):
 
 @pytest.mark.deid_requirement("PS3.15-E.3.3-01")
 @pytest.mark.parametrize(
-    "annotation",
+    "annotation, undrawn",
     [
         # Each line dashed by a row of lettering: the standard says neither
         # which bit comes first nor how long a bit is along the line, so no
-        # drawing can show what a display dashes.
-        _lined(_line_patterns()),
+        # drawing can show what a display dashes. Each of the five is
+        # dashed, and the three whose pattern differs from the first line's
+        # look different from it too.
+        (_lined(_line_patterns()), 8),
         # A dashed line without its Line Pattern, Type 1C here.
-        _lined([None]),
+        (_lined([None]), 1),
         # A dashing style that PS3.3 does not define.
-        _lined([0xFFFFFFFF], dashing="DOTTED"),
+        (_lined([0xFFFFFFFF], dashing="DOTTED"), 1),
     ],
 )
-def test_a_kept_annotation_with_a_dashed_line_is_held(annotation):
+def test_a_kept_annotation_with_a_dashed_line_is_held(annotation, undrawn):
     reviewed = _reviewed(annotation=(annotation_digest(annotation), Review.KEEP))
 
     _, result = _transformed(_presentation_state(annotation), reviewed)
 
-    lines = len(annotation.GraphicObjectSequence)
-    assert undrawn_objects(annotation) == lines
-    assert f"{lines} object(s) not drawn whole" in draw_annotation(annotation)
+    assert undrawn_objects(annotation) == undrawn
+    assert f"{undrawn} object(s) not drawn whole" in draw_annotation(annotation)
     assert isinstance(result, run.Transformed), result
     assert isinstance(result.evidence, HeldEvidence)
     (held,) = getattr(result.evidence, "held")
@@ -588,6 +591,201 @@ def test_a_kept_annotation_whose_lines_the_drawing_shows_is_written(patterns, da
     ] == (patterns)
     (material,) = _material(result)
     assert material.result.outcome is Outcome.KEPT
+
+
+# Rows of a grid of solid strokes, 1 where a stroke is opaque and 0 where it
+# is transparent, which spell lettering that a display shows and a drawing
+# in one opacity hides.
+OPACITY_MASK = ("10001011", "10001001", "11111001", "10001001", "10001011")
+
+
+def _grid(mask=OPACITY_MASK):
+    """An annotation of a solid stroke for each cell of ``mask``, opaque at 1."""
+    objects = []
+    for row, cells in enumerate(mask):
+        for column, cell in enumerate(cells):
+            objects.append(
+                synthetic.item(
+                    GraphicAnnotationUnits="PIXEL",
+                    GraphicDimensions=2,
+                    NumberOfGraphicPoints=2,
+                    GraphicData=[
+                        float(column * 4),
+                        float(row * 4),
+                        float(column * 4 + 3),
+                        float(row * 4),
+                    ],
+                    GraphicType="POLYLINE",
+                    LineStyleSequence=[
+                        synthetic.item(
+                            PatternOnColorCIELabValue=[65535, 32896, 32896],
+                            PatternOnOpacity=float(cell),
+                            LineThickness=1.0,
+                            LineDashingStyle="SOLID",
+                            ShadowStyle="OFF",
+                            ShadowOffsetX=0.0,
+                            ShadowOffsetY=0.0,
+                            ShadowColorCIELabValue=[0, 32896, 32896],
+                            ShadowOpacity=0.0,
+                        )
+                    ],
+                )
+            )
+    return synthetic.item(
+        GraphicLayer="LAYER",
+        ReferencedImageSequence=[
+            synthetic.reference(synthetic.CT_IMAGE_STORAGE, synthetic.CT_SLICES[0])
+        ],
+        GraphicObjectSequence=objects,
+    )
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.3-01")
+def test_strokes_whose_opacity_spells_lettering_are_held():
+    # The drawing draws every stroke in one opacity, so the lettering that
+    # the transparent strokes leave is not shown: the grid's drawing is the
+    # same as an opaque grid's. Each stroke that looks different from the
+    # first is counted, and a keep decision cannot release it.
+    lettered = _grid()
+    opaque = _grid(tuple("1" * 8 for _ in OPACITY_MASK))
+    reviewed = _reviewed(annotation=(annotation_digest(lettered), Review.KEEP))
+
+    _, result = _transformed(_presentation_state(lettered), reviewed)
+
+    unlike_first = sum(
+        cell != OPACITY_MASK[0][0] for row in OPACITY_MASK for cell in row
+    )
+    assert undrawn_objects(lettered) == unlike_first
+    assert undrawn_objects(opaque) == 0
+    assert isinstance(result, run.Transformed), result
+    assert isinstance(result.evidence, HeldEvidence)
+    (held,) = getattr(result.evidence, "held")
+    assert held.reason is Held.NOT_DRAWN
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.3-01")
+def test_a_kept_grid_of_alike_strokes_is_written():
+    opaque = _grid(tuple("1" * 8 for _ in OPACITY_MASK))
+    reviewed = _reviewed(annotation=(annotation_digest(opaque), Review.KEEP))
+
+    _, result = _transformed(_presentation_state(opaque), reviewed)
+
+    assert isinstance(result, run.Transformed), result
+    assert not isinstance(result.evidence, HeldEvidence)
+    written = pydicom.dcmread(io.BytesIO(result.data))
+    graphics = written.GraphicAnnotationSequence[0].GraphicObjectSequence
+    assert len(graphics) == 40
+    assert {graphic.LineStyleSequence[0].PatternOnOpacity for graphic in graphics} == {
+        1.0
+    }
+
+
+@pytest.mark.parametrize(
+    "first, second",
+    [
+        # A compound graphic in a style that the simple graphic beside it
+        # lacks: opaque letters can hide among transparent strokes.
+        (
+            {
+                "LineStyleSequence": [
+                    {"LineDashingStyle": "SOLID", "PatternOnOpacity": 1.0}
+                ]
+            },
+            {
+                "LineStyleSequence": [
+                    {"LineDashingStyle": "SOLID", "PatternOnOpacity": 0.0}
+                ]
+            },
+        ),
+        # A fill in another colour.
+        (
+            {"FillStyleSequence": [{"FillMode": "SOLID"}]},
+            {
+                "FillStyleSequence": [
+                    {"FillMode": "SOLID", "PatternOnColorCIELabValue": [0, 0, 0]}
+                ]
+            },
+        ),
+    ],
+)
+def test_a_compound_graphic_unlike_a_graphic_object_is_counted(first, second):
+    def styled(dataset, styles):
+        for keyword, items in styles.items():
+            setattr(dataset, keyword, [synthetic.item(**fields) for fields in items])
+        return dataset
+
+    item = synthetic.item(
+        GraphicLayer="LAYER",
+        GraphicObjectSequence=[
+            styled(
+                synthetic.item(
+                    GraphicAnnotationUnits="PIXEL",
+                    GraphicDimensions=2,
+                    NumberOfGraphicPoints=2,
+                    GraphicData=[1.0, 1.0, 40.0, 1.0],
+                    GraphicType="POLYLINE",
+                ),
+                first,
+            )
+        ],
+        CompoundGraphicSequence=[
+            styled(
+                synthetic.item(
+                    CompoundGraphicUnits="PIXEL",
+                    GraphicDimensions=2,
+                    NumberOfGraphicPoints=2,
+                    GraphicData=[1.0, 2.0, 40.0, 2.0],
+                    CompoundGraphicType="ARROW",
+                    CompoundGraphicInstanceID=1,
+                ),
+                second,
+            )
+        ],
+    )
+
+    assert undrawn_objects(item) == 1
+
+
+def test_text_objects_in_different_styles_are_counted():
+    def text(colour):
+        return synthetic.item(
+            AnchorPointAnnotationUnits="PIXEL",
+            AnchorPoint=[10.0, 10.0],
+            AnchorPointVisibility="N",
+            UnformattedTextValue="A",
+            TextStyleSequence=[
+                synthetic.item(TextColorCIELabValue=[65535, 32896, colour])
+            ],
+        )
+
+    alike = synthetic.item(GraphicLayer="LAYER", TextObjectSequence=[text(32896)] * 3)
+    unlike = synthetic.item(
+        GraphicLayer="LAYER",
+        TextObjectSequence=[text(32896), text(0), text(32896)],
+    )
+
+    assert undrawn_objects(alike) == 0
+    assert undrawn_objects(unlike) == 1
+
+
+def test_identifiers_that_tell_objects_apart_are_not_an_appearance():
+    def graphic(number):
+        return synthetic.item(
+            GraphicAnnotationUnits="PIXEL",
+            GraphicDimensions=2,
+            NumberOfGraphicPoints=2,
+            GraphicData=[1.0, float(number), 40.0, float(number)],
+            GraphicType="POLYLINE",
+            GraphicGroupID=number,
+            TrackingID=f"STROKE {number}",
+            TrackingUID=f"2.25.{900 + number}",
+        )
+
+    item = synthetic.item(
+        GraphicLayer="LAYER", GraphicObjectSequence=[graphic(1), graphic(2)]
+    )
+
+    assert undrawn_objects(item) == 0
 
 
 def test_a_list_is_taken_only_under_clean_graphics():

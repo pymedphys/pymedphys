@@ -50,6 +50,21 @@ and lines whose patterns are the rows of a bitmap can spell a name. A
 pattern whose 32 bits are all the same draws the whole line in one
 colour, so it hides nothing, and its line is drawn whole.
 
+The drawing draws every object in one colour and opacity, at one
+thickness, with no shadow, whatever its style. That hides nothing where
+the objects of an annotation look alike, but objects that look different,
+such as opaque and transparent strokes of one grid, can spell a name that
+the drawing cannot show. So each graphic object and compound graphic
+whose style, its Line Style Sequence (0070,0232) and Fill Style Sequence
+(0070,0233) but for a fill's pattern, which is drawn, differs from that of
+the item's first one is counted as not drawn whole, as is each text
+object whose appearance, every element of it that the drawing does not
+draw, such as its Text Style Sequence (0070,0231), differs from that of
+the first text object. A compound graphic's other elements, such as its
+rotation, shape it, not how it shows, and the drawing draws it through its
+points; UIDs and identifiers that only tell objects apart are part of no
+appearance.
+
 Annotation units are PIXEL, in the image's pixels, or DISPLAY, in
 fractions of the displayed area (C.10.5.1.1). Without the image, the two
 cannot be put in one frame, so the drawing has a panel for each units
@@ -89,6 +104,37 @@ _FILLED_SHADE = 'fill-opacity="0.15"'
 # The Line Patterns that draw a dashed line in one colour, all bits clear or
 # all set, whose line a solid one shows whole.
 _UNIFORM_LINE_PATTERNS = (0, 0xFFFFFFFF)
+# The style sequences of a graphic object or compound graphic.
+_STYLES = ("LineStyleSequence", "FillStyleSequence")
+# The elements of a graphic object, a compound graphic, or a text object
+# that the drawing draws, or that only tell objects apart or name their
+# text, which the text values list; every other element is part of the
+# object's appearance. A fill's pattern is drawn in a panel of its own.
+_DRAWN = frozenset(
+    {
+        "GraphicAnnotationUnits",
+        "GraphicDimensions",
+        "NumberOfGraphicPoints",
+        "GraphicData",
+        "GraphicType",
+        "GraphicFilled",
+        "CompoundGraphicUnits",
+        "CompoundGraphicType",
+        "CompoundGraphicInstanceID",
+        "GraphicGroupID",
+        "TrackingID",
+        "MajorTicksSequence",
+        "TickPosition",
+        "TickLabel",
+        "UnformattedTextValue",
+        "BoundingBoxAnnotationUnits",
+        "BoundingBoxTopLeftHandCorner",
+        "BoundingBoxBottomRightHandCorner",
+        "AnchorPointAnnotationUnits",
+        "AnchorPoint",
+        "FillPattern",
+    }
+)
 
 Point = tuple[float, float]
 
@@ -365,8 +411,52 @@ def _frame(units: str, panel: _Panel) -> tuple[float, float, float, float]:
     return (left - pad, top - pad, side + 2 * pad, side + 2 * pad)
 
 
+def _appearance(dataset: pydicom.Dataset) -> tuple:
+    """Return what of an object the drawing does not draw, to compare.
+
+    Each element but those in ``_DRAWN`` and UIDs, by tag, with its items'
+    appearances or its value's text, so that two objects that look alike
+    have the same appearance.
+    """
+    parts = []
+    for element in dataset:
+        if element.keyword in _DRAWN or element.VR == "UI":
+            continue
+        if element.VR == "SQ":
+            value: object = tuple(_appearance(item) for item in element.value or ())
+        elif isinstance(element.value, (bytes, bytearray)):
+            value = bytes(element.value).hex()
+        else:
+            value = repr(element.value)
+        parts.append((int(element.tag), value))
+    return tuple(parts)
+
+
+def _style(graphic: pydicom.Dataset) -> tuple:
+    """Return a graphic object's or compound graphic's style, to compare."""
+    return tuple(
+        (keyword, tuple(_appearance(item) for item in graphic.get(keyword) or ()))
+        for keyword in _STYLES
+    )
+
+
+def _unlike(appearances: Sequence[tuple]) -> int:
+    """Return how many objects look different from the first of them."""
+    return sum(each != appearances[0] for each in appearances[1:])
+
+
 def _draw(item: pydicom.Dataset) -> _Drawing:
     drawing = _Drawing()
+    drawing.skipped += _unlike(
+        [
+            _style(graphic)
+            for keyword in ("GraphicObjectSequence", "CompoundGraphicSequence")
+            for graphic in item.get(keyword) or ()
+        ]
+    )
+    drawing.skipped += _unlike(
+        [_appearance(text) for text in item.get("TextObjectSequence") or ()]
+    )
     for graphic in item.get("GraphicObjectSequence") or ():
         _graphic(drawing, graphic)
     for compound in item.get("CompoundGraphicSequence") or ():
@@ -389,9 +479,11 @@ def undrawn_objects(item: pydicom.Dataset) -> int:
     int
         The count that :func:`draw_annotation`'s caption gives: each object
         whose units, type, or Graphic Data cannot be drawn, each fill
-        whose mode or pattern cannot be read, and each line style other
-        than SOLID or a uniform DASHED one. A reviewer has not seen an
-        annotation whole where this is not 0.
+        whose mode or pattern cannot be read, each line style other than
+        SOLID or a uniform DASHED one, and each object that looks different
+        from the item's first of its kind in a way that the drawing does
+        not draw. A reviewer has not seen an annotation whole where this is
+        not 0.
     """
     return _draw(item).skipped
 

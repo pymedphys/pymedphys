@@ -99,8 +99,8 @@ class Held(enum.Enum):
     # or other person identifiers
     ECHOES_IDENTIFIER = "echoes-identifier"
     # the list keeps it, but the QC pack's drawing of it leaves out an
-    # object, a fill, or a dashed line's pattern, so the reviewer did not
-    # see it whole
+    # object, a fill, a dashed line's pattern, or a difference in style
+    # between its objects, so the reviewer did not see it whole
     NOT_DRAWN = "not-drawn"
 
 
@@ -235,7 +235,8 @@ def review_annotation(
 
     An annotation that the list removes is removed. One that it keeps is
     kept, unless the QC pack's drawing of it leaves out an object, a fill,
-    or a dashed line's pattern (``drawn`` is false,
+    a dashed line's pattern, or a difference in style between its objects
+    (``drawn`` is false,
     :func:`~pymedphys._dicom.deidentify.annotation_drawing.undrawn_objects`),
     since then the reviewer did not see it whole, or one of ``texts`` echoes
     one of ``identifiers``
