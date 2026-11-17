@@ -495,9 +495,7 @@ def _reviewed(
     location = finding.location
     if (
         span.value_start is None
-        or finding.offset < span.value_start
-        or finding.length < 1
-        or finding.offset + finding.length > span.end
+        or not _match_within_value(finding, span.value_start, span.end)
         or span.location != location
         or location.element is None
     ):
@@ -514,6 +512,19 @@ def _reviewed(
         value_sha256=hashlib.sha256(octets[span.value_start : span.end]).hexdigest(),
         value_offset=finding.offset - span.value_start,
         length=finding.length,
+    )
+
+
+def _match_within_value(finding: Finding, value_start: int, end: int) -> bool:
+    """Return whether a finding's match lies wholly in one value.
+
+    The match must start at or after ``value_start`` and end at or before
+    ``end``, the end of the element, and must span at least one byte.
+    """
+    return (
+        finding.length >= 1
+        and value_start <= finding.offset
+        and finding.offset + finding.length <= end
     )
 
 
