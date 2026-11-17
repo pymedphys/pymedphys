@@ -317,6 +317,7 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
 - **[Contributor facing only]** The corpus tests now run in two parts of their own in every split job, as they already did at the NumPy and pandas minimum versions: `ct-defacing` runs the CT defacing run alone and `corpus-runs` the other corpus modules, so every cell of the unit-test matrix and the `dicom` extra's run alone use three runners. With more Structured Reports in the synthetic corpus, the combined corpus part took more than its 30-minute limit on Ubuntu; every test still runs, and each cell's combined report does not change. [PR #2518](https://github.com/pymedphys/pymedphys/pull/2518)
 - **[Contributor facing only]** The CT defacing runs are halved between two modules, which share their helpers, and every split job runs the second, `test_deidentify_ct_defacing_review_runs.py`, in a `ct-defacing-reviews` part of its own, so every cell of the unit-test matrix, the `dicom` extra's run alone, and the NumPy and pandas minimum versions use four runners. The CT defacing part alone had reached its 30-minute limit on Ubuntu; every test still runs once, each cell still has one combined report, and no time limit changes. [PR #2565](https://github.com/pymedphys/pymedphys/pull/2565)
 - **[Contributor facing only]** The unit tests' `others` part is halved: a `deidentify-a-o` part runs the other de-identification modules whose names go on with a letter from `a` to `o`, chosen by one glob that `others` also ignores, so every cell of the unit-test matrix and the NumPy and pandas minimum versions use five runners; the `dicom` extra's run alone keeps four. The `others` part had reached 23 to 25 minutes of its 30-minute limit on Ubuntu, and 29:38 at the dependency floors; every test still runs once, each cell still has one combined report, and no time limit changes. [PR #2589](https://github.com/pymedphys/pymedphys/pull/2589)
+- **[Contributor facing only]** The unit tests' `corpus-runs` part is split: the policies' end-to-end runs over the synthetic corpus, most of its time, are halved by policy name, and every split job runs the policies from `p` to `z`, in the new `test_deidentify_corpus_end_to_end_p_z.py`, in a `corpus-end-to-end-p-z` part of its own; its tests call the first module's checks and cite the same requirements. The `dicom` extra's run alone also gains the `deidentify-a-o` part, so it runs in the same six parts. The `corpus-runs` part had reached 29 to 31 minutes on main's full matrix, and the `dicom` extra's `others` part 26 of its 30; every test still runs once, each cell still has one combined report, and no time limit changes. [PR #2610](https://github.com/pymedphys/pymedphys/pull/2610)
 - **[Contributor facing only]** `pymedphys dev lint` runs Pylint in one process over the package's files in a fixed order, sorted by path, so the same code gets the same messages on every run and machine. With one worker per CPU, Pylint had reported messages on lines that passed on the same code earlier, and the order in which one process reads the files can also change a message. Linting takes about three times as long, about 3 minutes locally on 4 cores. [PR #2497](https://github.com/pymedphys/pymedphys/pull/2497)
 - **[Contributor facing only]** Pyright now type-checks the CI scripts in `.github/scripts`, which it had silently skipped: its command line always excludes dot-directories below the project root, so the scripts are a project of their own whose `pyrightconfig.json` extends `pyproject.toml`'s settings. Check them locally with `uv run -- pyright --project .github/scripts`. The type-check job fails if either project checks fewer files than its tree holds. [PR #2428](https://github.com/pymedphys/pymedphys/pull/2428)
 - Corrected the documentation dependency-group terminology, the weekly dependency update branch name and the current status of the historical coordinate expected failures. [PR #2246](https://github.com/pymedphys/pymedphys/pull/2246)
@@ -441,9 +442,13 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
   en dash, a module table whose title differs from the module's name, and a
   module listed with the wrong section, are corrected by named corrections in
   the pin, each of which fails generation once it no longer applies. Each generated file records the edition, its
-  source page's digest, a digest of its rows, and the copyright attribution
-  of its part, such as "DICOM PS3.15 2026d, © NEMA", and the same input always
-  produces the same bytes. The generated tables ship in the package, in
+  source page's digest, a digest of its rows, and the attribution of its part
+  and edition, such as "DICOM PS3.15 2026d, © NEMA", with a link to the DICOM
+  Standard and NEMA's trademark notice, which the hand-written rule files that
+  name the Standard's attributes and codes also carry, and the same input always
+  produces the same bytes. The generator also writes
+  `_standard/NOTICE-DICOM.txt`, which the package lists among its licence
+  files, and the README and the user guide give the same attribution. The generated tables ship in the package, in
   `pymedphys/_dicom/deidentify/_standard/`, with loaders in
   `pymedphys._dicom.deidentify.standard` (`load_table_e1_1`,
   `load_table_e1_1a`, `load_table_e3_10_1`, and `load_data_dictionary`),
@@ -469,16 +474,18 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
   table's recorded digest without writing anything: it names the edition the
   pages give, the tables that would change, and the pages that could not be
   fetched or parsed, without quoting them, and exits with status 1 when a
-  table would change and 3 when a page failed; `--json` also writes the
-  result as JSON. The `deid-edition-check.yml` workflow runs it monthly and
-  opens or updates one issue when a table would change, a page fails, or the
-  check stops without a result.
+  table would change or the pages name a new edition, since every table names
+  its edition and is regenerated for each one, and 3 when a page failed;
+  `--json` also writes the result as JSON. The `deid-edition-check.yml`
+  workflow runs it monthly and opens or updates one issue when a table would
+  change, the pages name a new edition, a page fails, or the check stops
+  without a result.
   `pymedphys._dicom.deidentify.scope` uses Table B.5-1 to classify an
   instance as de-identified or sequestered: the first supported release
   de-identifies CT Image, RT Structure Set, RT Plan, and RT Dose instances in
   Implicit or Explicit VR Little Endian, and gives the reason for
   sequestering any other.
-  [PR #2090](https://github.com/pymedphys/pymedphys/pull/2090), [PR #2093](https://github.com/pymedphys/pymedphys/pull/2093), [PR #2096](https://github.com/pymedphys/pymedphys/pull/2096), [PR #2100](https://github.com/pymedphys/pymedphys/pull/2100), [PR #2104](https://github.com/pymedphys/pymedphys/pull/2104), [PR #2109](https://github.com/pymedphys/pymedphys/pull/2109), [PR #2112](https://github.com/pymedphys/pymedphys/pull/2112), [PR #2130](https://github.com/pymedphys/pymedphys/pull/2130), [PR #2158](https://github.com/pymedphys/pymedphys/pull/2158), [PR #2163](https://github.com/pymedphys/pymedphys/pull/2163), [PR #2173](https://github.com/pymedphys/pymedphys/pull/2173), [PR #2181](https://github.com/pymedphys/pymedphys/pull/2181), [PR #2188](https://github.com/pymedphys/pymedphys/pull/2188)
+  [PR #2090](https://github.com/pymedphys/pymedphys/pull/2090), [PR #2093](https://github.com/pymedphys/pymedphys/pull/2093), [PR #2096](https://github.com/pymedphys/pymedphys/pull/2096), [PR #2100](https://github.com/pymedphys/pymedphys/pull/2100), [PR #2104](https://github.com/pymedphys/pymedphys/pull/2104), [PR #2109](https://github.com/pymedphys/pymedphys/pull/2109), [PR #2112](https://github.com/pymedphys/pymedphys/pull/2112), [PR #2130](https://github.com/pymedphys/pymedphys/pull/2130), [PR #2158](https://github.com/pymedphys/pymedphys/pull/2158), [PR #2163](https://github.com/pymedphys/pymedphys/pull/2163), [PR #2173](https://github.com/pymedphys/pymedphys/pull/2173), [PR #2181](https://github.com/pymedphys/pymedphys/pull/2181), [PR #2188](https://github.com/pymedphys/pymedphys/pull/2188), [PR #2611](https://github.com/pymedphys/pymedphys/pull/2611)
 - **[Contributor facing only]** A private module,
   `pymedphys._nomenclature.tg263`, converts a copy of AAPM's TG-263 Structure
   Spreadsheet to JSON, the first step towards descriptor cleaning
