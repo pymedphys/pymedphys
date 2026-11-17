@@ -904,14 +904,19 @@ class DescriptorEntry:
 _DIGEST = re.compile(r"[0-9a-f]{64}")
 
 
+_GRAPHIC_ANNOTATION_SEQUENCE = "(0070,0001)"
+
+
 @dataclasses.dataclass(frozen=True, repr=False)
 class AnnotationEntry:
     """What the run decided for one graphic annotation, and a drawing of it.
 
-    The held annotations are the reviewer's list, whose decisions a reviewed
-    annotations list carries to later runs by their digests; the kept and
-    removed ones are the audit of what the list decided (D-062). Its
-    ``repr`` leaves out the text and the drawing.
+    Or for the annotations of an instance that the list does not remove,
+    together, so that strokes split across them are drawn as one: its path
+    then has no items. The held annotations are the reviewer's list, whose
+    decisions a reviewed annotations list carries to later runs by their
+    digests; the kept and removed ones are the audit of what the list
+    decided (D-062). Its ``repr`` leaves out the text and the drawing.
 
     Attributes
     ----------
@@ -919,10 +924,13 @@ class AnnotationEntry:
         The instance's run position.
     path : ElementPath
         Graphic Annotation Sequence (0070,0001), with the annotation's item
-        last in its ``items``.
+        last in its ``items``, or with no items for the annotations
+        together.
     digest : str
         The annotation's digest
         (:func:`~pymedphys._dicom.deidentify.reviewed_annotations.annotation_digest`),
+        or the annotations' together
+        (:func:`~pymedphys._dicom.deidentify.reviewed_annotations.together_digest`),
         64 lowercase hexadecimal digits.
     texts : tuple of str
         Its text values, at any depth, in file order.
@@ -946,8 +954,9 @@ class AnnotationEntry:
         _check_position("an annotation", self.position)
         problems = (
             (
-                not isinstance(self.path, ElementPath) or not self.path.items,
-                "needs its item's ElementPath",
+                not isinstance(self.path, ElementPath)
+                or self.path.tag != _GRAPHIC_ANNOTATION_SEQUENCE,
+                "needs its Graphic Annotation Sequence ElementPath",
             ),
             (
                 not isinstance(self.digest, str) or not _DIGEST.fullmatch(self.digest),

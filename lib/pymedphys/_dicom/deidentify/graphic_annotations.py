@@ -56,7 +56,12 @@ from collections.abc import Mapping, Sequence
 
 from pymedphys._imports import pydicom
 
-from .annotation_drawing import undrawn_objects
+from .annotation_drawing import (
+    layer_appearances,
+    together,
+    undrawn_objects,
+    undrawn_together,
+)
 from .content_items import ContentItemPlan
 from .file_layout import ElementPath
 from .iods import IOD
@@ -69,6 +74,7 @@ from .reviewed_annotations import (
     annotation_digest,
     annotation_texts,
     review_annotation,
+    review_together,
 )
 from .source import SourceEvidence
 
@@ -98,7 +104,15 @@ METHOD = (
     "pattern of a dashed line, or a difference in style between its "
     "objects, holds its "
     "instance for review, with its text and a drawing of its graphics in "
-    "the QC pack, from which the reviewer decides on it. Where the list "
+    "the QC pack, from which the reviewer decides on it. The annotations "
+    "of an instance that the list does not remove are decided on together "
+    "too, by a digest of the set, from the QC pack's drawing of them as one, "
+    "since annotations that each show nothing can spell a name together: "
+    "those that the list keeps are written only where it keeps the set, are "
+    "removed where it removes the set, and otherwise hold the instance for "
+    "review, as they do whatever the list decides where the drawing of the "
+    "set leaves out a difference in style between their objects or in how "
+    "their graphic layers are displayed. Where the list "
     "removes every item, the sequence takes its Basic Profile action, so "
     "the instance is sequestered, since the Type 1 sequence would be left "
     "with no item. The reviewer decides whether an annotation encodes "
@@ -112,6 +126,10 @@ METHOD = (
 class AnnotationMaterial:
     """What the run decided for one annotation, for the confidential QC pack.
 
+    Or for the annotations that an instance keeps together: its path then
+    has no items, and its digest is their
+    :func:`~.reviewed_annotations.together_digest`.
+
     Attributes
     ----------
     path : ElementPath
@@ -124,8 +142,15 @@ class AnnotationMaterial:
     result : ReviewedAnnotation
         What is written for it.
     item : pydicom.Dataset
-        The annotation's item as received, which the QC pack draws.
+        The annotation's item as received, which the QC pack draws, or, for
+        annotations together, one item that holds all of their objects
+        (:func:`~.annotation_drawing.together`).
     """
+
+    @property
+    def together(self) -> bool:
+        """Return whether this is the annotations that an instance keeps together."""
+        return not self.path.items
 
     path: ElementPath
     digest: str
@@ -155,6 +180,10 @@ class AnnotationPlan:
         that ends with it.
     material : tuple of AnnotationMaterial
         Each annotation, in order, with what is written for it.
+    layers : mapping of str to tuple
+        How each of the instance's graphic layers shows
+        (:func:`~.annotation_drawing.layer_appearances`), for the drawing
+        of the annotations that it keeps as one.
     """
 
     actions: Mapping[ElementPath, str] = dataclasses.field(
@@ -162,12 +191,17 @@ class AnnotationPlan:
     )
     removed_items: frozenset[Item] = frozenset()
     material: tuple[AnnotationMaterial, ...] = ()
+    layers: Mapping[str, tuple] = dataclasses.field(
+        default_factory=lambda: types.MappingProxyType({})
+    )
 
     @property
     def held(self) -> tuple[AnnotationMaterial, ...]:
         """Return each annotation that is held for review."""
         return tuple(
-            each for each in self.material if each.result.outcome is Outcome.HELD
+            each
+            for each in self.material
+            if each.result.outcome is Outcome.HELD and not each.together
         )
 
 
@@ -232,12 +266,16 @@ def annotation_plan(
         return NO_ANNOTATIONS
     try:
         echoed = (*identifiers, *dataset_identifiers(dataset))
+        layers = types.MappingProxyType(layer_appearances(dataset))
     except (TypeError, ValueError, UnicodeError, AttributeError):
         return NO_ANNOTATIONS
     results = [
         review_annotation(digest, text, reviewed, echoed, drawn=whole)
         for digest, text, whole in zip(digests, texts, drawn)
     ]
+    results, kept_together = kept_as_one(
+        items, digests, texts, results, reviewed, layers
+    )
     if all(result.outcome is Outcome.REMOVED for result in results):
         return NO_ANNOTATIONS
     actions: dict[ElementPath, str] = {sequence: _KEPT}
@@ -266,7 +304,53 @@ def annotation_plan(
             zip(digests, texts, results, items)
         )
     )
-    return AnnotationPlan(types.MappingProxyType(actions), frozenset(removed), material)
+    if kept_together is not None:
+        material = (*material, kept_together)
+    return AnnotationPlan(
+        types.MappingProxyType(actions), frozenset(removed), material, layers
+    )
+
+
+def kept_as_one(
+    items: Sequence[pydicom.Dataset],
+    digests: Sequence[str],
+    texts: Sequence[tuple[str, ...]],
+    results: Sequence[ReviewedAnnotation],
+    reviewed: ReviewedAnnotations,
+    layers: Mapping[str, tuple],
+) -> tuple[list[ReviewedAnnotation], AnnotationMaterial | None]:
+    """Return what is written for annotations decided on alone and together.
+
+    The annotations that ``results`` do not remove are decided on together
+    too, from the QC pack's drawing of them as one, and those kept are
+    released only as that decision allows
+    (:func:`~.reviewed_annotations.review_together`). Returns each
+    annotation's result, and, where at least two are not removed, the
+    material of them together, for the QC pack.
+    """
+    shown = [
+        index
+        for index, result in enumerate(results)
+        if result.outcome is not Outcome.REMOVED
+    ]
+    if len(shown) < 2:
+        return list(results), None
+    chosen = [items[index] for index in shown]
+    results, digest, decided = review_together(
+        digests,
+        results,
+        reviewed,
+        drawn=undrawn_together(chosen, layers) == 0,
+    )
+    assert digest is not None and decided is not None
+    material = AnnotationMaterial(
+        ElementPath((), GRAPHIC_ANNOTATION_SEQUENCE),
+        digest,
+        tuple(text for index in shown for text in texts[index]),
+        decided,
+        together(chosen),
+    )
+    return results, material
 
 
 def _private(tag: str) -> bool:

@@ -1000,7 +1000,9 @@ def annotation_counts(material: Mapping[int, Sequence[object]]) -> AnnotationCou
     ``material`` is each input's QC material, by its position. Each
     :class:`~.graphic_annotations.AnnotationMaterial` is one annotation of a
     Presentation State whose annotations the reviewed annotations list
-    decided on, so every annotation counts by its outcome, and each distinct
+    decided on, or, without items in its path, the instance's annotations
+    together, which are not counted, so every annotation counts by its
+    outcome, and each distinct
     annotation held for review once for each of its reasons, as
     :meth:`~pymedphys._dicom.deidentify.reviewed_annotations.AnnotationReviewQueue.report_counts`
     gives, without text or digest (D-062).
@@ -1008,7 +1010,9 @@ def annotation_counts(material: Mapping[int, Sequence[object]]) -> AnnotationCou
     queue = AnnotationReviewQueue()
     for position in sorted(material):
         found = [
-            item for item in material[position] if isinstance(item, AnnotationMaterial)
+            item
+            for item in material[position]
+            if isinstance(item, AnnotationMaterial) and not item.together
         ]
         if found:
             queue.add(

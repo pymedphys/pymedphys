@@ -36,6 +36,14 @@ but for its UIDs, and one whose text echoes one of its instance's patient or
 other person identifiers is held all the same, since a reviewer may have
 kept it for another patient (:func:`review_annotation`).
 
+A name can also be split into strokes across several annotations, each of
+which shows nothing alone, so the annotations of one instance that the
+list does not remove are released only where the list also has a decision
+on them together, by their :func:`together_digest`, which the reviewer
+gives from the QC pack's drawing of them as one (:func:`review_together`).
+A decision to keep them together applies only to that set: beside another
+annotation, or without one of them, they are a new set, held for review.
+
 The list holds digests only, but an annotation's text is short and could be
 guessed and checked against its digest, so the list is kept as confidential
 state, as the other reviewed lists are: the custodian keeps it with the key
@@ -70,6 +78,9 @@ FORMAT = "pymedphys-deid-reviewed-annotations/1"
 DIGEST_DOMAIN = "reviewed-annotations"
 # The domain of an annotation's digest, which prefixes its canonical form.
 ANNOTATION_DOMAIN = b"pymedphys-deid-annotation/1\x00"
+# The domain of the digest of annotations kept together in one instance,
+# which prefixes their digests.
+TOGETHER_DOMAIN = b"pymedphys-deid-annotations-together/1\x00"
 _DIGEST = re.compile(r"[0-9a-f]{64}")
 # The padding that a text value may carry, which its canonical form drops.
 _PADDING = " \x00"
@@ -102,6 +113,10 @@ class Held(enum.Enum):
     # object, a fill, a dashed line's pattern, or a difference in style
     # between its objects, so the reviewer did not see it whole
     NOT_DRAWN = "not-drawn"
+    # the list keeps it and the others that its instance keeps, but has no
+    # decision on them together, which the reviewer has not seen drawn as
+    # one
+    NOT_REVIEWED_TOGETHER = "not-reviewed-together"
 
 
 class Outcome(enum.Enum):
@@ -254,6 +269,86 @@ def review_annotation(
     if any(echoes_identifier(text, identifiers) for text in texts):
         return ReviewedAnnotation(Outcome.HELD, Held.ECHOES_IDENTIFIER)
     return ReviewedAnnotation(Outcome.KEPT)
+
+
+def together_digest(digests: Sequence[str]) -> str:
+    """Return the digest of annotations kept together, as 64 hexadecimal digits.
+
+    It is the SHA-256 of :data:`TOGETHER_DOMAIN` followed by the UTF-8 JSON
+    of their digests, sorted, so it is the same for the same annotations in
+    any order, and differs where any one of them is added, left out, or
+    changed. A reviewer's decision on it is a decision on the annotations
+    kept as one, as the QC pack draws them.
+    """
+    text = json.dumps(sorted(digests), separators=(",", ":"))
+    return hashlib.sha256(TOGETHER_DOMAIN + text.encode("utf-8")).hexdigest()
+
+
+def review_together(
+    digests: Sequence[str],
+    results: Sequence[ReviewedAnnotation],
+    reviewed: ReviewedAnnotations,
+    *,
+    drawn: bool,
+) -> tuple[list[ReviewedAnnotation], str | None, ReviewedAnnotation | None]:
+    """Return what is written for an instance's annotations as one.
+
+    A name can be split into strokes across several annotations, each of
+    which shows nothing alone, so the annotations that an instance does not
+    remove are decided on together too, by their :func:`together_digest`,
+    from the QC pack's drawing of them as one, and those that the list
+    keeps are released only as that decision allows. Without a decision on
+    them together, each kept one is held with ``NOT_REVIEWED_TOGETHER``;
+    where the list removes them together, each kept one is removed; and
+    where the drawing of them together leaves out a difference between them
+    (``drawn`` is false), each kept one is held with ``NOT_DRAWN``, whatever
+    the list decides, since the reviewer did not see them whole. Those held
+    on their own are included, so that a reviewer can decide on the
+    instance's annotations together in the same review as on each.
+
+    Parameters
+    ----------
+    digests : sequence of str
+        Each annotation's digest.
+    results : sequence of ReviewedAnnotation
+        What is written for each, decided on alone.
+    reviewed : ReviewedAnnotations
+        The list.
+    drawn : bool
+        Whether the QC pack's drawing of the annotations that are not
+        removed, as one, shows them whole
+        (:func:`~pymedphys._dicom.deidentify.annotation_drawing.undrawn_together`).
+
+    Returns
+    -------
+    tuple of (list of ReviewedAnnotation, str or None, ReviewedAnnotation or None)
+        What is written for each annotation; the digest of those not
+        removed, together; and what the list decided for them together.
+        The last two are None where fewer than two are not removed, and the
+        annotations are then as given.
+    """
+    results = list(results)
+    shown = [
+        index
+        for index, result in enumerate(results)
+        if result.outcome is not Outcome.REMOVED
+    ]
+    if len(shown) < 2:
+        return results, None, None
+    digest = together_digest([digests[index] for index in shown])
+    decision = reviewed.get(digest)
+    if not drawn:
+        outcome = ReviewedAnnotation(Outcome.HELD, Held.NOT_DRAWN)
+    elif decision is None:
+        outcome = ReviewedAnnotation(Outcome.HELD, Held.NOT_REVIEWED_TOGETHER)
+    elif decision is Review.REMOVE:
+        outcome = ReviewedAnnotation(Outcome.REMOVED)
+    else:
+        return results, digest, ReviewedAnnotation(Outcome.KEPT)
+    for index in shown:
+        if results[index].outcome is Outcome.KEPT:
+            results[index] = outcome
+    return results, digest, outcome
 
 
 class ReviewedAnnotations:

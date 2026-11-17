@@ -58,12 +58,18 @@ the drawing cannot show. So each graphic object and compound graphic
 whose style, its Line Style Sequence (0070,0232) and Fill Style Sequence
 (0070,0233) but for a fill's pattern, which is drawn, differs from that of
 the item's first one is counted as not drawn whole, as is each text
-object whose appearance, every element of it that the drawing does not
-draw, such as its Text Style Sequence (0070,0231), differs from that of
-the first text object. A compound graphic's other elements, such as its
-rotation, shape it, not how it shows, and the drawing draws it through its
-points; UIDs and identifiers that only tell objects apart are part of no
-appearance.
+object whose Text Style Sequence (0070,0231), its colour, opacity, and
+shadow, differs from that of the first text object. A text object's other
+elements, such as its justification, only place its text, which the text
+values list, and a graphic's other elements, such as a compound
+graphic's rotation, shape it, not how it shows.
+
+Several annotations of one instance can be drawn as one
+(:func:`together`), since a name can be split into strokes across them.
+The drawing of them together is whole only where each is, where their
+objects look alike across them, as within one, and where their graphic
+layers show alike, by every element of Graphic Layer Sequence (0070,0060)
+but a layer's name, order, and description (:func:`undrawn_together`).
 
 Annotation units are PIXEL, in the image's pixels, or DISPLAY, in
 fractions of the displayed area (C.10.5.1.1). Without the image, the two
@@ -86,7 +92,7 @@ from __future__ import annotations
 import dataclasses
 import html
 import math
-from collections.abc import Iterable, Sequence
+from collections.abc import Iterable, Mapping, Sequence
 
 from pymedphys._imports import pydicom
 
@@ -104,37 +110,16 @@ _FILLED_SHADE = 'fill-opacity="0.15"'
 # The Line Patterns that draw a dashed line in one colour, all bits clear or
 # all set, whose line a solid one shows whole.
 _UNIFORM_LINE_PATTERNS = (0, 0xFFFFFFFF)
+# The elements of a graphic layer that name or order it, which are not
+# part of how it shows.
+_LAYER_NAMING = frozenset(
+    {"GraphicLayer", "GraphicLayerOrder", "GraphicLayerDescription"}
+)
 # The style sequences of a graphic object or compound graphic.
 _STYLES = ("LineStyleSequence", "FillStyleSequence")
-# The elements of a graphic object, a compound graphic, or a text object
-# that the drawing draws, or that only tell objects apart or name their
-# text, which the text values list; every other element is part of the
-# object's appearance. A fill's pattern is drawn in a panel of its own.
-_DRAWN = frozenset(
-    {
-        "GraphicAnnotationUnits",
-        "GraphicDimensions",
-        "NumberOfGraphicPoints",
-        "GraphicData",
-        "GraphicType",
-        "GraphicFilled",
-        "CompoundGraphicUnits",
-        "CompoundGraphicType",
-        "CompoundGraphicInstanceID",
-        "GraphicGroupID",
-        "TrackingID",
-        "MajorTicksSequence",
-        "TickPosition",
-        "TickLabel",
-        "UnformattedTextValue",
-        "BoundingBoxAnnotationUnits",
-        "BoundingBoxTopLeftHandCorner",
-        "BoundingBoxBottomRightHandCorner",
-        "AnchorPointAnnotationUnits",
-        "AnchorPoint",
-        "FillPattern",
-    }
-)
+# The element of a style that the drawing draws: a fill's pattern, in a
+# panel of its own.
+_DRAWN = frozenset({"FillPattern"})
 
 Point = tuple[float, float]
 
@@ -411,16 +396,16 @@ def _frame(units: str, panel: _Panel) -> tuple[float, float, float, float]:
     return (left - pad, top - pad, side + 2 * pad, side + 2 * pad)
 
 
-def _appearance(dataset: pydicom.Dataset) -> tuple:
+def _appearance(dataset: pydicom.Dataset, drawn: frozenset[str] = _DRAWN) -> tuple:
     """Return what of an object the drawing does not draw, to compare.
 
-    Each element but those in ``_DRAWN`` and UIDs, by tag, with its items'
+    Each element but those in ``drawn`` and UIDs, by tag, with its items'
     appearances or its value's text, so that two objects that look alike
     have the same appearance.
     """
     parts = []
     for element in dataset:
-        if element.keyword in _DRAWN or element.VR == "UI":
+        if element.keyword in drawn or element.VR == "UI":
             continue
         if element.VR == "SQ":
             value: object = tuple(_appearance(item) for item in element.value or ())
@@ -432,12 +417,17 @@ def _appearance(dataset: pydicom.Dataset) -> tuple:
     return tuple(parts)
 
 
+def _appearance_of(dataset: pydicom.Dataset, keywords: Sequence[str]) -> tuple:
+    """Return the appearances of the items of an object's style sequences."""
+    return tuple(
+        (keyword, tuple(_appearance(item) for item in dataset.get(keyword) or ()))
+        for keyword in keywords
+    )
+
+
 def _style(graphic: pydicom.Dataset) -> tuple:
     """Return a graphic object's or compound graphic's style, to compare."""
-    return tuple(
-        (keyword, tuple(_appearance(item) for item in graphic.get(keyword) or ()))
-        for keyword in _STYLES
-    )
+    return _appearance_of(graphic, _STYLES)
 
 
 def _unlike(appearances: Sequence[tuple]) -> int:
@@ -455,7 +445,10 @@ def _draw(item: pydicom.Dataset) -> _Drawing:
         ]
     )
     drawing.skipped += _unlike(
-        [_appearance(text) for text in item.get("TextObjectSequence") or ()]
+        [
+            _appearance_of(text, ("TextStyleSequence",))
+            for text in item.get("TextObjectSequence") or ()
+        ]
     )
     for graphic in item.get("GraphicObjectSequence") or ():
         _graphic(drawing, graphic)
@@ -464,6 +457,67 @@ def _draw(item: pydicom.Dataset) -> _Drawing:
     for text in item.get("TextObjectSequence") or ():
         _text_object(drawing, text)
     return drawing
+
+
+def together(items: Sequence[pydicom.Dataset]) -> pydicom.Dataset:
+    """Return one item that holds every object of ``items``, in their order.
+
+    Its drawing (:func:`draw_annotation`) draws the annotations as one, so
+    that strokes split across them show as a display shows them together.
+    """
+    merged = pydicom.Dataset()
+    for keyword in (
+        "GraphicObjectSequence",
+        "CompoundGraphicSequence",
+        "TextObjectSequence",
+    ):
+        objects = [each for item in items for each in item.get(keyword) or ()]
+        if objects:
+            setattr(merged, keyword, objects)
+    return merged
+
+
+def layer_appearances(dataset: pydicom.Dataset) -> dict[str, tuple]:
+    """Return how each graphic layer of an instance shows, by its name.
+
+    Every element of each item of Graphic Layer Sequence (0070,0060) but its
+    name, order, and description, such as its recommended display grayscale
+    or CIELab value, which the drawing does not draw.
+    """
+    layers: dict[str, tuple] = {}
+    for layer in dataset.get("GraphicLayerSequence") or ():
+        name = str(layer.get("GraphicLayer", "") or "").rstrip(" \x00")
+        layers[name] = _appearance(layer, _LAYER_NAMING)
+    return layers
+
+
+def undrawn_together(
+    items: Sequence[pydicom.Dataset], layers: Mapping[str, tuple]
+) -> int:
+    """Return how much the drawing of annotations as one leaves out.
+
+    The drawing draws every object in one colour and opacity, whatever its
+    annotation or layer, so as well as what it leaves out of each
+    annotation (:func:`undrawn_objects`), each object that looks different
+    from the first of its kind among all of them, and each annotation on a
+    layer that shows differently from the first annotation's, is counted:
+    strokes split across annotations, in different styles or layers, can
+    spell a name that the drawing hides.
+
+    Parameters
+    ----------
+    items : sequence of pydicom.Dataset
+        The annotations kept together, as received.
+    layers : mapping of str to tuple
+        How each of the instance's layers shows (:func:`layer_appearances`).
+    """
+    shown = [
+        layers.get(str(item.get("GraphicLayer", "") or "").rstrip(" \x00"))
+        for item in items
+    ]
+    return undrawn_objects(together(items)) + sum(
+        each != shown[0] for each in shown[1:]
+    )
 
 
 def undrawn_objects(item: pydicom.Dataset) -> int:

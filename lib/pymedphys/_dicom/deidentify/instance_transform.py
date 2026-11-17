@@ -185,7 +185,13 @@ from .face_review import (
     registration_frames,
 )
 from .file_layout import ElementPath
-from .graphic_annotations import AnnotationMaterial, annotation_plan, with_annotations
+from .graphic_annotations import (
+    AnnotationMaterial,
+    AnnotationPlan,
+    annotation_plan,
+    kept_as_one,
+    with_annotations,
+)
 from .iod_conformance import lost_requirements, source_gaps
 from .iods import IOD, IODTables, load_iod_tables
 from .keys import DeidKey
@@ -1950,28 +1956,44 @@ class InstanceTransform:
         return redaction
 
     def _reviewed_annotations(
-        self, material: tuple[AnnotationMaterial, ...], edits: InstanceEdits
-    ) -> list[ReviewedAnnotation]:
-        """Return what is written for each annotation, once checked for echoes.
+        self, plan: AnnotationPlan, edits: InstanceEdits
+    ) -> tuple[AnnotationMaterial, ...]:
+        """Return each annotation's material, once checked for echoes.
 
-        The plan kept each annotation that the list keeps; one whose text
-        echoes one of the identifiers that the edits collected is held, so
-        that its instance is not released (D-062).
+        The plan kept each annotation that the list keeps, alone and with
+        the others; one whose text echoes one of the identifiers that the
+        edits collected is held, so that its instance is not released, and
+        the annotations are decided on together again (D-062). The material
+        of the annotations together, if any, is last.
         """
         assert self._annotations is not None
         identifiers = identifiers_of(edits)
-        return [
+        each = [material for material in plan.material if not material.together]
+        results = [
             review_annotation(
-                each.digest,
-                each.texts,
+                material.digest,
+                material.texts,
                 self._annotations,
                 identifiers,
-                drawn=undrawn_objects(each.item) == 0,
+                drawn=undrawn_objects(material.item) == 0,
             )
-            if each.result.outcome is AnnotationOutcome.KEPT
-            else each.result
-            for each in material
+            if material.result.outcome is AnnotationOutcome.KEPT
+            else material.result
+            for material in each
         ]
+        results, as_one = kept_as_one(
+            [material.item for material in each],
+            [material.digest for material in each],
+            [material.texts for material in each],
+            results,
+            self._annotations,
+            plan.layers,
+        )
+        found = tuple(
+            dataclasses.replace(material, result=result)
+            for material, result in zip(each, results)
+        )
+        return found if as_one is None else (*found, as_one)
 
     def _kept_descriptors(
         self, plan: InstancePlan, edits: InstanceEdits
@@ -2132,26 +2154,21 @@ class InstanceTransform:
             if cleaned.held:
                 evidence = HeldEvidence(evidence, cleaned.held)
         if annotations.material:
-            reviewed = self._reviewed_annotations(annotations.material, edits)
+            reviewed = self._reviewed_annotations(annotations, edits)
+            each = [material for material in reviewed if not material.together]
             held = tuple(
-                HeldAnnotation(material.path, result.held_because)
-                for material, result in zip(annotations.material, reviewed)
-                if result.held_because is not None
+                HeldAnnotation(material.path, material.result.held_because)
+                for material in each
+                if material.result.held_because is not None
             )
             if held:
                 evidence = _held_all(evidence, held)
             self.annotation_queue.add(
-                [material.digest for material in annotations.material],
-                [material.texts for material in annotations.material],
-                reviewed,
+                [material.digest for material in each],
+                [material.texts for material in each],
+                [material.result for material in each],
             )
-            names = (
-                *names,
-                *(
-                    dataclasses.replace(material, result=result)
-                    for material, result in zip(annotations.material, reviewed)
-                ),
-            )
+            names = (*names, *reviewed)
         if self._birth_dates is not None:
             edits = with_birth_date(edits, self._birth_dates.value(record.patient))
         defacing = self._defacing(iod, record)

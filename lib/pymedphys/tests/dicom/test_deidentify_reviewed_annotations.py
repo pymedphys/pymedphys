@@ -22,6 +22,7 @@ synthetic. Values that must never reach a written file carry the text
 ``SENTINEL``.
 """
 
+import copy
 import io
 import json
 import xml.dom.minidom
@@ -63,6 +64,7 @@ from pymedphys._dicom.deidentify.reviewed_annotations import (
     ReviewedAnnotationsError,
     annotation_digest,
     annotation_texts,
+    together_digest,
 )
 from pymedphys._dicom.deidentify.run_report import annotation_counts
 from pymedphys._dicom.deidentify.walker import SequesterReason, Sequestration
@@ -451,17 +453,33 @@ def test_an_annotation_without_a_decision_holds_its_instance_for_review():
 
     assert isinstance(result, run.Transformed), result
     assert isinstance(result.evidence, HeldEvidence)
-    path = ElementPath(((GRAPHIC_ANNOTATION_SEQUENCE, 1),), GRAPHIC_ANNOTATION_SEQUENCE)
+    arrow, ruler = (
+        ElementPath(
+            ((GRAPHIC_ANNOTATION_SEQUENCE, index),), GRAPHIC_ANNOTATION_SEQUENCE
+        )
+        for index in (0, 1)
+    )
+    # The kept arrow waits on a decision on the two together too.
     assert getattr(result.evidence, "held") == (
-        HeldAnnotation(path, Held.NOT_REVIEWED),
+        HeldAnnotation(arrow, Held.NOT_REVIEWED_TOGETHER),
+        HeldAnnotation(ruler, Held.NOT_REVIEWED),
     )
     # The staged file carries no unreviewed text.
     assert b"SENTINEL" not in result.data
-    held = [each for each in _material(result) if each.result.outcome is Outcome.HELD]
-    assert [each.texts for each in held] == [annotation_texts(_ruler())]
+    held = [
+        each
+        for each in _material(result)
+        if each.result.outcome is Outcome.HELD and not each.together
+    ]
+    assert [each.texts for each in held] == [
+        annotation_texts(_arrow()),
+        annotation_texts(_ruler()),
+    ]
     assert "SENTINEL" not in repr(held)
-    (pending,) = transform.annotation_queue.entries()
-    assert pending.digest == annotation_digest(_ruler())
+    assert {pending.digest for pending in transform.annotation_queue.entries()} == {
+        annotation_digest(_arrow()),
+        annotation_digest(_ruler()),
+    }
 
 
 def test_a_kept_annotation_that_names_the_patient_is_held():
@@ -788,6 +806,165 @@ def test_identifiers_that_tell_objects_apart_are_not_an_appearance():
     assert undrawn_objects(item) == 0
 
 
+# Annotations together
+
+
+def _parts(*opacities):
+    """Annotations that each hold an even share of an opaque grid's strokes.
+
+    Each part's strokes are drawn at the opacity given for it; one part per
+    opacity given.
+    """
+    strokes = list(_grid(tuple("1" * 8 for _ in OPACITY_MASK)).GraphicObjectSequence)
+    count = len(opacities)
+    parts = []
+    for index, opacity in enumerate(opacities):
+        part = _grid()
+        share = strokes[
+            index * len(strokes) // count : (index + 1) * len(strokes) // count
+        ]
+        part.GraphicObjectSequence = [copy.deepcopy(each) for each in share]
+        for stroke in part.GraphicObjectSequence:
+            stroke.LineStyleSequence[0].PatternOnOpacity = opacity
+        parts.append(part)
+    return parts
+
+
+def _kept_alone(*annotations):
+    return _reviewed(
+        **{
+            f"a{index}": (annotation_digest(each), Review.KEEP)
+            for index, each in enumerate(annotations)
+        }
+    )
+
+
+def test_the_digest_of_annotations_together_is_of_the_set():
+    first, second = annotation_digest(_arrow()), annotation_digest(_ruler())
+
+    assert together_digest([first, second]) == together_digest([second, first])
+    assert together_digest([first, second]) != together_digest([first])
+    assert together_digest([first, second]) != together_digest([first, second, first])
+    assert together_digest([first]) != first
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.3-01")
+def test_annotations_kept_alone_are_held_until_decided_on_together():
+    # Each half of a grid shows nothing alone; only the two drawn as one do.
+    first, second = _parts(1.0, 1.0)
+    reviewed = _kept_alone(first, second)
+
+    _, result = _transformed(_presentation_state(first, second), reviewed)
+
+    assert isinstance(result, run.Transformed), result
+    assert isinstance(result.evidence, HeldEvidence)
+    assert {each.reason for each in getattr(result.evidence, "held")} == {
+        Held.NOT_REVIEWED_TOGETHER
+    }
+    (together,) = [each for each in _material(result) if each.together]
+    assert together.digest == together_digest(
+        [annotation_digest(first), annotation_digest(second)]
+    )
+    assert together.result.held_because is Held.NOT_REVIEWED_TOGETHER
+    # The QC pack's drawing of them together draws all forty strokes.
+    assert draw_annotation(together.item).count("<polyline") == 40
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.3-01")
+def test_annotations_kept_together_are_written():
+    first, second = _parts(1.0, 1.0)
+    reviewed = _kept_alone(first, second)
+    reviewed.record(
+        together_digest([annotation_digest(first), annotation_digest(second)]),
+        Review.KEEP,
+    )
+
+    _, result = _transformed(_presentation_state(first, second), reviewed)
+
+    assert isinstance(result, run.Transformed), result
+    assert not isinstance(result.evidence, HeldEvidence)
+    written = pydicom.dcmread(io.BytesIO(result.data))
+    assert len(written.GraphicAnnotationSequence) == 2
+    assert [each.result.outcome for each in _material(result)] == [Outcome.KEPT] * 3
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.3-01")
+def test_annotations_removed_together_are_removed():
+    parts = _parts(1.0, 1.0, 1.0)
+    reviewed = _kept_alone(*parts)
+    reviewed.record(
+        together_digest([annotation_digest(each) for each in parts]),
+        Review.REMOVE,
+    )
+
+    _, result = _transformed(_presentation_state(*parts), reviewed)
+
+    # Every annotation is removed, so the Type 1 sequence would be empty.
+    assert isinstance(result, run.Sequestered), result
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.3-01")
+def test_a_decision_together_is_not_taken_for_another_set():
+    first, second, third = _parts(1.0, 1.0, 1.0)
+    reviewed = _kept_alone(first, second, third)
+    reviewed.record(
+        together_digest([annotation_digest(first), annotation_digest(second)]),
+        Review.KEEP,
+    )
+
+    # Beside a third annotation, the two are a new set, never drawn as one.
+    _, result = _transformed(_presentation_state(first, second, third), reviewed)
+
+    assert isinstance(result.evidence, HeldEvidence)
+    assert {each.reason for each in getattr(result.evidence, "held")} == {
+        Held.NOT_REVIEWED_TOGETHER
+    }
+
+
+@pytest.mark.deid_requirement("PS3.15-E.3.3-01")
+@pytest.mark.parametrize(
+    "opacities, layers",
+    [
+        # The halves' strokes in different opacities, so the drawing of them
+        # as one, in one opacity, hides what they spell together.
+        ((1.0, 0.0), ("LAYER", "LAYER")),
+        # The halves on layers that a display shows in different colours.
+        ((1.0, 1.0), ("LAYER", "OTHER")),
+    ],
+)
+def test_annotations_unlike_one_another_are_held_whatever_the_list_decides(
+    opacities, layers
+):
+    first, second = _parts(*opacities)
+    first.GraphicLayer, second.GraphicLayer = layers
+    reviewed = _kept_alone(first, second)
+    reviewed.record(
+        together_digest([annotation_digest(first), annotation_digest(second)]),
+        Review.KEEP,
+    )
+    dataset = _presentation_state(first, second)
+    dataset.GraphicLayerSequence = [
+        synthetic.item(
+            GraphicLayer="LAYER",
+            GraphicLayerOrder=1,
+            GraphicLayerRecommendedDisplayCIELabValue=[65535, 32896, 32896],
+        ),
+        synthetic.item(
+            GraphicLayer="OTHER",
+            GraphicLayerOrder=2,
+            GraphicLayerRecommendedDisplayCIELabValue=[0, 32896, 32896],
+        ),
+    ]
+
+    _, result = _transformed(dataset, reviewed)
+
+    assert undrawn_objects(first) == undrawn_objects(second) == 0
+    assert isinstance(result.evidence, HeldEvidence)
+    assert {each.reason for each in getattr(result.evidence, "held")} == {
+        Held.NOT_DRAWN
+    }
+
+
 def test_a_list_is_taken_only_under_clean_graphics():
     with pytest.raises(PolicyError, match="Clean Graphics|clean graphics"):
         _transformed(
@@ -838,8 +1015,13 @@ def test_the_release_report_counts_the_annotations_without_their_text():
 
     counts = annotation_counts({0: kept.qc, 1: held.qc})
 
-    assert dict(counts.outcomes) == {Outcome.KEPT: 2, Outcome.HELD: 1}
-    assert dict(counts.held) == {Held.NOT_REVIEWED: 1}
+    # The arrow kept alone, and held beside the ruler until the two are
+    # decided on together; the annotations together are not counted.
+    assert dict(counts.outcomes) == {Outcome.KEPT: 1, Outcome.HELD: 2}
+    assert dict(counts.held) == {
+        Held.NOT_REVIEWED: 1,
+        Held.NOT_REVIEWED_TOGETHER: 1,
+    }
     text = release_report.to_json(
         release_report.release_report(
             policy.compose_custom_policy(list(OPTIONS)),
@@ -852,10 +1034,13 @@ def test_the_release_report_counts_the_annotations_without_their_text():
     document = json.loads(text)
     assert document["annotations"] == {
         "outcomes": [
-            {"outcome": "held", "count": 1},
-            {"outcome": "kept", "count": 2},
+            {"outcome": "held", "count": 2},
+            {"outcome": "kept", "count": 1},
         ],
-        "held": [{"reason": "not-reviewed", "count": 1}],
+        "held": [
+            {"reason": "not-reviewed", "count": 1},
+            {"reason": "not-reviewed-together", "count": 1},
+        ],
     }
     assert document["method"]["reviewed_annotations"] == reviewed.keyed_digest(KEY)
     markdown = to_markdown(text)
@@ -1058,7 +1243,7 @@ def test_the_pack_lists_each_annotation_with_its_text_and_drawing():
         ({"held_because": None}, "exactly when it was held"),
         ({"drawing": "<html>"}, "SVG"),
         ({"texts": ["x"]}, "tuple of text"),
-        ({"path": ElementPath((), GRAPHIC_ANNOTATION_SEQUENCE)}, "item's"),
+        ({"path": ElementPath((), "(0070,0009)")}, "Graphic Annotation Sequence"),
     ],
 )
 def test_an_annotation_entry_is_checked(fields, match):
