@@ -59,12 +59,13 @@ The corpus tests build the synthetic corpus, run the engine over it once for eac
    export PYMEDPHYS_DICOM_VALIDATORS=required
    export PYMEDPHYS_DICOM_VALIDATION_REPORT="$PWD/dicom-validation"
    uv run --no-dev --extra tests pymedphys dev tests --dicom-validators \
-     lib/pymedphys/tests/dicom/test_deidentify_dicom_validation_corpus.py
+     lib/pymedphys/tests/dicom/test_deidentify_dicom_validation_corpus.py \
+     lib/pymedphys/tests/dicom/test_deidentify_dicom_validation_corpus_p_z.py
    ```
 
 The tests are marked `dicom_validators`, so the ordinary test run leaves them out. Without `PYMEDPHYS_DICOM_VALIDATORS=required` they skip when a validator is missing, rather than fail. The first run downloads the DocBook source into `~/.pymedphys/dicom-validator`, or into the directory that `PYMEDPHYS_DICOM_VALIDATOR_STANDARD` names. Each run's report is written into a directory of `dicom-validation` named after the run.
 
-In CI the job is `DICOM validation of de-identified output`, in the Unit Tests workflow. Its summary shows each run's report, and its `dicom-validation` artefact holds the reports as Markdown and JSON.
+The first module validates the policies whose names begin with a letter from a to o, and the second the others, through the same checks. In CI the job is `DICOM validation of de-identified output`, in the Unit Tests workflow, which validates the two halves on two runners, `(a-o)` and `(p-z)`. Each runner's summary shows its runs' reports, and its `dicom-validation-a-o` or `dicom-validation-p-z` artefact holds them as Markdown and JSON.
 
 ## Run it on a release of your own
 
@@ -79,6 +80,8 @@ uv run --no-dev --extra tests python -m pymedphys._dicom.deidentify.dicom_valida
   --work /data/midi-b/runs/validation-basic-1 \
   --out /data/midi-b/runs/validation-basic-1-dicom-validation
 ```
+
+The **MIDI-B Benchmark** workflow runs the same command in each of its jobs, after the benchmark, and keeps the results in the job's artefact (section 9 of the [MIDI-B benchmark guide](deidentification-midi-benchmark.md)).
 
 For another release, give the release and the mapping instead:
 
