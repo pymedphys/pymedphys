@@ -120,6 +120,7 @@ _SECTIONS = (
     "qc_review",
     "face_review",
     "redaction_review",
+    "residual_review",
     "pixel_regions",
     "readiness",
     "released",
@@ -192,6 +193,7 @@ def to_markdown(report: str) -> str:
         *_qc_review(document["qc_review"]),
         *_face_review(document["face_review"]),
         *_redaction_review(document["redaction_review"]),
+        *_residual_review(document["residual_review"]),
         *_pixel_regions(document["pixel_regions"]),
         *_readiness(document["readiness"]),
         *_released(document["released"]),
@@ -553,6 +555,24 @@ def _redaction_review(section: object) -> list[Block]:
             "proposed region, which only an IOD whose text finder met the "
             f"acceptance criteria allows: {flagged}. Frames of those files "
             f"that the reviewer was not shown: {not_shown}."
+        ],
+    ]
+
+
+def _residual_review(section: object) -> list[Block]:
+    if section is None:
+        return []
+    section = _fields("residual_review", section, ("reference",))
+    return [
+        ["## Residual review"],
+        [
+            "An instance that the residual search held for review was released "
+            "only where a reviewer cleared each of its findings, in the value "
+            "that the earlier run's confidential QC pack with this opaque "
+            "reference showed: "
+            + _code("residual_review reference", section["reference"])
+            + ". Each finding so cleared is counted under residual findings "
+            "exempted from review, as reviewed."
         ],
     ]
 
@@ -919,7 +939,8 @@ def _exempted(section: object) -> list[Block]:
             "that Modified Dates shifted, a value that a selected option keeps, "
             "text in a private creator that the run's safe private list keeps, "
             "or a standard code's meaning, or a UID that a selected option "
-            "keeps, that only instances the run did not write held. Each is "
+            "keeps, that only instances the run did not write held, or a "
+            "finding that a reviewer cleared in an earlier run's QC pack. Each is "
             "counted by why it was exempted, the attribute that "
             "held the source value, and the attribute it was found in, each "
             "instance once for each. The QC pack lists each finding by instance "
