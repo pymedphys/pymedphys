@@ -203,6 +203,7 @@ def test_the_document_has_the_sections_and_fields_the_design_lists(basic):
         "qc_review",
         "face_review",
         "redaction_review",
+        "residual_review",
         "pixel_regions",
         "readiness",
         "released",

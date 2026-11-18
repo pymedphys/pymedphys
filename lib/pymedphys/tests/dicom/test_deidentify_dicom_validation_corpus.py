@@ -23,7 +23,12 @@ the end-to-end tests, one for each policy of
 :data:`~pymedphys.tests.dicom.corpus_runs.CORPUS_RUNS`: among them
 ``basic``, ``basic-clean-descriptors`` with a reviewed ROI name and one the
 automatic tier renames, and ``basic`` over the corpus with its images
-compressed, which is skipped where a decoding plugin is not installed.
+compressed, which is skipped where a decoding plugin is not installed. This
+module runs and checks the policies whose names begin with a letter from a
+to o, and
+:mod:`~pymedphys.tests.dicom.test_deidentify_dicom_validation_corpus_p_z`
+runs the others through the same checks, so that CI can validate the two
+halves on two runners.
 
 The tests are marked ``dicom_validators``, so they run only when asked for,
 with ``--dicom-validators`` or ``--include-dicom-validators``. Without the
@@ -70,7 +75,7 @@ from pymedphys._dicom.deidentify.instance_transform import ReleaseGate
 
 from . import _corpus_run as runs
 from ._corpus_run import MARKER_SIGNATURES
-from .corpus_runs import CORPUS_RUNS
+from .corpus_runs import FIRST_HALF
 
 pytestmark = [pytest.mark.pydicom, pytest.mark.dicom_validators]
 
@@ -171,10 +176,14 @@ class Validated:
 @pytest.fixture(
     name="validated",
     scope="module",
-    params=[corpus_run.param() for corpus_run in CORPUS_RUNS],
+    params=[corpus_run.param() for corpus_run in FIRST_HALF],
 )
 def fixture_validated(request, toolset, published):  # pylint: disable = unused-argument
-    spec = request.param
+    return _validate(request.param, toolset)
+
+
+def _validate(spec, toolset):
+    """Run ``spec`` and return its outputs' and inputs' validation."""
     prepared = runs.prepare(spec)
     # A short directory, since a run refuses output paths that could exceed
     # Windows' 259 characters.

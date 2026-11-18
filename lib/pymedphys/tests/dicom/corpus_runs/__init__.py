@@ -19,7 +19,8 @@ Each module of this package defines ``RUN``, a
 :data:`CORPUS_RUNS` collects them in the order of their module names. An
 option's pull request adds its run as a new module, named after the option,
 such as ``retain_uids.py``, so that no two such pull requests change the
-same file.
+same file. :data:`FIRST_HALF` and :data:`SECOND_HALF` share them by the
+first letter of each policy's name, for the modules that CI runs in halves.
 """
 
 import importlib
@@ -40,3 +41,15 @@ def _collect() -> tuple[CorpusRun, ...]:
 
 
 CORPUS_RUNS: tuple[CorpusRun, ...] = _collect()
+
+# The runs take most of the time of the modules that make them all, so CI
+# shares each such module's runs between two parts by the first letter of
+# each policy's name. The letters are listed, as in the workflow's glob of
+# de-identification modules.
+FIRST_LETTERS = frozenset("abcdefghijklmno")
+FIRST_HALF: tuple[CorpusRun, ...] = tuple(
+    corpus_run for corpus_run in CORPUS_RUNS if corpus_run.name[0] in FIRST_LETTERS
+)
+SECOND_HALF: tuple[CorpusRun, ...] = tuple(
+    corpus_run for corpus_run in CORPUS_RUNS if corpus_run.name[0] not in FIRST_LETTERS
+)
