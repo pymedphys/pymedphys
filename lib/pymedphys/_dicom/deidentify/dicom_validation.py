@@ -284,16 +284,19 @@ def pairs_from_uid_mapping(
     """Pair inputs with outputs through a mapping of SOP Instance UIDs.
 
     ``mapping`` is a CSV file with the columns ``id_old`` and ``id_new``,
-    such as the MIDI benchmark's UID mapping file, and each output is named
-    by its SOP Instance UID with the suffix ``.dcm``, as a run names it.
-    Returns the pairs and the number of inputs without an output.
+    such as the MIDI benchmark's UID mapping file. Each output has the
+    suffix ``.dcm`` and is found by the SOP Instance UID it holds, not its
+    name: under Retain UIDs, an output holds its input's UID but is named by
+    that UID's keyed replacement. Returns the pairs and the number of inputs
+    without an output.
 
     Raises
     ------
     PairingError
         If the mapping lacks either column or maps an input UID to two
-        outputs, if two outputs share a name, or if an output is paired with
-        no input, since it would not be validated.
+        outputs, if an output's SOP Instance UID cannot be read, if two
+        outputs hold one SOP Instance UID, or if an output is paired with no
+        input, since it would not be validated.
     """
     replacements: dict[str, str] = {}
     with open(mapping, encoding="utf-8", newline="") as file:
@@ -305,8 +308,13 @@ def pairs_from_uid_mapping(
                 raise PairingError("the UID mapping maps an input UID to two outputs")
     outputs: dict[str, Path] = {}
     for path in Path(release).rglob("*.dcm"):
-        if path.is_file() and outputs.setdefault(path.stem, path) != path:
-            raise PairingError("two outputs in the release share a file name")
+        if not path.is_file():
+            continue
+        instance = _header(path).get("instance")
+        if not instance:
+            raise PairingError("an output's SOP Instance UID could not be read")
+        if outputs.setdefault(instance, path) != path:
+            raise PairingError("two outputs in the release hold one SOP Instance UID")
     discovery = run.discover(source)
     pairs = []
     unpaired = 0
