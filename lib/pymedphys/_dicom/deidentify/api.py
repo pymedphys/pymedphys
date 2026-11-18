@@ -221,7 +221,11 @@ def deidentify(  # pylint: disable = too-many-arguments
         which must exist, outside ``source``, ``release``, and ``qc_pack``,
         since a run records no decision. Each graphic annotation of a
         Presentation State that it keeps is written as received but for its
-        UIDs, each that it removes is removed, and one that it has no
+        UIDs, which are replaced as the instance's own are, its private
+        data elements, and any standard element that the IOD does not
+        define at its place in the annotation, such as a Patient's Birth
+        Date, which each take their own rules; each that it removes is
+        removed, and one that it has no
         decision on holds its instance for review, with its text and a
         drawing of it in the QC pack;
         ``python -m pymedphys._dicom.deidentify.reviewed_annotations_command``
