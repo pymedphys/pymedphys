@@ -326,7 +326,7 @@ def test_an_attestation_with_redaction_verdicts_is_read_back_as_written(first_ru
     assert attestation.redactions == _recorded(_verdicts(positions))
     assert qc_attestation.attested_pack(pack)[0] == attestation
     written = json.loads((pack / qc_attestation.ATTESTATION_FILE).read_text("ascii"))
-    assert written["format"] == "pymedphys-deid-qc-attestation/7"
+    assert written["format"] == "pymedphys-deid-qc-attestation/8"
     assert {
         "position": positions[_REVISED],
         "redaction": "revised",
