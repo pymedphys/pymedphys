@@ -14,7 +14,8 @@
 
 """The analytic head, the synthetic collection around it, and the two runs
 under Clean Recognizable Visual Features that the CT defacing run modules,
-test_deidentify_ct_defacing_run.py and
+test_deidentify_ct_defacing_run.py,
+test_deidentify_ct_defacing_variant_runs.py, and
 test_deidentify_ct_defacing_review_runs.py, review: the RT Structure Set
 replaced by one of the head, one RT Dose by a grid over the head, the PET
 Image by two slices of the head, and the BINARY Segmentation by one of the
@@ -32,7 +33,7 @@ import tempfile
 from pathlib import Path
 
 from pymedphys._imports import numpy as np
-from pymedphys._imports import pydicom, shapely
+from pymedphys._imports import pydicom, pytest, shapely
 
 from pymedphys._dicom.deidentify import dose_defacing, face_blocks, run
 from pymedphys._dicom.deidentify import synthetic_corpus as corpus_module
@@ -940,3 +941,19 @@ def _output_name(dataset):
         f"{dataset.PatientID}/{dataset.StudyInstanceUID}/"
         f"{dataset.SeriesInstanceUID}/{dataset.SOPInstanceUID}.dcm"
     )
+
+
+# The run that most of the CT defacing tests review, with the dose low
+# enough to set to zero in the face block, and the defaced run it reviews.
+# test_deidentify_ct_defacing_run.py reviews them again in its own runs, and
+# test_deidentify_ct_defacing_variant_runs.py compares its runs with the
+# defaced one, so each of those modules makes them, once.
+@pytest.fixture(name="reviewed_low", scope="module")
+def fixture_reviewed_low():
+    with _reviewed(first=(), dose=_dose(_LOW), registrations=True) as found:
+        yield found
+
+
+@pytest.fixture(name="defaced", scope="module")
+def fixture_defaced(reviewed_low):
+    return _second(reviewed_low, name="d")
