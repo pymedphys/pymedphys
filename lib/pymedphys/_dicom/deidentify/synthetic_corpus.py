@@ -1018,17 +1018,32 @@ _FIRST_DATE = datetime.date(900, 1, 1)
 # another marker's date, which the residual search would find.
 _DATE_RUN_DAYS = 363
 _DATE_RUN_PERIOD = 4004
+# The first 2**15 - 1 dates run on from _FIRST_DATE, to before 1900; the
+# rest run back from it, in runs on the same period, to no earlier than
+# _EARLIEST_DATE, late enough that a shift back by the longest offset still
+# gives a valid date. _LAST_DATE_NUMBER is the number of the last of them.
+_FORWARD_DATES = 2**15 - 1
+_EARLIEST_DATE = datetime.date(100, 1, 1)
+_LAST_DATE_NUMBER = (
+    _FORWARD_DATES
+    + (_FIRST_DATE - _EARLIEST_DATE).days // _DATE_RUN_PERIOD * _DATE_RUN_DAYS
+)
 _SECONDS_IN_A_DAY = 86_400
 # The kinds of marker numbered apart from the others, by VR, and how many of
-# each the corpus can hold: dates and datetimes, which share their days, up
-# to the last before 1900 (_marker_date); times, up to the last second of a
-# day; and VR SS, whose markers are negated, and US, up to the limits of
-# their 16 bits.
+# each the corpus can hold: dates and datetimes, which share their days,
+# no earlier than the year 100 and before 1900 (_marker_date); times, up to
+# the last second of a day; and VR SS, whose markers are negated, and US, up
+# to the limits of their 16 bits.
 _NUMBERED_APART = types.MappingProxyType(
     {"DA": "date", "DT": "date", "TM": "time", "SS": "SS", "US": "US"}
 )
 _KIND_LIMITS = types.MappingProxyType(
-    {"date": 2**15 - 1, "time": _SECONDS_IN_A_DAY - 1, "SS": 2**15, "US": 2**16 - 1}
+    {
+        "date": _LAST_DATE_NUMBER,
+        "time": _SECONDS_IN_A_DAY - 1,
+        "SS": 2**15,
+        "US": 2**16 - 1,
+    }
 )
 
 
@@ -2168,10 +2183,21 @@ def _marker_date(number: int) -> datetime.date:
 
     Within a run of ``_DATE_RUN_DAYS`` consecutive days dates are at most
     362 days apart, and between runs at least ``_DATE_RUN_PERIOD`` less 362,
-    3,642 days, so no two are 364 to 3,640 days apart. Every date of a
-    number below 2**15 is from 900 to before 1900.
+    3,642 days, so no two are 364 to 3,640 days apart. The first
+    ``_FORWARD_DATES`` run on from ``_FIRST_DATE`` to before 1900, and the
+    rest run back from it, the runs before it on the same period, so that
+    the dates of an earlier, smaller corpus stay as they were.
+
+    >>> _marker_date(1), _marker_date(_FORWARD_DATES)
+    (datetime.date(900, 1, 2), datetime.date(1886, 11, 25))
+    >>> _marker_date(_FORWARD_DATES + 1), _marker_date(_LAST_DATE_NUMBER)
+    (datetime.date(889, 1, 14), datetime.date(111, 9, 9))
     """
-    run, day = divmod(number, _DATE_RUN_DAYS)
+    if number <= _FORWARD_DATES:
+        run, day = divmod(number, _DATE_RUN_DAYS)
+    else:
+        back, day = divmod(number - _FORWARD_DATES - 1, _DATE_RUN_DAYS)
+        run = -1 - back
     return _FIRST_DATE + datetime.timedelta(days=run * _DATE_RUN_PERIOD + day)
 
 

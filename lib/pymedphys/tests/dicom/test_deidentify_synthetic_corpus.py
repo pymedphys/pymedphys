@@ -66,9 +66,9 @@ MARKER_PATTERNS = {
     **dict.fromkeys(("AE", "LO", "LT", "SH", "ST", "UC", "UT", "UN", "OB", "OW"), TEXT),
     "AS": r"\d{3}W",
     "CS": r"SYNMK_\d{5}",
-    "DA": r"(09|1[0-8])\d\d(0[1-9]|1[0-2])\d\d",
+    "DA": r"(0[1-9]|1[0-8])\d\d(0[1-9]|1[0-2])\d\d",
     "DS": r"8\d{5}\.5",
-    "DT": r"(09|1[0-8])\d\d(0[1-9]|1[0-2])\d{8}",
+    "DT": r"(0[1-9]|1[0-8])\d\d(0[1-9]|1[0-2])\d{8}",
     "IS": r"7\d{5}",
     "PN": r"SYNMK(\d{5})\^M[AÄ]RKER\1",
     "TM": r"([01]\d|2[0-3])[0-5]\d[0-5]\d\.424242",
@@ -767,7 +767,7 @@ def test_dates_are_distinct_valid_dates_before_1900(corpus):
 
     assert dates and len(dates) == len(set(dates))
     assert all(value_problem("DA", date) is None for date in dates)
-    assert all("0900" <= date[:4] <= "1899" for date in dates)
+    assert all("0100" <= date[:4] <= "1899" for date in dates)
 
 
 def test_no_date_shifted_under_modified_dates_is_another_markers(corpus):
