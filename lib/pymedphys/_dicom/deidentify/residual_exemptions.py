@@ -98,8 +98,8 @@ reason that such a finding is not a reason for review (D-032), or returns
   radiopharmaceutical, or an SR TEXT value, or a private data element that
   only copies one of them
   (:func:`~pymedphys._dicom.deidentify.residual_vocabulary.vocabulary_meaning`).
-  The release gate tries it for a text finding that nothing above
-  explains.
+  The release gate tries it after every exemption above, for a text finding
+  that none of them explains.
 - :attr:`Exemption.COPIED_REQUEST_CODE`: the finding's source is the Code
   Value, Coding Scheme Designator, or Code Meaning of a code item directly
   in Requested Procedure Code Sequence (0032,1064), at any depth, every
@@ -111,7 +111,8 @@ reason that such a finding is not a reason for review (D-032), or returns
   Sequence (0040,0275), into Procedure Code Sequence (0008,1032), which it
   keeps, so the removed copy reveals nothing the kept code does not, and
   every other finding in the kept code is decided as before. The release
-  gate tries it last, for a text finding that nothing above explains.
+  gate tries it after every exemption above, for a text finding that none
+  of them explains.
 
 The search records one finding of a source in each element, so each
 exemption is decided by the whole element: a CS value is exempt only if
@@ -205,6 +206,10 @@ class Exemption(enum.Enum):
     VOCABULARY_MEANING = "vocabulary-meaning"
     # equal to the same attribute of a kept code, from a removed request code
     COPIED_REQUEST_CODE = "copied-request-code"
+    # a finding that would hold the file for review, which a reviewer cleared
+    # in an attested QC pack of an earlier run of the same source file, in
+    # the same value (residuals.ReviewedFinding)
+    REVIEWED = "reviewed"
 
 
 @dataclasses.dataclass(frozen=True)
