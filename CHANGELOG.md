@@ -261,7 +261,7 @@ and a [reproducible two-hour workflow](https://docs.pymedphys.com/en/latest/cont
   error or `IndexError`.
   [PR #2111](https://github.com/pymedphys/pymedphys/pull/2111)
 
-- `Delivery.to_dicom` now works with an RT Plan template that has only one beam, so a delivery of a single-field plan can be written to DICOM. It raised `ValueError: zero-size array to reduction operation minimum which has no identity` for every one-beam template, even the plan that the delivery was read from with `Delivery.from_dicom`, because it sets the gantry angle tolerance that assigns control points to template beams from the spacing between those beams. A single beam now gets the 3 degree maximum tolerance, as beams at least 6.2 degrees apart already do, so the delivery's control points must lie within 3 degrees of the beam's gantry angle. Templates with two or more beams give the same results as before. [PR #TBD](https://github.com/pymedphys/pymedphys/pull/TBD)
+- `Delivery.to_dicom` now works with an RT Plan template that has only one beam, so a delivery of a single-field plan can be written to DICOM. It raised `ValueError: zero-size array to reduction operation minimum which has no identity` for every one-beam template, even the plan that the delivery was read from with `Delivery.from_dicom`, because it sets the gantry angle tolerance that assigns control points to template beams from the spacing between those beams. A single beam now gets the 3 degree maximum tolerance, as beams at least 6.2 degrees apart already do, so the delivery's control points must lie within 3 degrees of the beam's gantry angle. Templates with two or more beams give the same results as before. [PR #2615](https://github.com/pymedphys/pymedphys/pull/2615)
 
 ### Dependency changes
 
