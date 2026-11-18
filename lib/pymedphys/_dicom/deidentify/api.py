@@ -144,6 +144,7 @@ def deidentify(  # pylint: disable = too-many-arguments
     face_review: str | os.PathLike[str] | None = None,
     readiness_review: str | os.PathLike[str] | None = None,
     readiness_report: str | os.PathLike[str] | None = None,
+    residual_review: str | os.PathLike[str] | None = None,
     sequester_studies_with_several_patients: bool = False,
 ) -> Deidentified:
     """De-identify the DICOM files below a source directory into a new release.
@@ -264,6 +265,15 @@ def deidentify(  # pylint: disable = too-many-arguments
         The release report, ``release-report.json``, of the run whose QC
         pack is ``readiness_review``, which records that run's policy. It
         is given with ``readiness_review``.
+    residual_review : str or os.PathLike, optional
+        Under any policy, the QC pack of an earlier run of the same files,
+        attested with the residual findings of instances cleared by ``python
+        -m pymedphys._dicom.deidentify.attestation_command``. A file that
+        only such findings would hold for review, each one that the pack
+        showed for a cleared instance with the same source file, at the same
+        place in a value with the same SHA-256, is released, and the release report counts
+        each as reviewed (D-042). By default, none, so every such file is
+        held for review.
     sequester_studies_with_several_patients : bool, optional
         Whether to sequester every instance of a study whose instances name
         several patients, each a Patient ID with its issuer, the instances
@@ -419,6 +429,7 @@ def deidentify(  # pylint: disable = too-many-arguments
                 face_review=face_review,
                 readiness_review=readiness_review,
                 readiness_report=readiness_report,
+                residual_review=residual_review,
             )
         except command.TransformNotBuilt as error:
             raise DeidentifyError(str(error)) from None
