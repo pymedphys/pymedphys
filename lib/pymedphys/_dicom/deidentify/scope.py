@@ -60,11 +60,13 @@ table gives that sequence D, as the supplementary rules give a volumetric
 one's Volumetric Annotation Sequence (0070,1901) and Volumetric
 Presentation Input Annotation Sequence (0070,1905). Every Encapsulated PDF
 that holds its Encapsulated Document (0042,0011) is also sequestered under
-every policy: Table E.1-1 gives it D, and no reviewed rule gives a document
-a dummy value. Every other instance is sequestered: neither de-identified
-nor written, and listed in the run report by opaque identifiers only. That
-includes the other Structured Reports and instances of Private SOP
-Classes.
+every policy without the Clean Pixel Data Option: Table E.1-1 gives it D,
+and no reviewed rule gives a document a dummy value. Under that option, the
+document is released only as the reviewed rendering of its pages
+(:mod:`~pymedphys._dicom.deidentify.document_cleaning`). Every other
+instance is sequestered: neither de-identified nor written, and listed in
+the run report by opaque identifiers only. That includes the other
+Structured Reports and instances of Private SOP Classes.
 
 :func:`classify` decides from the instance's SOP Class UID (0008,0016), which
 PS3.4 Table B.5-1 maps to its IOD, and from the transfer syntax of its file.
