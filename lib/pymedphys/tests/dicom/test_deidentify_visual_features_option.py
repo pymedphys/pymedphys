@@ -797,6 +797,8 @@ def test_the_statement_names_each_supported_iod_that_lacks_the_attribute():
         "Planar MPR Volumetric Presentation State",
         "Volume Rendering Volumetric Presentation State",
         "Advanced Blending Presentation State",
+        "Waveform Presentation State",
+        "Waveform Acquisition Presentation State",
     }
     assert (
         "which of the supported IODs are RT Plan, RT Structure Set, RT Beams "
@@ -822,9 +824,10 @@ def test_the_statement_names_each_supported_iod_that_lacks_the_attribute():
         "Presentation State, Color Softcopy Presentation State, Pseudo-Color "
         "Softcopy Presentation State, Blending Softcopy Presentation State, "
         "XA/XRF Grayscale Softcopy Presentation State, Variable Modality LUT "
-        "Softcopy Presentation State, Planar MPR Volumetric Presentation State, "
-        "Volume Rendering Volumetric Presentation State, and Advanced Blending "
-        "Presentation State."
+        "Softcopy Presentation State, Planar MPR Volumetric Presentation "
+        "State, Volume Rendering Volumetric Presentation State, Advanced "
+        "Blending Presentation State, Waveform Presentation State, and "
+        "Waveform Acquisition Presentation State."
     ) in conformance_markdown.render_markdown(
         conformance.conformance_statement(_policy(), vocabulary=None)
     )
@@ -1330,7 +1333,7 @@ def test_the_report_names_the_attested_pack(second_run):
     attestation, _, report, _ = second_run
 
     assert report["face_review"]["reference"] == attestation.reference
-    assert report["format"] == "pymedphys-deid-release-report/70"
+    assert report["format"] == "pymedphys-deid-release-report/78"
 
 
 def test_the_report_counts_the_ct_series_that_were_not_defaced(second_run):
