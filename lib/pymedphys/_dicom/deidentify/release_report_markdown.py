@@ -961,6 +961,7 @@ def _exempted(section: object) -> list[Block]:
             "term or code, an equipment name, a vendor's private creator, a date "
             "that Modified Dates shifted, a value that a selected option keeps, "
             "text in a private creator that the run's safe private list keeps, "
+            "the method digest that the run writes, which holds no source value, "
             "or a standard code's meaning, or a UID that a selected option "
             "keeps, that only instances the run did not write held, or a "
             "finding that a reviewer cleared in an earlier run's QC pack. Each is "
