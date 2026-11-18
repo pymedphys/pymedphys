@@ -30,13 +30,13 @@ from select_checks import OUTPUTS, select_checks
 
 WORKFLOWS = Path(__file__).resolve().parents[1] / "workflows"
 # The lines that give each listed corpus module that runs alone a part of its
-# own, the two halves of the CT defacing runs and the second half of the
+# own, the three shares of the CT defacing runs and the second half of the
 # policies' end-to-end runs, and the other listed modules to the corpus-runs
 # part, in every job that runs in parts.
 ALONE_SELECTION = (
     "            alone=("
-    '"${CT_DEFACING_RUN_TEST}" "${CT_DEFACING_REVIEW_TEST}" '
-    '"${CORPUS_END_TO_END_P_Z_TEST}")\n',
+    '"${CT_DEFACING_RUN_TEST}" "${CT_DEFACING_VARIANT_TEST}" '
+    '"${CT_DEFACING_REVIEW_TEST}" "${CORPUS_END_TO_END_P_Z_TEST}")\n',
     '            for module in "${alone[@]}"; do\n',
     '              if [[ " ${listed[*]} " != *" ${module} "* ]]; then\n',
     '                echo "::error::Each module that runs alone must belong to '
@@ -44,6 +44,8 @@ ALONE_SELECTION = (
     '            if [[ "$(printf \'%s\\n\' "${alone[@]}" | sort -u | wc -l)" '
     "-ne ${#alone[@]} ]]; then\n",
     '              ct-defacing) selection=("${CT_DEFACING_RUN_TEST}") ;;\n',
+    "              ct-defacing-variants) "
+    'selection=("${CT_DEFACING_VARIANT_TEST}") ;;\n',
     '              ct-defacing-reviews) selection=("${CT_DEFACING_REVIEW_TEST}") ;;\n',
     '                  if [[ " ${alone[*]} " != *" ${path} "* ]]; then\n',
     '                    selection+=("${path}")\n',
@@ -438,12 +440,14 @@ class WorkflowContractTests(unittest.TestCase):
         for name in (
             "junit-extra-gamma",
             "junit-extra-dicom-ct-defacing",
+            "junit-extra-dicom-ct-defacing-variants",
             "junit-extra-dicom-ct-defacing-reviews",
             "junit-extra-dicom-corpus-runs",
             "junit-extra-dicom-corpus-end-to-end-p-z",
             "junit-extra-dicom-deidentify-a-o",
             "junit-extra-dicom-others",
             "junit-dependency-floors-ct-defacing",
+            "junit-dependency-floors-ct-defacing-variants",
             "junit-dependency-floors-ct-defacing-reviews",
             "junit-dependency-floors-corpus-runs",
             "junit-dependency-floors-corpus-end-to-end-p-z",
@@ -531,10 +535,11 @@ class WorkflowContractTests(unittest.TestCase):
             test,
         )
         # Every split job reads the modules that the workflow names to run
-        # alone, the two halves of the CT defacing runs and the second half of
-        # the policies' end-to-end runs: three different listed modules.
+        # alone, the three shares of the CT defacing runs and the second half
+        # of the policies' end-to-end runs: four different listed modules.
         keys = (
             "CT_DEFACING_RUN_TEST",
+            "CT_DEFACING_VARIANT_TEST",
             "CT_DEFACING_REVIEW_TEST",
             "CORPUS_END_TO_END_P_Z_TEST",
         )
@@ -561,7 +566,7 @@ class WorkflowContractTests(unittest.TestCase):
             with self.subTest(key=key):
                 line = re.search(rf"(?m)^        {key}: .+\n", test)[0]
                 self.assertIn(line, combined)
-        # In both jobs, each half of CT defacing and the second half of the
+        # In both jobs, each CT defacing module and the second half of the
         # policies' end-to-end runs run alone, the other listed modules run
         # together, and deidentify-a-o runs the de-identification modules from
         # a to o that are not listed. Both others parts ignore every module of
@@ -743,6 +748,25 @@ class WorkflowContractTests(unittest.TestCase):
         # The corpus tests skip without the validators unless required.
         self.assertIn("          PYMEDPHYS_DICOM_VALIDATORS: required\n", job)
         self.assertIn("pymedphys dev tests --dicom-validators", job)
+        # The policies' runs are validated in two halves on two runners, each
+        # half's module run by its own cell, with reports of their own; an
+        # unknown half fails rather than run nothing.
+        self.assertIn("        policies: [a-o, p-z]\n", job)
+        self.assertIn("      fail-fast: false\n", job)
+        modules = "lib/pymedphys/tests/dicom/test_deidentify_dicom_validation_corpus"
+        for line in (
+            "            a-o)\n"
+            "              selection=(\n"
+            f"                {modules}.py\n",
+            f"            p-z) selection=({modules}_p_z.py) ;;\n",
+            '            *) echo "::error::Unknown policies ${POLICIES}."; exit 1 ;;\n',
+            '--dicom-validators "${selection[@]}" \\\n',
+            'test-results/dicom-validation-${POLICIES}.xml"\n',
+            "          name: dicom-validation-${{ matrix.policies }}\n",
+        ):
+            with self.subTest(line=line):
+                self.assertIn(line, job)
+        self.assertNotIn("\n    if:", job)
         self.assertIn("uses: ./.github/actions/setup-dicom-validators", job)
         # Only the snapshot listing may fail without failing the job.
         self.assertEqual(job.count("continue-on-error: true"), 1)
